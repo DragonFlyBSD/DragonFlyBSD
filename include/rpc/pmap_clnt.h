@@ -29,7 +29,7 @@
  *	from: @(#)pmap_clnt.h 1.11 88/02/08 SMI
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.11 1999/08/27 23:45:04 peter Exp $
- * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.6 2004/02/26 13:58:26 joerg Exp $
+ * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.7 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -67,7 +67,7 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-bool_t		 pmap_set(u_long, u_long, int, int);
+bool_t		 pmap_set(u_long, u_long, int, u_short);
 bool_t		 pmap_unset(u_long, u_long);
 struct pmaplist	*pmap_getmaps(struct sockaddr_in *);
 enum clnt_stat	 pmap_rmtcall(struct sockaddr_in *, u_long, u_long, u_long,

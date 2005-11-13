@@ -29,7 +29,7 @@
  * @(#)pmap_getmaps.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getmaps.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getmaps.c,v 1.11 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getmaps.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getmaps.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -61,8 +61,7 @@
  * Calls the pmap service remotely to do get the maps.
  */
 struct pmaplist *
-pmap_getmaps(address)
-	 struct sockaddr_in *address;
+pmap_getmaps(struct sockaddr_in *address)
 {
 	struct pmaplist *head = (struct pmaplist *)NULL;
 	int socket = -1;
@@ -82,7 +81,7 @@ pmap_getmaps(address)
 		CLNT_DESTROY(client);
 	}
 	if (socket != -1)
-		(void)_close(socket);
+		_close(socket);
 	address->sin_port = 0;
 	return (head);
 }

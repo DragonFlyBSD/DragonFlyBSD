@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/getpublickey.c,v 1.2.6.1 2000/09/20 04:43:11 jkh Exp $
- * $DragonFly: src/lib/libc/rpc/getpublickey.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/getpublickey.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)publickey.c 1.10 91/03/11 Copyr 1986 Sun Micro
  */
@@ -61,9 +61,7 @@ int (*__getpublickey_LOCAL)() = 0;
  * Get somebody's public key
  */
 int
-__getpublickey_real(netname, publickey)
-	char *netname;
-	char *publickey;
+__getpublickey_real(char *netname, char *publickey)
 {
 	char lookup[3 * HEXKEYBYTES];
 	char *p;
@@ -77,7 +75,7 @@ __getpublickey_real(netname, publickey)
 		return (0);
 	}
 	*p = '\0';
-	(void) strncpy(publickey, lookup, HEXKEYBYTES);
+	strncpy(publickey, lookup, HEXKEYBYTES);
 	publickey[HEXKEYBYTES] = '\0';
 	return (1);
 }
@@ -88,9 +86,7 @@ __getpublickey_real(netname, publickey)
  */
 
 int
-getpublicandprivatekey(key, ret)
-	char *key;
-	char *ret;
+getpublicandprivatekey(char *key, char *ret)
 {
 	char buf[1024];	/* big enough */
 	char *res;
@@ -165,9 +161,8 @@ getpublicandprivatekey(key, ret)
 	}
 }
 
-int getpublickey(netname, publickey)
-	char *netname;
-	char *publickey;
+int
+getpublickey(char *netname, char *publickey)
 {
 	if (__getpublickey_LOCAL != NULL)
 		return(__getpublickey_LOCAL(netname, publickey));

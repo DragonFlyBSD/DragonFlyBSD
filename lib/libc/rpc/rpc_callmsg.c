@@ -29,7 +29,7 @@
  * @(#)rpc_callmsg.c 1.4 87/08/11 Copyr 1984 Sun Micro
  * @(#)rpc_callmsg.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/rpc_callmsg.c,v 1.9 1999/08/28 00:00:45 peter Exp $
- * $DragonFly: src/lib/libc/rpc/rpc_callmsg.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/rpc_callmsg.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -48,9 +48,7 @@
  * XDR a call message
  */
 bool_t
-xdr_callmsg(xdrs, cmsg)
-	XDR *xdrs;
-	struct rpc_msg *cmsg;
+xdr_callmsg(XDR *xdrs, struct rpc_msg *cmsg)
 {
 	int32_t *buf;
 	struct opaque_auth *oa;

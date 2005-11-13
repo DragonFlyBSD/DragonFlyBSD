@@ -30,7 +30,7 @@
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
  *
  * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.3 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 #ident	"@(#)key_call.c	1.25	94/04/24 SMI"
@@ -66,7 +66,7 @@
 #define	KEY_NRETRY	12	/* number of retries */
 
 #ifdef DEBUG
-#define	debug(msg)	(void) fprintf(stderr, "%s\n", msg);
+#define	debug(msg)	fprintf(stderr, "%s\n", msg);
 #else
 #define	debug(msg)
 #endif /* DEBUG */
@@ -87,8 +87,7 @@ des_block *(*__key_gendes_LOCAL)() = 0;
 static int key_call ( u_long, xdrproc_t, char *, xdrproc_t, char * );
 
 int
-key_setsecret(secretkey)
-	const char *secretkey;
+key_setsecret(const char *secretkey)
 {
 	keystatus status;
 
@@ -129,10 +128,7 @@ key_secretkey_is_set(void)
 }
 
 int
-key_encryptsession_pk(remotename, remotekey, deskey)
-	char *remotename;
-	netobj *remotekey;
-	des_block *deskey;
+key_encryptsession_pk(char *remotename, netobj *remotekey, des_block *deskey)
 {
 	cryptkeyarg2 arg;
 	cryptkeyres res;
@@ -153,10 +149,7 @@ key_encryptsession_pk(remotename, remotekey, deskey)
 }
 
 int
-key_decryptsession_pk(remotename, remotekey, deskey)
-	char *remotename;
-	netobj *remotekey;
-	des_block *deskey;
+key_decryptsession_pk(char *remotename, netobj *remotekey, des_block *deskey)
 {
 	cryptkeyarg2 arg;
 	cryptkeyres res;
@@ -177,9 +170,7 @@ key_decryptsession_pk(remotename, remotekey, deskey)
 }
 
 int
-key_encryptsession(remotename, deskey)
-	const char *remotename;
-	des_block *deskey;
+key_encryptsession(const char *remotename, des_block *deskey)
 {
 	cryptkeyarg arg;
 	cryptkeyres res;
@@ -199,9 +190,7 @@ key_encryptsession(remotename, deskey)
 }
 
 int
-key_decryptsession(remotename, deskey)
-	const char *remotename;
-	des_block *deskey;
+key_decryptsession(const char *remotename, des_block *deskey)
 {
 	cryptkeyarg arg;
 	cryptkeyres res;
@@ -221,8 +210,7 @@ key_decryptsession(remotename, deskey)
 }
 
 int
-key_gendes(key)
-	des_block *key;
+key_gendes(des_block *key)
 {
 	if (!key_call((u_long)KEY_GEN, xdr_void, (char *)NULL,
 			xdr_des_block, (char *)key)) {
@@ -232,8 +220,7 @@ key_gendes(key)
 }
 
 int
-key_setnet(arg)
-struct netstarg *arg;
+key_setnet(struct netstarg *arg)
 {
 	keystatus status;
 
@@ -252,9 +239,7 @@ struct netstarg *arg;
 
 
 int
-key_get_conv(pkey, deskey)
-	char *pkey;
-	des_block *deskey;
+key_get_conv(char *pkey, des_block *deskey)
 {
 	cryptkeyres res;
 
@@ -295,8 +280,7 @@ key_call_destroy(void *vp)
  * Keep the handle cached.  This call may be made quite often.
  */
 static CLIENT *
-getkeyserv_handle(vers)
-int	vers;
+getkeyserv_handle(int vers)
 {
 	struct key_call_private *kcp = key_call_private_main;
 	struct timeval wait_time;
@@ -369,7 +353,7 @@ int	vers;
 
 	wait_time.tv_sec = TOTAL_TIMEOUT/TOTAL_TRIES;
 	wait_time.tv_usec = 0;
-	(void) clnt_control(kcp->client, CLSET_RETRY_TIMEOUT,
+	clnt_control(kcp->client, CLSET_RETRY_TIMEOUT,
 		(char *)&wait_time);
 	if (clnt_control(kcp->client, CLGET_FD, (char *)&fd))
 		_fcntl(fd, F_SETFD, 1);	/* make it "close on exec" */
@@ -380,12 +364,8 @@ int	vers;
 /* returns  0 on failure, 1 on success */
 
 static int
-key_call(proc, xdr_arg, arg, xdr_rslt, rslt)
-	u_long proc;
-	xdrproc_t xdr_arg;
-	char *arg;
-	xdrproc_t xdr_rslt;
-	char *rslt;
+key_call(u_long proc, xdrproc_t xdr_arg, char *arg, xdrproc_t xdr_rslt,
+	 char *rslt)
 {
 	CLIENT *clnt;
 	struct timeval wait_time;

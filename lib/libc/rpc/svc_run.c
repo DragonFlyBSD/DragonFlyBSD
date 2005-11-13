@@ -29,7 +29,7 @@
  * @(#)svc_run.c 1.1 87/10/13 Copyr 1984 Sun Micro
  * @(#)svc_run.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_run.c,v 1.10 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_run.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_run.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -51,7 +51,7 @@ extern int __svc_fdsetsize;
 extern fd_set *__svc_fdset;
 
 void
-svc_run()
+svc_run(void)
 {
 	fd_set *fds;
 

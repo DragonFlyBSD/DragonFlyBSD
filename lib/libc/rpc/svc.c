@@ -29,7 +29,7 @@
  * @(#)svc.c 1.44 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc.c	2.4 88/08/11 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc.c,v 1.14.2.1 2001/03/05 10:50:36 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/svc.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -79,8 +79,7 @@ fd_set *__svc_fdset = NULL;
  * Activate a transport handle.
  */
 void
-xprt_register(xprt)
-	SVCXPRT *xprt;
+xprt_register(SVCXPRT *xprt)
 {
 	int sock = xprt->xp_sock;
 
@@ -126,8 +125,7 @@ xprt_register(xprt)
  * De-activate a transport handle.
  */
 void
-xprt_unregister(xprt)
-	SVCXPRT *xprt;
+xprt_unregister(SVCXPRT *xprt)
 {
 	int sock = xprt->xp_sock;
 
@@ -157,12 +155,8 @@ xprt_unregister(xprt)
  * program number comes in.
  */
 bool_t
-svc_register(xprt, prog, vers, dispatch, protocol)
-	SVCXPRT *xprt;
-	u_long prog;
-	u_long vers;
-	void (*dispatch)();
-	int protocol;
+svc_register(SVCXPRT *xprt, u_long prog, u_long vers, void (*dispatch)(),
+	     int protocol)
 {
 	struct svc_callout *prev;
 	struct svc_callout *s;
@@ -193,9 +187,7 @@ pmap_it:
  * Remove a service program from the callout list.
  */
 void
-svc_unregister(prog, vers)
-	u_long prog;
-	u_long vers;
+svc_unregister(u_long prog, u_long vers)
 {
 	struct svc_callout *prev;
 	struct svc_callout *s;
@@ -210,7 +202,7 @@ svc_unregister(prog, vers)
 	s->sc_next = NULL_SVC;
 	mem_free((char *) s, (u_int) sizeof(struct svc_callout));
 	/* now unregister the information with the local binder service */
-	(void)pmap_unset(prog, vers);
+	pmap_unset(prog, vers);
 }
 
 /*
@@ -218,10 +210,7 @@ svc_unregister(prog, vers)
  * struct.
  */
 static struct svc_callout *
-svc_find(prog, vers, prev)
-	u_long prog;
-	u_long vers;
-	struct svc_callout **prev;
+svc_find(u_long prog, u_long vers, struct svc_callout **prev)
 {
 	struct svc_callout *s, *p;
 
@@ -242,10 +231,7 @@ done:
  * Send a reply to an rpc request
  */
 bool_t
-svc_sendreply(xprt, xdr_results, xdr_location)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_results;
-	caddr_t xdr_location;
+svc_sendreply(SVCXPRT *xprt, xdrproc_t xdr_results, caddr_t xdr_location)
 {
 	struct rpc_msg rply;
 
@@ -262,8 +248,7 @@ svc_sendreply(xprt, xdr_results, xdr_location)
  * No procedure error reply
  */
 void
-svcerr_noproc(xprt)
-	SVCXPRT *xprt;
+svcerr_noproc(SVCXPRT *xprt)
 {
 	struct rpc_msg rply;
 
@@ -278,8 +263,7 @@ svcerr_noproc(xprt)
  * Can't decode args error reply
  */
 void
-svcerr_decode(xprt)
-	SVCXPRT *xprt;
+svcerr_decode(SVCXPRT *xprt)
 {
 	struct rpc_msg rply;
 
@@ -294,8 +278,7 @@ svcerr_decode(xprt)
  * Some system error
  */
 void
-svcerr_systemerr(xprt)
-	SVCXPRT *xprt;
+svcerr_systemerr(SVCXPRT *xprt)
 {
 	struct rpc_msg rply;
 
@@ -310,9 +293,7 @@ svcerr_systemerr(xprt)
  * Authentication error reply
  */
 void
-svcerr_auth(xprt, why)
-	SVCXPRT *xprt;
-	enum auth_stat why;
+svcerr_auth(SVCXPRT *xprt, enum auth_stat why)
 {
 	struct rpc_msg rply;
 
@@ -327,8 +308,7 @@ svcerr_auth(xprt, why)
  * Auth too weak error reply
  */
 void
-svcerr_weakauth(xprt)
-	SVCXPRT *xprt;
+svcerr_weakauth(SVCXPRT *xprt)
 {
 
 	svcerr_auth(xprt, AUTH_TOOWEAK);
@@ -338,8 +318,7 @@ svcerr_weakauth(xprt)
  * Program unavailable error reply
  */
 void
-svcerr_noprog(xprt)
-	SVCXPRT *xprt;
+svcerr_noprog(SVCXPRT *xprt)
 {
 	struct rpc_msg rply;
 
@@ -354,10 +333,7 @@ svcerr_noprog(xprt)
  * Program version mismatch error reply
  */
 void
-svcerr_progvers(xprt, low_vers, high_vers)
-	SVCXPRT *xprt;
-	u_long low_vers;
-	u_long high_vers;
+svcerr_progvers(SVCXPRT *xprt, u_long low_vers, u_long high_vers)
 {
 	struct rpc_msg rply;
 
@@ -389,8 +365,7 @@ svcerr_progvers(xprt, low_vers, high_vers)
  */
 
 void
-svc_getreq(rdfds)
-	int rdfds;
+svc_getreq(int rdfds)
 {
 	fd_set readfds;
 
@@ -400,16 +375,13 @@ svc_getreq(rdfds)
 }
 
 void
-svc_getreqset(readfds)
-	fd_set *readfds;
+svc_getreqset(fd_set *readfds)
 {
 	svc_getreqset2(readfds, FD_SETSIZE);
 }
 
 void
-svc_getreqset2(readfds, width)
-	fd_set *readfds;
-	int width;
+svc_getreqset2(fd_set *readfds, int width)
 {
 	enum xprt_stat stat;
 	struct rpc_msg msg;

@@ -29,7 +29,7 @@
  * @(#)clnt_simple.c 1.35 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_simple.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_simple.c,v 1.12 2000/01/27 23:06:35 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_simple.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_simple.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -58,11 +58,8 @@ static struct callrpc_private {
 } *callrpc_private;
 
 int
-callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
-	char *host;
-	int prognum, versnum, procnum;
-	xdrproc_t inproc, outproc;
-	char *in, *out;
+callrpc(char *host, int prognum, int versnum, int procnum, xdrproc_t inproc,
+	char *in, xdrproc_t outproc, char *out)
 {
 	struct callrpc_private *crp = callrpc_private;
 	struct sockaddr_in server_addr;
@@ -87,7 +84,7 @@ callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
 	} else {
 		crp->valid = 0;
 		if (crp->socket != -1)
-			(void)_close(crp->socket);
+			_close(crp->socket);
 		crp->socket = RPC_ANYSOCK;
 		if (crp->client) {
 			clnt_destroy(crp->client);
@@ -108,7 +105,7 @@ callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
 		crp->valid = 1;
 		crp->oldprognum = prognum;
 		crp->oldversnum = versnum;
-		(void) strcpy(crp->oldhost, host);
+		strcpy(crp->oldhost, host);
 	}
 	tottimeout.tv_sec = 25;
 	tottimeout.tv_usec = 0;

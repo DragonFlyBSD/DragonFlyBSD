@@ -29,7 +29,7 @@
  * @(#)clnt_perror.c 1.15 87/10/07 Copyr 1984 Sun Micro
  * @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.11.2.1 2000/08/23 00:02:04 jhb Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_perror.c,v 1.4 2004/11/16 18:55:45 liamfoy Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_perror.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -52,7 +52,7 @@ static char *auth_errmsg();
 static char *buf;
 
 static char *
-_buf()
+_buf(void)
 {
 
 	if (buf == 0)
@@ -64,9 +64,7 @@ _buf()
  * Print reply error info
  */
 char *
-clnt_sperror(rpch, s)
-	CLIENT *rpch;
-	const char *s;
+clnt_sperror(CLIENT *rpch, const char *s)
 {
 	struct rpc_err e;
 	char *err;
@@ -77,7 +75,7 @@ clnt_sperror(rpch, s)
 		return (0);
 	CLNT_GETERR(rpch, &e);
 
-	(void) snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s", s, clnt_sperrno(e.re_status));
+	snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s", s, clnt_sperrno(e.re_status));
 	str += strlen(str);
 
 	switch (e.re_status) {
@@ -98,37 +96,37 @@ clnt_sperror(rpch, s)
 
 	case RPC_CANTSEND:
 	case RPC_CANTRECV:
-		(void) snprintf(str, CLNT_PERROR_BUFLEN - (str - strstart),
+		snprintf(str, CLNT_PERROR_BUFLEN - (str - strstart),
 			"; errno = %s\n", strerror(e.re_errno));
 		break;
 
 	case RPC_VERSMISMATCH:
-		(void) sprintf(str,
+		sprintf(str,
 			"; low version = %lu, high version = %lu\n",
 			(u_long)e.re_vers.low, (u_long)e.re_vers.high);
 		break;
 
 	case RPC_AUTHERROR:
 		err = auth_errmsg(e.re_why);
-		(void) sprintf(str,"; why = ");
+		sprintf(str,"; why = ");
 		str += strlen(str);
 		if (err != NULL) {
-			(void) sprintf(str, "%s\n",err);
+			sprintf(str, "%s\n",err);
 		} else {
-			(void) sprintf(str,
+			sprintf(str,
 				"(unknown authentication error - %d)\n",
 				(int) e.re_why);
 		}
 		break;
 
 	case RPC_PROGVERSMISMATCH:
-		(void) sprintf(str,
+		sprintf(str,
 			"; low version = %lu, high version = %lu\n",
 			(u_long)e.re_vers.low, (u_long)e.re_vers.high);
 		break;
 
 	default:	/* unknown */
-		(void) sprintf(str,
+		sprintf(str,
 			"; s1 = %lu, s2 = %lu\n",
 			(long)e.re_lb.s1, (long)e.re_lb.s2);
 		break;
@@ -141,11 +139,9 @@ clnt_sperror(rpch, s)
 }
 
 void
-clnt_perror(rpch, s)
-	CLIENT *rpch;
-	const char *s;
+clnt_perror(CLIENT *rpch, const char *s)
 {
-	(void) fprintf(stderr,"%s\n",clnt_sperror(rpch,s));
+	fprintf(stderr,"%s\n",clnt_sperror(rpch,s));
 }
 
 
@@ -175,8 +171,7 @@ static const char *const rpc_errlist[] = {
  * This interface for use by clntrpc
  */
 char *
-clnt_sperrno(stat)
-	enum clnt_stat stat;
+clnt_sperrno(enum clnt_stat stat)
 {
 	unsigned int errnum = stat;
 
@@ -187,16 +182,14 @@ clnt_sperrno(stat)
 }
 
 void
-clnt_perrno(num)
-	enum clnt_stat num;
+clnt_perrno(enum clnt_stat num)
 {
-	(void) fprintf(stderr,"%s\n",clnt_sperrno(num));
+	fprintf(stderr,"%s\n",clnt_sperrno(num));
 }
 
 
 char *
-clnt_spcreateerror(s)
-	const char *s;
+clnt_spcreateerror(const char *s)
 {
 	char *str = _buf();
 
@@ -204,18 +197,18 @@ clnt_spcreateerror(s)
 		return(0);
 	switch (rpc_createerr.cf_stat) {
 	case RPC_PMAPFAILURE:
-		(void) snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s - %s\n", s,
+		snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s - %s\n", s,
 		    clnt_sperrno(rpc_createerr.cf_stat),
 		    clnt_sperrno(rpc_createerr.cf_error.re_status));
 		break;
 
 	case RPC_SYSTEMERROR:
-		(void) snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s - %s\n", s,
+		snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s - %s\n", s,
 		    clnt_sperrno(rpc_createerr.cf_stat),
 		    strerror(rpc_createerr.cf_error.re_errno));
 		break;
 	default:
-		(void) snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s\n", s,
+		snprintf(str, CLNT_PERROR_BUFLEN, "%s: %s\n", s,
 		clnt_sperrno(rpc_createerr.cf_stat));
 		break;
 	}
@@ -225,10 +218,9 @@ clnt_spcreateerror(s)
 }
 
 void
-clnt_pcreateerror(s)
-	const char *s;
+clnt_pcreateerror(const char *s)
 {
-	(void) fprintf(stderr,"%s\n",clnt_spcreateerror(s));
+	fprintf(stderr,"%s\n",clnt_spcreateerror(s));
 }
 
 static const char *const auth_errlist[] = {
@@ -243,8 +235,7 @@ static const char *const auth_errlist[] = {
 };
 
 static char *
-auth_errmsg(stat)
-	enum auth_stat stat;
+auth_errmsg(enum auth_stat stat)
 {
 	unsigned int errnum = stat;
 

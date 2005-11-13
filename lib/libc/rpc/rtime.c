@@ -28,7 +28,7 @@
  *
  * @(#)rtime.c	2.2 88/08/10 4.0 RPCSRC; from 1.8 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/rtime.c,v 1.5 2000/01/27 23:06:41 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/rtime.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/rtime.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -66,10 +66,7 @@ extern int _rpc_dtablesize ( void );
 static void do_close ( int );
 
 int
-rtime(addrp, timep, timeout)
-	struct sockaddr_in *addrp;
-	struct timeval *timep;
-	struct timeval *timeout;
+rtime(struct sockaddr_in *addrp, struct timeval *timep, struct timeval *timeout)
 {
 	int s;
 	fd_set readfds;
@@ -147,12 +144,11 @@ rtime(addrp, timep, timeout)
 }
 
 static void
-do_close(s)
-	int s;
+do_close(int s)
 {
 	int save;
 
 	save = errno;
-	(void)_close(s);
+	_close(s);
 	errno = save;
 }

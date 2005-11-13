@@ -29,7 +29,7 @@
  * @(#)svc_auth_unix.c 1.28 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc_auth_unix.c	2.3 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_auth_unix.c,v 1.8 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -51,9 +51,7 @@
  * Unix longhand authenticator
  */
 enum auth_stat
-_svcauth_unix(rqst, msg)
-	struct svc_req *rqst;
-	struct rpc_msg *msg;
+_svcauth_unix(struct svc_req *rqst, struct rpc_msg *msg)
 {
 	enum auth_stat stat;
 	XDR xdrs;
@@ -102,14 +100,14 @@ _svcauth_unix(rqst, msg)
 		 * timestamp, hostname len (0), uid, gid, and gids len (0).
 		 */
 		if ((5 + gid_len) * BYTES_PER_XDR_UNIT + str_len > auth_len) {
-			(void) printf("bad auth_len gid %d str %d auth %d\n",
+			printf("bad auth_len gid %d str %d auth %d\n",
 			    gid_len, str_len, auth_len);
 			stat = AUTH_BADCRED;
 			goto done;
 		}
 	} else if (! xdr_authunix_parms(&xdrs, aup)) {
 		xdrs.x_op = XDR_FREE;
-		(void)xdr_authunix_parms(&xdrs, aup);
+		xdr_authunix_parms(&xdrs, aup);
 		stat = AUTH_BADCRED;
 		goto done;
 	}
@@ -139,9 +137,7 @@ done:
  */
 /*ARGSUSED*/
 enum auth_stat
-_svcauth_short(rqst, msg)
-	struct svc_req *rqst;
-	struct rpc_msg *msg;
+_svcauth_short(struct svc_req *rqst, struct rpc_msg *msg)
 {
 	return (AUTH_REJECTEDCRED);
 }

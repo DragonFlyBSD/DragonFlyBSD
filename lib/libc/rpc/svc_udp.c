@@ -29,7 +29,7 @@
  * @(#)svc_udp.c 1.24 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_udp.c	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_udp.c,v 1.13 2000/01/27 23:06:41 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/svc_udp.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_udp.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -97,9 +97,7 @@ struct svcudp_data {
  * The routines returns NULL if a problem occurred.
  */
 SVCXPRT *
-svcudp_bufcreate(sock, sendsz, recvsz)
-	int sock;
-	u_int sendsz, recvsz;
+svcudp_bufcreate(int sock, u_int sendsz, u_int recvsz)
 {
 	bool_t madesock = FALSE;
 	SVCXPRT *xprt;
@@ -119,27 +117,27 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 	addr.sin_family = AF_INET;
 	if (bindresvport(sock, &addr)) {
 		addr.sin_port = 0;
-		(void)_bind(sock, (struct sockaddr *)&addr, len);
+		_bind(sock, (struct sockaddr *)&addr, len);
 	}
 	if (_getsockname(sock, (struct sockaddr *)&addr, &len) != 0) {
 		perror("svcudp_create - cannot getsockname");
 		if (madesock)
-			(void)_close(sock);
+			_close(sock);
 		return ((SVCXPRT *)NULL);
 	}
 	xprt = (SVCXPRT *)mem_alloc(sizeof(SVCXPRT));
 	if (xprt == NULL) {
-		(void)fprintf(stderr, "svcudp_create: out of memory\n");
+		fprintf(stderr, "svcudp_create: out of memory\n");
 		return (NULL);
 	}
 	su = (struct svcudp_data *)mem_alloc(sizeof(*su));
 	if (su == NULL) {
-		(void)fprintf(stderr, "svcudp_create: out of memory\n");
+		fprintf(stderr, "svcudp_create: out of memory\n");
 		return (NULL);
 	}
 	su->su_iosz = ((MAX(sendsz, recvsz) + 3) / 4) * 4;
 	if ((rpc_buffer(xprt) = mem_alloc(su->su_iosz)) == NULL) {
-		(void)fprintf(stderr, "svcudp_create: out of memory\n");
+		fprintf(stderr, "svcudp_create: out of memory\n");
 		return (NULL);
 	}
 	xdrmem_create(
@@ -155,25 +153,21 @@ svcudp_bufcreate(sock, sendsz, recvsz)
 }
 
 SVCXPRT *
-svcudp_create(sock)
-	int sock;
+svcudp_create(int sock)
 {
 
 	return(svcudp_bufcreate(sock, UDPMSGSIZE, UDPMSGSIZE));
 }
 
 static enum xprt_stat
-svcudp_stat(xprt)
-	SVCXPRT *xprt;
+svcudp_stat(SVCXPRT *xprt)
 {
 
 	return (XPRT_IDLE);
 }
 
 static bool_t
-svcudp_recv(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcudp_recv(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct svcudp_data *su = su_data(xprt);
 	XDR *xdrs = &(su->su_xdrs);
@@ -196,7 +190,7 @@ svcudp_recv(xprt, msg)
 	su->su_xid = msg->rm_xid;
 	if (su->su_cache != NULL) {
 		if (cache_get(xprt, msg, &reply, &replylen)) {
-			(void) _sendto(xprt->xp_sock, reply, (int) replylen, 0,
+			_sendto(xprt->xp_sock, reply, (int) replylen, 0,
 			  (struct sockaddr *) &xprt->xp_raddr, xprt->xp_addrlen);
 			return (TRUE);
 		}
@@ -205,9 +199,7 @@ svcudp_recv(xprt, msg)
 }
 
 static bool_t
-svcudp_reply(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcudp_reply(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct svcudp_data *su = su_data(xprt);
 	XDR *xdrs = &(su->su_xdrs);
@@ -232,20 +224,14 @@ svcudp_reply(xprt, msg)
 }
 
 static bool_t
-svcudp_getargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcudp_getargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 
 	return ((*xdr_args)(&(su_data(xprt)->su_xdrs), args_ptr));
 }
 
 static bool_t
-svcudp_freeargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcudp_freeargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 	XDR *xdrs = &(su_data(xprt)->su_xdrs);
 
@@ -254,13 +240,12 @@ svcudp_freeargs(xprt, xdr_args, args_ptr)
 }
 
 static void
-svcudp_destroy(xprt)
-	SVCXPRT *xprt;
+svcudp_destroy(SVCXPRT *xprt)
 {
 	struct svcudp_data *su = su_data(xprt);
 
 	xprt_unregister(xprt);
-	(void)_close(xprt->xp_sock);
+	_close(xprt->xp_sock);
 	XDR_DESTROY(&(su->su_xdrs));
 	mem_free(rpc_buffer(xprt), su->su_iosz);
 	mem_free((caddr_t)su, sizeof(struct svcudp_data));
@@ -279,7 +264,7 @@ svcudp_destroy(xprt)
 #define SPARSENESS 4	/* 75% sparse */
 
 #define CACHE_PERROR(msg)	\
-	(void) fprintf(stderr,"%s\n", msg)
+	fprintf(stderr,"%s\n", msg)
 
 #define ALLOC(type, size)	\
 	(type *) mem_alloc((unsigned) (sizeof(type) * (size)))
@@ -339,9 +324,8 @@ struct udp_cache {
  * Enable use of the cache.
  * Note: there is no disable.
  */
-int svcudp_enablecache(transp, size)
-	SVCXPRT *transp;
-	u_long size;
+int
+svcudp_enablecache(SVCXPRT *transp, u_long size)
 {
 	struct svcudp_data *su = su_data(transp);
 	struct udp_cache *uc;
@@ -378,9 +362,7 @@ int svcudp_enablecache(transp, size)
  * Set an entry in the cache
  */
 static void
-cache_set(xprt, replylen)
-	SVCXPRT *xprt;
-	u_long replylen;
+cache_set(SVCXPRT *xprt, u_long replylen)
 {
 	cache_ptr victim;
 	cache_ptr *vicp;
@@ -443,11 +425,7 @@ cache_set(xprt, replylen)
  * return 1 if found, 0 if not found
  */
 static int
-cache_get(xprt, msg, replyp, replylenp)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
-	char **replyp;
-	u_long *replylenp;
+cache_get(SVCXPRT *xprt, struct rpc_msg *msg, char **replyp, u_long *replylenp)
 {
 	u_int loc;
 	cache_ptr ent;

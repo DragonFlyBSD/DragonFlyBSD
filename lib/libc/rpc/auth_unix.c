@@ -29,7 +29,7 @@
  * @(#)auth_unix.c	1.19 87/08/11 Copyr 1984 Sun Micro
  * @(#)auth_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/auth_unix.c,v 1.12 1999/12/29 05:04:16 peter Exp $
- * $DragonFly: src/lib/libc/rpc/auth_unix.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/auth_unix.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -104,12 +104,7 @@ set_rpc_maxgrouplist(int num)
  * Returns an auth handle with the given stuff in it.
  */
 AUTH *
-authunix_create(machname, uid, gid, len, aup_gids)
-	char *machname;
-	int uid;
-	int gid;
-	int len;
-	int *aup_gids;
+authunix_create(char *machname, int uid, int gid, int len, int *aup_gids)
 {
 	struct authunix_parms aup;
 	char mymem[MAX_AUTH_BYTES];
@@ -124,14 +119,14 @@ authunix_create(machname, uid, gid, len, aup_gids)
 	auth = (AUTH *)mem_alloc(sizeof(*auth));
 #ifndef _KERNEL
 	if (auth == NULL) {
-		(void)fprintf(stderr, "authunix_create: out of memory\n");
+		fprintf(stderr, "authunix_create: out of memory\n");
 		return (NULL);
 	}
 #endif
 	au = (struct audata *)mem_alloc(sizeof(*au));
 #ifndef _KERNEL
 	if (au == NULL) {
-		(void)fprintf(stderr, "authunix_create: out of memory\n");
+		fprintf(stderr, "authunix_create: out of memory\n");
 		return (NULL);
 	}
 #endif
@@ -143,7 +138,7 @@ authunix_create(machname, uid, gid, len, aup_gids)
 	/*
 	 * fill in param struct from the given params
 	 */
-	(void)gettimeofday(&now,  (struct timezone *)0);
+	gettimeofday(&now,  (struct timezone *)0);
 	aup.aup_time = now.tv_sec;
 	aup.aup_machname = machname;
 	aup.aup_uid = uid;
@@ -169,7 +164,7 @@ authunix_create(machname, uid, gid, len, aup_gids)
 	au->au_origcred.oa_base = mem_alloc((u_int) len);
 #else
 	if ((au->au_origcred.oa_base = mem_alloc((u_int) len)) == NULL) {
-		(void)fprintf(stderr, "authunix_create: out of memory\n");
+		fprintf(stderr, "authunix_create: out of memory\n");
 		return (NULL);
 	}
 #endif
@@ -188,7 +183,7 @@ authunix_create(machname, uid, gid, len, aup_gids)
  * syscalls.
  */
 AUTH *
-authunix_create_default()
+authunix_create_default(void)
 {
 	int len;
 	char machname[MAX_MACHINE_NAME + 1];
@@ -217,16 +212,13 @@ authunix_create_default()
  */
 
 static void
-authunix_nextverf(auth)
-	AUTH *auth;
+authunix_nextverf(AUTH *auth)
 {
 	/* no action necessary */
 }
 
 static bool_t
-authunix_marshal(auth, xdrs)
-	AUTH *auth;
-	XDR *xdrs;
+authunix_marshal(AUTH *auth, XDR *xdrs)
 {
 	struct audata *au = AUTH_PRIVATE(auth);
 
@@ -234,9 +226,7 @@ authunix_marshal(auth, xdrs)
 }
 
 static bool_t
-authunix_validate(auth, verf)
-	AUTH *auth;
-	struct opaque_auth verf;
+authunix_validate(AUTH *auth, struct opaque_auth verf)
 {
 	struct audata *au;
 	XDR xdrs;
@@ -254,7 +244,7 @@ authunix_validate(auth, verf)
 			auth->ah_cred = au->au_shcred;
 		} else {
 			xdrs.x_op = XDR_FREE;
-			(void)xdr_opaque_auth(&xdrs, &au->au_shcred);
+			xdr_opaque_auth(&xdrs, &au->au_shcred);
 			au->au_shcred.oa_base = NULL;
 			auth->ah_cred = au->au_origcred;
 		}
@@ -264,8 +254,7 @@ authunix_validate(auth, verf)
 }
 
 static bool_t
-authunix_refresh(auth)
-	AUTH *auth;
+authunix_refresh(AUTH *auth)
 {
 	struct audata *au = AUTH_PRIVATE(auth);
 	struct authunix_parms aup;
@@ -289,7 +278,7 @@ authunix_refresh(auth)
 		goto done;
 
 	/* update the time and serialize in place */
-	(void)gettimeofday(&now, (struct timezone *)0);
+	gettimeofday(&now, (struct timezone *)0);
 	aup.aup_time = now.tv_sec;
 	xdrs.x_op = XDR_ENCODE;
 	XDR_SETPOS(&xdrs, 0);
@@ -301,14 +290,13 @@ authunix_refresh(auth)
 done:
 	/* free the struct authunix_parms created by deserializing */
 	xdrs.x_op = XDR_FREE;
-	(void)xdr_authunix_parms(&xdrs, &aup);
+	xdr_authunix_parms(&xdrs, &aup);
 	XDR_DESTROY(&xdrs);
 	return (stat);
 }
 
 static void
-authunix_destroy(auth)
-	AUTH *auth;
+authunix_destroy(AUTH *auth)
 {
 	struct audata *au = AUTH_PRIVATE(auth);
 
@@ -330,8 +318,7 @@ authunix_destroy(auth)
  * sets private data, au_marshed and au_mpos
  */
 static void
-marshal_new_auth(auth)
-	AUTH *auth;
+marshal_new_auth(AUTH *auth)
 {
 	XDR		xdr_stream;
 	XDR	*xdrs = &xdr_stream;

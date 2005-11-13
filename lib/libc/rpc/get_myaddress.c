@@ -29,7 +29,7 @@
  * @(#)get_myaddress.c 1.4 87/08/11 Copyr 1984 Sun Micro
  * @(#)get_myaddress.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/get_myaddress.c,v 1.18.2.1 2003/01/01 23:55:34 jdp Exp $
- * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/get_myaddress.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -59,8 +59,7 @@
  * interface only if there are no other possible interfaces.
  */
 int
-get_myaddress(addr)
-	struct sockaddr_in *addr;
+get_myaddress(struct sockaddr_in *addr)
 {
 	int s;
 	char buf[BUFSIZ];
@@ -110,6 +109,6 @@ again:
 		loopback = 1;
 		goto again;
 	}
-	(void)_close(s);
+	_close(s);
 	return (gotit ? 0 : -1);
 }

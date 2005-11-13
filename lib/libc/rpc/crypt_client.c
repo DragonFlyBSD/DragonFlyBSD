@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
- * $DragonFly: src/lib/libc/rpc/crypt_client.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/crypt_client.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
  */
@@ -46,10 +46,7 @@
 #endif
 
 int
-_des_crypt_call(buf, len, dparms)
-	char *buf;
-	int len;
-	struct desparams *dparms;
+_des_crypt_call(char *buf, int len, struct desparams *dparms)
 {
 	CLIENT *clnt;
 	desresp  *result_1;

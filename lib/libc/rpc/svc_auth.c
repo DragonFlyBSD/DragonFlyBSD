@@ -28,7 +28,7 @@
  *
  * @(#)svc_auth.c 1.26 89/02/07 Copyr 1984 Sun Micro
  * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.7 1999/12/29 05:04:16 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_auth.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
@@ -103,9 +103,7 @@ static struct authsvc *Auths = NULL;
  * invalid.
  */
 enum auth_stat
-_authenticate(rqst, msg)
-	struct svc_req *rqst;
-	struct rpc_msg *msg;
+_authenticate(struct svc_req *rqst, struct rpc_msg *msg)
 {
 	int cred_flavor;
 	struct authsvc *asp;
@@ -150,9 +148,7 @@ _authenticate(rqst, msg)
 
 /*ARGSUSED*/
 enum auth_stat
-_svcauth_null(rqst, msg)
-	struct svc_req *rqst;
-	struct rpc_msg *msg;
+_svcauth_null(struct svc_req *rqst, struct rpc_msg *msg)
 {
 	return (AUTH_OK);
 }
@@ -172,9 +168,7 @@ _svcauth_null(rqst, msg)
  */
 
 int
-svc_auth_reg(cred_flavor, handler)
-	int cred_flavor;
-	enum auth_stat (*handler)();
+svc_auth_reg(int cred_flavor, enum auth_stat (*handler)())
 {
 	struct authsvc *asp;
 

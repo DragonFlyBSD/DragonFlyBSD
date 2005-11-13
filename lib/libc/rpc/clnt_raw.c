@@ -29,7 +29,7 @@
  * @(#)clnt_raw.c 1.22 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_raw.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_raw.c,v 1.10 1999/08/28 00:00:36 peter Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -82,9 +82,7 @@ void	svc_getreq();
  * Create a client handle for memory based rpc.
  */
 CLIENT *
-clntraw_create(prog, vers)
-	u_long prog;
-	u_long vers;
+clntraw_create(u_long prog, u_long vers)
 {
 	struct clntraw_private *clp = clntraw_private;
 	struct rpc_msg call_msg;
@@ -125,14 +123,8 @@ clntraw_create(prog, vers)
 }
 
 static enum clnt_stat
-clntraw_call(h, proc, xargs, argsp, xresults, resultsp, timeout)
-	CLIENT *h;
-	u_long proc;
-	xdrproc_t xargs;
-	caddr_t argsp;
-	xdrproc_t xresults;
-	caddr_t resultsp;
-	struct timeval timeout;
+clntraw_call(CLIENT *h, u_long proc, xdrproc_t xargs, caddr_t argsp,
+	     xdrproc_t xresults, caddr_t resultsp, struct timeval timeout)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
@@ -155,7 +147,7 @@ call_again:
 	    (! (*xargs)(xdrs, argsp))) {
 		return (RPC_CANTENCODEARGS);
 	}
-	(void)XDR_GETPOS(xdrs);  /* called just to cause overhead */
+	XDR_GETPOS(xdrs);  /* called just to cause overhead */
 
 	/*
 	 * We have to call server input routine here because this is
@@ -192,7 +184,7 @@ call_again:
 		}
 		if (msg.acpted_rply.ar_verf.oa_base != NULL) {
 			xdrs->x_op = XDR_FREE;
-			(void)xdr_opaque_auth(xdrs, &(msg.acpted_rply.ar_verf));
+			xdr_opaque_auth(xdrs, &(msg.acpted_rply.ar_verf));
 		}
 	}
 
@@ -200,16 +192,13 @@ call_again:
 }
 
 static void
-clntraw_geterr()
+clntraw_geterr(void)
 {
 }
 
 
 static bool_t
-clntraw_freeres(cl, xdr_res, res_ptr)
-	CLIENT *cl;
-	xdrproc_t xdr_res;
-	caddr_t res_ptr;
+clntraw_freeres(CLIENT *cl, xdrproc_t xdr_res, caddr_t res_ptr)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
@@ -225,17 +214,17 @@ clntraw_freeres(cl, xdr_res, res_ptr)
 }
 
 static void
-clntraw_abort()
+clntraw_abort(void)
 {
 }
 
 static bool_t
-clntraw_control()
+clntraw_control(void)
 {
 	return (FALSE);
 }
 
 static void
-clntraw_destroy()
+clntraw_destroy(void)
 {
 }

@@ -28,7 +28,7 @@
  *
  * @(#)des_crypt.c	2.2 88/08/10 4.0 RPCSRC; from 1.13 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/des_crypt.c,v 1.3 1999/08/28 00:00:38 peter Exp $
- * $DragonFly: src/lib/libc/rpc/des_crypt.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/des_crypt.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * des_crypt.c, DES encryption library routines
@@ -69,12 +69,7 @@ extern _des_crypt_call ( char *, int, struct desparams * );
  * CBC mode encryption
  */
 int
-cbc_crypt(key, buf, len, mode, ivec)
-	char *key;
-	char *buf;
-	unsigned len;
-	unsigned mode;
-	char *ivec;	
+cbc_crypt(char *key, char *buf, unsigned len, unsigned mode, char *ivec)
 {
 	int err;
 	struct desparams dp;
@@ -96,11 +91,7 @@ cbc_crypt(key, buf, len, mode, ivec)
  * ECB mode encryption
  */
 int
-ecb_crypt(key, buf, len, mode)
-	char *key;
-	char *buf;
-	unsigned len;
-	unsigned mode;
+ecb_crypt(char *key, char *buf, unsigned len, unsigned mode)
 {
 	struct desparams dp;
 
@@ -119,12 +110,8 @@ ecb_crypt(key, buf, len, mode)
  * Common code to cbc_crypt() & ecb_crypt()
  */
 static int
-common_crypt(key, buf, len, mode, desp)	
-	char *key;	
-	char *buf;
-	unsigned len;
-	unsigned mode;
-	struct desparams *desp;
+common_crypt(char *key, char *buf, unsigned len, unsigned mode,
+	     struct desparams *desp)
 {
 	int desdev;
 

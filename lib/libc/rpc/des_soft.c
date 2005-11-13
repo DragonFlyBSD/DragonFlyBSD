@@ -28,6 +28,8 @@ static char sccsid[] = "@(#)des_soft.c	2.2 88/08/10 4.0 RPCSRC; from 1.13 88/02/
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * $DragonFly: src/lib/libc/rpc/des_soft.c,v 1.2 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Table giving odd parity in the low bit for ASCII characters
@@ -55,8 +57,7 @@ static char partab[128] = {
  * Add odd parity to low bit of 8 byte key
  */
 void
-des_setparity(p)
-	char *p;
+des_setparity(char *p)
 {
 	int i;
 

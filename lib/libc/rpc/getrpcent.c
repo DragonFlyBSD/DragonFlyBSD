@@ -29,7 +29,7 @@
  *
  * @(#)getrpcent.c 1.14 91/03/11 Copyr 1984 Sun Micro
  * $FreeBSD: src/lib/libc/rpc/getrpcent.c,v 1.10 1999/08/28 00:00:39 peter Exp $
- * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ char	*inet_ntoa();
 static char RPCDB[] = "/etc/rpc";
 
 static struct rpcdata *
-_rpcdata()
+_rpcdata(void)
 {
 	struct rpcdata *d = rpcdata;
 
@@ -87,8 +87,7 @@ _rpcdata()
 }
 
 struct rpcent *
-getrpcbynumber(number)
-	int number;
+getrpcbynumber(int number)
 {
 	struct rpcdata *d = _rpcdata();
 	struct rpcent *p;
@@ -117,7 +116,7 @@ getrpcbynumber(number)
                 }
                 d->current[d->currentlen] = '\0';
                 p = interpret(d->current, d->currentlen);
-                (void) free(d->current);
+                free(d->current);
                 return p;
         }
 no_yp:
@@ -132,8 +131,7 @@ no_yp:
 }
 
 struct rpcent *
-getrpcbyname(name)
-	char *name;
+getrpcbyname(char *name)
 {
 	struct rpcent *rpc = NULL;
 	char **rp;
@@ -153,8 +151,7 @@ done:
 }
 
 void
-setrpcent(f)
-	int f;
+setrpcent(int f)
 {
 	struct rpcdata *d = _rpcdata();
 
@@ -178,7 +175,7 @@ setrpcent(f)
 }
 
 void
-endrpcent()
+endrpcent(void)
 {
 	struct rpcdata *d = _rpcdata();
 
@@ -201,7 +198,7 @@ endrpcent()
 }
 
 struct rpcent *
-getrpcent()
+getrpcent(void)
 {
 	struct rpcdata *d = _rpcdata();
 #ifdef	YP
@@ -238,7 +235,7 @@ getrpcent()
                 }
                 val[vallen] = '\0';
                 hp = interpret(val, vallen);
-                (void) free(val);
+                free(val);
                 return hp;
         }
 no_yp:
@@ -252,9 +249,7 @@ no_yp:
 }
 
 static struct rpcent *
-interpret(val, len)
-	char *val;
-	int len;
+interpret(char *val, int len)
 {
 	struct rpcdata *d = _rpcdata();
 	char *p;
@@ -262,7 +257,7 @@ interpret(val, len)
 
 	if (d == 0)
 		return (0);
-	(void) strncpy(d->line, val, BUFSIZ);
+	strncpy(d->line, val, BUFSIZ);
 	d->line[BUFSIZ] = '\0';
 	p = d->line;
 	p[len] = '\n';

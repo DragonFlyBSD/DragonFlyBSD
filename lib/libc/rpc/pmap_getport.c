@@ -29,7 +29,7 @@
  * @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.5 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -69,11 +69,8 @@ pmap_getport_timeout(struct timeval *otv, struct timeval *ntv)
  * Returns 0 if no map exists.
  */
 u_short
-pmap_getport(address, program, version, protocol)
-	struct sockaddr_in *address;
-	u_long program;
-	u_long version;
-	u_int protocol;
+pmap_getport(struct sockaddr_in *address, u_long program, u_long version,
+	     u_int protocol)
 {
 	u_short port = 0;
 	int socket = -1;
@@ -98,7 +95,7 @@ pmap_getport(address, program, version, protocol)
 		CLNT_DESTROY(client);
 	}
 	if (socket != -1)
-		(void)_close(socket);
+		_close(socket);
 	address->sin_port = 0;
 	return (port);
 }

@@ -28,7 +28,7 @@
  *
  * @(#)auth_des.c	2.2 88/07/29 4.0 RPCSRC; from 1.9 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/auth_des.c,v 1.3 1999/08/28 00:00:32 peter Exp $
- * $DragonFly: src/lib/libc/rpc/auth_des.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/auth_des.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
@@ -113,11 +113,10 @@ struct ad_private {
  * Create the client des authentication object
  */	
 AUTH *
-authdes_create(servername, window, syncaddr, ckey)
-	char *servername;		/* network name of server */
-	u_int window;			/* time to live */
-	struct sockaddr *syncaddr;	/* optional addr of host to sync with */
-	des_block *ckey;		/* optional conversation key to use*/
+authdes_create(char *servername,       		/* network name of server */
+	       u_int window,			/* time to live */
+	       struct sockaddr *syncaddr,	/* optional addr of host to sync with */
+	       des_block *ckey)			/* optional conversation key to use*/
 {
 
 	AUTH *auth;
@@ -133,7 +132,7 @@ authdes_create(servername, window, syncaddr, ckey)
 	 */
 	auth = ALLOC(AUTH);
 	ad = ALLOC(struct ad_private);
-	(void) getnetname(namebuf);
+	getnetname(namebuf);
 
 	ad->ad_fullnamelen = RNDUP(strlen(namebuf));
 	ad->ad_fullname = (char *)mem_alloc(ad->ad_fullnamelen + 1);
@@ -200,13 +199,12 @@ failed:
  * getpublickey() which in the nameserver context can cause a deadlock.
  */
 AUTH *
-authdes_pk_create(servername, pkey, window, timehost, ckey, srvr)
-	char *servername;		/* network name of server */
-	netobj *pkey;			/* public key of server */
-	u_int window;			/* time to live */
-	char *timehost;			/* optional hostname to sync with */
-	des_block *ckey;		/* optional conversation key to use */
-	nis_server *srvr;		/* optional NIS+ server struct */
+authdes_pk_create(char *servername,		/* network name of server */
+		  netobj *pkey,			/* public key of server */
+		  u_int window,			/* time to live */
+		  char *timehost,		/* optional hostname to sync with */
+		  des_block *ckey,		/* optional conversation key to use */
+		  nis_server *srvr)		/* optional NIS+ server struct */
 {
 	AUTH *auth;
 	struct ad_private *ad;
@@ -312,8 +310,7 @@ failed:
  */	
 /*ARGSUSED*/
 static void
-authdes_nextverf(auth)
-	AUTH *auth;
+authdes_nextverf(AUTH *auth)
 {
 	/* what the heck am I supposed to do??? */
 }
@@ -324,9 +321,7 @@ authdes_nextverf(auth)
  * 2. Marshal
  */
 static bool_t
-authdes_marshal(auth, xdrs)
-	AUTH *auth;
-	XDR *xdrs;
+authdes_marshal(AUTH *auth, XDR *xdrs)
 {
 	struct ad_private *ad = AUTH_PRIVATE(auth);
 	struct authdes_cred *cred = &ad->ad_cred;
@@ -341,7 +336,7 @@ authdes_marshal(auth, xdrs)
 	 * Figure out the "time", accounting for any time difference
 	 * with the server if necessary.
 	 */
-	(void) gettimeofday(&ad->ad_timestamp, (struct timezone *)NULL);
+	gettimeofday(&ad->ad_timestamp, (struct timezone *)NULL);
 	ad->ad_timestamp.tv_sec += ad->ad_timediff.tv_sec;
 	ad->ad_timestamp.tv_usec += ad->ad_timediff.tv_usec;
 	if (ad->ad_timestamp.tv_usec >= MILLION) {
@@ -415,9 +410,7 @@ authdes_marshal(auth, xdrs)
  * 3. Validate
  */
 static bool_t
-authdes_validate(auth, rverf)
-	AUTH *auth;
-	struct opaque_auth *rverf;
+authdes_validate(AUTH *auth, struct opaque_auth *rverf)
 {
 	struct ad_private *ad = AUTH_PRIVATE(auth);
 	struct authdes_verf verf;
@@ -471,8 +464,7 @@ authdes_validate(auth, rverf)
  * 4. Refresh
  */
 static bool_t
-authdes_refresh(auth)
-	AUTH *auth;
+authdes_refresh(AUTH *auth)
 {
 	struct ad_private *ad = AUTH_PRIVATE(auth);
 	struct authdes_cred *cred = &ad->ad_cred;
@@ -511,8 +503,7 @@ authdes_refresh(auth)
  * 5. Destroy
  */
 static void
-authdes_destroy(auth)
-	AUTH *auth;
+authdes_destroy(AUTH *auth)
 {
 	struct ad_private *ad = AUTH_PRIVATE(auth);
 
@@ -529,9 +520,7 @@ authdes_destroy(auth)
  * adjust timep to reflect the delta between our clocks
  */
 static bool_t
-synchronize(syncaddr, timep)
-	struct sockaddr *syncaddr;
-	struct timeval *timep;
+synchronize(struct sockaddr *syncaddr, struct timeval *timep)
 {
 	struct timeval mytime;
 	struct timeval timeout;
@@ -541,7 +530,7 @@ synchronize(syncaddr, timep)
 	if (rtime((struct sockaddr_in *)syncaddr, timep, NULL /*&timeout*/) < 0) {
 		return (FALSE);
 	}
-	(void) gettimeofday(&mytime, (struct timezone *)NULL);
+	gettimeofday(&mytime, (struct timezone *)NULL);
 	timep->tv_sec -= mytime.tv_sec;
 	if (mytime.tv_usec > timep->tv_usec) {
 		timep->tv_sec -= 1;

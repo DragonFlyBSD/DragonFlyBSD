@@ -29,7 +29,7 @@
  * @(#)clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_udp.c,v 1.15.2.1 2001/06/28 21:44:24 iedowse Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_udp.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_udp.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -108,14 +108,8 @@ struct cu_data {
  * sent and received.
  */
 CLIENT *
-clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
-	struct sockaddr_in *raddr;
-	u_long program;
-	u_long version;
-	struct timeval wait;
-	int *sockp;
-	u_int sendsz;
-	u_int recvsz;
+clntudp_bufcreate(struct sockaddr_in *raddr, u_long program, u_long version,
+		  struct timeval wait, int *sockp, u_int sendsz, u_int recvsz)
 {
 	CLIENT *cl;
 	struct cu_data *cu = NULL;
@@ -128,7 +122,7 @@ clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
 
 	cl = (CLIENT *)mem_alloc(sizeof(CLIENT));
 	if (cl == NULL) {
-		(void) fprintf(stderr, "clntudp_create: out of memory\n");
+		fprintf(stderr, "clntudp_create: out of memory\n");
 		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 		rpc_createerr.cf_error.re_errno = errno;
 		goto fooy;
@@ -137,14 +131,14 @@ clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
 	recvsz = ((recvsz + 3) / 4) * 4;
 	cu = (struct cu_data *)mem_alloc(sizeof(*cu) + sendsz + recvsz);
 	if (cu == NULL) {
-		(void) fprintf(stderr, "clntudp_create: out of memory\n");
+		fprintf(stderr, "clntudp_create: out of memory\n");
 		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 		rpc_createerr.cf_error.re_errno = errno;
 		goto fooy;
 	}
 	cu->cu_outbuf = &cu->cu_inbuf[recvsz];
 
-	(void)gettimeofday(&now, (struct timezone *)0);
+	gettimeofday(&now, (struct timezone *)0);
 	if (raddr->sin_port == 0) {
 		u_short port;
 		if ((port =
@@ -185,9 +179,9 @@ clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
 			goto fooy;
 		}
 		/* attempt to bind to priv port */
-		(void)bindresvport(*sockp, (struct sockaddr_in *)0);
+		bindresvport(*sockp, (struct sockaddr_in *)0);
 		/* the sockets rpc controls are non-blocking */
-		(void)_ioctl(*sockp, FIONBIO, (char *) &dontblock);
+		_ioctl(*sockp, FIONBIO, (char *) &dontblock);
 		cu->cu_closeit = TRUE;
 	} else {
 		cu->cu_closeit = FALSE;
@@ -204,12 +198,8 @@ fooy:
 }
 
 CLIENT *
-clntudp_create(raddr, program, version, wait, sockp)
-	struct sockaddr_in *raddr;
-	u_long program;
-	u_long version;
-	struct timeval wait;
-	int *sockp;
+clntudp_create(struct sockaddr_in *raddr, u_long program, u_long version,
+	       struct timeval wait, int *sockp)
 {
 
 	return(clntudp_bufcreate(raddr, program, version, wait, sockp,
@@ -217,14 +207,13 @@ clntudp_create(raddr, program, version, wait, sockp)
 }
 
 static enum clnt_stat
-clntudp_call(cl, proc, xargs, argsp, xresults, resultsp, utimeout)
-	CLIENT	*cl;		/* client handle */
-	u_long		proc;		/* procedure number */
-	xdrproc_t	xargs;		/* xdr routine for args */
-	caddr_t		argsp;		/* pointer to args */
-	xdrproc_t	xresults;	/* xdr routine for results */
-	caddr_t		resultsp;	/* pointer to results */
-	struct timeval	utimeout;	/* seconds to wait before giving up */
+clntudp_call(CLIENT *cl,		/* client handle */
+	     u_long proc,		/* procedure number */
+	     xdrproc_t xargs,		/* xdr routine for args */
+	     caddr_t argsp,		/* pointer to args */
+	     xdrproc_t xresults,	/* xdr routine for results */
+	     caddr_t resultsp,		/* pointer to results */
+	     struct timeval utimeout)	/* seconds to wait before giving up */
 {
 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
 	XDR *xdrs;
@@ -393,7 +382,7 @@ send_again:
 			}
 			if (reply_msg.acpted_rply.ar_verf.oa_base != NULL) {
 				xdrs->x_op = XDR_FREE;
-				(void)xdr_opaque_auth(xdrs,
+				xdr_opaque_auth(xdrs,
 				    &(reply_msg.acpted_rply.ar_verf));
 			}
 		}  /* end successful completion */
@@ -428,9 +417,7 @@ send_again:
 }
 
 static void
-clntudp_geterr(cl, errp)
-	CLIENT *cl;
-	struct rpc_err *errp;
+clntudp_geterr(CLIENT *cl, struct rpc_err *errp)
 {
 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
 
@@ -439,10 +426,7 @@ clntudp_geterr(cl, errp)
 
 
 static bool_t
-clntudp_freeres(cl, xdr_res, res_ptr)
-	CLIENT *cl;
-	xdrproc_t xdr_res;
-	caddr_t res_ptr;
+clntudp_freeres(CLIENT *cl, xdrproc_t xdr_res, caddr_t res_ptr)
 {
 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
 	XDR *xdrs = &(cu->cu_outxdrs);
@@ -452,17 +436,13 @@ clntudp_freeres(cl, xdr_res, res_ptr)
 }
 
 static void
-clntudp_abort(/*h*/)
-	/*CLIENT *h;*/
+clntudp_abort(void)	/* CLIENT *h */
 {
 }
 
 
 static bool_t
-clntudp_control(cl, request, info)
-	CLIENT *cl;
-	int request;
-	char *info;
+clntudp_control(CLIENT *cl, int request, char *info)
 {
 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
 	struct timeval *tv;
@@ -580,13 +560,12 @@ clntudp_control(cl, request, info)
 }
 
 static void
-clntudp_destroy(cl)
-	CLIENT *cl;
+clntudp_destroy(CLIENT *cl)
 {
 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
 
 	if (cu->cu_closeit) {
-		(void)_close(cu->cu_sock);
+		_close(cu->cu_sock);
 	}
 	XDR_DESTROY(&(cu->cu_outxdrs));
 	mem_free((caddr_t)cu, (sizeof(*cu) + cu->cu_sendsz + cu->cu_recvsz));

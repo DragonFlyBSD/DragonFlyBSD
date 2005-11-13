@@ -30,7 +30,7 @@
  *       it from TI-RPC back to TD-RPC for use on FreeBSD.
  *
  * $FreeBSD: src/lib/libc/rpc/auth_time.c,v 1.4 2000/01/27 23:06:35 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/auth_time.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/auth_time.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 #include "namespace.h"
 #include <stdio.h>
@@ -70,8 +70,7 @@
 static int saw_alarm = 0;
 
 static void
-alarm_hndler(s)
-	int	s;
+alarm_hndler(int s)
 {
 	saw_alarm = 1;
 	return;
@@ -92,12 +91,8 @@ alarm_hndler(s)
  * Turn a 'universal address' into a struct sockaddr_in.
  * Bletch.
  */
-static int uaddr_to_sockaddr(uaddr, sin)
-#ifdef foo
-	endpoint		*endpt;
-#endif
-	char			*uaddr;
-	struct sockaddr_in	*sin;
+static int
+uaddr_to_sockaddr(char *uaddr, struct sockaddr_in *sin)
 {
 	unsigned char		p_bytes[2];
 	int			i;
@@ -127,9 +122,7 @@ static int uaddr_to_sockaddr(uaddr, sin)
  * Free the strings that were strduped into the eps structure.
  */
 static void
-free_eps(eps, num)
-	endpoint	eps[];
-	int		num;
+free_eps(endpoint eps[], int num)
 {
 	int		i;
 
@@ -153,12 +146,11 @@ free_eps(eps, num)
  * structure already populated.
  */
 static nis_server *
-get_server(sin, host, srv, eps, maxep)
-	struct sockaddr_in *sin;
-	char		*host;	/* name of the time host	*/
-	nis_server	*srv;	/* nis_server struct to use.	*/
-	endpoint	eps[];	/* array of endpoints		*/
-	int		maxep;	/* max array size		*/
+get_server(struct sockaddr_in *sin,
+	   char *host,			/* name of the time host	*/
+	   nis_server *srv,		/* nis_server struct to use.	*/
+	   endpoint eps[],		/* array of endpoints		*/
+	   int maxep)			/* max array size		*/
 {
 	char			hname[256];
 	int			num_ep = 0, i;
@@ -238,12 +230,11 @@ get_server(sin, host, srv, eps, maxep)
  * td = "server" - "client"
  */
 int
-__rpc_get_time_offset(td, srv, thost, uaddr, netid)
-	struct timeval	*td;	 /* Time difference			*/
-	nis_server	*srv;	 /* NIS Server description 		*/
-	char		*thost;	 /* if no server, this is the timehost	*/
-	char		**uaddr; /* known universal address		*/
-	struct sockaddr_in *netid; /* known network identifier		*/
+__rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
+		      nis_server *srv,		/* NIS Server description 		*/
+		      char *thost,		/* if no server, this is the timehost	*/
+		      char **uaddr,		/* known universal address		*/
+		      struct sockaddr_in *netid)/* known network identifier		*/
 {
 	CLIENT			*clnt; 		/* Client handle 	*/
 	endpoint		*ep,		/* useful endpoints	*/
@@ -452,7 +443,7 @@ __rpc_get_time_offset(td, srv, thost, uaddr, netid)
 			time_valid = 1;
 		}
 		save = errno;
-		(void)_close(s);
+		_close(s);
 		errno = save;
 		s = RPC_ANYSOCK;
 
@@ -471,7 +462,7 @@ error:
 	 */
 
 	if (s != RPC_ANYSOCK)
-		(void)_close(s);
+		_close(s);
 
 	if (clnt != NULL)
 		clnt_destroy(clnt);

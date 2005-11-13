@@ -29,7 +29,7 @@
  * @(#)bindresvport.c 1.8 88/02/08 SMI
  * @(#)bindresvport.c	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/bindresvport.c,v 1.12 2000/01/26 09:02:42 shin Exp $
- * $DragonFly: src/lib/libc/rpc/bindresvport.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/bindresvport.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -51,9 +51,7 @@
  * Bind a socket to a privileged IP port
  */
 int
-bindresvport(sd, sin)
-	int sd;
-	struct sockaddr_in *sin;
+bindresvport(int sd, struct sockaddr_in *sin)
 {
 	return bindresvport_sa(sd, (struct sockaddr *)sin);
 }
@@ -62,9 +60,7 @@ bindresvport(sd, sin)
  * Bind a socket to a privileged port for whatever protocol.
  */
 int
-bindresvport_sa(sd, sa)
-	int sd;
-	struct sockaddr *sa;
+bindresvport_sa(int sd, struct sockaddr *sa)
 {
 	int old, error, af;
 	struct sockaddr_storage myaddr;

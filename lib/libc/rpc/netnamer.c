@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.3.6.1 2000/09/20 04:43:11 jkh Exp $
- * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro
  */
@@ -68,12 +68,8 @@ static int _getgroups ( char *, gid_t * );
  * Convert network-name into unix credential
  */
 int
-netname2user(netname, uidp, gidp, gidlenp, gidlist)
-	char            netname[MAXNETNAMELEN + 1];
-	uid_t            *uidp;
-	gid_t            *gidp;
-	int            *gidlenp;
-	gid_t	       *gidlist;
+netname2user(char *netname, uid_t *uidp, gid_t *gidp, int *gidlenp,
+	     gid_t *gidlist)
 {
 	char           *p;
 	int             gidlen;
@@ -121,7 +117,7 @@ netname2user(netname, uidp, gidp, gidlenp, gidlist)
 	vallen = val2 - val1;
 	if (vallen > (1024 - 1))
 		vallen = 1024 - 1;
-	(void) strncpy(val, val1, 1024);
+	strncpy(val, val1, 1024);
 	val[vallen] = 0;
 
 	err = _rpc_get_default_domain(&domain);	/* change to rpc */
@@ -150,9 +146,7 @@ netname2user(netname, uidp, gidp, gidlenp, gidlist)
  */
 
 static int
-_getgroups(uname, groups)
-	char           *uname;
-	gid_t          groups[NGROUPS];
+_getgroups(char *uname, gid_t *groups)
 {
 	gid_t           ngroups = 0;
 	struct group *grp;
@@ -191,10 +185,7 @@ toomany:
  * Convert network-name to hostname
  */
 int
-netname2host(netname, hostname, hostlen)
-	char            netname[MAXNETNAMELEN + 1];
-	char           *hostname;
-	int             hostlen;
+netname2host(char *netname, char *hostname, int hostlen)
 {
 	int             err;
 	char            valbuf[1024];
@@ -206,7 +197,7 @@ netname2host(netname, hostname, hostlen)
 	if (getnetid(netname, valbuf)) {
 		val = valbuf;
 		if ((*val == '0') && (val[1] == ':')) {
-			(void) strncpy(hostname, val + 2, hostlen);
+			strncpy(hostname, val + 2, hostlen);
 			return (1);
 		}
 	}
@@ -222,7 +213,7 @@ netname2host(netname, hostname, hostlen)
 	vallen = val2 - val;
 	if (vallen > (hostlen - 1))
 		vallen = hostlen - 1;
-	(void) strncpy(hostname, val, vallen);
+	strncpy(hostname, val, vallen);
 	hostname[vallen] = 0;
 
 	err = _rpc_get_default_domain(&domain);	/* change to rpc */
@@ -240,8 +231,7 @@ netname2host(netname, hostname, hostlen)
  * network information service.
  */
 int
-getnetid(key, ret)
-	char           *key, *ret;
+getnetid(char *key, char *ret)
 {
 	char            buf[1024];	/* big enough */
 	char           *res;

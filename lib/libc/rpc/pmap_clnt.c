@@ -29,7 +29,7 @@
  * @(#)pmap_clnt.c 1.37 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_clnt.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_clnt.c,v 1.11 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_clnt.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_clnt.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -63,11 +63,7 @@ void clnt_perror();
  * Calls the pmap service remotely to do the mapping.
  */
 bool_t
-pmap_set(program, version, protocol, port)
-	u_long program;
-	u_long version;
-	int protocol;
-	u_short port;
+pmap_set(u_long program, u_long version, int protocol, u_short port)
 {
 	struct sockaddr_in myaddress;
 	int socket = -1;
@@ -103,7 +99,7 @@ pmap_set(program, version, protocol, port)
 	}
 	CLNT_DESTROY(client);
 	if (socket != -1)
-		(void)_close(socket);
+		_close(socket);
 	return (rslt);
 }
 
@@ -112,9 +108,7 @@ pmap_set(program, version, protocol, port)
  * Calls the pmap service remotely to do the un-mapping.
  */
 bool_t
-pmap_unset(program, version)
-	u_long program;
-	u_long version;
+pmap_unset(u_long program, u_long version)
 {
 	struct sockaddr_in myaddress;
 	int socket = -1;
@@ -145,6 +139,6 @@ pmap_unset(program, version)
 	    tottimeout);
 	CLNT_DESTROY(client);
 	if (socket != -1)
-		(void)_close(socket);
+		_close(socket);
 	return (rslt);
 }

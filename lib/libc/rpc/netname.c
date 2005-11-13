@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netname.c,v 1.2.6.1 2000/08/23 00:05:29 jhb Exp $
- * $DragonFly: src/lib/libc/rpc/netname.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/netname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)netname.c 1.8 91/03/11 Copyr 1986 Sun Micro
  */
@@ -81,8 +81,7 @@ static char *OPSYS = "unix";
  * Figure out my fully qualified network name
  */
 int
-getnetname(name)
-	char name[MAXNETNAMELEN+1];
+getnetname(char *name)
 {
 	uid_t uid;
 
@@ -99,10 +98,7 @@ getnetname(name)
  * Convert unix cred to network-name
  */
 int
-user2netname(netname, uid, domain)
-	char netname[MAXNETNAMELEN + 1];
-	uid_t uid;
-	char *domain;
+user2netname(char *netname, uid_t uid, char *domain)
 {
 	char *dfltdom;
 
@@ -115,7 +111,7 @@ user2netname(netname, uid, domain)
 	if (strlen(domain) + 1 + INT_STRLEN_MAXIMUM(u_long) + 1 + strlen(OPSYS) > MAXNETNAMELEN) {
 		return (0);
 	}
-	(void) sprintf(netname, "%s.%ld@%s", OPSYS, (u_long)uid, domain);	
+	sprintf(netname, "%s.%ld@%s", OPSYS, (u_long)uid, domain);	
 	return (1);
 }
 
@@ -124,10 +120,7 @@ user2netname(netname, uid, domain)
  * Convert host to network-name
  */
 int
-host2netname(netname, host, domain)
-	char netname[MAXNETNAMELEN + 1];
-	char *host;
-	char *domain;
+host2netname(char *netname, char *host, char *domain)
 {
 	char *dfltdom;
 	char hostname[MAXHOSTNAMELEN+1];
@@ -139,12 +132,12 @@ host2netname(netname, host, domain)
 		domain = dfltdom;
 	}
 	if (host == NULL) {
-		(void) gethostname(hostname, sizeof(hostname));
+		gethostname(hostname, sizeof(hostname));
 		host = hostname;
 	}
 	if (strlen(domain) + 1 + strlen(host) + 1 + strlen(OPSYS) > MAXNETNAMELEN) {
 		return (0);
 	} 
-	(void) sprintf(netname, "%s.%s@%s", OPSYS, host, domain);
+	sprintf(netname, "%s.%s@%s", OPSYS, host, domain);
 	return (1);
 }

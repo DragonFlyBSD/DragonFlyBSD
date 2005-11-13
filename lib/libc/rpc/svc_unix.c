@@ -29,7 +29,7 @@
  * @(#)svc_unix.c 1.21 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_unix.c,v 1.7.2.2 2001/09/05 22:29:23 dec Exp $
- * $DragonFly: src/lib/libc/rpc/svc_unix.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_unix.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -111,10 +111,8 @@ struct cmessage {
 
 static struct cmessage cm;
 
-static int __msgread(sock, buf, cnt)
-	int sock;
-	void *buf;
-	size_t cnt;
+static int
+__msgread(int sock, void *buf, size_t cnt)
 {
 	struct iovec iov[1];
 	struct msghdr msg;
@@ -134,10 +132,8 @@ static int __msgread(sock, buf, cnt)
 	return(_recvmsg(sock, &msg, 0));
 }
 
-static int __msgwrite(sock, buf, cnt)
-	int sock;
-	void *buf;
-	size_t cnt;
+static int
+__msgwrite(int sock, void *buf, size_t cnt)
 {
 	struct iovec iov[1];
 	struct msghdr msg;
@@ -182,11 +178,7 @@ static int __msgwrite(sock, buf, cnt)
  * 0 => use the system default.
  */
 SVCXPRT *
-svcunix_create(sock, sendsize, recvsize, path)
-	int sock;
-	u_int sendsize;
-	u_int recvsize;
-	char *path;
+svcunix_create(int sock, u_int sendsize, u_int recvsize, char *path)
 {
 	bool_t madesock = FALSE;
 	SVCXPRT *xprt;
@@ -214,19 +206,19 @@ svcunix_create(sock, sendsize, recvsize, path)
 	    (_listen(sock, 2) != 0)) {
 		perror("svc_unix.c - cannot getsockname or listen");
 		if (madesock)
-		       (void)_close(sock);
+		       _close(sock);
 		return ((SVCXPRT *)NULL);
 	}
 	r = (struct unix_rendezvous *)mem_alloc(sizeof(*r));
 	if (r == NULL) {
-		(void) fprintf(stderr, "svcunix_create: out of memory\n");
+		fprintf(stderr, "svcunix_create: out of memory\n");
 		return (NULL);
 	}
 	r->sendsize = sendsize;
 	r->recvsize = recvsize;
 	xprt = (SVCXPRT *)mem_alloc(sizeof(SVCXPRT));
 	if (xprt == NULL) {
-		(void) fprintf(stderr, "svcunix_create: out of memory\n");
+		fprintf(stderr, "svcunix_create: out of memory\n");
 		return (NULL);
 	}
 	xprt->xp_p2 = NULL;
@@ -244,32 +236,26 @@ svcunix_create(sock, sendsize, recvsize, path)
  * descriptor as its first input.
  */
 SVCXPRT *
-svcunixfd_create(fd, sendsize, recvsize)
-	int fd;
-	u_int sendsize;
-	u_int recvsize;
+svcunixfd_create(int fd, u_int sendsize, u_int recvsize)
 {
 
 	return (makefd_xprt(fd, sendsize, recvsize));
 }
 
 static SVCXPRT *
-makefd_xprt(fd, sendsize, recvsize)
-	int fd;
-	u_int sendsize;
-	u_int recvsize;
+makefd_xprt(int fd, u_int sendsize, u_int recvsize)
 {
 	SVCXPRT *xprt;
 	struct unix_conn *cd;
 
 	xprt = (SVCXPRT *)mem_alloc(sizeof(SVCXPRT));
 	if (xprt == (SVCXPRT *)NULL) {
-		(void) fprintf(stderr, "svc_unix: makefd_xprt: out of memory\n");
+		fprintf(stderr, "svc_unix: makefd_xprt: out of memory\n");
 		goto done;
 	}
 	cd = (struct unix_conn *)mem_alloc(sizeof(struct unix_conn));
 	if (cd == (struct unix_conn *)NULL) {
-		(void) fprintf(stderr, "svc_unix: makefd_xprt: out of memory\n");
+		fprintf(stderr, "svc_unix: makefd_xprt: out of memory\n");
 		mem_free((char *) xprt, sizeof(SVCXPRT));
 		xprt = (SVCXPRT *)NULL;
 		goto done;
@@ -290,8 +276,7 @@ makefd_xprt(fd, sendsize, recvsize)
 }
 
 static bool_t
-rendezvous_request(xprt)
-	SVCXPRT *xprt;
+rendezvous_request(SVCXPRT *xprt)
 {
 	int sock;
 	struct unix_rendezvous *r;
@@ -321,20 +306,19 @@ rendezvous_request(xprt)
 }
 
 static enum xprt_stat
-rendezvous_stat()
+rendezvous_stat(void)
 {
 
 	return (XPRT_IDLE);
 }
 
 static void
-svcunix_destroy(xprt)
-	SVCXPRT *xprt;
+svcunix_destroy(SVCXPRT *xprt)
 {
 	struct unix_conn *cd = (struct unix_conn *)xprt->xp_p1;
 
 	xprt_unregister(xprt);
-	(void)_close(xprt->xp_sock);
+	_close(xprt->xp_sock);
 	if (xprt->xp_port != 0) {
 		/* a rendezvouser socket */
 		xprt->xp_port = 0;
@@ -365,10 +349,7 @@ static struct timeval wait_per_try = { 35, 0 };
  * to handle new requests if any are detected.
  */
 static int
-readunix(xprt, buf, len)
-	SVCXPRT *xprt;
-	caddr_t buf;
-	int len;
+readunix(SVCXPRT *xprt, caddr_t buf, int len)
 {
 	int sock = xprt->xp_sock;
 	struct timeval start, delta, tv;
@@ -437,10 +418,7 @@ fatal_err:
  * Any error is fatal and the connection is closed.
  */
 static int
-writeunix(xprt, buf, len)
-	SVCXPRT *xprt;
-	caddr_t buf;
-	int len;
+writeunix(SVCXPRT *xprt, caddr_t buf, int len)
 {
 	int i, cnt;
 
@@ -455,8 +433,7 @@ writeunix(xprt, buf, len)
 }
 
 static enum xprt_stat
-svcunix_stat(xprt)
-	SVCXPRT *xprt;
+svcunix_stat(SVCXPRT *xprt)
 {
 	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
@@ -469,16 +446,14 @@ svcunix_stat(xprt)
 }
 
 static bool_t
-svcunix_recv(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcunix_recv(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
 	XDR *xdrs = &(cd->xdrs);
 
 	xdrs->x_op = XDR_DECODE;
-	(void)xdrrec_skiprecord(xdrs);
+	xdrrec_skiprecord(xdrs);
 	if (xdr_callmsg(xdrs, msg)) {
 		cd->x_id = msg->rm_xid;
 		/* set up verifiers */
@@ -492,20 +467,14 @@ svcunix_recv(xprt, msg)
 }
 
 static bool_t
-svcunix_getargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcunix_getargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 
 	return ((*xdr_args)(&(((struct unix_conn *)(xprt->xp_p1))->xdrs), args_ptr));
 }
 
 static bool_t
-svcunix_freeargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcunix_freeargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 	XDR *xdrs =
 	    &(((struct unix_conn *)(xprt->xp_p1))->xdrs);
@@ -515,9 +484,7 @@ svcunix_freeargs(xprt, xdr_args, args_ptr)
 }
 
 static bool_t
-svcunix_reply(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcunix_reply(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
@@ -527,6 +494,6 @@ svcunix_reply(xprt, msg)
 	xdrs->x_op = XDR_ENCODE;
 	msg->rm_xid = cd->x_id;
 	stat = xdr_replymsg(xdrs, msg);
-	(void)xdrrec_endofrecord(xdrs, TRUE);
+	xdrrec_endofrecord(xdrs, TRUE);
 	return (stat);
 }

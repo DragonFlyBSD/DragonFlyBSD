@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpcdname.c 1.7 91/03/11 Copyr 1989 Sun Micro
+ * $DragonFly: src/lib/libc/rpc/rpcdname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -42,7 +43,7 @@
 static char *default_domain = 0;
 
 static char *
-get_default_domain()
+get_default_domain(void)
 {
 	char temp[256];
 
@@ -54,7 +55,7 @@ get_default_domain()
 		default_domain = (char *)malloc((strlen(temp)+(unsigned)1));
 		if (default_domain == 0)
 			return (0);
-		(void) strcpy(default_domain, temp);
+		strcpy(default_domain, temp);
 		return (default_domain);
 	}
 	return (0);
@@ -67,8 +68,7 @@ get_default_domain()
  * get rejected elsewhere in the NIS client package.
  */
 int
-_rpc_get_default_domain(domain)
-	char **domain;
+_rpc_get_default_domain(char **domain)
 {
 	if ((*domain = get_default_domain()) != 0)
 		return (0);

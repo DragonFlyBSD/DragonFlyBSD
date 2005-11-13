@@ -29,7 +29,7 @@
  * @(#)auth_none.c	1.19 87/08/11 Copyr 1984 Sun Micro
  * @(#)auth_none.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/auth_none.c,v 1.9 1999/08/28 00:00:32 peter Exp $
- * $DragonFly: src/lib/libc/rpc/auth_none.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/auth_none.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ static struct authnone_private {
 } *authnone_private;
 
 AUTH *
-authnone_create()
+authnone_create(void)
 {
 	struct authnone_private *ap = authnone_private;
 	XDR xdr_stream;
@@ -88,8 +88,8 @@ authnone_create()
 		xdrs = &xdr_stream;
 		xdrmem_create(xdrs, ap->marshalled_client, (u_int)MAX_MARSHEL_SIZE,
 		    XDR_ENCODE);
-		(void)xdr_opaque_auth(xdrs, &ap->no_client.ah_cred);
-		(void)xdr_opaque_auth(xdrs, &ap->no_client.ah_verf);
+		xdr_opaque_auth(xdrs, &ap->no_client.ah_cred);
+		xdr_opaque_auth(xdrs, &ap->no_client.ah_verf);
 		ap->mcnt = XDR_GETPOS(xdrs);
 		XDR_DESTROY(xdrs);
 	}
@@ -98,9 +98,7 @@ authnone_create()
 
 /*ARGSUSED*/
 static bool_t
-authnone_marshal(client, xdrs)
-	AUTH *client;
-	XDR *xdrs;
+authnone_marshal(AUTH *client, XDR *xdrs)
 {
 	struct authnone_private *ap = authnone_private;
 
@@ -111,25 +109,25 @@ authnone_marshal(client, xdrs)
 }
 
 static void
-authnone_verf()
+authnone_verf(void)
 {
 }
 
 static bool_t
-authnone_validate()
+authnone_validate(void)
 {
 
 	return (TRUE);
 }
 
 static bool_t
-authnone_refresh()
+authnone_refresh(void)
 {
 
 	return (FALSE);
 }
 
 static void
-authnone_destroy()
+authnone_destroy(void)
 {
 }

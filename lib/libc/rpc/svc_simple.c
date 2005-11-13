@@ -29,7 +29,7 @@
  * @(#)svc_simple.c 1.18 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_simple.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_simple.c,v 1.9 1999/08/28 00:00:50 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_simple.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_simple.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -59,34 +59,32 @@ static SVCXPRT *transp;
 struct proglst *pl;
 
 int
-registerrpc(prognum, versnum, procnum, progname, inproc, outproc)
-	int prognum, versnum, procnum;
-	char *(*progname)();
-	xdrproc_t inproc, outproc;
+registerrpc(int prognum, int versnum, int procnum, char *(*progname)(),
+	    xdrproc_t inproc, xdrproc_t outproc)
 {
 
 	if (procnum == NULLPROC) {
-		(void) fprintf(stderr,
+		fprintf(stderr,
 		    "can't reassign procedure number %ld\n", NULLPROC);
 		return (-1);
 	}
 	if (transp == 0) {
 		transp = svcudp_create(RPC_ANYSOCK);
 		if (transp == NULL) {
-			(void) fprintf(stderr, "couldn't create an rpc server\n");
+			fprintf(stderr, "couldn't create an rpc server\n");
 			return (-1);
 		}
 	}
-	(void) pmap_unset((u_long)prognum, (u_long)versnum);
+	pmap_unset((u_long)prognum, (u_long)versnum);
 	if (!svc_register(transp, (u_long)prognum, (u_long)versnum,
 	    universal, IPPROTO_UDP)) {
-	    	(void) fprintf(stderr, "couldn't register prog %d vers %d\n",
+	    	fprintf(stderr, "couldn't register prog %d vers %d\n",
 		    prognum, versnum);
 		return (-1);
 	}
 	pl = (struct proglst *)malloc(sizeof(struct proglst));
 	if (pl == NULL) {
-		(void) fprintf(stderr, "registerrpc: out of memory\n");
+		fprintf(stderr, "registerrpc: out of memory\n");
 		return (-1);
 	}
 	pl->p_progname = progname;
@@ -100,9 +98,7 @@ registerrpc(prognum, versnum, procnum, progname, inproc, outproc)
 }
 
 static void
-universal(rqstp, transp)
-	struct svc_req *rqstp;
-	SVCXPRT *transp;
+universal(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	int prog, proc;
 	char *outdata;
@@ -114,7 +110,7 @@ universal(rqstp, transp)
 	 */
 	if (rqstp->rq_proc == NULLPROC) {
 		if (svc_sendreply(transp, xdr_void, NULL) == FALSE) {
-			(void) fprintf(stderr, "xxx\n");
+			fprintf(stderr, "xxx\n");
 			exit(1);
 		}
 		return;
@@ -134,16 +130,16 @@ universal(rqstp, transp)
 				/* there was an error */
 				return;
 			if (!svc_sendreply(transp, pl->p_outproc, outdata)) {
-				(void) fprintf(stderr,
+				fprintf(stderr,
 				    "trouble replying to prog %d\n",
 				    pl->p_prognum);
 				exit(1);
 			}
 			/* free the decoded arguments */
-			(void)svc_freeargs(transp, pl->p_inproc, xdrbuf);
+			svc_freeargs(transp, pl->p_inproc, xdrbuf);
 			return;
 		}
-	(void) fprintf(stderr, "never registered prog %d\n", prog);
+	fprintf(stderr, "never registered prog %d\n", prog);
 	exit(1);
 }
 

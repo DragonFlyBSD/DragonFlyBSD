@@ -29,7 +29,7 @@
  * @(#)getrpcport.c 1.3 87/08/11 SMI
  * @(#)getrpcport.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/getrpcport.c,v 1.10 1999/08/28 00:00:40 peter Exp $
- * $DragonFly: src/lib/libc/rpc/getrpcport.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/getrpcport.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -44,9 +44,7 @@
 #include <sys/socket.h>
 
 int
-getrpcport(host, prognum, versnum, proto)
-	char *host;
-	int prognum, versnum, proto;
+getrpcport(char *host, int prognum, int versnum, int proto)
 {
 	struct sockaddr_in addr;
 	struct hostent *hp;

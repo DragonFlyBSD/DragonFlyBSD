@@ -29,7 +29,7 @@
  * @(#)svc_raw.c 1.15 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_raw.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_raw.c,v 1.7 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_raw.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_raw.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -71,7 +71,7 @@ static struct xp_ops server_ops = {
 };
 
 SVCXPRT *
-svcraw_create()
+svcraw_create(void)
 {
 	struct svcraw_private *srp = svcraw_private;
 
@@ -89,16 +89,14 @@ svcraw_create()
 }
 
 static enum xprt_stat
-svcraw_stat()
+svcraw_stat(void)
 {
 
 	return (XPRT_IDLE);
 }
 
 static bool_t
-svcraw_recv(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcraw_recv(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct svcraw_private *srp = svcraw_private;
 	XDR *xdrs;
@@ -114,9 +112,7 @@ svcraw_recv(xprt, msg)
 }
 
 static bool_t
-svcraw_reply(xprt, msg)
-	SVCXPRT *xprt;
-	struct rpc_msg *msg;
+svcraw_reply(SVCXPRT *xprt, struct rpc_msg *msg)
 {
 	struct svcraw_private *srp = svcraw_private;
 	XDR *xdrs;
@@ -128,15 +124,12 @@ svcraw_reply(xprt, msg)
 	XDR_SETPOS(xdrs, 0);
 	if (! xdr_replymsg(xdrs, msg))
 	       return (FALSE);
-	(void)XDR_GETPOS(xdrs);  /* called just for overhead */
+	XDR_GETPOS(xdrs);  /* called just for overhead */
 	return (TRUE);
 }
 
 static bool_t
-svcraw_getargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcraw_getargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 	struct svcraw_private *srp = svcraw_private;
 
@@ -146,10 +139,7 @@ svcraw_getargs(xprt, xdr_args, args_ptr)
 }
 
 static bool_t
-svcraw_freeargs(xprt, xdr_args, args_ptr)
-	SVCXPRT *xprt;
-	xdrproc_t xdr_args;
-	caddr_t args_ptr;
+svcraw_freeargs(SVCXPRT *xprt, xdrproc_t xdr_args, caddr_t args_ptr)
 {
 	struct svcraw_private *srp = svcraw_private;
 	XDR *xdrs;
@@ -162,6 +152,6 @@ svcraw_freeargs(xprt, xdr_args, args_ptr)
 }
 
 static void
-svcraw_destroy()
+svcraw_destroy(void)
 {
 }

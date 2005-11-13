@@ -29,7 +29,7 @@
  *	from: @(#)clnt.h 1.31 88/02/08 SMI
  *	from: @(#)clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/clnt.h,v 1.11.2.1 2001/06/28 21:44:09 iedowse Exp $
- * $DragonFly: src/include/rpc/clnt.h,v 1.5 2004/11/16 18:55:04 liamfoy Exp $
+ * $DragonFly: src/include/rpc/clnt.h,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ __END_DECLS
  *	struct sockaddr_in *raddr;
  *	u_long prog;
  *	u_long version;
- *	register int *sockp;
+ *	int *sockp;
  *	u_int sendsz;
  *	u_int recvsz;
  */
@@ -365,7 +365,7 @@ __END_DECLS
  *	struct sockaddr_un *raddr;
  *	u_long prog;
  *	u_long version;
- *	register int *sockp;
+ *	int *sockp;
  *	u_int sendsz;
  *	u_int recvsz;
  */

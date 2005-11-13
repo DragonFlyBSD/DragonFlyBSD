@@ -29,7 +29,7 @@
  * @(#)pmap_prot.c 1.17 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_prot.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_prot.c,v 1.6 1999/08/28 00:00:42 peter Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_prot.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_prot.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -45,9 +45,7 @@
 
 
 bool_t
-xdr_pmap(xdrs, regs)
-	XDR *xdrs;
-	struct pmap *regs;
+xdr_pmap(XDR *xdrs, struct pmap *regs)
 {
 
 	if (xdr_u_long(xdrs, &regs->pm_prog) &&
