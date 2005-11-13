@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.98 2005/09/24 07:37:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.99 2005/11/13 10:55:36 corecode Exp $
  */
 
 /*-
@@ -367,9 +367,9 @@ ParsePushInput(char *fullname, FILE *fp, char *ptr, int lineno)
  *	CONTINUE if there's more to do. DONE if not.
  *
  * Side Effects:
- *	The old curFile.F is closed. The includes list is shortened.
- *	curFile.lineno, curFile.F, and curFile.fname are changed if
- *	CONTINUE is returned.
+ *	The old curFile.F is closed, but only if it was not a top-level
+ *	file. The includes list is shortened. curFile.lineno, curFile.F,
+ *	and curFile.fname are changed if CONTINUE is returned.
  */
 static int
 ParsePopInput(void)
@@ -383,7 +383,9 @@ ParsePopInput(void)
 
 	free(ifile->fname);
 	if (ifile->F != NULL) {
-		fclose(ifile->F);
+		/* Don't close the top-level file */
+		if (!TAILQ_EMPTY(&includes))
+			fclose(ifile->F);
 		Var_Append(".MAKEFILE_LIST", "..", VAR_GLOBAL);
 	}
 	if (ifile->str != NULL) {
