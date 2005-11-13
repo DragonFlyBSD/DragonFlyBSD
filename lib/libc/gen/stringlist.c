@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: stringlist.c,v 1.2 1997/01/17 07:26:20 lukem Exp $
+ * $DragonFly: src/lib/libc/gen/stringlist.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <stdio.h>
@@ -45,7 +46,7 @@
  * sl_init(): Initialize a string list
  */
 StringList *
-sl_init()
+sl_init(void)
 {
 	StringList *sl = malloc(sizeof(StringList));
 	if (sl == NULL)
@@ -64,9 +65,7 @@ sl_init()
  * sl_add(): Add an item to the string list
  */
 void
-sl_add(sl, name)
-	StringList *sl;
-	char *name;
+sl_add(StringList *sl, char *name)
 {
 	if (sl->sl_cur == sl->sl_max - 1) {
 		sl->sl_max += _SL_CHUNKSIZE;
@@ -82,9 +81,7 @@ sl_add(sl, name)
  * sl_free(): Free a stringlist
  */
 void
-sl_free(sl, all)
-	StringList *sl;
-	int all;
+sl_free(StringList *sl, int all)
 {
 	size_t i;
 
@@ -104,9 +101,7 @@ sl_free(sl, all)
  * sl_find(): Find a name in the string list
  */
 char *
-sl_find(sl, name)
-	StringList *sl;
-	char *name;
+sl_find(StringList *sl, char *name)
 {
 	size_t i;
 

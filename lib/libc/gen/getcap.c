@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libc/gen/getcap.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getcap.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
@@ -78,8 +78,7 @@ static int	nfcmp (char *, char *);
  * virtual database. 0 is returned on success, -1 on failure.
  */
 int
-cgetset(ent)
-	char *ent;
+cgetset(char *ent)
 {
 	if (ent == NULL) {
 		if (toprec)
@@ -94,7 +93,7 @@ cgetset(ent)
                 return (-1);
 	}
 	gottoprec = 0;
-        (void)strcpy(toprec, ent);
+        strcpy(toprec, ent);
         return (0);
 }
 
@@ -111,9 +110,7 @@ cgetset(ent)
  * return NULL.
  */
 char *
-cgetcap(buf, cap, type)
-	char *buf, *cap;
-	int type;
+cgetcap(char *buf, char *cap, int type)
 {
 	char *bp, *cp;
 
@@ -163,8 +160,7 @@ cgetcap(buf, cap, type)
  * reference loop is detected.
  */
 int
-cgetent(buf, db_array, name)
-	char **buf, **db_array, *name;
+cgetent(char **buf, char **db_array, char *name)
 {
 	u_int dummy;
 
@@ -190,10 +186,8 @@ cgetent(buf, db_array, name)
  *	  MAX_RECURSION.
  */
 static int
-getent(cap, len, db_array, fd, name, depth, nfield)
-	char **cap, **db_array, *name, *nfield;
-	u_int *len;
-	int fd, depth;
+getent(char **cap, u_int *len, char **db_array, int fd, char *name, int depth,
+       char *nfield)
 {
 	DB *capdbp;
 	char *r_end, *rp, **db_p;
@@ -217,7 +211,7 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 			errno = ENOMEM;
 			return (-2);
 		}
-		(void)strcpy(record, toprec);
+		strcpy(record, toprec);
 		myfd = 0;
 		db_p = db_array;
 		rp = record + topreclen + 1;
@@ -245,17 +239,17 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 		 */
 
 		if (fd >= 0) {
-			(void)lseek(fd, (off_t)0, SEEK_SET);
+			lseek(fd, (off_t)0, SEEK_SET);
 			myfd = 0;
 		} else {
-			(void)snprintf(pbuf, sizeof(pbuf), "%s.db", *db_p);
+			snprintf(pbuf, sizeof(pbuf), "%s.db", *db_p);
 			if ((capdbp = dbopen(pbuf, O_RDONLY, 0, DB_HASH, 0))
 			     != NULL) {
 				free(record);
 				retval = cdbget(capdbp, &record, name);
 				if (retval < 0) {
 					/* no record available */
-					(void)capdbp->close(capdbp);
+					capdbp->close(capdbp);
 					return (retval);
 				}
 				/* save the data; close frees it */
@@ -308,7 +302,7 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 					n = _read(fd, buf, sizeof(buf));
 					if (n <= 0) {
 						if (myfd)
-							(void)_close(fd);
+							_close(fd);
 						if (n < 0) {
 							free(record);
 							return (-2);
@@ -347,7 +341,7 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 					if (record == NULL) {
 						errno = ENOMEM;
 						if (myfd)
-							(void)_close(fd);
+							_close(fd);
 						return (-2);
 					}
 					r_end = record + newsize;
@@ -439,7 +433,7 @@ tc_exp:	{
 				/* an error */
 				if (iret < -1) {
 					if (myfd)
-						(void)_close(fd);
+						_close(fd);
 					free(record);
 					return (iret);
 				}
@@ -489,7 +483,7 @@ tc_exp:	{
 				if (record == NULL) {
 					errno = ENOMEM;
 					if (myfd)
-						(void)_close(fd);
+						_close(fd);
 					free(icap);
 					return (-2);
 				}
@@ -521,7 +515,7 @@ tc_exp:	{
 	 * return capability, length and success.
 	 */
 	if (myfd)
-		(void)_close(fd);
+		_close(fd);
 	*len = rp - record - 1;	/* don't count NUL */
 	if (r_end > rp)
 		if ((record =
@@ -537,9 +531,7 @@ tc_exp:	{
 }
 
 static int
-cdbget(capdbp, bp, name)
-	DB *capdbp;
-	char **bp, *name;
+cdbget(DB *capdbp, char **bp, char *name)
 {
 	DBT key, data;
 
@@ -572,8 +564,7 @@ cdbget(capdbp, bp, name)
  * record buf, -1 if not.
  */
 int
-cgetmatch(buf, name)
-	char *buf, *name;
+cgetmatch(char *buf, char *name)
 {
 	char *np, *bp;
 
@@ -614,10 +605,9 @@ cgetmatch(buf, name)
 
 
 int
-cgetfirst(buf, db_array)
-	char **buf, **db_array;
+cgetfirst(char **buf, char **db_array)
 {
-	(void)cgetclose();
+	cgetclose();
 	return (cgetnext(buf, db_array));
 }
 
@@ -626,10 +616,10 @@ static int slash;
 static char **dbp;
 
 int
-cgetclose()
+cgetclose(void)
 {
 	if (pfp != NULL) {
-		(void)fclose(pfp);
+		fclose(pfp);
 		pfp = NULL;
 	}
 	dbp = NULL;
@@ -644,9 +634,7 @@ cgetclose()
  * upon returning an entry with more remaining, and -1 if an error occurs.
  */
 int
-cgetnext(bp, db_array)
-        char **bp;
-	char **db_array;
+cgetnext(char **bp, char **db_array)
 {
 	size_t len;
 	int done, hadreaderr, i, savederrno, status;
@@ -657,7 +645,7 @@ cgetnext(bp, db_array)
 		dbp = db_array;
 
 	if (pfp == NULL && (pfp = fopen(*dbp, "r")) == NULL) {
-		(void)cgetclose();
+		cgetclose();
 		return (-1);
 	}
 	for(;;) {
@@ -678,11 +666,11 @@ cgetnext(bp, db_array)
 					return (-1);
 				} else {
 					if (*++dbp == NULL) {
-						(void)cgetclose();
+						cgetclose();
 						return (0);
 					} else if ((pfp =
 					    fopen(*dbp, "r")) == NULL) {
-						(void)cgetclose();
+						cgetclose();
 						return (-1);
 					} else
 						continue;
@@ -767,7 +755,7 @@ cgetnext(bp, db_array)
 		 */
 		status = getent(bp, &dummy, db_array, -1, buf, 0, NULL);
 		if (status == -2 || status == -3)
-			(void)cgetclose();
+			cgetclose();
 
 		return (status + 1);
 	}
@@ -784,9 +772,7 @@ cgetnext(bp, db_array)
  * allocation failure).
  */
 int
-cgetstr(buf, cap, str)
-	char *buf, *cap;
-	char **str;
+cgetstr(char *buf, char *cap, char **str)
 {
 	u_int m_room;
 	char *bp, *mp;
@@ -913,8 +899,7 @@ cgetstr(buf, cap, str)
  * error was encountered (storage allocation failure).
  */
 int
-cgetustr(buf, cap, str)
-	char *buf, *cap, **str;
+cgetustr(char *buf, char *cap, char **str)
 {
 	u_int m_room;
 	char *bp, *mp;
@@ -982,9 +967,7 @@ cgetustr(buf, cap, str)
  * numeric capability couldn't be found.
  */
 int
-cgetnum(buf, cap, num)
-	char *buf, *cap;
-	long *num;
+cgetnum(char *buf, char *cap, long *num)
 {
 	long n;
 	int base, digit;
@@ -1046,8 +1029,7 @@ cgetnum(buf, cap, num)
  * Compare name field of record.
  */
 static int
-nfcmp(nf, rec)
-	char *nf, *rec;
+nfcmp(char *nf, char *rec)
 {
 	char *cp, tmp;
 	int ret;

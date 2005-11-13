@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/popen.c,v 1.5 2005/04/26 08:37:24 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/popen.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
  */
@@ -85,8 +85,8 @@ popen(const char *command, const char *type)
 		return (NULL);
 
 	if ((cur = malloc(sizeof(struct pid))) == NULL) {
-		(void)_close(pdes[0]);
-		(void)_close(pdes[1]);
+		_close(pdes[0]);
+		_close(pdes[1]);
 		return (NULL);
 	}
 
@@ -97,8 +97,8 @@ popen(const char *command, const char *type)
 
 	switch (pid = fork()) {
 	case -1:			/* Error. */
-		(void)_close(pdes[0]);
-		(void)_close(pdes[1]);
+		_close(pdes[0]);
+		_close(pdes[1]);
 		free(cur);
 		return (NULL);
 		/* NOTREACHED */
@@ -112,23 +112,23 @@ popen(const char *command, const char *type)
 			 * the compiler is free to corrupt all the local
 			 * variables.
 			 */
-			(void)_close(pdes[0]);
+			_close(pdes[0]);
 			if (pdes[1] != STDOUT_FILENO) {
-				(void)_dup2(pdes[1], STDOUT_FILENO);
-				(void)_close(pdes[1]);
+				_dup2(pdes[1], STDOUT_FILENO);
+				_close(pdes[1]);
 				if (twoway)
-					(void)_dup2(STDOUT_FILENO, STDIN_FILENO);
+					_dup2(STDOUT_FILENO, STDIN_FILENO);
 			} else if (twoway && (pdes[1] != STDIN_FILENO))
-				(void)_dup2(pdes[1], STDIN_FILENO);
+				_dup2(pdes[1], STDIN_FILENO);
 		} else {
 			if (pdes[0] != STDIN_FILENO) {
-				(void)_dup2(pdes[0], STDIN_FILENO);
-				(void)_close(pdes[0]);
+				_dup2(pdes[0], STDIN_FILENO);
+				_close(pdes[0]);
 			}
-			(void)_close(pdes[1]);
+			_close(pdes[1]);
 		}
 		for (p = pidlist; p; p = p->next) {
-			(void)_close(fileno(p->fp));
+			_close(fileno(p->fp));
 		}
 		_execve(_PATH_BSHELL, __DECONST(char * const *, argv), environ);
 		_exit(127);
@@ -138,10 +138,10 @@ popen(const char *command, const char *type)
 	/* Parent; assume fdopen can't fail. */
 	if (*type == 'r') {
 		iop = fdopen(pdes[0], type);
-		(void)_close(pdes[1]);
+		_close(pdes[1]);
 	} else {
 		iop = fdopen(pdes[1], type);
-		(void)_close(pdes[0]);
+		_close(pdes[0]);
 	}
 
 	/* Link into list of file descriptors. */
@@ -172,7 +172,7 @@ pclose(FILE *iop)
 	if (cur == NULL)
 		return (-1);
 
-	(void)fclose(iop);
+	fclose(iop);
 
 	do {
 		pid = _wait4(cur->pid, &pstat, 0, (struct rusage *)0);

@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)raise.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/raise.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <signal.h>
 #include <unistd.h>
 
 int
-raise(s)
-	int s;
+raise(int s)
 {
 	return(kill(getpid(), s));
 }

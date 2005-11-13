@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/exec.c,v 1.6 2005/04/26 18:51:44 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/exec.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
@@ -135,18 +135,14 @@ execlp(const char *name, const char *arg, ...)
 }
 
 int
-execv(name, argv)
-	const char *name;
-	char * const *argv;
+execv(const char *name, char * const *argv)
 {
-	(void)_execve(name, argv, environ);
+	_execve(name, argv, environ);
 	return (-1);
 }
 
 int
-execvp(name, argv)
-	const char *name;
-	char * const *argv;
+execvp(const char *name, char * const *argv)
 {
 	const char **memp;
 	int cnt;
@@ -201,10 +197,9 @@ execvp(name, argv)
 		 * the user may execute the wrong program.
 		 */
 		if (lp + ln + 2 > sizeof(buf)) {
-			(void)_write(STDERR_FILENO, "execvp: ", 8);
-			(void)_write(STDERR_FILENO, p, lp);
-			(void)_write(STDERR_FILENO, ": path too long\n",
-			    16);
+			_write(STDERR_FILENO, "execvp: ", 8);
+			_write(STDERR_FILENO, p, lp);
+			_write(STDERR_FILENO, ": path too long\n", 16);
 			continue;
 		}
 		bcopy(p, buf, lp);
@@ -212,7 +207,7 @@ execvp(name, argv)
 		bcopy(name, buf + lp + 1, ln);
 		buf[lp + ln + 1] = '\0';
 
-retry:		(void)_execve(bp, argv, environ);
+retry:		_execve(bp, argv, environ);
 		switch(errno) {
 		case E2BIG:
 			goto done;

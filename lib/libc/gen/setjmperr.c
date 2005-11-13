@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/setjmperr.c,v 1.3 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/setjmperr.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/setjmperr.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)setjmperr.c	8.1 (Berkeley) 6/4/93
  */
@@ -49,8 +49,8 @@
 #include "un-namespace.h"
 
 void
-longjmperror()
+longjmperror(void)
 {
 #define	ERRMSG	"longjmp botch.\n"
-	(void)_write(STDERR_FILENO, ERRMSG, sizeof(ERRMSG) - 1);
+	_write(STDERR_FILENO, ERRMSG, sizeof(ERRMSG) - 1);
 }

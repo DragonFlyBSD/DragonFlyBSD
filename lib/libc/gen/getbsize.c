@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getbsize.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getbsize.c,v 1.3 2005/04/27 12:10:24 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getbsize.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <err.h>
@@ -40,9 +40,7 @@
 #include <string.h>
 
 char *
-getbsize(headerlenp, blocksizep)
-	int *headerlenp;
-	long *blocksizep;
+getbsize(int *headerlenp, long *blocksizep)
 {
 	static char header[20];
 	long n, max, mul, blocksize;
@@ -99,7 +97,7 @@ underflow:		warnx("minimum blocksize is 512");
 	} else
 		blocksize = n = 512;
 
-	(void)snprintf(header, sizeof(header), "%ld%s-blocks", n, form);
+	snprintf(header, sizeof(header), "%ld%s-blocks", n, form);
 	*headerlenp = strlen(header);
 	*blocksizep = blocksize;
 	return (header);

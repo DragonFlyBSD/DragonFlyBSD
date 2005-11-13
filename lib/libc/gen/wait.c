@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wait.c,v 1.3.2.1 2000/03/18 23:13:25 jasone Exp $
- * $DragonFly: src/lib/libc/gen/wait.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/wait.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)wait.c	8.1 (Berkeley) 6/4/93
  */
@@ -44,8 +44,7 @@
 #include "un-namespace.h"
 
 pid_t
-__wait(istat)
-	int *istat;
+__wait(int *istat)
 {
 	return (_wait4(WAIT_ANY, istat, 0, (struct rusage *)0));
 }

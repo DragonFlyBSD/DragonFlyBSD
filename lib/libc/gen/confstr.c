@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)confstr.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/confstr.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +44,7 @@
 #include <string.h>
 
 size_t
-confstr(name, buf, len)
-	int name;
-	char *buf;
-	size_t len;
+confstr(int name, char *buf, size_t len)
 {
 	size_t tlen;
 	int mib[2], sverrno;
@@ -71,7 +69,7 @@ confstr(name, buf, len)
 			 * POSIX 1003.2 requires partial return of
 			 * the string -- that should be *real* useful.
 			 */
-			(void)strncpy(buf, p, len - 1);
+			strncpy(buf, p, len - 1);
 			buf[len - 1] = '\0';
 			free(p);
 		}

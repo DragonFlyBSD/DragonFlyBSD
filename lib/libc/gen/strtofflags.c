@@ -32,7 +32,7 @@
  *
  * @(#)stat_flags.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $
- * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -76,8 +76,7 @@ static struct {
  *	are set, return the empty string.
  */
 char *
-fflagstostr(flags)
-	u_long flags;
+fflagstostr(u_long flags)
 {
 	char *string;
 	char *sp, *dp;
@@ -109,9 +108,7 @@ fflagstostr(flags)
  *	to the offending token.
  */
 int
-strtofflags(stringp, setp, clrp)
-	char **stringp;
-	u_long *setp, *clrp;
+strtofflags(char **stringp, u_long *setp, u_long *clrp)
 {
 	char *string, *p;
 	int i;

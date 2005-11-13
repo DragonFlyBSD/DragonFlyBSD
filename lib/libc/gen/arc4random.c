@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.6 2005/04/26 10:16:16 joerg Exp $ */
+/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.7 2005/11/13 00:07:42 swildner Exp $ */
 
 /*
  * Arc4 random number generator for OpenBSD.
@@ -86,7 +86,7 @@ arc4_stir(struct arc4_stream *as)
 	rdat.pid = getpid();
 	fd = _open("/dev/urandom", O_RDONLY, 0);
 	if (fd >= 0) {
-		(void) _read(fd, rdat.rnd, sizeof(rdat.rnd));
+		_read(fd, rdat.rnd, sizeof(rdat.rnd));
 		_close(fd);
 	}
 	/* fd < 0?  Ah, what the heck. We'll just take whatever was on the

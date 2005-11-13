@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)time.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/time.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <sys/time.h>
 
 time_t
-time(t)
-	time_t *t;
+time(time_t *t)
 {
 	struct timeval tt;
 

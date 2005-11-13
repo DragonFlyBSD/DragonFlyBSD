@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.12 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.13 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -55,7 +55,7 @@
 #include "libc_private.h"
 
 static char static_buf[TTY_PATH_MAX] = _PATH_DEV;
-static char *oldttyname __P((int, struct stat *));
+static char *oldttyname(int, struct stat *);
 static char *ttyname_threaded(int fd);
 static char *ttyname_unthreaded(int fd);
 
@@ -63,7 +63,7 @@ static pthread_mutex_t	ttyname_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t	ttyname_key;
 static int		ttyname_init = 0;
 
-char           *
+char *
 ttyname(int fd)
 {
 	char           *ret;
@@ -75,7 +75,7 @@ ttyname(int fd)
 	return (ret);
 }
 
-char           *
+char *
 ttyname_r(int fd, char *buf, size_t len)
 {
 	struct dirent *dirp;
@@ -111,12 +111,12 @@ ttyname_r(int fd, char *buf, size_t len)
 			rval = buf;
 			break;
 		}
-		(void) closedir(dp);
+		closedir(dp);
 	}
 	return (rval);
 }
 
-char           *
+char *
 ttyname_threaded(int fd)
 {
 	char	*buf;
@@ -176,18 +176,16 @@ ttyname_unthreaded(int fd)
 		    (sizeof(_PATH_DEV) + data.size - 1 < sizeof(static_buf))) {
 			bcopy(data.data,
 			    static_buf + sizeof(_PATH_DEV) - 1, data.size);
-			(void)(db->close)(db);
+			(db->close)(db);
 			return (static_buf);
 		}
-		(void)(db->close)(db);
+		(db->close)(db);
 	}
 	return (oldttyname(fd, &sb));
 }
 
 static char *
-oldttyname(fd, sb)
-	int fd __unused;
-	struct stat *sb;
+oldttyname(int fd __unused, struct stat *sb)
 {
 	struct dirent *dirp;
 	DIR *dp;
@@ -206,9 +204,9 @@ oldttyname(fd, sb)
 		if (stat(static_buf, &dsb) || sb->st_dev != dsb.st_dev ||
 		    sb->st_ino != dsb.st_ino)
 			continue;
-		(void)closedir(dp);
+		closedir(dp);
 		return (static_buf);
 	}
-	(void)closedir(dp);
+	closedir(dp);
 	return (NULL);
 }

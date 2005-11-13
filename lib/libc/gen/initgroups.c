@@ -32,7 +32,7 @@
  *
  * @(#)initgroups.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/initgroups.c,v 1.3.8.1 2001/12/19 15:49:35 tobez Exp $
- * $DragonFly: src/lib/libc/gen/initgroups.c,v 1.4 2004/09/19 17:25:42 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/initgroups.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,9 +42,7 @@
 #include <unistd.h>
 
 int
-initgroups(uname, agroup)
-	const char *uname;
-	int agroup;
+initgroups(const char *uname, int agroup)
 {
 	gid_t ngroups;
 	/*

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/psignal.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/psignal.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
@@ -47,9 +47,7 @@
 #include "un-namespace.h"
 
 void
-psignal(sig, s)
-	unsigned int sig;
-	const char *s;
+psignal(unsigned int sig, const char *s)
 {
 	const char *c;
 
@@ -58,9 +56,9 @@ psignal(sig, s)
 	else
 		c = "Unknown signal";
 	if (s != NULL && *s != '\0') {
-		(void)_write(STDERR_FILENO, s, strlen(s));
-		(void)_write(STDERR_FILENO, ": ", 2);
+		_write(STDERR_FILENO, s, strlen(s));
+		_write(STDERR_FILENO, ": ", 2);
 	}
-	(void)_write(STDERR_FILENO, c, strlen(c));
-	(void)_write(STDERR_FILENO, "\n", 1);
+	_write(STDERR_FILENO, c, strlen(c));
+	_write(STDERR_FILENO, "\n", 1);
 }

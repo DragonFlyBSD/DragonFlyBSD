@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
- * $DragonFly: src/lib/libc/gen/fstab.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/fstab.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)fstab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
@@ -60,7 +60,7 @@ static void fixfsfile (void);
 static int fstabscan (void);
 
 static void
-fixfsfile()
+fixfsfile(void)
 {
 	static char buf[sizeof(_PATH_DEV) + MNAMELEN];
 	struct stat sb;
@@ -82,7 +82,7 @@ fixfsfile()
 }
 
 static int
-fstabscan()
+fstabscan(void)
 {
 	char *cp, *p;
 #define	MAXLINELENGTH	1024
@@ -189,7 +189,7 @@ bad:		/* no way to distinguish between EOF and syntax error */
 }
 
 struct fstab *
-getfsent()
+getfsent(void)
 {
 	if ((!_fs_fp && !setfsent()) || !fstabscan())
 		return((struct fstab *)NULL);
@@ -197,8 +197,7 @@ getfsent()
 }
 
 struct fstab *
-getfsspec(name)
-	const char *name;
+getfsspec(const char *name)
 {
 	if (setfsent())
 		while (fstabscan())
@@ -208,8 +207,7 @@ getfsspec(name)
 }
 
 struct fstab *
-getfsfile(name)
-	const char *name;
+getfsfile(const char *name)
 {
 	if (setfsent())
 		while (fstabscan())
@@ -219,7 +217,7 @@ getfsfile(name)
 }
 
 int 
-setfsent()
+setfsent(void)
 {
 	if (_fs_fp) {
 		rewind(_fs_fp);
@@ -235,27 +233,26 @@ setfsent()
 }
 
 void
-endfsent()
+endfsent(void)
 {
 	if (_fs_fp) {
-		(void)fclose(_fs_fp);
+		fclose(_fs_fp);
 		_fs_fp = NULL;
 	}
 }
 
 static void
-error(err)
-	int err;
+error(int err)
 {
 	char *p;
 	char num[30];
 
-	(void)_write(STDERR_FILENO, "fstab: ", 7);
-	(void)_write(STDERR_FILENO, _PATH_FSTAB, sizeof(_PATH_FSTAB) - 1);
-	(void)_write(STDERR_FILENO, ":", 1);
+	_write(STDERR_FILENO, "fstab: ", 7);
+	_write(STDERR_FILENO, _PATH_FSTAB, sizeof(_PATH_FSTAB) - 1);
+	_write(STDERR_FILENO, ":", 1);
 	sprintf(num, "%d: ", LineNo);
-	(void)_write(STDERR_FILENO, num, strlen(num));
+	_write(STDERR_FILENO, num, strlen(num));
 	p = strerror(err);
-	(void)_write(STDERR_FILENO, p, strlen(p));
-	(void)_write(STDERR_FILENO, "\n", 1);
+	_write(STDERR_FILENO, p, strlen(p));
+	_write(STDERR_FILENO, "\n", 1);
 }

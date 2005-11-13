@@ -32,7 +32,7 @@
  *
  * @(#)uname.c	8.1 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/gen/uname.c,v 1.7 1999/08/27 23:59:06 peter Exp $
- * $DragonFly: src/lib/libc/gen/uname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/uname.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,8 +41,7 @@
 #include <errno.h>
 
 int
-uname(name)
-	struct utsname *name;
+uname(struct utsname *name)
 {
 	int mib[2], rval;
 	size_t len;

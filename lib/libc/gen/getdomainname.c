@@ -32,7 +32,7 @@
  *
  * @(#)gethostname.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/getdomainname.c,v 1.6 1999/08/27 23:58:39 peter Exp $
- * $DragonFly: src/lib/libc/gen/getdomainname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getdomainname.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,9 +41,7 @@
 #include <unistd.h>
 
 int
-getdomainname(name, namelen)
-	char *name;
-	int namelen;
+getdomainname(char *name, int namelen)
 {
 	int mib[2];
 	size_t size;

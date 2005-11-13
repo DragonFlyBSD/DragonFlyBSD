@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getusershell.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/getusershell.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)getusershell.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
@@ -93,7 +93,7 @@ setusershell(void)
 }
 
 static char **
-initshells()
+initshells(void)
 {
 	char **sp, *cp;
 	FILE *fp;
@@ -108,16 +108,16 @@ initshells()
 	if ((fp = fopen(_PATH_SHELLS, "r")) == NULL)
 		return (okshells);
 	if (fstat(fileno(fp), &statb) == -1) {
-		(void)fclose(fp);
+		fclose(fp);
 		return (okshells);
 	}
 	if ((strings = malloc((u_int)statb.st_size)) == NULL) {
-		(void)fclose(fp);
+		fclose(fp);
 		return (okshells);
 	}
 	shells = calloc((unsigned)statb.st_size / 3, sizeof (char *));
 	if (shells == NULL) {
-		(void)fclose(fp);
+		fclose(fp);
 		free(strings);
 		strings = NULL;
 		return (okshells);
@@ -135,6 +135,6 @@ initshells()
 		*cp++ = '\0';
 	}
 	*sp = NULL;
-	(void)fclose(fp);
+	fclose(fp);
 	return (shells);
 }

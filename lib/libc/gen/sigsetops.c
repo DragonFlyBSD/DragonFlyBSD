@@ -34,16 +34,14 @@
  *
  * @(#)sigsetops.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/sigsetops.c,v 1.7 1999/10/02 19:37:14 marcel Exp $
- * $DragonFly: src/lib/libc/gen/sigsetops.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/sigsetops.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <errno.h>
 #include <signal.h>
 
 int
-sigaddset(set, signo)
-	sigset_t *set;
-	int signo;
+sigaddset(sigset_t *set, int signo)
 {
 
 	if (signo <= 0 || signo > _SIG_MAXSIG) {
@@ -55,9 +53,7 @@ sigaddset(set, signo)
 }
 
 int
-sigdelset(set, signo)
-	sigset_t *set;
-	int signo;
+sigdelset(sigset_t *set, int signo)
 {
 
 	if (signo <= 0 || signo > _SIG_MAXSIG) {
@@ -69,8 +65,7 @@ sigdelset(set, signo)
 }
 
 int
-sigemptyset(set)
-	sigset_t *set;
+sigemptyset(sigset_t *set)
 {
 	int i;
 
@@ -80,8 +75,7 @@ sigemptyset(set)
 }
 
 int
-sigfillset(set)
-	sigset_t *set;
+sigfillset(sigset_t *set)
 {
 	int i;
 
@@ -91,9 +85,7 @@ sigfillset(set)
 }
 
 int
-sigismember(set, signo)
-	const sigset_t *set;
-	int signo;
+sigismember(const sigset_t *set, int signo)
 {
 
 	if (signo <= 0 || signo > _SIG_MAXSIG) {

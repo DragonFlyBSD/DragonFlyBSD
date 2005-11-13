@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)pwcache.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/pwcache.c,v 1.4 2005/04/26 08:45:19 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/pwcache.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <grp.h>
@@ -66,11 +66,11 @@ user_from_uid(uid_t uid, int nouser)
 		cp->uid = uid;
 		if (pw != NULL) {
 			cp->found = 1;
-			(void)strncpy(cp->name, pw->pw_name, UT_NAMESIZE);
+			strncpy(cp->name, pw->pw_name, UT_NAMESIZE);
 			cp->name[UT_NAMESIZE] = '\0';
 		} else {
 			cp->found = 0;
-			(void)snprintf(cp->name, UT_NAMESIZE, "%u", uid);
+			snprintf(cp->name, UT_NAMESIZE, "%u", uid);
 			if (nouser)
 				return (NULL);
 		}
@@ -100,11 +100,11 @@ group_from_gid(gid_t gid, int nogroup)
 		cp->gid = gid;
 		if (gr != NULL) {
 			cp->found = 1;
-			(void)strncpy(cp->name, gr->gr_name, UT_NAMESIZE);
+			strncpy(cp->name, gr->gr_name, UT_NAMESIZE);
 			cp->name[UT_NAMESIZE] = '\0';
 		} else {
 			cp->found = 0;
-			(void)snprintf(cp->name, UT_NAMESIZE, "%u", gid);
+			snprintf(cp->name, UT_NAMESIZE, "%u", gid);
 			if (nogroup)
 				return (NULL);
 		}

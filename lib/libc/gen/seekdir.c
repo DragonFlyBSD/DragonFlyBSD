@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/seekdir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.4 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)seekdir.c	8.1 (Berkeley) 6/4/93
  */
@@ -51,9 +51,7 @@ extern void _seekdir ( DIR *, long );
  * _seekdir is in telldir.c so that it can share opaque data structures.
  */
 void
-seekdir(dirp, loc)
-	DIR *dirp;
-	long loc;
+seekdir(DIR *dirp, long loc)
 {
 	if (__isthreaded)
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);

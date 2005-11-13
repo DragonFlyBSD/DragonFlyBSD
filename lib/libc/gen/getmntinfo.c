@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getmntinfo.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getmntinfo.c,v 1.3 2005/02/02 06:14:51 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getmntinfo.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,9 +43,7 @@
  * Return information about mounted filesystems.
  */
 int
-getmntinfo(mntbufp, flags)
-	struct statfs **mntbufp;
-	int flags;
+getmntinfo(struct statfs **mntbufp, int flags)
 {
 	static struct statfs *mntbuf;
 	static int mntsize;

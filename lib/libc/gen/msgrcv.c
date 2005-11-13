@@ -1,17 +1,12 @@
+/*
+ * $DragonFly: src/lib/libc/gen/msgrcv.c,v 1.2 2005/11/13 00:07:42 swildner Exp $
+ */
+
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
-#if __STDC__
 int msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp, int msgflg)
-#else
-int msgrcv(msqid, msgp, msgsz, msgtyp, msgflg)
-	int msqid;
-	void *msgp;
-	size_t msgsz;
-	long msgtyp;
-	int msgflg;
-#endif
 {
 	return (msgsys(3, msqid, msgp, msgsz, msgtyp, msgflg));
 }

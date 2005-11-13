@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ftok.c,v 1.5 1999/08/27 23:58:35 peter Exp $
- * $DragonFly: src/lib/libc/gen/ftok.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/ftok.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -33,9 +33,7 @@
 #include <sys/ipc.h>
 
 key_t
-ftok(path, id)
-	const char *path;
-	char id;
+ftok(const char *path, int id)
 {
 	struct stat st;
 

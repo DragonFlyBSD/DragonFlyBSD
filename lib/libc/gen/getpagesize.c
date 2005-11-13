@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getpagesize.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/getpagesize.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +43,7 @@
  */
 
 int
-getpagesize()
+getpagesize(void)
 {
 	int mib[2]; 
 	static int value;

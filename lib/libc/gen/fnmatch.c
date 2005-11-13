@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fnmatch.c	8.2 (Berkeley) 4/16/94
- * $DragonFly: src/lib/libc/gen/fnmatch.c,v 1.5 2005/04/26 18:53:17 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/fnmatch.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  */
 
 /*
@@ -58,9 +58,7 @@
 static int rangematch (const char *, char, int, char **);
 
 int
-fnmatch(pattern, string, flags)
-	const char *pattern, *string;
-	int flags;
+fnmatch(const char *pattern, const char *string, int flags)
 {
 	const char *stringstart;
 	char *newp;
@@ -163,11 +161,7 @@ fnmatch(pattern, string, flags)
 }
 
 static int
-rangematch(pattern, test, flags, newp)
-	const char *pattern;
-	char test;
-	int flags;
-	char **newp;
+rangematch(const char *pattern, char test, int flags, char **newp)
 {
 	int negate, ok;
 	char c, c2;

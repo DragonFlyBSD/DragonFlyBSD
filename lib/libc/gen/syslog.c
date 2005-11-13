@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.7 2005/03/09 18:52:21 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/syslog.c,v 1.8 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -79,11 +79,10 @@ struct bufcookie {
  * XXX: Maybe one day, dynamically allocate it so that the line length
  *      is `unlimited'.
  */
-static
-int writehook(cookie, buf, len)
-	void	*cookie;	/* really [struct bufcookie *] */
-	char	*buf;		/* characters to copy */
-	int	len;		/* length to copy */
+static int
+writehook(void *cookie,		/* really [struct bufcookie *] */
+	  char *buf,		/* characters to copy */
+	  int len)		/* length to copy */
 {
 	struct bufcookie *h;	/* private `handle' */
 
@@ -93,7 +92,7 @@ int writehook(cookie, buf, len)
 		len = h->left;
 	}
 	if (len > 0) {
-		(void)memcpy(h->base, buf, len); /* `write' it. */
+		memcpy(h->base, buf, len); /* `write' it. */
 		h->base += len;
 		h->left -= len;
 	}
@@ -115,10 +114,7 @@ syslog(int pri, const char *fmt, ...)
 }
 
 void
-vsyslog(pri, fmt, ap)
-	int pri;
-	const char *fmt;
-	va_list ap;
+vsyslog(int pri, const char *fmt, va_list ap)
 {
 	int cnt;
 	char ch, *p;
@@ -155,22 +151,22 @@ vsyslog(pri, fmt, ap)
 		return;
 
 	/* Build the message. */
-	(void)time(&now);
-	(void)fprintf(fp, "<%d>", pri);
-	(void)fprintf(fp, "%.15s ", ctime_r(&now, timbuf) + 4);
+	time(&now);
+	fprintf(fp, "<%d>", pri);
+	fprintf(fp, "%.15s ", ctime_r(&now, timbuf) + 4);
 	if (LogStat & LOG_PERROR) {
 		/* Transfer to string buffer */
-		(void)fflush(fp);
+		fflush(fp);
 		stdp = tbuf + (sizeof(tbuf) - tbuf_cookie.left);
 	}
 	if (LogTag == NULL)
 		LogTag = getprogname();
 	if (LogTag != NULL)
-		(void)fprintf(fp, "%s", LogTag);
+		fprintf(fp, "%s", LogTag);
 	if (LogStat & LOG_PID)
-		(void)fprintf(fp, "[%d]", getpid());
+		fprintf(fp, "[%d]", getpid());
 	if (LogTag != NULL) {
-		(void)fprintf(fp, ": ");
+		fprintf(fp, ": ");
 	}
 
 	/* Check to see if we can skip expanding the %m */
@@ -203,8 +199,8 @@ vsyslog(pri, fmt, ap)
 		fmt = fmt_cpy;
 	}
 
-	(void)vfprintf(fp, fmt, ap);
-	(void)fclose(fp);
+	vfprintf(fp, fmt, ap);
+	fclose(fp);
 
 	cnt = sizeof(tbuf) - tbuf_cookie.left;
 
@@ -218,7 +214,7 @@ vsyslog(pri, fmt, ap)
 		++v;
 		v->iov_base = "\n";
 		v->iov_len = 1;
-		(void)_writev(STDERR_FILENO, iov, 2);
+		_writev(STDERR_FILENO, iov, 2);
 	}
 
 	/* Get connected, output the message to the local logger. */
@@ -253,12 +249,12 @@ vsyslog(pri, fmt, ap)
 		++v;
 		v->iov_base = "\r\n";
 		v->iov_len = 2;
-		(void)_writev(fd, iov, 2);
-		(void)_close(fd);
+		_writev(fd, iov, 2);
+		_close(fd);
 	}
 }
 static void
-disconnectlog()
+disconnectlog(void)
 {
 	/*
 	 * If the user closed the FD and opened another in the same slot,
@@ -273,19 +269,19 @@ disconnectlog()
 }
 
 static void
-connectlog()
+connectlog(void)
 {
 	struct sockaddr_un SyslogAddr;	/* AF_UNIX address of local logger */
 
 	if (LogFile == -1) {
 		if ((LogFile = _socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
 			return;
-		(void)_fcntl(LogFile, F_SETFD, 1);
+		_fcntl(LogFile, F_SETFD, 1);
 	}
 	if (LogFile != -1 && !connected) {
 		SyslogAddr.sun_len = sizeof(SyslogAddr);
 		SyslogAddr.sun_family = AF_UNIX;
-		(void)strncpy(SyslogAddr.sun_path, _PATH_LOG,
+		strncpy(SyslogAddr.sun_path, _PATH_LOG,
 		    sizeof SyslogAddr.sun_path);
 		connected = _connect(LogFile, (struct sockaddr *)&SyslogAddr,
 			sizeof(SyslogAddr)) != -1;
@@ -295,7 +291,7 @@ connectlog()
 			 * Try the old "/dev/log" path, for backward
 			 * compatibility.
 			 */
-			(void)strncpy(SyslogAddr.sun_path, _PATH_OLDLOG,
+			strncpy(SyslogAddr.sun_path, _PATH_OLDLOG,
 			    sizeof SyslogAddr.sun_path);
 			connected = _connect(LogFile,
 				(struct sockaddr *)&SyslogAddr,
@@ -303,16 +299,14 @@ connectlog()
 		}
 
 		if (!connected) {
-			(void)_close(LogFile);
+			_close(LogFile);
 			LogFile = -1;
 		}
 	}
 }
 
 void
-openlog(ident, logstat, logfac)
-	const char *ident;
-	int logstat, logfac;
+openlog(const char *ident, int logstat, int logfac)
 {
 	if (ident != NULL)
 		LogTag = ident;
@@ -327,9 +321,9 @@ openlog(ident, logstat, logfac)
 }
 
 void
-closelog()
+closelog(void)
 {
-	(void)_close(LogFile);
+	_close(LogFile);
 	LogFile = -1;
 	LogTag = NULL;
 	connected = 0;
@@ -337,8 +331,7 @@ closelog()
 
 /* setlogmask -- set the log mask level */
 int
-setlogmask(pmask)
-	int pmask;
+setlogmask(int pmask)
 {
 	int omask;
 

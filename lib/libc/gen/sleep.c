@@ -32,7 +32,7 @@
  *
  * @(#)sleep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/sleep.c,v 1.28.2.1 2000/03/18 23:13:24 jasone Exp $
- * $DragonFly: src/lib/libc/gen/sleep.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/sleep.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -43,8 +43,7 @@
 #include "un-namespace.h"
 
 unsigned int
-__sleep(seconds)
-	unsigned int seconds;
+__sleep(unsigned int seconds)
 {
 	struct timespec time_to_sleep;
 	struct timespec time_remaining;

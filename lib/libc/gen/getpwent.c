@@ -32,7 +32,7 @@
  *
  * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -97,7 +97,7 @@ static int __hashpw(DBT *);
 static int __initdb(void);
 
 struct passwd *
-getpwent()
+getpwent(void)
 {
 	DBT key;
 	char bf[sizeof(_pw_keynum) + 1];
@@ -145,8 +145,7 @@ tryagain:
 }
 
 struct passwd *
-getpwnam(name)
-	const char *name;
+getpwnam(const char *name)
 {
 	DBT key;
 	int len, rval;
@@ -185,8 +184,7 @@ getpwnam(name)
 }
 
 struct passwd *
-getpwuid(uid)
-	uid_t uid;
+getpwuid(uid_t uid)
 {
 	DBT key;
 	int keyuid, rval;
@@ -226,8 +224,7 @@ getpwuid(uid)
 }
 
 int
-setpassent(stayopen)
-	int stayopen;
+setpassent(int stayopen)
 {
 	_pw_keynum = 0;
 #ifdef YP
@@ -240,25 +237,25 @@ setpassent(stayopen)
 }
 
 void
-setpwent()
+setpwent(void)
 {
-	(void)setpassent(0);
+	setpassent(0);
 }
 
 void
-endpwent()
+endpwent(void)
 {
 	_pw_keynum = 0;
 #ifdef YP
 	_pw_stepping_yp = 0;
 #endif
 	if (_pw_db) {
-		(void)(_pw_db->close)(_pw_db);
+		(_pw_db->close)(_pw_db);
 		_pw_db = (DB *)NULL;
 	}
 #ifdef YP
 	if (_ypcache) {
-		(void)(_ypcache->close)(_ypcache);
+		(_ypcache->close)(_ypcache);
 		_ypcache = (DB *)NULL;
 		_yp_exclusions = 0;
 	}
@@ -268,7 +265,7 @@ endpwent()
 }
 
 static int
-__initdb()
+__initdb(void)
 {
 	static int warned;
 	char *p;
@@ -283,8 +280,7 @@ __initdb()
 }
 
 static int
-__hashpw(key)
-	DBT *key;
+__hashpw(DBT *key)
 {
 	char *p, *t;
 	static u_int max;
@@ -324,7 +320,7 @@ __hashpw(key)
 #ifdef YP
 
 static void
-_ypinitdb()
+_ypinitdb(void)
 {
 	DBT key, data;
 	char buf[] = { _PW_KEYYPENABLED };
@@ -353,8 +349,7 @@ _ypinitdb()
  * See if a user is in the blackballed list.
  */
 static inline int
-lookup(name)
-	const char *name;
+lookup(const char *name)
 {
 	DBT key;
 
@@ -375,8 +370,7 @@ lookup(name)
  * Store a blackballed user in an in-core hash database.
  */
 static inline void
-store(key)
-	const char *key;
+store(const char *key)
 {
 	DBT lkey;
 /*
@@ -389,7 +383,7 @@ store(key)
 	lkey.data = (char *)key;
 	lkey.size = strlen(key);
 
-	(void)(_ypcache->put)(_ypcache, &lkey, &empty, R_NOOVERWRITE);
+	(_ypcache->put)(_ypcache, &lkey, &empty, R_NOOVERWRITE);
 }
 
 /*
@@ -405,8 +399,7 @@ store(key)
  * later.
  */
 static inline int
-unwind(grp)
-	char *grp;
+unwind(char *grp)
 {
 	char *user, *host, *domain;
 	static int latch = 0;
@@ -488,9 +481,7 @@ again:
  * See if a user is a member of a particular group.
  */
 static inline int
-ingr(grp, name)
-	const char *grp;
-	const char *name;
+ingr(const char *grp, const char *name)
 {
 	struct group *gr;
 
@@ -513,8 +504,7 @@ ingr(grp, name)
  * try searching regular groups with the same name.
  */
 static inline int
-verf(name)
-	const char *name;
+verf(const char *name)
 {
 	DBT key;
 	char bf[sizeof(_pw_keynum) + 1];
@@ -577,8 +567,7 @@ again:
 }
 
 static char *
-_get_adjunct_pw(name)
-	const char *name;
+_get_adjunct_pw(const char *name)
 {
 	static char adjunctbuf[YPMAXRECORD+2];
 	int rval;

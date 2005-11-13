@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/termios.c,v 1.9.2.1 2000/03/18 23:13:25 jasone Exp $
- * $DragonFly: src/lib/libc/gen/termios.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/termios.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)termios.c	8.2 (Berkeley) 2/21/94
  */
@@ -48,18 +48,14 @@
 #include "un-namespace.h"
 
 int
-tcgetattr(fd, t)
-	int fd;
-	struct termios *t;
+tcgetattr(int fd, struct termios *t)
 {
 
 	return (_ioctl(fd, TIOCGETA, t));
 }
 
 int
-tcsetattr(fd, opt, t)
-	int fd, opt;
-	const struct termios *t;
+tcsetattr(int fd, int opt, const struct termios *t)
 {
 	struct termios localterm;
 
@@ -82,13 +78,7 @@ tcsetattr(fd, opt, t)
 }
 
 int
-#if __STDC__
 tcsetpgrp(int fd, pid_t pgrp)
-#else
-tcsetpgrp(fd, pgrp)
-	int fd;
-	pid_t pgrp;
-#endif
 {
 	int s;
 
@@ -97,8 +87,7 @@ tcsetpgrp(fd, pgrp)
 }
 
 pid_t
-tcgetpgrp(fd)
-	int fd;
+tcgetpgrp(int fd)
 {
 	int s;
 
@@ -109,25 +98,21 @@ tcgetpgrp(fd)
 }
 
 speed_t
-cfgetospeed(t)
-	const struct termios *t;
+cfgetospeed(const struct termios *t)
 {
 
 	return (t->c_ospeed);
 }
 
 speed_t
-cfgetispeed(t)
-	const struct termios *t;
+cfgetispeed(const struct termios *t)
 {
 
 	return (t->c_ispeed);
 }
 
 int
-cfsetospeed(t, speed)
-	struct termios *t;
-	speed_t speed;
+cfsetospeed(struct termios *t, speed_t speed)
 {
 
 	t->c_ospeed = speed;
@@ -135,9 +120,7 @@ cfsetospeed(t, speed)
 }
 
 int
-cfsetispeed(t, speed)
-	struct termios *t;
-	speed_t speed;
+cfsetispeed(struct termios *t, speed_t speed)
 {
 
 	t->c_ispeed = speed;
@@ -145,9 +128,7 @@ cfsetispeed(t, speed)
 }
 
 int
-cfsetspeed(t, speed)
-	struct termios *t;
-	speed_t speed;
+cfsetspeed(struct termios *t, speed_t speed)
 {
 
 	t->c_ispeed = t->c_ospeed = speed;
@@ -159,8 +140,7 @@ cfsetspeed(t, speed)
  * mode with no characters interpreted, 8-bit data path.
  */
 void
-cfmakeraw(t)
-	struct termios *t;
+cfmakeraw(struct termios *t)
 {
 
 	t->c_iflag &= ~(IMAXBEL|IXOFF|INPCK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON|IGNPAR);
@@ -174,8 +154,7 @@ cfmakeraw(t)
 }
 
 int
-tcsendbreak(fd, len)
-	int fd, len;
+tcsendbreak(int fd, int len)
 {
 	struct timeval sleepytime;
 
@@ -183,15 +162,14 @@ tcsendbreak(fd, len)
 	sleepytime.tv_usec = 400000;
 	if (_ioctl(fd, TIOCSBRK, 0) == -1)
 		return (-1);
-	(void)_select(0, 0, 0, 0, &sleepytime);
+	_select(0, 0, 0, 0, &sleepytime);
 	if (_ioctl(fd, TIOCCBRK, 0) == -1)
 		return (-1);
 	return (0);
 }
 
 int
-__tcdrain(fd)
-	int fd;
+__tcdrain(int fd)
 {
 	return (_ioctl(fd, TIOCDRAIN, 0));
 }
@@ -201,8 +179,7 @@ __weak_reference(__tcdrain, tcdrain);
 #endif
 
 int
-tcflush(fd, which)
-	int fd, which;
+tcflush(int fd, int which)
 {
 	int com;
 
@@ -224,8 +201,7 @@ tcflush(fd, which)
 }
 
 int
-tcflow(fd, action)
-	int fd, action;
+tcflow(int fd, int action)
 {
 	struct termios term;
 	u_char c;

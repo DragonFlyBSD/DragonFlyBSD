@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)clock.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/clock.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +46,7 @@
 			 + (r).tv_usec / (1000000 / CLOCKS_PER_SEC))
 
 clock_t
-clock()
+clock(void)
 {
 	struct rusage ru;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/vis.c,v 1.13 2003/10/30 12:41:50 phk Exp $
- * $DragonFly: src/lib/libc/gen/vis.c,v 1.5 2005/09/03 16:25:42 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/vis.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -47,10 +47,7 @@
  * vis - visually encode characters
  */
 char *
-vis(dst, c, flag, nextc)
-	char *dst;
-	int c, nextc;
-	int flag;
+vis(char *dst, int c, int flag, int nextc)
 {
 	c = (unsigned char)c;
 
@@ -167,10 +164,7 @@ done:
  *	This is useful for encoding a block of data.
  */
 int
-strvis(dst, src, flag)
-	char *dst;
-	const char *src;
-	int flag;
+strvis(char *dst, const char *src, int flag)
 {
 	char c;
 	char *start;
@@ -211,11 +205,7 @@ strnvis(char *dst, const char *src, size_t len, int flag)
 }
 
 int
-strvisx(dst, src, len, flag)
-	char *dst;
-	const char *src;
-	size_t len;
-	int flag;
+strvisx(char *dst, const char *src, size_t len, int flag)
 {
 	int c;
 	char *start;

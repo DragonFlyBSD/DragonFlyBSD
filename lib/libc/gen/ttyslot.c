@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ttyslot.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/ttyslot.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/ttyslot.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <ttyent.h>
@@ -40,7 +40,7 @@
 #include <unistd.h>
 
 int
-ttyslot()
+ttyslot(void)
 {
 	struct ttyent *ttyp;
 	int slot;

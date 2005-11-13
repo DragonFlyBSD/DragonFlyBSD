@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)times.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/times.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/times.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -46,8 +46,7 @@
 #define	CONVTCK(r)	(r.tv_sec * CLK_TCK + r.tv_usec / (1000000 / CLK_TCK))
 
 clock_t
-times(tp)
-	struct tms *tp;
+times(struct tms *tp)
 {
 	struct rusage ru;
 	struct timeval t;

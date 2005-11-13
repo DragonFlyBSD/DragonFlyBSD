@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/unvis.c,v 1.4.8.1 2000/08/17 08:25:54 jhb Exp $
- * $DragonFly: src/lib/libc/gen/unvis.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/unvis.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)unvis.c	8.1 (Berkeley) 6/4/93
  */
@@ -60,9 +60,7 @@
  * unvis - decode characters previously encoded by vis
  */
 int
-unvis(cp, c, astate, flag)
-	char *cp;
-	int c, *astate, flag;
+unvis(char *cp, int c, int *astate, int flag)
 {
 
 	if (flag & UNVIS_END) {
@@ -239,9 +237,7 @@ unvis(cp, c, astate, flag)
  */
 
 int
-strunvis(dst, src)
-	char *dst;
-	const char *src;
+strunvis(char *dst, const char *src)
 {
 	char c;
 	char *start = dst;
@@ -270,9 +266,7 @@ strunvis(dst, src)
 }
 
 int
-strunvisx(dst, src, flag)
-	char *dst;
-	const char *src;
+strunvisx(char *dst, const char *src, int flag)
 {
 	char c;
 	char *start = dst;

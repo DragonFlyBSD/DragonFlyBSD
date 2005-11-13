@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/telldir.c,v 1.4.12.1 2001/03/05 09:39:59 obrien Exp $
- * $DragonFly: src/lib/libc/gen/telldir.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/telldir.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)telldir.c	8.1 (Berkeley) 6/4/93
  */
@@ -77,8 +77,7 @@ static struct	ddloc *dd_hash[NDIRHASH];   /* Hash list heads for ddlocs */
  * return a pointer into a directory
  */
 long
-telldir(dirp)
-	const DIR *dirp;
+telldir(const DIR *dirp)
 {
 	int index;
 	struct ddloc *lp;
@@ -104,9 +103,7 @@ telldir(dirp)
  * Only values returned by "telldir" should be passed to seekdir.
  */
 void
-_seekdir(dirp, loc)
-	DIR *dirp;
-	long loc;
+_seekdir(DIR *dirp, long loc)
 {
 	struct ddloc *lp;
 	struct ddloc **prevlp;
@@ -124,7 +121,7 @@ _seekdir(dirp, loc)
 		return;
 	if (lp->loc_loc == dirp->dd_loc && lp->loc_seek == dirp->dd_seek)
 		goto found;
-	(void) lseek(dirp->dd_fd, (off_t)lp->loc_seek, SEEK_SET);
+	lseek(dirp->dd_fd, (off_t)lp->loc_seek, SEEK_SET);
 	dirp->dd_seek = lp->loc_seek;
 	dirp->dd_loc = 0;
 	while (dirp->dd_loc < lp->loc_loc) {
@@ -143,8 +140,7 @@ found:
  * Reclaim memory for telldir cookies which weren't used.
  */
 void
-_reclaim_telldir(dirp)
-	DIR *dirp;
+_reclaim_telldir(DIR *dirp)
 {
 	struct ddloc *lp;
 	struct ddloc **prevlp;

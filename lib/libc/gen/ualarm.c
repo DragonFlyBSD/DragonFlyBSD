@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ualarm.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/ualarm.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/ualarm.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/time.h>
@@ -45,9 +45,7 @@
  * every ``reload'' microseconds after the first signal.
  */
 unsigned
-ualarm(usecs, reload)
-	unsigned usecs;
-	unsigned reload;
+ualarm(unsigned usecs, unsigned reload)
 {
 	struct itimerval new, old;
 

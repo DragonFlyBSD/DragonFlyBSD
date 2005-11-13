@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)nice.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/nice.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -43,8 +44,7 @@
  * Backwards compatible nice.
  */
 int
-nice(incr)
-	int incr;
+nice(int incr)
 {
 	int prio;
 

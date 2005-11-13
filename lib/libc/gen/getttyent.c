@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.11 1999/11/04 04:16:27 ache Exp $
- * $DragonFly: src/lib/libc/gen/getttyent.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getttyent.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
  */
@@ -53,8 +53,7 @@ static char *skip (char *);
 static char *value (char *);
 
 struct ttyent *
-getttynam(tty)
-	const char *tty;
+getttynam(const char *tty)
 {
 	struct ttyent *t;
 
@@ -69,7 +68,7 @@ getttynam(tty)
 }
 
 struct ttyent *
-getttyent()
+getttyent(void)
 {
 	static struct ttyent tty;
 	char *p;
@@ -86,7 +85,7 @@ getttyent()
 			i = strlen(p);
 			lbsize += MALLOCCHUNK;
 			if ((p = realloc(line, lbsize)) == NULL) {
-				(void)endttyent();
+				endttyent();
 				return (NULL);
 			}
 			line = p;
@@ -163,8 +162,7 @@ getttyent()
  * the next field.
  */
 static char *
-skip(p)
-	char *p;
+skip(char *p)
 {
 	char *t;
 	int c, q;
@@ -197,15 +195,14 @@ skip(p)
 }
 
 static char *
-value(p)
-	char *p;
+value(char *p)
 {
 
 	return ((p = index(p, '=')) ? ++p : NULL);
 }
 
 int
-setttyent()
+setttyent(void)
 {
 
 	if (line == NULL) {
@@ -222,7 +219,7 @@ setttyent()
 }
 
 int
-endttyent()
+endttyent(void)
 {
 	int rval;
 
@@ -239,9 +236,7 @@ endttyent()
 }
 
 static int
-isttystat(tty, flag)
-	const char *tty;
-	int flag;
+isttystat(const char *tty, int flag)
 {
 	struct ttyent *t;
 
@@ -250,15 +245,14 @@ isttystat(tty, flag)
 
 
 int
-isdialuptty(tty)
-	const char *tty;
+isdialuptty(const char *tty)
 {
 
 	return isttystat(tty, TTY_DIALUP);
 }
 
-int isnettty(tty)
-	const char *tty;
+int
+isnettty(const char *tty)
 {
 
 	return isttystat(tty, TTY_NETWORK);

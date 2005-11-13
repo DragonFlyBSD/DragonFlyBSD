@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
- * $DragonFly: src/lib/libc/gen/glob.c,v 1.4 2005/04/26 08:07:58 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/glob.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)glob.c	8.3 (Berkeley) 10/13/93
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
@@ -842,15 +842,15 @@ qprintf(const char *str, const Char *s)
 {
 	const Char *p;
 
-	(void)printf("%s:\n", str);
+	printf("%s:\n", str);
 	for (p = s; *p; p++)
-		(void)printf("%c", CHAR(*p));
-	(void)printf("\n");
+		printf("%c", CHAR(*p));
+	printf("\n");
 	for (p = s; *p; p++)
-		(void)printf("%c", *p & M_PROTECT ? '"' : ' ');
-	(void)printf("\n");
+		printf("%c", *p & M_PROTECT ? '"' : ' ');
+	printf("\n");
 	for (p = s; *p; p++)
-		(void)printf("%c", ismeta(*p) ? '_' : ' ');
-	(void)printf("\n");
+		printf("%c", ismeta(*p) ? '_' : ' ');
+	printf("\n");
 }
 #endif

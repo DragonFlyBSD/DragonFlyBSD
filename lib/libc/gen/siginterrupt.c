@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/siginterrupt.c,v 1.2.8.1 2001/03/05 09:34:53 obrien Exp $
- * $DragonFly: src/lib/libc/gen/siginterrupt.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/siginterrupt.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)siginterrupt.c	8.1 (Berkeley) 6/4/93
  */
@@ -46,8 +46,7 @@
  * after an instance of the indicated signal.
  */
 int
-siginterrupt(sig, flag)
-	int sig, flag;
+siginterrupt(int sig, int flag)
 {
 	extern sigset_t _sigintr;
 	struct sigaction sa;

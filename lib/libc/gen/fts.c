@@ -33,7 +33,7 @@
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  *
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
- * $DragonFly: src/lib/libc/gen/fts.c,v 1.6 2005/04/27 11:37:50 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/fts.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)fts.c	8.6 (Berkeley) 8/14/94
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
@@ -433,12 +433,12 @@ name:		t = sp->fts_path + NAPPEND(p->fts_parent);
 	} else if (p->fts_flags & FTS_SYMFOLLOW) {
 		if (FCHDIR(sp, p->fts_symfd)) {
 			saved_errno = errno;
-			(void)_close(p->fts_symfd);
+			_close(p->fts_symfd);
 			errno = saved_errno;
 			SET(FTS_STOP);
 			return (NULL);
 		}
-		(void)_close(p->fts_symfd);
+		_close(p->fts_symfd);
 	} else if (!(p->fts_flags & FTS_DONTCHDIR) &&
 		   fts_safe_changedir(sp, p->fts_parent, -1, "..")) {
 		SET(FTS_STOP);
@@ -601,8 +601,8 @@ fts_build(FTS *sp, int type)
 	}
 
 #ifdef notdef
-	(void)printf("nlinks == %d (cur: %d)\n", nlinks, cur->fts_nlink);
-	(void)printf("NOSTAT %d PHYSICAL %d SEEDOT %d\n",
+	printf("nlinks == %d (cur: %d)\n", nlinks, cur->fts_nlink);
+	printf("NOSTAT %d PHYSICAL %d SEEDOT %d\n",
 	    ISSET(FTS_NOSTAT), ISSET(FTS_PHYSICAL), ISSET(FTS_SEEDOT));
 #endif
 	/*
@@ -628,7 +628,7 @@ fts_build(FTS *sp, int type)
 			cur->fts_flags |= FTS_DONTCHDIR;
 			descend = 0;
 			cderrno = errno;
-			(void)closedir(dirp);
+			closedir(dirp);
 			dirp = NULL;
 		} else
 			descend = 1;
@@ -1061,7 +1061,7 @@ fts_safe_changedir(FTS *sp, FTSENT *p, int fd, const char *path)
 bail:
 	oerrno = errno;
 	if (fd < 0)
-		(void)_close(newfd);
+		_close(newfd);
 	errno = oerrno;
 	return (ret);
 }

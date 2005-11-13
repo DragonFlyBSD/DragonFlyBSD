@@ -28,7 +28,7 @@
  *
  * $OpenBSD: readpassphrase.c,v 1.12 2001/12/15 05:41:00 millert Exp $
  * $FreeBSD: src/lib/libc/gen/readpassphrase.c,v 1.6.2.2 2002/06/30 13:54:26 des Exp $
- * $DragonFly: src/lib/libc/gen/readpassphrase.c,v 1.3 2005/04/26 08:46:54 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/readpassphrase.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -86,13 +86,13 @@ restart:
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;		/* don't restart system calls */
 	sa.sa_handler = handler;
-	(void)_sigaction(SIGINT, &sa, &saveint);
-	(void)_sigaction(SIGHUP, &sa, &savehup);
-	(void)_sigaction(SIGQUIT, &sa, &savequit);
-	(void)_sigaction(SIGTERM, &sa, &saveterm);
-	(void)_sigaction(SIGTSTP, &sa, &savetstp);
-	(void)_sigaction(SIGTTIN, &sa, &savettin);
-	(void)_sigaction(SIGTTOU, &sa, &savettou);
+	_sigaction(SIGINT, &sa, &saveint);
+	_sigaction(SIGHUP, &sa, &savehup);
+	_sigaction(SIGQUIT, &sa, &savequit);
+	_sigaction(SIGTERM, &sa, &saveterm);
+	_sigaction(SIGTSTP, &sa, &savetstp);
+	_sigaction(SIGTTIN, &sa, &savettin);
+	_sigaction(SIGTTOU, &sa, &savettou);
 
 	/* Turn off echo if possible. */
 	if (tcgetattr(input, &oterm) == 0) {
@@ -101,13 +101,13 @@ restart:
 			term.c_lflag &= ~(ECHO | ECHONL);
 		if (term.c_cc[VSTATUS] != _POSIX_VDISABLE)
 			term.c_cc[VSTATUS] = _POSIX_VDISABLE;
-		(void)tcsetattr(input, TCSAFLUSH|TCSASOFT, &term);
+		tcsetattr(input, TCSAFLUSH|TCSASOFT, &term);
 	} else {
 		memset(&term, 0, sizeof(term));
 		memset(&oterm, 0, sizeof(oterm));
 	}
 
-	(void)_write(output, prompt, strlen(prompt));
+	_write(output, prompt, strlen(prompt));
 	end = buf + bufsiz - 1;
 	for (p = buf; (nr = _read(input, &ch, 1)) == 1 && ch != '\n' && ch != '\r';) {
 		if (p < end) {
@@ -125,20 +125,20 @@ restart:
 	*p = '\0';
 	save_errno = errno;
 	if (!(term.c_lflag & ECHO))
-		(void)_write(output, "\n", 1);
+		_write(output, "\n", 1);
 
 	/* Restore old terminal settings and signals. */
 	if (memcmp(&term, &oterm, sizeof(term)) != 0)
-		(void)tcsetattr(input, TCSANOW|TCSASOFT, &oterm);
-	(void)_sigaction(SIGINT, &saveint, NULL);
-	(void)_sigaction(SIGHUP, &savehup, NULL);
-	(void)_sigaction(SIGQUIT, &savequit, NULL);
-	(void)_sigaction(SIGTERM, &saveterm, NULL);
-	(void)_sigaction(SIGTSTP, &savetstp, NULL);
-	(void)_sigaction(SIGTTIN, &savettin, NULL);
-	(void)_sigaction(SIGTTOU, &savettou, NULL);
+		tcsetattr(input, TCSANOW|TCSASOFT, &oterm);
+	_sigaction(SIGINT, &saveint, NULL);
+	_sigaction(SIGHUP, &savehup, NULL);
+	_sigaction(SIGQUIT, &savequit, NULL);
+	_sigaction(SIGTERM, &saveterm, NULL);
+	_sigaction(SIGTSTP, &savetstp, NULL);
+	_sigaction(SIGTTIN, &savettin, NULL);
+	_sigaction(SIGTTOU, &savettou, NULL);
 	if (input != STDIN_FILENO)
-		(void)_close(input);
+		_close(input);
 
 	/*
 	 * If we were interrupted by a signal, resend it to ourselves
@@ -169,8 +169,8 @@ getpass(const char *prompt)
 	return(buf);
 }
 
-static void handler(int s)
+static void
+handler(int s)
 {
-
 	signo = s;
 }

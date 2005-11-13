@@ -35,7 +35,7 @@
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
  * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
- * $DragonFly: src/lib/libc/gen/setmode.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/setmode.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -80,9 +80,7 @@ static void	 dumpmode (BITCMD *);
  * bits) followed by a '+' (set bits).
  */
 mode_t
-getmode(bbox, omode)
-	void *bbox;
-	mode_t omode;
+getmode(void *bbox, mode_t omode)
 {
 	BITCMD *set;
 	mode_t clrval, newmode, value;
@@ -143,7 +141,7 @@ common:			if (set->cmd2 & CMD2_CLR) {
 		case '\0':
 		default:
 #ifdef SETMODE_DEBUG
-			(void)printf("getmode:%04o -> %04o\n", omode, newmode);
+			printf("getmode:%04o -> %04o\n", omode, newmode);
 #endif
 			return (newmode);
 		}
@@ -165,8 +163,7 @@ common:			if (set->cmd2 & CMD2_CLR) {
 #define	STANDARD_BITS	(S_ISUID|S_ISGID|S_IRWXU|S_IRWXG|S_IRWXO)
 
 void *
-setmode(p)
-	char *p;
+setmode(char *p)
 {
 	int perm, who;
 	char op;
@@ -185,10 +182,10 @@ setmode(p)
 	 * as best we can.
 	 */
 	sigfillset(&sigset);
-        (void)_sigprocmask(SIG_BLOCK, &sigset, &sigoset);
-	(void)umask(mask = umask(0));
+        _sigprocmask(SIG_BLOCK, &sigset, &sigoset);
+	umask(mask = umask(0));
 	mask = ~mask;
-        (void)_sigprocmask(SIG_SETMASK, &sigoset, NULL);
+        _sigprocmask(SIG_SETMASK, &sigoset, NULL);
 
 	setlen = SET_LEN + 2;
 
@@ -323,23 +320,19 @@ apply:		if (!*p)
 	}
 	set->cmd = 0;
 #ifdef SETMODE_DEBUG
-	(void)printf("Before compress_mode()\n");
+	printf("Before compress_mode()\n");
 	dumpmode(saveset);
 #endif
 	compress_mode(saveset);
 #ifdef SETMODE_DEBUG
-	(void)printf("After compress_mode()\n");
+	printf("After compress_mode()\n");
 	dumpmode(saveset);
 #endif
 	return (saveset);
 }
 
 static BITCMD *
-addcmd(set, op, who, oparg, mask)
-	BITCMD *set;
-	int oparg, who;
-	int op;
-	u_int mask;
+addcmd(BITCMD *set, int op, int who, int oparg, u_int mask)
 {
 	switch (op) {
 	case '=':
@@ -383,11 +376,10 @@ addcmd(set, op, who, oparg, mask)
 
 #ifdef SETMODE_DEBUG
 static void
-dumpmode(set)
-	BITCMD *set;
+dumpmode(BITCMD *set)
 {
 	for (; set->cmd; ++set)
-		(void)printf("cmd: '%c' bits %04o%s%s%s%s%s%s\n",
+		printf("cmd: '%c' bits %04o%s%s%s%s%s%s\n",
 		    set->cmd, set->bits, set->cmd2 ? " cmd2:" : "",
 		    set->cmd2 & CMD2_CLR ? " CLR" : "",
 		    set->cmd2 & CMD2_SET ? " SET" : "",
@@ -404,8 +396,7 @@ dumpmode(set)
  * compacted, but it's not worth the effort.
  */
 static void
-compress_mode(set)
-	BITCMD *set;
+compress_mode(BITCMD *set)
 {
 	BITCMD *nset;
 	int setbits, clrbits, Xbits, op;

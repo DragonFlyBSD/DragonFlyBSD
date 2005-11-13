@@ -31,15 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)gethostname.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/gethostname.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
 int
-gethostname(name, namelen)
-	char *name;
-	int namelen;
+gethostname(char *name, int namelen)
 {
 	int mib[2];
 	size_t size;

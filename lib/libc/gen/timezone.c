@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)timezone.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/timezone.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/timezone.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -54,9 +54,7 @@ char *_tztab();
 static char	czone[TZ_MAX_CHARS];		/* space for zone name */
 
 char *
-timezone(zone, dst)
-	int	zone,
-		dst;
+timezone(int zone, int dst)
 {
 	char	*beg,
 			*end;
@@ -66,7 +64,7 @@ timezone(zone, dst)
 			if (dst)
 				return(++end);
 			*end = '\0';
-			(void)strncpy(czone,beg,sizeof(czone) - 1);
+			strncpy(czone,beg,sizeof(czone) - 1);
 			czone[sizeof(czone) - 1] = '\0';
 			*end = ',';
 			return(czone);
@@ -107,9 +105,7 @@ static struct zone {
  *	STANDARD LIBRARY.
  */
 char *
-_tztab(zone,dst)
-	int	zone;
-	int	dst;
+_tztab(int zone, int dst)
 {
 	struct zone	*zp;
 	char	sign;
@@ -128,7 +124,7 @@ _tztab(zone,dst)
 	}
 	else
 		sign = '-';
-	(void)snprintf(czone, sizeof(czone),
+	snprintf(czone, sizeof(czone),
 	    "GMT%c%d:%02d",sign,zone / 60,zone % 60);
 	return(czone);
 }

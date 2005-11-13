@@ -32,19 +32,14 @@
  *
  * @(#)gethostid.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libc/gen/getosreldate.c,v 1.4 1999/08/27 23:58:43 peter Exp $
- * $DragonFly: src/lib/libc/gen/getosreldate.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getosreldate.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
-#if __STDC__
 int
 getosreldate(void)
-#else
-int
-getosreldate()
-#endif
 {
 	int mib[2];
 	size_t size;

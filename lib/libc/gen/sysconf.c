@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)sysconf.c	8.2 (Berkeley) 3/20/94
- * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.3 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/_posix.h>
@@ -60,8 +60,7 @@
  * less useful than returning up-to-date values, however.
  */
 long
-sysconf(name)
-	int name;
+sysconf(int name)
 {
 	struct rlimit rl;
 	size_t len;

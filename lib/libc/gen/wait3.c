@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/wait3.c,v 1.1.1.1.14.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/wait3.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/wait3.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)wait3.c	8.1 (Berkeley) 6/4/93
  */
@@ -44,10 +44,7 @@
 #include "un-namespace.h"
 
 pid_t
-wait3(istat, options, rup)
-	int *istat;
-	int options;
-	struct rusage *rup;
+wait3(int *istat, int options, struct rusage *rup)
 {
 	return (_wait4(WAIT_ANY, istat, options, rup));
 }

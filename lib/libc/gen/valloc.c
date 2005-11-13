@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)valloc.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/valloc.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <stdlib.h>
 #include <unistd.h>
 
 void *
-valloc(i)
-	size_t i;
+valloc(size_t i)
 {
 	long valsiz = getpagesize(), j;
 	void *cp = malloc(i + (valsiz-1));

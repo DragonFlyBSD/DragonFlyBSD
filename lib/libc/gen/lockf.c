@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/lockf.c,v 1.5 2000/01/27 23:06:17 jasone Exp $
- * $DragonFly: src/lib/libc/gen/lockf.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/lockf.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -46,10 +46,7 @@
 #include "un-namespace.h"
 
 int
-lockf(filedes, function, size)
-	int filedes;
-	int function;
-	off_t size;
+lockf(int filedes, int function, off_t size)
 {
 	struct flock fl;
 	int cmd;

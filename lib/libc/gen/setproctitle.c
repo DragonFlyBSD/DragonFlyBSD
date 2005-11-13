@@ -15,7 +15,7 @@
  *    Peter Wemm.
  *
  * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.12.2.2 2000/12/10 20:27:08 jdp Exp $
- * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.4 2005/03/09 18:52:21 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -82,12 +82,12 @@ setproctitle(const char *fmt, ...)
 			len = 0;
 		} else {
 			/* print program name heading for grep */
-			(void) snprintf(buf, sizeof(buf), "%s: ", getprogname());
+			snprintf(buf, sizeof(buf), "%s: ", getprogname());
 			len = strlen(buf);
 		}
 
 		/* print the argument string */
-		(void) vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+		vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
 
 		nargvp = nargv;
 		nargc = 1;

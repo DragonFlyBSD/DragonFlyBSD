@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.6 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -50,8 +50,7 @@
  * get next entry in a directory.
  */
 struct dirent *
-_readdir_unlocked(dirp)
-	DIR *dirp;
+_readdir_unlocked(DIR *dirp)
 {
 	struct dirent *dp;
 
@@ -80,8 +79,7 @@ _readdir_unlocked(dirp)
 }
 
 struct dirent *
-readdir(dirp)
-	DIR *dirp;
+readdir(DIR *dirp)
 {
 	struct dirent	*dp;
 
@@ -95,10 +93,7 @@ readdir(dirp)
 }
 
 int
-readdir_r(dirp, entry, result)
-	DIR *dirp;
-	struct dirent *entry;
-	struct dirent **result;
+readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
 {
 	struct dirent *dp;
 	int ret, saved_errno;
