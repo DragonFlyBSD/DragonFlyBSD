@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cmpdi2.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/quad/cmpdi2.c,v 1.3 2005/11/13 02:13:52 swildner Exp $
  */
 
 #include "quad.h"
@@ -45,8 +46,7 @@
  * signed.
  */
 int
-__cmpdi2(a, b)
-	quad_t a, b;
+__cmpdi2(quad_t a, quad_t b)
 {
 	union uu aa, bb;
 

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)qdivrem.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/quad/qdivrem.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ * $DragonFly: src/lib/libc/quad/qdivrem.c,v 1.4 2005/11/13 02:13:52 swildner Exp $
  */
 
 /*
@@ -81,8 +81,7 @@ shl(digit *p, int len, int sh)
  * leading zeros).
  */
 u_quad_t
-__qdivrem(uq, vq, arq)
-	u_quad_t uq, vq, *arq;
+__qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 {
 	union uu tmp;
 	digit *u, *v, *q;

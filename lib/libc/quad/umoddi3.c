@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)umoddi3.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/quad/umoddi3.c,v 1.3 2005/11/13 02:13:52 swildner Exp $
  */
 
 #include "quad.h"
@@ -43,11 +44,10 @@
  * Return remainder after dividing two unsigned quads.
  */
 u_quad_t
-__umoddi3(a, b)
-	u_quad_t a, b;
+__umoddi3(u_quad_t a, u_quad_t b)
 {
 	u_quad_t r;
 
-	(void)__qdivrem(a, b, &r);
+	__qdivrem(a, b, &r);
 	return (r);
 }

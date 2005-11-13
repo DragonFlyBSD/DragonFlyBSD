@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ucmpdi2.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/quad/ucmpdi2.c,v 1.3 2005/11/13 02:13:52 swildner Exp $
  */
 
 #include "quad.h"
@@ -44,8 +45,7 @@
  * Neither a nor b are considered signed.
  */
 int
-__ucmpdi2(a, b)
-	u_quad_t a, b;
+__ucmpdi2(u_quad_t a, u_quad_t b)
 {
 	union uu aa, bb;
 

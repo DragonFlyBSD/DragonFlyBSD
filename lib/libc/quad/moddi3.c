@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)moddi3.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/quad/moddi3.c,v 1.3 2005/11/13 02:13:52 swildner Exp $
  */
 
 #include "quad.h"
@@ -46,8 +47,7 @@
  * If -1/2 should produce -1 on this machine, this code is wrong.
  */
 quad_t
-__moddi3(a, b)
-	quad_t a, b;
+__moddi3(quad_t a, quad_t b)
 {
 	u_quad_t ua, ub, ur;
 	int neg;
@@ -60,6 +60,6 @@ __moddi3(a, b)
 		ub = -(u_quad_t)b;
 	else
 		ub = b;
-	(void)__qdivrem(ua, ub, &ur);
+	__qdivrem(ua, ub, &ur);
 	return (neg ? -ur : ur);
 }
