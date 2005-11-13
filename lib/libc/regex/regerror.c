@@ -37,7 +37,7 @@
  *	@(#)regerror.c	8.4 (Berkeley) 3/20/94
  *
  * @(#)regerror.c	8.4 (Berkeley) 3/20/94
- * $DragonFly: src/lib/libc/regex/regerror.c,v 1.5 2004/02/06 22:36:50 joerg Exp $
+ * $DragonFly: src/lib/libc/regex/regerror.c,v 1.6 2005/11/13 02:17:18 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -128,7 +128,7 @@ regerror(int errcode, const regex_t *preg, char *errbuf, size_t errbuf_size)
 
 		if (errcode&REG_ITOA) {
 			if (r->code != 0)
-				(void) strcpy(convbuf, r->name);
+				strcpy(convbuf, r->name);
 			else
 				sprintf(convbuf, "REG_0x%x", target);
 			assert(strlen(convbuf) < sizeof(convbuf));
@@ -140,9 +140,9 @@ regerror(int errcode, const regex_t *preg, char *errbuf, size_t errbuf_size)
 	len = strlen(s) + 1;
 	if (errbuf_size > 0) {
 		if (errbuf_size > len)
-			(void) strcpy(errbuf, s);
+			strcpy(errbuf, s);
 		else {
-			(void) strncpy(errbuf, s, errbuf_size-1);
+			strncpy(errbuf, s, errbuf_size-1);
 			errbuf[errbuf_size-1] = '\0';
 		}
 	}
