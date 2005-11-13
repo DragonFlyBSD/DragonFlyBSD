@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $
- * $DragonFly: src/lib/libc/locale/collate.c,v 1.6 2005/04/21 16:36:34 joerg Exp $
+ * $DragonFly: src/lib/libc/locale/collate.c,v 1.7 2005/11/13 01:20:49 swildner Exp $
  */
 
 #include "namespace.h"
@@ -85,16 +85,16 @@ __collate_load_tables(const char *encoding)
 
 	/* 'PathLocale' must be already set & checked. */
 	/* Range checking not needed, encoding has fixed size */
-	(void)strcpy(buf, _PathLocale);
-	(void)strcat(buf, "/");
-	(void)strcat(buf, encoding);
-	(void)strcat(buf, "/LC_COLLATE");
+	strcpy(buf, _PathLocale);
+	strcat(buf, "/");
+	strcat(buf, encoding);
+	strcat(buf, "/LC_COLLATE");
 	if ((fp = fopen(buf, "r")) == NULL)
 		return (_LDP_ERROR);
 
 	if (fread(strbuf, sizeof(strbuf), 1, fp) != 1) {
 		saverr = errno;
-		(void)fclose(fp);
+		fclose(fp);
 		errno = saverr;
 		return (_LDP_ERROR);
 	}
@@ -104,19 +104,19 @@ __collate_load_tables(const char *encoding)
 	else if (strcmp(strbuf, COLLATE_VERSION1_1) == 0)
 		chains = 1;
 	if (chains < 0) {
-		(void)fclose(fp);
+		fclose(fp);
 		errno = EFTYPE;
 		return (_LDP_ERROR);
 	}
 	if (chains) {
 		if (fread(&u32, sizeof(u32), 1, fp) != 1) {
 			saverr = errno;
-			(void)fclose(fp);
+			fclose(fp);
 			errno = saverr;
 			return (_LDP_ERROR);
 		}
 		if ((chains = (int)ntohl(u32)) < 1) {
-			(void)fclose(fp);
+			fclose(fp);
 			errno = EFTYPE;
 			return (_LDP_ERROR);
 		}
@@ -126,7 +126,7 @@ __collate_load_tables(const char *encoding)
 	if ((TMP_substitute_table =
 	     malloc(sizeof(__collate_substitute_table))) == NULL) {
 		saverr = errno;
-		(void)fclose(fp);
+		fclose(fp);
 		errno = saverr;
 		return (_LDP_ERROR);
 	}
@@ -134,7 +134,7 @@ __collate_load_tables(const char *encoding)
 	     malloc(sizeof(__collate_char_pri_table))) == NULL) {
 		saverr = errno;
 		free(TMP_substitute_table);
-		(void)fclose(fp);
+		fclose(fp);
 		errno = saverr;
 		return (_LDP_ERROR);
 	}
@@ -143,7 +143,7 @@ __collate_load_tables(const char *encoding)
 		saverr = errno;
 		free(TMP_substitute_table);
 		free(TMP_char_pri_table);
-		(void)fclose(fp);
+		fclose(fp);
 		errno = saverr;
 		return (_LDP_ERROR);
 	}
@@ -155,7 +155,7 @@ __collate_load_tables(const char *encoding)
 		free(TMP_substitute_table); \
 		free(TMP_char_pri_table); \
 		free(TMP_chain_pri_table); \
-		(void)fclose(d); \
+		fclose(d); \
 		errno = saverr; \
 		return (_LDP_ERROR); \
 	} \
@@ -165,9 +165,9 @@ __collate_load_tables(const char *encoding)
 	FREAD(TMP_char_pri_table, sizeof(__collate_char_pri_table), 1, fp);
 	FREAD(TMP_chain_pri_table,
 	      sizeof(*__collate_chain_pri_table), chains, fp);
-	(void)fclose(fp);
+	fclose(fp);
 
-	(void)strcpy(collate_encoding, encoding);
+	strcpy(collate_encoding, encoding);
 	if (__collate_substitute_table_ptr != NULL)
 		free(__collate_substitute_table_ptr);
 	__collate_substitute_table_ptr = TMP_substitute_table;
@@ -192,8 +192,7 @@ __collate_load_tables(const char *encoding)
 }
 
 u_char *
-__collate_substitute(s)
-	const u_char *s;
+__collate_substitute(const u_char *s)
 {
 	int dest_len, len, nlen;
 	int delta = strlen(s);
@@ -213,16 +212,14 @@ __collate_substitute(s)
 			if (dest_str == NULL)
 				__collate_err(EX_OSERR, __func__);
 		}
-		(void)strcpy(dest_str + len, __collate_substitute_table[*s++]);
+		strcpy(dest_str + len, __collate_substitute_table[*s++]);
 		len = nlen;
 	}
 	return (dest_str);
 }
 
 void
-__collate_lookup(t, len, prim, sec)
-	const u_char *t;
-	int *len, *prim, *sec;
+__collate_lookup(const u_char *t, int *len, int *prim, int *sec)
 {
 	struct __collate_st_chain_pri *p2;
 
@@ -242,8 +239,7 @@ __collate_lookup(t, len, prim, sec)
 }
 
 u_char *
-__collate_strdup(s)
-	u_char *s;
+__collate_strdup(u_char *s)
 {
 	u_char *t = strdup(s);
 
@@ -271,7 +267,7 @@ __collate_err(int ex, const char *f)
 
 #ifdef COLLATE_DEBUG
 void
-__collate_print_tables()
+__collate_print_tables(void)
 {
 	int i;
 	struct __collate_st_chain_pri *p2;

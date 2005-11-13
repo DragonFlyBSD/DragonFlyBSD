@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collcmp.c,v 1.12.2.1 2000/08/22 01:54:39 jhb Exp $
- * $DragonFly: src/lib/libc/locale/collcmp.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/collcmp.c,v 1.3 2005/11/13 01:20:49 swildner Exp $
  */
 
 #define ASCII_COMPATIBLE_COLLATE        /* see share/colldef */
@@ -41,8 +41,7 @@
  * "[a-z]"-type ranges with national characters.
  */
 
-int __collate_range_cmp (c1, c2)
-	int c1, c2;
+int __collate_range_cmp(int c1, int c2)
 {
 	static char s1[2], s2[2];
 	int ret;
