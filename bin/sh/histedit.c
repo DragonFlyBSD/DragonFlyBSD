@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.5 2005/11/06 11:44:02 swildner Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.6 2005/11/13 11:58:30 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -77,6 +77,7 @@ STATIC char *fc_replace(const char *, char *, char *);
 void
 histedit(void)
 {
+	FILE *el_err;
 
 #define editing (Eflag || Vflag)
 
@@ -98,6 +99,8 @@ histedit(void)
 			/*
 			 * turn editing on
 			 */
+			char *term, *shname;
+
 			INTOFF;
 			if (el_in == NULL)
 				el_in = fdopen(0, "r");
@@ -105,7 +108,16 @@ histedit(void)
 				el_out = fdopen(2, "w");
 			if (el_in == NULL || el_out == NULL)
 				goto bad;
-			el = el_init(arg0, el_in, el_out);
+			el_err = el_out;
+			term = lookupvar("TERM");
+			if (term)
+				setenv("TERM", term, 1);
+			else
+				unsetenv("TERM");
+			shname = arg0;
+			if (shname[0] == '-')
+				shname++;
+			el = el_init(arg0, el_in, el_out, el_err);
 			if (el != NULL) {
 				if (hist)
 					el_set(el, EL_HIST, history, hist);
@@ -147,12 +159,13 @@ void
 sethistsize(const char *hs)
 {
 	int histsize;
+	HistEvent he;
 
 	if (hist != NULL) {
 		if (hs == NULL || *hs == '\0' ||
 		   (histsize = atoi(hs)) < 0)
 			histsize = 100;
-		history(hist, H_EVENT, histsize);
+		history(hist, &he, H_SETSIZE, histsize);
 	}
 }
 
@@ -165,9 +178,9 @@ histcmd(int argc, char **argv)
 {
 	int ch;
 	const char *editor = NULL;
-	const HistEvent *he;
+	HistEvent he;
 	int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
-	int i;
+	int i, retval;
 	const char *firststr, *laststr;
 	int first, last, direction;
 	char *pat = NULL, *repl;	/* ksh "fc old=new" crap */
@@ -334,16 +347,16 @@ histcmd(int argc, char **argv)
 	 * The history interface needs rethinking, as the following
 	 * convolutions will demonstrate.
 	 */
-	history(hist, H_FIRST);
-	he = history(hist, H_NEXT_EVENT, first);
-	for (;he != NULL; he = history(hist, direction)) {
+	history(hist, &he, H_FIRST);
+	retval = history(hist, &he, H_NEXT_EVENT, first);
+	for (;retval != -1; retval = history(hist, &he, direction)) {
 		if (lflg) {
 			if (!nflg)
-				out1fmt("%5d ", he->num);
-			out1str(he->str);
+				out1fmt("%5d ", he.num);
+			out1str(he.str);
 		} else {
 			char *s = pat ?
-			   fc_replace(he->str, pat, repl) : (char *)he->str;
+			   fc_replace(he.str, pat, repl) : (char *)he.str;
 
 			if (sflg) {
 				if (displayhist) {
@@ -355,7 +368,7 @@ histcmd(int argc, char **argv)
 					 *  XXX what about recursive and
 					 *  relative histnums.
 					 */
-					history(hist, H_ENTER, s);
+					history(hist, &he, H_ENTER, s);
 				}
 			} else
 				fputs(s, efp);
@@ -364,7 +377,7 @@ histcmd(int argc, char **argv)
 		 * At end?  (if we were to loose last, we'd sure be
 		 * messed up).
 		 */
-		if (he->num == last)
+		if (he.num == last)
 			break;
 	}
 	if (editor) {
@@ -421,12 +434,12 @@ not_fcnumber(char *s)
 int
 str_to_event(const char *str, int last)
 {
-	const HistEvent *he;
+	HistEvent he;
 	const char *s = str;
 	int relative = 0;
-	int i;
+	int i, retval;
 
-	he = history(hist, H_FIRST);
+	history(hist, &he, H_FIRST);
 	switch (*s) {
 	case '-':
 		relative = 1;
@@ -437,33 +450,33 @@ str_to_event(const char *str, int last)
 	if (is_number(s)) {
 		i = atoi(s);
 		if (relative) {
-			while (he != NULL && i--) {
-				he = history(hist, H_NEXT);
+			while (retval != -1 && i--) {
+				retval = history(hist, &he, H_NEXT);
 			}
-			if (he == NULL)
-				he = history(hist, H_LAST);
+			if (retval == -1)
+				retval = history(hist, &he, H_LAST);
 		} else {
-			he = history(hist, H_NEXT_EVENT, i);
-			if (he == NULL) {
+			retval = history(hist, &he, H_NEXT_EVENT, i);
+			if (retval == -1) {
 				/*
 				 * the notion of first and last is
 				 * backwards to that of the history package
 				 */
-				he = history(hist, last ? H_FIRST : H_LAST);
+				retval = history(hist, &he, last ? H_FIRST : H_LAST);
 			}
 		}
-		if (he == NULL)
+		if (retval == -1)
 			error("history number %s not found (internal error)",
 			       str);
 	} else {
 		/*
 		 * pattern
 		 */
-		he = history(hist, H_PREV_STR, str);
-		if (he == NULL)
+		retval = history(hist, &he, H_PREV_STR, str);
+		if (retval == -1)
 			error("history pattern not found: %s", str);
 	}
-	return (he->num);
+	return (he.num);
 }
 
 int
@@ -472,7 +485,7 @@ bindcmd(int argc, char **argv)
 
 	if (el == NULL)
 		error("line editing is disabled");
-	return (el_parse(el, argc, argv));
+	return (el_parse(el, argc, (const char **)argv));
 }
 
 #else

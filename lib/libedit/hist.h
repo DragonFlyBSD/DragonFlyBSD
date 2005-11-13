@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,46 +29,48 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)hist.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/hist.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)hist.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: hist.h,v 1.10 2003/08/07 16:44:31 agc Exp $
+ * $DragonFly: src/lib/libedit/hist.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.hist.c: History functions
  */
 #ifndef _h_el_hist
-#define _h_el_hist
+#define	_h_el_hist
 
 #include "histedit.h"
 
-typedef const HistEvent *	(*hist_fun_t) (ptr_t, int, ...);
+typedef int (*hist_fun_t)(ptr_t, HistEvent *, int, ...);
 
 typedef struct el_history_t {
-    char *buf;				/* The history buffer		*/
-    char *last;				/* The last character		*/
-    int eventno;			/* Event we are looking for	*/
-    ptr_t ref;				/* Argument for history fcns	*/
-    hist_fun_t fun;			/* Event access			*/
-    const HistEvent *ev;		/* Event cookie			*/
+	char		*buf;		/* The history buffer		*/
+	size_t		sz;		/* Size of history buffer	*/
+	char		*last;		/* The last character		*/
+	int		 eventno;	/* Event we are looking for	*/
+	ptr_t		 ref;		/* Argument for history fcns	*/
+	hist_fun_t	 fun;		/* Event access			*/
+	HistEvent	 ev;		/* Event cookie			*/
 } el_history_t;
 
-#define HIST_FUN(el, fn, arg)	\
-    ((((el)->el_history.ev = \
-       (*(el)->el_history.fun)((el)->el_history.ref, fn, arg)) == NULL) ? \
-     NULL : (el)->el_history.ev->str)
+#define	HIST_FUN(el, fn, arg)	\
+    ((((*(el)->el_history.fun) ((el)->el_history.ref, &(el)->el_history.ev, \
+	fn, arg)) == -1) ? NULL : (el)->el_history.ev.str)
 
 #define	HIST_NEXT(el)		HIST_FUN(el, H_NEXT, NULL)
 #define	HIST_FIRST(el)		HIST_FUN(el, H_FIRST, NULL)
 #define	HIST_LAST(el)		HIST_FUN(el, H_LAST, NULL)
 #define	HIST_PREV(el)		HIST_FUN(el, H_PREV, NULL)
-#define	HIST_EVENT(el, num)	HIST_FUN(el, H_EVENT, num)
-#define HIST_LOAD(el, fname)	HIST_FUN(el, H_LOAD fname)
-#define HIST_SAVE(el, fname)	HIST_FUN(el, H_SAVE fname)
+#define	HIST_SET(el, num)	HIST_FUN(el, H_SET, num)
+#define	HIST_LOAD(el, fname)	HIST_FUN(el, H_LOAD fname)
+#define	HIST_SAVE(el, fname)	HIST_FUN(el, H_SAVE fname)
 
-protected int 		hist_init	(EditLine *);
-protected void 		hist_end	(EditLine *);
-protected el_action_t	hist_get	(EditLine *);
-protected int		hist_set	(EditLine *, hist_fun_t, ptr_t);
-protected int		hist_list	(EditLine *, int, char **);
+protected int		hist_init(EditLine *);
+protected void		hist_end(EditLine *);
+protected el_action_t	hist_get(EditLine *);
+protected int		hist_set(EditLine *, hist_fun_t, ptr_t);
+protected int		hist_command(EditLine *, int, const char **);
+protected int		hist_enlargebuf(EditLine *, size_t, size_t);
 
 #endif /* _h_el_hist */

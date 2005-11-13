@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.4 2004/08/20 01:19:50 joerg Exp $
+ * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.5 2005/11/13 11:58:31 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -403,13 +403,8 @@ main(int argc, char **argv)
                       size = 20;
                 } else
                     size = 20;
-#ifdef __NetBSD__
                 history(hist, NULL, H_SETSIZE, size);
                 edit = el_init("pppctl", stdin, stdout, stderr);
-#else
-                history(hist, H_EVENT, size);
-                edit = el_init("pppctl", stdin, stdout);
-#endif
                 el_source(edit, NULL);
                 el_set(edit, EL_PROMPT, GetPrompt);
                 if ((env = getenv("EL_EDITOR"))) {
@@ -422,11 +417,7 @@ main(int argc, char **argv)
                 el_set(edit, EL_HIST, history, (const char *)hist);
                 while ((l = smartgets(edit, &len, fd))) {
                     if (len > 1)
-#ifdef __NetBSD__
                         history(hist, NULL, H_ENTER, l);
-#else
-                        history(hist, H_ENTER, l);
-#endif
                     write(fd, l, len);
                     if (Receive(fd, REC_SHOW) != 0)
                         break;

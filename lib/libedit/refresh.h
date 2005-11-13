@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,29 +29,31 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)refresh.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/refresh.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)refresh.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: refresh.h,v 1.5 2003/08/07 16:44:33 agc Exp $
+ * $DragonFly: src/lib/libedit/refresh.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.refresh.h: Screen refresh functions
  */
 #ifndef _h_el_refresh
-#define _h_el_refresh
+#define	_h_el_refresh
 
 #include "histedit.h"
 
 typedef struct {
-    coord_t 	 r_cursor;	/* Refresh cursor position	*/
-    int r_oldcv, r_newcv;	/* Vertical locations		*/
+	coord_t	r_cursor;	/* Refresh cursor position	*/
+	int	r_oldcv;	/* Vertical locations		*/
+	int	r_newcv;
 } el_refresh_t;
 
-protected void	re_putc 		(EditLine *, int);
-protected void	re_clear_lines		(EditLine *);
-protected void	re_clear_display	(EditLine *);
-protected void	re_refresh		(EditLine *);
-protected void	re_refresh_cursor	(EditLine *);
-protected void	re_fastaddc		(EditLine *);
-protected void	re_goto_bottom		(EditLine *);
+protected void	re_putc(EditLine *, int, int);
+protected void	re_clear_lines(EditLine *);
+protected void	re_clear_display(EditLine *);
+protected void	re_refresh(EditLine *);
+protected void	re_refresh_cursor(EditLine *);
+protected void	re_fastaddc(EditLine *);
+protected void	re_goto_bottom(EditLine *);
 
 #endif /* _h_el_refresh */

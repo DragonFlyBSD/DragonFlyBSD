@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
  * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.6 2005/11/13 11:58:30 corecode Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -293,8 +293,9 @@ check:
 
 #ifndef NO_HISTORY
 	if (parsefile->fd == 0 && hist && something) {
+		HistEvent he;
 		INTOFF;
-		history(hist, whichprompt == 1 ? H_ENTER : H_ADD, parsenextc);
+		history(hist, &he, whichprompt == 1 ? H_ENTER : H_APPEND, parsenextc);
 		INTON;
 	}
 #endif

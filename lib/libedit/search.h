@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,37 +29,38 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)search.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/search.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)search.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: search.h,v 1.8 2003/10/18 23:27:36 christos Exp $
+ * $DragonFly: src/lib/libedit/search.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.search.h: Line and history searching utilities
  */
 #ifndef _h_el_search
-#define _h_el_search
+#define	_h_el_search
 
 #include "histedit.h"
 
 typedef struct el_search_t {
-    char *patbuf;		/* The pattern buffer		*/
-    int  patlen;		/* Length of the pattern buffer	*/
-    int  patdir;		/* Direction of the last search	*/
-    int  chadir;		/* Character search direction	*/
-    char chacha;		/* Character we are looking for	*/
+	char	*patbuf;		/* The pattern buffer		*/
+	size_t	 patlen;		/* Length of the pattern buffer	*/
+	int	 patdir;		/* Direction of the last search	*/
+	int	 chadir;		/* Character search direction	*/
+	char	 chacha;		/* Character we are looking for	*/
+	char	 chatflg;		/* 0 if f, 1 if t */
 } el_search_t;
 
 
-protected int 		el_match	(const char *, const char *);
-protected int		search_init	(EditLine *);
-protected void		search_end	(EditLine *);
-protected int		c_hmatch	(EditLine *, const char *);
-protected void		c_setpat	(EditLine *);
-protected el_action_t	ce_inc_search	(EditLine *, int);
-protected el_action_t	cv_search	(EditLine *, int);
-protected el_action_t	ce_search_line	(EditLine *, char *, int);
-protected el_action_t	cv_repeat_srch	(EditLine *, int);
-protected el_action_t	cv_csearch_back	(EditLine *, int, int, int);
-protected el_action_t	cv_csearch_fwd	(EditLine *, int, int, int);
+protected int		el_match(const char *, const char *);
+protected int		search_init(EditLine *);
+protected void		search_end(EditLine *);
+protected int		c_hmatch(EditLine *, const char *);
+protected void		c_setpat(EditLine *);
+protected el_action_t	ce_inc_search(EditLine *, int);
+protected el_action_t	cv_search(EditLine *, int);
+protected el_action_t	ce_search_line(EditLine *, int);
+protected el_action_t	cv_repeat_srch(EditLine *, int);
+protected el_action_t	cv_csearch(EditLine *, int, int, int, int);
 
 #endif /* _h_el_search */

@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,49 +29,51 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)key.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/key.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)key.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: key.h,v 1.8 2003/08/07 16:44:32 agc Exp $
+ * $DragonFly: src/lib/libedit/key.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.key.h: Key macro header
  */
 #ifndef _h_el_key
-#define _h_el_key
+#define	_h_el_key
 
 typedef union key_value_t {
-    el_action_t  cmd;	/* If it is a command the #	*/
-    char        *str;	/* If it is a string...		*/
+	el_action_t	 cmd;	/* If it is a command the #	*/
+	char		*str;	/* If it is a string...		*/
 } key_value_t;
 
 typedef struct key_node_t key_node_t;
 
 typedef struct el_key_t {
-    char        *buf;	/* Key print buffer		*/
-    key_node_t  *map;	/* Key map			*/
-    key_value_t  val;	/* Local conversion buffer	*/
+	char		*buf;	/* Key print buffer		*/
+	key_node_t	*map;	/* Key map			*/
+	key_value_t	 val;	/* Local conversion buffer	*/
 } el_key_t;
 
-#define XK_CMD	0
-#define XK_STR	1
-#define XK_NOD	2
-#define XK_EXE	3
+#define	XK_CMD	0
+#define	XK_STR	1
+#define	XK_NOD	2
+#define	XK_EXE	3
 
-protected int 		key_init	(EditLine *);
-protected void 		key_end		(EditLine *);
-protected key_value_t *	key_map_cmd	(EditLine *, int);
-protected key_value_t *	key_map_str	(EditLine *, char *);
-protected void		key_reset	(EditLine *);
-protected int 		key_get		(EditLine *, char *,
-					     key_value_t *);
-protected void		key_add		(EditLine *, char *, key_value_t *,
-					     int);
-protected void		key_clear	(EditLine *, el_action_t *,
-					     char *);
-protected int		key_delete	(EditLine *, char *);
-protected void		key_print	(EditLine *, char *);
-protected void	        key_kprint	(EditLine *, char *,
-					     key_value_t *, int);
-protected char 	       *key__decode_str	(char *, char *, char *);
+#undef key_end
+#undef key_clear
+#undef key_print
+
+protected int		 key_init(EditLine *);
+protected void		 key_end(EditLine *);
+protected key_value_t	*key_map_cmd(EditLine *, int);
+protected key_value_t	*key_map_str(EditLine *, char *);
+protected void		 key_reset(EditLine *);
+protected int		 key_get(EditLine *, char *, key_value_t *);
+protected void		 key_add(EditLine *, const char *, key_value_t *, int);
+protected void		 key_clear(EditLine *, el_action_t *, const char *);
+protected int		 key_delete(EditLine *, const char *);
+protected void		 key_print(EditLine *, const char *);
+protected void	         key_kprint(EditLine *, const char *, key_value_t *,
+    int);
+protected char		*key__decode_str(const char *, char *, const char *);
 
 #endif /* _h_el_key */

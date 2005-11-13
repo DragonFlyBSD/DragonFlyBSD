@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.8 2005/10/30 23:00:57 swildner Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.9 2005/11/13 11:58:31 corecode Exp $
  */
 
 #include <sys/cdio.h>
@@ -1156,9 +1156,9 @@ input(int *cmd)
 	do {
 		if (verbose) {
 			if (!el) {
-				el = el_init("cdcontrol", stdin, stdout);
+				el = el_init("cdcontrol", stdin, stdout, stderr);
 				hist = history_init();
-				history(hist, H_EVENT, 100);
+				history(hist, NULL, H_SETSIZE, 100);
 				el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_EDITOR, "emacs");
 				el_set(el, EL_PROMPT, cdcontrol_prompt);
@@ -1174,7 +1174,7 @@ input(int *cmd)
 			len = (num > MAXLINE) ? MAXLINE : num;
 			memcpy(buf, bp, len);
 			buf[len] = 0;
-			history(hist, H_ENTER, bp);
+			history(hist, NULL, H_ENTER, bp);
 #undef MAXLINE
 
 		} else {

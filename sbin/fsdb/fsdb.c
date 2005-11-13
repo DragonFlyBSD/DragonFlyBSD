@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.7 2005/11/06 12:15:35 swildner Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.8 2005/11/13 11:58:30 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -211,6 +211,7 @@ cmdloop(void)
     char **cmd_argv;
     struct cmdtable *cmdp;
     History *hist;
+    HistEvent he;
     EditLine *elptr;
 
     curinode = ginode(ROOTINO);
@@ -218,9 +219,9 @@ cmdloop(void)
     printactive(0);
 
     hist = history_init();
-    history(hist, H_EVENT, 100);	/* 100 elt history buffer */
+    history(hist, &he, H_SETSIZE, 100);	/* 100 elt history buffer */
 
-    elptr = el_init("fsdb", stdin, stdout);
+    elptr = el_init("fsdb", stdin, stdout, stderr);
     el_set(elptr, EL_EDITOR, "emacs");
     el_set(elptr, EL_PROMPT, prompt);
     el_set(elptr, EL_HIST, history, hist);
@@ -230,7 +231,7 @@ cmdloop(void)
 	if (debug)
 	    printf("command `%s'\n", elline);
 
-	history(hist, H_ENTER, elline);
+	history(hist, &he, H_ENTER, elline);
 
 	line = strdup(elline);
 	cmd_argv = crack(line, &cmd_argc);
@@ -238,7 +239,7 @@ cmdloop(void)
 	 * el_parse returns -1 to signal that it's not been handled
 	 * internally.
 	 */
-	if (el_parse(elptr, cmd_argc, cmd_argv) != -1)
+	if (el_parse(elptr, cmd_argc, (const char **)cmd_argv) != -1)
 	    continue;
 	if (cmd_argc) {
 	    known = 0;

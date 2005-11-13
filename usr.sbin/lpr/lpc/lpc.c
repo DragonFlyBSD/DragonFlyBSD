@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.5 2005/02/15 16:32:46 joerg Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.6 2005/11/13 11:58:31 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -154,9 +154,9 @@ cmdscanner(void)
 	for (;;) {
 		if (fromatty) {
 			if (!el) {
-				el = el_init("lpc", stdin, stdout);
+				el = el_init("lpc", stdin, stdout, stderr);
 				hist = history_init();
-				history(hist, H_EVENT, 100);
+				history(hist, NULL, H_SETSIZE, 100);
 				el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_EDITOR, "emacs");
 				el_set(el, EL_PROMPT, lpc_prompt);
@@ -178,7 +178,7 @@ cmdscanner(void)
 			len = (num > MAX_CMDLINE -1) ? MAX_CMDLINE -1 : num;
 			memcpy(cmdline, bp, len);
 			cmdline[len] = 0; 
-			history(hist, H_ENTER, bp);
+			history(hist, NULL, H_ENTER, bp);
 
 		} else {
 			if (fgets(cmdline, MAX_CMDLINE, stdin) == 0)
@@ -190,7 +190,7 @@ cmdscanner(void)
 		makeargv();
 		if (margc == 0)
 			continue;
-		if (el != NULL && el_parse(el, margc, margv) != -1)
+		if (el != NULL && el_parse(el, margc, (const char **)margv) != -1)
 			continue;
 
 		c = getcmd(margv[0]);

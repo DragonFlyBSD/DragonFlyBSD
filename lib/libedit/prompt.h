@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,28 +29,30 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)prompt.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/prompt.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)prompt.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: prompt.h,v 1.6 2003/08/07 16:44:32 agc Exp $
+ * $DragonFly: src/lib/libedit/prompt.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.prompt.h: Prompt printing stuff
  */
 #ifndef _h_el_prompt
-#define _h_el_prompt
+#define	_h_el_prompt
 
 #include "histedit.h"
 
-typedef char * (*el_pfunc_t) (EditLine*);
+typedef char * (*el_pfunc_t)(EditLine*);
 
 typedef struct el_prompt_t {
-    el_pfunc_t p_func;		/* Function to return the prompt	*/
-    coord_t    p_pos;		/* position in the line after prompt	*/
+	el_pfunc_t	p_func;	/* Function to return the prompt	*/
+	coord_t		p_pos;	/* position in the line after prompt	*/
 } el_prompt_t;
 
-protected void prompt_print	(EditLine *);
-protected int  prompt_set	(EditLine *, el_pfunc_t);
-protected int  prompt_init	(EditLine *);
-protected void prompt_end	(EditLine *);
+protected void	prompt_print(EditLine *, int);
+protected int	prompt_set(EditLine *, el_pfunc_t, int);
+protected int	prompt_get(EditLine *, el_pfunc_t *, int);
+protected int	prompt_init(EditLine *);
+protected void	prompt_end(EditLine *);
 
 #endif /* _h_el_prompt */

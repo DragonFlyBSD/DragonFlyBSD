@@ -13,11 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -33,46 +29,47 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)map.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/map.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
+ * @(#)map.h	8.1 (Berkeley) 6/4/93
+ * $NetBSD: map.h,v 1.8 2003/08/07 16:44:32 agc Exp $
+ * $DragonFly: src/lib/libedit/map.h,v 1.4 2005/11/13 11:58:30 corecode Exp $
  */
 
 /*
  * el.map.h:	Editor maps
  */
 #ifndef _h_el_map
-#define _h_el_map
+#define	_h_el_map
 
 typedef struct el_bindings_t {	/* for the "bind" shell command */
-    const char   *name;		/* function name for bind command */
-    int     func;		/* function numeric value */
-    const char   *description;	/* description of function */
+	const char	*name;		/* function name for bind command */
+	int		 func;		/* function numeric value */
+	const char	*description;	/* description of function */
 } el_bindings_t;
 
 
 typedef struct el_map_t {
-    el_action_t   *alt;		/* The current alternate key map	*/
-    el_action_t   *key;		/* The current normal key map		*/
-    el_action_t   *current;	/* The keymap we are using		*/
-    el_action_t   *emacs;	/* The default emacs key map		*/
-    el_action_t   *vic;		/* The vi command mode key map		*/
-    el_action_t   *vii;		/* The vi insert mode key map		*/
-    int		   type;	/* Emacs or vi				*/
-    el_bindings_t *help;	/* The help for the editor functions	*/
-    el_func_t     *func;	/* List of available functions		*/
-    int  	   nfunc;	/* The number of functions/help items	*/
+	el_action_t	*alt;		/* The current alternate key map */
+	el_action_t	*key;		/* The current normal key map	*/
+	el_action_t	*current;	/* The keymap we are using	*/
+	const el_action_t *emacs;	/* The default emacs key map	*/
+	const el_action_t *vic;		/* The vi command mode key map	*/
+	const el_action_t *vii;		/* The vi insert mode key map	*/
+	int		 type;		/* Emacs or vi			*/
+	el_bindings_t	*help;		/* The help for the editor functions */
+	el_func_t	*func;		/* List of available functions	*/
+	int		 nfunc;		/* The number of functions/help items */
 } el_map_t;
 
-#define MAP_EMACS	0
-#define MAP_VI		1
+#define	MAP_EMACS	0
+#define	MAP_VI		1
 
-protected int	map_bind		(EditLine *, int, char **);
-protected int	map_init		(EditLine *);
-protected void	map_end			(EditLine *);
-protected void	map_init_vi		(EditLine *);
-protected void	map_init_emacs		(EditLine *);
-protected int	map_set_editor		(EditLine *, char *);
-protected int	map_addfunc		(EditLine *, const char *,
-					     const char *, el_func_t);
+protected int	map_bind(EditLine *, int, const char **);
+protected int	map_init(EditLine *);
+protected void	map_end(EditLine *);
+protected void	map_init_vi(EditLine *);
+protected void	map_init_emacs(EditLine *);
+protected int	map_set_editor(EditLine *, char *);
+protected int	map_get_editor(EditLine *, const char **);
+protected int	map_addfunc(EditLine *, const char *, const char *, el_func_t);
 
 #endif /* _h_el_map */
