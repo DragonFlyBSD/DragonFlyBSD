@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.1 2003/11/14 20:54:07 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.2 2005/11/14 18:07:13 dillon Exp $
  *	from: DragonFly vm/vm_unix.c,v 1.3
  *	from: DragonFly vm/vm_mmap.c,v 1.15
  */
@@ -98,7 +98,6 @@ ommap(struct ommap_args *uap)
 	if (uap->flags & OMAP_INHERIT)
 		flags |= MAP_INHERIT;
 
-	prot = cvtbsdprot[uap->prot];
 	error = kern_mmap(uap->addr, uap->len, prot, flags, uap->fd, uap->pos,
 	    &uap->sysmsg_resultp);
 
