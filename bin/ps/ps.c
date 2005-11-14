@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.17 2005/10/08 19:46:50 corecode Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.18 2005/11/14 18:49:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -536,7 +536,8 @@ getfmt(char **(*fn) (kvm_t *, const struct kinfo_proc *, int), KINFO *ki, char
 	return (s);
 }
 
-#define UREADOK(ki)	(forceuread || (KI_PROC(ki)->p_flag & P_INMEM))
+#define UREADOK(ki)	\
+	(forceuread || (KI_PROC(ki)->p_flag & P_SWAPPEDOUT) == 0)
 
 static void
 saveuser(KINFO *ki)
@@ -545,7 +546,7 @@ saveuser(KINFO *ki)
 
 	usp = &ki->ki_u;
 
-	if (KI_PROC(ki)->p_flag & P_INMEM) {
+	if ((KI_PROC(ki)->p_flag & P_SWAPPEDOUT) == 0) {
 		/*
 		 * The u-area might be swapped out, and we can't get
 		 * at it because we have a crashdump and no swap.

@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.35 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.36 2005/11/14 18:50:15 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -110,6 +110,15 @@ SYSINIT(vm_limits, SI_SUB_VM_CONF, SI_ORDER_FIRST, vm_init_limits, &proc0)
 static void scheduler (void *);
 SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL)
 
+#ifdef INVARIANTS
+
+static int swap_debug = 0;
+SYSCTL_INT(_vm, OID_AUTO, swap_debug,
+	CTLFLAG_RW, &swap_debug, 0, "");
+
+#endif
+
+static int scheduler_notify;
 
 static void swapout (struct proc *);
 
@@ -307,30 +316,31 @@ vm_init_limits(void *udata)
 	p->p_rlimit[RLIMIT_RSS].rlim_max = RLIM_INFINITY;
 }
 
+/*
+ * Faultin the specified process.  Note that the process can be in any
+ * state.  Just clear P_SWAPPEDOUT and call wakeup in case the process is
+ * sleeping.
+ */
 void
 faultin(struct proc *p)
 {
-	if ((p->p_flag & P_INMEM) == 0) {
-
-		++p->p_lock;
-
-		pmap_swapin_proc(p);
-
-		crit_enter();
-
+	if (p->p_flag & P_SWAPPEDOUT) {
+		PHOLD(p);
 		/*
-		 * The process is in the kernel and controlled by LWKT,
-		 * so we just schedule it rather then call setrunqueue().
+		 * The process is waiting in the kernel to return to user
+		 * mode but cannot until P_SWAPPEDOUT gets cleared.
 		 */
-		if (p->p_stat == SRUN)
-			lwkt_schedule(p->p_thread);
-
-		p->p_flag |= P_INMEM;
+		crit_enter();
+		p->p_flag &= ~(P_SWAPPEDOUT | P_SWAPWAIT);
+#ifdef INVARIANTS
+		if (swap_debug)
+			printf("swapping in %d (%s)\n", p->p_pid, p->p_comm);
+#endif
+		wakeup(p);
 
 		/* undo the effect of setting SLOCK above */
-		--p->p_lock;
+		PRELE(p);
 		crit_exit();
-
 	}
 }
 
@@ -342,31 +352,48 @@ faultin(struct proc *p)
  * is enough space for them.  Of course, if a process waits for a long
  * time, it will be swapped in anyway.
  */
+
 /* ARGSUSED*/
 static void
 scheduler(void *dummy)
 {
 	struct proc *p;
-	int pri;
 	struct proc *pp;
+	int pri;
 	int ppri;
+	segsz_t pgs;
 
 	KKASSERT(!IN_CRITICAL_SECT(curthread));
 loop:
+	scheduler_notify = 0;
+	/*
+	 * Don't try to swap anything in if we are low on memory.
+	 */
 	if (vm_page_count_min()) {
 		vm_wait();
 		goto loop;
 	}
 
+	/*
+	 * Look for a good candidate to wake up
+	 */
 	pp = NULL;
 	ppri = INT_MIN;
 	for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-		if (p->p_stat == SRUN &&
-			(p->p_flag & (P_INMEM | P_SWAPPING)) == 0) {
+		if (p->p_flag & P_SWAPWAIT) {
+			pri = p->p_swtime + p->p_slptime - p->p_nice * 8;
 
-			pri = p->p_swtime + p->p_slptime;
-			if ((p->p_flag & P_SWAPINREQ) == 0) {
-				pri -= p->p_nice * 8;
+			/*
+			 * The more pages paged out while we were swapped,
+			 * the more work we have to do to get up and running
+			 * again and the lower our wakeup priority.
+			 *
+			 * Each second of sleep time is worth ~1MB
+			 */
+			pgs = vmspace_resident_count(p->p_vmspace);
+			if (pgs < p->p_vmspace->vm_swrss) {
+				pri -= (p->p_vmspace->vm_swrss - pgs) /
+					(1024 * 1024 / PAGE_SIZE);
 			}
 
 			/*
@@ -382,27 +409,45 @@ loop:
 	}
 
 	/*
-	 * Nothing to do, back to sleep.
+	 * Nothing to do, back to sleep for at least 1/10 of a second.  If
+	 * we are woken up, immediately process the next request.  If
+	 * multiple requests have built up the first is processed 
+	 * immediately and the rest are staggered.
 	 */
 	if ((p = pp) == NULL) {
-		tsleep(&proc0, 0, "sched", 0);
+		tsleep(&proc0, 0, "nowork", hz / 10);
+		if (scheduler_notify == 0)
+			tsleep(&scheduler_notify, 0, "nowork", 0);
 		goto loop;
 	}
-	p->p_flag &= ~P_SWAPINREQ;
 
 	/*
-	 * We would like to bring someone in. (only if there is space).
+	 * Fault the selected process in, then wait for a short period of
+	 * time and loop up.
+	 *
+	 * XXX we need a heuristic to get a measure of system stress and
+	 * then adjust our stagger wakeup delay accordingly.
 	 */
 	faultin(p);
 	p->p_swtime = 0;
+	tsleep(&proc0, 0, "swapin", hz / 10);
 	goto loop;
+}
+
+void
+swapin_request(void)
+{
+	if (scheduler_notify == 0) {
+		scheduler_notify = 1;
+		wakeup(&scheduler_notify);
+	}
 }
 
 #ifndef NO_SWAPPING
 
 #define	swappable(p) \
 	(((p)->p_lock == 0) && \
-		((p)->p_flag & (P_TRACED|P_SYSTEM|P_INMEM|P_WEXIT|P_SWAPPING)) == P_INMEM)
+	((p)->p_flag & (P_TRACED|P_SYSTEM|P_SWAPPEDOUT|P_WEXIT)) == 0)
 
 
 /*
@@ -414,16 +459,19 @@ SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold1,
 
 /*
  * Swap_idle_threshold2 is the time that a process can be idle before
- * it will be swapped out, if idle swapping is enabled.
+ * it will be swapped out, if idle swapping is enabled.  Default is
+ * one minute.
  */
-static int swap_idle_threshold2 = 10;
+static int swap_idle_threshold2 = 60;
 SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold2,
 	CTLFLAG_RW, &swap_idle_threshold2, 0, "");
 
 /*
  * Swapout is driven by the pageout daemon.  Very simple, we find eligible
- * procs and unwire their u-areas.  We try to always "swap" at least one
- * process in case we need the room for a swapin.
+ * procs and mark them as being swapped out.  This will cause the kernel
+ * to prefer to pageout those proc's pages first and the procs in question 
+ * will not return to user mode until the swapper tells them they can.
+ *
  * If any procs have been sleeping/stopped for at least maxslp seconds,
  * they are swapped.  Else, we swap the longest-sleeping or stopped process,
  * if any, otherwise the longest-resident process.
@@ -434,7 +482,6 @@ swapout_procs(int action)
 	struct proc *p;
 	struct proc *outp, *outp2;
 	int outpri, outpri2;
-	int didswap = 0;
 
 	outp = outp2 = NULL;
 	outpri = outpri2 = INT_MIN;
@@ -446,22 +493,14 @@ retry:
 
 		vm = p->p_vmspace;
 
-		switch (p->p_stat) {
-		default:
-			continue;
-
-		case SSLEEP:
-		case SSTOP:
+		if (p->p_stat == SSLEEP || p->p_stat == SRUN) {
 			/*
-			 * do not swapout a realtime process
+			 * do not swap out a realtime process
 			 */
-			if (RTP_PRIO_IS_REALTIME(p->p_rtprio.type))
+			if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
 				continue;
 
 			/*
-			 * YYY do not swapout a proc waiting on a critical
-			 * event.
-			 *
 			 * Guarentee swap_idle_threshold time in memory
 			 */
 			if (p->p_slptime < swap_idle_threshold1)
@@ -473,32 +512,22 @@ retry:
 			 * then swap the process out.
 			 */
 			if (((action & VM_SWAP_NORMAL) == 0) &&
-				(((action & VM_SWAP_IDLE) == 0) ||
-				  (p->p_slptime < swap_idle_threshold2)))
-				continue;
-
-			++vm->vm_refcnt;
-			/*
-			 * do not swapout a process that is waiting for VM
-			 * data structures there is a possible deadlock.
-			 */
-			if (lockmgr(&vm->vm_map.lock,
-					LK_EXCLUSIVE | LK_NOWAIT,
-					NULL, curthread)) {
-				vmspace_free(vm);
+			    (((action & VM_SWAP_IDLE) == 0) ||
+			     (p->p_slptime < swap_idle_threshold2))) {
 				continue;
 			}
-			vm_map_unlock(&vm->vm_map);
+
+			++vm->vm_refcnt;
+
 			/*
-			 * If the process has been asleep for awhile and had
-			 * most of its pages taken away already, swap it out.
+			 * If the process has been asleep for awhile, swap
+			 * it out.
 			 */
 			if ((action & VM_SWAP_NORMAL) ||
-				((action & VM_SWAP_IDLE) &&
-				 (p->p_slptime > swap_idle_threshold2))) {
+			    ((action & VM_SWAP_IDLE) &&
+			     (p->p_slptime > swap_idle_threshold2))) {
 				swapout(p);
 				vmspace_free(vm);
-				didswap++;
 				goto retry;
 			}
 
@@ -508,37 +537,23 @@ retry:
 			vmspace_free(vm);
 		}
 	}
-	/*
-	 * If we swapped something out, and another process needed memory,
-	 * then wakeup the sched process.
-	 */
-	if (didswap)
-		wakeup(&proc0);
 }
 
 static void
 swapout(struct proc *p)
 {
-
-#if defined(SWAP_DEBUG)
-	printf("swapping out %d\n", p->p_pid);
+#ifdef INVARIANTS
+	if (swap_debug)
+		printf("swapping out %d (%s)\n", p->p_pid, p->p_comm);
 #endif
 	++p->p_stats->p_ru.ru_nswap;
 	/*
 	 * remember the process resident count
 	 */
 	p->p_vmspace->vm_swrss = vmspace_resident_count(p->p_vmspace);
-
-	crit_enter();
-	p->p_flag &= ~P_INMEM;
-	p->p_flag |= P_SWAPPING;
-	if (p->p_flag & P_ONRUNQ)
-		p->p_usched->remrunqueue(&p->p_lwp);
-	crit_exit();
-
-	pmap_swapout_proc(p);
-
-	p->p_flag &= ~P_SWAPPING;
+	p->p_flag |= P_SWAPPEDOUT;
 	p->p_swtime = 0;
 }
+
 #endif /* !NO_SWAPPING */
+

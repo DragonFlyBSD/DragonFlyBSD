@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.17 2005/06/10 23:59:33 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.18 2005/11/14 18:50:11 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -76,6 +76,7 @@ extern int stathz;			/* statistics clock's frequency */
 extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
+extern int lbolt_syncer;		/* approx 1 hz but may be sped up */
 
 #endif /* _KERNEL */
 

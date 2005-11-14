@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.85 2005/11/08 22:38:43 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.86 2005/11/14 18:50:05 dillon Exp $
  */
 
 /*
@@ -146,7 +146,7 @@ static __inline
 void
 _lwkt_enqueue(thread_t td)
 {
-    if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING)) == 0) {
+    if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING|TDF_TSLEEPQ|TDF_BLOCKQ)) == 0) {
 	int nq = td->td_pri & TDPRI_MASK;
 	struct globaldata *gd = td->td_gd;
 
@@ -169,11 +169,8 @@ lwkt_schedule_self(thread_t td)
     crit_enter_quick(td);
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
+    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
     _lwkt_enqueue(td);
-#ifdef _KERNEL
-    if (td->td_proc && td->td_proc->p_stat == SSLEEP)
-	panic("SCHED SELF PANIC");
-#endif
     crit_exit_quick(td);
 }
 
@@ -665,10 +662,12 @@ again:
 		    ntd->td_flags |= TDF_IDLE_NOHLT;
 		    goto using_idle_thread;
 		} else {
+		    ++gd->gd_cnt.v_swtch;
 		    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		}
 	    } else {
+		++gd->gd_cnt.v_swtch;
 		TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 		TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    }
@@ -677,6 +676,7 @@ again:
 	     * THREAD SELECTION FOR A UP MACHINE BUILD.  We don't have to
 	     * worry about tokens or the BGL.
 	     */
+	    ++gd->gd_cnt.v_swtch;
 	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
 	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
 #endif
@@ -973,23 +973,9 @@ lwkt_schedule(thread_t td)
 {
     globaldata_t mygd = mycpu;
 
-#ifdef	INVARIANTS
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
-    if ((td->td_flags & TDF_PREEMPT_LOCK) == 0 && td->td_proc 
-	&& td->td_proc->p_stat == SSLEEP
-    ) {
-	printf("PANIC schedule curtd = %p (%d %d) target %p (%d %d)\n",
-	    curthread,
-	    curthread->td_proc ? curthread->td_proc->p_pid : -1,
-	    curthread->td_proc ? curthread->td_proc->p_stat : -1,
-	    td,
-	    td->td_proc ? td->td_proc->p_pid : -1,
-	    td->td_proc ? td->td_proc->p_stat : -1
-	);
-	panic("SCHED PANIC");
-    }
-#endif
     crit_enter_gd(mygd);
+    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
     if (td == mygd->gd_curthread) {
 	_lwkt_enqueue(td);
     } else {
@@ -1248,6 +1234,7 @@ lwkt_setcpu_remote(void *arg)
     td->td_gd = gd;
     cpu_sfence();
     td->td_flags &= ~TDF_MIGRATING;
+    KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
     _lwkt_enqueue(td);
 }
 #endif
@@ -1277,16 +1264,14 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
     crit_enter();
     if (w->wa_gen == *gen) {
 	_lwkt_dequeue(td);
+	td->td_flags |= TDF_BLOCKQ;
 	TAILQ_INSERT_TAIL(&w->wa_waitq, td, td_threadq);
 	++w->wa_count;
 	td->td_wait = w;
 	td->td_wmesg = wmesg;
-    again:
 	lwkt_switch();
-	if (td->td_wmesg != NULL) {
-	    _lwkt_dequeue(td);
-	    goto again;
-	}
+	KKASSERT((td->td_flags & TDF_BLOCKQ) == 0);
+	td->td_wmesg = NULL;
     }
     crit_exit();
     *gen = w->wa_gen;
@@ -1315,9 +1300,11 @@ lwkt_signal(lwkt_wait_t w, int count)
     while ((td = TAILQ_FIRST(&w->wa_waitq)) != NULL && count) {
 	--count;
 	--w->wa_count;
+	KKASSERT(td->td_flags & TDF_BLOCKQ);
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
+	td->td_flags &= ~TDF_BLOCKQ;
 	td->td_wait = NULL;
-	td->td_wmesg = NULL;
+	KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
 #ifdef SMP
 	if (td->td_gd == mycpu) {
 	    _lwkt_enqueue(td);

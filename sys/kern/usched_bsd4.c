@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.3 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.4 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -706,9 +706,15 @@ bsd4_select_curproc(globaldata_t gd)
  * This function is called at kernel-user priority (not userland priority)
  * when curlwp does not match gd_uschedcp.
  *
+ * This function is only called just prior to returning to user mode.
+ *
  * Basically we recalculate our estcpu to hopefully give us a more
  * favorable disposition, setrunqueue, then wait for the curlwp
  * designation to be handed to us (if the setrunqueue didn't do it).
+ *
+ * WARNING! THIS FUNCTION MAY CAUSE THE CURRENT THREAD TO MIGRATE TO
+ * ANOTHER CPU!  Because most of the kernel assumes that no migration will
+ * occur, this function is called only under very controlled circumstances.
  */
 static void
 bsd4_acquire_curproc(struct lwp *lp)
@@ -716,31 +722,36 @@ bsd4_acquire_curproc(struct lwp *lp)
 	globaldata_t gd = mycpu;
 
 	crit_enter();
-	++lp->lwp_stats->p_ru.ru_nivcsw;
 
 	/*
-	 * Loop until we become the current process.  
+	 * Recalculate our priority and put us back on the userland
+	 * scheduler's runq.
+	 *
+	 * Only increment the involuntary context switch count if the
+	 * setrunqueue call did not immediately schedule us.
 	 */
-	do {
-		KKASSERT(lp == gd->gd_curthread->td_lwp);
-		bsd4_recalculate_estcpu(lp);
-		lwkt_deschedule_self(gd->gd_curthread);
-		bsd4_setrunqueue(lp);
-		lwkt_switch();
+	KKASSERT(lp == gd->gd_curthread->td_lwp);
+	bsd4_recalculate_estcpu(lp);
+	lwkt_deschedule_self(gd->gd_curthread);
+	bsd4_setrunqueue(lp);
+	if ((gd->gd_curthread->td_flags & TDF_RUNQ) == 0)
+		++lp->lwp_stats->p_ru.ru_nivcsw;
+	lwkt_switch();
 
-		/*
-		 * WE MAY HAVE BEEN MIGRATED TO ANOTHER CPU, RELOAD GD.
-		 */
-		gd = mycpu;
-	} while (gd->gd_uschedcp != lp);
+	/*
+	 * Because we put ourselves back on the userland scheduler's run
+	 * queue, WE MAY HAVE BEEN MIGRATED TO ANOTHER CPU
+	 */
+	gd = mycpu;
+
+	/*
+	 * We better be the current process when we wake up, and we had
+	 * better not be on the run queue.
+	 */
+	KKASSERT(gd->gd_uschedcp == lp);
+	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
 
 	crit_exit();
-
-	/*
-	 * That's it.  Cleanup, we are done.  The caller can return to
-	 * user mode now.
-	 */
-	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
 }
 
 /*

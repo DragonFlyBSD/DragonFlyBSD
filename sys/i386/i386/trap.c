@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.65 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.66 2005/11/14 18:50:03 dillon Exp $
  */
 
 /*
@@ -214,33 +214,54 @@ userret(struct lwp *lp, struct trapframe *frame, int sticks)
 	int sig;
 
 	/*
-	 * Post any pending upcalls
-	 */
-	if (p->p_flag & P_UPCALLPEND) {
-		p->p_flag &= ~P_UPCALLPEND;
-		postupcall(lp);
-	}
-
-	/*
-	 * Post any pending signals
-	 */
-	while ((sig = CURSIG(p)) != 0) {
-		postsig(sig);
-	}
-
-	/*
 	 * Charge system time if profiling.  Note: times are in microseconds.
+	 * This may do a copyout and block, so do it first even though it
+	 * means some system time will be charged as user time.
 	 */
 	if (p->p_flag & P_PROFIL) {
 		addupc_task(p, frame->tf_eip, 
 			(u_int)((int)p->p_thread->td_sticks - sticks));
 	}
 
+recheck:
 	/*
-	 * Post any pending signals XXX
+	 * Block here if we are in a stopped state.
 	 */
-	while ((sig = CURSIG(p)) != 0)
+	if (p->p_flag & P_STOPPED) {
+		tstop(p);
+		goto recheck;
+	}
+
+	/*
+	 * Post any pending upcalls
+	 */
+	if (p->p_flag & P_UPCALLPEND) {
+		p->p_flag &= ~P_UPCALLPEND;
+		postupcall(lp);
+		goto recheck;
+	}
+
+	/*
+	 * Post any pending signals
+	 */
+	if ((sig = CURSIG(p)) != 0) {
 		postsig(sig);
+		goto recheck;
+	}
+
+	/*
+	 * block here if we are swapped out, but still process signals
+	 * (such as SIGKILL).  proc0 (the swapin scheduler) is already
+	 * aware of our situation, we do not have to wake it up.
+	 */
+	if (p->p_flag & P_SWAPPEDOUT) {
+		p->p_flag |= P_SWAPWAIT;
+		swapin_request();
+		if (p->p_flag & P_SWAPWAIT)
+			tsleep(p, PCATCH, "SWOUT", 0);
+		p->p_flag &= ~P_SWAPWAIT;
+		goto recheck;
+	}
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.43 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.44 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -385,7 +385,7 @@ again:
 	 * Increase reference counts on shared objects.
 	 * The p_stats and p_sigacts substructs are set in vm_fork.
 	 */
-	p2->p_flag = P_INMEM;
+	p2->p_flag = 0;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);

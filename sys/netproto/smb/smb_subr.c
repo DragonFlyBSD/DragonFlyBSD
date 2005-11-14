@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.15 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.16 2005/11/14 18:50:10 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -386,7 +386,7 @@ kthread_create2(void (*func)(void *), void *arg,
 		*newpp = p2;
 
 	/* this is a non-swapped system process */
-	p2->p_flag |= P_INMEM | P_SYSTEM;
+	p2->p_flag |= P_SYSTEM;
 	p2->p_procsig->ps_flag |= PS_NOCLDWAIT;
 
 	/* set up arg0 for 'ps', et al */

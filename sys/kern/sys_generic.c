@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.22 2005/06/22 01:33:21 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.23 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -977,12 +977,17 @@ selwakeup(struct selinfo *sip)
 	if (p != NULL) {
 		crit_enter();
 		if (p->p_wchan == (caddr_t)&selwait) {
-			if (p->p_stat == SSLEEP)
+			/*
+			 * Flag the process to break the tsleep when 
+			 * setrunnable is called, but only call setrunnable
+			 * here if the process is not in a stopped state.
+			 */
+			p->p_flag |= P_BREAKTSLEEP;
+			if ((p->p_flag & P_STOPPED) == 0)
 				setrunnable(p);
-			else
-				unsleep(p->p_thread);
-		} else if (p->p_flag & P_SELECT)
+		} else if (p->p_flag & P_SELECT) {
 			p->p_flag &= ~P_SELECT;
+		}
 		crit_exit();
 	}
 }

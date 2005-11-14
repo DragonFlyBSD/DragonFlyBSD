@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.52 2005/11/07 20:05:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.53 2005/11/14 18:50:03 dillon Exp $
  */
 
 /*
@@ -944,70 +944,6 @@ pmap_dispose_proc(struct proc *p)
 	return(td);
 }
 
-/*
- * Allow the UPAGES for a process to be prejudicially paged out.
- */
-void
-pmap_swapout_proc(struct proc *p)
-{
-#if 0
-	int i;
-	int s;
-	vm_object_t upobj;
-	vm_page_t m;
-
-	upobj = p->p_upages_obj;
-
-	/*
-	 * Unwiring the pages allow them to be paged to their backing store
-	 * (swap).
-	 */
-	crit_enter();
-	for (i = 0; i < UPAGES; i++) {
-		if ((m = vm_page_lookup(upobj, i)) == NULL)
-			panic("pmap_swapout_proc: upage already missing???");
-		vm_page_dirty(m);
-		vm_page_unwire(m, 0);
-		pmap_kremove((vm_offset_t)p->p_addr + (PAGE_SIZE * i));
-	}
-	crit_exit();
-#endif
-}
-
-/*
- * Bring the UPAGES for a specified process back in.
- */
-void
-pmap_swapin_proc(struct proc *p)
-{
-#if 0
-	int i,rv;
-	vm_object_t upobj;
-	vm_page_t m;
-
-	crit_enter();
-	upobj = p->p_upages_obj;
-	for (i = 0; i < UPAGES; i++) {
-		m = vm_page_grab(upobj, i, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-		pmap_kenter((vm_offset_t)p->p_addr + (i * PAGE_SIZE),
-			VM_PAGE_TO_PHYS(m));
-
-		if (m->valid != VM_PAGE_BITS_ALL) {
-			rv = vm_pager_get_pages(upobj, &m, 1, 0);
-			if (rv != VM_PAGER_OK)
-				panic("pmap_swapin_proc: cannot get upages for proc: %d\n", p->p_pid);
-			m = vm_page_lookup(upobj, i);
-			m->valid = VM_PAGE_BITS_ALL;
-		}
-		vm_page_wire(m);
-		vm_page_wakeup(m);
-		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
-	}
-	crit_exit();
-#endif
-}
-
 /***************************************************
  * Page table page management routines.....
  ***************************************************/
@@ -1166,6 +1102,10 @@ pmap_pinit2(struct pmap *pmap)
 	bcopy(PTD + KPTDI, pmap->pm_pdir + KPTDI, nkpt * PTESIZE);
 }
 
+/*
+ * Attempt to release and free and vm_page in a pmap.  Returns 1 on success,
+ * 0 on failure (if the procedure had to sleep).
+ */
 static int
 pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 {
@@ -1361,18 +1301,20 @@ retry:
 			ptdpg = p;
 			continue;
 		}
-		while (1) {
-			if (!pmap_release_free_page(pmap, p) &&
-			    (object->generation != curgeneration)) {
-				crit_exit();
-				goto retry;
-			}
+		if (!pmap_release_free_page(pmap, p)) {
+			crit_exit();
+			goto retry;
+		}
+		if (object->generation != curgeneration) {
+			crit_exit();
+			goto retry;
 		}
 	}
-	crit_exit();
-
-	if (ptdpg && !pmap_release_free_page(pmap, ptdpg))
+	if (ptdpg && !pmap_release_free_page(pmap, ptdpg)) {
+		crit_exit();
 		goto retry;
+	}
+	crit_exit();
 }
 
 static int

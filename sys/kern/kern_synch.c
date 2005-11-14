@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.52 2005/11/09 03:39:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.53 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -51,6 +51,7 @@
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/lock.h>
 #ifdef KTRACE
 #include <sys/uio.h>
 #include <sys/ktrace.h>
@@ -68,6 +69,7 @@ SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
 int	hogticks;
 int	lbolt;
+int	lbolt_syncer;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
 int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;
@@ -90,6 +92,7 @@ static fixpt_t cexp[3] = {
 };
 
 static void	endtsleep (void *);
+static void	unsleep_and_wakeup_thread(struct thread *td);
 static void	loadav (void *arg);
 static void	schedcpu (void *arg);
 
@@ -157,17 +160,17 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 static void
 schedcpu(void *arg)
 {
+	struct rlimit *rlim;
 	struct proc *p;
+	u_int64_t ttime;
 
+	/*
+	 * General process statistics once a second
+	 */
 	FOREACH_PROC_IN_SYSTEM(p) {
-		/*
-		 * Increment time in/out of memory and sleep time
-		 * (if sleeping).  We ignore overflow; with 16-bit int's
-		 * (remember them?) overflow takes 45 days.
-		 */
 		crit_enter();
 		p->p_swtime++;
-		if (p->p_stat == SSLEEP || p->p_stat == SSTOP)
+		if (p->p_stat == SSLEEP)
 			p->p_slptime++;
 
 		/*
@@ -181,7 +184,43 @@ schedcpu(void *arg)
 		}
 		crit_exit();
 	}
+
+	/*
+	 * Resource checks.  XXX break out since psignal/killproc can block,
+	 * limiting us to one process killed per second.  There is probably
+	 * a better way.
+	 */
+	FOREACH_PROC_IN_SYSTEM(p) {
+		crit_enter();
+		if (p->p_stat == SZOMB || 
+		    p->p_limit == NULL || 
+		    p->p_thread == NULL
+		) {
+			crit_exit();
+			continue;
+		}
+		ttime = p->p_thread->td_sticks + p->p_thread->td_uticks;
+		if (p->p_limit->p_cpulimit != RLIM_INFINITY &&
+		    ttime > p->p_limit->p_cpulimit
+		) {
+			rlim = &p->p_rlimit[RLIMIT_CPU];
+			if (ttime / (rlim_t)1000000 >= rlim->rlim_max) {
+				killproc(p, "exceeded maximum CPU limit");
+			} else {
+				psignal(p, SIGXCPU);
+				if (rlim->rlim_cur < rlim->rlim_max) {
+					/* XXX: we should make a private copy */
+					rlim->rlim_cur += 5;
+				}
+			}
+			crit_exit();
+			break;
+		}
+		crit_exit();
+	}
+
 	wakeup((caddr_t)&lbolt);
+	wakeup((caddr_t)&lbolt_syncer);
 	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
 }
 
@@ -234,11 +273,8 @@ sleep_gdinit(globaldata_t gd)
 
 		gd->gd_tsleep_hash = slpque_cpu0;
 	} else {
-#if 0
 		gd->gd_tsleep_hash = malloc(sizeof(slpque_cpu0), 
 					    M_TSLEEP, M_WAITOK | M_ZERO);
-#endif
-		gd->gd_tsleep_hash = slpque_cpu0;
 	}
 	for (i = 0; i < TABLESIZE; ++i)
 		TAILQ_INIT(&gd->gd_tsleep_hash[i]);
@@ -267,8 +303,10 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* may be NULL */
 	globaldata_t gd;
-	int sig = 0, catch = flags & PCATCH;
-	int id = LOOKUP(ident);
+	int sig;
+	int catch;
+	int id;
+	int error;
 	int oldpri;
 	struct callout thandle;
 
@@ -292,15 +330,53 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	}
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
+
+	/*
+	 * NOTE: all of this occurs on the current cpu, including any
+	 * callout-based wakeups, so a critical section is a sufficient
+	 * interlock.
+	 *
+	 * The entire sequence through to where we actually sleep must
+	 * run without breaking the critical section.
+	 */
+	id = LOOKUP(ident);
+	catch = flags & PCATCH;
+	error = 0;
+	sig = 0;
+
 	crit_enter_quick(td);
+
 	KASSERT(ident != NULL, ("tsleep: no ident"));
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
 		ident, wmesg, p->p_stat));
 
-	td->td_wchan = ident;
-	td->td_wmesg = wmesg;
-	td->td_wdomain = flags & PDOMAIN_MASK;
+	/*
+	 * Setup for the current process (if this is a process). 
+	 */
 	if (p) {
+		if (catch) {
+			/*
+			 * Early termination if PCATCH was set and a
+			 * signal is pending, interlocked with the
+			 * critical section.
+			 *
+			 * Early termination only occurs when tsleep() is
+			 * entered while in a normal SRUN state.
+			 */
+			if ((sig = CURSIG(p)) != 0)
+				goto resume;
+
+			/*
+			 * Causes psignal to wake us up when.
+			 */
+			p->p_flag |= P_SINTR;
+		}
+
+		/*
+		 * Make sure the current process has been untangled from
+		 * the userland scheduler and initialize slptime to start
+		 * counting.
+		 */
 		if (flags & PNORESCHED)
 			td->td_flags |= TDF_NORESCHED;
 		p->p_usched->release_curproc(&p->p_lwp);
@@ -308,102 +384,98 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	}
 
 	/*
-	 * note: all of this occurs on the current cpu, including any
-	 * callout-based wakeups, so a critical section is a sufficient
-	 * interlock.
+	 * Move our thread to the correct queue and setup our wchan, etc.
 	 */
 	lwkt_deschedule_self(td);
+	td->td_flags |= TDF_TSLEEPQ;
 	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_threadq);
 	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+
+	td->td_wchan = ident;
+	td->td_wmesg = wmesg;
+	td->td_wdomain = flags & PDOMAIN_MASK;
+
+	/*
+	 * Setup the timeout, if any
+	 */
 	if (timo) {
 		callout_init(&thandle);
 		callout_reset(&thandle, timo, endtsleep, td);
 	}
+
 	/*
-	 * We put ourselves on the sleep queue and start our timeout
-	 * before calling CURSIG, as we could stop there, and a wakeup
-	 * or a SIGCONT (or both) could occur while we were stopped.
-	 * A SIGCONT would cause us to be marked as SSLEEP
-	 * without resuming us, thus we must be ready for sleep
-	 * when CURSIG is called.  If the wakeup happens while we're
-	 * stopped, td->td_wchan will be 0 upon return from CURSIG.
+	 * Beddy bye bye.
 	 */
 	if (p) {
-		if (catch) {
-			p->p_flag |= P_SINTR;
-			if ((sig = CURSIG(p))) {
-				if (td->td_wchan) {
-					unsleep(td);
-					lwkt_schedule_self(td);
-				}
-				p->p_stat = SRUN;
-				goto resume;
-			}
-			if (td->td_wchan == NULL) {
-				catch = 0;
-				goto resume;
-			}
-		} else {
-			sig = 0;
-		}
-
 		/*
-		 * If we are not the current process we have to remove ourself
-		 * from the run queue.
+		 * Ok, we are sleeping.  Remove us from the userland runq
+		 * and place us in the SSLEEP state.
 		 */
-		KASSERT(p->p_stat == SRUN, ("PSTAT NOT SRUN %d %d", p->p_pid, p->p_stat));
-		/*
-		 * If this is the current 'user' process schedule another one.
-		 */
-		clrrunnable(p, SSLEEP);
+		if (p->p_flag & P_ONRUNQ)
+			p->p_usched->remrunqueue(&p->p_lwp);
+		p->p_stat = SSLEEP;
 		p->p_stats->p_ru.ru_nvcsw++;
-		mi_switch(p);
-		KASSERT(p->p_stat == SRUN, ("tsleep: stat not srun"));
+		lwkt_switch();
+		p->p_stat = SRUN;
 	} else {
 		lwkt_switch();
 	}
+
 	/* 
 	 * Make sure we haven't switched cpus while we were asleep.  It's
-	 * not supposed to happen.
+	 * not supposed to happen.  Cleanup our temporary flags.
 	 */
 	KKASSERT(gd == td->td_gd);
-resume:
-	if (p)
-		p->p_flag &= ~P_SINTR;
-	crit_exit_quick(td);
 	td->td_flags &= ~TDF_NORESCHED;
-	if (td->td_flags & TDF_TIMEOUT) {
-		td->td_flags &= ~TDF_TIMEOUT;
-		if (sig == 0)
-			return (EWOULDBLOCK);
-	} else if (timo) {
-		callout_stop(&thandle);
-	} else if (td->td_wmesg) {
-		/*
-		 * This can happen if a thread is woken up directly.  Clear
-		 * wmesg to avoid debugging confusion.
-		 */
-		td->td_wmesg = NULL;
-	}
-	/* inline of iscaught() */
-	if (p) {
-		if (catch && (sig != 0 || (sig = CURSIG(p)))) {
-			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
-				return (EINTR);
-			return (ERESTART);
+
+	/*
+	 * Cleanup the timeout.
+	 */
+	if (timo) {
+		if (td->td_flags & TDF_TIMEOUT) {
+			td->td_flags &= ~TDF_TIMEOUT;
+			if (sig == 0)
+				error = EWOULDBLOCK;
+		} else {
+			callout_stop(&thandle);
 		}
 	}
-	return (0);
+
+	/*
+	 * Since td_threadq is used both for our run queue AND for the
+	 * tsleep hash queue, we can't still be on it at this point because
+	 * we've gotten cpu back.
+	 */
+	KKASSERT((td->td_flags & TDF_TSLEEPQ) == 0);
+	td->td_wchan = NULL;
+	td->td_wmesg = NULL;
+	td->td_wdomain = 0;
+
+	/*
+	 * Figure out the correct error return
+	 */
+resume:
+	if (p) {
+		p->p_flag &= ~(P_BREAKTSLEEP | P_SINTR);
+		if (catch && error == 0 && (sig != 0 || (sig = CURSIG(p)))) {
+			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
+				error = EINTR;
+			else
+				error = ERESTART;
+		}
+	}
+	crit_exit_quick(td);
+	return (error);
 }
 
 /*
- * Implement the timeout for tsleep.  We interlock against
- * wchan when setting TDF_TIMEOUT.  For processes we remove
- * the sleep if the process is stopped rather then sleeping,
- * so it remains stopped.
+ * Implement the timeout for tsleep.
  *
- * This type of callout timeout had better be scheduled on the same
- * cpu the process is sleeping on.
+ * We set P_BREAKTSLEEP to indicate that an event has occured, but
+ * we only call setrunnable if the process is not stopped.
+ *
+ * This type of callout timeout is scheduled on the same cpu the process
+ * is sleeping on.  Also, at the moment, the MP lock is held.
  */
 static void
 endtsleep(void *arg)
@@ -411,40 +483,54 @@ endtsleep(void *arg)
 	thread_t td = arg;
 	struct proc *p;
 
+	ASSERT_MP_LOCK_HELD(curthread);
 	crit_enter();
-	if (td->td_wchan) {
+
+	/*
+	 * cpu interlock.  Thread flags are only manipulated on
+	 * the cpu owning the thread.  proc flags are only manipulated
+	 * by the older of the MP lock.  We have both.
+	 */
+	if (td->td_flags & TDF_TSLEEPQ) {
 		td->td_flags |= TDF_TIMEOUT;
+
 		if ((p = td->td_proc) != NULL) {
-			if (p->p_stat == SSLEEP)
+			p->p_flag |= P_BREAKTSLEEP;
+			if ((p->p_flag & P_STOPPED) == 0)
 				setrunnable(p);
-			else
-				unsleep(td);
 		} else {
-			unsleep(td);
-			lwkt_schedule(td);
+			unsleep_and_wakeup_thread(td);
 		}
 	}
 	crit_exit();
 }
 
 /*
- * Remove a process from its wait queue
- *
- * XXX not MP safe until called only on the cpu holding the sleeping
- * process.
+ * Unsleep and wakeup a thread.  This function runs without the MP lock
+ * which means that it can only manipulate thread state on the owning cpu,
+ * and cannot touch the process state at all.
  */
+static
 void
-unsleep(struct thread *td)
+unsleep_and_wakeup_thread(struct thread *td)
 {
+	globaldata_t gd = mycpu;
 	int id;
 
+#ifdef SMP
+	if (td->td_gd != gd) {
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)unsleep_and_wakeup_thread, td);
+		return;
+	}
+#endif
 	crit_enter();
-	id = LOOKUP(td->td_wchan);
-	if (td->td_wchan) {
-		TAILQ_REMOVE(&td->td_gd->gd_tsleep_hash[id], td, td_threadq);
-		if (TAILQ_FIRST(&td->td_gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_int(&slpque_cpumasks[id], td->td_gd->gd_cpumask);
-		td->td_wchan = NULL;
+	if (td->td_flags & TDF_TSLEEPQ) {
+		td->td_flags &= ~TDF_TSLEEPQ;
+		id = LOOKUP(td->td_wchan);
+		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_threadq);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
+			atomic_clear_int(&slpque_cpumasks[id], gd->gd_cpumask);
+		lwkt_schedule(td);
 	}
 	crit_exit();
 }
@@ -455,6 +541,10 @@ unsleep(struct thread *td)
  *
  * The domain encodes the sleep/wakeup domain AND the first cpu to check
  * (which is always the current cpu).  As we iterate across cpus
+ *
+ * This call may run without the MP lock held.  We can only manipulate thread
+ * state on the cpu owning the thread.  We CANNOT manipulate process state
+ * at all.
  */
 static void
 _wakeup(void *ident, int domain)
@@ -463,14 +553,11 @@ _wakeup(void *ident, int domain)
 	struct thread *td;
 	struct thread *ntd;
 	globaldata_t gd;
-	struct proc *p;
-#if 0
 #ifdef SMP
 	cpumask_t mask;
 	cpumask_t tmask;
 	int startcpu;
 	int nextcpu;
-#endif
 #endif
 	int id;
 
@@ -484,37 +571,20 @@ restart:
 		if (td->td_wchan == ident && 
 		    td->td_wdomain == (domain & PDOMAIN_MASK)
 		) {
+			KKASSERT(td->td_flags & TDF_TSLEEPQ);
+			td->td_flags &= ~TDF_TSLEEPQ;
 			TAILQ_REMOVE(qp, td, td_threadq);
 			if (TAILQ_FIRST(qp) == NULL) {
 				atomic_clear_int(&slpque_cpumasks[id],
 						 gd->gd_cpumask);
 			}
-			td->td_wchan = NULL;
-			if ((p = td->td_proc) != NULL && p->p_stat == SSLEEP) {
-				p->p_stat = SRUN;
-				if (p->p_flag & P_INMEM) {
-					/*
-					 * LWKT scheduled now, there is no
-					 * userland runq interaction until
-					 * the thread tries to return to user
-					 * mode.  We do NOT call setrunqueue().
-					 */
-					lwkt_schedule(td);
-				} else {
-					p->p_flag |= P_SWAPINREQ;
-					wakeup((caddr_t)&proc0);
-				}
-				/* END INLINE EXPANSION */
-			} else if (p == NULL) {
-				lwkt_schedule(td);
-			}
+			lwkt_schedule(td);
 			if (domain & PWAKEUP_ONE)
 				goto done;
 			goto restart;
 		}
 	}
 
-#if 0
 #ifdef SMP
 	/*
 	 * We finished checking the current cpu but there still may be
@@ -594,7 +664,6 @@ restart:
 		}
 	}
 #endif
-#endif
 done:
 	crit_exit();
 }
@@ -626,96 +695,47 @@ wakeup_domain_one(void *ident, int domain)
 }
 
 /*
- * The machine independent parts of mi_switch().
+ * setrunnable()
  *
- * 'p' must be the current process.
- */
-void
-mi_switch(struct proc *p)
-{
-	thread_t td = p->p_thread;
-	struct rlimit *rlim;
-	u_int64_t ttime;
-
-	KKASSERT(td == mycpu->gd_curthread);
-
-	crit_enter_quick(td);
-
-	/*
-	 * Check if the process exceeds its cpu resource allocation.
-	 * If over max, kill it.  Time spent in interrupts is not 
-	 * included.  YYY 64 bit match is expensive.  Ick.
-	 *
-	 * XXX move to the once-a-second process scan
-	 */
-	ttime = td->td_sticks + td->td_uticks;
-	if (p->p_stat != SZOMB && p->p_limit->p_cpulimit != RLIM_INFINITY &&
-	    ttime > p->p_limit->p_cpulimit) {
-		rlim = &p->p_rlimit[RLIMIT_CPU];
-		if (ttime / (rlim_t)1000000 >= rlim->rlim_max) {
-			killproc(p, "exceeded maximum CPU limit");
-		} else {
-			psignal(p, SIGXCPU);
-			if (rlim->rlim_cur < rlim->rlim_max) {
-				/* XXX: we should make a private copy */
-				rlim->rlim_cur += 5;
-			}
-		}
-	}
-
-	/*
-	 * If we are in a SSTOPped state we deschedule ourselves.  
-	 * YYY this needs to be cleaned up, remember that LWKTs stay on
-	 * their run queue which works differently then the user scheduler
-	 * which removes the process from the runq when it runs it.
-	 */
-	mycpu->gd_cnt.v_swtch++;
-	if (p->p_stat == SSTOP)
-		lwkt_deschedule_self(td);
-	lwkt_switch();
-	crit_exit_quick(td);
-}
-
-/*
- * Change process state to be runnable, placing it on the run queue if it
- * is in memory, and awakening the swapper if it isn't in memory.
+ * Make a process runnable.  The MP lock must be held on call.  This only
+ * has an effect if we are in SSLEEP.  We only break out of the
+ * tsleep if P_BREAKTSLEEP is set, otherwise we just fix-up the state.
  *
- * This operation MUST OCCUR on the cpu that the thread is sleeping on.
+ * NOTE: With the MP lock held we can only safely manipulate the process
+ * structure.  We cannot safely manipulate the thread structure.
  */
 void
 setrunnable(struct proc *p)
 {
 	crit_enter();
-
-	switch (p->p_stat) {
-	case 0:
-	case SRUN:
-	case SZOMB:
-	default:
-		panic("setrunnable");
-	case SSTOP:
-	case SSLEEP:
-		unsleep(p->p_thread);	/* e.g. when sending signals */
-		break;
-
-	case SIDL:
-		break;
-	}
-	p->p_stat = SRUN;
-
-	/*
-	 * The process is controlled by LWKT at this point, we do not mess
-	 * around with the userland scheduler until the thread tries to 
-	 * return to user mode.  We do not clear p_slptime or call
-	 * setrunqueue().
-	 */
-	if (p->p_flag & P_INMEM) {
-		lwkt_schedule(p->p_thread);
-	} else {
-		p->p_flag |= P_SWAPINREQ;
-		wakeup((caddr_t)&proc0);
+	ASSERT_MP_LOCK_HELD(curthread);
+	p->p_flag &= ~P_STOPPED;
+	if (p->p_stat == SSLEEP && (p->p_flag & P_BREAKTSLEEP)) {
+		unsleep_and_wakeup_thread(p->p_thread);
 	}
 	crit_exit();
+}
+
+/*
+ * The process is stopped due to some condition, usually because P_STOPPED
+ * is set but also possibly due to being traced.  
+ *
+ * NOTE!  If the caller sets P_STOPPED, the caller must also clear P_WAITED
+ * because the parent may check the child's status before the child actually
+ * gets to this routine.
+ *
+ * This routine is called with the current process only, typically just
+ * before returning to userland.
+ *
+ * Setting P_BREAKTSLEEP before entering the tsleep will cause a passive
+ * SIGCONT to break out of the tsleep.
+ */
+void
+tstop(struct proc *p)
+{
+	wakeup((caddr_t)p->p_pptr);
+	p->p_flag |= P_BREAKTSLEEP;
+	tsleep(p, 0, "stop", 0);
 }
 
 /*
@@ -749,20 +769,6 @@ uio_yield(void)
 	} else {
 		lwkt_switch();
 	}
-}
-
-/*
- * Change the process state to NOT be runnable, removing it from the run
- * queue.
- */
-void
-clrrunnable(struct proc *p, int stat)
-{
-	crit_enter_quick(p->p_thread);
-	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ))
-		p->p_usched->remrunqueue(&p->p_lwp);
-	p->p_stat = stat;
-	crit_exit_quick(p->p_thread);
 }
 
 /*

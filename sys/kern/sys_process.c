@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.17 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.18 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -358,8 +358,10 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			return EBUSY;
 
 		/* not currently stopped */
-		if (p->p_stat != SSTOP || (p->p_flag & P_WAITED) == 0)
+		if ((p->p_flag & P_STOPPED) == 0 ||
+		    (p->p_flag & P_WAITED) == 0) {
 			return EBUSY;
+		}
 
 		/* OK */
 		break;
@@ -438,10 +440,14 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		}
 
 	sendsig:
-		/* deliver or queue signal */
+		/*
+		 * Deliver or queue signal.  If the process is stopped
+		 * force it to SRUN again.
+		 */
 		crit_enter();
-		if (p->p_stat == SSTOP) {
+		if (p->p_flag & P_STOPPED) {
 			p->p_xstat = data;
+			p->p_flag |= P_BREAKTSLEEP;
 			setrunnable(p);
 		} else if (data) {
 			psignal(p, data);

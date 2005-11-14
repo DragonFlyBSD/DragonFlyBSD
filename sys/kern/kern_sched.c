@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/kern_sched.c,v 1.5 2005/06/27 18:38:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sched.c,v 1.6 2005/11/14 18:50:00 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -100,7 +100,7 @@ getscheduler(register_t *ret, struct ksched *ksched, struct proc *p)
 {
 	int e = 0;
 
-	switch (p->p_rtprio.type)
+	switch (p->p_lwp.lwp_rtprio.type)
 	{
 		case RTP_PRIO_FIFO:
 		*ret = SCHED_FIFO;
@@ -140,7 +140,7 @@ int ksched_setparam(register_t *ret, struct ksched *ksched,
 int ksched_getparam(register_t *ret, struct ksched *ksched,
 	struct proc *p, struct sched_param *param)
 {
-	if (RTP_PRIO_IS_REALTIME(p->p_rtprio.type))
+	if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
 		param->sched_priority = rtpprio_to_p4prio(p->p_rtprio.prio);
 
 	return 0;
@@ -171,7 +171,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 			rtp.type = (policy == SCHED_FIFO)
 				? RTP_PRIO_FIFO : RTP_PRIO_REALTIME;
 
-			p->p_rtprio = rtp;
+			p->p_lwp.lwp_rtprio = rtp;
 			need_user_resched();
 		}
 		else
@@ -184,7 +184,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 		{
 			rtp.type = RTP_PRIO_NORMAL;
 			rtp.prio = p4prio_to_rtpprio(param->sched_priority);
-			p->p_rtprio = rtp;
+			p->p_lwp.lwp_rtprio = rtp;
 
 			/* XXX Simply revert to whatever we had for last
 			 *     normal scheduler priorities.

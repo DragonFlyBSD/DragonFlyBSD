@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.38 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.39 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -77,7 +77,6 @@ static char	*expand_name(const char *, uid_t, pid_t);
 static int	killpg(int sig, int pgid, int all);
 static int	sig_ffs(sigset_t *set);
 static int	sigprop(int sig);
-static void	stop(struct proc *);
 #ifdef SMP
 static void	signotify_remote(void *arg);
 #endif
@@ -760,12 +759,6 @@ trapsignal(struct proc *p, int sig, u_long code)
  *
  * Other ignored signals are discarded immediately.
  */
-
-/*
- * temporary hack to allow checkpoint code to continue to
- * be in a module for the moment
- */
-
 void
 psignal(struct proc *p, int sig)
 {
@@ -814,10 +807,12 @@ psignal(struct proc *p, int sig)
 		p->p_nice = NZERO;
 	}
 
+	/*
+	 * If continuing, clear any pending STOP signals.
+	 */
 	if (prop & SA_CONT)
 		SIG_STOPSIGMASK(p->p_siglist);
 	
-
 	if (prop & SA_STOP) {
 		/*
 		 * If sending a tty stop signal to a member of an orphaned
@@ -837,76 +832,110 @@ psignal(struct proc *p, int sig)
 	 * Defer further processing for signals which are held,
 	 * except that stopped processes must be continued by SIGCONT.
 	 */
-	if (action == SIG_HOLD && (!(prop & SA_CONT) || p->p_stat != SSTOP))
-		return;
+	if (action == SIG_HOLD) {
+		if ((prop & SA_CONT) == 0 || (p->p_flag & P_STOPPED) == 0)
+			return;
+	}
 
 	crit_enter();
 
-	switch (p->p_stat) {
-	case SSLEEP:
+	/*
+	 * Process is in tsleep and not stopped
+	 */
+	if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED) == 0) {
 		/*
-		 * If process is sleeping uninterruptibly
+		 * If the process is sleeping uninterruptibly
 		 * we can't interrupt the sleep... the signal will
 		 * be noticed when the process returns through
 		 * trap() or syscall().
 		 */
 		if ((p->p_flag & P_SINTR) == 0)
 			goto out;
+
 		/*
-		 * Process is sleeping and traced... make it runnable
+		 * If the process is sleeping and traced, make it runnable
 		 * so it can discover the signal in issignal() and stop
 		 * for the parent.
+		 *
+		 * If the process is stopped and traced, no further action
+		 * is necessary.
 		 */
 		if (p->p_flag & P_TRACED)
 			goto run;
+
 		/*
-		 * If SIGCONT is default (or ignored) and process is
-		 * asleep, we are finished; the process should not
-		 * be awakened.
+		 * If the process is sleeping and SA_CONT, and the signal
+		 * mode is SIG_DFL, then make the process runnable.
+		 *
+		 * However, do *NOT* set P_BREAKTSLEEP.  We do not want 
+		 * a SIGCONT to terminate an interruptable tsleep early
+		 * and generate a spurious EINTR.
 		 */
 		if ((prop & SA_CONT) && action == SIG_DFL) {
 			SIGDELSET(p->p_siglist, sig);
-			goto out;
+			goto run_no_break;
 		}
+
 		/*
-		 * When a sleeping process receives a stop
-		 * signal, process immediately if possible.
-		 * All other (caught or default) signals
-		 * cause the process to run.
+		 * If the process is sleeping and receives a STOP signal,
+		 * process immediately if possible.  All other (caught or
+		 * default) signals cause the process to run.
 		 */
 		if (prop & SA_STOP) {
 			if (action != SIG_DFL)
 				goto run;
+
 			/*
-			 * If a child holding parent blocked,
-			 * stopping could cause deadlock.
+			 * If a child holding parent blocked, stopping 
+			 * could cause deadlock.  Take no action at this
+			 * time.
 			 */
 			if (p->p_flag & P_PPWAIT)
 				goto out;
+
+			/*
+			 * Do not actually try to manipulate the process
+			 * while it is sleeping, simply set P_STOPPED to
+			 * indicate that it should stop as soon as it safely
+			 * can.
+			 */
 			SIGDELSET(p->p_siglist, sig);
+			p->p_flag |= P_STOPPED;
+			p->p_flag &= ~P_WAITED;
 			p->p_xstat = sig;
 			if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
 				psignal(p->p_pptr, SIGCHLD);
-			stop(p);
 			goto out;
-		} else {
-			goto run;
 		}
-		/*NOTREACHED*/
-	case SSTOP:
+
 		/*
-		 * If traced process is already stopped,
-		 * then no further action is necessary.
+		 * Otherwise the signal can interrupt the sleep.
+		 */
+		goto run;
+	}
+
+	/*
+	 * Process is in tsleep and is stopped
+	 */
+	if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED)) {
+		/*
+		 * If the process is stopped and is being traced, then no
+		 * further action is necessary.
 		 */
 		if (p->p_flag & P_TRACED)
 			goto out;
 
 		/*
-		 * Kill signal always sets processes running.
+		 * If the process is stopped and receives a KILL signal,
+		 * make the process runnable.
 		 */
 		if (sig == SIGKILL)
 			goto run;
 
+		/*
+		 * If the process is stopped and receives a CONT signal,
+		 * then try to make the process runnable again.
+		 */
 		if (prop & SA_CONT) {
 			/*
 			 * If SIGCONT is default (or ignored), we continue the
@@ -914,88 +943,83 @@ psignal(struct proc *p, int sig)
 			 * it has no further action.  If SIGCONT is held, we
 			 * continue the process and leave the signal in
 			 * p_siglist.  If the process catches SIGCONT, let it
-			 * handle the signal itself.  If it isn't waiting on
-			 * an event, then it goes back to run state.
-			 * Otherwise, process goes back to sleep state.
+			 * handle the signal itself.
 			 */
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
 			if (action == SIG_CATCH)
 				goto run;
-			if (p->p_wchan == 0)
-				goto run;
-			clrrunnable(p, SSLEEP);
-			goto out;
+
+			/*
+			 * Make runnable but do not break a tsleep unless
+			 * some other signal was pending.
+			 */
+			goto run_no_break;
 		}
 
+		/*
+		 * If the process is stopped and receives another STOP
+		 * signal, we do not need to stop it again.  If we did
+		 * the shell could get confused.
+		 */
 		if (prop & SA_STOP) {
-			/*
-			 * Already stopped, don't need to stop again.
-			 * (If we did the shell could get confused.)
-			 */
 			SIGDELSET(p->p_siglist, sig);
 			goto out;
 		}
 
 		/*
-		 * If process is sleeping interruptibly, then simulate a
-		 * wakeup so that when it is continued, it will be made
-		 * runnable and can look at the signal.  But don't make
-		 * the process runnable, leave it stopped.
+		 * Otherwise the process is sleeping interruptably but
+		 * is stopped, just set the P_BREAKTSLEEP flag and take
+		 * no further action.  The next runnable action will wake
+		 * the process up.
 		 */
-		if (p->p_wchan && (p->p_flag & P_SINTR))
-			unsleep(p->p_thread);
-		goto out;
-	default:
-		/*
-		 * SRUN, SIDL, SZOMB do nothing with the signal,
-		 * other than kicking ourselves if we are running.
-		 * It will either never be noticed, or noticed very soon.
-		 *
-		 * Note that p_thread may be NULL or may not be completely
-		 * initialized if the process is in the SIDL or SZOMB state.
-		 *
-		 * For SMP we may have to forward the request to another cpu.
-		 * YYY the MP lock prevents the target process from moving
-		 * to another cpu, see kern/kern_switch.c
-		 *
-		 * If the target thread is waiting on its message port,
-		 * wakeup the target thread so it can check (or ignore)
-		 * the new signal.  YYY needs cleanup.
-		 */
-#ifdef SMP
-		if (lp == lwkt_preempted_proc()) {
-			signotify();
-		} else if (p->p_stat == SRUN) {
-			struct thread *td = p->p_thread;
-
-			KASSERT(td != NULL, 
-			    ("pid %d NULL p_thread stat %d flags %08x",
-			    p->p_pid, p->p_stat, p->p_flag));
-
-			if (td->td_gd != mycpu)
-				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
-			else if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
-				lwkt_schedule(td);
-		}
-#else
-		if (lp == lwkt_preempted_proc()) {
-			signotify();
-		} else if (p->p_stat == SRUN) {
-			struct thread *td = p->p_thread;
-
-			KASSERT(td != NULL, 
-			    ("pid %d NULL p_thread stat %d flags %08x",
-			    p->p_pid, p->p_stat, p->p_flag));
-
-			if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
-				lwkt_schedule(td);
-		}
-#endif
+		p->p_flag |= P_BREAKTSLEEP;
 		goto out;
 	}
+
+	/*
+	 * Otherwise the process is running
+	 *
+	 * SRUN, SIDL, SZOMB do nothing with the signal,
+	 * other than kicking ourselves if we are running.
+	 * It will either never be noticed, or noticed very soon.
+	 *
+	 * Note that p_thread may be NULL or may not be completely
+	 * initialized if the process is in the SIDL or SZOMB state.
+	 *
+	 * For SMP we may have to forward the request to another cpu.
+	 * YYY the MP lock prevents the target process from moving
+	 * to another cpu, see kern/kern_switch.c
+	 *
+	 * If the target thread is waiting on its message port,
+	 * wakeup the target thread so it can check (or ignore)
+	 * the new signal.  YYY needs cleanup.
+	 */
+	if (lp == lwkt_preempted_proc()) {
+		signotify();
+	} else if (p->p_stat == SRUN) {
+		struct thread *td = p->p_thread;
+
+		KASSERT(td != NULL, 
+		    ("pid %d NULL p_thread stat %d flags %08x",
+		    p->p_pid, p->p_stat, p->p_flag));
+
+#ifdef SMP
+		if (td->td_gd != mycpu)
+			lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
+		else
+#endif
+		if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
+			lwkt_schedule(td);
+	}
+	goto out;
 	/*NOTREACHED*/
 run:
+	/*
+	 * Make runnable and break out of any tsleep as well.
+	 */
+	p->p_flag |= P_BREAKTSLEEP;
+run_no_break:
 	setrunnable(p);
 out:
 	crit_exit();
@@ -1235,17 +1259,24 @@ issignal(struct proc *p)
 			SIGDELSET(p->p_siglist, sig);
 			continue;
 		}
-		if (p->p_flag & P_TRACED && (p->p_flag & P_PPWAIT) == 0) {
+		if ((p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
 			/*
-			 * If traced, always stop, and stay
-			 * stopped until released by the parent.
+			 * If traced, always stop, and stay stopped until
+			 * released by the parent.
+			 *
+			 * NOTE: P_STOPPED may get cleared during the loop,
+			 * but we do not re-notify the parent if we have 
+			 * to loop several times waiting for the parent
+			 * to let us continue.
 			 */
 			p->p_xstat = sig;
+			p->p_flag |= P_STOPPED;
+			p->p_flag &= ~P_WAITED;
 			psignal(p->p_pptr, SIGCHLD);
 			do {
-				stop(p);
-				mi_switch(p);
-			} while (!trace_req(p) && p->p_flag & P_TRACED);
+				tstop(p);
+			} while (!trace_req(p) && (p->p_flag & P_TRACED));
+			p->p_flag &= ~P_STOPPED;
 
 			/*
 			 * If parent wants us to take the signal,
@@ -1282,7 +1313,6 @@ issignal(struct proc *p)
 		 * to clear it from the pending mask.
 		 */
 		switch ((int)(intptr_t)p->p_sigacts->ps_sigact[_SIG_IDX(sig)]) {
-
 		case (int)SIG_DFL:
 			/*
 			 * Don't take default actions on system processes.
@@ -1320,10 +1350,14 @@ issignal(struct proc *p)
 				    prop & SA_TTYSTOP))
 					break;	/* == ignore */
 				p->p_xstat = sig;
-				stop(p);
+				p->p_flag |= P_STOPPED;
+				p->p_flag &= ~P_WAITED;
+
 				if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
 					psignal(p->p_pptr, SIGCHLD);
-				mi_switch(p);
+				while (p->p_flag & P_STOPPED) {
+					tstop(p);
+				}
 				break;
 			} else if (prop & SA_IGNORE) {
 				/*
@@ -1358,19 +1392,6 @@ issignal(struct proc *p)
 		SIGDELSET(p->p_siglist, sig);		/* take the signal! */
 	}
 	/* NOTREACHED */
-}
-
-/*
- * Put the argument process into the stopped state and notify the parent
- * via wakeup.  Signals are handled elsewhere.  The process must not be
- * on the run queue.
- */
-void
-stop(struct proc *p)
-{
-	p->p_stat = SSTOP;
-	p->p_flag &= ~P_WAITED;
-	wakeup((caddr_t)p->p_pptr);
 }
 
 /*

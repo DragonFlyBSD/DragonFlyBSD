@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.18 2005/06/27 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.19 2005/11/14 18:50:05 dillon Exp $
  */
 
 /*-
@@ -2412,7 +2412,7 @@ ttyinfo(tp)
 		 * 'pick' becomes invalid the moment we exit the critical
 		 * section.
 		 */
-		if (pick->p_thread && (pick->p_flag & P_INMEM)) {
+		if (pick->p_thread && (pick->p_flag & P_SWAPPEDOUT) == 0) {
 			calcru(pick, &utime, &stime, NULL);
 			isinmem = 1;
 		} else {

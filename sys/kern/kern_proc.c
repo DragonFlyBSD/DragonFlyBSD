@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.20 2005/04/22 17:41:15 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.21 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,7 +331,7 @@ orphanpg(struct pgrp *pg)
 	struct proc *p;
 
 	LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-		if (p->p_stat == SSTOP) {
+		if (p->p_flag & P_STOPPED) {
 			LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 				psignal(p, SIGHUP);
 				psignal(p, SIGCONT);
@@ -426,7 +426,7 @@ fill_eproc(struct proc *p, struct eproc *ep)
 		ep->e_vm = *vm;
 		ep->e_vm.vm_rssize = vmspace_resident_count(vm); /*XXX*/
 	}
-	if ((p->p_flag & P_INMEM) && p->p_stats)
+	if ((p->p_flag & P_SWAPPEDOUT) == 0 && p->p_stats)
 		ep->e_stats = *p->p_stats;
 	if (p->p_pptr)
 		ep->e_ppid = p->p_pptr->p_pid;
@@ -481,16 +481,18 @@ sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int d
 		xproc = *p;
 
 		/*
-		 * Fixup p_stat from SRUN to SSLEEP if the LWKT thread is
-		 * in a thread-blocked state.
-		 *
-		 * XXX temporary fix which might become permanent (I'd rather
-		 * not pollute the thread scheduler with knowlege about 
-		 * processes).
+		 * p_stat fixup.  If we are in a thread sleep mark p_stat
+		 * as sleeping if the thread is blocked.
 		 */
 		if (p->p_stat == SRUN && td && (td->td_flags & TDF_BLOCKED)) {
 			xproc.p_stat = SSLEEP;
 		}
+		/*
+		 * If the process is being stopped but is in a normal tsleep,
+		 * mark it as being SSTOP.
+		 */
+		if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED))
+			xproc.p_stat = SSTOP;
 	} else if (td) {
 		fill_eproc_td(td, &eproc, &xproc);
 	}

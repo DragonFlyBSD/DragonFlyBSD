@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/i386/i386/procfs_machdep.c,v 1.14 1999/10/11 14:50:03 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/procfs_machdep.c,v 1.4 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/procfs_machdep.c,v 1.5 2005/11/14 18:50:03 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ procfs_read_regs(p, regs)
 	struct proc *p;
 	struct reg *regs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (fill_regs(&p->p_lwp, regs));
 }
@@ -96,7 +96,7 @@ procfs_write_regs(p, regs)
 	struct proc *p;
 	struct reg *regs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (set_regs(&p->p_lwp, regs));
 }
@@ -106,7 +106,7 @@ procfs_read_dbregs(p, dbregs)
 	struct proc *p;
 	struct dbreg *dbregs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (fill_dbregs(&p->p_lwp, dbregs));
 }
@@ -116,7 +116,7 @@ procfs_write_dbregs(p, dbregs)
 	struct proc *p;
 	struct dbreg *dbregs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (set_dbregs(&p->p_lwp, dbregs));
 }
@@ -131,7 +131,7 @@ procfs_read_fpregs(p, fpregs)
 	struct proc *p;
 	struct fpreg *fpregs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (fill_fpregs(&p->p_lwp, fpregs));
 }
@@ -141,7 +141,7 @@ procfs_write_fpregs(p, fpregs)
 	struct proc *p;
 	struct fpreg *fpregs;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (set_fpregs(&p->p_lwp, fpregs));
 }
@@ -150,7 +150,7 @@ int
 procfs_sstep(p)
 	struct proc *p;
 {
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (EIO);
 	return (ptrace_single_step(&p->p_lwp));
 }

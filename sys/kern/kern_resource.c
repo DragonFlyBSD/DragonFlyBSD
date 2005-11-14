@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.23 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.24 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -235,7 +235,7 @@ rtprio(struct rtprio_args *uap)
 
 	switch (uap->function) {
 	case RTP_LOOKUP:
-		return (copyout(&p->p_rtprio, uap->rtp, sizeof(struct rtprio)));
+		return (copyout(&p->p_lwp.lwp_rtprio, uap->rtp, sizeof(struct rtprio)));
 	case RTP_SET:
 		if (cr->cr_uid && cr->cr_ruid &&
 		    cr->cr_uid != p->p_ucred->cr_uid &&
@@ -266,7 +266,7 @@ rtprio(struct rtprio_args *uap)
 		case RTP_PRIO_IDLE:
 			if (rtp.prio > RTP_PRIO_MAX)
 				return (EINVAL);
-			p->p_rtprio = rtp;
+			p->p_lwp.lwp_rtprio = rtp;
 			return (0);
 		default:
 			return (EINVAL);

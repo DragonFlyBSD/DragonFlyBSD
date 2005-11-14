@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.7 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.8 2005/11/14 18:50:05 dillon Exp $
  */
 
 /*
@@ -266,7 +266,7 @@ sched_sync(void)
 		 * filesystem activity.
 		 */
 		if (time_second == starttime)
-			tsleep(&lbolt, 0, "syncer", 0);
+			tsleep(&lbolt_syncer, 0, "syncer", 0);
 	}
 }
 
@@ -280,12 +280,11 @@ sched_sync(void)
 int
 speedup_syncer(void)
 {
-	crit_enter();
-	if (updatethread->td_wchan == &lbolt) { /* YYY */
-		unsleep(updatethread);
-		lwkt_schedule(updatethread);
-	}
-	crit_exit();
+	/*
+	 * Don't bother protecting the test.  unsleep_and_wakeup_thread()
+	 * will only do something real if the thread is in the right state.
+	 */
+	wakeup(&lbolt_syncer);
 	if (rushjob < syncdelay / 2) {
 		rushjob += 1;
 		stat_rush_requests += 1;

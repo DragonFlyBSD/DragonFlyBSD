@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.17 2005/08/31 17:20:18 liamfoy Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.18 2005/11/14 18:50:18 dillon Exp $
  */
 
 
@@ -522,7 +522,7 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
     hp->remaining--;
     
     /* set the wrapper for the process/thread name */
-    if ((PP(pp, p_flag) & P_INMEM) == 0)
+    if ((PP(pp, p_flag) & P_SWAPPEDOUT))
 	 wrapper = "[]"; /* swapped process [pname] */
     else if (((PP(pp, p_flag) & P_SYSTEM) != 0) && (TP(pp, td_proc) != NULL))
 	 wrapper = "()"; /* system process (pname) */

@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.50 2005/11/08 20:46:59 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.51 2005/11/14 18:50:05 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -306,7 +306,7 @@ proc0_init(void *dummy __unused)
 	p->p_sysent = &aout_sysvec;
 	TAILQ_INIT(&lp->lwp_sysmsgq);
 
-	p->p_flag = P_INMEM | P_SYSTEM;
+	p->p_flag = P_SYSTEM;
 	p->p_stat = SRUN;
 	p->p_nice = NZERO;
 	p->p_rtprio.type = RTP_PRIO_NORMAL;
@@ -598,7 +598,7 @@ create_init(const void *udata __unused)
 	error = fork1(&proc0.p_lwp, RFFDG | RFPROC, &initproc);
 	if (error)
 		panic("cannot fork init: %d", error);
-	initproc->p_flag |= P_INMEM | P_SYSTEM;
+	initproc->p_flag |= P_SYSTEM;
 	cpu_set_fork_handler(initproc, start_init, NULL);
 	crit_exit();
 }

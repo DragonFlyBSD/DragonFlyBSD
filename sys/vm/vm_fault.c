@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.19 2005/10/24 20:02:09 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.20 2005/11/14 18:50:15 dillon Exp $
  */
 
 /*
@@ -901,7 +901,8 @@ readrest:
 		vm_page_activate(fs.m);
 	}
 
-	if (curproc && (curproc->p_flag & P_INMEM) && curproc->p_stats) {
+	if (curproc && (curproc->p_flag & P_SWAPPEDOUT) == 0 &&
+	    curproc->p_stats) {
 		if (hardfault) {
 			curproc->p_stats->p_ru.ru_majflt++;
 		} else {

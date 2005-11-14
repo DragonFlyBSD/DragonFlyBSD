@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.23 2005/10/08 19:46:50 corecode Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.24 2005/11/14 18:49:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -209,7 +209,7 @@ state(const KINFO *k, const struct varent *vent)
 		*cp = '?';
 	}
 	cp++;
-	if (!(flag & P_INMEM))
+	if (flag & P_SWAPPEDOUT)
 		*cp++ = 'W';
 	if (p->p_nice < NZERO)
 		*cp++ = '<';
@@ -479,7 +479,7 @@ getpcpu(const KINFO *k)
 #define	fxtofl(fixpt)	((double)(fixpt) / fscale)
 
 	/* XXX - I don't like this */
-	if (p->p_swtime == 0 || (p->p_flag & P_INMEM) == 0)
+	if (p->p_swtime == 0 || (p->p_flag & P_SWAPPEDOUT))
 		return (0.0);
 	if (rawcpu)
 		return (100.0 * fxtofl(p->p_pctcpu));
@@ -532,7 +532,7 @@ getpmem(const KINFO *k)
 
 	p = KI_PROC(k);
 	e = KI_EPROC(k);
-	if ((p->p_flag & P_INMEM) == 0)
+	if (p->p_flag & P_SWAPPEDOUT)
 		return (0.0);
 	/* XXX want pmap ptpages, segtab, etc. (per architecture) */
 	szptudot = UPAGES;

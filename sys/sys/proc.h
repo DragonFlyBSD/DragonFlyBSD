@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.71 2005/11/08 20:47:02 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.72 2005/11/14 18:50:11 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -303,27 +303,31 @@ struct	proc {
 #define	p_pgid		p_pgrp->pg_id
 #endif
 
-/* Status values. */
+/*
+ * Status values.   Please note that p_stat doesn't actually take on
+ * synthesized states.
+ */
 #define	SIDL	1		/* Process being created by fork. */
 #define	SRUN	2		/* Currently runnable. */
 #define	SSLEEP	3		/* Sleeping on an address. */
-#define	SSTOP	4		/* Process debugging or suspension. */
+#define	SSTOP	4		/* Synthesized from SSLEEP + P_STOPPED */
 #define	SZOMB	5		/* Awaiting collection by parent. */
 #define STHREAD	6		/* Synthesized for eproc only */
 
 /* These flags are kept in p_flags. */
 #define	P_ADVLOCK	0x00001	/* Process may hold a POSIX advisory lock. */
 #define	P_CONTROLT	0x00002	/* Has a controlling terminal. */
-#define	P_INMEM		0x00004	/* Loaded into memory. */
+#define	P_SWAPPEDOUT	0x00004	/* Swapped out of memory */
+#define P_BREAKTSLEEP	0x00008	/* Event pending, break tsleep on sigcont */
 #define	P_PPWAIT	0x00010	/* Parent is waiting for child to exec/exit. */
 #define	P_PROFIL	0x00020	/* Has started profiling. */
 #define P_SELECT	0x00040 /* Selecting; wakeup/waiting danger. */
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
-#define	P_UNUSED00400	0x00400
+#define	P_STOPPED	0x00400	/* SIGSTOP status */
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
-#define	P_WAITED	0x01000	/* Debugging process has waited for child. */
+#define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
 #define	P_WEXIT		0x02000	/* Working on exiting. */
 #define	P_EXEC		0x04000	/* Process called exec. */
 
@@ -333,13 +337,13 @@ struct	proc {
 
 #define	P_UPCALLPEND	0x20000	/* an upcall is pending */
 
-#define	P_SWAPPING	0x40000	/* Process is being swapped. */
-#define	P_SWAPINREQ	0x80000	/* Swapin request due to wakeup */
+#define	P_SWAPWAIT	0x40000	/* Waiting for a swapin */
+#define	P_UNUSED80000	0x80000
 
 /* Marked a kernel thread */
 #define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
-#define P_UNUSED400000	0x400000
+#define P_IDLESWAP	0x400000 /* Swapout was due to idleswap, not load */
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 
 #define	P_JAILED	0x1000000 /* Process is in jail */
@@ -393,10 +397,7 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 	} while (0)
 
 /* hold process U-area in memory, normally for ptrace/procfs work */
-#define PHOLD(p) {							\
-	if ((p)->p_lock++ == 0 && ((p)->p_flag & P_INMEM) == 0)	\
-		faultin(p);						\
-}
+#define PHOLD(p)	(++(p)->p_lock)
 #define PRELE(p)	(--(p)->p_lock)
 
 #define	PIDHASH(pid)	(&pidhashtbl[(pid) & pidhash])
@@ -457,14 +458,13 @@ void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct proc *);
-void	clrrunnable (struct proc *, int stat);
+void	clrrunnable (struct proc *);
 void	sleep_gdinit (struct globaldata *);
 int	suser (struct thread *td);
 int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);
-void	unsleep (struct thread *);
 
 void	cpu_proc_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
@@ -480,6 +480,7 @@ void	cpu_thread_wait (struct thread *);
 int	cpu_coredump (struct thread *, struct vnode *, struct ucred *);
 void	setsugid (void);
 void	faultin (struct proc *p);
+void	swapin_request (void);
 
 u_int32_t	procrunnable (void);
 

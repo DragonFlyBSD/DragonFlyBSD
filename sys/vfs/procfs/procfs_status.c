@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.10 2005/10/08 19:46:51 corecode Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.11 2005/11/14 18:50:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,10 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		DOCHECK();
 	}
 
-	if (p->p_flag & P_INMEM) {
+	if (p->p_flag & P_SWAPPEDOUT) {
+		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
+		    " -1,-1 -1,-1 -1,-1");
+	} else {
 		struct timeval ut, st;
 
 		calcru(p, &ut, &st, (struct timeval *) NULL);
@@ -129,9 +132,7 @@ procfs_dostatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 		    p->p_start.tv_usec,
 		    ut.tv_sec, ut.tv_usec,
 		    st.tv_sec, st.tv_usec);
-	} else
-		ps += snprintf(ps, psbuf + sizeof(psbuf) - ps,
-		    " -1,-1 -1,-1 -1,-1");
+	}
 	DOCHECK();
 
 	ps += snprintf(ps, psbuf + sizeof(psbuf) - ps, " %s",

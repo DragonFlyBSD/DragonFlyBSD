@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.10 2005/05/07 22:50:05 corecode Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.11 2005/11/14 18:50:17 dillon Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ fetchpigs(void)
 		pp = &kpp[i].kp_proc;
 		pctp = &pt[i].pt_pctcpu;
 		time = pp->p_swtime;
-		if (time == 0 || (pp->p_flag & P_INMEM) == 0)
+		if (time == 0 || (pp->p_flag & P_SWAPPEDOUT))
 			*pctp = 0;
 		else
 			*pctp = ((double) pp->p_pctcpu /

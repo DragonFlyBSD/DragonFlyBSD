@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.7 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.8 2005/11/14 18:50:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,24 +106,24 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			continue;
 
 		case SSLEEP:
-		case SSTOP:
-			if (p->p_flag & P_INMEM) {
+			if ((p->p_flag & P_SWAPPEDOUT) == 0) {
 				if ((p->p_flag & P_SINTR) == 0)
 					totalp->t_dw++;
 				else if (p->p_slptime < maxslp)
 					totalp->t_sl++;
-			} else if (p->p_slptime < maxslp)
+			} else if (p->p_slptime < maxslp) {
 				totalp->t_sw++;
+			}
 			if (p->p_slptime >= maxslp)
 				continue;
 			break;
 
 		case SRUN:
 		case SIDL:
-			if (p->p_flag & P_INMEM)
-				totalp->t_rq++;
-			else
+			if (p->p_flag & P_SWAPPEDOUT)
 				totalp->t_sw++;
+			else
+				totalp->t_rq++;
 			if (p->p_stat == SIDL)
 				continue;
 			break;

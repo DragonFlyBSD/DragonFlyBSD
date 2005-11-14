@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.15 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.16 2005/11/14 18:50:15 dillon Exp $
  */
 
 /*
@@ -1472,11 +1472,11 @@ vm_daemon(void)
 
 			/*
 			 * let processes that are swapped out really be
-			 * swapped out set the limit to nothing (will force a
-			 * swap-out.)
+			 * swapped out.  Set the limit to nothing to get as
+			 * many pages out to swap as possible.
 			 */
-			if ((p->p_flag & P_INMEM) == 0)
-				limit = 0;	/* XXX */
+			if (p->p_flag & P_SWAPPEDOUT)
+				limit = 0;
 
 			size = vmspace_resident_count(p->p_vmspace);
 			if (limit >= 0 && size >= limit) {

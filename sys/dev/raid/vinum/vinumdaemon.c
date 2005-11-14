@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.6 2005/11/14 18:49:54 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -69,7 +69,7 @@ vinum_daemon(void)
 {
     struct daemonq *request;
 
-    curproc->p_flag |= P_INMEM | P_SYSTEM;		    /* we're a system process */
+    curproc->p_flag |= P_SYSTEM;		    /* we're a system process */
     daemon_save_config();				    /* start by saving the configuration */
     daemonpid = curproc->p_pid;				    /* mark our territory */
     while (1) {

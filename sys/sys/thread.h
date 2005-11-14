@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.72 2005/11/08 22:40:00 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.73 2005/11/14 18:50:11 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -279,6 +279,11 @@ struct thread {
  * LWKT threads stay on their (per-cpu) run queue while running, not to
  * be confused with user processes which are removed from the user scheduling
  * run queue while actually running.
+ *
+ * td_threadq can represent the thread on one of three queues... the LWKT
+ * run queue, a tsleep queue, or an lwkt blocking queue.  The LWKT subsystem
+ * does not allow a thread to be scheduled if it already resides on some
+ * queue.
  */
 #define TDF_RUNNING		0x0001	/* thread still active */
 #define TDF_RUNQ		0x0002	/* on an LWKT run queue */
@@ -287,6 +292,7 @@ struct thread {
 #define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
 #define TDF_MIGRATING		0x0020	/* thread is being migrated */
 #define TDF_SINTR		0x0040	/* interruptability hint for 'ps' */
+#define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
 
 #define TDF_SYSTHREAD		0x0100	/* system thread */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
@@ -300,6 +306,7 @@ struct thread {
 #define TDF_NORESCHED		0x00020000	/* Do not reschedule on wake */
 #define TDF_BLOCKED		0x00040000	/* Thread is blocked */
 #define TDF_PANICWARN		0x00080000	/* panic warning in switch */
+#define TDF_BLOCKQ		0x00100000	/* on block queue */
 
 /*
  * Thread priorities.  Typically only one thread from any given

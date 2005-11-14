@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.29 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.30 2005/11/14 18:50:01 dillon Exp $
  */
 
 /*
@@ -1314,7 +1314,7 @@ loop:
 			nprocs--;
 			return 0;
 		}
-		if (q->p_stat == SSTOP && (q->p_flag & P_WAITED) == 0 &&
+		if ((q->p_flag & P_STOPPED) && (q->p_flag & P_WAITED) == 0 &&
 		    (q->p_flag & P_TRACED ||
 		     (SCARG(uap, options) & (SVR4_WSTOPPED|SVR4_WCONTINUED)))) {
 			DPRINTF(("jobcontrol %d\n", q->p_pid));

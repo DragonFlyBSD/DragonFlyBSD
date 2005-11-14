@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.7 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.8 2005/11/14 18:50:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@
  * relative to process (curp)
  */
 #define TRACE_WAIT_P(curp, p) \
-	((p)->p_stat == SSTOP && \
+	(((p)->p_flag & P_STOPPED) && \
 	 (p)->p_pptr == (curp) && \
 	 ((p)->p_flag & P_TRACED))
 
@@ -246,7 +246,7 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 		error = 0;
 		if (p->p_flag & P_TRACED) {
 			while (error == 0 &&
-					(p->p_stat != SSTOP) &&
+					(p->p_flag & P_STOPPED) == 0 &&
 					(p->p_flag & P_TRACED) &&
 					(p->p_pptr == curp)) {
 				error = tsleep((caddr_t) p,
@@ -255,7 +255,7 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 			if (error == 0 && !TRACE_WAIT_P(curp, p))
 				error = EBUSY;
 		} else {
-			while (error == 0 && p->p_stat != SSTOP) {
+			while (error == 0 && (p->p_flag & P_STOPPED) == 0) {
 				error = tsleep((caddr_t) p,
 						PCATCH, "procfs", 0);
 			}
@@ -266,7 +266,12 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 		panic("procfs_control");
 	}
 
-	if (p->p_stat == SSTOP)
+	/*
+	 * If the process is in a stopped state, make it runnable again.
+	 * Do not set P_BREAKTSLEEP - that is, do not break a tsleep that
+	 * might be in progress.
+	 */
+	if (p->p_flag & P_STOPPED)
 		setrunnable(p);
 	return (0);
 }
@@ -310,6 +315,10 @@ procfs_doctl(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 #ifdef FIX_SSTEP
 				FIX_SSTEP(p);
 #endif
+				/*
+				 * Make the process runnable but do not
+				 * break its tsleep.
+				 */
 				setrunnable(p);
 			} else {
 				psignal(p, nm->nm_val);
