@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.51 2005/10/24 20:12:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.52 2005/11/14 19:14:05 dillon Exp $
  */
 
 /*
@@ -1804,8 +1804,16 @@ restart:
 		 * already been disassociated.
 		 */
 
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
-			panic("getnewbuf: locked buf");
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+			printf("getnewbuf: warning, locked buf %p, race corrected\n", bp);
+			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
+			goto restart;
+		}
+		if (bp->b_qindex != qindex) {
+			printf("getnewbuf: warning, BUF_LOCK blocked unexpectedly on buf %p index %d->%d, race corrected\n", bp, qindex, bp->b_qindex);
+			BUF_UNLOCK(bp);
+			goto restart;
+		}
 		bremfree(bp);
 
 		if (qindex == BQUEUE_CLEAN) {
