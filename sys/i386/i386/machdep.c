@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.82 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.83 2005/11/16 02:24:28 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -73,6 +73,7 @@
 #include <sys/vmmeter.h>
 #include <sys/bus.h>
 #include <sys/upcall.h>
+#include <sys/usched.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -1868,7 +1869,7 @@ init386(int first)
 	LIST_INSERT_HEAD(&proc0.p_lwps, &proc0.p_lwp, lwp_list);
 	proc0.p_lwp.lwp_thread = &thread0;
 	proc0.p_lwp.lwp_proc = &proc0;
-	proc0.p_usched = &usched_bsd4;
+	proc0.p_usched = usched_init();
 	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;

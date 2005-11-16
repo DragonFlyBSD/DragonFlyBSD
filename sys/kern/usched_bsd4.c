@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.4 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.5 2005/11/16 02:24:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,6 +98,8 @@ static void bsd4_recalculate_estcpu(struct lwp *lp);
 struct usched usched_bsd4 = {
 	{ NULL },
 	"bsd4", "Original DragonFly Scheduler",
+	NULL,			/* default registration */
+	NULL,			/* default deregistration */
 	bsd4_acquire_curproc,
 	bsd4_release_curproc,
 	bsd4_select_curproc,
@@ -107,7 +109,8 @@ struct usched usched_bsd4 = {
 	bsd4_recalculate_estcpu,
 	bsd4_resetpriority,
 	bsd4_forking,
-	bsd4_exiting
+	bsd4_exiting,
+	NULL			/* setcpumask not supported */
 };
 
 /*

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.27 2005/08/27 20:23:05 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.28 2005/11/16 02:24:30 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -651,3 +651,4 @@
 479	STD	BSD	{ int getdirentries(int fd, char *buf, u_int count, \
 			    long *basep); }
 480	STD	BSD	{ int getdents(int fd, char *buf, size_t count); }
+481	STD	BSD	{ int usched_set(const char *name, int flags); }
