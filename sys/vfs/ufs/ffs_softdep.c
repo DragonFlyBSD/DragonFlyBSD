@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.30 2005/10/14 23:45:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.31 2005/11/16 17:55:22 dillon Exp $
  */
 
 /*
@@ -4393,8 +4393,14 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 			 * is used at a place where the vnode has not yet
 			 * been sync'ed, this dependency can show up. So,
 			 * rather than panic, just flush it.
+			 *
+			 * nbp can wind up == bp if a device node for the
+			 * same filesystem is being fsynced at the same time,
+			 * leading to a panic if we don't catch the case.
 			 */
 			nbp = WK_BMSAFEMAP(wk)->sm_buf;
+			if (nbp == bp)
+				break;
 			if (getdirtybuf(&nbp, info->waitfor) == 0)
 				break;
 			FREE_LOCK(&lk);
