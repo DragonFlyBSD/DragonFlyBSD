@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.18 2005/10/22 04:06:53 corecode Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.19 2005/11/17 21:43:10 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -717,35 +717,52 @@ dointr(void)
 	u_long *intrcnt, uptime;
 	u_int64_t inttotal;
 	size_t nintr, inamlen, i, size;
-	char *intrname;
+	int nwidth;
+	char *intrstr;
+	char **intrname;
 
 	uptime = getuptime();
 	if (sysctlbyname("hw.intrnames", NULL, &inamlen, NULL, 0) != 0)
 		errx(1, "sysctlbyname");
-	intrname = malloc(inamlen);
-	if (intrname == NULL)
+	intrstr = malloc(inamlen);
+	if (intrstr == NULL)
 		err(1, "malloc");
-	sysctlbyname("hw.intrnames", intrname, &inamlen, NULL, 0);
-	for (nintr = 0, i = 0; i < inamlen; ++i)
-		if (intrname[i] == 0)
+	sysctlbyname("hw.intrnames", intrstr, &inamlen, NULL, 0);
+	for (nintr = 0, i = 0; i < inamlen; ++i) {
+		if (intrstr[i] == 0)
 			nintr++;
+	}
+	intrname = malloc(nintr * sizeof(char *));
+	for (i = 0; i < nintr; ++i) {
+		intrname[i] = intrstr;
+		intrstr += strlen(intrstr) + 1;
+	}
+
 	size = nintr * sizeof(*intrcnt);
 	intrcnt = malloc(size);
 	if (intrcnt == NULL)
 		err(1, "malloc");
 	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
+
+	nwidth = 8;
+	for (i = 0; i < nintr; ++i) {
+		if (nwidth < (int)strlen(intrname[i]))
+			nwidth = (int)strlen(intrname[i]);
+	}
+
 	printf("interrupt                   total       rate\n");
 	inttotal = 0;
-	while (nintr-- > 0) {
-		if (*intrcnt) {
-		    printf("%-12s %20lu %10lu\n", intrname,
-			    *intrcnt, *intrcnt / uptime);
+	for (i = 0; i < nintr; ++i) {
+		if (intrcnt[i] || strncmp(intrname[i], "irq", 3) != 0) {
+			printf("%-*.*s %11lu %10lu\n", 
+				nwidth, nwidth, intrname[i],
+				intrcnt[i], intrcnt[i] / uptime);
 		}
-		intrname += strlen(intrname) + 1;
-		inttotal += *intrcnt++;
+		inttotal += intrcnt[i];
 	}
-	printf("Total        %20llu %10llu\n", inttotal,
-			inttotal / (u_int64_t) uptime);
+	printf("%-*.*s %11llu %10llu\n", 
+		nwidth, nwidth, "Total",
+		inttotal, inttotal / (u_int64_t) uptime);
 }
 
 #define	MAX_KMSTATS	200
