@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.20 2005/10/30 04:41:08 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.21 2005/11/17 21:29:45 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -220,14 +220,6 @@ fwohci_pci_probe( device_t dev )
 	return ENXIO;
 }
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-static void
-fwohci_dummy_intr(void *arg)
-{
-	/* XXX do nothing */
-}
-#endif
-
 static int
 fwohci_pci_init(device_t self)
 {
@@ -328,16 +320,6 @@ fwohci_pci_attach(device_t self)
 			0,
 #endif
 		     (driver_intr_t *) fwohci_intr, sc, &sc->ih, NULL);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	/* XXX splcam() should mask this irq for sbp.c*/
-	err = bus_setup_intr(self, sc->irq_res, 0,
-		     (driver_intr_t *) fwohci_dummy_intr, sc,
-		     &sc->ih_cam, NULL);
-	/* XXX splbio() should mask this irq for physio()/fwmem_strategy() */
-	err = bus_setup_intr(self, sc->irq_res, 0,
-		     (driver_intr_t *) fwohci_dummy_intr, sc,
-		     &sc->ih_bio, NULL);
-#endif
 	if (err) {
 		device_printf(self, "Could not setup irq, %d\n", err);
 		fwohci_pci_detach(self);
@@ -409,10 +391,6 @@ fwohci_pci_detach(device_t self)
 			/* XXX or should we panic? */
 			device_printf(self, "Could not tear down irq, %d\n",
 				      err);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		bus_teardown_intr(self, sc->irq_res, sc->ih_cam);
-		bus_teardown_intr(self, sc->irq_res, sc->ih_bio);
-#endif
 		sc->ih = NULL;
 	}
 

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcivar.h,v 1.11 2004/01/06 14:30:47 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.5 2004/02/05 17:51:44 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.6 2005/11/17 21:29:45 dillon Exp $
  *
  */
 
@@ -50,10 +50,6 @@ typedef struct fwohci_softc {
 	bus_space_tag_t bst;
 	bus_space_handle_t bsh;
 	void *ih;
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	void *ih_cam;
-	void *ih_bio;
-#endif
 	struct resource *bsr;
 	struct resource *irq_res;
 	struct fwohci_dbch{
