@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.49 2005/10/13 00:06:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.50 2005/11/19 17:58:20 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1862,6 +1862,7 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	struct filedesc *fdp;
 	struct file *fp;
 	struct proc *p;
+	uid_t uid;
 	int count;
 	int error;
 	int n;
@@ -1877,29 +1878,39 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	 * the elements and add f_count via the filehead list because 
 	 * threaded processes share their descriptor table and f_count might
 	 * still be '1' in that case.
+	 *
+	 * Since the SYSCTL op can block, we must hold the process to
+	 * prevent it being ripped out from under us either in the 
+	 * file descriptor loop or in the greater LIST_FOREACH.  The
+	 * process may be in varying states of disrepair.  If the process
+	 * is in SZOMB we may have caught it just as it is being removed
+	 * from the allproc list, we must skip it in that case to maintain
+	 * an unbroken chain through the allproc list.
 	 */
 	count = 0;
 	error = 0;
 	LIST_FOREACH(p, &allproc, p_list) {
-		if (p->p_stat == SIDL)
+		if (p->p_stat == SIDL || p->p_stat == SZOMB)
 			continue;
 		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0)
 			continue;
 		if ((fdp = p->p_fd) == NULL)
 			continue;
+		PHOLD(p);
 		for (n = 0; n < fdp->fd_nfiles; ++n) {
 			if ((fp = fdp->fd_files[n].fp) == NULL)
 				continue;
 			if (req->oldptr == NULL) {
 				++count;
 			} else {
-				kcore_make_file(&kf, fp, p->p_pid,
-						p->p_ucred->cr_uid, n);
+				uid = p->p_ucred ? p->p_ucred->cr_uid : -1;
+				kcore_make_file(&kf, fp, p->p_pid, uid, n);
 				error = SYSCTL_OUT(req, &kf, sizeof(kf));
 				if (error)
 					break;
 			}
 		}
+		PRELE(p);
 		if (error)
 			break;
 	}

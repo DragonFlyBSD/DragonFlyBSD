@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.48 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.49 2005/11/19 17:58:20 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -317,11 +317,15 @@ exit1(int rv)
 	/*
 	 * Remove proc from allproc queue and pidhash chain.
 	 * Place onto zombproc.  Unlink from parent's child list.
+	 *
+	 * Interlock the SZOMB state with a tsleep against p_lock
+	 * (PHOLD/PRELE) so allproc loops don't get confused.
 	 */
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
 	p->p_stat = SZOMB;
-
+	while (p->p_lock)
+		tsleep(p, 0, "reap1", hz / 10);
 	LIST_REMOVE(p, p_hash);
 
 	q = LIST_FIRST(&p->p_children);
@@ -472,7 +476,7 @@ loop:
 			 * YYY no wakeup occurs so we depend on the timeout.
 			 */
 			if ((p->p_thread->td_flags & TDF_RUNNING) != 0) {
-				tsleep(p->p_thread, 0, "reap", 1);
+				tsleep(p->p_thread, 0, "reap2", 1);
 				goto loop;
 			}
 
@@ -485,7 +489,7 @@ loop:
 			 */
 			if (p->p_lock) {
 				while (p->p_lock)
-					tsleep(p, 0, "reap2", hz);
+					tsleep(p, 0, "reap3", hz);
 			}
 			lwkt_wait_free(p->p_thread);
 

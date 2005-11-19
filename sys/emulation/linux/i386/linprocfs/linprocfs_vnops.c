@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.22 2005/09/14 01:13:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.23 2005/11/19 17:58:19 dillon Exp $
  */
 
 /*
@@ -988,8 +988,10 @@ linprocfs_readdir_root(struct vop_readdir_args *ap)
 			break;
 		}
 
+		PHOLD(p);
 		retval = vop_write_dirent(&error, uio,
 		    d_ino, d_type, d_namlen, d_name);
+		PRELE(p);
 		if (retval)
 			break;
  	}

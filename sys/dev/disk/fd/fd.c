@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.23 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.24 2005/11/19 17:58:17 dillon Exp $
  *
  */
 
@@ -2148,7 +2148,6 @@ retrier(struct fdc_data *fdc)
 static int
 fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 {
-	struct proc *p = td->td_proc;
  	fdu_t	fdu;
  	fd_p	fd;
 
@@ -2166,7 +2165,6 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/*
 	 * keep the process from being swapped
 	 */
-	PHOLD(p);
 	BUF_LOCKINIT(bp);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
 	bp->b_flags = B_PHYS | B_FORMAT;
@@ -2205,7 +2203,6 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/*
 	 * allow the process to be swapped
 	 */
-	PRELE(p);
 	BUF_UNLOCK(bp);
 	BUF_LOCKFREE(bp);
 	free(bp, M_TEMP);

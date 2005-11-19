@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.36 2005/11/14 18:50:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.37 2005/11/19 17:58:33 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -325,7 +325,6 @@ void
 faultin(struct proc *p)
 {
 	if (p->p_flag & P_SWAPPEDOUT) {
-		PHOLD(p);
 		/*
 		 * The process is waiting in the kernel to return to user
 		 * mode but cannot until P_SWAPPEDOUT gets cleared.
@@ -338,8 +337,6 @@ faultin(struct proc *p)
 #endif
 		wakeup(p);
 
-		/* undo the effect of setting SLOCK above */
-		PRELE(p);
 		crit_exit();
 	}
 }

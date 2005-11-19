@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.12 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.13 2005/11/19 17:58:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -247,12 +247,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	resid = uio->uio_resid;
 	offset = uio->uio_offset;
 
-	/*
-	 * keep the process from being swapped
-	 */
-	if (uio->uio_td && uio->uio_td->td_proc)
-		PHOLD(uio->uio_td->td_proc);
-	
 	error = 0;
 	nerror = 0;
 	
@@ -376,8 +370,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	
 	if (error == 0)
 		error = nerror;
-	if (uio->uio_td && uio->uio_td->td_proc)
-		PRELE(uio->uio_td->td_proc);
 	uio->uio_iov->iov_base = udata;
 	uio->uio_resid = resid;
 	uio->uio_offset = offset;

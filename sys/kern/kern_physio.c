@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.12 2005/08/04 21:08:35 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.13 2005/11/19 17:58:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,12 +49,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	u_int iolen;
 	struct buf *bp;
 
-	/*
-	 * NOTE: we no longer have to PHOLD() the process, because the
-	 * kernel stack / uarea cannot be swapped, and when it can be in
-	 * the future it will only happen if the process is sleeping on
-	 * a particular address.
-	 */
 	bp = getpbuf(NULL);
 	sa = bp->b_data;
 	error = 0;

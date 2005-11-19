@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.24 2005/08/27 20:23:06 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.25 2005/11/19 17:58:22 dillon Exp $
  */
 
 
@@ -1424,7 +1424,6 @@ nfs_doio(struct buf *bp, struct thread *td)
 			  np->n_mtime != np->n_vattr.va_mtime.tv_sec))) {
 			uprintf("Process killed due to text file modification\n");
 			psignal(td->td_proc, SIGKILL);
-			PHOLD(td->td_proc);
 		}
 		break;
 	    case VLNK:
