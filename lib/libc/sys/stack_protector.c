@@ -24,16 +24,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: stack_protector.c,v 1.3 2002/12/10 08:53:42 etoh Exp $
- * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.2 2005/01/31 22:29:46 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/stack_protector.c,v 1.3 2005/11/19 15:19:03 joerg Exp $
  */
 
 #include "namespace.h"
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <string.h>
 #include <syslog.h>
+#include <unistd.h>
 #include "un-namespace.h"
 
-void __stack_smash_handler(char func[], int damaged __attribute__((unused)));
+void __stack_smash_handler(char func[], int damaged);
 static void __guard_setup(void) __attribute__ ((constructor));
 
 long __guard[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -64,9 +68,9 @@ __guard_setup(void)
 }
 
 void
-__stack_smash_handler(char func[], int damaged)
+__stack_smash_handler(char func[], int damaged  __unused)
 {
-    const char message[] = "stack overflow in function %s";
+    static const char message[] = "stack overflow in function %s";
     struct sigaction sa;
 
     /* this may fail on a chroot jail, though luck */
