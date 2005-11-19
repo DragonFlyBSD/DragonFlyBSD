@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.13 2005/05/23 19:41:59 joerg Exp $
+ * $DragonFly: src/include/unistd.h,v 1.14 2005/11/19 22:26:54 swildner Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -105,6 +105,7 @@ long	 sysconf(int);
 pid_t	 tcgetpgrp(int);
 int	 tcsetpgrp(int, pid_t);
 char	*ttyname(int);
+char	*ttyname_r(int, char *, size_t);
 int	 unlink(const char *);
 ssize_t	 write(int, const void *, size_t);
 
