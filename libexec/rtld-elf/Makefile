@@ -1,5 +1,5 @@
 # $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
-# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.11 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.12 2005/11/19 22:00:20 joerg Exp $
 
 PROG=		ld-elf.so.2
 SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
@@ -7,7 +7,10 @@ SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
 MAN=		rtld.1
 CFLAGS+=	-Wall -I${.CURDIR}/${MACHINE_ARCH} -I${.CURDIR} -D__thread=
 LDFLAGS+=	-nostdlib -e .rtld_start -Wl,--no-undefined
-INSTALLFLAGS=	-fschg -C -b
+INSTALLFLAGS=	-C -b
+.ifndef NOFSCHG
+INSTALLFLAGS+=	-fschg
+.endif
 MLINKS=		rtld.1 ld-elf.so.1.1
 MLINKS+=	rtld.1 ld-elf.so.2.1
 
