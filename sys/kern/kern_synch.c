@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.53 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.54 2005/11/19 17:19:47 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -466,6 +466,37 @@ resume:
 	}
 	crit_exit_quick(td);
 	return (error);
+}
+
+/*
+ * This is a dandy function that allows us to interlock tsleep/wakeup
+ * operations with unspecified upper level locks, such as lockmgr locks,
+ * simply by holding a critical section.  The sequence is:
+ *
+ *	(enter critical section)
+ *	(acquire upper level lock)
+ *	tsleep_interlock(blah)
+ *	(release upper level lock)
+ *	tsleep(blah, ...)
+ *	(exit critical section)
+ *
+ * Basically this function sets our cpumask for the ident which informs
+ * other cpus that our cpu 'might' be waiting (or about to wait on) the
+ * hash index related to the ident.  The critical section prevents another
+ * cpu's wakeup() from being processed on our cpu until we are actually
+ * able to enter the tsleep().  Thus, no race occurs between our attempt
+ * to release a resource and sleep, and another cpu's attempt to acquire
+ * a resource and call wakeup.
+ *
+ * There isn't much of a point to this function unless you call it while
+ * holding a critical section.
+ */
+void
+tsleep_interlock(void *ident)
+{
+	int id = LOOKUP(ident);
+
+	atomic_set_int(&slpque_cpumasks[id], mycpu->gd_cpumask);
 }
 
 /*

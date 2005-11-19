@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.14 2005/06/06 15:02:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.15 2005/11/19 17:19:47 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -50,7 +50,9 @@
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/sysctl.h>
+#include <sys/spinlock.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 /*
  * 0: no warnings, 1: warnings, 2: panic
@@ -106,6 +108,9 @@ shareunlock(struct lock *lkp, int decr) {
 	}
 }
 
+/*
+ * lock acquisition helper routine.  Called with the lock's spinlock held.
+ */
 static int
 acquire(struct lock *lkp, int extflags, int wanted) 
 {
@@ -120,29 +125,32 @@ acquire(struct lock *lkp, int extflags, int wanted)
 			return 0;
 	}
 
-	crit_enter();
 	while ((lkp->lk_flags & wanted) != 0) {
 		lkp->lk_flags |= LK_WAIT_NONZERO;
 		lkp->lk_waitcount++;
-		/* note: serialization lock is held through tsleep */
+
+		/*
+		 * Use the _quick version so the critical section is left
+		 * intact, protecting the tsleep interlock.  See 
+		 * tsleep_interlock() for a description of what is
+		 * happening here.
+		 */
+		tsleep_interlock(lkp);
+		spin_unlock_quick(&lkp->lk_spinlock);
 		error = tsleep(lkp, lkp->lk_prio, lkp->lk_wmesg, 
 			    ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
+		spin_lock_quick(&lkp->lk_spinlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
 			lkp->lk_waitcount = 0;
 		} else {
 			lkp->lk_waitcount--;
 		}
-		if (error) {
-			crit_exit();
+		if (error)
 			return error;
-		}
-		if (extflags & LK_SLEEPFAIL) {
-			crit_exit();
+		if (extflags & LK_SLEEPFAIL)
 			return ENOLCK;
-		}
 	}
-	crit_exit();
 	return 0;
 }
 
@@ -152,19 +160,21 @@ acquire(struct lock *lkp, int extflags, int wanted)
  * Shared requests increment the shared count. Exclusive requests set the
  * LK_WANT_EXCL flag (preventing further shared locks), and wait for already
  * accepted shared locks and shared-to-exclusive upgrades to go away.
+ *
+ * A spinlock is held for most of the procedure.  We must not do anything
+ * fancy while holding the spinlock.
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
+lockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 	struct thread *td)
 #else
-debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
+debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 	struct thread *td, const char *name, const char *file, int line)
 #endif
 {
 	int error;
 	int extflags;
-	lwkt_tokref ilock;
 	static int didpanic;
 
 	error = 0;
@@ -175,6 +185,8 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 #ifndef DEBUG_LOCKS
 		    if (lockmgr_from_int == 2) {
 			    didpanic = 1;
+			    if (flags & LK_INTERLOCK)
+				    spin_unlock(interlkp);
 			    panic(
 				"lockmgr %s from %p: called from interrupt",
 				lkp->lk_wmesg, ((int **)&lkp)[-1]);
@@ -187,6 +199,8 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 #else
 		    if (lockmgr_from_int == 2) {
 			    didpanic = 1;
+			    if (flags & LK_INTERLOCK)
+				    spin_unlock(interlkp);
 			    panic(
 				"lockmgr %s from %s:%d: called from interrupt",
 				lkp->lk_wmesg, file, line);
@@ -199,14 +213,13 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 #endif
 	}
 
-	lwkt_gettoken(&ilock, &lkp->lk_interlock);
+	spin_lock(&lkp->lk_spinlock);
 	if (flags & LK_INTERLOCK)
-		lwkt_reltoken(interlkp);
+		spin_unlock(interlkp);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 
 	switch (flags & LK_TYPE_MASK) {
-
 	case LK_SHARED:
 		/*
 		 * If we are not the exclusive lock holder, we have to block
@@ -247,8 +260,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		/* fall into downgrade */
 
 	case LK_DOWNGRADE:
-		if (lkp->lk_lockholder != td || lkp->lk_exclusivecount == 0)
+		if (lkp->lk_lockholder != td || lkp->lk_exclusivecount == 0) {
+			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: not holding exclusive lock");
+		}
 		sharelock(lkp, lkp->lk_exclusivecount);
 		lkp->lk_exclusivecount = 0;
 		lkp->lk_flags &= ~LK_HAVE_EXCL;
@@ -280,8 +295,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		 * after the upgrade). If we return an error, the file
 		 * will always be unlocked.
 		 */
-		if ((lkp->lk_lockholder == td) || (lkp->lk_sharecount <= 0))
+		if ((lkp->lk_lockholder == td) || (lkp->lk_sharecount <= 0)) {
+			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: upgrade exclusive lock");
+		}
 		shareunlock(lkp, 1);
 		COUNT(td, -1);
 		/*
@@ -307,8 +324,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 				break;
 			lkp->lk_flags |= LK_HAVE_EXCL;
 			lkp->lk_lockholder = td;
-			if (lkp->lk_exclusivecount != 0)
+			if (lkp->lk_exclusivecount != 0) {
+				spin_unlock(&lkp->lk_spinlock);
 				panic("lockmgr: non-zero exclusive count");
+			}
 			lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
 			lkp->lk_filename = file;
@@ -333,8 +352,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 			/*
 			 *	Recursive lock.
 			 */
-			if ((extflags & (LK_NOWAIT | LK_CANRECURSE)) == 0)
+			if ((extflags & (LK_NOWAIT | LK_CANRECURSE)) == 0) {
+				spin_unlock(&lkp->lk_spinlock);
 				panic("lockmgr: locking against myself");
+			}
 			if ((extflags & LK_CANRECURSE) != 0) {
 				lkp->lk_exclusivecount++;
 				COUNT(td, 1);
@@ -365,8 +386,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 			break;
 		lkp->lk_flags |= LK_HAVE_EXCL;
 		lkp->lk_lockholder = td;
-		if (lkp->lk_exclusivecount != 0)
+		if (lkp->lk_exclusivecount != 0) {
+			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: non-zero exclusive count");
+		}
 		lkp->lk_exclusivecount = 1;
 #if defined(DEBUG_LOCKS)
 			lkp->lk_filename = file;
@@ -380,6 +403,7 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		if (lkp->lk_exclusivecount != 0) {
 			if (lkp->lk_lockholder != td &&
 			    lkp->lk_lockholder != LK_KERNTHREAD) {
+				spin_unlock(&lkp->lk_spinlock);
 				panic("lockmgr: pid %d, not %s thr %p unlocking",
 				    (td->td_proc ? td->td_proc->p_pid : -99),
 				    "exclusive lock holder",
@@ -410,8 +434,10 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		 * check for holding a shared lock, but at least we can
 		 * check for an exclusive one.
 		 */
-		if (lkp->lk_lockholder == td)
+		if (lkp->lk_lockholder == td) {
+			spin_unlock(&lkp->lk_spinlock);
 			panic("lockmgr: draining against myself");
+		}
 
 		error = acquiredrain(lkp, extflags);
 		if (error)
@@ -428,7 +454,7 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		break;
 
 	default:
-		lwkt_reltoken(&ilock);
+		spin_unlock(&lkp->lk_spinlock);
 		panic("lockmgr: unknown locktype request %d",
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
@@ -439,10 +465,13 @@ debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 		lkp->lk_flags &= ~LK_WAITDRAIN;
 		wakeup((void *)&lkp->lk_flags);
 	}
-	lwkt_reltoken(&ilock);
+	spin_unlock(&lkp->lk_spinlock);
 	return (error);
 }
 
+/*
+ * lock acquisition helper routine.  Called with the lock's spinlock held.
+ */
 static int
 acquiredrain(struct lock *lkp, int extflags)
 {
@@ -457,10 +486,18 @@ acquiredrain(struct lock *lkp, int extflags)
 
 	while (lkp->lk_flags & LK_ALL) {
 		lkp->lk_flags |= LK_WAITDRAIN;
-		/* interlock serialization held through tsleep */
+		/*
+		 * Use the _quick version so the critical section is left
+		 * intact, protecting the tsleep interlock.  See 
+		 * tsleep_interlock() for a description of what is
+		 * happening here.
+		 */
+		tsleep_interlock(&lkp->lk_flags);
+		spin_unlock_quick(&lkp->lk_spinlock);
 		error = tsleep(&lkp->lk_flags, lkp->lk_prio,
 			lkp->lk_wmesg, 
 			((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
+		spin_lock_quick(&lkp->lk_spinlock);
 		if (error)
 			return error;
 		if (extflags & LK_SLEEPFAIL) {
@@ -476,7 +513,7 @@ acquiredrain(struct lock *lkp, int extflags)
 void
 lockinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
 {
-	lwkt_token_init(&lkp->lk_interlock);
+	spin_init(&lkp->lk_spinlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
 	lkp->lk_sharecount = 0;
 	lkp->lk_waitcount = 0;
@@ -508,10 +545,9 @@ lockreinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
 int
 lockstatus(struct lock *lkp, struct thread *td)
 {
-	lwkt_tokref ilock;
 	int lock_type = 0;
 
-	lwkt_gettoken(&ilock, &lkp->lk_interlock);
+	spin_lock(&lkp->lk_spinlock);
 	if (lkp->lk_exclusivecount != 0) {
 		if (td == NULL || lkp->lk_lockholder == td)
 			lock_type = LK_EXCLUSIVE;
@@ -520,7 +556,7 @@ lockstatus(struct lock *lkp, struct thread *td)
 	} else if (lkp->lk_sharecount != 0) {
 		lock_type = LK_SHARED;
 	}
-	lwkt_reltoken(&ilock);
+	spin_unlock(&lkp->lk_spinlock);
 	return (lock_type);
 }
 
@@ -532,12 +568,11 @@ lockstatus(struct lock *lkp, struct thread *td)
 int
 lockcount(struct lock *lkp)
 {
-	lwkt_tokref ilock;
 	int count;
 
-	lwkt_gettoken(&ilock, &lkp->lk_interlock);
+	spin_lock(&lkp->lk_spinlock);
 	count = lkp->lk_exclusivecount + lkp->lk_sharecount;
-	lwkt_reltoken(&ilock);
+	spin_unlock(&lkp->lk_spinlock);
 	return (count);
 }
 

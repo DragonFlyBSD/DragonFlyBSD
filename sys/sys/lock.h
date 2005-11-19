@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.10 2004/11/09 17:41:29 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.11 2005/11/19 17:19:48 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -52,6 +52,9 @@
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>		/* lwkt_token */
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
 
 /*
  * The general lock structure.  Provides for multiple shared locks,
@@ -61,7 +64,7 @@
 struct thread;
 
 struct lock {
-	lwkt_token lk_interlock;	/* lock on remaining fields */
+	struct spinlock lk_spinlock;	/* lock on remaining fields */
 	u_int	lk_flags;		/* see below */
 	int	lk_sharecount;		/* # of accepted shared locks */
 	int	lk_waitcount;		/* # of processes sleeping for lock */
@@ -150,7 +153,7 @@ struct lock {
  * Non-persistent external flags.
  */
 #define LK_INTERLOCK	0x00010000 /* unlock passed simple lock after
-				   getting lk_interlock */
+				      getting lk_spinlock */
 #define LK_RETRY	0x00020000 /* vn_lock: retry until locked */
 #define	LK_NOOBJ	0x00040000 /* vget: don't create object */
 #define	LK_THISLAYER	0x00080000 /* vn_lock: lock/unlock only current layer */
@@ -193,7 +196,7 @@ void	lockinit (struct lock *, int prio, char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, int prio, char *wmesg, int timo, int flags);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,
-			struct lwkt_tokref *, struct thread *p,
+			struct spinlock *, struct thread *p,
 			const char *,
 			const char *,
 			int);
@@ -202,7 +205,7 @@ int	debuglockmgr (struct lock *, u_int flags,
 	    "lockmgr", __FILE__, __LINE__)
 #else
 int	lockmgr (struct lock *, u_int flags,
-			struct lwkt_tokref *, struct thread *td);
+			struct spinlock *, struct thread *td);
 #endif
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);

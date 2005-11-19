@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.20 2005/08/12 00:17:26 hmp Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.21 2005/11/19 17:19:48 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -59,9 +59,11 @@
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
 #endif
-
 #ifndef _SYS_BIO_H_
 #include <sys/bio.h>
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 struct buf;
@@ -276,7 +278,7 @@ struct buf {
 /*
  * Buffer locking.  See sys/buf2.h for inline functions.
  */
-extern struct lwkt_token buftimetoken;	/* Interlock on setting prio and timo */
+extern struct spinlock buftimespinlock;	/* Interlock on setting prio and timo */
 extern char *buf_wmesg;			/* Default buffer lock message */
 #define BUF_WMESG "bufwait"
 

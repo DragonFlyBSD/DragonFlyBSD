@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.10 2005/06/10 23:59:33 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.11 2005/11/19 17:19:48 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -48,9 +48,11 @@
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>	/* curthread */
 #endif
-
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>	/* crit_*() functions */
+#endif
+#ifndef _SYS_SPINLOCK2_H_
+#include <sys/spinlock2.h>	/* crit_*() functions */
 #endif
 
 /*
@@ -66,17 +68,14 @@
 static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
-	lwkt_tokref ilock;
 	int ret;
 
-	crit_enter();
-	lwkt_gettoken(&ilock, &buftimetoken);
-	locktype |= LK_INTERLOCK;
+	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = buf_wmesg;
 	bp->b_lock.lk_prio = 0;		/* tsleep flags */
 	/* bp->b_lock.lk_timo = 0;   not necessary */
-	ret = lockmgr(&(bp)->b_lock, locktype, &ilock, curthread);
-	crit_exit();
+	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK,
+			&buftimespinlock, curthread);
 	return ret;
 }
 /*
@@ -85,17 +84,14 @@ BUF_LOCK(struct buf *bp, int locktype)
 static __inline int
 BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 {
-	lwkt_tokref ilock;
 	int ret;
 
-	crit_enter();
-	lwkt_gettoken(&ilock, &buftimetoken);
-	locktype |= LK_INTERLOCK | LK_TIMELOCK;
+	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = wmesg;
 	bp->b_lock.lk_prio = catch;	/* tsleep flags */
 	bp->b_lock.lk_timo = timo;
-	ret = lockmgr(&(bp)->b_lock, locktype, &ilock, curthread);
-	crit_exit();
+	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK | LK_TIMELOCK,
+			&buftimespinlock, curthread);
 	return ret;
 }
 /*
@@ -105,9 +101,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 static __inline void
 BUF_UNLOCK(struct buf *bp)
 {
-	crit_enter();
 	lockmgr(&(bp)->b_lock, LK_RELEASE, NULL, curthread);
-	crit_exit();
 }
 
 /*
@@ -134,12 +128,7 @@ BUF_KERNPROC(struct buf *bp)
 static __inline int
 BUF_REFCNT(struct buf *bp)
 {
-	int ret;
-
-	crit_enter();
-	ret = lockcount(&(bp)->b_lock);
-	crit_exit();
-	return ret;
+	return (lockcount(&(bp)->b_lock));
 }
 
 static __inline int

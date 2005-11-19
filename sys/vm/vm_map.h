@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.16 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.17 2005/11/19 17:19:52 dillon Exp $
  */
 
 /*
@@ -342,21 +342,6 @@ _vm_map_lock_upgrade(vm_map_t map, struct thread *td) {
 #define vm_map_lock_downgrade(map) \
 	lockmgr(&(map)->lock, LK_DOWNGRADE, NULL, curthread)
 #endif
-
-#define vm_map_set_recursive(map) \
-	do { \
-		lwkt_tokref ilock; \
-		lwkt_gettoken(&ilock, &(map)->lock.lk_interlock); \
-		(map)->lock.lk_flags |= LK_CANRECURSE; \
-		lwkt_reltoken(&ilock); \
-	} while(0)
-#define vm_map_clear_recursive(map) \
-	do { \
-		lwkt_tokref ilock; \
-		lwkt_gettoken(&ilock, &(map)->lock.lk_interlock); \
-		(map)->lock.lk_flags &= ~LK_CANRECURSE; \
-		lwkt_reltoken(&ilock); \
-	} while(0)
 
 #endif /* _KERNEL */
 
