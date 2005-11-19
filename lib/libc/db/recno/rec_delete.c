@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_delete.c	8.7 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -135,13 +135,13 @@ rec_rdelete(BTREE *t, recno_t nrec)
  *
  * Parameters:
  *	t:	tree
- *	index:	index on current page to delete
+ *	idx:	index on current page to delete
  *
  * Returns:
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_dleaf(BTREE *t, PAGE *h, u_int32_t index)
+__rec_dleaf(BTREE *t, PAGE *h, u_int32_t idx)
 {
 	RLEAF *rl;
 	indx_t *ip, cnt, offset;
@@ -159,7 +159,7 @@ __rec_dleaf(BTREE *t, PAGE *h, u_int32_t index)
 	 * down, overwriting the deleted record and its index.  If the record
 	 * uses overflow pages, make them available for reuse.
 	 */
-	to = rl = GETRLEAF(h, index);
+	to = rl = GETRLEAF(h, idx);
 	if (rl->flags & P_BIGDATA && __ovfl_delete(t, rl->bytes) == RET_ERROR)
 		return (RET_ERROR);
 	nbytes = NRLEAF(rl);
@@ -172,8 +172,8 @@ __rec_dleaf(BTREE *t, PAGE *h, u_int32_t index)
 	memmove(from + nbytes, from, (char *)to - from);
 	h->upper += nbytes;
 
-	offset = h->linp[index];
-	for (cnt = &h->linp[index] - (ip = &h->linp[0]); cnt--; ++ip)
+	offset = h->linp[idx];
+	for (cnt = &h->linp[idx] - (ip = &h->linp[0]); cnt--; ++ip)
 		if (ip[0] < offset)
 			ip[0] += nbytes;
 	for (cnt = &h->linp[NEXTINDEX(h)] - ip; --cnt; ++ip)

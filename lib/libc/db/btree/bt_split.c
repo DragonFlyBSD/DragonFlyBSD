@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_split.c	8.9 (Berkeley) 7/26/94
- * $DragonFly: src/lib/libc/db/btree/bt_split.c,v 1.7 2005/11/12 23:01:54 swildner Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_split.c,v 1.8 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -88,6 +88,9 @@ __bt_split(BTREE *t, PAGE *sp, const DBT *key, const DBT *data, int flags,
 	int parentsplit;
 	char *dest;
 
+	bi = NULL;
+	bl = NULL;
+	nksize = 0;
 	/*
 	 * Split the page into two pages, l and r.  The split routines return
 	 * a pointer to the page into which the key should be inserted and with
@@ -600,6 +603,7 @@ bt_psplit(BTREE *t, PAGE *h, PAGE *l, PAGE *r, indx_t *pskip, size_t ilen)
 	u_int32_t nbytes;
 	int bigkeycnt, isbigkey;
 
+	src = NULL;
 	/*
 	 * Split the data to the left and right pages.  Leave the skip index
 	 * open.  Additionally, make some effort not to split on an overflow
@@ -647,8 +651,8 @@ bt_psplit(BTREE *t, PAGE *h, PAGE *l, PAGE *r, indx_t *pskip, size_t ilen)
 		 * where we decide to try and copy too much onto the left page.
 		 * Make sure that doesn't happen.
 		 */
-		if (skip <= off &&
-		    used + nbytes + sizeof(indx_t) >= full || nxt == top - 1) {
+		if ((skip <= off &&
+		    used + nbytes + sizeof(indx_t) >= full) || nxt == top - 1) {
 			--off;
 			break;
 		}

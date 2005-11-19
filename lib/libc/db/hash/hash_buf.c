@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_buf.c,v 1.4.8.1 2001/03/05 07:38:05 obrien Exp $
- * $DragonFly: src/lib/libc/db/hash/hash_buf.c,v 1.6 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_buf.c,v 1.7 2005/11/19 20:46:32 swildner Exp $
  *
  * @(#)hash_buf.c	8.5 (Berkeley) 7/15/94
  */
@@ -96,12 +96,12 @@ static BUFHEAD *newbuf (HTAB *, u_int32_t, BUFHEAD *);
  * CAVEAT:  The buffer header accessed via prev_bp's ovfl field may no longer
  * be valid.  Therefore, you must always verify that its address matches the
  * address you are seeking.
+ *
+ * Parameters:
+ *	newpage:	If prev_bp set, indicates a new overflow page
  */
 extern BUFHEAD *
-__get_buf(HTAB *hashp,
-	  u_int32_t addr,
-	  BUFHEAD *prev_bp,
-	  int newpage)	/* If prev_bp set, indicates a new overflow page. */
+__get_buf(HTAB *hashp, u_int32_t addr, BUFHEAD *prev_bp, int newpage)
 {
 	BUFHEAD *bp;
 	u_int32_t is_disk_mask;
@@ -110,6 +110,8 @@ __get_buf(HTAB *hashp,
 
 	is_disk = 0;
 	is_disk_mask = 0;
+	segment_ndx = 0;
+	segp = NULL;
 	if (prev_bp) {
 		bp = prev_bp->ovfl;
 		if (!bp || (bp->addr != addr))

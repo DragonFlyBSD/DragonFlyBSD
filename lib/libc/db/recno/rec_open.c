@@ -31,7 +31,7 @@
  *
  * @(#)rec_open.c	8.10 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/recno/rec_open.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include "namespace.h"
@@ -60,6 +60,8 @@ __rec_open(const char *fname, int flags, int mode, const RECNOINFO *openinfo,
 	PAGE *h;
 	struct stat sb;
 	int rfd, sverrno;
+
+	rfd = 0;
 
 	/* Open the user's file -- if this fails, we're done. */
 	if (fname != NULL && (rfd = _open(fname, flags, mode)) < 0)

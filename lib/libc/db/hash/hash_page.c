@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_page.c,v 1.5 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libc/db/hash/hash_page.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_page.c,v 1.8 2005/11/19 20:46:32 swildner Exp $
  *
  * @(#)hash_page.c	8.7 (Berkeley) 8/16/94
  */
@@ -261,17 +261,17 @@ __split_page(HTAB *hashp, u_int32_t obucket, u_int32_t nbucket)
  * page or it might be a big key/data pair in which case we need to fix the
  * big key/data pair.
  *
+ * Parameters:
+ *	obucket - Same as __split_page
+ *	copyto  - First byte on page which contains key/data values
+ *	moved   - Number of pairs moved to new page	
  * Returns:
  *	 0 ==> success
  *	-1 ==> failure
  */
 static int
-ugly_split(HTAB *hashp,
-	   u_int32_t obucket,	/* Same as __split_page. */
-	   BUFHEAD *old_bufp,
-	   BUFHEAD *new_bufp,
-	   int copyto,		/* First byte on page which contains key/data values. */
-	   int moved)		/* Number of pairs moved to new page. */
+ugly_split(HTAB *hashp, u_int32_t obucket, BUFHEAD *old_bufp,
+	   BUFHEAD *new_bufp, int copyto, int moved)
 {
 	BUFHEAD *bufp;	/* Buffer header for ino */
 	u_int16_t *ino;	/* Page keys come off of */
@@ -648,6 +648,7 @@ overflow_page(HTAB *hashp)
 #ifdef DEBUG2
 	int tmp1, tmp2;
 #endif
+	freep = NULL;
 	splitnum = hashp->OVFL_POINT;
 	max_free = hashp->SPARES[splitnum];
 

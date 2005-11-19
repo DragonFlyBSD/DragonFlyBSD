@@ -28,7 +28,7 @@
  *
  * @(#)rec_put.c	8.7 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_put.c,v 1.4.6.1 2001/01/02 05:13:25 peter Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.5 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -189,7 +189,7 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 	DBT tdata;
 	EPG *e;
 	PAGE *h;
-	indx_t index, nxtindex;
+	indx_t curindex, nxtindex;
 	pgno_t pg;
 	u_int32_t nbytes;
 	int dflags, status;
@@ -220,7 +220,7 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 		return (RET_ERROR);
 
 	h = e->page;
-	index = e->index;
+	curindex = e->index;
 
 	/*
 	 * Add the specified key/data pair to the tree.  The R_IAFTER and
@@ -230,13 +230,13 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 	 */
 	switch (flags) {
 	case R_IAFTER:
-		++index;
+		++curindex;
 		break;
 	case R_IBEFORE:
 		break;
 	default:
 		if (nrec < t->bt_nrecs &&
-		    __rec_dleaf(t, h, index) == RET_ERROR) {
+		    __rec_dleaf(t, h, curindex) == RET_ERROR) {
 			mpool_put(t->bt_mp, h, 0);
 			return (RET_ERROR);
 		}
@@ -250,18 +250,18 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 	 */
 	nbytes = NRLEAFDBT(data->size);
 	if (h->upper - h->lower < nbytes + sizeof(indx_t)) {
-		status = __bt_split(t, h, NULL, data, dflags, nbytes, index);
+		status = __bt_split(t, h, NULL, data, dflags, nbytes, curindex);
 		if (status == RET_SUCCESS)
 			++t->bt_nrecs;
 		return (status);
 	}
 
-	if (index < (nxtindex = NEXTINDEX(h)))
-		memmove(h->linp + index + 1, h->linp + index,
-		    (nxtindex - index) * sizeof(indx_t));
+	if (curindex < (nxtindex = NEXTINDEX(h)))
+		memmove(h->linp + curindex + 1, h->linp + curindex,
+		    (nxtindex - curindex) * sizeof(indx_t));
 	h->lower += sizeof(indx_t);
 
-	h->linp[index] = h->upper -= nbytes;
+	h->linp[curindex] = h->upper -= nbytes;
 	dest = (char *)h + h->upper;
 	WR_RLEAF(dest, data, dflags);
 

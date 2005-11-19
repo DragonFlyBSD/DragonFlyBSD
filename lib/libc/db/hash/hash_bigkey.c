@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.8 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.9 2005/11/19 20:46:32 swildner Exp $
  */
 
 /*
@@ -113,7 +113,7 @@ __big_insert(HTAB *hashp, BUFHEAD *bufp, const DBT *key, const DBT *val)
 		if (!bufp)
 			return (-1);
 		n = p[0];
-		if (!key_size)
+		if (!key_size) {
 			if (FREESPACE(p)) {
 				move_bytes = MIN(FREESPACE(p), val_size);
 				off = OFFSET(p) - move_bytes;
@@ -126,6 +126,7 @@ __big_insert(HTAB *hashp, BUFHEAD *bufp, const DBT *key, const DBT *val)
 				OFFSET(p) = off;
 			} else
 				p[n - 2] = FULL_KEY;
+		}
 		p = (u_int16_t *)bufp->page;
 		cp = bufp->page;
 		bufp->flags |= BUF_MOD;
@@ -527,18 +528,19 @@ collect_key(HTAB *hashp, BUFHEAD *bufp, int len, DBT *val, int set)
 }
 
 /*
+ * Parameters:
+ *	op:		Pointer to where to put keys that go in old bucket
+ *	np:		Pointer to new bucket page
+ *	big_keyp:	Pointer to first page containing the big key/data
+ *	addr:		Address of big_keyp
+ *	obucket:	Old Bucket
  * Returns:
- *  0 => OK
- * -1 => error
+ *	0  => OK
+ *	-1 => error
  */
 extern int
-__big_split(HTAB *hashp,
-	    BUFHEAD *op,	/* Pointer to where to put keys that go in old bucket */
-	    BUFHEAD *np,	/* Pointer to new bucket page */
-	    BUFHEAD *big_keyp,	/* Pointer to first page containing the big key/data */
-	    int addr,		/* Address of big_keyp */
-	    u_int32_t obucket,	/* Old Bucket */
-	    SPLIT_RETURN *ret)
+__big_split(HTAB *hashp, BUFHEAD *op, BUFHEAD *np, BUFHEAD *big_keyp,
+	    int addr, u_int32_t obucket, SPLIT_RETURN *ret)
 {
 	BUFHEAD *tmpp;
 	u_int16_t *tp;

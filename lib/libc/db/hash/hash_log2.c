@@ -30,12 +30,15 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_log2.c	8.2 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_log2.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_log2.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include <sys/types.h>
 
 #include <db.h>
+#include "hash.h"
+#include "page.h"
+#include "extern.h"
 
 u_int32_t
 __log2(u_int32_t num)

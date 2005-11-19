@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/mpool/mpool.c,v 1.5.2.1 2001/03/05 23:05:01 obrien Exp $
- * $DragonFly: src/lib/libc/db/mpool/mpool.c,v 1.6 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/mpool/mpool.c,v 1.7 2005/11/19 20:46:32 swildner Exp $
  *
  * @(#)mpool.c	8.5 (Berkeley) 7/26/94
  */
@@ -58,7 +58,7 @@ static int  mpool_write (MPOOL *, BKT *);
  *	Initialize a memory pool.
  */
 MPOOL *
-mpool_open(void *key, int fd, pgno_t pagesize, pgno_t maxcache)
+mpool_open(void *key __unused, int fd, pgno_t pagesize, pgno_t maxcache)
 {
 	struct stat sb;
 	MPOOL *mp;
@@ -141,9 +141,7 @@ mpool_new(MPOOL *mp, pgno_t *pgnoaddr)
  *	Get a page.
  */
 void *
-mpool_get(MPOOL *mp,
-	  pgno_t pgno,
-	  u_int flags)				/* XXX not used? */
+mpool_get(MPOOL *mp, pgno_t pgno, u_int flags __unused)
 {
 	struct _hqh *head;
 	BKT *bp;
@@ -225,7 +223,7 @@ mpool_get(MPOOL *mp,
  *	Return a page.
  */
 int
-mpool_put(MPOOL *mp, void *page, u_int flags)
+mpool_put(MPOOL *mp __unused, void *page, u_int flags)
 {
 	BKT *bp;
 

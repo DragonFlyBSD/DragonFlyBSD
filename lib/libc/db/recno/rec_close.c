@@ -28,7 +28,7 @@
  *
  * @(#)rec_close.c	8.6 (Berkeley) 8/18/94
  * $FreeBSD: src/lib/libc/db/recno/rec_close.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
  */
 
 #include "namespace.h"
@@ -76,13 +76,14 @@ __rec_close(DB *dbp)
 	if (F_ISSET(t, R_MEMMAPPED) && munmap(t->bt_smap, t->bt_msize))
 		status = RET_ERROR;
 
-	if (!F_ISSET(t, R_INMEM))
+	if (!F_ISSET(t, R_INMEM)) {
 		if (F_ISSET(t, R_CLOSEFP)) {
 			if (fclose(t->bt_rfp))
 				status = RET_ERROR;
 		} else
 			if (_close(t->bt_rfd))
 				status = RET_ERROR;
+	}
 
 	if (__bt_close(dbp) == RET_ERROR)
 		status = RET_ERROR;
