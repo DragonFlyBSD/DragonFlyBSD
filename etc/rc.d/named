@@ -2,13 +2,12 @@
 #
 # $NetBSD: named,v 1.10 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/named,v 1.6 2003/01/12 04:53:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/named,v 1.5 2004/05/31 17:51:47 dillon Exp $
+# $DragonFly: src/etc/rc.d/named,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: named
 # REQUIRE: SERVERS
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

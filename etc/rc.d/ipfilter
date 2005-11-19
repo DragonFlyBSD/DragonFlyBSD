@@ -2,13 +2,13 @@
 #
 # $NetBSD: ipfilter,v 1.10 2001/02/28 17:03:50 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ipfilter,v 1.10 2003/04/30 02:54:17 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipfilter,v 1.5 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/ipfilter,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ipfilter
 # REQUIRE: root mountcritlocal tty ipmon
 # BEFORE:  netif
-# KEYWORD: DragonFly nojail
+# KEYWORD: nojail
 
 . /etc/rc.subr
 

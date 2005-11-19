@@ -25,13 +25,12 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/diskless,v 1.25 2003/02/15 16:34:14 jhay Exp $
-# $DragonFly: src/etc/rc.d/diskless,v 1.4 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/diskless,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: diskless
 # REQUIRE: initdiskless rcconf mountcritlocal
 # BEFORE: addswap random
-# KEYWORD: DragonFly 
 
 if [ -r /etc/rc.subr ]; then
     . /etc/rc.subr

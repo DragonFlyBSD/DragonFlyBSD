@@ -2,13 +2,12 @@
 #
 # $NetBSD: ntpd,v 1.6 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ntpd,v 1.5 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.4 2005/02/20 21:52:33 joerg Exp $
+# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ntpd
 # REQUIRE: NETWORKING
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

@@ -2,13 +2,12 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.6 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/ldconfig,v 1.7 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ldconfig
 # REQUIRE: mountcritremote
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

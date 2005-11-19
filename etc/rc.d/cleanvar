@@ -1,12 +1,11 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/cleanvar,v 1.5 2003/07/14 13:02:36 mtm Exp $
-# $DragonFly: src/etc/rc.d/cleanvar,v 1.4 2005/06/22 19:55:30 dillon Exp $
+# $DragonFly: src/etc/rc.d/cleanvar,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: cleanvar
 # REQUIRE: mountcritlocal
-# KEYWORD: DragonFly
 
 . /etc/rc.subr 
 

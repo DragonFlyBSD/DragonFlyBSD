@@ -2,13 +2,12 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.6 2005/07/25 01:29:03 joerg Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.7 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: dhclient
 # REQUIRE: netif mountcritlocal
 # BEFORE:  NETWORKING
-# KEYWORD: DragonFly
 #
 #	Note that there no syslog logging of dhclient messages at boot because
 #	dhclient needs to start before services that syslog depends upon do.

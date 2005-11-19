@@ -2,13 +2,12 @@
 #
 # $NetBSD: syslogd,v 1.12 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/syslogd,v 1.4 2002/10/01 13:29:44 ru Exp $
-# $DragonFly: src/etc/rc.d/syslogd,v 1.5 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/syslogd,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: syslogd
 # REQUIRE: mountcritremote sysdb
 # BEFORE:  SERVERS
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

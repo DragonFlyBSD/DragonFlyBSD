@@ -2,13 +2,12 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.9 2004/04/08 17:35:22 dillon Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.10 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: motd
 # REQUIRE: mountcritremote
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

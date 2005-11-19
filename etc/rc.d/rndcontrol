@@ -1,12 +1,11 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/rndcontrol,v 1.1 2004/07/14 09:00:09 asmodai Exp $
+# $DragonFly: src/etc/rc.d/rndcontrol,v 1.2 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: rndcontrol
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

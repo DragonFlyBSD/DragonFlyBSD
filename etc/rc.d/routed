@@ -2,12 +2,11 @@
 #
 # $NetBSD: routed,v 1.7 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/routed,v 1.6 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/routed,v 1.4 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/routed,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: routed
 # REQUIRE: netif routing
-# KEYWORD: DragonFly FreeBSD NetBSD
 
 . /etc/rc.subr
 

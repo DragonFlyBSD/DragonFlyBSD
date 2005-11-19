@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/quota,v 1.3 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/quota,v 1.2 2004/01/27 00:42:45 rob Exp $
+# $DragonFly: src/etc/rc.d/quota,v 1.3 2005/11/19 21:47:32 swildner Exp $
 #
 
 # Enable/Check the quotas (must be after ypbind if using NIS)
@@ -10,7 +10,6 @@
 # PROVIDE: quota
 # REQUIRE: mountcritremote
 # BEFORE: DAEMON
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

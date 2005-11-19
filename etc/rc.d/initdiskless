@@ -25,10 +25,9 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.6 2004/08/25 01:53:39 dillon Exp $
+# $DragonFly: src/etc/rc.d/initdiskless,v 1.7 2005/11/19 21:47:32 swildner Exp $
 #
 # PROVIDE: initdiskless
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 dummy_rc_command "$1"

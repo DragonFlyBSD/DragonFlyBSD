@@ -2,12 +2,11 @@
 #
 # $NetBSD: mountd,v 1.11 2002/01/31 01:26:06 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountd,v 1.9 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/mountd,v 1.5 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/mountd,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: mountd
 # REQUIRE: NETWORKING mountcritremote nfsserver rpcbind quota
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

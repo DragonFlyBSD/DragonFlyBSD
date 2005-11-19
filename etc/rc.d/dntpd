@@ -1,11 +1,10 @@
 #!/bin/sh
 #
-#$DragonFly: src/etc/rc.d/dntpd,v 1.1 2005/05/24 02:51:49 rob Exp $
+#$DragonFly: src/etc/rc.d/dntpd,v 1.2 2005/11/19 21:47:32 swildner Exp $
 
 # PROVIDE: dntpd
 # REQUIRE: NETWORKING
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

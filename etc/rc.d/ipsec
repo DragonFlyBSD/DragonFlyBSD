@@ -2,13 +2,12 @@
 #
 # $NetBSD: ipsec,v 1.7 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ipsec,v 1.5 2003/02/16 20:46:08 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipsec,v 1.4 2005/04/22 08:30:25 joerg Exp $
+# $DragonFly: src/etc/rc.d/ipsec,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ipsec
 # REQUIRE: root mountcritlocal tty
 # BEFORE:  DAEMON
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

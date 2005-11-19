@@ -25,12 +25,11 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/syscons,v 1.9 2002/09/09 22:40:34 gordon Exp $
-# $DragonFly: src/etc/rc.d/syscons,v 1.4 2005/08/21 19:08:12 dillon Exp $
+# $DragonFly: src/etc/rc.d/syscons,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: syscons
 # REQUIRE: LOGIN usbd
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

@@ -2,14 +2,13 @@
 #
 # $NetBSD: isdnd,v 1.9 2002/04/10 23:37:13 martin Exp $
 # $FreeBSD: src/etc/rc.d/isdnd,v 1.15 2003/07/15 12:39:37 mtm Exp $
-# $DragonFly: src/etc/rc.d/isdnd,v 1.4 2005/04/22 00:55:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/isdnd,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 # Mostly based on original script (/etc/rc.isdn) written by  Hellmuth Michaelis
 #
 
 # PROVIDE: isdnd
 # REQUIRE: netif mountcritlocal
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

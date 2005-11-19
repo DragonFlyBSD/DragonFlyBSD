@@ -2,12 +2,11 @@
 #
 # $NetBSD: ypserv,v 1.5 2000/09/19 13:04:39 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ypserv,v 1.7 2003/07/09 03:21:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/ypserv,v 1.4 2004/01/27 00:55:43 rob Exp $
+# $DragonFly: src/etc/rc.d/ypserv,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: ypserv
 # REQUIRE: rpcbind
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 

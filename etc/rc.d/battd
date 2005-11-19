@@ -1,12 +1,11 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/battd,v 1.1 2005/02/17 22:35:38 liamfoy Exp $
+# $DragonFly: src/etc/rc.d/battd,v 1.2 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: battd
 # REQUIRE: DAEMON apm
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 

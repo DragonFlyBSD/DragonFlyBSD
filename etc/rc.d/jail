@@ -1,13 +1,12 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/jail,v 1.4 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/jail,v 1.3 2004/09/17 00:08:54 joerg Exp $
+# $DragonFly: src/etc/rc.d/jail,v 1.4 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: jail
 # REQUIRE: LOGIN
 # BEFORE: securelevel
-# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
