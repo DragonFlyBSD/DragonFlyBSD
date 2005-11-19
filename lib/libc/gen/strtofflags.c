@@ -32,7 +32,7 @@
  *
  * @(#)stat_flags.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/lib/libc/gen/strtofflags.c,v 1.18.2.1 2000/06/28 01:52:24 joe Exp $
- * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/strtofflags.c,v 1.4 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -41,6 +41,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static struct {
 	char *name;

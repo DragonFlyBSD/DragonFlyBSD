@@ -32,7 +32,7 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.8 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@ getdiskbyname(const char *name)
 		pfsize[3], poffset[3], ptype[3];
 	u_int32_t *dx;
 
-	if (cgetent(&buf, db_array, (char *) name) < 0)
+	if (cgetent(&buf, db_array, (char *)name) < 0)
 		return NULL;
 
 	bzero((char *)&disk, sizeof(disk));

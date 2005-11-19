@@ -32,11 +32,12 @@
  *
  * @(#)gethostname.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/getbootfile.c,v 1.5 1999/08/27 23:58:37 peter Exp $
- * $DragonFly: src/lib/libc/gen/getbootfile.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getbootfile.c,v 1.3 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <paths.h>
 
 const char *
 getbootfile(void)

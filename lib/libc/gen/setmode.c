@@ -35,7 +35,7 @@
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
  * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
- * $DragonFly: src/lib/libc/gen/setmode.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/setmode.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -46,6 +46,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #ifdef SETMODE_DEBUG
 #include <stdio.h>
@@ -80,7 +81,7 @@ static void	 dumpmode (BITCMD *);
  * bits) followed by a '+' (set bits).
  */
 mode_t
-getmode(void *bbox, mode_t omode)
+getmode(const void *bbox, mode_t omode)
 {
 	BITCMD *set;
 	mode_t clrval, newmode, value;
@@ -163,7 +164,7 @@ common:			if (set->cmd2 & CMD2_CLR) {
 #define	STANDARD_BITS	(S_ISUID|S_ISGID|S_IRWXU|S_IRWXG|S_IRWXO)
 
 void *
-setmode(char *p)
+setmode(const char *p)
 {
 	int perm, who;
 	char op;

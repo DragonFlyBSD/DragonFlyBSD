@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.8 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -96,7 +96,7 @@ int
 readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result)
 {
 	struct dirent *dp;
-	int ret, saved_errno;
+	int saved_errno;
 
 	saved_errno = errno;
 	errno = 0;

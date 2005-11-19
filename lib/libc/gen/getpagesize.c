@@ -31,11 +31,12 @@
  * SUCH DAMAGE.
  *
  * @(#)getpagesize.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/getpagesize.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/getpagesize.c,v 1.4 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <unistd.h>
 
 /*
  * This is unlikely to change over the running time of any

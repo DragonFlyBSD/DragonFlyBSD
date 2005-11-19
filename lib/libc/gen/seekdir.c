@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/seekdir.c,v 1.2.8.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/seekdir.c,v 1.6 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)seekdir.c	8.1 (Berkeley) 6/4/93
  */
@@ -43,8 +43,6 @@
 #include "un-namespace.h"
 
 #include "libc_private.h"
-
-extern void _seekdir ( DIR *, long );
 
 /*
  * Seek to an entry in a directory.

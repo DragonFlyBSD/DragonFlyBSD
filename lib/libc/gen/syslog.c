@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.8 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/syslog.c,v 1.9 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -80,9 +80,7 @@ struct bufcookie {
  *      is `unlimited'.
  */
 static int
-writehook(void *cookie,		/* really [struct bufcookie *] */
-	  char *buf,		/* characters to copy */
-	  int len)		/* length to copy */
+writehook(void *cookie, const char *buf, int len)
 {
 	struct bufcookie *h;	/* private `handle' */
 
@@ -124,6 +122,8 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	FILE *fp, *fmt_fp;
 	struct bufcookie tbuf_cookie;
 	struct bufcookie fmt_cookie;
+
+	stdp = NULL;
 
 #define	INTERNALLOG	LOG_ERR|LOG_CONS|LOG_PERROR|LOG_PID
 	/* Check for invalid bits. */

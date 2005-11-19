@@ -32,7 +32,7 @@
  *
  * @(#)initgroups.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/initgroups.c,v 1.3.8.1 2001/12/19 15:49:35 tobez Exp $
- * $DragonFly: src/lib/libc/gen/initgroups.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/initgroups.c,v 1.6 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 int
 initgroups(const char *uname, int agroup)
 {
-	gid_t ngroups;
+	int ngroups;
 	/*
 	 * Provide space for one group more than NGROUPS to allow
 	 * setgroups to fail and set errno.

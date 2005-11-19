@@ -31,20 +31,15 @@
  * SUCH DAMAGE.
  *
  * @(#)sethostname.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/sethostname.c,v 1.3 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+#include <unistd.h>
 
-#if __STDC__
 int
 sethostname(const char *name, int namelen)
-#else
-int
-sethostname(name, namelen)
-	char *name;
-	int namelen;
-#endif
 {
 	int mib[2];
 

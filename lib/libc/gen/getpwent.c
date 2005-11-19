@@ -32,7 +32,7 @@
  *
  * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -95,6 +95,98 @@ static char * _get_adjunct_pw (const char *);
 #endif
 static int __hashpw(DBT *);
 static int __initdb(void);
+
+
+/*
+ * Parse the + entries in the password database and do appropriate
+ * NIS lookups. While ugly to look at, this is optimized to do only
+ * as many lookups as are absolutely necessary in any given case.
+ * Basically, the getpwent() function will feed us + and - lines
+ * as they appear in the database. For + lines, we do netgroup/group
+ * and user lookups to find all usernames that match the rule and
+ * extract them from the NIS passwd maps. For - lines, we save the
+ * matching names in a database and a) exlude them, and b) make sure
+ * we don't consider them when processing other + lines that appear
+ * later.
+ */
+static inline int
+unwind(char *grp)
+{
+	char *user, *host, *domain;
+	static int latch = 0;
+	static struct group *gr = NULL;
+	int rv = 0;
+
+	if (grp[0] == '+') {
+		if (strlen(grp) == 1) {
+			return(_nextyppass(&_pw_passwd));
+		}
+		if (grp[1] == '@') {
+			_pw_stepping_yp = 1;
+grpagain:
+			if (gr != NULL) {
+				if (*gr->gr_mem != NULL) {
+					if (lookup(*gr->gr_mem)) {
+						gr->gr_mem++;
+						goto grpagain;
+					}
+					rv = _getyppass(&_pw_passwd,
+							*gr->gr_mem,
+							"passwd.byname");
+					gr->gr_mem++;
+					return(rv);
+				} else {
+					latch = 0;
+					_pw_stepping_yp = 0;
+					gr = NULL;
+					return(0);
+				}
+			}
+			if (!latch) {
+				setnetgrent(grp+2);
+				latch++;
+			}
+again:
+			if (getnetgrent(&host, &user, &domain) == 0) {
+				if ((gr = getgrnam(grp+2)) != NULL)
+					goto grpagain;
+				latch = 0;
+				_pw_stepping_yp = 0;
+				return(0);
+			} else {
+				if (lookup(user))
+					goto again;
+				if (_getyppass(&_pw_passwd, user,
+							"passwd.byname"))
+					return(1);
+				else
+					goto again;
+			}
+		} else {
+			if (lookup(grp+1))
+				return(0);
+			return(_getyppass(&_pw_passwd, grp+1, "passwd.byname"));
+		}
+	} else {
+		if (grp[1] == '@') {
+			setnetgrent(grp+2);
+			rv = 0;
+			while(getnetgrent(&host, &user, &domain) != 0) {
+				store(user);
+				rv++;
+			}
+			if (!rv && (gr = getgrnam(grp+2)) != NULL) {
+				while(*gr->gr_mem) {
+					store(*gr->gr_mem);
+					gr->gr_mem++;
+				}
+			}
+		} else {
+			store(grp+1);
+		}
+	}
+	return(0);
+}
 
 struct passwd *
 getpwent(void)
@@ -384,97 +476,6 @@ store(const char *key)
 	lkey.size = strlen(key);
 
 	(_ypcache->put)(_ypcache, &lkey, &empty, R_NOOVERWRITE);
-}
-
-/*
- * Parse the + entries in the password database and do appropriate
- * NIS lookups. While ugly to look at, this is optimized to do only
- * as many lookups as are absolutely necessary in any given case.
- * Basically, the getpwent() function will feed us + and - lines
- * as they appear in the database. For + lines, we do netgroup/group
- * and user lookups to find all usernames that match the rule and
- * extract them from the NIS passwd maps. For - lines, we save the
- * matching names in a database and a) exlude them, and b) make sure
- * we don't consider them when processing other + lines that appear
- * later.
- */
-static inline int
-unwind(char *grp)
-{
-	char *user, *host, *domain;
-	static int latch = 0;
-	static struct group *gr = NULL;
-	int rv = 0;
-
-	if (grp[0] == '+') {
-		if (strlen(grp) == 1) {
-			return(_nextyppass(&_pw_passwd));
-		}
-		if (grp[1] == '@') {
-			_pw_stepping_yp = 1;
-grpagain:
-			if (gr != NULL) {
-				if (*gr->gr_mem != NULL) {
-					if (lookup(*gr->gr_mem)) {
-						gr->gr_mem++;
-						goto grpagain;
-					}
-					rv = _getyppass(&_pw_passwd,
-							*gr->gr_mem,
-							"passwd.byname");
-					gr->gr_mem++;
-					return(rv);
-				} else {
-					latch = 0;
-					_pw_stepping_yp = 0;
-					gr = NULL;
-					return(0);
-				}
-			}
-			if (!latch) {
-				setnetgrent(grp+2);
-				latch++;
-			}
-again:
-			if (getnetgrent(&host, &user, &domain) == 0) {
-				if ((gr = getgrnam(grp+2)) != NULL)
-					goto grpagain;
-				latch = 0;
-				_pw_stepping_yp = 0;
-				return(0);
-			} else {
-				if (lookup(user))
-					goto again;
-				if (_getyppass(&_pw_passwd, user,
-							"passwd.byname"))
-					return(1);
-				else
-					goto again;
-			}
-		} else {
-			if (lookup(grp+1))
-				return(0);
-			return(_getyppass(&_pw_passwd, grp+1, "passwd.byname"));
-		}
-	} else {
-		if (grp[1] == '@') {
-			setnetgrent(grp+2);
-			rv = 0;
-			while(getnetgrent(&host, &user, &domain) != 0) {
-				store(user);
-				rv++;
-			}
-			if (!rv && (gr = getgrnam(grp+2)) != NULL) {
-				while(*gr->gr_mem) {
-					store(*gr->gr_mem);
-					gr->gr_mem++;
-				}
-			}
-		} else {
-			store(grp+1);
-		}
-	}
-	return(0);
 }
 
 /*

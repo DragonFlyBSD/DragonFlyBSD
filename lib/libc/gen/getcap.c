@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libc/gen/getcap.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/getcap.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
@@ -195,6 +195,9 @@ getent(char **cap, u_int *len, char **db_array, int fd, char *name, int depth,
 	char *record, *cbuf;
 	int tc_not_resolved;
 	char pbuf[_POSIX_PATH_MAX];
+
+	rp = NULL;
+	myfd = 0;
 
 	/*
 	 * Return with ``loop detected'' error if we've recursed more than
@@ -640,6 +643,8 @@ cgetnext(char **bp, char **db_array)
 	int done, hadreaderr, i, savederrno, status;
 	char *cp, *line, *rp, *np, buf[BSIZE], nbuf[BSIZE];
 	u_int dummy;
+
+	savederrno = 0;
 
 	if (dbp == NULL)
 		dbp = db_array;

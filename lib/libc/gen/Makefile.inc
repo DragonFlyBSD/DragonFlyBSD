@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.16 2005/10/08 11:29:20 corecode Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.17 2005/11/19 22:32:53 swildner Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -136,7 +136,7 @@ MLINKS+=tcsetattr.3 cfgetispeed.3 tcsetattr.3 cfgetospeed.3 \
 	tcsetattr.3 cfmakeraw.3 tcsetattr.3 cfsetispeed.3 \
 	tcsetattr.3 cfsetospeed.3 tcsetattr.3 cfsetspeed.3 \
 	tcsetattr.3 tcgetattr.3
-MLINKS+=ttyname.3 isatty.3 ttyname.3 ttyslot.3
+MLINKS+=ttyname.3 isatty.3 ttyname.3 ttyslot.3 ttyname.3 ttyname_r.3
 MLINKS+=tzset.3 tzsetwall.3
 MLINKS+=unvis.3 strunvis.3 unvis.3 strunvisx.3
 MLINKS+=vis.3 strvis.3 vis.3 strvisx.3

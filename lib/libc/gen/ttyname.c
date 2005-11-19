@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.13 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.14 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -58,6 +58,7 @@ static char static_buf[TTY_PATH_MAX] = _PATH_DEV;
 static char *oldttyname(int, struct stat *);
 static char *ttyname_threaded(int fd);
 static char *ttyname_unthreaded(int fd);
+extern int  __sys_fstat(int, struct stat *);
 
 static pthread_mutex_t	ttyname_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t	ttyname_key;

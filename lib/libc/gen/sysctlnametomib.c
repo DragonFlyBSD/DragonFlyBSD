@@ -24,11 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/sysctlnametomib.c,v 1.1.2.1 2001/03/05 08:13:28 obrien Exp $
- * $DragonFly: src/lib/libc/gen/sysctlnametomib.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/sysctlnametomib.c,v 1.3 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <string.h>
 
 /*
  * This function uses a presently undocumented interface to the kernel

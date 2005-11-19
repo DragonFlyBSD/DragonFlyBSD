@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/termios.c,v 1.9.2.1 2000/03/18 23:13:25 jasone Exp $
- * $DragonFly: src/lib/libc/gen/termios.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/termios.c,v 1.5 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)termios.c	8.2 (Berkeley) 2/21/94
  */
@@ -154,7 +154,7 @@ cfmakeraw(struct termios *t)
 }
 
 int
-tcsendbreak(int fd, int len)
+tcsendbreak(int fd, int len __unused)
 {
 	struct timeval sleepytime;
 

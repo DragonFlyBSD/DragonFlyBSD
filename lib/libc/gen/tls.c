@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.9 2005/05/11 19:46:52 dillon Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.10 2005/11/19 22:32:53 swildner Exp $
  */
 
 /*
@@ -245,7 +245,7 @@ _libc_init_tls(void)
 		}
 	}
 	if (phdr == 0 || phent != sizeof(Elf_Phdr) || phnum == 0)
-		return;
+		return(NULL);
 
 	for (i = 0; (unsigned)i < phnum; i++) {
 		if (phdr[i].p_type == PT_TLS) {

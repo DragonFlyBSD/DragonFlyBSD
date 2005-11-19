@@ -31,12 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/unvis.c,v 1.4.8.1 2000/08/17 08:25:54 jhb Exp $
- * $DragonFly: src/lib/libc/gen/unvis.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/unvis.c,v 1.5 2005/11/19 22:32:53 swildner Exp $
  *
  * @(#)unvis.c	8.1 (Berkeley) 6/4/93
  */
 
 #include <sys/types.h>
+#include <ctype.h>
 #include <vis.h>
 
 /*
@@ -54,7 +55,7 @@
 #define	S_HTTP		0x080	/* %HEXHEX escape */
 
 #define	isoctal(c)	(((u_char)(c)) >= '0' && ((u_char)(c)) <= '7')
-#define	ishex(c)	(((u_char)(c)) >= '0' && ((u_char)(c)) <= '9' || ((u_char)(c)) >= 'a' && ((u_char)(c)) <= 'f')
+#define	ishex(c)	((((u_char)(c)) >= '0' && ((u_char)(c)) <= '9') || (((u_char)(c)) >= 'a' && ((u_char)(c)) <= 'f'))
 
 /*
  * unvis - decode characters previously encoded by vis
@@ -105,7 +106,7 @@ unvis(char *cp, int c, int *astate, int flag)
 			*astate = S_OCTAL2;
 			return (0);
 		case 'M':
-			*cp = 0200;
+			*cp = (char)0200;
 			*astate = S_META;
 			return (0);
 		case '^':

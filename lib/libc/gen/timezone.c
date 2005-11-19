@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)timezone.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/gen/timezone.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/timezone.c,v 1.5 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 #include <string.h>
 #define TZ_MAX_CHARS 255
 
-char *_tztab();
+char *_tztab(int, int);
 
 /*
  * timezone --
@@ -94,7 +94,7 @@ static struct zone {
 	{-10*60,"EST",	"EST"},		/* Aust: Eastern */
      {-10*60+30,"CST",	"CST"},		/* Aust: Central */
 	{-8*60,	"WST",	0},		/* Aust: Western */
-	{-1}
+	{-1,	 NULL,  NULL}
 };
 
 /*

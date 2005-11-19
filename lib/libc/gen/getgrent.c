@@ -34,7 +34,7 @@
  *
  * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
  * $FreeBSD: src/lib/libc/gen/getgrent.c,v 1.17.6.1 2001/03/05 08:56:02 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.4 2005/04/27 12:36:31 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.5 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <errno.h>
@@ -499,7 +499,7 @@ static int
 _nextypgroup(struct group *gr)
 {
 	static char *key;
-	static int keylen;
+	static size_t keylen;
 	char *lastkey, *result;
 	static char resultbuf[YPMAXRECORD + 2];
 	size_t resultlen;
