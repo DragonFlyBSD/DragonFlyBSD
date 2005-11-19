@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.97 2005/11/01 20:50:22 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.98 2005/11/19 21:55:46 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -391,6 +391,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version}.1.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/cat1/pkg_{add,create,delete,info,sign,version}.1.gz"
 .endif
+	rm -f ${DESTDIR}/etc/rc.d/network[123]
 	ldconfig -R
 
 distribution:
