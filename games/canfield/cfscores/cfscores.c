@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cfscores.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/canfield/cfscores/cfscores.c,v 1.9 1999/12/12 07:25:14 billf Exp $
- * $DragonFly: src/games/canfield/cfscores/cfscores.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/canfield/cfscores/cfscores.c,v 1.4 2005/11/19 09:50:30 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -41,6 +41,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "pathnames.h"
 
 struct betinfo {
@@ -56,12 +58,10 @@ struct betinfo {
 
 int dbfd;
 
-void printuser (struct passwd *, int);
+static void	printuser(struct passwd *, int);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct passwd *pw;
 	int uid;
@@ -98,24 +98,18 @@ main(argc, argv)
 		exit(3);
 	}
 	printuser(pw, 1);
-	exit(0);
+	return(0);
 }
 
 /*
  * print out info for specified password entry
  */
-void
-printuser(pw, printfail)
-	struct passwd *pw;
-	int printfail;
+static void
+printuser(struct passwd *pw, int printfail)
 {
 	struct betinfo total;
 	int i;
 
-	if (pw->pw_uid < 0) {
-		printf("Bad uid %d\n", pw->pw_uid);
-		return;
-	}
 	i = lseek(dbfd, pw->pw_uid * sizeof(struct betinfo), SEEK_SET);
 	if (i < 0) {
 		perror("lseek");
