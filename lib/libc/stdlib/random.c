@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.7 2005/11/20 12:37:49 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.8 2005/11/20 14:58:40 swildner Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
@@ -306,7 +306,7 @@ srandomdev(void)
 
 	if (!done) {
 		struct timeval tv;
-		unsigned long junk;
+		unsigned long junk;	/* XXX left uninitialized on purpose */
 
 		gettimeofday(&tv, NULL);
 		srandom(getpid() ^ tv.tv_sec ^ tv.tv_usec ^ junk);

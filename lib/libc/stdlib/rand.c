@@ -33,7 +33,7 @@
  * Posix rand_r function added May 1999 by Wes Peters <wes@softweyr.com>.
  *
  * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.15 2001/03/05 11:33:57 ache Exp $
- * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.6 2005/11/20 14:58:40 swildner Exp $
  */
 
 #include "namespace.h"
@@ -136,7 +136,7 @@ sranddev(void)
 
 	if (!done) {
 		struct timeval tv;
-		unsigned long junk;
+		unsigned long junk;	/* XXX left uninitialized on purpose */
 
 		gettimeofday(&tv, NULL);
 		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
