@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 12/13/93
 # $FreeBSD: src/share/man/man3/Makefile,v 1.15.2.3 2001/04/25 11:11:30 ru Exp $
-# $DragonFly: src/share/man/man3/Makefile,v 1.4 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/share/man/man3/Makefile,v 1.5 2005/11/20 11:05:44 swildner Exp $
 
 MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 pthread.3 queue.3 \
 	stdarg.3 sysexits.3 tree.3
@@ -89,6 +89,7 @@ MLINKS+=queue.3 TAILQ_REMOVE.3
 
 MLINKS+=stdarg.3 varargs.3 stdarg.3 va_arg.3 stdarg.3 va_end.3
 MLINKS+=stdarg.3 va_start.3
+MLINKS+=stdarg.3 va_copy.3
 
 MLINKS+=tree.3 RB_EMPTY.3
 MLINKS+=tree.3 RB_ENTRY.3

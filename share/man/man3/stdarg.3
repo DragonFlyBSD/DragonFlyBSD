@@ -34,10 +34,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)stdarg.3	8.1 (Berkeley) 6/5/93
-.\" $FreeBSD: src/share/man/man3/stdarg.3,v 1.4.2.5 2001/12/17 11:30:11 ru Exp $
-.\" $DragonFly: src/share/man/man3/stdarg.3,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $FreeBSD: src/share/man/man3/stdarg.3,v 1.15 2005/01/21 08:36:36 ru Exp $
+.\" $DragonFly: src/share/man/man3/stdarg.3,v 1.3 2005/11/20 11:05:44 swildner Exp $
 .\"
-.Dd June 5, 1993
+.Dd October 25, 2002
 .Dt STDARG 3
 .Os
 .Sh NAME
@@ -50,12 +50,14 @@
 .Ft type
 .Fn va_arg "va_list ap" type
 .Ft void
+.Fn va_copy "va_list dest" "va_list src"
+.Ft void
 .Fn va_end "va_list ap"
 .Sh DESCRIPTION
 A function may be called with a varying number of arguments of varying
 types.
 The include file
-.Aq Pa stdarg.h
+.In stdarg.h
 declares a type
 .Pq Em va_list
 and defines three macros for stepping
@@ -67,6 +69,7 @@ The called function must declare an object of type
 which is used by the macros
 .Fn va_start ,
 .Fn va_arg ,
+.Fn va_copy ,
 and
 .Fn va_end .
 .Pp
@@ -83,7 +86,7 @@ and must be called first.
 The parameter
 .Fa last
 is the name of the last parameter before the variable argument list,
-i.e. the last parameter of which the calling function knows the type.
+i.e., the last parameter of which the calling function knows the type.
 .Pp
 Because the address of this parameter is used in the
 .Fn va_start
@@ -133,6 +136,27 @@ Successive invocations return the values of the remaining
 arguments.
 .Pp
 The
+.Fn va_copy
+macro copies a variable argument list, previously initialized by
+.Fn va_start ,
+from
+.Fa src
+to
+.Fa dest .
+The state is preserved such that it is equivalent to calling
+.Fn va_start
+with the same second argument used with
+.Fa src ,
+and calling
+.Fn va_arg
+the same number of times as called with
+.Fa src .
+.Pp
+The
+.Fn va_copy
+macro returns no value.
+.Pp
+The
 .Fn va_end
 macro handles a normal return from the function whose variable argument
 list was initialized by
@@ -173,21 +197,22 @@ void foo(char *fmt, ...)
 	va_end(ap);
 }
 .Ed
-.Sh STANDARDS
-The
-.Fn va_start ,
-.Fn va_arg ,
-and
-.Fn va_end
-macros conform to
-.St -isoC .
 .Sh COMPATIBILITY
 These macros are
 .Em not
 compatible with the historic macros they replace.
 A backward compatible version can be found in the include
 file
-.Aq Pa varargs.h .
+.In varargs.h .
+.Sh STANDARDS
+The
+.Fn va_start ,
+.Fn va_arg ,
+.Fn va_copy ,
+and
+.Fn va_end
+macros conform to
+.St -isoC-99 .
 .Sh BUGS
 Unlike the
 .Em varargs
