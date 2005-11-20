@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
  */
@@ -90,10 +90,7 @@ static void r_sort_b (const u_char **,
 }
 
 int
-radixsort(a, n, tab, endch)
-	const u_char **a, *tab;
-	int n;
-	u_int endch;
+radixsort(const u_char **a, int n, const u_char *tab, u_int endch)
 {
 	const u_char *tr;
 	int c;
@@ -105,10 +102,7 @@ radixsort(a, n, tab, endch)
 }
 
 int
-sradixsort(a, n, tab, endch)
-	const u_char **a, *tab;
-	int n;
-	u_int endch;
+sradixsort(const u_char **a, int n, const u_char *tab, u_int endch)
 {
 	const u_char *tr, **ta;
 	int c;
@@ -133,11 +127,7 @@ sradixsort(a, n, tab, endch)
 
 /* Unstable, in-place sort. */
 static void
-r_sort_a(a, n, i, tr, endch)
-	const u_char **a;
-	int n, i;
-	const u_char *tr;
-	u_int endch;
+r_sort_a(const u_char **a, int n, int i, const u_char *tr, u_int endch)
 {
 	static int count[256], nc, bmin;
 	int c;
@@ -224,11 +214,8 @@ r_sort_a(a, n, i, tr, endch)
 
 /* Stable sort, requiring additional memory. */
 static void
-r_sort_b(a, ta, n, i, tr, endch)
-	const u_char **a, **ta;
-	int n, i;
-	const u_char *tr;
-	u_int endch;
+r_sort_b(const u_char **a, const u_char **ta, int n, int i, const u_char *tr,
+	 u_int endch)
 {
 	static int count[256], nc, bmin;
 	int c;
@@ -295,12 +282,9 @@ r_sort_b(a, ta, n, i, tr, endch)
 	}
 }
 
+/* insertion sort */
 static inline void
-simplesort(a, n, b, tr, endch)	/* insertion sort */
-	const u_char **a;
-	int n, b;
-	const u_char *tr;
-	u_int endch;
+simplesort(const u_char **a, int n, int b, const u_char *tr, u_int endch)
 {
 	u_char ch;
 	const u_char  **ak, **ai, *s, *t;

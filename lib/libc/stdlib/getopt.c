@@ -34,7 +34,7 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.6 2005/03/31 16:01:15 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.7 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdio.h>
@@ -101,7 +101,7 @@ getopt(int nargc, char * const nargv[], const char *ostr)
 		if (*place == 0)
 			++optind;
 		if (opterr && *ostr != ':')
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "%s: illegal option -- %c\n", getprogname(),
 			    optopt);
 		return (BADCH);
@@ -126,7 +126,7 @@ getopt(int nargc, char * const nargv[], const char *ostr)
 			if (*ostr == ':')
 				return (BADARG);
 			if (opterr)
-				(void)fprintf(stderr,
+				fprintf(stderr,
 				    "%s: option requires an argument -- %c\n",
 				    getprogname(), optopt);
 			return (BADCH);

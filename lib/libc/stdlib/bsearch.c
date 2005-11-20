@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bsearch.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/bsearch.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/bsearch.c,v 1.5 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stddef.h>
@@ -54,12 +54,8 @@
  * look at item 3.
  */
 void *
-bsearch(key, base0, nmemb, size, compar)
-	const void *key;
-	const void *base0;
-	size_t nmemb;
-	size_t size;
-	int (*compar) (const void *, const void *);
+bsearch(const void *key, const void *base0, size_t nmemb, size_t size,
+	int (*compar)(const void *, const void *))
 {
 	const char *base = base0;
 	size_t lim;

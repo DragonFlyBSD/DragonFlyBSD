@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.6 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.7 2005/11/20 12:37:49 swildner Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
@@ -212,10 +212,10 @@ static int rand_deg = DEG_3;
 static int rand_sep = SEP_3;
 static uint32_t *end_ptr = &randtbl[DEG_3 + 1];
 
-static inline long good_rand (long);
+static inline long good_rand(long);
 
-static inline long good_rand (x)
-	long x;
+static inline long
+good_rand(long x)
 {
 #ifdef  USE_WEAK_SEEDING
 /*
@@ -257,8 +257,7 @@ static inline long good_rand (x)
  * for default usage relies on values produced by this routine.
  */
 void
-srandom(x)
-	unsigned long x;
+srandom(unsigned long x)
 {
 	int i;
 
@@ -271,7 +270,7 @@ srandom(x)
 		fptr = &state[rand_sep];
 		rptr = &state[0];
 		for (i = 0; i < 10 * rand_deg; i++)
-			(void)random();
+			random();
 	}
 }
 
@@ -287,7 +286,7 @@ srandom(x)
  * a fixed seed.
  */
 void
-srandomdev()
+srandomdev(void)
 {
 	int fd, done;
 	size_t len;
@@ -344,10 +343,9 @@ srandomdev()
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-initstate(seed, arg_state, n)
-	unsigned long seed;		/* seed for R.N.G. */
-	char *arg_state;		/* pointer to state array */
-	long n;				/* # bytes of state info */
+initstate(unsigned long seed,		/* seed for R.N.G. */
+	  char *arg_state,		/* pointer to state array */
+	  long n)			/* # bytes of state info */
 {
 	char *ostate = (char *)(&state[-1]);
 	uint32_t *int_arg_state = (uint32_t *)(void *)arg_state;
@@ -357,7 +355,7 @@ initstate(seed, arg_state, n)
 	else
 		state[-1] = MAX_TYPES * (uint32_t)(rptr - state) + rand_type;
 	if (n < BREAK_0) {
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "random: not enough state (%ld bytes); ignored.\n", n);
 		return(0);
 	}
@@ -412,8 +410,7 @@ initstate(seed, arg_state, n)
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-setstate(arg_state)
-	char *arg_state;		/* pointer to state array */
+setstate(char *arg_state)		/* pointer to state array */
 {
 	uint32_t *new_state = (uint32_t *)(void *)arg_state;
 	uint32_t type = new_state[0] % MAX_TYPES;
@@ -435,7 +432,7 @@ setstate(arg_state)
 		rand_sep = seps[type];
 		break;
 	default:
-		(void)fprintf(stderr,
+		fprintf(stderr,
 		    "random: state info corrupted; not changed.\n");
 	}
 	state = (uint32_t *) (new_state + 1);
@@ -465,7 +462,7 @@ setstate(arg_state)
  * Returns a 31-bit random number.
  */
 long
-random()
+random(void)
 {
 	uint32_t i;
 	uint32_t *f, *r;

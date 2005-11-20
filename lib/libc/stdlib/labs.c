@@ -31,14 +31,13 @@
  * SUCH DAMAGE.
  *
  * @(#)labs.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/labs.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/labs.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>
 
 long
-labs(j)
-	long j;
+labs(long j)
 {
 	return(j < 0 ? -j : j);
 }

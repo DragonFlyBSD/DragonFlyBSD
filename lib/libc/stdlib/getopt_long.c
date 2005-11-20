@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.13 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.14 2005/11/20 12:37:48 swildner Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -477,8 +477,9 @@ getopt_long(int nargc, char * const *nargv, const char *options,
  *	Prefers long options over short options for single dash arguments.
  */
 
-int getopt_long_only(int nargc, char * const *nargv, const char *options,
-	    const struct option *long_options, int *idx)
+int
+getopt_long_only(int nargc, char * const *nargv, const char *options,
+		 const struct option *long_options, int *idx)
 {
 	return getopt_long_internal(nargc, nargv, options, long_options,
 				    idx, 1);

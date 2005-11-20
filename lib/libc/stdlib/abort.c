@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/abort.c,v 1.5.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/stdlib/abort.c,v 1.3 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/abort.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
  *
  * @(#)abort.c	8.1 (Berkeley) 6/4/93
  */
@@ -49,7 +49,7 @@ extern int	__sys_sigaction(int, const struct sigaction *,
 		    struct sigaction *);
 
 void
-abort()
+abort(void)
 {
 	struct sigaction act;
 
@@ -65,8 +65,8 @@ abort()
 	 * any errors -- X311J doesn't allow abort to return anyway.
 	 */
 	sigdelset(&act.sa_mask, SIGABRT);
-	(void)__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	(void)kill(getpid(), SIGABRT);
+	__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
+	kill(getpid(), SIGABRT);
 
 	/*
 	 * if SIGABRT ignored, or caught and the handler returns, do
@@ -75,10 +75,10 @@ abort()
 	act.sa_handler = SIG_DFL;
 	act.sa_flags = 0;
 	sigfillset(&act.sa_mask);
-	(void)__sys_sigaction(SIGABRT, &act, NULL);
+	__sys_sigaction(SIGABRT, &act, NULL);
 	sigdelset(&act.sa_mask, SIGABRT);
-	(void)__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	(void)kill(getpid(), SIGABRT);
+	__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
+	kill(getpid(), SIGABRT);
 	exit(1);
 }
 

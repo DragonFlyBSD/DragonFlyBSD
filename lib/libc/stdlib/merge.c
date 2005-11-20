@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)merge.c	8.2 (Berkeley) 2/14/94
- * $DragonFly: src/lib/libc/stdlib/merge.c,v 1.5 2005/03/09 02:44:42 drhodus Exp $
+ * $DragonFly: src/lib/libc/stdlib/merge.c,v 1.6 2005/11/20 12:37:48 swildner Exp $
  */
 
 /*
@@ -96,11 +96,8 @@ static void insertionsort(u_char *, size_t, size_t,
  * Arguments are as for qsort.
  */
 int
-mergesort(base, nmemb, size, cmp)
-	void *base;
-	size_t nmemb;
-	size_t size;
-	int (*cmp) (const void *, const void *);
+mergesort(void *base, size_t nmemb, size_t size,
+	  int (*cmp)(const void *, const void *))
 {
 	size_t i;
 	int  sense;
@@ -260,10 +257,8 @@ COPY:	    			b = t;
  * is defined.  Otherwise simple pairwise merging is used.)
  */
 void
-setup(list1, list2, n, size, cmp)
-	size_t n, size;
-	int (*cmp) (const void *, const void *);
-	u_char *list1, *list2;
+setup(u_char *list1, u_char *list2, size_t n, size_t size,
+      int (*cmp)(const void *, const void *))
 {
 	int i, length, size2, tmp, sense;
 	u_char *f1, *f2, *s, *l2, *last, *p2;
@@ -334,10 +329,8 @@ setup(list1, list2, n, size, cmp)
  * last 4 elements.
  */
 static void
-insertionsort(a, n, size, cmp)
-	u_char *a;
-	size_t n, size;
-	int (*cmp) (const void *, const void *);
+insertionsort(u_char *a, size_t n, size_t size,
+	      int (*cmp)(const void *, const void *))
 {
 	u_char *ai, *s, *t, *u, tmp;
 	int i;

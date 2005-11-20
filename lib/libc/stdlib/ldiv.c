@@ -34,13 +34,13 @@
  * SUCH DAMAGE.
  *
  * @(#)ldiv.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/ldiv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/ldiv.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>		/* ldiv_t */
 
 ldiv_t
-ldiv(num, denom)
+ldiv(long num, long denom)
 	long num, denom;
 {
 	ldiv_t r;

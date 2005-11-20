@@ -31,16 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)calloc.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/calloc.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/calloc.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>
 #include <string.h>
 
 void *
-calloc(num, size)
-	size_t num;
-	size_t size;
+calloc(size_t num, size_t size)
 {
 	void *p;
 

@@ -33,7 +33,7 @@
  * Posix rand_r function added May 1999 by Wes Peters <wes@softweyr.com>.
  *
  * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.15 2001/03/05 11:33:57 ache Exp $
- * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.4 2005/04/28 13:47:43 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include "namespace.h"
@@ -97,14 +97,13 @@ rand_r(unsigned int *ctx)
 static u_long next = 1;
 
 int
-rand()
+rand(void)
 {
 	return (do_rand(&next));
 }
 
 void
-srand(seed)
-u_int seed;
+srand(u_int seed)
 {
 	next = seed;
 }
@@ -147,7 +146,8 @@ sranddev(void)
 
 #ifdef TEST
 
-main()
+int
+main(int argc __unused, char *argv[] __unused)
 {
     int i;
     unsigned myseed;

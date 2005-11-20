@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.7 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.8 2005/11/20 12:37:48 swildner Exp $
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
@@ -57,8 +57,7 @@ int	__isthreaded	= 0;
  * Exit, flushing stdio buffers if necessary.
  */
 void
-exit(status)
-	int status;
+exit(int status)
 {
 	/* Ensure that the auto-initialization routine is linked in: */
 	extern int _thread_autoinit_dummy_decl;	

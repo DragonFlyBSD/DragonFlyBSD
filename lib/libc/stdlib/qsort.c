@@ -32,7 +32,7 @@
  *
  * @(#)qsort.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/qsort.c,v 1.8 1999/08/28 00:01:35 peter Exp $
- * $DragonFly: src/lib/libc/stdlib/qsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/qsort.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -61,9 +61,7 @@ static inline void	 swapfunc (char *, char *, int, int);
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
 static inline void
-swapfunc(a, b, n, swaptype)
-	char *a, *b;
-	int n, swaptype;
+swapfunc(char *a, char *b, int n, int swaptype)
 {
 	if(swaptype <= 1)
 		swapcode(long, a, b, n)
@@ -82,9 +80,7 @@ swapfunc(a, b, n, swaptype)
 #define vecswap(a, b, n) 	if ((n) > 0) swapfunc(a, b, n, swaptype)
 
 static inline char *
-med3(a, b, c, cmp)
-	char *a, *b, *c;
-	cmp_t *cmp;
+med3(char *a, char *b, char *c, cmp_t *cmp)
 {
 	return cmp(a, b) < 0 ?
 	       (cmp(b, c) < 0 ? b : (cmp(a, c) < 0 ? c : a ))
@@ -92,10 +88,7 @@ med3(a, b, c, cmp)
 }
 
 void
-qsort(a, n, es, cmp)
-	void *a;
-	size_t n, es;
-	cmp_t *cmp;
+qsort(void *a, size_t n, size_t es, cmp_t *cmp)
 {
 	char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
 	int d, r, swaptype, swap_cnt;

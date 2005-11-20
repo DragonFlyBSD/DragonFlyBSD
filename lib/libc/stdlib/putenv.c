@@ -31,15 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)putenv.c	8.2 (Berkeley) 3/27/94
- * $DragonFly: src/lib/libc/stdlib/putenv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/putenv.c,v 1.3 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include <stdlib.h>
 #include <string.h>
 
 int
-putenv(str)
-	const char *str;
+putenv(const char *str)
 {
 	char *p, *equal;
 	int rval;
@@ -47,11 +46,11 @@ putenv(str)
 	if ((p = strdup(str)) == NULL)
 		return (-1);
 	if ((equal = index(p, '=')) == NULL) {
-		(void)free(p);
+		free(p);
 		return (-1);
 	}
 	*equal = '\0';
 	rval = setenv(p, equal + 1, 1);
-	(void)free(p);
+	free(p);
 	return (rval);
 }

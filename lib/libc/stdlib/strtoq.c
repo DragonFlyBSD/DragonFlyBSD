@@ -32,7 +32,7 @@
  *
  * @(#)strtoq.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/strtoq.c,v 1.4.6.1 2001/03/02 09:45:20 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/strtoq.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtoq.c,v 1.3 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -46,10 +46,7 @@
  * alphabets and digits are each contiguous.
  */
 quad_t
-strtoq(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	int base;
+strtoq(const char *nptr, char **endptr, int base)
 {
 
 	return strtoll(nptr, endptr, base);

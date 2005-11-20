@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/heapsort.c,v 1.4 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/heapsort.c,v 1.5 2005/11/20 12:37:48 swildner Exp $
  *
  * @(#)heapsort.c	8.1 (Berkeley) 6/4/93
  */
@@ -138,10 +138,8 @@
  * only advantage over quicksort is that it requires little additional memory.
  */
 int
-heapsort(vbase, nmemb, size, compar)
-	void *vbase;
-	size_t nmemb, size;
-	int (*compar) (const void *, const void *);
+heapsort(void *vbase, size_t nmemb, size_t size,
+	 int (*compar)(const void *, const void *))
 {
 	int cnt, i, j, l;
 	char tmp, *tmp1, *tmp2;

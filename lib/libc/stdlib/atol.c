@@ -31,15 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)atol.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/atol.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/atol.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stddef.h>
 #include <stdlib.h>
 
 long
-atol(str)
-	const char *str;
+atol(const char *str)
 {
 	return(strtol(str, (char **)NULL, 10));
 }

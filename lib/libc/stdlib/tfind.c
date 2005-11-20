@@ -10,7 +10,7 @@
  *
  * $NetBSD: tfind.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tfind.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tfind.c,v 1.3 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/tfind.c,v 1.4 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -22,10 +22,9 @@
 
 /* find a node, or return 0 */
 void *
-tfind(vkey, vrootp, compar)
-	const void *vkey;		/* key to be found */
-	void **vrootp;			/* address of the tree root */
-	int (*compar) (const void *, const void *);
+tfind(const void *vkey,					/* key to be found */
+      void **vrootp,					/* address of the tree root */
+      int (*compar)(const void *, const void *))
 {
 	node_t **rootp = (node_t **)vrootp;
 

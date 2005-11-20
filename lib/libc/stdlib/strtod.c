@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/strtod.c,v 1.3.8.4 2002/08/31 22:26:35 dwmalone Exp $
- * $DragonFly: src/lib/libc/stdlib/strtod.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtod.c,v 1.4 2005/11/20 12:37:49 swildner Exp $
  *
  * @(#)strtod.c	8.1 (Berkeley) 6/4/93
  */
@@ -1890,6 +1890,11 @@ __dtoa
 	Bigint *b, *b1, *delta, *mlo, *mhi, *S;
 	double d2, ds, eps;
 	char *s, *s0;
+
+	ilim = 0;
+	ilim1 = 0;
+	spec_case = 0;
+	mlo = NULL;
 
 	if (word0(d) & Sign_bit) {
 		/* set sign for everything, including 0's and NaNs */

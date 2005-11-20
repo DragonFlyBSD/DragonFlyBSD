@@ -10,7 +10,7 @@
  *
  * $NetBSD: twalk.c,v 1.1 1999/02/22 10:33:16 christos Exp $
  * $FreeBSD: src/lib/libc/stdlib/twalk.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/twalk.c,v 1.3 2003/09/06 08:19:16 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/twalk.c,v 1.4 2005/11/20 12:37:49 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -25,10 +25,9 @@ static void trecurse (const node_t *,
 
 /* Walk the nodes of a tree */
 static void
-trecurse(root, action, level)
-	const node_t *root;	/* Root of the tree to be walked */
-	void (*action) (const void *, VISIT, int);
-	int level;
+trecurse(const node_t *root,				/* Root of the tree to be walked */
+	 void (*action)(const void *, VISIT, int),
+	 int level)
 {
 
 	if (root->llink == NULL && root->rlink == NULL)
@@ -46,9 +45,8 @@ trecurse(root, action, level)
 
 /* Walk the nodes of a tree */
 void
-twalk(vroot, action)
-	const void *vroot;	/* Root of the tree to be walked */
-	void (*action) (const void *, VISIT, int);
+twalk(const void *vroot,				/* Root of the tree to be walked */
+      void (*action)(const void *, VISIT, int))
 {
 	if (vroot != NULL && action != NULL)
 		trecurse(vroot, action, 0);

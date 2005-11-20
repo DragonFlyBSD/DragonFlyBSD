@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/system.c,v 1.5.2.2 2001/10/10 12:50:22 alfred Exp $
- * $DragonFly: src/lib/libc/stdlib/system.c,v 1.4 2005/04/28 13:38:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/system.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  *
  * @(#)system.c	8.1 (Berkeley) 6/4/93
  */
@@ -66,13 +66,13 @@ __system(const char *command)
 	 * existing signal dispositions.
 	 */
 	ign.sa_handler = SIG_IGN;
-	(void)sigemptyset(&ign.sa_mask);
+	sigemptyset(&ign.sa_mask);
 	ign.sa_flags = 0;
-	(void)_sigaction(SIGINT, &ign, &intact);
-	(void)_sigaction(SIGQUIT, &ign, &quitact);
-	(void)sigemptyset(&newsigblock);
-	(void)sigaddset(&newsigblock, SIGCHLD);
-	(void)_sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
+	_sigaction(SIGINT, &ign, &intact);
+	_sigaction(SIGQUIT, &ign, &quitact);
+	sigemptyset(&newsigblock);
+	sigaddset(&newsigblock, SIGCHLD);
+	_sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
 	switch(pid = fork()) {
 	case -1:			/* error */
 		break;
@@ -80,9 +80,9 @@ __system(const char *command)
 		/*
 		 * Restore original signal dispositions and exec the command.
 		 */
-		(void)_sigaction(SIGINT, &intact, NULL);
-		(void)_sigaction(SIGQUIT,  &quitact, NULL);
-		(void)_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+		_sigaction(SIGINT, &intact, NULL);
+		_sigaction(SIGQUIT,  &quitact, NULL);
+		_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *)NULL);
 		_exit(127);
 	default:			/* parent */
@@ -92,9 +92,9 @@ __system(const char *command)
 		} while (pid == -1 && errno == EINTR);
 		break;
 	}
-	(void)_sigaction(SIGINT, &intact, NULL);
-	(void)_sigaction(SIGQUIT,  &quitact, NULL);
-	(void)_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+	_sigaction(SIGINT, &intact, NULL);
+	_sigaction(SIGQUIT,  &quitact, NULL);
+	_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 	return(pid == -1 ? -1 : pstat);
 }
 
