@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/sys/ftruncate.c,v 1.3.6.1 2001/03/05 11:45:51 obrien Exp $
- * $DragonFly: src/lib/libc/sys/ftruncate.c,v 1.3 2005/01/31 22:29:46 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/ftruncate.c,v 1.4 2005/11/20 13:24:36 swildner Exp $
  *
  * @(#)ftruncate.c	8.1 (Berkeley) 6/17/93
  */
@@ -45,9 +45,7 @@
  * is not supplied by GCC 1.X but is supplied by GCC 2.X.
  */
 int
-ftruncate(fd, length)
-	int	fd;
-	off_t	length;
+ftruncate(int fd, off_t length)
 {
 
 	return(__syscall((quad_t)SYS_ftruncate, fd, 0, length));

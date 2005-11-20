@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)lseek.c	8.1 (Berkeley) 6/17/93
- * $DragonFly: src/lib/libc/sys/lseek.c,v 1.3 2005/01/31 22:29:46 dillon Exp $
+ * $DragonFly: src/lib/libc/sys/lseek.c,v 1.4 2005/11/20 13:24:36 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -43,10 +43,7 @@
  * is not supplied by GCC 1.X but is supplied by GCC 2.X.
  */
 off_t
-lseek(fd, offset, whence)
-	int	fd;
-	off_t	offset;
-	int	whence;
+lseek(int fd, off_t offset, int whence)
 {
 	return(__syscall((quad_t)SYS_lseek, fd, 0, offset, whence));
 }

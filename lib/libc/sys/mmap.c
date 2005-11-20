@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
+ * $DragonFly: src/lib/libc/sys/mmap.c,v 1.3 2005/11/20 13:24:36 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -43,13 +44,7 @@
  * is not supplied by GCC 1.X but is supplied by GCC 2.X.
  */
 void *
-mmap(addr, len, prot, flags, fd, offset)
-	void *	addr;
-	size_t	len;
-	int	prot;
-	int	flags;
-	int	fd;
-	off_t	offset;
+mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 {
 
 	return((void *)(long)__syscall((quad_t)SYS_mmap, addr, len, prot, flags,

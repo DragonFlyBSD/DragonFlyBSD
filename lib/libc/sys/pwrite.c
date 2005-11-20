@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
+ * $DragonFly: src/lib/libc/sys/pwrite.c,v 1.3 2005/11/20 13:24:36 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -42,11 +43,7 @@
  * is not supplied by GCC 1.X but is supplied by GCC 2.X.
  */
 ssize_t
-pwrite(fd, buf, nbyte, offset)
-	int	fd;
-	const void *buf;
-	size_t	nbyte;
-	off_t	offset;
+pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
 	return ((ssize_t)__syscall((quad_t)SYS_pwrite, fd, buf, nbyte, 0, offset));
 }

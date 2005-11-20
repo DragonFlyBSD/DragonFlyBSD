@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/xdryp.c,v 1.9.2.1 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.3 2005/04/26 05:30:12 joerg Exp $
+ * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.4 2005/11/20 13:24:36 swildner Exp $
  */
 
 #include <rpc/rpc.h>
@@ -49,10 +49,10 @@ typedef struct {
 	int  dsize;
 } datum;
 
+bool_t xdr_datum(XDR *, datum *);
+
 bool_t
-xdr_datum(xdrs, objp)
-XDR *xdrs;
-datum *objp;
+xdr_datum(XDR *xdrs, datum *objp)
 {
 	if (!xdr_bytes(xdrs, (char **)&objp->dptr, (u_int *)&objp->dsize, YPMAXRECORD)) {
 		return (FALSE);
@@ -61,9 +61,7 @@ datum *objp;
 }
 
 bool_t
-xdr_ypresp_all_seq(xdrs, objp)
-XDR *xdrs;
-u_long *objp;
+xdr_ypresp_all_seq(XDR *xdrs, u_long *objp)
 {
 	struct ypresp_all out;
 	u_long status;
