@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_txvar.h,v 1.14.2.1 2002/10/29 01:43:50 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.6 2005/11/20 11:59:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.7 2005/11/20 13:08:35 sephe Exp $
  */
 
 /*
@@ -120,16 +120,3 @@ struct epic_type {
 	epic_read_phy_reg((sc), (phy), (reg))
 #define	PHY_WRITE_2(sc, phy, reg, val)					\
 	epic_write_phy_reg((sc), (phy), (reg), (val))
-
-/* Macro to get either mbuf cluster or nothing */
-#define EPIC_MGETCLUSTER(m)						\
-	{ MGETHDR((m),MB_DONTWAIT,MT_DATA);				\
-	  if (m) {							\
-	    MCLGET((m),MB_DONTWAIT);					\
-	    if( 0 == ((m)->m_flags & M_EXT) ) {				\
-	      m_freem(m);						\
-	      (m) = NULL;						\
-	    }								\
-	  }								\
-	}
-
