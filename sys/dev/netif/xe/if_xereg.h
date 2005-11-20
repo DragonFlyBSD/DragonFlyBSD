@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  *
  *	$Id: if_xereg.h,v 1.5 1999/05/20 21:53:58 scott Exp $
- * $FreeBSD: src/sys/dev/xe/if_xereg.h,v 1.5 2000/01/10 08:05:53 imp Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xereg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $FreeBSD: src/sys/dev/xe/if_xereg.h,v 1.6 2003/10/14 22:51:35 rsm Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xereg.h,v 1.3 2005/11/20 10:16:56 sephe Exp $
  */
 #ifndef DEV_XE_IF_XEREG_H
 #define DEV_XE_IF_XEREG_H
@@ -284,10 +284,14 @@
 #define XE_IMR0_TX_OVERFLOW	0x01	/* Masks for bits in ISR */
 #define XE_IMR0_TX_PACKET	0x02
 #define XE_IMR0_MAC_INTR	0x04
+#define XE_IMR0_TX_RESGRANT	0x08	/* Tx reservation granted (CE2) */
 #define XE_IMR0_RX_EARLY	0x10
 #define XE_IMR0_RX_PACKET	0x20
 #define XE_IMR0_RX_REJECT	0x40
 #define XE_IMR0_FORCE_INTR	0x80
+
+/* XE_IMR1 bits */
+#define XE_IMR1_TX_UNDERRUN	0x01
 
 /* XE_ECR bits */
 #define XE_ECR_EARLY_TX		0x01	/* Enable early transmit mode */
@@ -374,7 +378,8 @@
 #define XE_GPR0_GP2_IN		0x20	/* Value read from GP2 line */
 
 /* XE_GPR1 bits */
-#define XE_GPR1_POWER_DOWN	0x01	/* Power down analog section (down to 20mA load) */
+#define XE_GPR1_POWER_DOWN	0x01	/* 0 = Power down analog section */
+#define XE_GPR1_AIC		0x04	/* AIC bit (CE2 only) */
 
 /* XE_BOV values */
 #define XE_BOV_DINGO		0x55	/* Dingo in Dingo mode */
@@ -472,6 +477,7 @@
 #define XE_TXST1_LINK_STATUS	0x10	/* Valid link status */
 
 /* RX0Msk bits */
+#define XE_RX0M_MP		0x01	/* Multicast packet? (CE2 only) */
 #define XE_RX0M_LONG_PACKET	0x02	/* Masks for bits in RXST0 */
 #define XE_RX0M_ALIGN_ERROR	0x04	/* Alignment error (CE2 only) */
 #define XE_RX0M_CRC_ERROR	0x08
@@ -505,6 +511,7 @@
 #define XE_SWC0_LOOPBACK_SOURCE	0x02	/* 1 = Transceiver, 0 = MAC */
 #define XE_SWC0_ACCEPT_ERROR	0x04	/* Accept otherwise OK packets with CRC errors */
 #define XE_SWC0_ACCEPT_SHORT	0x08	/* Accept otherwise OK packets that are too short */
+#define XE_SWC0_NO_SRC_INSERT	0x20	/* Disable source insertion (CE2) */
 #define XE_SWC0_NO_CRC_INSERT	0x40	/* Don't add CRC to outgoing packets */
 
 /* SWC1 bits */

@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
- * $FreeBSD: src/sys/dev/xe/if_xevar.h,v 1.1.2.1 2000/06/01 01:23:53 imp Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.5 2005/07/13 17:31:05 joerg Exp $
+ * $FreeBSD: src/sys/dev/xe/if_xevar.h,v 1.4 2003/10/14 22:51:35 rsm Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.6 2005/11/20 10:16:56 sephe Exp $
  */
 #ifndef DEV_XE_IF_XEDEV_H
 #define DEV_XE_IF_XEDEV_H
@@ -49,11 +49,14 @@ struct xe_softc {
   int irq_rid;
   struct resource *port_res;
   int port_rid;
+  struct resource *ce2_port_res;
+  int ce2_port_rid;
   int srev;     	/* Silicon revision */
   int tx_queued;	/* Packets currently waiting to transmit */
   int tx_tpr;		/* Last value of TPR reg on card */
-  int tx_collisions;	/* Collisions since last successful send */
   int tx_timeouts;	/* Count of transmit timeouts */
+  uint16_t tx_min;	/* Smallest packet we can send without padding */
+  uint16_t tx_thres;	/* Threshold bytes for early transmit */
   int autoneg_status;	/* Autonegotiation progress state */
   int media;		/* Private media word */
   u_char version;	/* Bonding Version register from card */
@@ -86,5 +89,8 @@ int	xe_attach(device_t);
 int	xe_detach(device_t);
 int	xe_activate(device_t);
 void	xe_deactivate(device_t);
+
+/* Debugging level */
+extern int	xe_debug;
 
 #endif /* DEV_XE_IF_XEVAR_H */

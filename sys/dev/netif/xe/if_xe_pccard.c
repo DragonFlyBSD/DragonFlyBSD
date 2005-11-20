@@ -25,8 +25,8 @@
  *
  * xe pccard interface driver
  *
- * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.1 2002/02/20 14:23:58 shiba Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.1 2005/07/13 17:31:05 joerg Exp $
+ * $FreeBSD: src/sys/dev/xe/if_xe_pccard.c,v 1.11 2003/10/14 22:51:35 rsm Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe_pccard.c,v 1.2 2005/11/20 10:16:56 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,14 @@
 
 #include "if_xereg.h"
 #include "if_xevar.h"
+
+#define XE_DEBUG
+
+#ifdef XE_DEBUG
+#define DEVPRINTF(level, arg)	if (xe_debug >= (level)) device_printf arg
+#else
+#define DEVPRINTF(level, arg)
+#endif
 
 static const struct pccard_product xe_pccard_products[] = {
 	PCMCIA_CARD(ACCTON, EN2226, 0),
@@ -87,18 +95,19 @@ struct xe_vendor {
 #define XE_CARD_TYPE_FLAGS_MOHAWK	0x2
 #define XE_CARD_TYPE_FLAGS_DINGO	0x4
 
-#define XE_PROD_UMASK		0x100f
-#define XE_PROD_MODEM_UMASK	0x1000
-#define XE_PROD_SINGLE_ID1	0x1
-#define XE_PROD_SINGLE_ID2	0x2
-#define XE_PROD_SINGLE_ID3	0x3
-#define XE_PROD_MULTI_ID1	0x1001
-#define XE_PROD_MULTI_ID2	0x1002
-#define XE_PROD_MULTI_ID3	0x1003
-#define XE_PROD_MULTI_ID4	0x1004
-#define XE_PROD_MULTI_ID5	0x1005
-#define XE_PROD_MULTI_ID6	0x1006
-#define XE_PROD_MULTI_ID7	0x1007
+#define XE_PROD_UMASK		0x11000f
+#define XE_PROD_ETHER_UMASK	0x010000
+#define XE_PROD_MODEM_UMASK	0x100000
+#define XE_PROD_SINGLE_ID1	0x010001
+#define XE_PROD_SINGLE_ID2	0x010002
+#define XE_PROD_SINGLE_ID3	0x010003
+#define XE_PROD_MULTI_ID1	0x110001
+#define XE_PROD_MULTI_ID2	0x110002
+#define XE_PROD_MULTI_ID3	0x110003
+#define XE_PROD_MULTI_ID4	0x110004
+#define XE_PROD_MULTI_ID5	0x110005
+#define XE_PROD_MULTI_ID6	0x110006 
+#define XE_PROD_MULTI_ID7	0x110007  
 
 struct xe_card_type {
 	uint32_t	 prod_type;
@@ -123,7 +132,7 @@ struct xe_card_type {
 static struct xe_vendor		*xe_vendor_lookup	(uint32_t);
 static struct xe_card_type	*xe_card_type_lookup	(uint32_t);
 
-static int	xe_cem56fix	(device_t);
+static int	xe_cemfix	(device_t);
 static int	xe_pccard_probe	(device_t);
 static int	xe_pccard_match	(device_t);
 static int	xe_pccard_attach(device_t);
@@ -152,11 +161,12 @@ devclass_t xe_devclass;
 DRIVER_MODULE(xe, pccard, xe_pccard_driver, xe_devclass, 0, 0);
 
 /*
- * Fixing for RealPort cards - they need a little furtling to get the
- * ethernet working. But this codes don't work well in NEWCARD.
+ * Fixing for CEM2, CEM3 and CEM56/REM56 cards.  These need some magic to
+ * enable the Ethernet function, which isn't mentioned anywhere in the CIS.
+ * Despite the register names, most of this isn't Dingo-specific.
  */
 static int
-xe_cem56fix(device_t dev)
+xe_cemfix(device_t dev)
 {
 	struct xe_softc *sc = device_get_softc(dev);
 	bus_space_tag_t bst;
@@ -165,7 +175,7 @@ xe_cem56fix(device_t dev)
 	int rid;
 	int ioport;
 
-	device_printf(dev, "Realport port 0x%0lx, size 0x%0lx\n",
+	device_printf(dev, "CEM I/O port 0x%0lx, size 0x%0lx\n",
 	    bus_get_resource_start(dev, SYS_RES_IOPORT, sc->port_rid),
 	    bus_get_resource_count(dev, SYS_RES_IOPORT, sc->port_rid));
 
@@ -191,12 +201,14 @@ xe_cem56fix(device_t dev)
 	bus_space_write_1(bst, bsh, DINGO_EBAR0, ioport & 0xff);
 	bus_space_write_1(bst, bsh, DINGO_EBAR1, (ioport >> 8) & 0xff);
 
-	bus_space_write_1(bst, bsh, DINGO_DCOR0, DINGO_DCOR0_SF_INT);
-	bus_space_write_1(bst, bsh, DINGO_DCOR1, DINGO_DCOR1_INT_LEVEL |
-						 DINGO_DCOR1_EEDIO);
-	bus_space_write_1(bst, bsh, DINGO_DCOR2, 0x00);
-	bus_space_write_1(bst, bsh, DINGO_DCOR3, 0x00);
-	bus_space_write_1(bst, bsh, DINGO_DCOR4, 0x00);
+	if (sc->dingo) {
+		bus_space_write_1(bst, bsh, DINGO_DCOR0, DINGO_DCOR0_SF_INT);
+		bus_space_write_1(bst, bsh, DINGO_DCOR1,
+				  DINGO_DCOR1_INT_LEVEL | DINGO_DCOR1_EEDIO);
+		bus_space_write_1(bst, bsh, DINGO_DCOR2, 0x00);
+		bus_space_write_1(bst, bsh, DINGO_DCOR3, 0x00);
+		bus_space_write_1(bst, bsh, DINGO_DCOR4, 0x00);
+	}
 
 	bus_release_resource(dev, SYS_RES_MEMORY, rid, r);
 
@@ -244,6 +256,33 @@ xe_pccard_probe(device_t dev)
 	struct xe_vendor *vendor_itm;
 	struct xe_card_type *card_itm;
 	int i;
+
+#ifdef XE_DEBUG
+	const char *vendor_str = NULL;
+	const char *product_str = NULL;
+	const char *cis4_str = NULL;
+
+	vendor = pccard_get_vendor(dev);
+	product = pccard_get_product(dev);
+	prodext = pccard_get_prodext(dev);
+	vendor_str = pccard_get_vendor_str(dev);
+	product_str = pccard_get_product_str(dev);
+	cis3_str = pccard_get_cis3_str(dev);
+	cis4_str = pccard_get_cis4_str(dev);
+
+	DEVPRINTF(1, (dev, "pccard_probe\n"));
+	DEVPRINTF(1, (dev, "vendor = 0x%04x\n", vendor));
+	DEVPRINTF(1, (dev, "product = 0x%04x\n", product));
+	DEVPRINTF(1, (dev, "prodext = 0x%02x\n", prodext));
+	DEVPRINTF(1, (dev, "vendor_str = %s\n",
+		      vendor_str == NULL ? "NULL" : vendor_str));
+	DEVPRINTF(1, (dev, "product_str = %s\n",
+		      product_str == NULL ? "NULL" : product_str));
+	DEVPRINTF(1, (dev, "cis3_str = %s\n",
+		      cis3_str == NULL ? "NULL" : cis3_str));
+	DEVPRINTF(1, (dev, "cis4_str = %s\n",
+		      cis4_str == NULL ? "NULL" : cis4_str));
+#endif
 
 	/*
 	 * PCCARD_CISTPL_MANFID = 0x20
@@ -294,7 +333,7 @@ xe_pccard_probe(device_t dev)
 	 */
 	cis3_str = pccard_get_cis3_str(dev);
 	if (strcmp(scp->card_type, "CE") == 0)
-		if (strcmp(cis3_str, "CE2") ==0)
+		if (cis3_str != NULL && strcmp(cis3_str, "PS-CE2-10") == 0)
 			scp->card_type = "CE2";
 
 	/*
@@ -325,8 +364,9 @@ xe_pccard_attach(device_t dev)
 		return err;
          
 	/* Hack RealPorts into submission */
-	if (scp->dingo && xe_cem56fix(dev) < 0) {
-		device_printf(dev, "Unable to fix your RealPort\n");
+	if (scp->modem && xe_cemfix(dev) < 0) {
+		device_printf(dev, "Unable to fix your %s combo card\n",
+			      scp->card_type);
 		xe_deactivate(dev);
 		return ENODEV;
 	}
