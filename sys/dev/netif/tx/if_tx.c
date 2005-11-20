@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.28 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.29 2005/11/20 09:46:31 sephe Exp $
  */
 
 /*
@@ -161,8 +161,7 @@ static struct epic_type epic_devs[] = {
 };
 
 static int
-epic_probe(dev)
-	device_t dev;
+epic_probe(device_t dev)
 {
 	struct epic_type *t;
 
@@ -177,8 +176,7 @@ epic_probe(dev)
 }
 
 static struct epic_type *
-epic_devtype(dev)
-	device_t dev;
+epic_devtype(device_t dev)
 {
 	struct epic_type *t;
 
@@ -207,8 +205,7 @@ epic_devtype(dev)
  * Reset to known state.
  */
 static int
-epic_attach(dev)
-	device_t dev;
+epic_attach(device_t dev)
 {
 	struct ifnet *ifp;
 	epic_softc_t *sc;
@@ -311,8 +308,7 @@ fail:
  * Detach driver and free resources
  */
 static int
-epic_detach(dev)
-	device_t dev;
+epic_detach(device_t dev)
 {
 	struct ifnet *ifp;
 	epic_softc_t *sc;
@@ -359,8 +355,7 @@ epic_detach(dev)
  * get confused by errant DMAs when rebooting.
  */
 static void
-epic_shutdown(dev)
-	device_t dev;
+epic_shutdown(device_t dev)
 {
 	epic_softc_t *sc;
 
@@ -375,11 +370,7 @@ epic_shutdown(dev)
  * This is if_ioctl handler.
  */
 static int
-epic_ifioctl(ifp, command, data, cr)
-	struct ifnet *ifp;
-	u_long command;
-	caddr_t data;
-	struct ucred *cr;
+epic_ifioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	epic_softc_t *sc = ifp->if_softc;
 	struct mii_data	*mii;
@@ -458,8 +449,7 @@ epic_ifioctl(ifp, command, data, cr)
  * Return -1 on failure.
  */
 static int
-epic_common_attach(sc)
-	epic_softc_t *sc;
+epic_common_attach(epic_softc_t *sc)
 {
 	int i;
 
@@ -507,8 +497,7 @@ epic_common_attach(sc)
  * or queue become empty.
  */
 static void
-epic_ifstart(ifp)
-	struct ifnet * ifp;
+epic_ifstart(struct ifnet *ifp)
 {
 	epic_softc_t *sc = ifp->if_softc;
 	struct epic_tx_buffer *buf;
@@ -585,8 +574,7 @@ epic_ifstart(ifp)
  * Synopsis: Finish all received frames.
  */
 static void
-epic_rx_done(sc)
-	epic_softc_t *sc;
+epic_rx_done(epic_softc_t *sc)
 {
 	u_int16_t len;
 	struct ifnet *ifp = &sc->sc_if;
@@ -650,8 +638,7 @@ epic_rx_done(sc)
  * are pending or descriptor is not transmitted yet.
  */
 static void
-epic_tx_done(sc)
-	epic_softc_t *sc;
+epic_tx_done(epic_softc_t *sc)
 {
 	struct epic_tx_buffer *buf;
 	struct epic_tx_desc *desc;
@@ -693,8 +680,7 @@ epic_tx_done(sc)
  * Interrupt function
  */
 static void
-epic_intr(arg)
-    void *arg;
+epic_intr(void *arg)
 {
     epic_softc_t * sc = (epic_softc_t *) arg;
     int status, i = 4;
@@ -766,8 +752,7 @@ epic_intr(arg)
  * and restart the transmitter.
  */
 static void
-epic_tx_underrun(sc)
-	epic_softc_t *sc;
+epic_tx_underrun(epic_softc_t *sc)
 {
 	if (sc->tx_threshold > TRANSMIT_THRESHOLD_MAX) {
 		sc->txcon &= ~TXCON_EARLY_TRANSMIT_ENABLE;
@@ -799,8 +784,7 @@ epic_tx_underrun(sc)
  * if success continue to work.
  */
 static void
-epic_ifwatchdog(ifp)
-	struct ifnet *ifp;
+epic_ifwatchdog(struct ifnet *ifp)
 {
 	epic_softc_t *sc = ifp->if_softc;
 
@@ -855,8 +839,7 @@ epic_stats_update(void *xsc)
  * Set media options.
  */
 static int
-epic_ifmedia_upd(ifp)
-	struct ifnet *ifp;
+epic_ifmedia_upd(struct ifnet *ifp)
 {
 	epic_softc_t *sc;
 	struct mii_data *mii;
@@ -981,9 +964,7 @@ epic_ifmedia_upd(ifp)
  * Report current media status.
  */
 static void
-epic_ifmedia_sts(ifp, ifmr)
-	struct ifnet *ifp;
-	struct ifmediareq *ifmr;
+epic_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	epic_softc_t *sc;
 	struct mii_data *mii;
@@ -1016,8 +997,7 @@ epic_ifmedia_sts(ifp, ifmr)
  * Callback routine, called on media change.
  */
 static void
-epic_miibus_statchg(dev)
-	device_t dev;
+epic_miibus_statchg(device_t dev)
 {
 	epic_softc_t *sc;
 	struct mii_data *mii;
@@ -1061,8 +1041,7 @@ epic_miibus_statchg(dev)
 }
 
 static void
-epic_miibus_mediainit(dev)
-	device_t dev;
+epic_miibus_mediainit(device_t dev)
 {
 	epic_softc_t *sc;
 	struct mii_data *mii;
@@ -1095,8 +1074,7 @@ epic_miibus_mediainit(dev)
  * Reset chip, allocate rings, and update media.
  */
 static int
-epic_init(sc)
-	epic_softc_t *sc;
+epic_init(epic_softc_t *sc)
 {
 	struct ifnet *ifp = &sc->sc_if;
 	int	i;
@@ -1189,8 +1167,7 @@ epic_init(sc)
  * access RXCON.
  */
 static void
-epic_set_rx_mode(sc)
-	epic_softc_t *sc;
+epic_set_rx_mode(epic_softc_t *sc)
 {
 	u_int32_t 		flags = sc->sc_if.if_flags;
 	u_int32_t 		rxcon = RXCON_DEFAULT;
@@ -1211,8 +1188,7 @@ epic_set_rx_mode(sc)
  * access TXCON.
  */
 static void
-epic_set_tx_mode(sc)
-	epic_softc_t *sc;
+epic_set_tx_mode(epic_softc_t *sc)
 {
 	if (sc->txcon & TXCON_EARLY_TRANSMIT_ENABLE)
 		CSR_WRITE_4(sc, ETXTHR, sc->tx_threshold);
@@ -1228,8 +1204,7 @@ epic_set_tx_mode(sc)
  * Note: EPIC must be in idle state.
  */
 static void
-epic_set_mc_table(sc)
-	epic_softc_t *sc;
+epic_set_mc_table(epic_softc_t *sc)
 {
 	struct ifnet *ifp = &sc->sc_if;
 	struct ifmultiaddr *ifma;
@@ -1271,8 +1246,7 @@ epic_set_mc_table(sc)
  * Synopsis: Start receive process and transmit one, if they need.
  */
 static void
-epic_start_activity(sc)
-	epic_softc_t *sc;
+epic_start_activity(epic_softc_t *sc)
 {
 	/* Start rx process */
 	CSR_WRITE_4(sc, COMMAND,
@@ -1285,8 +1259,7 @@ epic_start_activity(sc)
  * packet needs to be queued to stop Tx DMA.
  */
 static void
-epic_stop_activity(sc)
-	epic_softc_t *sc;
+epic_stop_activity(epic_softc_t *sc)
 {
 	int status, i;
 
@@ -1331,8 +1304,7 @@ epic_stop_activity(sc)
  * XXX the packet will then be actually sent over network...
  */
 static int
-epic_queue_last_packet(sc)
-	epic_softc_t *sc;
+epic_queue_last_packet(epic_softc_t *sc)
 {
 	struct epic_tx_desc *desc;
 	struct epic_frag_list *flist;
@@ -1395,8 +1367,7 @@ epic_queue_last_packet(sc)
  *  Synopsis: Shut down board and deallocates rings.
  */
 static void
-epic_stop(sc)
-	epic_softc_t *sc;
+epic_stop(epic_softc_t *sc)
 {
 
 	crit_enter();
@@ -1433,8 +1404,7 @@ epic_stop(sc)
  * Synopsis: This function should free all memory allocated for rings.
  */
 static void
-epic_free_rings(sc)
-	epic_softc_t *sc;
+epic_free_rings(epic_softc_t *sc)
 {
 	int i;
 
@@ -1469,8 +1439,7 @@ epic_free_rings(sc)
  * are bounded and aligned properly.
  */
 static int
-epic_init_rings(sc)
-	epic_softc_t *sc;
+epic_init_rings(epic_softc_t *sc)
 {
 	int i;
 
@@ -1530,9 +1499,7 @@ epic_init_rings(sc)
  * EEPROM operation functions
  */
 static void
-epic_write_eepromreg(sc, val)
-	epic_softc_t *sc;
-	u_int8_t val;
+epic_write_eepromreg(epic_softc_t *sc, u_int8_t val)
 {
 	u_int16_t i;
 
@@ -1545,16 +1512,13 @@ epic_write_eepromreg(sc, val)
 }
 
 static u_int8_t
-epic_read_eepromreg(sc)
-	epic_softc_t *sc;
+epic_read_eepromreg(epic_softc_t *sc)
 {
 	return CSR_READ_1(sc, EECTL);
 }
 
 static u_int8_t
-epic_eeprom_clock(sc, val)
-	epic_softc_t *sc;
-	u_int8_t val;
+epic_eeprom_clock(epic_softc_t *sc, u_int8_t val)
 {
 	epic_write_eepromreg(sc, val);
 	epic_write_eepromreg(sc, (val | 0x4));
@@ -1564,9 +1528,7 @@ epic_eeprom_clock(sc, val)
 }
 
 static void
-epic_output_eepromw(sc, val)
-	epic_softc_t *sc;
-	u_int16_t val;
+epic_output_eepromw(epic_softc_t *sc, u_int16_t val)
 {
 	int i;
 
@@ -1579,8 +1541,7 @@ epic_output_eepromw(sc, val)
 }
 
 static u_int16_t
-epic_input_eepromw(sc)
-	epic_softc_t *sc;
+epic_input_eepromw(epic_softc_t *sc)
 {
 	u_int16_t retval = 0;
 	int i;
@@ -1594,9 +1555,7 @@ epic_input_eepromw(sc)
 }
 
 static int
-epic_read_eeprom(sc, loc)
-	epic_softc_t *sc;
-	u_int16_t loc;
+epic_read_eeprom(epic_softc_t *sc, u_int16_t loc)
 {
 	u_int16_t dataval;
 	u_int16_t read_cmd;
@@ -1621,9 +1580,7 @@ epic_read_eeprom(sc, loc)
  * Here goes MII read/write routines
  */
 static int
-epic_read_phy_reg(sc, phy, reg)
-	epic_softc_t *sc;
-	int phy, reg;
+epic_read_phy_reg(epic_softc_t *sc, int phy, int reg)
 {
 	int i;
 
@@ -1638,9 +1595,7 @@ epic_read_phy_reg(sc, phy, reg)
 }
 
 static void
-epic_write_phy_reg(sc, phy, reg, val)
-	epic_softc_t *sc;
-	int phy, reg, val;
+epic_write_phy_reg(epic_softc_t *sc, int phy, int reg, int val)
 {
 	int i;
 
@@ -1656,9 +1611,7 @@ epic_write_phy_reg(sc, phy, reg, val)
 }
 
 static int
-epic_miibus_readreg(dev, phy, reg)
-	device_t dev;
-	int phy, reg;
+epic_miibus_readreg(device_t dev, int phy, int reg)
 {
 	epic_softc_t *sc;
 
@@ -1668,9 +1621,7 @@ epic_miibus_readreg(dev, phy, reg)
 }
 
 static int
-epic_miibus_writereg(dev, phy, reg, data)
-	device_t dev;
-	int phy, reg, data;
+epic_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
 	epic_softc_t *sc;
 
