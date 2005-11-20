@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)qdivrem.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/quad/qdivrem.c,v 1.4 2005/11/13 02:13:52 swildner Exp $
+ * $DragonFly: src/lib/libc/quad/qdivrem.c,v 1.5 2005/11/20 09:18:37 swildner Exp $
  */
 
 /*
@@ -213,9 +213,9 @@ __qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 			rhat = uj1;
 			goto qhat_too_big;
 		} else {
-			u_long n = COMBINE(uj0, uj1);
-			qhat = n / v1;
-			rhat = n % v1;
+			u_long n1 = COMBINE(uj0, uj1);
+			qhat = n1 / v1;
+			rhat = n1 % v1;
 		}
 		while (v2 * qhat > COMBINE(rhat, uj2)) {
 	qhat_too_big:

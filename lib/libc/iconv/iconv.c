@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/iconv/iconv.c,v 1.4 2004/08/02 13:38:21 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/iconv/iconv.c,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/iconv/iconv.c,v 1.2 2005/11/20 09:18:36 swildner Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -42,6 +42,10 @@
 #include "../citrus/citrus_iconv.h"
 
 #define ISBADF(_h_)	(!(_h_) || (_h_) == (iconv_t)-1)
+
+iconv_t _iconv_open(const char *, const char *);
+int _iconv_close(iconv_t);
+size_t _iconv(iconv_t, const char **, size_t *, char **, size_t *);
 
 iconv_t
 _iconv_open(const char *out, const char *in)

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/rune.c,v 1.26 2004/05/09 11:26:33 kleink Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/rune.c,v 1.5 2005/05/08 15:55:15 joerg Exp $
+/*	$DragonFly: src/lib/libc/locale/rune.c,v 1.6 2005/11/20 09:18:37 swildner Exp $	*/
 
 /*-
  * Copyright (c)1999 Citrus Project,

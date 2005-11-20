@@ -37,7 +37,7 @@
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/engine.c,v 1.5.8.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libc/regex/engine.c,v 1.6 2005/01/08 19:17:01 dillon Exp $
+ * $DragonFly: src/lib/libc/regex/engine.c,v 1.7 2005/11/20 09:18:37 swildner Exp $
  */
 
 /*
@@ -158,6 +158,8 @@ matcher(struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[],
 	char *mustlast;
 	int *matchjump;
 	int *charjump;
+
+	dp = NULL;
 
 	/* simplify the situation where possible */
 	if (g->cflags&REG_NOSUB)

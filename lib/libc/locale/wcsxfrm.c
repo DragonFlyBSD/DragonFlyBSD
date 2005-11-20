@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/locale/wcsxfrm.c,v 1.1 2003/03/02 22:18:16 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/wcsxfrm.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/locale/wcsxfrm.c,v 1.2 2005/11/20 09:18:37 swildner Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -43,13 +43,14 @@ wcsxfrm(wchar_t *s1, const wchar_t *s2, size_t n)
 	len = wcslen(s2);
 	if (len < n)
 		wcscpy(s1, s2);
-	else
+	else {
 		/*
 		 * SUSv3 says:
 		 *   If the value returned is n or more, the contents
 		 *   of the array pointed to by ws1 are unspecified.
 		 */
 		/* thus, do nothing */;
+	}
 
 	return(len);
 }

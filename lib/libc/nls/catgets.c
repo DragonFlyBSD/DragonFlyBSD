@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/nls/catgets.c,v 1.15 1999/08/17 04:00:51 mycroft Exp $	*/
-/*	$DragonFly: src/lib/libc/nls/catgets.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/nls/catgets.c,v 1.2 2005/11/20 09:18:37 swildner Exp $ */
 
 /*-
  * Copyright (c) 1996 The NetBSD Foundation, Inc.
@@ -40,6 +40,7 @@
 #define _NLS_PRIVATE
 
 #include <sys/types.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <nl_types.h>
 #include <stdlib.h>

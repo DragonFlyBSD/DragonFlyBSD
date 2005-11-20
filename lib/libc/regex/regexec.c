@@ -38,7 +38,7 @@
  *
  * @(#)regexec.c	8.3 (Berkeley) 3/20/94
  *
- * $DragonFly: src/lib/libc/regex/regexec.c,v 1.3 2004/02/06 22:36:50 joerg Exp $
+ * $DragonFly: src/lib/libc/regex/regexec.c,v 1.4 2005/11/20 09:18:37 swildner Exp $
  */
 
 /*
@@ -58,8 +58,6 @@
 
 #include "utils.h"
 #include "regex2.h"
-
-static int nope = 0;		/* for use in asserts; shuts lint up */
 
 /* macros for manipulating states, small version */
 #define	states	long

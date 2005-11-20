@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)cclass.h	8.3 (Berkeley) 3/20/94
+ * $DragonFly: src/lib/libc/regex/cclass.h,v 1.2 2005/11/20 09:18:37 swildner Exp $
  */
 
 
@@ -58,5 +59,5 @@ static struct cclass {
 	{"space",       CSPACE},
 	{"upper",       CUPPER},
 	{"xdigit",      CXDIGIT},
-	{NULL,          }
+	{NULL,		NULL}
 };

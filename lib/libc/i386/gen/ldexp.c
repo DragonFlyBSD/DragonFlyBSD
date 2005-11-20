@@ -34,8 +34,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/ldexp.c,v 1.6 1999/08/27 23:59:21 peter Exp $
- * $DragonFly: src/lib/libc/i386/gen/ldexp.c,v 1.4 2005/07/26 14:56:04 joerg Exp $
+ * $DragonFly: src/lib/libc/i386/gen/ldexp.c,v 1.5 2005/11/20 09:18:36 swildner Exp $
  */
+
+#include <math.h>
 
 /*
  * ldexp(value, exp): return value * (2 ** exp).

@@ -37,7 +37,7 @@
  *	@(#)regcomp.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/regcomp.c,v 1.13.2.2 2002/03/20 13:13:15 dcs Exp $
- * $DragonFly: src/lib/libc/regex/regcomp.c,v 1.6 2005/11/13 02:17:18 swildner Exp $
+ * $DragonFly: src/lib/libc/regex/regcomp.c,v 1.7 2005/11/20 09:18:37 swildner Exp $
  *
  * @(#)regcomp.c	8.5 (Berkeley) 3/20/94
  */
@@ -310,6 +310,9 @@ p_ere(struct parse *p,
 	sopno prevfwd;
 	sopno conc;
 	int first = 1;		/* is this the first alternative? */
+
+	prevback = 0;
+	prevfwd = 0;
 
 	for (;;) {
 		/* do a bunch of concatenated expressions */
@@ -1383,7 +1386,7 @@ mcfind(cset *cs, char *cp)
  * is deferred.
  */
 static void
-mcinvert(struct parse *p, cset *cs)
+mcinvert(struct parse *p __unused, cset *cs)
 {
 	assert(cs->multis == NULL);	/* xxx */
 }
@@ -1396,7 +1399,7 @@ mcinvert(struct parse *p, cset *cs)
  * is deferred.
  */
 static void
-mccase(struct parse *p, cset *cs)
+mccase(struct parse *p __unused, cset *cs)
 {
 	assert(cs->multis == NULL);	/* xxx */
 }
@@ -1624,6 +1627,9 @@ findmust(struct parse *p, struct re_guts *g)
 	int offset;
 	int cs, mccs;
 
+	start = NULL;
+	newstart = NULL;
+	
 	/* avoid making error situations worse */
 	if (p->error != 0)
 		return;
