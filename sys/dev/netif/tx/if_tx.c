@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.29 2005/11/20 09:46:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.30 2005/11/20 11:59:54 sephe Exp $
  */
 
 /*
@@ -71,16 +71,17 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
+#include <bus/pci/pcidevs.h>
 
-#include "../mii_layer/mii.h"
-#include "../mii_layer/miivar.h"
-#include "../mii_layer/miidevs.h"
-#include "../mii_layer/lxtphyreg.h"
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
+#include <dev/netif/mii_layer/miidevs.h>
+#include <dev/netif/mii_layer/lxtphyreg.h>
 
 #include "miibus_if.h"
 
-#include "if_txreg.h"
-#include "if_txvar.h"
+#include <dev/netif/tx/if_txreg.h>
+#include <dev/netif/tx/if_txvar.h>
 
 static int epic_ifioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void epic_intr(void *);
@@ -123,7 +124,6 @@ static int epic_probe(device_t);
 static int epic_attach(device_t);
 static void epic_shutdown(device_t);
 static int epic_detach(device_t);
-static struct epic_type *epic_devtype(device_t);
 
 static device_method_t epic_methods[] = {
 	/* Device interface */
@@ -155,7 +155,7 @@ DRIVER_MODULE(if_tx, pci, epic_driver, epic_devclass, 0, 0);
 DRIVER_MODULE(miibus, tx, miibus_driver, miibus_devclass, 0, 0);
 
 static struct epic_type epic_devs[] = {
-	{ SMC_VENDORID, SMC_DEVICEID_83C170,
+	{ PCI_VENDOR_SMC, PCI_PRODUCT_SMC_83C170,
 		"SMC EtherPower II 10/100" },
 	{ 0, 0, NULL }
 };
@@ -164,40 +164,25 @@ static int
 epic_probe(device_t dev)
 {
 	struct epic_type *t;
+	uint16_t vid, did;
 
-	t = epic_devtype(dev);
-
-	if (t != NULL) {
-		device_set_desc(dev, t->name);
-		return(0);
-	}
-
-	return(ENXIO);
-}
-
-static struct epic_type *
-epic_devtype(device_t dev)
-{
-	struct epic_type *t;
-
-	t = epic_devs;
-
-	while(t->name != NULL) {
-		if ((pci_get_vendor(dev) == t->ven_id) &&
-		    (pci_get_device(dev) == t->dev_id)) {
-			return(t);
+	vid = pci_get_vendor(dev);
+	did = pci_get_device(dev);
+	for (t = epic_devs; t->name != NULL; ++t) {
+		if (vid == t->ven_id && did == t->dev_id) {
+			device_set_desc(dev, t->name);
+			return 0;
 		}
-		t++;
 	}
-	return (NULL);
+	return ENXIO;
 }
 
 #if defined(EPIC_USEIOSPACE)
 #define	EPIC_RES	SYS_RES_IOPORT
-#define	EPIC_RID	PCIR_BASEIO
+#define EPIC_RID	PCIR_BAR(0)
 #else
 #define	EPIC_RES	SYS_RES_MEMORY
-#define	EPIC_RID	PCIR_BASEMEM
+#define EPIC_RID	PCIR_BAR(1)
 #endif
 
 /*
@@ -451,6 +436,7 @@ epic_ifioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 static int
 epic_common_attach(epic_softc_t *sc)
 {
+	uint16_t sub_vid;
 	int i;
 
 	sc->tx_flist = malloc(sizeof(struct epic_frag_list)*TX_RING_SIZE,
@@ -482,11 +468,11 @@ epic_common_attach(epic_softc_t *sc)
 	sc->serinst = -1;
 
 	/* Fetch card id */
-	sc->cardvend = pci_get_subvendor(sc->dev);
+	sub_vid = pci_get_subvendor(sc->dev);
 	sc->cardid = pci_get_subdevice(sc->dev);
 
-	if (sc->cardvend != SMC_VENDORID)
-		device_printf(sc->dev, "unknown card vendor %04xh\n", sc->cardvend);
+	if (sub_vid != PCI_VENDOR_SMC)
+		device_printf(sc->dev, "unknown card vendor %04xh\n", sub_vid);
 
 	return 0;
 }

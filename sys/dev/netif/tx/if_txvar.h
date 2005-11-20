@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_txvar.h,v 1.14.2.1 2002/10/29 01:43:50 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.5 2005/06/14 12:25:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_txvar.h,v 1.6 2005/11/20 11:59:54 sephe Exp $
  */
 
 /*
@@ -34,15 +34,6 @@
 /*#define	EPIC_USEIOSPACE	1*/
 /*#define	EPIC_EARLY_RX	1*/
 
-#ifndef ETHER_MAX_LEN
-#define ETHER_MAX_LEN		1518
-#endif
-#ifndef ETHER_MIN_LEN
-#define ETHER_MIN_LEN		64
-#endif
-#ifndef ETHER_CRC_LEN
-#define ETHER_CRC_LEN		4
-#endif
 #define TX_RING_SIZE		16		/* Leave this a power of 2 */
 #define RX_RING_SIZE		16		/* And this too, to do not */
 						/* confuse RX(TX)_RING_MASK */
@@ -52,11 +43,11 @@
 
 /* This is driver's structure to define EPIC descriptors */
 struct epic_rx_buffer {
-	struct mbuf *		mbuf;		/* mbuf receiving packet */
+	struct mbuf		*mbuf;		/* mbuf receiving packet */
 };
 
 struct epic_tx_buffer {
-	struct mbuf *		mbuf;		/* mbuf contained packet */
+	struct mbuf		*mbuf;		/* mbuf contained packet */
 };
 
 /* PHY, known by tx driver */
@@ -96,12 +87,11 @@ typedef struct {
 	u_int32_t		cur_rx;
 	u_int32_t		dirty_tx;
 	u_int32_t		pending_txs;
-	u_int16_t		cardvend;
-	u_int16_t		cardid;
 	struct mii_softc 	*physc;
 	u_int32_t		phyid;
 	int			serinst;
 	void 			*pool;
+	u_int16_t		cardid;
 } epic_softc_t;
 
 struct epic_type {

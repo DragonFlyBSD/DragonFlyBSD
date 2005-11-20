@@ -24,18 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_txreg.h,v 1.12.2.1 2002/10/29 01:43:50 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_txreg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_txreg.h,v 1.3 2005/11/20 11:59:54 sephe Exp $
  */
 
 #define	EPIC_MAX_MTU		1600	/* This is experiment-derived value */
-
-/* PCI aux configuration registers */
-#define	PCIR_BASEIO	(PCIR_MAPS + 0x0)	/* Base IO Address */
-#define	PCIR_BASEMEM	(PCIR_MAPS + 0x4)	/* Base Memory Address */
-
-/* PCI identification */
-#define SMC_VENDORID		0x10B8
-#define SMC_DEVICEID_83C170	0x0005
 
 /* EPIC's registers */
 #define	COMMAND		0x0000
