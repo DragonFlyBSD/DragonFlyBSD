@@ -35,7 +35,7 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.8 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.9 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -560,13 +560,13 @@ literal:
 			 */
 			if (flags & NDIGITS) {
 				if (p > buf)
-					(void)__ungetc(*(u_char *)--p, fp);
+					__ungetc(*(u_char *)--p, fp);
 				goto match_failure;
 			}
 			c = ((u_char *)p)[-1];
 			if (c == 'x' || c == 'X') {
 				--p;
-				(void)__ungetc(c, fp);
+				__ungetc(c, fp);
 			}
 			if ((flags & SUPPRESS) == 0) {
 				u_quad_t res;
@@ -663,10 +663,10 @@ literal:
 				/* just a bad exponent (e and maybe sign) */
 				c = *(u_char *)--p;
 				if (c != 'e' && c != 'E') {
-					(void)__ungetc(c, fp);/* sign */
+					__ungetc(c, fp);/* sign */
 					c = *(u_char *)--p;
 				}
-				(void)__ungetc(c, fp);
+				__ungetc(c, fp);
 			}
 			if ((flags & SUPPRESS) == 0) {
 				double res;
@@ -701,9 +701,7 @@ match_failure:
  * considered part of the scanset.
  */
 static u_char *
-__sccl(tab, fmt)
-	char *tab;
-	u_char *fmt;
+__sccl(char *tab, u_char *fmt)
 {
 	int c, n, v, i;
 
@@ -716,7 +714,7 @@ __sccl(tab, fmt)
 		v = 0;		/* default => reject */
 
 	/* XXX: Will not work if sizeof(tab*) > sizeof(char) */
-	(void) memset(tab, v, 256);
+	memset(tab, v, 256);
 
 	if (c == 0)
 		return (fmt - 1);/* format ended before closing ] */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.3.2.1 2001/03/05 10:53:51 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -82,6 +82,6 @@ fopen(const char *file, const char *mode)
 	 * fseek and ftell.)
 	 */
 	if (oflags & O_APPEND)
-		(void) __sseek((void *)fp, (fpos_t)0, SEEK_END);
+		__sseek((void *)fp, (fpos_t)0, SEEK_END);
 	return (fp);
 }

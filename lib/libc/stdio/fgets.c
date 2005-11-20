@@ -35,7 +35,7 @@
  *
  * @(#)fgets.c	8.2 (Berkeley) 12/22/93
  * $FreeBSD: src/lib/libc/stdio/fgets.c,v 1.9 1999/08/28 00:01:00 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -95,14 +95,14 @@ fgets(char *buf, int n, FILE *fp)
 			len = ++t - p;
 			fp->pub._r -= len;
 			fp->pub._p = t;
-			(void)memcpy((void *)s, (void *)p, len);
+			memcpy((void *)s, (void *)p, len);
 			s[len] = 0;
 			FUNLOCKFILE(fp);
 			return (buf);
 		}
 		fp->pub._r -= len;
 		fp->pub._p += len;
-		(void)memcpy((void *)s, (void *)p, len);
+		memcpy((void *)s, (void *)p, len);
 		s += len;
 		n -= len;
 	}

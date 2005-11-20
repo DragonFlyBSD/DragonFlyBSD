@@ -35,7 +35,7 @@
  *
  * @(#)putc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putc.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libc/stdio/putc.c,v 1.6 2005/08/27 21:35:01 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/putc.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -61,7 +61,8 @@ putc(int c, FILE *fp)
 	return (retval);
 }
 
-int putc_unlocked(int c, FILE *fp)
+int
+putc_unlocked(int c, FILE *fp)
 {
 	return(__sputc(c, fp));
 }

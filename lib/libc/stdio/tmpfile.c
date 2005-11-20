@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpfile.c,v 1.4.2.2 2003/02/15 05:34:52 kris Exp $
- * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.3 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpfile.c,v 1.4 2005/11/20 11:07:30 swildner Exp $
  *
  * @(#)tmpfile.c	8.1 (Berkeley) 6/4/93
  */
@@ -51,7 +51,7 @@
 #include "un-namespace.h"
 
 FILE *
-tmpfile()
+tmpfile(void)
 {
 	sigset_t set, oset;
 	FILE *fp;
@@ -66,28 +66,28 @@ tmpfile()
 	if (tmpdir == NULL)
 		tmpdir = _PATH_TMP;
 
-	(void)asprintf(&buf, "%s%s%s", tmpdir,
+	asprintf(&buf, "%s%s%s", tmpdir,
 	    (tmpdir[strlen(tmpdir) - 1] == '/') ? "" : "/", TRAILER);
 	if (buf == NULL)
 		return (NULL);
 
 	sigfillset(&set);
-	(void)_sigprocmask(SIG_BLOCK, &set, &oset);
+	_sigprocmask(SIG_BLOCK, &set, &oset);
 
 	fd = mkstemp(buf);
 	if (fd != -1)
-		(void)unlink(buf);
+		unlink(buf);
 
 	free(buf);
 
-	(void)_sigprocmask(SIG_SETMASK, &oset, NULL);
+	_sigprocmask(SIG_SETMASK, &oset, NULL);
 
 	if (fd == -1)
 		return (NULL);
 
 	if ((fp = fdopen(fd, "w+")) == NULL) {
 		sverrno = errno;
-		(void)_close(fd);
+		_close(fd);
 		errno = sverrno;
 		return (NULL);
 	}

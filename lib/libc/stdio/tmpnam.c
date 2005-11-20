@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpnam.c,v 1.3 1999/10/24 11:57:24 ache Exp $
- * $DragonFly: src/lib/libc/stdio/tmpnam.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpnam.c,v 1.5 2005/11/20 11:07:30 swildner Exp $
  *
  * @(#)tmpnam.c	8.3 (Berkeley) 3/28/94
  */
@@ -57,7 +57,7 @@ tmpnam(char *s)
 
 	if (s == NULL)
 		s = buf;
-	(void)snprintf(s, L_tmpnam, "%stmp.%lu.XXXXXX", P_tmpdir, tmpcount);
+	snprintf(s, L_tmpnam, "%stmp.%lu.XXXXXX", P_tmpdir, tmpcount);
 	++tmpcount;
 	return (_mktemp(s));
 }

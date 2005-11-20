@@ -1,5 +1,5 @@
 /*	$NetBSD: vswscanf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.2 2005/11/20 11:07:30 swildner Exp $ */
 
 /*-
  * Copyright (c) 1990, 1993
@@ -51,7 +51,7 @@ static int	eofread(void *, char *, int);
 
 static int
 /*ARGSUSED*/
-eofread(void *cookie, char *buf, int len)
+eofread(void *cookie __unused, char *buf __unused, int len __unused)
 {
 
 	return (0);

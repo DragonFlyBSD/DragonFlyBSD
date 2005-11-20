@@ -32,7 +32,7 @@
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
- * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.6 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 /* #include "namespace.h" */
@@ -98,7 +98,7 @@ _gettemp(char *path, int *doopen, int domkdir, int slen)
 	char *pad;
 	struct stat sbuf;
 	int rval;
-	uint32_t rand;
+	uint32_t psrand;
 
 	if (doopen != NULL && domkdir) {
 		errno = EINVAL;
@@ -117,8 +117,8 @@ _gettemp(char *path, int *doopen, int domkdir, int slen)
 
 	/* Fill space with random characters */
 	while (trv >= path && *trv == 'X') {
-		rand = arc4random() % (sizeof(padchar) - 1);
-		*trv-- = padchar[rand];
+		psrand = arc4random() % (sizeof(padchar) - 1);
+		*trv-- = padchar[psrand];
 	}
 	start = trv + 1;
 

@@ -35,7 +35,7 @@
  *
  * @(#)setvbuf.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/lib/libc/stdio/setvbuf.c,v 1.7 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libc/stdio/setvbuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/setvbuf.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -75,7 +75,7 @@ setvbuf(FILE *fp, char *buf, int mode, size_t size)
 	 * a seek.
 	 */
 	ret = 0;
-	(void)__sflush(fp);
+	__sflush(fp);
 	if (HASUB(fp))
 		FREEUB(fp);
 	fp->pub._r = fp->pub._lbfsize = 0;

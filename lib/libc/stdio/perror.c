@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/perror.c,v 1.3.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/perror.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/perror.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  *
  * @(#)perror.c	8.1 (Berkeley) 6/4/93
  */
@@ -65,5 +65,5 @@ perror(const char *s)
 	v++;
 	v->iov_base = __DECONST(char *, "\n");
 	v->iov_len = 1;
-	(void)_writev(STDERR_FILENO, iov, (v - iov) + 1);
+	_writev(STDERR_FILENO, iov, (v - iov) + 1);
 }

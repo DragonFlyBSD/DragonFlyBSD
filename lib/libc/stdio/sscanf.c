@@ -35,7 +35,7 @@
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.8 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <stdio.h>
@@ -49,7 +49,7 @@ static int eofread (void *, char *, int);
 
 /* ARGSUSED */
 static int
-eofread(void *cookie, char *buf, int len)
+eofread(void *cookie __unused, char *buf __unused, int len __unused)
 {
 
 	return (0);

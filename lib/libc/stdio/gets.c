@@ -35,7 +35,7 @@
  *
  * @(#)gets.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/gets.c,v 1.9 2000/01/27 23:06:45 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/gets.c,v 1.5 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/gets.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -56,7 +56,7 @@ gets(char *buf)
 	    "warning: this program uses gets(), which is unsafe.\n";
 
 	if (!warned) {
-		(void) _write(STDERR_FILENO, w, sizeof(w) - 1);
+		_write(STDERR_FILENO, w, sizeof(w) - 1);
 		warned = 1;
 	}
 	for (s = buf; (c = getchar()) != '\n';)

@@ -35,7 +35,7 @@
  *
  * @(#)rewind.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/rewind.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/rewind.c,v 1.3 2005/01/31 22:29:40 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/rewind.c,v 1.4 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -49,7 +49,7 @@ void
 rewind(FILE *fp)
 {
 	FLOCKFILE(fp);
-	(void)_fseeko(fp, 0L, SEEK_SET);
+	_fseeko(fp, 0L, SEEK_SET);
 	clearerr(fp);
 	FUNLOCKFILE(fp);
 	errno = 0;	/* not required, but seems reasonable */

@@ -35,7 +35,7 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -60,10 +60,7 @@ fseek(FILE *fp, long offset, int whence)
 }
 
 int
-fseeko(fp, offset, whence)
-	FILE *fp;
-	off_t offset;
-	int whence;
+fseeko(FILE *fp, off_t offset, int whence)
 {
 	int ret;
 

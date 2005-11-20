@@ -35,7 +35,7 @@
  *
  * @(#)setbuffer.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/setbuffer.c,v 1.5 1999/08/28 00:01:15 peter Exp $
- * $DragonFly: src/lib/libc/stdio/setbuffer.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/setbuffer.c,v 1.5 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <stdio.h>
@@ -44,7 +44,7 @@ void
 setbuffer(FILE *fp, char *buf, int size)
 {
 
-	(void)setvbuf(fp, buf, buf ? _IOFBF : _IONBF, (size_t)size);
+	setvbuf(fp, buf, buf ? _IOFBF : _IONBF, (size_t)size);
 }
 
 /*

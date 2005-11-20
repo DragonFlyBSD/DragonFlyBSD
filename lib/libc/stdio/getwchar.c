@@ -1,5 +1,5 @@
 /* $NetBSD: getwchar.c,v 1.3 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/getwchar.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
+/* $DragonFly: src/lib/libc/stdio/getwchar.c,v 1.2 2005/11/20 11:07:30 swildner Exp $ */
 
 /*-
  * Copyright (c)2001 Citrus Project,
@@ -38,7 +38,7 @@
 #undef getwchar
 
 wint_t
-getwchar()
+getwchar(void)
 {
 
 	return fgetwc(stdin);

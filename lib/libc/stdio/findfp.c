@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -214,8 +214,8 @@ f_prealloc(void)
 void
 _cleanup(void)
 {
-	/* (void) _fwalk(fclose); */
-	(void) _fwalk(__sflush);		/* `cheating' */
+	/* _fwalk(fclose); */
+	_fwalk(__sflush);		/* `cheating' */
 }
 
 /*

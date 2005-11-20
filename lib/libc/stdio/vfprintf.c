@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.13 2005/08/01 22:50:45 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.14 2005/11/20 11:07:30 swildner Exp $
  */
 
 /*
@@ -431,6 +431,12 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
         int nextarg;            /* 1-based argument index */
         va_list orgap;          /* original argument pointer */
 
+	_double = 0;
+	expsize = 0;
+	ulval = 0;
+	ujval = 0;
+	xdigs = NULL;
+
 	/*
 	 * Choose PADSIZE to trade efficiency vs. size.  If larger printf
 	 * fields occur frequently, increase PADSIZE and make the initialisers
@@ -553,7 +559,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 	fmt = (char *)fmt0;
         argtable = NULL;
         nextarg = 1;
-        orgap = ap;
+        va_copy(orgap, ap);
 	uio.uio_iov = iovp = iov;
 	uio.uio_resid = 0;
 	uio.uio_iovcnt = 0;

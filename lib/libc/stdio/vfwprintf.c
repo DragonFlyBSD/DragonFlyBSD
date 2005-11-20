@@ -35,7 +35,7 @@
  *
  * $FreeBSD: src/lib/libc/stdio/vfwprintf.c,v 1.24 2005/04/16 22:36:51 das Exp $
  * $NetBSD: vfwprintf.c,v 1.3 2005/06/15 09:31:27 he Exp $
- * $DragonFly: src/lib/libc/stdio/vfwprintf.c,v 1.1 2005/08/02 00:44:39 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfwprintf.c,v 1.2 2005/11/20 11:07:30 swildner Exp $
  */
 
 /*
@@ -1725,7 +1725,7 @@ cvt(double value, int ndigits, int flags, char *sign, int *decpt, int ch,
 			*rve++ = '0';
 	}
 	*length = rve - digits;
-	(void)mbstowcs(buf, digits, sizeof(buf)/sizeof(buf[0]));
+	mbstowcs(buf, digits, sizeof(buf)/sizeof(buf[0]));
 	return buf;
 }
 static int

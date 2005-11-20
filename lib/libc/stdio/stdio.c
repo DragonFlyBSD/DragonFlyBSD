@@ -35,7 +35,7 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -72,7 +72,7 @@ __swrite(void *cookie, char const *buf, int n)
 	FILE *fp = cookie;
 
 	if (fp->pub._flags & __SAPP)
-		(void) lseek(fp->pub._fileno, (off_t)0, SEEK_END);
+		lseek(fp->pub._fileno, (off_t)0, SEEK_END);
 	fp->pub._flags &= ~__SOFF;	/* in case FAPPEND mode is set */
 	return (_write(fp->pub._fileno, buf, (size_t)n));
 }

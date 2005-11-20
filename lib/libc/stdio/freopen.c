@@ -35,7 +35,7 @@
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -64,7 +64,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 	int dflags, flags, isopen, oflags, sverrno, wantfd;
 
 	if ((flags = __sflags(mode, &oflags)) == 0) {
-		(void) fclose(fp);
+		fclose(fp);
 		return (NULL);
 	}
 
@@ -143,11 +143,11 @@ freopen(const char *file, const char *mode, FILE *fp)
 	} else {
 		/* flush the stream; ANSI doesn't require this. */
 		if (fp->pub._flags & __SWR)
-			(void) __sflush(fp);
+			__sflush(fp);
 		/* if close is NULL, closing is a no-op, hence pointless */
 		isopen = fp->_close != NULL;
 		if ((wantfd = fp->pub._fileno) < 0 && isopen) {
-			(void) (*fp->_close)(fp->_cookie);
+			(*fp->_close)(fp->_cookie);
 			isopen = 0;
 		}
 	}
@@ -157,7 +157,7 @@ freopen(const char *file, const char *mode, FILE *fp)
 	if (f < 0 && isopen) {
 		/* If out of fd's close the old one and try again. */
 		if (errno == ENFILE || errno == EMFILE) {
-			(void) (*fp->_close)(fp->_cookie);
+			(*fp->_close)(fp->_cookie);
 			isopen = 0;
 			f = _open(file, oflags, DEFFILEMODE);
 		}
@@ -171,7 +171,7 @@ finish:
 	 * of any setbuffer calls, but stdio has always done this before.
 	 */
 	if (isopen)
-		(void) (*fp->_close)(fp->_cookie);
+		(*fp->_close)(fp->_cookie);
 	if (fp->pub._flags & __SMBF)
 		free((char *)fp->_bf._base);
 	fp->pub._w = 0;
@@ -201,7 +201,7 @@ finish:
 	 */
 	if (wantfd >= 0 && f != wantfd) {
 		if (_dup2(f, wantfd) >= 0) {
-			(void)_close(f);
+			_close(f);
 			f = wantfd;
 		}
 	}

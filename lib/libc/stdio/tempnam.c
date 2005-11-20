@@ -32,7 +32,7 @@
  *
  * @(#)tempnam.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/tempnam.c,v 1.8 1999/10/24 11:57:24 ache Exp $
- * $DragonFly: src/lib/libc/stdio/tempnam.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/tempnam.c,v 1.5 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,26 +61,26 @@ tempnam(const char *dir, const char *pfx)
 		pfx = "tmp.";
 
 	if (issetugid() == 0 && (f = getenv("TMPDIR"))) {
-		(void)snprintf(name, MAXPATHLEN, "%s%s%sXXXXXX", f,
+		snprintf(name, MAXPATHLEN, "%s%s%sXXXXXX", f,
 		    *(f + strlen(f) - 1) == '/'? "": "/", pfx);
 		if ((f = _mktemp(name)))
 			return(f);
 	}
 
 	if ((f = (char *)dir)) {
-		(void)snprintf(name, MAXPATHLEN, "%s%s%sXXXXXX", f,
+		snprintf(name, MAXPATHLEN, "%s%s%sXXXXXX", f,
 		    *(f + strlen(f) - 1) == '/'? "": "/", pfx);
 		if ((f = _mktemp(name)))
 			return(f);
 	}
 
 	f = P_tmpdir;
-	(void)snprintf(name, MAXPATHLEN, "%s%sXXXXXX", f, pfx);
+	snprintf(name, MAXPATHLEN, "%s%sXXXXXX", f, pfx);
 	if ((f = _mktemp(name)))
 		return(f);
 
 	f = _PATH_TMP;
-	(void)snprintf(name, MAXPATHLEN, "%s%sXXXXXX", f, pfx);
+	snprintf(name, MAXPATHLEN, "%s%sXXXXXX", f, pfx);
 	if ((f = _mktemp(name)))
 		return(f);
 

@@ -35,7 +35,7 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.9 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <errno.h>
@@ -115,7 +115,7 @@ __srefill(FILE *fp)
 	 * standard.
 	 */
 	if (fp->pub._flags & (__SLBF|__SNBF))
-		(void) _fwalk(lflush);
+		_fwalk(lflush);
 	fp->pub._p = fp->_bf._base;
 	fp->pub._r = (*fp->_read)(fp->_cookie, (char *)fp->pub._p, fp->_bf._size);
 	fp->pub._flags &= ~__SMOD;	/* buffer contents are again pristine */

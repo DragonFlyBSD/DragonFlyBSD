@@ -35,7 +35,7 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.8 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -81,7 +81,7 @@ __submore(FILE *fp)
 	if (p == NULL)
 		return (EOF);
 	/* no overlap (hence can use memcpy) because we doubled the size */
-	(void)memcpy((void *)(p + i), (void *)p, (size_t)i);
+	memcpy((void *)(p + i), (void *)p, (size_t)i);
 	fp->pub._p = p + i;
 	fp->_ub._base = p;
 	fp->_ub._size = i << 1;

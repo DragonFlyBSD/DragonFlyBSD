@@ -35,7 +35,7 @@
  *
  * @(#)fread.c	8.2 (Berkeley) 12/11/93
  * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.7 1999/08/28 00:01:04 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fread.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fread.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -68,7 +68,7 @@ fread(void *buf, size_t size, size_t count, FILE *fp)
 	total = resid;
 	p = buf;
 	while (resid > (r = fp->pub._r)) {
-		(void)memcpy((void *)p, (void *)fp->pub._p, (size_t)r);
+		memcpy((void *)p, (void *)fp->pub._p, (size_t)r);
 		fp->pub._p += r;
 		/* fp->_r = 0 ... done in __srefill */
 		p += r;
@@ -79,7 +79,7 @@ fread(void *buf, size_t size, size_t count, FILE *fp)
 			return ((total - resid) / size);
 		}
 	}
-	(void)memcpy((void *)p, (void *)fp->pub._p, resid);
+	memcpy((void *)p, (void *)fp->pub._p, resid);
 	fp->pub._r -= resid;
 	fp->pub._p += resid;
 	FUNLOCKFILE(fp);

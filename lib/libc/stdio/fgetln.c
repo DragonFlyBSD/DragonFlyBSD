@@ -35,7 +35,7 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.6 2005/08/02 00:44:39 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include <stdio.h>
@@ -126,7 +126,7 @@ fgetln(FILE *fp, size_t *lenp)
 		 */
 		if (__slbexpand(fp, len + OPTIMISTIC))
 			goto error;
-		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
+		memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
 		    len - off);
 		off = len;
 		if (__srefill(fp))
@@ -141,7 +141,7 @@ fgetln(FILE *fp, size_t *lenp)
 		len += diff;
 		if (__slbexpand(fp, len))
 			goto error;
-		(void)memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
+		memcpy((void *)(fp->_lb._base + off), (void *)fp->pub._p,
 		    diff);
 		fp->pub._r -= diff;
 		fp->pub._p = p;
