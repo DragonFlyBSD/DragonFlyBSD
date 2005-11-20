@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.26 2005/11/19 17:58:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.27 2005/11/20 02:23:59 dillon Exp $
  */
 
 /*
@@ -937,10 +937,12 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 			break;
 		}
 
-		PHOLD(p);
+		if (p)
+		    PHOLD(p);
 		retval = vop_write_dirent(&error, uio,
 		    d_ino, d_type, d_namlen, d_name);
-		PRELE(p);
+		if (p)
+		    PRELE(p);
 		if (retval)
 			break;
 	}
