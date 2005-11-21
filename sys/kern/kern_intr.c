@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.35 2005/11/21 21:50:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.36 2005/11/21 22:54:16 dillon Exp $
  *
  */
 
@@ -91,12 +91,14 @@ static struct thread emergency_intr_thread;
 #define ISTATE_NORMAL		1
 #define ISTATE_LIVELOCKED	2
 
+#ifdef SMP
 static int intr_mpsafe = 0;
-static int livelock_limit = 50000;
-static int livelock_lowater = 20000;
 TUNABLE_INT("kern.intr_mpsafe", &intr_mpsafe);
 SYSCTL_INT(_kern, OID_AUTO, intr_mpsafe,
         CTLFLAG_RW, &intr_mpsafe, 0, "Run INTR_MPSAFE handlers without the BGL");
+#endif
+static int livelock_limit = 50000;
+static int livelock_lowater = 20000;
 SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
 SYSCTL_INT(_kern, OID_AUTO, livelock_lowater,
@@ -706,6 +708,7 @@ ithread_handler(void *arg)
 	 * are MPSAFE.  However, if intr_mpsafe has been turned off we
 	 * always operate with the BGL.
 	 */
+#ifdef SMP
 	if (intr_mpsafe == 0) {
 	    if (mpheld == 0) {
 		get_mplock();
@@ -722,6 +725,7 @@ ithread_handler(void *arg)
 		mpheld = 0;
 	    }
 	}
+#endif
 
 	/*
 	 * If an interrupt is pending, clear i_running and execute the

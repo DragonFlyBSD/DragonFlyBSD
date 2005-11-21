@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.67 2005/11/21 21:59:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.68 2005/11/21 22:54:15 dillon Exp $
  */
 
 /*
@@ -167,10 +167,12 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
+#ifdef SMP
 static int syscall_mpsafe = 0;
 SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
 	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
 TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
+#endif
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
