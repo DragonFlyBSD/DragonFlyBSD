@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.9 2005/09/29 20:43:56 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.10 2005/11/21 21:56:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -294,6 +294,11 @@ log_console(struct uio *uio)
 	return;
 }
 
+/*
+ * Output to the console.
+ *
+ * NOT YET ENTIRELY MPSAFE
+ */
 int
 printf(const char *fmt, ...)
 {
@@ -343,6 +348,8 @@ vprintf(const char *fmt, __va_list ap)
  * Print a character on console or users terminal.  If destination is
  * the console then the last bunch of characters are saved in msgbuf for
  * inspection later.
+ *
+ * NOT YET ENTIRELY MPSAFE, EVEN WHEN LOGGING JUST TO THE SYSCONSOLE.
  */
 static void
 putchar(int c, void *arg)
@@ -782,6 +789,8 @@ number:
 
 /*
  * Put character in log buffer with a particular priority.
+ *
+ * MPSAFE
  */
 static void
 msglogchar(int c, int pri)
@@ -816,24 +825,33 @@ msglogchar(int c, int pri)
 }
 
 /*
- * Put char in log buffer
+ * Put char in log buffer.   Make sure nothing blows up beyond repair if
+ * we have an MP race.
+ *
+ * MPSAFE.
  */
 static void
 msgaddchar(int c, void *dummy)
 {
 	struct msgbuf *mbp;
+	int rindex;
+	int windex;
 
 	if (!msgbufmapped)
 		return;
 	mbp = msgbufp;
-	mbp->msg_ptr[mbp->msg_bufx++] = c;
-	if (mbp->msg_bufx >= mbp->msg_size)
-		mbp->msg_bufx = 0;
-	/* If the buffer is full, keep the most recent data. */
-	if (mbp->msg_bufr == mbp->msg_bufx) {
-		if (++mbp->msg_bufr >= mbp->msg_size)
-			mbp->msg_bufr = 0;
+	windex = mbp->msg_bufx;
+	mbp->msg_ptr[windex] = c;
+	if (++windex >= mbp->msg_size)
+		windex = 0;
+	rindex = mbp->msg_bufr;
+	if (windex == rindex) {
+		rindex += 32;
+		if (rindex >= mbp->msg_size)
+			rindex -= mbp->msg_size;
+		mbp->msg_bufr = rindex;
 	}
+	mbp->msg_bufx = windex;
 }
 
 static void
