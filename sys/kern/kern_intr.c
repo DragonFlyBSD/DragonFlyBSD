@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.34 2005/11/21 18:02:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.35 2005/11/21 21:50:26 dillon Exp $
  *
  */
 
@@ -64,7 +64,8 @@ struct intr_info {
 	struct thread	i_thread;
 	struct random_softc i_random;
 	int		i_running;
-	long		i_count;
+	long		i_count;	/* interrupts dispatched */
+	int		i_mplock_required;
 	int		i_fast;
 	int		i_slow;
 	int		i_state;
@@ -90,8 +91,12 @@ static struct thread emergency_intr_thread;
 #define ISTATE_NORMAL		1
 #define ISTATE_LIVELOCKED	2
 
+static int intr_mpsafe = 0;
 static int livelock_limit = 50000;
 static int livelock_lowater = 20000;
+TUNABLE_INT("kern.intr_mpsafe", &intr_mpsafe);
+SYSCTL_INT(_kern, OID_AUTO, intr_mpsafe,
+        CTLFLAG_RW, &intr_mpsafe, 0, "Run INTR_MPSAFE handlers without the BGL");
 SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
         CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
 SYSCTL_INT(_kern, OID_AUTO, livelock_lowater,
@@ -214,7 +219,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
 	lwkt_create((void *)ithread_handler, (void *)intr, NULL,
-	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD, -1, 
+	    &info->i_thread, TDF_STOPREQ|TDF_INTTHREAD|TDF_MPSAFE, -1, 
 	    "ithread %d", intr);
 	if (intr >= FIRST_SOFTINT)
 	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
@@ -227,7 +232,11 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Keep track of how many fast and slow interrupts we have.
+     * Set i_mplock_required if any handler in the chain requires
+     * the MP lock to operate.
      */
+    if ((intr_flags & INTR_MPSAFE) == 0)
+	info->i_mplock_required = 1;
     if (intr_flags & INTR_FAST)
 	++info->i_fast;
     else
@@ -306,6 +315,18 @@ unregister_int(void *id)
 	if (info->i_fast + info->i_slow == 0)
 	    machintr_vector_teardown(intr);
     }
+
+    /*
+     * Clear i_mplock_required if no handlers in the chain require the
+     * MP lock.
+     */
+    for (rec = info->i_reclist; rec; rec = rec->next) {
+	if ((rec->intr_flags & INTR_MPSAFE) == 0)
+	    break;
+    }
+    if (rec == NULL)
+	    info->i_mplock_required = 0;
+
     crit_exit();
 
     /*
@@ -673,21 +694,42 @@ ithread_handler(void *arg)
     gd = mycpu;
 
     /*
-     * The loop must be entered with one critical section held.  We start
-     * out with the MP lock released.
+     * The loop must be entered with one critical section held.  The thread
+     * is created with TDF_MPSAFE so the MP lock is not held on start.
      */
     crit_enter_gd(gd);
-    mpheld = 1;
+    mpheld = 0;
 
     for (;;) {
+	/*
+	 * The chain is only considered MPSAFE if all its interrupt handlers
+	 * are MPSAFE.  However, if intr_mpsafe has been turned off we
+	 * always operate with the BGL.
+	 */
+	if (intr_mpsafe == 0) {
+	    if (mpheld == 0) {
+		get_mplock();
+		mpheld = 1;
+	    }
+	} else if (info->i_mplock_required != mpheld) {
+	    if (info->i_mplock_required) {
+		KKASSERT(mpheld == 0);
+		get_mplock();
+		mpheld = 1;
+	    } else {
+		KKASSERT(mpheld != 0);
+		rel_mplock();
+		mpheld = 0;
+	    }
+	}
+
 	/*
 	 * If an interrupt is pending, clear i_running and execute the
 	 * handlers.  Note that certain types of interrupts can re-trigger
 	 * and set i_running again.
 	 *
 	 * Each handler is run in a critical section.  Note that we run both
-	 * FAST and SLOW designated service routines.  The chain is only
-	 * considered MPSAFE if all interrupt handlers are MPSAFE.
+	 * FAST and SLOW designated service routines.
 	 */
 	if (info->i_running) {
 	    ++ill_count;
