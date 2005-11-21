@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.42 2005/11/04 19:42:36 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.43 2005/11/21 18:02:42 dillon Exp $
  */
 
 /*
@@ -989,16 +989,17 @@ cpu_initclocks()
 			panic("APIC_IO: Cannot route 8254 interrupt to CPU");
 	}
 
-	clkdesc = inthand_add("clk", apic_8254_intr, clkintr,
-			      NULL, INTR_EXCL | INTR_FAST | 
-				    INTR_NOPOLL | INTR_MPSAFE, NULL);
+	clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
+			       NULL,
+			       INTR_EXCL | INTR_FAST | 
+			       INTR_NOPOLL | INTR_MPSAFE);
 	machintr_intren(apic_8254_intr);
 	
 #else /* APIC_IO */
 
-	inthand_add("clk", 0, clkintr, NULL,
-		    INTR_EXCL | INTR_FAST | 
-		    INTR_NOPOLL | INTR_MPSAFE, NULL);
+	register_int(0, clkintr, NULL, "clk", NULL,
+		     INTR_EXCL | INTR_FAST | 
+		     INTR_NOPOLL | INTR_MPSAFE);
 	machintr_intren(ICU_IRQ0);
 
 #endif /* APIC_IO */
@@ -1017,8 +1018,8 @@ cpu_initclocks()
 			panic("APIC RTC != 8");
 #endif /* APIC_IO */
 
-		inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL,
-			    INTR_EXCL | INTR_FAST | INTR_NOPOLL, NULL);
+		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
+			     INTR_EXCL | INTR_FAST | INTR_NOPOLL);
 		machintr_intren(8);
 
 		writertc(RTC_STATUSB, rtc_statusb);
@@ -1049,7 +1050,7 @@ cpu_initclocks()
 			 * Workaround: Limited variant of mixed mode.
 			 */
 			machintr_intrdis(apic_8254_intr);
-			inthand_remove(clkdesc);
+			unregister_int(clkdesc);
 			printf("APIC_IO: Broken MP table detected: "
 			       "8254 is not connected to "
 			       "IOAPIC #%d intpin %d\n",
@@ -1068,10 +1069,10 @@ cpu_initclocks()
 			}
 			apic_8254_intr = apic_irq(0, 0);
 			setup_8254_mixed_mode();
-			inthand_add("clk", apic_8254_intr,
-				    clkintr,
-				    NULL, INTR_EXCL | INTR_FAST | 
-					  INTR_NOPOLL | INTR_MPSAFE, NULL);
+			register_int(apic_8254_intr, clkintr, NULL, "clk",
+				     NULL,
+				     INTR_EXCL | INTR_FAST | 
+				     INTR_NOPOLL | INTR_MPSAFE);
 			machintr_intren(apic_8254_intr);
 		}
 		

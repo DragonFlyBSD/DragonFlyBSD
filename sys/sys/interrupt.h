@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.15 2005/11/03 04:54:02 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.16 2005/11/21 18:02:46 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -52,14 +52,13 @@ void *register_swi(int intr, inthand2_t *handler, void *arg,
 void *register_int(int intr, inthand2_t *handler, void *arg,
 			    const char *name, 
 			    struct lwkt_serialize *serializer, int flags);
-int get_registered_intr(void *id);
 long get_interrupt_counter(int intr);
 int count_registered_ints(int intr);
 const char *get_registered_name(int intr);
 
 void swi_setpriority(int intr, int pri);
-int unregister_swi(void *id);
-int unregister_int(void *id);
+void unregister_swi(void *id);
+void unregister_int(void *id);
 void register_randintr(int intr);
 void unregister_randintr(int intr);
 int next_registered_randintr(int intr);

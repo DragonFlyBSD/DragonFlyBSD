@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.23 2005/11/04 08:57:31 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.24 2005/11/21 18:02:42 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -154,14 +154,6 @@ void	call_fast_unpend(int irq);
 void	isa_defaultirq (void);
 int	isa_nmi (int cd);
 void	icu_reinit (void);
-
-/*
- * WARNING: These are internal functions and not to be used by device drivers!
- * They are subject to change without notice. 
- */
-void *inthand_add(const char *name, int irq, inthand2_t handler,
-		  void *arg, int flags, lwkt_serialize_t serializer);
-int inthand_remove(void *id);
 
 #endif /* LOCORE */
 

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.16 2005/11/05 01:30:26 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/mpapic.c,v 1.17 2005/11/21 18:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -301,7 +301,7 @@ io_apic_setup_intpin(int apic, int pin)
 	/*
 	 * Program the appropriate registers.  This routing may be 
 	 * overridden when an interrupt handler for a device is
-	 * actually added (see inthand_add(), which calls through
+	 * actually added (see register_int(), which calls through
 	 * the MACHINTR ABI to set up an interrupt handler/vector).
 	 *
 	 * The order in which we must program the two registers for

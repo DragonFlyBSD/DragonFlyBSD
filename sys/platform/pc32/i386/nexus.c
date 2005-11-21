@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.22 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.23 2005/11/21 18:02:40 dillon Exp $
  */
 
 /*
@@ -502,18 +502,22 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 	 * difference is that an additional frame argument is passed which
 	 * we do not currently want to expose the BUS subsystem to.
 	 */
-	*cookiep = inthand_add(device_get_nameunit(child), irq->r_start,
-	    (inthand2_t *)ihand, arg, icflags, serializer);
+	*cookiep = register_int(irq->r_start, (inthand2_t *)ihand, arg,
+				device_get_nameunit(child), serializer,
+				icflags);
 	if (*cookiep == NULL)
-		error = EINVAL;	/* XXX ??? */
-
+		error = EINVAL;
 	return (error);
 }
 
 static int
 nexus_teardown_intr(device_t dev, device_t child, struct resource *r, void *ih)
 {
-	return (inthand_remove(ih));
+	if (ih) {
+		unregister_int(ih);
+		return (0);
+	}
+	return(-1);
 }
 
 static int

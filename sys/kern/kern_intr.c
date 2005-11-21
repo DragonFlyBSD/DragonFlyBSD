@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.33 2005/11/04 08:17:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.34 2005/11/21 18:02:44 dillon Exp $
  *
  */
 
@@ -46,8 +46,11 @@
 
 #include <sys/interrupt.h>
 
+struct info_info;
+
 typedef struct intrec {
     struct intrec *next;
+    struct intr_info *info;
     inthand2_t	*handler;
     void	*argument;
     char	*name;
@@ -176,26 +179,20 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	name = "???";
     info = &intr_info_ary[intr];
 
+    /*
+     * Construct an interrupt handler record
+     */
     rec = malloc(sizeof(struct intrec), M_DEVBUF, M_INTWAIT);
     rec->name = malloc(strlen(name) + 1, M_DEVBUF, M_INTWAIT);
     strcpy(rec->name, name);
 
+    rec->info = info;
     rec->handler = handler;
     rec->argument = arg;
     rec->intr = intr;
     rec->intr_flags = intr_flags;
     rec->next = NULL;
     rec->serializer = serializer;
-
-    list = &info->i_reclist;
-
-    /*
-     * Keep track of how many fast and slow interrupts we have.
-     */
-    if (intr_flags & INTR_FAST)
-	++info->i_fast;
-    else
-	++info->i_slow;
 
     /*
      * Create an emergency polling thread and set up a systimer to wake
@@ -226,10 +223,20 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	info->i_thread.td_preemptable = lwkt_preempt;
     }
 
+    list = &info->i_reclist;
+
     /*
-     * Add the record to the interrupt list
+     * Keep track of how many fast and slow interrupts we have.
      */
-    crit_enter();	/* token */
+    if (intr_flags & INTR_FAST)
+	++info->i_fast;
+    else
+	++info->i_slow;
+
+    /*
+     * Add the record to the interrupt list.
+     */
+    crit_enter();
     while (*list != NULL)
 	list = &(*list)->next;
     *list = rec;
@@ -246,16 +253,25 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	if (max_installed_soft_intr <= intr)
 	    max_installed_soft_intr = intr + 1;
     }
+
+    /*
+     * Setup the machine level interrupt vector
+     */
+    if (info->i_slow + info->i_fast == 1) {
+	if (machintr_vector_setup(intr, intr_flags))
+	    printf("machintr_vector_setup: failed on irq %d\n", intr);
+    }
+
     return(rec);
 }
 
-int
+void
 unregister_swi(void *id)
 {
-    return(unregister_int(id));
+    unregister_int(id);
 }
 
-int
+void
 unregister_int(void *id)
 {
     struct intr_info *info;
@@ -271,44 +287,37 @@ unregister_int(void *id)
     info = &intr_info_ary[intr];
 
     /*
-     * Remove the interrupt descriptor
+     * Remove the interrupt descriptor, adjust the descriptor count,
+     * and teardown the machine level vector if this was the last interrupt.
      */
     crit_enter();
     list = &info->i_reclist;
     while ((rec = *list) != NULL) {
-	if (rec == id) {
-	    *list = rec->next;
+	if (rec == id)
 	    break;
-	}
 	list = &rec->next;
     }
-    crit_exit();
-
-    /*
-     * Free it, adjust interrupt type counts
-     */
-    if (rec != NULL) {
+    if (rec) {
+	*list = rec->next;
 	if (rec->intr_flags & INTR_FAST)
 	    --info->i_fast;
 	else
 	    --info->i_slow;
+	if (info->i_fast + info->i_slow == 0)
+	    machintr_vector_teardown(intr);
+    }
+    crit_exit();
+
+    /*
+     * Free the record.
+     */
+    if (rec != NULL) {
 	free(rec->name, M_DEVBUF);
 	free(rec, M_DEVBUF);
     } else {
 	printf("warning: unregister_int: int %d handler for %s not found\n",
 		intr, ((intrec_t)id)->name);
     }
-
-    /*
-     * Return the number of interrupt vectors still registered on this intr
-     */
-    return(info->i_fast + info->i_slow);
-}
-
-int
-get_registered_intr(void *id)
-{
-    return(((intrec_t)id)->intr);
 }
 
 const char *
@@ -648,6 +657,7 @@ ithread_handler(void *arg)
     int lticks;
     int lcount;
     int intr;
+    int mpheld;
     struct intrec **list;
     intrec_t rec, nrec;
     globaldata_t gd;
@@ -663,9 +673,11 @@ ithread_handler(void *arg)
     gd = mycpu;
 
     /*
-     * The loop must be entered with one critical section held.
+     * The loop must be entered with one critical section held.  We start
+     * out with the MP lock released.
      */
     crit_enter_gd(gd);
+    mpheld = 1;
 
     for (;;) {
 	/*
@@ -674,11 +686,13 @@ ithread_handler(void *arg)
 	 * and set i_running again.
 	 *
 	 * Each handler is run in a critical section.  Note that we run both
-	 * FAST and SLOW designated service routines.
+	 * FAST and SLOW designated service routines.  The chain is only
+	 * considered MPSAFE if all interrupt handlers are MPSAFE.
 	 */
 	if (info->i_running) {
 	    ++ill_count;
 	    info->i_running = 0;
+
 	    for (rec = *list; rec; rec = nrec) {
 		nrec = rec->next;
 		if (rec->serializer) {

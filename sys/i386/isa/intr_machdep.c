@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.42 2005/11/04 19:39:25 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.43 2005/11/21 18:02:42 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -252,92 +252,6 @@ isa_irq_pending(void)
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
  *
  */
-
-/*
- * Create and activate an interrupt handler descriptor data structure.
- *
- * The dev_instance pointer is required for resource management, and will
- * only be passed through to resource_claim().
- *
- * There will be functions that derive a driver and unit name from a
- * dev_instance variable, and those functions will be used to maintain the
- * interrupt counter label array referenced by systat and vmstat to report
- * device interrupt rates (->update_intrlabels).
- *
- * Add the interrupt handler descriptor data structure created by an
- * earlier call of create_intr() to the linked list for its irq.
- *
- * WARNING: This is an internal function and not to be used by device
- * drivers.  It is subject to change without notice.
- */
-
-void *
-inthand_add(const char *name, int irq, inthand2_t handler, void *arg,
-	     int flags, lwkt_serialize_t serializer)
-{
-	int errcode = 0;
-	void *id;
-
-	if (irq < 0 || irq >= MAX_HARDINTS) {
-		printf("create_intr: requested irq%d too high, limit is %d\n",
-		       irq, MAX_HARDINTS);
-		return (NULL);
-	}
-	/*
-	 * Register the interrupt, then setup the ICU
-	 */
-	id = register_int(irq, handler, arg, name, serializer, flags);
-
-	if (id == NULL) {
-		printf("Unable to install handler for %s\n", name);
-		printf("\tdevice combination not supported on irq %d\n", irq);
-		return(NULL);
-	}
-
-	crit_enter();
-	if (count_registered_ints(irq) == 1) {
-		if (machintr_vector_setup(irq, flags))
-			errcode = -1;
-	}
-	crit_exit();
-
-	/*
-	 * Cleanup
-	 */
-	if (errcode != 0) {
-		if (bootverbose) {
-			printf("\tinthand_add(irq%d) failed, result=%d\n", 
-			       irq, errcode);
-		}
-		unregister_int(id);
-		id = NULL;
-	}
-	return (id);
-}
-
-/*
- * Deactivate and remove the interrupt handler descriptor data connected
- * created by an earlier call of intr_connect() from the linked list.
- *
- * Return the memory held by the interrupt handler descriptor data structure
- * to the system. Make sure, the handler is not actively used anymore, before.
- */
-int
-inthand_remove(void *id)
-{
-	int irq;
-
-	if (id == NULL)
-		return(-1);
-
-	crit_enter();
-	irq = get_registered_intr(id);
-	if (unregister_int(id) == 0) {
-		machintr_vector_teardown(irq);
-	}
-	crit_exit();
-	return (0);
-}
 
 #ifdef SMP
 /*
