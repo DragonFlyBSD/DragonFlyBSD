@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.86 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.87 2005/11/21 18:49:26 dillon Exp $
  */
 
 /*
@@ -1341,7 +1341,10 @@ lwkt_create(void (*func)(void *), void *arg,
     cpu_set_thread_handler(td, lwkt_exit, func, arg);
     td->td_flags |= TDF_VERBOSE | tdflags;
 #ifdef SMP
-    td->td_mpcount = 1;
+    if (td->td_flags & TDF_MPSAFE)
+	td->td_mpcount = 0;
+    else
+	td->td_mpcount = 1;
 #endif
 
     /*
