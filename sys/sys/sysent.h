@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.8 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.9 2005/11/21 21:59:52 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -75,6 +75,7 @@ struct sysentvec {
 					/* send signal */
 	char 		*sv_sigcode;	/* start of sigtramp code */
 	int 		*sv_szsigcode;	/* size of sigtramp code */
+					/* prep syscall (must be MPSAFE) */
 	void		(*sv_prepsyscall) (struct trapframe *, int *,
 					       u_int *, caddr_t *);
 	char		*sv_name;	/* name of binary type */

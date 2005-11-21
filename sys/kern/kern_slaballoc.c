@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.35 2005/06/20 23:21:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.36 2005/11/21 21:59:50 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -367,7 +367,7 @@ zoneindex(unsigned long *bytes)
 }
 
 /*
- * malloc()	(SLAB ALLOCATOR) (MP SAFE)
+ * malloc()	(SLAB ALLOCATOR) (MPSAFE)
  *
  *	Allocate memory via the slab allocator.  If the request is too large,
  *	or if it page-aligned beyond a certain size, we fall back to the

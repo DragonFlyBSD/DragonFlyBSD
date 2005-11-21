@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.5 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.6 2005/11/21 21:59:50 dillon Exp $
  */
 
 /*
@@ -95,6 +95,8 @@ SYSCTL_INT(_kern, OID_AUTO, max_sysmsg, CTLFLAG_RW, &max_sysmsg, 0,
  * are no pending sysmsgs queued.
  *
  * NOTE: proc must be curproc.
+ *
+ * MPSAFE
  */
 struct sysmsg *
 sysmsg_wait(struct lwp *lp, struct sysmsg *sysmsg, int nonblock)

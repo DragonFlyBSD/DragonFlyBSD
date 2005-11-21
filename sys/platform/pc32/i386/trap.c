@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.66 2005/11/14 18:50:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.67 2005/11/21 21:59:47 dillon Exp $
  */
 
 /*
@@ -167,6 +167,10 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
+static int syscall_mpsafe = 0;
+SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
+	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
+TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 extern int max_sysmsg;
@@ -1239,7 +1243,24 @@ int trapwrite(addr)
  *
  *	In general, only simple access and manipulation of curproc and
  *	the current stack is allowed without having to hold MP lock.
+ *
+ *	MPSAFE - note that large sections of this routine are run without
+ *		 the MP lock.
  */
+#ifdef SMP
+
+#define MAKEMPSAFE(have_mplock)			\
+	if (have_mplock == 0) {			\
+		get_mplock();			\
+		have_mplock = 1;		\
+	}
+
+#else
+
+#define MAKEMPSAFE(have_mplock)
+
+#endif
+
 void
 syscall2(struct trapframe frame)
 {
@@ -1252,6 +1273,9 @@ syscall2(struct trapframe frame)
 	int sticks;
 	int error;
 	int narg;
+#ifdef SMP
+	int have_mplock = 0;
+#endif
 	u_int code;
 	union sysunion args;
 
@@ -1265,7 +1289,8 @@ syscall2(struct trapframe frame)
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
-	get_mplock();
+	if (syscall_mpsafe == 0)
+		MAKEMPSAFE(have_mplock);
 #endif
 	userenter(td);		/* lazy raise our priority */
 
@@ -1277,10 +1302,9 @@ syscall2(struct trapframe frame)
 	orig_tf_eflags = frame.tf_eflags;
 
 	if (p->p_sysent->sv_prepsyscall) {
-		/*
-		 * The prep code is not MP aware.
-		 */
-		(*p->p_sysent->sv_prepsyscall)(&frame, (int *)(&args.nosys.usrmsg + 1), &code, &params);
+		(*p->p_sysent->sv_prepsyscall)(
+			&frame, (int *)(&args.nosys.usrmsg + 1),
+			&code, &params);
 	} else {
 		/*
 		 * Need to check if this is a 32 bit or 64 bit syscall.
@@ -1318,28 +1342,20 @@ syscall2(struct trapframe frame)
 				narg * sizeof(register_t));
 		if (error) {
 #ifdef KTRACE
-			if (KTRPOINT(td, KTR_SYSCALL))
+			if (KTRPOINT(td, KTR_SYSCALL)) {
+				MAKEMPSAFE(have_mplock);
+				
 				ktrsyscall(p->p_tracep, code, narg,
 					(void *)(&args.nosys.usrmsg + 1));
+			}
 #endif
 			goto bad;
 		}
 	}
 
-#if 0
-	/*
-	 * Try to run the syscall without the MP lock if the syscall
-	 * is MP safe.  We have to obtain the MP lock no matter what if 
-	 * we are ktracing
-	 */
-	if ((callp->sy_narg & SYF_MPSAFE) == 0) {
-		get_mplock();
-		have_mplock = 1;
-	}
-#endif
-
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
+		MAKEMPSAFE(have_mplock);
 		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
 	}
 #endif
@@ -1356,6 +1372,16 @@ syscall2(struct trapframe frame)
 	args.sysmsg_fds[1] = frame.tf_edx;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
+
+#ifdef SMP
+	/*
+	 * Try to run the syscall without the MP lock if the syscall
+	 * is MP safe.  We have to obtain the MP lock no matter what if 
+	 * we are ktracing
+	 */
+	if ((callp->sy_narg & SYF_MPSAFE) == 0)
+		MAKEMPSAFE(have_mplock);
+#endif
 
 	error = (*callp->sy_call)(&args);
 
@@ -1402,6 +1428,7 @@ bad:
 	 * Traced syscall.  trapsignal() is not MP aware.
 	 */
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
+		MAKEMPSAFE(have_mplock);
 		frame.tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
@@ -1413,6 +1440,7 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
+		MAKEMPSAFE(have_mplock);
 		ktrsysret(p->p_tracep, code, error, args.sysmsg_result);
 	}
 #endif
@@ -1429,8 +1457,10 @@ bad:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
-	rel_mplock();
+	KASSERT(td->td_mpcount == have_mplock, 
+		("badmpcount syscall from %p", (void *)frame.tf_eip));
+	if (have_mplock)
+		rel_mplock();
 #endif
 }
 
@@ -1462,6 +1492,9 @@ sendsys2(struct trapframe frame)
 	struct sysent *callp;
 	union sysunion *sysun = NULL;
 	lwkt_msg_t umsg;
+#ifdef SMP
+	int have_mplock = 0;
+#endif
 	int sticks;
 	int error;
 	int narg;
@@ -1478,8 +1511,10 @@ sendsys2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
-	get_mplock();
+	KASSERT(td->td_mpcount == 0,
+		("badmpcount syscall from %p", (void *)frame.tf_eip));
+	if (syscall_mpsafe == 0)
+		MAKEMPSAFE(have_mplock);
 #endif
 	/*
 	 * access non-atomic field from critical section.  p_sticks is
@@ -1584,6 +1619,7 @@ sendsys2(struct trapframe frame)
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
+		MAKEMPSAFE(have_mplock);
 		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysun->nosys.usrmsg + 1));
 	}
 #endif
@@ -1601,7 +1637,13 @@ sendsys2(struct trapframe frame)
 	 * might be different.  YYY huh? a child returning from a fork
 	 * should never 'return' from this call, it should go right to the
 	 * fork_trampoline function.
+	 *
+	 * Obtain the MP lock if necessary.
 	 */
+#ifdef SMP
+	if ((callp->sy_narg & SYF_MPSAFE) == 0)
+		MAKEMPSAFE(have_mplock);
+#endif
 	error = (*callp->sy_call)(sysun);
 	gd = td->td_gd;	/* RELOAD, might have switched cpus */
 
@@ -1633,8 +1675,7 @@ bad1:
 		TAILQ_INSERT_TAIL(&lp->lwp_sysmsgq, &sysun->sysmsg, msgq);
 		lp->lwp_nsysmsg++;
 		error = (int)&sysun->sysmsg;
-	}
-	else {
+	} else {
 		free_sysun(td, sysun);
 	}
 bad2:
@@ -1644,6 +1685,7 @@ bad2:
 	 * Traced syscall.  trapsignal() is not MP aware.
 	 */
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
+		MAKEMPSAFE(have_mplock);
 		frame.tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
@@ -1655,6 +1697,7 @@ bad2:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
+		MAKEMPSAFE(have_mplock);
 		ktrsysret(p->p_tracep, code, error, result);
 	}
 #endif
@@ -1671,8 +1714,10 @@ bad2:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
-	rel_mplock();
+	KASSERT(td->td_mpcount == have_mplock,
+		("badmpcount syscall from %p", (void *)frame.tf_eip));
+	if (have_mplock)
+		rel_mplock();
 #endif
 }
 
@@ -1690,6 +1735,9 @@ waitsys2(struct trapframe frame)
 	lwkt_msg_t umsg;
 	register_t orig_tf_eflags;
 	int error = 0, result, sticks;
+#ifdef SMP
+	int have_mplock = 0;
+#endif
 	u_int code = 0;
 
 #ifdef DIAGNOSTIC
@@ -1703,7 +1751,8 @@ waitsys2(struct trapframe frame)
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p",
 	        (void *)frame.tf_eip));
-	get_mplock();
+	if (syscall_mpsafe == 0)
+		MAKEMPSAFE(have_mplock);
 #endif
 
 	/*
@@ -1774,6 +1823,7 @@ bad:
 	 * Traced syscall.  trapsignal() is not MP aware.
 	 */
 	if ((orig_tf_eflags & PSL_T) && !(orig_tf_eflags & PSL_VM)) {
+		MAKEMPSAFE(have_mplock);
 		frame.tf_eflags &= ~PSL_T;
 		trapsignal(p, SIGTRAP, 0);
 	}
@@ -1785,6 +1835,7 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
+		MAKEMPSAFE(have_mplock);
 		ktrsysret(p->p_tracep, code, error, result);
 	}
 #endif
@@ -1800,7 +1851,8 @@ bad:
 #ifdef SMP
 	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p",
 	        (void *)frame.tf_eip));
-	rel_mplock();
+	if (have_mplock)
+		rel_mplock();
 #endif
 }
 

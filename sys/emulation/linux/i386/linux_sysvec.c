@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.18 2005/06/22 15:27:45 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.19 2005/11/21 21:59:46 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -707,6 +707,11 @@ linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 	return (EJUSTRETURN);
 }
 
+/*
+ * Prep arguments.
+ *
+ * MUST BE MPSAFE
+ */
 static void
 linux_prepsyscall(struct trapframe *tf, int *args, u_int *code, caddr_t *params)
 {

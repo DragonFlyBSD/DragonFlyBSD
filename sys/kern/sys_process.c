@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.18 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.19 2005/11/21 21:59:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -627,11 +627,12 @@ trace_req(p)
 
 /*
  * stopevent()
- * Stop a process because of a procfs event;
- * stay stopped until p->p_step is cleared
- * (cleared by PIOCCONT in procfs).
+ *
+ * Stop a process because of a procfs event.  Stay stopped until p->p_step
+ * is cleared (cleared by PIOCCONT in procfs).
+ *
+ * MPSAFE
  */
-
 void
 stopevent(struct proc *p, unsigned int event, unsigned int val) 
 {

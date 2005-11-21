@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.5 2005/11/16 02:24:30 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.6 2005/11/21 21:59:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -184,7 +184,7 @@ rqinit(void *dummy)
 		TAILQ_INIT(&rtqueues[i]);
 		TAILQ_INIT(&idqueues[i]);
 	}
-	curprocmask &= ~1;
+	atomic_clear_int(&curprocmask, 1);
 }
 SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 
@@ -320,6 +320,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	cpumask_t mask;
 #endif
 
+	ASSERT_MP_LOCK_HELD(lp->lwp_thread);
 	crit_enter();
 	KASSERT(lp->lwp_proc->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
 	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0,
@@ -360,7 +361,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	cpuid = gd->gd_cpuid;
 
 	if ((curprocmask & (1 << cpuid)) == 0) {
-		curprocmask |= 1 << cpuid;
+		atomic_set_int(&curprocmask, 1 << cpuid);
 		gd->gd_uschedcp = lp;
 		gd->gd_upri = lp->lwp_priority;
 		lwkt_schedule(lp->lwp_thread);
@@ -455,7 +456,7 @@ bsd4_setrunqueue(struct lwp *lp)
 		while (mask && count) {
 			cpuid = bsfl(mask);
 			KKASSERT((curprocmask & (1 << cpuid)) == 0);
-			rdyprocmask &= ~(1 << cpuid);
+			atomic_clear_int(&rdyprocmask, 1 << cpuid);
 			lwkt_schedule(&globaldata_find(cpuid)->gd_schedthread);
 			--count;
 			mask &= ~(1 << cpuid);
@@ -529,6 +530,7 @@ bsd4_remrunqueue(struct lwp *lp)
 	u_int32_t *which;
 	u_int8_t pri;
 
+	ASSERT_MP_LOCK_HELD(lp->lwp_thread);
 	crit_enter();
 	KASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) != 0, ("not on runq4!"));
 	lp->lwp_proc->p_flag &= ~P_ONRUNQ;
@@ -560,6 +562,8 @@ bsd4_remrunqueue(struct lwp *lp)
 /*
  * This routine is called from a systimer IPI.  It MUST be MP-safe and
  * the BGL IS NOT HELD ON ENTRY.  This routine is called at ESTCPUFREQ.
+ *
+ * MPSAFE
  */
 static
 void
@@ -626,22 +630,31 @@ bsd4_release_curproc(struct lwp *lp)
 
 	if (gd->gd_uschedcp == lp) {
 		if (try_mplock()) {
-			/* 
-			 * YYY when the MP lock is not assumed (see else) we
-			 * will have to check that gd_uschedcp is still == lp
-			 * after acquisition of the MP lock
+			/*
+			 * If we can obtain the MP lock we can directly 
+			 * select the next current process.
+			 *
+			 * bsd4_select_curproc() will adjust curprocmask
+			 * for us.
 			 */
 			gd->gd_uschedcp = NULL;
 			gd->gd_upri = PRIBASE_NULL;
 			bsd4_select_curproc(gd);
 			rel_mplock();
 		} else {
-			KKASSERT(0);	/* MP LOCK ALWAYS HELD AT THE MOMENT */
+			/*
+			 * If we cannot obtain the MP lock schedule our
+			 * helper thread to select the next current
+			 * process.
+			 *
+			 * This is the only place where we adjust curprocmask
+			 * and rdyprocmask without holding the MP lock.
+			 */
 			gd->gd_uschedcp = NULL;
 			gd->gd_upri = PRIBASE_NULL;
-			/* YYY uschedcp and curprocmask */
+			atomic_clear_int(&curprocmask, 1 << cpuid);
 			if (runqcount && (rdyprocmask & (1 << cpuid))) {
-				rdyprocmask &= ~(1 << cpuid);
+				atomic_clear_int(&rdyprocmask, 1 << cpuid);
 				lwkt_schedule(&mycpu->gd_schedthread);
 			}
 		}
@@ -670,6 +683,7 @@ bsd4_select_curproc(globaldata_t gd)
 	void *old;
 
 	clear_user_resched();
+	get_mplock();
 
 	/*
 	 * Choose the next designated current user process.
@@ -685,7 +699,7 @@ bsd4_select_curproc(globaldata_t gd)
 	 */
 	old = gd->gd_uschedcp;
 	if ((nlp = chooseproc(gd->gd_uschedcp)) != NULL) {
-		curprocmask |= 1 << cpuid;
+		atomic_set_int(&curprocmask, 1 << cpuid);
 		gd->gd_upri = nlp->lwp_priority;
 		gd->gd_uschedcp = nlp;
 		lwkt_acquire(nlp->lwp_thread);
@@ -695,13 +709,14 @@ bsd4_select_curproc(globaldata_t gd)
 		KKASSERT(curprocmask & (1 << cpuid));
 	} else if (runqcount && (rdyprocmask & (1 << cpuid))) {
 		/*gd->gd_uschedcp = NULL;*/
-		curprocmask &= ~(1 << cpuid);
-		rdyprocmask &= ~(1 << cpuid);
+		atomic_clear_int(&curprocmask, 1 << cpuid);
+		atomic_clear_int(&rdyprocmask, 1 << cpuid);
 		lwkt_schedule(&gd->gd_schedthread);
 	} else {
 		/*gd->gd_uschedcp = NULL;*/
-		curprocmask &= ~(1 << cpuid);
+		atomic_clear_int(&curprocmask, 1 << cpuid);
 	}
+	rel_mplock();
 }
 
 /*
@@ -724,6 +739,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 {
 	globaldata_t gd = mycpu;
 
+	get_mplock();
 	crit_enter();
 
 	/*
@@ -755,6 +771,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 	KKASSERT((lp->lwp_proc->p_flag & P_ONRUNQ) == 0);
 
 	crit_exit();
+	rel_mplock();
 }
 
 /*
@@ -768,6 +785,8 @@ bsd4_resetpriority(struct lwp *lp)
 	int newpriority;
 	int opq;
 	int npq;
+
+	ASSERT_MP_LOCK_HELD(curthread);
 
 	/*
 	 * Set p_priority for general process comparisons
@@ -838,6 +857,8 @@ bsd4_resetpriority(struct lwp *lp)
  * Interactive processes will decay the boosted estcpu quickly while batch
  * processes will tend to compound it.
  * XXX lwp should be "spawning" instead of "forking"
+ *
+ * MPSAFE
  */
 static void
 bsd4_forking(struct lwp *plp, struct lwp *lp)
@@ -850,6 +871,8 @@ bsd4_forking(struct lwp *plp, struct lwp *lp)
 /*
  * Called when the parent reaps a child.   Propogate cpu use by the child
  * back to the parent.
+ *
+ * MPSAFE
  */
 static void
 bsd4_exiting(struct lwp *plp, struct lwp *lp)
@@ -888,6 +911,8 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 	int ndecay;
 	int nticks;
 	int nleft;
+
+	ASSERT_MP_LOCK_HELD(curthread);
 
 	/*
 	 * We have to subtract periodic to get the last schedclock
@@ -970,15 +995,15 @@ sched_thread(void *dummy)
     int cpuid = gd->gd_cpuid;		/* doesn't change */
     u_int32_t cpumask = 1 << cpuid;	/* doesn't change */
 
-    get_mplock();			/* hold the MP lock */
+    ASSERT_MP_LOCK_HELD(curthread);
     for (;;) {
 	struct lwp *nlp;
 
 	lwkt_deschedule_self(gd->gd_curthread);	/* interlock */
-	rdyprocmask |= cpumask;
+	atomic_set_int(&rdyprocmask, cpumask);
 	crit_enter_quick(gd->gd_curthread);
 	if ((curprocmask & cpumask) == 0 && (nlp = chooseproc(NULL)) != NULL) {
-	    curprocmask |= cpumask;
+	    atomic_set_int(&curprocmask, cpumask);
 	    gd->gd_upri = nlp->lwp_priority;
 	    gd->gd_uschedcp = nlp;
 	    lwkt_acquire(nlp->lwp_thread);
@@ -1019,8 +1044,8 @@ sched_thread_cpu_init(void)
 	 * been enabled in rqinit().
 	 */
 	if (i)
-	    curprocmask &= ~mask;
-	rdyprocmask |= mask;
+	    atomic_clear_int(&curprocmask, mask);
+	atomic_set_int(&rdyprocmask, mask);
     }
     if (bootverbose)
 	printf("\n");
