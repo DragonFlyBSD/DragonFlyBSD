@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.7 2005/06/20 13:01:15 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.8 2005/11/21 13:20:29 sephe Exp $
  */
 
 /*
@@ -398,6 +398,9 @@ struct vr_desc {
 
 #define VR_TXOWN(x)		x->vr_ptr->vr_status
 
+#define VR_TX_BUF_SIZE		(VR_TX_LIST_CNT * MCLBYTES)
+#define VR_TX_BUF(sc, i)	((sc)->vr_cdata.vr_tx_buf + ((i) * MCLBYTES))
+
 struct vr_list_data {
 	struct vr_desc		vr_rx_list[VR_RX_LIST_CNT];
 	struct vr_desc		vr_tx_list[VR_TX_LIST_CNT];
@@ -405,8 +408,10 @@ struct vr_list_data {
 
 struct vr_chain {
 	struct vr_desc		*vr_ptr;
-	struct mbuf		*vr_mbuf;
-	struct vr_chain		*vr_nextdesc;
+	void			*vr_buf;
+	vm_paddr_t		 vr_buf_paddr;
+	vm_paddr_t		 vr_next_desc_paddr;
+	int			 vr_next_idx;
 };
 
 struct vr_chain_onefrag {
@@ -416,14 +421,15 @@ struct vr_chain_onefrag {
 };
 
 struct vr_chain_data {
-	struct vr_chain_onefrag	vr_rx_chain[VR_RX_LIST_CNT];
-	struct vr_chain		vr_tx_chain[VR_TX_LIST_CNT];
+	struct vr_chain_onefrag	 vr_rx_chain[VR_RX_LIST_CNT];
+	struct vr_chain		 vr_tx_chain[VR_TX_LIST_CNT];
 
 	struct vr_chain_onefrag	*vr_rx_head;
 
-	struct vr_chain		*vr_tx_head;
-	struct vr_chain		*vr_tx_tail;
-	struct vr_chain		*vr_tx_free;
+	int			 vr_tx_head_idx;
+	int			 vr_tx_tail_idx;
+	int			 vr_tx_free_idx;
+	caddr_t			 vr_tx_buf;	/* Pointer arith is needed. */
 };
 
 struct vr_type {

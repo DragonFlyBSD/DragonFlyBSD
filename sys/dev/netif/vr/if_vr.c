@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.37 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.38 2005/11/21 13:20:29 sephe Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ static int	vr_detach(device_t);
 
 static int	vr_newbuf(struct vr_softc *, struct vr_chain_onefrag *,
 			  struct mbuf *);
-static int	vr_encap(struct vr_softc *, struct vr_chain *, struct mbuf * );
+static int	vr_encap(struct vr_softc *, int, struct mbuf * );
 
 static void	vr_rxeof(struct vr_softc *);
 static void	vr_rxeoc(struct vr_softc *);
@@ -758,7 +758,7 @@ vr_attach(device_t dev)
 		eaddr[i] = CSR_READ_1(sc, VR_PAR0 + i);
 
 	sc->vr_ldata = contigmalloc(sizeof(struct vr_list_data), M_DEVBUF,
-	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	    M_WAITOK | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (sc->vr_ldata == NULL) {
 		device_printf(dev, "no memory for list buffers!\n");
@@ -766,7 +766,20 @@ vr_attach(device_t dev)
 		goto fail;
 	}
 
-	bzero(sc->vr_ldata, sizeof(struct vr_list_data));
+	/* Initialize TX buffer */
+	sc->vr_cdata.vr_tx_buf = contigmalloc(VR_TX_BUF_SIZE, M_DEVBUF,
+	    M_WAITOK, 0, 0xffffffff, PAGE_SIZE, 0);
+	if (sc->vr_cdata.vr_tx_buf == NULL) {
+		device_printf(dev, "can't allocate tx buffer!\n");
+		error = ENXIO;
+		goto fail;
+	}
+
+	/* Set various TX indexes to invalid value */
+	sc->vr_cdata.vr_tx_free_idx = -1;
+	sc->vr_cdata.vr_tx_tail_idx = -1;
+	sc->vr_cdata.vr_tx_head_idx = -1;
+
 
 	ifp->if_softc = sc;
 	ifp->if_mtu = ETHERMTU;
@@ -837,6 +850,8 @@ vr_detach(device_t dev)
 		bus_release_resource(dev, VR_RES, VR_RID, sc->vr_res);
 	if (sc->vr_ldata != NULL)
 		contigfree(sc->vr_ldata, sizeof(struct vr_list_data), M_DEVBUF);
+	if (sc->vr_cdata.vr_tx_buf != NULL)
+		contigfree(sc->vr_cdata.vr_tx_buf, VR_TX_BUF_SIZE, M_DEVBUF);
 
 	return(0);
 }
@@ -849,23 +864,37 @@ vr_list_tx_init(struct vr_softc *sc)
 {
 	struct vr_chain_data *cd;
 	struct vr_list_data *ld;
-	int i, nexti;
+	struct vr_chain *tx_chain;
+	int i;
 
 	cd = &sc->vr_cdata;
 	ld = sc->vr_ldata;
+	tx_chain = cd->vr_tx_chain;
+
 	for (i = 0; i < VR_TX_LIST_CNT; i++) {
-		cd->vr_tx_chain[i].vr_ptr = &ld->vr_tx_list[i];
+		tx_chain[i].vr_ptr = &ld->vr_tx_list[i];
 		if (i == (VR_TX_LIST_CNT - 1))
-			nexti = 0;
+			tx_chain[i].vr_next_idx = 0;
 		else
-			nexti = i + 1;
-		cd->vr_tx_chain[i].vr_nextdesc = &cd->vr_tx_chain[nexti];
+			tx_chain[i].vr_next_idx = i + 1;
 	}
 
-	cd->vr_tx_free = &cd->vr_tx_chain[0];
-	cd->vr_tx_tail = cd->vr_tx_head = NULL;
+	for (i = 0; i < VR_TX_LIST_CNT; ++i) {
+		void *tx_buf;
+		int next_idx;
 
-	return(0);
+		tx_buf = VR_TX_BUF(sc, i);
+		next_idx = tx_chain[i].vr_next_idx;
+
+		tx_chain[i].vr_next_desc_paddr =
+			vtophys(tx_chain[next_idx].vr_ptr);
+		tx_chain[i].vr_buf_paddr = vtophys(tx_buf);
+	}
+
+	cd->vr_tx_free_idx = 0;
+	cd->vr_tx_tail_idx = cd->vr_tx_head_idx = -1;
+
+	return 0;
 }
 
 
@@ -1051,27 +1080,32 @@ vr_rxeoc(struct vr_softc *sc)
 static void
 vr_txeof(struct vr_softc *sc)
 {
-	struct vr_chain *cur_tx;
+	struct vr_chain_data *cd;
+	struct vr_chain *tx_chain;
 	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
+	cd = &sc->vr_cdata;
 
 	/* Reset the timeout timer; if_txeoc will clear it. */
 	ifp->if_timer = 5;
 
 	/* Sanity check. */
-	if (sc->vr_cdata.vr_tx_head == NULL)
+	if (cd->vr_tx_head_idx == -1)
 		return;
+
+	tx_chain = cd->vr_tx_chain;
 
 	/*
 	 * Go through our tx list and free mbufs for those
 	 * frames that have been transmitted.
 	 */
-	while(sc->vr_cdata.vr_tx_head->vr_mbuf != NULL) {
+	while(tx_chain[cd->vr_tx_head_idx].vr_buf != NULL) {
+		struct vr_chain *cur_tx;
 		uint32_t txstat;
 		int i;
 
-		cur_tx = sc->vr_cdata.vr_tx_head;
+		cur_tx = &tx_chain[cd->vr_tx_head_idx];
 		txstat = cur_tx->vr_ptr->vr_status;
 
 		if ((txstat & VR_TXSTAT_ABRT) ||
@@ -1101,21 +1135,18 @@ vr_txeof(struct vr_softc *sc)
 				ifp->if_collisions++;
 		}
 
-		ifp->if_collisions +=(txstat & VR_TXSTAT_COLLCNT) >> 3;
+		ifp->if_collisions += (txstat & VR_TXSTAT_COLLCNT) >> 3;
 
 		ifp->if_opackets++;
-		if (cur_tx->vr_mbuf != NULL) {
-			m_freem(cur_tx->vr_mbuf);
-			cur_tx->vr_mbuf = NULL;
-		}
+		cur_tx->vr_buf = NULL;
 
-		if (sc->vr_cdata.vr_tx_head == sc->vr_cdata.vr_tx_tail) {
-			sc->vr_cdata.vr_tx_head = NULL;
-			sc->vr_cdata.vr_tx_tail = NULL;
+		if (cd->vr_tx_head_idx == cd->vr_tx_tail_idx) {
+			cd->vr_tx_head_idx = -1;
+			cd->vr_tx_tail_idx = -1;
 			break;
 		}
 
-		sc->vr_cdata.vr_tx_head = cur_tx->vr_nextdesc;
+		cd->vr_tx_head_idx = cur_tx->vr_next_idx;
 	}
 }
 
@@ -1129,9 +1160,9 @@ vr_txeoc(struct vr_softc *sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	if (sc->vr_cdata.vr_tx_head == NULL) {
+	if (sc->vr_cdata.vr_tx_head_idx == -1) {
 		ifp->if_flags &= ~IFF_OACTIVE;
-		sc->vr_cdata.vr_tx_tail = NULL;
+		sc->vr_cdata.vr_tx_tail_idx = -1;
 		ifp->if_timer = 0;
 	}
 }
@@ -1222,9 +1253,11 @@ vr_intr(void *arg)
 			    (status & VR_ISR_TX_ABRT2) ||
 			    (status & VR_ISR_TX_ABRT)) {
 				ifp->if_oerrors++;
-				if (sc->vr_cdata.vr_tx_head != NULL) {
-					VR_SETBIT16(sc, VR_COMMAND, VR_CMD_TX_ON);
-					VR_SETBIT16(sc, VR_COMMAND, VR_CMD_TX_GO);
+				if (sc->vr_cdata.vr_tx_head_idx != -1) {
+					VR_SETBIT16(sc, VR_COMMAND,
+						    VR_CMD_TX_ON);
+					VR_SETBIT16(sc, VR_COMMAND,
+						    VR_CMD_TX_GO);
 				}
 			} else {
 				vr_txeoc(sc);
@@ -1246,14 +1279,16 @@ vr_intr(void *arg)
  * pointers to the fragment pointers.
  */
 static int
-vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
+vr_encap(struct vr_softc *sc, int chain_idx, struct mbuf *m_head)
 {
-	int frag = 0;
-	struct vr_desc *f = NULL;
-	int total_len;
-	struct mbuf *m_new;
+	struct vr_chain *c;
+	struct vr_desc *f;
+	caddr_t tx_buf;
+	int len;
 
-	total_len = 0;
+	KASSERT(chain_idx >= 0 && chain_idx < VR_TX_LIST_CNT,
+		("%s: chain idx(%d) out of range 0-%d",
+		 sc->arpcom.ac_if.if_xname, chain_idx, VR_TX_LIST_CNT));
 
 	/*
 	 * The VIA Rhine wants packet buffers to be longword
@@ -1261,34 +1296,30 @@ vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
 	 * waste time trying to decide when to copy and when not
 	 * to copy, just do it all the time.
 	 */
-	m_new = m_getl(m_head->m_pkthdr.len, MB_DONTWAIT, MT_DATA, M_PKTHDR,
-		       NULL);
-	if (m_new == NULL) {
-		if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
-		return (1);
-	}
-	m_copydata(m_head, 0, m_head->m_pkthdr.len,	
-				mtod(m_new, caddr_t));
-	m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
+	tx_buf = VR_TX_BUF(sc, chain_idx);
+	m_copydata(m_head, 0, m_head->m_pkthdr.len, tx_buf);
+	len = m_head->m_pkthdr.len;
+
 	/*
 	 * The Rhine chip doesn't auto-pad, so we have to make
 	 * sure to pad short frames out to the minimum frame length
 	 * ourselves.
 	 */
-	if (m_new->m_len < VR_MIN_FRAMELEN) {
-		m_new->m_pkthdr.len += VR_MIN_FRAMELEN - m_new->m_len;
-		m_new->m_len = m_new->m_pkthdr.len;
-	}
-	f = c->vr_ptr;
-	f->vr_data = vtophys(mtod(m_new, caddr_t));
-	f->vr_ctl = total_len = m_new->m_len;
-	f->vr_ctl |= VR_TXCTL_TLINK|VR_TXCTL_FIRSTFRAG;
-	f->vr_status = 0;
-	frag = 1;
+	if (len < VR_MIN_FRAMELEN) {
+		bzero(tx_buf + len, VR_MIN_FRAMELEN - len);
+		len = VR_MIN_FRAMELEN;
+ 	}
 
-	c->vr_mbuf = m_new;
-	c->vr_ptr->vr_ctl |= VR_TXCTL_LASTFRAG|VR_TXCTL_FINT;
-	c->vr_ptr->vr_next = vtophys(c->vr_nextdesc->vr_ptr);
+	c = &sc->vr_cdata.vr_tx_chain[chain_idx];
+	c->vr_buf = tx_buf;
+
+	f = c->vr_ptr;
+	f->vr_data = c->vr_buf_paddr;
+	f->vr_ctl = len;
+	f->vr_ctl |= (VR_TXCTL_TLINK | VR_TXCTL_FIRSTFRAG);
+	f->vr_ctl |= (VR_TXCTL_LASTFRAG | VR_TXCTL_FINT);
+	f->vr_status = 0;
+	f->vr_next = c->vr_next_desc_paddr;
 
 	return(0);
 }
@@ -1303,40 +1334,49 @@ static void
 vr_start(struct ifnet *ifp)
 {
 	struct vr_softc *sc;
-	struct mbuf *m_head = NULL;
-	struct vr_chain *cur_tx = NULL, *start_tx;
-
-	sc = ifp->if_softc;
+	struct vr_chain_data *cd;
+	struct vr_chain *tx_chain;
+	int cur_tx_idx, start_tx_idx, prev_tx_idx;
 
 	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
+	sc = ifp->if_softc;
+	cd = &sc->vr_cdata;
+	tx_chain = cd->vr_tx_chain;
+
+	start_tx_idx = cd->vr_tx_free_idx;
+	cur_tx_idx = prev_tx_idx = -1;
+
 	/* Check for an available queue slot. If there are none, punt. */
-	if (sc->vr_cdata.vr_tx_free->vr_mbuf != NULL) {
+	if (tx_chain[start_tx_idx].vr_buf != NULL) {
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
 
-	start_tx = sc->vr_cdata.vr_tx_free;
+	while(tx_chain[cd->vr_tx_free_idx].vr_buf == NULL) {
+		struct mbuf *m_head;
+		struct vr_chain *cur_tx;
 
-	while(sc->vr_cdata.vr_tx_free->vr_mbuf == NULL) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		/* Pick a descriptor off the free list. */
-		cur_tx = sc->vr_cdata.vr_tx_free;
-		sc->vr_cdata.vr_tx_free = cur_tx->vr_nextdesc;
+		cur_tx_idx = cd->vr_tx_free_idx;
+		cur_tx = &tx_chain[cur_tx_idx];
 
 		/* Pack the data into the descriptor. */
-		if (vr_encap(sc, cur_tx, m_head)) {
+		if (vr_encap(sc, cur_tx_idx, m_head)) {
 			ifp->if_flags |= IFF_OACTIVE;
-			cur_tx = NULL;
+			cur_tx_idx = prev_tx_idx;
 			break;
 		}
 
 		m_head = ifq_dequeue(&ifp->if_snd);
-		if (cur_tx != start_tx)
+
+		/* XXX */
+		if (cur_tx_idx != start_tx_idx)
 			VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 
 		BPF_MTAP(ifp, m_head);
@@ -1344,16 +1384,20 @@ vr_start(struct ifnet *ifp)
 
 		VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 		VR_SETBIT16(sc, VR_COMMAND, /*VR_CMD_TX_ON|*/VR_CMD_TX_GO);
+
+		/* Iff everything went OK, we bump up free index. */
+		prev_tx_idx = cur_tx_idx;
+		cd->vr_tx_free_idx = cur_tx->vr_next_idx;
 	}
 
 	/* If there are no frames queued, bail. */
-	if (cur_tx == NULL)
+	if (cur_tx_idx == -1)
 		return;
 
-	sc->vr_cdata.vr_tx_tail = cur_tx;
+	sc->vr_cdata.vr_tx_tail_idx = cur_tx_idx;
 
-	if (sc->vr_cdata.vr_tx_head == NULL)
-		sc->vr_cdata.vr_tx_head = start_tx;
+	if (sc->vr_cdata.vr_tx_head_idx == -1)
+		sc->vr_cdata.vr_tx_head_idx = start_tx_idx;
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -1611,21 +1655,15 @@ vr_stop(struct vr_softc *sc)
 			sc->vr_cdata.vr_rx_chain[i].vr_mbuf = NULL;
 		}
 	}
-	bzero((char *)&sc->vr_ldata->vr_rx_list,
-		sizeof(sc->vr_ldata->vr_rx_list));
+	bzero(&sc->vr_ldata->vr_rx_list, sizeof(sc->vr_ldata->vr_rx_list));
 
 	/*
-	 * Free the TX list buffers.
+	 * Reset the TX list buffer pointers.
 	 */
-	for (i = 0; i < VR_TX_LIST_CNT; i++) {
-		if (sc->vr_cdata.vr_tx_chain[i].vr_mbuf != NULL) {
-			m_freem(sc->vr_cdata.vr_tx_chain[i].vr_mbuf);
-			sc->vr_cdata.vr_tx_chain[i].vr_mbuf = NULL;
-		}
-	}
+	for (i = 0; i < VR_TX_LIST_CNT; i++)
+		sc->vr_cdata.vr_tx_chain[i].vr_buf = NULL;
 
-	bzero((char *)&sc->vr_ldata->vr_tx_list,
-		sizeof(sc->vr_ldata->vr_tx_list));
+	bzero(&sc->vr_ldata->vr_tx_list, sizeof(sc->vr_ldata->vr_tx_list));
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 }
