@@ -1,11 +1,10 @@
 # $FreeBSD: src/sys/modules/if_ef/Makefile,v 1.2.2.2 2001/04/25 11:24:03 ru Exp $
-# $DragonFly: src/sys/net/ef/Makefile,v 1.4 2005/09/11 10:52:56 swildner Exp $
+# $DragonFly: src/sys/net/ef/Makefile,v 1.5 2005/11/22 09:36:58 swildner Exp $
 
 .PATH:  ${.CURDIR}/../../net
 
 KMOD=   if_ef
 SRCS=   if_ef.c opt_ipx.h opt_inet.h opt_ef.h
-MAN=	ef.4
 
 # If you need only limited number of frames comment out unneeded ones
 # this will reduce number of visible devices
