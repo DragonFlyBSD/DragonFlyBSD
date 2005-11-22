@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.24 2005/11/03 23:45:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.25 2005/11/22 03:58:34 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -292,7 +292,7 @@ doreti_ast:
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
-1:	call	trap
+	call	trap
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
