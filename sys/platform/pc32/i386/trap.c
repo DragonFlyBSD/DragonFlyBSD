@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.68 2005/11/21 22:54:15 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.69 2005/11/22 00:49:18 dillon Exp $
  */
 
 /*
@@ -234,7 +234,9 @@ recheck:
 	 * Block here if we are in a stopped state.
 	 */
 	if (p->p_flag & P_STOPPED) {
+		get_mplock();
 		tstop(p);
+		rel_mplock();
 		goto recheck;
 	}
 
@@ -243,7 +245,9 @@ recheck:
 	 */
 	if (p->p_flag & P_UPCALLPEND) {
 		p->p_flag &= ~P_UPCALLPEND;
+		get_mplock();
 		postupcall(lp);
+		rel_mplock();
 		goto recheck;
 	}
 
@@ -251,7 +255,9 @@ recheck:
 	 * Post any pending signals
 	 */
 	if ((sig = CURSIG(p)) != 0) {
+		get_mplock();
 		postsig(sig);
+		rel_mplock();
 		goto recheck;
 	}
 
@@ -261,11 +267,13 @@ recheck:
 	 * aware of our situation, we do not have to wake it up.
 	 */
 	if (p->p_flag & P_SWAPPEDOUT) {
+		get_mplock();
 		p->p_flag |= P_SWAPWAIT;
 		swapin_request();
 		if (p->p_flag & P_SWAPWAIT)
 			tsleep(p, PCATCH, "SWOUT", 0);
 		p->p_flag &= ~P_SWAPWAIT;
+		rel_mplock();
 		goto recheck;
 	}
 }
