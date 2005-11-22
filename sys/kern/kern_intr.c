@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.36 2005/11/21 22:54:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.37 2005/11/22 06:13:42 dillon Exp $
  *
  */
 
@@ -268,7 +268,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
     /*
      * Setup the machine level interrupt vector
      */
-    if (info->i_slow + info->i_fast == 1) {
+    if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1) {
 	if (machintr_vector_setup(intr, intr_flags))
 	    printf("machintr_vector_setup: failed on irq %d\n", intr);
     }
@@ -314,7 +314,7 @@ unregister_int(void *id)
 	    --info->i_fast;
 	else
 	    --info->i_slow;
-	if (info->i_fast + info->i_slow == 0)
+	if (intr < FIRST_SOFTINT && info->i_fast + info->i_slow == 0)
 	    machintr_vector_teardown(intr);
     }
 
