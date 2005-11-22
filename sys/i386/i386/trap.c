@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.69 2005/11/22 00:49:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.70 2005/11/22 01:52:25 dillon Exp $
  */
 
 /*
@@ -101,6 +101,20 @@
 #include <ddb/ddb.h>
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
+
+#ifdef SMP
+
+#define MAKEMPSAFE(have_mplock)			\
+	if (have_mplock == 0) {			\
+		get_mplock();			\
+		have_mplock = 1;		\
+	}
+
+#else
+
+#define MAKEMPSAFE(have_mplock)
+
+#endif
 
 int (*pmath_emulate) (struct trapframe *);
 
@@ -172,6 +186,10 @@ static int syscall_mpsafe = 0;
 SYSCTL_INT(_kern, OID_AUTO, syscall_mpsafe, CTLFLAG_RW,
 	&syscall_mpsafe, 0, "Allow MPSAFE marked syscalls to run without BGL");
 TUNABLE_INT("kern.syscall_mpsafe", &syscall_mpsafe);
+static int trap_mpsafe = 0;
+SYSCTL_INT(_kern, OID_AUTO, trap_mpsafe, CTLFLAG_RW,
+	&trap_mpsafe, 0, "Allow traps to mostly run without the BGL");
+TUNABLE_INT("kern.trap_mpsafe", &trap_mpsafe);
 #endif
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
@@ -378,6 +396,7 @@ again:
  * necessary to properly take fatal kernel traps on SMP machines if 
  * get_mplock() has to block.
  */
+
 void
 trap(frame)
 	struct trapframe frame;
@@ -388,6 +407,9 @@ trap(frame)
 	struct proc *p;
 	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
+#ifdef SMP
+	int have_mplock = 0;
+#endif
 	vm_offset_t eva;
 
 	p = td->td_proc;
@@ -395,7 +417,7 @@ trap(frame)
 	if (db_active) {
 		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
 		++gd->gd_trap_nesting_level;
-		get_mplock();
+		MAKEMPSAFE(have_mplock);
 		trap_fatal(&frame, eva);
 		--gd->gd_trap_nesting_level;
 		goto out2;
@@ -417,15 +439,14 @@ trap(frame)
 		 * correct.
 		 */
 		eva = rcr2();
-		get_mplock();
 		cpu_enable_intr();
-	} else {
-		get_mplock();
 	}
+#ifdef SMP
+	if (trap_mpsafe == 0)
+		MAKEMPSAFE(have_mplock);
+#endif
+
 	--gd->gd_trap_nesting_level;
-	/*
-	 * MP lock is held at this point
-	 */
 
 	if (!(frame.tf_eflags & PSL_I)) {
 		/*
@@ -436,6 +457,7 @@ trap(frame)
 		 */
 		type = frame.tf_trapno;
 		if (ISPL(frame.tf_cs)==SEL_UPL || (frame.tf_eflags & PSL_VM)) {
+			MAKEMPSAFE(have_mplock);
 			printf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curproc->p_comm, type);
@@ -444,6 +466,7 @@ trap(frame)
 			 * XXX not quite right, since this may be for a
 			 * multiple fault in user mode.
 			 */
+			MAKEMPSAFE(have_mplock);
 			printf("kernel trap %d with interrupts disabled\n",
 			    type);
 		}
@@ -457,6 +480,7 @@ restart:
 	code = frame.tf_err;
 
 	if (in_vm86call) {
+		ASSERT_MP_LOCK_HELD(curthread);
 		if (frame.tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
 #ifdef SMP
@@ -550,6 +574,7 @@ restart:
 			break;
 
 		case T_PAGEFLT:		/* page fault */
+			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(&frame, TRUE, eva);
 			if (i == -1)
 				goto out;
@@ -570,6 +595,7 @@ restart:
 
 #if NISA > 0
 		case T_NMI:
+			MAKEMPSAFE(have_mplock);
 #ifdef POWERFAIL_NMI
 			goto handle_powerfail;
 #else /* !POWERFAIL_NMI */
@@ -644,6 +670,7 @@ kernel_trap:
 
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
+			MAKEMPSAFE(have_mplock);
 			(void) trap_pfault(&frame, FALSE, eva);
 			goto out2;
 
@@ -684,6 +711,7 @@ kernel_trap:
 			 */
 			if (frame.tf_eip == (int)cpu_switch_load_gs) {
 				td->td_pcb->pcb_gs = 0;
+				MAKEMPSAFE(have_mplock);
 				psignal(p, SIGBUS);
 				goto out2;
 			}
@@ -774,6 +802,7 @@ kernel_trap:
 			 * Otherwise, debugger traps "can't happen".
 			 */
 #ifdef DDB
+			MAKEMPSAFE(have_mplock);
 			if (kdb_trap (type, 0, &frame))
 				goto out2;
 #endif
@@ -781,6 +810,7 @@ kernel_trap:
 
 #if NISA > 0
 		case T_NMI:
+			MAKEMPSAFE(have_mplock);
 #ifdef POWERFAIL_NMI
 #ifndef TIMER_FREQ
 #  define TIMER_FREQ 1193182
@@ -819,6 +849,7 @@ kernel_trap:
 #endif /* NISA > 0 */
 		}
 
+		MAKEMPSAFE(have_mplock);
 		trap_fatal(&frame, eva);
 		goto out2;
 	}
@@ -827,6 +858,7 @@ kernel_trap:
 	if (*p->p_sysent->sv_transtrap)
 		i = (*p->p_sysent->sv_transtrap)(i, type);
 
+	MAKEMPSAFE(have_mplock);
 	trapsignal(p, i, ucode);
 
 #ifdef DEBUG
@@ -842,15 +874,16 @@ kernel_trap:
 out:
 #ifdef SMP
         if (ISPL(frame.tf_cs) == SEL_UPL)
-		KASSERT(td->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
+		KASSERT(td->td_mpcount == have_mplock, ("badmpcount trap/end from %p", (void *)frame.tf_eip));
 #endif
 	userret(lp, &frame, sticks);
 	userexit(lp);
-out2:
+out2:	;
 #ifdef SMP
-	KKASSERT(td->td_mpcount > 0);
+	KKASSERT(td->td_mpcount >= have_mplock);
+	if (have_mplock)
+		rel_mplock();
 #endif
-	rel_mplock();
 }
 
 #ifdef notyet
@@ -1257,19 +1290,6 @@ int trapwrite(addr)
  *	MPSAFE - note that large sections of this routine are run without
  *		 the MP lock.
  */
-#ifdef SMP
-
-#define MAKEMPSAFE(have_mplock)			\
-	if (have_mplock == 0) {			\
-		get_mplock();			\
-		have_mplock = 1;		\
-	}
-
-#else
-
-#define MAKEMPSAFE(have_mplock)
-
-#endif
 
 void
 syscall2(struct trapframe frame)
@@ -1298,7 +1318,7 @@ syscall2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame.tf_eip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
@@ -1468,7 +1488,7 @@ bad:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock, 
-		("badmpcount syscall from %p", (void *)frame.tf_eip));
+		("badmpcount syscall2/end from %p", (void *)frame.tf_eip));
 	if (have_mplock)
 		rel_mplock();
 #endif
@@ -1522,7 +1542,7 @@ sendsys2(struct trapframe frame)
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0,
-		("badmpcount syscall from %p", (void *)frame.tf_eip));
+		("badmpcount sendsys2 from %p", (void *)frame.tf_eip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
 #endif
@@ -1725,7 +1745,7 @@ bad2:
 	 * Release the MP lock if we had to get it
 	 */
 	KASSERT(td->td_mpcount == have_mplock,
-		("badmpcount syscall from %p", (void *)frame.tf_eip));
+		("badmpcount sendsys2/end from %p", (void *)frame.tf_eip));
 	if (have_mplock)
 		rel_mplock();
 #endif
@@ -1759,7 +1779,7 @@ waitsys2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p",
+	KASSERT(td->td_mpcount == 0, ("badmpcount waitsys from %p",
 	        (void *)frame.tf_eip));
 	if (syscall_mpsafe == 0)
 		MAKEMPSAFE(have_mplock);
@@ -1859,7 +1879,7 @@ bad:
 
 	userexit(lp);
 #ifdef SMP
-	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p",
+	KASSERT(td->td_mpcount == 1, ("badmpcount waitsys/end from %p",
 	        (void *)frame.tf_eip));
 	if (have_mplock)
 		rel_mplock();
