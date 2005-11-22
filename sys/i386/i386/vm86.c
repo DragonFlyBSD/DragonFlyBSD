@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.16 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.17 2005/11/22 04:09:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,6 +165,9 @@ POPL(struct vm86frame *vmf)
 	return (x);
 }
 
+/*
+ * MPSAFE
+ */
 int
 vm86_emulate(vmf)
 	struct vm86frame *vmf;
