@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.8 2005/09/21 18:13:24 justin Exp $
+# $DragonFly: site/data/main/Attic/release1_2.cgi,v 1.9 2005/11/22 17:36:06 dillon Exp $
 
 $TITLE(DragonFly - April 2005 Release 1.2.x Download)
 <h1>Obtaining DragonFly 1.2.x for your system</h1>
@@ -86,6 +86,28 @@ See the 'Download Site' list below for a list of download locations.
 <TD>Numerous critical SMP fixes: critical section and spl code, 
     IPI messaging, LWKT tokens, and a ktrace fix.  Also a
     security fix for a libz overflow.</TD>
+</TR>
+<TR>
+<TD>1.2.6</TD>
+<TD>09-Oct-2005</TD>
+<TD>
+<LI>MFC a fix for a long-standing softupdates bug (ffs_softdep/1.27).
+<LI>MFC a buffer cache case where a buffer is moved from an EMPTY state to
+  an EMPTYKVA state without disassociating its vnode.
+<LI>MFC a tcp sequence number vulnerability
+<LI>MFC fix a bug in the NFS server code that could cause it to return I/O
+   errors to a client which is manipulating large directories.
+<LI>MFC fixes to TWA/TWE related to malloc alignments that were causing newfs
+  and fsck to fail under certain conditions.
+<LI>MFC fixes for LWKT tokens (SMP)
+<LI>MFC fix an unmatched spl*() call.
+<LI>MFC unlock the vnode across a dev_close to avoid a tty deadlock.
+<LI>MFC fix an inode bitmap scanning bug which resulted in an assertion/panic
+<LI>MFC fix a rename bug when renaming a hardlink over itself.
+<LI>MFC fix a number of vinum issues.
+<LI>MFC fix a lock ordering deadlock in ffs_balloc.c
+<LI>Numerous issues related to building HEAD on RELEASE, and other issues.
+</TD>
 </TR>
 </TABLE>
 
