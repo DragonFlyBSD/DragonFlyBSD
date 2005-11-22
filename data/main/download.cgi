@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.89 2005/08/30 22:12:49 corecode Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.90 2005/11/22 17:35:39 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -73,13 +73,12 @@ the following tags:
 
 <h2>Other Sites</h2>
 
-<a href="http://gobsd.com">GoBSD.com</a>, a BSD-centric community website, is providing access to thousands of 
-<a href="http://gobsd.com/packages">pre-built DragonFly software packages</a>.  These can be added via 
-<code>pkg_add -r <i>packagename</i></code>.
-
 <p>
 Daily DragonFly events and news are reported at the 
 <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>.</p>
+
+<p><a href="http://gobsd.com">GoBSD.com</a> is a BSD-centric community website. 
+</p>
 
 <h2>Current Working Set</h2>
 
@@ -314,6 +313,44 @@ rsync
 </TD>
 </TR>
 
+<!-- binary packages after this -->
+<TR>
+<TD COLSPAN="3">&nbsp;</TD>
+</TR>
+
+<TR><TD CLASS="mirrorsection" COLSPAN="3">pkgsrc binary mirrors</TD></TR>
+
+<TR>
+<TD>packages.stura.uni-rostock.de (Germany)</TD>
+<TD>Master site for binary pkgsrc packages (<B>NOTE: Use other sites if possible!</B>)</TD>
+<TD><a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/DEVELOPMENT/i386/All/">i386 packages</a>,
+<a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+</TD>
+</TR>
+
+<TR>
+<TD>chlamydia.fs.ei.tum.de (Germany)</TD>
+<TD>binay pkgsrc packages </TD>
+<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/i386/All/">i386 packages</a>, 
+<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+</TD>
+</TR>
+
+<TR>
+<TD>ftp.pvvntnu.no (Norway)</TD>
+<TD>binay pkgsrc packages </TD>
+<TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/i386/All/">i386 packages</a>, 
+<a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/bootstra/p">bootstrap kits</a>
+</TD>
+</TR>
+
+<TR>
+<TD> www.gobsd.com (USA)</TD>
+<TD>binay pkgsrc packages </TD>
+<TD><a href="http://www.gobsd.com/pkgsrc/i386/All/">i386 packages</a>,
+<a href="http://www.gobsd.com/bootstrap/">bootstrap kits</a>
+</TD>
+</TR>
 
 <!-- source only after this -->
 
