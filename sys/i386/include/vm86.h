@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.5 2005/10/07 21:55:15 corecode Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.6 2005/11/22 08:41:02 dillon Exp $
  */
 
 #ifndef _MACHINE_VM86_H_
@@ -151,7 +151,7 @@ extern 	pt_entry_t *vm86paddr;
 struct proc;
 extern	int vm86_emulate (struct vm86frame *);
 extern	int vm86_sysarch (struct lwp *, char *);
-extern void vm86_trap (struct vm86frame *);
+extern void vm86_trap (struct vm86frame *, int);
 extern 	int vm86_intcall (int, struct vm86frame *);
 extern 	int vm86_datacall (int, struct vm86frame *, struct vm86context *);
 extern void vm86_initialize (void);

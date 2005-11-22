@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.83 2005/11/16 02:24:28 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.84 2005/11/22 08:41:00 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2038,7 +2038,8 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 
 	lwkt_init_thread(&gd->mi.gd_idlethread, 
 			gd->mi.gd_prvspace->idlestack, 
-			sizeof(gd->mi.gd_prvspace->idlestack), 0, &gd->mi);
+			sizeof(gd->mi.gd_prvspace->idlestack), 
+			TDF_MPSAFE, &gd->mi);
 	lwkt_set_comm(&gd->mi.gd_idlethread, "idle_%d", cpu);
 	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->mi.gd_idlethread.td_sp -= sizeof(void *);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.87 2005/11/21 18:49:26 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.88 2005/11/22 08:41:03 dillon Exp $
  */
 
 /*
@@ -231,10 +231,9 @@ lwkt_wait_init(lwkt_wait_t w)
  * does everything except load the startup and switcher function.
  */
 thread_t
-lwkt_alloc_thread(struct thread *td, int stksize, int cpu)
+lwkt_alloc_thread(struct thread *td, int stksize, int cpu, int flags)
 {
     void *stack;
-    int flags = 0;
     globaldata_t gd = mycpu;
 
     if (td == NULL) {
@@ -246,7 +245,7 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu)
 		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
 	    TAILQ_REMOVE(&gd->gd_tdfreeq, td, td_threadq);
 	    crit_exit_gd(gd);
-	    flags = td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
+	    flags |= td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
 	} else {
 	    crit_exit_gd(gd);
 #ifdef _KERNEL
@@ -321,9 +320,13 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
     td->td_kstack_size = stksize;
-    td->td_flags |= flags;
+    td->td_flags = flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
+#ifdef SMP
+    if ((flags & TDF_MPSAFE) == 0)
+	td->td_mpcount = 1;
+#endif
     lwkt_initport(&td->td_msgport, td);
     pmap_init_thread(td);
 #ifdef SMP
@@ -1335,17 +1338,11 @@ lwkt_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(template, LWKT_THREAD_STACK, cpu);
+    td = lwkt_alloc_thread(template, LWKT_THREAD_STACK, cpu,
+			   tdflags | TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, lwkt_exit, func, arg);
-    td->td_flags |= TDF_VERBOSE | tdflags;
-#ifdef SMP
-    if (td->td_flags & TDF_MPSAFE)
-	td->td_mpcount = 0;
-    else
-	td->td_mpcount = 1;
-#endif
 
     /*
      * Set up arg0 for 'ps' etc

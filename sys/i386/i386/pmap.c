@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.53 2005/11/14 18:50:03 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.54 2005/11/22 08:41:00 dillon Exp $
  */
 
 /*
@@ -920,7 +920,7 @@ pmap_init_proc(struct proc *p, struct thread *td)
 	td->td_lwp = &p->p_lwp;
 	td->td_switch = cpu_heavy_switch;
 #ifdef SMP
-	td->td_mpcount = 1;
+	KKASSERT(td->td_mpcount == 1);
 #endif
 	bzero(p->p_addr, sizeof(*p->p_addr));
 }

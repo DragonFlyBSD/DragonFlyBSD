@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.70 2005/11/22 01:52:25 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.71 2005/11/22 08:41:00 dillon Exp $
  */
 
 /*
@@ -494,8 +494,13 @@ restart:
 				/*
 				 * returns to original process
 				 */
-				vm86_trap((struct vm86frame *)&frame);
-				KKASSERT(0);
+#ifdef SMP
+				vm86_trap((struct vm86frame *)&frame,
+					  have_mplock);
+#else
+				vm86_trap((struct vm86frame *)&frame, 0);
+#endif
+				KKASSERT(0); /* NOT REACHED */
 			}
 			goto out2;
 		}
@@ -880,7 +885,6 @@ out:
 	userexit(lp);
 out2:	;
 #ifdef SMP
-	KKASSERT(td->td_mpcount >= have_mplock);
 	if (have_mplock)
 		rel_mplock();
 #endif

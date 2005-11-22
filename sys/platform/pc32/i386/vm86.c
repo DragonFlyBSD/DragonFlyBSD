@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.17 2005/11/22 04:09:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.18 2005/11/22 08:41:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -599,7 +599,7 @@ vm86_prepcall(struct vm86frame vmf)
  * to returning to the VM86 call.
  */
 void
-vm86_trap(struct vm86frame *vmf)
+vm86_trap(struct vm86frame *vmf, int have_mplock)
 {
 	caddr_t addr;
 
@@ -613,7 +613,8 @@ vm86_trap(struct vm86frame *vmf)
 	else
 		vmf->vmf_trapno = vmf->vmf_trapno << 16;
 
-	rel_mplock();
+	if (have_mplock)
+		rel_mplock();
 	vm86_biosret(vmf);
 }
 

@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.74 2005/11/21 18:49:27 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.75 2005/11/22 08:41:05 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -355,7 +355,7 @@ extern struct vm_zone	*thread_zone;
  * Applies both to the kernel and to liblwkt.
  */
 extern struct thread *lwkt_alloc_thread(struct thread *template, int stksize,
-	int cpu);
+	int cpu, int flags);
 extern void lwkt_init_thread(struct thread *td, void *stack, int stksize,
 	int flags, struct globaldata *gd);
 extern void lwkt_set_comm(thread_t td, const char *ctl, ...);

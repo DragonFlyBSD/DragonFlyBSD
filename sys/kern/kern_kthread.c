@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.11 2005/04/20 16:37:09 cpressey Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.12 2005/11/22 08:41:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,13 +54,12 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1);
+    td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, -1, TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-    td->td_flags |= TDF_VERBOSE;
 #ifdef SMP
-    td->td_mpcount = 1;
+    KKASSERT(td->td_mpcount == 1);
 #endif
 
     /*
@@ -87,13 +86,12 @@ kthread_create_stk(void (*func)(void *), void *arg,
     thread_t td;
     __va_list ap;
 
-    td = lwkt_alloc_thread(NULL, stksize, -1);
+    td = lwkt_alloc_thread(NULL, stksize, -1, TDF_VERBOSE);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-    td->td_flags |= TDF_VERBOSE;
 #ifdef SMP
-    td->td_mpcount = 1;
+    KKASSERT(td->td_mpcount == 1);
 #endif
     __va_start(ap, fmt);
     vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
