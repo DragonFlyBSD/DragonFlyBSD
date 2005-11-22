@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.45 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.46 2005/11/22 00:24:25 dillon Exp $
  */
 
 /*
@@ -2916,9 +2916,10 @@ dc_encap(struct dc_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 static void
 dc_start(struct ifnet *ifp)
 {
-	struct dc_softc		*sc;
-	struct mbuf *m_head = NULL, *m_new;
-	int did_defrag, idx, need_trans;
+	struct dc_softc	*sc;
+	struct mbuf *m_head;
+	struct mbuf *m_defragged;
+	int idx, need_trans;
 
 	sc = ifp->if_softc;
 
@@ -2932,7 +2933,7 @@ dc_start(struct ifnet *ifp)
 
 	need_trans = 0;
 	while(sc->dc_cdata.dc_tx_chain[idx] == NULL) {
-		did_defrag = 0;
+		m_defragged = NULL;
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
@@ -2957,36 +2958,44 @@ dc_start(struct ifnet *ifp)
 			}
 
 			/* only coalesce if have >1 mbufs */
-			m_new = m_defrag_nofree(m_head, MB_DONTWAIT);
-			if (m_new == NULL) {
+			m_defragged = m_defrag_nofree(m_head, MB_DONTWAIT);
+			if (m_defragged == NULL) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
-			m_freem(m_head);
-			m_head = m_new;
-			did_defrag = 1;
 		}
 
-		if (dc_encap(sc, m_head, &idx)) {
-			if (did_defrag) {
+		if (dc_encap(sc, (m_defragged ? m_defragged : m_head), &idx)) {
+			if (m_defragged) {
+				/*
+				 * Throw away the original packet if the
+				 * defragged packet could not be encapsulated,
+				 * as well as the defragged packet.
+				 */
+				ifq_dequeue(&ifp->if_snd, m_head);
 				m_freem(m_head);
-				m_new = ifq_dequeue(&ifp->if_snd);
-				m_freem(m_new);
+				m_freem(m_defragged);
 			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
-		m_new = ifq_dequeue(&ifp->if_snd);
-		if (did_defrag)
-			m_freem(m_new);
+		ifq_dequeue(&ifp->if_snd, m_head);
+
 		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, m_head);
+		BPF_MTAP(ifp, (m_defragged ? m_defragged : m_head));
+
+		/*
+		 * If we defragged the packet, m_head is not the one we
+		 * encapsulated so we can throw it away.
+		 */
+		if (m_defragged)
+			m_freem(m_head);
 
 		if (sc->dc_flags & DC_TX_ONE) {
 			ifp->if_flags |= IFF_OACTIVE;

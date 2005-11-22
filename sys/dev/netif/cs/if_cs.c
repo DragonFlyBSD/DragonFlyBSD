@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.21 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.22 2005/11/22 00:24:21 dillon Exp $
  */
 
 /*
@@ -990,7 +990,7 @@ cs_start(struct ifnet *ifp)
 		if (sc->buf_len)
 			length = sc->buf_len;
 		else {
-			m = ifq_dequeue(&ifp->if_snd);
+			m = ifq_dequeue(&ifp->if_snd, NULL);
 
 			if (m==NULL) {
 				crit_exit();

@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.31 2005/10/12 17:35:53 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.32 2005/11/22 00:24:34 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -1308,7 +1308,7 @@ txp_start(ifp)
 
 		ifp->if_timer = 5;
 
-		m = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m);
 		BPF_MTAP(ifp, m);
 		WRITE_REG(sc, r->r_reg, TXP_IDX2OFFSET(prod));
 	}

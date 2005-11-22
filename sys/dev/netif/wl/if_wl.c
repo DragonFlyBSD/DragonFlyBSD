@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.24 2005/10/12 17:35:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.25 2005/11/22 00:24:34 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -996,7 +996,7 @@ wlstart(struct ifnet *ifp)
 
     /* get ourselves some data */
     ifp = &(sc->wl_if);
-    m = ifq_dequeue(&ifp->if_snd);
+    m = ifq_dequeue(&ifp->if_snd, NULL);
     if (m != NULL) {
 	BPF_MTAP(ifp, m);
 	sc->tbusy++;

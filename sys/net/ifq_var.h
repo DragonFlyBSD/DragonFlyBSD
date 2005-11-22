@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.4 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.5 2005/11/22 00:24:34 dillon Exp $
  */
 #ifndef _NET_IFQ_VAR_H
 #define _NET_IFQ_VAR_H
@@ -80,13 +80,13 @@ ifq_enqueue(struct ifaltq *_ifq, struct mbuf *_m, struct altq_pktattr *_pa)
 }
 
 static __inline struct mbuf *
-ifq_dequeue(struct ifaltq *_ifq)
+ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
 {
 #ifdef ALTQ
 	if (_ifq->altq_tbr != NULL)
-		return(tbr_dequeue(_ifq, ALTDQ_REMOVE));
+		return(tbr_dequeue(_ifq, _mpolled, ALTDQ_REMOVE));
 #endif
-	return((*_ifq->altq_dequeue)(_ifq, ALTDQ_REMOVE));
+	return((*_ifq->altq_dequeue)(_ifq, _mpolled, ALTDQ_REMOVE));
 }
 
 static __inline struct mbuf *
@@ -94,9 +94,9 @@ ifq_poll(struct ifaltq *_ifq)
 {
 #ifdef ALTQ
 	if (_ifq->altq_tbr != NULL)
-		return(tbr_dequeue(_ifq, ALTDQ_POLL));
+		return(tbr_dequeue(_ifq, NULL, ALTDQ_POLL));
 #endif
-	return((*_ifq->altq_dequeue)(_ifq, ALTDQ_POLL));
+	return((*_ifq->altq_dequeue)(_ifq, NULL, ALTDQ_POLL));
 }
 
 static __inline void

@@ -1,5 +1,5 @@
 /*	$KAME: altq_priq.c,v 1.12 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_priq.c,v 1.5 2005/11/22 00:24:35 dillon Exp $ */
 
 /*
  * Copyright (C) 2000-2003
@@ -67,7 +67,7 @@ static void	priq_purge(struct priq_if *);
 static struct priq_class *priq_class_create(struct priq_if *, int, int, int, int);
 static int	priq_class_destroy(struct priq_class *);
 static int	priq_enqueue(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
-static struct mbuf *priq_dequeue(struct ifaltq *, int);
+static struct mbuf *priq_dequeue(struct ifaltq *, struct mbuf *, int);
 
 static int	priq_addq(struct priq_class *, struct mbuf *);
 static struct mbuf *priq_getq(struct priq_class *);
@@ -430,7 +430,7 @@ done:
  *	after ALTDQ_POLL.
  */
 static struct mbuf *
-priq_dequeue(struct ifaltq *ifq, int op)
+priq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
 	struct priq_class *cl;
@@ -439,6 +439,7 @@ priq_dequeue(struct ifaltq *ifq, int op)
 
 	if (ifq_is_empty(ifq)) {
 		/* no packet in the queue */
+		KKASSERT(mpolled == NULL);
 		return (NULL);
 	}
 
@@ -462,6 +463,7 @@ priq_dequeue(struct ifaltq *ifq, int op)
 		}
 	}
 	crit_exit();
+	KKASSERT(mpolled == NULL || mpolled == m);
 	return (m);
 }
 

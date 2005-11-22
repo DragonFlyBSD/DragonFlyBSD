@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.31 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -893,7 +893,7 @@ wi_start(struct ifnet *ifp)
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
-			m0 = ifq_dequeue(&ifp->if_snd);
+			ifq_dequeue(&ifp->if_snd, m0);
 			ifp->if_opackets++;
 			m_copydata(m0, 0, ETHER_HDR_LEN, 
 			    (caddr_t)&frmhdr.wi_ehdr);

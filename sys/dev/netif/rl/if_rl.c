@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.27 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.28 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -1382,7 +1382,7 @@ rl_start(struct ifnet *ifp)
 	sc = ifp->if_softc;
 
 	while(RL_CUR_TXMBUF(sc) == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

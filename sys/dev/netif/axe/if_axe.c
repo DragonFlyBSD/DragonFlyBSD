@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.17 2005/09/10 11:51:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.18 2005/11/22 00:24:18 dillon Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -833,7 +833,7 @@ axe_start(struct ifnet *ifp)
 		crit_exit();
 		return;
 	}
-	m_head = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame

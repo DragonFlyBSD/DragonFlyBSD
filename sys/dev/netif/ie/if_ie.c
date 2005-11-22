@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.24 2005/11/02 17:47:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.25 2005/11/22 00:24:32 dillon Exp $
  */
 
 /*
@@ -1428,7 +1428,7 @@ iestart(struct ifnet *ifp)
 		return;
 
 	do {
-		m = ifq_dequeue(&ie->arpcom.ac_if.if_snd);
+		m = ifq_dequeue(&ie->arpcom.ac_if.if_snd, NULL);
 		if (m == NULL)
 			break;
 

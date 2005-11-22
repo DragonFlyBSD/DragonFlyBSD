@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.23 2005/07/04 07:32:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.24 2005/11/22 00:24:34 dillon Exp $
  *
  */
 
@@ -418,7 +418,7 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	m0 = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m0);
 	m_freem(m0);
 	goto readcheck;
     }
@@ -433,7 +433,7 @@ startagain:
 	}
     }
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_AVAIL_THRESH | (8188 >> 2));
-    m0 = ifq_dequeue(&ifp->if_snd);
+    ifq_dequeue(&ifp->if_snd, m0);
 
     VX_BUSY_WAIT;
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_START_THRESH |

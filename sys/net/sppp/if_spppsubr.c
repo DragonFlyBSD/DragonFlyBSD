@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.20 2005/06/14 19:34:26 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.21 2005/11/22 00:24:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1118,7 +1118,7 @@ sppp_dequeue(struct ifnet *ifp)
 	    (sppp_ncp_check(sp) || sp->pp_mode == IFF_CISCO)) {
 		IF_DEQUEUE(&sp->pp_fastq, m);
 		if (m == NULL)
-			m = ifq_dequeue(&sp->pp_if.if_snd);
+			m = ifq_dequeue(&sp->pp_if.if_snd, NULL);
 	}
 
 	crit_exit();

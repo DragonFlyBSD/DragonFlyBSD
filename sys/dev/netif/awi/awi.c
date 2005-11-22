@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.23 2005/06/13 20:30:45 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.24 2005/11/22 00:24:17 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -772,7 +772,7 @@ awi_start(ifp)
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
-			m0 = ifq_dequeue(&ifp->if_snd);
+			ifq_dequeue(&ifp->if_snd, m0);
 			AWI_BPF_MTAP(sc, m0, AWI_BPF_NORM);
 			m0 = awi_fix_txhdr(sc, m0);
 			if (sc->sc_wep_algo != NULL && m0 != NULL)

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.19 2005/06/14 15:23:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.20 2005/11/22 00:24:30 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -418,7 +418,7 @@ ex_start(struct ifnet *ifp)
 		DODEBUG(Sent_Pkts, printf("i=%d, avail=%d\n", i, avail););
 
 		if (avail >= len + XMT_HEADER_LEN) {
-			opkt = ifq_dequeue(&ifp->if_snd);
+			ifq_dequeue(&ifp->if_snd, opkt);
 
 #ifdef EX_PSA_INTR      
 			/*

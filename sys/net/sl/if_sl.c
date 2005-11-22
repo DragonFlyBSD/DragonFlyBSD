@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.19 2005/07/16 17:08:13 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.20 2005/11/22 00:24:35 dillon Exp $
  */
 
 /*
@@ -556,7 +556,7 @@ slstart(tp)
 		if (m)
 			sc->sc_if.if_omcasts++;		/* XXX */
 		else
-			m = ifq_dequeue(&sc->sc_if.if_snd);
+			m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
 		crit_exit();
 		if (m == NULL)
 			return 0;

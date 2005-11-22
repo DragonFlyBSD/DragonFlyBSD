@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.23 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.24 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1345,7 +1345,7 @@ static void sf_start(ifp)
 			cur_tx = NULL;
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 		BPF_MTAP(ifp, cur_tx->sf_mbuf);
 
 		SF_INC(i, SF_TX_DLIST_CNT);

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.41 2005/10/24 08:06:16 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.42 2005/11/22 00:24:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -91,7 +91,7 @@
 static int	ifq_classic_enqueue(struct ifaltq *, struct mbuf *,
 				    struct altq_pktattr *);
 static struct mbuf *
-		ifq_classic_dequeue(struct ifaltq *, int);
+		ifq_classic_dequeue(struct ifaltq *, struct mbuf *, int);
 static int	ifq_classic_request(struct ifaltq *, int, void *);
 
 /*
@@ -1841,7 +1841,7 @@ ifq_classic_enqueue(struct ifaltq *ifq, struct mbuf *m,
 }
 
 static struct mbuf *
-ifq_classic_dequeue(struct ifaltq *ifq, int op)
+ifq_classic_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	struct mbuf *m;
 
@@ -1857,6 +1857,7 @@ ifq_classic_dequeue(struct ifaltq *ifq, int op)
 		panic("unsupported ALTQ dequeue op: %d", op);
 	}
 	crit_exit();
+	KKASSERT(mpolled == NULL || mpolled == m);
 	return(m);
 }
 

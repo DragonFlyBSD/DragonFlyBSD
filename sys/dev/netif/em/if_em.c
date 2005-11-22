@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.42 2005/11/08 12:48:18 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.43 2005/11/22 00:24:28 dillon Exp $*/
 
 #include "opt_polling.h"
 
@@ -668,7 +668,7 @@ em_start_serialized(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/* Send a copy of the frame to the BPF listener */
 		BPF_MTAP(ifp, m_head);

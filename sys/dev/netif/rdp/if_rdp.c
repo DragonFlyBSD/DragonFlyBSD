@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.19 2005/11/02 08:33:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.20 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -758,7 +758,7 @@ outloop:
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
-	m = ifq_dequeue(&ifp->if_snd);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m == NULL) {
 		/*
 		 * We are using the !OACTIVE flag to indicate to the outside

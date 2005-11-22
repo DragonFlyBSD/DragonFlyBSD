@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.21 2005/10/28 03:25:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.22 2005/11/22 00:24:32 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -470,7 +470,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 			if_printf(ifp, "lack of xfer\n");
 			return;
 		}
-		m = ifq_dequeue(&ifp->if_snd);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		STAILQ_REMOVE_HEAD(&fwe->xferlist, link);

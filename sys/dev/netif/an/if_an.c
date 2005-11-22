@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.32 2005/07/28 16:57:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.33 2005/11/22 00:24:14 dillon Exp $
  */
 
 /*
@@ -2585,7 +2585,7 @@ an_start(ifp)
 		bzero((char *)&tx_frame_802_3, sizeof(tx_frame_802_3));
 
 		while (sc->an_rdata.an_tx_ring[idx] == 0) {
-			m0 = ifq_dequeue(&ifp->if_snd);
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m0 == NULL)
 				break;
 
@@ -2642,7 +2642,7 @@ an_start(ifp)
 
 		while (sc->an_rdata.an_tx_empty ||
 		    idx != sc->an_rdata.an_tx_cons) {
-			m0 = ifq_dequeue(&ifp->if_snd);
+			m0 = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m0 == NULL) {
 				break;
 			}

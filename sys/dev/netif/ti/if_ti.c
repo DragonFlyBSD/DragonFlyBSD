@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.36 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.37 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1947,7 +1947,7 @@ ti_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);

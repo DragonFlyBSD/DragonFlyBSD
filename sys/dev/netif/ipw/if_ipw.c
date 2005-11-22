@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.10 2005/11/22 00:24:32 dillon Exp $
  */
 
 /*-
@@ -1490,7 +1490,7 @@ ipw_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m0 = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m0);
 
 		BPF_MTAP(ifp, m0);
 

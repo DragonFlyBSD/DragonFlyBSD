@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.20 2005/06/14 14:44:42 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.21 2005/11/22 00:24:29 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -466,7 +466,7 @@ startagain:
     if (len + pad > ETHER_MAX_LEN) {
 	/* packet is obviously too large: toss it */
 	++ifp->if_oerrors;
-	ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m);
 	m_freem(m);
 	goto readcheck;
     }
@@ -483,7 +483,7 @@ startagain:
 	outw(BASE + EP_COMMAND, SET_TX_AVAIL_THRESH | EP_THRESH_DISABLE);
     }
 
-    m = ifq_dequeue(&ifp->if_snd);
+    ifq_dequeue(&ifp->if_snd, m);
 
     outw(BASE + EP_W1_TX_PIO_WR_1, len); 
     outw(BASE + EP_W1_TX_PIO_WR_1, 0x0);	/* Second dword meaningless */

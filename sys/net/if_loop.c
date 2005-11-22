@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.17 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.18 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -313,7 +313,7 @@ lo_altqstart(struct ifnet *ifp)
 	
 	while (1) {
 		crit_enter();
-		m = ifq_dequeue(&ifp->if_snd);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		crit_exit();
 		if (m == NULL)
 			return;

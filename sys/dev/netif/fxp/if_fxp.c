@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.37 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.38 2005/11/22 00:24:32 dillon Exp $
  */
 
 /*
@@ -1095,14 +1095,14 @@ tbdinit:
 			if (mn == NULL)
 				break;
 			 /* We can transmit the packet, dequeue it. */
-			mb_head = ifq_dequeue(&ifp->if_snd);
+			ifq_dequeue(&ifp->if_snd, mb_head);
 			m_freem(mb_head);
 			mb_head = mn;
 			ntries = 1;
 			goto tbdinit;
 		} else {
 			/* Nothing to worry about, just dequeue. */
-			mb_head = ifq_dequeue(&ifp->if_snd);
+			ifq_dequeue(&ifp->if_snd, mb_head);
 		}
 
 		txp->tbd_number = segment;

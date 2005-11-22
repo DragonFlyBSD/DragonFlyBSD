@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.31 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1897,7 +1897,7 @@ static void tl_start(ifp)
 	start_tx = sc->tl_cdata.tl_tx_free;
 
 	while(sc->tl_cdata.tl_tx_free != NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

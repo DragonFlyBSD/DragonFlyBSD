@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.23 2005/07/10 15:17:00 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.24 2005/11/22 00:24:35 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -533,7 +533,7 @@ tunread(dev, uio, flag)
 
 	crit_enter();
 
-	while ((m0 = ifq_dequeue(&ifp->if_snd)) == NULL) {
+	while ((m0 = ifq_dequeue(&ifp->if_snd, NULL)) == NULL) {
 		if (flag & IO_NDELAY) {
 			crit_exit();
 			return EWOULDBLOCK;

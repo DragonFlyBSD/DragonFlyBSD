@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.38 2005/11/21 13:20:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.39 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1373,7 +1373,7 @@ vr_start(struct ifnet *ifp)
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 
 		/* XXX */
 		if (cur_tx_idx != start_tx_idx)

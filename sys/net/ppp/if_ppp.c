@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.25 2005/06/15 12:27:19 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.26 2005/11/22 00:24:35 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -998,7 +998,7 @@ ppp_dequeue(sc)
      */
     IF_DEQUEUE(&sc->sc_fastq, m);
     if (m == NULL)
-	m = ifq_dequeue(&sc->sc_if.if_snd);
+	m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
     if (m == NULL)
 	return NULL;
 

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq.c,v 1.5 1999/08/28 00:42:19 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.5 2005/02/20 04:41:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq.c,v 1.6 2005/11/22 00:24:33 dillon Exp $
  *
  */
 
@@ -894,7 +894,7 @@ pdq_queue_transmit_data(struct ifnet *ifp, pdq_t *pdq, PDQ_OS_DATABUF_T *pdu)
     /*
      * Everything went fine.  Finish it up.
      */
-    ifq_dequeue(&ifp->if_snd);
+    ifq_dequeue(&ifp->if_snd, pdu);
     tx->tx_descriptor_count[tx->tx_producer] = tx->tx_free - freecnt;
     eop->txd_eop = 1;
     PDQ_OS_DATABUF_ENQUEUE(&tx->tx_txq, pdu);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.26 2005/10/01 06:36:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.27 2005/11/22 00:24:26 dillon Exp $
  */
 
 /*
@@ -2097,7 +2097,7 @@ outloop:
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
-	m = ifq_dequeue(&ifp->if_snd);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m == 0) {
 
 		/*

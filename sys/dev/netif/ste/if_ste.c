@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.29 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.30 2005/11/22 00:24:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1479,7 +1479,7 @@ static void ste_start(ifp)
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

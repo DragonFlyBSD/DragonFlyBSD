@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.21 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.22 2005/11/22 00:24:33 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -1363,7 +1363,7 @@ my_start(struct ifnet * ifp)
 
 	start_tx = sc->my_cdata.my_tx_free;
 	while (sc->my_cdata.my_tx_free->my_mbuf == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

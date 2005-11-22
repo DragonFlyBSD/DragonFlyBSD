@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.32 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.33 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -1626,7 +1626,7 @@ nge_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);

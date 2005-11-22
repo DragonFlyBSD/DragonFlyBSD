@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.28 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.29 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1853,7 +1853,7 @@ sis_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
 		/*

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.22 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.23 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -1208,7 +1208,7 @@ lnc_start(struct ifnet *ifp)
 	int no_entries_needed;
 
 	do {
-		head = ifq_dequeue(&sc->arpcom.ac_if.if_snd);
+		head = ifq_dequeue(&sc->arpcom.ac_if.if_snd, NULL);
 		if (head == NULL)
 			return;
 

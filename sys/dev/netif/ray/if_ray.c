@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.24 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.25 2005/11/22 00:24:33 dillon Exp $
  *
  */
 
@@ -1463,7 +1463,7 @@ ray_tx(struct ifnet *ifp)
 	 * Get the mbuf and process it - we have to remember to free the
 	 * ccs if there are any errors.
 	 */
-	m0 = ifq_dequeue(&ifp->if_snd);
+	m0 = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m0 == NULL) {
 		RAY_CCS_FREE(sc, ccs);
 		return;

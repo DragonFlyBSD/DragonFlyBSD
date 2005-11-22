@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.16 2005/06/14 17:34:29 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.17 2005/11/22 00:24:35 dillon Exp $
  */
 
 /*
@@ -277,8 +277,8 @@ vlan_start(struct ifnet *ifp)
 
 	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
-		m = ifq_dequeue(&ifp->if_snd);
-		if (m == 0)
+		m = ifq_dequeue(&ifp->if_snd, NULL);
+		if (m == NULL)
 			break;
 		BPF_MTAP(ifp, m);
 

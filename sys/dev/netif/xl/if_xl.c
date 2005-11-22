@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.40 2005/10/24 08:06:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.41 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -2616,7 +2616,7 @@ xl_start_body(struct ifnet *ifp, int proc_rx)
 	start_tx = sc->xl_cdata.xl_tx_free;
 
 	while(sc->xl_cdata.xl_tx_free != NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 
@@ -2738,7 +2738,7 @@ xl_start_90xB(struct ifnet *ifp)
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

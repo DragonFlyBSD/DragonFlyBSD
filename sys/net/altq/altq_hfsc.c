@@ -1,5 +1,5 @@
 /*	$KAME: altq_hfsc.c,v 1.25 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_hfsc.c,v 1.5 2005/11/22 00:24:35 dillon Exp $ */
 
 /*
  * Copyright (c) 1997-1999 Carnegie Mellon University. All Rights Reserved.
@@ -82,7 +82,7 @@ static int	hfsc_class_destroy(struct hfsc_class *);
 static struct hfsc_class *hfsc_nextclass(struct hfsc_class *);
 static int	hfsc_enqueue(struct ifaltq *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf *hfsc_dequeue(struct ifaltq *, int);
+static struct mbuf *hfsc_dequeue(struct ifaltq *, struct mbuf *, int);
 
 static int	hfsc_addq(struct hfsc_class *, struct mbuf *);
 static struct mbuf *hfsc_getq(struct hfsc_class *);
@@ -661,7 +661,7 @@ hfsc_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
  *	after ALTDQ_POLL.
  */
 static struct mbuf *
-hfsc_dequeue(struct ifaltq *ifq, int op)
+hfsc_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	struct hfsc_if	*hif = (struct hfsc_if *)ifq->altq_disc;
 	struct hfsc_class *cl;
@@ -759,6 +759,7 @@ hfsc_dequeue(struct ifaltq *ifq, int op)
 	}
 done:
 	crit_exit();
+	KKASSERT(mpolled == NULL || m == mpolled);
 	return (m);
 }
 

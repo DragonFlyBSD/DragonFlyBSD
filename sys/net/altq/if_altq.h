@@ -1,5 +1,5 @@
 /*	$KAME: if_altq.h,v 1.11 2003/07/10 12:07:50 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/if_altq.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/if_altq.h,v 1.2 2005/11/22 00:24:35 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -50,7 +50,7 @@ struct	ifaltq {
 
 	int	(*altq_enqueue)(struct ifaltq *, struct mbuf *,
 				struct altq_pktattr *);
-	struct	mbuf *(*altq_dequeue)(struct ifaltq *, int);
+	struct	mbuf *(*altq_dequeue)(struct ifaltq *, struct mbuf *, int);
 	int	(*altq_request)(struct ifaltq *, int, void *);
 
 	/* classifier fields */
@@ -119,25 +119,16 @@ struct tb_regulator {
 /* altq request types (currently only purge is defined) */
 #define	ALTRQ_PURGE		1	/* purge all packets */
 
-#define	ALTQ_ENQUEUE(ifq, m, pa, err)					\
-	(err) = (*(ifq)->altq_enqueue)((ifq),(m),(pa))
-#define	ALTQ_DEQUEUE(ifq, m)						\
-	(m) = (*(ifq)->altq_dequeue)((ifq), ALTDQ_REMOVE)
-#define	ALTQ_POLL(ifq, m)						\
-	(m) = (*(ifq)->altq_dequeue)((ifq), ALTDQ_POLL)
-#define	ALTQ_PURGE(ifq)							\
-	(void)(*(ifq)->altq_request)((ifq), ALTRQ_PURGE, (void *)0)
-
 int	altq_attach(struct ifaltq *, int, void *,
 		    int (*)(struct ifaltq *, struct mbuf *, struct altq_pktattr *),
-		    struct mbuf *(*)(struct ifaltq *, int),
+		    struct mbuf *(*)(struct ifaltq *, struct mbuf *, int),
 		    int (*)(struct ifaltq *, int, void *),
 		    void *, void *(*)(struct ifaltq *, struct mbuf *,
 				      struct altq_pktattr *));
 int	altq_detach(struct ifaltq *);
 int	altq_enable(struct ifaltq *);
 int	altq_disable(struct ifaltq *);
-struct mbuf *tbr_dequeue(struct ifaltq *, int);
+struct mbuf *tbr_dequeue(struct ifaltq *, struct mbuf *, int);
 extern int	(*altq_input)(struct mbuf *, int);
 #endif /* _KERNEL */
 

@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.5 2005/06/03 18:20:36 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.6 2005/11/22 00:24:35 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -103,7 +103,7 @@ altq_lookup(const char *name, int type)
 int
 altq_attach(struct ifaltq *ifq, int type, void *discipline,
 	    int (*enqueue)(struct ifaltq *, struct mbuf *, struct altq_pktattr *),
-	    struct mbuf *(*dequeue)(struct ifaltq *, int),
+	    struct mbuf *(*dequeue)(struct ifaltq *, struct mbuf *, int),
 	    int (*request)(struct ifaltq *, int, void *),
 	    void *clfier,
 	    void *(*classify)(struct ifaltq *, struct mbuf *,
@@ -187,7 +187,7 @@ altq_disable(struct ifaltq *ifq)
 #define	TBR_UNSCALE(x)	((x) >> TBR_SHIFT)
 
 struct mbuf *
-tbr_dequeue(struct ifaltq *ifq, int op)
+tbr_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	struct tb_regulator *tbr;
 	struct mbuf *m;
@@ -219,12 +219,14 @@ tbr_dequeue(struct ifaltq *ifq, int op)
 		}
 	}
 
-	if (ifq_is_enabled(ifq))
-		m = (*ifq->altq_dequeue)(ifq, op);
-	else if (op == ALTDQ_POLL)
+	if (ifq_is_enabled(ifq)) {
+		m = (*ifq->altq_dequeue)(ifq, mpolled, op);
+	} else if (op == ALTDQ_POLL) {
 		IF_POLL(ifq, m);
-	else
+	} else {
 		IF_DEQUEUE(ifq, m);
+		KKASSERT(mpolled == NULL || mpolled == m);
+	}
 
 	if (m != NULL && op == ALTDQ_REMOVE)
 		tbr->tbr_token -= TBR_SCALE(m_pktlen(m));

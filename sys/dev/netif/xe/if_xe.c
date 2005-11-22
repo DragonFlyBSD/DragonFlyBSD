@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.28 2005/11/20 10:16:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.29 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -500,7 +500,7 @@ xe_start(struct ifnet *ifp) {
       return;
     }
 
-    mbp = ifq_dequeue(&ifp->if_snd);
+    ifq_dequeue(&ifp->if_snd, mbp);
     BPF_MTAP(ifp, mbp);
 
     ifp->if_timer = 5;			/* In case we don't hear from the card again */

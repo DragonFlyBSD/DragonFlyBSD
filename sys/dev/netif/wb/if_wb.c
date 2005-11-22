@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.31 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1314,7 +1314,7 @@ wb_start(struct ifnet *ifp)
 	start_tx = sc->wb_cdata.wb_tx_free;
 
 	while (sc->wb_cdata.wb_tx_free->wb_mbuf == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd);
+		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
 

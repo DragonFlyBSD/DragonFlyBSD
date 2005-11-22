@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.17 2005/10/24 08:06:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.18 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -1809,7 +1809,8 @@ static void
 re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
-	struct mbuf *m_head = NULL, *m_head2;
+	struct mbuf *m_head;
+	struct mbuf *m_head2;
 	int called_defrag, idx, need_trans;
 
 	crit_enter();
@@ -1821,26 +1822,37 @@ re_start(struct ifnet *ifp)
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
-
-		if (re_encap(sc, &m_head, &idx, &called_defrag)) {
+		m_head2 = m_head;
+		if (re_encap(sc, &m_head2, &idx, &called_defrag)) {
+			/*
+			 * If we could not encapsulate the defragged packet,
+			 * the returned m_head2 is garbage and we must dequeue
+			 * and throw away the original packet.
+			 */
 			if (called_defrag) {
-				m_head2 = ifq_dequeue(&ifp->if_snd);
-				m_freem(m_head2);
+				ifq_dequeue(&ifp->if_snd, m_head);
+				m_freem(m_head);
 			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
-		m_head2 = ifq_dequeue(&ifp->if_snd);
+		/*
+		 * Clean out the packet we encapsulated.  If we defragged
+		 * the packet the m_head2 is the one that got encapsulated
+		 * and the original must be thrown away.  Otherwise m_head2
+		 * *IS* the original.
+		 */
+		ifq_dequeue(&ifp->if_snd, m_head);
 		if (called_defrag)
-			m_freem(m_head2);
+			m_freem(m_head);
 		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		BPF_MTAP(ifp, m_head);
+		BPF_MTAP(ifp, m_head2);
 	}
 
 	if (!need_trans) {

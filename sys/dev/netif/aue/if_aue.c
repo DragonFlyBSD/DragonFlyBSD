@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.27 2005/09/20 07:17:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.28 2005/11/22 00:24:15 dillon Exp $
  */
 
 /*
@@ -1144,7 +1144,7 @@ aue_start(struct ifnet *ifp)
 		AUE_UNLOCK(sc);
 		return;
 	}
-	m_head = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame

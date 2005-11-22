@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.21 2005/10/13 08:10:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.22 2005/11/22 00:24:31 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1248,7 +1248,7 @@ fe_start (struct ifnet *ifp)
 		/*
 		 * Get the next mbuf chain for a packet to send.
 		 */
-		m = ifq_dequeue(&sc->sc_if.if_snd);
+		m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
 		if (m == NULL) {
 			/* No more packets to send.  */
 			goto indicate_inactive;

@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.18 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.19 2005/11/22 00:24:27 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -297,7 +297,7 @@ el_start(struct ifnet *ifp)
 	 */
 	while(1) {
 		/* Dequeue the next datagram */
-		m0 = ifq_dequeue(&ifp->if_snd);
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 
 		/* If there's nothing to send, return. */
 		if(m0 == NULL) {

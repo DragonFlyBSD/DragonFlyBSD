@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.21 2005/06/14 11:41:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.22 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -659,7 +659,7 @@ prepare_to_send(struct sbni_softc *sc)
 	sc->state &= ~(FL_WAIT_ACK | FL_NEED_RESEND);
 
 	for (;;) {
-		sc->tx_buf_p = ifq_dequeue(&sc->arpcom.ac_if.if_snd);
+		sc->tx_buf_p = ifq_dequeue(&sc->arpcom.ac_if.if_snd, NULL);
 		if (sc->tx_buf_p == NULL) {
 			/* nothing to transmit... */
 			sc->pktlen     = 0;

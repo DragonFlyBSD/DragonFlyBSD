@@ -1,5 +1,5 @@
 /*	$KAME: altq_cbq.c,v 1.20 2004/04/17 10:54:48 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.2 2005/05/24 20:59:05 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_cbq.c,v 1.3 2005/11/22 00:24:35 dillon Exp $ */
 
 /*
  * Copyright (c) Sun Microsystems, Inc. 1993-1998 All rights reserved.
@@ -67,7 +67,7 @@ static int		 cbq_clear_interface(cbq_state_t *);
 static int		 cbq_request(struct ifaltq *, int, void *);
 static int		 cbq_enqueue(struct ifaltq *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf	*cbq_dequeue(struct ifaltq *, int);
+static struct mbuf	*cbq_dequeue(struct ifaltq *, struct mbuf *, int);
 static void		 cbqrestart(struct ifaltq *);
 static void		 get_class_stats(class_stats_t *, struct rm_class *);
 static void		 cbq_purge(cbq_state_t *);
@@ -488,7 +488,7 @@ cbq_enqueue(struct ifaltq *ifq, struct mbuf *m, struct altq_pktattr *pktattr)
 }
 
 static struct mbuf *
-cbq_dequeue(struct ifaltq *ifq, int op)
+cbq_dequeue(struct ifaltq *ifq, struct mbuf *mpolled, int op)
 {
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
 	struct mbuf	*m;
@@ -504,6 +504,7 @@ cbq_dequeue(struct ifaltq *ifq, int op)
 		rmc_update_class_util(&cbqp->ifnp);
 	}
 	crit_exit();
+	KKASSERT(mpolled == NULL || mpolled == m);
 	return (m);
 }
 

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.38 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.39 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -1635,7 +1635,7 @@ sk_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		m_head = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m_head);
 		need_trans = 1;
 
 		BPF_MTAP(ifp, m_head);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.20 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.21 2005/11/22 00:24:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -633,7 +633,7 @@ start_xmit_frames(struct sbsh_softc *sc)
 	while (sc->tail_xq != ((sc->head_xq - 1) & (XQLEN - 1))
 	    && sc->regs->LTDR != ((sc->head_tdesc - 1) & 0x7f)) {
 
-		m = ifq_dequeue(&ifp->if_snd);
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		if (m->m_pkthdr.len) {

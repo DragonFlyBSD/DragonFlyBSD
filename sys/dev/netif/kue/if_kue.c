@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.16 2005/08/29 10:19:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.17 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -835,7 +835,7 @@ kue_start(struct ifnet *ifp)
 		KUE_UNLOCK(sc);
 		return;
 	}
-	m_head = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame

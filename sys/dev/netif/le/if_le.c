@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.31 2005/11/09 03:07:34 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.32 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -874,7 +874,7 @@ lemac_start(struct ifnet *ifp)
 	    break;
 	}
 
-	m = ifq_dequeue(&ifp->if_snd);
+	m = ifq_dequeue(&ifp->if_snd, NULL);
 	LE_OUTB(sc, LEMAC_REG_MPN, tx_pg);	/* Shift 2K window. */
 
 	/*
@@ -1733,7 +1733,7 @@ lance_start(struct ifnet *ifp)
 	if (m->m_pkthdr.len < len)
 	    LN_ZERO(sc, bp, len - m->m_pkthdr.len);
 
-	m = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m);
 
 	/*
 	 * Finally, copy out the descriptor and tell the

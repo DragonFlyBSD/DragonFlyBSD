@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.31 2005/11/20 13:08:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -499,7 +499,7 @@ epic_ifstart(struct ifnet *ifp)
 		flist = sc->tx_flist + sc->cur_tx;
 
 		/* Get next packet to send */
-		m0 = ifq_dequeue(&ifp->if_snd);
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 
 		/* If nothing to send, return */
 		if (m0 == NULL)

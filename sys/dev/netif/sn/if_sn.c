@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.22 2005/10/12 17:35:53 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.23 2005/11/22 00:24:34 dillon Exp $
  */
 
 /*
@@ -385,7 +385,7 @@ startagain:
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		printf("%s: large packet discarded (A)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
-		m = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m);
 		m_freem(m);
 		goto readcheck;
 	}
@@ -479,7 +479,7 @@ startagain:
 	 * Get the packet from the kernel.  This will include the Ethernet
 	 * frame header, MAC Addresses etc.
 	 */
-	m = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m);
 
 	/*
 	 * Push out the data to the card.
@@ -580,7 +580,7 @@ snresume(struct ifnet *ifp)
 	 * Sneak a peek at the next packet
 	 */
 	m = ifq_poll(&ifp->if_snd);
-	if (m == 0) {
+	if (m == NULL) {
 		printf("%s: snresume() with nothing to send\n", ifp->if_xname);
 		return;
 	}
@@ -600,7 +600,7 @@ snresume(struct ifnet *ifp)
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		printf("%s: large packet discarded (B)\n", ifp->if_xname);
 		++ifp->if_oerrors;
-		ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m);
 		m_freem(m);
 		return;
 	}
@@ -676,7 +676,7 @@ snresume(struct ifnet *ifp)
 	 * Get the packet from the kernel.  This will include the Ethernet
 	 * frame header, MAC Addresses etc.
 	 */
-	m = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m);
 
 	/*
 	 * Push out the data to the card.

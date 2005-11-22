@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.21 2005/11/04 08:44:47 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.22 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -939,7 +939,7 @@ nv_ifstart_serialized(struct ifnet *ifp)
 		buf = &desc->buf;
 
 		/* Get next packet to send. */
-		m0 = ifq_dequeue(&ifp->if_snd);
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 
 		/* If nothing to send, return. */
 		if (m0 == NULL)

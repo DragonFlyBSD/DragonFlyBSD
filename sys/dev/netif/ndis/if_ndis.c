@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.10 2005/11/22 00:24:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1183,7 +1183,7 @@ ndis_start(ifp)
 			NDIS_UNLOCK(sc);
 			return;
 		}
-		m = ifq_dequeue(&ifp->if_snd);
+		ifq_dequeue(&ifp->if_snd, m);
 
 		/*
 		 * Save pointer to original mbuf

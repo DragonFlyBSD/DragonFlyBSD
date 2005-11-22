@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.11 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.12 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -2223,7 +2223,7 @@ wi_start(ifp)
 	}
 
 nextpkt:
-	m0 = ifq_dequeue(&ifp->if_snd);
+	m0 = ifq_dequeue(&ifp->if_snd, NULL);
 	if (m0 == NULL) {
 		crit_exit();
 		return;

@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.3 2005/11/05 10:01:54 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.4 2005/11/22 00:24:33 dillon Exp $
  */
 
 /*
@@ -1023,7 +1023,7 @@ rue_start(struct ifnet *ifp)
 		RUE_UNLOCK(sc);
 		return;
 	}
-	m_head = ifq_dequeue(&ifp->if_snd);
+	ifq_dequeue(&ifp->if_snd, m_head);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame

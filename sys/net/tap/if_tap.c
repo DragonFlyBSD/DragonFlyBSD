@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.20 2005/06/14 18:37:26 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.21 2005/11/22 00:24:35 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -636,10 +636,7 @@ tapread(dev, uio, flag)
 
 	/* sleep until we get a packet */
 	do {
-		crit_enter();
-		m0 = ifq_dequeue(&ifp->if_snd);
-		crit_exit();
-
+		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL) {
 			if (flag & IO_NDELAY)
 				return (EWOULDBLOCK);
