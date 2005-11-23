@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.90 2005/11/22 17:35:39 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.91 2005/11/23 02:37:56 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -330,7 +330,7 @@ rsync
 
 <TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>binay pkgsrc packages </TD>
+<TD>binary pkgsrc packages </TD>
 <TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/i386/All/">i386 packages</a>, 
 <a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
 </TD>
@@ -338,7 +338,7 @@ rsync
 
 <TR>
 <TD>ftp.pvvntnu.no (Norway)</TD>
-<TD>binay pkgsrc packages </TD>
+<TD>binary pkgsrc packages </TD>
 <TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/i386/All/">i386 packages</a>, 
 <a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/bootstra/p">bootstrap kits</a>
 </TD>
@@ -346,7 +346,7 @@ rsync
 
 <TR>
 <TD> www.gobsd.com (USA)</TD>
-<TD>binay pkgsrc packages </TD>
+<TD>binary pkgsrc packages </TD>
 <TD><a href="http://www.gobsd.com/pkgsrc/i386/All/">i386 packages</a>,
 <a href="http://www.gobsd.com/bootstrap/">bootstrap kits</a>
 </TD>
