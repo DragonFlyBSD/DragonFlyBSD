@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.7 2005/11/23 01:27:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.8 2005/11/23 22:54:22 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -138,8 +138,15 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
      */
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
 	atomic_intr_cond_enter(&s->interlock, lwkt_serialize_sleep, s);
+#ifdef INVARIANTS
+	s->last_td = curthread;
+#endif
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg, frame);
+#ifdef INVARIANTS
+	KKASSERT(s->last_td == curthread);
+	s->last_td = (void *)-2;
+#endif
 	atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
     }
 }
@@ -158,7 +165,15 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
      */
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
 	if (atomic_intr_cond_try(&s->interlock) == 0) {
+#ifdef INVARIANTS
+	    s->last_td = curthread;
+#endif
 	    func(arg, frame);
+#ifdef INVARIANTS
+	    KKASSERT(s->last_td == curthread);
+	    s->last_td = (void *)-2;
+#endif
+	    atomic_intr_cond_exit(&s->interlock, lwkt_serialize_wakeup, s);
 	    return(0);
 	}
     }
