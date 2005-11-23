@@ -8,7 +8,7 @@
  * required.  Unlike tokens this serialization is not safe from deadlocks
  * nor is it recursive, and care must be taken when using it. 
  *
- * $DragonFly: src/sys/sys/serialize.h,v 1.2 2005/10/13 00:02:23 dillon Exp $
+ * $DragonFly: src/sys/sys/serialize.h,v 1.3 2005/11/23 01:27:55 dillon Exp $
  */
 
 #ifndef _SYS_SERIALIZE_H_
@@ -25,10 +25,17 @@ struct lwkt_serialize {
     struct thread	*last_td;
 };
 
+/*
+ * Note that last_td is only maintained when INVARIANTS is turned on,
+ * so this check is only useful as part of a [K]KASSERT.
+ */
+#define ASSERT_SERIALIZED(ss)	KKASSERT((ss)->last_td == curthread)
+
 typedef struct lwkt_serialize *lwkt_serialize_t;
 
 void lwkt_serialize_init(lwkt_serialize_t);
 void lwkt_serialize_enter(lwkt_serialize_t);
+int lwkt_serialize_try(lwkt_serialize_t);
 void lwkt_serialize_exit(lwkt_serialize_t);
 void lwkt_serialize_handler_disable(lwkt_serialize_t);
 void lwkt_serialize_handler_enable(lwkt_serialize_t);

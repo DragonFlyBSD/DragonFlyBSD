@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.6 2005/10/13 00:02:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.7 2005/11/23 01:27:54 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -80,6 +80,26 @@ lwkt_serialize_enter(lwkt_serialize_t s)
 #ifdef INVARIANTS
     s->last_td = curthread;
 #endif
+}
+
+/*
+ * Returns non-zero on success
+ */
+int
+lwkt_serialize_try(lwkt_serialize_t s)
+{
+    int error;
+
+#ifdef INVARIANTS
+    KKASSERT(s->last_td != curthread);
+#endif
+    if ((error = atomic_intr_cond_try(&s->interlock)) == 0) {
+#ifdef INVARIANTS
+	s->last_td = curthread;
+#endif
+	return(1);
+    }
+    return (0);
 }
 
 void
