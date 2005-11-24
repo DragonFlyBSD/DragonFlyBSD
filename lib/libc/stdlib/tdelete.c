@@ -10,7 +10,7 @@
  *
  * $NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.4 2005/11/20 12:37:49 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.5 2005/11/24 17:18:30 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -21,10 +21,15 @@
 #include <stdlib.h>
 
 
-/* delete node with given key */
+/* 
+ * delete node with given key
+ *
+ * Parameters:
+ *	vkey:	key to be deleted
+ *	vrootp:	address of the root of tree
+*/
 void *
-tdelete(const void *vkey,				/* key to be deleted */
-	void **vrootp,					/* address of the root of tree */
+tdelete(const void *vkey, void **vrootp,
 	int (*compar)(const void *, const void *))
 {
 	node_t **rootp = (node_t **)vrootp;

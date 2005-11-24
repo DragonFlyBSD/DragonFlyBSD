@@ -10,7 +10,7 @@
  *
  * $NetBSD: tsearch.c,v 1.3 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.6 2005/11/24 17:18:30 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -20,10 +20,14 @@
 #include <search.h>
 #include <stdlib.h>
 
-/* find or insert datum into search tree */
+/* find or insert datum into search tree
+ *
+ * Parameters:
+ *	vkey:	key to be located
+ *	vrootp:	address of tree root
+ */
 void *
-tsearch(const void *vkey,				/* key to be located */
-	void **vrootp,					/* address of tree root */
+tsearch(const void *vkey, void **vrootp,
 	int (*compar)(const void *, const void *))
 {
 	node_t *q;

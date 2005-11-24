@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.8 2005/11/20 14:58:40 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.9 2005/11/24 17:18:30 swildner Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
@@ -336,6 +336,11 @@ srandomdev(void)
  * Note: the first thing we do is save the current state, if any, just like
  * setstate() so that it doesn't matter when initstate is called.
  *
+ * Parameters:
+ *	seed:		seed for R.N.G.
+ *	arg_state:	pointer to state array
+ *	n:		# bytes of state info
+ *
  * Returns a pointer to the old state.
  *
  * Note: The Sparc platform requires that arg_state begin on an int
@@ -343,9 +348,7 @@ srandomdev(void)
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-initstate(unsigned long seed,		/* seed for R.N.G. */
-	  char *arg_state,		/* pointer to state array */
-	  long n)			/* # bytes of state info */
+initstate(unsigned long seed, char *arg_state, long n)
 {
 	char *ostate = (char *)(&state[-1]);
 	uint32_t *int_arg_state = (uint32_t *)(void *)arg_state;
@@ -403,6 +406,9 @@ initstate(unsigned long seed,		/* seed for R.N.G. */
  * Note that due to the order in which things are done, it is OK to call
  * setstate() with the same state as the current state.
  *
+ * Parameters:
+ *	arg_state:	pointer to state array
+ *
  * Returns a pointer to the old state information.
  *
  * Note: The Sparc platform requires that arg_state begin on a long
@@ -410,7 +416,7 @@ initstate(unsigned long seed,		/* seed for R.N.G. */
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
-setstate(char *arg_state)		/* pointer to state array */
+setstate(char *arg_state)
 {
 	uint32_t *new_state = (uint32_t *)(void *)arg_state;
 	uint32_t type = new_state[0] % MAX_TYPES;
