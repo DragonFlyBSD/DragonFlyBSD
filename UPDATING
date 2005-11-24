@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.15 2005/09/06 10:56:05 joerg Exp $
+$DragonFly: src/UPDATING,v 1.16 2005/11/24 16:33:03 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -82,17 +82,24 @@ the build steps above.
 	make installkernel KERNCONF=<KERNELNAME>
 	make installworld
 
-Then you need to upgrade your /etc.  DragonFly's 'make upgrade' target 
+Then you need to upgrade your system.  DragonFly's 'make upgrade' target 
 will unconditionally upgrade the /etc files that sysops do not usually
-mess around with, such as the files in /etc/rc.d.  If you are unsure we 
-recommend that you make a backup of your /etc before applying this step.
-Note that DragonFly's RC system is basically RCNG from FreeBSD-5, but
-there are some differences in the contents of the RC files.
+mess around with, such as the files in /etc/rc.d.  It will also remove any
+obsolete files such as utilities and manpages that have been removed from
+the system since the version you're coming from.  If you are unsure we 
+recommend that you make a backup of at least your /etc before applying
+this step.  Note that DragonFly's RC system is basically RCNG from
+FreeBSD-5, but there are some differences in the contents of the RC files.
 
 	make upgrade
 
+NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
+Doing so might leave your system in an unusable state.
+
 Finally we recommend that you do an 'ls -lta BLAH' for /bin, /sbin, /usr/bin,
-/usr/bin, and /usr/lib, and remove any stale files that you find.
+/usr/bin, and /usr/lib, and remove any stale files that you find.  Please
+report these files to the DragonFly developers so that they can be added to
+the 'upgrade' target.
 
 ------------------------------------------------------------------------------
 
@@ -134,11 +141,14 @@ To upgrade a DragonFly system from sources you run the following sequence:
 	make installkernel KERNCONF=<KERNELNAME>
 	make installworld
 
-You will also want to run the 'upgrade' target to upgrade your /etc.  The
-upgrade target is aware of stale files created by older DragonFly 
-installations and should delete them automatically.
+You will also want to run the 'upgrade' target to upgrade your /etc and the
+rest of your system.  The upgrade target is aware of stale files created by
+older DragonFly installations and should delete them automatically.
 
 	make upgrade
+
+NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
+Doing so might leave your system in an unusable state.
 
 If you are using 'config' manually from /usr/src/sys/i386/conf/BLAH, note 
 that the build will use the current DragonFly environment rather then
