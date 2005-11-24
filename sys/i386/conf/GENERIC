@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.30 2005/11/04 08:57:25 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.31 2005/11/24 23:01:58 dillon Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -133,6 +133,7 @@ device		ciss		# Compaq SmartRAID 5* series
 device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
 #device		aacp		# SCSI passthrough for aac (requires CAM)
 device		ida		# Compaq Smart RAID
+device		ips		# IBM ServeRAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
 device		twe		# 3ware Escalade 7000/8000's
