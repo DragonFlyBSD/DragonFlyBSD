@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/yppush/yppush_main.c,v 1.11.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/yppush/yppush_main.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/yppush/yppush_main.c,v 1.3 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <errno.h>
@@ -86,8 +86,8 @@ struct jobs *yppush_joblist;	/* Linked list of running jobs. */
 /*
  * Local error messages.
  */
-static char *yppusherr_string(err)
-	int err;
+static char *
+yppusherr_string(int err)
 {
 	switch (err) {
 	case YPPUSH_TIMEDOUT: return("transfer or callback timed out");
@@ -101,9 +101,8 @@ static char *yppusherr_string(err)
 /*
  * Report state of a job.
  */
-static int yppush_show_status(status, tid)
-	ypxfrstat status;
-	unsigned long tid;
+static int
+yppush_show_status(ypxfrstat status, unsigned long tid)
 {
 	struct jobs *job;
 
@@ -140,8 +139,8 @@ static int yppush_show_status(status, tid)
 }
 
 /* Exit routine. */
-static void yppush_exit(now)
-	int now;
+static void
+yppush_exit(int now)
 {
 	struct jobs *jptr;
 	int still_pending = 1;
@@ -201,8 +200,8 @@ to %s (transid = %lu) still pending", jptr->server, jptr->tid);
  * Handler for 'normal' signals.
  */
 
-static void handler(sig)
-	int sig;
+static void
+handler(int sig)
 {
 	if (sig == SIGTERM || sig == SIGINT || sig == SIGABRT) {
 		yppush_jobs = 0;
@@ -220,7 +219,8 @@ static void handler(sig)
 /*
  * Dispatch loop for callback RPC services.
  */
-static void yppush_svc_run()
+static void
+yppush_svc_run(void)
 {
 #ifdef FD_SETSIZE
 	fd_set readfds;
@@ -260,8 +260,8 @@ retry:
  * events here, which will occur when the callback handler has
  * something interesting to tell us.
  */
-static void async_handler(sig)
-	int sig;
+static void
+async_handler(int sig)
 {
 	yppush_svc_run();
 
@@ -294,8 +294,8 @@ yppushproc_xfrresp_1_svc(yppushresp_xfr *argp, struct svc_req *rqstp)
 /*
  * Transmit a YPPROC_XFR request to ypserv.
  */
-static int yppush_send_xfr(job)
-	struct jobs *job;
+static int
+yppush_send_xfr(struct jobs *job)
 {
 	ypreq_xfr req;
 /*	ypresp_xfr *resp; */
@@ -382,10 +382,8 @@ create udp handle to NIS server"));
  * request to the internal list, send the YPPROC_XFR request to ypserv
  * do other magic things.
  */
-int yp_push(server, map, tid)
-	char *server;
-	char *map;
-	unsigned long tid;
+int
+yp_push(char *server, char *map, unsigned long tid)
 {
 	unsigned long prognum;
 	int sock = RPC_ANYSOCK;
@@ -468,13 +466,9 @@ int yp_push(server, map, tid)
  * Called for each entry in the ypservers map from yp_get_map(), which
  * is our private yp_all() routine.
  */
-int yppush_foreach(status, key, keylen, val, vallen, data)
-	int status;
-	char *key;
-	int keylen;
-	char *val;
-	int vallen;
-	char *data;
+int
+yppush_foreach(int status, char *key, int keylen, char *val, int vallen,
+	       char *data)
 {
 	char server[YPMAXRECORD + 2];
 
@@ -516,7 +510,8 @@ int yppush_foreach(status, key, keylen, val, vallen, data)
 	return (0);
 }
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf (stderr, "%s\n%s\n",
 	"usage: yppush [-d domain] [-t timeout] [-j #parallel jobs] [-h host]",
@@ -528,9 +523,7 @@ static void usage()
  * Entry point. (About time!)
  */
 int
-main(argc,argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int ch;
 	DBT key, data;
@@ -664,7 +657,7 @@ main(argc,argv)
 		tmp = yppush_hostlist;
 		while (tmp) {
 			yppush_foreach(YP_TRUE, NULL, 0, tmp->name,
-							strlen(tmp->name));
+			    strlen(tmp->name), NULL);
 			tmp = tmp->next;
 		}
 	} else {

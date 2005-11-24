@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypset/ypset.c,v 1.5.2.2 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypset/ypset.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypset/ypset.c,v 1.3 2005/11/24 22:23:03 swildner Exp $
  */
 
 #include <err.h>
@@ -48,16 +48,14 @@ struct dom_binding{};
 extern bool_t xdr_domainname();
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: ypset [-h host] [-d domain] server\n");
 	exit(1);
 }
 
 int
-bind_tohost(sin, dom, server)
-struct sockaddr_in *sin;
-char *dom, *server;
+bind_tohost(struct sockaddr_in *sin, char *dom, char *server)
 {
 	struct ypbind_setdom ypsd;
 	struct timeval tv;
@@ -111,8 +109,7 @@ char *dom, *server;
 }
 
 int
-main(argc, argv)
-char **argv;
+main(int argc, char **argv)
 {
 	struct sockaddr_in sin;
 	struct hostent *hent;

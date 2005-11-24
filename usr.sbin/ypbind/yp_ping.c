@@ -32,7 +32,7 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.7 2005/11/24 22:23:02 swildner Exp $
  */
 
 /*
@@ -434,8 +434,9 @@ struct ping_req {
 	unsigned long		xid;
 };
 
-int __yp_ping(struct in_addr *restricted_addrs, int cnt,
-	      char *dom, short int *port)
+int
+__yp_ping(struct in_addr *restricted_addrs, int cnt,
+	  char *dom, short int *port)
 {
 	struct timeval		tv = { 5, 0 };
 	struct ping_req		**reqs;

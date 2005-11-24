@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/yp_mkdb/yp_mkdb.c,v 1.12.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/yp_mkdb/yp_mkdb.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/yp_mkdb/yp_mkdb.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <err.h>
@@ -53,7 +53,8 @@ char *yp_dir = "";	/* No particular default needed. */
 int _rpcpmstart = 0;
 int debug = 1;
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 	"usage: yp_mkdb -c",
@@ -65,17 +66,16 @@ static void usage()
 
 #define PERM_SECURE (S_IRUSR|S_IWUSR)
 
-static DB *open_db(path, flags)
-	char *path;
-	int flags;
+static DB *
+open_db(char *path, int flags)
 {
 	extern HASHINFO openinfo;
 
 	return(dbopen(path, flags, PERM_SECURE, DB_HASH, &openinfo));
 }
 
-static void unwind(map)
-	char *map;
+static void
+unwind(char *map)
 {
 	DB *dbp;
 	DBT key, data;
@@ -93,9 +93,8 @@ static void unwind(map)
 	return;
 }
 
-int main (argc, argv)
-	int argc;
-	char *argv[];
+int
+main(int argc, char *argv[])
 {
 	int ch;
 	int un = 0;

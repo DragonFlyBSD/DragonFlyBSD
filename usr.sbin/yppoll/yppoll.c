@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/yppoll/yppoll.c,v 1.5.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/yppoll/yppoll.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/yppoll/yppoll.c,v 1.3 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -46,15 +46,14 @@
 #include <rpcsvc/ypclnt.h>
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: yppoll [-h host] [-d domainname] mapname\n");
 	exit(1);
 }
 
 int
-main(argc, argv)
-char **argv;
+main(int argc, char **argv)
 {
 	char *domainname;
         char *hostname = "localhost";

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_server.c,v 1.31.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include "yp.h"
@@ -257,12 +257,9 @@ ypproc_next_2_svc(ypreq_key *argp, struct svc_req *rqstp)
 	return (&result);
 }
 
-static void ypxfr_callback(rval,addr,transid,prognum,port)
-	ypxfrstat rval;
-	struct sockaddr_in *addr;
-	unsigned int transid;
-	unsigned int prognum;
-	unsigned long port;
+static void
+ypxfr_callback(ypxfrstat rval, struct sockaddr_in *addr, unsigned int transid,
+	       unsigned int prognum, unsigned long port)
 {
 	CLIENT *clnt;
 	int sock = RPC_ANYSOCK;
@@ -653,7 +650,8 @@ ypproc_order_2_svc(ypreq_nokey *argp, struct svc_req *rqstp)
 	return (&result);
 }
 
-static void yp_maplist_free(struct ypmaplist *yp_maplist)
+static void
+yp_maplist_free(struct ypmaplist *yp_maplist)
 {
 	struct ypmaplist *next;
 
@@ -666,7 +664,8 @@ static void yp_maplist_free(struct ypmaplist *yp_maplist)
 	return;
 }
 
-static struct ypmaplist *yp_maplist_create(const char *domain)
+static struct ypmaplist *
+yp_maplist_create(const char *domain)
 {
 	char yp_mapdir[MAXPATHLEN + 2];
 	char yp_mapname[MAXPATHLEN + 2];

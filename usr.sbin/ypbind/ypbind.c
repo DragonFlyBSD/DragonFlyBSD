@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypbind/ypbind.c,v 1.30.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.5 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.6 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -340,7 +340,8 @@ ypbindprog_2(struct svc_req *rqstp, SVCXPRT *transp)
 }
 
 /* Jack the reaper */
-void reaper(int sig)
+void
+reaper(int sig)
 {
 	int st;
 
@@ -348,7 +349,8 @@ void reaper(int sig)
 		children--;
 }
 
-void terminate(int sig)
+void
+terminate(int sig)
 {
 	struct _dom_binding *ypdb;
 	char path[MAXPATHLEN];
@@ -514,7 +516,8 @@ checkwork(void)
  * doesn't always result in an error (otherwise I would have caught
  * the mistake much sooner), even though logically it should.
  */
-void handle_children(struct _dom_binding *ypdb)
+void
+handle_children(struct _dom_binding *ypdb)
 {
 	char buf[YPMAXDOMAIN + 1];
 	struct sockaddr_in addr;
@@ -603,7 +606,8 @@ tell_parent(char *dom, struct sockaddr_in *addr)
 	return (0);
 }
 
-bool_t broadcast_result(caddr_t out, struct sockaddr_in *addr)
+bool_t
+broadcast_result(caddr_t out, struct sockaddr_in *addr)
 {
 	if (retries >= MAX_RETRIES) {
 		bzero((char *)addr, sizeof(struct sockaddr_in));
@@ -793,7 +797,8 @@ ping(struct _dom_binding *ypdb)
 	return(0);
 }
 
-void rpc_received(char *dom, struct sockaddr_in *raddrp, int force)
+void
+rpc_received(char *dom, struct sockaddr_in *raddrp, int force)
 {
 	struct _dom_binding *ypdb, *prev = NULL;
 	struct iovec iov[2];

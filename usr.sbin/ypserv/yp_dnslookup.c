@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.16.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 /*
@@ -477,7 +477,8 @@ yp_async_lookup_name(struct svc_req *rqstp, char *name)
 /*
  * Queue and transmit an asynchronous DNS IP address lookup.
  */
-ypstat yp_async_lookup_addr(struct svc_req *rqstp, char *addr)
+ypstat
+yp_async_lookup_addr(struct svc_req *rqstp, char *addr)
 {
 	struct circleq_dnsentry *q;
 	char buf[MAXHOSTNAMELEN];

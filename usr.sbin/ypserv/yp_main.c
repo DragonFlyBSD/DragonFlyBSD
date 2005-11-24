@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_main.c,v 1.21.2.3 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.5 2005/11/24 22:23:02 swildner Exp $
  */
 
 /*
@@ -157,7 +157,8 @@ unregister(void)
 	pmap_unset(YPPROG, YPOLDVERS);
 }
 
-static void reaper(int sig)
+static void
+reaper(int sig)
 {
 	int status;
 	int saved_errno;
