@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/chap_ms.c,v 1.8 2000/02/24 21:10:28 markm Exp $
- * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.4 2004/05/20 19:24:42 cpressey Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.5 2005/11/24 23:42:54 swildner Exp $
  */
 
 /*
@@ -79,11 +79,14 @@ static void	Expand(u_char *, u_char *);
 static void	Collapse(u_char *, u_char *);
 #endif
 
+/*
+ * Parameters:
+ *	challenge:	IN   8 octets
+ *	pwHash:		IN  16 octets
+ *	response:	OUT 24 octets
+ */
 static void
-ChallengeResponse(challenge, pwHash, response)
-    u_char *challenge;	/* IN   8 octets */
-    u_char *pwHash;	/* IN  16 octets */
-    u_char *response;	/* OUT 24 octets */
+ChallengeResponse(u_char *challenge, u_char *pwHash, u_char *response)
 {
     char    ZPasswordHash[21];
 
@@ -105,11 +108,14 @@ ChallengeResponse(challenge, pwHash, response)
 
 
 #ifdef USE_CRYPT
+/*
+ * Parameters:
+ *	clear:		IN  8 octets
+ *	key:		IN  7 octets
+ *	cipher:		OUT 8 octets
+ */
 static void
-DesEncrypt(clear, key, cipher)
-    u_char *clear;	/* IN  8 octets */
-    u_char *key;	/* IN  7 octets */
-    u_char *cipher;	/* OUT 8 octets */
+DesEncrypt(u_char *clear, u_char *key, u_char *cipher)
 {
     u_char des_key[8];
     u_char crypt_key[66];
@@ -137,11 +143,14 @@ DesEncrypt(clear, key, cipher)
 
 #else /* USE_CRYPT */
 
+/*
+ * Parameters:
+ *	clear:		IN  8 octets
+ *	key:		IN  7 octets
+ *	cipher:		OUT 8 octets
+ */
 static void
-DesEncrypt(clear, key, cipher)
-    u_char *clear;	/* IN  8 octets */
-    u_char *key;	/* IN  7 octets */
-    u_char *cipher;	/* OUT 8 octets */
+DesEncrypt(u_char *clear, u_char *key, u_char *cipher)
 {
     des_cblock		des_key;
     des_key_schedule	key_schedule;
@@ -166,9 +175,8 @@ DesEncrypt(clear, key, cipher)
 #endif /* USE_CRYPT */
 
 
-static u_char Get7Bits(input, startBit)
-    u_char *input;
-    int startBit;
+static u_char
+Get7Bits(u_char *input, int startBit)
 {
     unsigned int word;
 
@@ -186,9 +194,8 @@ static u_char Get7Bits(input, startBit)
  * out == 64-byte string where each byte is either 1 or 0
  * Note that the low-order "bit" is always ignored by by setkey()
  */
-static void Expand(in, out)
-    u_char *in;
-    u_char *out;
+static void
+Expand(u_char *in, u_char *out)
 {
         int j, c;
         int i;
@@ -203,9 +210,8 @@ static void Expand(in, out)
 
 /* The inverse of Expand
  */
-static void Collapse(in, out)
-    u_char *in;
-    u_char *out;
+static void
+Collapse(u_char *in, u_char *out)
 {
         int j;
         int i;
@@ -220,9 +226,13 @@ static void Collapse(in, out)
 }
 #endif
 
-static void MakeKey(key, des_key)
-    u_char *key;	/* IN  56 bit DES key missing parity bits */
-    u_char *des_key;	/* OUT 64 bit DES key with parity bits added */
+/*
+ * Parameters:
+ *	IN  56 bit DES key missing parity bits
+ *	OUT 64 bit DES key with parity bits added
+ */
+static void
+MakeKey(u_char *key, u_char *des_key)
 {
     des_key[0] = Get7Bits(key,  0);
     des_key[1] = Get7Bits(key,  7);
@@ -246,12 +256,8 @@ static void MakeKey(key, des_key)
 }
 
 static void
-ChapMS_NT(rchallenge, rchallenge_len, secret, secret_len, response)
-    char *rchallenge;
-    int rchallenge_len;
-    char *secret;
-    int secret_len;
-    MS_ChapResponse    *response;
+ChapMS_NT(char *rchallenge, int rchallenge_len, char *secret, int secret_len,
+	  MS_ChapResponse *response)
 {
     int			i;
     MD4_CTX		md4Context;
@@ -276,12 +282,8 @@ ChapMS_NT(rchallenge, rchallenge_len, secret, secret_len, response)
 static u_char *StdText = (u_char *)"KGS!@#$%"; /* key from rasapi32.dll */
 
 static void
-ChapMS_LANMan(rchallenge, rchallenge_len, secret, secret_len, response)
-    char *rchallenge;
-    int rchallenge_len;
-    char *secret;
-    int secret_len;
-    MS_ChapResponse	*response;
+ChapMS_LANMan(char *rchallenge, int rchallenge_len, char *secret,
+	      int secret_len, MS_ChapResponse *response)
 {
     int			i;
     u_char		UcasePassword[MAX_NT_PASSWORD]; /* max is actually 14 */
@@ -298,12 +300,8 @@ ChapMS_LANMan(rchallenge, rchallenge_len, secret, secret_len, response)
 #endif
 
 void
-ChapMS(cstate, rchallenge, rchallenge_len, secret, secret_len)
-    chap_state *cstate;
-    char *rchallenge;
-    int rchallenge_len;
-    char *secret;
-    int secret_len;
+ChapMS(chap_state *cstate, char *rchallenge, int rchallenge_len, char *secret,
+       int secret_len)
 {
     MS_ChapResponse	response;
 #ifdef MSLANMAN

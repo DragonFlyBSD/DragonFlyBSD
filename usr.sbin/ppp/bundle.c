@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/bundle.c,v 1.84.2.12 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.4 2004/02/03 07:11:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.5 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1348,7 +1348,7 @@ bundle_GetLabel(struct bundle *bundle)
 }
 
 int
-bundle_LinkSize()
+bundle_LinkSize(void)
 {
   struct iovec iov[SCATTER_SEGMENTS];
   int niov, expect, f;

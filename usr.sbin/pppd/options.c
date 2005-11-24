@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/options.c,v 1.20.2.2 2002/08/31 18:16:01 dwmalone Exp $
- * $DragonFly: src/usr.sbin/pppd/options.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pppd/options.c,v 1.6 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <ctype.h>
@@ -456,9 +456,7 @@ static char *option_source;	/* string saying where the option came from */
  * parse_args - parse a string of arguments from the command line.
  */
 int
-parse_args(argc, argv)
-    int argc;
-    char **argv;
+parse_args(int argc, char **argv)
 {
     char *arg;
     struct cmd *cmdp;
@@ -511,9 +509,7 @@ parse_args(argc, argv)
  * if specified.
  */
 void
-scan_args(argc, argv)
-    int argc;
-    char **argv;
+scan_args(int argc, char **argv)
 {
     char *arg;
     struct cmd *cmdp;
@@ -542,7 +538,7 @@ scan_args(argc, argv)
  * usage - print out a message telling how to use the program.
  */
 void
-usage()
+usage(void)
 {
     if (phase == PHASE_INITIALIZE)
 	fprintf(stderr, usage_string, VERSION, PATCHLEVEL, IMPLEMENTATION,
@@ -553,8 +549,7 @@ usage()
  * showhelp - print out usage message and exit.
  */
 static int
-showhelp(argv)
-    char **argv;
+showhelp(char **argv)
 {
     if (phase == PHASE_INITIALIZE) {
 	usage();
@@ -567,8 +562,7 @@ showhelp(argv)
  * showversion - print out the version number and exit.
  */
 static int
-showversion(argv)
-    char **argv;
+showversion(char **argv)
 {
     if (phase == PHASE_INITIALIZE) {
 	fprintf(stderr, "pppd version %s patch level %d%s\n",
@@ -583,11 +577,7 @@ showversion(argv)
  * and interpret them.
  */
 int
-options_from_file(filename, must_exist, check_prot, priv)
-    char *filename;
-    int must_exist;
-    int check_prot;
-    int priv;
+options_from_file(char *filename, int must_exist, int check_prot, int priv)
 {
     FILE *f;
     int i, newline, ret;
@@ -662,7 +652,7 @@ err:
  * and if so, interpret options from it.
  */
 int
-options_from_user()
+options_from_user(void)
 {
     char *user, *path, *file;
     int ret;
@@ -688,7 +678,7 @@ options_from_user()
  * device, and if so, interpret options from it.
  */
 int
-options_for_tty()
+options_for_tty(void)
 {
     char *dev, *path, *p;
     int ret;
@@ -740,8 +730,7 @@ option_error __V((char *fmt, ...))
  * readable - check if a file is readable by the real user.
  */
 static int
-readable(fd)
-    int fd;
+readable(int fd)
 {
     uid_t uid;
     int ngroups, i;
@@ -771,11 +760,7 @@ readable(fd)
  * \<newline> is ignored.
  */
 int
-getword(f, word, newlinep, filename)
-    FILE *f;
-    char *word;
-    int *newlinep;
-    char *filename;
+getword(FILE *f, char *word, int *newlinep, char *filename)
 {
     int c, len, escape;
     int quoted, comment;
@@ -1014,10 +999,7 @@ getword(f, word, newlinep, filename)
  * number_option - parse an unsigned numeric parameter for an option.
  */
 static int
-number_option(str, valp, base)
-    char *str;
-    u_int32_t *valp;
-    int base;
+number_option(char *str, u_int32_t *valp, int base)
 {
     char *ptr;
 
@@ -1037,9 +1019,7 @@ number_option(str, valp, base)
  * if there is an error.
  */
 static int
-int_option(str, valp)
-    char *str;
-    int *valp;
+int_option(char *str, int *valp)
 {
     u_int32_t v;
 
@@ -1058,8 +1038,7 @@ int_option(str, valp)
  * readfile - take commands from a file.
  */
 static int
-readfile(argv)
-    char **argv;
+readfile(char **argv)
 {
     return options_from_file(*argv, 1, 1, privileged_option);
 }
@@ -1069,8 +1048,7 @@ readfile(argv)
  * Name may not contain /../, start with / or ../, or end in /..
  */
 static int
-callfile(argv)
-    char **argv;
+callfile(char **argv)
 {
     char *fname, *arg, *p;
     int l, ok;
@@ -1113,8 +1091,7 @@ callfile(argv)
  * setdebug - Set debug (command line argument).
  */
 static int
-setdebug(argv)
-    char **argv;
+setdebug(char **argv)
 {
     debug++;
     return (1);
@@ -1124,8 +1101,7 @@ setdebug(argv)
  * setkdebug - Set kernel debugging level.
  */
 static int
-setkdebug(argv)
-    char **argv;
+setkdebug(char **argv)
 {
     return int_option(*argv, &kdebugflag);
 }
@@ -1135,8 +1111,7 @@ setkdebug(argv)
  * setpdebug - Set libpcap debugging level.
  */
 static int
-setpdebug(argv)
-    char **argv;
+setpdebug(char **argv)
 {
     return int_option(*argv, &dflag);
 }
@@ -1145,8 +1120,7 @@ setpdebug(argv)
  * setpassfilter - Set the pass filter for packets
  */
 static int
-setpassfilter(argv)
-    char **argv;
+setpassfilter(char **argv)
 {
     pc.linktype = DLT_PPP;
     pc.snapshot = PPP_HDRLEN;
@@ -1161,8 +1135,7 @@ setpassfilter(argv)
  * setactivefilter - Set the active filter for packets
  */
 static int
-setactivefilter(argv)
-    char **argv;
+setactivefilter(char **argv)
 {
     pc.linktype = DLT_PPP;
     pc.snapshot = PPP_HDRLEN;
@@ -1178,8 +1151,7 @@ setactivefilter(argv)
  * noopt - Disable all options.
  */
 static int
-noopt(argv)
-    char **argv;
+noopt(char **argv)
 {
     BZERO((char *) &lcp_wantoptions[0], sizeof (struct lcp_options));
     BZERO((char *) &lcp_allowoptions[0], sizeof (struct lcp_options));
@@ -1198,8 +1170,7 @@ noopt(argv)
  * noaccomp - Disable Address/Control field compression negotiation.
  */
 static int
-noaccomp(argv)
-    char **argv;
+noaccomp(char **argv)
 {
     lcp_wantoptions[0].neg_accompression = 0;
     lcp_allowoptions[0].neg_accompression = 0;
@@ -1211,8 +1182,7 @@ noaccomp(argv)
  * noasyncmap - Disable async map negotiation.
  */
 static int
-noasyncmap(argv)
-    char **argv;
+noasyncmap(char **argv)
 {
     lcp_wantoptions[0].neg_asyncmap = 0;
     lcp_allowoptions[0].neg_asyncmap = 0;
@@ -1224,8 +1194,7 @@ noasyncmap(argv)
  * noip - Disable IP and IPCP.
  */
 static int
-noip(argv)
-    char **argv;
+noip(char **argv)
 {
     ipcp_protent.enabled_flag = 0;
     return (1);
@@ -1236,8 +1205,7 @@ noip(argv)
  * nomagicnumber - Disable magic number negotiation.
  */
 static int
-nomagicnumber(argv)
-    char **argv;
+nomagicnumber(char **argv)
 {
     lcp_wantoptions[0].neg_magicnumber = 0;
     lcp_allowoptions[0].neg_magicnumber = 0;
@@ -1249,8 +1217,7 @@ nomagicnumber(argv)
  * nomru - Disable mru negotiation.
  */
 static int
-nomru(argv)
-    char **argv;
+nomru(char **argv)
 {
     lcp_wantoptions[0].neg_mru = 0;
     lcp_allowoptions[0].neg_mru = 0;
@@ -1262,8 +1229,7 @@ nomru(argv)
  * setmru - Set MRU for negotiation.
  */
 static int
-setmru(argv)
-    char **argv;
+setmru(char **argv)
 {
     u_int32_t mru;
 
@@ -1279,8 +1245,7 @@ setmru(argv)
  * setmru - Set the largest MTU we'll use.
  */
 static int
-setmtu(argv)
-    char **argv;
+setmtu(char **argv)
 {
     u_int32_t mtu;
 
@@ -1297,8 +1262,7 @@ setmtu(argv)
 
 #ifdef CBCP_SUPPORT
 static int
-setcbcp(argv)
-    char **argv;
+setcbcp(char **argv)
 {
     lcp_wantoptions[0].neg_cbcp = 1;
     cbcp_protent.enabled_flag = 1;
@@ -1315,8 +1279,7 @@ setcbcp(argv)
  * nopcomp - Disable Protocol field compression negotiation.
  */
 static int
-nopcomp(argv)
-    char **argv;
+nopcomp(char **argv)
 {
     lcp_wantoptions[0].neg_pcompression = 0;
     lcp_allowoptions[0].neg_pcompression = 0;
@@ -1329,8 +1292,7 @@ nopcomp(argv)
  * LCP configure-requests).
  */
 static int
-setpassive(argv)
-    char **argv;
+setpassive(char **argv)
 {
     lcp_wantoptions[0].passive = 1;
     return (1);
@@ -1342,8 +1304,7 @@ setpassive(argv)
  * until we get one from the peer).
  */
 static int
-setsilent(argv)
-    char **argv;
+setsilent(char **argv)
 {
     lcp_wantoptions[0].silent = 1;
     return 1;
@@ -1354,8 +1315,7 @@ setsilent(argv)
  * nopap - Disable PAP authentication with peer.
  */
 static int
-nopap(argv)
-    char **argv;
+nopap(char **argv)
 {
     refuse_pap = 1;
     return (1);
@@ -1366,8 +1326,7 @@ nopap(argv)
  * reqpap - Require PAP authentication from peer.
  */
 static int
-reqpap(argv)
-    char **argv;
+reqpap(char **argv)
 {
     lcp_wantoptions[0].neg_upap = 1;
     setauth(NULL);
@@ -1379,8 +1338,7 @@ reqpap(argv)
  * setupapfile - specifies UPAP info for authenticating with peer.
  */
 static int
-setupapfile(argv)
-    char **argv;
+setupapfile(char **argv)
 {
     FILE * ufile;
     int l;
@@ -1422,8 +1380,7 @@ setupapfile(argv)
  * nochap - Disable CHAP authentication with peer.
  */
 static int
-nochap(argv)
-    char **argv;
+nochap(char **argv)
 {
     refuse_chap = 1;
     return (1);
@@ -1434,8 +1391,7 @@ nochap(argv)
  * reqchap - Require CHAP authentication from peer.
  */
 static int
-reqchap(argv)
-    char **argv;
+reqchap(char **argv)
 {
     lcp_wantoptions[0].neg_chap = 1;
     setauth(NULL);
@@ -1447,8 +1403,7 @@ reqchap(argv)
  * setnovj - disable vj compression
  */
 static int
-setnovj(argv)
-    char **argv;
+setnovj(char **argv)
 {
     ipcp_wantoptions[0].neg_vj = 0;
     ipcp_allowoptions[0].neg_vj = 0;
@@ -1460,8 +1415,7 @@ setnovj(argv)
  * setnovjccomp - disable VJ connection-ID compression
  */
 static int
-setnovjccomp(argv)
-    char **argv;
+setnovjccomp(char **argv)
 {
     ipcp_wantoptions[0].cflag = 0;
     ipcp_allowoptions[0].cflag = 0;
@@ -1473,8 +1427,7 @@ setnovjccomp(argv)
  * setvjslots - set maximum number of connection slots for VJ compression
  */
 static int
-setvjslots(argv)
-    char **argv;
+setvjslots(char **argv)
 {
     int value;
 
@@ -1494,8 +1447,7 @@ setvjslots(argv)
  * setconnector - Set a program to connect to a serial line
  */
 static int
-setconnector(argv)
-    char **argv;
+setconnector(char **argv)
 {
     connector = strdup(*argv);
     if (connector == NULL)
@@ -1510,8 +1462,7 @@ setconnector(argv)
  * setdisconnector - Set a program to disconnect from the serial line
  */
 static int
-setdisconnector(argv)
-    char **argv;
+setdisconnector(char **argv)
 {
     disconnector = strdup(*argv);
     if (disconnector == NULL)
@@ -1526,8 +1477,7 @@ setdisconnector(argv)
  * setwelcomer - Set a program to welcome a client after connection
  */
 static int
-setwelcomer(argv)
-    char **argv;
+setwelcomer(char **argv)
 {
     welcomer = strdup(*argv);
     if (welcomer == NULL)
@@ -1539,8 +1489,7 @@ setwelcomer(argv)
 }
 
 static int
-setmaxcon(argv)
-    char **argv;
+setmaxcon(char **argv)
 {
     return int_option(*argv, &max_con_attempts);
 }
@@ -1549,8 +1498,7 @@ setmaxcon(argv)
  * setmaxconnect - Set the maximum connect time
  */
 static int
-setmaxconnect(argv)
-    char **argv;
+setmaxconnect(char **argv)
 {
     int value;
 
@@ -1572,8 +1520,7 @@ setmaxconnect(argv)
  * setdomain - Set domain name to append to hostname 
  */
 static int
-setdomain(argv)
-    char **argv;
+setdomain(char **argv)
 {
     if (!privileged_option) {
 	option_error("using the domain option requires root privilege");
@@ -1594,8 +1541,7 @@ setdomain(argv)
  * setasyncmap - add bits to asyncmap (what we request peer to escape).
  */
 static int
-setasyncmap(argv)
-    char **argv;
+setasyncmap(char **argv)
 {
     u_int32_t asyncmap;
 
@@ -1611,8 +1557,7 @@ setasyncmap(argv)
  * setescape - add chars to the set we escape on transmission.
  */
 static int
-setescape(argv)
-    char **argv;
+setescape(char **argv)
 {
     int n, ret;
     char *p, *endp;
@@ -1643,8 +1588,7 @@ setescape(argv)
  * setspeed - Set the speed.
  */
 static int
-setspeed(arg)
-    char *arg;
+setspeed(char *arg)
 {
     char *ptr;
     int spd;
@@ -1661,9 +1605,7 @@ setspeed(arg)
  * setdevname - Set the device name.
  */
 static int
-setdevname(cp, quiet)
-    char *cp;
-    int quiet;
+setdevname(char *cp, int quiet)
 {
     struct stat statbuf;
     char dev[MAXPATHLEN];
@@ -1702,8 +1644,7 @@ setdevname(cp, quiet)
  * setipaddr - Set the IP address
  */
 int
-setipaddr(arg)
-    char *arg;
+setipaddr(char *arg)
 {
     struct hostent *hp;
     char *colon;
@@ -1770,8 +1711,7 @@ setipaddr(arg)
  * setnoipdflt - disable setipdefault()
  */
 static int
-setnoipdflt(argv)
-    char **argv;
+setnoipdflt(char **argv)
 {
     disable_defaultip = 1;
     return 1;
@@ -1782,8 +1722,7 @@ setnoipdflt(argv)
  * setipcpaccl - accept peer's idea of our address
  */
 static int
-setipcpaccl(argv)
-    char **argv;
+setipcpaccl(char **argv)
 {
     ipcp_wantoptions[0].accept_local = 1;
     return 1;
@@ -1794,8 +1733,7 @@ setipcpaccl(argv)
  * setipcpaccr - accept peer's idea of its address
  */
 static int
-setipcpaccr(argv)
-    char **argv;
+setipcpaccr(char **argv)
 {
     ipcp_wantoptions[0].accept_remote = 1;
     return 1;
@@ -1806,8 +1744,7 @@ setipcpaccr(argv)
  * setnetmask - set the netmask to be used on the interface.
  */
 static int
-setnetmask(argv)
-    char **argv;
+setnetmask(char **argv)
 {
     struct in_addr mask;
 
@@ -1821,24 +1758,21 @@ setnetmask(argv)
 }
 
 static int
-setcrtscts(argv)
-    char **argv;
+setcrtscts(char **argv)
 {
     crtscts = 1;
     return (1);
 }
 
 static int
-setnocrtscts(argv)
-    char **argv;
+setnocrtscts(char **argv)
 {
     crtscts = -1;
     return (1);
 }
 
 static int
-setxonxoff(argv)
-    char **argv;
+setxonxoff(char **argv)
 {
     lcp_wantoptions[0].asyncmap |= 0x000A0000;	/* escape ^S and ^Q */
     lcp_wantoptions[0].neg_asyncmap = 1;
@@ -1848,24 +1782,21 @@ setxonxoff(argv)
 }
 
 static int
-setnodetach(argv)
-    char **argv;
+setnodetach(char **argv)
 {
     nodetach = 1;
     return (1);
 }
 
 static int
-setupdetach(argv)
-    char **argv;
+setupdetach(char **argv)
 {
     nodetach = -1;
     return (1);
 }
 
 static int
-setdemand(argv)
-    char **argv;
+setdemand(char **argv)
 {
     demand = 1;
     persist = 1;
@@ -1873,40 +1804,35 @@ setdemand(argv)
 }
 
 static int
-setmodem(argv)
-    char **argv;
+setmodem(char **argv)
 {
     modem = 1;
     return 1;
 }
 
 static int
-setlocal(argv)
-    char **argv;
+setlocal(char **argv)
 {
     modem = 0;
     return 1;
 }
 
 static int
-setlock(argv)
-    char **argv;
+setlock(char **argv)
 {
     lockflag = 1;
     return 1;
 }
 
 static int
-setusehostname(argv)
-    char **argv;
+setusehostname(char **argv)
 {
     usehostname = 1;
     return 1;
 }
 
 static int
-setname(argv)
-    char **argv;
+setname(char **argv)
 {
     if (!privileged_option) {
 	option_error("using the name option requires root privilege");
@@ -1918,8 +1844,7 @@ setname(argv)
 }
 
 static int
-setuser(argv)
-    char **argv;
+setuser(char **argv)
 {
     strncpy(user, argv[0], MAXNAMELEN);
     user[MAXNAMELEN-1] = 0;
@@ -1927,8 +1852,7 @@ setuser(argv)
 }
 
 static int
-setremote(argv)
-    char **argv;
+setremote(char **argv)
 {
     strncpy(remote_name, argv[0], MAXNAMELEN);
     remote_name[MAXNAMELEN-1] = 0;
@@ -1936,8 +1860,7 @@ setremote(argv)
 }
 
 static int
-setauth(argv)
-    char **argv;
+setauth(char **argv)
 {
     auth_required = 1;
     if (privileged_option > auth_req_info.priv) {
@@ -1948,8 +1871,7 @@ setauth(argv)
 }
 
 static int
-setnoauth(argv)
-    char **argv;
+setnoauth(char **argv)
 {
     if (auth_required && privileged_option < auth_req_info.priv) {
 	option_error("cannot override auth option set by %s",
@@ -1961,8 +1883,7 @@ setnoauth(argv)
 }
 
 static int
-setdefaultroute(argv)
-    char **argv;
+setdefaultroute(char **argv)
 {
     if (!ipcp_allowoptions[0].default_route) {
 	option_error("defaultroute option is disabled");
@@ -1973,8 +1894,7 @@ setdefaultroute(argv)
 }
 
 static int
-setnodefaultroute(argv)
-    char **argv;
+setnodefaultroute(char **argv)
 {
     ipcp_allowoptions[0].default_route = 0;
     ipcp_wantoptions[0].default_route = 0;
@@ -1982,8 +1902,7 @@ setnodefaultroute(argv)
 }
 
 static int
-setproxyarp(argv)
-    char **argv;
+setproxyarp(char **argv)
 {
     if (!ipcp_allowoptions[0].proxy_arp) {
 	option_error("proxyarp option is disabled");
@@ -1994,8 +1913,7 @@ setproxyarp(argv)
 }
 
 static int
-setnoproxyarp(argv)
-    char **argv;
+setnoproxyarp(char **argv)
 {
     ipcp_wantoptions[0].proxy_arp = 0;
     ipcp_allowoptions[0].proxy_arp = 0;
@@ -2003,24 +1921,21 @@ setnoproxyarp(argv)
 }
 
 static int
-setpersist(argv)
-    char **argv;
+setpersist(char **argv)
 {
     persist = 1;
     return 1;
 }
 
 static int
-setnopersist(argv)
-    char **argv;
+setnopersist(char **argv)
 {
     persist = 0;
     return 1;
 }
 
 static int
-setdologin(argv)
-    char **argv;
+setdologin(char **argv)
 {
     uselogin = 1;
     return 1;
@@ -2031,15 +1946,13 @@ setdologin(argv)
  */
 
 static int
-setlcpechointv(argv)
-    char **argv;
+setlcpechointv(char **argv)
 {
     return int_option(*argv, &lcp_echo_interval);
 }
 
 static int
-setlcpechofails(argv)
-    char **argv;
+setlcpechofails(char **argv)
 {
     return int_option(*argv, &lcp_echo_fails);
 }
@@ -2048,114 +1961,98 @@ setlcpechofails(argv)
  * Functions to set timeouts, max transmits, etc.
  */
 static int
-setlcptimeout(argv)
-    char **argv;
+setlcptimeout(char **argv)
 {
     return int_option(*argv, &lcp_fsm[0].timeouttime);
 }
 
 static int
-setlcpterm(argv)
-    char **argv;
+setlcpterm(char **argv)
 {
     return int_option(*argv, &lcp_fsm[0].maxtermtransmits);
 }
 
 static int
-setlcpconf(argv)
-    char **argv;
+setlcpconf(char **argv)
 {
     return int_option(*argv, &lcp_fsm[0].maxconfreqtransmits);
 }
 
 static int
-setlcpfails(argv)
-    char **argv;
+setlcpfails(char **argv)
 {
     return int_option(*argv, &lcp_fsm[0].maxnakloops);
 }
 
 static int
-setipcptimeout(argv)
-    char **argv;
+setipcptimeout(char **argv)
 {
     return int_option(*argv, &ipcp_fsm[0].timeouttime);
 }
 
 static int
-setipcpterm(argv)
-    char **argv;
+setipcpterm(char **argv)
 {
     return int_option(*argv, &ipcp_fsm[0].maxtermtransmits);
 }
 
 static int
-setipcpconf(argv)
-    char **argv;
+setipcpconf(char **argv)
 {
     return int_option(*argv, &ipcp_fsm[0].maxconfreqtransmits);
 }
 
 static int
-setipcpfails(argv)
-    char **argv;
+setipcpfails(char **argv)
 {
     return int_option(*argv, &lcp_fsm[0].maxnakloops);
 }
 
 static int
-setpaptimeout(argv)
-    char **argv;
+setpaptimeout(char **argv)
 {
     return int_option(*argv, &upap[0].us_timeouttime);
 }
 
 static int
-setpapreqtime(argv)
-    char **argv;
+setpapreqtime(char **argv)
 {
     return int_option(*argv, &upap[0].us_reqtimeout);
 }
 
 static int
-setpapreqs(argv)
-    char **argv;
+setpapreqs(char **argv)
 {
     return int_option(*argv, &upap[0].us_maxtransmits);
 }
 
 static int
-setchaptimeout(argv)
-    char **argv;
+setchaptimeout(char **argv)
 {
     return int_option(*argv, &chap[0].timeouttime);
 }
 
 static int
-setchapchal(argv)
-    char **argv;
+setchapchal(char **argv)
 {
     return int_option(*argv, &chap[0].max_transmits);
 }
 
 static int
-setchapintv(argv)
-    char **argv;
+setchapintv(char **argv)
 {
     return int_option(*argv, &chap[0].chal_interval);
 }
 
 static int
-noccp(argv)
-    char **argv;
+noccp(char **argv)
 {
     ccp_protent.enabled_flag = 0;
     return 1;
 }
 
 static int
-setbsdcomp(argv)
-    char **argv;
+setbsdcomp(char **argv)
 {
     int rbits, abits;
     char *str, *endp;
@@ -2190,8 +2087,7 @@ setbsdcomp(argv)
 }
 
 static int
-setnobsdcomp(argv)
-    char **argv;
+setnobsdcomp(char **argv)
 {
     ccp_wantoptions[0].bsd_compress = 0;
     ccp_allowoptions[0].bsd_compress = 0;
@@ -2199,8 +2095,7 @@ setnobsdcomp(argv)
 }
 
 static int
-setdeflate(argv)
-    char **argv;
+setdeflate(char **argv)
 {
     int rbits, abits;
     char *str, *endp;
@@ -2243,8 +2138,7 @@ setdeflate(argv)
 }
 
 static int
-setnodeflate(argv)
-    char **argv;
+setnodeflate(char **argv)
 {
     ccp_wantoptions[0].deflate = 0;
     ccp_allowoptions[0].deflate = 0;
@@ -2252,8 +2146,7 @@ setnodeflate(argv)
 }
 
 static int
-setnodeflatedraft(argv)
-    char **argv;
+setnodeflatedraft(char **argv)
 {
     ccp_wantoptions[0].deflate_draft = 0;
     ccp_allowoptions[0].deflate_draft = 0;
@@ -2261,8 +2154,7 @@ setnodeflatedraft(argv)
 }
 
 static int
-setpred1comp(argv)
-    char **argv;
+setpred1comp(char **argv)
 {
     ccp_wantoptions[0].predictor_1 = 1;
     ccp_allowoptions[0].predictor_1 = 1;
@@ -2270,8 +2162,7 @@ setpred1comp(argv)
 }
 
 static int
-setnopred1comp(argv)
-    char **argv;
+setnopred1comp(char **argv)
 {
     ccp_wantoptions[0].predictor_1 = 0;
     ccp_allowoptions[0].predictor_1 = 0;
@@ -2279,8 +2170,7 @@ setnopred1comp(argv)
 }
 
 static int
-setipparam(argv)
-    char **argv;
+setipparam(char **argv)
 {
     ipparam = strdup(*argv);
     if (ipparam == NULL)
@@ -2290,23 +2180,20 @@ setipparam(argv)
 }
 
 static int
-setpapcrypt(argv)
-    char **argv;
+setpapcrypt(char **argv)
 {
     cryptpap = 1;
     return 1;
 }
 
 static int
-setidle(argv)
-    char **argv;
+setidle(char **argv)
 {
     return int_option(*argv, &idle_time_limit);
 }
 
 static int
-setholdoff(argv)
-    char **argv;
+setholdoff(char **argv)
 {
     return int_option(*argv, &holdoff);
 }
@@ -2315,8 +2202,7 @@ setholdoff(argv)
  * setdnsaddr - set the dns address(es)
  */
 static int
-setdnsaddr(argv)
-    char **argv;
+setdnsaddr(char **argv)
 {
     u_int32_t dns;
     struct hostent *hp;
@@ -2347,8 +2233,7 @@ setdnsaddr(argv)
  * the caller to the existing WINS server on a Windows NT platform.
  */
 static int
-setwinsaddr(argv)
-    char **argv;
+setwinsaddr(char **argv)
 {
     u_int32_t wins;
     struct hostent *hp;
@@ -2375,8 +2260,7 @@ setwinsaddr(argv)
 
 #ifdef IPX_CHANGE
 static int
-setipxrouter (argv)
-    char **argv;
+setipxrouter(char **argv)
 {
     ipxcp_wantoptions[0].neg_router  = 1;
     ipxcp_allowoptions[0].neg_router = 1;
@@ -2384,8 +2268,7 @@ setipxrouter (argv)
 }
 
 static int
-setipxname (argv)
-    char **argv;
+setipxname(char **argv)
 {
     char *dest = ipxcp_wantoptions[0].name;
     char *src  = *argv;
@@ -2417,36 +2300,31 @@ setipxname (argv)
 }
 
 static int
-setipxcptimeout (argv)
-    char **argv;
+setipxcptimeout(char **argv)
 {
     return int_option(*argv, &ipxcp_fsm[0].timeouttime);
 }
 
 static int
-setipxcpterm (argv)
-    char **argv;
+setipxcpterm(char **argv)
 {
     return int_option(*argv, &ipxcp_fsm[0].maxtermtransmits);
 }
 
 static int
-setipxcpconf (argv)
-    char **argv;
+setipxcpconf(char **argv)
 {
     return int_option(*argv, &ipxcp_fsm[0].maxconfreqtransmits);
 }
 
 static int
-setipxcpfails (argv)
-    char **argv;
+setipxcpfails(char **argv)
 {
     return int_option(*argv, &ipxcp_fsm[0].maxnakloops);
 }
 
 static int
-setipxnetwork(argv)
-    char **argv;
+setipxnetwork(char **argv)
 {
     u_int32_t v;
 
@@ -2459,8 +2337,7 @@ setipxnetwork(argv)
 }
 
 static int
-setipxanet(argv)
-    char **argv;
+setipxanet(char **argv)
 {
     ipxcp_wantoptions[0].accept_network = 1;
     ipxcp_allowoptions[0].accept_network = 1;
@@ -2468,8 +2345,7 @@ setipxanet(argv)
 }
 
 static int
-setipxalcl(argv)
-    char **argv;
+setipxalcl(char **argv)
 {
     ipxcp_wantoptions[0].accept_local = 1;
     ipxcp_allowoptions[0].accept_local = 1;
@@ -2477,8 +2353,7 @@ setipxalcl(argv)
 }
 
 static int
-setipxarmt(argv)
-    char **argv;
+setipxarmt(char **argv)
 {
     ipxcp_wantoptions[0].accept_remote = 1;
     ipxcp_allowoptions[0].accept_remote = 1;
@@ -2486,8 +2361,7 @@ setipxarmt(argv)
 }
 
 static u_char *
-setipxnodevalue(src,dst)
-u_char *src, *dst;
+setipxnodevalue(u_char *src, u_char *dst)
 {
     int indx;
     int item;
@@ -2512,8 +2386,7 @@ u_char *src, *dst;
 }
 
 static int
-setipxnode(argv)
-    char **argv;
+setipxnode(char **argv)
 {
     char *end;
 
@@ -2534,16 +2407,14 @@ setipxnode(argv)
 }
 
 static int
-setipxproto(argv)
-    char **argv;
+setipxproto(char **argv)
 {
     ipxcp_protent.enabled_flag = 1;
     return 1;
 }
 
 static int
-resetipxproto(argv)
-    char **argv;
+resetipxproto(char **argv)
 {
     ipxcp_protent.enabled_flag = 0;
     return 1;
@@ -2551,8 +2422,7 @@ resetipxproto(argv)
 #else
 
 static int
-resetipxproto(argv)
-    char **argv;
+resetipxproto(char **argv)
 {
     return 1;
 }
@@ -2560,8 +2430,7 @@ resetipxproto(argv)
 
 #ifdef MSLANMAN
 static int
-setmslanman(argv)
-    char **argv;
+setmslanman(char **argv)
 {
     ms_lanman = 1;
     return (1);

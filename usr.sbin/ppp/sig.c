@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/sig.c,v 1.15.2.1 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/sig.c,v 1.3 2004/09/14 00:35:16 drhodus Exp $
+ * $DragonFly: src/usr.sbin/ppp/sig.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -93,7 +93,7 @@ sig_signal(int sig, sig_type fn)
  * select() returned due to a signal being recorded by signal_recorder().
  */
 int
-sig_Handle()
+sig_Handle(void)
 {
   int sig;
   int got;

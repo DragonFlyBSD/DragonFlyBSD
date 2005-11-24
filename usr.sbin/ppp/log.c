@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/log.c,v 1.44.2.5 2002/09/01 02:12:28 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/log.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/log.c,v 1.3 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -80,7 +80,7 @@ struct prompt *log_PromptContext;
 int log_PromptListChanged;
 
 struct prompt *
-log_PromptList()
+log_PromptList(void)
 {
   return promptlist;
 }
@@ -160,7 +160,7 @@ log_DestroyPrompts(struct server *s)
 }
 
 void
-log_DisplayPrompts()
+log_DisplayPrompts(void)
 {
   struct prompt *p;
 
@@ -251,7 +251,7 @@ log_DiscardLocal(int id, u_long *mask)
 }
 
 void
-log_DiscardAll()
+log_DiscardAll(void)
 {
   LogMask = 0;
 }
@@ -302,7 +302,7 @@ log_SetTun(int tunno)
 }
 
 void
-log_Close()
+log_Close(void)
 {
   closelog();
   LogTunno = -1;

@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/ppp/physical.c,v 1.34.2.8 2002/09/01 02:12:29 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/physical.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/physical.c,v 1.3 2005/11/24 23:42:54 swildner Exp $
  *
  */
 
@@ -536,7 +536,7 @@ physical_ShowStatus(struct cmdargs const *arg)
 
 void
 physical_DescriptorRead(struct fdescriptor *d, struct bundle *bundle,
-                     const fd_set *fdset)
+                        const fd_set *fdset)
 {
   struct physical *p = descriptor2physical(d);
   u_char *rbuff;
@@ -664,7 +664,7 @@ iov2physical(struct datalink *dl, struct iovec *iov, int *niov, int maxiov,
 }
 
 int
-physical_MaxDeviceSize()
+physical_MaxDeviceSize(void)
 {
   int biggest, sz, n;
 
@@ -780,7 +780,8 @@ physical_DeviceMTU(struct physical *p)
   return p->handler ? p->handler->mtu : 0;
 }
 
-const char *physical_GetDevice(struct physical *p)
+const char *
+physical_GetDevice(struct physical *p)
 {
    return p->name.full;
 }

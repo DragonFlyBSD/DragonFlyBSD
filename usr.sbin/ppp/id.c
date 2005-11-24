@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/id.c,v 1.18.2.3 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/id.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/id.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static int uid;
 static int euid;
 
 void
-ID0init()
+ID0init(void)
 {
   uid = getuid();
   euid = geteuid();
@@ -76,7 +76,7 @@ ID0setuser(void)
 }
 
 uid_t
-ID0realuid()
+ID0realuid(void)
 {
   return uid;
 }

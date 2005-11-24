@@ -31,7 +31,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppstats/pppstats.c,v 1.13 1999/08/28 01:19:11 peter Exp $
- * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.6 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.7 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <stdio.h>
@@ -85,7 +85,7 @@ static void intpr(void);
 int main(int, char *argv[]);
 
 static void
-usage()
+usage(void)
 {
     fprintf(stderr, "Usage: %s [-a|-d] [-v|-r|-z] [-c count] [-w wait] [interface]\n",
 	    progname);
@@ -97,8 +97,7 @@ usage()
  * Sets a flag to not wait for the alarm.
  */
 static void
-catchalarm(arg)
-    int arg;
+catchalarm(int arg)
 {
     signalled = 1;
 }
@@ -106,8 +105,7 @@ catchalarm(arg)
 
 #ifndef STREAMS
 static void
-get_ppp_stats(curp)
-    struct ppp_stats *curp;
+get_ppp_stats(struct ppp_stats *curp)
 {
     struct ifpppstatsreq req;
 
@@ -132,8 +130,7 @@ get_ppp_stats(curp)
 }
 
 static void
-get_ppp_cstats(csp)
-    struct ppp_comp_stats *csp;
+get_ppp_cstats(struct ppp_comp_stats *csp)
 {
     struct ifpppcstatsreq creq;
 
@@ -179,9 +176,7 @@ get_ppp_cstats(csp)
 #else	/* STREAMS */
 
 int
-strioctl(fd, cmd, ptr, ilen, olen)
-    int fd, cmd, ilen, olen;
-    char *ptr;
+strioctl(int fd, int cmd, char *ptr, int ilen, int olen)
 {
     struct strioctl str;
 
@@ -198,8 +193,7 @@ strioctl(fd, cmd, ptr, ilen, olen)
 }
 
 static void
-get_ppp_stats(curp)
-    struct ppp_stats *curp;
+get_ppp_stats(struct ppp_stats *curp)
 {
     if (strioctl(s, PPPIO_GETSTAT, curp, 0, sizeof(*curp)) < 0) {
 	fprintf(stderr, "%s: ", progname);
@@ -212,8 +206,7 @@ get_ppp_stats(curp)
 }
 
 static void
-get_ppp_cstats(csp)
-    struct ppp_comp_stats *csp;
+get_ppp_cstats(ppp_comp_stats *csp)
 {
     if (strioctl(s, PPPIO_GETCSTAT, csp, 0, sizeof(*csp)) < 0) {
 	fprintf(stderr, "%s: ", progname);
@@ -247,7 +240,7 @@ get_ppp_cstats(csp)
  * First line printed is cumulative.
  */
 static void
-intpr()
+intpr(void)
 {
     int line = 0;
     sigset_t oldmask, mask;
@@ -404,9 +397,7 @@ intpr()
 }
 
 int
-main(argc, argv)
-    int argc;
-    char *argv[];
+main(int argc, char *argv[])
 {
     int c;
 #ifdef STREAMS

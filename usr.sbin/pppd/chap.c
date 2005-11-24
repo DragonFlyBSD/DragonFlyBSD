@@ -33,7 +33,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/chap.c,v 1.10 1999/08/28 01:19:01 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/chap.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 /*
@@ -104,8 +104,7 @@ extern void srand48(long);
  * ChapInit - Initialize a CHAP unit.
  */
 static void
-ChapInit(unit)
-    int unit;
+ChapInit(int unit)
 {
     chap_state *cstate = &chap[unit];
 
@@ -124,10 +123,7 @@ ChapInit(unit)
  *
  */
 void
-ChapAuthWithPeer(unit, our_name, digest)
-    int unit;
-    char *our_name;
-    int digest;
+ChapAuthWithPeer(int unit, char *our_name, int digest)
 {
     chap_state *cstate = &chap[unit];
 
@@ -154,10 +150,7 @@ ChapAuthWithPeer(unit, our_name, digest)
  * ChapAuthPeer - Authenticate our peer (start server).
  */
 void
-ChapAuthPeer(unit, our_name, digest)
-    int unit;
-    char *our_name;
-    int digest;
+ChapAuthPeer(int unit, char *our_name, int digest)
 {
     chap_state *cstate = &chap[unit];
   
@@ -181,8 +174,7 @@ ChapAuthPeer(unit, our_name, digest)
  * ChapChallengeTimeout - Timeout expired on sending challenge.
  */
 static void
-ChapChallengeTimeout(arg)
-    void *arg;
+ChapChallengeTimeout(void *arg)
 {
     chap_state *cstate = (chap_state *) arg;
   
@@ -208,8 +200,7 @@ ChapChallengeTimeout(arg)
  * ChapResponseTimeout - Timeout expired on sending response.
  */
 static void
-ChapResponseTimeout(arg)
-    void *arg;
+ChapResponseTimeout(void *arg)
 {
     chap_state *cstate = (chap_state *) arg;
 
@@ -225,8 +216,7 @@ ChapResponseTimeout(arg)
  * ChapRechallenge - Time to challenge the peer again.
  */
 static void
-ChapRechallenge(arg)
-    void *arg;
+ChapRechallenge(void *arg)
 {
     chap_state *cstate = (chap_state *) arg;
 
@@ -246,8 +236,7 @@ ChapRechallenge(arg)
  * Start up if we have pending requests.
  */
 static void
-ChapLowerUp(unit)
-    int unit;
+ChapLowerUp(int unit)
 {
     chap_state *cstate = &chap[unit];
   
@@ -272,8 +261,7 @@ ChapLowerUp(unit)
  * Cancel all timeouts.
  */
 static void
-ChapLowerDown(unit)
-    int unit;
+ChapLowerDown(int unit)
 {
     chap_state *cstate = &chap[unit];
   
@@ -296,8 +284,7 @@ ChapLowerDown(unit)
  * ChapProtocolReject - Peer doesn't grok CHAP.
  */
 static void
-ChapProtocolReject(unit)
-    int unit;
+ChapProtocolReject(int unit)
 {
     chap_state *cstate = &chap[unit];
 
@@ -315,10 +302,7 @@ ChapProtocolReject(unit)
  * ChapInput - Input CHAP packet.
  */
 static void
-ChapInput(unit, inpacket, packet_len)
-    int unit;
-    u_char *inpacket;
-    int packet_len;
+ChapInput(int unit, u_char *inpacket, int packet_len)
 {
     chap_state *cstate = &chap[unit];
     u_char *inp;
@@ -378,11 +362,7 @@ ChapInput(unit, inpacket, packet_len)
  * ChapReceiveChallenge - Receive Challenge and send Response.
  */
 static void
-ChapReceiveChallenge(cstate, inp, id, len)
-    chap_state *cstate;
-    u_char *inp;
-    int id;
-    int len;
+ChapReceiveChallenge(chap_state *cstate, u_char *inp, int id, int len)
 {
     int rchallenge_len;
     u_char *rchallenge;
@@ -478,11 +458,7 @@ ChapReceiveChallenge(cstate, inp, id, len)
  * ChapReceiveResponse - Receive and process response.
  */
 static void
-ChapReceiveResponse(cstate, inp, id, len)
-    chap_state *cstate;
-    u_char *inp;
-    int id;
-    int len;
+ChapReceiveResponse(chap_state *cstate, u_char *inp, int id, int len)
 {
     u_char *remmd, remmd_len;
     int secret_len, old_state;
@@ -601,11 +577,7 @@ ChapReceiveResponse(cstate, inp, id, len)
  * ChapReceiveSuccess - Receive Success
  */
 static void
-ChapReceiveSuccess(cstate, inp, id, len)
-    chap_state *cstate;
-    u_char *inp;
-    u_char id;
-    int len;
+ChapReceiveSuccess(chap_state *cstate, u_char *inp, int id, int len)
 {
 
     CHAPDEBUG((LOG_INFO, "ChapReceiveSuccess: Rcvd id %d.", id));
@@ -639,11 +611,7 @@ ChapReceiveSuccess(cstate, inp, id, len)
  * ChapReceiveFailure - Receive failure.
  */
 static void
-ChapReceiveFailure(cstate, inp, id, len)
-    chap_state *cstate;
-    u_char *inp;
-    u_char id;
-    int len;
+ChapReceiveFailure(chap_state *cstate, u_char *inp, int id, int len)
 {
     CHAPDEBUG((LOG_INFO, "ChapReceiveFailure: Rcvd id %d.", id));
 
@@ -671,8 +639,7 @@ ChapReceiveFailure(cstate, inp, id, len)
  * ChapSendChallenge - Send an Authenticate challenge.
  */
 static void
-ChapSendChallenge(cstate)
-    chap_state *cstate;
+ChapSendChallenge(chap_state *cstate)
 {
     u_char *outp;
     int chal_len, name_len;
@@ -708,9 +675,7 @@ ChapSendChallenge(cstate)
  * ChapSendStatus - Send a status response (ack or nak).
  */
 static void
-ChapSendStatus(cstate, code)
-    chap_state *cstate;
-    int code;
+ChapSendStatus(chap_state *cstate, int code)
 {
     u_char *outp;
     int outlen, msglen;
@@ -745,8 +710,7 @@ ChapSendStatus(cstate, code)
  */
 
 static void
-ChapGenChallenge(cstate)
-    chap_state *cstate;
+ChapGenChallenge(chap_state *cstate)
 {
     int chal_len;
     u_char *ptr = cstate->challenge;
@@ -772,8 +736,7 @@ ChapGenChallenge(cstate)
  */
 /* ARGSUSED */
 static void
-ChapSendResponse(cstate)
-    chap_state *cstate;
+ChapSendResponse(chap_state *cstate)
 {
     u_char *outp;
     int outlen, md_len, name_len;
@@ -811,11 +774,8 @@ static char *ChapCodenames[] = {
 };
 
 static int
-ChapPrintPkt(p, plen, printer, arg)
-    u_char *p;
-    int plen;
-    void (*printer)(void *, char *, ...);
-    void *arg;
+ChapPrintPkt(u_char *p, int plen, void (*printer)(void *, char *, ...),
+	     void *arg)
 {
     int code, id, len;
     int clen, nlen;

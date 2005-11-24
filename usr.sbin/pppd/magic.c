@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/magic.c,v 1.8 1999/08/28 01:19:05 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/magic.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/magic.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <stdio.h>
@@ -39,7 +39,7 @@ extern void srand48(long);
  * and current time, currently.
  */
 void
-magic_init()
+magic_init(void)
 {
     long seed;
     struct timeval t;
@@ -53,7 +53,7 @@ magic_init()
  * magic - Returns the next magic number.
  */
 u_int32_t
-magic()
+magic(void)
 {
     return (u_int32_t) mrand48();
 }
@@ -65,20 +65,19 @@ magic()
  */
 
 double
-drand48()
+drand48(void)
 {
     return (double)random() / (double)0x7fffffffL; /* 2**31-1 */
 }
 
 long
-mrand48()
+mrand48(void)
 {
     return random();
 }
 
 void
-srand48(seedval)
-long seedval;
+srand48(long seedval)
 {
     srandom((int)seedval);
 }

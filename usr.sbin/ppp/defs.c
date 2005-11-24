@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/defs.c,v 1.31.2.12 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/defs.c,v 1.3 2004/02/03 07:11:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/defs.c,v 1.4 2005/11/24 23:42:54 swildner Exp $
  */
 
 
@@ -59,7 +59,7 @@
 
 #if defined(__NetBSD__)
 void
-randinit()
+randinit(void)
 {
 #if defined(__DragonFly__)
   static int initdone;		/* srandomdev() call is only required once */
@@ -392,7 +392,7 @@ SetTitle(const char *title)
 }
 
 fd_set *
-mkfdset()
+mkfdset(void)
 {
   return (fd_set *)malloc(howmany(getdtablesize(), NFDBITS) * sizeof (fd_mask));
 }

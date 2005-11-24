@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.5 2005/11/13 11:58:31 corecode Exp $
+ * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.6 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 static char Buffer[LINELEN], Command[LINELEN];
 
 static int
-usage()
+usage(void)
 {
     fprintf(stderr, "usage: pppctl [-v] [-t n] [-p passwd] "
             "Port|LocalSock [command[;command]...]\n");
