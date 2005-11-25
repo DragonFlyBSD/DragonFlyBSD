@@ -29,7 +29,7 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
 /*
@@ -81,14 +81,8 @@ static int _openchild(char *, FILE **, FILE **);
  * and update it if so. Returns the yp status, which is zero
  * if there is no access violation.
  */
-mapupdate(requester, mapname, op, keylen, key, datalen, data)
-	char *requester;
-	char *mapname;
-	u_int op;
-	u_int keylen;
-	char *key;
-	u_int datalen;
-	char *data;
+mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
+	  u_int datalen, char *data)
 {
 	char updater[MAXMAPNAMELEN + 40];
 	FILE *childargs;
@@ -146,10 +140,7 @@ mapupdate(requester, mapname, op, keylen, key, datalen, data)
  * returns pid, or -1 for failure
  */
 static
-_openchild(command, fto, ffrom)
-	char *command;
-	FILE **fto;
-	FILE **ffrom;
+_openchild(char *command, FILE **fto, FILE **ffrom)
 {
 	int i;
 	pid_t pid;
@@ -218,8 +209,7 @@ error1:
 }
 
 static char *
-basename(path)
-	char *path;
+basename(char *path)
 {
 	char *p;
 
@@ -250,16 +240,15 @@ static int match(char *, char *);
  * and update it if so. Returns the status, which is zero
  * if there is no access violation. This function updates
  * the local file and then shuts up.
+ *
+ * Parameters:
+ *	name:		Name of the requestor
+ *	keylen:		Not used
+ *	datalen:	Not used
  */
 int
-localupdate(name, filename, op, keylen, key, datalen, data)
-	char *name;	/* Name of the requestor */
-	char *filename;
-	u_int op;
-	u_int keylen;	/* Not used */
-	char *key;
-	u_int datalen;	/* Not used */
-	char *data;
+localupdate(char *name,	char *filename, u_int op, u_int keylen, char *key,
+	    u_int datalen, char *data)
 {
 	char line[256];
 	FILE *rf;
@@ -345,9 +334,7 @@ localupdate(name, filename, op, keylen, key, datalen, data)
 }
 
 static int
-match(line, name)
-	char *line;
-	char *name;
+match(char *line, char *name)
 {
 	int len;
 

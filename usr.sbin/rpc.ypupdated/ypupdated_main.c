@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4.2.3 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include "ypupdate_prot.h"
@@ -77,8 +77,8 @@ extern int _rpcsvcstate;	 /* Set when a request is serviced */
 char *progname = "rpc.ypupdated";
 char *yp_dir = "/var/yp/";
 
-static
-void _msgout(char* msg)
+static void
+_msgout(char *msg)
 {
 #ifdef RPC_SVC_FG
 	if (_rpcpmstart)
@@ -117,7 +117,7 @@ closedown(int sig)
 }
 
 static void
-ypupdated_svc_run()
+ypupdated_svc_run(void)
 {
 #ifdef FD_SETSIZE
 	fd_set readfds;
@@ -155,8 +155,8 @@ ypupdated_svc_run()
 	}
 }
 
-static void reaper(sig)
-	int sig;
+static void
+reaper(int sig)
 {
 	int status;
 
@@ -176,16 +176,15 @@ static void reaper(sig)
 	}
 }
 
-void usage()
+void
+usage(void)
 {
 	fprintf(stderr, "rpc.ypupdatedd [-p path]\n");
 	exit(0);
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp = NULL;
 	int sock;

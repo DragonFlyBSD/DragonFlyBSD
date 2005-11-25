@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.16.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.7 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <stdio.h>
@@ -62,8 +62,8 @@ struct dom_binding {};
 
 char *tempname;
 
-void reaper(sig)
-	int sig;
+void
+reaper(int sig)
 {
 	extern pid_t pid;
 	extern int pstat;
@@ -83,8 +83,8 @@ void reaper(sig)
 	return;
 }
 
-void install_reaper(on)
-	int on;
+void
+install_reaper(int on)
 {
 	if (on) {
 		signal(SIGCHLD, reaper);
@@ -96,9 +96,8 @@ void install_reaper(on)
 
 static struct passwd yp_password;
 
-static void copy_yp_pass(p, x, m)
-char *p;
-int x, m;
+static void
+copy_yp_pass(char *p, int x, int m)
 {
 	char *t, *s = p;
 	static char *buf;
@@ -146,8 +145,8 @@ int x, m;
 	return;
 }
 
-static int validchars(arg)
-	char *arg;
+static int
+validchars(char *arg)
 {
 	int i;
 
@@ -169,9 +168,8 @@ static int validchars(arg)
 	return(0);
 }
 
-static int validate_master(opw, npw)
-	struct passwd *opw;
-	struct x_master_passwd *npw;
+static int
+validate_master(struct passwd *opw, struct x_master_passwd *npw)
 {
 
 	if (npw->pw_name[0] == '+' || npw->pw_name[0] == '-') {
@@ -196,9 +194,8 @@ static int validate_master(opw, npw)
 	return(0);
 }
 
-static int validate(opw, npw)
-	struct passwd *opw;
-	struct x_passwd *npw;
+static int
+validate(struct passwd *opw, struct x_passwd *npw)
 {
 
 	if (npw->pw_name[0] == '+' || npw->pw_name[0] == '-') {
@@ -257,8 +254,8 @@ static int validate(opw, npw)
  * all agree), then we use that domain. If we match the user in
  * more than one database, we must abort.
  */
-static char *find_domain(pw)
-	struct x_passwd *pw;
+static char *
+find_domain(struct x_passwd *pw)
 {
 	struct stat statbuf;
 	struct dirent *dirp;
@@ -312,9 +309,8 @@ static char *find_domain(pw)
 		return((char *)&domain);
 }
 
-static int update_inplace(pw, domain)
-	struct passwd *pw;
-	char *domain;
+static int
+update_inplace(struct passwd *pw, char *domain)
 {
 	DB *dbp = NULL;
 	DBT key = { NULL, 0 };
@@ -453,7 +449,8 @@ with the same name - continuing");
 	return(0);
 }
 
-static char *yp_mktmpnam()
+static char *
+yp_mktmpnam(void)
 {
 	static char path[MAXPATHLEN];
 	char *p;
@@ -698,8 +695,8 @@ struct cmessage {
  * than the last one. Since only the superuser is allowed to use it,
  * it is assumed that the caller knows what he's doing.
  */
-int *yppasswdproc_update_master_1_svc(master_yppasswd *argp,
-					struct svc_req *rqstp)
+int *
+yppasswdproc_update_master_1_svc(master_yppasswd *argp, struct svc_req *rqstp)
 {
 	static int result;
 	int pfd, tfd;

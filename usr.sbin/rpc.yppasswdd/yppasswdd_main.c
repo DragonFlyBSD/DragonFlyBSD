@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include "yppasswd.h"
@@ -95,8 +95,8 @@ int resvport = 1;
 int inplace = 0;
 char *sockname = YP_SOCKNAME;
 
-static void terminate(sig)
-	int sig;
+static void
+terminate(int sig)
 {
 	svc_unregister(YPPASSWDPROG, YPPASSWDVERS);
 	svc_unregister(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS);
@@ -104,8 +104,8 @@ static void terminate(sig)
 	exit(0);
 }
 
-static void reload(sig)
-	int sig;
+static void
+reload(int sig)
 {
 	load_securenets();
 }
@@ -140,7 +140,7 @@ closedown(int sig)
 	alarm(_RPCSVC_CLOSEDOWN/2);
 }
 
-static void usage()
+static void usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: rpc.yppasswdd [-t master.passwd file] [-d domain] [-p path] [-s]",
@@ -149,9 +149,7 @@ static void usage()
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	SVCXPRT *transp = NULL;
 	int sock;

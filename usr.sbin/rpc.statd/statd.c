@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.c,v 1.6 1999/10/05 14:40:38 marcel Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.4 2004/12/18 22:48:13 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 /* main() function for status monitor daemon.  Some of the code in this	*/
@@ -105,7 +105,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
       fprintf(stderr, "usage: rpc.statd [-d]\n");
       exit(1);
@@ -122,7 +122,8 @@ usage()
 		children to exit when they have done their work.
 */
 
-static void handle_sigchld(int sig, int code, struct sigcontext *scp)
+static void
+handle_sigchld(int sig, int code, struct sigcontext *scp)
 {
   int pid, status;
   pid = wait4(-1, &status, WNOHANG, (struct rusage*)0);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.lockd/procs.c,v 1.4.2.2 2001/08/01 06:39:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/procs.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/procs.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <string.h>
@@ -62,7 +62,8 @@
 		passed in as part of the called procedure specification
 */
 
-static void log_from_addr(char *fun_name, struct svc_req *req)
+static void
+log_from_addr(char *fun_name, struct svc_req *req)
 {
   struct sockaddr_in *addr;
   struct hostent *host;
@@ -119,7 +120,8 @@ static long clnt_cache_time[CLIENT_CACHE_SIZE];	/* time entry created	*/
 static struct in_addr clnt_cache_addr[CLIENT_CACHE_SIZE];
 static int clnt_cache_next_to_use = 0;
 
-static CLIENT *get_client(struct sockaddr_in *host_addr)
+static CLIENT *
+get_client(struct sockaddr_in *host_addr)
 {
   CLIENT *client;
   int sock_no;
@@ -204,7 +206,8 @@ static CLIENT *get_client(struct sockaddr_in *host_addr)
 		without expecting a result
 */
 
-static void transmit_result(int opcode, void *result, struct svc_req *req)
+static void
+transmit_result(int opcode, void *result, struct svc_req *req)
 {
   static char dummy;
   struct sockaddr_in *addr;
@@ -260,7 +263,8 @@ static void transmit_result(int opcode, void *result, struct svc_req *req)
    Notes:
 */
 
-nlm_testres *nlm_test_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
+nlm_testres *
+nlm_test_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
 {
   static nlm_testres res;
   if (debug_level) log_from_addr("nlm_test", rqstp);
@@ -275,7 +279,8 @@ nlm_testres *nlm_test_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_testres *nlmproc4_test_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
+nlm4_testres *
+nlmproc4_test_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
 {
   static nlm4_testres res;
   if (debug_level) log_from_addr("nlm_test", rqstp);
@@ -290,7 +295,8 @@ nlm4_testres *nlmproc4_test_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-void *nlm_test_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
+void *
+nlm_test_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
 {
   nlm_testres res;
   static char dummy;
@@ -320,7 +326,8 @@ void *nlm_test_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
   return (NULL);
 }
 
-void *nlmproc4_test_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
+void *
+nlmproc4_test_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
 {
   nlm4_testres res;
   static char dummy;
@@ -359,7 +366,8 @@ void *nlmproc4_test_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
    Notes:	*** grace period support missing
 */
 
-nlm_res *nlm_lock_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
+nlm_res *
+nlm_lock_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_lock", rqstp);
@@ -371,7 +379,8 @@ nlm_res *nlm_lock_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_res *nlmproc4_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
+nlm4_res *
+nlmproc4_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
 
@@ -384,7 +393,8 @@ nlm4_res *nlmproc4_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-void *nlm_lock_msg_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
+void *
+nlm_lock_msg_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
 
@@ -397,7 +407,8 @@ void *nlm_lock_msg_1_svc(nlm_lockargs *arg, struct svc_req *rqstp)
   return (NULL);
 }
 
-void *nlmproc4_lock_msg_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
+void *
+nlmproc4_lock_msg_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
 
@@ -418,7 +429,8 @@ void *nlmproc4_lock_msg_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
    Notes:
 */
 
-nlm_res *nlm_cancel_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
+nlm_res *
+nlm_cancel_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_cancel", rqstp);
@@ -432,7 +444,8 @@ nlm_res *nlm_cancel_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_res *nlmproc4_cancel_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
+nlm4_res *
+nlmproc4_cancel_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_cancel", rqstp);
@@ -446,7 +459,8 @@ nlm4_res *nlmproc4_cancel_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-void *nlm_cancel_msg_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
+void *
+nlm_cancel_msg_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_cancel_msg", rqstp);
@@ -459,7 +473,8 @@ void *nlm_cancel_msg_1_svc(nlm_cancargs *arg, struct svc_req *rqstp)
   return (NULL);
 }
 
-void *nlmproc4_cancel_msg_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
+void *
+nlmproc4_cancel_msg_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_cancel_msg", rqstp);
@@ -481,7 +496,8 @@ void *nlmproc4_cancel_msg_4_svc(nlm4_cancargs *arg, struct svc_req *rqstp)
 		re-try an unlock that has already succeeded.
 */
 
-nlm_res *nlm_unlock_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
+nlm_res *
+nlm_unlock_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_unlock", rqstp);
@@ -492,7 +508,8 @@ nlm_res *nlm_unlock_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_res *nlmproc4_unlock_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
+nlm4_res *
+nlmproc4_unlock_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_unlock", rqstp);
@@ -503,7 +520,8 @@ nlm4_res *nlmproc4_unlock_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-void *nlm_unlock_msg_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
+void *
+nlm_unlock_msg_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_unlock_msg", rqstp);
@@ -515,7 +533,8 @@ void *nlm_unlock_msg_1_svc(nlm_unlockargs *arg, struct svc_req *rqstp)
   return (NULL);
 }
 
-void *nlmproc4_unlock_msg_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
+void *
+nlmproc4_unlock_msg_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_unlock_msg", rqstp);
@@ -546,7 +565,8 @@ void *nlmproc4_unlock_msg_4_svc(nlm4_unlockargs *arg, struct svc_req *rqstp)
    Notes:	
 */
 
-nlm_res *nlm_granted_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
+nlm_res *
+nlm_granted_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_granted", rqstp);
@@ -558,7 +578,8 @@ nlm_res *nlm_granted_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_res *nlmproc4_granted_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
+nlm4_res *
+nlmproc4_granted_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_granted", rqstp);
@@ -570,7 +591,8 @@ nlm4_res *nlmproc4_granted_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-void *nlm_granted_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
+void *
+nlm_granted_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
 {
   nlm_res res;
   if (debug_level) log_from_addr("nlm_granted_msg", rqstp);
@@ -581,7 +603,8 @@ void *nlm_granted_msg_1_svc(nlm_testargs *arg, struct svc_req *rqstp)
   return (NULL);
 }
 
-void *nlmproc4_granted_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
+void *
+nlmproc4_granted_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
 {
   nlm4_res res;
   if (debug_level) log_from_addr("nlm_granted_msg", rqstp);
@@ -598,13 +621,15 @@ void *nlmproc4_granted_msg_4_svc(nlm4_testargs *arg, struct svc_req *rqstp)
    Returns:	Nothing
 */
 
-void *nlm_test_res_1_svc(nlm_testres *arg, struct svc_req *rqstp)
+void *
+nlm_test_res_1_svc(nlm_testres *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_test_res", rqstp);
   return (NULL);
 }
 
-void *nlmproc4_test_res_4_svc(nlm4_testres *arg, struct svc_req *rqstp)
+void *
+nlmproc4_test_res_4_svc(nlm4_testres *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_test_res", rqstp);
   return (NULL);
@@ -616,14 +641,16 @@ void *nlmproc4_test_res_4_svc(nlm4_testres *arg, struct svc_req *rqstp)
    Returns:	Nothing
 */
 
-void *nlm_lock_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
+void *
+nlm_lock_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_lock_res", rqstp);
 
   return (NULL);
 }
 
-void *nlmproc4_lock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
+void *
+nlmproc4_lock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_lock_res", rqstp);
 
@@ -636,13 +663,15 @@ void *nlmproc4_lock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
    Returns:	Nothing
 */
 
-void *nlm_cancel_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
+void *
+nlm_cancel_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_cancel_res", rqstp);
   return (NULL);
 }
 
-void *nlmproc4_cancel_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
+void *
+nlmproc4_cancel_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_cancel_res", rqstp);
   return (NULL);
@@ -654,13 +683,15 @@ void *nlmproc4_cancel_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
    Returns:	Nothing
 */
 
-void *nlm_unlock_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
+void *
+nlm_unlock_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_unlock_res", rqstp);
   return (NULL);
 }
 
-void *nlmproc4_unlock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
+void *
+nlmproc4_unlock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_unlock_res", rqstp);
   return (NULL);
@@ -672,13 +703,15 @@ void *nlmproc4_unlock_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
    Returns:	Nothing
 */
 
-void *nlm_granted_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
+void *
+nlm_granted_res_1_svc(nlm_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_granted_res", rqstp);
   return (NULL);
 }
 
-void *nlmproc4_granted_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
+void *
+nlmproc4_granted_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
 {
   if (debug_level) log_from_addr("nlm_granted_res", rqstp);
   return (NULL);
@@ -701,7 +734,8 @@ void *nlmproc4_granted_res_4_svc(nlm4_res *arg, struct svc_req *rqstp)
 		to retry if required.
 */
 
-nlm_shareres *nlm_share_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
+nlm_shareres *
+nlm_share_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
 {
   static nlm_shareres res;
   if (debug_level) log_from_addr("nlm_share", rqstp);
@@ -712,7 +746,8 @@ nlm_shareres *nlm_share_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_shareres *nlmproc4_share_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp)
+nlm4_shareres *
+nlmproc4_share_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp)
 {
   static nlm4_shareres res;
   if (debug_level) log_from_addr("nlm_share", rqstp);
@@ -730,7 +765,8 @@ nlm4_shareres *nlmproc4_share_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp)
    Notes:
 */
 
-nlm_shareres *nlm_unshare_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
+nlm_shareres *
+nlm_unshare_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
 {
   static nlm_shareres res;
   if (debug_level) log_from_addr("nlm_unshare", rqstp);
@@ -741,7 +777,8 @@ nlm_shareres *nlm_unshare_3_svc(nlm_shareargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_shareres *nlmproc4_unshare_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp)
+nlm4_shareres *
+nlmproc4_unshare_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp)
 {
   static nlm4_shareres res;
   if (debug_level) log_from_addr("nlm_unshare", rqstp);
@@ -763,7 +800,8 @@ nlm4_shareres *nlmproc4_unshare_4_svc(nlm4_shareargs *arg, struct svc_req *rqstp
 		respond to the statd protocol.
 */
 
-nlm_res *nlm_nm_lock_3_svc(nlm_lockargs *arg, struct svc_req *rqstp)
+nlm_res *
+nlm_nm_lock_3_svc(nlm_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm_res res;
   if (debug_level) log_from_addr("nlm_nm_lock", rqstp);
@@ -774,7 +812,8 @@ nlm_res *nlm_nm_lock_3_svc(nlm_lockargs *arg, struct svc_req *rqstp)
   return (&res);
 }
 
-nlm4_res *nlmproc4_nm_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
+nlm4_res *
+nlmproc4_nm_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
 {
   static nlm4_res res;
   if (debug_level) log_from_addr("nlm_nm_lock", rqstp);
@@ -796,7 +835,8 @@ nlm4_res *nlmproc4_nm_lock_4_svc(nlm4_lockargs *arg, struct svc_req *rqstp)
 		using monitored locks.
 */
 
-void *nlm_free_all_3_svc(nlm_notify *arg, struct svc_req *rqstp)
+void *
+nlm_free_all_3_svc(nlm_notify *arg, struct svc_req *rqstp)
 {
   static char dummy;
 
@@ -804,7 +844,8 @@ void *nlm_free_all_3_svc(nlm_notify *arg, struct svc_req *rqstp)
   return (&dummy);
 }
 
-void *nlmproc4_free_all_4_svc(nlm4_notify *arg, struct svc_req *rqstp)
+void *
+nlmproc4_free_all_4_svc(nlm4_notify *arg, struct svc_req *rqstp)
 {
   static char dummy;
 
@@ -812,7 +853,8 @@ void *nlmproc4_free_all_4_svc(nlm4_notify *arg, struct svc_req *rqstp)
   return (&dummy);
 }
 
-void *nlmproc4_null_4_svc(void *arg, struct svc_req *rqstp)
+void *
+nlmproc4_null_4_svc(void *arg, struct svc_req *rqstp)
 {
   static char dummy;
 

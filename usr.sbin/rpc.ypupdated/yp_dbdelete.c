@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <stdio.h>
@@ -46,9 +46,8 @@
 #include <rpcsvc/yp.h>
 #include "ypxfr_extern.h"
 
-int yp_del_record(dbp,key)
-	DB *dbp;
-	DBT *key;
+int
+yp_del_record(DB *dbp, DBT *key)
 {
 	int rval;
 

@@ -1,7 +1,7 @@
 
 /*
  * $FreeBSD: src/usr.sbin/rpc.statd/test.c,v 1.3 1999/08/28 01:19:39 peter Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/test.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/test.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 #include <stdio.h>
 #include <rpc/rpc.h>
@@ -12,9 +12,7 @@
 static struct timeval TIMEOUT = { 25, 0 };
 
 struct sm_stat_res *
-sm_stat_1(argp, clnt)
-	struct sm_name *argp;
-	CLIENT *clnt;
+sm_stat_1(struct sm_name *argp, CLIENT *clnt)
 {
 	static struct sm_stat_res res;
 
@@ -27,9 +25,7 @@ sm_stat_1(argp, clnt)
 
 
 struct sm_stat_res *
-sm_mon_1(argp, clnt)
-	struct mon *argp;
-	CLIENT *clnt;
+sm_mon_1(struct mon *argp, CLIENT *clnt)
 {
 	static struct sm_stat_res res;
 
@@ -42,9 +38,7 @@ sm_mon_1(argp, clnt)
 
 
 struct sm_stat *
-sm_unmon_1(argp, clnt)
-	struct mon_id *argp;
-	CLIENT *clnt;
+sm_unmon_1(struct mon_id *argp, CLIENT *clnt)
 {
 	static struct sm_stat res;
 
@@ -57,9 +51,7 @@ sm_unmon_1(argp, clnt)
 
 
 struct sm_stat *
-sm_unmon_all_1(argp, clnt)
-	struct my_id *argp;
-	CLIENT *clnt;
+sm_unmon_all_1(struct my_id *argp, CLIENT *clnt)
 {
 	static struct sm_stat res;
 
@@ -72,9 +64,7 @@ sm_unmon_all_1(argp, clnt)
 
 
 void *
-sm_simu_crash_1(argp, clnt)
-	void *argp;
-	CLIENT *clnt;
+sm_simu_crash_1(void *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -86,7 +76,8 @@ sm_simu_crash_1(argp, clnt)
 }
 
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
   CLIENT *cli;
   char dummy;

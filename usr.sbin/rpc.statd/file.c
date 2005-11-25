@@ -29,6 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $DragonFly: src/usr.sbin/rpc.statd/file.c,v 1.2 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <err.h>
@@ -54,7 +55,8 @@ static off_t status_file_len;	/* Current on-disc length of file	*/
    Returns:	Nothing.  Errors to syslog.
 */
 
-void sync_file(void)
+void
+sync_file(void)
 {
   if (msync((void *)status_info, 0, 0) < 0)
   {
@@ -70,7 +72,8 @@ void sync_file(void)
 		Failure to create also returns NULL.
 */
 
-HostInfo *find_host(char *hostname, int create)
+HostInfo *
+find_host(char *hostname, int create)
 {
   HostInfo *hp;
   HostInfo *spare_slot = NULL;
@@ -134,7 +137,8 @@ HostInfo *find_host(char *hostname, int create)
 		the state number to the next even value.
 */
 
-void init_file(char *filename)
+void
+init_file(char *filename)
 {
   int new_file = FALSE;
   char buf[HEADER_LEN];
@@ -216,7 +220,8 @@ void init_file(char *filename)
 		procedure used between co-operating statd's
 */
 
-bool_t xdr_stat_chge(XDR *xdrs, stat_chge *objp)
+bool_t
+xdr_stat_chge(XDR *xdrs, stat_chge *objp)
 {
   if (!xdr_string(xdrs, &objp->mon_name, SM_MAXSTRLEN))
   {
@@ -236,7 +241,8 @@ bool_t xdr_stat_chge(XDR *xdrs, stat_chge *objp)
    Returns:	TRUE if success, FALSE if failed.
 */
 
-static int notify_one_host(char *hostname)
+static int
+notify_one_host(char *hostname)
 {
   struct timeval timeout = { 20, 0 };	/* 20 secs timeout		*/
   CLIENT *cli;
@@ -280,7 +286,8 @@ static int notify_one_host(char *hostname)
 		logs to syslog.
 */
 
-void notify_hosts(void)
+void
+notify_hosts(void)
 {
   int i;
   int attempts;

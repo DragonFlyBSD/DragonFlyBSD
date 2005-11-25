@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <sys/fcntl.h>
@@ -47,9 +47,8 @@ struct dom_binding {};
 #include "ypxfr_extern.h"
 #include "ypupdated_extern.h"
 
-static int yp_domake(map, domain)
-	char *map;
-	char *domain;
+static int
+yp_domake(char *map, char *domain)
 {
 	int pid;
 
@@ -72,14 +71,9 @@ static int yp_domake(map, domain)
 	return(0);
 }
 
-int ypmap_update(netname, map, op, keylen, keyval, datlen, datval)
-	char *netname;
-	char *map;
-	unsigned int op;
-	unsigned int keylen;
-	char *keyval;
-	unsigned int datlen;
-	char *datval;
+int
+ypmap_update(char *netname, char *map, unsigned int op, unsigned int keylen,
+	     char *keyval, unsigned int datlen, char *datval)
 {
 	DB *dbp;
 	DBT key = { NULL, 0 }, data = { NULL, 0 };

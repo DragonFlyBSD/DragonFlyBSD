@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3.2.1 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <stdio.h>
@@ -65,8 +65,8 @@ int forked = 0;
 #define WINDOW (60*60)
 #endif
 
-static enum auth_stat yp_checkauth(svcreq)
-	struct svc_req *svcreq;
+static enum auth_stat
+yp_checkauth(struct svc_req *svcreq)
 {
 	struct authdes_cred *des_cred;
 
@@ -92,9 +92,8 @@ was too large -- possible spoof attempt");
 	}
 }
 
-unsigned int *ypu_change_1_svc(args, svcreq)
-	struct ypupdate_args *args;
-	struct svc_req *svcreq;
+unsigned int *
+ypu_change_1_svc(struct ypupdate_args *args, struct svc_req *svcreq)
 {
 	struct authdes_cred *des_cred;
 	static int res;
@@ -127,9 +126,8 @@ unsigned int *ypu_change_1_svc(args, svcreq)
 	return (&res);
 }
 
-unsigned int *ypu_insert_1_svc(args, svcreq)
-	struct ypupdate_args *args;
-	struct svc_req *svcreq;
+unsigned int *
+ypu_insert_1_svc(struct ypupdate_args *args, struct svc_req *svcreq)
 {
 	struct authdes_cred *des_cred;
 	static int res;
@@ -162,9 +160,8 @@ unsigned int *ypu_insert_1_svc(args, svcreq)
 	return (&res);
 }
 
-unsigned int *ypu_delete_1_svc(args, svcreq)
-	struct ypdelete_args *args;
-	struct svc_req *svcreq;
+unsigned int *
+ypu_delete_1_svc(struct ypdelete_args *args, struct svc_req *svcreq)
 {
 	struct authdes_cred *des_cred;
 	static int res;
@@ -197,9 +194,8 @@ unsigned int *ypu_delete_1_svc(args, svcreq)
 	return (&res);
 }
 
-unsigned int *ypu_store_1_svc(args, svcreq)
-	struct ypupdate_args *args;
-	struct svc_req *svcreq;
+unsigned int *
+ypu_store_1_svc(struct ypupdate_args *args, struct svc_req *svcreq)
 {
 	struct authdes_cred *des_cred;
 	static int res;

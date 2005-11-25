@@ -32,7 +32,7 @@
  *
  * @(#)pw_copy.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.4.2.1 2000/07/12 11:09:40 davidn Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
 /*
@@ -49,9 +49,7 @@
 #include "yppasswdd_extern.h"
 
 int
-pw_copy(ffd, tfd, pw)
-	int ffd, tfd;
-	struct passwd *pw;
+pw_copy(int ffd, int tfd, struct passwd *pw)
 {
 	FILE *from, *to;
 	int done;

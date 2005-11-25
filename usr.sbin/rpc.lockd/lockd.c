@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.c,v 1.5.2.1 2001/08/01 06:39:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.4 2004/12/18 22:48:13 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
 /* main() function for NFS lock daemon.  Most of the code in this	*/
@@ -103,7 +103,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
       fprintf(stderr, "usage: rpc.lockd [-d [debuglevel]]\n");
       exit(1);

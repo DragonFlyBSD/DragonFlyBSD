@@ -2,7 +2,7 @@
  * @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro
  * @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/rpc.lockd/test.c,v 1.4.2.1 2001/08/01 06:39:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/test.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/test.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <rpc/rpc.h>
@@ -12,9 +12,7 @@
 static struct timeval TIMEOUT = { 0, 0 };
 
 nlm_testres *
-nlm_test_1(argp, clnt)
-	struct nlm_testargs *argp;
-	CLIENT *clnt;
+nlm_test_1(struct nlm_testargs *argp, CLIENT *clnt)
 {
 	static nlm_testres res;
 
@@ -27,9 +25,7 @@ nlm_test_1(argp, clnt)
 
 
 nlm_res *
-nlm_lock_1(argp, clnt)
-	struct nlm_lockargs *argp;
-	CLIENT *clnt;
+nlm_lock_1(struct nlm_lockargs *argp, CLIENT *clnt)
 {
 	enum clnt_stat st;
 	static nlm_res res;
@@ -45,9 +41,7 @@ nlm_lock_1(argp, clnt)
 
 
 nlm_res *
-nlm_cancel_1(argp, clnt)
-	struct nlm_cancargs *argp;
-	CLIENT *clnt;
+nlm_cancel_1(struct nlm_cancargs *argp, CLIENT *clnt)
 {
 	static nlm_res res;
 
@@ -60,9 +54,7 @@ nlm_cancel_1(argp, clnt)
 
 
 nlm_res *
-nlm_unlock_1(argp, clnt)
-	struct nlm_unlockargs *argp;
-	CLIENT *clnt;
+nlm_unlock_1(struct nlm_unlockargs *argp, CLIENT *clnt)
 {
 	static nlm_res res;
 
@@ -75,9 +67,7 @@ nlm_unlock_1(argp, clnt)
 
 
 nlm_res *
-nlm_granted_1(argp, clnt)
-	struct nlm_testargs *argp;
-	CLIENT *clnt;
+nlm_granted_1(struct nlm_testargs *argp, CLIENT *clnt)
 {
 	static nlm_res res;
 
@@ -90,9 +80,7 @@ nlm_granted_1(argp, clnt)
 
 
 void *
-nlm_test_msg_1(argp, clnt)
-	struct nlm_testargs *argp;
-	CLIENT *clnt;
+nlm_test_msg_1(struct nlm_testargs *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -105,9 +93,7 @@ nlm_test_msg_1(argp, clnt)
 
 
 void *
-nlm_lock_msg_1(argp, clnt)
-	struct nlm_lockargs *argp;
-	CLIENT *clnt;
+nlm_lock_msg_1(struct nlm_lockargs *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -121,9 +107,7 @@ nlm_lock_msg_1(argp, clnt)
 
 
 void *
-nlm_cancel_msg_1(argp, clnt)
-	struct nlm_cancargs *argp;
-	CLIENT *clnt;
+nlm_cancel_msg_1(struct nlm_cancargs *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -136,9 +120,7 @@ nlm_cancel_msg_1(argp, clnt)
 
 
 void *
-nlm_unlock_msg_1(argp, clnt)
-	struct nlm_unlockargs *argp;
-	CLIENT *clnt;
+nlm_unlock_msg_1(struct nlm_unlockargs *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -151,9 +133,7 @@ nlm_unlock_msg_1(argp, clnt)
 
 
 void *
-nlm_granted_msg_1(argp, clnt)
-	struct nlm_testargs *argp;
-	CLIENT *clnt;
+nlm_granted_msg_1(struct nlm_testargs *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -166,9 +146,7 @@ nlm_granted_msg_1(argp, clnt)
 
 
 void *
-nlm_test_res_1(argp, clnt)
-	nlm_testres *argp;
-	CLIENT *clnt;
+nlm_test_res_1(nlm_testres *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -181,9 +159,7 @@ nlm_test_res_1(argp, clnt)
 
 
 void *
-nlm_lock_res_1(argp, clnt)
-	nlm_res *argp;
-	CLIENT *clnt;
+nlm_lock_res_1(nlm_res *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -196,9 +172,7 @@ nlm_lock_res_1(argp, clnt)
 
 
 void *
-nlm_cancel_res_1(argp, clnt)
-	nlm_res *argp;
-	CLIENT *clnt;
+nlm_cancel_res_1(nlm_res *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -211,9 +185,7 @@ nlm_cancel_res_1(argp, clnt)
 
 
 void *
-nlm_unlock_res_1(argp, clnt)
-	nlm_res *argp;
-	CLIENT *clnt;
+nlm_unlock_res_1(nlm_res *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -226,9 +198,7 @@ nlm_unlock_res_1(argp, clnt)
 
 
 void *
-nlm_granted_res_1(argp, clnt)
-	nlm_res *argp;
-	CLIENT *clnt;
+nlm_granted_res_1(nlm_res *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -241,9 +211,7 @@ nlm_granted_res_1(argp, clnt)
 
 
 nlm_shareres *
-nlm_share_3(argp, clnt)
-	nlm_shareargs *argp;
-	CLIENT *clnt;
+nlm_share_3(nlm_shareargs *argp, CLIENT *clnt)
 {
 	static nlm_shareres res;
 
@@ -256,9 +224,7 @@ nlm_share_3(argp, clnt)
 
 
 nlm_shareres *
-nlm_unshare_3(argp, clnt)
-	nlm_shareargs *argp;
-	CLIENT *clnt;
+nlm_unshare_3(nlm_shareargs *argp, CLIENT *clnt)
 {
 	static nlm_shareres res;
 
@@ -271,9 +237,7 @@ nlm_unshare_3(argp, clnt)
 
 
 nlm_res *
-nlm_nm_lock_3(argp, clnt)
-	nlm_lockargs *argp;
-	CLIENT *clnt;
+nlm_nm_lock_3(nlm_lockargs *argp, CLIENT *clnt)
 {
 	static nlm_res res;
 
@@ -286,9 +250,7 @@ nlm_nm_lock_3(argp, clnt)
 
 
 void *
-nlm_free_all_3(argp, clnt)
-	nlm_notify *argp;
-	CLIENT *clnt;
+nlm_free_all_3(nlm_notify *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -300,7 +262,8 @@ nlm_free_all_3(argp, clnt)
 }
 
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
   CLIENT *cli;
   nlm_res res_block;

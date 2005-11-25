@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/procs.c,v 1.4.2.2 2002/07/11 17:41:28 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/procs.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/procs.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <errno.h>
@@ -51,7 +51,8 @@
 		an address.
 */
 
-struct sm_stat_res *sm_stat_1_svc(sm_name *arg, struct svc_req *req)
+struct sm_stat_res *
+sm_stat_1_svc(sm_name *arg, struct svc_req *req)
 {
   static sm_stat_res res;
 
@@ -77,7 +78,8 @@ struct sm_stat_res *sm_stat_1_svc(sm_name *arg, struct svc_req *req)
 		valid (as judged by gethostbyname())
 */
 
-struct sm_stat_res *sm_mon_1_svc(mon *arg, struct svc_req *req)
+struct sm_stat_res *
+sm_mon_1_svc(mon *arg, struct svc_req *req)
 {
   static sm_stat_res res;
   HostInfo *hp;
@@ -136,7 +138,8 @@ struct sm_stat_res *sm_mon_1_svc(mon *arg, struct svc_req *req)
 		request, all are removed.
 */
 
-static int do_unmon(HostInfo *hp, my_id *idp)
+static int
+do_unmon(HostInfo *hp, my_id *idp)
 {
   MonList *lp, *next;
   MonList *last = NULL;
@@ -174,7 +177,8 @@ static int do_unmon(HostInfo *hp, my_id *idp)
 		earlier call to sm_mon_1
 */
 
-struct sm_stat *sm_unmon_1_svc(mon_id *arg, struct svc_req *req)
+struct sm_stat *
+sm_unmon_1_svc(mon_id *arg, struct svc_req *req)
 {
   static sm_stat res;
   HostInfo *hp;
@@ -212,7 +216,8 @@ struct sm_stat *sm_unmon_1_svc(mon_id *arg, struct svc_req *req)
 		host and program number.
 */
 
-struct sm_stat *sm_unmon_all_1_svc(my_id *arg, struct svc_req *req)
+struct sm_stat *
+sm_unmon_all_1_svc(my_id *arg, struct svc_req *req)
 {
   static sm_stat res;
   HostInfo *hp;
@@ -249,7 +254,8 @@ struct sm_stat *sm_unmon_all_1_svc(my_id *arg, struct svc_req *req)
 		and inform all hosts on the monitor list.
 */
 
-void *sm_simu_crash_1_svc(void *v, struct svc_req *req)
+void *
+sm_simu_crash_1_svc(void *v, struct svc_req *req)
 {
   static char dummy;
   int work_to_do;
@@ -293,7 +299,8 @@ void *sm_simu_crash_1_svc(void *v, struct svc_req *req)
 		that modify the list.
 */
 
-void *sm_notify_1_svc(stat_chge *arg, struct svc_req *req)
+void *
+sm_notify_1_svc(stat_chge *arg, struct svc_req *req)
 {
   struct timeval timeout = { 20, 0 };	/* 20 secs timeout		*/
   CLIENT *cli;
