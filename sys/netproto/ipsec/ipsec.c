@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.11 2005/06/10 23:59:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.12 2005/11/25 17:16:22 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1044,7 +1044,7 @@ ipsec_get_policy(pcb_sp, mp)
 		return ENOBUFS;
 	}
 
-	(*mp)->m_type = MT_DATA;
+	KKASSERT((*mp)->m_type == MT_DATA);
 	KEYDEBUG(KEYDEBUG_IPSEC_DUMP,
 		printf("ipsec_get_policy:\n");
 		kdebug_mbuf(*mp));
