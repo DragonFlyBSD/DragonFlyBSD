@@ -70,7 +70,7 @@
  *	$Id: g711conv.c,v 1.5 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4.2.1 2001/08/01 17:45:02 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4 2005/09/01 19:08:38 swildner Exp $
+ * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.5 2005/11/25 00:58:52 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -145,7 +145,8 @@ unsigned char bitreverse[256] = {
 
 /* A-law to u-law conversion */
 
-unsigned char alaw2ulaw(unsigned char aval)
+unsigned char
+alaw2ulaw(unsigned char aval)
 {
 	aval &= 0xff;
 	return ((aval & 0x80) ? (0xFF ^ _a2u[aval ^ 0xD5]) :
@@ -154,7 +155,8 @@ unsigned char alaw2ulaw(unsigned char aval)
 
 /* u-law to A-law conversion */
 
-unsigned char ulaw2alaw(unsigned char uval)
+unsigned char
+ulaw2alaw(unsigned char uval)
 {
 	uval &= 0xff;
 	return ((uval & 0x80) ? (0xD5 ^ (_u2a[0xFF ^ uval] - 1)) :

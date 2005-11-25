@@ -30,7 +30,7 @@
  *	$Id: main.c,v 1.16 2000/03/13 16:18:38 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntest/main.c,v 1.7.2.1 2001/08/01 17:45:07 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.4 2004/03/26 00:30:13 cpressey Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.5 2005/11/25 00:58:52 swildner Exp $
  *
  *      last edit-date: [Mon Mar 13 17:19:26 2000]
  *
@@ -537,7 +537,8 @@ get_cdid(int isdnfd)
 /*---------------------------------------------------------------------------*
  *	make shure all cdid's are inactive before leaving
  *---------------------------------------------------------------------------*/
-void cleanup(void)
+void
+cleanup(void)
 {
 	int len;
 	char buf[1024];
@@ -587,7 +588,8 @@ void cleanup(void)
 /*---------------------------------------------------------------------------*
  *	test the b-channels
  *---------------------------------------------------------------------------*/
-int do_test(void)
+int
+do_test(void)
 {
 
 #define FPH 0x3c

@@ -36,7 +36,7 @@
  *	$Id: main.c,v 1.35 2000/08/24 11:48:57 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.7.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.4 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.5 2005/11/25 00:58:52 swildner Exp $
  *
  *      last edit-date: [Mon Dec 13 21:52:11 1999]
  *
@@ -159,7 +159,8 @@ usage(void)
 /*---------------------------------------------------------------------------
  *	Parse command line, startup monitor client
  *---------------------------------------------------------------------------*/
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	int i;
 
@@ -483,7 +484,8 @@ mloop(void)
 /*
  * Dump a complete event packet.
  */
-static void dump_event(u_int8_t *msg, int len, int read)
+static void
+dump_event(u_int8_t *msg, int len, int read)
 {
 	int i;
 
@@ -558,16 +560,20 @@ print_charge(time_t tstamp, int controller, int channel, int units, int estimate
  * Print a connect event.
  * A real monitor would allocate state info for "channel" on this
  * event.
+ *
+ * Parameters:
+ *	tstamp:		server time of event
+ *	outgoing:	0 = incoming, 1 = outgoing
+ *	controller:	controller number
+ *	channel:	channel no, used to identify this connection until disconnect
+ *	cfgname:	name of config entry/connection
+ *	devname:	device used (e.g. isp0)
+ *	remphone:	phone no of remote side
+ *	locphone:	local phone no
  */
-static void print_connect(
-	time_t tstamp, 	/* server time of event */
-	int outgoing,	/* 0 = incoming, 1 = outgoing */
-	int controller, /* controller number */
-	int channel,	/* channel no, used to identify this connection until disconnect */
-	char * cfgname, 	/* name of config entry/connection */
-	char * devname, 	/* device used (e.g. isp0) */
-	char * remphone, 	/* phone no of remote side */
-	char * locphone)	/* local phone no */
+static void
+print_connect(time_t tstamp, int outgoing, int controller, int channel,
+	      char *cfgname, char *devname, char *remphone, char *locphone)
 {
 	char buf[256];
 

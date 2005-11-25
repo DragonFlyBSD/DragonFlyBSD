@@ -30,7 +30,7 @@
  *	$Id: facility.c,v 1.5 2000/02/21 15:17:17 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndecode/facility.c,v 1.6.2.1 2001/08/01 17:45:05 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdndecode/facility.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndecode/facility.c,v 1.3 2005/11/25 00:58:52 swildner Exp $
  *
  *      last edit-date: [Mon Feb 21 16:15:43 2000]
  *
@@ -361,7 +361,8 @@ again:
 /*---------------------------------------------------------------------------*
  *	print universal id type
  *---------------------------------------------------------------------------*/
-static char *uni_str(int code)
+static char *
+uni_str(int code)
 {
 	static char *tbl[] = {
 		"BOOLEAN",
@@ -399,7 +400,8 @@ static char *uni_str(int code)
 /*---------------------------------------------------------------------------*
  *	print operation value 
  *---------------------------------------------------------------------------*/
-static char *opval_str(int val)
+static char *
+opval_str(int val)
 {
 	static char buffer[80];
 	char *r;
@@ -548,7 +550,8 @@ static char *opval_str(int val)
 /*---------------------------------------------------------------------------*
  *	billing id string
  *---------------------------------------------------------------------------*/
-static char *bid_str(int val)
+static char *
+bid_str(int val)
 {
 	static char buffer[80];
 	char *r;

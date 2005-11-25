@@ -36,7 +36,7 @@
  *	$Id: monitor.c,v 1.30 2000/10/09 12:53:29 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/monitor.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/monitor.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/monitor.c,v 1.4 2005/11/25 00:58:52 swildner Exp $
  *
  *      last edit-date: [Mon Dec 13 21:47:44 1999]
  *
@@ -52,20 +52,24 @@
  * support compiled into the daemon)
  */
 
-void monitor_clear_rights(void)
+void
+monitor_clear_rights(void)
 {
 }
 
-int monitor_start_rights(const char *clientspec)
+int
+monitor_start_rights(const char *clientspec)
 {
 	return I4BMAR_OK;
 }
 
-void monitor_add_rights(int rights_mask)
+void
+monitor_add_rights(int rights_mask)
 {
 }
 
-void monitor_fixup_rights(void)
+void
+monitor_fixup_rights(void)
 {
 }
 
@@ -1281,7 +1285,8 @@ sock_write(int fd, void *buf, size_t nbytes)
 	return(nbytes);
 }
 
-struct monitor_rights * monitor_next_rights(const struct monitor_rights *r)
+struct monitor_rights *
+monitor_next_rights(const struct monitor_rights *r)
 {
 	if (r == NULL)
 		return TAILQ_FIRST(&rights);
