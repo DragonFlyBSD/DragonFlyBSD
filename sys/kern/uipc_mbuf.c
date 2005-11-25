@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.52 2005/06/17 18:58:02 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.53 2005/11/25 17:52:53 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -752,12 +752,16 @@ m_free(struct mbuf *m)
 				objcache_put(mbufphdrcluster_cache, m);
 			else
 				objcache_put(mbufcluster_cache, m);
+			--mbstat.m_clusters;
 		} else {
 			/*
 			 * Hell.  Someone else has a ref on this cluster,
 			 * we have to disconnect it which means we can't
 			 * put it back into the mbufcluster_cache, we
 			 * have to destroy the mbuf.
+			 *
+			 * Other mbuf references to the cluster will typically
+			 * be M_EXT | M_EXT_CLUSTER but without M_CLCACHE.
 			 *
 			 * XXX we could try to connect another cluster to
 			 * it.
@@ -769,7 +773,6 @@ m_free(struct mbuf *m)
 			else
 				objcache_dtor(mbufcluster_cache, m);
 		}
-		--mbstat.m_clusters;
 		break;
 	case M_EXT | M_EXT_CLUSTER:
 		/*
@@ -778,7 +781,8 @@ m_free(struct mbuf *m)
 		 * The cluster has to be independantly disassociated from the
 		 * mbuf.
 		 */
-		--mbstat.m_clusters;
+		if (m_sharecount(m) == 1)
+			--mbstat.m_clusters;
 		/* fall through */
 	case M_EXT:
 		/*
