@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.37 2005/11/22 06:13:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.38 2005/11/26 14:36:21 sephe Exp $
  *
  */
 
@@ -309,6 +309,8 @@ unregister_int(void *id)
 	list = &rec->next;
     }
     if (rec) {
+	intrec_t rec0;
+
 	*list = rec->next;
 	if (rec->intr_flags & INTR_FAST)
 	    --info->i_fast;
@@ -316,18 +318,18 @@ unregister_int(void *id)
 	    --info->i_slow;
 	if (intr < FIRST_SOFTINT && info->i_fast + info->i_slow == 0)
 	    machintr_vector_teardown(intr);
-    }
 
-    /*
-     * Clear i_mplock_required if no handlers in the chain require the
-     * MP lock.
-     */
-    for (rec = info->i_reclist; rec; rec = rec->next) {
-	if ((rec->intr_flags & INTR_MPSAFE) == 0)
-	    break;
-    }
-    if (rec == NULL)
+	/*
+	 * Clear i_mplock_required if no handlers in the chain require the
+	 * MP lock.
+	 */
+	for (rec0 = info->i_reclist; rec0; rec0 = rec0->next) {
+	    if ((rec0->intr_flags & INTR_MPSAFE) == 0)
+		break;
+	}
+	if (rec0 == NULL)
 	    info->i_mplock_required = 0;
+    }
 
     crit_exit();
 
