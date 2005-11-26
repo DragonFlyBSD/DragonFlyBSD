@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.22 2005/03/04 05:57:50 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.23 2005/11/26 20:54:34 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -363,7 +363,7 @@ syncache_init(void)
 	 * older one.
 	 */
 	tcp_syncache.zone = zinit("syncache", sizeof(struct syncache),
-	    tcp_syncache.cache_limit, ZONE_INTERRUPT, 0);
+	    tcp_syncache.cache_limit * ncpus2, ZONE_INTERRUPT, 0);
 	tcp_syncache.cache_limit -= 1;
 }
 
