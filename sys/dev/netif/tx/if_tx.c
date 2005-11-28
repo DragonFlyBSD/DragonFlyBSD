@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.33 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -270,11 +271,12 @@ epic_attach(device_t dev)
 	printf("\n");
 
 	/* Attach to OS's managers */
-	ether_ifattach(ifp, sc->sc_macaddr);
+	ether_ifattach(ifp, sc->sc_macaddr, NULL);
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
-	error = bus_setup_intr(dev, sc->irq, 0,
-			       epic_intr, sc, &sc->sc_ih, NULL);
+	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+			       epic_intr, sc, &sc->sc_ih, 
+			       ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
@@ -301,7 +303,7 @@ epic_detach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		ether_ifdetach(ifp);
@@ -315,8 +317,6 @@ epic_detach(device_t dev)
 	if (sc->sc_ih)
 		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
 
-	crit_exit();
-
 	if (sc->irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->res)
@@ -329,6 +329,7 @@ epic_detach(device_t dev)
 	if (sc->rx_desc)
 		free(sc->rx_desc, M_DEVBUF);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -343,12 +344,13 @@ static void
 epic_shutdown(device_t dev)
 {
 	epic_softc_t *sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
-
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	epic_stop(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -361,8 +363,6 @@ epic_ifioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data	*mii;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0;
-
-	crit_enter();
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -423,8 +423,6 @@ epic_ifioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-	crit_exit();
-
 	return error;
 }
 
@@ -608,7 +606,7 @@ epic_rx_done(epic_softc_t *sc)
 		m->m_pkthdr.len = m->m_len = len;
 
 		/* Give mbuf to OS */
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 
 		/* Successfuly received frame */
 		ifp->if_ipackets++;
@@ -774,8 +772,6 @@ epic_ifwatchdog(struct ifnet *ifp)
 {
 	epic_softc_t *sc = ifp->if_softc;
 
-	crit_enter();
-
 	if_printf(ifp, "device timeout %d packets\n", sc->pending_txs);
 
 	/* Try to finish queued packets */
@@ -797,8 +793,6 @@ epic_ifwatchdog(struct ifnet *ifp)
 	/* Start output */
 	if (!ifq_is_empty(&ifp->if_snd))
 		epic_ifstart(ifp);
-
-	crit_exit();
 }
 
 /*
@@ -809,16 +803,17 @@ static void
 epic_stats_update(void *xsc)
 {
 	epic_softc_t *sc = xsc;
+	struct ifnet *ifp = &sc->sc_if;
 	struct mii_data * mii;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii = device_get_softc(sc->miibus);
 	mii_tick(mii);
 
 	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -1065,11 +1060,8 @@ epic_init(epic_softc_t *sc)
 	struct ifnet *ifp = &sc->sc_if;
 	int	i;
 
-	crit_enter();
-
 	/* If interface is already running, then we need not do anything */
 	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
 		return 0;
 	}
 
@@ -1092,7 +1084,6 @@ epic_init(epic_softc_t *sc)
 	/* Initialize rings */
 	if (epic_init_rings(sc)) {
 		if_printf(ifp, "failed to init rings\n");
-		crit_exit();
 		return -1;
 	}	
 
@@ -1142,8 +1133,6 @@ epic_init(epic_softc_t *sc)
 	epic_ifmedia_upd(ifp);
 
 	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
-
-	crit_exit();
 
 	return 0;
 }
@@ -1355,9 +1344,6 @@ epic_queue_last_packet(epic_softc_t *sc)
 static void
 epic_stop(epic_softc_t *sc)
 {
-
-	crit_enter();
-
 	sc->sc_if.if_timer = 0;
 
 	callout_stop(&sc->tx_stat_timer);
@@ -1381,9 +1367,6 @@ epic_stop(epic_softc_t *sc)
 
 	/* Mark as stoped */
 	sc->sc_if.if_flags &= ~IFF_RUNNING;
-
-	crit_exit();
-	return;
 }
 
 /*

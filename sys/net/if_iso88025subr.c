@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.13 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
  *
  */
 
@@ -51,6 +51,7 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
+#include <sys/serialize.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -88,13 +89,13 @@ static int	iso88025_output(struct ifnet *, struct mbuf *,
 static void	iso88025_input(struct ifnet *, struct mbuf *);
 
 void
-iso88025_ifattach(struct ifnet *ifp)
+iso88025_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
 
 	ifp->if_input = iso88025_input;
 	ifp->if_output = iso88025_output;
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 	ifp->if_type = IFT_ISO88025;
 	ifp->if_addrlen = ISO88025_ADDR_LEN;
 	ifp->if_hdrlen = ISO88025_HDR_LEN;
@@ -124,12 +125,16 @@ iso88025_ioctl(struct ifnet *ifp, int command, caddr_t data)
 		switch (ifa->ifa_addr->sa_family) {
 #ifdef INET
 		case AF_INET:
+			lwkt_serialize_enter(ifp->if_serializer);
 			ifp->if_init(ifp->if_softc);	/* before arpwhohas */
+			lwkt_serialize_exit(ifp->if_serializer);
 			arp_ifinit(ifp, ifa);
 			break;
 #endif
 		default:
+			lwkt_serialize_enter(ifp->if_serializer);
 			ifp->if_init(ifp->if_softc);
+			lwkt_serialize_exit(ifp->if_serializer);
 			break;
 		}
 		break;
@@ -313,6 +318,8 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 	struct iso88025_header *th = mtod(m, struct iso88025_header *);
 	int isr, hdr_len;
 	u_short ether_type;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);

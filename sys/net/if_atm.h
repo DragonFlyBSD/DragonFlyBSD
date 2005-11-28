@@ -1,6 +1,6 @@
 /*      $NetBSD: if_atm.h,v 1.7 1996/11/09 23:02:27 chuck Exp $       */
 /* $FreeBSD: src/sys/net/if_atm.h,v 1.4 1999/12/29 04:38:34 peter Exp $ */
-/* $DragonFly: src/sys/net/if_atm.h,v 1.6 2005/01/06 17:59:32 hsu Exp $ */
+/* $DragonFly: src/sys/net/if_atm.h,v 1.7 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  *
@@ -101,7 +101,10 @@ struct atmllc {
 }
 
 #ifdef _KERNEL
-void	atm_ifattach (struct ifnet *);
+
+struct lwkt_serialize;
+
+void	atm_ifattach (struct ifnet *, struct lwkt_serialize *);
 void	atm_input (struct ifnet *, struct atm_pseudohdr *,
 		struct mbuf *, void *);
 int	atm_output (struct ifnet *, struct mbuf *, struct sockaddr *, 

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.11 2005/11/02 08:33:15 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.12 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -37,6 +37,7 @@
 #if defined(__bsdi__) || defined(__NetBSD__)
 #include <sys/device.h>
 #endif
+#include <sys/serialize.h>
 
 #include <net/if.h>
 
@@ -111,7 +112,11 @@ static void
 pdq_pci_ifintr(
     void *arg)
 {
-    (void) pdq_interrupt(((pdq_softc_t *) arg)->sc_pdq);
+    pdq_softc_t *sc = arg;
+
+    lwkt_serialize_enter(sc->sc_if.if_serializer);
+    pdq_interrupt(sc->sc_pdq);
+    lwkt_serialize_exit(sc->sc_if.if_serializer);
 }
 #else
 static int
@@ -198,7 +203,9 @@ pdq_pci_shutdown(
     void *sc,
     int howto)
 {
+    lwkt_serialize_enter(sc->sc_if.if_serializer);
     pdq_hwreset(((pdq_softc_t *)sc)->sc_pdq);
+    lwkt_serialize_exit(sc->sc_if.if_serializer);
 }
 
 static u_long pdq_pci_count;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.9 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.10 2005/11/28 17:13:46 dillon Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -425,8 +425,6 @@ ip6_mrouter_done(void)
 	struct mf6c *rt;
 	struct rtdetq *rte;
 
-	crit_enter();
-
 	/*
 	 * For each phyint in use, disable promiscuous reception of all IPv6
 	 * multicasts.
@@ -449,9 +447,10 @@ ip6_mrouter_done(void)
 				ifr.ifr_addr.sin6_family = AF_INET6;
 				ifr.ifr_addr.sin6_addr= in6addr_any;
 				ifp = mif6table[mifi].m6_ifp;
-				(*ifp->if_ioctl)(ifp, SIOCDELMULTI,
-						 (caddr_t)&ifr,
-						 (struct ucred *)NULL);
+				lwkt_serialize_enter(ifp->if_serializer);
+				ifp->if_ioctl(ifp, SIOCDELMULTI,
+					      (caddr_t)&ifr, NULL);
+				lwkt_serialize_exit(ifp->if_serializer);
 			}
 		}
 	}
@@ -496,8 +495,6 @@ ip6_mrouter_done(void)
 
 	ip6_mrouter = NULL;
 	ip6_mrouter_ver = 0;
-
-	crit_exit();
 
 #ifdef MRT6DEBUG
 	if (mrt6debug)
@@ -1449,8 +1446,10 @@ phyint_send(struct ip6_hdr *ip6, struct mif6 *mifp, struct mbuf *m)
 		 * We just call if_output instead of nd6_output here, since
 		 * we need no ND for a multicast forwarded packet...right?
 		 */
+		lwkt_serialize_enter(ifp->if_serializer);
 		error = (*ifp->if_output)(ifp, mb_copy,
 		    (struct sockaddr *)&ro.ro_dst, NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
 #ifdef MRT6DEBUG
 		if (mrt6debug & DEBUG_XMIT)
 			log(LOG_DEBUG, "phyint_send on mif %d err %d\n",

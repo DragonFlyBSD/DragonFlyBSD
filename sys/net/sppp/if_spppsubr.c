@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.21 2005/11/22 00:24:35 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.22 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -968,7 +968,9 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 			rv = 0;
 		}
 	} else {
+		lwkt_serialize_enter(ifp->if_serializer);
 		rv = ifq_enqueue(&ifp->if_snd, m, &pktattr);
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	if (rv) {
 		++ifp->if_oerrors;
@@ -4714,6 +4716,7 @@ sppp_keepalive(void *dummy)
 				lcp.Up(sp);
 			}
 		}
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (sp->pp_alivecnt <= MAXALIVECNT)
 			++sp->pp_alivecnt;
 		if (sp->pp_mode == IFF_CISCO)
@@ -4725,6 +4728,7 @@ sppp_keepalive(void *dummy)
 			sppp_cp_send (sp, PPP_LCP, ECHO_REQ,
 				sp->lcp.echoid, 4, &nmagic);
 		}
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	callout_reset(&keepalive_timeout, hz * 10, sppp_keepalive, NULL);
 	crit_exit();

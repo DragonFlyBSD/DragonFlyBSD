@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.25 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.26 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -129,8 +130,8 @@ static int pcn_ioctl		(struct ifnet *, u_long, caddr_t,
 					struct ucred *);
 static void pcn_init		(void *);
 static void pcn_stop		(struct pcn_softc *);
-static void pcn_watchdog		(struct ifnet *);
-static void pcn_shutdown		(device_t);
+static void pcn_watchdog	(struct ifnet *);
+static void pcn_shutdown	(device_t);
 static int pcn_ifmedia_upd	(struct ifnet *);
 static void pcn_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
@@ -619,10 +620,11 @@ static int pcn_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->pcn_irq, 0,
-			       pcn_intr, sc, &sc->pcn_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->pcn_irq, INTR_NETSAFE,
+			       pcn_intr, sc, &sc->pcn_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't set up irq\n");
@@ -640,7 +642,7 @@ static int pcn_detach(dev)
 	struct pcn_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		pcn_reset(sc);
@@ -655,8 +657,6 @@ static int pcn_detach(dev)
 	if (sc->pcn_intrhand)
 		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
 
-	crit_enter();
-
 	if (sc->pcn_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
 	if (sc->pcn_res)
@@ -666,6 +666,7 @@ static int pcn_detach(dev)
 		contigfree(sc->pcn_ldata, sizeof(struct pcn_list_data),
 			   M_DEVBUF);
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -809,7 +810,7 @@ static void pcn_rxeof(sc)
 		    cur_rx->pcn_rxlen - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	sc->pcn_cdata.pcn_rx_prod = i;
@@ -886,7 +887,7 @@ static void pcn_tick(xsc)
 	struct mii_data *mii;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii = device_get_softc(sc->pcn_miibus);
 	mii_tick(mii);
@@ -902,10 +903,9 @@ static void pcn_tick(xsc)
 			if (!ifq_is_empty(&ifp->if_snd))
 				pcn_start(ifp);
 	}
-
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void pcn_intr(arg)
@@ -1084,8 +1084,6 @@ static void pcn_init(xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii = NULL;
 
-	crit_enter();
-
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
 	 */
@@ -1108,7 +1106,6 @@ static void pcn_init(xsc)
 		    "memory for rx buffers\n", sc->pcn_unit);
 		pcn_stop(sc);
 
-		crit_exit();
 		return;
 	}
 
@@ -1180,8 +1177,6 @@ static void pcn_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -1239,8 +1234,6 @@ static int pcn_ioctl(ifp, command, data, cr)
 	struct mii_data		*mii = NULL;
 	int			error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -1287,9 +1280,6 @@ static int pcn_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -1367,12 +1357,12 @@ static void pcn_stop(sc)
 static void pcn_shutdown(dev)
 	device_t		dev;
 {
-	struct pcn_softc	*sc;
+	struct pcn_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc = device_get_softc(dev);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	pcn_reset(sc);
 	pcn_stop(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
+

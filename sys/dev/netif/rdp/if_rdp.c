@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.20 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.21 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -75,6 +75,7 @@
 #include <sys/linker_set.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/ethernet.h>
@@ -615,7 +616,7 @@ rdp_attach(struct isa_device *isa_dev)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	/*
 	 * Print additional info when attached
@@ -875,6 +876,8 @@ rdpintr(void *arg)
 	struct ifnet *ifp = (struct ifnet *)sc;
 	u_char isr, tsr, rsr, colls;
 
+	lwkt_serialize_enter(ifp->if_serializer);
+
 	/* disable interrupts, so SD3 can be routed to the pin */
 	sc->irqenbit = 0;
 	outb(sc->baseaddr + lpt_control, Ctrl_SelData);
@@ -993,6 +996,7 @@ rdpintr(void *arg)
 	WrNib(sc, CMR2, CMR2_IRQOUT | CMR2_IRQINV);
 	sc->irqenbit = Ctrl_IRQEN;
 	outb(sc->baseaddr + lpt_control, Ctrl_SelData + sc->irqenbit);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -1137,7 +1141,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	outb(sc->baseaddr + lpt_control, Ctrl_SelData);
 	WrNib(sc, CMR1, CMR1_RDPAC);
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
 }
 
 /*

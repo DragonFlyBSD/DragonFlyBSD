@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.18 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.19 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -122,6 +122,7 @@
 #include <sys/module.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -200,6 +201,7 @@ static void	re_rxeof(struct re_softc *);
 static void	re_txeof(struct re_softc *);
 static void	re_intr(void *);
 static void	re_tick(void *);
+static void	re_tick_serialized(void *);
 static void	re_start(struct ifnet *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	re_init(void *);
@@ -1159,10 +1161,12 @@ re_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	/* Perform hardware diagnostic. */
 	error = re_diag(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "hardware diagnostic failure\n");
@@ -1171,8 +1175,8 @@ re_attach(device_t dev)
 	}
 
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->re_irq, 0, re_intr, sc,
-			       &sc->re_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->re_irq, INTR_NETSAFE, re_intr, sc,
+			       &sc->re_intrhand, ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
@@ -1201,7 +1205,7 @@ re_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/* These should only be active if attach succeeded */
 	if (device_is_attached(dev)) {
@@ -1214,8 +1218,6 @@ re_detach(device_t dev)
 
 	if (sc->re_intrhand)
 		bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
-
-	crit_exit();
 
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
@@ -1271,6 +1273,7 @@ re_detach(device_t dev)
 	if (sc->re_parent_tag)
 		bus_dma_tag_destroy(sc->re_parent_tag);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1504,11 +1507,12 @@ re_rxeof(struct re_softc *sc)
 			}
 		}
 
-		if (rxvlan & RE_RDESC_VLANCTL_TAG)
+		if (rxvlan & RE_RDESC_VLANCTL_TAG) {
 			VLAN_INPUT_TAG(m,
 			   be16toh((rxvlan & RE_RDESC_VLANCTL_DATA)));
-		else
-			(*ifp->if_input)(ifp, m);
+		} else {
+			ifp->if_input(ifp, m);
+		}
 	}
 
 	/* Flush the RX DMA ring */
@@ -1582,16 +1586,22 @@ static void
 re_tick(void *xsc)
 {
 	struct re_softc *sc = xsc;
-	struct mii_data *mii;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
+	re_tick_serialized(xsc);
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
+}
+
+static void
+re_tick_serialized(void *xsc)
+{
+	struct re_softc *sc = xsc;
+	struct mii_data *mii;
 
 	mii = device_get_softc(sc->re_miibus);
 	mii_tick(mii);
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
-
-	crit_exit();
 }
 
 #ifdef DEVICE_POLLING
@@ -1679,7 +1689,7 @@ re_intr(void *arg)
 		}
 
 		if (status & RE_ISR_LINKCHG)
-			re_tick(sc);
+			re_tick_serialized(sc);
 	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -1813,8 +1823,6 @@ re_start(struct ifnet *ifp)
 	struct mbuf *m_head2;
 	int called_defrag, idx, need_trans;
 
-	crit_enter();
-
 	idx = sc->re_ldata.re_tx_prodidx;
 
 	need_trans = 0;
@@ -1856,7 +1864,6 @@ re_start(struct ifnet *ifp)
 	}
 
 	if (!need_trans) {
-		crit_exit();
 		return;
 	}
 
@@ -1890,8 +1897,6 @@ re_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	crit_exit();
 }
 
 static void
@@ -1901,8 +1906,6 @@ re_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
-
-	crit_enter();
 
 	mii = device_get_softc(sc->re_miibus);
 
@@ -2049,7 +2052,6 @@ re_init(void *xsc)
 		CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
 
 	if (sc->re_testmode) {
-		crit_exit();
 		return;
 	}
 
@@ -2061,8 +2063,6 @@ re_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -2104,8 +2104,6 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > RE_JUMBO_MTU)
@@ -2144,9 +2142,6 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -2157,8 +2152,6 @@ re_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "watchdog timeout\n");
 
-	crit_enter();
-
 	ifp->if_oerrors++;
 
 	re_txeof(sc);
@@ -2168,8 +2161,6 @@ re_watchdog(struct ifnet *ifp)
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		ifp->if_start(ifp);
-
-	crit_exit();
 }
 
 /*
@@ -2181,8 +2172,6 @@ re_stop(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
-
-	crit_enter();
 
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);
@@ -2216,8 +2205,6 @@ re_stop(struct re_softc *sc)
 			sc->re_ldata.re_rx_mbuf[i] = NULL;
 		}
 	}
-
-	crit_exit();
 }
 
 /*

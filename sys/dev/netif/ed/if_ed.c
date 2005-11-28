@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.27 2005/11/22 00:24:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.28 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -1725,7 +1725,7 @@ ed_attach(device_t dev)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
@@ -1822,8 +1822,10 @@ ed_tick(void *arg)
 {
 	struct ed_softc *sc = arg;
 	struct mii_data *mii;
+	struct ifnet *ifp;
 
-	crit_enter();
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->gone) {
 		crit_exit();
@@ -1836,8 +1838,7 @@ ed_tick(void *arg)
 	}
 
 	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 #endif
 
@@ -2786,7 +2787,7 @@ ed_get_packet(struct ed_softc *sc, char *buf, u_short len)
 
 	m->m_pkthdr.len = m->m_len = len;
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
 }
 
 /*

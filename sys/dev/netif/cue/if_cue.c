@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.23 2005/11/22 00:24:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.24 2005/11/28 17:13:41 dillon Exp $
  */
 
 /*
@@ -492,7 +492,7 @@ USB_ATTACH(cue)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 	usb_register_netisr();
 	sc->cue_dying = 0;
 

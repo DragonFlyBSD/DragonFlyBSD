@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.19 2005/09/01 12:59:38 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.20 2005/11/28 17:13:41 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -313,7 +313,7 @@ cm_attach(dev)
 	ifp->if_timer = 0;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
 
-	arc_ifattach(ifp, linkaddress);
+	arc_ifattach(ifp, linkaddress, NULL);
 	return 0;
 }
 
@@ -329,11 +329,9 @@ cm_init(xsc)
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0) {
-		crit_enter();
 		ifp->if_flags |= IFF_RUNNING;
 		cm_reset(sc);
 		cm_start(ifp);
-		crit_exit();
 	}
 }
 
@@ -461,22 +459,14 @@ cm_start(ifp)
 	if_printf(ifp, "start(%p)\n", ifp);
 #endif
 
-	crit_enter();
-
-	if ((ifp->if_flags & IFF_RUNNING) == 0) {
-		crit_exit();
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
-	}
 
-	if (sc->sc_tx_fillcount >= 2) {
-		crit_exit();
+	if (sc->sc_tx_fillcount >= 2)
 		return;
-	}
 
 	m = arc_frag_next(ifp);
 	buffer = sc->sc_tx_act ^ 1;
-
-	crit_exit();
 
 	if (m == 0)
 		return;
@@ -543,7 +533,6 @@ cm_start(ifp)
 	sc->sc_retransmits[buffer] = (m->m_flags & M_BCAST) ? 1 : 5;
 
 	/* actually transmit the packet */
-	crit_enter();
 
 	if (++sc->sc_tx_fillcount > 1) {
 		/*
@@ -569,9 +558,6 @@ cm_start(ifp)
 
 		sc->sc_arccom.ac_if.if_timer = ARCTIMEOUT;
 	}
-
-	crit_exit();
-
 	m_freem(m);
 
 	/*
@@ -599,9 +585,7 @@ cm_srint(vsc)
 	struct arc_header *ah;
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
-	crit_enter();
 	buffer = sc->sc_rx_act ^ 1;
-	crit_exit();
 
 	/*
 	 * Align so that IP packet will be longword aligned. Here we
@@ -651,7 +635,7 @@ cm_srint(vsc)
 	    rman_get_bustag(sc->mem_res), rman_get_bushandle(sc->mem_res),
 	    cm_ram_ptr + offset, mtod(m, u_char *) + 2, len);
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
 
 	m = NULL;
 	ifp->if_ipackets++;
@@ -663,8 +647,6 @@ cleanup:
 
 	/* mark buffer as invalid by source id 0 */
 	PUTMEM(buffer << 9, 0);
-
-	crit_enter();
 
 	if (--sc->sc_rx_fillcount == 2 - 1) {
 
@@ -680,7 +662,6 @@ cleanup:
 		if_printf(ifp, "srint: restarted rx on buf %d\n", buffer);
 #endif
 	}
-	crit_exit();
 }
 
 __inline static void
@@ -901,12 +882,14 @@ cm_reconwatch(arg)
 	struct cm_softc *sc = arg;
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (sc->sc_reconcount >= ARC_EXCESSIVE_RECONS) {
 		sc->sc_reconcount = 0;
 		log(LOG_WARNING, "%s: token valid again.\n",
 		    ifp->if_xname);
 	}
 	sc->sc_reconcount = 0;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 
@@ -926,8 +909,6 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	sc = ifp->if_softc;
 	ifa = (struct ifaddr *)data;
 	ifr = (struct ifreq *)data;
-
-	crit_enter();
 
 #if defined(CM_DEBUG) && (CM_DEBUG > 2)
 	if_printf(ifp, "ioctl() called, cmd = 0x%lx\n", command);
@@ -956,8 +937,6 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = arc_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 	return (error);
 }
 

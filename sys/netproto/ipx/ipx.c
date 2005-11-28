@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.8 2005/06/10 22:34:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,9 +165,10 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 			ia->ia_flags &= ~IFA_ROUTE;
 		}
 		if (ifp->if_ioctl) {
-			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR,
-						 (void *)ia,
-						 td->td_proc->p_ucred);
+			lwkt_serialize_enter(ifp->if_serializer);
+			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR,
+					      (void *)ia, td->td_proc->p_ucred);
+			lwkt_serialize_exit(ifp->if_serializer);
 			if (error)
 				return (error);
 		}
@@ -223,7 +224,10 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 	default:
 		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		lwkt_serialize_exit(ifp->if_serializer);
+		return (error);
 	}
 }
 
@@ -257,8 +261,6 @@ ipx_ifinit(ifp, ia, sipx, scrub)
 	struct sockaddr_ipx oldaddr;
 	int error;
 
-	crit_enter();
-
 	/*
 	 * Set up new addresses.
 	 */
@@ -276,14 +278,15 @@ ipx_ifinit(ifp, ia, sipx, scrub)
 	 * if this is its first address,
 	 * and to validate the address if necessary.
 	 */
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (ifp->if_ioctl != NULL &&
-	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (void *)ia,
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (void *)ia,
 	   			      (struct ucred *)NULL))) {
 		ia->ia_addr = oldaddr;
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);
 	}
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 	/*
 	 * Add route for the network.

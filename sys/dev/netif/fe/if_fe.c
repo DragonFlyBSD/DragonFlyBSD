@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.22 2005/11/22 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.23 2005/11/28 17:13:42 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -744,13 +744,6 @@ fe_attach (device_t dev)
 	int flags = device_get_flags(dev);
 	int b, error;
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       fe_intr, sc, &sc->irq_handle, NULL);
-	if (error) {
-		fe_release_resource(dev);
-		return ENXIO;
-	}
-
 	/*
 	 * Initialize ifnet structure
 	 */
@@ -819,8 +812,18 @@ fe_attach (device_t dev)
 #endif
 
 	/* Attach and stop the interface. */
-	ether_ifattach(&sc->sc_if, sc->sc_enaddr);
+	ether_ifattach(&sc->sc_if, sc->sc_enaddr, NULL);
 	fe_stop(sc);
+
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       fe_intr, sc, &sc->irq_handle, 
+			       sc->sc_if.if_serializer);
+	if (error) {
+		if_detach(&sc->sc_if);
+		fe_release_resource(dev);
+		return ENXIO;
+	}
+
   
   	/* Print additional info when attached.  */
  	device_printf(dev, "type %s%s\n", sc->typestr,
@@ -943,8 +946,6 @@ fe_reset (struct fe_softc *sc)
 void
 fe_stop (struct fe_softc *sc)
 {
-	crit_enter();
-
 	/* Disable interrupts.  */
 	fe_outb(sc, FE_DLCR2, 0x00);
 	fe_outb(sc, FE_DLCR3, 0x00);
@@ -976,8 +977,6 @@ fe_stop (struct fe_softc *sc)
 	/* Call a device-specific hook.  */
 	if (sc->stop)
 		sc->stop(sc);
-
-	crit_exit();
 }
 
 /*
@@ -1007,8 +1006,6 @@ fe_init (void * xsc)
 	struct fe_softc *sc = xsc;
 
 	/* Start initializing 86960.  */
-	crit_enter();
-
 	/* Call a hook before we start initializing the chip.  */
 	if (sc->init)
 		sc->init(sc);
@@ -1116,8 +1113,6 @@ fe_init (void * xsc)
            delay.  */
 	fe_start(&sc->sc_if);
 #endif
-
-	crit_exit();
 }
 
 /*
@@ -1752,8 +1747,6 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0;
 
-	crit_enter();
-
 	switch (command) {
 	  case SIOCSIFFLAGS:
 		/*
@@ -1797,9 +1790,6 @@ fe_ioctl (struct ifnet * ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 
@@ -1885,7 +1875,7 @@ fe_get_packet (struct fe_softc * sc, u_short len)
 	}
 
 	/* Feed the packet to upper layer.  */
-	(*sc->sc_if.if_input)(&sc->sc_if, m);
+	sc->sc_if.if_input(&sc->sc_if, m);
 	return 0;
 }
 

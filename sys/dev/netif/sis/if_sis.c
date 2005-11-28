@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.29 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.30 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -68,6 +68,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -515,8 +516,6 @@ sis_mii_readreg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
 	int i, ack;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -589,8 +588,6 @@ fail:
 	SIO_SET(SIS_MII_CLK);
 	DELAY(1);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -602,8 +599,6 @@ fail:
 static int
 sis_mii_writereg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
-	crit_enter();
-
 	/*
 	 * Set up frame for TX.
 	 */
@@ -636,8 +631,6 @@ sis_mii_writereg(struct sis_softc *sc, struct sis_mii_frame *frame)
 	 * Turn off xmit.
 	 */
 	SIO_CLR(SIS_MII_DIR);
-
-	crit_exit();
 
 	return(0);
 }
@@ -1302,16 +1295,17 @@ sis_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 	
 	/*
 	 * Tell the upper layer(s) we support long frames.
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-	error = bus_setup_intr(dev, sc->sis_irq, 0,
+	error = bus_setup_intr(dev, sc->sis_irq, INTR_NETSAFE,
 			       sis_intr, sc, 
-			       &sc->sis_intrhand, NULL);
+			       &sc->sis_intrhand, 
+			       ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
@@ -1337,7 +1331,7 @@ sis_detach(device_t dev)
 	struct sis_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		sis_reset(sc);
@@ -1350,8 +1344,6 @@ sis_detach(device_t dev)
 
 	if (sc->sis_intrhand)
 		bus_teardown_intr(dev, sc->sis_irq, sc->sis_intrhand);
-
-	crit_exit();
 
 	if (sc->sis_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sis_irq);
@@ -1380,6 +1372,7 @@ sis_detach(device_t dev)
 	if (sc->sis_parent_tag)
 		bus_dma_tag_destroy(sc->sis_parent_tag);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1558,7 +1551,7 @@ sis_rxeof(struct sis_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	sc->sis_cdata.sis_rx_prod = i;
@@ -1635,7 +1628,7 @@ sis_tick(void *xsc)
 	struct mii_data *mii;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii = device_get_softc(sc->sis_miibus);
 	mii_tick(mii);
@@ -1650,8 +1643,7 @@ sis_tick(void *xsc)
 	}
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 #ifdef DEVICE_POLLING
@@ -1883,8 +1875,6 @@ sis_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	crit_enter();
-
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
 	 */
@@ -1920,7 +1910,6 @@ sis_init(void *xsc)
 		if_printf(ifp, "initialization failed: "
 			  "no memory for rx buffers\n");
 		sis_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -2042,8 +2031,6 @@ sis_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -2094,8 +2081,6 @@ sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -2123,9 +2108,6 @@ sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -2212,9 +2194,13 @@ static void
 sis_shutdown(device_t dev)
 {
 	struct sis_softc	*sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
-
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	sis_reset(sc);
 	sis_stop(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
+

@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.24 2005/11/22 00:24:35 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.25 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -131,7 +131,7 @@ tuncreate(dev)
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_softc = sc;
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 	dev->si_drv1 = sc;
 }
@@ -182,27 +182,29 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	tp->tun_pid = 0;
 
 	/* Junk all pending output. */
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	ifq_purge(&ifp->if_snd);
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (ifp->if_flags & IFF_UP) {
-		crit_enter();
+		lwkt_serialize_enter(ifp->if_serializer);
 		if_down(ifp);
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		struct ifaddr *ifa;
 
-		crit_enter();
+		lwkt_serialize_enter(ifp->if_serializer);
 		/* find internet addresses and delete routes */
-		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
-			if (ifa->ifa_addr->sa_family == AF_INET)
+		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+			if (ifa->ifa_addr->sa_family == AF_INET) {
 				rtinit(ifa, (int)RTM_DELETE,
 				    tp->tun_flags & TUN_DSTADDR ? RTF_HOST : 0);
+			}
+		}
 		ifp->if_flags &= ~IFF_RUNNING;
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	funsetown(tp->tun_sigio);
@@ -251,6 +253,8 @@ tuninit(ifp)
 
 /*
  * Process an ioctl request.
+ *
+ * MPSAFE
  */
 int
 tunifioctl(ifp, cmd, data, cr)
@@ -263,8 +267,6 @@ tunifioctl(ifp, cmd, data, cr)
 	struct tun_softc *tp = ifp->if_softc;
 	struct ifstat *ifs;
 	int error = 0;
-
-	crit_enter();
 
 	switch(cmd) {
 	case SIOCGIFSTATUS:
@@ -292,13 +294,13 @@ tunifioctl(ifp, cmd, data, cr)
 	default:
 		error = EINVAL;
 	}
-
-	crit_exit();
 	return (error);
 }
 
 /*
  * tunoutput - queue packets from higher level ready to put out.
+ *
+ * MPSAFE
  */
 int
 tunoutput(ifp, m0, dst, rt)
@@ -350,9 +352,7 @@ tunoutput(ifp, m0, dst, rt)
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			crit_enter();
 			IF_DROP(&ifp->if_snd);
-			crit_exit();
 			ifp->if_oerrors++;
 			return (ENOBUFS);
 		} else {
@@ -366,9 +366,7 @@ tunoutput(ifp, m0, dst, rt)
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
-			crit_enter();
 			IF_DROP(&ifp->if_snd);
-			crit_exit();
 			ifp->if_oerrors++;
 			return ENOBUFS;
 		} else
@@ -390,11 +388,13 @@ tunoutput(ifp, m0, dst, rt)
 		ifp->if_opackets++;
 		if (tp->tun_flags & TUN_RWAIT) {
 			tp->tun_flags &= ~TUN_RWAIT;
-		wakeup((caddr_t)tp);
+			wakeup((caddr_t)tp);
 		}
+		get_mplock();
 		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
 			pgsigio(tp->tun_sigio, SIGIO, 0);
 		selwakeup(&tp->tun_rsel);
+		rel_mplock();
 	}
 	return (error);
 }
@@ -473,18 +473,17 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			tp->tun_flags &= ~TUN_ASYNC;
 		break;
 	case FIONREAD:
-		crit_enter();
-
+		lwkt_serialize_enter(tp->tun_if.if_serializer);
 		if (!ifq_is_empty(&tp->tun_if.if_snd)) {
 			struct mbuf *mb;
 
 			mb = ifq_poll(&tp->tun_if.if_snd);
 			for( *(int *)data = 0; mb != 0; mb = mb->m_next) 
 				*(int *)data += mb->m_len;
-		} else
+		} else {
 			*(int *)data = 0;
-
-		crit_exit();
+		}
+		lwkt_serialize_exit(tp->tun_if.if_serializer);
 		break;
 	case FIOSETOWN:
 		return (fsetown(*(int *)data, &tp->tun_sigio));
@@ -531,21 +530,21 @@ tunread(dev, uio, flag)
 
 	tp->tun_flags &= ~TUN_RWAIT;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	while ((m0 = ifq_dequeue(&ifp->if_snd, NULL)) == NULL) {
 		if (flag & IO_NDELAY) {
-			crit_exit();
+			lwkt_serialize_exit(ifp->if_serializer);
 			return EWOULDBLOCK;
 		}
 		tp->tun_flags |= TUN_RWAIT;
 		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0) {
-			crit_exit();
+			lwkt_serialize_exit(ifp->if_serializer);
 			return error;
 		}
 	}
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	while (m0 && uio->uio_resid > 0 && error == 0) {
 		len = min(uio->uio_resid, m0->m_len);
@@ -701,7 +700,7 @@ tunpoll(dev_t dev, int events, struct thread *td)
 
 	TUNDEBUG(ifp, "tunpoll\n");
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
@@ -715,7 +714,7 @@ tunpoll(dev_t dev, int events, struct thread *td)
 	if (events & (POLLOUT | POLLWRNORM))
 		revents |= events & (POLLOUT | POLLWRNORM);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (revents);
 }

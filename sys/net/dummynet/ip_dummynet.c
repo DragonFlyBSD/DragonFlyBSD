@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.13 2005/06/03 18:20:36 swildner Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -464,8 +464,10 @@ transmit_event(struct dn_pipe *pipe)
 		    m = bdg_forward_ptr(m, eh, pkt->ifp);
 		    if (m)
 			m_freem(m);
-		} else
-		    ether_demux(NULL, eh, m); /* which consumes the mbuf */
+		} else {
+		    /* which consumes the mbuf */
+		    ether_demux(NULL, eh, m);
+		}
 	    }
 	    break ;
 	case DN_TO_ETH_OUT:

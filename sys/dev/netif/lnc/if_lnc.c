@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.23 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.24 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -71,6 +71,7 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/syslog.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <machine/bus.h>
@@ -576,7 +577,7 @@ lnc_rint(struct lnc_softc *sc)
 				      sc->arpcom.ac_enaddr, ETHER_ADDR_LEN) == 0) {
 				    m_freem(head);
 				} else {
-					(ifp->if_input)(ifp, head);
+					ifp->if_input(ifp, head);
 				}
 			} else {
 				int unit = ifp->if_dunit;
@@ -873,7 +874,7 @@ lnc_attach_common(device_t dev)
 	 * XXX -- should check return status of if_attach
 	 */
 
-	ether_ifattach(&sc->arpcom.ac_if, sc->arpcom.ac_enaddr);
+	ether_ifattach(&sc->arpcom.ac_if, sc->arpcom.ac_enaddr, NULL);
 
 	if (sc->nic.ic == LANCE || sc->nic.ic == C_LANCE)
 		if_printf(ifp, "%s (%s)", nic_ident[sc->nic.ident],

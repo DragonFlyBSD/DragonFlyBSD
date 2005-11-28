@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.6 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.7 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -88,6 +88,7 @@ atm_rtrequest(req, rt, info)
 	struct atm_pseudohdr *aph;
 #endif
 	static struct sockaddr_dl null_sdl = {sizeof(null_sdl), AF_LINK};
+	int error;
 
 	if (rt->rt_flags & RTF_GATEWAY)   /* link level requests only */
 		return;
@@ -153,8 +154,11 @@ atm_rtrequest(req, rt, info)
 		 */
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
-		if (rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA, (caddr_t)&api,
-					 (struct ucred *)NULL) != 0) {
+		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
+		error = rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA,
+					     (caddr_t)&api, NULL);
+		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
+		if (error) {
 			printf("atm: couldn't add VC\n");
 			goto failed;
 		}
@@ -195,9 +199,10 @@ failed:
 
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
+		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
 		rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, (caddr_t)&api,
 				     (struct ucred *)NULL);
-
+		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
 		break;
 	}
 }

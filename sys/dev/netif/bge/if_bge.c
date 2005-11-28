@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.49 2005/11/22 00:24:20 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.50 2005/11/28 17:13:41 dillon Exp $
  *
  */
 
@@ -200,6 +200,7 @@ static void	bge_txeof(struct bge_softc *);
 static void	bge_rxeof(struct bge_softc *);
 
 static void	bge_tick(void *);
+static void	bge_tick_serialized(void *);
 static void	bge_stats_update(struct bge_softc *);
 static void	bge_stats_update_regs(struct bge_softc *);
 static int	bge_encap(struct bge_softc *, struct mbuf *, uint32_t *);
@@ -1718,10 +1719,11 @@ bge_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, ether_addr);
+	ether_ifattach(ifp, ether_addr, NULL);
 
-	error = bus_setup_intr(dev, sc->bge_irq, 0,
-			       bge_intr, sc, &sc->bge_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->bge_irq, INTR_NETSAFE,
+			       bge_intr, sc, &sc->bge_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't set up irq\n");
@@ -1742,7 +1744,7 @@ bge_detach(device_t dev)
 	struct bge_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		ether_ifdetach(ifp);
@@ -1758,11 +1760,11 @@ bge_detach(device_t dev)
 
 	bge_release_resources(sc);
 
-	crit_exit();
-
 	if (sc->bge_asicrev != BGE_ASICREV_BCM5705 &&
 	    sc->bge_asicrev != BGE_ASICREV_BCM5750)
 		bge_free_jumbo_mem(sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -2030,10 +2032,9 @@ bge_rxeof(struct bge_softc *sc)
 		if (have_tag) {
 			VLAN_INPUT_TAG(m, vlan_tag);
 			have_tag = vlan_tag = 0;
-			continue;
+		} else {
+			ifp->if_input(ifp, m);
 		}
-
-		(*ifp->if_input)(ifp, m);
 	}
 
 	CSR_WRITE_4(sc, BGE_MBX_RX_CONS0_LO, sc->bge_rx_saved_considx);
@@ -2112,7 +2113,7 @@ bge_intr(void *xsc)
 		if (status & BGE_MACSTAT_MI_INTERRUPT) {
 			sc->bge_link = 0;
 			callout_stop(&sc->bge_stat_timer);
-			bge_tick(sc);
+			bge_tick_serialized(sc);
 			/* Clear the interrupt */
 			CSR_WRITE_4(sc, BGE_MAC_EVT_ENB,
 			    BGE_EVTENB_MI_INTERRUPT);
@@ -2148,11 +2149,11 @@ bge_intr(void *xsc)
 			    (!sc->bge_tbi && (mimode & BGE_MIMODE_AUTOPOLL))) {
 				sc->bge_link = 0;
 				callout_stop(&sc->bge_stat_timer);
-				bge_tick(sc);
+				bge_tick_serialized(sc);
 			}
 			sc->bge_link = 0;
 			callout_stop(&sc->bge_stat_timer);
-			bge_tick(sc);
+			bge_tick_serialized(sc);
 			/* Clear the interrupt */
 			CSR_WRITE_4(sc, BGE_MAC_STS, BGE_MACSTAT_SYNC_CHANGED|
 			    BGE_MACSTAT_CFG_CHANGED|BGE_MACSTAT_MI_COMPLETE|
@@ -2185,10 +2186,19 @@ bge_tick(void *xsc)
 {
 	struct bge_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	bge_tick_serialized(xsc);
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static void
+bge_tick_serialized(void *xsc)
+{
+	struct bge_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii = NULL;
 	struct ifmedia *ifm = NULL;
-
-	crit_enter();
 
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5705 ||
 	    sc->bge_asicrev == BGE_ASICREV_BCM5750)
@@ -2199,7 +2209,6 @@ bge_tick(void *xsc)
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 
 	if (sc->bge_link) {
-		crit_exit();
 		return;
 	}
 
@@ -2217,7 +2226,6 @@ bge_tick(void *xsc)
 			if (!ifq_is_empty(&ifp->if_snd))
 				(*ifp->if_start)(ifp);
 		}
-		crit_exit();
 		return;
 	}
 
@@ -2236,8 +2244,6 @@ bge_tick(void *xsc)
 				(*ifp->if_start)(ifp);
 		}
 	}
-
-	crit_exit();
 }
 
 static void
@@ -2445,10 +2451,7 @@ bge_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t *m;
 
-	crit_enter();
-
 	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
 		return;
 	}
 
@@ -2463,7 +2466,6 @@ bge_init(void *xsc)
 	 */
 	if (bge_blockinit(sc)) {
 		if_printf(ifp, "initialization failure\n");
-		crit_exit();
 		return;
 	}
 
@@ -2536,8 +2538,6 @@ bge_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -2642,8 +2642,6 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	int mask, error = 0;
 	struct mii_data *mii;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFMTU:
 		/* Disallow jumbo frames on 5705/5750. */
@@ -2719,9 +2717,6 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 

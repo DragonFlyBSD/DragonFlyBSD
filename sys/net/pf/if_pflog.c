@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pflog.c,v 1.9 2004/06/22 20:13:24 brooks Exp $	*/
 /*	$OpenBSD: if_pflog.c,v 1.11 2003/12/31 11:18:25 cedric Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.3 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pflog.c,v 1.4 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -133,7 +133,7 @@ pflog_clone_create(struct if_clone *ifc, int unit)
         sc->sc_if.if_snd.ifq_maxlen = ifqmaxlen;
         sc->sc_if.if_hdrlen = PFLOG_HDRLEN;
         sc->sc_if.if_softc = sc;
-        if_attach(&sc->sc_if);
+        if_attach(&sc->sc_if, NULL);
 
         LIST_INSERT_HEAD(&pflog_list, sc, sc_next);
 	bpfattach(&sc->sc_if, DLT_PFLOG, PFLOG_HDRLEN);

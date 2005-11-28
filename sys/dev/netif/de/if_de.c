@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.40 2005/10/12 17:35:51 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.41 2005/11/28 17:13:42 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -129,13 +129,11 @@ tulip_timeout_callback(void *arg)
 {
     tulip_softc_t *sc = arg;
 
-    crit_enter();
-
+    lwkt_serialize_enter(&sc->tulip_serializer);
     sc->tulip_flags &= ~TULIP_TIMEOUTPENDING;
     sc->tulip_probe_timeout -= 1000 / TULIP_HZ;
     (sc->tulip_boardsw->bd_media_poll)(sc, TULIP_MEDIAPOLL_TIMER);
-
-    crit_exit();
+    lwkt_serialize_exit(&sc->tulip_serializer);
 }
 
 static void
@@ -152,6 +150,7 @@ static int
 tulip_txprobe(tulip_softc_t *sc)
 {
     struct mbuf *m;
+
     /*
      * Before we are sure this is the right media we need
      * to send a small packet to make sure there's carrier.
@@ -3026,7 +3025,6 @@ tulip_rx_intr(tulip_softc_t *sc)
     int fillok = 1;
 
     for (;;) {
-	struct ether_header eh;
 	tulip_desc_t *eop = ri->ri_nextin;
 	int total_len = 0, last_offset = 0;
 	struct mbuf *ms = NULL, *me = NULL;
@@ -3106,7 +3104,6 @@ tulip_rx_intr(tulip_softc_t *sc)
 		)) {
 	    me->m_len = total_len - last_offset;
 
-	    eh = *mtod(ms, struct ether_header *);
 	    sc->tulip_flags |= TULIP_RXACT;
 	    accept = 1;
 	} else {
@@ -3163,9 +3160,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 		) {
 #if !defined(TULIP_COPY_RXDATA)
 		ms->m_pkthdr.len = total_len;
-		ms->m_pkthdr.rcvif = ifp;
-		m_adj(ms, sizeof(struct ether_header));
-		ether_input(ifp, &eh, ms);
+		ifp->if_input(ifp, ms);
 #else
 #ifdef BIG_PACKET
 #error BIG_PACKET is incompatible with TULIP_COPY_RXDATA
@@ -3174,8 +3169,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 		m_copydata(ms, 0, total_len, mtod(m0, caddr_t));
 		m0->m_len = m0->m_pkthdr.len = total_len;
 		m0->m_pkthdr.rcvif = ifp;
-		m_adj(m0, sizeof(struct ether_header));
-		ether_input(ifp, &eh, m0);
+		ifp->if_input(ifp, m0);
 		m0 = ms;
 #endif /* ! TULIP_COPY_RXDATA */
 	    }
@@ -3723,8 +3717,6 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
     struct ifreq *ifr = (struct ifreq *)data;
     int error = 0;
 
-    crit_enter();
-
     switch (cmd) {
 	case SIOCSIFADDR: {
 	    ifp->if_flags |= IFF_UP;
@@ -3849,9 +3841,6 @@ tulip_ifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred * cr)
 	    break;
 	}
     }
-
-    crit_exit();
-
     return error;
 }
 
@@ -3951,7 +3940,7 @@ tulip_attach(tulip_softc_t *sc)
 
     tulip_reset(sc);
 
-    ether_ifattach(&(sc)->tulip_if, sc->tulip_enaddr);
+    ether_ifattach(&(sc)->tulip_if, sc->tulip_enaddr, NULL);
     ifp->if_snd.ifq_maxlen = ifqmaxlen;
 }
 
@@ -4041,10 +4030,13 @@ static int
 tulip_shutdown(device_t dev)
 {
     tulip_softc_t *sc = device_get_softc(dev);
+
+    lwkt_serialize_enter(&sc->tulip_serializer);
     TULIP_CSR_WRITE(sc, csr_busmode, TULIP_BUSMODE_SWRESET);
     DELAY(10);	/* Wait 10 microseconds (actually 50 PCI cycles but at 
 		   33MHz that comes to two microseconds but wait a
 		   bit longer anyways) */
+    lwkt_serialize_exit(&sc->tulip_serializer);
     return 0;
 }
 
@@ -4098,6 +4090,7 @@ tulip_pci_attach(device_t dev)
     }
 
     sc = device_get_softc(dev);
+    lwkt_serialize_init(&sc->tulip_serializer);
     sc->tulip_dev = dev;
     sc->tulip_pci_busno = pci_get_bus(dev);
     sc->tulip_pci_devno = pci_get_slot(dev);
@@ -4163,6 +4156,7 @@ tulip_pci_attach(device_t dev)
 		   33MHz that comes to two microseconds but wait a
 		   bit longer anyways) */
 
+    lwkt_serialize_enter(&sc->tulip_serializer);
     if ((retval = tulip_read_macaddr(sc)) < 0) {
 	device_printf(dev, "can't read ENET ROM (why=%d) (", retval);
 	for (idx = 0; idx < 32; idx++)
@@ -4184,18 +4178,18 @@ tulip_pci_attach(device_t dev)
 	    rid = 0;
 	    res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
 				         RF_SHAREABLE | RF_ACTIVE);
-	    if (res == 0 || bus_setup_intr(dev, res, 0,
-					   intr_rtn, sc, &ih, NULL)) {
+	    if (res == 0 || bus_setup_intr(dev, res, INTR_NETSAFE,
+					   intr_rtn, sc, &ih,
+					   &sc->tulip_serializer)) {
+		lwkt_serialize_exit(&sc->tulip_serializer);
 		device_printf(dev, "couldn't map interrupt\n");
 		free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
 		free((caddr_t) sc->tulip_txdescs, M_DEVBUF);
 		return ENXIO;
 	    }
 	}
-
-	crit_enter();
 	tulip_attach(sc);
-	crit_exit();
+	lwkt_serialize_exit(&sc->tulip_serializer);
     }
     return 0;
 }

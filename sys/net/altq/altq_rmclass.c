@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.4 2005/06/03 18:20:36 swildner Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.5 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -1501,6 +1501,10 @@ rmc_delay_action(struct rm_class *cl, struct rm_class *borrow)
  *	by raising IPL to splimp so that's what's implemented here.  On a
  *	different system this would probably need to be changed.
  *
+ *	Since this function is called from an independant timeout, we
+ *	have to set up the lock conditions expected for the ALTQ operation.
+ *	Note that the restart will probably fall through to an if_start.
+ *
  *	Returns:	NONE
  */
 
@@ -1510,7 +1514,7 @@ rmc_restart(void *arg)
 	struct rm_class *cl = arg;
 	struct rm_ifdat *ifd = cl->ifdat_;
 
-	crit_enter();
+	lwkt_serialize_enter(ifd->ifq_->altq_ifp->if_serializer);
 	if (cl->sleeping_) {
 		cl->sleeping_ = 0;
 		cl->undertime_.tv_sec = 0;
@@ -1520,7 +1524,7 @@ rmc_restart(void *arg)
 			(ifd->restart)(ifd->ifq_);
 		}
 	}
-	crit_exit();
+	lwkt_serialize_exit(ifd->ifq_->altq_ifp->if_serializer);
 }
 
 /*

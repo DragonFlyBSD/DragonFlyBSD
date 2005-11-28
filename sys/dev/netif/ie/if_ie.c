@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.25 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.26 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -204,8 +204,7 @@ static int	ierint(int unit, struct ie_softc * ie);
 static int	ietint(int unit, struct ie_softc * ie);
 static int	iernr(int unit, struct ie_softc * ie);
 static void	start_receiver(int unit);
-static __inline int ieget(int, struct ie_softc *, struct mbuf **,
-			  struct ether_header *);
+static __inline int ieget(int, struct ie_softc *, struct mbuf **);
 static v_caddr_t setup_rfa(v_caddr_t ptr, struct ie_softc * ie);
 static int	mc_setup(int, v_caddr_t, volatile struct ie_sys_ctl_block *);
 static void	ie_mc_reset(int unit);
@@ -831,7 +830,7 @@ ieattach(struct isa_device *dvp)
 		EVENTHANDLER_REGISTER(shutdown_post_sync, ee16_shutdown,
 				      ie, SHUTDOWN_PRI_DEFAULT);
 
-	ether_ifattach(ifp, ie->arpcom.ac_enaddr);
+	ether_ifattach(ifp, ie->arpcom.ac_enaddr, NULL);
 	return (1);
 }
 
@@ -844,6 +843,8 @@ ieintr(void *arg)
 	int unit = (int)arg;
 	struct ie_softc *ie = &ie_softc[unit];
 	u_short status;
+
+	lwkt_serialize_enter(ie->arpcom.ac_if.if_serializer);
 
 	/* Clear the interrupt latch on the 3C507. */
 	if (ie->hard_type == IE_3C507
@@ -907,6 +908,7 @@ loop:
 	if (ie->hard_type == IE_EE16)
 		outb(PORT + IEE16_IRQ, ie->irq_encoded | IEE16_IRQ_ENABLE);
 
+	lwkt_serialize_exit(ie->arpcom.ac_if.if_serializer);
 }
 
 /*
@@ -1158,9 +1160,10 @@ ie_packet_len(int unit, struct ie_softc * ie)
  * operation considerably.  (Provided that it works, of course.)
  */
 static __inline int
-ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
+ieget(int unit, struct ie_softc *ie, struct mbuf **mp)
 {
 	struct	mbuf *m, *top, **mymp;
+	struct  ether_header eh;
 	int	i;
 	int	offset;
 	int	totlen, resid;
@@ -1176,7 +1179,7 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 	/*
 	 * Snarf the Ethernet header.
 	 */
-	bcopy((v_caddr_t) ie->cbuffs[i], (caddr_t) ehp, sizeof *ehp);
+	bcopy((v_caddr_t) ie->cbuffs[i], (caddr_t) &eh, sizeof eh);
 	/* ignore cast-qual warning here */
 
 	/*
@@ -1185,14 +1188,14 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 	 * This is only a consideration when FILTER is defined; i.e., when
 	 * we are either running BPF or doing multicasting.
 	 */
-	if (!check_eh(ie, ehp)) {
+	if (!check_eh(ie, &eh)) {
 		ie_drop_packet_buffer(unit, ie);
 		ie->arpcom.ac_if.if_ierrors--;	/* just this case, it's not an
 						 * error
 						 */
 		return (-1);
 	}
-	totlen -= (offset = sizeof *ehp);
+	offset = 0;
 
 	MGETHDR(*mp, MB_DONTWAIT, MT_DATA);
 	if (!*mp) {
@@ -1200,7 +1203,6 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 		return (-1);
 	}
 	m = *mp;
-	m->m_pkthdr.rcvif = &ie->arpcom.ac_if;
 	m->m_len = MHLEN;
 	resid = m->m_pkthdr.len = totlen;
 	top = 0;
@@ -1333,8 +1335,7 @@ static void
 ie_readframe(int unit, struct ie_softc *ie, int	num/* frame number to read */)
 {
 	struct ie_recv_frame_desc rfd;
-	struct mbuf *m = 0;
-	struct ether_header eh;
+	struct mbuf *m = NULL;
 
 	bcopy((v_caddr_t) (ie->rframes[num]), &rfd,
 	      sizeof(struct ie_recv_frame_desc));
@@ -1350,21 +1351,12 @@ ie_readframe(int unit, struct ie_softc *ie, int	num/* frame number to read */)
 	ie->rfhead = (ie->rfhead + 1) % ie->nframes;
 
 	if (rfd.ie_fd_status & IE_FD_OK) {
-		if (ieget(unit, ie, &m, &eh)) {
+		if (ieget(unit, ie, &m)) {
 			ie->arpcom.ac_if.if_ierrors++;	/* this counts as an
 							 * error */
 			return;
 		}
 	}
-#ifdef DEBUG
-	if (ie_debug & IED_READFRAME) {
-		printf("ie%d: frame from ether %6D type %x\n", unit,
-		       eh.ether_shost, ":", (unsigned) eh.ether_type);
-	}
-	if (ntohs(eh.ether_type) > ETHERTYPE_TRAIL
-	    && ntohs(eh.ether_type) < (ETHERTYPE_TRAIL + ETHERTYPE_NTRAILER))
-		printf("received trailer!\n");
-#endif
 
 	if (!m)
 		return;
@@ -1372,7 +1364,7 @@ ie_readframe(int unit, struct ie_softc *ie, int	num/* frame number to read */)
 	/*
 	 * Finally pass this packet up to higher layers.
 	 */
-	ether_input(&ie->arpcom.ac_if, &eh, m);
+	ie->arpcom.ac_if.if_input(&ie->arpcom.ac_if, m);
 }
 
 static void
@@ -1497,8 +1489,6 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	volatile struct ie_sys_ctl_block *scb;
 	u_long	realbase;
 
-	crit_exit();
-
 	realbase = (uintptr_t) where + size - (1 << 24);
 
 	scp = (volatile struct ie_sys_conf_ptr *) (uintptr_t)
@@ -1530,7 +1520,6 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	DELAY(100);		/* wait a while... */
 
 	if (iscp->ie_busy) {
-		crit_exit();
 		return (0);
 	}
 	/*
@@ -1554,7 +1543,6 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	DELAY(100);
 
 	if (iscp->ie_busy) {
-		crit_exit();
 		return (0);
 	}
 	ie_softc[unit].iosize = size;
@@ -1567,8 +1555,6 @@ check_ie_present(int unit, caddr_t where, unsigned size)
 	 * Acknowledge any interrupts we may have caused...
 	 */
 	ie_ack(scb, IE_ST_WHENCE, unit, ie_softc[unit].ie_chan_attn);
-
-	crit_exit();
 
 	return (1);
 }
@@ -1732,10 +1718,7 @@ sl_read_ether(int unit, unsigned char addr[6])
 static void
 iereset(int unit)
 {
-	crit_enter();
-
 	if (unit >= NIE) {
-		crit_exit();
 		return;
 	}
 	printf("ie%d: reset\n", unit);
@@ -1759,8 +1742,6 @@ iereset(int unit)
 
 	ie_softc[unit].arpcom.ac_if.if_flags |= IFF_UP;
 	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
-
-	crit_exit();
 }
 
 /*
@@ -1860,14 +1841,10 @@ run_tdr(int unit, volatile struct ie_tdr_cmd *cmd)
 static void
 start_receiver(int unit)
 {
-	crit_enter();
-
 	ie_softc[unit].scb->ie_recv_list = MK_16(MEM, ie_softc[unit].rframes[0]);
 	command_and_wait(unit, IE_RU_START, 0, 0);
 
 	ie_ack(ie_softc[unit].scb, IE_ST_WHENCE, unit, ie_softc[unit].ie_chan_attn);
-
-	crit_exit();
 }
 
 /*
@@ -1988,8 +1965,6 @@ ieinit(xsc)
 	int	i;
 	int	unit = ie->unit;
 
-	crit_enter();
-
 	ptr = Alignvol((volatile char *) scb + sizeof *scb);
 
 	/*
@@ -2008,7 +1983,6 @@ ieinit(xsc)
 
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		 || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
-			crit_exit();
 			printf("ie%d: configure command failed\n", unit);
 			return;
 		}
@@ -2028,7 +2002,6 @@ ieinit(xsc)
 		scb->ie_command_list = MK_16(MEM, cmd);
 		if (command_and_wait(unit, IE_CU_START, cmd, IE_STAT_COMPL)
 		    || !(cmd->com.ie_cmd_status & IE_STAT_OK)) {
-			crit_exit();
 			printf("ie%d: individual address "
 			       "setup command failed\n", unit);
 			return;
@@ -2098,8 +2071,6 @@ ieinit(xsc)
 	ie->arpcom.ac_if.if_flags |= IFF_RUNNING;	/* tell higher levels
 							 * we're here */
 	start_receiver(unit);
-
-	crit_exit();
 }
 
 static void
@@ -2112,8 +2083,6 @@ static int
 ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int error = 0;
-
-	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -2153,8 +2122,6 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 	return (error);
 }
 

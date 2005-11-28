@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.10 2005/06/10 22:44:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.11 2005/11/28 17:13:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,9 +174,11 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			ia->ia_flags &= ~IFA_ROUTE;
 		}
 		if (ifp->if_ioctl) {
-			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, 
+			lwkt_serialize_enter(ifp->if_serializer);
+			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, 
 							(caddr_t)ia,
 							(struct ucred *)NULL);
+			lwkt_serialize_exit(ifp->if_serializer);
 			if (error)
 				return (error);
 		}
@@ -238,7 +240,10 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	default:
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data, (struct ucred *)NULL));
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, cmd, data, (struct ucred *)NULL);
+		lwkt_serialize_exit(ifp->if_serializer);
+		return (error);
 	}
 }
 
@@ -293,26 +298,32 @@ ns_ifinit(ifp, ia, sns, scrub)
 	 * and to validate the address if necessary.
 	 */
 	if (ns_hosteqnh(ns_thishost, ns_zerohost)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (ifp->if_ioctl &&
-		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
+		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
 						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
+			lwkt_serialize_exit(ifp->if_serializer);
 			crit_exit();
 			return (error);
 		}
+		lwkt_serialize_exit(ifp->if_serializer);
 		ns_thishost = *h;
 	} else if (ns_hosteqnh(sns->sns_addr.x_host, ns_zerohost)
 	    || ns_hosteqnh(sns->sns_addr.x_host, ns_thishost)) {
 		*h = ns_thishost;
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (ifp->if_ioctl &&
-		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
+		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
 						(struct ucred *)NULL))) {
 			ia->ia_addr = oldaddr;
+			lwkt_serialize_exit(ifp->if_serializer);
 			crit_exit();
 			return (error);
 		}
+		lwkt_serialize_exit(ifp->if_serializer);
 		if (!ns_hosteqnh(ns_thishost,*h)) {
 			ia->ia_addr = oldaddr;
 			crit_exit();

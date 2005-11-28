@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.8 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.9 2005/11/28 17:13:43 dillon Exp $
  */
 
  
@@ -135,29 +135,27 @@ sbni_pci_attach(device_t dev)
 	sc->irq_res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irq_rid,
 	    RF_SHAREABLE);
 
-	if (sc->irq_res) {
-		printf(" irq %ld\n", rman_get_start(sc->irq_res));
-		error = bus_setup_intr(dev, sc->irq_res, 0,
-				       sbni_intr, sc, 
-				       &sc->irq_handle, NULL);
-		if (error) {
-			printf("sbni%d: bus_setup_intr\n", next_sbni_unit);
-			goto attach_failed;
-		}
-	} else {
-		printf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);
-		error = ENOENT;
-		goto attach_failed;
-	}
-
 	*(u_int32_t*)&flags = 0;
 
 	sbni_attach(sc, next_sbni_unit++, flags);
 	if (sc->slave_sc)
 		sbni_attach(sc->slave_sc, next_sbni_unit++, flags);
+
+	if (sc->irq_res) {
+		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+				       sbni_intr, sc, 
+				       &sc->irq_handle, 
+				       sc->arpcom.ac_if.if_serializer);
+		if (error) {
+			printf("sbni%d: bus_setup_intr\n", next_sbni_unit);
+		}
+	} else {
+		printf("\nsbni%d: cannot claim irq!\n", next_sbni_unit);
+	}
+
 	return (0);
 
-attach_failed:
+#if 0
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->io_rid, sc->io_res);
 	if (sc->irq_res) {
 		bus_release_resource(
@@ -166,4 +164,5 @@ attach_failed:
 	if (sc->slave_sc)
 		free(sc->slave_sc, M_DEVBUF);
 	return (error);
+#endif
 }

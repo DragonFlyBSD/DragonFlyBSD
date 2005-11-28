@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.25 2005/11/22 00:24:34 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.26 2005/11/28 17:13:44 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -199,6 +199,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <sys/kernel.h>
@@ -404,12 +405,10 @@ wlprobe(device_t dev)
      */
 #define PCMD(base, hacr) outw((base), (hacr))
 
-    crit_enter();
     PCMD(base, HACR_RESET);			/* reset the board */
     DELAY(DELAYCONST);				/* >> 4 clocks at 6MHz */
     PCMD(base, HACR_RESET);			/* reset the board */
     DELAY(DELAYCONST);	                	/* >> 4 clocks at 6MHz */
-    crit_exit();
 
     /* clear reset command and set PIO#1 in autoincrement mode */
     PCMD(base, HACR_DEFAULT);
@@ -549,14 +548,15 @@ wlattach(device_t dev)
        */
     ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
     ifq_set_ready(&ifp->if_snd);
-    ether_ifattach(ifp, sc->wl_ac.ac_enaddr);
+    ether_ifattach(ifp, sc->wl_ac.ac_enaddr, NULL);
 
     if (sc->freq24) 
 	printf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
     printf("\n");                                       /* 2.4 Gz       */
 
-    error = bus_setup_intr(dev, sc->res_irq, 0,
-			   wlintr, sc, &sc->intr_handle, NULL);
+    error = bus_setup_intr(dev, sc->res_irq, INTR_NETSAFE,
+			   wlintr, sc, &sc->intr_handle, 
+			   ifp->if_serializer);
     if (error) {
 	device_printf(dev, "setup irq fail!\n");
 	ether_ifdetach(ifp);
@@ -576,7 +576,7 @@ wldetach(device_t dev)
     device_t parent = device_get_parent(dev);
     struct ifnet *ifp = &sc->wl_if;
 
-    crit_enter();
+    lwkt_serialize_enter(ifp->if_serializer);
     ether_ifdetach(ifp);
 
     /* reset the board */
@@ -591,9 +591,9 @@ wldetach(device_t dev)
     }
 
     bus_generic_detach(dev);
-    crit_exit();
 
     wl_free_resources(dev);
+    lwkt_serialize_exit(ifp->if_serializer);
     return (0);
 }
 
@@ -794,7 +794,6 @@ wlinit(void *xsc)
     if (ifp->if_flags & IFF_DEBUG)
 	if_printf(ifp, "entered wlinit()\n");
 #endif
-    crit_enter();
     if ((stat = wlhwrst(sc)) == TRUE) {
 	ifp->if_flags |= IFF_RUNNING;   /* same as DSF_RUNNING */
 	/* 
@@ -811,7 +810,6 @@ wlinit(void *xsc)
     } else {
 	if_printf(ifp, "init(): trouble resetting board.\n");
     }
-    crit_exit();
 }
 
 /*
@@ -1085,7 +1083,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
     bytes_in_msg = rbd.status & RBD_SW_COUNT;
     MGETHDR(m, MB_DONTWAIT, MT_DATA);
     tm = m;
-    if (m == (struct mbuf *)0) {
+    if (m == NULL) {
 	/*
 	 * not only do we want to return, we need to drop the packet on
 	 * the floor to clear the interrupt.
@@ -1121,9 +1119,11 @@ wlread(struct wl_softc *sc, u_short fd_p)
 
     mlen = 0;
     clen = mlen;
-    bytes_in_mbuf = m->m_len;
+    bytes_in_mbuf = m->m_len - sizeof(eh);
     mb_p = mtod(tm, u_char *);
     bytes = min(bytes_in_mbuf, bytes_in_msg);
+    bcopy(&eh, mb_p, sizeof(eh));
+    mb_p += sizeof(eh);
     for (;;) {
 	if (bytes & 1) {
 	    len = bytes + 1;
@@ -1217,7 +1217,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
      * to pass the packet upwards.
      *
      */
-    ether_input(ifp, &eh, m);
+    ifp->if_input(ifp, m);
     return 1;
 }
 
@@ -1251,7 +1251,6 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
     if (ifp->if_flags & IFF_DEBUG)
 	if_printf(ifp, "entered wlioctl()\n");
 #endif
-    crit_enter();
     switch (cmd) {
     case SIOCSIFFLAGS:
 	if (ifp->if_flags & IFF_ALLMULTI) {
@@ -1480,7 +1479,6 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
         error = ether_ioctl(ifp, cmd, data);
         break;
     }
-    crit_exit();
     return (error);
 }
 
@@ -1499,10 +1497,13 @@ static void
 wlwatchdog(void *vsc)
 {
     struct wl_softc *sc = vsc;
+    struct ifnet *ifp = &sc->wl_if;
 
+    lwkt_serialize_enter(ifp->if_serializer);
     log(LOG_ERR, "%s: wavelan device timeout on xmit\n", sc->wl_if.if_xname);
     sc->wl_if.if_oerrors++;
     wlinit(sc);
+    lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -2467,8 +2468,6 @@ wlsetpsa(struct wl_softc *sc)
     sc->psa[WLPSA_CRCHIGH] = (crc >> 8) & 0xff;
     sc->psa[WLPSA_CRCOK] = 0x55;	/* default to 'bad' until programming complete */
 
-    crit_enter();		/* ick, long pause */
-    
     PCMD(base, HACR_DEFAULT & ~HACR_16BITS);
     PCMD(base, HACR_DEFAULT & ~HACR_16BITS);
     
@@ -2487,8 +2486,6 @@ wlsetpsa(struct wl_softc *sc)
     
     PCMD(base, HACR_DEFAULT);
     PCMD(base, HACR_DEFAULT);
-    
-    crit_exit();
 }
 
 /* 

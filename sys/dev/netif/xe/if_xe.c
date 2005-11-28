@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.29 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.30 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -105,6 +105,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <sys/module.h>
@@ -163,6 +164,7 @@ static void      xe_watchdog		(struct ifnet *ifp);
 static int       xe_media_change	(struct ifnet *ifp);
 static void      xe_media_status	(struct ifnet *ifp, struct ifmediareq *mrp);
 static timeout_t xe_setmedia;
+static timeout_t xe_setmedia_serialized;
 static void      xe_reset		(struct xe_softc *scp);
 static void      xe_stop		(struct xe_softc *scp);
 static void      xe_enable_intr		(struct xe_softc *scp);
@@ -326,10 +328,11 @@ xe_attach (device_t dev)
   }
 
   /* Attach the interface */
-  ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr);
+  ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr, NULL);
 
-  err = bus_setup_intr(dev, scp->irq_res, 0, xe_intr, scp,
-		       &scp->intrhand, NULL);
+  err = bus_setup_intr(dev, scp->irq_res, INTR_NETSAFE,
+		       xe_intr, scp, &scp->intrhand,
+		       scp->arpcom.ac_if.if_serializer);
   if (err) {
     device_printf(dev, "Setup intr failed\n");
     ether_ifdetach(&scp->arpcom.ac_if);
@@ -449,7 +452,7 @@ xe_init(void *xscp) {
   xe_enable_intr(scp);
 
   /* Start media selection */
-  xe_setmedia(scp);
+  xe_setmedia_serialized(scp);
 
   /* Enable output */
   scp->ifp->if_flags |= IFF_RUNNING;
@@ -824,7 +827,7 @@ xe_intr(void *xscp)
 	/* Deliver packet to upper layers */
 	mbp->m_pkthdr.rcvif = ifp;
 	mbp->m_pkthdr.len = mbp->m_len = len;
-	(*ifp->if_input)(ifp, mbp);
+	ifp->if_input(ifp, mbp);
 	ifp->if_ipackets++;
       }
       else if (rsr & XE_RSR_ALIGN_ERROR) {
@@ -893,7 +896,7 @@ xe_media_change(struct ifnet *ifp) {
        IFM_SUBTYPE(scp->ifm->ifm_media) == IFM_100_TX) && !scp->phy_ok)
     return (EINVAL);
 
-  xe_setmedia(scp);
+  xe_setmedia_serialized(scp);
 
   return 0;
 }
@@ -912,11 +915,24 @@ xe_media_status(struct ifnet *ifp, struct ifmediareq *mrp) {
   mrp->ifm_active = ((struct xe_softc *)ifp->if_softc)->media;
 }
 
+static 
+void
+xe_setmedia(void *xscp) 
+{
+    struct xe_softc *scp = xscp;
+
+    lwkt_serialize_enter(scp->arpcom.ac_if.if_serializer);
+    xe_setmedia_serialized(xscp);
+    lwkt_serialize_exit(scp->arpcom.ac_if.if_serializer);
+}
 
 /*
  * Select active media.
  */
-static void xe_setmedia(void *xscp) {
+static 
+void
+xe_setmedia_serialized(void *xscp) 
+{
   struct xe_softc *scp = xscp;
   u_int16_t bmcr, bmsr, anar, lpar;
 

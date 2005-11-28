@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.23 2005/11/22 00:24:34 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.24 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <sys/module.h>
@@ -175,6 +176,7 @@ sn_attach(device_t dev)
 	int             rev;
 	u_short         address;
 	int		j;
+	int		error;
 
 	sn_activate(dev);
 
@@ -226,7 +228,16 @@ sn_attach(device_t dev)
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_timer = 0;
 
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
+
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       sn_intr, sc, &sc->intrhand,
+			       ifp->if_serializer);
+	if (error) {
+		ether_ifdetach(ifp);
+		sn_deactivate(dev);
+		return error;
+	}
 
 	return 0;
 }
@@ -242,8 +253,6 @@ sninit(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int             flags;
 	int             mask;
-
-	crit_enter();
 
 	/*
 	 * This resets the registers mostly to defaults, but doesn't affect
@@ -328,8 +337,6 @@ sninit(void *xsc)
 	 * Attempt to push out any waiting packets.
 	 */
 	snstart(ifp);
-
-	crit_exit();
 }
 
 
@@ -347,14 +354,10 @@ snstart(struct ifnet *ifp)
 	u_char          packet_no;
 	int             time_out;
 
-	crit_enter();
-
 	if (ifp->if_flags & IFF_OACTIVE) {
-		crit_exit();
 		return;
 	}
 	if (sc->pages_wanted != -1) {
-		crit_exit();
 		printf("%s: snstart() while memory allocation pending\n",
 		       ifp->if_xname);
 		return;
@@ -366,7 +369,6 @@ startagain:
 	 */
 	m = ifq_poll(&ifp->if_snd);
 	if (m == 0) {
-		crit_exit();
 		return;
 	}
 	/*
@@ -446,7 +448,6 @@ startagain:
 		ifp->if_flags |= IFF_OACTIVE;
 		sc->pages_wanted = numPages;
 
-		crit_exit();
 		return;
 	}
 	/*
@@ -542,8 +543,6 @@ readcheck:
 	 */
 	if (inw(BASE + FIFO_PORTS_REG_W) & FIFO_REMPTY)
 		goto startagain;
-
-	crit_exit();
 }
 
 
@@ -758,8 +757,6 @@ sn_intr(void *arg)
 	u_short         tx_status;
 	u_short         card_stats;
 
-	crit_enter();
-
 	/*
 	 * Clear the watchdog.
 	 */
@@ -963,8 +960,6 @@ out:
 	mask |= inb(BASE + INTR_MASK_REG_B);
 	outb(BASE + INTR_MASK_REG_B, mask);
 	sc->intr_mask = mask;
-
-	crit_exit();
 }
 
 void
@@ -1066,7 +1061,7 @@ read_another:
 
 	m->m_pkthdr.len = m->m_len = packet_length;
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
 
 out:
 
@@ -1100,8 +1095,6 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct sn_softc *sc = ifp->if_softc;
 	int error = 0;
-
-	crit_enter();
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1138,30 +1131,20 @@ snioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	crit_exit();
-
 	return (error);
 }
 
 void
 snreset(struct sn_softc *sc)
 {
-	crit_enter();
-
 	snstop(sc);
 	sninit(sc);
-
-	crit_exit();
 }
 
 void
 snwatchdog(struct ifnet *ifp)
 {
-	crit_enter();
-
 	sn_intr(ifp->if_softc);
-
-	crit_exit();
 }
 
 
@@ -1199,7 +1182,6 @@ int
 sn_activate(device_t dev)
 {
 	struct sn_softc *sc = device_get_softc(dev);
-	int err;
 
 	sc->port_rid = 0;
 	sc->port_res = bus_alloc_resource(dev, SYS_RES_IOPORT, &sc->port_rid,
@@ -1220,12 +1202,6 @@ sn_activate(device_t dev)
 #endif
 		sn_deactivate(dev);
 		return ENOMEM;
-	}
-	err = bus_setup_intr(dev, sc->irq_res, 0, sn_intr, sc,
-			     &sc->intrhand, NULL);
-	if (err) {
-		sn_deactivate(dev);
-		return err;
 	}
 	
 	sc->sn_io_addr = rman_get_start(sc->port_res);

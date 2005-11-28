@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.19 2005/11/22 00:24:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.20 2005/11/28 17:13:42 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -32,6 +32,7 @@
 #include <sys/syslog.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/ethernet.h>
@@ -85,6 +86,8 @@ struct isa_driver eldriver = {
 	el_probe, el_attach, "el"
 };
 
+static struct lwkt_serialize el_serializer;
+
 /* Probe routine.  See if the card is there and at the right place. */
 static int
 el_probe(struct isa_device *idev)
@@ -93,6 +96,8 @@ el_probe(struct isa_device *idev)
 	u_short base; /* Just for convenience */
 	u_char station_addr[ETHER_ADDR_LEN];
 	int i;
+
+	lwkt_serialize_init(&el_serializer);
 
 	/* Grab some info for our structure */
 	sc = &el_softc[idev->id_unit];
@@ -199,7 +204,7 @@ el_attach(struct isa_device *idev)
 
 	/* Now we can attach the interface */
 	dprintf(("Attaching interface...\n"));
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, &el_serializer);
 
 	dprintf(("el_attach() finished.\n"));
 	return(1);
@@ -213,10 +218,8 @@ el_reset(xsc)
 	struct el_softc *sc = xsc;
 
 	dprintf(("elreset()\n"));
-	crit_enter();
 	el_stop(sc);
 	el_init(sc);
-	crit_exit();
 }
 
 static void el_stop(xsc)
@@ -236,7 +239,6 @@ el_init(xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	u_short base = sc->el_base;
 
-	crit_enter();
 
 	/* First, reset the board. */
 	dprintf(("Resetting board...\n"));
@@ -264,8 +266,6 @@ el_init(xsc)
 
 	/* And start output. */
 	el_start(ifp);
-
-	crit_exit();
 }
 
 /* Start output on interface.  Get datagrams from the queue and output
@@ -285,7 +285,6 @@ el_start(struct ifnet *ifp)
 	base = sc->el_base;
 
 	dprintf(("el_start()...\n"));
-	crit_enter();
 
 	/* Don't do anything if output is active */
 	if (ifp->if_flags & IFF_OACTIVE)
@@ -302,7 +301,6 @@ el_start(struct ifnet *ifp)
 		/* If there's nothing to send, return. */
 		if(m0 == NULL) {
 			sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
-			crit_exit();
 			return;
 		}
 
@@ -367,8 +365,6 @@ el_start(struct ifnet *ifp)
 		 */
 		(void)inb(base+EL_AS);
 		outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
-		crit_exit();
-		crit_enter();
 	}
 }
 
@@ -403,19 +399,14 @@ el_xmit(struct el_softc *sc,int len)
 static __inline void
 elread(struct el_softc *sc,caddr_t buf,int len)
 {
-	struct ether_header *eh;
 	struct mbuf *m;
-
-	eh = (struct ether_header *)buf;
 
 	/*
 	 * Put packet into an mbuf chain
 	 */
 	m = elget(buf,len,&sc->arpcom.ac_if);
-	if(m == 0)
-		return;
-
-	ether_input(&sc->arpcom.ac_if,eh,m);
+	if(m)
+		sc->arpcom.ac_if.if_input(&sc->arpcom.ac_if, m);
 }
 
 /* controller interrupt */
@@ -426,6 +417,8 @@ elintr(void *arg)
 	struct el_softc *sc;
 	int base;
 	int stat, rxstat, len, done;
+
+	lwkt_serialize_enter(&el_serializer);
 
 	/* Get things pointing properly */
 	sc = &el_softc[unit];
@@ -438,6 +431,7 @@ elintr(void *arg)
 	if(stat & EL_AS_RXBUSY) {
 		(void)inb(base+EL_RXC);
 		outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
+		lwkt_serialize_exit(&el_serializer);
 		return;
 	}
 
@@ -447,6 +441,7 @@ elintr(void *arg)
 		if(rxstat & EL_RXS_STALE) {
 			(void)inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
+			lwkt_serialize_exit(&el_serializer);
 			return;
 		}
 
@@ -463,6 +458,7 @@ elintr(void *arg)
 			outb(base+EL_RBC,0);
 			(void)inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
+			lwkt_serialize_exit(&el_serializer);
 			return;
 		}
 
@@ -483,6 +479,7 @@ elintr(void *arg)
 			outb(base+EL_RBC,0);
 			(void)inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
+			lwkt_serialize_exit(&el_serializer);
 			return;
 		}
 
@@ -498,7 +495,6 @@ elintr(void *arg)
 		dprintf(("%6D\n",sc->el_pktbuf,":"));
 
 		/* Pass data up to upper levels */
-		len -= sizeof(struct ether_header);
 		elread(sc,(caddr_t)(sc->el_pktbuf),len);
 
 		/* Is there another packet? */
@@ -513,7 +509,7 @@ elintr(void *arg)
 
 	(void)inb(base+EL_RXC);
 	outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
-	return;
+	lwkt_serialize_exit(&el_serializer);
 }
 
 /*
@@ -531,14 +527,12 @@ elget(buf, totlen, ifp)
         caddr_t cp;
         char *epkt;
 
-        buf += sizeof(struct ether_header);
         cp = buf;
         epkt = cp + totlen;
 
         MGETHDR(m, MB_DONTWAIT, MT_DATA);
         if (m == 0)
                 return (0);
-        m->m_pkthdr.rcvif = ifp;
         m->m_pkthdr.len = totlen;
         m->m_len = MHLEN;
         top = 0;
@@ -590,8 +584,6 @@ el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int error = 0;
 
-	crit_enter();
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		/*
@@ -614,9 +606,6 @@ el_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 

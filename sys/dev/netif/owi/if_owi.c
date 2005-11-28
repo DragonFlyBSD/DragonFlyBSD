@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.12 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.13 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -75,6 +75,7 @@
 #include <sys/random.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <machine/bus.h>
@@ -183,11 +184,11 @@ owi_generic_detach(dev)
 	struct wi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->wi_gone) {
 		device_printf(dev, "already unloaded\n");
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return(ENODEV);
 	}
 
@@ -195,15 +196,12 @@ owi_generic_detach(dev)
 
 	/* Delete all remaining media. */
 	ifmedia_removeall(&sc->ifmedia);
-
 	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
-
-	crit_exit();
-
 	owi_free(dev);
 	sc->wi_gone = 1;
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -439,10 +437,11 @@ owi_generic_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq, 0,
-			       wi_intr, sc, &sc->wi_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+			       wi_intr, sc, &sc->wi_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
@@ -795,7 +794,7 @@ wi_rxeof(sc)
 #ifdef WICACHE
 		wi_cache_store(sc, m, rx_frame.wi_q_info);
 #endif  
-		(*ifp->if_input)(ifp,  m);
+		ifp->if_input(ifp, m);
 	}
 }
 
@@ -826,19 +825,16 @@ wi_inquire(xsc)
 	struct wi_softc *sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	callout_reset(&sc->wi_stat_timer, hz* 60, wi_inquire, sc);
 
 	/* Don't do this while we're transmitting */
-	if (ifp->if_flags & IFF_OACTIVE) {
-		crit_exit();
-		return;
+	if ((ifp->if_flags & IFF_OACTIVE) == 0) {
+		wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_COUNTERS, 0, 0);
 	}
 
-	wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_COUNTERS, 0, 0);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -1608,8 +1604,6 @@ wi_ioctl(ifp, command, data, cr)
 	ifr = (struct ifreq *)data;
 	ireq = (struct ieee80211req *)data;
 
-	crit_enter();
-
 	if (sc->wi_gone) {
 		error = ENODEV;
 		goto out;
@@ -1974,8 +1968,6 @@ wi_ioctl(ifp, command, data, cr)
 		break;
 	}
 out:
-	crit_exit();
-
 	return(error);
 }
 
@@ -1988,12 +1980,8 @@ wi_init(xsc)
 	struct wi_ltv_macaddr	mac;
 	int			id = 0;
 
-	crit_enter();
-
-	if (sc->wi_gone) {
-		crit_exit();
+	if (sc->wi_gone)
 		return;
-	}
 
 	if (ifp->if_flags & IFF_RUNNING)
 		wi_stop(sc);
@@ -2116,8 +2104,6 @@ wi_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->wi_stat_timer, hz * 60, wi_inquire, sc);
-
-	crit_exit();
 }
 
 #define RC4STATE 256
@@ -2210,24 +2196,16 @@ wi_start(ifp)
 	struct ether_header	*eh;
 	int			id;
 
-	crit_enter();
-
-	if (sc->wi_gone) {
-		crit_exit();
+	if (sc->wi_gone)
 		return;
-	}
 
-	if (ifp->if_flags & IFF_OACTIVE) {
-		crit_exit();
+	if (ifp->if_flags & IFF_OACTIVE)
 		return;
-	}
 
 nextpkt:
 	m0 = ifq_dequeue(&ifp->if_snd, NULL);
-	if (m0 == NULL) {
-		crit_exit();
+	if (m0 == NULL)
 		return;
-	}
 
 	bzero((char *)&tx_frame, sizeof(tx_frame));
 	tx_frame.wi_frame_ctl = htole16(WI_FTYPE_DATA);
@@ -2338,8 +2316,6 @@ nextpkt:
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	crit_exit();
 }
 
 int
@@ -2387,12 +2363,8 @@ wi_stop(sc)
 {
 	struct ifnet		*ifp;
 
-	crit_enter();
-
-	if (sc->wi_gone) {
-		crit_exit();
+	if (sc->wi_gone)
 		return;
-	}
 
 	owihap_shutdown(sc);
 
@@ -2411,8 +2383,6 @@ wi_stop(sc)
 	callout_stop(&sc->wi_stat_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
-
-	crit_exit();
 }
 
 static void
@@ -2510,12 +2480,14 @@ void
 owi_shutdown(dev)
 	device_t		dev;
 {
-	struct wi_softc		*sc;
+	struct wi_softc	*sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	wi_stop(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 #ifdef WICACHE

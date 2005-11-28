@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.9 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.10 2005/11/28 17:13:46 dillon Exp $
  *
  */
 
@@ -69,6 +69,8 @@ extern struct sp_info	atm_attributes_pool;
 
 	/* atm_usrreq.c */
 extern struct pr_usrreqs	atm_dgram_usrreqs;
+
+struct lwkt_serialize;
 
 /*
  * Global function declarations
@@ -120,7 +122,7 @@ int		atm_physif_deregister (Cmn_unit *);
 void		atm_physif_freenifs (struct atm_pif *);
 int		atm_netconv_register (struct atm_ncm *);
 int		atm_netconv_deregister (struct atm_ncm *);
-int		atm_nif_attach (struct atm_nif *);
+int		atm_nif_attach (struct atm_nif *, struct lwkt_serialize *);
 void		atm_nif_detach (struct atm_nif *);
 int		atm_nif_setaddr (struct atm_nif *, struct ifaddr *);
 int		atm_ifoutput (struct ifnet *, KBuffer *,

@@ -1,7 +1,3 @@
-/*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
-/* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.24 2005/11/22 00:24:17 dillon Exp $ */
-
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -36,6 +32,10 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
+ * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.25 2005/11/28 17:13:41 dillon Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -165,8 +165,6 @@ static int awi_cmd_scan (struct awi_softc *sc);
 static int awi_cmd (struct awi_softc *sc, u_int8_t cmd);
 static void awi_cmd_done (struct awi_softc *sc);
 static int awi_next_txd (struct awi_softc *sc, int len, u_int32_t *framep, u_int32_t*ntxdp);
-static int awi_lock (struct awi_softc *sc);
-static void awi_unlock (struct awi_softc *sc);
 static int awi_intr_lock (struct awi_softc *sc);
 static void awi_intr_unlock (struct awi_softc *sc);
 static int awi_cmd_wait (struct awi_softc *sc);
@@ -210,23 +208,19 @@ awi_attach(sc)
 	struct ifmediareq imr;
 #endif
 
-	crit_enter();
 	/*
 	 * Even if we can sleep in initialization state,
 	 * all other processes (e.g. ifconfig) have to wait for
 	 * completion of attaching interface.
 	 */
-	sc->sc_busy = 1;
 	sc->sc_status = AWI_ST_INIT;
 	TAILQ_INIT(&sc->sc_scan);
 	error = awi_init_hw(sc);
 	if (error) {
 		sc->sc_invalid = 1;
-		crit_exit();
 		return error;
 	}
 	error = awi_init_mibs(sc);
-	crit_exit();
 	if (error) {
 		sc->sc_invalid = 1;
 		return error;
@@ -251,7 +245,9 @@ awi_attach(sc)
 	if_printf(ifp, "IEEE802.11 %s %dMbps (firmware %s)\n",
 	    sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH ? "FH" : "DS",
 	    sc->sc_tx_rate / 10, sc->sc_banner);
-	ether_ifattach(ifp, sc->sc_mib_addr.aMAC_Address);
+	ether_ifattach(ifp, sc->sc_mib_addr.aMAC_Address, NULL);
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 #ifdef IFM_IEEE80211
 	ifmedia_init(&sc->sc_media, 0, awi_media_change, awi_media_status);
@@ -271,12 +267,9 @@ awi_attach(sc)
 	awi_media_status(ifp, &imr);
 	ifmedia_set(&sc->sc_media, imr.ifm_active);
 #endif
-
-	/* ready to accept ioctl */
-	awi_unlock(sc);
-
 	/* Attach is successful. */
 	sc->sc_attached = 1;
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 
@@ -294,12 +287,8 @@ awi_ioctl(ifp, cmd, data, cr)
 	struct ieee80211_nwid nwid;
 	u_int8_t *p;
 
-	crit_enter();
+	error = 0;
 
-	/* serialize ioctl */
-	error = awi_lock(sc);
-	if (error)
-		goto cantlock;
 	switch (cmd) {
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP;
@@ -395,9 +384,6 @@ awi_ioctl(ifp, cmd, data, cr)
 		error = awi_wicfg(ifp, cmd, data);
 		break;
 	}
-	awi_unlock(sc);
-  cantlock:
-	crit_exit();
 	return error;
 }
 
@@ -545,7 +531,7 @@ awi_intr(arg)
 {
 	struct awi_softc *sc = arg;
 	u_int16_t status;
-	int error, handled = 0, ocansleep;
+	int error, handled = 0;
 
 	if (!sc->sc_enabled || !sc->sc_enab_intr || sc->sc_invalid)
 		return 0;
@@ -553,8 +539,6 @@ awi_intr(arg)
 	am79c930_gcr_setbits(&sc->sc_chip,
 	    AM79C930_GCR_DISPWDN | AM79C930_GCR_ECINT);
 	awi_write_1(sc, AWI_DIS_PWRDN, 1);
-	ocansleep = sc->sc_cansleep;
-	sc->sc_cansleep = 0;
 
 	for (;;) {
 		error = awi_intr_lock(sc);
@@ -584,7 +568,6 @@ awi_intr(arg)
 				(void)awi_next_scan(sc);
 		}
 	}
-	sc->sc_cansleep = ocansleep;
 	am79c930_gcr_clearbits(&sc->sc_chip, AM79C930_GCR_DISPWDN);
 	awi_write_1(sc, AWI_DIS_PWRDN, 0);
 	return handled;
@@ -692,15 +675,12 @@ awi_watchdog(ifp)
 	struct ifnet *ifp;
 {
 	struct awi_softc *sc = ifp->if_softc;
-	int ocansleep;
 
 	if (sc->sc_invalid) {
 		ifp->if_timer = 0;
 		return;
 	}
 
-	ocansleep = sc->sc_cansleep;
-	sc->sc_cansleep = 0;
 	if (sc->sc_tx_timer && --sc->sc_tx_timer == 0) {
 		if_printf(ifp, "transmit timeout\n");
 		awi_txint(sc);
@@ -733,7 +713,6 @@ awi_watchdog(ifp)
 		ifp->if_timer = 0;
 	else
 		ifp->if_timer = 1;
-	sc->sc_cansleep = ocansleep;
 }
 
 static void
@@ -1039,7 +1018,7 @@ awi_input(sc, m, rxts, rssi)
 			break;
 		}
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 		break;
 	case IEEE80211_FC0_TYPE_MGT:
 		if ((wh->i_fc[1] & IEEE80211_FC1_DIR_MASK) !=
@@ -1225,13 +1204,9 @@ awi_init_hw(sc)
 		status = awi_read_1(sc, AWI_SELFTEST);
 		if ((status & 0xf0) == 0xf0)
 			break;
-		if (sc->sc_cansleep) {
-			sc->sc_sleep_cnt++;
-			(void)tsleep(sc, 0, "awitst", 1);
-			sc->sc_sleep_cnt--;
-		} else {
-			DELAY(1000*1000/hz);
-		}
+		sc->sc_sleep_cnt++;
+		(void)tsleep(sc, 0, "awitst", 1);
+		sc->sc_sleep_cnt--;
 	}
 	if (status != AWI_SELFTEST_PASSED) {
 		if_printf(ifp, "failed to complete selftest (code %x)\n",
@@ -1271,8 +1246,6 @@ awi_init_hw(sc)
 			printf(" (no hardware)\n");
 		else if (error != EWOULDBLOCK)
 			printf(" (error %d)\n", error);
-		else if (sc->sc_cansleep)
-			printf(" (lost interrupt)\n");
 		else
 			printf(" (command timeout)\n");
 	}
@@ -2316,53 +2289,6 @@ awi_next_txd(sc, len, framep, ntxdp)
 }
 
 static int
-awi_lock(sc)
-	struct awi_softc *sc;
-{
-	int error = 0;
-
-	if (curproc == NULL) {
-		/*
-		 * XXX
-		 * Though driver ioctl should be called with context,
-		 * KAME ipv6 stack calls ioctl in interrupt for now.
-		 * We simply abort the request if there are other
-		 * ioctl requests in progress.
-		 */
-		if (sc->sc_busy) {
-			return EWOULDBLOCK;
-			if (sc->sc_invalid)
-				return ENXIO;
-		}
-		sc->sc_busy = 1;
-		sc->sc_cansleep = 0;
-		return 0;
-	}
-	while (sc->sc_busy) {
-		if (sc->sc_invalid)
-			return ENXIO;
-		sc->sc_sleep_cnt++;
-		error = tsleep(sc, PCATCH, "awilck", 0);
-		sc->sc_sleep_cnt--;
-		if (error)
-			return error;
-	}
-	sc->sc_busy = 1;
-	sc->sc_cansleep = 1;
-	return 0;
-}
-
-static void
-awi_unlock(sc)
-	struct awi_softc *sc;
-{
-	sc->sc_busy = 0;
-	sc->sc_cansleep = 0;
-	if (sc->sc_sleep_cnt)
-		wakeup(sc);
-}
-
-static int
 awi_intr_lock(sc)
 	struct awi_softc *sc;
 {
@@ -2415,21 +2341,9 @@ awi_cmd_wait(sc)
 			sc->sc_invalid = 1;
 			return ENXIO;
 		}
-		if (sc->sc_cansleep) {
-			sc->sc_sleep_cnt++;
-			error = tsleep(sc, 0, "awicmd",
-			    AWI_CMD_TIMEOUT*hz/1000);
-			sc->sc_sleep_cnt--;
-		} else {
-			if (awi_read_1(sc, AWI_CMD_STATUS) != AWI_STAT_IDLE) {
-				awi_cmd_done(sc);
-				break;
-			}
-			if (i++ >= AWI_CMD_TIMEOUT*1000/10)
-				error = EWOULDBLOCK;
-			else
-				DELAY(10);
-		}
+		sc->sc_sleep_cnt++;
+		error = tsleep(sc, 0, "awicmd", AWI_CMD_TIMEOUT*hz/1000);
+		sc->sc_sleep_cnt--;
 		if (error)
 			break;
 	}

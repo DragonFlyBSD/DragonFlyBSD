@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.18 2005/07/05 10:20:39 corecode Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
  */
 
 /*
@@ -1035,7 +1035,9 @@ forward:
 		    return m0;
 		bcopy(&save_eh, mtod(m, struct ether_header *), ETHER_HDR_LEN);
 	    }
+	    lwkt_serialize_enter(last->if_serializer);
 	    error = ifq_handoff(last, m, &pktattr);
+	    lwkt_serialize_exit(last->if_serializer);
 	    if (error != 0) {
 #if 0
 		BDG_MUTE(last); /* should I also mute ? */

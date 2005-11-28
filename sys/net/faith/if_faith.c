@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.12 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.13 2005/11/28 17:13:45 dillon Exp $
  */
 /*
  * derived from
@@ -177,7 +177,7 @@ faith_clone_create(ifc, unit)
 	sc->sc_if.if_hdrlen = 0;
 	sc->sc_if.if_addrlen = 0;
 	sc->sc_if.if_snd.ifq_maxlen = ifqmaxlen;
-	if_attach(&sc->sc_if);
+	if_attach(&sc->sc_if, NULL);
 	bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 	LIST_INSERT_HEAD(&faith_softc_list, sc, sc_list);
 	return (0);

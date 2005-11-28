@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.15 2005/10/28 03:25:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.16 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -240,7 +240,7 @@ lp_attach (device_t dev)
 	ifp->if_hdrlen = 0;
 	ifp->if_addrlen = 0;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 
 	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
 

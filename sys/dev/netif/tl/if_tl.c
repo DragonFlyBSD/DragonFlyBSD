@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.33 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -186,6 +186,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -273,6 +274,7 @@ static int tl_intvec_netsts	(void *, u_int32_t);
 static int tl_newbuf		(struct tl_softc *,
 					struct tl_chain_onefrag *);
 static void tl_stats_update	(void *);
+static void tl_stats_update_serialized(void *);
 static int tl_encap		(struct tl_softc *, struct tl_chain *,
 						struct mbuf *);
 
@@ -648,8 +650,6 @@ static int tl_mii_readreg(sc, frame)
 	int			i, ack;
 	int			minten = 0;
 
-	crit_enter();
-
 	tl_mii_sync(sc);
 
 	/*
@@ -728,8 +728,6 @@ fail:
 		tl_dio_setbit(sc, TL_NETSIO, TL_SIO_MINTEN);
 	}
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -744,7 +742,6 @@ static int tl_mii_writereg(sc, frame)
 
 	tl_mii_sync(sc);
 
-	crit_enter();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -784,8 +781,6 @@ static int tl_mii_writereg(sc, frame)
 	/* Reenable interrupts */
 	if (minten)
 		tl_dio_setbit(sc, TL_NETSIO, TL_SIO_MINTEN);
-
-	crit_exit();
 
 	return(0);
 }
@@ -1281,10 +1276,11 @@ static int tl_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->tl_irq, 0,
-			       tl_intr, sc, &sc->tl_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->tl_irq, INTR_NETSAFE,
+			       tl_intr, sc, &sc->tl_intrhand, 
+			       ifp->if_serializer);
 
 	if (error) {
 		ether_ifdetach(ifp);
@@ -1305,7 +1301,7 @@ static int tl_detach(dev)
 	struct tl_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		tl_stop(sc);
@@ -1315,8 +1311,6 @@ static int tl_detach(dev)
 	if (sc->tl_miibus)
 		device_delete_child(dev, sc->tl_miibus);
 	bus_generic_detach(dev);
-
-	crit_exit();
 
 	if (sc->tl_ldata)
 		contigfree(sc->tl_ldata, sizeof(struct tl_list_data), M_DEVBUF);
@@ -1329,6 +1323,7 @@ static int tl_detach(dev)
 	if (sc->tl_res)
 		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1488,7 +1483,7 @@ static int tl_intvec_rxeof(xsc, type)
 				continue;
 		}
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	return(r);
@@ -1687,7 +1682,7 @@ static void tl_intr(xsc)
 		r = tl_intvec_txeoc((void *)sc, type);
 		break;
 	case (TL_INTR_STATOFLOW):
-		tl_stats_update(sc);
+		tl_stats_update_serialized(sc);
 		r = 1;
 		break;
 	case (TL_INTR_RXEOF):
@@ -1722,16 +1717,27 @@ static void tl_intr(xsc)
 	return;
 }
 
-static void tl_stats_update(xsc)
-	void			*xsc;
+static 
+void
+tl_stats_update(void *xsc)
+{
+	struct tl_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	tl_stats_update_serialized(xsc);
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static 
+void
+tl_stats_update_serialized(void *xsc)
 {
 	struct tl_softc		*sc;
 	struct ifnet		*ifp;
 	struct tl_stats		tl_stats;
 	struct mii_data		*mii;
 	u_int32_t		*p;
-
-	crit_enter();
 
 	bzero((char *)&tl_stats, sizeof(struct tl_stats));
 
@@ -1775,10 +1781,6 @@ static void tl_stats_update(xsc)
 		mii = device_get_softc(sc->tl_miibus);
 		mii_tick(mii);
 	}
-
-	crit_exit();
-
-	return;
 }
 
 /*
@@ -1965,8 +1967,6 @@ static void tl_init(xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii;
 
-	crit_enter();
-
 	/*
 	 * Cancel pending I/O.
 	 */
@@ -2036,8 +2036,6 @@ static void tl_init(xsc)
 
 	/* Start the stats update counter */
 	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
-
-	crit_exit();
 }
 
 /*
@@ -2105,8 +2103,6 @@ static int tl_ioctl(ifp, command, data, cr)
 	struct ifreq		*ifr = (struct ifreq *) data;
 	int			error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -2150,9 +2146,6 @@ static int tl_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 

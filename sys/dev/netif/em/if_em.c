@@ -1,40 +1,97 @@
-/**************************************************************************
-
-Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
-
-Copyright (c) 2001-2005, Intel Corporation
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- 1. Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-
- 2. Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the
-    documentation and/or other materials provided with the distribution.
-
- 3. Neither the name of the Intel Corporation nor the names of its
-    contributors may be used to endorse or promote products derived from
-    this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-
-***************************************************************************/
-
-/*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.43 2005/11/22 00:24:28 dillon Exp $*/
+/*
+ *
+ * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
+ *
+ * Copyright (c) 2001-2005, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ *  1. Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ * 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ * 
+ *  3. Neither the name of the Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived from
+ *     this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ *
+ * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.44 2005/11/28 17:13:42 dillon Exp $
+ * $FreeBSD$
+ */
+/*
+ * SERIALIZATION API RULES:
+ *
+ * - If the driver uses the same serializer for the interrupt as for the
+ *   ifnet, most of the serialization will be done automatically for the
+ *   driver.  
+ *
+ * - ifmedia entry points will be serialized by the ifmedia code using the
+ *   ifnet serializer.
+ *
+ * - if_* entry points except for if_input will be serialized by the IF
+ *   and protocol layers.
+ *
+ * - The device driver must be sure to serialize access from timeout code
+ *   installed by the device driver.
+ *
+ * - The device driver typically holds the serializer at the time it wishes
+ *   to call if_input.  If so, it should pass the serializer to if_input and
+ *   note that the serializer might be dropped temporarily by if_input 
+ *   (e.g. in case it has to bridge the packet to another interface).
+ *
+ *   NOTE!  Since callers into the device driver hold the ifnet serializer,
+ *   the device driver may be holding a serializer at the time it calls
+ *   if_input even if it is not serializer-aware.
+ */
 
 #include "opt_polling.h"
 
@@ -144,11 +201,9 @@ static int	em_detach(device_t);
 static int	em_shutdown(device_t);
 static void	em_intr(void *);
 static void	em_start(struct ifnet *);
-static void	em_start_serialized(struct ifnet *);
 static int	em_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	em_watchdog(struct ifnet *);
 static void	em_init(void *);
-static void	em_init_serialized(void *);
 static void	em_stop(void *);
 static void	em_media_status(struct ifnet *, struct ifmediareq *);
 static int	em_media_change(struct ifnet *);
@@ -316,8 +371,6 @@ em_attach(device_t dev)
 	INIT_DEBUGOUT("em_attach: begin");
 
 	adapter = device_get_softc(dev);
-
-	lwkt_serialize_init(&adapter->serializer);
 
 	callout_init(&adapter->timer);
 	callout_init(&adapter->tx_fifo_timer);
@@ -535,9 +588,10 @@ em_attach(device_t dev)
         else
 		adapter->pcix_82544 = FALSE;
 
-	error = bus_setup_intr(dev, adapter->res_interrupt, 0,
+	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_NETSAFE,
 			   (void (*)(void *)) em_intr, adapter,
-			   &adapter->int_handler_tag, &adapter->serializer);
+			   &adapter->int_handler_tag,
+			   adapter->interface_data.ac_if.if_serializer);
 	if (error) {
 		device_printf(dev, "Error registering interrupt handler!\n");
 		ether_ifdetach(&adapter->interface_data.ac_if);
@@ -565,11 +619,11 @@ fail:
 static int
 em_detach(device_t dev)
 {
-	struct adapter * adapter = device_get_softc(dev);
+	struct adapter *adapter = device_get_softc(dev);
 
 	INIT_DEBUGOUT("em_detach: begin");
 
-	lwkt_serialize_enter(&adapter->serializer);
+	lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
 	adapter->in_detach = 1;
 
 	if (device_is_attached(dev)) {
@@ -612,7 +666,7 @@ em_detach(device_t dev)
 	adapter->sysctl_tree = NULL;
 	sysctl_ctx_free(&adapter->sysctl_ctx);
 
-	lwkt_serialize_exit(&adapter->serializer);
+	lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 	return(0);
 }
 
@@ -643,18 +697,10 @@ em_shutdown(device_t dev)
 static void
 em_start(struct ifnet *ifp)
 {
-	struct adapter *adapter = ifp->if_softc;
-
-	lwkt_serialize_enter(&adapter->serializer);
-	em_start_serialized(ifp);
-	lwkt_serialize_exit(&adapter->serializer);
-}
-
-static void
-em_start_serialized(struct ifnet *ifp)
-{
 	struct mbuf *m_head;
 	struct adapter *adapter = ifp->if_softc;
+
+	ASSERT_SERIALIZED(adapter->interface_data.ac_if.if_serializer);
 
 	if (!adapter->link_active)
 		return;
@@ -694,7 +740,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct adapter *adapter = ifp->if_softc;
 
-	lwkt_serialize_enter(&adapter->serializer);
+	ASSERT_SERIALIZED(adapter->interface_data.ac_if.if_serializer);
 
 	if (adapter->in_detach)
 		goto out;
@@ -703,9 +749,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	case SIOCSIFADDR:
 	case SIOCGIFADDR:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCxIFADDR (Get/Set Interface Addr)");
-		lwkt_serialize_exit(&adapter->serializer);
 		ether_ioctl(ifp, command, data);
-		lwkt_serialize_enter(&adapter->serializer);
 		break;
 	case SIOCSIFMTU:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFMTU (Set Interface MTU)");
@@ -729,14 +773,14 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			ifp->if_mtu = ifr->ifr_mtu;
 			adapter->hw.max_frame_size = 
 			ifp->if_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
-			em_init_serialized(adapter);
+			em_init(adapter);
 		}
 		break;
 	case SIOCSIFFLAGS:
 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFFLAGS (Set Interface Flags)");
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING))
-				em_init_serialized(adapter);
+				em_init(adapter);
 			em_disable_promisc(adapter);
 			em_set_promisc(adapter);
 		} else {
@@ -769,7 +813,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			else
 				ifp->if_capenable |= IFCAP_HWCSUM;
 			if (ifp->if_flags & IFF_RUNNING)
-				em_init_serialized(adapter);
+				em_init(adapter);
 		}
 		break;
 	default:
@@ -778,7 +822,6 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	}
 
 out:
-	lwkt_serialize_exit(&adapter->serializer);
 	return(error);
 }
 
@@ -826,16 +869,6 @@ em_watchdog(struct ifnet *ifp)
 
 static void
 em_init(void *arg)
-{
-	struct adapter *adapter = arg;
-
-	lwkt_serialize_enter(&adapter->serializer);
-	em_init_serialized(arg);
-	lwkt_serialize_exit(&adapter->serializer);
-}
-
-static void
-em_init_serialized(void *arg)
 {
 	struct adapter *adapter = arg;
 	uint32_t pba;
@@ -942,7 +975,8 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct adapter *adapter = ifp->if_softc;
 	uint32_t reg_icr;
 
-	lwkt_serialize_enter(&adapter->serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	switch(cmd) {
 	case POLL_REGISTER:
 		em_disable_intr(adapter);
@@ -968,11 +1002,10 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 		if (ifp->if_flags & IFF_RUNNING) {
 			if (!ifq_is_empty(&ifp->if_snd))
-				em_start_serialized(ifp);
+				em_start(ifp);
 		}
 		break;
 	}
-	lwkt_serialize_exit(&adapter->serializer);
 }
 
 #endif /* DEVICE_POLLING */
@@ -990,6 +1023,8 @@ em_intr(void *arg)
 	struct adapter *adapter = arg;
 
 	ifp = &adapter->interface_data.ac_if;  
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	reg_icr = E1000_READ_REG(&adapter->hw, ICR);
 	if (!reg_icr)
@@ -1015,7 +1050,7 @@ em_intr(void *arg)
 	}
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		em_start_serialized(ifp);
+		em_start(ifp);
 }
 
 /*********************************************************************
@@ -1032,6 +1067,8 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct adapter * adapter = ifp->if_softc;
 
 	INIT_DEBUGOUT("em_media_status: begin");
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	em_check_for_link(&adapter->hw);
 	if (E1000_READ_REG(&adapter->hw, STATUS) & E1000_STATUS_LU) {
@@ -1097,7 +1134,7 @@ em_media_change(struct ifnet *ifp)
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return(EINVAL);
 
-	lwkt_serialize_enter(&adapter->serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (IFM_SUBTYPE(ifm->ifm_media)) {
 	case IFM_AUTO:
@@ -1134,9 +1171,8 @@ em_media_change(struct ifnet *ifp)
 	 */
 	adapter->hw.phy_reset_disable = FALSE;
 
-	em_init_serialized(adapter);
+	em_init(adapter);
 
-	lwkt_serialize_exit(&adapter->serializer);
 	return(0);
 }
 
@@ -1338,9 +1374,9 @@ em_82547_move_tail(void *arg)
 {
 	struct adapter *adapter = arg;
 
-	lwkt_serialize_enter(&adapter->serializer);
+	lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
 	em_82547_move_tail_serialized(arg);
-	lwkt_serialize_exit(&adapter->serializer);
+	lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 }
 
 static void
@@ -1557,7 +1593,7 @@ em_local_timer(void *arg)
 	struct adapter *adapter = arg;
 	ifp = &adapter->interface_data.ac_if;
 
-	lwkt_serialize_enter(&adapter->serializer);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	em_check_for_link(&adapter->hw);
 	em_print_link_status(adapter);
@@ -1568,7 +1604,7 @@ em_local_timer(void *arg)
 
 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
 
-	lwkt_serialize_exit(&adapter->serializer);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -1772,7 +1808,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 
 	ifp->if_capenable = ifp->if_capabilities;
 
-	ether_ifattach(ifp, adapter->hw.mac_addr);
+	ether_ifattach(ifp, adapter->hw.mac_addr, NULL);
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -2646,9 +2682,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 						       (current_desc->special & 
 							E1000_RXD_SPC_VLAN_MASK));
 				} else {
-					/* lwkt_serialize_exit() */
-					(*ifp->if_input)(ifp, adapter->fmp);
-					/* lwkt_serialize_enter() */
+					ifp->if_input(ifp, adapter->fmp);
 				}
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
@@ -2749,7 +2783,7 @@ em_enable_intr(struct adapter *adapter)
 	struct ifnet *ifp = &adapter->interface_data.ac_if;
 	
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
-		lwkt_serialize_handler_enable(&adapter->serializer);
+		lwkt_serialize_handler_enable(ifp->if_serializer);
 		E1000_WRITE_REG(&adapter->hw, IMS, (IMS_ENABLE_MASK));
 	}
 }
@@ -2772,7 +2806,7 @@ em_disable_intr(struct adapter *adapter)
 		E1000_WRITE_REG(&adapter->hw, IMC, 0xffffffff);
 	}
 
-	lwkt_serialize_handler_disable(&adapter->serializer);
+	lwkt_serialize_handler_disable(adapter->interface_data.ac_if.if_serializer);
 }
 
 static int
@@ -3137,7 +3171,7 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 	info->value = usecs;
 	ticks = E1000_USECS_TO_TICKS(usecs);
 
-	lwkt_serialize_enter(&adapter->serializer);
+	lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
 	regval = E1000_READ_OFFSET(&adapter->hw, info->offset);
 	regval = (regval & ~0xffff) | (ticks & 0xffff);
 	/* Handle a few special cases. */
@@ -3157,7 +3191,7 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 		break;
 	}
 	E1000_WRITE_OFFSET(&adapter->hw, info->offset, regval);
-	lwkt_serialize_exit(&adapter->serializer);
+	lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 	return(0);
 }
 
@@ -3194,15 +3228,15 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 		 * recalculate sysctl value assignment to get exact frequency.
 		 */
 		throttle = 1000000000 / 256 / throttle;
-		lwkt_serialize_enter(&adapter->serializer);
+		lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
 		em_int_throttle_ceil = 1000000000 / 256 / throttle;
 		E1000_WRITE_REG(&adapter->hw, ITR, throttle);
-		lwkt_serialize_exit(&adapter->serializer);
+		lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 	} else {
-		lwkt_serialize_enter(&adapter->serializer);
+		lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
 		em_int_throttle_ceil = 0;
 		E1000_WRITE_REG(&adapter->hw, ITR, 0);
-		lwkt_serialize_exit(&adapter->serializer);
+		lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 	}
 	device_printf(adapter->dev, "Interrupt moderation set to %d/sec\n", 
 			em_int_throttle_ceil);

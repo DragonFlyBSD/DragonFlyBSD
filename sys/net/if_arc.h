@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arc.h,v 1.13 1999/11/19 20:41:19 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_arc.h,v 1.2.2.3 2003/01/28 11:19:05 fjoe Exp $ */
-/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.4 2004/07/23 07:16:30 joerg Exp $ */
+/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.5 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (c) 1982, 1986, 1993
@@ -130,8 +130,9 @@ struct	arccom {
 
 #ifdef _KERNEL
 extern int arc_ipmtu;	/* XXX new ip only, no RFC 1051! */
+struct lwkt_serialize;
 
-void	arc_ifattach (struct ifnet *, u_int8_t);
+void	arc_ifattach (struct ifnet *, u_int8_t, struct lwkt_serialize *);
 void	arc_ifdetach (struct ifnet *);
 void	arc_storelladdr (struct ifnet *, u_int8_t);
 int	arc_isphds (int);

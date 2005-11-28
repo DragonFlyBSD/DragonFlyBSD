@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.6 2005/11/22 00:24:35 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.7 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -299,8 +299,11 @@ tbr_timeout(void *arg)
 		if (ifp->if_snd.altq_tbr == NULL)
 			continue;
 		active++;
-		if (!ifq_is_empty(&ifp->if_snd) && ifp->if_start != NULL)
+		if (!ifq_is_empty(&ifp->if_snd) && ifp->if_start != NULL) {
+			lwkt_serialize_enter(ifp->if_serializer);
 			(*ifp->if_start)(ifp);
+			lwkt_serialize_exit(ifp->if_serializer);
+		}
 	}
 	crit_exit();
 	if (active > 0)

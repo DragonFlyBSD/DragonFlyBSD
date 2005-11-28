@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.11 2005/06/02 22:11:45 swildner Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.12 2005/11/28 17:13:46 dillon Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -591,7 +591,7 @@ ng_iface_constructor(node_p *nodep)
 		log(LOG_WARNING, "%s: can't acquire netgraph name\n", ifname);
 
 	/* Attach the interface */
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 
 	/* Done */

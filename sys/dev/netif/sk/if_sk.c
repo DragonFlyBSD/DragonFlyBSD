@@ -1,5 +1,3 @@
-/*	$OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $	*/
-
 /*
  * Copyright (c) 1997, 1998, 1999, 2000
  *	Bill Paul <wpaul@ctr.columbia.edu>.  All rights reserved.
@@ -31,8 +29,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.39 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.40 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -94,8 +93,9 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-#include <sys/thread2.h>
 #include <sys/queue.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -261,6 +261,7 @@ static device_method_t sk_methods[] = {
 
 static DEFINE_CLASS_0(sk, sk_driver, sk_methods, sizeof(struct sk_if_softc));
 static devclass_t sk_devclass;
+static struct lwkt_serialize sk_serializer;
 
 DECLARE_DUMMY_MODULE(if_sk);
 DRIVER_MODULE(if_sk, pci, skc_driver, skc_devclass, 0, 0);
@@ -1072,6 +1073,7 @@ skc_probe(device_t dev)
 	struct sk_type *t;
 	uint16_t vendor, product;
 
+	lwkt_serialize_init(&sk_serializer);
 	vendor = pci_get_vendor(dev);
 	product = pci_get_device(dev);
 
@@ -1304,7 +1306,7 @@ sk_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc_if->arpcom.ac_enaddr, &sk_serializer);
 	callout_init(&sc_if->sk_tick_timer);
 
 	return(0);
@@ -1411,9 +1413,9 @@ skc_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->sk_irq, 0,
+	error = bus_setup_intr(dev, sc->sk_irq, INTR_NETSAFE,
 			       sk_intr, sc,
-			       &sc->sk_intrhand, NULL);
+			       &sc->sk_intrhand, &sk_serializer);
 
 	if (error) {
 		printf("skc%d: couldn't set up irq\n", unit);
@@ -1523,7 +1525,7 @@ sk_detach(device_t dev)
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(&sk_serializer);
 
 	sk_stop(sc_if);
 	ether_ifdetach(ifp);
@@ -1533,7 +1535,7 @@ sk_detach(device_t dev)
 	contigfree(sc_if->sk_cdata.sk_jumbo_buf, SK_JMEM, M_DEVBUF);
 	contigfree(sc_if->sk_rdata, sizeof(struct sk_ring_data), M_DEVBUF);
 
-	crit_exit();
+	lwkt_serialize_exit(&sk_serializer);
 
 	return(0);
 }
@@ -1543,10 +1545,11 @@ skc_detach(device_t dev)
 {
 	struct sk_softc *sc;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 
+	/*
+	 * recursed from sk_detach ?  don't need serializer
+	 */
 	bus_generic_detach(dev);
 	if (sc->sk_devs[SK_PORT_A] != NULL)
 		device_delete_child(dev, sc->sk_devs[SK_PORT_A]);
@@ -1556,8 +1559,6 @@ skc_detach(device_t dev)
 	bus_teardown_intr(dev, sc->sk_irq, sc->sk_intrhand);
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sk_irq);
 	bus_release_resource(dev, SK_RES, SK_RID, sc->sk_res);
-
-	crit_exit();
 
 	return(0);
 }
@@ -1672,6 +1673,8 @@ skc_shutdown(device_t dev)
 {
 	struct sk_softc *sc = device_get_softc(dev);
 
+	lwkt_serialize_enter(&sk_serializer);
+
 	/* Turn off the 'driver is loaded' LED. */
 	CSR_WRITE_2(sc, SK_LED, SK_LED_GREEN_OFF);
 
@@ -1680,6 +1683,7 @@ skc_shutdown(device_t dev)
 	 * assert the resets on the attached XMAC(s).
 	 */
 	sk_reset(sc);
+	lwkt_serialize_exit(&sk_serializer);
 }
 
 static void
@@ -1735,7 +1739,7 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		}
 
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	sc_if->sk_cdata.sk_rx_prod = i;
@@ -1782,11 +1786,16 @@ sk_tick(void *xsc_if)
 	struct mii_data *mii = device_get_softc(sc_if->sk_miibus);
 	int i;
 
-	if ((ifp->if_flags & IFF_UP) == 0)
+	lwkt_serialize_enter(&sk_serializer);
+
+	if ((ifp->if_flags & IFF_UP) == 0) {
+		lwkt_serialize_exit(&sk_serializer);
 		return;
+	}
 
 	if (sc_if->sk_phytype == SK_PHYTYPE_BCOM) {
 		sk_intr_bcom(sc_if);
+		lwkt_serialize_exit(&sk_serializer);
 		return;
 	}
 
@@ -1804,6 +1813,7 @@ sk_tick(void *xsc_if)
 
 	if (i != 3) {
 		callout_reset(&sc_if->sk_tick_timer, hz, sk_tick, sc_if);
+		lwkt_serialize_exit(&sk_serializer);
 		return;
 	}
 
@@ -1813,6 +1823,7 @@ sk_tick(void *xsc_if)
 	mii_tick(mii);
 	mii_pollstat(mii);
 	callout_stop(&sc_if->sk_tick_timer);
+	lwkt_serialize_exit(&sk_serializer);
 }
 
 static void

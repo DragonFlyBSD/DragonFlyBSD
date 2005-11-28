@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.17 2005/11/22 00:24:35 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.18 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -232,7 +232,7 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_ioctl = vlan_ioctl;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
-	ether_ifattach(ifp, ifv->ifv_ac.ac_enaddr);
+	ether_ifattach(ifp, ifv->ifv_ac.ac_enaddr, NULL);
 	/* Now undo some of the damage... */
 	ifp->if_data.ifi_type = IFT_L2VLAN;
 	ifp->if_data.ifi_hdrlen = EVL_ENCAPLEN;
@@ -359,7 +359,11 @@ vlan_start(struct ifnet *ifp)
 		 * Send it, precisely as ether_output() would have.
 		 * We are already running at splimp.
 		 */
+		lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_enter(p->if_serializer);
 		error = ifq_handoff(p, m, &pktattr);
+		lwkt_serialize_exit(p->if_serializer);
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (error)
 			ifp->if_oerrors++;
 		else
@@ -376,14 +380,18 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	struct bpf_if *bif;
 	struct ifvlan *ifv;
 	struct ether_header *eh = mtod(m, struct ether_header *);
+	struct ifnet *rcvif;
 
 	m_adj(m, ETHER_HDR_LEN);
+	rcvif = m->m_pkthdr.rcvif;
+
+	ASSERT_SERIALIZED(rcvif->if_serializer);
 
 	/*
 	 * Fake up a header and send the packet to the physical interface's
 	 * bpf tap if active.
 	 */
-	if ((bif = m->m_pkthdr.rcvif->if_bpf) != NULL) {
+	if ((bif = rcvif->if_bpf) != NULL) {
 		struct ether_vlan_header evh;
 
 		bcopy(eh, &evh, 2*ETHER_ADDR_LEN);
@@ -396,8 +404,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 
 	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
 	    ifv = LIST_NEXT(ifv, ifv_list)) {
-		if (m->m_pkthdr.rcvif == ifv->ifv_p
-		    && ifv->ifv_tag == t)
+		if (rcvif == ifv->ifv_p && ifv->ifv_tag == t)
 			break;
 	}
 
@@ -414,7 +421,11 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	m->m_pkthdr.rcvif = &ifv->ifv_if;
 
 	ifv->ifv_if.if_ipackets++;
+	lwkt_serialize_exit(rcvif->if_serializer);
+	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
 	ether_input(&ifv->ifv_if, eh, m);
+	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
+	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
 }
 
@@ -422,17 +433,21 @@ static int
 vlan_input(struct ether_header *eh, struct mbuf *m)
 {
 	struct ifvlan *ifv;
+	struct ifnet *rcvif;
+
+	rcvif = m->m_pkthdr.rcvif;
+	ASSERT_SERIALIZED(rcvif->if_serializer);
 
 	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
 	    ifv = LIST_NEXT(ifv, ifv_list)) {
-		if (m->m_pkthdr.rcvif == ifv->ifv_p
+		if (rcvif == ifv->ifv_p
 		    && (EVL_VLANOFTAG(ntohs(*mtod(m, u_int16_t *)))
 			== ifv->ifv_tag))
 			break;
 	}
 
 	if (ifv == NULL || (ifv->ifv_if.if_flags & IFF_UP) == 0) {
-		m->m_pkthdr.rcvif->if_noproto++;
+		rcvif->if_noproto++;
 		m_freem(m);
 		return -1;	/* so ether_input can take note */
 	}
@@ -451,7 +466,11 @@ vlan_input(struct ether_header *eh, struct mbuf *m)
 	m->m_pkthdr.len -= EVL_ENCAPLEN;
 
 	ifv->ifv_if.if_ipackets++;
+	lwkt_serialize_exit(rcvif->if_serializer);
+	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
 	ether_input(&ifv->ifv_if, eh, m);
+	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
+	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
 }
 
@@ -563,6 +582,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	ifa = (struct ifaddr *)data;
 	ifv = ifp->if_softc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	crit_enter();
 
 	switch (cmd) {
@@ -592,8 +612,12 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCGIFMEDIA:
 		if (ifv->ifv_p != NULL) {
-			error = (ifv->ifv_p->if_ioctl)(ifv->ifv_p,
-						       SIOCGIFMEDIA, data, cr);
+			lwkt_serialize_exit(ifp->if_serializer);
+			lwkt_serialize_enter(ifv->ifv_p->if_serializer);
+			error = ifv->ifv_p->if_ioctl(ifv->ifv_p,
+						     SIOCGIFMEDIA, data, cr);
+			lwkt_serialize_exit(ifv->ifv_p->if_serializer);
+			lwkt_serialize_enter(ifp->if_serializer);
 			/* Limit the result to the parent's current config. */
 			if (error == 0) {
 				struct ifmediareq *ifmr;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.25 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.26 2005/11/28 17:13:43 dillon Exp $
  *
  */
 
@@ -466,11 +466,6 @@ ray_attach(device_t dev)
 		ray_res_release(sc);
 		return (error);
 	}
-	error = ray_res_alloc_irq(sc);
-	if (error) {
-		ray_res_release(sc);
-		return (error);
-	}
 
 	/*
 	 * Reset any pending interrupts
@@ -528,7 +523,13 @@ ray_attach(device_t dev)
 	callout_init(&sc->tx_timer);
 	TAILQ_INIT(&sc->sc_comq);
 
-	ether_ifattach(ifp, ep->e_station_addr);
+	ether_ifattach(ifp, ep->e_station_addr, NULL);
+
+	error = ray_res_alloc_irq(sc);
+	if (error) {
+		ray_detach(dev);
+		return (error);
+	}
 
 	/*
 	 * Print out some useful information
@@ -579,7 +580,7 @@ ray_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ray_comq_entry *com;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STOP, "");
 
@@ -621,7 +622,7 @@ ray_detach(device_t dev)
 	ray_res_release(sc);
 	RAY_DPRINTF(sc, RAY_DBG_STOP, "unloading complete");
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
@@ -645,8 +646,6 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		return (ENXIO);
 
 	error = error2 = 0;
-
-	crit_enter();
 
 	switch (command) {
 	case SIOCSIFFLAGS:
@@ -733,8 +732,6 @@ ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 
 	return (error);
 }
@@ -1609,11 +1606,11 @@ ray_tx_timo(void *xsc)
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR, "");
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd)) {
-		crit_enter();
 		ray_tx(ifp);
-		crit_exit();
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -2063,7 +2060,7 @@ ray_rx_data(struct ray_softc *sc, struct mbuf *m0, u_int8_t siglev, u_int8_t ant
 	RAY_MBUF_DUMP(sc, RAY_DBG_RX, m0, "(3) packet after trimming");
 	ifp->if_ipackets++;
 	ray_rx_update_cache(sc, header->i_addr2, siglev, antenna);
-	(*ifp->if_input)(ifp, m0);
+	ifp->if_input(ifp, m0);
 }
 
 /*
@@ -3348,8 +3345,7 @@ ray_com_ecf_timo(void *xsc)
     	struct ray_comq_entry *com;
 	u_int8_t cmd, status;
 
-	crit_enter();
-
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_COM, "");
 	RAY_MAP_CM(sc);
 
@@ -3380,8 +3376,7 @@ ray_com_ecf_timo(void *xsc)
 		break;
 
 	}
-
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 /*
@@ -3726,8 +3721,9 @@ ray_res_alloc_irq(struct ray_softc *sc)
 		RAY_PRINTF(sc, "Cannot allocate irq");
 		return (ENOMEM);
 	}
-	error = bus_setup_intr(sc->dev, sc->irq_res, 0,
-			       ray_intr, sc, &sc->irq_handle, NULL);
+	error = bus_setup_intr(sc->dev, sc->irq_res, INTR_NETSAFE,
+			       ray_intr, sc, &sc->irq_handle, 
+			       sc->arpcom.ac_if.if_serializer);
 	if (error) {
 		RAY_PRINTF(sc, "Failed to setup irq");
 		return (error);

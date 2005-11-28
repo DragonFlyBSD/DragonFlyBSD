@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.32 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.33 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -81,6 +81,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -139,6 +140,7 @@ static void	lge_rxeoc(struct lge_softc *);
 static void	lge_txeof(struct lge_softc *);
 static void	lge_intr(void *);
 static void	lge_tick(void *);
+static void	lge_tick_serialized(void *);
 static void	lge_start(struct ifnet *);
 static int	lge_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	lge_init(void *);
@@ -544,10 +546,11 @@ lge_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->lge_irq, 0,
-			       lge_intr, sc, &sc->lge_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->lge_irq, INTR_NETSAFE,
+			       lge_intr, sc, &sc->lge_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		printf("lge%d: couldn't set up irq\n", unit);
@@ -567,8 +570,7 @@ lge_detach(device_t dev)
 	struct lge_softc *sc= device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
 		lge_reset(sc);
 		lge_stop(sc);
@@ -582,8 +584,6 @@ lge_detach(device_t dev)
 	if (sc->lge_intrhand)
 		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
 
-	crit_exit();
-
 	if (sc->lge_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
 	if (sc->lge_res)
@@ -594,6 +594,7 @@ lge_detach(device_t dev)
 			   M_DEVBUF);
 	lge_free_jumbo_mem(sc);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -909,7 +910,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	sc->lge_cdata.lge_rx_cons = i;
@@ -970,10 +971,19 @@ static void
 lge_tick(void *xsc)
 {
 	struct lge_softc *sc = xsc;
-	struct mii_data *mii;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
+	lge_tick_serialized(xsc);
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static void
+lge_tick_serialized(void *xsc)
+{
+	struct lge_softc *sc = xsc;
+	struct mii_data *mii;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	CSR_WRITE_4(sc, LGE_STATSIDX, LGE_STATS_SINGLE_COLL_PKTS);
 	ifp->if_collisions += CSR_READ_4(sc, LGE_STATSVAL);
@@ -997,8 +1007,6 @@ lge_tick(void *xsc)
 	}
 
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
-
-	crit_exit();
 }
 
 static void
@@ -1037,7 +1045,7 @@ lge_intr(void *arg)
 		if (status & LGE_ISR_PHY_INTR) {
 			sc->lge_link = 0;
 			callout_stop(&sc->lge_stat_timer);
-			lge_tick(sc);
+			lge_tick_serialized(sc);
 		}
 	}
 
@@ -1153,12 +1161,8 @@ lge_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	crit_enter();
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
+	if (ifp->if_flags & IFF_RUNNING)
 		return;
-	}
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -1177,7 +1181,6 @@ lge_init(void *xsc)
 		printf("lge%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->lge_unit);
 		lge_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -1275,8 +1278,6 @@ lge_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -1321,8 +1322,6 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data	 *mii;
 	int error = 0;
-
-	crit_enter();
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -1369,8 +1368,6 @@ lge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 
 	return(error);
 }

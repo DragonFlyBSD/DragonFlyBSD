@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.14 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.15 2005/11/28 17:13:45 dillon Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -235,7 +235,7 @@ i4bispppattach(void *dummy)
 		sppp_attach(&sc->sc_if);
 /* XXX: validate / add proper code */
 		ether_ifattach_bpf(&sc->sc_if, ((struct arpcom*)sc)->ac_enaddr,
-				   DLT_PPP, PPP_HDRLEN);
+				   DLT_PPP, PPP_HDRLEN, NULL);
 		callout_init(&sc->sc_timeout);
 	}
 }

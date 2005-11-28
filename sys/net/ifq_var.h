@@ -28,8 +28,16 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.5 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.6 2005/11/28 17:13:45 dillon Exp $
  */
+/*
+ * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
+ * be called within a critical section to interlock subsystems based on
+ * the MP lock, and must be holding the interface serializer to interlock
+ * MPSAFE subsystems.  Once all subsystems are made MPSAFE, the critical
+ * section will no longer be required.
+ */
+
 #ifndef _NET_IFQ_VAR_H
 #define _NET_IFQ_VAR_H
 
@@ -61,24 +69,36 @@ ifq_is_attached(struct ifaltq *_ifq)
 }
 #endif
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline int
 ifq_is_ready(struct ifaltq *_ifq)
 {
 	return(_ifq->altq_flags & ALTQF_READY);
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline void
 ifq_set_ready(struct ifaltq *_ifq)
 {
 	_ifq->altq_flags |= ALTQF_READY;
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline int
 ifq_enqueue(struct ifaltq *_ifq, struct mbuf *_m, struct altq_pktattr *_pa)
 {
 	return((*_ifq->altq_enqueue)(_ifq, _m, _pa));
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline struct mbuf *
 ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
 {
@@ -89,6 +109,9 @@ ifq_dequeue(struct ifaltq *_ifq, struct mbuf *_mpolled)
 	return((*_ifq->altq_dequeue)(_ifq, _mpolled, ALTDQ_REMOVE));
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline struct mbuf *
 ifq_poll(struct ifaltq *_ifq)
 {
@@ -99,12 +122,18 @@ ifq_poll(struct ifaltq *_ifq)
 	return((*_ifq->altq_dequeue)(_ifq, NULL, ALTDQ_POLL));
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline void
 ifq_purge(struct ifaltq *_ifq)
 {
 	(*_ifq->altq_request)(_ifq, ALTRQ_PURGE, NULL);
 }
 
+/*
+ * WARNING: Should only be called in an MPSAFE manner.
+ */
 static __inline void
 ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
 	     struct altq_pktattr *_pa)
@@ -117,12 +146,21 @@ ifq_classify(struct ifaltq *_ifq, struct mbuf *_m, uint8_t _af,
 		(*_ifq->altq_classify)(_ifq, _m, _pa);
 }
 
+/*
+ * Hand a packet to an interface. 
+ *
+ * For subsystems protected by the MP lock, access to the queue is protected
+ * by a critical section.
+ *
+ * For MPSAFE subsystems and drivers, access to the queue is protected by
+ * the ifnet serializer.
+ */
 static __inline int
 ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 {
 	int _error;
 
-	crit_enter();
+	ASSERT_SERIALIZED(_ifp->if_serializer);
 	_error = ifq_enqueue(&_ifp->if_snd, _m, _pa);
 	if (_error == 0) {
 		_ifp->if_obytes += _m->m_pkthdr.len;
@@ -131,7 +169,6 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 		if ((_ifp->if_flags & IFF_OACTIVE) == 0)
 			(*_ifp->if_start)(_ifp);
 	}
-	crit_exit();
 	return(_error);
 }
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.17 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.18 2005/11/28 17:13:38 dillon Exp $
  */
 
 /*
@@ -205,8 +205,9 @@ an_attach_pci(dev)
 	if (error)
 		goto fail;
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       an_intr, sc, &sc->irq_handle, NULL);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       an_intr, sc, &sc->irq_handle, 
+			       sc->arpcom.ac_if.if_serializer);
 	if (error) {
     		ifmedia_removeall(&sc->an_ifmedia);
 		ether_ifdetach(&sc->arpcom.ac_if);

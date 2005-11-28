@@ -32,7 +32,7 @@
  *
  *	@(#)ns_output.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_output.c,v 1.7 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.6 2004/07/27 13:50:15 hmp Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.7 2005/11/28 17:13:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,8 +139,10 @@ gotif:
 		if (ns_copy_output) {
 			ns_watch_output(m0, ifp);
 		}
+		lwkt_serialize_enter(ifp->if_serializer);
 		error = (*ifp->if_output)(ifp, m0,
 					(struct sockaddr *)dst, ro->ro_rt);
+		lwkt_serialize_exit(ifp->if_serializer);
 		goto done;
 	} else error = EMSGSIZE;
 

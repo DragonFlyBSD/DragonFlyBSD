@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.16 2005/10/12 17:35:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.17 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -433,7 +433,7 @@ sr_attach(device_t device)
 
 		sc->ifsppp.pp_flags = PP_KEEPALIVE;
 		sppp_attach((struct ifnet *)&sc->ifsppp);
-		if_attach(ifp);
+		if_attach(ifp, NULL);
 
 		bpfattach(ifp, DLT_PPP, PPP_HEADER_LEN);
 #else	/* NETGRAPH */

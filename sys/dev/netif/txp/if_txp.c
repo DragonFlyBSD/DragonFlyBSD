@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.32 2005/11/22 00:24:34 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.33 2005/11/28 17:13:44 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -47,6 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -312,10 +313,11 @@ txp_attach(dev)
 	ifp->if_hwassist = 0;
 	txp_capabilities(sc);
 
-	ether_ifattach(ifp, enaddr);
+	ether_ifattach(ifp, enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->sc_irq, 0,
-			       txp_intr, sc, &sc->sc_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->sc_irq, INTR_NETSAFE,
+			       txp_intr, sc, &sc->sc_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
 		ether_ifdetach(ifp);
@@ -337,10 +339,9 @@ txp_detach(dev)
 	struct ifnet *ifp;
 	int i;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	ifp = &sc->sc_arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	txp_stop(sc);
 	txp_shutdown(dev);
@@ -352,8 +353,7 @@ txp_detach(dev)
 		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
 
 	txp_release_resources(dev);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -738,10 +738,12 @@ txp_rx_reclaim(sc, r)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (rxd->rx_stat & RX_STAT_VLAN)
 			VLAN_INPUT_TAG(m, htons(rxd->rx_vlan >> 16));
 		else
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
+		lwkt_serialize_exit(ifp->if_serializer);
 
 next:
 
@@ -867,8 +869,11 @@ txp_shutdown(dev)
 	device_t dev;
 {
 	struct txp_softc *sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
+	ifp = &sc->sc_arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/* mask all interrupts */
 	WRITE_REG(sc, TXP_IMR,
@@ -880,6 +885,7 @@ txp_shutdown(dev)
 	txp_command(sc, TXP_CMD_RX_DISABLE, 0, 0, 0, NULL, NULL, NULL, 0);
 	txp_command(sc, TXP_CMD_HALT, 0, 0, 0, NULL, NULL, NULL, 0);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1029,8 +1035,6 @@ txp_ioctl(ifp, command, data, cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -1057,9 +1061,6 @@ txp_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -1140,8 +1141,6 @@ txp_init(xsc)
 
 	txp_stop(sc);
 
-	crit_enter();
-
 	txp_command(sc, TXP_CMD_MAX_PKT_SIZE_WRITE, TXP_MAX_PKTLEN, 0, 0,
 	    NULL, NULL, NULL, 1);
 
@@ -1174,8 +1173,6 @@ txp_init(xsc)
 	ifp->if_timer = 0;
 
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
-
-	crit_exit();
 }
 
 static void
@@ -1187,7 +1184,7 @@ txp_tick(vsc)
 	struct txp_rsp_desc *rsp = NULL;
 	struct txp_ext_desc *ext;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	txp_rxbuf_reclaim(sc);
 
 	if (txp_command2(sc, TXP_CMD_READ_STATISTICS, 0, 0, 0, NULL, 0,
@@ -1214,7 +1211,7 @@ out:
 		free(rsp, M_DEVBUF);
 
 	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void

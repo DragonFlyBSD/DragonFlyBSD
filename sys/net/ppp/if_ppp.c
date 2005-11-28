@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.26 2005/11/22 00:24:35 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.27 2005/11/28 17:13:45 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -205,22 +205,19 @@ pppintr(struct netmsg *msg)
 
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
-	crit_enter();
+	lwkt_serialize_enter(sc->sc_if.if_serializer);
 	if (!(sc->sc_flags & SC_TBUSY)
 	    && (!ifq_is_empty(&sc->sc_if.if_snd) || !IF_QEMPTY(&sc->sc_fastq))) {
 	    sc->sc_flags |= SC_TBUSY;
-	    crit_exit();
 	    (*sc->sc_start)(sc);
-	} else
-	    crit_exit();
+	} 
 	for (;;) {
-	    crit_enter();
 	    IF_DEQUEUE(&sc->sc_rawq, m);
-	    crit_exit();
 	    if (m == NULL)
 		break;
 	    ppp_inproc(sc, m);
 	}
+	lwkt_serialize_exit(sc->sc_if.if_serializer);
     }
     lwkt_replymsg(&msg->nm_lmsg, 0);
     return(EASYNC);
@@ -251,7 +248,7 @@ pppattach(dummy)
 	sc->sc_fastq.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_rawq.ifq_maxlen = IFQ_MAXLEN;
 	callout_init(&sc->sc_timeout);
-	if_attach(&sc->sc_if);
+	if_attach(&sc->sc_if, NULL);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }
     netisr_register(NETISR_PPP, cpu0_portfn, pppintr);
@@ -879,7 +876,9 @@ pppoutput(ifp, m0, dst, rtp)
 	        error = 0;
 	    }
 	} else {
+	    lwkt_serialize_enter(sc->sc_if.if_serializer);
 	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
+	    lwkt_serialize_exit(sc->sc_if.if_serializer);
 	}
 	if (error) {
 	    crit_exit();
@@ -941,7 +940,9 @@ ppp_requeue(sc)
 		    error = 0;
 		}
 	    } else {
+	        lwkt_serialize_enter(sc->sc_if.if_serializer);
 		error = ifq_enqueue(&sc->sc_if.if_snd, m, NULL);
+	        lwkt_serialize_exit(sc->sc_if.if_serializer);
 	    }
 	    if (error) {
 		    sc->sc_if.if_oerrors++;
@@ -1268,6 +1269,8 @@ ppp_inproc(sc, m)
     u_char *iphdr;
     u_int hlen;
 
+    ASSERT_SERIALIZED(ifp->if_serializer);
+
     sc->sc_stats.ppp_ipackets++;
 
     if (sc->sc_flags & SC_LOG_INPKT) {
@@ -1491,7 +1494,7 @@ ppp_inproc(sc, m)
 	m->m_pkthdr.len -= PPP_HDRLEN;
 	m->m_data += PPP_HDRLEN;
 	m->m_len -= PPP_HDRLEN;
-	if (ipflow_fastforward(m))
+	if (ipflow_fastforward(m, ifp->if_serializer))
 	    return;
 	isr = NETISR_IP;
 	break;

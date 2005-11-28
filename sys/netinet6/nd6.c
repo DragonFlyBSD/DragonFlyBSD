@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.16 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.17 2005/11/28 17:13:46 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1959,11 +1959,15 @@ lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway);
 	
   sendpkt:
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if ((ifp->if_flags & IFF_LOOPBACK) != 0) {
-		return((*ifp->if_output)(origifp, m, (struct sockaddr *)dst,
-					 rt));
+		error = (*ifp->if_output)(origifp, m, (struct sockaddr *)dst,
+					  rt);
+	} else {
+		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst, rt);
 	}
-	return((*ifp->if_output)(ifp, m, (struct sockaddr *)dst, rt));
+	lwkt_serialize_exit(ifp->if_serializer);
+	return (error);
 
   bad:
 	if (m)

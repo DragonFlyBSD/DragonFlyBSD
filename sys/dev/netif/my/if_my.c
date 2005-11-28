@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.22 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.23 2005/11/28 17:13:43 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -40,9 +40,11 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
 #include <sys/module.h>
+#include <sys/serialize.h>
+
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -861,7 +863,6 @@ my_attach(device_t dev)
 		error = ENXIO;
 		goto fail;
 	}
-	callout_init(&sc->my_stat_ch);
 
 	sc->my_info = t;
 
@@ -962,10 +963,11 @@ my_attach(device_t dev)
 	my_stop(sc);
 	ifmedia_set(&sc->ifmedia, media);
 
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->my_irq, 0,
-			       my_intr, sc, &sc->my_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->my_irq, INTR_NETSAFE,
+			       my_intr, sc, &sc->my_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		printf("my%d: couldn't set up irq\n", unit);
@@ -985,7 +987,7 @@ my_detach(device_t dev)
 	struct my_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
 		ether_ifdetach(ifp);
 		my_stop(sc);
@@ -994,7 +996,7 @@ my_detach(device_t dev)
 	if (sc->my_intrhand)
 		bus_teardown_intr(dev, sc->my_irq, sc->my_intrhand);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (sc->my_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);
@@ -1144,7 +1146,7 @@ my_rxeof(struct my_softc * sc)
 			m->m_pkthdr.len = m->m_len = total_len;
 		}
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 }
 

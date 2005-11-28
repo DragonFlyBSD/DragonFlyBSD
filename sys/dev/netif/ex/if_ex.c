@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.20 2005/11/22 00:24:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.21 2005/11/28 17:13:42 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -49,6 +49,7 @@
 
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/serialize.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -268,7 +269,7 @@ ex_attach(device_t dev)
 	/*
 	 * Attach the interface.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	return(0);
 }
@@ -283,8 +284,6 @@ ex_init(void *xsc)
 	unsigned short		temp_reg;
 
 	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
-
-	crit_enter();
 
 	ifp->if_timer = 0;
 
@@ -358,8 +357,6 @@ ex_init(void *xsc)
 
 	ex_start(ifp);
 
-	crit_exit();
-
 	DODEBUG(Start_End, printf("ex_init%d: finish\n", ifp->if_dunit););
 }
 
@@ -375,8 +372,6 @@ ex_start(struct ifnet *ifp)
 	struct mbuf *		m;
 
 	DODEBUG(Start_End, printf("ex_start%d: start\n", unit););
-
-	crit_enter();
 
 	/*
 	 * Main loop: send outgoing packets to network card until there are no
@@ -536,9 +531,6 @@ ex_start(struct ifnet *ifp)
 			DODEBUG(Status, printf("OACTIVE start\n"););
 		}
 	}
-
-	crit_exit();
-
 	DODEBUG(Start_End, printf("ex_start%d: finish\n", unit););
 }
 
@@ -742,7 +734,7 @@ ex_rx_intr(struct ex_softc *sc)
 						m->m_len = MLEN;
 					}
 				}
-				(*ifp->if_input)(ifp, ipkt);
+				ifp->if_input(ifp, ipkt);
 				ifp->if_ipackets++;
 			}
 		} else {
@@ -771,8 +763,6 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	int			error = 0;
 
 	DODEBUG(Start_End, printf("ex_ioctl%d: start ", ifp->if_dunit););
-
-	crit_enter();
 
 	switch(cmd) {
 		case SIOCSIFFLAGS:
@@ -810,8 +800,6 @@ ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			break;
 	}
 
-	crit_exit();
-
 	DODEBUG(Start_End, printf("\nex_ioctl%d: finish\n", ifp->if_dunit););
 
 	return(error);
@@ -822,13 +810,9 @@ static void
 ex_reset(struct ex_softc *sc)
 {
 	DODEBUG(Start_End, printf("ex_reset%d: start\n", unit););
-  
-	crit_enter();
 
 	ex_stop(sc);
 	ex_init(sc);
-
-	crit_exit();
 
 	DODEBUG(Start_End, printf("ex_reset%d: finish\n", unit););
 }

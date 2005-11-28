@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.22 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.23 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -245,7 +245,7 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 		(csr0 & 0x01 ? 500000 : 2000000) / (1 << flags.rate);
 
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
@@ -264,8 +264,6 @@ sbni_init(void *xsc)
 	struct sbni_softc *sc =xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
 	/*
 	 * kludge to avoid multiple initialization when more than once
 	 * protocols configured
@@ -281,8 +279,6 @@ sbni_init(void *xsc)
 
 	/* attempt to start output */
 	sbni_start(ifp);
-
-	crit_exit();
 }
 
 
@@ -843,7 +839,7 @@ indicate_pkt(struct sbni_softc *sc)
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len   = m->m_len = sc->inppos;
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
 	sc->rx_buf_p = NULL;
 }
 
@@ -860,7 +856,7 @@ sbni_timeout(void *xsc)
 	struct sbni_softc *sc = xsc;
 	u_char csr0;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	csr0 = sbni_inb(sc, CSR0);
 	if (csr0 & RC_CHK) {
@@ -882,7 +878,7 @@ sbni_timeout(void *xsc)
 	sbni_outb(sc, CSR0, csr0 | RC_CHK); 
 	callout_reset(&sc->sbni_stat_timer, hz / SBNI_HZ, sbni_timeout, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1039,8 +1035,6 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	ifr = (struct ifreq *)data;
 	error = 0;
 
-	crit_enter();
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		/*
@@ -1127,9 +1121,6 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 

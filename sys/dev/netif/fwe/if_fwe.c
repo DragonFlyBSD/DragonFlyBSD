@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.22 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.23 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -199,7 +199,7 @@ fwe_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, TX_MAX_QUEUE);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
         /* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
@@ -253,12 +253,10 @@ fwe_detach(device_t dev)
 {
 	struct fwe_softc *fwe = device_get_softc(dev);
 
-	crit_enter();
-
+	lwkt_serialize_enter(fwe->fwe_if.if_serializer);
 	fwe_stop(fwe);
 	ether_ifdetach(&fwe->fwe_if);
-
-	crit_exit();
+	lwkt_serialize_exit(fwe->fwe_if.if_serializer);
 	return 0;
 }
 
@@ -359,8 +357,6 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifstat *ifs = NULL;
 	int error = 0, len;
 
-	crit_enter();
-
 	switch (cmd) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -390,9 +386,6 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, cmd, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 
@@ -404,6 +397,7 @@ fwe_output_callback(struct fw_xfer *xfer)
 
 	fwe = (struct fwe_softc *)xfer->sc;
 	ifp = &fwe->fwe_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	/* XXX error check */
 	FWEDEBUG(ifp, "resp = %d\n", xfer->resp);
 	if (xfer->resp != 0)
@@ -412,15 +406,12 @@ fwe_output_callback(struct fw_xfer *xfer)
 	m_freem(xfer->mbuf);
 	fw_xfer_unload(xfer);
 
-	crit_enter();
-
 	STAILQ_INSERT_TAIL(&fwe->xferlist, xfer, link);
-
-	crit_exit();
 
 	/* for queue full */
 	if (!ifq_is_empty(&ifp->if_snd))
 		fwe_start(ifp);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -429,8 +420,6 @@ fwe_start(struct ifnet *ifp)
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 
 	FWEDEBUG(ifp, "starting\n");
-
-	crit_enter();
 
 	if (fwe->dma_ch < 0) {
 		FWEDEBUG(ifp, "not ready\n");
@@ -444,8 +433,6 @@ fwe_start(struct ifnet *ifp)
 
 		ifp->if_flags &= ~IFF_OACTIVE;
 	}
-
-	crit_exit();
 }
 
 #define HDR_LEN 4
@@ -515,6 +502,7 @@ fwe_as_input(struct fw_xferq *xferq)
 
 	fwe = (struct fwe_softc *)xferq->sc;
 	ifp = &fwe->fwe_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	while ((sxfer = STAILQ_FIRST(&xferq->stvalid)) != NULL) {
 		STAILQ_REMOVE_HEAD(&xferq->stvalid, link);
 		fp = mtod(sxfer->mbuf, struct fw_pkt *);
@@ -558,11 +546,12 @@ fwe_as_input(struct fw_xferq *xferq)
 			 c[20], c[21], c[22], c[23]
 		 );
 #endif
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 		ifp->if_ipackets ++;
 	}
 	if (STAILQ_FIRST(&xferq->stfree) != NULL)
 		fwe->fd.fc->irx_enable(fwe->fd.fc, fwe->dma_ch);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 

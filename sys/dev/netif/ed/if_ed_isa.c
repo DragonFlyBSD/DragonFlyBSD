@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.12 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.13 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 
 static int ed_isa_probe		(device_t);
 static int ed_isa_attach	(device_t);
+static int ed_isa_detach	(device_t);
 
 static struct isa_pnp_id ed_ids[] = {
 	{ 0x1684a34d,	NULL },		/* SMC8416 */
@@ -129,20 +130,45 @@ ed_isa_attach(device_t dev)
 
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       edintr, sc, &sc->irq_handle, NULL);
-	if (error) {
+	error = ed_attach(dev);
+	if (error == 0) {
+		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+				       edintr, sc, &sc->irq_handle,
+				       sc->arpcom.ac_if.if_serializer);
+		if (error)
+			ed_isa_detach(dev);
+	} else {
 		ed_release_resources(dev);
-		return (error);
 	}
+	return (error);
+}
 
-	return ed_attach(dev);
+static int
+ed_isa_detach(device_t dev)
+{
+        struct ed_softc *sc = device_get_softc(dev);
+        struct ifnet *ifp = &sc->arpcom.ac_if;
+
+        lwkt_serialize_enter(ifp->if_serializer);
+        if (sc->gone) {
+                device_printf(dev, "already unloaded\n");
+                return (0);
+        }
+        ed_stop(sc);
+        ifp->if_flags &= ~IFF_RUNNING;
+        ether_ifdetach(ifp);
+        sc->gone = 1;
+        bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+        ed_release_resources(dev);
+        lwkt_serialize_exit(ifp->if_serializer);
+        return (0);
 }
 
 static device_method_t ed_isa_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		ed_isa_probe),
 	DEVMETHOD(device_attach,	ed_isa_attach),
+	DEVMETHOD(device_attach,	ed_isa_detach),
 
 	{ 0, 0 }
 };

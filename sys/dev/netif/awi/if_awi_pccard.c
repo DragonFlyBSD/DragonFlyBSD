@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.13 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.14 2005/11/28 17:13:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,23 +187,25 @@ awi_pccard_attach(device_t dev)
 	} else
 		am79c930_chip_init(&sc->sc_chip, 0);
 
-	error = bus_setup_intr(dev, psc->sc_irq_res, 0,
-			       (void (*)(void *))awi_intr, sc,
-			       &psc->sc_intrhand, NULL);
-	if (error) {
-		device_printf(dev, "awi_pccard_attach: intr setup failed\n");
-		goto fail;
-	}
-
-	sc->sc_cansleep = 1;
 	sc->sc_enabled = 1;
 	sc->sc_ifp = &sc->sc_ec.ac_if;
 
 	error = awi_attach(sc);
 	sc->sc_enabled = 0;	/*XXX*/
-	if (error == 0)
-		return 0;
-	device_printf(dev, "awi_pccard_attach: awi_attach failed\n");
+
+	if (error) {
+		device_printf(dev, "awi_pccard_attach: awi_attach failed\n");
+		goto fail;
+	}
+
+	error = bus_setup_intr(dev, psc->sc_irq_res, INTR_NETSAFE,
+			       (void (*)(void *))awi_intr, sc,
+			       &psc->sc_intrhand, sc->sc_ifp->if_serializer);
+	if (error) {
+		device_printf(dev, "awi_pccard_attach: intr setup failed\n");
+		goto fail;
+	}
+	return 0;
 
   fail:
 	if (psc->sc_intrhand) {

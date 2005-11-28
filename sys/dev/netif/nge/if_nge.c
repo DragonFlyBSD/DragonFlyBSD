@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.33 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.34 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -97,6 +97,8 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
+
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -404,8 +406,6 @@ nge_mii_readreg(struct nge_softc *sc, struct nge_mii_frame *frame)
 {
 	int ack, i;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -478,8 +478,6 @@ fail:
 	SIO_SET(NGE_MEAR_MII_CLK);
 	DELAY(1);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -491,8 +489,6 @@ fail:
 static int
 nge_mii_writereg(struct nge_softc *sc, struct nge_mii_frame *frame)
 {
-	crit_enter();
-
 	/*
 	 * Set up frame for TX.
 	 */
@@ -525,8 +521,6 @@ nge_mii_writereg(struct nge_softc *sc, struct nge_mii_frame *frame)
 	 * Turn off xmit.
 	 */
 	SIO_CLR(NGE_MEAR_MII_DIR);
-
-	crit_exit();
 
 	return(0);
 }
@@ -903,10 +897,11 @@ nge_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->nge_irq, 0,
-			       nge_intr, sc, &sc->nge_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->nge_irq, INTR_NETSAFE,
+			       nge_intr, sc, &sc->nge_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't set up irq\n");
@@ -925,7 +920,7 @@ nge_detach(device_t dev)
 	struct nge_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		nge_reset(sc);
@@ -940,8 +935,6 @@ nge_detach(device_t dev)
 	if (sc->nge_intrhand)
 		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
 
-	crit_exit();
-
 	if (sc->nge_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
 	if (sc->nge_res)
@@ -953,6 +946,7 @@ nge_detach(device_t dev)
 	if (sc->nge_cdata.nge_jumbo_buf)
 		contigfree(sc->nge_cdata.nge_jumbo_buf, NGE_JMEM, M_DEVBUF);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1285,10 +1279,12 @@ nge_rxeof(struct nge_softc *sc)
 		 * If we received a packet with a vlan tag, pass it
 		 * to vlan_input() instead of ether_input().
 		 */
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (extsts & NGE_RXEXTSTS_VLANPKT)
 			VLAN_INPUT_TAG(m, extsts & NGE_RXEXTSTS_VTCI);
 		else
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	sc->nge_cdata.nge_rx_prod = i;
@@ -1360,7 +1356,7 @@ nge_tick(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->nge_tbi) {
 		if (sc->nge_link == 0) {
@@ -1393,7 +1389,7 @@ nge_tick(void *xsc)
 	}
 	callout_reset(&sc->nge_stat_timer, hz, nge_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 #ifdef DEVICE_POLLING
@@ -1504,7 +1500,7 @@ nge_intr(void *arg)
 		/* mii_tick should only be called once per second */
 		if (status & NGE_ISR_PHY_INTR) {
 			sc->nge_link = 0;
-			nge_tick(sc);
+			nge_tick_serialized(sc);
 		}
 #endif
 	}
@@ -1652,10 +1648,7 @@ nge_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	crit_enter();
-
 	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
 		return;
 	}
 
@@ -1686,7 +1679,6 @@ nge_init(void *xsc)
 		printf("nge%d: initialization failed: no "
 			"memory for rx buffers\n", sc->nge_unit);
 		nge_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -1828,8 +1820,6 @@ nge_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	crit_exit();
 }
 
 /*
@@ -1940,8 +1930,6 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu > NGE_JUMBO_MTU) {
@@ -2006,9 +1994,6 @@ nge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -2114,7 +2099,11 @@ static void
 nge_shutdown(device_t dev)
 {
 	struct nge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	nge_reset(sc);
 	nge_stop(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
+

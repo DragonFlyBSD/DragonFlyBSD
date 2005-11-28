@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.13 2005/08/27 19:00:49 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.14 2005/11/28 17:13:23 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -108,7 +108,6 @@ typedef struct callout usb_callout_t;
 typedef struct malloc_type *usb_malloc_type;
 
 #define Ether_ifattach ether_ifattach
-#define IF_INPUT(ifp, m) (*(ifp)->if_input)((ifp), (m))
 
 #define logprintf printf
 
@@ -223,7 +222,6 @@ typedef int usb_malloc_type;
 
 #define Ether_ifattach ether_ifattach
 #define if_deactivate(x)
-#define IF_INPUT(ifp, m) (*(ifp)->if_input)(ifp, m)
 
 #define	usbpoll			usbselect
 #define	uhidpoll		uhidselect

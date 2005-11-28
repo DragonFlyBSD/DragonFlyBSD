@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.21 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.22 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,8 +37,10 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
-#include <sys/thread2.h>
 #include <sys/queue.h>
+#include <sys/serialize.h>
+
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -368,10 +370,11 @@ gx_attach(device_t dev)
 	/*
 	 * Call MI attach routines.
 	 */
-	ether_ifattach(ifp, gx->arpcom.ac_enaddr);
+	ether_ifattach(ifp, gx->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, gx->gx_irq, 0,
-			       gx_intr, gx, &gx->gx_intrhand, NULL);
+	error = bus_setup_intr(dev, gx->gx_irq, INTR_NETSAFE,
+			       gx_intr, gx, &gx->gx_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't setup irq\n");
@@ -394,8 +397,6 @@ gx_init(void *xsc)
 	u_int16_t *m;
 	u_int32_t ctrl;
 	int i, tmp;
-
-	crit_enter();
 
 	/* Disable host interrupts, halt chip. */
 	gx_reset(gx);
@@ -547,8 +548,6 @@ printf("66mhz: %s  64bit: %s\n",
 	CSR_READ_4(gx, GX_STATUS) & GX_STAT_PCI66 ? "yes" : "no",
 	CSR_READ_4(gx, GX_STATUS) & GX_STAT_BUS64 ? "yes" : "no");
 #endif
-
-	crit_exit();
 }
 
 /*
@@ -571,6 +570,7 @@ gx_detach(device_t dev)
 	struct gx_softc *gx = device_get_softc(dev);
 	struct ifnet *ifp = &gx->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
 		ether_ifdetach(ifp);
 		gx_reset(gx);
@@ -583,8 +583,6 @@ gx_detach(device_t dev)
 
 	if (gx->gx_intrhand)
 		bus_teardown_intr(gx->gx_dev, gx->gx_irq, gx->gx_intrhand);
-
-	crit_exit();
 
 	if (gx->gx_irq)
 		bus_release_resource(gx->gx_dev, SYS_RES_IRQ, 0, gx->gx_irq);
@@ -599,6 +597,7 @@ gx_detach(device_t dev)
 	if (gx->gx_tbimode)
 		ifmedia_removeall(&gx->gx_media);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 
@@ -862,8 +861,6 @@ gx_miibus_statchg(device_t dev)
 	 */
 	mii = device_get_softc(gx->gx_miibus);
 
-	crit_enter();
-
 	reg = CSR_READ_4(gx, GX_CTRL);
 	if (mii->mii_media_active & IFM_FLAG0)
 		reg |= GX_CTRL_RX_FLOWCTRL;
@@ -874,8 +871,6 @@ gx_miibus_statchg(device_t dev)
 	else
 		reg &= ~GX_CTRL_TX_FLOWCTRL;
 	CSR_WRITE_4(gx, GX_CTRL, reg);
-
-	crit_exit();
 }
 
 static int
@@ -885,8 +880,6 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
 	int mask, error = 0;
-
-	crit_enter();
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -942,9 +935,6 @@ gx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 
@@ -1282,7 +1272,7 @@ gx_rxeof(struct gx_softc *gx)
 		if (staterr & GX_RXSTAT_VLAN_PKT)
 			VLAN_INPUT_TAG(m, rx->rx_special);
 		else
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
 		continue;
 
   ierror:
@@ -1368,8 +1358,6 @@ gx_intr(void *xsc)
 	struct ifnet *ifp = &gx->arpcom.ac_if;
 	u_int32_t intr;
 
-	crit_enter();
-
 	gx->gx_interrupts++;
 
 	/* Disable host interrupts. */
@@ -1412,8 +1400,6 @@ gx_intr(void *xsc)
 
 	if (ifp->if_flags & IFF_RUNNING && !ifq_is_empty(&ifp->if_snd))
 		gx_start(ifp);
-
-	crit_exit();
 }
 
 /*
@@ -1544,8 +1530,6 @@ gx_start(struct ifnet *ifp)
 	struct gx_softc	*gx = ifp->if_softc;
 	struct mbuf *m_head;
 
-	crit_enter();
-
 	for (;;) {
 		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
@@ -1569,6 +1553,4 @@ gx_start(struct ifnet *ifp)
 		 */
 		ifp->if_timer = 5;
 	}
-
-	crit_exit();
 }

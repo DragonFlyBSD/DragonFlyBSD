@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.21 2005/11/22 00:24:35 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.22 2005/11/28 17:13:46 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -56,6 +56,7 @@
 #include <sys/ttycom.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
+#include <sys/serialize.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -159,13 +160,13 @@ tapmodevent(mod, type, data)
 		/* XXX: maintain tap ifs in a local list */
 		unit = 0;
 		while (unit <= taplastunit) {
-			crit_enter();
-			TAILQ_FOREACH(ifp, &ifnet, if_link)
+			TAILQ_FOREACH(ifp, &ifnet, if_link) {
 				if ((strcmp(ifp->if_dname, TAP) == 0) ||
-				    (strcmp(ifp->if_dname, VMNET) == 0))
+				    (strcmp(ifp->if_dname, VMNET) == 0)) {
 					if (ifp->if_dunit == unit)
 						break;
-			crit_exit();
+				}
+			}
 
 			if (ifp != NULL) {
 				struct tap_softc	*tp = ifp->if_softc;
@@ -174,9 +175,9 @@ tapmodevent(mod, type, data)
 					"taplastunit = %d\n",
 					minor(tp->tap_dev), taplastunit);
 
-				crit_enter();
+				lwkt_serialize_enter(ifp->if_serializer);
 				ether_ifdetach(ifp);
-				crit_exit();
+				lwkt_serialize_exit(ifp->if_serializer);
 				destroy_dev(tp->tap_dev);
 				free(tp, M_TAP);
 			}
@@ -252,7 +253,7 @@ tapcreate(dev)
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, ether_addr);
+	ether_ifattach(ifp, ether_addr, NULL);
 
 	tp->tap_flags |= TAP_INITED;
 
@@ -310,9 +311,9 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 
 	/* junk all pending output */
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	ifq_purge(&ifp->if_snd);
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/*
 	 * do not bring the interface down, and do not anything with
@@ -320,8 +321,8 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 	 */
 
 	if (((tp->tap_flags & TAP_VMNET) == 0) && (ifp->if_flags & IFF_UP)) {
-		crit_enter();
 		if_down(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (ifp->if_flags & IFF_RUNNING) {
 			/* find internet addresses and delete routes */
 			struct ifaddr	*ifa = NULL;
@@ -342,7 +343,7 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
 
 			ifp->if_flags &= ~IFF_RUNNING;
 		}
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	funsetown(tp->tap_sigio);
@@ -391,6 +392,8 @@ tapifinit(xtp)
  * tapifioctl
  *
  * Process an ioctl request on network interface
+ *
+ * MPSAFE
  */
 int
 tapifioctl(ifp, cmd, data, cr)
@@ -407,9 +410,7 @@ tapifioctl(ifp, cmd, data, cr)
 		case SIOCSIFADDR:
 		case SIOCGIFADDR:
 		case SIOCSIFMTU:
-			crit_enter();
 			dummy = ether_ioctl(ifp, cmd, data);
-			crit_exit();
 			return (dummy);
 
 		case SIOCSIFFLAGS: /* XXX -- just like vmnet does */
@@ -418,7 +419,6 @@ tapifioctl(ifp, cmd, data, cr)
 			break;
 
 		case SIOCGIFSTATUS:
-			crit_enter();
 			ifs = (struct ifstat *)data;
 			dummy = strlen(ifs->ascii);
 			if (tp->tap_td != NULL && dummy < sizeof(ifs->ascii)) {
@@ -433,7 +433,6 @@ tapifioctl(ifp, cmd, data, cr)
 					"\tOpened by td %p\n", tp->tap_td);
 				}
 			}
-			crit_exit();
 			break;
 
 		default:
@@ -467,13 +466,9 @@ tapifstart(ifp)
 		TAPDEBUG(ifp, "not ready. minor = %#x, tap_flags = 0x%x\n",
 			 minor(tp->tap_dev), tp->tap_flags);
 
-		crit_enter();
 		ifq_purge(&ifp->if_snd);
-		crit_exit();
 		return;
 	}
-
-	crit_enter();
 
 	ifp->if_flags |= IFF_OACTIVE;
 
@@ -486,13 +481,16 @@ tapifstart(ifp)
 		if ((tp->tap_flags & TAP_ASYNC) && (tp->tap_sigio != NULL))
 			pgsigio(tp->tap_sigio, SIGIO, 0);
 
+		/*
+		 * selwakeup is not MPSAFE.  tapifstart is.
+		 */
+		get_mplock();
 		selwakeup(&tp->tap_rsel);
+		rel_mplock();
 		ifp->if_opackets ++; /* obytes are counted in ether_output */
 	}
 
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	crit_exit();
 } /* tapifstart */
 
 
@@ -508,101 +506,100 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	struct ifnet		*ifp = &tp->tap_if;
  	struct tapinfo		*tapp = NULL;
 	struct mbuf *mb;
+	short f;
+	int error;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	error = 0;
 
 	switch (cmd) {
- 		case TAPSIFINFO:
-			crit_enter();
- 		        tapp = (struct tapinfo *)data;
- 			ifp->if_mtu = tapp->mtu;
- 			ifp->if_type = tapp->type;
- 			ifp->if_baudrate = tapp->baudrate;
-			crit_exit();
- 		break;
-
-	 	case TAPGIFINFO:
- 			tapp = (struct tapinfo *)data;
- 			tapp->mtu = ifp->if_mtu;
- 			tapp->type = ifp->if_type;
- 			tapp->baudrate = ifp->if_baudrate;
- 		break;
-
-		case TAPSDEBUG:
-			tapdebug = *(int *)data;
+	case TAPSIFINFO:
+		tapp = (struct tapinfo *)data;
+		ifp->if_mtu = tapp->mtu;
+		ifp->if_type = tapp->type;
+		ifp->if_baudrate = tapp->baudrate;
 		break;
 
-		case TAPGDEBUG:
-			*(int *)data = tapdebug;
+	case TAPGIFINFO:
+		tapp = (struct tapinfo *)data;
+		tapp->mtu = ifp->if_mtu;
+		tapp->type = ifp->if_type;
+		tapp->baudrate = ifp->if_baudrate;
 		break;
 
-		case FIONBIO:
+	case TAPSDEBUG:
+		tapdebug = *(int *)data;
 		break;
 
-		case FIOASYNC:
-			crit_enter();
-			if (*(int *)data)
-				tp->tap_flags |= TAP_ASYNC;
-			else
-				tp->tap_flags &= ~TAP_ASYNC;
-			crit_exit();
+	case TAPGDEBUG:
+		*(int *)data = tapdebug;
 		break;
 
-		case FIONREAD:
-			crit_enter();
-			*(int *)data = 0;
-			if ((mb = ifq_poll(&ifp->if_snd)) != NULL) {
-				for(; mb != NULL; mb = mb->m_next)
-					*(int *)data += mb->m_len;
-			} 
-			crit_exit();
+	case FIONBIO:
 		break;
 
-		case FIOSETOWN:
-			return (fsetown(*(int *)data, &tp->tap_sigio));
-
-		case FIOGETOWN:
-			*(int *)data = fgetown(tp->tap_sigio);
-			return (0);
-
-		/* this is deprecated, FIOSETOWN should be used instead */
-		case TIOCSPGRP:
-			return (fsetown(-(*(int *)data), &tp->tap_sigio));
-
-		/* this is deprecated, FIOGETOWN should be used instead */
-		case TIOCGPGRP:
-			*(int *)data = -fgetown(tp->tap_sigio);
-			return (0);
-
-		/* VMware/VMnet port ioctl's */
-
-		case SIOCGIFFLAGS:	/* get ifnet flags */
-			bcopy(&ifp->if_flags, data, sizeof(ifp->if_flags));
+	case FIOASYNC:
+		if (*(int *)data)
+			tp->tap_flags |= TAP_ASYNC;
+		else
+			tp->tap_flags &= ~TAP_ASYNC;
 		break;
 
-		case VMIO_SIOCSIFFLAGS: { /* VMware/VMnet SIOCSIFFLAGS */
-			short	f = *(short *)data;
-
-			f &= 0x0fff;
-			f &= ~IFF_CANTCHANGE;
-			f |= IFF_UP;
-
-			crit_enter();
-			ifp->if_flags = f | (ifp->if_flags & IFF_CANTCHANGE);
-			crit_exit();
-		} break;
-
-		case OSIOCGIFADDR:	/* get MAC address of the remote side */
-		case SIOCGIFADDR:
-			bcopy(tp->ether_addr, data, sizeof(tp->ether_addr));
+	case FIONREAD:
+		*(int *)data = 0;
+		if ((mb = ifq_poll(&ifp->if_snd)) != NULL) {
+			for(; mb != NULL; mb = mb->m_next)
+				*(int *)data += mb->m_len;
+		} 
 		break;
 
-		case SIOCSIFADDR:	/* set MAC address of the remote side */
-			bcopy(data, tp->ether_addr, sizeof(tp->ether_addr));
+	case FIOSETOWN:
+		error = fsetown(*(int *)data, &tp->tap_sigio);
 		break;
 
-		default:
-			return (ENOTTY);
+	case FIOGETOWN:
+		*(int *)data = fgetown(tp->tap_sigio);
+		break;
+
+	/* this is deprecated, FIOSETOWN should be used instead */
+	case TIOCSPGRP:
+		error = fsetown(-(*(int *)data), &tp->tap_sigio);
+		break;
+
+	/* this is deprecated, FIOGETOWN should be used instead */
+	case TIOCGPGRP:
+		*(int *)data = -fgetown(tp->tap_sigio);
+		break;
+
+	/* VMware/VMnet port ioctl's */
+
+	case SIOCGIFFLAGS:	/* get ifnet flags */
+		bcopy(&ifp->if_flags, data, sizeof(ifp->if_flags));
+		break;
+
+	case VMIO_SIOCSIFFLAGS: /* VMware/VMnet SIOCSIFFLAGS */
+		f = *(short *)data;
+		f &= 0x0fff;
+		f &= ~IFF_CANTCHANGE;
+		f |= IFF_UP;
+		ifp->if_flags = f | (ifp->if_flags & IFF_CANTCHANGE);
+		break;
+
+	case OSIOCGIFADDR:	/* get MAC address of the remote side */
+	case SIOCGIFADDR:
+		bcopy(tp->ether_addr, data, sizeof(tp->ether_addr));
+		break;
+
+	case SIOCSIFADDR:	/* set MAC address of the remote side */
+		bcopy(data, tp->ether_addr, sizeof(tp->ether_addr));
+		break;
+
+	default:
+		error = ENOTTY;
+		break;
 	}
-	return (0);
+	lwkt_serialize_exit(ifp->if_serializer);
+	return (error);
 } /* tapioctl */
 
 
@@ -636,15 +633,19 @@ tapread(dev, uio, flag)
 
 	/* sleep until we get a packet */
 	do {
+		lwkt_serialize_enter(ifp->if_serializer);
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL) {
+			tp->tap_flags |= TAP_RWAIT;
+			tsleep_interlock(tp);
+			lwkt_serialize_exit(ifp->if_serializer);
 			if (flag & IO_NDELAY)
 				return (EWOULDBLOCK);
-			
-			tp->tap_flags |= TAP_RWAIT;
-			error = tsleep((caddr_t)tp, PCATCH, "taprd", 0);
+			error = tsleep(tp, PCATCH, "taprd", 0);
 			if (error)
 				return (error);
+		} else {
+			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	} while (m0 == NULL);
 
@@ -736,9 +737,10 @@ tapwrite(dev, uio, flag)
 	 *
 	 * adjust mbuf and give packet to the ether_input
 	 */
-
-	(*ifp->if_input)(ifp, top);
+	lwkt_serialize_enter(ifp->if_serializer);
+	ifp->if_input(ifp, top);
 	ifp->if_ipackets ++; /* ibytes are counted in ether_input */
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 } /* tapwrite */
@@ -760,8 +762,7 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 
 	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
 			TAPDEBUG(ifp,
@@ -777,10 +778,9 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 			selrecord(td, &tp->tap_rsel);
 		}
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if (events & (POLLOUT | POLLWRNORM))
 		revents |= (events & (POLLOUT | POLLWRNORM));
-
-	crit_exit();
 	return (revents);
 } /* tappoll */

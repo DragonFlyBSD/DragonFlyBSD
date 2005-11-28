@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.13 2004/05/30 17:57:45 phk Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.3 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.4 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ ieee80211_ifattach(struct ifnet *ifp)
 	struct ieee80211_channel *c;
 	int i;
 
-	ether_ifattach(ifp, ic->ic_myaddr);
+	ether_ifattach(ifp, ic->ic_myaddr, NULL);
 	bpfattach_dlt(ifp, DLT_IEEE802_11,
 	    sizeof(struct ieee80211_frame_addr4), &ic->ic_rawbpf);
 	ieee80211_crypto_attach(ifp);

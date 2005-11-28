@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.22 2005/11/22 00:24:21 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.23 2005/11/28 17:13:41 dillon Exp $
  */
 
 /*
@@ -587,7 +587,7 @@ cs_attach(device_t dev)
 {
         struct cs_softc *sc = device_get_softc(dev);
         int media = 0, error;
-	struct ifnet *ifp = &(sc->arpcom.ac_if);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	/*
 	 * Initialize the media structures.
@@ -671,10 +671,11 @@ cs_attach(device_t dev)
 	ifmedia_set(&sc->media, media);
 	cs_mediaset(sc, media);
 
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       csintr, sc, &sc->irq_handle, NULL);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       csintr, sc, &sc->irq_handle, 
+			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "Couldn't set up irq");
 		ether_ifdetach(ifp);
@@ -692,18 +693,16 @@ int
 cs_detach(device_t dev)
 {
 	struct cs_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		cs_stop(sc);
 		ether_ifdetach(&sc->arpcom.ac_if);
 	}
-
 	if (sc->irq_handle != NULL)
 		bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-
-	crit_exit();
 
 #if 0
 	/*
@@ -715,11 +714,10 @@ cs_detach(device_t dev)
 
 	if (sc->buffer != NULL)
 		free(sc->buffer, M_DEVBUF);
-
 	cs_release_resources(dev);
-
 	ifmedia_removeall(&sc->media);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 
@@ -732,8 +730,6 @@ cs_init(void *xsc)
 	struct cs_softc *sc=(struct cs_softc *)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i, rx_cfg;
-
-	crit_enter();
 
 	/*
 	 * reset whatchdog timer
@@ -801,8 +797,6 @@ cs_init(void *xsc)
 	 * Start sending process
 	 */
 	cs_start(ifp);
-
-	crit_exit();
 }
 
 /*
@@ -863,7 +857,7 @@ cs_get_packet(struct cs_softc *sc)
 
 	if (status & (RX_IA | RX_BROADCAST) || 
 	    (ifp->if_flags & IFF_MULTICAST && status & RX_HASHED)) {
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 
 		ifp->if_ipackets++;
 
@@ -984,8 +978,6 @@ cs_start(struct ifnet *ifp)
 	struct mbuf *m, *mp;
 	struct cs_softc *sc = ifp->if_softc;
 
-	crit_enter();
-
 	for (;;) {
 		if (sc->buf_len)
 			length = sc->buf_len;
@@ -993,7 +985,6 @@ cs_start(struct ifnet *ifp)
 			m = ifq_dequeue(&ifp->if_snd, NULL);
 
 			if (m==NULL) {
-				crit_exit();
 				return;
 			}
 
@@ -1027,7 +1018,6 @@ cs_start(struct ifnet *ifp)
 		if (!(cs_readreg(sc->nic_addr, PP_BusST) & READY_FOR_TX_NOW)) {
 			ifp->if_timer = sc->buf_len;
 			ifp->if_flags |= IFF_OACTIVE;
-			crit_exit();
 			return;
 		}
 
@@ -1040,7 +1030,6 @@ cs_start(struct ifnet *ifp)
 		 */
 		ifp->if_timer = length;
 
-		crit_exit();
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
@@ -1052,8 +1041,6 @@ cs_start(struct ifnet *ifp)
 static void
 cs_stop(struct cs_softc *sc)
 {
-	crit_enter();
-
 	cs_writereg(sc->nic_addr, PP_RxCFG, 0);
 	cs_writereg(sc->nic_addr, PP_TxCFG, 0);
 	cs_writereg(sc->nic_addr, PP_BufCFG, 0);
@@ -1061,8 +1048,6 @@ cs_stop(struct cs_softc *sc)
 
 	sc->arpcom.ac_if.if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	sc->arpcom.ac_if.if_timer = 0;
-
-	crit_exit();
 }
 
 /*
@@ -1130,8 +1115,6 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 	if_printf(ifp, "ioctl(%lx)\n", command);
 #endif
 
-	crit_enter();
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		/*
@@ -1176,8 +1159,6 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
 		error = ether_ioctl(ifp, command, data);
 		break;
         }
-
-	crit_exit();
 
 	return error;
 }

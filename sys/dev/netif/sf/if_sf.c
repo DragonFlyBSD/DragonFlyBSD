@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.24 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.25 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -87,6 +87,8 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
+
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -533,8 +535,6 @@ static int sf_ioctl(ifp, command, data, cr)
 	struct mii_data		*mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -569,8 +569,6 @@ static int sf_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 
 	return(error);
 }
@@ -797,10 +795,11 @@ static int sf_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->sf_irq, 0,
-			       sf_intr, sc, &sc->sf_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->sf_irq, INTR_NETSAFE,
+			       sf_intr, sc, &sc->sf_intrhand, 
+			       ifp->if_serializer);
 
 	if (error) {
 		ether_ifdetach(ifp);
@@ -821,7 +820,7 @@ static int sf_detach(dev)
 	struct sf_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		ether_ifdetach(ifp);
@@ -835,8 +834,6 @@ static int sf_detach(dev)
 	if (sc->sf_intrhand)
 		bus_teardown_intr(dev, sc->sf_irq, sc->sf_intrhand);
 
-	crit_exit();
-
 	if (sc->sf_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sf_irq);
 	if(sc->sf_res)
@@ -847,6 +844,7 @@ static int sf_detach(dev)
 			   M_DEVBUF);
 	}
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -992,7 +990,7 @@ static void sf_rxeof(sc)
 
 		ifp->if_ipackets++;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	csr_write_4(sc, SF_CQ_CONSIDX,
@@ -1139,8 +1137,6 @@ static void sf_init(xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	crit_enter();
-
 	sf_stop(sc);
 	sf_reset(sc);
 
@@ -1162,7 +1158,6 @@ static void sf_init(xsc)
 	if (sf_init_rx_ring(sc) == ENOBUFS) {
 		printf("sf%d: initialization failed: no "
 		    "memory for rx buffers\n", sc->sf_unit);
-		crit_exit();
 		return;
 	}
 
@@ -1236,8 +1231,6 @@ static void sf_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
-
-	crit_exit();
 }
 
 static int sf_encap(sc, c, m_head)
@@ -1429,7 +1422,7 @@ static void sf_stats_update(xsc)
 	u_int32_t		*ptr;
 	int			i;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	ptr = (u_int32_t *)&stats;
 	for (i = 0; i < sizeof(stats)/sizeof(u_int32_t); i++)
@@ -1455,7 +1448,7 @@ static void sf_stats_update(xsc)
 
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void sf_watchdog(ifp)
@@ -1481,11 +1474,14 @@ static void sf_watchdog(ifp)
 static void sf_shutdown(dev)
 	device_t		dev;
 {
-	struct sf_softc		*sc;
+	struct sf_softc	*sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
-
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	sf_stop(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return;
 }

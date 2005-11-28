@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_isa.c,v 1.12 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.6 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.7 2005/11/28 17:13:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -243,8 +244,9 @@ lnc_isa_attach(device_t dev)
 		goto fail;
 	}
 
-	error = bus_setup_intr(dev, sc->irqres, 0, lncintr,
-	            	       sc, &sc->intrhand, NULL);
+	error = bus_setup_intr(dev, sc->irqres, INTR_NETSAFE, lncintr,
+	            	       sc, &sc->intrhand, 
+			       sc->arpcom.ac_if.if_serializer);
 	if (error) {
 		device_printf(dev, "Failed to setup irq handler\n");
 		ether_ifdetach(&sc->arpcom.ac_if);
@@ -263,7 +265,7 @@ lnc_isa_detach(device_t dev)
 {
 	lnc_softc_t *sc = device_get_softc(dev);
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	if (device_is_attached(dev)) {
 		ether_ifdetach(&sc->arpcom.ac_if);
@@ -272,8 +274,6 @@ lnc_isa_detach(device_t dev)
 
 	if (sc->intrhand)
 		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
-
-	crit_exit();
 
 	if (sc->irqres)
 		bus_release_resource(dev, SYS_RES_IRQ, sc->irqrid, sc->irqres);
@@ -289,6 +289,7 @@ lnc_isa_detach(device_t dev)
 	if (sc->dmat)
 		bus_dma_tag_destroy(sc->dmat);
 
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 	return (0);
 }
 

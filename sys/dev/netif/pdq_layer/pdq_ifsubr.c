@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.13 2005/06/20 15:10:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.14 2005/11/28 17:13:43 dillon Exp $
  *
  */
 
@@ -185,7 +185,7 @@ pdq_os_receive_pdu(
     }
 
     m->m_pkthdr.len = pktlen;
-    (*sc->sc_if.if_input)(&sc->sc_if, m);
+    sc->sc_if.if_input(&sc->sc_if, m);
 }
 
 void
@@ -361,5 +361,5 @@ pdq_ifattach(
     ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
     ifq_set_ready(&ifp->if_snd);
   
-    fddi_ifattach(ifp);
+    fddi_ifattach(ifp, NULL);
 }

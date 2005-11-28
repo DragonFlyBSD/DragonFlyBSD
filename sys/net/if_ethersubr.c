@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.32 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.33 2005/11/28 17:13:45 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -162,6 +162,8 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	int hlen = ETHER_HDR_LEN;	/* link layer header length */
 	struct arpcom *ac = IFP2AC(ifp);
 	int error;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
 		gotoerr(ENETDOWN);
@@ -366,6 +368,8 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	int error = 0;
 	struct altq_pktattr pktattr;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	/* Extract info from dummynet tag, ignore others */
 	while (m->m_type == MT_TAG) {
 		if (m->m_flags == PACKET_TAG_DUMMYNET) {
@@ -383,7 +387,9 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 		m->m_pkthdr.rcvif = NULL;
 		eh = mtod(m, struct ether_header *);
 		m_adj(m, ETHER_HDR_LEN);
+		lwkt_serialize_exit(ifp->if_serializer);
 		m = bdg_forward_ptr(m, eh, ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		m_freem(m);
 		return (0);
 	}
@@ -422,13 +428,13 @@ no_bridge:
 			      ETHER_HDR_LEN);
 		}
 	}
+	crit_exit();
 
 	/*
 	 * Queue message on interface, update output statistics if
 	 * successful, and start output if interface not yet active.
 	 */
 	error = ifq_handoff(ifp, m, &pktattr);
-	crit_exit();
 	return (error);
 }
 
@@ -559,6 +565,8 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 {
 	struct ether_header save_eh;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (eh == NULL) {
 		if (m->m_len < sizeof(struct ether_header)) {
 			/* XXX error in the caller. */
@@ -579,7 +587,9 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {
+		lwkt_serialize_exit(ifp->if_serializer);
 		(*ng_ether_input_p)(ifp, &m, eh);
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (m == NULL)
 			return;
 	}
@@ -595,7 +605,9 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		}
 		if (bif != BDG_LOCAL) {
 			save_eh = *eh ; /* because it might change */
+			lwkt_serialize_exit(ifp->if_serializer);
 			m = bdg_forward_ptr(m, eh, bif); /* needs forwarding */
+			lwkt_serialize_enter(ifp->if_serializer);
 			/*
 			 * Do not continue if bdg_forward_ptr() processed our
 			 * packet (and cleared the mbuf pointer m) or if
@@ -687,7 +699,7 @@ post_stats:
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
-		if (ipflow_fastforward(m))
+		if (ipflow_fastforward(m, ifp->if_serializer))
 			return;
 		isr = NETISR_IP;
 		break;
@@ -798,20 +810,22 @@ dropanyway:
  */
 
 void
-ether_ifattach(struct ifnet *ifp, uint8_t *lla)
+ether_ifattach(struct ifnet *ifp, uint8_t *lla, lwkt_serialize_t serializer)
 {
-	ether_ifattach_bpf(ifp, lla, DLT_EN10MB, sizeof(struct ether_header));
+	ether_ifattach_bpf(ifp, lla, DLT_EN10MB, sizeof(struct ether_header),
+			   serializer);
 }
 
 void
-ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
+ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
+		   lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
 	ifp->if_hdrlen = ETHER_HDR_LEN;
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 	ifp->if_mtu = ETHERMTU;
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 10000000;
@@ -844,9 +858,7 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 void
 ether_ifdetach(struct ifnet *ifp)
 {
-	crit_enter();
 	if_down(ifp);
-	crit_exit();
 
 	if (ng_ether_detach_p != NULL)
 		(*ng_ether_detach_p)(ifp);
@@ -862,6 +874,8 @@ ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	struct ifaddr *ifa = (struct ifaddr *) data;
 	struct ifreq *ifr = (struct ifreq *) data;
 	int error = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (command) {
 	case SIOCSIFADDR:

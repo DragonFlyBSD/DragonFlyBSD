@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.18 2005/09/01 12:59:38 sephe Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.19 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -53,6 +53,7 @@
 #include <sys/sockio.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
+#include <sys/serialize.h>
 
 #include <machine/cpu.h>
 
@@ -501,6 +502,8 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
 	int isr;
 	u_int8_t atype;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
@@ -534,14 +537,14 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
 #ifdef INET
 	case ARCTYPE_IP:
 		m_adj(m, ARC_HDRNEWLEN);
-		if (ipflow_fastforward(m))
+		if (ipflow_fastforward(m, ifp->if_serializer))
 			return;
 		isr = NETISR_IP;
 		break;
 
 	case ARCTYPE_IP_OLD:
 		m_adj(m, ARC_HDRLEN);
-		if (ipflow_fastforward(m))
+		if (ipflow_fastforward(m, ifp->if_serializer))
 			return;
 		isr = NETISR_IP;
 		break;
@@ -607,16 +610,14 @@ arc_storelladdr(ifp, lla)
  * Perform common duties while attaching to interface list
  */
 void
-arc_ifattach(ifp, lla)
-	struct ifnet *ifp;
-	u_int8_t lla;
+arc_ifattach(struct ifnet *ifp, u_int8_t lla, lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
 	struct arccom *ac;
 
 	ifp->if_input = arc_input;
 	ifp->if_output = arc_output;
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 	ifp->if_type = IFT_ARCNET;
 	ifp->if_addrlen = 1;
 	ifp->if_broadcastaddr = arcbroadcastaddr;
@@ -670,7 +671,9 @@ arc_ioctl(ifp, command, data)
 		switch (ifa->ifa_addr->sa_family) {
 #ifdef INET
 		case AF_INET:
+			lwkt_serialize_enter(ifp->if_serializer);
 			ifp->if_init(ifp->if_softc);	/* before arpwhohas */
+			lwkt_serialize_exit(ifp->if_serializer);
 			arp_ifinit(ifp, ifa);
 			break;
 #endif
@@ -690,12 +693,16 @@ arc_ioctl(ifp, command, data)
 			/*
 			 * Set new address
 			 */
+			lwkt_serialize_enter(ifp->if_serializer);
 			ifp->if_init(ifp->if_softc);
+			lwkt_serialize_exit(ifp->if_serializer);
 			break;
 		}
 #endif
 		default:
+			lwkt_serialize_enter(ifp->if_serializer);
 			ifp->if_init(ifp->if_softc);
+			lwkt_serialize_exit(ifp->if_serializer);
 			break;
 		}
 		break;

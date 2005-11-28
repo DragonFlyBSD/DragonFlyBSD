@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.38 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.39 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -658,7 +658,7 @@ fxp_attach(device_t dev)
 	/*
 	 * Attach the interface.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
@@ -672,8 +672,9 @@ fxp_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	error = bus_setup_intr(dev, sc->irq, 0,
-			       fxp_intr, sc, &sc->ih, NULL);
+	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+			       fxp_intr, sc, &sc->ih, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
@@ -732,7 +733,7 @@ fxp_detach(device_t dev)
 	/* disable interrupts */
 	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	/*
 	 * Stop DMA and drop transmit queue.
@@ -753,10 +754,9 @@ fxp_detach(device_t dev)
 	if (sc->ih)
 		bus_teardown_intr(dev, sc->irq, sc->ih);
 
-	crit_exit();
-
 	/* Release our allocated resources. */
 	fxp_release(dev);
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 
 	return (0);
 }
@@ -789,7 +789,7 @@ fxp_suspend(device_t dev)
 	struct fxp_softc *sc = device_get_softc(dev);
 	int i;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	fxp_stop(sc);
 	
@@ -802,7 +802,7 @@ fxp_suspend(device_t dev)
 
 	sc->suspended = 1;
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 	return (0);
 }
 
@@ -818,7 +818,7 @@ fxp_resume(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	fxp_powerstate_d0(dev);
 
@@ -843,7 +843,7 @@ fxp_resume(device_t dev)
 
 	sc->suspended = 0;
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 	return (0);
 }
 
@@ -1348,7 +1348,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 				continue;
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
 		}
 	}
 	if (rnr) {
@@ -1380,6 +1380,8 @@ fxp_tick(void *xsc)
 	struct fxp_cb_tx *txp;
 	struct mbuf *m;
 
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
+
 	ifp->if_opackets += sp->tx_good;
 	ifp->if_collisions += sp->tx_total_collisions;
 	if (sp->rx_good) {
@@ -1405,8 +1407,6 @@ fxp_tick(void *xsc)
 		if (tx_threshold < 192)
 			tx_threshold += 64;
 	}
-
-	crit_enter();
 
 	/*
 	 * Release any xmit buffers that have completed DMA. This isn't
@@ -1473,7 +1473,7 @@ fxp_tick(void *xsc)
 	 */
 	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 /*
@@ -1559,8 +1559,6 @@ fxp_init(void *xsc)
 	struct fxp_cb_tx *txp;
 	struct fxp_cb_mcs *mcsp;
 	int i, prm;
-
-	crit_enter();
 
 	/*
 	 * Cancel any pending I/O
@@ -1800,8 +1798,6 @@ fxp_init(void *xsc)
 	 * Start stats updater.
 	 */
 	callout_reset(&sc->fxp_stat_timer, hz, fxp_tick, sc);
-
-	crit_exit();
 }
 
 static int
@@ -1968,8 +1964,6 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch (command) {
 
 	case SIOCSIFFLAGS:
@@ -2028,9 +2022,6 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 

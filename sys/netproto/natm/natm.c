@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.18 2005/06/10 22:34:51 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.19 2005/11/28 17:13:47 dillon Exp $ */
 
 /*
  *
@@ -213,16 +213,16 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
     ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
-    crit_enter();
+    lwkt_serialize_enter(ifp->if_serializer);
     if (ifp->if_ioctl == NULL || 
 	ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
 		      td->td_proc->p_ucred) != 0) {
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	goto out;
     }
-    crit_exit();
+    lwkt_serialize_exit(ifp->if_serializer);
 
     soisconnected(so);
 
@@ -261,10 +261,11 @@ natm_usr_disconnect(struct socket *so)
     ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
     ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
     api.rxhand = npcb;
-    crit_enter();
-    if (ifp->if_ioctl != NULL)
+    if (ifp->if_ioctl != NULL) {
+	lwkt_serialize_enter(ifp->if_serializer);
 	ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
-    crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
+    }
 
     npcb_free(npcb, NPCB_REMOVE);
     soisdisconnected(so);
@@ -363,8 +364,6 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
     struct atm_rawioctl ario;
     int error = 0;
 
-    crit_enter();
-
     npcb = (struct natmpcb *) so->so_pcb;
     if (npcb == NULL) {
 	error = EINVAL;
@@ -382,9 +381,11 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
         }
         ario.npcb = npcb;
         ario.rawvalue = *((int *)arg);
+	lwkt_serialize_enter(ifp->if_serializer);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, 
 					 SIOCXRAWATM, (caddr_t) &ario,
 					 td->td_proc->p_ucred);
+	lwkt_serialize_exit(ifp->if_serializer);
 	if (!error) {
 	    if (ario.rawvalue) 
 		npcb->npcb_flags |= NPCB_RAW;
@@ -394,9 +395,7 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
     }
     else
 	error = EOPNOTSUPP;
-
  out:
-    crit_exit();
     return (error);
 }
 
@@ -553,16 +552,16 @@ struct proc *p;
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      crit_enter();
+      lwkt_serialize_enter(ifp->if_serializer);
       if (ifp->if_ioctl == NULL || 
 	  ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
 	  		(struct ucred *)NULL) != 0) {
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
 	break;
       }
-      crit_exit();
+      lwkt_serialize_exit(ifp->if_serializer);
 
       soisconnected(so);
 
@@ -585,10 +584,10 @@ struct proc *p;
       ATM_PH_VPI(&api.aph) = npcb->npcb_vpi;
       ATM_PH_SETVCI(&api.aph, npcb->npcb_vci);
       api.rxhand = npcb;
-      crit_enter();
+      lwkt_serialize_enter(ifp->if_serializer);
       if (ifp->if_ioctl != NULL)
 	  ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
-      crit_exit();
+      lwkt_serialize_exit(ifp->if_serializer);
 
       npcb_free(npcb, NPCB_REMOVE);
       soisdisconnected(so);
@@ -656,8 +655,10 @@ struct proc *p;
         }
         ario.npcb = npcb;
         ario.rawvalue = *((int *)nam);
+        lwkt_serialize_enter(npcb->npcb_ifp->if_serializer);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, SIOCXRAWATM,
         				 (caddr_t) &ario, (struct ucred *)NULL);
+        lwkt_serialize_exit(npcb->npcb_ifp->if_serializer);
 	if (!error) {
           if (ario.rawvalue) 
 	    npcb->npcb_flags |= NPCB_RAW;

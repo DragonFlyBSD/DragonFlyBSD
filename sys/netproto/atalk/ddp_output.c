@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.7 2004/06/03 15:04:51 joerg Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.8 2005/11/28 17:13:46 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -121,6 +121,7 @@ ddp_route( struct mbuf *m, struct route *ro)
     struct at_ifaddr	*aa = NULL;
     struct ifnet	*ifp = NULL;
     u_short		net;
+    int	error;
 
 #if 0
     /* Check for net zero, node zero ("myself") */
@@ -228,6 +229,9 @@ ddp_route( struct mbuf *m, struct route *ro)
 	return (if_simloop(ifp, m, gate.sat_family, 0));
     }
 
-    return((*ifp->if_output)( ifp,
-	m, (struct sockaddr *)&gate, NULL)); /* XXX */
+    /* XXX */
+    lwkt_serialize_enter(ifp->if_serializer);
+    error = (*ifp->if_output)( ifp, m, (struct sockaddr *)&gate, NULL);
+    lwkt_serialize_exit(ifp->if_serializer);
+    return (error);
 }

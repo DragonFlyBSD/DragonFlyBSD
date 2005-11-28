@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.20 2005/11/22 00:24:35 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.21 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -229,7 +229,7 @@ slattach(dummy)
 		sc->sc_if.if_linkmiblen = sizeof *sc;
 		callout_init(&sc->sc_oftimeout);
 		callout_init(&sc->sc_katimeout);
-		if_attach(&sc->sc_if);
+		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_SLIP, SLIP_HDRLEN);
 	}
 }
@@ -498,7 +498,9 @@ sloutput(ifp, m, dst, rtp)
 			error = 0;
 		}
 	} else {
+		lwkt_serialize_enter(sc->sc_if.if_serializer);
 		error = ifq_enqueue(&sc->sc_if.if_snd, m, &pktattr);
+		lwkt_serialize_enter(sc->sc_if.if_serializer);
 	}
 	if (error) {
 		sc->sc_if.if_oerrors++;

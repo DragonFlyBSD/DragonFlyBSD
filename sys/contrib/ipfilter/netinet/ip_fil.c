@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.19 2005/06/12 15:37:19 hsu Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.20 2005/11/28 17:13:35 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -1843,13 +1843,17 @@ frdest_t *fdp;
 #  ifdef IRIX
 		IFNET_UPPERLOCK(ifp);
 #  endif
+		lwkt_serialize_enter(ifp->if_serializer);
 		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst,
 					  ro->ro_rt);
+		lwkt_serialize_exit(ifp->if_serializer);
 #  ifdef IRIX
 		IFNET_UPPERUNLOCK(ifp);
 #  endif
 # else
+		lwkt_serialize_enter(ifp->if_serializer);
 		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst);
+		lwkt_serialize_exit(ifp->if_serializer);
 # endif
 		goto done;
 	}
@@ -1938,7 +1942,8 @@ sendorfree:
 	for (m = m0; m; m = m0) {
 		m0 = m->m_act;
 		m->m_act = 0;
-		if (error == 0)
+		if (error == 0) {
+			lwkt_serialize_enter(ifp->if_serializer);
 # if (BSD >= 199306) || (defined(IRIX) && (IRIX >= 605))
 			error = (*ifp->if_output)(ifp, m,
 			    (struct sockaddr *)dst, ro->ro_rt);
@@ -1946,8 +1951,10 @@ sendorfree:
 			error = (*ifp->if_output)(ifp, m,
 			    (struct sockaddr *)dst);
 # endif
-		else
+			lwkt_serialize_exit(ifp->if_serializer);
+		} else {
 			m_freem(m);
+		}
 	}
     }	
 done:

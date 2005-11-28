@@ -1,6 +1,6 @@
 /* $NetBSD: awivar.h,v 1.12 2000/07/21 04:48:56 onoe Exp $ */
 /* $FreeBSD: src/sys/dev/awi/awivar.h,v 1.6.2.1 2000/12/07 04:09:39 imp Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.6 2005/06/13 20:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awivar.h,v 1.7 2005/11/28 17:13:41 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -99,8 +99,6 @@ struct awi_softc
 	struct ifmedia		sc_media;
 	enum awi_status		sc_status;
 	unsigned int		sc_enabled:1,
-				sc_busy:1,
-				sc_cansleep:1,
 				sc_invalid:1,
 				sc_enab_intr:1,
 				sc_format_llc:1,

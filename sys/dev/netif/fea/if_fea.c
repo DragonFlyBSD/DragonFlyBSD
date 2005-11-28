@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.9 2005/10/12 17:35:52 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.10 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -35,6 +35,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -217,12 +218,16 @@ pdq_eisa_attach (dev)
 		goto bad;
 	}
 
-	if (bus_setup_intr(dev, irq, 0, pdq_eisa_intr, dev, &ih, NULL)) {
+	pdq_ifattach(sc, NULL);
+
+	if (bus_setup_intr(dev, irq, INTR_NETSAFE,
+			   pdq_eisa_intr, dev, &ih, 
+			   sc->sc_if.if_serializer)
+        ) {
 		goto bad;
 	}
 
 	bcopy((caddr_t) sc->sc_pdq->pdq_hwaddr.lanaddr_bytes, sc->sc_ac.ac_enaddr, 6);
-	pdq_ifattach(sc, NULL);
 
 	return (0);
 
@@ -242,8 +247,10 @@ pdq_eisa_shutdown(dev)
 	device_t	dev;
 {
 	pdq_softc_t	*sc = device_get_softc(dev);
-
+ 
+	lwkt_serialize_enter(sc->sc_if.if_serializer);
 	pdq_hwreset(sc->sc_pdq);
+	lwkt_serialize_exit(sc->sc_if.if_serializer);
 
 	return (0);
 }

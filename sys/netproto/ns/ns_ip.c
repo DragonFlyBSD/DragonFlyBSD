@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.12 2005/06/09 02:03:39 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.13 2005/11/28 17:13:47 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ nsipattach()
 	ifp->if_output = nsipoutput;
 	ifp->if_start = nsipstart;
 	ifp->if_flags = IFF_POINTOPOINT;
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 
 	return (m);
 }

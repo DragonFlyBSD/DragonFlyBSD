@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.21 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.22 2005/11/28 17:13:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,6 +36,7 @@
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/random.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -264,10 +265,11 @@ sbsh_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-				sbsh_intr, sc, &sc->intr_hand, NULL);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+				sbsh_intr, sc, &sc->intr_hand, 
+				ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		printf("sbsh%d: couldn't set up irq\n", unit);
@@ -287,7 +289,7 @@ sbsh_detach(device_t dev)
 	struct sbsh_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		sbsh_stop(sc);
@@ -297,14 +299,13 @@ sbsh_detach(device_t dev)
 	if (sc->intr_hand)
 		bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
 
-	crit_exit();
-
 	if (sc->irq_res)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
 	if (sc->mem_res)
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_MAPS + 4,
 				     sc->mem_res);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 
@@ -314,12 +315,8 @@ sbsh_start(struct ifnet *ifp)
 {
 	struct sbsh_softc  *sc = ifp->if_softc;
 
-	crit_enter();
-
 	if (sc->state == ACTIVE)
 		start_xmit_frames(ifp->if_softc);
-
-	crit_exit();
 }
 
 
@@ -330,10 +327,7 @@ sbsh_init(void *xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	u_int8_t		t;
 
-	crit_enter();
-
 	if ((ifp->if_flags & IFF_RUNNING) || sc->state == NOT_LOADED) {
-		crit_exit();
 		return;
 	}
 
@@ -350,8 +344,6 @@ sbsh_init(void *xsc)
 		ifp->if_flags |= IFF_RUNNING;
 		ifp->if_flags &= ~IFF_OACTIVE;
 	}
-
-	crit_exit();
 }
 
 
@@ -359,8 +351,6 @@ static void
 sbsh_stop(struct sbsh_softc *sc)
 {
 	u_int8_t  t;
-
-	crit_enter();
 
 	sc->regs->IMR = EXT;
 
@@ -377,8 +367,6 @@ sbsh_stop(struct sbsh_softc *sc)
 
 	sc->regs->IMR = 0;
 	sc->state = DOWN;
-
-	crit_enter();
 }
 
 
@@ -406,8 +394,6 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct dsl_stats	ds;
 	int			error = 0;
 	u_int8_t		t;
-
-	crit_enter();
 
 	switch(cmd) {
 	case SIOCLOADFIRMW:
@@ -497,9 +483,6 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, cmd, data);
 		break;
 	}
-
-	crit_exit();
-
 	return (error);
 }
 
@@ -509,7 +492,9 @@ sbsh_shutdown(device_t dev)
 {
 	struct sbsh_softc	*sc = device_get_softc(dev);
 
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	sbsh_stop(sc);
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 static int
@@ -517,11 +502,9 @@ sbsh_suspend(device_t dev)
 {
 	struct sbsh_softc *sc = device_get_softc(dev);
 
-	crit_enter();
-
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	sbsh_stop(sc);
-
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 
 	return (0);
 }
@@ -532,12 +515,8 @@ sbsh_resume(device_t dev)
 	struct sbsh_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
 	if (ifp->if_flags & IFF_UP)
 		sbsh_init(sc);
-
-	crit_exit();
 
 	return (0);
 }
@@ -800,7 +779,7 @@ indicate_frames(struct sbsh_softc *sc)
 				sc->rbd[sc->head_rdesc].length & 0x7ff;
 		m->m_pkthdr.rcvif = ifp;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 		++sc->in_stats.rcvd_pkts;
 		++ifp->if_ipackets;
 

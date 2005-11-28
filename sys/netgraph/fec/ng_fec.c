@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.15 2005/06/03 23:31:36 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.16 2005/11/28 17:13:46 dillon Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -444,7 +444,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Stop interface */
 	bifp->if_flags &= ~IFF_UP;
-	(*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
+	bifp->if_ioctl(bifp, SIOCSIFFLAGS, NULL, NULL);
 
 	/* Restore MAC address. */
 	ac = (struct arpcom *)bifp;
@@ -464,7 +464,6 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
  * Pass an ioctl command down to all the underyling interfaces in a
  * bundle. Used for setting multicast filters and flags.
  */
-
 static int 
 ng_fec_setport(struct ifnet *ifp, u_long command, caddr_t data)
 {
@@ -476,11 +475,16 @@ ng_fec_setport(struct ifnet *ifp, u_long command, caddr_t data)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
+	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		oifp = p->fec_if;
-		if (oifp != NULL)
-			(*oifp->if_ioctl)(oifp, command, data, NULL);
+		if (oifp != NULL) {
+			lwkt_serialize_enter(oifp->if_serializer);
+			oifp->if_ioctl(oifp, command, data, NULL);
+			lwkt_serialize_exit(oifp->if_serializer);
+		}
 	}
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	return(0);
 }
@@ -506,13 +510,17 @@ ng_fec_init(void *arg)
 
 	ng_fec_stop(ifp);
 
+	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
+		lwkt_serialize_enter(bifp->if_serializer);
 		bifp->if_flags |= IFF_UP;
-                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
+                bifp->if_ioctl(bifp, SIOCSIFFLAGS, NULL, NULL);
 		/* mark iface as up and let the monitor check it */
 		p->fec_ifstat = -1;
+		lwkt_serialize_exit(bifp->if_serializer);
 	}
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	callout_reset(&priv->fec_timeout, hz, ng_fec_tick, priv);
 }
@@ -528,13 +536,16 @@ ng_fec_stop(struct ifnet *ifp)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
+	lwkt_serialize_exit(ifp->if_serializer);	/* XXX */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bifp = p->fec_if;
+		lwkt_serialize_enter(bifp->if_serializer);
 		bifp->if_flags &= ~IFF_UP;
-                (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
+                bifp->if_ioctl(bifp, SIOCSIFFLAGS, NULL, NULL);
+		lwkt_serialize_exit(bifp->if_serializer);
 	}
-
 	callout_stop(&priv->fec_timeout);
+	lwkt_serialize_enter(ifp->if_serializer);	/* XXX */
 }
 
 static void
@@ -550,14 +561,19 @@ ng_fec_tick(void *arg)
 	priv = arg;
 	b = &priv->fec_bundle;
 
+	/*
+	 * Note: serializer for parent interface not held on entry, and
+	 * cannot be held during the loop to avoid a deadlock.
+	 */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		bzero((char *)&ifmr, sizeof(ifmr));
 		ifp = p->fec_if;
-		error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr,
-					 NULL);
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr, NULL);
 		if (error) {
 			printf("fec%d: failed to check status "
 			    "of link %s\n", priv->unit, ifp->if_xname);
+			lwkt_serialize_exit(ifp->if_serializer);
 			continue;
 		}
 
@@ -581,6 +597,7 @@ ng_fec_tick(void *arg)
 				}
 			}
 		}
+		lwkt_serialize_exit(ifp->if_serializer);
 	}
 
 	ifp = &priv->arpcom.ac_if;
@@ -972,7 +989,11 @@ ng_fec_start(struct ifnet *ifp)
 	}
 	ifp->if_opackets++;
 
+	lwkt_serialize_exit(ifp->if_serializer);
+	lwkt_serialize_enter(oifp->if_serializer);
 	priv->if_error = ether_output_frame(oifp, m0);
+	lwkt_serialize_exit(oifp->if_serializer);
+	lwkt_serialize_enter(ifp->if_serializer);
 }
 
 #ifdef DEBUG
@@ -1086,7 +1107,7 @@ ng_fec_constructor(node_p *nodep)
 		ng_ether_input_p = ng_fec_input;
 
 	/* Attach the interface */
-	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
+	ether_ifattach(ifp, priv->arpcom.ac_enaddr, NULL);
 	priv->real_if_output = ifp->if_output;
 	ifp->if_output = ng_fec_output;
 	callout_init(&priv->fec_timeout);

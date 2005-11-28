@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.11 2005/06/03 23:23:03 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.12 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -712,8 +712,7 @@ atm_netconv_deregister(ncp)
  *
  */
 int
-atm_nif_attach(nip)
-	struct atm_nif	*nip;
+atm_nif_attach(struct atm_nif *nip, lwkt_serialize_t serializer)
 {
 	struct atm_pif	*pip, *pip2;
 	struct ifnet	*ifp;
@@ -739,7 +738,7 @@ atm_nif_attach(nip)
 	/*
 	 * Add to system interface list 
 	 */
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 
 	/*
 	 * Add to physical interface list

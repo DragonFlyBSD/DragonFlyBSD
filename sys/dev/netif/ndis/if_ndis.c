@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.10 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.11 2005/11/28 17:13:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,9 +42,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/proc.h>
-#if __FreeBSD_version < 502113
 #include <sys/sysctl.h>
-#endif
+#include <sys/serialize.h>
 
 #include <net/if.h>
 #include <net/ifq_var.h>
@@ -376,20 +375,6 @@ ndis_attach(dev)
 	NDIS_LOCK_INIT(&sc->ndis_lock);
 	NDIS_LOCK_INIT(&sc->ndis_intrlock);
 
-        /*
-	 * Hook interrupt early, since calling the driver's
-	 * init routine may trigger an interrupt.
-	 */
-
-	error = bus_setup_intr(dev, sc->ndis_irq, INTR_MPSAFE,
-			       ndis_intr, sc,
-			       &sc->ndis_intrhand, NULL);
-
-	if (error) {
-		device_printf(dev, "couldn't set up irq\n");
-		goto fail;
-	}
-
 	sc->ndis_regvals = ndis_regvals;
 
 #if __FreeBSD_version < 502113
@@ -674,8 +659,20 @@ nonettypes:
 		    IFM_ETHER|IFM_100_TX|IFM_FDX, 0, NULL);
 		ifmedia_add(&sc->ifmedia, IFM_ETHER|IFM_AUTO, 0, NULL);
 		ifmedia_set(&sc->ifmedia, IFM_ETHER|IFM_AUTO);
-		ether_ifattach(ifp, eaddr);
+		ether_ifattach(ifp, eaddr, NULL);
 	}
+
+	if (error == 0) {
+		error = bus_setup_intr(dev, sc->ndis_irq, INTR_NETSAFE,
+				       ndis_intr, sc,
+				       &sc->ndis_intrhand, 
+				       ifp->if_serializer);
+		if (error) {
+			device_printf(dev, "couldn't set up irq\n");
+			goto fail;
+		}
+	}
+
 
 	/* Override the status handler so we can detect link changes. */
 	sc->ndis_block.nmb_status_func = ndis_linksts;
@@ -706,8 +703,10 @@ ndis_detach(dev)
 	NDIS_LOCK_INFO;
 
 	sc = device_get_softc(dev);
-	NDIS_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	NDIS_LOCK(sc);
 	ifp->if_flags &= ~IFF_UP;
 
 	if (device_is_attached(dev)) {
@@ -751,6 +750,7 @@ ndis_detach(dev)
 	NDIS_LOCK_DESTROY(&sc->ndis_lock);
 	NDIS_LOCK_DESTROY(&sc->ndis_intrlock);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -763,12 +763,13 @@ ndis_suspend(dev)
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 #ifdef notdef
 	if (NDIS_INITIALIZED(sc))
         	ndis_stop(sc);
 #endif
-
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -782,8 +783,10 @@ ndis_resume(dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (NDIS_INITIALIZED(sc))
         	ndis_init(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -876,7 +879,7 @@ ndis_rxeof(adapter, packets, pktcnt)
 				}
 			}
 
-			(*ifp->if_input)(ifp, m0);
+			ifp->if_input(ifp, m0);
 		}
 	}
 
@@ -988,12 +991,14 @@ ndis_intrtask(arg)
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->serializer);
 	irql = FASTCALL1(hal_raise_irql, DISPATCH_LEVEL);
 	ndis_intrhand(sc);
 	FASTCALL1(hal_lower_irql, irql);
 	NDIS_INTRLOCK(sc);
 	ndis_enable_intr(sc);
 	NDIS_INTRUNLOCK(sc);
+	lwkt_serialize_exit(ifp->serializer);
 
 	return;
 }
@@ -1047,6 +1052,7 @@ ndis_ticktask(xsc)
 	void			*xsc;
 {
 	struct ndis_softc	*sc;
+	struct ifnet		*ifp;
 	__stdcall ndis_checkforhang_handler hangfunc;
 	uint8_t			rval;
 	ndis_media_state	linkstate;
@@ -1054,13 +1060,16 @@ ndis_ticktask(xsc)
 	NDIS_LOCK_INFO;
 
 	sc = xsc;
+	ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->serializer);
 	hangfunc = sc->ndis_chars.nmc_checkhang_func;
 
 	if (hangfunc != NULL) {
 		rval = hangfunc(sc->ndis_block.nmb_miniportadapterctx);
 		if (rval == TRUE) {
 			ndis_reset_nic(sc);
+			lwkt_serialize_exit(ifp->serializer);
 			return;
 		}
 	}
@@ -1094,8 +1103,7 @@ ndis_ticktask(xsc)
 	}
 
 	NDIS_UNLOCK(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->serializer);
 }
 
 static void

@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.14 2005/06/09 02:03:39 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.15 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -115,7 +115,7 @@ ipxipattach()
 	ifp->if_output = ipxipoutput;
 	ifp->if_start = ipxipstart;
 	ifp->if_flags = IFF_POINTOPOINT;
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 
 	return (m);
 }

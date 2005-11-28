@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.20 2005/08/27 03:05:24 hsu Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.21 2005/11/28 17:13:37 dillon Exp $
  */
 
 /*
@@ -785,7 +785,7 @@ done_probe:
   /*
    * final commit
    */
-  atm_ifattach(ifp); 
+  atm_ifattach(ifp, NULL);
 }
 
 

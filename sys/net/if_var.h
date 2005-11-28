@@ -32,11 +32,15 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.31 2005/10/24 08:06:16 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.32 2005/11/28 17:13:45 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
 #define	_NET_IF_VAR_H_
+
+#ifndef _SYS_SERIALIZE_H_
+#include <sys/serialize.h>
+#endif
 
 /*
  * Structures defining a network interface, providing a packet
@@ -46,8 +50,8 @@
  * length, and provides higher level routines with input datagrams
  * received from its medium.
  *
- * Output occurs when the routine if_output is called, with three parameters:
- *	(*ifp->if_output)(ifp, m, dst, rt)
+ * Output occurs when the routine if_output is called, with four parameters:
+ *	ifp->if_output(ifp, m, dst, rt)
  * Here m is the mbuf chain to be sent and dst is the destination address.
  * The output routine encapsulates the supplied datagram if necessary,
  * and then transmits it on its medium.
@@ -56,7 +60,7 @@
  * places it on the input queue of a internetwork datagram routine
  * and posts the associated software interrupt, or passes the datagram to
  * the routine if_input. It is called with the mbuf chain as parameter:
- *	(*ifp->if_input)(ifp, m)
+ *	ifp->if_input(ifp, m)
  * The input routine removes the protocol dependent header if necessary.
  *
  * Routines exist for locating interfaces by their addresses
@@ -75,6 +79,7 @@ struct	rt_addrinfo;
 struct	socket;
 struct	ether_header;
 struct	ucred;
+struct	lwkt_serialize;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -144,13 +149,23 @@ enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
  * Unfortunately devices' softc are opaque, so we depend on this layout
  * to locate the struct ifnet from the softc in the generic code.
  *
- * Note that not all fields are used by drivers in the FreeBSD source
- * tree. However, who knows what third party software does with fields
- * marked as "unused", such as if_ipending, if_done, and if_poll*,
- * so any attemt to redefine their meaning might end up in binary
- * compatibility problems, even if the size of struct ifnet, and
- * the size and position of its fields do not change.
- * We just have to live with that.
+ * MPSAFE NOTES: 
+ *
+ * ifnet and its related packet queues are protected by if_serializer.
+ * Callers of if_output, if_ioctl, if_start, if_watchdog, if_init, 
+ * if_resolvemulti, and if_poll hold if_serializer.  Device drivers usually
+ * use the same serializer for their interrupt but this is not required.
+ * However, the device driver must be holding if_serializer when it 
+ * calls if_input.  Note that the serializer may be temporarily released
+ * within if_input to avoid a deadlock (e.g. when fast-forwarding or
+ * bridging packets between interfaces).
+ *
+ * If a device driver installs the same serializer for its interrupt
+ * as for ifnet, then the driver only really needs to worry about further
+ * serialization in timeout based entry points.  All other entry points
+ * will already be serialized.  Older ISA drivers still using the old
+ * interrupt infrastructure will have to obtain and release the serializer
+ * in their interrupt routine themselves.
  */
 struct ifnet {
 	void	*if_softc;		/* pointer to driver state */
@@ -198,6 +213,8 @@ struct ifnet {
 	const uint8_t	*if_broadcastaddr;
 	void	*if_afdata[AF_MAX];
 	struct ifaddr	*if_lladdr;
+	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
+	struct lwkt_serialize if_default_serializer; /* if not supplied */
 };
 typedef void if_init_f_t (void *);
 
@@ -279,6 +296,11 @@ typedef void if_init_f_t (void *);
 
 #ifdef _KERNEL
 
+/*
+ * DEPRECATED - should not be used by any new driver.  This code uses the
+ * old queueing interface and if_start ABI and does not use the ifp's
+ * serializer.
+ */
 #define IF_HANDOFF(ifq, m, ifp)			if_handoff(ifq, m, ifp, 0)
 #define IF_HANDOFF_ADJ(ifq, m, ifp, adj)	if_handoff(ifq, m, ifp, adj)
 
@@ -303,8 +325,9 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 		_need_if_start = !(_ifp->if_flags & IFF_OACTIVE);
 	}
 	IF_ENQUEUE(_ifq, _m);
-	if (_need_if_start)
+	if (_need_if_start) {
 		(*_ifp->if_start)(_ifp);
+	}
 	crit_exit();
 	return (1);
 }
@@ -418,8 +441,9 @@ extern	int ifqmaxlen;
 extern	struct ifnet loif[];
 extern	int if_index;
 
-void	ether_ifattach(struct ifnet *, uint8_t *);
-void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int);
+void	ether_ifattach(struct ifnet *, uint8_t *, struct lwkt_serialize *);
+void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
+			struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
 void	ether_input(struct ifnet *, struct ether_header *, struct mbuf *);
 void	ether_demux(struct ifnet *, struct ether_header *, struct mbuf *);
@@ -430,7 +454,7 @@ uint32_t	ether_crc32_be(const uint8_t *, size_t);
 
 int	if_addmulti(struct ifnet *, struct sockaddr *, struct ifmultiaddr **);
 int	if_allmulti(struct ifnet *, int);
-void	if_attach(struct ifnet *);
+void	if_attach(struct ifnet *, struct lwkt_serialize *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);

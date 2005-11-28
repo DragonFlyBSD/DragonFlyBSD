@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_input.c,v 1.21 2004/06/13 17:29:09 mlaier Exp $
- * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211_input.c,v 1.2 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211_input.c,v 1.3 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -299,7 +299,7 @@ ieee80211_input(struct ifnet *ifp, struct mbuf *m, struct ieee80211_node *ni,
 			}
 		}
 		if (m != NULL)
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
 		return;
 
 	case IEEE80211_FC0_TYPE_MGT:

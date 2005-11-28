@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.14 2005/01/26 00:37:39 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.15 2005/11/28 17:13:46 dillon Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -191,7 +191,7 @@ stfmodevent(mod, type, data)
 		sc->sc_if.if_flags  |= IFF_LINK2;
 #endif
 		sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
-		if_attach(&sc->sc_if);
+		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 		break;
 	case MOD_UNLOAD:

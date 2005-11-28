@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.28 2005/07/08 18:19:39 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.29 2005/11/28 17:13:45 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -480,7 +480,9 @@ bpf_wakeup(struct bpf_d *d)
 	if (d->bd_async && d->bd_sig && d->bd_sigio)
 		pgsigio(d->bd_sigio, d->bd_sig, 0);
 
+	get_mplock();
 	selwakeup(&d->bd_sel);
+	rel_mplock();
 	/* XXX */
 	d->bd_sel.si_pid = 0;
 }
@@ -530,7 +532,9 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
 	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	error = (*ifp->if_output)(ifp, m, &dst, (struct rtentry *)NULL);
+	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
 	/*
 	 * The driver frees the mbuf.
@@ -620,8 +624,10 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				error = EINVAL;
 			else {
 				ifp = d->bd_bif->bif_ifp;
-				error = (*ifp->if_ioctl)(ifp, cmd, addr,
-							 td->td_proc->p_ucred);
+				lwkt_serialize_enter(ifp->if_serializer);
+				error = ifp->if_ioctl(ifp, cmd, addr,
+						      td->td_proc->p_ucred);
+				lwkt_serialize_exit(ifp->if_serializer);
 			}
 			break;
 		}

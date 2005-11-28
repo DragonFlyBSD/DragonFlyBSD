@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.24 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.25 2005/11/28 17:13:44 dillon Exp $
  *
  */
 
@@ -64,6 +64,7 @@
 #include <sys/socket.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -114,6 +115,7 @@ static void vxreset (struct vx_softc *);
 static void vxread (struct vx_softc *);
 static struct mbuf *vxget (struct vx_softc *, u_int);
 static void vxmbuffill (void *);
+static void vxmbuffill_serialized (void *);
 static void vxmbufempty (struct vx_softc *);
 static void vxsetfilter (struct vx_softc *);
 static void vxgetlink (struct vx_softc *);
@@ -167,7 +169,7 @@ vxattach(device_t dev)
     ifp->if_watchdog = vxwatchdog;
     ifp->if_softc = sc;
 
-    ether_ifattach(ifp, eaddr);
+    ether_ifattach(ifp, eaddr, NULL);
 
     sc->tx_start_thresh = 20;	/* probably a good starting point. */
 
@@ -225,7 +227,7 @@ vxinit(xsc)
     CSR_WRITE_2(sc, VX_COMMAND, RX_ENABLE);
     CSR_WRITE_2(sc, VX_COMMAND, TX_ENABLE);
 
-    vxmbuffill((caddr_t) sc);
+    vxmbuffill_serialized((caddr_t) sc);
 
     /* Interface is now `running', with no output active. */
     ifp->if_flags |= IFF_RUNNING;
@@ -700,7 +702,7 @@ again:
 	return;
     }
 
-    (*ifp->if_input)(ifp, m);
+    ifp->if_input(ifp, m);
 
     /*
     * In periods of high traffic we can actually receive enough
@@ -837,8 +839,6 @@ vxioctl(ifp, cmd, data, cr)
     struct ifreq *ifr = (struct ifreq *) data;
     int error = 0;
 
-    crit_enter();
-
     switch (cmd) {
     case SIOCSIFFLAGS:
 	if ((ifp->if_flags & IFF_UP) == 0 &&
@@ -893,9 +893,6 @@ vxioctl(ifp, cmd, data, cr)
 	ether_ioctl(ifp, cmd, data);
 	break;
     }
-
-    crit_exit();
-
     return (error);
 }
 
@@ -903,12 +900,8 @@ static void
 vxreset(sc)
     struct vx_softc *sc;
 {
-
-    crit_enter();
-
     vxstop(sc);
     vxinit(sc);
-    crit_exit();
 }
 
 static void
@@ -971,13 +964,22 @@ vxbusyeeprom(sc)
 }
 
 static void
-vxmbuffill(sp)
-    void *sp;
+vxmbuffill(void *sp)
+{
+    struct vx_softc *sc = (struct vx_softc *) sp;
+    struct ifnet *ifp = &sc->arpcom.ac_if;
+
+    lwkt_serialize_enter(ifp->if_serializer);
+    vxmbuffill_serialized(sp);
+    lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static void
+vxmbuffill_serialized(void *sp)
 {
     struct vx_softc *sc = (struct vx_softc *) sp;
     int	i;
 
-    crit_enter();
     i = sc->last_mb;
     do {
 	if (sc->mb[i] == NULL)
@@ -994,7 +996,6 @@ vxmbuffill(sp)
     } else {
 	sc->buffill_pending = 0;
     }
-    crit_exit();
 }
 
 static void
@@ -1003,7 +1004,6 @@ vxmbufempty(sc)
 {
     int	i;
 
-    crit_enter();
     for (i = 0; i < MAX_MBS; i++) {
 	if (sc->mb[i]) {
 	    m_freem(sc->mb[i]);
@@ -1013,5 +1013,4 @@ vxmbufempty(sc)
     sc->last_mb = sc->next_mb = 0;
     if (sc->buffill_pending != 0)
 	callout_stop(&sc->vx_timer);
-    crit_exit();
 }

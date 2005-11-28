@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.14 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.15 2005/11/28 17:13:45 dillon Exp $
  */
 
 /*
@@ -48,8 +48,10 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
-#include <sys/thread2.h>
 #include <sys/errno.h>
+#include <sys/serialize.h>
+
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -234,6 +236,8 @@ atm_input(ifp, ah, m, rxhand)
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int isr;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
@@ -302,8 +306,7 @@ atm_input(ifp, ah, m, rxhand)
  * Perform common duties while attaching to interface list
  */
 void
-atm_ifattach(ifp)
-	struct ifnet *ifp;
+atm_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -317,7 +320,7 @@ atm_ifattach(ifp)
 #endif
 	ifp->if_output = atm_output;
 	ifq_set_maxlen(&ifp->if_snd, 50);
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	for (ifa = TAILQ_FIRST(&ifp->if_addrlist); ifa != 0;

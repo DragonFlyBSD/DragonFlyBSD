@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.33 2005/11/22 00:24:14 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.34 2005/11/28 17:13:38 dillon Exp $
  */
 
 /*
@@ -801,7 +801,7 @@ an_attach(sc, dev, flags)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->an_caps.an_oemaddr);
+	ether_ifattach(ifp, sc->an_caps.an_oemaddr, NULL);
 
 	return(0);
 }
@@ -812,14 +812,13 @@ an_detach(device_t dev)
 	struct an_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	an_stop(sc);
 	ifmedia_removeall(&sc->an_ifmedia);
 	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-	crit_exit();
-
 	an_release_resources(dev);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 
@@ -980,7 +979,7 @@ an_rxeof(sc)
 				rx_frame.an_rx_signal_strength,
 				rx_frame.an_rsvd0);
 #endif
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m);
 		}
 
 	} else { /* MPI-350 */
@@ -1041,7 +1040,7 @@ an_rxeof(sc)
 					rx_frame.an_rsvd0);
 #endif
 #endif
-				(*ifp->if_input)(ifp, m);
+				ifp->if_input(ifp, m);
 			
 				an_rx_desc.an_valid = 1;
 				an_rx_desc.an_len = AN_RX_BUFFER_SIZE;
@@ -1127,7 +1126,7 @@ an_stats_update(xsc)
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	sc->an_status.an_type = AN_RID_STATUS;
 	sc->an_status.an_len = sizeof(struct an_ltv_status);
@@ -1147,7 +1146,7 @@ an_stats_update(xsc)
 
 	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 void
@@ -1868,8 +1867,6 @@ an_ioctl(ifp, command, data, cr)
 	ifr = (struct ifreq *)data;
 	ireq = (struct ieee80211req *)data;
 
-	crit_enter();
-
 	config = (struct an_ltv_genconfig *)&sc->areq;
 	key = (struct an_ltv_key *)&sc->areq;
 	status = (struct an_ltv_status *)&sc->areq;
@@ -2421,8 +2418,6 @@ an_ioctl(ifp, command, data, cr)
 		break;
 	}
 
-	crit_exit();
-
 	return(error != 0);
 }
 
@@ -2457,7 +2452,6 @@ an_init(xsc)
 	struct an_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
 	if (ifp->if_flags & IFF_RUNNING)
 		an_stop(sc);
 
@@ -2469,7 +2463,6 @@ an_init(xsc)
 		if (sc->mpi350)
 			an_init_mpi350_desc(sc);	
 		if (an_init_tx_ring(sc)) {
-			crit_exit();
 			if_printf(ifp, "tx buffer allocation failed\n");
 			return;
 		}
@@ -2508,7 +2501,6 @@ an_init(xsc)
 	sc->an_ssidlist.an_type = AN_RID_SSIDLIST;
 	sc->an_ssidlist.an_len = sizeof(struct an_ltv_ssidlist_new);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_ssidlist)) {
-		crit_exit();
 		if_printf(ifp, "failed to set ssid list\n");
 		return;
 	}
@@ -2517,7 +2509,6 @@ an_init(xsc)
 	sc->an_aplist.an_type = AN_RID_APLIST;
 	sc->an_aplist.an_len = sizeof(struct an_ltv_aplist);
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_aplist)) {
-		crit_exit();
 		if_printf(ifp, "failed to set AP list\n");
 		return;
 	}
@@ -2526,14 +2517,12 @@ an_init(xsc)
 	sc->an_config.an_len = sizeof(struct an_ltv_genconfig);
 	sc->an_config.an_type = AN_RID_GENCONFIG;
 	if (an_write_record(sc, (struct an_ltv_gen *)&sc->an_config)) {
-		crit_exit();
 		if_printf(ifp, "failed to set configuration\n");
 		return;
 	}
 
 	/* Enable the MAC */
 	if (an_cmd(sc, AN_CMD_ENABLE, 0)) {
-		crit_exit();
 		if_printf(ifp, "failed to enable MAC\n");
 		return;
 	}
@@ -2548,8 +2537,6 @@ an_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
-
-	crit_exit();
 }
 
 static void
@@ -2730,8 +2717,6 @@ an_stop(sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
 	an_cmd(sc, AN_CMD_FORCE_SYNCLOSS, 0);
 	CSR_WRITE_2(sc, AN_INT_EN(sc->mpi350), 0);
 	an_cmd(sc, AN_CMD_DISABLE, 0);
@@ -2747,8 +2732,6 @@ an_stop(sc)
 		free(sc->an_flash_buffer, M_DEVBUF);
 		sc->an_flash_buffer = NULL;
 	}
-
-	crit_exit();
 }
 
 static void
@@ -2759,14 +2742,12 @@ an_watchdog(ifp)
 
 	sc = ifp->if_softc;
 
-	crit_enter();
 	an_reset(sc);
 	if (sc->mpi350)
 		an_init_mpi350_desc(sc);	
 	an_init(sc);
 
 	ifp->if_oerrors++;
-	crit_exit();
 
 	if_printf(ifp, "device timeout\n");
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.15 2005/07/26 20:48:41 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.16 2005/11/28 17:13:46 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -363,6 +363,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	struct	in6_ifaddr *ia = NULL;
 	struct	in6_aliasreq *ifra = (struct in6_aliasreq *)data;
 	int privileged;
+	int error;
 
 	privileged = 0;
 	if (suser(td) == 0)
@@ -744,7 +745,10 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	default:
 		if (ifp == NULL || ifp->if_ioctl == 0)
 			return(EOPNOTSUPP);
-		return((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		lwkt_serialize_exit(ifp->if_serializer);
+		return (error);
 	}
 
 	return(0);
@@ -1538,7 +1542,7 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	int	error = 0, plen, ifacount = 0;
 	struct ifaddr *ifa;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/*
 	 * Give the interface a chance to initialize
@@ -1557,12 +1561,12 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	ia->ia_addr = *sin6;
 
 	if (ifacount <= 1 && ifp->if_ioctl &&
-	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia,
 	    			      (struct ucred *)NULL))) {
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return(error);
 	}
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 

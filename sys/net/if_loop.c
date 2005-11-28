@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.18 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ loopattach(void *dummy)
 #ifdef ALTQ
 	        ifp->if_start = lo_altqstart;
 #endif
-		if_attach(ifp);
+		if_attach(ifp, NULL);
 		bpfattach(ifp, DLT_NULL, sizeof(u_int));
 	}
 }
@@ -255,6 +255,11 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		afp = mtod(m, int32_t *);
 		*afp = (int32_t)af;
 
+		/*
+		 * A critical section is needed for subsystems protected by
+		 * the MP lock, and the serializer is assumed to already
+		 * be held for MPSAFE subsystems.
+		 */
 	        crit_enter();
 		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
 		(*ifp->if_start)(ifp);

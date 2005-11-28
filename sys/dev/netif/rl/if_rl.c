@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.28 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.29 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -95,6 +95,7 @@
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -417,8 +418,6 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 {
 	int ack, i;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -490,8 +489,6 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	MII_SET(RL_MII_CLK);
 	DELAY(1);
 
-	crit_exit();
-
 	return(ack ? 1 : 0);
 }
 
@@ -501,8 +498,6 @@ rl_mii_readreg(struct rl_softc *sc, struct rl_mii_frame *frame)
 static int
 rl_mii_writereg(struct rl_softc *sc, struct rl_mii_frame *frame)
 {
-	crit_enter();
-
 	/*
 	 * Set up frame for TX.
 	 */
@@ -534,8 +529,6 @@ rl_mii_writereg(struct rl_softc *sc, struct rl_mii_frame *frame)
 	 * Turn off xmit.
 	 */
 	MII_CLR(RL_MII_DIR);
-
-	crit_exit();
 
 	return(0);
 }
@@ -934,10 +927,10 @@ rl_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->rl_irq, 0, rl_intr,
-			       sc, &sc->rl_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->rl_irq, INTR_NETSAFE, rl_intr,
+			       sc, &sc->rl_intrhand, ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
@@ -961,7 +954,7 @@ rl_detach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		rl_stop(sc);
@@ -974,8 +967,6 @@ rl_detach(device_t dev)
 
 	if (sc->rl_intrhand)
 		bus_teardown_intr(dev, sc->rl_irq, sc->rl_intrhand);
-
-	crit_exit();
 
 	if (sc->rl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->rl_irq);
@@ -991,6 +982,8 @@ rl_detach(device_t dev)
 		bus_dma_tag_destroy(sc->rl_tag);
 	if (sc->rl_parent_tag)
 		bus_dma_tag_destroy(sc->rl_parent_tag);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -1161,7 +1154,7 @@ rl_rxeof(struct rl_softc *sc)
 
 		ifp->if_ipackets++;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 }
 
@@ -1225,14 +1218,14 @@ rl_tick(void *xsc)
 	struct rl_softc *sc = xsc;
 	struct mii_data *mii;
 
-	crit_enter();
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	mii = device_get_softc(sc->rl_miibus);
 	mii_tick(mii);
 
 	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 #ifdef DEVICE_POLLING
@@ -1434,8 +1427,6 @@ rl_init(void *xsc)
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
 
-	crit_enter();
-
 	mii = device_get_softc(sc->rl_miibus);
 
 	/*
@@ -1535,8 +1526,6 @@ rl_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
-
-	crit_exit();
 }
 
 /*
@@ -1577,8 +1566,6 @@ rl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data	*mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -1606,8 +1593,6 @@ rl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	}
 
-	crit_exit();
-
 	return(error);
 }
 
@@ -1618,7 +1603,7 @@ rl_watchdog(struct ifnet *ifp)
 
 	device_printf(sc->rl_dev, "watchdog timeout\n");
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	ifp->if_oerrors++;
 
@@ -1626,7 +1611,7 @@ rl_watchdog(struct ifnet *ifp)
 	rl_rxeof(sc);
 	rl_init(sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -1675,8 +1660,9 @@ rl_shutdown(device_t dev)
 	struct rl_softc *sc;
 
 	sc = device_get_softc(dev);
-
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	rl_stop(sc);
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 /*
@@ -1690,6 +1676,7 @@ rl_suspend(device_t dev)
 	struct rl_softc	*sc = device_get_softc(dev);
 	int i;
 
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	rl_stop(sc);
 
 	for (i = 0; i < 5; i++)
@@ -1701,6 +1688,7 @@ rl_suspend(device_t dev)
 
 	sc->suspended = 1;
 
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 	return (0);
 }
 
@@ -1714,6 +1702,8 @@ static int rl_resume(device_t dev)
 	struct rl_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int		i;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/* better way to do this? */
 	for (i = 0; i < 5; i++)
@@ -1732,6 +1722,6 @@ static int rl_resume(device_t dev)
                 rl_init(sc);
 
 	sc->suspended = 0;
-
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.46 2005/11/22 00:24:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47 2005/11/28 17:13:41 dillon Exp $
  */
 
 /*
@@ -637,8 +637,6 @@ dc_mii_readreg(struct dc_softc *sc, struct dc_mii_frame *frame)
 {
 	int ack, i;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -692,8 +690,6 @@ fail:
 	dc_mii_writebit(sc, 0);
 	dc_mii_writebit(sc, 0);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -705,8 +701,6 @@ fail:
 static int
 dc_mii_writereg(struct dc_softc *sc, struct dc_mii_frame *frame)
 {
-	crit_enter();
-
 	/*
 	 * Set up frame for TX.
 	 */
@@ -730,8 +724,6 @@ dc_mii_writereg(struct dc_softc *sc, struct dc_mii_frame *frame)
 	/* Idle bit. */
 	dc_mii_writebit(sc, 0);
 	dc_mii_writebit(sc, 0);
-
-	crit_exit();
 
 	return(0);
 }
@@ -2030,7 +2022,7 @@ dc_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
 	if (DC_IS_ADMTEK(sc)) {
 		/*
@@ -2044,8 +2036,9 @@ dc_attach(device_t dev)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
-	error = bus_setup_intr(dev, sc->dc_irq, 0,
-			       dc_intr, sc, &sc->dc_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->dc_irq, INTR_NETSAFE,
+			       dc_intr, sc, &sc->dc_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		ether_ifdetach(ifp);
 		device_printf(dev, "couldn't set up irq\n");
@@ -2066,7 +2059,7 @@ dc_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct dc_mediainfo *m;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		dc_stop(sc);
@@ -2079,8 +2072,6 @@ dc_detach(device_t dev)
 
 	if (sc->dc_intrhand)
 		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
-
-	crit_exit();
 
 	if (sc->dc_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
@@ -2101,6 +2092,7 @@ dc_detach(device_t dev)
 	if (sc->dc_srom)
 		free(sc->dc_srom, M_DEVBUF);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -2460,7 +2452,7 @@ dc_rxeof(struct dc_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	sc->dc_cdata.dc_rx_prod = i;
@@ -2580,7 +2572,7 @@ dc_tick(void *xsc)
 	struct mii_data *mii;
 	u_int32_t r;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	mii = device_get_softc(sc->dc_miibus);
 
@@ -2608,8 +2600,9 @@ dc_tick(void *xsc)
 					sc->dc_link = 0;
 			}
 		}
-	} else
+	} else {
 		mii_tick(mii);
+	}
 
 	/*
 	 * When the init routine completes, we expect to be able to send
@@ -2645,7 +2638,7 @@ dc_tick(void *xsc)
 	else
 		callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -3024,8 +3017,6 @@ dc_init(void *xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct mii_data		*mii;
 
-	crit_enter();
-
 	mii = device_get_softc(sc->dc_miibus);
 
 	/*
@@ -3107,7 +3098,6 @@ dc_init(void *xsc)
 		if_printf(ifp, "initialization failed: no "
 			  "memory for rx buffers\n");
 		dc_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -3169,8 +3159,6 @@ dc_init(void *xsc)
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	crit_exit();
 
 	/* Don't start the ticker if this is a homePNA link. */
 	if (IFM_SUBTYPE(mii->mii_media.ifm_media) == IFM_HPNA_1)
@@ -3244,8 +3232,6 @@ dc_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data		*mii;
 	int			error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -3279,8 +3265,6 @@ dc_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
 
 	return(error);
 }
@@ -3370,13 +3354,16 @@ dc_stop(struct dc_softc *sc)
 static void
 dc_shutdown(device_t dev)
 {
-	struct dc_softc		*sc;
+	struct dc_softc	*sc;
+	struct ifnet *ifp;
 
 	sc = device_get_softc(dev);
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	dc_stop(sc);
 
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -3388,12 +3375,11 @@ static int
 dc_suspend(device_t dev)
 {
 	struct dc_softc	*sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
-
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	dc_stop(sc);
-
 	for (i = 0; i < 5; i++)
 		sc->saved_maps[i] = pci_read_config(dev, PCIR_MAPS + i * 4, 4);
 	sc->saved_biosaddr = pci_read_config(dev, PCIR_BIOS, 4);
@@ -3403,7 +3389,7 @@ dc_suspend(device_t dev)
 
 	sc->suspended = 1;
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 
@@ -3419,8 +3405,7 @@ dc_resume(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	dc_acpi(dev);
 
 	/* better way to do this? */
@@ -3440,7 +3425,7 @@ dc_resume(device_t dev)
                 dc_init(sc);
 
 	sc->suspended = 0;
+	lwkt_serialize_exit(ifp->if_serializer);
 
-	crit_exit();
 	return (0);
 }

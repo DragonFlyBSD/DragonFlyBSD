@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.12 2005/10/12 17:35:51 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.13 2005/11/28 17:13:41 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -86,8 +86,9 @@ cm_isa_attach(dev)
 	if (error)
 		return error;
 
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       cmintr, sc, &sc->irq_handle, NULL);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       cmintr, sc, &sc->irq_handle,
+			       sc->sc_arccom.ac_if.if_serializer);
 	if (error) {
 		arc_ifdetach(&sc->sc_arccom.ac_if);
 		cm_release_resources(dev);
@@ -102,15 +103,12 @@ cm_isa_detach(device_t dev)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 
-	crit_enter();
-
+	lwkt_serialize_enter(sc->sc_arccom.ac_if.if_serializer);
 	cm_stop(sc);
 	arc_ifdetach(&sc->sc_arccom.ac_if);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-
-	crit_exit();
-
 	cm_release_resources(dev);
+	lwkt_serialize_exit(sc->sc_arccom.ac_if.if_serializer);
 
 	return (0);
 }

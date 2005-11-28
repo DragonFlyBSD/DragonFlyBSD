@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.17 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.18 2005/11/28 17:13:45 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -128,7 +128,7 @@ ef_attach(struct efnet *sc)
 	/*
 	 * Attach the interface
 	 */
-	ether_ifattach(ifp, IF_LLADDR(sc->ef_ifp));
+	ether_ifattach(ifp, IF_LLADDR(sc->ef_ifp), NULL);
 
 	ifp->if_resolvemulti = 0;
 	ifp->if_type = IFT_XETHER;
@@ -256,7 +256,7 @@ ef_inputEII(struct mbuf *m, struct ether_header *eh, struct llc* l,
 #endif
 #ifdef INET
 	case ETHERTYPE_IP:
-		if (ipflow_fastforward(m))
+		if (ipflow_fastforward(m, NULL))
 			return (0);
 		isr = NETISR_IP;
 		break;

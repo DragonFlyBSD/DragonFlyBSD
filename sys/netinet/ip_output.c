@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.32 2005/08/15 16:46:21 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.33 2005/11/28 17:13:46 dillon Exp $
  */
 
 #define _IP_VHL
@@ -1002,8 +1002,10 @@ pass:
 			m->m_pkthdr.len = tmp;
 		}
 #endif
+		lwkt_serialize_enter(ifp->if_serializer);
 		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst,
 					  ro->ro_rt);
+		lwkt_serialize_exit(ifp->if_serializer);
 		goto done;
 	}
 
@@ -1045,11 +1047,14 @@ pass:
 				ia->ia_ifa.if_opackets++;
 				ia->ia_ifa.if_obytes += m->m_pkthdr.len;
 			}
+			lwkt_serialize_enter(ifp->if_serializer);
 			error = (*ifp->if_output)(ifp, m,
 						  (struct sockaddr *)dst,
 						  ro->ro_rt);
-		} else
+			lwkt_serialize_exit(ifp->if_serializer);
+		} else {
 			m_freem(m);
+		}
 	}
 
 	if (error == 0)

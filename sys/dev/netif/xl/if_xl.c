@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.41 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.42 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -108,6 +108,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -207,6 +208,7 @@ static int xl_detach		(device_t);
 
 static int xl_newbuf		(struct xl_softc *, struct xl_chain_onefrag *);
 static void xl_stats_update	(void *);
+static void xl_stats_update_serialized(void *);
 static int xl_encap		(struct xl_softc *, struct xl_chain *,
 						struct mbuf *);
 static void xl_rxeof		(struct xl_softc *, int);
@@ -457,8 +459,6 @@ xl_mii_readreg(struct xl_softc *sc, struct xl_mii_frame *frame)
 {
 	int			i, ack;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -527,8 +527,6 @@ fail:
 	MII_CLR(XL_MII_CLK);
 	MII_SET(XL_MII_CLK);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -540,8 +538,6 @@ fail:
 static int
 xl_mii_writereg(struct xl_softc *sc, struct xl_mii_frame *frame)
 {
-	crit_enter();
-
 	/*
 	 * Set up frame for TX.
 	 */
@@ -577,8 +573,6 @@ xl_mii_writereg(struct xl_softc *sc, struct xl_mii_frame *frame)
 	 * Turn off xmit.
 	 */
 	MII_CLR(XL_MII_DIR);
-
-	crit_exit();
 
 	return(0);
 }
@@ -1597,7 +1591,7 @@ done:
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
         /*
          * Tell the upper layer(s) we support long frames.
@@ -1605,8 +1599,9 @@ done:
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->xl_irq, 0,
-			       xl_intr, sc, &sc->xl_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->xl_irq, INTR_NETSAFE,
+			       xl_intr, sc, &sc->xl_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		if_printf(ifp, "couldn't set up irq\n");
 		ether_ifdetach(ifp);
@@ -1637,6 +1632,8 @@ xl_detach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
+
 	if (sc->xl_flags & XL_FLAG_USE_MMIO) {
 		rid = XL_PCI_LOMEM;
 		res = SYS_RES_MEMORY;
@@ -1644,8 +1641,6 @@ xl_detach(device_t dev)
 		rid = XL_PCI_LOIO;   
 		res = SYS_RES_IOPORT;
 	}
-
-	crit_enter();
 
 	if (device_is_attached(dev)) {
 		xl_reset(sc);
@@ -1661,8 +1656,6 @@ xl_detach(device_t dev)
 	if (sc->xl_intrhand)
 		bus_teardown_intr(dev, sc->xl_irq, sc->xl_intrhand);
 
-	crit_exit();
-
 	if (sc->xl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->xl_irq);
 	if (sc->xl_fres != NULL)
@@ -1672,6 +1665,7 @@ xl_detach(device_t dev)
 		bus_release_resource(dev, res, rid, sc->xl_res);
 
 	xl_dma_free(dev);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -2138,7 +2132,7 @@ again:
 			}
 		}
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 
 	if (sc->xl_type != XL_TYPE_905B) {
@@ -2384,7 +2378,7 @@ xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 				if (status & XL_STAT_STATSOFLOW) {
 					sc->xl_stats_no_timeout = 1;
-					xl_stats_update(sc);
+					xl_stats_update_serialized(sc);
 					sc->xl_stats_no_timeout = 0;
 				}
 			}
@@ -2441,7 +2435,7 @@ xl_intr(void *arg)
 
 		if (status & XL_STAT_STATSOFLOW) {
 			sc->xl_stats_no_timeout = 1;
-			xl_stats_update(sc);
+			xl_stats_update_serialized(sc);
 			sc->xl_stats_no_timeout = 0;
 		}
 	}
@@ -2454,6 +2448,16 @@ xl_intr(void *arg)
 
 static void
 xl_stats_update(void *xsc)
+{
+	struct xl_softc	*sc = xsc;
+
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
+	xl_stats_update_serialized(xsc);
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
+}
+
+static void
+xl_stats_update_serialized(void *xsc)
 {
 	struct xl_softc		*sc;
 	struct ifnet		*ifp;
@@ -2801,8 +2805,6 @@ xl_init(void *xsc)
 	u_int16_t		rxfilt = 0;
 	struct mii_data		*mii = NULL;
 
-	crit_enter();
-
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
 	 */
@@ -2842,7 +2844,6 @@ xl_init(void *xsc)
 		if_printf(ifp, "initialization of the rx ring failed (%d)\n",
 			  error);
 		xl_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -2976,7 +2977,7 @@ xl_init(void *xsc)
 	/* Clear out the stats counters. */
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_STATS_DISABLE);
 	sc->xl_stats_no_timeout = 1;
-	xl_stats_update(sc);
+	xl_stats_update_serialized(sc);
 	sc->xl_stats_no_timeout = 0;
 	XL_SEL_WIN(4);
 	CSR_WRITE_2(sc, XL_W4_NET_DIAG, XL_NETDIAG_UPPER_BYTES_ENABLE);
@@ -3014,8 +3015,6 @@ xl_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->xl_stat_timer, hz, xl_stats_update, sc);
-
-	crit_exit();
 }
 
 /*
@@ -3133,8 +3132,6 @@ xl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data		*mii = NULL;
 	u_int8_t		rxfilt;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		XL_SEL_WIN(5);
@@ -3193,9 +3190,6 @@ xl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -3298,14 +3292,12 @@ xl_stop(struct xl_softc *sc)
 static void
 xl_shutdown(device_t dev)
 {
-	struct xl_softc		*sc;
+	struct xl_softc	*sc = device_get_softc(dev);
 
-	sc = device_get_softc(dev);
-
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	xl_reset(sc);
 	xl_stop(sc);
-
-	return;
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 }
 
 static int
@@ -3313,11 +3305,9 @@ xl_suspend(device_t dev)
 {
 	struct xl_softc *sc = device_get_softc(dev);
 
-	crit_enter();
-
+	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 	xl_stop(sc);
-
-	crit_exit();
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 
 	return(0);
 }
@@ -3331,13 +3321,11 @@ xl_resume(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	xl_reset(sc);
 	if (ifp->if_flags & IFF_UP)
 		xl_init(sc);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }

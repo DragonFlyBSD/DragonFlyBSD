@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.32 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.33 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -46,10 +46,12 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
-#include <sys/thread2.h>
 #include <sys/malloc.h>
 #include <sys/linker_set.h>
 #include <sys/module.h>
+#include <sys/serialize.h>
+
+#include <sys/thread2.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -231,6 +233,8 @@ static const struct le_board le_boards[] = {
     { NULL }				/* Must Be Last! */
 };
 
+static struct lwkt_serialize	le_serialize;
+
 /*
  * This tells the autoconf code how to set us up.
  */
@@ -253,6 +257,8 @@ le_probe(struct isa_device *dvp)
     struct le_softc *sc = &le_softc[dvp->id_unit];
     const struct le_board *bd;
     int iospace;
+
+    lwkt_serialize_init(&le_serialize);
 
     if (dvp->id_unit >= NLE) {
 	printf("%s%d not configured -- too many devices\n",
@@ -300,7 +306,7 @@ le_attach(struct isa_device *dvp)
     ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
     ifq_set_ready(&ifp->if_snd);
 
-    ether_ifattach(ifp, sc->le_ac.ac_enaddr);
+    ether_ifattach(ifp, sc->le_ac.ac_enaddr, &le_serialize);
 
     return 1;
 }
@@ -310,8 +316,10 @@ le_intr(void *arg)
 {
     int unit = (int)arg;
 
+    lwkt_serialize_enter(&le_serialize);
     le_intrs[unit]++;
     (*le_intrvec[unit])(&le_softc[unit]);
+    lwkt_serialize_exit(&le_serialize);
 }
 
 #define	LE_XTRA		0
@@ -320,33 +328,20 @@ static void
 le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
     size_t len1, caddr_t seg2)
 {
-    struct ether_header eh;
     struct mbuf *m;
-
-    if (total_len - sizeof(eh) > ETHERMTU
-	    || total_len - sizeof(eh) < ETHERMIN) {
-	sc->le_if.if_ierrors++;
-	return;
-    }
-    bcopy(seg1, &eh, ETHER_HDR_LEN);
-
-    seg1 += ETHER_HDR_LEN;
-    total_len -= ETHER_HDR_LEN;
-    len1 -= ETHER_HDR_LEN;
 
     m = m_getl(total_len + LE_XTRA, MB_DONTWAIT, MT_DATA, M_PKTHDR, NULL);
     if (m == NULL) {
 	sc->le_if.if_ierrors++;
 	return;
     }
-    m->m_pkthdr.rcvif = &sc->le_if;
     m->m_data += LE_XTRA;
     m->m_len = m->m_pkthdr.len = total_len;
 
     bcopy(seg1, mtod(m, caddr_t), len1);
     if (seg2 != NULL)
 	bcopy(seg2, mtod(m, caddr_t) + len1, total_len - len1);
-    ether_input(&sc->le_if, &eh, m);
+    sc->le_if.if_input(&sc->le_if, m);
 }
 
 static int
@@ -357,8 +352,6 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
     if ((sc->le_flags & IFF_UP) == 0)
 	return EIO;
-
-    crit_enter();
 
     switch (cmd) {
 	case SIOCSIFFLAGS: {
@@ -379,9 +372,6 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, cmd, data);
 		break;
     }
-
-    crit_exit();
-
     return error;
 }
 
@@ -679,8 +669,6 @@ lemac_init(void *xsc)
     if ((sc->le_flags & IFF_UP) == 0)
 	return;
 
-    crit_enter();
-
     /*
      * If the interface has the up flag
      */
@@ -720,8 +708,6 @@ lemac_init(void *xsc)
 	LEMAC_INTR_DISABLE(sc);
 	sc->le_if.if_flags &= ~IFF_RUNNING;
     }
-
-    crit_exit();
 }
 
 /*

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.66 2005/01/06 01:42:28 imp Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.17 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.18 2005/11/28 17:13:39 dillon Exp $
  */
 
 /*
@@ -55,13 +55,15 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/module.h>
-#include <sys/thread2.h>
 #include <sys/bus.h>
+#include <sys/serialize.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <sys/rman.h>
+
+#include <sys/thread2.h>
 
 #include <net/if.h>
 #ifdef NETGRAPH
@@ -149,6 +151,7 @@ struct ar_softc {
 };
 
 static int	next_ar_unit = 0;
+static struct lwkt_serialize ar_serializer;
 
 #ifdef NETGRAPH
 #define DOG_HOLDOFF	6	/* dog holds off for 6 secs */
@@ -260,6 +263,7 @@ ar_attach(device_t device)
 	int error;
 
 	hc = (struct ar_hardc *)device_get_softc(device);
+	lwkt_serialize_init(&ar_serializer);
 
 	printf("arc%d: %uK RAM, %u ports, rev %u.\n",
 		hc->cunit,
@@ -271,7 +275,7 @@ ar_attach(device_t device)
 
 	error = BUS_SETUP_INTR(device_get_parent(device), device, hc->res_irq,
 			       0, arintr, hc,
-			       &hc->intr_cookie, NULL);
+			       &hc->intr_cookie, &ar_serializer);
 	if (error)
 		return (1);
 
@@ -324,7 +328,7 @@ ar_attach(device_t device)
 			iface);
 
 		sppp_attach((struct ifnet *)&sc->ifsppp);
-		if_attach(ifp);
+		if_attach(ifp, &ar_serializer);
 
 		bpfattach(ifp, DLT_PPP, PPP_HEADER_LEN);
 #else	/* NETGRAPH */
@@ -358,6 +362,9 @@ ar_detach(device_t device)
 {
 	device_t parent = device_get_parent(device);
 	struct ar_hardc *hc = device_get_softc(device);
+	int error;
+
+	lwkt_serialize_enter(&ar_serializer);
 
 	if (hc->intr_cookie != NULL) {
 		if (BUS_TEARDOWN_INTR(parent, device,
@@ -374,7 +381,10 @@ ar_detach(device_t device)
 	FREE(hc->sc, M_DEVBUF);
 	hc->sc = NULL;
 	hc->mem_start = NULL;
-	return (ar_deallocate_resources(device));
+	error = ar_deallocate_resources(device);
+	lwkt_serialize_exit(&ar_serializer);
+
+	return (error);
 }
 
 int
@@ -792,8 +802,6 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	TRC(if_printf(ifp, "arioctl %s.\n",
 		(cmd == SIOCSIFFLAGS) ? "SIOCSIFFLAGS" : "SIOCSIFADDR");)
 
-	crit_enter();
-
 	should_be_up = ifp->if_flags & IFF_RUNNING;
 
 	if(!was_up && should_be_up) {
@@ -808,8 +816,6 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ar_down(sc);
 		sppp_flush(ifp);
 	}
-
-	crit_exit();
 	return (0);
 }
 #endif	/* NETGRAPH */
@@ -2057,12 +2063,11 @@ ngar_watchdog_frame(void * arg)
 	struct ar_softc * sc = arg;
 	int	speed;
 
-	crit_enter();
-
 	if (sc->running == 0) {
-		crit_exit();
 		return; /* if we are not running let timeouts die */
 	}
+
+	lwkt_serialize_enter(&ar_serializer);
 
 	/*
 	 * calculate the apparent throughputs 
@@ -2078,39 +2083,29 @@ ngar_watchdog_frame(void * arg)
 		sc->outrate = speed;
 	sc->inlast++;
 
-	crit_exit();
-
 	if ((sc->inlast > QUITE_A_WHILE)
 	&& (sc->out_deficit > LOTS_OF_PACKETS)) {
 		log(LOG_ERR, "ar%d: No response from remote end\n", sc->unit);
 
-		crit_enter();
-
 		ar_down(sc);
 		ar_up(sc);
 		sc->inlast = sc->out_deficit = 0;
-
-		crit_exit();
 	} else if ( sc->xmit_busy ) { /* no TX -> no TX timeouts */
 		if (sc->out_dog == 0) { 
 			log(LOG_ERR, "ar%d: Transmit failure.. no clock?\n",
 					sc->unit);
-
-			crit_enter();
 
 			arwatchdog(sc);
 #if 0
 			ar_down(sc);
 			ar_up(sc);
 #endif
-
-			crit_exit();
-
 			sc->inlast = sc->out_deficit = 0;
 		} else {
 			sc->out_dog--;
 		}
 	}
+	lwkt_serialize_exit(&ar_serializer);
 	callout_reset(&sc->timer, hz, ngar_watchdog_frame, sc);
 }
 
@@ -2248,12 +2243,8 @@ ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	else
 		xmitq_p = (&sc->xmitq);
 
-	crit_enter();
-
 	if (IF_QFULL(xmitq_p)) {
 		IF_DROP(xmitq_p);
-
-		crit_exit();
 
 		error = ENOBUFS;
 		goto bad;
@@ -2261,7 +2252,6 @@ ngar_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	IF_ENQUEUE(xmitq_p, m);
 	arstart(sc);
 
-	crit_exit();
 	return (0);
 
 bad:
@@ -2331,13 +2321,9 @@ ngar_disconnect(hook_p hook)
 	 * If it's the data hook, then free resources etc.
 	 */
 	if (NG_HOOK_PRIVATE(hook)) {
-		crit_enter();
-
 		sc->datahooks--;
 		if (sc->datahooks == 0)
 			ar_down(sc);
-
-		crit_exit();
 	} else {
 		sc->debug_hook = NULL;
 	}

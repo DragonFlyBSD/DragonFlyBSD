@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.30 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.31 2005/11/28 17:13:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -241,8 +242,6 @@ static int ste_mii_readreg(sc, frame)
 {
 	int			i, ack;
 
-	crit_enter();
-
 	/*
 	 * Set up frame for RX.
 	 */
@@ -316,8 +315,6 @@ fail:
 	MII_SET(STE_PHYCTL_MCLK);
 	DELAY(1);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -331,8 +328,6 @@ static int ste_mii_writereg(sc, frame)
 	struct ste_mii_frame	*frame;
 	
 {
-
-	crit_enter();
 	/*
 	 * Set up frame for TX.
 	 */
@@ -365,8 +360,6 @@ static int ste_mii_writereg(sc, frame)
 	 * Turn off xmit.
 	 */
 	MII_CLR(STE_PHYCTL_MDIR);
-
-	crit_exit();
 
 	return(0);
 }
@@ -716,7 +709,7 @@ static void ste_rxeof(sc)
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = total_len;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 		
 		cur_rx->ste_ptr->ste_status = 0;
 		count++;
@@ -805,11 +798,11 @@ static void ste_stats_update(xsc)
 	struct ifnet		*ifp;
 	struct mii_data		*mii;
 
-	crit_enter();
-
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
 	mii = device_get_softc(sc->ste_miibus);
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
         ifp->if_collisions += CSR_READ_1(sc, STE_LATE_COLLS)
             + CSR_READ_1(sc, STE_MULTI_COLLS)
@@ -831,9 +824,7 @@ static void ste_stats_update(xsc)
 	}
 
 	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
-	crit_exit();
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 
@@ -987,15 +978,16 @@ static int ste_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
         /*
          * Tell the upper layer(s) we support long frames.
          */
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
  
-	error = bus_setup_intr(dev, sc->ste_irq, 0,
-			       ste_intr, sc, &sc->ste_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->ste_irq, INTR_NETSAFE,
+			       ste_intr, sc, &sc->ste_intrhand, 
+			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
 		ether_ifdetach(ifp);
@@ -1015,10 +1007,9 @@ static int ste_detach(dev)
 	struct ste_softc	*sc;
 	struct ifnet		*ifp;
 
-	crit_enter();
-
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		if (bus_child_present(dev))
@@ -1032,8 +1023,6 @@ static int ste_detach(dev)
 	if (sc->ste_intrhand != NULL)
 		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
 
-	crit_exit();
-
 	if (sc->ste_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
 	if (sc->ste_res != NULL)
@@ -1042,6 +1031,7 @@ static int ste_detach(dev)
 		contigfree(sc->ste_ldata, sizeof(struct ste_list_data),
 			   M_DEVBUF);
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -1155,8 +1145,6 @@ static void ste_init(xsc)
 	struct ifnet		*ifp;
 	struct mii_data		*mii;
 
-	crit_enter();
-
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
 	mii = device_get_softc(sc->ste_miibus);
@@ -1173,7 +1161,6 @@ static void ste_init(xsc)
 		if_printf(ifp, "initialization failed: no "
 		    "memory for RX buffers\n");
 		ste_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -1252,11 +1239,7 @@ static void ste_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	crit_exit();
-
 	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
-
-	return;
 }
 
 static void ste_stop(sc)
@@ -1341,8 +1324,6 @@ static int ste_ioctl(ifp, command, data, cr)
 	struct mii_data		*mii;
 	int			error = 0;
 
-	crit_enter();
-
 	sc = ifp->if_softc;
 	ifr = (struct ifreq *)data;
 
@@ -1385,9 +1366,6 @@ static int ste_ioctl(ifp, command, data, cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 

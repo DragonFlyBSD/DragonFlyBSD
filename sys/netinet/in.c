@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.16 2005/06/04 14:41:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.17 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -348,10 +348,12 @@ in_control(so, cmd, data, ifp, td)
 			return (EINVAL);
 		oldaddr = ia->ia_dstaddr;
 		ia->ia_dstaddr = *(struct sockaddr_in *)&ifr->ifr_dstaddr;
+		lwkt_serialize_enter(ifp->if_serializer);
 		if (ifp->if_ioctl &&
-		    (error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
+		    (error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, (caddr_t)ia,
 					      td->td_proc->p_ucred))) {
 			ia->ia_dstaddr = oldaddr;
+			lwkt_serialize_exit(ifp->if_serializer);
 			return (error);
 		}
 		if (ia->ia_flags & IFA_ROUTE) {
@@ -361,6 +363,7 @@ in_control(so, cmd, data, ifp, td)
 					(struct sockaddr *)&ia->ia_dstaddr;
 			rtinit(&ia->ia_ifa, RTM_ADD, RTF_HOST | RTF_UP);
 		}
+		lwkt_serialize_exit(ifp->if_serializer);
 		return (0);
 
 	case SIOCSIFBRDADDR:
@@ -442,19 +445,22 @@ in_control(so, cmd, data, ifp, td)
 	default:
 		if (ifp == NULL || ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
+		lwkt_serialize_enter(ifp->if_serializer);
+		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		lwkt_serialize_exit(ifp->if_serializer);
+		return (error);
 	}
 
 	/*
 	 * Protect from ipintr() traversing address list while we're modifying
 	 * it.
 	 */
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 	TAILQ_REMOVE(&ifp->if_addrhead, &ia->ia_ifa, ifa_link);
 	TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
 	LIST_REMOVE(ia, ia_hash);
 	IFAFREE(&ia->ia_ifa);
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (error);
 }
@@ -671,7 +677,7 @@ in_ifinit(ifp, ia, sin, scrub)
 	struct sockaddr_in oldaddr;
 	int flags = RTF_UP, error = 0;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	oldaddr = ia->ia_addr;
 	if (oldaddr.sin_family == AF_INET)
@@ -686,9 +692,8 @@ in_ifinit(ifp, ia, sin, scrub)
 	 * and to validate the address if necessary.
 	 */
 	if (ifp->if_ioctl &&
-	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
-				      (struct ucred *)NULL))) {
-		crit_exit();
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
+		lwkt_serialize_exit(ifp->if_serializer);
 		/* LIST_REMOVE(ia, ia_hash) is done in in_control */
 		ia->ia_addr = oldaddr;
 		if (ia->ia_addr.sin_family == AF_INET)
@@ -696,7 +701,7 @@ in_ifinit(ifp, ia, sin, scrub)
 			    ia, ia_hash);
 		return (error);
 	}
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	if (scrub) {
 		ia->ia_ifa.ifa_addr = (struct sockaddr *)&oldaddr;
 		in_ifscrub(ifp, ia);

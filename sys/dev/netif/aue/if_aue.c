@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.28 2005/11/22 00:24:15 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.29 2005/11/28 17:13:41 dillon Exp $
  */
 
 /*
@@ -725,7 +725,7 @@ USB_ATTACH(aue)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 	usb_register_netisr();
 	sc->aue_dying = 0;
 

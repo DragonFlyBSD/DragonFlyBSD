@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pccard.c,v 1.1.2.6 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.13 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pccard.c,v 1.14 2005/11/28 17:13:38 dillon Exp $
  */
 
 /*
@@ -161,8 +161,9 @@ an_pccard_attach(device_t dev)
 	/*
 	 * Must setup the interrupt after the an_attach to prevent racing.
 	 */
-	error = bus_setup_intr(dev, sc->irq_res, 0,
-			       an_intr, sc, &sc->irq_handle, NULL);
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       an_intr, sc, &sc->irq_handle,
+			       sc->arpcom.ac_if.if_serializer);
 	if (error) {
 		ether_ifdetach(&sc->arpcom.ac_if);
 		ifmedia_removeall(&sc->an_ifmedia);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.26 2005/11/22 00:24:19 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.27 2005/11/28 17:13:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -414,13 +414,14 @@ bfe_attach(device_t dev)
 		goto fail;
 	}
 
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
 	/*
 	 * Hook interrupt last to avoid having to lock softc
 	 */
-	error = bus_setup_intr(dev, sc->bfe_irq, 0,
-			       bfe_intr, sc, &sc->bfe_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->bfe_irq, INTR_NETSAFE,
+			       bfe_intr, sc, &sc->bfe_intrhand, 
+			       sc->arpcom.ac_if.if_serializer);
 
 	if (error) {
 		ether_ifdetach(ifp);
@@ -439,7 +440,7 @@ bfe_detach(device_t dev)
 	struct bfe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		bfe_stop(sc);
@@ -453,8 +454,6 @@ bfe_detach(device_t dev)
 	if (sc->bfe_intrhand != NULL)
 		bus_teardown_intr(dev, sc->bfe_irq, sc->bfe_intrhand);
 
-	crit_exit();
-
 	if (sc->bfe_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bfe_irq);
 
@@ -462,8 +461,8 @@ bfe_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, BFE_PCI_MEMLO,
 				     sc->bfe_res);
 	}
-
 	bfe_dma_free(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -475,12 +474,11 @@ static void
 bfe_shutdown(device_t dev)
 {
 	struct bfe_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	bfe_stop(sc); 
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static int
@@ -655,15 +653,11 @@ bfe_clear_stats(struct bfe_softc *sc)
 {
 	u_long reg;
 
-	crit_enter();
-
 	CSR_WRITE_4(sc, BFE_MIB_CTRL, BFE_MIB_CLR_ON_READ);
 	for (reg = BFE_TX_GOOD_O; reg <= BFE_TX_PAUSE; reg += 4)
 		CSR_READ_4(sc, reg);
 	for (reg = BFE_RX_GOOD_O; reg <= BFE_RX_NPAUSE; reg += 4)
 		CSR_READ_4(sc, reg);
-
-	crit_exit();
 }
 
 static int 
@@ -671,27 +665,20 @@ bfe_resetphy(struct bfe_softc *sc)
 {
 	uint32_t val;
 
-	crit_enter();
-
 	bfe_writephy(sc, 0, BMCR_RESET);
 	DELAY(100);
 	bfe_readphy(sc, 0, &val);
 	if (val & BMCR_RESET) {
-		crit_exit();
 		if_printf(&sc->arpcom.ac_if,
 			  "PHY Reset would not complete.\n");
 		return(ENXIO);
 	}
-
-	crit_exit();
 	return(0);
 }
 
 static void
 bfe_chip_halt(struct bfe_softc *sc)
 {
-	crit_enter();
-
 	/* disable interrupts - not that it actually does..*/
 	CSR_WRITE_4(sc, BFE_IMASK, 0);
 	CSR_READ_4(sc, BFE_IMASK);
@@ -702,16 +689,12 @@ bfe_chip_halt(struct bfe_softc *sc)
 	CSR_WRITE_4(sc, BFE_DMARX_CTRL, 0);
 	CSR_WRITE_4(sc, BFE_DMATX_CTRL, 0);
 	DELAY(10);
-
-	crit_exit();
 }
 
 static void
 bfe_chip_reset(struct bfe_softc *sc)
 {
 	uint32_t val;    
-
-	crit_enter();
 
 	/* Set the interrupt vector for the enet core */
 	bfe_pci_setup(sc, BFE_INTVEC_ENET0);
@@ -787,8 +770,6 @@ bfe_chip_reset(struct bfe_softc *sc)
 
 	bfe_resetphy(sc);
 	bfe_setupphy(sc);
-
-	crit_exit();
 }
 
 static void
@@ -1009,8 +990,6 @@ bfe_readphy(struct bfe_softc *sc, uint32_t reg, uint32_t *val)
 {
 	int err; 
 
-	crit_enter();
-
 	/* Clear MII ISR */
 	CSR_WRITE_4(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII);
 	CSR_WRITE_4(sc, BFE_MDIO_DATA, (BFE_MDIO_SB_START |
@@ -1020,8 +999,6 @@ bfe_readphy(struct bfe_softc *sc, uint32_t reg, uint32_t *val)
 				(BFE_MDIO_TA_VALID << BFE_MDIO_TA_SHIFT)));
 	err = bfe_wait_bit(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII, 100, 0);
 	*val = CSR_READ_4(sc, BFE_MDIO_DATA) & BFE_MDIO_DATA_DATA;
-
-	crit_exit();
 	return(err);
 }
 
@@ -1029,8 +1006,6 @@ static int
 bfe_writephy(struct bfe_softc *sc, uint32_t reg, uint32_t val)
 {
 	int status;
-
-	crit_enter();
 
 	CSR_WRITE_4(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII);
 	CSR_WRITE_4(sc, BFE_MDIO_DATA, (BFE_MDIO_SB_START |
@@ -1040,8 +1015,6 @@ bfe_writephy(struct bfe_softc *sc, uint32_t reg, uint32_t val)
 				(BFE_MDIO_TA_VALID << BFE_MDIO_TA_SHIFT) |
 				(val & BFE_MDIO_DATA_DATA)));
 	status = bfe_wait_bit(sc, BFE_EMAC_ISTAT, BFE_EMAC_INT_MII, 100, 0);
-
-	crit_exit();
 
 	return status;
 }
@@ -1055,8 +1028,6 @@ bfe_setupphy(struct bfe_softc *sc)
 {
 	uint32_t val;
 	
-	crit_enter();
-
 	/* Enable activity LED */
 	bfe_readphy(sc, 26, &val);
 	bfe_writephy(sc, 26, val & 0x7fff); 
@@ -1066,7 +1037,6 @@ bfe_setupphy(struct bfe_softc *sc)
 	bfe_readphy(sc, 27, &val);
 	bfe_writephy(sc, 27, val | (1 << 6));
 
-	crit_exit();
 	return(0);
 }
 
@@ -1089,8 +1059,6 @@ bfe_txeof(struct bfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t i, chipidx;
-
-	crit_enter();
 
 	chipidx = CSR_READ_4(sc, BFE_DMATX_STAT) & BFE_STAT_CDMASK;
 	chipidx /= sizeof(struct bfe_desc);
@@ -1118,8 +1086,6 @@ bfe_txeof(struct bfe_softc *sc)
 		ifp->if_timer = 0;
 	else
 		ifp->if_timer = 5;
-
-	crit_exit();
 }
 
 /* Pass a received packet up the stack */
@@ -1131,8 +1097,6 @@ bfe_rxeof(struct bfe_softc *sc)
 	struct bfe_rxheader *rxheader;
 	struct bfe_data *r;
 	uint32_t cons, status, current, len, flags;
-
-	crit_enter();
 
 	cons = sc->bfe_rx_cons;
 	status = CSR_READ_4(sc, BFE_DMARX_STAT);
@@ -1175,12 +1139,10 @@ bfe_rxeof(struct bfe_softc *sc)
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
 
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
 	sc->bfe_rx_cons = cons;
-
-	crit_exit();
 }
 
 static void
@@ -1189,8 +1151,6 @@ bfe_intr(void *xsc)
 	struct bfe_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t istat, imask, flag;
-
-	crit_enter();
 
 	istat = CSR_READ_4(sc, BFE_ISTAT);
 	imask = CSR_READ_4(sc, BFE_IMASK);
@@ -1206,7 +1166,6 @@ bfe_intr(void *xsc)
 
 	/* not expecting this interrupt, disregard it */
 	if (istat == 0) {
-		crit_exit();
 		return;
 	}
 
@@ -1234,8 +1193,6 @@ bfe_intr(void *xsc)
 	/* We have packets pending, fire them out */ 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		bfe_start(ifp);
-
-	crit_exit();
 }
 
 static int
@@ -1311,21 +1268,15 @@ bfe_start(struct ifnet *ifp)
 	struct mbuf *m_head = NULL;
 	int idx, need_trans;
 
-	crit_enter();
-
 	/* 
 	 * Not much point trying to send if the link is down
 	 * or we have nothing to send.
 	 */
-	if (!sc->bfe_link) {
-		crit_exit();
+	if (!sc->bfe_link)
 		return;
-	}
 
-	if (ifp->if_flags & IFF_OACTIVE) {
-		crit_exit();
+	if (ifp->if_flags & IFF_OACTIVE)
 		return;
-	}
 
 	idx = sc->bfe_tx_prod;
 
@@ -1353,10 +1304,8 @@ bfe_start(struct ifnet *ifp)
 		BPF_MTAP(ifp, m_head);
 	}
 
-	if (!need_trans) {
-		crit_exit();
+	if (!need_trans)
 		return;
-	}
 
 	sc->bfe_tx_prod = idx;
 	/* Transmit - twice due to apparent hardware bug */
@@ -1367,8 +1316,6 @@ bfe_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	crit_exit();
 }
 
 static void
@@ -1377,12 +1324,8 @@ bfe_init(void *xsc)
 	struct bfe_softc *sc = (struct bfe_softc*)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
+	if (ifp->if_flags & IFF_RUNNING)
 		return;
-	}
 
 	bfe_stop(sc);
 	bfe_chip_reset(sc);
@@ -1391,7 +1334,6 @@ bfe_init(void *xsc)
 		if_printf(ifp, "bfe_init failed. "
 			  " Not enough memory for list buffers\n");
 		bfe_stop(sc);
-		crit_exit();
 		return;
 	}
 
@@ -1407,7 +1349,6 @@ bfe_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
-	crit_exit();
 }
 
 /*
@@ -1419,8 +1360,6 @@ bfe_ifmedia_upd(struct ifnet *ifp)
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
-	crit_enter();
-
 	mii = device_get_softc(sc->bfe_miibus);
 	sc->bfe_link = 0;
 	if (mii->mii_instance) {
@@ -1431,7 +1370,6 @@ bfe_ifmedia_upd(struct ifnet *ifp)
 	}
 	mii_mediachg(mii);
 
-	crit_exit();
 	return(0);
 }
 
@@ -1444,14 +1382,10 @@ bfe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
-	crit_enter();
-
 	mii = device_get_softc(sc->bfe_miibus);
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
-
-	crit_exit();
 }
 
 static int
@@ -1461,8 +1395,6 @@ bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
 	int error = 0;
-
-	crit_enter();
 
 	switch (command) {
 		case SIOCSIFFLAGS:
@@ -1489,9 +1421,6 @@ bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			error = ether_ioctl(ifp, command, data);
 			break;
 	}
-
-	crit_exit();
-
 	return error;
 }
 
@@ -1502,14 +1431,10 @@ bfe_watchdog(struct ifnet *ifp)
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
 
-	crit_enter();
-
 	ifp->if_flags &= ~IFF_RUNNING;
 	bfe_init(sc);
 
 	ifp->if_oerrors++;
-
-	crit_exit();
 }
 
 static void
@@ -1517,28 +1442,25 @@ bfe_tick(void *xsc)
 {
 	struct bfe_softc *sc = xsc;
 	struct mii_data *mii;
-
-	crit_enter();
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	mii = device_get_softc(sc->bfe_miibus);
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	bfe_stats_update(sc);
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 
-	if (sc->bfe_link) {
-		crit_exit();
-		return;
+	if (sc->bfe_link == NULL) {
+		mii_tick(mii);
+		if (!sc->bfe_link && mii->mii_media_status & IFM_ACTIVE &&
+		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)  {
+			sc->bfe_link++;
+		}
+		if (!sc->bfe_link)
+			sc->bfe_link++;
 	}
-
-	mii_tick(mii);
-	if (!sc->bfe_link && mii->mii_media_status & IFM_ACTIVE &&
-			IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) 
-		sc->bfe_link++;
-
-	if (!sc->bfe_link)
-		sc->bfe_link++;
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -1550,8 +1472,6 @@ bfe_stop(struct bfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
 	callout_stop(&sc->bfe_stat_timer);
 
 	bfe_chip_halt(sc);
@@ -1559,6 +1479,5 @@ bfe_stop(struct bfe_softc *sc)
 	bfe_rx_ring_free(sc);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-
-	crit_exit();
 }
+

@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.27 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.28 2005/11/28 17:13:46 dillon Exp $
  */
 
 /*
@@ -775,7 +775,9 @@ match:
 		la->la_preempt = arp_maxtries;
 		if (la->la_hold != NULL) {
 			m_adj(la->la_hold, sizeof(struct ether_header));
+			lwkt_serialize_enter(ifp->if_serializer);
 			(*ifp->if_output)(ifp, la->la_hold, rt_key(rt), rt);
+			lwkt_serialize_exit(ifp->if_serializer);
 			la->la_hold = NULL;
 		}
 	}
@@ -873,7 +875,9 @@ reply:
 	}
 	sa.sa_family = AF_UNSPEC;
 	sa.sa_len = sizeof sa;
+	lwkt_serialize_enter(ifp->if_serializer);
 	(*ifp->if_output)(ifp, m, &sa, (struct rtentry *)0);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return;
 }
 #endif

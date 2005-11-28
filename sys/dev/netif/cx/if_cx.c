@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.18 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.19 2005/11/28 17:13:41 dillon Exp $
  *
  */
 #undef DEBUG
@@ -281,7 +281,7 @@ cxattach (struct isa_device *id)
 			c->ifp->if_watchdog = (watchdog_func_t) cxwatchdog;
 			/* Init routine is never called by upper level? */
 			sppp_attach (c->ifp);
-			if_attach (c->ifp);
+			if_attach (c->ifp, NULL);
 			sp = (struct sppp*) c->ifp;
 			/* If BPF is in the kernel, call the attach for it. */
 			bpfattach (c->ifp, DLT_PPP, PPP_HEADER_LEN);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.10 2005/10/30 04:41:15 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.11 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,6 +34,7 @@
 
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/serialize.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -312,9 +313,9 @@ ex_isa_attach(device_t dev)
 		goto bad;
 	}
 
-	error = bus_setup_intr(dev, sc->irq, 0,
-				ex_intr, (void *)sc,
-				&sc->ih, NULL);
+	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+				ex_intr, (void *)sc, &sc->ih, 
+				sc->arpcom.ac_if.if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed!\n");
 		goto bad;

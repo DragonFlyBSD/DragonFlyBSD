@@ -1,7 +1,3 @@
-/*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.13 2005/06/03 18:20:36 swildner Exp $	*/
-/*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
-
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -29,6 +25,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
+ * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
 #include "opt_inet.h"
@@ -163,7 +163,7 @@ gifattach0(sc)
 	sc->gif_if.if_output = gif_output;
 	sc->gif_if.if_type   = IFT_GIF;
 	sc->gif_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
-	if_attach(&sc->gif_if);
+	if_attach(&sc->gif_if, NULL);
 	bpfattach(&sc->gif_if, DLT_NULL, sizeof(u_int));
 }
 

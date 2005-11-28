@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.18 2005/11/22 00:24:18 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.19 2005/11/28 17:13:41 dillon Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -209,10 +209,7 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	usbd_status		err;
 	u_int16_t		val;
 
-	crit_enter();
-
 	if (sc->axe_dying) {
-		crit_exit();
 		return(0);
 	}
 
@@ -223,25 +220,20 @@ axe_miibus_readreg(device_ptr_t dev, int phy, int reg)
 	 */
 
 	if (sc->axe_phyaddrs[0] != AXE_NOPHY && phy != sc->axe_phyaddrs[0]) {
-		crit_exit();
 		return (0);
 	}
 
 	if (sc->axe_phyaddrs[1] != AXE_NOPHY && phy != sc->axe_phyaddrs[1]) {
-		crit_exit();
 		return (0);
 	}
 #endif
 	if (sc->axe_phyaddrs[0] != 0xFF && sc->axe_phyaddrs[0] != phy) {
-		crit_exit();
 		return (0);
 	}
 
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	err = axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, (void *)&val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
-
-	crit_exit();
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "read PHY failed\n");
@@ -260,18 +252,13 @@ axe_miibus_writereg(device_ptr_t dev, int phy, int reg, int val)
 	struct axe_softc	*sc = USBGETSOFTC(dev);
 	usbd_status		err;
 
-	crit_enter();
-
 	if (sc->axe_dying) {
-		crit_exit();
 		return(0);
 	}
 
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	err = axe_cmd(sc, AXE_CMD_MII_WRITE_REG, reg, phy, (void *)&val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
-
-	crit_exit();
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "write PHY failed\n");
@@ -338,14 +325,11 @@ axe_setmulti(struct axe_softc *sc)
 	u_int16_t		rxmode;
 	u_int8_t		hashtbl[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	crit_enter();
-
 	axe_cmd(sc, AXE_CMD_RXCTL_READ, 0, 0, (void *)&rxmode);
 
 	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
 		rxmode |= AXE_RXCMD_ALLMULTI;
 		axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
-		crit_exit();
 		return;
 	} else
 		rxmode &= ~AXE_RXCMD_ALLMULTI;
@@ -363,8 +347,6 @@ axe_setmulti(struct axe_softc *sc)
 
 	axe_cmd(sc, AXE_CMD_WRITE_MCAST, 0, 0, (void *)&hashtbl);
 	axe_cmd(sc, AXE_CMD_RXCTL_WRITE, 0, rxmode, NULL);
-
-	crit_exit();
 }
 
 Static void
@@ -502,7 +484,7 @@ USB_ATTACH(axe)
 	 * Call MI attach routine.
 	 */
 
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
 	sc->axe_dying = 0;
 
@@ -517,8 +499,6 @@ axe_detach(device_ptr_t dev)
 	struct axe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
-
 	sc->axe_dying = 1;
 	callout_stop(&sc->axe_stat_timer);
 	ether_ifdetach(ifp);
@@ -529,8 +509,6 @@ axe_detach(device_ptr_t dev)
 		usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_RX]);
 	if (sc->axe_ep[AXE_ENDPT_INTR] != NULL)
 		usbd_abort_pipe(sc->axe_ep[AXE_ENDPT_INTR]);
-
-	crit_exit();
 
 	return(0);
 }
@@ -619,12 +597,10 @@ axe_rxstart(struct ifnet *ifp)
 	struct axe_softc *sc = ifp->if_softc;
 	struct axe_chain *c;
 
-	crit_enter();
 	c = &sc->axe_cdata.axe_rx_chain[sc->axe_cdata.axe_rx_prod];
 
 	if (axe_newbuf(sc, c, NULL) == ENOBUFS) {
 		ifp->if_ierrors++;
-		crit_exit();
 		return;
 	}
 
@@ -633,8 +609,6 @@ axe_rxstart(struct ifnet *ifp)
 	    c, mtod(c->axe_mbuf, char *), AXE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, axe_rxeof);
 	usbd_transfer(c->axe_xfer);
-
-	crit_exit();
 }
 
 /*
@@ -650,16 +624,16 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
         struct mbuf *m;
 	int total_len = 0;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (!(ifp->if_flags & IFF_RUNNING)) {
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			crit_exit();
+			lwkt_serialize_exit(ifp->if_serializer);
 			return;
 		}
 		if (usbd_ratecheck(&sc->axe_rx_notice)) {
@@ -687,8 +661,7 @@ axe_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
 	axe_rxstart(ifp);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 	return;
 done:
 	/* Setup new transfer. */
@@ -696,8 +669,7 @@ done:
 	    c, mtod(c->axe_mbuf, char *), AXE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, axe_rxeof);
 	usbd_transfer(c->axe_xfer);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 /*
@@ -713,17 +685,16 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	usbd_status err;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			crit_exit();
+			lwkt_serialize_exit(ifp->if_serializer);
 			return;
 		}
 		if_printf(ifp, "usb error on tx: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->axe_ep[AXE_ENDPT_TX]);
-		crit_exit();
+		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
 
@@ -743,8 +714,7 @@ axe_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 Static void
@@ -758,8 +728,7 @@ axe_tick(void *xsc)
 	if (mii == NULL)
 		return;
 
-	crit_enter();
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	mii_tick(mii);
 	if (!sc->axe_link && mii->mii_media_status & IFM_ACTIVE &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
@@ -767,10 +736,8 @@ axe_tick(void *xsc)
 		if (!ifq_is_empty(&ifp->if_snd))
 			axe_start(ifp);
 	}
-
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
-
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 Static int
@@ -810,27 +777,21 @@ axe_start(struct ifnet *ifp)
 	struct axe_softc *sc = ifp->if_softc;
 	struct mbuf *m_head = NULL;
 
-	crit_enter();
-
 	if (!sc->axe_link) {
-		crit_exit();
 		return;
 	}
 
 	if (ifp->if_flags & IFF_OACTIVE) {
-		crit_exit();
 		return;
 	}
 
 	m_head = ifq_poll(&ifp->if_snd);
 	if (m_head == NULL) {
-		crit_exit();
 		return;
 	}
 
 	if (axe_encap(sc, m_head, 0)) {
 		ifp->if_flags |= IFF_OACTIVE;
-		crit_exit();
 		return;
 	}
 	ifq_dequeue(&ifp->if_snd, m_head);
@@ -847,8 +808,6 @@ axe_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	crit_exit();
 }
 
 Static void
@@ -860,10 +819,7 @@ axe_init(void *xsc)
 	usbd_status		err;
 	int i, rxmode;
 
-	crit_enter();
-
 	if (ifp->if_flags & IFF_RUNNING) {
-		crit_exit();
 		return;
 	}
 
@@ -882,14 +838,12 @@ axe_init(void *xsc)
 
 	/* Init TX ring. */
 	if (axe_tx_list_init(sc) == ENOBUFS) {
-		crit_exit();
 		if_printf(ifp, "tx list init failed\n");
 		return;
 	}
 
 	/* Init RX ring. */
 	if (axe_rx_list_init(sc) == ENOBUFS) {
-		crit_exit();
 		if_printf(ifp, "rx list init failed\n");
 		return;
 	}
@@ -918,7 +872,6 @@ axe_init(void *xsc)
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_RX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_RX]);
 	if (err) {
-		crit_exit();
 		if_printf(ifp, "open rx pipe failed: %s\n", usbd_errstr(err));
 		return;
 	}
@@ -926,7 +879,6 @@ axe_init(void *xsc)
 	err = usbd_open_pipe(sc->axe_iface, sc->axe_ed[AXE_ENDPT_TX],
 	    USBD_EXCLUSIVE_USE, &sc->axe_ep[AXE_ENDPT_TX]);
 	if (err) {
-		crit_exit();
 		if_printf(ifp, "open tx pipe failed: %s\n", usbd_errstr(err));
 		return;
 	}
@@ -944,8 +896,6 @@ axe_init(void *xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	callout_reset(&sc->axe_stat_timer, hz, axe_tick, sc);
-
-	crit_exit();
 }
 
 Static int
@@ -956,8 +906,6 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data		*mii;
 	u_int16_t		rxmode;
 	int error = 0;
-
-	crit_enter();
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1004,9 +952,6 @@ axe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 
@@ -1017,8 +962,6 @@ axe_watchdog(struct ifnet *ifp)
 	struct axe_chain *c;
 	usbd_status stat;
 
-	crit_enter();
-
 	ifp->if_oerrors++;
 	if_printf(ifp, "watchdog timeout\n");
 
@@ -1028,8 +971,6 @@ axe_watchdog(struct ifnet *ifp)
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		axe_start(ifp);
-
-	crit_exit();
 }
 
 /*
@@ -1042,8 +983,6 @@ axe_stop(struct axe_softc *sc)
 	usbd_status		err;
 	struct ifnet		*ifp;
 	int i;
-
-	crit_enter();
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
@@ -1129,8 +1068,6 @@ axe_stop(struct axe_softc *sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
         sc->axe_link = 0;
-
-	crit_exit();
 }
 
 /*

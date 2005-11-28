@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.13 2005/06/13 22:27:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.14 2005/11/28 17:13:42 dillon Exp $
  */
 
 /*
@@ -147,7 +147,7 @@ icattach(device_t dev)
 	ifp->if_addrlen = 0;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 
 	bpfattach(ifp, DLT_NULL, ICHDRLEN);
 

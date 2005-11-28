@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.13 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.14 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include "opt_ed.h"
@@ -102,6 +102,7 @@ ed_pccard_detach(device_t dev)
 	struct ed_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (sc->gone) {
 		device_printf(dev, "already unloaded\n");
 		return (0);
@@ -112,6 +113,7 @@ ed_pccard_detach(device_t dev)
 	sc->gone = 1;
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	ed_release_resources(dev);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 
@@ -258,7 +260,7 @@ ed_pccard_attach(device_t dev)
 		ed_alloc_memory(dev, sc->mem_rid, sc->mem_used);
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 		
-	error = bus_setup_intr(dev, sc->irq_res, 0,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
 			       edintr, sc, &sc->irq_handle, NULL);
 	if (error) {
 		printf("setup intr failed %d \n", error);

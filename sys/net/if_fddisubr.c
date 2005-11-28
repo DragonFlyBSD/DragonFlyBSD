@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.18 2005/06/03 23:23:03 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -47,6 +47,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/malloc.h>
+#include <sys/serialize.h>
 
 #include <net/if.h>
 #include <net/bpf.h>
@@ -361,6 +362,8 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 	struct llc *l;
 	struct fddi_header *fh = mtod(m, struct fddi_header *);
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (m->m_len < sizeof(struct fddi_header)) {
 		/* XXX error in the caller. */
 		m_freem(m);
@@ -501,8 +504,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 #endif
 
 void
-fddi_ifattach(ifp)
-	struct ifnet *ifp;
+fddi_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
 
@@ -518,7 +520,7 @@ fddi_ifattach(ifp)
 #ifdef IFF_NOTRAILERS
 	ifp->if_flags |= IFF_NOTRAILERS;
 #endif
-	if_attach(ifp);
+	if_attach(ifp, serializer);
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 	sdl = IF_LLSOCKADDR(ifp);
 	sdl->sdl_type = IFT_FDDI;

@@ -55,7 +55,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_rue.c,v 1.14 2004/06/09 14:34:03 naddy Exp $
- * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.4 2005/11/22 00:24:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rue/if_rue.c,v 1.5 2005/11/28 17:13:43 dillon Exp $
  */
 
 /*
@@ -615,7 +615,7 @@ USB_ATTACH(rue)
 	}
 
 	/* Call MI attach routine */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
 	callout_init(&sc->rue_stat_ch);
 	sc->rue_dying = 0;

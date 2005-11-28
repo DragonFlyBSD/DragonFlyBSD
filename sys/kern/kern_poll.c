@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.21 2005/10/24 08:06:16 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.22 2005/11/28 17:13:45 dillon Exp $
  */
 
 #include "opt_polling.h"
@@ -419,22 +419,27 @@ netisr_poll(struct netmsg *msg)
 		for (i = 0 ; i < poll_handlers ; i++) {
 			struct pollrec *p = &pr[i];
 			if ((p->ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING)) == (IFF_UP|IFF_RUNNING|IFF_POLLING)) {
-				p->ifp->if_poll(p->ifp, arg, cycles);
+				if (lwkt_serialize_try(p->ifp->if_serializer)) {
+					p->ifp->if_poll(p->ifp, arg, cycles);
+					lwkt_serialize_exit(p->ifp->if_serializer);
+				}
 			}
 		}
 	} else {	/* unregister */
 		for (i = 0 ; i < poll_handlers ; i++) {
 			struct pollrec *p = &pr[i];
-			if (p->ifp->if_flags & IFF_POLLING) {
-				p->ifp->if_flags &= ~IFF_POLLING;
-				/*
-				 * Only call the interface deregistration
-				 * function if the interface is still 
-				 * running.
-				 */
-				if (p->ifp->if_flags & IFF_RUNNING)
-					p->ifp->if_poll(p->ifp, POLL_DEREGISTER, 1);
-			}
+			if ((p->ifp->if_flags & IFF_POLLING) == 0)
+				continue;
+			/*
+			 * Only call the interface deregistration
+			 * function if the interface is still 
+			 * running.
+			 */
+			lwkt_serialize_enter(p->ifp->if_serializer);
+			p->ifp->if_flags &= ~IFF_POLLING;
+			if (p->ifp->if_flags & IFF_RUNNING)
+				p->ifp->if_poll(p->ifp, POLL_DEREGISTER, 1);
+			lwkt_serialize_exit(p->ifp->if_serializer);
 		}
 		residual_burst = 0;
 		poll_handlers = 0;
@@ -469,8 +474,10 @@ ether_poll_register(struct ifnet *ifp)
 	 * Attempt to register.  Interlock with IFF_POLLING.
 	 */
 	crit_enter();	/* XXX MP - not mp safe */
+	lwkt_serialize_enter(ifp->if_serializer);
 	ifp->if_flags |= IFF_POLLING;
 	ifp->if_poll(ifp, POLL_REGISTER, 0);
+	lwkt_serialize_exit(ifp->if_serializer);
 	if ((ifp->if_flags & IFF_POLLING) == 0) {
 		crit_exit();
 		return 0;
@@ -494,7 +501,9 @@ ether_poll_register(struct ifnet *ifp)
 			verbose--;
 		}
 		ifp->if_flags &= ~IFF_POLLING;
+		lwkt_serialize_enter(ifp->if_serializer);
 		ifp->if_poll(ifp, POLL_DEREGISTER, 0);
+		lwkt_serialize_exit(ifp->if_serializer);
 		rc = 0;
 	} else {
 		pr[poll_handlers].ifp = ifp;
@@ -539,8 +548,11 @@ ether_poll_deregister(struct ifnet *ifp)
 	 * Only call the deregistration function if the interface is still
 	 * in a run state.
 	 */
-	if (ifp->if_flags & IFF_RUNNING)
+	if (ifp->if_flags & IFF_RUNNING) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		ifp->if_poll(ifp, POLL_DEREGISTER, 1);
+		lwkt_serialize_exit(ifp->if_serializer);
+	}
 	return (1);
 }
 

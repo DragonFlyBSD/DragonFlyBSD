@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.13 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.14 2005/11/28 17:13:23 dillon Exp $
  */
 
 /*
@@ -78,10 +78,10 @@ Static int usbintr(struct netmsg *msg)
 	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ifnet *ifp;
 
-	crit_enter();
 	ifp = m->m_pkthdr.rcvif;
+	lwkt_serialize_enter(ifp->if_serializer);
 	(*ifp->if_input)(ifp, m);
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return EASYNC;

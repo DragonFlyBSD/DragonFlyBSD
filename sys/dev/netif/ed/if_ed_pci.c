@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.9 2005/10/12 17:35:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.10 2005/11/28 17:13:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,8 @@
 #include <bus/pci/pcivar.h>
 
 #include "if_edvar.h"
+
+static int ed_pci_detach(device_t dev);
 
 static struct _pcsid
 {
@@ -95,22 +97,45 @@ ed_pci_attach(device_t dev)
                 return (error);
         }
 
-        error = bus_setup_intr(dev, sc->irq_res, 0,
-                               edintr, sc, &sc->irq_handle, NULL);
-        if (error) {
-                ed_release_resources(dev);
-                return (error);
-        }
-
 	error = ed_attach(dev);
-
+	if (error == 0) {
+		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+				       edintr, sc, &sc->irq_handle, 
+				       sc->arpcom.ac_if.if_serializer);
+		if (error)
+			ed_pci_detach(dev);
+	} else {
+                ed_release_resources(dev);
+	}
 	return (error);
+}
+
+static int
+ed_pci_detach(device_t dev)
+{
+	struct ed_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (sc->gone) {
+		device_printf(dev, "already unloaded\n");
+		return (0);
+	}
+	ed_stop(sc);
+	ifp->if_flags &= ~IFF_RUNNING;
+	ether_ifdetach(ifp);
+	sc->gone = 1;
+	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+	ed_release_resources(dev);
+	lwkt_serialize_exit(ifp->if_serializer);
+	return (0);
 }
 
 static device_method_t ed_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		ed_pci_probe),
 	DEVMETHOD(device_attach,	ed_pci_attach),
+	DEVMETHOD(device_attach,	ed_pci_detach),
 
 	{ 0, 0 }
 };

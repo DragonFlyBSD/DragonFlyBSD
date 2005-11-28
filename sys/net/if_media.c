@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.7 2004/12/21 02:54:14 hsu Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.8 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -187,7 +187,8 @@ ifmedia_set(ifm, target)
 }
 
 /*
- * Device-independent media ioctl support function.
+ * Device-independent media ioctl support function, typically called
+ * from the device network ioctl procedure.
  */
 int
 ifmedia_ioctl(ifp, ifr, ifm, cmd)
@@ -203,8 +204,9 @@ ifmedia_ioctl(ifp, ifr, ifm, cmd)
 	if (ifp == NULL || ifr == NULL || ifm == NULL)
 		return (EINVAL);
 
-	switch (cmd) {
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
+	switch (cmd) {
 	/*
 	 * Set the current media.
 	 */

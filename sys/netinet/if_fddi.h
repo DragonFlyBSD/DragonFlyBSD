@@ -34,7 +34,7 @@
  *
  *	@(#)if_fddi.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_fddi.h,v 1.8 1999/12/29 04:40:58 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.6 2005/11/28 17:13:46 dillon Exp $
  */
 
 #ifndef _NETINET_IF_FDDI_H_
@@ -78,7 +78,9 @@ struct	fddi_header {
 #define	fddi_delmulti		ether_delmulti
 #define	fddi_sprintf		ether_sprintf
 
-void    fddi_ifattach (struct ifnet *);
+struct lwkt_serialize;
+
+void    fddi_ifattach (struct ifnet *, struct lwkt_serialize *);
 
 #endif
 

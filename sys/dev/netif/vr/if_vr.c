@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.39 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.40 2005/11/28 17:13:44 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -289,8 +290,6 @@ vr_mii_readreg(struct vr_softc *sc, struct vr_mii_frame *frame)
 {
 	int i, ack;
 
-	crit_enter();
-
 	/* Set up frame for RX. */
 	frame->mii_stdelim = VR_MII_STARTDELIM;
 	frame->mii_opcode = VR_MII_READOP;
@@ -359,8 +358,6 @@ fail:
 	SIO_SET(VR_MIICMD_CLK);
 	DELAY(1);
 
-	crit_exit();
-
 	if (ack)
 		return(1);
 	return(0);
@@ -368,8 +365,6 @@ fail:
 #else
 {
 	int i;
-
-	crit_enter();
 
   	/* Set the PHY address. */
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
@@ -386,8 +381,6 @@ fail:
 	}
 	frame->mii_data = CSR_READ_2(sc, VR_MIIDATA);
 
-	crit_exit();
-
 	return(0);
 }
 #endif
@@ -400,9 +393,6 @@ static int
 vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 #ifdef VR_USESWSHIFT	
 {
-
-	crit_enter();
-
 	CSR_WRITE_1(sc, VR_MIICMD, 0);
 	VR_SETBIT(sc, VR_MIICMD, VR_MIICMD_DIRECTPGM);
 
@@ -432,15 +422,11 @@ vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 	/* Turn off xmit. */
 	SIO_CLR(VR_MIICMD_DIR);
 
-	crit_exit();
-
 	return(0);
 }
 #else
 {
 	int i;
-
-	crit_enter();
 
   	/* Set the PHY-adress */
 	CSR_WRITE_1(sc, VR_PHYADDR, (CSR_READ_1(sc, VR_PHYADDR)& 0xe0)|
@@ -457,9 +443,6 @@ vr_mii_writereg(struct vr_softc *sc, struct vr_mii_frame *frame)
 			break;
 		DELAY(1);
 	}
-
-	crit_exit();
-
 	return(0);
 }
 #endif
@@ -806,10 +789,11 @@ vr_attach(device_t dev)
 	}
 
 	/* Call MI attach routine. */
-	ether_ifattach(ifp, eaddr);
+	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->vr_irq, 0,
-			       vr_intr, sc, &sc->vr_intrhand, NULL);
+	error = bus_setup_intr(dev, sc->vr_irq, INTR_NETSAFE,
+			       vr_intr, sc, &sc->vr_intrhand, 
+			       ifp->if_serializer);
 
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");
@@ -829,7 +813,7 @@ vr_detach(device_t dev)
 	struct vr_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (device_is_attached(dev)) {
 		vr_stop(sc);
@@ -842,8 +826,6 @@ vr_detach(device_t dev)
 	if (sc->vr_intrhand != NULL)
 		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
 
-	crit_exit();
-
 	if (sc->vr_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
 	if (sc->vr_res != NULL)
@@ -853,6 +835,7 @@ vr_detach(device_t dev)
 	if (sc->vr_cdata.vr_tx_buf != NULL)
 		contigfree(sc->vr_cdata.vr_tx_buf, VR_TX_BUF_SIZE, M_DEVBUF);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -1037,7 +1020,7 @@ vr_rxeof(struct vr_softc *sc)
 		m = m0;
 
 		ifp->if_ipackets++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m);
 	}
 }
 
@@ -1171,9 +1154,10 @@ static void
 vr_tick(void *xsc)
 {
 	struct vr_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
-	crit_enter();
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->vr_flags & VR_F_RESTART) {
 		if_printf(&sc->arpcom.ac_if, "restarting\n");
@@ -1188,7 +1172,7 @@ vr_tick(void *xsc)
 
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 
-	crit_exit();
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void
@@ -1415,8 +1399,6 @@ vr_init(void *xsc)
 
 	mii = device_get_softc(sc->vr_miibus);
 
-	crit_enter();
-
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	vr_stop(sc);
 	vr_reset(sc);
@@ -1448,7 +1430,6 @@ vr_init(void *xsc)
 	/* Init circular RX list. */
 	if (vr_list_rx_init(sc) == ENOBUFS) {
 		vr_stop(sc);
-		crit_exit();
 		if_printf(ifp, "initialization failed: no memory for rx buffers\n");
 		return;
 	}
@@ -1497,8 +1478,6 @@ vr_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	crit_exit();
-
 	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 }
 
@@ -1542,8 +1521,6 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data *mii;
 	int error = 0;
 
-	crit_enter();
-
 	switch(command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -1568,9 +1545,6 @@ vr_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	crit_exit();
-
 	return(error);
 }
 

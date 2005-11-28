@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.8 2005/06/02 22:11:45 swildner Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -354,7 +355,7 @@ ng_eiface_constructor(node_p *nodep)
 	*/
 
 	/* Attach the interface */
-	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
+	ether_ifattach(ifp, priv->arpcom.ac_enaddr, NULL);
 
 	/* Done */
 	return (0);
@@ -504,7 +505,9 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	    return (EINVAL);
 	  }
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	if ( !(ifp->if_flags & IFF_UP) ) {
+		lwkt_serialize_exit(ifp->if_serializer);
 		return (ENETDOWN);
 	}
 
@@ -516,7 +519,8 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	BPF_MTAP(ifp, m);
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* Done */
 	return (error);
@@ -536,7 +540,9 @@ ng_eiface_rmnode(node_p node)
 
 	ng_cutlinks(node);
 	node->flags &= ~NG_INVALID;
+	lwkt_serialize_enter(ifp->if_serializer);
 	ifp->if_flags &= ~(IFF_UP | IFF_RUNNING | IFF_OACTIVE);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 

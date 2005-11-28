@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/if_pfsync.c,v 1.11 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: if_pfsync.c,v 1.26 2004/03/28 18:14:20 mcbride Exp $	*/
-/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.2 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/if_pfsync.c,v 1.3 2005/11/28 17:13:45 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -157,7 +157,7 @@ pfsync_clone_create(struct if_clone *ifc, int unit)
 	callout_init(&sc->sc_tmo);
 	callout_init(&sc->sc_bulk_tmo);
 	callout_init(&sc->sc_bulkfail_tmo);
-	if_attach(&sc->sc_if);
+	if_attach(&sc->sc_if, NULL);
 
 	LIST_INSERT_HEAD(&pfsync_list, sc, sc_next);
 	bpfattach(&sc->sc_if, DLT_PFSYNC, PFSYNC_HDRLEN);

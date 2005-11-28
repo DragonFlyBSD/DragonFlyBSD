@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.7 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.8 2005/11/28 17:13:45 dillon Exp $
  */
 
 /*
@@ -85,7 +85,7 @@ discattach()
 	ifp->if_hdrlen = 0;
 	ifp->if_addrlen = 0;
 	ifp->if_snd.ifq_maxlen = 20;
-	if_attach(ifp);
+	if_attach(ifp, NULL);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
 }
 
