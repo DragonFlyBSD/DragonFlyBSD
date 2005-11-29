@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_skreg.h,v 1.8.2.1 2000/04/27 14:48:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.9 2005/05/27 20:43:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_skreg.h,v 1.10 2005/11/29 19:56:55 dillon Exp $
  */
 
 /*
@@ -1459,6 +1459,7 @@ struct sk_if_softc {
 	int			sk_tx_bmu;	/* TX BMU register */
 	int			sk_if_flags;
 	SLIST_HEAD(__sk_jfreehead, sk_jslot)	sk_jfree_listhead;
+	struct lwkt_serialize	sk_jslot_serializer;
 };
 
 #define SK_MAXUNIT	256

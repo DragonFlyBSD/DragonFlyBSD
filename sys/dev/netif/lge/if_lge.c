@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.33 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.34 2005/11/29 19:56:51 dillon Exp $
  */
 
 /*
@@ -434,6 +434,7 @@ lge_attach(device_t dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	callout_init(&sc->lge_stat_timer);
+	lwkt_serialize_init(&sc->lge_jslot_serializer);
 
 	/*
 	 * Handle power management nonsense.
@@ -778,18 +779,17 @@ lge_jalloc(struct lge_softc *sc)
 {
 	struct lge_jslot *entry;
 
+	lwkt_serialize_enter(&sc->lge_jslot_serializer);
 	entry = SLIST_FIRST(&sc->lge_jfree_listhead);
-
-	if (entry == NULL) {
+	if (entry) {
+		SLIST_REMOVE_HEAD(&sc->lge_jfree_listhead, jslot_link);
+		entry->lge_inuse = 1;
+	} else {
 #ifdef LGE_VERBOSE
 		printf("lge%d: no free jumbo buffers\n", sc->lge_unit);
 #endif
-		return(NULL);
 	}
-
-	SLIST_REMOVE_HEAD(&sc->lge_jfree_listhead, jslot_link);
-	entry->lge_inuse = 1;
-
+	lwkt_serialize_exit(&sc->lge_jslot_serializer);
 	return(entry);
 }
 
@@ -810,7 +810,7 @@ lge_jref(void *arg)
 	else if (entry->lge_inuse == 0)
 		panic("lge_jref: buffer already free!");
 	else
-		entry->lge_inuse++;
+		atomic_add_int(&entry->lge_inuse, 1);
 }
 
 /*
@@ -825,12 +825,19 @@ lge_jfree(void *arg)
 	if (sc == NULL)
 		panic("lge_jfree: can't find softc pointer!");
 
-	if (&sc->lge_cdata.lge_jslots[entry->lge_slot] != entry)
+	if (&sc->lge_cdata.lge_jslots[entry->lge_slot] != entry) {
 		panic("lge_jfree: asked to free buffer that we don't manage!");
-	else if (entry->lge_inuse == 0)
+	} else if (entry->lge_inuse == 0) {
 		panic("lge_jfree: buffer already free!");
-	else if (--entry->lge_inuse == 0)
-		SLIST_INSERT_HEAD(&sc->lge_jfree_listhead, entry, jslot_link);
+	} else {
+		lwkt_serialize_enter(&sc->lge_jslot_serializer);
+		atomic_subtract_int(&entry->lge_inuse, 1);
+		if (entry->lge_inuse == 0) {
+			SLIST_INSERT_HEAD(&sc->lge_jfree_listhead,
+					  entry, jslot_link);
+		}
+		lwkt_serialize_exit(&sc->lge_jslot_serializer);
+	}
 }
 
 /*

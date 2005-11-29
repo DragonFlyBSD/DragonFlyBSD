@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.12 2005/08/22 18:29:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.13 2005/11/29 19:56:50 dillon Exp $
  */
 
 /*
@@ -2239,6 +2239,7 @@ struct bge_softc {
 	uint16_t		bge_std;	/* current std ring head */
 	uint16_t		bge_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__bge_jfreehead, bge_jslot)	bge_jfree_listhead;
+	struct lwkt_serialize	bge_jslot_serializer;
 	uint32_t		bge_stat_ticks;
 	uint32_t		bge_rx_coal_ticks;
 	uint32_t		bge_tx_coal_ticks;

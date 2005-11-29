@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.40 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.41 2005/11/29 19:56:55 dillon Exp $
  */
 
 /*
@@ -916,18 +916,17 @@ sk_jalloc(struct sk_if_softc *sc_if)
 {
 	struct sk_jslot *entry;
 
+	lwkt_serialize_enter(&sc_if->sk_jslot_serializer);
 	entry = SLIST_FIRST(&sc_if->sk_jfree_listhead);
-
-	if (entry == NULL) {
+	if (entry) {
+		SLIST_REMOVE_HEAD(&sc_if->sk_jfree_listhead, jslot_link);
+		entry->sk_inuse = 1;
+	} else {
 #ifdef SK_VERBOSE
 		printf("sk%d: no free jumbo buffers\n", sc_if->sk_unit);
 #endif
-		return(NULL);
 	}
-
-	SLIST_REMOVE_HEAD(&sc_if->sk_jfree_listhead, jslot_link);
-	entry->sk_inuse = 1;
-
+	lwkt_serialize_exit(&sc_if->sk_jslot_serializer);
 	return(entry);
 }
 
@@ -950,7 +949,7 @@ sk_jref(void *arg)
 		    "that we don't manage!");
 	if (entry->sk_inuse == 0)
 		panic("sk_jref: buffer already free!");
-	entry->sk_inuse++;
+	atomic_add_int(&entry->sk_inuse, 1);
 }
 
 /*
@@ -970,8 +969,11 @@ sk_jfree(void *arg)
 		    "that we don't manage!");
 	if (entry->sk_inuse == 0)
 		panic("sk_jref: buffer already free!");
-	if (--entry->sk_inuse == 0)
+	lwkt_serialize_enter(&sc->sk_jslot_serializer);
+	atomic_subtract_int(&entry->sk_inuse, 1);
+	if (entry->sk_inuse == 0)
 		SLIST_INSERT_HEAD(&sc->sk_jfree_listhead, entry, jslot_link);
+	lwkt_serialize_exit(&sc->sk_jslot_serializer);
 }
 
 /*
@@ -1171,6 +1173,7 @@ sk_attach(device_t dev)
 	device_set_ivars(dev, NULL);
 	sc_if->sk_dev = dev;
 	callout_init(&sc_if->sk_tick_timer);
+	lwkt_serialize_init(&sc_if->sk_jslot_serializer);
 
 	sc_if->sk_dev = dev;
 	sc_if->sk_unit = device_get_unit(dev);

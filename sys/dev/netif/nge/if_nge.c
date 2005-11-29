@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.34 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.35 2005/11/29 19:56:53 dillon Exp $
  */
 
 /*
@@ -729,6 +729,7 @@ nge_attach(device_t dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	callout_init(&sc->nge_stat_timer);
+	lwkt_serialize_init(&sc->nge_jslot_serializer);
 
 	/*
 	 * Handle power management nonsense.
@@ -1120,18 +1121,17 @@ nge_jalloc(struct nge_softc *sc)
 {
 	struct nge_jslot *entry;
 
+	lwkt_serialize_enter(&sc->nge_jslot_serializer);
 	entry = SLIST_FIRST(&sc->nge_jfree_listhead);
-
-	if (entry == NULL) {
+	if (entry) {
+		SLIST_REMOVE_HEAD(&sc->nge_jfree_listhead, jslot_link);
+		entry->nge_inuse = 1;
+	} else {
 #ifdef NGE_VERBOSE
 		printf("nge%d: no free jumbo buffers\n", sc->nge_unit);
 #endif
-		return(NULL);
 	}
-
-	SLIST_REMOVE_HEAD(&sc->nge_jfree_listhead, jslot_link);
-	entry->nge_inuse = 1;
-
+	lwkt_serialize_exit(&sc->nge_jslot_serializer);
 	return(entry);
 }
 
@@ -1155,7 +1155,7 @@ nge_jref(void *arg)
 	else if (entry->nge_inuse == 0)
 		panic("nge_jref: buffer already free!");
 	else
-		entry->nge_inuse++;
+		atomic_add_int(&entry->nge_inuse, 1);
 }
 
 /*
@@ -1170,13 +1170,20 @@ nge_jfree(void *arg)
 	if (sc == NULL)
 		panic("nge_jref: can't find softc pointer!");
 
-	if (&sc->nge_cdata.nge_jslots[entry->nge_slot] != entry)
+	if (&sc->nge_cdata.nge_jslots[entry->nge_slot] != entry) {
 		panic("nge_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (entry->nge_inuse == 0)
+	} else if (entry->nge_inuse == 0) {
 		panic("nge_jref: buffer already free!");
-	else if (--entry->nge_inuse == 0)
-		SLIST_INSERT_HEAD(&sc->nge_jfree_listhead, entry, jslot_link);
+	} else {
+		lwkt_serialize_enter(&sc->nge_jslot_serializer);
+		atomic_subtract_int(&entry->nge_inuse, 1);
+		if (entry->nge_inuse == 0) {
+			SLIST_INSERT_HEAD(&sc->nge_jfree_listhead, 
+					  entry, jslot_link);
+		}
+		lwkt_serialize_exit(&sc->nge_jslot_serializer);
+	}
 }
 /*
  * A frame has been uploaded: pass the resulting mbuf chain up to

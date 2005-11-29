@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tireg.h,v 1.13.2.4 2001/04/26 16:41:15 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.6 2005/06/14 13:34:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_tireg.h,v 1.7 2005/11/29 19:56:56 dillon Exp $
  */
 
 /*
@@ -1147,6 +1147,7 @@ struct ti_softc {
 	uint16_t		ti_jumbo;	/* current jumo ring head */
 	SLIST_HEAD(__ti_mchead, ti_mc_entry)	ti_mc_listhead;
 	SLIST_HEAD(__ti_jfreehead, ti_jslot)	ti_jfree_listhead;
+	struct lwkt_serialize	ti_jslot_serializer;
 	uint32_t		ti_stat_ticks;
 	uint32_t		ti_rx_coal_ticks;
 	uint32_t		ti_tx_coal_ticks;

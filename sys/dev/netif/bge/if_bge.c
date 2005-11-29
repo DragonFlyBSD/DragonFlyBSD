@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.50 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.51 2005/11/29 19:56:50 dillon Exp $
  *
  */
 
@@ -82,6 +82,7 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/queue.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -656,15 +657,15 @@ bge_jalloc(struct bge_softc *sc)
 {
 	struct bge_jslot *entry;
 
+	lwkt_serialize_enter(&sc->bge_jslot_serializer);
 	entry = SLIST_FIRST(&sc->bge_jfree_listhead);
-
-	if (entry == NULL) {
+	if (entry) {
+		SLIST_REMOVE_HEAD(&sc->bge_jfree_listhead, jslot_link);
+		entry->bge_inuse = 1;
+	} else {
 		if_printf(&sc->arpcom.ac_if, "no free jumbo buffers\n");
-		return(NULL);
 	}
-
-	SLIST_REMOVE_HEAD(&sc->bge_jfree_listhead, jslot_link);
-	entry->bge_inuse = 1;
+	lwkt_serialize_exit(&sc->bge_jslot_serializer);
 	return(entry);
 }
 
@@ -680,13 +681,14 @@ bge_jref(void *arg)
 	if (sc == NULL)
 		panic("bge_jref: can't find softc pointer!");
 
-	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry)
+	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry) {
 		panic("bge_jref: asked to reference buffer "
 		    "that we don't manage!");
-	else if (entry->bge_inuse == 0)
+	} else if (entry->bge_inuse == 0) {
 		panic("bge_jref: buffer already free!");
-	else
-		entry->bge_inuse++;
+	} else {
+		atomic_add_int(&entry->bge_inuse, 1);
+	}
 }
 
 /*
@@ -701,12 +703,23 @@ bge_jfree(void *arg)
 	if (sc == NULL)
 		panic("bge_jfree: can't find softc pointer!");
 
-	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry)
+	if (&sc->bge_cdata.bge_jslots[entry->bge_slot] != entry) {
 		panic("bge_jfree: asked to free buffer that we don't manage!");
-	else if (entry->bge_inuse == 0)
+	} else if (entry->bge_inuse == 0) {
 		panic("bge_jfree: buffer already free!");
-	else if (--entry->bge_inuse == 0)
-		SLIST_INSERT_HEAD(&sc->bge_jfree_listhead, entry, jslot_link);
+	} else {
+		/*
+		 * Possible MP race to 0, use the serializer.  The atomic insn
+		 * is still needed for races against bge_jref().
+		 */
+		lwkt_serialize_enter(&sc->bge_jslot_serializer);
+		atomic_subtract_int(&entry->bge_inuse, 1);
+		if (entry->bge_inuse == 0) {
+			SLIST_INSERT_HEAD(&sc->bge_jfree_listhead, 
+					  entry, jslot_link);
+		}
+		lwkt_serialize_exit(&sc->bge_jslot_serializer);
+	}
 }
 
 
@@ -1505,6 +1518,7 @@ bge_attach(device_t dev)
 	sc = device_get_softc(dev);
 	sc->bge_dev = dev;
 	callout_init(&sc->bge_stat_timer);
+	lwkt_serialize_init(&sc->bge_jslot_serializer);
 
 	/*
 	 * Map control/status registers.

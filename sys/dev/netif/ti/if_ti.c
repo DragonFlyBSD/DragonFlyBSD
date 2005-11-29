@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.38 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.39 2005/11/29 19:56:56 dillon Exp $
  */
 
 /*
@@ -623,15 +623,15 @@ ti_jalloc(struct ti_softc *sc)
 {
 	struct ti_jslot *entry;
 
+	lwkt_serialize_enter(&sc->ti_jslot_serializer);
 	entry = SLIST_FIRST(&sc->ti_jfree_listhead);
-
-	if (entry == NULL) {
+	if (entry) {
+		SLIST_REMOVE_HEAD(&sc->ti_jfree_listhead, jslot_link);
+		entry->ti_inuse = 1;
+	} else {
 		if_printf(&sc->arpcom.ac_if, "no free jumbo buffers\n");
-		return(NULL);
 	}
-
-	SLIST_REMOVE_HEAD(&sc->ti_jfree_listhead, jslot_link);
-	entry->ti_inuse = 1;
+	lwkt_serialize_exit(&sc->ti_jslot_serializer);
 	return(entry);
 }
 
@@ -654,7 +654,7 @@ ti_jref(void *arg)
 		    "that we don't manage!");
 	if (entry->ti_inuse == 0)
 		panic("ti_jref: buffer already free!");
-	entry->ti_inuse++;
+	atomic_add_int(&entry->ti_inuse, 1);
 }
 
 /*
@@ -674,8 +674,11 @@ ti_jfree(void *arg)
 		    "that we don't manage!");
 	if (entry->ti_inuse == 0)
 		panic("ti_jref: buffer already free!");
-	if (--entry->ti_inuse == 0)
+	lwkt_serialize_enter(&sc->ti_jslot_serializer);
+	atomic_subtract_int(&entry->ti_inuse, 1);
+	if (entry->ti_inuse == 0)
 		SLIST_INSERT_HEAD(&sc->ti_jfree_listhead, entry, jslot_link);
+	lwkt_serialize_exit(&sc->ti_jslot_serializer);
 }
 
 

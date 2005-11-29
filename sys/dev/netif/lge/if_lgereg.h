@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.8 2005/06/14 15:08:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.9 2005/11/29 19:56:51 dillon Exp $
  */
 
 
@@ -544,6 +544,7 @@ struct lge_softc {
 	struct lge_ring_data	lge_cdata;
 	struct callout		lge_stat_timer;
 	SLIST_HEAD(__lge_jfreehead, lge_jslot)	lge_jfree_listhead;
+	struct lwkt_serialize	lge_jslot_serializer;
 };
 
 /*
