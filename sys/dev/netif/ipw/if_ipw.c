@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.11 2005/11/29 17:15:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.12 2005/11/29 19:55:02 dillon Exp $
  */
 
 /*-
@@ -1268,6 +1268,7 @@ ipw_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg __unused, int erro
 static int
 ipw_cmd(struct ipw_softc *sc, u_int32_t type, void *data, u_int32_t len)
 {
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	struct ipw_soft_bd *sbd;
 	bus_addr_t physaddr;
 	int error;
@@ -1301,12 +1302,21 @@ ipw_cmd(struct ipw_softc *sc, u_int32_t type, void *data, u_int32_t len)
 
 	sc->txcur = (sc->txcur + 1) % IPW_NTBD;
 	sc->txfree--;
+
+	/*
+	 * This is kinda messy.  Since we may be MP, a combination of
+	 * a critical section for a local cpu interrupt and 
+	 * tsleep_interlock() for a remote cpu interrupt is required to
+	 * avoid command completion racing the tsleep.
+	 */
+	crit_enter();
+	tsleep_interlock(sc);
 	CSR_WRITE_4(sc, IPW_CSR_TX_WRITE_INDEX, sc->txcur);
-
-	DPRINTFN(2, ("TX!CMD!%u!%u!%u!%u\n", type, 0, 0, len));
-
-	/* wait at most one second for command to complete */
-	return tsleep(sc, 0, "ipwcmd", hz);
+	lwkt_serialize_exit(ifp->if_serializer);
+	error = tsleep(sc, 0, "ipwcmd", hz);
+	crit_exit();
+	lwkt_serialize_enter(ifp->if_serializer);
+	return (error);
 }
 
 static int
@@ -1706,6 +1716,7 @@ ipw_load_ucode(struct ipw_softc *sc, u_char *uc, int size)
 static int
 ipw_load_firmware(struct ipw_softc *sc, u_char *fw, int size)
 {
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	u_char *p, *end;
 	u_int32_t dst;
 	u_int16_t len;
@@ -1733,13 +1744,25 @@ ipw_load_firmware(struct ipw_softc *sc, u_char *fw, int size)
 	/* Allow interrupts so we know when the firmware is inited */
 	CSR_WRITE_4(sc, IPW_CSR_INTR_MASK, IPW_INTR_MASK);
 
-	/* Tell the adapter to initialize the firmware */
+	/*
+	 * Tell the adapter to initialize the firmware.
+	 *
+	 * This is kinda messy.  Since we may be MP, a combination of
+	 * a critical section for a local cpu interrupt and 
+	 * tsleep_interlock() for a remote cpu interrupt is required to
+	 * avoid command completion racing the tsleep.
+	 */
+	crit_enter();
 	CSR_WRITE_4(sc, IPW_CSR_RST, 0);
 	CSR_WRITE_4(sc, IPW_CSR_CTL, CSR_READ_4(sc, IPW_CSR_CTL) |
 	    IPW_CTL_ALLOW_STANDBY);
 
-	/* Wait at most one second for firmware initialization to complete */
-	if ((error = tsleep(sc, 0, "ipwinit", hz)) != 0) {
+	tsleep_interlock(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
+	error = tsleep(sc, 0, "ipwinit", hz);
+	crit_exit();
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (error) {
 		if_printf(&sc->sc_ic.ic_if, "timeout waiting for firmware "
 		    "initialization to complete\n");
 		return error;
