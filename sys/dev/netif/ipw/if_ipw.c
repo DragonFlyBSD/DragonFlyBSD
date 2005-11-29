@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.10 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.11 2005/11/29 17:15:56 dillon Exp $
  */
 
 /*-
@@ -46,8 +46,9 @@
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/proc.h>
-#include <sys/thread2.h>
 #include <sys/ucred.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -359,7 +360,7 @@ ipw_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-			       ipw_intr, sc, &sc->sc_ih, NULL);
+			       ipw_intr, sc, &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -376,14 +377,11 @@ ipw_detach(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	IPW_LOCK_DECL();
 
-	IPW_LOCK(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	ipw_stop(sc);
 	ipw_free_firmware(sc);
-
-	IPW_UNLOCK(sc);
 
 	bpfdetach(ifp);
 
@@ -402,6 +400,7 @@ ipw_detach(device_t dev)
 
 	sysctl_ctx_free(&sc->sysctl_ctx);
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 
@@ -694,13 +693,11 @@ static int
 ipw_shutdown(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
-	IPW_LOCK_DECL();
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	IPW_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	ipw_stop(sc);
-
-	IPW_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
 }
@@ -709,13 +706,11 @@ static int
 ipw_suspend(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
-	IPW_LOCK_DECL();
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	IPW_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	ipw_stop(sc);
-
-	IPW_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
 }
@@ -725,10 +720,8 @@ ipw_resume(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	IPW_LOCK_DECL();
 
-	IPW_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP) {
@@ -736,8 +729,7 @@ ipw_resume(device_t dev)
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_start(ifp);
 	}
-
-	IPW_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
 }
@@ -747,20 +739,13 @@ ipw_media_change(struct ifnet *ifp)
 {
 	struct ipw_softc *sc = ifp->if_softc;
 	int error;
-	IPW_LOCK_DECL();
-
-	IPW_LOCK(sc);
 
 	error = ieee80211_media_change(ifp);
-	if (error != ENETRESET) {
-		IPW_UNLOCK(sc);
+	if (error != ENETRESET)
 		return error;
-	}
 
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
 		ipw_init(sc);
-
-	IPW_UNLOCK(sc);
 
 	return 0;
 }
@@ -1220,14 +1205,9 @@ ipw_intr(void *arg)
 {
 	struct ipw_softc *sc = arg;
 	u_int32_t r;
-	IPW_LOCK_DECL();
 
-	IPW_LOCK(sc);
-
-	if ((r = CSR_READ_4(sc, IPW_CSR_INTR)) == 0 || r == 0xffffffff) {
-		IPW_UNLOCK(sc);
+	if ((r = CSR_READ_4(sc, IPW_CSR_INTR)) == 0 || r == 0xffffffff)
 		return;
-	}
 
 	/* Disable interrupts */
 	CSR_WRITE_4(sc, IPW_CSR_INTR_MASK, 0);
@@ -1256,8 +1236,6 @@ ipw_intr(void *arg)
 
 	/* Re-enable interrupts */
 	CSR_WRITE_4(sc, IPW_CSR_INTR_MASK, IPW_INTR_MASK);
-
-	IPW_UNLOCK(sc);
 }
 
 static void
@@ -1541,9 +1519,6 @@ ipw_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr;
 	struct ieee80211req *ireq;
 	int error = 0;
-	IPW_LOCK_DECL();
-
-	IPW_LOCK(sc);
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1618,8 +1593,6 @@ ipw_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			ipw_init(sc);
 		error = 0;
 	}
-
-	IPW_UNLOCK(sc);
 
 	return error;
 }
