@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-release1_2-supfile,v 1.1.2.2 2005/04/06 20:56:16 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-release1_2-supfile,v 1.1.2.3 2005/11/30 14:52:26 swildner Exp $
 #
 # DRAGONFLY-RELEASE1_2-SUPFILE
 #
@@ -48,5 +48,4 @@
 *default delete use-rel-suffix
 *default compress
 
-cvs-src
-
+dragonfly-cvs-src

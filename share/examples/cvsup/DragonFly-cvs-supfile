@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.1.2.2 2005/04/06 20:56:16 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.1.2.3 2005/11/30 14:52:26 swildner Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -8,7 +8,7 @@
 # If not running X, or invoking cvsup from a non-interactive script, then
 # run it as follows:
 #
-#	cvsup -g -L 2 DragonFly-supfile
+#	cvsup -g -L 2 DragonFly-cvs-supfile
 #
 # You may wish to change some of the settings in this file to better
 # suit your system:
@@ -47,8 +47,7 @@
 *default delete use-rel-suffix
 *default compress
 
-cvs-root
-cvs-src
-cvs-dfports
-# cvs-site
-
+dragonfly-cvs-root
+dragonfly-cvs-src
+dragonfly-cvs-dfports
+# dragonfly-cvs-site
