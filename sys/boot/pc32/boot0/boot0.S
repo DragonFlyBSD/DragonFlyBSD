@@ -46,7 +46,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.6 2004/07/19 23:30:31 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.7 2005/11/30 08:25:07 swildner Exp $
  */
 
 #include "../bootasm.h"
@@ -57,7 +57,7 @@
 		.set PRT_OFF,0x1be		# Partition table
 
 		.set TBL0SZ,0x3 		# Table 0 size
-		.set TBL1SZ,0xc 		# Table 1 size
+		.set TBL1SZ,0xb 		# Table 1 size
 
 		.set MAGIC,0xaa55		# Magic: bootable
 		.set B0MAGIC,0xbb66		# Identification
@@ -470,7 +470,7 @@ tables:
 		.byte os_dos-.			# Windows
 		.byte os_linux-.		# Linux
 		.byte os_bsd-.			# BSD/OS
-		.byte os_freebsd-.		# FreeBSD
+		.byte os_dfbsd-.		# DragonFly/FreeBSD
 		.byte os_bsd-.			# OpenBSD
 		.byte os_bsd-.			# NetBSD
 
@@ -482,7 +482,7 @@ tables:
 os_misc:	.ascii "?";    .byte '?'|0x80
 os_dos: 	.ascii "DO";   .byte 'S'|0x80
 os_linux:	.ascii "Linu"; .byte 'x'|0x80
-os_freebsd:	.ascii "Free"
+os_dfbsd:	.ascii "DF/F"
 os_bsd: 	.ascii "BS";   .byte 'D'|0x80
 
 		.org PRT_OFF-0xe,0x90
