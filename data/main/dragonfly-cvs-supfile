@@ -1,6 +1,6 @@
 # DRAGONFLY-CVS-SUPFILE
 #
-# $DragonFly: site/data/main/Attic/dragonfly-cvs-supfile,v 1.7 2005/01/05 09:07:24 okumoto Exp $
+# $DragonFly: site/data/main/Attic/dragonfly-cvs-supfile,v 1.8 2005/11/30 14:19:12 swildner Exp $
 #
 # This file will by default maintain a copy of the DragonFly BSD CVS tree
 # in /home/dcvs.
@@ -47,13 +47,13 @@
 *default delete use-rel-suffix
 *default compress
 
-cvs-root
-cvs-src
-# cvs-sys is included in cvs-src
-#cvs-sys
+dragonfly-cvs-root
+dragonfly-cvs-src
+# dragonfly-cvs-sys is included in dragonfly-cvs-src
+#dragonfly-cvs-sys
 # Uncomment the line below to get the DragonFly website files.
-#cvs-site
+#dragonfly-cvs-site
 # Uncomment the line below to get DragonFly ports
-#cvs-dfports
+#dragonfly-cvs-dfports
 # Uncomment the line below to get the DragonFly handbook files.
-#cvs-doc
+#dragonfly-cvs-doc
