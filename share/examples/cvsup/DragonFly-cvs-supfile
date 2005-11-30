@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.2 2005/10/04 11:12:20 corecode Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.3 2005/11/30 14:48:54 swildner Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -8,7 +8,7 @@
 # If not running X, or invoking cvsup from a non-interactive script, then
 # run it as follows:
 #
-#	cvsup -g -L 2 DragonFly-supfile
+#	cvsup -g -L 2 DragonFly-cvs-supfile
 #
 # You may wish to change some of the settings in this file to better
 # suit your system:
