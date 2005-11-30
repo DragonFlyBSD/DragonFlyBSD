@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.20 2005/11/30 13:35:24 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -437,7 +437,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 		switch (type) {
 #ifdef INET
 		case ETHERTYPE_IP:
-			if (ipflow_fastforward(m))
+			if (ipflow_fastforward(m, ifp->if_serializer))
 				return;
 			isr = NETISR_IP;
 			break;

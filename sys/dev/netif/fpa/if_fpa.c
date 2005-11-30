@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.12 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.13 2005/11/30 13:35:24 sephe Exp $
  */
 
 /*
@@ -199,12 +199,12 @@ pdq_pci_attach(
 }
 
 static void
-pdq_pci_shutdown(
-    void *sc,
-    int howto)
+pdq_pci_shutdown(void *arg, int howto)
 {
+    pdq_softc_t *sc = arg;
+
     lwkt_serialize_enter(sc->sc_if.if_serializer);
-    pdq_hwreset(((pdq_softc_t *)sc)->sc_pdq);
+    pdq_hwreset(sc->sc_pdq);
     lwkt_serialize_exit(sc->sc_if.if_serializer);
 }
 

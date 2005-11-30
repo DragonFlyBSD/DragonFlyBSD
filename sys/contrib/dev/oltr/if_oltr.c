@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.21 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.22 2005/11/30 13:35:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -416,7 +416,7 @@ oltr_pci_attach(device_t dev)
 	 * Attach the interface
 	 */
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-	iso88025_ifattach(ifp);
+	iso88025_ifattach(ifp, NULL);
 
 	crit_exit();
 	return(0);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.12 2005/11/28 17:13:46 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.13 2005/11/30 13:35:24 sephe Exp $
  */
 
 /*
@@ -509,7 +509,7 @@ atm_physif_ioctl(code, data, arg)
 				panic("AIOCF_SETNIF: unknown media");
 			}
 
-			if ((err = atm_nif_attach(nip)) != 0) {
+			if ((err = atm_nif_attach(nip, NULL)) != 0) {
 				atm_free ( (caddr_t)nip );
 
 				/*

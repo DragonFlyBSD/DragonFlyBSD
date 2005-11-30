@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.15 2005/11/30 13:35:24 sephe Exp $
  *
  */
 
@@ -402,7 +402,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 #ifdef INET
 	case ETHERTYPE_IP:
 		th->iso88025_shost[0] &= ~(TR_RII);
-		if (ipflow_fastforward(m))
+		if (ipflow_fastforward(m, ifp->if_serializer))
 			return;
 		isr = NETISR_IP;
 		break;
