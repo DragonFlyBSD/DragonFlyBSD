@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.8 2005/11/02 22:59:39 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.9 2005/12/01 18:30:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,6 @@ ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
 
 ASSYM(SSLEEP, SSLEEP);
 ASSYM(SRUN, SRUN);
-ASSYM(SZOMB, SZOMB);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
 ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));

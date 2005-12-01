@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.49 2005/11/19 17:58:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.50 2005/12/01 18:30:08 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -323,7 +323,7 @@ exit1(int rv)
 	 */
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
-	p->p_stat = SZOMB;
+	p->p_flag |= P_ZOMBIE;
 	while (p->p_lock)
 		tsleep(p, 0, "reap1", hz / 10);
 	LIST_REMOVE(p, p_hash);
@@ -467,7 +467,7 @@ loop:
 		}
 
 		nfound++;
-		if (p->p_stat == SZOMB) {
+		if (p->p_flag & P_ZOMBIE) {
 			/*
 			 * The process's thread may still be in the middle
 			 * of switching away, we can't rip its stack out from

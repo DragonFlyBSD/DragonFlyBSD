@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.39 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.40 2005/12/01 18:30:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -628,10 +628,11 @@ killpg(int sig, int pgid, int all)
 				return (ESRCH);
 		}
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
-			if (p->p_pid <= 1 || p->p_flag & P_SYSTEM ||
-			    p->p_stat == SZOMB ||
-			    !CANSIGNAL(p, sig))
+			if (p->p_pid <= 1 || 
+			    (p->p_flag & (P_SYSTEM | P_ZOMBIE)) ||
+			    !CANSIGNAL(p, sig)) {
 				continue;
+			}
 			nfound++;
 			if (sig)
 				psignal(p, sig);

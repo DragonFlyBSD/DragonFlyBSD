@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.30 2005/11/14 18:50:01 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.31 2005/12/01 18:30:12 dillon Exp $
  */
 
 /*
@@ -1158,11 +1158,10 @@ svr4_setinfo(p, st, s)
 
 	if (p) {
 		i.si_pid = p->p_pid;
-		if (p->p_stat == SZOMB) {
+		if (p->p_flag & P_ZOMBIE) {
 			i.si_stime = p->p_ru->ru_stime.tv_sec;
 			i.si_utime = p->p_ru->ru_utime.tv_sec;
-		}
-		else {
+		} else {
 			i.si_stime = p->p_stats->p_ru.ru_stime.tv_sec;
 			i.si_utime = p->p_stats->p_ru.ru_utime.tv_sec;
 		}
@@ -1238,7 +1237,7 @@ loop:
 			continue;
 		}
 		nfound++;
-		if (q->p_stat == SZOMB && 
+		if ((q->p_flag & P_ZOMBIE) && 
 		    ((SCARG(uap, options) & (SVR4_WEXITED|SVR4_WTRAPPED)))) {
 			*retval = 0;
 			DPRINTF(("found %d\n", q->p_pid));

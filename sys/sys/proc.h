@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.72 2005/11/14 18:50:11 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.73 2005/12/01 18:30:10 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -311,7 +311,7 @@ struct	proc {
 #define	SRUN	2		/* Currently runnable. */
 #define	SSLEEP	3		/* Sleeping on an address. */
 #define	SSTOP	4		/* Synthesized from SSLEEP + P_STOPPED */
-#define	SZOMB	5		/* Awaiting collection by parent. */
+#define	SZOMB	5		/* Synthesized from P_ZOMBIE for eproc only */
 #define STHREAD	6		/* Synthesized for eproc only */
 
 /* These flags are kept in p_flags. */
@@ -338,7 +338,7 @@ struct	proc {
 #define	P_UPCALLPEND	0x20000	/* an upcall is pending */
 
 #define	P_SWAPWAIT	0x40000	/* Waiting for a swapin */
-#define	P_UNUSED80000	0x80000
+#define	P_ZOMBIE	0x80000	/* Now in a zombied state */
 
 /* Marked a kernel thread */
 #define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */

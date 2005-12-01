@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.54 2005/11/19 17:19:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.55 2005/12/01 18:30:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -192,7 +192,8 @@ schedcpu(void *arg)
 	 */
 	FOREACH_PROC_IN_SYSTEM(p) {
 		crit_enter();
-		if (p->p_stat == SZOMB || 
+		if (p->p_stat == SIDL || 
+		    (p->p_flag & P_ZOMBIE) ||
 		    p->p_limit == NULL || 
 		    p->p_thread == NULL
 		) {

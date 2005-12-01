@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.50 2005/11/19 17:58:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.51 2005/12/01 18:30:08 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1890,7 +1890,7 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	count = 0;
 	error = 0;
 	LIST_FOREACH(p, &allproc, p_list) {
-		if (p->p_stat == SIDL || p->p_stat == SZOMB)
+		if (p->p_stat == SIDL || (p->p_flag & P_ZOMBIE))
 			continue;
 		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0)
 			continue;

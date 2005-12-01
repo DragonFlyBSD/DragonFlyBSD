@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.21 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.22 2005/12/01 18:30:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -312,7 +312,7 @@ fixjobc(struct proc *p, struct pgrp *pgrp, int entering)
 	LIST_FOREACH(p, &p->p_children, p_sibling)
 		if ((hispgrp = p->p_pgrp) != pgrp &&
 		    hispgrp->pg_session == mysession &&
-		    p->p_stat != SZOMB) {
+		    (p->p_flag & P_ZOMBIE) == 0) {
 			if (entering)
 				hispgrp->pg_jobc++;
 			else if (--hispgrp->pg_jobc == 0)
@@ -421,7 +421,8 @@ fill_eproc(struct proc *p, struct eproc *ep)
 	if (p->p_procsig) {
 		ep->e_procsig = *p->p_procsig;
 	}
-	if (p->p_stat != SIDL && p->p_stat != SZOMB && p->p_vmspace != NULL) {
+	if (p->p_stat != SIDL && (p->p_flag & P_ZOMBIE) == 0 && 
+	    p->p_vmspace != NULL) {
 		struct vmspace *vm = p->p_vmspace;
 		ep->e_vm = *vm;
 		ep->e_vm.vm_rssize = vmspace_resident_count(vm); /*XXX*/
@@ -493,6 +494,8 @@ sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int d
 		 */
 		if (p->p_stat == SSLEEP && (p->p_flag & P_STOPPED))
 			xproc.p_stat = SSTOP;
+		if (p->p_flag & P_ZOMBIE)
+			xproc.p_stat = SZOMB;
 	} else if (td) {
 		fill_eproc_td(td, &eproc, &xproc);
 	}
