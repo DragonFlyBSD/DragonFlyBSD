@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.53 2005/11/25 17:52:53 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.54 2005/12/01 18:40:56 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -100,6 +100,7 @@
 #include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>
@@ -116,6 +117,7 @@
 struct mbcluster {
 	int32_t	mcl_refs;
 	void	*mcl_data;
+	struct lwkt_serialize mcl_serializer;
 };
 
 static void mbinit(void *);
@@ -273,6 +275,7 @@ mclmeta_ctor(void *obj, void *private, int ocflags)
 		return (FALSE);
 	cl->mcl_refs = 0;
 	cl->mcl_data = buf;
+	lwkt_serialize_init(&cl->mcl_serializer);
 	return (TRUE);
 }
 
@@ -297,7 +300,7 @@ linkcluster(struct mbuf *m, struct mbcluster *cl)
 	m->m_ext.ext_ref = m_mclref;
 	m->m_ext.ext_free = m_mclfree;
 	m->m_ext.ext_size = MCLBYTES;
-	++cl->mcl_refs;
+	atomic_add_int(&cl->mcl_refs, 1);
 
 	m->m_data = m->m_ext.ext_buf;
 	m->m_flags |= M_EXT | M_EXT_CLUSTER;
@@ -642,6 +645,18 @@ m_mclget(struct mbuf *m, int how)
 	}
 }
 
+/*
+ * Updates to mbcluster must be MPSAFE.  Only an entity which already has
+ * a reference to the cluster can ref it, so we are in no danger of 
+ * racing an add with a subtract.  But the operation must still be atomic
+ * since multiple entities may have a reference on the cluster.
+ *
+ * m_mclfree() is almost the same but it must contend with two entities
+ * freeing the cluster at the same time.  If there is only one reference
+ * count we are the only entity referencing the cluster and no further
+ * locking is required.  Otherwise we must protect against a race to 0
+ * with the serializer.
+ */
 static void
 m_mclref(void *arg)
 {
@@ -655,13 +670,20 @@ m_mclfree(void *arg)
 {
 	struct mbcluster *mcl = arg;
 
-	/* XXX interrupt race.  Currently called from a critical section */
-	if (mcl->mcl_refs > 1) {
-		atomic_subtract_int(&mcl->mcl_refs, 1);
-	} else {
-		KKASSERT(mcl->mcl_refs == 1);
+	if (mcl->mcl_refs == 1) {
 		mcl->mcl_refs = 0;
 		objcache_put(mclmeta_cache, mcl);
+	} else {
+		lwkt_serialize_enter(&mcl->mcl_serializer);
+		if (mcl->mcl_refs > 1) {
+			atomic_subtract_int(&mcl->mcl_refs, 1);
+			lwkt_serialize_exit(&mcl->mcl_serializer);
+		} else {
+			lwkt_serialize_exit(&mcl->mcl_serializer);
+			KKASSERT(mcl->mcl_refs == 1);
+			mcl->mcl_refs = 0;
+			objcache_put(mclmeta_cache, mcl);
+		}
 	}
 }
 
