@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.25 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.26 2005/12/01 21:15:54 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -538,10 +538,10 @@ tunread(dev, uio, flag)
 			return EWOULDBLOCK;
 		}
 		tp->tun_flags |= TUN_RWAIT;
-		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0) {
-			lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_exit(ifp->if_serializer);
+		if ((error = tsleep(tp, PCATCH, "tunread", 0)) != 0)
 			return error;
-		}
+		lwkt_serialize_enter(ifp->if_serializer);
 	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
