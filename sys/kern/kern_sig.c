@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.40 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.41 2005/12/01 18:54:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1230,6 +1230,9 @@ iscaught(struct proc *p)
  * by checking the pending signal masks in the CURSIG macro.) The normal call
  * sequence is
  *
+ * This routine is called via CURSIG/__cursig and the MP lock might not be
+ * held.  Obtain the MP lock for the duration of the operation.
+ *
  *	while (sig = CURSIG(curproc))
  *		postsig(sig);
  */
@@ -1239,6 +1242,7 @@ issignal(struct proc *p)
 	sigset_t mask;
 	int sig, prop;
 
+	get_mplock();
 	for (;;) {
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
 
@@ -1246,8 +1250,10 @@ issignal(struct proc *p)
 		SIGSETNAND(mask, p->p_sigmask);
 		if (p->p_flag & P_PPWAIT)
 			SIG_STOPSIGMASK(mask);
-		if (!SIGNOTEMPTY(mask))	 	/* no signal to send */
+		if (!SIGNOTEMPTY(mask)) { 	/* no signal to send */
+			rel_mplock();
 			return (0);
+		}
 		sig = sig_ffs(&mask);
 
 		STOPEVENT(p, S_SIG, sig);
@@ -1367,6 +1373,7 @@ issignal(struct proc *p)
 				 */
 				break;		/* == ignore */
 			} else {
+				rel_mplock();
 				return (sig);
 			}
 
@@ -1388,6 +1395,7 @@ issignal(struct proc *p)
 			 * This signal has an action, let
 			 * postsig() process it.
 			 */
+			rel_mplock();
 			return (sig);
 		}
 		SIGDELSET(p->p_siglist, sig);		/* take the signal! */
