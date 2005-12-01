@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.8 2005/11/23 22:54:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.9 2005/12/01 18:34:09 dillon Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -194,6 +194,7 @@ lwkt_serialize_sleep(void *info)
 {
     lwkt_serialize_t s = info;
     crit_enter();
+    tsleep_interlock(s);
     if (atomic_intr_cond_test(&s->interlock) != 0)
 	    tsleep(s, 0, "slize", 0);
     crit_exit();
