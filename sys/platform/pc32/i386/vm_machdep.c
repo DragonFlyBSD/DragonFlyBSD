@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.38 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.39 2005/12/02 22:02:16 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -294,6 +294,7 @@ void
 cpu_thread_exit(void)
 {
 	curthread->td_switch = cpu_exit_switch;
+	curthread->td_flags |= TDF_EXITING;
 	lwkt_switch();
 	panic("cpu_exit");
 }

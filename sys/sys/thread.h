@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.75 2005/11/22 08:41:05 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.76 2005/12/02 22:02:20 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -274,7 +274,9 @@ struct thread {
  * Thread flags.  Note that TDF_RUNNING is cleared on the old thread after
  * we switch to the new one, which is necessary because LWKTs don't need
  * to hold the BGL.  This flag is used by the exit code and the managed
- * thread migration code.
+ * thread migration code.  Note in addition that preemption will cause
+ * TDF_RUNNING to be cleared temporarily, so any code checking TDF_RUNNING
+ * must also check TDF_PREEMPT_LOCK.
  *
  * LWKT threads stay on their (per-cpu) run queue while running, not to
  * be confused with user processes which are removed from the user scheduling
@@ -308,6 +310,7 @@ struct thread {
 #define TDF_PANICWARN		0x00080000	/* panic warning in switch */
 #define TDF_BLOCKQ		0x00100000	/* on block queue */
 #define TDF_MPSAFE		0x00200000	/* (thread creation) */
+#define TDF_EXITING		0x00400000	/* thread exiting */
 
 /*
  * Thread priorities.  Typically only one thread from any given

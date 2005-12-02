@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.50 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.51 2005/12/02 22:02:17 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -310,8 +310,10 @@ exit1(int rv)
 
 	/*
 	 * Once we set SZOMB the process can get reaped.  The wait1 code
-	 * will also wait for TDF_RUNNING to be cleared in the thread's flags,
-	 * indicating that it has been completely switched out.
+	 * will also wait for TDF_EXITING to be set and for both TDF_RUNNING
+	 * and TDF_PREEMPT_LOCK to be cleared in the thread's flags,
+	 * indicating that it has been completely switched out for the last
+	 * time.
 	 */
 
 	/*
@@ -319,7 +321,9 @@ exit1(int rv)
 	 * Place onto zombproc.  Unlink from parent's child list.
 	 *
 	 * Interlock the SZOMB state with a tsleep against p_lock
-	 * (PHOLD/PRELE) so allproc loops don't get confused.
+	 * (PHOLD/PRELE) so allproc loops don't get confused.  Get
+	 * our own ref on p_lock to prevent us from getting reaped
+	 * too early.
 	 */
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
@@ -469,18 +473,6 @@ loop:
 		nfound++;
 		if (p->p_flag & P_ZOMBIE) {
 			/*
-			 * The process's thread may still be in the middle
-			 * of switching away, we can't rip its stack out from
-			 * under it until TDF_RUNNING clears!
-			 *
-			 * YYY no wakeup occurs so we depend on the timeout.
-			 */
-			if ((p->p_thread->td_flags & TDF_RUNNING) != 0) {
-				tsleep(p->p_thread, 0, "reap2", 1);
-				goto loop;
-			}
-
-			/*
 			 * Other kernel threads may be in the middle of 
 			 * accessing the proc.  For example, kern/kern_proc.c
 			 * could be blocked writing proc data to a sysctl.
@@ -492,6 +484,22 @@ loop:
 					tsleep(p, 0, "reap3", hz);
 			}
 			lwkt_wait_free(p->p_thread);
+
+			/*
+			 * The process's thread may still be in the middle
+			 * of switching away, we can't rip its stack out from
+			 * under it until TDF_EXITING is set and both
+			 * TDF_RUNNING and TDF_PREEMPT_LOCK are clear.
+			 * TDF_PREEMPT_LOCK must be checked because TDF_RUNNING
+			 * will be cleared temporarily if a thread gets
+			 * preempted.
+			 *
+			 * YYY no wakeup occurs so we depend on the timeout.
+			 */
+			if ((p->p_thread->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK|TDF_EXITING)) != TDF_EXITING) {
+				tsleep(p->p_thread, 0, "reap2", 1);
+				goto loop;
+			}
 
 			/* scheduling hook for heuristic */
 			p->p_usched->heuristic_exiting(td->td_lwp, &p->p_lwp);

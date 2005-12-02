@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.88 2005/11/22 08:41:03 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.89 2005/12/02 22:02:17 dillon Exp $
  */
 
 /*
@@ -1072,7 +1072,7 @@ lwkt_acquire(thread_t td)
     mygd = mycpu;
     cpu_lfence();
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
-    while (td->td_flags & TDF_RUNNING)	/* XXX spin */
+    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))	/* XXX spin */
 	cpu_lfence();
     if (gd != mygd) {
 	crit_enter_gd(mygd);
@@ -1232,7 +1232,7 @@ lwkt_setcpu_remote(void *arg)
     thread_t td = arg;
     globaldata_t gd = mycpu;
 
-    while (td->td_flags & TDF_RUNNING)
+    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))
 	cpu_lfence();
     td->td_gd = gd;
     cpu_sfence();
