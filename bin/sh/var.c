@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.8 2005/04/19 05:18:19 cpressey Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.9 2005/12/02 17:16:10 dillon Exp $
  */
 
 #include <unistd.h>
@@ -101,7 +101,7 @@ STATIC const struct varinit varinit[] = {
 	  NULL },
 	{ &vmpath,	VSTRFIXED|VTEXTFIXED|VUNSET,	"MAILPATH=",
 	  NULL },
-	{ &vpath,	VSTRFIXED|VTEXTFIXED,		"PATH=/bin:/usr/bin",
+	{ &vpath,	VSTRFIXED|VTEXTFIXED,		"PATH=/bin:/usr/bin:/sbin:/usr/sbin",
 	  changepath },
 	{ &vppid,	VSTRFIXED|VTEXTFIXED|VUNSET,	"PPID=",
 	  NULL },
