@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.74 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.75 2005/12/02 17:29:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3029,7 +3029,8 @@ revoke(struct revoke_args *uap)
 		}
 		vrele(vp);
 	}
-	crfree(cred);
+	if (cred)
+		crfree(cred);
 	return (error);
 }
 
