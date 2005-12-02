@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.41 2005/12/01 18:54:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.42 2005/12/02 19:31:49 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -904,6 +904,7 @@ psignal(struct proc *p, int sig)
 			p->p_flag |= P_STOPPED;
 			p->p_flag &= ~P_WAITED;
 			p->p_xstat = sig;
+			wakeup(p->p_pptr);
 			if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
 				psignal(p->p_pptr, SIGCHLD);
 			goto out;
