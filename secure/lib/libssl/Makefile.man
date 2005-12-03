@@ -1,4 +1,4 @@
-# $DragonFly: src/secure/lib/libssl/Makefile.man,v 1.4 2005/07/07 12:18:27 corecode Exp $
+# $DragonFly: src/secure/lib/libssl/Makefile.man,v 1.5 2005/12/03 14:06:16 corecode Exp $
 # DO NOT EDIT: generated from man-makefile-update target
 MAN+= SSL_CIPHER_get_name.3
 MLINKS+= SSL_CIPHER_get_name.3 SSL_CIPHER_get_bits.3

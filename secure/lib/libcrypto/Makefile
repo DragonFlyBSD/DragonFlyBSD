@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.7 2005/09/06 18:55:28 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.8 2005/12/03 14:06:13 corecode Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -44,7 +44,8 @@ SRCS+=	b_dump.c b_print.c b_sock.c bf_buff.c bf_lbuf.c bf_nbio.c \
 	bss_null.c bss_sock.c
 
 # bn
-SRCS+=	bn_add.c bn_asm.c bn_blind.c bn_ctx.c bn_depr.c bn_div.c bn_err.c bn_exp.c \
+SRCS+=	bn_add.c bn_asm.c bn_blind.c bn_const.c bn_ctx.c bn_depr.c \
+	bn_div.c bn_err.c bn_exp.c \
 	bn_exp2.c bn_gcd.c bn_gf2m.c bn_kron.c bn_lib.c bn_mod.c bn_mont.c \
 	bn_mpi.c bn_mul.c bn_nist.c bn_prime.c bn_print.c bn_rand.c bn_recp.c \
 	bn_shift.c bn_sqr.c bn_sqrt.c bn_word.c
