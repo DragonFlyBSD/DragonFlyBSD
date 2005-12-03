@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.4 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.5 2005/12/03 02:19:52 joerg Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -69,12 +69,12 @@
  * Note that those commented out are not currently supported by the
  * implementation.
  */
-#define _POSIX_THREADS
-#define _POSIX_THREAD_ATTR_STACKADDR
-#define _POSIX_THREAD_ATTR_STACKSIZE
-#define _POSIX_THREAD_PRIORITY_SCHEDULING
-#define _POSIX_THREAD_PRIO_INHERIT
-#define _POSIX_THREAD_PRIO_PROTECT
+#define	_POSIX_THREADS				200112L
+#define	_POSIX_THREAD_ATTR_STACKADDR		200112L
+#define	_POSIX_THREAD_ATTR_STACKSIZE		200112L
+#define	_POSIX_THREAD_PRIORITY_SCHEDULING	200112L
+#define	_POSIX_THREAD_PRIO_INHERIT		200112L
+#define	_POSIX_THREAD_PRIO_PROTECT		200112L
 /* #define _POSIX_THREAD_PROCESS_SHARED */
 /*
  * 1003.1c-1995 says on page 38 (2.9.3, paragraph 3) that if _POSIX_THREADS is
@@ -86,7 +86,7 @@
  * ways.
  */
 /* #define _POSIX_THREAD_SAFE_FUNCTIONS */
-#define _POSIX_SEMAPHORES
+#define	_POSIX_SEMAPHORES	200112L
 
 /* access function */
 #define	F_OK		0	/* test for existence of file */
@@ -152,7 +152,7 @@
 
 #ifdef _P1003_1B_VISIBLE
 
-#define _POSIX_PRIORITY_SCHEDULING
+#define	_POSIX_PRIORITY_SCHEDULING 200112L
 
 #if 0
 /* Not until the dust settles after the header commit
@@ -163,8 +163,8 @@
 #endif
 
 /* ??? #define	_POSIX_FSYNC			1 */
-#define	_POSIX_MAPPED_FILES		1
-#define _POSIX_SHARED_MEMORY_OBJECTS	1
+#define	_POSIX_MAPPED_FILES		200112L
+#define	_POSIX_SHARED_MEMORY_OBJECTS	200112L
 
 /* POSIX.1B sysconf options */
 #define _SC_ASYNCHRONOUS_IO	28
