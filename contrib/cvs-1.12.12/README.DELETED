@@ -97,6 +97,8 @@ lib/Makefile.am
 lib/Makefile.in
 lib/atexit.c
 lib/build_lib.com
+lib/chdir-long.c
+lib/chdir-long.h
 lib/dup2.c
 lib/fncase.c
 lib/fnmatch.c
@@ -105,6 +107,8 @@ lib/fnmatch_loop.c
 lib/fseeko.c
 lib/ftello.c
 lib/ftruncate.c
+lib/getcwd.c
+lib/getcwd.h
 lib/getdate.y
 lib/gethostname.c
 lib/gettimeofday.c
@@ -116,6 +120,8 @@ lib/memmove.c
 lib/mkdir.c
 lib/mkstemp.c
 lib/nanosleep.c
+lib/openat.c
+lib/openat.h
 lib/realloc.c
 lib/regex.c
 lib/rename.c
