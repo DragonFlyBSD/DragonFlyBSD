@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.31 2005/11/24 23:01:58 dillon Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.32 2005/12/03 18:32:32 dillon Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -33,7 +33,7 @@ options 	CD9660_ROOT		#CD-ROM usable as root, CD9660 required
 options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
-options 	SCSI_DELAY=15000	#Delay (in ms) before probing SCSI
+options 	SCSI_DELAY=5000		#Delay (in ms) before probing SCSI
 options		DEVICE_POLLING		# Support mixed interrupt-polling
 					# handling of network device drivers
 options 	UCONSOLE		#Allow users to grab the console
