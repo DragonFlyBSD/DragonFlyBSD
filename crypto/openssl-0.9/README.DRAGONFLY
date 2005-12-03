@@ -1,6 +1,7 @@
 Original source can be downloaded from OpenSSL at
-<http://www.openssl.org/source/openssl-0.9.8.tar.gz>.
-MD5 (openssl-0.9.8.tar.gz) = 9da21071596a124acde6080552deac16
-SHA1 (openssl-0.9.8.tar.gz) = 7350b0f0d1a6d257cb24b9d4dc5e30b80e49d6ac
+<http://www.openssl.org/source/openssl-0.9.8a.tar.gz>.
+
+MD5 (openssl-0.9.8a.tar.gz) = 1d16c727c10185e4d694f87f5e424ee1
+SHA1 (openssl-0.9.8a.tar.gz) = 2aaba0f728179370fb3e86b43209205bc6c06a3a
 
 A list of deleted files is in README.DELETED.
