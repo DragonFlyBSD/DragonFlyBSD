@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/lib/Makefile,v 1.19.2.4 2003/01/21 23:06:52 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.12 2005/07/23 20:23:06 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.13 2005/12/03 12:11:44 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -30,8 +30,9 @@ SRCS=	config.h \
 	xgetcwd.c xgethostname.c xreadlink.c yesno.c \
 	pagealign_alloc.c getline.c getndelim2.c mktime.c \
 	getpass.c rpmatch.c vasnprintf.c printf-args.c printf-parse.c \
-	asnprintf.c getcwd.c closeout.c chdir-long.c quotearg.c \
-	memrchr.c openat.c
+	asnprintf.c closeout.c quotearg.c memrchr.c
+
+SRCS+=	save-cwd.c.patch xgetcwd.c.patch
 
 config.h: config.h.proto
 	sed -e "s,@VERSION@,${VERSION}-DragonFly,g" \

@@ -1,0 +1,18 @@
+$DragonFly: src/gnu/usr.bin/cvs/lib/Attic/xgetcwd.c.patch,v 1.1 2005/12/03 12:11:44 corecode Exp $
+Index: xgetcwd.c
+===================================================================
+RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12.12/lib/xgetcwd.c,v
+retrieving revision 1.1
+diff -u -r1.1 xgetcwd.c
+--- xgetcwd.c	21 Apr 2005 06:33:15 -0000	1.1
++++ xgetcwd.c	16 Oct 2005 10:18:28 -0000
+@@ -25,8 +25,8 @@
+ #include "xgetcwd.h"
+ 
+ #include <errno.h>
++#include <unistd.h>
+ 
+-#include "getcwd.h"
+ #include "xalloc.h"
+ 
+ /* Return the current directory, newly allocated.
