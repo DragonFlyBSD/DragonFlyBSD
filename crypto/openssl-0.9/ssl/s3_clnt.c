@@ -130,7 +130,9 @@
 #include <openssl/objects.h>
 #include <openssl/evp.h>
 #include <openssl/md5.h>
+#ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
+#endif
 #include <openssl/bn.h>
 
 static SSL_METHOD *ssl3_get_client_method(int ver);
@@ -149,28 +151,10 @@ static SSL_METHOD *ssl3_get_client_method(int ver)
 		return(NULL);
 	}
 
-SSL_METHOD *SSLv3_client_method(void)
-	{
-	static int init=1;
-	static SSL_METHOD SSLv3_client_data;
-
-	if (init)
-		{
-		CRYPTO_w_lock(CRYPTO_LOCK_SSL_METHOD);
-
-		if (init)
-			{
-			memcpy((char *)&SSLv3_client_data,(char *)sslv3_base_method(),
-				sizeof(SSL_METHOD));
-			SSLv3_client_data.ssl_connect=ssl3_connect;
-			SSLv3_client_data.get_ssl_method=ssl3_get_client_method;
-			init=0;
-			}
-
-		CRYPTO_w_unlock(CRYPTO_LOCK_SSL_METHOD);
-		}
-	return(&SSLv3_client_data);
-	}
+IMPLEMENT_ssl3_meth_func(SSLv3_client_method,
+			ssl_undefined_function,
+			ssl3_connect,
+			ssl3_get_client_method)
 
 int ssl3_connect(SSL *s)
 	{
@@ -385,11 +369,15 @@ int ssl3_connect(SSL *s)
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
+#ifdef OPENSSL_NO_COMP
+			s->session->compress_meth=0;
+#else
 			if (s->s3->tmp.new_compression == NULL)
 				s->session->compress_meth=0;
 			else
 				s->session->compress_meth=
 					s->s3->tmp.new_compression->id;
+#endif
 			if (!s->method->ssl3_enc->setup_key_block(s))
 				{
 				ret= -1;
@@ -533,9 +521,12 @@ int ssl3_client_hello(SSL *s)
 	{
 	unsigned char *buf;
 	unsigned char *p,*d;
-	int i,j;
+	int i;
 	unsigned long Time,l;
+#ifndef OPENSSL_NO_COMP
+	int j;
 	SSL_COMP *comp;
+#endif
 
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL3_ST_CW_CLNT_HELLO_A)
@@ -594,6 +585,9 @@ int ssl3_client_hello(SSL *s)
 		p+=i;
 
 		/* COMPRESSION */
+#ifdef OPENSSL_NO_COMP
+		*(p++)=1;
+#else
 		if (s->ctx->comp_methods == NULL)
 			j=0;
 		else
@@ -604,6 +598,7 @@ int ssl3_client_hello(SSL *s)
 			comp=sk_SSL_COMP_value(s->ctx->comp_methods,i);
 			*(p++)=comp->id;
 			}
+#endif
 		*(p++)=0; /* Add the NULL method */
 		
 		l=(p-d);
@@ -631,7 +626,9 @@ int ssl3_get_server_hello(SSL *s)
 	int i,al,ok;
 	unsigned int j;
 	long n;
+#ifndef OPENSSL_NO_COMP
 	SSL_COMP *comp;
+#endif
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_SRVR_HELLO_A,
@@ -762,6 +759,14 @@ int ssl3_get_server_hello(SSL *s)
 
 	/* lets get the compression algorithm */
 	/* COMPRESSION */
+#ifdef OPENSSL_NO_COMP
+	if (*(p++) != 0)
+		{
+		al=SSL_AD_ILLEGAL_PARAMETER;
+		SSLerr(SSL_F_SSL3_GET_SERVER_HELLO,SSL_R_UNSUPPORTED_COMPRESSION_ALGORITHM);
+		goto f_err;
+		}
+#else
 	j= *(p++);
 	if (j == 0)
 		comp=NULL;
@@ -778,6 +783,7 @@ int ssl3_get_server_hello(SSL *s)
 		{
 		s->s3->tmp.new_compression=comp;
 		}
+#endif
 
 	if (p != (d+n))
 		{
@@ -1608,6 +1614,7 @@ int ssl3_get_server_done(SSL *s)
 	}
 
 
+#ifndef OPENSSL_NO_ECDH
 static const int KDF1_SHA1_len = 20;
 static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 	{
@@ -1619,8 +1626,9 @@ static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 	return SHA1(in, inlen, out);
 #else
 	return NULL;
-#endif
+#endif	/* OPENSSL_NO_SHA */
 	}
+#endif	/* OPENSSL_NO_ECDH */
 
 int ssl3_send_client_key_exchange(SSL *s)
 	{
@@ -2132,7 +2140,7 @@ int ssl3_send_client_verify(SSL *s)
 	unsigned u=0;
 #endif
 	unsigned long n;
-#ifndef OPENSSL_NO_DSA
+#if !defined(OPENSSL_NO_DSA) || !defined(OPENSSL_NO_ECDSA)
 	int j;
 #endif
 

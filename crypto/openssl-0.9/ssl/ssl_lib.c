@@ -125,7 +125,9 @@
 #include <openssl/objects.h>
 #include <openssl/lhash.h>
 #include <openssl/x509v3.h>
+#ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
+#endif
 
 const char *SSL_version_str=OPENSSL_VERSION_TEXT;
 
@@ -136,7 +138,14 @@ SSL3_ENC_METHOD ssl3_undef_enc_method={
 	ssl_undefined_function,
 	(int (*)(SSL *, unsigned char *, unsigned char *, int))ssl_undefined_function,
 	(int (*)(SSL*, int))ssl_undefined_function,
-	(int (*)(SSL *, EVP_MD_CTX *, EVP_MD_CTX *, const char*, int, unsigned char *))ssl_undefined_function
+	(int (*)(SSL *, EVP_MD_CTX *, EVP_MD_CTX *, const char*, int, unsigned char *))ssl_undefined_function,
+	0,	/* finish_mac_length */
+	(int (*)(SSL *, EVP_MD_CTX *, unsigned char *))ssl_undefined_function,
+	NULL,	/* client_finished_label */
+	0,	/* client_finished_label_len */
+	NULL,	/* server_finished_label */
+	0,	/* server_finished_label_len */
+	(int (*)(int))ssl_undefined_function
 	};
 
 int SSL_clear(SSL *s)
@@ -1551,7 +1560,10 @@ void ssl_set_cert_masks(CERT *c, SSL_CIPHER *cipher)
 	int rsa_enc_export,dh_rsa_export,dh_dsa_export;
 	int rsa_tmp_export,dh_tmp_export,kl;
 	unsigned long mask,emask;
-	int have_ecc_cert, have_ecdh_tmp, ecdh_ok, ecdsa_ok, ecc_pkey_size;
+	int have_ecc_cert, ecdh_ok, ecdsa_ok, ecc_pkey_size;
+#ifndef OPENSSL_NO_ECDH
+	int have_ecdh_tmp;
+#endif
 	X509 *x = NULL;
 	EVP_PKEY *ecc_pkey = NULL;
 	int signature_nid = 0;
@@ -2234,6 +2246,7 @@ void ssl_clear_cipher_ctx(SSL *s)
 		OPENSSL_free(s->enc_write_ctx);
 		s->enc_write_ctx=NULL;
 		}
+#ifndef OPENSSL_NO_COMP
 	if (s->expand != NULL)
 		{
 		COMP_CTX_free(s->expand);
@@ -2244,6 +2257,7 @@ void ssl_clear_cipher_ctx(SSL *s)
 		COMP_CTX_free(s->compress);
 		s->compress=NULL;
 		}
+#endif
 	}
 
 /* Fix this function so that it takes an optional type parameter */
@@ -2270,6 +2284,16 @@ SSL_CIPHER *SSL_get_current_cipher(const SSL *s)
 		return(s->session->cipher);
 	return(NULL);
 	}
+#ifdef OPENSSL_NO_COMP
+const void *SSL_get_current_compression(SSL *s)
+	{
+	return NULL;
+	}
+const void *SSL_get_current_expansion(SSL *s)
+	{
+	return NULL;
+	}
+#else
 
 const COMP_METHOD *SSL_get_current_compression(SSL *s)
 	{
@@ -2284,6 +2308,7 @@ const COMP_METHOD *SSL_get_current_expansion(SSL *s)
 		return(s->expand->meth);
 	return(NULL);
 	}
+#endif
 
 int ssl_init_wbio_buffer(SSL *s,int push)
 	{

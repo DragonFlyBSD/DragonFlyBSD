@@ -661,12 +661,15 @@ int OPENSSL_isservice(void)
 #endif
     else				return 0;
 }
+#else
+int OPENSSL_isservice(void) { return 0; }
 #endif
 
 void OPENSSL_showfatal (const char *fmta,...)
 { va_list ap;
   TCHAR buf[256];
   const TCHAR *fmt;
+#ifdef STD_ERROR_HANDLE	/* what a dirty trick! */
   HANDLE h;
 
     if ((h=GetStdHandle(STD_ERROR_HANDLE)) != NULL &&
@@ -677,9 +680,10 @@ void OPENSSL_showfatal (const char *fmta,...)
 	va_end (ap);
 	return;
     }
+#endif
 
     if (sizeof(TCHAR)==sizeof(char))
-	fmt=fmta;
+	fmt=(const TCHAR *)fmta;
     else do
     { int    keepgoing;
       size_t len_0=strlen(fmta)+1,i;
@@ -730,21 +734,7 @@ void OPENSSL_showfatal (const char *fmta,...)
     }
     else
 #endif
-    {	MSGBOXPARAMS         m;
-
-	m.cbSize             = sizeof(m);
-	m.hwndOwner          = NULL;
-	m.lpszCaption        = _T("OpenSSL: FATAL");
-	m.dwStyle            = MB_OK;
-	m.hInstance          = NULL;
-	m.lpszIcon           = IDI_ERROR;
-	m.dwContextHelpId    = 0;
-	m.lpfnMsgBoxCallback = NULL;
-	m.dwLanguageId       = MAKELANGID(LANG_ENGLISH,SUBLANG_ENGLISH_US);
-	m.lpszText           = buf;
-
-	MessageBoxIndirect (&m);
-    }
+	MessageBox (NULL,buf,_T("OpenSSL: FATAL"),MB_OK|MB_ICONSTOP);
 }
 #else
 void OPENSSL_showfatal (const char *fmta,...)

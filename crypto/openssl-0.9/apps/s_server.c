@@ -153,6 +153,12 @@ typedef unsigned int u_int;
 #include <openssl/x509.h>
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
+#ifndef OPENSSL_NO_DH
+#include <openssl/dh.h>
+#endif
+#ifndef OPENSSL_NO_RSA
+#include <openssl/rsa.h>
+#endif
 #include "s_apps.h"
 #include "timeouts.h"
 
@@ -530,7 +536,9 @@ int MAIN(int argc, char *argv[])
 	char *CApath=NULL,*CAfile=NULL;
 	unsigned char *context = NULL;
 	char *dhfile = NULL;
+#ifndef OPENSSL_NO_ECDH
 	char *named_curve = NULL;
+#endif
 	int badop=0,bugs=0;
 	int ret=1;
 	int off=0;
@@ -824,21 +832,24 @@ bad:
 	if (s_key_file == NULL)
 		s_key_file = s_cert_file;
 
-	s_key = load_key(bio_err, s_key_file, s_key_format, 0, pass, e,
-		       "server certificate private key file");
-	if (!s_key)
+	if (nocert == 0)
 		{
-		ERR_print_errors(bio_err);
-		goto end;
-		}
+		s_key = load_key(bio_err, s_key_file, s_key_format, 0, pass, e,
+		       "server certificate private key file");
+		if (!s_key)
+			{
+			ERR_print_errors(bio_err);
+			goto end;
+			}
 
-	s_cert = load_cert(bio_err,s_cert_file,s_cert_format,
+		s_cert = load_cert(bio_err,s_cert_file,s_cert_format,
 			NULL, e, "server certificate file");
 
-	if (!s_cert)
-		{
-		ERR_print_errors(bio_err);
-		goto end;
+		if (!s_cert)
+			{
+			ERR_print_errors(bio_err);
+			goto end;
+			}
 		}
 
 	if (s_dcert_file)

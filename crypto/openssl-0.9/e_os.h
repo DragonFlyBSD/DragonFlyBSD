@@ -245,7 +245,7 @@ extern "C" {
 #  define NO_DIRENT
 
 #  ifdef WINDOWS
-#    ifndef _WIN32_WINNT
+#    if !defined(_WIN32_WCE) && !defined(_WIN32_WINNT)
        /*
 	* Defining _WIN32_WINNT here in e_os.h implies certain "discipline."
 	* Most notably we ought to check for availability of each specific
@@ -565,6 +565,9 @@ extern HINSTANCE _hInstance;
 extern char *sys_errlist[]; extern int sys_nerr;
 # define strerror(errnum) \
 	(((errnum)<0 || (errnum)>=sys_nerr) ? NULL : sys_errlist[errnum])
+  /* Being signed SunOS 4.x memcpy breaks ASN1_OBJECT table lookup */
+#include "crypto/o_str.h"
+# define memcmp OPENSSL_memcmp
 #endif
 
 #ifndef OPENSSL_EXIT

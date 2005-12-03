@@ -81,8 +81,10 @@
 
 static int print(BIO *fp,const char *str, const BIGNUM *num,
 		unsigned char *buf,int off);
+#ifndef OPENSSL_NO_EC
 static int print_bin(BIO *fp, const char *str, const unsigned char *num,
 		size_t len, int off);
+#endif
 #ifndef OPENSSL_NO_RSA
 #ifndef OPENSSL_NO_FP_API
 int RSA_print_fp(FILE *fp, const RSA *x, int off)
@@ -196,6 +198,11 @@ int DSA_print(BIO *bp, const DSA *x, int off)
 
 	if (x->p)
 		buf_len = (size_t)BN_num_bytes(x->p);
+	else
+		{
+		DSAerr(DSA_F_DSA_PRINT,DSA_R_MISSING_PARAMETERS);
+		goto err;
+		}
 	if (x->q)
 		if (buf_len < (i = (size_t)BN_num_bytes(x->q)))
 			buf_len = i;
@@ -601,6 +608,7 @@ static int print(BIO *bp, const char *number, const BIGNUM *num, unsigned char *
 	return(1);
 	}
 
+#ifndef OPENSSL_NO_EC
 static int print_bin(BIO *fp, const char *name, const unsigned char *buf,
 		size_t len, int off)
 	{
@@ -638,6 +646,7 @@ static int print_bin(BIO *fp, const char *name, const unsigned char *buf,
 
 	return 1;
 	}
+#endif
 
 #ifndef OPENSSL_NO_DH
 #ifndef OPENSSL_NO_FP_API
@@ -666,6 +675,11 @@ int DHparams_print(BIO *bp, const DH *x)
 
 	if (x->p)
 		buf_len = (size_t)BN_num_bytes(x->p);
+	else
+		{
+		reason = ERR_R_PASSED_NULL_PARAMETER;
+		goto err;
+		}
 	if (x->g)
 		if (buf_len < (i = (size_t)BN_num_bytes(x->g)))
 			buf_len = i;
@@ -719,11 +733,16 @@ int DSAparams_print_fp(FILE *fp, const DSA *x)
 int DSAparams_print(BIO *bp, const DSA *x)
 	{
 	unsigned char *m=NULL;
-	int reason=ERR_R_BUF_LIB,ret=0;
+	int ret=0;
 	size_t buf_len=0,i;
 
 	if (x->p)
 		buf_len = (size_t)BN_num_bytes(x->p);
+	else
+		{
+		DSAerr(DSA_F_DSA_PRINT,DSA_R_MISSING_PARAMETERS);
+		goto err;
+		}
 	if (x->q)
 		if (buf_len < (i = (size_t)BN_num_bytes(x->q)))
 			buf_len = i;
@@ -733,7 +752,7 @@ int DSAparams_print(BIO *bp, const DSA *x)
 	m=(unsigned char *)OPENSSL_malloc(buf_len+10);
 	if (m == NULL)
 		{
-		reason=ERR_R_MALLOC_FAILURE;
+		DSAerr(DSA_F_DSA_PRINT,ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 
@@ -746,7 +765,6 @@ int DSAparams_print(BIO *bp, const DSA *x)
 	ret=1;
 err:
 	if (m != NULL) OPENSSL_free(m);
-	DSAerr(DSA_F_DSAPARAMS_PRINT,reason);
 	return(ret);
 	}
 

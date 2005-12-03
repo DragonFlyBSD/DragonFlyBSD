@@ -133,7 +133,9 @@
 #include <openssl/objects.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
+#endif
 #include <openssl/bn.h>
 #ifndef OPENSSL_NO_KRB5
 #include <openssl/krb5_asn.h>
@@ -154,28 +156,10 @@ static SSL_METHOD *ssl3_get_server_method(int ver)
 		return(NULL);
 	}
 
-SSL_METHOD *SSLv3_server_method(void)
-	{
-	static int init=1;
-	static SSL_METHOD SSLv3_server_data;
-
-	if (init)
-		{
-		CRYPTO_w_lock(CRYPTO_LOCK_SSL_METHOD);
-
-		if (init)
-			{
-			memcpy((char *)&SSLv3_server_data,(char *)sslv3_base_method(),
-				sizeof(SSL_METHOD));
-			SSLv3_server_data.ssl_accept=ssl3_accept;
-			SSLv3_server_data.get_ssl_method=ssl3_get_server_method;
-			init=0;
-			}
-			
-		CRYPTO_w_unlock(CRYPTO_LOCK_SSL_METHOD);
-		}
-	return(&SSLv3_server_data);
-	}
+IMPLEMENT_ssl3_meth_func(SSLv3_server_method,
+			ssl3_accept,
+			ssl_undefined_function,
+			ssl3_get_server_method)
 
 int ssl3_accept(SSL *s)
 	{
@@ -682,7 +666,9 @@ int ssl3_get_client_hello(SSL *s)
 	unsigned long id;
 	unsigned char *p,*d,*q;
 	SSL_CIPHER *c;
+#ifndef OPENSSL_NO_COMP
 	SSL_COMP *comp=NULL;
+#endif
 	STACK_OF(SSL_CIPHER) *ciphers=NULL;
 
 	/* We do this so that we will respond with our native type.
@@ -913,6 +899,7 @@ int ssl3_get_client_hello(SSL *s)
 	 * options, we will now look for them.  We have i-1 compression
 	 * algorithms from the client, starting at q. */
 	s->s3->tmp.new_compression=NULL;
+#ifndef OPENSSL_NO_COMP
 	if (s->ctx->comp_methods != NULL)
 		{ /* See if we have a match */
 		int m,nn,o,v,done=0;
@@ -937,6 +924,7 @@ int ssl3_get_client_hello(SSL *s)
 		else
 			comp=NULL;
 		}
+#endif
 
 	/* TLS does not mind if there is extra stuff */
 #if 0   /* SSL 3.0 does not mind either, so we should disable this test
@@ -960,7 +948,11 @@ int ssl3_get_client_hello(SSL *s)
 
 	if (!s->hit)
 		{
+#ifdef OPENSSL_NO_COMP
+		s->session->compress_meth=0;
+#else
 		s->session->compress_meth=(comp == NULL)?0:comp->id;
+#endif
 		if (s->session->ciphers != NULL)
 			sk_SSL_CIPHER_free(s->session->ciphers);
 		s->session->ciphers=ciphers;
@@ -1086,10 +1078,14 @@ int ssl3_send_server_hello(SSL *s)
 		p+=i;
 
 		/* put the compression method */
+#ifdef OPENSSL_NO_COMP
+			*(p++)=0;
+#else
 		if (s->s3->tmp.new_compression == NULL)
 			*(p++)=0;
 		else
 			*(p++)=s->s3->tmp.new_compression->id;
+#endif
 
 		/* do the header */
 		l=(p-d);
@@ -1642,6 +1638,7 @@ err:
 	}
 
 
+#ifndef OPENSSL_NO_ECDH
 static const int KDF1_SHA1_len = 20;
 static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 	{
@@ -1653,8 +1650,9 @@ static void *KDF1_SHA1(const void *in, size_t inlen, void *out, size_t *outlen)
 	return SHA1(in, inlen, out);
 #else
 	return NULL;
-#endif
+#endif	/* OPENSSL_NO_SHA */
 	}
+#endif	/* OPENSSL_NO_ECDH */
 
 int ssl3_get_client_key_exchange(SSL *s)
 	{
