@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/time/strptime.c,v 1.22 2000/12/20 20:56:34 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdtime/strptime.c,v 1.4 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdtime/strptime.c,v 1.5 2005/12/04 23:25:40 swildner Exp $ */
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -54,7 +54,7 @@
 #define	ALT_O			0x02
 #define	LEGAL_ALT(x)		{ if (alt_format & ~(x)) return (0); }
 
-static	int conv_num __P((const unsigned char **, int *, int, int));
+static	int conv_num(const unsigned char **, int *, int, int);
 
 char *
 strptime(const char *buf, const char *fmt, struct tm *tm)

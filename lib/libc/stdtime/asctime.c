@@ -3,7 +3,7 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/asctime.c,v 1.7.6.1 2001/03/05 11:37:20 obrien Exp $
-** $DragonFly: src/lib/libc/stdtime/asctime.c,v 1.4 2005/01/31 22:29:44 dillon Exp $
+** $DragonFly: src/lib/libc/stdtime/asctime.c,v 1.5 2005/12/04 23:25:40 swildner Exp $
 */
 
 /*
@@ -22,8 +22,7 @@
 
 
 char *
-asctime(timeptr)
-const struct tm *	timeptr;
+asctime(const struct tm *timeptr)
 {
 	static char		result[3 * 2 + 5 * INT_STRLEN_MAXIMUM(int) +
 					3 + 2 + 1 + 1];
@@ -31,9 +30,7 @@ const struct tm *	timeptr;
 }
 
 char *
-asctime_r(timeptr, result)
-const struct tm *	timeptr;
-char *result;
+asctime_r(const struct tm *timeptr, char *result)
 {
 	static const char	wday_name[][3] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -63,7 +60,7 @@ char *result;
 	**	"%.3s %.3s%3d %02.2d:%02.2d:%02.2d %d\n"
 	** Since the .2 in 02.2d is ignored, we drop it.
 	*/
-	(void) sprintf(result, "%.3s %.3s%3d %02d:%02d:%02d %d\n",
+	sprintf(result, "%.3s %.3s%3d %02d:%02d:%02d %d\n",
 		wn, mn,
 		timeptr->tm_mday, timeptr->tm_hour,
 		timeptr->tm_min, timeptr->tm_sec,

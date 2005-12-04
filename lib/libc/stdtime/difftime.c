@@ -3,7 +3,7 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/difftime.c,v 1.4.8.1 2001/03/05 11:37:21 obrien Exp $
-** $DragonFly: src/lib/libc/stdtime/difftime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
+** $DragonFly: src/lib/libc/stdtime/difftime.c,v 1.4 2005/12/04 23:25:40 swildner Exp $
 */
 
 /*
@@ -27,9 +27,7 @@
 #endif /* !defined HAVE_LONG_DOUBLE */
 
 double
-difftime(time1, time0)
-const time_t	time1;
-const time_t	time0;
+difftime(const time_t time1, const time_t time0)
 {
 	time_t	delta;
 	time_t	hibit;

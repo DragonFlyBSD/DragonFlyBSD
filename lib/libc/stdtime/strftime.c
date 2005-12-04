@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $	*/
-/*	$DragonFly: src/lib/libc/stdtime/strftime.c,v 1.5 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdtime/strftime.c,v 1.6 2005/12/04 23:25:40 swildner Exp $ */
 
 /*
 ** Based on the UCB version with the ID appearing below.
@@ -89,18 +89,18 @@ strftime(char * const s, const size_t maxsize, const char * const format,
 	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn);
 #ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
 	if (warn != IN_NONE && getenv(YEAR_2000_NAME) != NULL) {
-		(void) fprintf(stderr, "\n");
+		fprintf(stderr, "\n");
 		if (format == NULL)
-			(void) fprintf(stderr, "NULL strftime format ");
-		else	(void) fprintf(stderr, "strftime format \"%s\" ",
+			fprintf(stderr, "NULL strftime format ");
+		else	fprintf(stderr, "strftime format \"%s\" ",
 				format);
-		(void) fprintf(stderr, "yields only two digits of years in ");
+		fprintf(stderr, "yields only two digits of years in ");
 		if (warn == IN_SOME)
-			(void) fprintf(stderr, "some locales");
+			fprintf(stderr, "some locales");
 		else if (warn == IN_THIS)
-			(void) fprintf(stderr, "the current locale");
-		else	(void) fprintf(stderr, "all locales");
-		(void) fprintf(stderr, "\n");
+			fprintf(stderr, "the current locale");
+		else	fprintf(stderr, "all locales");
+		fprintf(stderr, "\n");
 	}
 #endif /* !defined NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU */
 	if (p == s + maxsize)
@@ -272,9 +272,9 @@ label:
 					mkt = mktime(&tm);
 					/* CONSTCOND */
 					if (TYPE_SIGNED(time_t))
-						(void) sprintf(buf, "%ld",
+						sprintf(buf, "%ld",
 							(long) mkt);
-					else	(void) sprintf(buf, "%lu",
+					else	sprintf(buf, "%lu",
 							(unsigned long) mkt);
 					pt = _add(buf, pt, ptlim);
 				}
@@ -552,7 +552,7 @@ _conv(const int n, const char * const format, char * const pt,
 {
 	char	buf[INT_STRLEN_MAXIMUM(int) + 1];
 
-	(void) sprintf(buf, format, n);
+	sprintf(buf, format, n);
 	return _add(buf, pt, ptlim);
 }
 
