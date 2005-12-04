@@ -3,7 +3,7 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/localtime.c,v 1.25.2.2 2002/08/13 16:08:07 bmilekic Exp $
-** $DragonFly: src/lib/libc/stdtime/localtime.c,v 1.5 2005/12/04 23:25:40 swildner Exp $
+** $DragonFly: src/lib/libc/stdtime/localtime.c,v 1.6 2005/12/04 23:41:06 swildner Exp $
 */
 
 /*
@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include <fcntl.h>
+#include <time.h>
 #include <pthread.h>
 #include "private.h"
 #include <un-namespace.h>
