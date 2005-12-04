@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.43 2005/11/07 23:21:58 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.44 2005/12/04 21:24:13 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -97,13 +97,44 @@ check:
 		echo ""; \
 		echo "    http://www.bsdinstaller.org/packages/"; \
 		echo ""; \
-		echo "They can be automatically downloaded by issuing"; \
-		echo "'make installer_fetchpkgs' from this directory."; \
+		echo "They can be automatically downloaded by issuing:"; \
+		echo "    make installer_fetchpkgs"; \
 		echo ""; \
 		exit 1; \
 	fi
 .endfor
+	@if [ ! -f /usr/pkg/sbin/pkg_add ]; then \
+		echo "NetBSD pkgsrc has not been bootstrapped.  You can"; \
+		echo "automatically download the pkgsrc and install the"; \
+		echo "the bootstrap with:"; \
+		echo "    make pkgsrc_fetch"; \
+		echo "    make pkgsrc_bootstrap"; \
+		exit 1; \
+	fi
+	@if [ ! -f /etc/mk.conf ]; then \
+		echo "NetBSD pkgsrc: /etc/mk.conf must exist.  You can"; \
+		echo "automatically create this file with:"; \
+		echo "    make pkgsrc_conf"; \
+		exit 1; \
+	fi
 	@echo "check: all preqs found"
+
+pkgsrc_fetch:
+	cd /usr
+	cvs -d anoncvs@anoncvs.us.netbsd.org:/cvsroot checkout pkgsrc
+
+pkgsrc_bootstrap:
+	rm -rf /tmp/bootstrap-workdir
+	cd /usr/pkgsrc/bootstrap && ./bootstrap --workdir=/tmp/bootstrap-workdir
+	rm -rf /tmp/bootstrap-workdir
+	fgrep -q LOCALBASE /etc/mk.conf || (echo "you may also have to run make pkgsrc_conf to initialize /etc/mk.conf")
+
+pkgsrc_conf:
+.if !exists(/etc/mk.conf) 
+	cp ${.CURDIR}/mk.conf.pkgsrc /etc/mk.conf
+.else
+	fgrep -q BSD_PKG_MK /etc/mk.conf || cat ${.CURDIR}/mk.conf.pkgsrc >> /etc/mk.conf
+.endif
 
 fetchpkgs:
 .for PKG in ${REL_PACKAGES}
@@ -155,6 +186,8 @@ buildiso:
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
 customizeiso:
+	cd /usr/pkgsrc/bootstrap && ./bootstrap --workdir=${NRLOBJDIR}/nrelease/bootstrap-workdir --prefix=${ISOROOT}/usr/pkg
+	cp ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
@@ -216,6 +249,7 @@ mkiso:
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
 clean:
+	rm -rf /tmp/bootstrap-workdir
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
