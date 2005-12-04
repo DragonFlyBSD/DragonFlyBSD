@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.3 2004/08/02 13:35:02 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.4 2005/12/04 18:07:49 dillon Exp $
  */
 
 /*
@@ -743,6 +743,11 @@ struct re_softc {
  * D-Link DFE-530TX+ device ID
  */
 #define DLINK_DEVICEID_530TXPLUS		0x1300
+
+/*
+ * D-Link DFE-5280T device ID
+ */
+#define DLINK_DEVICEID_528T			0x4300
 
 /*
  * D-Link DFE-690TXD device ID

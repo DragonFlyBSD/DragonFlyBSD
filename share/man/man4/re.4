@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/re.4,v 1.1 2004/07/07 09:47:27 joerg Exp $
+.\" $DragonFly: src/share/man/man4/re.4,v 1.2 2005/12/04 18:07:47 dillon Exp $
 .\"
 .Dd September 4, 2003
 .Dt RE 4
@@ -52,6 +52,8 @@ the following:
 Alloy Computer Products EtherGOLD 1439E 10/100 (8139C+)
 .It
 Compaq Evo N1015v Integrated Ethernet (8139C+)
+.It
+D-Link DGE-528(T) Gigabit Ethernet (8169S)
 .It
 Gigabyte 7N400 Pro2 Integrated Gigabit Ethernet (8110S)
 .It
@@ -205,4 +207,4 @@ user should insure the NIC is installed in a 32-bit PCI slot to
 avoid this problem.
 .Pp
 The RealTek 8169, 8169S and 8110S chips appear to only be capable of
-transmitting jumbo frames up to 7.5K in size.
+transmitting jumbo frames up to 7440 bytes in size.

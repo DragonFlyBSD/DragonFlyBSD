@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.19 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.20 2005/12/04 18:07:49 dillon Exp $
  */
 
 /*
@@ -107,8 +107,8 @@
  * interrupt moderation using the timer interrupt registers, which
  * significantly reduces TX interrupt load. There is also support
  * for jumbo frames, however the 8169/8169S/8110S can not transmit
- * jumbo frames larger than 7.5K, so the max MTU possible with this
- * driver is 7500 bytes.
+ * jumbo frames larger than 7440, so the max MTU possible with this
+ * driver is 7422 bytes.
  */
 
 #include "opt_polling.h"
@@ -165,6 +165,8 @@
  * Various supported device vendors/types and their names.
  */
 static struct re_type re_devs[] = {
+	{ DLINK_VENDORID, DLINK_DEVICEID_528T, RE_HWREV_8169S,
+		"D-Link DGE-528(T) Gigabit Ethernet Adapter" },
 	{ RT_VENDORID, RT_DEVICEID_8139, RE_HWREV_8139CPLUS,
 		"RealTek 8139C+ 10/100BaseTX" },
 	{ RT_VENDORID, RT_DEVICEID_8169, RE_HWREV_8169,
