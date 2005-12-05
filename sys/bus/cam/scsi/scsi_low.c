@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.14 2005/12/05 03:42:31 swildner Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -209,8 +209,7 @@ SCSI_LOW_INLINE void scsi_low_ccb_message_clear (struct slccb *);
 SCSI_LOW_INLINE void scsi_low_init_msgsys (struct scsi_low_softc *, struct targ_info *);
 
 SCSI_LOW_INLINE void
-scsi_low_activate_qtag(cb)
-	struct slccb *cb;
+scsi_low_activate_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
 
@@ -222,8 +221,7 @@ scsi_low_activate_qtag(cb)
 }
 	
 SCSI_LOW_INLINE void
-scsi_low_deactivate_qtag(cb)
-	struct slccb *cb;
+scsi_low_deactivate_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
 
@@ -235,44 +233,33 @@ scsi_low_deactivate_qtag(cb)
 }
 	
 SCSI_LOW_INLINE void
-scsi_low_ccb_message_exec(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_ccb_message_exec(struct scsi_low_softc *slp, struct slccb *cb)
 {
-
 	scsi_low_assert_msg(slp, cb->ti, cb->ccb_msgoutflag, 0);
 	cb->ccb_msgoutflag = 0;
 }
 
 SCSI_LOW_INLINE void
-scsi_low_ccb_message_assert(cb, msg)
-	struct slccb *cb;
-	u_int msg;
+scsi_low_ccb_message_assert(struct slccb *cb, u_int msg)
 {
-
 	cb->ccb_msgoutflag = cb->ccb_omsgoutflag = msg;
 }
 
 SCSI_LOW_INLINE void
-scsi_low_ccb_message_retry(cb)
-	struct slccb *cb;
+scsi_low_ccb_message_retry(struct slccb *cb)
 {
 	cb->ccb_msgoutflag = cb->ccb_omsgoutflag;
 }
 
 SCSI_LOW_INLINE void
-scsi_low_ccb_message_clear(cb)
-	struct slccb *cb;
+scsi_low_ccb_message_clear(struct slccb *cb)
 {
 	cb->ccb_msgoutflag = 0;
 }
 
 SCSI_LOW_INLINE void
-scsi_low_init_msgsys(slp, ti)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
+scsi_low_init_msgsys(struct scsi_low_softc *slp, struct targ_info *ti)
 {
-
 	ti->ti_msginptr = 0;
 	ti->ti_emsgflags = ti->ti_msgflags = ti->ti_omsgflags = 0;
 	SCSI_LOW_DEASSERT_ATN(slp);
@@ -304,10 +291,7 @@ static struct slccb *scsi_low_find_ccb (struct scsi_low_softc *, u_int, u_int, v
 static int scsi_low_translate_error_code (struct slccb *, struct scsi_low_error_code *);
 
 static struct slccb *
-scsi_low_find_ccb(slp, target, lun, osdep)
-	struct scsi_low_softc *slp;
-	u_int target, lun;
-	void *osdep;
+scsi_low_find_ccb(struct scsi_low_softc *slp, u_int target, u_int lun, void *osdep)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -338,11 +322,8 @@ scsi_low_find_ccb(slp, target, lun, osdep)
 }
 
 static int 
-scsi_low_translate_error_code(cb, tp)
-	struct slccb *cb;
-	struct scsi_low_error_code *tp;
+scsi_low_translate_error_code(struct slccb *cb, struct scsi_low_error_code *tp)
 {
-
 	if (cb->ccb_error == 0)
 		return tp->error_code;
 
@@ -403,8 +384,7 @@ struct scsi_low_error_code scsi_low_error_code_cam[] = {
 #define	SCSI_LOW_CAM_POLL_HZ	1000	/* OK ? */
 
 static void
-scsi_low_poll_cam(sim)
-	struct cam_sim *sim;
+scsi_low_poll_cam(struct cam_sim *sim)
 {
 	struct scsi_low_softc *slp = SIM2SLP(sim);
 
@@ -419,18 +399,14 @@ scsi_low_poll_cam(sim)
 }
 
 static void
-scsi_low_cam_rescan_callback(periph, ccb)
-	struct cam_periph *periph;
-	union ccb *ccb;
+scsi_low_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-
 	xpt_free_path(ccb->ccb_h.path);
 	free(ccb, M_DEVBUF);
 }
 
 static void
-scsi_low_rescan_bus_cam(slp)
-	struct scsi_low_softc *slp;
+scsi_low_rescan_bus_cam(struct scsi_low_softc *slp)
 {
   	struct cam_path *path;
 	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT | M_ZERO);
@@ -449,9 +425,7 @@ scsi_low_rescan_bus_cam(slp)
 }
 
 void
-scsi_low_scsi_action_cam(sim, ccb)
-	struct cam_sim *sim;
-	union ccb *ccb;
+scsi_low_scsi_action_cam(struct cam_sim *sim, union ccb *ccb)
 {
 	struct scsi_low_softc *slp = SIM2SLP(sim);
 	struct targ_info *ti;
@@ -851,8 +825,7 @@ settings_out:
 }
 
 static int
-scsi_low_attach_cam(slp)
-	struct scsi_low_softc *slp;
+scsi_low_attach_cam(struct scsi_low_softc *slp)
 {
 	struct cam_devq *devq;
 	int tagged_openings;
@@ -898,20 +871,16 @@ scsi_low_attach_cam(slp)
 }
 
 static int
-scsi_low_world_start_cam(slp)
-	struct scsi_low_softc *slp;
+scsi_low_world_start_cam(struct scsi_low_softc *slp)
 {
-
 	if (!cold)
 		scsi_low_rescan_bus_cam(slp);
 	return 0;
 }
 
 static int
-scsi_low_dettach_cam(slp)
-	struct scsi_low_softc *slp;
+scsi_low_dettach_cam(struct scsi_low_softc *slp)
 {
-
 	xpt_async(AC_LOST_DEVICE, slp->sl_si.path, NULL);
 	xpt_free_path(slp->sl_si.path);
 	xpt_bus_deregister(cam_sim_path(slp->sl_si.sim));
@@ -921,9 +890,7 @@ scsi_low_dettach_cam(slp)
 }
 
 static int
-scsi_low_ccb_setup_cam(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_ccb_setup_cam(struct scsi_low_softc *slp, struct slccb *cb)
 {
         union ccb *ccb = (union ccb *) cb->osdep;
 
@@ -947,9 +914,7 @@ scsi_low_ccb_setup_cam(slp, cb)
 }
 
 static int
-scsi_low_done_cam(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_done_cam(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	union ccb *ccb;
 
@@ -1005,12 +970,8 @@ scsi_low_done_cam(slp, cb)
 }
 
 static void
-scsi_low_timeout_cam(slp, ch, action)
-	struct scsi_low_softc *slp;
-	int ch;
-	int action;
+scsi_low_timeout_cam(struct scsi_low_softc *slp, int ch, int action)
 {
-
 	switch (ch)
 	{
 	case SCSI_LOW_TIMEOUT_CH_IO:
@@ -1047,18 +1008,15 @@ scsi_low_timeout_cam(slp, ch, action)
  * scsi low deactivate and activate
  **************************************************************/
 int
-scsi_low_is_busy(slp)
-	struct scsi_low_softc *slp;
+scsi_low_is_busy(struct scsi_low_softc *slp)
 {
-
 	if (slp->sl_nio > 0)
 		return EBUSY;
 	return 0;
 }
 
 int
-scsi_low_deactivate(slp)
-	struct scsi_low_softc *slp;
+scsi_low_deactivate(struct scsi_low_softc *slp)
 {
 	crit_enter();
 	slp->sl_flags |= HW_INACTIVE;
@@ -1071,8 +1029,7 @@ scsi_low_deactivate(slp)
 }
 
 int
-scsi_low_activate(slp)
-	struct scsi_low_softc *slp;
+scsi_low_activate(struct scsi_low_softc *slp)
 {
 	int error;
 
@@ -1102,18 +1059,13 @@ int);
 static void scsi_low_msg_log_show (struct scsi_low_msg_log *, char *, int);
 
 static void
-scsi_low_msg_log_init(slmlp)
-	struct scsi_low_msg_log *slmlp;
+scsi_low_msg_log_init(struct scsi_low_msg_log *slmlp)
 {
-
 	slmlp->slml_ptr = 0;
 }
 
 static void
-scsi_low_msg_log_write(slmlp, datap, len)
-	struct scsi_low_msg_log *slmlp;
-	u_int8_t *datap;
-	int len;
+scsi_low_msg_log_write(struct scsi_low_msg_log *slmlp, u_int8_t *datap, int len)
 {
 	int ptr, ind;
 
@@ -1128,10 +1080,7 @@ scsi_low_msg_log_write(slmlp, datap, len)
 }
 	
 static void
-scsi_low_msg_log_show(slmlp, s, len)
-	struct scsi_low_msg_log *slmlp;
-	char *s;
-	int len;
+scsi_low_msg_log_show(struct scsi_low_msg_log *slmlp, char *s, int len)
 {
 	int ptr, ind;
 
@@ -1153,8 +1102,7 @@ scsi_low_msg_log_show(slmlp, s, len)
  * power control
  **************************************************************/
 static void
-scsi_low_engage(arg)
-	void *arg;
+scsi_low_engage(void *arg)
 {
 	struct scsi_low_softc *slp = arg;
 
@@ -1182,9 +1130,7 @@ scsi_low_engage(arg)
 }
 
 static int
-scsi_low_init(slp, flags)
-	struct scsi_low_softc *slp;
-	u_int flags;
+scsi_low_init(struct scsi_low_softc *slp, u_int flags)
 {
 	int rv = 0;
 
@@ -1222,10 +1168,7 @@ out:
  * allocate lun_info
  **************************************************************/
 static struct lun_info *
-scsi_low_alloc_li(ti, lun, alloc)
-	struct targ_info *ti;
-	int lun;
-	int alloc;
+scsi_low_alloc_li(struct targ_info *ti, int lun, int alloc)
 {
 	struct scsi_low_softc *slp = ti->ti_sc;
 	struct lun_info *li;
@@ -1283,9 +1226,7 @@ scsi_low_alloc_li(ti, lun, alloc)
  * allocate targ_info
  **************************************************************/
 static struct targ_info *
-scsi_low_alloc_ti(slp, targ)
-	struct scsi_low_softc *slp;
-	int targ;
+scsi_low_alloc_ti(struct scsi_low_softc *slp, int targ)
 {
 	struct targ_info *ti;
 
@@ -1321,8 +1262,7 @@ scsi_low_alloc_ti(slp, targ)
 }
 
 static void
-scsi_low_free_ti(slp)
-	struct scsi_low_softc *slp;
+scsi_low_free_ti(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti, *tib;
 	struct lun_info *li, *nli;
@@ -1354,18 +1294,15 @@ scsi_low_free_ti(slp)
  * timeout
  **************************************************************/
 void
-scsi_low_bus_idle(slp)
-	struct scsi_low_softc *slp;
+scsi_low_bus_idle(struct scsi_low_softc *slp)
 {
-
 	slp->sl_retry_sel = 0;
 	if (slp->sl_Tnexus == NULL)
 		scsi_low_start(slp);
 }
 
 static void
-scsi_low_timeout(arg)
-	void *arg;
+scsi_low_timeout(void *arg)
 {
 	struct scsi_low_softc *slp = arg;
 
@@ -1377,8 +1314,7 @@ scsi_low_timeout(arg)
 }
 
 static int
-scsi_low_timeout_check(slp)
-	struct scsi_low_softc *slp;
+scsi_low_timeout_check(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -1492,9 +1428,7 @@ bus_reset:
 
 
 static int
-scsi_low_abort_ccb(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_abort_ccb(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -1544,9 +1478,8 @@ scsi_low_abort_ccb(slp, cb)
  * Generic SCSI INTERFACE
  **************************************************************/
 int
-scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
-	struct scsi_low_softc *slp;
-	int openings, ntargs, nluns, targsize, lunsize;
+scsi_low_attach(struct scsi_low_softc *slp, int openings, int ntargs, int nluns,
+		int targsize, int lunsize)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -1638,8 +1571,7 @@ scsi_low_attach(slp, openings, ntargs, nluns, targsize, lunsize)
 }
 
 int
-scsi_low_dettach(slp)
-	struct scsi_low_softc *slp;
+scsi_low_dettach(struct scsi_low_softc *slp)
 {
 	int rv;
 
@@ -1669,12 +1601,9 @@ scsi_low_dettach(slp)
  * Generic enqueue
  **************************************************************/
 static int
-scsi_low_enqueue(slp, ti, li, cb, flags, msg)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct lun_info *li;
-	struct slccb *cb;
-	u_int flags, msg;
+scsi_low_enqueue(struct scsi_low_softc *slp, struct targ_info *ti,
+		 struct lun_info *li, struct slccb *cb, u_int flags,
+		 u_int msg)
 {	
 
 	cb->ti = ti;
@@ -1706,11 +1635,8 @@ scsi_low_enqueue(slp, ti, li, cb, flags, msg)
 }
 
 static int
-scsi_low_message_enqueue(slp, ti, li, flags)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct lun_info *li;
-	u_int flags;
+scsi_low_message_enqueue(struct scsi_low_softc *slp, struct targ_info *ti,
+			 struct lun_info *li, u_int flags)
 {
 	struct slccb *cb;
 	u_int tmsgflags;
@@ -1743,10 +1669,8 @@ static int scsi_low_sense_abort_start (struct scsi_low_softc *, struct targ_info
 static int scsi_low_resume (struct scsi_low_softc *);
 
 static void
-scsi_low_unit_ready_cmd(cb)
-	struct slccb *cb;
+scsi_low_unit_ready_cmd(struct slccb *cb)
 {
-
 	cb->ccb_scp.scp_cmd = unit_ready_cmd;
 	cb->ccb_scp.scp_cmdlen = sizeof(unit_ready_cmd);
 	cb->ccb_scp.scp_datalen = 0;
@@ -1755,13 +1679,9 @@ scsi_low_unit_ready_cmd(cb)
 }
 
 static int
-scsi_low_sense_abort_start(slp, ti, li, cb)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct lun_info *li;
-	struct slccb *cb;
+scsi_low_sense_abort_start(struct scsi_low_softc *slp, struct targ_info *ti,
+			   struct lun_info *li, struct slccb *cb)
 {
-
 	cb->ccb_scp.scp_cmdlen = 6;
 	SCSI_LOW_BZERO(cb->ccb_scsi_cmd, cb->ccb_scp.scp_cmdlen);
 	cb->ccb_scsi_cmd[0] = REQUEST_SENSE;
@@ -1788,13 +1708,9 @@ scsi_low_sense_abort_start(slp, ti, li, cb)
 }
 
 static int
-scsi_low_setup_start(slp, ti, li, cb)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct lun_info *li;
-	struct slccb *cb;
+scsi_low_setup_start(struct scsi_low_softc *slp, struct targ_info *ti,
+		     struct lun_info *li, struct slccb *cb)
 {
-
 	switch(li->li_state)
 	{
 	case SCSI_LOW_LUN_SLEEP:
@@ -1835,10 +1751,8 @@ scsi_low_setup_start(slp, ti, li, cb)
 }
 
 static int
-scsi_low_resume(slp)
-	struct scsi_low_softc *slp;
+scsi_low_resume(struct scsi_low_softc *slp)
 {
-
 	if (slp->sl_flags & HW_RESUME)
 		return EJUSTRETURN;
 	slp->sl_flags &= ~HW_POWDOWN;
@@ -1856,8 +1770,7 @@ scsi_low_resume(slp)
 }
 
 static void
-scsi_low_start(slp)
-	struct scsi_low_softc *slp;
+scsi_low_start(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -2004,9 +1917,7 @@ scsi_low_cmd_start:
 }
 
 void
-scsi_low_arbit_fail(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_arbit_fail(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	struct targ_info *ti = cb->ti;
 
@@ -2028,11 +1939,8 @@ scsi_low_arbit_fail(slp, cb)
 }
 
 static void
-scsi_low_bus_release(slp, ti)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
+scsi_low_bus_release(struct scsi_low_softc *slp, struct targ_info *ti)
 {
-
 	if (ti->ti_disc > 0)
 	{
 		SCSI_LOW_SETUP_PHASE(ti, PH_DISC);
@@ -2058,9 +1966,7 @@ scsi_low_bus_release(slp, ti)
 }
 
 static int
-scsi_low_setup_done(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_setup_done(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -2180,9 +2086,7 @@ resume:
 }
 
 static int
-scsi_low_done(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_done(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	int rv;
 
@@ -2337,10 +2241,8 @@ retry:
  * Reset
  **************************************************************/
 static void
-scsi_low_reset_nexus_target(slp, ti, fdone)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	int fdone;
+scsi_low_reset_nexus_target(struct scsi_low_softc *slp, struct targ_info *ti,
+			    int fdone)
 {
 	struct lun_info *li;
 
@@ -2387,9 +2289,7 @@ scsi_low_reset_nexus_target(slp, ti, fdone)
 }
 
 static void
-scsi_low_reset_nexus(slp, fdone)
-	struct scsi_low_softc *slp;
-	int fdone;
+scsi_low_reset_nexus(struct scsi_low_softc *slp, int fdone)
 {
 	struct targ_info *ti;
 	struct slccb *cb, *topcb;
@@ -2430,7 +2330,6 @@ static char tw_chars[] = "|/-\\";
 static void
 scsi_low_twiddle_wait(void)
 {
-
 	cnputc('\b');
 	cnputc(tw_chars[tw_pos++]);
 	tw_pos %= (sizeof(tw_chars) - 1);
@@ -2438,8 +2337,7 @@ scsi_low_twiddle_wait(void)
 }
 
 void
-scsi_low_bus_reset(slp)
-	struct scsi_low_softc *slp;
+scsi_low_bus_reset(struct scsi_low_softc *slp)
 {
 	int i;
 
@@ -2453,10 +2351,7 @@ scsi_low_bus_reset(slp)
 }
 
 int
-scsi_low_restart(slp, flags, s)
-	struct scsi_low_softc *slp;
-	int flags;
-	u_char *s;
+scsi_low_restart(struct scsi_low_softc *slp, int flags, u_char *s)
 {
 	int error;
 
@@ -2476,10 +2371,7 @@ scsi_low_restart(slp, flags, s)
 #define	MSGCMD_LUN(msg)	(msg & 0x07)
 
 static struct slccb *
-scsi_low_establish_ccb(ti, li, tag)
-	struct targ_info *ti;
-	struct lun_info *li;
-	scsi_low_tag_t tag;
+scsi_low_establish_ccb(struct targ_info *ti, struct lun_info *li, scsi_low_tag_t tag)
 {
 	struct scsi_low_softc *slp = ti->ti_sc;
 	struct slccb *cb;
@@ -2538,9 +2430,7 @@ found:
 }
 
 struct targ_info *
-scsi_low_reselected(slp, targ)
-	struct scsi_low_softc *slp;
-	u_int targ;
+scsi_low_reselected(struct scsi_low_softc *slp, u_int targ)
 {
 	struct targ_info *ti;
 	struct slccb *cb;
@@ -2613,9 +2503,7 @@ world_restart:
  * cmd out pointer setup
  **************************************************************/
 int
-scsi_low_cmd(slp, ti)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
+scsi_low_cmd(struct scsi_low_softc *slp, struct targ_info *ti)
 {
 	struct slccb *cb = slp->sl_Qnexus;
 	
@@ -2650,11 +2538,8 @@ scsi_low_cmd(slp, ti)
  * data out pointer setup
  **************************************************************/
 int
-scsi_low_data(slp, ti, bp, direction)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct buf **bp;
-	int direction;
+scsi_low_data(struct scsi_low_softc *slp, struct targ_info *ti,
+	      struct buf **bp, int direction)
 {
 	struct slccb *cb = slp->sl_Qnexus;
 
@@ -2809,8 +2694,7 @@ struct scsi_low_msgin_data scsi_low_msgin_data[] = {
  * msgout
  **************************************************************/
 static int
-scsi_low_msgfunc_synch(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_synch(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	int ptr = ti->ti_msgoutlen;
@@ -2823,8 +2707,7 @@ scsi_low_msgfunc_synch(slp)
 }
 
 static int
-scsi_low_msgfunc_wide(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_wide(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	int ptr = ti->ti_msgoutlen;
@@ -2836,8 +2719,7 @@ scsi_low_msgfunc_wide(slp)
 }
 
 static int
-scsi_low_msgfunc_identify(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_identify(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	struct lun_info *li = slp->sl_Lnexus;
@@ -2873,35 +2755,28 @@ scsi_low_msgfunc_identify(slp)
 }
 
 static int
-scsi_low_msgfunc_abort(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_abort(struct scsi_low_softc *slp)
 {
-
 	SCSI_LOW_SETUP_MSGPHASE(slp, MSGPH_ABORT);
 	return 1;
 }
 
 static int
-scsi_low_msgfunc_qabort(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_qabort(struct scsi_low_softc *slp)
 {
-
 	SCSI_LOW_SETUP_MSGPHASE(slp, MSGPH_TERM);
 	return 1;
 }
 
 static int
-scsi_low_msgfunc_reset(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_reset(struct scsi_low_softc *slp)
 {
-
 	SCSI_LOW_SETUP_MSGPHASE(slp, MSGPH_RESET);
 	return 1;
 }
 
 static int
-scsi_low_msgfunc_qtag(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msgfunc_qtag(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -2928,11 +2803,8 @@ scsi_low_msgfunc_qtag(slp)
  * responces in msgin (after msgout).
  */
 static int
-scsi_low_errfunc_identify(slp, msgflags)
-	struct scsi_low_softc *slp;
-	u_int msgflags;
+scsi_low_errfunc_identify(struct scsi_low_softc *slp, u_int msgflags)
 {
-
 	if (slp->sl_Lnexus != NULL)
 	{
 	        slp->sl_Lnexus->li_cfgflags &= ~SCSI_LOW_DISC;
@@ -2942,9 +2814,7 @@ scsi_low_errfunc_identify(slp, msgflags)
 }
 
 static int
-scsi_low_errfunc_synch(slp, msgflags)
-	struct scsi_low_softc *slp;
-	u_int msgflags;
+scsi_low_errfunc_synch(struct scsi_low_softc *slp, u_int msgflags)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 
@@ -2955,9 +2825,7 @@ scsi_low_errfunc_synch(slp, msgflags)
 }
 
 static int
-scsi_low_errfunc_wide(slp, msgflags)
-	struct scsi_low_softc *slp;
-	u_int msgflags;
+scsi_low_errfunc_wide(struct scsi_low_softc *slp, u_int msgflags)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 
@@ -2967,11 +2835,8 @@ scsi_low_errfunc_wide(slp, msgflags)
 }
 
 static int
-scsi_low_errfunc_qtag(slp, msgflags)
-	struct scsi_low_softc *slp;
-	u_int msgflags;
+scsi_low_errfunc_qtag(struct scsi_low_softc *slp, u_int msgflags)
 {
-
 	if ((msgflags & SCSI_LOW_MSG_REJECT) != 0)
 	{
 		if (slp->sl_Qnexus != NULL)
@@ -2990,10 +2855,7 @@ scsi_low_errfunc_qtag(slp, msgflags)
 
 
 int
-scsi_low_msgout(slp, ti, fl)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_int fl;
+scsi_low_msgout(struct scsi_low_softc *slp, struct targ_info *ti, u_int fl)
 {
 	struct scsi_low_msgout_data *mdp;
 	int len = 0;
@@ -3095,16 +2957,13 @@ scsi_low_msgout(slp, ti, fl)
  * msgin
  **************************************************************/
 static int
-scsi_low_msginfunc_noop(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_noop(struct scsi_low_softc *slp)
 {
-
 	return 0;
 }
 
 static int
-scsi_low_msginfunc_rejop(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_rejop(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	u_int8_t msg = ti->ti_msgin[0];
@@ -3115,8 +2974,7 @@ scsi_low_msginfunc_rejop(slp)
 }
 
 static int
-scsi_low_msginfunc_cc(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_cc(struct scsi_low_softc *slp)
 {
 	struct lun_info *li;
 
@@ -3162,8 +3020,7 @@ scsi_low_msginfunc_cc(slp)
 }
 
 static int
-scsi_low_msginfunc_lcc(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_lcc(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -3248,17 +3105,14 @@ cmd_link_start:
 }
 
 static int
-scsi_low_msginfunc_disc(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_disc(struct scsi_low_softc *slp)
 {
-
 	SCSI_LOW_SETUP_MSGPHASE(slp, MSGPH_DISC);
 	return 0;
 }
 
 static int
-scsi_low_msginfunc_sdp(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_sdp(struct scsi_low_softc *slp)
 {
 	struct slccb *cb = slp->sl_Qnexus;
 
@@ -3273,10 +3127,8 @@ scsi_low_msginfunc_sdp(slp)
 }
 
 static int
-scsi_low_msginfunc_rp(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_rp(struct scsi_low_softc *slp)
 {
-
 	if (slp->sl_Qnexus != NULL)
 		slp->sl_scp = slp->sl_Qnexus->ccb_sscp;
 	else
@@ -3285,8 +3137,7 @@ scsi_low_msginfunc_rp(slp)
 }
 
 static int
-scsi_low_synch(slp)
-	struct scsi_low_softc *slp;
+scsi_low_synch(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	u_int period = 0, offset = 0, speed;
@@ -3360,8 +3211,7 @@ scsi_low_synch(slp)
 }
 
 static int
-scsi_low_wide(slp)
-	struct scsi_low_softc *slp;
+scsi_low_wide(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	int error;
@@ -3403,8 +3253,7 @@ scsi_low_wide(slp)
 }
 
 static int
-scsi_low_msginfunc_simple_qtag(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_simple_qtag(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	scsi_low_tag_t etag = (scsi_low_tag_t) ti->ti_msgin[1];
@@ -3433,8 +3282,7 @@ scsi_low_msginfunc_simple_qtag(slp)
 }
 
 static int
-scsi_low_msginfunc_i_wide_residue(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_i_wide_residue(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -3455,8 +3303,7 @@ scsi_low_msginfunc_i_wide_residue(slp)
 }
 
 static int
-scsi_low_msginfunc_ext(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_ext(struct scsi_low_softc *slp)
 {
 	struct slccb *cb = slp->sl_Qnexus;
 	struct lun_info *li = slp->sl_Lnexus;
@@ -3521,8 +3368,7 @@ scsi_low_msginfunc_ext(slp)
 }
 
 static int
-scsi_low_msginfunc_parity(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_parity(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 
@@ -3532,8 +3378,7 @@ scsi_low_msginfunc_parity(slp)
 }
 
 static int
-scsi_low_msginfunc_msg_reject(slp)
-	struct scsi_low_softc *slp;
+scsi_low_msginfunc_msg_reject(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti = slp->sl_Tnexus;
 	struct scsi_low_msgout_data *mdp;
@@ -3566,10 +3411,7 @@ scsi_low_msginfunc_msg_reject(slp)
 }
 
 int
-scsi_low_msgin(slp, ti, c)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_int c;
+scsi_low_msgin(struct scsi_low_softc *slp, struct targ_info *ti, u_int c)
 {
 	struct scsi_low_msgin_data *sdp;
 	struct lun_info *li;
@@ -3710,9 +3552,7 @@ out:
  * disconnect
  **********************************************************/
 int
-scsi_low_disconnected(slp, ti)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
+scsi_low_disconnected(struct scsi_low_softc *slp, struct targ_info *ti)
 {
 	struct slccb *cb = slp->sl_Qnexus;
 
@@ -3807,8 +3647,7 @@ io_resume:
  * TAG operations
  **********************************************************/
 int
-scsi_low_alloc_qtag(cb)
-	struct slccb *cb;
+scsi_low_alloc_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
 	scsi_low_tag_t etag;
@@ -3844,8 +3683,7 @@ found:
 }
 	
 int
-scsi_low_dealloc_qtag(cb)
-	struct slccb *cb;
+scsi_low_dealloc_qtag(struct slccb *cb)
 {
 	struct lun_info *li = cb->li;
 	scsi_low_tag_t etag;
@@ -3875,10 +3713,7 @@ scsi_low_dealloc_qtag(cb)
 }
 
 struct slccb *
-scsi_low_revoke_ccb(slp, cb, fdone)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
-	int fdone;
+scsi_low_revoke_ccb(struct scsi_low_softc *slp, struct slccb *cb, int fdone)
 {
 	struct targ_info *ti = cb->ti;
 	struct lun_info *li = cb->li;
@@ -3928,10 +3763,7 @@ scsi_low_revoke_ccb(slp, cb, fdone)
 }
 
 void
-scsi_low_reset_nexus_lun(slp, li, fdone)
-	struct scsi_low_softc *slp;
-	struct lun_info *li;
-	int fdone;
+scsi_low_reset_nexus_lun(struct scsi_low_softc *slp, struct lun_info *li, int fdone)
 {
 	struct slccb *cb, *ncb, *ecb;
 
@@ -3968,8 +3800,7 @@ scsi_low_reset_nexus_lun(slp, li, fdone)
  * Qurik setup
  **************************************************************/
 static void
-scsi_low_calcf_lun(li)
-	struct lun_info *li;
+scsi_low_calcf_lun(struct lun_info *li)
 {
 	struct targ_info *ti = li->li_ti;
 	struct scsi_low_softc *slp = ti->ti_sc;
@@ -4032,8 +3863,7 @@ scsi_low_calcf_lun(li)
 }
 
 static void
-scsi_low_calcf_target(ti)
-	struct targ_info *ti;
+scsi_low_calcf_target(struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = ti->ti_sc;
 	u_int offset, period, diskflags;
@@ -4091,8 +3921,7 @@ scsi_low_calcf_target(ti)
 }
 
 static void
-scsi_low_calcf_show(li)
-	struct lun_info *li;
+scsi_low_calcf_show(struct lun_info *li)
 {
 	struct targ_info *ti = li->li_ti;
 	struct scsi_low_softc *slp = ti->ti_sc;
@@ -4112,8 +3941,7 @@ scsi_low_calcf_show(li)
 static int scsi_low_poll (struct scsi_low_softc *, struct slccb *);
 
 static int
-scsi_low_start_up(slp)
-	struct scsi_low_softc *slp;
+scsi_low_start_up(struct scsi_low_softc *slp)
 {
 	struct targ_info *ti;
 	struct lun_info *li;
@@ -4174,9 +4002,7 @@ scsi_low_start_up(slp)
 }
 
 static int
-scsi_low_poll(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_poll(struct scsi_low_softc *slp, struct slccb *cb)
 {
 	int tcount;
 
@@ -4202,10 +4028,8 @@ scsi_low_poll(slp, cb)
  **********************************************************/
 #ifdef	SCSI_LOW_DEBUG
 static void
-scsi_low_test_abort(slp, ti, li)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	struct lun_info *li;
+scsi_low_test_abort(struct scsi_low_softc *slp, struct targ_info *ti,
+		    struct lun_info *li)
 {
 	struct slccb *acb;
 
@@ -4221,12 +4045,8 @@ scsi_low_test_abort(slp, ti, li)
 }
 
 static void
-scsi_low_test_atten(slp, ti, msg)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_int msg;
+scsi_low_test_atten(struct scsi_low_softc *slp, struct targ_info *ti, u_int msg)
 {
-
 	if (slp->sl_ph_count < SCSI_LOW_MAX_ATTEN_CHECK)
 		scsi_low_assert_msg(slp, ti, msg, 0);
 	else
@@ -4234,9 +4054,7 @@ scsi_low_test_atten(slp, ti, msg)
 }
 
 static void
-scsi_low_test_cmdlnk(slp, cb)
-	struct scsi_low_softc *slp;
-	struct slccb *cb;
+scsi_low_test_cmdlnk(struct scsi_low_softc *slp, struct slccb *cb)
 {
 #define	SCSI_LOW_CMDLNK_NOK	(CCB_INTERNAL | CCB_SENSE | CCB_CLEARQ)
 
@@ -4251,12 +4069,8 @@ scsi_low_test_cmdlnk(slp, cb)
 #endif	/* SCSI_LOW_DEBUG */
 
 /* static */ void
-scsi_low_info(slp, ti, s)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_char *s;
+scsi_low_info(struct scsi_low_softc *slp, struct targ_info *ti, u_char *s)
 {
-
 	if (slp == NULL)
 		slp = LIST_FIRST(&sl_tab);
 	if (s == NULL)
@@ -4284,9 +4098,7 @@ static u_char *phase[] =
 };
 
 void
-scsi_low_print(slp, ti)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
+scsi_low_print(struct scsi_low_softc *slp, struct targ_info *ti)
 {
 	struct lun_info *li;
 	struct slccb *cb;

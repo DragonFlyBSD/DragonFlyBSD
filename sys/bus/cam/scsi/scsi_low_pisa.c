@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low_pisa.c,v 1.2.2.4 2001/12/17 13:30:20 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.5 2004/09/17 01:50:06 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.6 2005/12/05 03:42:31 swildner Exp $	*/
 /*	$NecBSD: scsi_low_pisa.c,v 1.13 1998/11/26 14:26:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -46,21 +46,16 @@
 #include <bus/cam/scsi/scsi_low_pisa.h>
 
 int
-scsi_low_deactivate_pisa(sc)
-	struct scsi_low_softc *sc;
+scsi_low_deactivate_pisa(struct scsi_low_softc *sc)
 {
-
 	if (scsi_low_deactivate(sc) != 0)
 		return EBUSY;
 	return 0;
 }
 
 int
-scsi_low_activate_pisa(sc, flags)
-	struct scsi_low_softc *sc;
-	int flags;
+scsi_low_activate_pisa(struct scsi_low_softc *sc, int flags)
 {
-
 	sc->sl_cfgflags = ((sc->sl_cfgflags & 0xffff0000) |
 			   (flags & 0x00ff));
 

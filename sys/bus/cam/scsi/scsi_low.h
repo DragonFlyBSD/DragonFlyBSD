@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.8 2005/06/02 20:40:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.9 2005/12/05 03:42:31 swildner Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -706,28 +706,21 @@ static __inline int scsi_low_assert_msg (struct scsi_low_softc *, struct targ_in
 static __inline int scsi_low_is_disconnect_ok (struct slccb *);
 
 static __inline int
-scsi_low_is_msgout_continue(ti, mask)
-	struct targ_info *ti;
-	u_int mask;
+scsi_low_is_msgout_continue(struct targ_info *ti, u_int mask)
 {
-	
 	return ((ti->ti_msgflags & (~mask)) != 0);
 }
 
 static __inline int
-scsi_low_is_disconnect_ok(cb)
-	struct slccb *cb;
+scsi_low_is_disconnect_ok(struct slccb *cb)
 {
-
 	return ((cb->li->li_flags & SCSI_LOW_DISC) != 0 &&
 		    (cb->ccb_flags & (CCB_SENSE | CCB_CLEARQ)) == 0);
 }
 
 static __inline void
-scsi_low_attention(slp)
-	struct scsi_low_softc *slp;
+scsi_low_attention(struct scsi_low_softc *slp)
 {
-
 	if (slp->sl_atten != 0)
 		return;
 
@@ -736,13 +729,8 @@ scsi_low_attention(slp)
 }
 
 static __inline int
-scsi_low_assert_msg(slp, ti, msg, now)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_int msg;
-	int now;
+scsi_low_assert_msg(struct scsi_low_softc *slp, struct targ_info *ti, u_int msg, int now)
 {
-
 	ti->ti_msgflags |= msg;
 	if (now != 0)
 		scsi_low_attention(slp);
@@ -750,18 +738,14 @@ scsi_low_assert_msg(slp, ti, msg, now)
 }
 
 static __inline void
-scsi_low_arbit_win(slp)
-	struct scsi_low_softc *slp;
+scsi_low_arbit_win(struct scsi_low_softc *slp)
 {
-
 	slp->sl_selid = NULL;
 }
 
 static __inline void
-scsi_low_data_finish(slp)
-	struct scsi_low_softc *slp;
+scsi_low_data_finish(struct scsi_low_softc *slp)
 {
-
 	if (slp->sl_Qnexus != NULL)
 	{
 		slp->sl_Qnexus->ccb_datalen = slp->sl_scp.scp_datalen;
@@ -769,12 +753,8 @@ scsi_low_data_finish(slp)
 }
 
 static __inline int
-scsi_low_statusin(slp, ti, c)
-	struct scsi_low_softc *slp;
-	struct targ_info *ti;
-	u_int c;
+scsi_low_statusin(struct scsi_low_softc *slp, struct targ_info *ti, u_int c)
 {
-
 	slp->sl_ph_count ++;
 	if ((c & SCSI_LOW_DATA_PE) != 0)
 	{
