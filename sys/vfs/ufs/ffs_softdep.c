@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.31 2005/11/16 17:55:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.32 2005/12/05 06:13:16 dillon Exp $
  */
 
 /*
@@ -1837,10 +1837,12 @@ softdep_setup_freeblocks(ip, length)
 
 	info.fs = fs;
 	info.ip = ip;
+	crit_enter();
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 				softdep_setup_freeblocks_bp, &info);
-	} while (count > 0);
+	} while (count != 0);
+	crit_exit();
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) != 0)
 		(void)free_inodedep(inodedep);
 
@@ -1873,8 +1875,15 @@ softdep_setup_freeblocks_bp(struct buf *bp, void *data)
 	struct softdep_setup_freeblocks_info *info = data;
 	struct inodedep *inodedep;
 
-	if (getdirtybuf(&bp, MNT_WAIT) == 0)
+	if (getdirtybuf(&bp, MNT_WAIT) == 0) {
+		printf("softdep_setup_freeblocks_bp(1): caught bp %p going away\n", bp);
 		return(-1);
+	}
+	if (bp->b_vp != ITOV(info->ip) || (bp->b_flags & B_DELWRI) == 0) {
+		printf("softdep_setup_freeblocks_bp(2): caught bp %p going away\n", bp);
+		BUF_UNLOCK(bp);
+		return(-1);
+	}
 	(void) inodedep_lookup(info->fs, info->ip->i_number, 0, &inodedep);
 	deallocate_dependencies(bp, inodedep);
 	bp->b_flags |= B_INVAL | B_NOCACHE;
@@ -4103,8 +4112,10 @@ softdep_fsync_mountdev(vp)
 	if (!vn_isdisk(vp, NULL))
 		panic("softdep_fsync_mountdev: vnode not a disk");
 	ACQUIRE_LOCK(&lk);
+	crit_enter();
 	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
-		softdep_fsync_mountdev_bp, NULL);
+		softdep_fsync_mountdev_bp, vp);
+	crit_exit();
 	drain_output(vp, 1);
 	FREE_LOCK(&lk);
 }
@@ -4113,15 +4124,17 @@ static int
 softdep_fsync_mountdev_bp(struct buf *bp, void *data)
 {
 	struct worklist *wk;
+	struct vnode *vp = data;
 
 	/* 
 	 * If it is already scheduled, skip to the next buffer.
 	 */
 	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
 		return(0);
-	if ((bp->b_flags & B_DELWRI) == 0) {
-		FREE_LOCK(&lk);
-		panic("softdep_fsync_mountdev: not dirty");
+	if (bp->b_vp != vp || (bp->b_flags & B_DELWRI) == 0) {
+		BUF_UNLOCK(bp);
+		printf("softdep_fsync_mountdev_bp: warning, buffer %p ripped out from under vnode %p\n", bp, vp);
+		return(0);
 	}
 	/*
 	 * We are only interested in bitmaps with outstanding
@@ -4204,8 +4217,10 @@ top:
 	drain_output(vp, 1);
 	info.vp = vp;
 	info.waitfor = waitfor;
+	crit_enter();
 	error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 			softdep_sync_metadata_bp, &info);
+	crit_exit();
 	if (error < 0) {
 		FREE_LOCK(&lk);
 		return(-error);	/* error code */
@@ -4264,8 +4279,15 @@ softdep_sync_metadata_bp(struct buf *bp, void *data)
 	int error;
 	int i;
 
-	if (getdirtybuf(&bp, MNT_WAIT) == 0)
-		return (0);
+	if (getdirtybuf(&bp, MNT_WAIT) == 0) {
+		printf("softdep_sync_metadata_bp(1): caught buf %p going away\n", bp);
+		return (1);
+	}
+	if (bp->b_vp != info->vp || (bp->b_flags & B_DELWRI) == 0) {
+		printf("softdep_sync_metadata_bp(2): caught buf %p going away vp %p\n", bp, info->vp);
+		BUF_UNLOCK(bp);
+		return(1);
+	}
 
 	/*
 	 * As we hold the buffer locked, none of its dependencies
