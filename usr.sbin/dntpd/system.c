@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.7 2005/09/13 18:13:11 dillon Exp $
+ * $DragonFly: src/usr.sbin/dntpd/system.c,v 1.8 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include "defs.h"
@@ -49,7 +49,7 @@
  * intact.
  */
 void
-sysntp_clear_alternative_corrections()
+sysntp_clear_alternative_corrections(void)
 {
     struct timex ntp;
     int64_t offset;

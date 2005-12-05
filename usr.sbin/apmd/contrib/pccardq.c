@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.sbin/apmd/contrib/pccardq.c,v 1.2 1999/08/28 05:11:25 peter Exp $ */
-/* $DragonFly: src/usr.sbin/apmd/contrib/pccardq.c,v 1.2 2003/06/17 04:29:52 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/apmd/contrib/pccardq.c,v 1.3 2005/12/05 01:04:00 swildner Exp $ */
 
 #include <err.h>
 #include <errno.h>
@@ -21,7 +21,7 @@ const char     *tmp_dir = "/tmp";
 unsigned        slot_map = ~0;
 
 void
-usage()
+usage(void)
 {
     fprintf(stderr, "usage: %s [-a] [-n] [-s slot]\n", prog);
 }
@@ -211,7 +211,7 @@ get_slot_info(int so, int slot, char **manuf, char **version, char
     return rc;
 }
 
-const char     *
+const char *
 strstate(int state)
 {
     switch (state) {

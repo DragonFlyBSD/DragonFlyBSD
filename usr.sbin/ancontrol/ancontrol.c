@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
- * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.5 2003/11/15 20:33:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.6 2005/12/05 01:04:00 swildner Exp $
  *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
  * @(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp
@@ -134,7 +134,8 @@ int main		(int, char **);
 
 #define ACT_DUMPRSSIMAP 39
 
-static int an_getval(const char *iface, struct an_req *areq)
+static int
+an_getval(const char *iface, struct an_req *areq)
 {
 	struct ifreq		ifr;
 	int			s, okay = 1;
@@ -159,7 +160,8 @@ static int an_getval(const char *iface, struct an_req *areq)
 	return okay;
 }
 
-static void an_setval(const char *iface, struct an_req *areq)
+static void
+an_setval(const char *iface, struct an_req *areq)
 {
 	struct ifreq		ifr;
 	int			s;
@@ -182,7 +184,8 @@ static void an_setval(const char *iface, struct an_req *areq)
 	return;
 }
 
-static void an_printstr(char *str, int len)
+static void
+an_printstr(char *str, int len)
 {
 	int			i;
 
@@ -196,7 +199,8 @@ static void an_printstr(char *str, int len)
 	return;
 }
 
-static void an_printwords(u_int16_t *w, int len)
+static void
+an_printwords(u_int16_t *w, int len)
 {
 	int			i;
 
@@ -208,7 +212,8 @@ static void an_printwords(u_int16_t *w, int len)
 	return;
 }
 
-static void an_printspeeds(u_int8_t *w, int len)
+static void
+an_printspeeds(u_int8_t *w, int len)
 {
 	int			i;
 
@@ -220,7 +225,8 @@ static void an_printspeeds(u_int8_t *w, int len)
 	return;
 }
 
-static void an_printbool(int val)
+static void
+an_printbool(int val)
 {
 	if (val)
 		printf("[ On ]");
@@ -230,7 +236,8 @@ static void an_printbool(int val)
 	return;
 }
 
-static void an_printhex(char *ptr, int len)
+static void
+an_printhex(char *ptr, int len)
 {
 	int			i;
 
@@ -245,7 +252,8 @@ static void an_printhex(char *ptr, int len)
 	return;
 }
 
-static void an_dumpstatus(const char *iface)
+static void
+an_dumpstatus(const char *iface)
 {
 	struct an_ltv_status	*sts;
 	struct an_req		areq;
@@ -349,7 +357,8 @@ static void an_dumpstatus(const char *iface)
 	return;
 }
 
-static void an_dumpcaps(const char *iface)
+static void
+an_dumpcaps(const char *iface)
 {
 	struct an_ltv_caps	*caps;
 	struct an_req		areq;
@@ -433,7 +442,8 @@ static void an_dumpcaps(const char *iface)
 	return;
 }
 
-static void an_dumpstats(const char *iface)
+static void
+an_dumpstats(const char *iface)
 {
 	struct an_ltv_stats	*stats;
 	struct an_req		areq;
@@ -599,7 +609,8 @@ static void an_dumpstats(const char *iface)
 	return;
 }
 
-static void an_dumpap(const char *iface)
+static void
+an_dumpap(const char *iface)
 {
 	struct an_ltv_aplist	*ap;
 	struct an_req		areq;
@@ -623,7 +634,8 @@ static void an_dumpap(const char *iface)
 	return;
 }
 
-static void an_dumpssid(const char *iface)
+static void
+an_dumpssid(const char *iface)
 {
 	struct an_ltv_ssidlist	*ssid;
 	struct an_req		areq;
@@ -641,7 +653,8 @@ static void an_dumpssid(const char *iface)
 	return;
 }
 
-static void an_dumpconfig(const char *iface)
+static void
+an_dumpconfig(const char *iface)
 {
 	struct an_ltv_genconfig	*cfg;
 	struct an_req		areq;
@@ -847,7 +860,8 @@ static void an_dumpconfig(const char *iface)
 	return;
 }
 
-static void an_dumprssimap(const char *iface)
+static void
+an_dumprssimap(const char *iface)
 {
 	struct an_ltv_rssi_map	*rssi;
 	struct an_req		areq;
@@ -875,7 +889,8 @@ static void an_dumprssimap(const char *iface)
 	return;
 }
 
-static void usage(char *p)
+static void
+usage(char *p)
 {
 	fprintf(stderr, "usage:  %s -i iface -A (show specified APs)\n", p);
 	fprintf(stderr, "\t%s -i iface -N (show specified SSIDss)\n", p);
@@ -915,7 +930,8 @@ static void usage(char *p)
 	exit(1);
 }
 
-static void an_setconfig(const char *iface, int act, void *arg)
+static void
+an_setconfig(const char *iface, int act, void *arg)
 {
 	struct an_ltv_genconfig	*cfg;
 	struct an_ltv_caps	*caps;
@@ -1054,7 +1070,8 @@ static void an_setconfig(const char *iface, int act, void *arg)
 	exit(0);
 }
 
-static void an_setspeed(const char *iface, int act __unused, void *arg)
+static void
+an_setspeed(const char *iface, int act __unused, void *arg)
 {
 	struct an_req		areq;
 	struct an_ltv_caps	*caps;
@@ -1099,7 +1116,8 @@ static void an_setspeed(const char *iface, int act __unused, void *arg)
 	exit(0);
 }
 
-static void an_setap(const char *iface, int act, void *arg)
+static void
+an_setap(const char *iface, int act, void *arg)
 {
 	struct an_ltv_aplist	*ap;
 	struct an_req		areq;
@@ -1142,7 +1160,8 @@ static void an_setap(const char *iface, int act, void *arg)
 	exit(0);
 }
 
-static void an_setssid(const char *iface, int act, void *arg)
+static void
+an_setssid(const char *iface, int act, void *arg)
 {
 	struct an_ltv_ssidlist	*ssid;
 	struct an_req		areq;
@@ -1179,7 +1198,8 @@ static void an_setssid(const char *iface, int act, void *arg)
 }
 
 #ifdef ANCACHE
-static void an_zerocache(const char *iface)
+static void
+an_zerocache(const char *iface)
 {
 	struct an_req		areq;
 
@@ -1192,7 +1212,8 @@ static void an_zerocache(const char *iface)
 	return;
 }
 
-static void an_readcache(const char *iface)
+static void
+an_readcache(const char *iface)
 {
 	struct an_req		areq;
 	int 			*an_sigitems;
@@ -1238,7 +1259,8 @@ static void an_readcache(const char *iface)
 }
 #endif
 
-static int an_hex2int(char c)
+static int
+an_hex2int(char c)
 {
 	if (c >= '0' && c <= '9')
 		return (c - '0');
@@ -1250,7 +1272,8 @@ static int an_hex2int(char c)
 	return (0); 
 }
 
-static void an_str2key(char *s, struct an_ltv_key *k)
+static void
+an_str2key(char *s, struct an_ltv_key *k)
 {
 	int			n, i;
 	char			*p;
@@ -1276,7 +1299,8 @@ static void an_str2key(char *s, struct an_ltv_key *k)
 	return;
 }
 
-static void an_setkeys(const char *iface, char *key, int keytype)
+static void
+an_setkeys(const char *iface, char *key, int keytype)
 {
 	struct an_req		areq;
 	struct an_ltv_key	*k;
@@ -1321,7 +1345,8 @@ static void an_setkeys(const char *iface, char *key, int keytype)
 	return;
 }
 
-static void an_readkeyinfo(const char *iface)
+static void
+an_readkeyinfo(const char *iface)
 {
 	struct an_req		areq;
 	struct an_ltv_genconfig	*cfg;
@@ -1373,7 +1398,8 @@ static void an_readkeyinfo(const char *iface)
 	return;
 }
 
-static void an_enable_tx_key(const char *iface, char *arg)
+static void
+an_enable_tx_key(const char *iface, char *arg)
 {
 	struct an_req		areq;
 	struct an_ltv_key	*k;
@@ -1416,7 +1442,8 @@ static void an_enable_tx_key(const char *iface, char *arg)
 	return;
 }
 
-static void an_enable_leap_mode(const char *iface, char *username)
+static void
+an_enable_leap_mode(const char *iface, char *username)
 {
 	struct an_req		areq;
 	struct an_ltv_status	*sts;
@@ -1510,7 +1537,8 @@ static void an_enable_leap_mode(const char *iface, char *username)
 	}
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	int			ch;
 	int			act = 0;

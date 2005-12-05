@@ -25,7 +25,7 @@
  *
  *	$Id: acpiconf.c,v 1.5 2000/08/08 14:12:19 iwasaki Exp $
  *	$FreeBSD: src/usr.sbin/acpi/acpiconf/acpiconf.c,v 1.14 2004/03/05 02:48:22 takawata Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpiconf/acpiconf.c,v 1.1 2004/07/05 00:22:43 dillon Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpiconf/acpiconf.c,v 1.2 2005/12/05 01:04:00 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 static int	acpifd;
 
 static int
-acpi_init()
+acpi_init(void)
 {
 	acpifd = open(ACPIDEV, O_RDWR);
 	if (acpifd == -1){

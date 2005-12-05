@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.1 2005/03/06 05:02:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.2 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -153,7 +153,7 @@ extern char *__progname;
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage:  %s iface\n"
+	fprintf(stderr, "usage:  %s iface\n"
 	    "\t%s iface -d path [-m bss|ibss]\n"
 	    "\t%s iface -k\n"
 	    "\t%s iface -r\n", __progname, __progname, __progname,
@@ -172,12 +172,12 @@ do_req(const char *iface, unsigned long req, void *data)
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		err(EX_OSERR, "Can't create socket");
 
-	(void)memset(&ifr, 0, sizeof ifr);
-	(void)strncpy(ifr.ifr_name, iface, sizeof ifr.ifr_name);
+	memset(&ifr, 0, sizeof ifr);
+	strncpy(ifr.ifr_name, iface, sizeof ifr.ifr_name);
 	ifr.ifr_data = data;
 	error = ioctl(s, req, &ifr);
 
-	(void)close(s);
+	close(s);
 
 	return error;
 }
@@ -202,7 +202,7 @@ mmap_file(const char *filename, char **addr, size_t *len)
 	*addr += sizeof (struct header);
 	*len -= sizeof (struct header);
 
-	(void)close(fd);
+	close(fd);
 }
 
 static void
@@ -211,14 +211,14 @@ load_firmware(const char *iface, const char *path, const char *mode)
 	char filename[FILENAME_MAX];
 	struct firmware fw;
 
-	(void)snprintf(filename, sizeof filename, "%s/iwi-boot.fw", path);
+	snprintf(filename, sizeof filename, "%s/iwi-boot.fw", path);
 	mmap_file(filename, &fw.boot, &fw.boot_size);
 
-	(void)snprintf(filename, sizeof filename, "%s/iwi-ucode-%s.fw", path,
+	snprintf(filename, sizeof filename, "%s/iwi-ucode-%s.fw", path,
 	    mode);
 	mmap_file(filename, &fw.ucode, &fw.ucode_size);
 
-	(void)snprintf(filename, sizeof filename, "%s/iwi-%s.fw", path, mode);
+	snprintf(filename, sizeof filename, "%s/iwi-%s.fw", path, mode);
 	mmap_file(filename, &fw.main, &fw.main_size);
 
 	if (do_req(iface, strstr(mode,"ibss") 
@@ -241,7 +241,7 @@ dump_debug(const char *iface)
 	snprintf(oid_name, sizeof oid_name, "hw.%s.firmware_logs", iface );
 	if (sysctlbyname(oid_name, 0, 0, &dump, len) == -1)
 		err(EX_OSERR, "Can't dump firmware logs");
-	(void)printf("All firmware logs dumped.\n");
+	printf("All firmware logs dumped.\n");
 }
 
 
@@ -256,7 +256,7 @@ get_radio_state(const char *iface)
 	if (sysctlbyname(oid_name, &radio, &len, NULL, 0) == -1)
 		err(EX_OSERR, "Can't get radio transmitter state");
 
-	(void)printf("Radio is %s\n", radio ? "ON" : "OFF");
+	printf("Radio is %s\n", radio ? "ON" : "OFF");
 }
 
 struct statistic {
@@ -335,6 +335,6 @@ get_statistics(const char *iface)
 		err(EX_OSERR, "Can't retrieve statistics");
 
 	for (stt = tbl; stt->index != 0; stt++)
-		(void)printf("%-60s[%u]\n", stt->desc, stats[stt->index]);
+		printf("%-60s[%u]\n", stt->desc, stats[stt->index]);
 }
 

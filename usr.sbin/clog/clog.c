@@ -25,7 +25,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $Id: clog.c,v 1.3 2001/10/02 18:51:26 jdw Exp $
- * $DragonFly: src/usr.sbin/clog/clog.c,v 1.2 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/clog/clog.c,v 1.3 2005/12/05 01:04:00 swildner Exp $
  */
 
 
@@ -57,13 +57,15 @@
  */
 #define BUFFER_SIZE 16384
 
-void init_log __P((const char *lname, size_t size));
-void read_log __P((const char *lname, int optf));
-void usage __P((void));
+void init_log(const char *lname, size_t size);
+void read_log(const char *lname, int optf);
+void usage(void);
 
 const char *pname;
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv)
+{
 	int ch;
 	int init = 0;
 	int size = 0;
@@ -109,13 +111,17 @@ int main(int argc, char **argv) {
 }
 
 
-void usage() {
+void
+usage(void)
+{
   fprintf(stderr,"usage: %s [-i -s log_size] [ -f ] log_file\n",pname);
   exit(1);
 }
 
 
-void read_log(const char *lname, int optf) {
+void
+read_log(const char *lname, int optf)
+{
 	int fd;
 	struct stat sb;
 	struct clog_footer *pcf;
@@ -176,7 +182,9 @@ void read_log(const char *lname, int optf) {
 }
 
 
-void init_log(const char *lname, size_t size) {
+void
+init_log(const char *lname, size_t size)
+{
 	int fd;
 	size_t fill = size;
 	char buffer[BUFFER_SIZE];

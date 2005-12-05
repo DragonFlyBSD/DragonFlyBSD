@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $
- * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.5 2004/03/20 16:27:42 drhodus Exp $
+ * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.6 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -80,8 +80,8 @@ static void prepare_key(unsigned char *key_data_ptr,int key_data_len,
 static void arcfour(unsigned char *buffer_ptr,int buffer_len,arcfour_key * key);
 static void swap_byte(unsigned char *a, unsigned char *b);
 
-static void prepare_key(unsigned char *key_data_ptr, int key_data_len,
-		 arcfour_key *key)
+static void
+prepare_key(unsigned char *key_data_ptr, int key_data_len, arcfour_key *key)
 {
    unsigned char index1;
    unsigned char index2;
@@ -105,7 +105,8 @@ static void prepare_key(unsigned char *key_data_ptr, int key_data_len,
    }       
 }
 
-static void arcfour(unsigned char *buffer_ptr, int buffer_len, arcfour_key *key)
+static void
+arcfour(unsigned char *buffer_ptr, int buffer_len, arcfour_key *key)
 { 
    unsigned char x;
    unsigned char y;
@@ -131,7 +132,8 @@ static void arcfour(unsigned char *buffer_ptr, int buffer_len, arcfour_key *key)
    key->y = y;
 }
 
-static void swap_byte(unsigned char *a, unsigned char *b)
+static void
+swap_byte(unsigned char *a, unsigned char *b)
 {
    unsigned char swapByte; 
    
@@ -141,7 +143,8 @@ static void swap_byte(unsigned char *a, unsigned char *b)
 }
 
 /* Dummy _des_crypt function that uses ARCFOUR with a 40 bit key */
-int _arcfour_crypt(char *buf, int len, struct desparams *desp)
+int
+_arcfour_crypt(char *buf, int len, struct desparams *desp)
 {
 	struct arcfour_key arcfourk;
 
@@ -169,7 +172,8 @@ static void *dlhandle;
 #define LIBCRYPTO "libcrypto.so.1"
 #endif
 
-void load_des(int warn, char *libpath)
+void
+load_des(int warn, char *libpath)
 {
 	char dlpath[MAXPATHLEN];
 

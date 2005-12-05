@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $Id: ipwcontrol.c,v 1.5.2.1 2005/01/13 20:01:05 damien Exp $
- * $DragonFly: src/usr.sbin/ipwcontrol/Attic/ipwcontrol.c,v 1.2 2005/07/08 13:17:33 joerg Exp $
+ * $DragonFly: src/usr.sbin/ipwcontrol/Attic/ipwcontrol.c,v 1.3 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -128,12 +128,12 @@ do_req(const char *iface, unsigned long req, void *data)
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		err(EX_OSERR, "Can't create socket");
 
-	(void)memset(&ifr, 0, sizeof(ifr));
-	(void)strncpy(ifr.ifr_name, iface, sizeof(ifr.ifr_name));
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, iface, sizeof(ifr.ifr_name));
 	ifr.ifr_data = data;
 	error = ioctl(s, req, &ifr);
 
-	(void)close(s);
+	close(s);
 
 	return error;
 }
@@ -157,8 +157,8 @@ load_firmware(const char *iface, const char *firmware)
 	if (do_req(iface, SIOCSLOADFW, map) == -1)
 		err(EX_OSERR, "Can't load %s to driver", firmware);
 
-	(void)munmap(map, st.st_size);
-	(void)close(fd);
+	munmap(map, st.st_size);
+	close(fd);
 }
 
 static void
@@ -182,7 +182,7 @@ get_radio_state(const char *iface)
 	if (sysctlbyname(sysctl_name, &radio, &len, NULL, 0) == -1)
 		err(EX_OSERR, "Could not get radio transmitter state");
 
-	(void)printf("Radio is %s\n", radio ? "ON" : "OFF");
+	printf("Radio is %s\n", radio ? "ON" : "OFF");
 }
 
 struct statistic {
@@ -390,24 +390,24 @@ get_statistics(const char *iface)
 		err(EX_OSERR, "Can't retrieve statistics");
 
 	for (st = tbl; st->index != 0; st++) {
-		(void)printf("%-60s[", st->desc);
+		printf("%-60s[", st->desc);
 		switch (st->unit) {
 		case INT:
-			(void)printf("%u", stats[st->index]);
+			printf("%u", stats[st->index]);
 			break;
 		
 		case BOOL:
-			(void)printf(stats[st->index] ? "true" : "false");
+			printf(stats[st->index] ? "true" : "false");
 			break;
 
 		case PERCENTAGE:
-			(void)printf("%u%%", stats[st->index]);
+			printf("%u%%", stats[st->index]);
 			break;
 
 		case HEX:
 		default:
-			(void)printf("0x%08X", stats[st->index]);
+			printf("0x%08X", stats[st->index]);
 		}
-		(void)printf("]\n");
+		printf("]\n");
 	}
 }

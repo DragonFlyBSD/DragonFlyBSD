@@ -73,7 +73,7 @@ Research Laboratory (NRL).
 
 /*
  *	$ANA: keyadmin.c,v 1.2 1996/06/13 19:42:40 wollman Exp $
- * $DragonFly: src/usr.sbin/keyadmin/keyadmin.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyadmin/keyadmin.c,v 1.4 2005/12/05 01:04:01 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -272,8 +272,8 @@ pid_t mypid;
   help:   Print appropriate help message on stdout.
 
 ----------------------------------------------------------------------*/
-int help(cmdname)
-     char *cmdname;
+int
+help(char *cmdname)
 {
   int i;
 
@@ -306,7 +306,7 @@ int help(cmdname)
 
 ----------------------------------------------------------------------*/
 static void
-usage()
+usage(void)
 {
 
   fprintf(stderr, "usage: keyadmin <command> <args>\n");
@@ -316,10 +316,8 @@ usage()
   parsekey:  parse argument into a binary key and also record
              the length of the resulting key.
 ----------------------------------------------------------------------*/
-int parsekey(key, keylen, arg)
-     u_int8_t *key;
-     u_int8_t *keylen;
-     char *arg;
+int
+parsekey(u_int8_t *key, u_int8_t *keylen, char *arg)
 {
   int i, j, k, l;
   u_int8_t thisbyte;
@@ -370,9 +368,8 @@ int parsekey(key, keylen, arg)
   parsenametonum:   converts command-line name into index number.
 
 ----------------------------------------------------------------------*/
-int parsenametonum(tab, arg)
-     struct nametonum *tab;
-     char *arg;
+int
+parsenametonum(struct nametonum *tab, char *arg)
 {
   int i;
 
@@ -388,9 +385,8 @@ int parsenametonum(tab, arg)
   parsesockaddr:  Convert hostname arg into an appropriate sockaddr.
 
 ----------------------------------------------------------------------*/
-int parsesockaddr(sockaddr, arg)
-     struct sockaddr *sockaddr;
-     char *arg;
+int
+parsesockaddr(struct sockaddr *sockaddr, char *arg)
 {
   struct hostent *hostent;
   struct in_addr in_addr, *in_addrp;
@@ -450,9 +446,8 @@ int parsesockaddr(sockaddr, arg)
   dummyfromaddr:  Creates a zeroed sockaddr of family af.
 
 ----------------------------------------------------------------------*/
-void dummyfromaddr(sa, af)
-     struct sockaddr *sa;
-     int af;
+void
+dummyfromaddr(struct sockaddr *sa, int af)
 {
   int size;
 #ifdef INET6
@@ -478,9 +473,8 @@ void dummyfromaddr(sa, af)
   parse4:  parse keytype, spi, src addr, and dest addr from argv (command line)
            and stick in structure pointed to by key_messageptr.
 ----------------------------------------------------------------------*/
-int parse4(argc, argv)
-     int argc;
-     char *argv[];
+int
+parse4(int argc, char *argv[])
 {
   int i;
 
@@ -525,9 +519,8 @@ int parse4(argc, argv)
            from argv (command line)
            and stick in structure pointed to by key_messageptr.
 ----------------------------------------------------------------------*/
-int parse7(argc, argv)
-     int argc;
-     char *argv[];
+int
+parse7(int argc, char *argv[])
 {
   int i, j;
 
@@ -592,10 +585,8 @@ int parse7(argc, argv)
   parsecmdline:
 
 ----------------------------------------------------------------------*/
-int parsecmdline(buffer, argv, argc)
-     char *buffer;
-     char **argv;
-     int *argc;
+int
+parsecmdline(char *buffer, char **argv, int *argc)
 {
   int i = 0, iargc = 0;
   char *head;
@@ -628,8 +619,8 @@ int parsecmdline(buffer, argv, argc)
   load:   load keys from file filename into Key Engine.
 
 ----------------------------------------------------------------------*/
-int load(filename)
-     char *filename;
+int
+load(char *filename)
 {
   FILE *fh;
   char buffer[1024], *buf, *largv[KEYCMD_ARG_MAX], *c;
@@ -680,9 +671,7 @@ int load(filename)
 
 ----------------------------------------------------------------------*/
 int
-parsedata(km, kip)
-     struct key_msghdr *km;
-     struct key_msgdata *kip;
+parsedata(struct key_msghdr *km, struct key_msgdata *kip)
 {
   char *cp, *cpmax;
  
@@ -740,10 +729,8 @@ parsedata(km, kip)
   printkeyiv:
 
 ----------------------------------------------------------------------*/
-void printkeyiv(fp, cp, len)
-     FILE *fp;
-     caddr_t cp;
-     int len;
+void
+printkeyiv(FILE *fp, caddr_t cp, int len)
 {
   int i;
   for (i=0; i<len; i++)
@@ -754,9 +741,8 @@ void printkeyiv(fp, cp, len)
   printsockaddr:
 
 ----------------------------------------------------------------------*/
-void printsockaddr(fp, sa)
-     FILE *fp;
-     struct sockaddr *sa;
+void
+printsockaddr(FILE *fp, struct sockaddr *sa)
 {
   struct hostent *hp;
   char *addrp;
@@ -785,9 +771,7 @@ void printsockaddr(fp, sa)
 
 ----------------------------------------------------------------------*/
 char *
-parsenumtoname(tab, num)
-     struct nametonum *tab;
-     int num;
+parsenumtoname(struct nametonum *tab, int num)
 {
   int i;
   for (i = 0; tab[i].name; i++) {
@@ -802,9 +786,7 @@ parsenumtoname(tab, num)
 
 ----------------------------------------------------------------------*/
 int
-parsenumtoflag(tab, num)
-     struct nametonum *tab;
-     int num;
+parsenumtoflag(struct nametonum *tab, int num)
 {
   int i;
   for (i = 0; tab[i].name; i++) {
@@ -819,9 +801,8 @@ parsenumtoflag(tab, num)
   printkeymsg:
 
 ----------------------------------------------------------------------*/
-void printkeymsg(kmp, kdp)
-     struct key_msghdr *kmp;
-     struct key_msgdata *kdp;
+void
+printkeymsg(struct key_msghdr *kmp, struct key_msgdata *kdp)
 {
 
   printf("type=%d(%s) ",kmp->type, parsenumtoname(keytypes, kmp->type)); 
@@ -873,9 +854,8 @@ void printkeymsg(kmp, kdp)
   docmd:
 
 ----------------------------------------------------------------------*/
-int docmd(argc, argv)
-     int argc;
-     char **argv;
+int
+docmd(int argc, char **argv)
 {
   int i, j, seqno;
   int fd;
@@ -1151,9 +1131,8 @@ readmesg2:
   main:
 
 ----------------------------------------------------------------------*/
-int main(argc, argv)
-     int argc;
-     char *argv[];
+int
+main(int argc, char *argv[])
 {
   int i, j;
   u_long rcvsize;
