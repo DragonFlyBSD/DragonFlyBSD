@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.43 2005/09/14 01:13:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.44 2005/12/05 17:01:53 dillon Exp $
  */
 
 
@@ -2173,8 +2173,13 @@ nfs_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * Readdir rpc call.
- * Called from below the buffer cache by nfs_doio().
+ * Readdir rpc call.  nfs_bioread->nfs_doio->nfs_readdirrpc.
+ *
+ * Note that for directories, nfs_bioread maintains the underlying nfs-centric
+ * offset/block and converts the nfs formatted directory entries for userland
+ * consumption as well as deals with offsets into the middle of blocks.
+ * nfs_doio only deals with logical blocks.  In particular, uio_offset will
+ * be block-bounded.  It must convert to cookies for the actual RPC.
  */
 int
 nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
@@ -2246,7 +2251,7 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 		nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
 		more_dirs = fxdr_unsigned(int, *tl);
 	
-		/* loop thru the dir entries, doctoring them to 4bsd form */
+		/* loop thru the dir entries, converting them to std form */
 		while (more_dirs && bigenough) {
 			if (v3) {
 				nfsm_dissect(tl, u_int32_t *,
@@ -2264,9 +2269,23 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 				m_freem(mrep);
 				goto nfsmout;
 			}
+
+			/*
+			 * len is the number of bytes in the path element
+			 * name, not including the \0 termination.
+			 *
+			 * tlen is the number of bytes w have to reserve for
+			 * the path element name.
+			 */
 			tlen = nfsm_rndup(len);
 			if (tlen == len)
 				tlen += 4;	/* To ensure null termination */
+
+			/*
+			 * If the entry would cross a DIRBLKSIZ boundary, 
+			 * extend the previous nfs_dirent to cover the
+			 * remaining space.
+			 */
 			left = DIRBLKSIZ - blksiz;
 			if ((tlen + sizeof(struct nfs_dirent)) > left) {
 				dp->nfs_reclen += left;
@@ -2292,6 +2311,12 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 				uiop->uio_iov->iov_base += sizeof(struct nfs_dirent);
 				uiop->uio_iov->iov_len -= sizeof(struct nfs_dirent);
 				nfsm_mtouio(uiop, len);
+
+				/*
+				 * The uiop has advanced by nfs_dirent + len
+				 * but really needs to advance by
+				 * nfs_dirent + tlen
+				 */
 				cp = uiop->uio_iov->iov_base;
 				tlen -= len;
 				*cp = '\0';	/* null terminate */
@@ -2299,8 +2324,13 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 				uiop->uio_iov->iov_len -= tlen;
 				uiop->uio_offset += tlen;
 				uiop->uio_resid -= tlen;
-			} else
+			} else {
+				/*
+				 * NFS strings must be rounded up (nfsm_myouio
+				 * handled that in the bigenough case).
+				 */
 				nfsm_adv(nfsm_rndup(len));
+			}
 			if (v3) {
 				nfsm_dissect(tl, u_int32_t *,
 				    3 * NFSX_UNSIGNED);
@@ -2308,14 +2338,22 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 				nfsm_dissect(tl, u_int32_t *,
 				    2 * NFSX_UNSIGNED);
 			}
+
+			/*
+			 * If we were able to accomodate the last entry,
+			 * get the cookie for the next one.  Otherwise
+			 * hold-over the cookie for the one we were not
+			 * able to accomodate.
+			 */
 			if (bigenough) {
 				cookie.nfsuquad[0] = *tl++;
 				if (v3)
 					cookie.nfsuquad[1] = *tl++;
-			} else if (v3)
+			} else if (v3) {
 				tl += 2;
-			else
+			} else {
 				tl++;
+			}
 			more_dirs = fxdr_unsigned(int, *tl);
 		}
 		/*
@@ -2340,13 +2378,16 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 		uiop->uio_resid -= left;
 	}
 
-	/*
-	 * We are now either at the end of the directory or have filled the
-	 * block.
-	 */
-	if (bigenough)
+	if (bigenough) {
+		/*
+		 * We hit the end of the directory, update direofoffset.
+		 */
 		dnp->n_direofoffset = uiop->uio_offset;
-	else {
+	} else {
+		/*
+		 * There is more to go, insert the link cookie so the
+		 * next block can be read.
+		 */
 		if (uiop->uio_resid > 0)
 			printf("EEK! readdirrpc resid > 0\n");
 		cookiep = nfs_getcookie(dnp, uiop->uio_offset, 1);
