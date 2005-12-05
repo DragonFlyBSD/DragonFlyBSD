@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)vipw.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/vipw/vipw.c,v 1.11 1999/10/25 09:46:57 sheldonh Exp $
- * $DragonFly: src/usr.sbin/vipw/vipw.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/vipw/vipw.c,v 1.5 2005/12/05 01:23:23 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -56,9 +56,7 @@ void	copyfile(int, int);
 static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int pfd, tfd;
 	struct stat begin, end;
@@ -117,8 +115,7 @@ main(argc, argv)
 }
 
 void
-copyfile(from, to)
-	int from, to;
+copyfile(int from, int to)
 {
 	int nr, nw, off;
 	char buf[8*1024];
@@ -132,9 +129,8 @@ copyfile(from, to)
 }
 
 static void
-usage()
+usage(void)
 {
-
 	fprintf(stderr, "usage: vipw [ -d directory ]\n");
 	exit(1);
 }

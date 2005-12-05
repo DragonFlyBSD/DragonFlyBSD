@@ -26,14 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/decode.c,v 1.8.2.1 2001/05/28 17:36:56 sobomax Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/decode.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/decode.c,v 1.3 2005/12/05 01:23:23 swildner Exp $
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "decode.h"
 
-int decode(FILE *fd, char *buffer, int len)
+int
+decode(FILE *fd, char *buffer, int len)
 {
 	int n, pos = 0, tpos;
 	char *bp, *p;

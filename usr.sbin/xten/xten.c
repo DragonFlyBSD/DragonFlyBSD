@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/xten/xten.c,v 1.4 1999/08/28 01:21:02 peter Exp $
- * $DragonFly: src/usr.sbin/xten/xten.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/xten/xten.c,v 1.4 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -70,9 +70,7 @@ int find(char *, char *[]);
 static void usage(void);
 
 int
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char *argv[])
 {
   int c, tmp, h, k, sock, error;
   FILE *daemon;
@@ -155,7 +153,7 @@ char *argv[];
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: xten house key[:cnt] [[house] key[:cnt] ...]\n");
@@ -163,9 +161,7 @@ usage()
 }
 
 int
-find(s, tab)
-char *s;
-char *tab[];
+find(char *s, char *tab[])
 {
 	int i;
 

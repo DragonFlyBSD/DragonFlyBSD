@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $
  * $FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.8 2002/04/22 13:44:47 des Exp $
- * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.6 2005/09/01 19:08:38 swildner Exp $
+ * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.7 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -65,7 +65,7 @@ void dumpone(char *name, int f, int addr);
 int main(int, char **);
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: %s [-a addr] [-d] [-f dev] [-v]\n",
 	    getprogname());

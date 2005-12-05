@@ -32,7 +32,7 @@
  *
  * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/vipw/pw_util.c,v 1.17.2.4 2002/09/04 15:28:10 des Exp $
- * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.4 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -66,16 +66,14 @@ char *mppath = _PATH_PWD;
 char *masterpasswd = _PATH_MASTERPASSWD;
 
 void
-pw_cont(sig)
-	int sig;
+pw_cont(int sig)
 {
-
 	if (editpid != -1)
 		kill(editpid, sig);
 }
 
 void
-pw_init()
+pw_init(void)
 {
 	struct rlimit rlim;
 
@@ -105,7 +103,7 @@ pw_init()
 }
 
 int
-pw_lock()
+pw_lock(void)
 {
 	/*
 	 * If the master password file doesn't exist, the system is hosed.
@@ -138,7 +136,7 @@ pw_lock()
 }
 
 int
-pw_tmp()
+pw_tmp(void)
 {
 	static char path[MAXPATHLEN];
 	int fd;
@@ -157,8 +155,7 @@ pw_tmp()
 }
 
 int
-pw_mkdb(username)
-char *username;
+pw_mkdb(char *username)
 {
 	int pstat;
 	pid_t pid;
@@ -184,8 +181,7 @@ char *username;
 }
 
 void
-pw_edit(notsetuid)
-	int notsetuid;
+pw_edit(int notsetuid)
 {
 	int pstat;
 	char *p, *editor;
@@ -222,7 +218,7 @@ pw_edit(notsetuid)
 }
 
 void
-pw_prompt()
+pw_prompt(void)
 {
 	int c, first;
 
@@ -236,9 +232,7 @@ pw_prompt()
 }
 
 void
-pw_error(name, err, eval)
-	char *name;
-	int err, eval;
+pw_error(char *name, int err, int eval)
 {
 #ifdef YP
 	extern int _use_yp;

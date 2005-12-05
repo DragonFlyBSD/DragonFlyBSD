@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/usr.sbin/watch/watch.c,v 1.18.2.3 2002/08/17 00:59:03 mikeh Exp $
- * $DragonFly: src/usr.sbin/watch/watch.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/watch/watch.c,v 1.5 2005/12/05 01:23:23 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ char            tbuf[1024], gbuf[1024];
 
 
 static void
-clear()
+clear(void)
 {
 	if (clear_ok)
 		tputs(gbuf, 1, putchar);
@@ -92,8 +92,7 @@ clear()
 }
 
 static void
-timestamp(buf)
-	const char     *buf;
+timestamp(const char *buf)
 {
 	time_t          t;
 	char            btmp[1024];
@@ -108,7 +107,7 @@ timestamp(buf)
 }
 
 static void
-set_tty()
+set_tty(void)
 {
 	struct termios  ntty;
 
@@ -134,16 +133,14 @@ set_tty()
 }
 
 static void
-unset_tty()
+unset_tty(void)
 {
 	tcsetattr (std_in, TCSANOW, &otty);
 }
 
 
 static void
-fatal(error, buf)
-	int		      error;
-	const char           *buf;
+fatal(int error, const char *buf)
 {
 	unset_tty();
 	if (buf)
@@ -153,7 +150,7 @@ fatal(error, buf)
 }
 
 static int
-open_snp()
+open_snp(void)
 {
 	char            snp[] = {_PATH_DEV "snpX"};
 	char            c;
@@ -180,8 +177,7 @@ open_snp()
 
 
 static void
-cleanup(signo)
-	int		signo __unused;
+cleanup(int signo __unused)
 {
 	if (opt_timestamp)
 		timestamp("Logging Exited.");
@@ -192,14 +188,14 @@ cleanup(signo)
 
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: watch [-ciotnW] [tty name]\n");
 	exit(EX_USAGE);
 }
 
 static void
-setup_scr()
+setup_scr(void)
 {
 	char           *cbuf = gbuf, *term;
 	if (!opt_interactive)
@@ -213,7 +209,7 @@ setup_scr()
 }
 
 static void
-detach_snp()
+detach_snp(void)
 {
 	dev_t		dev;
 
@@ -222,7 +218,7 @@ detach_snp()
 }
 
 static void
-attach_snp()
+attach_snp(void)
 {
 	if (ioctl(snp_io, SNPSTTY, &snp_tty) != 0)
 		fatal(EX_UNAVAILABLE, "cannot attach to tty");
@@ -232,8 +228,7 @@ attach_snp()
 
 
 static void
-set_dev(name)
-	const char     *name;
+set_dev(const char *name)
 {
 	char            buf[DEV_NAME_LEN];
 	struct stat	sb;
@@ -259,9 +254,7 @@ set_dev(name)
 }
 
 void
-ask_dev(dbuf, msg)
-        char	       *dbuf;
-        const char     *msg;
+ask_dev(char *dbuf, const char *msg)
 {
 	char            buf[DEV_NAME_LEN];
 	int             len;
@@ -289,9 +282,7 @@ ask_dev(dbuf, msg)
 #define READB_LEN	5
 
 int
-main(ac, av)
-	int             ac;
-	char          **av;
+main(int ac, char **av)
 {
 	int             res, idata, rv;
 	size_t		nread, b_size = MIN_SIZE;

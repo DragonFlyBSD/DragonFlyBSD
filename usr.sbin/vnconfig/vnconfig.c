@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.9 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.10 2005/12/05 01:23:23 swildner Exp $
  */
 
 #include <ctype.h>
@@ -594,7 +594,7 @@ rawdevice(char *dev)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
 		"usage: vnconfig [-cdeguv] [-s option] [-r option] [-S value] special_file",

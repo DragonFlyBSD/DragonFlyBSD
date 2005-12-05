@@ -33,7 +33,7 @@
  * DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/wormcontrol/wormcontrol.c,v 1.11 1999/10/01 14:12:46 peter Exp $
- * $DragonFly: src/usr.sbin/wormcontrol/Attic/wormcontrol.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/wormcontrol/Attic/wormcontrol.c,v 1.3 2005/12/05 01:23:23 swildner Exp $
  */
 
 #include <err.h>
@@ -48,7 +48,7 @@
 #include <sys/wormio.h>
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,"usage: wormcontrol [-f device] command [args]\n");
 	exit(EX_USAGE);

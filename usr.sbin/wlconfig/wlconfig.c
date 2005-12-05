@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/wlconfig/wlconfig.c,v 1.8.2.2 2001/07/19 05:24:10 kris Exp $
- * $DragonFly: src/usr.sbin/wlconfig/wlconfig.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/wlconfig/wlconfig.c,v 1.3 2005/12/05 01:23:23 swildner Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ print_psa(u_char *psa, int currnwid)
 
 
 static void
-usage()
+usage(void)
 {
     fprintf(stderr,"usage: wlconfig ifname [param value ...]\n");
     exit(1);
