@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/pdb.c,v 1.7 1999/08/28 01:19:53 peter Exp $
- * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,7 @@ static void print_ci(const struct cmdinfo *, const struct cmdinfo *);
 static DB	*pacct_db;
 
 int
-pacct_init()
+pacct_init(void)
 {
 	DB *saved_pacct_db;
 	int error;
@@ -105,15 +105,14 @@ out:	if (error != 0)
 }
 
 void
-pacct_destroy()
+pacct_destroy(void)
 {
 	if (DB_CLOSE(pacct_db) < 0)
 		warn("destroying process accounting stats");
 }
 
 int
-pacct_add(ci)
-	const struct cmdinfo *ci;
+pacct_add(const struct cmdinfo *ci)
 {
 	DBT key, data;
 	struct cmdinfo newci;
@@ -155,7 +154,7 @@ pacct_add(ci)
 }
 
 int
-pacct_update()
+pacct_update(void)
 {
 	DB *saved_pacct_db;
 	DBT key, data;
@@ -203,7 +202,7 @@ pacct_update()
 }
 
 void
-pacct_print()
+pacct_print(void)
 {
 	BTREEINFO bti;
 	DBT key, data, ndata;
@@ -301,8 +300,7 @@ next:		rv = DB_SEQ(pacct_db, &key, &data, R_NEXT);
 }
 
 static int
-check_junk(cip)
-	struct cmdinfo *cip;
+check_junk(struct cmdinfo *cip)
 {
 	char *cp;
 	size_t len;
@@ -314,9 +312,7 @@ check_junk(cip)
 }
 
 static void
-add_ci(fromcip, tocip)
-	const struct cmdinfo *fromcip;
-	struct cmdinfo *tocip;
+add_ci(const struct cmdinfo *fromcip, struct cmdinfo *tocip)
 {
 	tocip->ci_calls += fromcip->ci_calls;
 	tocip->ci_etime += fromcip->ci_etime;
@@ -327,8 +323,7 @@ add_ci(fromcip, tocip)
 }
 
 static void
-print_ci(cip, totalcip)
-	const struct cmdinfo *cip, *totalcip;
+print_ci(const struct cmdinfo *cip, const struct cmdinfo *totalcip)
 {
 	double t, c;
 	int uflow;

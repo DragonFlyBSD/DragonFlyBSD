@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd_mkdb.c	8.5 (Berkeley) 4/20/94
  * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.35 2000/03/09 18:11:16 paul Exp $
- * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.5 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -83,9 +83,7 @@ int	scan(FILE *, struct passwd *);
 static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	DB *dp, *sdp, *pw_db;
 	DBT data, sdata, key;
@@ -477,9 +475,7 @@ main(argc, argv)
 }
 
 int
-scan(fp, pw)
-	FILE *fp;
-	struct passwd *pw;
+scan(FILE *fp, struct passwd *pw)
 {
 	static int lcnt;
 	char *p;
@@ -521,9 +517,7 @@ fmt:		errno = EFTYPE;	/* XXX */
 }
 
 void                    
-cp(from, to, mode)              
-	char *from, *to;
-	mode_t mode;    
+cp(char *from, char *to, mode_t mode)              
 {               
 	static char buf[MAXBSIZE];
 	int from_fd, rcount, to_fd, wcount;
@@ -553,8 +547,7 @@ cp(from, to, mode)
 
 
 void
-mv(from, to)
-	char *from, *to;
+mv(char *from, char *to)
 {
 	char buf[MAXPATHLEN];
 
@@ -567,17 +560,15 @@ mv(from, to)
 }
 
 void
-error(name)
-	char *name;
+error(char *name)
 {
-
 	warn("%s", name);
 	cleanup();
 	exit(1);
 }
 
 void
-cleanup()
+cleanup(void)
 {
 	char buf[MAXPATHLEN];
 
@@ -597,7 +588,7 @@ cleanup()
 }
 
 static void
-usage()
+usage(void)
 {
 
 	fprintf(stderr,

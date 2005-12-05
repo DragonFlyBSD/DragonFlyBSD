@@ -22,6 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $DragonFly: src/usr.sbin/lpr/filters.ru/koi2alt/koi2alt.c,v 1.2 2005/12/05 02:40:27 swildner Exp $
  */
 
 /*
@@ -57,7 +59,8 @@ char *koi2alt[] = {
 	"\x9c","\x9b","\x87","\x98","\x9d","\x99","\x97","\x9a"
 };
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	int c, i;
 	char *cp;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.1.2.1 2001/08/30 12:29:56 murray Exp $
- * $DragonFly: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlstty/stlstty.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -109,7 +109,8 @@ static void	usage(void);
 
 /*****************************************************************************/
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf(stderr, "Usage: stlstty [OPTION] [ARGS]\n\n");
 	fprintf(stderr, "  -h, --help            print this information\n");
@@ -139,7 +140,8 @@ static void usage()
 
 /*****************************************************************************/
 
-void getpflags()
+void
+getpflags(void)
 {
 	unsigned long	pflags;
 
@@ -195,7 +197,8 @@ void getpflags()
 
 /*****************************************************************************/
 
-void setpflags(unsigned long pflagin, unsigned long pflagout)
+void
+setpflags(unsigned long pflagin, unsigned long pflagout)
 {
 	unsigned long	pflags;
 
@@ -212,7 +215,8 @@ void setpflags(unsigned long pflagin, unsigned long pflagout)
 
 /*****************************************************************************/
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	unsigned long	pflagin, pflagout;
 	int		optind, optfound;

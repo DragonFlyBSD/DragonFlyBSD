@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.5 2004/12/18 22:48:14 swildner Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.6 2005/12/05 02:40:28 swildner Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*
@@ -95,7 +95,7 @@ extern int lineno;
 extern int parse(FILE **);
 
 void
-Usage()
+Usage(void)
 {
 	printf("Usage:\t%s [-dv] -c\n", pname);
 	printf("\t%s [-dv] -f (file)\n", pname);
@@ -486,7 +486,7 @@ numstr(int x)
 }
 
 void
-shortdump_hdr()
+shortdump_hdr(void)
 {
 	printf("%-4s %-3s %-1s %-8s %-7s %s -> %s\n",
 		"time", "p", "s", "spi", "ltime", "src", "dst");

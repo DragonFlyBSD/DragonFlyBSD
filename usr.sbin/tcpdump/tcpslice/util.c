@@ -19,20 +19,14 @@
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.3 1999/08/28 05:11:32 peter Exp $
- * $DragonFly: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include "tcpslice.h"
 
 /* VARARGS */
 void
-#if __STDC__
 error(const char *fmt, ...)
-#else
-error(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 

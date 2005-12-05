@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlload/stlload.c,v 1.10.2.2 2002/02/13 22:55:45 dbaker Exp $
- * $DragonFly: src/usr.sbin/stallion/stlload/stlload.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlload/stlload.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -99,7 +99,8 @@ int	download(void);
 
 /*****************************************************************************/
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: stlload [-vhVR] [-i image-file] [-c control-device] [-r rx-buf-size]",
@@ -115,7 +116,8 @@ static void usage()
  *	ECP boards only.
  */
 
-int ecpfindports(cdkecpsig_t *sigp)
+int
+ecpfindports(cdkecpsig_t *sigp)
 {
 	unsigned int	id;
 	int		bank, nrports;
@@ -146,7 +148,8 @@ int ecpfindports(cdkecpsig_t *sigp)
  *	ONboards and Brumbys.
  */
 
-int onbfindports(cdkonbsig_t *sigp)
+int
+onbfindports(cdkonbsig_t *sigp)
 {
 	int	i, nrports;
 
@@ -172,7 +175,8 @@ int onbfindports(cdkonbsig_t *sigp)
  *	start slave running and then read shared memory map.
  */
 
-int download()
+int
+download(void)
 {
 	unsigned char	alivemarker;
 	time_t		strttime;
@@ -422,7 +426,8 @@ int download()
 
 /*****************************************************************************/
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	struct stat	statinfo;
 	int		c;

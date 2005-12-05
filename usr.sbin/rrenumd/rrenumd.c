@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.6 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -123,7 +123,7 @@ int main(int, char *[]);
 
 /* Print usage. Don't call this after daemonized. */
 static void
-show_usage()
+show_usage(void)
 {
 	fprintf(stderr, "usage: rrenumd [-c conf_file|-s] [-df"
 #ifdef IPSEC
@@ -178,7 +178,7 @@ join_multi(const char *addrname)
 #endif
 
 static void
-init_globals()
+init_globals(void)
 {
 	static struct iovec rcviov;
 	static u_char rprdata[4500]; /* maximal MTU of connected links */
@@ -476,7 +476,7 @@ rrenum_snd_eachdst(struct payload_list *pl)
 
 #if 0
 static void
-rrenum_snd_fullsequence()
+rrenum_snd_fullsequence(void)
 {
 	struct payload_list *pl;
 

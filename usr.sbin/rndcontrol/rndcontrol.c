@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.11.2.1 2000/05/10 02:04:44 obrien Exp $
- * $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.3 2005/11/02 23:06:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/random.h>
@@ -37,7 +37,7 @@
 #include <sys/ioctl.h>
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rndcontrol [-q] [-s irq_no] [-c irq_no]\n");
 	exit(1);

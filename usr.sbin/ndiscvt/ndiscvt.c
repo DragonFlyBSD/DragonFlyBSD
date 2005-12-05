@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/ndiscvt/ndiscvt.c,v 1.1 2004/07/30 00:24:24 dillon Exp $
+ * $DragonFly: src/usr.sbin/ndiscvt/ndiscvt.c,v 1.2 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -80,10 +80,8 @@ extern const char *__progname;
 	sect_hdr = (image_section_header *)((vm_offset_t)nt_hdr +	\
 	    sizeof(image_nt_header));
 
-static
-int insert_padding(imgbase, imglen)
-	void			**imgbase;
-	int			*imglen;
+static int
+insert_padding(void **imgbase, int *imglen)
 {
         image_section_header	*sect_hdr;
         image_dos_header	*dos_hdr;

@@ -29,7 +29,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.4 2004/03/20 17:09:44 cpressey Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,8 @@ get_inode(int fd, struct fs *super, ino_t ino)
 #define	actualblocks(super,ip)	((ip)->di_blocks)
 #endif
 
-static int virtualblocks(struct fs *super, struct dinode *ip)
+static int
+virtualblocks(struct fs *super, struct dinode *ip)
 {
 	off_t nblk, sz;
 	
@@ -481,7 +482,7 @@ donames(int fd, struct fs *super, char *name)
 }
 
 static void
-usage()
+usage(void)
 {
 #ifdef	COMPAT
 	fprintf(stderr,"usage: quot [-nfcvha] [filesystem ...]\n");

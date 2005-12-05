@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw_vpw.c,v 1.3 2000/01/15 00:20:21 davidn Exp $
- * $DragonFly: src/usr.sbin/pw/pw_vpw.c,v 1.3 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_vpw.c,v 1.4 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <stdio.h>
@@ -168,7 +168,8 @@ vgetpwnam(const char * nam)
   return vnextpwent(nam, -1, 1);
 }
 
-int vpwdb(char *arg, ...)
+int
+vpwdb(char *arg, ...)
 {
   arg=arg;
   return 0;

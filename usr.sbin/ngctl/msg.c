@@ -35,7 +35,7 @@
  *
  * $Whistle: msg.c,v 1.2 1999/11/29 23:38:35 archie Exp $
  * $FreeBSD: src/usr.sbin/ngctl/msg.c,v 1.1.4.1 2000/07/27 22:05:36 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.4 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include "ngctl.h"
@@ -107,7 +107,7 @@ MsgCmd(int ac, const char **av)
  * Read and display the next incoming control message
  */
 void
-MsgRead()
+MsgRead(void)
 {
 	u_char buf[2 * sizeof(struct ng_mesg) + BUF_SIZE];
 	struct ng_mesg *const m = (struct ng_mesg *)buf;

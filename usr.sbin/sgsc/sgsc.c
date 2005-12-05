@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sgsc/sgsc.c,v 1.5 1999/08/28 01:19:57 peter Exp $
- * $DragonFly: src/usr.sbin/sgsc/sgsc.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sgsc/sgsc.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <err.h>
@@ -49,7 +49,7 @@
 #define FAIL -1
 
 static void
-usage()
+usage(void)
 {
   fprintf(stderr, "%s\n%s\n",
 	"usage: sgsc [-sq] [-f file] [-r dpi] [-w width] [-h height]",

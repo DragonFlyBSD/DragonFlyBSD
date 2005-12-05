@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.9.2.1 2001/08/30 12:29:58 murray Exp $
- * $DragonFly: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -92,7 +92,8 @@ void	clearallstats();
 
 /*****************************************************************************/
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 	"usage: stlstats [-hVi] [-c control-device] [-b board-number]",
@@ -102,7 +103,8 @@ static void usage()
 
 /*****************************************************************************/
 
-void useportdevice(char *devname)
+void
+useportdevice(char *devname)
 {
 	struct stat	statinfo;
 	int		portnr, portcnt;
@@ -140,7 +142,8 @@ void useportdevice(char *devname)
  *	Get the board stats for the current display board.
  */
 
-void getbrdstats()
+void
+getbrdstats(void)
 {
 	brdstats.brd = displaybrdnr;
 	if (ioctl(ctrlfd, COM_GETBRDSTATS, &brdstats) < 0)
@@ -153,7 +156,8 @@ void getbrdstats()
  *	Zero out stats for the current display port.
  */
 
-void clearportstats()
+void
+clearportstats(void)
 {
 	stats[displayportnr].brd = displaybrdnr;
 	stats[displayportnr].panel = displaypanelnr;
@@ -167,7 +171,8 @@ void clearportstats()
  *	Zero out all stats for all ports on all boards.
  */
 
-void clearallstats()
+void
+clearallstats(void)
 {
 	int	brdnr, panelnr, portnr;
 
@@ -189,7 +194,8 @@ void clearallstats()
  *	Get the stats for the current display board/panel.
  */
 
-void getallstats()
+void
+getallstats(void)
 {
 	int	i;
 
@@ -210,7 +216,8 @@ void getallstats()
  *	Display the per ports stats screen.
  */
 
-void displayport()
+void
+displayport(void)
 {
 	mvprintw(0, 0, "STALLION SERIAL PORT STATISTICS");
 	mvprintw(2, 0,
@@ -285,7 +292,8 @@ void displayport()
  *	Also checks for keyboard input, and processes it as appropriate.
  */
 
-void menuport()
+void
+menuport(void)
 {
 	int	ch, done;
 
@@ -351,7 +359,8 @@ void menuport()
  *	Display the all ports stats screen.
  */
 
-void displayallports()
+void
+displayallports(void)
 {
 	int	i, nrports, portnr;;
 
@@ -407,7 +416,8 @@ void displayallports()
  *	Also checks for keyboard input, and processes it as appropriate.
  */
 
-void menuallports()
+void
+menuallports(void)
 {
 	int	ch, done;
 
@@ -486,7 +496,8 @@ void menuallports()
  *	A local exit routine - shuts down curses before exiting.
  */
 
-void localexit(int nr)
+void
+localexit(int nr)
 {
 	refresh();
 	endwin();
@@ -495,7 +506,8 @@ void localexit(int nr)
 
 /*****************************************************************************/
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	struct stat	statinfo;
 	int		c, useport;

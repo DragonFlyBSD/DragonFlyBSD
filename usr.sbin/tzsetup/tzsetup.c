@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.4 2005/02/19 01:43:06 swildner Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -630,7 +630,7 @@ set_zone_whole_country(dialogMenuItem *dmi)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: tzsetup [-n]\n");
 	exit(1);

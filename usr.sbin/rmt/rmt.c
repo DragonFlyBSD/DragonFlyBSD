@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rmt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rmt/rmt.c,v 1.7 2000/02/12 01:14:33 mjacob Exp $
- * $DragonFly: src/usr.sbin/rmt/rmt.c,v 1.4 2004/12/18 22:48:05 swildner Exp $
+ * $DragonFly: src/usr.sbin/rmt/rmt.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -71,9 +71,7 @@ void	 error(int);
 void	 getstring(char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int rval;
 	char c;
@@ -204,8 +202,7 @@ ioerror:
 }
 
 void
-getstring(bp)
-	char *bp;
+getstring(char *bp)
 {
 	int i;
 	char *cp = bp;
@@ -220,9 +217,7 @@ getstring(bp)
 }
 
 char *
-checkbuf(record, size)
-	char *record;
-	int size;
+checkbuf(char *record, int size)
 {
 
 	if (size <= maxrecsize)
@@ -242,8 +237,7 @@ checkbuf(record, size)
 }
 
 void
-error(num)
-	int num;
+error(int num)
 {
 
 	DEBUG2("rmtd: E %d (%s)\n", num, strerror(num));

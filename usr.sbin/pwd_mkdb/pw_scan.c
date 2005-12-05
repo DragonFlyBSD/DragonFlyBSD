@@ -32,7 +32,7 @@
  *
  * @(#)pw_scan.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.14.2.1 2002/11/11 08:52:04 maxim Exp $
- * $DragonFly: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pw_scan.c,v 1.3 2005/12/05 02:40:27 swildner Exp $
  */
 
 /*
@@ -65,9 +65,7 @@
 int	pw_big_ids_warning = -1;
 
 int
-pw_scan(bp, pw)
-	char *bp;
-	struct passwd *pw;
+pw_scan(char *bp, struct passwd *pw)
 {
 	uid_t id;
 	int root;

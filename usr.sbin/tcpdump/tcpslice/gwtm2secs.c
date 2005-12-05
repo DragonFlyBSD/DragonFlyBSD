@@ -19,7 +19,7 @@
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.4 1999/08/28 05:11:32 peter Exp $
- * $DragonFly: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.3 2004/04/23 17:55:11 cpressey Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -35,7 +35,8 @@ static int days_in_month[] =
 #define IS_LEAP_YEAR(year)	\
 	(year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))
 
-time_t gwtm2secs(struct tm *tm)
+time_t
+gwtm2secs(struct tm *tm)
 {
 	int i, days, year;
 

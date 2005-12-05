@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)sliplogin.c        8.2 (Berkeley) 2/1/94
  * $FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $
- * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 /*
@@ -139,8 +139,7 @@ struct slip_modes {
 };
 
 void
-findid(name)
-	char *name;
+findid(char *name)
 {
 	FILE *fp;
 	static char slopt[5][16];
@@ -249,8 +248,7 @@ findid(name)
 }
 
 char *
-sigstr(s)
-	int s;
+sigstr(int s)
 {
 	static char buf[32];
 
@@ -294,8 +292,7 @@ sigstr(s)
 }
 
 void
-hup_handler(s)
-	int s;
+hup_handler(int s)
 {
 	char logoutfile[MAXPATHLEN];
 
@@ -324,8 +321,8 @@ hup_handler(s)
 
 
 /* Modify the slip line mode and add any compression or no-icmp flags. */
-void line_flags(unit)
-	int unit;
+void
+line_flags(int unit)
 {
 	struct ifreq ifr;
 	int s;
@@ -355,10 +352,8 @@ void line_flags(unit)
         close(s);
 }
 
-
-main(argc, argv)
-	int argc;
-	char *argv[];
+int
+main(int argc, char *argv[])
 {
 	int fd, s, ldisc;
 	char *name;

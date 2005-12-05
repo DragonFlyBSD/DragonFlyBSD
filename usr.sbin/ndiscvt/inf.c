@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/ndiscvt/inf.c,v 1.1 2004/07/30 00:24:24 dillon Exp $
+ * $DragonFly: src/usr.sbin/ndiscvt/inf.c,v 1.2 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <stdio.h>
@@ -67,7 +67,7 @@ static void	dump_paramreg	(const struct section *,
 static FILE	*ofp;
 
 int
-inf_parse (FILE *fp, FILE *outfp)
+inf_parse(FILE *fp, FILE *outfp)
 {
 	TAILQ_INIT(&sh);
 	TAILQ_INIT(&rh);
@@ -87,7 +87,7 @@ inf_parse (FILE *fp, FILE *outfp)
 }
 
 void
-section_add (const char *s)
+section_add(const char *s)
 {
 	struct section *sec;
 
@@ -100,7 +100,7 @@ section_add (const char *s)
 }
 
 static struct assign *
-find_assign (const char *s, const char *k)
+find_assign(const char *s, const char *k)
 {
 	struct assign *assign;
 	char newkey[256];
@@ -137,7 +137,7 @@ stringcvt(const char *s)
 }
 
 struct section *
-find_section (const char *s)
+find_section(const char *s)
 {
 	struct section *section;
 
@@ -230,7 +230,7 @@ dump_pci_id(const char *s)
 }
 
 static void
-dump_deviceids_pci()
+dump_deviceids_pci(void)
 {
 	struct assign *manf, *dev;
 	struct section *sec;
@@ -309,7 +309,7 @@ retry:
 }
 
 static void
-dump_deviceids_pcmcia()
+dump_deviceids_pcmcia(void)
 {
 	struct assign *manf, *dev;
 	struct section *sec;
@@ -636,7 +636,7 @@ retry:
 }
 
 void
-assign_add (const char *a)
+assign_add(const char *a)
 {
 	struct assign *assign;
 	int i;
@@ -654,7 +654,7 @@ assign_add (const char *a)
 }
 
 void
-define_add (const char *d __unused)
+define_add(const char *d __unused)
 {
 #ifdef notdef
 	fprintf(stderr, "define \"%s\"\n", d);
@@ -671,7 +671,7 @@ sstrdup(const char *str)
 }
 
 static int
-satoi (const char *nptr)
+satoi(const char *nptr)
 {
 	if (nptr != NULL && strlen(nptr))
 		return (atoi(nptr));
@@ -679,7 +679,7 @@ satoi (const char *nptr)
 }
 
 void
-regkey_add (const char *r)
+regkey_add(const char *r)
 {
 	struct reg *reg;
 
@@ -699,7 +699,7 @@ regkey_add (const char *r)
 }
 
 void
-push_word (const char *w)
+push_word(const char *w)
 {
 	if (w && strlen(w))
 		words[idx++] = w;
@@ -709,7 +709,7 @@ push_word (const char *w)
 }
 
 void
-clear_words (void)
+clear_words(void)
 {
 	int i;
 

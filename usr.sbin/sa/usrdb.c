@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/usrdb.c,v 1.8.2.2 2000/10/28 02:28:20 gallatin Exp $
- * $DragonFly: src/usr.sbin/sa/usrdb.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/sa/usrdb.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@ static int uid_compare(const DBT *, const DBT *);
 static DB	*usracct_db;
 
 int
-usracct_init()
+usracct_init(void)
 {
 	DB *saved_usracct_db;
 	BTREEINFO bti;
@@ -111,15 +111,14 @@ out:
 }
 
 void
-usracct_destroy()
+usracct_destroy(void)
 {
 	if (DB_CLOSE(usracct_db) < 0)
 		warn("destroying user accounting stats");
 }
 
 int
-usracct_add(ci)
-	const struct cmdinfo *ci;
+usracct_add(const struct cmdinfo *ci)
 {
 	DBT key, data;
 	struct userinfo newui;
@@ -169,7 +168,7 @@ usracct_add(ci)
 }
 
 int
-usracct_update()
+usracct_update(void)
 {
 	DB *saved_usracct_db;
 	DBT key, data;
@@ -221,7 +220,7 @@ usracct_update()
 }
 
 void
-usracct_print()
+usracct_print(void)
 {
 	DBT key, data;
 	struct userinfo uistore, *ui = &uistore;
@@ -266,8 +265,7 @@ usracct_print()
 }
 
 static int
-uid_compare(k1, k2)
-	const DBT *k1, *k2;
+uid_compare(const DBT *k1, const DBT *k2)
 {
 	u_long d1, d2;
 

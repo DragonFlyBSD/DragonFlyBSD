@@ -27,14 +27,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/route6d/misc/cksum.c,v 1.1 1999/12/28 02:37:10 shin Exp $
- * $DragonFly: src/usr.sbin/route6d/misc/cksum.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/route6d/misc/cksum.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <stdio.h>
 
 unsigned short buf[BUFSIZ];
 
-main()
+int
+main(void)
 {
 	int	i;
 	unsigned short *p = buf, *q = &buf[4];

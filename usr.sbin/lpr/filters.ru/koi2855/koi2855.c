@@ -29,7 +29,7 @@
  * KOI8-R -> CP855 conversion filter (Russian character sets)
  *
  * $FreeBSD: src/usr.sbin/lpr/filters.ru/koi2855/koi2855.c,v 1.1 1999/09/21 20:42:10 ache Exp $
- * $DragonFly: src/usr.sbin/lpr/filters.ru/koi2855/koi2855.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/filters.ru/koi2855/koi2855.c,v 1.3 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -59,7 +59,8 @@ unsigned char koi2855 [] = {
 0xee, 0xf2, 0xf4, 0xf6, 0xf8, 0xfa, 0xfc, 0x9f
 };
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	int c, i;
 	char *cp;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rip6query/rip6query.c,v 1.3.2.2 2001/07/03 11:02:08 ume Exp $
- * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.4 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <stdio.h>
@@ -74,9 +74,7 @@ static const char *sa_n2a(struct sockaddr *);
 static const char *inet6_n2a(struct in6_addr *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct netinfo6 *np;
 	struct sockaddr_in6 fsock;
@@ -180,15 +178,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "Usage: rip6query [-I iface] address\n");
 }
 
 /* getnameinfo() is preferred as we may be able to show ifindex as ifname */
 static const char *
-sa_n2a(sa)
-	struct sockaddr *sa;
+sa_n2a(struct sockaddr *sa)
 {
 	static char buf[NI_MAXHOST];
 
@@ -200,8 +197,7 @@ sa_n2a(sa)
 }
 
 static const char *
-inet6_n2a(addr)
-	struct in6_addr *addr;
+inet6_n2a(struct in6_addr *addr)
 {
 	static char buf[NI_MAXHOST];
 
