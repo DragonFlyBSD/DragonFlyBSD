@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/timer.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.4 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.5 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/time.h>
@@ -52,7 +52,7 @@ static struct rtadvd_timer timer_head;
 static struct timeval tm_max = {0x7fffffff, 0x7fffffff};
 
 void
-rtadvd_timer_init()
+rtadvd_timer_init(void)
 {
 	memset(&timer_head, 0, sizeof(timer_head));
 
@@ -123,7 +123,7 @@ rtadvd_set_timer(struct timeval *tm, struct rtadvd_timer *timer)
  * Return the next interval for select() call.
  */
 struct timeval *
-rtadvd_check_timer()
+rtadvd_check_timer(void)
 {
 	static struct timeval returnval;
 	struct timeval now;

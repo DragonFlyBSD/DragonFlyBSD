@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -83,8 +83,7 @@ static void get_prefix(struct rainfo *);
 static int getinet6sysctl(int);
 
 void
-getconfig(intface)
-	char *intface;
+getconfig(char *intface)
 {
 	int stat, pfxs, i;
 	char tbuf[BUFSIZ];
@@ -641,12 +640,7 @@ get_prefix(struct rainfo *rai)
 }
 
 static void
-makeentry(buf, len, id, string, add)
-	char *buf;
-	size_t len;
-	int id;
-	char *string;
-	int add;
+makeentry(char *buf, size_t len, int id, char *string, int add)
 {
 	char *ep = buf + len;
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.c,v 1.1.2.4 2002/04/04 11:07:19 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.6 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.7 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -110,9 +110,7 @@ static void usage(char *progname);
 static char **autoifprobe(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int s, rtsock, maxfd, ch;
 	int once = 0;
@@ -470,7 +468,7 @@ make_packet(struct ifinfo *ifinfo)
 }
 
 static struct timeval *
-rtsol_check_timer()
+rtsol_check_timer(void)
 {
 	static struct timeval returnval;
 	struct timeval now, rtsol_timer;
@@ -709,15 +707,7 @@ usage(char *progname)
 }
 
 void
-#if __STDC__
 warnmsg(int priority, const char *func, const char *msg, ...)
-#else
-warnmsg(priority, func, msg, va_alist)
-	int priority;
-	const char *func;
-	const char *msg;
-	va_dcl
-#endif
 {
 	va_list ap;
 	char buf[BUFSIZ];
@@ -737,7 +727,7 @@ warnmsg(priority, func, msg, va_alist)
 }
 
 static char **
-autoifprobe()
+autoifprobe(void)
 {
 #ifndef HAVE_GETIFADDRS
 	errx(1, "-a is not available with the configuration");

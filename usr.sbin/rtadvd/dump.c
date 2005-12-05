@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/dump.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -82,8 +82,7 @@ static char *rtpref_str[] = {
 };
 
 static char *
-ether_str(sdl)
-	struct sockaddr_dl *sdl;
+ether_str(struct sockaddr_dl *sdl)
 {
 	static char ebuf[32];
 	u_char *cp;
@@ -101,7 +100,7 @@ ether_str(sdl)
 }
 
 static void
-if_dump()
+if_dump(void)
 {
 	struct rainfo *rai;
 	struct prefix *pfx;
@@ -238,8 +237,7 @@ if_dump()
 }
 
 void
-rtadvd_dump_file(dumpfile)
-	char *dumpfile;
+rtadvd_dump_file(char *dumpfile)
 {
 	if ((fp = fopen(dumpfile, "w")) == NULL) {
 		syslog(LOG_WARNING, "<%s> open a dump file(%s)",

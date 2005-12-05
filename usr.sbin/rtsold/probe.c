@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/probe.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ static void sendprobe(struct in6_addr *addr, int ifindex);
 
 
 int
-probe_init()
+probe_init(void)
 {
 	int scmsglen = CMSG_SPACE(sizeof(struct in6_pktinfo)) +
 		CMSG_SPACE(sizeof(int));

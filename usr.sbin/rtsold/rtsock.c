@@ -1,6 +1,6 @@
 /*	$KAME: rtsock.c,v 1.3 2000/10/10 08:46:45 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/rtsold/rtsock.c,v 1.1.2.1 2001/07/03 11:02:16 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.5 2005/02/17 14:00:10 joerg Exp $	*/
+/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.6 2005/12/05 00:56:37 swildner Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
@@ -81,15 +81,14 @@ static struct {
 };
 
 int
-rtsock_open()
+rtsock_open(void)
 {
 
 	return socket(PF_ROUTE, SOCK_RAW, 0);
 }
 
 int
-rtsock_input(s)
-	int s;
+rtsock_input(int s)
 {
 	ssize_t n;
 	char msg[2048];

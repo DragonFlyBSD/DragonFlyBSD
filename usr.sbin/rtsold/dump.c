@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/dump.c,v 1.1.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@ static char *sec2str(time_t);
 const char *ifstatstr[] = {"IDLE", "DELAY", "PROBE", "DOWN", "TENTATIVE"};
 
 static void
-dump_interface_status()
+dump_interface_status(void)
 {
 	struct ifinfo *ifinfo;
 	struct timeval now;
@@ -111,8 +111,7 @@ rtsold_dump_file(const char *dumpfile)
 }
 
 static char *
-sec2str(total)
-	time_t total;
+sec2str(time_t total)
 {
 	static char result[256];
 	int days, hours, mins, secs;

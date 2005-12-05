@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsol.c,v 1.1.2.4 2002/04/24 10:22:30 suz Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.4 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.5 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,7 @@ static struct sockaddr_in6 sin6_allrouters = {
 };
 
 int
-sockopen()
+sockopen(void)
 {
 	int on;
 	struct icmp6_filter filt;

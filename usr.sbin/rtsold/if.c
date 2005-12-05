@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/if.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/if.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtsold/if.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ static void get_rtaddrs(int addrs, struct sockaddr *sa,
 			     struct sockaddr **rti_info);
 
 int
-ifinit()
+ifinit(void)
 {
 	ifsock = rssock;
 
@@ -438,7 +438,7 @@ get_llflag(const char *name)
 
 #ifndef HAVE_GETIFADDRS
 static unsigned int
-if_maxindex()
+if_maxindex(void)
 {
 	struct if_nameindex *p, *p0;
 	unsigned int max = 0;

@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.7 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.8 2005/12/05 00:58:50 swildner Exp $
  */
 
 #include <ctype.h>
@@ -145,7 +145,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.7 2004/12/18 22:48:04 swildner Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.8 2005/12/05 00:58:50 swildner Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -729,9 +729,8 @@ inet_fmts(u_int32 addr, u_int32 mask, char *s)
     return (s);
 }
 
-char   *
-inet_name(addr)
-    u_int32  addr;
+char *
+inet_name(u_int32 addr)
 {
     struct hostent *e;
 

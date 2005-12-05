@@ -10,7 +10,7 @@
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.5 2005/12/05 00:58:50 swildner Exp $
  */
 
 #include "defs.h"
@@ -98,12 +98,13 @@ timer_nextTimer(void)
 
 /* 
  * sets the timer
+ *
+ * delay  - number of units for timeout
+ * action - function to be called on timeout
+ * data   - what to call the timeout function with
  */
 int
-timer_setTimer(delay, action, data)
-    int 	delay;  	/* number of units for timeout */
-    cfunc_t	action; 	/* function to be called on timeout */
-    void  	*data;  	/* what to call the timeout function with */
+timer_setTimer(int delay, cfunc_t action, void *data)
 {
     struct     timeout_q  *ptr, *node, *prev;
     int i = 0;
@@ -163,8 +164,7 @@ timer_setTimer(delay, action, data)
 
 /* returns the time until the timer is scheduled */
 int
-timer_leftTimer(timer_id)
-    int timer_id;
+timer_leftTimer(int timer_id)
 {
     struct timeout_q *ptr;
     int left = 0;
@@ -182,8 +182,7 @@ timer_leftTimer(timer_id)
 
 /* clears the associated timer.  Returns 1 if succeeded. */
 int
-timer_clearTimer(timer_id)
-    int  timer_id;
+timer_clearTimer(int timer_id)
 {
     struct timeout_q  *ptr, *prev;
     int i = 0;
@@ -236,7 +235,7 @@ timer_clearTimer(timer_id)
  * debugging utility
  */
 static void
-print_Q()
+print_Q(void)
 {
     struct timeout_q  *ptr;
     

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mrouted/testrsrr/testrsrr.c,v 1.4 1999/08/28 01:17:17 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/testrsrr/testrsrr.c,v 1.3 2004/03/15 18:10:29 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/testrsrr/testrsrr.c,v 1.4 2005/12/05 00:58:50 swildner Exp $
  */
 #include <stddef.h>
 #include <stdlib.h>
@@ -49,7 +49,8 @@
 char sunpath[MAXPATHLEN];
 int s;
 
-void exitfn(void)
+void
+exitfn(void)
 {
 	close(s);
 	unlink(sunpath);

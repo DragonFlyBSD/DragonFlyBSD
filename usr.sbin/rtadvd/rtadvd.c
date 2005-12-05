@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rtadvd.c,v 1.3.2.4 2003/04/05 10:31:58 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -146,9 +146,7 @@ static void rtmsg_input(void);
 static void rtadvd_set_dump_file(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	fd_set fdset;
 	int maxfd = 0;
@@ -312,20 +310,19 @@ main(argc, argv)
 }
 
 static void
-rtadvd_set_dump_file()
+rtadvd_set_dump_file(void)
 {
 	do_dump = 1;
 }
 
 static void
-set_die(sig)
-	int sig;
+set_die(int sig)
 {
 	do_die = 1;
 }
 
 static void
-die()
+die(void)
 {
 	struct rainfo *ra;
 	int i;
@@ -350,7 +347,7 @@ die()
 }
 
 static void
-rtmsg_input()
+rtmsg_input(void)
 {
 	int n, type, ifindex = 0, plen;
 	size_t len;
@@ -553,7 +550,7 @@ rtmsg_input()
 }
 
 void
-rtadvd_input()
+rtadvd_input(void)
 {
 	int i;
 	int *hlimp = NULL;
@@ -1310,7 +1307,7 @@ free_ndopts(union nd_opts *ndopts)
 }
 
 void
-sock_open()
+sock_open(void)
 {
 	struct icmp6_filter filt;
 	struct ipv6_mreq mreq;
@@ -1465,7 +1462,7 @@ sock_open()
 
 /* open a routing socket to watch the routing table */
 static void
-rtsock_open()
+rtsock_open(void)
 {
 	if ((rtsock = socket(PF_ROUTE, SOCK_RAW, 0)) < 0) {
 		syslog(LOG_ERR,
@@ -1488,8 +1485,7 @@ if_indextorainfo(int index)
 }
 
 static void
-ra_output(rainfo)
-struct rainfo *rainfo;
+ra_output(struct rainfo *rainfo)
 {
 	int i;
 	struct cmsghdr *cm;

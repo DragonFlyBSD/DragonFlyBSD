@@ -10,7 +10,7 @@
  * prune.c,v 3.8.4.59 1998/03/01 02:06:32 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.5 2005/12/05 00:58:50 swildner Exp $
  */
 
 #include "defs.h"
@@ -2076,9 +2076,7 @@ age_table_entry(void)
  * have expired.
  */
 static void
-expire_prune(vifi, gt)
-     vifi_t vifi;
-     struct gtable *gt;
+expire_prune(vifi_t vifi, struct gtable *gt)
 {
     /*
      * No need to send a graft, any prunes that we sent
