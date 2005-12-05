@@ -29,7 +29,7 @@
  * @(#)xdr_array.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_array.c,v 1.8.2.3 2002/08/01 12:23:20 nectar Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -56,15 +56,17 @@
  * If addrp is NULL (*sizep * elsize) bytes are allocated.
  * elsize is the size (in bytes) of each element, and elproc is the
  * xdr procedure to call to handle each element of the array.
+ *
+ * Parameters:
+ *     addrp:	array pointer
+ *     sizep:	number of elements
+ *     maxsize: max number of elements
+ *     elsize:  size in bytes of each element
+ *     elproc:	xdr routine to handle each element
  */
 bool_t
-xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
-	XDR *xdrs;
-	caddr_t *addrp;		/* array pointer */
-	u_int *sizep;		/* number of elements */
-	u_int maxsize;		/* max numberof elements */
-	u_int elsize;		/* size in bytes of each element */
-	xdrproc_t elproc;	/* xdr routine to handle each element */
+xdr_array(XDR *xdrs, caddr_t *addrp, u_int *sizep, u_int maxsize, u_int elsize,
+	  xdrproc_t elproc)
 {
 	u_int i;
 	caddr_t target = *addrp;
@@ -94,7 +96,7 @@ xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
 				return (TRUE);
 			*addrp = target = mem_alloc(nodesize);
 			if (target == NULL) {
-				(void) fprintf(stderr,
+				fprintf(stderr,
 					"xdr_array: out of memory\n");
 				return (FALSE);
 			}
@@ -103,6 +105,8 @@ xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
 
 		case XDR_FREE:
 			return (TRUE);
+		case XDR_ENCODE:
+			break;
 	}
 
 	/*
@@ -134,12 +138,8 @@ xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
  * > xdr_elem: routine to XDR each element
  */
 bool_t
-xdr_vector(xdrs, basep, nelem, elemsize, xdr_elem)
-	XDR *xdrs;
-	char *basep;
-	u_int nelem;
-	u_int elemsize;
-	xdrproc_t xdr_elem;
+xdr_vector(XDR *xdrs, char *basep, u_int nelem, u_int elemsize,
+	   xdrproc_t xdr_elem)
 {
 	u_int i;
 	char *elptr;

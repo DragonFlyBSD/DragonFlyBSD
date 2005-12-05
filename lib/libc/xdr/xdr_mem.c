@@ -29,7 +29,7 @@
  * @(#)xdr_mem.c 1.19 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_mem.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_mem.c,v 1.8.2.1 2003/03/20 12:59:55 jedgar Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_mem.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_mem.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -48,17 +48,17 @@
 #include <rpc/xdr.h>
 #include <netinet/in.h>
 
-static bool_t	xdrmem_getlong_aligned();
-static bool_t	xdrmem_putlong_aligned();
-static bool_t	xdrmem_getlong_unaligned();
-static bool_t	xdrmem_putlong_unaligned();
-static bool_t	xdrmem_getbytes();
-static bool_t	xdrmem_putbytes();
-static u_int	xdrmem_getpos(); /* XXX w/64-bit pointers, u_int not enough! */
-static bool_t	xdrmem_setpos();
-static int32_t *xdrmem_inline_aligned();
-static int32_t *xdrmem_inline_unaligned();
-static void	xdrmem_destroy();
+static bool_t	xdrmem_getlong_aligned(XDR *, long *);
+static bool_t	xdrmem_putlong_aligned(XDR *, long *);
+static bool_t	xdrmem_getlong_unaligned(XDR *, long *);
+static bool_t	xdrmem_putlong_unaligned(XDR *, long *);
+static bool_t	xdrmem_getbytes(XDR *, caddr_t, u_int);
+static bool_t	xdrmem_putbytes(XDR *, caddr_t, u_int);
+static u_int	xdrmem_getpos(XDR *); /* XXX w/64-bit pointers, u_int not enough! */
+static bool_t	xdrmem_setpos(XDR *, u_int);
+static int32_t *xdrmem_inline_aligned(XDR *, int);
+static int32_t *xdrmem_inline_unaligned(XDR *, int);
+static void	xdrmem_destroy(void);
 
 static struct	xdr_ops xdrmem_ops_aligned = {
 	xdrmem_getlong_aligned,
@@ -87,11 +87,7 @@ static struct	xdr_ops xdrmem_ops_unaligned = {
  * memory buffer.
  */
 void
-xdrmem_create(xdrs, addr, size, op)
-	XDR *xdrs;
-	caddr_t addr;
-	u_int size;
-	enum xdr_op op;
+xdrmem_create(XDR *xdrs, caddr_t addr, u_int size, enum xdr_op op)
 {
 
 	xdrs->x_op = op;
@@ -102,16 +98,12 @@ xdrmem_create(xdrs, addr, size, op)
 }
 
 static void
-xdrmem_destroy(/*xdrs*/)
-	/*XDR *xdrs;*/
+xdrmem_destroy(void)
 {
-
 }
 
 static bool_t
-xdrmem_getlong_aligned(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmem_getlong_aligned(XDR *xdrs, long *lp)
 {
 
 	if (xdrs->x_handy < sizeof(int32_t))
@@ -123,9 +115,7 @@ xdrmem_getlong_aligned(xdrs, lp)
 }
 
 static bool_t
-xdrmem_putlong_aligned(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmem_putlong_aligned(XDR *xdrs, long *lp)
 {
 
 	if (xdrs->x_handy < sizeof(int32_t))
@@ -137,9 +127,7 @@ xdrmem_putlong_aligned(xdrs, lp)
 }
 
 static bool_t
-xdrmem_getlong_unaligned(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmem_getlong_unaligned(XDR *xdrs, long *lp)
 {
 	int32_t l;
 
@@ -153,9 +141,7 @@ xdrmem_getlong_unaligned(xdrs, lp)
 }
 
 static bool_t
-xdrmem_putlong_unaligned(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmem_putlong_unaligned(XDR *xdrs, long *lp)
 {
 	int32_t l;
 
@@ -169,10 +155,7 @@ xdrmem_putlong_unaligned(xdrs, lp)
 }
 
 static bool_t
-xdrmem_getbytes(xdrs, addr, len)
-	XDR *xdrs;
-	caddr_t addr;
-	u_int len;
+xdrmem_getbytes(XDR *xdrs, caddr_t addr, u_int len)
 {
 
 	if (xdrs->x_handy < len)
@@ -184,10 +167,7 @@ xdrmem_getbytes(xdrs, addr, len)
 }
 
 static bool_t
-xdrmem_putbytes(xdrs, addr, len)
-	XDR *xdrs;
-	caddr_t addr;
-	u_int len;
+xdrmem_putbytes(XDR *xdrs, caddr_t addr, u_int len)
 {
 
 	if (xdrs->x_handy < len)
@@ -199,8 +179,7 @@ xdrmem_putbytes(xdrs, addr, len)
 }
 
 static u_int
-xdrmem_getpos(xdrs)
-	XDR *xdrs;
+xdrmem_getpos(XDR *xdrs)
 {
 
 	/* XXX w/64-bit pointers, u_int not enough! */
@@ -208,9 +187,7 @@ xdrmem_getpos(xdrs)
 }
 
 static bool_t
-xdrmem_setpos(xdrs, pos)
-	XDR *xdrs;
-	u_int pos;
+xdrmem_setpos(XDR *xdrs, u_int pos)
 {
 	caddr_t newaddr = xdrs->x_base + pos;
 	caddr_t lastaddr = xdrs->x_private + xdrs->x_handy;
@@ -223,9 +200,7 @@ xdrmem_setpos(xdrs, pos)
 }
 
 static int32_t *
-xdrmem_inline_aligned(xdrs, len)
-	XDR *xdrs;
-	int len;
+xdrmem_inline_aligned(XDR *xdrs, int len)
 {
 	int32_t *buf = 0;
 
@@ -238,10 +213,7 @@ xdrmem_inline_aligned(xdrs, len)
 }
 
 static int32_t *
-xdrmem_inline_unaligned(xdrs, len)
-	XDR *xdrs;
-	int len;
+xdrmem_inline_unaligned(XDR *xdrs __unused, int len __unused)
 {
-	
 	return (0);
 }

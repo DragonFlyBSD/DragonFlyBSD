@@ -29,7 +29,7 @@
  * @(#)xdr_reference.c 1.11 87/08/11 SMI
  * @(#)xdr_reference.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.8 1999/08/28 00:02:56 peter Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_reference.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_reference.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
 /*
@@ -57,13 +57,14 @@
  * the  necessary storage is allocated.
  * size is the sizeof the referneced structure.
  * proc is the routine to handle the referenced structure.
+ *
+ * Parameters:
+ *     pp:	the pointer to work on
+ *     size:	size of the object pointed to
+ *     proc:	xdr routine to handle the object
  */
 bool_t
-xdr_reference(xdrs, pp, size, proc)
-	XDR *xdrs;
-	caddr_t *pp;		/* the pointer to work on */
-	u_int size;		/* size of the object pointed to */
-	xdrproc_t proc;		/* xdr routine to handle the object */
+xdr_reference(XDR *xdrs, caddr_t *pp, u_int size, xdrproc_t proc)
 {
 	caddr_t loc = *pp;
 	bool_t stat;
@@ -76,11 +77,13 @@ xdr_reference(xdrs, pp, size, proc)
 		case XDR_DECODE:
 			*pp = loc = (caddr_t) mem_alloc(size);
 			if (loc == NULL) {
-				(void) fprintf(stderr,
+				fprintf(stderr,
 				    "xdr_reference: out of memory\n");
 				return (FALSE);
 			}
 			memset(loc, 0, (int)size);
+			break;
+		case XDR_ENCODE:
 			break;
 	}
 
@@ -114,13 +117,8 @@ xdr_reference(xdrs, pp, size, proc)
  *
  */
 bool_t
-xdr_pointer(xdrs,objpp,obj_size,xdr_obj)
-	XDR *xdrs;
-	char **objpp;
-	u_int obj_size;
-	xdrproc_t xdr_obj;
+xdr_pointer(XDR *xdrs, char **objpp, u_int obj_size, xdrproc_t xdr_obj)
 {
-
 	bool_t more_data;
 
 	more_data = (*objpp != NULL);
