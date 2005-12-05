@@ -25,12 +25,13 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/newfs_msdos/newfs_msdos.c,v 1.9.2.4 2001/08/01 08:43:04 obrien Exp $
- * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/newfs_msdos/newfs_msdos.c,v 1.3 2005/12/05 01:16:47 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/diskslice.h>
 #include <sys/disklabel.h>
+#include <sys/diskmbr.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -50,7 +51,6 @@
 #define BPN	  4		/* bits per nibble */
 #define NPB	  2		/* nibbles per byte */
 
-#define DOSMAGIC  0xaa55	/* DOS magic number */
 #define MINBPS	  128		/* minimum bytes per sector */
 #define MAXSPC	  128		/* maximum sectors per cluster */
 #define MAXNFT	  16		/* maximum number of FATs */
