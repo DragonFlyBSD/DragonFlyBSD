@@ -1,7 +1,7 @@
 /*
  * DEFS.H
  *
- * $DragonFly: src/lib/libsys/genhooks/defs.h,v 1.1 2005/05/08 18:14:56 dillon Exp $
+ * $DragonFly: src/lib/libsys/genhooks/defs.h,v 1.2 2005/12/05 16:48:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -83,4 +83,5 @@ void parse_file(const char *path);
 
 void output_user(FILE *fo);
 void output_lib(FILE *fo);
+void output_standalone(FILE *fo, const char *list_prefix);
 

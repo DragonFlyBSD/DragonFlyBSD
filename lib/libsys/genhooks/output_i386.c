@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libsys/genhooks/output_i386.c,v 1.1 2005/05/08 18:14:56 dillon Exp $
+ * $DragonFly: src/lib/libsys/genhooks/output_i386.c,v 1.2 2005/12/05 16:48:22 dillon Exp $
  */
 /*
  * OUTPUT_I386.C
@@ -45,6 +45,7 @@
 void
 output_user(FILE *fo)
 {
+    const char *name;
     sys_info *sys;
     int i;
 
@@ -58,10 +59,12 @@ output_user(FILE *fo)
 		    "__syscall_%d:\n",
 		    i);
 	if (sys) {
+	    name = sys->func_ret->var_name;
 	    fprintf(fo, "\t.globl __syscall_%s\n"
 			"__syscall_%s:\n",
-			sys->func_ret->var_name,
-			sys->func_ret->var_name);
+			name, name);
+	    fprintf(fo, "\t.weak %s\n", name);
+	    fprintf(fo, "\t.equ %s, __syscall_%s\n", name, name);
 	}
 	fprintf(fo, "\n");
     }
@@ -105,5 +108,69 @@ output_lib(FILE *fo)
 		"\tmovl\t$-1,%%edx\n"
 		"\tret\n");
     fprintf(fo, "\t.p2align 12,0\n");
+}
+
+void
+output_standalone(FILE *fo, const char *list_prefix)
+{
+    const char *name;
+    sys_info *sys;
+    char *path;
+    FILE *fp;
+    int i;
+
+    {
+	asprintf(&path, "%serrno.s", list_prefix);
+	if ((fp = fopen(path, "w")) == NULL) {
+	    err(1, "unable to create %s\n", path);
+	    /* not reached */
+	}
+	fprintf(fp, "\t.text\n");
+	fprintf(fp, "\t.p2align 4\n");
+	fprintf(fp, "__syscall_errno_return:\n"
+		    "\tmovl\t%%gs:12,%%edx\n"	/* XXX hardwired */
+		    "\tmovl\t%%eax,(%%edx)\n"
+		    "\tmovl\t$-1,%%eax\n"
+		    "\tmovl\t$-1,%%edx\n"
+		    "\tret\n");
+	fclose(fp);
+
+	fprintf(fo, "%s ", path);
+	free(path);
+    }
+
+    for (i = 0; i < sys_count; ++i) {
+	sys = sys_array[i];
+	if (sys == NULL)
+	    continue;
+
+	asprintf(&path, "%s%s.s", list_prefix, sys->func_ret->var_name);
+	if ((fp = fopen(path, "w")) == NULL) {
+	    err(1, "unable to create %s\n", path);
+	    /* not reached */
+	}
+
+	name = sys->func_ret->var_name;
+	fprintf(fp, "\t.text\n");
+	fprintf(fp, "\t.p2align 4\n");
+	fprintf(fp, "\t.globl __syscall_%d\n"
+		    "__syscall_%d:\n", i);
+	fprintf(fp, "\t.globl __syscall_%s\n"
+		    "__syscall_%s:\n",
+		    name, name);
+	fprintf(fp, "\t.weak %s\n", name);
+	fprintf(fp, "\t.equ %s, __syscall_%s\n", name, name);
+	fprintf(fp, "\tlea\t0x%x,%%eax\n"
+		    "\tint\t$0x80\n"
+		    "\tjb\t__syscall_errno_return\n"
+		    "\tret\n",
+		    i);
+	fprintf(fp, "\n");
+	fclose(fp);
+
+	fprintf(fo, " %s", path);
+	free(path);
+    }
+    fprintf(fo, "\n");
 }
 

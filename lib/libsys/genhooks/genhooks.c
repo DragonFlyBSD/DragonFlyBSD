@@ -31,10 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libsys/genhooks/genhooks.c,v 1.1 2005/05/08 18:14:56 dillon Exp $
+ * $DragonFly: src/lib/libsys/genhooks/genhooks.c,v 1.2 2005/12/05 16:48:22 dillon Exp $
  */
 /*
- * GENHOOKS -u/-l [-o outfile] infile(s)
+ * GENHOOKS [-u] [-l] [-s listfile] [-o outfile] infile(s)
  *
  * Generate assembly hooks for the actual system calls.  This program
  * will either generate hooks for user programs, or it will generate
@@ -48,16 +48,22 @@ static void usage(const char *argv0);
 int
 main(int ac, char **av)
 {
-    enum { OUTPUT_NONE, OUTPUT_USER, OUTPUT_LIB } output_type = OUTPUT_NONE;
+    enum { OUTPUT_NONE, OUTPUT_USER, 
+	   OUTPUT_LIB, OUTPUT_STANDALONE } output_type = OUTPUT_NONE;
     const char *argv0 = av[0];
+    const char *list_prefix = NULL;
     FILE *fo = NULL;
     int i;
     int ch;
 
-    while ((ch = getopt(ac, av, "ulo:")) != -1) {
+    while ((ch = getopt(ac, av, "uls:o:")) != -1) {
 	switch(ch) {
 	case 'u':
 	    output_type = OUTPUT_USER;
+	    break;
+	case 's':
+	    output_type = OUTPUT_STANDALONE;
+	    list_prefix = optarg;
 	    break;
 	case 'l':
 	    output_type = OUTPUT_LIB;
@@ -97,16 +103,22 @@ main(int ac, char **av)
     case OUTPUT_LIB:
 	output_lib(fo);
 	break;
+    case OUTPUT_STANDALONE:
+	output_standalone(fo, list_prefix);
+	break;
     default:
 	break;
     }
+    if (fo != stdout)
+	fclose(fo);
     return(0);
 }
 
 static void
 usage(const char *argv0)
 {
-    fprintf(stderr, "%s [-u/-l] [-o outfile] infiles...\n", argv0);
+    fprintf(stderr, "%s [-u] [-l] [-s outprefix] [-o outfile] infiles...\n", 
+	    argv0);
     exit(1);
 }
 
