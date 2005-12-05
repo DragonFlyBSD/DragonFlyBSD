@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.7 2005/08/28 23:35:35 corecode Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.8 2005/12/05 16:52:02 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -50,6 +50,7 @@
 #include <sys/signalvar.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/buf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -75,9 +76,13 @@ struct nlist Nl[] = {
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
 static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist);
+static void dumpbufs(kvm_t *kd, void *bufp, const char *id);
 static int getobjpages(kvm_t *kd, struct vm_object *obj);
 static int getobjvnpsize(kvm_t *kd, struct vm_object *obj);
 
+int tracebufs = 0;
+
+int
 main(int ac, char **av)
 {
     struct mount *mp;
@@ -88,8 +93,11 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
 
-    while ((ch = getopt(ac, av, "M:N:")) != -1) {
+    while ((ch = getopt(ac, av, "bM:N:")) != -1) {
 	switch(ch) {   
+	case 'b':
+	    tracebufs = 1;
+	    break;
 	case 'M':
 	    corefile = optarg;
 	    break;
@@ -253,10 +261,38 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	    vn.v_lock.lk_lockholder);
     }
 
+    if (tracebufs) {
+	if (vn.v_rbclean_tree.rbh_root) {
+	    printf("\tCLEAN BUFFERS\n");
+	    dumpbufs(kd, vn.v_rbclean_tree.rbh_root, "ROOT");
+	}
+	if (vn.v_rbdirty_tree.rbh_root) {
+	    printf("\tDIRTY BUFFERS\n");
+	    dumpbufs(kd, vn.v_rbdirty_tree.rbh_root, "ROOT");
+	}
+    }
+
     if (whichlist)
 	return(vn.v_nmntvnodes.tqe_next);
     else
 	return(vn.v_freelist.tqe_next);
+}
+
+static void
+dumpbufs(kvm_t *kd, void *bufp, const char *id)
+{
+	struct buf buf;
+
+	kkread(kd, (u_long)bufp, &buf, sizeof(buf));
+	printf("\t    %-8s %p lbn %5d fbn %6d\n",
+		id, bufp,
+		buf.b_lblkno,
+		buf.b_blkno);
+
+	if (buf.b_rbnode.rbe_left)
+	    dumpbufs(kd, buf.b_rbnode.rbe_left, "LEFT");
+	if (buf.b_rbnode.rbe_right)
+	    dumpbufs(kd, buf.b_rbnode.rbe_right, "RIGHT");
 }
 
 static
