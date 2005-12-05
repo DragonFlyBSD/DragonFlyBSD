@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.6 2004/05/08 21:23:30 justin Exp $
+# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.7 2005/12/05 02:04:12 corecode Exp $
 
 $TITLE(DragonFly - Reporting Bugs)
 <p>
@@ -13,6 +13,8 @@ painless an affair as possible by providing several ways to report them.</p>
 		nntp://nntp.dragonflybsd.org/dragonfly.bugs</a></li>
     <li>When we have an official bug tracking system in place you will
        be able to submit a bug through that.</li>
+    <li>If you want to report a security related issue which may not be disclosed
+       immediately, write to:  security-officer at dragonflybsd.org</li>
 </ul>
 <p>
 The email and newsgroup bug reporting methods are meant to be casual affairs.
