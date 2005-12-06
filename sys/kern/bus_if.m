@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.8 2005/10/30 04:41:15 dillon Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.9 2005/12/06 13:48:49 sephe Exp $
 #
 
 #include <sys/bus.h>
@@ -119,7 +119,7 @@ METHOD void driver_added {
 } DEFAULT bus_generic_driver_added;
 
 #
-# For busses which use use drivers supporting DEVICE_IDENTIFY to
+# For busses which use drivers supporting DEVICE_IDENTIFY to
 # enumerate their devices, these methods are used to create new
 # device instances. If place is non-NULL, the new device will be
 # added after the last existing child with the same order.
