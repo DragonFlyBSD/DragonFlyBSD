@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.10 2005/10/09 14:44:04 corecode Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.11 2005/12/06 02:22:23 corecode Exp $
 
 LIB=    ncurses
 
@@ -18,19 +18,19 @@ CFLAGS+=	-DTRACE
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 ncurses_def.h:
-	${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
 curses.h: curses.head curses.tail
 	cat ${.CURDIR}/../include/curses.head >$@
-	${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
 	cat ${NCURSESDIR}/include/curses.wide >>$@
 	cat ${NCURSESDIR}/include/curses.tail >>$@
 term.h: MKterm.h.awk ncurses_cfg.h
 	awk -f ${.CURDIR}/../include/MKterm.h.awk ${TERMINFO_CAPS} > $@
-	${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
+	sh ${NCURSESDIR}/include/edit_cfg.sh ${.CURDIR}/../include/ncurses_cfg.h $@
 hashsize.h:
-	${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} >$@
+	sh ${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} >$@
 parametrized.h:
-	${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} >$@
+	sh ${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} >$@
 init_keytry.h: make_keys keys.list
 	./make_keys keys.list > $@
 
@@ -38,7 +38,7 @@ make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
 
 keys.list:
-	${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
+	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
 
 names.c codes.c:
 	awk -f ${NCURSESTINFODIR}/MKnames.awk ${TERMINFO_CAPS}

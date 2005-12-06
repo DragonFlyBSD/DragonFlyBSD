@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.4 2005/09/22 11:14:44 asmodai Exp $
+# $DragonFly: src/lib/libncurses/libmenu/Makefile,v 1.5 2005/12/06 02:22:23 corecode Exp $
 
 LIB=    menu
 
@@ -13,10 +13,10 @@ CFLAGS+= 	-I${NCURSESDIR}/menu
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
 
 ncurses_def.h:
-	${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
+	sh ${NCURSESDIR}/include/MKncurses_def.sh ${NCURSESDIR}/include/ncurses_defs > ${.TARGET}
 curses.h:
 	cat ${.CURDIR}/../include/curses.head >$@
-	${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
+	sh ${NCURSESDIR}/include/MKkey_defs.sh $(TERMINFO_CAPS) >>$@
 	cat ${NCURSESDIR}/include/curses.wide >>$@
 	cat ${NCURSESDIR}/include/curses.tail >>$@
 
