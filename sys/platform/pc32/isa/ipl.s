@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.25 2005/11/22 03:58:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.26 2005/12/06 02:02:24 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -206,6 +206,7 @@ doreti_fast:
 	jnc	doreti_next
 	pushl	%eax			/* save IRQ mask unavailable for BGL */
 					/* NOTE: is also CPL in frame */
+#if 0
 #ifdef SMP
 	pushl	%ecx			/* save ecx */
 	call	try_mplock
@@ -214,11 +215,14 @@ doreti_fast:
 	jz	1f
 	/* MP lock successful */
 #endif
+#endif
 	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
+#if 0
 #ifdef SMP
 	call	rel_mplock
+#endif
 #endif
 	popl	%eax
 	jmp	doreti_next
@@ -375,6 +379,7 @@ splz_fast:
 	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	splz_next
 	pushl	%eax
+#if 0
 #ifdef SMP
 	pushl	%ecx
 	call	try_mplock
@@ -382,11 +387,14 @@ splz_fast:
 	testl	%eax,%eax
 	jz	1f
 #endif
+#endif
 	incl	PCPU(intr_nesting_level)
 	call	dofastunpend		/* unpend fast intr %ecx */
 	decl	PCPU(intr_nesting_level)
+#if 0
 #ifdef SMP
 	call	rel_mplock
+#endif
 #endif
 	popl	%eax
 	jmp	splz_next
