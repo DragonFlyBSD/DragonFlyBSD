@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.21 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.22 2005/12/06 13:51:01 sephe Exp $
  */
 
 #include "opt_ddb.h"
@@ -975,8 +975,7 @@ find_mod_metadata(const char *modname)
 	if (mdt->md_type != MDT_MODULE)
 	    continue;
 	if (strlen(mdt->md_cval) == len &&
-	    strncmp(mdt->md_cval, modname, len) == 0
-	) {
+	    strncmp(mdt->md_cval, modname, len) == 0) {
 	    return(mdt);
 	}
     }
