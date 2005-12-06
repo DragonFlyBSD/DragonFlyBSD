@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.48 2005/11/07 20:05:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.49 2005/12/06 23:37:47 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -235,6 +235,8 @@ u_int32_t *io_apic_versions;
 extern	int nkpt;
 
 u_int32_t cpu_apic_versions[MAXCPU];
+int64_t tsc_offsets[MAXCPU];
+int64_t tsc0_offset;
 
 #ifdef APIC_IO
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];
@@ -2450,6 +2452,14 @@ ap_init(void)
 	while (cpu_try_mplock() == 0)
 	    ;
 
+	if (cpu_feature & CPUID_TSC) {
+	    /*
+	     * The BSP is constantly updating tsc0_offset, figure out the
+	     * relative difference to synchronize ktrdump.
+	     */
+	    tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc0_offset;
+	}
+
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
 
@@ -2509,9 +2519,15 @@ ap_finish(void)
 	mp_finish = 1;
 	if (bootverbose)
 		printf("Finish MP startup\n");
+	if (cpu_feature & CPUID_TSC)
+		tsc0_offset = rdtsc();
+	tsc_offsets[0] = 0;
 	rel_mplock();
-	while (smp_active_mask != smp_startup_mask)
+	while (smp_active_mask != smp_startup_mask) {
 		cpu_lfence();
+		if (cpu_feature & CPUID_TSC)
+			tsc0_offset = rdtsc();
+	}
 	while (try_mplock() == 0)
 		;
 	if (bootverbose)

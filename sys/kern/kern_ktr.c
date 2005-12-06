@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.6 2005/06/20 20:37:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.7 2005/12/06 23:37:53 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -113,6 +113,9 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, version, CTLFLAG_RD, &ktr_version, 0, "");
 static int	ktr_stacktrace = 1;
 SYSCTL_INT(_debug_ktr, OID_AUTO, stacktrace, CTLFLAG_RD, &ktr_stacktrace, 0, "");
 
+static int	ktr_resynchronize = 0;
+SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW, &ktr_resynchronize, 0, "");
+
 /*
  * Give cpu0 a static buffer so the tracepoint facility can be used during
  * early boot (note however that we still use a critical section, XXX).
@@ -120,6 +123,11 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, stacktrace, CTLFLAG_RD, &ktr_stacktrace, 0, "")
 static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
 static struct	ktr_entry *ktr_buf[MAXCPU] = { &ktr_buf0[0] };
 static int	ktr_idx[MAXCPU];
+static int	ktr_sync_state = 0;
+static int	ktr_sync_count;
+static int64_t	ktr_sync_tsc;
+struct callout	ktr_resync_callout;
+
 
 #ifdef KTR_VERBOSE
 int	ktr_verbose = KTR_VERBOSE;
@@ -137,8 +145,96 @@ ktr_sysinit(void *dummy)
 				    M_KTR, M_WAITOK | M_ZERO);
 	}
 }
+SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
 
-SYSINIT(announce, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
+#ifdef SMP
+
+/*
+ * Try to resynchronize the TSC's for all cpus.  This is really, really nasty.
+ * We have to send an IPIQ message to all remote cpus, wait until they 
+ * get into their IPIQ processing code loop, then do an even stricter hard
+ * loop to get the cpus as close to synchronized as we can to get the most
+ * accurate reading.
+ *
+ * This callback occurs on cpu0.
+ */
+static void ktr_resync_callback(void *dummy);
+static void ktr_resync_remote(void *dummy);
+
+static void
+ktr_resyncinit(void *dummy)
+{
+	callout_init(&ktr_resync_callout);
+	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
+}
+SYSINIT(ktr_resync, SI_SUB_FINISH_SMP+1, SI_ORDER_ANY, ktr_resyncinit, NULL);
+
+extern cpumask_t smp_active_mask;
+
+/*
+ * We use a callout callback instead of a systimer because we cannot afford
+ * to preempt anyone to do this, or we might deadlock a spin-lock or 
+ * serializer between two cpus.
+ */
+static
+void 
+ktr_resync_callback(void *dummy __unused)
+{
+	int count;
+
+	KKASSERT(mycpu->gd_cpuid == 0);
+	if (ktr_resynchronize == 0)
+		goto done;
+	if ((cpu_feature & CPUID_TSC) == 0)
+		return;
+	crit_enter();
+	ktr_sync_count = 0;
+	ktr_sync_state = 1;
+	ktr_sync_tsc = rdtsc();
+	count = lwkt_send_ipiq_mask(mycpu->gd_other_cpus & smp_active_mask,
+				    (ipifunc1_t)ktr_resync_remote, NULL);
+	while (ktr_sync_count != count)
+		lwkt_process_ipiq();
+	cpu_disable_intr();
+	ktr_sync_tsc = rdtsc();
+	cpu_sfence();
+	ktr_sync_state = 2;
+	cpu_sfence();
+	while (ktr_sync_count != 0) {
+		ktr_sync_tsc = rdtsc();
+		cpu_lfence();
+		cpu_nop();
+	}
+	cpu_enable_intr();
+	crit_exit();
+	ktr_sync_state = 0;
+done:
+	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
+}
+
+extern int64_t tsc_offsets[MAXCPU];
+
+static void
+ktr_resync_remote(void *dummy __unused)
+{
+	volatile int64_t tsc1 = ktr_sync_tsc;
+	volatile int64_t tsc2;
+
+	KKASSERT(ktr_sync_state == 1);
+	atomic_add_int(&ktr_sync_count, 1);
+	while (ktr_sync_state == 1) {
+		lwkt_process_ipiq();
+	}
+	cpu_disable_intr();
+	KKASSERT(ktr_sync_state == 2);
+	tsc2 = ktr_sync_tsc;
+	if (tsc2 > tsc1)
+		tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc2;
+	atomic_subtract_int(&ktr_sync_count, 1);
+	cpu_enable_intr();
+}
+
+#endif
 
 static __inline
 void
@@ -155,7 +251,7 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 		++ktr_idx[cpu];
 		crit_exit();
 		if (cpu_feature & CPUID_TSC)
-			entry->ktr_timestamp = rdtsc();
+			entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
 		else
 			entry->ktr_timestamp = get_approximate_time_t();
 		entry->ktr_info = info;

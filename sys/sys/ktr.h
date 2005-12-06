@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/ktr.h,v 1.7 2005/06/20 21:12:49 dillon Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.8 2005/12/06 23:37:55 dillon Exp $
  */
 /*
  * Generic Kernel trace buffer support.  
@@ -50,7 +50,7 @@
 #endif
 
 #define	KTR_BUFSIZE	48
-#define KTR_VERSION	2
+#define KTR_VERSION	3
 
 #ifndef LOCORE
 

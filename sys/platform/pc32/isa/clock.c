@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.43 2005/11/21 18:02:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.44 2005/12/06 23:37:51 dillon Exp $
  */
 
 /*
@@ -114,7 +114,8 @@ static uint16_t i8254_walltimer_cntr;
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	statclock_disable = 1;	/* we don't use the statclock right now */
-u_int	tsc_freq;
+u_int	tsc_freq;		/* XXX obsolete, convert users */
+int64_t	tsc_frequency;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
 int	timer0_running;
@@ -558,8 +559,10 @@ calibrate_clocks(void)
 	 * Read the cpu cycle counter.  The timing considerations are
 	 * similar to those for the i8254 clock.
 	 */
-	if (tsc_present) 
-		tsc_freq = rdtsc() - old_tsc;
+	if (tsc_present) {
+		tsc_frequency = rdtsc() - old_tsc;
+		tsc_freq = (u_int)tsc_frequency;	/* XXX */
+	}
 
 	if (tsc_present)
 		printf("TSC clock: %u Hz, ", tsc_freq);
@@ -741,6 +744,7 @@ startrtclock()
 		    "%d Hz differs from default of %d Hz by more than 1%%\n",
 			       freq, i8254_cputimer.freq);
 		tsc_freq = 0;
+		tsc_frequency = 0;
 	}
 
 #ifndef CLK_USE_TSC_CALIBRATION
@@ -749,9 +753,10 @@ startrtclock()
 			printf(
 "CLK_USE_TSC_CALIBRATION not specified - using old calibration method\n");
 		tsc_freq = 0;
+		tsc_frequency = 0;
 	}
 #endif
-	if (tsc_present && tsc_freq == 0) {
+	if (tsc_present && tsc_frequency == 0) {
 		/*
 		 * Calibration of the i586 clock relative to the mc146818A
 		 * clock failed.  Do a less accurate calibration relative
@@ -760,7 +765,8 @@ startrtclock()
 		u_int64_t old_tsc = rdtsc();
 
 		DELAY(1000000);
-		tsc_freq = rdtsc() - old_tsc;
+		tsc_frequency = rdtsc() - old_tsc;
+		tsc_freq = (u_int)tsc_frequency;
 #ifdef CLK_USE_TSC_CALIBRATION
 		if (bootverbose)
 			printf("TSC clock: %u Hz (Method B)\n", tsc_freq);
