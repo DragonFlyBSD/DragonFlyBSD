@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.8 2004/06/06 19:16:14 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.9 2005/12/06 04:03:56 dillon Exp $
  */
 
 /*
@@ -257,53 +257,49 @@ smb_co_gone(struct smb_connobj *cp, struct smb_cred *scred)
 void
 smb_co_ref(struct smb_connobj *cp, struct thread *td)
 {
-	smb_ilock ilock;
-
-	SMB_CO_LOCK(&ilock, cp);
+	SMB_CO_LOCK(cp);
 	cp->co_usecount++;
-	SMB_CO_UNLOCK(&ilock);
+	SMB_CO_UNLOCK(cp);
 }
 
 void
 smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred)
 {
 	struct thread *td = scred->scr_td;
-	smb_ilock ilock;
 
-	SMB_CO_LOCK(&ilock, cp);
+	SMB_CO_LOCK(cp);
 	if (cp->co_usecount > 1) {
 		cp->co_usecount--;
-		SMB_CO_UNLOCK(&ilock);
+		SMB_CO_UNLOCK(cp);
 		return;
 	}
 	if (cp->co_usecount == 0) {
 		SMBERROR("negative use_count for object %d", cp->co_level);
-		SMB_CO_UNLOCK(&ilock);
+		SMB_CO_UNLOCK(cp);
 		return;
 	}
 	cp->co_usecount--;
 	cp->co_flags |= SMBO_GONE;
 
-	lockmgr(&cp->co_lock, LK_DRAIN | LK_INTERLOCK, &ilock, td);
+	lockmgr(&cp->co_lock, LK_DRAIN | LK_INTERLOCK, SMB_CO_INTERLOCK(cp), td);
 	smb_co_gone(cp, scred);
 }
 
 int
-smb_co_get(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct smb_cred *scred)
+smb_co_get(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct smb_cred *scred)
 {
 	int error;
-	smb_ilock iilock;
 
 	if ((flags & LK_INTERLOCK) == 0) {
-		SMB_CO_LOCK(&iilock, cp);
-		ilock = &iilock;
+		SMB_CO_LOCK(cp);
+		sl = SMB_CO_INTERLOCK(cp);
 	}
 	cp->co_usecount++;
-	error = smb_co_lock(cp, ilock, flags | LK_INTERLOCK, scred->scr_td);
+	error = smb_co_lock(cp, sl, flags | LK_INTERLOCK, scred->scr_td);
 	if (error) {
-		SMB_CO_LOCK(ilock, cp);
+		SMB_CO_LOCK(cp);
 		cp->co_usecount--;
-		SMB_CO_UNLOCK(ilock);
+		SMB_CO_UNLOCK(cp);
 		return error;
 	}
 	return 0;
@@ -314,10 +310,9 @@ smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 {
 	struct thread *td = scred->scr_td;
 	int flags;
-	smb_ilock ilock;
 
 	flags = LK_RELEASE;
-	SMB_CO_LOCK(&ilock, cp);
+	SMB_CO_LOCK(cp);
 	if (cp->co_usecount > 1) {
 		cp->co_usecount--;
 	} else if (cp->co_usecount == 1) {
@@ -327,7 +322,7 @@ smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 	} else {
 		SMBERROR("negative usecount");
 	}
-	lockmgr(&cp->co_lock, LK_RELEASE | LK_INTERLOCK, &ilock, td);
+	lockmgr(&cp->co_lock, LK_RELEASE | LK_INTERLOCK, SMB_CO_INTERLOCK(cp), td);
 	if ((cp->co_flags & SMBO_GONE) == 0)
 		return;
 	lockmgr(&cp->co_lock, LK_DRAIN, NULL, td);
@@ -341,7 +336,7 @@ smb_co_lockstatus(struct smb_connobj *cp, struct thread *td)
 }
 
 int
-smb_co_lock(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct thread *td)
+smb_co_lock(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct thread *td)
 {
 	if (cp->co_flags & SMBO_GONE)
 		return EINVAL;
@@ -352,13 +347,13 @@ smb_co_lock(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct thread *
 		SMBERROR("recursive lock for object %d\n", cp->co_level);
 		return 0;
 	}
-	return lockmgr(&cp->co_lock, flags, ilock, td);
+	return lockmgr(&cp->co_lock, flags, sl, td);
 }
 
 void
-smb_co_unlock(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct thread *td)
+smb_co_unlock(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct thread *td)
 {
-	lockmgr(&cp->co_lock, flags | LK_RELEASE, ilock, td);
+	lockmgr(&cp->co_lock, flags | LK_RELEASE, sl, td);
 }
 
 static void
@@ -651,11 +646,10 @@ u_short
 smb_vc_nextmid(struct smb_vc *vcp)
 {
 	u_short r;
-	smb_ilock ilock;
 
-	SMB_CO_LOCK(&ilock, &vcp->obj);
+	SMB_CO_LOCK(&vcp->obj);
 	r = vcp->vc_mid++;
-	SMB_CO_UNLOCK(&ilock);
+	SMB_CO_UNLOCK(&vcp->obj);
 	return r;
 }
 

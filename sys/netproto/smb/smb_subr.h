@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.11 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.12 2005/12/06 04:03:56 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -77,14 +77,15 @@ void m_dumpm(struct mbuf *m);
 #define	smb_suser(cred)	suser_cred(cred, 0)
 
 #include <sys/lock.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 
 #define	lockdestroy(lock)
-#define	smb_slock			lwkt_token
-#define	smb_ilock			lwkt_tokref
-#define	smb_sl_init(tok, desc)		lwkt_token_init(tok)
-#define	smb_sl_destroy(tok)
-#define	smb_sl_lock(ilock, tok)		lwkt_gettoken(ilock, tok)
-#define	smb_sl_unlock(ilock)		lwkt_reltoken(ilock)
+#define	smb_slock			spinlock
+#define	smb_sl_init(sl, desc)		spin_init(sl)
+#define	smb_sl_destroy(sl)
+#define	smb_sl_lock(sl)			spin_lock(sl)
+#define	smb_sl_unlock(sl)		spin_unlock(sl)
 
 #define SMB_STRFREE(p)	do { if (p) smb_strfree(p); } while(0)
 
@@ -173,7 +174,7 @@ int  smb_put_asunistring(struct smb_rq *rqp, const char *src);
 int kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...);
 void kthread_exit2(void);
-int smb_sleep(void *chan, struct lwkt_tokref *ilock, int slpflags, const char *wmesg, int timo);
+int smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int timo);
 
 
 #endif /* !_NETSMB_SMB_SUBR_H_ */

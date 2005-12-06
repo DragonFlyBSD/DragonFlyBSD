@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.17 2005/12/03 21:01:03 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.18 2005/12/06 04:03:56 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -412,13 +412,13 @@ kthread_exit2(void)
  * since we blocked, so reget or release as appropriate.
  */
 int
-smb_sleep(void *chan, struct lwkt_tokref *ilock, int slpflags, const char *wmesg, int timo)
+smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int timo)
 {
 	int error;
 
 	error = tsleep(chan, slpflags, wmesg, timo);
-	if ((slpflags & PDROP) && ilock)
-		lwkt_reltoken(ilock);
+	if ((slpflags & PDROP) && sl)
+		smb_sl_unlock(sl);
 	return error;
 }
 
