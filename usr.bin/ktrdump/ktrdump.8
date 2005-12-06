@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.4 2005/06/21 06:50:28 dillon Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.5 2005/12/06 23:41:56 dillon Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -34,7 +34,7 @@
 .Nd print kernel ktr trace buffer
 .Sh SYNOPSIS
 .Nm
-.Op Fl acfinpqrtx
+.Op Fl acfinpqrstx
 .Op Fl N Ar execfile
 .Op Fl M Ar corefile
 .Op Fl o Ar outfile
@@ -57,13 +57,21 @@ Print the ID string field, identifying the facility being logged.
 .Nm
 normally tries to translate the caller fields and (when easily parsed)
 trace arguments into symbols.  This option forces hex values to be
-displayed instead.
+displayed instead.  This option will also cause relative timestamps to
+be displayed as TSC timestamps rather then converted to microseconds.
 .It Fl p
 Print the trace data.
 .It Fl q
 Quiet mode; do not print the column header.
 .It Fl r
-Print relative timestamps rather than absolute timestamps.
+Print relative timestamps in microseconds, rather than absolute TSC
+timestamps.
+.It Fl s
+Attempt to merge the KTR logs for all cpus into a single time-sorted
+log.  For the numbers to make any sense you probably want to turn
+on the
+.Va debug.ktr.resynchronize
+sysctl variable.
 .It Fl x
 Print the call chain leading up to the procedure which issued
 the KTR.

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.3 2005/06/21 06:50:28 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.4 2005/12/06 23:41:56 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -67,6 +67,7 @@ static struct nlist nl[] = {
 	{ "_ktr_idx" },
 	{ "_ktr_buf" },
 	{ "_ncpus" },
+	{ "_tsc_frequency" },
 	{ NULL }
 };
 
@@ -76,12 +77,14 @@ static int iflag;
 static int nflag;
 static int qflag;
 static int rflag;
+static int sflag;
 static int tflag;
 static int xflag;
 static int pflag;
 static int Mflag;
 static int Nflag;
 static int64_t last_timestamp;
+static double tsc_frequency;
 
 static char corefile[PATH_MAX];
 static char execfile[PATH_MAX];
@@ -98,11 +101,16 @@ int
 main(int ac, char **av)
 {
 	struct ktr_entry **ktr_buf;
+	struct ktr_entry *entry;
+	struct ktr_entry *entryx;
 	uintmax_t tlast, tnow;
 	struct stat sb;
 	kvm_t *kd;
 	FILE *fo;
 	char *p;
+	int64_t first_timestamp;
+	int64_t tts;
+	int *ktr_start_index;
 	int version;
 	int entries;
 	int *ktr_idx;
@@ -112,12 +120,14 @@ main(int ac, char **av)
 	int c;
 	int i;
 	int n;
+	int bestn;
+	int row;
 
 	/*
 	 * Parse commandline arguments.
 	 */
 	fo = stdout;
-	while ((c = getopt(ac, av, "acfiqrtxpN:M:o:")) != -1) {
+	while ((c = getopt(ac, av, "acfinqrtxpsN:M:o:")) != -1) {
 		switch (c) {
 		case 'a':
 			cflag = 1;
@@ -164,6 +174,9 @@ main(int ac, char **av)
 		case 'r':
 			rflag = 1;
 			break;
+		case 's':
+			sflag = 1;	/* sort across the cpus */
+			break;
 		case 't':
 			tflag = 1;
 			break;
@@ -201,9 +214,14 @@ main(int ac, char **av)
 		errx(1, "%s", kvm_geterr(kd));
 	if (kvm_read(kd, nl[4].n_value, &ncpus, sizeof(ncpus)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
-
-	if (version != KTR_VERSION)
-		errx(1, "ktr version mismatch");
+	ktr_start_index = malloc(sizeof(*ktr_start_index) * ncpus);
+	if (version >= 3) {
+		if (kvm_read(kd, nl[5].n_value, &tts, sizeof(tts)) == -1)
+			errx(1, "%s", kvm_geterr(kd));
+		tsc_frequency = (double)tts;
+	}
+	if (version > KTR_VERSION)
+		errx(1, "ktr version too high for us to handle");
 	if (kvm_read(kd, nl[1].n_value, &entries, sizeof(entries)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
 	ktr_buf = malloc(sizeof(*ktr_buf) * ncpus);
@@ -220,17 +238,80 @@ main(int ac, char **av)
 		void *kptr = ktr_buf[n];
 		ktr_buf[n] = malloc(sizeof(**ktr_buf) * entries);
 		if (kvm_read(kd, (uintptr_t)kptr, ktr_buf[n], sizeof(**ktr_buf) * entries) == -1)
-		errx(1, "%s", kvm_geterr(kd));
+			errx(1, "%s", kvm_geterr(kd));
+	}
+
+	/*
+	 * Figure out the lowest numbered timestamp.
+	 */
+	first_timestamp = 0;
+	printf("TSC frequency is %6.3f MHz\n", tsc_frequency / 1000000.0);
+	for (n = 0; n < ncpus; ++n) {
+		for (i = 0; i < entries; ++i) {
+			entry = &ktr_buf[n][i];
+			if (entry->ktr_timestamp && (first_timestamp == 0 ||
+			    first_timestamp < entry->ktr_timestamp)) {
+				first_timestamp = entry->ktr_timestamp;
+			}
+		}
+	}
+
+	/*
+	 * Figure out the starting entry for each cpu
+	 */
+	for (n = 0; n < ncpus; ++n) {
+		ktr_start_index[n] = 0;
+		tts = 0;
+		for (i = 0; i < entries; ++i) {
+			entry = &ktr_buf[n][i];
+			if (entry->ktr_timestamp == 0)
+				continue;
+			if (tts == 0 || tts > entry->ktr_timestamp) {
+				tts = entry->ktr_timestamp;
+				ktr_start_index[n] = i;
+			}
+		}
 	}
 
 	/*
 	 * Now tear through the trace buffer.
 	 */
-	for (n = 0; n < ncpus; ++n) {
-		last_timestamp = 0;
-		for (i = 0; i < entries; ++i) {
-			print_header(fo, i);
-			print_entry(fo, kd, n, i, &ktr_buf[n][i]);
+	if (sflag) {
+		row = 0;
+		for (;;) {
+			bestn = -1;
+			tts = 0;
+			for (n = 0; n < ncpus; ++n) {
+				i = ktr_start_index[n];
+				entry = &ktr_buf[n][i];
+				if (entry->ktr_timestamp == 0)
+					continue;
+				if (tts == 0 || tts >= entry->ktr_timestamp) {
+					tts = entry->ktr_timestamp;
+					bestn = n;
+				}
+			}
+			if (bestn < 0 || tts < last_timestamp)
+				break;
+			print_header(fo, row);
+			print_entry(fo, kd, bestn, ktr_start_index[bestn],
+				    &ktr_buf[bestn][ktr_start_index[bestn]]);
+			if (++ktr_start_index[bestn] == entries)
+				ktr_start_index[bestn] = 0;
+			last_timestamp = tts;
+			++row;
+		}
+	} else {
+		for (n = 0; n < ncpus; ++n) {
+			last_timestamp = first_timestamp;
+			i = ktr_start_index[n];
+			do {
+				entry = &ktr_buf[n][i];
+				print_header(fo, i);
+				print_entry(fo, kd, n, i, &ktr_buf[n][i]);
+				if (++i == entries)
+					i = 0;
+			} while (i != ktr_start_index[n]);
 		}
 	}
 	return (0);
@@ -270,11 +351,15 @@ print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
 	if (cflag)
 		fprintf(fo, "%-3d ", n);
 	if (tflag || rflag) {
-		if (rflag)
+		if (rflag && !nflag && tsc_frequency != 0.0) {
+			fprintf(fo, "%13.3f uS ",
+				(double)(entry->ktr_timestamp - last_timestamp) * 1000000.0 / tsc_frequency);
+		} else if (rflag) {
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp -
 						last_timestamp);
-		else
+		} else {
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp);
+		}
 	}
 	if (xflag) {
 		if (nflag) {
