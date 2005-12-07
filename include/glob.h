@@ -35,7 +35,7 @@
  *
  *	@(#)glob.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/glob.h,v 1.3.6.3 2002/09/18 14:13:30 mikeh Exp $
- * $DragonFly: src/include/glob.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/glob.h,v 1.4 2005/12/07 02:28:15 corecode Exp $
  */
 
 #ifndef _GLOB_H_
@@ -90,6 +90,7 @@ typedef struct {
 #define	GLOB_QUOTE	0x0400	/* Quote special chars with \. */
 #define	GLOB_TILDE	0x0800	/* Expand tilde names from the passwd file. */
 #define	GLOB_LIMIT	0x1000	/* limit number of returned paths */
+#define	GLOB_PERIOD	0x4000	/* Names with leading dots match as well */
 
 /* source compatibility, these are the old names */
 #define GLOB_MAXPATH	GLOB_LIMIT

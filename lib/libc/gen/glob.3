@@ -33,9 +33,9 @@
 .\"
 .\"     @(#)glob.3	8.3 (Berkeley) 4/16/94
 .\" $FreeBSD: src/lib/libc/gen/glob.3,v 1.7.2.11 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/glob.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/glob.3,v 1.3 2005/12/07 02:28:15 corecode Exp $
 .\"
-.Dd April 16, 1994
+.Dd December 6, 2005
 .Dt GLOB 3
 .Os
 .Sh NAME
@@ -271,6 +271,8 @@ that can be coerced into a denial of service attack
 via patterns that expand to a very large number of matches,
 such as a long string of
 .Ql */../*/.. .
+.It Dv GLOB_PERIOD
+Allow matching of pathnames which start with a period.
 .El
 .Pp
 If, during the search, a directory is encountered that cannot be opened

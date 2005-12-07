@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
- * $DragonFly: src/lib/libc/gen/glob.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/glob.c,v 1.6 2005/12/07 02:28:15 corecode Exp $
  *
  * @(#)glob.c	8.3 (Berkeley) 10/13/93
  * $FreeBSD: src/lib/libc/gen/glob.c,v 1.11.6.6 2002/09/18 14:13:31 mikeh Exp $
@@ -613,7 +613,8 @@ glob3(Char *pathbuf, Char *pathend, Char *pathend_last, const Char *pattern,
 		Char *dc;
 
 		/* Initial DOT must be matched literally. */
-		if (dp->d_name[0] == DOT && *pattern != DOT)
+		if (dp->d_name[0] == DOT && *pattern != DOT &&
+		    !(pglob->gl_flags & GLOB_PERIOD))
 			continue;
 		dc = pathend;
 		sc = (u_char *) dp->d_name;
