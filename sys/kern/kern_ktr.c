@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.7 2005/12/06 23:37:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.8 2005/12/07 04:27:50 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -96,6 +96,20 @@
 #endif
 #define KTR_ENTRIES_MASK	(KTR_ENTRIES - 1)
 
+/*
+ * test logging support.  When ktr_testlogcnt is non-zero each synchronization
+ * interrupt will issue three back-to-back ktr logging messages on cpu 0
+ * so the user can determine KTR logging overheads.
+ */
+#if !defined(KTR_TESTLOG)
+#define KTR_TESTLOG	KTR_ALL
+#endif
+KTR_INFO_MASTER(testlog);
+KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1", sizeof(void *) * 4);
+KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2", sizeof(void *) * 4);
+KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
+#define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
+
 MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
 SYSCTL_NODE(_debug, OID_AUTO, ktr, CTLFLAG_RW, 0, "ktr");
@@ -116,6 +130,11 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, stacktrace, CTLFLAG_RD, &ktr_stacktrace, 0, "")
 static int	ktr_resynchronize = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW, &ktr_resynchronize, 0, "");
 
+#if KTR_TESTLOG
+static int	ktr_testlogcnt = 0;
+SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "");
+#endif
+
 /*
  * Give cpu0 a static buffer so the tracepoint facility can be used during
  * early boot (note however that we still use a critical section, XXX).
@@ -127,7 +146,6 @@ static int	ktr_sync_state = 0;
 static int	ktr_sync_count;
 static int64_t	ktr_sync_tsc;
 struct callout	ktr_resync_callout;
-
 
 #ifdef KTR_VERBOSE
 int	ktr_verbose = KTR_VERBOSE;
@@ -183,6 +201,24 @@ ktr_resync_callback(void *dummy __unused)
 	int count;
 
 	KKASSERT(mycpu->gd_cpuid == 0);
+
+#if KTR_TESTLOG
+	/*
+	 * Test logging
+	 */
+	if (ktr_testlogcnt) {
+		--ktr_testlogcnt;
+		cpu_disable_intr();
+		logtest(test1);
+		logtest(test2);
+		logtest(test3);
+		cpu_enable_intr();
+	}
+#endif
+
+	/*
+	 * Resynchronize the TSC
+	 */
 	if (ktr_resynchronize == 0)
 		goto done;
 	if ((cpu_feature & CPUID_TSC) == 0)
