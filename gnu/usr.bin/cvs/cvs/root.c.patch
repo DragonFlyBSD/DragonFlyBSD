@@ -1,18 +1,18 @@
-$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/root.c.patch,v 1.1 2005/01/25 14:00:18 joerg Exp $
-Index: root.c
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/root.c.patch,v 1.2 2005/12/07 01:16:30 corecode Exp $
+Index: src/root.c
 ===================================================================
-RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/cvs-1.12.9/src/root.c,v
-retrieving revision 1.1
-diff -u -r1.1 root.c
---- root.c	3 Aug 2004 18:08:51 -0000	1.1
-+++ root.c	24 Jan 2005 16:56:08 -0000
-@@ -507,10 +507,14 @@
- #ifdef CLIENT_SUPPORT
+RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12/src/root.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 root.c
+--- src/root.c	7 Dec 2005 00:15:13 -0000	1.1.1.1
++++ src/root.c	7 Dec 2005 01:04:02 -0000
+@@ -635,10 +635,14 @@
      newroot->isremote = (newroot->method != local_method);
  
+ #if defined (CLIENT_SUPPORT) || defined (SERVER_SUPPORT)
 -    if (readonlyfs && newroot->isremote)
 -	error (1, 0,
-+    if (newroot->isremote && readonlyfs) {
++    if (readonlyfs && newroot->isremote) {
 +	/* downgrade readonlyfs settings via environment */
 +	if (readonlyfs < 0)
 +	    error (1, 0,
@@ -22,4 +22,4 @@ diff -u -r1.1 root.c
 +    }
  
      if ((newroot->method != local_method)
- #ifdef CLIENT_SUPPORT
+ 	&& (newroot->method != fork_method)

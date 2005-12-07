@@ -1,20 +1,20 @@
-$DragonFly: src/gnu/usr.bin/cvs/lib/Attic/save-cwd.c.patch,v 1.1 2005/12/03 12:11:44 corecode Exp $
-Index: save-cwd.c
+$DragonFly: src/gnu/usr.bin/cvs/lib/Attic/save-cwd.c.patch,v 1.2 2005/12/07 01:16:30 corecode Exp $
+Index: lib/save-cwd.c
 ===================================================================
-RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12.12/lib/save-cwd.c,v
-retrieving revision 1.1
-diff -u -r1.1 save-cwd.c
---- save-cwd.c	21 Apr 2005 06:33:15 -0000	1.1
-+++ save-cwd.c	16 Oct 2005 10:16:48 -0000
-@@ -41,7 +41,6 @@
+RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12/lib/save-cwd.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 save-cwd.c
+--- lib/save-cwd.c	7 Dec 2005 00:15:28 -0000	1.1.1.1
++++ lib/save-cwd.c	7 Dec 2005 01:04:02 -0000
+@@ -37,7 +37,6 @@
  
  #include <errno.h>
  
 -#include "chdir-long.h"
+ #include "unistd-safer.h"
  #include "xgetcwd.h"
  
- /* On systems without the fchdir function (WOE), pretend that open
-@@ -105,7 +104,7 @@
+@@ -102,7 +101,7 @@
    if (0 <= cwd->desc)
      return fchdir (cwd->desc);
    else
