@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.9 2005/03/13 11:43:07 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.10 2005/12/07 13:42:57 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -26,7 +26,7 @@ SRCS=	add.c admin.c annotate.c buffer.c \
 	main.c diff.c ${PATCHES}
 
 PATCHES=main.c.patch diff.c.patch root.c.patch rcs.c.patch \
-	parseinfo.c.patch cvs.h.patch
+	parseinfo.c.patch cvs.h.patch zlib.c.patch
 CONTRIBDIR=	${CVSDIR}/src
 
 ${.OBJDIR}/cvs.1: cvs.1.patch

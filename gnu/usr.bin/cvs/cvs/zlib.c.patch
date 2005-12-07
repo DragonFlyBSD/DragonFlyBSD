@@ -1,0 +1,17 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/zlib.c.patch,v 1.1 2005/12/07 13:42:57 corecode Exp $
+Index: src/zlib.c
+===================================================================
+RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12/src/zlib.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 zlib.c
+--- src/zlib.c	7 Dec 2005 00:15:26 -0000	1.1.1.1
++++ src/zlib.c	7 Dec 2005 13:39:09 -0000
+@@ -229,7 +229,7 @@
+ 	   would fetch all the available bytes, and at least one byte.  */
+ 
+ 	status = (*cb->buf->input) (cb->buf->closure, bd->text,
+-				    need, BUFFER_DATA_SIZE, &nread);
++				    need > 0 ? 1 : 0, BUFFER_DATA_SIZE, &nread);
+ 
+ 	if (status == -2)
+ 	    /* Don't try to recover from memory allcoation errors.  */
