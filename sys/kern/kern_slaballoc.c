@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.36 2005/11/21 21:59:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.37 2005/12/07 04:49:54 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -136,9 +136,14 @@ KTR_INFO(KTR_MEMORY, memory, free_chunk, 4, MEMORY_STRING, MEMORY_ARG_SIZE);
 KTR_INFO(KTR_MEMORY, memory, free_request, 5, MEMORY_STRING, MEMORY_ARG_SIZE);
 KTR_INFO(KTR_MEMORY, memory, free_remote, 6, MEMORY_STRING, MEMORY_ARG_SIZE);
 #endif
+KTR_INFO(KTR_MEMORY, memory, malloc_beg, 0, "malloc begin", 0);
+KTR_INFO(KTR_MEMORY, memory, free_beg, 0, "free begin", 0);
+KTR_INFO(KTR_MEMORY, memory, free_end, 0, "free end", 0);
 
 #define logmemory(name, ptr, type, size, flags)				\
 	KTR_LOG(memory_ ## name, ptr, type, size, flags)
+#define logmemory_quick(name)						\
+	KTR_LOG(memory_ ## name)
 
 /*
  * Fixed globals (not per-cpu)
@@ -392,6 +397,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
     int i;
 #endif
 
+    logmemory_quick(malloc_beg);
     gd = mycpu;
     slgd = &gd->gd_slab;
 
@@ -786,6 +792,7 @@ free(void *ptr, struct malloc_type *type)
     struct globaldata *gd;
     int pgno;
 
+    logmemory_quick(free_beg);
     gd = mycpu;
     slgd = &gd->gd_slab;
 
@@ -797,6 +804,7 @@ free(void *ptr, struct malloc_type *type)
      */
     if (ptr == ZERO_LENGTH_PTR) {
 	logmemory(free_zero, ptr, type, -1, 0);
+	logmemory_quick(free_end);
 	return;
     }
 
@@ -843,6 +851,7 @@ free(void *ptr, struct malloc_type *type)
 		logmemory(free_ovsz, ptr, type, size, 0);
 		kmem_slab_free(ptr, size);	/* may block */
 	    }
+	    logmemory_quick(free_end);
 	    return;
 	}
     }
@@ -867,6 +876,7 @@ free(void *ptr, struct malloc_type *type)
 #else
 	panic("Corrupt SLZone");
 #endif
+	logmemory_quick(free_end);
 	return;
     }
 
@@ -954,6 +964,7 @@ free(void *ptr, struct malloc_type *type)
 	slgd->FreeZones = z;
 	++slgd->NFreeZones;
     }
+    logmemory_quick(free_end);
     crit_exit();
 }
 
