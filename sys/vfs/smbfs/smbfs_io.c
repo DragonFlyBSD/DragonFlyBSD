@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.19 2005/08/27 20:23:06 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.20 2005/12/08 20:37:20 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -85,7 +85,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	struct smbfs_fctx *ctx;
 	struct vnode *newvp;
 	struct smbnode *np = VTOSMB(vp);
-	int error, i, offset, retval/*, *eofflag = ap->a_eofflag*/;
+	int error, offset, retval/*, *eofflag = ap->a_eofflag*/;
 
 	np = VTOSMB(vp);
 	SMBVDEBUG("dirname='%s'\n", np->n_name);
@@ -96,7 +96,6 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		return(EINVAL);
 
 	error = 0;
-	i = 0;
 	offset = uio->uio_offset;
 
 	if (uio->uio_resid > 0 && offset < 1) {
@@ -104,7 +103,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 			goto done;
 		if (error)
 			goto done;
-		i++;
+		++offset;
 	}
 
 	if (uio->uio_resid > 0 && offset < 2) {
@@ -114,7 +113,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 			goto done;
 		if (error)
 			goto done;
-		i++;
+		++offset;
 	}
 
 	if (uio->uio_resid == 0)
@@ -135,10 +134,12 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 			return error;
 		}
 		np->n_dirseq = ctx;
-	} else
+	} else {
 		ctx = np->n_dirseq;
+	}
 	while (np->n_dirofs < offset) {
-		error = smbfs_findnext(ctx, offset - np->n_dirofs++, &scred);
+		error = smbfs_findnext(ctx, offset - np->n_dirofs, &scred);
+		++np->n_dirofs;
 		if (error) {
 			smbfs_findclose(np->n_dirseq, &scred);
 			np->n_dirseq = NULL;
@@ -146,7 +147,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		}
 	}
 	error = 0;
-	for (; uio->uio_resid > 0 && !error; i++) {
+	while (uio->uio_resid > 0 && !error) {
 		/*
 		 * Overestimate the size of a record a bit, doesn't really
 		 * hurt to be wrong here.
@@ -155,6 +156,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		if (error)
 			break;
 		np->n_dirofs++;
+		++offset;
 
 		retval = vop_write_dirent(&error, uio, ctx->f_attr.fa_ino,
 		    (ctx->f_attr.fa_attr & SMB_FA_DIR) ? DT_DIR : DT_REG,
@@ -170,9 +172,8 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	}
 	if (error == ENOENT)
 		error = 0;
-
 done:
-	uio->uio_offset = i;
+	uio->uio_offset = offset;
 	return error;
 }
 
