@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.18 2005/12/06 04:03:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.19 2005/12/08 19:15:12 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -416,9 +416,17 @@ smb_sleep(void *chan, struct smb_slock *sl, int slpflags, const char *wmesg, int
 {
 	int error;
 
-	error = tsleep(chan, slpflags, wmesg, timo);
-	if ((slpflags & PDROP) && sl)
+	if (sl) {
+		crit_enter();
+		tsleep_interlock(chan);
 		smb_sl_unlock(sl);
+		error = tsleep(chan, slpflags, wmesg, timo);
+		if ((slpflags & PDROP) == 0)
+			smb_sl_lock(sl);
+		crit_exit();
+	} else {
+		error = tsleep(chan, slpflags, wmesg, timo);
+	}
 	return error;
 }
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.12 2005/12/06 04:03:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.13 2005/12/08 19:15:12 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -55,12 +55,12 @@
 #define	SMB_IOD_EVLOCKPTR(iod)	(&(iod)->iod_evlock)
 #define	SMB_IOD_EVLOCK(iod)	smb_sl_lock(&(iod)->iod_evlock)
 #define	SMB_IOD_EVUNLOCK(iod)	smb_sl_unlock(&(iod)->iod_evlock)
-#define SMB_IOD_INTERLOCK(iod)	(&(iod)->iod_evlock)
+#define SMB_IOD_EVINTERLOCK(iod) (&(iod)->iod_evlock)
 
 #define	SMB_IOD_RQLOCKPTR(iod)	(&(iod)->iod_rqlock)
 #define	SMB_IOD_RQLOCK(iod)	smb_sl_lock(&((iod)->iod_rqlock))
 #define	SMB_IOD_RQUNLOCK(iod)	smb_sl_unlock(&(iod)->iod_rqlock)
-#define	SMB_IOD_INTERLOCK(iod) (&(iod)->iod_rqlock)
+#define	SMB_IOD_RQINTERLOCK(iod) (&(iod)->iod_rqlock)
 
 #define	smb_iod_wakeup(iod)	wakeup(&(iod)->iod_flags)
 
@@ -387,7 +387,7 @@ smb_iod_request(struct smbiod *iod, int event, void *ident)
 		return 0;
 	}
 	smb_iod_wakeup(iod);
-	smb_sleep(evp, SMB_IOD_INTERLOCK(iod), PDROP, "90evw", 0);
+	smb_sleep(evp, SMB_IOD_EVINTERLOCK(iod), PDROP, "90evw", 0);
 	error = evp->ev_error;
 	free(evp, M_SMBIOD);
 	return error;
@@ -448,7 +448,7 @@ smb_iod_addrq(struct smb_rq *rqp)
 		if (iod->iod_muxcnt < vcp->vc_maxmux)
 			break;
 		iod->iod_muxwant++;
-		smb_sleep(&iod->iod_muxwant, SMB_IOD_INTERLOCK(iod), 0, "90mux", 0);
+		smb_sleep(&iod->iod_muxwant, SMB_IOD_RQINTERLOCK(iod), 0, "90mux", 0);
 	}
 	iod->iod_muxcnt++;
 	TAILQ_INSERT_TAIL(&iod->iod_rqlist, rqp, sr_link);
@@ -473,7 +473,7 @@ smb_iod_removerq(struct smb_rq *rqp)
 	SMB_IOD_RQLOCK(iod);
 	while (rqp->sr_flags & SMBR_XLOCK) {
 		rqp->sr_flags |= SMBR_XLOCKWANT;
-		smb_sleep(rqp, SMB_IOD_INTERLOCK(iod), 0, "90xrm", 0);
+		smb_sleep(rqp, SMB_IOD_RQINTERLOCK(iod), 0, "90xrm", 0);
 	}
 	TAILQ_REMOVE(&iod->iod_rqlist, rqp, sr_link);
 	iod->iod_muxcnt--;
