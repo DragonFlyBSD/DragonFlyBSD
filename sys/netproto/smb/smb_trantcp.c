@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.12 2005/06/10 22:44:02 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.13 2005/12/08 20:20:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -218,6 +218,13 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 	so->so_rcv.sb_flags &= ~SB_NOINTR;
 	so->so_snd.sb_flags &= ~SB_NOINTR;
 	error = soconnect(so, (struct sockaddr*)to, td);
+
+	/*
+	 * If signals are allowed nbssn_recv() can wind up in a hard loop
+	 * on EWOULDBLOCK. 
+	 */
+	so->so_rcv.sb_flags |= SB_NOINTR;
+	so->so_snd.sb_flags |= SB_NOINTR;
 	if (error)
 		goto bad;
 	crit_enter();
