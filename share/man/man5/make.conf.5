@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.10 2005/09/06 18:55:39 dillon Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.11 2005/12/09 23:55:28 swildner Exp $
 .\"
 .Dd November 3, 2000
 .Dt MAKE.CONF 5
@@ -272,14 +272,6 @@ been configured to use a serial console instead of the keyboard/video card.
 .Pq Vt int
 The baud rate to use for the console if the boot blocks have
 been configured to use a serial console instead of the keyboard/video card.
-.It Va BOOTWAIT
-.Pq Vt int
-Controls the amount of time the kernel waits for a console keypress
-before booting the default kernel.
-The value is approximately milliseconds.
-Keypresses are accepted by the BIOS before booting from disk,
-making it possible to give custom boot parameters even when this is
-set to 0.
 .It Va COPTFLAGS
 .Pq Vt str
 Controls the compiler settings when building the
@@ -443,11 +435,6 @@ and related programs.
 .It Va NO_SHARE
 .Pq Vt bool
 Set to not enter the share subdirectory.
-.It Va NO_SHAREDOCS
-.Pq Vt bool
-Set to not build the
-.Bx 4.4
-legacy docs.
 .It Va NO_X
 .Pq Vt bool
 Set to not compile in X\-Windows support (e.g.\&
