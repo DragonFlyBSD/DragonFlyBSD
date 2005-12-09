@@ -1,6 +1,6 @@
 #	from: @(#)bsd.subdir.mk	5.9 (Berkeley) 2/1/91
 # $FreeBSD: src/share/mk/bsd.subdir.mk,v 1.30.2.5 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.subdir.mk,v 1.3 2004/03/22 20:58:15 dillon Exp $
+# $DragonFly: src/share/mk/bsd.subdir.mk,v 1.4 2005/12/09 18:53:44 swildner Exp $
 #
 # The include file <bsd.subdir.mk> contains the default targets
 # for building subdirectories. 
@@ -27,7 +27,7 @@
 #
 #	afterinstall, all, all-man, beforeinstall, checkdpadd,
 #	clean, cleandepend, cleandir, depend, install, lint, maninstall,
-#	obj, objlink, realinstall, regress, tags
+#	manlint, obj, objlink, realinstall, regress, tags
 #
 
 .include <bsd.init.mk>
@@ -68,7 +68,7 @@ ${SUBDIR}::
 
 
 .for __target in all all-man checkdpadd clean cleandepend cleandir \
-    depend distribute lint maninstall \
+    depend distribute lint maninstall manlint \
     obj objlink realinstall regress tags
 ${__target}: _SUBDIR
 .endfor

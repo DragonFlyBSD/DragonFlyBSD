@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.15 2005/09/16 18:50:15 dillon Exp $
+# $DragonFly: src/Makefile,v 1.16 2005/12/09 18:53:44 swildner Exp $
 #
 # The user-driven targets are:
 #
@@ -78,7 +78,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	cleandepend cleandir depend distribute distributeworld everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
-	mk most obj objlink regress rerelease tags update \
+	manlint mk most obj objlink regress rerelease tags update \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _obj _build-tools _cross-tools
 
