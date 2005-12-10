@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.9 2005/12/10 18:16:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.10 2005/12/10 18:25:18 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -165,6 +165,8 @@ int64_t tsc_offsets[MAXCPU];
 int64_t tsc_offsets[1];
 #endif
 
+#if KTR_TESTLOG || KTR_ALL
+
 static void
 ktr_sysinit(void *dummy)
 {
@@ -177,7 +179,7 @@ ktr_sysinit(void *dummy)
 }
 SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
 
-#ifdef SMP
+#endif
 
 /*
  * Try to resynchronize the TSC's for all cpus.  This is really, really nasty.
@@ -189,7 +191,6 @@ SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
  * This callback occurs on cpu0.
  */
 static void ktr_resync_callback(void *dummy);
-static void ktr_resync_remote(void *dummy);
 
 static void
 ktr_resyncinit(void *dummy)
@@ -199,6 +200,9 @@ ktr_resyncinit(void *dummy)
 }
 SYSINIT(ktr_resync, SI_SUB_FINISH_SMP+1, SI_ORDER_ANY, ktr_resyncinit, NULL);
 
+#ifdef SMP
+
+static void ktr_resync_remote(void *dummy);
 extern cpumask_t smp_active_mask;
 
 /*
