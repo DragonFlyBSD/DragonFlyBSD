@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.56 2005/12/10 17:36:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.57 2005/12/10 18:27:24 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -57,6 +57,7 @@
 #include <sys/ktrace.h>
 #endif
 #include <sys/xwait.h>
+#include <sys/ktr.h>
 
 #include <machine/cpu.h>
 #include <machine/ipl.h>
@@ -78,6 +79,16 @@ int	safepri;
 static struct callout loadav_callout;
 static struct callout schedcpu_callout;
 MALLOC_DEFINE(M_TSLEEP, "tslpque", "tsleep queues");
+
+#if !defined(KTR_TSLEEP)
+#define KTR_TSLEEP	KTR_ALL
+#endif
+KTR_INFO_MASTER(tsleep);
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_beg, 0, "tsleep enter", 0);
+KTR_INFO(KTR_TSLEEP, tsleep, tsleep_end, 0, "tsleep exit", 0);
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_beg, 0, "wakeup enter", 0);
+KTR_INFO(KTR_TSLEEP, tsleep, wakeup_end, 0, "wakeup exit", 0);
+#define logtsleep(name)	KTR_LOG(tsleep_ ## name)
 
 struct loadavg averunnable =
 	{ {0, 0, 0}, FSCALE };	/* load average, of runnable procs */
@@ -329,6 +340,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		lwkt_setpri_self(oldpri);
 		return (0);
 	}
+	logtsleep(tsleep_beg);
 	gd = td->td_gd;
 	KKASSERT(td != &gd->gd_idlethread);	/* you must be kidding! */
 
@@ -465,6 +477,7 @@ resume:
 				error = ERESTART;
 		}
 	}
+	logtsleep(tsleep_end);
 	crit_exit_quick(td);
 	return (error);
 }
@@ -594,6 +607,7 @@ _wakeup(void *ident, int domain)
 	int id;
 
 	crit_enter();
+	logtsleep(wakeup_beg);
 	gd = mycpu;
 	id = LOOKUP(ident);
 	qp = &gd->gd_tsleep_hash[id];
@@ -697,6 +711,7 @@ restart:
 	}
 #endif
 done:
+	logtsleep(wakeup_end);
 	crit_exit();
 }
 
