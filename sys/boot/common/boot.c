@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/boot.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/boot.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/boot.c,v 1.4 2005/12/10 00:39:48 swildner Exp $
  */
 
 /*
@@ -146,7 +146,7 @@ command_autoboot(int argc, char *argv[])
  * we haven't tried already, try now.
  */
 void
-autoboot_maybe()
+autoboot_maybe(void)
 {
     char	*cp;
     

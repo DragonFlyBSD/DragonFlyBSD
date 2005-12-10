@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.20 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.7 2005/09/03 23:52:47 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/pxe.c,v 1.8 2005/12/10 00:39:48 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -495,7 +495,7 @@ bangpxe_call(int func)
 
 
 time_t
-getsecs()
+getsecs(void)
 {
 	time_t n = 0;
 	time(&n);
