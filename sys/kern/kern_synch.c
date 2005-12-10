@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.55 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.56 2005/12/10 17:36:39 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -447,7 +447,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 * tsleep hash queue, we can't still be on it at this point because
 	 * we've gotten cpu back.
 	 */
-	KKASSERT((td->td_flags & TDF_TSLEEPQ) == 0);
+	KASSERT((td->td_flags & TDF_TSLEEPQ) == 0, ("tsleep: impossible thread flags %08x", td->td_flags));
 	td->td_wchan = NULL;
 	td->td_wmesg = NULL;
 	td->td_wdomain = 0;
