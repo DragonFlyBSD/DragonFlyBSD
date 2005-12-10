@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.man.mk,v 1.31.2.11 2002/12/19 13:48:33 ru Exp $
-# $DragonFly: src/share/mk/bsd.man.mk,v 1.3 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/mk/bsd.man.mk,v 1.4 2005/12/10 00:15:01 swildner Exp $
 #
 # The include file <bsd.man.mk> handles installing manual pages and 
 # their links.
@@ -63,7 +63,7 @@ MROFF_CMD?=	groff -Tascii -mtty-char -man -t
 MCOMPRESS_CMD?=	${COMPRESS_CMD}
 MCOMPRESS_EXT?=	${COMPRESS_EXT}
 
-SECTIONS=	1 1aout 2 3 4 5 6 7 8 9
+SECTIONS=	1 2 3 4 5 6 7 8 9
 .SUFFIXES:	${SECTIONS:S/^/./g}
 
 # Backwards compatibility.

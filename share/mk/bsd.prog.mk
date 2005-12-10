@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.10 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.11 2005/12/10 00:15:01 swildner Exp $
 
 .include <bsd.init.mk>
 
@@ -72,8 +72,7 @@ ${PROG}: ${OBJS}
 .if	!defined(NOMAN) && !defined(MAN) && \
 	!defined(MAN1) && !defined(MAN2) && !defined(MAN3) && \
 	!defined(MAN4) && !defined(MAN5) && !defined(MAN6) && \
-	!defined(MAN7) && !defined(MAN8) && !defined(MAN9) && \
-	!defined(MAN1aout)
+	!defined(MAN7) && !defined(MAN8) && !defined(MAN9)
 MAN=	${PROG}.1
 MAN1=	${MAN}
 .endif
