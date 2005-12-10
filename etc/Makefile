@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.99 2005/11/30 06:23:52 y0netan1 Exp $
+# $DragonFly: src/etc/Makefile,v 1.100 2005/12/10 17:41:25 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -183,7 +183,9 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/dev/netif/wi/if_wavelan_ieee.h
 	rm -f ${DESTDIR}/usr/include/net/if_ieee80211.h
 .endif
+.if exists(${DESTDIR}/usr/lib/gcc2)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
+.endif
 	rm -f ${DESTDIR}/usr/sbin/pccardc ${DESTDIR}/usr/sbin/pccardd
 	rm -f ${DESTDIR}/usr/share/examples/etc/defaults/pccard.conf
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}5/pccard.conf.5.gz"
@@ -387,9 +389,9 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/zoneinfo/${tzfile}
 .endfor
 .if exists(${DESTDIR}/usr/freebsd_pkg/sbin/pkg_add)
-	csh -c "rm -f ${DESTDIR}/usr/sbin/pkg_{install,add,create,delete,info,sign,version}"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version}.1.gz"
-	csh -c "rm -f ${DESTDIR}/usr/share/man/cat1/pkg_{add,create,delete,info,sign,version}.1.gz"
+	csh -c "rm -f ${DESTDIR}/usr/sbin/pkg_{install,add,create,delete,info,sign,version,check,update}"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/man1/pkg_{add,create,delete,info,sign,version,check,update}.1.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/cat1/pkg_{add,create,delete,info,sign,version,check,update}.1.gz"
 .endif
 	rm -f ${DESTDIR}/etc/rc.d/altqd
 	csh -c "rm -f ${DESTDIR}/etc/rc.d/network{,1,2,3}"
