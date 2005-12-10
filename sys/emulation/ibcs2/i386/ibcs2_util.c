@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.9 2004/11/12 00:09:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.10 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -51,14 +51,13 @@ const char      ibcs2_emul_path[] = "/compat/ibcs2";
  * If cflag is set, we check if an attempt can be made to create
  * the named file, i.e. we check if the directory it should
  * be in exists.
+ *
+ * Parameters:
+ *	sgp:	Pointer to stackgap memory
  */
 int
-ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
-	caddr_t		 *sgp;		/* Pointer to stackgap memory */
-	const char	 *prefix;
-	char		 *path;
-	char		**pbuf;
-	int		  cflag;
+ibcs2_emul_find(caddr_t *sgp, const char *prefix, char *path,
+		char **pbuf, int cflag)
 {
 	struct nlookupdata	 nd;
 	struct nlookupdata	 ndroot;

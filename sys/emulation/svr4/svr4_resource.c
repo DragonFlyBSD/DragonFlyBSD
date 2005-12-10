@@ -40,7 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.6 2003/11/04 05:01:10 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.7 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -91,8 +91,7 @@
 static __inline int svr4_to_native_rl (int);
 
 static __inline int
-svr4_to_native_rl(rl)
-	int rl;
+svr4_to_native_rl(int rl)
 {
 	switch (rl) {
 	case SVR4_RLIMIT_CPU:

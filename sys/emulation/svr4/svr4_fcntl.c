@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.16 2005/06/22 01:33:29 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.17 2005/12/10 16:06:20 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -65,8 +65,7 @@ static void bsd_to_svr4_flock64 (struct flock *, struct svr4_flock64 *);
 static void svr4_to_bsd_flock64 (struct svr4_flock64 *, struct flock *);
 
 static u_long
-svr4_to_bsd_cmd(cmd)
-	u_long	cmd;
+svr4_to_bsd_cmd(u_long cmd)
 {
 	switch (cmd) {
 	case SVR4_F_DUPFD:
@@ -91,8 +90,7 @@ svr4_to_bsd_cmd(cmd)
 }
 
 static int
-svr4_to_bsd_flags(l)
-	int	l;
+svr4_to_bsd_flags(int l)
 {
 	int	r = 0;
 	r |= (l & SVR4_O_RDONLY) ? O_RDONLY : 0;
@@ -111,8 +109,7 @@ svr4_to_bsd_flags(l)
 }
 
 static int
-bsd_to_svr4_flags(l)
-	int	l;
+bsd_to_svr4_flags(int l)
 {
 	int	r = 0;
 	r |= (l & O_RDONLY) ? SVR4_O_RDONLY : 0;
@@ -132,9 +129,7 @@ bsd_to_svr4_flags(l)
 
 
 static void
-bsd_to_svr4_flock(iflp, oflp)
-	struct flock		*iflp;
-	struct svr4_flock	*oflp;
+bsd_to_svr4_flock(struct flock *iflp, struct svr4_flock *oflp)
 {
 	switch (iflp->l_type) {
 	case F_RDLCK:
@@ -160,9 +155,7 @@ bsd_to_svr4_flock(iflp, oflp)
 
 
 static void
-svr4_to_bsd_flock(iflp, oflp)
-	struct svr4_flock	*iflp;
-	struct flock		*oflp;
+svr4_to_bsd_flock(struct svr4_flock *iflp, struct flock *oflp)
 {
 	switch (iflp->l_type) {
 	case SVR4_F_RDLCK:
@@ -187,9 +180,7 @@ svr4_to_bsd_flock(iflp, oflp)
 }
 
 static void
-bsd_to_svr4_flock64(iflp, oflp)
-	struct flock		*iflp;
-	struct svr4_flock64	*oflp;
+bsd_to_svr4_flock64(struct flock *iflp, struct svr4_flock64 *oflp)
 {
 	switch (iflp->l_type) {
 	case F_RDLCK:
@@ -215,9 +206,7 @@ bsd_to_svr4_flock64(iflp, oflp)
 
 
 static void
-svr4_to_bsd_flock64(iflp, oflp)
-	struct svr4_flock64	*iflp;
-	struct flock		*oflp;
+svr4_to_bsd_flock64(struct svr4_flock64 *iflp, struct flock *oflp)
 {
 	switch (iflp->l_type) {
 	case SVR4_F_RDLCK:

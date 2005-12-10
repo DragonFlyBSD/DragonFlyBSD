@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.9 2005/06/22 01:33:25 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.10 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -127,9 +127,7 @@ static u_long s2btab[] = {
 };
 
 static void
-stios2btios(st, bt)
-	struct ibcs2_termios *st;
-	struct termios *bt;
+stios2btios(struct ibcs2_termios *st, struct termios *bt)
 {
 	u_long l, r;
 
@@ -222,9 +220,7 @@ stios2btios(st, bt)
 }
 
 static void
-btios2stios(bt, st)
-	struct termios *bt;
-	struct ibcs2_termios *st;
+btios2stios(struct termios *bt, struct ibcs2_termios *st)
 {
 	u_long l, r;
 
@@ -312,9 +308,7 @@ btios2stios(bt, st)
 }
 
 static void
-stios2stio(ts, t)
-	struct ibcs2_termios *ts;
-	struct ibcs2_termio *t;
+stios2stio(struct ibcs2_termios *ts, struct ibcs2_termio *t)
 {
 	t->c_iflag = ts->c_iflag;
 	t->c_oflag = ts->c_oflag;
@@ -325,9 +319,7 @@ stios2stio(ts, t)
 }
 
 static void
-stio2stios(t, ts)
-	struct ibcs2_termio *t;
-	struct ibcs2_termios *ts;
+stio2stios(struct ibcs2_termio *t, struct ibcs2_termios *ts)
 {
 	ts->c_iflag = t->c_iflag;
 	ts->c_oflag = t->c_oflag;

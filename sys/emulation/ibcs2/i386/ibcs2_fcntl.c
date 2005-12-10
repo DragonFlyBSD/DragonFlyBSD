@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.10 2005/06/22 01:33:25 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.11 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -52,8 +52,7 @@ static int  oflags2ioflags   (int);
 static int  ioflags2oflags   (int);
 
 static int
-cvt_o_flags(flags)
-	int flags;
+cvt_o_flags(int flags)
 {
 	int r = 0;
 
@@ -73,9 +72,7 @@ cvt_o_flags(flags)
 }
 
 static void
-cvt_flock2iflock(flp, iflp)
-	struct flock *flp;
-	struct ibcs2_flock *iflp;
+cvt_flock2iflock(struct flock *flp, struct ibcs2_flock *iflp)
 {
 	switch (flp->l_type) {
 	case F_RDLCK:
@@ -106,9 +103,7 @@ print_flock(struct flock *flp)
 #endif
 
 static void
-cvt_iflock2flock(iflp, flp)
-	struct ibcs2_flock *iflp;
-	struct flock *flp;
+cvt_iflock2flock(struct ibcs2_flock *iflp, struct flock *flp)
 {
 	flp->l_start = (off_t)iflp->l_start;
 	flp->l_len = (off_t)iflp->l_len;
@@ -129,8 +124,7 @@ cvt_iflock2flock(iflp, flp)
 
 /* convert iBCS2 mode into NetBSD mode */
 static int
-ioflags2oflags(flags)
-	int flags;
+ioflags2oflags(int flags)
 {
 	int r = 0;
 	
@@ -150,8 +144,7 @@ ioflags2oflags(flags)
 
 /* convert NetBSD mode into iBCS2 mode */
 static int
-oflags2ioflags(flags)
-	int flags;
+oflags2ioflags(int flags)
 {
 	int r = 0;
 	

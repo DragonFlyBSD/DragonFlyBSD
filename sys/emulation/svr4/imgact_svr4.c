@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.7 2004/01/20 18:41:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.8 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -57,8 +57,7 @@
 static int	exec_svr4_imgact (struct image_params *iparams);
 
 static int
-exec_svr4_imgact(imgp)
-    struct image_params *imgp;
+exec_svr4_imgact(struct image_params *imgp)
 {
     const struct exec *a_out = (const struct exec *) imgp->image_header;
     struct vmspace *vmspace;

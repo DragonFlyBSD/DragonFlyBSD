@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.19 2005/11/21 21:59:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.20 2005/12/10 16:06:20 swildner Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -733,8 +733,7 @@ linux_prepsyscall(struct trapframe *tf, int *args, u_int *code, caddr_t *params)
 static int	exec_linux_imgact_try (struct image_params *iparams);
 
 static int
-exec_linux_imgact_try(imgp)
-    struct image_params *imgp;
+exec_linux_imgact_try(struct image_params *imgp)
 {
     const char *head = (const char *)imgp->image_header;
     int error = -1;

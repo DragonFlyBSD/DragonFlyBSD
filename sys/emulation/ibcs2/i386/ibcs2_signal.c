@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.c,v 1.16 1999/10/10 09:14:31 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.8 2005/06/27 01:49:59 swildner Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.9 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -128,9 +128,7 @@ static int ibcs2_to_bsd_sig[IBCS2_SIGTBLSZ] = {
 };
 
 void
-ibcs2_to_bsd_sigset(iss, bss)
-	const ibcs2_sigset_t *iss;
-	sigset_t *bss;
+ibcs2_to_bsd_sigset(const ibcs2_sigset_t *iss, sigset_t *bss)
 {
 	int i, newsig;
 
@@ -145,9 +143,7 @@ ibcs2_to_bsd_sigset(iss, bss)
 }
 
 static void
-bsd_to_ibcs2_sigset(bss, iss)
-	const sigset_t *bss;
-	ibcs2_sigset_t *iss;
+bsd_to_ibcs2_sigset(const sigset_t *bss, ibcs2_sigset_t *iss)
 {
 	int i, newsig;
 
@@ -162,9 +158,8 @@ bsd_to_ibcs2_sigset(bss, iss)
 }
 
 static void
-ibcs2_to_bsd_sigaction(isa, bsa)
-	struct ibcs2_sigaction *isa;
-	struct sigaction *bsa;
+ibcs2_to_bsd_sigaction(struct ibcs2_sigaction *isa,
+		       struct sigaction *bsa)
 {
 
 	bsa->sa_handler = isa->isa_handler;
@@ -175,9 +170,8 @@ ibcs2_to_bsd_sigaction(isa, bsa)
 }
 
 static void
-bsd_to_ibcs2_sigaction(bsa, isa)
-	struct sigaction *bsa;
-	struct ibcs2_sigaction *isa;
+bsd_to_ibcs2_sigaction(struct sigaction *bsa,
+		       struct ibcs2_sigaction *isa)
 {
 
 	isa->isa_handler = bsa->sa_handler;

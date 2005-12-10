@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stat.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.9 2003/11/20 06:05:30 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.10 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -89,9 +89,7 @@ static int svr4_to_bsd_pathconf (int);
 static void bsd_to_svr4_stat (struct stat *, struct svr4_stat *);
 
 static void
-bsd_to_svr4_stat(st, st4)
-	struct stat		*st;
-	struct svr4_stat 	*st4;
+bsd_to_svr4_stat(struct stat *st, struct svr4_stat *st4)
 {
 	memset(st4, 0, sizeof(*st4));
 	st4->st_dev = bsd_to_svr4_odev_t(st->st_dev);
@@ -110,9 +108,7 @@ bsd_to_svr4_stat(st, st4)
 
 
 static void
-bsd_to_svr4_xstat(st, st4)
-	struct stat		*st;
-	struct svr4_xstat	*st4;
+bsd_to_svr4_xstat(struct stat *st, struct svr4_xstat *st4)
 {
 	memset(st4, 0, sizeof(*st4));
 	st4->st_dev = bsd_to_svr4_dev_t(st->st_dev);
@@ -133,9 +129,7 @@ bsd_to_svr4_xstat(st, st4)
 
 
 static void
-bsd_to_svr4_stat64(st, st4)
-	struct stat		*st;
-	struct svr4_stat64	*st4;
+bsd_to_svr4_stat64(struct stat *st, struct svr4_stat64 *st4)
 {
 	memset(st4, 0, sizeof(*st4));
 	st4->st_dev = bsd_to_svr4_dev_t(st->st_dev);
@@ -695,8 +689,7 @@ svr4_sys_utimes(struct svr4_sys_utimes_args *uap)
 }
 
 static int
-svr4_to_bsd_pathconf(name)
-	int name;
+svr4_to_bsd_pathconf(int name)
 {
 	switch (name) {
 	case SVR4_PC_LINK_MAX:

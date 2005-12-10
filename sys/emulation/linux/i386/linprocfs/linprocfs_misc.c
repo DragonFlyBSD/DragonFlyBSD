@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.11 2005/04/27 14:31:19 hmp Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.12 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -80,11 +80,8 @@
 #define P2K(x) ((x) << (PAGE_SHIFT - 10))		/* pages to kbytes */
 
 int
-linprocfs_domeminfo(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
 {
 	char *ps;
 	char psbuf[512];		/* XXX - conservative */
@@ -161,11 +158,8 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 }
 
 int
-linprocfs_docpuinfo(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
 {
 	char *ps;
 	char psbuf[512];		/* XXX - conservative */
@@ -262,11 +256,8 @@ cpucnt(int offset)
 }
 
 int
-linprocfs_dostat(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_dostat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		 struct uio *uio)
 {
         char *ps;
 	char psbuf[512];
@@ -295,11 +286,8 @@ linprocfs_dostat(curp, p, pfs, uio)
 }
 
 int
-linprocfs_douptime(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_douptime(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		   struct uio *uio)
 {
 	char *ps;
 	char psbuf[64];
@@ -314,11 +302,8 @@ linprocfs_douptime(curp, p, pfs, uio)
 }
 
 int
-linprocfs_doversion(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_doversion(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		    struct uio *uio)
 {
         char *ps;
 	int xlen;
@@ -331,11 +316,8 @@ linprocfs_doversion(curp, p, pfs, uio)
 }
 
 int
-linprocfs_doprocstat(curp, p, pfs, uio)
-    	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_doprocstat(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		     struct uio *uio)
 {
 	char *ps, psbuf[1024];
 
@@ -398,11 +380,8 @@ static char *state_str[] = {
 };
 
 int
-linprocfs_doprocstatus(curp, p, pfs, uio)
-    	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
+linprocfs_doprocstatus(struct proc *curp, struct proc *p, struct pfsnode *pfs,
+		       struct uio *uio)
 {
 	char *ps, psbuf[1024];
 	char *state;

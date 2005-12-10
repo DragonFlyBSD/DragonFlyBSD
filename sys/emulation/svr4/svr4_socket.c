@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_socket.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.7 2005/08/02 13:03:54 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_socket.c,v 1.8 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -78,11 +78,7 @@ extern TAILQ_HEAD(svr4_sockcache_head, svr4_sockcache_entry) svr4_head;
 extern int svr4_str_initialized;
 
 struct sockaddr_un *
-svr4_find_socket(td, fp, dev, ino)
-	struct thread *td;
-	struct file *fp;
-	udev_t dev;
-	ino_t ino;
+svr4_find_socket(struct thread *td, struct file *fp, udev_t dev, ino_t ino)
 {
 	struct svr4_sockcache_entry *e;
 	void *cookie = ((struct socket *) fp->f_data)->so_emuldata;
@@ -118,10 +114,7 @@ svr4_find_socket(td, fp, dev, ino)
  * the streams "soo_close()" routine).
  */
 int
-svr4_add_socket(td, path, st)
-	struct thread *td;
-	const char *path;
-	struct stat *st;
+svr4_add_socket(struct thread *td, const char *path, struct stat *st)
 {
 	struct svr4_sockcache_entry *e;
 	int len, error;

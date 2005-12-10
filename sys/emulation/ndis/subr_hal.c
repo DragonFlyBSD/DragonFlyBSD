@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_hal.c,v 1.12 2004/04/19 22:39:04 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.1 2004/07/29 20:51:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_hal.c,v 1.2 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -86,45 +86,35 @@ __stdcall static void dummy (void);
 extern struct mtx_pool *ndis_mtxpool;
 
 __stdcall static void
-hal_stall_exec_cpu(usecs)
-	uint32_t		usecs;
+hal_stall_exec_cpu(uint32_t usecs)
 {
 	DELAY(usecs);
 	return;
 }
 
 __stdcall static void
-hal_writeport_ulong(port, val)
-	uint32_t		*port;
-	uint32_t		val;
+hal_writeport_ulong(uint32_t *port, uint32_t val)
 {
 	bus_space_write_4(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
 	return;
 }
 
 __stdcall static void
-hal_writeport_ushort(port, val)
-	uint16_t		*port;
-	uint16_t		val;
+hal_writeport_ushort(uint16_t *port, uint16_t val)
 {
 	bus_space_write_2(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
 	return;
 }
 
 __stdcall static void
-hal_writeport_uchar(port, val)
-	uint8_t			*port;
-	uint8_t			val;
+hal_writeport_uchar(uint8_t *port, uint8_t val)
 {
 	bus_space_write_1(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port, val);
 	return;
 }
 
 __stdcall static void
-hal_writeport_buf_ulong(port, val, cnt)
-	uint32_t		*port;
-	uint32_t		*val;
-	uint32_t		cnt;
+hal_writeport_buf_ulong(uint32_t *port, uint32_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_4(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -132,10 +122,7 @@ hal_writeport_buf_ulong(port, val, cnt)
 }
 
 __stdcall static void
-hal_writeport_buf_ushort(port, val, cnt)
-	uint16_t		*port;
-	uint16_t		*val;
-	uint32_t		cnt;
+hal_writeport_buf_ushort(uint16_t *port, uint16_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_2(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -143,10 +130,7 @@ hal_writeport_buf_ushort(port, val, cnt)
 }
 
 __stdcall static void
-hal_writeport_buf_uchar(port, val, cnt)
-	uint8_t			*port;
-	uint8_t			*val;
-	uint32_t		cnt;
+hal_writeport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
 {
 	bus_space_write_multi_1(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -154,31 +138,25 @@ hal_writeport_buf_uchar(port, val, cnt)
 }
 
 __stdcall static uint16_t
-hal_readport_ushort(port)
-	uint16_t		*port;
+hal_readport_ushort(uint16_t *port)
 {
 	return(bus_space_read_2(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
 __stdcall static uint32_t
-hal_readport_ulong(port)
-	uint32_t		*port;
+hal_readport_ulong(uint32_t *port)
 {
 	return(bus_space_read_4(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
 __stdcall static uint8_t
-hal_readport_uchar(port)
-	uint8_t			*port;
+hal_readport_uchar(uint8_t *port)
 {
 	return(bus_space_read_1(NDIS_BUS_SPACE_IO, 0x0, (bus_size_t)port));
 }
 
 __stdcall static void
-hal_readport_buf_ulong(port, val, cnt)
-	uint32_t		*port;
-	uint32_t		*val;
-	uint32_t		cnt;
+hal_readport_buf_ulong(uint32_t *port, uint32_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_4(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -186,10 +164,7 @@ hal_readport_buf_ulong(port, val, cnt)
 }
 
 __stdcall static void
-hal_readport_buf_ushort(port, val, cnt)
-	uint16_t		*port;
-	uint16_t		*val;
-	uint32_t		cnt;
+hal_readport_buf_ushort(uint16_t *port, uint16_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_2(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -197,10 +172,7 @@ hal_readport_buf_ushort(port, val, cnt)
 }
 
 __stdcall static void
-hal_readport_buf_uchar(port, val, cnt)
-	uint8_t			*port;
-	uint8_t			*val;
-	uint32_t		cnt;
+hal_readport_buf_uchar(uint8_t *port, uint8_t *val, uint32_t cnt)
 {
 	bus_space_read_multi_1(NDIS_BUS_SPACE_IO, 0x0,
 	    (bus_size_t)port, val, cnt);
@@ -287,8 +259,7 @@ hal_irql(void)
 }
 
 __stdcall static uint64_t
-hal_perfcount(freq)
-	uint64_t		*freq;
+hal_perfcount(uint64_t *freq)
 {
 	if (freq != NULL)
 		*freq = hz;
@@ -326,7 +297,7 @@ hal_lower_irql(REGARGS1(uint8_t oldirql))
 }
 
 __stdcall
-static void dummy()
+static void dummy(void)
 {
 	printf ("hal dummy called...\n");
 	return;

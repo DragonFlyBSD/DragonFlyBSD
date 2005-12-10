@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.13 2005/06/01 16:51:46 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.14 2005/12/10 16:06:20 swildner Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -242,14 +242,13 @@ svr4_fixup(register_t **stack_base, struct image_params *imgp)
  * be in exists.
  *
  * Code shamelessly stolen by Mark Newton from IBCS2 emulation code.
+ *
+ * Parameters:
+ *	sgp:	Pointer to stackgap memory
  */
 int
-svr4_emul_find(sgp, prefix, path, pbuf, cflag)
-	caddr_t		 *sgp;		/* Pointer to stackgap memory */
-	const char	 *prefix;
-	char		 *path;
-	char		**pbuf;
-	int		  cflag;
+svr4_emul_find(caddr_t *sgp, const char *prefix, char *path, char **pbuf,
+	       int cflag)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct nlookupdata	 nd;

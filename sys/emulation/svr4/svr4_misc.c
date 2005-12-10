@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.31 2005/12/01 18:30:12 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.32 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -631,11 +631,8 @@ svr4_sys_fchroot(struct svr4_sys_fchroot_args *uap)
 
 
 static int
-svr4_mknod(retval, path, mode, dev)
-	register_t *retval;
-	char *path;
-	svr4_mode_t mode;
-	svr4_dev_t dev;
+svr4_mknod(register_t *retval, char *path, svr4_mode_t mode,
+	   svr4_dev_t dev)
 {
 	caddr_t sg = stackgap_init();
 	int error;
@@ -847,8 +844,7 @@ svr4_sys_break(struct svr4_sys_break_args *uap)
 }
 
 static __inline clock_t
-timeval_to_clock_t(tv)
-	struct timeval *tv;
+timeval_to_clock_t(struct timeval *tv)
 {
 	return tv->tv_sec * hz + tv->tv_usec / (1000000 / hz);
 }
@@ -966,8 +962,7 @@ svr4_sys_ulimit(struct svr4_sys_ulimit_args *uap)
 }
 
 static struct proc *
-svr4_pfind(pid)
-	pid_t pid;
+svr4_pfind(pid_t pid)
 {
 	struct proc *p;
 
@@ -1143,10 +1138,7 @@ svr4_sys_hrtsys(struct svr4_sys_hrtsys_args *uap)
 
 
 static int
-svr4_setinfo(p, st, s)
-	struct proc *p;
-	int st;
-	svr4_siginfo_t *s;
+svr4_setinfo(struct proc *p, int st, svr4_siginfo_t *s)
 {
 	svr4_siginfo_t i;
 	int sig;

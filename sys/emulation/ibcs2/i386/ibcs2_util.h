@@ -29,7 +29,7 @@
  *
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.h,v 1.4 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.h,v 1.5 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -59,16 +59,14 @@ static __inline caddr_t stackgap_init(void);
 static __inline void *stackgap_alloc(caddr_t *, size_t);
 
 static __inline caddr_t
-stackgap_init()
+stackgap_init(void)
 {
 #define szsigcode (*(curproc->p_sysent->sv_szsigcode))
         return (caddr_t)(PS_STRINGS - szsigcode - SPARE_USRSPACE);
 }
 
 static __inline void *
-stackgap_alloc(sgp, sz)
-	caddr_t	*sgp;
-	size_t   sz;
+stackgap_alloc(caddr_t *sgp, size_t sz)
 {
 	void	*p = (void *) *sgp;
 	*sgp += ALIGN(sz);

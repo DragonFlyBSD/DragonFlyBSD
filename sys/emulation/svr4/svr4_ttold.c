@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ttold.c,v 1.7 1999/12/08 12:00:49 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.5 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.6 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -95,9 +95,7 @@ print_svr4_ltchars(str, sl)
 #endif /* DEBUG_SVR4 */
 
 static void
-svr4_tchars_to_bsd_tchars(st, bt)
-	const struct svr4_tchars	*st;
-	struct tchars			*bt;
+svr4_tchars_to_bsd_tchars(const struct svr4_tchars *st, struct tchars *bt)
 {
 	bt->t_intrc  = st->t_intrc;
 	bt->t_quitc  = st->t_quitc;
@@ -109,9 +107,7 @@ svr4_tchars_to_bsd_tchars(st, bt)
 
 
 static void
-bsd_tchars_to_svr4_tchars(bt, st)
-	const struct tchars	*bt;
-	struct svr4_tchars	*st;
+bsd_tchars_to_svr4_tchars(const struct tchars *bt, struct svr4_tchars *st)
 {
 	st->t_intrc  = bt->t_intrc;
 	st->t_quitc  = bt->t_quitc;
@@ -123,9 +119,7 @@ bsd_tchars_to_svr4_tchars(bt, st)
 
 
 static void
-svr4_sgttyb_to_bsd_sgttyb(ss, bs)
-	const struct svr4_sgttyb	*ss;
-	struct sgttyb			*bs;
+svr4_sgttyb_to_bsd_sgttyb(const struct svr4_sgttyb *ss, struct sgttyb *bs)
 {
 	bs->sg_ispeed = ss->sg_ispeed;
 	bs->sg_ospeed = ss->sg_ospeed;
@@ -136,9 +130,7 @@ svr4_sgttyb_to_bsd_sgttyb(ss, bs)
 
 
 static void
-bsd_sgttyb_to_svr4_sgttyb(bs, ss)
-	const struct sgttyb	*bs;
-	struct svr4_sgttyb	*ss;
+bsd_sgttyb_to_svr4_sgttyb(const struct sgttyb *bs, struct svr4_sgttyb *ss)
 {
 	ss->sg_ispeed = bs->sg_ispeed;
 	ss->sg_ospeed = bs->sg_ospeed;
@@ -149,9 +141,7 @@ bsd_sgttyb_to_svr4_sgttyb(bs, ss)
 
 
 static void
-svr4_ltchars_to_bsd_ltchars(sl, bl)
-	const struct svr4_ltchars	*sl;
-	struct ltchars			*bl;
+svr4_ltchars_to_bsd_ltchars(const struct svr4_ltchars *sl, struct ltchars *bl)
 {
 	bl->t_suspc  = sl->t_suspc;
 	bl->t_dsuspc = sl->t_dsuspc;
@@ -163,9 +153,7 @@ svr4_ltchars_to_bsd_ltchars(sl, bl)
 
 
 static void
-bsd_ltchars_to_svr4_ltchars(bl, sl)
-	const struct ltchars	*bl;
-	struct svr4_ltchars	*sl;
+bsd_ltchars_to_svr4_ltchars(const struct ltchars *bl, struct svr4_ltchars *sl)
 {
 	sl->t_suspc  = bl->t_suspc;
 	sl->t_dsuspc = bl->t_dsuspc;
@@ -177,13 +165,8 @@ bsd_ltchars_to_svr4_ltchars(bl, sl)
 
 
 int
-svr4_ttold_ioctl(fp, td, retval, fd, cmd, data)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t data;
+svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
+		 int fd, u_long cmd, caddr_t data)
 {
 	int			error;
 

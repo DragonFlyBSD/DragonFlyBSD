@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.11 2005/01/31 21:55:18 joerg Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.12 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -55,9 +55,7 @@ static void bsd_stat2ibcs_stat (struct stat *, struct ibcs2_stat *);
 static int  cvt_statfs         (struct statfs *, caddr_t, int);
 
 static void
-bsd_stat2ibcs_stat(st, st4)
-	struct stat *st;
-	struct ibcs2_stat *st4;
+bsd_stat2ibcs_stat(struct stat *st, struct ibcs2_stat *st4)
 {
 	bzero(st4, sizeof(*st4));
 	st4->st_dev  = (ibcs2_dev_t)st->st_dev;
@@ -77,10 +75,7 @@ bsd_stat2ibcs_stat(st, st4)
 }
 
 static int
-cvt_statfs(sp, buf, len)
-	struct statfs *sp;
-	caddr_t buf;
-	int len;
+cvt_statfs(struct statfs *sp, caddr_t buf, int len)
 {
 	struct ibcs2_statfs ssfs;
 

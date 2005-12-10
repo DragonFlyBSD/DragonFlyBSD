@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ipc.c,v 1.15 1999/08/28 00:43:57 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.5 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ipc.c,v 1.6 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -65,9 +65,7 @@ static void cvt_iperm2perm   (struct ibcs2_ipc_perm *, struct ipc_perm *);
  */
 
 static void
-cvt_msqid2imsqid(bp, ibp)
-struct msqid_ds *bp;
-struct ibcs2_msqid_ds *ibp;
+cvt_msqid2imsqid(struct msqid_ds *bp, struct ibcs2_msqid_ds *ibp)
 {
 	cvt_perm2iperm(&bp->msg_perm, &ibp->msg_perm);
 	ibp->msg_first = bp->msg_first;
@@ -84,9 +82,7 @@ struct ibcs2_msqid_ds *ibp;
 }
 
 static void
-cvt_imsqid2msqid(ibp, bp)
-struct ibcs2_msqid_ds *ibp;
-struct msqid_ds *bp;
+cvt_imsqid2msqid(struct ibcs2_msqid_ds *ibp, struct msqid_ds *bp)
 {
 	cvt_iperm2perm(&ibp->msg_perm, &bp->msg_perm);
 	bp->msg_first = ibp->msg_first;
@@ -153,9 +149,7 @@ ibcs2_msgsys(struct ibcs2_msgsys_args *uap)
  */
 #ifdef unused
 static void
-cvt_sem2isem(bp, ibp)
-struct sem *bp;
-struct ibcs2_sem *ibp;
+cvt_sem2isem(struct sem *bp, struct ibcs2_sem *ibp)
 {
 	ibp->semval = bp->semval;
 	ibp->sempid = bp->sempid;
@@ -165,9 +159,7 @@ struct ibcs2_sem *ibp;
 }
 
 static void
-cvt_isem2sem(ibp, bp)
-struct ibcs2_sem *ibp;
-struct sem *bp;
+cvt_isem2sem(struct ibcs2_sem *ibp, struct sem *bp)
 {
 	bp->semval = ibp->semval;
 	bp->sempid = ibp->sempid;
@@ -178,9 +170,7 @@ struct sem *bp;
 #endif
 
 static void
-cvt_iperm2perm(ipp, pp)
-struct ibcs2_ipc_perm *ipp;
-struct ipc_perm *pp;
+cvt_iperm2perm(struct ibcs2_ipc_perm *ipp, struct ipc_perm *pp)
 {
 	pp->uid = ipp->uid;
 	pp->gid = ipp->gid;
@@ -192,9 +182,7 @@ struct ipc_perm *pp;
 }
 
 static void
-cvt_perm2iperm(pp, ipp)
-struct ipc_perm *pp;
-struct ibcs2_ipc_perm *ipp;
+cvt_perm2iperm(struct ipc_perm *pp, struct ibcs2_ipc_perm *ipp)
 {
 	ipp->uid = pp->uid;
 	ipp->gid = pp->gid;
@@ -206,9 +194,7 @@ struct ibcs2_ipc_perm *ipp;
 }
 
 static void
-cvt_semid2isemid(bp, ibp)
-struct semid_ds *bp;
-struct ibcs2_semid_ds *ibp;
+cvt_semid2isemid(struct semid_ds *bp, struct ibcs2_semid_ds *ibp)
 {
 	cvt_perm2iperm(&bp->sem_perm, &ibp->sem_perm);
 	ibp->sem_base = (struct ibcs2_sem *)bp->sem_base;
@@ -219,9 +205,7 @@ struct ibcs2_semid_ds *ibp;
 }
 
 static void
-cvt_isemid2semid(ibp, bp)
-struct ibcs2_semid_ds *ibp;
-struct semid_ds *bp;
+cvt_isemid2semid(struct ibcs2_semid_ds *ibp, struct semid_ds *bp)
 {
 	cvt_iperm2perm(&ibp->sem_perm, &bp->sem_perm);
 	bp->sem_base = (struct sem *)ibp->sem_base;
@@ -308,9 +292,7 @@ ibcs2_semsys(struct ibcs2_semsys_args *uap)
  */
 
 static void
-cvt_shmid2ishmid(bp, ibp)
-struct shmid_ds *bp;
-struct ibcs2_shmid_ds *ibp;
+cvt_shmid2ishmid(struct shmid_ds *bp, struct ibcs2_shmid_ds *ibp)
 {
 	cvt_perm2iperm(&bp->shm_perm, &ibp->shm_perm);
 	ibp->shm_segsz = bp->shm_segsz;
@@ -325,9 +307,7 @@ struct ibcs2_shmid_ds *ibp;
 }
 
 static void
-cvt_ishmid2shmid(ibp, bp)
-struct ibcs2_shmid_ds *ibp;
-struct shmid_ds *bp;
+cvt_ishmid2shmid(struct ibcs2_shmid_ds *ibp, struct shmid_ds *bp)
 {
 	cvt_iperm2perm(&ibp->shm_perm, &bp->shm_perm);
 	bp->shm_segsz = ibp->shm_segsz;

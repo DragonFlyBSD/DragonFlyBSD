@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/ndis/subr_pe.c,v 1.1 2004/07/29 20:51:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_pe.c,v 1.2 2005/12/10 16:06:20 swildner Exp $
  * $FreeBSD: src/sys/compat/ndis/subr_pe.c,v 1.7 2004/01/13 22:49:45 obrien Exp $
  */
 
@@ -74,9 +74,7 @@ static vm_offset_t pe_functbl_match(image_patch_table *, char *);
  */
 
 int
-pe_get_dos_header(imgbase, hdr)
-	vm_offset_t		imgbase;
-	image_dos_header	*hdr;
+pe_get_dos_header(vm_offset_t imgbase, image_dos_header *hdr)
 {
 	uint16_t		signature;
 
@@ -97,8 +95,7 @@ pe_get_dos_header(imgbase, hdr)
  */
 
 int
-pe_is_nt_image(imgbase)
-	vm_offset_t		imgbase;
+pe_is_nt_image(vm_offset_t imgbase)
 {
 	uint32_t		signature;
 	image_dos_header	*dos_hdr;
@@ -124,9 +121,7 @@ pe_is_nt_image(imgbase)
  */
 
 int
-pe_get_optional_header(imgbase, hdr)
-	vm_offset_t		imgbase;
-	image_optional_header	*hdr;
+pe_get_optional_header(vm_offset_t imgbase, image_optional_header *hdr)
 {
 	image_dos_header	*dos_hdr;
 	image_nt_header		*nt_hdr;
@@ -152,9 +147,7 @@ pe_get_optional_header(imgbase, hdr)
  */
 
 int
-pe_get_file_header(imgbase, hdr)
-	vm_offset_t		imgbase;
-	image_file_header	*hdr;
+pe_get_file_header(vm_offset_t imgbase, image_file_header *hdr)
 {
 	image_dos_header	*dos_hdr;
 	image_nt_header		*nt_hdr;
@@ -180,9 +173,7 @@ pe_get_file_header(imgbase, hdr)
  */
 
 int
-pe_get_section_header(imgbase, hdr)
-	vm_offset_t		imgbase;
-	image_section_header	*hdr;
+pe_get_section_header(vm_offset_t imgbase, image_section_header *hdr)
 {
 	image_dos_header	*dos_hdr;
 	image_nt_header		*nt_hdr;
@@ -209,8 +200,7 @@ pe_get_section_header(imgbase, hdr)
  */
 
 int
-pe_numsections(imgbase)
-	vm_offset_t		imgbase;
+pe_numsections(vm_offset_t imgbase)
 {
 	image_file_header	file_hdr;
 
@@ -226,8 +216,7 @@ pe_numsections(imgbase)
  */
 
 vm_offset_t
-pe_imagebase(imgbase)
-	vm_offset_t		imgbase;
+pe_imagebase(vm_offset_t imgbase)
 {
 	image_optional_header	optional_hdr;
 
@@ -243,9 +232,7 @@ pe_imagebase(imgbase)
  */
 
 vm_offset_t
-pe_directory_offset(imgbase, diridx)
-	vm_offset_t		imgbase;
-	uint32_t		diridx;
+pe_directory_offset(vm_offset_t imgbase, uint32_t diridx)
 {
 	image_optional_header	opt_hdr;
 	vm_offset_t		dir;
@@ -262,9 +249,7 @@ pe_directory_offset(imgbase, diridx)
 }
 
 vm_offset_t
-pe_translate_addr(imgbase, rva)
-	vm_offset_t		imgbase;
-	uint32_t		rva;
+pe_translate_addr(vm_offset_t imgbase, uint32_t rva)
 {
 	image_optional_header	opt_hdr;
 	image_section_header	*sect_hdr;
@@ -317,10 +302,8 @@ pe_translate_addr(imgbase, rva)
  */
 
 int
-pe_get_section(imgbase, hdr, name)
-	vm_offset_t		imgbase;
-	image_section_header	*hdr;
-	const char		*name;
+pe_get_section(vm_offset_t imgbase, image_section_header *hdr,
+	       const char *name)
 {
 	image_dos_header	*dos_hdr;
 	image_nt_header		*nt_hdr;
@@ -361,8 +344,7 @@ pe_get_section(imgbase, hdr, name)
  */
 
 int
-pe_relocate(imgbase)
-	vm_offset_t		imgbase;
+pe_relocate(vm_offset_t imgbase)
 {
 	image_section_header	sect;
 	image_base_reloc	*relhdr;
@@ -425,10 +407,8 @@ pe_relocate(imgbase)
  */
 
 int
-pe_get_import_descriptor(imgbase, desc, module)
-	vm_offset_t		imgbase;
-	image_import_descriptor	*desc;
-	char			*module;
+pe_get_import_descriptor(vm_offset_t imgbase, image_import_descriptor *desc,
+			 char *module)
 {	
 	vm_offset_t		offset;
 	image_import_descriptor	*imp_desc;
@@ -458,9 +438,7 @@ pe_get_import_descriptor(imgbase, desc, module)
 }
 
 int
-pe_get_messagetable(imgbase, md)
-	vm_offset_t		imgbase;
-	message_resource_data	**md;
+pe_get_messagetable(vm_offset_t imgbase, message_resource_data **md)
 {
 	image_resource_directory	*rdir, *rtype;
 	image_resource_directory_entry	*dent, *dent2;
@@ -504,12 +482,8 @@ pe_get_messagetable(imgbase, md)
 }
 
 int
-pe_get_message(imgbase, id, str, len, flags)
-	vm_offset_t		imgbase;
-	uint32_t		id;
-	char			**str;
-	int			*len;
-	uint16_t		*flags;
+pe_get_message(vm_offset_t imgbase, uint32_t id, char **str, int *len,
+	       uint16_t *flags)
 {
 	message_resource_data	*md = NULL;
 	message_resource_block	*mb;
@@ -549,9 +523,7 @@ pe_get_message(imgbase, id, str, len, flags)
  */
 
 static vm_offset_t
-pe_functbl_match(functbl, name)
-	image_patch_table	*functbl;
-	char			*name;
+pe_functbl_match(image_patch_table *functbl, char *name)
 {
 	image_patch_table	*p;
 
@@ -579,10 +551,8 @@ pe_functbl_match(functbl, name)
  */
 
 int
-pe_patch_imports(imgbase, module, functbl)
-	vm_offset_t		imgbase;
-	char			*module;
-	image_patch_table	*functbl;
+pe_patch_imports(vm_offset_t imgbase, char *module,
+		 image_patch_table *functbl)
 {
 	image_import_descriptor	imp_desc;
 	char			*fname;

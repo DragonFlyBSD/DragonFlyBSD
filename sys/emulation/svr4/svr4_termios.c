@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_termios.c,v 1.5 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_termios.c,v 1.5 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_termios.c,v 1.6 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -167,9 +167,7 @@ print_bsd_termios(bt)
 #endif /* DEBUG_SVR4 */
 
 static u_long
-bsd_to_svr4_speed(sp, mask)
-	u_long sp;
-	u_long mask;
+bsd_to_svr4_speed(u_long sp, u_long mask)
 {
 	switch (sp) {
 #undef getval
@@ -205,9 +203,7 @@ bsd_to_svr4_speed(sp, mask)
 
 
 static u_long
-svr4_to_bsd_speed(sp, mask)
-	u_long sp;
-	u_long mask;
+svr4_to_bsd_speed(u_long sp, u_long mask)
 {
 	while ((mask & 1) == 0) {
 		mask >>= 1;
@@ -241,10 +237,8 @@ svr4_to_bsd_speed(sp, mask)
 
 
 static void
-svr4_to_bsd_termios(st, bt, new)
-	const struct svr4_termios	*st;
-	struct termios	 		*bt;
-	int				 new;
+svr4_to_bsd_termios(const struct svr4_termios *st, struct termios *bt,
+		    int new)
 {
 	/* control characters */
 	/*
@@ -343,9 +337,7 @@ svr4_to_bsd_termios(st, bt, new)
 
 
 static void
-bsd_to_svr4_termios(bt, st)
-	const struct termios 	*bt;
-	struct svr4_termios	*st;
+bsd_to_svr4_termios(const struct termios *bt, struct svr4_termios *st)
 {
 	/* control characters */
 	/*
@@ -446,9 +438,7 @@ bsd_to_svr4_termios(bt, st)
 
 
 static void
-svr4_termio_to_termios(t, ts)
-	const struct svr4_termio	*t;
-	struct svr4_termios		*ts;
+svr4_termio_to_termios(const struct svr4_termio *t, struct svr4_termios *ts)
 {
 	int i;
 
@@ -463,9 +453,7 @@ svr4_termio_to_termios(t, ts)
 
 
 static void
-svr4_termios_to_termio(ts, t)
-	const struct svr4_termios	*ts;
-	struct svr4_termio		*t;
+svr4_termios_to_termio(const struct svr4_termios *ts, struct svr4_termio *t)
 {
 	int i;
 
@@ -480,13 +468,8 @@ svr4_termios_to_termio(ts, t)
 }
 
 int
-svr4_term_ioctl(fp, td, retval, fd, cmd, data)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t data;
+svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
+		int fd, u_long cmd, caddr_t data)
 {
 	struct termios 		bt;
 	struct svr4_termios	st;

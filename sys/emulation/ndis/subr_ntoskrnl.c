@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.6 2005/06/10 23:27:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.7 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/ctype.h>
@@ -186,7 +186,7 @@ static struct nt_objref_head ntoskrnl_reflist;
 static MALLOC_DEFINE(M_NDIS, "ndis", "ndis emulation");
 
 int
-ntoskrnl_libinit()
+ntoskrnl_libinit(void)
 {
 	lwkt_token_init(&ntoskrnl_dispatchtoken);
 	ntoskrnl_init_lock(&ntoskrnl_global);
@@ -195,17 +195,16 @@ ntoskrnl_libinit()
 }
 
 int
-ntoskrnl_libfini()
+ntoskrnl_libfini(void)
 {
 	lwkt_token_uninit(&ntoskrnl_dispatchtoken);
 	return(0);
 }
 
 __stdcall static uint8_t 
-ntoskrnl_unicode_equal(str1, str2, caseinsensitive)
-	ndis_unicode_string	*str1;
-	ndis_unicode_string	*str2;
-	uint8_t			caseinsensitive;
+ntoskrnl_unicode_equal(ndis_unicode_string *str1,
+		       ndis_unicode_string *str2,
+		       uint8_t caseinsensitive)
 {
 	int			i;
 
@@ -227,9 +226,8 @@ ntoskrnl_unicode_equal(str1, str2, caseinsensitive)
 }
 
 __stdcall static void
-ntoskrnl_unicode_copy(dest, src)
-	ndis_unicode_string	*dest;
-	ndis_unicode_string	*src;
+ntoskrnl_unicode_copy(ndis_unicode_string *dest,
+		      ndis_unicode_string *src)
 {
 
 	if (dest->nus_maxlen >= src->nus_len)
@@ -241,10 +239,9 @@ ntoskrnl_unicode_copy(dest, src)
 }
 
 __stdcall static ndis_status
-ntoskrnl_unicode_to_ansi(dest, src, allocate)
-	ndis_ansi_string	*dest;
-	ndis_unicode_string	*src;
-	uint8_t			allocate;
+ntoskrnl_unicode_to_ansi(ndis_ansi_string *dest,
+			 ndis_unicode_string *src,
+			 uint8_t allocate)
 {
 	char			*astr = NULL;
 
@@ -267,10 +264,9 @@ ntoskrnl_unicode_to_ansi(dest, src, allocate)
 }
 
 __stdcall static ndis_status
-ntoskrnl_ansi_to_unicode(dest, src, allocate)
-	ndis_unicode_string	*dest;
-	ndis_ansi_string	*src;
-	uint8_t			allocate;
+ntoskrnl_ansi_to_unicode(ndis_unicode_string *dest,
+			 ndis_ansi_string *src,
+			 uint8_t allocate)
 {
 	uint16_t		*ustr = NULL;
 
@@ -292,14 +288,9 @@ ntoskrnl_ansi_to_unicode(dest, src, allocate)
 }
 
 __stdcall static void *
-ntoskrnl_iobuildsynchfsdreq(func, dobj, buf, len, off, event, status)
-	uint32_t		func;
-	void			*dobj;
-	void			*buf;
-	uint32_t		len;
-	uint32_t		*off;
-	void			*event;
-	void			*status;
+ntoskrnl_iobuildsynchfsdreq(uint32_t func, void *dobj, void *buf,
+			    uint32_t len, uint32_t *off,
+			    void *event, void *status)
 {
 	return(NULL);
 }
@@ -316,8 +307,7 @@ ntoskrnl_iofcompletereq(REGARGS2(void *irp, uint8_t prioboost))
 }
 
 static void
-ntoskrnl_wakeup(arg)
-	void			*arg;
+ntoskrnl_wakeup(void *arg)
 {
 	nt_dispatch_header	*obj;
 	wait_block		*w;
@@ -348,8 +338,7 @@ ntoskrnl_wakeup(arg)
 }
 
 static void 
-ntoskrnl_time(tval)
-	uint64_t                *tval;
+ntoskrnl_time(uint64_t *tval)
 {
 	struct timespec		ts;
 
@@ -413,12 +402,8 @@ ntoskrnl_time(tval)
  */
 
 __stdcall uint32_t
-ntoskrnl_waitforobj(obj, reason, mode, alertable, duetime)
-	nt_dispatch_header	*obj;
-	uint32_t		reason;
-	uint32_t		mode;
-	uint8_t			alertable;
-	int64_t			*duetime;
+ntoskrnl_waitforobj(nt_dispatch_header *obj, uint32_t reason,
+		    uint32_t mode, uint8_t alertable, int64_t *duetime)
 {
 	struct thread		*td = curthread;
 	kmutant			*km;
@@ -532,16 +517,10 @@ ntoskrnl_waitforobj(obj, reason, mode, alertable, duetime)
 }
 
 __stdcall static uint32_t
-ntoskrnl_waitforobjs(cnt, obj, wtype, reason, mode,
-	alertable, duetime, wb_array)
-	uint32_t		cnt;
-	nt_dispatch_header	*obj[];
-	uint32_t		wtype;
-	uint32_t		reason;
-	uint32_t		mode;
-	uint8_t			alertable;
-	int64_t			*duetime;
-	wait_block		*wb_array;
+ntoskrnl_waitforobjs(uint32_t cnt, nt_dispatch_header *obj[],
+		     uint32_t wtype, uint32_t reason, uint32_t mode,
+		     uint8_t alertable, int64_t *duetime,
+		     wait_block *wb_array)
 {
 	struct thread		*td = curthread;
 	kmutant			*km;
@@ -681,137 +660,106 @@ ntoskrnl_waitforobjs(cnt, obj, wtype, reason, mode,
 }
 
 __stdcall static void
-ntoskrnl_writereg_ushort(reg, val)
-	uint16_t		*reg;
-	uint16_t		val;
+ntoskrnl_writereg_ushort(uint16_t *reg, uint16_t val)
 {
 	bus_space_write_2(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg, val);
 	return;
 }
 
 __stdcall static uint16_t
-ntoskrnl_readreg_ushort(reg)
-	uint16_t		*reg;
+ntoskrnl_readreg_ushort(uint16_t *reg)
 {
 	return(bus_space_read_2(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg));
 }
 
 __stdcall static void
-ntoskrnl_writereg_ulong(reg, val)
-	uint32_t		*reg;
-	uint32_t		val;
+ntoskrnl_writereg_ulong(uint32_t *reg, uint32_t val)
 {
 	bus_space_write_4(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg, val);
 	return;
 }
 
 __stdcall static uint32_t
-ntoskrnl_readreg_ulong(reg)
-	uint32_t		*reg;
+ntoskrnl_readreg_ulong(uint32_t *reg)
 {
 	return(bus_space_read_4(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg));
 }
 
 __stdcall static uint8_t
-ntoskrnl_readreg_uchar(reg)
-	uint8_t			*reg;
+ntoskrnl_readreg_uchar(uint8_t *reg)
 {
 	return(bus_space_read_1(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg));
 }
 
 __stdcall static void
-ntoskrnl_writereg_uchar(reg, val)
-	uint8_t			*reg;
-	uint8_t			val;
+ntoskrnl_writereg_uchar(uint8_t *reg, uint8_t val)
 {
 	bus_space_write_1(NDIS_BUS_SPACE_MEM, 0x0, (bus_size_t)reg, val);
 	return;
 }
 
 __stdcall static int64_t
-_allmul(a, b)
-	int64_t			a;
-	int64_t			b;
+_allmul(int64_t a, int64_t b)
 {
 	return (a * b);
 }
 
 __stdcall static int64_t
-_alldiv(a, b)
-	int64_t			a;
-	int64_t			b;
+_alldiv(int64_t a, int64_t b)
 {
 	return (a / b);
 }
 
 __stdcall static int64_t
-_allrem(a, b)
-	int64_t			a;
-	int64_t			b;
+_allrem(int64_t a, int64_t b)
 {
 	return (a % b);
 }
 
 __stdcall static uint64_t
-_aullmul(a, b)
-	uint64_t		a;
-	uint64_t		b;
+_aullmul(uint64_t a, uint64_t b)
 {
 	return (a * b);
 }
 
 __stdcall static uint64_t
-_aulldiv(a, b)
-	uint64_t		a;
-	uint64_t		b;
+_aulldiv(uint64_t a, uint64_t b)
 {
 	return (a / b);
 }
 
 __stdcall static uint64_t
-_aullrem(a, b)
-	uint64_t		a;
-	uint64_t		b;
+_aullrem(uint64_t a, uint64_t b)
 {
 	return (a % b);
 }
 
 __regparm static int64_t
-_allshl(a, b)
-	int64_t			a;
-	uint8_t			b;
+_allshl(int64_t a, uint8_t b)
 {
 	return (a << b);
 }
 
 __regparm static uint64_t
-_aullshl(a, b)
-	uint64_t		a;
-	uint8_t			b;
+_aullshl(uint64_t a, uint8_t b)
 {
 	return (a << b);
 }
 
 __regparm static int64_t
-_allshr(a, b)
-	int64_t			a;
-	uint8_t			b;
+_allshr(int64_t a, uint8_t b)
 {
 	return (a >> b);
 }
 
 __regparm static uint64_t
-_aullshr(a, b)
-	uint64_t		a;
-	uint8_t			b;
+_aullshr(uint64_t a, uint8_t b)
 {
 	return (a >> b);
 }
 
 static slist_entry *
-ntoskrnl_pushsl(head, entry)
-	slist_header		*head;
-	slist_entry		*entry;
+ntoskrnl_pushsl(slist_header *head, slist_entry *entry)
 {
 	slist_entry		*oldhead;
 
@@ -825,8 +773,7 @@ ntoskrnl_pushsl(head, entry)
 }
 
 static slist_entry *
-ntoskrnl_popsl(head)
-	slist_header		*head;
+ntoskrnl_popsl(slist_header *head)
 {
 	slist_entry		*first;
 
@@ -841,32 +788,24 @@ ntoskrnl_popsl(head)
 }
 
 __stdcall static void *
-ntoskrnl_allocfunc(pooltype, size, tag)
-	uint32_t		pooltype;
-	size_t			size;
-	uint32_t		tag;
+ntoskrnl_allocfunc(uint32_t pooltype, size_t size, uint32_t tag)
 {
 	return(malloc(size, M_DEVBUF, M_WAITOK));
 }
 
 __stdcall static void
-ntoskrnl_freefunc(buf)
-	void			*buf;
+ntoskrnl_freefunc(void *buf)
 {
 	free(buf, M_DEVBUF);
 	return;
 }
 
 __stdcall static void
-ntoskrnl_init_lookaside(lookaside, allocfunc, freefunc,
-    flags, size, tag, depth)
-	paged_lookaside_list	*lookaside;
-	lookaside_alloc_func	*allocfunc;
-	lookaside_free_func	*freefunc;
-	uint32_t		flags;
-	size_t			size;
-	uint32_t		tag;
-	uint16_t		depth;
+ntoskrnl_init_lookaside(paged_lookaside_list *lookaside,
+			lookaside_alloc_func *allocfunc,
+			lookaside_free_func *freefunc,
+			uint32_t flags, size_t size,
+			uint32_t tag, uint16_t depth)
 {
 	bzero((char *)lookaside, sizeof(paged_lookaside_list));
 
@@ -894,8 +833,7 @@ ntoskrnl_init_lookaside(lookaside, allocfunc, freefunc,
 }
 
 __stdcall static void
-ntoskrnl_delete_lookaside(lookaside)
-	paged_lookaside_list   *lookaside;
+ntoskrnl_delete_lookaside(paged_lookaside_list *lookaside)
 {
 	void			*buf;
 	__stdcall void		(*freefunc)(void *);
@@ -908,15 +846,11 @@ ntoskrnl_delete_lookaside(lookaside)
 }
 
 __stdcall static void
-ntoskrnl_init_nplookaside(lookaside, allocfunc, freefunc,
-    flags, size, tag, depth)
-	npaged_lookaside_list	*lookaside;
-	lookaside_alloc_func	*allocfunc;
-	lookaside_free_func	*freefunc;
-	uint32_t		flags;
-	size_t			size;
-	uint32_t		tag;
-	uint16_t		depth;
+ntoskrnl_init_nplookaside(npaged_lookaside_list *lookaside,
+			  lookaside_alloc_func *allocfunc,
+			  lookaside_free_func *freefunc,
+			  uint32_t flags, size_t size,
+			  uint32_t tag, uint16_t depth)
 {
 	bzero((char *)lookaside, sizeof(npaged_lookaside_list));
 
@@ -944,8 +878,7 @@ ntoskrnl_init_nplookaside(lookaside, allocfunc, freefunc,
 }
 
 __stdcall static void
-ntoskrnl_delete_nplookaside(lookaside)
-	npaged_lookaside_list   *lookaside;
+ntoskrnl_delete_nplookaside(npaged_lookaside_list *lookaside)
 {
 	void			*buf;
 	__stdcall void		(*freefunc)(void *);
@@ -1053,8 +986,7 @@ ntoskrnl_interlock_addstat(REGARGS2(uint64_t *addend, uint32_t inc))
 };
 
 __stdcall static void
-ntoskrnl_freemdl(mdl)
-	ndis_buffer		*mdl;
+ntoskrnl_freemdl(ndis_buffer *mdl)
 {
 	ndis_buffer		*head;
 
@@ -1085,9 +1017,7 @@ ntoskrnl_freemdl(mdl)
 }
 
 __stdcall static uint32_t
-ntoskrnl_sizeofmdl(vaddr, len)
-	void			*vaddr;
-	size_t			len;
+ntoskrnl_sizeofmdl(void *vaddr, size_t len)
 {
 	uint32_t		l;
 
@@ -1098,38 +1028,28 @@ ntoskrnl_sizeofmdl(vaddr, len)
 }
 
 __stdcall static void
-ntoskrnl_build_npaged_mdl(mdl)
-	ndis_buffer		*mdl;
+ntoskrnl_build_npaged_mdl(ndis_buffer *mdl)
 {
 	mdl->nb_mappedsystemva = (char *)mdl->nb_startva + mdl->nb_byteoffset;
 	return;
 }
 
 __stdcall static void *
-ntoskrnl_mmaplockedpages(buf, accessmode)
-	ndis_buffer		*buf;
-	uint8_t			accessmode;
+ntoskrnl_mmaplockedpages(ndis_buffer *buf, uint8_t accessmode)
 {
 	return(MDL_VA(buf));
 }
 
 __stdcall static void *
-ntoskrnl_mmaplockedpages_cache(buf, accessmode, cachetype, vaddr,
-    bugcheck, prio)
-	ndis_buffer		*buf;
-	uint8_t			accessmode;
-	uint32_t		cachetype;
-	void			*vaddr;
-	uint32_t		bugcheck;
-	uint32_t		prio;
+ntoskrnl_mmaplockedpages_cache(ndis_buffer *buf, uint8_t accessmode,
+			       uint32_t cachetype, void *vaddr,
+			       uint32_t bugcheck, uint32_t prio)
 {
 	return(MDL_VA(buf));
 }
 
 __stdcall static void
-ntoskrnl_munmaplockedpages(vaddr, buf)
-	void			*vaddr;
-	ndis_buffer		*buf;
+ntoskrnl_munmaplockedpages(void *vaddr, ndis_buffer *buf)
 {
 	return;
 }
@@ -1142,8 +1062,7 @@ ntoskrnl_munmaplockedpages(vaddr, buf)
  * function. Instead, we grab a mutex from the mutex pool.
  */
 __stdcall static void
-ntoskrnl_init_lock(lock)
-	kspin_lock		*lock;
+ntoskrnl_init_lock(kspin_lock *lock)
 {
 	*lock = 0;
 
@@ -1151,10 +1070,7 @@ ntoskrnl_init_lock(lock)
 }
 
 __stdcall static size_t
-ntoskrnl_memcmp(s1, s2, len)
-	const void		*s1;
-	const void		*s2;
-	size_t			len;
+ntoskrnl_memcmp(const void *s1, const void *s2, size_t len)
 {
 	size_t			i, total = 0;
 	uint8_t			*m1, *m2;
@@ -1170,9 +1086,7 @@ ntoskrnl_memcmp(s1, s2, len)
 }
 
 __stdcall static void
-ntoskrnl_init_ansi_string(dst, src)
-	ndis_ansi_string	*dst;
-	char			*src;
+ntoskrnl_init_ansi_string(ndis_ansi_string *dst, char *src)
 {
 	ndis_ansi_string	*a;
 
@@ -1191,9 +1105,7 @@ ntoskrnl_init_ansi_string(dst, src)
 }
 
 __stdcall static void
-ntoskrnl_init_unicode_string(dst, src)
-	ndis_unicode_string	*dst;
-	uint16_t		*src;
+ntoskrnl_init_unicode_string(ndis_unicode_string *dst, uint16_t *src)
 {
 	ndis_unicode_string	*u;
 	int			i;
@@ -1216,10 +1128,8 @@ ntoskrnl_init_unicode_string(dst, src)
 }
 
 __stdcall ndis_status
-ntoskrnl_unicode_to_int(ustr, base, val)
-	ndis_unicode_string	*ustr;
-	uint32_t		base;
-	uint32_t		*val;
+ntoskrnl_unicode_to_int(ndis_unicode_string *ustr, uint32_t base,
+			uint32_t *val)
 {
 	uint16_t		*uchr;
 	int			len, neg = 0;
@@ -1270,8 +1180,7 @@ ntoskrnl_unicode_to_int(ustr, base, val)
 }
 
 __stdcall static void
-ntoskrnl_free_unicode_string(ustr)
-	ndis_unicode_string	*ustr;
+ntoskrnl_free_unicode_string(ndis_unicode_string *ustr)
 {
 	if (ustr->nus_buf == NULL)
 		return;
@@ -1281,8 +1190,7 @@ ntoskrnl_free_unicode_string(ustr)
 }
 
 __stdcall static void
-ntoskrnl_free_ansi_string(astr)
-	ndis_ansi_string	*astr;
+ntoskrnl_free_ansi_string(ndis_ansi_string *astr)
 {
 	if (astr->nas_buf == NULL)
 		return;
@@ -1292,15 +1200,13 @@ ntoskrnl_free_ansi_string(astr)
 }
 
 static int
-atoi(str)
-	const char		*str;
+atoi(const char *str)
 {
 	return (int)strtol(str, (char **)NULL, 10);
 }
 
 static long
-atol(str)
-	const char		*str;
+atol(const char *str)
 {
 	return strtol(str, (char **)NULL, 10);
 }
@@ -1316,9 +1222,7 @@ rand(void)
 }
 
 __stdcall static uint8_t
-ntoskrnl_wdmver(major, minor)
-	uint8_t			major;
-	uint8_t			minor;
+ntoskrnl_wdmver(uint8_t major, uint8_t minor)
 {
 	if (major == WDM_MAJOR && minor == WDM_MINOR_WINXP)
 		return(TRUE);
@@ -1326,12 +1230,8 @@ ntoskrnl_wdmver(major, minor)
 }
 
 __stdcall static ndis_status
-ntoskrnl_devprop(devobj, regprop, buflen, prop, reslen)
-	device_object		*devobj;
-	uint32_t		regprop;
-	uint32_t		buflen;
-	void			*prop;
-	uint32_t		*reslen;
+ntoskrnl_devprop(device_object *devobj, uint32_t regprop, uint32_t buflen,
+		 void *prop, uint32_t *reslen)
 {
 	ndis_miniport_block	*block;
 
@@ -1352,9 +1252,7 @@ ntoskrnl_devprop(devobj, regprop, buflen, prop, reslen)
 }
 
 __stdcall static void
-ntoskrnl_init_mutex(kmutex, level)
-	kmutant			*kmutex;
-	uint32_t		level;
+ntoskrnl_init_mutex(kmutant *kmutex, uint32_t level)
 {
 	INIT_LIST_HEAD((&kmutex->km_header.dh_waitlisthead));
 	kmutex->km_abandoned = FALSE;
@@ -1368,9 +1266,7 @@ ntoskrnl_init_mutex(kmutex, level)
 }
 
 __stdcall static uint32_t
-ntoskrnl_release_mutex(kmutex, kwait)
-	kmutant			*kmutex;
-	uint8_t			kwait;
+ntoskrnl_release_mutex(kmutant *kmutex, uint8_t kwait)
 {
 	struct lwkt_tokref	tokref;
 
@@ -1391,17 +1287,13 @@ ntoskrnl_release_mutex(kmutex, kwait)
 }
 
 __stdcall static uint32_t
-ntoskrnl_read_mutex(kmutex)
-	kmutant			*kmutex;
+ntoskrnl_read_mutex(kmutant *kmutex)
 {
 	return(kmutex->km_header.dh_sigstate);
 }
 
 __stdcall void
-ntoskrnl_init_event(kevent, type, state)
-	nt_kevent		*kevent;
-	uint32_t		type;
-	uint8_t			state;
+ntoskrnl_init_event(nt_kevent *kevent, uint32_t type, uint8_t state)
 {
 	INIT_LIST_HEAD((&kevent->k_header.dh_waitlisthead));
 	kevent->k_header.dh_sigstate = state;
@@ -1411,8 +1303,7 @@ ntoskrnl_init_event(kevent, type, state)
 }
 
 __stdcall uint32_t
-ntoskrnl_reset_event(kevent)
-	nt_kevent		*kevent;
+ntoskrnl_reset_event(nt_kevent *kevent)
 {
 	uint32_t		prevstate;
 	struct lwkt_tokref	tokref;
@@ -1426,10 +1317,7 @@ ntoskrnl_reset_event(kevent)
 }
 
 __stdcall uint32_t
-ntoskrnl_set_event(kevent, increment, kwait)
-	nt_kevent		*kevent;
-	uint32_t		increment;
-	uint8_t			kwait;
+ntoskrnl_set_event(nt_kevent *kevent, uint32_t increment, uint8_t kwait)
 {
 	uint32_t		prevstate;
 
@@ -1440,28 +1328,21 @@ ntoskrnl_set_event(kevent, increment, kwait)
 }
 
 __stdcall void
-ntoskrnl_clear_event(kevent)
-	nt_kevent		*kevent;
+ntoskrnl_clear_event(nt_kevent *kevent)
 {
 	kevent->k_header.dh_sigstate = FALSE;
 	return;
 }
 
 __stdcall uint32_t
-ntoskrnl_read_event(kevent)
-	nt_kevent		*kevent;
+ntoskrnl_read_event(nt_kevent *kevent)
 {
 	return(kevent->k_header.dh_sigstate);
 }
 
 __stdcall static ndis_status
-ntoskrnl_objref(handle, reqaccess, otype, accessmode, object, handleinfo)
-	ndis_handle		handle;
-	uint32_t		reqaccess;
-	void			*otype;
-	uint8_t			accessmode;
-	void			**object;
-	void			**handleinfo;
+ntoskrnl_objref(ndis_handle handle, uint32_t reqaccess, void *otype,
+		uint8_t accessmode, void **object, void **handleinfo)
 {
 	nt_objref		*nr;
 
@@ -1489,8 +1370,7 @@ ntoskrnl_objderef(REGARGS1(void *object))
 }
 
 __stdcall static uint32_t
-ntoskrnl_zwclose(handle)
-	ndis_handle		handle;
+ntoskrnl_zwclose(ndis_handle handle)
 {
 	return(STATUS_SUCCESS);
 }
@@ -1500,8 +1380,7 @@ ntoskrnl_zwclose(handle)
  * PsTerminateSystemThread().
  */
 static void
-ntoskrnl_thrfunc(arg)
-	void			*arg;
+ntoskrnl_thrfunc(void *arg)
 {
 	thread_context		*thrctx;
 	__stdcall uint32_t (*tfunc)(void *);
@@ -1520,15 +1399,9 @@ ntoskrnl_thrfunc(arg)
 }
 
 __stdcall static ndis_status
-ntoskrnl_create_thread(handle, reqaccess, objattrs, phandle,
-	clientid, thrfunc, thrctx)
-	ndis_handle		*handle;
-	uint32_t		reqaccess;
-	void			*objattrs;
-	ndis_handle		phandle;
-	void			*clientid;
-	void			*thrfunc;
-	void			*thrctx;
+ntoskrnl_create_thread(ndis_handle *handle, uint32_t reqaccess,
+		       void *objattrs, ndis_handle phandle,
+		       void *clientid, void *thrfunc, void *thrctx)
 {
 	int			error;
 	char			tname[128];
@@ -1559,8 +1432,7 @@ ntoskrnl_create_thread(handle, reqaccess, objattrs, phandle,
  * them.
  */
 __stdcall static ndis_status
-ntoskrnl_thread_exit(status)
-	ndis_status		status;
+ntoskrnl_thread_exit(ndis_status status)
 {
 	struct nt_objref	*nr;
 
@@ -1602,8 +1474,7 @@ ntoskrnl_debugger(void)
 }
 
 static void
-ntoskrnl_timercall(arg)
-	void			*arg;
+ntoskrnl_timercall(void *arg)
 {
 	ktimer			*timer;
 
@@ -1637,8 +1508,7 @@ ntoskrnl_timercall(arg)
 }
 
 __stdcall void
-ntoskrnl_init_timer(timer)
-	ktimer			*timer;
+ntoskrnl_init_timer(ktimer *timer)
 {
 	if (timer == NULL)
 		return;
@@ -1647,9 +1517,7 @@ ntoskrnl_init_timer(timer)
 }
 
 __stdcall void
-ntoskrnl_init_timer_ex(timer, type)
-	ktimer			*timer;
-	uint32_t		type;
+ntoskrnl_init_timer_ex(ktimer *timer, uint32_t type)
 {
 	if (timer == NULL)
 		return;
@@ -1671,8 +1539,7 @@ ntoskrnl_init_timer_ex(timer, type)
  * I can tell, defered procedure calls must run at DISPATCH_LEVEL.
  */
 static void
-ntoskrnl_run_dpc(arg)
-	void			*arg;
+ntoskrnl_run_dpc(void *arg)
 {
 	kdpc_func		dpcfunc;
 	kdpc			*dpc;
@@ -1688,10 +1555,7 @@ ntoskrnl_run_dpc(arg)
 }
 
 __stdcall void
-ntoskrnl_init_dpc(dpc, dpcfunc, dpcctx)
-	kdpc			*dpc;
-	void			*dpcfunc;
-	void			*dpcctx;
+ntoskrnl_init_dpc(kdpc *dpc, void *dpcfunc, void *dpcctx)
 {
 	if (dpc == NULL)
 		return;
@@ -1703,10 +1567,7 @@ ntoskrnl_init_dpc(dpc, dpcfunc, dpcctx)
 }
 
 __stdcall uint8_t
-ntoskrnl_queue_dpc(dpc, sysarg1, sysarg2)
-	kdpc			*dpc;
-	void			*sysarg1;
-	void			*sysarg2;
+ntoskrnl_queue_dpc(kdpc *dpc, void *sysarg1, void *sysarg2)
 {
 	dpc->k_sysarg1 = sysarg1;
 	dpc->k_sysarg2 = sysarg2;
@@ -1717,8 +1578,7 @@ ntoskrnl_queue_dpc(dpc, sysarg1, sysarg2)
 }
 
 __stdcall uint8_t
-ntoskrnl_dequeue_dpc(dpc)
-	kdpc			*dpc;
+ntoskrnl_dequeue_dpc(kdpc *dpc)
 {
 	if (ndis_unsched(ntoskrnl_run_dpc, dpc, NDIS_SWI))
 		return(FALSE);
@@ -1727,11 +1587,8 @@ ntoskrnl_dequeue_dpc(dpc)
 }
 
 __stdcall uint8_t
-ntoskrnl_set_timer_ex(timer, duetime, period, dpc)
-	ktimer			*timer;
-	int64_t			duetime;
-	uint32_t		period;
-	kdpc			*dpc;
+ntoskrnl_set_timer_ex(ktimer *timer, int64_t duetime, uint32_t period,
+		      kdpc *dpc)
 {
 	struct timeval		tv;
 	uint64_t		curtime;
@@ -1782,17 +1639,13 @@ ntoskrnl_set_timer_ex(timer, duetime, period, dpc)
 }
 
 __stdcall uint8_t
-ntoskrnl_set_timer(timer, duetime, dpc)
-	ktimer			*timer;
-	int64_t			duetime;
-	kdpc			*dpc;
+ntoskrnl_set_timer(ktimer *timer, int64_t duetime, kdpc *dpc)
 {
 	return (ntoskrnl_set_timer_ex(timer, duetime, 0, dpc));
 }
 
 __stdcall uint8_t
-ntoskrnl_cancel_timer(timer)
-	ktimer			*timer;
+ntoskrnl_cancel_timer(ktimer *timer)
 {
 	uint8_t			pending;
 
@@ -1816,14 +1669,13 @@ ntoskrnl_cancel_timer(timer)
 }
 
 __stdcall uint8_t
-ntoskrnl_read_timer(timer)
-	ktimer			*timer;
+ntoskrnl_read_timer(ktimer *timer)
 {
 	return(timer->k_header.dh_sigstate);
 }
 
 __stdcall static void
-dummy()
+dummy(void)
 {
 	printf ("ntoskrnl dummy called...\n");
 	return;

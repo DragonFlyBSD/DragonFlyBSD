@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.c,v 1.13.2.1 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.8 2003/12/20 05:52:22 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.9 2005/12/10 16:06:21 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -89,11 +89,8 @@ svr4_setregs(p, epp, stack)
 #endif /* __NetBSD__ */
 
 void
-svr4_getcontext(p, uc, mask, oonstack)
-	struct proc *p;
-	struct svr4_ucontext *uc;
-	sigset_t *mask;
-	int oonstack;
+svr4_getcontext(struct proc *p, struct svr4_ucontext *uc, sigset_t *mask,
+		int oonstack)
 {
 	struct trapframe *tf = p->p_md.md_regs;
 	svr4_greg_t *r = uc->uc_mcontext.greg;
@@ -178,9 +175,7 @@ svr4_getcontext(p, uc, mask, oonstack)
  * a machine fault.
  */
 int
-svr4_setcontext(p, uc)
-	struct proc *p;
-	struct svr4_ucontext *uc;
+svr4_setcontext(struct proc *p, struct svr4_ucontext *uc)
 {
 #if defined(DONE_MORE_SIGALTSTACK_WORK)
 	struct sigacts *psp = p->p_sigacts;
@@ -285,11 +280,8 @@ svr4_setcontext(p, uc)
 
 
 static void
-svr4_getsiginfo(si, sig, code, addr)
-	union svr4_siginfo	*si;
-	int			 sig;
-	u_long			 code;
-	caddr_t			 addr;
+svr4_getsiginfo(union svr4_siginfo *si, int sig, u_long code,
+		caddr_t addr)
 {
 	si->si_signo = bsd_to_svr4_sig[sig];
 	si->si_errno = 0;
@@ -388,11 +380,7 @@ svr4_getsiginfo(si, sig, code, addr)
  * will return to the user pc, psl.
  */
 void
-svr4_sendsig(catcher, sig, mask, code)
-	sig_t catcher;
-	int sig;
-	sigset_t *mask;
-	u_long code;
+svr4_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
 	struct proc *p = curproc;
 	struct trapframe *tf;

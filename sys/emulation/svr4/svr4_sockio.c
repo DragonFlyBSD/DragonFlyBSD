@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sockio.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.7 2004/08/02 13:22:32 joerg Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.8 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,8 +52,7 @@ static int bsd_to_svr4_flags (int);
 	if (bf & __CONCAT(I,a))	sf |= __CONCAT(SVR4_I,a)
 
 static int
-bsd_to_svr4_flags(bf)
-	int bf;
+bsd_to_svr4_flags(int bf)
 {
 	int sf = 0;
 	bsd_to_svr4_flag(FF_UP);
@@ -73,13 +72,8 @@ bsd_to_svr4_flags(bf)
 }
 
 int
-svr4_sock_ioctl(fp, td, retval, fd, cmd, data)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t data;
+svr4_sock_ioctl(struct file *fp, struct thread *td, register_t *retval,
+		int fd, u_long cmd, caddr_t data)
 {
 	int error;
 

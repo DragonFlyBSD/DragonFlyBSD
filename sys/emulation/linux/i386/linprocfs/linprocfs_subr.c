@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.15 2004/12/17 00:18:05 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.16 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -85,11 +85,8 @@ extern int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, str
  * the vnode free list.
  */
 int
-linprocfs_allocvp(mp, vpp, pid, pfs_type)
-	struct mount *mp;
-	struct vnode **vpp;
-	long pid;
-	pfstype pfs_type;
+linprocfs_allocvp(struct mount *mp, struct vnode **vpp, long pid,
+		  pfstype pfs_type)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
@@ -220,8 +217,7 @@ out:
 }
 
 int
-linprocfs_freevp(vp)
-	struct vnode *vp;
+linprocfs_freevp(struct vnode *vp)
 {
 	struct pfsnode **pfspp;
 	struct pfsnode *pfs = VTOPFS(vp);
@@ -238,8 +234,7 @@ linprocfs_freevp(vp)
 }
 
 int
-linprocfs_rw(ap)
-	struct vop_read_args *ap;
+linprocfs_rw(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
@@ -314,10 +309,7 @@ linprocfs_rw(ap)
  * EFAULT:    user i/o buffer is not addressable
  */
 int
-vfs_getuserstr(uio, buf, buflenp)
-	struct uio *uio;
-	char *buf;
-	int *buflenp;
+vfs_getuserstr(struct uio *uio, char *buf, int *buflenp)
 {
 	int xlen;
 	int error;
@@ -349,10 +341,7 @@ vfs_getuserstr(uio, buf, buflenp)
 }
 
 vfs_namemap_t *
-vfs_findname(nm, buf, buflen)
-	vfs_namemap_t *nm;
-	char *buf;
-	int buflen;
+vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 {
 
 	for (; nm->nm_name; nm++)

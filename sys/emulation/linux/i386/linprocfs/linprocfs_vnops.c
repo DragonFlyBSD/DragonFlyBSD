@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.23 2005/11/19 17:58:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.24 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -124,13 +124,7 @@ static pid_t atopid (const char *, u_int);
  * memory images.
  */
 static int
-linprocfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+linprocfs_open(struct vop_open_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p2;
@@ -170,13 +164,7 @@ linprocfs_open(ap)
  * any exclusive open flag (see _open above).
  */
 static int
-linprocfs_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+linprocfs_close(struct vop_close_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p;
@@ -214,8 +202,7 @@ linprocfs_close(ap)
  * (vp) is not locked on entry or exit.
  */
 static int
-linprocfs_ioctl(ap)
-	struct vop_ioctl_args *ap;
+linprocfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *procp;
@@ -307,14 +294,7 @@ linprocfs_ioctl(ap)
  * (EIO) would be a reasonable alternative.
  */
 static int
-linprocfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-	} */ *ap;
+linprocfs_bmap(struct vop_bmap_args *ap)
 {
 
 	if (ap->a_vpp != NULL)
@@ -337,10 +317,7 @@ linprocfs_bmap(ap)
  *      on exit.
  */
 static int
-linprocfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+linprocfs_inactive(struct vop_inactive_args *ap)
 {
 	/*struct vnode *vp = ap->a_vp;*/
 
@@ -355,10 +332,7 @@ linprocfs_inactive(ap)
  * from any private lists.
  */
 static int
-linprocfs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+linprocfs_reclaim(struct vop_reclaim_args *ap)
 {
 	return (linprocfs_freevp(ap->a_vp));
 }
@@ -369,10 +343,7 @@ linprocfs_reclaim(ap)
  * of (vp).
  */
 static int
-linprocfs_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+linprocfs_print(struct vop_print_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 
@@ -385,7 +356,7 @@ linprocfs_print(ap)
  * generic entry point for unsupported operations
  */
 static int
-linprocfs_badop()
+linprocfs_badop(void)
 {
 
 	return (EIO);
@@ -401,13 +372,7 @@ linprocfs_badop()
  * this is relatively minimal for procfs.
  */
 static int
-linprocfs_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+linprocfs_getattr(struct vop_getattr_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
@@ -547,13 +512,7 @@ linprocfs_getattr(ap)
 }
 
 static int
-linprocfs_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+linprocfs_setattr(struct vop_setattr_args *ap)
 {
 
 	if (ap->a_vap->va_flags != VNOVAL)
@@ -585,13 +544,7 @@ linprocfs_setattr(ap)
  * that the operation really does make sense.
  */
 static int
-linprocfs_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+linprocfs_access(struct vop_access_args *ap)
 {
 	struct vattr *vap;
 	struct vattr vattr;
@@ -639,12 +592,7 @@ found:
  * for most pseudo-filesystems very little needs to be done.
  */
 static int
-linprocfs_lookup(ap)
-	struct vop_old_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+linprocfs_lookup(struct vop_old_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode **vpp = ap->a_vpp;
@@ -785,8 +733,7 @@ out:
  * Does this process have a text file?
  */
 int
-linprocfs_validfile(p)
-	struct proc *p;
+linprocfs_validfile(struct proc *p)
 {
 
 	return (procfs_findtextvp(p) != NULLVP);
@@ -1005,8 +952,7 @@ done:
  * readlink reads the link of `self' or `exe'
  */
 static int
-linprocfs_readlink(ap)
-	struct vop_readlink_args *ap;
+linprocfs_readlink(struct vop_readlink_args *ap)
 {
 	char buf[16];		/* should be enough */
 	struct proc *procp;
@@ -1051,9 +997,7 @@ linprocfs_readlink(ap)
  * convert decimal ascii to pid_t
  */
 static pid_t
-atopid(b, len)
-	const char *b;
-	u_int len;
+atopid(const char *b, u_int len)
 {
 	pid_t p = 0;
 
@@ -1101,4 +1045,3 @@ struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
 	{ &vop_ioctl_desc,		(void *) linprocfs_ioctl },
 	{ NULL, NULL }
 };
-

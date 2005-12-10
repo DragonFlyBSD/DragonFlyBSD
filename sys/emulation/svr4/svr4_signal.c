@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.10 2005/06/27 01:49:59 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.11 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -126,8 +126,7 @@ int svr4_to_bsd_sig[SVR4_SIGTBLSZ] = {
 };
 
 void
-svr4_sigfillset(s)
-	svr4_sigset_t *s;
+svr4_sigfillset(svr4_sigset_t *s)
 {
 	int i;
 
@@ -138,9 +137,7 @@ svr4_sigfillset(s)
 }
 
 void
-svr4_to_bsd_sigset(sss, bss)
-	const svr4_sigset_t *sss;
-	sigset_t *bss;
+svr4_to_bsd_sigset(const svr4_sigset_t *sss, sigset_t *bss)
 {
 	int i, newsig;
 
@@ -154,9 +151,7 @@ svr4_to_bsd_sigset(sss, bss)
 }
 
 void
-bsd_to_svr4_sigset(bss, sss)
-	const sigset_t *bss;
-	svr4_sigset_t *sss;
+bsd_to_svr4_sigset(const sigset_t *bss, svr4_sigset_t *sss)
 {
 	int i, newsig;
 
@@ -178,9 +173,8 @@ bsd_to_svr4_sigset(bss, sss)
  * XXX: Only a subset of the flags is currently implemented.
  */
 void
-svr4_to_bsd_sigaction(ssa, bsa)
-	const struct svr4_sigaction *ssa;
-	struct sigaction *bsa;
+svr4_to_bsd_sigaction(const struct svr4_sigaction *ssa,
+		      struct sigaction *bsa)
 {
 
 	bsa->sa_handler = (sig_t) ssa->ssa_handler;
@@ -205,9 +199,8 @@ svr4_to_bsd_sigaction(ssa, bsa)
 }
 
 void
-bsd_to_svr4_sigaction(bsa, ssa)
-	const struct sigaction *bsa;
-	struct svr4_sigaction *ssa;
+bsd_to_svr4_sigaction(const struct sigaction *bsa,
+		      struct svr4_sigaction *ssa)
 {
 
 	ssa->ssa_handler = (svr4_sig_t) bsa->sa_handler;
@@ -226,9 +219,8 @@ bsd_to_svr4_sigaction(bsa, ssa)
 }
 
 void
-svr4_to_bsd_sigaltstack(sss, bss)
-	const struct svr4_sigaltstack *sss;
-	struct sigaltstack *bss;
+svr4_to_bsd_sigaltstack(const struct svr4_sigaltstack *sss,
+			struct sigaltstack *bss)
 {
 
 	bss->ss_sp = sss->ss_sp;
@@ -243,9 +235,8 @@ svr4_to_bsd_sigaltstack(sss, bss)
 }
 
 void
-bsd_to_svr4_sigaltstack(bss, sss)
-	const struct sigaltstack *bss;
-	struct svr4_sigaltstack *sss;
+bsd_to_svr4_sigaltstack(const struct sigaltstack *bss,
+			struct svr4_sigaltstack *sss)
 {
 
 	sss->ss_sp = bss->ss_sp;

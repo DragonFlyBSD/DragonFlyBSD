@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_util.h,v 1.4 1999/08/28 00:51:28 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_util.h,v 1.4 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_util.h,v 1.5 2005/12/10 16:06:20 swildner Exp $
  */
 
 #ifndef	_SVR4_UTIL_H_
@@ -52,16 +52,14 @@ static __inline caddr_t stackgap_init(void);
 static __inline void *stackgap_alloc(caddr_t *, size_t);
 
 static __inline caddr_t
-stackgap_init()
+stackgap_init(void)
 {
 #define szsigcode (*(curproc->p_sysent->sv_szsigcode))
         return (caddr_t)(((caddr_t)PS_STRINGS) - szsigcode - SPARE_USRSPACE);
 }
 
 static __inline void *
-stackgap_alloc(sgp, sz)
-	caddr_t	*sgp;
-	size_t   sz;
+stackgap_alloc(caddr_t *sgp, size_t sz)
 {
 	void	*p = (void *) *sgp;
 	*sgp += ALIGN(sz);

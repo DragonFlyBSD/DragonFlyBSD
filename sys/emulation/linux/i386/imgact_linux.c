@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/imgact_linux.c,v 1.35.2.2 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.6 2004/01/20 18:41:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.7 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,7 @@
 static int	exec_linux_imgact (struct image_params *iparams);
 
 static int
-exec_linux_imgact(imgp)
-    struct image_params *imgp;
+exec_linux_imgact(struct image_params *imgp)
 {
     const struct exec *a_out = (const struct exec *) imgp->image_header;
     struct vmspace *vmspace;

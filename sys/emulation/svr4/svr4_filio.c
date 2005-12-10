@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.8 2005/06/22 01:33:29 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.9 2005/12/10 16:06:20 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -172,13 +172,8 @@ svr4_sys_write(struct svr4_sys_write_args *uap)
 #endif /* BOGUS */
 
 int
-svr4_fil_ioctl(fp, td, retval, fd, cmd, data)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t data;
+svr4_fil_ioctl(struct file *fp, struct thread *td, register_t *retval,
+	       int fd, u_long cmd, caddr_t data)
 {
 	struct proc *p = td->td_proc;
 	int error;

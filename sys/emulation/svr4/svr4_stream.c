@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.14 2005/06/22 01:33:29 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.15 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -147,12 +147,8 @@ static int svr4_recvit (struct thread *td, int s, struct msghdr *mp,
  * I will take out all the #ifdef COMPAT_OLDSOCK gumph, though.
  */
 static int
-svr4_sendit(td, s, mp, flags, retval)
-	struct thread *td;
-	int s;
-	struct msghdr *mp;
-	int flags;
-	int *retval;
+svr4_sendit(struct thread *td, int s, struct msghdr *mp, int flags,
+	    int *retval)
 {
 	struct proc *p;
 	struct file *fp;
@@ -256,12 +252,8 @@ bad:
 }
 
 static int
-svr4_recvit(td, s, mp, namelenp, retval)
-	struct thread *td;
-	int s;
-	struct msghdr *mp;
-	caddr_t namelenp;
-	int *retval;
+svr4_recvit(struct thread *td, int s, struct msghdr *mp, caddr_t namelenp,
+	    int *retval)
 {
 	struct proc *p = td->td_proc;
 	struct file *fp;
@@ -392,9 +384,7 @@ static void show_msg (const char *, int, struct svr4_strbuf *,
 			  struct svr4_strbuf *, int);
 
 static void
-bufprint(buf, len)
-	u_char *buf;
-	size_t len;
+bufprint(u_char *buf, size_t len)
 {
 	size_t i;
 
@@ -407,9 +397,7 @@ bufprint(buf, len)
 }
 
 static int
-show_ioc(str, ioc)
-	const char		*str;
-	struct svr4_strioctl	*ioc;
+show_ioc(const char *str, struct svr4_strioctl *ioc)
 {
 	u_char *ptr = (u_char *) malloc(ioc->len, M_TEMP, M_WAITOK);
 	int error;
@@ -432,8 +420,7 @@ show_ioc(str, ioc)
 
 
 static int
-show_strbuf(str)
-	struct svr4_strbuf *str;
+show_strbuf(struct svr4_strbuf *str)
 {
 	int error;
 	u_char *ptr = NULL;
@@ -470,12 +457,8 @@ show_strbuf(str)
 
 
 static void
-show_msg(str, fd, ctl, dat, flags)
-	const char		*str;
-	int			 fd;
-	struct svr4_strbuf	*ctl;
-	struct svr4_strbuf	*dat;
-	int			 flags;
+show_msg(const char *str, int fd, struct svr4_strbuf *ctl,
+	 struct svr4_strbuf *dat, int flags)
 {
 	struct svr4_strbuf	buf;
 	int error;
@@ -559,9 +542,7 @@ clean_pipe(const char *path)
 
 
 static void
-sockaddr_to_netaddr_in(sc, sain)
-	struct svr4_strmcmd *sc;
-	const struct sockaddr_in *sain;
+sockaddr_to_netaddr_in(struct svr4_strmcmd *sc, const struct sockaddr_in *sain)
 {
 	struct svr4_netaddr_in *na;
 	na = SVR4_ADDROF(sc);
@@ -575,9 +556,7 @@ sockaddr_to_netaddr_in(sc, sain)
 
 
 static void
-sockaddr_to_netaddr_un(sc, saun)
-	struct svr4_strmcmd *sc;
-	const struct sockaddr_un *saun;
+sockaddr_to_netaddr_un(struct svr4_strmcmd *sc, const struct sockaddr_un *saun)
 {
 	struct svr4_netaddr_un *na;
 	char *dst, *edst = ((char *) sc) + sc->offs + sizeof(na->family) + 1  -
@@ -594,9 +573,7 @@ sockaddr_to_netaddr_un(sc, saun)
 
 
 static void
-netaddr_to_sockaddr_in(sain, sc)
-	struct sockaddr_in *sain;
-	const struct svr4_strmcmd *sc;
+netaddr_to_sockaddr_in(struct sockaddr_in *sain, const struct svr4_strmcmd *sc)
 {
 	const struct svr4_netaddr_in *na;
 
@@ -613,9 +590,7 @@ netaddr_to_sockaddr_in(sain, sc)
 
 
 static void
-netaddr_to_sockaddr_un(saun, sc)
-	struct sockaddr_un *saun;
-	const struct svr4_strmcmd *sc;
+netaddr_to_sockaddr_un(struct sockaddr_un *saun, const struct svr4_strmcmd *sc)
 {
 	const struct svr4_netaddr_un *na;
 	char *dst, *edst = &saun->sun_path[sizeof(saun->sun_path) - 1];
@@ -634,9 +609,7 @@ netaddr_to_sockaddr_un(saun, sc)
 
 
 static void
-getparm(fp, pa)
-	struct file *fp;
-	struct svr4_si_sockparms *pa;
+getparm(struct file *fp, struct svr4_si_sockparms *pa)
 {
 	struct svr4_strm *st = svr4_stream_get(fp);
 	struct socket *so = (struct socket *) fp->f_data;
@@ -675,11 +648,8 @@ getparm(fp, pa)
 
 
 static int
-si_ogetudata(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread 		*td;
+si_ogetudata(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	     struct thread *td)
 {
 	int error;
 	struct svr4_si_oudata ud;
@@ -732,11 +702,8 @@ si_ogetudata(fp, fd, ioc, td)
 
 
 static int
-si_sockparams(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+si_sockparams(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	      struct thread *td)
 {
 	struct svr4_si_sockparms pa;
 
@@ -746,11 +713,8 @@ si_sockparams(fp, fd, ioc, td)
 
 
 static int
-si_listen(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+si_listen(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	  struct thread *td)
 {
 	int error;
 	struct svr4_strm *st = svr4_stream_get(fp);
@@ -810,11 +774,8 @@ si_listen(fp, fd, ioc, td)
 
 
 static int
-si_getudata(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+si_getudata(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	    struct thread *td)
 {
 	int error;
 	struct svr4_si_udata ud;
@@ -869,11 +830,8 @@ si_getudata(fp, fd, ioc, td)
 
 
 static int
-si_shutdown(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+si_shutdown(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	    struct thread *td)
 {
 	int error;
 	struct shutdown_args ap;
@@ -894,11 +852,8 @@ si_shutdown(fp, fd, ioc, td)
 
 
 static int
-sockmod(fp, fd, ioc, td)
-	struct file		*fp;
-	int			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+sockmod(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	struct thread *td)
 {
 	switch (ioc->cmd) {
 	case SVR4_SI_OGETUDATA:
@@ -950,11 +905,8 @@ sockmod(fp, fd, ioc, td)
 
 
 static int
-ti_getinfo(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+ti_getinfo(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	   struct thread *td)
 {
 	int error;
 	struct svr4_infocmd info;
@@ -988,11 +940,8 @@ ti_getinfo(fp, fd, ioc, td)
 
 
 static int
-ti_bind(fp, fd, ioc, td)
-	struct file		*fp;
-	int 			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+ti_bind(struct file *fp, int fd, struct svr4_strioctl *ioc,
+	struct thread *td)
 {
 	int error;
 	struct svr4_strm *st = svr4_stream_get(fp);
@@ -1091,11 +1040,7 @@ reply:
 
 
 static int
-timod(fp, fd, ioc, td)
-	struct file		*fp;
-	int			 fd;
-	struct svr4_strioctl	*ioc;
-	struct thread		*td;
+timod(struct file *fp, int fd, struct svr4_strioctl *ioc, struct thread *td)
 {
 	switch (ioc->cmd) {
 	case SVR4_TI_GETINFO:
@@ -1122,13 +1067,8 @@ timod(fp, fd, ioc, td)
 
 
 int
-svr4_stream_ti_ioctl(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+svr4_stream_ti_ioctl(struct file *fp, struct thread *td, register_t *retval,
+		     int fd, u_long cmd, caddr_t dat)
 {
 	struct svr4_strbuf skb, *sub = (struct svr4_strbuf *) dat;
 	struct svr4_strm *st = svr4_stream_get(fp);
@@ -1264,13 +1204,8 @@ svr4_stream_ti_ioctl(fp, td, retval, fd, cmd, dat)
 
 
 static int
-i_nread(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+i_nread(struct file *fp, struct thread *td, register_t *retval,
+	int fd, u_long cmd, caddr_t dat)
 {
 	int error;
 	int nread = 0;	
@@ -1294,13 +1229,8 @@ i_nread(fp, td, retval, fd, cmd, dat)
 }
 
 static int
-i_fdinsert(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+i_fdinsert(struct file *fp, struct thread *td, register_t *retval,
+	   int fd, u_long cmd, caddr_t dat)
 {
 	/*
 	 * Major hack again here. We assume that we are using this to
@@ -1356,13 +1286,8 @@ i_fdinsert(fp, td, retval, fd, cmd, dat)
 
 
 static int
-_i_bind_rsvd(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+_i_bind_rsvd(struct file *fp, struct thread *td, register_t *retval,
+	     int fd, u_long cmd, caddr_t dat)
 {
 	struct mkfifo_args ap;
 
@@ -1380,13 +1305,8 @@ _i_bind_rsvd(fp, td, retval, fd, cmd, dat)
 }
 
 static int
-_i_rele_rsvd(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+_i_rele_rsvd(struct file *fp, struct thread *td, register_t *retval,
+	     int fd, u_long cmd, caddr_t dat)
 {
 	struct unlink_args ap;
 
@@ -1400,13 +1320,8 @@ _i_rele_rsvd(fp, td, retval, fd, cmd, dat)
 }
 
 static int
-i_str(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+i_str(struct file *fp, struct thread *td, register_t *retval,
+      int fd, u_long cmd, caddr_t dat)
 {
 	int			 error;
 	struct svr4_strioctl	 ioc;
@@ -1444,13 +1359,8 @@ i_str(fp, td, retval, fd, cmd, dat)
 }
 
 static int
-i_setsig(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+i_setsig(struct file *fp, struct thread *td, register_t *retval,
+	 int fd, u_long cmd, caddr_t dat)
 {
 	/* 
 	 * This is the best we can do for now; we cannot generate
@@ -1522,13 +1432,8 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 }
 
 static int
-i_getsig(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+i_getsig(struct file *fp, struct thread *td, register_t *retval,
+	 int fd, u_long cmd, caddr_t dat)
 {
 	int error;
 
@@ -1549,13 +1454,8 @@ i_getsig(fp, td, retval, fd, cmd, dat)
 }
 
 int
-svr4_stream_ioctl(fp, td, retval, fd, cmd, dat)
-	struct file *fp;
-	struct thread *td;
-	register_t *retval;
-	int fd;
-	u_long cmd;
-	caddr_t dat;
+svr4_stream_ioctl(struct file *fp, struct thread *td, register_t *retval,
+		  int fd, u_long cmd, caddr_t dat)
 {
 	*retval = 0;
 
@@ -2261,7 +2161,8 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 	return error;
 }
 
-int svr4_sys_send(struct svr4_sys_send_args *uap)
+int
+svr4_sys_send(struct svr4_sys_send_args *uap)
 {
 	struct osend_args osa;
 	int error;
@@ -2276,7 +2177,8 @@ int svr4_sys_send(struct svr4_sys_send_args *uap)
 	return(error);
 }
 
-int svr4_sys_recv(struct svr4_sys_recv_args *uap)
+int
+svr4_sys_recv(struct svr4_sys_recv_args *uap)
 {
 	struct orecv_args ora;
 	int error;

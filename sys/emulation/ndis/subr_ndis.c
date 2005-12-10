@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.8 2004/11/17 18:59:21 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.9 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -293,14 +293,14 @@ __stdcall static void dummy(void);
 #define NDIS_POOL_EXTRA		16
 
 int
-ndis_libinit()
+ndis_libinit(void)
 {
 	strcpy(ndis_filepath, "/compat/ndis");
 	return(0);
 }
 
 int
-ndis_libfini()
+ndis_libfini(void)
 {
 	return(0);
 }
@@ -313,9 +313,7 @@ ndis_libfini()
  */
 
 int
-ndis_ascii_to_unicode(ascii, unicode)
-	char			*ascii;
-	uint16_t		**unicode;
+ndis_ascii_to_unicode(char *ascii, uint16_t **unicode)
 {
 	uint16_t		*ustr;
 	int			i;
@@ -332,10 +330,7 @@ ndis_ascii_to_unicode(ascii, unicode)
 }
 
 int
-ndis_unicode_to_ascii(unicode, ulen, ascii)
-	uint16_t		*unicode;
-	int			ulen;
-	char			**ascii;
+ndis_unicode_to_ascii(uint16_t *unicode, int ulen, char **ascii)
 {
 	uint8_t			*astr;
 	int			i;
@@ -352,11 +347,8 @@ ndis_unicode_to_ascii(unicode, ulen, ascii)
 }
 
 __stdcall static void
-ndis_initwrap(wrapper, drv_obj, path, unused)
-	ndis_handle		*wrapper;
-	device_object		*drv_obj;
-	void			*path;
-	void			*unused;
+ndis_initwrap(ndis_handle *wrapper, device_object *drv_obj, void *path,
+	      void *unused)
 {
 	ndis_miniport_block	*block;
 
@@ -367,18 +359,15 @@ ndis_initwrap(wrapper, drv_obj, path, unused)
 }
 
 __stdcall static void
-ndis_termwrap(handle, syspec)
-	ndis_handle		handle;
-	void			*syspec;
+ndis_termwrap(ndis_handle handle, void *syspec)
 {
 	return;
 }
 
 __stdcall static ndis_status
-ndis_register_miniport(handle, characteristics, len)
-	ndis_handle		handle;
-	ndis_miniport_characteristics *characteristics;
-	int			len;
+ndis_register_miniport(ndis_handle handle,
+		       ndis_miniport_characteristics *characteristics,
+		       int len)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -398,10 +387,7 @@ ndis_register_miniport(handle, characteristics, len)
 }
 
 __stdcall static ndis_status
-ndis_malloc_withtag(vaddr, len, tag)
-	void			**vaddr;
-	uint32_t		len;
-	uint32_t		tag;
+ndis_malloc_withtag(void **vaddr, uint32_t len, uint32_t tag)
 {
 	void			*mem;
 
@@ -414,11 +400,8 @@ ndis_malloc_withtag(vaddr, len, tag)
 }
 
 __stdcall static ndis_status
-ndis_malloc(vaddr, len, flags, highaddr)
-	void			**vaddr;
-	uint32_t		len;
-	uint32_t		flags;
-	ndis_physaddr		highaddr;
+ndis_malloc(void **vaddr, uint32_t len, uint32_t flags,
+	    ndis_physaddr highaddr)
 {
 	void			*mem;
 
@@ -431,10 +414,7 @@ ndis_malloc(vaddr, len, flags, highaddr)
 }
 
 __stdcall static void
-ndis_free(vaddr, len, flags)
-	void			*vaddr;
-	uint32_t		len;
-	uint32_t		flags;
+ndis_free(void *vaddr, uint32_t len, uint32_t flags)
 {
 	if (len == 0)
 		return;
@@ -444,13 +424,9 @@ ndis_free(vaddr, len, flags)
 }
 
 __stdcall static ndis_status
-ndis_setattr_ex(adapter_handle, adapter_ctx, hangsecs,
-			flags, iftype)
-	ndis_handle			adapter_handle;
-	ndis_handle			adapter_ctx;
-	uint32_t			hangsecs;
-	uint32_t			flags;
-	ndis_interface_type		iftype;
+ndis_setattr_ex(ndis_handle adapter_handle, ndis_handle adapter_ctx,
+		uint32_t hangsecs, uint32_t flags,
+		ndis_interface_type iftype)
 {
 	ndis_miniport_block		*block;
 
@@ -467,10 +443,7 @@ ndis_setattr_ex(adapter_handle, adapter_ctx, hangsecs,
 }
 
 __stdcall static void
-ndis_open_cfg(status, cfg, wrapctx)
-	ndis_status		*status;
-	ndis_handle		*cfg;
-	ndis_handle		wrapctx;
+ndis_open_cfg(ndis_status *status, ndis_handle *cfg, ndis_handle wrapctx)
 {
 	*cfg = wrapctx;
 	*status = NDIS_STATUS_SUCCESS;
@@ -478,11 +451,8 @@ ndis_open_cfg(status, cfg, wrapctx)
 }
 
 __stdcall static void
-ndis_open_cfgbyname(status, cfg, subkey, subhandle)
-	ndis_status		*status;
-	ndis_handle		cfg;
-	ndis_unicode_string	*subkey;
-	ndis_handle		*subhandle;
+ndis_open_cfgbyname(ndis_status *status, ndis_handle cfg,
+		    ndis_unicode_string *subkey, ndis_handle *subhandle)
 {
 	*subhandle = cfg;
 	*status = NDIS_STATUS_SUCCESS;
@@ -490,23 +460,16 @@ ndis_open_cfgbyname(status, cfg, subkey, subhandle)
 }
 
 __stdcall static void
-ndis_open_cfgbyidx(status, cfg, idx, subkey, subhandle)
-	ndis_status		*status;
-	ndis_handle		cfg;
-	uint32_t		idx;
-	ndis_unicode_string	*subkey;
-	ndis_handle		*subhandle;
+ndis_open_cfgbyidx(ndis_status *status, ndis_handle cfg, uint32_t idx,
+		   ndis_unicode_string *subkey, ndis_handle *subhandle)
 {
 	*status = NDIS_STATUS_FAILURE;
 	return;
 }
 
 static ndis_status
-ndis_encode_parm(block, oid, type, parm)
-	ndis_miniport_block	*block;
-        struct sysctl_oid	*oid;
-	ndis_parm_type		type;
-	ndis_config_parm	**parm;
+ndis_encode_parm(ndis_miniport_block *block, struct sysctl_oid *oid,
+		 ndis_parm_type type, ndis_config_parm **parm)
 {
 	uint16_t		*unicode;
 	ndis_unicode_string	*ustr;
@@ -549,9 +512,7 @@ ndis_encode_parm(block, oid, type, parm)
 }
 
 int
-ndis_strcasecmp(s1, s2)
-        const char              *s1;
-        const char              *s2;
+ndis_strcasecmp(const char *s1, const char *s2)
 {
 	char			a, b;
 
@@ -573,12 +534,8 @@ ndis_strcasecmp(s1, s2)
 }
 
 __stdcall static void
-ndis_read_cfg(status, parm, cfg, key, type)
-	ndis_status		*status;
-	ndis_config_parm	**parm;
-	ndis_handle		cfg;
-	ndis_unicode_string	*key;
-	ndis_parm_type		type;
+ndis_read_cfg(ndis_status *status, ndis_config_parm **parm, ndis_handle cfg,
+	      ndis_unicode_string *key, ndis_parm_type type)
 {
 	char			*keystr = NULL;
 	uint16_t		*unicode;
@@ -648,10 +605,8 @@ ndis_read_cfg(status, parm, cfg, key, type)
 }
 
 static ndis_status
-ndis_decode_parm(block, parm, val)
-	ndis_miniport_block	*block;
-	ndis_config_parm	*parm;
-	char			*val;
+ndis_decode_parm(ndis_miniport_block *block, ndis_config_parm *parm,
+		 char *val)
 {
 	ndis_unicode_string	*ustr;
 	char			*astr = NULL;
@@ -677,11 +632,8 @@ ndis_decode_parm(block, parm, val)
 }
 
 __stdcall static void
-ndis_write_cfg(status, cfg, key, parm)
-	ndis_status		*status;
-	ndis_handle		cfg;
-	ndis_unicode_string	*key;
-	ndis_config_parm	*parm;
+ndis_write_cfg(ndis_status *status, ndis_handle cfg, ndis_unicode_string *key,
+	       ndis_config_parm *parm)
 {
 	char			*keystr = NULL;
 	ndis_miniport_block	*block;
@@ -729,8 +681,7 @@ ndis_write_cfg(status, cfg, key, parm)
 }
 
 __stdcall static void
-ndis_close_cfg(cfg)
-	ndis_handle		cfg;
+ndis_close_cfg(ndis_handle cfg)
 {
 	return;
 }
@@ -739,8 +690,7 @@ ndis_close_cfg(cfg)
  * Initialize a Windows spinlock.
  */
 __stdcall static void
-ndis_create_lock(lock)
-	ndis_spin_lock		*lock;
+ndis_create_lock(ndis_spin_lock *lock)
 {
 	lock->nsl_spinlock = 0;
 	lock->nsl_kirql = 0;
@@ -757,8 +707,7 @@ ndis_create_lock(lock)
  * talking to you.)
  */
 __stdcall static void
-ndis_destroy_lock(lock)
-	ndis_spin_lock		*lock;
+ndis_destroy_lock(ndis_spin_lock *lock)
 {
 #ifdef notdef
 	lock->nsl_spinlock = 0;
@@ -772,8 +721,7 @@ ndis_destroy_lock(lock)
  */
 
 __stdcall static void
-ndis_lock(lock)
-	ndis_spin_lock		*lock;
+ndis_lock(ndis_spin_lock *lock)
 {
 	lock->nsl_kirql = FASTCALL2(hal_lock,
 	    &lock->nsl_spinlock, DISPATCH_LEVEL);
@@ -785,8 +733,7 @@ ndis_lock(lock)
  */
 
 __stdcall static void
-ndis_unlock(lock)
-	ndis_spin_lock		*lock;
+ndis_unlock(ndis_spin_lock *lock)
 {
 	FASTCALL2(hal_unlock, &lock->nsl_spinlock, lock->nsl_kirql);
 	return;
@@ -796,8 +743,7 @@ ndis_unlock(lock)
  * Acquire a spinlock when already running at IRQL == DISPATCH_LEVEL.
  */
 __stdcall static void
-ndis_lock_dpr(lock)
-	ndis_spin_lock		*lock;
+ndis_lock_dpr(ndis_spin_lock *lock)
 {
 	FASTCALL1(ntoskrnl_lock_dpc, &lock->nsl_spinlock);
 	return;
@@ -807,20 +753,15 @@ ndis_lock_dpr(lock)
  * Release a spinlock without leaving IRQL == DISPATCH_LEVEL.
  */
 __stdcall static void
-ndis_unlock_dpr(lock)
-	ndis_spin_lock		*lock;
+ndis_unlock_dpr(ndis_spin_lock *lock)
 {
 	FASTCALL1(ntoskrnl_unlock_dpc, &lock->nsl_spinlock);
 	return;
 }
 
 __stdcall static uint32_t
-ndis_read_pci(adapter, slot, offset, buf, len)
-	ndis_handle		adapter;
-	uint32_t		slot;
-	uint32_t		offset;
-	void			*buf;
-	uint32_t		len;
+ndis_read_pci(ndis_handle adapter, uint32_t slot, uint32_t offset,
+	      void *buf, uint32_t len)
 {
 	ndis_miniport_block	*block;
 	int			i;
@@ -838,12 +779,8 @@ ndis_read_pci(adapter, slot, offset, buf, len)
 }
 
 __stdcall static uint32_t
-ndis_write_pci(adapter, slot, offset, buf, len)
-	ndis_handle		adapter;
-	uint32_t		slot;
-	uint32_t		offset;
-	void			*buf;
-	uint32_t		len;
+ndis_write_pci(ndis_handle adapter, uint32_t slot, uint32_t offset,
+	       void *buf, uint32_t len)
 {
 	ndis_miniport_block	*block;
 	int			i;
@@ -901,11 +838,7 @@ ndis_syslog(ndis_handle adapter, ndis_error_code code,
 }
 
 static void
-ndis_map_cb(arg, segs, nseg, error)
-	void			*arg;
-	bus_dma_segment_t	*segs;
-	int			nseg;
-	int			error;
+ndis_map_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	struct ndis_map_arg	*ctx;
 	int			i;
@@ -926,13 +859,9 @@ ndis_map_cb(arg, segs, nseg, error)
 }
 
 __stdcall static void
-ndis_vtophys_load(adapter, buf, mapreg, writedev, addrarray, arraysize)
-	ndis_handle		adapter;
-	ndis_buffer		*buf;
-	uint32_t		mapreg;
-	uint8_t			writedev;
-	ndis_paddr_unit		*addrarray;
-	uint32_t		*arraysize;
+ndis_vtophys_load(ndis_handle adapter, ndis_buffer *buf, uint32_t mapreg,
+		  uint8_t writedev, ndis_paddr_unit *addrarray,
+		  uint32_t *arraysize)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -968,10 +897,8 @@ ndis_vtophys_load(adapter, buf, mapreg, writedev, addrarray, arraysize)
 }
 
 __stdcall static void
-ndis_vtophys_unload(adapter, buf, mapreg)
-	ndis_handle		adapter;
-	ndis_buffer		*buf;
-	uint32_t		mapreg;
+ndis_vtophys_unload(ndis_handle adapter, ndis_buffer *buf,
+		    uint32_t mapreg)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1009,10 +936,7 @@ ndis_vtophys_unload(adapter, buf, mapreg)
  */
 
 __stdcall static void
-ndis_init_timer(timer, func, ctx)
-	ndis_timer		*timer;
-	ndis_timer_function	func;
-	void			*ctx;
+ndis_init_timer(ndis_timer *timer, ndis_timer_function func, void *ctx)
 {
 	ntoskrnl_init_timer(&timer->nt_ktimer);
 	ntoskrnl_init_dpc(&timer->nt_kdpc, func, ctx);
@@ -1021,11 +945,8 @@ ndis_init_timer(timer, func, ctx)
 }
 
 __stdcall static void
-ndis_create_timer(timer, handle, func, ctx)
-	ndis_miniport_timer	*timer;
-	ndis_handle		handle;
-	ndis_timer_function	func;
-	void			*ctx;
+ndis_create_timer(ndis_miniport_timer *timer, ndis_handle handle,
+		  ndis_timer_function func, void *ctx)
 {
 	/* Save the funcptr and context */
 
@@ -1044,9 +965,7 @@ ndis_create_timer(timer, handle, func, ctx)
  * but the former is just a macro wrapper around the latter.
  */
 __stdcall static void
-ndis_set_timer(timer, msecs)
-	ndis_timer		*timer;
-	uint32_t		msecs;
+ndis_set_timer(ndis_timer *timer, uint32_t msecs)
 {
 	/*
 	 * KeSetTimer() wants the period in
@@ -1059,9 +978,7 @@ ndis_set_timer(timer, msecs)
 }
 
 __stdcall static void
-ndis_set_periodic_timer(timer, msecs)
-	ndis_miniport_timer	*timer;
-	uint32_t		msecs;
+ndis_set_periodic_timer(ndis_miniport_timer *timer, uint32_t msecs)
 {
 	ntoskrnl_set_timer_ex(&timer->nmt_ktimer,
 	    ((int64_t)msecs * -10000), msecs, &timer->nmt_kdpc);
@@ -1077,9 +994,7 @@ ndis_set_periodic_timer(timer, msecs)
  */
 
 __stdcall static void
-ndis_cancel_timer(timer, cancelled)
-	ndis_timer		*timer;
-	uint8_t			*cancelled;
+ndis_cancel_timer(ndis_timer *timer, uint8_t *cancelled)
 {
 	*cancelled = ntoskrnl_cancel_timer(&timer->nt_ktimer);
 
@@ -1087,11 +1002,8 @@ ndis_cancel_timer(timer, cancelled)
 }
 
 __stdcall static void
-ndis_query_resources(status, adapter, list, buflen)
-	ndis_status		*status;
-	ndis_handle		adapter;
-	ndis_resource_list	*list;
-	uint32_t		*buflen;
+ndis_query_resources(ndis_status *status, ndis_handle adapter,
+		     ndis_resource_list *list, uint32_t *buflen)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1114,11 +1026,8 @@ ndis_query_resources(status, adapter, list, buflen)
 }
 
 __stdcall static ndis_status
-ndis_register_ioport(offset, adapter, port, numports)
-	void			**offset;
-	ndis_handle		adapter;
-	uint32_t		port;
-	uint32_t		numports;
+ndis_register_ioport(void **offset, ndis_handle adapter,
+		     uint32_t port, uint32_t numports)
 {
 	struct ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1142,21 +1051,15 @@ ndis_register_ioport(offset, adapter, port, numports)
 }
 
 __stdcall static void
-ndis_deregister_ioport(adapter, port, numports, offset)
-	ndis_handle		adapter;
-	uint32_t		port;
-	uint32_t		numports;
-	void			*offset;
+ndis_deregister_ioport(ndis_handle adapter, uint32_t port,
+		       uint32_t numports, void *offset)
 {
 	return;
 }
 
 __stdcall static void
-ndis_read_netaddr(status, addr, addrlen, adapter)
-	ndis_status		*status;
-	void			**addr;
-	uint32_t		*addrlen;
-	ndis_handle		adapter;
+ndis_read_netaddr(ndis_status *status, void **addr,
+		  uint32_t *addrlen, ndis_handle adapter)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -1177,21 +1080,15 @@ ndis_read_netaddr(status, addr, addrlen, adapter)
 }
 
 __stdcall static ndis_status
-ndis_mapreg_cnt(bustype, cnt)
-	uint32_t		bustype;
-	uint32_t		*cnt;
+ndis_mapreg_cnt(uint32_t bustype, uint32_t *cnt)
 {
 	*cnt = 8192;
 	return(NDIS_STATUS_SUCCESS);
 }
 
 __stdcall static ndis_status
-ndis_alloc_mapreg(adapter, dmachannel, dmasize, physmapneeded, maxmap)
-	ndis_handle		adapter;
-	uint32_t		dmachannel;
-	uint8_t			dmasize;
-	uint32_t		physmapneeded;
-	uint32_t		maxmap;
+ndis_alloc_mapreg(ndis_handle adapter, uint32_t dmachannel, uint8_t dmasize,
+		  uint32_t physmapneeded, uint32_t maxmap)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -1225,8 +1122,7 @@ ndis_alloc_mapreg(adapter, dmachannel, dmasize, physmapneeded, maxmap)
 }
 
 __stdcall static void
-ndis_free_mapreg(adapter)
-	ndis_handle		adapter;
+ndis_free_mapreg(ndis_handle adapter)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -1246,11 +1142,7 @@ ndis_free_mapreg(adapter)
 }
 
 static void
-ndis_mapshared_cb(arg, segs, nseg, error)
-	void			*arg;
-	bus_dma_segment_t	*segs;
-	int			nseg;
-	int			error;
+ndis_mapshared_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	ndis_physaddr		*p;
 
@@ -1268,12 +1160,8 @@ ndis_mapshared_cb(arg, segs, nseg, error)
  * This maps to bus_dmamem_alloc().
  */
 __stdcall static void
-ndis_alloc_sharedmem(adapter, len, cached, vaddr, paddr)
-	ndis_handle		adapter;
-	uint32_t		len;
-	uint8_t			cached;
-	void			**vaddr;
-	ndis_physaddr		*paddr;
+ndis_alloc_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
+		     void **vaddr, ndis_physaddr *paddr)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1348,8 +1236,7 @@ struct ndis_allocwork {
 };
 
 static void
-ndis_asyncmem_complete(arg)
-	void			*arg;
+ndis_asyncmem_complete(void *arg)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1376,11 +1263,8 @@ ndis_asyncmem_complete(arg)
 }
 
 __stdcall static ndis_status
-ndis_alloc_sharedmem_async(adapter, len, cached, ctx)
-	ndis_handle		adapter;
-	uint32_t		len;
-	uint8_t			cached;
-	void			*ctx;
+ndis_alloc_sharedmem_async(ndis_handle adapter, uint32_t len,
+			   uint8_t cached, void *ctx)
 {
 	struct ndis_allocwork	*w;
 
@@ -1410,12 +1294,8 @@ ndis_alloc_sharedmem_async(adapter, len, cached, ctx)
 }
 
 __stdcall static void
-ndis_free_sharedmem(adapter, len, cached, vaddr, paddr)
-	ndis_handle		adapter;
-	uint32_t		len;
-	uint8_t			cached;
-	void			*vaddr;
-	ndis_physaddr		paddr;
+ndis_free_sharedmem(ndis_handle adapter, uint32_t len, uint8_t cached,
+		    void *vaddr, ndis_physaddr paddr)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1450,11 +1330,8 @@ ndis_free_sharedmem(adapter, len, cached, vaddr, paddr)
 }
 
 __stdcall static ndis_status
-ndis_map_iospace(vaddr, adapter, paddr, len)
-	void			**vaddr;
-	ndis_handle		adapter;
-	ndis_physaddr		paddr;
-	uint32_t		len;
+ndis_map_iospace(void **vaddr, ndis_handle adapter, ndis_physaddr paddr,
+		 uint32_t len)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -1481,10 +1358,7 @@ ndis_map_iospace(vaddr, adapter, paddr, len)
 }
 
 __stdcall static void
-ndis_unmap_iospace(adapter, vaddr, len)
-	ndis_handle		adapter;
-	void			*vaddr;
-	uint32_t		len;
+ndis_unmap_iospace(ndis_handle adapter, void *vaddr, uint32_t len)
 {
 	return;
 }
@@ -1496,8 +1370,7 @@ ndis_cachefill(void)
 }
 
 __stdcall static uint32_t
-ndis_dma_align(handle)
-	ndis_handle		handle;
+ndis_dma_align(ndis_handle handle)
 {
 	return(128);
 }
@@ -1514,10 +1387,7 @@ ndis_dma_align(handle)
  */
 
 __stdcall static ndis_status
-ndis_init_sc_dma(adapter, is64, maxphysmap)
-	ndis_handle		adapter;
-	uint8_t			is64;
-	uint32_t		maxphysmap;
+ndis_init_sc_dma(ndis_handle adapter, uint8_t is64, uint32_t maxphysmap)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -1543,11 +1413,8 @@ ndis_init_sc_dma(adapter, is64, maxphysmap)
 }
 
 __stdcall static void
-ndis_alloc_packetpool(status, pool, descnum, protrsvdlen)
-	ndis_status		*status;
-	ndis_handle		*pool;
-	uint32_t		descnum;
-	uint32_t		protrsvdlen;
+ndis_alloc_packetpool(ndis_status *status, ndis_handle *pool,
+		      uint32_t descnum, uint32_t protrsvdlen)
 {
 	ndis_packet		*cur;
 	int			i;
@@ -1568,20 +1435,16 @@ ndis_alloc_packetpool(status, pool, descnum, protrsvdlen)
 }
 
 __stdcall static void
-ndis_ex_alloc_packetpool(status, pool, descnum, oflowdescnum, protrsvdlen)
-	ndis_status		*status;
-	ndis_handle		*pool;
-	uint32_t		descnum;
-	uint32_t		oflowdescnum;
-	uint32_t		protrsvdlen;
+ndis_ex_alloc_packetpool(ndis_status *status, ndis_handle *pool,
+			 uint32_t descnum, uint32_t oflowdescnum,
+			 uint32_t protrsvdlen)
 {
 	return(ndis_alloc_packetpool(status, pool,
 	    descnum + oflowdescnum, protrsvdlen));
 }
 
 __stdcall static uint32_t
-ndis_packetpool_use(pool)
-	ndis_handle		pool;
+ndis_packetpool_use(ndis_handle pool)
 {
 	ndis_packet		*head;
 
@@ -1591,8 +1454,7 @@ ndis_packetpool_use(pool)
 }
 
 __stdcall static void
-ndis_free_packetpool(pool)
-	ndis_handle		pool;
+ndis_free_packetpool(ndis_handle pool)
 {
 	ndis_packet		*head;
 
@@ -1613,10 +1475,7 @@ ndis_free_packetpool(pool)
 }
 
 __stdcall static void
-ndis_alloc_packet(status, packet, pool)
-	ndis_status		*status;
-	ndis_packet		**packet;
-	ndis_handle		pool;
+ndis_alloc_packet(ndis_status *status, ndis_packet **packet, ndis_handle pool)
 {
 	ndis_packet		*head, *pkt;
 
@@ -1669,8 +1528,7 @@ ndis_alloc_packet(status, packet, pool)
 }
 
 __stdcall static void
-ndis_release_packet(packet)
-	ndis_packet		*packet;
+ndis_release_packet(ndis_packet *packet)
 {
 	ndis_packet		*head;
 
@@ -1697,9 +1555,7 @@ ndis_release_packet(packet)
 }
 
 __stdcall static void
-ndis_unchain_headbuf(packet, buf)
-	ndis_packet		*packet;
-	ndis_buffer		**buf;
+ndis_unchain_headbuf(ndis_packet *packet, ndis_buffer **buf)
 {
 	ndis_packet_private	*priv;
 
@@ -1722,9 +1578,7 @@ ndis_unchain_headbuf(packet, buf)
 }
 
 __stdcall static void
-ndis_unchain_tailbuf(packet, buf)
-	ndis_packet		*packet;
-	ndis_buffer		**buf;
+ndis_unchain_tailbuf(ndis_packet *packet, ndis_buffer **buf)
 {
 	ndis_packet_private	*priv;
 	ndis_buffer		*tmp;
@@ -1761,10 +1615,8 @@ ndis_unchain_tailbuf(packet, buf)
  */
 
 __stdcall static void
-ndis_alloc_bufpool(status, pool, descnum)
-	ndis_status		*status;
-	ndis_handle		*pool;
-	uint32_t		descnum;
+ndis_alloc_bufpool(ndis_status *status, ndis_handle *pool,
+		   uint32_t descnum)
 {
 	ndis_buffer		*cur;
 	int			i;
@@ -1786,8 +1638,7 @@ ndis_alloc_bufpool(status, pool, descnum)
 }
 
 __stdcall static void
-ndis_free_bufpool(pool)
-	ndis_handle		pool;
+ndis_free_bufpool(ndis_handle pool)
 {
 	ndis_buffer		*head;
 
@@ -1810,12 +1661,8 @@ ndis_free_bufpool(pool)
  * This maps to a bus_dmamap_create() and bus_dmamap_load().
  */
 __stdcall static void
-ndis_alloc_buf(status, buffer, pool, vaddr, len)
-	ndis_status		*status;
-	ndis_buffer		**buffer;
-	ndis_handle		pool;
-	void			*vaddr;
-	uint32_t		len;
+ndis_alloc_buf(ndis_status *status, ndis_buffer **buffer, ndis_handle pool,
+	       void *vaddr, uint32_t len)
 {
 	ndis_buffer		*head, *buf;
 
@@ -1860,8 +1707,7 @@ ndis_alloc_buf(status, buffer, pool, vaddr, len)
 }
 
 __stdcall static void
-ndis_release_buf(buf)
-	ndis_buffer		*buf;
+ndis_release_buf(ndis_buffer *buf)
 {
 	ndis_buffer		*head;
 
@@ -1894,8 +1740,7 @@ ndis_release_buf(buf)
 /* Aw c'mon. */
 
 __stdcall static uint32_t
-ndis_buflen(buf)
-	ndis_buffer		*buf;
+ndis_buflen(ndis_buffer *buf)
 {
 	return(buf->nb_bytecount);
 }
@@ -1906,10 +1751,7 @@ ndis_buflen(buf)
  */
 
 __stdcall static void
-ndis_query_buf(buf, vaddr, len)
-	ndis_buffer		*buf;
-	void			**vaddr;
-	uint32_t		*len;
+ndis_query_buf(ndis_buffer *buf, void **vaddr, uint32_t *len)
 {
 	if (vaddr != NULL)
 		*vaddr = MDL_VA(buf);
@@ -1921,11 +1763,8 @@ ndis_query_buf(buf, vaddr, len)
 /* Same as above -- we don't care about the priority. */
 
 __stdcall static void
-ndis_query_buf_safe(buf, vaddr, len, prio)
-	ndis_buffer		*buf;
-	void			**vaddr;
-	uint32_t		*len;
-	uint32_t		prio;
+ndis_query_buf_safe(ndis_buffer *buf, void **vaddr,
+		    uint32_t *len, uint32_t prio)
 {
 	if (vaddr != NULL)
 		*vaddr = MDL_VA(buf);
@@ -1937,24 +1776,19 @@ ndis_query_buf_safe(buf, vaddr, len, prio)
 /* Damnit Microsoft!! How many ways can you do the same thing?! */
 
 __stdcall static void *
-ndis_buf_vaddr(buf)
-	ndis_buffer		*buf;
+ndis_buf_vaddr(ndis_buffer *buf)
 {
 	return(MDL_VA(buf));
 }
 
 __stdcall static void *
-ndis_buf_vaddr_safe(buf, prio)
-	ndis_buffer		*buf;
-	uint32_t		prio;
+ndis_buf_vaddr_safe(ndis_buffer *buf, uint32_t prio)
 {
 	return(MDL_VA(buf));
 }
 
 __stdcall static void
-ndis_adjust_buflen(buf, len)
-	ndis_buffer		*buf;
-	int			len;
+ndis_adjust_buflen(ndis_buffer *buf, int len)
 {
 	buf->nb_bytecount = len;
 
@@ -1962,24 +1796,21 @@ ndis_adjust_buflen(buf, len)
 }
 
 __stdcall static uint32_t
-ndis_interlock_inc(addend)
-	uint32_t		*addend;
+ndis_interlock_inc(uint32_t *addend)
 {
 	atomic_add_long((u_long *)addend, 1);
 	return(*addend);
 }
 
 __stdcall static uint32_t
-ndis_interlock_dec(addend)
-	uint32_t		*addend;
+ndis_interlock_dec(uint32_t *addend)
 {
 	atomic_subtract_long((u_long *)addend, 1);
 	return(*addend);
 }
 
 __stdcall static void
-ndis_init_event(event)
-	ndis_event		*event;
+ndis_init_event(ndis_event *event)
 {
 	/*
 	 * NDIS events are always notification
@@ -1992,25 +1823,21 @@ ndis_init_event(event)
 }
 
 __stdcall static void
-ndis_set_event(event)
-	ndis_event		*event;
+ndis_set_event(ndis_event *event)
 {
 	ntoskrnl_set_event(&event->ne_event, 0, 0);
 	return;
 }
 
 __stdcall static void
-ndis_reset_event(event)
-	ndis_event		*event;
+ndis_reset_event(ndis_event *event)
 {
 	ntoskrnl_reset_event(&event->ne_event);
 	return;
 }
 
 __stdcall static uint8_t
-ndis_wait_event(event, msecs)
-	ndis_event		*event;
-	uint32_t		msecs;
+ndis_wait_event(ndis_event *event, uint32_t msecs)
 {
 	int64_t			duetime;
 	uint32_t		rval;
@@ -2027,9 +1854,7 @@ ndis_wait_event(event, msecs)
 }
 
 __stdcall static ndis_status
-ndis_unicode2ansi(dstr, sstr)
-	ndis_ansi_string	*dstr;
-	ndis_unicode_string	*sstr;
+ndis_unicode2ansi(ndis_ansi_string *dstr, ndis_unicode_string *sstr)
 {
 	if (dstr == NULL || sstr == NULL)
 		return(NDIS_STATUS_FAILURE);
@@ -2041,9 +1866,7 @@ ndis_unicode2ansi(dstr, sstr)
 }
 
 __stdcall static ndis_status
-ndis_ansi2unicode(dstr, sstr)
-	ndis_unicode_string	*dstr;
-	ndis_ansi_string	*sstr;
+ndis_ansi2unicode(ndis_unicode_string *dstr, ndis_ansi_string *sstr)
 {
 	char			*str;
 	if (dstr == NULL || sstr == NULL)
@@ -2061,10 +1884,8 @@ ndis_ansi2unicode(dstr, sstr)
 }
 
 __stdcall static ndis_status
-ndis_assign_pcirsrc(adapter, slot, list)
-	ndis_handle		adapter;
-	uint32_t		slot;
-	ndis_resource_list	**list;
+ndis_assign_pcirsrc(ndis_handle adapter, uint32_t slot,
+		    ndis_resource_list **list)
 {
 	ndis_miniport_block	*block;
 
@@ -2078,14 +1899,9 @@ ndis_assign_pcirsrc(adapter, slot, list)
 }
 
 __stdcall static ndis_status
-ndis_register_intr(intr, adapter, ivec, ilevel, reqisr, shared, imode)
-	ndis_miniport_interrupt	*intr;
-	ndis_handle		adapter;
-	uint32_t		ivec;
-	uint32_t		ilevel;
-	uint8_t			reqisr;
-	uint8_t			shared;
-	ndis_interrupt_mode	imode;
+ndis_register_intr(ndis_miniport_interrupt *intr, ndis_handle adapter,
+		   uint32_t ivec, uint32_t ilevel, uint8_t reqisr,
+		   uint8_t shared, ndis_interrupt_mode imode)
 {
 	ndis_miniport_block	*block;
 
@@ -2099,17 +1915,14 @@ ndis_register_intr(intr, adapter, ivec, ilevel, reqisr, shared, imode)
 }	
 
 __stdcall static void
-ndis_deregister_intr(intr)
-	ndis_miniport_interrupt	*intr;
+ndis_deregister_intr(ndis_miniport_interrupt *intr)
 {
 	return;
 }
 
 __stdcall static void
-ndis_register_shutdown(adapter, shutdownctx, shutdownfunc)
-	ndis_handle		adapter;
-	void			*shutdownctx;
-	ndis_shutdown_handler	shutdownfunc;
+ndis_register_shutdown(ndis_handle adapter, void *shutdownctx,
+		       ndis_shutdown_handler shutdownfunc)
 {
 	ndis_miniport_block	*block;
 	ndis_miniport_characteristics *chars;
@@ -2129,8 +1942,7 @@ ndis_register_shutdown(adapter, shutdownctx, shutdownfunc)
 }
 
 __stdcall static void
-ndis_deregister_shutdown(adapter)
-	ndis_handle		adapter;
+ndis_deregister_shutdown(ndis_handle adapter)
 {
 	ndis_miniport_block	*block;
 	ndis_miniport_characteristics *chars;
@@ -2150,8 +1962,7 @@ ndis_deregister_shutdown(adapter)
 }
 
 __stdcall static uint32_t
-ndis_numpages(buf)
-	ndis_buffer		*buf;
+ndis_numpages(ndis_buffer *buf)
 {
 	if (buf == NULL)
 		return(0);
@@ -2161,9 +1972,7 @@ ndis_numpages(buf)
 }
 
 __stdcall static void
-ndis_buf_physpages(buf, pages)
-	ndis_buffer		*buf;
-	uint32_t		*pages;
+ndis_buf_physpages(ndis_buffer *buf, uint32_t *pages)
 {
 	if (buf == NULL)
 		return;
@@ -2173,10 +1982,7 @@ ndis_buf_physpages(buf, pages)
 }
 
 __stdcall static void
-ndis_query_bufoffset(buf, off, len)
-	ndis_buffer		*buf;
-	uint32_t		*off;
-	uint32_t		*len;
+ndis_query_bufoffset(ndis_buffer *buf, uint32_t *off, uint32_t *len)
 {
 	if (buf == NULL)
 		return;
@@ -2188,8 +1994,7 @@ ndis_query_bufoffset(buf, off, len)
 }
 
 __stdcall static void
-ndis_sleep(usecs)
-	uint32_t		usecs;
+ndis_sleep(uint32_t usecs)
 {
 	struct timeval		tv;
 
@@ -2202,11 +2007,8 @@ ndis_sleep(usecs)
 }
 
 __stdcall static uint32_t
-ndis_read_pccard_amem(handle, offset, buf, len)
-	ndis_handle		handle;
-	uint32_t		offset;
-	void			*buf;
-	uint32_t		len;
+ndis_read_pccard_amem(ndis_handle handle, uint32_t offset, void *buf,
+		      uint32_t len)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -2232,11 +2034,8 @@ ndis_read_pccard_amem(handle, offset, buf, len)
 }
 
 __stdcall static uint32_t
-ndis_write_pccard_amem(handle, offset, buf, len)
-	ndis_handle		handle;
-	uint32_t		offset;
-	void			*buf;
-	uint32_t		len;
+ndis_write_pccard_amem(ndis_handle handle, uint32_t offset, void *buf,
+		       uint32_t len)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -2262,10 +2061,7 @@ ndis_write_pccard_amem(handle, offset, buf, len)
 }
 
 __stdcall static list_entry *
-ndis_insert_head(head, entry, lock)
-	list_entry		*head;
-	list_entry		*entry;
-	ndis_spin_lock		*lock;
+ndis_insert_head(list_entry *head, list_entry *entry, ndis_spin_lock *lock)
 {
 	list_entry		*flink;
 
@@ -2282,9 +2078,7 @@ ndis_insert_head(head, entry, lock)
 }
 
 __stdcall static list_entry *
-ndis_remove_head(head, lock)
-	list_entry		*head;
-	ndis_spin_lock		*lock;
+ndis_remove_head(list_entry *head, ndis_spin_lock *lock)
 {
 	list_entry		*flink;
 	list_entry		*entry;
@@ -2301,10 +2095,7 @@ ndis_remove_head(head, lock)
 }
 
 __stdcall static list_entry *
-ndis_insert_tail(head, entry, lock)
-	list_entry		*head;
-	list_entry		*entry;
-	ndis_spin_lock		*lock;
+ndis_insert_tail(list_entry *head, list_entry *entry, ndis_spin_lock *lock)
 {
 	list_entry		*blink;
 
@@ -2321,10 +2112,8 @@ ndis_insert_tail(head, entry, lock)
 }
 
 __stdcall static uint8_t
-ndis_sync_with_intr(intr, syncfunc, syncctx)
-	ndis_miniport_interrupt	*intr;
-	void			*syncfunc;
-	void			*syncctx;
+ndis_sync_with_intr(ndis_miniport_interrupt *intr, void *syncfunc,
+		    void *syncctx)
 {
 	struct ndis_softc	*sc;
 	__stdcall uint8_t (*sync)(void *);
@@ -2348,8 +2137,7 @@ ndis_sync_with_intr(intr, syncfunc, syncctx)
  * January 1, 1601. (?!?!)
  */
 __stdcall static void
-ndis_time(tval)
-	uint64_t		*tval;
+ndis_time(uint64_t *tval)
 {
 	struct timespec		ts;
 
@@ -2364,8 +2152,7 @@ ndis_time(tval)
  * Return the number of milliseconds since the system booted.
  */
 __stdcall static void
-ndis_uptime(tval)
-	uint32_t		*tval;
+ndis_uptime(uint32_t *tval)
 {
 	struct timespec		ts;
 
@@ -2376,9 +2163,7 @@ ndis_uptime(tval)
 }
 
 __stdcall static void
-ndis_init_string(dst, src)
-	ndis_unicode_string	*dst;
-	char			*src;
+ndis_init_string(ndis_unicode_string *dst, char *src)
 {
 	ndis_unicode_string	*u;
 
@@ -2391,8 +2176,7 @@ ndis_init_string(dst, src)
 }
 
 __stdcall static void
-ndis_free_string(str)
-	ndis_unicode_string	*str;
+ndis_free_string(ndis_unicode_string *str)
 {
 	if (str == NULL)
 		return;
@@ -2403,16 +2187,13 @@ ndis_free_string(str)
 }
 
 __stdcall static ndis_status
-ndis_remove_miniport(adapter)
-	ndis_handle		*adapter;
+ndis_remove_miniport(ndis_handle *adapter)
 {
 	return(NDIS_STATUS_SUCCESS);
 }
 
 __stdcall static void
-ndis_init_ansi_string(dst, src)
-	ndis_ansi_string	*dst;
-	char			*src;
+ndis_init_ansi_string(ndis_ansi_string *dst, char *src)
 {
 	ndis_ansi_string	*a;
 
@@ -2431,9 +2212,7 @@ ndis_init_ansi_string(dst, src)
 }
 
 __stdcall static void
-ndis_init_unicode_string(dst, src)
-	ndis_unicode_string	*dst;
-	uint16_t		*src;
+ndis_init_unicode_string(ndis_unicode_string *dst, uint16_t *src)
 {
 	ndis_unicode_string	*u;
 	int			i;
@@ -2455,14 +2234,10 @@ ndis_init_unicode_string(dst, src)
 	return;
 }
 
-__stdcall static void ndis_get_devprop(adapter, phydevobj,
-	funcdevobj, nextdevobj, resources, transresources)
-	ndis_handle		adapter;
-	device_object		**phydevobj;
-	device_object		**funcdevobj;
-	device_object		**nextdevobj;
-	cm_resource_list	*resources;
-	cm_resource_list	*transresources;
+__stdcall static void
+ndis_get_devprop(ndis_handle adapter, device_object **phydevobj,
+		 device_object **funcdevobj, device_object **nextdevobj,
+		 cm_resource_list *resources, cm_resource_list *transresources)
 {
 	ndis_miniport_block	*block;
 
@@ -2477,12 +2252,8 @@ __stdcall static void ndis_get_devprop(adapter, phydevobj,
 }
 
 __stdcall static void
-ndis_firstbuf(packet, buf, firstva, firstlen, totlen)
-	ndis_packet		*packet;
-	ndis_buffer		**buf;
-	void			**firstva;
-	uint32_t		*firstlen;
-	uint32_t		*totlen;
+ndis_firstbuf(ndis_packet *packet, ndis_buffer **buf, void **firstva,
+	      uint32_t *firstlen, uint32_t *totlen)
 {
 	ndis_buffer		*tmp;
 
@@ -2502,25 +2273,16 @@ ndis_firstbuf(packet, buf, firstva, firstlen, totlen)
 }
 
 __stdcall static void
-ndis_firstbuf_safe(packet, buf, firstva, firstlen, totlen, prio)
-	ndis_packet		*packet;
-	ndis_buffer		**buf;
-	void			**firstva;
-	uint32_t		*firstlen;
-	uint32_t		*totlen;
-	uint32_t		prio;
+ndis_firstbuf_safe(ndis_packet *packet, ndis_buffer **buf, void **firstva,
+		   uint32_t *firstlen, uint32_t *totlen, uint32_t prio)
 {
 	ndis_firstbuf(packet, buf, firstva, firstlen, totlen);
 }
 
 /* can also return NDIS_STATUS_RESOURCES/NDIS_STATUS_ERROR_READING_FILE */
 __stdcall static void
-ndis_open_file(status, filehandle, filelength, filename, highestaddr)
-	ndis_status		*status;
-	ndis_handle		*filehandle;
-	uint32_t		*filelength;
-	ndis_unicode_string	*filename;
-	ndis_physaddr		highestaddr;
+ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelength,
+	       ndis_unicode_string *filename, ndis_physaddr highestaddr)
 {
 	char			*afilename = NULL;
 	struct thread		*td = curthread;
@@ -2569,10 +2331,7 @@ done:
 }
 
 __stdcall static void
-ndis_map_file(status, mappedbuffer, filehandle)
-	ndis_status		*status;
-	void			**mappedbuffer;
-	ndis_handle		filehandle;
+ndis_map_file(ndis_status *status, void **mappedbuffer, ndis_handle filehandle)
 {
 	ndis_fh			*fh;
 	struct thread		*td = curthread;
@@ -2611,8 +2370,7 @@ ndis_map_file(status, mappedbuffer, filehandle)
 }
 
 __stdcall static void
-ndis_unmap_file(filehandle)
-	ndis_handle		filehandle;
+ndis_unmap_file(ndis_handle filehandle)
 {
 	ndis_fh			*fh;
 	fh = (ndis_fh *)filehandle;
@@ -2626,8 +2384,7 @@ ndis_unmap_file(filehandle)
 }
 
 __stdcall static void
-ndis_close_file(filehandle)
-	ndis_handle		filehandle;
+ndis_close_file(ndis_handle filehandle)
 {
 	struct thread		*td = curthread;
 	ndis_fh			*fh;
@@ -2653,7 +2410,7 @@ ndis_close_file(filehandle)
 }
 
 __stdcall static uint8_t
-ndis_cpu_cnt()
+ndis_cpu_cnt(void)
 {
 	return(ncpus);
 }
@@ -2663,8 +2420,7 @@ typedef __stdcall void (*ndis_status_handler)(ndis_handle, ndis_status,
         void *, uint32_t);
 
 __stdcall static void
-ndis_ind_statusdone(adapter)
-	ndis_handle		adapter;
+ndis_ind_statusdone(ndis_handle adapter)
 {
 	ndis_miniport_block	*block;
 	ndis_statusdone_handler	statusdonefunc;
@@ -2677,11 +2433,8 @@ ndis_ind_statusdone(adapter)
 }
 
 __stdcall static void
-ndis_ind_status(adapter, status, sbuf, slen)
-	ndis_handle		adapter;
-	ndis_status		status;
-	void			*sbuf;
-	uint32_t		slen;
+ndis_ind_status(ndis_handle adapter, ndis_status status, void *sbuf,
+		uint32_t slen)
 {
 	ndis_miniport_block	*block;
 	ndis_status_handler	statusfunc;
@@ -2694,8 +2447,7 @@ ndis_ind_status(adapter, status, sbuf, slen)
 }
 
 static void
-ndis_workfunc(ctx)
-	void			*ctx;
+ndis_workfunc(void *ctx)
 {
 	ndis_work_item		*work;
 	ndis_proc		workfunc;
@@ -2707,21 +2459,15 @@ ndis_workfunc(ctx)
 }
 
 __stdcall static ndis_status
-ndis_sched_workitem(work)
-	ndis_work_item		*work;
+ndis_sched_workitem(ndis_work_item *work)
 {
 	ndis_sched(ndis_workfunc, work, NDIS_TASKQUEUE);
 	return(NDIS_STATUS_SUCCESS);
 }
 
 __stdcall static void
-ndis_pkt_to_pkt(dpkt, doff, reqlen, spkt, soff, cpylen)
-	ndis_packet		*dpkt;
-	uint32_t		doff;
-	uint32_t		reqlen;
-	ndis_packet		*spkt;
-	uint32_t		soff;
-	uint32_t		*cpylen;
+ndis_pkt_to_pkt(ndis_packet *dpkt, uint32_t doff, uint32_t reqlen,
+		ndis_packet *spkt, uint32_t soff, uint32_t *cpylen)
 {
 	ndis_buffer		*src, *dst;
 	char			*sptr, *dptr;
@@ -2805,27 +2551,18 @@ ndis_pkt_to_pkt(dpkt, doff, reqlen, spkt, soff, cpylen)
 }
 
 __stdcall static void
-ndis_pkt_to_pkt_safe(dpkt, doff, reqlen, spkt, soff, cpylen, prio)
-	ndis_packet		*dpkt;
-	uint32_t		doff;
-	uint32_t		reqlen;
-	ndis_packet		*spkt;
-	uint32_t		soff;
-	uint32_t		*cpylen;
-	uint32_t		prio;
+ndis_pkt_to_pkt_safe(ndis_packet *dpkt, uint32_t doff, uint32_t reqlen,
+		     ndis_packet *spkt, uint32_t soff, uint32_t *cpylen,
+		     uint32_t prio)
 {
 	ndis_pkt_to_pkt(dpkt, doff, reqlen, spkt, soff, cpylen);
 	return;
 }
 
 __stdcall static ndis_status
-ndis_register_dev(handle, devname, symname, majorfuncs, devobj, devhandle)
-	ndis_handle		handle;
-	ndis_unicode_string	*devname;
-	ndis_unicode_string	*symname;
-	driver_dispatch		*majorfuncs[];
-	void			**devobj;
-	ndis_handle		*devhandle;
+ndis_register_dev(ndis_handle handle, ndis_unicode_string *devname,
+		  ndis_unicode_string *symname, driver_dispatch **majorfuncs,
+		  void **devobj, ndis_handle *devhandle)
 {
 	ndis_miniport_block	*block;
 
@@ -2837,16 +2574,13 @@ ndis_register_dev(handle, devname, symname, majorfuncs, devobj, devhandle)
 }
 
 __stdcall static ndis_status
-ndis_deregister_dev(handle)
-	ndis_handle		handle;
+ndis_deregister_dev(ndis_handle handle)
 {
 	return(NDIS_STATUS_SUCCESS);
 }
 
 __stdcall static ndis_status
-ndis_query_name(name, handle)
-	ndis_unicode_string	*name;
-	ndis_handle		handle;
+ndis_query_name(ndis_unicode_string *name, ndis_handle handle)
 {
 	ndis_miniport_block	*block;
 
@@ -2859,15 +2593,13 @@ ndis_query_name(name, handle)
 }
 
 __stdcall static void
-ndis_register_unload(handle, func)
-	ndis_handle		handle;
-	void			*func;
+ndis_register_unload(ndis_handle handle, void *func)
 {
 	return;
 }
 
 __stdcall static void
-dummy()
+dummy(void)
 {
 	printf ("NDIS dummy called...\n");
 	return;

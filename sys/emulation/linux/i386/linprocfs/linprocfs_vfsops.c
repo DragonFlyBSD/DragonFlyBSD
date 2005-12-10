@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.10 2005/09/17 07:42:58 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.11 2005/12/10 16:06:20 swildner Exp $
  */
 
 /*
@@ -71,11 +71,7 @@ static int	linprocfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-linprocfs_mount(mp, path, data, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct thread *td;
+linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	size_t size;
 	int error;
@@ -107,10 +103,7 @@ linprocfs_mount(mp, path, data, td)
  * unmount system call
  */
 static int
-linprocfs_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+linprocfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error;
 	int flags = 0;
@@ -129,9 +122,7 @@ linprocfs_unmount(mp, mntflags, td)
 }
 
 int
-linprocfs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+linprocfs_root(struct mount *mp, struct vnode **vpp)
 {
 
 	return (linprocfs_allocvp(mp, vpp, 0, Proot));
@@ -141,10 +132,7 @@ linprocfs_root(mp, vpp)
  * Get file system statistics.
  */
 static int
-linprocfs_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+linprocfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	sbp->f_bsize = PAGE_SIZE;
 	sbp->f_iosize = PAGE_SIZE;
