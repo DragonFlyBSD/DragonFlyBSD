@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.89 2005/12/02 22:02:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.90 2005/12/10 18:50:36 dillon Exp $
  */
 
 /*
@@ -957,17 +957,23 @@ lwkt_yield(void)
  * the thread has been enqueued, including dealing with preemption and
  * setting need_lwkt_resched() (which prevents the kernel from returning
  * to userland until it has processed higher priority threads).
+ *
+ * It is possible for this routine to be called after a failed _enqueue
+ * (due to the target thread migrating, sleeping, or otherwise blocked).
+ * We have to check that the thread is actually on the run queue!
  */
 static __inline
 void
 _lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri)
 {
-    if (ntd->td_preemptable) {
-	ntd->td_preemptable(ntd, cpri);	/* YYY +token */
-    } else if ((ntd->td_flags & TDF_NORESCHED) == 0 &&
-	(ntd->td_pri & TDPRI_MASK) > (gd->gd_curthread->td_pri & TDPRI_MASK)
-    ) {
-	need_lwkt_resched();
+    if (ntd->td_flags & TDF_RUNQ) {
+	if (ntd->td_preemptable) {
+	    ntd->td_preemptable(ntd, cpri);	/* YYY +token */
+	} else if ((ntd->td_flags & TDF_NORESCHED) == 0 &&
+	    (ntd->td_pri & TDPRI_MASK) > (gd->gd_curthread->td_pri & TDPRI_MASK)
+	) {
+	    need_lwkt_resched();
+	}
     }
 }
 
