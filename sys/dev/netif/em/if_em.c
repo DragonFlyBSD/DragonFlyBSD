@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.44 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.45 2005/12/10 18:28:18 dillon Exp $
  * $FreeBSD$
  */
 /*
@@ -297,6 +297,22 @@ TUNABLE_INT("hw.em.rx_int_delay", &em_rx_int_delay_dflt);
 TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
+
+/*
+ * Kernel trace for characterization of operations
+ */
+#if !defined(KTR_IF_EM)
+#define KTR_IF_EM	KTR_ALL
+#endif
+KTR_INFO_MASTER(if_em);
+KTR_INFO(KTR_IF_EM, if_em, intr_beg, 0, "intr begin", 0);
+KTR_INFO(KTR_IF_EM, if_em, intr_end, 1, "intr end", 0);
+KTR_INFO(KTR_IF_EM, if_em, poll_beg, 2, "poll begin", 0);
+KTR_INFO(KTR_IF_EM, if_em, poll_end, 3, "poll end", 0);
+KTR_INFO(KTR_IF_EM, if_em, pkt_receive, 4, "rx packet", 0);
+KTR_INFO(KTR_IF_EM, if_em, pkt_txqueue, 5, "tx packet", 0);
+KTR_INFO(KTR_IF_EM, if_em, pkt_txclean, 6, "tx clean", 0);
+#define logif(name)	KTR_LOG(if_em_ ## name)
 
 /*********************************************************************
  *  Device identification routine
@@ -710,6 +726,7 @@ em_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
+		logif(pkt_txqueue);
 		if (em_encap(adapter, m_head)) { 
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
@@ -975,6 +992,8 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct adapter *adapter = ifp->if_softc;
 	uint32_t reg_icr;
 
+	logif(poll_beg);
+
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(cmd) {
@@ -1006,6 +1025,7 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		}
 		break;
 	}
+	logif(poll_end);
 }
 
 #endif /* DEVICE_POLLING */
@@ -1024,11 +1044,14 @@ em_intr(void *arg)
 
 	ifp = &adapter->interface_data.ac_if;  
 
+	logif(intr_beg);
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	reg_icr = E1000_READ_REG(&adapter->hw, ICR);
-	if (!reg_icr)
+	if (!reg_icr) {
+		logif(intr_end);
 		return;
+	}
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
@@ -1051,6 +1074,7 @@ em_intr(void *arg)
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		em_start(ifp);
+	logif(intr_end);
 }
 
 /*********************************************************************
@@ -2260,6 +2284,8 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 		tx_desc->upper.data = 0;
 		num_avail++;                        
 
+		logif(pkt_txclean);
+
 		if (tx_buffer->m_head) {
 			ifp->if_opackets++;
 			bus_dmamap_sync(adapter->txtag, tx_buffer->map,
@@ -2594,6 +2620,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 		return;
 
 	while ((current_desc->status & E1000_RXD_STAT_DD) && (count != 0)) {
+		logif(pkt_receive);
 		mp = adapter->rx_buffer_area[i].m_head;
 		bus_dmamap_sync(adapter->rxtag, adapter->rx_buffer_area[i].map,
 				BUS_DMASYNC_POSTREAD);

@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.13 2005/11/28 17:13:42 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.14 2005/12/10 18:28:18 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -45,6 +45,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/sockio.h>
+#include <sys/sysctl.h>
+#include <sys/ktr.h>
 #include <sys/endian.h>
 
 #include <net/if.h>
