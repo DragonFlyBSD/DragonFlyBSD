@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.49 2005/12/06 23:37:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.50 2005/12/10 18:16:36 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -235,8 +235,8 @@ u_int32_t *io_apic_versions;
 extern	int nkpt;
 
 u_int32_t cpu_apic_versions[MAXCPU];
-int64_t tsc_offsets[MAXCPU];
 int64_t tsc0_offset;
+extern int64_t tsc_offsets[];
 
 #ifdef APIC_IO
 struct apic_intmapinfo	int_to_apicintpin[APIC_INTMAPSIZE];

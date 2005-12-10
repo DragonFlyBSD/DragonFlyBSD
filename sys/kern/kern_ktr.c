@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.8 2005/12/07 04:27:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.9 2005/12/10 18:16:37 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -98,7 +98,7 @@
 
 /*
  * test logging support.  When ktr_testlogcnt is non-zero each synchronization
- * interrupt will issue three back-to-back ktr logging messages on cpu 0
+ * interrupt will issue six back-to-back ktr logging messages on cpu 0
  * so the user can determine KTR logging overheads.
  */
 #if !defined(KTR_TESTLOG)
@@ -108,7 +108,11 @@ KTR_INFO_MASTER(testlog);
 KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
+KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4", 0);
+KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5", 0);
+KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6", 0);
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
+#define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 
 MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
@@ -142,15 +146,23 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "")
 static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
 static struct	ktr_entry *ktr_buf[MAXCPU] = { &ktr_buf0[0] };
 static int	ktr_idx[MAXCPU];
+#ifdef SMP
 static int	ktr_sync_state = 0;
 static int	ktr_sync_count;
 static int64_t	ktr_sync_tsc;
+#endif
 struct callout	ktr_resync_callout;
 
 #ifdef KTR_VERBOSE
 int	ktr_verbose = KTR_VERBOSE;
 TUNABLE_INT("debug.ktr.verbose", &ktr_verbose);
 SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0, "");
+#endif
+
+#ifdef SMP
+int64_t tsc_offsets[MAXCPU];
+#else
+int64_t tsc_offsets[1];
 #endif
 
 static void
@@ -212,6 +224,9 @@ ktr_resync_callback(void *dummy __unused)
 		logtest(test1);
 		logtest(test2);
 		logtest(test3);
+		logtest_noargs(test4);
+		logtest_noargs(test5);
+		logtest_noargs(test6);
 		cpu_enable_intr();
 	}
 #endif
@@ -223,6 +238,12 @@ ktr_resync_callback(void *dummy __unused)
 		goto done;
 	if ((cpu_feature & CPUID_TSC) == 0)
 		return;
+
+	/*
+	 * Send the synchronizing IPI and wait for all cpus to get into
+	 * their spin loop.  We must process incoming IPIs while waiting
+	 * to avoid a deadlock.
+	 */
 	crit_enter();
 	ktr_sync_count = 0;
 	ktr_sync_state = 1;
@@ -231,6 +252,11 @@ ktr_resync_callback(void *dummy __unused)
 				    (ipifunc1_t)ktr_resync_remote, NULL);
 	while (ktr_sync_count != count)
 		lwkt_process_ipiq();
+
+	/*
+	 * Continuously update the TSC for cpu 0 while waiting for all other
+	 * cpus to finish stage 2.
+	 */
 	cpu_disable_intr();
 	ktr_sync_tsc = rdtsc();
 	cpu_sfence();
@@ -248,19 +274,30 @@ done:
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
 }
 
-extern int64_t tsc_offsets[MAXCPU];
-
+/*
+ * The remote-end of the KTR synchronization protocol runs on all cpus except
+ * cpu 0.  Since this is an IPI function, it is entered with the current
+ * thread in a critical section.
+ */
 static void
 ktr_resync_remote(void *dummy __unused)
 {
 	volatile int64_t tsc1 = ktr_sync_tsc;
 	volatile int64_t tsc2;
 
+	/*
+	 * Inform the master that we have entered our hard loop.
+	 */
 	KKASSERT(ktr_sync_state == 1);
 	atomic_add_int(&ktr_sync_count, 1);
 	while (ktr_sync_state == 1) {
 		lwkt_process_ipiq();
 	}
+
+	/*
+	 * Now the master is in a hard loop, synchronize the TSC and
+	 * we are done.
+	 */
 	cpu_disable_intr();
 	KKASSERT(ktr_sync_state == 2);
 	tsc2 = ktr_sync_tsc;
@@ -270,8 +307,41 @@ ktr_resync_remote(void *dummy __unused)
 	cpu_enable_intr();
 }
 
+#else	/* !SMP */
+
+/*
+ * The resync callback for UP doesn't do anything other then run the test
+ * log messages.  If test logging is not enabled, don't bother resetting
+ * the callout.
+ */
+static
+void 
+ktr_resync_callback(void *dummy __unused)
+{
+#if KTR_TESTLOG
+	/*
+	 * Test logging
+	 */
+	if (ktr_testlogcnt) {
+		--ktr_testlogcnt;
+		cpu_disable_intr();
+		logtest(test1);
+		logtest(test2);
+		logtest(test3);
+		logtest_noargs(test4);
+		logtest_noargs(test5);
+		logtest_noargs(test6);
+		cpu_enable_intr();
+	}
+	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
+#endif
+}
+
 #endif
 
+/*
+ * KTR_WRITE_ENTRY - Primary entry point for kernel trace logging
+ */
 static __inline
 void
 ktr_write_entry(struct ktr_info *info, const char *file, int line,
@@ -285,17 +355,22 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 		crit_enter();
 		entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
 		++ktr_idx[cpu];
-		crit_exit();
-		if (cpu_feature & CPUID_TSC)
+		if (cpu_feature & CPUID_TSC) {
+#ifdef SMP
 			entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
-		else
+#else
+			entry->ktr_timestamp = rdtsc();
+#endif
+		} else {
 			entry->ktr_timestamp = get_approximate_time_t();
+		}
 		entry->ktr_info = info;
 		entry->ktr_file = file;
 		entry->ktr_line = line;
+		crit_exit();
 		if (info->kf_data_size > KTR_BUFSIZE)
 			bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
-		else
+		else if (info->kf_data_size)
 			bcopyi(ptr, entry->ktr_data, info->kf_data_size);
 		if (ktr_stacktrace)
 			cpu_ktr_caller(entry);
