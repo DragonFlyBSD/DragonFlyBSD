@@ -3,14 +3,15 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.5 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.6 2005/12/10 00:22:29 swildner Exp $
 .\"
 .Dd May 25, 2001
 .Dt TUNING 7
 .Os
 .Sh NAME
 .Nm tuning
-.Nd performance tuning under DragonFly
+.Nd performance tuning under
+.Dx
 .Sh SYSTEM SETUP - DISKLABEL, NEWFS, TUNEFS, SWAP
 When using
 .Xr disklabel 8
@@ -527,14 +528,16 @@ data representing the echo of the character.   With delayed acks turned off
 the acknowledgement may be sent in its own packet before the remote service
 has a chance to echo the data it just received.  This same concept also
 applies to any interactive protocol (e.g. SMTP, WWW, POP3) and can cut the
-number of tiny packets flowing across the network in half.   The DragonFly
+number of tiny packets flowing across the network in half.   The
+.Dx
 delayed-ack implementation also follows the TCP protocol rule that
 at least every other packet be acknowledged even if the standard 100ms
 timeout has not yet passed.  Normally the worst a delayed ack can do is
 slightly delay the teardown of a connection, or slightly delay the ramp-up
 of a slow-start TCP connection.  While we aren't sure we believe that
 the several FAQs related to packages such as SAMBA and SQUID which advise
-turning off delayed acks may be refering to the slow-start issue.  In DragonFly
+turning off delayed acks may be refering to the slow-start issue.  In
+.Dx
 it would be more beneficial to increase the slow-start flightsize via
 the
 .Va net.inet.tcp.slowstart_flightsize

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.6 2005/05/30 00:19:40 swildner Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.7 2005/12/10 00:22:28 swildner Exp $
 .Dd May 29, 2005
 .Dt LOADER.CONF 5
 .Os
@@ -158,7 +158,9 @@ selects a mute console
 (useful for systems with neither a video console nor a serial port).
 .It Va fred_disable
 .Pq Dq NO
-Shows a monochrome version of Fred, the official DragonFly BSD mascot, when the
+Shows a monochrome version of Fred, the official
+.Dx
+mascot, when the
 boot menu appears. To make his life a bit more colorful, consider setting
 .Pa loader_color
 to
@@ -169,7 +171,9 @@ to
 .Pq Dq NO
 If set to
 .Dq YES ,
-you'll meet Fred, the official DragonFly BSD mascot, in technicolor when the
+you'll meet Fred, the official
+.Dx
+mascot, in technicolor when the
 boot menu appears (remember to set
 .Pa fred_disable
 to

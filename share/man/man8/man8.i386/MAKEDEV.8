@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)MAKEDEV.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.15.2.5 2002/05/11 06:15:16 dd Exp $
-.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.5 2005/05/07 17:38:33 swildner Exp $
+.\" $DragonFly: src/share/man/man8/man8.i386/MAKEDEV.8,v 1.6 2005/12/10 00:22:29 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt MAKEDEV 8 i386
@@ -105,7 +105,9 @@ CDROM drives.
 .Pp
 .Nm
 creates each special file with reasonable default ownership and permissions.
-Under DragonFly BSD, you can change these default settings by putting
+Under
+.Dx ,
+you can change these default settings by putting
 .Dq local override
 entries in the
 .Pa /etc/devices.conf

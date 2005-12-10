@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/tap.4,v 1.1.2.7 2002/04/16 23:59:28 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/tap.4,v 1.3 2004/05/10 13:47:42 hmp Exp $
+.\" $DragonFly: src/share/man/man4/tap.4,v 1.4 2005/12/10 00:22:29 swildner Exp $
 .\" Based on PR#2411
 .\"
 .Dd July 9, 2000
@@ -187,7 +187,7 @@ brought down
 (as if with
 .Dq ifconfig tap Ns Sy N No down )
 unless the devices is a
-.EM VMnet
+.Em VMnet
 device.
 All queued frames are thrown away. If the interface is up when the data
 device is not open, output frames are thrown away rather than

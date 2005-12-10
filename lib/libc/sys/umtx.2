@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.5 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.6 2005/12/10 00:22:28 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt UMTX 2
@@ -74,7 +74,8 @@ in
 on the specified user address.  A count of 0 will wake up all sleeping
 processes.  This function may wake up more processes then the specified
 count but will never wake up fewer processes (unless there are simply not
-that many currently sleeping on the address).  The current DragonFly
+that many currently sleeping on the address).  The current
+.Dx
 implementation optimized the count = 1 case but otherwise just wakes up
 all processes sleeping on the address.
 .Pp
@@ -207,4 +208,5 @@ The
 .Fn umtx_sleep ,
 and
 .Fn umtx_wakeup
-function calls first appeared in DragonFly 1.1 .
+function calls first appeared in
+.Dx 1.1 .

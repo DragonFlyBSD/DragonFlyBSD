@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlinfo.3,v 1.3.2.1 2003/02/20 20:42:45 kan Exp $
-.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.3 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.4 2005/12/10 00:22:28 swildner Exp $
 .\"
 .Dd February 14, 2003
 .Os
@@ -196,7 +196,7 @@ For simplicity, error checking has been omitted.
      dlinfo(RTLD_SELF, RTLD_DI_LINKMAP, &map);
 
      while (map != NULL) {
-         printf("%p: %s\n", map->l_addr, map->l_name);
+         printf("%p: %s\en", map->l_addr, map->l_name);
          map = map->l_next;
      }
 .Ed
@@ -228,7 +228,7 @@ For simplicity, error checking has been omitted.
       path = &info->dls_serpath[0];
 
       for (cnt = 1; cnt <= info->dls_cnt; cnt++, path++) {
-          (void) printf("%2d: %s\n", cnt, path->dls_name);
+          (void) printf("%2d: %s\en", cnt, path->dls_name);
       }
 .Ed
 .Sh RETURN VALUES
