@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.4 2005/12/06 23:41:56 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.5 2005/12/10 18:38:26 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -192,7 +192,6 @@ main(int ac, char **av)
 		cflag = 1;
 		iflag = 1;
 		tflag = 1;
-		fflag = 1;
 		pflag = 1;
 	}
 
