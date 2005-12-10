@@ -22,26 +22,35 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/usr.bin/relpath/relpath.1,v 1.2 2005/03/08 20:29:55 swildner Exp $
+.\" $DragonFly: src/usr.bin/relpath/relpath.1,v 1.3 2005/12/10 00:04:51 swildner Exp $
 .\"
 .Dd Jan 19, 2005
 .Dt RELPATH 1
 .Os
 .Sh NAME
 .Nm relpath
-.Nd returns a path which is relative to the specified base.
+.Nd returns a path which is relative to the specified base
 .Sh SYNOPSIS
 .Nm
-base path
+.Ar base path
 .Sh DESCRIPTION
 The
 .Nm
-utility returns a path for 'path' which is relative to the specified
-'base'.  The path in 'path' and all the elements between it and
-'base' must exist on the same filesystem.
+utility returns a path for
+.Ar path
+which is relative to the specified
+.Ar base .
+The path in
+.Ar path
+and all the elements between it and
+.Ar base
+must exist on the same file system.
 .Sh EXAMPLES
-% relpath /usr/home /usr/home/okumoto/test/main
-okumoto/test/main
-.Sh NOTE/BUG
-If any element in 'path' has the same inode as 'base' then the path
-returned will be the same.
+.Dl % relpath /usr/home /usr/home/okumoto/test/main
+.Dl okumoto/test/main
+.Sh BUGS
+If any element in
+.Ar path
+has the same inode as
+.Ar base
+then the path returned will be the same.
