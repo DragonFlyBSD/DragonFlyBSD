@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.10 2005/12/10 18:25:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.11 2005/12/10 21:19:30 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -111,6 +111,7 @@ KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4", 0);
 KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5", 0);
 KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6", 0);
+KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong", 0);
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 
@@ -137,6 +138,9 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, resynchronize, CTLFLAG_RW, &ktr_resynchronize, 
 #if KTR_TESTLOG
 static int	ktr_testlogcnt = 0;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "");
+static int	ktr_testipicnt = 0;
+static int	ktr_testipicnt_remainder;
+SYSCTL_INT(_debug_ktr, OID_AUTO, testipicnt, CTLFLAG_RW, &ktr_testipicnt, 0, "");
 #endif
 
 /*
@@ -191,6 +195,7 @@ SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
  * This callback occurs on cpu0.
  */
 static void ktr_resync_callback(void *dummy);
+static void ktr_pingpong_remote(void *dummy);
 
 static void
 ktr_resyncinit(void *dummy)
@@ -232,6 +237,15 @@ ktr_resync_callback(void *dummy __unused)
 		logtest_noargs(test5);
 		logtest_noargs(test6);
 		cpu_enable_intr();
+	}
+
+	/*
+	 * Test IPI messaging
+	 */
+	if (ktr_testipicnt && ktr_testipicnt_remainder == 0 && ncpus > 1) {
+		ktr_testipicnt_remainder = ktr_testipicnt;
+		ktr_testipicnt = 0;
+		lwkt_send_ipiq_bycpu(1, ktr_pingpong_remote, NULL);
 	}
 #endif
 
@@ -309,6 +323,18 @@ ktr_resync_remote(void *dummy __unused)
 		tsc_offsets[mycpu->gd_cpuid] = rdtsc() - tsc2;
 	atomic_subtract_int(&ktr_sync_count, 1);
 	cpu_enable_intr();
+}
+
+static
+void
+ktr_pingpong_remote(void *dummy __unused)
+{
+	logtest_noargs(pingpong);
+	if (ktr_testipicnt_remainder) {
+		--ktr_testipicnt_remainder;
+		lwkt_send_ipiq_bycpu(1 - mycpu->gd_cpuid, 
+				     ktr_pingpong_remote, NULL);
+	}
 }
 
 #else	/* !SMP */

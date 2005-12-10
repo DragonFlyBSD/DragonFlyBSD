@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.5 2005/12/06 23:41:56 dillon Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.6 2005/12/10 21:19:29 dillon Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -91,6 +91,46 @@ The default is
 The file to write the output to.
 The default is standard output.
 .El
+.Sh OPERATIONAL NOTES
+Users of
+.Nm
+should keep in mind that the act of trace logging will itself effect
+execution overheads.  On a 2Ghz cpu a logging call can take anywhere
+from 40ns to 150ns to run.
+.Pp
+The TSC counter is used on cpus equipped with it (which is all modern cpus).
+The TSC counters may not be synchronized on SMP systems and may drift even
+between cores on multi-core cpus.  Enabling synchronization between cpus
+via the
+.Va debug.ktr.resynchronize
+sysctl will impose additional system overheads and will generally only be
+accurate to within 100ns or so (and perhaps not even that good).  
+Resynchronization only occurs 10 times a second and serious drift will
+cause a great deal of measurement noise when trying to compare events occuring
+on two different cpus.
+.Pp
+Users using the
+.Fl s
+option should be aware that events for each cpu are independantly logged
+and one cpu might have more events logged then another, causing earlier
+events to be discarded sooner then other cpus.  The beginning portion of
+the sorted output may thus show MP related events for one cpu with no
+corresponding events for other cpus.
+.Pp
+It is possible to somewhat characterize KTR logging overheads by setting
+the
+.Va debug.ktr.testlogcnt
+sysctl and then observing test logging events in the KTR output.  Tests 1-3
+log four dummy arguments while tests 4-6 log no arguments.
+.Pp
+It is possible to characterize IPI messaging latencies by setting the
+.Va debug.ktr.testipicnt
+sysctl.   A small number between 1 and 1000 is recommended.  This will
+cause the system to ping pong a single IPI message between cpu 0 and cpu 1
+asynchronously that number of times, as fast as it can.  A
+.Nm
+should be performed almost immediately after setting the sysctl or you
+might miss the logged events.
 .Sh SEE ALSO
 .Xr ktr 4 ,
 .Xr ktr 9
@@ -103,8 +143,12 @@ utility first appeared in
 .An -nosplit
 The
 .Nm
-utility was implemented by
+utility was originally implemented by
 .An Jake Burkholder Aq jake@FreeBSD.org .
-.Pp
-This manual page was written by
+This manual page was originally written by
 .An Chad David Aq davidc@FreeBSD.org .
+The program and manual page were rewritten pretty much from
+scratch by
+.An Matthew Dillon 
+for
+.Dx .
