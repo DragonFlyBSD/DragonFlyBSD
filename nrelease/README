@@ -1,0 +1,49 @@
+$DragonFly: src/nrelease/Attic/README,v 1.1 2005/12/10 14:47:05 joerg Exp $
+
+The DragonFly framework for building ISO image (nrelease)
+=========================================================
+
+Important user-tunable variables
+--------------------------------
+
+ISODIR			default prefix of ISOFILE and ISOROOT
+ISOFILE			name of the ISO image to generate
+ISOROOT			location where to fresh world is installed to
+KERNCONF		kernel configuration to use
+
+PKGSRC_PACKAGES		default list of packages to be added to the ISO
+PKGSRC_PKG_ADD		location of pkgsrc-style pkg_add used during build
+PKGSRC_PKG_PATH		location of binary packages to be added to the ISO
+PKGSRC_BOOTSTRAP_FILE	location of the bootstrap kit
+			(this must be local, PKGSRC_PKG_PATH can be remote)
+PKGSRC_DB		db location used by the bootstrap kit
+PKGSRC_PREFIX		localbase used by the bootstrap kit
+PKGSRC_RSYNC_SRC	where to fetch packages from during make fetch
+
+WITH_INSTALLER		if defined, the BSD installer is added to the target
+
+The default values match the packages from packages.stura.uni-rostock.de.
+
+
+Important targets
+-----------------
+
+fetch			fetches the bootstrap kit and binary packages using rsync
+release			builds world and kernel, installs them, adds packages and
+			prepares the ISO image
+quickrel		same as release, but use quickworld and quickkernel
+realquickrel		same as release, but skips buildworld and buildkernel
+
+
+First time usage
+----------------
+
+The nrelease framework expects to find a working pkg_add from pkgsrc.
+You can use the bootstrap kit, which matches the default configuration,
+or install it yourself.  If you use a location other than /usr/pkg, you
+have to specify PKGSRC_PKG_ADD in make.conf.
+
+If you want to have any packages install in the ISO (the default), run
+``make fetch'' first, to get them and the bootstrap kit used in the ISO.
+By default, the current directory is used, the location can and should
+be overriden by PKGSRC_PKG_PATH in make.conf.

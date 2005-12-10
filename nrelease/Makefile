@@ -1,33 +1,47 @@
-# $DragonFly: src/nrelease/Makefile,v 1.44 2005/12/04 21:24:13 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.45 2005/12/10 14:47:05 joerg Exp $
 #
+
+all: release
+
+# compat target
+installer_release: release
+installer_quickrel: 
+installer_realquickrel: realquickrel
+
+.if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel)
+WITH_INSTALLER=
+.endif
 
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC
-PKG_PATH= /usr/freebsd_pkg/sbin
 
-# Specify which packages are required on the ISO, and let the user
-# specify additional packages to include.  During the `pkgaddiso'
-# target, the packages are obtained from PACKAGES_LOC.
-#
-REQ_PACKAGES= cdrtools-2.01 cvsup-without-gui-16.1h
-REL_PACKAGES?= ${REQ_PACKAGES} ${EXTRA_PACKAGES}
-.if defined(PACKAGES)
-PACKAGES_LOC?= ${PACKAGES}/All
-.else
-PACKAGES_LOC?= /usr/ports/packages/All
-.endif
-PACKAGE_SITES?=http://www.bsdinstaller.org/packages/ \
-	       http://cvs.bsdinstaller.org/packages/
+PKGSRC_PKG_ADD?=	/usr/pkg/sbin/pkg_add
+PKGSRC_PKG_PATH?=	${.CURDIR}
+PKGSRC_BOOTSTRAP_FILE?=	${PKGSRC_PKG_PATH}/bootstrap.tar.gz
+PKGSRC_DB?=		/var/db/pkg
+PKGSRC_PREFIX?=		/usr/pkg
+PKGSRC_RSYNC_SRC?=	rsync://packages.stura.uni-rostock.de/dfly14-nrelease
+
+ENV?=	env
+TAR?=	tar
+RSYNC_CMD?=	rsync -avz
+
+PKGSRC_PACKAGES?=	cdrecord
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
 # target; each overwrites the last.
 #
 REQ_ROOTSKELS= ${.CURDIR}/root
-ROOTSKELS?= ${REQ_ROOTSKELS} ${EXTRA_ROOTSKELS}
+ROOTSKELS?=	${REQ_ROOTSKELS}
+
+.if defined(WITH_INSTALLER)
+PKGSRC_PACKAGES+=	dfuibe_installer dfuife_curses
+ROOTSKELS+=		installer
+.endif
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -42,117 +56,20 @@ KERNEL_CCVER ?= ${CCVER}
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso customizeiso pkgaddiso mklocatedb mkiso
+		buildiso customizeiso mklocatedb mkiso
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso customizeiso pkgaddiso mklocatedb mkiso
+		buildiso customizeiso mklocatedb mkiso
 
-realquickrel:	check clean \
-		buildiso customizeiso pkgaddiso mklocatedb mkiso
-
-#########################################################################
-#			ISO TARGETS WITH INSTALLER			#
-#########################################################################
-
-INSTALLER_PKGS= libaura-3.1 libdfui-4.1 libinstaller-5.1 \
-		dfuibe_installer-1.1.6 dfuife_curses-1.5 \
-		thttpd-notimeout-2.24 dfuife_cgi-1.4
-INSTALLER_SKELS= installer
-
-INSTALLER_ENV= EXTRA_PACKAGES="${INSTALLER_PKGS} ${EXTRA_PACKAGES}" \
-		EXTRA_ROOTSKELS="${INSTALLER_SKELS} ${EXTRA_ROOTSKELS}"
-
-installer_check:
-		@${INSTALLER_ENV} ${MAKE} check
-
-installer_fetchpkgs:
-		@${INSTALLER_ENV} ${MAKE} fetchpkgs
-
-installer_release:
-		${INSTALLER_ENV} ${MAKE} release
-
-installer_quickrel:
-		${INSTALLER_ENV} ${MAKE} quickrel
-
-installer_realquickrel:
-		${INSTALLER_ENV} ${MAKE} realquickrel
-
-#########################################################################
-#				HELPER TARGETS				#
-#########################################################################
+realquickrel:	check clean buildiso customizeiso mklocatedb mkiso
 
 check:
-	@if [ ! -f /usr/local/bin/mkisofs ]; then \
-		echo "You need to install the sysutils/cdrtools port for"; \
-		echo "this target"; \
-		exit 1; \
-	fi
-.for PKG in ${REL_PACKAGES}
-	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
-		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz."; \
-		echo "(Perhaps you need to download or build it first?)"; \
-		echo ""; \
-		echo "If you are trying to build the installer, the"; \
-		echo "required packages can be obtained from:"; \
-		echo ""; \
-		echo "    http://www.bsdinstaller.org/packages/"; \
-		echo ""; \
-		echo "They can be automatically downloaded by issuing:"; \
-		echo "    make installer_fetchpkgs"; \
-		echo ""; \
-		exit 1; \
-	fi
-.endfor
-	@if [ ! -f /usr/pkg/sbin/pkg_add ]; then \
-		echo "NetBSD pkgsrc has not been bootstrapped.  You can"; \
-		echo "automatically download the pkgsrc and install the"; \
-		echo "the bootstrap with:"; \
-		echo "    make pkgsrc_fetch"; \
-		echo "    make pkgsrc_bootstrap"; \
-		exit 1; \
-	fi
-	@if [ ! -f /etc/mk.conf ]; then \
-		echo "NetBSD pkgsrc: /etc/mk.conf must exist.  You can"; \
-		echo "automatically create this file with:"; \
-		echo "    make pkgsrc_conf"; \
-		exit 1; \
-	fi
-	@echo "check: all preqs found"
-
-pkgsrc_fetch:
-	cd /usr
-	cvs -d anoncvs@anoncvs.us.netbsd.org:/cvsroot checkout pkgsrc
-
-pkgsrc_bootstrap:
-	rm -rf /tmp/bootstrap-workdir
-	cd /usr/pkgsrc/bootstrap && ./bootstrap --workdir=/tmp/bootstrap-workdir
-	rm -rf /tmp/bootstrap-workdir
-	fgrep -q LOCALBASE /etc/mk.conf || (echo "you may also have to run make pkgsrc_conf to initialize /etc/mk.conf")
-
-pkgsrc_conf:
-.if !exists(/etc/mk.conf) 
-	cp ${.CURDIR}/mk.conf.pkgsrc /etc/mk.conf
-.else
-	fgrep -q BSD_PKG_MK /etc/mk.conf || cat ${.CURDIR}/mk.conf.pkgsrc >> /etc/mk.conf
-.endif
-
-fetchpkgs:
-.for PKG in ${REL_PACKAGES}
-	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
-		cd ${PACKAGES_LOC} && \
-		echo "fetching ${PKG}..." && \
-		for SITE in ${PACKAGE_SITES}; do \
-			if [ ! -f ${PKG}.tgz ]; then \
-				fetch $${SITE}${PKG}.tgz || \
-				    echo "Not available from $${SITE}"; \
-			fi; \
-		done; \
-		if [ ! -f ${PKG}.tgz ]; then \
-			echo "Couldn't retrieve ${PKG}.tgz!"; \
-			exit 1; \
-		fi; \
-	fi
-.endfor
+	@${ECHO} Testing mkisofs...
+	@mkisofs --version > /dev/null
+	@${ECHO} Testing pkg_add and list of packages...
+	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGSRC_PKG_ADD} -n ${PKGSRC_PACKAGES} > /dev/null 2>&1
+	@${ECHO} Testing for existence of bootstrap kit...
+	@[ -r ${PKGSRC_BOOTSTRAP_FILE} ]
 
 buildworld1:
 	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make buildworld )
@@ -186,8 +103,6 @@ buildiso:
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
 customizeiso:
-	cd /usr/pkgsrc/bootstrap && ./bootstrap --workdir=${NRLOBJDIR}/nrelease/bootstrap-workdir --prefix=${ISOROOT}/usr/pkg
-	cp ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
@@ -205,36 +120,9 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-
-pkgcleaniso:
-	rm -f ${ISOROOT}/tmp/chrootscript
-	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
-.for PKG in ${REL_PACKAGES}
-	echo "${PKG_PATH}/pkg_delete -f ${PKG}" >> ${ISOROOT}/tmp/chrootscript
-.endfor
-	chmod a+x ${ISOROOT}/tmp/chrootscript
-	chroot ${ISOROOT}/ /tmp/chrootscript || exit 0
-	rm ${ISOROOT}/tmp/chrootscript
-
-pkgaddiso:
-	rm -f ${ISOROOT}/tmp/chrootscript
-	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
-.for PKG in ${REL_PACKAGES}
-	if [ ! -d ${ISOROOT}/var/db/pkg/${PKG} ]; then \
-		cp ${PACKAGES_LOC}/${PKG}.tgz ${ISOROOT}/tmp/${PKG}.tgz; \
-		echo "echo 'Installing package ${PKG}...' && \\" >> \
-		    ${ISOROOT}/tmp/chrootscript; \
-		echo "${PKG_PATH}/pkg_add /tmp/${PKG}.tgz && \\" >> \
-		    ${ISOROOT}/tmp/chrootscript; \
-	fi
-.endfor
-	echo "echo 'All packages added successfully!'" >> \
-	    ${ISOROOT}/tmp/chrootscript
-	chmod a+x ${ISOROOT}/tmp/chrootscript
-	chroot ${ISOROOT}/ /tmp/chrootscript
-	rm ${ISOROOT}/tmp/chrootscript
-.for PKG in ${REL_PACKAGES}
-	rm -f ${ISOROOT}/tmp/${PKG}.tgz
+	cd ${ISOROOT} && ${TAR} xzf ${PKGSRC_BOOTSTRAP_FILE}
+.for pkg in ${PKGSRC_PACKAGES}
+	${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGSRC_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${pkg}
 .endfor
 
 mklocatedb:
@@ -249,12 +137,20 @@ mkiso:
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
 clean:
-	rm -rf /tmp/bootstrap-workdir
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
+
+fetch:
+	mkdir -p ${PKGSRC_PKG_PATH}
+	${RSYNC_CMD} ${PKGSRC_RSYNC_SRC} ${PKGSRC_PKG_PATH}
+
+.PHONY: all release installer_release quickrel installer_quickrel realquickrel
+.PHONY: installer_realquickrel check buildworld1 buildworld2
+.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
+.PHONE: clean realclean fetch
 
 .include <bsd.prog.mk>
