@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.8 2005/12/11 13:00:16 swildner Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.9 2005/12/11 13:28:53 swildner Exp $
  */
 
 /* 
@@ -5268,7 +5268,7 @@ zcalloc(voidpf opaque, unsigned items, unsigned size)
 }
 
 void
-zcfreevoidpf opaque, voidpf ptr)
+zcfree(voidpf opaque, voidpf ptr)
 {
     int n;
     if (*(ush*)&ptr != 0) { /* object < 64K */
