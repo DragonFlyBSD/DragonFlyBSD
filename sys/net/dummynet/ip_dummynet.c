@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.15 2005/12/11 13:00:16 swildner Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1326,7 +1326,7 @@ purge_pipe(struct dn_pipe *pipe)
  * remove references from all ipfw rules to all pipes.
  */
 static void
-dummynet_flush()
+dummynet_flush(void)
 {
     struct dn_pipe *curr_p, *p ;
     struct dn_flow_set *fs, *curr_fs;
@@ -1650,7 +1650,7 @@ pipe_remove_from_heap(struct dn_heap *h, struct dn_pipe *p)
  * drain all queues. Called in case of severe mbuf shortage.
  */
 void
-dummynet_drain()
+dummynet_drain(void)
 {
     struct dn_flow_set *fs;
     struct dn_pipe *p;

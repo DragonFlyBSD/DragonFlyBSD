@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.14 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.15 2005/12/11 13:00:16 swildner Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -127,9 +127,7 @@ SYSCTL_INT(_net_link_gif, OID_AUTO, parallel_tunnels, CTLFLAG_RW,
     &parallel_tunnels, 0, "Allow parallel tunnels?");
 
 int
-gif_clone_create(ifc, unit)
-	struct if_clone *ifc;
-	int unit;
+gif_clone_create(struct if_clone *ifc, int unit)
 {
 	struct gif_softc *sc;
 	
@@ -146,8 +144,7 @@ gif_clone_create(ifc, unit)
 }
 
 void
-gifattach0(sc)
-	struct gif_softc *sc;
+gifattach0(struct gif_softc *sc)
 {
 
 	sc->encap_cookie4 = sc->encap_cookie6 = NULL;
@@ -168,8 +165,7 @@ gifattach0(sc)
 }
 
 void
-gif_clone_destroy(ifp)
-	struct ifnet *ifp;
+gif_clone_destroy(struct ifnet *ifp)
 {
 	int err;
 	struct gif_softc *sc = ifp->if_softc;
@@ -196,10 +192,7 @@ gif_clone_destroy(ifp)
 }
 
 static int
-gifmodevent(mod, type, data)
-	module_t mod;
-	int type;
-	void *data;
+gifmodevent(module_t mod, int type, void *data)
 {
 
 	switch (type) {
@@ -235,11 +228,7 @@ static moduledata_t gif_mod = {
 DECLARE_MODULE(if_gif, gif_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 
 int
-gif_encapcheck(m, off, proto, arg)
-	const struct mbuf *m;
-	int off;
-	int proto;
-	void *arg;
+gif_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
 {
 	struct ip ip;
 	struct gif_softc *sc;
@@ -296,12 +285,13 @@ gif_encapcheck(m, off, proto, arg)
 	}
 }
 
+/*
+ * Parameters:
+ *	rt:	added in net2
+ */
 int
-gif_output(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;	/* added in net2 */
+gif_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	int error = 0;
@@ -373,10 +363,7 @@ gif_output(ifp, m, dst, rt)
 }
 
 void
-gif_input(m, af, ifp)
-	struct mbuf *m;
-	int af;
-	struct ifnet *ifp;
+gif_input(struct mbuf *m, int af, struct ifnet *ifp)
 {
 	int isr;
 
@@ -434,11 +421,7 @@ gif_input(m, af, ifp)
 
 /* XXX how should we handle IPv6 scope on SIOC[GS]IFPHYADDR? */
 int
-gif_ioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+gif_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct gif_softc *sc  = (struct gif_softc*)ifp;
 	struct ifreq     *ifr = (struct ifreq*)data;
@@ -672,10 +655,7 @@ gif_ioctl(ifp, cmd, data, cr)
 }
 
 int
-gif_set_tunnel(ifp, src, dst)
-	struct ifnet *ifp;
-	struct sockaddr *src;
-	struct sockaddr *dst;
+gif_set_tunnel(struct ifnet *ifp, struct sockaddr *src, struct sockaddr *dst)
 {
 	struct gif_softc *sc = (struct gif_softc *)ifp;
 	struct gif_softc *sc2;
@@ -779,8 +759,7 @@ gif_set_tunnel(ifp, src, dst)
 }
 
 void
-gif_delete_tunnel(ifp)
-	struct ifnet *ifp;
+gif_delete_tunnel(struct ifnet *ifp)
 {
 	struct gif_softc *sc = (struct gif_softc *)ifp;
 

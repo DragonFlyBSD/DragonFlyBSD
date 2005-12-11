@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.14 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.15 2005/12/11 13:00:16 swildner Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -158,9 +158,7 @@ greattach(void)
 }
 
 static int
-gre_clone_create(ifc, unit)
-	struct if_clone *ifc;
-	int unit;
+gre_clone_create(struct if_clone *ifc, int unit)
 {
 	struct gre_softc *sc;
 
@@ -189,8 +187,7 @@ gre_clone_create(ifc, unit)
 }
 
 static void
-gre_clone_destroy(ifp)
-	struct ifnet *ifp;
+gre_clone_destroy(struct ifnet *ifp)
 {
 	struct gre_softc *sc = ifp->if_softc;
 

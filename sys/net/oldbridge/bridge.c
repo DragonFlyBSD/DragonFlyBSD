@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.19 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.20 2005/12/11 13:00:16 swildner Exp $
  */
 
 /*
@@ -392,7 +392,7 @@ static char bridge_cfg[1024]; /* in BSS so initialized to all NULs */
  * "ifconfig -l"
  */
 static void
-parse_bdg_cfg()
+parse_bdg_cfg(void)
 {
     char *p, *beg ;
     int l, cluster;

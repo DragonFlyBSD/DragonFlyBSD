@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.13 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.14 2005/12/11 13:00:16 swildner Exp $
  */
 /*
  * derived from
@@ -114,10 +114,7 @@ struct if_clone faith_cloner = IF_CLONE_INITIALIZER(FAITHNAME,
 #define	FAITHMTU	1500
 
 static int
-faithmodevent(mod, type, data)
-	module_t mod;
-	int type;
-	void *data;
+faithmodevent(module_t mod, int type, void *data)
 {
 
 	switch (type) {
@@ -156,9 +153,7 @@ DECLARE_MODULE(if_faith, faith_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(if_faith, 1);
 
 int
-faith_clone_create(ifc, unit)
-	struct if_clone *ifc;
-	int unit;
+faith_clone_create(struct if_clone *ifc, int unit)
 {
 	struct faith_softc *sc;
 
@@ -184,8 +179,7 @@ faith_clone_create(ifc, unit)
 }
 
 void
-faith_clone_destroy(ifp)
-	struct ifnet *ifp;
+faith_clone_destroy(struct ifnet *ifp)
 {
 	struct faith_softc *sc = (struct faith_softc *) ifp;
 
@@ -197,11 +191,8 @@ faith_clone_destroy(ifp)
 }
 
 int
-faithoutput(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	    struct rtentry *rt)
 {
 	int isr;
 
@@ -260,10 +251,7 @@ faithoutput(ifp, m, dst, rt)
 
 /* ARGSUSED */
 static void
-faithrtrequest(cmd, rt, info)
-	int cmd;
-	struct rtentry *rt;
-	struct rt_addrinfo *info;
+faithrtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 {
 	if (rt) {
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; /* for ISO */
@@ -282,11 +270,7 @@ faithrtrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 static int
-faithioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+faithioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -346,8 +330,7 @@ faithioctl(ifp, cmd, data, cr)
  * XXX could be layer violation to call sys/net from sys/netinet6
  */
 static int
-faithprefix(in6)
-	struct in6_addr *in6;
+faithprefix(struct in6_addr *in6)
 {
 	struct rtentry *rt;
 	struct sockaddr_in6 sin6;

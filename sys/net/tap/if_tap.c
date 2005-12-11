@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.22 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.23 2005/12/11 13:00:17 swildner Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -133,10 +133,7 @@ DEV_MODULE(if_tap, tapmodevent, NULL);
  * module event handler
  */
 static int
-tapmodevent(mod, type, data)
-	module_t	 mod;
-	int		 type;
-	void		*data;
+tapmodevent(module_t mod, int type, void *data)
 {
 	static int		 attached = 0;
 	struct ifnet		*ifp = NULL;
@@ -202,8 +199,7 @@ tapmodevent(mod, type, data)
  * to create interface
  */
 static void
-tapcreate(dev)
-	dev_t	dev;
+tapcreate(dev_t dev)
 {
 	struct ifnet		*ifp = NULL;
 	struct tap_softc	*tp = NULL;
@@ -372,8 +368,7 @@ tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
  * network interface initialization function
  */
 static void
-tapifinit(xtp)
-	void	*xtp;
+tapifinit(void *xtp)
 {
 	struct tap_softc	*tp = (struct tap_softc *)xtp;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -396,11 +391,7 @@ tapifinit(xtp)
  * MPSAFE
  */
 int
-tapifioctl(ifp, cmd, data, cr)
-	struct ifnet	*ifp;
-	u_long		 cmd;
-	caddr_t		 data;
-	struct ucred	*cr;
+tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct tap_softc 	*tp = (struct tap_softc *)(ifp->if_softc);
 	struct ifstat		*ifs = NULL;
@@ -449,8 +440,7 @@ tapifioctl(ifp, cmd, data, cr)
  * queue packets from higher level ready to put out
  */
 static void
-tapifstart(ifp)
-	struct ifnet	*ifp;
+tapifstart(struct ifnet *ifp)
 {
 	struct tap_softc	*tp = ifp->if_softc;
 
@@ -610,10 +600,7 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
  * least as much of a packet as can be read
  */
 static int
-tapread(dev, uio, flag)
-	dev_t		 dev;
-	struct uio	*uio;
-	int		 flag;
+tapread(dev_t dev, struct uio *uio, int flag)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
@@ -677,10 +664,7 @@ tapread(dev, uio, flag)
  * the cdevsw write interface - an atomic write is a packet - or else!
  */
 static int
-tapwrite(dev, uio, flag)
-	dev_t		 dev;
-	struct uio	*uio;
-	int		 flag;
+tapwrite(dev_t dev, struct uio *uio, int flag)
 {
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;

@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.13 2005/06/15 12:27:20 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.14 2005/12/11 13:00:17 swildner Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -162,8 +162,7 @@ static struct linesw pppdisc = {
 };
 
 void
-pppasyncattach(dummy)
-    void *dummy;
+pppasyncattach(void *dummy)
 {
     /* register line discipline */
     linesw[PPPDISC] = pppdisc;
@@ -245,9 +244,7 @@ pppopen(dev_t dev, struct tty *tp)
  * Mimics part of ttyclose().
  */
 static int
-pppclose(tp, flag)
-    struct tty *tp;
-    int flag;
+pppclose(struct tty *tp, int flag)
 {
     struct ppp_softc *sc;
 
@@ -272,8 +269,7 @@ pppclose(tp, flag)
  * Relinquish the interface unit to another device.
  */
 static void
-pppasyncrelinq(sc)
-    struct ppp_softc *sc;
+pppasyncrelinq(struct ppp_softc *sc)
 {
     crit_enter();
 
@@ -297,8 +293,7 @@ pppasyncrelinq(sc)
  * This gets called from the upper layer to notify a mtu change
  */
 static void
-pppasyncsetmtu(sc)
-struct ppp_softc *sc;
+pppasyncsetmtu(struct ppp_softc *sc)
 {
     struct tty *tp = (struct tty *) sc->sc_devp;
 
@@ -315,10 +310,7 @@ struct ppp_softc *sc;
  * reads on the tty file descriptor (ie: pppd).
  */
 static int
-pppread(tp, uio, flag)
-    struct tty *tp;
-    struct uio *uio;
-    int flag;
+pppread(struct tty *tp, struct uio *uio, int flag)
 {
     struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
     struct mbuf *m, *m0;
@@ -373,10 +365,7 @@ pppread(tp, uio, flag)
  * writes on the tty file descriptor (ie: pppd).
  */
 static int
-pppwrite(tp, uio, flag)
-    struct tty *tp;
-    struct uio *uio;
-    int flag;
+pppwrite(struct tty *tp, struct uio *uio, int flag)
 {
     struct ppp_softc *sc = (struct ppp_softc *)tp->t_sc;
     struct mbuf *m, *m0, **mp;
@@ -540,8 +529,7 @@ pppfcs(u_short fcs, u_char *cp, int len)
  * when there is data ready to be sent.
  */
 static void
-pppasyncstart(sc)
-    struct ppp_softc *sc;
+pppasyncstart(struct ppp_softc *sc)
 {
     struct tty *tp = (struct tty *) sc->sc_devp;
     struct mbuf *m;
@@ -724,8 +712,7 @@ pppasyncstart(sc)
  * the inq, at splsoftnet. The pppd daemon is to be woken up to do a read().
  */
 static void
-pppasyncctlp(sc)
-    struct ppp_softc *sc;
+pppasyncctlp(struct ppp_softc *sc)
 {
     struct tty *tp;
 
@@ -744,8 +731,7 @@ pppasyncctlp(sc)
  * Called at spltty or higher.
  */
 int
-pppstart(tp)
-    struct tty *tp;
+pppstart(struct tty *tp)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
 
@@ -782,8 +768,7 @@ pppstart(tp)
  * Timeout routine - try to start some more output.
  */
 static void
-ppp_timeout(x)
-    void *x;
+ppp_timeout(void *x)
 {
     struct ppp_softc *sc = (struct ppp_softc *) x;
     struct tty *tp = (struct tty *) sc->sc_devp;
@@ -798,8 +783,7 @@ ppp_timeout(x)
  * Allocate enough mbuf to handle current MRU.
  */
 static void
-pppgetm(sc)
-    struct ppp_softc *sc;
+pppgetm(struct ppp_softc *sc)
 {
     struct mbuf *m, **mp;
     int len;
@@ -832,9 +816,7 @@ static unsigned paritytab[8] = {
  * This is safe to be called while the upper half's netisr is preempted.
  */
 static int
-pppinput(c, tp)
-    int c;
-    struct tty *tp;
+pppinput(int c, struct tty *tp)
 {
     struct ppp_softc *sc;
     struct mbuf *m;
@@ -1085,9 +1067,7 @@ pppinput(c, tp)
 #define MAX_DUMP_BYTES	128
 
 static void
-ppplogchar(sc, c)
-    struct ppp_softc *sc;
-    int c;
+ppplogchar(struct ppp_softc *sc, int c)
 {
     if (c >= 0)
 	sc->sc_rawin[sc->sc_rawin_count++] = c;

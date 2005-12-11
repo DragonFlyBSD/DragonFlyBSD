@@ -32,7 +32,7 @@
  *
  *	@(#)slcompress.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/net/slcompress.c,v 1.16 1999/12/29 04:38:37 peter Exp $
- * $DragonFly: src/sys/net/ppp_layer/slcompress.c,v 1.3 2003/07/26 20:19:34 rob Exp $
+ * $DragonFly: src/sys/net/ppp_layer/slcompress.c,v 1.4 2005/12/11 13:00:17 swildner Exp $
  */
 
 /*
@@ -68,9 +68,7 @@
 #endif
 
 void
-sl_compress_init(comp, max_state)
-	struct slcompress *comp;
-	int max_state;
+sl_compress_init(struct slcompress *comp, int max_state)
 {
 	u_int i;
 	struct cstate *tstate = comp->tstate;
@@ -160,11 +158,8 @@ sl_compress_init(comp, max_state)
  * if m is an M_PKTHDR mbuf.
  */
 u_int
-sl_compress_tcp(m, ip, comp, compress_cid)
-	struct mbuf *m;
-	struct ip *ip;
-	struct slcompress *comp;
-	int compress_cid;
+sl_compress_tcp(struct mbuf *m, struct ip *ip, struct slcompress *comp,
+		int compress_cid)
 {
 	struct cstate *cs = comp->last_cs->cs_next;
 	u_int hlen = ip->ip_hl;
@@ -420,11 +415,7 @@ uncompressed:
 
 
 int
-sl_uncompress_tcp(bufp, len, type, comp)
-	u_char **bufp;
-	int len;
-	u_int type;
-	struct slcompress *comp;
+sl_uncompress_tcp(u_char **bufp, int len, u_int type, struct slcompress *comp)
 {
 	u_char *hdr, *cp;
 	int hlen, vjlen;
@@ -468,13 +459,8 @@ sl_uncompress_tcp(bufp, len, type, comp)
  * in *hdrp and its length in *hlenp.
  */
 int
-sl_uncompress_tcp_core(buf, buflen, total_len, type, comp, hdrp, hlenp)
-	u_char *buf;
-	int buflen, total_len;
-	u_int type;
-	struct slcompress *comp;
-	u_char **hdrp;
-	u_int *hlenp;
+sl_uncompress_tcp_core(u_char *buf, int buflen, int total_len, u_int type,
+		       struct slcompress *comp, u_char **hdrp, u_int *hlenp)
 {
 	u_char *cp;
 	u_int hlen, changes;

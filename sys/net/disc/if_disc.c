@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.8 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.9 2005/12/11 13:00:16 swildner Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static int discioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 /* ARGSUSED */
 static void
-discattach()
+discattach(void)
 {
 	struct ifnet *ifp = &discif;
 
@@ -112,11 +112,8 @@ static moduledata_t disc_mod = {
 DECLARE_MODULE(if_disc, disc_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 
 static int
-discoutput(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+discoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
 {
 	if ((m->m_flags & M_PKTHDR) == 0)
 		panic("discoutput no HDR");
@@ -148,10 +145,7 @@ discoutput(ifp, m, dst, rt)
 
 /* ARGSUSED */
 static void
-discrtrequest(cmd, rt, info)
-	int cmd;
-	struct rtentry *rt;
-	struct rt_addrinfo *info;
+discrtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 {
 	if (rt)
 		rt->rt_rmx.rmx_mtu = DSMTU;
@@ -162,11 +156,7 @@ discrtrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 static int
-discioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+discioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;

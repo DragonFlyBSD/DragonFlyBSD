@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.26 2005/12/01 21:15:54 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.27 2005/12/11 13:00:17 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -107,8 +107,7 @@ tunattach(void *dummy)
 }
 
 static void
-tuncreate(dev)
-	dev_t dev;
+tuncreate(dev_t dev)
 {
 	struct tun_softc *sc;
 	struct ifnet *ifp;
@@ -215,8 +214,7 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 }
 
 static int
-tuninit(ifp)
-	struct ifnet *ifp;
+tuninit(struct ifnet *ifp)
 {
 	struct tun_softc *tp = ifp->if_softc;
 	struct ifaddr *ifa;
@@ -257,11 +255,7 @@ tuninit(ifp)
  * MPSAFE
  */
 int
-tunifioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long	cmd;
-	caddr_t	data;
-	struct ucred *cr;
+tunifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct tun_softc *tp = ifp->if_softc;
@@ -303,11 +297,8 @@ tunifioctl(ifp, cmd, data, cr)
  * MPSAFE
  */
 int
-tunoutput(ifp, m0, dst, rt)
-	struct ifnet   *ifp;
-	struct mbuf    *m0;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
+	  struct rtentry *rt)
 {
 	struct tun_softc *tp = ifp->if_softc;
 	int error;
@@ -512,10 +503,7 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
  * least as much of a packet as can be read.
  */
 static	int
-tunread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+tunread(dev_t dev, struct uio *uio, int flag)
 {
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
@@ -564,10 +552,7 @@ tunread(dev, uio, flag)
  * the cdevsw write interface - an atomic write is a packet - or else!
  */
 static	int
-tunwrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+tunwrite(dev_t dev, struct uio *uio, int flag)
 {
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;

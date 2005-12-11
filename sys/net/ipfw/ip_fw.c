@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.14 2005/06/17 19:12:19 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.15 2005/12/11 13:00:16 swildner Exp $
  */
 
 #define        DEB(x)
@@ -1618,7 +1618,7 @@ dropit:
  * Must be called at splimp().
  */
 static void
-flush_rule_ptrs()
+flush_rule_ptrs(void)
 {
     struct ip_fw *fcp ;
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.6 2004/06/02 14:42:59 eirikn Exp $	*/
+/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.7 2005/12/11 13:00:17 swildner Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -120,9 +120,7 @@ struct compressor ppp_deflate_draft = {
  * Space allocation and freeing routines for use by zlib routines.
  */
 void *
-z_alloc(notused, items, size)
-    void *notused;
-    u_int items, size;
+z_alloc(void *notused, u_int items, u_int size)
 {
     void *ptr;
 
@@ -131,9 +129,7 @@ z_alloc(notused, items, size)
 }
 
 void
-z_free(notused, ptr)
-    void *notused;
-    void *ptr;
+z_free(void *notused, void *ptr)
 {
     free(ptr, M_DEVBUF);
 }
@@ -142,9 +138,7 @@ z_free(notused, ptr)
  * Allocate space for a compressor.
  */
 static void *
-z_comp_alloc(options, opt_len)
-    u_char *options;
-    int opt_len;
+z_comp_alloc(u_char *options, int opt_len)
 {
     struct deflate_state *state;
     int w_size;
@@ -177,8 +171,7 @@ z_comp_alloc(options, opt_len)
 }
 
 static void
-z_comp_free(arg)
-    void *arg;
+z_comp_free(void *arg)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -187,10 +180,8 @@ z_comp_free(arg)
 }
 
 static int
-z_comp_init(arg, options, opt_len, unit, hdrlen, debug)
-    void *arg;
-    u_char *options;
-    int opt_len, unit, hdrlen, debug;
+z_comp_init(void *arg, u_char *options, int opt_len, int unit, int hdrlen,
+	    int debug)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -213,8 +204,7 @@ z_comp_init(arg, options, opt_len, unit, hdrlen, debug)
 }
 
 static void
-z_comp_reset(arg)
-    void *arg;
+z_comp_reset(void *arg)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -222,12 +212,14 @@ z_comp_reset(arg)
     deflateReset(&state->strm);
 }
 
+/*
+ * Parameters:
+ *	mret:	compressed packet (out)
+ *	mp:	uncompressed packet (in)
+ */
 int
-z_compress(arg, mret, mp, orig_len, maxolen)
-    void *arg;
-    struct mbuf **mret;		/* compressed packet (out) */
-    struct mbuf *mp;		/* uncompressed packet (in) */
-    int orig_len, maxolen;
+z_compress(void *arg, struct mbuf **mret, struct mbuf *mp, int orig_len,
+	   int maxolen)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
     u_char *rptr, *wptr;
@@ -348,9 +340,7 @@ z_compress(arg, mret, mp, orig_len, maxolen)
 }
 
 static void
-z_comp_stats(arg, stats)
-    void *arg;
-    struct compstat *stats;
+z_comp_stats(void *arg, struct compstat *stats)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
     u_int out;
@@ -370,9 +360,7 @@ z_comp_stats(arg, stats)
  * Allocate space for a decompressor.
  */
 static void *
-z_decomp_alloc(options, opt_len)
-    u_char *options;
-    int opt_len;
+z_decomp_alloc(u_char *options, int opt_len)
 {
     struct deflate_state *state;
     int w_size;
@@ -404,8 +392,7 @@ z_decomp_alloc(options, opt_len)
 }
 
 static void
-z_decomp_free(arg)
-    void *arg;
+z_decomp_free(void *arg)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -414,10 +401,8 @@ z_decomp_free(arg)
 }
 
 static int
-z_decomp_init(arg, options, opt_len, unit, hdrlen, mru, debug)
-    void *arg;
-    u_char *options;
-    int opt_len, unit, hdrlen, mru, debug;
+z_decomp_init(void *arg, u_char *options, int opt_len, int unit, int hdrlen,
+	      int mru, int debug)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -441,8 +426,7 @@ z_decomp_init(arg, options, opt_len, unit, hdrlen, mru, debug)
 }
 
 static void
-z_decomp_reset(arg)
-    void *arg;
+z_decomp_reset(void *arg)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
 
@@ -467,9 +451,7 @@ z_decomp_reset(arg)
  * compression, even though they are detected by inspecting the input.
  */
 int
-z_decompress(arg, mi, mop)
-    void *arg;
-    struct mbuf *mi, **mop;
+z_decompress(void *arg, struct mbuf *mi, struct mbuf **mop)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
     struct mbuf *mo, *mo_head;
@@ -615,9 +597,7 @@ z_decompress(arg, mi, mop)
  * Incompressible data has arrived - add it to the history.
  */
 static void
-z_incomp(arg, mi)
-    void *arg;
-    struct mbuf *mi;
+z_incomp(void *arg, struct mbuf *mi)
 {
     struct deflate_state *state = (struct deflate_state *) arg;
     u_char *rptr;

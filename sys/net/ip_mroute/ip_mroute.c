@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.18 2005/08/15 16:46:20 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.19 2005/12/11 13:00:16 swildner Exp $
  */
 
 #include "opt_mrouting.h"
@@ -2678,7 +2678,7 @@ unschedule_bw_meter(struct bw_meter *x)
  * looking at.
  */
 static void
-bw_meter_process()
+bw_meter_process(void)
 {
     static uint32_t last_tv_sec;	/* last time we processed this */
 

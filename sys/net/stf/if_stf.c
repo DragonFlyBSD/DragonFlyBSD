@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.15 2005/11/28 17:13:46 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.16 2005/12/11 13:00:17 swildner Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -155,10 +155,7 @@ static void stf_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static int stf_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int
-stfmodevent(mod, type, data)
-	module_t mod;
-	int type;
-	void *data;
+stfmodevent(module_t mod, int type, void *data)
 {
 	struct stf_softc *sc;
 	int err;
@@ -216,11 +213,7 @@ static moduledata_t stf_mod = {
 DECLARE_MODULE(if_stf, stf_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 
 static int
-stf_encapcheck(m, off, proto, arg)
-	const struct mbuf *m;
-	int off;
-	int proto;
-	void *arg;
+stf_encapcheck(const struct mbuf *m, int off, int proto, void *arg)
 {
 	struct ip ip;
 	struct in6_ifaddr *ia6;
@@ -278,8 +271,7 @@ stf_encapcheck(m, off, proto, arg)
 }
 
 static struct in6_ifaddr *
-stf_getsrcifa6(ifp)
-	struct ifnet *ifp;
+stf_getsrcifa6(struct ifnet *ifp)
 {
 	struct ifaddr *ia;
 	struct in_ifaddr *ia4;
@@ -309,11 +301,8 @@ stf_getsrcifa6(ifp)
 }
 
 static int
-stf_output(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	   struct rtentry *rt)
 {
 	struct stf_softc *sc;
 	struct sockaddr_in6 *dst6;
@@ -413,11 +402,12 @@ stf_output(ifp, m, dst, rt)
 	return ip_output(m, NULL, &sc->sc_ro, 0, NULL, NULL);
 }
 
+/*
+ * Parameters:
+ *	inifp:	incoming interface
+ */
 static int
-stf_checkaddr4(sc, in, inifp)
-	struct stf_softc *sc;
-	struct in_addr *in;
-	struct ifnet *inifp;	/* incoming interface */
+stf_checkaddr4(struct stf_softc *sc, struct in_addr *in, struct ifnet *inifp)
 {
 	struct in_ifaddr *ia4;
 
@@ -473,11 +463,12 @@ stf_checkaddr4(sc, in, inifp)
 	return 0;
 }
 
+/*
+ * Parameters:
+ *	inifp:	incoming interface
+ */
 static int
-stf_checkaddr6(sc, in6, inifp)
-	struct stf_softc *sc;
-	struct in6_addr *in6;
-	struct ifnet *inifp;	/* incoming interface */
+stf_checkaddr6(struct stf_softc *sc, struct in6_addr *in6, struct ifnet *inifp)
 {
 	/*
 	 * check 6to4 addresses
@@ -586,10 +577,7 @@ in_stf_input(struct mbuf *m, ...)
 
 /* ARGSUSED */
 static void
-stf_rtrequest(cmd, rt, info)
-	int cmd;
-	struct rtentry *rt;
-	struct rt_addrinfo *info;
+stf_rtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 {
 
 	if (rt)
@@ -597,11 +585,7 @@ stf_rtrequest(cmd, rt, info)
 }
 
 static int
-stf_ioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+stf_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr;

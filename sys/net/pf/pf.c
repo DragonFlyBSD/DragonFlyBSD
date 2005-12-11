@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.7 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.8 2005/12/11 13:00:17 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1071,7 +1071,7 @@ pf_addr_wrap_neq(struct pf_addr_wrap *aw1, struct pf_addr_wrap *aw2)
 }
 
 void
-pf_update_anchor_rules()
+pf_update_anchor_rules(void)
 {
 	struct pf_rule	*rule;
 	int		 i;
