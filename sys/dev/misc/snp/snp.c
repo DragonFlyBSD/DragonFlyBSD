@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.11 2005/06/16 16:27:05 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -120,9 +120,7 @@ static int		snp_in (struct snoop *snp, char *buf, int n);
 static int		snp_modevent (module_t mod, int what, void *arg);
 
 static int
-snplclose(tp, flag)
-	struct tty *tp;
-	int flag;
+snplclose(struct tty *tp, int flag)
 {
 	struct snoop *snp;
 	int error;
@@ -136,10 +134,7 @@ snplclose(tp, flag)
 }
 
 static int
-snplwrite(tp, uio, flag)
-	struct tty *tp;
-	struct uio *uio;
-	int flag;
+snplwrite(struct tty *tp, struct uio *uio, int flag)
 {
 	struct iovec iov;
 	struct uio uio2;
@@ -179,8 +174,7 @@ snplwrite(tp, uio, flag)
 }
 
 static struct tty *
-snpdevtotty(dev)
-	dev_t dev;
+snpdevtotty(dev_t dev)
 {
 	if ((dev_dflags(dev) & D_TTY) == 0)
 		return (NULL);
@@ -193,10 +187,7 @@ snpdevtotty(dev)
 				 */
 
 static int
-snpwrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+snpwrite(dev_t dev, struct uio *uio, int flag)
 {
 	struct snoop *snp;
 	struct tty *tp;
@@ -232,10 +223,7 @@ tty_input:
 
 
 static int
-snpread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+snpread(dev_t dev, struct uio *uio, int flag)
 {
 	struct snoop *snp;
 	int error, len, n, nblen;
@@ -297,10 +285,7 @@ snpread(dev, uio, flag)
 }
 
 static int
-snp_in(snp, buf, n)
-	struct snoop *snp;
-	char *buf;
-	int n;
+snp_in(struct snoop *snp, char *buf, int n)
 {
 	int s_free, s_tail;
 	int len, nblen;
@@ -414,8 +399,7 @@ snpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 
 
 static int
-snp_detach(snp)
-	struct snoop *snp;
+snp_detach(struct snoop *snp)
 {
 	struct tty *tp;
 
@@ -466,8 +450,7 @@ snpclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-snp_down(snp)
-	struct snoop *snp;
+snp_down(struct snoop *snp)
 {
 
 	if (snp->snp_blen != SNOOP_MINLEN) {
@@ -588,10 +571,7 @@ snppoll(dev_t dev, int events, d_thread_t *td)
 }
 
 static int
-snp_modevent(mod, type, data)
-	module_t mod;
-	int type;
-	void *data;
+snp_modevent(module_t mod, int type, void *data)
 {
 
 	switch (type) {

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.10 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.11 2005/12/11 01:54:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -108,9 +108,7 @@ static struct isa_pnp_id ep_ids[] = {
  */
 
 static u_int16_t
-get_eeprom_data(id_port, offset)
-	int	id_port;
-	int	offset;
+get_eeprom_data(int id_port, int offset)
 {
 	int		i;
 	u_int16_t	data = 0;
@@ -125,9 +123,7 @@ get_eeprom_data(id_port, offset)
 }
 
 const char *
-ep_isa_match_id (id, isa_devs)
-	u_int32_t	      id;
-	struct isa_ident *      isa_devs;
+ep_isa_match_id(u_int32_t id, struct isa_ident *isa_devs)
 {
 	struct isa_ident *      i = isa_devs;
 	while(i->name != NULL) {
@@ -147,7 +143,7 @@ ep_isa_match_id (id, isa_devs)
 }
 
 static int
-ep_isa_identify (driver_t *driver, device_t parent)
+ep_isa_identify(driver_t *driver, device_t parent)
 {
 	int		tag = EP_LAST_TAG;
 	int		found = 0;
@@ -280,7 +276,7 @@ ep_isa_identify (driver_t *driver, device_t parent)
 }
 
 static int
-ep_isa_probe (device_t dev)
+ep_isa_probe(device_t dev)
 {
 	int	error = 0;
 
@@ -307,7 +303,7 @@ ep_isa_probe (device_t dev)
 }
 
 static int
-ep_isa_attach (device_t dev)
+ep_isa_attach(device_t dev)
 {
 	struct ep_softc *	sc = device_get_softc(dev);
 	int			error = 0;

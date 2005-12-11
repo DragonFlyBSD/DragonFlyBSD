@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.9 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.10 2005/12/11 01:54:08 swildner Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -123,8 +123,7 @@ else if ((inb(KSR)&0xF7)==0x14) sc->sc_type=1;
  *  Attach device and print the type of card to the screen.
  */
 static int
-gpattach(isdp)
-	struct isa_device *isdp;
+gpattach(struct isa_device *isdp)
 {
 	struct   gpib_softc   *sc = &gpib_sc;
 
@@ -150,11 +149,7 @@ gpattach(isdp)
  * i.e. even if gpib5 is open, we can't open another minor device
  */
 static	int
-gpopen(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+gpopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct gpib_softc *sc = &gpib_sc;
 	u_char unit;
@@ -228,11 +223,7 @@ enableremote(unit);
  *	Close gpib device.
  */
 static	int
-gpclose(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+gpclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	struct gpib_softc *sc = &gpib_sc;
         unsigned char unit;
@@ -331,10 +322,7 @@ while (!(inb(ISR1)&2)&&(status==EWOULDBLOCK));
  *    by minor(dev).
  */
 static	int
-gpwrite(dev, uio, ioflag)
-	dev_t dev;
-	struct uio *uio;
-	int ioflag;
+gpwrite(dev_t dev, struct uio *uio, int ioflag)
 {
 	int err,count;
 
@@ -479,7 +467,7 @@ static void showregs() {
   National Instruments.  They should give you one if you call them*/
 
 static int
-initgpib() {
+initgpib(void) {
   outb(CMDR,0x20);
   outb(CFG,0x16);
   outb(IMR3,0);
@@ -529,7 +517,7 @@ return(0);
 /*This is kind of Brute force..  But it works*/
 
 static void 
-closegpib() 
+closegpib(void) 
 {
    outb(AUXMR,chip_reset);
 }

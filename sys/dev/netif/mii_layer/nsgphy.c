@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.11 2005/10/31 12:49:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -96,8 +96,8 @@ void	nsgphy_status (struct mii_softc *);
 static int	nsgphy_mii_phy_auto (struct mii_softc *, int);
 extern void	mii_phy_auto_timeout (void *);
 
-static int nsgphy_probe(dev)
-	device_t		dev;
+static int
+nsgphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -117,8 +117,8 @@ static int nsgphy_probe(dev)
 	return(ENXIO);
 }
 
-static int nsgphy_attach(dev)
-	device_t		dev;
+static int
+nsgphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -181,8 +181,8 @@ static int nsgphy_attach(dev)
 	return(0);
 }
 
-static int nsgphy_detach(dev)
-	device_t		dev;
+static int
+nsgphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -196,11 +196,9 @@ static int nsgphy_detach(dev)
 
 	return(0);
 }
+
 int
-nsgphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+nsgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
@@ -343,8 +341,7 @@ nsgphy_service(sc, mii, cmd)
 }
 
 void
-nsgphy_status(sc)
-	struct mii_softc *sc;
+nsgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	int bmsr, bmcr, physup, anlpar, gstat;
@@ -413,9 +410,7 @@ nsgphy_status(sc)
 
 
 static int
-nsgphy_mii_phy_auto(mii, waitfor)
-	struct mii_softc *mii;
-	int waitfor;
+nsgphy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 {
 	int bmsr, ktcr = 0, i;
 

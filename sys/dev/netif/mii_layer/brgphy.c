@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.11 2005/10/31 12:49:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -93,8 +93,8 @@ static void	bcm5411_load_dspcode(struct mii_softc *);
 static void	bcm5703_load_dspcode(struct mii_softc *);
 static int	brgphy_mii_model;
 
-static int brgphy_probe(dev)
-	device_t		dev;
+static int
+brgphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -146,8 +146,7 @@ static int brgphy_probe(dev)
 }
 
 static int
-brgphy_attach(dev)
-	device_t		dev;
+brgphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -203,8 +202,7 @@ brgphy_attach(dev)
 }
 
 static int
-brgphy_detach(dev)
-	device_t		dev;
+brgphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -218,10 +216,7 @@ brgphy_detach(dev)
 }
 
 static int
-brgphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+brgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg, speed, gig;
@@ -385,8 +380,7 @@ setit:
 }
 
 void
-brgphy_status(sc)
-	struct mii_softc *sc;
+brgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -448,8 +442,7 @@ brgphy_status(sc)
 
 
 static int
-brgphy_mii_phy_auto(mii)
-	struct mii_softc *mii;
+brgphy_mii_phy_auto(struct mii_softc *mii)
 {
 	int ktcr = 0;
 

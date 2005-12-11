@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.7 2005/06/06 21:48:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.8 2005/12/11 01:54:07 swildner Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -211,10 +211,7 @@ static __inline u_int8_t nsp_cr_read_1 (bus_space_tag_t bst, bus_space_handle_t 
 static __inline void nsp_cr_write_1 (bus_space_tag_t bst, bus_space_handle_t bsh, bus_addr_t ofs, u_int8_t va);
 
 static __inline u_int8_t
-nsp_cr_read_1(bst, bsh, ofs)
-	bus_space_tag_t bst;
-	bus_space_handle_t bsh;
-	bus_addr_t ofs;
+nsp_cr_read_1(bus_space_tag_t bst, bus_space_handle_t bsh, bus_addr_t ofs)
 {
 	
 	bus_space_write_1(bst, bsh, nsp_idxr, ofs);
@@ -222,11 +219,8 @@ nsp_cr_read_1(bst, bsh, ofs)
 }
 
 static __inline void 
-nsp_cr_write_1(bst, bsh, ofs, va)
-	bus_space_tag_t bst;
-	bus_space_handle_t bsh;
-	bus_addr_t ofs;
-	u_int8_t va;
+nsp_cr_write_1(bus_space_tag_t bst, bus_space_handle_t bsh, bus_addr_t ofs,
+	       u_int8_t va)
 {
 
 	bus_space_write_1(bst, bsh, nsp_idxr, ofs);
@@ -234,9 +228,7 @@ nsp_cr_write_1(bst, bsh, ofs, va)
 }
 	
 static int
-nsp_expect_signal(sc, curphase, mask)
-	struct nsp_softc *sc;
-	u_int8_t curphase, mask;
+nsp_expect_signal(struct nsp_softc *sc, u_int8_t curphase, u_int8_t mask)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -265,8 +257,7 @@ nsp_expect_signal(sc, curphase, mask)
 }
 
 static void
-nsphw_init(sc)
-	struct nsp_softc *sc;
+nsphw_init(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -312,8 +303,7 @@ nsphw_init(sc)
  * scsi low interface
  ****************************************************/
 static void
-nsphw_attention(sc)
-	struct nsp_softc *sc;
+nsphw_attention(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -325,8 +315,7 @@ nsphw_attention(sc)
 }
 
 static void
-nsphw_bus_reset(sc)
-	struct nsp_softc *sc;
+nsphw_bus_reset(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -344,8 +333,7 @@ nsphw_bus_reset(sc)
 }
 
 static void
-nsphw_selection_done_and_expect_msgout(sc)
-	struct nsp_softc *sc;
+nsphw_selection_done_and_expect_msgout(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -366,9 +354,7 @@ nsphw_selection_done_and_expect_msgout(sc)
 }
 
 static int
-nsphw_start_selection(sc, cb)
-	struct nsp_softc *sc;
-	struct slccb *cb;
+nsphw_start_selection(struct nsp_softc *sc, struct slccb *cb)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -470,9 +456,7 @@ nsphw_start_selection(sc, cb)
 }
 
 static int
-nsp_world_start(sc, fdone)
-	struct nsp_softc *sc;
-	int fdone;
+nsp_world_start(struct nsp_softc *sc, int fdone)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -521,10 +505,7 @@ static struct ncp_synch_data ncp_sync_data_20M[] = {
 };
 
 static int
-nsp_msg(sc, ti, msg)
-	struct nsp_softc *sc;
-	struct targ_info *ti;
-	u_int msg;
+nsp_msg(struct nsp_softc *sc, struct targ_info *ti, u_int msg)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -585,10 +566,7 @@ nsp_msg(sc, ti, msg)
 }
 
 static int
-nsp_targ_init(sc, ti, action)
-	struct nsp_softc *sc;
-	struct targ_info *ti;
-	int action;
+nsp_targ_init(struct nsp_softc *sc, struct targ_info *ti, int action)
 {
 	struct nsp_targ_info *nti = (void *) ti;
 
@@ -604,9 +582,7 @@ nsp_targ_init(sc, ti, action)
 }	
 
 static void
-nsp_start_timer(sc, time)
-	struct nsp_softc *sc;
-	int time;
+nsp_start_timer(struct nsp_softc *sc, int time)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -619,10 +595,7 @@ nsp_start_timer(sc, time)
  * General probe attach
  **************************************************************/
 int
-nspprobesubr(iot, ioh, dvcfg)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	u_int dvcfg;
+nspprobesubr(bus_space_tag_t iot, bus_space_handle_t ioh, u_int dvcfg)
 {
 	u_int8_t regv;
 
@@ -633,9 +606,7 @@ nspprobesubr(iot, ioh, dvcfg)
 }
 
 int
-nspprint(aux, name)
-	void *aux;
-	const char *name;
+nspprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
@@ -644,8 +615,7 @@ nspprint(aux, name)
 }
 
 void
-nspattachsubr(sc)
-	struct nsp_softc *sc;
+nspattachsubr(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -664,8 +634,7 @@ nspattachsubr(sc)
  * PDMA functions
  **************************************************************/
 static u_int
-nsp_fifo_count(sc)
-	struct nsp_softc *sc;
+nsp_fifo_count(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -679,8 +648,7 @@ nsp_fifo_count(sc)
 }
 
 static u_int
-nsp_request_count(sc)
-	struct nsp_softc *sc;
+nsp_request_count(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -694,11 +662,7 @@ nsp_request_count(sc)
 }
 
 static void
-nsp_setup_fifo(sc, on, direction, datalen)
-	struct nsp_softc *sc;
-	int on;
-	int direction;
-	int datalen;
+nsp_setup_fifo(struct nsp_softc *sc, int on, int direction, int datalen)
 {
 	u_int8_t xfermode;
 
@@ -753,9 +717,7 @@ out:
 }
 
 static void
-nsp_pdma_end(sc, ti)
-	struct nsp_softc *sc;
-	struct targ_info *ti;
+nsp_pdma_end(struct nsp_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -823,10 +785,7 @@ nsp_pdma_end(sc, ti)
 #define	WFIFO_CRIT	32
 
 static void
-nsp_data_padding(sc, direction, count)
-	struct nsp_softc *sc;
-	int direction;
-	u_int count;
+nsp_data_padding(struct nsp_softc *sc, int direction, u_int count)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -849,9 +808,7 @@ nsp_data_padding(sc, direction, count)
 }
 
 static int
-nsp_read_fifo(sc, suspendio)
-	struct nsp_softc *sc;
-	int suspendio;
+nsp_read_fifo(struct nsp_softc *sc, int suspendio)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -940,9 +897,7 @@ nsp_read_fifo(sc, suspendio)
 }
 
 static int
-nsp_write_fifo(sc, suspendio)
-	struct nsp_softc *sc;
-	int suspendio;
+nsp_write_fifo(struct nsp_softc *sc, int suspendio)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1012,8 +967,7 @@ nsp_write_fifo(sc, suspendio)
 }
 
 static int
-nsp_wait_interrupt(sc)
-	struct nsp_softc *sc;
+nsp_wait_interrupt(struct nsp_softc *sc)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -1038,9 +992,7 @@ nsp_wait_interrupt(sc)
 }
 
 static void
-nsp_pio_read(sc, suspendio)
-	struct nsp_softc *sc;
-	int suspendio;
+nsp_pio_read(struct nsp_softc *sc, int suspendio)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1117,9 +1069,7 @@ ReadLoop:
 }
 
 static void
-nsp_pio_write(sc, suspendio)
-	struct nsp_softc *sc;
-	int suspendio;
+nsp_pio_write(struct nsp_softc *sc, int suspendio)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1228,10 +1178,7 @@ WriteLoop:
 }
 
 static int
-nsp_negate_signal(sc, mask, s)
-	struct nsp_softc *sc;
-	u_int8_t mask;
-	u_char *s;
+nsp_negate_signal(struct nsp_softc *sc, u_int8_t mask, u_char *s)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1254,12 +1201,8 @@ nsp_negate_signal(sc, mask, s)
 }
 
 static int
-nsp_xfer(sc, buf, len, phase, clear_atn)
-	struct nsp_softc *sc;
-	u_int8_t *buf;
-	int len;
-	int phase;
-	int clear_atn;
+nsp_xfer(struct nsp_softc *sc, u_int8_t *buf, int len, int phase,
+	 int clear_atn)
 {
 	bus_space_tag_t bst = sc->sc_iot;
 	bus_space_handle_t bsh = sc->sc_ioh;
@@ -1297,8 +1240,7 @@ out:
  * disconnect & reselect (HW low)
  **************************************************************/
 static int
-nsp_reselected(sc)
-	struct nsp_softc *sc;
+nsp_reselected(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1328,9 +1270,7 @@ nsp_reselected(sc)
 }
 
 static int
-nsp_disconnected(sc, ti)
-	struct nsp_softc *sc;
-	struct targ_info *ti;
+nsp_disconnected(struct nsp_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1358,10 +1298,8 @@ nsp_disconnected(sc, ti)
 static void nsp_error (struct nsp_softc *, u_char *, u_int8_t, u_int8_t, u_int8_t);
 
 static void
-nsp_error(sc, s, isrc, ph, irqphs)
-	struct nsp_softc *sc;
-	u_char *s;
-	u_int8_t isrc, ph, irqphs;
+nsp_error(struct nsp_softc *sc, u_char *s, u_int8_t isrc, u_int8_t ph,
+	  u_int8_t irqphs)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -1371,8 +1309,7 @@ nsp_error(sc, s, isrc, ph, irqphs)
 }
 
 static int
-nsp_target_nexus_establish(sc)
-	struct nsp_softc *sc;
+nsp_target_nexus_establish(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -1390,16 +1327,14 @@ nsp_target_nexus_establish(sc)
 }
 
 static int
-nsp_lun_nexus_establish(sc)
-	struct nsp_softc *sc;
+nsp_lun_nexus_establish(struct nsp_softc *sc)
 {
 
 	return 0;
 }
 
 static int
-nsp_ccb_nexus_establish(sc)
-	struct nsp_softc *sc;
+nsp_ccb_nexus_establish(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -1434,10 +1369,7 @@ nsp_ccb_nexus_establish(sc)
 }
 
 static int
-nsp_phase_match(sc, phase, stat)
-	struct nsp_softc *sc;
-	u_int8_t phase;
-	u_int8_t stat;
+nsp_phase_match(struct nsp_softc *sc, u_int8_t phase, u_int8_t stat)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -1455,8 +1387,7 @@ nsp_phase_match(sc, phase, stat)
 }
 
 int
-nspintr(arg)
-	void *arg;
+nspintr(void *arg)
 {
 	struct nsp_softc *sc = arg;
 	struct scsi_low_softc *slp = &sc->sc_sclow;
@@ -1867,8 +1798,7 @@ timerout:
 }
 
 static int
-nsp_timeout(sc)
-	struct nsp_softc *sc;
+nsp_timeout(struct nsp_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;

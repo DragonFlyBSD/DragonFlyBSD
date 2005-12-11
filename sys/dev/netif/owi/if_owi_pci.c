@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.8.2.3 2002/06/16 18:07:18 nsayer Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi_pci.c,v 1.2 2005/05/24 09:52:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi_pci.c,v 1.3 2005/12/11 01:54:09 swildner Exp $
  */
 
 /*
@@ -108,8 +108,7 @@ static struct {
 DRIVER_MODULE(if_owi, pci, wi_pci_driver, owi_devclass, 0, 0);
 
 static int
-wi_pci_probe(dev)
-	device_t	dev;
+wi_pci_probe(device_t dev)
 {
 	struct wi_softc		*sc;
 	int i;

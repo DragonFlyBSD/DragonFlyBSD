@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.15 2005/05/05 22:57:44 swildner Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.16 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include "opt_bus.h"
@@ -94,7 +94,7 @@ static devclass_t agp_devclass;
 /* Helper functions for implementing chipset mini drivers. */
 
 void
-agp_flush_cache()
+agp_flush_cache(void)
 {
 #ifdef __i386__
 	wbinvd();
@@ -816,7 +816,7 @@ agp_mmap(dev_t kdev, vm_offset_t offset, int prot)
 /* Implementation of the kernel api */
 
 device_t
-agp_find_device()
+agp_find_device(void)
 {
 	if (!agp_devclass)
 		return 0;

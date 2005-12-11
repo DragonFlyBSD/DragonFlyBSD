@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.8 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.9 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -101,8 +101,8 @@ DRIVER_MODULE(pnphy, miibus, pnphy_driver, pnphy_devclass, 0, 0);
 int	pnphy_service (struct mii_softc *, struct mii_data *, int);
 void	pnphy_status (struct mii_softc *);
 
-static int pnphy_probe(dev)
-	device_t		dev;
+static int
+pnphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -121,8 +121,8 @@ static int pnphy_probe(dev)
 	return (0);
 }
 
-static int pnphy_attach(dev)
-	device_t		dev;
+static int
+pnphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -165,8 +165,8 @@ static int pnphy_attach(dev)
 	return(0);
 }
 
-static int pnphy_detach(dev)
-	device_t		dev;
+static int
+pnphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -180,10 +180,7 @@ static int pnphy_detach(dev)
 }
 
 int
-pnphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+pnphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct dc_softc		*dc_sc;
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -278,8 +275,7 @@ pnphy_service(sc, mii, cmd)
 }
 
 void
-pnphy_status(sc)
-	struct mii_softc *sc;
+pnphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	int reg;

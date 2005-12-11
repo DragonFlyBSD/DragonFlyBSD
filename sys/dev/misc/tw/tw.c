@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.14 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
  *
  */
 
@@ -307,7 +307,8 @@ static int twdelaycount;
  * fairly forgiving.
  */
 
-static void twdelay25(void)
+static void
+twdelay25(void)
 {
   int cnt;
   for(cnt = twdelaycount; cnt; cnt--);	/* Should take about 25us */
@@ -320,7 +321,8 @@ static void twdelay25(void)
  * if we happen to be interrupted during the delay.
  */
 
-static void twdelayn(int n)
+static void
+twdelayn(int n)
 {
 #ifdef HIRESTIME
   int t, d;
@@ -342,8 +344,8 @@ static void twdelayn(int n)
   }
 }
 
-static int twprobe(idp)
-     struct isa_device *idp;
+static int
+twprobe(struct isa_device *idp)
 {
   struct tw_sc sc;
   int d;
@@ -392,8 +394,8 @@ static int twprobe(idp)
   return(0);
 }
 
-static int twattach(idp)
-	struct isa_device *idp;
+static int
+twattach(struct isa_device *idp)
 {
   struct tw_sc *sc;
   int	unit;
@@ -409,11 +411,8 @@ static int twattach(idp)
   return (1);
 }
 
-int twopen(dev, flag, mode, td)
-     dev_t dev;
-     int flag;
-     int mode;
-     struct thread *td;
+int
+twopen(dev_t dev, int flag, int mode, struct thread *td)
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
@@ -428,11 +427,8 @@ int twopen(dev, flag, mode, td)
   return(0);
 }
 
-int twclose(dev, flag, mode, td)
-     dev_t dev;
-     int flag;
-     int mode;
-     struct thread *td;
+int
+twclose(dev_t dev, int flag, int mode, struct thread *td)
 {
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
@@ -443,10 +439,8 @@ int twclose(dev, flag, mode, td)
   return(0);
 }
 
-int twread(dev, uio, ioflag)
-     dev_t dev;
-     struct uio *uio;
-     int ioflag;
+int
+twread(dev_t dev, struct uio *uio, int ioflag)
 {
   u_char buf[3];
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
@@ -461,10 +455,8 @@ int twread(dev, uio, ioflag)
   return(error);
 }
 
-int twwrite(dev, uio, ioflag)
-     dev_t dev;
-     struct uio *uio;
-     int ioflag;
+int
+twwrite(dev_t dev, struct uio *uio, int ioflag)
 {
   struct tw_sc *sc;
   int house, key, reps;
@@ -533,10 +525,8 @@ int twwrite(dev, uio, ioflag)
  * Determine if there is data available for reading
  */
 
-int twpoll(dev, events, td)
-     dev_t dev;
-     int events;
-     struct thread *td;
+int
+twpoll(dev_t dev, int events, struct thread *td)
 {
   struct tw_sc *sc;
   int revents = 0;
@@ -680,9 +670,8 @@ static char *X10_KEY_LABEL[32] = {
 
 #define TWRETRY		10		/* Try 10 times to sync with AC line */
 
-static int twsend(sc, h, k, cnt)
-struct tw_sc *sc;
-int h, k, cnt;
+static int
+twsend(struct tw_sc *sc, int h, int k, int cnt)
 {
   int i;
   int port = sc->sc_port;
@@ -766,8 +755,8 @@ int h, k, cnt;
  * X-10 packet.
  */
 
-static int wait_for_zero(sc)
-struct tw_sc *sc;
+static int
+wait_for_zero(struct tw_sc *sc)
 {
   int i, old, new, max;
   int port = sc->sc_port + tw_zcport;
@@ -798,8 +787,8 @@ struct tw_sc *sc;
  * last bit was transmitted.
  */
 
-static int next_zero(sc)
-struct tw_sc *sc;
+static int
+next_zero(struct tw_sc *sc)
 {
   int d;
 #ifdef HIRESTIME
@@ -819,9 +808,8 @@ struct tw_sc *sc;
  * Should be called from a critical section.
  */
 
-static int twputpkt(sc, p)
-struct tw_sc *sc;
-u_char *p;
+static int
+twputpkt(struct tw_sc *sc, u_char *p)
 {
   int i, next;
 
@@ -850,10 +838,8 @@ u_char *p;
  * Should be called from a critical section.
  */
 
-static int twgetbytes(sc, p, cnt)
-struct tw_sc *sc;
-u_char *p;
-int cnt;
+static int
+twgetbytes(struct tw_sc *sc, u_char *p, int cnt)
 {
   int error;
 
@@ -876,8 +862,7 @@ int cnt;
  */
 
 static void
-twabortrcv(arg)
-	void *arg;
+twabortrcv(void *arg)
 {
   struct tw_sc *sc = arg;
   u_char pkt[3];
@@ -918,7 +903,8 @@ tw_is_within(int value, int expected, int tolerance)
  * reconstruct the transmission without having to poll.
  */
 
-static void twintr(void *arg)
+static void
+twintr(void *arg)
 {
   int unit = (int)arg;
   struct tw_sc *sc = &tw_sc[unit];
@@ -1094,7 +1080,8 @@ static void twintr(void *arg)
   }
 }
 
-static void twdebugtimes(struct tw_sc *sc)
+static void
+twdebugtimes(struct tw_sc *sc)
 {
     int i;
     for (i = 0; (i < sc->sc_no_rcv) && (i < SC_RCV_TIME_LEN); i++)
@@ -1110,7 +1097,8 @@ static void twdebugtimes(struct tw_sc *sc)
  * or reception is on schedule.
  */
 
-static void twsetuptimes(int *a)
+static void
+twsetuptimes(int *a)
 {
   struct timeval tv;
   int i, t;
@@ -1130,7 +1118,8 @@ static void twsetuptimes(int *a)
  * on schedule.
  */
 
-static int twchecktime(int target, int tol)
+static int
+twchecktime(int target, int tol)
 {
   struct timeval tv;
   int t, d;

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.15 2005/08/25 18:48:19 drhodus Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.16 2005/12/11 01:54:09 swildner Exp $
  */
 
 /*
@@ -398,10 +398,8 @@ ums_detach(device_t self)
 }
 
 void
-ums_intr(xfer, addr, status)
-	usbd_xfer_handle xfer;
-	usbd_private_handle addr;
-	usbd_status status;
+ums_intr(usbd_xfer_handle xfer, usbd_private_handle addr,
+	 usbd_status status)
 {
 	struct ums_softc *sc = addr;
 	u_char *ibuf;
@@ -529,9 +527,9 @@ ums_add_to_queue(struct ums_softc *sc, int dx, int dy, int dz, int buttons)
 		selwakeuppri(&sc->rsel, 0);
 	}
 }
+
 Static int
-ums_enable(v)
-	void *v;
+ums_enable(void *v)
 {
 	struct ums_softc *sc = v;
 
@@ -564,8 +562,7 @@ ums_enable(v)
 }
 
 Static void
-ums_disable(priv)
-	void *priv;
+ums_disable(void *priv)
 {
 	struct ums_softc *sc = priv;
 

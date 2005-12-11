@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.8 2005/06/10 15:29:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.9 2005/12/11 01:54:07 swildner Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -181,31 +181,24 @@ struct scsi_low_funcs ncv_funcs = {
  * hwfuncs
  **************************************************************/
 static __inline void
-ncvhw_select_register_0(iot, ioh, hw)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct ncv_hw *hw;
+ncvhw_select_register_0(bus_space_tag_t iot, bus_space_handle_t ioh,
+			struct ncv_hw *hw)
 {
 
 	bus_space_write_1(iot, ioh, cr0_cfg4, hw->hw_cfg4);
 }
 
 static __inline void
-ncvhw_select_register_1(iot, ioh, hw)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct ncv_hw *hw;
+ncvhw_select_register_1(bus_space_tag_t iot, bus_space_handle_t ioh,
+			struct ncv_hw *hw)
 {
 
 	bus_space_write_1(iot, ioh, cr1_cfg5, hw->hw_cfg5);
 }
 
 static __inline void
-ncvhw_fpush(iot, ioh, buf, len)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	u_int8_t *buf;
-	int len;
+ncvhw_fpush(bus_space_tag_t iot, bus_space_handle_t ioh, u_int8_t *buf,
+	    int len)
 {
 	int ptr;
 
@@ -214,10 +207,7 @@ ncvhw_fpush(iot, ioh, buf, len)
 }
 
 static __inline void
-ncvhw_set_count(iot, ioh, count)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	int count;
+ncvhw_set_count(bus_space_tag_t iot, bus_space_handle_t ioh, int count)
 {
 
 	bus_space_write_1(iot, ioh, cr0_tclsb, (u_int8_t) count);
@@ -226,9 +216,7 @@ ncvhw_set_count(iot, ioh, count)
 }
 
 static __inline u_int
-ncvhw_get_count(iot, ioh)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
+ncvhw_get_count(bus_space_tag_t iot, bus_space_handle_t ioh)
 {
 	u_int count;
 
@@ -239,10 +227,7 @@ ncvhw_get_count(iot, ioh)
 }
 
 static int
-ncvhw_check(iot, ioh, hw)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct ncv_hw *hw;
+ncvhw_check(bus_space_tag_t iot, bus_space_handle_t ioh, struct ncv_hw *hw)
 {
 	u_int8_t stat;
 
@@ -294,10 +279,8 @@ ncvhw_check(iot, ioh, hw)
 }
 
 static void
-ncvhw_reset(iot, ioh, hw)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct ncv_hw *hw;
+ncvhw_reset(bus_space_tag_t iot, bus_space_handle_t ioh,
+	    struct ncv_hw *hw)
 {
 
 	ncvhw_select_register_0(iot, ioh, hw);
@@ -315,10 +298,8 @@ ncvhw_reset(iot, ioh, hw)
 }
 
 static void
-ncvhw_init(iot, ioh, hw)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	struct ncv_hw *hw;
+ncvhw_init(bus_space_tag_t iot, bus_space_handle_t ioh,
+	   struct ncv_hw *hw)
 {
 
 	ncvhw_select_register_0(iot, ioh, hw);
@@ -342,9 +323,7 @@ ncvhw_init(iot, ioh, hw)
 
 #ifdef	NCV_POWER_CONTROL
 static int
-ncvhw_power(sc, flags)
-	struct ncv_softc *sc;
-	u_int flags;
+ncvhw_power(struct ncv_softc *sc, u_int flags)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -382,8 +361,7 @@ ncvhw_power(sc, flags)
  * scsi low interface
  **************************************************************/
 static void
-ncvhw_attention(sc)
-	struct ncv_softc *sc;
+ncvhw_attention(struct ncv_softc *sc)
 {
 
 	bus_space_write_1(sc->sc_iot, sc->sc_ioh, cr0_cmd, CMD_SETATN);
@@ -391,8 +369,7 @@ ncvhw_attention(sc)
 }
 
 static void
-ncvhw_bus_reset(sc)
-	struct ncv_softc *sc;
+ncvhw_bus_reset(struct ncv_softc *sc)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -404,9 +381,7 @@ ncvhw_bus_reset(sc)
 }
 
 static int
-ncvhw_start_selection(sc, cb)
-	struct ncv_softc *sc;
-	struct slccb *cb;
+ncvhw_start_selection(struct ncv_softc *sc, struct slccb *cb)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -471,9 +446,7 @@ ncvhw_start_selection(sc, cb)
 }
 
 static int
-ncv_world_start(sc, fdone)
-	struct ncv_softc *sc;
-	int fdone;
+ncv_world_start(struct ncv_softc *sc, int fdone)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -504,10 +477,7 @@ ncv_world_start(sc, fdone)
 }
 
 static int
-ncv_msg(sc, ti, msg)
-	struct ncv_softc *sc;
-	struct targ_info *ti;
-	u_int msg;
+ncv_msg(struct ncv_softc *sc, struct targ_info *ti, u_int msg)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -547,10 +517,7 @@ ncv_msg(sc, ti, msg)
 }
 
 static int
-ncv_targ_init(sc, ti, action)
-	struct ncv_softc *sc;
-	struct targ_info *ti;
-	int action;
+ncv_targ_init(struct ncv_softc *sc, struct targ_info *ti, int action)
 {
 	struct ncv_targ_info *nti = (void *) ti;
 
@@ -573,10 +540,7 @@ ncv_targ_init(sc, ti, action)
 static int ncv_setup_img (struct ncv_hw *, u_int, int);
 
 static int
-ncv_setup_img(hw, dvcfg, hostid)
-	struct ncv_hw *hw;
-	u_int dvcfg;
-	int hostid;
+ncv_setup_img(struct ncv_hw *hw, u_int dvcfg, int hostid)
 {
 
 	if (NCV_CLKFACTOR(dvcfg) > CLK_35M_F)
@@ -616,11 +580,8 @@ ncv_setup_img(hw, dvcfg, hostid)
 }
 
 int
-ncvprobesubr(iot, ioh, dvcfg, hsid)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	u_int dvcfg;
-	int hsid;
+ncvprobesubr(bus_space_tag_t iot, bus_space_handle_t ioh, u_int dvcfg,
+	     int hsid)
 {
 	struct ncv_hw hwtab;
 
@@ -634,9 +595,7 @@ ncvprobesubr(iot, ioh, dvcfg, hsid)
 }
 
 int
-ncvprint(aux, name)
-	void *aux;
-	const char *name;
+ncvprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
@@ -645,8 +604,7 @@ ncvprint(aux, name)
 }
 
 void
-ncvattachsubr(sc)
-	struct ncv_softc *sc;
+ncvattachsubr(struct ncv_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -665,9 +623,7 @@ ncvattachsubr(sc)
  * PDMA
  **************************************************************/
 static __inline void
-ncv_setup_and_start_pio(sc, reqlen)
-	struct ncv_softc *sc;
-	u_int reqlen;
+ncv_setup_and_start_pio(struct ncv_softc *sc, u_int reqlen)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -681,9 +637,7 @@ ncv_setup_and_start_pio(sc, reqlen)
 }
 
 static void
-ncv_pdma_end(sc, ti)
-	struct ncv_softc *sc;
-	struct targ_info *ti;
+ncv_pdma_end(struct ncv_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -743,10 +697,7 @@ out:
 }
 
 static void
-ncv_pio_read(sc, buf, reqlen)
-	struct ncv_softc *sc;
-	u_int8_t *buf;
-	u_int reqlen;
+ncv_pio_read(struct ncv_softc *sc, u_int8_t *buf, u_int reqlen)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -809,10 +760,7 @@ out:
 }
 
 static void
-ncv_pio_write(sc, buf, reqlen)
-	struct ncv_softc *sc;
-	u_int8_t *buf;
-	u_int reqlen;
+ncv_pio_write(struct ncv_softc *sc, u_int8_t *buf, u_int reqlen)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -874,8 +822,7 @@ done:
  * disconnect & reselect (HW low)
  **************************************************************/
 static int
-ncv_reselected(sc)
-	struct ncv_softc *sc;
+ncv_reselected(struct ncv_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -905,9 +852,7 @@ ncv_reselected(sc)
 }
 
 static int
-ncv_disconnected(sc, ti)
-	struct ncv_softc *sc;
-	struct targ_info *ti;
+ncv_disconnected(struct ncv_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -928,8 +873,7 @@ ncv_disconnected(sc, ti)
  * SEQUENCER
  **************************************************************/
 static int
-ncv_target_nexus_establish(sc)
-	struct ncv_softc *sc;
+ncv_target_nexus_establish(struct ncv_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	struct targ_info *ti = slp->sl_Tnexus;
@@ -944,16 +888,14 @@ ncv_target_nexus_establish(sc)
 }
 
 static int
-ncv_lun_nexus_establish(sc)
-	struct ncv_softc *sc;
+ncv_lun_nexus_establish(struct ncv_softc *sc)
 {
 
 	return 0;
 }
 
 static int
-ncv_ccb_nexus_establish(sc)
-	struct ncv_softc *sc;
+ncv_ccb_nexus_establish(struct ncv_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -963,8 +905,7 @@ ncv_ccb_nexus_establish(sc)
 }
 
 static int
-ncv_catch_intr(sc)
-	struct ncv_softc *sc;
+ncv_catch_intr(struct ncv_softc *sc)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -983,8 +924,7 @@ ncv_catch_intr(sc)
 }
 
 int
-ncvintr(arg)
-	void *arg;
+ncvintr(void *arg)
 {
 	struct ncv_softc *sc = arg;
 	struct scsi_low_softc *slp = &sc->sc_sclow;

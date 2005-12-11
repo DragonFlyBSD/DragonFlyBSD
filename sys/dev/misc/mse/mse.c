@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.14 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -279,8 +279,7 @@ static struct mse_types {
 };
 
 static	int
-mse_probe(dev)
-	device_t dev;
+mse_probe(device_t dev)
 {
 	mse_softc_t *sc;
 	int error;
@@ -325,8 +324,7 @@ mse_probe(dev)
 }
 
 static	int
-mse_attach(dev)
-	device_t dev;
+mse_attach(device_t dev)
 {
 	mse_softc_t *sc;
 	int flags;
@@ -369,8 +367,7 @@ mse_attach(dev)
 }
 
 static	int
-mse_detach(dev)
-	device_t dev;
+mse_detach(device_t dev)
 {
 	mse_softc_t *sc;
 	int rid;
@@ -392,11 +389,7 @@ mse_detach(dev)
  * Exclusive open the mouse, initialize it and enable interrupts.
  */
 static	int
-mseopen(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+mseopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	mse_softc_t *sc;
 
@@ -431,11 +424,7 @@ mseopen(dev, flags, fmt, td)
  * mseclose: just turn off mouse innterrupts.
  */
 static	int
-mseclose(dev, flags, fmt, td)
-	dev_t dev;
-	int flags;
-	int fmt;
-	struct thread *td;
+mseclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 
@@ -453,10 +442,7 @@ mseclose(dev, flags, fmt, td)
  * (Yes this is cheesy, but it makes the X386 server happy, so...)
  */
 static	int
-mseread(dev, uio, ioflag)
-	dev_t dev;
-	struct uio *uio;
-	int ioflag;
+mseread(dev_t dev, struct uio *uio, int ioflag)
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int xfer, error;
@@ -519,12 +505,7 @@ mseread(dev, uio, ioflag)
  * mseioctl: process ioctl commands.
  */
 static int
-mseioctl(dev, cmd, addr, flag, td)
-	dev_t dev;
-	u_long cmd;
-	caddr_t addr;
-	int flag;
-	struct thread *td;
+mseioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	mousestatus_t status;
@@ -635,10 +616,7 @@ mseioctl(dev, cmd, addr, flag, td)
  * msepoll: check for mouse input to be processed.
  */
 static	int
-msepoll(dev, events, td)
-	dev_t dev;
-	int events;
-	struct thread *td;
+msepoll(dev_t dev, int events, struct thread *td)
 {
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int revents = 0;
@@ -665,8 +643,7 @@ msepoll(dev, events, td)
  * msetimeout: watchdog timer routine.
  */
 static void
-msetimeout(arg)
-	void *arg;
+msetimeout(void *arg)
 {
 	dev_t dev;
 	mse_softc_t *sc;
@@ -686,8 +663,7 @@ msetimeout(arg)
  * mseintr: update mouse status. sc_deltax and sc_deltay are accumulative.
  */
 static void
-mseintr(arg)
-	void *arg;
+mseintr(void *arg)
 {
 	/*
 	 * the table to turn MouseSystem button bits (MOUSE_MSC_BUTTON?UP)
@@ -765,9 +741,7 @@ mseintr(arg)
  *  interrupts and return 1)
  */
 static int
-mse_probelogi(dev, sc)
-	device_t dev;
-	mse_softc_t *sc;
+mse_probelogi(device_t dev, mse_softc_t *sc)
 {
 
 	int sig;
@@ -793,9 +767,7 @@ mse_probelogi(dev, sc)
  * Initialize Logitech mouse and enable interrupts.
  */
 static void
-mse_enablelogi(tag, handle)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
+mse_enablelogi(bus_space_tag_t tag, bus_space_handle_t handle)
 {
 	int dx, dy, but;
 
@@ -807,9 +779,7 @@ mse_enablelogi(tag, handle)
  * Disable interrupts for Logitech mouse.
  */
 static void
-mse_disablelogi(tag, handle)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
+mse_disablelogi(bus_space_tag_t tag, bus_space_handle_t handle)
 {
 
 	bus_space_write_1(tag, handle, MSE_PORTC, MSE_DISINTR);
@@ -819,12 +789,8 @@ mse_disablelogi(tag, handle)
  * Get the current dx, dy and button up/down state.
  */
 static void
-mse_getlogi(tag, handle, dx, dy, but)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
-	int *dx;
-	int *dy;
-	int *but;
+mse_getlogi(bus_space_tag_t tag, bus_space_handle_t handle, int *dx, int *dy,
+	    int *but)
 {
 	char x, y;
 
@@ -851,9 +817,7 @@ mse_getlogi(tag, handle, dx, dy, but)
  * (do not enable interrupts)
  */
 static int
-mse_probeati(dev, sc)
-	device_t dev;
-	mse_softc_t *sc;
+mse_probeati(device_t dev, mse_softc_t *sc)
 {
 	int i;
 
@@ -867,9 +831,7 @@ mse_probeati(dev, sc)
  * Initialize ATI Inport mouse and enable interrupts.
  */
 static void
-mse_enableati(tag, handle)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
+mse_enableati(bus_space_tag_t tag, bus_space_handle_t handle)
 {
 
 	bus_space_write_1(tag, handle, MSE_PORTA, MSE_INPORT_RESET);
@@ -881,9 +843,7 @@ mse_enableati(tag, handle)
  * Disable interrupts for ATI Inport mouse.
  */
 static void
-mse_disableati(tag, handle)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
+mse_disableati(bus_space_tag_t tag, bus_space_handle_t handle)
 {
 
 	bus_space_write_1(tag, handle, MSE_PORTA, MSE_INPORT_MODE);
@@ -894,12 +854,8 @@ mse_disableati(tag, handle)
  * Get current dx, dy and up/down button state.
  */
 static void
-mse_getati(tag, handle, dx, dy, but)
-	bus_space_tag_t tag;
-	bus_space_handle_t handle;
-	int *dx;
-	int *dy;
-	int *but;
+mse_getati(bus_space_tag_t tag, bus_space_handle_t handle, int *dx, int *dy,
+	   int *but)
 {
 	char byte;
 

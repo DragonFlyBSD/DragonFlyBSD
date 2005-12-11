@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.25 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.26 2005/12/11 01:54:09 swildner Exp $
  *
  */
 
@@ -185,8 +185,7 @@ vxattach(device_t dev)
  * interrupts. ?!
  */
 static void
-vxinit(xsc)
-	void *xsc;
+vxinit(void *xsc)
 {
     struct vx_softc *sc = (struct vx_softc *) xsc;
     struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -238,8 +237,7 @@ vxinit(xsc)
 }
 
 static void
-vxsetfilter(sc)
-    struct vx_softc *sc;
+vxsetfilter(struct vx_softc *sc)
 {
     struct ifnet *ifp = &sc->arpcom.ac_if;  
     
@@ -250,8 +248,7 @@ vxsetfilter(sc)
 }               
 
 static void            
-vxgetlink(sc)
-    struct vx_softc *sc;
+vxgetlink(struct vx_softc *sc)
 {
     int n, k;
 
@@ -284,8 +281,7 @@ vxgetlink(sc)
 }
 
 static void            
-vxsetlink(sc)
-    struct vx_softc *sc;
+vxsetlink(struct vx_softc *sc)
 {       
     struct ifnet *ifp = &sc->arpcom.ac_if;  
     int i, j, k;
@@ -390,8 +386,7 @@ vxsetlink(sc)
 }
 
 static void
-vxstart(ifp)
-    struct ifnet *ifp;
+vxstart(struct ifnet *ifp)
 {
     struct vx_softc *sc = ifp->if_softc;
     struct mbuf *m0;
@@ -504,8 +499,7 @@ readcheck:
  *      on the cable (once in a blue moon).
  */
 static int
-vxstatus(sc)
-    struct vx_softc *sc;
+vxstatus(struct vx_softc *sc)
 {
     int fifost;
     struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -586,8 +580,7 @@ vxtxstat(struct vx_softc *sc)
 }
 
 void
-vxintr(voidsc)
-    void *voidsc;
+vxintr(void *voidsc)
 {
     short status;
     struct vx_softc *sc = voidsc;
@@ -633,8 +626,7 @@ vxintr(voidsc)
 }
 
 static void
-vxread(sc)
-    struct vx_softc *sc;
+vxread(struct vx_softc *sc)
 {
     struct ifnet *ifp = &sc->arpcom.ac_if;
     struct mbuf *m;
@@ -739,9 +731,7 @@ abort:
 }
 
 static struct mbuf *
-vxget(sc, totlen)
-    struct vx_softc *sc;
-    u_int totlen;
+vxget(struct vx_softc *sc, u_int totlen)
 {
     struct ifnet *ifp = &sc->arpcom.ac_if;
     struct mbuf *top, **mp, *m;
@@ -829,11 +819,7 @@ vxget(sc, totlen)
 
 
 static int
-vxioctl(ifp, cmd, data, cr)
-    struct ifnet *ifp;
-    u_long cmd;
-    caddr_t data;
-    struct ucred *cr;
+vxioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
     struct vx_softc *sc = ifp->if_softc;
     struct ifreq *ifr = (struct ifreq *) data;
@@ -897,16 +883,14 @@ vxioctl(ifp, cmd, data, cr)
 }
 
 static void
-vxreset(sc)
-    struct vx_softc *sc;
+vxreset(struct vx_softc *sc)
 {
     vxstop(sc);
     vxinit(sc);
 }
 
 static void
-vxwatchdog(ifp)
-    struct ifnet *ifp;
+vxwatchdog(struct ifnet *ifp)
 {
     struct vx_softc *sc = ifp->if_softc;
 
@@ -918,8 +902,7 @@ vxwatchdog(ifp)
 }
 
 void
-vxstop(sc)
-    struct vx_softc *sc;
+vxstop(struct vx_softc *sc)
 {
     struct ifnet *ifp = &sc->arpcom.ac_if;
 
@@ -944,8 +927,7 @@ vxstop(sc)
 }
 
 int
-vxbusyeeprom(sc)
-    struct vx_softc *sc;
+vxbusyeeprom(struct vx_softc *sc)
 {
     int j, i = 100;
 
@@ -999,8 +981,7 @@ vxmbuffill_serialized(void *sp)
 }
 
 static void
-vxmbufempty(sc)
-    struct vx_softc *sc;
+vxmbufempty(struct vx_softc *sc)
 {
     int	i;
 

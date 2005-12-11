@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.7 2005/06/30 17:11:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.8 2005/12/11 01:54:09 swildner Exp $
  */
 
 /*
@@ -160,8 +160,7 @@ static const struct pccard_product wi_pccard_products[] = {
 };
 
 static int
-wi_pccard_match(dev)
-	device_t	dev;
+wi_pccard_match(device_t dev)
 {
 	const struct pccard_product *pp;
 	u_int32_t fcn;
@@ -181,8 +180,7 @@ wi_pccard_match(dev)
 }
 
 static int
-wi_pccard_probe(dev)
-	device_t	dev;
+wi_pccard_probe(device_t dev)
 {
 	struct wi_softc	*sc;
 	int		error;

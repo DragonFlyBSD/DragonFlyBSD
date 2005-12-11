@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.14 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.15 2005/12/11 01:54:09 swildner Exp $
  */
 
 /* 
@@ -1173,10 +1173,7 @@ rphardclose(struct rp_port *rp)
 
 static
 int
-rpwrite(dev, uio, flag)
-	dev_t	dev;
-	struct	uio	*uio;
-	int	flag;
+rpwrite(dev_t dev, struct uio *uio, int flag)
 {
 	struct	rp_port *rp;
 	struct	tty	*tp;
@@ -1420,9 +1417,7 @@ static struct speedtab baud_table[] = {
 };
 
 static int
-rpparam(tp, t)
-	struct tty *tp;
-	struct termios *t;
+rpparam(struct tty *tp, struct termios *t)
 {
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
@@ -1551,9 +1546,7 @@ rpparam(tp, t)
 }
 
 static void
-rp_disc_optim(tp, t)
-struct	tty	*tp;
-struct	termios *t;
+rp_disc_optim(struct tty *tp, struct termios *t)
 {
 	if(!(t->c_iflag & (ICRNL | IGNCR | IMAXBEL | INLCR | ISTRIP | IXON))
 		&&(!(t->c_iflag & BRKINT) || (t->c_iflag & IGNBRK))
@@ -1567,8 +1560,7 @@ struct	termios *t;
 }
 
 static void
-rpstart(tp)
-	struct tty *tp;
+rpstart(struct tty *tp)
 {
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
@@ -1629,9 +1621,7 @@ rpstart(tp)
 
 static
 void
-rpstop(tp, flag)
-	struct tty *tp;
-	int	flag;
+rpstop(struct tty *tp, int flag)
 {
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;

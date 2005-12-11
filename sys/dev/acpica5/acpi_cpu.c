@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.11 2005/09/23 02:28:50 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.12 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -737,7 +737,7 @@ acpi_cpu_power_profile(void *arg)
  * port.
  */
 static void
-acpi_cpu_startup_throttling()
+acpi_cpu_startup_throttling(void)
 {
     ACPI_LOCK_DECL;
 
@@ -786,7 +786,7 @@ acpi_cpu_startup_throttling()
 }
 
 static void
-acpi_cpu_startup_cx()
+acpi_cpu_startup_cx(void)
 {
     struct acpi_cpu_softc *sc;
     struct sbuf		 sb;
@@ -879,7 +879,7 @@ acpi_cpu_throttle_set(uint32_t speed)
  * interrupts are re-enabled.
  */
 static void
-acpi_cpu_idle()
+acpi_cpu_idle(void)
 {
     struct	acpi_cpu_softc *sc;
     struct	acpi_cx *cx_next;
@@ -984,7 +984,7 @@ acpi_cpu_idle()
 
 /* Put the CPU in C1 in a machine-dependant way. */
 static void
-acpi_cpu_c1()
+acpi_cpu_c1(void)
 {
 #ifdef __ia64__
     ia64_call_pal_static(PAL_HALT_LIGHT, 0, 0, 0);

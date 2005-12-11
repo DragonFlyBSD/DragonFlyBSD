@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.22 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.23 2005/12/11 01:54:08 swildner Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -126,8 +126,7 @@ DECLARE_DUMMY_MODULE(if_ep);
 #define EP_FRST(sc, f)	(sc->stat &= ~(f))
 
 static int
-eeprom_rdy(sc)
-    struct ep_softc *sc;
+eeprom_rdy(struct ep_softc *sc)
 {
     int i;
 
@@ -146,9 +145,7 @@ eeprom_rdy(sc)
  * before
  */
 u_int16_t
-get_e(sc, offset)
-    struct ep_softc *sc;
-    u_int16_t offset;
+get_e(struct ep_softc *sc, int offset)
 {
     if (!eeprom_rdy(sc))
 	return (0);
@@ -159,9 +156,7 @@ get_e(sc, offset)
 }
 
 void
-ep_get_macaddr(sc, addr)
-	struct ep_softc	*	sc;
-	uint8_t *		addr;
+ep_get_macaddr(struct ep_softc *sc, uint8_t *addr)
 {
 	int			i;
 	u_int16_t * 		macaddr = (u_int16_t *)addr;
@@ -220,8 +215,7 @@ bad:
 }
 
 void
-ep_get_media(sc)
-	struct ep_softc	*	sc;
+ep_get_media(struct ep_softc *sc)
 {
 	u_int16_t		config;
 	
@@ -263,8 +257,7 @@ ep_free(device_t dev)
 }
 	
 int
-ep_attach(sc)
-	struct ep_softc *	sc;
+ep_attach(struct ep_softc *sc)
 {
 	struct ifnet *		ifp = NULL;
 	struct ifmedia *	ifm = NULL;
@@ -333,8 +326,7 @@ ep_attach(sc)
  * interrupts. ?!
  */
 static void
-ep_if_init(xsc)
-    void *xsc;
+ep_if_init(void *xsc)
 {
     struct ep_softc *sc = xsc;
     struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -425,8 +417,7 @@ ep_if_init(xsc)
 static const char padmap[] = {0, 3, 2, 1};
 
 static void
-ep_if_start(ifp)
-    struct ifnet *ifp;
+ep_if_start(struct ifnet *ifp)
 {
     struct ep_softc *sc = ifp->if_softc;
     u_int len;
@@ -535,8 +526,7 @@ readcheck:
 }
 
 void
-ep_intr(arg)
-    void *arg;
+ep_intr(void *arg)
 {
     struct ep_softc *sc = arg;
     struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -642,8 +632,7 @@ rescan:
 }
 
 static void
-epread(sc)
-    struct ep_softc *sc;
+epread(struct ep_softc *sc)
 {
     struct mbuf *top, *mcur, *m;
     struct ifnet *ifp;
@@ -769,8 +758,7 @@ out:
 }
 
 static int 
-ep_ifmedia_upd(ifp)
-	struct ifnet *		ifp;
+ep_ifmedia_upd(struct ifnet *ifp)
 {
 	struct ep_softc *	sc = ifp->if_softc;
 	int			i = 0, j;
@@ -815,9 +803,7 @@ ep_ifmedia_upd(ifp)
 }
 
 static void
-ep_ifmedia_sts(ifp, ifmr)
-	struct ifnet *		ifp;
-	struct ifmediareq *	ifmr;
+ep_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ep_softc *	sc = ifp->if_softc;
 
@@ -827,11 +813,7 @@ ep_ifmedia_sts(ifp, ifmr)
 }
 
 static int
-ep_if_ioctl(ifp, cmd, data, cr)
-	struct ifnet *		ifp;
-	u_long			cmd;
-	caddr_t			data;
-	struct ucred *		cr;
+ep_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ep_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;
@@ -886,8 +868,7 @@ ep_if_ioctl(ifp, cmd, data, cr)
 }
 
 static void
-ep_if_watchdog(ifp)
-    struct ifnet *ifp;
+ep_if_watchdog(struct ifnet *ifp)
 {
     struct ep_softc *sc = ifp->if_softc;
 
@@ -908,8 +889,7 @@ ep_if_watchdog(ifp)
 }
 
 static void
-epstop(sc)
-    struct ep_softc *sc;
+epstop(struct ep_softc *sc)
 {
     if (sc->gone) {
 	return;

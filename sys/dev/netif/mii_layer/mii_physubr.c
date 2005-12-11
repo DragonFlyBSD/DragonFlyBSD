@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.10 2005/10/31 12:49:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.11 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -74,9 +74,7 @@ mii_softc_init(struct mii_softc *mii, struct mii_attach_args *ma)
 }
 
 int
-mii_phy_auto(mii, waitfor)
-	struct mii_softc *mii;
-	int waitfor;
+mii_phy_auto(struct mii_softc *mii, int waitfor)
 {
 	int bmsr, i;
 
@@ -120,8 +118,7 @@ mii_phy_auto(mii, waitfor)
 }
 
 void
-mii_phy_auto_stop(sc)
-	struct mii_softc *sc;
+mii_phy_auto_stop(struct mii_softc *sc)
 {
 	if (sc->mii_flags & MIIF_DOINGAUTO) {
 		sc->mii_flags &= ~MIIF_DOINGAUTO;
@@ -130,8 +127,7 @@ mii_phy_auto_stop(sc)
 }
 
 void
-mii_phy_auto_timeout(arg)
-	void *arg;
+mii_phy_auto_timeout(void *arg)
 {
 	struct mii_softc *mii = arg;
 	int bmsr;
@@ -153,8 +149,7 @@ mii_phy_auto_timeout(arg)
 }
 
 void
-mii_phy_reset(mii)
-	struct mii_softc *mii;
+mii_phy_reset(struct mii_softc *mii)
 {
 	int reg, i;
 
@@ -218,8 +213,7 @@ mii_anar(int media)
  * Given a BMCR value, return the corresponding ifmedia word.
  */
 int
-mii_media_from_bmcr(bmcr)
-	int bmcr;
+mii_media_from_bmcr(int bmcr)
 {
 	int rv = IFM_ETHER;
 

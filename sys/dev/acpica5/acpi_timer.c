@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.7 2005/10/30 04:41:15 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.8 2005/12/11 01:54:07 swildner Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -109,7 +109,7 @@ DRIVER_MODULE(acpi_timer, acpi, acpi_timer_driver, acpi_timer_devclass, 0, 0);
 MODULE_DEPEND(acpi_timer, acpi, 1, 1, 1);
 
 static u_int
-acpi_timer_read()
+acpi_timer_read(void)
 {
     return (bus_space_read_4(acpi_timer_bst, acpi_timer_bsh, 0));
 }
@@ -329,7 +329,7 @@ SYSCTL_PROC(_machdep, OID_AUTO, acpi_timer_freq, CTLTYPE_INT | CTLFLAG_RW,
  */
 
 static int
-acpi_timer_test()
+acpi_timer_test(void)
 {
     uint32_t	last, this;
     int		min, max, n, delta;

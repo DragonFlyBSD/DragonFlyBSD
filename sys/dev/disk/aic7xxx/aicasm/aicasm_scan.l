@@ -41,7 +41,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_scan.l#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_scan.l,v 1.13.2.6 2002/09/27 15:46:28 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_scan.l,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_scan.l,v 1.3 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -576,7 +576,7 @@ next_substitution(struct symbol *mac_symbol, const char *body_pos,
 }
 
 int
-yywrap()
+yywrap(void)
 {
 	include_t *include;
 

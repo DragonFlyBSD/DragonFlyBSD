@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.8 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.9 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -88,8 +88,7 @@ DRIVER_MODULE(pnaphy, miibus, pnaphy_driver, pnaphy_devclass, 0, 0);
 int	pnaphy_service (struct mii_softc *, struct mii_data *, int);
 
 static int
-pnaphy_probe(dev)
-	device_t		dev;
+pnaphy_probe(device_t dev)
 {
 
 	struct mii_attach_args	*ma;
@@ -106,8 +105,7 @@ pnaphy_probe(dev)
 }
 
 static int
-pnaphy_attach(dev)
-	device_t		dev;
+pnaphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -156,8 +154,8 @@ pnaphy_attach(dev)
 	return(0);
 }
 
-static int pnaphy_detach(dev)
-	device_t		dev;
+static int
+pnaphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -172,10 +170,7 @@ static int pnaphy_detach(dev)
 }
 
 int
-pnaphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+pnaphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;

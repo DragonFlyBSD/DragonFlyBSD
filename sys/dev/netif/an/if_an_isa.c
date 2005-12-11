@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.14 2005/11/28 17:13:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -81,8 +81,7 @@ static int an_probe_isa		(device_t);
 static int an_attach_isa	(device_t);
 
 static int
-an_probe_isa(dev)
-	device_t		dev;
+an_probe_isa(device_t dev)
 {
 	int error;
 
@@ -103,8 +102,7 @@ back:
 }
 
 static int
-an_attach_isa(dev)
-	device_t dev;
+an_attach_isa(device_t dev)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	int flags = device_get_flags(dev);

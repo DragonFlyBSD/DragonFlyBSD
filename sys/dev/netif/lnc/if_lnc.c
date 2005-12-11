@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.24 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.25 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -886,8 +886,7 @@ lnc_attach_common(device_t dev)
 }
 
 static void
-lnc_init(xsc)
-	void *xsc;
+lnc_init(void *xsc)
 {
 	struct lnc_softc *sc = xsc;
 	int i;

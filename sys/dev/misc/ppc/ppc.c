@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.10 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.11 2005/12/11 01:54:08 swildner Exp $
  *
  */
 
@@ -151,8 +151,8 @@ static char *ppc_epp_protocol[] = { " (EPP 1.9)", " (EPP 1.7)", 0 };
  * ppc_ecp_sync()		XXX
  */
 static void
-ppc_ecp_sync(device_t dev) {
-
+ppc_ecp_sync(device_t dev)
+{
 	int i, r;
 	struct ppc_data *ppc = DEVTOSOFTC(dev);
 
@@ -1279,8 +1279,8 @@ ppc_generic_detect(struct ppc_data *ppc, int chipset_mode)
  * mode is the mode suggested at boot
  */
 static int
-ppc_detect(struct ppc_data *ppc, int chipset_mode) {
-
+ppc_detect(struct ppc_data *ppc, int chipset_mode)
+{
 #ifdef PPC_PROBE_CHIPSET
 	int i, mode;
 

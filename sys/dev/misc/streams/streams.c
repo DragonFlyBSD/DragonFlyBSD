@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.21 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.22 2005/12/11 01:54:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -316,8 +316,7 @@ svr4_ptm_alloc(struct thread *td)
 
 
 struct svr4_strm *
-svr4_stream_get(fp)
-	struct file *fp;
+svr4_stream_get(struct file *fp)
 {
 	struct socket *so;
 	struct svr4_strm *st;

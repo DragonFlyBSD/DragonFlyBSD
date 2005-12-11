@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/acphy.c,v 1.2.2.2 2002/10/21 21:20:19 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/acphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/acphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
  
 /*
@@ -117,8 +117,8 @@ int	acphy_service (struct mii_softc *, struct mii_data *, int);
 void	acphy_reset (struct mii_softc *);
 void	acphy_status (struct mii_softc *);
 
-static int acphy_probe(dev)
-	device_t		dev;
+static int
+acphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -133,8 +133,8 @@ static int acphy_probe(dev)
 	return (0);
 }
 
-static int acphy_attach(dev)
-	device_t		dev;
+static int
+acphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -167,8 +167,8 @@ static int acphy_attach(dev)
 	return (0);
 }
 
-static int acphy_detach(dev)
-	device_t		dev;
+static int
+acphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -182,10 +182,7 @@ static int acphy_detach(dev)
 }
 
 int
-acphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+acphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
@@ -271,8 +268,7 @@ acphy_service(sc, mii, cmd)
 }
 
 void
-acphy_status(sc)
-	struct mii_softc *sc;
+acphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -315,8 +311,7 @@ acphy_status(sc)
 }
 
 void
-acphy_reset(sc)
-	struct mii_softc *sc;
+acphy_reset(struct mii_softc *sc)
 {
 
 	mii_phy_reset(sc);

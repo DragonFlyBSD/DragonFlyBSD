@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.33 2005/11/28 17:13:44 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.34 2005/12/11 01:54:09 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -182,8 +182,7 @@ DECLARE_DUMMY_MODULE(if_txp);
 DRIVER_MODULE(if_txp, pci, txp_driver, txp_devclass, 0, 0);
 
 static int
-txp_probe(dev)
-	device_t dev;
+txp_probe(device_t dev)
 {
 	struct txp_type *t;
 	uint16_t vid, did;
@@ -202,8 +201,7 @@ txp_probe(dev)
 }
 
 static int
-txp_attach(dev)
-	device_t dev;
+txp_attach(device_t dev)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
@@ -332,8 +330,7 @@ fail:
 }
 
 static int
-txp_detach(dev)
-	device_t dev;
+txp_detach(device_t dev)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
@@ -381,8 +378,7 @@ txp_release_resources(device_t dev)
 }
 
 static int
-txp_chip_init(sc)
-	struct txp_softc *sc;
+txp_chip_init(struct txp_softc *sc)
 {
 	/* disable interrupts */
 	WRITE_REG(sc, TXP_IER, 0);
@@ -419,8 +415,7 @@ txp_chip_init(sc)
 }
 
 static int
-txp_reset_adapter(sc)
-	struct txp_softc *sc;
+txp_reset_adapter(struct txp_softc *sc)
 {
 	u_int32_t r;
 	int i;
@@ -446,8 +441,7 @@ txp_reset_adapter(sc)
 }
 
 static int
-txp_download_fw(sc)
-	struct txp_softc *sc;
+txp_download_fw(struct txp_softc *sc)
 {
 	struct txp_fw_file_header *fileheader;
 	struct txp_fw_section_header *secthead;
@@ -521,8 +515,7 @@ txp_download_fw(sc)
 }
 
 static int
-txp_download_fw_wait(sc)
-	struct txp_softc *sc;
+txp_download_fw_wait(struct txp_softc *sc)
 {
 	u_int32_t i, r;
 
@@ -549,10 +542,8 @@ txp_download_fw_wait(sc)
 }
 
 static int
-txp_download_fw_section(sc, sect, sectnum)
-	struct txp_softc *sc;
-	struct txp_fw_section_header *sect;
-	int sectnum;
+txp_download_fw_section(struct txp_softc *sc,
+			struct txp_fw_section_header *sect, int sectnum)
 {
 	vm_offset_t dma;
 	int rseg, err = 0;
@@ -617,8 +608,7 @@ bail:
 }
 
 static void 
-txp_intr(vsc)
-	void *vsc;
+txp_intr(void *vsc)
 {
 	struct txp_softc *sc = vsc;
 	struct txp_hostvar *hv = sc->sc_hostvar;
@@ -663,9 +653,7 @@ txp_intr(vsc)
 }
 
 static void
-txp_rx_reclaim(sc, r)
-	struct txp_softc *sc;
-	struct txp_rx_ring *r;
+txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	struct txp_rx_desc *rxd;
@@ -762,8 +750,7 @@ next:
 }
 
 static void
-txp_rxbuf_reclaim(sc)
-	struct txp_softc *sc;
+txp_rxbuf_reclaim(struct txp_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	struct txp_hostvar *hv = sc->sc_hostvar;
@@ -819,9 +806,7 @@ err_sd:
  * Reclaim mbufs and entries from a transmit ring.
  */
 static void
-txp_tx_reclaim(sc, r)
-	struct txp_softc *sc;
-	struct txp_tx_ring *r;
+txp_tx_reclaim(struct txp_softc *sc, struct txp_tx_ring *r)
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	u_int32_t idx = TXP_OFFSET2IDX(*(r->r_off));
@@ -865,8 +850,7 @@ txp_tx_reclaim(sc, r)
 }
 
 static int
-txp_shutdown(dev)
-	device_t dev;
+txp_shutdown(device_t dev)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
@@ -890,8 +874,7 @@ txp_shutdown(dev)
 }
 
 static int
-txp_alloc_rings(sc)
-	struct txp_softc *sc;
+txp_alloc_rings(struct txp_softc *sc)
 {
 	struct txp_boot_record *boot;
 	struct txp_ldata *ld;
@@ -1025,11 +1008,7 @@ txp_alloc_rings(sc)
 }
 
 static int
-txp_ioctl(ifp, command, data, cr)
-	struct ifnet *ifp;
-	u_long command;
-	caddr_t data;
-	struct ucred *cr;
+txp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -1065,8 +1044,7 @@ txp_ioctl(ifp, command, data, cr)
 }
 
 static int
-txp_rxring_fill(sc)
-	struct txp_softc *sc;
+txp_rxring_fill(struct txp_softc *sc)
 {
 	int i;
 	struct ifnet *ifp;
@@ -1100,8 +1078,7 @@ txp_rxring_fill(sc)
 }
 
 static void
-txp_rxring_empty(sc)
-	struct txp_softc *sc;
+txp_rxring_empty(struct txp_softc *sc)
 {
 	int i;
 	struct txp_swdesc *sd;
@@ -1125,8 +1102,7 @@ txp_rxring_empty(sc)
 }
 
 static void
-txp_init(xsc)
-	void *xsc;
+txp_init(void *xsc)
 {
 	struct txp_softc *sc;
 	struct ifnet *ifp;
@@ -1176,8 +1152,7 @@ txp_init(xsc)
 }
 
 static void
-txp_tick(vsc)
-	void *vsc;
+txp_tick(void *vsc)
 {
 	struct txp_softc *sc = vsc;
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
@@ -1215,8 +1190,7 @@ out:
 }
 
 static void
-txp_start(ifp)
-	struct ifnet *ifp;
+txp_start(struct ifnet *ifp)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct txp_tx_ring *r = &sc->sc_txhir;
@@ -1325,11 +1299,9 @@ oactive:
  * Handle simple commands sent to the typhoon
  */
 static int
-txp_command(sc, id, in1, in2, in3, out1, out2, out3, wait)
-	struct txp_softc *sc;
-	u_int16_t id, in1, *out1;
-	u_int32_t in2, in3, *out2, *out3;
-	int wait;
+txp_command(struct txp_softc *sc, u_int16_t id, u_int16_t in1, u_int32_t in2,
+	    u_int32_t in3, u_int16_t *out1, u_int32_t *out2, u_int32_t *out3,
+	    int wait)
 {
 	struct txp_rsp_desc *rsp = NULL;
 
@@ -1350,14 +1322,9 @@ txp_command(sc, id, in1, in2, in3, out1, out2, out3, wait)
 }
 
 static int
-txp_command2(sc, id, in1, in2, in3, in_extp, in_extn, rspp, wait)
-	struct txp_softc *sc;
-	u_int16_t id, in1;
-	u_int32_t in2, in3;
-	struct txp_ext_desc *in_extp;
-	u_int8_t in_extn;
-	struct txp_rsp_desc **rspp;
-	int wait;
+txp_command2(struct txp_softc *sc, u_int16_t id, u_int16_t in1, u_int32_t in2,
+	     u_int32_t in3, struct txp_ext_desc *in_extp, u_int8_t in_extn,
+	     struct txp_rsp_desc **rspp, int wait)
 {
 	struct txp_hostvar *hv = sc->sc_hostvar;
 	struct txp_cmd_desc *cmd;
@@ -1423,12 +1390,8 @@ txp_command2(sc, id, in1, in2, in3, in_extp, in_extn, rspp, wait)
 }
 
 static int
-txp_response(sc, ridx, id, seq, rspp)
-	struct txp_softc *sc;
-	u_int32_t ridx;
-	u_int16_t id;
-	u_int16_t seq;
-	struct txp_rsp_desc **rspp;
+txp_response(struct txp_softc *sc, u_int32_t ridx, u_int16_t id, u_int16_t seq,
+	     struct txp_rsp_desc **rspp)
 {
 	struct txp_hostvar *hv = sc->sc_hostvar;
 	struct txp_rsp_desc *rsp;
@@ -1474,9 +1437,8 @@ txp_response(sc, ridx, id, seq, rspp)
 }
 
 static void
-txp_rsp_fixup(sc, rsp, dst)
-	struct txp_softc *sc;
-	struct txp_rsp_desc *rsp, *dst;
+txp_rsp_fixup(struct txp_softc *sc, struct txp_rsp_desc *rsp,
+	      struct txp_rsp_desc *dst)
 {
 	struct txp_rsp_desc *src = rsp;
 	struct txp_hostvar *hv = sc->sc_hostvar;
@@ -1500,8 +1462,7 @@ txp_rsp_fixup(sc, rsp, dst)
 }
 
 static int
-txp_cmd_desc_numfree(sc)
-	struct txp_softc *sc;
+txp_cmd_desc_numfree(struct txp_softc *sc)
 {
 	struct txp_hostvar *hv = sc->sc_hostvar;
 	struct txp_boot_record *br = sc->sc_boot;
@@ -1525,8 +1486,7 @@ txp_cmd_desc_numfree(sc)
 }
 
 static void
-txp_stop(sc)
-	struct txp_softc *sc;
+txp_stop(struct txp_softc *sc)
 {
 	struct ifnet *ifp;
 
@@ -1545,15 +1505,13 @@ txp_stop(sc)
 }
 
 static void
-txp_watchdog(ifp)
-	struct ifnet *ifp;
+txp_watchdog(struct ifnet *ifp)
 {
 	return;
 }
 
 static int
-txp_ifmedia_upd(ifp)
-	struct ifnet *ifp;
+txp_ifmedia_upd(struct ifnet *ifp)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->sc_ifmedia;
@@ -1589,9 +1547,7 @@ txp_ifmedia_upd(ifp)
 }
 
 static void
-txp_ifmedia_sts(ifp, ifmr)
-	struct ifnet *ifp;
-	struct ifmediareq *ifmr;
+txp_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct txp_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->sc_ifmedia;
@@ -1656,8 +1612,7 @@ bail:
 
 #ifdef TXP_DEBUG
 static void
-txp_show_descriptor(d)
-	void *d;
+txp_show_descriptor(void *d)
 {
 	struct txp_cmd_desc *cmd = d;
 	struct txp_rsp_desc *rsp = d;
@@ -1700,8 +1655,7 @@ txp_show_descriptor(d)
 #endif
 
 static void
-txp_set_filter(sc)
-	struct txp_softc *sc;
+txp_set_filter(struct txp_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	uint16_t filter;
@@ -1749,8 +1703,7 @@ setit:
 }
 
 static void
-txp_capabilities(sc)
-	struct txp_softc *sc;
+txp_capabilities(struct txp_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	struct txp_rsp_desc *rsp = NULL;

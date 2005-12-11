@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.20 2005/08/03 16:36:33 hmp Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.21 2005/12/11 01:54:07 swildner Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -302,7 +302,7 @@ putccdbuf(struct ccdbuf *cbp)
  * add devsw entries.
  */
 static void
-ccdattach()
+ccdattach(void)
 {
 	int i;
 	int num = NCCD;
@@ -325,10 +325,7 @@ ccdattach()
 }
 
 static int
-ccd_modevent(mod, type, data)
-	module_t mod;
-	int type;
-	void *data;
+ccd_modevent(module_t mod, int type, void *data)
 {
 	int error = 0;
 
@@ -557,9 +554,7 @@ fail:
 }
 
 static void
-ccdinterleave(cs, unit)
-	struct ccd_softc *cs;
-	int unit;
+ccdinterleave(struct ccd_softc *cs, int unit)
 {
 	struct ccdcinfo *ci, *smallci;
 	struct ccdiinfo *ii;
@@ -754,8 +749,7 @@ ccdclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static void
-ccdstrategy(bp)
-	struct buf *bp;
+ccdstrategy(struct buf *bp)
 {
 	int unit = ccdunit(bp->b_dev);
 	struct ccd_softc *cs = &ccd_softc[unit];
@@ -830,9 +824,7 @@ done:
 }
 
 static void
-ccdstart(cs, bp)
-	struct ccd_softc *cs;
-	struct buf *bp;
+ccdstart(struct ccd_softc *cs, struct buf *bp)
 {
 	long bcount, rcount;
 	struct ccdbuf *cbp[4];
@@ -913,13 +905,8 @@ ccdstart(cs, bp)
  * Build a component buffer header.
  */
 static void
-ccdbuffer(cb, cs, bp, bn, addr, bcount)
-	struct ccdbuf **cb;
-	struct ccd_softc *cs;
-	struct buf *bp;
-	daddr_t bn;
-	caddr_t addr;
-	long bcount;
+ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
+	  caddr_t addr, long bcount)
 {
 	struct ccdcinfo *ci, *ci2 = NULL;	/* XXX */
 	struct ccdbuf *cbp;
@@ -1088,9 +1075,7 @@ ccdbuffer(cb, cs, bp, bn, addr, bcount)
 }
 
 static void
-ccdintr(cs, bp)
-	struct ccd_softc *cs;
-	struct buf *bp;
+ccdintr(struct ccd_softc *cs, struct buf *bp)
 {
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
@@ -1111,8 +1096,7 @@ ccdintr(cs, bp)
  * take a ccd interrupt.
  */
 static void
-ccdiodone(cbp)
-	struct ccdbuf *cbp;
+ccdiodone(struct ccdbuf *cbp)
 {
 	struct buf *bp = cbp->cb_obp;
 	int unit = cbp->cb_unit;
@@ -1586,8 +1570,7 @@ done:
  * up.
  */
 static void
-ccdgetdisklabel(dev)
-	dev_t dev;
+ccdgetdisklabel(dev_t dev)
 {
 	int unit = ccdunit(dev);
 	struct ccd_softc *cs = &ccd_softc[unit];
@@ -1645,8 +1628,7 @@ ccdgetdisklabel(dev)
  * that a disklabel isn't present.
  */
 static void
-ccdmakedisklabel(cs)
-	struct ccd_softc *cs;
+ccdmakedisklabel(struct ccd_softc *cs)
 {
 	struct disklabel *lp = &cs->sc_label;
 
@@ -1666,8 +1648,7 @@ ccdmakedisklabel(cs)
  * Several drivers do this; it should be abstracted and made MP-safe.
  */
 static int
-ccdlock(cs)
-	struct ccd_softc *cs;
+ccdlock(struct ccd_softc *cs)
 {
 	int error;
 
@@ -1684,8 +1665,7 @@ ccdlock(cs)
  * Unlock and wake up any waiters.
  */
 static void
-ccdunlock(cs)
-	struct ccd_softc *cs;
+ccdunlock(struct ccd_softc *cs)
 {
 
 	cs->sc_flags &= ~CCDF_LOCKED;
@@ -1697,8 +1677,7 @@ ccdunlock(cs)
 
 #ifdef DEBUG
 static void
-printiinfo(ii)
-	struct ccdiinfo *ii;
+printiinfo(struct ccdiinfo *ii)
 {
 	int ix, i;
 

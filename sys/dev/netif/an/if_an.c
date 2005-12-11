@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.34 2005/11/28 17:13:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.35 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -310,8 +310,7 @@ SYSCTL_PROC(_hw_an, OID_AUTO, an_cache_mode, CTLTYPE_STRING | CTLFLAG_RW,
  * find this, then there's no card present.
  */
 int
-an_probe(dev)
-	device_t		dev;
+an_probe(device_t dev)
 {
         struct an_softc *sc = device_get_softc(dev);
 	struct an_ltv_ssidlist_new ssid;
@@ -364,10 +363,7 @@ an_probe(dev)
  * Allocate a port resource with the given resource id.
  */
 int
-an_alloc_port(dev, rid, size)
-	device_t dev;
-	int rid;
-	int size;
+an_alloc_port(device_t dev, int rid, int size)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -386,7 +382,8 @@ an_alloc_port(dev, rid, size)
 /*
  * Allocate a memory resource with the given resource id.
  */
-int an_alloc_memory(device_t dev, int rid, int size)
+int
+an_alloc_memory(device_t dev, int rid, int size)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -427,10 +424,7 @@ int an_alloc_aux_memory(device_t dev, int rid, int size)
  * Allocate an irq resource with the given resource id.
  */
 int
-an_alloc_irq(dev, rid, flags)
-	device_t dev;
-	int rid;
-	int flags;
+an_alloc_irq(device_t dev, int rid, int flags)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -447,11 +441,7 @@ an_alloc_irq(dev, rid, flags)
 }
 
 static void
-an_dma_malloc_cb(arg, segs, nseg, error)
-	void *arg;
-	bus_dma_segment_t *segs;
-	int nseg;
-	int error;
+an_dma_malloc_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 {
 	bus_addr_t *paddr = (bus_addr_t*) arg;
 	*paddr = segs->ds_addr;
@@ -461,11 +451,8 @@ an_dma_malloc_cb(arg, segs, nseg, error)
  * Alloc DMA memory and set the pointer to it
  */
 static int
-an_dma_malloc(sc, size, dma, mapflags)
-	struct an_softc *sc;
-	bus_size_t size;
-	struct an_dma_alloc *dma;
-	int mapflags;
+an_dma_malloc(struct an_softc *sc, bus_size_t size, struct an_dma_alloc *dma,
+	      int mapflags)
 {
 	int r;
 
@@ -500,9 +487,7 @@ fail_0:
 }
 
 static void
-an_dma_free(sc, dma)
-	struct an_softc *sc;
-	struct an_dma_alloc *dma;
+an_dma_free(struct an_softc *sc, struct an_dma_alloc *dma)
 {
 	bus_dmamap_unload(sc->an_dtag, dma->an_dma_map);
 	bus_dmamem_free(sc->an_dtag, dma->an_dma_vaddr, dma->an_dma_map);
@@ -514,8 +499,7 @@ an_dma_free(sc, dma)
  * Release all resources
  */
 void
-an_release_resources(dev)
-	device_t dev;
+an_release_resources(device_t dev)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	int i;
@@ -558,8 +542,7 @@ an_release_resources(dev)
 }
 
 int
-an_init_mpi350_desc(sc)
-	struct an_softc *sc;
+an_init_mpi350_desc(struct an_softc *sc)
 {
 	struct an_command	cmd_struct;
 	struct an_reply		reply;
@@ -667,10 +650,7 @@ an_init_mpi350_desc(sc)
 }
 
 int
-an_attach(sc, dev, flags)
-	struct an_softc *sc;
-	device_t dev;
-	int flags;
+an_attach(struct an_softc *sc, device_t dev, int flags)
 {
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	int			error;
@@ -823,8 +803,7 @@ an_detach(device_t dev)
 }
 
 static void
-an_rxeof(sc)
-	struct an_softc *sc;
+an_rxeof(struct an_softc *sc)
 {
 	struct ifnet   *ifp;
 	struct ether_header *eh;
@@ -1067,9 +1046,7 @@ an_rxeof(sc)
 }
 
 static void
-an_txeof(sc, status)
-	struct an_softc		*sc;
-	int			status;
+an_txeof(struct an_softc *sc, int status)
 {
 	struct ifnet		*ifp;
 	int			id, i;
@@ -1117,8 +1094,7 @@ an_txeof(sc, status)
  * in an ad-hoc group, or as a station connected to an access point).
  */
 static void
-an_stats_update(xsc)
-	void			*xsc;
+an_stats_update(void *xsc)
 {
 	struct an_softc		*sc;
 	struct ifnet		*ifp;
@@ -1150,8 +1126,7 @@ an_stats_update(xsc)
 }
 
 void
-an_intr(xsc)
-	void			*xsc;
+an_intr(void *xsc)
 {
 	struct an_softc		*sc;
 	struct ifnet		*ifp;
@@ -1212,10 +1187,8 @@ an_intr(xsc)
 }
 
 static int
-an_cmd_struct(sc, cmd, reply)
-	struct an_softc		*sc;
-	struct an_command	*cmd;
-	struct an_reply		*reply;
+an_cmd_struct(struct an_softc *sc, struct an_command *cmd,
+	      struct an_reply *reply)
 {
 	int			i;
 
@@ -1259,10 +1232,7 @@ an_cmd_struct(sc, cmd, reply)
 }
 
 static int
-an_cmd(sc, cmd, val)
-	struct an_softc		*sc;
-	int			cmd;
-	int			val;
+an_cmd(struct an_softc *sc, int cmd, int val)
 {
 	int			i, s = 0;
 
@@ -1307,8 +1277,7 @@ an_cmd(sc, cmd, val)
  * head and force it to reboot correctly.
  */
 static void
-an_reset(sc)
-	struct an_softc		*sc;
+an_reset(struct an_softc *sc)
 {
 	an_cmd(sc, AN_CMD_ENABLE, 0);
 	an_cmd(sc, AN_CMD_FW_RESTART, 0);
@@ -1326,9 +1295,7 @@ an_reset(sc)
  * Read an LTV record from the NIC.
  */
 static int
-an_read_record(sc, ltv)
-	struct an_softc		*sc;
-	struct an_ltv_gen	*ltv;
+an_read_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 {
 	struct an_ltv_gen	*an_ltv;
 	struct an_card_rid_desc an_rid_desc;
@@ -1439,9 +1406,7 @@ an_read_record(sc, ltv)
  * Same as read, except we inject data instead of reading it.
  */
 static int
-an_write_record(sc, ltv)
-	struct an_softc		*sc;
-	struct an_ltv_gen	*ltv;
+an_write_record(struct an_softc *sc, struct an_ltv_gen *ltv)
 {
 	struct an_card_rid_desc an_rid_desc;
 	struct an_command	cmd;
@@ -1540,10 +1505,7 @@ an_write_record(sc, ltv)
 }
 
 static void
-an_dump_record(sc, ltv, string)
-	struct an_softc		*sc;
-	struct an_ltv_gen	*ltv;
-	char			*string;
+an_dump_record(struct an_softc *sc, struct an_ltv_gen *ltv, char *string)
 {
 	u_int8_t		*ptr2;
 	int			len;
@@ -1585,9 +1547,7 @@ an_dump_record(sc, ltv, string)
 }
 
 static int
-an_seek(sc, id, off, chan)
-	struct an_softc		*sc;
-	int			id, off, chan;
+an_seek(struct an_softc *sc, int id, int off, int chan)
 {
 	int			i;
 	int			selreg, offreg;
@@ -1621,11 +1581,7 @@ an_seek(sc, id, off, chan)
 }
 
 static int
-an_read_data(sc, id, off, buf, len)
-	struct an_softc		*sc;
-	int			id, off;
-	caddr_t			buf;
-	int			len;
+an_read_data(struct an_softc *sc, int id, int off, caddr_t buf, int len)
 {
 	int			i;
 	u_int16_t		*ptr;
@@ -1648,11 +1604,7 @@ an_read_data(sc, id, off, buf, len)
 }
 
 static int
-an_write_data(sc, id, off, buf, len)
-	struct an_softc		*sc;
-	int			id, off;
-	caddr_t			buf;
-	int			len;
+an_write_data(struct an_softc *sc, int id, int off, caddr_t buf, int len)
 {
 	int			i;
 	u_int16_t		*ptr;
@@ -1679,10 +1631,7 @@ an_write_data(sc, id, off, buf, len)
  * it out.
  */
 static int
-an_alloc_nicmem(sc, len, id)
-	struct an_softc		*sc;
-	int			len;
-	int			*id;
+an_alloc_nicmem(struct an_softc *sc, int len, int *id)
 {
 	int			i;
 
@@ -1713,9 +1662,7 @@ an_alloc_nicmem(sc, len, id)
 }
 
 static void
-an_setdef(sc, areq)
-	struct an_softc		*sc;
-	struct an_req		*areq;
+an_setdef(struct an_softc *sc, struct an_req *areq)
 {
 	struct ifnet		*ifp;
 	struct an_ltv_genconfig	*cfg;
@@ -1824,9 +1771,7 @@ an_setdef(sc, areq)
  */
 
 static void
-an_promisc(sc, promisc)
-	struct an_softc		*sc;
-	int			promisc;
+an_promisc(struct an_softc *sc, int promisc)
 {
 	if (sc->an_was_monitor)
 		an_reset(sc);
@@ -1842,11 +1787,7 @@ an_promisc(sc, promisc)
 }
 
 static int
-an_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	int			error = 0;
 	int			len;
@@ -2422,8 +2363,7 @@ an_ioctl(ifp, command, data, cr)
 }
 
 static int
-an_init_tx_ring(sc)
-	struct an_softc		*sc;
+an_init_tx_ring(struct an_softc *sc)
 {
 	int			i;
 	int			id;
@@ -2446,8 +2386,7 @@ an_init_tx_ring(sc)
 }
 
 static void
-an_init(xsc)
-	void			*xsc;
+an_init(void *xsc)
 {
 	struct an_softc		*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -2540,8 +2479,7 @@ an_init(xsc)
 }
 
 static void
-an_start(ifp)
-	struct ifnet		*ifp;
+an_start(struct ifnet *ifp)
 {
 	struct an_softc		*sc;
 	struct mbuf		*m0 = NULL;
@@ -2709,8 +2647,7 @@ an_start(ifp)
 }
 
 void
-an_stop(sc)
-	struct an_softc		*sc;
+an_stop(struct an_softc *sc)
 {
 	struct ifnet		*ifp;
 	int			i;
@@ -2735,8 +2672,7 @@ an_stop(sc)
 }
 
 static void
-an_watchdog(ifp)
-	struct ifnet		*ifp;
+an_watchdog(struct ifnet *ifp)
 {
 	struct an_softc		*sc;
 
@@ -2753,8 +2689,7 @@ an_watchdog(ifp)
 }
 
 void
-an_shutdown(dev)
-	device_t		dev;
+an_shutdown(device_t dev)
 {
 	struct an_softc		*sc;
 
@@ -2765,8 +2700,7 @@ an_shutdown(dev)
 }
 
 void
-an_resume(dev)
-	device_t		dev;
+an_resume(device_t dev)
 {
 	struct an_softc		*sc;
 	struct ifnet		*ifp;
@@ -2856,11 +2790,8 @@ SYSCTL_INT(_hw_an, OID_AUTO, an_cache_iponly, CTLFLAG_RW,
  * strength in MAC (src) indexed cache.
  */
 static void
-an_cache_store (sc, m, rx_rssi, rx_quality)
-	struct an_softc *sc;
-	struct mbuf *m;
-	u_int8_t rx_rssi;
-	u_int8_t rx_quality;
+an_cache_store (struct an_softc *sc, struct mbuf *m, u_int8_t rx_rssi,
+		u_int8_t rx_quality)
 {
 	struct ether_header *eh = mtod(m, struct ether_header *);
 	struct ip *ip = NULL;
@@ -2998,8 +2929,7 @@ an_cache_store (sc, m, rx_rssi, rx_quality)
 #endif
 
 static int
-an_media_change(ifp)
-	struct ifnet		*ifp;
+an_media_change(struct ifnet *ifp)
 {
 	struct an_softc *sc = ifp->if_softc;
 	struct an_ltv_genconfig	*cfg;
@@ -3053,9 +2983,7 @@ an_media_change(ifp)
 }
 
 static void
-an_media_status(ifp, imr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*imr;
+an_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 {
 	struct an_ltv_status	status;
 	struct an_softc		*sc = ifp->if_softc;
@@ -3103,9 +3031,7 @@ an_media_status(ifp, imr)
  */
 
 static int
-readrids(ifp, l_ioctl)
-	struct ifnet   *ifp;
-	struct aironet_ioctl *l_ioctl;
+readrids(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 {
 	unsigned short  rid;
 	struct an_softc *sc;
@@ -3174,9 +3100,7 @@ readrids(ifp, l_ioctl)
 }
 
 static int
-writerids(ifp, l_ioctl)
-	struct ifnet   *ifp;
-	struct aironet_ioctl *l_ioctl;
+writerids(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 {
 	struct an_softc *sc;
 	int             rid, command;
@@ -3277,8 +3201,7 @@ writerids(ifp, l_ioctl)
 #define FLASH_SIZE	32 * 1024
 
 static int
-unstickbusy(ifp)
-	struct ifnet   *ifp;
+unstickbusy(struct ifnet *ifp)
 {
 	struct an_softc *sc = ifp->if_softc;
 
@@ -3296,9 +3219,7 @@ unstickbusy(ifp)
  */
 
 static int
-WaitBusy(ifp, uSec)
-	struct ifnet   *ifp;
-	int             uSec;
+WaitBusy(struct ifnet *ifp, int uSec)
 {
 	int             statword = 0xffff;
 	int             delay = 0;
@@ -3322,8 +3243,7 @@ WaitBusy(ifp, uSec)
  */
 
 static int
-cmdreset(ifp)
-	struct ifnet   *ifp;
+cmdreset(struct ifnet *ifp)
 {
 	int             status;
 	struct an_softc *sc = ifp->if_softc;
@@ -3353,8 +3273,7 @@ cmdreset(ifp)
  */
 
 static int
-setflashmode(ifp)
-	struct ifnet   *ifp;
+setflashmode(struct ifnet *ifp)
 {
 	int             status;
 	struct an_softc *sc = ifp->if_softc;
@@ -3382,10 +3301,7 @@ setflashmode(ifp)
  */
 
 static int
-flashgchar(ifp, matchbyte, dwelltime)
-	struct ifnet   *ifp;
-	int             matchbyte;
-	int             dwelltime;
+flashgchar(struct ifnet *ifp, int matchbyte, int dwelltime)
 {
 	int             rchar;
 	unsigned char   rbyte = 0;
@@ -3421,10 +3337,7 @@ flashgchar(ifp, matchbyte, dwelltime)
  */
 
 static int
-flashpchar(ifp, byte, dwelltime)
-	struct ifnet   *ifp;
-	int             byte;
-	int             dwelltime;
+flashpchar(struct ifnet *ifp, int byte, int dwelltime)
 {
 	int             echo;
 	int             pollbusy, waittime;
@@ -3480,8 +3393,7 @@ flashpchar(ifp, byte, dwelltime)
  */
 
 static int
-flashputbuf(ifp)
-	struct ifnet   *ifp;
+flashputbuf(struct ifnet *ifp)
 {
 	unsigned short *bufp;
 	int             nwords;
@@ -3515,8 +3427,7 @@ flashputbuf(ifp)
  */
 
 static int
-flashrestart(ifp)
-	struct ifnet   *ifp;
+flashrestart(struct ifnet *ifp)
 {
 	int             status = 0;
 	struct an_softc *sc = ifp->if_softc;
@@ -3534,9 +3445,7 @@ flashrestart(ifp)
  */
 
 static int
-flashcard(ifp, l_ioctl)
-	struct ifnet   *ifp;
-	struct aironet_ioctl *l_ioctl;
+flashcard(struct ifnet *ifp, struct aironet_ioctl *l_ioctl)
 {
 	int             z = 0, status;
 	struct an_softc	*sc;

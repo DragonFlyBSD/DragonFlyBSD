@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.7 2005/10/24 16:45:19 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -100,8 +100,8 @@ driver_t miibus_driver = {
  * to the network interface driver parent.
  */
 
-int miibus_probe(dev)
-	device_t		dev;
+int
+miibus_probe(device_t dev)
 {
 	struct mii_attach_args	ma, *args;
 	struct mii_data		*mii;
@@ -154,8 +154,8 @@ int miibus_probe(dev)
 	return(0);
 }
 
-int miibus_attach(dev)
-	device_t		dev;
+int
+miibus_attach(device_t dev)
 {
 	void			**v;
 	ifm_change_cb_t		ifmedia_upd;
@@ -173,8 +173,8 @@ int miibus_attach(dev)
 	return(0);
 }
 
-int miibus_detach(dev)
-	device_t		dev;
+int
+miibus_detach(device_t dev)
 {
 	struct mii_data		*mii;
 
@@ -186,9 +186,8 @@ int miibus_detach(dev)
 	return(0);
 }
 
-static int miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+miibus_readreg(device_t dev, int phy, int reg)
 {
 	device_t		parent;
 
@@ -196,9 +195,8 @@ static int miibus_readreg(dev, phy, reg)
 	return(MIIBUS_READREG(parent, phy, reg));
 }
 
-static int miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	int			phy, reg, data;
+static int
+miibus_writereg(device_t dev, int phy, int reg, int data)
 {
 	device_t		parent;
 
@@ -206,8 +204,8 @@ static int miibus_writereg(dev, phy, reg, data)
 	return(MIIBUS_WRITEREG(parent, phy, reg, data));
 }
 
-static void miibus_statchg(dev)
-	device_t		dev;
+static void
+miibus_statchg(device_t dev)
 {
 	device_t		parent;
 
@@ -216,8 +214,8 @@ static void miibus_statchg(dev)
 	return;
 }
 
-static void miibus_mediainit(dev)
-	device_t		dev;
+static void
+miibus_mediainit(device_t dev)
 {
 	struct mii_data		*mii;
 	struct ifmedia_entry	*m;
@@ -239,11 +237,9 @@ static void miibus_mediainit(dev)
 	return;
 }
 
-int mii_phy_probe(dev, child, ifmedia_upd, ifmedia_sts)
-	device_t		dev;
-	device_t		*child;
-	ifm_change_cb_t		ifmedia_upd;
-	ifm_stat_cb_t		ifmedia_sts;
+int
+mii_phy_probe(device_t dev, device_t *child, ifm_change_cb_t ifmedia_upd,
+	      ifm_stat_cb_t ifmedia_sts)
 {
 	void			**v;
 	int			bmsr, i;
@@ -279,8 +275,7 @@ int mii_phy_probe(dev, child, ifmedia_upd, ifmedia_sts)
  * Media changed; notify all PHYs.
  */
 int
-mii_mediachg(mii)
-	struct mii_data *mii;
+mii_mediachg(struct mii_data *mii)
 {
 	struct mii_softc *child;
 	int rv;
@@ -301,8 +296,7 @@ mii_mediachg(mii)
  * Call the PHY tick routines, used during autonegotiation.
  */
 void
-mii_tick(mii)
-	struct mii_data *mii;
+mii_tick(struct mii_data *mii)
 {
 	struct mii_softc *child;
 
@@ -315,8 +309,7 @@ mii_tick(mii)
  * Get media status from PHYs.
  */
 void
-mii_pollstat(mii)
-	struct mii_data *mii;
+mii_pollstat(struct mii_data *mii)
 {
 	struct mii_softc *child;
 

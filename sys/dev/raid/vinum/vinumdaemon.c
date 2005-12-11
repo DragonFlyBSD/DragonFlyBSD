@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.6 2005/11/14 18:49:54 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.7 2005/12/11 01:54:09 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -251,7 +251,7 @@ queue_daemon_request(enum daemonrq type, union daemoninfo info)
  * if it is, ESRCH otherwise
  */
 int
-vinum_finddaemon()
+vinum_finddaemon(void)
 {
     int result;
 

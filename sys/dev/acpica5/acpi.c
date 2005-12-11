@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.18 2005/11/01 23:36:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.19 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -640,7 +640,7 @@ acpi_shutdown(device_t dev)
 }
 
 static void
-acpi_quirks_set()
+acpi_quirks_set(void)
 {
     XSDT_DESCRIPTOR *xsdt;
     struct acpi_quirks *quirk;

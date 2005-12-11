@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy_subr.c,v 1.2.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.5 2005/10/24 15:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.6 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -64,8 +64,7 @@
  * by decoding the NWay autonegotiation, use this routine.
  */
 void
-ukphy_status(phy)
-	struct mii_softc *phy;
+ukphy_status(struct mii_softc *phy)
 {
 	struct mii_data *mii = phy->mii_pdata;
 	int bmsr, bmcr, anlpar;

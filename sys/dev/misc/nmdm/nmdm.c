@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.11 2005/06/16 16:31:34 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -125,8 +125,7 @@ do {	\
  * This function creates and initializes a pair of ttys.
  */
 static void
-nmdminit(n)
-	int n;
+nmdminit(int n)
 {
 	dev_t dev1, dev2;
 	struct nm_softc *pt;
@@ -304,10 +303,7 @@ nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 static	int
-nmdmread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+nmdmread(dev_t dev, struct uio *uio, int flag)
 {
 	int error = 0;
 	struct tty *tp, *tp2;
@@ -341,10 +337,7 @@ nmdmread(dev, uio, flag)
  * indirectly, when tty driver calls nmdmstart.
  */
 static	int
-nmdmwrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+nmdmwrite(dev_t dev, struct uio *uio, int flag)
 {
 	u_char *cp = 0;
 	int cc = 0;
@@ -438,8 +431,7 @@ again:
  * Wake up process selecting or sleeping for input from controlling tty.
  */
 static void
-nmdmstart(tp)
-	struct tty *tp;
+nmdmstart(struct tty *tp)
 {
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 
@@ -451,9 +443,7 @@ nmdmstart(tp)
 
 /* Wakes up the OTHER tty;*/
 static void
-wakeup_other(tp, flag)
-	struct tty *tp;
-	int flag;
+wakeup_other(struct tty *tp, int flag)
 {
 	struct softpart *ourpart, *otherpart;
 
@@ -469,9 +459,7 @@ wakeup_other(tp, flag)
 }
 
 static	void
-nmdmstop(tp, flush)
-	struct tty *tp;
-	int flush;
+nmdmstop(struct tty *tp, int flush)
 {
 	struct nm_softc *pti = tp->t_dev->si_drv1;
 	int flag;
@@ -571,8 +559,7 @@ nmdm_crossover(struct nm_softc *pti,
 static void nmdm_drvinit (void *unused);
 
 static void
-nmdm_drvinit(unused)
-	void *unused;
+nmdm_drvinit(void *unused)
 {
 	/* XXX: Gross hack for DEVFS */
 	nmdminit(0);

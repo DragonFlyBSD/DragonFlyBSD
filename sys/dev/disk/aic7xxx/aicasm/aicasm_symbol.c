@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_symbol.c#24 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_symbol.c,v 1.11.2.7 2003/01/20 23:59:21 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_symbol.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_symbol.c,v 1.3 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -129,7 +129,7 @@ symbol_delete(symbol_t *symbol)
 }
 
 void
-symtable_open()
+symtable_open(void)
 {
 	symtable = dbopen(/*filename*/NULL,
 			  O_CREAT | O_NONBLOCK | O_RDWR, /*mode*/0, DB_HASH,
@@ -143,7 +143,7 @@ symtable_open()
 }
 
 void
-symtable_close()
+symtable_close(void)
 {
 	if (symtable != NULL) {
 		DBT	 key;

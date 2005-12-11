@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/amphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/amphy.c,v 1.8 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/amphy.c,v 1.9 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -82,8 +82,8 @@ DRIVER_MODULE(amphy, miibus, amphy_driver, amphy_devclass, 0, 0);
 int	amphy_service (struct mii_softc *, struct mii_data *, int);
 void	amphy_status (struct mii_softc *);
 
-static int amphy_probe(dev)
-	device_t		dev;
+static int
+amphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -103,8 +103,8 @@ static int amphy_probe(dev)
 	return(0);
 }
 
-static int amphy_attach(dev)
-	device_t		dev;
+static int
+amphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -148,8 +148,8 @@ static int amphy_attach(dev)
 	return(0);
 }
 
-static int amphy_detach(dev)
-	device_t		dev;
+static int
+amphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -162,11 +162,9 @@ static int amphy_detach(dev)
 
 	return(0);
 }
+
 int
-amphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+amphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
@@ -276,8 +274,7 @@ amphy_service(sc, mii, cmd)
 }
 
 void
-amphy_status(sc)
-	struct mii_softc *sc;
+amphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	int bmsr, bmcr, par, anlpar;

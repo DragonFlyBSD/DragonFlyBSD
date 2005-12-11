@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.14 2005/09/06 01:21:26 hmp Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -540,12 +540,8 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
  */
 
 static int
-vniocattach_file(vn, vio, dev, flag, td)
-	struct vn_softc *vn;
-	struct vn_ioctl *vio;
-	dev_t dev;
-	int flag;
-	struct thread *td;
+vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
+		 int flag, struct thread *td)
 {
 	struct vattr vattr;
 	struct nlookupdata nd;
@@ -628,12 +624,8 @@ done:
  */
 
 static int
-vniocattach_swap(vn, vio, dev, flag, td)
-	struct vn_softc *vn;
-	struct vn_ioctl *vio;
-	dev_t dev;
-	int flag;
-	struct thread *td;
+vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
+		 int flag, struct thread *td)
 {
 	int error;
 	struct proc *p = td->td_proc;

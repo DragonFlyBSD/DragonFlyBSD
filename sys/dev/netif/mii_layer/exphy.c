@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -115,8 +115,8 @@ DRIVER_MODULE(xlphy, miibus, exphy_driver, exphy_devclass, 0, 0);
 int	exphy_service (struct mii_softc *, struct mii_data *, int);
 void	exphy_reset (struct mii_softc *);
 
-static int exphy_probe(dev)
-	device_t		dev;
+static int
+exphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 	device_t		parent;
@@ -147,8 +147,8 @@ static int exphy_probe(dev)
 	return (0);
 }
 
-static int exphy_attach(dev)
-	device_t		dev;
+static int
+exphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -203,8 +203,8 @@ static int exphy_attach(dev)
 	return(0);
 }
 
-static int exphy_detach(dev)
-	device_t		dev;
+static int
+exphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -219,10 +219,7 @@ static int exphy_detach(dev)
 }
 
 int
-exphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+exphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 
@@ -299,8 +296,7 @@ exphy_service(sc, mii, cmd)
 }
 
 void
-exphy_reset(sc)
-	struct mii_softc *sc;
+exphy_reset(struct mii_softc *sc)
 {
 
 	mii_phy_reset(sc);

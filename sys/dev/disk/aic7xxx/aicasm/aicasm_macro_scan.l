@@ -41,7 +41,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_macro_scan.l#7 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.1.2.3 2002/09/27 15:46:28 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_scan.l,v 1.3 2005/12/11 01:54:07 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -150,7 +150,7 @@ MCARG		[^(), \t]+
 %%
 
 int
-mmwrap()
+mmwrap(void)
 {
 	stop("EOF encountered in macro call", EX_DATAERR);
 }

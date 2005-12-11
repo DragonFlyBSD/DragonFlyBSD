@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.9 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.10 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -1262,8 +1262,7 @@ polling:
 }
 
 static void 
-trm_Interrupt(vpACB)
-void *vpACB;
+trm_Interrupt(void *vpACB)
 {
 	PACB		pACB;
 	PDCB		pDCB;

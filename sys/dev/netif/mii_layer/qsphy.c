@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
  
 /*
@@ -121,8 +121,8 @@ int	qsphy_service (struct mii_softc *, struct mii_data *, int);
 void	qsphy_reset (struct mii_softc *);
 void	qsphy_status (struct mii_softc *);
 
-static int qsphy_probe(dev)
-	device_t		dev;
+static int
+qsphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;
 
@@ -137,8 +137,8 @@ static int qsphy_probe(dev)
 	return (0);
 }
 
-static int qsphy_attach(dev)
-	device_t		dev;
+static int
+qsphy_attach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
@@ -171,8 +171,8 @@ static int qsphy_attach(dev)
 	return (0);
 }
 
-static int qsphy_detach(dev)
-	device_t		dev;
+static int
+qsphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
 	struct mii_data *mii;
@@ -186,10 +186,7 @@ static int qsphy_detach(dev)
 }
 
 int
-qsphy_service(sc, mii, cmd)
-	struct mii_softc *sc;
-	struct mii_data *mii;
-	int cmd;
+qsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
@@ -270,8 +267,7 @@ qsphy_service(sc, mii, cmd)
 }
 
 void
-qsphy_status(sc)
-	struct mii_softc *sc;
+qsphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
 	int bmsr, bmcr, pctl;
@@ -322,8 +318,7 @@ qsphy_status(sc)
 }
 
 void
-qsphy_reset(sc)
-	struct mii_softc *sc;
+qsphy_reset(struct mii_softc *sc)
 {
 
 	mii_phy_reset(sc);

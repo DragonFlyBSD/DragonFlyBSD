@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.9 2005/06/10 15:29:16 swildner Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.10 2005/12/11 01:54:07 swildner Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -191,9 +191,7 @@ struct scsi_low_funcs stgfuncs = {
  * hwfuncs
  ****************************************************/
 static __inline void 
-stghw_bcr_write_1(sc, bcv)
-	struct stg_softc *sc;
-	u_int8_t bcv;
+stghw_bcr_write_1(struct stg_softc *sc, u_int8_t bcv)
 {
 
 	bus_space_write_1(sc->sc_iot, sc->sc_ioh, tmc_bctl, bcv);
@@ -201,8 +199,7 @@ stghw_bcr_write_1(sc, bcv)
 }
 
 static int
-stghw_check(sc)
-	struct stg_softc *sc;
+stghw_check(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -258,8 +255,7 @@ stghw_check(sc)
 }
 
 static void
-stghw_init(sc)
-	struct stg_softc *sc;
+stghw_init(struct stg_softc *sc)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -275,10 +271,7 @@ stghw_init(sc)
 }
 
 static int
-stg_targ_init(sc, ti, action)
-	struct stg_softc *sc;
-	struct targ_info *ti;
-	int action;
+stg_targ_init(struct stg_softc *sc, struct targ_info *ti, int action)
 {
 	struct stg_targ_info *sti = (void *) ti;
 
@@ -296,8 +289,7 @@ stg_targ_init(sc, ti, action)
  * scsi low interface
  ****************************************************/
 static void
-stghw_attention(sc)
-	struct stg_softc *sc;
+stghw_attention(struct stg_softc *sc)
 {
 
 	sc->sc_busc |= BCTL_ATN;
@@ -307,8 +299,7 @@ stghw_attention(sc)
 }
 
 static void
-stghw_bus_reset(sc)
-	struct stg_softc *sc;
+stghw_bus_reset(struct stg_softc *sc)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -321,9 +312,7 @@ stghw_bus_reset(sc)
 }
 
 static int
-stghw_start_selection(sc, cb)
-	struct stg_softc *sc;
-	struct slccb *cb;
+stghw_start_selection(struct stg_softc *sc, struct slccb *cb)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -353,9 +342,7 @@ stghw_start_selection(sc, cb)
 }
 
 static int
-stg_world_start(sc, fdone)
-	struct stg_softc *sc;
-	int fdone;
+stg_world_start(struct stg_softc *sc, int fdone)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	int error;
@@ -377,10 +364,7 @@ stg_world_start(sc, fdone)
 }
 
 static int
-stg_msg(sc, ti, msg)
-	struct stg_softc *sc;
-	struct targ_info *ti;
-	u_int msg;
+stg_msg(struct stg_softc *sc, struct targ_info *ti, u_int msg)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -425,10 +409,7 @@ stg_msg(sc, ti, msg)
  * General probe attach
  **************************************************************/
 int
-stgprobesubr(iot, ioh, dvcfg)
-	bus_space_tag_t iot;
-	bus_space_handle_t ioh;
-	u_int dvcfg;
+stgprobesubr(bus_space_tag_t iot, bus_space_handle_t ioh, u_int dvcfg)
 {
 	u_int16_t lsb, msb;
 
@@ -448,9 +429,7 @@ stgprobesubr(iot, ioh, dvcfg)
 }
 
 int
-stgprint(aux, name)
-	void *aux;
-	const char *name;
+stgprint(void *aux, const char *name)
 {
 
 	if (name != NULL)
@@ -459,8 +438,7 @@ stgprint(aux, name)
 }
 
 void
-stgattachsubr(sc)
-	struct stg_softc *sc;
+stgattachsubr(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 
@@ -481,9 +459,7 @@ stgattachsubr(sc)
  * PDMA functions
  **************************************************************/
 static __inline void
-stg_pdma_end(sc, ti)
-	struct stg_softc *sc;
-	struct targ_info *ti;
+stg_pdma_end(struct stg_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -546,10 +522,7 @@ out:
 }
 
 static void
-stg_pio_read(sc, ti, thold)
-	struct stg_softc *sc;
-	struct targ_info *ti;
-	u_int thold;
+stg_pio_read(struct stg_softc *sc, struct targ_info *ti, u_int thold)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -639,10 +612,7 @@ stg_pio_read(sc, ti, thold)
 }
 
 static void
-stg_pio_write(sc, ti, thold)
-	struct stg_softc *sc;
-	struct targ_info *ti;
-	u_int thold;
+stg_pio_write(struct stg_softc *sc, struct targ_info *ti, u_int thold)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -721,10 +691,7 @@ stg_pio_write(sc, ti, thold)
 }
 
 static int
-stg_negate_signal(sc, mask, s)
-	struct stg_softc *sc;
-	u_int8_t mask;
-	u_char *s;
+stg_negate_signal(struct stg_softc *sc, u_int8_t mask, u_char *s)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -748,9 +715,7 @@ stg_negate_signal(sc, mask, s)
 }
 
 static int
-stg_expect_signal(sc, phase, mask)
-	struct stg_softc *sc;
-	u_int8_t phase, mask;
+stg_expect_signal(struct stg_softc *sc, u_int8_t phase, u_int8_t mask)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t bst = sc->sc_iot;
@@ -777,12 +742,8 @@ stg_expect_signal(sc, phase, mask)
 }
 
 static int
-stg_xfer(sc, buf, len, phase, clear_atn)
-	struct stg_softc *sc;
-	u_int8_t *buf;
-	int len;
-	int phase;
-	int clear_atn;
+stg_xfer(struct stg_softc *sc, u_int8_t *buf, int len, int phase,
+	 int clear_atn)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -827,8 +788,7 @@ bad:
  * disconnect & reselect (HW low)
  **************************************************************/
 static int
-stg_reselected(sc)
-	struct stg_softc *sc;
+stg_reselected(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -910,9 +870,7 @@ reselected:
 }
 
 static int
-stg_disconnected(sc, ti)
-	struct stg_softc *sc;
-	struct targ_info *ti;
+stg_disconnected(struct stg_softc *sc, struct targ_info *ti)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -938,8 +896,7 @@ stg_disconnected(sc, ti)
  * SEQUENCER
  **************************************************************/
 static int
-stg_target_nexus_establish(sc)
-	struct stg_softc *sc;
+stg_target_nexus_establish(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -956,16 +913,14 @@ stg_target_nexus_establish(sc)
 }
 
 static int
-stg_lun_nexus_establish(sc)
-	struct stg_softc *sc;
+stg_lun_nexus_establish(struct stg_softc *sc)
 {
 
 	return 0;
 }
 
 static int
-stg_ccb_nexus_establish(sc)
-	struct stg_softc *sc;
+stg_ccb_nexus_establish(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	struct slccb *cb = slp->sl_Qnexus;
@@ -977,9 +932,7 @@ stg_ccb_nexus_establish(sc)
 #define	STGHW_SELECT_INTERVAL	10
 
 static int
-stghw_select_targ_wait(sc, mu)
-	struct stg_softc *sc;
-	int mu;
+stghw_select_targ_wait(struct stg_softc *sc, int mu)
 {
 	bus_space_tag_t iot = sc->sc_iot;
 	bus_space_handle_t ioh = sc->sc_ioh;
@@ -1002,8 +955,7 @@ stghw_select_targ_wait(sc, mu)
 }
 
 static void
-stg_selection_done_and_expect_msgout(sc)
-	struct stg_softc *sc;
+stg_selection_done_and_expect_msgout(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;
@@ -1016,8 +968,7 @@ stg_selection_done_and_expect_msgout(sc)
 }
 
 int
-stgintr(arg)
-	void *arg;
+stgintr(void *arg)
 {
 	struct stg_softc *sc = arg;
 	struct scsi_low_softc *slp = &sc->sc_sclow;
@@ -1348,8 +1299,7 @@ out:
 }
 
 static int
-stg_timeout(sc)
-	struct stg_softc *sc;
+stg_timeout(struct stg_softc *sc)
 {
 	struct scsi_low_softc *slp = &sc->sc_sclow;
 	bus_space_tag_t iot = sc->sc_iot;

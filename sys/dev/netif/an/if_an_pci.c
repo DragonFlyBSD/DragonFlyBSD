@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.18 2005/11/28 17:13:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.19 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -138,8 +138,7 @@ an_probe_pci(device_t dev)
 }
 
 static int
-an_attach_pci(dev)
-	device_t		dev;
+an_attach_pci(device_t dev)
 {
 	struct an_softc		*sc;
 	int 			flags, error;

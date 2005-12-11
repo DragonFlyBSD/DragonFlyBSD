@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -129,8 +129,8 @@ int	tlphy_auto (struct tlphy_softc *, int);
 void	tlphy_acomp (struct tlphy_softc *);
 void	tlphy_status (struct tlphy_softc *);
 
-static int tlphy_probe(dev)
-	device_t		dev;
+static int
+tlphy_probe(device_t dev)
 {
 	struct mii_attach_args *ma;       
 
@@ -145,8 +145,8 @@ static int tlphy_probe(dev)
 	return (0);
 }
 
-static int tlphy_attach(dev)
-	device_t		dev;
+static int
+tlphy_attach(device_t dev)
 {
 	struct tlphy_softc *sc;
 	struct mii_attach_args *ma;
@@ -225,8 +225,8 @@ static int tlphy_attach(dev)
 	return(0);
 }
 
-static int tlphy_detach(dev)
-	device_t		dev;
+static int
+tlphy_detach(device_t dev)
 {
 	struct tlphy_softc	*sc;
 	struct mii_data		*mii;
@@ -240,10 +240,7 @@ static int tlphy_detach(dev)
 }
 
 int
-tlphy_service(self, mii, cmd)
-	struct mii_softc *self;
-	struct mii_data *mii;
-	int cmd;
+tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 {
 	struct tlphy_softc *sc = (struct tlphy_softc *)self;
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -359,8 +356,7 @@ tlphy_service(self, mii, cmd)
 }
 
 void
-tlphy_status(sc)
-	struct tlphy_softc *sc;
+tlphy_status(struct tlphy_softc *sc)
 {
 	struct mii_data *mii = sc->sc_mii.mii_pdata;
 	int bmsr, bmcr, tlctrl;
@@ -402,9 +398,7 @@ tlphy_status(sc)
 }
 
 int
-tlphy_auto(sc, waitfor)
-	struct tlphy_softc *sc;
-	int waitfor;
+tlphy_auto(struct tlphy_softc *sc, int waitfor)
 {
 	int error;
 
@@ -430,8 +424,7 @@ tlphy_auto(sc, waitfor)
 }
 
 void
-tlphy_acomp(sc)
-	struct tlphy_softc *sc;
+tlphy_acomp(struct tlphy_softc *sc)
 {
 	int aner, anlpar;
 

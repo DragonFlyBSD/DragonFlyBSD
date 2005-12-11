@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.10 2005/06/10 15:46:31 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.11 2005/12/11 01:54:09 swildner Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -125,7 +125,8 @@ static void ser_putc(int c)
     }
 }
 
-int ser_printf(const char *fmt, ...)
+int
+ser_printf(const char *fmt, ...)
 {
     __va_list args;
     int i;
@@ -1889,8 +1890,8 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
 }
 
 /* Controller event handling functions */
-gdt_evt_str *gdt_store_event(u_int16_t source, u_int16_t idx,
-                             gdt_evt_data *evt)
+gdt_evt_str *
+gdt_store_event(u_int16_t source, u_int16_t idx, gdt_evt_data *evt)
 {
     gdt_evt_str *e;
     struct timeval tv;
@@ -1934,7 +1935,8 @@ gdt_evt_str *gdt_store_event(u_int16_t source, u_int16_t idx,
     return e;
 }
 
-int gdt_read_event(int handle, gdt_evt_str *estr)
+int
+gdt_read_event(int handle, gdt_evt_str *estr)
 {
     gdt_evt_str *e;
     int eindex;
@@ -1965,7 +1967,8 @@ int gdt_read_event(int handle, gdt_evt_str *estr)
     return eindex;
 }
 
-void gdt_readapp_event(u_int8_t application, gdt_evt_str *estr)
+void
+gdt_readapp_event(u_int8_t application, gdt_evt_str *estr)
 {
     gdt_evt_str *e;
     int found = FALSE;
@@ -1995,7 +1998,8 @@ void gdt_readapp_event(u_int8_t application, gdt_evt_str *estr)
     crit_exit();
 }
 
-void gdt_clear_events()
+void
+gdt_clear_events(void)
 {
     GDT_DPRINTF(GDT_D_MISC, ("gdt_clear_events\n"));
 

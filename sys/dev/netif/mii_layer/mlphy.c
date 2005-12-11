@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
  */
 
 /*
@@ -102,8 +102,8 @@ static int	mlphy_service (struct mii_softc *, struct mii_data *, int);
 static void	mlphy_reset (struct mii_softc *);
 static void	mlphy_status (struct mii_softc *);
 
-static int mlphy_probe(dev)
-	device_t		dev;
+static int
+mlphy_probe(device_t dev)
 {
 	struct mii_attach_args	*ma;
 	device_t		parent;
@@ -131,8 +131,8 @@ static int mlphy_probe(dev)
 	return (0);
 }
 
-static int mlphy_attach(dev)
-	device_t		dev;
+static int
+mlphy_attach(device_t dev)
 {
 	struct mlphy_softc *msc;
 	struct mii_softc *sc;
@@ -180,8 +180,8 @@ static int mlphy_attach(dev)
 	return(0);
 }
 
-static int mlphy_detach(dev)
-	device_t		dev;
+static int
+mlphy_detach(device_t dev)
 {
 	struct mlphy_softc	*sc;
 	struct mii_data		*mii;
@@ -196,10 +196,7 @@ static int mlphy_detach(dev)
 }
 
 static int
-mlphy_service(xsc, mii, cmd)
-	struct mii_softc *xsc;
-	struct mii_data *mii;
-	int cmd;
+mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry	*ife = mii->mii_media.ifm_cur;
 	int			reg;
@@ -400,8 +397,8 @@ mlphy_service(xsc, mii, cmd)
  * The Micro Linear PHY comes out of reset with the 'autoneg
  * enable' bit set, which we don't want.
  */
-static void mlphy_reset(sc)
-	struct mii_softc	*sc;
+static void
+mlphy_reset(struct mii_softc *sc)
 {
 	int			reg;
 
@@ -417,8 +414,8 @@ static void mlphy_reset(sc)
  * If we negotiate a 10Mbps mode, we need to check for an alternate
  * PHY and make sure it's enabled and set correctly.
  */
-static void mlphy_status(sc)
-	struct mii_softc	*sc;
+static void
+mlphy_status(struct mii_softc *sc)
 {
 	struct mlphy_softc	*msc = (struct mlphy_softc *)sc;
 	struct mii_data		*mii = msc->ml_mii.mii_pdata;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.26 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.27 2005/12/11 01:54:09 swildner Exp $
  */
 
 /*
@@ -197,59 +197,52 @@ DRIVER_MODULE(miibus, pcn, miibus_driver, miibus_devclass, 0, 0);
 #define PCN_BCR_CLRBIT(sc, reg, x)			\
 	pcn_bcr_write(sc, reg, pcn_bcr_read(sc, reg) & ~(x))
 
-static u_int32_t pcn_csr_read(sc, reg)
-	struct pcn_softc	*sc;
-	int			reg;
+static u_int32_t
+pcn_csr_read(struct pcn_softc *sc, int reg)
 {
 	CSR_WRITE_4(sc, PCN_IO32_RAP, reg);
 	return(CSR_READ_4(sc, PCN_IO32_RDP));
 }
 
-static u_int16_t pcn_csr_read16(sc, reg)
-	struct pcn_softc	*sc;
-	int			reg;
+static u_int16_t
+pcn_csr_read16(struct pcn_softc *sc, int reg)
 {
 	CSR_WRITE_2(sc, PCN_IO16_RAP, reg);
 	return(CSR_READ_2(sc, PCN_IO16_RDP));
 }
 
-static void pcn_csr_write(sc, reg, val)
-	struct pcn_softc	*sc;
-	int			reg;
+static void
+pcn_csr_write(struct pcn_softc *sc, int reg, int val)
 {
 	CSR_WRITE_4(sc, PCN_IO32_RAP, reg);
 	CSR_WRITE_4(sc, PCN_IO32_RDP, val);
 	return;
 }
 
-static u_int32_t pcn_bcr_read(sc, reg)
-	struct pcn_softc	*sc;
-	int			reg;
+static u_int32_t
+pcn_bcr_read(struct pcn_softc *sc, int reg)
 {
 	CSR_WRITE_4(sc, PCN_IO32_RAP, reg);
 	return(CSR_READ_4(sc, PCN_IO32_BDP));
 }
 
-static u_int16_t pcn_bcr_read16(sc, reg)
-	struct pcn_softc	*sc;
-	int			reg;
+static u_int16_t
+pcn_bcr_read16(struct pcn_softc *sc, int reg)
 {
 	CSR_WRITE_2(sc, PCN_IO16_RAP, reg);
 	return(CSR_READ_2(sc, PCN_IO16_BDP));
 }
 
-static void pcn_bcr_write(sc, reg, val)
-	struct pcn_softc	*sc;
-	int			reg;
+static void
+pcn_bcr_write(struct pcn_softc *sc, int reg, int val)
 {
 	CSR_WRITE_4(sc, PCN_IO32_RAP, reg);
 	CSR_WRITE_4(sc, PCN_IO32_BDP, val);
 	return;
 }
 
-static int pcn_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+pcn_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct pcn_softc	*sc;
 	int			val;
@@ -269,9 +262,8 @@ static int pcn_miibus_readreg(dev, phy, reg)
 	return(val);
 }
 
-static int pcn_miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	int			phy, reg, data;
+static int
+pcn_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
 	struct pcn_softc	*sc;
 
@@ -283,8 +275,8 @@ static int pcn_miibus_writereg(dev, phy, reg, data)
 	return(0);
 }
 
-static void pcn_miibus_statchg(dev)
-	device_t		dev;
+static void
+pcn_miibus_statchg(device_t dev)
 {
 	struct pcn_softc	*sc;
 	struct mii_data		*mii;
@@ -303,8 +295,8 @@ static void pcn_miibus_statchg(dev)
 
 #define DC_POLY		0xEDB88320
 
-static u_int32_t pcn_crc(addr)
-	caddr_t			addr;
+static u_int32_t
+pcn_crc(caddr_t addr)
 {
 	u_int32_t		idx, bit, data, crc;
 
@@ -319,8 +311,8 @@ static u_int32_t pcn_crc(addr)
 	return ((crc >> 26) & 0x3F);
 }
 
-static void pcn_setmulti(sc)
-	struct pcn_softc	*sc;
+static void
+pcn_setmulti(struct pcn_softc *sc)
 {
 	struct ifnet		*ifp;
 	struct ifmultiaddr	*ifma;
@@ -358,8 +350,8 @@ static void pcn_setmulti(sc)
 	return;
 }
 
-static void pcn_reset(sc)
-	struct pcn_softc	*sc;
+static void
+pcn_reset(struct pcn_softc *sc)
 {
 	/*
 	 * Issue a reset by reading from the RESET register.
@@ -387,8 +379,8 @@ static void pcn_reset(sc)
  * Probe for an AMD chip. Check the PCI vendor and device
  * IDs against our list and return a device name if we find a match.
  */
-static int pcn_probe(dev)
-	device_t		dev;
+static int
+pcn_probe(device_t dev)
 {
 	struct pcn_type		*t;
 	struct pcn_softc	*sc;
@@ -486,8 +478,8 @@ static int pcn_probe(dev)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-static int pcn_attach(dev)
-	device_t		dev;
+static int
+pcn_attach(device_t dev)
 {
 	uint8_t			eaddr[ETHER_ADDR_LEN];
 	u_int32_t		command;
@@ -636,8 +628,8 @@ fail:
 	return(error);
 }
 
-static int pcn_detach(dev)
-	device_t		dev;
+static int
+pcn_detach(device_t dev)
 {
 	struct pcn_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -674,8 +666,8 @@ static int pcn_detach(dev)
 /*
  * Initialize the transmit descriptors.
  */
-static int pcn_list_tx_init(sc)
-	struct pcn_softc	*sc;
+static int
+pcn_list_tx_init(struct pcn_softc *sc)
 {
 	struct pcn_list_data	*ld;
 	struct pcn_ring_data	*cd;
@@ -700,8 +692,8 @@ static int pcn_list_tx_init(sc)
 /*
  * Initialize the RX descriptors and allocate mbufs for them.
  */
-static int pcn_list_rx_init(sc)
-	struct pcn_softc	*sc;
+static int
+pcn_list_rx_init(struct pcn_softc *sc)
 {
 	struct pcn_list_data	*ld;
 	struct pcn_ring_data	*cd;
@@ -723,10 +715,8 @@ static int pcn_list_rx_init(sc)
 /*
  * Initialize an RX descriptor and attach an MBUF cluster.
  */
-static int pcn_newbuf(sc, idx, m)
-	struct pcn_softc	*sc;
-	int			idx;
-	struct mbuf		*m;
+static int
+pcn_newbuf(struct pcn_softc *sc, int idx, struct mbuf *m)
 {
 	struct mbuf		*m_new = NULL;
 	struct pcn_rx_desc	*c;
@@ -765,8 +755,8 @@ static int pcn_newbuf(sc, idx, m)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-static void pcn_rxeof(sc)
-	struct pcn_softc	*sc;
+static void
+pcn_rxeof(struct pcn_softc *sc)
 {
         struct mbuf		*m;
         struct ifnet		*ifp;
@@ -823,8 +813,8 @@ static void pcn_rxeof(sc)
  * the list buffers.
  */
 
-static void pcn_txeof(sc)
-	struct pcn_softc	*sc;
+static void
+pcn_txeof(struct pcn_softc *sc)
 {
 	struct pcn_tx_desc	*cur_tx = NULL;
 	struct ifnet		*ifp;
@@ -880,8 +870,8 @@ static void pcn_txeof(sc)
 	return;
 }
 
-static void pcn_tick(xsc)
-	void			*xsc;
+static void
+pcn_tick(void *xsc)
 {
 	struct pcn_softc *sc = xsc;
 	struct mii_data *mii;
@@ -908,8 +898,8 @@ static void pcn_tick(xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-static void pcn_intr(arg)
-	void			*arg;
+static void
+pcn_intr(void *arg)
 {
 	struct pcn_softc	*sc;
 	struct ifnet		*ifp;
@@ -951,10 +941,8 @@ static void pcn_intr(arg)
  * Encapsulate an mbuf chain in a descriptor by coupling the mbuf data
  * pointers to the fragment pointers.
  */
-static int pcn_encap(sc, m_head, txidx)
-	struct pcn_softc	*sc;
-	struct mbuf		*m_head;
-	u_int32_t		*txidx;
+static int
+pcn_encap(struct pcn_softc *sc, struct mbuf *m_head, u_int32_t *txidx)
 {
 	struct pcn_tx_desc	*f = NULL;
 	struct mbuf		*m;
@@ -1006,8 +994,8 @@ static int pcn_encap(sc, m_head, txidx)
  * copy of the pointers since the transmit list fragment pointers are
  * physical addresses.
  */
-static void pcn_start(ifp)
-	struct ifnet		*ifp;
+static void
+pcn_start(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;
 	struct mbuf		*m_head = NULL;
@@ -1053,8 +1041,8 @@ static void pcn_start(ifp)
 	ifp->if_timer = 5;
 }
 
-void pcn_setfilt(ifp)
-	struct ifnet		*ifp;
+void
+pcn_setfilt(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;
 
@@ -1077,8 +1065,8 @@ void pcn_setfilt(ifp)
 	return;
 }
 
-static void pcn_init(xsc)
-	void			*xsc;
+static void
+pcn_init(void *xsc)
 {
 	struct pcn_softc	*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -1182,8 +1170,8 @@ static void pcn_init(xsc)
 /*
  * Set media options.
  */
-static int pcn_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+static int
+pcn_ifmedia_upd(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;
 	struct mii_data		*mii;
@@ -1206,9 +1194,8 @@ static int pcn_ifmedia_upd(ifp)
 /*
  * Report current media status.
  */
-static void pcn_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+static void
+pcn_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct pcn_softc	*sc;
 	struct mii_data		*mii;
@@ -1223,11 +1210,8 @@ static void pcn_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int pcn_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+static int
+pcn_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct pcn_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
@@ -1283,8 +1267,8 @@ static int pcn_ioctl(ifp, command, data, cr)
 	return(error);
 }
 
-static void pcn_watchdog(ifp)
-	struct ifnet		*ifp;
+static void
+pcn_watchdog(struct ifnet *ifp)
 {
 	struct pcn_softc	*sc;
 
@@ -1307,8 +1291,8 @@ static void pcn_watchdog(ifp)
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-static void pcn_stop(sc)
-	struct pcn_softc	*sc;
+static void
+pcn_stop(struct pcn_softc *sc)
 {
 	int		i;
 	struct ifnet		*ifp;
@@ -1354,8 +1338,8 @@ static void pcn_stop(sc)
  * Stop all chip I/O so that the kernel's probe routines don't
  * get confused by errant DMAs when rebooting.
  */
-static void pcn_shutdown(dev)
-	device_t		dev;
+static void
+pcn_shutdown(device_t dev)
 {
 	struct pcn_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;

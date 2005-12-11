@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.25 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.26 2005/12/11 01:54:09 swildner Exp $
  */
 
 /*
@@ -217,9 +217,8 @@ DRIVER_MODULE(miibus, sf, miibus_driver, miibus_devclass, 0, 0);
 #define SF_CLRBIT(sc, reg, x)				\
 	csr_write_4(sc, reg, csr_read_4(sc, reg) & ~x)
 
-static u_int32_t csr_read_4(sc, reg)
-	struct sf_softc		*sc;
-	int			reg;
+static u_int32_t
+csr_read_4(struct sf_softc *sc, int reg)
 {
 	u_int32_t		val;
 
@@ -233,9 +232,8 @@ static u_int32_t csr_read_4(sc, reg)
 	return(val);
 }
 
-static u_int8_t sf_read_eeprom(sc, reg)
-	struct sf_softc		*sc;
-	int			reg;
+static u_int8_t
+sf_read_eeprom(struct sf_softc *sc, int reg)
 {
 	u_int8_t		val;
 
@@ -245,10 +243,8 @@ static u_int8_t sf_read_eeprom(sc, reg)
 	return(val);
 }
 
-static void csr_write_4(sc, reg, val)
-	struct sf_softc		*sc;
-	int			reg;
-	u_int32_t		val;
+static void
+csr_write_4(struct sf_softc *sc, int reg, u_int32_t val)
 {
 #ifdef SF_USEIOSPACE
 	CSR_WRITE_4(sc, SF_INDIRECTIO_ADDR, reg + SF_RMAP_INTREG_BASE);
@@ -259,8 +255,8 @@ static void csr_write_4(sc, reg, val)
 	return;
 }
 
-static u_int32_t sf_calchash(addr)
-	caddr_t			addr;
+static u_int32_t
+sf_calchash(caddr_t addr)
 {
 	u_int32_t		crc, carry;
 	int			i, j;
@@ -289,10 +285,8 @@ static u_int32_t sf_calchash(addr)
  * offset 'idx.' The perfect filter only has 16 entries so do
  * some sanity tests.
  */
-static int sf_setperf(sc, idx, mac)
-	struct sf_softc		*sc;
-	int			idx;
-	caddr_t			mac;
+static int
+sf_setperf(struct sf_softc *sc, int idx, caddr_t mac)
 {
 	u_int16_t		*p;
 
@@ -319,10 +313,8 @@ static int sf_setperf(sc, idx, mac)
  * specified mac address 'mac.' If 'prio' is nonzero, update the
  * priority hash table instead of the filter hash table.
  */
-static int sf_sethash(sc, mac, prio)
-	struct sf_softc		*sc;
-	caddr_t			mac;
-	int			prio;
+static int
+sf_sethash(struct sf_softc *sc, caddr_t mac, int prio)
 {
 	u_int32_t		h = 0;
 
@@ -346,10 +338,8 @@ static int sf_sethash(sc, mac, prio)
 /*
  * Set a VLAN tag in the receive filter.
  */
-static int sf_setvlan(sc, idx, vlan)
-	struct sf_softc		*sc;
-	int			idx;
-	u_int32_t		vlan;
+static int
+sf_setvlan(struct sf_softc *sc, int idx, u_int32_t vlan)
 {
 	if (idx < 0 || idx >> SF_RXFILT_HASH_CNT)
 		return(EINVAL);
@@ -361,9 +351,8 @@ static int sf_setvlan(sc, idx, vlan)
 }
 #endif
 
-static int sf_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+sf_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct sf_softc		*sc;
 	int			i;
@@ -386,9 +375,8 @@ static int sf_miibus_readreg(dev, phy, reg)
 	return(val & 0x0000FFFF);
 }
 
-static int sf_miibus_writereg(dev, phy, reg, val)
-	device_t		dev;
-	int			phy, reg, val;
+static int
+sf_miibus_writereg(device_t dev, int phy, int reg, int val)
 {
 	struct sf_softc		*sc;
 	int			i;
@@ -407,8 +395,8 @@ static int sf_miibus_writereg(dev, phy, reg, val)
 	return(0);
 }
 
-static void sf_miibus_statchg(dev)
-	device_t		dev;
+static void
+sf_miibus_statchg(device_t dev)
 {
 	struct sf_softc		*sc;
 	struct mii_data		*mii;
@@ -427,8 +415,8 @@ static void sf_miibus_statchg(dev)
 	return;
 }
 
-static void sf_setmulti(sc)
-	struct sf_softc		*sc;
+static void
+sf_setmulti(struct sf_softc *sc)
 {
 	struct ifnet		*ifp;
 	int			i;
@@ -484,8 +472,8 @@ static void sf_setmulti(sc)
 /*
  * Set media options.
  */
-static int sf_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+static int
+sf_ifmedia_upd(struct ifnet *ifp)
 {
 	struct sf_softc		*sc;
 	struct mii_data		*mii;
@@ -507,9 +495,8 @@ static int sf_ifmedia_upd(ifp)
 /*
  * Report current media status.
  */
-static void sf_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+static void
+sf_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct sf_softc		*sc;
 	struct mii_data		*mii;
@@ -524,11 +511,8 @@ static void sf_ifmedia_sts(ifp, ifmr)
 	return;
 }
 
-static int sf_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct ucred		*cr;
+static int
+sf_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct sf_softc		*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
@@ -573,8 +557,8 @@ static int sf_ioctl(ifp, command, data, cr)
 	return(error);
 }
 
-static void sf_reset(sc)
-	struct sf_softc		*sc;
+static void
+sf_reset(struct sf_softc *sc)
 {
 	int		i;
 
@@ -605,8 +589,8 @@ static void sf_reset(sc)
  * We also check the subsystem ID so that we can identify exactly which
  * NIC has been found, if possible.
  */
-static int sf_probe(dev)
-	device_t		dev;
+static int
+sf_probe(device_t dev)
 {
 	struct sf_type		*t;
 
@@ -660,8 +644,8 @@ static int sf_probe(dev)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-static int sf_attach(dev)
-	device_t		dev;
+static int
+sf_attach(device_t dev)
 {
 	int			i;
 	u_int32_t		command;
@@ -814,8 +798,8 @@ fail:
 	return(error);
 }
 
-static int sf_detach(dev)
-	device_t		dev;
+static int
+sf_detach(device_t dev)
 {
 	struct sf_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -848,8 +832,8 @@ static int sf_detach(dev)
 	return(0);
 }
 
-static int sf_init_rx_ring(sc)
-	struct sf_softc		*sc;
+static int
+sf_init_rx_ring(struct sf_softc *sc)
 {
 	struct sf_list_data	*ld;
 	int			i;
@@ -869,8 +853,8 @@ static int sf_init_rx_ring(sc)
 	return(0);
 }
 
-static void sf_init_tx_ring(sc)
-	struct sf_softc		*sc;
+static void
+sf_init_tx_ring(struct sf_softc *sc)
 {
 	struct sf_list_data	*ld;
 	int			i;
@@ -893,10 +877,9 @@ static void sf_init_tx_ring(sc)
 	return;
 }
 
-static int sf_newbuf(sc, c, m)
-	struct sf_softc		*sc;
-	struct sf_rx_bufdesc_type0	*c;
-	struct mbuf		*m;
+static int
+sf_newbuf(struct sf_softc *sc, struct sf_rx_bufdesc_type0 *c,
+	  struct mbuf *m)
 {
 	struct mbuf		*m_new = NULL;
 
@@ -945,8 +928,8 @@ static int sf_newbuf(sc, c, m)
  * packets into properly aligned buffers before handing them off.
  */
 
-static void sf_rxeof(sc)
-	struct sf_softc		*sc;
+static void
+sf_rxeof(struct sf_softc *sc)
 {
 	struct mbuf		*m;
 	struct ifnet		*ifp;
@@ -1009,8 +992,8 @@ static void sf_rxeof(sc)
  * gives the impression that it should match the producer/consumer
  * index, which is the offset in 8 byte blocks.
  */
-static void sf_txeof(sc)
-	struct sf_softc		*sc;
+static void
+sf_txeof(struct sf_softc *sc)
 {
 	int			txcons, cmpprodidx, cmpconsidx;
 	struct sf_tx_cmpdesc_type1 *cur_cmp;
@@ -1054,8 +1037,8 @@ static void sf_txeof(sc)
 	return;
 }
 
-static void sf_txthresh_adjust(sc)
-	struct sf_softc		*sc;
+static void
+sf_txthresh_adjust(struct sf_softc *sc)
 {
 	u_int32_t		txfctl;
 	u_int8_t		txthresh;
@@ -1077,8 +1060,8 @@ static void sf_txthresh_adjust(sc)
 	return;
 }
 
-static void sf_intr(arg)
-	void			*arg;
+static void
+sf_intr(void *arg)
 {
 	struct sf_softc		*sc;
 	struct ifnet		*ifp;
@@ -1130,8 +1113,8 @@ static void sf_intr(arg)
 	return;
 }
 
-static void sf_init(xsc)
-	void			*xsc;
+static void
+sf_init(void *xsc)
 {
 	struct sf_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -1233,10 +1216,9 @@ static void sf_init(xsc)
 	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 }
 
-static int sf_encap(sc, c, m_head)
-	struct sf_softc		*sc;
-	struct sf_tx_bufdesc_type0 *c;
-	struct mbuf		*m_head;
+static int
+sf_encap(struct sf_softc *sc, struct sf_tx_bufdesc_type0 *c,
+	 struct mbuf *m_head)
 {
 	int			frag = 0;
 	struct sf_frag		*f = NULL;
@@ -1296,8 +1278,8 @@ static int sf_encap(sc, c, m_head)
 	return(0);
 }
 
-static void sf_start(ifp)
-	struct ifnet		*ifp;
+static void
+sf_start(struct ifnet *ifp)
 {
 	struct sf_softc		*sc;
 	struct sf_tx_bufdesc_type0 *cur_tx = NULL;
@@ -1363,8 +1345,8 @@ static void sf_start(ifp)
 	return;
 }
 
-static void sf_stop(sc)
-	struct sf_softc		*sc;
+static void
+sf_stop(struct sf_softc *sc)
 {
 	int			i;
 	struct ifnet		*ifp;
@@ -1412,8 +1394,8 @@ static void sf_stop(sc)
  * indirect data register, the contents of the address register could
  * be changed out from under us.
  */     
-static void sf_stats_update(xsc)
-	void			*xsc;
+static void
+sf_stats_update(void *xsc)
 {
 	struct sf_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -1451,8 +1433,8 @@ static void sf_stats_update(xsc)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-static void sf_watchdog(ifp)
-	struct ifnet		*ifp;
+static void
+sf_watchdog(struct ifnet *ifp)
 {
 	struct sf_softc		*sc;
 
@@ -1471,8 +1453,8 @@ static void sf_watchdog(ifp)
 	return;
 }
 
-static void sf_shutdown(dev)
-	device_t		dev;
+static void
+sf_shutdown(device_t dev)
 {
 	struct sf_softc	*sc;
 	struct ifnet *ifp;
