@@ -1,7 +1,5 @@
-# $DragonFly: src/nrelease/Makefile,v 1.45 2005/12/10 14:47:05 joerg Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.46 2005/12/11 18:36:14 dillon Exp $
 #
-
-all: release
 
 # compat target
 installer_release: release
@@ -151,6 +149,6 @@ fetch:
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
 .PHONY: installer_realquickrel check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
-.PHONE: clean realclean fetch
+.PHONY: clean realclean fetch
 
 .include <bsd.prog.mk>
