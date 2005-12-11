@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/nullfs.c,v 1.3.2.1 2000/05/04 13:47:51 ps Exp $ */
-/* $DragonFly: src/lib/libstand/nullfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
+/* $DragonFly: src/lib/libstand/nullfs.c,v 1.3 2005/12/11 02:27:26 swildner Exp $ */
 /*	$NetBSD: nullfs.c,v 1.1 1996/01/13 22:25:39 leo Exp $	*/
 
 /*-
@@ -71,42 +71,49 @@
 /*
  * Null filesystem
  */
-int	null_open (const char *path, struct open_file *f)
+int
+null_open(const char *path, struct open_file *f)
 {
 	errno  = EIO;
 	return -1;
 }
 
-int	null_close(struct open_file *f)
+int
+null_close(struct open_file *f)
 {
 	return 0;
 }
 
-int	null_read (struct open_file *f, void *buf, size_t size, size_t *resid)
+int
+null_read(struct open_file *f, void *buf, size_t size, size_t *resid)
 {
 	errno = EIO;
 	return -1;
 }
 
-int	null_write (struct open_file *f, void *buf, size_t size, size_t *resid)
+int
+null_write(struct open_file *f, void *buf, size_t size, size_t *resid)
 {
 	errno = EIO;
 	return -1;
 }
 
-off_t	null_seek (struct open_file *f, off_t offset, int where)
+off_t
+null_seek(struct open_file *f, off_t offset, int where)
 {
 	errno = EIO;
 	return -1;
 }
 
-int	null_stat (struct open_file *f, struct stat *sb)
+int
+null_stat(struct open_file *f, struct stat *sb)
 {
 	errno = EIO;
 	return -1;
 }
 
-int	null_readdir(struct open_file *f, struct dirent *d)
+int
+null_readdir(struct open_file *f, struct dirent *d)
 {
 	errno = EIO;
 	return -1;

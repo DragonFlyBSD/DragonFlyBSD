@@ -38,7 +38,7 @@
  *
  * @(#) Header: bootp.c,v 1.4 93/09/11 03:13:51 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/bootp.c,v 1.1.1.1.6.2 2000/09/20 18:37:25 ps Exp $
- * $DragonFly: src/lib/libstand/bootp.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/bootp.c,v 1.5 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -82,9 +82,7 @@ struct in_addr dhcp_serverip;
 
 /* Fetch required bootp infomation */
 void
-bootp(sock, flag)
-	int sock;
-	int flag;
+bootp(int sock, int flag)
 {
 	struct iodesc *d;
 	struct bootp *bp;
@@ -254,10 +252,7 @@ bootp(sock, flag)
 
 /* Transmit a bootp request */
 static ssize_t
-bootpsend(d, pkt, len)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
+bootpsend(struct iodesc *d, void *pkt, size_t len)
 {
 	struct bootp *bp;
 
@@ -278,11 +273,7 @@ bootpsend(d, pkt, len)
 }
 
 static ssize_t
-bootprecv(d, pkt, len, tleft)
-struct iodesc *d;
-void *pkt;
-size_t len;
-time_t tleft;
+bootprecv(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 {
 	ssize_t n;
 	struct bootp *bp;
@@ -337,9 +328,7 @@ bad:
 }
 
 static int
-vend_rfc1048(cp, len)
-	u_char *cp;
-	u_int len;
+vend_rfc1048(u_char *cp, u_int len)
 {
 	u_char *ep;
 	int size;
@@ -396,8 +385,7 @@ vend_rfc1048(cp, len)
 
 #ifdef BOOTP_VEND_CMU
 static void
-vend_cmu(cp)
-	u_char *cp;
+vend_cmu(u_char *cp)
 {
 	struct cmu_vend *vp;
 

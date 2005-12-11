@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.7 2005/04/18 07:55:09 joerg Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.8 2005/12/11 02:27:26 swildner Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -107,15 +107,15 @@ struct open_file;
  */
 struct fs_ops {
     const char	*fs_name;
-    int		(*fo_open)(const char *path, struct open_file *f);
-    int		(*fo_close)(struct open_file *f);
-    int		(*fo_read)(struct open_file *f, void *buf,
-			   size_t size, size_t *resid);
-    int		(*fo_write)(struct open_file *f, void *buf,
-			    size_t size, size_t *resid);
-    off_t	(*fo_seek)(struct open_file *f, off_t offset, int where);
-    int		(*fo_stat)(struct open_file *f, struct stat *sb);
-    int		(*fo_readdir)(struct open_file *f, struct dirent *d);
+    int		(*fo_open)(const char *, struct open_file *);
+    int		(*fo_close)(struct open_file *);
+    int		(*fo_read)(struct open_file *, void *,
+			   size_t, size_t *);
+    int		(*fo_write)(struct open_file *, void *,
+			    size_t, size_t *);
+    off_t	(*fo_seek)(struct open_file *, off_t, int);
+    int		(*fo_stat)(struct open_file *, struct stat *);
+    int		(*fo_readdir)(struct open_file *, struct dirent *);
 };
 
 /*
@@ -144,12 +144,11 @@ struct devsw {
     const char	dv_name[8];
     int		dv_type;		/* opaque type constant, arch-dependant */
     int		(*dv_init)(void);	/* early probe call */
-    int		(*dv_strategy)(void *devdata, int rw, daddr_t blk, size_t size,
-			       char *buf, size_t *rsize);
-    int		(*dv_open)(struct open_file *f, ...);
-    int		(*dv_close)(struct open_file *f);
-    int		(*dv_ioctl)(struct open_file *f, u_long cmd, void *data);
-    void	(*dv_print)(int verbose);	/* print device information */
+    int		(*dv_strategy)(void *, int, daddr_t, size_t, char *, size_t *);
+    int		(*dv_open)(struct open_file *, ...);
+    int		(*dv_close)(struct open_file *);
+    int		(*dv_ioctl)(struct open_file *, u_long, void *);
+    void	(*dv_print)(int);	/* print device information */
     void	(*dv_cleanup)(void);
 };
 
@@ -184,80 +183,89 @@ extern struct open_file files[];
 
 #define isascii(c)	(((c) & ~0x7F) == 0)
 
-static __inline int isupper(int c)
+static __inline int
+isupper(int c)
 {
     return c >= 'A' && c <= 'Z';
 }
 
-static __inline int islower(int c)
+static __inline int
+islower(int c)
 {
     return c >= 'a' && c <= 'z';
 }
 
-static __inline int isspace(int c)
+static __inline int
+isspace(int c)
 {
     return c == ' ' || (c >= 0x9 && c <= 0xd);
 }
 
-static __inline int isdigit(int c)
+static __inline int
+isdigit(int c)
 {
     return c >= '0' && c <= '9';
 }
 
-static __inline int isxdigit(int c)
+static __inline int
+isxdigit(int c)
 {
     return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
-static __inline int isalpha(int c)
+static __inline int
+isalpha(int c)
 {
     return isupper(c) || islower(c);
 }
 
-static __inline int isalnum(int c)
+static __inline int
+isalnum(int c)
 {
     return isalpha(c) || isdigit(c);
 }
 
-static __inline int toupper(int c)
+static __inline int
+toupper(int c)
 {
     return islower(c) ? c - 'a' + 'A' : c;
 }
 
-static __inline int tolower(int c)
+static __inline int
+tolower(int c)
 {
     return isupper(c) ? c - 'A' + 'a' : c;
 }
 
 /* sbrk emulation */
-extern void	setheap(void *base, void *top);
-extern char	*sbrk(int incr);
+extern void	setheap(void *, void *);
+extern char	*sbrk(int);
 
 /* Matt Dillon's zalloc/zmalloc */
-extern void	*malloc(size_t bytes);
-extern void	free(void *ptr);
+extern void	*malloc(size_t);
+extern void	free(void *);
 /*#define free(p)	{CHK("free %p", p); free(p);} */ /* use for catching guard violations */
-extern void	*calloc(size_t n1, size_t n2);
-extern void	*realloc(void *ptr, size_t size);
-extern void	*reallocf(void *ptr, size_t size);
+extern void	*calloc(size_t, size_t);
+extern void	*realloc(void *, size_t);
+extern void	*reallocf(void *, size_t);
 extern void	mallocstats(void);
 
 /* disklabel support (undocumented, may be junk) */
 struct		disklabel;
 extern char	*getdisklabel(const char *, struct disklabel *);
 
-extern int	printf(const char *fmt, ...);
-extern void	vprintf(const char *fmt, __va_list va);
-extern int	sprintf(char *buf, const char *cfmt, ...);
-extern void	vsprintf(char *buf, const char *cfmt, __va_list va);
-int	snprintf(char *, size_t, const char *, ...);
-int	vsnprintf(char *, size_t, const char *, __va_list);
+extern int	printf(const char *, ...);
+extern void	vprintf(const char *, __va_list);
+extern int	sprintf(char *, const char *, ...);
+extern void	vsprintf(char *, const char *, __va_list);
+int		snprintf(char *, size_t, const char *, ...);
+int		vsnprintf(char *, size_t, const char *, __va_list);
 
 extern void	twiddle(void);
 
 extern void	ngets(char *, int);
 #define gets(x)	ngets((x), 0)
-extern int	fgetstr(char *buf, int size, int fd);
+extern int	fgetstr(char *, int, int);
 
 extern int	open(const char *, int);
 #define	O_RDONLY	0x0
@@ -269,8 +277,10 @@ extern ssize_t	read(int, void *, size_t);
 extern ssize_t	write(int, void *, size_t);
 extern struct	dirent *readdirfd(int);
 
-extern void	srandom(u_long seed);
+extern void	srandom(u_long);
 extern u_long	random(void);
+
+extern void	exit(int);
     
 /* imports from stdlib, locally modified */
 extern long	strtol(const char *, char **, int);
@@ -281,8 +291,8 @@ extern int	getopt(int, char * const [], const char *);
 /* pager.c */
 extern void	pager_open(void);
 extern void	pager_close(void);
-extern int	pager_output(const char *lines);
-extern int	pager_file(const char *fname);
+extern int	pager_output(const char *);
+extern int	pager_file(const char *);
 
 /* No signal state to preserve */
 #define setjmp	_setjmp
@@ -294,9 +304,9 @@ extern int	pager_file(const char *fname);
 #define EV_NOHOOK	(1<<2)		/* don't call hook when setting */
 
 struct env_var;
-typedef char	*(ev_format_t)(struct env_var *ev);
-typedef int	(ev_sethook_t)(struct env_var *ev, int flags, void *value);
-typedef int	(ev_unsethook_t)(struct env_var *ev);
+typedef char	*(ev_format_t)(struct env_var *);
+typedef int	(ev_sethook_t)(struct env_var *, int, void *);
+typedef int	(ev_unsethook_t)(struct env_var *);
 
 struct env_var
 {
@@ -309,15 +319,13 @@ struct env_var
 };
 extern struct env_var	*environ;
 
-extern struct env_var	*env_getenv(const char *name);
-extern int		env_setenv(const char *name, int flags,
-				   const void *value, ev_sethook_t sethook,
-				   ev_unsethook_t unsethook);
-extern char		*getenv(const char *name);
-extern int		setenv(const char *name, const char *value,
-			       int overwrite);
-extern int		putenv(const char *string);
-extern int		unsetenv(const char *name);
+extern struct env_var	*env_getenv(const char *);
+extern int		env_setenv(const char *, int, const void *, ev_sethook_t,
+				   ev_unsethook_t);
+extern char		*getenv(const char *);
+extern int		setenv(const char *, const char *, int);
+extern int		putenv(const char *);
+extern int		unsetenv(const char *);
 
 extern ev_sethook_t	env_noset;		/* refuse set operation */
 extern ev_unsethook_t	env_nounset;		/* refuse unset operation */
@@ -345,8 +353,8 @@ static __inline u_long ulmin(u_long a, u_long b) { return (a < b ? a : b); }
 
 /* swaps (undocumented, useful?) */
 #ifdef __i386__
-extern u_int32_t	bswap32(u_int32_t x);
-extern u_int64_t	bswap64(u_int64_t x);
+extern u_int32_t	bswap32(u_int32_t);
+extern u_int64_t	bswap64(u_int64_t);
 #endif
 
 /* null functions for device/filesystem switches (undocumented) */
@@ -354,13 +362,13 @@ extern int	nodev(void);
 extern int	noioctl(struct open_file *, u_long, void *);
 extern void	nullsys(void);
 
-extern int	null_open(const char *path, struct open_file *f);
-extern int	null_close(struct open_file *f);
-extern int	null_read(struct open_file *f, void *buf, size_t size, size_t *resid);
-extern int	null_write(struct open_file *f, void *buf, size_t size, size_t *resid);
-extern off_t	null_seek(struct open_file *f, off_t offset, int where);
-extern int	null_stat(struct open_file *f, struct stat *sb);
-extern int	null_readdir(struct open_file *f, struct dirent *d);
+extern int	null_open(const char *, struct open_file *);
+extern int	null_close(struct open_file *);
+extern int	null_read(struct open_file *, void *, size_t, size_t *);
+extern int	null_write(struct open_file *, void *, size_t, size_t *);
+extern off_t	null_seek(struct open_file *, off_t, int);
+extern int	null_stat(struct open_file *, struct stat *);
+extern int	null_readdir(struct open_file *, struct dirent *);
 
 
 /* 
@@ -371,7 +379,7 @@ extern int		getchar(void);
 extern int		ischar(void);
 extern void		putchar(int);
 extern int		devopen(struct open_file *, const char *, const char **);
-extern int		devclose(struct open_file *f);
+extern int		devclose(struct open_file *);
 extern void		panic(const char *, ...) __dead2;
 extern struct fs_ops	*file_system[];
 extern struct devsw	*devsw[];

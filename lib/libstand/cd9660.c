@@ -30,7 +30,7 @@
  *
  * $NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $
  * $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $
- * $DragonFly: src/lib/libstand/cd9660.c,v 1.5 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/lib/libstand/cd9660.c,v 1.6 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -119,15 +119,13 @@ struct ptable_ent {
 
 /* XXX these should be in the system headers */
 static __inline int
-isonum_722(p)
-	u_char *p;
+isonum_722(u_char *p)
 {
 	return (*p << 8)|p[1];
 }
 
 static __inline int
-isonum_732(p)
-	u_char *p;
+isonum_732(u_char *p)
 {
 	return (*p << 24)|(p[1] << 16)|(p[2] << 8)|p[3];
 }

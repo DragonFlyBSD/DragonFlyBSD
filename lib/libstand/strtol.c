@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strtol.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libstand/strtol.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/strtol.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include "stand.h"
@@ -44,10 +44,7 @@
  * alphabets and digits are each contiguous.
  */
 long
-strtol(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	int base;
+strtol(const char *nptr, char **endptr, int base)
 {
 	const char *s;
 	unsigned long acc;

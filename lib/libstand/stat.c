@@ -33,14 +33,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)stat.c	8.1 (Berkeley) 6/11/93
+ * $DragonFly: src/lib/libstand/stat.c,v 1.2 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include "stand.h"
 
 int
-stat(str, sb)
-	const char *str;
-	struct stat *sb;
+stat(const char *str, struct stat *sb)
 {
 	int fd, rv;
 

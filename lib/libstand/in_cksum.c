@@ -38,7 +38,7 @@
  *
  * @(#) Header: in_cksum.c,v 1.1 92/09/11 01:15:55 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/in_cksum.c,v 1.1.1.1.6.1 2002/07/22 09:28:50 peter Exp $
- * $DragonFly: src/lib/libstand/in_cksum.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/in_cksum.c,v 1.3 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -53,9 +53,7 @@
  * In particular, it should not be this one.
  */
 int
-in_cksum(p, len)
-	void *p;
-	int len;
+in_cksum(void *p, int len)
 {
 	int sum = 0, oddbyte = 0, v = 0;
 	u_char *cp = p;

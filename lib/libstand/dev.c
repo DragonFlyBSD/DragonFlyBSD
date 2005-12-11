@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)dev.c	8.1 (Berkeley) 6/11/93
+ * $DragonFly: src/lib/libstand/dev.c,v 1.2 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,22 +42,19 @@
 #include "stand.h"
 
 int
-nodev()
+nodev(void)
 {
 	return (ENXIO);
 }
 
 void
-nullsys()
+nullsys(void)
 {
 }
 
 /* ARGSUSED */
 int
-noioctl(f, cmd, data)
-	struct open_file *f;
-	u_long cmd;
-	void *data;
+noioctl(struct open_file *f, u_long cmd, void *data)
 {
 	return (EINVAL);
 }

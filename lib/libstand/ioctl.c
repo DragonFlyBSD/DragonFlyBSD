@@ -1,5 +1,5 @@
 /*	$NetBSD: ioctl.c,v 1.4 1994/10/30 21:48:24 cgd Exp $	*/
-/* $DragonFly: src/lib/libstand/ioctl.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
+/* $DragonFly: src/lib/libstand/ioctl.c,v 1.3 2005/12/11 02:27:26 swildner Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -68,10 +68,7 @@
 #include "stand.h"
 
 int
-ioctl(fd, cmd, arg)
-	int fd;
-	u_long cmd;
-	char *arg;
+ioctl(int fd, u_long cmd, char *arg)
 {
 	struct open_file *f = &files[fd];
 

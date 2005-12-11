@@ -38,7 +38,7 @@
  *
  * @(#) Header: net.c,v 1.9 93/08/06 19:32:15 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/udp.c,v 1.1.2.1 2000/04/15 03:09:29 ps Exp $
- * $DragonFly: src/lib/libstand/udp.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/udp.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -61,10 +61,7 @@
 
 /* Caller must leave room for ethernet, ip and udp headers in front!! */
 ssize_t
-sendudp(d, pkt, len)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
+sendudp(struct iodesc *d, void *pkt, size_t len)
 {
 	ssize_t cc;
 	struct ip *ip;
@@ -136,11 +133,7 @@ sendudp(d, pkt, len)
  * Caller leaves room for the headers (Ether, IP, UDP)
  */
 ssize_t
-readudp(d, pkt, len, tleft)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
-	time_t tleft;
+readudp(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 {
 	ssize_t n;
 	size_t hlen;

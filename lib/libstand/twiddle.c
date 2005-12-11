@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/twiddle.c,v 1.2 1999/08/28 00:05:34 peter Exp $
- * $DragonFly: src/lib/libstand/twiddle.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/twiddle.c,v 1.3 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@
 /* Extra functions from NetBSD standalone printf.c */
 
 void
-twiddle()
+twiddle(void)
 {
 	static int pos;
 

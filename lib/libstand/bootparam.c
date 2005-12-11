@@ -28,6 +28,8 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/lib/libstand/bootparam.c,v 1.2 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -101,8 +103,7 @@ int xdr_string_decode(char **p, char *str, int *len_p);
  * know about us (don't want to broadcast a getport call).
  */
 int
-bp_whoami(sockfd)
-	int sockfd;
+bp_whoami(int sockfd)
 {
 	/* RPC structures for PMAPPROC_CALLIT */
 	struct args {
@@ -230,11 +231,7 @@ bp_whoami(sockfd)
  *	server pathname
  */
 int
-bp_getfile(sockfd, key, serv_addr, pathname)
-	int sockfd;
-	char *key;
-	char *pathname;
-	struct in_addr *serv_addr;
+bp_getfile(int sockfd, char *key, struct in_addr *serv_addr, char *pathname)
 {
 	struct {
 		n_long	h[RPC_HEADER_WORDS];
@@ -326,10 +323,7 @@ bp_getfile(sockfd, key, serv_addr, pathname)
 
 
 int
-xdr_string_encode(pkt, str, len)
-	char **pkt;
-	char *str;
-	int len;
+xdr_string_encode(char **pkt, char *str, int len)
 {
 	u_int32_t *lenp;
 	char *datap;
@@ -347,11 +341,12 @@ xdr_string_encode(pkt, str, len)
 	return (0);
 }
 
+/*
+ * Parameters:
+ *	len_p:	bufsize - 1
+ */
 int
-xdr_string_decode(pkt, str, len_p)
-	char **pkt;
-	char *str;
-	int *len_p;		/* bufsize - 1 */
+xdr_string_decode(char **pkt, char *str, int *len_p)
 {
 	u_int32_t *lenp;
 	char *datap;
@@ -376,11 +371,12 @@ xdr_string_decode(pkt, str, len_p)
 	return (0);
 }
 
-
+/*
+ * Parameters:
+ *	ia:	network order
+ */
 int
-xdr_inaddr_encode(pkt, ia)
-	char **pkt;
-	struct in_addr ia;		/* network order */
+xdr_inaddr_encode(char **pkt, struct in_addr ia)
 {
 	struct xdr_inaddr *xi;
 	u_char *cp;
@@ -410,10 +406,12 @@ xdr_inaddr_encode(pkt, ia)
 	return (0);
 }
 
+/*
+ * Parameters:
+ *	ia:	network order
+ */
 int
-xdr_inaddr_decode(pkt, ia)
-	char **pkt;
-	struct in_addr *ia;		/* network order */
+xdr_inaddr_decode(char **pkt, struct in_addr *ia)
 {
 	struct xdr_inaddr *xi;
 	u_char *cp;

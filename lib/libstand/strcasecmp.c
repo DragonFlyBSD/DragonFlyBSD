@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libstand/strcasecmp.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/strcasecmp.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -39,8 +39,7 @@
 #include "stand.h"
 
 int
-strcasecmp(s1, s2)
-	const char *s1, *s2;
+strcasecmp(const char *s1, const char *s2)
 {
 	const u_char
 			*us1 = (const u_char *)s1,
@@ -53,9 +52,7 @@ strcasecmp(s1, s2)
 }
 
 int
-strncasecmp(s1, s2, n)
-	const char *s1, *s2;
-	size_t n;
+strncasecmp(const char *s1, const char *s2, size_t n)
 {
 	if (n != 0) {
 		const u_char

@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
- * $DragonFly: src/lib/libstand/printf.c,v 1.5 2005/04/18 07:55:09 joerg Exp $
+ * $DragonFly: src/lib/libstand/printf.c,v 1.6 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -155,9 +155,7 @@ snprintf_func(int ch, void *arg)
  * buffer.
  */
 static char *
-ksprintn(ul, base, lenp)
-	u_long ul;
-	int base, *lenp;
+ksprintn(u_long ul, int base, int *lenp)
 {					/* A long in base 8, plus NULL. */
 	static char buf[sizeof(long) * NBBY / 3 + 2];
 	char *p;

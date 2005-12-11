@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strdup.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libstand/strdup.c,v 1.3 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include "stand.h"
@@ -38,8 +39,7 @@
 #include <string.h>
 
 char *
-strdup(str)
-	const char *str;
+strdup(const char *str)
 {
 	size_t len;
 	char *copy = NULL;

@@ -1,5 +1,5 @@
 /*	$NetBSD: rarp.c,v 1.16 1997/07/07 15:52:52 drochner Exp $	*/
-/* $DragonFly: src/lib/libstand/rarp.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
+/* $DragonFly: src/lib/libstand/rarp.c,v 1.3 2005/12/11 02:27:26 swildner Exp $							*/
 
 /*
  * Copyright (c) 1992 Regents of the University of California.
@@ -61,8 +61,7 @@ static ssize_t rarprecv(struct iodesc *, void *, size_t, time_t);
  * Ethernet (Reverse) Address Resolution Protocol (see RFC 903, and 826).
  */
 int
-rarp_getipaddress(sock)
-	int sock;
+rarp_getipaddress(int sock)
 {
 	struct iodesc *d;
 	struct ether_arp *ap;
@@ -135,10 +134,7 @@ rarp_getipaddress(sock)
  * Broadcast a RARP request (i.e. who knows who I am)
  */
 static ssize_t
-rarpsend(d, pkt, len)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
+rarpsend(struct iodesc *d, void *pkt, size_t len)
 {
 
 #ifdef RARP_DEBUG
@@ -154,11 +150,7 @@ rarpsend(d, pkt, len)
  * else -1 (and errno == 0)
  */
 static ssize_t
-rarprecv(d, pkt, len, tleft)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
-	time_t tleft;
+rarprecv(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 {
 	ssize_t n;
 	struct ether_arp *ap;

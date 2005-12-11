@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.6 2005/08/27 20:23:05 joerg Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.7 2005/12/11 02:27:26 swildner Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -128,9 +128,7 @@ static void	ffs_oldfscompat(struct fs *);
  * Read a new inode into a file structure.
  */
 static int
-read_inode(inumber, f)
-	ino_t inumber;
-	struct open_file *f;
+read_inode(ino_t inumber, struct open_file *f)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	struct fs *fs = fp->f_fs;
@@ -181,12 +179,12 @@ out:
 /*
  * Given an offset in a file, find the disk block number that
  * contains that block.
+ *
+ * Parameters:
+ *	disk_block_p:	out
  */
 static int
-block_map(f, file_block, disk_block_p)
-	struct open_file *f;
-	daddr_t file_block;
-	daddr_t *disk_block_p;	/* out */
+block_map(struct open_file *f, daddr_t file_block, daddr_t *disk_block_p)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	struct fs *fs = fp->f_fs;
@@ -287,12 +285,13 @@ block_map(f, file_block, disk_block_p)
 /*
  * Read a portion of a file into an internal buffer.  Return
  * the location in the buffer and the amount in the buffer.
+ *
+ * Parameters:
+ *	buf_p:	out
+ *	size_p:	out
  */
 static int
-buf_read_file(f, buf_p, size_p)
-	struct open_file *f;
-	char **buf_p;		/* out */
-	size_t *size_p;		/* out */
+buf_read_file(struct open_file *f, char **buf_p, size_t *size_p)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	struct fs *fs = fp->f_fs;
@@ -349,12 +348,12 @@ buf_read_file(f, buf_p, size_p)
 /*
  * Search a directory for a name and return its
  * i_number.
+ *
+ * Parameters:
+ *	inumber_p:	out
  */
 static int
-search_directory(name, f, inumber_p)
-	char *name;
-	struct open_file *f;
-	ino_t *inumber_p;		/* out */
+search_directory(char *name, struct open_file *f, ino_t *inumber_p)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	struct direct *dp;
@@ -401,9 +400,7 @@ search_directory(name, f, inumber_p)
  * Open a file.
  */
 static int
-ufs_open(upath, f)
-	const char *upath;
-	struct open_file *f;
+ufs_open(const char *upath, struct open_file *f)
 {
 	char *cp, *ncp;
 	int c;
@@ -593,8 +590,7 @@ out:
 }
 
 static int
-ufs_close(f)
-	struct open_file *f;
+ufs_close(struct open_file *f)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	int level;
@@ -617,13 +613,12 @@ ufs_close(f)
 /*
  * Copy a portion of a file into kernel memory.
  * Cross block boundaries when necessary.
+ *
+ * Parameters:
+ *	resid:	out
  */
 static int
-ufs_read(f, start, size, resid)
-	struct open_file *f;
-	void *start;
-	size_t size;
-	size_t *resid;	/* out */
+ufs_read(struct open_file *f, void *start, size_t size, size_t *resid)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 	size_t csize;
@@ -656,10 +651,7 @@ ufs_read(f, start, size, resid)
 }
 
 static off_t
-ufs_seek(f, offset, where)
-	struct open_file *f;
-	off_t offset;
-	int where;
+ufs_seek(struct open_file *f, off_t offset, int where)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 
@@ -680,9 +672,7 @@ ufs_seek(f, offset, where)
 }
 
 static int
-ufs_stat(f, sb)
-	struct open_file *f;
-	struct stat *sb;
+ufs_stat(struct open_file *f, struct stat *sb)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 
@@ -728,8 +718,7 @@ again:
  * XXX - goes away some day.
  */
 static void
-ffs_oldfscompat(fs)
-	struct fs *fs;
+ffs_oldfscompat(struct fs *fs)
 {
 	int i;
 

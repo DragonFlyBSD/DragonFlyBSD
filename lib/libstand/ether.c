@@ -1,5 +1,5 @@
 /*	$NetBSD: ether.c,v 1.11 1997/07/07 15:52:50 drochner Exp $	*/
-/* $DragonFly: src/lib/libstand/ether.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $								*/
+/* $DragonFly: src/lib/libstand/ether.c,v 1.3 2005/12/11 02:27:26 swildner Exp $								*/
 
 /*
  * Copyright (c) 1992 Regents of the University of California.
@@ -56,12 +56,7 @@
 
 /* Caller must leave room for ethernet header in front!! */
 ssize_t
-sendether(d, pkt, len, dea, etype)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
-	u_char *dea;
-	int etype;
+sendether(struct iodesc *d, void *pkt, size_t len, u_char *dea, int etype)
 {
 	ssize_t n;
 	struct ether_header *eh;
@@ -92,12 +87,8 @@ sendether(d, pkt, len, dea, etype)
  * NOTE: Caller must leave room for the Ether header.
  */
 ssize_t
-readether(d, pkt, len, tleft, etype)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
-	time_t tleft;
-	u_int16_t *etype;
+readether(struct iodesc *d, void *pkt, size_t len, time_t tleft,
+	  u_int16_t *etype)
 {
 	ssize_t n;
 	struct ether_header *eh;
@@ -135,8 +126,7 @@ readether(d, pkt, len, tleft, etype)
  */
 static char digits[] = "0123456789abcdef";
 char *
-ether_sprintf(ap)
-        u_char *ap;
+ether_sprintf(u_char *ap)
 {
 	int i;
 	static char etherbuf[18];

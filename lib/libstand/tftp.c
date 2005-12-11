@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/tftp.c,v 1.2.6.4 2001/07/14 14:00:03 mikeh Exp $
- * $DragonFly: src/lib/libstand/tftp.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/tftp.c,v 1.5 2005/12/11 02:27:26 swildner Exp $
  */
 
 /*
@@ -110,11 +110,7 @@ static int tftperrors[8] = {
 };
 
 static ssize_t 
-recvtftp(d, pkt, len, tleft)
-	struct iodesc *d;
-	void  *pkt;
-	ssize_t len;
-	time_t          tleft;
+recvtftp(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 {
 	struct tftphdr *t;
 
@@ -168,8 +164,7 @@ recvtftp(d, pkt, len, tleft)
 
 /* send request, expect first block (or error) */
 static int 
-tftp_makereq(h)
-	struct tftp_handle *h;
+tftp_makereq(struct tftp_handle *h)
 {
 	struct {
 		u_char header[HEADER_SIZE];
@@ -212,8 +207,7 @@ tftp_makereq(h)
 
 /* ack block, expect next */
 static int 
-tftp_getnextblock(h)
-	struct tftp_handle *h;
+tftp_getnextblock(struct tftp_handle *h)
 {
 	struct {
 		u_char header[HEADER_SIZE];
@@ -246,9 +240,7 @@ tftp_getnextblock(h)
 }
 
 static int 
-tftp_open(path, f)
-	const char *path;
-	struct open_file *f;
+tftp_open(const char *path, struct open_file *f)
 {
 	struct tftp_handle *tftpfile;
 	struct iodesc  *io;
@@ -270,7 +262,7 @@ tftp_open(path, f)
 	    return(ENOMEM);
 	}
 
-	res = tftp_makereq(tftpfile, path);
+	res = tftp_makereq(tftpfile);
 
 	if (res) {
 		free(tftpfile->path);
@@ -281,12 +273,12 @@ tftp_open(path, f)
 	return (0);
 }
 
+/*
+ * Parameters:
+ *	resid:	out
+ */
 static int 
-tftp_read(f, addr, size, resid)
-	struct open_file *f;
-	void           *addr;
-	size_t          size;
-	size_t         *resid;	/* out */
+tftp_read(struct open_file *f, void *addr, size_t size, size_t *resid)
 {
 	struct tftp_handle *tftpfile;
 	static int      tc = 0;
@@ -356,8 +348,7 @@ tftp_read(f, addr, size, resid)
 }
 
 static int 
-tftp_close(f)
-	struct open_file *f;
+tftp_close(struct open_file *f)
 {
 	struct tftp_handle *tftpfile;
 	tftpfile = (struct tftp_handle *) f->f_fsdata;
@@ -371,20 +362,18 @@ tftp_close(f)
 	return (0);
 }
 
+/*
+ * Parameters:
+ *	resid:	out
+ */
 static int 
-tftp_write(f, start, size, resid)
-	struct open_file *f;
-	void           *start;
-	size_t          size;
-	size_t         *resid;	/* out */
+tftp_write(struct open_file *f, void *start, size_t size, size_t *resid)
 {
 	return (EROFS);
 }
 
 static int 
-tftp_stat(f, sb)
-	struct open_file *f;
-	struct stat    *sb;
+tftp_stat(struct open_file *f, struct stat *sb)
 {
 	struct tftp_handle *tftpfile;
 	tftpfile = (struct tftp_handle *) f->f_fsdata;
@@ -398,10 +387,7 @@ tftp_stat(f, sb)
 }
 
 static off_t 
-tftp_seek(f, offset, where)
-	struct open_file *f;
-	off_t           offset;
-	int             where;
+tftp_seek(struct open_file *f, off_t offset, int where)
 {
 	struct tftp_handle *tftpfile;
 	tftpfile = (struct tftp_handle *) f->f_fsdata;

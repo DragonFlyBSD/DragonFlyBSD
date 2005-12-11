@@ -1,5 +1,5 @@
 /*	$NetBSD: write.c,v 1.7 1996/06/21 20:29:30 pk Exp $	*/
-/* $DragonFly: src/lib/libstand/write.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
+/* $DragonFly: src/lib/libstand/write.c,v 1.3 2005/12/11 02:27:26 swildner Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -69,10 +69,7 @@
 #include "stand.h"
 
 ssize_t
-write(fd, dest, bcount)
-	int fd;
-	void *dest;
-	size_t bcount;
+write(int fd, void *dest, size_t bcount)
 {
 	struct open_file *f = &files[fd];
 	size_t resid;

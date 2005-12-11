@@ -1,5 +1,5 @@
 /*	$NetBSD: fstat.c,v 1.1 1996/01/13 22:25:38 leo Exp $	*/
-/* $DragonFly: src/lib/libstand/fstat.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
+/* $DragonFly: src/lib/libstand/fstat.c,v 1.3 2005/12/11 02:27:26 swildner Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -39,9 +39,7 @@
 #include "stand.h"
 
 int
-fstat(fd, sb)
-	int fd;
-	struct stat *sb;
+fstat(int fd, struct stat *sb)
 {
 	struct open_file *f = &files[fd];
 

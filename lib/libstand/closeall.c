@@ -62,12 +62,14 @@
  * 
  * any improvements or extensions that they make and grant Carnegie the
  * rights to redistribute these changes.
+ *
+ * $DragonFly: src/lib/libstand/closeall.c,v 1.2 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include "stand.h"
 
 void
-closeall()
+closeall(void)
 {
 	int i;
 

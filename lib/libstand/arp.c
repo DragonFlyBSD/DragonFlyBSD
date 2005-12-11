@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * @(#) Header: arp.c,v 1.5 93/07/15 05:52:26 leres Exp  (LBL)
- * $DragonFly: src/lib/libstand/arp.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libstand/arp.c,v 1.4 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -71,9 +71,7 @@ static	ssize_t arprecv(struct iodesc *, void *, size_t, time_t);
 
 /* Broadcast an ARP packet, asking who has addr on interface d */
 u_char *
-arpwhohas(d, addr)
-	struct iodesc *d;
-	struct in_addr addr;
+arpwhohas(struct iodesc *d, struct in_addr addr)
 {
 	int i;
 	struct ether_arp *ah;
@@ -149,10 +147,7 @@ arpwhohas(d, addr)
 }
 
 static ssize_t
-arpsend(d, pkt, len)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
+arpsend(struct iodesc *d, void *pkt, size_t len)
 {
 
 #ifdef ARP_DEBUG
@@ -168,11 +163,7 @@ arpsend(d, pkt, len)
  * else -1 (and errno == 0)
  */
 static ssize_t
-arprecv(d, pkt, len, tleft)
-	struct iodesc *d;
-	void *pkt;
-	size_t len;
-	time_t tleft;
+arprecv(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 {
 	ssize_t n;
 	struct ether_arp *ah;
@@ -256,11 +247,12 @@ arprecv(d, pkt, len, tleft)
 /*
  * Convert an ARP request into a reply and send it.
  * Notes:  Re-uses buffer.  Pad to length = 46.
+ *
+ * Parameters:
+ *	pkt:	the request
  */
 void
-arp_reply(d, pkt)
-	struct iodesc *d;
-	void *pkt;		/* the request */
+arp_reply(struct iodesc *d, void *pkt)
 {
 	struct ether_arp *arp = pkt;
 

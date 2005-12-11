@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)inet_ntoa.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libstand/inet_ntoa.c,v 1.3 2005/12/11 02:27:26 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +45,7 @@
  * to base 256 d.d.d.d representation.
  */
 char *
-inet_ntoa(in)
-	struct in_addr in;
+inet_ntoa(struct in_addr in)
 {
 	static const char fmt[] = "%u.%u.%u.%u";
 	static char ret[sizeof "255.255.255.255"];
