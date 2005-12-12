@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.11 2005/12/10 21:19:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.12 2005/12/12 08:15:02 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -81,7 +81,9 @@
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/malloc.h>
+#include <sys/spinlock.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 #include <sys/ctype.h>
 
 #include <machine/cpu.h>
@@ -111,7 +113,14 @@ KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test4, 3, "test4", 0);
 KTR_INFO(KTR_TESTLOG, testlog, test5, 4, "test5", 0);
 KTR_INFO(KTR_TESTLOG, testlog, test6, 5, "test6", 0);
+#ifdef SMP
 KTR_INFO(KTR_TESTLOG, testlog, pingpong, 6, "pingpong", 0);
+KTR_INFO(KTR_TESTLOG, testlog, pipeline, 7, "pipeline", 0);
+#endif
+KTR_INFO(KTR_TESTLOG, testlog, crit_beg, 8, "crit_beg", 0);
+KTR_INFO(KTR_TESTLOG, testlog, crit_end, 9, "crit_end", 0);
+KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg", 0);
+KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end", 0);
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
 
@@ -141,6 +150,10 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testlogcnt, CTLFLAG_RW, &ktr_testlogcnt, 0, "")
 static int	ktr_testipicnt = 0;
 static int	ktr_testipicnt_remainder;
 SYSCTL_INT(_debug_ktr, OID_AUTO, testipicnt, CTLFLAG_RW, &ktr_testipicnt, 0, "");
+static int	ktr_testcritcnt = 0;
+SYSCTL_INT(_debug_ktr, OID_AUTO, testcritcnt, CTLFLAG_RW, &ktr_testcritcnt, 0, "");
+static int	ktr_testspincnt = 0;
+SYSCTL_INT(_debug_ktr, OID_AUTO, testspincnt, CTLFLAG_RW, &ktr_testspincnt, 0, "");
 #endif
 
 /*
@@ -163,11 +176,7 @@ TUNABLE_INT("debug.ktr.verbose", &ktr_verbose);
 SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0, "");
 #endif
 
-#ifdef SMP
-int64_t tsc_offsets[MAXCPU];
-#else
-int64_t tsc_offsets[1];
-#endif
+extern int64_t tsc_offsets[];
 
 #if KTR_TESTLOG || KTR_ALL
 
@@ -196,6 +205,7 @@ SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
  */
 static void ktr_resync_callback(void *dummy);
 static void ktr_pingpong_remote(void *dummy);
+static void ktr_pipeline_remote(void *dummy);
 
 static void
 ktr_resyncinit(void *dummy)
@@ -246,6 +256,39 @@ ktr_resync_callback(void *dummy __unused)
 		ktr_testipicnt_remainder = ktr_testipicnt;
 		ktr_testipicnt = 0;
 		lwkt_send_ipiq_bycpu(1, ktr_pingpong_remote, NULL);
+	}
+
+	/*
+	 * Test critical sections
+	 */
+	if (ktr_testcritcnt) {
+		crit_enter();
+		crit_exit();
+		logtest_noargs(crit_beg);
+		for (count = ktr_testcritcnt; count; --count) {
+			crit_enter();
+			crit_exit();
+		}
+		logtest_noargs(crit_end);
+		ktr_testcritcnt = 0;
+	}
+
+	/*
+	 * Test spinlock sections
+	 */
+	if (ktr_testspincnt) {
+		struct spinlock spin;
+
+		spin_init(&spin);
+		spin_lock_quick(&spin);
+		spin_unlock_quick(&spin);
+		logtest_noargs(spin_beg);
+		for (count = ktr_testspincnt; count; --count) {
+			spin_lock_quick(&spin);
+			spin_unlock_quick(&spin);
+		}
+		logtest_noargs(spin_end);
+		ktr_testspincnt = 0;
 	}
 #endif
 
@@ -329,12 +372,27 @@ static
 void
 ktr_pingpong_remote(void *dummy __unused)
 {
+	int other_cpu;
+
 	logtest_noargs(pingpong);
+	other_cpu = 1 - mycpu->gd_cpuid;
 	if (ktr_testipicnt_remainder) {
 		--ktr_testipicnt_remainder;
-		lwkt_send_ipiq_bycpu(1 - mycpu->gd_cpuid, 
-				     ktr_pingpong_remote, NULL);
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pingpong_remote, NULL);
+	} else {
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pipeline_remote, NULL);
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pipeline_remote, NULL);
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pipeline_remote, NULL);
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pipeline_remote, NULL);
+		lwkt_send_ipiq_bycpu(other_cpu, ktr_pipeline_remote, NULL);
 	}
+}
+
+static
+void
+ktr_pipeline_remote(void *dummy __unused)
+{
+	logtest_noargs(pipeline);
 }
 
 #else	/* !SMP */

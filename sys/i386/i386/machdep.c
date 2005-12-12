@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.84 2005/11/22 08:41:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.85 2005/12/12 08:15:03 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -142,6 +142,11 @@ SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
 
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
+#ifdef SMP
+int64_t tsc_offsets[MAXCPU];
+#else
+int64_t tsc_offsets[1];
+#endif
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
