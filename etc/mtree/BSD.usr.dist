@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.40 2005/11/01 20:50:24 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.41 2005/12/13 01:58:27 corecode Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -185,6 +185,8 @@
             nwclient
             ..
             perfmon
+	    ..
+	    pf
             ..
             portal
             ..
