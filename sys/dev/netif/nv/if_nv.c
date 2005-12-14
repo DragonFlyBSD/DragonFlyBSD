@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.23 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.24 2005/12/14 17:04:29 dillon Exp $
  */
 
 /*
@@ -635,11 +635,11 @@ nv_init(void *xsc)
 	/* Set the MAC address */
 	sc->hwapi->pfnSetNodeAddress(sc->hwapi->pADCX, sc->sc_macaddr);
 
-	sc->hwapi->pfnStart(sc->hwapi->pADCX);
-
 	/* Setup multicast filter */
 	nv_setmulti(sc);
 	nv_ifmedia_upd(ifp);
+
+	sc->hwapi->pfnStart(sc->hwapi->pADCX);
 
 	/* Update interface parameters */
 	ifp->if_flags |= IFF_RUNNING;
@@ -743,7 +743,8 @@ nv_stop(struct nv_softc *sc)
 	sc->hwapi->pfnDisableInterrupts(sc->hwapi->pADCX);
 	lwkt_serialize_handler_disable(ifp->if_serializer);
 
-	sc->hwapi->pfnStop(sc->hwapi->pADCX, 0);
+	sc->hwapi->pfnStop(sc->hwapi->pADCX,
+				   AFFECT_RECEIVER | AFFECT_TRANSMITTER);
 	sc->hwapi->pfnClearTxDesc(sc->hwapi->pADCX);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: do pfnDeinit\n");
