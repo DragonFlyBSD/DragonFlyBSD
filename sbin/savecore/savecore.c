@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
- * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.10 2005/04/22 02:23:23 swildner Exp $
+ * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.14 2005/01/05 09:14:34 maxim Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.11 2005/12/15 22:20:49 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -413,6 +413,9 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 				syslog(LOG_ERR, "%s: %m", ddname);
 			goto err2;
 		}
+		if (compress) {
+			nw = fwrite(buf, 1, nr, fp);
+		} else {
 		for (nw = 0; nw < nr; nw = he) {
 			/* find a contiguous block of zeroes */
 			for (hs = nw; hs < nr; hs += BLOCKSIZE) {
@@ -448,6 +451,7 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 			if (he > hs)
 				if (fseeko(fp, he - hs, SEEK_CUR) == -1)
 					break;
+			}
 		}
 		if (nw != nr) {
 			syslog(LOG_ERR, "%s: %m", path);
