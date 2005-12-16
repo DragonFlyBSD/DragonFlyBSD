@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.32 2005/11/22 00:24:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.33 2005/12/16 21:05:48 dillon Exp $
  */
 
 /*
@@ -82,6 +82,7 @@
 #include <sys/random.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/serialize.h>
 #include <sys/thread2.h>
 
 #include <machine/bus.h>
@@ -484,7 +485,8 @@ wi_attach(device_t dev)
 
 
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-			       wi_intr, sc, &sc->wi_intrhand, NULL);
+			       wi_intr, sc, &sc->wi_intrhand,
+			       ifp->if_serializer);
 	if (error) {
 		ieee80211_ifdetach(ifp);
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
@@ -503,9 +505,8 @@ wi_detach(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	WI_LOCK_DECL();
 
-	WI_LOCK(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	/* check if device was removed */
 	sc->wi_gone |= !bus_child_present(dev);
@@ -514,7 +515,9 @@ wi_detach(device_t dev)
 
 	ieee80211_ifdetach(ifp);
 	wi_free(dev);
-	WI_UNLOCK(sc);
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	return (0);
 }
 
@@ -522,8 +525,11 @@ void
 wi_shutdown(device_t dev)
 {
 	struct wi_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->sc_if;
 
-	wi_stop(&sc->sc_if, 1);
+	lwkt_serialize_enter(ifp->if_serializer);
+	wi_stop(ifp, 1);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 #ifdef DEVICE_POLLING
@@ -573,15 +579,12 @@ wi_intr(void *arg)
 	struct wi_softc *sc = arg;
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	u_int16_t status;
-	WI_LOCK_DECL();
 
 	if (sc->wi_gone || !sc->sc_enabled || (ifp->if_flags & IFF_UP) == 0) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
 		CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
 		return;
 	}
-
-	WI_LOCK(sc);
 
 	/* Disable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -603,8 +606,6 @@ wi_intr(void *arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
 
-	WI_UNLOCK(sc);
-
 	return;
 }
 
@@ -617,14 +618,9 @@ wi_init(void *arg)
 	struct wi_joinreq join;
 	int i;
 	int error = 0, wasenabled;
-	WI_LOCK_DECL();
 
-	WI_LOCK(sc);
-
-	if (sc->wi_gone) {
-		WI_UNLOCK(sc);
+	if (sc->wi_gone)
 		return;
-	}
 
 	if ((wasenabled = sc->sc_enabled))
 		wi_stop(ifp, 1);
@@ -785,15 +781,13 @@ wi_init(void *arg)
 		if (sc->sc_firmware_type != WI_LUCENT)
 			wi_write_rid(sc, WI_RID_JOIN_REQ, &join, sizeof(join));
 	}
-
-	WI_UNLOCK(sc);
 	return;
 out:
 	if (error) {
 		if_printf(ifp, "interface not running\n");
 		wi_stop(ifp, 1);
 	}
-	WI_UNLOCK(sc);
+
 	DPRINTF((ifp, "wi_init: return %d\n", error));
 	return;
 }
@@ -803,9 +797,6 @@ wi_stop(struct ifnet *ifp, int disable)
 {
 	struct ieee80211com *ic = (struct ieee80211com *) ifp;
 	struct wi_softc *sc = ifp->if_softc;
-	WI_LOCK_DECL();
-
-	WI_LOCK(sc);
 
 	DELAY(100000);
 
@@ -830,8 +821,6 @@ wi_stop(struct ifnet *ifp, int disable)
 	sc->sc_false_syns = 0;
 	sc->sc_naps = 0;
 	ifp->if_timer = 0;
-
-	WI_UNLOCK(sc);
 }
 
 static void
@@ -844,18 +833,12 @@ wi_start(struct ifnet *ifp)
 	struct mbuf *m0;
 	struct wi_frame frmhdr;
 	int cur, fid, off, error;
-	WI_LOCK_DECL();
 
-	WI_LOCK(sc);
+	if (sc->wi_gone)
+		return;
 
-	if (sc->wi_gone) {
-		WI_UNLOCK(sc);
+	if (sc->sc_flags & WI_FLAGS_OUTRANGE)
 		return;
-	}
-	if (sc->sc_flags & WI_FLAGS_OUTRANGE) {
-		WI_UNLOCK(sc);
-		return;
-	}
 
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
@@ -961,8 +944,6 @@ wi_start(struct ifnet *ifp)
 		}
 		sc->sc_txnext = cur = (cur + 1) % sc->sc_ntxbuf;
 	}
-
-	WI_UNLOCK(sc);
 }
 
 static int
@@ -1060,9 +1041,6 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	u_int8_t nodename[IEEE80211_NWID_LEN];
 	int error = 0;
 	struct wi_req wreq;
-	WI_LOCK_DECL();
-
-	WI_LOCK(sc);
 
 	if (sc->wi_gone) {
 		error = ENODEV;
@@ -1191,9 +1169,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = 0;
 	}
 out:
-	WI_UNLOCK(sc);
-
-	return (error);
+	return error;
 }
 
 static int

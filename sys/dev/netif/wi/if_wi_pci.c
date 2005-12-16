@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.7 2005/06/30 17:11:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.8 2005/12/16 21:05:48 dillon Exp $
  */
 
 /*
@@ -48,6 +48,8 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/thread.h>
+#include <sys/serialize.h>
+#include <sys/thread2.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -240,12 +242,15 @@ wi_pci_suspend(device_t dev)
 {
 	struct wi_softc		*sc;
 	struct ifnet *ifp;
+
 	sc = device_get_softc(dev);
 	ifp = &sc->sc_if;
 
+	lwkt_serialize_enter(ifp->if_serializer);
 	wi_stop(ifp, 1);
+	lwkt_serialize_exit(ifp->if_serializer);
 	
-	return (0);
+	return 0;
 }
 
 static int
@@ -253,11 +258,16 @@ wi_pci_resume(device_t dev)
 {
 	struct wi_softc *sc;
 	struct ifnet *ifp;
+
 	sc = device_get_softc(dev);
 	ifp = &sc->sc_if;
 
-	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE)
-		return (0);
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
+		lwkt_serialize_exit(ifp->if_serializer);
+		return 0;
+	}
 
 	if (ifp->if_flags & IFF_UP) {
 		ifp->if_init(ifp->if_softc);
@@ -265,5 +275,7 @@ wi_pci_resume(device_t dev)
 			ifp->if_start(ifp);
 	}
 
-	return (0);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return 0;
 }
