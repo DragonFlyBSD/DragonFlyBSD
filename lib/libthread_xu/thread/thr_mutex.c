@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.6 2005/05/07 07:39:14 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.7 2005/12/18 11:02:05 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -849,10 +849,8 @@ _mutex_cv_unlock(pthread_mutex_t *m)
 int
 _mutex_cv_lock(pthread_mutex_t *m)
 {
-	struct  pthread *curthread;
 	int	ret;
 
-	curthread = tls_get_curthread();
 	if ((ret = _pthread_mutex_lock(m)) == 0)
 		(*m)->m_refcount--;
 	return (ret);
