@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.5 2005/05/24 20:59:03 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.6 2005/12/18 12:02:15 sephe Exp $
  */
 
 /*
@@ -222,7 +222,7 @@ cardbus_attach_card(device_t cbdev)
 	cardbus_detach_card(cbdev); /* detach existing cards */
 
 	POWER_ENABLE_SOCKET(brdev, cbdev);
-	bus = pcib_get_bus(cbdev);
+	bus = pcib_get_bus(brdev);
 	if (bus == 0) {
 		/*
 		 * XXX EVILE BAD XXX
