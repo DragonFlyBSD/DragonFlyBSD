@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.49 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.50 2005/12/18 08:16:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -107,6 +107,7 @@
 #include <sys/protosw.h>
 #include <sys/random.h>
 #include <sys/in_cksum.h>
+#include <sys/ktr.h>
 
 #include <vm/vm_zone.h>
 
@@ -156,10 +157,17 @@
 #endif
 
 #include <sys/md5.h>
-
 #include <sys/msgport2.h>
-
 #include <machine/smp.h>
+
+#if !defined(KTR_TCP)
+#define KTR_TCP		KTR_ALL
+#endif
+KTR_INFO_MASTER(tcp);
+KTR_INFO(KTR_TCP, tcp, rxmsg, 0, "tcp getmsg", 0);
+KTR_INFO(KTR_TCP, tcp, wait, 1, "tcp waitmsg", 0);
+KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
+#define logtcp(name)	KTR_LOG(tcp_ ## name)
 
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
@@ -388,9 +396,12 @@ tcpmsg_service_loop(void *dummy)
 
 	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
 		do {
+			logtcp(rxmsg);
 			msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
 		} while ((msg = lwkt_getport(&curthread->td_msgport)) != NULL);
+		logtcp(delayed);
 		tcp_willblock();
+		logtcp(wait);
 	}
 }
 
