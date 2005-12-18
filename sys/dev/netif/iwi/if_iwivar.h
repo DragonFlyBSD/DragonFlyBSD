@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.3 2005/06/27 11:28:54 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.4 2005/12/18 02:47:34 sephe Exp $
  */
 
 struct iwi_firmware {
@@ -178,25 +178,6 @@ struct iwi_softc {
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
 #define SIOCSLOADIBSSFW	 _IOW('i', 138, struct ifreq)
 #define SIOCSKILLFW	 _IOW('i', 139, struct ifreq)
-
-#define IWI_LOCK_INIT(tok)     lwkt_token_init(tok)
-#define IWI_LOCK_DESTROY(tok)  lwkt_token_uninit(tok)
-
-#define IWI_LOCK_INFO          struct lwkt_tokref tokinfo
-#define IWI_INTRLOCK_INFO      struct lwkt_tokref intrtokinfo
-#define IWI_INTRLOCK(_sc)      lwkt_gettoken(&intrtokinfo,(&(_sc)->sc_intrlock))
-#define IWI_INTRUNLOCK(SC)     lwkt_reltoken(&intrtokinfo)
-#define IWI_LOCK(_sc)          lwkt_gettoken(&tokinfo,&((_sc)->sc_lock))
-#define IWI_UNLOCK(SC)         lwkt_reltoken(&tokinfo)
-
-/*
- * Holding a token is not enough for iwi_tx_start() the DMA send
- * routine. Revert back to the old ipl mechanism for now.
- */
-
-#define IWI_IPLLOCK_INFO
-#define IWI_IPLLOCK(_sc)	crit_enter()
-#define IWI_IPLUNLOCK(_sc)	crit_exit()
 
 /* tsleepable events */
 #define IWI_FW_WAKE_MONITOR(sc)      (sc + 1)

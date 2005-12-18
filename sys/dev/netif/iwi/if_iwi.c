@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.8 2005/11/22 00:24:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.9 2005/12/18 02:47:34 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -167,7 +167,6 @@ static int		iwi_config(struct iwi_softc *);
 static int		iwi_scan(struct iwi_softc *);
 static int		iwi_auth_and_assoc(struct iwi_softc *);
 static void		iwi_init(void *);
-static void		iwi_init_locked(void *);
 static void		iwi_stop(void *);
 static void		iwi_dump_fw_event_log(struct iwi_softc *sc);
 static void		iwi_dump_fw_error_log(struct iwi_softc *sc);
@@ -249,9 +248,15 @@ static void
 iwi_fw_monitor(void *arg)
 {
 	struct iwi_softc *sc = (struct iwi_softc *)arg;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 	int error, boff;
+
 	for ( ;; ) {
+		crit_enter();
+		tsleep_interlock(IWI_FW_WAKE_MONITOR(sc));
 		error = tsleep(IWI_FW_WAKE_MONITOR(sc), 0, "iwifwm", 0 );
+		crit_exit();
+
 		if ( error == 0 ) {
 			if ( sc->flags & IWI_FLAG_EXIT ) {
 				sc->flags &= ~( IWI_FLAG_EXIT );
@@ -261,11 +266,16 @@ iwi_fw_monitor(void *arg)
 				for ( boff = 1; sc->flags & IWI_FLAG_RESET ; boff++ ) {
 					if ( sc->debug_level > 0 )
 						iwi_dump_fw_error_log(sc);
-					iwi_init_locked(sc);
+					lwkt_serialize_enter(ifp->if_serializer);
+					iwi_init(sc);
+					lwkt_serialize_exit(ifp->if_serializer);
 					if ((sc->flags & IWI_FLAG_FW_INITED))
 						sc->flags &= ~( IWI_FLAG_RESET );
-					error = tsleep( IWI_FW_CMD_ACKED(sc), 0,
+					crit_enter();
+					tsleep_interlock(IWI_FW_CMD_ACKED(sc));
+					error = tsleep(IWI_FW_CMD_ACKED(sc), 0,
 						       "iwirun", boff * hz );
+					crit_exit();
 				}
 			}
 		}
@@ -300,9 +310,6 @@ iwi_attach(device_t dev)
 	int error, rid, i;
 
 	sc->sc_dev = dev;
-
-	IWI_LOCK_INIT( &sc->sc_lock );
-	IWI_LOCK_INIT( &sc->sc_intrlock );
 
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		device_printf(dev, "chip is in D%d power mode "
@@ -414,7 +421,7 @@ iwi_attach(device_t dev)
 	ifp->if_softc = sc;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	ifp->if_init = iwi_init_locked;
+	ifp->if_init = iwi_init;
 	ifp->if_ioctl = iwi_ioctl;
 	ifp->if_start = iwi_start;
 	ifp->if_watchdog = iwi_watchdog;
@@ -537,7 +544,7 @@ iwi_attach(device_t dev)
 	 * Hook our interrupt after all initialization is complete
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
-			       iwi_intr, sc, &sc->sc_ih, NULL);
+			       iwi_intr, sc, &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail2;
@@ -558,17 +565,13 @@ iwi_detach(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	IWI_LOCK_INFO;
-	IWI_IPLLOCK_INFO;
 
 	sc->flags |= IWI_FLAG_EXIT;
 	wakeup(IWI_FW_WAKE_MONITOR(sc)); /* Stop firmware monitor. */
 
 	tsleep(IWI_FW_MON_EXIT(sc), 0, "iwiexi", 10 * hz);
 
-	IWI_LOCK(sc);
-	IWI_IPLLOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
 		iwi_stop(sc);
 		iwi_free_firmware(sc);
@@ -577,17 +580,12 @@ iwi_detach(device_t dev)
 	}
 
 	if (sc->sysctl_tree) {
-		crit_enter();
 		sysctl_ctx_free(&sc->sysctl_ctx);
-		crit_exit();
 		sc->sysctl_tree = 0;
 	}
 
 	if (sc->sc_ih != NULL)
 		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-
-	IWI_IPLUNLOCK(sc);
-	IWI_UNLOCK(sc);
 
 	if (sc->irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
@@ -596,11 +594,9 @@ iwi_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, IWI_PCI_BAR0,
 		    sc->mem);
 	}
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	iwi_release(sc);
-
-	IWI_LOCK_DESTROY(&(sc->sc_lock));
-	IWI_LOCK_DESTROY(&(sc->sc_intrlock));
 
 	return 0;
 }
@@ -813,13 +809,11 @@ static int
 iwi_shutdown(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
-	IWI_LOCK_INFO;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	IWI_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	iwi_stop(sc);
-
-	IWI_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
 }
@@ -828,14 +822,11 @@ static int
 iwi_suspend(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	IWI_LOCK_INFO;
-
-	IWI_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	iwi_stop(sc);
-
-	IWI_UNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return 0;
 }
@@ -845,10 +836,8 @@ iwi_resume(device_t dev)
 {
 	struct iwi_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	IWI_LOCK_INFO;
 
-	IWI_LOCK(sc);
-
+	lwkt_serialize_enter(ifp->if_serializer);
 	pci_write_config(dev, 0x41, 0, 1);
 
 	if (ifp->if_flags & IFF_UP) {
@@ -856,9 +845,7 @@ iwi_resume(device_t dev)
 		if (ifp->if_flags & IFF_RUNNING)
 			ifp->if_start(ifp);
 	}
-
-	IWI_UNLOCK(sc);
-
+	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 
@@ -867,13 +854,9 @@ iwi_media_change(struct ifnet *ifp)
 {
 	struct iwi_softc *sc = ifp->if_softc;
 	int error = 0;
-	IWI_LOCK_INFO;
-
-	IWI_LOCK(sc);
 
 	error = ieee80211_media_change(ifp);
 	if (error != ENETRESET) {
-		IWI_UNLOCK(sc);
 		return error;
 	}
 	error = 0; /* clear ENETRESET */
@@ -882,10 +865,6 @@ iwi_media_change(struct ifnet *ifp)
 		iwi_init(sc);
 		error = tsleep( IWI_FW_CMD_ACKED(sc), 0, "iwirun", hz );
 	}
-
-
-	IWI_UNLOCK(sc);
-
 	return error;
 }
 
@@ -960,15 +939,22 @@ static int
 iwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg __unused)
 {
 	struct iwi_softc *sc = ic->ic_softc;
+	struct ifnet *ifp = &ic->ic_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (nstate) {
 	case IEEE80211_S_SCAN:
-		if ( sc->flags & IWI_FLAG_ASSOCIATED ) {
+		if (sc->flags & IWI_FLAG_ASSOCIATED) {
 			sc->flags &= ~( IWI_FLAG_ASSOCIATED );
 			iwi_disassociate(sc);
-			(void) tsleep( IWI_FW_DEASSOCIATED(sc), 
-					0, "iwisca", hz );
-			
+
+			crit_enter();
+			tsleep_interlock(IWI_FW_DEASSOCIATED(sc));
+			lwkt_serialize_exit(ifp->if_serializer);
+			tsleep(IWI_FW_DEASSOCIATED(sc), 0, "iwisca", hz );
+			crit_exit();
+			lwkt_serialize_enter(ifp->if_serializer);
 		}
 		if ( !(sc->flags & IWI_FLAG_SCANNING) &&
 		     !(sc->flags & IWI_FLAG_RF_DISABLED) ) {
@@ -980,9 +966,13 @@ iwi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg __unu
 		if ( sc->flags & IWI_FLAG_ASSOCIATED ) {
 			sc->flags &= ~( IWI_FLAG_ASSOCIATED );
 			iwi_disassociate(sc);
-			(void) tsleep( IWI_FW_DEASSOCIATED(sc), 0,
-				       "iwiaut", hz );
-			
+
+			crit_enter();
+			tsleep_interlock(IWI_FW_DEASSOCIATED(sc));
+			lwkt_serialize_exit(ifp->if_serializer);
+			tsleep(IWI_FW_DEASSOCIATED(sc), 0, "iwiaut", hz );
+			crit_exit();
+			lwkt_serialize_enter(ifp->if_serializer);
 		}
 		if ( iwi_auth_and_assoc(sc) != 0 )
 			ieee80211_new_state(ic, IEEE80211_S_SCAN, -1);
@@ -1255,13 +1245,11 @@ iwi_notification_intr(struct iwi_softc *sc, struct iwi_notif *notif)
 		sc->flags &= ~(IWI_FLAG_SCANNING);
 		sc->flags |= IWI_FLAG_SCAN_COMPLETE;
 
-		if ( sc->flags & IWI_FLAG_SCAN_ABORT ) {
+		if ( sc->flags & IWI_FLAG_SCAN_ABORT )
 			sc->flags &= ~(IWI_FLAG_SCAN_ABORT);
-			wakeup(IWI_FW_SCAN_COMPLETED(sc));
-		} else {
+		else
 			ieee80211_end_scan(ifp);
-			wakeup(IWI_FW_SCAN_COMPLETED(sc));
-		}
+		wakeup(IWI_FW_SCAN_COMPLETED(sc));
 		break;
 
 	case IWI_NOTIF_TYPE_AUTHENTICATION:
@@ -1413,15 +1401,9 @@ iwi_intr(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = &ic->ic_if;
 	u_int32_t r;
-	IWI_LOCK_INFO;
-	IWI_IPLLOCK_INFO;
 
-	IWI_IPLLOCK(sc);
-
-	if ((r = CSR_READ_4(sc, IWI_CSR_INTR)) == 0 || r == 0xffffffff) {
-		IWI_IPLUNLOCK(sc);
+	if ((r = CSR_READ_4(sc, IWI_CSR_INTR)) == 0 || r == 0xffffffff)
 		return;
-	}
 
 	/* Disable interrupts */
 	CSR_WRITE_4(sc, IWI_CSR_INTR_MASK, 0);
@@ -1430,19 +1412,17 @@ iwi_intr(void *arg)
 
 	sc->flags &= ~(IWI_FLAG_RF_DISABLED);
 
-	if ( r & IWI_INTR_FATAL_ERROR ) {
-		if ( !(sc->flags & (IWI_FLAG_RESET | IWI_FLAG_EXIT))) {
+	if (r & IWI_INTR_FATAL_ERROR) {
+		if (!(sc->flags & (IWI_FLAG_RESET | IWI_FLAG_EXIT))) {
 			sc->flags |= IWI_FLAG_RESET;
 			wakeup(IWI_FW_WAKE_MONITOR(sc));
 		}
 	}
 
 	if (r & IWI_INTR_PARITY_ERROR) {
-			device_printf(sc->sc_dev, "fatal error\n");
-			sc->sc_ic.ic_if.if_flags &= ~IFF_UP;
-			IWI_LOCK(sc);
-			iwi_stop(sc);
-			IWI_UNLOCK(sc);
+		device_printf(sc->sc_dev, "fatal error\n");
+		sc->sc_ic.ic_if.if_flags &= ~IFF_UP;
+		iwi_stop(sc);
 	}
 
 	if (r & IWI_INTR_FW_INITED) {
@@ -1453,9 +1433,7 @@ iwi_intr(void *arg)
 	if (r & IWI_INTR_RADIO_OFF) {
 		DPRINTF(("radio transmitter off\n"));
 		sc->sc_ic.ic_if.if_flags &= ~IFF_UP;
-		IWI_LOCK(sc);
 		iwi_stop(sc);
-		IWI_UNLOCK(sc);
 		sc->flags |= IWI_FLAG_RF_DISABLED;
 	}
 
@@ -1468,18 +1446,17 @@ iwi_intr(void *arg)
 	if (r & IWI_INTR_TX1_TRANSFER)
 		iwi_tx_intr(sc);
 
-	if (r & ~(IWI_HANDLED_INTR_MASK))
-		device_printf(sc->sc_dev, 
+	if (r & ~(IWI_HANDLED_INTR_MASK)) {
+		device_printf(sc->sc_dev,
 			      "unhandled interrupt(s) INTR!0x%08x\n",
 			      r & ~(IWI_HANDLED_INTR_MASK));
+	}
 
 	/* Acknowledge interrupts */
 	CSR_WRITE_4(sc, IWI_CSR_INTR, r);
 
 	/* Re-enable interrupts */
 	CSR_WRITE_4(sc, IWI_CSR_INTR_MASK, IWI_INTR_MASK);
-
-	IWI_IPLUNLOCK(sc);
 
 	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		iwi_start(ifp);
@@ -1525,6 +1502,7 @@ iwi_cmd(struct iwi_softc *sc, u_int8_t type, void *data, u_int8_t len,
     int async)
 {
 	struct iwi_cmd_desc *desc;
+	int ret;
 
 	DPRINTFN(2, ("TX!CMD!%u!%u\n", type, len));
 
@@ -1539,9 +1517,22 @@ iwi_cmd(struct iwi_softc *sc, u_int8_t type, void *data, u_int8_t len,
 	    BUS_DMASYNC_PREWRITE);
 
 	sc->cmd_cur = (sc->cmd_cur + 1) % IWI_CMD_RING_SIZE;
-	CSR_WRITE_4(sc, IWI_CSR_CMD_WRITE_INDEX, sc->cmd_cur);
+	if (!async) {
+		struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	return async ? 0 : tsleep( IWI_FW_CMD_ACKED(sc), 0, "iwicmd", hz);
+		crit_enter();
+		CSR_WRITE_4(sc, IWI_CSR_CMD_WRITE_INDEX, sc->cmd_cur);
+		tsleep_interlock(IWI_FW_CMD_ACKED(sc));
+		lwkt_serialize_exit(ifp->if_serializer);
+		ret = tsleep(IWI_FW_CMD_ACKED(sc), 0, "iwicmd", hz);
+		crit_exit();
+		lwkt_serialize_enter(ifp->if_serializer);
+	} else {
+		CSR_WRITE_4(sc, IWI_CSR_CMD_WRITE_INDEX, sc->cmd_cur);
+		ret = 0;
+	}
+
+	return ret; 
 }
 
 static int
@@ -1556,8 +1547,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 	struct mbuf *mnew;
 	u_int32_t id = 0;
 	int error, i;
-	IWI_IPLLOCK_INFO; /* XXX still need old ipl locking mech. here */
-	IWI_IPLLOCK(sc);
 
 	if (sc->sc_drvbpf != NULL) {
 		struct iwi_tx_radiotap_header *tap = &sc->sc_txtap;
@@ -1589,7 +1578,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
 		m_freem(m0);
-		IWI_IPLUNLOCK(sc);
 		return error;
 	}
 	if (error != 0) {
@@ -1598,7 +1586,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 			device_printf(sc->sc_dev,
 			    "could not defragment mbuf\n");
 			m_freem(m0);
-			IWI_IPLUNLOCK(sc);
 			return ENOBUFS;
 		}
 		m0 = mnew;
@@ -1609,7 +1596,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 			device_printf(sc->sc_dev,
 			    "could not map mbuf (error %d)\n", error);
 			m_freem(m0);
-			IWI_IPLUNLOCK(sc);
 			return error;
 		}
 	}
@@ -1655,7 +1641,6 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 	sc->tx_cur = (sc->tx_cur + 1) % IWI_TX_RING_SIZE;
 	CSR_WRITE_4(sc, IWI_CSR_TX1_WRITE_INDEX, sc->tx_cur);
 
-	IWI_IPLUNLOCK(sc);
 	return 0;
 }
 
@@ -1742,8 +1727,14 @@ iwi_wi_ioctl_get(struct ifnet *ifp, caddr_t data)
 	switch (wreq.wi_type) {
 	case WI_RID_READ_APS:
 		ieee80211_begin_scan(ifp);
-		(void) tsleep(IWI_FW_SCAN_COMPLETED(sc), 
-			PCATCH, "ssidscan", hz * 2);
+
+		crit_enter();
+		tsleep_interlock(IWI_FW_SCAN_COMPLETED(sc));
+		lwkt_serialize_exit(ifp->if_serializer);
+		tsleep(IWI_FW_SCAN_COMPLETED(sc), PCATCH, "ssidscan", hz * 2);
+		crit_exit();
+		lwkt_serialize_enter(ifp->if_serializer);
+
 		ieee80211_end_scan(ifp);
 		break;
 	default:
@@ -1764,16 +1755,12 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ieee80211req *ireq;
 	struct ifaddr *ifa;
 	int error = 0;
-	IWI_LOCK_INFO;
-
-	IWI_LOCK(sc);
 
 	switch (cmd) {
        case SIOCSIFADDR:
 		/*
 		 * Handle this here instead of in net80211_ioctl.c
-		 * so that we can lock (IWI_LOCK) the call to
-		 * iwi_init().
+		 * so that we can lock the call to iwi_init().
 		 */
 		ifa = (struct ifaddr *) data;
 		switch (ifa->ifa_addr->sa_family) {
@@ -1898,9 +1885,6 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = tsleep(IWI_FW_CMD_ACKED(sc), 0, "iwirun", hz);
 		}
 	}
-
-	IWI_UNLOCK(sc);
-
 	return error;
 }
 
@@ -1924,11 +1908,19 @@ iwi_stop_master(struct iwi_softc *sc)
 	 */
 	if ( ( sc->flags & IWI_FLAG_SCANNING ) && 
 	     !( sc->flags & IWI_FLAG_RF_DISABLED ) ) {
+	     	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	     	ASSERT_SERIALIZED(ifp->if_serializer);
+
 		iwi_abort_scan(sc);
 		if (( sc->flags & IWI_FLAG_SCAN_ABORT ) && 
 		    !( sc->flags & IWI_FLAG_RF_DISABLED )) {
-			(void) tsleep(IWI_FW_SCAN_COMPLETED(sc), 0,
-					 "iwiabr", hz);
+		    	crit_enter();
+			tsleep_interlock(IWI_FW_SCAN_COMPLETED(sc));
+			lwkt_serialize_exit(ifp->if_serializer);
+			tsleep(IWI_FW_SCAN_COMPLETED(sc), 0, "iwiabr", hz);
+			crit_exit();
+			lwkt_serialize_enter(ifp->if_serializer);
 		}
 	}
 	/* Disable interrupts */
@@ -2067,6 +2059,7 @@ iwi_load_firmware(struct iwi_softc *sc, void *fw, int size)
 	u_char *p, *end;
 	u_int32_t sentinel, ctl, src, dst, sum, len, mlen;
 	int ntries, error = 0;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
 	sc->flags &= ~(IWI_FLAG_FW_INITED);
 
@@ -2170,12 +2163,17 @@ iwi_load_firmware(struct iwi_softc *sc, void *fw, int size)
 	CSR_WRITE_4(sc, IWI_CSR_INTR_MASK, IWI_INTR_MASK);
 
 	/* Tell the adapter to initialize the firmware */
+	crit_enter();
 	CSR_WRITE_4(sc, IWI_CSR_RST, 0);
-	CSR_WRITE_4(sc, IWI_CSR_CTL, CSR_READ_4(sc, IWI_CSR_CTL) |
-	    IWI_CTL_ALLOW_STANDBY);
+	CSR_WRITE_4(sc, IWI_CSR_CTL,
+		    CSR_READ_4(sc, IWI_CSR_CTL) | IWI_CTL_ALLOW_STANDBY);
 
-	/* Wait at most one second for firmware initialization to complete */
-	if ((error = tsleep(IWI_FW_INITIALIZED(sc), 0, "iwiini", hz)) != 0) {
+	tsleep_interlock(IWI_FW_INITIALIZED(sc));
+	lwkt_serialize_exit(ifp->if_serializer);
+	error = tsleep(IWI_FW_INITIALIZED(sc), 0, "iwiini", hz);
+	crit_exit();
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (error != 0) {
 		device_printf(sc->sc_dev, "timeout waiting for firmware "
 		    "initialization to complete\n");
 		goto fail4;
@@ -2699,16 +2697,6 @@ fail:
 	if ( !(sc->flags & IWI_FLAG_RESET) )
 		ifp->if_flags &= ~IFF_UP;
 	iwi_stop(sc);
-}
-
-static void
-iwi_init_locked(void *priv) 
-{
-	struct iwi_softc *sc = priv;
-	IWI_LOCK_INFO;
-	IWI_LOCK(sc);
-	iwi_init(sc);
-	IWI_UNLOCK(sc);
 }
 
 static void
