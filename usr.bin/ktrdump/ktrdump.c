@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.5 2005/12/10 18:38:26 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.6 2005/12/19 17:09:58 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -85,6 +85,7 @@ static int Mflag;
 static int Nflag;
 static int64_t last_timestamp;
 static double tsc_frequency;
+static double correction_factor = 0.0;
 
 static char corefile[PATH_MAX];
 static char execfile[PATH_MAX];
@@ -127,7 +128,7 @@ main(int ac, char **av)
 	 * Parse commandline arguments.
 	 */
 	fo = stdout;
-	while ((c = getopt(ac, av, "acfinqrtxpsN:M:o:")) != -1) {
+	while ((c = getopt(ac, av, "acfinqrtxpsA:N:M:o:")) != -1) {
 		switch (c) {
 		case 'a':
 			cflag = 1;
@@ -151,6 +152,9 @@ main(int ac, char **av)
 			break;
 		case 'i':
 			iflag = 1;
+			break;
+		case 'A':
+			correction_factor = strtod(optarg, NULL);
 			break;
 		case 'M':
 			if (strlcpy(corefile, optarg, sizeof(corefile))
@@ -194,7 +198,10 @@ main(int ac, char **av)
 		tflag = 1;
 		pflag = 1;
 	}
-
+	if (correction_factor != 0.0 && (rflag == 0 || nflag)) {
+		fprintf(stderr, "Correction factor can only be applied with -r and without -n\n");
+		exit(1);
+	}
 	ac -= optind;
 	av += optind;
 	if (ac != 0)
@@ -352,7 +359,7 @@ print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry)
 	if (tflag || rflag) {
 		if (rflag && !nflag && tsc_frequency != 0.0) {
 			fprintf(fo, "%13.3f uS ",
-				(double)(entry->ktr_timestamp - last_timestamp) * 1000000.0 / tsc_frequency);
+				(double)(entry->ktr_timestamp - last_timestamp) * 1000000.0 / tsc_frequency - correction_factor);
 		} else if (rflag) {
 			fprintf(fo, "%-16lld ", entry->ktr_timestamp -
 						last_timestamp);
