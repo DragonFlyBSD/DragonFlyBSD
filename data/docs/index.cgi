@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.15 2005/06/21 04:13:53 dillon Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.16 2005/12/19 06:21:02 dillon Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -77,6 +77,15 @@ $TITLE(DragonFly - Documentation)
 		<a href="./USENIX2005_BSD/dfly_usenix2005_bsd.sxd">OpenOffice SXD</a>
 	</td>
 	<td align="right">April 2005</td>
+</tr>
+
+<tr>
+	<td>BayLisa timing Slides for SMP Operation with DragonFly</td>
+	<td>
+		<a href="./LISA200512/">HTML</a>,
+		<a href="./LISA200512/dfly_baylisa2005.sxd">OpenOffice SXD</a>
+	</td>
+	<td align="right">15 December 2005</td>
 </tr>
 
 
