@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbbvar.h,v 1.15 2002/10/07 23:11:29 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbbvar.h,v 1.1 2004/02/10 07:55:47 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbbvar.h,v 1.2 2005/12/19 01:18:58 dillon Exp $
  */
 
 /*
@@ -36,6 +36,7 @@
 struct cbb_intrhand {
 	driver_intr_t *intr;
 	void	*arg;
+	struct lwkt_serialize *serializer;
 	STAILQ_ENTRY(cbb_intrhand) entries;
 };
 

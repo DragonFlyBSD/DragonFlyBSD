@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.14 2005/06/27 02:27:10 swildner Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.15 2005/12/19 01:18:57 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -1222,7 +1222,7 @@ pccard_setup_intr(device_t dev, device_t child, struct resource *irq,
 	if (func->intr_handler != NULL)
 		panic("Only one interrupt handler per function allowed");
 	err = bus_generic_setup_intr(dev, child, irq, flags, pccard_intr,
-				     func, cookiep, NULL);
+				     func, cookiep, serializer);
 	if (err != 0)
 		return (err);
 	func->intr_handler = intr;

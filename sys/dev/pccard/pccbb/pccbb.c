@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.11 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.12 2005/12/19 01:18:58 dillon Exp $
  */
 
 /*
@@ -79,6 +79,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/errno.h>
+#include <sys/interrupt.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
@@ -803,7 +804,7 @@ cbb_setup_intr(device_t dev, device_t child, struct resource *irq,
 	*cookiep = ih;
 	ih->intr = intr;
 	ih->arg = arg;
-	KKASSERT(serializer == NULL);	/* not yet supported */
+	ih->serializer = serializer;
 	STAILQ_INSERT_TAIL(&sc->intr_handlers, ih, entries);
 	/*
 	 * XXX we should do what old card does to ensure that we don't
@@ -1057,7 +1058,13 @@ cbb_intr(void *arg)
 	}
 	if (sc->flags & CBB_CARD_OK) {
 		STAILQ_FOREACH(ih, &sc->intr_handlers, entries) {
-			(*ih->intr)(ih->arg);
+			if (ih->serializer) {
+				lwkt_serialize_handler_call(ih->serializer,
+						(inthand2_t *)ih->intr, 
+						ih->arg, NULL);
+			} else {
+				(*ih->intr)(ih->arg);
+			}
 		}
 		
 	}
