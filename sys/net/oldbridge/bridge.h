@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.h,v 1.4.2.5 2002/02/15 05:13:58 luigi Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.h,v 1.3 2005/12/19 00:07:02 corecode Exp $
  */
 
 extern int do_bridge;

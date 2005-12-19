@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.28 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.29 2005/12/19 00:07:02 corecode Exp $
  */
 
 /*
@@ -115,7 +115,7 @@
 #include <net/if_llc.h>
 #ifdef BRIDGE
 #include <net/ethernet.h>
-#include <net/bridge/bridge.h>
+#include <net/oldbridge/bridge.h>
 #endif
 
 #include <netinet/in.h>

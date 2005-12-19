@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.8 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.9 2005/12/19 00:07:02 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <net/if_var.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/bridge/bridge.h>
+#include <net/oldbridge/bridge.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>

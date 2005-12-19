@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.28 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.29 2005/12/19 00:07:02 corecode Exp $
  */
 
 /*
@@ -71,7 +71,7 @@
 
 #include <net/bpf.h>
 #include "opt_bdg.h"
-#include <net/bridge/bridge.h>
+#include <net/oldbridge/bridge.h>
 
 #include <machine/md_var.h>
 
