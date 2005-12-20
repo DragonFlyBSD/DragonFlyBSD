@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.4 2005/08/06 13:34:14 swildner Exp $
+.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.5 2005/12/20 16:09:31 swildner Exp $
 .\"
 .Dd August 6, 2005
 .Os
@@ -75,43 +75,65 @@
 .Sh DESCRIPTION
 .Fn nlookup
 does a generic namecache lookup.
-Note that the passed struct nlookupdata is not nlookup_done()'d on
-return, even if an error occurs.
-If no error occurs the returned nl_ncp is always referenced and
-locked, otherwise it may or may not be.
+Note that the passed
+.Fa "struct nlookupdata"
+is not
+.Fn nlookup_done Ap d
+on return, even if an error occurs.
+If no error occurs the returned nl_ncp
+is always referenced and locked, otherwise it may or may not be.
 Intermediate directory elements, including the current directory,
 require execute (search) permission.
 .Fn nlookup
 does not examine the access permissions on the returned element.
-If NLC_CREATE or NLC_DELETE is set the last directory must allow
-node creation (VCREATE/VDELETE), and an error code of 0 will be
-returned for a non-existant target.
-Otherwise a non-existant target will cause ENOENT to be returned.
+If
+.Dv NLC_CREATE
+or
+.Dv NLC_DELETE
+is set the last directory must allow
+node creation
+.Po
+.Dv VCREATE Ns / Ns Dv VDELETE
+.Pc ,
+and an error code of 0
+will be returned for a non-existant target.
+Otherwise a non-existant target will cause
+.Er ENOENT
+to be returned.
 .Pp
 .Fn nlookup_init
-initializes a nlookupdata structure, and does an early error
+initializes a
+.Fa "struct nlookupdata" ,
+and does an early error
 return for copyin faults or a degenerate empty string (which is
 not allowed).
-The first process proc0's credentials are used if the calling
+The first process proc0's
+credentials are used if the calling
 thread is not associated with a process context.
 .Pp
 .Fn nlookup_init_raw
 works similarly to
 .Fn nlookup_init
 but does not assume a process context.
-rootncp is always chosen for the root directory and the cred
+rootncp is always chosen for the root directory and the
+.Fa cred
 and starting directory are supplied in the arguments.
 .Pp
 .Fn nlookup_set_cred
 sets a different credential; this credential will be used by
-future operations performed on nd.nl_open_vp and the
-nlookupdata structure.
+future operations performed on nd.nl_open_vp
+and the
+.Fa nlookupdata
+structure.
 .Pp
 .Fn nlookup_zero
-zeroes a given nlookupdata structure.
+zeroes a given
+.Fa "struct nlookupdata" .
 .Pp
 .Fn nlookup_done
-cleans up a nlookupdata structure after we are through with
+cleans up an
+.Fa nlookupdata
+structure after we are through with
 it.
 This function may be called on any nlookupdata structure
 initialized with
@@ -121,15 +143,19 @@ Calling
 is mandatory in all cases except where
 .Fn nlookup_init
 returns an error, even if as a consumer you believe you
-have taken all dynamic elements out of the nlookupdata
+have taken all dynamic elements out of the
+.Fa nlookupdata
 structure.
 .Pp
 .Fn nlookup_simple
 is a simple all-in-one nlookup.
 It returns a locked namecache structure or NULL if an error
 occured.
-Note that the returned ncp is not checked for permissions,
-though VEXEC is checked on the directory path leading up to
+Note that the returned ncp
+is not checked for permissions,
+though
+.Dv VEXEC
+is checked on the directory path leading up to
 the result.
 The caller must call
 .Fn naccess
@@ -140,7 +166,8 @@ is used to resolve a mount point's glue ncp.
 It creates the illusion of continuity in the namecache tree
 by connecting the ncp related to the vnode under the mount
 to the ncp related to the mount's root vnode.
-If no error occured a locked, ref'd ncp is stored in *ncpp.
+If no error occured a locked, ref'd ncp is stored in
+.Fa *ncpp .
 .Pp
 .Fn nreadsymlink
 reads the contents of a symlink, allocates a path buffer out
@@ -153,21 +180,42 @@ in the nlc.
 generally checks the V* access bits from
 .Pa sys/vnode.h .
 All specified bits must pass for this function to return 0.
-If VCREATE is specified and the target ncp represents a
-non-existant file or dir, or if VDELETE is specified and the
-target exists, the parent directory is checked for VWRITE.
-If VEXCL is specified and the target ncp represents a positive
+If
+.Dv VCREATE
+is specified and the target ncp represents a
+non-existant file or dir, or if
+.Dv VDELETE
+is specified and the
+target exists, the parent directory is checked for
+.Dv VWRITE .
+If
+.Dv VEXCL
+is specified and the target ncp represents a positive
 hit, an error is returned.
-If VCREATE is not specified and the target does not exist
-(negative hit), ENOENT is returned.
-Note that nlookup() does not (and should not) return ENOENT
+If
+.Dv VCREATE
+is not specified and the target does not exist
+(negative hit),
+.Er ENOENT
+is returned.
+Note that
+.Fn nlookup
+does not (and should not) return
+.Er ENOENT
 for non-existant leafs.
 The passed ncp may or may not be locked.
 The caller should use a locked ncp on leaf lookups, especially
-for VCREATE, VDELETE, and VEXCL checks.
+for
+.Dv VCREATE ,
+.Dv VDELETE ,
+and
+.Dv VEXCL
+checks.
 .Pp
 .Fn naccess_va
-checks the requested access against the given vattr using cred.
+checks the requested access against the given
+.Fa vattr using
+.Fa cred .
 .Sh BUGS
 This man page needs further work.
 .Sh SEE ALSO
