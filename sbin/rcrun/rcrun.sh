@@ -2,9 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.5 2005/12/20 11:57:48 corecode Exp $
-
-OS=`sysctl -n kern.ostype`
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.6 2005/12/20 15:25:45 swildner Exp $
 
 dostart()
 {
