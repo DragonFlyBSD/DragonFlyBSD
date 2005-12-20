@@ -35,7 +35,7 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/stdio/vfscanf.c,v 1.35 2004/01/31 23:16:09 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.9 2005/11/20 11:07:30 swildner Exp $
+ * $DragonFly: src/lib/libc/stdio/vfscanf.c,v 1.10 2005/12/20 00:21:53 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -361,8 +361,8 @@ literal:
 				}
 				nread += sum;
 			} else {
-				size_t r = fread((void *)va_arg(ap, char *), 1,
-				    width, fp);
+				size_t r = __fread((void *)va_arg(ap, char *),
+					1, width, fp);
 
 				if (r == 0)
 					goto input_failure;

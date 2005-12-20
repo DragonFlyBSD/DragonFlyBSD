@@ -36,7 +36,7 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/local.h,v 1.9 2005/08/02 00:44:39 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/local.h,v 1.10 2005/12/20 00:21:53 davidxu Exp $
  */
 
 #include <sys/types.h> /* for off_t */
@@ -71,6 +71,7 @@ extern int	__vfprintf(FILE *, const char *, __va_list);
 extern wint_t	__fgetwc_unlock(FILE *);
 extern wint_t	__fputwc_unlock(wchar_t, FILE *);
 extern int 	__vfwprintf_unlocked(FILE *, const wchar_t *, __va_list);
+extern size_t	__fread(void *buf, size_t size, size_t count, FILE *fp);
 
 extern int	__sdidinit;
 
