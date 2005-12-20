@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.4 2003/12/13 02:49:09 dillon Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.5 2005/12/20 11:57:48 corecode Exp $
 
 OS=`sysctl -n kern.ostype`
 
@@ -21,7 +21,7 @@ dostart()
 	    ;;
 	*)
 	    _return=0
-	    for j in `rcorder -k $OS -o $i /etc/rc.d/*`; do
+	    for j in `rcorder -o $i /etc/rc.d/*`; do
 		need=1
 		for k in `rcorder -p $j`; do
 		    if [ $k = $i ]; then
@@ -111,7 +111,7 @@ faststart)
 	;;
 stop)
 	for i in $@; do
-	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
+	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find keyword $i"
 	    else
@@ -121,7 +121,7 @@ stop)
 	;;
 restart)
 	for i in $@; do
-	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
+	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find keyword $i"
 	    else
@@ -136,7 +136,7 @@ disable|enable)
 	    mode=NO
 	fi
 	for i in $@; do
-	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
+	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find provider id $i"
 	    elif [ `varsym -s -q rcng_$i` = "$mode" ]; then
@@ -160,7 +160,7 @@ disable|enable)
 	;;
 rcvar)
 	for i in $@; do
-	    j=`rcorder -k $OS -o $i /etc/rc.d/* | tail -1`
+	    j=`rcorder -o $i /etc/rc.d/* | tail -1`
 	    if [ X$j = X ]; then
 		echo "Unable to find provider id $i"
 	    else
