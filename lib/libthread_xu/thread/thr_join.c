@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_join.c,v 1.28 2003/12/09 02:20:56 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.4 2005/10/10 13:46:53 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.5 2005/12/20 00:19:41 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -134,6 +134,7 @@ join_common(pthread_t pthread, void **thread_return,
 		pthread->joiner = NULL;
 		THREAD_LIST_UNLOCK(curthread);
 	} else {
+		ret = 0;
 		tmp = pthread->ret;
 		THREAD_LIST_LOCK(curthread);
 		pthread->tlflags |= TLFLAGS_DETACHED;
