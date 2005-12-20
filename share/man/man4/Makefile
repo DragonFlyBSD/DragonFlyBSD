@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.29 2005/11/22 09:36:58 swildner Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.30 2005/12/20 01:54:09 corecode Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -27,7 +27,6 @@ MAN=	aac.4 \
 	bktr.4 \
 	blackhole.4 \
 	bpf.4 \
-	bridge.4 \
 	bt.4 \
 	cardbus.4 \
 	ccd.4 \
@@ -144,6 +143,7 @@ MAN=	aac.4 \
 	nv.4 \
 	null.4 \
 	ohci.4 \
+	oldbridge.4 \
 	orm.4 \
 	pass.4 \
 	pccard.4 \
