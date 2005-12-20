@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.18 2005/11/03 23:45:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.19 2005/12/20 19:09:35 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -46,7 +46,7 @@
  * lock operations can occur outside a critical section with interrupts
  * enabled with the provisio (which the routines below handle) that an
  * interrupt may come along and preempt us, racing our cmpxchgl instruction
- * to perform the operation we have requested by pre-dispoing td_mpcount.
+ * to perform the operation we have requested by pre-disposing td_mpcount.
  *
  * Additionally, the LWKT threading system manages the MP lock and
  * lwkt_switch(), in particular, may be called after pre-disposing td_mpcount

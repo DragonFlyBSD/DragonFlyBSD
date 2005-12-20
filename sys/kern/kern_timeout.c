@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.20 2005/11/04 19:28:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.21 2005/12/20 19:09:33 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -527,7 +527,7 @@ callout_stop(struct callout *c)
 /*
  * Prepare a callout structure for use by callout_reset() and/or 
  * callout_stop().  The MP version of this routine requires that the callback
- * function installed by callout_reset() by MP safe.
+ * function installed by callout_reset() be MP safe.
  */
 void
 callout_init(struct callout *c)
