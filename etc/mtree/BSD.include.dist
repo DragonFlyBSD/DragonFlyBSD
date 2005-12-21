@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.18 2005/07/07 14:40:12 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.19 2005/12/21 11:18:30 corecode Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -158,6 +158,8 @@
 	ip_mroute
 	..
 	bridge
+	..
+	oldbridge
 	..
 	tun
 	..
