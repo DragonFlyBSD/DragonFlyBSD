@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.29 2005/12/19 00:07:02 corecode Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.30 2005/12/21 16:40:25 corecode Exp $
  */
 
 /*
@@ -638,14 +638,42 @@ in_arpinput(struct mbuf *m)
 	 * of the receive interface. (This will change slightly
 	 * when we have clusters of interfaces).
 	 */
-	LIST_FOREACH(ia, INADDR_HASH(itaddr.s_addr), ia_hash)
+	LIST_FOREACH(ia, INADDR_HASH(itaddr.s_addr), ia_hash) {
+		/*
+		 * Old style bridging OBSOLETE
+		 */
 		if ((BRIDGE_TEST || (ia->ia_ifp == ifp)) &&
-		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr)
+		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
 			goto match;
-	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash)
+		}
+
+		/*
+		 * New style bridging
+		 */
+		if (ifp->if_bridge && ia->ia_ifp && 
+		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
+		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
+			goto match;
+		}
+	}
+	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash) {
+		/*
+		 * Old style bridging OBSOLETE
+		 */
 		if ((BRIDGE_TEST || (ia->ia_ifp == ifp)) &&
-		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr)
+		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
 			goto match;
+		}
+
+		/*
+		 * New style bridging
+		 */
+		if (ifp->if_bridge && ia->ia_ifp &&
+		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
+		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
+			goto match;
+		}
+	}
 	/*
 	 * No match, use the first inet address on the receive interface
 	 * as a dummy address for the rest of the function.

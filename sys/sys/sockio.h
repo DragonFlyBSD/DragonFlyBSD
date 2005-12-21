@@ -32,7 +32,7 @@
  *
  *	@(#)sockio.h	8.1 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/sockio.h,v 1.14.2.6 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sys/sys/sockio.h,v 1.3 2004/03/15 22:37:41 hmp Exp $
+ * $DragonFly: src/sys/sys/sockio.h,v 1.4 2005/12/21 16:40:25 corecode Exp $
  */
 
 #ifndef	_SYS_SOCKIO_H_
@@ -106,6 +106,11 @@
 
 #define	SIOCGPRIVATE_0	_IOWR('i', 80, struct ifreq)	/* Linux Private + 0 */
 #define	SIOCGPRIVATE_1	_IOWR('i', 81, struct ifreq)	/* Linux Private + 1 */
+
+#define	SIOCSDRVSPEC     _IOW('i', 123, struct ifdrv)   /* set driver-specific
+							   parameters */
+#define	SIOCGDRVSPEC    _IOWR('i', 123, struct ifdrv)   /* get driver-specific
+							   parameters */
 
 #define SIOCIFCREATE	_IOWR('i', 122, struct ifreq)	/* create clone if */
 #define SIOCIFDESTROY	 _IOW('i', 121, struct ifreq)	/* destroy clone if */
