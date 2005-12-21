@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/Makefile,v 1.4 2005/06/19 16:18:22 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/Makefile,v 1.5 2005/12/21 17:07:33 joerg Exp $
 
 SUBDIR=		libgcc libgcov
 
@@ -7,7 +7,7 @@ MAKE := HOST_CCVER=${HOST_CCVER} CCVER=gcc34 ${MAKE}
 .endif
 
 .if !defined(NO_FORTRAN)
-SUBDIR+= libg2c
+SUBDIR+= libg2c libfrtbegin
 .endif
 
 .if !defined(NO_OBJC)
