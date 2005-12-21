@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.9 2005/05/16 20:59:28 rob Exp $
+# $DragonFly: src/sbin/Makefile,v 1.10 2005/12/21 16:33:20 corecode Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -8,6 +8,7 @@ SUBDIR=	adjkerntz \
 	atacontrol \
 	atm \
 	badsect \
+	brconfig \
 	camcontrol \
 	ccdconfig \
 	clri \
