@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.24 2005/08/06 19:20:38 y0netan1 Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.25 2005/12/21 19:50:54 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -26,7 +26,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ifnet.9 inittodr.9 intro.9 kernacc.9 ktr.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 \
 	nlookup.9 \
-	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
+	panic.9 pci.9 pfil.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \
 	rman.9 \
 	rtalloc.9 rtentry.9 sleep.9 spl.9 \
@@ -255,6 +255,14 @@ MLINKS+=nlookup.9 nreadsymlink.9
 MLINKS+=nlookup.9 naccess.9
 MLINKS+=nlookup.9 naccess_va.9
 MLINKS+=nlookup.9 namei.9
+
+MLINKS+=pfil.9 pfil_hook_get.9
+MLINKS+=pfil.9 pfil_add_hook.9
+MLINKS+=pfil.9 pfil_remove_hook.9
+MLINKS+=pfil.9 pfil_head_register.9
+MLINKS+=pfil.9 pfil_head_unregister.9
+MLINKS+=pfil.9 pfil_head_get.9
+MLINKS+=pfil.9 pfil_run_hooks.9
 
 MLINKS+=sysctl_add_oid.9 sysctl_remove_oid.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_OID.9
