@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.34 2005/12/19 00:07:02 corecode Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.35 2005/12/21 16:37:15 corecode Exp $
  */
 
 #include "opt_atalk.h"
@@ -124,6 +124,11 @@ bridge_in_t *bridge_in_ptr;
 bdg_forward_t *bdg_forward_ptr;
 bdgtakeifaces_t *bdgtakeifaces_ptr;
 struct bdg_softc *ifp2sc;
+
+struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
+int (*bridge_output_p)(struct ifnet *, struct mbuf *,
+		       struct sockaddr *, struct rtentry *);
+void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
 static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
 			      struct sockaddr *);
@@ -302,6 +307,14 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		       ETHER_ADDR_LEN);
 	else
 		memcpy(eh->ether_shost, ac->ac_enaddr, ETHER_ADDR_LEN);
+
+	/*
+	 * Bridges require special output handling.
+	 */
+	if (ifp->if_bridge) {
+		KASSERT(bridge_output_p != NULL,("ether_input: if_bridge not loaded!"));
+		return ((*bridge_output_p)(ifp, m, NULL, NULL));
+	}
 
 	/*
 	 * If a simplex interface, and the packet is being sent to our
@@ -567,23 +580,59 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (eh == NULL) {
-		if (m->m_len < sizeof(struct ether_header)) {
-			/* XXX error in the caller. */
-			m_freem(m);
-			return;
-		}
-		m->m_pkthdr.rcvif = ifp;
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, sizeof(struct ether_header));
-		/* XXX */
-		/* m->m_pkthdr.len = m->m_len; */
+	/* XXX old crufty stuff, needs to be removed */
+	if (eh != NULL) {
+		printf("ether_input got mbuf without embedded ethernet header");
+		m_free(m);
+		return;
 	}
 
-	if (ifp->if_bpf)
-		bpf_ptap(ifp->if_bpf, m, eh, ETHER_HDR_LEN);
+	if (m->m_len < sizeof(struct ether_header)) {
+		/* XXX error in the caller. */
+		m_freem(m);
+		return;
+	}
+	m->m_pkthdr.rcvif = ifp;
+	eh = mtod(m, struct ether_header *);
 
-	ifp->if_ibytes += m->m_pkthdr.len + (sizeof *eh);
+	BPF_MTAP(ifp, m);
+
+	ifp->if_ibytes += m->m_pkthdr.len;
+
+	/*
+	 * Tap the packet off here for a bridge.  bridge_input()
+	 * will return NULL if it has consumed the packet, otherwise
+	 * it gets processed as normal.  Note that bridge_input()
+	 * will always return the original packet if we need to
+	 * process it locally.
+	 */
+	if (ifp->if_bridge) {
+		KASSERT(bridge_input_p != NULL,("ether_input: if_bridge not loaded!"));
+
+		if(m->m_flags & M_PROTO1) {
+			m->m_flags &= ~M_PROTO1;
+		} else {
+			/* clear M_PROMISC, in case the packets comes from a vlan */
+			/* m->m_flags &= ~M_PROMISC; */
+			lwkt_serialize_exit(ifp->if_serializer);
+			m = (*bridge_input_p)(ifp, m);
+			lwkt_serialize_enter(ifp->if_serializer);
+			if (m == NULL)
+				return;
+
+			/*
+			 * Bridge has determined that the packet is for us.
+			 * Update our interface pointer -- we may have had
+			 * to "bridge" the packet locally.
+			 */
+			ifp = m->m_pkthdr.rcvif;
+		}
+	}
+
+	/* XXX old crufty stuff, needs to be removed */
+	m_adj(m, sizeof(struct ether_header));
+	/* XXX */
+	/* m->m_pkthdr.len = m->m_len; */
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.67 2005/11/11 16:35:49 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.68 2005/12/21 16:37:15 corecode Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -546,6 +546,7 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #
 pseudo-device	ether			#Generic Ethernet
 pseudo-device	vlan	1		#VLAN support
+pseudo-device	bridge			#Bridging support
 pseudo-device	token			#Generic TokenRing
 pseudo-device	fddi			#Generic FDDI
 pseudo-device	arcnet			#Generic Arcnet

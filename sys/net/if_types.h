@@ -32,7 +32,7 @@
  *
  *	@(#)if_types.h	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sys/net/if_types.h,v 1.8.2.4 2002/12/23 23:02:21 kbyanc Exp $
- * $DragonFly: src/sys/net/if_types.h,v 1.4 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if_types.h,v 1.5 2005/12/21 16:37:15 corecode Exp $
  * $NetBSD: if_types.h,v 1.16 2000/04/19 06:30:53 itojun Exp $
  */
 
@@ -243,6 +243,7 @@
 #define	IFT_ATMVCIENDPT		   0xc2 /* ATM VCI End Point */
 #define	IFT_OPTICALCHANNEL	   0xc3 /* Optical Channel */
 #define	IFT_OPTICALTRANSPORT	   0xc4 /* Optical Transport */
+#define IFT_BRIDGE		   0xd1 /* Transparent bridge interface */
 
 /* not based on IANA assignments */
 #define	IFT_GIF		0xf0

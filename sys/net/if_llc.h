@@ -32,7 +32,7 @@
  *
  *      @(#)if_llc.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_llc.h,v 1.7 1999/08/28 00:48:18 peter Exp $
- * $DragonFly: src/sys/net/if_llc.h,v 1.3 2004/07/20 14:43:34 joerg Exp $
+ * $DragonFly: src/sys/net/if_llc.h,v 1.4 2005/12/21 16:37:15 corecode Exp $
  */
 
 #ifndef _NET_IF_LLC_H_
@@ -140,6 +140,7 @@ struct llc {
 /*
  * ISO PDTR 10178 contains among others
  */
+#define LLC_8021D_LSAP	0x42
 #define LLC_X25_LSAP	0x7e
 #define LLC_SNAP_LSAP	0xaa
 #define LLC_ISO_LSAP	0xfe

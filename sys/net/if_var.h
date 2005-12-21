@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.32 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.33 2005/12/21 16:37:15 corecode Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -211,6 +211,7 @@ struct ifnet {
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
+	void	*if_bridge;		/* bridge glue */
 	void	*if_afdata[AF_MAX];
 	struct ifaddr	*if_lladdr;
 	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */

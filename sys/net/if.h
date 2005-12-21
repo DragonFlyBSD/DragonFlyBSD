@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.13 2005/05/25 14:59:05 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.14 2005/12/21 16:37:15 corecode Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -279,6 +279,13 @@ struct ifmediareq {
 	int	ifm_active;		/* active options */
 	int	ifm_count;		/* # entries in ifm_ulist array */
 	int	*ifm_ulist;		/* media words */
+};
+
+struct  ifdrv {
+	char            ifd_name[IFNAMSIZ];     /* if name, e.g. "en0" */
+	unsigned long   ifd_cmd;
+	size_t          ifd_len;
+	void            *ifd_data;
 };
 
 /* 
