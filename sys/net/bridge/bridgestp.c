@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.1 2005/12/21 16:40:25 corecode Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.2 2005/12/22 15:16:13 corecode Exp $
  */
 
 /*
@@ -1035,7 +1035,9 @@ bstp_ifupdstatus(struct bridge_softc *sc, struct bridge_iflist *bif)
 	int error = 0;
 
 	bzero((char *)&ifmr, sizeof(ifmr));
+	lwkt_serialize_enter(ifp->if_serializer);
 	error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr, curthread->td_proc->p_ucred);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	if ((error == 0) && (ifp->if_flags & IFF_UP)) {
 	 	if (ifmr.ifm_status & IFM_ACTIVE) {
