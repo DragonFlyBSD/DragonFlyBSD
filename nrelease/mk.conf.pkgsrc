@@ -1,0 +1,13 @@
+# Generated from nrelease
+#
+# $DragonFly: src/nrelease/Attic/mk.conf.pkgsrc,v 1.1 2005/12/22 06:32:10 dillon Exp $
+.ifdef BSD_PKG_MK
+
+PKG_DBDIR=/var/db/pkg
+LOCALBASE=/usr/pkg
+VARBASE=/var
+FETCH_CMD=/usr/pkg/bin/ftp
+PAX=/usr/pkg/bin/pax
+X11_TYPE=xorg
+
+.endif

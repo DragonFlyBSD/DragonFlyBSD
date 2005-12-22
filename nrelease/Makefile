@@ -1,12 +1,13 @@
-# $DragonFly: src/nrelease/Makefile,v 1.46 2005/12/11 18:36:14 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.47 2005/12/22 06:32:10 dillon Exp $
 #
 
 # compat target
 installer_release: release
 installer_quickrel: 
 installer_realquickrel: realquickrel
+installer_fetch: fetch
 
-.if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel)
+.if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel) || make(installer_fetch)
 WITH_INSTALLER=
 .endif
 
@@ -16,18 +17,20 @@ ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC
 
-PKGSRC_PKG_ADD?=	/usr/pkg/sbin/pkg_add
-PKGSRC_PKG_PATH?=	${.CURDIR}
-PKGSRC_BOOTSTRAP_FILE?=	${PKGSRC_PKG_PATH}/bootstrap.tar.gz
-PKGSRC_DB?=		/var/db/pkg
 PKGSRC_PREFIX?=		/usr/pkg
-PKGSRC_RSYNC_SRC?=	rsync://packages.stura.uni-rostock.de/dfly14-nrelease
+PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
+PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
+PKGSRC_PKG_PATH?=	${ISODIR}/packages
+PKGSRC_DB?=		/var/db/pkg
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.4.0-RELEASE-BUILD
 
 ENV?=	env
 TAR?=	tar
-RSYNC_CMD?=	rsync -avz
 
-PKGSRC_PACKAGES?=	cdrecord
+PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
+PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20051221
+
+PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -37,7 +40,9 @@ REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if defined(WITH_INSTALLER)
-PKGSRC_PACKAGES+=	dfuibe_installer dfuife_curses
+PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6.tgz dfuife_curses-1.5.tgz
+PKGSRC_PACKAGES+=	gettext-lib-0.11.5nb6.tgz libaura-3.1.tgz \
+			libdfui-4.1.tgz libinstaller-5.1.tgz
 ROOTSKELS+=		installer
 .endif
 
@@ -62,12 +67,29 @@ quickrel:	check clean buildworld2 buildkernel2 \
 realquickrel:	check clean buildiso customizeiso mklocatedb mkiso
 
 check:
-	@${ECHO} Testing mkisofs...
-	@mkisofs --version > /dev/null
-	@${ECHO} Testing pkg_add and list of packages...
-	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGSRC_PKG_ADD} -n ${PKGSRC_PACKAGES} > /dev/null 2>&1
-	@${ECHO} Testing for existence of bootstrap kit...
-	@[ -r ${PKGSRC_BOOTSTRAP_FILE} ]
+.if !exists(${PKGBIN_PKG_ADD})
+	@echo "Unable to find ${PKGBIN_PKG_ADD}.  You can use the following"
+	@echo "command to bootstrap pkgsrc:"
+	@echo "    make pkgsrc_bootstrap"
+	@exit 1
+.endif
+.if !exists(/etc/mk.conf)
+	@echo "You do not have an /etc/mk.conf.  You can use the following"
+	@echo "command to install one.  Otherwise pkgsrc defaults will not"
+	@echo "point to the  right place:"
+	@echo "    make pkgsrc_conf"
+	@exit 1
+.endif
+.for PKG in ${PKGSRC_PACKAGES}
+	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer_]fetch"; exit 1)
+.endfor
+.if !exists(${PKGBIN_MKISOFS})
+	@echo "mkisofs is not installed.  It is part of the cdrecord package."
+	@echo "You can install it with:"
+	@echo "    make pkgsrc_cdrecord"
+	@exit 1
+.endif
 
 buildworld1:
 	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make buildworld )
@@ -101,6 +123,10 @@ buildiso:
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
 customizeiso:
+	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap && \
+		./bootstrap --workdir=${NRLOBJDIR}/nrelease/bootstrap-workdir \
+		--prefix=${ISOROOT}/usr/pkg
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
@@ -118,9 +144,8 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	cd ${ISOROOT} && ${TAR} xzf ${PKGSRC_BOOTSTRAP_FILE}
-.for pkg in ${PKGSRC_PACKAGES}
-	${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGSRC_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${pkg}
+.for PKG in ${PKGSRC_PACKAGES}
+	${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
 .endfor
 
 mklocatedb:
@@ -131,7 +156,7 @@ mklocatedb:
 		-presort >${ISOROOT}/var/db/locate.database )
 
 mkiso:
-	( cd ${ISOROOT}; mkisofs -b boot/cdboot -no-emul-boot \
+	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
 clean:
@@ -141,12 +166,42 @@ clean:
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
+	# do not use PKGSRC_PKG_PATH here, we do not want to destroy an
+	# override location.
+	if [ -d ${ISODIR}/packages ]; then rm -rf ${ISODIR}/packages; fi
 
 fetch:
 	mkdir -p ${PKGSRC_PKG_PATH}
-	${RSYNC_CMD} ${PKGSRC_RSYNC_SRC} ${PKGSRC_PKG_PATH}
+.for PKG in ${PKGSRC_PACKAGES}
+	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
+.endfor
+.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+.endif
+
+pkgsrc_bootstrap:
+	mkdir -p ${PKGSRC_PKG_PATH}
+.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+.endif
+	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	(cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap; ./bootstrap)
+
+pkgsrc_conf:
+.if !exists(/etc/mk.conf) 
+	cp ${.CURDIR}/mk.conf.pkgsrc /etc/mk.conf
+.else
+	fgrep -q BSD_PKG_MK /etc/mk.conf || cat ${.CURDIR}/mk.conf.pkgsrc >> /etc/mk.conf
+.endif
+
+pkgsrc_cdrecord:
+.if !exists (${PKGBIN_MKISOFS})
+	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrecord*
+.endif
 
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
+.PHONY: installer_fetch
 .PHONY: installer_realquickrel check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
 .PHONY: clean realclean fetch
