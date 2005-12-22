@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.47 2005/12/22 06:32:10 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.48 2005/12/22 23:23:32 dillon Exp $
 #
 
 # compat target
@@ -124,12 +124,12 @@ buildiso:
 
 customizeiso:
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap && \
-		./bootstrap --workdir=${NRLOBJDIR}/nrelease/bootstrap-workdir \
-		--prefix=${ISOROOT}/usr/pkg
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
+	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap ${ISOROOT}/tmp/bootstrap
+	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap; ./bootstrap"
+	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
 	rm -rf ${ISOROOT}/usr/local/share/pristine
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
