@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.6 2005/11/21 21:59:50 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.7 2005/12/23 10:08:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,11 +190,11 @@ SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 
 /*
  * chooseproc() is called when a cpu needs a user process to LWKT schedule,
- * it selects a user process and returns it.  If chkp is non-NULL and chkp
- * has a better or equal then the process that would otherwise be
+ * it selects a user process and returns it.  If chklp is non-NULL and chklp
+ * has a better or equal priority then the process that would otherwise be
  * chosen, NULL is returned.
  *
- * Until we fix the RUNQ code the chkp test has to be strict or we may
+ * Until we fix the RUNQ code the chklp test has to be strict or we may
  * bounce between processes trying to acquire the current process designation.
  */
 static
