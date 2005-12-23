@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.48 2005/12/22 23:23:32 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.48.2.1 2005/12/23 21:52:09 dillon Exp $
 #
 
 # compat target
@@ -127,8 +127,9 @@ customizeiso:
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
-	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap ${ISOROOT}/tmp/bootstrap
-	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap; ./bootstrap"
+	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
+	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT} ${ISOROOT}/tmp/bootstrap
+	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap/bootstrap; ./bootstrap"
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
 	rm -rf ${ISOROOT}/usr/local/share/pristine
