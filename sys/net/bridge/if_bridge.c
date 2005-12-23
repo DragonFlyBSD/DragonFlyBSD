@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.2 2005/12/23 17:38:23 corecode Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.3 2005/12/23 17:41:36 corecode Exp $
  */
 
 /*
@@ -1329,6 +1329,7 @@ bridge_start(struct ifnet *ifp)
 		if (m == 0)
 			break;
 		BPF_MTAP(ifp, m);
+		ifp->if_opackets++;
 
 		eh = mtod(m, struct ether_header *);
 		dst_if = NULL;
