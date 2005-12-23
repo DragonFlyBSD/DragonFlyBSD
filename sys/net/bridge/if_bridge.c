@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.1 2005/12/21 16:40:25 corecode Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.2 2005/12/23 17:38:23 corecode Exp $
  */
 
 /*
@@ -1520,6 +1520,12 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	m->m_flags &= ~M_PROTO1; /* XXX Hack - loop prevention */
 
+	/*
+	 * Tap all packets arriving on the bridge, no matter if
+	 * they are local destinations or not.  In is in.
+	 */
+	BPF_MTAP(bifp, m);
+
 #define IFP2AC(ifp) ((struct arpcom *)(ifp))
 #define IFP2ENADDR(ifp) (IFP2AC(ifp)->ac_enaddr)
 	if (memcmp(eh->ether_dhost, IFP2ENADDR(bifp),
@@ -1536,12 +1542,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 		goto out;
 	}
-
-	/*
-	 * Tap all packets arriving on the bridge, no matter if
-	 * they are local destinations or not.  In is in.
-	 */
-	BPF_MTAP(bifp, m);
 
 	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
 		/* Tap off 802.1D packets; they do not get forwarded. */
