@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/network.subr,v 1.151 2003/06/24 03:55:21 kuriyama Exp $
-# $DragonFly: src/etc/network.subr,v 1.1 2003/07/24 06:35:32 dillon Exp $
+# $DragonFly: src/etc/network.subr,v 1.2 2005/12/23 17:42:59 dillon Exp $
 #
 
 #
@@ -265,7 +265,9 @@ list_net_interfaces()
 {
 	type=$1
 
-	# Get a list of ALL the interfaces
+	# Get a list of ALL the interfaces.  NOTE: cloned interfaces
+	# have already been configured so they should show up in the
+	# ifconfig -l output.
 	#
 	case ${network_interfaces} in
 	[Aa][Uu][Tt][Oo])
@@ -275,7 +277,6 @@ list_net_interfaces()
 		_tmplist="${network_interfaces}"
 		;;
 	esac
-	_tmplist="${_tmplist} ${cloned_interfaces}"
 
 	if [ -z "$type" ]; then
 		echo $_tmplist
