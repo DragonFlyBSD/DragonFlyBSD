@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_trap.c,v 1.14 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_trap.c,v 1.3 2003/11/08 03:06:53 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_trap.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -45,8 +45,7 @@
 extern jmp_buf	db_jmpbuf;
 
 void
-db_trap(type, code)
-	int	type, code;
+db_trap(int type, int code)
 {
 	boolean_t	bkpt;
 	boolean_t	watchpt;

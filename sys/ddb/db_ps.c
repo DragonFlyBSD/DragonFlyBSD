@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.14 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.15 2005/12/23 21:35:44 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,11 +43,7 @@
 static void db_dump_td_tokens(thread_t td);
 
 void
-db_ps(dummy1, dummy2, dummy3, dummy4)
-	db_expr_t	dummy1;
-	boolean_t	dummy2;
-	db_expr_t	dummy3;
-	char *		dummy4;
+db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
 	int np;
 	int cpuidx;

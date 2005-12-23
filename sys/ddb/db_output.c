@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.6 2004/09/03 08:50:47 eirikn Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.7 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ static void db_putchar (int c, void *arg);
  * Force pending whitespace.
  */
 void
-db_force_whitespace()
+db_force_whitespace(void)
 {
 	int last_print, next_tab;
 
@@ -93,11 +93,12 @@ db_force_whitespace()
 
 /*
  * Output character.  Buffer whitespace.
+ *
+ * Parameters:
+ *     arg:	character to output
  */
 static void
-db_putchar(c, arg)
-	int	c;		/* character to output */
-	void *	arg;
+db_putchar(int c, void *arg)
 {
 	if (c > ' ' && c <= '~') {
 	    /*
@@ -143,7 +144,7 @@ db_putchar(c, arg)
  * Return output position
  */
 int
-db_print_position()
+db_print_position(void)
 {
 	return (db_output_position);
 }
@@ -182,7 +183,7 @@ db_iprintf(const char *fmt,...)
  * End line if too long.
  */
 void
-db_end_line()
+db_end_line(void)
 {
 	if (db_output_position >= db_max_width)
 	    db_printf("\n");

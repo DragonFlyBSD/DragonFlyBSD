@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.7 2004/09/03 08:50:47 eirikn Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.8 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -61,11 +61,8 @@ static const struct command __CONCAT(func_name,_cmd) = {	\
 TEXT_SET(set, __CONCAT(func_name,_cmd));			\
 								\
 static void							\
-func_name(addr, have_addr, count, modif)			\
-	db_expr_t addr;						\
-	boolean_t have_addr;					\
-	db_expr_t count;					\
-	char *modif;
+func_name(db_expr_t addr, boolean_t have_addr, db_expr_t count, \
+	  char *modif)
 
 extern char *esym;
 extern db_expr_t db_maxoff;

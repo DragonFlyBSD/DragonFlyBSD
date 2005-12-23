@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_access.c,v 1.15 1999/08/28 00:41:04 peter Exp $
- * $DragonFly: src/sys/ddb/db_access.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_access.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -49,10 +49,7 @@ static unsigned db_extend[] = {	/* table for sign-extending */
 };
 
 db_expr_t
-db_get_value(addr, size, is_signed)
-	db_addr_t	addr;
-	int		size;
-	boolean_t	is_signed;
+db_get_value(db_addr_t addr, int size, boolean_t is_signed)
 {
 	char		data[sizeof(int)];
 	db_expr_t 	value;
@@ -78,10 +75,7 @@ db_get_value(addr, size, is_signed)
 }
 
 void
-db_put_value(addr, size, value)
-	db_addr_t	addr;
-	int		size;
-	db_expr_t value;
+db_put_value(db_addr_t addr, int size, db_expr_t value)
 {
 	char		data[sizeof(int)];
 	int		i;

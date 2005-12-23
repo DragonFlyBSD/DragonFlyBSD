@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_aout.c,v 1.27 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_aout.c,v 1.5 2005/06/10 20:16:31 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_aout.c,v 1.6 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -71,13 +71,14 @@ static void	X_db_sym_init (int *symtab, char *esymtab, char *name);
 	(sp = (struct nlist *)((symtab) + 1), \
 	 ep = (struct nlist *)((char *)sp + *(symtab)))
 
+/*
+ * Parameters:
+ *     symtab:	pointer to start of symbol table
+ *     esymtab:	pointer to end of string table, for checking - rounded up to
+ *              integer boundary
+ */
 static void
-X_db_sym_init(symtab, esymtab, name)
-	int *	symtab;		/* pointer to start of symbol table */
-	char *	esymtab;	/* pointer to end of string table,
-				   for checking - rounded up to integer
-				   boundary */
-	char *	name;
+X_db_sym_init(int *symtab, char *esymtab, char *name)
 {
 	struct nlist	*sym_start, *sym_end;
 	struct nlist	*sp;
@@ -122,9 +123,7 @@ X_db_sym_init(symtab, esymtab, name)
 }
 
 c_db_sym_t
-X_db_lookup(stab, symstr)
-	db_symtab_t	*stab;
-	const char *	symstr;
+X_db_lookup(db_symtab_t *stab, const char *symstr)
 {
 	struct nlist *sp, *ep;
 
@@ -144,13 +143,13 @@ X_db_lookup(stab, symstr)
 	return ((db_sym_t)0);
 }
 
+/*
+ * Parameters:
+ *     diffp:	in/out
+ */
 c_db_sym_t
-X_db_search_symbol(symtab, off, strategy, diffp)
-	db_symtab_t *	symtab;
-	
-	db_addr_t	off;
-	db_strategy_t	strategy;
-	db_expr_t	*diffp;		/* in/out */
+X_db_search_symbol(db_symtab_t *symtab, db_addr_t off, db_strategy_t strategy,
+		   db_expr_t *diffp)
 {
 	unsigned int	diff = *diffp;
 	struct nlist	*symp = 0;
@@ -199,11 +198,8 @@ X_db_search_symbol(symtab, off, strategy, diffp)
  * Return the name and value for a symbol.
  */
 void
-X_db_symbol_values(symtab, sym, namep, valuep)
-	db_symtab_t	*symtab;
-	c_db_sym_t	sym;
-	const char	**namep;
-	db_expr_t	*valuep;
+X_db_symbol_values(db_symtab_t *symtab, c_db_sym_t sym, const char **namep,
+		   db_expr_t *valuep)
 {
 	const struct nlist *sp;
 
@@ -216,12 +212,8 @@ X_db_symbol_values(symtab, sym, namep, valuep)
 
 
 boolean_t
-X_db_line_at_pc(symtab, cursym, filename, linenum, off)
-	db_symtab_t *	symtab;
-	c_db_sym_t	cursym;
-	char 		**filename;
-	int 		*linenum;
-	db_expr_t	off;
+X_db_line_at_pc(db_symtab_t *symtab, c_db_sym_t cursym, char **filename,
+		int *linenum, db_expr_t off)
 {
 	struct nlist	*sp, *ep;
 	unsigned long		sodiff = -1UL, lndiff = -1UL, ln = 0;
@@ -282,11 +274,8 @@ X_db_line_at_pc(symtab, cursym, filename, linenum, off)
 }
 
 boolean_t
-X_db_sym_numargs(symtab, cursym, nargp, argnamep)
-	db_symtab_t *	symtab;
-	c_db_sym_t	cursym;
-	int		*nargp;
-	char		**argnamep;
+X_db_sym_numargs(db_symtab_t *symtab, c_db_sym_t cursym, int *nargp,
+		 char **argnamep)
 {
 	struct nlist	*sp, *ep;
 	u_long			addr;
@@ -324,7 +313,7 @@ X_db_sym_numargs(symtab, cursym, nargp, argnamep)
  * Initialization routine for a.out files.
  */
 void
-kdb_init()
+kdb_init(void)
 {
 #ifdef __i386__
 	if (bootinfo.bi_esymtab != bootinfo.bi_symtab)
@@ -343,9 +332,7 @@ kdb_init()
 #include <boot_ufs/file_io.h>
 #include <vm/vm_kern.h>
 
-read_symtab_from_file(fp, symtab_name)
-	struct file	*fp;
-	char *		symtab_name;
+read_symtab_from_file(struct file *fp, char *symtab_name)
 {
 	vm_size_t	resid;
 	kern_return_t	result;

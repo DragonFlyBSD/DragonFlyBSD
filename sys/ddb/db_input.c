@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_input.c,v 1.28.2.1 2002/03/08 16:37:10 yar Exp $
- * $DragonFly: src/sys/ddb/db_input.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_input.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -71,18 +71,14 @@ static void	db_putnchars (int c, int count);
 static void	db_putstring (char *s, int count);
 
 void
-db_putstring(s, count)
-	char	*s;
-	int	count;
+db_putstring(char *s, int count)
 {
 	while (--count >= 0)
 	    cnputc(*s++);
 }
 
 void
-db_putnchars(c, count)
-	int	c;
-	int	count;
+db_putnchars(int c, int count)
 {
 	while (--count >= 0)
 	    cnputc(c);
@@ -94,9 +90,7 @@ db_putnchars(c, count)
 #define	DEL_FWD		0
 #define	DEL_BWD		1
 void
-db_delete(n, bwd)
-	int	n;
-	int	bwd;
+db_delete(int n, int bwd)
 {
 	char *p;
 
@@ -115,8 +109,7 @@ db_delete(n, bwd)
 
 /* returns TRUE at end-of-line */
 int
-db_inputchar(c)
-	int	c;
+db_inputchar(int c)
 {
 	static int escstate;
 
@@ -292,15 +285,13 @@ db_inputchar(c)
 }
 
 int
-cnmaygetc()
+cnmaygetc(void)
 {
 	return (-1);
 }
 
 int
-db_readline(lstart, lsize)
-	char *	lstart;
-	int	lsize;
+db_readline(char *lstart, int lsize)
 {
 	if (lsize != db_lhistlsize) {
 		/*
@@ -342,7 +333,7 @@ db_readline(lstart, lsize)
 }
 
 void
-db_check_interrupt()
+db_check_interrupt(void)
 {
 	int	c;
 

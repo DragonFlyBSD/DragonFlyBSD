@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.c,v 1.18 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_break.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -59,7 +59,7 @@ static void	db_set_breakpoint (vm_map_t map, db_addr_t addr,
 				       int count);
 
 static db_breakpoint_t
-db_breakpoint_alloc()
+db_breakpoint_alloc(void)
 {
 	db_breakpoint_t	bkpt;
 
@@ -78,18 +78,14 @@ db_breakpoint_alloc()
 }
 
 static void
-db_breakpoint_free(bkpt)
-	db_breakpoint_t	bkpt;
+db_breakpoint_free(db_breakpoint_t bkpt)
 {
 	bkpt->link = db_free_breakpoints;
 	db_free_breakpoints = bkpt;
 }
 
 static void
-db_set_breakpoint(map, addr, count)
-	vm_map_t	map;
-	db_addr_t	addr;
-	int		count;
+db_set_breakpoint(vm_map_t map, db_addr_t addr, int count)
 {
 	db_breakpoint_t	bkpt;
 
@@ -115,9 +111,7 @@ db_set_breakpoint(map, addr, count)
 }
 
 static void
-db_delete_breakpoint(map, addr)
-	vm_map_t	map;
-	db_addr_t	addr;
+db_delete_breakpoint(vm_map_t map, db_addr_t addr)
 {
 	db_breakpoint_t	bkpt;
 	db_breakpoint_t	*prev;
@@ -140,9 +134,7 @@ db_delete_breakpoint(map, addr)
 }
 
 static db_breakpoint_t
-db_find_breakpoint(map, addr)
-	vm_map_t	map;
-	db_addr_t	addr;
+db_find_breakpoint(vm_map_t map, db_addr_t addr)
 {
 	db_breakpoint_t	bkpt;
 
@@ -158,8 +150,7 @@ db_find_breakpoint(map, addr)
 }
 
 db_breakpoint_t
-db_find_breakpoint_here(addr)
-	db_addr_t	addr;
+db_find_breakpoint_here(db_addr_t addr)
 {
     return db_find_breakpoint(db_map_addr(addr), addr);
 }
@@ -167,7 +158,7 @@ db_find_breakpoint_here(addr)
 static boolean_t	db_breakpoints_inserted = TRUE;
 
 void
-db_set_breakpoints()
+db_set_breakpoints(void)
 {
 	db_breakpoint_t	bkpt;
 
@@ -189,7 +180,7 @@ db_set_breakpoints()
 }
 
 void
-db_clear_breakpoints()
+db_clear_breakpoints(void)
 {
 	db_breakpoint_t	bkpt;
 
@@ -212,8 +203,7 @@ db_clear_breakpoints()
  * so the breakpoint does not have to be on the breakpoint list.
  */
 db_breakpoint_t
-db_set_temp_breakpoint(addr)
-	db_addr_t	addr;
+db_set_temp_breakpoint(db_addr_t addr)
 {
 	db_breakpoint_t	bkpt;
 
@@ -235,8 +225,7 @@ db_set_temp_breakpoint(addr)
 }
 
 void
-db_delete_temp_breakpoint(bkpt)
-	db_breakpoint_t	bkpt;
+db_delete_temp_breakpoint(db_breakpoint_t bkpt)
 {
 	db_put_value(bkpt->address, BKPT_SIZE, bkpt->bkpt_inst);
 	db_breakpoint_free(bkpt);
@@ -247,7 +236,7 @@ db_delete_temp_breakpoint(bkpt)
  * List breakpoints.
  */
 static void
-db_list_breakpoints()
+db_list_breakpoints(void)
 {
 	db_breakpoint_t	bkpt;
 
@@ -271,11 +260,7 @@ db_list_breakpoints()
 /* Delete breakpoint */
 /*ARGSUSED*/
 void
-db_delete_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_delete_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count, char *modif)
 {
 	db_delete_breakpoint(db_map_addr(addr), (db_addr_t)addr);
 }
@@ -283,11 +268,8 @@ db_delete_cmd(addr, have_addr, count, modif)
 /* Set breakpoint with skip count */
 /*ARGSUSED*/
 void
-db_breakpoint_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_breakpoint_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
+		  char *modif)
 {
 	if (count == -1)
 	    count = 1;
@@ -297,11 +279,8 @@ db_breakpoint_cmd(addr, have_addr, count, modif)
 
 /* list breakpoints */
 void
-db_listbreak_cmd(dummy1, dummy2, dummy3, dummy4)
-	db_expr_t	dummy1;
-	boolean_t	dummy2;
-	db_expr_t	dummy3;
-	char *		dummy4;
+db_listbreak_cmd(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3,
+		 char *dummy4)
 {
 	db_list_breakpoints();
 }
@@ -313,8 +292,7 @@ db_listbreak_cmd(dummy1, dummy2, dummy3, dummy4)
  */
 
 boolean_t
-db_map_equal(map1, map2)
-	vm_map_t	map1, map2;
+db_map_equal(vm_map_t map1, vm_map_t map2)
 {
 	return ((map1 == map2) ||
 		((map1 == NULL) && (map2 == kernel_map)) ||
@@ -322,8 +300,7 @@ db_map_equal(map1, map2)
 }
 
 boolean_t
-db_map_current(map)
-	vm_map_t	map;
+db_map_current(vm_map_t map)
 {
 #if 0
 	thread_t	thread;
@@ -338,8 +315,7 @@ db_map_current(map)
 }
 
 vm_map_t
-db_map_addr(addr)
-	vm_offset_t addr;
+db_map_addr(vm_offset_t addr)
 {
 #if 0
 	thread_t	thread;

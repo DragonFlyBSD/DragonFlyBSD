@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_variables.c,v 1.18 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_variables.c,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_variables.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -56,8 +56,7 @@ static struct db_variable *db_evars =
 		db_vars + sizeof(db_vars)/sizeof(db_vars[0]);
 
 static int
-db_find_variable(varp)
-	struct db_variable	**varp;
+db_find_variable(struct db_variable **varp)
 {
 	int	t;
 	struct db_variable *vp;
@@ -82,8 +81,7 @@ db_find_variable(varp)
 }
 
 int
-db_get_variable(valuep)
-	db_expr_t	*valuep;
+db_get_variable(db_expr_t *valuep)
 {
 	struct db_variable *vp;
 
@@ -97,8 +95,7 @@ db_get_variable(valuep)
 
 #ifdef notused
 static int
-db_set_variable(value)
-	db_expr_t	value;
+db_set_variable(db_expr_t value)
 {
 	struct db_variable *vp;
 
@@ -112,9 +109,7 @@ db_set_variable(value)
 #endif
 
 void
-db_read_variable(vp, valuep)
-	struct db_variable *vp;
-	db_expr_t	*valuep;
+db_read_variable(struct db_variable *vp, db_expr_t *valuep)
 {
 	db_varfcn_t	*func = vp->fcn;
 
@@ -125,9 +120,7 @@ db_read_variable(vp, valuep)
 }
 
 static void
-db_write_variable(vp, valuep)
-	struct db_variable *vp;
-	db_expr_t	*valuep;
+db_write_variable(struct db_variable *vp, db_expr_t *valuep)
 {
 	db_varfcn_t	*func = vp->fcn;
 
@@ -138,11 +131,7 @@ db_write_variable(vp, valuep)
 }
 
 void
-db_set_cmd(dummy1, dummy2, dummy3, dummy4)
-	db_expr_t	dummy1;
-	boolean_t	dummy2;
-	db_expr_t	dummy3;
-	char *		dummy4;
+db_set_cmd(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
 	db_expr_t	value;
 	struct db_variable *vp;

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.c,v 1.18 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.c,v 1.4 2005/02/01 17:53:01 eirikn Exp $
+ * $DragonFly: src/sys/ddb/db_lex.c,v 1.5 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -86,8 +86,7 @@ db_read_char(void)
 }
 
 static void
-db_unread_char(c)
-	int c;
+db_unread_char(int c)
 {
 	db_look_char = c;
 }

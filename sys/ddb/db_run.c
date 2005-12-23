@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_run.c,v 1.18 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_run.c,v 1.6 2003/11/15 21:05:40 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_run.c,v 1.7 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -72,8 +72,7 @@ static void	db_single_step (db_regs_t *regs);
 #endif
 
 boolean_t
-db_stop_at_pc(is_breakpoint)
-	boolean_t	*is_breakpoint;
+db_stop_at_pc(boolean_t *is_breakpoint)
 {
 	db_addr_t	pc;
 	db_breakpoint_t bkpt;
@@ -168,8 +167,7 @@ db_stop_at_pc(is_breakpoint)
 }
 
 void
-db_restart_at_pc(watchpt)
-	boolean_t watchpt;
+db_restart_at_pc(boolean_t watchpt)
 {
 	db_addr_t	pc = PC_REGS(DDB_REGS);
 
@@ -217,8 +215,7 @@ db_restart_at_pc(watchpt)
 
 #ifdef notused
 static void
-db_single_step(regs)
-	db_regs_t *regs;
+db_single_step(db_regs_t *regs)
 {
 	if (db_run_mode == STEP_CONTINUE) {
 	    db_run_mode = STEP_INVISIBLE;
@@ -261,8 +258,7 @@ db_breakpoint_t	db_not_taken_bkpt = 0;
 db_breakpoint_t	db_taken_bkpt = 0;
 
 void
-db_set_single_step(regs)
-	db_regs_t *regs;
+db_set_single_step(db_regs_t *regs)
 {
 	db_addr_t pc = PC_REGS(regs), brpc;
 	 unsigned	 inst;
@@ -284,8 +280,7 @@ db_set_single_step(regs)
 }
 
 void
-db_clear_single_step(regs)
-	db_regs_t *regs;
+db_clear_single_step(db_regs_t *regs)
 {
 
 	if (db_not_taken_bkpt != 0) {
@@ -305,11 +300,8 @@ extern int	db_cmd_loop_done;
 /* single-step */
 /*ARGSUSED*/
 void
-db_single_step_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_single_step_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
+		   char *modif)
 {
 	boolean_t	print = FALSE;
 
@@ -332,11 +324,8 @@ db_single_step_cmd(addr, have_addr, count, modif)
 /* trace and print until call/return */
 /*ARGSUSED*/
 void
-db_trace_until_call_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_trace_until_call_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
+			char *modif)
 {
 	boolean_t	print = FALSE;
 
@@ -354,11 +343,8 @@ db_trace_until_call_cmd(addr, have_addr, count, modif)
 
 /*ARGSUSED*/
 void
-db_trace_until_matching_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_trace_until_matching_cmd(db_expr_t addr, boolean_t have_addr,
+			    db_expr_t count, char *modif)
 {
 	boolean_t	print = FALSE;
 
@@ -378,11 +364,8 @@ db_trace_until_matching_cmd(addr, have_addr, count, modif)
 /* continue */
 /*ARGSUSED*/
 void
-db_continue_cmd(addr, have_addr, count, modif)
-	db_expr_t	addr;
-	boolean_t	have_addr;
-	db_expr_t	count;
-	char *		modif;
+db_continue_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
+		char *modif)
 {
 	if (modif[0] == 'c')
 	    db_run_mode = STEP_COUNT;

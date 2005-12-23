@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_kld.c,v 1.9 2000/01/11 13:25:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_kld.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_kld.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
  *	from db_aout.c,v 1.20 1998/06/07 17:09:36 dfr Exp
  */
 
@@ -44,9 +44,7 @@
 #include <ddb/db_sym.h>
 
 c_db_sym_t
-X_db_lookup(stab, symstr)
-	db_symtab_t	*stab;
-	const char *	symstr;
+X_db_lookup(db_symtab_t *stab, const char *symstr)
 {
 	c_linker_sym_t sym;
 
@@ -56,12 +54,13 @@ X_db_lookup(stab, symstr)
 	    return (c_db_sym_t) 0;
 }
 
+/*
+ * Parameters:
+ *     diffp:	in/out
+ */
 c_db_sym_t
-X_db_search_symbol(symtab, off, strategy, diffp)
-	db_symtab_t *	symtab;
-	db_addr_t	off;
-	db_strategy_t	strategy;
-	db_expr_t	*diffp;		/* in/out */
+X_db_search_symbol(db_symtab_t *symtab, db_addr_t off, db_strategy_t strategy,
+		   db_expr_t *diffp)
 {
 	c_linker_sym_t sym;
 	long diff;
@@ -78,11 +77,8 @@ X_db_search_symbol(symtab, off, strategy, diffp)
  * Return the name and value for a symbol.
  */
 void
-X_db_symbol_values(symtab, dbsym, namep, valuep)
-	db_symtab_t	*symtab;
-	c_db_sym_t	dbsym;
-	const char	**namep;
-	db_expr_t	*valuep;
+X_db_symbol_values(db_symtab_t *symtab, c_db_sym_t dbsym, const char **namep,
+		   db_expr_t *valuep)
 {
 	c_linker_sym_t sym = (c_linker_sym_t) dbsym;
 	linker_symval_t symval;
@@ -96,22 +92,15 @@ X_db_symbol_values(symtab, dbsym, namep, valuep)
 
 
 boolean_t
-X_db_line_at_pc(symtab, cursym, filename, linenum, off)
-	db_symtab_t *	symtab;
-	c_db_sym_t	cursym;
-	char 		**filename;
-	int 		*linenum;
-	db_expr_t	off;
+X_db_line_at_pc(db_symtab_t *symtab, c_db_sym_t cursym, char **filename,
+		int *linenum, db_expr_t off)
 {
 	return FALSE;
 }
 
 boolean_t
-X_db_sym_numargs(symtab, cursym, nargp, argnamep)
-	db_symtab_t *	symtab;
-	c_db_sym_t	cursym;
-	int		*nargp;
-	char		**argnamep;
+X_db_sym_numargs(db_symtab_t *symtab, c_db_sym_t cursym, int *nargp,
+		 char **argnamep)
 {
 	return FALSE;
 }
@@ -120,7 +109,7 @@ X_db_sym_numargs(symtab, cursym, nargp, argnamep)
  * Initialization routine for a.out files.
  */
 void
-kdb_init()
+kdb_init(void)
 {
 	db_add_symbol_table(0, 0, "kernel", 0);
 }

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.8 2005/06/14 13:25:40 joerg Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.9 2005/12/23 21:35:44 swildner Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ static boolean_t	db_ed_style = TRUE;
  * Utility routine - discard tokens through end-of-line.
  */
 void
-db_skip_to_eol()
+db_skip_to_eol(void)
 {
 	int	t;
 	do {
@@ -111,14 +111,13 @@ static void	db_command (struct command **last_cmdp,
 
 /*
  * Search for command prefix.
+ *
+ * Parameters:
+ *     cmdp:	out
  */
 static int
-db_cmd_search(name, table, aux_tablep, aux_tablep_end, cmdp)
-	char *		name;
-	struct command	*table;
-	struct command	**aux_tablep;
-	struct command	**aux_tablep_end;
-	struct command	**cmdp;	/* out */
+db_cmd_search(char *name, struct command *table, struct command **aux_tablep,
+	      struct command **aux_tablep_end, struct command **cmdp)
 {
 	struct command	*cmd;
 	struct command	**aux_cmdp;
@@ -196,10 +195,8 @@ db_cmd_search(name, table, aux_tablep, aux_tablep_end, cmdp)
 }
 
 static void
-db_cmd_list(table, aux_tablep, aux_tablep_end)
-	struct command *table;
-	struct command **aux_tablep;
-	struct command **aux_tablep_end;
+db_cmd_list(struct command *table, struct command **aux_tablep,
+	    struct command **aux_tablep_end)
 {
 	struct command *cmd;
 	struct command **aux_cmdp;
@@ -216,12 +213,13 @@ db_cmd_list(table, aux_tablep, aux_tablep_end)
 	}
 }
 
+/*
+ * Parameters:
+ *     last_cmdp:	IN_OUT
+ */
 static void
-db_command(last_cmdp, cmd_table, aux_cmd_tablep, aux_cmd_tablep_end)
-	struct command	**last_cmdp;	/* IN_OUT */
-	struct command	*cmd_table;
-	struct command	**aux_cmd_tablep;
-	struct command	**aux_cmd_tablep_end;
+db_command(struct command **last_cmdp, struct command *cmd_table,
+	   struct command **aux_cmd_tablep, struct command **aux_cmd_tablep_end)
 {
 	struct command	*cmd;
 	int		t;
@@ -428,7 +426,7 @@ static struct command	*db_last_command = 0;
 
 #if 0
 void
-db_help_cmd()
+db_help_cmd(void)
 {
 	struct command *cmd = db_command_table;
 
@@ -450,7 +448,7 @@ DB_COMMAND(panic, db_panic)
 }
 
 void
-db_command_loop()
+db_command_loop(void)
 {
 	/*
 	 * Initialize 'prev' and 'next' to dot.
@@ -461,12 +459,12 @@ db_command_loop()
 	db_cmd_loop_done = 0;
 	while (!db_cmd_loop_done) {
 
-	    (void) setjmp(db_jmpbuf);
+	    setjmp(db_jmpbuf);
 	    if (db_print_position() != 0)
 		db_printf("\n");
 
 	    db_printf("db> ");
-	    (void) db_read_line();
+	    db_read_line();
 
 	    db_command(&db_last_command, db_command_table,
 		    SET_BEGIN(db_cmd_set), SET_LIMIT(db_cmd_set));
@@ -474,8 +472,7 @@ db_command_loop()
 }
 
 void
-db_error(s)
-	char *s;
+db_error(char *s)
 {
 	if (s)
 	    db_printf("%s", s);
@@ -489,11 +486,7 @@ db_error(s)
  * !expr(arg,arg,arg)
  */
 static void
-db_fncall(dummy1, dummy2, dummy3, dummy4)
-	db_expr_t	dummy1;
-	boolean_t	dummy2;
-	db_expr_t	dummy3;
-	char *		dummy4;
+db_fncall(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
 	db_expr_t	fn_addr;
 #define	MAXARGS		11	/* XXX only 10 are passed */
@@ -557,11 +550,7 @@ cn_getc_t *gdb_getc;
 cn_putc_t *gdb_putc;
 
 static void
-db_gdb (dummy1, dummy2, dummy3, dummy4)
-	db_expr_t	dummy1;
-	boolean_t	dummy2;
-	db_expr_t	dummy3;
-	char *		dummy4;
+db_gdb(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 {
 
 	if (gdbdev == NODEV) {
@@ -577,12 +566,7 @@ db_gdb (dummy1, dummy2, dummy3, dummy4)
 }
 
 static void
-db_reset (
-	db_expr_t dummy1,
-	boolean_t dummy2,
-	db_expr_t dummy3,
-	char * dummy4
-) {
-		
-		cpu_reset();
+db_reset(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char * dummy4)
+{
+	cpu_reset();
 }
