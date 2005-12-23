@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.38 2005/11/26 14:36:21 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.39 2005/12/23 22:17:39 swildner Exp $
  *
  */
 
@@ -811,7 +811,7 @@ ithread_handler(void *arg)
 	     * to wake the thread up at the limit frequency.
 	     */
 	    printf("intr %d at %d > %d hz, livelocked limit engaged!\n",
-		   intr, livelock_limit, ill_count);
+		   intr, ill_count, livelock_limit);
 	    info->i_state = ISTATE_LIVELOCKED;
 	    if ((use_limit = livelock_limit) < 100)
 		use_limit = 100;
