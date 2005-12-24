@@ -22,8 +22,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/network.subr,v 1.151 2003/06/24 03:55:21 kuriyama Exp $
-# $DragonFly: src/etc/network.subr,v 1.2 2005/12/23 17:42:59 dillon Exp $
+# $FreeBSD: src/etc/network.subr,v 1.156 2004/08/28 07:58:02 yar Exp $
+# $DragonFly: src/etc/network.subr,v 1.3 2005/12/24 14:27:47 corecode Exp $
 #
 
 #
@@ -259,7 +259,9 @@ ipx_down()
 #		nodhcp - all interfaces, excluding DHCP configured interfaces
 #		dhcp   - list only DHCP configured interfaces
 #	If no argument is specified all network interfaces are output.
-#	Note that the list always includes cloned interfaces.
+#	Note that the list will include cloned interfaces if applicable.
+#	Cloned interfaces must already exist to have a chance to appear
+#	in the list if ${network_interfaces} is set to `auto'.
 #
 list_net_interfaces()
 {
@@ -274,7 +276,7 @@ list_net_interfaces()
 		_tmplist="`ifconfig -l`"
 		;;
 	*)
-		_tmplist="${network_interfaces}"
+		_tmplist="${network_interfaces} ${cloned_interfaces}"
 		;;
 	esac
 
@@ -286,7 +288,7 @@ list_net_interfaces()
 	# Separate out dhcp and non-dhcp intefraces
 	#
 	_aprefix=
-	_brefix=
+	_bprefix=
 	for _if in ${_tmplist} ; do
 		eval _ifarg="\$ifconfig_${_if}"
 		case "$_ifarg" in
