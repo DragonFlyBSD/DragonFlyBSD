@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/Attic/dvcfg.h,v 1.4 2003/08/26 21:42:18 rob Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/Attic/dvcfg.h,v 1.5 2005/12/24 20:34:04 swildner Exp $ */
 /*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
@@ -54,9 +54,7 @@ struct dvcfg_hwsel {
 static __inline dvcfg_hw_t dvcfg_hw (struct dvcfg_hwsel *, u_int);
 
 static __inline dvcfg_hw_t
-dvcfg_hw(selp, num)
-	struct dvcfg_hwsel *selp;
-	u_int num;
+dvcfg_hw(struct dvcfg_hwsel *selp, u_int num)
 {
 
 	return ((num >= selp->cfg_max) ? 0 : selp->cfg_sel[num]);

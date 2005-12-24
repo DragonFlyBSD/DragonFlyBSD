@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sysarch.h,v 1.13.2.2 2002/10/07 17:17:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/sysarch.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/sysarch.h,v 1.4 2005/12/24 20:34:04 swildner Exp $
  */
 
 /*
@@ -77,9 +77,9 @@ int i386_set_ldt (int, union descriptor *, int);
 int i386_get_ioperm (unsigned int, unsigned int *, int *);
 int i386_set_ioperm (unsigned int, unsigned int, int);
 int i386_vm86 (int, void *);
-int i386_set_watch (int watchnum, unsigned int watchaddr, int size,
-                        int access, struct dbreg * d);
-int i386_clr_watch (int watchnum, struct dbreg * d);
+int i386_set_watch (int, unsigned int, int, int, struct dbreg *);
+int i386_clr_watch (int, struct dbreg *);
+int sysarch(int, void *);
 __END_DECLS
 #endif
 

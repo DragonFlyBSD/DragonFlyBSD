@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.43 2005/11/21 18:02:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.44 2005/12/24 20:34:04 swildner Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -102,8 +102,7 @@ static void	init_i8259(void);
  * return true to panic system, false to ignore.
  */
 int
-isa_nmi(cd)
-	int cd;
+isa_nmi(int cd)
 {
 	int retval = 0;
 	int isa_port = inb(0x61);
@@ -150,7 +149,7 @@ isa_nmi(cd)
  *  ICU reinitialize when ICU configuration has lost.
  */
 void
-icu_reinit()
+icu_reinit(void)
 {
 	int i;
 
@@ -166,7 +165,7 @@ icu_reinit()
  * during configuration of kernel, setup interrupt control unit
  */
 void
-isa_defaultirq()
+isa_defaultirq(void)
 {
 	int i;
 

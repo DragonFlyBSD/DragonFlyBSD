@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.8 2005/11/06 07:28:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/initcpu.c,v 1.9 2005/12/24 20:34:04 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -191,7 +191,7 @@ init_5x86(void)
 	load_cr0(rcr0() | CR0_CD | CR0_NW);
 	wbinvd();
 
-	(void)read_cyrix_reg(CCR3);		/* dummy */
+	read_cyrix_reg(CCR3);		/* dummy */
 
 	/* Initialize CCR2. */
 	ccr2 = read_cyrix_reg(CCR2);
@@ -264,7 +264,7 @@ init_5x86(void)
 	/* Restore CCR3. */
 	write_cyrix_reg(CCR3, ccr3);
 
-	(void)read_cyrix_reg(0x80);		/* dummy */
+	read_cyrix_reg(0x80);		/* dummy */
 
 	/* Unlock NW bit in CR0. */
 	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_LOCK_NW);

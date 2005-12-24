@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.71 2005/11/22 08:41:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.72 2005/12/24 20:34:04 swildner Exp $
  */
 
 /*
@@ -676,7 +676,7 @@ kernel_trap:
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
 			MAKEMPSAFE(have_mplock);
-			(void) trap_pfault(&frame, FALSE, eva);
+			trap_pfault(&frame, FALSE, eva);
 			goto out2;
 
 		case T_DNA:

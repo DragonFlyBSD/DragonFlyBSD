@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.12 2005/10/28 03:25:57 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.13 2005/12/24 20:34:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -309,7 +309,7 @@ apm_power_off(void *junk, int howto)
 	sc->bios.r.ebx = PMDV_ALLDEV;
 	sc->bios.r.ecx = PMST_OFF;
 	sc->bios.r.edx = 0;
-	(void) apm_bioscall();
+	apm_bioscall();
 }
 
 /* APM Battery low handler */
@@ -687,7 +687,7 @@ apm_cpu_idle(void)
 
 		sc->bios.r.eax = (APM_BIOS <<8) | APM_CPUIDLE;
 		sc->bios.r.edx = sc->bios.r.ecx = sc->bios.r.ebx = 0;
-		(void) apm_bioscall();
+		apm_bioscall();
 	}
 	/*
 	 * Some APM implementation halts CPU in BIOS, whenever

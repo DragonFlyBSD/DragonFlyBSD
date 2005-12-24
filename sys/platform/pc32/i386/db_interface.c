@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.11 2005/11/03 23:45:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.12 2005/12/24 20:34:04 swildner Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ kdb_trap(type, code, regs)
 	db_printf(" stopped\n");
 #endif /* SMP */
 
-	(void) setjmp(db_global_jmpbuf);
+	setjmp(db_global_jmpbuf);
 	db_global_jmpbuf_valid = TRUE;
 	db_active++;
 	if (ddb_mode) {

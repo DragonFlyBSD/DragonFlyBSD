@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.44 2005/12/06 23:37:51 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.45 2005/12/24 20:34:04 swildner Exp $
  */
 
 /*
@@ -221,7 +221,7 @@ acquire_timer2(int mode)
 }
 
 int
-release_timer2()
+release_timer2(void)
 {
 	if (timer2_state != ACQUIRED)
 		return (-1);
@@ -456,8 +456,7 @@ sysbeep(int pitch, int period)
  */
 
 int
-rtcin(reg)
-	int reg;
+rtcin(int reg)
 {
 	u_char val;
 
@@ -686,7 +685,7 @@ timer_restore(void)
  * Initialize 8254 timer 0 early so that it can be used in DELAY().
  */
 void
-startrtclock()
+startrtclock(void)
 {
 	u_int delta, freq;
 
@@ -893,7 +892,7 @@ wrong_time:
  * Write system time back to RTC
  */
 void
-resettodr()
+resettodr(void)
 {
 	struct timeval tv;
 	unsigned long tm;
@@ -956,7 +955,7 @@ resettodr()
  * interrupts.  statclock_disable is set by default.
  */
 void
-cpu_initclocks()
+cpu_initclocks(void)
 {
 	int diag;
 #ifdef APIC_IO
@@ -1100,7 +1099,7 @@ cpu_initclocks()
 #ifdef APIC_IO
 
 static void 
-setup_8254_mixed_mode()
+setup_8254_mixed_mode(void)
 {
 	/*
 	 * Allow 8254 timer to INTerrupt 8259:

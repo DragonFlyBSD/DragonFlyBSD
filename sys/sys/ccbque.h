@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/sys/ccbque.h,v 1.7 2005/06/03 17:14:51 dillon Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.8 2005/12/24 20:34:04 swildner Exp $
  */
 /*
  * Common command control queue funcs.
@@ -62,8 +62,7 @@ static struct CCBTYPE##que CCBTYPE##que;
 #define GENERIC_CCB(DEV, CCBTYPE, CHAIN)				\
 									\
 void									\
-DEV##_init_ccbque(count)						\
-	int count;							\
+DEV##_init_ccbque(int count)						\
 {									\
 	if (CCBTYPE##que.maxccb == 0)					\
 		TAILQ_INIT(&CCBTYPE##que.CCBTYPE##tab);			\
@@ -71,7 +70,7 @@ DEV##_init_ccbque(count)						\
 }									\
 									\
 struct CCBTYPE *							\
-DEV##_get_ccb()								\
+DEV##_get_ccb(void)								\
 {									\
 	struct CCBTYPE *cb;						\
 									\
@@ -106,8 +105,7 @@ out:									\
 }									\
 									\
 void									\
-DEV##_free_ccb(cb)							\
-	struct CCBTYPE *cb;					\
+DEV##_free_ccb(struct CCBTYPE *cb)							\
 {									\
 	crit_enter();							\
 									\

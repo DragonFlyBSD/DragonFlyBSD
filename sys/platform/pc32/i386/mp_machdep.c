@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.50 2005/12/10 18:16:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.51 2005/12/24 20:34:04 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -914,7 +914,7 @@ mptable_pass2(void)
 				proc.apic_id = ((proc_entry_ptr)position)->apic_id;
 				for (i = 1; i < logical_cpus; i++) {
 					proc.apic_id++;
-					(void)processor_entry(&proc, cpu);
+					processor_entry(&proc, cpu);
 					logical_cpus_mask |= (1 << cpu);
 					cpu++;
 				}
