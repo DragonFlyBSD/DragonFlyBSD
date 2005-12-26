@@ -32,7 +32,7 @@
  *
  * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/vipw/pw_util.c,v 1.17.2.4 2002/09/04 15:28:10 des Exp $
- * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.4 2005/12/05 01:23:23 swildner Exp $
+ * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.5 2005/12/26 20:18:56 dillon Exp $
  */
 
 /*
@@ -68,8 +68,9 @@ char *masterpasswd = _PATH_MASTERPASSWD;
 void
 pw_cont(int sig)
 {
-	if (editpid != -1)
+	if (editpid != -1) {
 		kill(editpid, sig);
+	}
 }
 
 void
@@ -203,12 +204,12 @@ pw_edit(int notsetuid)
 		_exit(errno);
 	}
 	for (;;) {
-		editpid = waitpid(editpid, (int *)&pstat, WUNTRACED);
+		editpid = waitpid(editpid, (int *)&pstat, 0);
 		errno = WEXITSTATUS(pstat);
 		if (editpid == -1)
 			pw_error(editor, 1, 1);
 		else if (WIFSTOPPED(pstat))
-			raise(WSTOPSIG(pstat));
+			; /*raise(WSTOPSIG(pstat));*/
 		else if (WIFEXITED(pstat) && errno == 0)
 			break;
 		else
