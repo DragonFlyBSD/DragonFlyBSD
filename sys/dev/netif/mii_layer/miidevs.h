@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.5 2004/02/10 21:14:14 hmp Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.6 2005/12/26 13:38:38 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.4 2004/02/09 16:41:33 hmp Exp 
+ *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.6 2005/12/26 13:36:18 sephe Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -98,6 +98,8 @@
 /* Don't know what's going on here. */
 #define	MII_OUI_xxDAVICOM	0x006040	/* Davicom Semiconductor */
 
+/* This is the OUI of the gigE PHY in the RealTek 8169S/8110S chips */
+#define	MII_OUI_xxREALTEK	0x000732	/*  */
 
 /*
  * List of known models.  Grouped by oui.
@@ -178,6 +180,8 @@
 /* RealTek Semiconductor PHYs */
 #define	MII_MODEL_REALTEK_RTL8201L	0x0020
 #define	MII_STR_REALTEK_RTL8201L	"RTL8201L 10/100 media interface"
+#define	MII_MODEL_xxREALTEK_RTL8169S	0x0011
+#define	MII_STR_xxREALTEK_RTL8169S	"RTL8169S/8110S media interface"
 
 /* Seeq PHYs */
 #define	MII_MODEL_xxSEEQ_80220	0x0003
