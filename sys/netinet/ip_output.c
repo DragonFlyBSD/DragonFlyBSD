@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.33 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.33.2.1 2005/12/27 18:43:01 dillon Exp $
  */
 
 #define _IP_VHL
@@ -876,7 +876,7 @@ spd_done:
 				if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
 					m->m_pkthdr.csum_flags |=
 					    CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
-					m0->m_pkthdr.csum_data = 0xffff;
+					m->m_pkthdr.csum_data = 0xffff;
 				}
 				m->m_pkthdr.csum_flags |=
 				    CSUM_IP_CHECKED | CSUM_IP_VALID;
