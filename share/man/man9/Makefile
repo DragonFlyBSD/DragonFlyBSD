@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.25 2005/12/21 19:50:54 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.26 2005/12/27 22:45:23 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -158,6 +158,7 @@ MLINKS+=kernacc.9 useracc.9
 MLINKS+=make_dev.9 destroy_dev.9
 MLINKS+=malloc.9 FREE.9 malloc.9 MALLOC.9 malloc.9 free.9
 MLINKS+=malloc.9 realloc.9 malloc.9 reallocf.9
+MLINKS+=malloc.9 MALLOC_DEFINE.9 malloc.9 MALLOC_DECLARE.9
 MLINKS+=mi_switch.9 cpu_switch.9
 MLINKS+=pci.9 pci_read_config.9 pci.9 pci_write_config.9
 MLINKS+=pci.9 pci_enable_busmaster.9 pci.9 pci_disable_busmaster.9
