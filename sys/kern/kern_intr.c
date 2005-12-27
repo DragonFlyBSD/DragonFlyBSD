@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.38 2005/11/26 14:36:21 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.38.2.1 2005/12/27 21:33:52 dillon Exp $
  *
  */
 
@@ -267,8 +267,16 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 
     /*
      * Setup the machine level interrupt vector
+     *
+     * XXX temporary workaround for some ACPI brokedness.  ACPI installs
+     * its interrupt too early, before the IOAPICs have been configured,
+     * which means the IOAPIC is not enabled by the registration of the
+     * ACPI interrupt.  Anything else sharing that IRQ will wind up not
+     * being enabled.  Temporarily work around the problem by always
+     * installing and enabling on every new interrupt handler, even
+     * if one has already been setup on that irq.
      */
-    if (intr < FIRST_SOFTINT && info->i_slow + info->i_fast == 1) {
+    if (intr < FIRST_SOFTINT /* && info->i_slow + info->i_fast == 1*/) {
 	if (machintr_vector_setup(intr, intr_flags))
 	    printf("machintr_vector_setup: failed on irq %d\n", intr);
     }
