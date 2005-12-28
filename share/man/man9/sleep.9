@@ -56,7 +56,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sleep.9,v 1.18.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sleep.9,v 1.4 2004/07/16 05:04:36 hmp Exp $
+.\" $DragonFly: src/share/man/man9/sleep.9,v 1.5 2005/12/28 13:35:02 swildner Exp $
 .\" "
 .Dd May 10, 2004
 .Os
@@ -150,16 +150,16 @@ function returns
 if awakened, otherwise an appropriate error code is returned.
 .Sh ERRORS
 .Bl -tag -width Er
-.It Bq EWOULDBLOCK
+.It Bq Er EWOULDBLOCK
 The timeout will expire.
-.It Bq ERESTART
+.It Bq Er ERESTART
 The signal needs to be delivered to the system call should and
 it should be restarted if possible.
 This only happens if
 .Dv PCATCH
 was set in
 .Fa flags .
-.It Bq EINTR
+.It Bq Er EINTR
 The system needs to be interrupted by the signal.
 This only happens if
 .Dv PCATCH

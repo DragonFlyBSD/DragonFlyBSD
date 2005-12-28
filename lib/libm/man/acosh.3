@@ -27,7 +27,7 @@
 .\"
 .\"     from: @(#)acosh.3	5.2 (Berkeley) 5/6/91
 .\"	$NetBSD: acosh.3,v 1.15 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/acosh.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\"	$DragonFly: src/lib/libm/man/acosh.3,v 1.2 2005/12/28 13:35:02 swildner Exp $
 .\"
 .Dd May 6, 1991
 .Dt ACOSH 3
@@ -61,7 +61,8 @@ and
 .Fn acoshf "x"
 return NaN and set the global variable
 .Va errno
-to EDOM.
+to
+.Er EDOM .
 .\" SVR4_MODE
 .\" call
 .\" .Xr matherr 3 .
