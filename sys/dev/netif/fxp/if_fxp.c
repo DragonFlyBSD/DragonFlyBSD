@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.40 2005/12/17 09:09:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.40.2.1 2005/12/28 10:39:20 sephe Exp $
  */
 
 /*
@@ -732,15 +732,20 @@ fxp_detach(device_t dev)
 {
 	struct fxp_softc *sc = device_get_softc(dev);
 
-	/* disable interrupts */
-	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
-
 	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	/*
 	 * Stop DMA and drop transmit queue.
 	 */
 	fxp_stop(sc);
+
+	/*
+	 * Disable interrupts.
+	 *
+	 * NOTE: This should be done after fxp_stop(), because software
+	 * resetting in fxp_stop() may leave interrupts turned on.
+	 */
+	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
 
 	/*
 	 * Close down routes etc.
