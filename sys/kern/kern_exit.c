@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.51 2005/12/02 22:02:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.52 2005/12/28 19:13:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -452,6 +452,25 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	if (options &~ (WUNTRACED|WNOHANG|WLINUXCLONE))
 		return (EINVAL);
 loop:
+	/*
+	 * Hack for backwards compatibility with badly written user code.  
+	 * Or perhaps we have to do this anyway, it is unclear. XXX
+	 *
+	 * The problem is that if a process group is stopped and the parent
+	 * is doing a wait*(..., WUNTRACED, ...), it will see the STOP
+	 * of the child and then stop itself when it tries to return from the
+	 * system call.  When the process group is resumed the parent will
+	 * then get the STOP status even though the child has now resumed
+	 * (a followup wait*() will get the CONT status).
+	 *
+	 * Previously the CONT would overwrite the STOP because the tstop
+	 * was handled within tsleep(), and the parent would only see
+	 * the CONT when both are stopped and continued together.  This litte
+	 * two-line hack restores this effect.
+	 */
+	while (q->p_flag & P_STOPPED)  
+            tstop(q);
+
 	nfound = 0;
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
