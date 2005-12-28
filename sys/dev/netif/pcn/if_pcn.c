@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.27 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.27.2.1 2005/12/28 07:03:54 y0netan1 Exp $
  */
 
 /*
@@ -623,6 +623,7 @@ pcn_attach(device_t dev)
 		goto fail;
 	}
 
+	return (0);
 fail:
 	pcn_detach(dev);
 	return(error);
