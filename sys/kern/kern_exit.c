@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.51 2005/12/02 22:02:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.51.2.1 2005/12/28 19:14:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -452,6 +452,9 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	if (options &~ (WUNTRACED|WNOHANG|WLINUXCLONE))
 		return (EINVAL);
 loop:
+	while (q->p_flag & P_STOPPED)
+		tstop(q);
+
 	nfound = 0;
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
