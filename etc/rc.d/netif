@@ -23,7 +23,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/netif,v 1.2 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/netif,v 1.4 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/netif,v 1.4.2.1 2005/12/29 17:29:36 dillon Exp $
 #
 
 # PROVIDE: netif
@@ -56,6 +56,11 @@ network_start()
 
 	# Configure the interface(s).
 	network_common ifn_start verbose
+
+	# Give our interfaces a little time to come up
+	# before we start pounding them.  In particular, dhclient
+	# and named can get mightily confused.
+	sleep 2
 
 	# Resync ipfilter
 	/etc/rc.d/ipfilter resync
