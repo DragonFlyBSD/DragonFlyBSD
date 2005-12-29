@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/localdaemons,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/localdaemons,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/localdaemons,v 1.4 2005/12/29 20:48:01 dillon Exp $
 #
 
 # PROVIDE: localdaemons
@@ -17,7 +17,7 @@ stop_cmd="locald_stop"
 
 locald_start()
 {
-	# For each dir in $local_startup, search for init scripts matching *.sh
+	# For each dir in $local_startup, search for init scripts matching *
 	#
 	case ${local_startup} in
 	[Nn][Oo] | '')
@@ -30,7 +30,7 @@ locald_start()
 		fi
 		for dir in ${local_startup}; do
 			if [ -d "${dir}" ]; then
-				for script in ${dir}/*.sh; do
+				for script in ${dir}/*; do
 					slist="${slist}${script_name_sep}${script}"
 				done
 			fi
@@ -56,7 +56,7 @@ locald_stop()
 {
 	echo -n 'Shutting down daemon processes:'
 
-	# For each dir in $local_startup, search for init scripts matching *.sh
+	# For each dir in $local_startup, search for init scripts matching *
 	case ${local_startup} in
 	[Nn][Oo] | '')
 		;;
@@ -67,7 +67,7 @@ locald_stop()
 		fi
 		for dir in ${local_startup}; do
 			if [ -d "${dir}" ]; then
-				for script in ${dir}/*.sh; do
+				for script in ${dir}/*; do
 					slist="${slist}${script_name_sep}${script}"
 				done
 			fi
