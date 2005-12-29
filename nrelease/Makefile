@@ -1,9 +1,9 @@
-# $DragonFly: src/nrelease/Makefile,v 1.48.2.1 2005/12/23 21:52:09 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.48.2.2 2005/12/29 20:19:08 dillon Exp $
 #
 
 # compat target
 installer_release: release
-installer_quickrel: 
+installer_quickrel: quickrel
 installer_realquickrel: realquickrel
 installer_fetch: fetch
 
@@ -29,6 +29,7 @@ TAR?=	tar
 
 PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
 PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20051221
+CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20051229
 
 PKGSRC_PACKAGES?=	cdrecord-2.00.3nb2.tgz
 
@@ -90,6 +91,16 @@ check:
 	@echo "    make pkgsrc_cdrecord"
 	@exit 1
 .endif
+.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	@echo "The pkgsrc bootstrap kit is not installed.  You can install it with:"
+	@echo "    make [installer_]fetch"
+	@exit 1
+.endif
+.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
+	@echo "    make [installer_]fetch"
+	@exit 1
+.endif
 
 buildworld1:
 	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make buildworld )
@@ -124,11 +135,13 @@ buildiso:
 
 customizeiso:
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	cpdup ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT} ${ISOROOT}/tmp/bootstrap
+	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
 	chroot ${ISOROOT} csh -c "cd /tmp/bootstrap/bootstrap; ./bootstrap"
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
@@ -179,6 +192,9 @@ fetch:
 .endfor
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+.endif
+.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 .endif
 
 pkgsrc_bootstrap:
