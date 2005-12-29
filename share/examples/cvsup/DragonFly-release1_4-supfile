@@ -1,0 +1,51 @@
+# $DragonFly: src/share/examples/cvsup/DragonFly-release1_4-supfile,v 1.1.2.2 2005/12/29 17:49:28 dillon Exp $
+#
+# DRAGONFLY-RELEASE1_4-SUPFILE
+#
+# This file will by default maintain the DragonFly 1.4 release source code
+# in /usr/src/ by tracking the DragonFly_RELEASE_1_4_Slip tag in the CVS tree.
+# This tag represents the maintainance arm of the DragonFly 1.4 release.
+#
+# (The '_Slip' part is a slip tag that tracks changes along with the correct
+#  subversion.  If you do not use this tag your subversion may be out of 
+#  whack with the actual code you get).
+#
+# If not running X, or invoking cvsup from a non-interactive script, then
+# run it as follows:
+#
+#	cvsup -g -L 4 DragonFly-release1_4-supfile
+#
+# You may wish to change some of the settings in this file to better
+# suit your system:
+#
+# host=<mirror_site>
+#		This specifies the server host which will supply the
+#		file updates.  If you leave it at its default a random
+#		mirror site will be used.
+#
+# base=/usr
+#		This specifies the root where CVSup will store information
+#		about the collections you have transferred to your system.
+#		A setting of "/usr" will generate this information in
+#		/usr/sup.  Even if you are CVSupping a large number of
+#		collections, you will be hard pressed to generate more than
+#		~1MB of data in this directory.  You can override the
+#		"base" setting on the command line with cvsup's "-b base"
+#		option.  This directory must exist in order to run CVSup.
+#
+# prefix=/usr
+#		This specifies where to place the requested files.  A
+#		setting of "/usr" will place all of the files
+#		requested in /usr (e.g., "/usr/src/bin",
+#		"/usr/ports/archivers").  The prefix directory
+#		must exist in order to run CVSup.
+#
+#
+*default host=cvsup.dragonflybsd.org
+*default base=/usr
+*default prefix=/usr
+*default release=cvs tag=DragonFly_RELEASE_1_4_Slip
+*default delete use-rel-suffix
+*default compress
+
+dragonfly-cvs-src
