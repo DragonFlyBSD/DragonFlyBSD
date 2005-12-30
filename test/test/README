@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.40 2005/08/28 04:25:23 sephe Exp $
+$DragonFly: src/test/test/README,v 1.41 2005/12/30 04:24:39 justin Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -12,3 +12,9 @@ blah
 Hello from Marysville, Washington, USA!
 Good morning!
 blah
+
+Oh, the grand old Duke of York
+He had ten thousand men
+He'd march them up the hill
+and march them down again.
+
