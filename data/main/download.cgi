@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.91 2005/11/23 02:37:56 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.92 2005/12/30 04:41:13 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -514,5 +514,16 @@ distributions on CD and DVD to New Zealand and the rest of the world.
 </td>
 <td><a href="http://www.linuxcdmall.com/dragonfly.html">http://www.linuxcdmall.com/dragonfly.html</a>
 </tr>
+
+<tr>
+<td><b>Tetrad Digital Integrity</b><br/>
+TDI is an information assurance company in the Washington DC area, which
+can provide consulting services for deploying DragonFly BSD in all areas of
+enterprise use - desktop, server and infrastructure (router/firewall
+etc)</td>
+<td><a href="http://www.tdisecurity.com/">http://www.tdisecurity.com</a><br/>
+dfbsd@tdisecurity.com
+</tr>
+
 
 </TABLE>
