@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/lib/gcc34/libstdc++/c++config.h,v 1.2 2005/08/10 14:09:16 joerg Exp $ */
+/* $DragonFly: src/gnu/lib/gcc34/libstdc++/c++config.h,v 1.3 2005/12/30 16:57:42 joerg Exp $ */
 
 // Predefined symbols and macros -*- C++ -*-
 
@@ -122,7 +122,7 @@ namespace std
 /* #undef _GLIBCXX_USE_C99 */
 
 // Define if code specialized for wchar_t should be used.
-/* #undef _GLIBCXX_USE_WCHAR_T */
+#define _GLIBCXX_USE_WCHAR_T 1
 
 // Define if using setrlimit to set resource limits during 'make check'.
 #define _GLIBCXX_RES_LIMITS 1
