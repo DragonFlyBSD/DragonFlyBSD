@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47.2.1 2005/12/30 13:44:39 sephe Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
  * ADMtek AN985 (www.admtek.com.tw)
  * Davicom DM9100, DM9102, DM9102A (www.davicom8.com)
  * Accton EN1217 (www.accton.com)
+ * Xircom X3201 (www.xircom.com)
  * Conexant LANfinity (www.conexant.com)
  *
  * Datasheets for the 21143 are available at developer.intel.com.
@@ -185,6 +186,8 @@ static const struct dc_type dc_devs[] = {
 		"Accton EN1217 10/100BaseTX" },
 	{ DC_VENDORID_ACCTON, DC_DEVICEID_EN2242,
 		"Accton EN2242 MiniPCI 10/100BaseTX" },
+    	{ DC_VENDORID_XIRCOM, DC_DEVICEID_X3201,
+	  	"Xircom X3201 10/100BaseTX" },
 	{ DC_VENDORID_CONEXANT, DC_DEVICEID_RS7112,
 		"Conexant LANfinity MiniPCI 10/100BaseTX" },
 	{ DC_VENDORID_3COM, DC_DEVICEID_3CSOHOB,
@@ -229,6 +232,8 @@ static void dc_eeprom_putbyte	(struct dc_softc *, int);
 static void dc_eeprom_getword	(struct dc_softc *, int, u_int16_t *);
 static void dc_eeprom_getword_pnic
 				(struct dc_softc *, int, u_int16_t *);
+static void dc_eeprom_getword_xircom
+				(struct dc_softc *, int, u_int16_t *);
 static void dc_eeprom_width	(struct dc_softc *);
 static void dc_read_eeprom	(struct dc_softc *, caddr_t, int,
 							int, int);
@@ -249,6 +254,7 @@ static void dc_setcfg		(struct dc_softc *, int);
 static void dc_setfilt_21143	(struct dc_softc *);
 static void dc_setfilt_asix	(struct dc_softc *);
 static void dc_setfilt_admtek	(struct dc_softc *);
+static void dc_setfilt_xircom	(struct dc_softc *);
 
 static void dc_setfilt		(struct dc_softc *);
 
@@ -265,6 +271,7 @@ static void dc_decode_leaf_mii	(struct dc_softc *,
 static void dc_decode_leaf_sym	(struct dc_softc *,
 				    struct dc_eblock_sym *);
 static void dc_apply_fixup	(struct dc_softc *, int);
+static uint32_t dc_mchash_xircom(struct dc_softc *, const uint8_t *);
 
 #ifdef DC_USEIOSPACE
 #define DC_RES			SYS_RES_IOPORT
@@ -311,6 +318,7 @@ SYSCTL_INT(_hw, OID_AUTO, dc_quick, CTLFLAG_RW,
 #endif
 
 DECLARE_DUMMY_MODULE(if_dc);
+DRIVER_MODULE(if_dc, cardbus, dc_driver, dc_devclass, 0, 0);
 DRIVER_MODULE(if_dc, pci, dc_driver, dc_devclass, 0, 0);
 DRIVER_MODULE(miibus, dc, miibus_driver, miibus_devclass, 0, 0);
 
@@ -493,6 +501,26 @@ dc_eeprom_getword_pnic(struct dc_softc *sc, int addr, u_int16_t *dest)
 
 /*
  * Read a word of data stored in the EEPROM at address 'addr.'
+ * The Xircom X3201 has its own non-standard way to read
+ * the EEPROM, too.
+ */
+static void
+dc_eeprom_getword_xircom(struct dc_softc *sc, int addr, u_int16_t *dest)
+{
+	SIO_SET(DC_SIO_ROMSEL | DC_SIO_ROMCTL_READ);
+
+	addr *= 2;
+	CSR_WRITE_4(sc, DC_ROM, addr | 0x160);
+	*dest = (u_int16_t)CSR_READ_4(sc, DC_SIO)&0xff;
+	addr += 1;
+	CSR_WRITE_4(sc, DC_ROM, addr | 0x160);
+	*dest |= ((u_int16_t)CSR_READ_4(sc, DC_SIO)&0xff) << 8;
+
+	SIO_CLR(DC_SIO_ROMSEL | DC_SIO_ROMCTL_READ);
+}
+
+/*
+ * Read a word of data stored in the EEPROM at address 'addr.'
  */
 static void
 dc_eeprom_getword(struct dc_softc *sc, int addr, u_int16_t *dest)
@@ -551,6 +579,8 @@ dc_read_eeprom(struct dc_softc *sc, caddr_t dest, int off, int cnt, int swap)
 	for (i = 0; i < cnt; i++) {
 		if (DC_IS_PNIC(sc))
 			dc_eeprom_getword_pnic(sc, off + i, &word);
+		else if (DC_IS_XIRCOM(sc))
+			dc_eeprom_getword_xircom(sc, off + i, &word);
 		else
 			dc_eeprom_getword(sc, off + i, &word);
 		ptr = (u_int16_t *)(dest + (i * 2));
@@ -1221,6 +1251,74 @@ dc_setfilt_asix(struct dc_softc *sc)
 	return;
 }
 
+void
+dc_setfilt_xircom(struct dc_softc *sc)
+{
+	struct dc_desc		*sframe;
+	u_int32_t		h, *sp;
+	struct ifmultiaddr	*ifma;
+	struct ifnet		*ifp;
+	int			i;
+
+	ifp = &sc->arpcom.ac_if;
+	DC_CLRBIT(sc, DC_NETCFG, (DC_NETCFG_TX_ON|DC_NETCFG_RX_ON));
+
+	i = sc->dc_cdata.dc_tx_prod;
+	DC_INC(sc->dc_cdata.dc_tx_prod, DC_TX_LIST_CNT);
+	sc->dc_cdata.dc_tx_cnt++;
+	sframe = &sc->dc_ldata->dc_tx_list[i];
+	sp = (u_int32_t *)&sc->dc_cdata.dc_sbuf;
+	bzero(sp, DC_SFRAME_LEN);
+
+	sframe->dc_data = vtophys(&sc->dc_cdata.dc_sbuf);
+	sframe->dc_ctl = DC_SFRAME_LEN | DC_TXCTL_SETUP | DC_TXCTL_TLINK |
+	    DC_FILTER_HASHPERF | DC_TXCTL_FINT;
+
+	sc->dc_cdata.dc_tx_chain[i] = (struct mbuf *)&sc->dc_cdata.dc_sbuf;
+
+	/* If we want promiscuous mode, set the allframes bit. */
+	if (ifp->if_flags & IFF_PROMISC)
+		DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_RX_PROMISC);
+	else
+		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_PROMISC);
+
+	if (ifp->if_flags & IFF_ALLMULTI)
+ 		DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
+	else
+		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_RX_ALLMULTI);
+
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		if (ifma->ifma_addr->sa_family != AF_LINK)
+			continue;
+		h = dc_mchash_xircom(sc,
+			LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		sp[h >> 4] |= 1 << (h & 0xF);
+	}
+
+	if (ifp->if_flags & IFF_BROADCAST) {
+		h = dc_mchash_xircom(sc, (caddr_t)&etherbroadcastaddr);
+		sp[h >> 4] |= 1 << (h & 0xF);
+	}
+
+	/* Set our MAC address */
+	sp[0] = ((u_int16_t *)sc->arpcom.ac_enaddr)[0];
+	sp[1] = ((u_int16_t *)sc->arpcom.ac_enaddr)[1];
+	sp[2] = ((u_int16_t *)sc->arpcom.ac_enaddr)[2];
+	
+	DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_TX_ON);
+	DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_RX_ON);
+	ifp->if_flags |= IFF_RUNNING;
+	sframe->dc_status = DC_TXSTAT_OWN;
+	CSR_WRITE_4(sc, DC_TXSTART, 0xFFFFFFFF);
+
+	/*
+	 * wait some time...
+	 */
+	DELAY(1000);
+
+	ifp->if_timer = 5;
+}
+
 static void
 dc_setfilt(struct dc_softc *sc)
 {
@@ -1234,7 +1332,8 @@ dc_setfilt(struct dc_softc *sc)
 	if (DC_IS_ADMTEK(sc))
 		dc_setfilt_admtek(sc);
 
-	return;
+	if (DC_IS_XIRCOM(sc))
+		dc_setfilt_xircom(sc);
 }
 
 /*
@@ -1405,7 +1504,8 @@ dc_reset(struct dc_softc *sc)
 			break;
 	}
 
-	if (DC_IS_ASIX(sc) || DC_IS_ADMTEK(sc) || DC_IS_CONEXANT(sc)) {
+	if (DC_IS_ASIX(sc) || DC_IS_ADMTEK(sc) || DC_IS_XIRCOM(sc) ||
+	    DC_IS_CONEXANT(sc)) {
 		DELAY(10000);
 		DC_CLRBIT(sc, DC_BUSCTL, DC_BUSCTL_RESET);
 		i = 0;
@@ -1736,6 +1836,7 @@ dc_attach(device_t dev)
 	struct ifnet		*ifp;
 	u_int32_t		revision;
 	int			error = 0, rid, mac_offset;
+	uint8_t			*mac;
 
 	sc = device_get_softc(dev);
 	callout_init(&sc->dc_stat_timer);
@@ -1778,8 +1879,9 @@ dc_attach(device_t dev)
 	
 	revision = pci_get_revid(dev);
 
-	/* Get the eeprom width, but PNIC has diff eeprom */
-	if (sc->dc_info->dc_did != DC_DEVICEID_82C168)
+	/* Get the eeprom width, but PNIC and XIRCOM have diff eeprom */
+	if (sc->dc_info->dc_did != DC_DEVICEID_82C168 &&
+	    sc->dc_info->dc_did != DC_DEVICEID_X3201)
 		dc_eeprom_width(sc);
 
 	switch(sc->dc_info->dc_did) {
@@ -1881,6 +1983,17 @@ dc_attach(device_t dev)
 		sc->dc_pmode = DC_PMODE_MII;
 		dc_read_srom(sc, sc->dc_romwidth);
 		break;
+	case DC_DEVICEID_X3201:
+		sc->dc_type = DC_TYPE_XIRCOM;
+		sc->dc_flags |= (DC_TX_INTR_ALWAYS | DC_TX_COALESCE |
+				 DC_TX_ALIGN);
+		/*
+		 * We don't actually need to coalesce, but we're doing
+		 * it to obtain a double word aligned buffer.
+		 * The DC_TX_COALESCE flag is required.
+		 */
+		sc->dc_pmode = DC_PMODE_MII;
+		break;
 	default:
 		device_printf(dev, "unknown device: %x\n", sc->dc_info->dc_did);
 		break;
@@ -1897,7 +2010,7 @@ dc_attach(device_t dev)
 	dc_reset(sc);
 
 	/* Take 21143 out of snooze mode */
-	if (DC_IS_INTEL(sc)) {
+	if (DC_IS_INTEL(sc) || DC_IS_XIRCOM(sc)) {
 		command = pci_read_config(dev, DC_PCI_CFDD, 4);
 		command &= ~(DC_CFDD_SNOOZE_MODE|DC_CFDD_SLEEP_MODE);
 		pci_write_config(dev, DC_PCI_CFDD, command, 4);
@@ -1948,6 +2061,15 @@ dc_attach(device_t dev)
 	case DC_TYPE_CONEXANT:
 		bcopy(sc->dc_srom + DC_CONEXANT_EE_NODEADDR, &eaddr, 6);
 		break;
+	case DC_TYPE_XIRCOM:
+		/* The MAC comes from the CIS */
+		mac = pci_get_ether(dev);
+		if (!mac) {
+			device_printf(dev, "No station address in CIS!\n");
+			goto fail;
+		}
+		bcopy(mac, eaddr, ETHER_ADDR_LEN);
+	 	break;
 	default:
 		dc_read_eeprom(sc, (caddr_t)&eaddr, DC_EE_NODEADDR, 3, 0);
 		break;
@@ -1989,6 +2111,20 @@ dc_attach(device_t dev)
 		dc_apply_fixup(sc, IFM_AUTO);
 		tmp = sc->dc_pmode;
 		sc->dc_pmode = DC_PMODE_MII;
+	}
+
+	/*
+	 * Setup General Purpose port mode and data so the tulip can talk
+	 * to the MII.  This needs to be done before mii_phy_probe so that
+	 * we can actually see them.
+	 */
+	if (DC_IS_XIRCOM(sc)) {
+		CSR_WRITE_4(sc, DC_SIAGP, DC_SIAGP_WRITE_EN | DC_SIAGP_INT1_EN |
+		    DC_SIAGP_MD_GP2_OUTPUT | DC_SIAGP_MD_GP0_OUTPUT);
+		DELAY(10);
+		CSR_WRITE_4(sc, DC_SIAGP, DC_SIAGP_INT1_EN |
+		    DC_SIAGP_MD_GP2_OUTPUT | DC_SIAGP_MD_GP0_OUTPUT);
+		DELAY(10);
 	}
 
 	error = mii_phy_probe(dev, &sc->dc_miibus,
@@ -2509,8 +2645,9 @@ dc_txeof(struct dc_softc *sc)
 			continue;
 		}
 
-		if (DC_IS_CONEXANT(sc)) {
+		if (DC_IS_XIRCOM(sc) || DC_IS_CONEXANT(sc)) {
 			/*
+			 * XXX: Why does my Xircom taunt me so?
 			 * For some reason Conexant chips like
 			 * setting the CARRLOST flag even when
 			 * the carrier is there. In CURRENT we
@@ -2783,7 +2920,8 @@ dc_intr(void *arg)
 	/* Disable interrupts. */
 	CSR_WRITE_4(sc, DC_IMR, 0x00000000);
 
-	while((status = CSR_READ_4(sc, DC_ISR)) & DC_INTRS) {
+	while(((status = CSR_READ_4(sc, DC_ISR)) & DC_INTRS) &&
+	      status != 0xFFFFFFFF) {
 
 		CSR_WRITE_4(sc, DC_ISR, status);
 
@@ -3089,6 +3227,19 @@ dc_init(void *xsc)
 		else
 			DC_SETBIT(sc, DC_MX_MAGICPACKET, DC_MX_MAGIC_98715);
 	}
+
+	if (DC_IS_XIRCOM(sc)) {
+		/*
+		 * Setup General Purpose Port mode and data so the tulip
+		 * can talk to the MII.
+		 */
+		CSR_WRITE_4(sc, DC_SIAGP, DC_SIAGP_WRITE_EN | DC_SIAGP_INT1_EN |
+			   DC_SIAGP_MD_GP2_OUTPUT | DC_SIAGP_MD_GP0_OUTPUT);
+		DELAY(10);
+		CSR_WRITE_4(sc, DC_SIAGP, DC_SIAGP_INT1_EN |
+			   DC_SIAGP_MD_GP2_OUTPUT | DC_SIAGP_MD_GP0_OUTPUT);
+		DELAY(10);
+ 	}
 
 	DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_TX_THRESH);
 	DC_SETBIT(sc, DC_NETCFG, DC_TXTHRESH_MIN);
@@ -3428,4 +3579,18 @@ dc_resume(device_t dev)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
+}
+
+static uint32_t
+dc_mchash_xircom(struct dc_softc *sc, const uint8_t *addr)
+{
+	uint32_t crc;
+
+	/* Compute CRC for the address value. */
+	crc = ether_crc32_le(addr, ETHER_ADDR_LEN);
+
+	if ((crc & 0x180) == 0x180)
+		return ((crc & 0x0F) + (crc & 0x70) * 3 + (14 << 4));
+	else
+		return ((crc & 0x1F) + ((crc >> 1) & 0xF0) * 3 + (12 << 4));
 }
