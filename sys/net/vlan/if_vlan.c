@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.18 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.19 2005/12/30 17:41:14 dillon Exp $
  */
 
 /*
@@ -303,13 +303,11 @@ vlan_start(struct ifnet *ifp)
 			altq_etherclassify(&p->if_snd, m, &pktattr);
 
 		/*
-		 * If the LINK0 flag is set, it means the underlying interface
-		 * can do VLAN tag insertion itself and doesn't require us to
-	 	 * create a special header for it. In this case, we just pass
-		 * the packet along. However, we need some way to tell the
-		 * interface where the packet came from so that it knows how
-		 * to find the VLAN tag to use, so we set the rcvif in the
-		 * mbuf header to our ifnet.
+		 * If underlying interface can do VLAN tag insertion itself,
+		 * just pass the packet along. However, we need some way to
+		 * tell the interface where the packet came from so that it
+		 * knows how to find the VLAN tag to use, so we set the rcvif 
+		 * in the mbuf header to our ifnet.
 		 *
 		 * Note: we also set the M_PROTO1 flag in the mbuf to let
 		 * the parent driver know that the rcvif pointer is really
@@ -320,7 +318,7 @@ vlan_start(struct ifnet *ifp)
 		 * following potentially bogus rcvif pointers off into
 		 * never-never land.
 		 */
-		if (ifp->if_flags & IFF_LINK0) {
+		if (p->if_capenable & IFCAP_VLAN_HWTAGGING) {
 			m->m_pkthdr.rcvif = ifp;
 			m->m_flags |= M_PROTO1;
 		} else {
@@ -379,10 +377,8 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 {
 	struct bpf_if *bif;
 	struct ifvlan *ifv;
-	struct ether_header *eh = mtod(m, struct ether_header *);
 	struct ifnet *rcvif;
 
-	m_adj(m, ETHER_HDR_LEN);
 	rcvif = m->m_pkthdr.rcvif;
 
 	ASSERT_SERIALIZED(rcvif->if_serializer);
@@ -392,14 +388,18 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	 * bpf tap if active.
 	 */
 	if ((bif = rcvif->if_bpf) != NULL) {
+		struct ether_header *eh;
 		struct ether_vlan_header evh;
 
+		eh = mtod(m, struct ether_header *);
+		m_adj(m, ETHER_HDR_LEN);
 		bcopy(eh, &evh, 2*ETHER_ADDR_LEN);
 		evh.evl_encap_proto = htons(ETHERTYPE_VLAN);
 		evh.evl_tag = htons(t);
 		evh.evl_proto = eh->ether_type;
-
 		bpf_ptap(bif, m, &evh, ETHER_HDR_LEN + EVL_ENCAPLEN);
+		/* XXX assumes data was left intact */
+		M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT); 
 	}
 
 	for (ifv = LIST_FIRST(&ifv_list); ifv != NULL;
@@ -423,7 +423,7 @@ vlan_input_tag( struct mbuf *m, uint16_t t)
 	ifv->ifv_if.if_ipackets++;
 	lwkt_serialize_exit(rcvif->if_serializer);
 	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, eh, m);
+	ether_input(&ifv->ifv_if, NULL, m);
 	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
@@ -434,6 +434,7 @@ vlan_input(struct ether_header *eh, struct mbuf *m)
 {
 	struct ifvlan *ifv;
 	struct ifnet *rcvif;
+	struct ether_header eh_copy;
 
 	rcvif = m->m_pkthdr.rcvif;
 	ASSERT_SERIALIZED(rcvif->if_serializer);
@@ -455,20 +456,22 @@ vlan_input(struct ether_header *eh, struct mbuf *m)
 	/*
 	 * Having found a valid vlan interface corresponding to
 	 * the given source interface and vlan tag, remove the
-	 * encapsulation, and run the real packet through
-	 * ether_input() a second time (it had better be
+	 * remaining encapsulation (ether_vlan_header minus the ether_header
+	 * that had already been removed) and run the real packet
+	 * through ether_input() a second time (it had better be
 	 * reentrant!).
 	 */
+	eh_copy = *eh;
+	eh_copy.ether_type = mtod(m, u_int16_t *)[1];	/* evl_proto */
 	m->m_pkthdr.rcvif = &ifv->ifv_if;
-	eh->ether_type = mtod(m, u_int16_t *)[1];
-	m->m_data += EVL_ENCAPLEN;
-	m->m_len -= EVL_ENCAPLEN;
-	m->m_pkthdr.len -= EVL_ENCAPLEN;
+	m_adj(m, EVL_ENCAPLEN);
+	M_PREPEND(m, ETHER_HDR_LEN, MB_WAIT); 
+	*(struct ether_header *)mtod(m, void *) = eh_copy;
 
 	ifv->ifv_if.if_ipackets++;
 	lwkt_serialize_exit(rcvif->if_serializer);
 	lwkt_serialize_enter(ifv->ifv_if.if_serializer);
-	ether_input(&ifv->ifv_if, eh, m);
+	ether_input(&ifv->ifv_if, NULL, m);
 	lwkt_serialize_exit(ifv->ifv_if.if_serializer);
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
@@ -484,7 +487,7 @@ vlan_config(struct ifvlan *ifv, struct ifnet *p)
 	if (ifv->ifv_p)
 		return EBUSY;
 	ifv->ifv_p = p;
-	if (p->if_data.ifi_hdrlen == sizeof(struct ether_vlan_header))
+	if (p->if_capenable & IFCAP_VLAN_MTU)
 		ifv->ifv_if.if_mtu = p->if_mtu;
 	else
 		ifv->ifv_if.if_mtu = p->if_data.ifi_mtu - EVL_ENCAPLEN;
