@@ -35,7 +35,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)dumprestore.h	8.2 (Berkeley) 1/21/94
+ * @(#)dumprestore.h	8.2 (Berkeley) 1/21/94
+ * $DragonFly: src/include/protocols/dumprestore.h,v 1.1.4.1 2005/12/30 17:55:29 dillon Exp $
  */
 
 #ifndef _PROTOCOLS_DUMPRESTORE_H_
@@ -68,11 +69,11 @@ union u_spcl {
 	char dummy[TP_BSIZE];
 	struct	s_spcl {
 		int32_t	c_type;		    /* record type (see below) */
-		time_t	c_date;		    /* date of this dump */
-		time_t	c_ddate;	    /* date of previous dump */
+		int32_t	c_date;		    /* date of this dump */
+		int32_t	c_ddate;	    /* date of previous dump */
 		int32_t	c_volume;	    /* dump volume number */
 		daddr_t	c_tapea;	    /* logical block of this record */
-		ino_t	c_inumber;	    /* number of inode */
+		u_int32_t c_inumber;	    /* number of inode */
 		int32_t	c_magic;	    /* magic number (see above) */
 		int32_t	c_checksum;	    /* record checksum */
 		struct	dinode	c_dinode;   /* ownership and mode of inode */
