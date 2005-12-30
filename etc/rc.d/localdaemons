@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/localdaemons,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/localdaemons,v 1.4 2005/12/29 20:48:01 dillon Exp $
+# $DragonFly: src/etc/rc.d/localdaemons,v 1.5 2005/12/30 21:01:49 dillon Exp $
 #
 
 # PROVIDE: localdaemons
@@ -14,6 +14,25 @@
 name="localdaemons"
 start_cmd="locald_start"
 stop_cmd="locald_stop"
+
+# Returns true (0) if the passed argument is a valid name
+# for a script, false (1) otherwise.
+#
+valid_scriptname()
+{
+	case ${1##*.} in
+	orig)
+		return 1
+		;;
+	sample)
+		return 1
+		;;
+	dist)
+		return 1
+		;;
+	esac
+	return 0
+}
 
 locald_start()
 {
@@ -31,7 +50,9 @@ locald_start()
 		for dir in ${local_startup}; do
 			if [ -d "${dir}" ]; then
 				for script in ${dir}/*; do
-					slist="${slist}${script_name_sep}${script}"
+					if valid_scriptname ${script}; then
+						slist="${slist}${script_name_sep}${script}"
+					fi
 				done
 			fi
 		done
@@ -68,7 +89,9 @@ locald_stop()
 		for dir in ${local_startup}; do
 			if [ -d "${dir}" ]; then
 				for script in ${dir}/*; do
-					slist="${slist}${script_name_sep}${script}"
+					if valid_scriptname ${script}; then
+						slist="${slist}${script_name_sep}${script}"
+					fi
 				done
 			fi
 		done
