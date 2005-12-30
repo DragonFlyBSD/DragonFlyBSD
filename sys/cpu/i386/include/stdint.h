@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.2 2005/04/21 16:36:35 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.3 2005/12/30 15:29:26 joerg Exp $
  */
 
 #ifndef _MACHINE_STDINT_H_
@@ -116,7 +116,15 @@ typedef __uint32_t	__socklen_t;
 /*
  * Its convenient to put these here rather then create another header file.
  */
-#define __offsetof(type, field) ((size_t)(&((type *)0)->field))
+#ifndef __cplusplus
+#define __offsetof(type, field) ((__size_t)(&((type *)0)->field))
+#else   
+#define __offsetof(type, field)					\
+	(__offsetof__ (reinterpret_cast <__size_t>		\
+		 (&reinterpret_cast <const volatile char &>	\
+		  (static_cast<type *> (0)->field))))
+#endif  
+
 #define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
 
 #endif /* _MACHINE_STDINT_H_ */
