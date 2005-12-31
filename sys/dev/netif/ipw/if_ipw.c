@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.12 2005/11/29 19:55:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.13 2005/12/31 14:07:59 sephe Exp $
  */
 
 /*-
@@ -363,12 +363,15 @@ ipw_attach(device_t dev)
 			       ipw_intr, sc, &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
+		bpfdetach(ifp);
+		ieee80211_ifdetach(ifp);
 		goto fail;
 	}
 
 	return 0;
 
-fail:	ipw_detach(dev);
+fail:
+	ipw_detach(dev);
 	return ENXIO;
 }
 
@@ -378,29 +381,29 @@ ipw_detach(device_t dev)
 	struct ipw_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
+		ipw_stop(sc);
+		ipw_free_firmware(sc);
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+		lwkt_serialize_exit(ifp->if_serializer);
 
-	ipw_stop(sc);
-	ipw_free_firmware(sc);
-
-	bpfdetach(ifp);
-
-	ieee80211_ifdetach(ifp);
+		bpfdetach(ifp);
+		ieee80211_ifdetach(ifp);
+	}
 
 	ipw_release(sc);
 
-	if (sc->irq != NULL) {
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+	if (sc->irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-	}
 
-	if (sc->mem != NULL)
+	if (sc->mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, IPW_PCI_BAR0,
-		    sc->mem);
+				     sc->mem);
+	}
 
 	sysctl_ctx_free(&sc->sysctl_ctx);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 

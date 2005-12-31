@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.34 2005/12/11 01:54:09 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.35 2005/12/31 14:08:00 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -332,16 +332,17 @@ fail:
 static int
 txp_detach(device_t dev)
 {
-	struct txp_softc *sc;
-	struct ifnet *ifp;
+	struct txp_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->sc_arpcom.ac_if;
 	int i;
 
-	sc = device_get_softc(dev);
-	ifp = &sc->sc_arpcom.ac_if;
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	txp_stop(sc);
 	txp_shutdown(dev);
+	bus_teardown_intr(dev, sc->sc_irq, sc->sc_intrhand);
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	ifmedia_removeall(&sc->sc_ifmedia);
 	ether_ifdetach(ifp);
@@ -350,7 +351,6 @@ txp_detach(device_t dev)
 		free(sc->sc_rxbufs[i].rb_sd, M_DEVBUF);
 
 	txp_release_resources(dev);
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -361,9 +361,6 @@ txp_release_resources(device_t dev)
 	struct txp_softc *sc;
 
 	sc = device_get_softc(dev);
-
-	if (sc->sc_intrhand != NULL)
-		bus_teardown_intr(dev, sc->sc_irq, sc->sc_intrhand);
 
 	if (sc->sc_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_irq);

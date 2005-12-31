@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sn/if_sn_pccard.c,v 1.3.2.2 2001/01/25 19:40:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.6 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sn/if_sn_pccard.c,v 1.7 2005/12/31 14:08:00 sephe Exp $
  */
 
 /*
@@ -115,10 +115,16 @@ static int
 sn_pccard_detach(device_t dev)
 {
 	struct sn_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
+	lwkt_serialize_enter(ifp->if_serializer);
+	ifp->if_flags &= ~IFF_RUNNING;
+	bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
+	lwkt_serialize_enter(ifp->if_serializer);
+
 	ether_ifdetach(&sc->arpcom.ac_if);
 	sn_deactivate(dev);
+
 	return 0;
 }
 

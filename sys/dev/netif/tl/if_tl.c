@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.34 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.35 2005/12/31 14:08:00 sephe Exp $
  */
 
 /*
@@ -1266,10 +1266,12 @@ tl_detach(device_t dev)
 	struct tl_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		tl_stop(sc);
+		bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
@@ -1281,14 +1283,11 @@ tl_detach(device_t dev)
 		contigfree(sc->tl_ldata, sizeof(struct tl_list_data), M_DEVBUF);
 	if (sc->tl_bitrate)
 		ifmedia_removeall(&sc->ifmedia);
-	if (sc->tl_intrhand)
-		bus_teardown_intr(dev, sc->tl_irq, sc->tl_intrhand);
 	if (sc->tl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->tl_irq);
 	if (sc->tl_res)
 		bus_release_resource(dev, TL_RES, TL_RID, sc->tl_res);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

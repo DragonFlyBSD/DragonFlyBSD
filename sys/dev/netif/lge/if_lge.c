@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.34 2005/11/29 19:56:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.35 2005/12/31 14:07:59 sephe Exp $
  */
 
 /*
@@ -571,19 +571,19 @@ lge_detach(device_t dev)
 	struct lge_softc *sc= device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		lge_reset(sc);
 		lge_stop(sc);
+		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
 	if (sc->lge_miibus)
 		device_delete_child(dev, sc->lge_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->lge_intrhand)
-		bus_teardown_intr(dev, sc->lge_irq, sc->lge_intrhand);
 
 	if (sc->lge_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->lge_irq);
@@ -595,7 +595,6 @@ lge_detach(device_t dev)
 			   M_DEVBUF);
 	lge_free_jumbo_mem(sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.23 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.24 2005/12/31 14:07:59 sephe Exp $
  */
 
 /*
@@ -695,14 +695,14 @@ cs_detach(device_t dev)
 	struct cs_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		cs_stop(sc);
+		bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(&sc->arpcom.ac_if);
 	}
-	if (sc->irq_handle != NULL)
-		bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 
 #if 0
 	/*
@@ -717,7 +717,6 @@ cs_detach(device_t dev)
 	cs_release_resources(dev);
 	ifmedia_removeall(&sc->media);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 

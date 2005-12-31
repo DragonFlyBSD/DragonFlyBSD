@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.11 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.12 2005/12/31 14:07:59 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -704,14 +704,18 @@ ndis_detach(dev)
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
-	lwkt_serialize_enter(ifp->if_serializer);
 
 	NDIS_LOCK(sc);
 	ifp->if_flags &= ~IFF_UP;
 
 	if (device_is_attached(dev)) {
 		NDIS_UNLOCK(sc);
+
+		lwkt_serialize_enter(ifp->if_serializer);
 		ndis_stop(sc);
+		bus_teardown_intr(dev, sc->ndis_irq, sc->ndis_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		if (sc->ndis_80211)
 			ieee80211_ifdetach(ifp);
 		else
@@ -721,8 +725,6 @@ ndis_detach(dev)
 
 	bus_generic_detach(dev);
 
-	if (sc->ndis_intrhand)
-		bus_teardown_intr(dev, sc->ndis_irq, sc->ndis_intrhand);
 	if (sc->ndis_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ndis_irq);
 	if (sc->ndis_res_io)
@@ -745,12 +747,10 @@ ndis_detach(dev)
 
 #if __FreeBSD_version < 502113
 	sysctl_ctx_free(&sc->ndis_ctx);
-
 #endif
 	NDIS_LOCK_DESTROY(&sc->ndis_lock);
 	NDIS_LOCK_DESTROY(&sc->ndis_intrlock);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 
@@ -991,14 +991,14 @@ ndis_intrtask(arg)
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->serializer);
+	lwkt_serialize_enter(ifp->if_serializer);
 	irql = FASTCALL1(hal_raise_irql, DISPATCH_LEVEL);
 	ndis_intrhand(sc);
 	FASTCALL1(hal_lower_irql, irql);
 	NDIS_INTRLOCK(sc);
 	ndis_enable_intr(sc);
 	NDIS_INTRUNLOCK(sc);
-	lwkt_serialize_exit(ifp->serializer);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return;
 }
@@ -1062,14 +1062,14 @@ ndis_ticktask(xsc)
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->serializer);
+	lwkt_serialize_enter(ifp->if_serializer);
 	hangfunc = sc->ndis_chars.nmc_checkhang_func;
 
 	if (hangfunc != NULL) {
 		rval = hangfunc(sc->ndis_block.nmb_miniportadapterctx);
 		if (rval == TRUE) {
 			ndis_reset_nic(sc);
-			lwkt_serialize_exit(ifp->serializer);
+			lwkt_serialize_exit(ifp->if_serializer);
 			return;
 		}
 	}
@@ -1103,7 +1103,7 @@ ndis_ticktask(xsc)
 	}
 
 	NDIS_UNLOCK(sc);
-	lwkt_serialize_exit(ifp->serializer);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static void

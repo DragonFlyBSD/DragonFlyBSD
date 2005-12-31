@@ -1,6 +1,6 @@
 /*	$NetBSD: if_bah_zbus.c,v 1.6 2000/01/23 21:06:12 aymeric Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/if_cm_isa.c,v 1.1.2.1 2002/02/13 22:33:41 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.13 2005/11/28 17:13:41 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/if_cm_isa.c,v 1.14 2005/12/31 14:07:59 sephe Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -105,10 +105,11 @@ cm_isa_detach(device_t dev)
 
 	lwkt_serialize_enter(sc->sc_arccom.ac_if.if_serializer);
 	cm_stop(sc);
-	arc_ifdetach(&sc->sc_arccom.ac_if);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-	cm_release_resources(dev);
 	lwkt_serialize_exit(sc->sc_arccom.ac_if.if_serializer);
+
+	arc_ifdetach(&sc->sc_arccom.ac_if);
+	cm_release_resources(dev);
 
 	return (0);
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.32 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.33 2005/12/31 14:08:00 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -991,24 +991,20 @@ fail:
 static int
 ste_detach(device_t dev)
 {
-	struct ste_softc	*sc;
-	struct ifnet		*ifp;
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
-	lwkt_serialize_enter(ifp->if_serializer);
+	struct ste_softc	*sc = device_get_softc(dev);
+	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
 	if (device_is_attached(dev)) {
-		if (bus_child_present(dev))
-			ste_stop(sc);
+		lwkt_serialize_enter(ifp->if_serializer);
+		ste_stop(sc);
+		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 	if (sc->ste_miibus != NULL)
 		device_delete_child(dev, sc->ste_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->ste_intrhand != NULL)
-		bus_teardown_intr(dev, sc->ste_irq, sc->ste_intrhand);
 
 	if (sc->ste_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->ste_irq);
@@ -1018,7 +1014,6 @@ ste_detach(device_t dev)
 		contigfree(sc->ste_ldata, sizeof(struct ste_list_data),
 			   M_DEVBUF);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.24 2005/11/28 17:13:44 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.25 2005/12/31 14:08:00 sephe Exp $
  */
 
 /*
@@ -1213,9 +1213,6 @@ sn_deactivate(device_t dev)
 {
 	struct sn_softc *sc = device_get_softc(dev);
 	
-	if (sc->intrhand)
-		bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
-	sc->intrhand = 0;
 	if (sc->port_res)
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->port_rid, 
 		    sc->port_res);

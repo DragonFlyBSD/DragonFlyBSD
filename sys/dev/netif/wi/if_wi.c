@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.33 2005/12/16 21:05:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.34 2005/12/31 14:08:00 sephe Exp $
  */
 
 /*
@@ -510,14 +510,12 @@ wi_detach(device_t dev)
 
 	/* check if device was removed */
 	sc->wi_gone |= !bus_child_present(dev);
-
 	wi_stop(ifp, 0);
-
-	ieee80211_ifdetach(ifp);
-	wi_free(dev);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
+	ieee80211_ifdetach(ifp);
+	wi_free(dev);
 	return (0);
 }
 

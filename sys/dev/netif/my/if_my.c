@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.23 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.24 2005/12/31 14:07:59 sephe Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -987,16 +987,14 @@ my_detach(device_t dev)
 	struct my_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
-		ether_ifdetach(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		my_stop(sc);
-	}
-
-	if (sc->my_intrhand)
 		bus_teardown_intr(dev, sc->my_irq, sc->my_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+		ether_ifdetach(ifp);
+	}
 
 	if (sc->my_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->my_irq);

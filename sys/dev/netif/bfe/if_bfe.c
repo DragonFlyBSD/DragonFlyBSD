@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.27 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.28 2005/12/31 14:07:58 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -440,19 +440,18 @@ bfe_detach(device_t dev)
 	struct bfe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		bfe_stop(sc);
-		ether_ifdetach(ifp);
 		bfe_chip_reset(sc);
+		bus_teardown_intr(dev, sc->bfe_irq, sc->bfe_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		ether_ifdetach(ifp);
 	}
 	if (sc->bfe_miibus != NULL)
 		device_delete_child(dev, sc->bfe_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->bfe_intrhand != NULL)
-		bus_teardown_intr(dev, sc->bfe_irq, sc->bfe_intrhand);
 
 	if (sc->bfe_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bfe_irq);
@@ -462,7 +461,7 @@ bfe_detach(device_t dev)
 				     sc->bfe_res);
 	}
 	bfe_dma_free(sc);
-	lwkt_serialize_exit(ifp->if_serializer);
+
 	return(0);
 }
 

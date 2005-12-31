@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.10 2005/11/28 17:13:42 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.11 2005/12/31 14:07:59 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -183,11 +183,12 @@ ex_pccard_detach(device_t dev)
 	struct ex_softc		*sc = device_get_softc(dev);
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_enter(ifp->if_serializer);
 	ex_stop(sc);
 	ifp->if_flags &= ~IFF_RUNNING;
-	if_detach(ifp);
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	ether_ifdetach(ifp);
 	ex_release_resources(dev);
-	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 	return (0);
 }

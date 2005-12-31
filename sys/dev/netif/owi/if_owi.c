@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.14 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.15 2005/12/31 14:08:00 sephe Exp $
  */
 
 /*
@@ -190,17 +190,17 @@ owi_generic_detach(device_t dev)
 		lwkt_serialize_exit(ifp->if_serializer);
 		return(ENODEV);
 	}
-
 	wi_stop(sc);
+	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
+	sc->wi_gone = 1;
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	/* Delete all remaining media. */
 	ifmedia_removeall(&sc->ifmedia);
 	ether_ifdetach(ifp);
-	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 	owi_free(dev);
-	sc->wi_gone = 1;
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

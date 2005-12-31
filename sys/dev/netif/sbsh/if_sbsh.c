@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.22 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.23 2005/12/31 14:08:00 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -289,23 +289,22 @@ sbsh_detach(device_t dev)
 	struct sbsh_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		sbsh_stop(sc);
+		bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
-	if (sc->intr_hand)
-		bus_teardown_intr(dev, sc->irq_res, sc->intr_hand);
-
 	if (sc->irq_res)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq_res);
-	if (sc->mem_res)
+	if (sc->mem_res) {
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_MAPS + 4,
 				     sc->mem_res);
+	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 

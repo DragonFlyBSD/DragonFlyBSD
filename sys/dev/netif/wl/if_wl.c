@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.26 2005/11/28 17:13:44 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.27 2005/12/31 14:08:00 sephe Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -577,7 +577,6 @@ wldetach(device_t dev)
     struct ifnet *ifp = &sc->wl_if;
 
     lwkt_serialize_enter(ifp->if_serializer);
-    ether_ifdetach(ifp);
 
     /* reset the board */
     sc->hacr = HACR_RESET;
@@ -590,10 +589,12 @@ wldetach(device_t dev)
 	sc->intr_handle = NULL;
     }
 
-    bus_generic_detach(dev);
-
-    wl_free_resources(dev);
     lwkt_serialize_exit(ifp->if_serializer);
+
+    ether_ifdetach(ifp);
+    bus_generic_detach(dev);
+    wl_free_resources(dev);
+
     return (0);
 }
 

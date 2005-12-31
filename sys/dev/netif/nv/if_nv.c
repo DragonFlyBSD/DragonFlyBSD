@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.24 2005/12/14 17:04:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.25 2005/12/31 14:07:59 sephe Exp $
  */
 
 /*
@@ -550,16 +550,17 @@ nv_detach(device_t dev)
 {
 	struct nv_softc *sc = device_get_softc(dev);
 	struct ifnet   *ifp;
+	int is_attached;
 
 	ifp = &sc->arpcom.ac_if;
-	lwkt_serialize_enter(ifp->if_serializer);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_detach - entry\n");
 
-	if (device_is_attached(dev)) {
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	is_attached = device_is_attached(dev);
+	if (is_attached)
 		nv_stop(sc);
-		ether_ifdetach(ifp);
-	}
 
 	if (sc->miibus)
 		device_delete_child(dev, sc->miibus);
@@ -576,6 +577,12 @@ nv_detach(device_t dev)
 	/* Release resources */
 	if (sc->sc_ih)
 		bus_teardown_intr(sc->dev, sc->irq, sc->sc_ih);
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	if (is_attached)
+		ether_ifdetach(ifp);
+
 	if (sc->irq)
 		bus_release_resource(sc->dev, SYS_RES_IRQ, 0, sc->irq);
 	if (sc->res)
@@ -594,8 +601,6 @@ nv_detach(device_t dev)
 		bus_dma_tag_destroy(sc->ttag);
 	if (sc->rtag)
 		bus_dma_tag_destroy(sc->rtag);
-
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: nv_detach - exit\n");
 	return (0);

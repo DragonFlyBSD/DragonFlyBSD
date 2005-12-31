@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.45 2005/12/10 18:28:18 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.46 2005/12/31 14:07:59 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -639,20 +639,21 @@ em_detach(device_t dev)
 
 	INIT_DEBUGOUT("em_detach: begin");
 
-	lwkt_serialize_enter(adapter->interface_data.ac_if.if_serializer);
-	adapter->in_detach = 1;
-
 	if (device_is_attached(dev)) {
+		struct ifnet *ifp = &adapter->interface_data.ac_if;
+
+		lwkt_serialize_enter(ifp->if_serializer);
+		adapter->in_detach = 1;
 		em_stop(adapter);
 		em_phy_hw_reset(&adapter->hw);
-		ether_ifdetach(&adapter->interface_data.ac_if);
+		bus_teardown_intr(dev, adapter->res_interrupt, 
+				  adapter->int_handler_tag);
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		ether_ifdetach(ifp);
 	}
 	bus_generic_detach(dev);
 
-	if (adapter->int_handler_tag != NULL) {
-		bus_teardown_intr(dev, adapter->res_interrupt, 
-				  adapter->int_handler_tag);
-	}
 	if (adapter->res_interrupt != NULL) {
 		bus_release_resource(dev, SYS_RES_IRQ, 0, 
 				     adapter->res_interrupt);
@@ -682,7 +683,6 @@ em_detach(device_t dev)
 	adapter->sysctl_tree = NULL;
 	sysctl_ctx_free(&adapter->sysctl_ctx);
 
-	lwkt_serialize_exit(adapter->interface_data.ac_if.if_serializer);
 	return(0);
 }
 

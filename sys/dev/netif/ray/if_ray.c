@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.26 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.27 2005/12/31 14:08:00 sephe Exp $
  *
  */
 
@@ -584,8 +584,10 @@ ray_detach(device_t dev)
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STOP, "");
 
-	if ((sc == NULL) || (sc->sc_gone))
+	if ((sc == NULL) || (sc->sc_gone)) {
+		lwkt_serialize_exit(ifp->if_serializer);
 		return (0);
+	}
 
 	/*
 	 * Mark as not running and detach the interface.
@@ -596,7 +598,6 @@ ray_detach(device_t dev)
 	sc->sc_gone = 1;
 	sc->sc_c.np_havenet = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	ether_ifdetach(ifp);
 
 	/*
 	 * Stop the runq and wake up anyone sleeping for us.
@@ -605,7 +606,7 @@ ray_detach(device_t dev)
 	callout_stop(&sc->tx_timer);
 	com = TAILQ_FIRST(&sc->sc_comq);
 	for (com = TAILQ_FIRST(&sc->sc_comq); com != NULL;
-	    com = TAILQ_NEXT(com, c_chain)) {
+	     com = TAILQ_NEXT(com, c_chain)) {
 		com->c_flags |= RAY_COM_FDETACHED;
 		com->c_retval = 0;
 		RAY_DPRINTF(sc, RAY_DBG_STOP, "looking at com %p %b",
@@ -615,14 +616,16 @@ ray_detach(device_t dev)
 			wakeup(com->c_wakeup);
 		}
 	}
-	
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	ether_ifdetach(ifp);
+
 	/*
 	 * Release resources
 	 */
 	ray_res_release(sc);
 	RAY_DPRINTF(sc, RAY_DBG_STOP, "unloading complete");
-
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
