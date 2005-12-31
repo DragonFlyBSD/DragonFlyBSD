@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.5 2005/05/27 07:35:59 swildner Exp $
+# $DragonFly: src/gnu/lib/gcc34/libstdc++/Makefile,v 1.5.2.1 2005/12/31 17:31:30 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -40,7 +40,7 @@ SRCS+=	locale_facets.cc localename.cc stdexcept.cc strstream.cc tree.cc
 SRCS+=	allocator-inst.cc concept-inst.cc fstream-inst.cc ext-inst.cc
 SRCS+=	io-inst.cc istream-inst.cc locale-inst.cc locale-misc-inst.cc
 SRCS+=	misc-inst.cc ostream-inst.cc sstream-inst.cc streambuf-inst.cc
-SRCS+=	string-inst.cc valarray-inst.cc wlocale-inst.cc
+SRCS+=	string-inst.cc valarray-inst.cc wlocale-inst.cc wstring-inst.cc
 SRCS+=	basic_file_stdio.cc c_locale.cc
 
 # target sources
