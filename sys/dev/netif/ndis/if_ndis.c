@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.12 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.13 2005/12/31 19:39:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -198,8 +198,6 @@ out:
 	    &sc->ndis_filter, &len);
 	if (error)
 		device_printf (sc->ndis_dev, "set filter failed: %d\n", error);
-
-	return;
 }
 
 static int
@@ -372,8 +370,6 @@ ndis_attach(dev)
 	sc = device_get_softc(dev);
 
 	callout_init(&sc->ndis_stat_timer);
-	NDIS_LOCK_INIT(&sc->ndis_lock);
-	NDIS_LOCK_INIT(&sc->ndis_intrlock);
 
 	sc->ndis_regvals = ndis_regvals;
 
@@ -700,17 +696,13 @@ ndis_detach(dev)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
-	NDIS_LOCK_INFO;
 
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	NDIS_LOCK(sc);
 	ifp->if_flags &= ~IFF_UP;
 
 	if (device_is_attached(dev)) {
-		NDIS_UNLOCK(sc);
-
 		lwkt_serialize_enter(ifp->if_serializer);
 		ndis_stop(sc);
 		bus_teardown_intr(dev, sc->ndis_irq, sc->ndis_intrhand);
@@ -720,9 +712,7 @@ ndis_detach(dev)
 			ieee80211_ifdetach(ifp);
 		else
 			ether_ifdetach(ifp);
-	} else
-		NDIS_UNLOCK(sc);
-
+	}
 	bus_generic_detach(dev);
 
 	if (sc->ndis_irq)
@@ -748,9 +738,6 @@ ndis_detach(dev)
 #if __FreeBSD_version < 502113
 	sysctl_ctx_free(&sc->ndis_ctx);
 #endif
-	NDIS_LOCK_DESTROY(&sc->ndis_lock);
-	NDIS_LOCK_DESTROY(&sc->ndis_intrlock);
-
 	return(0);
 }
 
@@ -882,8 +869,6 @@ ndis_rxeof(adapter, packets, pktcnt)
 			ifp->if_input(ifp, m0);
 		}
 	}
-
-	return;
 }
 
 /*
@@ -902,7 +887,6 @@ ndis_txeof(adapter, packet, status)
 	struct ifnet		*ifp;
 	int			idx;
 	struct mbuf		*m;
-	NDIS_LOCK_INFO;
 
 	block = (ndis_miniport_block *)adapter;
 	sc = (struct ndis_softc *)block->nmb_ifp;
@@ -916,7 +900,6 @@ ndis_txeof(adapter, packet, status)
 	ndis_free_packet(packet);
 	m_freem(m);
 
-	NDIS_LOCK(sc);
 	sc->ndis_txarray[idx] = NULL;
 	sc->ndis_txpending++;
 
@@ -926,11 +909,8 @@ ndis_txeof(adapter, packet, status)
 		ifp->if_oerrors++;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~IFF_OACTIVE;
-	NDIS_UNLOCK(sc);
 
 	ndis_sched(ndis_starttask, ifp, NDIS_TASKQUEUE);
-
-	return;
 }
 
 __stdcall static void
@@ -944,8 +924,6 @@ ndis_linksts(adapter, status, sbuf, slen)
 
 	block = adapter;
 	block->nmb_getstat = status;
-
-	return;
 }
 
 __stdcall static void
@@ -975,8 +953,6 @@ ndis_linksts_done(adapter)
 	default:
 		break;
 	}
-
-	return;
 }
 
 static void
@@ -986,7 +962,6 @@ ndis_intrtask(arg)
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
 	uint8_t			irql;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -995,12 +970,8 @@ ndis_intrtask(arg)
 	irql = FASTCALL1(hal_raise_irql, DISPATCH_LEVEL);
 	ndis_intrhand(sc);
 	FASTCALL1(hal_lower_irql, irql);
-	NDIS_INTRLOCK(sc);
 	ndis_enable_intr(sc);
-	NDIS_INTRUNLOCK(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
-
-	return;
 }
 
 static void
@@ -1011,7 +982,6 @@ ndis_intr(arg)
 	struct ifnet		*ifp;
 	int			is_our_intr = 0;
 	int			call_isr = 0;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -1019,19 +989,15 @@ ndis_intr(arg)
 	if (sc->ndis_block.nmb_miniportadapterctx == NULL)
 		return;
 
-	NDIS_INTRLOCK(sc);
 	if (sc->ndis_block.nmb_interrupt->ni_isrreq == TRUE)
 		ndis_isr(sc, &is_our_intr, &call_isr);
 	else {
 		ndis_disable_intr(sc);
 		call_isr = 1;
 	}
-	NDIS_INTRUNLOCK(sc);
 
 	if ((is_our_intr || call_isr))
 		ndis_sched(ndis_intrtask, ifp, NDIS_SWI);
-
-	return;
 }
 
 static void
@@ -1057,7 +1023,6 @@ ndis_ticktask(xsc)
 	uint8_t			rval;
 	ndis_media_state	linkstate;
 	int			error, len;
-	NDIS_LOCK_INFO;
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
@@ -1078,15 +1043,11 @@ ndis_ticktask(xsc)
 	error = ndis_get_info(sc, OID_GEN_MEDIA_CONNECT_STATUS,
 	    (void *)&linkstate, &len);
 
-	NDIS_LOCK(sc);
-
 	if (sc->ndis_link == 0 && linkstate == nmc_connected) {
 		device_printf(sc->ndis_dev, "link up\n");
 		sc->ndis_link = 1;
-		NDIS_UNLOCK(sc);
 		if (sc->ndis_80211)
 			ndis_getstate_80211(sc);
-		NDIS_LOCK(sc);
 #ifdef LINK_STATE_UP
 		sc->arpcom.ac_if.if_link_state = LINK_STATE_UP;
 		rt_ifmsg(&(sc->arpcom.ac_if));
@@ -1102,7 +1063,6 @@ ndis_ticktask(xsc)
 #endif /* LINK_STATE_DOWN */
 	}
 
-	NDIS_UNLOCK(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
@@ -1129,8 +1089,6 @@ ndis_map_sclist(arg, segs, nseg, mapsize, error)
 		sclist->nsl_elements[i].nse_addr.np_quad = segs[i].ds_addr;
 		sclist->nsl_elements[i].nse_len = segs[i].ds_len;
 	}
-
-	return;
 }
 
 static void
@@ -1142,7 +1100,6 @@ ndis_starttask(arg)
 	ifp = arg;
 	if (!ifq_is_empty(&ifp->if_snd))
 		ndis_start(ifp);
-	return;
 }
 
 /*
@@ -1167,14 +1124,10 @@ ndis_start(ifp)
 	ndis_packet		**p0 = NULL, *p = NULL;
 	ndis_tcpip_csum		*csum;
 	int			pcnt = 0;
-	NDIS_LOCK_INFO;
 
 	sc = ifp->if_softc;
 
-	NDIS_LOCK(sc);
-
 	if (!sc->ndis_link || ifp->if_flags & IFF_OACTIVE) {
-		NDIS_UNLOCK(sc);
 		return;
 	}
 
@@ -1188,7 +1141,6 @@ ndis_start(ifp)
 		sc->ndis_txarray[sc->ndis_txidx] = NULL;
 
 		if (ndis_mtop(m, &sc->ndis_txarray[sc->ndis_txidx])) {
-			NDIS_UNLOCK(sc);
 			return;
 		}
 		ifq_dequeue(&ifp->if_snd, m);
@@ -1257,7 +1209,6 @@ ndis_start(ifp)
 	}
 
 	if (pcnt == 0) {
-		NDIS_UNLOCK(sc);
 		return;
 	}
 
@@ -1269,14 +1220,10 @@ ndis_start(ifp)
 	 */
 	ifp->if_timer = 5;
 
-	NDIS_UNLOCK(sc);
-
 	if (sc->ndis_maxpkts == 1)
 		ndis_send_packet(sc, p);
 	else
 		ndis_send_packets(sc, p0, pcnt);
-
-	return;
 }
 
 static void
@@ -1286,7 +1233,6 @@ ndis_init(xsc)
 	struct ndis_softc	*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	int			i, error;
-	NDIS_LOCK_INFO;
 
 	/*
 	 * Avoid reintializing the link unnecessarily.
@@ -1338,16 +1284,12 @@ ndis_init(xsc)
 	if (sc->ndis_80211)
 		ndis_setstate_80211(sc);
 
-	NDIS_LOCK(sc);
-
 	sc->ndis_txidx = 0;
 	sc->ndis_txpending = sc->ndis_maxpkts;
 	sc->ndis_link = 0;
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
-
-	NDIS_UNLOCK(sc);
 
 	/*
 	 * Some drivers don't set this value. The NDIS spec says
@@ -1425,8 +1367,6 @@ ndis_ifmedia_sts(ifp, ifmr)
 		device_printf(sc->ndis_dev, "unknown speed: %d\n", media_info);
 		break;
 	}
-
-	return;
 }
 
 static void
@@ -1619,8 +1559,6 @@ ndis_setstate_80211(sc)
 
 	if (rval)
 		device_printf (sc->ndis_dev, "set ssid failed: %d\n", rval);
-
-	return;
 }
 
 static void
@@ -1775,8 +1713,9 @@ ndis_getstate_80211(sc)
 			break;
 		}
 		free(bs, M_TEMP);
-	} else
+	} else {
 		return;
+	}
 
 	len = sizeof(ssid);
 	bzero((char *)&ssid, len);
@@ -1865,7 +1804,6 @@ ndis_getstate_80211(sc)
 	else
 		ic->ic_flags &= ~IEEE80211_F_WEPON;
 */
-	return;
 }
 
 static int
@@ -1878,8 +1816,6 @@ ndis_ioctl(ifp, command, data, cr)
 	struct ndis_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	int			i, error = 0;
-
-	/*NDIS_LOCK(sc);*/
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -1960,9 +1896,6 @@ ndis_ioctl(ifp, command, data, cr)
 		sc->ndis_skip = 0;
 		break;
 	}
-
-	/*NDIS_UNLOCK(sc);*/
-
 	return(error);
 }
 
@@ -2089,19 +2022,14 @@ ndis_watchdog(ifp)
 	struct ifnet		*ifp;
 {
 	struct ndis_softc		*sc;
-	NDIS_LOCK_INFO;
 
 	sc = ifp->if_softc;
 
-	NDIS_LOCK(sc);
 	ifp->if_oerrors++;
 	device_printf(sc->ndis_dev, "watchdog timeout\n");
-	NDIS_UNLOCK(sc);
 
 	ndis_reset_nic(sc);
 	ndis_sched(ndis_starttask, ifp, NDIS_TASKQUEUE);
-
-	return;
 }
 
 /*
@@ -2113,20 +2041,15 @@ ndis_stop(sc)
 	struct ndis_softc		*sc;
 {
 	struct ifnet		*ifp;
-	NDIS_LOCK_INFO;
 
 	ifp = &sc->arpcom.ac_if;
 	callout_stop(&sc->ndis_stat_timer);
 
 	ndis_halt_nic(sc);
 
-	NDIS_LOCK(sc);
 	ifp->if_timer = 0;
 	sc->ndis_link = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	NDIS_UNLOCK(sc);
-
-	return;
 }
 
 /*
@@ -2141,6 +2064,4 @@ ndis_shutdown(dev)
 
 	sc = device_get_softc(dev);
 	ndis_shutdown_nic(sc);
-
-	return;
 }

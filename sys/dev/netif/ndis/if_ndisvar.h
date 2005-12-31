@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndisvar.h,v 1.15 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndisvar.h,v 1.2 2004/09/14 23:57:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndisvar.h,v 1.3 2005/12/31 19:39:14 dillon Exp $
  */
 
 #define NDIS_DEFAULT_NODENAME	"FreeBSD NDIS node"
@@ -95,8 +95,6 @@ struct ndis_softc {
 	struct resource		*ndis_res_cm;	/* common mem (pccard) */
 	struct resource_list	ndis_rl;
 	int			ndis_rescnt;
-	struct lwkt_token	ndis_lock;
-	struct lwkt_token	ndis_intrlock;
 	device_t		ndis_dev;
 	int			ndis_unit;
 	ndis_miniport_block	ndis_block;
@@ -133,12 +131,4 @@ struct ndis_softc {
 	bus_dmamap_t		*ndis_tmaps;
 	int			ndis_mmapcnt;
 };
-
-#define NDIS_LOCK_INFO		struct lwkt_tokref tokinfo
-#define NDIS_LOCK_INIT(tok)	lwkt_token_init(tok)
-#define NDIS_LOCK_DESTROY(tok)	lwkt_token_uninit(tok)
-#define NDIS_LOCK(_sc)		lwkt_gettoken(&tokinfo, &(_sc)->ndis_lock)
-#define NDIS_INTRLOCK(_sc)	lwkt_gettoken(&tokinfo, &(_sc)->ndis_intrlock)
-#define NDIS_UNLOCK(_sc)	lwkt_reltoken(&tokinfo)
-#define NDIS_INTRUNLOCK(_sc)	lwkt_reltoken(&tokinfo)
 
