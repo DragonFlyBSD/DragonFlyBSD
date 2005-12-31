@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.8 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.9 2005/12/31 23:35:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1059,13 +1059,10 @@ ndis_set_info(void *arg, ndis_oid oid, void *buf, int *buflen)
 	uint32_t		byteswritten = 0, bytesneeded = 0;
 	int			error;
 	uint8_t			irql;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	setfunc = sc->ndis_chars.nmc_setinfo_func;
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
-	NDIS_UNLOCK(sc);
 
 	if (adapter == NULL || setfunc == NULL)
 		return(ENXIO);
@@ -1227,17 +1224,12 @@ ndis_reset_nic(void *arg)
 	ndis_handle		adapter;
 	ndis_reset_handler	resetfunc;
 	uint8_t			addressing_reset;
-	struct ifnet		*ifp;
 	int			rval;
 	uint8_t			irql;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	ifp = &sc->arpcom.ac_if;
-	NDIS_LOCK(sc);
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
 	resetfunc = sc->ndis_chars.nmc_reset_func;
-	NDIS_UNLOCK(sc);
 	if (adapter == NULL || resetfunc == NULL)
 		return(EIO);
 
@@ -1258,16 +1250,11 @@ ndis_halt_nic(void *arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	ndis_halt_handler	haltfunc;
-	struct ifnet		*ifp;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	ifp = &sc->arpcom.ac_if;
 
-	NDIS_LOCK(sc);
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
 	if (adapter == NULL) {
-		NDIS_UNLOCK(sc);
 		return(EIO);
 	}
 
@@ -1278,13 +1265,10 @@ ndis_halt_nic(void *arg)
 	 */
 
 	haltfunc = sc->ndis_chars.nmc_halt_func;
-	NDIS_UNLOCK(sc);
 
 	haltfunc(adapter);
 
-	NDIS_LOCK(sc);
 	sc->ndis_block.nmb_miniportadapterctx = NULL;
-	NDIS_UNLOCK(sc);
 
 	return(0);
 }
@@ -1295,13 +1279,10 @@ ndis_shutdown_nic(void *arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	ndis_shutdown_handler	shutdownfunc;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
 	shutdownfunc = sc->ndis_chars.nmc_shutdown_handler;
-	NDIS_UNLOCK(sc);
 	if (adapter == NULL || shutdownfunc == NULL)
 		return(EIO);
 
@@ -1325,16 +1306,13 @@ ndis_init_nic(void *arg)
 	ndis_status		status, openstatus = 0;
 	ndis_medium		mediumarray[NdisMediumMax];
 	uint32_t		chosenmedium, i;
-	NDIS_LOCK_INFO;
 
 	if (arg == NULL)
 		return(EINVAL);
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	block = &sc->ndis_block;
 	initfunc = sc->ndis_chars.nmc_init_func;
-	NDIS_UNLOCK(sc);
 
 	TAILQ_INIT(&block->nmb_timerlist);
 
@@ -1350,9 +1328,7 @@ ndis_init_nic(void *arg)
 	 * If the init failed, none of these will work.
 	 */
 	if (status != NDIS_STATUS_SUCCESS) {
-		NDIS_LOCK(sc);
 		sc->ndis_block.nmb_miniportadapterctx = NULL;
-		NDIS_UNLOCK(sc);
 		return(ENXIO);
 	}
 
@@ -1382,13 +1358,10 @@ ndis_disable_intr(void *arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	ndis_disable_interrupts_handler	intrdisfunc;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
 	intrdisfunc = sc->ndis_chars.nmc_disable_interrupts_func;
-	NDIS_UNLOCK(sc);
 	if (adapter == NULL || intrdisfunc == NULL)
 	    return;
 	intrdisfunc(adapter);
@@ -1426,16 +1399,13 @@ ndis_intrhand(void *arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	ndis_interrupt_handler	intrfunc;
-	NDIS_LOCK_INFO;
 
 	if (arg == NULL)
 		return(EINVAL);
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
 	intrfunc = sc->ndis_chars.nmc_interrupt_func;
-	NDIS_UNLOCK(sc);
 	if (adapter == NULL || intrfunc == NULL)
 		return(EINVAL);
 
@@ -1454,13 +1424,10 @@ ndis_get_info(void *arg, ndis_oid oid, void *buf, int *buflen)
 	uint32_t		byteswritten = 0, bytesneeded = 0;
 	int			error;
 	uint8_t			irql;
-	NDIS_LOCK_INFO;
 
 	sc = arg;
-	NDIS_LOCK(sc);
 	queryfunc = sc->ndis_chars.nmc_queryinfo_func;
 	adapter = sc->ndis_block.nmb_miniportadapterctx;
-	NDIS_UNLOCK(sc);
 
 	if (adapter == NULL || queryfunc == NULL)
 		return(ENXIO);

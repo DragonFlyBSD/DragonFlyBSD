@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.13 2005/12/31 19:39:14 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.14 2005/12/31 23:35:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -362,7 +362,7 @@ ndis_attach(dev)
 {
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ndis_softc	*sc;
-	struct ifnet		*ifp = NULL;
+	struct ifnet		*ifp;
 	void			*img;
 	int			error = 0, len;
 	int			i;
@@ -2060,8 +2060,12 @@ void
 ndis_shutdown(dev)
 	device_t		dev;
 {
-	struct ndis_softc		*sc;
+	struct ndis_softc	*sc;
+	struct ifnet		*ifp;
 
 	sc = device_get_softc(dev);
+	ifp = &sc->arpcom.ac_if;
+	lwkt_serialize_enter(ifp->if_serializer);
 	ndis_shutdown_nic(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 }
