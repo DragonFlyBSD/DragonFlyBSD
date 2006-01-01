@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.9 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.9.2.1 2006/01/01 16:59:44 y0netan1 Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -514,8 +514,14 @@ ips_ffdc_reset(ips_softc_t *sc)
 	}
 	ips_send_ffdc_reset_cmd(command);
 	if (COMMAND_ERROR(&command->status)) {
-		device_printf(sc->dev, "ERROR: ffdc reset command failed!\n");
-		return 1;
+		/*
+		 * apparently some cards may report error status for
+		 * an ffdc reset command, even though it works correctly
+		 * afterwards.  just complain about that and proceed here.
+		 */
+		device_printf(sc->dev,
+			      "ERROR: ffdc reset command failed(0x%04x)!\n",
+			      command->status.value);
 	}
 	return 0;
 }
