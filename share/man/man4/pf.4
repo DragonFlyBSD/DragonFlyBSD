@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.4,v 1.46 2004/02/19 21:29:51 cedric Exp $
-.\"	$DragonFly: src/share/man/man4/pf.4,v 1.1 2005/03/24 01:15:59 corecode Exp $
+.\"	$DragonFly: src/share/man/man4/pf.4,v 1.1.4.1 2006/01/01 00:53:28 dillon Exp $
 .\"
 .\" Copyright (C) 2001, Kjell Wooding.  All rights reserved.
 .\"
@@ -561,7 +561,7 @@ Implemented as a standard 2-phase commit, which will either fail for all
 rulesets or completely succeed.
 All tickets need to be valid.
 Returns
-.Dv EBUSY
+.Er EBUSY
 if a concurrent process is trying to update some of the same rulesets
 concurrently.
 .It Dv DIOCXROLLBACK Fa "struct pfioc_trans"
@@ -646,7 +646,8 @@ from the kernel's fingerprint list.
 The rest of the structure members will come back filled.
 Get the whole list by repeatedly incrementing the
 .Va fp_getnum
-number until the ioctl returns EBUSY.
+number until the ioctl returns
+.Er EBUSY .
 .It Dv DIOCGETSRCNODES Fa "struct pfioc_src_nodes"
 .Bd -literal
 struct pfioc_src_nodes {

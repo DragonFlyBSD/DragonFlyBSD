@@ -68,7 +68,7 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.4 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.4.2.1 2006/01/01 00:53:28 dillon Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -614,7 +614,7 @@ The routine can safely wait (sleep) for resources.
 .It Dv BUS_DMA_NOWAIT
 The routine is not allowed to wait for resources.
 If resources are not available,
-.Dv ENOMEM
+.Er ENOMEM
 is returned.
 .It Dv BUS_DMA_COHERENT
 Attempt to map this memory such that cache sync operations are
