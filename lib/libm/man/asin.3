@@ -27,7 +27,7 @@
 .\"
 .\"     from: @(#)asin.3	5.1 (Berkeley) 5/2/91
 .\"	$NetBSD: asin.3,v 1.16 2003/08/07 16:44:46 agc Exp $
-.\"	$DragonFly: src/lib/libm/man/asin.3,v 1.1 2005/07/26 21:15:20 joerg Exp $
+.\"	$DragonFly: src/lib/libm/man/asin.3,v 1.1.2.1 2006/01/01 00:54:09 dillon Exp $
 .\"
 .Dd May 2, 1991
 .Dt ASIN 3
@@ -63,7 +63,8 @@ and
 .Fn asinf "x"
 return NaN and set the global variable
 .Va errno
-to EDOM.
+to
+.Er EDOM .
 .\" SYSV_MODE
 .\" call
 .\" .Xr matherr 3 .
