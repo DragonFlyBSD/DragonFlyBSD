@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/copyright.h,v 1.10.2.5 2003/01/07 04:28:55 imp Exp $
- * $DragonFly: src/sys/sys/copyright.h,v 1.7 2005/03/05 18:08:50 swildner Exp $
+ * $DragonFly: src/sys/sys/copyright.h,v 1.7.4.1 2006/01/01 00:57:39 dillon Exp $
  */
 
 
@@ -36,7 +36,7 @@
 
 /* DragonFly */
 #define COPYRIGHT_DragonFly \
-	"Copyright (c) 2003, 2004, 2005 The DragonFly Project.\n"
+	"Copyright (c) 2003, 2004, 2005, 2006 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \
