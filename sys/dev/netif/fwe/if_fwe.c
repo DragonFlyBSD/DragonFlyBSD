@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.23 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.23.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -255,8 +255,9 @@ fwe_detach(device_t dev)
 
 	lwkt_serialize_enter(fwe->fwe_if.if_serializer);
 	fwe_stop(fwe);
-	ether_ifdetach(&fwe->fwe_if);
 	lwkt_serialize_exit(fwe->fwe_if.if_serializer);
+
+	ether_ifdetach(&fwe->fwe_if);
 	return 0;
 }
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47.2.1 2005/12/30 13:44:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.47.2.2 2006/01/01 00:59:04 dillon Exp $
  */
 
 /*
@@ -2195,19 +2195,18 @@ dc_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct dc_mediainfo *m;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		dc_stop(sc);
+		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
 	if (sc->dc_miibus)
 		device_delete_child(dev, sc->dc_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->dc_intrhand)
-		bus_teardown_intr(dev, sc->dc_irq, sc->dc_intrhand);
 
 	if (sc->dc_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->dc_irq);
@@ -2219,7 +2218,7 @@ dc_detach(device_t dev)
 	if (sc->dc_pnic_rx_buf != NULL)
 		free(sc->dc_pnic_rx_buf, M_DEVBUF);
 
-	while(sc->dc_mi != NULL) {
+	while (sc->dc_mi != NULL) {
 		m = sc->dc_mi->dc_next;
 		free(sc->dc_mi, M_DEVBUF);
 		sc->dc_mi = m;
@@ -2228,7 +2227,6 @@ dc_detach(device_t dev)
 	if (sc->dc_srom)
 		free(sc->dc_srom, M_DEVBUF);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

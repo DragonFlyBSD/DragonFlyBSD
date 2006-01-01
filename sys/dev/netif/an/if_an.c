@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.35 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.35.2.1 2006/01/01 00:59:03 dillon Exp $
  */
 
 /*
@@ -794,11 +794,12 @@ an_detach(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	an_stop(sc);
+	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	ifmedia_removeall(&sc->an_ifmedia);
 	ether_ifdetach(ifp);
-	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
 	an_release_resources(dev);
-	lwkt_serialize_exit(ifp->if_serializer);
 	return 0;
 }
 

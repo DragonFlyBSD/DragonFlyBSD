@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.13 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.13.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,17 +150,21 @@ ed_isa_detach(device_t dev)
         struct ifnet *ifp = &sc->arpcom.ac_if;
 
         lwkt_serialize_enter(ifp->if_serializer);
+
         if (sc->gone) {
                 device_printf(dev, "already unloaded\n");
+		lwkt_serialize_exit(ifp->if_serializer);
                 return (0);
         }
         ed_stop(sc);
         ifp->if_flags &= ~IFF_RUNNING;
-        ether_ifdetach(ifp);
         sc->gone = 1;
         bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-        ed_release_resources(dev);
+
         lwkt_serialize_exit(ifp->if_serializer);
+
+        ether_ifdetach(ifp);
+        ed_release_resources(dev);
         return (0);
 }
 

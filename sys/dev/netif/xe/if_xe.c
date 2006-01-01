@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.30 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.30.2.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ static u_int16_t xe_phy_readreg		(struct xe_softc *scp, u_int16_t reg);
 static void      xe_phy_writereg	(struct xe_softc *scp, u_int16_t reg, u_int16_t data);
 
 /* Debugging functions */
-static void      xe_reg_dump		(struct xe_softc *scp);
+static void      xe_reg_dump		(struct xe_softc *scp) __unused;
 static void      xe_mii_dump		(struct xe_softc *scp);
 
 #define XE_DEBUG
@@ -232,17 +232,19 @@ int
 xe_detach(device_t dev)
 {
   struct xe_softc *sc = device_get_softc(dev);
+  struct ifnet *ifp = &sc->arpcom.ac_if;
 
-  crit_enter();
+  lwkt_serialize_enter(ifp->if_serializer);
 
-  sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
+  ifp->if_flags &= ~IFF_RUNNING; 
   callout_stop(&sc->xe_timer);
-  ether_ifdetach(&sc->arpcom.ac_if);
   bus_teardown_intr(dev, sc->irq_res, sc->intrhand);
 
-  crit_exit();
+  lwkt_serialize_exit(ifp->if_serializer);
 
+  ether_ifdetach(ifp);
   xe_deactivate(dev);
+
   return 0;
 }
 

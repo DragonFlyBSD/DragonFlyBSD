@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.41 2005/11/29 19:56:55 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.41.2.1 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -1246,6 +1246,7 @@ sk_attach(device_t dev)
 	default:
 		printf("skc%d: unsupported PHY type: %d\n",
 		    sc->sk_unit, sc_if->sk_phytype);
+		sc->sk_if[port] = NULL;
 		return(ENODEV);
 	}
 
@@ -1303,6 +1304,7 @@ sk_attach(device_t dev)
 		    M_DEVBUF);
 		contigfree(sc_if->sk_rdata,
 		    sizeof(struct sk_ring_data), M_DEVBUF);
+		sc->sk_if[port] = NULL;
 		return(ENXIO);
 	}
 
@@ -1528,17 +1530,12 @@ sk_detach(device_t dev)
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 
-	lwkt_serialize_enter(&sk_serializer);
-
-	sk_stop(sc_if);
 	ether_ifdetach(ifp);
 	bus_generic_detach(dev);
 	if (sc_if->sk_miibus != NULL)
 		device_delete_child(dev, sc_if->sk_miibus);
 	contigfree(sc_if->sk_cdata.sk_jumbo_buf, SK_JMEM, M_DEVBUF);
 	contigfree(sc_if->sk_rdata, sizeof(struct sk_ring_data), M_DEVBUF);
-
-	lwkt_serialize_exit(&sk_serializer);
 
 	return(0);
 }
@@ -1550,6 +1547,17 @@ skc_detach(device_t dev)
 
 	sc = device_get_softc(dev);
 
+	lwkt_serialize_enter(&sk_serializer);
+
+	if (sc->sk_if[SK_PORT_A] != NULL)
+		sk_stop(sc->sk_if[SK_PORT_A]);
+	if (sc->sk_if[SK_PORT_B] != NULL)
+		sk_stop(sc->sk_if[SK_PORT_B]);
+
+	bus_teardown_intr(dev, sc->sk_irq, sc->sk_intrhand);
+
+	lwkt_serialize_exit(&sk_serializer);
+
 	/*
 	 * recursed from sk_detach ?  don't need serializer
 	 */
@@ -1559,7 +1567,6 @@ skc_detach(device_t dev)
 	if (sc->sk_devs[SK_PORT_B] != NULL)
 		device_delete_child(dev, sc->sk_devs[SK_PORT_B]);
 
-	bus_teardown_intr(dev, sc->sk_irq, sc->sk_intrhand);
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sk_irq);
 	bus_release_resource(dev, SK_RES, SK_RID, sc->sk_res);
 

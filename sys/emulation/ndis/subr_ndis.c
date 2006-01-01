@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.9 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.9.2.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 /*
@@ -48,15 +48,14 @@
  * expects.
  */
 
-
 #include <sys/ctype.h>
 #include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/types.h>
 #include <sys/errno.h>
 
 #include <sys/callout.h>
-#include <sys/kernel.h>
-#include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/lock.h>
 #include <sys/socket.h>
@@ -2116,18 +2115,19 @@ ndis_sync_with_intr(ndis_miniport_interrupt *intr, void *syncfunc,
 		    void *syncctx)
 {
 	struct ndis_softc	*sc;
+	struct ifnet		*ifp;
 	__stdcall uint8_t (*sync)(void *);
 	uint8_t			rval;
-	NDIS_LOCK_INFO;
 
 	if (syncfunc == NULL || syncctx == NULL)
 		return(0);
 
 	sc = (struct ndis_softc *)intr->ni_block->nmb_ifp;
+	ifp = &sc->arpcom.ac_if;
 	sync = syncfunc;
-	NDIS_INTRLOCK(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 	rval = sync(syncctx);
-	NDIS_INTRUNLOCK(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(rval);
 }

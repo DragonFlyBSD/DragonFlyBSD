@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.35 2005/11/29 19:56:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.35.2.1 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -921,20 +921,19 @@ nge_detach(device_t dev)
 	struct nge_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		nge_reset(sc);
 		nge_stop(sc);
+		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
 	if (sc->nge_miibus)
 		device_delete_child(dev, sc->nge_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->nge_intrhand)
-		bus_teardown_intr(dev, sc->nge_irq, sc->nge_intrhand);
 
 	if (sc->nge_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->nge_irq);
@@ -947,7 +946,6 @@ nge_detach(device_t dev)
 	if (sc->nge_cdata.nge_jumbo_buf)
 		contigfree(sc->nge_cdata.nge_jumbo_buf, NGE_JMEM, M_DEVBUF);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

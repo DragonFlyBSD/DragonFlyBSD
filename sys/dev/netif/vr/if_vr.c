@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.40 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.40.2.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 /*
@@ -813,18 +813,17 @@ vr_detach(device_t dev)
 	struct vr_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		vr_stop(sc);
+		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 	if (sc->vr_miibus != NULL)
 		device_delete_child(dev, sc->vr_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->vr_intrhand != NULL)
-		bus_teardown_intr(dev, sc->vr_irq, sc->vr_intrhand);
 
 	if (sc->vr_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->vr_irq);
@@ -835,7 +834,6 @@ vr_detach(device_t dev)
 	if (sc->vr_cdata.vr_tx_buf != NULL)
 		contigfree(sc->vr_cdata.vr_tx_buf, VR_TX_BUF_SIZE, M_DEVBUF);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

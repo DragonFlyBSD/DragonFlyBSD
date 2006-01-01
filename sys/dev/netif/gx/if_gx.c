@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.22 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.22.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -570,19 +570,18 @@ gx_detach(device_t dev)
 	struct gx_softc *gx = device_get_softc(dev);
 	struct ifnet *ifp = &gx->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
-		ether_ifdetach(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		gx_reset(gx);
 		gx_stop(gx);
-	}
+		bus_teardown_intr(gx->gx_dev, gx->gx_irq, gx->gx_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
 
+		ether_ifdetach(ifp);
+	}
 	if (gx->gx_miibus)
 		device_delete_child(gx->gx_dev, gx->gx_miibus);
 	bus_generic_detach(gx->gx_dev);
-
-	if (gx->gx_intrhand)
-		bus_teardown_intr(gx->gx_dev, gx->gx_irq, gx->gx_intrhand);
 
 	if (gx->gx_irq)
 		bus_release_resource(gx->gx_dev, SYS_RES_IRQ, 0, gx->gx_irq);
@@ -597,7 +596,6 @@ gx_detach(device_t dev)
 	if (gx->gx_tbimode)
 		ifmedia_removeall(&gx->gx_media);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 

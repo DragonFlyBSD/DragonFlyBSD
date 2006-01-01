@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.29 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.29.2.1 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -954,19 +954,18 @@ rl_detach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		rl_stop(sc);
+		bus_teardown_intr(dev, sc->rl_irq, sc->rl_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
 	if (sc->rl_miibus)
 		device_delete_child(dev, sc->rl_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->rl_intrhand)
-		bus_teardown_intr(dev, sc->rl_irq, sc->rl_intrhand);
 
 	if (sc->rl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->rl_irq);
@@ -982,8 +981,6 @@ rl_detach(device_t dev)
 		bus_dma_tag_destroy(sc->rl_tag);
 	if (sc->rl_parent_tag)
 		bus_dma_tag_destroy(sc->rl_parent_tag);
-
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }

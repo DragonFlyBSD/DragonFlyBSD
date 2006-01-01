@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.9 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.9.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 /*
@@ -230,15 +230,22 @@ static int
 ep_pccard_detach(device_t dev)
 {
 	struct ep_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (sc->gone) {
 		device_printf(dev, "already unloaded\n");
+		lwkt_serialize_exit(ifp->if_serializer);
 		return (0);
 	}
-	sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
-	ether_ifdetach(&sc->arpcom.ac_if);
+	ifp->if_flags &= ~IFF_RUNNING; 
 	sc->gone = 1;
 	bus_teardown_intr(dev, sc->irq, sc->ep_intrhand);
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	ether_ifdetach(&sc->arpcom.ac_if);
 	ep_free(dev);
 	return (0);
 }

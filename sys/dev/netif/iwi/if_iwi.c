@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.9 2005/12/18 02:47:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.9.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -571,10 +571,13 @@ iwi_detach(device_t dev)
 
 	tsleep(IWI_FW_MON_EXIT(sc), 0, "iwiexi", 10 * hz);
 
-	lwkt_serialize_enter(ifp->if_serializer);
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		iwi_stop(sc);
 		iwi_free_firmware(sc);
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		bpfdetach(ifp);
 		ieee80211_ifdetach(ifp);
 	}
@@ -584,9 +587,6 @@ iwi_detach(device_t dev)
 		sc->sysctl_tree = 0;
 	}
 
-	if (sc->sc_ih != NULL)
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
-
 	if (sc->irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
 
@@ -594,7 +594,6 @@ iwi_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_MEMORY, IWI_PCI_BAR0,
 		    sc->mem);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	iwi_release(sc);
 

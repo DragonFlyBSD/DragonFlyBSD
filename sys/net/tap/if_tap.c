@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.23 2005/12/11 13:00:17 swildner Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.23.2.1 2006/01/01 00:59:06 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -172,9 +172,7 @@ tapmodevent(module_t mod, int type, void *data)
 					"taplastunit = %d\n",
 					minor(tp->tap_dev), taplastunit);
 
-				lwkt_serialize_enter(ifp->if_serializer);
 				ether_ifdetach(ifp);
-				lwkt_serialize_exit(ifp->if_serializer);
 				destroy_dev(tp->tap_dev);
 				free(tp, M_TAP);
 			}

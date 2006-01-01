@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.33 2005/12/16 21:05:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.33.2.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 /*
@@ -510,14 +510,13 @@ wi_detach(device_t dev)
 
 	/* check if device was removed */
 	sc->wi_gone |= !bus_child_present(dev);
-
 	wi_stop(ifp, 0);
-
-	ieee80211_ifdetach(ifp);
-	wi_free(dev);
+	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
+	ieee80211_ifdetach(ifp);
+	wi_free(dev);
 	return (0);
 }
 
@@ -2816,10 +2815,6 @@ wi_free(device_t dev)
 {
 	struct wi_softc	*sc = device_get_softc(dev);
 
-	if (sc->wi_intrhand != NULL) {
-		bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
-		sc->wi_intrhand = NULL;
-	}
 	if (sc->iobase != NULL) {
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->iobase_rid, sc->iobase);
 		sc->iobase = NULL;

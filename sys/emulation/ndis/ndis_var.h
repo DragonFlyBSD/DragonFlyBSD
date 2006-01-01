@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/ndis_var.h,v 1.27 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/ndis_var.h,v 1.2 2004/07/29 21:35:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/ndis_var.h,v 1.2.4.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 #ifndef _NDIS_VAR_H_
@@ -1154,9 +1154,6 @@ typedef struct ndis_packet ndis_packet;
 
 /* mbuf ext type for NDIS */
 #define EXT_NDIS		0x999
-
-/* mtx type for NDIS */
-#define MTX_NDIS_LOCK "NDIS lock"
 
 struct ndis_filterdbs {
 	union {

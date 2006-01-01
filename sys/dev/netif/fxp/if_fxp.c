@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.40.2.1 2005/12/28 10:39:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.40.2.2 2006/01/01 00:59:04 dillon Exp $
  */
 
 /*
@@ -748,11 +748,6 @@ fxp_detach(device_t dev)
 	CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
 
 	/*
-	 * Close down routes etc.
-	 */
-	ether_ifdetach(&sc->arpcom.ac_if);
-
-	/*
 	 * Free all media structures.
 	 */
 	if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
@@ -761,9 +756,15 @@ fxp_detach(device_t dev)
 	if (sc->ih)
 		bus_teardown_intr(dev, sc->irq, sc->ih);
 
+	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
+
+	/*
+	 * Close down routes etc.
+	 */
+	ether_ifdetach(&sc->arpcom.ac_if);
+
 	/* Release our allocated resources. */
 	fxp_release(dev);
-	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 
 	return (0);
 }

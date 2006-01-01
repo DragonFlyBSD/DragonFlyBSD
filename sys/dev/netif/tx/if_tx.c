@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.33 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.33.2.1 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -297,25 +297,21 @@ fail:
 static int
 epic_detach(device_t dev)
 {
-	struct ifnet *ifp;
-	epic_softc_t *sc;
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
-
-	lwkt_serialize_enter(ifp->if_serializer);
+	epic_softc_t *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	if (device_is_attached(dev)) {
-		ether_ifdetach(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		epic_stop(sc);
+		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		ether_ifdetach(ifp);
 	}
 
 	if (sc->miibus)
 		device_delete_child(dev, sc->miibus);
 	bus_generic_detach(dev);
-
-	if (sc->sc_ih)
-		bus_teardown_intr(dev, sc->irq, sc->sc_ih);
 
 	if (sc->irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
@@ -329,7 +325,6 @@ epic_detach(device_t dev)
 	if (sc->rx_desc)
 		free(sc->rx_desc, M_DEVBUF);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

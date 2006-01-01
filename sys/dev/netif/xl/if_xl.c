@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.42 2005/11/28 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.42.2.1 2006/01/01 00:59:06 dillon Exp $
  */
 
 /*
@@ -1632,8 +1632,6 @@ xl_detach(device_t dev)
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (sc->xl_flags & XL_FLAG_USE_MMIO) {
 		rid = XL_PCI_LOMEM;
 		res = SYS_RES_MEMORY;
@@ -1643,8 +1641,12 @@ xl_detach(device_t dev)
 	}
 
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		xl_reset(sc);
 		xl_stop(sc);
+		bus_teardown_intr(dev, sc->xl_irq, sc->xl_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
@@ -1652,9 +1654,6 @@ xl_detach(device_t dev)
 		device_delete_child(dev, sc->xl_miibus);
 	bus_generic_detach(dev);
 	ifmedia_removeall(&sc->ifmedia);
-
-	if (sc->xl_intrhand)
-		bus_teardown_intr(dev, sc->xl_irq, sc->xl_intrhand);
 
 	if (sc->xl_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->xl_irq);
@@ -1665,7 +1664,6 @@ xl_detach(device_t dev)
 		bus_release_resource(dev, res, rid, sc->xl_res);
 
 	xl_dma_free(dev);
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }

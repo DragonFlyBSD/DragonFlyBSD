@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.27.2.1 2005/12/28 07:03:54 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.27.2.2 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -635,20 +635,19 @@ pcn_detach(device_t dev)
 	struct pcn_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		pcn_reset(sc);
 		pcn_stop(sc);
+		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 
 	if (sc->pcn_miibus != NULL)
 		device_delete_child(dev, sc->pcn_miibus);
 	bus_generic_detach(dev);
-
-	if (sc->pcn_intrhand)
-		bus_teardown_intr(dev, sc->pcn_irq, sc->pcn_intrhand);
 
 	if (sc->pcn_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->pcn_irq);
@@ -659,7 +658,6 @@ pcn_detach(device_t dev)
 		contigfree(sc->pcn_ldata, sizeof(struct pcn_list_data),
 			   M_DEVBUF);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.8 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.8.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -209,15 +209,15 @@ lnc_pci_detach(device_t dev)
 {
 	lnc_softc_t *sc = device_get_softc(dev);
 
-	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
 	if (device_is_attached(dev)) {
-		ether_ifdetach(&sc->arpcom.ac_if);
+		lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 		lnc_stop(sc);
-	}
-
-	if (sc->intrhand)
 		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
+		lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
+
+		ether_ifdetach(&sc->arpcom.ac_if);
+	}
 
 	if (sc->irqres)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irqres);
@@ -231,8 +231,6 @@ lnc_pci_detach(device_t dev)
 	}
 	if (sc->dmat)
 		bus_dma_tag_destroy(sc->dmat);
-
-	lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
 
 	return (0);
 }

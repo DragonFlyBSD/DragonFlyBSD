@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.20 2005/12/04 18:07:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.20.2.1 2006/01/01 00:59:05 dillon Exp $
  */
 
 /*
@@ -1207,25 +1207,25 @@ re_detach(device_t dev)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	/* These should only be active if attach succeeded */
 	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(ifp->if_serializer);
 		re_stop(sc);
+		bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
+
 		ether_ifdetach(ifp);
 	}
 	if (sc->re_miibus)
 		device_delete_child(dev, sc->re_miibus);
 	bus_generic_detach(dev);
 
-	if (sc->re_intrhand)
-		bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
-
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
-	if (sc->re_res)
+	if (sc->re_res) {
 		bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO,
 				     sc->re_res);
+	}
 
 	/* Unload and free the RX DMA ring memory and map */
 
@@ -1275,7 +1275,6 @@ re_detach(device_t dev)
 	if (sc->re_parent_tag)
 		bus_dma_tag_destroy(sc->re_parent_tag);
 
-	lwkt_serialize_exit(ifp->if_serializer);
 	return(0);
 }
 

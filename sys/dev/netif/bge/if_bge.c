@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.51 2005/11/29 19:56:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.51.2.1 2006/01/01 00:59:03 dillon Exp $
  *
  */
 
@@ -1758,14 +1758,15 @@ bge_detach(device_t dev)
 	struct bge_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (device_is_attached(dev)) {
-		ether_ifdetach(ifp);
+		lwkt_serialize_enter(ifp->if_serializer);
 		bge_stop(sc);
 		bge_reset(sc);
-	}
+		bus_teardown_intr(dev, sc->bge_irq, sc->bge_intrhand);
+		lwkt_serialize_exit(ifp->if_serializer);
 
+		ether_ifdetach(ifp);
+	}
 	if (sc->bge_tbi)
 		ifmedia_removeall(&sc->bge_ifmedia);
 	if (sc->bge_miibus);
@@ -1777,8 +1778,6 @@ bge_detach(device_t dev)
 	if (sc->bge_asicrev != BGE_ASICREV_BCM5705 &&
 	    sc->bge_asicrev != BGE_ASICREV_BCM5750)
 		bge_free_jumbo_mem(sc);
-
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(0);
 }
@@ -1795,9 +1794,6 @@ bge_release_resources(struct bge_softc *sc)
 
 	if (sc->bge_vpd_readonly != NULL)
 		free(sc->bge_vpd_readonly, M_DEVBUF);
-
-        if (sc->bge_intrhand != NULL)
-                bus_teardown_intr(dev, sc->bge_irq, sc->bge_intrhand);
 
         if (sc->bge_irq != NULL)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->bge_irq);

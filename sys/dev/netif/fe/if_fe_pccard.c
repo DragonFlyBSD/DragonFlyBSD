@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_pccard.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.8 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_pccard.c,v 1.8.2.1 2006/01/01 00:59:04 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -188,10 +188,11 @@ fe_pccard_detach(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	fe_stop(sc);
-	ether_ifdetach(ifp);
 	bus_teardown_intr(dev, sc->irq_res, sc->irq_handle);
-	fe_release_resource(dev);
 	lwkt_serialize_exit(ifp->if_serializer);
+
+	ether_ifdetach(ifp);
+	fe_release_resource(dev);
 
 	return 0;
 }
