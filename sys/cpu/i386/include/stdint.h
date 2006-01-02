@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.3 2005/12/30 15:29:26 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.4 2006/01/02 06:02:01 y0netan1 Exp $
  */
 
 #ifndef _MACHINE_STDINT_H_
@@ -118,6 +118,8 @@ typedef __uint32_t	__socklen_t;
  */
 #ifndef __cplusplus
 #define __offsetof(type, field) ((__size_t)(&((type *)0)->field))
+#elif (__GNUC__ >= 4)
+#define __offsetof(type, field) __builtin_offsetof(type, field)
 #else   
 #define __offsetof(type, field)					\
 	(__offsetof__ (reinterpret_cast <__size_t>		\
