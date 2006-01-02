@@ -1,0 +1,98 @@
+$DragonFly: doc/notes/release.txt,v 1.1 2006/01/02 16:41:53 dillon Exp $
+
+			Rolling a DragonFly release
+
+(I) Precursor work in HEAD, done anywhere from a few weeks to a few days
+    before the branch.
+
+    * Start running nrelease builds, typically as shown below.  Burn the
+      ISO(s) and install a machine from scratch.  Extract or mount the
+      sources on the machine and make sure it can build the release.
+
+	cd /usr/src/nrelease; make installer_release
+
+    * Bump the sub-version for HEAD and synchronize current work tags.
+
+	cd /usr/src
+	vi sys/sys/param.h	(bump DragonFly_version)
+	vi sys/conf/subvers-DEVELOPMENT_x_y
+	cvs commit ...
+	make update_preview_tag
+
+    * Add a target to /usr/src/Makefile that will update the SLIP tag for
+      the new release.  'update_release{a}_{b}_slip_tag'.  Use prior 
+      similar targets as your template.
+
+    * Create a cvsup example file for the new release version in
+      /usr/src/share/examples/cvsup/
+
+    * Do any additional work in HEAD leading up to the branch point.
+
+(II) Branch
+
+    * Execute the cvs operation to branch the tree.
+
+	cvs rtag -a -b -R DragonFly_RELEASE_a_b src
+
+(III) Adjust HEAD's version.
+
+    * Edit and commit appropriate files
+
+	cd /usr/src
+	vi sys/sys/param.h
+	vi sys/conf/subvers-DEVELOPMENT_x_y
+	vi sys/conf/newvers.sh		(adjust default version for HEAD)
+	vi gnu/usr.bin/groff/tmac/mdoc.local (adjust version for man pages)
+	cvs commit ...
+	make update_preview_tag
+
+(IV) Adjust the new branch.
+
+     * Edit and commit appropriate files on the new RELEASE branch.
+
+	[ON DEDICATED TEST MACHINE]
+	Create ~/.cvsrc in root containing:
+
+	cvs -q
+	diff -u
+	update -Pd
+	checkout -P
+
+	[ON DEDICATED TEST MACHINE]
+
+	cd /usr
+	rm -rf /usr/src (or whatever... clean it out).
+	cvs -d .... checkout -P -rDragonFly_RELEASE_a_b src
+	cd /usr/src
+	vi sys/sys/param.h
+	vi sys/conf/subvers-RELEASE_a_b
+	vi sys/conf/newvers.sh		(no changes are needed)
+	vi gnu/usr.bin/groff/tmac/mdoc.local (adjust version for man pages)
+	cvs commit ...
+
+(V) Set the initial slip tag on the release branch.
+
+	cd /usr/src
+	make update_release_1_4_slip_tag
+
+(VI) Build the ISO on the release branch.  Follow any directions the make
+     gives to obtain required pieces to generate the ISO:
+
+	[ON TEST MACHINE]
+	[NEW RELEASE CHECKED OUT]
+	cd /usr/src/nrelease
+	make installer_release
+
+    Then burn and test the ISO.  Repeat as necessary through release 
+    engineering.
+
+(VII) RELEASE ENGINEERING
+
+    * All work goes to the release branch
+    * Update the slip tag using the slip tag update target when all finished.
+    * Generate ISOs for wide-spread testing, make them available, etc.
+    * Make sure the release can be built on a machine freshlyl installed from
+      the ISO.
+    * The sub-version is not usually updated during this testing
+    * Bump the sub-version to 1 for the release.
+
