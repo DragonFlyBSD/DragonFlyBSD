@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.75 2005/12/02 17:29:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.76 2006/01/04 18:11:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -453,8 +453,7 @@ unmount(struct unmount_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct vnode *vp;
-	struct mount *mp;
+	struct mount *mp = NULL;
 	int error;
 	struct nlookupdata nd;
 
@@ -464,44 +463,42 @@ unmount(struct unmount_args *uap)
 	if (usermount == 0 && (error = suser(td)))
 		return (error);
 
-	vp = NULL;
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
-	nlookup_done(&nd);
 	if (error)
-		return (error);
+		goto out;
 
-	mp = vp->v_mount;
+	mp = nd.nl_ncp->nc_mount;
 
 	/*
 	 * Only root, or the user that did the original mount is
 	 * permitted to unmount this filesystem.
 	 */
 	if ((mp->mnt_stat.f_owner != p->p_ucred->cr_uid) &&
-	    (error = suser(td))) {
-		vput(vp);
-		return (error);
-	}
+	    (error = suser(td)))
+		goto out;
 
 	/*
 	 * Don't allow unmounting the root file system.
 	 */
 	if (mp->mnt_flag & MNT_ROOTFS) {
-		vput(vp);
-		return (EINVAL);
+		error = EINVAL;
+		goto out;
 	}
 
 	/*
 	 * Must be the root of the filesystem
 	 */
-	if ((vp->v_flag & VROOT) == 0) {
-		vput(vp);
-		return (EINVAL);
+	if (! (nd.nl_ncp->nc_flag & NCF_MOUNTPT)) {
+		error = EINVAL;
+		goto out;
 	}
-	vput(vp);
+
+out:
+	nlookup_done(&nd);
+	if (error)
+		return (error);
 	return (dounmount(mp, uap->flags, td));
 }
 
