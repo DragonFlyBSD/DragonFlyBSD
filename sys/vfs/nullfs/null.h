@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.6 2004/08/28 19:02:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.7 2006/01/04 03:09:53 dillon Exp $
  */
 
 struct null_args {
@@ -49,36 +49,7 @@ struct null_mount {
 };
 
 #ifdef _KERNEL
-/*
- * A cache of vnode references
- */
-struct null_node {
-	struct null_node	*null_next;	/* Hash list */
-	struct vnode	        *null_lowervp;	/* vrefed once */
-	struct vnode		*null_vnode;	/* Back pointer */
-};
-
 #define	MOUNTTONULLMOUNT(mp) ((struct null_mount *)((mp)->mnt_data))
-#define	VTONULL(vp) ((struct null_node *)(vp)->v_data)
-#define	NULLTOV(xp) ((xp)->null_vnode)
-
-int nullfs_init(struct vfsconf *vfsp);
-int nullfs_uninit(struct vfsconf *vfsp);
-int null_node_add(struct null_node *np);
-void null_node_rem(struct null_node *np);
-int null_node_create(struct mount *mp, struct vnode *target, struct vnode **vpp);
-int null_bypass(struct vop_generic_args *ap);
-
-#ifdef DIAGNOSTIC
-struct vnode *null_checkvp(struct vnode *vp, char *fil, int lno);
-#define	NULLVPTOLOWERVP(vp) null_checkvp((vp), __FILE__, __LINE__)
-#else
-#define	NULLVPTOLOWERVP(vp) (VTONULL(vp)->null_lowervp)
-#endif
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_NULLFSNODE);
-#endif
 
 #ifdef NULLFS_DEBUG
 #define NULLFSDEBUG(format, args...) printf(format ,## args)

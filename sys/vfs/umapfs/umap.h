@@ -36,10 +36,8 @@
  *	@(#)umap.h	8.4 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap.h,v 1.13 1999/12/29 04:54:47 peter Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.7 2004/08/28 19:02:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.8 2006/01/04 03:09:54 dillon Exp $
  */
-
-#include <vfs/nullfs/null.h>
 
 #define MAPFILEENTRIES 64
 #define GMAPFILEENTRIES 16
@@ -70,12 +68,10 @@ struct umap_mount {
  * A cache of vnode references
  */
 struct umap_node {
-	struct null_node	umap_null;
+	struct umap_node	*umap_next;     /* Hash list */
+	struct vnode		*umap_lowervp;  /* vrefed once */
+	struct vnode		*umap_vnode;    /* Back pointer */
 };
-
-#define umap_next	umap_null.null_next
-#define umap_lowervp	umap_null.null_lowervp
-#define umap_vnode	umap_null.null_vnode
 
 extern int umapfs_init (struct vfsconf *vfsp);
 extern int umap_node_create (struct mount *mp, struct vnode *target, struct vnode **vpp);

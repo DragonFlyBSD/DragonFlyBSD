@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.18 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.19 2006/01/04 03:09:53 dillon Exp $
  */
 
 /*
@@ -59,8 +59,6 @@ extern struct vnodeopv_entry_desc null_vnodeop_entries[];
 
 static MALLOC_DEFINE(M_NULLFSMNT, "NULLFS mount", "NULLFS mount structure");
 
-static int	nullfs_fhtovp(struct mount *mp, struct fid *fidp,
-				   struct vnode **vpp);
 static int	nullfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
 static int	nullfs_mount(struct mount *mp, char *path, caddr_t data,
@@ -71,8 +69,6 @@ static int	nullfs_root(struct mount *mp, struct vnode **vpp);
 static int	nullfs_statfs(struct mount *mp, struct statfs *sbp,
 				   struct thread *td);
 static int	nullfs_unmount(struct mount *mp, int mntflags, struct thread *td);
-static int	nullfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp);
-static int	nullfs_vptofh(struct vnode *vp, struct fid *fhp);
 static int	nullfs_extattrctl(struct mount *mp, int cmd,
 			const char *attrname, caddr_t arg, struct thread *td);
 
@@ -84,11 +80,9 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	int error = 0;
 	struct null_args args;
-	struct vnode *lowerrootvp, *vp;
-	struct vnode *nullm_rootvp;
+	struct vnode *rootvp;
 	struct null_mount *xmp;
 	u_int size;
-	int isvnunlocked = 0;
 	struct nlookupdata nd;
 
 	NULLFSDEBUG("nullfs_mount(mp = %p)\n", (void *)mp);
@@ -108,44 +102,15 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		return (error);
 
 	/*
-	 * Unlock lower node to avoid deadlock.
-	 * (XXX) VOP_ISLOCKED is needed?
-	 */
-	if ((mp->mnt_vnodecovered->v_tag == VT_NULL) &&
-		VOP_ISLOCKED(mp->mnt_vnodecovered, NULL)) {
-		VOP_UNLOCK(mp->mnt_vnodecovered, 0, td);
-		isvnunlocked = 1;
-	}
-	/*
 	 * Find lower node
 	 */
-	lowerrootvp = NULL;
+	rootvp = NULL;
 	error = nlookup_init(&nd, args.target, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0) {
 		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, 
-					&lowerrootvp);
-	}
-	nlookup_done(&nd);
-
-	/*
-	 * Re-lock vnode.
-	 */
-	if (isvnunlocked && !VOP_ISLOCKED(mp->mnt_vnodecovered, NULL))
-		vn_lock(mp->mnt_vnodecovered, LK_EXCLUSIVE | LK_RETRY, td);
-	if (error)
-		return (error);
-		
-	/*
-	 * Sanity check on lower vnode
-	 *
-	 * Check multi null mount to avoid `lock against myself' panic.
-	 */
-	if (lowerrootvp == VTONULL(mp->mnt_vnodecovered)->null_lowervp) {
-		NULLFSDEBUG("nullfs_mount: multi null mount?\n");
-		vput(lowerrootvp);
-		return (EDEADLK);
+					&rootvp);
 	}
 
 	xmp = (struct null_mount *) malloc(sizeof(struct null_mount),
@@ -154,37 +119,29 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Save reference to underlying FS
 	 */
-	xmp->nullm_vfs = lowerrootvp->v_mount;
+        /*
+         * As lite stacking enters the scene, the old way of doing this
+	 * -- via the vnode -- is not good enough anymore...
+	 */
+	xmp->nullm_vfs = nd.nl_ncp->nc_mount;
+	nlookup_done(&nd);
 
 	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
 			 null_vnodeop_entries, 0);
 
-	/*
-	 * Save reference.  Each mount also holds
-	 * a reference on the root vnode.
-	 */
-	error = null_node_create(mp, lowerrootvp, &vp);
-	/*
-	 * Unlock the node (either the lower or the alias)
-	 */
-	VOP_UNLOCK(vp, 0, td);
-	/*
-	 * Make sure the node alias worked
-	 */
-	if (error) {
-		vrele(lowerrootvp);
-		free(xmp, M_NULLFSMNT);	/* XXX */
-		return (error);
-	}
+	VOP_UNLOCK(rootvp, 0, td);
 
 	/*
 	 * Keep a held reference to the root vnode.
 	 * It is vrele'd in nullfs_unmount.
 	 */
-	nullm_rootvp = vp;
-	nullm_rootvp->v_flag |= VROOT;
-	xmp->nullm_rootvp = nullm_rootvp;
-	if (NULLVPTOLOWERVP(nullm_rootvp)->v_mount->mnt_flag & MNT_LOCAL)
+	xmp->nullm_rootvp = rootvp;
+	/*
+	 * XXX What's the proper safety condition for querying
+	 * the underlying mount? Is this flag tuning necessary
+	 * at all?
+	 */
+	if (xmp->nullm_vfs->mnt_flag & MNT_LOCAL)
 		mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_data = (qaddr_t) xmp;
 	vfs_getnewfsid(mp);
@@ -205,18 +162,12 @@ static int
 nullfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	void *mntdata;
-	int error;
 	int flags = 0;
 
 	NULLFSDEBUG("nullfs_unmount: mp = %p\n", (void *)mp);
 
 	if (mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
-
-	/* There is 1 extra root vnode reference (nullm_rootvp). */
-	error = vflush(mp, 1, flags);
-	if (error)
-		return (error);
 
 	/*
 	 * Finally, throw away the null_mount structure
@@ -233,9 +184,8 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
-	NULLFSDEBUG("nullfs_root(mp = %p, vp = %p->%p)\n", (void *)mp,
-	    (void *)MOUNTTONULLMOUNT(mp)->nullm_rootvp,
-	    (void *)NULLVPTOLOWERVP(MOUNTTONULLMOUNT(mp)->nullm_rootvp));
+	NULLFSDEBUG("nullfs_root(mp = %p, vp = %p)\n", (void *)mp,
+	    (void *)MOUNTTONULLMOUNT(mp)->nullm_rootvp);
 
 	/*
 	 * Return locked reference to root.
@@ -268,9 +218,8 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	int error;
 	struct statfs mstat;
 
-	NULLFSDEBUG("nullfs_statfs(mp = %p, vp = %p->%p)\n", (void *)mp,
-	    (void *)MOUNTTONULLMOUNT(mp)->nullm_rootvp,
-	    (void *)NULLVPTOLOWERVP(MOUNTTONULLMOUNT(mp)->nullm_rootvp));
+	NULLFSDEBUG("nullfs_statfs(mp = %p, vp = %p)\n", (void *)mp,
+	    (void *)MOUNTTONULLMOUNT(mp)->nullm_rootvp);
 
 	bzero(&mstat, sizeof(mstat));
 
@@ -296,32 +245,12 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static int
-nullfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
-{
-
-	return VFS_VGET(MOUNTTONULLMOUNT(mp)->nullm_vfs, ino, vpp);
-}
-
-static int
-nullfs_fhtovp(struct mount *mp, struct fid *fidp, struct vnode **vpp)
-{
-
-	return VFS_FHTOVP(MOUNTTONULLMOUNT(mp)->nullm_vfs, fidp, vpp);
-}
-
-static int
 nullfs_checkexp(struct mount *mp, struct sockaddr *nam, int *extflagsp,
 		struct ucred **credanonp)
 {
 
 	return VFS_CHECKEXP(MOUNTTONULLMOUNT(mp)->nullm_vfs, nam, 
 		extflagsp, credanonp);
-}
-
-static int
-nullfs_vptofh(struct vnode *vp, struct fid *fhp)
-{
-	return VFS_VPTOFH(NULLVPTOLOWERVP(vp), fhp);
 }
 
 static int                        
@@ -340,12 +269,7 @@ static struct vfsops null_vfsops = {
 	.vfs_quotactl =   	nullfs_quotactl,
 	.vfs_statfs =    	nullfs_statfs,
 	.vfs_sync =     	vfs_stdsync,
-	.vfs_vget =     	nullfs_vget,
-	.vfs_fhtovp =   	nullfs_fhtovp,
 	.vfs_checkexp =  	nullfs_checkexp,
-	.vfs_vptofh =   	nullfs_vptofh,
-	.vfs_init =     	nullfs_init,
-	.vfs_uninit =    	nullfs_uninit,
 	.vfs_extattrctl =  	nullfs_extattrctl
 };
 
