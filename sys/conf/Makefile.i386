@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.26 2005/11/02 08:33:12 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.27 2006/01/06 15:49:01 joerg Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -237,16 +237,29 @@ kernel-install:
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
 	fi
+.ifdef NOFSCHG
+.if exists(${DESTDIR}/${KERNEL})
+	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+.endif
+	${INSTALL} -m 555 -o root -g wheel \
+		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+.else
 .if exists(${DESTDIR}/${KERNEL})
 	-chflags noschg ${DESTDIR}/${KERNEL}
 	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
 .endif
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+.endif
 
 kernel-reinstall:
+.ifdef NOFSCHG
+	${INSTALL} -m 555 -o root -g wheel \
+		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+.else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
+.endif
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
 all:	modules
