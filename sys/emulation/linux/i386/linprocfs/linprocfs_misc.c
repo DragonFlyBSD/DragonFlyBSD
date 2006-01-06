@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.13 2006/01/06 15:01:06 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.14 2006/01/06 15:01:38 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -475,7 +475,7 @@ linprocfs_doloadavg(struct proc *curp, struct proc *p,
 	    (int)(averunnable.ldavg[2] * 100 / averunnable.fscale % 100),
 	    1,                      /* number of running tasks */
 	    -1,                     /* number of tasks */
-	    1,         /* The last pid, just kidding */
+	    1         /* The last pid, just kidding */
 	);
 	return(uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
