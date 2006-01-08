@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.93 2006/01/08 02:25:23 swildner Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.94 2006/01/08 05:45:29 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -334,8 +334,16 @@ rsync
 <TR>
 <TD>ftp.pvvntnu.no (Norway)</TD>
 <TD>binary pkgsrc packages </TD>
-<TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/i386/All/">i386 packages</a>, 
-<a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/HEAD/bootstra/p">bootstrap kits</a>
+<TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/DEVELOPMENT/i386/All/">i386 packages</a>, 
+<a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+</TD>
+</TR>
+
+<TR>
+<TD>TheShell.com (Phoenix, AZ, USA)</TD>
+<TD>binary pkgsrc packages </TD>
+<TD><a href="http://theshell.com/pub/DragonFly/packages/DEVELOPMENT/i386/All/">i386 packages</a>, 
+<a href="http://theshell.com/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
