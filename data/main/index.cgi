@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.17 2005/08/01 07:12:57 dillon Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.18 2006/01/08 19:02:45 dillon Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -20,11 +20,11 @@ $TITLE(The DragonFly BSD Project)
 
 <table border="0" width="100%" bgcolor="white">
 <tr><td align="center">
-    <h1>DragonFly-1.2.x RELEASED!</h1>
-	<h1>08 April 2005</h1>
+    <h1>DragonFly-1.4.x RELEASED!</h1>
+	<h1>07 January 2006</h1>
 </td></tr></table>
 <p>
-The <a href="release1_2.cgi"><b>DragonFly-1.2.x Release</b></a> is ready!
+The <a href="release1_4.cgi"><b>DragonFly-1.4.x Release</b></a> is ready!
 </p>
 
 <h1>What is DragonFly BSD?</h1>
