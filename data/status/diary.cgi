@@ -1,8 +1,238 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.26 2005/04/09 23:11:52 hmp Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.27 2006/01/08 19:05:33 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Sat 7 January 2006</h2>
+<ul>
+	<li>Add the closefrom() system call.
+	<li>GCC 3.4 is now the default compiler.  2.95.x is no longer 
+	    supported (it can't handle the new threading storage classes
+	    properly).
+	<li>Import Citrus from NetBSD.
+	<li>Implement direct TLS support for programs whether threaded or not.
+	<li>Major library and user-visible system structure changes
+	    (dirent, stat, errno, etc), and other work requires a major
+	    library bump for libc and other libraries.  libc is now
+	    libc.so.6.
+	<li>stat: inode size now 64 bits, nlink now 32 bits.  new fields, 
+	    added pad.
+	<li>dirent: inode size now 64 bits, various fields disentangled from
+	    the UFS dirent.
+	<li>statfs: new fields, added pad.
+	<li>Clean up RC scripts that are not used by DragonFly.
+	<li>Remove the OS keyword requirement for RC scripts.
+	<li>Add support for unsigned quads to sysctl.
+	<li>Implement DNTPD, DragonFly's own NTP client time synchronization
+	    demon.
+	<li>Correct a large number of bugs in the third party ntpd code, but
+	    for client-side operations we now recommend you use dntpd.
+	<li>Add a framework for aggregating per-cpu structures for user 
+	    reporting.
+	<li>Userland TLS (data spaces for threads) support added.
+	<li>Create a binary library compatibility infrastructure that
+	    allows us to install and/or upgrade older revs of shared
+	    libraries on newer machines to maintain compatibility with
+	    older programs.
+	<li>Fix issues related to the expansion of symbolic links by the
+	    bourne shell.
+	<li>Many, Many mdoc cleanups and fixes.
+	<li>Update cvs, openssl, ssh, sendmail, groff, 
+	    and other numerous contributed applications.
+	<li>Bring in a brand new pam infrastructure.
+	<li>Introduce pkgsrc support.
+	<li>Get rid of libmsun.
+	<li>Implement backwards scanning and partial-transaction handling
+	    features in jscan.
+
+	<p></p>
+	<li>FreeBSD-SA-05:06.iir - major disk access vulnerability for IIR
+	<li>FreeBSD-SA-05:04.ifconf - memory disclosure vulnerability
+	<li>FreeBSD-SA-05:08.kmem - memory disclosure vulnerability
+	<li>FreeBSD-SA-05:16.zlib - possible buffer overflow in zlib
+	<li>FreeBSD-SA-05:18.zlib - possible buffer overflow in zlib
+	<li>FreeBSD-SA-05:15.tcp - fix TCP RESET window check 
+	    (DOS attack vulnerability)
+	<li>? - a bzip2 vulnerability
+
+	<p></p>
+	<li>Fix a bug in the TCP NewReno algorithm which could result in
+	    a large amount of data being unnecessarily retransmitted.
+	<li>Fix numerous TCP buffering issues.
+	<li>Implement TCP Appropriate Byte Counting
+	<li>Bring in ALTQ and reorganize the IF queueing code to remove
+	    per-driver depdendancies on ALTQ.
+	<li>Strip away numerous TCP hidden indirections that make code hard
+	    to read and understand.
+	<li>Introduce BPF_MTAP which includes an address family parameter.
+	<li>Reimplement network polling with a systimer, allowing the
+	    frequency to be adjusted on the fly.
+	<li>Remove the really bad hack that was calling the network polling
+	    code from the trap code.
+	<li>Completely rewrite nework polling support.
+	<li>Make the network IF serializer mandatory for all network device
+	    driver interrupts, ioctl's, and if_ callbacks.
+	<li>Implement a very fast memory object caching infrastructure.  This
+	    will eventually replace zalloc() (but not yet).
+	<li>Rewrite the mbuf allocator using the new memory object caching
+	    infrastructure.  Remove many crazily-large mbuf macros in favor
+	    of the new infrastructure.
+	<li>Convert all remaining uses of the old mbuf m_ext API to the new
+	    API.  Remove support for the old API.
+	<li>Reorder the detach sequence in all network drivers.  Unhook the
+	    interrupt first rather then last.
+	<li>Fix all instances where an mbuf packet header and mbuf data 
+	    buffer were being referenced by the wrong name and all instances
+	    where the packet header flag was being improperly set or cleared.
+	<li>Fix a number of mbuf statistics counting bugs.
+	<li>Fix numerous bugs in ipfw/ipfw2 where m_tag data was not being
+	    stored in the right place, resulting in a panic.
+	<li>Add support for the experiemental SCTP protocol.
+	<li>Fix an issue with cloned interfaces being added twice.
+
+	<p></p>
+	<li>Add a passive IPIQ call for non-time-critical events such as
+	    memory free() calls.
+	<li>Add TLS support for threads using the GDT instead of the LDT.
+	<li>Greatly simplify and demystify the NTP kernel interface.  Convert
+	    most aspects of the interface over to sysctls.
+	<li>Implement ranged fsync's in-kernel.  This capability will 
+	    eventually replace the write-behind heuristic.
+
+	<li>Introduce MP-safe mountlist scanning code.
+	<li>Introduce rip-out-safe red-black tree scanning code.
+	<li>Use the new RB scanning code to get rid of VPLACEMARKER and
+	    generally use the new RB scanning code to handle all RB tree
+	    scanning in a safe way (allowing the scan code callback to block).
+	<li>Zoneinfo upgrades
+	<li>Rename cpu_mb*() functions to cpu_mfence(), cpu_lfence(), and
+	    cpu_sfence() to make their function more apparent.
+	<li>Fix bugs in the LWKT token code related to token references
+	    being lost due to a preemption or blocking condition.
+	<li>Fix bugs in the LWKT rwlock code relating to preemption occuring
+	    during token acquisition.
+	<li>Fix a bug in the LWKT thread queueing and dequeueing code 
+	    related to a preemption.
+	<li>Increase the size of the physmap[] array to accomodate newer
+	    PC's which have a larger number of memory segments and fix
+	    an overflow bug.
+	<li>Use the ACPI timer if present instead of one of the other 8254
+	    timers (which are not dependable because BIOS calls might 
+	    manipulate them).
+	<li>Change cpu statistics to be accounted for on a per-cpu basis.
+	<li>Make network routing statistics per-cpu.
+	<li>Extend the interrupt vector code to pass a frame as a pointer.
+	<li>Remove the last vestiges of the old mbuf tagging code.
+	<li>Add a serializer API and code (basically blockable mutexes).
+	<li>Add interrupt enablement and disablement features to the new
+	    serializer module to deal with races against blocked serializer
+	    locks when e.g. removing a driver.
+	<li>Remove bus_{disable,enable}_intr(), it was not generic enough
+	    for our needs.
+	<li>Remove all spl*() procedures and convert all uses to critical
+	    sections.
+	<li>Do not try to completely halt all cpus when panic()ing as this
+	    will likely leave the machine in a state that prevents it from
+	    being able to do a dump.
+	<li>Try to unwind certain conditions when panic()ing from a trap
+	    in order to give the machine a better chance to dump its core.
+	<li>A number of malloc()'s using M_NOWAIT really needed to be
+	    using M_WAITOK.
+	<li>Attempt to avoid a livelocked USB interrupt during boot by 
+	    delaying the enablement of the EHCI interrupt until after all
+	    companion controllers have been attached.
+	<li>Reimplement the kernel tracepoint facility (KTR) to greatly
+	    reduce the complexity of the API as well as remove all hardwired
+	    flags and values.  In addition, record two levels of call
+	    backtrace for each entry, if enabled.
+	<li>Beef up ktrdump to display symbolic results when possible.
+	<li>Beef up the slab allocator build with INVARINTS by adding a
+	    bitmap to detect duplicate frees and such.
+	<li>Remove the 16 bit count limit for file descriptors.
+	<li>Replace the file descriptor allocator with an O(log N) 
+	    full-on in-place binary search tree.
+	<li>Allow the initial stack pointer for a use process to be
+	    randomized.
+	<li>Fix numerous scheduling issues that could cause the scheduler
+	    to lose track of a reschedule request, resulting in poor 
+	    interactive performance.  Rewrite the interactive/batch
+	    heuristic.
+	<li>Begin to implement a management system to allow multiple 
+	    userland schedulers to be configured in a system.
+	<li>Add rm -I and add an alias for interactive shells to use it
+	    by default.  -I is a less invasive -i.
+	<li>Fix a bug in the pipe code that was not handling kernel-space
+	    writes correctly.  Such writes can occur whenever the kernel
+	    writes KVM-referenced data to a descriptor, such as that
+	    journaling code might do.
+	<li>Fix many issues with the high level filesystem journaling code.
+	    High level journal records are now considered fairly solid.
+	<li>Implement the transactional features of the high level journaling
+	    subsystem by allowing a journaling record to be written prior to
+	    the VFS operation being executed, then aborted if the VFS operation
+	    fails.
+	<li>Implement UNDO records for most journaling transaction types.
+	<li>Implement the journaling code's full-duplex ack protocol feature
+	    which allows journals to be broken and restarted without losing
+	    data.
+	<li>Implement a stat-visible FSMID (filesystem modification id).  This
+	    identifier changes whenever any modifying operation on the file
+	    or directory occurs, and for directories this identifier also
+	    changes if anything in the sub-tree under the directory is
+	    modified (recursively).  The FSMID is synthesized for filesystems
+	    which do not implement it directly in order to guarentee its 
+	    usefulness for at least a subset of operations.
+	<li>Implement pesistent storage of the FSMID for UFS.
+	<li>Implement shutdown() support for pipes.
+	<li>Implement a low level spinlock facility.  Basically the 
+	    implementation gives us an MP-safe critical section type of
+	    vehicle.  However, being a spinlock the facility may only be
+	    used for very short sections of code.
+	<li>Fix a bug with USB<->CAM communication for USB mass storage
+	    devices.
+	<li>Fix numerous bugs in USB, primarily EHCI.
+	<li>Fix multiple panics when a fatal trap occurs from an IPI or
+	    FAST interrupt.  Interlock panics on multiple cpus so only the
+	    first is recognized as the 'real' panic.
+	<li>Add a large number of assertions to the scheduler and interrupt
+	    subsystems.
+	<li>Fix a critical IPI messaging bug (SMP only).
+	<li>Do not compile the kernel with the stack protector.  The stack
+	    protector generates weird incorrect or unexpected code in some
+	    cases which interfere with the C<->assembly interactions in the
+	    kernel build
+	<li>Various bug fixes to softupdates. 
+	<li>Fix a bitmap scanning bug in UFS which could sometimes result
+	    in a sanity check panic, but no data corruption.
+	<li>Fix a deadlock in UFS's ffs_balloc() related to an incorrect
+	    buffer locking order.
+	<li>Continued work on the buffer cache.
+	<li>Separate out APIC and ICU interrupt management.
+	<li>Rewrite the interrupt setup code.
+	<li>Major rewriting of the VFS directory scanning code.  Add a new
+	    function vop_write_dirent() to create the dirent for return to
+	    userland.  The new API is mandatory and filesystem code (not
+	    even UFS) may not make assumptions about the size of the
+	    userland-returned dirent.
+	<li>Major cleanup of the device identification method.
+	<li>Lots of driver updates.
+	<li>Ansify a great deal more of the codebase.
+	<li>Remove the now obsolete smp_rendezvous() mechanism.
+	<li>Compile up both the TFTP and the NFS PXE bootp code rather
+	    then the (previous) make.conf option to select one or the other.
+	<li>Convert the lockmgr interlock from a token to a spinlock, also
+	    incidently fixing an issue where non-blocking locks would
+	    still potentially issue a thread switch.
+	<li>Fix bugs in the interrupt livelock code.
+	<li>Rewrite the code handling stopped user processes.
+	<li>Rewrite tsleep()/wakeup() to be per-cpu and MPSAFE.  Reorganize
+	    the process states (p_stat), removing a number of states but
+	    resynthesizing them in eproc for 'ps'.
+	<li>Integrate the new if_bridge code from Open/Net/FreeBSD.
+	<li>Add an emergency interrupt polling feature that can be used
+	    to get an otherwise non-working system working.
+</ul>
 
 <h2>Thu 7 April 2005</h2>
 <ul>
