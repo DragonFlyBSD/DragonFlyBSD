@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: site/src/wiki2html,v 1.6 2005/01/20 10:17:34 okumoto Exp $
+# $DragonFly: site/src/wiki2html,v 1.7 2006/01/08 03:06:29 swildner Exp $
 
 cat << EOF
 #!/usr/local/www/cgi-bin/tablecg
@@ -16,8 +16,8 @@ EOF
 # 3.	Delete table of contents section.
 # 4.	Remove URLs to edit links.
 # 5-6.	Convert <h1> tags to bold.
-# 7.	Fix relitive references for DFWiki.
-# 8.	Fix relitive references for FAQs.
+# 7.	Fix relative references for the DragonFly Wiki.
+# 8.	Fix relative references for FAQs.
 # 9.	Remove span urlexpansion (URL stuff)
 # 10.	Remove footer at bottom of page. (note: since sed is really
 #	just working with lines, NOT removing the </p> is difficult.  So I
@@ -29,8 +29,8 @@ sed	-e '1,/<!-- start content -->/d' \
         -e 's,^<div class="editsection" style="float:right;margin-left:5px;">.*<\/div>,,' \
         -e 's/<h1>/<b>/g' \
         -e 's/<\/h1>/<\/b>/g' \
-	-e 's,a href="/dfwiki/index\.php/Main_Page" title ="Main Page",a href="http://wiki.dragonflybsd.org/dfwiki/index.php/Main_Page" title ="http://wiki.dragonflybsd.org/dfwiki/index.php/Main_Page",g' \
-	-e 's,dfwiki/index.php/DragonFly_FAQ\([^"]*\)",main/FAQ\1.cgi",g' \
+	-e 's,a href="/index\.php/Main_Page" title ="Main Page",a href="http://wiki.dragonflybsd.org/index.php/Main_Page" title ="http://wiki.dragonflybsd.org/index.php/Main_Page",g' \
+	-e 's,index.php/DragonFly_FAQ\([^"]*\)",main/FAQ\1.cgi",g' \
 	-e "s,<span class='urlexpansion'> ([^)]*)</span>,,g" \
 	-e '/<\/p><div class="printfooter">/,/<\/dvi>/d'
 
