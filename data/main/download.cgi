@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.92 2005/12/30 04:41:13 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.93 2006/01/08 02:25:23 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -162,8 +162,8 @@ that day and can become quite large.  For example, 1.2.75.
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>Snapshots master site, official ISOs</TD>
 <TD>
-<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</a>,
-<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>,
+<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/">HTTP</a>,
+<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/">FTP</a>,
 <a href="http://chlamydia.fs.ei.tum.de/services/#rsync">rsync</a>
 </TD>
 </TR>
@@ -171,22 +171,11 @@ that day and can become quite large.  For example, 1.2.75.
 <TR>
 <TD>AllBSD.org (Japan)</TD>
 <TD>Daily snapshots, official ISOs</TD>
-<TD><a href="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</a>,
-<a href="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</a>, 
+<TD><a href="http://pub.allbsd.org/DragonFly/">HTTP</a>,
+<a href="ftp://ftp.allbsd.org/pub/DragonFly/">FTP</a>, 
 rsync
 </TD>
 </TR>
-
-<!--  Erik Skaalerus is changing jobs
-<TR>
-<TD>dragon.BSDTech.com (Norway)</TD>
-<TD>Daily snapshots, official ISOs</TD>
-<TD>
-<a href="http://dragon.bsdtech.com/DragonFly/">HTTP</a>, 
-<a href="ftp://dragon.bsdtech.com/DragonFly/">FTP</a>
-</TD>
-</TR>
--->
 
 <TR>
 <TD>Esat.net (IE)</TD>
@@ -216,6 +205,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>University of Illinois at Chicago (Illinois, USA)</TD>
 <TD>Official ISOs</TD>
@@ -230,6 +220,7 @@ rsync
 <a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>bgp4.net</TD>
@@ -240,6 +231,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>Chung Hua University (Taiwan)</TD>
 <TD>code, official ISOs</TD>
@@ -248,6 +240,7 @@ rsync
 <a href="ftp://ftp.csie.chu.edu.tw">FTP</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>Providence University (Taiwan)</TD>
@@ -267,6 +260,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>mirror.isp.net.au (Australia)</TD>
 <TD>Daily snapshots</TD>
@@ -275,6 +269,7 @@ rsync
 <a href="ftp://mirror.isp.net.au/pub/DragonFly/iso-images/">FTP</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>TheShell.com (Phoenix AZ, USA)</TD>
@@ -344,6 +339,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD> www.gobsd.com (USA)</TD>
 <TD>binary pkgsrc packages </TD>
@@ -351,6 +347,7 @@ rsync
 <a href="http://www.gobsd.com/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
+-->
 
 <!-- source only after this -->
 
@@ -386,15 +383,6 @@ rsync, cvsup, cvsync, cvsweb
 </TD>
 </TR>
 
-<!--  Erik Skaalerus is changing jobs
-<TR>
-<TD>dragon.BSDTech.com (Norway)</TD>
-<TD>Code</TD>
-<TD>
-cvsup, <a href="http://dragon.BSDTech.com/DragonFly/">source/dfports snapshots</a></TD>
-</TR>
--->
-
 <TR>
 <TD>grappa.unix-ag.uni-kl.de (Germany)</TD>
 <TD>Code</TD>
@@ -421,6 +409,7 @@ cvsup, cvsync, rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>alxl.info (Riga, Latvia)</TD>
 <TD>Code</TD>
@@ -428,6 +417,7 @@ cvsup, cvsync, rsync
 cvsup, <a href="http://alxl.info/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>dragonflybsd.delphij.net (China)</TD>
