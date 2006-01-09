@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.22 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.23 2006/01/09 15:13:44 corecode Exp $
  */
 
 /*
@@ -246,7 +246,7 @@ static int
 fdesc_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct lwp *lp = ap->a_td->td_proc;
+	struct lwp *lp = ap->a_td->td_lwp;
 
 	KKASSERT(lp);
 
