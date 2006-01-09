@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.94 2006/01/08 05:45:29 swildner Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.95 2006/01/09 01:37:48 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -118,14 +118,14 @@ features often discussed on the mailing lists are typically not
 in release branches.
 </p>
 <p>
-The current release is <a href="release1_2.cgi">DragonFly 1.2.X-RELEASE</a>.
+The current release is <a href="release1_4.cgi">DragonFly 1.4.X-RELEASE</a>.
 </p>
 
 <p>
 DragonFly systems based on releases are labeled RELEASE.  For example,
 you might be running <b>DragonFly X.Y.Z-RELEASE</b>.  The subversion is
 bumped on a daily basis when commits have been made to the release branch
-that day and can become quite large.  For example, 1.2.75.
+that day and can become quite large.  For example, 1.4.75.
 </p>
 
 <h2>Download Sites</h2>
