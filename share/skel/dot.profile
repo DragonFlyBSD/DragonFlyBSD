@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/skel/dot.profile,v 1.19.2.2 2002/07/13 16:29:10 mp Exp $
-# $DragonFly: src/share/skel/dot.profile,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/skel/dot.profile,v 1.3 2006/01/10 01:56:04 corecode Exp $
 #
 # .profile - Bourne Shell startup script for login shells
 #
@@ -7,7 +7,7 @@
 #
 
 # remove /usr/games and /usr/X11R6/bin if you want
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/X11R6/bin:$HOME/bin; export PATH
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/pkg/sbin:/usr/pkg/bin:/usr/pkg/xorg/bin:/usr/local/sbin:/usr/local/bin:$HOME/bin; export PATH
 
 # Setting TERM is normally done through /etc/ttys.  Do only override
 # if you're sure that you'll never log in via telnet or xterm or a
