@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.22 2005/12/06 13:51:01 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.23 2006/01/10 00:33:12 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -431,6 +431,7 @@ linker_file_unload(linker_file_t file)
 		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
 			       mod));
 		lockmgr(&lock, LK_RELEASE, NULL, curthread);
+		file->refs--;
 		goto out;
 	    }
 
