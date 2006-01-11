@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.32 2005/12/05 06:13:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.33 2006/01/11 02:46:38 corecode Exp $
  */
 
 /*
@@ -3546,7 +3546,6 @@ handle_written_inodeblock(inodedep, bp)
 		panic("handle_written_inodeblock: not started");
 	}
 	inodedep->id_state &= ~IOSTARTED;
-	inodedep->id_state |= COMPLETE;
 	dp = (struct dinode *)bp->b_data +
 	    ino_to_fsbo(inodedep->id_fs, inodedep->id_ino);
 	/*
@@ -3565,6 +3564,7 @@ handle_written_inodeblock(inodedep, bp)
 		bdirty(bp);
 		return (1);
 	}
+	inodedep->id_state |= COMPLETE;
 	/*
 	 * Roll forward anything that had to be rolled back before 
 	 * the inode could be updated.
