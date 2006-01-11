@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.14 2005/07/30 13:59:45 joerg Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.15 2006/01/11 01:15:32 corecode Exp $
 #
 
 .include <bsd.init.mk>
@@ -297,13 +297,13 @@ clean:
 .if defined(LIB) && !empty(LIB)
 	rm -f a.out ${OBJS} ${OBJS:S/$/.tmp/} ${STATICOBJS}
 .endif
-.if !defined(INTERNALLIB)
-.if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
-	rm -f ${POBJS} ${POBJS:S/$/.tmp/}
-.endif
 .if defined(SHLIB_NAME) || \
     defined(INSTALL_PIC_ARCHIVE) && defined(LIB) && !empty(LIB)
 	rm -f ${SOBJS} ${SOBJS:.So=.so} ${SOBJS:S/$/.tmp/}
+.endif
+.if !defined(INTERNALLIB)
+.if !defined(NOPROFILE) && defined(LIB) && !empty(LIB)
+	rm -f ${POBJS} ${POBJS:S/$/.tmp/}
 .endif
 .if defined(SHLIB_NAME)
 .if defined(SHLIB_LINK)
