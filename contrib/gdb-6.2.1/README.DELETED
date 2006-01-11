@@ -533,6 +533,8 @@ gdb/ia64-linux-nat.c
 gdb/ia64-linux-tdep.c
 gdb/ia64-tdep.c
 gdb/ia64-tdep.h
+gdb/infttrace.c
+gdb/infttrace.h
 gdb/irix5-nat.c
 gdb/linux-nat.c
 gdb/linux-nat.h
