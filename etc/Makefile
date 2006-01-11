@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.100 2005/12/10 17:41:25 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.101 2006/01/11 01:04:34 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -134,15 +134,6 @@ upgrade_etc:	preupgrade
 .endif
 .if !defined(NO_I4B)
 	cd ${UPGRADE_SRCDIR}/isdn; ${MAKE} install
-.endif
-.if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
-.if !defined(NO_MAKEDEV)
-	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
-	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
-.if !defined(NO_MAKEDEV_RUN)
-	cd ${DESTDIR}/dev; sh MAKEDEV all
-.endif
-.endif
 .endif
 	cd ${UPGRADE_SRCDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${MTREE} ${DESTDIR}/etc/mtree
@@ -396,6 +387,15 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/etc/rc.d/altqd
 	csh -c "rm -f ${DESTDIR}/etc/rc.d/network{,1,2,3}"
 	ldconfig -R
+.if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
+.if !defined(NO_MAKEDEV)
+	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
+	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
+.if !defined(NO_MAKEDEV_RUN)
+	cd ${DESTDIR}/dev; sh MAKEDEV all
+.endif
+.endif
+.endif
 
 distribution:
 	cd ${.CURDIR}; \
