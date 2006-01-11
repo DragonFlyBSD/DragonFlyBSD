@@ -32,7 +32,7 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm.h,v 1.5 2004/04/02 05:46:02 hmp Exp $
+ * $DragonFly: src/lib/libkvm/kvm.h,v 1.6 2006/01/11 01:12:59 corecode Exp $
  */
 
 #ifndef _KVM_H_
@@ -81,6 +81,7 @@ kvm_t	 *kvm_open
 kvm_t	 *kvm_openfiles
 	    (const char *, const char *, const char *, int, char *);
 __ssize_t	  kvm_read (kvm_t *, unsigned long, void *, __size_t);
+char	 *kvm_readstr(kvm_t *, u_long, char *, size_t *);
 __ssize_t	  kvm_uread
 	    (kvm_t *, const struct proc *, unsigned long, char *, __size_t);
 __ssize_t	  kvm_write (kvm_t *, unsigned long, const void *, __size_t);

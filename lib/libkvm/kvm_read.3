@@ -35,9 +35,9 @@
 .\"
 .\"     @(#)kvm_read.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libkvm/kvm_read.3,v 1.6.2.3 2001/12/17 10:08:30 ru Exp $
-.\" $DragonFly: src/lib/libkvm/kvm_read.3,v 1.2 2003/06/17 04:26:49 dillon Exp $
+.\" $DragonFly: src/lib/libkvm/kvm_read.3,v 1.3 2006/01/11 01:12:59 corecode Exp $
 .\"
-.Dd June 4, 1993
+.Dd January 8, 2006
 .Dt KVM_READ 3
 .Os
 .Sh NAME
@@ -50,11 +50,14 @@
 .In kvm.h
 .Ft ssize_t
 .Fn kvm_read "kvm_t *kd" "unsigned long addr" "void *buf" "size_t nbytes"
+.Ft "char *"
+.Fn kvm_readstr "kvm_t *kd" "unsigned long addr" "char *buf" "size_t *len"
 .Ft ssize_t
 .Fn kvm_write "kvm_t *kd" "unsigned long addr" "const void *buf" "size_t nbytes"
 .Sh DESCRIPTION
 The
-.Fn kvm_read
+.Fn kvm_read ,
+.Fn kvm_readstr
 and
 .Fn kvm_write
 functions are used to read and write kernel virtual memory (or a crash
@@ -81,9 +84,54 @@ to
 .Fa addr .
 Unlike their SunOS counterparts, these functions cannot be used to
 read or write process address spaces.
+.Pp
+The
+.Fn kvm_readstr
+function exists for convenience to read NUL terminated strings
+from the kernel address space.
+If
+.Fa buf
+is
+.Dv NULL ,
+.Fn kvm_readstr
+will allocate a sufficiently large buffer, which needs to be
+deallocated via
+.Xr free 3
+by the caller.
+If
+.Fa len
+is not
+.Dv NULL ,
+.Fn kvm_readstr
+will interpret the value it is pointing to as the size of
+.Fa buf
+and will store the size of the complete string at
+.Fa addr .
+Note that if only
+.Fa buf
+is too small to hold the complete string,
+.Fn kvm_readstr
+will return
+.Dv NULL
+but set
+.Fa len
+to the size needed.
 .Sh RETURN VALUES
-Upon success, the number of bytes actually transferred is returned.
+For
+.Fn kvm_read
+and
+.Fn kvm_write
+the number of bytes actually transferred is returned, if the request
+was successful.
 Otherwise, -1 is returned.
+.Pp
+For
+.Fn kvm_readstr
+.Dv NULL
+is returned on failure.
+Upon success, the address of the string is returned, which will be
+.Fa buf
+if this was supplied.
 .Sh SEE ALSO
 .Xr kvm 3 ,
 .Xr kvm_close 3 ,

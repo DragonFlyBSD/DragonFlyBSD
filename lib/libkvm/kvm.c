@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.7 2005/10/24 19:59:51 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.8 2006/01/11 01:12:59 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -384,6 +384,103 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 			len -= cc;
 		}
 		return ((char *)cp - (char *)buf);
+	}
+	/* NOTREACHED */
+}
+
+char *
+kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
+{
+	size_t len, cc, pos;
+	char ch;
+	int asize = -1;
+
+	if (buf == NULL) {
+		asize = len = 16;
+		buf = malloc(len);
+		if (buf == NULL) {
+			_kvm_syserr(kd, kd->program, "kvm_readstr");
+			return NULL;
+		}
+	} else {
+		len = *lenp;
+	}
+
+	if (ISALIVE(kd)) {
+		/*
+		 * We're using /dev/kmem.  Just read straight from the
+		 * device and let the active kernel do the address translation.
+		 */
+		errno = 0;
+		if (lseek(kd->vmfd, (off_t)kva, 0) == -1 && errno != 0) {
+			_kvm_err(kd, 0, "invalid address (%x)", kva);
+			return NULL;
+		}
+
+		for (pos = 0, ch = -1; ch != 0; pos++) {
+			cc = read(kd->vmfd, &ch, 1);
+			if ((ssize_t)cc < 0) {
+				_kvm_syserr(kd, 0, "kvm_readstr");
+				return NULL;
+			} else if (cc < 1)
+				_kvm_err(kd, kd->program, "short read");
+			if (pos == asize) {
+				buf = realloc(buf, asize *= 2);
+				if (buf == NULL) {
+					_kvm_syserr(kd, kd->program, "kvm_readstr");
+					return NULL;
+				}
+				len = asize;
+			}
+			if (pos < len)
+				buf[pos] = ch;
+		}
+
+		if (lenp != NULL)
+			*lenp = pos;
+		if (pos > len)
+			return NULL;
+		else
+			return buf;
+	} else {
+		size_t left = 0;
+		for (pos = 0, ch = -1; ch != 0; pos++, left--, kva++) {
+			if (left == 0) {
+				u_long pa;
+
+				left = _kvm_kvatop(kd, kva, &pa);
+				if (left == 0)
+					return NULL;
+				errno = 0;
+				if (lseek(kd->pmfd, (off_t)pa, 0) == -1 && errno != 0) {
+					_kvm_syserr(kd, 0, _PATH_MEM);
+					return NULL;
+				}
+			}
+			cc = read(kd->vmfd, &ch, 1);
+			if ((ssize_t)cc < 0) {
+				_kvm_syserr(kd, 0, "kvm_readstr");
+				return NULL;
+			} else if (cc < 1)
+				_kvm_err(kd, kd->program, "short read");
+			if (pos == asize) {
+				buf = realloc(buf, asize *= 2);
+				if (buf == NULL) {
+					_kvm_syserr(kd, kd->program, "kvm_readstr");
+					return NULL;
+				}
+				len = asize;
+			}
+			if (pos < len)
+				buf[pos] = ch;
+		}
+
+		if (lenp != NULL)
+			*lenp = pos;
+		if (pos > len)
+			return NULL;
+		else
+			return buf;
 	}
 	/* NOTREACHED */
 }
