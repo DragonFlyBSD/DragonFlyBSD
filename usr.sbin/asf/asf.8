@@ -22,9 +22,9 @@
 .\" such damage.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/usr.sbin/asf/asf.8,v 1.1 2004/06/18 21:20:55 hmp Exp $
+.\" $DragonFly: src/usr.sbin/asf/asf.8,v 1.2 2006/01/11 02:00:13 corecode Exp $
 .\"
-.Dd June 18, 2004
+.Dd January 11, 2006
 .Os
 .Dt ASF 8
 .Sh NAME
@@ -32,7 +32,7 @@
 .Nd add symbol files
 .Sh SYNOPSIS
 .Nm
-.Op Fl afksx
+.Op Fl afks
 .Op Ar modules-path Op Ar outfile
 .Sh DESCRIPTION
 By default,
@@ -85,18 +85,25 @@ Instead of reading from standard input, start a
 and read the information from it.
 .It Fl s
 Don't prepend a (guessed) subdirectory of the module path.
-.It Fl x
-Normally
-.Nm
-looks for KLDs with names of the form
-.Ao Ar module Ac Ns Pa .ko.debug .
-The
-.Fl x
-option tells
-.Nm
-to look for KLDs with names of the form
-.Ao Ar module Ac Ns Pa .ko .
 .El
+.Sh EXAMPLES
+The common usage on a
+.Dx
+system would probably be cut-and-pasting the output of
+.Xr gdb 1
+.Bd -literal -offset indent
+(kgdb) kldstat
+.Ed
+.Pp
+into
+.Bd -literal -offset indent
+asf -s /modules
+.Ed
+.Pp
+and then issuing a
+.Bd -literal -offset indent
+(kgdb) source .asf
+.Ed
 .Sh HISTORY
 The
 .Nm

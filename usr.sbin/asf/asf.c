@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.1 2004/06/18 21:20:55 hmp Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.2 2006/01/11 02:00:13 corecode Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -183,49 +183,62 @@ main(int argc, char *argv[])
     char ocbuf[MAXLINE];
     int tokens;				/* number of tokens on line */
     char basetoken[MAXLINE];
-    int i;
+    int i, ch;
     const char *filemode = "w";		/* mode for outfile */
     char cwd[MAXPATHLEN];		/* current directory */
-    const char *debugname = ".debug";	/* some file names end in this */
     char *token[MAXTOKEN];
     int nosubdir = 0;
     int dofind = 0;
 
     getcwd(cwd, MAXPATHLEN);		/* find where we are */
     kldstat = stdin;
-    for (i = 1; i < argc; i++) {
-	if (argv[i][0] == '-') {
-	    if (strcmp(argv[i], "-k") == 0) { /* get input from kldstat(8) */
-		if (!(kldstat = popen("kldstat", "r"))) {
-		    perror("Can't start kldstat");
-		    return 1;
-		}
-	    } else if (strcmp(argv[i], "-a") == 0) /* append to outfile */
-		filemode = "a";
-	    else if (strcmp(argv[i], "-x") == 0) /* no .debug extension */
-		debugname = "";		/* nothing */
-	    else if (strcmp(argv[i], "-s") == 0) /* no subdir */
-		nosubdir = 1;		/* nothing */
-	    else if (strcmp(argv[i], "-f") == 0) /* find .ko (recursively) */
-		dofind = 1;
-	    else {
-		fprintf(stderr,
-		    "Invalid option: %s, aborting\n",
-		    argv[i]);
-		usage(argv[0]);
+    while ((ch = getopt(argc, argv, "afks")) != -1) {
+	switch (ch) {
+	case 'k': /* get input from kldstat(8) */
+	    if (!(kldstat = popen("kldstat", "r"))) {
+		perror("Can't start kldstat");
 		return 1;
 	    }
-	} else if (modules_path == NULL)
-	    modules_path = argv[i];
-	else if (outfile == NULL)
-	    outfile = argv[i];
-	else {
+	    break;
+	case 'a': /* append to outfile */
+	    filemode = "a";
+	    break;
+	case 's': /* no subdir */
+	    nosubdir = 1;		/* nothing */
+	    break;
+	case 'f': /* find .ko (recursively) */
+	    dofind = 1;
+	    break;
+	default:
 	    fprintf(stderr,
-		"Extraneous startup information: \"%s\", aborting\n",
-		argv[i]);
+		    "Invalid option: %s, aborting\n",
+		    argv[i]);
 	    usage(argv[0]);
 	    return 1;
 	}
+    }
+
+    argv += optind;
+    argc -= optind;
+
+    if (argc >= 1) {
+	modules_path = argv[0];
+	argc--;
+	argv++;
+    }
+
+    if (argc >= 1) {
+	outfile = argv[0];
+	argc--;
+	argv++;
+    }
+
+    if (argc > 0) {
+	fprintf(stderr,
+	    "Extraneous startup information: \"%s\", aborting\n",
+	    argv[0]);
+	usage(getprogname());
+	return 1;
     }
     if (modules_path == NULL)
 	modules_path = "modules";
@@ -255,11 +268,10 @@ main(int argc, char *argv[])
 		basetoken[strlen(basetoken) - 2] = '\0'; /* cut off the .ko */
 		snprintf(ocbuf,
 		    MAXLINE,
-		    "/usr/bin/objdump --section-headers %s/%s%s%s",
+		    "/usr/bin/objdump --section-headers %s/%s%s",
 		    modules_path,
 		    nosubdir ? "" : basetoken,
-		    token[4],
-		    debugname);
+		    token[4]);
 	    } else {
 		char *modpath;
 		
@@ -268,9 +280,8 @@ main(int argc, char *argv[])
 		    continue;
 		snprintf(ocbuf,
 		    MAXLINE,
-		    "/usr/bin/objdump --section-headers %s%s",
-		    modpath,
-		    debugname);
+		    "/usr/bin/objdump --section-headers %s",
+		    modpath);
 		free(modpath);
 	    }
 	    if (!(objcopy = popen(ocbuf, "r"))) {
@@ -298,23 +309,22 @@ main(int argc, char *argv[])
 	    if (textaddr) {		/* we must have a text address */
 		if (!dofind) {
 		    fprintf(out,
-			"add-symbol-file %s/%s/%s%s%s 0x%llx",
-			cwd,
+			"add-symbol-file %s%s%s/%s%s 0x%llx",
+			modules_path[0] != '/' ? cwd : "",
+			modules_path[0] != '/' ? "/" : "",
 			modules_path,
 			nosubdir ? "" : basetoken,
 			token[4],
-			debugname,
 			textaddr);
 		} else {
 		    char *modpath;
-		
+
 		    modpath = findmodule(strdup(modules_path), token[4]);
 		    if (modpath == NULL)
 			continue;
 		    fprintf(out,
-			"add-symbol-file %s%s 0x%llx",
+			"add-symbol-file %s 0x%llx",
 			modpath,
-			debugname,
 			textaddr);
 		    free(modpath);
 		}
