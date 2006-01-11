@@ -24,17 +24,19 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.19 2005/11/28 17:13:47 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.20 2006/01/11 02:38:02 corecode Exp $
  */
 
 #ifndef _SYS_BUS_H_
 #define _SYS_BUS_H_
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #include <sys/queue.h>
 #include <sys/kobj.h>
+#ifdef _KERNEL
 #include <sys/serialize.h>
+#endif
 
 /*
  * Forward declarations
@@ -95,6 +97,9 @@ struct resource_list_entry {
     u_long		count;		/* count within range */
 };
 SLIST_HEAD(resource_list, resource_list_entry);
+
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#ifdef _KERNEL
 
 /*
  * Initialise a resource list.
