@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.15 2005/03/17 17:28:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.16 2006/01/12 13:43:11 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -226,7 +226,8 @@ main(int argc, char **argv)
 			fileflag = 1;
 			break;
 		case 'k':
-			putenv("BLOCKSIZE=1K");
+			if (putenv("BLOCKSIZE=1K") == -1)
+				warn("putenv: cannot set BLOCKSIZE=1K");
 			break;
 		case 'M':
 			memf = optarg;

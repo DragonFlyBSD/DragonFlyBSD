@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/ldd.c,v 1.18.2.7 2002/02/27 18:35:53 sobomax Exp $
- * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.5 2005/07/24 15:04:56 joerg Exp $
+ * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -98,11 +98,16 @@ main(int argc, char **argv)
 #endif
 
 	/* ld.so magic */
-	setenv("LD_TRACE_LOADED_OBJECTS", "1", 1);
-	if (fmt1)
-		setenv("LD_TRACE_LOADED_OBJECTS_FMT1", fmt1, 1);
-	if (fmt2)
-		setenv("LD_TRACE_LOADED_OBJECTS_FMT2", fmt2, 1);
+	if (setenv("LD_TRACE_LOADED_OBJECTS", "1", 1) == -1)
+		err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS=1");
+	if (fmt1) {
+		if (setenv("LD_TRACE_LOADED_OBJECTS_FMT1", fmt1, 1) == -1)
+			err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS_FMT1=%s", fmt1);
+	}
+	if (fmt2) {
+		if (setenv("LD_TRACE_LOADED_OBJECTS_FMT2", fmt2, 1) == -1)
+			err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS_FMT2=%s", fmt2);
+	}
 
 	rval = 0;
 	for ( ;  argc > 0;  argc--, argv++) {
@@ -180,7 +185,8 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		setenv("LD_TRACE_LOADED_OBJECTS_PROGNAME", *argv, 1);
+		if (setenv("LD_TRACE_LOADED_OBJECTS_PROGNAME", *argv, 1) == -1)
+			err(1, "setenv: cannot set LD_TRACE_LOADED_OBJECTS_PROGNAME=%s", *argv);
 		if (fmt1 == NULL && fmt2 == NULL)
 			/* Default formats */
 			printf("%s:\n", *argv);

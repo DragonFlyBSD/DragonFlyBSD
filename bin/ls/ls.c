@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.78 2004/06/08 09:30:10 das Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.14 2005/09/18 18:01:49 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.15 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -221,7 +221,8 @@ main(int argc, char *argv[])
 			fts_options |= FTS_COMFOLLOW;
 			break;
 		case 'G':
-			setenv("CLICOLOR", "", 1);
+			if (setenv("CLICOLOR", "", 1) != 0)
+				warn("setenv: cannot set CLICOLOR");
 			break;
 		case 'L':
 			fts_options &= ~FTS_PHYSICAL;

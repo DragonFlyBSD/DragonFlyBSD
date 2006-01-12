@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.6 2005/11/06 11:44:02 swildner Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.7 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -145,11 +145,13 @@ main(int argc, char **argv)
 		case 'b':
 				/* FALLTHROUGH */
 		case 'P':
-			putenv("BLOCKSIZE=512");
+			if (putenv("BLOCKSIZE=512") != 0)
+				warn("putenv: cannot set BLOCKSIZE=512");
 			hflag = 0;
 			break;
 		case 'g':
-			putenv("BLOCKSIZE=1g");
+			if (putenv("BLOCKSIZE=1g") != 0)
+				warn("putenv: cannot set BLOCKSIZE=1g");
 			hflag = 0;
 			break;
 		case 'H':
@@ -164,7 +166,8 @@ main(int argc, char **argv)
 			iflag = 1;
 			break;
 		case 'k':
-			putenv("BLOCKSIZE=1k");
+			if (putenv("BLOCKSIZE=1k") != 0)
+				warn("putenv: cannot set BLOCKSIZE=1k");
 			hflag = 0;
 			break;
 		case 'l':
@@ -173,7 +176,8 @@ main(int argc, char **argv)
 			vfslist = makevfslist(makenetvfslist());
 			break;
 		case 'm':
-			putenv("BLOCKSIZE=1m");
+			if (putenv("BLOCKSIZE=1m") != 0)
+				warn("putenv: cannot set BLOCKSIZE=1m");
 			hflag = 0;
 			break;
 		case 'n':

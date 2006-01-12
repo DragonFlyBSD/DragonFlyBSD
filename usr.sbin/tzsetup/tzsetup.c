@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
  */
 
 /*
@@ -586,7 +586,8 @@ confirm_zone(const char *filename)
 	time_t t = time(0);
 	int rv;
 	
-	setenv("TZ", filename, 1);
+	if (setenv("TZ", filename, 1) == -1)
+		err(1, "setenv: cannot set TZ=%s", filename);
 	tzset();
 	tm = localtime(&t);
 

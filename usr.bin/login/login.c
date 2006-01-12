@@ -32,7 +32,7 @@
  *
  * @(#)login.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $
- * $DragonFly: src/usr.bin/login/login.c,v 1.5 2005/07/13 12:34:22 joerg Exp $
+ * $DragonFly: src/usr.bin/login/login.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
  */
 
 #if 0
@@ -656,16 +656,24 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	(void)setenv("SHELL", pwd->pw_shell, 1);
-	(void)setenv("HOME", pwd->pw_dir, 1);
-	if (term != NULL && *term != '\0')
-		(void)setenv("TERM", term, 1);		/* Preset overrides */
-	else {
-		(void)setenv("TERM", stypeof(tty), 0);	/* Fallback doesn't */
+	if (setenv("SHELL", pwd->pw_shell, 1) == -1)
+		err(1, "setenv: cannot set SHELL=%s", pwd->pw_shell);
+	if (setenv("HOME", pwd->pw_dir, 1) == -1)
+		err(1, "setenv: cannot set HOME=%s", pwd->pw_dir);
+	if (term != NULL && *term != '\0') {
+		if (setenv("TERM", term, 1) == -1)		/* Preset overrides */
+			err(1, "setenv: cannot set TERM=%s", term);
 	}
-	(void)setenv("LOGNAME", username, 1);
-	(void)setenv("USER", username, 1);
-	(void)setenv("PATH", rootlogin ? _PATH_STDPATH : _PATH_DEFPATH, 0);
+	else {
+		if (setenv("TERM", stypeof(tty), 0) == -1)	/* Fallback doesn't */
+			err(1, "setenv: cannot set TERM=%s", stypeof(tty));
+	}
+	if (setenv("LOGNAME", username, 1) == -1)
+		err(1, "setenv: cannot set LOGNAME=%s", username);
+	if (setenv("USER", username, 1) == -1)
+		err(1, "setenv: cannot set USER=%s", username);
+	if (setenv("PATH", rootlogin ? _PATH_STDPATH : _PATH_DEFPATH, 0) == -1)
+		err(1, "setenv: cannot set PATH=%s", rootlogin ? _PATH_STDPATH : _PATH_DEFPATH);
 
 	if (!quietlog) {
 		char	*cw;
@@ -857,8 +865,10 @@ export_pam_environment(void)
 	char	**pp;
 
 	for (pp = environ_pam; *pp != NULL; pp++) {
-		if (ok_to_export(*pp))
-			(void) putenv(*pp);
+		if (ok_to_export(*pp)) {
+			if (putenv(*pp) == -1)
+				err(1, "putenv: cannot set %s", *pp);
+		}
 		free(*pp);
 	}
 	return PAM_SUCCESS;

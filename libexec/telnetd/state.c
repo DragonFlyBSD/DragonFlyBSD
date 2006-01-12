@@ -32,7 +32,7 @@
  *
  * @(#)state.c	8.5 (Berkeley) 5/30/95
  * $FreeBSD: src/libexec/telnetd/state.c,v 1.9.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/state.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/telnetd/state.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <stdarg.h>
@@ -1162,7 +1162,8 @@ suboption(void)
 		return;
 	settimer(xdisplocsubopt);
 	subpointer[SB_LEN()] = '\0';
-	(void)setenv("DISPLAY", (char *)subpointer, 1);
+	if (setenv("DISPLAY", (char *)subpointer, 1) == -1)
+		syslog(LOG_ERR, "setenv: cannot set DISPLAY=%s: %m", (char *)subpointer);
 	break;
     }  /* end of case TELOPT_XDISPLOC */
 
@@ -1327,8 +1328,10 @@ suboption(void)
 		case NEW_ENV_VAR:
 		case ENV_USERVAR:
 			*cp = '\0';
-			if (valp)
-				(void)setenv(varp, valp, 1);
+			if (valp) {
+				if (setenv(varp, valp, 1) == -1)
+					syslog(LOG_ERR, "setenv: cannot set %s=%s: %m", varp, valp);
+			}
 			else
 				unsetenv(varp);
 			cp = varp = (char *)subpointer;
@@ -1346,8 +1349,10 @@ suboption(void)
 		}
 	}
 	*cp = '\0';
-	if (valp)
-		(void)setenv(varp, valp, 1);
+	if (valp) {
+		if (setenv(varp, valp, 1) == -1)
+			syslog(LOG_ERR, "setenv: cannot set %s=%s: %m", varp, valp);
+	}
 	else
 		unsetenv(varp);
 	break;

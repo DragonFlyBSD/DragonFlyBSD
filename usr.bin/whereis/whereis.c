@@ -22,7 +22,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.3 2005/08/31 16:45:51 liamfoy Exp $
+ * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.4 2006/01/12 13:43:11 corecode Exp $
  */
 
 /*
@@ -383,7 +383,8 @@ main(int argc, char **argv)
 		errx(EX_DATAERR, "no directories to search");
 
 	if (opt_m) {
-		setenv("MANPATH", colonify(mandirs), 1);
+		if (setenv("MANPATH", colonify(mandirs), 1) == -1)
+			err(1, "setenv: cannot set MANPATH=%s", colonify(mandirs));
 		if ((i = regcomp(&re, MANWHEREISMATCH, REG_EXTENDED)) != 0) {
 			regerror(i, &re, buf, BUFSIZ - 1);
 			errx(EX_UNAVAILABLE, "regcomp(%s) failed: %s",

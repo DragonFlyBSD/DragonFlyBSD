@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.18 2005/12/21 16:48:06 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.19 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <err.h>
@@ -170,7 +170,8 @@ main(int argc, char **argv)
 
 	path = strdup(objformat_path);
 
-	setenv("OBJFORMAT", objformat, 1);
+	if (setenv("OBJFORMAT", objformat, 1) == -1)
+		err(1, "setenv: cannot set OBJFORMAT=%s", objformat);
 
 	/*
 	 * objformat_path could be sequence of colon-separated paths.

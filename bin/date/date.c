@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.47 2005/01/10 08:39:21 imp Exp $
- * $DragonFly: src/bin/date/date.c,v 1.13 2005/07/20 19:51:56 cpressey Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.14 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,8 @@ main(int argc, char **argv)
 			set_timezone = 1;
 			break;
 		case 'u':		/* do everything in UTC */
-			setenv("TZ", "UTC0", 1);
+			if (setenv("TZ", "UTC0", 1) != 0)
+				err(1, "setenv: cannot set TZ=UTC0");
 			break;
 		case 'v':
 			v = vary_append(v, optarg);

@@ -32,7 +32,7 @@
  *
  * @(#)telnetd.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/libexec/telnetd/telnetd.c,v 1.22.2.8 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/telnetd.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/telnetd/telnetd.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include "telnetd.h"
@@ -590,7 +590,8 @@ doit(struct sockaddr *who)
 	 */
 	*user_name = 0;
 	level = getterminaltype(user_name);
-	setenv("TERM", terminaltype ? terminaltype : "network", 1);
+	if (setenv("TERM", terminaltype ? terminaltype : "network", 1) == -1)
+		syslog(LOG_ERR, "setenv: cannot set TERM=%s: %m", terminaltype ? terminaltype : "network");
 
 	telnet(net, pty, remote_hostname);	/* begin server process */
 

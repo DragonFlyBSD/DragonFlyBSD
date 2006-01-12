@@ -35,7 +35,7 @@
  *
  * @(#)wwenviron.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwenviron.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwenviron.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwenviron.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include "ww.h"
@@ -92,9 +92,11 @@ register struct ww *wp;
 	 */
 	(void) sprintf(buf, "%sco#%d:li#%d:%s",
 		WWT_TERMCAP, wp->ww_w.nc, wp->ww_w.nr, wwwintermcap);
-	(void) setenv("TERMCAP", buf, 1);
+	if (setenv("TERMCAP", buf, 1) == -1)
+		err(1, "setenv: cannot set TERMCAP=%s", buf);
 	(void) sprintf(buf, "%d", wp->ww_id + 1);
-	(void) setenv("WINDOW_ID", buf, 1);
+	if (setenv("WINDOW_ID", buf, 1) == -1)
+		err(1, "setenv: cannot set WINDOW_ID=%s", buf);
 	return 0;
 bad:
 	wwerrno = WWE_SYS;

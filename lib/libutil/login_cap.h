@@ -23,7 +23,7 @@
  *
  *	Was login_cap.h,v 1.9 1997/05/07 20:00:01 eivind Exp
  * $FreeBSD: src/lib/libutil/login_cap.h,v 1.3.2.1 2000/09/20 11:19:54 green Exp $
- * $DragonFly: src/lib/libutil/login_cap.h,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/libutil/login_cap.h,v 1.4 2006/01/12 13:43:10 corecode Exp $
  */
 
 #ifndef _LOGIN_CAP_H_
@@ -116,7 +116,7 @@ const char *login_setcryptfmt (login_cap_t *, const char *, const char *);
 int setclasscontext (const char*, unsigned int);
 int setusercontext (login_cap_t*, const struct passwd*, uid_t, unsigned int);
 void setclassresources (login_cap_t *);
-void setclassenvironment (login_cap_t *, const struct passwd *, int);
+int setclassenvironment (login_cap_t *, const struct passwd *, int);
 
 /* Most of these functions are deprecated */
 int auth_approve (login_cap_t*, const char*, const char*);

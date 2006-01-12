@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.8 2005/09/01 22:19:26 liamfoy Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.9 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -155,13 +155,15 @@ main(int argc, char **argv)
 				cflag = 1;
 				break;
 			case 'h':
-				putenv("BLOCKSIZE=512");
+				if (putenv("BLOCKSIZE=512") == -1)
+					warn("putenv: cannot set BLOCKSIZE=512");
 				hflag = 1;
 				valp = vals_base2;
 				break;
 			case 'k':
 				hflag = 0;
-				putenv("BLOCKSIZE=1024");
+				if (putenv("BLOCKSIZE=1024") == -1)
+					warn("putenv: cannot set BLOCKSIZE=1024");
 				break;
 			case 'r':		 /* Compatibility. */
 				break;

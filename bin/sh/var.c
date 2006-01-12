@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.10 2005/12/04 20:32:50 dillon Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.11 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <unistd.h>
@@ -316,7 +316,8 @@ setvareq(char *s, int flags)
 			if (vp == &vmpath || (vp == &vmail && ! mpathset()))
 				chkmail(1);
 			if ((vp->flags & VEXPORT) && localevar(s)) {
-				putenv(s);
+				if (putenv(s) != 0)
+					error("putenv: cannot set %s", s);
 				setlocale(LC_ALL, "");
 			}
 			INTON;
@@ -332,7 +333,8 @@ setvareq(char *s, int flags)
 	INTOFF;
 	*vpp = vp;
 	if ((vp->flags & VEXPORT) && localevar(s)) {
-		putenv(s);
+		if (putenv(s) != 0)
+			error("putenv: cannot set %s", s);
 		setlocale(LC_ALL, "");
 	}
 	INTON;
@@ -553,7 +555,8 @@ exportcmd(int argc, char **argv)
 
 						vp->flags |= flag;
 						if ((vp->flags & VEXPORT) && localevar(vp->text)) {
-							putenv(vp->text);
+							if (putenv(vp->text) != 0)
+								error("putenv: cannot set %s", vp->text);
 							setlocale(LC_ALL, "");
 						}
 						goto found;

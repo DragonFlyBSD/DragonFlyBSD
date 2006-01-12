@@ -35,7 +35,7 @@
  *
  * @(#)wwinit.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwinit.c,v 1.11.2.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwinit.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwinit.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include "ww.h"
@@ -303,7 +303,8 @@ wwinit()
 	 * since tt_init() has already made its own copy of it and
 	 * wwterm now points to the copy.
 	 */
-	(void) setenv("TERM", WWT_TERM, 1);
+	if (setenv("TERM", WWT_TERM, 1) == -1)
+		err(1, "setenv: cannot set TERM=%s", WWT_TERM);
 #ifdef TERMINFO
 	if (wwterminfoinit() < 0)
 		goto bad;

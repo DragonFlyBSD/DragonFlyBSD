@@ -35,7 +35,7 @@
  *
  * @(#)wwterminfo.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwterminfo.c,v 1.3.6.2 2001/05/17 19:40:13 eric Exp $
- * $DragonFly: src/usr.bin/window/wwterminfo.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwterminfo.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
 #ifdef TERMINFO
@@ -68,7 +68,8 @@ wwterminfoinit()
 		wwerrno = WWE_SYS;
 		return -1;
 	}
-	(void) setenv("TERMINFO", wwterminfopath, 1);
+	if (setenv("TERMINFO", wwterminfopath, 1) == -1)
+		err(1, "setenv: cannot set TERMINFO=%s", wwterminfopath);
 		/* make a termcap entry and turn it into terminfo */
 	(void) sprintf(buf, "%s/cap", wwterminfopath);
 	if ((fp = fopen(buf, "w")) == NULL) {

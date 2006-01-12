@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)env.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/env/env.c,v 1.5.2.3 2002/06/26 08:23:36 tjr Exp $
- * $DragonFly: src/usr.bin/env/env.c,v 1.4 2004/12/08 20:17:12 liamfoy Exp $
+ * $DragonFly: src/usr.bin/env/env.c,v 1.5 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <err.h>
@@ -66,7 +66,7 @@ main(int argc, char **argv)
 		}
 	for (argv += optind; *argv && (p = strchr(*argv, '=')); ++argv) {
 		if (setenv(*argv, ++p, 1) == -1)
-			err(1, "%s", *argv);
+			err(1, "setenv: cannot set %s=%s", *argv, p);
 	}
 
 	if (*argv) {

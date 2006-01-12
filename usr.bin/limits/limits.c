@@ -21,7 +21,7 @@
  * Display/change(+runprogram)/eval resource limits.
  *
  * $FreeBSD: src/usr.bin/limits/limits.c,v 1.7.2.3 2003/05/22 09:26:57 sheldonh Exp $
- * $DragonFly: src/usr.bin/limits/limits.c,v 1.4 2005/01/12 01:20:26 cpressey Exp $
+ * $DragonFly: src/usr.bin/limits/limits.c,v 1.5 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <err.h>
@@ -433,8 +433,10 @@ main(int argc, char *argv[])
 	login_close(lc);
 
 	/* set leading environment variables, like eval(1) */
-	while (*argv && (p = strchr(*argv, '=')))
-	    (void)setenv(*argv++, ++p, 1);
+	while (*argv && (p = strchr(*argv, '='))) {
+	    if (setenv(*argv++, ++p, 1) == -1)
+		err(1, "setenv: cannot set %s=%s", *argv, p);
+	}
 
 	/* Set limits */
 	for (rcswhich = 0; rcswhich < RLIM_NLIMITS; rcswhich++) {

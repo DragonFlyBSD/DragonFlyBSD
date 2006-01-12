@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login_class.3,v 1.9.2.4 2003/04/29 14:40:07 trhodes Exp $
-.\" $DragonFly: src/lib/libutil/login_class.3,v 1.2 2003/06/17 04:26:52 dillon Exp $
+.\" $DragonFly: src/lib/libutil/login_class.3,v 1.3 2006/01/12 13:43:10 corecode Exp $
 .\"
 .Dd December 28, 1996
 .Os
@@ -40,7 +40,7 @@
 .Fn setusercontext "login_cap_t *lc" "const struct passwd *pwd" "uid_t uid" "unsigned int flags"
 .Ft void
 .Fn setclassresources "login_cap_t *lc"
-.Ft void
+.Ft int
 .Fn setclassenvironment "login_cap_t *lc" "const struct passwd *pwd" "int paths"
 .Sh DESCRIPTION
 These functions provide a higher level interface to the login class
@@ -172,6 +172,8 @@ and
 functions are subsets of the setcontext functions above, but may
 be useful in isolation.
 .Sh RETURN VALUES
+.Fn setclassenvironment
+,
 .Fn setclasscontext
 and
 .Fn setusercontext
@@ -180,6 +182,13 @@ If an error occurs when attempting to set the user, login, group
 or resources, a message is reported to
 .Xr syslog 3 ,
 with LOG_ERR priority and directed to the currently active facility.
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er ENOMEM
+The function
+.Fn setclassenvironment
+failed because it were unable to allocate memory for the environment.
+.El
 .Sh SEE ALSO
 .Xr setgid 2 ,
 .Xr setlogin 2 ,

@@ -22,7 +22,7 @@
  * High-level routines relating to use of the user capabilities database
  *
  * $FreeBSD: src/lib/libutil/login_class.c,v 1.14.2.3 2002/08/06 07:07:52 ache Exp $
- * $DragonFly: src/lib/libutil/login_class.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/login_class.c,v 1.5 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -192,7 +192,7 @@ substvar(char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
 }
 
 
-void
+int
 setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 {
     struct login_vars	*vars = paths ? pathvars : envars;
@@ -210,10 +210,17 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 	char * np  = substvar(var, pwd, hlen, pch, nlen);
 
 	if (np != NULL) {
-	    setenv(vars->var, np, vars->overwrite);
+	    if (setenv(vars->var, np, vars->overwrite) == -1) {
+		syslog(LOG_ERR, "setclassenvironment: %m");
+		free(np);
+		return -1;
+	    }
 	    free(np);
 	} else if (vars->def != NULL) {
-	    setenv(vars->var, vars->def, 0);
+	    if (setenv(vars->var, vars->def, 0) == -1) {
+		syslog(LOG_ERR, "setclassenvironment: %m");
+		return -1;
+	    }
 	}
 	++vars;
     }
@@ -234,7 +241,10 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 
 		    *p++ = '\0';
 		    if ((np = substvar(p, pwd, hlen, pch, nlen)) != NULL) {
-			setenv(*set_env, np, 1);
+			if (setenv(*set_env, np, 1) == -1) {
+			    free(np);
+			    return -1;
+			}
 			free(np);
 		    }
 		}
@@ -242,6 +252,7 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 	    }
 	}
     }
+    return 0;
 }
 
 
@@ -280,8 +291,9 @@ setclasscontext(const char *classname, unsigned int flags)
 
 static mode_t
 setlogincontext(login_cap_t *lc, const struct passwd *pwd,
-		mode_t mymask, unsigned long flags)
+		mode_t mymask, unsigned long flags, int *errcode)
 {
+    *errcode = 0;
     if (lc) {
 	/* Set resources */
 	if (flags & LOGIN_SETRESOURCES)
@@ -290,11 +302,15 @@ setlogincontext(login_cap_t *lc, const struct passwd *pwd,
 	if (flags & LOGIN_SETUMASK)
 	    mymask = (mode_t)login_getcapnum(lc, "umask", mymask, mymask);
 	/* Set paths */
-	if (flags & LOGIN_SETPATH)
-	    setclassenvironment(lc, pwd, 1);
+	if (flags & LOGIN_SETPATH) {
+	    if (setclassenvironment(lc, pwd, 1) == -1)
+		*errcode = -1;
+	}
 	/* Set environment */
-	if (flags & LOGIN_SETENV)
-	    setclassenvironment(lc, pwd, 0);
+	if (flags & LOGIN_SETENV) {
+	    if (setclassenvironment(lc, pwd, 0) == -1)
+		*errcode = -1;
+	}
     }
     return mymask;
 }
@@ -324,6 +340,7 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
 #ifndef __NETBSD_SYSCALLS
     struct rtprio rtp;
 #endif
+    int		errcode;
 
     if (lc == NULL) {
 	if (pwd != NULL && (lc = login_getpwclass(pwd)) != NULL)
@@ -389,7 +406,11 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
     }
 
     mymask = (flags & LOGIN_SETUMASK) ? umask(LOGIN_DEFUMASK) : 0;
-    mymask = setlogincontext(lc, pwd, mymask, flags);
+    mymask = setlogincontext(lc, pwd, mymask, flags, &errcode);
+    if (errcode == -1) {
+	login_close(llc);
+	return -1;
+    }
     login_close(llc);
 
     /* This needs to be done after anything that needs root privs */
@@ -402,7 +423,11 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
      * Now, we repeat some of the above for the user's private entries
      */
     if ((lc = login_getuserclass(pwd)) != NULL) {
-	mymask = setlogincontext(lc, pwd, mymask, flags);
+	mymask = setlogincontext(lc, pwd, mymask, flags, &errcode);
+	if (errcode == -1) {
+	    login_close(lc);
+	    return -1;
+	}
 	login_close(lc);
     }
 

@@ -32,7 +32,7 @@
  *
  * @(#)sys_term.c	8.4+1 (Berkeley) 5/30/95
  * $FreeBSD: src/libexec/telnetd/sys_term.c,v 1.24.2.8 2002/06/17 02:48:06 jmallett Exp $
- * $DragonFly: src/libexec/telnetd/sys_term.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/telnetd/sys_term.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -1026,11 +1026,15 @@ start_login(char *host undef1, int autologin undef1, char *name undef1)
 	 * "real" or "kludge" if we are operating in either
 	 * real or kludge linemode.
 	 */
-	if (lmodetype == REAL_LINEMODE)
-		setenv("LINEMODE", "real", 1);
+	if (lmodetype == REAL_LINEMODE) {
+		if (setenv("LINEMODE", "real", 1) == -1)
+			syslog(LOG_ERR, "setenv: cannot set LINEMODE=real: %m");
+	}
 # ifdef KLUDGELINEMODE
-	else if (lmodetype == KLUDGE_LINEMODE || lmodetype == KLUDGE_OK)
-		setenv("LINEMODE", "kludge", 1);
+	else if (lmodetype == KLUDGE_LINEMODE || lmodetype == KLUDGE_OK) {
+		if (setenv("LINEMODE", "kludge", 1) == -1)
+			syslog(LOG_ERR, "setenv: cannot set LINEMODE=kludge: %m");
+	}
 # endif
 #endif
 #ifdef	BFTPDAEMON

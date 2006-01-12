@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.7 2006/01/12 13:43:11 corecode Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -88,7 +88,11 @@ main(int argc, char **argv)
 	set_cron_cwd();
 
 #if defined(POSIX)
-	setenv("PATH", _PATH_DEFPATH, 1);
+	if (setenv("PATH", _PATH_DEFPATH, 1) == -1) {
+		log_it("CRON", getpid(), "DEATH",
+		       "setenv: cannot set PATH");
+		exit(0);
+	}
 #endif
 
 	/* if there are no debug flags turned on, fork as a daemon should.

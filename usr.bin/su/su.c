@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.8 2005/03/14 11:55:33 joerg Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.9 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -396,21 +396,30 @@ main(int argc, char **argv)
 			/* set the su'd user's environment & umask */
 			setusercontext(lc, pwd, pwd->pw_uid, LOGIN_SETPATH|LOGIN_SETUMASK|LOGIN_SETENV);
 #else
-			setenv("PATH", _PATH_DEFPATH, 1);
+			if (setenv("PATH", _PATH_DEFPATH, 1) == -1)
+				err(1, "setenv: cannot set PATH=%s", _PATH_DEFPATH);
 #endif
-			if (p)
-				setenv("TERM", p, 1);
+			if (p) {
+				if (setenv("TERM", p, 1) == -1)
+					err(1, "setenv: cannot set TERM=%s", p);
+			}
 #ifdef KERBEROS5
-			if (ccname)
-				setenv("KRB5CCNAME", ccname, 1);
+			if (ccname) {
+				if (setenv("KRB5CCNAME", ccname, 1) == -1)
+					err(1, "setenv: cannot set KRB5CCNAME=%s", ccname);
+			}
 #endif
 			if (chdir(pwd->pw_dir) < 0)
 				errx(1, "no directory");
 		}
-		if (asthem || pwd->pw_uid)
-			setenv("USER", pwd->pw_name, 1);
-		setenv("HOME", pwd->pw_dir, 1);
-		setenv("SHELL", shell, 1);
+		if (asthem || pwd->pw_uid) {
+			if (setenv("USER", pwd->pw_name, 1) == -1)
+				err(1, "setenv: cannot set USER=%s", pwd->pw_name);
+		}
+		if (setenv("HOME", pwd->pw_dir, 1) == -1)
+			err(1, "setenv: cannot set HOME=%s", pwd->pw_dir);
+		if (setenv("SHELL", shell, 1) == -1)
+			err(1, "setenv: cannot set SHELL=%s", shell);
 	}
 	if (iscsh == YES) {
 		if (fastlogin)

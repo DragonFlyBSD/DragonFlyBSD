@@ -35,7 +35,7 @@
  *
  * @(#)popen.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/ftpd/popen.c,v 1.18.2.3 2001/08/09 00:53:18 mikeh Exp $
- * $DragonFly: src/libexec/ftpd/popen.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/ftpd/popen.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -146,7 +146,8 @@ ftpd_popen(program, type)
 			closelog();
 			/* Trigger to sense new /etc/localtime after chroot */
 			if (getenv("TZ") == NULL) {
-				setenv("TZ", "", 0);
+				if (setenv("TZ", "", 0) == -1)
+					syslog(LOG_ERR, "setenv: cannot set TZ: %m");
 				tzset();
 				unsetenv("TZ");
 				tzset();

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tabs/tabs.c,v 1.3 2002/06/08 11:33:22 tjr Exp $
- * $DragonFly: src/usr.bin/tabs/tabs.c,v 1.1 2004/06/19 22:03:08 hmp Exp $
+ * $DragonFly: src/usr.bin/tabs/tabs.c,v 1.2 2006/01/12 13:43:11 corecode Exp $
  */
 
 /*
@@ -108,12 +108,15 @@ main(int argc __unused, char *argv[])
 				errx(1, "%s: invalid increment", arg + 1);
 		} else if (arg[1] == 'T') {
 			/* -Ttype or -T type */
-			if (arg[2] != '\0')
-				setenv("TERM", arg + 2, 1);
+			if (arg[2] != '\0') {
+				if (setenv("TERM", arg + 2, 1) == -1)
+					err(1, "setenv: cannot set TERM=%s", arg + 2);
+			}
 			else {
 				if ((arg = *++argv) == NULL)
 					usage();
-				setenv("TERM", arg, 1);
+				if (setenv("TERM", arg, 1) == -1)
+					err(1, "setenv: cannot set TERM=%s", arg);
 			}
 		} else if (arg[1] == '-') {
 			arg = *++argv;
