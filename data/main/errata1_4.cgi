@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.1 2006/01/08 19:02:45 dillon Exp $
+# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.2 2006/01/12 18:58:37 dillon Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Errata Page)
 <h1>Errata Page for DragonFly 1.4.x</h1>
@@ -9,24 +9,22 @@ $TITLE(DragonFly - January 2006 Release 1.4.x Errata Page)
 <ul>
     <li><p>
 	European timezones may not be properly set by the installer.  You
-	will have to go in post-install and set the timezone by copying the
-	correct file from /usr/share/zoneinfo to /etc/localtime.  Do not
-	use a softlink or the default time will not use the correct timezone
-	in single-user mode.
+	will have to go in post-install and set the timezone by running
+	the 'tzsetup' program.
+	<pre>
+tzsetup
+	</pre>
     </p></li>
 
     <li><p>
 	When upgrading a system a new /etc/pam.d directory is created
 	but not populated.  You must run ./convert.sh from the /etc/pam.d
-	directory.  PAM will not work properly until you do.</p>
-    </p></li>
-    <li><p>
-	Due to our switch from ports to pkgsrc and the mistake (which we 
-	cannot take back now) of using /var/db/pkg for both, you may have
-	to clean out the /var/db/pkg directory to avoid conflicts.  Note
-	that the actual install location for ports was /usr/local, and
-	the install location for pkgsrc is /usr/pkg, so the actual installed
-	packages should not theoretically conflict.
+	directory.  PAM will not work properly until you do.  For example,
+	you would not be able to login to X using xdm.</p>
+	<pre>
+cd /etc/pam.d
+sh ./convert.sh
+	</pre>
     </p></li>
     <li><p>
 	A larger problem is that third party libraries used by ports or
@@ -48,6 +46,49 @@ cvs -q
 diff -u
 update -Pd
 checkout -P
+	</pre>
+    </p></li>
+    <li><p>
+	The installer fails to install the file /etc/mk.conf.  The following
+	is recommended, but you have two choices.  If you are upgrading an
+	older system that has installed ports, you may want to change 
+	pkgsrc's notion of the pkgsrc database from "/var/db/pkg" to, say
+	"/var/db/pkgsrc", to avoid conflicts with the ports database.
+	Otherwise just stick with "/var/db/pkg".  The two key items here
+	is the defaulting of X to 'xorg' and setting a WRKOBJDIR to avoid
+	cluttering the package source tree.
+	<pre>
+.ifdef BSD_PKG_MK
+
+PKG_DBDIR=/var/db/pkg
+LOCALBASE=/usr/pkg
+VARBASE=/var
+FETCH_CMD=/usr/pkg/bin/ftp
+PAX=/usr/pkg/bin/pax
+X11_TYPE=xorg
+WRKOBJDIR=/usr/obj/pkgsrc
+
+.endif
+	</pre>
+    </p></li>
+    <li><p>
+    Packages pre-installed by the CD have incorrect paths in their +CONTENTS
+    files.  The following commands will clean these up:
+    <pre>
+find /var/db/pkg -name +CONTENTS -type f -exec \
+	sed -i '' -e 's,/usr/release/root,,' -- {} \;
+pkg_admin rebuild
+    </pre>
+    </p></li>
+    <li><p>
+	Binary packages are not yet generated for the release.  This space
+	will have a reference as soon as it is available.
+    </p></li>
+    <li><p>
+	The newaliases command must be run as root, otherwise sendmail will
+	complain about not being able to find the mail aliases database.
+	<pre>
+newaliases
 	</pre>
     </p></li>
 </ul>

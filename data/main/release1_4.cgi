@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_4.cgi,v 1.1 2006/01/08 19:02:45 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_4.cgi,v 1.2 2006/01/12 18:58:37 dillon Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Download)
 <h1>Obtaining DragonFly 1.4.x for your system</h1>
@@ -113,13 +113,11 @@ See the 'Download Site' list below for a list of download locations.
     <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
 </TD></TR>
 
-<!--
-<TR><TD>Bit Torrent</TD>
+<TR><TD>FrostBit.org</TD>
 <TD>1.4.0_REL image</TD>
 <TD>
-    <A HREF="http://torrent.bitslush.org/dfly-1.4.0_REL.iso.gz.torrent">TORRENT</A>
+    <A HREF="http://torrent.frostbit.org/dfly-1.4.0_REL.iso.gz.torrent">TORRENT</A>
 </TD></TR>
--->
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
 <TD>1.4.0_REL image</TD>
