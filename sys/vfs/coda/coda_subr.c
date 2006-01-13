@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_subr.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_subr.c,v 1.11.2.1 2001/10/25 19:18:51 dillon Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.9 2005/04/20 17:01:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.10 2006/01/13 21:09:27 swildner Exp $
  * 
   */
 
@@ -370,7 +370,8 @@ coda_cacheprint(struct mount *whoIam)
  * CODA_REPLACE -- replace one ViceFid with another throughout the name cache 
  */
 
-int handleDownCall(int opcode, union outputArgs *out)
+int
+handleDownCall(int opcode, union outputArgs *out)
 {
     int error;
 
@@ -525,7 +526,8 @@ coda_vmflush(struct cnode *cp)
 /* 
  * kernel-internal debugging switches
  */
-void coda_debugon(void)
+void
+coda_debugon(void)
 {
     codadebug = -1;
     coda_nc_debug = -1;
@@ -534,7 +536,8 @@ void coda_debugon(void)
     coda_vfsop_print_entry = 1;
 }
 
-void coda_debugoff(void)
+void
+coda_debugoff(void)
 {
     codadebug = 0;
     coda_nc_debug = 0;

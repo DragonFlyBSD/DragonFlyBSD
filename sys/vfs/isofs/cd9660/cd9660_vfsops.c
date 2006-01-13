@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.28 2005/09/17 07:43:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.29 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
 
 	args.ssector = iso_get_ssector(rootdev, td);
 
-	(void)VOP_CLOSE(rootvp, FREAD, td);
+	VOP_CLOSE(rootvp, FREAD, td);
 
 	if (bootverbose)
 		printf("iso_mountroot(): using session at block %d\n",
@@ -167,7 +167,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
 	if ((error = iso_mountfs(rootvp, mp, td, &args)) != 0)
 		return (error);
 
-	(void)cd9660_statfs(mp, &mp->mnt_stat, td);
+	cd9660_statfs(mp, &mp->mnt_stat, td);
 	return (0);
 }
 
@@ -254,10 +254,10 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		return error;
 	}
 	imp = VFSTOISOFS(mp);
-	(void) copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
+	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void) cd9660_statfs(mp, &mp->mnt_stat, td);
+	cd9660_statfs(mp, &mp->mnt_stat, td);
 	return 0;
 }
 
@@ -525,7 +525,7 @@ out:
 	if (supbp)
 		brelse(supbp);
 	if (needclose)
-		(void)VOP_CLOSE(devvp, FREAD, td);
+		VOP_CLOSE(devvp, FREAD, td);
 	if (isomp) {
 		free((caddr_t)isomp, M_ISOFSMNT);
 		mp->mnt_data = (qaddr_t)0;

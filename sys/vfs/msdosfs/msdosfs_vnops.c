@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.27 2005/09/14 01:13:38 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.28 2006/01/13 21:09:27 swildner Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -789,7 +789,7 @@ msdosfs_write(struct vop_write_args *ap)
 		 * may want to write somemore into the block later.
 		 */
 		if (ioflag & IO_SYNC)
-			(void) bwrite(bp);
+			bwrite(bp);
 		else if (n + croffset == pmp->pm_bpcluster)
 			bawrite(bp);
 		else

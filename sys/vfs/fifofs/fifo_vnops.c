@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.21 2005/09/17 07:43:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.22 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -180,7 +180,7 @@ fifo_open(struct vop_open_args *ap)
 		fip->fi_readsock = rso;
 		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, ap->a_td);
 		if (error) {
-			(void)soclose(rso);
+			soclose(rso);
 			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
@@ -188,8 +188,8 @@ fifo_open(struct vop_open_args *ap)
 		fip->fi_writesock = wso;
 		error = unp_connect2(wso, rso);
 		if (error) {
-			(void)soclose(wso);
-			(void)soclose(rso);
+			soclose(wso);
+			soclose(rso);
 			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);

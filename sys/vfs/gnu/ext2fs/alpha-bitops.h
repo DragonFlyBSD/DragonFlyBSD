@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/gnu/ext2fs/alpha-bitops.h,v 1.1.2.1 2001/08/14 18:03:19 gallatin Exp $ */
-/* $DragonFly: src/sys/vfs/gnu/ext2fs/Attic/alpha-bitops.h,v 1.2 2003/06/17 04:28:33 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/gnu/ext2fs/Attic/alpha-bitops.h,v 1.3 2006/01/13 21:09:27 swildner Exp $ */
 #ifndef _ALPHA_BITOPS_H
 #define _ALPHA_BITOPS_H
 
@@ -32,7 +32,8 @@ static __inline unsigned long hweight64(unsigned long);
 static __inline unsigned long
 find_next_zero_bit(void *, unsigned long, unsigned long);
 
-static __inline unsigned int set_bit(unsigned long nr, volatile void * addr)
+static __inline unsigned int
+set_bit(unsigned long nr, volatile void * addr)
 {
 	unsigned long oldbit;
 	unsigned long temp;
@@ -54,7 +55,8 @@ static __inline unsigned int set_bit(unsigned long nr, volatile void * addr)
 	return oldbit;
 }
 
-static __inline unsigned int clear_bit(unsigned long nr, volatile void * addr)
+static __inline unsigned int
+clear_bit(unsigned long nr, volatile void * addr)
 {
 	unsigned long oldbit;
 	unsigned long temp;
@@ -76,7 +78,8 @@ static __inline unsigned int clear_bit(unsigned long nr, volatile void * addr)
 	return oldbit;
 }
 
-static __inline unsigned int change_bit(unsigned long nr, volatile void * addr)
+static __inline unsigned int
+change_bit(unsigned long nr, volatile void * addr)
 {
 	unsigned long oldbit;
 	unsigned long temp;
@@ -107,7 +110,8 @@ static __inline unsigned int test_bit(int nr, volatile void * addr)
  * Do a binary search on the bits.  Due to the nature of large
  * constants on the alpha, it is worthwhile to split the search.
  */
-static __inline unsigned long ffz_b(unsigned long x)
+static __inline unsigned long
+ffz_b(unsigned long x)
 {
 	unsigned long sum = 0;
 
@@ -119,7 +123,8 @@ static __inline unsigned long ffz_b(unsigned long x)
 	return sum;
 }
 
-static __inline unsigned long ffz(unsigned long word)
+static __inline unsigned long
+ffz(unsigned long word)
 {
 #ifdef __alpha_cix__
 	/* Whee.  EV6 can calculate it directly.  */
@@ -146,7 +151,8 @@ static __inline unsigned long ffz(unsigned long word)
  * differs in spirit from the above ffz (man ffs).
  */
 
-static __inline int ffs(int word)
+static __inline int
+ffs(int word)
 {
 	int result = ffz(~word);
 	return word ? result+1 : 0;
@@ -160,7 +166,8 @@ static __inline int ffs(int word)
 
 #ifdef __alpha_cix__
 /* Whee.  EV6 can calculate it directly.  */
-static __inline unsigned long hweight64(unsigned long w)
+static __inline unsigned long
+hweight64(unsigned long w)
 {
 	unsigned long result;
 	__asm__("ctpop %1,%0" : "=r"(result) : "r"(w));
@@ -179,7 +186,8 @@ static __inline unsigned long hweight64(unsigned long w)
 #endif /* __alpha_cix__ */
 
 /* from lib/string.c */
-static __inline void * memscan(void * addr, int c, size_t size)
+static __inline void *
+memscan(void * addr, int c, size_t size)
 {
 	unsigned char * p = (unsigned char *) addr;
 
@@ -196,7 +204,8 @@ static __inline void * memscan(void * addr, int c, size_t size)
 /*
  * Find next zero bit in a bitmap reasonably efficiently..
  */
-static __inline unsigned long find_next_zero_bit(void * addr, unsigned long size, unsigned long offset)
+static __inline unsigned long
+find_next_zero_bit(void * addr, unsigned long size, unsigned long offset)
 {
 	unsigned long * p = ((unsigned long *) addr) + (offset >> 6);
 	unsigned long result = offset & ~63UL;

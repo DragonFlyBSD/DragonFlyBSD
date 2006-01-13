@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.7 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.8 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ ext2_checkoverlap(struct buf *bp, struct inode *ip)
 		    ep->b_blkno + btodb(ep->b_bcount) <= start)
 			continue;
 		vprint("Disk overlap", vp);
-		(void)printf("\tstart %d, end %d overlap start %d, end %d\n",
+		printf("\tstart %d, end %d overlap start %d, end %d\n",
 			start, last, ep->b_blkno,
 			ep->b_blkno + btodb(ep->b_bcount) - 1);
 		panic("Disk buffer overlap");

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.16 2005/09/17 07:43:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.17 2006/01/13 21:09:27 swildner Exp $
  */
 
 /*
@@ -106,7 +106,7 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	bzero(mp->mnt_stat.f_mntfromname, MNAMELEN);
 	bcopy("fdesc", mp->mnt_stat.f_mntfromname, sizeof("fdesc"));
-	(void)fdesc_statfs(mp, &mp->mnt_stat, td);
+	fdesc_statfs(mp, &mp->mnt_stat, td);
 	return (0);
 }
 

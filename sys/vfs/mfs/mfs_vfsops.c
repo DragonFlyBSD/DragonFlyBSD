@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.23 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.24 2006/01/13 21:09:27 swildner Exp $
  */
 
 
@@ -333,7 +333,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	(void) VFS_STATFS(mp, &mp->mnt_stat, td);
+	VFS_STATFS(mp, &mp->mnt_stat, td);
 
 	goto success;
 

@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.23 2005/09/14 01:13:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.24 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -243,9 +243,9 @@ ext2_fsync_bp(struct buf *bp, void *data)
 	 * since there is no way to quickly wait for them below.
 	 */
 	if (bp->b_vp == info->vp || info->waitfor == MNT_NOWAIT)
-		(void) bawrite(bp);
+		bawrite(bp);
 	else
-		(void) bwrite(bp);
+		bwrite(bp);
 	crit_enter();
 	return(1);
 }
@@ -590,7 +590,7 @@ abortit:
 			if (doingdirectory && newparent) {
 				dp->i_nlink--;
 				dp->i_flag |= IN_CHANGE;
-				(void)UFS_UPDATE(tdvp, 1);
+				UFS_UPDATE(tdvp, 1);
 			}
 			goto bad;
 		}
@@ -778,7 +778,7 @@ abortit:
 					    "rename: mangled dir");
 				} else {
 					dirbuf.dotdot_ino = newparent;
-					(void) vn_rdwr(UIO_WRITE, fvp,
+					vn_rdwr(UIO_WRITE, fvp,
 					    (caddr_t)&dirbuf,
 					    sizeof (struct dirtemplate),
 					    (off_t)0, UIO_SYSSPACE,

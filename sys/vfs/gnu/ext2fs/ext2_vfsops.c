@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.31 2005/09/17 07:43:06 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.32 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -121,10 +121,12 @@ static int	compute_sb_data (struct vnode * devvp,
  * VFS Operations.
  *
  * mount system call
+ *
+ * Parameters:
+ *	data:	this is actually a (struct ufs_args *)
  */
 static int
-ext2_mount(struct mount *mp, char *path,
-	   caddr_t data,	/* this is actually a (struct ufs_args *) */
+ext2_mount(struct mount *mp, char *path, caddr_t data,
 	   struct thread *td)
 {
 	struct vnode *devvp;
@@ -271,7 +273,8 @@ ext2_mount(struct mount *mp, char *path,
  * checks that the data in the descriptor blocks make sense
  * this is taken from ext2/super.c
  */
-static int ext2_check_descriptors(struct ext2_sb_info *sb)
+static int
+ext2_check_descriptors(struct ext2_sb_info *sb)
 {
         int i;
         int desc_block = 0;
@@ -704,7 +707,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 out:
 	if (bp)
 		brelse(bp);
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	if (ump) {
 		bsd_free(ump->um_e2fs->s_es, M_UFSMNT);
 		bsd_free(ump->um_e2fs, M_UFSMNT);

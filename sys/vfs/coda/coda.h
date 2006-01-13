@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $ 
  * $FreeBSD: src/sys/coda/coda.h,v 1.9 1999/12/29 04:54:30 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda.h,v 1.3 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda.h,v 1.4 2006/01/13 21:09:26 swildner Exp $
  * 
  */
 
@@ -182,7 +182,8 @@ typedef struct ViceFid {
 
 
 #ifdef __linux__
-static __inline__ ino_t  coda_f2i(struct ViceFid *fid)
+static __inline__ ino_t
+coda_f2i(struct ViceFid *fid)
 {
 	if ( ! fid ) 
 		return 0; 

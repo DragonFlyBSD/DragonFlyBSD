@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.17 2005/09/14 01:13:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.18 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -834,14 +834,7 @@ cd9660_putpages(struct vop_putpages_args *ap)
  * Advisory lock support
  */
 static int
-cd9660_advlock(ap)
-	struct vop_advlock_args /* {
-		struct vnode *a_vp;
-		caddr_t a_id;
-		int	a_op;
-		struct flock *a_fl;
-		int	a_flags;
-	} */ *ap;
+cd9660_advlock(struct vop_advlock_args *ap)
 {
 	struct iso_node *ip = VTOI(ap->a_vp);
 	return (lf_advlock(ap, &(ip->i_lockf), ip->i_size));

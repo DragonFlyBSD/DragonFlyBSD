@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.5 2005/06/06 15:35:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.6 2006/01/13 21:09:27 swildner Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -59,9 +59,9 @@
  * ext2_linux_ialloc.c
  */
 
-static void read_block_bitmap (struct mount * mp,
-			       unsigned int block_group,
-			       unsigned long bitmap_nr)
+static void
+read_block_bitmap(struct mount *mp, unsigned int block_group,
+		  unsigned long bitmap_nr)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	struct ext2_group_desc * gdp;
@@ -91,8 +91,8 @@ static void read_block_bitmap (struct mount * mp,
  * 2/ If the file system contains less than EXT2_MAX_GROUP_LOADED groups,
  *    this function reads the bitmap without maintaining a LRU cache.
  */
-static int load__block_bitmap (struct mount * mp,
-			       unsigned int block_group)
+static int
+load__block_bitmap(struct mount *mp, unsigned int block_group)
 {
 	int i, j;
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
@@ -151,8 +151,8 @@ static int load__block_bitmap (struct mount * mp,
 	return 0;
 }
 
-static __inline int load_block_bitmap (struct mount * mp,
-				       unsigned int block_group)
+static __inline int
+load_block_bitmap(struct mount * mp, unsigned int block_group)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	if (sb->s_loaded_block_bitmaps > 0 &&
@@ -167,8 +167,9 @@ static __inline int load_block_bitmap (struct mount * mp,
 	return load__block_bitmap (mp, block_group);
 }
 
-void ext2_free_blocks (struct mount * mp, unsigned long block,
-		       unsigned long count)
+void
+ext2_free_blocks(struct mount * mp, unsigned long block,
+		 unsigned long count)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	struct buffer_head * bh;
@@ -251,9 +252,10 @@ void ext2_free_blocks (struct mount * mp, unsigned long block,
  * each block group the search first looks for an entire free byte in the block
  * bitmap, and then for any free bit if that fails.
  */
-int ext2_new_block (struct mount * mp, unsigned long goal,
-		    u_int32_t * prealloc_count,
-		    u_int32_t * prealloc_block)
+int
+ext2_new_block(struct mount * mp, unsigned long goal,
+	       u_int32_t * prealloc_count,
+	       u_int32_t * prealloc_block)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	struct buffer_head * bh;
@@ -457,7 +459,8 @@ got_block:
 }
 
 #ifdef unused
-static unsigned long ext2_count_free_blocks (struct mount * mp)
+static unsigned long
+ext2_count_free_blocks(struct mount * mp)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 #ifdef EXT2FS_DEBUG
@@ -492,15 +495,16 @@ static unsigned long ext2_count_free_blocks (struct mount * mp)
 }
 #endif /* unused */
 
-static __inline int block_in_use (unsigned long block,
-				  struct ext2_sb_info * sb,
-				  unsigned char * map)
+static __inline int
+block_in_use (unsigned long block, struct ext2_sb_info *sb,
+	      unsigned char * map)
 {
 	return test_bit ((block - sb->s_es->s_first_data_block) %
 			 EXT2_BLOCKS_PER_GROUP(sb), map);
 }
 
-static int test_root(int a, int b)
+static int
+test_root(int a, int b)
 {
 	if (a == 0)
 		return 1;
@@ -513,14 +517,16 @@ static int test_root(int a, int b)
 	}
 }
 
-int ext2_group_sparse(int group)
+int
+ext2_group_sparse(int group)
 {
 	return (test_root(group, 3) || test_root(group, 5) ||
 		test_root(group, 7));
 }
 
 #ifdef unused
-static void ext2_check_blocks_bitmap (struct mount * mp)
+static void
+ext2_check_blocks_bitmap(struct mount * mp)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	struct buffer_head * bh;

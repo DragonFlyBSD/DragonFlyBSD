@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.9 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.10 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -349,7 +349,7 @@ done:
 	oip->i_flag |= IN_CHANGE;
 	vnode_pager_setsize(ovp, length);
 #if QUOTA
-	(void) chkdq(oip, -blocksreleased, NOCRED, 0);
+	chkdq(oip, -blocksreleased, NOCRED, 0);
 #endif
 	return (allerror);
 }

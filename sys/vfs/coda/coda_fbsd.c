@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.8 2004/11/12 00:09:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.9 2006/01/13 21:09:26 swildner Exp $
  * 
  */
 
@@ -172,7 +172,7 @@ printf("error = %d\n", error);
 
     /* Do an internal close if necessary. */
     if (opened_internally) {
-	(void)VOP_CLOSE(vp, FREAD, cred, p);
+	VOP_CLOSE(vp, FREAD, cred, p);
     }
 
     return(error);

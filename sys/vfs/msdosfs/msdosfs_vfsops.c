@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.28 2005/09/17 07:43:10 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.29 2006/01/13 21:09:27 swildner Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -287,10 +287,9 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		return error;
 	}
 
-	(void) copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
-	    &size);
+	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void) msdosfs_statfs(mp, &mp->mnt_stat, td);
+	msdosfs_statfs(mp, &mp->mnt_stat, td);
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n", mp, pmp, pmp->pm_inusemap);
 #endif
@@ -670,7 +669,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 error_exit:
 	if (bp)
 		brelse(bp);
-	(void) VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, td);
 	if (pmp) {
 		if (pmp->pm_inusemap)
 			free(pmp->pm_inusemap, M_MSDOSFSFAT);

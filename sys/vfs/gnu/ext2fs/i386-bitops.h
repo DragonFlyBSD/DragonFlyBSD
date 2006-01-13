@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/gnu/ext2fs/i386-bitops.h,v 1.5 1999/11/15 23:16:06 obrien Exp $ */
-/* $DragonFly: src/sys/vfs/gnu/ext2fs/i386-bitops.h,v 1.2 2003/06/17 04:28:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/gnu/ext2fs/i386-bitops.h,v 1.3 2006/01/13 21:09:27 swildner Exp $ */
 /*
  * this is mixture of i386/bitops.h and asm/string.h
  * taken from the Linux source tree 
@@ -27,7 +27,8 @@
 struct __dummy { unsigned long a[100]; };
 #define ADDR (*(struct __dummy *) addr)
 
-static __inline__ int set_bit(int nr, void * addr)
+static __inline__ int
+set_bit(int nr, void *addr)
 {
 	int oldbit;
 
@@ -37,7 +38,8 @@ static __inline__ int set_bit(int nr, void * addr)
 	return oldbit;
 }
 
-static __inline__ int clear_bit(int nr, void * addr)
+static __inline__ int
+clear_bit(int nr, void *addr)
 {
 	int oldbit;
 
@@ -47,7 +49,8 @@ static __inline__ int clear_bit(int nr, void * addr)
 	return oldbit;
 }
 
-static __inline__ int change_bit(int nr, void * addr)
+static __inline__ int
+change_bit(int nr, void *addr)
 {
 	int oldbit;
 
@@ -61,7 +64,8 @@ static __inline__ int change_bit(int nr, void * addr)
  * This routine doesn't need to be atomic, but it's faster to code it
  * this way.
  */
-static __inline__ int test_bit(int nr, void * addr)
+static __inline__ int
+test_bit(int nr, void *addr)
 {
 	int oldbit;
 
@@ -74,7 +78,8 @@ static __inline__ int test_bit(int nr, void * addr)
 /*
  * Find-bit routines..
  */
-static __inline__ int find_first_zero_bit(void * addr, unsigned size)
+static __inline__ int
+find_first_zero_bit(void *addr, unsigned size)
 {
 	int res;
 	int _count = (size + 31) >> 5;
@@ -99,7 +104,8 @@ static __inline__ int find_first_zero_bit(void * addr, unsigned size)
 	return res;
 }
 
-static __inline__ int find_next_zero_bit (void * addr, int size, int offset)
+static __inline__ int
+find_next_zero_bit(void *addr, int size, int offset)
 {
 	unsigned long * p = ((unsigned long *) addr) + (offset >> 5);
 	int set = 0, bit = offset & 31, res;
@@ -131,7 +137,8 @@ static __inline__ int find_next_zero_bit (void * addr, int size, int offset)
  * ffz = Find First Zero in word. Undefined if no zero exists,
  * so code should check against ~0UL first..
  */
-static __inline__ unsigned long ffz(unsigned long word)
+static __inline__ unsigned long
+ffz(unsigned long word)
 {
 	__asm__("bsfl %1,%0"
 		:"=r" (word)
@@ -145,7 +152,8 @@ static __inline__ unsigned long ffz(unsigned long word)
 /*
  * find the first occurrence of byte 'c', or 1 past the area if none
  */
-static __inline__ char * memscan(void * addr, unsigned char c, int size)
+static __inline__ char *
+memscan(void *addr, unsigned char c, int size)
 {
         if (!size)
                 return addr;

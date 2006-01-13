@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.5 2004/04/11 18:17:21 cpressey Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.6 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -532,13 +532,17 @@ retry:
  * Descent down to the end of tree, then search for
  * ralp->len contignous run begining from last run's end and
  * concatenate new block! If we can't find one, then...
+ *
+ * Parameters:
+ *	hpmp:	Mix info
+ *	rlsn:	LSN containing AlSec
+ *	ralp:	AlLeaf to insert
+ *	ranp:	New AlNodes' values
+ *	resp:	Mix returning info
  */
 int
-hpfs_addextentr(struct hpfsmount *hpmp,	/* Mix info */
-		lsn_t rlsn,		/* LSN containing AlSec */
-		alleaf_t *ralp,		/* AlLeaf to insert */
-		alnode_t *ranp,		/* New AlNodes' values */
-		u_long *resp)		/* Mix returning info */
+hpfs_addextentr(struct hpfsmount *hpmp, lsn_t rlsn, alleaf_t *ralp,
+		alnode_t *ranp, u_long *resp)
 {
 	struct buf *rbp;
 	alsec_t *rasp;

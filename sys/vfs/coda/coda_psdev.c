@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.9 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.10 2006/01/13 21:09:27 swildner Exp $
  * 
  */
 
@@ -207,10 +207,10 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
     if (outstanding_upcalls) {
 #ifdef	CODA_VERBOSE
 	printf("presleep: outstanding_upcalls = %d\n", outstanding_upcalls);
-    	(void) tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
+    	tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
 	printf("postsleep: outstanding_upcalls = %d\n", outstanding_upcalls);
 #else
-    	(void) tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
+    	tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
 #endif
     }
 
@@ -574,7 +574,7 @@ coda_call(struct coda_mntinfo *mntinfo, int inSize, int *outSize,
 	} while (error && i++ < 128 && VC_OPEN(vcp));
 	p->p_sigmask = psig_omask;
 #else
-	(void) tsleep(&vmp->vm_sleep, 0, "coda_call", 0);
+	tsleep(&vmp->vm_sleep, 0, "coda_call", 0);
 #endif
 	if (VC_OPEN(vcp)) {	/* Venus is still alive */
  	/* Op went through, interrupt or not... */

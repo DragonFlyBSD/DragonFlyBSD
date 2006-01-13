@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.27 2005/09/14 01:13:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.28 2006/01/13 21:09:27 swildner Exp $
  * 
  */
 
@@ -492,7 +492,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
     /* Do an internal close if necessary. */
     if (opened_internally) {
 	MARK_INT_GEN(CODA_CLOSE_STATS);
-	(void)VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE), td);
+	VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE), td);
     }
 
     /* Invalidate cached attributes if writing. */
@@ -1601,7 +1601,7 @@ printf("coda_readdir: Internally Opening %p\n", vp);
 	/* Do an "internal close" if necessary. */ 
 	if (opened_internally) {
 	    MARK_INT_GEN(CODA_CLOSE_STATS);
-	    (void)VOP_CLOSE(vp, FREAD, td);
+	    VOP_CLOSE(vp, FREAD, td);
 	}
     }
 

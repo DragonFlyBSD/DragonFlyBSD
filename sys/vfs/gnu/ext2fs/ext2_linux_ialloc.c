@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.6 2005/06/06 15:35:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.7 2006/01/13 21:09:27 swildner Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -58,16 +58,17 @@
 
 /* this is supposed to mark a buffer dirty on ready for delayed writing
  */
-void mark_buffer_dirty(struct buf *bh)
+void
+mark_buffer_dirty(struct buf *bh)
 {
 	crit_enter();
 	bh->b_flags |= B_DIRTY;
 	crit_exit();
 } 
 
-struct ext2_group_desc * get_group_desc (struct mount * mp,
-						unsigned int block_group,
-						struct buffer_head ** bh)
+struct ext2_group_desc *
+get_group_desc(struct mount * mp, unsigned int block_group,
+	       struct buffer_head **bh)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	unsigned long group_desc;
@@ -94,9 +95,9 @@ struct ext2_group_desc * get_group_desc (struct mount * mp,
 	return gdp + desc;
 }
 
-static void read_inode_bitmap (struct mount * mp,
-			       unsigned long block_group,
-			       unsigned int bitmap_nr)
+static void
+read_inode_bitmap(struct mount *mp, unsigned long block_group,
+		  unsigned int bitmap_nr)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	struct ext2_group_desc * gdp;
@@ -127,8 +128,8 @@ static void read_inode_bitmap (struct mount * mp,
  * 2/ If the file system contains less than EXT2_MAX_GROUP_LOADED groups,
  *    this function reads the bitmap without maintaining a LRU cache.
  */
-static int load_inode_bitmap (struct mount * mp,
-			      unsigned int block_group)
+static int
+load_inode_bitmap(struct mount *mp, unsigned int block_group)
 {
 	struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
 	int i, j;
@@ -190,7 +191,8 @@ static int load_inode_bitmap (struct mount * mp,
 }
 
 
-void ext2_free_inode (struct inode * inode)
+void
+ext2_free_inode(struct inode *inode)
 {
 	struct ext2_sb_info * sb;
 	struct buffer_head * bh;
@@ -254,9 +256,8 @@ void ext2_free_inode (struct inode * inode)
  *
  * This may be used one day by the NFS server
  */
-static void inc_inode_version (struct inode * inode,
-			       struct ext2_group_desc *gdp,
-			       int mode)
+static void
+inc_inode_version(struct inode *inode, struct ext2_group_desc *gdp, int mode)
 {
 	unsigned long inode_block;
 	struct buffer_head * bh;
@@ -297,7 +298,8 @@ static void inc_inode_version (struct inode * inode,
 /*
  * this functino has been reduced to the actual 'find the inode number' part
  */
-ino_t ext2_new_inode (const struct inode * dir, int mode)
+ino_t
+ext2_new_inode(const struct inode *dir, int mode)
 {
 	struct ext2_sb_info * sb;
 	struct buffer_head * bh;
@@ -443,7 +445,8 @@ repeat:
 }
 
 #ifdef unused
-static unsigned long ext2_count_free_inodes (struct mount * mp)
+static unsigned long
+ext2_count_free_inodes(struct mount *mp)
 {
 #ifdef EXT2FS_DEBUG
         struct ext2_sb_info *sb = VFSTOUFS(mp)->um_e2fs;
@@ -479,7 +482,8 @@ static unsigned long ext2_count_free_inodes (struct mount * mp)
 #endif /* unused */
 
 #ifdef LATER
-void ext2_check_inodes_bitmap (struct mount * mp)
+void
+ext2_check_inodes_bitmap(struct mount *mp)
 {
 	struct ext2_super_block * es;
 	unsigned long desc_count, bitmap_count, x;

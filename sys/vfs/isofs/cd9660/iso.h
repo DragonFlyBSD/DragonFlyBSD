@@ -37,7 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.5 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.6 2006/01/13 21:09:27 swildner Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -277,16 +277,14 @@ ino_t isodirino (struct iso_directory_record *, struct iso_mnt *);
 
 static __inline int isonum_711 (u_char *);
 static __inline int
-isonum_711(p)
-	u_char *p;
+isonum_711(u_char *p)
 {
 	return *p;
 }
 
 static __inline int isonum_712 (char *);
 static __inline int
-isonum_712(p)
-	char *p;
+isonum_712(char *p)
 {
 	return *p;
 }
@@ -295,16 +293,14 @@ isonum_712(p)
 
 static __inline int isonum_723 (u_char *);
 static __inline int
-isonum_723(p)
-	u_char *p;
+isonum_723(u_char *p)
 {
 	return *p|(p[1] << 8);
 }
 
 static __inline int isonum_733 (u_char *);
 static __inline int
-isonum_733(p)
-	u_char *p;
+isonum_733(u_char *p)
 {
 	return *p|(p[1] << 8)|(p[2] << 16)|(p[3] << 24);
 }
@@ -314,15 +310,13 @@ isonum_733(p)
 #if BYTE_ORDER == LITTLE_ENDIAN
 
 static __inline int
-isonum_723(p)
-	u_char *p
+isonum_723(u_char *p)
 {
 	return *(u_int16t *)p;
 }
 
 static __inline int
-isonum_733(p)
-	u_char *p;
+isonum_733(u_char *p)
 {
 	return *(u_int32t *)p;
 }
@@ -332,15 +326,13 @@ isonum_733(p)
 #if BYTE_ORDER == BIG_ENDIAN
 
 static __inline int
-isonum_723(p)
-	u_char *p
+isonum_723(u_char *p)
 {
 	return *(u_int16t *)(p + 2);
 }
 
 static __inline int
-isonum_733(p)
-	u_char *p;
+isonum_733(u_char *p)
 {
 	return *(u_int32t *)(p + 4);
 }

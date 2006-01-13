@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.7 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.8 2006/01/13 21:09:27 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -180,7 +180,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 	/*
 	 * Restore user's disk quota because allocation failed.
 	 */
-	(void) chkdq(ip, (long)-btodb(size), cred, FORCE);
+	chkdq(ip, (long)-btodb(size), cred, FORCE);
 #endif
 nospace:
 	ext2_fserr(fs, cred->cr_uid, "file system full");

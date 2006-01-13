@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.30 2005/09/17 07:43:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.31 2006/01/13 21:09:27 swildner Exp $
  */
 
 
@@ -338,7 +338,7 @@ failed:
 		brelse (bp);
 	mp->mnt_data = (qaddr_t)NULL;
 	dev->si_mountpoint = NULL;
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	return (error);
 }
 
