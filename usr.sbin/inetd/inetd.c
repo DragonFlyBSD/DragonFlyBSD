@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.9 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.10 2006/01/13 20:26:46 swildner Exp $
  */
 
 /*
@@ -505,7 +505,7 @@ main(int argc, char **argv)
 		memset(dummy, 'x', DUMMYSIZE - 1);
 		dummy[DUMMYSIZE - 1] = '\0';
 		if (setenv("inetd_dummy", dummy, 1) == -1)
-			syslog(LOG_WARN, "setenv: cannot set inetd_dummy=%s: %m", dummy);
+			syslog(LOG_WARNING, "setenv: cannot set inetd_dummy=%s: %m", dummy);
 		
 	}
 
