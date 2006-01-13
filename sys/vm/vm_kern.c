@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.21 2005/04/02 15:58:16 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.22 2006/01/13 20:45:30 swildner Exp $
  */
 
 /*
@@ -214,7 +214,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * And finally, mark the data as non-pageable.
 	 */
 
-	(void) vm_map_wire(map, (vm_offset_t) addr, addr + size, kmflags);
+	vm_map_wire(map, (vm_offset_t) addr, addr + size, kmflags);
 
 	return (addr);
 }
@@ -231,7 +231,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 void
 kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
 {
-	(void) vm_map_remove(map, trunc_page(addr), round_page(addr + size));
+	vm_map_remove(map, trunc_page(addr), round_page(addr + size));
 }
 
 /*
@@ -487,7 +487,7 @@ kmem_free_wakeup(vm_map_t map, vm_offset_t addr, vm_size_t size)
 
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	(void) vm_map_delete(map, trunc_page(addr), round_page(addr + size), &count);
+	vm_map_delete(map, trunc_page(addr), round_page(addr + size), &count);
 	wakeup(map);
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
@@ -515,7 +515,7 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	kernel_map = m;
 	kernel_map->system_map = 1;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
-	(void) vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
+	vm_map_insert(m, &count, NULL, (vm_offset_t) 0,
 	    VM_MIN_KERNEL_ADDRESS, start, VM_PROT_ALL, VM_PROT_ALL, 0);
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);

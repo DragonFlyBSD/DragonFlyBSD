@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.19 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.20 2006/01/13 20:45:30 swildner Exp $
  */
 
 #include "opt_swap.h"
@@ -284,11 +284,11 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 		dev = NODEV;
 
 	if (nblks == 0 && dev != NODEV && ((nblks = dev_dpsize(dev)) == -1)) {
-		(void) VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE, td);
 		return (ENXIO);
 	}
 	if (nblks == 0) {
-		(void) VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE, td);
 		return (ENXIO);
 	}
 
@@ -299,7 +299,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	if (nblks > 0x40000000 / BLIST_META_RADIX / nswdev) {
 		printf("exceeded maximum of %d blocks per swap unit\n",
 			0x40000000 / BLIST_META_RADIX / nswdev);
-		(void) VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE, td);
 		return (ENXIO);
 	}
 	/*

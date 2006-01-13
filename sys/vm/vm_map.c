@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.39 2005/03/13 15:58:56 eirikn Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.40 2006/01/13 20:45:30 swildner Exp $
  */
 
 /*
@@ -2165,7 +2165,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 
 			smap = current->object.sub_map;
 			vm_map_lock_read(smap);
-			(void) vm_map_lookup_entry(smap, offset, &tentry);
+			vm_map_lookup_entry(smap, offset, &tentry);
 			tsize = tentry->end - offset;
 			if (tsize < size)
 				size = tsize;

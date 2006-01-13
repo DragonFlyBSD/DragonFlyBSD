@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.22 2005/06/22 01:33:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.23 2006/01/13 20:45:30 swildner Exp $
  */
 
 /*
@@ -497,15 +497,13 @@ munmap(struct munmap_args *uap)
 	if (!vm_map_check_protection(map, addr, addr + size, VM_PROT_NONE))
 		return (EINVAL);
 	/* returns nothing but KERN_SUCCESS anyway */
-	(void) vm_map_remove(map, addr, addr + size);
+	vm_map_remove(map, addr, addr + size);
 	return (0);
 }
 
 #if 0
 void
-munmapfd(p, fd)
-	struct proc *p;
-	int fd;
+munmapfd(struct proc *p, int fd)
 {
 	/*
 	 * XXX should unmap any regions mapped to this file
@@ -958,7 +956,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		if (*addr != trunc_page(*addr))
 			return (EINVAL);
 		fitit = FALSE;
-		(void) vm_map_remove(map, *addr, *addr + size);
+		vm_map_remove(map, *addr, *addr + size);
 	}
 
 	/*
@@ -1056,7 +1054,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (flags & (MAP_SHARED|MAP_INHERIT)) {
 		rv = vm_map_inherit(map, *addr, *addr + size, VM_INHERIT_SHARE);
 		if (rv != KERN_SUCCESS) {
-			(void) vm_map_remove(map, *addr, *addr + size);
+			vm_map_remove(map, *addr, *addr + size);
 			goto out;
 		}
 	}

@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.16 2005/11/14 18:50:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.17 2006/01/13 20:45:30 swildner Exp $
  */
 
 /*
@@ -1112,7 +1112,7 @@ rescan0:
 	 */
 	if (vm_paging_target() > 0) {
 		if (vnodes_skipped && vm_page_count_min())
-			(void) speedup_syncer();
+			speedup_syncer();
 #if !defined(NO_SWAPPING)
 		if (vm_swap_enabled && vm_page_count_target()) {
 			vm_req_vmdaemon();
