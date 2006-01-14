@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.17 2006/01/06 02:44:53 drhodus Exp $
+$DragonFly: src/UPDATING,v 1.18 2006/01/14 22:23:40 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -61,7 +61,6 @@ object hierarchy is necessary.
 	cd /usr
 	rm -rf src
 	cvs -R -d /home/dcvs checkout -P src
-	cvs -R -d /home/dcvs checkout -P dfports
 
 	# build it (500MB used in /usr/obj)
 	#
@@ -123,7 +122,6 @@ the hour and minute in the cron job a bit to avoid pileups.
 	# install the source from the CVS hierarchy
 	cd /usr
 	cvs -R -d /home/dcvs checkout -P src
-	cvs -R -d /home/dcvs checkout -P dfports
 
 Once you have the repository and broken out sources you can decide whether to
 update your sources from the repository automatically or manually.  Since
@@ -168,23 +166,26 @@ and buildkernel as shown above, before asking for help.
 Kerberos IV (eBones) was removed from the tree, please consider moving to
 Kerberos 5 (Heimdal).
 
-> FreeBSD and DragonFly ports
------------------------------
+> Package Management System
+---------------------------
 
-DragonFly will eventually have its own package management system but at the
-moment we leverage off of the FreeBSD ports system.  You should maintain
-/usr/ports from the FreeBSD cvs repository via cvsup just like you do now.
+Starting with the 1.4 release, DragonFly uses NetBSD's pkgsrc package
+management system.  The necessary tools to build and maintain packages
+are provided in /usr/pkg/bin and /usr/pkg/sbin.  Make sure that these
+directories are in your PATH variable.
 
-DragonFly has its own 'port overrides' hierarchy in /usr/dfports.  You can
-check this out of the DragonFly cvs repository using:
+In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+the tarball from NetBSD:
 
-cd /usr
-cvs -R -d /home/dcvs checkout -P dfports
+	fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
+	cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
 
-Be sure that you have installed 'relpath' from the DragonFly sources
-(/usr/src/usr.bin/relpath) as well as the updated /usr/share/mk files from
-/usr/src/share/mk.  As a test you can cd into /usr/ports/sysutils/cpdup and
-build the port.  Dragonfly should contain an override and you should see a
-warning message that the DragonFly override is being build instead when you
-build it from the FreeBSD ports.
+This tree can then be kept up to date with cvs update:
 
+	cd /usr/pkgsrc; cvs up
+
+NOTE! If you upgraded from a pre-1.4 system to 1.4 or later, you need to
+build and install the pkgsrc bootstrap manually:
+
+	cd /usr/pkgsrc/bootstrap
+	./bootstrap --pkgdbdir /var/db/pkg --prefix /usr/pkg

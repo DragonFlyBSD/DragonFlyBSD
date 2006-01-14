@@ -1,20 +1,20 @@
 # $FreeBSD: src/share/examples/cvsup/README,v 1.15.2.5 2002/12/03 05:58:04 kuriyama Exp $
-# $DragonFly: src/share/examples/cvsup/README,v 1.4 2005/04/06 20:52:55 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/README,v 1.5 2006/01/14 22:23:39 swildner Exp $
 
 This directory contains sample "supfiles" for obtaining and updating
 the various BSD's via the Internet.  These supfiles will work with CVSup
 version 14.0 or later.  For general information on CVSup itself, please
 see http://www.freebsd.org/doc/handbook/cvsup.html
 
-To maintain the sources for DragonFlyBSD, use:
+To maintain the sources for DragonFlyBSD, use one of:
 
         DragonFly-cvs-supfile		Main CVS repository for DragonFly BSD
 
 	DragonFly-preview-supfile	A recent development snapshot of the
 					DragonFly source tree.
 
-	DragonFly-dfports-supfile	Latest DragonFly ports override for
-					the FreeBSD ports tree.
+	DragonFly-releaseX_Y-supfile	The source tree for release X.Y of
+					DragonFly.
 
 To maintain the sources for FreeBSD, use:
 
