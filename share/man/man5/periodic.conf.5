@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/periodic.conf.5,v 1.8.2.22 2003/02/08 21:42:01 gshapiro Exp $
-.\" $DragonFly: src/share/man/man5/periodic.conf.5,v 1.3 2005/07/25 00:24:31 gshapiro Exp $
+.\" $DragonFly: src/share/man/man5/periodic.conf.5,v 1.4 2006/01/14 22:44:46 swildner Exp $
 .\"
 .Dd June 22, 2000
 .Dt PERIODIC.CONF 5
@@ -664,13 +664,6 @@ An orphaned file is one with an invalid owner or group.
 A list of directories under which orphaned files are searched for.
 This would usually be set to
 .Pa / .
-.It Va weekly_status_pkg_enable
-.Pq Vt bool
-Set to
-.Dq YES
-if you want to use
-.Xr pkg_version 1
-to list installed packages which are out of date.
 .It Va weekly_local
 .Pq Vt str
 Set to a list of extra scripts that should be run after all other
@@ -716,7 +709,6 @@ is shared or distributed.
 .Xr msgs 1 ,
 .Xr netstat 1 ,
 .Xr nice 1 ,
-.Xr pkg_version 1 ,
 .Xr rdist 1 ,
 .Xr rc.conf 5 ,
 .Xr ac 8 ,
