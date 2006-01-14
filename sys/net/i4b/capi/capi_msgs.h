@@ -25,7 +25,7 @@
  * capi/capi_msgs.h	The CAPI i4b message and handler declarations.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.h,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.h,v 1.3 2006/01/14 11:05:17 swildner Exp $
  */
 
 #ifndef _I4B_CAPI_MSGS_H_
@@ -307,38 +307,44 @@
 #define CAPIMSG_LEN(msg)             (msg[0]|(msg[1]<<8))
 #define CAPIMSG_DATALEN(msg)         (msg[16]|(msg[17]<<8))
 
-static __inline u_int8_t* capimsg_getu8(u_int8_t *msg, u_int8_t *val)
+static __inline u_int8_t *
+capimsg_getu8(u_int8_t *msg, u_int8_t *val)
 {
     *val = *msg;
     return (msg + 1);
 }
 
-static __inline u_int8_t* capimsg_getu16(u_int8_t *msg, u_int16_t *val)
+static __inline u_int8_t *
+capimsg_getu16(u_int8_t *msg, u_int16_t *val)
 {
     *val = (msg[0]|(msg[1]<<8));
     return (msg + 2);
 }
 
-static __inline u_int8_t* capimsg_getu32(u_int8_t *msg, u_int32_t *val)
+static __inline u_int8_t *
+capimsg_getu32(u_int8_t *msg, u_int32_t *val)
 {
     *val = (msg[0]|(msg[1]<<8)|(msg[2]<<16)|(msg[3]<<24));
     return (msg + 4);
 }
 
-static __inline u_int8_t* capimsg_setu8(u_int8_t *msg, u_int8_t val)
+static __inline u_int8_t *
+capimsg_setu8(u_int8_t *msg, u_int8_t val)
 {
     msg[0] = val;
     return (msg + 1);
 }
 
-static __inline u_int8_t* capimsg_setu16(u_int8_t *msg, u_int16_t val)
+static __inline u_int8_t *
+capimsg_setu16(u_int8_t *msg, u_int16_t val)
 {
     msg[0] = (val & 0xff);
     msg[1] = (val >> 8) & 0xff;
     return (msg + 2);
 }
 
-static __inline u_int8_t* capimsg_setu32(u_int8_t *msg, u_int32_t val)
+static __inline u_int8_t *
+capimsg_setu32(u_int8_t *msg, u_int32_t val)
 {
     msg[0] = (val & 0xff);
     msg[1] = (val >> 8) & 0xff;

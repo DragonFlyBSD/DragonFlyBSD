@@ -30,7 +30,7 @@
  *	$Id: i4b_l2fsm.c,v 1.22 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2fsm.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2fsm.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2fsm.c,v 1.7 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Tue May 30 15:48:20 2000]
  *
@@ -226,7 +226,8 @@ struct l2state_tab {
 /*---------------------------------------------------------------------------*
  *	event handler, executes function and sets new state
  *---------------------------------------------------------------------------*/	
-void i4b_next_l2state(l2_softc_t *l2sc, int event)
+void
+i4b_next_l2state(l2_softc_t *l2sc, int event)
 {
 	int currstate, newstate;
 	int (*savpostfsmfunc)(int) = NULL;
@@ -291,7 +292,8 @@ void i4b_next_l2state(l2_softc_t *l2sc, int event)
 /*---------------------------------------------------------------------------*
  *	return pointer to current state description
  *---------------------------------------------------------------------------*/	
-char *i4b_print_l2state(l2_softc_t *l2sc)
+char *
+i4b_print_l2state(l2_softc_t *l2sc)
 {
 	return((char *) l2state_text[l2sc->Q921_state]);
 }

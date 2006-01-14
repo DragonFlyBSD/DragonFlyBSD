@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.11 2005/03/04 02:21:48 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.12 2006/01/14 11:05:17 swildner Exp $
  */
 
 /*
@@ -501,7 +501,8 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	return (x);
 }
 
-static boolean_t	/* XXX: arbitrary ordering for non-contiguous masks */
+/* XXX: arbitrary ordering for non-contiguous masks */
+static boolean_t
 rn_lexobetter(char *mp, char *np)
 {
 	char *lim;
@@ -1044,7 +1045,7 @@ rn_inithead(void **head, int off)
 }
 
 void
-rn_init()
+rn_init(void)
 {
 	char *cp, *cplim;
 #ifdef _KERNEL

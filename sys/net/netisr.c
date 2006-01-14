@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.23 2005/01/19 17:30:52 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.24 2006/01/14 11:05:17 swildner Exp $
  */
 
 /*
@@ -254,8 +254,7 @@ netmsg_service_sync(void)
  * The netmsg function simply replies the message.  API semantics require
  * EASYNC to be returned if the netmsg function disposes of the message.
  */
-static
-int
+static int
 netmsg_sync_func(struct netmsg *msg)
 {
     lwkt_replymsg(&msg->nm_lmsg, 0);

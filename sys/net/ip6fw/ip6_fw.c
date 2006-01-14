@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.13 2005/06/15 17:12:24 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.14 2006/01/14 11:05:18 swildner Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -1133,7 +1133,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 	/* only allow get calls if secure mode > 2 */
 	if (securelevel > 2) {
 		if (m) {
-			(void)m_freem(m);
+			m_freem(m);
 			*mm = 0;
 		}
 		return(EPERM);
@@ -1149,7 +1149,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 			free(fcp, M_IP6FW);
 		}
 		if (m) {
-			(void)m_freem(m);
+			m_freem(m);
 			*mm = 0;
 		}
 		return (0);
@@ -1157,7 +1157,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 	if (stage == IPV6_FW_ZERO) {
 		error = zero_entry6(m);
 		if (m) {
-			(void)m_freem(m);
+			m_freem(m);
 			*mm = 0;
 		}
 		return (error);
@@ -1175,7 +1175,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		else
 			error = add_entry6(&ip6_fw_chain, frwl);
 		if (m) {
-			(void)m_freem(m);
+			m_freem(m);
 			*mm = 0;
 		}
 		return error;
@@ -1192,7 +1192,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 			error = del_entry6(&ip6_fw_chain,
 			    mtod(m, struct ip6_fw *)->fw_number);
 		if (m) {
-			(void)m_freem(m);
+			m_freem(m);
 			*mm = 0;
 		}
 		return error;
@@ -1200,7 +1200,7 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 
 	dprintf(("%s unknown request %d\n", err_prefix, stage));
 	if (m) {
-		(void)m_freem(m);
+		m_freem(m);
 		*mm = 0;
 	}
 	return (EINVAL);

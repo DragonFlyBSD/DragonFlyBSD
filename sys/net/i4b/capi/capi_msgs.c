@@ -25,7 +25,7 @@
  * capi/capi_msgs.c	The CAPI i4b message handlers.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.c,v 1.1.2.2 2001/12/10 10:28:25 hm Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.7 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,8 @@
 //  ------------------------
 */
 
-void capi_listen_req(capi_softc_t *sc, u_int32_t CIP)
+void
+capi_listen_req(capi_softc_t *sc, u_int32_t CIP)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 18);
     u_int8_t *msg;
@@ -80,7 +81,8 @@ void capi_listen_req(capi_softc_t *sc, u_int32_t CIP)
     sc->send(sc, m);
 }
 
-void capi_listen_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_listen_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     u_int16_t Info;
@@ -102,7 +104,8 @@ void capi_listen_conf(capi_softc_t *sc, struct mbuf *m_in)
     }
 }
 
-void capi_info_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_info_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 4);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -130,7 +133,8 @@ void capi_info_ind(capi_softc_t *sc, struct mbuf *m_in)
     sc->send(sc, m);
 }
 
-void capi_alert_req(capi_softc_t *sc, call_desc_t *cd)
+void
+capi_alert_req(capi_softc_t *sc, call_desc_t *cd)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 5);
     u_int8_t *msg;
@@ -156,7 +160,8 @@ void capi_alert_req(capi_softc_t *sc, call_desc_t *cd)
     sc->send(sc, m);
 }
 
-void capi_alert_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_alert_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     u_int16_t Info;
@@ -184,7 +189,8 @@ void capi_alert_conf(capi_softc_t *sc, struct mbuf *m_in)
 //                       (notify Layer 4)
 */
 
-void capi_connect_req(capi_softc_t *sc, call_desc_t *cd)
+void
+capi_connect_req(capi_softc_t *sc, call_desc_t *cd)
 {
     struct mbuf *m;
     u_int8_t *msg;
@@ -257,7 +263,8 @@ void capi_connect_req(capi_softc_t *sc, call_desc_t *cd)
     sc->send(sc, m);
 }
 
-void capi_connect_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     call_desc_t *cd;
@@ -300,7 +307,8 @@ void capi_connect_conf(capi_softc_t *sc, struct mbuf *m_in)
     }
 }
 
-void capi_connect_active_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_active_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 4);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -347,7 +355,8 @@ void capi_connect_active_ind(capi_softc_t *sc, struct mbuf *m_in)
     }
 }
 
-void capi_connect_b3_req(capi_softc_t *sc, call_desc_t *cd)
+void
+capi_connect_b3_req(capi_softc_t *sc, call_desc_t *cd)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 5);
     u_int8_t *msg;
@@ -374,7 +383,8 @@ void capi_connect_b3_req(capi_softc_t *sc, call_desc_t *cd)
     sc->send(sc, m);
 }
 
-void capi_connect_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     call_desc_t *cd;
@@ -416,7 +426,8 @@ void capi_connect_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
     }
 }
 
-void capi_connect_b3_active_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_b3_active_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 4);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -475,7 +486,8 @@ void capi_connect_b3_active_ind(capi_softc_t *sc, struct mbuf *m_in)
 //                       (notify Layer 4)
 */
 
-void capi_connect_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     call_desc_t *cd;
@@ -555,7 +567,8 @@ void capi_connect_ind(capi_softc_t *sc, struct mbuf *m_in)
     i4b_l4_connect_ind(cd);
 }
 
-void capi_connect_resp(capi_softc_t *sc, call_desc_t *cd)
+void
+capi_connect_resp(capi_softc_t *sc, call_desc_t *cd)
 {
     struct mbuf *m;
     u_int8_t *msg;
@@ -632,7 +645,8 @@ void capi_connect_resp(capi_softc_t *sc, call_desc_t *cd)
     sc->send(sc, m);
 }
 
-void capi_connect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_connect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 7);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -682,7 +696,8 @@ void capi_connect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 //  --------------
 */
 
-void capi_data_b3_req(capi_softc_t *sc, int chan, struct mbuf *m_b3)
+void
+capi_data_b3_req(capi_softc_t *sc, int chan, struct mbuf *m_b3)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 14);
     u_int8_t *msg;
@@ -712,7 +727,8 @@ void capi_data_b3_req(capi_softc_t *sc, int chan, struct mbuf *m_b3)
     sc->send(sc, m);
 }
 
-void capi_data_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_data_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     u_int32_t NCCI;
@@ -733,7 +749,8 @@ void capi_data_b3_conf(capi_softc_t *sc, struct mbuf *m_in)
     }
 }
 
-void capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 6);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -802,7 +819,8 @@ void capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 //  --------------------
 */
 
-void capi_disconnect_req(capi_softc_t *sc, call_desc_t *cd)
+void
+capi_disconnect_req(capi_softc_t *sc, call_desc_t *cd)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 5);
     u_int8_t *msg;
@@ -830,7 +848,8 @@ void capi_disconnect_req(capi_softc_t *sc, call_desc_t *cd)
     sc->send(sc, m);
 }
 
-void capi_disconnect_conf(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_disconnect_conf(capi_softc_t *sc, struct mbuf *m_in)
 {
     u_int8_t *msg = mtod(m_in, u_int8_t*);
     call_desc_t *cd;
@@ -863,7 +882,8 @@ void capi_disconnect_conf(capi_softc_t *sc, struct mbuf *m_in)
     ctrl_desc[sc->ctrl_unit].bch_state[bch] = BCH_ST_FREE;
 }
 
-void capi_disconnect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_disconnect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 4);
     u_int8_t *msg = mtod(m_in, u_int8_t*);
@@ -891,7 +911,8 @@ void capi_disconnect_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
     sc->send(sc, m);
 }
 
-void capi_disconnect_ind(capi_softc_t *sc, struct mbuf *m_in)
+void
+capi_disconnect_ind(capi_softc_t *sc, struct mbuf *m_in)
 {
     struct mbuf *m = i4b_Dgetmbuf(8 + 4);
     u_int8_t *msg = mtod(m_in, u_int8_t*);

@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.11 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.12 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -423,8 +423,7 @@ hscx_read_reg_int(int chan, struct l1_softc *sc)
  *	avma1pp2_probe - probe for a card
  *---------------------------------------------------------------------------*/
 static int
-avma1pp2_pci_probe(dev)
-	device_t		dev;
+avma1pp2_pci_probe(device_t dev)
 {
 	u_int16_t		did, vid;
 

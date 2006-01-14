@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.12 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.13 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -467,8 +467,7 @@ hscx_read_reg_int(int chan, u_int off, struct l1_softc *sc)
  *	avma1pp_probe - probe for a card
  *---------------------------------------------------------------------------*/
 static int
-avma1pp_pci_probe(dev)
-	device_t		dev;
+avma1pp_pci_probe(device_t dev)
 {
 	u_int16_t		did, vid;
 

@@ -25,7 +25,7 @@
  * capi/iavc/iavc.h	The AVM ISDN controllers' common declarations.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc.h,v 1.2 2003/07/23 17:58:41 phk Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc.h,v 1.3 2004/04/16 15:40:21 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc.h,v 1.4 2006/01/14 11:05:17 swildner Exp $
  */
 
 #ifndef _CAPI_IAVC_H_
@@ -110,12 +110,14 @@ extern void     t1_reset(iavc_softc_t *sc);
 //      S5933 DMA controller.
 */
 
-static __inline u_int32_t AMCC_READ(iavc_softc_t *sc, int off)
+static __inline u_int32_t
+AMCC_READ(iavc_softc_t *sc, int off)
 {
     return bus_space_read_4(sc->sc_mem_bt, sc->sc_mem_bh, off);
 }
 
-static __inline void AMCC_WRITE(iavc_softc_t *sc, int off, u_int32_t value)
+static __inline void
+AMCC_WRITE(iavc_softc_t *sc, int off, u_int32_t value)
 {
     bus_space_write_4(sc->sc_mem_bt, sc->sc_mem_bh, off, value);
 }
@@ -125,19 +127,22 @@ static __inline void AMCC_WRITE(iavc_softc_t *sc, int off, u_int32_t value)
 //      Routines to access the DMA buffers byte- or wordwise.
 */
 
-static __inline u_int8_t* amcc_put_byte(u_int8_t *buf, u_int8_t value)
+static __inline u_int8_t *
+amcc_put_byte(u_int8_t *buf, u_int8_t value)
 {
     *buf++ = value;
     return buf;
 }
 
-static __inline u_int8_t* amcc_get_byte(u_int8_t *buf, u_int8_t *value)
+static __inline u_int8_t *
+amcc_get_byte(u_int8_t *buf, u_int8_t *value)
 {
     *value = *buf++;
     return buf;
 }
 
-static __inline u_int8_t* amcc_put_word(u_int8_t *buf, u_int32_t value)
+static __inline u_int8_t *
+amcc_put_word(u_int8_t *buf, u_int32_t value)
 {
     *buf++ = (value & 0xff);
     *buf++ = (value >> 8) & 0xff;
@@ -146,7 +151,8 @@ static __inline u_int8_t* amcc_put_word(u_int8_t *buf, u_int32_t value)
     return buf;
 }
 
-static __inline u_int8_t* amcc_get_word(u_int8_t *buf, u_int32_t *value)
+static __inline u_int8_t *
+amcc_get_word(u_int8_t *buf, u_int32_t *value)
 {
     *value = *buf++;
     *value |= (*buf++ << 8);
@@ -285,20 +291,23 @@ static __inline u_int8_t* amcc_get_word(u_int8_t *buf, u_int32_t *value)
 //      I/O ports.
 */
 
-static __inline u_int8_t b1io_outp(iavc_softc_t *sc, int off, u_int8_t val)
+static __inline u_int8_t
+b1io_outp(iavc_softc_t *sc, int off, u_int8_t val)
 {
     bus_space_write_1(sc->sc_io_bt, sc->sc_io_bh, off, val);
     DELAY(1);
     return bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, B1_ANALYSE);
 }
 
-static __inline int b1io_rx_full(iavc_softc_t *sc)
+static __inline int
+b1io_rx_full(iavc_softc_t *sc)
 {
     u_int8_t val = bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, B1_INSTAT);
     return (val & 0x01);
 }
 
-static __inline int b1io_tx_empty(iavc_softc_t *sc)
+static __inline int
+b1io_tx_empty(iavc_softc_t *sc)
 {
     u_int8_t val = bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, B1_OUTSTAT);
     return  (val & 0x01);
@@ -340,22 +349,26 @@ u_int32_t b1io_write_reg(iavc_softc_t *sc, int reg, u_int32_t val);
 //      to have the analysis port.
 */
 
-static __inline void t1io_outp(iavc_softc_t *sc, int off, u_int8_t val)
+static __inline void
+t1io_outp(iavc_softc_t *sc, int off, u_int8_t val)
 {
     bus_space_write_1(sc->sc_io_bt, sc->sc_io_bh, off, val);
 }
 
-static __inline u_int8_t t1io_inp(iavc_softc_t *sc, int off)
+static __inline u_int8_t
+t1io_inp(iavc_softc_t *sc, int off)
 {
     return bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, off);
 }
 
-static __inline int t1io_isfastlink(iavc_softc_t *sc)
+static __inline int
+t1io_isfastlink(iavc_softc_t *sc)
 {
     return ((bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, T1_IDENT) & ~0x82) == 1);
 }
 
-static __inline u_int8_t t1io_fifostatus(iavc_softc_t *sc)
+static __inline u_int8_t
+t1io_fifostatus(iavc_softc_t *sc)
 {
     return bus_space_read_1(sc->sc_io_bt, sc->sc_io_bh, T1_FIFOSTAT);
 }
@@ -404,13 +417,15 @@ void t1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len);
 #define iavc_get_word(sc)      b1io_get_word(sc)
 #define iavc_put_word(sc, val) b1io_put_word(sc, val)
 
-static __inline u_int32_t iavc_get_slice(iavc_softc_t *sc, u_int8_t *dp)
+static __inline u_int32_t
+iavc_get_slice(iavc_softc_t *sc, u_int8_t *dp)
 {
     if (sc->sc_t1) return t1io_get_slice(sc, dp);
     else return b1io_get_slice(sc, dp);
 }
 
-static __inline void iavc_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
+static __inline void
+iavc_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
 {
     if (sc->sc_t1) t1io_put_slice(sc, dp, len);
     else b1io_put_slice(sc, dp, len);

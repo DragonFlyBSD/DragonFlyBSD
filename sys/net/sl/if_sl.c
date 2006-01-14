@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.22 2005/12/11 13:00:17 swildner Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.23 2006/01/14 11:05:18 swildner Exp $
  */
 
 /*
@@ -621,7 +621,7 @@ slstart(struct tty *tp)
 		 */
 		if (tp->t_outq.c_cc == 0) {
 			++sc->sc_if.if_obytes;
-			(void) putc(FRAME_END, &tp->t_outq);
+			putc(FRAME_END, &tp->t_outq);
 		}
 
 		while (m) {
@@ -665,7 +665,7 @@ slstart(struct tty *tp)
 					if (putc(*cp++ == FRAME_ESCAPE ?
 					   TRANS_FRAME_ESCAPE : TRANS_FRAME_END,
 					   &tp->t_outq)) {
-						(void) unputc(&tp->t_outq);
+						unputc(&tp->t_outq);
 						break;
 					}
 					sc->sc_if.if_obytes += 2;
@@ -682,8 +682,8 @@ slstart(struct tty *tp)
 			 * a day) you probably do not have enough clists
 			 * and you should increase "nclist" in param.c.
 			 */
-			(void) unputc(&tp->t_outq);
-			(void) putc(FRAME_END, &tp->t_outq);
+			unputc(&tp->t_outq);
+			putc(FRAME_END, &tp->t_outq);
 			sc->sc_if.if_collisions++;
 		} else {
 			++sc->sc_if.if_obytes;
@@ -994,7 +994,7 @@ sl_outfill(void *chan)
 		if (sc->sc_flags & SC_OUTWAIT) {
 			crit_enter();
 			++sc->sc_if.if_obytes;
-			(void) putc(FRAME_END, &tp->t_outq);
+			putc(FRAME_END, &tp->t_outq);
 			(*tp->t_oproc)(tp);
 			crit_exit();
 		} else

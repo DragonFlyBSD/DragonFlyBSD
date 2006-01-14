@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.9 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.10 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -423,8 +423,7 @@ static struct ifpnp_ids {
  *	avm_pnp_probe - probe for a card
  *---------------------------------------------------------------------------*/
 static int
-avm_pnp_probe(dev)
-	device_t		dev;
+avm_pnp_probe(device_t dev)
 {
 	struct ifpnp_ids *ids;			/* pnp id's */
 	char *string = NULL;				/* the name */

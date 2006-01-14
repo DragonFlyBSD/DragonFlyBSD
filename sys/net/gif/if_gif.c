@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $
- * $DragonFly: src/sys/net/gif/if_gif.c,v 1.15 2005/12/11 13:00:16 swildner Exp $
+ * $DragonFly: src/sys/net/gif/if_gif.c,v 1.16 2006/01/14 11:05:17 swildner Exp $
  * $KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $
  */
 
@@ -694,12 +694,12 @@ gif_set_tunnel(struct ifnet *ifp, struct sockaddr *src, struct sockaddr *dst)
 		switch (sc->gif_psrc->sa_family) {
 #ifdef INET
 		case AF_INET:
-			(void)in_gif_detach(sc);
+			in_gif_detach(sc);
 			break;
 #endif
 #ifdef INET6
 		case AF_INET6:
-			(void)in6_gif_detach(sc);
+			in6_gif_detach(sc);
 			break;
 #endif
 		}
@@ -775,10 +775,10 @@ gif_delete_tunnel(struct ifnet *ifp)
 	}
 	/* it is safe to detach from both */
 #ifdef INET
-	(void)in_gif_detach(sc);
+	in_gif_detach(sc);
 #endif
 #ifdef INET6
-	(void)in6_gif_detach(sc);
+	in6_gif_detach(sc);
 #endif
 
 	if (sc->gif_psrc && sc->gif_pdst)

@@ -25,7 +25,7 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.8 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.9 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -150,7 +150,8 @@ i4b_capi_bch_stat(int unit, int chan, bchan_statistics_t *bsp)
     crit_exit();
 }
 
-int capi_start_tx(capi_softc_t *sc, int chan)
+int
+capi_start_tx(capi_softc_t *sc, int chan)
 {
     struct mbuf *m_b3;
     int sent = 0;

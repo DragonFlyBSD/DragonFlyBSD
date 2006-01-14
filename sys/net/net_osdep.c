@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/net_osdep.c,v 1.1.2.5 2002/04/28 05:40:25 suz Exp $	*/
-/*	$DragonFly: src/sys/net/net_osdep.c,v 1.3 2004/01/06 03:17:25 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/net_osdep.c,v 1.4 2006/01/14 11:05:17 swildner Exp $	*/
 /*	$KAME: net_osdep.c,v 1.9 2001/04/06 09:22:05 itojun Exp $	*/
 
 /*
@@ -51,8 +51,7 @@
 #include <net/net_osdep.h>
 
 const char *
-if_name(ifp)
-	struct ifnet *ifp;
+if_name(struct ifnet *ifp)
 {
 	return ifp->if_xname;
 }

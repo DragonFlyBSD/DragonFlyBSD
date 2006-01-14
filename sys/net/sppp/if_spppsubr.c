@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.22 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.23 2006/01/14 11:05:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -3730,61 +3730,75 @@ sppp_ipv6cp_scr(struct sppp *sp)
 	sppp_cp_send(sp, PPP_IPV6CP, CONF_REQ, sp->confid[IDX_IPV6CP], i, &opt);
 }
 #else /*INET6*/
-static void sppp_ipv6cp_init(struct sppp *sp)
+static void
+sppp_ipv6cp_init(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_up(struct sppp *sp)
+static void
+sppp_ipv6cp_up(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_down(struct sppp *sp)
+static void
+sppp_ipv6cp_down(struct sppp *sp)
 {
 }
 
 
-static void sppp_ipv6cp_open(struct sppp *sp)
+static void
+sppp_ipv6cp_open(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_close(struct sppp *sp)
+static void
+sppp_ipv6cp_close(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_TO(void *sp)
+static void
+sppp_ipv6cp_TO(void *sp)
 {
 }
 
-static int sppp_ipv6cp_RCR(struct sppp *sp, struct lcp_header *h, int len)
+static int
+sppp_ipv6cp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 {
 	return 0;
 }
 
-static void sppp_ipv6cp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
+static void
+sppp_ipv6cp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 {
 }
 
-static void sppp_ipv6cp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
+static void
+sppp_ipv6cp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 {
 }
 
-static void sppp_ipv6cp_tlu(struct sppp *sp)
+static void
+sppp_ipv6cp_tlu(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_tld(struct sppp *sp)
+static void
+sppp_ipv6cp_tld(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_tls(struct sppp *sp)
+static void
+sppp_ipv6cp_tls(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_tlf(struct sppp *sp)
+static void
+sppp_ipv6cp_tlf(struct sppp *sp)
 {
 }
 
-static void sppp_ipv6cp_scr(struct sppp *sp)
+static void
+sppp_ipv6cp_scr(struct sppp *sp)
 {
 }
 #endif /*INET6*/

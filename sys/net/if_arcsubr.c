@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.19 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.20 2006/01/14 11:05:17 swildner Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -226,8 +226,7 @@ bad:
 }
 
 void
-arc_frag_init(ifp)
-	struct ifnet *ifp;
+arc_frag_init(struct ifnet *ifp)
 {
 	struct arccom *ac;
 
@@ -236,8 +235,7 @@ arc_frag_init(ifp)
 }
 
 struct mbuf *
-arc_frag_next(ifp)
-	struct ifnet *ifp;
+arc_frag_next(struct ifnet *ifp)
 {
 	struct arccom *ac;
 	struct mbuf *m;
@@ -332,9 +330,7 @@ arc_frag_next(ifp)
  */
 
 __inline struct mbuf *
-arc_defrag(ifp, m)
-	struct ifnet *ifp;
-	struct mbuf *m;
+arc_defrag(struct ifnet *ifp, struct mbuf *m)
 {
 	struct arc_header *ah, *ah1;
 	struct arccom *ac;
@@ -482,8 +478,7 @@ outofseq:
  * Easiest is to assume that everybody else uses that, too.
  */
 int
-arc_isphds(type)
-	u_int8_t type;
+arc_isphds(int type)
 {
 	return (type != ARCTYPE_IP_OLD &&
 		type != ARCTYPE_ARP_OLD &&
@@ -599,9 +594,7 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
  * Register (new) link level address.
  */
 void
-arc_storelladdr(ifp, lla)
-	struct ifnet *ifp;
-	u_int8_t lla;
+arc_storelladdr(struct ifnet *ifp, u_int8_t lla)
 {
 	ARC_LLADDR(ifp) = lla;
 }
@@ -648,18 +641,14 @@ arc_ifattach(struct ifnet *ifp, u_int8_t lla, lwkt_serialize_t serializer)
 }
 
 void
-arc_ifdetach(ifp)
-	struct ifnet *ifp;
+arc_ifdetach(struct ifnet *ifp)
 {
 	bpfdetach(ifp);
 	if_detach(ifp);
 }
 
 int
-arc_ioctl(ifp, command, data)
-	struct ifnet *ifp;
-	int command;
-	caddr_t data;
+arc_ioctl(struct ifnet *ifp, int command, caddr_t data)
 {
 	struct ifaddr *ifa = (struct ifaddr *) data;
 	struct ifreq *ifr = (struct ifreq *) data;
@@ -755,10 +744,8 @@ arc_ioctl(ifp, command, data)
 
 /* based on ether_resolvemulti() */
 int
-arc_resolvemulti(ifp, llsa, sa)
-	struct ifnet *ifp;
-	struct sockaddr **llsa;
-	struct sockaddr *sa;
+arc_resolvemulti(struct ifnet *ifp, struct sockaddr **llsa,
+		 struct sockaddr *sa)
 {
 	struct sockaddr_dl *sdl;
 	struct sockaddr_in *sin;

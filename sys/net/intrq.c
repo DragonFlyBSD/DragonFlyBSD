@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.c,v 1.3 2000/01/29 16:13:08 peter Exp $
- * $DragonFly: src/sys/net/Attic/intrq.c,v 1.5 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.c,v 1.6 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -90,9 +90,7 @@ static const struct {
 };
 
 int
-family_enqueue(family, m)
-	sa_family_t family;
-	struct mbuf *m;
+family_enqueue(sa_family_t family, struct mbuf *m)
 {
 	int entry, s;
 

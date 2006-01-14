@@ -1,5 +1,5 @@
 /*	$KAME: altq_rmclass.c,v 1.18 2003/11/06 06:32:53 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.5 2005/11/28 17:13:45 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_rmclass.c,v 1.6 2006/01/14 11:05:17 swildner Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -1410,7 +1410,8 @@ rmc_drop_action(struct rm_class *cl)
 		ifd->na_[cl->pri_]--;
 }
 
-void rmc_dropall(struct rm_class *cl)
+void
+rmc_dropall(struct rm_class *cl)
 {
 	struct rm_ifdat *ifd = cl->ifdat_;
 
@@ -1619,7 +1620,8 @@ static struct rmc_funcs {
 	NULL,			NULL
 };
 
-static char *rmc_funcname(void *func)
+static chari *
+rmc_funcname(void *func)
 {
 	struct rmc_funcs *fp;
 

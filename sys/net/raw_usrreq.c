@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.10 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.11 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,7 @@
  * Initialize raw connection block q.
  */
 void
-raw_init()
+raw_init(void)
 {
 	LIST_INIT(&rawcb_list);
 }
@@ -118,10 +118,7 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 
 /*ARGSUSED*/
 void
-raw_ctlinput(cmd, arg, dummy)
-	int cmd;
-	struct sockaddr *arg;
-	void *dummy;
+raw_ctlinput(int cmd, struct sockaddr *arg, void *dummy)
 {
 
 	if (cmd < 0 || cmd > PRC_NCMDS)

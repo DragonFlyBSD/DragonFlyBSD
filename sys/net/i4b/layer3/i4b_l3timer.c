@@ -30,7 +30,7 @@
  *	$Id: i4b_l3timer.c,v 1.17 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_l3timer.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_l3timer.c,v 1.7 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_l3timer.c,v 1.8 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Thu Aug 24 12:49:50 2000]
  *
@@ -57,7 +57,8 @@
 /*---------------------------------------------------------------------------*
  *	stop all layer 3 timers
  *---------------------------------------------------------------------------*/
-void i4b_l3_stop_all_timers(call_desc_t *cd)
+void
+i4b_l3_stop_all_timers(call_desc_t *cd)
 {
 	T303_stop(cd);
 	T305_stop(cd);

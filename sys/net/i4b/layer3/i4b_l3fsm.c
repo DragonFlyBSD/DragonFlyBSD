@@ -30,7 +30,7 @@
  *	$Id: i4b_l3fsm.c,v 1.22 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_l3fsm.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_l3fsm.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_l3fsm.c,v 1.7 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Thu Oct 12 17:58:35 2000]
  *
@@ -215,7 +215,8 @@ struct l3state_tab {
 /*---------------------------------------------------------------------------*
  *	event handler
  *---------------------------------------------------------------------------*/	
-void next_l3state(call_desc_t *cd, int event)
+void
+next_l3state(call_desc_t *cd, int event)
 {
 	int currstate, newstate;
 
@@ -257,7 +258,8 @@ void next_l3state(call_desc_t *cd, int event)
 /*---------------------------------------------------------------------------*
  *	return pointer to current state description
  *---------------------------------------------------------------------------*/	
-char *print_l3state(call_desc_t *cd)
+char *
+print_l3state(call_desc_t *cd)
 {
 	return((char *) l3state_text[cd->Q931state]);
 }
@@ -266,7 +268,8 @@ char *print_l3state(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U0 event L4 setup req
  *---------------------------------------------------------------------------*/	
-static void F_00A(call_desc_t *cd)
+static void
+F_00A(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_00A executing");
 
@@ -291,7 +294,8 @@ static void F_00A(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U0 event SETUP from L2
  *---------------------------------------------------------------------------*/	
-static void F_00H(call_desc_t *cd)
+static void
+F_00H(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_00H executing");
 	i4b_l4_connect_ind(cd);	/* tell l4 we have an incoming setup */	
@@ -300,7 +304,8 @@ static void F_00H(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U0 event STATUS from L2
  *---------------------------------------------------------------------------*/	
-static void F_00I(call_desc_t *cd)
+static void
+F_00I(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_00I executing");
 
@@ -315,7 +320,8 @@ static void F_00I(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U0 event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_00J(call_desc_t *cd)
+static void
+F_00J(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_00J executing");
 	i4b_l3_tx_release_complete(cd, 0);	/* 0 = don't send cause */	
@@ -324,7 +330,8 @@ static void F_00J(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event disconnect req from L4
  *---------------------------------------------------------------------------*/	
-static void F_01B(call_desc_t *cd)
+static void
+F_01B(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01B executing");
 	/* cause from L4 */
@@ -336,7 +343,8 @@ static void F_01B(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event RELEASE COMPLETE from L2
  *---------------------------------------------------------------------------*/	
-static void F_01K(call_desc_t *cd)
+static void
+F_01K(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01K executing");
 	T303_stop(cd);
@@ -347,7 +355,8 @@ static void F_01K(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event SETUP ACK from L2
  *---------------------------------------------------------------------------*/	
-static void F_01L(call_desc_t *cd)
+static void
+F_01L(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01L executing");
 	T303_stop(cd);
@@ -367,7 +376,8 @@ static void F_01L(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event CALL PROCEEDING from L2
  *---------------------------------------------------------------------------*/	
-static void F_01M(call_desc_t *cd)
+static void
+F_01M(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01M executing");
 	T303_stop(cd);
@@ -378,7 +388,8 @@ static void F_01M(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event ALERT from L2  (XXX !)
  *---------------------------------------------------------------------------*/	
-static void F_01N(call_desc_t *cd)
+static void
+F_01N(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01N executing");
 	T303_stop(cd);
@@ -388,7 +399,8 @@ static void F_01N(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event CONNECT from L2 (XXX !)
  *---------------------------------------------------------------------------*/	
-static void F_01O(call_desc_t *cd)
+static void
+F_01O(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01O executing");
 	T303_stop(cd);
@@ -399,7 +411,8 @@ static void F_01O(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U1 event T303 timeout
  *---------------------------------------------------------------------------*/	
-static void F_01U(call_desc_t *cd)
+static void
+F_01U(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_01U executing");
 	if(cd->T303_first_to == 1)
@@ -420,7 +433,8 @@ static void F_01U(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U3 event release req from L4
  *---------------------------------------------------------------------------*/	
-static void F_03C(call_desc_t *cd)
+static void
+F_03C(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_03C executing");
 	T310_stop(cd);
@@ -433,7 +447,8 @@ static void F_03C(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U3 event ALERT from L2
  *---------------------------------------------------------------------------*/	
-static void F_03N(call_desc_t *cd)
+static void
+F_03N(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_03N executing");
 	T310_stop(cd);
@@ -443,7 +458,8 @@ static void F_03N(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U3 event CONNECT from L2
  *---------------------------------------------------------------------------*/	
-static void F_03O(call_desc_t *cd)
+static void
+F_03O(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_03O executing");
 	T310_stop(cd);
@@ -454,7 +470,8 @@ static void F_03O(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U3 event PROGESS IND from L2
  *---------------------------------------------------------------------------*/	
-static void F_03P(call_desc_t *cd)
+static void
+F_03P(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_03P executing");
 	T310_stop(cd);
@@ -466,7 +483,8 @@ static void F_03P(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U3 event T310 timeout
  *---------------------------------------------------------------------------*/	
-static void F_03Y(call_desc_t *cd)
+static void
+F_03Y(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_03Y executing");
 	cd->cause_out = 102;	/* recovery on timer expiry */
@@ -478,7 +496,8 @@ static void F_03Y(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U4 event CONNECT from L2
  *---------------------------------------------------------------------------*/	
-static void F_04O(call_desc_t *cd)
+static void
+F_04O(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_04O executing");
 	i4b_l3_tx_connect_ack(cd);	/* CONNECT ACK to network */		
@@ -488,7 +507,8 @@ static void F_04O(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event alert req from L4
  *---------------------------------------------------------------------------*/	
-static void F_06D(call_desc_t *cd)
+static void
+F_06D(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06D executing");
 
@@ -507,7 +527,8 @@ static void F_06D(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event incoming setup accept from L4
  *---------------------------------------------------------------------------*/	
-static void F_06E(call_desc_t *cd)
+static void
+F_06E(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06E executing");
 
@@ -527,7 +548,8 @@ static void F_06E(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event incoming setup reject from L4
  *---------------------------------------------------------------------------*/	
-static void F_06F(call_desc_t *cd)
+static void
+F_06F(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06F executing");
 
@@ -549,7 +571,8 @@ static void F_06F(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event incoming setup ignore from L4
  *---------------------------------------------------------------------------*/	
-static void F_06G(call_desc_t *cd)
+static void
+F_06G(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06G executing");
 	freecd_by_cd(cd);
@@ -558,7 +581,8 @@ static void F_06G(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_06J(call_desc_t *cd)
+static void
+F_06J(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06J executing");
 	i4b_l3_tx_release_complete(cd, 0);
@@ -569,7 +593,8 @@ static void F_06J(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U6 event DISCONNECT from L2
  *---------------------------------------------------------------------------*/	
-static void F_06Q(call_desc_t *cd)
+static void
+F_06Q(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_06Q executing");
 	i4b_l4_disconnect_ind(cd);
@@ -578,7 +603,8 @@ static void F_06Q(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U7 event setup response accept from L4
  *---------------------------------------------------------------------------*/	
-static void F_07E(call_desc_t *cd)
+static void
+F_07E(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_07E executing");
 	i4b_l3_tx_connect(cd);
@@ -588,7 +614,8 @@ static void F_07E(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U7 event setup response reject from L4
  *---------------------------------------------------------------------------*/	
-static void F_07F(call_desc_t *cd)
+static void
+F_07F(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_07F executing");
 	i4b_l3_tx_release_complete(cd, 1);
@@ -598,7 +625,8 @@ static void F_07F(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U7 event setup response ignore from L4
  *---------------------------------------------------------------------------*/	
-static void F_07G(call_desc_t *cd)
+static void
+F_07G(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_07G executing");
 	freecd_by_cd(cd);
@@ -607,7 +635,8 @@ static void F_07G(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U8 event CONNECT ACK from L2
  *---------------------------------------------------------------------------*/	
-static void F_08R(call_desc_t *cd)
+static void
+F_08R(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_08R executing");
 	T313_stop(cd);
@@ -617,7 +646,8 @@ static void F_08R(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U8 event T313 timeout
  *---------------------------------------------------------------------------*/	
-static void F_08Z(call_desc_t *cd)
+static void
+F_08Z(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_08Z executing");
 	cd->cause_out = 102;	/* recovery on timer expiry */
@@ -629,7 +659,8 @@ static void F_08Z(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U9 event alert req from L4
  *---------------------------------------------------------------------------*/	
-static void F_09D(call_desc_t *cd)
+static void
+F_09D(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_09D executing");
 	i4b_l3_tx_alert(cd);
@@ -638,7 +669,8 @@ static void F_09D(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U9 event setup response accept from L4
  *---------------------------------------------------------------------------*/	
-static void F_09E(call_desc_t *cd)
+static void
+F_09E(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_09E executing");
 	i4b_l3_tx_connect(cd);
@@ -648,7 +680,8 @@ static void F_09E(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U9 event setup response reject from L4
  *---------------------------------------------------------------------------*/	
-static void F_09F(call_desc_t *cd)
+static void
+F_09F(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_09F executing");
 	i4b_l3_tx_release_complete(cd, 1);
@@ -657,7 +690,8 @@ static void F_09F(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U9 event setup response ignore from L4
  *---------------------------------------------------------------------------*/	
-static void F_09G(call_desc_t *cd)
+static void
+F_09G(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_09G executing");
 	freecd_by_cd(cd);	
@@ -666,7 +700,8 @@ static void F_09G(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U11 event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_11J(call_desc_t *cd)
+static void
+F_11J(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_11J executing");
 	T305_stop(cd);
@@ -678,7 +713,8 @@ static void F_11J(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U11 event DISCONNECT from L2
  *---------------------------------------------------------------------------*/	
-static void F_11Q(call_desc_t *cd)
+static void
+F_11Q(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_11Q executing");
 	T305_stop(cd);
@@ -690,7 +726,8 @@ static void F_11Q(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U11 event T305 timeout
  *---------------------------------------------------------------------------*/	
-static void F_11V(call_desc_t *cd)
+static void
+F_11V(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_11V executing");
 	cd->cause_out = 102;
@@ -702,7 +739,8 @@ static void F_11V(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U12 event release req from L4
  *---------------------------------------------------------------------------*/	
-static void F_12C(call_desc_t *cd)
+static void
+F_12C(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_12C executing");
 	i4b_l3_tx_release(cd, 1);
@@ -713,7 +751,8 @@ static void F_12C(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U12 event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_12J(call_desc_t *cd)
+static void
+F_12J(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_12J executing");
 	i4b_l3_tx_release_complete(cd, 0);
@@ -724,7 +763,8 @@ static void F_12J(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U19 event STATUS from L2
  *---------------------------------------------------------------------------*/	
-static void F_19I(call_desc_t *cd)
+static void
+F_19I(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_19I executing");
 
@@ -743,7 +783,8 @@ static void F_19I(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U19 event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_19J(call_desc_t *cd)
+static void
+F_19J(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_19J executing");
 	T308_stop(cd);
@@ -754,7 +795,8 @@ static void F_19J(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U19 event RELEASE COMPLETE from L2
  *---------------------------------------------------------------------------*/	
-static void F_19K(call_desc_t *cd)
+static void
+F_19K(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_19K executing");
 	T308_stop(cd);
@@ -765,7 +807,8 @@ static void F_19K(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U19 event T308 timeout
  *---------------------------------------------------------------------------*/	
-static void F_19W(call_desc_t *cd)
+static void
+F_19W(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_19W executing");
 	if(cd->T308_first_to == 0)
@@ -787,14 +830,16 @@ static void F_19W(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM routine no change no action
  *---------------------------------------------------------------------------*/	
-static void F_NCNA(call_desc_t *cd)
+static void
+F_NCNA(call_desc_t *cd)
 {
 }
 
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state event STATUS ENQ from L2
  *---------------------------------------------------------------------------*/	
-static void F_STENQ(call_desc_t *cd)
+static void
+F_STENQ(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_STENQ executing");
 	i4b_l3_tx_status(cd, CAUSE_Q850_STENQRSP); /* 30, resonse to stat enq */
@@ -803,7 +848,8 @@ static void F_STENQ(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state except 0 & 19 event STATUS from L2
  *---------------------------------------------------------------------------*/	
-static void F_STAT(call_desc_t *cd)
+static void
+F_STAT(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_STAT executing");
 	if(cd->call_state == 0)
@@ -827,7 +873,8 @@ static void F_STAT(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM some states event INFORMATION from L2
  *---------------------------------------------------------------------------*/	
-static void F_INFO(call_desc_t *cd)
+static void
+F_INFO(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_INFO executing");
 	i4b_l4_info_ind(cd);
@@ -837,7 +884,8 @@ static void F_INFO(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM T308 timeout while expecting RELEASE COMPLETE
  *---------------------------------------------------------------------------*/	
-static void F_308TO(call_desc_t *cd)
+static void
+F_308TO(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_308TO executing");
 	i4b_l3_stop_all_timers(cd);
@@ -848,7 +896,8 @@ static void F_308TO(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM some states event RELEASE COMPLETE from L2
  *---------------------------------------------------------------------------*/	
-static void F_RELCP(call_desc_t *cd)
+static void
+F_RELCP(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_RELCP executing");
 	i4b_l3_stop_all_timers(cd);
@@ -859,7 +908,8 @@ static void F_RELCP(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM some states event RELEASE from L2
  *---------------------------------------------------------------------------*/	
-static void F_REL(call_desc_t *cd)
+static void
+F_REL(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_REL executing");
 	i4b_l3_stop_all_timers(cd);
@@ -871,7 +921,8 @@ static void F_REL(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM some states event DISCONNECT from L2
  *---------------------------------------------------------------------------*/	
-static void F_DISC(call_desc_t *cd)
+static void
+F_DISC(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DISC executing");
 	i4b_l3_stop_all_timers(cd);
@@ -890,7 +941,8 @@ static void F_DISC(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM some states event disconnect request from L4
  *---------------------------------------------------------------------------*/	
-static void F_DCRQ(call_desc_t *cd)
+static void
+F_DCRQ(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DCRQ executing");
 
@@ -909,7 +961,8 @@ static void F_DCRQ(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state except 0 event unexpected message from L2
  *---------------------------------------------------------------------------*/	
-static void F_UEM(call_desc_t *cd)
+static void
+F_UEM(call_desc_t *cd)
 {
 	NDBGL3(L3_F_ERR, "FSM function F_UEM executing, state = %s", print_l3state(cd));
 	i4b_l3_tx_status(cd, CAUSE_Q850_MSGNCWCS); /* 101, message not compatible with call state */
@@ -918,7 +971,8 @@ static void F_UEM(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state except 0 event SETUP from L2
  *---------------------------------------------------------------------------*/	
-static void F_SIGN(call_desc_t *cd)
+static void
+F_SIGN(call_desc_t *cd)
 {
 	NDBGL3(L3_F_ERR, "FSM function F_SIGN executing");
 
@@ -928,7 +982,8 @@ static void F_SIGN(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM relevant states event DL ESTABLISH IND from L2
  *---------------------------------------------------------------------------*/	
-static void F_DLEI(call_desc_t *cd)
+static void
+F_DLEI(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DLEI executing");
 
@@ -940,7 +995,8 @@ static void F_DLEI(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state event illegal event occured
  *---------------------------------------------------------------------------*/	
-static void F_ILL(call_desc_t *cd)
+static void
+F_ILL(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_ILL executing");
 }
@@ -948,7 +1004,8 @@ static void F_ILL(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state event T309 timeout
  *---------------------------------------------------------------------------*/	
-static void F_309TO(call_desc_t *cd)
+static void
+F_309TO(call_desc_t *cd)
 {
 	NDBGL3(L3_F_ERR, "FSM function F_309TO executing");
 
@@ -964,7 +1021,8 @@ static void F_309TO(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state event FACILITY message received
  *---------------------------------------------------------------------------*/	
-static void F_FCTY(call_desc_t *cd)
+static void
+F_FCTY(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_FCTY executing");
 	/* ST_SUSE, no change in state ! */
@@ -973,7 +1031,8 @@ static void F_FCTY(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state ST_OW event DL ESTABLISH CONF from L2
  *---------------------------------------------------------------------------*/	
-static void F_DECF1(call_desc_t *cd)
+static void
+F_DECF1(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DECF1 executing");
 	i4b_l3_tx_setup(cd);
@@ -982,7 +1041,8 @@ static void F_DECF1(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state ST_IWA event DL ESTABLISH CONF from L2
  *---------------------------------------------------------------------------*/	
-static void F_DECF2(call_desc_t *cd)
+static void
+F_DECF2(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DECF2 executing");
 	i4b_l3_tx_connect(cd);
@@ -991,7 +1051,8 @@ static void F_DECF2(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state ST_IWR event DL ESTABLISH CONF from L2
  *---------------------------------------------------------------------------*/	
-static void F_DECF3(call_desc_t *cd)
+static void
+F_DECF3(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DECF3 executing");
 	i4b_l3_tx_release_complete(cd, 1);
@@ -1001,7 +1062,8 @@ static void F_DECF3(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state ST_IWL event DL ESTABLISH CONF from L2
  *---------------------------------------------------------------------------*/	
-static void F_DECF4(call_desc_t *cd)
+static void
+F_DECF4(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DECF4 executing");
 	i4b_l3_tx_alert(cd);
@@ -1011,7 +1073,8 @@ static void F_DECF4(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state event DL ESTABLISH CONF from L2
  *---------------------------------------------------------------------------*/	
-static void F_DECF(call_desc_t *cd)
+static void
+F_DECF(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DECF executing");
 	T309_stop(cd);
@@ -1021,7 +1084,8 @@ static void F_DECF(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM any state except U10 event DL RELEASE IND from L2
  *---------------------------------------------------------------------------*/	
-static void F_DLRI(call_desc_t *cd)
+static void
+F_DLRI(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DLRI executing");
 	i4b_l3_stop_all_timers(cd);
@@ -1032,7 +1096,8 @@ static void F_DLRI(call_desc_t *cd)
 /*---------------------------------------------------------------------------*
  *	L3 FSM state U10 event DL RELEASE IND from L2
  *---------------------------------------------------------------------------*/	
-static void F_DLRIA(call_desc_t *cd)
+static void
+F_DLRIA(call_desc_t *cd)
 {
 	NDBGL3(L3_F_MSG, "FSM function F_DLRIA executing");
 

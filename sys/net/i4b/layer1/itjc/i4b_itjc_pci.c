@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.14 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.15 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1497,7 +1497,8 @@ itjc_write_reg(struct l1_softc *sc, int what, bus_size_t offs, u_int8_t data)
 /*---------------------------------------------------------------------------*
  *	itjc_probe - probe for a card.
  *---------------------------------------------------------------------------*/
-static int itjc_probe(device_t dev)
+static int
+itjc_probe(device_t dev)
 {
 	u_int16_t	vid = pci_get_vendor(dev),
 			did = pci_get_device(dev);

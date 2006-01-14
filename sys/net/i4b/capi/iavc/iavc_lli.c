@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.7 2005/06/03 16:49:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.8 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,8 @@ static void iavc_start_tx(iavc_softc_t *);
 //      Sends a capi message.
 */
 
-int iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
+int
+iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
 {
     iavc_softc_t *sc = (iavc_softc_t*) capi_sc->ctx;
     u_int8_t val;
@@ -170,7 +171,8 @@ int iavc_load(capi_softc_t *capi_sc, int len, u_int8_t *cp)
     return 0;
 }
 
-int iavc_register(capi_softc_t *capi_sc, int applid, int nchan)
+int
+iavc_register(capi_softc_t *capi_sc, int applid, int nchan)
 {
     iavc_softc_t *sc = (iavc_softc_t*) capi_sc->ctx;
     struct mbuf *m = i4b_Dgetmbuf(23);
@@ -210,7 +212,8 @@ int iavc_register(capi_softc_t *capi_sc, int applid, int nchan)
     return 0;
 }
 
-int iavc_release(capi_softc_t *capi_sc, int applid)
+int
+iavc_release(capi_softc_t *capi_sc, int applid)
 {
     iavc_softc_t *sc = (iavc_softc_t*) capi_sc->ctx;
     struct mbuf *m = i4b_Dgetmbuf(7);
@@ -237,7 +240,8 @@ int iavc_release(capi_softc_t *capi_sc, int applid)
     return 0;
 }
 
-int iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
+int
+iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
 {
     iavc_softc_t *sc = (iavc_softc_t*) capi_sc->ctx;
 
@@ -276,7 +280,8 @@ int iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
 //      board, and sets state to INIT.
 */
 
-static int iavc_send_init(iavc_softc_t *sc)
+static int
+iavc_send_init(iavc_softc_t *sc)
 {
     struct mbuf *m = i4b_Dgetmbuf(15);
     u_int8_t *p;
@@ -339,7 +344,8 @@ static int iavc_send_init(iavc_softc_t *sc)
 //      Reads an incoming message and calls capi_ll_receive().
 */
 
-static int iavc_receive_init(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_init(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t Length;
     u_int8_t *p;
@@ -397,7 +403,8 @@ static int iavc_receive_init(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     struct mbuf *m = i4b_Dgetmbuf(3);
     u_int8_t *p;
@@ -436,14 +443,16 @@ static int iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive_stop(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_stop(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     printf("iavc%d: receive_stop\n", sc->sc_unit);
     sc->sc_blocked = TRUE;
     return 0;
 }
 
-static int iavc_receive_new_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_new_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t ApplId, NCCI, WindowSize;
 
@@ -461,7 +470,8 @@ static int iavc_receive_new_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive_free_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_free_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t ApplId, NCCI;
 
@@ -477,7 +487,8 @@ static int iavc_receive_free_ncci(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive_task_ready(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_task_ready(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t TaskId, Length;
     u_int8_t *p;
@@ -496,7 +507,8 @@ static int iavc_receive_task_ready(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive_debugmsg(iavc_softc_t *sc, u_int8_t *dmabuf)
+static int
+iavc_receive_debugmsg(iavc_softc_t *sc, u_int8_t *dmabuf)
 {
     u_int32_t Length;
     u_int8_t *p;
@@ -513,7 +525,8 @@ static int iavc_receive_debugmsg(iavc_softc_t *sc, u_int8_t *dmabuf)
     return 0;
 }
 
-static int iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
+static int
+iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
 {
     struct mbuf *m;
     u_int32_t ApplId, Length;
@@ -599,7 +612,8 @@ static int iavc_receive(iavc_softc_t *sc, u_int8_t *dmabuf, int b3data)
 //      Initiates DMA on the next queued message if possible.
 */
 
-void iavc_handle_intr(iavc_softc_t *sc)
+void
+iavc_handle_intr(iavc_softc_t *sc)
 {
     u_int32_t status;
     u_int32_t newcsr;
@@ -645,7 +659,8 @@ void iavc_handle_intr(iavc_softc_t *sc)
     sc->sc_intr = FALSE;
 }
 
-static void iavc_handle_rx(iavc_softc_t *sc)
+static void
+iavc_handle_rx(iavc_softc_t *sc)
 {
     u_int8_t *dmabuf = 0, cmd;
 
@@ -699,7 +714,8 @@ static void iavc_handle_rx(iavc_softc_t *sc)
     }
 }
 
-static void iavc_start_tx(iavc_softc_t *sc)
+static void
+iavc_start_tx(iavc_softc_t *sc)
 {
     struct mbuf *m;
     u_int8_t *dmabuf;
@@ -825,7 +841,8 @@ static void iavc_start_tx(iavc_softc_t *sc)
     }
 }
 
-int t1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
+int
+t1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
 {
     int len, i;
     len = i = b1io_get_word(sc);
@@ -861,7 +878,8 @@ int t1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
     return len;
 }
 
-void t1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
+void
+t1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
 {
     int i = len;
     b1io_put_word(sc, i);
@@ -896,7 +914,8 @@ void t1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
     }
 }
 
-u_int32_t b1io_get_word(iavc_softc_t *sc)
+u_int32_t
+b1io_get_word(iavc_softc_t *sc)
 {
     u_int32_t val = 0;
     val |= b1io_get_byte(sc);
@@ -906,7 +925,8 @@ u_int32_t b1io_get_word(iavc_softc_t *sc)
     return val;
 }
 
-void b1io_put_word(iavc_softc_t *sc, u_int32_t val)
+void
+b1io_put_word(iavc_softc_t *sc, u_int32_t val)
 {
     b1io_put_byte(sc, (val & 0xff));
     b1io_put_byte(sc, (val >> 8) & 0xff);
@@ -914,7 +934,8 @@ void b1io_put_word(iavc_softc_t *sc, u_int32_t val)
     b1io_put_byte(sc, (val >> 24) & 0xff);
 }
 
-int b1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
+int
+b1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
 {
     int len, i;
     len = i = b1io_get_word(sc);
@@ -922,20 +943,23 @@ int b1io_get_slice(iavc_softc_t *sc, u_int8_t *dp)
     return len;
 }
 
-void b1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
+void
+b1io_put_slice(iavc_softc_t *sc, u_int8_t *dp, int len)
 {
     b1io_put_word(sc, len);
     while (len--) b1io_put_byte(sc, *dp++);
 }
 
-u_int32_t b1io_read_reg(iavc_softc_t *sc, int reg)
+u_int32_t
+b1io_read_reg(iavc_softc_t *sc, int reg)
 {
     b1io_put_byte(sc, READ_REGISTER);
     b1io_put_word(sc, reg);
     return b1io_get_word(sc);
 }
 
-u_int32_t b1io_write_reg(iavc_softc_t *sc, int reg, u_int32_t val)
+u_int32_t
+b1io_write_reg(iavc_softc_t *sc, int reg, u_int32_t val)
 {
     b1io_put_byte(sc, WRITE_REGISTER);
     b1io_put_word(sc, reg);
@@ -943,7 +967,8 @@ u_int32_t b1io_write_reg(iavc_softc_t *sc, int reg, u_int32_t val)
     return b1io_get_word(sc);
 }
 
-u_int8_t b1io_get_byte(iavc_softc_t *sc)
+u_int8_t
+b1io_get_byte(iavc_softc_t *sc)
 {
     int spin = 0;
     while (!b1io_rx_full(sc) && spin < B1IO_WAIT_MAX) {
@@ -955,7 +980,8 @@ u_int8_t b1io_get_byte(iavc_softc_t *sc)
     return 0xff;
 }
 
-int b1io_put_byte(iavc_softc_t *sc, u_int8_t val)
+int
+b1io_put_byte(iavc_softc_t *sc, u_int8_t val)
 {
     int spin = 0;
     while (!b1io_tx_empty(sc) && spin < B1IO_WAIT_MAX) {
@@ -969,7 +995,8 @@ int b1io_put_byte(iavc_softc_t *sc, u_int8_t val)
     return -1;
 }
 
-int b1io_save_put_byte(iavc_softc_t *sc, u_int8_t val)
+int
+b1io_save_put_byte(iavc_softc_t *sc, u_int8_t val)
 {
     int spin = 0;
     while (!b1io_tx_empty(sc) && spin < B1IO_WAIT_MAX) {

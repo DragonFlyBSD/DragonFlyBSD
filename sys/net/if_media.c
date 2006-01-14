@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.8 2005/11/28 17:13:45 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.9 2006/01/14 11:05:17 swildner Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -75,11 +75,8 @@ static	void ifmedia_printword (int);
  * Initialize if_media struct for a specific interface instance.
  */
 void
-ifmedia_init(ifm, dontcare_mask, change_callback, status_callback)
-	struct ifmedia *ifm;
-	int dontcare_mask;
-	ifm_change_cb_t change_callback;
-	ifm_stat_cb_t status_callback;
+ifmedia_init(struct ifmedia *ifm, int dontcare_mask,
+	     ifm_change_cb_t change_callback, ifm_stat_cb_t status_callback)
 {
 
 	LIST_INIT(&ifm->ifm_list);
@@ -91,8 +88,7 @@ ifmedia_init(ifm, dontcare_mask, change_callback, status_callback)
 }
 
 void
-ifmedia_removeall(ifm)
-	struct ifmedia *ifm;
+ifmedia_removeall(struct ifmedia *ifm)
 {
 	struct ifmedia_entry *entry;
 
@@ -108,11 +104,7 @@ ifmedia_removeall(ifm)
  * for a specific interface instance.
  */
 void
-ifmedia_add(ifm, mword, data, aux)
-	struct ifmedia *ifm;
-	int mword;
-	int data;
-	void *aux;
+ifmedia_add(struct ifmedia *ifm, int mword, int data, void *aux)
 {
 	struct ifmedia_entry *entry;
 
@@ -140,10 +132,8 @@ ifmedia_add(ifm, mword, data, aux)
  * supported media for a specific interface instance.
  */
 void
-ifmedia_list_add(ifm, lp, count)
-	struct ifmedia *ifm;
-	struct ifmedia_entry *lp;
-	int count;
+ifmedia_list_add(struct ifmedia *ifm, struct ifmedia_entry *lp,
+		 int count)
 {
 	int i;
 
@@ -160,10 +150,7 @@ ifmedia_list_add(ifm, lp, count)
  * media-change callback.
  */
 void
-ifmedia_set(ifm, target)
-	struct ifmedia *ifm; 
-	int target;
-
+ifmedia_set(struct ifmedia *ifm, int target)
 {
 	struct ifmedia_entry *match;
 
@@ -191,11 +178,8 @@ ifmedia_set(ifm, target)
  * from the device network ioctl procedure.
  */
 int
-ifmedia_ioctl(ifp, ifr, ifm, cmd)
-	struct ifnet *ifp;
-	struct ifreq *ifr;
-	struct ifmedia *ifm;
-	u_long cmd;
+ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
+	      struct ifmedia *ifm, u_long cmd)
 {
 	struct ifmedia_entry *match;
 	struct ifmediareq *ifmr = (struct ifmediareq *) ifr;
@@ -354,10 +338,7 @@ ifmedia_ioctl(ifp, ifr, ifm, cmd)
  *
  */
 static struct ifmedia_entry *
-ifmedia_match(ifm, target, mask)
-	struct ifmedia *ifm; 
-	int target;
-	int mask;
+ifmedia_match(struct ifmedia *ifm, int target, int mask)
 {
 	struct ifmedia_entry *match, *next;
 
@@ -442,8 +423,7 @@ struct ifmedia_type_to_subtype ifmedia_types_to_subtypes[] = {
  * print a media word.
  */
 static void
-ifmedia_printword(ifmw)
-	int ifmw;
+ifmedia_printword(int ifmw)
 {
 	struct ifmedia_description *desc;
 	struct ifmedia_type_to_subtype *ttos;

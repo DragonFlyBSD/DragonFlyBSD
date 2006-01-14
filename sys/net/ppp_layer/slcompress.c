@@ -32,7 +32,7 @@
  *
  *	@(#)slcompress.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/net/slcompress.c,v 1.16 1999/12/29 04:38:37 peter Exp $
- * $DragonFly: src/sys/net/ppp_layer/slcompress.c,v 1.4 2005/12/11 13:00:17 swildner Exp $
+ * $DragonFly: src/sys/net/ppp_layer/slcompress.c,v 1.5 2006/01/14 11:05:18 swildner Exp $
  */
 
 /*
@@ -440,7 +440,7 @@ sl_uncompress_tcp(u_char **bufp, int len, u_int type, struct slcompress *comp)
 	 */
 	if ((intptr_t)cp & 3) {
 		if (len > 0)
-			(void) ovbcopy(cp, (caddr_t)((intptr_t)cp &~ 3), len);
+			ovbcopy(cp, (caddr_t)((intptr_t)cp &~ 3), len);
 		cp = (u_char *)((intptr_t)cp &~ 3);
 	}
 	cp -= hlen;

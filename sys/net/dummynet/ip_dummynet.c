@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.16 2005/12/19 00:07:02 corecode Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.17 2006/01/14 11:05:17 swildner Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -424,7 +424,7 @@ transmit_event(struct dn_pipe *pipe)
 	 */
 	switch (pkt->dn_dir) {
 	case DN_TO_IP_OUT:
-	    (void)ip_output((struct mbuf *)pkt, NULL, NULL, 0, NULL, NULL);
+	    ip_output((struct mbuf *)pkt, NULL, NULL, 0, NULL, NULL);
 	    rt_unref (pkt->ro.ro_rt) ;
 	    break ;
 

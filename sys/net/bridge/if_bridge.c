@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.3 2005/12/23 17:41:36 corecode Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.4 2006/01/14 11:05:17 swildner Exp $
  */
 
 /*
@@ -645,7 +645,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif)
 		/*
 		 * Take the interface out of promiscuous mode.
 		 */
-		(void) ifpromisc(ifs, 0);
+		ifpromisc(ifs, 0);
 		break;
 
 	case IFT_GIF:
@@ -1108,7 +1108,7 @@ bridge_ifdetach(struct ifnet *ifp)
 	snprintf(breq.ifbr_ifsname, sizeof(breq.ifbr_ifsname), ifp->if_xname);
 
 	lwkt_serialize_enter(ifp->if_serializer);
-	(void) bridge_ioctl_del(sc, &breq);
+	bridge_ioctl_del(sc, &breq);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
@@ -1403,8 +1403,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	     eh->ether_shost[3] == 0 &&
 	     eh->ether_shost[4] == 0 &&
 	     eh->ether_shost[5] == 0) == 0) {
-		(void) bridge_rtupdate(sc, eh->ether_shost,
-		    src_if, 0, IFBAF_DYNAMIC);
+		bridge_rtupdate(sc, eh->ether_shost, src_if, 0, IFBAF_DYNAMIC);
 	}
 
 	if ((bif->bif_flags & IFBIF_STP) != 0 &&
@@ -1616,7 +1615,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_dhost,
 		    ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_flags & IFBIF_LEARNING)
-				(void) bridge_rtupdate(sc,
+				bridge_rtupdate(sc,
 				    eh->ether_shost, ifp, 0, IFBAF_DYNAMIC);
 			m->m_pkthdr.rcvif = bif->bif_ifp;
 			if (ifp->if_type == IFT_GIF) {
@@ -2087,8 +2086,8 @@ bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
  * question.) If *bifp or *ifp are NULL then packet filtering is skipped for
  * that interface.
  */
-static int bridge_pfil(struct mbuf **mp, struct ifnet *bifp,
-		struct ifnet *ifp, int dir)
+static int
+bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 {
 	int snap, error, i;
 	struct ether_header *eh1, eh2;

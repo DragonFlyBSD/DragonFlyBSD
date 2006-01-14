@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isac.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isac.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isac.c,v 1.5 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Wed Jan 24 09:10:36 2001]
  *
@@ -280,7 +280,7 @@ isic_isac_irq(struct l1_softc *sc, int ista)
 		/* if S/Q IRQ, read SQC reg to clr SQC IRQ */
 	
 		if(ci & ISAC_CIRR_SQC)
-			(void) ISAC_READ(I_SQRR);
+			ISAC_READ(I_SQRR);
 
 		/* C/I code change IRQ (flag already cleared by CIRR read) */
 	

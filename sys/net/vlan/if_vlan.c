@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.19 2005/12/30 17:41:14 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.20 2006/01/14 11:05:18 swildner Exp $
  */
 
 /*
@@ -514,7 +514,7 @@ vlan_config(struct ifvlan *ifv, struct ifnet *p)
 	 * Configure multicast addresses that may already be
 	 * joined on the vlan device.
 	 */
-	(void)vlan_setmulti(&ifv->ifv_if);
+	vlan_setmulti(&ifv->ifv_if);
 
 	return 0;
 }

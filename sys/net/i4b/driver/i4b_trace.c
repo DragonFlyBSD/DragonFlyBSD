@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.13 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.14 2006/01/14 11:05:18 swildner Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -101,8 +101,8 @@ static struct cdevsw i4btrc_cdevsw = {
 /*---------------------------------------------------------------------------*
  *	interface init routine
  *---------------------------------------------------------------------------*/
-static
-void i4btrcinit(void *unused)
+static void
+i4btrcinit(void *unused)
 {
 	cdevsw_add(&i4btrc_cdevsw, 0, 0);
 }

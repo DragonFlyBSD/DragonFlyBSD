@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.22 2005/06/15 19:29:30 joerg Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.23 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -132,7 +132,7 @@ rtable_init(void **table)
 }
 
 void
-route_init()
+route_init(void)
 {
 #ifdef SMP
 	int ccpu;

@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.14 2005/12/11 13:00:17 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.15 2006/01/14 11:05:18 swildner Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -563,7 +563,7 @@ pppasyncstart(struct ppp_softc *sc)
 	    /* XXX as above. */
 	    if (CCOUNT(&tp->t_outq) == 0) {
 		++sc->sc_stats.ppp_obytes;
-		(void) putc(PPP_FLAG, &tp->t_outq);
+		putc(PPP_FLAG, &tp->t_outq);
 	    }
 
 	    /* Calculate the FCS for the first mbuf's worth. */
@@ -606,7 +606,7 @@ pppasyncstart(struct ppp_softc *sc)
 			break;
 		    }
 		    if (putc(*start ^ PPP_TRANS, &tp->t_outq)) {
-			(void) unputc(&tp->t_outq);
+			unputc(&tp->t_outq);
 			crit_exit();
 			break;
 		    }

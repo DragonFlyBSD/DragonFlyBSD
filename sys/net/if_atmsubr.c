@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.15 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.16 2006/01/14 11:05:17 swildner Exp $
  */
 
 /*
@@ -227,11 +227,8 @@ bad:
  * the packet is in the mbuf chain m.
  */
 void
-atm_input(ifp, ah, m, rxhand)
-	struct ifnet *ifp;
-	struct atm_pseudohdr *ah;
-	struct mbuf *m;
-	void *rxhand;
+atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
+	  void *rxhand)
 {
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int isr;

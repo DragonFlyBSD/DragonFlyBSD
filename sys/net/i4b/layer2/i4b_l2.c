@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.9 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.10 2006/01/14 11:05:18 swildner Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
@@ -101,7 +101,8 @@ struct i4b_l2l3_func i4b_l2l3_func = {
 /*---------------------------------------------------------------------------*
  *	DL_ESTABLISH_REQ from layer 3
  *---------------------------------------------------------------------------*/
-int i4b_dl_establish_req(int unit)
+int
+i4b_dl_establish_req(int unit)
 {
 	l2_softc_t *l2sc = &l2_softc[unit];
 	
@@ -114,7 +115,8 @@ int i4b_dl_establish_req(int unit)
 /*---------------------------------------------------------------------------*
  *	DL_RELEASE_REQ from layer 3
  *---------------------------------------------------------------------------*/
-int i4b_dl_release_req(int unit)
+int
+i4b_dl_release_req(int unit)
 {
 	l2_softc_t *l2sc = &l2_softc[unit];
 
@@ -126,7 +128,8 @@ int i4b_dl_release_req(int unit)
 /*---------------------------------------------------------------------------*
  *	DL UNIT DATA REQUEST from Layer 3
  *---------------------------------------------------------------------------*/
-int i4b_dl_unit_data_req(int unit, struct mbuf *m)
+int
+i4b_dl_unit_data_req(int unit, struct mbuf *m)
 {
 #ifdef NOTDEF
 	NDBGL2(L2_PRIM, "unit %d",unit);
@@ -137,7 +140,8 @@ int i4b_dl_unit_data_req(int unit, struct mbuf *m)
 /*---------------------------------------------------------------------------*
  *	DL DATA REQUEST from Layer 3
  *---------------------------------------------------------------------------*/
-int i4b_dl_data_req(int unit, struct mbuf *m)
+int
+i4b_dl_data_req(int unit, struct mbuf *m)
 {
 	l2_softc_t *l2sc = &l2_softc[unit];
 
@@ -314,7 +318,8 @@ i4b_mph_status_ind(int unit, int status, int parm)
 /*---------------------------------------------------------------------------*
  *	MDL_COMMAND_REQ from layer 3
  *---------------------------------------------------------------------------*/
-int i4b_mdl_command_req(int unit, int command, void * parm)
+int
+i4b_mdl_command_req(int unit, int command, void * parm)
 {
 	NDBGL2(L2_PRIM, "unit %d, command=%d, parm=%d", unit, command, (unsigned int)parm);
 

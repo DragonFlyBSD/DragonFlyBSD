@@ -41,7 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.9 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -217,8 +217,10 @@ bsd_clear(struct bsd_db *db)
  * Since both peers must reset the dictionary at the same time even in
  * the absence of CLEAR codes (while packets are incompressible), they
  * must compute the same ratio.
+ *
+ * Return 1=output CLEAR
  */
-static int				/* 1=output CLEAR */
+static int
 bsd_check(struct bsd_db *db)
 {
     u_int new_ratio;
@@ -444,8 +446,10 @@ bsd_decomp_init(void *state, u_char *options, int opt_len,
  *   *mp	- from here
  *   slen	- uncompressed length
  *   maxolen	- max compressed length
+ *
+ * return new slen
  */
-int					/* new slen */
+int
 bsd_compress(void *state, struct mbuf **mret, struct mbuf *mp, 
     int slen, int maxolen)
 {

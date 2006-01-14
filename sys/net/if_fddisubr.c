@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.20 2005/11/30 13:35:24 sephe Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.21 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -546,10 +546,7 @@ fddi_ifattach(struct ifnet *ifp, lwkt_serialize_t serializer)
 }
 
 static int
-fddi_resolvemulti(ifp, llsa, sa)
-	struct ifnet *ifp;
-	struct sockaddr **llsa;
-	struct sockaddr *sa;
+fddi_resolvemulti(struct ifnet *ifp, struct sockaddr **llsa, struct sockaddr *sa)
 {
 	struct sockaddr_dl *sdl;
 	struct sockaddr_in *sin;

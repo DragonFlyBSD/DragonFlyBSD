@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' card specific support routines.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_card.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.6 2005/06/03 16:49:55 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.7 2006/01/14 11:05:17 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,8 @@
 //  AVM B1 (active BRI, PIO mode)
 */
 
-int b1_detect(iavc_softc_t *sc)
+int
+b1_detect(iavc_softc_t *sc)
 {
     if ((iavc_read_port(sc, B1_INSTAT) & 0xfc) ||
 	(iavc_read_port(sc, B1_OUTSTAT) & 0xfc))
@@ -80,12 +81,14 @@ int b1_detect(iavc_softc_t *sc)
     return (0); /* found */
 }
 
-void b1_disable_irq(iavc_softc_t *sc)
+void
+b1_disable_irq(iavc_softc_t *sc)
 {
     b1io_outp(sc, B1_INSTAT, 0x00);
 }
 
-void b1_reset(iavc_softc_t *sc)
+void
+b1_reset(iavc_softc_t *sc)
 {
     b1io_outp(sc, B1_RESET, 0);
     DELAY(55*2*1000);
@@ -101,7 +104,8 @@ void b1_reset(iavc_softc_t *sc)
 //  Newer PCI-based B1's, and T1's, supports DMA
 */
 
-int b1dma_detect(iavc_softc_t *sc)
+int
+b1dma_detect(iavc_softc_t *sc)
 {
     AMCC_WRITE(sc, AMCC_MCSR, 0);
     DELAY(10*1000);
@@ -150,7 +154,8 @@ int b1dma_detect(iavc_softc_t *sc)
     return (0); /* found */
 }
 
-void b1dma_reset(iavc_softc_t *sc)
+void
+b1dma_reset(iavc_softc_t *sc)
 {
     crit_enter();
     sc->sc_csr = 0;
@@ -178,13 +183,20 @@ void b1dma_reset(iavc_softc_t *sc)
 
 /* XXX how do these differ from b1io_{read,write}_reg()? XXX */
 
-static int b1dma_tx_empty(int iobase)
-{ return inb(iobase + 3) & 1; }
+static int
+b1dma_tx_empty(int iobase)
+{
+	return inb(iobase + 3) & 1;
+}
 
-static int b1dma_rx_full(int iobase)
-{ return inb(iobase + 2) & 1; }
+static int
+b1dma_rx_full(int iobase)
+{
+	return inb(iobase + 2) & 1;
+}
 
-static int b1dma_tolink(iavc_softc_t *sc, void *buf, int len)
+static int
+b1dma_tolink(iavc_softc_t *sc, void *buf, int len)
 {
     volatile int spin;
     char *s = (char*) buf;
@@ -199,7 +211,8 @@ static int b1dma_tolink(iavc_softc_t *sc, void *buf, int len)
     return 0;
 }
 
-static int b1dma_fromlink(iavc_softc_t *sc, void *buf, int len)
+static int
+b1dma_fromlink(iavc_softc_t *sc, void *buf, int len)
 {
     volatile int spin;
     char *s = (char*) buf;
@@ -214,7 +227,8 @@ static int b1dma_fromlink(iavc_softc_t *sc, void *buf, int len)
     return 0;
 }
 
-static int WriteReg(iavc_softc_t *sc, u_int32_t reg, u_int8_t val)
+static int
+WriteReg(iavc_softc_t *sc, u_int32_t reg, u_int8_t val)
 {
     u_int8_t cmd = 0;
     if (b1dma_tolink(sc, &cmd, 1) == 0 &&
@@ -225,7 +239,8 @@ static int WriteReg(iavc_softc_t *sc, u_int32_t reg, u_int8_t val)
     return -1;
 }
 
-static u_int8_t ReadReg(iavc_softc_t *sc, u_int32_t reg)
+static u_int8_t
+ReadReg(iavc_softc_t *sc, u_int32_t reg)
 {
     u_int8_t cmd = 1;
     if (b1dma_tolink(sc, &cmd, 1) == 0 &&
@@ -237,7 +252,8 @@ static u_int8_t ReadReg(iavc_softc_t *sc, u_int32_t reg)
     return 0xff;
 }
 
-int t1_detect(iavc_softc_t *sc)
+int
+t1_detect(iavc_softc_t *sc)
 {
     int ret = b1dma_detect(sc);
     if (ret) return ret;
@@ -269,12 +285,14 @@ int t1_detect(iavc_softc_t *sc)
     return 0; /* found */
 }
 
-void t1_disable_irq(iavc_softc_t *sc)
+void
+t1_disable_irq(iavc_softc_t *sc)
 {
     iavc_write_port(sc, T1_IRQMASTER, 0x00);
 }
 
-void t1_reset(iavc_softc_t *sc)
+void
+t1_reset(iavc_softc_t *sc)
 {
     b1_reset(sc);
     iavc_write_port(sc, B1_INSTAT, 0x00);
