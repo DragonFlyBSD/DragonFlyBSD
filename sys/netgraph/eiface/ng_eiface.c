@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.10 2006/01/14 11:10:47 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -351,7 +351,7 @@ ng_eiface_constructor(node_p *nodep)
 	/* Give this node name *
 	bzero(ifname, sizeof(ifname));
 	sprintf(ifname, "if%s", ifp->if_xname);
-	(void) ng_name_node(node, ifname);
+	ng_name_node(node, ifname);
 	*/
 
 	/* Attach the interface */

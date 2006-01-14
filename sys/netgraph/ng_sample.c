@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_sample.c,v 1.7.2.3 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_sample.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_sample.c,v 1.3 2006/01/14 11:10:47 swildner Exp $
  * $Whistle: ng_sample.c,v 1.13 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -403,7 +403,8 @@ ng_xxx_rcvdataq(hook_p hook, struct mbuf *m, meta_p meta)
  * to some interrupt.
  * in which case it would probably look as follows:
  */
-devintr()
+void
+devintr(void)
 {
 	meta_p  meta = NULL;	/* whatever metadata we might imagine goes
 				 * here */

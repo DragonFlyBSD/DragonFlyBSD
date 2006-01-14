@@ -38,7 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.7 2005/06/02 22:11:46 swildner Exp $
+ * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.8 2006/01/14 11:10:47 swildner Exp $
  */
 
 /*
@@ -1007,7 +1007,7 @@ ng_l2tp_seq_failure(priv_p priv)
 	NG_MKMESSAGE(msg, NGM_L2TP_COOKIE, NGM_L2TP_ACK_FAILURE, 0, M_NOWAIT);
 	if (msg == NULL)
 		return;
-	(void)ng_send_msg(priv->node, msg, priv->ftarget, NULL);
+	ng_send_msg(priv->node, msg, priv->ftarget, NULL);
 }
 
 /************************************************************************

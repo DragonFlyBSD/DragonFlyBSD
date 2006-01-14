@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.16 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.17 2006/01/14 11:10:47 swildner Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -611,8 +611,8 @@ ng_fec_ifmedia_upd(struct ifnet *ifp)
 	return(0);
 }
 
-static void ng_fec_ifmedia_sts(struct ifnet *ifp,
-	struct ifmediareq *ifmr)
+static void
+ng_fec_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ng_fec_private	*priv;
 	struct ng_fec_bundle	*b;

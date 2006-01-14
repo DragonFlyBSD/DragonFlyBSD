@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.5 2004/05/19 22:53:01 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.6 2006/01/14 11:10:47 swildner Exp $
  *
  */
 
@@ -173,7 +173,7 @@ ng_device_mod_event(module_t mod, int event, void *data)
 
 
 static int
-ng_device_init()
+ng_device_init(void)
 {
         struct ngd_softc *sc = &ngd_softc;
 	
@@ -224,7 +224,7 @@ ng_device_rcvmsg(node_p node,
 }
 
 static int
-get_free_unit()
+get_free_unit(void)
 {
 	struct ngd_connection *tmp = NULL;
 	struct ngd_softc *sc = &ngd_softc;

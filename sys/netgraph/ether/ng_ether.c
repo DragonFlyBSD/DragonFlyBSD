@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.8 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.9 2006/01/14 11:10:47 swildner Exp $
  */
 
 /*
@@ -263,7 +263,7 @@ ng_ether_input2(node_p node, struct mbuf **mp, struct ether_header *eh)
 		return;
 
 	/* Send out lower/orphan hook */
-	(void)ng_queue_data(priv->lower, *mp, meta);
+	ng_queue_data(priv->lower, *mp, meta);
 	*mp = NULL;
 }
 
@@ -661,7 +661,7 @@ ng_ether_rmnode(node_p node)
 	ng_cutlinks(node);
 	node->flags &= ~NG_INVALID;	/* bounce back to life */
 	if (priv->promisc) {		/* disable promiscuous mode */
-		(void)ifpromisc(priv->ifp, 0);
+		ifpromisc(priv->ifp, 0);
 		priv->promisc = 0;
 	}
 	priv->autoSrcAddr = 1;		/* reset auto-src-addr flag */
