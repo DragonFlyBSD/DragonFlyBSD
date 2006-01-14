@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.6 2005/11/13 11:58:31 corecode Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.6.2.1 2006/01/14 23:24:46 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -143,6 +143,7 @@ cmdscanner(void)
 	struct cmd *c;
 	static EditLine *el;
 	static History *hist;
+	static HistEvent he;
 	size_t len;
 	int num;
 	const char *bp;
@@ -156,7 +157,7 @@ cmdscanner(void)
 			if (!el) {
 				el = el_init("lpc", stdin, stdout, stderr);
 				hist = history_init();
-				history(hist, NULL, H_SETSIZE, 100);
+				history(hist, &he, H_SETSIZE, 100);
 				el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_EDITOR, "emacs");
 				el_set(el, EL_PROMPT, lpc_prompt);
@@ -178,7 +179,7 @@ cmdscanner(void)
 			len = (num > MAX_CMDLINE -1) ? MAX_CMDLINE -1 : num;
 			memcpy(cmdline, bp, len);
 			cmdline[len] = 0; 
-			history(hist, NULL, H_ENTER, bp);
+			history(hist, &he, H_ENTER, bp);
 
 		} else {
 			if (fgets(cmdline, MAX_CMDLINE, stdin) == 0)

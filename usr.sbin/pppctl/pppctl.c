@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.6 2005/11/24 23:42:54 swildner Exp $
+ * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.6.2.1 2006/01/14 23:24:46 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -393,6 +393,7 @@ main(int argc, char **argv)
             if (len == 0) {
                 EditLine *edit;
                 History *hist;
+		HistEvent he;
                 const char *l, *env;
                 int size;
 
@@ -403,7 +404,7 @@ main(int argc, char **argv)
                       size = 20;
                 } else
                     size = 20;
-                history(hist, NULL, H_SETSIZE, size);
+                history(hist, &he, H_SETSIZE, size);
                 edit = el_init("pppctl", stdin, stdout, stderr);
                 el_source(edit, NULL);
                 el_set(edit, EL_PROMPT, GetPrompt);
@@ -417,7 +418,7 @@ main(int argc, char **argv)
                 el_set(edit, EL_HIST, history, (const char *)hist);
                 while ((l = smartgets(edit, &len, fd))) {
                     if (len > 1)
-                        history(hist, NULL, H_ENTER, l);
+                        history(hist, &he, H_ENTER, l);
                     write(fd, l, len);
                     if (Receive(fd, REC_SHOW) != 0)
                         break;
