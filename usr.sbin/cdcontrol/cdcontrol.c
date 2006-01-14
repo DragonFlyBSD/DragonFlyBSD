@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.9 2005/11/13 11:58:31 corecode Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.10 2006/01/14 22:58:17 corecode Exp $
  */
 
 #include <sys/cdio.h>
@@ -1147,6 +1147,7 @@ input(int *cmd)
 #define MAXLINE 80
 	static EditLine *el = NULL;
 	static History *hist = NULL;
+	static HistEvent he;
 	static char buf[MAXLINE];
 	int num = 0;
 	int len;
@@ -1158,7 +1159,7 @@ input(int *cmd)
 			if (!el) {
 				el = el_init("cdcontrol", stdin, stdout, stderr);
 				hist = history_init();
-				history(hist, NULL, H_SETSIZE, 100);
+				history(hist, &he, H_SETSIZE, 100);
 				el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_EDITOR, "emacs");
 				el_set(el, EL_PROMPT, cdcontrol_prompt);
@@ -1174,7 +1175,7 @@ input(int *cmd)
 			len = (num > MAXLINE) ? MAXLINE : num;
 			memcpy(buf, bp, len);
 			buf[len] = 0;
-			history(hist, NULL, H_ENTER, bp);
+			history(hist, &he, H_ENTER, bp);
 #undef MAXLINE
 
 		} else {
