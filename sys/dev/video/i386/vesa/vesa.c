@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.12 2005/08/13 16:43:34 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.13 2006/01/14 23:04:46 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -448,7 +448,7 @@ vesa_bios_save_restore(int code, void *p, size_t size)
 	vmf.vmf_ecx = STATE_ALL;
 	vmf.vmf_edx = code;	/* STATE_SAVE/STATE_LOAD */
 	buf = vesa_vm86_buf;
-	vm86_getptr(&vesa_vmcontext, (vm_offset_t)buf, &vmf.vmf_es, &vmf.vmf_di);
+	vm86_getptr(&vesa_vmcontext, (vm_offset_t)buf, &vmf.vmf_es, &vmf.vmf_bx);
 	bcopy(p, buf, size);
 
 	err = vm86_datacall(0x10, &vmf, &vesa_vmcontext);
