@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.17 2005/11/28 17:13:46 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.18 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -1365,7 +1365,7 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 			struct nd_pfxrouter *pfr;
 			int j;
 
-			(void)in6_embedscope(&prl->prefix[i].prefix,
+			in6_embedscope(&prl->prefix[i].prefix,
 			    &pr->ndpr_prefix, NULL, NULL);
 			prl->prefix[i].raflags = pr->ndpr_raf;
 			prl->prefix[i].prefixlen = pr->ndpr_plen;
@@ -1407,7 +1407,7 @@ nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 		     rpp = LIST_NEXT(rpp, rp_entry)) {
 			if (i >= PRLSTSIZ)
 				break;
-			(void)in6_embedscope(&prl->prefix[i].prefix,
+			in6_embedscope(&prl->prefix[i].prefix,
 			    &pr->ndpr_prefix, NULL, NULL);
 			prl->prefix[i].raflags = rpp->rp_raf;
 			prl->prefix[i].prefixlen = rpp->rp_plen;
@@ -1604,7 +1604,7 @@ nd6_cache_lladdr(struct ifnet *ifp, struct in6_addr *from, char *lladdr,
 		return NULL;
 	if ((rt->rt_flags & (RTF_GATEWAY | RTF_LLINFO)) != RTF_LLINFO) {
 fail:
-		(void)nd6_free(rt);
+		nd6_free(rt);
 		return NULL;
 	}
 	ln = (struct llinfo_nd6 *)rt->rt_llinfo;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.19 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1472,7 +1472,7 @@ do { \
 				error =	ip6_setmoptions(sopt->sopt_name,
 							&in6p->in6p_moptions,
 							m);
-				(void)m_free(m);
+				m_free(m);
 			    }
 				break;
 
@@ -2496,7 +2496,7 @@ ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)
 	in6_clearscope(&ip6->ip6_src);
 	in6_clearscope(&ip6->ip6_dst);
 
-	(void)if_simloop(ifp, copym, dst->sin6_family, NULL);
+	if_simloop(ifp, copym, dst->sin6_family, NULL);
 }
 
 /*

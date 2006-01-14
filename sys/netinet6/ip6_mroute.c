@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.10 2005/11/28 17:13:46 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.11 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -267,7 +267,7 @@ ip6_mrouter_set(struct socket *so, struct sockopt *sopt)
 		break;
 	}
 
-	(void)m_freem(m);
+	m_freem(m);
 	return(error);
 }
 

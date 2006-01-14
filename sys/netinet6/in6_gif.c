@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.14 2005/03/04 03:48:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.15 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -222,7 +222,8 @@ in6_gif_output(struct ifnet *ifp,
 #endif
 }
 
-int in6_gif_input(struct mbuf **mp, int *offp, int proto)
+int
+in6_gif_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
 	struct ifnet *gifp = NULL;

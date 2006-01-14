@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.26 2005/06/17 19:12:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.27 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -587,7 +587,7 @@ ip6_input(struct netmsg *msg)
 		/*
 		 * record address information into m_aux.
 		 */
-		(void)ip6_setdstifaddr(m, ia6);
+		ip6_setdstifaddr(m, ia6);
 
 		/*
 		 * packets to a tentative, duplicated, or somehow invalid

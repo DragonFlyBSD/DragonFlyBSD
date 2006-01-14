@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.16 2005/11/28 17:13:46 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.17 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -1002,7 +1002,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 			llsol.s6_addr32[3] =
 				ifra->ifra_addr.sin6_addr.s6_addr32[3];
 			llsol.s6_addr8[12] = 0xff;
-			(void)in6_addmulti(&llsol, ifp, &error);
+			in6_addmulti(&llsol, ifp, &error);
 			if (error != 0) {
 				log(LOG_WARNING,
 				    "in6_update_ifa: addmulti failed for "
@@ -1036,7 +1036,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 				  (struct sockaddr *)&mltmask,
 				  RTF_UP|RTF_CLONING,  /* xxx */
 				  (struct rtentry **)0);
-			(void)in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
+			in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 			if (error != 0) {
 				log(LOG_WARNING,
 				    "in6_update_ifa: addmulti failed for "
@@ -1054,8 +1054,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		    == 0) {
 			IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 			if (in6m == NULL && ia != NULL) {
-				(void)in6_addmulti(&mltaddr.sin6_addr,
-				    ifp, &error);
+				in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 				if (error != 0) {
 					log(LOG_WARNING, "in6_update_ifa: "
 					    "addmulti failed for "
@@ -1089,8 +1088,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 					  (struct sockaddr *)&mltmask,
 					  RTF_UP,
 					  (struct rtentry **)0);
-				(void)in6_addmulti(&mltaddr.sin6_addr, ifp,
-						   &error);
+				in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 				if (error != 0) {
 					log(LOG_WARNING, "in6_update_ifa: "
 					    "addmulti failed for %s on %s "

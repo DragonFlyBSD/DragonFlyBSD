@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.9 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.10 2006/01/14 11:44:24 swildner Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -466,9 +466,7 @@ bad:
 
 #ifdef INET6
 int
-esp6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+esp6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
 	int off = *offp;
@@ -880,10 +878,7 @@ bad:
 }
 
 void
-esp6_ctlinput(cmd, sa, d)
-	int cmd;
-	struct sockaddr *sa;
-	void *d;
+esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 {
 	const struct newesp *espp;
 	struct newesp esp;

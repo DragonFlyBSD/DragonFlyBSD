@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.7 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.8 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -570,7 +570,7 @@ in6_purgeprefix(struct ifnet *ifp)
 		if (ifpr->ifpr_prefix->sa_family != AF_INET6 ||
 		    ifpr->ifpr_type != IN6_PREFIX_RR)
  			continue;
-		(void)delete_each_prefix(ifpr2rp(ifpr), PR_ORIG_KERNEL);
+		delete_each_prefix(ifpr2rp(ifpr), PR_ORIG_KERNEL);
 	}
 }
 
@@ -999,7 +999,7 @@ delete_prefixes(struct ifnet *ifp, u_char origin)
 		    ifpr->ifpr_type != IN6_PREFIX_RR)
  			continue;
 		if (ifpr2rp(ifpr)->rp_statef_delmark)
-			(void)delete_each_prefix(ifpr2rp(ifpr), origin);
+			delete_each_prefix(ifpr2rp(ifpr), origin);
 	}
 }
 

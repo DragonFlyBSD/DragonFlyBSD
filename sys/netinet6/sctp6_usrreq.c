@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.4 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.5 2006/01/14 11:44:25 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -121,7 +121,7 @@ extern struct protosw inetsw[];
 extern u_int32_t sctp_debug_on;
 #endif
 
-static	int sctp6_detach __P((struct socket *so));
+static	int sctp6_detach(struct socket *so);
 
 #if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__))
 extern void in6_sin_2_v4mapsin6 (struct sockaddr_in *sin,
@@ -177,14 +177,9 @@ extern int sctp_no_csum_on_loopback;
 
 int
 #if defined(__APPLE__)
-sctp6_input(mp, offp)
+sctp6_input(struct mbuf **mp, int *offp)
 #else
-sctp6_input(mp, offp, proto)
-#endif
-     struct mbuf **mp;
-     int *offp;
-#ifndef __APPLE__
-     int proto;
+sctp6_input(struct mbuf **mp, int *offp, int proto)
 #endif
 {
 	struct mbuf *m = *mp;
@@ -440,7 +435,7 @@ sctp_skip_csum:
 	offset -= sizeof(*ch);
 	ecn_bits = ((ntohl(ip6->ip6_flow) >> 20) & 0x000000ff);
 	crit_enter();
-	(void)sctp_common_input_processing(&m, iphlen, offset, length, sh, ch,
+	sctp_common_input_processing(&m, iphlen, offset, length, sh, ch,
 	    in6p, stcb, net, ecn_bits);
 	/* inp's ref-count reduced && stcb unlocked */
 	crit_exit();
@@ -568,10 +563,7 @@ out:
 
 
 void
-sctp6_ctlinput(cmd, pktdst, d)
-     int cmd;
-     struct sockaddr *pktdst;
-     void *d;
+sctp6_ctlinput(int cmd, struct sockaddr *pktdst, void *d)
 {
 	struct sctphdr sh;
 	struct ip6ctlparam *ip6cp = NULL;
@@ -1642,11 +1634,8 @@ struct pr_usrreqs sctp6_usrreqs = {
 #else
 
 int
-sctp6_usrreq(so, req, m, nam, control, p)
-     struct socket *so;
-     int req;
-     struct mbuf *m, *nam, *control;
-     struct proc *p;
+sctp6_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
+	     struct mbuf *control, struct proc *p)
 {
 	int s;
 	int error = 0;

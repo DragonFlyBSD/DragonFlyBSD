@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.13 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.14 2006/01/14 11:44:25 swildner Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -906,8 +906,8 @@ in6_get_tmpifid(struct ifnet *ifp, u_int8_t *retbuf, const u_int8_t *baseid,
 		bcopy(baseid, ndi->randomseed1, sizeof(ndi->randomseed1));
 
 		/* generate_tmp_ifid will update seedn and buf */
-		(void)generate_tmp_ifid(ndi->randomseed0, ndi->randomseed1,
-					ndi->randomid);
+		generate_tmp_ifid(ndi->randomseed0, ndi->randomseed1,
+				  ndi->randomid);
 	}
 	bcopy(ndi->randomid, retbuf, 8);
 }
@@ -934,9 +934,9 @@ in6_tmpaddrtimer(void *ignored_arg)
 			 * We've been generating a random ID on this interface.
 			 * Create a new one.
 			 */
-			(void)generate_tmp_ifid(ndi->randomseed0,
-						ndi->randomseed1,
-						ndi->randomid);
+			generate_tmp_ifid(ndi->randomseed0,
+					  ndi->randomseed1,
+					  ndi->randomid);
 		}
 	}
 

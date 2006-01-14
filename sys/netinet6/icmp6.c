@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.20 2005/03/04 03:48:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.21 2006/01/14 11:44:24 swildner Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1100,8 +1100,7 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 		ctlfunc = (void (*) (int, struct sockaddr *, void *))
 			(inet6sw[ip6_protox[nxt]].pr_ctlinput);
 		if (ctlfunc) {
-			(void) (*ctlfunc)(code, (struct sockaddr *)&icmp6dst,
-					  &ip6cp);
+			(*ctlfunc)(code, (struct sockaddr *)&icmp6dst, &ip6cp);
 		}
 	}
 	return(0);
@@ -1887,7 +1886,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 	rip6src.sin6_len = sizeof(struct sockaddr_in6);
 	rip6src.sin6_family = AF_INET6;
 	/* KAME hack: recover scopeid */
-	(void)in6_recoverscope(&rip6src, &ip6->ip6_src, m->m_pkthdr.rcvif);
+	in6_recoverscope(&rip6src, &ip6->ip6_src, m->m_pkthdr.rcvif);
 
 	LIST_FOREACH(in6p, &ripcbinfo.pcblisthead, inp_list)
 	{
