@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_input.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -51,9 +51,7 @@
  *
  */
 void
-ipatm_cpcs_data(tok, m)
-	void		*tok;
-	KBuffer		*m;
+ipatm_cpcs_data(void *tok, KBuffer *m)
 {
 	struct ipvcc	*ivp = tok;
 
@@ -80,7 +78,7 @@ ipatm_cpcs_data(tok, m)
 	/*
 	 * Pass packet to IP
 	 */
-	(void) ipatm_ipinput(ivp->iv_ipnif, m);
+	ipatm_ipinput(ivp->iv_ipnif, m);
 }
 
 
@@ -100,9 +98,7 @@ ipatm_cpcs_data(tok, m)
  *
  */
 int
-ipatm_ipinput(inp, m)
-	struct ip_nif	*inp;
-	KBuffer		*m;
+ipatm_ipinput(struct ip_nif *inp, KBuffer *m)
 {
 #ifdef DIAGNOSTIC
 	if (ipatm_print) {

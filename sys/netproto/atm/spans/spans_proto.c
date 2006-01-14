@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_proto.c,v 1.4 1999/08/28 00:48:51 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_proto.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_proto.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -182,8 +182,7 @@ struct t_atm_cause spans_cause = {
  *
  */
 void
-spans_timer(tip)
-	struct atm_time	*tip;
+spans_timer(struct atm_time *tip)
 {
 	struct spans	*spp;
 	spans_msg	*msg;
@@ -332,8 +331,7 @@ spans_timer(tip)
  *
  */
 void
-spans_vctimer(tip)
-	struct atm_time	*tip;
+spans_vctimer(struct atm_time *tip)
 {
 	int			err;
 	struct spans		*spp;
@@ -457,8 +455,7 @@ spans_vctimer(tip)
  *
  */
 caddr_t
-spans_getname(tok)
-	void		*tok;
+spans_getname(void *tok)
 {
 	return("SPANS");
 }
@@ -477,8 +474,7 @@ spans_getname(tok)
  *
  */
 void
-spans_connected(tok)
-	void		*tok;
+spans_connected(void *tok)
 {
 	struct spans		*spp = (struct spans *)tok;
 
@@ -506,9 +502,7 @@ spans_connected(tok)
  *
  */
 void
-spans_cleared(tok, cp)
-	void			*tok;
-	struct t_atm_cause	*cp;
+spans_cleared(void *tok, struct t_atm_cause *cp)
 {
 	struct spans	*spp = (struct spans *)tok;
 
@@ -537,9 +531,7 @@ spans_cleared(tok, cp)
  *
  */
 void
-spans_cpcs_data(tok, m)
-	void	*tok;
-	KBuffer	*m;
+spans_cpcs_data(void *tok, KBuffer *m)
 {
 	struct spans	*spp = tok;
 

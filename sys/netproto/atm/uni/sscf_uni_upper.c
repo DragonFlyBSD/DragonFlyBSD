@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni_upper.c,v 1.5 2000/01/17 20:49:50 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_upper.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni_upper.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -58,11 +58,7 @@
  *
  */
 void
-sscf_uni_upper(cmd, tok, arg1, arg2)
-	int	cmd;
-	void	*tok;
-	int	arg1;
-	int	arg2;
+sscf_uni_upper(int cmd, void *tok, int arg1, int arg2)
 {
 	struct univcc	*uvp = (struct univcc *)tok;
 	Atm_connvc	*cvp = uvp->uv_connvc;

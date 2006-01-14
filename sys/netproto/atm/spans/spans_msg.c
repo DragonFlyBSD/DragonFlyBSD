@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_msg.c,v 1.5 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_msg.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_msg.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -80,9 +80,7 @@ static void	spans_query_req (struct spans *, spans_msg *);
  *
  */
 static void
-spans_host_link(spp, host_epoch)
-	struct spans	*spp;
-	long	host_epoch;
+spans_host_link(struct spans *spp, long host_epoch)
 {
 	struct atm_pif	*pip = spp->sp_pif;
 
@@ -123,9 +121,7 @@ spans_host_link(spp, host_epoch)
  *
  */
 int
-spans_send_msg(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_send_msg(struct spans *spp, spans_msg *msg)
 {
 	int		err = 0;
 	KBuffer		*m;
@@ -196,9 +192,7 @@ spans_send_msg(spp, msg)
  *
  */
 int
-spans_send_open_req(spp, svp)
-	struct	spans		*spp;
-	struct	spans_vccb	*svp;
+spans_send_open_req(struct spans *spp, struct spans_vccb *svp)
 {
 	spans_msg	*req;
 	int		err = 0;
@@ -253,10 +247,8 @@ done:
  *
  */
 int
-spans_send_open_rsp(spp, svp, result)
-	struct	spans		*spp;
-	struct	spans_vccb	*svp;
-	spans_result		result;
+spans_send_open_rsp(struct spans *spp, struct spans_vccb *svp,
+		    spans_result result)
 {
 	spans_msg	*rsp;
 	int		rc;
@@ -306,9 +298,7 @@ spans_send_open_rsp(spp, svp, result)
  *
  */
 int
-spans_send_close_req(spp, svp)
-	struct spans		*spp;
-	struct	spans_vccb	*svp;
+spans_send_close_req(struct spans *spp, struct spans_vccb *svp)
 {
 	spans_msg	*req;
 	int		err = 0;
@@ -370,9 +360,7 @@ done:
  *
  */
 static void
-spans_status_ind(spp, msg)
-	struct	spans	*spp;
-	spans_msg	*msg;
+spans_status_ind(struct spans *spp, spans_msg *msg)
 {
 	spans_msg	*rsp_msg;
 	struct atm_pif	*pip = spp->sp_pif;
@@ -475,9 +463,7 @@ spans_status_ind(spp, msg)
  *
  */
 static void
-spans_status_rsp(spp, msg)
-	struct	spans	*spp;
-	spans_msg	*msg;
+spans_status_rsp(struct spans *spp, spans_msg *msg)
 {
 
 	/*
@@ -523,9 +509,7 @@ spans_status_rsp(spp, msg)
  *
  */
 static void
-spans_open_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_open_req(struct spans *spp, spans_msg *msg)
 {
 	spans_result		result = SPANS_OK;
 	spans_msg		*rsp_msg;
@@ -823,9 +807,7 @@ response:
  *
  */
 static void
-spans_open_rsp(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_open_rsp(struct spans *spp, spans_msg *msg)
 {
 	struct spans_vccb	*svp;
 
@@ -921,9 +903,7 @@ spans_open_rsp(spp, msg)
  *
  */
 static void
-spans_close_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_close_req(struct spans *spp, spans_msg *msg)
 {
 	struct spans_vccb	*svp;
 	spans_result		result;
@@ -1045,9 +1025,7 @@ response:
  *
  */
 static void
-spans_close_rsp(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_close_rsp(struct spans *spp, spans_msg *msg)
 {
 	struct spans_vccb	*svp;
 
@@ -1138,9 +1116,7 @@ spans_close_rsp(spp, msg)
  *
  */
 static void
-spans_multi_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_multi_req(struct spans *spp, spans_msg *msg)
 {
 	spans_msg	*rsp_msg;
 
@@ -1164,7 +1140,7 @@ spans_multi_req(spp, msg)
 	/*
 	 * Send the response and free the message.
 	 */
-	(void) spans_send_msg(spp, rsp_msg);
+	spans_send_msg(spp, rsp_msg);
 	atm_free(rsp_msg);
 }
 
@@ -1184,9 +1160,7 @@ spans_multi_req(spp, msg)
  *
  */
 static void
-spans_add_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_add_req(struct spans *spp, spans_msg *msg)
 {
 	spans_msg	*rsp_msg;
 
@@ -1211,7 +1185,7 @@ spans_add_req(spp, msg)
 	/*
 	 * Send the response and free the message.
 	 */
-	(void) spans_send_msg(spp, rsp_msg);
+	spans_send_msg(spp, rsp_msg);
 	atm_free(rsp_msg);
 }
 
@@ -1231,9 +1205,7 @@ spans_add_req(spp, msg)
  *
  */
 static void
-spans_join_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_join_req(struct spans *spp, spans_msg *msg)
 {
 	spans_msg	*rsp_msg;
 
@@ -1256,7 +1228,7 @@ spans_join_req(spp, msg)
 	/*
 	 * Send the response and free the message.
 	 */
-	(void) spans_send_msg(spp, rsp_msg);
+	spans_send_msg(spp, rsp_msg);
 	atm_free(rsp_msg);
 }
 
@@ -1276,9 +1248,7 @@ spans_join_req(spp, msg)
  *
  */
 static void
-spans_leave_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_leave_req(struct spans *spp, spans_msg *msg)
 {
 	spans_msg	*rsp_msg;
 
@@ -1301,7 +1271,7 @@ spans_leave_req(spp, msg)
 	/*
 	 * Send the response and free the message.
 	 */
-	(void) spans_send_msg(spp, rsp_msg);
+	spans_send_msg(spp, rsp_msg);
 	atm_free(rsp_msg);
 }
 
@@ -1321,9 +1291,7 @@ spans_leave_req(spp, msg)
  *
  */
 static void
-spans_vcir_ind(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_vcir_ind(struct spans *spp, spans_msg *msg)
 {
 	/*
 	 * Adjust the limits if they have changed
@@ -1360,9 +1328,7 @@ spans_vcir_ind(spp, msg)
  *
  */
 static void
-spans_query_req(spp, msg)
-	struct spans	*spp;
-	spans_msg	*msg;
+spans_query_req(struct spans *spp, spans_msg *msg)
 {
 	struct spans_vccb	*svp = NULL;
 	spans_msg		*rsp_msg;
@@ -1435,7 +1401,7 @@ spans_query_req(spp, msg)
 	/*
 	 * Send the response and free the message.
 	 */
-	(void) spans_send_msg(spp, rsp_msg);
+	spans_send_msg(spp, rsp_msg);
 	atm_free(rsp_msg);
 }
 
@@ -1457,9 +1423,7 @@ spans_query_req(spp, msg)
  *
  */
 void
-spans_rcv_msg(spp, m)
-	struct spans	*spp;
-	KBuffer		*m;
+spans_rcv_msg(struct spans *spp, KBuffer *m)
 {
 	XDR		xdrs;
 	spans_msg	*msg;

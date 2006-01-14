@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_util.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_util.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -53,8 +53,7 @@
  *
  */
 void
-unisig_free_msg(msg)
-	struct unisig_msg	*msg;
+unisig_free_msg(struct unisig_msg *msg)
 {
 	int			i;
 	struct ie_generic	*ie, *ienxt;
@@ -95,10 +94,7 @@ unisig_free_msg(msg)
  *
  */
 int
-unisig_verify_vccb(usp, uvp)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-
+unisig_verify_vccb(struct unisig *usp, struct unisig_vccb *uvp)
 {
 	struct unisig_vccb	*utp, *uvnext;
 
@@ -128,10 +124,7 @@ unisig_verify_vccb(usp, uvp)
  *
  */
 struct unisig_vccb *
-unisig_find_conn(usp, cref)
-	struct unisig	*usp;
-	u_int		cref;
-
+unisig_find_conn(struct unisig *usp, u_int cref)
 {
 	struct unisig_vccb	*uvp, *uvnext;
 
@@ -164,11 +157,7 @@ unisig_find_conn(usp, cref)
  *
  */
 struct unisig_vccb *
-unisig_find_vpvc(usp, vpi, vci, dir)
-	struct unisig	*usp;
-	int		vpi, vci;
-	u_char		dir;
-
+unisig_find_vpvc(struct unisig *usp, int vpi, int vci, u_char dir)
 {
 	struct unisig_vccb	*uvp, *uvnext;
 
@@ -196,9 +185,7 @@ unisig_find_vpvc(usp, vpi, vci, dir)
  *
  */
 int
-unisig_alloc_call_ref(usp)
-	struct unisig	*usp;
-
+unisig_alloc_call_ref(struct unisig *usp)
 {
 	int	cref;
 
@@ -241,8 +228,7 @@ unisig_alloc_call_ref(usp)
  *
  */
 char *
-unisig_addr_print(p)
-	Atm_addr		*p;
+unisig_addr_print(Atm_addr *p)
 {
 	int		i;
 	char		*fp, *op, t_buff[16];
@@ -365,8 +351,7 @@ unisig_addr_print(p)
  *
  */
 void
-unisig_print_mbuf(m)
-	KBuffer		*m;
+unisig_print_mbuf(KBuffer *m)
 {
 	int i;
 	caddr_t		cp;

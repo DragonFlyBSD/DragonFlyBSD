@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.13 2005/06/10 22:34:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.14 2006/01/14 13:36:40 swildner Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -128,10 +128,7 @@ end:
  * send message to the socket.
  */
 static int
-key_sendup0(rp, m, promisc)
-	struct rawcb *rp;
-	struct mbuf *m;
-	int promisc;
+key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 {
 	int error;
 
@@ -169,13 +166,15 @@ key_sendup0(rp, m, promisc)
 	return error;
 }
 
-/* XXX this interface should be obsoleted. */
+/*
+ * XXX this interface should be obsoleted.
+ *
+ * Parameters:
+ *	target:	target of the resulting message
+ */
 int
-key_sendup(so, msg, len, target)
-	struct socket *so;
-	struct sadb_msg *msg;
-	u_int len;
-	int target;	/*target of the resulting message*/
+key_sendup(struct socket *so, struct sadb_msg *msg, u_int len,
+	   int target)
 {
 	struct mbuf *m, *n, *mprev;
 	int tlen;
@@ -256,10 +255,7 @@ key_sendup(so, msg, len, target)
 
 /* so can be NULL if target != KEY_SENDUP_ONE */
 int
-key_sendup_mbuf(so, m, target)
-	struct socket *so;
-	struct mbuf *m;
-	int target;
+key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
 {
 	struct mbuf *n;
 	struct keycb *kp;
@@ -309,7 +305,7 @@ key_sendup_mbuf(so, m, target)
 		 */
 		if (((struct keycb *)rp)->kp_promisc) {
 			if ((n = m_copy(m, 0, (int)M_COPYALL)) != NULL) {
-				(void)key_sendup0(rp, n, 1);
+				key_sendup0(rp, n, 1);
 				n = NULL;
 			}
 		}

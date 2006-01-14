@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/netnatm/natm_pcb.c,v 1.6.6.1 2000/08/03 18:56:28 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.5 2005/06/10 22:34:51 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm_pcb.c,v 1.6 2006/01/14 13:36:40 swildner Exp $ */
 /*	$NetBSD: natm_pcb.c,v 1.4 1996/11/09 03:26:27 chuck Exp $	*/
 
 /*
@@ -58,10 +58,8 @@ struct npcblist natm_pcbs;
  * npcb_alloc: allocate a npcb [in the free state]
  */
 
-struct natmpcb *npcb_alloc(wait)
-
-int wait;
-
+struct natmpcb *
+npcb_alloc(int wait)
 {
   struct natmpcb *npcb;
 
@@ -83,11 +81,8 @@ int wait;
  * npcb_free: free a npcb
  */
 
-void npcb_free(npcb, op)
-
-struct natmpcb *npcb;
-int op;
-
+void
+npcb_free(struct natmpcb *npcb, int op)
 {
   crit_enter();
 
@@ -112,13 +107,8 @@ int op;
  *   returns npcb if ok
  */
 
-struct natmpcb *npcb_add(npcb, ifp, vci, vpi)
-
-struct natmpcb *npcb;
-struct ifnet *ifp;
-u_int16_t vci;
-u_int8_t vpi;
-
+struct natmpcb *
+npcb_add(struct natmpcb *npcb, struct ifnet *ifp, int vci, int vpi)
 {
   struct natmpcb *cpcb = NULL;		/* current pcb */
 
@@ -171,10 +161,10 @@ done:
 
 #ifdef DDB
 
-int npcb_dump (void);
+int npcb_dump(void);
 
-int npcb_dump()
-
+int
+npcb_dump(void)
 {
   struct natmpcb *cpcb;
 

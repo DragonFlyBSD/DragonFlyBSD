@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uni_load.c,v 1.4 2000/01/17 20:49:54 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uni_load.c,v 1.7 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uni_load.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ static int	uni_stop (void);
  *
  */
 static int
-uni_start()
+uni_start(void)
 {
 	int	err;
 
@@ -128,7 +128,7 @@ done:
  *
  */
 static int
-uni_stop()
+uni_stop(void)
 {
 	int	err;
 
@@ -184,7 +184,7 @@ static int	uni_dounload (void);
  *
  */
 static int
-uni_doload()
+uni_doload(void)
 {
 	int	err = 0;
 
@@ -194,7 +194,7 @@ uni_doload()
 	err = uni_start();
 	if (err)
 		/* Problems, clean up */
-		(void)uni_stop();
+		uni_stop();
 
 	return (err);
 }
@@ -215,7 +215,7 @@ uni_doload()
  *
  */
 static int
-uni_dounload()
+uni_dounload(void)
 {
 	int	err = 0;
 
@@ -253,9 +253,7 @@ MOD_MISC(uni);
  *
  */
 static int
-uni_load(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+uni_load(struct lkm_table *lkmtp, int cmd)
 {
 	return(uni_doload());
 }
@@ -277,9 +275,7 @@ uni_load(lkmtp, cmd)
  *
  */
 static int
-uni_unload(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+uni_unload(struct lkm_table *lkmtp, int cmd)
 {
 	return(uni_dounload());
 }
@@ -305,10 +301,7 @@ uni_unload(lkmtp, cmd)
  *
  */
 int
-uni_mod(lkmtp, cmd, ver)
-	struct lkm_table	*lkmtp;
-	int		cmd;
-	int		ver;
+uni_mod(struct lkm_table *lkmtp, int cmd, int ver)
 {
 	MOD_DISPATCH(uni, lkmtp, cmd, ver,
 		uni_load, uni_unload, lkm_nullcmd);
@@ -348,7 +341,7 @@ uni_doload(void *arg)
 	err = uni_start();
 	if (err) {
 		/* Problems, clean up */
-		(void)uni_stop();
+		uni_stop();
 
 		log(LOG_ERR, "ATM UNI unable to initialize (%d)!!\n", err);
 	}

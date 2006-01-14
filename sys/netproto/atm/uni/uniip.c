@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniip.c,v 1.4 1999/08/28 00:49:03 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniip.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniip.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ static struct sp_info  uniip_pool = {
  *
  */
 int
-uniip_start()
+uniip_start(void)
 {
 	int	err;
 
@@ -121,7 +121,7 @@ uniip_start()
  *
  */
 int
-uniip_stop()
+uniip_stop(void)
 {
 
 	/*
@@ -160,8 +160,7 @@ uniip_stop()
  *
  */
 static int
-uniip_ipact(inp)
-	struct ip_nif	*inp;
+uniip_ipact(struct ip_nif *inp)
 {
 	struct uniip		*uip;
 
@@ -216,8 +215,7 @@ uniip_ipact(inp)
  *
  */
 static int
-uniip_ipdact(inp)
-	struct ip_nif	*inp;
+uniip_ipdact(struct ip_nif *inp)
 {
 	struct uniip		*uip;
 

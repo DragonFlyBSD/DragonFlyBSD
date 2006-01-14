@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.9 2005/06/02 22:37:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ static struct attr_cause	sigpvc_cause = {
  *
  */
 static int
-sigpvc_start()
+sigpvc_start(void)
 {
 	int	err = 0;
 
@@ -152,7 +152,7 @@ sigpvc_start()
  *
  */
 static int
-sigpvc_stop()
+sigpvc_stop(void)
 {
 	int	err = 0;
 
@@ -213,9 +213,7 @@ done:
  *
  */
 static int
-sigpvc_attach(smp, pip)
-	struct sigmgr	*smp;
-	struct atm_pif	*pip;
+sigpvc_attach(struct sigmgr *smp, struct atm_pif *pip)
 {
 	int	err = 0;
 	struct sigpvc	*pvp = NULL;
@@ -281,8 +279,7 @@ done:
  *
  */
 static int
-sigpvc_detach(pip)
-	struct atm_pif	*pip;
+sigpvc_detach(struct atm_pif *pip)
 {
 	struct sigpvc	*pvp;
 	struct vccb	*vcp, *vnext;
@@ -357,9 +354,7 @@ sigpvc_detach(pip)
  *
  */
 static int
-sigpvc_setup(cvp, errp)
-	Atm_connvc	*cvp;
-	int		*errp;
+sigpvc_setup(Atm_connvc *cvp, int *errp)
 {
 	struct sigpvc	*pvp =
 		(struct sigpvc *)cvp->cvc_attr.nif->nif_pif->pif_siginst;
@@ -421,9 +416,7 @@ done:
  *
  */
 static int
-sigpvc_release(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+sigpvc_release(struct vccb *vcp, int *errp)
 {
 
 	/*
@@ -462,8 +455,7 @@ sigpvc_release(vcp, errp)
  *
  */
 static int
-sigpvc_free(vcp)
-	struct vccb	*vcp;
+sigpvc_free(struct vccb *vcp)
 {
 	struct atm_pif	*pip = vcp->vc_pif;
 	struct sigpvc	*pvp = (struct sigpvc *)pip->pif_siginst;
@@ -521,10 +513,7 @@ sigpvc_free(vcp)
  *
  */
 static int
-sigpvc_ioctl(code, data, arg1)
-	int		code;
-	caddr_t		data;
-	caddr_t		arg1;
+sigpvc_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmdelreq	*adp;
 	struct atminfreq	*aip;
@@ -598,7 +587,7 @@ sigpvc_ioctl(code, data, arg1)
 			/*
 			 * Fill in info to be returned
 			 */
-			(void) snprintf(avr.avp_intf, sizeof(avr.avp_intf),
+			snprintf(avr.avp_intf, sizeof(avr.avp_intf),
 				"%s%d",
 				pvp->pv_pif->pif_name, pvp->pv_pif->pif_unit);
 			avr.avp_vpi = vcp->vc_vpi;
@@ -688,7 +677,7 @@ static int	sigpvc_dounload (void);
  *
  */
 static int
-sigpvc_doload()
+sigpvc_doload(void)
 {
 	int	err = 0;
 
@@ -698,7 +687,7 @@ sigpvc_doload()
 	err = sigpvc_start();
 	if (err)
 		/* Problems, clean up */
-		(void)sigpvc_stop();
+		sigpvc_stop();
 
 	return (err);
 }
@@ -719,7 +708,7 @@ sigpvc_doload()
  *
  */
 static int
-sigpvc_dounload()
+sigpvc_dounload(void)
 {
 	int	err = 0;
 
@@ -757,9 +746,7 @@ MOD_MISC(sigpvc);
  *
  */
 static int
-sigpvc_load(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+sigpvc_load(struct lkm_table *lkmtp, int cmd)
 {
 	return(sigpvc_doload());
 }
@@ -781,9 +768,7 @@ sigpvc_load(lkmtp, cmd)
  *
  */
 static int
-sigpvc_unload(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+sigpvc_unload(struct lkm_table *lkmtp, int cmd)
 {
 	return(sigpvc_dounload());
 }
@@ -809,10 +794,7 @@ sigpvc_unload(lkmtp, cmd)
  *
  */
 int
-sigpvc_mod(lkmtp, cmd, ver)
-	struct lkm_table	*lkmtp;
-	int		cmd;
-	int		ver;
+sigpvc_mod(struct lkm_table *lkmtp, int cmd, int ver)
 {
 	MOD_DISPATCH(sigpvc, lkmtp, cmd, ver,
 		sigpvc_load, sigpvc_unload, lkm_nullcmd);
@@ -852,7 +834,7 @@ sigpvc_doload(void *arg)
 	err = sigpvc_start();
 	if (err) {
 		/* Problems, clean up */
-		(void)sigpvc_stop();
+		sigpvc_stop();
 
 		log(LOG_ERR, "ATM SIGPVC unable to initialize (%d)!!\n", err);
 	}

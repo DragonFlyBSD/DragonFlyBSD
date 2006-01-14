@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.h,v 1.4 2000/01/14 19:54:38 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.h,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.h,v 1.4 2006/01/14 13:36:40 swildner Exp $
  */
 #ifndef _NETNCP_NCP_RQ_H_
 #define _NETNCP_NCP_RQ_H_
@@ -147,10 +147,14 @@ int nwfs_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 int nwfs_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos);
 struct mbuf* ncp_rp_mbuf(struct ncp_rq *rqp, int size);
 
-static void __inline ncp_rq_mem(struct ncp_rq *rqp, caddr_t source, int size) {
+static void __inline
+ncp_rq_mem(struct ncp_rq *rqp, caddr_t source, int size)
+{
 	ncp_rq_putanymem(rqp,source,size,0);
 }
-static int __inline ncp_rq_usermem(struct ncp_rq *rqp, caddr_t source, int size) {
+static int __inline
+ncp_rq_usermem(struct ncp_rq *rqp, caddr_t source, int size)
+{
 	return ncp_rq_putanymem(rqp,source,size,1);
 }
 void ncp_sign_init(const char *logindata, char *sign_root);
@@ -185,7 +189,8 @@ u_int32_t ncp_reply_dword_hl(struct ncp_buf *, int);
 u_int32_t ncp_reply_dword_lh(struct ncp_buf *, int);
 
 static __inline void
-ConvertToNWfromDWORD(u_int32_t sfd, ncp_fh *fh) {
+ConvertToNWfromDWORD(u_int32_t sfd, ncp_fh *fh)
+{
 	fh->val1 = (fh->val.val32 = sfd);
 	return;
 }

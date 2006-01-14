@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.16 2005/06/10 22:44:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.17 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -193,11 +193,11 @@ spp_input(struct mbuf *m, ...)
 			nsp->nsp_laddr = si->si_dna;
 		if (ns_pcbconnect(nsp, mtod(am, struct sockaddr *))) {
 			nsp->nsp_laddr = laddr;
-			(void) m_free(am);
+			m_free(am);
 			spp_istat.noconn++;
 			goto drop;
 		}
-		(void) m_free(am);
+		m_free(am);
 		spp_template(cb);
 		dropsocket = 0;		/* committed to socket */
 		cb->s_did = si->si_sid;
@@ -273,16 +273,16 @@ spp_input(struct mbuf *m, ...)
 	m->m_data += sizeof (struct idp);
 
 	if (spp_reass(cb, si, m)) {
-		(void) m_freem(m);
+		m_freem(m);
 	}
 	if (cb->s_force || (cb->s_flags & (SF_ACKNOW|SF_WIN|SF_RXT)))
-		(void) spp_output(cb, (struct mbuf *)0);
+		spp_output(cb, (struct mbuf *)0);
 	cb->s_flags &= ~(SF_WIN|SF_RXT);
 	return;
 
 dropwithreset:
 	if (dropsocket)
-		(void) soabort(so);
+		soabort(so);
 	si->si_seq = ntohs(si->si_seq);
 	si->si_ack = ntohs(si->si_ack);
 	si->si_alo = ntohs(si->si_alo);
@@ -345,7 +345,7 @@ spp_reass(struct sppcb *cb, struct spidp *si, struct mbuf *si_m)
 				cb->s_snxt = si->si_ack;
 				cb->s_cwnd = CUNIT;
 				cb->s_force = 1 + SPPT_REXMT;
-				(void) spp_output(cb, (struct mbuf *)0);
+				spp_output(cb, (struct mbuf *)0);
 				cb->s_timer[SPPT_REXMT] = cb->s_rxtcur;
 				cb->s_rtt = 0;
 				if (cwnd >= 4 * CUNIT)
@@ -470,7 +470,7 @@ update_window:
 			/*register struct socket *so = cb->s_nspcb->nsp_socket;
 			if (so->so_state && SS_NOFDREF) {
 				ns_error(si_m, NS_ERR_NOSOCK, 0);
-				(void)spp_close(cb);
+				spp_close(cb);
 			} else
 				       would crash system*/
 			spp_istat.notyet++;
@@ -647,10 +647,10 @@ spp_ctlinput(int cmd, caddr_t arg)
 			NS_WILDCARD);
 		if (nsp) {
 			if(nsp->nsp_pcb)
-				(void) spp_drop((struct sppcb *)nsp->nsp_pcb,
-						(int)nsctlerrmap[cmd]);
+				spp_drop((struct sppcb *)nsp->nsp_pcb,
+					 (int)nsctlerrmap[cmd]);
 			else
-				(void) idp_drop(nsp, (int)nsctlerrmap[cmd]);
+				idp_drop(nsp, (int)nsctlerrmap[cmd]);
 		}
 		break;
 
@@ -823,7 +823,7 @@ spp_output(struct sppcb *cb, struct mbuf *m0)
 			struct sphdr *sh;
 			if (m0->m_len < sizeof (*sh)) {
 				if((m0 = m_pullup(m0, sizeof(*sh))) == NULL) {
-					(void) m_free(m);
+					m_free(m);
 					m_freem(m0);
 					return (EINVAL);
 				}
@@ -1731,7 +1731,7 @@ spp_drop(struct sppcb *cb, int errno)
 	if (TCPS_HAVERCVDSYN(cb->s_state)) {
 		sppstat.spps_drops++;
 		cb->s_state = TCPS_CLOSED;
-		/*(void) tcp_output(cb);*/
+		/*tcp_output(cb);*/
 	} else
 		sppstat.spps_conndrops++;
 	so->so_error = errno;
@@ -1762,7 +1762,7 @@ spp_fasttimo(void)
 			cb->s_flags &= ~SF_DELACK;
 			cb->s_flags |= SF_ACKNOW;
 			sppstat.spps_delack++;
-			(void) spp_output(cb, (struct mbuf *) 0);
+			spp_output(cb, (struct mbuf *) 0);
 		}
 	    }
 	}
@@ -1874,7 +1874,7 @@ spp_timers(struct sppcb *cb, int timer)
 			win = 2;
 		cb->s_cwnd = CUNIT;
 		cb->s_ssthresh = win * CUNIT;
-		(void) spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, (struct mbuf *) 0);
 		break;
 
 	/*
@@ -1884,7 +1884,7 @@ spp_timers(struct sppcb *cb, int timer)
 	case SPPT_PERSIST:
 		sppstat.spps_persisttimeo++;
 		spp_setpersist(cb);
-		(void) spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, (struct mbuf *) 0);
 		break;
 
 	/*
@@ -1899,7 +1899,7 @@ spp_timers(struct sppcb *cb, int timer)
 		    	if (cb->s_idle >= SPPTV_MAXIDLE)
 				goto dropit;
 			sppstat.spps_keepprobe++;
-			(void) spp_output(cb, (struct mbuf *) 0);
+			spp_output(cb, (struct mbuf *) 0);
 		} else
 			cb->s_idle = 0;
 		cb->s_timer[SPPT_KEEP] = SPPTV_KEEP;

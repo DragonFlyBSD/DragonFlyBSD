@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.8 2005/06/10 22:43:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.9 2006/01/14 13:36:40 swildner Exp $
  *
  * Core of NCP protocol
  */
@@ -66,8 +66,9 @@ static void ncp_sign_packet(struct ncp_conn *conn, struct ncp_rq *rqp, int *size
 
 
 #ifdef NCP_DATA_DEBUG
-static
-void m_dumpm(struct mbuf *m) {
+static void
+m_dumpm(struct mbuf *m)
+{
 	char *p;
 	int len;
 	printf("d=");

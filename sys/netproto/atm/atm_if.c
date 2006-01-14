@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.13 2005/11/30 13:35:24 sephe Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.14 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -72,10 +72,7 @@ static int	(*atm_ifouttbl[AF_MAX+1])
  *
  */
 int
-atm_physif_register(cup, name, sdp)
-	Cmn_unit		*cup;
-	char			*name;
-	struct stack_defn	*sdp;
+atm_physif_register(Cmn_unit *cup, char *name, struct stack_defn *sdp)
 {
 	struct atm_pif	*pip;
 
@@ -142,8 +139,7 @@ atm_physif_register(cup, name, sdp)
  *
  */
 int
-atm_physif_deregister(cup)
-	Cmn_unit	*cup;
+atm_physif_deregister(Cmn_unit *cup)
 {
 	struct atm_pif	*pip = (struct atm_pif *)&cup->cu_pif;
 	Cmn_vcc		*cvp;
@@ -215,8 +211,7 @@ atm_physif_deregister(cup)
  *
  */
 void
-atm_physif_freenifs(pip)
-	struct atm_pif	*pip;
+atm_physif_freenifs(struct atm_pif *pip)
 {
 	struct atm_nif	*nip = pip->pif_nif;
 
@@ -263,10 +258,7 @@ atm_physif_freenifs(pip)
  *
  */
 static int
-atm_physif_ioctl(code, data, arg)
-	int	code;
-	caddr_t	data;
-	caddr_t	arg;
+atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 {
 	struct atminfreq	*aip = (struct atminfreq *)data;
 	struct atmsetreq	*asr = (struct atmsetreq *)data;
@@ -311,7 +303,7 @@ atm_physif_ioctl(code, data, arg)
 		KM_ZERO((caddr_t)&apr, sizeof(apr));
 		smp = pip->pif_sigmgr;
 		sip = pip->pif_siginst;
-		(void) snprintf(apr.anp_intf, sizeof(apr.anp_intf),
+		snprintf(apr.anp_intf, sizeof(apr.anp_intf),
 			"%s%d", pip->pif_name, pip->pif_unit );
 		if ( pip->pif_nif )
 		{
@@ -366,13 +358,13 @@ atm_physif_ioctl(code, data, arg)
 		 * Fill in info to be returned
 		 */
 		KM_ZERO((caddr_t)&anr, sizeof(anr));
-		(void) snprintf(anr.anp_intf, sizeof(anr.anp_intf),
+		snprintf(anr.anp_intf, sizeof(anr.anp_intf),
 		    "%s", ifp->if_xname);
 		IFP_TO_IA(ifp, ia);
 		if (ia) {
 			anr.anp_proto_addr = *ia->ia_ifa.ifa_addr;
 		}
-		(void) snprintf(anr.anp_phy_intf, sizeof(anr.anp_phy_intf),
+		snprintf(anr.anp_phy_intf, sizeof(anr.anp_phy_intf),
 		    "%s%d", pip->pif_name, pip->pif_unit);
 
 		/*
@@ -551,7 +543,7 @@ atm_physif_ioctl(code, data, arg)
 		 * Fill in info to be returned
 		 */
 		KM_ZERO((caddr_t)&acr, sizeof(acr));
-		(void) snprintf(acr.acp_intf, sizeof(acr.acp_intf),
+		snprintf(acr.acp_intf, sizeof(acr.acp_intf),
 		    "%s%d", pip->pif_name, pip->pif_unit);
 		KM_COPY((caddr_t)acp, (caddr_t)&acr.acp_cfg,
 				sizeof(Atm_config));
@@ -605,8 +597,7 @@ atm_physif_ioctl(code, data, arg)
  *
  */
 int
-atm_netconv_register(ncp)
-	struct atm_ncm	*ncp;
+atm_netconv_register(struct atm_ncm *ncp)
 {
 	struct atm_ncm	*tdp;
 
@@ -666,8 +657,7 @@ atm_netconv_register(ncp)
  *
  */
 int
-atm_netconv_deregister(ncp)
-	struct atm_ncm	*ncp;
+atm_netconv_deregister(struct atm_ncm *ncp)
 {
 	int	found;
 
@@ -782,8 +772,7 @@ atm_nif_attach(struct atm_nif *nip, lwkt_serialize_t serializer)
  *
  */
 void
-atm_nif_detach(nip)
-	struct atm_nif	*nip;
+atm_nif_detach(struct atm_nif *nip)
 {
 	struct atm_ncm	*ncp;
 	int		i;
@@ -798,7 +787,7 @@ atm_nif_detach(nip)
 	 * Notify convergence modules of network i/f demise
 	 */
 	for (ncp = atm_netconv_head; ncp; ncp = ncp->ncm_next) {
-		(void) (*ncp->ncm_stat)(NCM_DETACH, nip, 0);
+		(*ncp->ncm_stat)(NCM_DETACH, nip, 0);
 	}
 
 	/*
@@ -835,7 +824,7 @@ atm_nif_detach(nip)
 	for (i = 1; i <= AF_MAX; i++) {
 		if ((rnh = rt_tables[i]) == NULL)
 			continue;
-		(void) rnh->rnh_walktree(rnh, atm_netif_rtdel, ifp);
+		rnh->rnh_walktree(rnh, atm_netif_rtdel, ifp);
 	}
 
 	/*
@@ -868,9 +857,7 @@ atm_nif_detach(nip)
  *
  */
 static int
-atm_netif_rtdel(rn, arg)
-	struct radix_node	*rn;
-	void			*arg;
+atm_netif_rtdel(struct radix_node *rn, void *arg)
 {
 	struct rtentry	*rt = (struct rtentry *)rn;
 	struct ifnet	*ifp = arg;
@@ -915,9 +902,7 @@ atm_netif_rtdel(rn, arg)
  *
  */
 int
-atm_nif_setaddr(nip, ifa)
-	struct atm_nif	*nip;
-	struct ifaddr	*ifa;
+atm_nif_setaddr(struct atm_nif *nip, struct ifaddr *ifa)
 {
 	struct atm_ncm	*ncp;
 	int	err = 0;
@@ -958,11 +943,8 @@ atm_nif_setaddr(nip, ifa)
  *
  */
 int
-atm_ifoutput(ifp, m, dst, rt)
-	struct ifnet	*ifp;
-	KBuffer		*m;
-	struct sockaddr	*dst;
-	struct rtentry	*rt;
+atm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst,
+	     struct rtentry *rt)
 {
 	u_short		fam = dst->sa_family;
 	int		(*func)(struct ifnet *, KBuffer *,
@@ -1054,11 +1036,7 @@ atm_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
  *
  */
 static int
-atm_ifparse(name, namep, size, unitp)
-	char		*name;
-	char		*namep;
-	int		size;
-	int		*unitp;
+atm_ifparse(char *name, char *namep, int size, int *unitp)
 {
 	char		*cp, *np;
 	int		len = 0, unit = 0;
@@ -1100,8 +1078,7 @@ atm_ifparse(name, namep, size, unitp)
  *
  */
 struct atm_pif *
-atm_pifname(name)
-	char		*name;
+atm_pifname(char *name)
 {
 	struct atm_pif	*pip;
 	char		n[IFNAMSIZ];
@@ -1139,8 +1116,7 @@ atm_pifname(name)
  *
  */
 struct atm_nif *
-atm_nifname(name)
-	char		*name;
+atm_nifname(char *name)
 {
 	struct atm_pif	*pip;
 	struct atm_nif	*nip;

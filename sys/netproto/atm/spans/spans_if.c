@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.9 2005/06/02 22:37:50 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ static struct sigmgr	*spans_mgr = NULL;
  *
  */
 static int
-spans_start()
+spans_start(void)
 {
 	int	err = 0;
 
@@ -172,7 +172,7 @@ done:
  *
  */
 static int
-spans_stop()
+spans_stop(void)
 {
 	int	err = 0;
 
@@ -245,9 +245,7 @@ done:
  *
  */
 static int
-spans_attach(smp, pip)
-	struct sigmgr	*smp;
-	struct atm_pif	*pip;
+spans_attach(struct sigmgr *smp, struct atm_pif *pip)
 {
 	int		err = 0, n = 0;
 	struct spans	*spp = NULL;
@@ -366,8 +364,7 @@ done:
  *
  */
 static int
-spans_detach(pip)
-	struct atm_pif	*pip;
+spans_detach(struct atm_pif *pip)
 {
 	struct spans		*spp;
 	struct vccb		*vcp, *vnext;
@@ -483,9 +480,7 @@ spans_detach(pip)
  *
  */
 static int
-spans_setup(cvp, errp)
-	Atm_connvc	*cvp;
-	int		*errp;
+spans_setup(Atm_connvc *cvp, int *errp)
 {
 	struct atm_pif	*pip = cvp->cvc_attr.nif->nif_pif;
 	struct spans	*spp = (struct spans *)pip->pif_siginst;
@@ -549,9 +544,7 @@ spans_setup(cvp, errp)
  *
  */
 static int
-spans_release(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+spans_release(struct vccb *vcp, int *errp)
 {
 	int		rc = 0;
 	struct atm_pif	*pip = vcp->vc_pif;
@@ -621,9 +614,7 @@ spans_release(vcp, errp)
  *
  */
 static int
-spans_accept(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+spans_accept(struct vccb *vcp, int *errp)
 {
 	struct atm_pif		*pip = vcp->vc_pif;
 	struct spans		*spp = (struct spans *)pip->pif_siginst;
@@ -693,9 +684,7 @@ failed:
  *
  */
 static int
-spans_reject(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+spans_reject(struct vccb *vcp, int *errp)
 {
 	struct atm_pif		*pip = vcp->vc_pif;
 	struct spans		*spp = (struct spans *)pip->pif_siginst;
@@ -753,8 +742,7 @@ spans_reject(vcp, errp)
  *
  */
 int
-spans_abort(vcp)
-	struct vccb	*vcp;
+spans_abort(struct vccb *vcp)
 {
 
 	/*
@@ -809,8 +797,7 @@ spans_abort(vcp)
  *
  */
 int
-spans_free(vcp)
-	struct vccb	*vcp;
+spans_free(struct vccb *vcp)
 {
 	struct atm_pif *pip = vcp->vc_pif;
 	struct spans *spp = (struct spans *)pip->pif_siginst;
@@ -874,10 +861,7 @@ spans_free(vcp)
  *
  */
 static int
-spans_ioctl(code, data, arg1)
-        int		code;
-        caddr_t		data;
-        caddr_t		arg1;
+spans_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmdelreq	*adp;
 	struct atminfreq	*aip;
@@ -969,7 +953,7 @@ spans_ioctl(code, data, arg1)
 			/*
 			 * Fill out the response struct for the VCC
 			 */
-			(void) snprintf(rsp.avp_intf,
+			snprintf(rsp.avp_intf,
 				    sizeof(rsp.avp_intf), "%s%d",
 					spp->sp_pif->pif_name,
 					spp->sp_pif->pif_unit);
@@ -1073,7 +1057,7 @@ static int	spans_dounload (void);
  *
  */
 static int
-spans_doload()
+spans_doload(void)
 {
 	int	err = 0;
 
@@ -1083,7 +1067,7 @@ spans_doload()
 	err = spans_start();
 	if (err)
 		/* Problems, clean up */
-		(void)spans_stop();
+		spans_stop();
 
 	return (err);
 }
@@ -1104,7 +1088,7 @@ spans_doload()
  *
  */
 static int
-spans_dounload()
+spans_dounload(void)
 {
 	int	err = 0;
 
@@ -1142,9 +1126,7 @@ MOD_MISC(spans);
  *
  */
 static int
-spans_load(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+spans_load(struct lkm_table *lkmtp, int cmd)
 {
 	return(spans_doload());
 }
@@ -1166,9 +1148,7 @@ spans_load(lkmtp, cmd)
  *
  */
 static int
-spans_unload(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+spans_unload(struct lkm_table *lkmtp, int cmd)
 {
 	return(spans_dounload());
 }
@@ -1194,10 +1174,7 @@ spans_unload(lkmtp, cmd)
  *
  */
 int
-spans_mod(lkmtp, cmd, ver)
-	struct lkm_table	*lkmtp;
-	int		cmd;
-	int		ver;
+spans_mod(struct lkm_table *lkmtp, int cmd, int ver)
 {
 	MOD_DISPATCH(spans, lkmtp, cmd, ver,
 		spans_load, spans_unload, lkm_nullcmd);
@@ -1237,7 +1214,7 @@ spans_doload(void *arg)
 	err = spans_start();
 	if (err) {
 		/* Problems, clean up */
-		(void)spans_stop();
+		spans_stop();
 
 		log(LOG_ERR, "ATM SPANS unable to initialize (%d)!!\n", err);
 	}

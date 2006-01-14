@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.17 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.18 2006/01/14 13:36:39 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -96,7 +96,7 @@ aarptimer(void *ignored)
  * consideration.
  */
 struct at_ifaddr *
-at_ifawithnet(struct sockaddr_at  *sat )
+at_ifawithnet(struct sockaddr_at *sat)
 {
     struct at_ifaddr	*aa;
     struct sockaddr_at	*sat2;
@@ -116,7 +116,7 @@ at_ifawithnet(struct sockaddr_at  *sat )
 }
 
 static void
-aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
+aarpwhohas(struct arpcom *ac, struct sockaddr_at *sat)
 {
     struct mbuf		*m;
     struct ether_header	*eh;
@@ -197,11 +197,8 @@ aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
 }
 
 int
-aarpresolve( ac, m, destsat, desten )
-    struct arpcom	*ac;
-    struct mbuf		*m;
-    struct sockaddr_at	*destsat;
-    u_char		*desten;
+aarpresolve(struct arpcom *ac, struct mbuf *m, struct sockaddr_at *destsat,
+	    u_char *desten )
 {
     struct at_ifaddr	*aa;
     struct aarptab	*aat;
@@ -467,7 +464,7 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 }
 
 static void
-aarptfree( struct aarptab *aat)
+aarptfree(struct aarptab *aat)
 {
 
     if ( aat->aat_hold )
@@ -478,9 +475,8 @@ aarptfree( struct aarptab *aat)
     aat->aat_ataddr.s_node = 0;
 }
 
-    struct aarptab *
-aarptnew( addr )
-    struct at_addr	*addr;
+struct aarptab *
+aarptnew(struct at_addr *addr)
 {
     int			n;
     int			oldest = -1;
@@ -515,7 +511,7 @@ out:
 
 
 void
-aarpprobe( void *arg )
+aarpprobe(void *arg)
 {
     struct arpcom	*ac = arg;
     struct mbuf		*m;

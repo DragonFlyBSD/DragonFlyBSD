@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -111,13 +111,11 @@ static char xdr_zero[BYTES_PER_XDR_UNIT] = { 0, 0, 0, 0 };
  * XDR integers
  */
 bool_t
-xdr_int(xdrs, ip)
-	XDR *xdrs;
-	int *ip;
+xdr_int(XDR *xdrs, int *ip)
 {
 
 #ifdef lint
-	(void) (xdr_short(xdrs, (short *)ip));
+	(xdr_short(xdrs, (short *)ip));
 	return (xdr_long(xdrs, (long *)ip));
 #else
 	if (sizeof (int) == sizeof (long)) {
@@ -132,13 +130,11 @@ xdr_int(xdrs, ip)
  * XDR unsigned integers
  */
 bool_t
-xdr_u_int(xdrs, up)
-	XDR *xdrs;
-	u_int *up;
+xdr_u_int(XDR *xdrs, u_int *up)
 {
 
 #ifdef lint
-	(void) (xdr_short(xdrs, (short *)up));
+	(xdr_short(xdrs, (short *)up));
 	return (xdr_u_long(xdrs, (u_long *)up));
 #else
 	if (sizeof (u_int) == sizeof (u_long)) {
@@ -154,9 +150,7 @@ xdr_u_int(xdrs, up)
  * same as xdr_u_long - open coded to save a proc call!
  */
 bool_t
-xdr_long(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdr_long(XDR *xdrs, long *lp)
 {
 
 	if (xdrs->x_op == XDR_ENCODE)
@@ -176,9 +170,7 @@ xdr_long(xdrs, lp)
  * same as xdr_long - open coded to save a proc call!
  */
 bool_t
-xdr_u_long(xdrs, ulp)
-	XDR *xdrs;
-	u_long *ulp;
+xdr_u_long(XDR *xdrs, u_long *ulp)
 {
 
 	if (xdrs->x_op == XDR_DECODE)
@@ -194,9 +186,7 @@ xdr_u_long(xdrs, ulp)
  * XDR short integers
  */
 bool_t
-xdr_short(xdrs, sp)
-	XDR *xdrs;
-	short *sp;
+xdr_short(XDR *xdrs, short *sp)
 {
 	long l;
 
@@ -223,9 +213,7 @@ xdr_short(xdrs, sp)
  * XDR unsigned short integers
  */
 bool_t
-xdr_u_short(xdrs, usp)
-	XDR *xdrs;
-	u_short *usp;
+xdr_u_short(XDR *xdrs, u_short *usp)
 {
 	u_long l;
 
@@ -253,9 +241,7 @@ xdr_u_short(xdrs, usp)
  * XDR a char
  */
 bool_t
-xdr_char(xdrs, cp)
-	XDR *xdrs;
-	char *cp;
+xdr_char(XDR *xdrs, char *cp)
 {
 	int i;
 
@@ -271,9 +257,7 @@ xdr_char(xdrs, cp)
  * XDR an unsigned char
  */
 bool_t
-xdr_u_char(xdrs, cp)
-	XDR *xdrs;
-	u_char *cp;
+xdr_u_char(XDR *xdrs, u_char *cp)
 {
 	u_int u;
 
@@ -289,9 +273,7 @@ xdr_u_char(xdrs, cp)
  * XDR booleans
  */
 bool_t
-xdr_bool(xdrs, bp)
-	XDR *xdrs;
-	bool_t *bp;
+xdr_bool(XDR *xdrs, bool_t *bp)
 {
 	long lb;
 
@@ -318,9 +300,7 @@ xdr_bool(xdrs, bp)
  * XDR enumerations
  */
 bool_t
-xdr_enum(xdrs, ep)
-	XDR *xdrs;
-	enum_t *ep;
+xdr_enum(XDR *xdrs, enum_t *ep)
 {
 #ifndef lint
 	enum sizecheck { SIZEVAL };	/* used to find the size of an enum */
@@ -336,7 +316,7 @@ xdr_enum(xdrs, ep)
 		return (FALSE);
 	}
 #else
-	(void) (xdr_short(xdrs, (short *)ep));
+	(xdr_short(xdrs, (short *)ep));
 	return (xdr_long(xdrs, (long *)ep));
 #endif
 }
@@ -347,10 +327,7 @@ xdr_enum(xdrs, ep)
  * cp points to the opaque object and cnt gives the byte length.
  */
 bool_t
-xdr_opaque(xdrs, cp, cnt)
-	XDR *xdrs;
-	caddr_t cp;
-	u_int cnt;
+xdr_opaque(XDR *xdrs, caddr_t cp, u_int cnt)
 {
 	u_int rndup;
 	static char crud[BYTES_PER_XDR_UNIT];
@@ -439,10 +416,7 @@ static struct	xdr_ops xdrmbuf_ops = {
  * kernel buffer.
  */
 void
-xdrmbuf_init(xdrs, m, op)
-	XDR *xdrs;
-	KBuffer	*m;
-	enum xdr_op op;
+xdrmbuf_init(XDR *xdrs, KBuffer *m, enum xdr_op op)
 {
 
 	xdrs->x_op = op;
@@ -453,9 +427,7 @@ xdrmbuf_init(xdrs, m, op)
 }
 
 static bool_t
-xdrmbuf_getlong(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmbuf_getlong(XDR *xdrs, long *lp)
 {
 
 	/*
@@ -509,9 +481,7 @@ xdrmbuf_getlong(xdrs, lp)
 }
 
 static bool_t
-xdrmbuf_putlong(xdrs, lp)
-	XDR *xdrs;
-	long *lp;
+xdrmbuf_putlong(XDR *xdrs, long *lp)
 {
 
 	/*
@@ -565,10 +535,7 @@ xdrmbuf_putlong(xdrs, lp)
 }
 
 static bool_t
-xdrmbuf_getbytes(xdrs, addr, len)
-	XDR *xdrs;
-	caddr_t addr;
-	u_int len;
+xdrmbuf_getbytes(XDR *xdrs, caddr_t addr, u_int len)
 {
 
 	while (len > 0) {
@@ -616,10 +583,7 @@ xdrmbuf_getbytes(xdrs, addr, len)
 }
 
 static bool_t
-xdrmbuf_putbytes(xdrs, addr, len)
-	XDR *xdrs;
-	caddr_t addr;
-	u_int len;
+xdrmbuf_putbytes(XDR *xdrs, caddr_t addr, u_int len)
 {
 
 	while (len > 0) {
@@ -667,8 +631,7 @@ xdrmbuf_putbytes(xdrs, addr, len)
 }
 
 static u_int
-xdrmbuf_getpos(xdrs)
-	XDR *xdrs;
+xdrmbuf_getpos(XDR *xdrs)
 {
 
 	return ((u_int)xdrs->x_private - (u_int)xdrs->x_base);

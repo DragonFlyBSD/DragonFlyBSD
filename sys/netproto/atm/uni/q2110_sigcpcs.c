@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/q2110_sigcpcs.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_sigcpcs.c,v 1.6 2004/07/23 14:14:30 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_sigcpcs.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -365,10 +365,7 @@ void	(*(*sscop_q2110_pdutab[]))
  *
  */
 static void
-sscop_bgn_outconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_outconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err;
@@ -396,7 +393,7 @@ sscop_bgn_outconn(sop, m, trlr)
 	/*
 	 * Return an ACK to peer
 	 */
-	(void) sscop_send_bgak(sop);
+	sscop_send_bgak(sop);
 
 	/*
 	 * Notify user of connection establishment
@@ -443,10 +440,7 @@ sscop_bgn_outconn(sop, m, trlr)
  *
  */
 static void
-sscop_bgn_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err;
@@ -503,10 +497,7 @@ sscop_bgn_inconn(sop, m, trlr)
  *
  */
 static void
-sscop_bgn_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err;
@@ -517,7 +508,7 @@ sscop_bgn_ready(sop, m, trlr)
 	if (sscop_is_rexmit(sop, bp->bgn_nsq)) {
 		KB_FREEALL(m);
 		sop->so_timer[SSCOP_T_NORESP] = sop->so_parm.sp_timeresp;
-		(void) sscop_send_bgak(sop);
+		sscop_send_bgak(sop);
 		return;
 	}
 
@@ -583,10 +574,7 @@ sscop_bgn_ready(sop, m, trlr)
  *
  */
 static void
-sscop_bgrej_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -637,10 +625,7 @@ sscop_bgrej_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_end_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct end_pdu	*ep = (struct end_pdu *)trlr;
 	int		err, source;
@@ -653,7 +638,7 @@ sscop_end_outrecov(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Get Source value
@@ -701,10 +686,7 @@ sscop_end_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_end_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct end_pdu	*ep = (struct end_pdu *)trlr;
 	int		err, source;
@@ -720,7 +702,7 @@ sscop_end_ready(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Get Source value
@@ -768,10 +750,7 @@ sscop_end_ready(sop, m, trlr)
  *
  */
 static void
-sscop_endak_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -822,10 +801,7 @@ sscop_endak_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_rs_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct rs_pdu	*rp = (struct rs_pdu *)trlr;
 	int		err;
@@ -858,7 +834,7 @@ sscop_rs_outresyn(sop, m, trlr)
 	/*
 	 * Return an ACK to peer
 	 */
-	(void) sscop_send_rsak(sop);
+	sscop_send_rsak(sop);
 
 	/*
 	 * Notify user of connection resynchronization
@@ -904,10 +880,7 @@ sscop_rs_outresyn(sop, m, trlr)
  *
  */
 static void
-sscop_rs_inresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_inresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct rs_pdu	*rp = (struct rs_pdu *)trlr;
 
@@ -941,10 +914,7 @@ sscop_rs_inresyn(sop, m, trlr)
  *
  */
 static void
-sscop_rs_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct rs_pdu	*rp = (struct rs_pdu *)trlr;
 	int		err;
@@ -1005,10 +975,7 @@ sscop_rs_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_rs_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct rs_pdu	*rp = (struct rs_pdu *)trlr;
 	int		err;
@@ -1073,10 +1040,7 @@ sscop_rs_ready(sop, m, trlr)
  *
  */
 static void
-sscop_er_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1102,10 +1066,7 @@ sscop_er_error(sop, m, trlr)
  *
  */
 static void
-sscop_er_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1116,7 +1077,7 @@ sscop_er_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	return;
 }
@@ -1135,10 +1096,7 @@ sscop_er_idle(sop, m, trlr)
  *
  */
 static void
-sscop_er_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct er_pdu	*ep = (struct er_pdu *)trlr;
 	int		err;
@@ -1174,7 +1132,7 @@ sscop_er_outrecov(sop, m, trlr)
 	/*
 	 * Acknowledge ER
 	 */
-	(void) sscop_send_erak(sop);
+	sscop_send_erak(sop);
 
 	/*
 	 * Deliver any outstanding data to user
@@ -1213,10 +1171,7 @@ sscop_er_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_er_recovrsp(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_recovrsp(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct er_pdu	*ep = (struct er_pdu *)trlr;
 
@@ -1225,7 +1180,7 @@ sscop_er_recovrsp(sop, m, trlr)
 	 */
 	if (sscop_is_rexmit(sop, ep->er_nsq)) {
 		KB_FREEALL(m);
-		(void) sscop_send_erak(sop);
+		sscop_send_erak(sop);
 		return;
 	}
 
@@ -1251,10 +1206,7 @@ sscop_er_recovrsp(sop, m, trlr)
  *
  */
 static void
-sscop_er_inrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_inrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct er_pdu	*ep = (struct er_pdu *)trlr;
 
@@ -1288,10 +1240,7 @@ sscop_er_inrecov(sop, m, trlr)
  *
  */
 static void
-sscop_er_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_er_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct er_pdu	*ep = (struct er_pdu *)trlr;
 	int		err;
@@ -1366,10 +1315,7 @@ sscop_er_ready(sop, m, trlr)
  *
  */
 static void
-sscop_erak_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_erak_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1395,10 +1341,7 @@ sscop_erak_error(sop, m, trlr)
  *
  */
 static void
-sscop_erak_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_erak_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1409,7 +1352,7 @@ sscop_erak_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	return;
 }
@@ -1428,10 +1371,7 @@ sscop_erak_idle(sop, m, trlr)
  *
  */
 static void
-sscop_erak_outrecov(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_erak_outrecov(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct erak_pdu	*ep = (struct erak_pdu *)trlr;
 	int		err;
@@ -1488,10 +1428,7 @@ sscop_erak_outrecov(sop, m, trlr)
  *
  */
 static void
-sscop_sd_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct sd_pdu	*sp = (struct sd_pdu *)trlr;
 	struct pdu_hdr	*php;
@@ -1518,7 +1455,7 @@ sscop_sd_ready(sop, m, trlr)
 		 * then send a USTAT to inform transmitter of this gap
 		 */
 		if (SEQ_LT(sop->so_rcvhigh, sop->so_rcvmax, sop->so_rcvnext)) { 
-			(void) sscop_send_ustat(sop, sop->so_rcvmax);
+			sscop_send_ustat(sop, sop->so_rcvmax);
 			sop->so_rcvhigh = sop->so_rcvmax;
 		}
 		return;
@@ -1676,7 +1613,7 @@ sscop_sd_ready(sop, m, trlr)
 		/*
 		 * Yes, then there's a missing PDU, so inform the transmitter
 		 */
-		(void) sscop_send_ustat(sop, ns);
+		sscop_send_ustat(sop, ns);
 
 		/*
 		 * Update high-water mark
@@ -1701,10 +1638,7 @@ sscop_sd_ready(sop, m, trlr)
  *
  */
 static void
-sscop_poll_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct poll_pdu	*pp = (struct poll_pdu *)trlr;
 	sscop_seq	nps;
@@ -1747,7 +1681,7 @@ sscop_poll_ready(sop, m, trlr)
 	 */
 	SEQ_SET(nps, ntohl(pp->poll_nps));
 	KB_FREEALL(m);
-	(void) sscop_send_stat(sop, nps);
+	sscop_send_stat(sop, nps);
 
 	return;
 }

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_print.c,v 1.6 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_print.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_print.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -112,7 +112,7 @@ static char *spans_indent;
 static char indent_str[11] = "          ";
 
 static void
-inc_indent()
+inc_indent(void)
 {
 	if (spans_indent != &indent_str[0]) {
 		spans_indent--;
@@ -120,7 +120,7 @@ inc_indent()
 }
 
 static void
-dec_indent()
+dec_indent(void)
 {
 	if (spans_indent != INIT_INDENT) {
 		spans_indent++;
@@ -128,10 +128,7 @@ dec_indent()
 }
 
 static void
-spans_aal_str(objp, dest, len)
-	spans_aal *objp;
-	char *dest;
-	int len;
+spans_aal_str(spans_aal *objp, char *dest, int len)
 {
 	static char	*aal_names[] = {
 		"SPANS_AAL0",
@@ -153,10 +150,7 @@ spans_aal_str(objp, dest, len)
 #endif 
 
 static void
-spans_result_str(objp, dest, len)
-	spans_result *objp;
-	char *dest;
-	int len;
+spans_result_str(spans_result *objp, char *dest, int len)
 {
 	static char	*result_names[] = {
 		"SPANS_OK",
@@ -175,10 +169,7 @@ spans_result_str(objp, dest, len)
 }
 
 static void
-spans_msgtype_str(objp, dest, len)
-	spans_msgtype *objp;
-	char *dest;
-	int len;
+spans_msgtype_str(spans_msgtype *objp, char *dest, int len)
 {
 	int	i;
 
@@ -240,10 +231,7 @@ spans_msgtype_str(objp, dest, len)
 #ifdef LONGPRINT 
 
 static void
-spans_query_type_str(objp, dest, len)
-	spans_query_type *objp;
-	char *dest;
-	int len;
+spans_query_type_str(spans_query_type *objp, char *dest, int len)
 {
 	static char	*query_names[] = {
 		"SPANS_QUERY_NORMAL",
@@ -261,10 +249,7 @@ spans_query_type_str(objp, dest, len)
 }
 
 static void
-spans_state_str(objp, dest, len)
-	spans_query_type *objp;
-	char *dest;
-	int len;
+spans_state_str(spans_query_type *objp, char *dest, int len)
 {
 	static char	*state_names[] = {
 		"SPANS_CONN_OPEN",
@@ -283,15 +268,13 @@ spans_state_str(objp, dest, len)
 
 
 static void
-spans_print_version(objp)
-	spans_version *objp;
+spans_print_version(spans_version *objp)
 {
 	printf("%sspans_version        0x%x\n", spans_indent, *objp);
 }
 
 static void
-spans_print_vpvc(objp)
-	spans_vpvc *objp;
+spans_print_vpvc(spans_vpvc *objp)
 {
 	printf("%sVP/VC                %d/%d\n", spans_indent,
 			SPANS_EXTRACT_VPI(*objp),
@@ -299,8 +282,7 @@ spans_print_vpvc(objp)
 }
 
 static void
-spans_print_vpvc_pref(objp)
-	spans_vpvc_pref *objp;
+spans_print_vpvc_pref(spans_vpvc_pref *objp)
 {
 	printf("%sspans_vpvc_pref\n", spans_indent);
 	inc_indent();
@@ -311,8 +293,7 @@ spans_print_vpvc_pref(objp)
 }
 
 static void
-spans_print_addr(objp)
-	spans_addr *objp;
+spans_print_addr(spans_addr *objp)
 {
 	char	addr_str[80];
 
@@ -321,15 +302,13 @@ spans_print_addr(objp)
 }
 
 static void
-spans_print_sap(objp)
-	spans_sap *objp;
+spans_print_sap(spans_sap *objp)
 {
 	printf("%sSAP                  %d\n", spans_indent, *objp);
 }
 
 static void
-spans_print_atm_conn(objp)
-	spans_atm_conn *objp;
+spans_print_atm_conn(spans_atm_conn *objp)
 {
 	printf("%sspans_atm_conn\n", spans_indent);
 	inc_indent();
@@ -341,8 +320,7 @@ spans_print_atm_conn(objp)
 }
 
 static void
-spans_print_resrc(objp)
-	spans_resrc *objp;
+spans_print_resrc(spans_resrc *objp)
 {
 	printf("%sspans_resrc\n", spans_indent);
 	inc_indent();
@@ -353,8 +331,7 @@ spans_print_resrc(objp)
 }
 
 static void
-spans_print_aal(objp)
-	spans_aal *objp;
+spans_print_aal(spans_aal *objp)
 {
 	char		aal_str[80];
 
@@ -363,8 +340,7 @@ spans_print_aal(objp)
 }
 
 static void
-spans_print_result(objp)
-	spans_result *objp;
+spans_print_result(spans_result *objp)
 {
 	char		result_str[80];
 
@@ -373,8 +349,7 @@ spans_print_result(objp)
 }
 
 static void
-spans_print_msgtype(objp)
-	spans_msgtype *objp;
+spans_print_msgtype(spans_msgtype *objp)
 {
 	char		msgtype_str[80];
 
@@ -383,8 +358,7 @@ spans_print_msgtype(objp)
 }
 
 static void
-spans_print_parm_stat_req(objp)
-	spans_parm_stat_req *objp;
+spans_print_parm_stat_req(spans_parm_stat_req *objp)
 {
 	printf("%sspans_parm_stat_req\n", spans_indent);
 	inc_indent();
@@ -394,8 +368,7 @@ spans_print_parm_stat_req(objp)
 }
 
 static void
-spans_print_parm_stat_ind(objp)
-	spans_parm_stat_ind *objp;
+spans_print_parm_stat_ind(spans_parm_stat_ind *objp)
 {
 	printf("%sspans_parm_stat_ind\n", spans_indent);
 	inc_indent();
@@ -407,8 +380,7 @@ spans_print_parm_stat_ind(objp)
 }
 
 static void
-spans_print_parm_stat_rsp(objp)
-	spans_parm_stat_rsp *objp;
+spans_print_parm_stat_rsp(spans_parm_stat_rsp *objp)
 {
 	printf("%sspans_parm_stat_rsp\n", spans_indent);
 	inc_indent();
@@ -419,8 +391,7 @@ spans_print_parm_stat_rsp(objp)
 }
 
 static void
-spans_print_parm_open_req(objp)
-	spans_parm_open_req *objp;
+spans_print_parm_open_req(spans_parm_open_req *objp)
 {
 	printf("%sspans_parm_open_req\n", spans_indent);
 	inc_indent();
@@ -433,8 +404,7 @@ spans_print_parm_open_req(objp)
 }
 
 static void
-spans_print_parm_open_ind(objp)
-	spans_parm_open_ind *objp;
+spans_print_parm_open_ind(spans_parm_open_ind *objp)
 {
 	printf("%sspans_parm_open_ind\n", spans_indent);
 	inc_indent();
@@ -447,8 +417,7 @@ spans_print_parm_open_ind(objp)
 }
 
 static void
-spans_print_parm_open_rsp(objp)
-	spans_parm_open_rsp *objp;
+spans_print_parm_open_rsp(spans_parm_open_rsp *objp)
 {
 	printf("%sspans_parm_open_rsp\n", spans_indent);
 	inc_indent();
@@ -460,8 +429,7 @@ spans_print_parm_open_rsp(objp)
 }
 
 static void
-spans_print_parm_open_cnf(objp)
-	spans_parm_open_cnf *objp;
+spans_print_parm_open_cnf(spans_parm_open_cnf *objp)
 {
 	printf("%sspans_parm_open_cnf\n", spans_indent);
 	inc_indent();
@@ -473,8 +441,7 @@ spans_print_parm_open_cnf(objp)
 }
 
 static void
-spans_print_parm_close_req(objp)
-	spans_parm_close_req *objp;
+spans_print_parm_close_req(spans_parm_close_req *objp)
 {
 	printf("%sspans_parm_close_req\n", spans_indent);
 	inc_indent();
@@ -483,8 +450,7 @@ spans_print_parm_close_req(objp)
 }
 
 static void
-spans_print_parm_close_ind(objp)
-	spans_parm_close_ind *objp;
+spans_print_parm_close_ind(spans_parm_close_ind *objp)
 {
 	printf("%sspans_parm_close_ind\n", spans_indent);
 	inc_indent();
@@ -493,8 +459,7 @@ spans_print_parm_close_ind(objp)
 }
 
 static void
-spans_print_parm_close_rsp(objp)
-	spans_parm_close_rsp *objp;
+spans_print_parm_close_rsp(spans_parm_close_rsp *objp)
 {
 	printf("%sspans_parm_close_rsp\n", spans_indent);
 	inc_indent();
@@ -504,8 +469,7 @@ spans_print_parm_close_rsp(objp)
 }
 
 static void
-spans_print_parm_close_cnf(objp)
-	spans_parm_close_cnf *objp;
+spans_print_parm_close_cnf(spans_parm_close_cnf *objp)
 {
 	printf("%sspans_parm_close_cnf\n", spans_indent);
 	inc_indent();
@@ -515,8 +479,7 @@ spans_print_parm_close_cnf(objp)
 }
 
 static void
-spans_print_parm_rclose_req(objp)
-	spans_parm_rclose_req *objp;
+spans_print_parm_rclose_req(spans_parm_rclose_req *objp)
 {
 	printf("%sspans_parm_rclose_req\n", spans_indent);
 	inc_indent();
@@ -525,8 +488,7 @@ spans_print_parm_rclose_req(objp)
 }
 
 static void
-spans_print_parm_rclose_ind(objp)
-	spans_parm_rclose_ind *objp;
+spans_print_parm_rclose_ind(spans_parm_rclose_ind *objp)
 {
 	printf("%sspans_parm_rclose_ind\n", spans_indent);
 	inc_indent();
@@ -535,8 +497,7 @@ spans_print_parm_rclose_ind(objp)
 }
 
 static void
-spans_print_parm_rclose_rsp(objp)
-	spans_parm_rclose_rsp *objp;
+spans_print_parm_rclose_rsp(spans_parm_rclose_rsp *objp)
 {
 	printf("%sspans_parm_rclose_rsp\n", spans_indent);
 	inc_indent();
@@ -546,8 +507,7 @@ spans_print_parm_rclose_rsp(objp)
 }
 
 static void
-spans_print_parm_rclose_cnf(objp)
-	spans_parm_rclose_cnf *objp;
+spans_print_parm_rclose_cnf(spans_parm_rclose_cnf *objp)
 {
 	printf("%sspans_parm_rclose_cnf\n", spans_indent);
 	inc_indent();
@@ -557,8 +517,7 @@ spans_print_parm_rclose_cnf(objp)
 }
 
 static void
-spans_print_parm_multi_req(objp)
-	spans_parm_multi_req *objp;
+spans_print_parm_multi_req(spans_parm_multi_req *objp)
 {
 	printf("%sspans_parm_multi_req\n", spans_indent);
 	inc_indent();
@@ -571,8 +530,7 @@ spans_print_parm_multi_req(objp)
 }
 
 static void
-spans_print_parm_multi_ind(objp)
-	spans_parm_multi_ind *objp;
+spans_print_parm_multi_ind(spans_parm_multi_ind *objp)
 {
 	printf("%sspans_parm_multi_ind\n", spans_indent);
 	inc_indent();
@@ -585,8 +543,7 @@ spans_print_parm_multi_ind(objp)
 }
 
 static void
-spans_print_parm_multi_rsp(objp)
-	spans_parm_multi_rsp *objp;
+spans_print_parm_multi_rsp(spans_parm_multi_rsp *objp)
 {
 	printf("%sspans_parm_multi_rsp\n", spans_indent);
 	inc_indent();
@@ -598,8 +555,7 @@ spans_print_parm_multi_rsp(objp)
 }
 
 static void
-spans_print_parm_multi_cnf(objp)
-	spans_parm_multi_cnf *objp;
+spans_print_parm_multi_cnf(spans_parm_multi_cnf *objp)
 {
 	printf("%sspans_parm_multi_cnf\n", spans_indent);
 	inc_indent();
@@ -611,8 +567,7 @@ spans_print_parm_multi_cnf(objp)
 }
 
 static void
-spans_print_parm_add_req(objp)
-	spans_parm_add_req *objp;
+spans_print_parm_add_req(spans_parm_add_req *objp)
 {
 	printf("%sspans_parm_add_req\n", spans_indent);
 	inc_indent();
@@ -622,8 +577,7 @@ spans_print_parm_add_req(objp)
 }
 
 static void
-spans_print_parm_add_ind(objp)
-	spans_parm_add_ind *objp;
+spans_print_parm_add_ind(spans_parm_add_ind *objp)
 {
 	printf("%sspans_parm_add_ind\n", spans_indent);
 	inc_indent();
@@ -633,8 +587,7 @@ spans_print_parm_add_ind(objp)
 }
 
 static void
-spans_print_parm_add_rsp(objp)
-	spans_parm_add_rsp *objp;
+spans_print_parm_add_rsp(spans_parm_add_rsp *objp)
 {
 	printf("%sspans_parm_add_rsp\n", spans_indent);
 	inc_indent();
@@ -645,8 +598,7 @@ spans_print_parm_add_rsp(objp)
 }
 
 static void
-spans_print_parm_add_cnf(objp)
-	spans_parm_add_cnf *objp;
+spans_print_parm_add_cnf(spans_parm_add_cnf *objp)
 {
 	printf("%sspans_parm_add_cnf\n", spans_indent);
 	inc_indent();
@@ -657,8 +609,7 @@ spans_print_parm_add_cnf(objp)
 }
 
 static void
-spans_print_parm_join_req(objp)
-	spans_parm_join_req *objp;
+spans_print_parm_join_req(spans_parm_join_req *objp)
 {
 	printf("%sspans_parm_join_req\n", spans_indent);
 	inc_indent();
@@ -667,8 +618,7 @@ spans_print_parm_join_req(objp)
 }
 
 static void
-spans_print_parm_join_cnf(objp)
-	spans_parm_join_cnf *objp;
+spans_print_parm_join_cnf(spans_parm_join_cnf *objp)
 {
 	printf("%sspans_print_parm_join_cnf\n", spans_indent);
 	inc_indent();
@@ -678,8 +628,7 @@ spans_print_parm_join_cnf(objp)
 }
 
 static void
-spans_print_parm_leave_req(objp)
-	spans_parm_leave_req *objp;
+spans_print_parm_leave_req(spans_parm_leave_req *objp)
 {
 	printf("%sspans_print_parm_leave_req\n", spans_indent);
 	inc_indent();
@@ -688,8 +637,7 @@ spans_print_parm_leave_req(objp)
 }
 
 static void
-spans_print_parm_leave_cnf(objp)
-	spans_parm_leave_cnf *objp;
+spans_print_parm_leave_cnf(spans_parm_leave_cnf *objp)
 {
 	printf("%sspans_parm_leave_cnf\n", spans_indent);
 	inc_indent();
@@ -699,8 +647,7 @@ spans_print_parm_leave_cnf(objp)
 }
 
 static void
-spans_print_parm_vcir_ind(objp)
-	spans_parm_vcir_ind *objp;
+spans_print_parm_vcir_ind(spans_parm_vcir_ind *objp)
 {
 	printf("%sspans_parm_vcir_ind\n", spans_indent);
 	inc_indent();
@@ -710,8 +657,7 @@ spans_print_parm_vcir_ind(objp)
 }
 
 static void
-spans_print_parm_query_req(objp)
-	spans_parm_query_req *objp;
+spans_print_parm_query_req(spans_parm_query_req *objp)
 {
 	char query_type_str[80];
 
@@ -725,8 +671,7 @@ spans_print_parm_query_req(objp)
 }
 
 static void
-spans_print_parm_query_rsp(objp)
-	spans_parm_query_rsp *objp;
+spans_print_parm_query_rsp(spans_parm_query_rsp *objp)
 {
 	char query_type_str[80], state_type_str[80];
 
@@ -745,8 +690,7 @@ spans_print_parm_query_rsp(objp)
 }
 
 static void
-spans_print_msgbody(objp)
-	spans_msgbody *objp;
+spans_print_msgbody(spans_msgbody *objp)
 {
 	printf("%sspans_msgbody\n", spans_indent);
 	inc_indent();
@@ -847,8 +791,7 @@ spans_print_msgbody(objp)
 }
 
 void
-spans_print_msg(objp)
-	spans_msg *objp;
+spans_print_msg(spans_msg *objp)
 {
 	spans_indent = INIT_INDENT;
 	printf("%sspans_msg\n", spans_indent);
@@ -861,8 +804,7 @@ spans_print_msg(objp)
 #else	/* ifdef LONGPRINT */
 
 static void
-spans_print_msgbody(objp)
-	spans_msgbody *objp;
+spans_print_msgbody(spans_msgbody *objp)
 {
 	char	daddr[80], msgtype_str[80], result_str[80], saddr[80];
 	spans_parm_stat_req	*streq_p;
@@ -1070,8 +1012,7 @@ spans_print_msgbody(objp)
 }
 
 void
-spans_print_msg(objp)
-	spans_msg *objp;
+spans_print_msg(spans_msg *objp)
 {
 #ifdef LONGPRINT
 	spans_indent = INIT_INDENT;

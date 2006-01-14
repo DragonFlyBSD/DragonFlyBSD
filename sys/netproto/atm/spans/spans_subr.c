@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_subr.c,v 1.4 1999/08/28 00:48:52 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.5 2005/06/02 22:37:50 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_subr.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -61,10 +61,7 @@
  *
  */
 int
-spans_open_vcc(spp, cvp)
-	struct spans	*spp;
-	Atm_connvc	*cvp;
-
+spans_open_vcc(struct spans *spp, Atm_connvc *cvp)
 {
 	struct atm_pif		*pip = spp->sp_pif;
 	struct spans_vccb	*svp;
@@ -256,11 +253,7 @@ spans_open_vcc(spp, cvp)
  *	errno	error encountered
  */
 int
-spans_close_vcc(spp, svp, force)
-	struct spans		*spp;
-	struct spans_vccb	*svp;
-	int			force;
-
+spans_close_vcc(struct spans *spp, struct spans_vccb *svp, int force)
 {
 	int		err = 0;
 
@@ -349,10 +342,7 @@ spans_close_vcc(spp, svp, force)
  *	errno	error encountered
  */
 int
-spans_clear_vcc(spp, svp)
-	struct spans		*spp;
-	struct spans_vccb	*svp;
-
+spans_clear_vcc(struct spans *spp, struct spans_vccb *svp)
 {
 	u_char	outstate;
 
@@ -425,10 +415,7 @@ spans_clear_vcc(spp, svp)
  *
  */
 void
-spans_switch_reset(spp, cause)
-	struct spans	*spp;
-	int		cause;
-
+spans_switch_reset(struct spans *spp, int cause)
 {
 	struct vccb	*vcp, *vnext;
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.6 2005/06/02 22:37:47 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -60,10 +60,7 @@
  *
  */
 int
-ipatm_ifoutput(ifp, m, dst)
-	struct ifnet	*ifp;
-	KBuffer		*m;
-	struct sockaddr	*dst;
+ipatm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst)
 {
 	struct ipvcc	*ivp;
 	int	err = 0;
@@ -131,7 +128,7 @@ ipatm_ifoutput(ifp, m, dst)
 				/*
 				 * It's for us - hand packet to loopback driver
 				 */
-				(void) if_simloop(ifp, m, dst->sa_family, 0);
+				if_simloop(ifp, m, dst->sa_family, 0);
 				goto done;
 			}
 		}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_msg.c,v 1.6 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_msg.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -70,9 +70,7 @@ static int	unisig_print_msg = 0;
  *
  */
 void
-unisig_cause_from_attr(iep, aap)
-	struct ie_generic	*iep;
-	Atm_attributes		*aap;
+unisig_cause_from_attr(struct ie_generic *iep, Atm_attributes *aap)
 {
 	/*
 	 * Copy cause info from attribute block to IE
@@ -98,10 +96,8 @@ unisig_cause_from_attr(iep, aap)
  *
  */
 void
-unisig_cause_from_msg(iep, msg, cause)
-	struct ie_generic	*iep;
-	struct unisig_msg	*msg;
-	int			cause;
+unisig_cause_from_msg(struct ie_generic *iep, struct unisig_msg *msg,
+		      int cause)
 {
 	struct ie_generic	*ie1;
 	int			i;
@@ -169,9 +165,7 @@ unisig_cause_from_msg(iep, msg, cause)
  *
  */
 int
-unisig_send_msg(usp, msg)
-	struct unisig		*usp;
-	struct unisig_msg	*msg;
+unisig_send_msg(struct unisig *usp, struct unisig_msg *msg)
 {
 	int		err = 0;
 	struct usfmt	usf;
@@ -242,9 +236,7 @@ unisig_send_msg(usp, msg)
  *
  */
 int
-unisig_send_setup(usp, uvp)
-	struct	unisig		*usp;
-	struct	unisig_vccb	*uvp;
+unisig_send_setup(struct unisig *usp, struct unisig_vccb *uvp)
 {
 	int			err = 0;
 	struct unisig_msg	*setup;
@@ -338,11 +330,8 @@ done:
  *
  */
 int
-unisig_send_release(usp, uvp, msg, cause)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
-	int			cause;
+unisig_send_release(struct unisig *usp, struct unisig_vccb *uvp,
+		    struct unisig_msg *msg, int cause)
 {
 	int			err = 0;
 	struct unisig_msg	*rls_msg;
@@ -414,11 +403,8 @@ unisig_send_release(usp, uvp, msg, cause)
  *
  */
 int
-unisig_send_release_complete(usp, uvp, msg, cause)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
-	int			cause;
+unisig_send_release_complete(struct unisig *usp, struct unisig_vccb *uvp,
+			     struct unisig_msg *msg, int cause)
 {
 	int			err = 0;
 	struct unisig_msg	*rls_cmp;
@@ -493,11 +479,8 @@ unisig_send_release_complete(usp, uvp, msg, cause)
  *
  */
 int
-unisig_send_status(usp, uvp, msg, cause)
-	struct unisig		*usp;
-	struct	unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
-	int			cause;
+unisig_send_status(struct unisig *usp, struct unisig_vccb *uvp,
+		   struct unisig_msg *msg, int cause)
 {
 	int			err = 0, i;
 	struct unisig_msg	*stat_msg;
@@ -606,9 +589,7 @@ unisig_send_status(usp, uvp, msg, cause)
  *
  */
 static void
-unisig_rcv_restart(usp, msg)
-	struct unisig		*usp;
-	struct unisig_msg	*msg;
+unisig_rcv_restart(struct unisig *usp, struct unisig_msg *msg)
 {
 	struct unisig_vccb	*uvp, *uvnext;
 	struct unisig_msg	*rsta_msg;
@@ -629,7 +610,7 @@ unisig_rcv_restart(usp, msg)
 					msg->msg_ie_cnid->ie_cnid_vci,
 					0);
 			if (uvp && uvp->uv_type & VCC_SVC) {
-				(void) unisig_clear_vcc(usp, uvp,
+				unisig_clear_vcc(usp, uvp,
 						T_ATM_CAUSE_NORMAL_CALL_CLEARING);
 			}
 		}
@@ -643,7 +624,7 @@ unisig_rcv_restart(usp, msg)
 			uvnext = Q_NEXT(uvp, struct unisig_vccb,
 					uv_sigelem);
 			if (uvp->uv_type & VCC_SVC) {
-				(void) unisig_clear_vcc(usp, uvp,
+				unisig_clear_vcc(usp, uvp,
 						T_ATM_CAUSE_NORMAL_CALL_CLEARING);
 			}
 		}
@@ -673,7 +654,7 @@ unisig_rcv_restart(usp, msg)
 	/*
 	 * Send the message
 	 */
-	(void) unisig_send_msg(usp, rsta_msg);
+	unisig_send_msg(usp, rsta_msg);
 	rsta_msg->msg_ie_rsti = NULL;
 	rsta_msg->msg_ie_cnid = NULL;
 	unisig_free_msg(rsta_msg);
@@ -694,9 +675,7 @@ unisig_rcv_restart(usp, msg)
  *
  */
 static void
-unisig_rcv_setup(usp, msg)
-	struct unisig		*usp;
-	struct unisig_msg	*msg;
+unisig_rcv_setup(struct unisig *usp, struct unisig_msg *msg)
 {
 	struct unisig_vccb	*uvp = NULL;
 	struct ie_generic	*iep;
@@ -724,7 +703,7 @@ unisig_rcv_setup(usp, msg)
 	 */
 	for (iep = msg->msg_ie_err; iep; iep = iep->ie_next) {
 		if (iep->ie_err_cause == UNI_IE_CAUS_MISSING) {
-			(void) unisig_send_release_complete(usp,
+			unisig_send_release_complete(usp,
 					uvp, msg, UNI_IE_CAUS_MISSING);
 			return;
 		}
@@ -736,7 +715,7 @@ unisig_rcv_setup(usp, msg)
 	 */
 	for (iep = msg->msg_ie_err; iep; iep = iep->ie_next) {
 		if (iep->ie_err_cause == UNI_IE_CAUS_IECONTENT) {
-			(void) unisig_send_release_complete(usp,
+			unisig_send_release_complete(usp,
 					uvp, msg,
 					UNI_IE_CAUS_IECONTENT);
 			return;
@@ -765,7 +744,7 @@ unisig_rcv_setup(usp, msg)
 	/*
 	 * Pass the VCCB and message to the VC state machine
 	 */
-	(void) unisig_vc_state(usp, uvp, UNI_VC_SETUP_MSG, msg);
+	unisig_vc_state(usp, uvp, UNI_VC_SETUP_MSG, msg);
 
 	/*
 	 * If the VCCB state is NULL, the open failed and the
@@ -797,9 +776,7 @@ unisig_rcv_setup(usp, msg)
  *
  */
 int
-unisig_rcv_msg(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_rcv_msg(struct unisig *usp, KBuffer *m)
 {
 	int			err;
 	u_int			cref;
@@ -898,22 +875,22 @@ unisig_rcv_msg(usp, m)
 	 */
 	switch(msg->msg_type) {
 	case UNI_MSG_CALP:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_CALLP_MSG, msg);
 		break;
 	case UNI_MSG_CONN:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_CONNECT_MSG, msg);
 		break;
 	case UNI_MSG_CACK:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_CNCTACK_MSG, msg);
 		break;
 	case UNI_MSG_SETU:
 		unisig_rcv_setup(usp, msg);
 		break;
 	case UNI_MSG_RLSE:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_RELEASE_MSG, msg);
 		break;
 	case UNI_MSG_RLSC:
@@ -922,7 +899,7 @@ unisig_rcv_msg(usp, m)
 		 * call reference value
 		 */
 		if (uvp) {
-			(void) unisig_vc_state(usp, uvp,
+			unisig_vc_state(usp, uvp,
 					UNI_VC_RLSCMP_MSG, msg);
 		}
 		break;
@@ -932,31 +909,31 @@ unisig_rcv_msg(usp, m)
 	case UNI_MSG_RSTA:
 		break;
 	case UNI_MSG_STAT:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_STATUS_MSG, msg);
 		break;
 	case UNI_MSG_SENQ:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_STATUSENQ_MSG, msg);
 		break;
 	case UNI_MSG_ADDP:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_ADDP_MSG, msg);
 		break;
 	case UNI_MSG_ADPA:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_ADDPACK_MSG, msg);
 		break;
 	case UNI_MSG_ADPR:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_ADDPREJ_MSG, msg);
 		break;
 	case UNI_MSG_DRPP:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_DROP_MSG, msg);
 		break;
 	case UNI_MSG_DRPA:
-		(void) unisig_vc_state(usp, uvp,
+		unisig_vc_state(usp, uvp,
 				UNI_VC_DROPACK_MSG, msg);
 		break;
 	default:

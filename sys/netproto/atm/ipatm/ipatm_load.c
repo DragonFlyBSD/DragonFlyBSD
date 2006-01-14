@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.8 2005/06/02 22:37:47 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.9 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -373,7 +373,7 @@ static struct t_atm_cause	ipatm_cause = {
  *
  */
 static int
-ipatm_start()
+ipatm_start(void)
 {
 	struct atm_pif	*pip;
 	struct atm_nif	*nip;
@@ -527,7 +527,7 @@ done:
  *
  */
 static int
-ipatm_stop()
+ipatm_stop(void)
 {
 	struct ip_nif	*inp;
 	int	err = 0, i;
@@ -545,7 +545,7 @@ ipatm_stop()
 	/*
 	 * Kill VCC idle timer
 	 */
-	(void) atm_untimeout(&ipatm_itimer);
+	atm_untimeout(&ipatm_itimer);
 
 	/*
 	 * Stop listening for incoming calls
@@ -554,8 +554,7 @@ ipatm_stop()
 	     i < (sizeof(ipatm_listeners) / sizeof(struct ipatm_listener));
 	     i++) {
 		if (ipatm_listeners[i].conn != NULL) {
-			(void) atm_cm_release(ipatm_listeners[i].conn,
-					&ipatm_cause);
+			atm_cm_release(ipatm_listeners[i].conn, &ipatm_cause);
 		}
 	}
 
@@ -563,14 +562,14 @@ ipatm_stop()
 	 * Detach all our interfaces
 	 */
 	while ((inp = ipatm_nif_head) != NULL) {
-		(void) ipatm_nifstat(NCM_DETACH, inp->inf_nif, 0);
+		ipatm_nifstat(NCM_DETACH, inp->inf_nif, 0);
 	}
 	
 	/*
 	 * De-register from system
 	 */
-	(void) atm_netconv_deregister(&ipatm_ncm);
-	(void) atm_endpoint_deregister(&ipatm_endpt);
+	atm_netconv_deregister(&ipatm_ncm);
+	atm_endpoint_deregister(&ipatm_endpt);
 
 	/*
 	 * Free up our storage pools
@@ -610,7 +609,7 @@ static int	ipatm_dounload (void);
  *
  */
 static int
-ipatm_doload()
+ipatm_doload(void)
 {
 	int	err = 0;
 
@@ -620,7 +619,7 @@ ipatm_doload()
 	err = ipatm_start();
 	if (err)
 		/* Problems, clean up */
-		(void)ipatm_stop();
+		ipatm_stop();
 
 	return (err);
 }
@@ -641,7 +640,7 @@ ipatm_doload()
  *
  */
 static int
-ipatm_dounload()
+ipatm_dounload(void)
 {
 	int	err = 0;
 
@@ -679,9 +678,7 @@ MOD_MISC(ipatm);
  *
  */
 static int
-ipatm_load(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+ipatm_load(struct lkm_table *lkmtp, int cmd)
 {
 	return(ipatm_doload());
 }
@@ -703,9 +700,7 @@ ipatm_load(lkmtp, cmd)
  *
  */
 static int
-ipatm_unload(lkmtp, cmd)
-	struct lkm_table	*lkmtp;
-	int		cmd;
+ipatm_unload(struct lkm_table *lkmtp, int cmd)
 {
 	return(ipatm_dounload());
 }
@@ -731,10 +726,7 @@ ipatm_unload(lkmtp, cmd)
  *
  */
 int
-ipatm_mod(lkmtp, cmd, ver)
-	struct lkm_table	*lkmtp;
-	int		cmd;
-	int		ver;
+ipatm_mod(struct lkm_table *lkmtp, int cmd, int ver)
 {
 	MOD_DISPATCH(ipatm, lkmtp, cmd, ver,
 		ipatm_load, ipatm_unload, lkm_nullcmd);
@@ -774,7 +766,7 @@ ipatm_doload(void *arg)
 	err = ipatm_start();
 	if (err) {
 		/* Problems, clean up */
-		(void)ipatm_stop();
+		ipatm_stop();
 
 		log(LOG_ERR, "IP over ATM unable to initialize (%d)!!\n", err);
 	}

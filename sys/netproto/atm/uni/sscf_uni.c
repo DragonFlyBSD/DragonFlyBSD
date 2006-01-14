@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscf_uni.c,v 1.7.2.1 2001/09/30 22:54:35 kris Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscf_uni.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ static struct t_atm_cause	sscf_uni_cause = {
  *
  */
 int
-sscf_uni_start()
+sscf_uni_start(void)
 {
 	int	err = 0;
 
@@ -126,7 +126,7 @@ done:
  *
  */
 int
-sscf_uni_stop()
+sscf_uni_stop(void)
 {
 	/*
 	 * Any connections still exist??
@@ -142,7 +142,7 @@ sscf_uni_stop()
 	/*
 	 * Deregister the stack service
 	 */
-	(void) atm_stack_deregister(&sscf_uni_service);
+	atm_stack_deregister(&sscf_uni_service);
 
 	/*
 	 * Free our storage pools
@@ -171,9 +171,7 @@ sscf_uni_stop()
  *
  */
 static int
-sscf_uni_inst(ssp, cvp)
-	struct stack_defn	**ssp;
-	Atm_connvc		*cvp;
+sscf_uni_inst(struct stack_defn **ssp, Atm_connvc *cvp)
 {
 	struct stack_defn	*sdp_up = ssp[0],
 				*sdp_me = ssp[1],
@@ -259,9 +257,7 @@ sscf_uni_inst(ssp, cvp)
  *
  */
 void
-sscf_uni_abort(uvp, msg)
-	struct univcc	*uvp;
-	char		*msg;
+sscf_uni_abort(struct univcc *uvp, char *msg)
 {
 	/*
 	 * Log error message
@@ -277,7 +273,7 @@ sscf_uni_abort(uvp, msg)
 	/*
 	 * Tell Connection Manager to abort this connection
 	 */
-	(void) atm_cm_abort(uvp->uv_connvc, &sscf_uni_cause);
+	atm_cm_abort(uvp->uv_connvc, &sscf_uni_cause);
 }
 
 
@@ -294,10 +290,7 @@ sscf_uni_abort(uvp, msg)
  *
  */
 void
-sscf_uni_pdu_print(uvp, m, msg)
-	struct univcc	*uvp;
-	KBuffer		*m;
-	char		*msg;
+sscf_uni_pdu_print(struct univcc *uvp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 	struct vccb	*vcp;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp.c,v 1.8 2000/01/15 20:46:07 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.7 2004/04/22 05:09:46 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ static void	uniarp_client_mode (struct uniip *, Atm_addr *);
  *
  */
 int
-uniarp_start()
+uniarp_start(void)
 {
 	int	err;
 
@@ -127,7 +127,7 @@ uniarp_start()
  *
  */
 void
-uniarp_stop()
+uniarp_stop(void)
 {
 	int	i;
 
@@ -142,12 +142,12 @@ uniarp_stop()
 	/*
 	 * Cancel timers
 	 */
-	(void) atm_untimeout(&uniarp_timer);
+	atm_untimeout(&uniarp_timer);
 
 	/*
 	 * De-register ourselves
 	 */
-	(void) atm_endpoint_deregister(&uniarp_endpt);
+	atm_endpoint_deregister(&uniarp_endpt);
 
 	/*
 	 * Free our storage pools
@@ -171,8 +171,7 @@ uniarp_stop()
  *
  */
 void
-uniarp_ipact(uip)
-	struct uniip		*uip;
+uniarp_ipact(struct uniip *uip)
 {
 	struct unisig		*usp;
 
@@ -217,8 +216,7 @@ uniarp_ipact(uip)
  *
  */
 void
-uniarp_ipdact(uip)
-	struct uniip		*uip;
+uniarp_ipdact(struct uniip *uip)
 {
 	struct uniarp		*uap, *unext;
 	int	i;
@@ -305,7 +303,7 @@ uniarp_ipdact(uip)
 	 * Stop aging timer if this is the last active interface
 	 */
 	if (uniip_head == uip && uip->uip_next == NULL)
-		(void) atm_untimeout(&uniarp_timer);
+		atm_untimeout(&uniarp_timer);
 }
 
 
@@ -325,8 +323,7 @@ uniarp_ipdact(uip)
  *
  */
 void
-uniarp_ifaddr(sip)
-	struct siginst		*sip;
+uniarp_ifaddr(struct siginst *sip)
 {
 	struct atm_nif		*nip;
 	struct uniip		*uip;
@@ -396,8 +393,7 @@ uniarp_ifaddr(sip)
  *
  */
 static void
-uniarp_server_mode(uip)
-	struct uniip		*uip;
+uniarp_server_mode(struct uniip *uip)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -516,9 +512,7 @@ uniarp_server_mode(uip)
  *
  */
 static void
-uniarp_client_mode(uip, aap)
-	struct uniip		*uip;
-	Atm_addr		*aap;
+uniarp_client_mode(struct uniip *uip, Atm_addr *aap)
 {
 	struct ip_nif		*inp = uip->uip_ipnif;
 	struct uniarp		*uap, *unext;
@@ -734,8 +728,7 @@ uniarp_client_mode(uip, aap)
  *
  */
 void
-uniarp_iftimeout(tip)
-	struct atm_time	*tip;
+uniarp_iftimeout(struct atm_time *tip)
 {
 	struct ip_nif	*inp;
 	struct uniip	*uip;
@@ -767,7 +760,7 @@ uniarp_iftimeout(tip)
 		 * Resend registration request
 		 */
 		inp = uip->uip_ipnif;
-		(void) uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
+		uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
 
 		/*
 		 * Restart timer
@@ -781,7 +774,7 @@ uniarp_iftimeout(tip)
 		 * Refresh our registration
 		 */
 		inp = uip->uip_ipnif;
-		(void) uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
+		uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
 
 		/*
 		 * Restart timer
@@ -813,10 +806,7 @@ uniarp_iftimeout(tip)
  *
  */
 int
-uniarp_ioctl(code, data, arg1)
-        int		code;
-        caddr_t		data;
-        caddr_t		arg1;
+uniarp_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmaddreq	*aap;
 	struct atmdelreq	*adp;
@@ -1024,7 +1014,7 @@ uniarp_ioctl(code, data, arg1)
 					AF_INET;
 				SATOSIN(&aar.aap_arp_addr)->sin_addr.s_addr =
 					uap->ua_dstip.s_addr;
-				(void) strlcpy(aar.aap_intf,
+				strlcpy(aar.aap_intf,
 				    nip->nif_if.if_xname,
 				    sizeof(aar.aap_intf));
 				aar.aap_flags = uap->ua_flags;
@@ -1078,7 +1068,7 @@ uniarp_ioctl(code, data, arg1)
 			 */
 			SATOSIN(&aar.aap_arp_addr)->sin_family = AF_INET;
 			SATOSIN(&aar.aap_arp_addr)->sin_addr.s_addr = 0;
-			(void) strlcpy(aar.aap_intf,
+			strlcpy(aar.aap_intf,
 			    nip->nif_if.if_xname,
 			    sizeof(aar.aap_intf));
 			aar.aap_flags = 0;
@@ -1159,7 +1149,7 @@ updbuf:
 			/*
 			 * Fill in info to be returned
 			 */
-			(void) strlcpy(asr.asp_intf,
+			strlcpy(asr.asp_intf,
 			    nip->nif_if.if_xname,
 			    sizeof(asr.asp_intf));
 			asr.asp_state = uip->uip_arpstate;
@@ -1225,8 +1215,7 @@ updbuf:
  *
  */
 caddr_t
-uniarp_getname(tok)
-	void		*tok;
+uniarp_getname(void *tok)
 {
 	return ("ATMARP");
 }

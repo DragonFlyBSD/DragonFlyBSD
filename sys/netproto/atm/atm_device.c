@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.7 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -95,9 +95,7 @@ static struct t_atm_cause	atm_dev_cause = {
  *
  */
 int
-atm_dev_inst(ssp, cvcp)
-	struct stack_defn	**ssp;
-	Atm_connvc		*cvcp;
+atm_dev_inst(struct stack_defn **ssp, Atm_connvc *cvcp)
 {
 	Cmn_unit	*cup = (Cmn_unit *)cvcp->cvc_attr.nif->nif_pif;
 	Cmn_vcc		*cvp;
@@ -209,11 +207,7 @@ atm_dev_inst(ssp, cvcp)
  */
 /*ARGSUSED*/
 void
-atm_dev_lower(cmd, tok, arg1, arg2)
-	int	cmd;
-	void	*tok;
-	int	arg1;
-	int	arg2;
+atm_dev_lower(int cmd, void *tok, int arg1, int arg2)
 {
 	Cmn_vcc		*cvp = (Cmn_vcc *)tok;
 	Atm_connvc	*cvcp = cvp->cv_connvc;
@@ -276,7 +270,7 @@ atm_dev_lower(cmd, tok, arg1, arg2)
 		 */
 		if ((cvp->cv_state == CVS_INITED) || 
 		    (cvp->cv_state == CVS_ACTIVE)) {
-			(void) (*cup->cu_closevcc)(cup, cvp);
+			(*cup->cu_closevcc)(cup, cvp);
 		}
 		cvp->cv_state = CVS_TERM;
 
@@ -324,7 +318,7 @@ atm_dev_lower(cmd, tok, arg1, arg2)
 		/*
 		 * Free VCC resources
 		 */
-		(void) atm_free((caddr_t)cvp);
+		atm_free((caddr_t)cvp);
 		break;
 		}
 
@@ -395,10 +389,7 @@ atm_dev_lower(cmd, tok, arg1, arg2)
  *
  */
 void *         
-atm_dev_alloc(size, align, flags)
-	u_int		size;
-	u_int		align;
-	u_int		flags;
+atm_dev_alloc(u_int size, u_int align, u_int flags)
 {
 	Mem_blk		*mbp;
 	Mem_ent		*mep;
@@ -580,8 +571,7 @@ atm_dev_free(volatile void *uaddr)
  *
  */
 KBuffer *         
-atm_dev_compress(m)
-	KBuffer		*m;
+atm_dev_compress(KBuffer *m)
 {
 	KBuffer		*n, *n0, **np;
 	int		len, space;
@@ -676,11 +666,7 @@ atm_dev_compress(m)
  *
  */
 Cmn_vcc *
-atm_dev_vcc_find(cup, vpi, vci, type)
-	Cmn_unit	*cup;
-	u_int		vpi;
-	u_int		vci;
-	u_int		type;
+atm_dev_vcc_find(Cmn_unit *cup, u_int vpi, u_int vci, u_int type)
 {
 	Cmn_vcc		*cvp;
 
@@ -719,7 +705,7 @@ atm_dev_vcc_find(cup, vpi, vci, type)
  *
  */
 void
-atm_unload()
+atm_unload(void)
 {
 	Mem_blk		*mbp;
 	Mem_ent		*mep;
@@ -770,11 +756,7 @@ atm_unload()
  *
  */
 void
-atm_dev_pdu_print(cup, cvp, m, msg)
-	Cmn_unit	*cup;
-	Cmn_vcc		*cvp;
-	KBuffer		*m;
-	char		*msg;
+atm_dev_pdu_print(Cmn_unit *cup, Cmn_vcc *cvp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 

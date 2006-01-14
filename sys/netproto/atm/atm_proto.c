@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.10 2005/03/04 02:21:49 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.11 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -144,9 +144,7 @@ atm_proto_notsupp2(struct socket *so, struct sockaddr *addr, thread_t td)
  *
  */
 int
-atm_proto_notsupp3(so, addr)
-	struct socket	*so;
-	struct sockaddr	**addr;
+atm_proto_notsupp3(struct socket *so, struct sockaddr **addr)
 {
 	return (EOPNOTSUPP);
 }

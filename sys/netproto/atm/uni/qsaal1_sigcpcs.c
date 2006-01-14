@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/qsaal1_sigcpcs.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigcpcs.c,v 1.6 2004/07/23 14:14:30 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigcpcs.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -344,10 +344,7 @@ void	(*(*sscop_qsaal_pdutab[]))
  *
  */
 static void
-sscop_bgn_outconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_outconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err;
@@ -382,7 +379,7 @@ sscop_bgn_outconn(sop, m, trlr)
 	/*
 	 * Return an ACK to peer
 	 */
-	(void) sscop_send_bgak(sop);
+	sscop_send_bgak(sop);
 
 	/*
 	 * Stop retransmit timer
@@ -432,10 +429,7 @@ sscop_bgn_outconn(sop, m, trlr)
  *
  */
 static void
-sscop_end_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct end_pdu	*ep = (struct end_pdu *)trlr;
 	int		err, source;
@@ -448,7 +442,7 @@ sscop_end_outresyn(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Get Source value
@@ -496,10 +490,7 @@ sscop_end_outresyn(sop, m, trlr)
  *
  */
 static void
-sscop_end_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -516,7 +507,7 @@ sscop_end_conresyn(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Notify user of connection termination
@@ -555,10 +546,7 @@ sscop_end_conresyn(sop, m, trlr)
  *
  */
 static void
-sscop_end_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct end_pdu	*ep = (struct end_pdu *)trlr;
 	int		err, source;
@@ -577,7 +565,7 @@ sscop_end_ready(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Get Source value
@@ -625,10 +613,7 @@ sscop_end_ready(sop, m, trlr)
  *
  */
 static void
-sscop_endak_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -679,10 +664,7 @@ sscop_endak_outresyn(sop, m, trlr)
  *
  */
 static void
-sscop_rs_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -724,10 +706,7 @@ sscop_rs_outresyn(sop, m, trlr)
  *
  */
 static void
-sscop_rs_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -769,10 +748,7 @@ sscop_rs_ready(sop, m, trlr)
  *
  */
 static void
-sscop_rsak_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rsak_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -834,10 +810,7 @@ sscop_rsak_conresyn(sop, m, trlr)
  *
  */
 static void
-sscop_sd_inresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_inresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -860,7 +833,7 @@ sscop_sd_inresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -899,10 +872,7 @@ sscop_sd_inresyn(sop, m, trlr)
  *
  */
 static void
-sscop_sd_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -919,7 +889,7 @@ sscop_sd_conresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -959,11 +929,7 @@ sscop_sd_conresyn(sop, m, trlr)
  *
  */
 static void
-sscop_sd_process(sop, m, trlr, type)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
-	int		type;
+sscop_sd_process(struct sscop *sop, KBuffer *m, caddr_t trlr, int type)
 {
 	struct sd_pdu	*sp;
 	struct sdp_pdu	*spp;
@@ -1154,7 +1120,7 @@ sscop_sd_process(sop, m, trlr, type)
 		 * Yes, then there's a missing PDU, so inform the transmitter
 		 */
 		if (type == PT_SD)
-			(void) sscop_send_ustat(sop, ns);
+			sscop_send_ustat(sop, ns);
 
 		/*
 		 * Update high-water mark
@@ -1189,10 +1155,7 @@ dopoll:
  *
  */
 static void
-sscop_sd_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	/*
 	 * Just call common SD/SDP processor
@@ -1216,10 +1179,7 @@ sscop_sd_ready(sop, m, trlr)
  *
  */
 static void
-sscop_sdp_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sdp_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	/*
 	 * Just call common SD/SDP processor
@@ -1243,10 +1203,7 @@ sscop_sdp_ready(sop, m, trlr)
  *
  */
 static void
-sscop_poll_inresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_inresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1269,7 +1226,7 @@ sscop_poll_inresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1308,10 +1265,7 @@ sscop_poll_inresyn(sop, m, trlr)
  *
  */
 static void
-sscop_poll_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1328,7 +1282,7 @@ sscop_poll_conresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1367,10 +1321,7 @@ sscop_poll_conresyn(sop, m, trlr)
  *
  */
 static void
-sscop_poll_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct poll_pdu	*pp = (struct poll_pdu *)trlr;
 	sscop_seq	nps;
@@ -1414,7 +1365,7 @@ sscop_poll_ready(sop, m, trlr)
 	 */
 	SEQ_SET(nps, ntohl(pp->poll_nps));
 	KB_FREEALL(m);
-	(void) sscop_send_stat(sop, nps);
+	sscop_send_stat(sop, nps);
 
 	return;
 }
@@ -1433,10 +1384,7 @@ sscop_poll_ready(sop, m, trlr)
  *
  */
 static void
-sscop_stat_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_stat_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1453,7 +1401,7 @@ sscop_stat_conresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1492,10 +1440,7 @@ sscop_stat_conresyn(sop, m, trlr)
  *
  */
 static void
-sscop_ustat_conresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ustat_conresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1512,7 +1457,7 @@ sscop_ustat_conresyn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_subr.c,v 1.4 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_subr.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -60,10 +60,7 @@ extern struct sp_info sigpvc_vcpool;
  *
  */
 int
-sigpvc_create_pvc(pvp, cvp, errp)
-	struct sigpvc	*pvp;
-	Atm_connvc	*cvp;
-	int		*errp;
+sigpvc_create_pvc(struct sigpvc *pvp, Atm_connvc *cvp, int *errp)
 {
 	Atm_addr_pvc	*pp;
 	struct vccb	*vcp;
@@ -153,8 +150,7 @@ sigpvc_create_pvc(pvp, cvp, errp)
  *
  */
 void
-sigpvc_close_vcc(vcp)
-	struct vccb	*vcp;
+sigpvc_close_vcc(struct vccb *vcp)
 {
 
 	/*

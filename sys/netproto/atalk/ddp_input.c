@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.9 2004/04/21 18:13:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -84,11 +84,7 @@ out:
 }
 
 static void
-ddp_input( m, ifp, elh, phase )
-    struct mbuf		*m;
-    struct ifnet	*ifp;
-    struct elaphdr	*elh;
-    int			phase;
+ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
 {
     struct sockaddr_at	from, to;
     struct ddpshdr	*dsh, ddps;
@@ -399,7 +395,7 @@ around the kernel :) */
 char	hexdig[] = "0123456789ABCDEF";
 
 static void
-bprint( char *data, int len )
+bprint(char *data, int len)
 {
     char	xout[ BPXLEN ], aout[ BPALEN ];
     int		i = 0;
@@ -442,7 +438,7 @@ bprint( char *data, int len )
 }
 
 static void
-m_printm( struct mbuf *m )
+m_printm(struct mbuf *m)
 {
     for (; m; m = m->m_next ) {
 	bprint( mtod( m, char * ), m->m_len );

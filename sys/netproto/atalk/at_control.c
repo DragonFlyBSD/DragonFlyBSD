@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -340,9 +340,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
  * as aa->at_ifaddr.ifa_ifp should be the same.
  */
 static int
-at_scrub( ifp, aa )
-    struct ifnet	*ifp;
-    struct at_ifaddr	*aa;
+at_scrub(struct ifnet *ifp, struct at_ifaddr *aa)
 {
     int			error;
 
@@ -373,10 +371,7 @@ at_scrub( ifp, aa )
  * bang them all together at high speed and see what happens
  */
 static int 
-at_ifinit( ifp, aa, sat )
-    struct ifnet	*ifp;
-    struct at_ifaddr	*aa;
-    struct sockaddr_at	*sat;
+at_ifinit(struct ifnet *ifp, struct at_ifaddr *aa, struct sockaddr_at *sat)
 {
     struct netrange	nr, onr;
     struct sockaddr_at	oldaddr;
@@ -679,8 +674,7 @@ at_ifinit( ifp, aa, sat )
  * check whether a given address is a broadcast address for us..
  */
 int
-at_broadcast( sat )
-    struct sockaddr_at	*sat;
+at_broadcast(struct sockaddr_at *sat)
 {
     struct at_ifaddr	*aa;
 

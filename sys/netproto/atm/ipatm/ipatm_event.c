@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_event.c,v 1.4 1999/08/28 00:48:43 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_event.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_event.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -57,8 +57,7 @@
  *
  */
 void
-ipatm_timeout(tip)
-	struct atm_time	*tip;
+ipatm_timeout(struct atm_time *tip)
 {
 	struct ipvcc	*ivp;
 
@@ -77,7 +76,7 @@ ipatm_timeout(tip)
 		/*
 		 * Give up waiting for arp response
 		 */
-		(void) ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
+		ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
 		break;
 
 	case IPVCC_POPEN:
@@ -85,7 +84,7 @@ ipatm_timeout(tip)
 		/*
 		 * Give up waiting for signalling manager response
 		 */
-		(void) ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
+		ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
 		break;
 
 	case IPVCC_ACTPENT:
@@ -140,8 +139,7 @@ ipatm_timeout(tip)
  *
  */
 void
-ipatm_connected(toku)
-	void		*toku;
+ipatm_connected(void *toku)
 {
 	struct ipvcc	*ivp = (struct ipvcc *)toku;
 
@@ -170,14 +168,14 @@ ipatm_connected(toku)
 		if (ap->aal.type == ATM_AAL5) {
 			if ((ap->aal.v.aal5.forward_max_SDU_size < mtu) ||
 			    (ap->aal.v.aal5.backward_max_SDU_size > mtu)) {
-				(void) ipatm_closevc(ivp,
+				ipatm_closevc(ivp,
 				      T_ATM_CAUSE_AAL_PARAMETERS_NOT_SUPPORTED);
 				return;
 			}
 		} else {
 			if ((ap->aal.v.aal4.forward_max_SDU_size < mtu) ||
 			    (ap->aal.v.aal4.backward_max_SDU_size > mtu)) {
-				(void) ipatm_closevc(ivp,
+				ipatm_closevc(ivp,
 				      T_ATM_CAUSE_AAL_PARAMETERS_NOT_SUPPORTED);
 				return;
 			}
@@ -203,9 +201,7 @@ ipatm_connected(toku)
  *
  */
 void
-ipatm_cleared(toku, cause)
-	void		*toku;
-	struct t_atm_cause	*cause;
+ipatm_cleared(void *toku, struct t_atm_cause *cause)
 {
 	struct ipvcc	*ivp = (struct ipvcc *)toku;
 
@@ -224,7 +220,7 @@ ipatm_cleared(toku, cause)
 		 */
 		ivp->iv_state = IPVCC_CLOSED;
 		if (ipatm_retrysvc(ivp)) {
-			(void) ipatm_closevc(ivp, cause->cause_value);
+			ipatm_closevc(ivp, cause->cause_value);
 		}
 		break;
 
@@ -232,7 +228,7 @@ ipatm_cleared(toku, cause)
 	case IPVCC_ACTPENT:
 	case IPVCC_ACTIVE:
 		ivp->iv_state = IPVCC_CLOSED;
-		(void) ipatm_closevc(ivp, cause->cause_value);
+		ipatm_closevc(ivp, cause->cause_value);
 		break;
 	}
 }
@@ -250,9 +246,7 @@ ipatm_cleared(toku, cause)
  *
  */
 void
-ipatm_arpnotify(ivp, event)
-	struct ipvcc	*ivp;
-	int		event;
+ipatm_arpnotify(struct ipvcc *ivp, int event)
 {
 	struct sockaddr_in	sin;
 	struct ifnet		*ifp;
@@ -283,12 +277,12 @@ ipatm_arpnotify(ivp, event)
 				if (ivp->iv_queue) {
 					ifp = (struct ifnet *)
 						ivp->iv_ipnif->inf_nif;
-					(void) ipatm_ifoutput(ifp, 
+					ipatm_ifoutput(ifp, 
 						ivp->iv_queue, 
 						(struct sockaddr *)&sin);
 					ivp->iv_queue = NULL;
 				}
-				(void) ipatm_closevc(ivp,
+				ipatm_closevc(ivp,
 						T_ATM_CAUSE_UNSPECIFIED_NORMAL);
 
 			} else {
@@ -297,7 +291,7 @@ ipatm_arpnotify(ivp, event)
 				 */
 				ivp->iv_flags |= IVF_MAPOK;
 				if (ipatm_opensvc(ivp)) {
-					(void) ipatm_closevc(ivp,
+					ipatm_closevc(ivp,
 						T_ATM_CAUSE_TEMPORARY_FAILURE);
 				}
 			}
@@ -319,7 +313,7 @@ ipatm_arpnotify(ivp, event)
 				sin.sin_family = AF_INET;
 				sin.sin_addr.s_addr = ivp->iv_dst.s_addr;
 				ifp = (struct ifnet *)ivp->iv_ipnif->inf_nif;
-				(void) ipatm_ifoutput(ifp, ivp->iv_queue, 
+				ipatm_ifoutput(ifp, ivp->iv_queue, 
 					(struct sockaddr *)&sin);
 				ivp->iv_queue = NULL;
 			}
@@ -347,7 +341,7 @@ ipatm_arpnotify(ivp, event)
 		/*
 		 * ARP lookup failed, just trash it all
 		 */
-		(void) ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
+		ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
 		break;
 
 	case MAP_CHANGED:
@@ -370,7 +364,7 @@ ipatm_arpnotify(ivp, event)
 
 			case IPVCC_POPEN:
 			case IPVCC_ACTIVE:
-				(void) ipatm_closevc(ivp,
+				ipatm_closevc(ivp,
 					T_ATM_CAUSE_UNSPECIFIED_NORMAL);
 				break;
 			}
@@ -401,8 +395,7 @@ ipatm_arpnotify(ivp, event)
  *
  */
 void
-ipatm_itimeout(tip)
-	struct atm_time	*tip;
+ipatm_itimeout(struct atm_time *tip)
 {
 	struct ipvcc	*ivp, *inext;
 	struct ip_nif	*inp;
@@ -441,7 +434,7 @@ ipatm_itimeout(tip)
 			/*
 			 * OK, we found one - close the VCC
 			 */
-			(void) ipatm_closevc(ivp,
+			ipatm_closevc(ivp,
 					T_ATM_CAUSE_UNSPECIFIED_NORMAL);
 		}
 	}

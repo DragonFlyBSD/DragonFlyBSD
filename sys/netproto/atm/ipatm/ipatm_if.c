@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_if.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_if.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_if.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -64,10 +64,7 @@ static void	ipatm_closenif (struct ip_nif *);
  *
  */
 int
-ipatm_nifstat(cmd, nip, arg)
-	int		cmd;
-	struct atm_nif	*nip;
-	int		arg;
+ipatm_nifstat(int cmd, struct atm_nif *nip, int arg)
 {
 	struct in_ifaddr	*ia;
 	struct siginst		*sip;
@@ -136,7 +133,7 @@ ipatm_nifstat(cmd, nip, arg)
 			ipatm_closenif(inp);
 
 			if (inp->inf_serv)
-				(void) (*inp->inf_serv->is_ifdact)(inp);
+				(*inp->inf_serv->is_ifdact)(inp);
 		}
 
 		/*
@@ -277,7 +274,7 @@ ipatm_nifstat(cmd, nip, arg)
 		 * Tell interface service that i/f has gone down
 		 */
 		if (inp->inf_serv)
-			(void) (*inp->inf_serv->is_ifdact)(inp);
+			(*inp->inf_serv->is_ifdact)(inp);
 
 		/*
 		 * Just have to wait for another sigattach
@@ -307,8 +304,7 @@ ipatm_nifstat(cmd, nip, arg)
  *
  */
 static void
-ipatm_closenif(inp)
-	struct ip_nif	*inp;
+ipatm_closenif(struct ip_nif *inp)
 {
 	struct ipvcc	*ivp, *inext;
 
@@ -319,7 +315,7 @@ ipatm_closenif(inp)
 
 		inext = Q_NEXT(ivp, struct ipvcc, iv_elem);
 
-		(void) ipatm_closevc(ivp, T_ATM_CAUSE_UNSPECIFIED_NORMAL);
+		ipatm_closevc(ivp, T_ATM_CAUSE_UNSPECIFIED_NORMAL);
 	}
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.9 2004/06/03 13:34:37 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.10 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -70,8 +70,7 @@ int	ns_errprintfs = 0;
 #endif
 
 int
-ns_err_x(c)
-int c;
+ns_err_x(int c)
 {
 	u_short *w, *lim, *base = ns_errstat.ns_es_codes;
 	u_short x = c;
@@ -97,10 +96,7 @@ int c;
  */
 
 void
-ns_error(om, type, param)
-	struct mbuf *om;
-	int type;
-	int param;
+ns_error(struct mbuf *om, int type, int param)
 {
 	struct ns_epidp *ep;
 	struct mbuf *m;
@@ -169,15 +165,14 @@ ns_error(om, type, param)
 		nip->idp_sum = ns_cksum(m, sizeof(*ep));
 	} else
 		nip->idp_sum = 0xffff;
-	(void) ns_output(m, (struct route *)0, 0);
+	ns_output(m, (struct route *)0, 0);
 
 freeit:
 	m_freem(om);
 }
 
 void
-ns_printhost(p)
-struct ns_addr *p;
+ns_printhost(struct ns_addr *p)
 {
 
 	printf("<net:%x%x,host:%x%x%x,port:%x>",
@@ -194,8 +189,7 @@ struct ns_addr *p;
  * Process a received NS_ERR message.
  */
 void
-ns_err_input(m)
-	struct mbuf *m;
+ns_err_input(struct mbuf *m)
 {
 	struct ns_errp *ep;
 #ifdef	NS_ERRPRINTFS
@@ -297,8 +291,7 @@ freeit:
 }
 
 int
-ns_echo(m)
-struct mbuf *m;
+ns_echo(struct mbuf *m)
 {
 	struct idp *idp = mtod(m, struct idp *);
 	struct echo {
@@ -321,6 +314,6 @@ struct mbuf *m;
 		idp->idp_sum = ns_cksum(m,
 		    (int)(((ntohs(idp->idp_len) - 1)|1)+1));
 	}
-	(void) ns_output(m, (struct route *)0, NS_FORWARDING);
+	ns_output(m, (struct route *)0, NS_FORWARDING);
 	return(0);
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.13 2005/06/10 23:59:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.14 2006/01/14 13:36:40 swildner Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -1289,10 +1289,7 @@ key_newsp(const char* where, int tag)
  * so must be set properly later.
  */
 struct secpolicy *
-key_msg2sp(xpl0, len, error)
-	struct sadb_x_policy *xpl0;
-	size_t len;
-	int *error;
+key_msg2sp(struct sadb_x_policy *xpl0, size_t len, int *error)
 {
 	struct secpolicy *newsp;
 
@@ -1508,7 +1505,7 @@ key_msg2sp(xpl0, len, error)
 }
 
 static u_int32_t
-key_newreqid()
+key_newreqid(void)
 {
 	static u_int32_t auto_reqid = IPSEC_MANUAL_REQID_MAX + 1;
 
@@ -1524,8 +1521,7 @@ key_newreqid()
  * copy secpolicy struct to sadb_x_policy structure indicated.
  */
 struct mbuf *
-key_sp2msg(sp)
-	struct secpolicy *sp;
+key_sp2msg(struct secpolicy *sp)
 {
 	struct sadb_x_policy *xpl;
 	int tlen;
@@ -1680,10 +1676,7 @@ fail:
  * m will always be freed.
  */
 static int
-key_spdadd(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spdadd(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_address *src0, *dst0;
 	struct sadb_x_policy *xpl0, *xpl;
@@ -1899,7 +1892,7 @@ key_spdadd(so, m, mhp)
  *	others: success.
  */
 static u_int32_t
-key_getnewspid()
+key_getnewspid(void)
 {
 	u_int32_t newid = 0;
 	int count = key_spi_trycnt;	/* XXX */
@@ -1936,10 +1929,7 @@ key_getnewspid()
  * m will always be freed.
  */
 static int
-key_spddelete(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spddelete(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_address *src0, *dst0;
 	struct sadb_x_policy *xpl0;
@@ -2031,10 +2021,8 @@ key_spddelete(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_spddelete2(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spddelete2(struct socket *so, struct mbuf *m,
+	       const struct sadb_msghdr *mhp)
 {
 	u_int32_t id;
 	struct secpolicy *sp;
@@ -2127,10 +2115,7 @@ key_spddelete2(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_spdget(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spdget(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	u_int32_t id;
 	struct secpolicy *sp;
@@ -2178,8 +2163,7 @@ key_spdget(so, m, mhp)
  *    others: error number
  */
 int
-key_spdacquire(sp)
-	struct secpolicy *sp;
+key_spdacquire(struct secpolicy *sp)
 {
 	struct mbuf *result = NULL, *m;
 	struct secspacq *newspacq;
@@ -2248,10 +2232,7 @@ fail:
  * m will always be freed.
  */
 static int
-key_spdflush(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spdflush(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_msg *newmsg;
 	struct secpolicy *sp;
@@ -2298,10 +2279,7 @@ key_spdflush(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_spddump(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_spddump(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct secpolicy *sp;
 	int cnt;
@@ -2339,10 +2317,8 @@ key_spddump(so, m, mhp)
 }
 
 static struct mbuf *
-key_setdumpsp(sp, type, seq, pid)
-	struct secpolicy *sp;
-	u_int8_t type;
-	u_int32_t seq, pid;
+key_setdumpsp(struct secpolicy *sp, u_int8_t type, u_int32_t seq,
+	      u_int32_t pid)
 {
 	struct mbuf *result = NULL, *m;
 
@@ -2397,8 +2373,7 @@ fail:
  * get PFKEY message length for security policy and request.
  */
 static u_int
-key_getspreqmsglen(sp)
-	struct secpolicy *sp;
+key_getspreqmsglen(struct secpolicy *sp)
 {
 	u_int tlen;
 
@@ -2435,8 +2410,7 @@ key_getspreqmsglen(sp)
  *	others	: error number
  */
 static int
-key_spdexpire(sp)
-	struct secpolicy *sp;
+key_spdexpire(struct secpolicy *sp)
 {
 	
 	struct mbuf *result = NULL, *m;
@@ -2549,8 +2523,7 @@ key_spdexpire(sp)
  *	others	: pointer to new SA head.
  */
 static struct secashead *
-key_newsah(saidx)
-	struct secasindex *saidx;
+key_newsah(struct secasindex *saidx)
 {
 	struct secashead *newsah;
 
@@ -2575,8 +2548,7 @@ key_newsah(saidx)
  * delete SA index and all SA registerd.
  */
 static void
-key_delsah(sah)
-	struct secashead *sah;
+key_delsah(struct secashead *sah)
 {
 	struct secasvar *sav, *nextsav;
 	u_int stateidx, state;
@@ -2646,13 +2618,8 @@ key_delsah(sah)
  * does not modify mbuf.  does not free mbuf on error.
  */
 static struct secasvar *
-key_newsav(m, mhp, sah, errp, where, tag)
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
-	struct secashead *sah;
-	int *errp;
-	const char* where;
-	int tag;
+key_newsav(struct mbuf *m, const struct sadb_msghdr *mhp, struct secashead *sah,
+	   int *errp, const char *where, int tag)
 {
 	struct secasvar *newsav;
 	const struct sadb_sa *xsa;
@@ -2732,8 +2699,7 @@ done:
  * free() SA variable entry.
  */
 static void
-key_delsav(sav)
-	struct secasvar *sav;
+key_delsav(struct secasvar *sav)
 {
 	KASSERT(sav != NULL, ("key_delsav: null sav"));
 	KASSERT(sav->refcnt == 0,
@@ -2791,8 +2757,7 @@ key_delsav(sav)
  *	others	: found, pointer to a SA.
  */
 static struct secashead *
-key_getsah(saidx)
-	struct secasindex *saidx;
+key_getsah(struct secasindex *saidx)
 {
 	struct secashead *sah;
 
@@ -2814,9 +2779,7 @@ key_getsah(saidx)
  *	others	: found, pointer to a SA.
  */
 static struct secasvar *
-key_checkspidup(saidx, spi)
-	struct secasindex *saidx;
-	u_int32_t spi;
+key_checkspidup(struct secasindex *saidx, u_int32_t spi)
 {
 	struct secashead *sah;
 	struct secasvar *sav;
@@ -2846,9 +2809,7 @@ key_checkspidup(saidx, spi)
  *	others	: found, pointer to a SA.
  */
 static struct secasvar *
-key_getsavbyspi(sah, spi)
-	struct secashead *sah;
-	u_int32_t spi;
+key_getsavbyspi(struct secashead *sah, u_int32_t spi)
 {
 	struct secasvar *sav;
 	u_int stateidx, state;
@@ -2886,10 +2847,8 @@ key_getsavbyspi(sah, spi)
  * does not modify mbuf.  does not free mbuf on error.
  */
 static int
-key_setsaval(sav, m, mhp)
-	struct secasvar *sav;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_setsaval(struct secasvar *sav, struct mbuf *m,
+	     const struct sadb_msghdr *mhp)
 {
 	int error = 0;
 
@@ -3147,8 +3106,7 @@ key_setsaval(sav, m, mhp)
  *	other:	errno
  */
 static int
-key_mature(sav)
-	struct secasvar *sav;
+key_mature(struct secasvar *sav)
 {
 	int error;
 
@@ -3218,10 +3176,8 @@ key_mature(sav)
  * subroutine for SADB_GET and SADB_DUMP.
  */
 static struct mbuf *
-key_setdumpsa(sav, type, satype, seq, pid)
-	struct secasvar *sav;
-	u_int8_t type, satype;
-	u_int32_t seq, pid;
+key_setdumpsa(struct secasvar *sav, u_int8_t type, u_int8_t satype,
+	      u_int32_t seq, u_int32_t pid)
 {
 	struct mbuf *result = NULL, *tres = NULL, *m;
 	int l = 0;
@@ -3367,12 +3323,8 @@ fail:
  * set data into sadb_msg.
  */
 static struct mbuf *
-key_setsadbmsg(type, tlen, satype, seq, pid, reserved)
-	u_int8_t type, satype;
-	u_int16_t tlen;
-	u_int32_t seq;
-	pid_t pid;
-	u_int16_t reserved;
+key_setsadbmsg(u_int8_t type, u_int16_t tlen, u_int8_t satype, u_int32_t seq,
+	       pid_t pid, u_int16_t reserved)
 {
 	struct mbuf *m;
 	struct sadb_msg *p;
@@ -3413,8 +3365,7 @@ key_setsadbmsg(type, tlen, satype, seq, pid, reserved)
  * copy secasvar data into sadb_address.
  */
 static struct mbuf *
-key_setsadbsa(sav)
-	struct secasvar *sav;
+key_setsadbsa(struct secasvar *sav)
 {
 	struct mbuf *m;
 	struct sadb_sa *p;
@@ -3447,11 +3398,8 @@ key_setsadbsa(sav)
  * set data into sadb_address.
  */
 static struct mbuf *
-key_setsadbaddr(exttype, saddr, prefixlen, ul_proto)
-	u_int16_t exttype;
-	const struct sockaddr *saddr;
-	u_int8_t prefixlen;
-	u_int16_t ul_proto;
+key_setsadbaddr(u_int16_t exttype, const struct sockaddr *saddr, u_int8_t prefixlen,
+		u_int16_t ul_proto)
 {
 	struct mbuf *m;
 	struct sadb_address *p;
@@ -3499,11 +3447,8 @@ key_setsadbaddr(exttype, saddr, prefixlen, ul_proto)
  * set data into sadb_ident.
  */
 static struct mbuf *
-key_setsadbident(exttype, idtype, string, stringlen, id)
-	u_int16_t exttype, idtype;
-	caddr_t string;
-	int stringlen;
-	u_int64_t id;
+key_setsadbident(u_int16_t exttype, u_int16_t idtype, caddr_t string,
+		 int stringlen, u_int64_t id)
 {
 	struct mbuf *m;
 	struct sadb_ident *p;
@@ -3538,9 +3483,7 @@ key_setsadbident(exttype, idtype, string, stringlen, id)
  * set data into sadb_x_sa2.
  */
 static struct mbuf *
-key_setsadbxsa2(mode, seq, reqid)
-	u_int8_t mode;
-	u_int32_t seq, reqid;
+key_setsadbxsa2(u_int8_t mode, u_int32_t seq, u_int32_t reqid)
 {
 	struct mbuf *m;
 	struct sadb_x_sa2 *p;
@@ -3572,10 +3515,7 @@ key_setsadbxsa2(mode, seq, reqid)
  * set data into sadb_x_policy
  */
 static struct mbuf *
-key_setsadbxpolicy(type, dir, id)
-	u_int16_t type;
-	u_int8_t dir;
-	u_int32_t id;
+key_setsadbxpolicy(u_int16_t type, u_int8_t dir, u_int32_t id)
 {
 	struct mbuf *m;
 	struct sadb_x_policy *p;
@@ -3606,9 +3546,7 @@ key_setsadbxpolicy(type, dir, id)
  * copy a buffer into the new buffer allocated.
  */
 static void *
-key_newbuf(src, len)
-	const void *src;
-	u_int len;
+key_newbuf(const void *src, u_int len)
 {
 	caddr_t new;
 
@@ -3627,8 +3565,7 @@ key_newbuf(src, len)
  *	0: false
  */
 int
-key_ismyaddr(sa)
-	struct sockaddr *sa;
+key_ismyaddr(struct sockaddr *sa)
 {
 #ifdef INET
 	struct sockaddr_in *sin;
@@ -3672,8 +3609,7 @@ key_ismyaddr(sa)
 #include <netinet6/in6_var.h>
 
 static int
-key_ismyaddr6(sin6)
-	struct sockaddr_in6 *sin6;
+key_ismyaddr6(struct sockaddr_in6 *sin6)
 {
 	struct in6_ifaddr *ia;
 	struct in6_multi *in6m;
@@ -4256,13 +4192,13 @@ key_timehandler(void *unused)
  * to initialize a seed for random()
  */
 static void
-key_srandom()
+key_srandom(void)
 {
 	srandom(time_second);
 }
 
 u_long
-key_random()
+key_random(void)
 {
 	u_long value;
 
@@ -4271,9 +4207,7 @@ key_random()
 }
 
 void
-key_randomfill(p, l)
-	void *p;
-	size_t l;
+key_randomfill(void *p, size_t l)
 {
 	size_t n;
 	u_long v;
@@ -4303,8 +4237,7 @@ key_randomfill(p, l)
  *	0: invalid satype.
  */
 static u_int16_t
-key_satype2proto(satype)
-	u_int8_t satype;
+key_satype2proto(u_int8_t satype)
 {
 	switch (satype) {
 	case SADB_SATYPE_UNSPEC:
@@ -4327,8 +4260,7 @@ key_satype2proto(satype)
  *	0: invalid protocol type.
  */
 static u_int8_t
-key_proto2satype(proto)
-	u_int16_t proto;
+key_proto2satype(u_int16_t proto)
 {
 	switch (proto) {
 	case IPPROTO_AH:
@@ -4357,10 +4289,7 @@ key_proto2satype(proto)
  *	other if success, return pointer to the message to send.
  */
 static int
-key_getspi(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_getspi(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_address *src0, *dst0;
 	struct secasindex saidx;
@@ -4554,9 +4483,7 @@ key_getspi(so, m, mhp)
  *	others: success.
  */
 static u_int32_t
-key_do_getnewspi(spirange, saidx)
-	struct sadb_spirange *spirange;
-	struct secasindex *saidx;
+key_do_getnewspi(struct sadb_spirange *spirange, struct secasindex *saidx)
 {
 	u_int32_t newspi;
 	u_int32_t min, max;
@@ -4632,10 +4559,7 @@ key_do_getnewspi(spirange, saidx)
  * m will always be freed.
  */
 static int
-key_update(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_update(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_sa *sa0;
 	struct sadb_address *src0, *dst0;
@@ -4783,9 +4707,7 @@ key_update(so, m, mhp)
  */
 #ifdef IPSEC_DOSEQCHECK
 static struct secasvar *
-key_getsavbyseq(sah, seq)
-	struct secashead *sah;
-	u_int32_t seq;
+key_getsavbyseq(struct secashead *sah, u_int32_t seq)
 {
 	struct secasvar *sav;
 	u_int state;
@@ -4827,10 +4749,7 @@ key_getsavbyseq(sah, seq)
  * m will always be freed.
  */
 static int
-key_add(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_add(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_sa *sa0;
 	struct sadb_address *src0, *dst0;
@@ -4943,10 +4862,8 @@ key_add(so, m, mhp)
 
 /* m is retained */
 static int
-key_setident(sah, m, mhp)
-	struct secashead *sah;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_setident(struct secashead *sah, struct mbuf *m,
+	     const struct sadb_msghdr *mhp)
 {
 	const struct sadb_ident *idsrc, *iddst;
 	int idsrclen, iddstlen;
@@ -5015,9 +4932,7 @@ key_setident(sah, m, mhp)
  * it is caller's responsibility to free the result. 
  */
 static struct mbuf *
-key_getmsgbuf_x1(m, mhp)
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_getmsgbuf_x1(struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct mbuf *n;
 
@@ -5061,10 +4976,7 @@ static int key_delete_all (struct socket *, struct mbuf *,
  * m will always be freed.
  */
 static int
-key_delete(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_delete(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_sa *sa0;
 	struct sadb_address *src0, *dst0;
@@ -5163,11 +5075,8 @@ key_delete(so, m, mhp)
  * delete all SAs for src/dst.  Called from key_delete().
  */
 static int
-key_delete_all(so, m, mhp, proto)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
-	u_int16_t proto;
+key_delete_all(struct socket *so, struct mbuf *m,
+	       const struct sadb_msghdr *mhp, u_int16_t proto)
 {
 	struct sadb_address *src0, *dst0;
 	struct secasindex saidx;
@@ -5248,10 +5157,7 @@ key_delete_all(so, m, mhp, proto)
  * m will always be freed.
  */
 static int
-key_get(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_get(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_sa *sa0;
 	struct sadb_address *src0, *dst0;
@@ -5330,8 +5236,7 @@ key_get(so, m, mhp)
 
 /* XXX make it sysctl-configurable? */
 static void
-key_getcomb_setlifetime(comb)
-	struct sadb_comb *comb;
+key_getcomb_setlifetime(struct sadb_comb *comb)
 {
 
 	comb->sadb_comb_soft_allocations = 1;
@@ -5349,7 +5254,7 @@ key_getcomb_setlifetime(comb)
  * XXX no idea if the user wants ESP authentication or not
  */
 static struct mbuf *
-key_getcomb_esp()
+key_getcomb_esp(void)
 {
 	struct sadb_comb *comb;
 	struct enc_xform *algo;
@@ -5453,7 +5358,7 @@ key_getsizes_ah(
  * XXX reorder combinations by preference
  */
 static struct mbuf *
-key_getcomb_ah()
+key_getcomb_ah(void)
 {
 	struct sadb_comb *comb;
 	struct auth_hash *algo;
@@ -5508,7 +5413,7 @@ key_getcomb_ah()
  * XXX reorder combinations by preference
  */
 static struct mbuf *
-key_getcomb_ipcomp()
+key_getcomb_ipcomp(void)
 {
 	struct sadb_comb *comb;
 	struct comp_algo *algo;
@@ -5553,8 +5458,7 @@ key_getcomb_ipcomp()
  * XXX sysctl interface to ipsec_{ah,esp}_keymin
  */
 static struct mbuf *
-key_getprop(saidx)
-	const struct secasindex *saidx;
+key_getprop(const struct secasindex *saidx)
 {
 	struct sadb_prop *prop;
 	struct mbuf *m, *n;
@@ -5829,8 +5733,7 @@ key_getacq(const struct secasindex *saidx)
 }
 
 static struct secacq *
-key_getacqbyseq(seq)
-	u_int32_t seq;
+key_getacqbyseq(u_int32_t seq)
 {
 	struct secacq *acq;
 
@@ -5844,8 +5747,7 @@ key_getacqbyseq(seq)
 #endif
 
 static struct secspacq *
-key_newspacq(spidx)
-	struct secpolicyindex *spidx;
+key_newspacq(struct secpolicyindex *spidx)
 {
 	struct secspacq *acq;
 
@@ -5866,8 +5768,7 @@ key_newspacq(spidx)
 }
 
 static struct secspacq *
-key_getspacq(spidx)
-	struct secpolicyindex *spidx;
+key_getspacq(struct secpolicyindex *spidx)
 {
 	struct secspacq *acq;
 
@@ -5894,10 +5795,7 @@ key_getspacq(spidx)
  * m will always be freed.
  */
 static int
-key_acquire2(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_acquire2(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	const struct sadb_address *src0, *dst0;
 	struct secasindex saidx;
@@ -6010,10 +5908,8 @@ key_acquire2(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_register(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_register(struct socket *so, struct mbuf *m,
+	     const struct sadb_msghdr *mhp)
 {
 	struct secreg *reg, *newreg = 0;
 
@@ -6164,8 +6060,7 @@ key_register(so, m, mhp)
  * XXX: I want to do free a socket marked done SADB_RESIGER to socket.
  */
 void
-key_freereg(so)
-	struct socket *so;
+key_freereg(struct socket *so)
 {
 	struct secreg *reg;
 	int i;
@@ -6204,8 +6099,7 @@ key_freereg(so)
  *	others	: error number
  */
 static int
-key_expire(sav)
-	struct secasvar *sav;
+key_expire(struct secasvar *sav)
 {
 	
 	int satype;
@@ -6335,10 +6229,7 @@ key_expire(sav)
  * m will always be freed.
  */
 static int
-key_flush(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_flush(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct sadb_msg *newmsg;
 	struct secashead *sah, *nextsah;
@@ -6415,10 +6306,7 @@ key_flush(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_dump(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_dump(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	struct secashead *sah;
 	struct secasvar *sav;
@@ -6498,10 +6386,7 @@ key_dump(so, m, mhp)
  * m will always be freed.
  */
 static int
-key_promisc(so, m, mhp)
-	struct socket *so;
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
+key_promisc(struct socket *so, struct mbuf *m, const struct sadb_msghdr *mhp)
 {
 	int olen;
 
@@ -6586,9 +6471,7 @@ static int (*key_typesw[]) (struct socket *, struct mbuf *,
  *    length for buffer to send to user process.
  */
 int
-key_parse(m, so)
-	struct mbuf *m;
-	struct socket *so;
+key_parse(struct mbuf *m, struct socket *so)
 {
 	struct sadb_msg *msg;
 	struct sadb_msghdr mh;
@@ -6839,10 +6722,7 @@ senderror:
 }
 
 static int
-key_senderror(so, m, code)
-	struct socket *so;
-	struct mbuf *m;
-	int code;
+key_senderror(struct socket *so, struct mbuf *m, int code)
 {
 	struct sadb_msg *msg;
 
@@ -6860,9 +6740,7 @@ key_senderror(so, m, code)
  * XXX larger-than-MCLBYTES extension?
  */
 static int
-key_align(m, mhp)
-	struct mbuf *m;
-	struct sadb_msghdr *mhp;
+key_align(struct mbuf *m, struct sadb_msghdr *mhp)
 {
 	struct mbuf *n;
 	struct sadb_ext *ext;
@@ -6965,9 +6843,7 @@ key_align(m, mhp)
 }
 
 static int
-key_validate_ext(ext, len)
-	const struct sadb_ext *ext;
-	int len;
+key_validate_ext(const struct sadb_ext *ext, int len)
 {
 	const struct sockaddr *sa;
 	enum { NONE, ADDR } checktype = NONE;
@@ -7024,7 +6900,7 @@ key_validate_ext(ext, len)
 }
 
 void
-key_init()
+key_init(void)
 {
 	int i;
 
@@ -7069,11 +6945,8 @@ key_init()
  * xxx more checks to be provided
  */
 int
-key_checktunnelsanity(sav, family, src, dst)
-	struct secasvar *sav;
-	u_int family;
-	caddr_t src;
-	caddr_t dst;
+key_checktunnelsanity(struct secasvar *sav, u_int family, caddr_t src,
+		      caddr_t dst)
 {
 	/* sanity check */
 	if (sav->sah == NULL)
@@ -7093,7 +6966,7 @@ key_checktunnelsanity(sav, family, src, dst)
  * domain name, returns nothing.
  */
 static const char *
-key_getfqdn()
+key_getfqdn(void)
 {
 	int i;
 	int hasdot;
@@ -7122,7 +6995,7 @@ key_getfqdn()
  * get username@FQDN for the host/user.
  */
 static const char *
-key_getuserfqdn()
+key_getuserfqdn(void)
 {
 	const char *host;
 	static char userfqdn[MAXHOSTNAMELEN + MAXLOGNAME + 2];
@@ -7150,9 +7023,7 @@ key_getuserfqdn()
 
 /* record data transfer on SA, and update timestamps */
 void
-key_sa_recordxfer(sav, m)
-	struct secasvar *sav;
-	struct mbuf *m;
+key_sa_recordxfer(struct secasvar *sav, struct mbuf *m)
 {
 	KASSERT(sav != NULL, ("key_sa_recordxfer: Null secasvar"));
 	KASSERT(m != NULL, ("key_sa_recordxfer: Null mbuf"));
@@ -7193,8 +7064,7 @@ key_sa_recordxfer(sav, m)
 
 /* dumb version */
 void
-key_sa_routechange(dst)
-	struct sockaddr *dst;
+key_sa_routechange(struct sockaddr *dst)
 {
 	struct secashead *sah;
 	struct route *ro;
@@ -7212,9 +7082,7 @@ key_sa_routechange(dst)
 }
 
 static void
-key_sa_chgstate(sav, state)
-	struct secasvar *sav;
-	u_int8_t state;
+key_sa_chgstate(struct secasvar *sav, u_int8_t state)
 {
 	if (sav == NULL)
 		panic("key_sa_chgstate called with sav == NULL");
@@ -7230,8 +7098,7 @@ key_sa_chgstate(sav, state)
 }
 
 void
-key_sa_stir_iv(sav)
-	struct secasvar *sav;
+key_sa_stir_iv(struct secasvar *sav)
 {
 
 	if (!sav->iv)
@@ -7241,8 +7108,7 @@ key_sa_stir_iv(sav)
 
 /* XXX too much? */
 static struct mbuf *
-key_alloc_mbuf(l)
-	int l;
+key_alloc_mbuf(int l)
 {
 	struct mbuf *m = NULL, *n;
 	int len, t;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_input.c,v 1.6 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_input.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -74,9 +74,7 @@ static struct in_addr	tip;
  *
  */
 void
-uniarp_cpcs_data(tok, m)
-	void		*tok;
-	KBuffer		*m;
+uniarp_cpcs_data(void *tok, KBuffer *m)
 {
 	struct ipvcc	*ivp = tok;
 	struct atmarp_hdr	*ahp;
@@ -262,9 +260,7 @@ bad:
  *
  */
 static void
-proc_arp_req(ivp, m)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
+proc_arp_req(struct ipvcc *ivp, KBuffer *m)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -341,12 +337,11 @@ proc_arp_req(ivp, m)
 	 * try to accomodate old clients (per RFC-2225 8.4.4).
 	 */
 	if (sip.s_addr == tip.s_addr)
-		(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub,
-				UAO_REGISTER);
+		uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_REGISTER);
 	else {
 		uap = (struct uniarp *)ivp->iv_arpent;
 		if ((uap == NULL) || (uap->ua_origin < UAO_REGISTER))
-			(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub,
+			uniarp_cache_svc(uip, &sip, &satm, &satmsub,
 					UAO_REGISTER);
 	}
 
@@ -359,21 +354,21 @@ proc_arp_req(ivp, m)
 		/*
 		 * We've found a valid mapping
 		 */
-		(void) uniarp_arp_rsp(uip, &uap->ua_arpmap, &sip, &satm,
+		uniarp_arp_rsp(uip, &uap->ua_arpmap, &sip, &satm,
 					&satmsub, ivp);
 
 	} else if (tip.s_addr == myip.s_addr) {
 		/*
 		 * We're the target, so respond accordingly
 		 */
-		(void) uniarp_arp_rsp(uip, &uip->uip_arpsvrmap, &sip, &satm,
+		uniarp_arp_rsp(uip, &uip->uip_arpsvrmap, &sip, &satm,
 					&satmsub, ivp);
 
 	} else {
 		/*
 		 * We don't know who the target is, so NAK the query
 		 */
-		(void) uniarp_arp_nak(uip, m, ivp);
+		uniarp_arp_nak(uip, m, ivp);
 		m = NULL;
 	}
 
@@ -397,9 +392,7 @@ drop:
  *
  */
 static void
-proc_arp_rsp(ivp, m)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
+proc_arp_rsp(struct ipvcc *ivp, KBuffer *m)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -465,7 +458,7 @@ proc_arp_rsp(ivp, m)
 			 */
 			uap = (struct uniarp *)ivp->iv_arpent;
 			if ((uap->ua_flags & UAF_VALID) == 0) {
-				(void) uniarp_inarp_req(uip, &uap->ua_dstatm,
+				uniarp_inarp_req(uip, &uap->ua_dstatm,
 					&uap->ua_dstatmsub, ivp);
 			}
 			goto drop;
@@ -490,7 +483,7 @@ proc_arp_rsp(ivp, m)
 	 * Now we believe this packet contains an authoritative mapping,
 	 * which we probably need to setup an outgoing SVC connection
 	 */
-	(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_LOOKUP);
+	uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_LOOKUP);
 
 drop:
 	crit_exit();
@@ -511,9 +504,7 @@ drop:
  *
  */
 static void
-proc_arp_nak(ivp, m)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
+proc_arp_nak(struct ipvcc *ivp, KBuffer *m)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -592,9 +583,7 @@ drop:
  *
  */
 static void
-proc_inarp_req(ivp, m)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
+proc_inarp_req(struct ipvcc *ivp, KBuffer *m)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -674,7 +663,7 @@ proc_inarp_req(ivp, m)
 		 *
 		 * Therefore, update cache with authoritative data.
 		 */
-		(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_LOOKUP);
+		uniarp_cache_svc(uip, &sip, &satm, &satmsub, UAO_LOOKUP);
 
 		/*
 		 * Make sure the cache update didn't kill the server VCC
@@ -701,7 +690,7 @@ proc_inarp_req(ivp, m)
 	/*
 	 * Send an InATMARP response back to originator
 	 */
-	(void) uniarp_inarp_rsp(uip, &sip, &satm, &satmsub, ivp);
+	uniarp_inarp_rsp(uip, &sip, &satm, &satmsub, ivp);
 
 drop:
 	crit_exit();
@@ -722,9 +711,7 @@ drop:
  *
  */
 static void
-proc_inarp_rsp(ivp, m)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
+proc_inarp_rsp(struct ipvcc *ivp, KBuffer *m)
 {
 	struct ip_nif	*inp;
 	struct atm_nif	*nip;
@@ -809,7 +796,7 @@ proc_inarp_rsp(ivp, m)
 		 * with what we've got.  Our clients will get "registered"
 		 * when (if) they query us with an arp request.
 		 */
-		(void) uniarp_cache_svc(uip, &sip, &satm, &satmsub,
+		uniarp_cache_svc(uip, &sip, &satm, &satmsub,
 				UAO_PEER_RSP);
 	}
 
@@ -833,10 +820,7 @@ drop:
  *
  */
 void
-uniarp_pdu_print(ivp, m, msg)
-	struct ipvcc	*ivp;
-	KBuffer		*m;
-	char		*msg;
+uniarp_pdu_print(struct ipvcc *ivp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 	struct vccb	*vcp;

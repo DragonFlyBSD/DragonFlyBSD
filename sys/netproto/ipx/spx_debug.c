@@ -34,7 +34,7 @@
  *	@(#)spx_debug.c
  *
  * $FreeBSD: src/sys/netipx/spx_debug.c,v 1.14 1999/08/28 00:49:43 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_debug.c,v 1.4 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -65,12 +65,7 @@ static	int spx_debx;
  * spx debug routines
  */
 void
-spx_trace(act, ostate, sp, si, req)
-	short act;
-	u_char ostate;
-	struct spxpcb *sp;
-	struct spx *si;
-	int req;
+spx_trace(int act, int ostate, struct spxpcb *sp, struct spx *si, int req)
 {
 #ifdef INET
 #ifdef TCPDEBUG

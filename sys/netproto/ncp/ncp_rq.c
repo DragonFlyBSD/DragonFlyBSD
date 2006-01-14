@@ -32,7 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.8 2005/05/26 22:59:57 hsu Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.9 2006/01/14 13:36:40 swildner Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -432,11 +432,7 @@ ncp_rp_mbuf(struct ncp_rq *rqp, int size) {
 }
 
 int
-nwfs_mbuftouio(mrep, uiop, siz, dpos)
-	struct mbuf **mrep;
-	struct uio *uiop;
-	int siz;
-	caddr_t *dpos;
+nwfs_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 {
 	char *mbufcp, *uiocp;
 	int xfer, left, len;
@@ -501,11 +497,7 @@ nwfs_mbuftouio(mrep, uiop, siz, dpos)
  * NOTE: can ony handle iovcnt == 1
  */
 int
-nwfs_uiotombuf(uiop, mq, siz, bpos)
-	struct uio *uiop;
-	struct mbuf **mq;
-	int siz;
-	caddr_t *bpos;
+nwfs_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 {
 	char *uiocp;
 	struct mbuf *mp, *mp2;

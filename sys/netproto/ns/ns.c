@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.11 2005/11/28 17:13:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -251,9 +251,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 * Delete any previous route for an old address.
 */
 void
-ns_ifscrub(ifp, ia)
-	struct ifnet *ifp;
-	struct ns_ifaddr *ia;
+ns_ifscrub(struct ifnet *ifp, struct ns_ifaddr *ia)
 {
 	if (ia->ia_flags & IFA_ROUTE) {
 		if (ifp->if_flags & IFF_POINTOPOINT) {
@@ -268,11 +266,7 @@ ns_ifscrub(ifp, ia)
  * and routing table entry.
  */
 int
-ns_ifinit(ifp, ia, sns, scrub)
-	struct ifnet *ifp;
-	struct ns_ifaddr *ia;
-	struct sockaddr_ns *sns;
-	int scrub;
+ns_ifinit(struct ifnet *ifp, struct ns_ifaddr *ia, struct sockaddr_ns *sns, int scrub)
 {
 	struct sockaddr_ns oldaddr;
 	union ns_host *h = &ia->ia_addr.sns_addr.x_host;
@@ -357,8 +351,7 @@ ns_ifinit(ifp, ia, sns, scrub)
  * Return address info for specified internet network.
  */
 struct ns_ifaddr *
-ns_iaonnetof(dst)
-	struct ns_addr *dst;
+ns_iaonnetof(struct ns_addr *dst)
 {
 	struct ns_ifaddr *ia;
 	struct ns_addr *compare;

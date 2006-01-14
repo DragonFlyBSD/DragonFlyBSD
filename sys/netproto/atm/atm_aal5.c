@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.9 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -222,10 +222,7 @@ static Atm_attributes	atm_aal5_defattr = {
  *
  */
 static int
-atm_aal5_attach(so, proto, ai)
-	struct socket	*so;
-	int		proto;
-	struct pru_attach_info *ai;
+atm_aal5_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	Atm_pcb		*atp;
 
@@ -268,8 +265,7 @@ out:
  *
  */
 static int
-atm_aal5_detach(so)
-	struct socket	*so;
+atm_aal5_detach(struct socket *so)
 {
 	ATM_INTRO("detach");
 
@@ -293,10 +289,7 @@ atm_aal5_detach(so)
  *
  */
 static int
-atm_aal5_bind(so, addr, td)
-	struct socket	*so;
-	struct sockaddr	*addr;
-	struct thread	*td;
+atm_aal5_bind(struct socket *so, struct sockaddr *addr, struct thread *td)
 {
 	ATM_INTRO("bind");
 
@@ -670,11 +663,8 @@ atm_aal5_peeraddr(struct socket *so, struct sockaddr **addr)
  *
  */
 static int
-atm_aal5_incoming(tok, cop, ap, tokp)
-	void		*tok;
-	Atm_connection	*cop;
-	Atm_attributes	*ap;
-	void		**tokp;
+atm_aal5_incoming(void *tok, Atm_connection *cop, Atm_attributes *ap,
+		  void **tokp)
 {
 	Atm_pcb		*atp0 = tok, *atp;
 	struct socket	*so;
@@ -719,9 +709,7 @@ atm_aal5_incoming(tok, cop, ap, tokp)
  *
  */
 static void
-atm_aal5_cpcs_data(tok, m)
-	void		*tok;
-	KBuffer		*m;
+atm_aal5_cpcs_data(void *tok, KBuffer *m)
 {
 	Atm_pcb		*atp = tok;
 	struct socket	*so;
@@ -849,7 +837,7 @@ out:
  *
  */
 void
-atm_aal5_init()
+atm_aal5_init(void)
 {
 	/*
 	 * Register our endpoint
@@ -877,8 +865,7 @@ atm_aal5_init()
  *
  */
 static caddr_t
-atm_aal5_getname(tok)
-	void		*tok;
+atm_aal5_getname(void *tok)
 {
 	Atm_pcb		*atp = tok;
 

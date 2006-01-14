@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_usrreq.c,v 1.5.2.1 2003/02/15 09:25:13 phk Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_usrreq.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_usrreq.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -56,10 +56,7 @@
  *
  */
 int
-ipatm_ioctl(code, data, arg1)
-	int		code;
-	caddr_t		data;
-	caddr_t		arg1;
+ipatm_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmaddreq	*aap;
 	struct atmdelreq	*adp;
@@ -326,7 +323,7 @@ ipatm_ioctl(code, data, arg1)
 					AF_INET;
 				SATOSIN(&aivr.aip_dst_addr)->sin_addr.s_addr = 
 					ivp->iv_dst.s_addr;
-				(void) strlcpy(aivr.aip_intf,
+				strlcpy(aivr.aip_intf,
 				    inp->inf_nif->nif_if.if_xname,
 				    sizeof(aivr.aip_intf));
 				if ((ivp->iv_conn) &&
@@ -379,8 +376,7 @@ ipatm_ioctl(code, data, arg1)
  *
  */
 caddr_t
-ipatm_getname(tok)
-	void		*tok;
+ipatm_getname(void *tok)
 {
 	return ("IP");
 }

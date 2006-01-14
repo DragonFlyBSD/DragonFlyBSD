@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_print.c,v 1.4 2000/01/17 20:49:57 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_print.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -143,9 +143,7 @@ static struct type_name ie_types[] = {
  *
  */
 static char *
-find_type(tbl, type)
-	struct type_name	*tbl;
-	u_char			type;
+find_type(struct type_name *tbl, u_char type)
 {
 	while (type != tbl->type && tbl->name)
 		tbl++;
@@ -168,8 +166,7 @@ find_type(tbl, type)
  *
  */
 static void
-usp_print_atm_addr(p)
-	Atm_addr		*p;
+usp_print_atm_addr(Atm_addr *p)
 {
 	char		*cp;
 
@@ -189,9 +186,7 @@ usp_print_atm_addr(p)
  *
  */
 void
-usp_print_msg(msg, dir)
-	struct unisig_msg	*msg;
-	int			dir;
+usp_print_msg(struct unisig_msg *msg, int dir)
 {
 	char			*name;
 	int			i;
@@ -253,8 +248,7 @@ usp_print_msg(msg, dir)
  *
  */
 static void
-usp_print_ie(ie)
-	struct ie_generic	*ie;
+usp_print_ie(struct ie_generic *ie)
 {
 	char	*name;
 
@@ -352,8 +346,7 @@ usp_print_ie(ie)
  *
  */
 static void
-usp_print_ie_aalp(ie)
-	struct ie_generic	*ie;
+usp_print_ie_aalp(struct ie_generic *ie)
 {
 	printf("        AAL type:      %d\n", ie->ie_aalp_aal_type);
 	switch(ie->ie_aalp_aal_type) {
@@ -417,8 +410,7 @@ usp_print_ie_aalp(ie)
  *
  */
 static void
-usp_print_ie_clrt(ie)
-	struct ie_generic	*ie;
+usp_print_ie_clrt(struct ie_generic *ie)
 {
 	printf("        Forward peak:  %d\n", ie->ie_clrt_fwd_peak);
 	printf("        Backward peak: %d\n", ie->ie_clrt_bkwd_peak);
@@ -450,8 +442,7 @@ usp_print_ie_clrt(ie)
  *
  */
 static void
-usp_print_ie_bbcp(ie)
-	struct ie_generic	*ie;
+usp_print_ie_bbcp(struct ie_generic *ie)
 {
 	printf("        Bearer class:  0x%x\n",
 			ie->ie_bbcp_bearer_class);
@@ -476,8 +467,7 @@ usp_print_ie_bbcp(ie)
  *
  */
 static void
-usp_print_ie_bhli(ie)
-	struct ie_generic	*ie;
+usp_print_ie_bhli(struct ie_generic *ie)
 {
 	int	i;
 
@@ -501,8 +491,7 @@ usp_print_ie_bhli(ie)
  *
  */
 static void
-usp_print_ie_blli(ie)
-	struct ie_generic	*ie;
+usp_print_ie_blli(struct ie_generic *ie)
 {
 	printf("        Layer 1 ID:    0x%x\n", ie->ie_blli_l1_id);
 	printf("        Layer 2 ID:    0x%x\n", ie->ie_blli_l2_id);
@@ -545,8 +534,7 @@ usp_print_ie_blli(ie)
  *
  */
 static void
-usp_print_ie_clst(ie)
-	struct ie_generic	*ie;
+usp_print_ie_clst(struct ie_generic *ie)
 {
 	printf("        Call state:    %d\n",
 			ie->ie_clst_state);
@@ -564,8 +552,7 @@ usp_print_ie_clst(ie)
  *
  */
 static void
-usp_print_ie_cdad(ie)
-	struct ie_generic	*ie;
+usp_print_ie_cdad(struct ie_generic *ie)
 {
 	printf("        ATM addr:      ");
 	usp_print_atm_addr(&ie->ie_cdad_addr);
@@ -584,8 +571,7 @@ usp_print_ie_cdad(ie)
  *
  */
 static void
-usp_print_ie_cdsa(ie)
-	struct ie_generic	*ie;
+usp_print_ie_cdsa(struct ie_generic *ie)
 {
 	printf("        ATM subaddr:   ");
 	usp_print_atm_addr(&ie->ie_cdsa_addr);
@@ -604,8 +590,7 @@ usp_print_ie_cdsa(ie)
  *
  */
 static void
-usp_print_ie_cgad(ie)
-	struct ie_generic	*ie;
+usp_print_ie_cgad(struct ie_generic *ie)
 {
 	printf("        ATM addr:      ");
 	usp_print_atm_addr(&ie->ie_cgad_addr);
@@ -624,8 +609,7 @@ usp_print_ie_cgad(ie)
  *
  */
 static void
-usp_print_ie_cgsa(ie)
-	struct ie_generic	*ie;
+usp_print_ie_cgsa(struct ie_generic *ie)
 {
 	printf("        ATM subaddr:   ");
 	usp_print_atm_addr(&ie->ie_cgsa_addr);
@@ -644,8 +628,7 @@ usp_print_ie_cgsa(ie)
  *
  */
 static void
-usp_print_ie_caus(ie)
-	struct ie_generic	*ie;
+usp_print_ie_caus(struct ie_generic *ie)
 {
 	int	i;
 
@@ -688,8 +671,7 @@ usp_print_ie_caus(ie)
  *
  */
 static void
-usp_print_ie_cnid(ie)
-	struct ie_generic	*ie;
+usp_print_ie_cnid(struct ie_generic *ie)
 {
 	printf("        VP assoc sig:  0x%x\n", ie->ie_cnid_vp_sig);
 	printf("        Pref/excl:     0x%x\n",
@@ -710,8 +692,7 @@ usp_print_ie_cnid(ie)
  *
  */
 static void
-usp_print_ie_qosp(ie)
-	struct ie_generic	*ie;
+usp_print_ie_qosp(struct ie_generic *ie)
 {
 	printf("        QoS fwd:       0x%x\n",
 			ie->ie_qosp_fwd_class);
@@ -731,8 +712,7 @@ usp_print_ie_qosp(ie)
  *
  */
 static void
-usp_print_ie_brpi(ie)
-	struct ie_generic	*ie;
+usp_print_ie_brpi(struct ie_generic *ie)
 {
 	printf("        Indicator:     0x%x\n", ie->ie_brpi_ind);
 }
@@ -749,8 +729,7 @@ usp_print_ie_brpi(ie)
  *
  */
 static void
-usp_print_ie_rsti(ie)
-	struct ie_generic	*ie;
+usp_print_ie_rsti(struct ie_generic *ie)
 {
 	printf("        Class:         0x%x\n", ie->ie_rsti_class);
 }
@@ -767,8 +746,7 @@ usp_print_ie_rsti(ie)
  *
  */
 static void
-usp_print_ie_blsh(ie)
-	struct ie_generic	*ie;
+usp_print_ie_blsh(struct ie_generic *ie)
 {
 }
 
@@ -784,8 +762,7 @@ usp_print_ie_blsh(ie)
  *
  */
 static void
-usp_print_ie_bnsh(ie)
-	struct ie_generic	*ie;
+usp_print_ie_bnsh(struct ie_generic *ie)
 {
 }
 
@@ -801,8 +778,7 @@ usp_print_ie_bnsh(ie)
  *
  */
 static void
-usp_print_ie_bsdc(ie)
-	struct ie_generic	*ie;
+usp_print_ie_bsdc(struct ie_generic *ie)
 {
 	printf("        Indication:    0x%x\n", ie->ie_bsdc_ind);
 }
@@ -819,8 +795,7 @@ usp_print_ie_bsdc(ie)
  *
  */
 static void
-usp_print_ie_trnt(ie)
-	struct ie_generic	*ie;
+usp_print_ie_trnt(struct ie_generic *ie)
 {
 #ifdef NOTDEF
 	struct ie_generic	ie_trnt_hdr;
@@ -842,8 +817,7 @@ usp_print_ie_trnt(ie)
  *
  */
 static void
-usp_print_ie_eprf(ie)
-	struct ie_generic	*ie;
+usp_print_ie_eprf(struct ie_generic *ie)
 {
 	printf("        Ref type:      0x%x\n",
 			ie->ie_eprf_type);
@@ -863,8 +837,7 @@ usp_print_ie_eprf(ie)
  *
  */
 static void
-usp_print_ie_epst(ie)
-	struct ie_generic	*ie;
+usp_print_ie_epst(struct ie_generic *ie)
 {
 	printf("        Endpt state:   %d\n",
 			ie->ie_epst_state);

@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.11 2005/06/10 22:34:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -247,8 +247,7 @@ ipx_pcbconnect(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 }
 
 void
-ipx_pcbdisconnect(ipxp)
-	struct ipxpcb *ipxp;
+ipx_pcbdisconnect(struct ipxpcb *ipxp)
 {
 
 	ipxp->ipxp_faddr = zeroipx_addr;
@@ -257,8 +256,7 @@ ipx_pcbdisconnect(ipxp)
 }
 
 void
-ipx_pcbdetach(ipxp)
-	struct ipxpcb *ipxp;
+ipx_pcbdetach(struct ipxpcb *ipxp)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
@@ -284,9 +282,7 @@ ipx_setsockaddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 }
 
 void
-ipx_setpeeraddr(ipxp, nam)
-	struct ipxpcb *ipxp;
-	struct sockaddr **nam;
+ipx_setpeeraddr(struct ipxpcb *ipxp, struct sockaddr **nam)
 {
 	struct sockaddr_ipx *sipx, ssipx;
 	
@@ -306,11 +302,8 @@ ipx_setpeeraddr(ipxp, nam)
  * be a parameter list!)
  */
 void
-ipx_pcbnotify(dst, errno, notify, param)
-	struct ipx_addr *dst;
-	int errno;
-	void (*notify)(struct ipxpcb *);
-	long param;
+ipx_pcbnotify(struct ipx_addr *dst, int errno,
+	      void (*notify)(struct ipxpcb *), long param)
 {
 	struct ipxpcb *ipxp, *oinp;
 
@@ -339,8 +332,8 @@ ipx_pcbnotify(dst, errno, notify, param)
  * After a routing change, flush old routing
  * and allocate a (hopefully) better one.
  */
-ipx_rtchange(ipxp)
-	struct ipxpcb *ipxp;
+void
+ipx_rtchange(struct ipxpcb *ipxp)
 {
 	if (ipxp->ipxp_route.ro_rt != NULL) {
 		rtfree(ipxp->ipxp_route.ro_rt);
@@ -355,10 +348,7 @@ ipx_rtchange(ipxp)
 #endif
 
 struct ipxpcb *
-ipx_pcblookup(faddr, lport, wildp)
-	struct ipx_addr *faddr;
-	u_short lport;
-	int wildp;
+ipx_pcblookup(struct ipx_addr *faddr, int lport, int wildp)
 {
 	struct ipxpcb *ipxp, *match = 0;
 	int matchwild = 3, wildcard;

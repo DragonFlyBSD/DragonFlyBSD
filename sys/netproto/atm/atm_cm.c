@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_cm.c,v 1.6 1999/08/28 00:48:34 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.6 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_cm.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -133,11 +133,8 @@ static struct sp_info          atm_connvc_pool = {
  *
  */
 int
-atm_cm_connect(epp, token, ap, copp)
-	Atm_endpoint	*epp;
-	void		*token;
-	Atm_attributes	*ap;
-	Atm_connection	**copp;
+atm_cm_connect(Atm_endpoint *epp, void *token, Atm_attributes *ap,
+	       Atm_connection **copp)
 {
 	Atm_connection	*cop;
 	Atm_connvc	*cvp;
@@ -516,11 +513,8 @@ done:
  *
  */
 int
-atm_cm_listen(epp, token, ap, copp)
-	Atm_endpoint	*epp;
-	void		*token;
-	Atm_attributes	*ap;
-	Atm_connection	**copp;
+atm_cm_listen(Atm_endpoint *epp, void *token, Atm_attributes *ap,
+	      Atm_connection **copp)
 {
 	Atm_connection	*cop;
 	int		err = 0;
@@ -769,12 +763,8 @@ done:
  *
  */
 int
-atm_cm_addllc(epp, token, llc, ecop, copp)
-	Atm_endpoint	*epp;
-	void		*token;
-	struct attr_llc	*llc;
-	Atm_connection	*ecop;
-	Atm_connection	**copp;
+atm_cm_addllc(Atm_endpoint *epp, void *token, struct attr_llc *llc,
+	      Atm_connection *ecop, Atm_connection **copp)
 {
 	Atm_connection	*cop, *cop2;
 	Atm_connvc	*cvp;
@@ -909,10 +899,7 @@ done:
  *
  */
 int
-atm_cm_addparty(cop, id, addr)
-	Atm_connection	*cop;
-	int		id;
-	struct t_atm_sap	*addr;
+atm_cm_addparty(Atm_connection *cop, int id, struct t_atm_sap *addr)
 {
 	return (0);
 }
@@ -932,10 +919,7 @@ atm_cm_addparty(cop, id, addr)
  *
  */
 int
-atm_cm_dropparty(cop, id, cause)
-	Atm_connection	*cop;
-	int		id;
-	struct t_atm_cause	*cause;
+atm_cm_dropparty(Atm_connection *cop, int id, struct t_atm_cause *cause)
 {
 	return (0);
 }
@@ -959,9 +943,7 @@ atm_cm_dropparty(cop, id, cause)
  *
  */
 int
-atm_cm_release(cop, cause)
-	Atm_connection	*cop;
-	struct t_atm_cause	*cause;
+atm_cm_release(Atm_connection *cop, struct t_atm_cause *cause)
 {
 	Atm_connvc	*cvp;
 
@@ -1059,9 +1041,7 @@ atm_cm_release(cop, cause)
  *
  */
 int
-atm_cm_abort(cvp, cause)
-	Atm_connvc	*cvp;
-	struct t_atm_cause	*cause;
+atm_cm_abort(Atm_connvc *cvp, struct t_atm_cause *cause)
 {
 	ATM_DEBUG2("atm_cm_abort: cvp=%p cause=%d\n",
 		cvp, cause->cause_value);
@@ -1130,9 +1110,7 @@ atm_cm_abort(cvp, cause)
  *
  */
 int
-atm_cm_incoming(vcp, ap)
-	struct vccb	*vcp;
-	Atm_attributes	*ap;
+atm_cm_incoming(struct vccb *vcp, Atm_attributes *ap)
 {
 	Atm_connvc	*cvp;
 	int		err;
@@ -1310,8 +1288,7 @@ fail:
  *
  */
 void
-atm_cm_connected(cvp)
-	Atm_connvc	*cvp;
+atm_cm_connected(Atm_connvc *cvp)
 {
 	Atm_connection	*cop, *cop2;
 	KBuffer		*m;
@@ -1432,8 +1409,7 @@ atm_cm_connected(cvp)
  *
  */
 void
-atm_cm_cleared(cvp)
-	Atm_connvc	*cvp;
+atm_cm_cleared(Atm_connvc *cvp)
 {
 	Atm_connection	*cop, *cop2;
 
@@ -1482,8 +1458,7 @@ atm_cm_cleared(cvp)
  *
  */
 static KTimeout_ret
-atm_cm_procinq(arg)
-	void	*arg;
+atm_cm_procinq(void *arg)
 {
 	Atm_connvc	*cvp;
 	int		cnt = 0;
@@ -1544,8 +1519,7 @@ atm_cm_procinq(arg)
  *
  */
 static void
-atm_cm_incall(cvp)
-	Atm_connvc	*cvp;
+atm_cm_incall(Atm_connvc *cvp)
 {
 	Atm_connection	*cop, *lcop, *hcop;
 	Atm_attributes	attr;
@@ -1738,9 +1712,7 @@ fail:
  *
  */
 static int
-atm_cm_accept(cvp, cop)
-	Atm_connvc	*cvp;
-	Atm_connection	*cop;
+atm_cm_accept(Atm_connvc *cvp, Atm_connection *cop)
 {
 	struct stack_list	sl;
 	void		(*upf)(int, void *, int, int);
@@ -1920,9 +1892,7 @@ done:
  *
  */
 Atm_connection *
-atm_cm_match(ap, pcop)
-	Atm_attributes	*ap;
-	Atm_connection	*pcop;
+atm_cm_match(Atm_attributes *ap, Atm_connection *pcop)
 {
 	Atm_connection	*cop;
 	Atm_attributes	*lap;
@@ -2115,8 +2085,7 @@ atm_cm_match(ap, pcop)
  *
  */
 static Atm_connvc *
-atm_cm_share_llc(ap)
-	Atm_attributes	*ap;
+atm_cm_share_llc(Atm_attributes *ap)
 {
 	Atm_connection	*cop;
 	Atm_connvc	*cvp;
@@ -2300,9 +2269,7 @@ atm_cm_share_llc(ap)
  *
  */
 static void
-atm_cm_closeconn(cop, cause)
-	Atm_connection	*cop;
-	struct t_atm_cause	*cause;
+atm_cm_closeconn(Atm_connection *cop, struct t_atm_cause *cause)
 {
 
 	/*
@@ -2396,8 +2363,7 @@ atm_cm_closeconn(cop, cause)
  *
  */
 static void
-atm_cm_closevc(cvp)
-	Atm_connvc	*cvp;
+atm_cm_closevc(Atm_connvc *cvp)
 {
 	int	err;
 
@@ -2544,7 +2510,7 @@ atm_cm_closevc(cvp)
 	 */
 	cvp->cvc_state = CVCS_FREE;
 	if (cvp->cvc_vcc) {
-		(void) (*cvp->cvc_sigmgr->sm_free)(cvp->cvc_vcc);
+		(*cvp->cvc_sigmgr->sm_free)(cvp->cvc_vcc);
 	}
 
 	/*
@@ -2572,8 +2538,7 @@ atm_cm_closevc(cvp)
  *
  */
 static void
-atm_cm_timeout(tip)
-	struct atm_time	*tip;
+atm_cm_timeout(struct atm_time *tip)
 {
 	Atm_connection	*cop, *cop2;
 	Atm_connvc	*cvp;
@@ -2650,10 +2615,7 @@ logerr:
  *
  */
 int
-atm_cm_cpcs_ctl(cmd, cop, arg)
-	int		cmd;
-	Atm_connection	*cop;
-	void		*arg;
+atm_cm_cpcs_ctl(int cmd, Atm_connection *cop, void *arg)
 {
 	Atm_connvc	*cvp;
 	int		err = 0;
@@ -2705,9 +2667,7 @@ done:
  *
  */
 int
-atm_cm_cpcs_data(cop, m)
-	Atm_connection	*cop;
-	KBuffer		*m;
+atm_cm_cpcs_data(Atm_connection *cop, KBuffer *m)
 {
 	Atm_connvc	*cvp;
 	struct attr_llc	*llcp;
@@ -2818,11 +2778,7 @@ done:
  *
  */
 static void
-atm_cm_cpcs_upper(cmd, tok, arg1, arg2)
-	int		cmd;
-	void		*tok;
-	int		arg1;
-	int		arg2;
+atm_cm_cpcs_upper(int cmd, void *tok, int arg1, int arg2)
 {
 	Atm_connection	*cop;
 	Atm_connvc	*cvp = tok;
@@ -2965,10 +2921,7 @@ atm_cm_cpcs_upper(cmd, tok, arg1, arg2)
  *
  */
 int
-atm_cm_saal_ctl(cmd, cop, arg)
-	int		cmd;
-	Atm_connection	*cop;
-	void		*arg;
+atm_cm_saal_ctl(int cmd, Atm_connection *cop, void *arg)
 {
 	Atm_connvc	*cvp;
 	int		err = 0;
@@ -3029,9 +2982,7 @@ done:
  *
  */
 int
-atm_cm_saal_data(cop, m)
-	Atm_connection	*cop;
-	KBuffer		*m;
+atm_cm_saal_data(Atm_connection *cop, KBuffer *m)
 {
 	Atm_connvc	*cvp;
 	int		err;
@@ -3084,11 +3035,7 @@ done:
  *
  */
 static void
-atm_cm_saal_upper(cmd, tok, arg1, arg2)
-	int		cmd;
-	void		*tok;
-	int		arg1;
-	int		arg2;
+atm_cm_saal_upper(int cmd, void *tok, int arg1, int arg2)
 {
 	Atm_connection	*cop;
 	Atm_connvc	*cvp = tok;
@@ -3163,11 +3110,7 @@ atm_cm_saal_upper(cmd, tok, arg1, arg2)
  *
  */
 int
-atm_cm_sscop_ctl(cmd, cop, arg1, arg2)
-	int		cmd;
-	Atm_connection	*cop;
-	void		*arg1;
-	void		*arg2;
+atm_cm_sscop_ctl(int cmd, Atm_connection *cop, void *arg1, void *arg2)
 {
 	Atm_connvc	*cvp;
 	int		err = 0;
@@ -3233,9 +3176,7 @@ done:
  *
  */
 int
-atm_cm_sscop_data(cop, m)
-	Atm_connection	*cop;
-	KBuffer		*m;
+atm_cm_sscop_data(Atm_connection *cop, KBuffer *m)
 {
 	Atm_connvc	*cvp;
 	int		err;
@@ -3288,11 +3229,7 @@ done:
  *
  */
 static void
-atm_cm_sscop_upper(cmd, tok, arg1, arg2)
-	int		cmd;
-	void		*tok;
-	int		arg1;
-	int		arg2;
+atm_cm_sscop_upper(int cmd, void *tok, int arg1, int arg2)
 {
 	Atm_connection	*cop;
 	Atm_connvc	*cvp = tok;
@@ -3383,8 +3320,7 @@ atm_cm_sscop_upper(cmd, tok, arg1, arg2)
  *
  */
 int
-atm_endpoint_register(epp)
-	Atm_endpoint	*epp;
+atm_endpoint_register(Atm_endpoint *epp)
 {
 	crit_enter();
 	/*
@@ -3431,8 +3367,7 @@ atm_endpoint_register(epp)
  *
  */
 int
-atm_endpoint_deregister(epp)
-	Atm_endpoint	*epp;
+atm_endpoint_deregister(Atm_endpoint *epp)
 {
 	crit_enter();
 
@@ -3456,4 +3391,3 @@ atm_endpoint_deregister(epp)
 	crit_exit();
 	return (0);
 }
-

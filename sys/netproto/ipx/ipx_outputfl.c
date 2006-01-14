@@ -34,7 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.7 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.8 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,10 +52,7 @@
 static int ipx_copy_output = 0;
 
 int
-ipx_outputfl(m0, ro, flags)
-	struct mbuf *m0;
-	struct route *ro;
-	int flags;
+ipx_outputfl(struct mbuf *m0, struct route *ro, int flags)
 {
 	struct ipx *ipx = mtod(m0, struct ipx *);
 	struct ifnet *ifp = NULL;
@@ -159,8 +156,7 @@ done:
  * that have ipx configured and isn't in the list yet.
  */
 int
-ipx_output_type20(m)
-	struct mbuf *m;
+ipx_output_type20(struct mbuf *m)
 {
 	struct ipx *ipx;
 	union ipx_net *nbnet;

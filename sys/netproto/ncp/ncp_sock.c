@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.11 2005/06/10 22:43:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
  *
  * Low level socket routines
  */
@@ -98,7 +98,7 @@ ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 	error = EIO;
 	crit_enter();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-		(void) tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
+		tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) &&
 		    so->so_error == 0 /*&& rep &&*/) {
 			so->so_state &= ~SS_ISCONNECTING;
@@ -137,7 +137,8 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 	return (error);
 }
 #endif
-int ncp_sock_recv(struct socket *so, struct mbuf **mp, int *rlen)
+int
+ncp_sock_recv(struct socket *so, struct mbuf **mp, int *rlen)
 {
 	struct uio auio;
 	struct thread *td = curthread; /* XXX */

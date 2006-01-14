@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_util.c,v 1.5 1999/08/29 10:28:10 bde Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_util.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -67,9 +67,7 @@ static struct {
  *
  */
 int
-spans_get_spans_sap(lsap, ssap)
-	Sap_t	lsap;
-	spans_sap	*ssap;
+spans_get_spans_sap(Sap_t lsap, spans_sap *ssap)
 {
 	int i;
 
@@ -103,9 +101,7 @@ spans_get_spans_sap(lsap, ssap)
  *
  */
 int
-spans_get_local_sap(ssap, lsap)
-	spans_sap	ssap;
-	Sap_t	*lsap;
+spans_get_local_sap(spans_sap ssap, Sap_t *lsap)
 {
 	int i;
 
@@ -134,8 +130,7 @@ spans_get_local_sap(ssap, lsap)
  *
  */
 int
-spans_ephemeral_sap(spp)
-	struct spans	*spp;
+spans_ephemeral_sap(struct spans *spp)
 {
 	return(SPANS_SAP_EPHEMERAL);
 }
@@ -154,9 +149,7 @@ spans_ephemeral_sap(spp)
  *
  */
 int
-spans_get_spans_aal(laal, saal)
-	Aal_t		laal;
-	spans_aal	*saal;
+spans_get_spans_aal(Aal_t laal, spans_aal *saal)
 {
 	/*
 	 *
@@ -197,9 +190,7 @@ spans_get_spans_aal(laal, saal)
  *
  */
 int
-spans_get_local_aal(saal, laal)
-	spans_aal	saal;
-	Aal_t		*laal;
+spans_get_local_aal(spans_aal saal, Aal_t *laal)
 {
 	/*
 	 *
@@ -242,10 +233,7 @@ spans_get_local_aal(saal, laal)
  *
  */
 int
-spans_verify_vccb(spp, svp)
-	struct spans		*spp;
-	struct spans_vccb	*svp;
-
+spans_verify_vccb(struct spans *spp, struct spans_vccb *svp)
 {
 	struct spans_vccb	*vcp, *vcnext;
 
@@ -279,11 +267,7 @@ spans_verify_vccb(spp, svp)
  *
  */
 struct spans_vccb *
-spans_find_vpvc(spp, vpi, vci, dir)
-	struct spans	*spp;
-	int		vpi, vci;
-	u_char		dir;
-
+spans_find_vpvc(struct spans *spp, int vpi, int vci, u_char dir)
 {
 	struct spans_vccb	*svp, *svnext;
 
@@ -314,9 +298,7 @@ spans_find_vpvc(spp, vpi, vci, dir)
  *
  */
 struct spans_vccb *
-spans_find_conn(spp, p)
-	struct spans		*spp;
-	struct spans_atm_conn	*p;
+spans_find_conn(struct spans *spp, struct spans_atm_conn *p)
 {
 	struct spans_vccb	*svp, *svnext;
 
@@ -352,8 +334,7 @@ spans_find_conn(spp, p)
  *
  */
 spans_vpvc
-spans_alloc_vpvc(spp)
-	struct spans		*spp;
+spans_alloc_vpvc(struct spans *spp)
 {
 	int	vpi, vci;
 
@@ -406,8 +387,7 @@ spans_alloc_vpvc(spp)
  *
  */
 char *
-spans_addr_print(p)
-	struct spans_addr	*p;
+spans_addr_print(struct spans_addr *p)
 {
 	static char	strbuff[80];
 	union {
@@ -452,8 +432,7 @@ spans_addr_print(p)
  *
  */
 void
-spans_dump_buffer(m)
-	KBuffer		*m;
+spans_dump_buffer(KBuffer *m)
 {
 	int		i;
 	caddr_t		cp;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_vcm.c,v 1.5 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.5 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_vcm.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -79,8 +79,7 @@ static struct t_atm_cause       uniarp_cause = {
  *
  */
 int
-uniarp_pvcopen(ivp)
-	struct ipvcc	*ivp;
+uniarp_pvcopen(struct ipvcc *ivp)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
@@ -120,7 +119,7 @@ uniarp_pvcopen(ivp)
 		 * We don't take no (or maybe) for an answer
 		 */
 		if (ivp->iv_arpconn) {
-			(void) atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
+			atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
 			ivp->iv_arpconn = NULL;
 		}
 		atm_free((caddr_t)uap);
@@ -149,7 +148,7 @@ uniarp_pvcopen(ivp)
 	/*
 	 * Send Inverse ATMARP request
 	 */
-	(void) uniarp_inarp_req(uip, &uap->ua_dstatm, &uap->ua_dstatmsub, ivp);
+	uniarp_inarp_req(uip, &uap->ua_dstatm, &uap->ua_dstatmsub, ivp);
 
 	/*
 	 * Start resend timer 
@@ -181,9 +180,7 @@ uniarp_pvcopen(ivp)
  *
  */
 int
-uniarp_svcout(ivp, dst)
-	struct ipvcc	*ivp;
-	struct in_addr	*dst;
+uniarp_svcout(struct ipvcc *ivp, struct in_addr *dst)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
@@ -284,7 +281,7 @@ uniarp_svcout(ivp, dst)
 	/*
 	 * Issue arp request for this address
 	 */
-	(void) uniarp_arp_req(uip, dst);
+	uniarp_arp_req(uip, dst);
 
 	/*
 	 * Start retry timer
@@ -318,10 +315,7 @@ uniarp_svcout(ivp, dst)
  *
  */
 int
-uniarp_svcin(ivp, dst, dstsub)
-	struct ipvcc	*ivp;
-	Atm_addr	*dst;
-	Atm_addr	*dstsub;
+uniarp_svcin(struct ipvcc *ivp, Atm_addr *dst, Atm_addr *dstsub)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
@@ -465,8 +459,7 @@ uniarp_svcin(ivp, dst, dstsub)
  *
  */
 int
-uniarp_svcactive(ivp)
-	struct ipvcc	*ivp;
+uniarp_svcactive(struct ipvcc *ivp)
 {
 	struct ip_nif	*inp;
 	struct uniip	*uip;
@@ -491,7 +484,7 @@ uniarp_svcactive(ivp)
 		 * We don't take no (or maybe) for an answer
 		 */
 		if (ivp->iv_arpconn) {
-			(void) atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
+			atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
 			ivp->iv_arpconn = NULL;
 		}
 		return (err);
@@ -514,7 +507,7 @@ uniarp_svcactive(ivp)
 		 * for our own address.  To keep everyone happy, we'll go 
 		 * with both and see what works!
 		 */
-		(void) uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
+		uniarp_arp_req(uip, &(IA_SIN(inp->inf_addr)->sin_addr));
 
 		/*
 		 * Start retry timer
@@ -534,7 +527,7 @@ uniarp_svcactive(ivp)
 	 * nice and let the callee know right away who we are.  If we're the
 	 * callee, let's find out asap the caller's IP address.
 	 */
-	(void) uniarp_inarp_req(uip, &uap->ua_dstatm, &uap->ua_dstatmsub, ivp);
+	uniarp_inarp_req(uip, &uap->ua_dstatm, &uap->ua_dstatmsub, ivp);
 
 	/*
 	 * Start retry timer if entry isn't valid yet
@@ -563,8 +556,7 @@ uniarp_svcactive(ivp)
  *
  */
 void
-uniarp_vcclose(ivp)
-	struct ipvcc	*ivp;
+uniarp_vcclose(struct ipvcc *ivp)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
@@ -575,7 +567,7 @@ uniarp_vcclose(ivp)
 	 * Close our CM connection
 	 */
 	if (ivp->iv_arpconn) {
-		(void) atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
+		atm_cm_release(ivp->iv_arpconn, &uniarp_cause);
 		ivp->iv_arpconn = NULL;
 	}
 
@@ -657,8 +649,7 @@ uniarp_vcclose(ivp)
  *
  */
 void
-uniarp_connected(toku)
-	void		*toku;
+uniarp_connected(void *toku)
 {
 
 	/*
@@ -681,9 +672,7 @@ uniarp_connected(toku)
  *
  */
 void
-uniarp_cleared(toku, cause)
-	void		*toku;
-	struct t_atm_cause	*cause;
+uniarp_cleared(void *toku, struct t_atm_cause *cause)
 {
 	struct ipvcc	*ivp = toku;
 

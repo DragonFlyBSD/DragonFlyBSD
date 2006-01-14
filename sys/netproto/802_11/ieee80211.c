@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.13 2004/05/30 17:57:45 phk Exp $
- * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211.c,v 1.4 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/Attic/ieee80211.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -143,7 +143,7 @@ ieee80211_ifattach(struct ifnet *ifp)
 		ic->ic_curmode = IEEE80211_MODE_AUTO;
 	ic->ic_des_chan = IEEE80211_CHAN_ANYC;	/* any channel is ok */
 
-	(void) ieee80211_setmode(ic, ic->ic_curmode);
+	ieee80211_setmode(ic, ic->ic_curmode);
 
 	if (ic->ic_lintval == 0)
 		ic->ic_lintval = 100;		/* default sleep */

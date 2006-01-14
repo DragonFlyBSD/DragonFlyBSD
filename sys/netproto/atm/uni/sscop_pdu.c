@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_pdu.c,v 1.5 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_pdu.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -69,9 +69,7 @@ static int		sscop_recv_locate (struct sscop *, sscop_seq,
  *
  */
 int
-sscop_send_bgn(sop, source)
-	struct sscop	*sop;
-	int		source;
+sscop_send_bgn(struct sscop *sop, int source)
 {
 	KBuffer		*m;
 	struct bgn_pdu	*bp;
@@ -133,8 +131,7 @@ sscop_send_bgn(sop, source)
  *
  */
 int
-sscop_send_bgak(sop)
-	struct sscop	*sop;
+sscop_send_bgak(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct bgak_pdu	*bp;
@@ -191,8 +188,7 @@ sscop_send_bgak(sop)
  *
  */
 int
-sscop_send_bgrej(sop)
-	struct sscop	*sop;
+sscop_send_bgrej(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct bgrej_pdu	*bp;
@@ -249,9 +245,7 @@ sscop_send_bgrej(sop)
  *
  */
 int
-sscop_send_end(sop, source)
-	struct sscop	*sop;
-	int		source;
+sscop_send_end(struct sscop *sop, int source)
 {
 	KBuffer		*m;
 	struct end_pdu	*ep;
@@ -314,8 +308,7 @@ sscop_send_end(sop, source)
  *
  */
 int
-sscop_send_endak(sop)
-	struct sscop	*sop;
+sscop_send_endak(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct endak_q2110_pdu	*e2p;
@@ -386,8 +379,7 @@ sscop_send_endak(sop)
  *
  */
 int
-sscop_send_rs(sop)
-	struct sscop	*sop;
+sscop_send_rs(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct rs_pdu	*rp;
@@ -448,8 +440,7 @@ sscop_send_rs(sop)
  *
  */
 int
-sscop_send_rsak(sop)
-	struct sscop	*sop;
+sscop_send_rsak(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct rsak_q2110_pdu	*r2p;
@@ -519,8 +510,7 @@ sscop_send_rsak(sop)
  *
  */
 int
-sscop_send_er(sop)
-	struct sscop	*sop;
+sscop_send_er(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct er_pdu	*ep;
@@ -576,8 +566,7 @@ sscop_send_er(sop)
  *
  */
 int
-sscop_send_erak(sop)
-	struct sscop	*sop;
+sscop_send_erak(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct erak_pdu	*ep;
@@ -633,8 +622,7 @@ sscop_send_erak(sop)
  *
  */
 int
-sscop_send_poll(sop)
-	struct sscop	*sop;
+sscop_send_poll(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct poll_pdu	*pp;
@@ -687,8 +675,7 @@ sscop_send_poll(sop)
  *
  */
 static KBuffer *
-sscop_stat_init(sop)
-	struct sscop	*sop;
+sscop_stat_init(struct sscop *sop)
 {
 	KBuffer		*m;
 
@@ -726,9 +713,7 @@ sscop_stat_init(sop)
  *
  */
 static KBuffer *
-sscop_stat_add(elem, m)
-	sscop_seq	elem;
-	KBuffer		*m;
+sscop_stat_add(sscop_seq elem, KBuffer *m)
 {
 	KBuffer		*n;
 	sscop_seq	*sp;
@@ -780,11 +765,7 @@ sscop_stat_add(elem, m)
  *
  */
 static int
-sscop_stat_end(sop, nps, head, m)
-	struct sscop	*sop;
-	sscop_seq	nps;
-	KBuffer		*head;
-	KBuffer		*m;
+sscop_stat_end(struct sscop *sop, sscop_seq nps, KBuffer *head, KBuffer *m)
 {
 	struct stat_pdu	*sp;
 	KBuffer		*n;
@@ -870,10 +851,7 @@ sscop_stat_end(sop, nps, head, m)
  *
  */
 static int
-sscop_recv_locate(sop, seq, currp)
-	struct sscop	*sop;
-	sscop_seq	seq;
-	struct pdu_hdr	**currp;
+sscop_recv_locate(struct sscop *sop, sscop_seq seq, struct pdu_hdr **currp)
 {
 	sscop_seq	cs;
 
@@ -928,9 +906,7 @@ sscop_recv_locate(sop, seq, currp)
  *
  */
 int
-sscop_send_stat(sop, nps)
-	struct sscop	*sop;
-	sscop_seq	nps;
+sscop_send_stat(struct sscop *sop, sscop_seq nps)
 {
 	KBuffer		*head, *curr, *n;
 	struct pdu_hdr	*rq = sop->so_recv_hd;
@@ -1067,9 +1043,7 @@ nobufs:
  *
  */
 int
-sscop_send_ustat(sop, ns)
-	struct sscop	*sop;
-	sscop_seq	ns;
+sscop_send_ustat(struct sscop *sop, sscop_seq ns)
 {
 	KBuffer		*m;
 	struct ustat_pdu	*up;
@@ -1128,9 +1102,7 @@ sscop_send_ustat(sop, ns)
  *
  */
 int
-sscop_send_ud(sop, m)
-	struct sscop	*sop;
-	KBuffer		*m;
+sscop_send_ud(struct sscop *sop, KBuffer *m)
 {
 	KBuffer		*ml, *n;
 	int		len = 0, err;
@@ -1217,10 +1189,7 @@ sscop_send_ud(sop, m)
  *
  */
 void
-sscop_pdu_print(sop, m, msg)
-	struct sscop	*sop;
-	KBuffer		*m;
-	char		*msg;
+sscop_pdu_print(struct sscop *sop, KBuffer *m, char *msg)
 {
 	char		buf[128];
 	struct vccb	*vcp;

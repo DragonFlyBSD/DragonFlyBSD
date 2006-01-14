@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_signal.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.5 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_signal.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -60,8 +60,7 @@ static struct stack_defn	*atm_stack_head = NULL;
  *
  */
 int
-atm_sigmgr_register(smp)
-	struct sigmgr	*smp;
+atm_sigmgr_register(struct sigmgr *smp)
 {
 	struct sigmgr	*smp2;
 
@@ -111,8 +110,7 @@ atm_sigmgr_register(smp)
  *
  */
 int
-atm_sigmgr_deregister(smp)
-	struct sigmgr	*smp;
+atm_sigmgr_deregister(struct sigmgr *smp)
 {
 	int		found;
 
@@ -151,9 +149,7 @@ atm_sigmgr_deregister(smp)
  *
  */
 int
-atm_sigmgr_attach(pip, proto)
-	struct atm_pif	*pip;
-	u_char		proto;
+atm_sigmgr_attach(struct atm_pif *pip, u_char proto)
 {
 	struct atm_pif	*tp;
 	struct sigmgr	*smp;
@@ -220,7 +216,7 @@ atm_sigmgr_attach(pip, proto)
 			/*
 			 * Someone's unhappy, so back all this out
 			 */
-			(void) atm_sigmgr_detach(pip);
+			atm_sigmgr_detach(pip);
 		}
 	}
 
@@ -245,8 +241,7 @@ atm_sigmgr_attach(pip, proto)
  *
  */
 int
-atm_sigmgr_detach(pip)
-	struct atm_pif	*pip;
+atm_sigmgr_detach(struct atm_pif *pip)
 {
 	struct atm_pif	*tp;
 	struct atm_nif	*nip;
@@ -277,7 +272,7 @@ atm_sigmgr_detach(pip)
 	 */
 	for (nip = pip->pif_nif; nip; nip = nip->nif_pnext) {
 		for (ncp = atm_netconv_head; ncp; ncp = ncp->ncm_next) {
-			(void) (*ncp->ncm_stat)(NCM_SIGDETACH, nip, 0);
+			(*ncp->ncm_stat)(NCM_SIGDETACH, nip, 0);
 		}
 	}
 
@@ -313,8 +308,7 @@ atm_sigmgr_detach(pip)
  *
  */
 int
-atm_stack_register(sdp)
-	struct stack_defn	*sdp;
+atm_stack_register(struct stack_defn *sdp)
 {
 	struct stack_defn	*tdp;
 
@@ -364,8 +358,7 @@ atm_stack_register(sdp)
  *
  */
 int
-atm_stack_deregister(sdp)
-	struct stack_defn	*sdp;
+atm_stack_deregister(struct stack_defn *sdp)
 {
 	int	found;
 
@@ -411,10 +404,8 @@ atm_stack_deregister(sdp)
  *
  */
 int
-atm_create_stack(cvp, tlp, upf)
-	Atm_connvc		*cvp;
-	struct stack_list	*tlp;
-	void			(*upf)(int, void *, int, int);
+atm_create_stack(Atm_connvc *cvp, struct stack_list *tlp,
+		 void (*upf)(int, void *, int, int))
 {
 	struct stack_defn	*sdp, usd;
 	struct stack_inst	svs;

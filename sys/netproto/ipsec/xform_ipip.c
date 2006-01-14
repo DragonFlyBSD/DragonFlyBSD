@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.12 2005/08/15 16:46:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.13 2006/01/14 13:36:40 swildner Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -678,10 +678,10 @@ ipe4_attach(void)
 	xform_register(&ipe4_xformsw);
 	/* attach to encapsulation framework */
 	/* XXX save return cookie for detach on module remove */
-	(void) encap_attach_func(AF_INET, -1,
+	encap_attach_func(AF_INET, -1,
 		ipe4_encapcheck, (struct protosw*) &ipe4_protosw[0], NULL);
 #ifdef INET6
-	(void) encap_attach_func(AF_INET6, -1,
+	encap_attach_func(AF_INET6, -1,
 		ipe4_encapcheck, (struct protosw*) &ipe4_protosw[1], NULL);
 #endif
 }

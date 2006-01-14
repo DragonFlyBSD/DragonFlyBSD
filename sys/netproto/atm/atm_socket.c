@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -76,11 +76,7 @@ static struct t_atm_cause	atm_sock_cause = {
  *
  */
 int
-atm_sock_attach(so, send, recv, rl)
-	struct socket	*so;
-	u_long		send;
-	u_long		recv;
-	struct rlimit	*rl;
+atm_sock_attach(struct socket *so, u_long send, u_long recv, struct rlimit *rl)
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 	int		err;
@@ -133,8 +129,7 @@ atm_sock_attach(so, send, recv, rl)
  *
  */
 int
-atm_sock_detach(so)
-	struct socket	*so;
+atm_sock_detach(struct socket *so)
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 
@@ -148,7 +143,7 @@ atm_sock_detach(so)
 	 * Terminate any (possibly pending) connection
 	 */
 	if (atp->atp_conn) {
-		(void) atm_sock_disconnect(so);
+		atm_sock_disconnect(so);
 	}
 
 	/*
@@ -178,9 +173,7 @@ atm_sock_detach(so)
  *
  */
 int
-atm_sock_bind(so, addr)
-	struct socket	*so;
-	struct sockaddr	*addr;
+atm_sock_bind(struct socket *so, struct sockaddr *addr)
 {
 	Atm_pcb			*atp = sotoatmpcb(so);
 	Atm_attributes		attr;
@@ -314,9 +307,7 @@ atm_sock_bind(so, addr)
  *
  */
 int
-atm_sock_listen(so, epp)
-	struct socket	*so;
-	Atm_endpoint	*epp;
+atm_sock_listen(struct socket *so, Atm_endpoint *epp)
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 
@@ -349,10 +340,7 @@ atm_sock_listen(so, epp)
  *
  */
 int
-atm_sock_connect(so, addr, epp)
-	struct socket	*so;
-	struct sockaddr	*addr;
-	Atm_endpoint	*epp;
+atm_sock_connect(struct socket *so, struct sockaddr *addr, Atm_endpoint *epp)
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 	struct sockaddr_atm	*satm;
@@ -509,8 +497,7 @@ atm_sock_connect(so, addr, epp)
  *
  */
 int
-atm_sock_disconnect(so)
-	struct socket	*so;
+atm_sock_disconnect(struct socket *so)
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 	struct t_atm_cause	*cause;
@@ -559,9 +546,7 @@ atm_sock_disconnect(so)
  *
  */
 int
-atm_sock_sockaddr(so, addr)
-	struct socket	*so;
-	struct sockaddr	**addr;
+atm_sock_sockaddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_atm	*satm;
 	struct t_atm_sap_addr	*saddr;
@@ -617,9 +602,7 @@ atm_sock_sockaddr(so, addr)
  *
  */
 int
-atm_sock_peeraddr(so, addr)
-	struct socket	*so;
-	struct sockaddr	**addr;
+atm_sock_peeraddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_atm	*satm;
 	struct t_atm_sap_addr	*saddr;
@@ -686,10 +669,7 @@ atm_sock_peeraddr(so, addr)
  *
  */
 int
-atm_sock_setopt(so, sopt, atp)
-	struct socket	*so;
-	struct sockopt	*sopt;
-	Atm_pcb		*atp;
+atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 {
 	int	err = 0;
 	union {
@@ -1053,10 +1033,7 @@ atm_sock_setopt(so, sopt, atp)
  *
  */
 int
-atm_sock_getopt(so, sopt, atp)
-	struct socket	*so;
-	struct sockopt	*sopt;
-	Atm_pcb		*atp;
+atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 {
 	Atm_attributes	*ap;
 
@@ -1199,7 +1176,7 @@ atm_sock_getopt(so, sopt, atp)
 			struct ifnet		*ifp;
 
 			ifp = &ap->nif->nif_if;
-			(void) snprintf(netif.net_intf, sizeof(netif.net_intf),
+			snprintf(netif.net_intf, sizeof(netif.net_intf),
 			    "%s", ifp->if_xname);
 			return (sooptcopyout(sopt, &netif,
 					sizeof netif));
@@ -1236,8 +1213,7 @@ atm_sock_getopt(so, sopt, atp)
  *
  */
 void
-atm_sock_connected(toku)
-	void		*toku;
+atm_sock_connected(void *toku)
 {
 	Atm_pcb		*atp = (Atm_pcb *)toku;
 
@@ -1261,9 +1237,7 @@ atm_sock_connected(toku)
  *
  */
 void
-atm_sock_cleared(toku, cause)
-	void		*toku;
-	struct t_atm_cause	*cause;
+atm_sock_cleared(void *toku, struct t_atm_cause *cause)
 {
 	Atm_pcb		*atp = (Atm_pcb *)toku;
 	struct socket	*so;
@@ -1297,7 +1271,7 @@ atm_sock_cleared(toku, cause)
 	 * Cleanup failed incoming connection setup
 	 */
 	if (so->so_state & SS_NOFDREF) {
-		(void) atm_sock_detach(so);
+		atm_sock_detach(so);
 	}
 }
 

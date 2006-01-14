@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_sigaa.c,v 1.4 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigaa.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigaa.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -54,10 +54,7 @@
  *
  */
 void
-sscop_estreq_idle(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_estreq_idle(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -84,7 +81,7 @@ sscop_estreq_idle(sop, arg1, arg2)
 	 */
 	sop->so_connctl = 1;
 	SEQ_INCR(sop->so_sendconn, 1);
-	(void) sscop_send_bgn(sop, SSCOP_SOURCE_USER);
+	sscop_send_bgn(sop, SSCOP_SOURCE_USER);
 
 	/*
 	 * Reset transmitter state
@@ -121,10 +118,7 @@ sscop_estreq_idle(sop, arg1, arg2)
  *
  */
 void
-sscop_estrsp_inconn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_estrsp_inconn(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -162,7 +156,7 @@ sscop_estrsp_inconn(sop, arg1, arg2)
 	/*
 	 * Send BGAK PDU
 	 */
-	(void) sscop_send_bgak(sop);
+	sscop_send_bgak(sop);
 
 	/*
 	 * Start polling timer
@@ -202,10 +196,7 @@ sscop_estrsp_inconn(sop, arg1, arg2)
  *
  */
 void
-sscop_relreq_outconn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_relreq_outconn(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -228,7 +219,7 @@ sscop_relreq_outconn(sop, arg1, arg2)
 	 * Send first END PDU
 	 */
 	sop->so_connctl = 1;
-	(void) sscop_send_end(sop, SSCOP_SOURCE_USER);
+	sscop_send_end(sop, SSCOP_SOURCE_USER);
 
 	if (sop->so_vers == SSCOP_VERS_QSAAL)
 		/*
@@ -263,10 +254,7 @@ sscop_relreq_outconn(sop, arg1, arg2)
  *
  */
 void
-sscop_relreq_inconn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_relreq_inconn(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -278,7 +266,7 @@ sscop_relreq_inconn(sop, arg1, arg2)
 	/*
 	 * Return a BGREJ PDU
 	 */
-	(void) sscop_send_bgrej(sop);
+	sscop_send_bgrej(sop);
 
 	/*
 	 * Back to IDLE state
@@ -302,10 +290,7 @@ sscop_relreq_inconn(sop, arg1, arg2)
  *
  */
 void
-sscop_relreq_ready(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_relreq_ready(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -326,7 +311,7 @@ sscop_relreq_ready(sop, arg1, arg2)
 	 * Send first END PDU
 	 */
 	sop->so_connctl = 1;
-	(void) sscop_send_end(sop, SSCOP_SOURCE_USER);
+	sscop_send_end(sop, SSCOP_SOURCE_USER);
 
 	if (sop->so_vers == SSCOP_VERS_Q2110) {
 		/*
@@ -370,10 +355,7 @@ sscop_relreq_ready(sop, arg1, arg2)
  *
  */
 void
-sscop_datreq_ready(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_datreq_ready(struct sscop *sop, int arg1, int arg2)
 {
 	KBuffer		*m = (KBuffer *)arg1;
 
@@ -417,10 +399,7 @@ sscop_datreq_ready(sop, arg1, arg2)
  *
  */
 void
-sscop_udtreq_all(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_udtreq_all(struct sscop *sop, int arg1, int arg2)
 {
 	KBuffer		*m = (KBuffer *)arg1;
 
@@ -435,7 +414,7 @@ sscop_udtreq_all(sop, arg1, arg2)
 	/*
 	 * Send the data in a UD PDU
 	 */
-	(void) sscop_send_ud(sop, m);
+	sscop_send_ud(sop, m);
 	
 	return;
 }

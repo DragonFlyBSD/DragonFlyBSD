@@ -32,7 +32,7 @@
  *
  *	@(#)spp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_debug.c,v 1.10 1999/08/28 00:49:52 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.5 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.6 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -69,12 +69,7 @@ int      spp_debx;
  * spp debug routines
  */
 void
-spp_trace(act, ostate, sp, si, req)
-	short act;
-	u_char ostate;
-	struct sppcb *sp;
-	struct spidp *si;
-	int req;
+spp_trace(short act, u_char ostate, struct sppcb *sp, struct spidp *si, int req)
 {
 #ifdef INET
 #ifdef TCPDEBUG

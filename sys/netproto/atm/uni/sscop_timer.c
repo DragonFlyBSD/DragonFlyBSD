@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_timer.c,v 1.6 2000/01/17 20:49:53 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_timer.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_timer.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -77,8 +77,7 @@ static void	(*sscop_expired[SSCOP_T_NUM]) (struct sscop *) = {
  *
  */
 void
-sscop_timeout(tip)
-	struct atm_time	*tip;
+sscop_timeout(struct atm_time *tip)
 {
 	struct sscop	*sop, **sprev;
 	int		i;
@@ -153,8 +152,7 @@ sscop_timeout(tip)
  *
  */
 static void
-sscop_poll_expire(sop)
-	struct sscop	*sop;
+sscop_poll_expire(struct sscop *sop)
 {
 
 	/*
@@ -172,7 +170,7 @@ sscop_poll_expire(sop)
 	 * Send next poll along its way
 	 */
 	SEQ_INCR(sop->so_pollsend, 1);
-	(void) sscop_send_poll(sop);
+	sscop_send_poll(sop);
 
 	/*
 	 * Reset data counter for this poll cycle
@@ -199,8 +197,7 @@ sscop_poll_expire(sop)
  *
  */
 static void
-sscop_idle_expire(sop)
-	struct sscop	*sop;
+sscop_idle_expire(struct sscop *sop)
 {
 
 	/*
@@ -216,7 +213,7 @@ sscop_idle_expire(sop)
 	 * Send next poll along its way
 	 */
 	SEQ_INCR(sop->so_pollsend, 1);
-	(void) sscop_send_poll(sop);
+	sscop_send_poll(sop);
 
 	/*
 	 * Reset data counter for this poll cycle
@@ -248,8 +245,7 @@ sscop_idle_expire(sop)
  *
  */
 static void
-sscop_noresponse_expire(sop)
-	struct sscop	*sop;
+sscop_noresponse_expire(struct sscop *sop)
 {
 	int		err;
 
@@ -288,7 +284,7 @@ sscop_noresponse_expire(sop)
 	/*
 	 * Notify peer of termination
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Report peer's failure
@@ -326,8 +322,7 @@ sscop_noresponse_expire(sop)
  *
  */
 static void
-sscop_cc_expire(sop)
-	struct sscop	*sop;
+sscop_cc_expire(struct sscop *sop)
 {
 	int		err;
 
@@ -346,7 +341,7 @@ sscop_cc_expire(sop)
 			 * Send another BGN PDU
 			 */
 			sop->so_connctl++;
-			(void) sscop_send_bgn(sop, SSCOP_SOURCE_USER);
+			sscop_send_bgn(sop, SSCOP_SOURCE_USER);
 
 			/*
 			 * Restart retransmit timer
@@ -372,7 +367,7 @@ sscop_cc_expire(sop)
 			/*
 			 * Notify peer of termination
 			 */
-			(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+			sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 			/*
 			 * Report establishment failure
@@ -401,7 +396,7 @@ sscop_cc_expire(sop)
 			 * Send another END PDU
 			 */
 			sop->so_connctl++;
-			(void) sscop_send_end(sop, SSCOP_SOURCE_LAST);
+			sscop_send_end(sop, SSCOP_SOURCE_LAST);
 
 			/*
 			 * Restart retransmit timer
@@ -446,7 +441,7 @@ rexmitrs:
 			 * Send another RS PDU
 			 */
 			sop->so_connctl++;
-			(void) sscop_send_rs(sop);
+			sscop_send_rs(sop);
 
 			/*
 			 * Restart retransmit timer
@@ -472,7 +467,7 @@ rexmitrs:
 			/*
 			 * Notify peer of termination
 			 */
-			(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+			sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 			/*
 			 * Report establishment failure
@@ -516,7 +511,7 @@ rexmitrs:
 			 * Send another ER PDU
 			 */
 			sop->so_connctl++;
-			(void) sscop_send_er(sop);
+			sscop_send_er(sop);
 
 			/*
 			 * Restart retransmit timer
@@ -542,7 +537,7 @@ rexmitrs:
 			/*
 			 * Notify peer of termination
 			 */
-			(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+			sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 			/*
 			 * Report establishment failure

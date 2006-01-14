@@ -32,7 +32,7 @@
  *
  *	@(#)ns_cksum.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_cksum.c,v 1.7 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_cksum.c,v 1.4 2004/06/02 14:19:11 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_cksum.c,v 1.5 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -51,9 +51,7 @@
 #define FOLD(x) {l_util.l = (x); (x) = l_util.s[0] + l_util.s[1]; ADDCARRY(x);}
 
 u_short
-ns_cksum(m, len)
-	struct mbuf *m;
-	int len;
+ns_cksum(struct mbuf *m, int len)
 {
 	u_short *w;
 	int sum = 0;

@@ -32,7 +32,7 @@
  * Character conversion routines
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.c,v 1.4 2000/01/29 02:10:37 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_nls.c,v 1.4 2006/01/14 13:36:40 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -187,14 +187,18 @@ struct ncp_nlstables ncp_defnls = {
 	ncp_u2l, ncp_l2u, ncp_n2u, ncp_u2n, 0
 };
 
-void ncp_str_upper(char *name) {
+void
+ncp_str_upper(char *name)
+{
 	while (*name) {
 		*name = ncp_defnls.to_upper[(u_char)*name];
 		name++;
 	}
 }
 
-void ncp_str_lower(char *name) {
+void
+ncp_str_lower(char *name)
+{
 	while (*name) {
 		*name = ncp_defnls.to_lower[(u_char)*name];
 		name++;
@@ -205,7 +209,8 @@ void ncp_str_lower(char *name) {
  * Check if pathname is valid under given conditions.
  */
 int
-ncp_pathcheck(char *s, int len, struct ncp_nlstables *nt, int strict) {
+ncp_pathcheck(char *s, int len, struct ncp_nlstables *nt, int strict)
+{
 	u_char *tbl = NULL,  sc;
 	int opt = nt->opt;
 
@@ -238,7 +243,8 @@ ncp_pathcheck(char *s, int len, struct ncp_nlstables *nt, int strict) {
  * leave it as is.
  */
 void
-ncp_pathcopy(char *src, char *dst, int len, struct ncp_nlstables *nt) {
+ncp_pathcopy(char *src, char *dst, int len, struct ncp_nlstables *nt)
+{
 	int	donls;
 	u_char	c;
 /*	char *d = dst, *s = src;*/
@@ -272,7 +278,8 @@ ncp_pathcopy(char *src, char *dst, int len, struct ncp_nlstables *nt) {
  * Convert NetWare filename to Unix with optional conversions
  */
 void
-ncp_path2unix(char *src, char *dst, int len, struct ncp_nlstables *nt) {
+ncp_path2unix(char *src, char *dst, int len, struct ncp_nlstables *nt)
+{
 	int	donls;
 	u_char	c, *tbl;
 /*	char *d = dst, *s = src;*/

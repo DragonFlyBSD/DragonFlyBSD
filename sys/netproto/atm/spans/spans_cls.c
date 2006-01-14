@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_cls.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.6 2005/06/02 22:37:50 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_cls.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -226,7 +226,7 @@ static struct t_atm_cause	spanscls_cause = {
  *
  */
 int
-spanscls_start()
+spanscls_start(void)
 {
 	int	err;
 
@@ -263,7 +263,7 @@ spanscls_start()
  *
  */
 void
-spanscls_stop()
+spanscls_stop(void)
 {
 	crit_enter();
 
@@ -283,7 +283,7 @@ spanscls_stop()
 	/*
 	 * De-register ourselves
 	 */
-	(void) atm_endpoint_deregister(&spanscls_endpt);
+	atm_endpoint_deregister(&spanscls_endpt);
 
 	/*
 	 * Free our storage pools
@@ -309,8 +309,7 @@ spanscls_stop()
  *
  */
 int
-spanscls_attach(spp)
-	struct spans	*spp;
+spanscls_attach(struct spans *spp)
 {
 	struct spanscls	*clp;
 	Atm_addr_pvc	*pvcp;
@@ -381,8 +380,7 @@ spanscls_attach(spp)
  *
  */
 void
-spanscls_detach(spp)
-	struct spans	*spp;
+spanscls_detach(struct spans *spp)
 {
 	struct spanscls	*clp;
 
@@ -432,8 +430,7 @@ spanscls_detach(spp)
  *
  */
 static int
-spanscls_ipact(inp)
-	struct ip_nif	*inp;
+spanscls_ipact(struct ip_nif *inp)
 {
 	struct spans		*spp;
 	struct spanscls		*clp;
@@ -482,8 +479,7 @@ spanscls_ipact(inp)
  *
  */
 static int
-spanscls_ipdact(inp)
-	struct ip_nif	*inp;
+spanscls_ipdact(struct ip_nif *inp)
 {
 	struct spanscls		*clp;
 
@@ -522,9 +518,7 @@ spanscls_ipdact(inp)
  *
  */
 static int
-spanscls_bcast_output(inp, m)
-	struct ip_nif	*inp;
-	KBuffer		*m;
+spanscls_bcast_output(struct ip_nif *inp, KBuffer *m)
 {
 	struct spans		*spp;
 	struct spanscls		*clp;
@@ -619,9 +613,7 @@ spanscls_bcast_output(inp, m)
  *
  */
 static void
-spanscls_cpcs_data(tok, m)
-	void		*tok;
-	KBuffer		*m;
+spanscls_cpcs_data(void *tok, KBuffer *m)
 {
 	struct spanscls	*clp = tok;
 	struct spans	*spp = clp->cls_spans;
@@ -699,7 +691,7 @@ spanscls_cpcs_data(tok, m)
 		 * Packet is ready for input to IP
 		 */
 		if ((inp = clp->cls_ipnif) != NULL)
-			(void) (*inp->inf_ipinput)(inp, m);
+			(*inp->inf_ipinput)(inp, m);
 		else
 			KB_FREEALL(m);
 		break;
@@ -731,9 +723,7 @@ spanscls_cpcs_data(tok, m)
  *
  */
 void
-spanscls_closevc(clp, cause)
-	struct spanscls	*clp;
-	struct t_atm_cause	*cause;
+spanscls_closevc(struct spanscls *clp, struct t_atm_cause *cause)
 {
 	int	err;
 
@@ -763,8 +753,7 @@ spanscls_closevc(clp, cause)
  *
  */
 static void
-spanscls_connected(toku)
-	void		*toku;
+spanscls_connected(void *toku)
 {
 	/*
 	 * We should never get one of these
@@ -785,9 +774,7 @@ spanscls_connected(toku)
  *
  */
 static void
-spanscls_cleared(toku, cause)
-	void		*toku;
-	struct t_atm_cause	*cause;
+spanscls_cleared(void *toku, struct t_atm_cause *cause)
 {
 	struct spanscls	*clp = (struct spanscls *)toku;
 
@@ -810,8 +797,7 @@ spanscls_cleared(toku, cause)
  *
  */
 static caddr_t
-spanscls_getname(tok)
-	void		*tok;
+spanscls_getname(void *tok)
 {
 	return ("SPANSCLS");
 }
@@ -830,10 +816,7 @@ spanscls_getname(tok)
  *
  */
 static void
-spanscls_pdu_print(clp, m, msg)
-	struct spanscls	*clp;
-	KBuffer		*m;
-	char		*msg;
+spanscls_pdu_print(struct spanscls *clp, KBuffer *m, char *msg)
 {
 	char		buf[128];
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_timer.c,v 1.4 2000/01/17 20:49:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_timer.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_timer.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -63,8 +63,7 @@ static void	uniarp_pvc_oldage (struct uniarp *);
  *
  */
 void
-uniarp_timeout(tip)
-	struct atm_time	*tip;
+uniarp_timeout(struct atm_time *tip)
 {
 	struct uniip	*uip;
 	struct uniarp	*uap;
@@ -91,7 +90,7 @@ uniarp_timeout(tip)
 		for (ivp = uap->ua_ivp; ivp; ivp = ivp->iv_arpnext) {
 			if (ivp->iv_state != IPVCC_ACTIVE)
 				continue;
-			(void) uniarp_inarp_req(uip, &uap->ua_dstatm, 
+			uniarp_inarp_req(uip, &uap->ua_dstatm, 
 				&uap->ua_dstatmsub, ivp);
 		}
 
@@ -106,7 +105,7 @@ uniarp_timeout(tip)
 		 * (if it's up at the moment)
 		 */
 		if (uip->uip_arpstate == UIAS_CLIENT_ACTIVE)
-			(void) uniarp_arp_req(uip, &uap->ua_dstip);
+			uniarp_arp_req(uip, &uap->ua_dstip);
 
 		/*
 		 * Restart retry timer
@@ -133,8 +132,7 @@ uniarp_timeout(tip)
  *
  */
 static void
-uniarp_svc_oldage(uap)
-	struct uniarp	*uap;
+uniarp_svc_oldage(struct uniarp *uap)
 {
 	struct ipvcc	*ivp, *inext;
 	struct uniip	*uip = uap->ua_intf;
@@ -180,7 +178,7 @@ uniarp_svc_oldage(uap)
 			 * If we are a client (and the server VCC is active),
 			 * then we'll ask the server for a refresh
 			 */ 
-			(void) uniarp_arp_req(uip, &uap->ua_dstip);
+			uniarp_arp_req(uip, &uap->ua_dstip);
 		} else {
 			/*
 			 * Otherwise, solicit the each active VCC peer with 
@@ -189,7 +187,7 @@ uniarp_svc_oldage(uap)
 			for (ivp = uap->ua_ivp; ivp; ivp = ivp->iv_arpnext) {
 				if (ivp->iv_state != IPVCC_ACTIVE)
 					continue;
-				(void) uniarp_inarp_req(uip, &uap->ua_dstatm,
+				uniarp_inarp_req(uip, &uap->ua_dstatm,
 					&uap->ua_dstatmsub, ivp);
 			}
 		}
@@ -222,8 +220,7 @@ uniarp_svc_oldage(uap)
  *
  */
 static void
-uniarp_pvc_oldage(uap)
-	struct uniarp	*uap;
+uniarp_pvc_oldage(struct uniarp *uap)
 {
 	struct ipvcc	*ivp = uap->ua_ivp;
 
@@ -239,7 +236,7 @@ uniarp_pvc_oldage(uap)
 	/*
 	 * Solicit peer with Inverse ATMARP
 	 */
-	(void) uniarp_inarp_req(uap->ua_intf, &uap->ua_dstatm,
+	uniarp_inarp_req(uap->ua_intf, &uap->ua_dstatm,
 			&uap->ua_dstatmsub, ivp);
 
 	/*
@@ -271,8 +268,7 @@ uniarp_pvc_oldage(uap)
  *
  */
 void
-uniarp_aging(tip)
-	struct atm_time	*tip;
+uniarp_aging(struct atm_time *tip)
 {
 	struct uniarp	*uap, *unext;
 	int		i;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_proto.c,v 1.5 2000/01/17 20:49:57 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_proto.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_proto.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -56,8 +56,7 @@
  *
  */
 void
-unisig_timer(tip)
-	struct atm_time	*tip;
+unisig_timer(struct atm_time *tip)
 {
 	struct unisig	*usp;
 
@@ -73,7 +72,7 @@ unisig_timer(tip)
 	/*
 	 * Pass the timeout to the signalling manager state machine
 	 */
-	(void) unisig_sigmgr_state(usp,
+	unisig_sigmgr_state(usp,
 			UNISIG_SIGMGR_TIMEOUT,
 			(KBuffer *) 0);
 }
@@ -95,8 +94,7 @@ unisig_timer(tip)
  *
  */
 void
-unisig_vctimer(tip)
-	struct atm_time	*tip;
+unisig_vctimer(struct atm_time *tip)
 {
 	struct unisig		*usp;
 	struct unisig_vccb	*uvp;
@@ -118,13 +116,13 @@ unisig_vctimer(tip)
 		/*
 		 * If we're aborting, this is an ABORT call
 		 */
-		(void) unisig_vc_state(usp, uvp, UNI_VC_ABORT_CALL,
+		unisig_vc_state(usp, uvp, UNI_VC_ABORT_CALL,
 				(struct unisig_msg *) 0);
 	} else {
 		/*
 		 * If we're not aborting, it's a timeout
 		 */
-		(void) unisig_vc_state(usp, uvp, UNI_VC_TIMEOUT,
+		unisig_vc_state(usp, uvp, UNI_VC_TIMEOUT,
 				(struct unisig_msg *) 0);
 	}
 }
@@ -147,10 +145,7 @@ unisig_vctimer(tip)
  *
  */
 void
-unisig_saal_ctl(cmd, tok, a1)
-	int		cmd;
-	void		*tok;
-	void		*a1;
+unisig_saal_ctl(int cmd, void *tok, void *a1)
 {
 	struct unisig	*usp = tok;
 
@@ -163,25 +158,25 @@ unisig_saal_ctl(cmd, tok, a1)
 	switch (cmd) {
 
 	case SSCF_UNI_ESTABLISH_IND:
-		(void) unisig_sigmgr_state(usp,
+		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_EST_IND,
 				(KBuffer *) 0);
 		break;
 
 	case SSCF_UNI_ESTABLISH_CNF:
-		(void) unisig_sigmgr_state(usp,
+		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_EST_CNF,
 				(KBuffer *) 0);
 		break;
 
 	case SSCF_UNI_RELEASE_IND:
-		(void) unisig_sigmgr_state(usp,
+		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_RLS_IND,
 				(KBuffer *) 0);
 		break;
 
 	case SSCF_UNI_RELEASE_CNF:
-		(void) unisig_sigmgr_state(usp,
+		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_RLS_CNF,
 				(KBuffer *) 0);
 		break;
@@ -209,9 +204,7 @@ unisig_saal_ctl(cmd, tok, a1)
  *
  */
 void
-unisig_saal_data(tok, m)
-	void		*tok;
-	KBuffer		*m;
+unisig_saal_data(void *tok, KBuffer *m)
 {
 	struct unisig	*usp = tok;
 
@@ -221,7 +214,7 @@ unisig_saal_data(tok, m)
 	/*
 	 * Pass data to signalling manager state machine
 	 */
-	(void) unisig_sigmgr_state(usp,
+	unisig_sigmgr_state(usp,
 			UNISIG_SIGMGR_SSCF_DATA_IND,
 			m);
 }
@@ -238,8 +231,7 @@ unisig_saal_data(tok, m)
  *
  */
 caddr_t
-unisig_getname(tok)
-        void            *tok;
+unisig_getname(void *tok)
 {
 	struct unisig	*usp = tok;
 
@@ -267,8 +259,7 @@ unisig_getname(tok)
  *
  */
 void
-unisig_connected(tok)
-	void		*tok;
+unisig_connected(void *tok)
 {
 	struct unisig		*usp = tok;
 
@@ -297,9 +288,7 @@ unisig_connected(tok)
  *
  */
 void
-unisig_cleared(tok, cp)
-	void			*tok;
-	struct t_atm_cause	*cp;
+unisig_cleared(void *tok, struct t_atm_cause *cp)
 {
 	struct unisig		*usp = tok;
 
@@ -310,7 +299,7 @@ unisig_cleared(tok, cp)
 	 * VCC has been closed.  Notify the signalling
 	 * manager state machine.
 	 */
-	(void) unisig_sigmgr_state(usp,
+	unisig_sigmgr_state(usp,
 			UNISIG_SIGMGR_CALL_CLEARED,
 			(KBuffer *) 0);
 }

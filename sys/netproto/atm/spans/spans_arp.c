@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.8 2005/06/02 22:37:50 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.9 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -92,9 +92,7 @@ static struct sp_info	spansarp_pool = {
  *
  */
 int
-spansarp_svcout(ivp, dst)
-	struct ipvcc	*ivp;
-	struct in_addr	*dst;
+spansarp_svcout(struct ipvcc *ivp, struct in_addr *dst)
 {
 	struct spanscls	*clp;
 	struct spansarp	*sap;
@@ -182,7 +180,7 @@ spansarp_svcout(ivp, dst)
 	/*
 	 * Issue arp request for this address
 	 */
-	(void) spansarp_request(sap);
+	spansarp_request(sap);
 
 	crit_exit();
 	return (MAP_PROCEEDING);
@@ -213,10 +211,7 @@ spansarp_svcout(ivp, dst)
  *
  */
 int
-spansarp_svcin(ivp, dst, dstsub)
-	struct ipvcc	*ivp;
-	Atm_addr	*dst;
-	Atm_addr	*dstsub;
+spansarp_svcin(struct ipvcc *ivp, Atm_addr *dst, Atm_addr *dstsub)
 {
 	/*
 	 * Clear ARP entry field
@@ -242,8 +237,7 @@ spansarp_svcin(ivp, dst, dstsub)
  *
  */
 int
-spansarp_svcactive(ivp)
-	struct ipvcc	*ivp;
+spansarp_svcactive(struct ipvcc *ivp)
 {
 	struct spansarp	*sap;
 
@@ -284,8 +278,7 @@ spansarp_svcactive(ivp)
  *
  */
 void
-spansarp_vcclose(ivp)
-	struct ipvcc	*ivp;
+spansarp_vcclose(struct ipvcc *ivp)
 {
 	struct spansarp	*sap;
 
@@ -351,7 +344,7 @@ spansarp_vcclose(ivp)
  *
  */
 void
-spansarp_stop()
+spansarp_stop(void)
 {
 	int	i;
 
@@ -366,8 +359,8 @@ spansarp_stop()
 	/*
 	 * Cancel timers
 	 */
-	(void) atm_untimeout(&spansarp_timer);
-	(void) atm_untimeout(&spansarp_rtimer);
+	atm_untimeout(&spansarp_timer);
+	atm_untimeout(&spansarp_rtimer);
 
 	/*
 	 * Free our storage pools
@@ -391,8 +384,7 @@ spansarp_stop()
  *
  */
 void
-spansarp_ipact(clp)
-	struct spanscls		*clp;
+spansarp_ipact(struct spanscls *clp)
 {
 	/*
 	 * Make sure aging timer is running
@@ -417,8 +409,7 @@ spansarp_ipact(clp)
  *
  */
 void
-spansarp_ipdact(clp)
-	struct spanscls		*clp;
+spansarp_ipdact(struct spanscls *clp)
 {
 	struct spanscls		*clp2;
 	struct spansarp		*sap, *snext;
@@ -465,7 +456,7 @@ spansarp_ipdact(clp)
 			break;
 	}
 	if (clp2 == NULL)
-		(void) atm_untimeout(&spansarp_timer);
+		atm_untimeout(&spansarp_timer);
 }
 
 
@@ -481,8 +472,7 @@ spansarp_ipdact(clp)
  *
  */
 static int
-spansarp_request(sap)
-	struct spansarp	*sap;
+spansarp_request(struct spansarp *sap)
 {
 	struct spanscls		*clp;
 	struct spans		*spp;
@@ -570,9 +560,7 @@ spansarp_request(sap)
  *
  */
 void
-spansarp_input(clp, m)
-	struct spanscls	*clp;
-	KBuffer		*m;
+spansarp_input(struct spanscls *clp, KBuffer *m)
 {
 	struct spans		*spp = clp->cls_spans;
 	struct spanscls_hdr	*chp;
@@ -740,8 +728,7 @@ free:
  *
  */
 static void
-spansarp_aging(tip)
-	struct atm_time	*tip;
+spansarp_aging(struct atm_time *tip)
 {
 	struct spansarp	*sap, *snext;
 	struct ipvcc	*ivp, *inext;
@@ -799,7 +786,7 @@ spansarp_aging(tip)
 				/*
 				 * Issue arp request for this address
 				 */
-				(void) spansarp_request(sap);
+				spansarp_request(sap);
 
 			} else {
 				/*
@@ -831,8 +818,7 @@ spansarp_aging(tip)
  *
  */
 static void
-spansarp_retry(tip)
-	struct atm_time	*tip;
+spansarp_retry(struct atm_time *tip)
 {
 	struct spansarp	*sap;
 
@@ -857,7 +843,7 @@ spansarp_retry(tip)
 		/*
 		 * Send another arp request
 		 */
-		(void) spansarp_request(sap);
+		spansarp_request(sap);
 	}
 }
 
@@ -878,10 +864,7 @@ spansarp_retry(tip)
  *
  */
 int
-spansarp_ioctl(code, data, arg1)
-        int		code;
-        caddr_t		data;
-        caddr_t		arg1;
+spansarp_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmaddreq	*aap;
 	struct atmdelreq	*adp;
@@ -1083,7 +1066,7 @@ spansarp_ioctl(code, data, arg1)
 					AF_INET;
 				SATOSIN(&aar.aap_arp_addr)->sin_addr.s_addr =
 					sap->sa_dstip.s_addr;
-				(void) strlcpy(aar.aap_intf,
+				strlcpy(aar.aap_intf,
 				    clp->cls_ipnif->inf_nif->nif_if.if_xname,
 				    sizeof(aar.aap_intf));
 				aar.aap_flags = sap->sa_flags;

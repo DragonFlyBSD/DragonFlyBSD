@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_vcm.c,v 1.4 1999/08/28 00:48:45 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.7 2005/06/02 22:37:47 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -320,9 +320,7 @@ static struct t_atm_cause	ipatm_cause = {
  *
  */
 int
-ipatm_openpvc(pvp, sivp)
-	struct ipatmpvc	*pvp;
-	struct ipvcc	**sivp;
+ipatm_openpvc(struct ipatmpvc *pvp, struct ipvcc **sivp)
 {
 	struct ipvcc	*ivp;
 	Atm_attributes	*ap;
@@ -490,11 +488,8 @@ done:
  *
  */
 int
-ipatm_createsvc(ifp, daf, dst, sivp)
-	struct ifnet		*ifp;
-	u_short			daf;
-	caddr_t			dst;
-	struct ipvcc		**sivp;
+ipatm_createsvc(struct ifnet *ifp, u_short daf, caddr_t dst,
+		struct ipvcc **sivp)
 {
 	struct atm_nif	*nip = (struct atm_nif *)ifp;
 	struct ip_nif	*inp;
@@ -667,8 +662,7 @@ done:
  *
  */
 int
-ipatm_opensvc(ivp)
-	struct ipvcc	*ivp;
+ipatm_opensvc(struct ipvcc *ivp)
 {
 	struct ip_nif	*inp = ivp->iv_ipnif;
 	Atm_attributes	*ap;
@@ -753,8 +747,7 @@ ipatm_opensvc(ivp)
  *
  */
 int
-ipatm_retrysvc(ivp)
-	struct ipvcc	*ivp;
+ipatm_retrysvc(struct ipvcc *ivp)
 {
 	struct ip_nif	*inp = ivp->iv_ipnif;
 
@@ -783,8 +776,7 @@ ipatm_retrysvc(ivp)
  *
  */
 void
-ipatm_activate(ivp)
-	struct ipvcc	*ivp;
+ipatm_activate(struct ipvcc *ivp)
 {
 
 	/*
@@ -797,7 +789,7 @@ ipatm_activate(ivp)
 	 * Tell ARP module that connection is active
 	 */
 	if ((*ivp->iv_ipnif->inf_serv->is_arp_svcact)(ivp)) {
-		(void) ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
+		ipatm_closevc(ivp, T_ATM_CAUSE_TEMPORARY_FAILURE);
 		return;
 	}
 
@@ -811,7 +803,7 @@ ipatm_activate(ivp)
 		sin.sin_family = AF_INET;
 		sin.sin_addr.s_addr = ivp->iv_dst.s_addr;
 		ifp = (struct ifnet *)ivp->iv_ipnif->inf_nif;
-		(void) ipatm_ifoutput(ifp, ivp->iv_queue, 
+		ipatm_ifoutput(ifp, ivp->iv_queue, 
 			(struct sockaddr *)&sin);
 		ivp->iv_queue = NULL;
 	}
@@ -843,11 +835,8 @@ ipatm_activate(ivp)
  *
  */
 int
-ipatm_incoming(tok, cop, ap, tokp)
-	void		*tok;
-	Atm_connection	*cop;
-	Atm_attributes	*ap;
-	void		**tokp;
+ipatm_incoming(void *tok, Atm_connection *cop, Atm_attributes *ap,
+	       void **tokp)
 {
 	struct atm_nif	*nip = ap->nif;
 	struct ip_nif	*inp;
@@ -1014,9 +1003,7 @@ reject:
  *
  */
 int
-ipatm_closevc(ivp, code)
-	struct ipvcc	*ivp;
-	int		code;
+ipatm_closevc(struct ipvcc *ivp, int code)
 {
 	struct ip_nif	*inp = ivp->iv_ipnif;
 	int	err;
@@ -1125,9 +1112,7 @@ ipatm_closevc(ivp, code)
  *
  */
 int
-ipatm_chknif(in, inp)
-	struct in_addr	in;
-	struct ip_nif	*inp;
+ipatm_chknif(struct in_addr in, struct ip_nif *inp)
 {
 	struct in_ifaddr	*ia;
 	u_long	i;
@@ -1183,9 +1168,7 @@ ipatm_chknif(in, inp)
  *
  */
 struct ipvcc *
-ipatm_iptovc(dst, nip)
-	struct sockaddr_in	*dst;
-	struct atm_nif		*nip;
+ipatm_iptovc(struct sockaddr_in *dst, struct atm_nif *nip)
 {
 	struct ip_nif	*inp;
 	struct ipvcc	*ivp;

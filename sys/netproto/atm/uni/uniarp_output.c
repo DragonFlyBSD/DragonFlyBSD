@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_output.c,v 1.3 1999/08/28 00:49:03 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_output.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_output.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -54,9 +54,7 @@
  *
  */
 int
-uniarp_arp_req(uip, tip)
-	struct uniip	*uip;
-	struct in_addr	*tip;
+uniarp_arp_req(struct uniip *uip, struct in_addr *tip)
 {
 	KBuffer		*m;
 	struct atmarp_hdr	*ahp;
@@ -199,13 +197,8 @@ uniarp_arp_req(uip, tip)
  *
  */
 int
-uniarp_arp_rsp(uip, amp, tip, tatm, tsub, ivp)
-	struct uniip	*uip;
-	struct arpmap	*amp;
-	struct in_addr	*tip;
-	Atm_addr	*tatm;
-	Atm_addr	*tsub;
-	struct ipvcc	*ivp;
+uniarp_arp_rsp(struct uniip *uip, struct arpmap *amp, struct in_addr *tip,
+	       Atm_addr *tatm, Atm_addr *tsub, struct ipvcc *ivp)
 {
 	KBuffer		*m;
 	struct atmarp_hdr	*ahp;
@@ -377,10 +370,7 @@ uniarp_arp_rsp(uip, amp, tip, tatm, tsub, ivp)
  *
  */
 int
-uniarp_arp_nak(uip, m, ivp)
-	struct uniip	*uip;
-	KBuffer		*m;
-	struct ipvcc	*ivp;
+uniarp_arp_nak(struct uniip *uip, KBuffer *m, struct ipvcc *ivp)
 {
 	struct atmarp_hdr	*ahp;
 	int		err;
@@ -433,11 +423,8 @@ uniarp_arp_nak(uip, m, ivp)
  *
  */
 int
-uniarp_inarp_req(uip, tatm, tsub, ivp)
-	struct uniip	*uip;
-	Atm_addr	*tatm;
-	Atm_addr	*tsub;
-	struct ipvcc	*ivp;
+uniarp_inarp_req(struct uniip *uip, Atm_addr *tatm, Atm_addr *tsub,
+		 struct ipvcc *ivp)
 {
 	KBuffer		*m;
 	struct atmarp_hdr	*ahp;
@@ -618,12 +605,8 @@ uniarp_inarp_req(uip, tatm, tsub, ivp)
  *
  */
 int
-uniarp_inarp_rsp(uip, tip, tatm, tsub, ivp)
-	struct uniip	*uip;
-	struct in_addr	*tip;
-	Atm_addr	*tatm;
-	Atm_addr	*tsub;
-	struct ipvcc	*ivp;
+uniarp_inarp_rsp(struct uniip *uip, struct in_addr *tip, Atm_addr *tatm,
+		 Atm_addr *tsub, struct ipvcc *ivp)
 {
 	KBuffer		*m;
 	struct atmarp_hdr	*ahp;

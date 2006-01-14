@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.13 2005/11/28 17:13:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.14 2006/01/14 13:36:40 swildner Exp $
  */
 
 /*
@@ -84,7 +84,7 @@ struct ifnet_en *nsip_list;		/* list of all hosts and gateways or
 					broadcast addrs */
 
 struct ifnet_en *
-nsipattach()
+nsipattach(void)
 {
 	struct ifnet_en *m;
 	struct ifnet *ifp;
@@ -121,10 +121,8 @@ nsipattach()
  * Process an ioctl request.
  */
 /* ARGSUSED */
-nsipioctl(ifp, cmd, data)
-	struct ifnet *ifp;
-	int cmd;
-	caddr_t data;
+int
+nsipioctl(struct ifnet *ifp, int cmd, caddr_t data)
 {
 	int error = 0;
 	struct ifreq *ifr;
@@ -232,10 +230,8 @@ idpip_input(struct mbuf *m, ...)
 }
 
 /* ARGSUSED */
-nsipoutput(ifn, m, dst)
-	struct ifnet_en *ifn;
-	struct mbuf *m;
-	struct sockaddr *dst;
+int
+nsipoutput(struct ifnet_en *ifn, struct mbuf *m, struct sockaddr *dst)
 {
 
 	struct ip *ip;
@@ -297,16 +293,16 @@ bad:
 	return (ENETUNREACH);
 }
 
-nsipstart(ifp)
-struct ifnet *ifp;
+void
+nsipstart(struct ifnet *ifp)
 {
 	panic("nsip_start called");
 }
 
 struct ifreq ifr = {"nsip0"};
 
-nsip_route(m)
-	struct mbuf *m;
+int
+nsip_route(struct mbuf *m)
 {
 	struct nsip_req *rq = mtod(m, struct nsip_req *);
 	struct sockaddr_ns *ns_dst = (struct sockaddr_ns *)&rq->rq_ns;
@@ -372,15 +368,15 @@ nsip_route(m)
 	 */
 	ifr.ifr_name[4] = '0' + nsipif_units - 1;
 	ifr.ifr_dstaddr = * (struct sockaddr *) ns_dst;
-	(void)ns_control((struct socket *)0, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
+	ns_control((struct socket *)0, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
 			(struct ifnet *)ifn, NULL);
 	satons_addr(ifr.ifr_addr).x_host = ns_thishost;
 	return (ns_control((struct socket *)0, (int)SIOCSIFADDR, (caddr_t)&ifr,
 			(struct ifnet *)ifn, NULL));
 }
 
-nsip_free(ifp)
-struct ifnet *ifp;
+int
+nsip_free(struct ifnet *ifp)
 {
 	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
 	struct route *ro = & ifn->ifen_route;
@@ -393,9 +389,8 @@ struct ifnet *ifp;
 	return (0);
 }
 
-nsip_ctlinput(cmd, sa)
-	int cmd;
-	struct sockaddr *sa;
+void
+nsip_ctlinput(int cmd, struct sockaddr *sa)
 {
 	extern u_char inetctlerrmap[];
 	struct sockaddr_in *sin;
@@ -421,8 +416,8 @@ nsip_ctlinput(cmd, sa)
 	}
 }
 
-nsip_rtchange(dst)
-	struct in_addr *dst;
+void
+nsip_rtchange(struct in_addr *dst)
 {
 	struct ifnet_en *ifn;
 

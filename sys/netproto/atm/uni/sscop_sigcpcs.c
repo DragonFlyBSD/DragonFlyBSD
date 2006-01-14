@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_sigcpcs.c,v 1.4 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigcpcs.c,v 1.5 2004/07/23 14:14:30 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigcpcs.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -55,10 +55,7 @@
  *
  */
 void
-sscop_noop(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_noop(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	/*
 	 * Just free PDU
@@ -82,10 +79,7 @@ sscop_noop(sop, m, trlr)
  *
  */
 void
-sscop_bgn_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err, source;
@@ -104,7 +98,7 @@ sscop_bgn_idle(sop, m, trlr)
 		 */
 		if (sscop_is_rexmit(sop, bp->bgn_nsq)) {
 			KB_FREEALL(m);
-			(void) sscop_send_bgrej(sop);
+			sscop_send_bgrej(sop);
 			return;
 		}
 	}
@@ -163,10 +157,7 @@ sscop_bgn_idle(sop, m, trlr)
  *
  */
 void
-sscop_bgn_outdisc(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_outdisc(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err, source;
@@ -176,8 +167,8 @@ sscop_bgn_outdisc(sop, m, trlr)
 	 */
 	if (sscop_is_rexmit(sop, bp->bgn_nsq)) {
 		KB_FREEALL(m);
-		(void) sscop_send_bgak(sop);
-		(void) sscop_send_end(sop, SSCOP_SOURCE_LAST);
+		sscop_send_bgak(sop);
+		sscop_send_end(sop, SSCOP_SOURCE_LAST);
 		return;
 	}
 
@@ -252,10 +243,7 @@ sscop_bgn_outdisc(sop, m, trlr)
  *
  */
 void
-sscop_bgn_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err, source;
@@ -265,8 +253,8 @@ sscop_bgn_outresyn(sop, m, trlr)
 	 */
 	if (sscop_is_rexmit(sop, bp->bgn_nsq)) {
 		KB_FREEALL(m);
-		(void) sscop_send_bgak(sop);
-		(void) sscop_send_rs(sop);
+		sscop_send_bgak(sop);
+		sscop_send_rs(sop);
 		return;
 	}
 
@@ -341,10 +329,7 @@ sscop_bgn_outresyn(sop, m, trlr)
  *
  */
 void
-sscop_bgn_inresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgn_inresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgn_pdu	*bp = (struct bgn_pdu *)trlr;
 	int		err, source;
@@ -443,10 +428,7 @@ sscop_bgn_inresyn(sop, m, trlr)
  *
  */
 void
-sscop_bgak_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgak_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -472,10 +454,7 @@ sscop_bgak_error(sop, m, trlr)
  *
  */
 void
-sscop_bgak_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgak_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -486,7 +465,7 @@ sscop_bgak_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -504,10 +483,7 @@ sscop_bgak_idle(sop, m, trlr)
  *
  */
 void
-sscop_bgak_outconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgak_outconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct bgak_pdu	*bp = (struct bgak_pdu *)trlr;
 	int		err;
@@ -601,10 +577,7 @@ sscop_bgak_outconn(sop, m, trlr)
  *
  */
 void
-sscop_bgrej_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -629,10 +602,7 @@ sscop_bgrej_error(sop, m, trlr)
  *
  */
 void
-sscop_bgrej_outconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_outconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		source, uu, err;
 
@@ -689,10 +659,7 @@ sscop_bgrej_outconn(sop, m, trlr)
  *
  */
 void
-sscop_bgrej_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -733,10 +700,7 @@ sscop_bgrej_inconn(sop, m, trlr)
  *
  */
 void
-sscop_bgrej_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -789,10 +753,7 @@ sscop_bgrej_outresyn(sop, m, trlr)
  *
  */
 void
-sscop_bgrej_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_bgrej_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -853,10 +814,7 @@ sscop_bgrej_ready(sop, m, trlr)
  *
  */
 void
-sscop_end_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -867,7 +825,7 @@ sscop_end_idle(sop, m, trlr)
 	/*
 	 * Return an ENDAK to peer
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	return;
 }
@@ -886,10 +844,7 @@ sscop_end_idle(sop, m, trlr)
  *
  */
 void
-sscop_end_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct end_pdu	*ep = (struct end_pdu *)trlr;
 	int		err, source;
@@ -902,7 +857,7 @@ sscop_end_inconn(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Get Source value
@@ -945,10 +900,7 @@ sscop_end_inconn(sop, m, trlr)
  *
  */
 void
-sscop_end_outdisc(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_end_outdisc(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -965,7 +917,7 @@ sscop_end_outdisc(sop, m, trlr)
 	/*
 	 * Acknowledge END
 	 */
-	(void) sscop_send_endak(sop);
+	sscop_send_endak(sop);
 
 	/*
 	 * Notify user of connection termination
@@ -999,10 +951,7 @@ sscop_end_outdisc(sop, m, trlr)
  *
  */
 void
-sscop_endak_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1028,10 +977,7 @@ sscop_endak_error(sop, m, trlr)
  *
  */
 void
-sscop_endak_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1077,10 +1023,7 @@ sscop_endak_inconn(sop, m, trlr)
  *
  */
 void
-sscop_endak_outdisc(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_outdisc(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1126,10 +1069,7 @@ sscop_endak_outdisc(sop, m, trlr)
  *
  */
 void
-sscop_endak_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_endak_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1190,10 +1130,7 @@ sscop_endak_ready(sop, m, trlr)
  *
  */
 void
-sscop_rs_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1219,10 +1156,7 @@ sscop_rs_error(sop, m, trlr)
  *
  */
 void
-sscop_rs_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rs_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1233,7 +1167,7 @@ sscop_rs_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	return;
 }
@@ -1252,10 +1186,7 @@ sscop_rs_idle(sop, m, trlr)
  *
  */
 void
-sscop_rsak_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rsak_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1281,10 +1212,7 @@ sscop_rsak_error(sop, m, trlr)
  *
  */
 void
-sscop_rsak_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rsak_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1295,7 +1223,7 @@ sscop_rsak_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -1313,10 +1241,7 @@ sscop_rsak_idle(sop, m, trlr)
  *
  */
 void
-sscop_rsak_outresyn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_rsak_outresyn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct rsak_q2110_pdu	*rp = (struct rsak_q2110_pdu *)trlr;
 	int		err;
@@ -1394,10 +1319,7 @@ sscop_rsak_outresyn(sop, m, trlr)
  *
  */
 void
-sscop_sd_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1423,10 +1345,7 @@ sscop_sd_error(sop, m, trlr)
  *
  */
 void
-sscop_sd_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1437,7 +1356,7 @@ sscop_sd_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -1455,10 +1374,7 @@ sscop_sd_idle(sop, m, trlr)
  *
  */
 void
-sscop_sd_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_sd_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1470,7 +1386,7 @@ sscop_sd_inconn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1504,10 +1420,7 @@ sscop_sd_inconn(sop, m, trlr)
  *
  */
 void
-sscop_poll_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1533,10 +1446,7 @@ sscop_poll_error(sop, m, trlr)
  *
  */
 void
-sscop_poll_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1547,7 +1457,7 @@ sscop_poll_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -1565,10 +1475,7 @@ sscop_poll_idle(sop, m, trlr)
  *
  */
 void
-sscop_poll_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_poll_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1580,7 +1487,7 @@ sscop_poll_inconn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1614,10 +1521,7 @@ sscop_poll_inconn(sop, m, trlr)
  *
  */
 void
-sscop_stat_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_stat_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1643,10 +1547,7 @@ sscop_stat_error(sop, m, trlr)
  *
  */
 void
-sscop_stat_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_stat_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -1657,7 +1558,7 @@ sscop_stat_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -1675,10 +1576,7 @@ sscop_stat_idle(sop, m, trlr)
  *
  */
 void
-sscop_stat_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_stat_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -1690,7 +1588,7 @@ sscop_stat_inconn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -1724,10 +1622,7 @@ sscop_stat_inconn(sop, m, trlr)
  *
  */
 void
-sscop_stat_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_stat_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct stat_pdu	*sp = (struct stat_pdu *)trlr;
 	struct pdu_hdr	*php;
@@ -2004,10 +1899,7 @@ goterr:
  *
  */
 void
-sscop_ustat_error(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ustat_error(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -2033,10 +1925,7 @@ sscop_ustat_error(sop, m, trlr)
  *
  */
 void
-sscop_ustat_idle(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ustat_idle(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*
@@ -2047,7 +1936,7 @@ sscop_ustat_idle(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 	return;
 }
 
@@ -2065,10 +1954,7 @@ sscop_ustat_idle(sop, m, trlr)
  *
  */
 void
-sscop_ustat_inconn(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ustat_inconn(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -2080,7 +1966,7 @@ sscop_ustat_inconn(sop, m, trlr)
 	/*
 	 * Return an END to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Notify user of connection failure
@@ -2114,10 +2000,7 @@ sscop_ustat_inconn(sop, m, trlr)
  *
  */
 void
-sscop_ustat_ready(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ustat_ready(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	struct ustat_pdu	*up = (struct ustat_pdu *)trlr;
 	struct pdu_hdr	*php;
@@ -2259,10 +2142,7 @@ goterr:
  *
  */
 void
-sscop_ud_all(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_ud_all(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 	int		err;
 
@@ -2290,10 +2170,7 @@ sscop_ud_all(sop, m, trlr)
  *
  */
 void
-sscop_md_all(sop, m, trlr)
-	struct sscop	*sop;
-	KBuffer		*m;
-	caddr_t		trlr;
+sscop_md_all(struct sscop *sop, KBuffer *m, caddr_t trlr)
 {
 
 	/*

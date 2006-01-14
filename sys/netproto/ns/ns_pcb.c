@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.13 2005/06/10 22:44:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.14 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -213,7 +213,7 @@ ns_pcbconnect(struct nspcb *nsp, struct sockaddr *nam)
 		return (EADDRINUSE);
 	if (ns_nullhost(nsp->nsp_laddr)) {
 		if (nsp->nsp_lport == 0)
-			(void) ns_pcbbind(nsp, NULL);
+			ns_pcbbind(nsp, NULL);
 		nsp->nsp_laddr.x_host = ns_thishost;
 	}
 	nsp->nsp_faddr = sns->sns_addr;
@@ -304,6 +304,7 @@ ns_pcbnotify(struct ns_addr *dst, int errno,
  * After a routing change, flush old routing
  * and allocate a (hopefully) better one.
  */
+void
 ns_rtchange(struct nspcb *nsp)
 {
 	if (nsp->nsp_route.ro_rt) {

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_vc_state.c,v 1.6.2.1 2001/07/25 20:53:44 pirzyk Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_vc_state.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_vc_state.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -203,11 +203,8 @@ static int (*unisig_vc_act_vec[MAX_ACTION])
  *
  */
 int
-unisig_vc_state(usp, uvp, event, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	int			event;
-	struct unisig_msg	*msg;
+unisig_vc_state(struct unisig *usp, struct unisig_vccb *uvp, int event,
+		struct unisig_msg *msg)
 {
 	int	action, rc, state;
 
@@ -249,10 +246,8 @@ unisig_vc_state(usp, uvp, event, msg)
  *
  */
 static int
-unisig_vc_invalid(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_invalid(struct unisig *usp, struct unisig_vccb *uvp,
+		  struct unisig_msg *msg)
 {
 	log(LOG_ERR, "unisig_vc_state: unexpected action\n");
 	return(EINVAL);
@@ -276,10 +271,8 @@ unisig_vc_invalid(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act01(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act01(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int		rc;
 
@@ -328,10 +321,8 @@ unisig_vc_act01(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act02(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act02(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int	rc = 0;
 
@@ -343,7 +334,7 @@ unisig_vc_act02(usp, uvp, msg)
 				T_ATM_CAUSE_NO_ROUTE_TO_DESTINATION);
 	} else {
 		uvp->uv_retry++;
-		(void) unisig_send_setup(usp, uvp);
+		unisig_send_setup(usp, uvp);
 		UNISIG_VC_TIMER((struct vccb *) uvp, UNI_T303);
 	}
 	
@@ -367,10 +358,8 @@ unisig_vc_act02(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act03(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act03(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int	rc, cause;
 
@@ -410,10 +399,8 @@ unisig_vc_act03(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act04(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act04(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			cause, rc, vpi, vci;
 	struct atm_pif		*pip = usp->us_pif;
@@ -511,10 +498,8 @@ response04:
  *
  */
 static int
-unisig_vc_act05(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act05(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 	struct unisig_msg	*rls_msg;
@@ -591,10 +576,8 @@ unisig_vc_act05(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act06(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act06(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			cause, rc, vci, vpi;
 	struct atm_pif		*pip = usp->us_pif;
@@ -782,10 +765,8 @@ response06:
  *
  */
 static int
-unisig_vc_act07(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act07(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 
@@ -844,10 +825,8 @@ unisig_vc_act07(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act08(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act08(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			cause = 0, rc, vpi, vci;
 	struct atm_pif		*pip = usp->us_pif;
@@ -1026,10 +1005,8 @@ response08:
  *
  */
 static int
-unisig_vc_act09(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act09(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 	struct unisig_msg	*conn_msg;
@@ -1092,10 +1069,8 @@ unisig_vc_act09(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act10(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act10(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Clear any running timer
@@ -1139,10 +1114,8 @@ unisig_vc_act10(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act11(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act11(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc, cause;
 
@@ -1191,10 +1164,8 @@ unisig_vc_act11(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act12(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act12(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 
@@ -1230,10 +1201,8 @@ unisig_vc_act12(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act13(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act13(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Clear any running timer
@@ -1282,10 +1251,8 @@ unisig_vc_act13(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act14(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act14(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 
@@ -1339,10 +1306,8 @@ unisig_vc_act14(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act15(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act15(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			cause, rc;
 	struct ie_generic	*iep;
@@ -1425,10 +1390,8 @@ unisig_vc_act15(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act16(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act16(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int	rc;
 
@@ -1464,10 +1427,8 @@ unisig_vc_act16(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act17(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act17(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 
@@ -1506,10 +1467,8 @@ unisig_vc_act17(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act18(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act18(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Clear any running timer
@@ -1545,10 +1504,8 @@ unisig_vc_act18(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act19(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act19(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	return(0);
 }
@@ -1572,10 +1529,8 @@ unisig_vc_act19(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act20(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act20(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 	struct unisig_msg	*stat_msg;
@@ -1631,10 +1586,8 @@ unisig_vc_act20(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act21(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act21(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int	cause, rc;
 
@@ -1650,7 +1603,7 @@ unisig_vc_act21(usp, uvp, msg)
 	 */
 	if (msg->msg_ie_clst->ie_clst_state == UNI_NULL) {
 		if (uvp) {
-			(void)unisig_clear_vcc(usp, uvp,
+			unisig_clear_vcc(usp, uvp,
 					T_ATM_CAUSE_DESTINATION_OUT_OF_ORDER);
 		}
 		return(0);
@@ -1692,7 +1645,7 @@ unisig_vc_act21(usp, uvp, msg)
 				cause,
 				msg->msg_ie_caus->ie_caus_diagnostic[0]);
 		if (uvp) {
-			(void)unisig_clear_vcc(usp, uvp, cause);
+			unisig_clear_vcc(usp, uvp, cause);
 		}
 	}
 
@@ -1719,10 +1672,8 @@ unisig_vc_act21(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act22(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act22(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 	struct unisig_msg	*status;
@@ -1825,10 +1776,8 @@ unisig_vc_act22(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act23(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act23(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 	struct unisig_msg	*apr_msg;
@@ -1886,10 +1835,8 @@ unisig_vc_act23(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act24(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act24(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	return(EALREADY);
 }
@@ -1912,10 +1859,8 @@ unisig_vc_act24(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act25(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act25(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	return(EINVAL);
 }
@@ -1939,10 +1884,8 @@ unisig_vc_act25(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act26(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act26(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int	rc;
 
@@ -1988,10 +1931,8 @@ unisig_vc_act26(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act27(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act27(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Set the state
@@ -2024,10 +1965,8 @@ unisig_vc_act27(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act28(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act28(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Set the state
@@ -2062,10 +2001,8 @@ unisig_vc_act28(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act29(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act29(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	int			rc;
 
@@ -2097,10 +2034,8 @@ unisig_vc_act29(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act30(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act30(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	/*
 	 * Clear any running timer
@@ -2142,10 +2077,8 @@ unisig_vc_act30(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_act31(usp, uvp, msg)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
+unisig_vc_act31(struct unisig *usp, struct unisig_vccb *uvp,
+		struct unisig_msg *msg)
 {
 	return(ENETDOWN);
 }
@@ -2169,11 +2102,8 @@ unisig_vc_act31(usp, uvp, msg)
  *
  */
 static int
-unisig_vc_clear_call(usp, uvp, msg, cause)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	struct unisig_msg	*msg;
-	int			cause;
+unisig_vc_clear_call(struct unisig *usp, struct unisig_vccb *uvp,
+		     struct unisig_msg *msg, int cause)
 {
 	int			rc;
 

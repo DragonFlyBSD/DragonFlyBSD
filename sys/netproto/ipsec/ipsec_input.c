@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.9 2005/06/17 19:12:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.10 2006/01/14 13:36:40 swildner Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -468,7 +468,7 @@ ipsec6_common_input(struct mbuf **mp, int *offp, int proto)
 		}
 		protoff += offsetof(struct ip6_ext, ip6e_nxt);
 	}
-	(void) ipsec_common_input(*mp, *offp, protoff, AF_INET6, proto);
+	ipsec_common_input(*mp, *offp, protoff, AF_INET6, proto);
 	return IPPROTO_DONE;
 }
 

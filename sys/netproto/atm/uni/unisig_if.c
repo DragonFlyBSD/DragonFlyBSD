@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_if.c,v 1.8 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.7 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_if.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ static struct sigmgr	unisig_mgr31 = {
  *
  */
 int
-unisig_start()
+unisig_start(void)
 {
 	int	err = 0;
 
@@ -177,7 +177,7 @@ done:
  *
  */
 int
-unisig_stop()
+unisig_stop(void)
 {
 	int	err = 0;
 
@@ -197,8 +197,8 @@ unisig_stop()
 	/*
 	 * De-register from system
 	 */
-	(void) atm_sigmgr_deregister(&unisig_mgr30);
-	(void) atm_sigmgr_deregister(&unisig_mgr31);
+	atm_sigmgr_deregister(&unisig_mgr30);
+	atm_sigmgr_deregister(&unisig_mgr31);
 
 	/*
 	 * Free up our storage pools
@@ -235,9 +235,7 @@ done:
  *
  */
 static int
-unisig_attach(smp, pip)
-	struct sigmgr	*smp;
-	struct atm_pif	*pip;
+unisig_attach(struct sigmgr *smp, struct atm_pif *pip)
 {
 	int			err = 0;
 	struct unisig		*usp = NULL;
@@ -345,8 +343,7 @@ done:
  *
  */
 static int
-unisig_detach(pip)
-	struct atm_pif	*pip;
+unisig_detach(struct atm_pif *pip)
 {
 	struct unisig		*usp;
 	int			err;
@@ -403,9 +400,7 @@ unisig_detach(pip)
  *
  */
 static int
-unisig_setup(cvp, errp)
-	Atm_connvc	*cvp;
-	int		*errp;
+unisig_setup(Atm_connvc *cvp, int *errp)
 {
 	struct atm_pif	*pip = cvp->cvc_attr.nif->nif_pif;
 	struct unisig	*usp = (struct unisig *)pip->pif_siginst;
@@ -470,9 +465,7 @@ unisig_setup(cvp, errp)
  *
  */
 static int
-unisig_release(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+unisig_release(struct vccb *vcp, int *errp)
 {
 	int		rc = 0;
 	struct atm_pif	*pip = vcp->vc_pif;
@@ -533,9 +526,7 @@ unisig_release(vcp, errp)
  *
  */
 static int
-unisig_accept(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+unisig_accept(struct vccb *vcp, int *errp)
 {
 	struct unisig_vccb	*uvp = (struct unisig_vccb *)vcp;
 	struct atm_pif		*pip = uvp->uv_pif;
@@ -607,9 +598,7 @@ free:
  *
  */
 static int
-unisig_reject(vcp, errp)
-	struct vccb	*vcp;
-	int		*errp;
+unisig_reject(struct vccb *vcp, int *errp)
 {
 	struct unisig_vccb	*uvp = (struct unisig_vccb *)vcp;
 	struct atm_pif		*pip = uvp->uv_pif;
@@ -648,7 +637,7 @@ failed:
 	uvp->uv_sstate = UNI_FREE;
 	uvp->uv_ustate = VCCU_CLOSED;
 	DEQUEUE(uvp, struct unisig_vccb, uv_sigelem, usp->us_vccq);
-	(void) unisig_free((struct vccb *)uvp);
+	unisig_free((struct vccb *)uvp);
 	return(CALL_FAILED);
 }
 
@@ -673,8 +662,7 @@ failed:
  *
  */
 static int
-unisig_abort(vcp)
-	struct vccb	*vcp;
+unisig_abort(struct vccb *vcp)
 {
 
 	ATM_DEBUG1("unisig_abort: vcp=%p\n", vcp);
@@ -720,8 +708,7 @@ unisig_abort(vcp)
  *
  */
 int
-unisig_free(vcp)
-	struct vccb	*vcp;
+unisig_free(struct vccb *vcp)
 {
 	struct atm_pif *pip = vcp->vc_pif;
 	struct unisig *usp = (struct unisig *)pip->pif_siginst;
@@ -789,10 +776,7 @@ unisig_free(vcp)
  *
  */
 static int
-unisig_ioctl(code, data, arg1)
-        int		code;
-        caddr_t		data;
-        caddr_t		arg1;
+unisig_ioctl(int code, caddr_t data, caddr_t arg1)
 {
 	struct atmdelreq	*adp;
 	struct atminfreq	*aip;
@@ -887,7 +871,7 @@ unisig_ioctl(code, data, arg1)
 			/*
 			 * Fill out the response struct for the VCC
 			 */
-			(void) snprintf(rsp.avp_intf,
+			snprintf(rsp.avp_intf,
 				    sizeof(rsp.avp_intf), "%s%d",
 					usp->us_pif->pif_name,
 					usp->us_pif->pif_unit);

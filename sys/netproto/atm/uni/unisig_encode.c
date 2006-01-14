@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_encode.c,v 1.5 2000/01/17 20:49:56 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_encode.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_encode.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -122,9 +122,7 @@ extern struct ie_decode_tbl	ie_clrt_tbl[];
  *
  */
 int
-usf_enc_msg(usf, msg)
-	struct usfmt		*usf;
-	struct unisig_msg	*msg;
+usf_enc_msg(struct usfmt *usf, struct unisig_msg *msg)
 {
 	int			i, len, rc;
 	u_char			c;
@@ -232,9 +230,7 @@ usf_enc_msg(usf, msg)
  *
  */
 static int
-usf_enc_ie(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie(struct usfmt *usf, struct ie_generic *ie)
 {
 	int			i, rc;
 	u_char			c;
@@ -325,9 +321,7 @@ usf_enc_ie(usf, ie)
  *
  */
 static int
-usf_enc_ie_aalp(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_aalp(struct usfmt *usf, struct ie_generic *ie)
 {
 	int		i, rc = 0;
 
@@ -402,9 +396,7 @@ usf_enc_ie_aalp(usf, ie)
  *
  */
 static int
-usf_enc_ie_clrt(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_clrt(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 
@@ -471,9 +463,7 @@ usf_enc_ie_clrt(usf, ie)
  *
  */
 static int
-usf_enc_ie_bbcp(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_bbcp(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -542,9 +532,7 @@ usf_enc_ie_bbcp(usf, ie)
  *
  */
 static int
-usf_enc_ie_bhli(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_bhli(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	i, rc;
 	u_int	type;
@@ -629,9 +617,7 @@ usf_enc_ie_bhli(usf, ie)
  *
  */
 static int
-usf_enc_ie_blli(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_blli(struct usfmt *usf, struct ie_generic *ie)
 {
 	u_char		c;
 	int		rc;
@@ -919,9 +905,7 @@ usf_enc_ie_blli(usf, ie)
  *
  */
 static int
-usf_enc_ie_clst(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_clst(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -952,9 +936,7 @@ usf_enc_ie_clst(usf, ie)
  *
  */
 static int
-usf_enc_ie_cdad(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_cdad(struct usfmt *usf, struct ie_generic *ie)
 {
 	u_char	c;
 	int	rc;
@@ -1008,9 +990,7 @@ usf_enc_ie_cdad(usf, ie)
  *
  */
 static int
-usf_enc_ie_cdsa(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_cdsa(struct usfmt *usf, struct ie_generic *ie)
 {
 	u_char	c;
 	int	rc;
@@ -1053,9 +1033,7 @@ usf_enc_ie_cdsa(usf, ie)
  *
  */
 static int
-usf_enc_ie_cgad(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_cgad(struct usfmt *usf, struct ie_generic *ie)
 {
 	u_char	c;
 	int	rc;
@@ -1125,9 +1103,7 @@ usf_enc_ie_cgad(usf, ie)
  *
  */
 static int
-usf_enc_ie_cgsa(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_cgsa(struct usfmt *usf, struct ie_generic *ie)
 {
 	u_char	c;
 	int	rc;
@@ -1170,9 +1146,7 @@ usf_enc_ie_cgsa(usf, ie)
  *
  */
 static int
-usf_enc_ie_caus(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_caus(struct usfmt *usf, struct ie_generic *ie)
 {
 	int			i, rc;
 	u_char			c;
@@ -1229,9 +1203,7 @@ usf_enc_ie_caus(usf, ie)
  *
  */
 static int
-usf_enc_ie_cnid(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_cnid(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -1272,9 +1244,7 @@ usf_enc_ie_cnid(usf, ie)
  *
  */
 static int
-usf_enc_ie_qosp(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_qosp(struct usfmt *usf, struct ie_generic *ie)
 {
         int             rc;
 
@@ -1314,9 +1284,7 @@ usf_enc_ie_qosp(usf, ie)
  *
  */
 static int
-usf_enc_ie_brpi(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_brpi(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -1347,9 +1315,7 @@ usf_enc_ie_brpi(usf, ie)
  *
  */
 static int
-usf_enc_ie_rsti(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_rsti(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -1382,9 +1348,7 @@ usf_enc_ie_rsti(usf, ie)
  *
  */
 static int
-usf_enc_ie_bsdc(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_bsdc(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	rc;
 	u_char	c;
@@ -1416,9 +1380,7 @@ usf_enc_ie_bsdc(usf, ie)
  *
  */
 static int
-usf_enc_ie_trnt(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_trnt(struct usfmt *usf, struct ie_generic *ie)
 {
 	int	i, rc;
 	u_char	c;
@@ -1464,9 +1426,7 @@ usf_enc_ie_trnt(usf, ie)
  *
  */
 static int
-usf_enc_ie_uimp(usf, ie)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
+usf_enc_ie_uimp(struct usfmt *usf, struct ie_generic *ie)
 {
 	return(0);
 }
@@ -1491,10 +1451,8 @@ usf_enc_ie_uimp(usf, ie)
  *
  */
 static int
-usf_enc_ie_ident(usf, ie, tbl)
-	struct usfmt		*usf;
-	struct ie_generic	*ie;
-	struct ie_decode_tbl	*tbl;
+usf_enc_ie_ident(struct usfmt *usf, struct ie_generic *ie,
+		 struct ie_decode_tbl *tbl)
 {
 	int	i, len, rc;
 	char	*cp;
@@ -1637,9 +1595,7 @@ badtbl:
  *
  */
 static int
-usf_enc_atm_addr(usf, addr)
-	struct usfmt	*usf;
-	Atm_addr	*addr;
+usf_enc_atm_addr(struct usfmt *usf, Atm_addr *addr)
 {
 	int	len, rc;
 	u_char	*cp;

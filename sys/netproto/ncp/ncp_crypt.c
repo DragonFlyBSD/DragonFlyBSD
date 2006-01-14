@@ -1,6 +1,6 @@
 /* 
  * $FreeBSD: src/sys/netncp/ncp_crypt.c,v 1.3.2.1 2001/02/22 08:57:58 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_crypt.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_crypt.c,v 1.4 2006/01/14 13:36:40 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -141,10 +141,7 @@ nw_encrypt(const u_char *fra, const u_char *buf, u_char *target) {
 typedef u_int32_t	UINT4;
 typedef unsigned char *POINTER;
 
-#define PROTO_LIST(list) list
-
-static void Decode PROTO_LIST
-  ((UINT4 *, const unsigned char *, unsigned int));
+static void Decode(UINT4 *, const unsigned char *, unsigned int);
 
 /* Constants for MD4Transform routine.
  */
@@ -258,11 +255,8 @@ ncp_sign(const u_int32_t *state, const char *block, u_int32_t *ostate) {
 /* Decodes input (unsigned char) into output (UINT4). Assumes len is
      a multiple of 4.
  */
-static void Decode (output, input, len)
-
-UINT4 *output;
-const unsigned char *input;
-unsigned int len;
+static void
+Decode(UINT4 *output, const unsigned char *input, unsigned int len)
 {
   unsigned int i, j;
 

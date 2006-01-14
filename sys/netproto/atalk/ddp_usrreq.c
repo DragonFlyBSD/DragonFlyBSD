@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.9 2005/06/10 22:43:58 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.10 2006/01/14 13:36:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -539,7 +539,7 @@ at_setsockaddr(struct socket *so, struct sockaddr **nam)
 
 
 void 
-ddp_init(void )
+ddp_init(void)
 {
 	netisr_register(NETISR_ATALK1, cpu0_portfn, at1intr);
 	netisr_register(NETISR_ATALK2, cpu0_portfn, at2intr);
@@ -548,7 +548,7 @@ ddp_init(void )
 
 #if 0
 static void 
-ddp_clean(void )
+ddp_clean(void)
 {
     struct ddpcb	*ddp;
 

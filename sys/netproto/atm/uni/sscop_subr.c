@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_subr.c,v 1.6 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_subr.c,v 1.7 2004/07/24 13:00:09 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_subr.c,v 1.8 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -60,9 +60,7 @@ static int sscop_proc_xmit (struct sscop *);
  *
  */
 KBuffer *
-sscop_stat_getelem(m, pelem)
-	KBuffer		*m;
-	sscop_seq	*pelem;
+sscop_stat_getelem(KBuffer *m, sscop_seq *pelem)
 {
 	caddr_t		cp;
 
@@ -150,9 +148,7 @@ sscop_stat_getelem(m, pelem)
  *
  */
 struct pdu_hdr *
-sscop_pack_locate(sop, seq)
-	struct sscop	*sop;
-	sscop_seq	seq;
+sscop_pack_locate(struct sscop *sop, sscop_seq seq)
 {
 	struct pdu_hdr	*php;
 
@@ -187,9 +183,7 @@ sscop_pack_locate(sop, seq)
  *
  */
 void
-sscop_pack_free(sop, seq)
-	struct sscop	*sop;
-	sscop_seq	seq;
+sscop_pack_free(struct sscop *sop, sscop_seq seq)
 {
 	struct pdu_hdr	*php, *prev;
 
@@ -261,9 +255,7 @@ found:
  *
  */
 void
-sscop_rexmit_insert(sop, php)
-	struct sscop	*sop;
-	struct pdu_hdr	*php;
+sscop_rexmit_insert(struct sscop *sop, struct pdu_hdr *php)
 {
 	struct pdu_hdr	*curr, *next;
 	sscop_seq	seq = php->ph_ns;
@@ -323,9 +315,7 @@ sscop_rexmit_insert(sop, php)
  *
  */
 void
-sscop_rexmit_unlink(sop, php)
-	struct sscop	*sop;
-	struct pdu_hdr	*php;
+sscop_rexmit_unlink(struct sscop *sop, struct pdu_hdr *php)
 {
 	struct pdu_hdr	*curr;
 
@@ -381,8 +371,7 @@ sscop_rexmit_unlink(sop, php)
  *
  */
 void
-sscop_xmit_drain(sop)
-	struct sscop	*sop;
+sscop_xmit_drain(struct sscop *sop)
 {
 	KBuffer		*m;
 	struct pdu_hdr	*php;
@@ -437,9 +426,7 @@ sscop_xmit_drain(sop)
  *
  */
 int
-sscop_recv_insert(sop, php)
-	struct sscop	*sop;
-	struct pdu_hdr	*php;
+sscop_recv_insert(struct sscop *sop, struct pdu_hdr *php)
 {
 	struct pdu_hdr	*curr, *next;
 	sscop_seq	seq = php->ph_ns;
@@ -504,8 +491,7 @@ sscop_recv_insert(sop, php)
  *
  */
 void
-sscop_rcvr_drain(sop)
-	struct sscop	*sop;
+sscop_rcvr_drain(struct sscop *sop)
 {
 	struct pdu_hdr	*php;
 
@@ -533,8 +519,7 @@ sscop_rcvr_drain(sop)
  *
  */
 void
-sscop_service_xmit(sop)
-	struct sscop	*sop;
+sscop_service_xmit(struct sscop *sop)
 {
 	KBuffer		*m, *n;
 	struct pdu_hdr	*php;
@@ -666,7 +651,7 @@ sscop_service_xmit(sop)
 		 * Yup, send another poll out
 		 */
 		SEQ_INCR(sop->so_pollsend, 1);
-		(void) sscop_send_poll(sop);
+		sscop_send_poll(sop);
 		pollsent++;
 
 		/*
@@ -689,7 +674,7 @@ sscop_service_xmit(sop)
 		 * Send poll
 		 */
 		SEQ_INCR(sop->so_pollsend, 1);
-		(void) sscop_send_poll(sop);
+		sscop_send_poll(sop);
 
 		/*
 		 * Reset data counter for this poll cycle
@@ -723,8 +708,7 @@ sscop_service_xmit(sop)
  *
  */
 static int
-sscop_proc_xmit(sop)
-	struct sscop	*sop;
+sscop_proc_xmit(struct sscop *sop)
 {
 	KBuffer		*m, *ml, *n;
 	struct pdu_hdr	*php;
@@ -902,9 +886,7 @@ sscop_proc_xmit(sop)
  *
  */
 int
-sscop_is_rexmit(sop, nsq)
-	struct sscop	*sop;
-	u_char		nsq;
+sscop_is_rexmit(struct sscop *sop, u_char nsq)
 {
 
 	/*
@@ -940,8 +922,7 @@ sscop_is_rexmit(sop, nsq)
  *
  */
 void
-sscop_set_poll(sop)
-	struct sscop	*sop;
+sscop_set_poll(struct sscop *sop)
 {
 
 	/*

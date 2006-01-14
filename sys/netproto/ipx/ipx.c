@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.9 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.10 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -235,9 +235,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 * Delete any previous route for an old address.
 */
 static void
-ipx_ifscrub(ifp, ia)
-	struct ifnet *ifp;
-	struct ipx_ifaddr *ia; 
+ipx_ifscrub(struct ifnet *ifp, struct ipx_ifaddr *ia)
 {
 	if (ia->ia_flags & IFA_ROUTE) {
 		if (ifp->if_flags & IFF_POINTOPOINT) {
@@ -252,11 +250,8 @@ ipx_ifscrub(ifp, ia)
  * and routing table entry.
  */
 static int
-ipx_ifinit(ifp, ia, sipx, scrub)
-	struct ifnet *ifp;
-	struct ipx_ifaddr *ia;
-	struct sockaddr_ipx *sipx;
-	int scrub;
+ipx_ifinit(struct ifnet *ifp, struct ipx_ifaddr *ia,
+	   struct sockaddr_ipx *sipx, int scrub)
 {
 	struct sockaddr_ipx oldaddr;
 	int error;
@@ -310,8 +305,7 @@ ipx_ifinit(ifp, ia, sipx, scrub)
  * Return address info for specified internet network.
  */
 struct ipx_ifaddr *
-ipx_iaonnetof(dst)
-	struct ipx_addr *dst;
+ipx_iaonnetof(struct ipx_addr *dst)
 {
 	struct ipx_ifaddr *ia;
 	struct ipx_addr *compare;
@@ -338,8 +332,7 @@ ipx_iaonnetof(dst)
 
 
 void
-ipx_printhost(addr)
-struct ipx_addr *addr;
+ipx_printhost(struct ipx_addr *addr)
 {
 	u_short port;
 	struct ipx_addr work = *addr;

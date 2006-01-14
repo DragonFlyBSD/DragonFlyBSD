@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/q2110_subr.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_subr.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -52,8 +52,7 @@
  *
  */
 void
-q2110_clear_xmit(sop)
-	struct sscop	*sop;
+q2110_clear_xmit(struct sscop *sop)
 {
 	/*
 	 * Only clear queues if 'Clear Buffers' == No
@@ -74,8 +73,7 @@ q2110_clear_xmit(sop)
  *
  */
 void
-q2110_init_state(sop)
-	struct sscop	*sop;
+q2110_init_state(struct sscop *sop)
 {
 	/*
 	 * Initialize for entry into Data Transfer Ready state
@@ -101,8 +99,7 @@ q2110_init_state(sop)
  *
  */
 void
-q2110_prep_retrieve(sop)
-	struct sscop	*sop;
+q2110_prep_retrieve(struct sscop *sop)
 {
 	/*
 	 * If 'Clear Buffers' == No, just clear retransmit queue,
@@ -132,8 +129,7 @@ q2110_prep_retrieve(sop)
  *
  */
 void
-q2110_prep_recovery(sop)
-	struct sscop	*sop;
+q2110_prep_recovery(struct sscop *sop)
 {
 	/*
 	 * If 'Clear Buffers' == No, just clear retransmit queue,
@@ -158,8 +154,7 @@ q2110_prep_recovery(sop)
  *
  */
 void
-q2110_deliver_data(sop)
-	struct sscop	*sop;
+q2110_deliver_data(struct sscop *sop)
 {
 	/*
 	 * If 'Clear Buffers' == No, give data to user
@@ -188,8 +183,7 @@ q2110_deliver_data(sop)
  *
  */
 void
-q2110_error_recovery(sop)
-	struct sscop	*sop;
+q2110_error_recovery(struct sscop *sop)
 {
 
 	/*
@@ -210,7 +204,7 @@ q2110_error_recovery(sop)
 	 */
 	sop->so_connctl = 1;
 	SEQ_INCR(sop->so_sendconn, 1);
-	(void) sscop_send_er(sop);
+	sscop_send_er(sop);
 
 	/*
 	 * Set retransmit timer

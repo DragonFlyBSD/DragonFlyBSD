@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.15 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.16 2006/01/14 13:36:40 swildner Exp $
  */
 
 /*
@@ -89,7 +89,7 @@ static	void ipxip_rtchange(struct in_addr *dst);
 static	void ipxipstart(struct ifnet *ifp);
 
 static struct ifnet_en *
-ipxipattach()
+ipxipattach(void)
 {
 	struct ifnet_en *m;
 	struct ifnet *ifp;
@@ -222,11 +222,8 @@ ipxip_input(struct mbuf *m, ...)
 }
 
 static int
-ipxipoutput(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+ipxipoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	    struct rtentry *rt)
 {
 	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
 	struct ip *ip;
@@ -289,8 +286,7 @@ ipxipoutput(ifp, m, dst, rt)
 }
 
 static void
-ipxipstart(ifp)
-struct ifnet *ifp;
+ipxipstart(struct ifnet *ifp)
 {
 	panic("ipxip_start called\n");
 }
@@ -298,9 +294,7 @@ struct ifnet *ifp;
 static struct ifreq ifr_ipxip = {"ipxip0"};
 
 int
-ipxip_route(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ipxip_route(struct socket *so, struct sockopt *sopt)
 {
 	int error;
 	struct ifnet_en *ifn;
@@ -386,8 +380,7 @@ ipxip_route(so, sopt)
 }
 
 static int
-ipxip_free(ifp)
-struct ifnet *ifp;
+ipxip_free(struct ifnet *ifp)
 {
 	struct ifnet_en *ifn = (struct ifnet_en *)ifp;
 	struct route *ro = & ifn->ifen_route;
@@ -401,10 +394,7 @@ struct ifnet *ifp;
 }
 
 void
-ipxip_ctlinput(cmd, sa, dummy)
-	int cmd;
-	struct sockaddr *sa;
-	void *dummy;
+ipxip_ctlinput(int cmd, struct sockaddr *sa, void *dummy)
 {
 	struct sockaddr_in *sin;
 
@@ -429,8 +419,7 @@ ipxip_ctlinput(cmd, sa, dummy)
 }
 
 static void
-ipxip_rtchange(dst)
-	struct in_addr *dst;
+ipxip_rtchange(struct in_addr *dst)
 {
 	struct ifnet_en *ifn;
 

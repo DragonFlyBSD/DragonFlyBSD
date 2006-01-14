@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_subr.c,v 1.7 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_subr.c,v 1.5 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_subr.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -78,9 +78,7 @@ extern struct ie_epst  ie_epst_absent;
  *
  */
 void
-unisig_cause_attr_from_user(aap, cause)
-	Atm_attributes	*aap;
-	int		cause;
+unisig_cause_attr_from_user(Atm_attributes *aap, int cause)
 {
 	if (cause == T_ATM_ABSENT)
 		return;
@@ -109,9 +107,7 @@ unisig_cause_attr_from_user(aap, cause)
  *
  */
 void
-unisig_cause_attr_from_ie(aap, iep)
-	Atm_attributes		*aap;
-	struct ie_generic	*iep;
+unisig_cause_attr_from_ie(Atm_attributes *aap, struct ie_generic *iep)
 {
 	/*
 	 * Set the fields in the attribute block
@@ -146,9 +142,7 @@ unisig_cause_attr_from_ie(aap, iep)
  *
  */
 int
-unisig_open_vcc(usp, cvp)
-	struct unisig	*usp;
-	Atm_connvc	*cvp;
+unisig_open_vcc(struct unisig *usp, Atm_connvc *cvp)
 {
 	struct atm_pif		*pip = usp->us_pif;
 	struct unisig_vccb	*uvp;
@@ -325,9 +319,7 @@ unisig_open_vcc(usp, cvp)
  *	errno	error encountered
  */
 int
-unisig_close_vcc(usp, uvp)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
+unisig_close_vcc(struct unisig *usp, struct unisig_vccb *uvp)
 {
 	int		err = 0;
 
@@ -386,10 +378,7 @@ unisig_close_vcc(usp, uvp)
  *	errno	error encountered
  */
 int
-unisig_clear_vcc(usp, uvp, cause)
-	struct unisig		*usp;
-	struct unisig_vccb	*uvp;
-	int			cause;
+unisig_clear_vcc(struct unisig *usp, struct unisig_vccb *uvp, int cause)
 {
 	u_char	outstate;
 
@@ -451,9 +440,7 @@ unisig_clear_vcc(usp, uvp, cause)
  *
  */
 void
-unisig_switch_reset(usp, cause)
-	struct unisig	*usp;
-	int		cause;
+unisig_switch_reset(struct unisig *usp, int cause)
 {
 	struct unisig_vccb	*uvp, *vnext;
 
@@ -472,7 +459,7 @@ unisig_switch_reset(usp, cause)
 			/*
 			 * Close the SVC and notify the owner
 			 */
-			(void)unisig_clear_vcc(usp, uvp,
+			unisig_clear_vcc(usp, uvp,
 					T_ATM_CAUSE_NORMAL_CALL_CLEARING);
 		} else if (uvp->uv_type & VCC_PVC) {
 			/*
@@ -511,10 +498,8 @@ unisig_switch_reset(usp, cause)
  *
  */
 void
-unisig_save_attrs(usp, msg, ap)
-	struct unisig		*usp;
-	struct unisig_msg	*msg;
-	Atm_attributes		*ap;
+unisig_save_attrs(struct unisig *usp, struct unisig_msg *msg,
+		  Atm_attributes *ap)
 {
 	/*
 	 * Sanity check
@@ -853,10 +838,8 @@ unisig_save_attrs(usp, msg, ap)
  *
  */
 int
-unisig_set_attrs(usp, msg, ap)
-	struct unisig		*usp;
-	struct unisig_msg	*msg;
-	Atm_attributes		*ap;
+unisig_set_attrs(struct unisig *usp, struct unisig_msg *msg,
+		 Atm_attributes *ap)
 {
 	int			err = 0;
 

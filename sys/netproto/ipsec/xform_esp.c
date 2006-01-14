@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.8 2005/06/17 19:12:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.9 2006/01/14 13:36:40 swildner Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -761,7 +761,7 @@ esp_output(
 	 */
 	switch (sav->flags & SADB_X_EXT_PMASK) {
 	case SADB_X_EXT_PRAND:
-		(void) read_random(pad, padding - 2);
+		read_random(pad, padding - 2);
 		break;
 	case SADB_X_EXT_PZERO:
 		bzero(pad, padding - 2);

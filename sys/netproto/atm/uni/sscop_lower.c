@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_lower.c,v 1.5 2000/01/17 20:49:51 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_lower.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_lower.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -106,11 +106,7 @@ static u_char	sscop_buf1[] = {
  *
  */
 void
-sscop_lower(cmd, tok, arg1, arg2)
-	int	cmd;
-	void	*tok;
-	int	arg1;
-	int	arg2;
+sscop_lower(int cmd, void *tok, int arg1, int arg2)
 {
 	struct sscop	*sop = (struct sscop *)tok;
 	void		(**stab) (struct sscop *, int, int);
@@ -190,10 +186,7 @@ sscop_lower(cmd, tok, arg1, arg2)
  *
  */
 void
-sscop_aa_noop_0(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_aa_noop_0(struct sscop *sop, int arg1, int arg2)
 {
 	/*
 	 * Nothing to do
@@ -215,10 +208,7 @@ sscop_aa_noop_0(sop, arg1, arg2)
  *
  */
 void
-sscop_aa_noop_1(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_aa_noop_1(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -244,10 +234,7 @@ sscop_aa_noop_1(sop, arg1, arg2)
  *
  */
 void
-sscop_init_inst(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_init_inst(struct sscop *sop, int arg1, int arg2)
 {
 	int		err;
 
@@ -306,10 +293,7 @@ sscop_init_inst(sop, arg1, arg2)
  *
  */
 void
-sscop_term_all(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_term_all(struct sscop *sop, int arg1, int arg2)
 {
 	int		err;
 

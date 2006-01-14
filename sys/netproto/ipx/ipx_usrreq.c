@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.9 2005/06/10 22:34:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.10 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include "opt_ipx.h"
@@ -109,9 +109,7 @@ struct	pr_usrreqs ripx_usrreqs = {
  *  This may also be called for raw listeners.
  */
 void
-ipx_input(m, ipxp)
-	struct mbuf *m;
-	struct ipxpcb *ipxp;
+ipx_input(struct mbuf *m, struct ipxpcb *ipxp)
 {
 	struct ipx *ipx = mtod(m, struct ipx *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
@@ -156,8 +154,7 @@ bad:
 }
 
 void
-ipx_abort(ipxp)
-	struct ipxpcb *ipxp;
+ipx_abort(struct ipxpcb *ipxp)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
@@ -170,9 +167,7 @@ ipx_abort(ipxp)
  * the specified error.
  */
 void
-ipx_drop(ipxp, errno)
-	struct ipxpcb *ipxp;
-	int errno;
+ipx_drop(struct ipxpcb *ipxp, int errno)
 {
 	struct socket *so = ipxp->ipxp_socket;
 
@@ -193,9 +188,7 @@ ipx_drop(ipxp, errno)
 }
 
 static int
-ipx_output(ipxp, m0)
-	struct ipxpcb *ipxp;
-	struct mbuf *m0;
+ipx_output(struct ipxpcb *ipxp, struct mbuf *m0)
 {
 	struct ipx *ipx;
 	struct socket *so;
@@ -313,9 +306,7 @@ ipx_output(ipxp, m0)
 }
 
 int
-ipx_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ipx_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 	int mask, error, optval;
@@ -423,8 +414,7 @@ ipx_ctloutput(so, sopt)
 }
 
 static int
-ipx_usr_abort(so)
-	struct socket *so;
+ipx_usr_abort(struct socket *so)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
@@ -478,8 +468,7 @@ ipx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 }
 
 static int
-ipx_detach(so)
-	struct socket *so;
+ipx_detach(struct socket *so)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
@@ -492,8 +481,7 @@ ipx_detach(so)
 }
 
 static int
-ipx_disconnect(so)
-	struct socket *so;
+ipx_disconnect(struct socket *so)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
@@ -507,9 +495,7 @@ ipx_disconnect(so)
 }
 
 int
-ipx_peeraddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+ipx_peeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
@@ -559,17 +545,14 @@ send_release:
 }
 
 static int
-ipx_shutdown(so)
-	struct socket *so;
+ipx_shutdown(struct socket *so)
 {
 	socantsendmore(so);
 	return (0);
 }
 
 int
-ipx_sockaddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+ipx_sockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 

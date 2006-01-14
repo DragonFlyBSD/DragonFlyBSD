@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_mbuf.c,v 1.5 1999/08/28 00:49:05 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_mbuf.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_mbuf.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -57,12 +57,7 @@
  *
  */
 int
-usf_init(usf, usp, buf, op, headroom)
-	struct usfmt	*usf;
-	struct unisig	*usp;
-	KBuffer		*buf;
-	int		op;
-	int		headroom;
+usf_init(struct usfmt *usf, struct unisig *usp, KBuffer *buf, int op, int headroom)
 {
 	KBuffer		*m;
 
@@ -129,9 +124,7 @@ usf_init(usf, usp, buf, op, headroom)
  *
  */
 int
-usf_byte(usf, c)
-	struct usfmt	*usf;
-	u_char		*c;
+usf_byte(struct usfmt *usf, u_char *c)
 {
 	u_char		*mp;
 	KBuffer		*m = usf->usf_m_addr, *m1;
@@ -209,10 +202,7 @@ usf_byte(usf, c)
  *
  */
 int
-usf_short(usf, s)
-	struct usfmt	*usf;
-	u_short		*s;
-
+usf_short(struct usfmt *usf, u_short *s)
 {
 	int	rc;
 	union {
@@ -249,10 +239,7 @@ usf_short(usf, s)
  *
  */
 int
-usf_int3(usf, i)
-	struct usfmt	*usf;
-	u_int		*i;
-
+usf_int3(struct usfmt *usf, u_int *i)
 {
 	int	j, rc;
 	union {
@@ -291,10 +278,7 @@ usf_int3(usf, i)
  *
  */
 int
-usf_int(usf, i)
-	struct usfmt	*usf;
-	u_int		*i;
-
+usf_int(struct usfmt *usf, u_int *i)
 {
 	int	j, rc;
 	union {
@@ -338,10 +322,7 @@ usf_int(usf, i)
  *
  */
 int
-usf_ext(usf, i)
-	struct usfmt	*usf;
-	u_int		*i;
-
+usf_ext(struct usfmt *usf, u_int *i)
 {
 	int	j, rc;
 	u_char	c, buff[sizeof(u_int)+1];
@@ -403,8 +384,7 @@ usf_ext(usf, i)
  *
  */
 int
-usf_count(usf)
-	struct usfmt	*usf;
+usf_count(struct usfmt *usf)
 {
 	int		count;
 	KBuffer		*m = usf->usf_m_addr;
@@ -448,10 +428,7 @@ usf_count(usf)
  *
  */
 int
-usf_byte_mark(usf, c, bp)
-	struct usfmt	*usf;
-	u_char		*c;
-	u_char		**bp;
+usf_byte_mark(struct usfmt *usf, u_char *c, u_char **bp)
 {
 	u_char		*mp;
 	int		rc;

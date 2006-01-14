@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/unisig_sigmgr_state.c,v 1.6 2000/01/17 20:49:58 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.6 2005/06/02 22:37:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/unisig_sigmgr_state.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -222,10 +222,7 @@ static Atm_attributes	unisig_attr = {
  *
  */
 int
-unisig_sigmgr_state(usp, event, m)
-	struct unisig	*usp;
-	int		event;
-	KBuffer		*m;
+unisig_sigmgr_state(struct unisig *usp, int event, KBuffer *m)
 {
 	int		action, err = 0;
 
@@ -269,9 +266,7 @@ unisig_sigmgr_state(usp, event, m)
  *
  */
 static int
-unisig_sigmgr_invalid(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_invalid(struct unisig *usp, KBuffer *m)
 {
 	log(LOG_ERR, "unisig_sigmgr_state: unexpected action\n");
 	if (m)
@@ -296,9 +291,7 @@ unisig_sigmgr_invalid(usp, m)
  *
  */
 static int
-unisig_sigmgr_act01(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act01(struct unisig *usp, KBuffer *m)
 {
 	/*
 	 * Set the new state
@@ -324,9 +317,7 @@ unisig_sigmgr_act01(usp, m)
  *
  */
 static int
-unisig_sigmgr_act02(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act02(struct unisig *usp, KBuffer *m)
 {
 	/*
 	 * Ignore event, discard message if present
@@ -353,9 +344,7 @@ unisig_sigmgr_act02(usp, m)
  *
  */
 static int
-unisig_sigmgr_act03(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act03(struct unisig *usp, KBuffer *m)
 {
 	struct unisig_vccb	*uvp, *vnext;
 
@@ -375,7 +364,7 @@ unisig_sigmgr_act03(usp, m)
 	for (uvp = Q_HEAD(usp->us_vccq, struct unisig_vccb);
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
-		(void) unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
+		unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
 				(struct unisig_msg *) 0);
 	}
 
@@ -399,9 +388,7 @@ unisig_sigmgr_act03(usp, m)
  *
  */
 static int
-unisig_sigmgr_act04(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act04(struct unisig *usp, KBuffer *m)
 {
 	int		err;
 
@@ -433,9 +420,7 @@ unisig_sigmgr_act04(usp, m)
  *
  */
 static int
-unisig_sigmgr_act05(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act05(struct unisig *usp, KBuffer *m)
 {
 	struct unisig_vccb	*uvp, *vnext;
 
@@ -450,7 +435,7 @@ unisig_sigmgr_act05(usp, m)
 	for (uvp = Q_HEAD(usp->us_vccq, struct unisig_vccb);
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
-		(void) unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
+		unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
 				(struct unisig_msg *) 0);
 	}
 
@@ -473,9 +458,7 @@ unisig_sigmgr_act05(usp, m)
  *
  */
 static int
-unisig_sigmgr_act06(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act06(struct unisig *usp, KBuffer *m)
 {
 	struct unisig_vccb	*uvp, *vnext;
 
@@ -490,14 +473,14 @@ unisig_sigmgr_act06(usp, m)
 	for (uvp = Q_HEAD(usp->us_vccq, struct unisig_vccb);
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
-		(void) unisig_vc_state(usp, uvp, UNI_VC_SAAL_FAIL,
+		unisig_vc_state(usp, uvp, UNI_VC_SAAL_FAIL,
 				(struct unisig_msg *) 0);
 	}
 
 	/*
 	 * Try to restart the SSCF session
 	 */
-	(void) unisig_sigmgr_act04(usp, (KBuffer *) 0);
+	unisig_sigmgr_act04(usp, (KBuffer *) 0);
 
 	/*
 	 * Go to INIT state
@@ -523,9 +506,7 @@ unisig_sigmgr_act06(usp, m)
  *
  */
 static int
-unisig_sigmgr_act07(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act07(struct unisig *usp, KBuffer *m)
 {
 	int	err;
 
@@ -554,9 +535,7 @@ unisig_sigmgr_act07(usp, m)
  *
  */
 static int
-unisig_sigmgr_act08(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act08(struct unisig *usp, KBuffer *m)
 {
 
 	/*
@@ -591,9 +570,7 @@ unisig_sigmgr_act08(usp, m)
  *
  */
 static int
-unisig_sigmgr_act09(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act09(struct unisig *usp, KBuffer *m)
 {
 	log(LOG_ERR, "unisig_sigmgr_act09: unexpected action\n");
 	if (m)
@@ -617,9 +594,7 @@ unisig_sigmgr_act09(usp, m)
  *
  */
 static int
-unisig_sigmgr_act10(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act10(struct unisig *usp, KBuffer *m)
 {
 	return(0);
 }
@@ -640,9 +615,7 @@ unisig_sigmgr_act10(usp, m)
  *
  */
 static int
-unisig_sigmgr_act11(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act11(struct unisig *usp, KBuffer *m)
 {
 	log(LOG_ERR, "unisig_sigmgr_act11: unexpected action\n");
 	if (m)
@@ -666,9 +639,7 @@ unisig_sigmgr_act11(usp, m)
  *
  */
 static int
-unisig_sigmgr_act12(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act12(struct unisig *usp, KBuffer *m)
 {
 	log(LOG_ERR, "unisig_sigmgr_act11: unexpected action\n");
 	if (m)
@@ -692,9 +663,7 @@ unisig_sigmgr_act12(usp, m)
  *
  */
 static int
-unisig_sigmgr_act13(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act13(struct unisig *usp, KBuffer *m)
 {
 	int		err;
 	Atm_addr_pvc	*pvcp;
@@ -769,9 +738,7 @@ unisig_sigmgr_act13(usp, m)
  *
  */
 static int
-unisig_sigmgr_act14(usp, m)
-	struct unisig	*usp;
-	KBuffer		*m;
+unisig_sigmgr_act14(struct unisig *usp, KBuffer *m)
 {
 	int			err;
 	struct unisig_vccb	*sig_vccb, *uvp, *vnext;

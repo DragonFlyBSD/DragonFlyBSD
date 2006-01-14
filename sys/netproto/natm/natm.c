@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.19 2005/11/28 17:13:47 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.20 2006/01/14 13:36:40 swildner Exp $ */
 
 /*
  *
@@ -430,18 +430,14 @@ struct pr_usrreqs natm_usrreqs = {
 #else  /* !FREEBSD_USRREQS */
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-int natm_usrreq(so, req, m, nam, control, p)
+int
+natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
+	    struct mbuf *control, struct proc *p)
 #elif defined(__DragonFly__)
-int natm_usrreq(so, req, m, nam, control)
+int
+natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
+	    struct mbuf *control)
 #endif
-
-struct socket *so;
-int req;
-struct mbuf *m, *nam, *control;
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-struct proc *p;
-#endif
-
 {
   int error = 0;
   struct natmpcb *npcb;
@@ -707,8 +703,9 @@ done:
  * later...
  */
 
-int natm0_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
-    void *newp, size_t newlen)
+int
+natm0_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+	     void *newp, size_t newlen)
 {
   /* All sysctl names at this level are terminal. */
   if (namelen != 1)
@@ -721,8 +718,9 @@ int natm0_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
  * later...
  */
 
-int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
-    void *newp, size_t newlen)
+int
+natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+	     void *newp, size_t newlen)
 {
   /* All sysctl names at this level are terminal. */
   if (namelen != 1)
@@ -743,7 +741,7 @@ SYSINIT(natm_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_natm_setup, NULL);
 #endif
 
 void
-natm_init()
+natm_init(void)
 {
   LIST_INIT(&natm_pcbs);
 

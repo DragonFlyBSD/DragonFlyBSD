@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.12 2004/06/02 14:43:02 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.13 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ static	void ipx_forward(struct mbuf *m);
  */
 
 void
-ipx_init()
+ipx_init(void)
 {
 	ipx_broadnet = *(union ipx_net *)allones;
 	ipx_broadhost = *(union ipx_host *)allones;
@@ -273,11 +273,12 @@ out:
 	return(EASYNC);
 }
 
+/*
+ * Parameters:
+ *	arg_as_sa:	XXX should be swapped with dummy
+ */
 void
-ipx_ctlinput(cmd, arg_as_sa, dummy)
-	int cmd;
-	struct sockaddr *arg_as_sa;	/* XXX should be swapped with dummy */
-	void *dummy;
+ipx_ctlinput(int cmd, struct sockaddr *arg_as_sa, void *dummy)
 {
 	caddr_t arg = (/* XXX */ caddr_t)arg_as_sa;
 	struct ipx_addr *ipx;
@@ -312,8 +313,7 @@ static struct route ipx_droute;
 static struct route ipx_sroute;
 
 static void
-ipx_forward(m)
-struct mbuf *m;
+ipx_forward(struct mbuf *m)
 {
 	struct ipx *ipx = mtod(m, struct ipx *);
 	int error;
@@ -427,9 +427,7 @@ cleanup:
 }
 
 static int
-ipx_do_route(src, ro)
-struct ipx_addr *src;
-struct route *ro;
+ipx_do_route(struct ipx_addr *src, struct route *ro)
 {
 	struct sockaddr_ipx *dst;
 
@@ -449,8 +447,7 @@ struct route *ro;
 }
 
 static void
-ipx_undo_route(ro)
-struct route *ro;
+ipx_undo_route(struct route *ro)
 {
 	if (ro->ro_rt != NULL) {
 		RTFREE(ro->ro_rt);
@@ -458,9 +455,7 @@ struct route *ro;
 }
 
 void
-ipx_watch_output(m, ifp)
-struct mbuf *m;
-struct ifnet *ifp;
+ipx_watch_output(struct mbuf *m, struct ifnet *ifp)
 {
 	struct ipxpcb *ipxp;
 	struct ifaddr *ifa;

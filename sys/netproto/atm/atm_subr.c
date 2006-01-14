@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.17 2005/06/02 22:37:45 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.18 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -102,7 +102,7 @@ static struct sp_info	atm_stackq_pool = {
  *
  */
 void
-atm_initialize()
+atm_initialize(void)
 {
 	/*
 	 * Never called from interrupts, so no locking needed
@@ -148,8 +148,7 @@ atm_initialize()
  *
  */
 void *
-atm_allocate(sip)
-	struct sp_info	*sip;
+atm_allocate(struct sp_info *sip)
 {
 	void		*bp;
 	struct sp_chunk	*scp;
@@ -291,8 +290,7 @@ atm_allocate(sip)
  *
  */
 void
-atm_free(bp)
-	void		*bp;
+atm_free(void *bp)
 {
 	struct sp_info	*sip;
 	struct sp_chunk	*scp;
@@ -345,8 +343,7 @@ atm_free(bp)
  *
  */
 static void
-atm_compact(tip)
-	struct atm_time	*tip;
+atm_compact(struct atm_time *tip)
 {
 	struct sp_info	*sip;
 	struct sp_chunk	*scp;
@@ -434,8 +431,7 @@ atm_compact(tip)
  *
  */
 void
-atm_release_pool(sip)
-	struct sp_info	*sip;
+atm_release_pool(struct sp_info *sip)
 {
 	struct sp_chunk	*scp, *scp_next;
 
@@ -489,8 +485,7 @@ atm_release_pool(sip)
  *
  */
 static KTimeout_ret
-atm_timexp(arg)
-	void	*arg;
+atm_timexp(void *arg)
 {
 	struct atm_time	*tip;
 
@@ -564,10 +559,7 @@ restart:
  *
  */
 void
-atm_timeout(tip, t, func)
-	struct atm_time	*tip;
-	int		t;
-	void		(*func)(struct atm_time *);
+atm_timeout(struct atm_time *tip, int t, void (*func)(struct atm_time *))
 {
 	struct atm_time	*tip1, *tip2;
 
@@ -631,8 +623,7 @@ atm_timeout(tip, t, func)
  *
  */
 int
-atm_untimeout(tip)
-	struct atm_time	*tip;
+atm_untimeout(struct atm_time *tip)
 {
 	struct atm_time	*tip1, *tip2;
 
@@ -698,13 +689,8 @@ atm_untimeout(tip)
  *
  */
 int
-atm_stack_enq(cmd, func, token, cvp, arg1, arg2)
-	int		cmd;
-	void		(*func)(int, void *, int, int);
-	void		*token;
-	Atm_connvc	*cvp;
-	int		arg1;
-	int		arg2;
+atm_stack_enq(int cmd, void (*func)(int, void *, int, int), void *token,
+	      Atm_connvc *cvp, int arg1, int arg2)
 {
 	struct stackq_entry	*sqp;
 
@@ -757,7 +743,7 @@ atm_stack_enq(cmd, func, token, cvp, arg1, arg2)
  *
  */
 void
-atm_stack_drain()
+atm_stack_drain(void)
 {
 	struct stackq_entry	*sqp, *qprev, *qnext;
 	int		cnt;
@@ -908,9 +894,7 @@ atm_intr(struct netmsg *msg)
  *
  */
 void
-atm_pdu_print(m, msg)
-	KBuffer		*m;
-	char		*msg;
+atm_pdu_print(KBuffer *m, char *msg)
 {
 	caddr_t		cp;
 	int		i;

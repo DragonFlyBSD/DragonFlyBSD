@@ -32,7 +32,7 @@
  *
  *	@(#)ns_output.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_output.c,v 1.7 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.7 2005/11/28 17:13:47 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.8 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -56,10 +56,7 @@ int ns_output_cnt = 0;
 struct mbuf *ns_lastout;
 
 int
-ns_output(m0, ro, flags)
-	struct mbuf *m0;
-	struct route *ro;
-	int flags;
+ns_output(struct mbuf *m0, struct route *ro, int flags)
 {
 	struct idp *idp = mtod(m0, struct idp *);
 	struct ifnet *ifp = 0;
@@ -69,7 +66,7 @@ ns_output(m0, ro, flags)
 
 	if (ns_hold_output) {
 		if (ns_lastout) {
-			(void)m_free(ns_lastout);
+			m_free(ns_lastout);
 		}
 		ns_lastout = m_copy(m0, 0, (int)M_COPYALL);
 	}

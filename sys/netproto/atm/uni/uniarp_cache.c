@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_cache.c,v 1.4 1999/08/28 00:49:02 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_cache.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_cache.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -60,12 +60,8 @@
  *
  */
 int
-uniarp_cache_svc(uip, ip, atm, atmsub, origin)
-	struct uniip		*uip;
-	struct in_addr		*ip;
-	Atm_addr		*atm;
-	Atm_addr		*atmsub;
-	u_int			origin;
+uniarp_cache_svc(struct uniip *uip, struct in_addr *ip, Atm_addr *atm,
+		 Atm_addr *atmsub, u_int origin)
 {
 	struct ip_nif		*inp;
 	struct ipvcc		*ivp, *inext, *itail;
@@ -308,11 +304,8 @@ dataok:
  *
  */
 void
-uniarp_cache_pvc(ivp, ip, atm, atmsub)
-	struct ipvcc		*ivp;
-	struct in_addr		*ip;
-	Atm_addr		*atm;
-	Atm_addr		*atmsub;
+uniarp_cache_pvc(struct ipvcc *ivp, struct in_addr *ip, Atm_addr *atm,
+		 Atm_addr *atmsub)
 {
 	struct ip_nif		*inp;
 	struct uniarp		*uap;
@@ -379,10 +372,7 @@ uniarp_cache_pvc(ivp, ip, atm, atmsub)
  *
  */
 int
-uniarp_validate_ip(uip, ip, origin)
-	struct uniip		*uip;
-	struct in_addr		*ip;
-	u_int			origin;
+uniarp_validate_ip(struct uniip *uip, struct in_addr *ip, u_int origin)
 {
 	struct uniarp_prf	*upp;
 	int	i;

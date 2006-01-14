@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop.c,v 1.6.2.1 2001/09/30 22:54:35 kris Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ static u_char	sscop_maa_log[MAA_ERROR_COUNT] = {
  *
  */
 int
-sscop_start()
+sscop_start(void)
 {
 	int	err = 0;
 
@@ -169,7 +169,7 @@ done:
  *
  */
 int
-sscop_stop()
+sscop_stop(void)
 {
 	int	err = 0;
 
@@ -187,12 +187,12 @@ sscop_stop()
 	/*
 	 * Stop our timer
 	 */
-	(void) atm_untimeout(&sscop_timer);
+	atm_untimeout(&sscop_timer);
 
 	/*
 	 * Deregister the stack service
 	 */
-	(void) atm_stack_deregister(&sscop_service);
+	atm_stack_deregister(&sscop_service);
 
 	/*
 	 * Free our storage pools
@@ -221,9 +221,7 @@ sscop_stop()
  *
  */
 static int
-sscop_inst(ssp, cvp)
-	struct stack_defn	**ssp;
-	Atm_connvc		*cvp;
+sscop_inst(struct stack_defn **ssp, Atm_connvc *cvp)
 {
 	struct stack_defn	*sdp_up = ssp[0],
 				*sdp_me = ssp[1],
@@ -316,9 +314,7 @@ sscop_inst(ssp, cvp)
  *
  */
 void
-sscop_maa_error(sop, code)
-	struct sscop	*sop;
-	int		code;
+sscop_maa_error(struct sscop *sop, int code)
 {
 	int		i;
 
@@ -366,9 +362,7 @@ sscop_maa_error(sop, code)
  *
  */
 void
-sscop_abort(sop, msg)
-	struct sscop	*sop;
-	char		*msg;
+sscop_abort(struct sscop *sop, char *msg)
 {
 	Atm_connvc	*cvp = sop->so_connvc;
 
@@ -381,7 +375,7 @@ sscop_abort(sop, msg)
 	/*
 	 * Send an END PDU as a courtesy to peer
 	 */
-	(void) sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_end(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Set termination state
@@ -397,6 +391,6 @@ sscop_abort(sop, msg)
 	/*
 	 * Tell Connection Manager to abort this connection
 	 */
-	(void) atm_cm_abort(cvp, &sscop_cause);
+	atm_cm_abort(cvp, &sscop_cause);
 }
 

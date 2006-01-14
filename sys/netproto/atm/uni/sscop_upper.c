@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_upper.c,v 1.5 2000/01/17 20:49:54 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_upper.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_upper.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -181,11 +181,7 @@ static u_char q2110_padlen[] = {
  *
  */
 void
-sscop_upper(cmd, tok, arg1, arg2)
-	int	cmd;
-	void	*tok;
-	int	arg1;
-	int	arg2;
+sscop_upper(int cmd, void *tok, int arg1, int arg2)
 {
 	struct sscop	*sop = (struct sscop *)tok;
 	void		(**ptab) (struct sscop *, KBuffer *, caddr_t);
@@ -263,10 +259,7 @@ sscop_upper(cmd, tok, arg1, arg2)
  *
  */
 static caddr_t
-sscop_pdu_receive(m, sop, typep)
-	KBuffer		*m;
-	struct sscop	*sop;
-	int		*typep;
+sscop_pdu_receive(KBuffer *m, struct sscop *sop, int *typep)
 {
 	KBuffer		*m0, *ml, *mn;
 	caddr_t		cp, tp;

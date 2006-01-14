@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/qsaal1_sigaa.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigaa.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_sigaa.c,v 1.6 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -265,10 +265,7 @@ void	(*(*sscop_qsaal_aatab[SSCOP_CMD_SIZE]))
  *
  */
 static void
-sscop_estreq_ready(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_estreq_ready(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -305,7 +302,7 @@ sscop_estreq_ready(sop, arg1, arg2)
 	 * Send first BGN PDU
 	 */
 	sop->so_connctl = 1;
-	(void) sscop_send_bgn(sop, SSCOP_SOURCE_USER);
+	sscop_send_bgn(sop, SSCOP_SOURCE_USER);
 
 	/*
 	 * Reset transmitter state
@@ -339,10 +336,7 @@ sscop_estreq_ready(sop, arg1, arg2)
  *
  */
 static void
-sscop_datreq_outconn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_datreq_outconn(struct sscop *sop, int arg1, int arg2)
 {
 	KBuffer		*m = (KBuffer *)arg1;
 
@@ -396,10 +390,7 @@ sscop_datreq_outconn(sop, arg1, arg2)
  *
  */
 static void
-sscop_resreq_ready(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_resreq_ready(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
@@ -423,7 +414,7 @@ sscop_resreq_ready(sop, arg1, arg2)
 	 * Send first RS PDU
 	 */
 	sop->so_connctl = 1;
-	(void) sscop_send_rs(sop);
+	sscop_send_rs(sop);
 
 	/*
 	 * Reset transmitter state
@@ -457,16 +448,13 @@ sscop_resreq_ready(sop, arg1, arg2)
  *
  */
 static void
-sscop_resrsp_inresyn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_resrsp_inresyn(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
 	 * Send RSAK PDU
 	 */
-	(void) sscop_send_rsak(sop);
+	sscop_send_rsak(sop);
 
 	/*
 	 * Back to data transfer state
@@ -490,16 +478,13 @@ sscop_resrsp_inresyn(sop, arg1, arg2)
  *
  */
 static void
-sscop_resrsp_conresyn(sop, arg1, arg2)
-	struct sscop	*sop;
-	int		arg1;
-	int		arg2;
+sscop_resrsp_conresyn(struct sscop *sop, int arg1, int arg2)
 {
 
 	/*
 	 * Send RSAK PDU
 	 */
-	(void) sscop_send_rsak(sop);
+	sscop_send_rsak(sop);
 
 	/*
 	 * Back to waiting for peer's RSAK

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.16 2005/01/23 13:21:44 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.17 2006/01/14 13:36:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ long	ns_pexseq;
 static int nsintr(struct netmsg *msg);
 
 void
-ns_init()
+ns_init(void)
 {
 	ns_broadhost = * (union ns_host *) allones;
 	ns_broadnet = * (union ns_net *) allones;
@@ -247,9 +247,7 @@ u_char nsctlerrmap[PRC_NCMDS] = {
 int idp_donosocks = 1;
 
 void
-idp_ctlinput(cmd, arg)
-	int cmd;
-	caddr_t arg;
+idp_ctlinput(int cmd, caddr_t arg)
 {
 	struct ns_addr *ns;
 	struct nspcb *nsp;
@@ -289,7 +287,7 @@ idp_ctlinput(cmd, arg)
 		nsp = ns_pcblookup(ns, errp->ns_err_idp.idp_sna.x_port,
 			NS_WILDCARD);
 		if(nsp && idp_donosocks && ! ns_nullhost(nsp->nsp_faddr))
-			(void) idp_drop(nsp, (int)nsctlerrmap[cmd]);
+			idp_drop(nsp, (int)nsctlerrmap[cmd]);
 	}
 }
 
@@ -305,8 +303,7 @@ struct route idp_droute;
 struct route idp_sroute;
 
 void
-idp_forward(m)
-struct mbuf *m;
+idp_forward(struct mbuf *m)
 {
 	struct idp *idp = mtod(m, struct idp *);
 	int error, type, code;
@@ -425,9 +422,7 @@ cleanup:
 }
 
 int
-idp_do_route(src, ro)
-struct ns_addr *src;
-struct route *ro;
+idp_do_route(struct ns_addr *src, struct route *ro)
 {
 
 	struct sockaddr_ns *dst;
@@ -448,16 +443,13 @@ struct route *ro;
 }
 
 void
-idp_undo_route(ro)
-struct route *ro;
+idp_undo_route(struct route *ro)
 {
 	if (ro->ro_rt) {RTFREE(ro->ro_rt);}
 }
 
 void
-ns_watch_output(m, ifp)
-struct mbuf *m;
-struct ifnet *ifp;
+ns_watch_output(struct mbuf *m, struct ifnet *ifp)
 {
 	struct nspcb *nsp;
 	struct ifaddr *ifa;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/qsaal1_subr.c,v 1.4 2000/01/17 20:49:50 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_subr.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/qsaal1_subr.c,v 1.5 2006/01/14 13:36:39 swildner Exp $
  */
 
 /*
@@ -52,8 +52,7 @@
  *
  */
 void
-qsaal1_reestablish(sop)
-	struct sscop	*sop;
+qsaal1_reestablish(struct sscop *sop)
 {
 
 	/*
@@ -72,7 +71,7 @@ qsaal1_reestablish(sop)
 	 * Send first BGN PDU
 	 */
 	sop->so_connctl = 1;
-	(void) sscop_send_bgn(sop, SSCOP_SOURCE_SSCOP);
+	sscop_send_bgn(sop, SSCOP_SOURCE_SSCOP);
 
 	/*
 	 * Reset transmit variables
@@ -104,8 +103,7 @@ qsaal1_reestablish(sop)
  *
  */
 void
-qsaal1_reset_xmit(sop)
-	struct sscop	*sop;
+qsaal1_reset_xmit(struct sscop *sop)
 {
 
 	/*
@@ -139,8 +137,7 @@ qsaal1_reset_xmit(sop)
  *
  */
 void
-qsaal1_reset_rcvr(sop)
-	struct sscop	*sop;
+qsaal1_reset_rcvr(struct sscop *sop)
 {
 
 	/*
@@ -170,8 +167,7 @@ qsaal1_reset_rcvr(sop)
  *
  */
 void
-qsaal1_clear_connection(sop)
-	struct sscop	*sop;
+qsaal1_clear_connection(struct sscop *sop)
 {
 
 	/*
