@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.17 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.18 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -83,8 +83,7 @@ extern struct inpcbinfo udbinfo;
  * Otherwise, it includes only the directly-connected (sub)nets.
  */
 int
-in_localaddr(in)
-	struct in_addr in;
+in_localaddr(struct in_addr in)
 {
 	u_long i = ntohl(in.s_addr);
 	struct in_ifaddr *ia;
@@ -107,8 +106,7 @@ in_localaddr(in)
  * may be forwarded.
  */
 int
-in_canforward(in)
-	struct in_addr in;
+in_canforward(struct in_addr in)
 {
 	u_long i = ntohl(in.s_addr);
 	u_long net;
@@ -127,8 +125,7 @@ in_canforward(in)
  * Trim a mask in a sockaddr
  */
 static void
-in_socktrim(ap)
-struct sockaddr_in *ap;
+in_socktrim(struct sockaddr_in *ap)
 {
     char *cplim = (char *) &ap->sin_addr;
     char *cp = (char *) (&ap->sin_addr + 1);
@@ -142,8 +139,7 @@ struct sockaddr_in *ap;
 }
 
 static int
-in_mask2len(mask)
-	struct in_addr *mask;
+in_mask2len(struct in_addr *mask)
 {
 	int x, y;
 	u_char *p;
@@ -164,9 +160,7 @@ in_mask2len(mask)
 }
 
 static void
-in_len2mask(mask, len)
-	struct in_addr *mask;
-	int len;
+in_len2mask(struct in_addr *mask, int len)
 {
 	int i;
 	u_char *p;
@@ -189,12 +183,8 @@ static int in_interfaces;	/* number of external internet interfaces */
  */
 /* ARGSUSED */
 int
-in_control(so, cmd, data, ifp, td)
-	struct socket *so;
-	u_long cmd;
-	caddr_t data;
-	struct ifnet *ifp;
-	struct thread *td;
+in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
+	   struct thread *td)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct in_ifaddr *ia = 0, *iap;
@@ -484,12 +474,8 @@ in_control(so, cmd, data, ifp, td)
  * NOTE! td might be NULL.
  */
 static int
-in_lifaddr_ioctl(so, cmd, data, ifp, td)
-	struct socket *so;
-	u_long cmd;
-	caddr_t	data;
-	struct ifnet *ifp;
-	struct thread *td;
+in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
+		 struct thread *td)
 {
 	struct if_laddrreq *iflr = (struct if_laddrreq *)data;
 	struct ifaddr *ifa;
@@ -648,9 +634,7 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
  * Delete any existing route for an interface.
  */
 void
-in_ifscrub(ifp, ia)
-	struct ifnet *ifp;
-	struct in_ifaddr *ia;
+in_ifscrub(struct ifnet *ifp, struct in_ifaddr *ia)
 {
 
 	if ((ia->ia_flags & IFA_ROUTE) == 0)
@@ -667,11 +651,7 @@ in_ifscrub(ifp, ia)
  * and routing table entry.
  */
 static int
-in_ifinit(ifp, ia, sin, scrub)
-	struct ifnet *ifp;
-	struct in_ifaddr *ia;
-	struct sockaddr_in *sin;
-	int scrub;
+in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia, struct sockaddr_in *sin, int scrub)
 {
 	u_long i = ntohl(sin->sin_addr.s_addr);
 	struct sockaddr_in oldaddr;
@@ -819,9 +799,7 @@ in_broadcast(struct in_addr in, struct ifnet *ifp)
  * Add an address to the list of IP multicast addresses for a given interface.
  */
 struct in_multi *
-in_addmulti(ap, ifp)
-	struct in_addr *ap;
-	struct ifnet *ifp;
+in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 {
 	struct in_multi *inm;
 	int error;
@@ -874,8 +852,7 @@ in_addmulti(ap, ifp)
  * Delete a multicast address record.
  */
 void
-in_delmulti(inm)
-	struct in_multi *inm;
+in_delmulti(struct in_multi *inm)
 {
 	struct ifmultiaddr *ifma;
 	struct in_multi my_inm;

@@ -35,7 +35,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_id.c,v 1.1.2.1 2001/07/19 06:37:26 kris Exp $
- * $DragonFly: src/sys/netinet/ip_id.c,v 1.5 2005/08/15 16:46:21 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_id.c,v 1.6 2006/01/14 11:33:50 swildner Exp $
  */
 
 /*
@@ -94,15 +94,8 @@ u_int16_t ip_randomid (void);
  * Do a fast modular exponation, returned value will be in the range
  * of 0 - (mod-1)
  */
-
-#ifdef __STDC__
 static u_int16_t
 pmod(u_int16_t gen, u_int16_t exp, u_int16_t mod)
-#else
-static u_int16_t
-pmod(gen, exp, mod)
-	u_int16_t gen, exp, mod;
-#endif
 {
 	u_int16_t s, t, u;
 

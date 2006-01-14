@@ -1,5 +1,5 @@
 /*	$KAME: sctp_hashdriver.c,v 1.5 2004/01/19 09:48:26 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_hashdriver.c,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_hashdriver.c,v 1.2 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -63,8 +63,9 @@
  * that is what the FIP-180.1 web page says.
  */
 
-void sctp_hash_digest(char *key, int key_len, char *text, int text_len,
-    unsigned char *digest)
+void
+sctp_hash_digest(char *key, int key_len, char *text, int text_len,
+		 unsigned char *digest)
 {
 #ifdef USE_MD5
 	md5_ctxt context;
@@ -149,8 +150,9 @@ void sctp_hash_digest(char *key, int key_len, char *text, int text_len,
 #endif /* USE_MD5 */
 }
 
-void sctp_hash_digest_m(char *key, int key_len, struct mbuf *m, int offset,
-    unsigned char *digest)
+void
+sctp_hash_digest_m(char *key, int key_len, struct mbuf *m, int offset,
+		   unsigned char *digest)
 {
 	struct mbuf *m_at;
 #ifdef USE_MD5

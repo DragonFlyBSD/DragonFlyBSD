@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.7 2005/07/15 17:23:47 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.8 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -186,7 +186,7 @@ SCTP_INP_WLOCK(struct sctp_inpcb *inp)
 }
 
 void
-SCTP_INP_INFO_RLOCK()
+SCTP_INP_INFO_RLOCK(void)
 {
 	struct sctp_inpcb *inp;
 	struct sctp_tcb *stcb;
@@ -204,13 +204,13 @@ SCTP_INP_INFO_RLOCK()
 }
 
 void
-SCTP_INP_INFO_WLOCK()
+SCTP_INP_INFO_WLOCK(void)
 {
 	SCTP_INP_INFO_RLOCK();
 }
 
 
-void sctp_validate_no_locks()
+void sctp_validate_no_locks(void)
 {
 	struct sctp_inpcb *inp;
 	struct sctp_tcb *stcb;
@@ -1301,18 +1301,18 @@ sctp_findassociation_addr(struct mbuf *m, int iphlen, int offset,
 		from6->sin6_port = sh->src_port;
 		to6->sin6_port = sh->dest_port;
 		/* Get the scopes in properly to the sin6 addr's */
-		(void)in6_recoverscope(to6, &to6->sin6_addr, NULL);
+		in6_recoverscope(to6, &to6->sin6_addr, NULL);
 #if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
-		(void)in6_embedscope(&to6->sin6_addr, to6, NULL, NULL);
+		in6_embedscope(&to6->sin6_addr, to6, NULL, NULL);
 #else
-		(void)in6_embedscope(&to6->sin6_addr, to6);
+		in6_embedscope(&to6->sin6_addr, to6);
 #endif
 
-		(void)in6_recoverscope(from6, &from6->sin6_addr, NULL);
+		in6_recoverscope(from6, &from6->sin6_addr, NULL);
 #if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
-		(void)in6_embedscope(&from6->sin6_addr, from6, NULL, NULL);
+		in6_embedscope(&from6->sin6_addr, from6, NULL, NULL);
 #else
-		(void)in6_embedscope(&from6->sin6_addr, from6);
+		in6_embedscope(&from6->sin6_addr, from6);
 #endif
 	} else {
 		/* Currently not supported. */
@@ -2399,7 +2399,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate)
 	}
 
 	if (ip_pcb->inp_options) {
-		(void)m_free(ip_pcb->inp_options);
+		m_free(ip_pcb->inp_options);
 		ip_pcb->inp_options = 0;
 	}
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500000
@@ -2779,10 +2779,10 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		struct sockaddr_in6 *sin6;
 		sin6 = (struct sockaddr_in6 *)&net->ro._l_addr;
 #if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
-		(void)in6_embedscope(&sin6->sin6_addr, sin6,
+		in6_embedscope(&sin6->sin6_addr, sin6,
 		    &stcb->sctp_ep->ip_inp.inp, NULL);
 #else
-		(void)in6_embedscope(&sin6->sin6_addr, sin6);
+		in6_embedscope(&sin6->sin6_addr, sin6);
 #endif
 #ifndef SCOPEDROUTING
 		sin6->sin6_scope_id = 0;
@@ -2796,7 +2796,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	if (newaddr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sin6;
 		sin6 = (struct sockaddr_in6 *)&net->ro._l_addr;
-		(void)in6_recoverscope(sin6, &sin6->sin6_addr, NULL);
+		in6_recoverscope(sin6, &sin6->sin6_addr, NULL);
 	}
 	if ((net->ro.ro_rt) &&
 	    (net->ro.ro_rt->rt_ifp)) {
@@ -4084,7 +4084,7 @@ static int sctp_scale_up_for_address = SCTP_SCALE_FOR_ADDR;
 #endif
 
 void
-sctp_pcb_init()
+sctp_pcb_init(void)
 {
 	/*
 	 * SCTP initialization for the PCB structures
@@ -4950,7 +4950,7 @@ sctp_drain_mbufs(struct sctp_inpcb *inp, struct sctp_tcb *stcb)
 }
 
 void
-sctp_drain()
+sctp_drain(void)
 {
 	/*
 	 * We must walk the PCB lists for ALL associations here. The system

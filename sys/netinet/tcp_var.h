@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.35 2005/05/10 15:48:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.36 2006/01/14 11:33:50 swildner Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -640,7 +640,7 @@ struct lwkt_port *
 	 tcp_soport(struct socket *, struct sockaddr *nam, int req);
 struct tcpcb *
 	 tcp_timers (struct tcpcb *, int);
-void	 tcp_trace (int, int, struct tcpcb *, void *, struct tcphdr *,
+void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
 			int);
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
 void	 syncache_init(void);

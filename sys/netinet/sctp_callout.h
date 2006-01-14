@@ -1,5 +1,5 @@
 /*	$KAME: sctp_callout.h,v 1.8 2005/01/25 07:35:42 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_callout.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_callout.h,v 1.2 2006/01/14 11:33:50 swildner Exp $	*/
 
 #ifndef __SCTP_CALLOUT__
 #define __SCTP_CALLOUT__
@@ -40,7 +40,7 @@ struct callout {
 	TAILQ_ENTRY(callout) tqe;
 	int	c_time;				/* ticks to the event */
 	void	*c_arg;				/* function argument */
-	void	(*c_func) __P((void *));	/* function to call */
+	void	(*c_func)(void *);		/* function to call */
 	int	c_flags;			/* state of this entry */
 };
 #endif
@@ -57,11 +57,11 @@ TAILQ_HEAD(calloutlist, callout);
 
 #define	callout_active(c)	((c)->c_flags & CALLOUT_ACTIVE)
 #define	callout_deactivate(c)	((c)->c_flags &= ~CALLOUT_ACTIVE)
-void	callout_init __P((struct callout *));
+void	callout_init(struct callout *);
 #define	callout_pending(c)	((c)->c_flags & CALLOUT_PENDING)
 
-void	callout_reset __P((struct callout *, int, void (*)(void *), void *));
+void	callout_reset(struct callout *, int, void (*)(void *), void *);
 #ifndef __NetBSD__
-int	callout_stop __P((struct callout *));
+int	callout_stop(struct callout *);
 #endif
 #endif

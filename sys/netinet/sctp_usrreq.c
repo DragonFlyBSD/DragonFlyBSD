@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.6 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.7 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -451,10 +451,7 @@ void
 #else
 void *
 #endif
-sctp_ctlinput(cmd, sa, vip)
-	int cmd;
-	struct sockaddr *sa;
-	void *vip;
+sctp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
 	struct ip *ip = vip;
 	struct sctphdr *sh;
@@ -1177,8 +1174,7 @@ sctp_fill_user_address(struct sockaddr_storage *ss, struct sockaddr *sa)
  * On NetBSD and OpenBSD in6_sin_2_v4mapsin6() not used and not exported,
  * so we have to export it here.
  */
-void    in6_sin_2_v4mapsin6 __P((struct sockaddr_in *sin,
-                                 struct sockaddr_in6 *sin6));
+void    in6_sin_2_v4mapsin6(struct sockaddr_in *sin, struct sockaddr_in6 *sin6);
 #endif
 
 static int
@@ -3609,7 +3605,7 @@ sctp_ctloutput(struct socket *so, struct sockopt *sopt)
 		error = sooptcopyin(sopt, mtod(m, caddr_t), sopt->sopt_valsize,
 				    sopt->sopt_valsize);
 		if (error) {
-			(void) m_free(m);
+			m_free(m);
 			goto out;
 		}
 		m->m_len = sopt->sopt_valsize;
@@ -3643,11 +3639,8 @@ sctp_ctloutput(struct socket *so, struct sockopt *sopt)
 #else
 /* NetBSD and OpenBSD */
 int
-sctp_ctloutput(op, so, level, optname, mp)
-     int op;
-     struct socket *so;
-     int level, optname;
-     struct mbuf **mp;
+sctp_ctloutput(int op, struct socket *so, int level, int optname,
+	       struct mbuf **mp)
 {
 	int s, error;
 	struct inpcb *inp;
@@ -3684,7 +3677,7 @@ sctp_ctloutput(op, so, level, optname, mp)
 		{
 			crit_exit();
 			if (op == PRCO_SETOPT && *mp)
-				(void) m_free(*mp);
+				m_free(*mp);
 			return (ECONNRESET);
 		}
 	if (level != IPPROTO_SCTP) {
@@ -3705,7 +3698,7 @@ sctp_ctloutput(op, so, level, optname, mp)
 	if (op == PRCO_SETOPT) {
 		error = sctp_optsset(so, optname, mp, (struct proc *)NULL);
 		if (*mp)
-			(void) m_free(*mp);
+			m_free(*mp);
 	} else if (op ==  PRCO_GETOPT) {
 		error = sctp_optsget(so, optname, mp, (struct proc *)NULL);
 	} else {
@@ -3954,7 +3947,7 @@ sctp_usr_recvd(struct socket *so, int flags)
 			done_yet = TAILQ_EMPTY(&inp->sctp_queue_list);
 			while (!done_yet) {
 				sq_cnt++;
-				(void)sctp_remove_from_socket_q(inp);
+				sctp_remove_from_socket_q(inp);
 				done_yet = TAILQ_EMPTY(&inp->sctp_queue_list);
 			}
 		}
@@ -4356,18 +4349,13 @@ struct pr_usrreqs sctp_usrreqs = {
 #else
 #if defined(__NetBSD__)
 int
-sctp_usrreq(so, req, m, nam, control, p)
-     struct socket *so;
-     int req;
-     struct mbuf *m, *nam, *control;
-     struct proc *p;
+sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
+	    struct mbuf *control, struct proc *p)
 {
 #else
 int
-sctp_usrreq(so, req, m, nam, control)
-     struct socket *so;
-     int req;
-     struct mbuf *m, *nam, *control;
+sctp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
+	    struct mbuf *control)
 {
 	struct proc *p = curproc;
 #endif
@@ -4527,13 +4515,8 @@ sctp_usrreq(so, req, m, nam, control)
  * Sysctl for sctp variables.
  */
 int
-sctp_sysctl(name, namelen, oldp, oldlenp, newp, newlen)
-	int *name;
-	u_int namelen;
-	void *oldp;
-	size_t *oldlenp;
-	void *newp;
-	size_t newlen;
+sctp_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
+	    size_t newlen)
 {
 
 	/* All sysctl names at this level are terminal. */

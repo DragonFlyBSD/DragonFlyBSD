@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.2 2005/03/09 06:54:34 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.3 2006/01/14 11:33:50 swildner Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ static vm_zone_t sackblock_zone;
  * Initialize SACK module.
  */
 void
-tcp_sack_init()
+tcp_sack_init(void)
 {
 	sackblock_zone = zinit("sack blocks", sizeof(struct sackblock),
 	    maxsockets, ZONE_INTERRUPT, 0);

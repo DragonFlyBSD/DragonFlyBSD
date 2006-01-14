@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.h,v 1.14 2004/08/17 04:06:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.3 2006/01/14 11:33:50 swildner Exp $	*/
 
 #ifndef __sctputil_h__
 #define __sctputil_h__
@@ -209,8 +209,8 @@ int sctp_cmpaddr(struct sockaddr *, struct sockaddr *);
 void sctp_print_address(struct sockaddr *);
 void sctp_print_address_pkt(struct ip *, struct sctphdr *);
 
-int sbappendaddr_nocheck __P((struct sockbuf *, struct sockaddr *,
-	struct mbuf *, struct mbuf *, u_int32_t, struct sctp_inpcb *));
+int sbappendaddr_nocheck(struct sockbuf *, struct sockaddr *,
+	struct mbuf *, struct mbuf *, u_int32_t, struct sctp_inpcb *);
 
 
 int sctp_release_pr_sctp_chunk(struct sctp_tcb *, struct sctp_tmit_chunk *,

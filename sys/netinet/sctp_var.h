@@ -1,5 +1,5 @@
 /*	$KAME: sctp_var.h,v 1.23 2004/10/27 07:57:49 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_var.h,v 1.3 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -155,11 +155,11 @@ SYSCTL_DECL(_net_inet_sctp);
 #endif
 extern struct	pr_usrreqs sctp_usrreqs;
 #elif defined(__NetBSD__)
-int sctp_usrreq __P((struct socket *, int, struct mbuf *, struct mbuf *,
-		      struct mbuf *, struct proc *));
+int sctp_usrreq(struct socket *, int, struct mbuf *, struct mbuf *,
+		      struct mbuf *, struct proc *);
 #else
-int sctp_usrreq __P((struct socket *, int, struct mbuf *, struct mbuf *,
-		      struct mbuf *));
+int sctp_usrreq(struct socket *, int, struct mbuf *, struct mbuf *,
+		      struct mbuf *);
 #endif
 
 #define	sctp_sbspace(sb) ((long) (((sb)->sb_hiwat > (sb)->sb_cc) ? ((sb)->sb_hiwat - (sb)->sb_cc) : 0))
@@ -181,28 +181,28 @@ void sctp_fasttim(void);
 #endif
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
-void	sctp_ctlinput __P((int, struct sockaddr *, void *));
-int	sctp_ctloutput __P((struct socket *, struct sockopt *));
-void	sctp_input __P((struct mbuf *, int));
+void	sctp_ctlinput(int, struct sockaddr *, void *);
+int	sctp_ctloutput(struct socket *, struct sockopt *);
+void	sctp_input(struct mbuf *, int);
 #elif defined(__DragonFly__)
-void	sctp_ctlinput __P((int, struct sockaddr *, void *));
-int	sctp_ctloutput __P((struct socket *, struct sockopt *));
-void	sctp_input __P((struct mbuf *, ... ));
+void	sctp_ctlinput(int, struct sockaddr *, void *);
+int	sctp_ctloutput(struct socket *, struct sockopt *);
+void	sctp_input(struct mbuf *, ... );
 #else
-void*	sctp_ctlinput __P((int, struct sockaddr *, void *));
-int	sctp_ctloutput __P((int, struct socket *, int, int, struct mbuf **));
-void	sctp_input __P((struct mbuf *, ... ));
+void*	sctp_ctlinput(int, struct sockaddr *, void *);
+int	sctp_ctloutput(int, struct socket *, int, int, struct mbuf **);
+void	sctp_input(struct mbuf *, ... );
 #endif
-void	sctp_drain __P((void));
-void	sctp_init __P((void));
-int	sctp_shutdown __P((struct socket *));
-void	sctp_notify __P((struct sctp_inpcb *, int, struct sctphdr *,
-			 struct sockaddr *, struct sctp_tcb *,
-			 struct sctp_nets *));
-int sctp_usr_recvd __P((struct socket *, int));
+void	sctp_drain(void);
+void	sctp_init(void);
+int	sctp_shutdown(struct socket *);
+void	sctp_notify(struct sctp_inpcb *, int, struct sctphdr *,
+		    struct sockaddr *, struct sctp_tcb *,
+		    struct sctp_nets *);
+int sctp_usr_recvd(struct socket *, int);
 
 #if defined(INET6)
-void ip_2_ip6_hdr __P((struct ip6_hdr *, struct ip *));
+void ip_2_ip6_hdr(struct ip6_hdr *, struct ip *);
 #endif
 
 int sctp_bindx(struct socket *, int, struct sockaddr_storage *,

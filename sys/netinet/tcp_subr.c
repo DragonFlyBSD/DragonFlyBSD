@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.50 2005/12/18 08:16:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.51 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -309,7 +309,7 @@ struct	inp_tp {
  * Tcp initialization
  */
 void
-tcp_init()
+tcp_init(void)
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
@@ -1023,7 +1023,7 @@ tcp_drain_handler(lwkt_msg_t lmsg)
 #endif
 
 void
-tcp_drain()
+tcp_drain(void)
 {
 #ifdef SMP
 	int cpu;
@@ -1788,7 +1788,7 @@ tcp_gettaocache(struct in_conninfo *inc)
  * nothing in the cache left over.
  */
 static void
-tcp_cleartaocache()
+tcp_cleartaocache(void)
 {
 }
 

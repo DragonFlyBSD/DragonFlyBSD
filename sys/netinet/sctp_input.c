@@ -1,5 +1,5 @@
 /*	$KAME: sctp_input.c,v 1.27 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.7 2005/08/11 03:16:14 corecode Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.c,v 1.8 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -4076,17 +4076,10 @@ extern int sctp_no_csum_on_loopback;
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 void
-sctp_input(m, off)
-	struct mbuf *m;
-	int off;
+sctp_input(struct mbuf *m, int off)
 #else
 void
-#if __STDC__
 sctp_input(struct mbuf *m, ...)
-#else
-sctp_input(m, va_alist)
-	struct mbuf *m;
-#endif
 #endif
 {
 	int iphlen;

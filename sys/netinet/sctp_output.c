@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.4 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.5 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -2584,14 +2584,14 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	}
 }
 
-static
-int sctp_is_address_in_scope(struct ifaddr *ifa,
- 			     int ipv4_addr_legal,
-			     int ipv6_addr_legal,
-			     int loopback_scope,
-			     int ipv4_local_scope,
-			     int local_scope,
-			     int site_scope)
+static int
+sctp_is_address_in_scope(struct ifaddr *ifa,
+ 			 int ipv4_addr_legal,
+			 int ipv6_addr_legal,
+			 int loopback_scope,
+			 int ipv4_local_scope,
+			 int local_scope,
+			 int site_scope)
 {
 	if ((loopback_scope == 0) &&
 	    (ifa->ifa_ifp) &&
@@ -3567,7 +3567,7 @@ sctp_send_initiate_ack(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 				 */
 				cnt_inits_to=1;
 				/* pull out the scope_id from incoming pkt */
-				(void)in6_recoverscope(sin6, &ip6->ip6_src,
+				in6_recoverscope(sin6, &ip6->ip6_src,
 				    init_pkt->m_pkthdr.rcvif);
 #if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
 				in6_embedscope(&sin6->sin6_addr, sin6, NULL,
@@ -7029,9 +7029,9 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			 * output once. this assures that we WILL send HB's
 			 * if queued too.
 			 */
-			(void)sctp_med_chunk_output(inp, stcb, asoc, &num_out, &reason_code, 1,
-						    &cwnd_full, from_where,
-						    &now, &now_filled);
+			sctp_med_chunk_output(inp, stcb, asoc, &num_out, &reason_code, 1,
+					      &cwnd_full, from_where,
+					      &now, &now_filled);
 #ifdef SCTP_DEBUG
 			if (sctp_debug_on & SCTP_DEBUG_OUTPUT1) {
 				printf("Control send outputs:%d@full\n", num_out);
@@ -7068,8 +7068,8 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 			sctp_auditing(10, inp, stcb, NULL);
 #endif
 			/* Push out any control */
-			(void)sctp_med_chunk_output(inp, stcb, asoc, &num_out, &reason_code, 1, &cwnd_full, from_where,
-						    &now, &now_filled);
+			sctp_med_chunk_output(inp, stcb, asoc, &num_out, &reason_code, 1, &cwnd_full, from_where,
+					      &now, &now_filled);
 			return (ret);
 		}
 		if ((num_out == 0) && (ret == 0)) {
@@ -7196,17 +7196,8 @@ sctp_chunk_output(struct sctp_inpcb *inp,
 
 
 int
-sctp_output(inp, m, addr, control, p, flags)
-     struct sctp_inpcb *inp;
-     struct mbuf *m;
-     struct sockaddr *addr;
-     struct mbuf *control;
-#if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-     struct thread *p;
-#else
-     struct proc *p;
-#endif
-    int flags;
+sctp_output(struct sctp_inpcb *inp, struct mbuf *m, struct sockaddr *addr,
+	    struct mbuf *control, struct thread *p, int flags)
 {
 	struct inpcb *ip_inp;
 	struct sctp_inpcb *t_inp;
@@ -9245,7 +9236,7 @@ sctp_send_abort(struct mbuf *m, int iphlen, struct sctphdr *sh, uint32_t vtag,
 		iph_out->ip_len = htons(mout->m_pkthdr.len);
 #endif
 		/* out it goes */
-		(void)ip_output(mout, 0, &ro, IP_RAWOUTPUT, NULL
+		ip_output(mout, 0, &ro, IP_RAWOUTPUT, NULL
 #if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
     || defined(__NetBSD__) || defined(__DragonFly__)
 		    , NULL

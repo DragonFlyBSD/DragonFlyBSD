@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.23 2005/11/26 20:54:34 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.24 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_inet6.h"
@@ -368,9 +368,7 @@ syncache_init(void)
 }
 
 static void
-syncache_insert(sc, sch)
-	struct syncache *sc;
-	struct syncache_head *sch;
+syncache_insert(struct syncache *sc, struct syncache_head *sch)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc2;
@@ -418,9 +416,7 @@ syncache_insert(sc, sch)
 }
 
 static void
-syncache_drop(sc, sch)
-	struct syncache *sc;
-	struct syncache_head *sch;
+syncache_drop(struct syncache *sc, struct syncache_head *sch)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 #ifdef INET6
@@ -535,9 +531,7 @@ syncache_timer_handler(lwkt_msg_t msg)
  * Find an entry in the syncache.
  */
 struct syncache *
-syncache_lookup(inc, schp)
-	struct in_conninfo *inc;
-	struct syncache_head **schp;
+syncache_lookup(struct in_conninfo *inc, struct syncache_head **schp)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc;
@@ -576,9 +570,7 @@ syncache_lookup(inc, schp)
  * connection is in the syn cache.  If it is, zap it.
  */
 void
-syncache_chkrst(inc, th)
-	struct in_conninfo *inc;
-	struct tcphdr *th;
+syncache_chkrst(struct in_conninfo *inc, struct tcphdr *th)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
@@ -607,8 +599,7 @@ syncache_chkrst(inc, th)
 }
 
 void
-syncache_badack(inc)
-	struct in_conninfo *inc;
+syncache_badack(struct in_conninfo *inc)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
@@ -621,9 +612,7 @@ syncache_badack(inc)
 }
 
 void
-syncache_unreach(inc, th)
-	struct in_conninfo *inc;
-	struct tcphdr *th;
+syncache_unreach(struct in_conninfo *inc, struct tcphdr *th)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
@@ -657,9 +646,7 @@ syncache_unreach(inc, th)
  * Build a new TCP socket structure from a syncache entry.
  */
 static struct socket *
-syncache_socket(sc, lso)
-	struct syncache *sc;
-	struct socket *lso;
+syncache_socket(struct syncache *sc, struct socket *lso)
 {
 	struct inpcb *inp = NULL, *linp;
 	struct socket *so;
@@ -840,11 +827,8 @@ abort:
  * the SYN-RECEIVED state.
  */
 int
-syncache_expand(inc, th, sop, m)
-	struct in_conninfo *inc;
-	struct tcphdr *th;
-	struct socket **sop;
-	struct mbuf *m;
+syncache_expand(struct in_conninfo *inc, struct tcphdr *th, struct socket **sop,
+		struct mbuf *m)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
@@ -911,12 +895,8 @@ resetandabort:
  * the data, we avoid this DoS scenario.
  */
 int
-syncache_add(inc, to, th, sop, m)
-	struct in_conninfo *inc;
-	struct tcpopt *to;
-	struct tcphdr *th;
-	struct socket **sop;
-	struct mbuf *m;
+syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
+	     struct socket **sop, struct mbuf *m)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct tcpcb *tp;
@@ -1125,9 +1105,7 @@ syncache_add(inc, to, th, sop, m)
 }
 
 static int
-syncache_respond(sc, m)
-	struct syncache *sc;
-	struct mbuf *m;
+syncache_respond(struct syncache *sc, struct mbuf *m)
 {
 	u_int8_t *optp;
 	int optlen, error;
@@ -1411,10 +1389,7 @@ syncookie_generate(struct syncache *sc)
 }
 
 static struct syncache *
-syncookie_lookup(inc, th, so)
-	struct in_conninfo *inc;
-	struct tcphdr *th;
-	struct socket *so;
+syncookie_lookup(struct in_conninfo *inc, struct tcphdr *th, struct socket *so)
 {
 	u_int32_t md5_buffer[4];
 	struct syncache *sc;

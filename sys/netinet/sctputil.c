@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.4 2005/07/15 17:19:28 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.5 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -144,7 +144,8 @@ int sctp_cwnd_log_at=0;
 int sctp_cwnd_log_rolled=0;
 struct sctp_cwnd_log sctp_clog[SCTP_STAT_LOG_SIZE];
 
-void sctp_clr_stat_log(void)
+void
+sctp_clr_stat_log(void)
 {
 	sctp_cwnd_log_at=0;
 	sctp_cwnd_log_rolled=0;
@@ -165,6 +166,7 @@ sctp_log_strm_del_alt(u_int32_t tsn, u_int16_t sseq, int from)
 		sctp_cwnd_log_at = 0;
 		sctp_cwnd_log_rolled = 1;
 	}
+
 
 }
 
@@ -410,8 +412,8 @@ sctp_fill_stat_log(struct mbuf *m)
 u_int8_t sctp_audit_data[SCTP_AUDIT_SIZE][2];
 static int sctp_audit_indx = 0;
 
-static
-void sctp_print_audit_report(void)
+static void
+sctp_print_audit_report(void)
 {
 	int i;
 	int cnt;
@@ -457,8 +459,9 @@ void sctp_print_audit_report(void)
 	printf("\n");
 }
 
-void sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+void
+sctp_auditing(int from, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
+	      struct sctp_nets *net)
 {
 	int resend_cnt, tot_out, rep, tot_book_cnt;
 	struct sctp_nets *lnet;
@@ -694,7 +697,8 @@ sctp_select_initial_TSN(struct sctp_pcb *m)
 	return (x);
 }
 
-u_int32_t sctp_select_a_tag(struct sctp_inpcb *m)
+u_int32_t
+sctp_select_a_tag(struct sctp_inpcb *m)
 {
 	u_long x, not_done;
 	struct timeval now;
@@ -941,7 +945,7 @@ sctp_timeout_handler(void *t)
 		crit_exit();
 #if defined(__APPLE__)
 		/* release BSD kernel funnel/mutex */
-		(void) thread_funnel_set(network_flock, FALSE);
+		thread_funnel_set(network_flock, FALSE);
 #endif
 		SCTP_INP_WUNLOCK(inp);
 		return;
@@ -951,7 +955,7 @@ sctp_timeout_handler(void *t)
 			crit_exit();
 #if defined(__APPLE__)
 			/* release BSD kernel funnel/mutex */
-			(void) thread_funnel_set(network_flock, FALSE);
+			thread_funnel_set(network_flock, FALSE);
 #endif
 			SCTP_INP_WUNLOCK(inp);
 			return;
@@ -967,7 +971,7 @@ sctp_timeout_handler(void *t)
 		crit_exit();
 #if defined(__APPLE__)
 		/* release BSD kernel funnel/mutex */
-		(void) thread_funnel_set(network_flock, FALSE);
+		thread_funnel_set(network_flock, FALSE);
 #endif
 		SCTP_INP_WUNLOCK(inp);
 		return;
@@ -1192,7 +1196,7 @@ sctp_timeout_handler(void *t)
 	crit_exit();
 #if defined(__APPLE__)
 	/* release BSD kernel funnel/mutex */
-	(void) thread_funnel_set(network_flock, FALSE);
+	thread_funnel_set(network_flock, FALSE);
 #endif
 }
 
@@ -3242,12 +3246,9 @@ sctp_print_address_pkt(struct ip *iph, struct sctphdr *sh)
 
 
 int
-sbappendaddr_nocheck(sb, asa, m0, control, tag, inp)
-	struct sockbuf *sb;
-	struct sockaddr *asa;
-	struct mbuf *m0, *control;
-	u_int32_t tag;
-	struct sctp_inpcb *inp;
+sbappendaddr_nocheck(struct sockbuf *sb, struct sockaddr *asa, struct mbuf *m0,
+		     struct mbuf *control, u_int32_t tag,
+		     struct sctp_inpcb *inp)
 {
 #ifdef __NetBSD__
 	struct mbuf *m, *n;

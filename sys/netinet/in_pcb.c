@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.36 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.37 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -442,10 +442,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
  *   have forced minor changes in every protocol).
  */
 int
-in_pcbladdr(inp, nam, plocal_sin)
-	struct inpcb *inp;
-	struct sockaddr *nam;
-	struct sockaddr_in **plocal_sin;
+in_pcbladdr(struct inpcb *inp, struct sockaddr *nam, struct sockaddr_in **plocal_sin)
 {
 	struct in_ifaddr *ia;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
@@ -603,8 +600,7 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 }
 
 void
-in_pcbdisconnect(inp)
-	struct inpcb *inp;
+in_pcbdisconnect(struct inpcb *inp)
 {
 
 	inp->inp_faddr.s_addr = INADDR_ANY;
@@ -615,8 +611,7 @@ in_pcbdisconnect(inp)
 }
 
 void
-in_pcbdetach(inp)
-	struct inpcb *inp;
+in_pcbdetach(struct inpcb *inp)
 {
 	struct socket *so = inp->inp_socket;
 	struct inpcbinfo *ipi = inp->inp_pcbinfo;
@@ -648,9 +643,7 @@ in_pcbdetach(inp)
  * because there actually /is/ a programming error somewhere... XXX)
  */
 int
-in_setsockaddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+in_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
@@ -679,9 +672,7 @@ in_setsockaddr(so, nam)
 }
 
 int
-in_setpeeraddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+in_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct inpcb *inp;
 	struct sockaddr_in *sin;
@@ -710,10 +701,8 @@ in_setpeeraddr(so, nam)
 }
 
 void
-in_pcbnotifyall(head, faddr, errno, notify)
-	struct inpcbhead *head;
-	struct in_addr faddr;
-	void (*notify) (struct inpcb *, int);
+in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int errno,
+		void (*notify)(struct inpcb *, int))
 {
 	struct inpcb *inp, *ninp;
 
@@ -738,9 +727,7 @@ in_pcbnotifyall(head, faddr, errno, notify)
 }
 
 void
-in_pcbpurgeif0(head, ifp)
-	struct inpcb *head;
-	struct ifnet *ifp;
+in_pcbpurgeif0(struct inpcb *head, struct ifnet *ifp)
 {
 	struct inpcb *inp;
 	struct ip_moptions *imo;
@@ -811,9 +798,7 @@ in_losing(struct inpcb *inp)
  * and allocate a (hopefully) better one.
  */
 void
-in_rtchange(inp, errno)
-	struct inpcb *inp;
-	int errno;
+in_rtchange(struct inpcb *inp, int errno)
 {
 	if (inp->inp_route.ro_rt) {
 		rtfree(inp->inp_route.ro_rt);
@@ -829,11 +814,8 @@ in_rtchange(inp, errno)
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
-	struct inpcbinfo *pcbinfo;
-	struct in_addr laddr;
-	u_int lport_arg;
-	int wild_okay;
+in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr, u_int lport_arg,
+		   int wild_okay)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -895,12 +877,9 @@ in_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
  * Lookup PCB in hash list.
  */
 struct inpcb *
-in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
-	struct inpcbinfo *pcbinfo;
-	struct in_addr faddr, laddr;
-	u_int fport_arg, lport_arg;
-	boolean_t wildcard;
-	struct ifnet *ifp;
+in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr, u_int fport_arg,
+		  struct in_addr laddr, u_int lport_arg, boolean_t wildcard,
+		  struct ifnet *ifp)
 {
 	struct inpcbhead *head;
 	struct inpcb *inp;
@@ -1118,8 +1097,7 @@ in_pcbremwildcardhash(struct inpcb *inp)
  * Remove PCB from various lists.
  */
 void
-in_pcbremlists(inp)
-	struct inpcb *inp;
+in_pcbremlists(struct inpcb *inp)
 {
 	if (inp->inp_lport) {
 		struct inpcbport *phd = inp->inp_phd;

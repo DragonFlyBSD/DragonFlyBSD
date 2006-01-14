@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.24 2005/10/28 15:56:47 liamfoy Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.25 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -140,11 +140,7 @@ extern	struct protosw inetsw[];
  * in response to bad packet ip.
  */
 void
-icmp_error(n, type, code, dest, destmtu)
-	struct mbuf *n;
-	int type, code;
-	n_long dest;
-	int destmtu;
+icmp_error(struct mbuf *n, int type, int code, n_long dest, int destmtu)
 {
 	struct ip *oip = mtod(n, struct ip *), *nip;
 	unsigned oiplen = IP_VHL_HL(oip->ip_vhl) << 2;
@@ -612,8 +608,7 @@ freeit:
  * Reflect the ip packet back to the source
  */
 static void
-icmp_reflect(m)
-	struct mbuf *m;
+icmp_reflect(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct ifaddr *ifa;
@@ -755,10 +750,7 @@ done:
  * after supplying a checksum.
  */
 static void
-icmp_send(m, opts, rt)
-	struct mbuf *m;
-	struct mbuf *opts;
-	struct route *rt;
+icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	int hlen;
@@ -785,7 +777,7 @@ icmp_send(m, opts, rt)
 }
 
 n_time
-iptime()
+iptime(void)
 {
 	struct timeval atv;
 	u_long t;

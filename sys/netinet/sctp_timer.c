@@ -1,5 +1,5 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.3 2005/07/15 15:15:27 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.4 2006/01/14 11:33:50 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -261,10 +261,10 @@ sctp_find_alternate_net(struct sctp_tcb *stcb,
 			sin6 = (struct sockaddr_in6 *)&alt->ro._l_addr;
 			if (sin6->sin6_family == AF_INET6) {
 #if defined(SCTP_BASE_FREEBSD) || defined(__APPLE__) || defined(__DragonFly__)
-				(void)in6_embedscope(&sin6->sin6_addr, sin6,
-						     NULL, NULL);
+				in6_embedscope(&sin6->sin6_addr, sin6,
+					       NULL, NULL);
 #else
-				(void)in6_embedscope(&sin6->sin6_addr, sin6);
+				in6_embedscope(&sin6->sin6_addr, sin6);
 #endif
 			}
 #endif
@@ -275,8 +275,7 @@ sctp_find_alternate_net(struct sctp_tcb *stcb,
 #endif
 #ifndef SCOPEDROUTING
 			if (sin6->sin6_family == AF_INET6) {
-				(void)in6_recoverscope(sin6, &sin6->sin6_addr,
-				    NULL);
+				in6_recoverscope(sin6, &sin6->sin6_addr, NULL);
 			}
 #endif
 			alt->src_addr_selected = 0;
@@ -925,9 +924,10 @@ sctp_t1init_timer(struct sctp_inpcb *inp,
  * then increment the resend counter (after all the threshold management
  * stuff of course).
  */
-int  sctp_cookie_timer(struct sctp_inpcb *inp,
-		       struct sctp_tcb *stcb,
-		       struct sctp_nets *net)
+int
+sctp_cookie_timer(struct sctp_inpcb *inp,
+		  struct sctp_tcb *stcb,
+		  struct sctp_nets *net)
 {
 	struct sctp_nets *alt;
 	struct sctp_tmit_chunk *cookie;
@@ -990,8 +990,9 @@ int  sctp_cookie_timer(struct sctp_inpcb *inp,
 	return (0);
 }
 
-int sctp_strreset_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+int
+sctp_strreset_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
+		    struct sctp_nets *net)
 {
 	struct sctp_nets *alt;
 	struct sctp_tmit_chunk *strrst, *chk;
@@ -1062,8 +1063,9 @@ int sctp_strreset_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	return (0);
 }
 
-int sctp_asconf_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+int
+sctp_asconf_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
+		  struct sctp_nets *net)
 {
 	struct sctp_nets *alt;
 	struct sctp_tmit_chunk *asconf, *chk;
@@ -1163,7 +1165,7 @@ int sctp_asconf_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
  */
 int
 sctp_shutdown_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+		    struct sctp_nets *net)
 {
 	struct sctp_nets *alt;
 	/* first threshold managment */
@@ -1196,8 +1198,9 @@ sctp_shutdown_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	return (0);
 }
 
-int sctp_shutdownack_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+int
+sctp_shutdownack_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
+		       struct sctp_nets *net)
 {
 	struct sctp_nets *alt;
 	/* first threshold managment */
@@ -1266,7 +1269,7 @@ sctp_audit_stream_queues_for_size(struct sctp_inpcb *inp,
 
 int
 sctp_heartbeat_timer(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
-    struct sctp_nets *net)
+		     struct sctp_nets *net)
 {
 	int cnt_of_unconf=0;
 
@@ -1350,9 +1353,10 @@ sctp_getnext_mtu(struct sctp_inpcb *inp, u_int32_t cur_mtu)
 }
 
 
-void sctp_pathmtu_timer(struct sctp_inpcb *inp,
-			struct sctp_tcb *stcb,
-			struct sctp_nets *net)
+void
+sctp_pathmtu_timer(struct sctp_inpcb *inp,
+		   struct sctp_tcb *stcb,
+		   struct sctp_nets *net)
 {
 	u_int32_t next_mtu;
 
@@ -1379,9 +1383,10 @@ void sctp_pathmtu_timer(struct sctp_inpcb *inp,
 	sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, inp, stcb, net);
 }
 
-void sctp_autoclose_timer(struct sctp_inpcb *inp,
-			  struct sctp_tcb *stcb,
-			  struct sctp_nets *net)
+void
+sctp_autoclose_timer(struct sctp_inpcb *inp,
+		     struct sctp_tcb *stcb,
+		     struct sctp_nets *net)
 {
 	struct timeval tn, *tim_touse;
 	struct sctp_association *asoc;

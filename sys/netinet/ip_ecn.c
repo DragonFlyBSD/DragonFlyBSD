@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_ecn.c,v 1.1.2.3 2002/04/17 07:50:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_ecn.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_ecn.c,v 1.3 2006/01/14 11:33:50 swildner Exp $	*/
 /*	$KAME: ip_ecn.c,v 1.11 2001/05/03 16:09:29 itojun Exp $	*/
 
 /*
@@ -61,10 +61,7 @@
  * modify outer ECN (TOS) field on ingress operation (tunnel encapsulation).
  */
 void
-ip_ecn_ingress(mode, outer, inner)
-	int mode;
-	u_int8_t *outer;
-	const u_int8_t *inner;
+ip_ecn_ingress(int mode, u_int8_t *outer, const u_int8_t *inner)
 {
 	if (!outer || !inner)
 		panic("NULL pointer passed to ip_ecn_ingress");
@@ -86,10 +83,7 @@ ip_ecn_ingress(mode, outer, inner)
  * modify inner ECN (TOS) field on egress operation (tunnel decapsulation).
  */
 void
-ip_ecn_egress(mode, outer, inner)
-	int mode;
-	const u_int8_t *outer;
-	u_int8_t *inner;
+ip_ecn_egress(int mode, const u_int8_t *outer, u_int8_t *inner)
 {
 	if (!outer || !inner)
 		panic("NULL pointer passed to ip_ecn_egress");
@@ -107,10 +101,7 @@ ip_ecn_egress(mode, outer, inner)
 
 #ifdef INET6
 void
-ip6_ecn_ingress(mode, outer, inner)
-	int mode;
-	u_int32_t *outer;
-	const u_int32_t *inner;
+ip6_ecn_ingress(int mode, u_int32_t *outer, const u_int32_t *inner)
 {
 	u_int8_t outer8, inner8;
 
@@ -125,10 +116,7 @@ ip6_ecn_ingress(mode, outer, inner)
 }
 
 void
-ip6_ecn_egress(mode, outer, inner)
-	int mode;
-	const u_int32_t *outer;
-	u_int32_t *inner;
+ip6_ecn_egress(int mode, const u_int32_t *outer, u_int32_t *inner)
 {
 	u_int8_t outer8, inner8;
 

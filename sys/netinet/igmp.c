@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.11 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.12 2006/01/14 11:33:50 swildner Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ static struct router_info *Head;
 static void igmp_sendpkt (struct in_multi *, int, unsigned long);
 
 void
-igmp_init()
+igmp_init(void)
 {
 	struct ipoption *ra;
 
@@ -121,8 +121,7 @@ igmp_init()
 }
 
 static struct router_info *
-find_rti(ifp)
-	struct ifnet *ifp;
+find_rti(struct ifnet *ifp)
 {
 	struct router_info *rti = Head;
 
@@ -351,8 +350,7 @@ igmp_input(struct mbuf *m, ...)
 }
 
 void
-igmp_joingroup(inm)
-	struct in_multi *inm;
+igmp_joingroup(struct in_multi *inm)
 {
 	crit_enter();
 	if (inm->inm_addr.s_addr == igmp_all_hosts_group
@@ -371,8 +369,7 @@ igmp_joingroup(inm)
 }
 
 void
-igmp_leavegroup(inm)
-	struct in_multi *inm;
+igmp_leavegroup(struct in_multi *inm)
 {
 	if (inm->inm_state == IGMP_IREPORTEDLAST &&
 	    inm->inm_addr.s_addr != igmp_all_hosts_group &&
@@ -382,7 +379,7 @@ igmp_leavegroup(inm)
 }
 
 void
-igmp_fasttimo()
+igmp_fasttimo(void)
 {
 	struct in_multi *inm;
 	struct in_multistep step;
@@ -413,7 +410,7 @@ igmp_fasttimo()
 }
 
 void
-igmp_slowtimo()
+igmp_slowtimo(void)
 {
 	struct router_info *rti =  Head;
 
@@ -439,10 +436,7 @@ igmp_slowtimo()
 static struct route igmprt;
 
 static void
-igmp_sendpkt(inm, type, addr)
-	struct in_multi *inm;
-	int type;
-	unsigned long addr;
+igmp_sendpkt(struct in_multi *inm, int type, unsigned long addr)
 {
 	struct mbuf *m;
 	struct igmp *igmp;

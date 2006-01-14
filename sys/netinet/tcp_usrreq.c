@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.36 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.37 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1068,9 +1068,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
  * run in a critical section any more.  This needs more examination.)
  */
 int
-tcp_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int	error, opt, optval;
 	struct	inpcb *inp;
@@ -1255,8 +1253,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
  * send segment to peer (with FIN).
  */
 static struct tcpcb *
-tcp_disconnect(tp)
-	struct tcpcb *tp;
+tcp_disconnect(struct tcpcb *tp)
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
 
@@ -1285,8 +1282,7 @@ tcp_disconnect(tp)
  * We can let the user exit from the close as soon as the FIN is acked.
  */
 static struct tcpcb *
-tcp_usrclosed(tp)
-	struct tcpcb *tp;
+tcp_usrclosed(struct tcpcb *tp)
 {
 
 	switch (tp->t_state) {

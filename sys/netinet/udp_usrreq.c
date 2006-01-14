@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.35 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.36 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -195,7 +195,7 @@ static	int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 			    struct mbuf *, struct thread *);
 
 void
-udp_init()
+udp_init(void)
 {
 	in_pcbinfo_init(&udbinfo);
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
@@ -536,9 +536,7 @@ bad:
 
 #ifdef INET6
 static void
-ip_2_ip6_hdr(ip6, ip)
-	struct ip6_hdr *ip6;
-	struct ip *ip;
+ip_2_ip6_hdr(struct ip6_hdr *ip6, struct ip *ip)
 {
 	bzero(ip6, sizeof *ip6);
 
@@ -558,11 +556,7 @@ ip_2_ip6_hdr(ip6, ip)
  * caller must properly init udp_ip6 and udp_in6 beforehand.
  */
 static void
-udp_append(last, ip, n, off)
-	struct inpcb *last;
-	struct ip *ip;
-	struct mbuf *n;
-	int off;
+udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 {
 	struct sockaddr *append_sa;
 	struct mbuf *opts = NULL;
@@ -610,9 +604,7 @@ udp_append(last, ip, n, off)
  * just wake up so that he can collect error status.
  */
 void
-udp_notify(inp, errno)
-	struct inpcb *inp;
-	int errno;
+udp_notify(struct inpcb *inp, int errno)
 {
 	inp->inp_socket->so_error = errno;
 	sorwakeup(inp->inp_socket);
@@ -620,10 +612,7 @@ udp_notify(inp, errno)
 }
 
 void
-udp_ctlinput(cmd, sa, vip)
-	int cmd;
-	struct sockaddr *sa;
-	void *vip;
+udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
 	struct ip *ip = vip;
 	struct udphdr *uh;
@@ -688,12 +677,8 @@ SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
     0, 0, udp_getcred, "S,ucred", "Get the ucred of a UDP connection");
 
 static int
-udp_output(inp, m, dstaddr, control, td)
-	struct inpcb *inp;
-	struct mbuf *m;
-	struct sockaddr *dstaddr;
-	struct mbuf *control;
-	struct thread *td;
+udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
+	   struct mbuf *control, struct thread *td)
 {
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_uio.h,v 1.10 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_uio.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_uio.h,v 1.2 2006/01/14 11:33:50 swildner Exp $	*/
 
 #ifndef __sctp_uio_h__
 #define __sctp_uio_h__
@@ -487,36 +487,36 @@ struct sctp_cwnd_log_req{
 #if !(defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL)))
 
 __BEGIN_DECLS
-int	sctp_peeloff	__P((int, sctp_assoc_t));
-int	sctp_bindx	__P((int, struct sockaddr *, int, int));
-int     sctp_connectx   __P((int, struct sockaddr *, int));
-int	sctp_getpaddrs	__P((int, sctp_assoc_t, struct sockaddr **));
-void	sctp_freepaddrs	__P((struct sockaddr *));
-int	sctp_getladdrs	__P((int, sctp_assoc_t, struct sockaddr **));
-void	sctp_freeladdrs	__P((struct sockaddr *));
-int     sctp_opt_info   __P((int, sctp_assoc_t, int, void *, size_t *));
+int	sctp_peeloff	(int, sctp_assoc_t);
+int	sctp_bindx	(int, struct sockaddr *, int, int);
+int     sctp_connectx   (int, struct sockaddr *, int);
+int	sctp_getpaddrs	(int, sctp_assoc_t, struct sockaddr **);
+void	sctp_freepaddrs	(struct sockaddr *);
+int	sctp_getladdrs	(int, sctp_assoc_t, struct sockaddr **);
+void	sctp_freeladdrs	(struct sockaddr *);
+int     sctp_opt_info   (int, sctp_assoc_t, int, void *, size_t *);
 
-ssize_t sctp_sendmsg    __P((int, const void *, size_t,
+ssize_t sctp_sendmsg    (int, const void *, size_t,
 	const struct sockaddr *,
-	socklen_t, u_int32_t, u_int32_t, u_int16_t, u_int32_t, u_int32_t));
+	socklen_t, u_int32_t, u_int32_t, u_int16_t, u_int32_t, u_int32_t);
 
-ssize_t sctp_send       __P((int sd, const void *msg, size_t len,
-	const struct sctp_sndrcvinfo *sinfo,int flags));
+ssize_t sctp_send       (int sd, const void *msg, size_t len,
+	const struct sctp_sndrcvinfo *sinfo,int flags);
 
 ssize_t
-sctp_sendx __P((int sd, const void *msg, size_t len,
+sctp_sendx(int sd, const void *msg, size_t len,
 		struct sockaddr *addrs, int addrcnt,
-		struct sctp_sndrcvinfo *sinfo, int flags));
+		struct sctp_sndrcvinfo *sinfo, int flags);
 ssize_t
-sctp_sendmsgx __P((int sd, const void *, size_t,
+sctp_sendmsgx(int sd, const void *, size_t,
 	           struct sockaddr *, int,
-	           u_int32_t, u_int32_t, u_int16_t, u_int32_t, u_int32_t));
+	           u_int32_t, u_int32_t, u_int16_t, u_int32_t, u_int32_t);
 
 sctp_assoc_t
-sctp_getassocid __P((int sd, struct sockaddr *sa));
+sctp_getassocid(int sd, struct sockaddr *sa);
 
-ssize_t sctp_recvmsg	__P((int, void *, size_t, struct sockaddr *,
-        socklen_t *, struct sctp_sndrcvinfo *, int *));
+ssize_t sctp_recvmsg	(int, void *, size_t, struct sockaddr *,
+        socklen_t *, struct sctp_sndrcvinfo *, int *);
 
 __END_DECLS
 

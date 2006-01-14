@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.c,v 1.16.2.1 2000/07/15 07:14:31 kris Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.4 2005/01/06 17:54:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.5 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_inet.h"
@@ -81,12 +81,8 @@ static int	tcp_debx;
  * Tcp debug routines
  */
 void
-tcp_trace(act, ostate, tp, ipgen, th, req)
-	short act, ostate;
-	struct tcpcb *tp;
-	void *ipgen;
-	struct tcphdr *th;
-	int req;
+tcp_trace(short act, short ostate, struct tcpcb *tp, void *ipgen,
+	  struct tcphdr *th, int req)
 {
 #ifdef INET6
 	int isipv6;

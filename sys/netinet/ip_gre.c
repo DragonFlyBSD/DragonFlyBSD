@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.9 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.10 2006/01/14 11:33:50 swildner Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -285,9 +285,7 @@ gre_mobile_input(struct mbuf *m, ...)
  * Find the gre interface associated with our src/dst/proto set.
  */
 static struct gre_softc *
-gre_lookup(m, proto)
-	struct mbuf *m;
-	u_int8_t proto;
+gre_lookup(struct mbuf *m, u_int8_t proto)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct gre_softc *sc;

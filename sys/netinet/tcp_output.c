@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.29 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.30 2006/01/14 11:33:50 swildner Exp $
  */
 
 #include "opt_inet6.h"
@@ -148,8 +148,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, avoid_pure_win_update, CTLFLAG_RW,
  * Tcp output routine: figure out what should be sent and send it.
  */
 int
-tcp_output(tp)
-	struct tcpcb *tp;
+tcp_output(struct tcpcb *tp)
 {
 	struct inpcb * const inp = tp->t_inpcb;
 	struct socket *so = inp->inp_socket;
@@ -1037,8 +1036,7 @@ out:
 }
 
 void
-tcp_setpersist(tp)
-	struct tcpcb *tp;
+tcp_setpersist(struct tcpcb *tp)
 {
 	int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 	int tt;
