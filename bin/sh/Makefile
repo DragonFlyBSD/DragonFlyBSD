@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.4 (Berkeley) 5/5/95
 # $FreeBSD: src/bin/sh/Makefile,v 1.30.2.1 2001/12/15 10:05:18 knu Exp $
-# $DragonFly: src/bin/sh/Makefile,v 1.4 2005/02/06 06:16:40 okumoto Exp $
+# $DragonFly: src/bin/sh/Makefile,v 1.4.2.1 2006/01/15 13:05:54 corecode Exp $
 
 WARNS?=	0	# Not yet
 
@@ -24,6 +24,10 @@ LFLAGS= -8	# 8-bit lex scanner for arithmetic
 CFLAGS+=-DSHELL -I. -I${.CURDIR}
 # for debug:
 # CFLAGS+= -g -DDEBUG=2
+
+.if defined(BOOTSTRAPPING)
+CFLAGS+=-DNO_HISTORY
+.endif
 
 .PATH:	${.CURDIR}/bltin \
 	${.CURDIR}/../../usr.bin/printf \
