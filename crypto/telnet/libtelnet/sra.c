@@ -28,7 +28,7 @@
  * 
  *
  * $FreeBSD: src/crypto/telnet/libtelnet/sra.c,v 1.1.2.7 2002/05/16 08:46:49 markm Exp $
- * $DragonFly: src/crypto/telnet/libtelnet/sra.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ * $DragonFly: src/crypto/telnet/libtelnet/sra.c,v 1.3 2006/01/17 23:50:34 dillon Exp $
  */
 
 #ifdef	SRA
@@ -57,6 +57,8 @@ char pka[HEXKEYBYTES+1], ska[HEXKEYBYTES+1], pkb[HEXKEYBYTES+1];
 char *user, *pass, *xuser, *xpass;
 DesData ck;
 IdeaData ik;
+
+#define PASS_SIZE	256
 
 extern int auth_debug_mode;
 extern char line[];
@@ -118,7 +120,7 @@ sra_init(Authenticator *ap __unused, int server)
 
 	user = (char *)malloc(256);
 	xuser = (char *)malloc(513);
-	pass = (char *)malloc(256);
+	pass = (char *)malloc(PASS_SIZE);
 	xpass = (char *)malloc(513);
 
 	if (user == NULL || xuser == NULL || pass == NULL || xpass ==
@@ -302,8 +304,8 @@ sra_reply(Authenticator *ap, unsigned char *data, int cnt)
 			goto enc_user;
 		}
 		/* encode password */
-		memset(pass,0,sizeof(pass));
-		telnet_gets("Password: ",pass,255,0);
+		memset(pass,0,PASS_SIZE);
+		telnet_gets("Password: ",pass,PASS_SIZE-1,0);
 		pk_encode(pass,xpass,&ck);
 		/* send it off */
 		if (auth_debug_mode)

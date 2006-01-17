@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.7 2004/07/07 12:24:00 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.8 2006/01/17 23:49:13 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -307,7 +307,7 @@ allocsb()
 	} else {
 		sb = xmalloc(sizeof (sbuf_t));
 	}
-	(void)memset(sb, 0, sizeof (sb));
+	(void)memset(sb, 0, sizeof (*sb));
 	return (sb);
 }
 

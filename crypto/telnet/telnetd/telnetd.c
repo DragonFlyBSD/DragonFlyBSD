@@ -32,7 +32,7 @@
  *
  * @(#)telnetd.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnetd/telnetd.c,v 1.11.2.5 2002/04/13 10:59:09 markm Exp $
- * $DragonFly: src/crypto/telnet/telnetd/telnetd.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/telnetd.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include "telnetd.h"
@@ -585,8 +585,8 @@ getterminaltype(char *name undef2)
 		     */
 		     _gettermname();
 		    if (strncmp(first, terminaltype, sizeof(first)) != 0) {
-			(void) strncpy(terminaltype, first, sizeof(terminaltype)-1);
-			terminaltype[sizeof(terminaltype)-1] = '\0';
+			(void) strncpy(terminaltype, first, TERMINAL_TYPE_SIZE-1);
+			terminaltype[TERMINAL_TYPE_SIZE-1] = '\0';
 		    }
 		    break;
 		}

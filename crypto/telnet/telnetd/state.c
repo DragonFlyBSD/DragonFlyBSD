@@ -32,7 +32,7 @@
  *
  * @(#)state.c	8.5 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnetd/state.c,v 1.4.2.3 2002/04/13 10:59:08 markm Exp $
- * $DragonFly: src/crypto/telnet/telnetd/state.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ * $DragonFly: src/crypto/telnet/telnetd/state.c,v 1.3 2006/01/17 23:50:35 dillon Exp $
  */
 
 #include <stdarg.h>
@@ -1092,7 +1092,7 @@ suboption(void)
     }  /* end of case TELOPT_TSPEED */
 
     case TELOPT_TTYPE: {		/* Yaaaay! */
-	static char terminalname[41];
+	static char terminalname[TERMINAL_TYPE_SIZE];
 
 	if (his_state_is_wont(TELOPT_TTYPE))	/* Ignore if option disabled */
 		break;

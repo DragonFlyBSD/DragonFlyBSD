@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ncpaddr.c,v 1.10.2.3 2003/04/29 16:05:55 ume Exp $
- * $DragonFly: src/usr.sbin/ppp/ncpaddr.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/ncpaddr.c,v 1.3 2006/01/17 23:49:16 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -866,17 +866,17 @@ ncprange_ntoa(const struct ncprange *range)
       for (; len >= 3; res[len -= 2] = '\0')
         if (strcmp(res + len - 2, ".0"))
           break;
-      snprintf(res + len, sizeof res - len, "&0x%08lx",
+      snprintf(res + len, strlen(res) - len, "&0x%08lx",
                (unsigned long)ntohl(range->ncprange_ip4mask.s_addr));
     } else if (range->ncprange_ip4width < 32)
-      snprintf(res + len, sizeof res - len, "/%d", range->ncprange_ip4width);
+      snprintf(res + len, strlen(res) - len, "/%d", range->ncprange_ip4width);
 
     return res;
 
 #ifndef NOINET6
   case AF_INET6:
     if (range->ncprange_ip6width != 128)
-      snprintf(res + len, sizeof res - len, "/%d", range->ncprange_ip6width);
+      snprintf(res + len, strlen(res) - len, "/%d", range->ncprange_ip6width);
 
     return res;
 #endif
