@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.50 2005/12/29 20:18:58 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.51 2006/01/17 23:52:20 dillon Exp $
 #
 
 # compat target
@@ -125,6 +125,7 @@ buildiso:
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
+	cp -p ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
