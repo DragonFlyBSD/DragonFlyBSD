@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.6 2005/11/13 11:58:30 corecode Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.7 2006/01/17 15:06:26 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -110,8 +110,10 @@ histedit(void)
 				goto bad;
 			el_err = el_out;
 			term = lookupvar("TERM");
-			if (term)
-				setenv("TERM", term, 1);
+			if (term) {
+				if (setenv("TERM", term, 1) == -1)
+					error("setenv: cannot set TERM=1");
+			}
 			else
 				unsetenv("TERM");
 			shname = arg0;
