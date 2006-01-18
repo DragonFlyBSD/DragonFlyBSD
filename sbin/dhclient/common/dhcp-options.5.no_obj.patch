@@ -1,4 +1,4 @@
-$DragonFly: src/sbin/dhclient/common/Attic/dhcp-options.5.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+$DragonFly: src/sbin/dhclient/common/Attic/dhcp-options.5.no_obj.patch,v 1.1 2006/01/18 02:33:36 dillon Exp $
 --- dhcp-options.5.orig	2004-06-10 19:59:15.000000000 +0200
 +++ dhcp-options.5	2004-06-24 16:36:09.000000000 +0200
 @@ -421,7 +421,10 @@

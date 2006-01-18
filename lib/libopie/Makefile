@@ -1,7 +1,7 @@
 # Makefile for libopie
 #
 # $FreeBSD: src/lib/libopie/Makefile,v 1.10.2.3 2002/07/15 14:17:08 des Exp $
-# $DragonFly: src/lib/libopie/Makefile,v 1.3 2005/04/21 13:42:34 joerg Exp $
+# $DragonFly: src/lib/libopie/Makefile,v 1.4 2006/01/18 02:33:35 dillon Exp $
 #
 OPIE_DIST?=	${.CURDIR}/../../contrib/opie
 DIST_DIR=	${OPIE_DIST}/${.CURDIR:T}
@@ -20,6 +20,9 @@ SRCS=	atob8.c btoa8.c btoh.c challenge.c getsequence.c hash.c hashlen.c \
 	getutline.c pututline.c endutent.c setutent.c # from libmissing
 SRCS+=	opieextra.c
 INCS=	${OPIE_DIST}/opie.h
+
+CONTRIBDIR= ${DIST_DIR}
+SRCS+=	readpass.c.patch
 
 CFLAGS+=-I${.CURDIR} -I${OPIE_DIST} -I${DIST_DIR} \
 	-DKEY_FILE=${KEYFILE}

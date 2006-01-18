@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/lib/libbind/Makefile,v 1.7 2004/09/20 15:32:59 asmodai Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.8 2006/01/18 02:33:32 dillon Exp $
 
 BIND_DIR=${.CURDIR}/../../contrib/bind-9.2.4rc7
 
@@ -34,6 +34,12 @@ SRCS+=	gethostent_r.c getnetgrent_r.c getprotoent_r.c getservent_r.c \
 	lcl.c lcl_ho.c lcl_ng.c lcl_nw.c \
 	lcl_pr.c lcl_sv.c nis.c nul_ng.c util.c \
 	getgrent_r.c \
+
+# kind of a messy way to patch this file
+#
+CONTRIBDIR= ${BIND_DIR}/lib/bind/irs
+CFLAGS+=-I${CONTRIBDIR}
+SRCS+=	dns_ho.c.patch
 
 .PATH:	${BIND_DIR}/lib/bind/nameser
 SRCS+=	ns_date.c ns_name.c ns_netint.c \

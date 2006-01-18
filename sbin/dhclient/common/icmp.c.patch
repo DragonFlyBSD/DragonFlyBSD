@@ -1,0 +1,18 @@
+$DragonFly: src/sbin/dhclient/common/Attic/icmp.c.patch,v 1.1 2006/01/18 02:33:36 dillon Exp $
+
+Index: contrib/dhcp-3.0/common/icmp.c
+===================================================================
+RCS file: /cvs/src/contrib/dhcp-3.0/common/icmp.c,v
+retrieving revision 1.1
+diff -u -r1.1 icmp.c
+--- contrib/dhcp-3.0/common/icmp.c	4 Jan 2005 19:58:53 -0000	1.1
++++ contrib/dhcp-3.0/common/icmp.c	17 Jan 2006 23:27:36 -0000
+@@ -291,7 +291,7 @@
+ 	icbuf = (u_int8_t *)(ia + 1);
+ 	if (icmp_state -> icmp_handler)
+ 		(*icmp_state -> icmp_handler) (*ia, icbuf,
+-					       (int)(length - sizeof ia));
++					       (int)(length - sizeof *ia));
+ }
+ 
+ void trace_icmp_input_stop (trace_type_t *ttype) { }

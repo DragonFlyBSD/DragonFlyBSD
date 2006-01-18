@@ -1,0 +1,21 @@
+$DragonFly: src/usr.sbin/tcpdump/tcpdump/print-ospf6.c.patch,v 1.1 2006/01/18 02:33:38 dillon Exp $
+
+Index: contrib/tcpdump-3.8.3/print-ospf6.c
+===================================================================
+RCS file: /cvs/src/contrib/tcpdump-3.8.3/print-ospf6.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 print-ospf6.c
+--- print-ospf6.c.orig	15 May 2004 12:24:19 -0000	1.1.1.1
++++ print-ospf6.c	17 Jan 2006 23:38:21 -0000
+@@ -348,9 +348,9 @@
+ 		printf(" metric %u",
+ 			EXTRACT_32BITS(&lsap->lsa_un.un_inter_ap.inter_ap_metric) & SLA_MASK_METRIC);
+ 		lsapp = lsap->lsa_un.un_inter_ap.inter_ap_prefix;
+-		while (lsapp + sizeof(lsapp) <= (struct lsa_prefix *)ls_end) {
++		while (lsapp + 1 <= (struct lsa_prefix *)ls_end) {
+ 			k = ospf6_print_lsaprefix(lsapp);
+-			if (k)
++			if (k < 0)
+ 				goto trunc;
+ 			lsapp = (struct lsa_prefix *)(((u_char *)lsapp) + k);
+ 		}

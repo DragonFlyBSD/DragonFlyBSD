@@ -1,0 +1,36 @@
+$DragonFly: src/lib/libopie/readpass.c.patch,v 1.1 2006/01/18 02:33:35 dillon Exp $
+
+Index: contrib/opie/libopie/readpass.c
+===================================================================
+RCS file: /cvs/src/contrib/opie/libopie/readpass.c,v
+retrieving revision 1.1
+diff -u -r1.1 readpass.c
+--- readpass.c.orig	17 Jun 2003 02:46:16 -0000	1.1
++++ readpass.c		17 Jan 2006 23:22:00 -0000
+@@ -61,7 +61,7 @@
+ 
+ #define CONTROL(x) (x - 64)
+ 
+-char *bsseq = "\b \b";
++char bsseq[3] = { "\b \b" };
+ 
+ #ifdef unix
+ static jmp_buf jmpbuf;
+@@ -252,7 +252,7 @@
+ 	goto beep;
+ 
+       if (flags & 1)
+-        write(1, bsseq, sizeof(bsseq) - 1);
++        write(1, bsseq, sizeof(bsseq));
+       c--;
+       goto loop;
+     }
+@@ -265,7 +265,7 @@
+ 
+       if (flags & 1)
+         while(c-- > buf)
+-          write(1, bsseq, sizeof(bsseq) - 1);
++          write(1, bsseq, sizeof(bsseq));
+ 
+       c = buf;
+       goto loop;

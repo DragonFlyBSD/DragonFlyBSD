@@ -1,0 +1,40 @@
+$DragonFly: src/lib/libbind/Attic/dns_ho.c.patch,v 1.1 2006/01/18 02:33:32 dillon Exp $
+
+Index: contrib/bind-9.2.4rc7/lib/bind/irs/dns_ho.c
+===================================================================
+RCS file: /cvs/src/contrib/bind-9.2.4rc7/lib/bind/irs/dns_ho.c,v
+retrieving revision 1.1
+diff -u -r1.1 dns_ho.c
+--- dns_ho.c.orig	20 Sep 2004 06:33:16 -0000	1.1
++++ dns_ho.c		17 Jan 2006 23:20:46 -0000
+@@ -260,7 +260,7 @@
+ 		errno = ENOMEM;
+ 		goto cleanup;
+ 	}
+-	memset(q, 0, sizeof(q));
++	memset(q, 0, sizeof(*q));
+ 
+ 	switch (af) {
+ 	case AF_INET:
+@@ -352,8 +352,8 @@
+ 		errno = ENOMEM;
+ 		goto cleanup;
+ 	}
+-	memset(q, 0, sizeof(q));
+-	memset(q2, 0, sizeof(q2));
++	memset(q, 0, sizeof(*q));
++	memset(q2, 0, sizeof(*q2));
+ 
+ 	if (af == AF_INET6 && len == IN6ADDRSZ &&
+ 	    (!memcmp(uaddr, mapped, sizeof mapped) ||
+@@ -578,8 +578,8 @@
+ 		errno = ENOMEM;
+ 		goto cleanup;
+ 	}
+-	memset(q, 0, sizeof(q2));
+-	memset(q2, 0, sizeof(q2));
++	memset(q, 0, sizeof(*q));
++	memset(q2, 0, sizeof(*q2));
+ 
+ 	switch (pai->ai_family) {
+ 	case AF_UNSPEC:
