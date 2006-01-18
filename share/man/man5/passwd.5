@@ -31,13 +31,14 @@
 .\"
 .\"     From: @(#)passwd.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/passwd.5,v 1.26.2.5 2002/02/01 15:51:18 ru Exp $
-.\" $DragonFly: src/share/man/man5/passwd.5,v 1.3 2004/03/11 12:28:56 hmp Exp $
+.\" $DragonFly: src/share/man/man5/passwd.5,v 1.4 2006/01/18 07:42:57 reed Exp $
 .\"
 .Dd September 29, 1994
 .Dt PASSWD 5
 .Os
 .Sh NAME
-.Nm passwd
+.Nm passwd ,
+.Nm master.passwd
 .Nd format of the password file
 .Sh DESCRIPTION
 The
@@ -197,7 +198,7 @@ done with other shells.
 .Sh YP/NIS INTERACTION
 .Ss Enabling access to NIS passwd data
 The system administrator can configure
-.Tn FreeBSD
+.Dx
 to use NIS/YP for
 its password information by adding special records to the
 .Pa /etc/master.passwd
@@ -228,7 +229,7 @@ The
 will tell the
 .Xr getpwent 3
 routines in
-.Tn FreeBSD Ns 's
+.Dx Ap s
 standard C library to begin using the NIS passwd maps
 for lookups.
 .Pp
@@ -400,7 +401,7 @@ the NIS master server; once a host's access list has been set in
 it need not be modified again unless new netgroups are created.
 .Sh NOTES
 .Ss Shadow passwords through NIS
-.Tn FreeBSD
+.Dx
 uses a shadow password scheme: users' encrypted passwords
 are stored only in
 .Pa /etc/master.passwd
@@ -414,16 +415,16 @@ other users' accounts.
 NIS does not support a standard means of
 password shadowing, which implies that placing your password data
 into the NIS passwd maps totally defeats the security of
-.Tn FreeBSD Ns 's
+.Dx Ap s
 password shadowing system.
 .Pp
-.Tn FreeBSD
+.Dx
 provides a few special features to help get around this
 problem.
 It is possible to implement password shadowing between
-.Tn FreeBSD
+.Dx
 NIS clients and
-.Tn FreeBSD
+.Dx
 NIS servers.
 The
 .Xr getpwent 3
@@ -435,14 +436,15 @@ maps which should contain the same data found in the
 .Pa /etc/master.passwd
 file.
 If the maps exist,
-.Tn FreeBSD
+.Dx
 will attempt to use them for user
 authentication instead of the standard
 .Pa passwd.byname
 and
 .Pa passwd.byuid
 maps.
-.Tn FreeBSD Ns 's
+The
+.Dx
 .Xr ypserv 8
 will also check client requests to make sure they originate on a
 privileged port.
@@ -460,7 +462,7 @@ be allowed access to the standard
 maps which contain no password information.
 .Pp
 Note that this feature cannot be used in an environment with
-.No non- Ns Tn FreeBSD
+.No non- Ns Tn DragonFly
 systems.
 Note also that a truly determined user with
 unrestricted access to your network could still compromise the
@@ -470,7 +472,7 @@ maps.
 Unlike
 .Tn SunOS
 and other operating systems that use Sun's NIS code,
-.Tn FreeBSD
+.Dx
 allows the user to override
 .Pa all
 of the fields in a user's NIS
@@ -499,7 +501,7 @@ using an NIS wildcard entry that looks like this:
 
 .Ed
 This often leads to new
-.Tn FreeBSD
+.Dx
 administrators choosing NIS entries for their
 .Pa master.passwd
 files that look like this:
@@ -516,7 +518,7 @@ Or worse, this
 .Pa master.passwd
 .Sy FILE!!
 The first tells
-.Tn FreeBSD
+.Dx
 to remap all passwords to
 .Ql \&*
 (which
@@ -564,7 +566,7 @@ of the file and once at the end.
 instead of simple wildcards, other combinations could be achieved.)
 .Pp
 By contrast,
-.Fx
+.Dx
 does not have a single
 .Tn ASCII
 password file: it
@@ -579,7 +581,7 @@ the
 and
 .Fn getpwuid
 functions in
-.Tn FreeBSD
+.Dx
 are designed to do direct queries to the
 hash database rather than a linear search.
 This approach is faster
@@ -591,7 +593,7 @@ it cannot easily apply the same override logic used by
 .Tn SunOS .
 .Pp
 Instead,
-.Tn FreeBSD
+.Dx
 groups all the NIS override entries together
 and constructs a filter out of them.
 Each NIS password entry
@@ -614,7 +616,7 @@ in the
 file, since doing otherwise would lead to unpredictable behavior.
 .Pp
 The end result is that
-.Tn FreeBSD Ns 's
+.Dx
 provides a very close approximation
 of
 .Tn SunOS Ns 's
@@ -639,7 +641,7 @@ the password space.
 .El
 .Pp
 In 99% of all
-.Tn FreeBSD
+.Dx
 configurations, NIS client behavior will be
 indistinguishable from that of
 .Tn SunOS
@@ -648,7 +650,7 @@ Even
 so, users should be aware of these architectural differences.
 .Pp
 .Ss Using groups instead of netgroups for NIS overrides
-.Tn FreeBSD
+.Dx
 offers the capability to do override matching based on
 user groups rather than netgroups.
 If, for example, an NIS entry
@@ -665,16 +667,17 @@ netgroup doesn't exist, the system
 will try to match users against the normal
 .Ql operator
 group instead.
-.Ss Changes in behavior from older versions of
-.Dx
+.Ss Changes in behavior from old versions of FreeBSD
 There have been several bug fixes and improvements in
-.Dx Ns 's
+.Fx Ap 's
 NIS/YP handling, some of which have caused changes in behavior.
 While the behavior changes are generally positive, it is important
 that users and system administrators be aware of them:
 .Bl -enum -offset indent
 .It
-In versions prior to 2.0.5, reverse lookups (i.e. using
+In
+.Fx
+versions prior to 2.0.5, reverse lookups (i.e. using
 .Fn getpwuid )
 would not have overrides applied, which is to say that it
 was possible for
@@ -693,7 +696,7 @@ Prior to
 .Fx 2.0.5 ,
 netgroup overrides did not work at
 all, largely because
-.Tn FreeBSD
+.Fx
 did not have support for reading
 netgroups through NIS.
 Again, this has been fixed, and
@@ -702,7 +705,7 @@ netgroups can be specified just as in
 and similar NIS-capable
 systems.
 .It
-.Dx
+.Fx
 now has NIS server capabilities and supports the use
 of
 .Pa master.passwd
@@ -796,8 +799,8 @@ file format appeared in
 The YP/NIS functionality is modeled after
 .Tn SunOS
 and first appeared in
-.Fx 1.1
-The override capability is new in
+.Fx 1.1 .
+The override capability was new in
 .Fx 2.0 .
 The override capability was updated to properly support netgroups
 in
