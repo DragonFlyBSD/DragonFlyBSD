@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
- * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.7 2004/07/19 23:30:33 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.8 2006/01/18 09:59:34 swildner Exp $
  */
 
 #include "../../bootasm.h"
@@ -229,7 +229,7 @@ init.7: 	stosl				# Set entry
 		lidt idtdesc	 		# Set IDT
 #ifdef PAGING
 		xor %eax,%eax			# Set base
-		mov $MEM_BTX_DIR>>0x8,%ah		#  of page
+		mov $MEM_BTX_DIR>>0x8,%ah	#  of page
 		mov %eax,%cr3			#  directory
 #endif
 		lgdt gdtdesc	 		# Set GDT
