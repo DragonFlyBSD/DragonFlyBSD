@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.10 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.11 2006/01/19 22:19:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -146,6 +146,8 @@ static struct nlist nl[] = {
 	{ "_nmbufs" },
 #define	N_RTTRASH	42
 	{ "_rttrash" },
+#define	N_NCPUS		43
+	{ "_ncpus" },
 	{ "" },
 };
 
@@ -302,6 +304,7 @@ static char *nlistf = NULL, *memf = NULL;
 int	Aflag;		/* show addresses of protocol control block */
 int	aflag;		/* show all sockets (including servers) */
 int	bflag;		/* show i/f total bytes in/out */
+int	cpuflag = -1;	/* dump route table from specific cpu */
 int	dflag;		/* show i/f dropped packets */
 int	gflag;		/* show group (multicast) routing or stats */
 int	iflag;		/* show interfaces */
@@ -330,10 +333,11 @@ main(int argc, char **argv)
 {
 	struct protox *tp = NULL;  /* for printing cblocks & stats */
 	int ch;
+	int n;
 
 	af = AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "Aabdf:gI:iLlM:mN:nPp:rSsBtuWw:z")) != -1)
+	while ((ch = getopt(argc, argv, "Aabc:df:gI:iLlM:mN:nPp:rSsBtuWw:z")) != -1)
 		switch(ch) {
 		case 'A':
 			Aflag = 1;
@@ -343,6 +347,13 @@ main(int argc, char **argv)
 			break;
 		case 'b':
 			bflag = 1;
+			break;
+		case 'c':
+			kread(0, 0, 0);
+			kread(nl[N_NCPUS].n_value, (char *)&n, sizeof(n));
+			cpuflag = strtol(optarg, NULL, 0);
+			if (cpuflag < 0 || cpuflag >= n)
+			    errx(1, "cpu %d does not exist", cpuflag);
 			break;
 		case 'd':
 			dflag = 1;
@@ -735,7 +746,7 @@ static void
 usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-"usage: netstat [-AaLnSW] [-f protocol_family | -p protocol]\n"
+"usage: netstat [-AaLnSW] [-c cpu] [-f protocol_family | -p protocol]\n"
 "               [-M core] [-N system]",
 "       netstat -i | -I interface [-abdnt] [-f address_family]\n"
 "               [-M core] [-N system]",

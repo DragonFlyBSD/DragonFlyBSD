@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)route.8	8.3 (Berkeley) 3/19/94
 .\" $FreeBSD: src/sbin/route/route.8,v 1.17.2.9 2003/02/24 00:56:43 trhodes Exp $
-.\" $DragonFly: src/sbin/route/route.8,v 1.4 2004/03/23 18:25:51 dillon Exp $
+.\" $DragonFly: src/sbin/route/route.8,v 1.5 2006/01/19 22:19:30 dillon Exp $
 .\"
 .Dd June 8, 2001
 .Dt ROUTE 8
@@ -42,6 +42,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dnqtv
+.Op Fl c Ar cpu
 .Ar command
 .Oo
 .Op Ar modifiers
@@ -66,6 +67,10 @@ programmatic interface discussed in
 .Pp
 The following options are available:
 .Bl -tag -width indent
+.It Fl c Ar cpu
+On SMP systems the route table is replicated.  This option allows the
+route table for a specific cpu to be accessed and exists primarily
+for debugging purposes.
 .It Fl n
 Bypass attempts to print host and network names symbolically
 when reporting actions.  (The process of translating between symbolic

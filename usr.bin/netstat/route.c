@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.10 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.11 2006/01/19 22:19:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,14 +150,19 @@ routepr(u_long rtree)
 
 	printf("Routing tables\n");
 
-	if (Aflag == 0 && NewTree)
+	if (Aflag == 0 && NewTree) {
 		ntreestuff();
-	else {
+	} else {
 		if (rtree == 0) {
 			printf("rt_tables: symbol not in namelist\n");
 			return;
 		}
-
+		if (cpuflag >= 0) {
+			/*
+			 * Severe hack.
+			 */
+			rtree += cpuflag * (AF_MAX + 1) * sizeof(void *);
+		}
 		kget(rtree, rt_tables);
 		for (i = 0; i <= AF_MAX; i++) {
 			if ((rnh = rt_tables[i]) == 0)
@@ -482,7 +487,8 @@ static void
 ntreestuff(void)
 {
 	size_t needed;
-	int mib[6];
+	int mib[7];
+	int miblen;
 	char *buf, *next, *lim;
 	struct rt_msghdr *rtm;
 
@@ -492,14 +498,20 @@ ntreestuff(void)
 	mib[3] = 0;
 	mib[4] = NET_RT_DUMP;
 	mib[5] = 0;
-	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) {
+	if (cpuflag >= 0) {
+		mib[6] = cpuflag;
+		miblen = 7;
+	} else {
+		miblen = 6;
+	}
+	if (sysctl(mib, miblen, NULL, &needed, NULL, 0) < 0) {
 		err(1, "sysctl: net.route.0.0.dump estimate");
 	}
 
 	if ((buf = malloc(needed)) == 0) {
 		err(2, "malloc(%lu)", (unsigned long)needed);
 	}
-	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+	if (sysctl(mib, miblen, buf, &needed, NULL, 0) < 0) {
 		err(1, "sysctl: net.route.0.0.dump");
 	}
 	lim  = buf + needed;

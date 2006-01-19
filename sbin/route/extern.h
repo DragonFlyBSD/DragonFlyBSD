@@ -1,6 +1,6 @@
 /*
  * $NetBSD: extern.h,v 1.2 2001/10/24 16:05:06 atatat Exp $
- * $DragonFly: src/sbin/route/extern.h,v 1.3 2005/03/16 04:18:35 cpressey Exp $
+ * $DragonFly: src/sbin/route/extern.h,v 1.4 2006/01/19 22:19:30 dillon Exp $
  */
 
 /*
@@ -40,6 +40,7 @@ void	 show(int, char **);
 
 /* route.c */
 extern int	nflag, wflag;
+extern int	cpuflag;
 
 char	*routename(struct sockaddr *);
 char	*netname(struct sockaddr *);

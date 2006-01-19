@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.13 2005/03/16 08:02:05 cpressey Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.14 2006/01/19 22:19:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,6 +87,7 @@ union	sockunion {
 typedef union sockunion *sup;
 
 int	nflag, wflag;
+int	cpuflag = -1;
 
 static struct ortentry route;
 static struct rt_metrics rt_metrics;
@@ -146,8 +147,11 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage((char *)NULL);
 
-	while ((ch = getopt(argc, argv, "wnqdtv")) != -1)
+	while ((ch = getopt(argc, argv, "c:wnqdtv")) != -1)
 		switch(ch) {
+		case 'c':
+			cpuflag = strtol(optarg, NULL, 0);
+			break;
 		case 'w':
 			wflag = 1;
 			break;
@@ -218,7 +222,8 @@ static void
 flushroutes(int argc, char **argv)
 {
 	size_t needed;
-	int mib[6], rlen, seqno;
+	int mib[7], rlen, seqno;
+	int miblen;
 	char *buf, *next, *lim;
 	struct rt_msghdr *rtm;
 
@@ -260,11 +265,17 @@ bad:			usage(*argv);
 	mib[3] = 0;		/* wildcard address family */
 	mib[4] = NET_RT_DUMP;
 	mib[5] = 0;		/* no flags */
-	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)
+	if (cpuflag >= 0) {
+		mib[6] = cpuflag;
+		miblen = 7;
+	} else {
+		miblen = 6;
+	}
+	if (sysctl(mib, miblen, NULL, &needed, NULL, 0) < 0)
 		err(EX_OSERR, "route-sysctl-estimate");
 	if ((buf = malloc(needed)) == NULL)
 		errx(EX_OSERR, "malloc failed");
-	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
+	if (sysctl(mib, miblen, buf, &needed, NULL, 0) < 0)
 		err(EX_OSERR, "route-sysctl-get");
 	lim = buf + needed;
 	if (verbose)

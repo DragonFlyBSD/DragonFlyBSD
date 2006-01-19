@@ -1,7 +1,7 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.5 2005/03/16 07:30:33 cpressey Exp $
+ * $DragonFly: src/sbin/route/show.c,v 1.6 2006/01/19 22:19:30 dillon Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -102,7 +102,8 @@ show(int argc, char *argv[])
 	struct rt_msghdr *rtm;
 	char *buf = NULL, *next, *lim = NULL;
 	size_t needed;
-	int mib[6], af = 0;
+	int mib[7], af = 0;
+	int miblen;
         struct sockaddr *sa;
 
         if (argc > 1) {
@@ -142,7 +143,13 @@ bad:                    usage(*argv);
 	mib[3] = 0;
 	mib[4] = NET_RT_DUMP;
 	mib[5] = 0;
-	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)	{
+	if (cpuflag >= 0) {
+		mib[6] = cpuflag;
+		miblen = 7;
+	} else {
+		miblen = 6;
+	}
+	if (sysctl(mib, miblen, NULL, &needed, NULL, 0) < 0)	{
 		perror("route-sysctl-estimate");
 		exit(1);
 	}
@@ -151,7 +158,7 @@ bad:                    usage(*argv);
 			printf("out of space\n");
 			exit(1);
 		}
-		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
+		if (sysctl(mib, miblen, buf, &needed, NULL, 0) < 0) {
 			perror("sysctl of routing table");
 			exit(1);
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.7 2005/05/01 04:05:35 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.8 2006/01/19 22:19:25 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -40,6 +40,7 @@
 extern int	Aflag;	/* show addresses of protocol control block */
 extern int	aflag;	/* show all sockets (including servers) */
 extern int	bflag;	/* show i/f total bytes in/out */
+extern int	cpuflag;
 extern int	dflag;	/* show i/f dropped packets */
 extern int	gflag;	/* show group (multicast) routing or stats */
 extern int	iflag;	/* show interfaces */
@@ -54,7 +55,6 @@ extern int	tflag;	/* show i/f watchdog timers */
 extern int	Bflag;	/* show buffer limit instead of buffer use */
 extern int	Wflag;	/* wide display */
 extern int	zflag;	/* zero stats */
-
 extern int	interval; /* repeat interval for i/f stats */
 
 extern char	*interface; /* desired i/f for stats, or NULL for all i/fs */

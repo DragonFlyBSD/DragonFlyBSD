@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.7 2005/05/07 23:32:57 corecode Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.8 2006/01/19 22:19:31 dillon Exp $
  */
 
 /*
@@ -93,6 +93,7 @@ int get_ether_addr(u_int32_t ipaddr, struct ether_addr *hwaddr);
 static int pid;
 static int nflag;	/* no reverse dns lookups */
 static int aflag;	/* do it for all entries */
+static int cpuflag = -1;
 static int s = -1;
 
 struct	sockaddr_in so_mask;
@@ -122,10 +123,13 @@ main(int argc, char **argv)
 	int rtn = 0;
 
 	pid = getpid();
-	while ((ch = getopt(argc, argv, "andfsS")) != -1)
+	while ((ch = getopt(argc, argv, "ac:ndfsS")) != -1)
 		switch((char)ch) {
 		case 'a':
 			aflag = 1;
+			break;
+		case 'c':
+			cpuflag = strtol(optarg, NULL, 0);
 			break;
 		case 'd':
 			SETFUNC(F_DELETE);
@@ -454,7 +458,8 @@ void
 search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	struct sockaddr_inarp *sin, struct rt_msghdr *rtm))
 {
-	int mib[6];
+	int mib[7];
+	int miblen;
 	size_t needed;
 	char *lim, *buf, *next;
 	struct rt_msghdr *rtm;
@@ -467,11 +472,17 @@ search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	mib[3] = AF_INET;
 	mib[4] = NET_RT_FLAGS;
 	mib[5] = RTF_LLINFO;
-	if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)
+	if (cpuflag >= 0) {
+	    mib[6] = cpuflag;
+	    miblen = 7;
+	} else {
+	    miblen = 6;
+	}
+	if (sysctl(mib, miblen, NULL, &needed, NULL, 0) < 0)
 		errx(1, "route-sysctl-estimate");
 	if ((buf = malloc(needed)) == NULL)
 		errx(1, "malloc");
-	if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
+	if (sysctl(mib, miblen, buf, &needed, NULL, 0) < 0)
 		errx(1, "actual retrieval of routing table");
 	lim = buf + needed;
 	for (next = buf; next < lim; next += rtm->rtm_msglen) {

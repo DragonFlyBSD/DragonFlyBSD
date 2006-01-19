@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)arp.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/arp/arp.8,v 1.8.2.11 2003/03/11 21:13:48 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/arp/arp.8,v 1.2 2003/06/17 04:29:52 dillon Exp $
+.\" $DragonFly: src/usr.sbin/arp/arp.8,v 1.3 2006/01/19 22:19:31 dillon Exp $
 .\"
 .Dd June 6, 1993
 .Dt ARP 8
@@ -42,9 +42,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl n
+.Op Fl c Ar cpu
 .Ar hostname
 .Nm
 .Op Fl n
+.Op Fl c Ar cpu
 .Fl a
 .Nm
 .Fl d Ar hostname
@@ -81,6 +83,10 @@ Available options:
 The program displays or deletes all of the current
 .Tn ARP
 entries.
+.It Fl c Ar cpu
+On SMP systems the route table is replicated.  This option allows
+the route table for a specific cpu to be accessed and exists
+primarily for debugging purposes.
 .It Fl d
 A super-user may delete an entry for the host called
 .Ar hostname
