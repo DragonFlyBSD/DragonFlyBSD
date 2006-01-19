@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: util.c,v 1.29 2004/11/19 20:00:57 otto Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.4 2005/01/10 21:45:33 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.5 2006/01/19 04:51:30 corecode Exp $
  */
 
 /*
@@ -104,6 +104,12 @@ backup_file(const char *orig)
 
 	if (backup_type == none || stat(orig, &filestat) != 0)
 		return 0;			/* nothing to do */
+	/*
+	 * If the user used zero prefixes or suffixes, then
+	 * he doesn't want backups
+	 */
+	if ((origprae && *origprae == 0) || *simple_backup_suffix == 0)
+		return 0;
 	orig_device = filestat.st_dev;
 	orig_inode = filestat.st_ino;
 
