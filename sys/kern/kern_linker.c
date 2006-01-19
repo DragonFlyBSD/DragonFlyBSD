@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.23 2006/01/10 00:33:12 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.24 2006/01/19 04:49:45 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -1025,6 +1025,7 @@ linker_preload(void* arg)
 
 	lf = linker_find_file_by_name(modname);
 	if (lf) {
+	    lf->refs++;
 	    lf->userrefs++;
 	    continue;
 	}
