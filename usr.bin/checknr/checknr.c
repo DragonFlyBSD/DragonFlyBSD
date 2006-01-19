@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.11 2005/03/04 02:53:55 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.12 2006/01/19 03:14:06 corecode Exp $
  */
 
 #include <err.h>
@@ -555,7 +555,7 @@ addmac(const char *mac)
 	if (binsrch(mac, &slot) >= 0) {
 #ifdef DEBUG
 		printf("binsrch(%s) -> already in table\n", mac);
-#endif DEBUG
+#endif /* DEBUG */
 		return;
 	}
 #ifdef DEBUG
