@@ -1,5 +1,6 @@
-# $DragonFly: src/usr.bin/wmake/Makefile,v 1.1 2003/08/11 00:25:17 dillon Exp $
+# $DragonFly: src/usr.bin/wmake/Makefile,v 1.2 2006/01/20 20:36:43 swildner Exp $
 
 SCRIPTS=wmake.sh
+MAN=	wmake.1
 
 .include <bsd.prog.mk>
