@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.6 2005/09/06 17:34:03 reed Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.7 2006/01/22 02:38:53 justin Exp $
 -->
 
 <chapter id="linuxemu">
@@ -115,8 +115,8 @@
 
     <para>Linux binary compatibility is not turned on by default.  The
       easiest way to enable this functionality is to load the
-      <literal>linux</literal> KLD object (<quote>Kernel LoaDable
-      object</quote>).  You can load this module by simply typing
+      <literal>linux</literal> KLD object (<quote>Kernel Loadable
+      Device</quote>).  You can load this module by simply typing
       <command>linux</command> at the command prompt.</para>
 
     <para>If you would like Linux compatibility to always be enabled,
@@ -151,21 +151,22 @@ Id Refs Address    Size     Name
       </indexterm>
 
       <para>This can be done one of two ways, either by using the
-	<link linkend="linuxemu-libs-port">linux_base</link> port, or
+	<link linkend="linuxemu-suse-pkgsrc">suse</link> package, or
 	by installing them <link
 	linkend="linuxemu-libs-manually">manually</link>.</para>
 
-      <sect3 id="linuxemu-libs-port">
-	<title>Installing Using the linux_base Port</title>
-	<indexterm><primary>ports collection</primary></indexterm>
+      <sect3 id="linuxemu-suse-pkgsrc">
+	<title>Installing Using suse Package</title>
+	<indexterm><primary>pkgsrc</primary></indexterm>
 
 	<para>This is by far the easiest method to use when installing the
-	  runtime libraries.  It is just like installing any other port
-	  from the <ulink type="html" url="file://localhost/usr/ports/">ports collection</ulink>.
+	  runtime libraries.  It is just like installing any other package
+	  from the <ulink type="html" url="file://localhost/usr/pkgsrc/">pkgsrc collection</ulink>.
 	  Simply do the following:</para>
 
-	<screen>&prompt.root; <userinput>cd /usr/ports/emulators/linux_base</userinput>
-&prompt.root; <userinput>make install distclean</userinput></screen>
+	<screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/suse9</userinput>
+&prompt.root; <userinput>make install distclean</userinput>
+&prompt.root; <userinput>ln -s /usr/pkg/emul /compat</userinput></screen>
 
 	<para>You should now have working Linux binary compatibility.
 	  Some programs may complain about incorrect minor versions of the
@@ -173,9 +174,9 @@ Id Refs Address    Size     Name
 	  a problem.</para>
 
 	<note><para>There may be multiple versions of the <filename
-	  role="package">emulators/linux_base</filename> port available,
+	  role="package">meta-pkgs/suse</filename> package available,
 	  corresponding to different versions of various Linux distributions.
-	  You should install the port most closely resembling the
+	  You should install the package most closely resembling the
 	  requirements of the Linux applications you would like to
 	  install.</para></note>
 
@@ -184,7 +185,7 @@ Id Refs Address    Size     Name
       <sect3 id="linuxemu-libs-manually">
 	<title>Installing Libraries Manually</title>
 
-	<para>If you do not have the <quote>ports</quote> collection
+	<para>If you do not have the <quote>pkgsrc</quote> collection
 	  installed, you can install the libraries by hand instead.  You
 	  will need the Linux shared libraries that the program depends on
 	  and the runtime linker.  Also, you will need to create a
@@ -212,7 +213,7 @@ Id Refs Address    Size     Name
 	<title>How to Install Additional Shared Libraries</title>
 	<indexterm><primary>shared libraries</primary></indexterm>
 
-	<para>What if you install the <filename>linux_base</filename> port
+	<para>What if you install the <filename>suse</filename> package
 	  and your application still complains about missing shared
 	  libraries?  How do you know which shared libraries Linux
 	  binaries need, and where to get them?  Basically, there are 2
@@ -319,7 +320,7 @@ Abort</screen>
       <indexterm><primary>GNU toolchain</primary></indexterm>
       <para>The GNU toolchain now places the appropriate branding
 	information into ELF binaries automatically, so this step
-	should become increasingly unnecessary in the future.</para>
+	should only be needed for older, libc5 binaries.</para>
     </sect2>
 
     <sect2>
@@ -1680,7 +1681,7 @@ export PATH</programlisting>
       <sect3 id="installinglinuxbase-system">
 	<title>Installing the Linux Base System</title>
 
-	<para>First the <link linkend="linuxemu-libs-port">linux_base</link>
+	<para>First the <link linkend="linuxemu-suse-pkgsrc">linux_base</link>
 	  port needs to be installed (as <username>root</username>):</para>
 
 	<screen>&prompt.root; <userinput>cd /usr/ports/emulators/linux_base</userinput>
