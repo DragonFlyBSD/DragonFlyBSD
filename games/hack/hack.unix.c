@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.5 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.unix.c,v 1.6 2006/01/22 03:43:37 swildner Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -408,7 +408,7 @@ readmail() {
 		execl(mr, mr, (char *) 0);
 		exit(1);
 	}
-#else DEF_MAILREADER
+#else /* DEF_MAILREADER */
 	(void) page_file(mailbox, FALSE);
 #endif /* DEF_MAILREADER */
 	/* get new stat; not entirely correct: there is a small time

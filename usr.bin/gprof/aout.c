@@ -1,4 +1,4 @@
-/* $DragonFly: src/usr.bin/gprof/aout.c,v 1.2 2005/04/10 20:55:38 drhodus Exp $								*/
+/* $DragonFly: src/usr.bin/gprof/aout.c,v 1.3 2006/01/22 03:43:37 swildner Exp $								*/
 #include <a.out.h>
 
 #include "gprof.h"
@@ -50,7 +50,7 @@ aout_getnfile(const char *filename, char ***defaultEs)
 		printf("[getnfile] 0X%08x\t%s\n", nl[j].value, nl[j].name);
 	    }
 	}
-#   endif DEBUG
+#   endif /* DEBUG */
     *defaultEs = excludes;
     return 0;
 }
@@ -118,7 +118,7 @@ getsymtab(FILE *nfile, const char *filename)
 		    printf( "[getsymtab] rejecting: 0x%x %s\n" ,
 			    nbuf.n_type , strtab + nbuf.n_un.n_strx );
 		}
-#	    endif DEBUG
+#	    endif /* DEBUG */
 	    continue;
 	}
 	npe->value = nbuf.n_value;
@@ -128,7 +128,7 @@ getsymtab(FILE *nfile, const char *filename)
 		printf( "[getsymtab] %d %s 0x%08x\n" ,
 			nname , npe -> name , npe -> value );
 	    }
-#	endif DEBUG
+#	endif /* DEBUG */
 	npe++;
 	nname++;
     }

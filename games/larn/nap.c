@@ -1,6 +1,6 @@
 /* nap.c		 Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/nap.c,v 1.4 1999/11/16 02:57:23 billf Exp $ */
-/* $DragonFly: src/games/larn/nap.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/nap.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
 #include <signal.h>
 #include <sys/types.h>
 #ifdef SYSV
@@ -8,8 +8,8 @@
 #else
 #ifdef BSD
 #include <sys/timeb.h>
-#endif BSD
-#endif SYSV
+#endif /* BSD */
+#endif /* SYSV */
 
 /*
  *	routine to take a nap for n milliseconds
@@ -31,7 +31,7 @@ napms(x)	/* do nothing */
 	int x;
 	{
 	}
-#else NONAP
+#else /* NONAP */
 #ifdef SYSV
 /*	napms - sleep for time milliseconds - uses times() */
 /* this assumes that times returns a relative time in 60ths of a second */
@@ -51,7 +51,7 @@ napms(time)
 		;
 	}
 
-#else not SYSV
+#else /* not SYSV */
 #ifdef BSD
 #ifdef SIGVTALRM
 /* This must be BSD 4.2!  */
@@ -115,8 +115,8 @@ static napms(time)
 		}
 	}
 #endif
-#else not BSD
+#else /* not BSD */
 static napms(time) int time; {}	/* do nothing, forget it */
-#endif BSD
-#endif SYSV
-#endif NONAP
+#endif /* BSD */
+#endif /* SYSV */
+#endif /* NONAP */

@@ -1,6 +1,6 @@
 /*	main.c		*/
 /* $FreeBSD: src/games/larn/main.c,v 1.9 1999/11/30 03:48:59 billf Exp $ */
-/* $DragonFly: src/games/larn/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/main.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "header.h"
@@ -30,7 +30,7 @@ Cmd line format: larn [-slicnh] [-o<optsifle>] [-##] [++]\n\
 static char *termtypes[] = { "vt100", "vt101", "vt102", "vt103", "vt125",
 	"vt131", "vt140", "vt180", "vt220", "vt240", "vt241", "vt320", "vt340",
 	"vt341"  };
-#endif VT100
+#endif /* VT100 */
 /*
 	************
 	MAIN PROGRAM
@@ -51,7 +51,7 @@ main(argc,argv)
  */
 #ifndef VT100
 	init_term();	/* setup the terminal (find out what type) for termcap */
-#endif VT100
+#endif /* VT100 */
 	if (((ptr = getlogin()) == 0) || (*ptr==0)) {	/* try to get login name */
 	  if (pwe=getpwuid(getuid())) /* can we get it from /etc/passwd? */
 		ptr = pwe->pw_name;
@@ -98,7 +98,7 @@ main(argc,argv)
 		lprcat("Sorry, Larn needs a VT100 family terminal for all it's features.\n"); lflush();
 		exit(1);
 		}
-#endif VT100
+#endif /* VT100 */
 
 /*
  *	now make scoreboard if it is not there (don't clear)
@@ -161,9 +161,9 @@ main(argc,argv)
 
 #ifdef UIDSCORE
 	userid = geteuid();	/* obtain the user's effective id number */
-#else UIDSCORE
+#else /* UIDSCORE */
 	userid = getplid(logname);	/* obtain the players id number */
-#endif UIDSCORE
+#endif /* UIDSCORE */
 	if (userid < 0) { write(2,"Can't obtain playerid\n",22); exit(1); }
 
 #ifdef HIDEBYLINK
@@ -187,7 +187,7 @@ main(argc,argv)
 		{
 		szero(argv[i]);	/* zero the argument to avoid ps snooping */
 		}
-#endif HIDEBYLINK
+#endif /* HIDEBYLINK */
 
 	if (access(savefilename,0)==0)	/* restore game if need to */
 		{
@@ -881,4 +881,4 @@ szero(str)
 	while (*str)
 		*str++ = 0;
 	}
-#endif HIDEBYLINK
+#endif /* HIDEBYLINK */

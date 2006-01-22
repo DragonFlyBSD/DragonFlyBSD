@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/gprof.c,v 1.11 1999/08/28 01:01:55 peter Exp $
- * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.5 2006/01/22 03:43:37 swildner Exp $
  */
 
 #include <err.h>
@@ -83,9 +83,9 @@ main(int argc, char **argv)
 	    debug |= ANYDEBUG;
 #	    ifdef DEBUG
 		printf("[main] debug = %d\n", debug);
-#	    else not DEBUG
+#	    else /* not DEBUG */
 		printf("gprof: -d ignored\n");
-#	    endif DEBUG
+#	    endif /* DEBUG */
 	    break;
 	case 'E':
 	    ++argv;
@@ -240,7 +240,7 @@ getpfile(char *filename)
 		printf( "[getpfile] frompc 0x%x selfpc 0x%x count %d\n" ,
 			arc.raw_frompc , arc.raw_selfpc , arc.raw_count );
 	    }
-#	endif DEBUG
+#	endif /* DEBUG */
 	    /*
 	     *	add this arc
 	     */
@@ -303,7 +303,7 @@ openpfile(char *filename)
 		sampbytes , nsamples );
 	    printf( "[openpfile] sample rate %d\n" , hz );
 	}
-#   endif DEBUG
+#   endif /* DEBUG */
     return(pfile);
 }
 
@@ -327,7 +327,7 @@ tally(struct rawarc *rawp)
 	    printf( "[tally] arc from %s to %s traversed %d times\n" ,
 		    parentp -> name , childp -> name , rawp -> raw_count );
 	}
-#   endif DEBUG
+#   endif /* DEBUG */
     addarc( parentp , childp , rawp -> raw_count );
 }
 
@@ -376,7 +376,7 @@ dumpsum(char *sumfile)
 		    printf( "[dumpsum] frompc 0x%x selfpc 0x%x count %d\n" ,
 			    arc.raw_frompc , arc.raw_selfpc , arc.raw_count );
 		}
-#	    endif DEBUG
+#	    endif /* DEBUG */
 	}
     }
     fclose( sfile );
@@ -479,7 +479,7 @@ asgnsamples(void)
 		printf( "[asgnsamples] pcl 0x%x pch 0x%x ccnt %d\n" ,
 			pcl , pch , ccnt );
 	    }
-#	endif DEBUG
+#	endif /* DEBUG */
 	totime += time;
 	for (j = j - 1; j < nname; j++) {
 	    svalue0 = nl[j].svalue;
@@ -505,7 +505,7 @@ asgnsamples(void)
 				nl[j].name,
 				overlap * time / scale, overlap);
 		    }
-#		endif DEBUG
+#		endif /* DEBUG */
 		nl[j].time += overlap * time / scale;
 	    }
 	}
@@ -514,7 +514,7 @@ asgnsamples(void)
 	if (debug & SAMPLEDEBUG) {
 	    printf("[asgnsamples] totime %f\n", totime);
 	}
-#   endif DEBUG
+#   endif /* DEBUG */
 }
 
 
@@ -556,7 +556,7 @@ alignentries(void)
 		    printf("[alignentries] pushing svalue 0x%x to 0x%x\n",
 			    nlp->svalue, nlp->svalue + UNITS_TO_CODE);
 		}
-#	    endif DEBUG
+#	    endif /* DEBUG */
 	    nlp->svalue += UNITS_TO_CODE;
 	}
     }

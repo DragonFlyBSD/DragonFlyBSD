@@ -33,7 +33,7 @@
  *	@(#)mille.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/mille/mille.h,v 1.7 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.h,v 1.4 2004/01/26 18:14:43 drhodus Exp $
+ * $DragonFly: src/games/mille/mille.h,v 1.5 2006/01/22 03:43:37 swildner Exp $
  */
 
 # include	<sys/types.h>
@@ -168,7 +168,7 @@
 #	define	erasechar()	_tty.sg_erase
 #	define	killchar()	_tty.sg_kill
 # endif
-# endif	SYSV
+# endif	/* SYSV */
 
 typedef struct {
 	bool	coups[NUM_SAFE];

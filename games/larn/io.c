@@ -1,6 +1,6 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/io.c,v 1.4 2004/06/21 02:28:34 dillon Exp $
+ * $DragonFly: src/games/larn/io.c,v 1.5 2006/01/22 03:43:37 swildner Exp $
  *
  *	Below are the functions in this file:
  *
@@ -70,7 +70,7 @@ static char saveeof,saveeol;
     _a.c_cc[VMIN]=1;_a.c_cc[VTIME]=1;_a.c_lflag &= ~(ICANON|ECHO|ECHOE|ECHOK|ECHONL)
 #define unraw(_a) _a.c_cc[VMIN]=saveeof;_a.c_cc[VTIME]=saveeol;_a.c_lflag |= ICANON|ECHO|ECHOE|ECHOK|ECHONL
 
-#else not SYSV
+#else /* not SYSV */
 
 #ifndef BSD
 #define CBREAK RAW		/* V7 has no CBREAK */
@@ -79,17 +79,17 @@ static char saveeof,saveeol;
 #define doraw(_a) (_a.sg_flags |= CBREAK,_a.sg_flags &= ~ECHO)
 #define unraw(_a) (_a.sg_flags &= ~CBREAK,_a.sg_flags |= ECHO)
 #include <sgtty.h>
-#endif not SYSV
+#endif /* not SYSV */
 
 #ifndef NOVARARGS	/* if we have varargs */
 #include <stdarg.h>
-#else NOVARARGS	/* if we don't have varargs */
+#else /* NOVARARGS */	/* if we don't have varargs */
 typedef char *va_list;
 #define va_dcl int va_alist;
 #define va_start(plist) plist = (char *) &va_alist
 #define va_end(plist)
 #define va_arg(plist,mode) ((mode *)(plist += sizeof(mode)))[-1]
-#endif NOVARARGS
+#endif /* NOVARARGS */
 
 #define LINBUFSIZE 128		/* size of the lgetw() and lgetl() buffer		*/
 int lfd;					/*  output file numbers							*/
@@ -259,7 +259,7 @@ lprintf(const char *fmt, ...)
 		}
 	va_end(ap);
 	}
-#endif lint
+#endif /* lint */
 
 /*
  *	lprint(long-integer)				send binary integer to output buffer
@@ -308,10 +308,10 @@ lwrite(buf,len)
 #ifndef VT100
 		for (str=buf;  len>0; --len)
 			lprc(*str++);
-#else VT100
+#else /* VT100 */
 		lflush();
 		write(lfd,buf,len);
-#endif VT100
+#endif /* VT100 */
 		}
 	else while (len)
 		{
@@ -564,7 +564,7 @@ cursor(x,y)
 	p = x_num[x];	/* get the string to print */
 	while (*p) *lpnt++ = *p++;	/* print the string */
 	}
-#else VT100
+#else /* VT100 */
 /*
  * cursor(x,y)	  Put cursor at specified coordinates staring at [1,1] (termcap)
  */
@@ -575,7 +575,7 @@ cursor (x,y)
 
 	*lpnt++ = CURSOR;		*lpnt++ = x;		*lpnt++ = y;
 	}
-#endif VT100
+#endif /* VT100 */
 
 /*
  *	Routine to position cursor at beginning of 24th line
@@ -658,7 +658,7 @@ init_term()
 		died(-285);	/* malloc() failure */
 		}
 	}
-#endif VT100
+#endif /* VT100 */
 
 /*
  * cl_line(x,y)  Clear the whole line indicated by 'y' and leave cursor at [x,y]
@@ -668,9 +668,9 @@ cl_line(x,y)
 	{
 #ifdef VT100
 	cursor(x,y);		lprcat("\33[2K");
-#else VT100
+#else /* VT100 */
 	cursor(1,y);		*lpnt++ = CL_LINE;		cursor(x,y);
-#endif VT100
+#endif /* VT100 */
 	}
 
 /*
@@ -681,12 +681,12 @@ cl_up(x,y)
 	{
 #ifdef VT100
 	cursor(x,y);  lprcat("\33[1J\33[2K");
-#else VT100
+#else /* VT100 */
 	int i;
 	cursor(1,1);
 	for (i=1; i<=y; i++)   { *lpnt++ = CL_LINE;  *lpnt++ = '\n'; }
 	cursor(x,y);
-#endif VT100
+#endif /* VT100 */
 	}
 
 /*
@@ -697,7 +697,7 @@ cl_dn(x,y)
 	{
 #ifdef VT100
 	cursor(x,y); lprcat("\33[J\33[2K");
-#else VT100
+#else /* VT100 */
 	int i;
 	cursor(1,y);
 	if (!CD)
@@ -709,7 +709,7 @@ cl_dn(x,y)
 	else
 		*lpnt++ = CL_DOWN;
 	cursor(x,y);
-#endif VT100
+#endif /* VT100 */
 	}
 
 /*
@@ -723,12 +723,12 @@ standout(str)
 	while (*str)
 		*lpnt++ = *str++;
 	resetbold();
-#else VT100
+#else /* VT100 */
 	*lpnt++ = ST_START;
 	while (*str)
 		*lpnt++ = *str++;
 	*lpnt++ = ST_END;
-#endif VT100
+#endif /* VT100 */
 	}
 
 /*
@@ -828,7 +828,7 @@ lflush ()
 	lpnt = lpbuf;
 	flush_buf();	/* flush real output buffer now */
 	}
-#else VT100
+#else /* VT100 */
 /*
  *	lflush()						flush the output buffer
  *
@@ -847,7 +847,7 @@ lflush()
         }
 	lpnt = lpbuf;	/* point back to beginning of buffer */
     }
-#endif VT100
+#endif /* VT100 */
 
 #ifndef VT100
 static int pindex=0;
@@ -907,7 +907,7 @@ char *tmcapcnv(sd,ss)
 	*sd=0; /* NULL terminator */
 	return(sd);
 	}
-#endif VT100
+#endif /* VT100 */
 
 /*
  *	beep()		Routine to emit a beep if enabled (see no-beep in .larnopts)

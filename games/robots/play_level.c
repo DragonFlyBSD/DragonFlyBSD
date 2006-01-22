@@ -32,7 +32,7 @@
  *
  * @(#)play_level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/play_level.c,v 1.4 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/play_level.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/play_level.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
  */
 
 # include	"robots.h"
@@ -63,7 +63,7 @@ play_level()
 	move(Max.y, Max.x);
 	addch(inch());
 	standend();
-# endif DEBUG
+# endif /* DEBUG */
 	setjmp(End_move);
 	flush_in();
 	while (!Dead && Num_robots > 0) {

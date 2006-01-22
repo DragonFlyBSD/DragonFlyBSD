@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/trace.c,v 1.6.2.1 2000/07/20 10:35:22 kris Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.5 2005/05/08 00:07:39 corecode Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.6 2006/01/22 03:43:38 swildner Exp $
  *
  * @(#)trace.c	8.1 (Berkeley) 6/5/93
  */
@@ -56,7 +56,7 @@
 #ifdef DEBUG
 FILE	*ftrace = stdout;
 int	tracing = 1;
-#else DEBUG
+#else /* DEBUG */
 FILE	*ftrace = NULL;
 int	tracing = 0;
 #endif

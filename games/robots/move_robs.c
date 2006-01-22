@@ -32,7 +32,7 @@
  *
  * @(#)move_robs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/move_robs.c,v 1.4 1999/11/30 03:49:19 billf Exp $
- * $DragonFly: src/games/robots/move_robs.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/move_robs.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
  */
 
 # include	"robots.h"
@@ -58,7 +58,7 @@ bool	was_sig;
 	addch(inch());
 	move(Max.y, Max.x);
 	addch(inch());
-# endif DEBUG
+# endif /* DEBUG */
 	for (rp = Robots; rp < &Robots[MAXROBOTS]; rp++) {
 		if (rp->y < 0)
 			continue;
@@ -119,7 +119,7 @@ bool	was_sig;
 	move(Max.y, Max.x);
 	addch(inch());
 	standend();
-# endif DEBUG
+# endif /* DEBUG */
 	if (Real_time)
 		alarm(3);
 }

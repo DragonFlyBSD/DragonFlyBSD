@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/misc.c,v 1.8.2.1 2001/06/13 13:52:14 dwmalone Exp $
- * $DragonFly: src/games/mille/misc.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/misc.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
  */
 
 #include <sys/file.h>
@@ -45,7 +45,7 @@
 # ifdef	attron
 #	include	<term.h>
 #	define	_tty	cur_term->Nttyb
-# endif	attron
+# endif	/* attron */
 
 /*
  * @(#)misc.c	1.2 (Berkeley) 3/28/83

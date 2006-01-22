@@ -1,6 +1,6 @@
 /* scores.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/scores.c,v 1.6 1999/11/16 02:57:24 billf Exp $
- * $DragonFly: src/games/larn/scores.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/scores.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
  *
  *	Functions in this file are:
  *
@@ -536,7 +536,7 @@ invalid:
 		logg.killed=c[MONSTKILLED];
 #endif
 		lwrite((char*)&logg,sizeof(struct log_fmt));	 lwclose();
-#endif NOLOG
+#endif /* NOLOG */
 
 /*	now for the scoreboard maintenance -- not for a suspended game 	*/
 		if (x != 257)
@@ -651,5 +651,5 @@ addone:
 	lcreat((char*)0);	/* re-open terminal channel */
 	return(high);
 	}
-#endif UIDSCORE
+#endif /* UIDSCORE */
 

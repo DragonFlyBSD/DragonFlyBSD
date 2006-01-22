@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/games/larn/signal.c,v 1.2 2006/01/22 03:43:37 swildner Exp $
+ */
+
 #include <signal.h>
 #include "header.h"			/* "Larn is copyrighted 1986 by Noah Morgan.\n" */
 #define BIT(a) (1<<((a)-1))
@@ -43,7 +47,7 @@ tstop() /* control Y	*/
 	if (predostuff==1) s2choose(); else drawscreen();
 	showplayer();	lflush();
 	}
-#endif SIGTSTP
+#endif /* SIGTSTP */
 
 /*
  *	subroutine to issue the needed signal traps  called from main()
@@ -70,7 +74,7 @@ sigsetup()
 	signal(SIGPIPE, sigpipe);		signal(SIGTERM, sigterm);
 #ifdef SIGTSTP
 	signal(SIGTSTP,tstop);		signal(SIGSTOP,tstop);
-#endif SIGTSTP
+#endif /* SIGTSTP */
 	}
 
 #ifdef BSD	/* for BSD UNIX? */
@@ -129,7 +133,7 @@ static char *signame[NSIG] = { "",
 "SIGPWR",  /*	19	 power fail */
 "","","","","","","","","","","","" };
 
-#endif BSD
+#endif /* BSD */
 
 /*
  *	routine to process a fatal error signal

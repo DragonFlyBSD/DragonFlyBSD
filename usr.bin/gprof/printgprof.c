@@ -32,7 +32,7 @@
  *
  * @(#)printgprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/printgprof.c,v 1.6 1999/08/28 01:01:56 peter Exp $
- * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.5 2006/01/22 03:43:37 swildner Exp $
  */
 
 #include <err.h>
@@ -366,7 +366,7 @@ printname(nltype *selfp)
 	    if ( debug & PROPDEBUG ) {
 		printf( "%5.2f%% " , selfp -> propfraction );
 	    }
-#	endif DEBUG
+#	endif /* DEBUG */
     }
     if ( selfp -> cycleno != 0 ) {
 	printf( " <cycle %d>" , selfp -> cycleno );
@@ -595,7 +595,7 @@ arccmp(arctype *thisp, arctype *thatp)
 		    thatp -> arc_count , thatchildp -> ncall );
 	    printf( "\n" );
 	}
-#   endif DEBUG
+#   endif /* DEBUG */
     if ( thisparentp == thischildp ) {
 	    /* this is a self call */
 	return LESSTHAN;

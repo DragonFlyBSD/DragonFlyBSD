@@ -32,7 +32,7 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/save.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/save.c,v 1.3 2005/04/29 09:22:57 joerg Exp $
+ * $DragonFly: src/games/mille/save.c,v 1.4 2006/01/22 03:43:37 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -50,7 +50,7 @@
 # ifdef	attron
 #	include	<term.h>
 #	define	_tty	cur_term->Nttyb
-# endif	attron
+# endif	/* attron */
 
 /*
  * @(#)save.c	1.2 (Berkeley) 3/28/83

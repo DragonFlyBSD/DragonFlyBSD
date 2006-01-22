@@ -1,6 +1,6 @@
 /*	object.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/object.c,v 1.4 1999/11/16 02:57:23 billf Exp $ */
-/* $DragonFly: src/games/larn/object.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/object.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
 #include "header.h"
 
 /*
@@ -672,7 +672,7 @@ oelevator(dir)
 	int x;
 	x=dir;
 	dir=x;
-#endif lint
+#endif /* lint */
 	}
 
 ostatue()

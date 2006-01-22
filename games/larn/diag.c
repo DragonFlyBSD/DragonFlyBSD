@@ -1,6 +1,6 @@
 /*	diag.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/diag.c,v 1.5 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/diag.c,v 1.3 2004/06/21 02:28:34 dillon Exp $ */
+/* $DragonFly: src/games/larn/diag.c,v 1.4 2006/01/22 03:43:37 swildner Exp $ */
 #include <sys/types.h>
 #include <sys/times.h>
 #include <sys/stat.h>
@@ -187,7 +187,7 @@ savegame(fname)
 	lwclose();	lastmonst[0] = 0;
 #ifndef VT100
 	setscroll();
-#endif VT100
+#endif /* VT100 */
 	lcreat((char*)0);  nosignal=0;
 	return(0);
 	}

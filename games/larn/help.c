@@ -1,6 +1,6 @@
 /*	help.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/help.c,v 1.4 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/help.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/help.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
 #include "header.h"
 /*
  *	help function to display the help info
@@ -17,7 +17,7 @@ help()
 	int i,j;
 #ifndef VT100
 	char tmbuf[128];	/* intermediate translation buffer when not a VT100 */
-#endif VT100
+#endif /* VT100 */
 	if ((j=openhelp()) < 0)  return;	/* open the help file and get # pages */
 	for (i=0; i<23; i++) lgetl();	/* skip over intro message */
 	for (;  j>0; j--)
@@ -26,9 +26,9 @@ help()
 		for (i=0; i<23; i++)
 #ifdef VT100
 			lprcat(lgetl());	/* print out each line that we read in */
-#else VT100
+#else /* VT100 */
 			{ tmcapcnv(tmbuf,lgetl());  lprcat(tmbuf); } /* intercept \33's */
-#endif VT100
+#endif /* VT100 */
 		if (j>1)
 			{
 			lprcat("    ---- Press ");  standout("return");
@@ -52,15 +52,15 @@ welcome()
 	int i;
 #ifndef VT100
 	char tmbuf[128];	/* intermediate translation buffer when not a VT100 */
-#endif VT100
+#endif /* VT100 */
 	if (openhelp() < 0)  return;   	/* open the help file */
 	clear();
 	for(i=0; i<23; i++)
 #ifdef VT100
 			lprcat(lgetl());	/* print out each line that we read in */
-#else VT100
+#else /* VT100 */
 			{ tmcapcnv(tmbuf,lgetl());  lprcat(tmbuf); } /* intercept \33's */
-#endif VT100
+#endif /* VT100 */
 	lrclose();  retcont();	/* press return to continue */
 	}
 

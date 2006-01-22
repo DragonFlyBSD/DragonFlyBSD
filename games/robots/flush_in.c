@@ -32,7 +32,7 @@
  *
  * @(#)flush_in.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/flush_in.c,v 1.2 1999/11/30 03:49:17 billf Exp $
- * $DragonFly: src/games/robots/flush_in.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/flush_in.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
  */
 
 # include	<curses.h>
@@ -45,7 +45,7 @@ flush_in()
 {
 # ifdef TIOCFLUSH
 	ioctl(fileno(stdin), TIOCFLUSH, NULL);
-# else TIOCFLUSH
+# else /* TIOCFLUSH */
 	crmode();
-# endif TIOCFLUSH
+# endif /* TIOCFLUSH */
 }
