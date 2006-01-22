@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.27 2005/09/14 01:13:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.28 2006/01/22 04:44:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1256,7 +1256,7 @@ hpfs_pathconf(struct vop_pathconf_args *ap)
  */
 #if defined(__DragonFly__)
 struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
-	{ &vop_default_desc, vop_defaultop },
+	{ &vop_default_desc, (vnodeopv_entry_t)vop_defaultop },
 
 	{ &vop_getattr_desc, (vnodeopv_entry_t)hpfs_getattr },
 	{ &vop_setattr_desc, (vnodeopv_entry_t)hpfs_setattr },
@@ -1265,9 +1265,9 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_print_desc, (vnodeopv_entry_t)hpfs_print },
 	{ &vop_old_create_desc, (vnodeopv_entry_t)hpfs_create },
 	{ &vop_old_remove_desc, (vnodeopv_entry_t)hpfs_remove },
-	{ &vop_islocked_desc, vop_stdislocked },
-	{ &vop_unlock_desc, vop_stdunlock },
-	{ &vop_lock_desc, vop_stdlock },
+	{ &vop_islocked_desc, (vnodeopv_entry_t)vop_stdislocked },
+	{ &vop_unlock_desc, (vnodeopv_entry_t)vop_stdunlock },
+	{ &vop_lock_desc, (vnodeopv_entry_t)vop_stdlock },
 	{ &vop_old_lookup_desc, (vnodeopv_entry_t)hpfs_lookup },
 	{ &vop_access_desc, (vnodeopv_entry_t)hpfs_access },
 	{ &vop_close_desc, (vnodeopv_entry_t)hpfs_close },
@@ -1278,7 +1278,7 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_getpages_desc, (vnodeopv_entry_t) hpfs_getpages },
 	{ &vop_putpages_desc, (vnodeopv_entry_t) hpfs_putpages },
 	{ &vop_strategy_desc, (vnodeopv_entry_t)hpfs_strategy },
-	{ &vop_bwrite_desc, vop_stdbwrite },
+	{ &vop_bwrite_desc, (vnodeopv_entry_t)vop_stdbwrite },
 	{ &vop_read_desc, (vnodeopv_entry_t)hpfs_read },
 	{ &vop_write_desc, (vnodeopv_entry_t)hpfs_write },
 	{ &vop_ioctl_desc, (vnodeopv_entry_t)hpfs_ioctl },
