@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.13 2005/10/30 04:41:08 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.14 2006/01/22 14:03:51 swildner Exp $
  *
  */
 
@@ -276,7 +276,9 @@ fw_asy_callback(struct fw_xfer *xfer){
 /*
  * Postpone to later retry.
  */
-void fw_asybusy(struct fw_xfer *xfer){
+void
+fw_asybusy(struct fw_xfer *xfer)
+{
 	printf("fw_asybusy\n");
 /*
 	xfer->ch =  timeout((timeout_t *)fw_asystart, (void *)xfer, 20000);
@@ -697,7 +699,8 @@ fw_busreset(struct firewire_comm *fc)
 }
 
 /* Call once after reboot */
-void fw_init(struct firewire_comm *fc)
+void
+fw_init(struct firewire_comm *fc)
 {
 	int i;
 	struct csrdir *csrd;
@@ -1136,7 +1139,8 @@ fw_print_sid(u_int32_t sid)
 /*
  * To receive self ID. 
  */
-void fw_sidrcv(struct firewire_comm* fc, u_int32_t *sid, u_int len)
+void
+fw_sidrcv(struct firewire_comm* fc, u_int32_t *sid, u_int len)
 {
 	u_int32_t *p;
 	union fw_self_id *self_id;

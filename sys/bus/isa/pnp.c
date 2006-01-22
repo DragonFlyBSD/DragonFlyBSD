@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.8 2005/10/30 04:41:09 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.9 2006/01/22 14:03:51 swildner Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -160,7 +160,7 @@ pnp_read(int d)
  * Intel May 94.
  */
 static void
-pnp_send_initiation_key()
+pnp_send_initiation_key(void)
 {
 	int cur, i;
 

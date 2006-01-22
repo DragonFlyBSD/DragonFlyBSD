@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.15 2005/06/27 02:27:10 swildner Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -452,7 +452,8 @@ pci_chip_match(device_t dev)
 **---------------------------------------------------------
 */
 
-const char* pci_vga_match(device_t dev)
+const char *
+pci_vga_match(device_t dev)
 {
 	u_int id = pci_get_devid(dev);
 	const char *vendor, *chip, *type;

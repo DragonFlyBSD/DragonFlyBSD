@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.h,v 1.6.2.1 2000/03/17 22:36:21 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.h,v 1.4 2004/02/16 19:49:28 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.h,v 1.5 2006/01/22 14:03:51 swildner Exp $
  */
 
 #ifndef _CAM_CAM_H
@@ -174,7 +174,8 @@ SYSCTL_DECL(_kern_cam);
 
 static __inline void cam_init_pinfo(cam_pinfo *pinfo);
 
-static __inline void cam_init_pinfo(cam_pinfo *pinfo)
+static __inline void
+cam_init_pinfo(cam_pinfo *pinfo)
 {
 	pinfo->priority = CAM_PRIORITY_NONE;	
 	pinfo->index = CAM_UNQUEUED_INDEX;

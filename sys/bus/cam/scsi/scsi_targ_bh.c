@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.9 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.10 2006/01/22 14:03:51 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -693,8 +693,8 @@ targbherror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 }
 #endif
 
-static struct targbh_cmd_desc*
-targbhallocdescr()
+static struct targbh_cmd_desc *
+targbhallocdescr(void)
 {
 	struct targbh_cmd_desc* descr;
 

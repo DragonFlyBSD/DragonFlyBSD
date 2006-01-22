@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.15 2005/09/04 05:16:59 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
  */
 
 /*
@@ -1115,7 +1115,7 @@ ehci_dump_regs(ehci_softc_t *sc)
  * debugger.
  */
 void
-ehci_dump()
+ehci_dump(void)
 {
 	ehci_dump_regs(theehci);
 }
@@ -2817,16 +2817,58 @@ ehci_device_bulk_done(usbd_xfer_handle xfer)
 
 /************************/
 
-Static usbd_status	ehci_device_intr_transfer(usbd_xfer_handle xfer) { return USBD_IOERROR; }
-Static usbd_status	ehci_device_intr_start(usbd_xfer_handle xfer) { return USBD_IOERROR; }
-Static void		ehci_device_intr_abort(usbd_xfer_handle xfer) { }
-Static void		ehci_device_intr_close(usbd_pipe_handle pipe) { }
-Static void		ehci_device_intr_done(usbd_xfer_handle xfer) { }
+Static usbd_status
+ehci_device_intr_transfer(usbd_xfer_handle xfer)
+{
+	return USBD_IOERROR;
+}
+
+Static usbd_status
+ehci_device_intr_start(usbd_xfer_handle xfer)
+{
+	return USBD_IOERROR;
+}
+
+Static void
+ehci_device_intr_abort(usbd_xfer_handle xfer)
+{
+}
+
+Static void
+ehci_device_intr_close(usbd_pipe_handle pipe)
+{
+}
+
+Static void
+ehci_device_intr_done(usbd_xfer_handle xfer)
+{
+}
 
 /************************/
 
-Static usbd_status	ehci_device_isoc_transfer(usbd_xfer_handle xfer) { return USBD_IOERROR; }
-Static usbd_status	ehci_device_isoc_start(usbd_xfer_handle xfer) { return USBD_IOERROR; }
-Static void		ehci_device_isoc_abort(usbd_xfer_handle xfer) { }
-Static void		ehci_device_isoc_close(usbd_pipe_handle pipe) { }
-Static void		ehci_device_isoc_done(usbd_xfer_handle xfer) { }
+Static usbd_status
+ehci_device_isoc_transfer(usbd_xfer_handle xfer)
+{
+	return USBD_IOERROR;
+}
+
+Static usbd_status
+ehci_device_isoc_start(usbd_xfer_handle xfer)
+{
+	return USBD_IOERROR;
+}
+
+Static void
+ehci_device_isoc_abort(usbd_xfer_handle xfer)
+{
+}
+
+Static void
+ehci_device_isoc_close(usbd_pipe_handle pipe)
+{
+}
+
+Static void
+ehci_device_isoc_done(usbd_xfer_handle xfer)
+{
+}

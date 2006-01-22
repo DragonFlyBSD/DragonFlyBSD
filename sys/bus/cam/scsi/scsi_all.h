@@ -15,7 +15,7 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.14.2.5 2003/08/24 03:26:37 ken Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.3 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.4 2006/01/22 14:03:51 swildner Exp $
  */
 
 /*
@@ -906,9 +906,9 @@ static __inline u_int32_t scsi_4btoul(u_int8_t *bytes);
 static __inline void *find_mode_page_6(struct scsi_mode_header_6 *mode_header);
 static __inline void *find_mode_page_10(struct scsi_mode_header_10 *mode_header);
 
-static __inline void scsi_extract_sense(struct scsi_sense_data *sense,
-					int *error_code, int *sense_key,
-					int *asc, int *ascq)
+static __inline void
+scsi_extract_sense(struct scsi_sense_data *sense, int *error_code,
+		   int *sense_key, int *asc, int *ascq)
 {
 	*error_code = sense->error_code & SSD_ERRCODE;
 	*sense_key = sense->flags & SSD_KEY;

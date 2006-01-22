@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.14 2005/12/05 03:42:31 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.15 2006/01/22 14:03:51 swildner Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -1307,7 +1307,7 @@ scsi_low_timeout(void *arg)
 	struct scsi_low_softc *slp = arg;
 
 	crit_enter();
-	(void) scsi_low_timeout_check(slp);
+	scsi_low_timeout_check(slp);
 	(*slp->sl_osdep_fp->scsi_low_osdep_timeout)
 		(slp, SCSI_LOW_TIMEOUT_CH_IO, SCSI_LOW_TIMEOUT_START);
 	crit_exit();

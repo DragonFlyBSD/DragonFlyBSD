@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.14 2006/01/22 14:03:51 swildner Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -578,8 +578,8 @@ saclose(dev_t dev, int flag, int fmt, struct thread *td)
 		 * issues an 'offline' command, that will be allowed
 		 * to clear state.
 		 */
-		(void) sarewind(periph);
-		(void) saloadunload(periph, FALSE);
+		sarewind(periph);
+		saloadunload(periph, FALSE);
 		closedbits |= SA_FLAG_TAPE_MOUNTED|SA_FLAG_TAPE_FROZEN;
 		break;
 	case SA_MODE_REWIND:
@@ -1068,7 +1068,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			break;
 		}
 		case MTREW:	/* rewind */
-			(void) sacheckeod(periph);
+			sacheckeod(periph);
 			error = sarewind(periph);
 			/* see above */
 			softc->flags &=
@@ -1090,7 +1090,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			break;
 		case MTOFFL:	/* rewind and put the drive offline */
 
-			(void) sacheckeod(periph);
+			sacheckeod(periph);
 			/* see above */
 			softc->flags &= ~SA_FLAG_TAPE_WRITTEN;
 			softc->filemarks = 0;
@@ -1905,7 +1905,7 @@ samount(struct cam_periph *periph, int oflags, dev_t dev)
 			    MSG_SIMPLE_Q_TAG, 1, FALSE, 0, 8192,
 			    (void *) rblim, 8192, SSD_FULL_SIZE,
 			    IO_TIMEOUT);
-			(void) cam_periph_runccb(ccb, saerror, 0, SF_NO_PRINT,
+			cam_periph_runccb(ccb, saerror, 0, SF_NO_PRINT,
 			    &softc->device_stats);
 			QFRLS(ccb);
 			scsi_rewind(&ccb->csio, 1, sadone, MSG_SIMPLE_Q_TAG,
@@ -2235,7 +2235,7 @@ exit:
 	 * so release any device reservation.
 	 */
 	if (error != 0) {
-		(void) sareservereleaseunit(periph, FALSE);
+		sareservereleaseunit(periph, FALSE);
 	} else {
 		/*
 		 * Clear I/O residual.

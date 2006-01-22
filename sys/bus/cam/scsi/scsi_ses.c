@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.12 2005/06/02 20:40:31 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.13 2006/01/22 14:03:51 swildner Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -1873,10 +1873,10 @@ safte_set_objstat(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		if (err)
 			return (err);
 		if (obp->cstat[3] & SESCTL_RQSTON) {
-			(void) wrbuf16(ssc, SAFTE_WT_ACTPWS,
+			wrbuf16(ssc, SAFTE_WT_ACTPWS,
 				idx - cc->pwroff, 0, 0, slp);
 		} else {
-			(void) wrbuf16(ssc, SAFTE_WT_ACTPWS,
+			wrbuf16(ssc, SAFTE_WT_ACTPWS,
 				idx - cc->pwroff, 0, 1, slp);
 		}
 		break;
@@ -1901,9 +1901,9 @@ safte_set_objstat(ses_softc_t *ssc, ses_objstat *obp, int slp)
 			} else {
 				fsp = 1;
 			}
-			(void) wrbuf16(ssc, SAFTE_WT_FANSPD, idx, fsp, 0, slp);
+			wrbuf16(ssc, SAFTE_WT_FANSPD, idx, fsp, 0, slp);
 		} else {
-			(void) wrbuf16(ssc, SAFTE_WT_FANSPD, idx, 0, 0, slp);
+			wrbuf16(ssc, SAFTE_WT_FANSPD, idx, 0, 0, slp);
 		}
 		break;
 	case SESTYP_DOORLOCK:
@@ -1912,8 +1912,7 @@ safte_set_objstat(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		} else {
 			cc->flag2 |= SAFT_FLG2_LOCKDOOR;
 		}
-		(void) wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
-		    cc->flag2, 0, slp);
+		wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1, cc->flag2, 0, slp);
 		break;
 	case SESTYP_ALARM:
 		/*
@@ -1928,8 +1927,7 @@ safte_set_objstat(ses_softc_t *ssc, ses_objstat *obp, int slp)
 			cc->flag2 &= ~SAFT_FLG1_ALARM;
 		}
 		ep->priv = obp->cstat[3];
-		(void) wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
-			cc->flag2, 0, slp);
+		wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1, cc->flag2, 0, slp);
 		break;
 	default:
 		break;
@@ -2405,7 +2403,7 @@ set_objstat_sel(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		 * do the 'disable' for a power supply.
 		 */
 		if (obp->cstat[0] & SESCTL_DISABLE) {
-			(void) wrbuf16(ssc, SAFTE_WT_ACTPWS,
+			wrbuf16(ssc, SAFTE_WT_ACTPWS,
 				idx - cc->pwroff, 0, 0, slp);
 		}
 		break;
@@ -2416,7 +2414,7 @@ set_objstat_sel(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		 */
 		if (obp->cstat[0] & SESCTL_DISABLE) {
 			/* remember- fans are the first items, so idx works */
-			(void) wrbuf16(ssc, SAFTE_WT_FANSPD, idx, 0, 0, slp);
+			wrbuf16(ssc, SAFTE_WT_FANSPD, idx, 0, 0, slp);
 		}
 		break;
 	case SESTYP_DOORLOCK:
@@ -2425,7 +2423,7 @@ set_objstat_sel(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		 */
 		if (obp->cstat[0] & SESCTL_DISABLE) {
 			cc->flag2 &= ~SAFT_FLG2_LOCKDOOR;
-			(void) wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
+			wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
 				cc->flag2, 0, slp);
 		}
 		break;
@@ -2436,7 +2434,7 @@ set_objstat_sel(ses_softc_t *ssc, ses_objstat *obp, int slp)
 		if (obp->cstat[0] & SESCTL_DISABLE) {
 			cc->flag2 &= ~SAFT_FLG1_ALARM;
 			ep->priv |= 0x40;	/* Muted */
-			(void) wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
+			wrbuf16(ssc, SAFTE_WT_GLOBAL, cc->flag1,
 				cc->flag2, 0, slp);
 		}
 		break;
@@ -2520,7 +2518,7 @@ wrslot_stat(ses_softc_t *ssc, int slp)
 		sdata[1 + (3 * i)] = ep->priv & 0xff;
 	}
 	amt = -(cc->Nslots * 3 + 1);
-	(void) ses_runcmd(ssc, cdb, 10, sdata, &amt);
+	ses_runcmd(ssc, cdb, 10, sdata, &amt);
 	SES_FREE(sdata, cc->Nslots * 3 + 1);
 }
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.27 2005/10/13 00:02:25 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.28 2006/01/22 14:03:51 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -875,14 +875,14 @@ dev_allocq_is_runnable(struct cam_devq *devq)
 }
 
 static void
-xpt_periph_init()
+xpt_periph_init(void)
 {
 	cdevsw_add(&xpt_cdevsw, 0, 0);
 	make_dev(&xpt_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "xpt0");
 }
 
 static void
-probe_periph_init()
+probe_periph_init(void)
 {
 }
 
@@ -1301,8 +1301,7 @@ ptstartover:
 
 /* Functions accessed by the peripheral drivers */
 static void
-xpt_init(dummy)
-	void *dummy;
+xpt_init(void *dummy)
 {
 	struct cam_sim *xpt_sim;
 	struct cam_path *path;
@@ -4487,7 +4486,7 @@ xpt_done(union ccb *done_ccb)
 }
 
 union ccb *
-xpt_alloc_ccb()
+xpt_alloc_ccb(void)
 {
 	union ccb *new_ccb;
 

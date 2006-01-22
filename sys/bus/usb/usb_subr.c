@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.10 2004/03/19 00:35:57 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.11 2006/01/22 14:03:51 swildner Exp $
  */
 
 /* Also already have from NetBSD:
@@ -1362,7 +1362,8 @@ usb_disconnect_port(struct usbd_port *up, device_ptr_t parent)
 }
 
 #ifdef __OpenBSD__
-void *usb_realloc(void *p, u_int size, int pool, int flags)
+void *
+usb_realloc(void *p, u_int size, int pool, int flags)
 {
 	void *q;
 

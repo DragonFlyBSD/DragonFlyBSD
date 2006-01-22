@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.5 2004/11/14 15:20:05 joerg Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.6 2006/01/22 14:03:51 swildner Exp $
  */
 
 #include "opt_eisa.h"
@@ -91,7 +91,7 @@ int num_eisa_slots = EISA_SLOTS;
 
 static devclass_t eisa_devclass;
 
-static void eisa_reg_print (device_t, char *, char *, int *);
+static void eisa_reg_print(device_t, char *, char *, int *);
 static struct irq_node * eisa_find_irq(struct eisa_device *e_dev, int rid);
 static struct resvaddr * eisa_find_maddr(struct eisa_device *e_dev, int rid);
 static struct resvaddr * eisa_find_ioaddr(struct eisa_device *e_dev, int rid);
@@ -214,11 +214,7 @@ eisa_probe_nomatch(device_t dev, device_t child)
 }
 
 static void
-eisa_reg_print (dev, string, separator, column)
-	device_t	dev;
-	char *		string;
-	char *		separator;
-	int *		column;
+eisa_reg_print(device_t dev, char *string, char *separator, int *column)
 {
 	int length = strlen(string);
 

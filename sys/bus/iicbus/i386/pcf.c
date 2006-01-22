@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.6 2005/10/12 17:35:46 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
  *
  */
 #include <sys/param.h>
@@ -234,19 +234,22 @@ pcf_print_child(device_t bus, device_t dev)
 /*
  * Specific register access to PCF8584
  */
-static void PCF_SET_S0(struct pcf_softc *pcf, int data)
+static void
+PCF_SET_S0(struct pcf_softc *pcf, int data)
 {
 	outb(pcf->pcf_base, data);
 	pcf_nops();
 }
 
-static void PCF_SET_S1(struct pcf_softc *pcf, int data)
+static void
+PCF_SET_S1(struct pcf_softc *pcf, int data)
 {
 	outb(pcf->pcf_base+1, data);
 	pcf_nops();
 }
 
-static char PCF_GET_S0(struct pcf_softc *pcf)
+static char
+PCF_GET_S0(struct pcf_softc *pcf)
 {
 	char data;
 
@@ -256,7 +259,8 @@ static char PCF_GET_S0(struct pcf_softc *pcf)
 	return (data);
 }
 
-static char PCF_GET_S1(struct pcf_softc *pcf)
+static char
+PCF_GET_S1(struct pcf_softc *pcf)
 {
 	char data;
 
@@ -270,7 +274,8 @@ static char PCF_GET_S1(struct pcf_softc *pcf)
  * Polling mode for master operations wait for a new
  * byte incomming or outgoing
  */
-static int pcf_wait_byte(struct pcf_softc *pcf)
+static int
+pcf_wait_byte(struct pcf_softc *pcf)
 {
 	int counter = TIMEOUT;
 
@@ -283,7 +288,8 @@ static int pcf_wait_byte(struct pcf_softc *pcf)
 	return (IIC_ETIMEOUT);
 }
 
-static int pcf_stop(device_t pcfdev)
+static int
+pcf_stop(device_t pcfdev)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 
@@ -304,7 +310,8 @@ static int pcf_stop(device_t pcfdev)
 }
 
 
-static int pcf_noack(struct pcf_softc *pcf, int timeout)
+static int
+pcf_noack(struct pcf_softc *pcf, int timeout)
 {
 	int noack;
 	int k = timeout/10;
@@ -319,7 +326,8 @@ static int pcf_noack(struct pcf_softc *pcf, int timeout)
 	return (noack);
 }
 
-static int pcf_repeated_start(device_t pcfdev, u_char slave, int timeout)
+static int
+pcf_repeated_start(device_t pcfdev, u_char slave, int timeout)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 	int error = 0;
@@ -348,7 +356,8 @@ error:
 	return (error);
 }
 
-static int pcf_start(device_t pcfdev, u_char slave, int timeout)
+static int
+pcf_start(device_t pcfdev, u_char slave, int timeout)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 	int error = 0;
@@ -489,7 +498,8 @@ error:
 	return;
 }
 
-static int pcf_rst_card(device_t pcfdev, u_char speed, u_char addr, u_char *oldaddr)
+static int
+pcf_rst_card(device_t pcfdev, u_char speed, u_char addr, u_char *oldaddr)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 

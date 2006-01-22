@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.15 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -415,11 +415,10 @@ usb_event_thread(void *arg)
 #endif
 		usb_discover(sc);
 #ifdef USB_DEBUG
-		(void)tsleep(&sc->sc_bus->needs_explore, 0, "usbevt",
-			usb_noexplore ? 0 : hz * 60);
+		tsleep(&sc->sc_bus->needs_explore, 0, "usbevt",
+		       usb_noexplore ? 0 : hz * 60);
 #else
-		(void)tsleep(&sc->sc_bus->needs_explore, 0, "usbevt",
-			hz * 60);
+		tsleep(&sc->sc_bus->needs_explore, 0, "usbevt", hz * 60);
 #endif
 		DPRINTFN(2,("usb_event_thread: woke up\n"));
 	}
@@ -808,7 +807,7 @@ usb_add_event(int type, struct usb_event *uep)
 	if (usb_nevents >= USB_MAX_EVENTS) {
 		/* Too many queued events, drop an old one. */
 		DPRINTF(("usb: event dropped\n"));
-		(void)usb_get_next_event(&ue);
+		usb_get_next_event(&ue);
 	}
 	TAILQ_INSERT_TAIL(&usb_events, ueq, next);
 	usb_nevents++;

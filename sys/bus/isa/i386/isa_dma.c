@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.6 2003/11/03 17:11:10 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
  */
 
 /*
@@ -92,9 +92,7 @@ static int dmapageport[8] = { 0x87, 0x83, 0x81, 0x82, 0x8f, 0x8b, 0x89, 0x8a };
  * Setup a DMA channel's bounce buffer.
  */
 void
-isa_dmainit(chan, bouncebufsize)
-	int chan;
-	u_int bouncebufsize;
+isa_dmainit(int chan, u_int bouncebufsize)
 {
 	void *buf;
 
@@ -130,8 +128,7 @@ isa_dmainit(chan, bouncebufsize)
  * in open() or during its initialization.
  */
 int
-isa_dma_acquire(chan)
-	int chan;
+isa_dma_acquire(int chan)
 {
 #ifdef DIAGNOSTIC
 	if (chan & ~VALID_DMA_MASK)
@@ -153,8 +150,7 @@ isa_dma_acquire(chan)
  * during close() or during its shutdown.
  */
 void
-isa_dma_release(chan)
-	int chan;
+isa_dma_release(int chan)
 {
 #ifdef DIAGNOSTIC
 	if (chan & ~VALID_DMA_MASK)
@@ -183,8 +179,7 @@ isa_dma_release(chan)
  * external dma control by a board.
  */
 void
-isa_dmacascade(chan)
-	int chan;
+isa_dmacascade(int chan)
 {
 #ifdef DIAGNOSTIC
 	if (chan & ~VALID_DMA_MASK)

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.11 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.12 2006/01/22 14:03:51 swildner Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -415,7 +415,7 @@ chregister(struct cam_periph *periph, void *arg)
 	 * Lock this peripheral until we are setup.
 	 * This first call can't block
 	 */
-	(void)cam_periph_lock(periph, 0);
+	cam_periph_lock(periph, 0);
 	xpt_schedule(periph, /*priority*/5);
 
 	return(CAM_REQ_CMP);

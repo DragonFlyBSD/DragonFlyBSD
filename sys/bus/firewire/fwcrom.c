@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.6 2005/03/21 22:07:24 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
  */
 
 #ifndef __DragonFly__
@@ -552,7 +552,8 @@ crom_load(struct crom_src *src, u_int32_t *buf, int maxlen)
 
 #ifdef TEST
 int
-main () {
+main(int argc, char *argv[])
+{
 	struct crom_src src;
 	struct crom_chunk root,unit1,unit2,unit3;
 	struct crom_chunk text1,text2,text3,text4,text5,text6,text7;

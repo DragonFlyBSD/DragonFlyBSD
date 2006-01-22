@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.7 2002/02/09 21:34:06 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.2 2004/03/15 17:15:18 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.3 2006/01/22 14:03:51 swildner Exp $ */
 
 #define	PCCARDDEBUG
 
@@ -207,7 +207,8 @@ static struct pccard_cis_quirk pccard_cis_quirks[] = {
 static int n_pccard_cis_quirks =
 	sizeof(pccard_cis_quirks)/sizeof(pccard_cis_quirks[0]);
 
-void pccard_check_cis_quirks(device_t dev)
+void
+pccard_check_cis_quirks(device_t dev)
 {
 	struct pccard_softc *sc = PCCARD_SOFTC(dev);
 	int wiped = 0;
