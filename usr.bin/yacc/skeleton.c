@@ -36,7 +36,7 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.6 2006/01/22 13:38:50 swildner Exp $
  */
 
 #include "defs.h"
@@ -121,7 +121,7 @@ const char *header[] = {
 
 const char *body[] = {
     "/* allocate initial stack or double stack size, up to YYMAXDEPTH */",
-    "static int yygrowstack()",
+    "static int yygrowstack(void)",
     "{",
     "    int newsize, i;",
     "    short *newss;",

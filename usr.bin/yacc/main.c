@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
  * @(#)main.c	5.5 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
- * $DragonFly: src/usr.bin/yacc/main.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
+ * $DragonFly: src/usr.bin/yacc/main.c,v 1.6 2006/01/22 13:38:50 swildner Exp $
  */
 
 #include <signal.h>
@@ -110,7 +110,7 @@ static void usage(void);
 
 
 static void
-cleanup()
+cleanup(void)
 {
     if (action_file) { fclose(action_file); unlink(action_file_name); }
     if (text_file) { fclose(text_file); unlink(text_file_name); }
