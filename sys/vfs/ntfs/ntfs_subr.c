@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.17 2005/11/24 02:16:17 y0netan1 Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.18 2006/01/22 04:31:22 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -346,8 +346,6 @@ out:
 int
 ntfs_ntget(struct ntnode *ip)
 {
-	lwkt_tokref ilock;
-
 	dprintf(("ntfs_ntget: get ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
@@ -483,8 +481,6 @@ ntfs_ntref(struct ntnode *ip)
 void
 ntfs_ntrele(struct ntnode *ip)
 {
-	lwkt_tokref ilock;
-
 	dprintf(("ntfs_ntrele: rele ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
