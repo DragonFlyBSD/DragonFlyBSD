@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.5 2005/08/08 01:47:21 y0netan1 Exp $
+ * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.6 2006/01/22 04:10:32 swildner Exp $
  */
 
 #include "opt_pci.h"
@@ -41,6 +41,7 @@
 
 #include <machine/resource.h>
 
+#include <bus/isa/isavar.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
