@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.8 2005/09/06 17:26:58 reed Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.9 2006/01/22 04:04:51 justin Exp $
 -->
 
 <chapter id="introduction">
@@ -53,7 +53,7 @@
     <indexterm><primary>4.4BSD-Lite</primary></indexterm> 
 
     <para>&os; is a 4.4BSD-Lite based operating system for
-      Intel (x86 and &itanium;).  A port to AMD64 is in progress. 
+      Intel (x86).  A port to AMD64 is in progress. 
       <!-- reed: todo: the following sentence can be removed -->
       You can also
       read about <link linkend="history">the history of &os;</link>,
@@ -112,8 +112,7 @@
       
 	<listitem>
 	  <para>&os; is a <emphasis>32-bit</emphasis> operating
-	    system (<emphasis>64-bit</emphasis> on the &itanium; and AMD64) and was
-	    designed as such from the ground up.</para>
+	    system. </para>
 	</listitem>
 
 	<indexterm>
