@@ -23,11 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/include/stdarg.h,v 1.3 2005/04/24 10:58:19 asmodai Exp $
+ * $DragonFly: src/include/stdarg.h,v 1.3.2.1 2006/01/24 21:46:42 joerg Exp $
  */
 
 #ifndef _STDARG_H_
 #define _STDARG_H_
+
+#ifndef	_SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
 
 #ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
