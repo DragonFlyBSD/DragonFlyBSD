@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.20 2006/01/11 02:38:02 corecode Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.21 2006/01/25 19:56:23 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -55,7 +55,7 @@ typedef void driver_intr_t(void*);
 #define	INTR_FAST	0x0080
 #define	INTR_EXCL	0x0100
 #define	INTR_MPSAFE	0x0200
-#define	INTR_ENTROPY	0x0400
+#define	INTR_NOENTROPY	0x0400
 #define INTR_NOPOLL	0x0800	/* interrupt cannot be polled (e.g. ata) */
 
 #define INTR_NETSAFE	INTR_MPSAFE

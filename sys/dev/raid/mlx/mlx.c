@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.14 2005/10/12 17:35:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.15 2006/01/25 19:56:29 dillon Exp $
  */
 
 /*
@@ -370,7 +370,7 @@ mlx_attach(struct mlx_softc *sc)
 	return(ENXIO);
     }
     error = bus_setup_intr(sc->mlx_dev, sc->mlx_irq, 
-			   INTR_ENTROPY, mlx_intr, sc,
+			   0, mlx_intr, sc,
 			   &sc->mlx_intr, NULL);
     if (error) {
 	device_printf(sc->mlx_dev, "can't set up interrupt\n");

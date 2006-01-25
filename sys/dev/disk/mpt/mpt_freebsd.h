@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.8 2005/10/12 17:35:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.9 2006/01/25 19:56:25 dillon Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -90,7 +90,7 @@
 #define	MPT_LOCK_DESTROY(mpt)
 #else
 #if	LOCKING_WORKED_AS_IT_SHOULD
-#define	MPT_IFLAGS		INTR_ENTROPY | INTR_MPSAFE
+#define	MPT_IFLAGS		INTR_MPSAFE
 #define	MPT_LOCK_SETUP(mpt)						\
 		mtx_init(&mpt->mpt_lock, "mpt", NULL, MTX_DEF);		\
 		mpt->mpt_locksetup = 1
@@ -103,7 +103,7 @@
 #define	MPT_LOCK(mpt)		mtx_lock(&(mpt)->mpt_lock)
 #define	MPT_UNLOCK(mpt)		mtx_unlock(&(mpt)->mpt_lock)
 #else
-#define	MPT_IFLAGS		INTR_ENTROPY
+#define	MPT_IFLAGS		0
 #define	MPT_LOCK_SETUP(mpt)	do { } while (0)
 #define	MPT_LOCK_DESTROY(mpt)	do { } while (0)
 #define	MPT_LOCK(mpt)		do { } while (0)

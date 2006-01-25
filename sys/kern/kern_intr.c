@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.40 2005/12/27 21:32:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.41 2006/01/25 19:56:21 dillon Exp $
  *
  */
 
@@ -245,6 +245,14 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
 	++info->i_slow;
 
     /*
+     * Enable random number generation keying off of this interrupt.
+     */
+    if ((intr_flags & INTR_NOENTROPY) == 0 && info->i_random.sc_enabled == 0) {
+	info->i_random.sc_enabled = 1;
+	info->i_random.sc_intr = intr;
+    }
+
+    /*
      * Add the record to the interrupt list.
      */
     crit_enter();
@@ -424,7 +432,7 @@ unregister_randintr(int intr)
     if (intr < 0 || intr >= MAX_INTS)
 	panic("register_swi: bad intr %d", intr);
     info = &intr_info_ary[intr];
-    info->i_random.sc_enabled = 0;
+    info->i_random.sc_enabled = -1;
 }
 
 int
@@ -436,7 +444,7 @@ next_registered_randintr(int intr)
 	panic("register_swi: bad intr %d", intr);
     while (intr < MAX_INTS) {
 	info = &intr_info_ary[intr];
-	if (info->i_random.sc_enabled)
+	if (info->i_random.sc_enabled > 0)
 	    break;
 	++intr;
     }
@@ -764,7 +772,7 @@ ithread_handler(void *arg)
 	 * This is our interrupt hook to add rate randomness to the random
 	 * number generator.
 	 */
-	if (info->i_random.sc_enabled)
+	if (info->i_random.sc_enabled > 0)
 	    add_interrupt_randomness(intr);
 
 	/*

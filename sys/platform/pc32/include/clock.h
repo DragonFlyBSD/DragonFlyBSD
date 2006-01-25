@@ -4,7 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.6 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.7 2006/01/25 19:56:18 dillon Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
@@ -20,6 +20,7 @@ extern int	disable_rtc_set;
 extern int	statclock_disable;
 extern u_int	timer_freq;
 extern int	timer0_max_count;
+extern int	tsc_present;
 extern u_int	tsc_freq;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;

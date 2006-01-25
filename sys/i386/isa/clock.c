@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.45 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.46 2006/01/25 19:56:19 dillon Exp $
  */
 
 /*
@@ -114,6 +114,7 @@ static uint16_t i8254_walltimer_cntr;
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	statclock_disable = 1;	/* we don't use the statclock right now */
+int	tsc_present;
 u_int	tsc_freq;		/* XXX obsolete, convert users */
 int64_t	tsc_frequency;
 int	tsc_is_broken;
@@ -128,7 +129,6 @@ static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
-static	u_int	tsc_present;
 static  int	rtc_loaded;
 
 static int i8254_cputimer_div;
@@ -997,14 +997,16 @@ cpu_initclocks(void)
 	clkdesc = register_int(apic_8254_intr, clkintr, NULL, "clk",
 			       NULL,
 			       INTR_EXCL | INTR_FAST | 
-			       INTR_NOPOLL | INTR_MPSAFE);
+			       INTR_NOPOLL | INTR_MPSAFE | 
+			       INTR_NOENTROPY);
 	machintr_intren(apic_8254_intr);
 	
 #else /* APIC_IO */
 
 	register_int(0, clkintr, NULL, "clk", NULL,
 		     INTR_EXCL | INTR_FAST | 
-		     INTR_NOPOLL | INTR_MPSAFE);
+		     INTR_NOPOLL | INTR_MPSAFE |
+		     INTR_NOENTROPY);
 	machintr_intren(ICU_IRQ0);
 
 #endif /* APIC_IO */
@@ -1024,7 +1026,8 @@ cpu_initclocks(void)
 #endif /* APIC_IO */
 
 		register_int(8, (inthand2_t *)rtcintr, NULL, "rtc", NULL,
-			     INTR_EXCL | INTR_FAST | INTR_NOPOLL);
+			     INTR_EXCL | INTR_FAST | INTR_NOPOLL |
+			     INTR_NOENTROPY);
 		machintr_intren(8);
 
 		writertc(RTC_STATUSB, rtc_statusb);
@@ -1077,7 +1080,8 @@ cpu_initclocks(void)
 			register_int(apic_8254_intr, clkintr, NULL, "clk",
 				     NULL,
 				     INTR_EXCL | INTR_FAST | 
-				     INTR_NOPOLL | INTR_MPSAFE);
+				     INTR_NOPOLL | INTR_MPSAFE |
+				     INTR_NOENTROPY);
 			machintr_intren(apic_8254_intr);
 		}
 		
