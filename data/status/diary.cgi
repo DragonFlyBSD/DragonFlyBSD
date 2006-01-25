@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.27 2006/01/08 19:05:33 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.28 2006/01/25 04:10:16 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -11,7 +11,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    supported (it can't handle the new threading storage classes
 	    properly).
 	<li>Import Citrus from NetBSD.
-	<li>Implement direct TLS support for programs whether threaded or not.
+	<li>Implement direct TLS support for programs, whether threaded or not.
 	<li>Major library and user-visible system structure changes
 	    (dirent, stat, errno, etc), and other work requires a major
 	    library bump for libc and other libraries.  libc is now
@@ -37,10 +37,10 @@ $TITLE(DragonFly - Big-Picture Status)
 	    older programs.
 	<li>Fix issues related to the expansion of symbolic links by the
 	    bourne shell.
-	<li>Many, Many mdoc cleanups and fixes.
+	<li>Many, many mdoc cleanups and fixes.
 	<li>Update cvs, openssl, ssh, sendmail, groff, 
 	    and other numerous contributed applications.
-	<li>Bring in a brand new pam infrastructure.
+	<li>Bring in a brand new PAM infrastructure.
 	<li>Introduce pkgsrc support.
 	<li>Get rid of libmsun.
 	<li>Implement backwards scanning and partial-transaction handling
@@ -62,7 +62,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Fix numerous TCP buffering issues.
 	<li>Implement TCP Appropriate Byte Counting
 	<li>Bring in ALTQ and reorganize the IF queueing code to remove
-	    per-driver depdendancies on ALTQ.
+	    per-driver dependencies on ALTQ.
 	<li>Strip away numerous TCP hidden indirections that make code hard
 	    to read and understand.
 	<li>Introduce BPF_MTAP which includes an address family parameter.
@@ -70,7 +70,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    frequency to be adjusted on the fly.
 	<li>Remove the really bad hack that was calling the network polling
 	    code from the trap code.
-	<li>Completely rewrite nework polling support.
+	<li>Completely rewrite network polling support.
 	<li>Make the network IF serializer mandatory for all network device
 	    driver interrupts, ioctl's, and if_ callbacks.
 	<li>Implement a very fast memory object caching infrastructure.  This
@@ -88,7 +88,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Fix a number of mbuf statistics counting bugs.
 	<li>Fix numerous bugs in ipfw/ipfw2 where m_tag data was not being
 	    stored in the right place, resulting in a panic.
-	<li>Add support for the experiemental SCTP protocol.
+	<li>Add support for the experimental SCTP protocol.
 	<li>Fix an issue with cloned interfaces being added twice.
 
 	<p></p>
@@ -115,7 +115,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>Fix a bug in the LWKT thread queueing and dequeueing code 
 	    related to a preemption.
 	<li>Increase the size of the physmap[] array to accomodate newer
-	    PC's which have a larger number of memory segments and fix
+	    PCs which have a larger number of memory segments and fix
 	    an overflow bug.
 	<li>Use the ACPI timer if present instead of one of the other 8254
 	    timers (which are not dependable because BIOS calls might 
@@ -217,7 +217,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    userland-returned dirent.
 	<li>Major cleanup of the device identification method.
 	<li>Lots of driver updates.
-	<li>Ansify a great deal more of the codebase.
+	<li>ANSIfy a great deal more of the codebase.
 	<li>Remove the now obsolete smp_rendezvous() mechanism.
 	<li>Compile up both the TFTP and the NFS PXE bootp code rather
 	    then the (previous) make.conf option to select one or the other.
