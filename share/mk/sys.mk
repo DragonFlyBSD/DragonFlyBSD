@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.14 2005/07/07 11:49:56 corecode Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.15 2006/01/26 17:48:35 corecode Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -21,7 +21,7 @@ unix		?=	We run FreeBSD, not UNIX.
 
 .LIBS:		.a
 
-X11BASE		?=	/usr/X11R6
+X11BASE		?=	/usr/pkg/xorg
 
 AR		?=	ar
 NXAR		?=	${NXENV} ${AR}
