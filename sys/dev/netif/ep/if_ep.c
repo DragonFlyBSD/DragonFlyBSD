@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.23 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.24 2006/01/28 14:05:57 sephe Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -446,6 +446,7 @@ startagain:
 
     for (len = 0, top = m; m; m = m->m_next)
 	len += m->m_len;
+    m = top;
 
     pad = padmap[len & 3];
 
