@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.14.2.1 2006/01/01 00:59:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.14.2.2 2006/01/28 15:15:51 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -264,14 +264,6 @@ ed_pccard_attach(device_t dev)
 		ed_alloc_memory(dev, sc->mem_rid, sc->mem_used);
 	ed_alloc_irq(dev, sc->irq_rid, 0);
 		
-	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
-			       edintr, sc, &sc->irq_handle, NULL);
-	if (error) {
-		printf("setup intr failed %d \n", error);
-		ed_release_resources(dev);
-		return (error);
-	}	      
-
 	if (sc->vendor != ED_VENDOR_LINKSYS) {
 		ether_addr = pccard_get_ether(dev);
 		for (i = 0, sum = 0; i < ETHER_ADDR_LEN; i++)
@@ -291,6 +283,15 @@ ed_pccard_attach(device_t dev)
 		    ed_ifmedia_sts);
 	}
 #endif
+
+	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+			       edintr, sc, &sc->irq_handle,
+			       sc->arpcom.ac_if.if_serializer);
+	if (error) {
+		printf("setup intr failed %d \n", error);
+		ed_release_resources(dev);
+		return (error);
+	}
 
 	return (error);
 }
