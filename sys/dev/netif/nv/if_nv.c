@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.25 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.26 2006/01/29 08:25:33 sephe Exp $
  */
 
 /*
@@ -231,6 +231,10 @@ static struct nv_type nv_devs[] = {
 		"NVIDIA nForce MCP10 Networking Adapter"},
 	{NVIDIA_VENDORID, NFORCE_MCPNET11_DEVICEID,
 		"NVIDIA nForce MCP11 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET12_DEVICEID,
+		"NVIDIA nForce MCP12 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET13_DEVICEID,
+		"NVIDIA nForce MCP13 Networking Adapter"},
         {0, 0, NULL}
 };
 
