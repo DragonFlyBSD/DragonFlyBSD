@@ -1,5 +1,6 @@
-/*
- * Copyright (c) 2003, 2004 by Quinton Dolan <q@onthenet.com.au>. 
+/*-
+ * Copyright (c) 2005 by David E. O'Brien <obrien@FreeBSD.org>.
+ * Copyright (c) 2003,2004 by Quinton Dolan <q@onthenet.com.au>. 
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +25,8 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.26 2006/01/29 08:25:33 sephe Exp $
+ * $FreeBSD: src/sys/dev/nve/if_nve.c,v 1.20 2005/12/12 06:23:43 bz Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.27 2006/01/29 22:10:11 corecode Exp $
  */
 
 /*
@@ -56,7 +58,7 @@
  * amount of hardware centric code, it's hopefully no more buggy than its
  * linux counterpart.
  *
- * NVIDIA now suppport the nForce3 AMD64 platform, however I have been
+ * NVIDIA now support the nForce3 AMD64 platform, however I have been
  * unable to access such a system to verify support. However, the code is
  * reported to work with little modification when compiled with the AMD64
  * version of the NVIDIA Linux library. All that should be necessary to make
@@ -209,20 +211,20 @@ DRIVER_MODULE(nv, pci, nv_driver, nv_devclass, 0, 0);
 DRIVER_MODULE(miibus, nv, miibus_driver, miibus_devclass, 0, 0);
 
 static struct nv_type nv_devs[] = {
-        {NVIDIA_VENDORID, NFORCE_MCPNET1_DEVICEID,
-                "NVIDIA nForce MCP Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET2_DEVICEID,
-                "NVIDIA nForce MCP2 Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET3_DEVICEID,
-                "NVIDIA nForce MCP3 Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET4_DEVICEID,
-                "NVIDIA nForce MCP4 Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET5_DEVICEID,
-                "NVIDIA nForce MCP5 Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET6_DEVICEID,
-                "NVIDIA nForce MCP6 Networking Adapter"},
-        {NVIDIA_VENDORID, NFORCE_MCPNET7_DEVICEID,
-                "NVIDIA nForce MCP7 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET1_DEVICEID,
+		"NVIDIA nForce MCP Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET2_DEVICEID,
+		"NVIDIA nForce MCP2 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET3_DEVICEID,
+		"NVIDIA nForce MCP3 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET4_DEVICEID,
+		"NVIDIA nForce MCP4 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET5_DEVICEID,
+		"NVIDIA nForce MCP5 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET6_DEVICEID,
+		"NVIDIA nForce MCP6 Networking Adapter"},
+	{NVIDIA_VENDORID, NFORCE_MCPNET7_DEVICEID,
+		"NVIDIA nForce MCP7 Networking Adapter"},
 	{NVIDIA_VENDORID, NFORCE_MCPNET8_DEVICEID,
 		"NVIDIA nForce MCP8 Networking Adapter"},
 	{NVIDIA_VENDORID, NFORCE_MCPNET9_DEVICEID,
@@ -306,6 +308,9 @@ nv_attach(device_t dev)
 	ADAPTER_OPEN_PARAMS OpenParams;
 	int             error = 0, i, rid;
 	u_int32_t	unit;
+
+	if (bootverbose)
+		device_printf(dev, "nvenetlib.o version %s\n", DRIVER_VERSION);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_attach - entry\n");
 
@@ -629,6 +634,9 @@ nv_init(void *xsc)
 	nv_stop(sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: do pfnInit\n");
+
+	nv_ifmedia_upd(ifp);
+
 	/* Setup Hardware interface and allocate memory structures */
 	error = sc->hwapi->pfnInit(sc->hwapi->pADCX, 
 				   0, /* force speed */ 
@@ -646,7 +654,6 @@ nv_init(void *xsc)
 
 	/* Setup multicast filter */
 	nv_setmulti(sc);
-	nv_ifmedia_upd(ifp);
 
 	sc->hwapi->pfnStart(sc->hwapi->pADCX);
 
@@ -764,6 +771,7 @@ nv_stop(struct nv_softc *sc)
 	sc->linkup = 0;
 	sc->cur_rx = 0;
 	sc->pending_rxs = 0;
+	sc->pending_txs = 0;
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
@@ -1328,7 +1336,7 @@ nv_osalloc(PNV_VOID ctx, PMEMORY_BLOCK mem)
 	sc = (struct nv_softc *)ctx;
 
 	mem->pLogical = (PVOID)contigmalloc(mem->uiLength, M_DEVBUF,
-				    M_NOWAIT | M_ZERO, 0, ~0, PAGE_SIZE, 0);
+	    M_NOWAIT | M_ZERO, 0, 0xffffffff, PAGE_SIZE, 0);
 
 	if (!mem->pLogical) {
 		device_printf(sc->dev, "memory allocation failed\n");
@@ -1604,18 +1612,7 @@ nv_ospacketrx(PNV_VOID ctx, PNV_VOID data, NV_UINT32 success,
 static NV_SINT32
 nv_oslinkchg(PNV_VOID ctx, NV_SINT32 enabled)
 {
-	struct nv_softc *sc = (struct nv_softc *)ctx;
-	struct ifnet   *ifp;
-
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_oslinkchg\n");
-
-	ifp = &sc->sc_if;
-
-	if (enabled)
-		ifp->if_flags |= IFF_UP;
-	else
-		ifp->if_flags &= ~IFF_UP;
-
 
 	return (1);
 }
@@ -1747,8 +1744,6 @@ nv_oslockacquire(PNV_VOID ctx, NV_SINT32 type, PNV_VOID lock)
 {
 	DEBUGOUT(NV_DEBUG_LOCK, "nv: nv_oslockacquire\n");
 
-	NV_OSLOCK((struct nv_softc *)lock);
-
 	return (1);
 }
 
@@ -1757,8 +1752,6 @@ static NV_SINT32
 nv_oslockrelease(PNV_VOID ctx, NV_SINT32 type, PNV_VOID lock)
 {
 	DEBUGOUT(NV_DEBUG_LOCK, "nv: nv_oslockrelease\n");
-
-	NV_OSUNLOCK((struct nv_softc *)lock);
 
 	return (1);
 }

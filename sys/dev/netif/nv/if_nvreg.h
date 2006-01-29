@@ -24,7 +24,8 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.11 2006/01/29 08:25:33 sephe Exp $
+ * $FreeBSD: src/sys/dev/nve/if_nvereg.h,v 1.7 2005/12/07 17:38:03 obrien Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.12 2006/01/29 22:10:11 corecode Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -34,6 +35,7 @@
 
 #define linux
 
+#include "nvenet_version.h"
 #include "basetype.h"
 #include "os.h"
 #include "drvinfo.h"
@@ -63,7 +65,7 @@
 
 #define TX_RING_SIZE 64
 #define RX_RING_SIZE 64
-#define NV_MAX_FRAGS 63
+#define	NV_MAX_FRAGS 32		/* match adapter.h:ADAPTER_WRITE_DATA.sElement[] */
 
 #define	FCS_LEN 4
 
@@ -178,9 +180,6 @@ struct nv_type {
 
 #define sc_if arpcom.ac_if
 #define sc_macaddr arpcom.ac_enaddr
-
-#define NV_OSLOCK(_sc)		crit_enter()
-#define NV_OSUNLOCK(_sc)	crit_exit()
 
 #define IF_Kbps(x)	((x) * 1000)		/* kilobits/sec. */
 #define IF_Mbps(x)	(IF_Kbps((x) * 1000))	/* megabits/sec. */
