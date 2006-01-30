@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.15 2006/01/14 11:05:18 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.16 2006/01/30 14:16:16 y0netan1 Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -322,7 +322,7 @@ pppread(struct tty *tp, struct uio *uio, int flag)
      * Loop waiting for input, checking that nothing disasterous
      * happens in the meantime.
      */
-    crit_exit();
+    crit_enter();
     for (;;) {
 	if (tp != (struct tty *) sc->sc_devp || tp->t_line != PPPDISC) {
 	    crit_exit();
