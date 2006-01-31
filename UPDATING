@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.18 2006/01/14 22:23:40 swildner Exp $
+$DragonFly: src/UPDATING,v 1.19 2006/01/31 09:45:30 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -149,7 +149,7 @@ NOTE! Never do a 'make upgrade' before 'make installworld' has been run.
 Doing so might leave your system in an unusable state.
 
 If you are using 'config' manually from /usr/src/sys/i386/conf/BLAH, note 
-that the build will use the current DragonFly environment rather then
+that the build will use the current DragonFly environment rather than
 the post-build environment from the last buildworld.   For this reason manual
 configs are discouraged.  The proper way to build a kernel is to use the
 'buildkernel' or 'quickkernel' target in /usr/src.
