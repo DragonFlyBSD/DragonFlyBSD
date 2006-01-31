@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.17 2005/08/15 16:46:21 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.18 2006/01/31 19:05:40 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -161,10 +161,10 @@ struct lwkt_port;
 extern u_short	ip_id;				/* ip packet ctr, for ids */
 extern int	ip_defttl;			/* default IP ttl */
 extern int	ipforwarding;			/* ip forwarding */
-extern struct route ipforward_rt;		/* ip forwarding cached route */
+extern struct route ipforward_rt[];		/* ip forwarding cached route */
 extern u_char	ip_protox[];
-extern struct socket *ip_rsvpd;	/* reservation protocol daemon */
-extern struct socket *ip_mrouter; /* multicast routing daemon */
+extern struct socket *ip_rsvpd;		/* reservation protocol daemon */
+extern struct socket *ip_mrouter;	/* multicast routing daemon */
 extern int	(*legal_vif_num)(int);
 extern u_long	(*ip_mcast_src)(int);
 extern int rsvp_on;

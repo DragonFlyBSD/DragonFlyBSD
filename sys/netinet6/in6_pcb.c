@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.27 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.28 2006/01/31 19:05:42 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -947,7 +947,7 @@ in6_losing(struct inpcb *in6p)
 		info.rti_info[RTAX_NETMASK] = rt_mask(rt);
 		rt_missmsg(RTM_LOSING, &info, rt->rt_flags, 0);
 		if (rt->rt_flags & RTF_DYNAMIC)
-			rtrequest1(RTM_DELETE, &info, NULL);
+			rtrequest1_global(RTM_DELETE, &info, NULL, NULL);
 		in6p->in6p_route.ro_rt = NULL;
 		rtfree(rt);
 		/*

@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.23 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.24 2006/01/31 19:05:35 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -98,9 +98,11 @@
 #include <sys/globaldata.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netisr.h>
 
 #include <netinet/in.h>
 #include <net/ip_mroute/ip_mroute.h>
@@ -112,39 +114,79 @@ static struct rtstatistics rtstatistics_percpu[MAXCPU];
 #define rtstat	rtstatistics_percpu[0]
 #endif
 
-struct radix_node_head *rt_tables[AF_MAX+1];
+struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
+struct lwkt_port *rt_ports[MAXCPU];
 
 static void	rt_maskedcopy (struct sockaddr *, struct sockaddr *,
 			       struct sockaddr *);
-static void	rtable_init (void **);
+static void rtable_init(void);
+static void rtable_service_loop(void *dummy);
+static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
+				      struct rtentry *, void *);
+
+#ifdef SMP
+static int rtredirect_msghandler(struct lwkt_msg *lmsg);
+static int rtrequest1_msghandler(struct lwkt_msg *lmsg);
+#endif
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
 
-static void
-rtable_init(void **table)
-{
-	struct domain *dom;
-
-	SLIST_FOREACH(dom, &domains, dom_next)
-		if (dom->dom_rtattach)
-			dom->dom_rtattach(&table[dom->dom_family],
-					  dom->dom_rtoffset);
-}
-
+/*
+ * Initialize the route table(s) for protocol domains and
+ * create a helper thread which will be responsible for updating
+ * route table entries on each cpu.
+ */
 void
 route_init(void)
 {
-#ifdef SMP
-	int ccpu;
+	int cpu, origcpu;
+	thread_t rtd;
 
-	for (ccpu = 0; ccpu < ncpus; ++ccpu)
-		bzero(&rtstatistics_percpu[ccpu], sizeof(struct rtstatistics));
-#else
-	bzero(&rtstat, sizeof(struct rtstatistics));
-#endif
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
+	rn_init();      /* initialize all zeroes, all ones, mask table */
+	origcpu = mycpuid;
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		lwkt_migratecpu(cpu);
+		rtable_init();
+		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
+			    TDF_STOPREQ, cpu, "rtable_cpu %d", cpu);
+		rt_ports[cpu] = &rtd->td_msgport;
+		lwkt_schedule(rtd);
+	}
+	lwkt_migratecpu(origcpu);
+}
 
-	rn_init();	/* initialize all zeroes, all ones, mask table */
-	rtable_init((void **)rt_tables);
+static void
+rtable_init(void)
+{
+	struct domain *dom;
+
+	SLIST_FOREACH(dom, &domains, dom_next) {
+		if (dom->dom_rtattach) {
+			dom->dom_rtattach(
+				(void **)&rt_tables[mycpuid][dom->dom_family],
+			        dom->dom_rtoffset);
+		}
+	}
+}
+
+/*
+ * Our per-cpu table management protocol thread.  All route table operations
+ * are chained through all cpus in order starting at cpu #0 in order to
+ * maintain duplicate route tables on each cpu.  Having a spearate route
+ * table management thread allows the protocol and interrupt threads to
+ * issue route table changes.
+ */
+static void
+rtable_service_loop(void *dummy __unused)
+{
+	struct lwkt_msg *lmsg;
+	thread_t td = curthread;
+
+	while ((lmsg = lwkt_waitport(&td->td_msgport, NULL)) != NULL) {
+		lmsg->ms_cmd.cm_func(lmsg);
+	}
 }
 
 /*
@@ -219,7 +261,7 @@ rtalloc_ign(struct route *ro, u_long ignoreflags)
 struct rtentry *
 _rtlookup(struct sockaddr *dst, boolean_t generate_report, u_long ignore)
 {
-	struct radix_node_head *rnh = rt_tables[dst->sa_family];
+	struct radix_node_head *rnh = rt_tables[mycpuid][dst->sa_family];
 	struct rtentry *rt;
 
 	if (rnh == NULL)
@@ -278,7 +320,8 @@ rtfree(struct rtentry *rt)
 
 	--rt->rt_refcnt;
 	if (rt->rt_refcnt == 0) {
-		struct radix_node_head *rnh = rt_tables[rt_key(rt)->sa_family];
+		struct radix_node_head *rnh =
+		    rt_tables[mycpuid][rt_key(rt)->sa_family];
 
 		if (rnh->rnh_close)
 			rnh->rnh_close((struct radix_node *)rt, rnh);
@@ -294,16 +337,9 @@ rtfree(struct rtentry *rt)
 	}
 }
 
-/*
- * Force a routing table entry to the specified destination to go through
- * the given gateway.  Normally called as a result of a routing redirect
- * message from the network layer.
- *
- * N.B.: must be called at splnet
- */
-void
-rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
-	   struct sockaddr *netmask, int flags, struct sockaddr *src)
+static int
+rtredirect_oncpu(struct sockaddr *dst, struct sockaddr *gateway,
+		 struct sockaddr *netmask, int flags, struct sockaddr *src)
 {
 	struct rtentry *rt = NULL;
 	struct rt_addrinfo rtinfo;
@@ -396,6 +432,50 @@ out:
 	else if (stat != NULL)
 		(*stat)++;
 
+	return error;
+}
+
+#ifdef SMP
+
+struct netmsg_rtredirect {
+	struct lwkt_msg	lmsg;
+	struct sockaddr *dst;
+	struct sockaddr *gateway;
+	struct sockaddr *netmask;
+	int		flags;
+	struct sockaddr *src;
+};
+
+#endif
+
+/*
+ * Force a routing table entry to the specified
+ * destination to go through the given gateway.
+ * Normally called as a result of a routing redirect
+ * message from the network layer.
+ *
+ * N.B.: must be called at splnet
+ */
+void
+rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
+	   struct sockaddr *netmask, int flags, struct sockaddr *src)
+{
+	struct rt_addrinfo rtinfo;
+	int error;
+#ifdef SMP
+	struct netmsg_rtredirect msg;
+
+	lwkt_initmsg(&msg.lmsg, &curthread->td_msgport, 0,
+		     lwkt_cmd_func(rtredirect_msghandler), lwkt_cmd_op_none);
+	msg.dst = dst;
+	msg.gateway = gateway;
+	msg.netmask = netmask;
+	msg.flags = flags;
+	msg.src = src;
+	error = lwkt_domsg(rtable_portfn(0), &msg.lmsg);
+#else
+	error = rtredirect_oncpu(dst, gateway, netmask, flags, src);
+#endif
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_info[RTAX_DST] = dst;
 	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
@@ -403,6 +483,26 @@ out:
 	rtinfo.rti_info[RTAX_AUTHOR] = src;
 	rt_missmsg(RTM_REDIRECT, &rtinfo, flags, error);
 }
+
+#ifdef SMP
+
+static int
+rtredirect_msghandler(struct lwkt_msg *lmsg)
+{
+	struct netmsg_rtredirect *msg = (void *)lmsg;
+	int nextcpu;
+
+	rtredirect_oncpu(msg->dst, msg->gateway, msg->netmask,
+			 msg->flags, msg->src);
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+	else
+		lwkt_replymsg(&msg->lmsg, 0);
+	return (0);
+}
+
+#endif
 
 /*
 * Routing table ioctl interface.
@@ -549,6 +649,111 @@ rtrequest(
 }
 
 int
+rtrequest_global(
+	int req,
+	struct sockaddr *dst,
+	struct sockaddr *gateway,
+	struct sockaddr *netmask,
+	int flags)
+{
+	struct rt_addrinfo rtinfo;
+
+	bzero(&rtinfo, sizeof(struct rt_addrinfo));
+	rtinfo.rti_info[RTAX_DST] = dst;
+	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
+	rtinfo.rti_info[RTAX_NETMASK] = netmask;
+	rtinfo.rti_flags = flags;
+	return rtrequest1_global(req, &rtinfo, NULL, NULL);
+}
+
+#ifdef SMP
+
+struct netmsg_rtq {
+	struct lwkt_msg		lmsg;
+	int			req;
+	struct rt_addrinfo	*rtinfo;
+	rtrequest1_callback_func_t callback;
+	void			*arg;
+};
+
+#endif
+
+int
+rtrequest1_global(int req, struct rt_addrinfo *rtinfo, 
+		  rtrequest1_callback_func_t callback, void *arg)
+{
+	int error;
+#ifdef SMP
+	struct netmsg_rtq msg;
+
+	lwkt_initmsg(&msg.lmsg, &curthread->td_msgport, 0,
+		     lwkt_cmd_func(rtrequest1_msghandler), lwkt_cmd_op_none);
+	msg.lmsg.ms_error = -1;
+	msg.req = req;
+	msg.rtinfo = rtinfo;
+	msg.callback = callback;
+	msg.arg = arg;
+	error = lwkt_domsg(rtable_portfn(0), &msg.lmsg);
+#else
+	struct rtentry *rt = NULL;
+
+	error = rtrequest1(req, rtinfo, &rt);
+	if (rt)
+		--rt->rt_refcnt;
+	if (callback)
+		callback(req, error, rtinfo, rt, arg);
+#endif
+	return (error);
+}
+
+/*
+ * Handle a route table request on the current cpu.  Since the route table's
+ * are supposed to be identical on each cpu, an error occuring later in the
+ * message chain is considered system-fatal.
+ */
+#ifdef SMP
+
+static int
+rtrequest1_msghandler(struct lwkt_msg *lmsg)
+{
+	struct netmsg_rtq *msg = (void *)lmsg;
+	struct rtentry *rt = NULL;
+	int nextcpu;
+	int error;
+
+	error = rtrequest1(msg->req, msg->rtinfo, &rt);
+	if (rt)
+		--rt->rt_refcnt;
+	if (msg->callback)
+		msg->callback(msg->req, error, msg->rtinfo, rt, msg->arg);
+
+	/*
+	 * RTM_DELETE's are propogated even if an error occurs, since a
+	 * cloned route might be undergoing deletion and cloned routes
+	 * are not necessarily replicated.  An overall error is returned
+	 * only if no cpus have the route in question.
+	 */
+	if (msg->lmsg.ms_error < 0 || error == 0)
+		msg->lmsg.ms_error = error;
+
+	nextcpu = mycpuid + 1;
+	if (error && msg->req != RTM_DELETE) {
+		if (mycpuid != 0) {
+			panic("rtrequest1_msghandler: rtrequest table "
+			      "error was not on cpu #0: %p", msg);
+		}
+		lwkt_replymsg(&msg->lmsg, error);
+	} else if (nextcpu < ncpus) {
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+	} else {
+		lwkt_replymsg(&msg->lmsg, msg->lmsg.ms_error);
+	}
+	return (0);
+}
+
+#endif
+
+int
 rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 {
 	struct sockaddr *dst = rtinfo->rti_info[RTAX_DST];
@@ -565,7 +770,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	/*
 	 * Find the correct routing tree to use for this Address Family
 	 */
-	if ((rnh = rt_tables[dst->sa_family]) == NULL)
+	if ((rnh = rt_tables[mycpuid][dst->sa_family]) == NULL)
 		gotoerr(EAFNOSUPPORT);
 
 	/*
@@ -588,6 +793,9 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		KASSERT(!(rn->rn_flags & (RNF_ACTIVE | RNF_ROOT)),
 			("rnh_deladdr returned flags 0x%x", rn->rn_flags));
 		rt = (struct rtentry *)rn;
+
+		/* ref to prevent a deletion race */
+		++rt->rt_refcnt;
 
 		/* Free any routes cloned from this one. */
 		if ((rt->rt_flags & (RTF_CLONING | RTF_PRCLONING)) &&
@@ -621,9 +829,10 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		KASSERT(rt->rt_refcnt >= 0,
 			("rtrequest1(DELETE): refcnt %ld", rt->rt_refcnt));
 		if (ret_nrt != NULL) {
+			/* leave ref intact for return */
 			*ret_nrt = rt;
-		} else if (rt->rt_refcnt == 0) {
-			rt->rt_refcnt++;  /* refcnt > 0 required for rtfree() */
+		} else {
+			/* deref / attempt to destroy */
 			rtfree(rt);
 		}
 		break;
@@ -900,7 +1109,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 	char *space, *oldspace;
 	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
 	struct rtentry *rt = rt0;
-	struct radix_node_head *rnh = rt_tables[dst->sa_family];
+	struct radix_node_head *rnh = rt_tables[mycpuid][dst->sa_family];
 
 	/*
 	 * A host route with the destination equal to the gateway
@@ -1062,7 +1271,6 @@ int
 rtinit(struct ifaddr *ifa, int cmd, int flags)
 {
 	struct sockaddr *dst, *deldst, *netmask;
-	struct rtentry *rt;
 	struct mbuf *m = NULL;
 	struct radix_node_head *rnh;
 	struct radix_node *rn;
@@ -1099,7 +1307,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		 * Look up an rtentry that is in the routing tree and
 		 * contains the correct info.
 		 */
-		if ((rnh = rt_tables[dst->sa_family]) == NULL ||
+		if ((rnh = rt_tables[mycpuid][dst->sa_family]) == NULL ||
 		    (rn = rnh->rnh_lookup((char *)dst,
 					  (char *)netmask, rnh)) == NULL ||
 		    ((struct rtentry *)rn)->rt_ifa != ifa ||
@@ -1129,32 +1337,32 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 	rtinfo.rti_info[RTAX_NETMASK] = netmask;
 	rtinfo.rti_flags = flags | ifa->ifa_flags;
 	rtinfo.rti_ifa = ifa;
-	error = rtrequest1(cmd, &rtinfo, &rt);
-	if (error == 0 && rt != NULL) {
-		/*
-		 * notify any listening routing agents of the change
-		 */
-		rt_newaddrmsg(cmd, ifa, error, rt);
-		if (cmd == RTM_DELETE) {
-			/*
-			 * If we are deleting, and we found an entry, then
-			 * it's been removed from the tree.. now throw it away.
-			 */
-			if (rt->rt_refcnt == 0) {
-				rt->rt_refcnt++; /* make a 1->0 transition */
-				rtfree(rt);
-			}
-		} else if (cmd == RTM_ADD) {
-			/*
-			 * We just wanted to add it.. we don't actually
-			 * need a reference.
-			 */
-			rt->rt_refcnt--;
-		}
-	}
+	error = rtrequest1_global(cmd, &rtinfo, rtinit_rtrequest_callback, ifa);
 	if (m != NULL)
 		m_free(m);
 	return (error);
+}
+
+static void
+rtinit_rtrequest_callback(int cmd, int error,
+			  struct rt_addrinfo *rtinfo, struct rtentry *rt,
+			  void *arg)
+{
+	struct ifaddr *ifa = arg;
+
+	if (error == 0 && rt) {
+		if (mycpuid == 0) {
+			++rt->rt_refcnt;
+			rt_newaddrmsg(cmd, ifa, error, rt);
+			--rt->rt_refcnt;
+		}
+		if (cmd == RTM_DELETE) {
+			if (rt->rt_refcnt == 0) {
+				++rt->rt_refcnt;
+				rtfree(rt);
+			}
+		}
+	}
 }
 
 /* This must be before ip6_init2(), which is now SI_ORDER_MIDDLE */

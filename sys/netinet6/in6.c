@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.17 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.18 2006/01/31 19:05:42 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -133,6 +133,7 @@ static int in6_lifaddr_ioctl (struct socket *, u_long, caddr_t,
 static int in6_ifinit (struct ifnet *, struct in6_ifaddr *,
 			   struct sockaddr_in6 *, int);
 static void in6_unlink_ifa (struct in6_ifaddr *, struct ifnet *);
+static void in6_ifloop_request_callback(int, int, struct rt_addrinfo *, struct rtentry *, void *);
 
 struct in6_multihead in6_multihead;	/* XXX BSS initialization */
 
@@ -146,14 +147,14 @@ static void
 in6_ifloop_request(int cmd, struct ifaddr *ifa)
 {
 	struct sockaddr_in6 all1_sa;
-	struct rtentry *nrt = NULL;
-	int e;
+        struct rt_addrinfo rtinfo;
+	int error;
 	
 	bzero(&all1_sa, sizeof(all1_sa));
 	all1_sa.sin6_family = AF_INET6;
 	all1_sa.sin6_len = sizeof(struct sockaddr_in6);
 	all1_sa.sin6_addr = in6mask128;
-
+ 
 	/*
 	 * We specify the address itself as the gateway, and set the
 	 * RTF_LLINFO flag, so that the corresponding host route would have
@@ -162,16 +163,31 @@ in6_ifloop_request(int cmd, struct ifaddr *ifa)
 	 * (probably implicitly) set nd6_rtrequest() to ifa->ifa_rtrequest,
 	 * which changes the outgoing interface to the loopback interface.
 	 */
-	e = rtrequest(cmd, ifa->ifa_addr, ifa->ifa_addr,
-		      (struct sockaddr *)&all1_sa,
-		      RTF_UP|RTF_HOST|RTF_LLINFO, &nrt);
-	if (e != 0) {
+	bzero(&rtinfo, sizeof(struct rt_addrinfo));
+	rtinfo.rti_info[RTAX_DST] = ifa->ifa_addr;
+	rtinfo.rti_info[RTAX_GATEWAY] = ifa->ifa_addr;
+	rtinfo.rti_info[RTAX_NETMASK] = (struct sockaddr *)&all1_sa;
+	rtinfo.rti_flags = RTF_UP|RTF_HOST|RTF_LLINFO;
+
+	error = rtrequest1_global(cmd, &rtinfo, 
+				  in6_ifloop_request_callback, ifa);
+	if (error != 0) {
 		log(LOG_ERR, "in6_ifloop_request: "
 		    "%s operation failed for %s (errno=%d)\n",
 		    cmd == RTM_ADD ? "ADD" : "DELETE",
 		    ip6_sprintf(&((struct in6_ifaddr *)ifa)->ia_addr.sin6_addr),
-		    e);
+		    error);
 	}
+}
+
+static void
+in6_ifloop_request_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			    struct rtentry *rt, void *arg)
+{
+	struct ifaddr *ifa = arg;
+
+	if (error)
+		goto done;
 
 	/*
 	 * Make sure rt_ifa be equal to IFA, the second argument of the
@@ -180,10 +196,12 @@ in6_ifloop_request(int cmd, struct ifaddr *ifa)
 	 * ip6_input, we assume that the rt_ifa points to the address instead
 	 * of the loopback address.
 	 */
-	if (cmd == RTM_ADD && nrt && ifa != nrt->rt_ifa) {
-		IFAFREE(nrt->rt_ifa);
+	if (cmd == RTM_ADD && rt && ifa != rt->rt_ifa) {
+		++rt->rt_refcnt;
+		IFAFREE(rt->rt_ifa);
 		IFAREF(ifa);
-		nrt->rt_ifa = ifa;
+		rt->rt_ifa = ifa;
+		--rt->rt_refcnt;
 	}
 
 	/*
@@ -192,19 +210,19 @@ in6_ifloop_request(int cmd, struct ifaddr *ifa)
 	 *      we end up reporting twice in such a case.  Should we rather
 	 *      omit the second report?
 	 */
-	if (nrt) {
-		rt_newaddrmsg(cmd, ifa, e, nrt);
+	if (rt) {
+		if (mycpuid == 0)
+			rt_newaddrmsg(cmd, ifa, error, rt);
 		if (cmd == RTM_DELETE) {
-			if (nrt->rt_refcnt <= 0) {
-				/* XXX: we should free the entry ourselves. */
-				nrt->rt_refcnt++;
-				rtfree(nrt);
+			if (rt->rt_refcnt == 0) {
+				++rt->rt_refcnt;
+				rtfree(rt);
 			}
-		} else {
-			/* the cmd must be RTM_ADD here */
-			nrt->rt_refcnt--;
 		}
 	}
+done:
+	/* no way to return any new error */
+	;
 }
 
 /*
@@ -1030,12 +1048,11 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 
 		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 		if (in6m == NULL) {
-			rtrequest(RTM_ADD,
+			rtrequest_global(RTM_ADD,
 				  (struct sockaddr *)&mltaddr,
 				  (struct sockaddr *)&ia->ia_addr,
 				  (struct sockaddr *)&mltmask,
-				  RTF_UP|RTF_CLONING,  /* xxx */
-				  (struct rtentry **)0);
+				  RTF_UP|RTF_CLONING);  /* xxx */
 			in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 			if (error != 0) {
 				log(LOG_WARNING,
@@ -1082,12 +1099,11 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 
 			IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 			if (in6m == NULL && ia_loop != NULL) {
-				rtrequest(RTM_ADD,
+				rtrequest_global(RTM_ADD,
 					  (struct sockaddr *)&mltaddr,
 					  (struct sockaddr *)&ia_loop->ia_addr,
 					  (struct sockaddr *)&mltmask,
-					  RTF_UP,
-					  (struct rtentry **)0);
+					  RTF_UP);
 				in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 				if (error != 0) {
 					log(LOG_WARNING, "in6_update_ifa: "

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.43 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.44 2006/01/31 19:05:35 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -314,6 +314,7 @@ if_detach(struct ifnet *ifp)
 	struct ifaddr *ifa;
 	struct radix_node_head	*rnh;
 	int i;
+	int cpu, origcpu;
 	struct domain *dp;
 
 	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
@@ -388,11 +389,16 @@ if_detach(struct ifnet *ifp)
 	 * the entire routing table looking for routes which point
 	 * to this interface...oh well...
 	 */
-	for (i = 1; i <= AF_MAX; i++) {
-		if ((rnh = rt_tables[i]) == NULL)
-			continue;
-		rnh->rnh_walktree(rnh, if_rtdel, ifp);
+	origcpu = mycpuid;
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		lwkt_migratecpu(cpu);
+		for (i = 1; i <= AF_MAX; i++) {
+			if ((rnh = rt_tables[mycpuid][i]) == NULL)
+				continue;
+			rnh->rnh_walktree(rnh, if_rtdel, ifp);
+		}
 	}
+	lwkt_migratecpu(origcpu);
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);

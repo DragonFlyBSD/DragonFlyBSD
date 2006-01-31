@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.29 2005/07/15 17:54:47 eirikn Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.30 2006/01/31 19:05:35 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -405,15 +405,22 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 	return (0);
 }
 
+static void route_output_add_callback(int, int, struct rt_addrinfo *,
+					struct rtentry *, void *);
+static void route_output_delete_callback(int, int, struct rt_addrinfo *,
+					struct rtentry *, void *);
+static void route_output_change_callback(int, int, struct rt_addrinfo *,
+					struct rtentry *, void *);
+static void route_output_lock_callback(int, int, struct rt_addrinfo *, 
+					struct rtentry *, void *);
+
 /*ARGSUSED*/
 static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct rt_msghdr *rtm = NULL;
-	struct rtentry *rt = NULL;
-	struct rtentry *saved_nrt = NULL;
+	struct rtentry *rt;
 	struct radix_node_head *rnh;
-	struct ifaddr *ifa = NULL;
 	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
 	struct rt_addrinfo rtinfo;
@@ -483,99 +490,49 @@ route_output(struct mbuf *m, struct socket *so, ...)
 
 	switch (rtm->rtm_type) {
 	case RTM_ADD:
-		if (rtinfo.rti_gateway == NULL)
-			gotoerr(EINVAL);
-		error = rtrequest1(RTM_ADD, &rtinfo, &saved_nrt);
-		if (error == 0 && saved_nrt != NULL) {
-			rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx,
-			    &saved_nrt->rt_rmx);
-			saved_nrt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
-			saved_nrt->rt_rmx.rmx_locks |=
-			    (rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
-			--saved_nrt->rt_refcnt;
-			saved_nrt->rt_genmask = rtinfo.rti_genmask;
+		if (rtinfo.rti_gateway == NULL) {
+			error = EINVAL;
+		} else {
+			error = rtrequest1_global(RTM_ADD, &rtinfo, 
+					  route_output_add_callback, rtm);
 		}
 		break;
 	case RTM_DELETE:
-		error = rtrequest1(RTM_DELETE, &rtinfo, &saved_nrt);
-		if (error == 0) {
-			if ((rt = saved_nrt))
-				rt->rt_refcnt++;
-			if (fillrtmsg(&rtm, rt, &rtinfo) != 0)
-				gotoerr(ENOBUFS);
-		}
+		/*
+		 * note: &rtm passed as argument so 'rtm' can be replaced.
+		 */
+		error = rtrequest1_global(RTM_DELETE, &rtinfo,
+					  route_output_delete_callback, &rtm);
 		break;
 	case RTM_GET:
-	case RTM_CHANGE:
-	case RTM_LOCK:
-		if ((rnh = rt_tables[rtinfo.rti_dst->sa_family]) == NULL)
-			gotoerr(EAFNOSUPPORT);
+		rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family];
+		if (rnh == NULL) {
+			error = EAFNOSUPPORT;
+			break;
+		}
 		rt = (struct rtentry *)
 		    rnh->rnh_lookup((char *)rtinfo.rti_dst,
 		    		    (char *)rtinfo.rti_netmask, rnh);
-		if (rt == NULL)
-			gotoerr(ESRCH);
-		rt->rt_refcnt++;
-
-		switch(rtm->rtm_type) {
-		case RTM_GET:
-			if (fillrtmsg(&rtm, rt, &rtinfo) != 0)
-				gotoerr(ENOBUFS);
-			break;
-		case RTM_CHANGE:
-			/*
-			 * new gateway could require new ifaddr, ifp;
-			 * flags may also be different; ifp may be specified
-			 * by ll sockaddr when protocol address is ambiguous
-			 */
-			if (((rt->rt_flags & RTF_GATEWAY) &&
-			     rtinfo.rti_gateway != NULL) ||
-			    rtinfo.rti_ifpaddr != NULL ||
-			    (rtinfo.rti_ifaaddr != NULL &&
-			     sa_equal(rtinfo.rti_ifaaddr,
-			     	      rt->rt_ifa->ifa_addr))) {
-				error = rt_getifa(&rtinfo);
-				if (error != 0)
-					gotoerr(error);
-			}
-			if (rtinfo.rti_gateway != NULL) {
-				error = rt_setgate(rt, rt_key(rt),
-						   rtinfo.rti_gateway);
-				if (error != 0)
-					gotoerr(error);
-			}
-			if ((ifa = rtinfo.rti_ifa) != NULL) {
-				struct ifaddr *oifa = rt->rt_ifa;
-
-				if (oifa != ifa) {
-					if (oifa && oifa->ifa_rtrequest)
-						oifa->ifa_rtrequest(RTM_DELETE,
-						    rt, &rtinfo);
-					IFAFREE(rt->rt_ifa);
-					IFAREF(ifa);
-					rt->rt_ifa = ifa;
-					rt->rt_ifp = rtinfo.rti_ifp;
-				}
-			}
-			rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx,
-				      &rt->rt_rmx);
-			if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
-			       rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, &rtinfo);
-			if (rtinfo.rti_genmask != NULL)
-				rt->rt_genmask = rtinfo.rti_genmask;
-			/*
-			 * Fall into
-			 */
-		case RTM_LOCK:
-			rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
-			rt->rt_rmx.rmx_locks |=
-				(rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
+		if (rt == NULL) {
+			error = ESRCH;
 			break;
 		}
-
+		rt->rt_refcnt++;
+		if (fillrtmsg(&rtm, rt, &rtinfo) != 0)
+			gotoerr(ENOBUFS);
+		--rt->rt_refcnt;
+		break;
+	case RTM_CHANGE:
+		error = rtrequest1_global(RTM_GET, &rtinfo,
+					  route_output_change_callback, rtm);
+		break;
+	case RTM_LOCK:
+		error = rtrequest1_global(RTM_GET, &rtinfo,
+					  route_output_lock_callback, rtm);
 		break;
 	default:
-		gotoerr(EOPNOTSUPP);
+		error = EOPNOTSUPP;
+		break;
 	}
 
 flush:
@@ -585,8 +542,7 @@ flush:
 		else
 			rtm->rtm_flags |= RTF_DONE;
 	}
-	if (rt != NULL)
-		rtfree(rt);
+
 	/*
 	 * Check to see if we don't want our own messages.
 	 */
@@ -616,6 +572,99 @@ flush:
 	if (rp != NULL)
 		rp->rcb_proto.sp_family = PF_ROUTE;
 	return (error);
+}
+
+static void
+route_output_add_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			  struct rtentry *rt, void *arg)
+{
+	struct rt_msghdr *rtm = arg;
+
+	if (error == 0 && rt != NULL) {
+		rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx,
+		    &rt->rt_rmx);
+		rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
+		rt->rt_rmx.rmx_locks |=
+		    (rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
+		rt->rt_genmask = rtinfo->rti_genmask;
+	}
+}
+
+static void
+route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			  struct rtentry *rt, void *arg)
+{
+	struct rt_msghdr **rtm = arg;
+
+	if (error == 0 && rt) {
+		++rt->rt_refcnt;
+		if (fillrtmsg(rtm, rt, rtinfo) != 0) {
+			error = ENOBUFS;
+			/* XXX no way to return the error */
+		}
+		--rt->rt_refcnt;
+	}
+}
+
+static void
+route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			  struct rtentry *rt, void *arg)
+{
+	struct rt_msghdr *rtm = arg;
+	struct ifaddr *ifa;
+
+	if (error)
+		goto done;
+
+	/*
+	 * new gateway could require new ifaddr, ifp;
+	 * flags may also be different; ifp may be specified
+	 * by ll sockaddr when protocol address is ambiguous
+	 */
+	if (((rt->rt_flags & RTF_GATEWAY) && rtinfo->rti_gateway != NULL) ||
+	    rtinfo->rti_ifpaddr != NULL || (rtinfo->rti_ifaaddr != NULL &&
+	    sa_equal(rtinfo->rti_ifaaddr, rt->rt_ifa->ifa_addr))
+	) {
+		error = rt_getifa(rtinfo);
+		if (error != 0)
+			goto done;
+	}
+	if (rtinfo->rti_gateway != NULL) {
+		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway);
+		if (error != 0)
+			goto done;
+	}
+	if ((ifa = rtinfo->rti_ifa) != NULL) {
+		struct ifaddr *oifa = rt->rt_ifa;
+
+		if (oifa != ifa) {
+			if (oifa && oifa->ifa_rtrequest)
+				oifa->ifa_rtrequest(RTM_DELETE, rt, rtinfo);
+			IFAFREE(rt->rt_ifa);
+			IFAREF(ifa);
+			rt->rt_ifa = ifa;
+			rt->rt_ifp = rtinfo->rti_ifp;
+		}
+	}
+	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
+	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
+	       rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
+	if (rtinfo->rti_genmask != NULL)
+		rt->rt_genmask = rtinfo->rti_genmask;
+done:
+	/* XXX no way to return error */
+	;
+}
+
+static void
+route_output_lock_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+			   struct rtentry *rt, void *arg)
+{
+	struct rt_msghdr *rtm = arg;
+
+	rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
+	rt->rt_rmx.rmx_locks |=
+		(rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
 }
 
 static void
@@ -1162,6 +1211,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	u_int	namelen = arg2;
 	struct radix_node_head *rnh;
 	int	i, error = EINVAL;
+	int	origcpu;
 	u_char  af;
 	struct	walkarg w;
 
@@ -1169,7 +1219,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	namelen--;
 	if (req->newptr)
 		return (EPERM);
-	if (namelen != 3)
+	if (namelen != 3 && namelen != 4)
 		return (EINVAL);
 	af = name[0];
 	bzero(&w, sizeof w);
@@ -1177,13 +1227,25 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	w.w_arg = name[2];
 	w.w_req = req;
 
+	/*
+	 * Optional third argument specifies cpu, used primarily for
+	 * debugging the route table.
+	 */
+	if (namelen == 4) {
+		if (name[3] < 0 || name[3] >= ncpus)
+			return (EINVAL);
+		origcpu = mycpuid;
+		lwkt_migratecpu(name[3]);
+	} else {
+		origcpu = -1;
+	}
 	crit_enter();
 	switch (w.w_op) {
-
 	case NET_RT_DUMP:
 	case NET_RT_FLAGS:
 		for (i = 1; i <= AF_MAX; i++)
-			if ((rnh = rt_tables[i]) && (af == 0 || af == i) &&
+			if ((rnh = rt_tables[mycpuid][i]) &&
+			    (af == 0 || af == i) &&
 			    (error = rnh->rnh_walktree(rnh,
 						       sysctl_dumpentry, &w)))
 				break;
@@ -1195,6 +1257,8 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	crit_exit();
 	if (w.w_tmem != NULL)
 		free(w.w_tmem, M_RTABLE);
+	if (origcpu >= 0)
+		lwkt_migratecpu(origcpu);
 	return (error);
 }
 

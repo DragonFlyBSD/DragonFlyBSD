@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.12 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.13 2006/01/31 19:05:35 dillon Exp $
  */
 
 /*
@@ -71,7 +71,6 @@ static struct radix_node_head *mask_rnhead;
 
 static int max_keylen;
 static char *rn_zeros, *rn_ones;
-static char *addmask_key;
 
 static int rn_lexobetter(char *m, char *n);
 static struct radix_mask *
@@ -435,6 +434,7 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	int b = 0, mlen, m0, j;
 	boolean_t maskduplicated, isnormal;
 	static int last_zeroed = 0;
+	char *addmask_key;
 
 	if ((mlen = clen(netmask)) > max_keylen)
 		mlen = max_keylen;
@@ -442,6 +442,9 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 		skip = 1;
 	if (mlen <= skip)
 		return (mask_rnhead->rnh_nodes);
+	R_Malloc(addmask_key, char *, max_keylen);
+	if (addmask_key == NULL)
+		return NULL;
 	if (skip > 1)
 		bcopy(rn_ones + 1, addmask_key + 1, skip - 1);
 	if ((m0 = mlen) > skip)
@@ -455,6 +458,7 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	if (mlen <= skip) {
 		if (m0 >= last_zeroed)
 			last_zeroed = mlen;
+		Free(addmask_key);
 		return (mask_rnhead->rnh_nodes);
 	}
 	if (m0 < last_zeroed)
@@ -464,10 +468,10 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	if (bcmp(addmask_key, x->rn_key, mlen) != 0)
 		x = NULL;
 	if (x != NULL || search)
-		return (x);
+		goto out;
 	R_Malloc(x, struct radix_node *, max_keylen + 2 * (sizeof *x));
 	if ((saved_x = x) == NULL)
-		return (NULL);
+		goto out;
 	bzero(x, max_keylen + 2 * (sizeof *x));
 	netmask = cp = (char *)(x + 2);
 	bcopy(addmask_key, cp, mlen);
@@ -475,7 +479,7 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	if (maskduplicated) {
 		log(LOG_ERR, "rn_addmask: mask impossibly already in tree");
 		Free(saved_x);
-		return (x);
+		goto out;
 	}
 	/*
 	 * Calculate index of mask, and check for normalcy.
@@ -498,6 +502,8 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	x->rn_bit = -1 - b;
 	if (isnormal)
 		x->rn_flags |= RNF_NORMAL;
+out:
+	Free(addmask_key);
 	return (x);
 }
 
@@ -1060,12 +1066,12 @@ rn_init(void)
 		    "rn_init: radix functions require max_keylen be set\n");
 		return;
 	}
-	R_Malloc(rn_zeros, char *, 3 * max_keylen);
+	R_Malloc(rn_zeros, char *, 2 * max_keylen);
 	if (rn_zeros == NULL)
 		panic("rn_init");
-	bzero(rn_zeros, 3 * max_keylen);
+	bzero(rn_zeros, 2 * max_keylen);
 	rn_ones = cp = rn_zeros + max_keylen;
-	addmask_key = cplim = rn_ones + max_keylen;
+	cplim = rn_ones + max_keylen;
 	while (cp < cplim)
 		*cp++ = -1;
 	if (rn_inithead((void **)&mask_rnhead, 0) == 0)

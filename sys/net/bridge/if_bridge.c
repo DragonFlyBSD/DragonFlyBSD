@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.4 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.5 2006/01/31 19:05:37 dillon Exp $
  */
 
 /*
@@ -1391,6 +1391,12 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	eh = mtod(m, struct ether_header *);
 
 	/*
+	 * Various ifp's are used below, release the serializer for
+	 * the bridge ifp so other ifp serializers can be acquired.
+	 */
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	/*
 	 * If the interface is learning, and the source
 	 * address is valid and not multicast, record
 	 * the address.
@@ -1409,7 +1415,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	if ((bif->bif_flags & IFBIF_STP) != 0 &&
 	    bif->bif_state == BSTP_IFSTATE_LEARNING) {
 		m_freem(m);
-		return;
+		goto done;
 	}
 
 	/*
@@ -1425,7 +1431,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 		if (src_if == dst_if) {
 			m_freem(m);
-			return;
+			goto done;
 		}
 	} else {
 		/* ...forward it to all interfaces. */
@@ -1440,16 +1446,14 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 #endif
 	    ) {
 		if (bridge_pfil(&m, ifp, src_if, PFIL_IN) != 0)
-			return;
+			goto done;
 		if (m == NULL)
-			return;
+			goto done;
 	}
 
 	if (dst_if == NULL) {
-		lwkt_serialize_exit(ifp->if_serializer);
 		bridge_broadcast(sc, src_if, m, 1);
-		lwkt_serialize_enter(ifp->if_serializer);
-		return;
+		goto done;
 	}
 
 	/*
@@ -1458,13 +1462,13 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	 */
 	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
 		m_freem(m);
-		return;
+		goto done;
 	}
 	bif = bridge_lookup_member_if(sc, dst_if);
 	if (bif == NULL) {
 		/* Not a member of the bridge (anymore?) */
 		m_freem(m);
-		return;
+		goto done;
 	}
 
 	if (bif->bif_flags & IFBIF_STP) {
@@ -1472,7 +1476,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		case BSTP_IFSTATE_DISABLED:
 		case BSTP_IFSTATE_BLOCKING:
 			m_freem(m);
-			return;
+			goto done;
 		}
 	}
 
@@ -1482,12 +1486,17 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 #endif
 	    ) {
 		if (bridge_pfil(&m, sc->sc_ifp, dst_if, PFIL_OUT) != 0)
-			return;
+			goto done;
 		if (m == NULL)
-			return;
+			goto done;
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
 	bridge_enqueue(sc, dst_if, m);
+
+	/*
+	 * ifp's serializer was held on entry and is expected to be held
+	 * on return.
+	 */
+done:
 	lwkt_serialize_enter(ifp->if_serializer);
 }
 

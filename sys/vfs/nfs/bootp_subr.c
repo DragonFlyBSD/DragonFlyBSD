@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.12 2005/10/27 14:03:56 sephe Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.13 2006/01/31 19:05:45 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1137,11 +1137,10 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	if (ifctx->gotgw != 0 || gctx->gotgw == 0) {
 		clear_sinaddr(&defdst);
 		clear_sinaddr(&defmask);
-		error = rtrequest(RTM_ADD,
-				  (struct sockaddr *) &defdst,
-				  (struct sockaddr *) gw,
-				  (struct sockaddr *) &defmask,
-				  (RTF_UP | RTF_GATEWAY | RTF_STATIC), NULL);
+		error = rtrequest_global(RTM_ADD, (struct sockaddr *) &defdst,
+					 (struct sockaddr *) gw,
+					 (struct sockaddr *) &defmask,
+					 (RTF_UP | RTF_GATEWAY | RTF_STATIC));
 		if (error != 0) {
 			printf("bootpc_adjust_interface: "
 			       "add net route, error=%d\n", error);

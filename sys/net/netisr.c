@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.24 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.25 2006/01/31 19:05:35 dillon Exp $
  */
 
 /*
@@ -349,6 +349,12 @@ lwkt_port_t
 cpu0_portfn(struct mbuf **mptr)
 {
     return (&netisr_cpu[0].td_msgport);
+}
+
+lwkt_port_t
+cpu_portfn(int cpu)
+{
+    return (&netisr_cpu[cpu].td_msgport);
 }
 
 /* ARGSUSED */

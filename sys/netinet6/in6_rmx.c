@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.13 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.14 2006/01/31 19:05:42 dillon Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -83,6 +83,7 @@
 #include <sys/socketvar.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/globaldata.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -101,8 +102,8 @@
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
 
-static struct callout	in6_rtqtimo_ch;
-static struct callout	in6_mtutimo_ch;
+static struct callout	in6_rtqtimo_ch[MAXCPU];
+static struct callout	in6_mtutimo_ch[MAXCPU];
 
 extern int	in6_inithead (void **head, int off);
 
@@ -380,7 +381,8 @@ in6_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop;
-	callout_reset(&in6_rtqtimo_ch, tvtohz_high(&atv), in6_rtqtimo, rock);
+	callout_reset(&in6_rtqtimo_ch[mycpuid], tvtohz_high(&atv), in6_rtqtimo,
+		      rock);
 }
 
 /*
@@ -434,14 +436,15 @@ in6_mtutimo(void *rock)
 		printf("invalid mtu expiration time on routing table\n");
 		arg.nextstop = time_second + 30;	/* last resort */
 	}
-	callout_reset(&in6_mtutimo_ch, tvtohz_high(&atv), in6_mtutimo, rock);
+	callout_reset(&in6_mtutimo_ch[mycpuid], tvtohz_high(&atv), in6_mtutimo,
+		      rock);
 }
 
 #if 0
 void
 in6_rtqdrain(void)
 {
-	struct radix_node_head *rnh = rt_tables[AF_INET6];
+	struct radix_node_head *rnh = rt_tables[mycpuid][AF_INET6];
 	struct rtqk_arg arg;
 
 	arg.found = arg.killed = 0;
@@ -466,15 +469,15 @@ in6_inithead(void **head, int off)
 	if (!rn_inithead(head, off))
 		return 0;
 
-	if (head != (void **)&rt_tables[AF_INET6]) /* BOGUS! */
+	if (head != (void **)&rt_tables[mycpuid][AF_INET6]) /* BOGUS! */
 		return 1;	/* only do this for the real routing table */
 
 	rnh = *head;
 	rnh->rnh_addaddr = in6_addroute;
 	rnh->rnh_matchaddr = in6_matchroute;
 	rnh->rnh_close = in6_clsroute;
-	callout_init(&in6_mtutimo_ch);
-	callout_init(&in6_rtqtimo_ch);
+	callout_init(&in6_mtutimo_ch[mycpuid]);
+	callout_init(&in6_rtqtimo_ch[mycpuid]);
 	in6_rtqtimo(rnh);	/* kick off timeout first time */
 	in6_mtutimo(rnh);	/* kick off timeout first time */
 	return 1;

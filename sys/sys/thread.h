@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.76 2005/12/02 22:02:20 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.77 2006/01/31 19:05:44 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -408,6 +408,7 @@ extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
 extern int  lwkt_checkpri_self(void);
 extern void lwkt_setcpu_self(struct globaldata *rgd);
+extern void lwkt_migratecpu(int cpuid);
 
 #ifdef SMP
 

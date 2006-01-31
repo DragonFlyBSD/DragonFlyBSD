@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.37 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.38 2006/01/31 19:05:40 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -783,7 +783,7 @@ in_losing(struct inpcb *inp)
 		rtinfo.rti_flags = rt->rt_flags;
 		rt_missmsg(RTM_LOSING, &rtinfo, rt->rt_flags, 0);
 		if (rt->rt_flags & RTF_DYNAMIC)
-			rtrequest1(RTM_DELETE, &rtinfo, NULL);
+			rtrequest1_global(RTM_DELETE, &rtinfo, NULL, NULL);
 		inp->inp_route.ro_rt = NULL;
 		rtfree(rt);
 		/*

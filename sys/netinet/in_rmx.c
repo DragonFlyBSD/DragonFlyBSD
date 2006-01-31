@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.12 2005/06/02 23:52:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.13 2006/01/31 19:05:40 dillon Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/socket.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+#include <sys/globaldata.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -60,7 +61,7 @@
 
 #define RTPRF_EXPIRING	RTF_PROTO3	/* set on routes we manage */
 
-static struct callout in_rtqtimo_ch;
+static struct callout in_rtqtimo_ch[MAXCPU];
 
 /*
  * Do what we need to do when inserting a route.
@@ -141,9 +142,10 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	 * and there is a cached route, free it.  Otherwise, we may end
 	 * up using the wrong route.
 	 */
-	if (ret != NULL && ipforwarding && ipforward_rt.ro_rt != NULL) {
-		RTFREE(ipforward_rt.ro_rt);
-		ipforward_rt.ro_rt = NULL;
+	if (ret != NULL && ipforwarding &&
+	    ipforward_rt[mycpuid].ro_rt != NULL) {
+		RTFREE(ipforward_rt[mycpuid].ro_rt);
+		ipforward_rt[mycpuid].ro_rt = NULL;
 	}
 
 	return ret;
@@ -316,13 +318,14 @@ in_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	callout_reset(&in_rtqtimo_ch, tvtohz_high(&atv), in_rtqtimo, rock);
+	callout_reset(&in_rtqtimo_ch[mycpuid], tvtohz_high(&atv), in_rtqtimo,
+		      rock);
 }
 
 void
 in_rtqdrain(void)
 {
-	struct radix_node_head *rnh = rt_tables[AF_INET];
+	struct radix_node_head *rnh = rt_tables[mycpuid][AF_INET];
 	struct rtqk_arg arg;
 
 	arg.found = arg.killed = 0;
@@ -346,14 +349,14 @@ in_inithead(void **head, int off)
 	if (!rn_inithead(head, off))
 		return 0;
 
-	if (head != (void **)&rt_tables[AF_INET]) /* BOGUS! */
+	if (head != (void **)&rt_tables[mycpuid][AF_INET]) /* BOGUS! */
 		return 1;	/* only do this for the real routing table */
 
 	rnh = *head;
 	rnh->rnh_addaddr = in_addroute;
 	rnh->rnh_matchaddr = in_matchroute;
 	rnh->rnh_close = in_closeroute;
-	callout_init(&in_rtqtimo_ch);
+	callout_init(&in_rtqtimo_ch[mycpuid]);
 	in_rtqtimo(rnh);	/* kick off timeout first time */
 	return 1;
 }
@@ -408,7 +411,7 @@ in_ifadown(struct ifaddr *ifa, int delete)
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return 1;
 
-	arg.rnh = rnh = rt_tables[AF_INET];
+	arg.rnh = rnh = rt_tables[mycpuid][AF_INET];
 	arg.ifa = ifa;
 	arg.del = delete;
 	rnh->rnh_walktree(rnh, in_ifadownkill, &arg);

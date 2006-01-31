@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.33 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.34 2006/01/31 19:05:45 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -518,10 +518,10 @@ nfs_mountroot(mp)
 		sin.sin_len = sizeof(sin);
 		printf("nfs_mountroot: gateway %s\n",
 			inet_ntoa(nd->mygateway.sin_addr));
-		error = rtrequest(RTM_ADD, (struct sockaddr *)&sin,
-		    (struct sockaddr *)&nd->mygateway,
-		    (struct sockaddr *)&mask,
-		    RTF_UP | RTF_GATEWAY, (struct rtentry **)0);
+		error = rtrequest_global(RTM_ADD, (struct sockaddr *)&sin,
+					(struct sockaddr *)&nd->mygateway,
+					(struct sockaddr *)&mask,
+					RTF_UP | RTF_GATEWAY);
 		if (error)
 			printf("nfs_mountroot: unable to set gateway, error %d, continuing anyway\n", error);
 	}

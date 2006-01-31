@@ -82,7 +82,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.21 2005/01/19 17:30:52 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.22 2006/01/31 19:05:35 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -211,6 +211,7 @@ struct netisr {
 extern lwkt_port netisr_afree_rport;
 
 lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
+lwkt_port_t	cpu_portfn(int cpu);
 void		netisr_dispatch(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);
 void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);
