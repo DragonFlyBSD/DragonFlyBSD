@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.95 2006/01/09 01:37:48 swildner Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.96 2006/01/31 18:39:22 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -211,6 +211,7 @@ rsync
 <TD>Official ISOs</TD>
 <TD><a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a></TD>
 </TR>
+-->
 
 <TR>
 <TD>Starkast.net (Sweden)</TD>
@@ -220,7 +221,6 @@ rsync
 <a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
--->
 
 <TR>
 <TD>bgp4.net</TD>

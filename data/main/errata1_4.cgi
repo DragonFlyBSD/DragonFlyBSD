@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.2 2006/01/12 18:58:37 dillon Exp $
+# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.3 2006/01/31 18:39:22 dillon Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Errata Page)
 <h1>Errata Page for DragonFly 1.4.x</h1>
@@ -90,5 +90,11 @@ pkg_admin rebuild
 	<pre>
 newaliases
 	</pre>
+    </p></li>
+    <li><p>
+	The skeleton .cshrc and .profile for newly added users does not
+	contain the pkgsrc binary paths, and rc.shutdown also did not contain
+	the required path.  The commit and diffs is avaliable at this
+	URL: <A HREF="http://leaf.dragonflybsd.org/mailarchive/commits/2006-01/msg00038.html">SkeletonFixes</A>
     </p></li>
 </ul>
