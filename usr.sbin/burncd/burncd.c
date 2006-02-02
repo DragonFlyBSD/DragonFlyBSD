@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/burncd/burncd.c,v 1.10.2.6 2002/11/20 00:26:18 njl Exp $
- * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.3 2006/02/02 17:00:29 eirikn Exp $
  */
 
 #include <unistd.h>
@@ -231,7 +231,7 @@ main(int argc, char **argv)
 			continue;
 		}
 		if (!block_size)
-			err(EX_NOINPUT, "no data format selected");
+			errx(EX_NOINPUT, "no data format selected");
 		if (list) {
 			char file_buf[MAXPATHLEN + 1], *eol;
 			FILE *fp;
