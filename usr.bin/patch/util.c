@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: util.c,v 1.29 2004/11/19 20:00:57 otto Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.5 2006/01/19 04:51:30 corecode Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.6 2006/02/03 21:20:29 corecode Exp $
  */
 
 /*
@@ -106,10 +106,13 @@ backup_file(const char *orig)
 		return 0;			/* nothing to do */
 	/*
 	 * If the user used zero prefixes or suffixes, then
-	 * he doesn't want backups
+	 * he doesn't want backups.  Yet we have to remove
+	 * orig to break possible hardlinks.
 	 */
-	if ((origprae && *origprae == 0) || *simple_backup_suffix == 0)
+	if ((origprae && *origprae == 0) || *simple_backup_suffix == 0) {
+		unlink(orig);
 		return 0;
+	}
 	orig_device = filestat.st_dev;
 	orig_inode = filestat.st_ino;
 
