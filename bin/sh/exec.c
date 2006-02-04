@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.5 2004/10/01 20:38:40 dillon Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.6 2006/02/04 14:12:20 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -754,10 +754,13 @@ typecmd(int argc, char **argv)
 				out1fmt(" is%s %s\n",
 				    cmdp ? " a tracked alias for" : "", name);
 			} else {
-				if (access(argv[i], X_OK) == 0)
+				if (access(argv[i], X_OK) == 0) {
 					out1fmt(" is %s\n", argv[i]);
-				else
+				}
+				else {
 					out1fmt(": %s\n", strerror(errno));
+					error |= 127;
+				}
 			}
 			break;
 		}
