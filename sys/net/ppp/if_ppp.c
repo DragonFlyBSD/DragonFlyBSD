@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.28 2005/12/11 13:00:17 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.29 2006/02/06 01:49:37 y0netan1 Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -867,9 +867,8 @@ pppoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	        error = 0;
 	    }
 	} else {
-	    lwkt_serialize_enter(sc->sc_if.if_serializer);
+	    ASSERT_SERIALIZED(sc->sc_if.if_serializer);
 	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
-	    lwkt_serialize_exit(sc->sc_if.if_serializer);
 	}
 	if (error) {
 	    crit_exit();
