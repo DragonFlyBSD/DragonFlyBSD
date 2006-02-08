@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.16 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.17 2006/02/08 08:34:13 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -422,8 +422,6 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	if (flag & VXWANT)
 		*fp++ = 'W';
 #endif
-	if (flag & VBWAIT)
-		*fp++ = 'B';
 	if (flag & VOBJBUF)
 		*fp++ = 'V';
 	if (flag & VAGE)
