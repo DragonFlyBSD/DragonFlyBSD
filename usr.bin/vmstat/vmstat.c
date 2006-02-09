@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.19 2005/11/17 21:43:10 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.19.2.1 2006/02/09 01:11:45 y0netan1 Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -739,7 +739,7 @@ dointr(void)
 	}
 
 	size = nintr * sizeof(*intrcnt);
-	intrcnt = malloc(size);
+	intrcnt = calloc(nintr, sizeof(*intrcnt));
 	if (intrcnt == NULL)
 		err(1, "malloc");
 	sysctlbyname("hw.intrcnt", intrcnt, &size, NULL, 0);
