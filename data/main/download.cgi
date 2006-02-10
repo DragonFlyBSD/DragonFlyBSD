@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.96 2006/01/31 18:39:22 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.97 2006/02/10 02:18:31 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -297,14 +297,6 @@ rsync
 <TD>
 <a href="http://ftp.tu-clausthal.de/pub/DragonFly/">HTTP</a>,
 <a href="ftp://ftp.tu-clausthal.de/pub/DragonFly/">FTP</a>
-</TD>
-</TR>
-
-<TR>
-<TD>GULUS (Quebec)</TD>
-<TD>code, official ISOs, snapshot ISOs</TD>
-<TD>
-<a href="http://gulus.USherbrooke.ca/pub/distro/DragonFly/">HTTP</a>
 </TD>
 </TR>
 
