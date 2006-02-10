@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.5 2004/08/06 22:49:41 cpressey Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.6 2006/02/10 19:01:09 swildner Exp $
 .\"
 .Dd July 30, 1999
 .Dt DISKLABEL 8
@@ -106,7 +106,6 @@ addition,
 .Nm
 can install bootstrap code.
 .Ss Raw or in-core label
-.Pp
 The disk label resides close to or at the beginning of each disk slice.
 For faster access, the kernel maintains a copy in core at all times.  By
 default, most forms of the
@@ -121,7 +120,6 @@ must be used when first installing a label on a disk.  The specific effect of
 is described under each command.
 .Pp
 .Ss Disk device name
-.Pp
 All
 .Nm
 forms require a disk device name, which should always be the raw
@@ -145,7 +143,6 @@ The
 .Nm
 utility will automatically prepend it.
 .Ss Reading the disk label
-.Pp
 To examine the label on a disk drive, use
 .Nm
 without options:
@@ -174,7 +171,6 @@ reads the label from the raw disk and displays it.  Both versions are usually
 identical except in the case where a label has not yet been initialized or
 is corrupt.
 .Ss Writing a standard label
-.Pp
 To write a standard label, use the form
 .Pp
 .Nm
@@ -263,7 +259,6 @@ Installing a new disklabel does not in of itself allow your system to boot
 a kernel using that label.  You must also install boot blocks, which is
 described later on in this manual page.
 .Ss Editing an existing disk label
-.Pp
 To edit an existing disk label, use the form
 .Pp
 .Nm
@@ -289,7 +284,6 @@ is specified, no data will be written to the device, and instead the
 disklabel that would have been written will be printed to stdout.  This is
 useful to see how a partitioning scheme will work out for a specific disk.
 .Ss Restoring a disk label from a file
-.Pp
 To restore a disk label from a file, use the form
 .Pp
 .Nm
@@ -314,7 +308,6 @@ is used, no data will be written to the device, and instead the
 disklabel that would have been written will be printed to stdout.  This is
 useful to see how a partitioning scheme will work out for a specific disk.
 .Ss Enabling and disabling writing to the disk label area
-.Pp
 By default, it is not possible to write to the disk label area at the beginning
 of a disk.  The disk driver arranges for
 .Xr write 2
@@ -335,7 +328,6 @@ command
 .Fl N
 .Ar disk
 .Ss Installing bootstraps
-.Pp
 The final three forms of
 .Nm
 are used to install bootstrap code.  If you are creating a
@@ -457,7 +449,6 @@ for the standard stage1 and stage2 boot images (details may vary
 on architectures like the Alpha, where only a single-stage boot is used).
 .El
 .Ss Initializing/Formatting a bootable disk from scratch
-.Pp
 To initialize a disk from scratch the following sequence is recommended.
 Please note that this will wipe everything that was previously on the disk,
 including any

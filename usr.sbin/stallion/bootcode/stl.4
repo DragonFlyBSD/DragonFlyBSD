@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/stallion/bootcode/stl.4,v 1.8.2.5 2001/12/14 16:41:52 ru Exp $
-.\" $DragonFly: src/usr.sbin/stallion/bootcode/stl.4,v 1.3 2005/08/01 01:49:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/stallion/bootcode/stl.4,v 1.4 2006/02/10 19:01:10 swildner Exp $
 .\"
 .Dd January 8, 1998
 .Os
@@ -44,7 +44,6 @@
 .Cd "device stli0 at isa? port <io-addr> iomem <mem-addr> iosiz <size> flags <type> "
 .Cd "device stli0 at eisa? port <io-addr> iomem <mem-addr> iosiz <size> flags <type> "
 .Sh DESCRIPTION
-.Pp
 This is a kernel driver for Stallion Technologies multiport serial boards.
 There are two drivers, each supporting a different class of boards.
 The
@@ -57,7 +56,6 @@ while the
 driver supports all other types, including
 ONboard, Brumby and EasyConnection 8/64 (ISA and EISA).
 .Sh CONFIGURATION
-.Pp
 Each non-PCI board installed in the system needs a configuration entry in the
 kernel configuration file.
 Slightly different options and parameters are required for each of the

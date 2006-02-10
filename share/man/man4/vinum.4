@@ -35,7 +35,7 @@
 .\" advised of the possibility of such damage.
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
-.\" $DragonFly: src/share/man/man4/vinum.4,v 1.5 2004/07/08 00:14:49 hmp Exp $
+.\" $DragonFly: src/share/man/man4/vinum.4,v 1.6 2006/02/10 19:01:09 swildner Exp $
 .\"
 .Dd October 5, 1999
 .Dt vinum 4
@@ -570,7 +570,6 @@ the subdisk.
 .\" XXX
 .Nm This mapping is still to be determined.
 .Ss OBJECT STATES
-.Pp
 Each
 .Nm
 object has a \fIstate\fR associated with it.
@@ -715,7 +714,6 @@ Solving problems with
 .Nm
 can be a difficult affair.  This section suggests some approaches.
 .Ss Configuration problems
-.Pp
 It is relatively easy (too easy) to run into problems with the
 .Nm
 configuration.  If you do, the first thing you should do is stop configuration
@@ -775,7 +773,6 @@ corruption.  You may need to use the
 .Cm resetconfig
 command if you have this kind of trouble.
 .Ss Kernel Panics
-.Pp
 In order to analyse a panic which you suspect comes from
 .Nm
 you will need to build a debug kernel.  See the online handbook at
@@ -934,7 +931,6 @@ the
 .Nm bt
 (backtrace) command above.
 .Ss Reporting problems with Vinum
-.Pp
 If you find any bugs in
 .Nm ,
 please report them to Greg Lehey <grog@lemis.com>.  Supply the following

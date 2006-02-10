@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ip.4	8.2 (Berkeley) 11/30/93
 .\" $FreeBSD: src/share/man/man4/ip.4,v 1.13.2.9 2002/05/02 02:40:26 silby Exp $
-.\" $DragonFly: src/share/man/man4/ip.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ip.4,v 1.3 2006/02/10 19:01:09 swildner Exp $
 .\"
 .Dd March 3, 2001
 .Dt IP 4
@@ -176,7 +176,6 @@ and
 .Sy net.inet.ip.portrange.lowlast .
 .El
 .Ss "Multicast Options"
-.Pp
 .Tn IP
 multicasting is supported only on
 .Dv AF_INET
@@ -301,7 +300,6 @@ contains the same values as used to add the membership.
 Memberships are dropped when the socket is closed or the process exits.
 .\"-----------------------
 .Ss "Raw IP Sockets"
-.Pp
 Raw
 .Tn IP
 sockets are connectionless,
