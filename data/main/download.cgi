@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.97 2006/02/10 02:18:31 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.98 2006/02/10 09:48:51 swildner Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -463,7 +463,7 @@ BSD-Systems.co.uk offers high quality Open Source Operating Systems
 available for purchase on CD, and will ship to UK or international 
 addresses.
 </TD>
-<TD><A HREF="http://bsd-systems.co.uk/">http://bsd-systems.co.uk/</A>
+<TD><A HREF="http://bsd-systems.co.uk/">http://bsd-systems.co.uk/</A></TD>
 </TR>
 
 
@@ -474,18 +474,27 @@ nominal fee.  Part of your purchase from Crescent Anchor will be contributed
 back to support continuing DragonFly development via the forthcoming 
 nonprofit company.  Please visit the Crescent Anchor site for details, 
 pricing, and other offers.  </TD>
-<TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A>
+<TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A></TD>
 </TR>
 
 <TR>
 <TD><B>Ikarios</B><br>
-
 Ikarios is a low-cost supplier (mail-order only) of CDs, shipping in most
 European countries.<br>
 Each industrially-produced and tested CD-R of "DragonFly BSD 1.0A RELEASE"
 CD-R costs at most 1.99 euro (decreasing rate).<br>
 </TD>
-<TD><A HREF="http://www.ikarios.com/form#dfbsd">http://www.ikarios.com/</A>
+<TD><A HREF="http://www.ikarios.com/form#dfbsd">http://www.ikarios.com/</A></TD>
+</TR>
+
+<TR>
+<TD><B>Lehmanns</B><br>
+Lehmanns is a bookshop located in Germany, offering various
+BSD and Linux distributions.  Their FreeBSD DVDs also
+contain the latest version of DragonFly BSD, which can
+be started straight from the boot menu of the DVD.
+</TD>
+<TD><A HREF="http://www.lob.de/">http://www.lob.de/</A></TD>
 </TR>
 
 <TR>
@@ -493,7 +502,7 @@ CD-R costs at most 1.99 euro (decreasing rate).<br>
 Linux Bazar is a low-cost supplier of software CDs.  Shipping is only to 
 addresses within India.
 </TD>
-<TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
+<TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A></TD>
 </TR>
 
 <tr>
@@ -502,7 +511,7 @@ Linux CD Mall, a family business operating from Auckland, NZ, is run by
 Chris Hope and The Electric Toolbox Ltd to distribute Linux and BSD
 distributions on CD and DVD to New Zealand and the rest of the world.
 </td>
-<td><a href="http://www.linuxcdmall.com/dragonfly.html">http://www.linuxcdmall.com/dragonfly.html</a>
+<td><a href="http://www.linuxcdmall.com/dragonfly.html">http://www.linuxcdmall.com/dragonfly.html</a></td>
 </tr>
 
 <tr>
@@ -512,7 +521,7 @@ can provide consulting services for deploying DragonFly BSD in all areas of
 enterprise use - desktop, server and infrastructure (router/firewall
 etc)</td>
 <td><a href="http://www.tdisecurity.com/">http://www.tdisecurity.com</a><br/>
-dfbsd@tdisecurity.com
+dfbsd@tdisecurity.com</td>
 </tr>
 
 
