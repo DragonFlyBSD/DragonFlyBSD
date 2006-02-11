@@ -1,7 +1,10 @@
 # $FreeBSD: src/gnu/usr.bin/texinfo/texindex/Makefile,v 1.7.2.1 2002/08/07 16:53:39 ru Exp $
-# $DragonFly: src/gnu/usr.bin/texinfo/texindex/Makefile,v 1.2 2003/06/17 04:25:49 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/texinfo/texindex/Makefile,v 1.2.4.1 2006/02/11 01:25:42 joerg Exp $
 
 PROG=	texindex
+
+PATCHES=	texindex.c.patch
+CONTRIBDIR=	${TXIDIR}/util
 
 DPADD=	${LIBTXI}
 LDADD=	${LIBTXI}
