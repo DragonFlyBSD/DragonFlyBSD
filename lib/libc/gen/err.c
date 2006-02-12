@@ -32,9 +32,10 @@
  *	From: @(#)err.c	8.1 (Berkeley) 6/4/93
  *
  * $FreeBSD: src/lib/libc/gen/err.c,v 1.6 1999/08/27 23:58:33 peter Exp $
- * $DragonFly: src/lib/libc/gen/err.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/err.c,v 1.5 2006/02/12 21:14:11 dillon Exp $
  */
 
+#include <sys/cdefs.h>
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
@@ -131,13 +132,14 @@ verrx(int eval, const char *fmt, va_list ap)
 }
 
 void
-warn(const char *fmt, ...)
+_warn(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
 	vwarnc(errno, fmt, ap);
 	va_end(ap);
 }
+__weak_reference(_warn,warn);
 
 void
 vwarn(const char *fmt, va_list ap)
