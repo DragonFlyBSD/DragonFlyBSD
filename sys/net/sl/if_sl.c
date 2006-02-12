@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.23 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.24 2006/02/12 19:53:56 dillon Exp $
  */
 
 /*
@@ -491,9 +491,7 @@ sloutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			error = 0;
 		}
 	} else {
-		lwkt_serialize_enter(sc->sc_if.if_serializer);
 		error = ifq_enqueue(&sc->sc_if.if_snd, m, &pktattr);
-		lwkt_serialize_enter(sc->sc_if.if_serializer);
 	}
 	if (error) {
 		sc->sc_if.if_oerrors++;
