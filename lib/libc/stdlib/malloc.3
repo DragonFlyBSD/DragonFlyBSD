@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.25.2.16 2003/01/06 17:10:45 trhodes Exp $
-.\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.5 2005/08/05 22:35:10 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.6 2006/02/12 21:19:07 dillon Exp $
 .\"
 .Dd August 27, 1996
 .Dt MALLOC 3
@@ -174,6 +174,25 @@ flags being set) become fatal.
 The process will call
 .Xr abort 3
 in these cases.
+.It D
+.Fn malloc
+will dump statistics in a file called
+.Pa malloc.out
+at exit.
+This option requires the library to have been compiled with -DMALLOC_STATS in
+order to have any effect.
+.It F
+Unused pages on the freelist are read and write protected to
+cause a segmentation fault upon access.
+.It G
+Enable guard pages and chunk randomization.
+Each page size or larger allocation is followed by a guard page that will
+cause a segmentation fault upon any access.
+Smaller than page size chunks are returned in a random order.
+.It H
+Pass a hint to the kernel about pages unused by the allocation functions.
+This will help performance if the system is paging excessively.  This
+option is off by default.
 .It J
 Each byte of new memory allocated by
 .Fn malloc ,
@@ -190,17 +209,16 @@ This options also sets the
 .Dq R
 option.
 This is intended for debugging and will impact performance negatively.
-.It H
-Pass a hint to the kernel about pages unused by the allocation functions.
-This will help performance if the system is paging excessively.  This
-option is off by default.
+.It N
+Do not output warning messages when encountering possible corruption
+or bad pointers.
+.It P
+Pointer sized allocations are aligned to the end of a page to catch
+sizeof(ptr) errors where sizeof(*ptr) is meant.
 .It R
-Causes the
+Always reallocate when
 .Fn realloc
-and
-.Fn reallocf
-functions to always reallocate memory even if the initial allocation was
-sufficiently large.
+is called, even if the initial allocation was big enough.
 This can substantially aid in compacting memory.
 .It U
 Generate
