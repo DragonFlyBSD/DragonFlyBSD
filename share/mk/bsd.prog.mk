@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.11 2005/12/10 00:15:01 swildner Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.12 2006/02/13 13:27:20 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -29,12 +29,9 @@ OBJCLIBS?= -lobjc
 LDADD+=	${OBJCLIBS}
 .endif
 
+.include <bsd.patch.mk>
+
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
-.for _PATCH in ${SRCS:T:N*.no_obj.patch:N*.h.patch:M*.patch}
-.for _OBJ in ${_PATCH:R:R:S/$/.o/}
-OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
-.endfor
-.endfor
 
 ${PROG}: ${OBJS}
 .if defined(PROG_CXX)

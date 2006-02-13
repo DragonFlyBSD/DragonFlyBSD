@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.dep.mk,v 1.27.2.3 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.dep.mk,v 1.8 2005/09/01 14:17:58 joerg Exp $
+# $DragonFly: src/share/mk/bsd.dep.mk,v 1.9 2006/02/13 13:27:20 corecode Exp $
 #
 # The include file <bsd.dep.mk> handles Makefile dependencies.
 #
@@ -66,32 +66,6 @@ tags: ${SRCS}
 
 .if defined(SRCS)
 CLEANFILES?=
-
-.for _PSRC in ${SRCS:M*.no_obj.patch}
-.for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
-
-${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
-	mkdir -p ${.TARGET:H}
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
-
-beforedepend: ${PC_}
-
-CLEANFILES:=	${CLEANFILES} ${_PC}
-.endfor
-.endfor
-
-.for _PSRC in ${SRCS:N*.no_obj.patch:M*.patch}
-.for _PC in ${_PSRC:T:C/(\.no_obj)?\.patch$//:S|,|/|g}
-
-${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
-	mkdir -p ${.TARGET:H}
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
-
-SRCS:=	${SRCS:N${_PC}:S|${_PSRC}|${_PC}|}
-CLEANFILES:=	${CLEANFILES} ${_PC}
-.endfor
-.endfor
- 
 
 .for _LSRC in ${SRCS:M*.l:N*/*}
 .for _LC in ${_LSRC:S/.l/.c/}
