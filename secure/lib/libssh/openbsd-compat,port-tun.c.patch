@@ -1,0 +1,12 @@
+$DragonFly: src/secure/lib/libssh/Attic/openbsd-compat,port-tun.c.patch,v 1.1 2006/02/13 14:47:58 corecode Exp $
+--- port-tun.c	2006-01-01 11:15:51.000000000 +0100
++++ port-tun.c	2006-02-12 23:37:21.000000000 +0100
+@@ -93,7 +93,7 @@
+ #ifdef SSH_TUN_FREEBSD
+ #include <sys/socket.h>
+ #include <net/if.h>
+-#include <net/if_tun.h>
++#include <net/tun/if_tun.h>
+ 
+ int
+ sys_tun_open(int tun, int mode)
