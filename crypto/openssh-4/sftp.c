@@ -1448,8 +1448,9 @@ main(int argc, char **argv)
 	extern char *optarg;
 
 	__progname = ssh_get_progname(argv[0]);
+	memset(&args, '\0', sizeof(args));
 	args.list = NULL;
-	addargs(&args, "ssh");		/* overwritten with ssh_program */
+	addargs(&args, ssh_program);
 	addargs(&args, "-oForwardX11 no");
 	addargs(&args, "-oForwardAgent no");
 	addargs(&args, "-oClearAllForwardings yes");
@@ -1483,6 +1484,7 @@ main(int argc, char **argv)
 			break;
 		case 'S':
 			ssh_program = optarg;
+			replacearg(&args, 0, "%s", ssh_program);
 			break;
 		case 'b':
 			if (batchmode)
@@ -1559,7 +1561,6 @@ main(int argc, char **argv)
 		addargs(&args, "%s", host);
 		addargs(&args, "%s", (sftp_server != NULL ?
 		    sftp_server : "sftp"));
-		args.list[0] = ssh_program;
 
 		if (!batchmode)
 			fprintf(stderr, "Connecting to %s...\n", host);
@@ -1572,6 +1573,7 @@ main(int argc, char **argv)
 			fprintf(stderr, "Attaching to %s...\n", sftp_direct);
 		connect_to_server(sftp_direct, args.list, &in, &out);
 	}
+	freeargs(&args);
 
 	err = interactive_loop(in, out, file1, file2);
 

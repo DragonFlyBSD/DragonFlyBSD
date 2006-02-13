@@ -36,7 +36,11 @@ struct arglist {
 	u_int   num;
 	u_int   nalloc;
 };
-void	 addargs(arglist *, char *, ...) __attribute__((format(printf, 2, 3)));
+void	 addargs(arglist *, char *, ...)
+	     __attribute__((format(printf, 2, 3)));
+void	 replacearg(arglist *, u_int, char *, ...)
+	     __attribute__((format(printf, 3, 4)));
+void	 freeargs(arglist *);
 
 /* readpass.c */
 
