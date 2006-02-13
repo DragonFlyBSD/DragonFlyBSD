@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.12 2006/02/13 13:27:20 corecode Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.13 2006/02/13 14:21:25 corecode Exp $
 
 .include <bsd.init.mk>
 
@@ -20,6 +20,8 @@ LDFLAGS+= -static
 PROG=	${PROG_CXX}
 .endif
 
+.include <bsd.patch.mk>
+
 .if defined(PROG)
 .if defined(SRCS)
 
@@ -28,8 +30,6 @@ PROG=	${PROG_CXX}
 OBJCLIBS?= -lobjc
 LDADD+=	${OBJCLIBS}
 .endif
-
-.include <bsd.patch.mk>
 
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 
