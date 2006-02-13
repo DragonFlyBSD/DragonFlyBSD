@@ -9,7 +9,6 @@ README.smartcard
 RFC.nroff
 TODO
 WARNING.RNG
-acconfig.h
 aclocal.m4
 auth-shadow.c
 auth-sia.c
@@ -36,6 +35,7 @@ openbsd-compat/base64.c
 openbsd-compat/basename.c
 openbsd-compat/bindresvport.c
 openbsd-compat/bsd-arc4random.c
+openbsd-compat/bsd-asprintf.c
 openbsd-compat/bsd-closefrom.c
 openbsd-compat/bsd-cray.c
 openbsd-compat/bsd-cygwin_util.c
