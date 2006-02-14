@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.14 2005/12/11 13:00:17 swildner Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.14.2.1 2006/02/14 12:31:29 y0netan1 Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -322,7 +322,7 @@ pppread(struct tty *tp, struct uio *uio, int flag)
      * Loop waiting for input, checking that nothing disasterous
      * happens in the meantime.
      */
-    crit_exit();
+    crit_enter();
     for (;;) {
 	if (tp != (struct tty *) sc->sc_devp || tp->t_line != PPPDISC) {
 	    crit_exit();
@@ -409,7 +409,9 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
     m0->m_len -= PPP_HDRLEN;
 
     /* call the upper layer to "transmit" it... */
+    lwkt_serialize_enter(sc->sc_if.if_serializer);
     error = pppoutput(&sc->sc_if, m0, &dst, (struct rtentry *)0);
+    lwkt_serialize_exit(sc->sc_if.if_serializer);
     crit_exit();
     return (error);
 }
