@@ -14,7 +14,7 @@ char *copyright =
  *  Copyright (c) 1996, William LeFebvre, Group sys Consulting
  *
  * $FreeBSD: src/contrib/top/top.c,v 1.4.6.5 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/top.c,v 1.2 2003/06/17 04:24:07 dillon Exp $
+ * $DragonFly: src/contrib/top/top.c,v 1.3 2006/02/15 12:54:36 corecode Exp $
  */
 
 /*
@@ -193,9 +193,9 @@ char *argv[];
     fd_set readfds;
 
 #ifdef ORDER
-    static char command_chars[] = "\f qh?en#sdkriIuto";
+    static char command_chars[] = "\f qh?en#sdkriIutTOSo";
 #else
-    static char command_chars[] = "\f qh?en#sdkriIut";
+    static char command_chars[] = "\f qh?en#sdkriIutTOSO";
 #endif
 /* these defines enumerate the "strchr"s of the commands in command_chars */
 #define CMD_redraw	0
@@ -215,8 +215,11 @@ char *argv[];
 #define CMD_idletog2    13
 #define CMD_user	14
 #define CMD_selftog	15
+#define CMD_threads	16
+#define CMD_othreads	17
+#define CMD_system	18
 #ifdef ORDER
-#define CMD_order       16
+#define CMD_order       19
 #endif
 
     /* set the buffer for stdout */
@@ -245,6 +248,8 @@ char *argv[];
     ps.idle    = Yes;
     ps.self    = -1;
     ps.system  = No;
+    ps.threads = No;
+    ps.only_threads = No;
     ps.uid     = -1;
     ps.command = NULL;
 
@@ -271,7 +276,7 @@ char *argv[];
 	    optind = 1;
 	}
 
-	while ((i = getopt(ac, av, "SIbinquvs:d:U:o:t")) != EOF)
+	while ((i = getopt(ac, av, "SITONbinquvs:d:U:o:t")) != EOF)
 	{
 	    switch(i)
 	    {
@@ -299,6 +304,14 @@ char *argv[];
 
 	      case 'I':                   /* show idle processes */
 		ps.idle = !ps.idle;
+		break;
+
+	      case 'O':
+		ps.only_threads = !ps.only_threads; /* only threads */
+		break;
+
+	      case 'T':
+		ps.threads = !ps.threads;	/* show threads */
 		break;
 
 	      case 'i':			/* go interactive regardless */
@@ -925,6 +938,31 @@ restart:
 				new_message(MT_standout | MT_delayed,
 				    " %sisplaying self.",
 				    (ps.self == -1) ? "D" : "Not d");
+				putchar('\r');
+				break;
+
+			    case CMD_threads:
+			        ps.threads = !ps.threads;
+			        new_message(MT_standout | MT_delayed,
+				   " %sisplaying threads.",
+				   ps.threads ? "D" : "Not d");
+				putchar('\r');
+				break;
+
+				case CMD_othreads:
+					ps.only_threads = !ps.only_threads;
+					new_message(MT_standout | MT_delayed,
+					ps.only_threads ?
+					  "Only displaying threads." :
+					  "Displaying threads and processes.");
+				putchar('\r');
+				break;
+
+			    case CMD_system:
+			        ps.system = !ps.system;
+			        new_message(MT_standout | MT_delayed,
+				   " %sisplaying system processes.",
+				   ps.system ? "D" : "Not d");
 				putchar('\r');
 				break;
 

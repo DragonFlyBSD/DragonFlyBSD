@@ -16,6 +16,8 @@
 /* Log base 2 of 1024 is 10 (2^10 == 1024) */
 #define LOG1024		10
 
+extern int screen_width;
+
 char *itoa();
 char *itoa7();
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/contrib/top/machine.h,v 1.4.6.1 2002/08/11 17:09:25 dwmalone Exp $
- * $DragonFly: src/contrib/top/machine.h,v 1.2 2003/06/17 04:24:07 dillon Exp $
+ * $DragonFly: src/contrib/top/machine.h,v 1.3 2006/02/15 12:54:36 corecode Exp $
  */
 
 /*
@@ -60,6 +60,8 @@ struct process_select
     int idle;		/* show idle processes */
     int self;		/* show self */
     int system;		/* show system processes */
+    int threads;	/* show threads */
+    int only_threads;	/* show only threads */
     int uid;		/* only this uid (unless uid == -1) */
     char *command;	/* only this command (unless == NULL) */
 };

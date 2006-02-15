@@ -1,7 +1,7 @@
 .\" NOTE:  changes to the manual page for "top" should be made in the
 .\"        file "top.X" and NOT in the file "top.1".
 .\" $FreeBSD: src/contrib/top/top.X,v 1.6.6.2 2002/08/11 17:09:25 dwmalone Exp $
-.\" $DragonFly: src/contrib/top/top.X,v 1.2 2003/06/17 04:24:07 dillon Exp $
+.\" $DragonFly: src/contrib/top/top.X,v 1.3 2006/02/15 12:54:36 corecode Exp $
 .nr N %topn%
 .nr D %delay%
 .TH TOP 1 Local
@@ -64,6 +64,14 @@ terminal.
 .B \-S
 Show system processes in the display.  Normally, system processes such as
 the pager and the swapper are not shown.  This option makes them visible.
+.TP
+.B \-T
+Show kernel threads in the display.  Normally, kernel threads such as
+the pagedaemon and bufdaemon are not shown.  This option makes them
+visible.
+.TP
+.B \-O
+Show only kernel threads.
 .TP
 .B \-b
 Use \*(lqbatch\*(rq mode.  In this mode, all input from the terminal is
@@ -202,6 +210,15 @@ Redraw the screen.
 .IP "\fBh\fP\ or\ \fB?\fP"
 Display a summary of the commands (help screen).  Version information
 is included in this display.
+.TP
+.B S
+Display system processes.
+.TP
+.B T
+Display kernel threads, such as bufdaemon and pagedaemon.
+.TP
+.B O
+Toggle displaying of only kernel threads.
 .TP
 .B q
 Quit
