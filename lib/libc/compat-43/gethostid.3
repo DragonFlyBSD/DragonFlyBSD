@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)gethostid.3	8.1 (Berkeley) 6/2/93
 .\" $FreeBSD: src/lib/libc/compat-43/gethostid.3,v 1.5.2.6 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/compat-43/gethostid.3,v 1.2 2003/06/17 04:26:41 dillon Exp $
+.\" $DragonFly: src/lib/libc/compat-43/gethostid.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 2, 1993
 .Dt GETHOSTID 3
@@ -70,8 +70,6 @@ The hostid should be set or retrieved by use of
 .Xr gethostname 3 ,
 .Xr sysctl 3 ,
 .Xr sysctl 8
-.Sh BUGS
-32 bits for the identifier is too small.
 .Sh HISTORY
 The
 .Fn gethostid
@@ -81,3 +79,5 @@ syscalls appeared in
 .Bx 4.2
 and were dropped in
 .Bx 4.4 .
+.Sh BUGS
+32 bits for the identifier is too small.

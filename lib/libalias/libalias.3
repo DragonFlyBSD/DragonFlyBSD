@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libalias/libalias.3,v 1.23.2.11 2001/12/17 10:08:22 ru Exp $
-.\" $DragonFly: src/lib/libalias/libalias.3,v 1.2 2003/06/17 04:26:41 dillon Exp $
+.\" $DragonFly: src/lib/libalias/libalias.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd April 13, 2000
 .Dt LIBALIAS 3
@@ -846,11 +846,6 @@ is provided for error checking purposes.
 This function can be used if an already-aliased packet needs to have its
 original IP header restored for further processing (eg. logging).
 .Ed
-.Sh BUGS
-PPTP aliasing does not work when more than one internal client
-connects to the same external server at the same time, because
-PPTP requires a single TCP control connection to be established
-between any two IP addresses.
 .Sh AUTHORS
 .An Charles Mott Aq cm@linktel.net ,
 versions 1.0 - 1.8, 2.0 - 2.4.
@@ -980,3 +975,8 @@ If this results in a conflict, then port numbers are randomly chosen until
 a unique aliasing link can be established.
 In an alternate operating mode, the first choice of an aliasing port is also
 random and unrelated to the local port number.
+.Sh BUGS
+PPTP aliasing does not work when more than one internal client
+connects to the same external server at the same time, because
+PPTP requires a single TCP control connection to be established
+between any two IP addresses.

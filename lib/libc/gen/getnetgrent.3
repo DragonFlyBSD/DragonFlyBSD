@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getnetgrent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getnetgrent.3,v 1.6.2.5 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/getnetgrent.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getnetgrent.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETNETGRENT 3
@@ -119,14 +119,14 @@ have no return value.
 .It Pa /etc/netgroup
 netgroup database file
 .El
-.Sh SEE ALSO
-.Xr netgroup 5
 .Sh COMPATIBILITY
 The netgroup members have three string fields to maintain compatibility
 with other vendor implementations, however it is not obvious what use the
 .Sy domain
 string has within
 .Bx .
+.Sh SEE ALSO
+.Xr netgroup 5
 .Sh BUGS
 The function
 .Fn getnetgrent

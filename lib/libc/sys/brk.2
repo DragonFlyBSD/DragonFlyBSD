@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)brk.2	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/lib/libc/sys/brk.2,v 1.13.2.10 2002/03/04 12:00:31 dwmalone Exp $
-.\" $DragonFly: src/lib/libc/sys/brk.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/brk.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd July 12, 1999
 .Dt BRK 2
@@ -151,6 +151,11 @@ to support the expansion of the data segment.
 .Xr end 3 ,
 .Xr free 3 ,
 .Xr malloc 3
+.Sh HISTORY
+A
+.Fn brk
+function call appeared in
+.At v7 .
 .Sh BUGS
 Mixing
 .Fn brk
@@ -167,8 +172,3 @@ It is not possible to distinguish this
 from a failure caused by exceeding the maximum size of
 the data segment without consulting
 .Xr getrlimit 2 .
-.Sh HISTORY
-A
-.Fn brk
-function call appeared in
-.At v7 .

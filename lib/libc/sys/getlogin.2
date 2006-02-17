@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getlogin.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/getlogin.2,v 1.14.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getlogin.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getlogin.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt GETLOGIN 2
@@ -167,17 +167,12 @@ The size of the buffer is smaller than the result to be returned.
 .Sh SEE ALSO
 .Xr setsid 2 ,
 .Xr daemon 3
-.Sh BUGS
-In earlier versions of the system,
+.Sh STANDARDS
 .Fn getlogin
-failed unless the process was associated with a login terminal.
-The current implementation (using
-.Fn setlogin )
-allows getlogin to succeed even when the process has no controlling terminal.
-In earlier versions of the system, the value returned by
-.Fn getlogin
-could not be trusted without checking the user ID.
-Portable programs should probably still make this check.
+and
+.Fn getlogin_r
+conform to
+.St -p1003.1-96 .
 .Sh HISTORY
 The
 .Fn getlogin
@@ -189,9 +184,14 @@ was changed from earlier versions of
 .Fx
 to be conformant with
 .St -p1003.1-96 .
-.Sh STANDARDS
+.Sh BUGS
+In earlier versions of the system,
 .Fn getlogin
-and
-.Fn getlogin_r
-conform to
-.St -p1003.1-96 .
+failed unless the process was associated with a login terminal.
+The current implementation (using
+.Fn setlogin )
+allows getlogin to succeed even when the process has no controlling terminal.
+In earlier versions of the system, the value returned by
+.Fn getlogin
+could not be trusted without checking the user ID.
+Portable programs should probably still make this check.

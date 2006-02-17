@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)kvm_getprocs.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libkvm/kvm_getprocs.3,v 1.6.2.7 2003/04/29 14:37:04 trhodes Exp $
-.\" $DragonFly: src/lib/libkvm/kvm_getprocs.3,v 1.2 2003/06/17 04:26:49 dillon Exp $
+.\" $DragonFly: src/lib/libkvm/kvm_getprocs.3,v 1.3 2006/02/17 19:35:07 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt KVM_GETPROCS 3
@@ -153,8 +153,6 @@ and
 all return
 .Dv NULL
 on failure.
-.Sh BUGS
-These routines do not belong in the kvm interface.
 .Sh SEE ALSO
 .Xr kvm 3 ,
 .Xr kvm_close 3 ,
@@ -164,3 +162,5 @@ These routines do not belong in the kvm interface.
 .Xr kvm_openfiles 3 ,
 .Xr kvm_read 3 ,
 .Xr kvm_write 3
+.Sh BUGS
+These routines do not belong in the kvm interface.

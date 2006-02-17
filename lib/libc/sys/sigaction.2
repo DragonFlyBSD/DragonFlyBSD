@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.4 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.5 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -530,6 +530,25 @@ An attempt is made to ignore or supply a handler for
 or
 .Dv SIGSTOP .
 .El
+.Sh SEE ALSO
+.Xr kill 1 ,
+.Xr kill 2 ,
+.Xr ptrace 2 ,
+.Xr sigaltstack 2 ,
+.Xr sigblock 2 ,
+.Xr sigpause 2 ,
+.Xr sigpending 2 ,
+.Xr sigprocmask 2 ,
+.Xr sigsetmask 2 ,
+.Xr sigsuspend 2 ,
+.Xr sigvec 2 ,
+.Xr wait 2 ,
+.Xr fpsetmask 3 ,
+.Xr setjmp 3 ,
+.Xr siginterrupt 3 ,
+.Xr sigsetops 3 ,
+.Xr ucontext 3 ,
+.Xr tty 4
 .Sh STANDARDS
 The
 .Fn sigaction
@@ -569,22 +588,3 @@ and
 .\" and
 .\" SA_SIGINFO
 flags are featuring options commonly found in other operating systems.
-.Sh SEE ALSO
-.Xr kill 1 ,
-.Xr kill 2 ,
-.Xr ptrace 2 ,
-.Xr sigaltstack 2 ,
-.Xr sigblock 2 ,
-.Xr sigpause 2 ,
-.Xr sigpending 2 ,
-.Xr sigprocmask 2 ,
-.Xr sigsetmask 2 ,
-.Xr sigsuspend 2 ,
-.Xr sigvec 2 ,
-.Xr wait 2 ,
-.Xr fpsetmask 3 ,
-.Xr setjmp 3 ,
-.Xr siginterrupt 3 ,
-.Xr sigsetops 3 ,
-.Xr ucontext 3 ,
-.Xr tty 4

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)sync.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/sync.2,v 1.6.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/sync.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/sync.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt SYNC 2
@@ -69,11 +69,11 @@ attributes.
 .Xr fsync 2 ,
 .Xr syncer 4 ,
 .Xr sync 8
-.Sh BUGS
-.Fn Sync
-may return before the buffers are completely flushed.
 .Sh HISTORY
 A
 .Fn sync
 function call appeared in
 .At v6 .
+.Sh BUGS
+.Fn Sync
+may return before the buffers are completely flushed.

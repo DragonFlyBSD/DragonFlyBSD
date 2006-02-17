@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.5 2005/12/10 00:22:28 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/tls.2,v 1.6 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt TLS 2
@@ -87,18 +87,6 @@ If the kernel is unable to accomodate the supplied base address an error
 will be returned.
 .Sh RETURN VALUES
 A return value of 0 is returned on success, -1 on error.
-.Sh ERRORS
-.Bl -tag -width Er
-.It Bq Er ERANGE
-The specified facility index,
-.Fa which ,
-is not supported.
-.It Bq Er EINVAL
-An invalid parameter has been specified.
-.It Bq Er ENOENT
-(sys_get_tls_area) The specified facility has not been initialized with
-.Fn sys_set_tls_area .
-.El
 .Sh EXAMPLE
 .Bd -literal -compact
 
@@ -159,6 +147,18 @@ getdata(int offset)
 }
 
 .Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er ERANGE
+The specified facility index,
+.Fa which ,
+is not supported.
+.It Bq Er EINVAL
+An invalid parameter has been specified.
+.It Bq Er ENOENT
+(sys_get_tls_area) The specified facility has not been initialized with
+.Fn sys_set_tls_area .
+.El
 .Sh SEE ALSO
 .Xr umtx 2
 .Sh HISTORY

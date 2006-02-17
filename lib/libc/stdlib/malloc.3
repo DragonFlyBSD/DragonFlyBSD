@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)malloc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.25.2.16 2003/01/06 17:10:45 trhodes Exp $
-.\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.6 2006/02/12 21:19:07 dillon Exp $
+.\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.7 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd August 27, 1996
 .Dt MALLOC 3
@@ -273,30 +273,6 @@ and
 options are intended for testing and debugging.
 An application which changes its behavior when these options are used
 is flawed.
-.Sh EXAMPLES
-To set a systemwide reduction of cache size, and to dump core whenever
-a problem occurs:
-.Pp
-.Bd -literal -offset indent
-ln -s 'A<' /etc/malloc.conf
-.Ed
-.Pp
-To specify in the source that a program does no return value checking
-on calls to these functions:
-.Bd -literal -offset indent
-extern char *malloc_options;
-malloc_options = "X";
-.Ed
-.Sh ENVIRONMENT
-The following environment variables affect the execution of the allocation
-functions:
-.Bl -tag -width ".Ev MALLOC_OPTIONS"
-.It Ev MALLOC_OPTIONS
-If the environment variable
-.Ev MALLOC_OPTIONS
-is set, the characters it contains will be interpreted as flags to the
-allocation functions.
-.El
 .Sh RETURN VALUES
 The
 .Fn malloc
@@ -334,6 +310,30 @@ deallocates it in this case.
 The
 .Fn free
 function returns no value.
+.Sh ENVIRONMENT
+The following environment variables affect the execution of the allocation
+functions:
+.Bl -tag -width ".Ev MALLOC_OPTIONS"
+.It Ev MALLOC_OPTIONS
+If the environment variable
+.Ev MALLOC_OPTIONS
+is set, the characters it contains will be interpreted as flags to the
+allocation functions.
+.El
+.Sh EXAMPLES
+To set a systemwide reduction of cache size, and to dump core whenever
+a problem occurs:
+.Pp
+.Bd -literal -offset indent
+ln -s 'A<' /etc/malloc.conf
+.Ed
+.Pp
+To specify in the source that a program does no return value checking
+on calls to these functions:
+.Bd -literal -offset indent
+extern char *malloc_options;
+malloc_options = "X";
+.Ed
 .Sh DEBUGGING MALLOC PROBLEMS
 The major difference between this implementation and other allocation
 implementations is that the free pages are not accessed unless allocated,

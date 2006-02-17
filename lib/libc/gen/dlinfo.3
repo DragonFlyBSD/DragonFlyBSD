@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/dlinfo.3,v 1.3.2.1 2003/02/20 20:42:45 kan Exp $
-.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.4 2005/12/10 00:22:28 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/dlinfo.3,v 1.5 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd February 14, 2003
 .Os
@@ -182,6 +182,12 @@ argument is filled with
 pointer
 .Ft ( char *p ) .
 .El
+.Sh RETURN VALUES
+.Fn dlinfo
+returns 0 on success, or -1 if error occured.
+Whenever an error has been detected, a message detailing it can
+be retrieved via a call to
+.Fn dlerror .
 .Sh EXAMPLES
 Example 1: Using
 .Fn dlinfo
@@ -231,12 +237,6 @@ For simplicity, error checking has been omitted.
           (void) printf("%2d: %s\en", cnt, path->dls_name);
       }
 .Ed
-.Sh RETURN VALUES
-.Fn dlinfo
-returns 0 on success, or -1 if error occured.
-Whenever an error has been detected, a message detailing it can
-be retrieved via a call to
-.Fn dlerror .
 .Sh SEE ALSO
 .Xr rtld 1 ,
 .Xr dladdr 3 ,

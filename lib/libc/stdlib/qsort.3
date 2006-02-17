@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)qsort.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/qsort.3,v 1.4.2.5 2001/12/14 18:33:58 ru Exp $
-.\" $DragonFly: src/lib/libc/stdlib/qsort.3,v 1.3 2005/08/05 22:35:10 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdlib/qsort.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt QSORT 3
@@ -158,6 +158,12 @@ function
 returns no value.
 .Pp
 .Rv -std heapsort mergesort
+.Sh COMPATIBILITY
+Previous versions of
+.Fn qsort
+did not permit the comparison routine itself to call
+.Fn qsort 3 .
+This is no longer true.
 .Sh ERRORS
 The
 .Fn heapsort
@@ -181,12 +187,6 @@ or
 .Fn mergesort
 were unable to allocate memory.
 .El
-.Sh COMPATIBILITY
-Previous versions of
-.Fn qsort
-did not permit the comparison routine itself to call
-.Fn qsort 3 .
-This is no longer true.
 .Sh SEE ALSO
 .Xr sort 1 ,
 .Xr radixsort 3

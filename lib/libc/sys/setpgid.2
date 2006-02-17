@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)setpgid.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/setpgid.2,v 1.5.2.7 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/setpgid.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/setpgid.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt SETPGID 2
@@ -63,6 +63,13 @@ must have the same effective user-id as the invoker or be a descendant
 of the invoking process.
 .Sh RETURN VALUES
 .Rv -std setpgid
+.Sh COMPATIBILITY
+.Fn Setpgrp
+is identical to
+.Fn setpgid ,
+and is retained for calling convention compatibility with historical
+versions of
+.Bx .
 .Sh ERRORS
 .Fn Setpgid
 will fail and the process group will not be altered if:
@@ -81,10 +88,3 @@ The
 .Fn setpgid
 function call is expected to conform to
 .St -p1003.1-90 .
-.Sh COMPATIBILITY
-.Fn Setpgrp
-is identical to
-.Fn setpgid ,
-and is retained for calling convention compatibility with historical
-versions of
-.Bx .

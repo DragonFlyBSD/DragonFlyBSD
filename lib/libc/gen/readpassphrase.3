@@ -26,7 +26,7 @@
 .\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/readpassphrase.3,v 1.4.2.3 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/readpassphrase.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/readpassphrase.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd December 7, 2001
 .Dt READPASSPHRASE 3
@@ -93,6 +93,31 @@ If an error is encountered, the terminal state is restored and
 a
 .Dv NULL
 pointer is returned.
+.Sh FILES
+.Bl -tag -width ".Pa /dev/tty" -compact
+.It Pa /dev/tty
+.El
+.Sh EXAMPLES
+The following code fragment will read a passphrase from
+.Pa /dev/tty
+into the buffer
+.Fa passbuf .
+.Bd -literal -offset indent
+char passbuf[1024];
+
+\&...
+
+if (readpassphrase("Response: ", passbuf, sizeof(passbuf),
+    RPP_REQUIRE_TTY) == NULL)
+	errx(1, "unable to read passphrase");
+
+if (compare(transform(passbuf), epass) != 0)
+	errx(1, "bad passphrase");
+
+\&...
+
+memset(passbuf, 0, sizeof(passbuf));
+.Ed
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EINTR
@@ -118,27 +143,6 @@ There is no controlling terminal and the
 .Dv RPP_REQUIRE_TTY
 flag was specified.
 .El
-.Sh EXAMPLES
-The following code fragment will read a passphrase from
-.Pa /dev/tty
-into the buffer
-.Fa passbuf .
-.Bd -literal -offset indent
-char passbuf[1024];
-
-\&...
-
-if (readpassphrase("Response: ", passbuf, sizeof(passbuf),
-    RPP_REQUIRE_TTY) == NULL)
-	errx(1, "unable to read passphrase");
-
-if (compare(transform(passbuf), epass) != 0)
-	errx(1, "bad passphrase");
-
-\&...
-
-memset(passbuf, 0, sizeof(passbuf));
-.Ed
 .Sh SIGNALS
 The
 .Fn readpassphrase
@@ -173,10 +177,6 @@ from a background process) are treated specially.
 When the process is resumed after it has been stopped,
 .Fn readpassphrase
 will reprint the prompt and the user may then enter a passphrase.
-.Sh FILES
-.Bl -tag -width ".Pa /dev/tty" -compact
-.It Pa /dev/tty
-.El
 .Sh SEE ALSO
 .Xr sigaction 2 ,
 .Xr getpass 3

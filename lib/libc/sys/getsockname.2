@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getsockname.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getsockname.2,v 1.9.2.8 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getsockname.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getsockname.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETSOCKNAME 2
@@ -85,12 +85,12 @@ process address space.
 .Xr bind 2 ,
 .Xr getpeername 2 ,
 .Xr socket 2
-.Sh BUGS
-Names bound to sockets in the UNIX domain are inaccessible;
-.Xr getsockname
-returns a zero length name.
 .Sh HISTORY
 The
 .Fn getsockname
 function call appeared in
 .Bx 4.2 .
+.Sh BUGS
+Names bound to sockets in the UNIX domain are inaccessible;
+.Xr getsockname
+returns a zero length name.

@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)getenv.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/stdlib/getenv.3,v 1.4.2.7 2001/12/14 18:33:58 ru Exp $
-.\" $DragonFly: src/lib/libc/stdlib/getenv.3,v 1.4 2004/03/11 12:28:50 hmp Exp $
+.\" $DragonFly: src/lib/libc/stdlib/getenv.3,v 1.5 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt GETENV 3
@@ -142,6 +142,17 @@ The
 .Fn getenv
 function conforms to
 .St -isoC .
+.Sh HISTORY
+The functions
+.Fn setenv
+and
+.Fn unsetenv
+appeared in
+.At v7 .
+The
+.Fn putenv
+function appeared in
+.Bx 4.3 Reno .
 .Sh BUGS
 Successive calls to
 .Fn setenv
@@ -159,14 +170,3 @@ semantics for these functions
 are copied and that old values remain accessible indefinitely) make this
 bug unavoidable.  Future versions may eliminate one or both of these
 semantic guarantees in order to fix the bug.
-.Sh HISTORY
-The functions
-.Fn setenv
-and
-.Fn unsetenv
-appeared in
-.At v7 .
-The
-.Fn putenv
-function appeared in
-.Bx 4.3 Reno .

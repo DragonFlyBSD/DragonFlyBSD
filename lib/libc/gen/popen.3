@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)popen.3	8.2 (Berkeley) 5/3/95
 .\" $FreeBSD: src/lib/libc/gen/popen.3,v 1.10.2.4 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/popen.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/popen.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd May 3, 1995
 .Dt POPEN 3
@@ -165,6 +165,16 @@ function does not reliably set
 .Xr fopen 3 ,
 .Xr stdio 3 ,
 .Xr system 3
+.Sh HISTORY
+A
+.Fn popen
+and a
+.Fn pclose
+function appeared in
+.At v7 .
+.Pp
+Bidirectional functionality was added in
+.Fx 2.2.6 .
 .Sh BUGS
 Since the standard input of a command opened for reading
 shares its seek offset with the process that called
@@ -190,13 +200,3 @@ always calls
 .Xr sh 1 ,
 never calls
 .Xr csh 1 .
-.Sh HISTORY
-A
-.Fn popen
-and a
-.Fn pclose
-function appeared in
-.At v7 .
-.Pp
-Bidirectional functionality was added in
-.Fx 2.2.6 .

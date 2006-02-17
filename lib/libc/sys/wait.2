@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)wait.2	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/sys/wait.2,v 1.6.2.6 2001/12/14 18:34:02 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/wait.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/wait.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt WAIT 2
@@ -274,6 +274,11 @@ or the signal did not have the
 .Dv SA_RESTART
 flag set.
 .El
+.Sh SEE ALSO
+.Xr ptrace 2 ,
+.Xr sigaction 2 ,
+.Xr _exit 2 ,
+.Xr exit 3
 .Sh STANDARDS
 The
 .Fn wait
@@ -290,11 +295,6 @@ macro
 and the ability to restart a pending
 .Fn wait
 call are extensions to the POSIX interface.
-.Sh SEE ALSO
-.Xr ptrace 2 ,
-.Xr sigaction 2 ,
-.Xr _exit 2 ,
-.Xr exit 3
 .Sh HISTORY
 A
 .Fn wait

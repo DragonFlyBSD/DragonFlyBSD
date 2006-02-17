@@ -30,7 +30,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/msgsnd.3,v 1.9.2.5 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/msgsnd.3,v 1.3 2004/03/11 12:28:50 hmp Exp $
+.\" $DragonFly: src/lib/libc/gen/msgsnd.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd November 24, 1997
 .Dt MSGSND 3
@@ -156,6 +156,8 @@ points to an invalid address.
 .It Bq Er EINTR
 The system call was interrupted by the delivery of a signal.
 .El
+.Sh HISTORY
+Message queues appeared in the first release of AT&T Unix System V.
 .Sh BUGS
 .Nx Ns ,
 .Dx Ns ,
@@ -165,5 +167,3 @@ do not define the
 .Er EIDRM
 error value, which should be used
 in the case of a removed message queue.
-.Sh HISTORY
-Message queues appeared in the first release of AT&T Unix System V.

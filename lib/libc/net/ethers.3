@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/ethers.3,v 1.10.2.11 2002/02/01 15:51:17 ru Exp $
-.\" $DragonFly: src/lib/libc/net/ethers.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/net/ethers.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd April 12, 1995
 .Dt ETHERS 3
@@ -184,6 +184,11 @@ file.
 .Sh SEE ALSO
 .Xr ethers 5 ,
 .Xr yp 8
+.Sh HISTORY
+This particular implementation of the
+.Nm
+library functions were written for and first appeared in
+.Fx 2.1 .
 .Sh BUGS
 The
 .Fn ether_aton
@@ -191,8 +196,3 @@ and
 .Fn ether_ntoa
 functions returns values that are stored in static memory areas
 which may be overwritten the next time they are called.
-.Sh HISTORY
-This particular implementation of the
-.Nm
-library functions were written for and first appeared in
-.Fx 2.1 .

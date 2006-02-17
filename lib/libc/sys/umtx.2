@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.6 2005/12/10 00:22:28 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/umtx.2,v 1.7 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd February 21, 2005
 .Dt UMTX 2
@@ -97,22 +97,6 @@ as shown below.
 .Pp
 .Fn umtx_wakeup
 will generally return 0 unless the address is bad.
-.Sh ERRORS
-.Bl -tag -width Er
-.It Bq Er EBUSY
-The contents of
-.Fa *ptr
-did not match
-.Fa value
-.It Bq Er ETIMEDOUT
-The specified timeout occured.
-.It Bq Er EINTR
-The
-.Fn umtx_sleep
-call was interrupted by a signal.
-.It Bq Er EINVAL
-An invalid parameter (typically an invalid timeout) was specified.
-.El
 .Sh EXAMPLE
 .Bd -literal -compact
 
@@ -201,6 +185,22 @@ userland_rel_mutex(struct umtx *mtx)
     }
 }
 .Ed
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EBUSY
+The contents of
+.Fa *ptr
+did not match
+.Fa value
+.It Bq Er ETIMEDOUT
+The specified timeout occured.
+.It Bq Er EINTR
+The
+.Fn umtx_sleep
+call was interrupted by a signal.
+.It Bq Er EINVAL
+An invalid parameter (typically an invalid timeout) was specified.
+.El
 .Sh SEE ALSO
 .Xr tls 2
 .Sh HISTORY

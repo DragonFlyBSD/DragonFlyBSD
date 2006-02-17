@@ -1,6 +1,6 @@
 .\"	$NetBSD: usb.3,v 1.13 2000/09/24 02:17:52 augustss Exp $
 .\"	$FreeBSD: src/lib/libusbhid/usbhid.3,v 1.11.2.1 2002/04/03 15:54:00 joe Exp $
-.\"	$DragonFly: src/lib/libusbhid/usbhid.3,v 1.2 2003/06/17 04:26:51 dillon Exp $
+.\"	$DragonFly: src/lib/libusbhid/usbhid.3,v 1.3 2006/02/17 19:35:07 swildner Exp $
 .\"
 .\" Copyright (c) 1999 Lennart Augustsson <augustss@netbsd.org>
 .\" All rights reserved.
@@ -191,13 +191,11 @@ function extracts the value of the item.
 Conversely
 .Fn hid_set_data
 can be used to put data into a report (which must be zeroed first).
-.Sh EXAMPLES
-Not yet.
 .Sh FILES
 .Pa /usr/share/misc/usb_hid_usages
 The default HID usage table.
-.Sh BUGS
-This man page is woefully incomplete.
+.Sh EXAMPLES
+Not yet.
 .Sh SEE ALSO
 The
 .Tn USB
@@ -211,3 +209,5 @@ The
 .Nm
 library first appeared in
 .Nx 1.5 .
+.Sh BUGS
+This man page is woefully incomplete.

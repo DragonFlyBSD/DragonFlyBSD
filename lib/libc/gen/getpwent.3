@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)getpwent.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/gen/getpwent.3,v 1.11.2.5 2002/02/01 15:51:16 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getpwent.3,v 1.3 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/getpwent.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd September 20, 1994
 .Dt GETPWENT 3
@@ -184,6 +184,11 @@ The current password file
 .It Pa /etc/passwd
 A Version 7 format password file
 .El
+.Sh COMPATIBILITY
+The historic function
+.Xr setpwfile 3 ,
+which allowed the specification of alternate password databases,
+has been deprecated and is no longer available.
 .Sh SEE ALSO
 .Xr getlogin 2 ,
 .Xr getgrent 3 ,
@@ -205,11 +210,6 @@ The
 .Fn setpassent
 function appeared in
 .Bx 4.3 Reno .
-.Sh COMPATIBILITY
-The historic function
-.Xr setpwfile 3 ,
-which allowed the specification of alternate password databases,
-has been deprecated and is no longer available.
 .Sh BUGS
 The functions
 .Fn getpwent ,

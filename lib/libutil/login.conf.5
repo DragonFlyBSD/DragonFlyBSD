@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login.conf.5,v 1.22.2.18 2003/05/10 23:30:54 murray Exp $
-.\" $DragonFly: src/lib/libutil/login.conf.5,v 1.4 2004/04/22 16:52:55 dillon Exp $
+.\" $DragonFly: src/lib/libutil/login.conf.5,v 1.5 2006/02/17 19:35:07 swildner Exp $
 .\"
 .Dd November 22, 1996
 .Dt LOGIN.CONF 5
@@ -382,10 +382,6 @@ Similarly with the
 and
 .Em host.exempt
 lists.
-.Sh BUGS
-The
-.Em idletime
-setting is not enforced.
 .Sh SEE ALSO
 .Xr cap_mkdb 1 ,
 .Xr login 1 ,
@@ -395,3 +391,7 @@ setting is not enforced.
 .Xr login_class 3 ,
 .Xr passwd 5 ,
 .Xr ttys 5
+.Sh BUGS
+The
+.Em idletime
+setting is not enforced.

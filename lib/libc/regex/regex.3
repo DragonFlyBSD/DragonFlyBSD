@@ -35,7 +35,7 @@
 .\"
 .\"	@(#)regex.3	8.4 (Berkeley) 3/20/94
 .\" $FreeBSD: src/lib/libc/regex/regex.3,v 1.4.2.4 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/regex/regex.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/regex/regex.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd March 20, 1994
 .Dt REGEX 3
@@ -573,14 +573,6 @@ and
 beginning and ending subexpressions in obsolete
 .Pq Dq basic
 REs are anchors, not ordinary characters.
-.Sh SEE ALSO
-.Xr grep 1 ,
-.Xr re_format 7
-.Pp
-.St -p1003.2 ,
-sections 2.8 (Regular Expression Notation)
-and
-B.5 (C Binding for Regular Expression Matching).
 .Sh DIAGNOSTICS
 Non-zero error codes from
 .Fn regcomp
@@ -636,6 +628,14 @@ can't happen - you found a bug
 .It Dv REG_INVARG
 invalid argument, e.g. negative-length string
 .El
+.Sh SEE ALSO
+.Xr grep 1 ,
+.Xr re_format 7
+.Pp
+.St -p1003.2 ,
+sections 2.8 (Regular Expression Notation)
+and
+B.5 (C Binding for Regular Expression Matching).
 .Sh HISTORY
 Originally written by
 .An Henry Spencer .

@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/lib/libskey/skey.access.5,v 1.5.2.1 2001/01/12 18:06:50 ru Exp $
-.\" $DragonFly: src/lib/libskey/skey.access.5,v 1.2 2003/06/17 04:26:51 dillon Exp $
+.\" $DragonFly: src/lib/libskey/skey.access.5,v 1.3 2006/02/17 19:35:07 swildner Exp $
 .\"
 .Dd January 12, 2001
 .Dt SKEY.ACCESS 5
@@ -109,6 +109,16 @@ True when the user attempts to log in as a member of the
 .Ar wheel
 group.
 .El
+.Sh FILES
+.Bl -tag -width /etc/skey.access
+.It Pa /etc/skey.access
+password control table
+.El
+.Sh DIAGNOSTICS
+Syntax errors are reported to the
+.Xr syslogd 8 .
+When an error is found
+the rule is skipped.
 .Sh COMPATIBILITY
 For the sake of backwards compatibility, the
 .Ic internet
@@ -205,16 +215,6 @@ the
 .Fn skeyaccess
 routines ignore network addresses that appear to
 belong to someone else.
-.El
-.Sh DIAGNOSTICS
-Syntax errors are reported to the
-.Xr syslogd 8 .
-When an error is found
-the rule is skipped.
-.Sh FILES
-.Bl -tag -width /etc/skey.access
-.It Pa /etc/skey.access
-password control table
 .El
 .Sh SEE ALSO
 .Xr login 1 ,

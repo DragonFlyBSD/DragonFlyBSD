@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)send.2	8.2 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/send.2,v 1.10.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/send.2,v 1.6 2005/04/02 16:22:41 liamfoy Exp $
+.\" $DragonFly: src/lib/libc/sys/send.2,v 1.7 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd February 15, 1995
 .Dt SEND 2
@@ -193,6 +193,18 @@ The socket is unable to send anymore data (SS_CANTSENDMORE has
 been set on the socket). This typically means that the socket
 is not connected.
 .El
+.Sh SEE ALSO
+.Xr fcntl 2 ,
+.Xr getsockopt 2 ,
+.Xr recv 2 ,
+.Xr select 2 ,
+.Xr socket 2 ,
+.Xr write 2
+.Sh HISTORY
+The
+.Fn send
+function call appeared in
+.Bx 4.2 .
 .Sh BUGS
 Because
 .Fn sendmsg
@@ -207,15 +219,3 @@ then
 it before it has actually been sent, the result being that the receiver
 gets a closed file descriptor.  It is left to the application to
 implement an acknowlegment mechanism to prevent this from happening.
-.Sh SEE ALSO
-.Xr fcntl 2 ,
-.Xr getsockopt 2 ,
-.Xr recv 2 ,
-.Xr select 2 ,
-.Xr socket 2 ,
-.Xr write 2
-.Sh HISTORY
-The
-.Fn send
-function call appeared in
-.Bx 4.2 .

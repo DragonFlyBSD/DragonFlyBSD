@@ -55,7 +55,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/eui64.3,v 1.3 2004/07/07 20:15:31 ru Exp $
-.\" $DragonFly: src/lib/libc/net/eui64.3,v 1.2 2004/12/26 12:37:07 swildner Exp $
+.\" $DragonFly: src/lib/libc/net/eui64.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd March 4, 2004
 .Dt EUI64 3
@@ -216,6 +216,12 @@ file.
 .Xr firewire 4 ,
 .Xr eui64 5 ,
 .Xr yp 8
+.Sh HISTORY
+These functions first appears in
+.Fx 5.3 .
+They are derived from the
+.Xr ethers 3
+family of functions.
 .Sh BUGS
 The
 .Fn eui64_aton
@@ -223,9 +229,3 @@ and
 .Fn eui64_ntoa
 functions returns values that are stored in static memory areas
 which may be overwritten the next time they are called.
-.Sh HISTORY
-These functions first appears in
-.Fx 5.3 .
-They are derived from the
-.Xr ethers 3
-family of functions.

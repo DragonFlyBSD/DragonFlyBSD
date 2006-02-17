@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)gethostname.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getdomainname.3,v 1.9.2.5 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getdomainname.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getdomainname.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd May 6, 1994
 .Dt GETDOMAINNAME 3
@@ -86,14 +86,14 @@ The caller tried to set the hostname and was not the super-user.
 .Xr gethostid 3 ,
 .Xr gethostname 3 ,
 .Xr sysctl 3
+.Sh HISTORY
+The
+.Fn getdomainname
+function call appeared in
+.Bx 4.2 .
 .Sh BUGS
 Domain names are limited to
 .Dv MAXHOSTNAMELEN
 (from
 .Ao Pa sys/param.h Ac )
 characters, currently 256.
-.Sh HISTORY
-The
-.Fn getdomainname
-function call appeared in
-.Bx 4.2 .

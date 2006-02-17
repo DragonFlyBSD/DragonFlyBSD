@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)select.2	8.2 (Berkeley) 3/25/94
 .\" $FreeBSD: src/lib/libc/sys/select.2,v 1.14.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/select.2,v 1.5 2005/08/03 16:07:39 corecode Exp $
+.\" $DragonFly: src/lib/libc/sys/select.2,v 1.6 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd March 25, 1994
 .Dt SELECT 2
@@ -193,6 +193,11 @@ is not guaranteed to examine the unused file descriptors.   For historical
 reasons,
 .Fn select
 will always examine the first 256 descriptors.
+.Sh HISTORY
+The
+.Fn select
+function call appeared in
+.Bx 4.2 .
 .Sh BUGS
 .St -susv2
 allows systems to modify the original timeout in place.
@@ -200,8 +205,3 @@ Thus, it is unwise to assume that the timeout value will be unmodified
 by the
 .Fn select
 call.
-.Sh HISTORY
-The
-.Fn select
-function call appeared in
-.Bx 4.2 .

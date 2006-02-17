@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.3 2004/11/09 17:52:45 joerg Exp $
+.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt SYSCONF 3
@@ -186,10 +186,6 @@ argument is invalid.
 .El
 .Sh SEE ALSO
 .Xr sysctl 3
-.Sh BUGS
-The value for _SC_STREAM_MAX is a minimum maximum, and required to be
-the same as ANSI C's FOPEN_MAX, so the returned value is a ridiculously
-small and misleading number.
 .Sh STANDARDS
 Except for the fact that values returned by
 .Fn sysconf
@@ -201,3 +197,7 @@ The
 .Fn sysconf
 function first appeared in
 .Bx 4.4 .
+.Sh BUGS
+The value for _SC_STREAM_MAX is a minimum maximum, and required to be
+the same as ANSI C's FOPEN_MAX, so the returned value is a ridiculously
+small and misleading number.
