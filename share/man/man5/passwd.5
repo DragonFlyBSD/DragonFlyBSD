@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)passwd.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/passwd.5,v 1.26.2.5 2002/02/01 15:51:18 ru Exp $
-.\" $DragonFly: src/share/man/man5/passwd.5,v 1.5 2006/01/18 09:24:37 swildner Exp $
+.\" $DragonFly: src/share/man/man5/passwd.5,v 1.6 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd September 29, 1994
 .Dt PASSWD 5
@@ -735,6 +735,25 @@ password file, with passwords intact
 .Xr db 3 -format
 password database, with passwords intact
 .El
+.Sh COMPATIBILITY
+The password file format has changed since
+.Bx 4.3 .
+The following awk script can be used to convert your old-style password
+file into a new style password file.
+The additional fields
+.Dq class ,
+.Dq change
+and
+.Dq expire
+are added, but are turned off by default.
+These fields can then be set using
+.Xr vipw 8
+or
+.Xr pw 8 .
+.Bd -literal -offset indent
+BEGIN { FS = ":"}
+{ print $1 ":" $2 ":" $3 ":" $4 "::0:0:" $5 ":" $6 ":" $7 }
+.Ed
 .Sh SEE ALSO
 .Xr chpass 1 ,
 .Xr login 1 ,
@@ -747,6 +766,22 @@ password database, with passwords intact
 .Xr pwd_mkdb 8 ,
 .Xr vipw 8 ,
 .Xr yp 8
+.Sh HISTORY
+A
+.Nm
+file format appeared in
+.At v6 .
+The YP/NIS functionality is modeled after
+.Tn SunOS
+and first appeared in
+.Fx 1.1 .
+The override capability was new in
+.Fx 2.0 .
+The override capability was updated to properly support netgroups
+in
+.Fx 2.0.5 .
+Support for comments first appeared in
+.Fx 3.0 .
 .Sh BUGS
 User information should (and eventually will) be stored elsewhere.
 .Pp
@@ -772,38 +807,3 @@ will not be available when a
 .Dx
 system is used as a client with
 a standard NIS server.
-.Sh COMPATIBILITY
-The password file format has changed since
-.Bx 4.3 .
-The following awk script can be used to convert your old-style password
-file into a new style password file.
-The additional fields
-.Dq class ,
-.Dq change
-and
-.Dq expire
-are added, but are turned off by default.
-These fields can then be set using
-.Xr vipw 8
-or
-.Xr pw 8 .
-.Bd -literal -offset indent
-BEGIN { FS = ":"}
-{ print $1 ":" $2 ":" $3 ":" $4 "::0:0:" $5 ":" $6 ":" $7 }
-.Ed
-.Sh HISTORY
-A
-.Nm
-file format appeared in
-.At v6 .
-The YP/NIS functionality is modeled after
-.Tn SunOS
-and first appeared in
-.Fx 1.1 .
-The override capability was new in
-.Fx 2.0 .
-The override capability was updated to properly support netgroups
-in
-.Fx 2.0.5 .
-Support for comments first appeared in
-.Fx 3.0 .

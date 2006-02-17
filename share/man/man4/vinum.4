@@ -35,7 +35,7 @@
 .\" advised of the possibility of such damage.
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
-.\" $DragonFly: src/share/man/man4/vinum.4,v 1.6 2006/02/10 19:01:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/vinum.4,v 1.7 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd October 5, 1999
 .Dt vinum 4
@@ -682,33 +682,6 @@ The drive is not accessible.
 The drive is up and running.
 .El
 .sp 2v
-.Sh BUGS
-.Bl -enum
-.It
-.Nm
-is a new product.  Bugs can be expected.  The configuration mechanism is not yet
-fully functional.  If you have difficulties, please look at the section
-DEBUGGING PROBLEMS WITH VINUM before reporting problems.
-.It
-Kernels with the
-.Nm
-pseudo-device appear to work, but are not supported.  If you have trouble with
-this configuration, please first replace the kernel with a non-Vinum
-kernel and test with the kld module.
-.It
-Detection of differences between the version of the kernel and the kld is not
-yet implemented.
-.It
-The RAID-5 functionality is new in
-.Fx 3.3 .
-Some problems have been
-reported with
-.Nm
-in combination with soft updates, but these are not reproducible on all
-systems.  If you are planning to use
-.Nm
-in a production environment, please test carefully.
-.El
 .Sh DEBUGGING PROBLEMS WITH VINUM
 Solving problems with
 .Nm
@@ -951,8 +924,11 @@ at the beginning.
 .It
 If you have a panic, a stack trace as described above.
 .El
-.Sh AUTHORS
-.An Greg Lehey Aq grog@lemis.com .
+.Sh SEE ALSO
+.Xr disklabel 5 ,
+.Xr disklabel 8 ,
+.Xr newfs 8 ,
+.Xr vinum 8
 .Sh HISTORY
 .Nm
 first appeared in
@@ -962,8 +938,32 @@ The RAID-5 component of
 was developed by Cybernet Inc.
 .Pa www.cybernet.com
 for its NetMAX product.
-.Sh SEE ALSO
-.Xr disklabel 5 ,
-.Xr disklabel 8 ,
-.Xr newfs 8 ,
-.Xr vinum 8
+.Sh AUTHORS
+.An Greg Lehey Aq grog@lemis.com .
+.Sh BUGS
+.Bl -enum
+.It
+.Nm
+is a new product.  Bugs can be expected.  The configuration mechanism is not yet
+fully functional.  If you have difficulties, please look at the section
+DEBUGGING PROBLEMS WITH VINUM before reporting problems.
+.It
+Kernels with the
+.Nm
+pseudo-device appear to work, but are not supported.  If you have trouble with
+this configuration, please first replace the kernel with a non-Vinum
+kernel and test with the kld module.
+.It
+Detection of differences between the version of the kernel and the kld is not
+yet implemented.
+.It
+The RAID-5 functionality is new in
+.Fx 3.3 .
+Some problems have been
+reported with
+.Nm
+in combination with soft updates, but these are not reproducible on all
+systems.  If you are planning to use
+.Nm
+in a production environment, please test carefully.
+.El

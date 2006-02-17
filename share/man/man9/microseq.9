@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/microseq.9,v 1.9.2.6 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/microseq.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/microseq.9,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd June 6, 1998
 .Dt MICROSEQ 9
@@ -473,10 +473,6 @@ at ppc level to avoid ppbus to adapter function call overhead.
 But some
 actions like deciding whereas the transfer is IEEE1284-1994 compliant are
 executed at ppbus layer.
-.Sh BUGS
-Only one level of submicrosequences is allowed.
-.Pp
-When triggering the port, maximum delay allowed is 255 us.
 .Sh SEE ALSO
 .Xr ppbus 4 ,
 .Xr ppc 4 ,
@@ -490,3 +486,7 @@ manual page first appeared in
 This
 manual page was written by
 .An Nicolas Souchu .
+.Sh BUGS
+Only one level of submicrosequences is allowed.
+.Pp
+When triggering the port, maximum delay allowed is 255 us.

@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/lpt.4,v 1.9.2.2 2001/08/17 13:08:38 ru Exp $
-.\" $DragonFly: src/share/man/man4/lpt.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/lpt.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd February 14, 1999
 .Dt LPT 4
@@ -88,17 +88,17 @@ In order to retrieve printer info from /dev/lpt0, just apply the
 command to the device.
 If the printer supports IEEE1284 nibble mode and has
 data to send to the host, you'll get it.
+.Sh FILES
+.Bl -tag -width Pa -compact
+.It Pa /dev/lpt0
+first parallel port driver
+.El
 .Sh SEE ALSO
 .Xr ppbus 4 ,
 .Xr lptcontrol 8
 .Sh HISTORY
 This driver replaces the functionality of the lpa
 driver, which is now defunct.
-.Sh FILES
-.Bl -tag -width Pa -compact
-.It Pa /dev/lpt0
-first parallel port driver
-.El
 .Sh BUGS
 There are lots of them, especially in cheap parallel port implementations.
 .Pp

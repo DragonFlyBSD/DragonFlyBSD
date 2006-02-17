@@ -1,5 +1,5 @@
 .\"     $FreeBSD: src/share/man/man4/isp.4,v 1.3.4.9 2001/12/17 11:30:12 ru Exp $
-.\"     $DragonFly: src/share/man/man4/isp.4,v 1.3 2006/02/10 19:01:09 swildner Exp $
+.\"     $DragonFly: src/share/man/man4/isp.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
 .\"     $NetBSD: isp.4,v 1.5 1999/12/18 18:33:05 mjacob Exp $
 .\"
 .\" Copyright (c) 1998, 1999
@@ -162,6 +162,16 @@ This is a driver debug level- meaningful from 0 through 7.
 This is a driver target mode debug level- meaningful from 0 through
 5.
 .El
+.Sh SEE ALSO
+.Xr da 4 ,
+.Xr intro 4 ,
+.Xr ispfw 4 ,
+.Xr sa 4 ,
+.Xr scsi 4
+.Sh AUTHORS
+The
+.Nm
+driver was written by Matthew Jacob for NASA/Ames Research Center.
 .Sh BUGS
 The driver currently ignores some NVRAM settings.
 .Pp
@@ -182,13 +192,3 @@ To
 unwedge the system, unplug and replug the fibre channel connection,
 or otherwise cause a LIP (Loop Initialization Primitive sequence)-
 this will kick the f/w into getting unstuck.
-.Sh SEE ALSO
-.Xr da 4 ,
-.Xr intro 4 ,
-.Xr ispfw 4 ,
-.Xr sa 4 ,
-.Xr scsi 4
-.Sh AUTHORS
-The
-.Nm
-driver was written by Matthew Jacob for NASA/Ames Research Center.

@@ -34,7 +34,7 @@
 .\"
 .\" $Whistle: ng_mppc.8,v 1.1 1999/12/08 20:20:39 archie Exp $
 .\" $FreeBSD: src/share/man/man4/ng_mppc.4,v 1.11.2.3 2002/03/20 18:16:36 archie Exp $
-.\" $DragonFly: src/share/man/man4/ng_mppc.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ng_mppc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd December 8, 1999
 .Dt NG_MPPC 4
@@ -160,11 +160,6 @@ These files must be obtained elsewhere and added to the kernel
 sources before this node type will compile with the
 .Dv NETGRAPH_MPPC_COMPRESSION
 option.
-.Sh BUGS
-In PPP, encryption should be handled by the Encryption Control Protocol (ECP)
-rather than CCP.
-However, Microsoft combined both compression and encryption into their
-``compression'' algorithm, which is confusing.
 .Sh SEE ALSO
 .Xr netgraph 4 ,
 .Xr ng_ppp 4 ,
@@ -192,3 +187,8 @@ However, Microsoft combined both compression and encryption into their
 .Re
 .Sh AUTHORS
 .An Archie Cobbs Aq archie@FreeBSD.org
+.Sh BUGS
+In PPP, encryption should be handled by the Encryption Control Protocol (ECP)
+rather than CCP.
+However, Microsoft combined both compression and encryption into their
+``compression'' algorithm, which is confusing.

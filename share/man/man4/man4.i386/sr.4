@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sr.4,v 1.15.2.4 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd July 4, 1996
 .Dt SR 4 i386
@@ -110,12 +110,6 @@ Connecting to this hook enables the transmission of raw HDLC frames.
 The node will have the same name as the device with ``sync_''
 prepended, e.g.,
 .Dv sync_sr0 .
-.Sh DIAGNOSTICS
-.Bl -diag
-.It "sr%d: Warning illegal interrupt %d."
-The card cannot use the specified interrupt.
-Choose a different one.
-.El
 .Sh FILES
 .Bl -tag -width /sys/i386/isa/ic/hd64570.h -compact
 .It Pa /sys/i386/isa/ic/hd64570.h
@@ -124,12 +118,12 @@ Choose a different one.
 .It Pa /sys/i386/isa/if_sr.h
 .It Pa /sys/pci/if_sr_p.c
 .El
-.Sh BUGS
-At the moment only the X.21 interface is tested.
-The others
-may need tweaks to the clock selection code.
-.Pp
-The code can probably stand some optimizing.
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "sr%d: Warning illegal interrupt %d."
+The card cannot use the specified interrupt.
+Choose a different one.
+.El
 .Sh SEE ALSO
 .Xr ar 4 ,
 .Xr cx 4 ,
@@ -145,3 +139,9 @@ device driver was written by
 .Pp
 Netgraph support was added by
 .An Julian Elischer Aq julian@FreeBSD.org .
+.Sh BUGS
+At the moment only the X.21 interface is tested.
+The others
+may need tweaks to the clock selection code.
+.Pp
+The code can probably stand some optimizing.

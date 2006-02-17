@@ -10,7 +10,7 @@
 .\" use.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/apm.4,v 1.13.2.5 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd November 1, 1994
 .Dt APM 4 i386
@@ -112,6 +112,11 @@ polls APM events and handles the following events.
 .It Dv "PMEV_UPDATETIME       " No "adjust clock    " "update time"
 .El
 .El
+.Sh SEE ALSO
+.Xr apm 8 ,
+.Xr zzz 8
+.Sh AUTHORS
+Tatsumi Hosokawa <hosokawa@jp.FreeBSD.org>
 .Sh BUGS
 WARNING!  Many, if not most, of the implementations of APM-bios in laptops
 today are buggy.  You may be putting your LCD-display and batteries at
@@ -141,8 +146,3 @@ or
 .Pp
 Disk spin-down, LCD backlight control, and power on demand have not
 been supported on the current version.
-.Sh SEE ALSO
-.Xr apm 8 ,
-.Xr zzz 8
-.Sh AUTHORS
-Tatsumi Hosokawa <hosokawa@jp.FreeBSD.org>

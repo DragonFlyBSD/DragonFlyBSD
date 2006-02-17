@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/rtentry.9,v 1.11.2.6 2002/03/17 09:12:50 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/rtentry.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/rtentry.9,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .Dd October 8, 1996
 .Os
 .Dt RTENTRY 9
@@ -318,6 +318,9 @@ The
 .Nm RTF_PRCLONING
 mechanism first appeared in
 .Fx 2.0 .
+.Sh AUTHORS
+This manual page was written by
+.An Garrett Wollman .
 .Sh BUGS
 There are a number of historical relics remaining in this interface.
 The
@@ -330,6 +333,3 @@ There is some disagreement over whether it is legitimate for
 .Dv RTF_LLINFO
 to be set by any process other than
 .Fn rt_ifa->ifa_rtrequest .
-.Sh AUTHORS
-This manual page was written by
-.An Garrett Wollman .

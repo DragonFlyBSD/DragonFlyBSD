@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/spkr.4,v 1.13.2.6 2001/12/17 11:30:13 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/spkr.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/spkr.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd November 7, 1993
 .Dt SPKR 4 i386
@@ -199,6 +199,23 @@ BASIC.)
 .Pp
 Whitespace in play strings is simply skipped and may be used to separate
 melody sections.
+.Sh FILES
+.Bl -tag -width /dev/speakerxx
+.It Pa /dev/speaker
+speaker device file
+.El
+.Sh SEE ALSO
+.Xr spkrtest 8
+.Sh HISTORY
+The
+.Nm
+device appeared in
+.Fx 1.0 .
+.Sh AUTHORS
+.An Eric S. Raymond Aq esr@snark.thyrsus.com
+June 1990
+.Sh "PORTED BY"
+.An Andrew A. Chernov Aq ache@astral.msk.su
 .Sh BUGS
 Due to roundoff in the pitch tables and slop in the tone-generation and timer
 hardware (neither of which was designed for precision), neither pitch accuracy
@@ -218,20 +235,3 @@ compatibility.
 In play strings which are very long (longer than your system's physical I/O
 blocks) note suffixes or numbers may occasionally be parsed incorrectly due
 to crossing a block boundary.
-.Sh FILES
-.Bl -tag -width /dev/speakerxx
-.It Pa /dev/speaker
-speaker device file
-.El
-.Sh SEE ALSO
-.Xr spkrtest 8
-.Sh AUTHORS
-.An Eric S. Raymond Aq esr@snark.thyrsus.com
-June 1990
-.Sh "PORTED BY"
-.An Andrew A. Chernov Aq ache@astral.msk.su
-.Sh HISTORY
-The
-.Nm
-device appeared in
-.Fx 1.0 .

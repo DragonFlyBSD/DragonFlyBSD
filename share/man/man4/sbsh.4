@@ -22,7 +22,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/sbsh.4,v 1.1.2.1 2003/04/15 18:15:08 fjoe Exp $
-.\" $DragonFly: src/share/man/man4/sbsh.4,v 1.3 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/share/man/man4/sbsh.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd April 11, 2003
 .Dt SBSH 4
@@ -42,6 +42,13 @@ configured with
 (all standard network interface parameters could be set). Modem-specific
 parameters (master/slave mode, line rate etc.) must be set with the
 sb16config utility before interface activation.
+.Sh FILES
+The sources for the driver reside in:
+.Pp
+.Bl -tag -compact
+.It Pa /sys/dev/sbsh/if_sbsh.c
+.It Pa /sys/dev/sbsh/if_sbshreg.h
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "sbsh%d: couldn't map memory"
@@ -59,13 +66,6 @@ Probably, a hardware error or incompatibility.
 .It "sbsh%d: unable to get mbuf"
 .It "sbsh%d: unable to get mbuf cluster"
 The driver failed to allocate a memory buffer.
-.El
-.Sh FILES
-The sources for the driver reside in:
-.Pp
-.Bl -tag -compact
-.It Pa /sys/dev/sbsh/if_sbsh.c
-.It Pa /sys/dev/sbsh/if_sbshreg.h
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,

@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.1 2005/03/22 00:40:53 dillon Exp $
+.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.2 2006/02/17 19:37:10 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -78,6 +78,12 @@ the first field (the device node name) may contain the
 .Ql *
 wildcard character, if the new ownership/permissions should apply to an entire
 device family (see EXAMPLES).
+.Sh FILES
+.Bl -tag -width ".Pa devices.conf"
+.It Pa devices.conf
+The local device permissions override file lives in
+.Pa /etc .
+.El
 .Sh EXAMPLES
 The following is an example of how to set up local overrides for some
 device nodes.
@@ -98,11 +104,5 @@ fd/4	ihate:floppies	000
 # Grant mommy write access to my fridge
 fridge	mommy:supplies	640	# Will be ignored by MAKEDEV(8)...
 .Ed
-.Sh FILES
-.Bl -tag -width ".Pa devices.conf"
-.It Pa devices.conf
-The local device permissions override file lives in
-.Pa /etc .
-.El
 .Sh SEE ALSO
 .Xr MAKEDEV 8

@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)mem.4	5.3 (Berkeley) 5/2/91
 .\" $FreeBSD: src/share/man/man4/mem.4,v 1.7.2.5 2002/02/27 03:39:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/mem.4,v 1.3 2003/09/07 17:04:00 hmp Exp $
+.\" $DragonFly: src/share/man/man4/mem.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd May 2, 1991
 .Dt MEM 4
@@ -184,8 +184,6 @@ base/length supplued.
 An attempt to remove a range failed because the range is permanently
 enabled.
 .El
-.Sh BUGS
-Busy range attributes are not yet managed correctly.
 .Sh FILES
 .Bl -tag -width /dev/kmem -compact
 .It Pa /dev/mem
@@ -202,3 +200,5 @@ files appeared in
 .At v6 .
 The ioctl interface for memory range attributes was added in
 .Fx 3.2 .
+.Sh BUGS
+Busy range attributes are not yet managed correctly.

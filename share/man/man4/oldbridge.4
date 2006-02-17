@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bridge.4,v 1.6.2.11 2002/02/18 02:00:21 luigi Exp $
-.\" $DragonFly: src/share/man/man4/Attic/oldbridge.4,v 1.1 2005/12/19 00:07:02 corecode Exp $
+.\" $DragonFly: src/share/man/man4/Attic/oldbridge.4,v 1.2 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd February 15, 2002
 .Dt OLDBRIDGE 4
@@ -157,6 +157,17 @@ devices.
 When using vlan devices, care must be taken by not creating loops
 between these devices and their parent interfaces.
 .Pp
+.Sh SEE ALSO
+.Xr ip 4 ,
+.Xr ng_bridge 4 ,
+.Xr vlan 4 ,
+.Xr ipfw 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+Bridging was introduced in
+.Fx 2.2.8
+by
+.An Luigi Rizzo Aq luigi@iet.unipi.it .
 .Sh BUGS
 Care must be taken not to construct loops in the
 .Nm
@@ -189,14 +200,3 @@ It might be useful to have a rule of the form
 .Pp
 near the beginning of your ruleset to implement specific rulesets
 for bridged packets.
-.Sh SEE ALSO
-.Xr ip 4 ,
-.Xr ng_bridge 4 ,
-.Xr vlan 4 ,
-.Xr ipfw 8 ,
-.Xr sysctl 8
-.Sh HISTORY
-Bridging was introduced in
-.Fx 2.2.8
-by
-.An Luigi Rizzo Aq luigi@iet.unipi.it .

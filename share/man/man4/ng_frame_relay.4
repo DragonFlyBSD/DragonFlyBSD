@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_frame_relay.4,v 1.11.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_frame_relay.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ng_frame_relay.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\" $Whistle: ng_frame_relay.8,v 1.4 1999/01/25 23:46:26 archie Exp $
 .\"
 .Dd January 19, 1999
@@ -77,15 +77,6 @@ This node type supports only the generic control messages.
 This node shuts down upon receipt of a
 .Dv NGM_SHUTDOWN
 control message, or when all hooks have been disconnected.
-.Sh BUGS
-Technically, frames on DLCI X should not be transmitted to the switch
-until the LMI protocol entity on both ends has configured DLCI X as active.
-The
-.Nm
-node type ignores this restriction, and will always pass data received
-on a DLCI hook to
-.Dv downstream .
-Instead, it should query the LMI node first.
 .Sh SEE ALSO
 .Xr netgraph 4 ,
 .Xr ng_lmi 4 ,
@@ -97,3 +88,12 @@ node type was implemented in
 .Fx 4.0 .
 .Sh AUTHORS
 .An Julian Elischer Aq julian@FreeBSD.org
+.Sh BUGS
+Technically, frames on DLCI X should not be transmitted to the switch
+until the LMI protocol entity on both ends has configured DLCI X as active.
+The
+.Nm
+node type ignores this restriction, and will always pass data received
+on a DLCI hook to
+.Dv downstream .
+Instead, it should query the LMI node first.

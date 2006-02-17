@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/share/man/man4/divert.4,v 1.15.2.7 2002/03/13 18:38:44 keramida Exp $
-.\" $DragonFly: src/share/man/man4/divert.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/divert.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd June 18, 1996
 .Dt DIVERT 4
@@ -151,6 +151,9 @@ that was not associated with any interface.
 .Xr sendto 2 ,
 .Xr socket 2 ,
 .Xr ipfw 8
+.Sh AUTHORS
+.An Archie Cobbs Aq archie@FreeBSD.org ,
+Whistle Communications Corp.
 .Sh BUGS
 This is an attempt to provide a clean way for user mode processes
 to implement various IP tricks like address translation, but it
@@ -164,6 +167,3 @@ packet destined for another machine don't get routed through the
 local machine, the packet is lost.
 This should probably be
 a settable socket option in any case.
-.Sh AUTHORS
-.An Archie Cobbs Aq archie@FreeBSD.org ,
-Whistle Communications Corp.

@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_ether.4,v 1.4.2.12 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/ng_ether.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ng_ether.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd June 26, 2000
 .Dt NG_ETHER 4
@@ -198,6 +198,16 @@ tracing packet flow, statistics, etc.:
 ngctl mkpeer fxp0: tee lower right
 ngctl connect fxp0: lower upper left
 .Ed
+.Sh SEE ALSO
+.Xr arp 4 ,
+.Xr netgraph 4 ,
+.Xr netintro 4 ,
+.Xr ifconfig 8 ,
+.Xr ngctl 8 ,
+.Xr nghook 8
+.Sh AUTHORS
+.An Julian Elischer Aq julian@FreeBSD.org
+.An Archie Cobbs Aq archie@FreeBSD.org
 .Sh BUGS
 The automatic KLD module loading mechanism that works for most
 other netgraph node types does not work for the
@@ -211,13 +221,3 @@ Therefore, if the KLD is not statically compiled into the kernel,
 it is necessary to load the KLD manually in order to bring the
 .Nm
 nodes into existence.
-.Sh SEE ALSO
-.Xr arp 4 ,
-.Xr netgraph 4 ,
-.Xr netintro 4 ,
-.Xr ifconfig 8 ,
-.Xr ngctl 8 ,
-.Xr nghook 8
-.Sh AUTHORS
-.An Julian Elischer Aq julian@FreeBSD.org
-.An Archie Cobbs Aq archie@FreeBSD.org

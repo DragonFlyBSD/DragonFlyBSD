@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/uio.9,v 1.5.2.4 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/uio.9,v 1.3 2004/07/27 13:11:22 hmp Exp $
+.\" $DragonFly: src/share/man/man9/uio.9,v 1.4 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd February 2, 1997
 .Os
@@ -112,6 +112,15 @@ for the associated thread; used if
 indicates that the transfer is to be made from/to a process's address
 space.
 .El
+.Sh RETURN VALUES
+.Fn uiomove
+can return
+.Er EFAULT
+from the invoked
+.Xr copyin 9
+or
+.Xr copyout 9
+in case the transfer was to/from a process's address space.
 .Sh EXAMPLES
 The idea is that the driver maintains a private buffer for its data,
 and processes the request in chunks of maximal the size of this
@@ -152,15 +161,6 @@ error:
 	return rv;
 }
 .Ed
-.Sh RETURN VALUES
-.Fn uiomove
-can return
-.Er EFAULT
-from the invoked
-.Xr copyin 9
-or
-.Xr copyout 9
-in case the transfer was to/from a process's address space.
 .Sh SEE ALSO
 .Xr read 2 ,
 .Xr readv 2 ,

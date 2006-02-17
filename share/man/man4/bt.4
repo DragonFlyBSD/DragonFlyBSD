@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/bt.4,v 1.10.4.6 2001/10/01 13:07:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/bt.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/bt.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd October 16, 1998
 .Dt BT 4
@@ -98,11 +98,30 @@ Boards with certain firmware revisions may lock up under heavy load to
 certain devices, especially if tagged queueing is used.  Should you encounter
 a problem with your adapter, contact Mylex technical support and ensure you
 have the latest firmware for your controller.
+.Sh FILES
+.Bl -tag -width /usr/share/man0/template.doc -compact
+.It Pa sys/dev/buslogic/bt.c
+Core Driver Implementation
+.It Pa sys/dev/buslogic/btreg.h
+MultiMaster Register Set and Core Driver Data Structures
+.It Pa sys/pci/bt_pci.c
+PCI Bus Driver Attachment
+.It Pa sys/i386/eisa/bt_eisa.c
+EISA Bus Driver Attachment
+.It Pa sys/i386/isa/bt_isa.c
+ISA/VL Bus Driver Attachment
+.El
 .Sh SEE ALSO
 .Xr cd 4 ,
 .Xr da 4 ,
 .Xr sa 4 ,
 .Xr scsi 4
+.Sh HISTORY
+The
+.Nm
+driver first appeared in the
+.Bx 386
+patch kit.
 .Sh AUTHORS
 .An -nosplit
 .An Julian Elischer
@@ -119,22 +138,3 @@ for writing such a complete and well documented Mylex/BusLogic MultiMaster
 driver for Linux.  Support in this driver for the wide range of MultiMaster
 controllers and firmware revisions, with their otherwise undocumented quirks,
 would not have been possible without his efforts.
-.Sh FILES
-.Bl -tag -width /usr/share/man0/template.doc -compact
-.It Pa sys/dev/buslogic/bt.c
-Core Driver Implementation
-.It Pa sys/dev/buslogic/btreg.h
-MultiMaster Register Set and Core Driver Data Structures
-.It Pa sys/pci/bt_pci.c
-PCI Bus Driver Attachment
-.It Pa sys/i386/eisa/bt_eisa.c
-EISA Bus Driver Attachment
-.It Pa sys/i386/isa/bt_isa.c
-ISA/VL Bus Driver Attachment
-.El
-.Sh HISTORY
-The
-.Nm
-driver first appeared in the
-.Bx 386
-patch kit.

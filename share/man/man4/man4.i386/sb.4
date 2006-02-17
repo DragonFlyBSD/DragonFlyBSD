@@ -11,7 +11,7 @@
 .\"
 .\" alex!@bigfoot.com
 .\" $FreeBSD: src/share/man/man4/man4.i386/sb.4,v 1.9.2.6 2002/12/20 18:03:05 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sb.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sb.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd August 9, 1997
 .Dt SB 4 i386
@@ -52,18 +52,13 @@ SoundBlaster 1.0 to the SoundBlaster 16/SoundBlaster 32.  The awe driver
 provides AWE32/64 functionality.  This driver is provided in
 .Fx
 versions 2.0-current through 3.0-current.
-.Sh BUGS
-Since the SB16 uses the same IRQ and addresses for
-the different drivers, some of the snd drivers will not be probed because
-the kernel thinks there is a conflict.
-.Pp
-Current version doesn't support mode changes without closing and reopening
-the device.
-Support for this feature may be implemented in a future
-version of this driver.
 .Sh SEE ALSO
 .Xr cdcontrol 1 ,
 .Xr mixer 8
+.Sh HISTORY
+Sound Galaxy NX Pro support added by Hunyue Yau (Jan 6 1994).  MV
+ProSonic/Jazz 16 16bit support added by JRA Gibson (April 1995).  Audio
+Excel DSP 16 support added by Riccardo Facchetti (March 24 1995).
 .Sh AUTHORS
 .An -nosplit
 The original SoundBlaster DSP and SoundBlaster 16 MIDI, and Yamaha OPL-3
@@ -73,7 +68,12 @@ The SoundBlaster 16 DSP code was written by
 .An J. Schuber Aq jsb@sth.ruhr-uni-bochum.de .
 Improvements to the OPL-3 drivers were made by
 .An Rob Hooft Aq hooft@chem.ruu.nl .
-.Sh HISTORY
-Sound Galaxy NX Pro support added by Hunyue Yau (Jan 6 1994).  MV
-ProSonic/Jazz 16 16bit support added by JRA Gibson (April 1995).  Audio
-Excel DSP 16 support added by Riccardo Facchetti (March 24 1995).
+.Sh BUGS
+Since the SB16 uses the same IRQ and addresses for
+the different drivers, some of the snd drivers will not be probed because
+the kernel thinks there is a conflict.
+.Pp
+Current version doesn't support mode changes without closing and reopening
+the device.
+Support for this feature may be implemented in a future
+version of this driver.

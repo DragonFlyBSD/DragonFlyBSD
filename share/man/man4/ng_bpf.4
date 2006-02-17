@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_bpf.4,v 1.17.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_bpf.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ng_bpf.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\" $Whistle: ng_bpf.8,v 1.2 1999/12/03 01:57:12 archie Exp $
 .\"
 .Dd December 2, 1999
@@ -172,6 +172,17 @@ ngctl msg ${NODEPATH} setprogram { thisHook=\\"${INHOOK}\\" \\
   ifNotMatch=\\"${NOTMATCHHOOK}\\" \\
   ${BPFPROG} } }
 .Ed
+.Sh SEE ALSO
+.Xr bpf 4 ,
+.Xr netgraph 4 ,
+.Xr ngctl 8
+.Sh HISTORY
+The
+.Nm
+node type was implemented in
+.Fx 4.0 .
+.Sh AUTHORS
+.An Archie Cobbs Aq archie@FreeBSD.org
 .Sh BUGS
 When built as a loadable kernel module, this module includes the file
 .Pa net/bpf_filter.c .
@@ -180,14 +191,3 @@ Although loading the module should fail if
 already exists in the kernel, currently it does not, and the duplicate
 copies of the file do not interfere.
 However, this may change in the future.
-.Sh HISTORY
-The
-.Nm
-node type was implemented in
-.Fx 4.0 .
-.Sh SEE ALSO
-.Xr bpf 4 ,
-.Xr netgraph 4 ,
-.Xr ngctl 8
-.Sh AUTHORS
-.An Archie Cobbs Aq archie@FreeBSD.org

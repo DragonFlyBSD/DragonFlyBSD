@@ -22,7 +22,7 @@
 .\" for fe driver.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/fe.4,v 1.14.2.8 2001/10/10 11:43:53 murray Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/fe.4,v 1.3 2005/06/17 23:10:11 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/fe.4,v 1.4 2006/02/17 19:37:10 swildner Exp $
 .Dd March 3, 1996
 .Dt FE 4 i386
 .Os
@@ -243,26 +243,11 @@ It requires the PC card (PCMCIA) support package.
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr ifconfig 8
-.Sh BUGS
-Following are major known bugs:
-.Pp
-Statistics on the number of collisions maintained by the
+.Sh HISTORY
+The
 .Nm
-driver is not accurate;
-the
-.Fl i
-option of
-.Xr netstat 1
-shows slightly less value than true number of collisions.
-.Pp
-More mbuf clusters are used than expected.
-The packet receive routine has an intended violation
-against the mbuf cluster allocation policy.
-The unnecessarily allocated clusters are freed within short lifetime,
-and it will not affect long term kernel memory usage.
-.Pp
-Although XNS and IPX supports are included in the driver,
-they are never be tested and must have a lot of bugs.
+driver appeared in
+.Fx 2.0.5 .
 .Sh AUTHORS, COPYRIGHT AND DISCLAIMER
 The
 .Nm
@@ -302,8 +287,23 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 DOCUMENT AND THE ASSOCIATED SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-.Sh HISTORY
-The
+.Sh BUGS
+Following are major known bugs:
+.Pp
+Statistics on the number of collisions maintained by the
 .Nm
-driver appeared in
-.Fx 2.0.5 .
+driver is not accurate;
+the
+.Fl i
+option of
+.Xr netstat 1
+shows slightly less value than true number of collisions.
+.Pp
+More mbuf clusters are used than expected.
+The packet receive routine has an intended violation
+against the mbuf cluster allocation policy.
+The unnecessarily allocated clusters are freed within short lifetime,
+and it will not affect long term kernel memory usage.
+.Pp
+Although XNS and IPX supports are included in the driver,
+they are never be tested and must have a lot of bugs.

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/targ.4,v 1.3.2.1 2003/02/18 22:07:11 njl Exp $
-.\" $DragonFly: src/share/man/man4/targ.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/targ.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd November 15, 2002
 .Dt TARG 4
@@ -129,16 +129,6 @@ are the control devices.
 .%T "FreeBSD Target Information"
 .%O http://www.root.org/~nate/freebsd/
 .Re
-.Sh BUGS
-Currently, only the
-.Xr ahc 4
-and
-.Xr isp 4
-drivers fully support target mode.
-.Pp
-The
-.Xr ahc 4
-driver does not support tagged queuing in target mode.
 .Sh AUTHORS
 .An -nosplit
 The
@@ -152,3 +142,13 @@ for
 .Fx 5.0
 by
 .An Nate Lawson Aq nate@root.org .
+.Sh BUGS
+Currently, only the
+.Xr ahc 4
+and
+.Xr isp 4
+drivers fully support target mode.
+.Pp
+The
+.Xr ahc 4
+driver does not support tagged queuing in target mode.

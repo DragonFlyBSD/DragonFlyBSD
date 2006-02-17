@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/gusc.4,v 1.3.2.3 2001/08/17 13:08:37 ru Exp $
-.\" $DragonFly: src/share/man/man4/gusc.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/gusc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd December 18, 1999
 .Dt GUSC 4
@@ -60,13 +60,13 @@ secondary DMA channel, the flags should be set to zero.
 .It xxx: gus pcm not attached, out of memory
 There are not enough memory to drive the device.
 .El
+.Sh SEE ALSO
+.Xr pcm 4
 .Sh HISTORY
 The
 .Nm
 device driver first appeared in
 .Fx 4.0 .
-.Sh SEE ALSO
-.Xr pcm 4
 .Sh AUTHORS
 .An Ville-Pertti Keinonen Aq will@iki.fi
 .An Seigo Tanimura Aq tanimura@r.dl.itc.u-tokyo.ac.jp

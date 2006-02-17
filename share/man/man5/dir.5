@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)dir.5	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/share/man/man5/dir.5,v 1.12.2.5 2001/12/17 11:30:13 ru Exp $
-.\" $DragonFly: src/share/man/man5/dir.5,v 1.5 2005/03/05 16:10:39 hmp Exp $
+.\" $DragonFly: src/share/man/man5/dir.5,v 1.6 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd March 5, 2005
 .Dt DIR 5
@@ -86,12 +86,12 @@ This file should not be included directly by applications.
 .Sh SEE ALSO
 .Xr fs 5 ,
 .Xr inode 5
-.Sh BUGS
-The usage of the member d_type of struct dirent is unportable as it is
-.Dx Ns / Ns Fx Ns -specific .
-It also may fail on certain filesystems, for example the cd9660 filesystem.
 .Sh HISTORY
 A
 .Nm
 file format appeared in
 .At v7 .
+.Sh BUGS
+The usage of the member d_type of struct dirent is unportable as it is
+.Dx Ns / Ns Fx Ns -specific .
+It also may fail on certain filesystems, for example the cd9660 filesystem.

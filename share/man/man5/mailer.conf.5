@@ -1,6 +1,6 @@
 .\"	$NetBSD: mailer.conf.5,v 1.2 1999/05/29 18:18:30 christos Exp $
 .\"	$FreeBSD: src/share/man/man5/mailer.conf.5,v 1.1.1.1.2.5 2001/08/17 13:08:47 ru Exp $
-.\"	$DragonFly: src/share/man/man5/mailer.conf.5,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\"	$DragonFly: src/share/man/man5/mailer.conf.5,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .\" Copyright (c) 1998
 .\" 	Perry E. Metzger.  All rights reserved.
@@ -55,6 +55,8 @@ would be set up this way.)
 The second member of each pair is the name of the program to
 actually execute when the first name is invoked. The file may also
 contain comments, denoted by a # mark in the first column of any line.
+.Sh FILES
+/etc/mail/mailer.conf
 .Sh EXAMPLES
 The following is an example of how to set up an
 .Nm
@@ -76,8 +78,6 @@ send-mail	/usr/libexec/postfix/sendmail
 mailq		/usr/libexec/postfix/sendmail
 newaliases	/usr/libexec/postfix/sendmail
 .Ed
-.Sh FILES
-/etc/mail/mailer.conf
 .Sh SEE ALSO
 .Xr mail 1 ,
 .Xr mailq 1 ,

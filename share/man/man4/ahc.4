@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ahc.4,v 1.22.2.8 2002/01/21 17:38:18 scottl Exp $
-.\" $DragonFly: src/share/man/man4/ahc.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ahc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd February 13, 2000
 .Dt AHC 4
@@ -252,6 +252,26 @@ the new transaction.  This allows the controller to queue up to
 local SCB space serves as a cache for disconnected transactions, the
 more SCB space available, the less host bus traffic consumed saving
 and restoring SCB data.
+.Sh SEE ALSO
+.Xr aha 4 ,
+.Xr ahb 4 ,
+.Xr cd 4 ,
+.Xr da 4 ,
+.Xr sa 4 ,
+.Xr scsi 4
+.Sh HISTORY
+The
+.Nm
+driver appeared in
+.Fx 2.0 .
+.Sh AUTHORS
+The
+.Nm
+driver, the
+.Tn AIC7xxx
+sequencer-code assembler,
+and the firmware running on the aic7xxx chips was written by
+.An Justin T. Gibbs .
 .Sh BUGS
 Some Quantum drives (at least the Empire 2100 and 1080s) will not run on an
 .Tn AIC7870
@@ -274,23 +294,3 @@ Reselection in target mode fails to function correctly on all high
 voltage differential boards as shipped by Adaptec.  Information on
 how to modify HVD board to work correctly in target mode is available
 from Adaptec.
-.Sh SEE ALSO
-.Xr aha 4 ,
-.Xr ahb 4 ,
-.Xr cd 4 ,
-.Xr da 4 ,
-.Xr sa 4 ,
-.Xr scsi 4
-.Sh AUTHORS
-The
-.Nm
-driver, the
-.Tn AIC7xxx
-sequencer-code assembler,
-and the firmware running on the aic7xxx chips was written by
-.An Justin T. Gibbs .
-.Sh HISTORY
-The
-.Nm
-driver appeared in
-.Fx 2.0 .

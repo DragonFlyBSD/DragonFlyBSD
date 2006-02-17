@@ -55,7 +55,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/sym.4,v 1.5.2.7 2001/10/01 13:07:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/sym.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/sym.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd January 12, 2000
 .Dt SYM 4
@@ -276,8 +276,6 @@ NCR/Symbios/LSI Logic 53C8XX family of PCI SCSI controllers.
 .It "sym53c1510D	40MHz	16Bit	4KB	Y	Y"
 .It "sym53c1010	80MHz	16Bit	8KB	Y	Y"
 .El
-.Sh BUGS
-No known bugs.
 .Sh SEE ALSO
 .Xr cd 4 ,
 .Xr da 4 ,
@@ -285,6 +283,11 @@ No known bugs.
 .Xr sa 4 ,
 .Xr scsi 4 ,
 .Xr camcontrol 8
+.Sh HISTORY
+The
+.Nm
+driver appeared in
+.Fx 4.0 .
 .Sh AUTHORS
 .An -nosplit
 The
@@ -308,8 +311,5 @@ by
 .An Wolfgang Stanglmeier
 and
 .An Stefan Esser .
-.Sh HISTORY
-The
-.Nm
-driver appeared in
-.Fx 4.0 .
+.Sh BUGS
+No known bugs.

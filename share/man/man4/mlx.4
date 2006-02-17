@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/mlx.4,v 1.3.2.5 2001/10/01 13:07:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/mlx.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/mlx.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd April 10, 2000
 .Dt MLX 4
@@ -210,11 +210,6 @@ or in the driver.
 .El
 .Sh SEE ALSO
 .Xr mlxcontrol 8
-.Sh BUGS
-The driver does not yet support EISA adapters.
-.Pp
-The driver does not yet support the version 6.x firmware as found in the
-AcceleRAID 352 and eXtremeRAID 2000 and 3000 products.
 .Sh AUTHORS
 .An -nosplit
 The
@@ -229,3 +224,8 @@ This manual page was written by
 and
 .An Michael Smith
 .Aq msmith@FreeBSD.org .
+.Sh BUGS
+The driver does not yet support EISA adapters.
+.Pp
+The driver does not yet support the version 6.x firmware as found in the
+AcceleRAID 352 and eXtremeRAID 2000 and 3000 products.

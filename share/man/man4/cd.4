@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/cd.4,v 1.17.2.8 2003/06/03 14:32:09 hmp Exp $
-.\" $DragonFly: src/share/man/man4/cd.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/cd.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
 .\"
 .Dd October 10, 1998
 .Dt CD 4
@@ -457,6 +457,18 @@ None.
 .Xr disklabel 5 ,
 .Xr disklabel 8 ,
 .Xr cd 9
+.Sh HISTORY
+This
+.Nm
+driver is based upon the
+.Nm
+driver written by Julian Elischer, which appeared in
+.Bx 386 0.1 .
+The
+CAM version of the
+.Nm
+driver was written by Kenneth Merry and first appeared in
+.Fx 3.0 .
 .Sh BUGS
 The names of the structures used for the third argument to
 .Fn ioctl
@@ -482,15 +494,3 @@ require modification of
 to support the two timeouts when hardwiring
 .Nm
 devices.
-.Sh HISTORY
-This
-.Nm
-driver is based upon the
-.Nm
-driver written by Julian Elischer, which appeared in
-.Bx 386 0.1 .
-The
-CAM version of the
-.Nm
-driver was written by Kenneth Merry and first appeared in
-.Fx 3.0 .

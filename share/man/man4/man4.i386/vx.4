@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/vx.4,v 1.10.2.5 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/vx.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/vx.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd January 15, 1996
 .Dt VX 4 i386
@@ -75,16 +75,6 @@ mostly in spurious warnings.
 The performance of this driver is somewhat limited by the fact that it uses
 only polled-mode I/O and does not make use of the bus-mastering capability
 of the cards.
-.Sh BUGS
-The
-.Nm
-driver is known not to reset the adapter correctly following a warm boot
-on some systems.
-.Pp
-The
-.Nm
-driver has not been exhaustively tested with all the models of cards that it
-claims to support.
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr netintro 4 ,
@@ -107,3 +97,13 @@ device driver and this manual page were written by
 based on the work of
 .An Herb Peyerl
 and with the assistance of numerous others.
+.Sh BUGS
+The
+.Nm
+driver is known not to reset the adapter correctly following a warm boot
+on some systems.
+.Pp
+The
+.Nm
+driver has not been exhaustively tested with all the models of cards that it
+claims to support.

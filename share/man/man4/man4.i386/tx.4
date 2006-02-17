@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/tx.4,v 1.11.2.10 2003/02/17 21:20:40 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/tx.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/tx.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd February 8, 2001
 .Dt TX 4 i386
@@ -97,11 +97,11 @@ Packet thrown away.
 .It "tx%d: can't stop %s DMA"
 While reseting, driver failed to stop device correctly.
 .El
-.Sh BUGS
-The multicast packets filtering is not supported.
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr miibus 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr ifconfig 8
+.Sh BUGS
+The multicast packets filtering is not supported.

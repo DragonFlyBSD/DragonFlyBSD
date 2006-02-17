@@ -29,7 +29,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/pnp.4,v 1.5.2.7 2001/09/25 23:40:30 yokota Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/pnp.4,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/pnp.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd September 7, 1997
 .Dt PNP 4 i386
@@ -176,18 +176,18 @@ before accessing the card's ISA ports/memory address ranges.
 .El
 .Sh SEE ALSO
 .Xr kget 8
-.Sh BUGS
-There is no support for visual configuration of PnP devices.
-It would be nice to have commands in userconfig to fetch the
-configuration of PnP devices.
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 2.2.5 .
 .Sh AUTHORS
 .An -nosplit
 PnP support was written by
 .An Luigi Rizzo ,
 based on initial work done by
 .An Sujal Patel .
-.Sh HISTORY
-The
-.Nm
-driver first appeared in
-.Fx 2.2.5 .
+.Sh BUGS
+There is no support for visual configuration of PnP devices.
+It would be nice to have commands in userconfig to fetch the
+configuration of PnP devices.

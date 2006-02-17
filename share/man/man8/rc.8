@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)rc.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/share/man/man8/rc.8,v 1.22 2002/12/12 17:25:58 ru Exp $
-.\" $DragonFly: src/share/man/man8/rc.8,v 1.6 2005/12/10 00:11:08 swildner Exp $
+.\" $DragonFly: src/share/man/man8/rc.8,v 1.7 2006/02/17 19:37:10 swildner Exp $
 .Dd November 4, 2002
 .Dt RC 8
 .Os
@@ -466,6 +466,17 @@ before starting the daemon.
 .Pp
 Following tradition, all startup files reside in
 .Pa /etc .
+.Sh FILES
+.Bl -tag -compact
+.It Pa /etc/rc
+.It Pa /etc/rc.conf
+.It Pa /etc/rc.conf.local
+.It Pa /etc/rc.d/
+.It Pa /etc/rc.firewall
+.It Pa /etc/rc.local
+.It Pa /etc/rc.shutdown
+.It Pa /etc/rc.subr
+.El
 .Sh EXAMPLES
 The following is a minimal
 .Nm rc.d/
@@ -546,17 +557,6 @@ As all processes are killed by
 at shutdown, the explicit
 .Xr kill 1
 is unnecessary, but is often included.
-.Sh FILES
-.Bl -tag -compact
-.It Pa /etc/rc
-.It Pa /etc/rc.conf
-.It Pa /etc/rc.conf.local
-.It Pa /etc/rc.d/
-.It Pa /etc/rc.firewall
-.It Pa /etc/rc.local
-.It Pa /etc/rc.shutdown
-.It Pa /etc/rc.subr
-.El
 .Sh SEE ALSO
 .Xr kill 1 ,
 .Xr rc.conf 5 ,
