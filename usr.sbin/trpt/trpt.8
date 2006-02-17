@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)trpt.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/trpt/trpt.8,v 1.8.2.5 2003/03/11 22:31:34 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/trpt/trpt.8,v 1.2 2003/06/17 04:30:03 dillon Exp $
+.\" $DragonFly: src/usr.sbin/trpt/trpt.8,v 1.3 2006/02/17 19:40:28 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt TRPT 8
@@ -131,9 +131,6 @@ arguments may be used to supplant the defaults.
 .It Pa /kernel
 .It Pa /dev/kmem
 .El
-.Sh SEE ALSO
-.Xr netstat 1 ,
-.Xr setsockopt 2
 .Sh DIAGNOSTICS
 .Bl -diag
 .It no namelist
@@ -141,14 +138,17 @@ When the system image doesn't
 contain the proper symbols to find the trace buffer;
 others which should be self explanatory.
 .El
+.Sh SEE ALSO
+.Xr netstat 1 ,
+.Xr setsockopt 2
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Bx 4.2 .
 .Sh BUGS
 Should also print the data for each input or output,
 but this is not saved in the trace record.
 .Pp
 The output format is inscrutable and should be described
 here.
-.Sh HISTORY
-The
-.Nm
-utility appeared in
-.Bx 4.2 .

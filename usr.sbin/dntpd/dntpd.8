@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.7 2006/02/10 19:01:10 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.8 2006/02/17 19:40:14 swildner Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -234,17 +234,6 @@ per line.  Any information after a '#' is assumed to be a comment.  Any
 number of servers may be specified but it is usually wasteful to have more
 than four.
 .Pp
-.Sh BUGS
-An algorithm is needed to deal with time sources with packet-latency-based
-offset errors.
-.Pp
-The offset correction needs to be able to operate while a prior offset
-correction is still in-progress.
-.Pp
-We need to record the frequency correction in a file which is then read on
-startup, to avoid having to recorrect the frequency from scratch every
-time the system is rebooted.
-.Pp
 .Sh FILES
 .Bl -tag -compact
 .It Pa /var/run/dntpd.pid
@@ -260,3 +249,13 @@ The default configuration file.
 .Pp
 .Sh AUTHORS
 This program was written by Matthew Dillon.
+.Sh BUGS
+An algorithm is needed to deal with time sources with packet-latency-based
+offset errors.
+.Pp
+The offset correction needs to be able to operate while a prior offset
+correction is still in-progress.
+.Pp
+We need to record the frequency correction in a file which is then read on
+startup, to avoid having to recorrect the frequency from scratch every
+time the system is rebooted.

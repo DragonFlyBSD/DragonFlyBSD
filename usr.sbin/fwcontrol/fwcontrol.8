@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.1.2.6 2003/05/01 06:35:00 simokawa Exp $
-.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.4 2005/08/01 01:49:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.5 2006/02/17 19:40:15 swildner Exp $
 .\"
 .\"
 .Dd December 30, 2002
@@ -87,6 +87,10 @@ in the ports collection.
 .It Fl S Ar filename
 Send a DV file as isochronus stream.
 .El
+.Sh FILES
+.Bl -tag -width indent
+.It Pa /dev/fw0
+.El
 .Sh EXAMPLES
 Each DV frame has fixed size and it is easy to edit those frame order.
 .Bd -literal -offset indent
@@ -112,10 +116,6 @@ Swap first and second 30 frames and send them to DV recorder.
 .Pp
 For PAL, replace 'bs=120000' with 'bs=144000'.
 .Pp
-.Sh FILES
-.Bl -tag -width indent
-.It Pa /dev/fw0
-.El
 .Sh SEE ALSO
 .Xr firewire 4 ,
 .Xr fwohci 4 ,

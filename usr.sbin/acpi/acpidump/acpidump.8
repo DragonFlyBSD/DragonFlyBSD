@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.16 2004/06/04 19:21:06 ru Exp $
-.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.2 2005/08/01 01:49:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.3 2006/02/17 19:40:09 swildner Exp $
 .\"
 .Dd August 31, 2000
 .Dt ACPIDUMP 8
@@ -135,6 +135,10 @@ flag may not be used with this option.
 .It Fl o Ar dsdt_output
 Store the DSDT data block from physical memory into the specified file.
 .El
+.Sh FILES
+.Bl -tag -width /dev/mem
+.It Pa /dev/mem
+.El
 .Sh EXAMPLES
 This example dumps the DSDT from physical memory to foo.dsdt.
 It also prints the contents of various system tables and disassembles
@@ -149,17 +153,6 @@ Verbose messages are enabled.
 .Bd -literal -offset indent
 # acpidump -v -d -f foo.dsdt
 .Ed
-.Sh BUGS
-In the current implementation,
-.Nm
-does not dump the
-Secondary System Descriptor Table (SSDT),
-Embedded Controller Descriptor Table (ECDT),
-or BOOT structures.
-.Sh FILES
-.Bl -tag -width /dev/mem
-.It Pa /dev/mem
-.El
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr mem 4 ,
@@ -189,3 +182,10 @@ and was rewritten to use
 .Xr iasl 8
 for
 .Fx 5.2 .
+.Sh BUGS
+In the current implementation,
+.Nm
+does not dump the
+Secondary System Descriptor Table (SSDT),
+Embedded Controller Descriptor Table (ECDT),
+or BOOT structures.

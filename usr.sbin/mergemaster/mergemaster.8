@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/mergemaster/mergemaster.8,v 1.5.2.12 2003/03/02 02:45:01 dougb Exp $
-.\" $DragonFly: src/usr.sbin/mergemaster/mergemaster.8,v 1.3 2004/03/11 12:28:59 hmp Exp $
+.\" $DragonFly: src/usr.sbin/mergemaster/mergemaster.8,v 1.4 2006/02/17 19:40:17 swildner Exp $
 .\"
 .Dd February 5, 2001
 .Dt MERGEMASTER 8
@@ -252,29 +252,6 @@ Other variables that are used by the script internally
 can be specified in
 .Pa .mergemasterrc
 as described in more detail below.
-.Sh EXAMPLES
-Typically all you will need to do is type
-.Nm
-at the prompt and the script will do all the work for you.
-.Pp
-To use context diff's and have
-.Nm
-explain more things as it goes along, use:
-.Pp
-.Dl # mergemaster -cv
-.Pp
-To specify that
-.Nm
-put the temporary root environment in
-.Pa /usr/tmp/root ,
-use:
-.Pp
-.Dl # mergemaster -t /usr/tmp/root
-.Pp
-To specify a 110 column screen with a strict
-comparison, use:
-.Pp
-.Dl # mergemaster -sw 110
 .Sh FILES
 .Bl -tag -width $HOME/.mergemasterrc -compact
 .It Pa /etc/mergemaster.rc
@@ -341,6 +318,40 @@ with all values commented out:
 #MM_PRE_COMPARE_SCRIPT=
 #MM_EXIT_SCRIPT=
 .Ed
+.Sh EXAMPLES
+Typically all you will need to do is type
+.Nm
+at the prompt and the script will do all the work for you.
+.Pp
+To use context diff's and have
+.Nm
+explain more things as it goes along, use:
+.Pp
+.Dl # mergemaster -cv
+.Pp
+To specify that
+.Nm
+put the temporary root environment in
+.Pa /usr/tmp/root ,
+use:
+.Pp
+.Dl # mergemaster -t /usr/tmp/root
+.Pp
+To specify a 110 column screen with a strict
+comparison, use:
+.Pp
+.Dl # mergemaster -sw 110
+.Sh DIAGNOSTICS
+Exit status is 0 on successful completion, or if the user bails out
+manually at some point during execution.
+.Pp
+Exit status is 1 if it fails for one of the following reasons:
+.Pp
+Invalid command line option
+.Pp
+Failure to create the temporary root environment
+.Pp
+Failure to populate the temporary root
 .Sh SEE ALSO
 .Xr cvs 1 ,
 .Xr diff 1 ,
@@ -355,17 +366,6 @@ with all values commented out:
 .%T The Cutting Edge (using make world)
 .%A Nik Clayton
 .Re
-.Sh DIAGNOSTICS
-Exit status is 0 on successful completion, or if the user bails out
-manually at some point during execution.
-.Pp
-Exit status is 1 if it fails for one of the following reasons:
-.Pp
-Invalid command line option
-.Pp
-Failure to create the temporary root environment
-.Pp
-Failure to populate the temporary root
 .Sh HISTORY
 The
 .Nm

@@ -25,7 +25,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/fdcontrol/fdcontrol.8,v 1.9.2.4 2002/06/21 16:40:24 charnier Exp $
-.\" $DragonFly: src/usr.sbin/fdcontrol/fdcontrol.8,v 1.2 2003/06/17 04:29:53 dillon Exp $
+.\" $DragonFly: src/usr.sbin/fdcontrol/fdcontrol.8,v 1.3 2006/02/17 19:40:14 swildner Exp $
 .\"
 .Dd May 22, 1994
 .Os
@@ -75,19 +75,6 @@ Error codes for the underlying
 commands are printed by the
 .Xr warn 3
 facility.
-.Sh BUGS
-The
-.Nm
-utility is currently under development.
-It's user interface is rather
-silly and likely to change in future, options should be provided to
-allow anything being modified from the command line.
-.Pp
-The driver does actually support only two debug levels
-(0 and 1),
-where debug level 1 will generate huge amounts of output.
-It is likely
-to overflow the syslog if not used with extreme care.
 .Sh SEE ALSO
 .Xr ioctl 2 ,
 .Xr warn 3 ,
@@ -102,3 +89,16 @@ functionality are subjects to future improvements and changes.
 The program has been contributed by
 .An J\(:org Wunsch ,
 Dresden.
+.Sh BUGS
+The
+.Nm
+utility is currently under development.
+It's user interface is rather
+silly and likely to change in future, options should be provided to
+allow anything being modified from the command line.
+.Pp
+The driver does actually support only two debug levels
+(0 and 1),
+where debug level 1 will generate huge amounts of output.
+It is likely
+to overflow the syslog if not used with extreme care.

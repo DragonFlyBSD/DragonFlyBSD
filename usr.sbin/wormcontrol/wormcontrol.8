@@ -33,7 +33,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/wormcontrol/wormcontrol.8,v 1.14.2.1 2000/12/27 13:50:37 ru Exp $
-.\" $DragonFly: src/usr.sbin/wormcontrol/Attic/wormcontrol.8,v 1.3 2005/08/01 01:49:18 swildner Exp $
+.\" $DragonFly: src/usr.sbin/wormcontrol/Attic/wormcontrol.8,v 1.4 2006/02/17 19:40:30 swildner Exp $
 .\"
 .\" arrgh, hilit19 needs this" :-(
 .Dd January 27, 1996
@@ -134,12 +134,10 @@ Blank a CD-RW disk.
 Sets the next writeable location on the drive, used when writing
 more than one track ie CD-DA (audio) disks.
 .El
-.Sh DIAGNOSTICS
-Error codes for the underlying
-.Xr ioctl 2
-commands are printed by the
-.Xr err 3
-facility.
+.Sh FILES
+.Bl -tag -width /usr/share/examples/worm/* -compact
+.It Pa /usr/share/examples/worm/*
+.El
 .Sh EXAMPLES
 The typical sequence of burning a data CD-R looks like:
 .Bd -literal
@@ -163,10 +161,12 @@ The mentioned command
 .Xr team 1
 is not part of the base system, but comes extremely handy in order to
 pipe a constant data stream into the CD recorder.
-.Sh FILES
-.Bl -tag -width /usr/share/examples/worm/* -compact
-.It Pa /usr/share/examples/worm/*
-.El
+.Sh DIAGNOSTICS
+Error codes for the underlying
+.Xr ioctl 2
+commands are printed by the
+.Xr err 3
+facility.
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr team 1 ,

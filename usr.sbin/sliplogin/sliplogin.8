@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)sliplogin.8	8.2 (Berkeley) 1/5/94
 .\" $FreeBSD: src/usr.sbin/sliplogin/sliplogin.8,v 1.12.2.5 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/sliplogin/sliplogin.8,v 1.2 2003/06/17 04:30:03 dillon Exp $
+.\" $DragonFly: src/usr.sbin/sliplogin/sliplogin.8,v 1.3 2006/02/17 19:40:27 swildner Exp $
 .\"
 .Dd January 5, 1994
 .Dt SLIPLOGIN 8
@@ -184,6 +184,32 @@ If latter two parameters are omitted, they will not affect the
 corresponding SLIP configuration.
 If any of first two parameters is equal to zero, it will not affect
 the corresponding SLIP configuration.
+.Sh FILES
+.Bl -tag -width indent
+.It Pa /etc/sliphome/slip.hosts
+list of host login names and parameters.
+.It Pa /etc/sliphome/slip.login
+script executed when a connection is made.
+.It Pa /etc/sliphome/slip.login. Ns Ar loginname
+script executed when a connection is made by
+.Ar loginname .
+.It Pa /etc/sliphome/slip.logout
+script executed when a connection is lost.
+.It Pa /etc/sliphome/slip.logout. Ns Ar loginname
+script executed when a connection is lost by
+.Ar loginname .
+.It Pa /etc/sliphome/slip.slparms
+extra parameters file.
+.It Pa /etc/sliphome/slip.slparms. Ns Ar loginname
+extra parameters file for
+.Ar loginname .
+.It Pa /var/run/ Ns Ar ttyXn Ns Pa .if
+contains the name of the network interface used by the sliplogin process on
+.Ar ttyXn .
+.It Pa /var/run/ Ns Ar slX Ns Pa .pid
+contains the PID of the sliplogin process which is using interface
+.Ar slX .
+.El
 .Sh EXAMPLES
 The normal use of
 .Nm
@@ -274,32 +300,6 @@ was found in
 unit
 .Em unit
 was successfully attached.
-.El
-.Sh FILES
-.Bl -tag -width indent
-.It Pa /etc/sliphome/slip.hosts
-list of host login names and parameters.
-.It Pa /etc/sliphome/slip.login
-script executed when a connection is made.
-.It Pa /etc/sliphome/slip.login. Ns Ar loginname
-script executed when a connection is made by
-.Ar loginname .
-.It Pa /etc/sliphome/slip.logout
-script executed when a connection is lost.
-.It Pa /etc/sliphome/slip.logout. Ns Ar loginname
-script executed when a connection is lost by
-.Ar loginname .
-.It Pa /etc/sliphome/slip.slparms
-extra parameters file.
-.It Pa /etc/sliphome/slip.slparms. Ns Ar loginname
-extra parameters file for
-.Ar loginname .
-.It Pa /var/run/ Ns Ar ttyXn Ns Pa .if
-contains the name of the network interface used by the sliplogin process on
-.Ar ttyXn .
-.It Pa /var/run/ Ns Ar slX Ns Pa .pid
-contains the PID of the sliplogin process which is using interface
-.Ar slX .
 .El
 .Sh SEE ALSO
 .Xr slattach 8 ,

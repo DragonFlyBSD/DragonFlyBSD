@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rpc.ypxfrd/rpc.ypxfrd.8,v 1.9.2.3 2003/03/11 22:31:32 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/rpc.ypxfrd/rpc.ypxfrd.8,v 1.3 2004/03/11 12:29:00 hmp Exp $
+.\" $DragonFly: src/usr.sbin/rpc.ypxfrd/rpc.ypxfrd.8,v 1.4 2006/02/17 19:40:24 swildner Exp $
 .\"
 .Dd June 2, 1996
 .Dt RPC.YPXFRD 8
@@ -131,6 +131,8 @@ The NIS maps for a particular NIS domain.
 .Xr yppush 8 ,
 .Xr ypserv 8 ,
 .Xr ypxfr 8
+.Sh AUTHORS
+.An Bill Paul Aq wpaul@ctr.columbia.edu
 .Sh BUGS
 The
 .Dx
@@ -147,5 +149,3 @@ file formats.
 Furthermore, ndbm is byte-order sensitive and not very
 smart about it, meaning that am ndbm database created on a big endian
 system can't be read on a little endian system.
-.Sh AUTHORS
-.An Bill Paul Aq wpaul@ctr.columbia.edu

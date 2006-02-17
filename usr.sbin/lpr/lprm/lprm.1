@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)lprm.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/lpr/lprm/lprm.1,v 1.5.2.5 2002/06/21 16:40:54 charnier Exp $
-.\" $DragonFly: src/usr.sbin/lpr/lprm/lprm.1,v 1.2 2003/06/17 04:29:56 dillon Exp $
+.\" $DragonFly: src/usr.sbin/lpr/lprm/lprm.1,v 1.3 2006/02/17 19:40:17 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt LPRM 1
@@ -133,18 +133,18 @@ Spooling directories.
 Lock file used to obtain the pid of the current
 daemon and the job number of the currently active job.
 .El
+.Sh DIAGNOSTICS
+``Permission denied" if the user tries to remove files other than his
+own.
 .Sh SEE ALSO
 .Xr lpq 1 ,
 .Xr lpr 1 ,
 .Xr lpd 8
-.Sh DIAGNOSTICS
-``Permission denied" if the user tries to remove files other than his
-own.
-.Sh BUGS
-Since there are race conditions possible in the update of the lock file,
-the currently active job may be incorrectly identified.
 .Sh HISTORY
 The
 .Nm
 command appeared in
 .Bx 3.0 .
+.Sh BUGS
+Since there are race conditions possible in the update of the lock file,
+the currently active job may be incorrectly identified.

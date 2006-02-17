@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/isic.4,v 1.8.2.8 2001/08/16 15:55:58 ru Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/isic.4,v 1.3 2006/02/10 19:01:10 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/isic.4,v 1.4 2006/02/17 19:40:15 swildner Exp $
 .\"
 .\"	last edit-date: [Fri Jan 26 14:32:33 2001]
 .\"
@@ -357,14 +357,11 @@ to the 0x200 range in their documentation (the board also uses 0x600 etc.)
 The driver matches the manufacturers' description for the purposes of
 configuration, but of course makes use of all the ports in order to
 operate the card.
-.Sh BUGS
-Since there is no hardware documentation available from several manufacturers
-for their boards, it is likely that there are many, many bugs left.
-.Sh STANDARDS
-CCITT Recommendation I.430
 .Sh SEE ALSO
 .Xr i4bq921 4 ,
 .Xr i4bq931 4
+.Sh STANDARDS
+CCITT Recommendation I.430
 .Sh AUTHORS
 .An -nosplit
 The
@@ -386,3 +383,6 @@ The
 .Nx Ns /Amiga
 ISDN Blaster/Master/MasterII driver was written by
 .An Ignatios Souvatzis Aq is@netbsd.org .
+.Sh BUGS
+Since there is no hardware documentation available from several manufacturers
+for their boards, it is likely that there are many, many bugs left.

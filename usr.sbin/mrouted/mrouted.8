@@ -1,7 +1,7 @@
 .\"COPYRIGHT 1989 by The Board of Trustees of Leland Stanford Junior University.
 .\"
 .\" $FreeBSD: src/usr.sbin/mrouted/mrouted.8,v 1.16.2.8 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mrouted/mrouted.8,v 1.2 2003/06/17 04:29:57 dillon Exp $
+.\" $DragonFly: src/usr.sbin/mrouted/mrouted.8,v 1.3 2006/02/17 19:40:18 swildner Exp $
 .\"
 .Dd May 8, 1995
 .Dt MROUTED 8
@@ -465,6 +465,13 @@ For convenience in sending signals,
 writes its pid to
 .Pa /var/run/mrouted.pid
 upon startup.
+.Sh FILES
+.Bl -tag -width /var/tmp/mrouted.cache -compact
+.It Pa /etc/mrouted.conf
+.It Pa /var/run/mrouted.pid
+.It Pa /var/tmp/mrouted.dump
+.It Pa /var/tmp/mrouted.cache
+.El
 .Sh EXAMPLES
 The routing tables look like this:
 .Pp
@@ -588,13 +595,6 @@ one subnet.
 An additional line with a "<" as the first character is printed
 describing any prunes received from downstream dependent neighbors
 for this subnet and group.
-.Sh FILES
-.Bl -tag -width /var/tmp/mrouted.cache -compact
-.It Pa /etc/mrouted.conf
-.It Pa /var/run/mrouted.pid
-.It Pa /var/tmp/mrouted.dump
-.It Pa /var/tmp/mrouted.cache
-.El
 .Sh SEE ALSO
 .Xr map-mbone 8 ,
 .Xr mrinfo 8 ,

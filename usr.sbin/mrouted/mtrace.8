@@ -30,7 +30,7 @@
 .\" All rights reserved.
 .\"
 .\" $FreeBSD: src/usr.sbin/mrouted/mtrace.8,v 1.12.2.6 2003/03/11 22:31:29 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/mrouted/mtrace.8,v 1.2 2003/06/17 04:29:57 dillon Exp $
+.\" $DragonFly: src/usr.sbin/mrouted/mtrace.8,v 1.3 2006/02/17 19:40:18 swildner Exp $
 .\"
 .Dd May 8, 1995
 .Dt MTRACE 8
@@ -509,6 +509,11 @@ Querying full reverse path... * switching to hop-by-hop:
  -5  * * * noc.hpc.org (192.187.8.2) [mrouted 2.2] didn't respond
 Round trip time 95 ms
 .Ed
+.Sh SEE ALSO
+.Xr map-mbone 8 ,
+.Xr mrinfo 8 ,
+.Xr mrouted 8 ,
+.Xr traceroute 8
 .Sh AUTHORS
 .An -nosplit
 Implemented by
@@ -535,11 +540,6 @@ are modeled after the unicast
 .Nm traceroute
 program written by
 .An Van Jacobson .
-.Sh SEE ALSO
-.Xr map-mbone 8 ,
-.Xr mrinfo 8 ,
-.Xr mrouted 8 ,
-.Xr traceroute 8
 .Sh BUGS
 Statistics collection in passive mode doesn't always produce the same output
 as when actively collecting data.

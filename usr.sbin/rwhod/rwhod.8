@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)rwhod.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/usr.sbin/rwhod/rwhod.8,v 1.13.2.4 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/rwhod/rwhod.8,v 1.5 2005/08/10 11:29:49 liamfoy Exp $
+.\" $DragonFly: src/usr.sbin/rwhod/rwhod.8,v 1.6 2006/02/17 19:40:26 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt RWHOD 8
@@ -239,13 +239,13 @@ image currently operating.
 .Sh SEE ALSO
 .Xr ruptime 1 ,
 .Xr rwho 1
-.Sh BUGS
-Status information should be sent only upon request rather than continuously.
-People often interpret the server dying
-or network communication failures
-as a machine going down.
 .Sh HISTORY
 The
 .Nm
 utility appeared in
 .Bx 4.2 .
+.Sh BUGS
+Status information should be sent only upon request rather than continuously.
+People often interpret the server dying
+or network communication failures
+as a machine going down.

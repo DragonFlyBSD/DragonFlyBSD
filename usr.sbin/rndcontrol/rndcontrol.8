@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.13.2.2 2001/12/21 09:05:32 ru Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.2 2003/06/17 04:30:02 dillon Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.3 2006/02/17 19:40:22 swildner Exp $
 .\"
 .Dd October 20, 1995
 .Dt RNDCONTROL 8
@@ -80,10 +80,13 @@ secure random device
 .It Pa /dev/urandom
 random device
 .El
-.Sh BUGS
-Sure to be some.
 .Sh SEE ALSO
 .Xr random 4
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Fx 2.1.5 .
 .Sh AUTHORS
 .An -nosplit
 .An Theodore Ts'o
@@ -92,8 +95,5 @@ wrote the core code.
 ported this code to
 .Fx
 and wrote the support routines and constructed the man pages.
-.Sh HISTORY
-The
-.Nm
-utility first appeared in
-.Fx 2.1.5 .
+.Sh BUGS
+Sure to be some.

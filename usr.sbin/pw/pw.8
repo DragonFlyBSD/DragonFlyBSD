@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/pw/pw.8,v 1.19.2.12 2003/05/08 15:01:44 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.2 2003/06/17 04:30:01 dillon Exp $
+.\" $DragonFly: src/usr.sbin/pw/pw.8,v 1.3 2006/02/17 19:40:21 swildner Exp $
 .\"
 .Dd December 9, 1996
 .Dt PW 8
@@ -815,6 +815,27 @@ respectively.  The
 and
 .Fl q
 options as described above are accepted by these commands.
+.Sh FILES
+.Bl -tag -width /etc/master.passwd.new -compact
+.It Pa /etc/master.passwd
+The user database
+.It Pa /etc/passwd
+A Version 7 format password file
+.It Pa /etc/login.conf
+The user capabilities database
+.It Pa /etc/group
+The group database
+.It Pa /etc/master.passwd.new
+Temporary copy of the master password file
+.It Pa /etc/passwd.new
+Temporary copy of the Version 7 password file
+.It Pa /etc/group.new
+Temporary copy of the group file
+.It Pa /etc/pw.conf
+Pw default options file
+.It Pa /var/log/userlog
+User/group modification logfile
+.El
 .Sh DIAGNOSTICS
 The
 .Nm
@@ -921,27 +942,6 @@ utility writes a log to the
 file when actions such as user or group additions or deletions occur.
 The location of this logfile can be changed in
 .Xr pw.conf 5 .
-.Sh FILES
-.Bl -tag -width /etc/master.passwd.new -compact
-.It Pa /etc/master.passwd
-The user database
-.It Pa /etc/passwd
-A Version 7 format password file
-.It Pa /etc/login.conf
-The user capabilities database
-.It Pa /etc/group
-The group database
-.It Pa /etc/master.passwd.new
-Temporary copy of the master password file
-.It Pa /etc/passwd.new
-Temporary copy of the Version 7 password file
-.It Pa /etc/group.new
-Temporary copy of the group file
-.It Pa /etc/pw.conf
-Pw default options file
-.It Pa /var/log/userlog
-User/group modification logfile
-.El
 .Sh SEE ALSO
 .Xr chpass 1 ,
 .Xr passwd 1 ,

@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)pwd_mkdb.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.15.2.4 2003/03/11 22:31:31 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.2 2003/06/17 04:30:02 dillon Exp $
+.\" $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.3 2006/02/17 19:40:22 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt PWD_MKDB 8
@@ -131,6 +131,23 @@ The current password file.
 .It Pa /etc/passwd
 A Version 7 format password file.
 .El
+.Sh COMPATIBILITY
+Previous versions of the system had a program similar to
+.Nm ,
+.Xr mkpasswd 8 ,
+which built
+.Xr dbm 3
+style databases for the password file but depended on the calling programs
+to install them.
+The program was renamed in order that previous users of the program
+not be surprised by the changes in functionality.
+.Sh SEE ALSO
+.Xr chpass 1 ,
+.Xr passwd 1 ,
+.Xr db 3 ,
+.Xr getpwent 3 ,
+.Xr passwd 5 ,
+.Xr vipw 8
 .Sh BUGS
 Because of the necessity for atomic update of the password files,
 .Nm
@@ -152,20 +169,3 @@ The front-ends to
 and
 .Xr vipw 8 ,
 handle the locking necessary to avoid this problem.
-.Sh COMPATIBILITY
-Previous versions of the system had a program similar to
-.Nm ,
-.Xr mkpasswd 8 ,
-which built
-.Xr dbm 3
-style databases for the password file but depended on the calling programs
-to install them.
-The program was renamed in order that previous users of the program
-not be surprised by the changes in functionality.
-.Sh SEE ALSO
-.Xr chpass 1 ,
-.Xr passwd 1 ,
-.Xr db 3 ,
-.Xr getpwent 3 ,
-.Xr passwd 5 ,
-.Xr vipw 8

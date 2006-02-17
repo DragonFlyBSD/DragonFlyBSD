@@ -23,7 +23,7 @@
 .\" notice must be reproduced on all copies.
 .\"
 .\" @(#) $FreeBSD: src/usr.sbin/atm/scspd/scspd.8,v 1.2.2.3 2003/03/11 21:13:48 trhodes Exp $
-.\" @(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.8,v 1.2 2003/06/17 04:29:52 dillon Exp $
+.\" @(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.8,v 1.3 2006/02/17 19:40:11 swildner Exp $
 .\"
 .\"
 .Dd August 21, 1998
@@ -611,15 +611,6 @@ option is specified on the command line.
 .%O "draft\-ietf\-ion\-scsp\-atmarpd\-00.txt"
 .%T "A Distributed ATMARP Service Using SCSP"
 .Re
-.Sh BUGS
-If
-.Nm
-terminates and is restarted, there will be a period of
-instability while previously-synchronized cache entries time out and are
-refreshed.
-.Pp
-Please report any bugs to
-.Aq harp\-bugs@magic.net .
 .Sh COPYRIGHT
 Copyright (c) 1994-1998, Network Computing Services, Inc.
 .Sh AUTHORS
@@ -632,3 +623,12 @@ Network Computing Services, Inc.
 .Sh ACKNOWLEDGMENTS
 This software was developed with the support of the Defense
 Advanced Research Projects Agency (DARPA).
+.Sh BUGS
+If
+.Nm
+terminates and is restarted, there will be a period of
+instability while previously-synchronized cache entries time out and are
+refreshed.
+.Pp
+Please report any bugs to
+.Aq harp\-bugs@magic.net .

@@ -2,7 +2,7 @@
 .\"
 .\"	from: @(#)newsyslog.8
 .\" $FreeBSD: src/usr.sbin/newsyslog/newsyslog.8,v 1.23.2.14 2003/05/07 20:42:56 gad Exp $
-.\" $DragonFly: src/usr.sbin/newsyslog/newsyslog.8,v 1.2 2003/06/17 04:29:57 dillon Exp $
+.\" $DragonFly: src/usr.sbin/newsyslog/newsyslog.8,v 1.3 2006/02/17 19:40:19 swildner Exp $
 .\"
 .\" Copyright 1988, 1989 by the Massachusetts Institute of Technology
 .\"
@@ -509,13 +509,6 @@ will examine all files listed in the configuration file.
 .Nm
 configuration file
 .El
-.Sh BUGS
-Doesn't yet automatically read the logs to find security breaches.
-.Sh AUTHORS
-.An Theodore Ts'o ,
-MIT Project Athena
-.Pp
-Copyright 1987, Massachusetts Institute of Technology
 .Sh COMPATIBILITY
 Previous versions of the
 .Nm
@@ -531,3 +524,10 @@ accepted for backwards compatibility.
 .Xr syslog 3 ,
 .Xr chown 8 ,
 .Xr syslogd 8
+.Sh AUTHORS
+.An Theodore Ts'o ,
+MIT Project Athena
+.Pp
+Copyright 1987, Massachusetts Institute of Technology
+.Sh BUGS
+Doesn't yet automatically read the logs to find security breaches.

@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/sa/sa.8,v 1.11.2.4 2003/03/11 22:31:33 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/sa/sa.8,v 1.2 2003/06/17 04:30:03 dillon Exp $
+.\" $DragonFly: src/usr.sbin/sa/sa.8,v 1.3 2006/02/17 19:40:26 swildner Exp $
 .\"
 .Dd February 25, 1994
 .Dt SA 8
@@ -195,8 +195,6 @@ flag is specified, only the
 and
 .Fl s
 flags are honored.
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh FILES
 .Bl -tag -width /var/account/usracct -compact
 .It Pa /var/account/acct
@@ -206,18 +204,15 @@ per-command accounting summary database
 .It Pa /var/account/usracct
 per-user accounting summary database
 .El
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr lastcomm 1 ,
 .Xr acct 5 ,
 .Xr ac 8 ,
 .Xr accton 8
-.Sh BUGS
-The number of options to this program is absurd, especially considering
-that there's not much logic behind their lettering.
-.Pp
-The field labels should be more consistent.
-.Pp
-The VM system does not record the CPU storage integral.
+.Sh AUTHORS
+.An Chris G. Demetriou Aq cgd@postgres.berkeley.edu
 .Sh CAVEATS
 While the behavior of the options in this version of
 .Nm
@@ -234,5 +229,10 @@ The formats of the summary files created by this version of
 are very different from the those used by the original version.
 This is not considered a problem, however, because the accounting record
 format has changed as well (since user ids are now 32 bits).
-.Sh AUTHORS
-.An Chris G. Demetriou Aq cgd@postgres.berkeley.edu
+.Sh BUGS
+The number of options to this program is absurd, especially considering
+that there's not much logic behind their lettering.
+.Pp
+The field labels should be more consistent.
+.Pp
+The VM system does not record the CPU storage integral.

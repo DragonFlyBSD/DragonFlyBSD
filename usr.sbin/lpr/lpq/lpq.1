@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)lpq.1	8.2 (Berkeley) 4/28/95
 .\" $FreeBSD: src/usr.sbin/lpr/lpq/lpq.1,v 1.5.2.4 2002/06/21 16:40:46 charnier Exp $
-.\" $DragonFly: src/usr.sbin/lpr/lpq/lpq.1,v 1.2 2003/06/17 04:29:56 dillon Exp $
+.\" $DragonFly: src/usr.sbin/lpr/lpq/lpq.1,v 1.3 2006/02/17 19:40:16 swildner Exp $
 .\"
 .Dd April 28, 1995
 .Dt LPQ 1
@@ -120,6 +120,9 @@ Control files specifying jobs.
 .It Pa /var/spool/*/lock
 The lock file to obtain the currently active job.
 .El
+.Sh DIAGNOSTICS
+Unable to open various files.  The lock file being malformed.  Garbage
+files when there is no daemon active, but files in the spooling directory.
 .Sh SEE ALSO
 .Xr lpr 1 ,
 .Xr lprm 1 ,
@@ -136,6 +139,3 @@ Due to the dynamic nature of the information in the spooling directory
 may report unreliably.
 Output formatting is sensitive to the line length of the terminal;
 this can results in widely spaced columns.
-.Sh DIAGNOSTICS
-Unable to open various files.  The lock file being malformed.  Garbage
-files when there is no daemon active, but files in the spooling directory.

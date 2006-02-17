@@ -29,7 +29,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ac/ac.8,v 1.13.2.5 2003/03/11 21:13:47 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/ac/ac.8,v 1.2 2003/06/17 04:29:52 dillon Exp $
+.\" $DragonFly: src/usr.sbin/ac/ac.8,v 1.3 2006/02/17 19:40:09 swildner Exp $
 .\"
 .Dd March 15, 1994
 .Dt AC 8
@@ -120,13 +120,13 @@ allows times recorded in
 .Pa modems
 to be charged out at a different rate than
 .Pa other .
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh FILES
 .Bl -tag -width /var/log/wtmp -compact
 .It Pa /var/log/wtmp
 connect time accounting file
 .El
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr login 1 ,
 .Xr utmp 5 ,
