@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.16 2005/09/14 01:13:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.17 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -243,7 +243,7 @@ searchloop:
 					if (isoflags & 2)
 						ino = isodirino(ep, imp);
 					else
-						ino = dbtob(bp->b_blkno)
+						ino = dbtob(bp->b_bio2.bio_blkno)
 							+ entryoffsetinblock;
 					saveoffset = dp->i_offset;
 				} else if (ino)
@@ -260,7 +260,7 @@ searchloop:
 			if (isonum_711(ep->flags)&2)
 				ino = isodirino(ep, imp);
 			else
-				ino = dbtob(bp->b_blkno) + entryoffsetinblock;
+				ino = dbtob(bp->b_bio2.bio_blkno) + entryoffsetinblock;
 			dp->i_ino = ino;
 			cd9660_rrip_getname(ep,altname,&namelen,&dp->i_ino,imp);
 			if (namelen == cnp->cn_namelen
@@ -408,17 +408,17 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	}
 
 	/*
-	 * We must BMAP the buffer because the directory code may use b_blkno
+	 * We must BMAP the buffer because the directory code may use bio_blkno
 	 * to calculate the inode for certain types of directory entries.
 	 * We could get away with not doing it before we VMIO-backed the
 	 * directories because the buffers would get freed atomically with
 	 * the invalidation of their data.  But with VMIO-backed buffers
 	 * the buffers may be freed and then later reconstituted - and the
-	 * reconstituted buffer will have no knowledge of b_blkno.
+	 * reconstituted buffer will have no knowledge of bio_blkno.
 	 */
-	if (bp->b_blkno == bp->b_lblkno) {
-		error = VOP_BMAP(vp, bp->b_lblkno, NULL, 
-			    &bp->b_blkno, NULL, NULL);
+	if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+		error = VOP_BMAP(vp, bp->b_bio1.bio_blkno, NULL, 
+			    	 &bp->b_bio2.bio_blkno, NULL, NULL);
 		if (error) {
                         bp->b_error = error;
                         bp->b_flags |= B_ERROR;
@@ -433,3 +433,4 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	*bpp = bp;
 	return (0);
 }
+

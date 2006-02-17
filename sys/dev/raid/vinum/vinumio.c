@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.9 2005/09/16 04:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.10 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -324,12 +324,11 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, int flag)
 
 	bp = geteblk(len);				    /* get a buffer header */
 	bp->b_flags = flag;
-	bp->b_dev = drive->dev;				    /* device */
-	bp->b_blkno = offset / drive->partinfo.disklab->d_secsize; /* block number */
+	bp->b_bio1.bio_blkno = offset / drive->partinfo.disklab->d_secsize; /* block number */
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = buf;
 	bp->b_bcount = len;
-	BUF_STRATEGY(bp, 0);				    /* initiate the transfer */
+	dev_dstrategy(drive->dev, &bp->b_bio1);
 	error = biowait(bp);
 	bp->b_data = bp->b_saveaddr;
 	bp->b_flags |= B_INVAL | B_AGE;
@@ -794,8 +793,7 @@ write_volume_label(int volno)
      */
     bp = geteblk((int) lp->d_secsize);			    /* get a buffer */
     dev = make_adhoc_dev(&vinum_cdevsw, vol->volno);
-    bp->b_dev = dev;
-    bp->b_blkno = LABELSECTOR * ((int) lp->d_secsize / DEV_BSIZE);
+    bp->b_bio1.bio_blkno = LABELSECTOR * ((int) lp->d_secsize / DEV_BSIZE);
     bp->b_bcount = lp->d_secsize;
     bzero(bp->b_data, lp->d_secsize);
     dlp = (struct disklabel *) bp->b_data;
@@ -810,7 +808,7 @@ write_volume_label(int volno)
      *
      * Negotiate with phk to get it fixed.
      */
-    BUF_STRATEGY(bp, 0);
+    dev_dstrategy(dev, &bp->b_bio1);
     error = biowait(bp);
     bp->b_flags |= B_INVAL | B_AGE;
     bp->b_flags &= ~B_ERROR;

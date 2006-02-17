@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.19 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.20 2006/02/17 19:17:54 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -190,18 +190,18 @@ acddetach(struct ata_device *atadev)
 {   
     struct acd_softc *cdp = atadev->driver;
     struct acd_devlist *entry;
-    struct buf *bp;
+    struct bio *bio;
     int subdev;
     
     if (cdp->changer_info) {
 	for (subdev = 0; subdev < cdp->changer_info->slots; subdev++) {
 	    if (cdp->driver[subdev] == cdp)
 		continue;
-	    while ((bp = bufq_first(&cdp->driver[subdev]->queue))) {
-		bufq_remove(&cdp->driver[subdev]->queue, bp);
-		bp->b_flags |= B_ERROR;
-		bp->b_error = ENXIO;
-		biodone(bp);
+	    while ((bio = bioq_first(&cdp->driver[subdev]->bio_queue))) {
+		bioq_remove(&cdp->driver[subdev]->bio_queue, bio);
+		bio->bio_buf->b_flags |= B_ERROR;
+		bio->bio_buf->b_error = ENXIO;
+		biodone(bio);
 	    }
 	    release_dev(cdp->driver[subdev]->dev);
 	    while ((entry = TAILQ_FIRST(&cdp->driver[subdev]->dev_list))) {
@@ -217,10 +217,10 @@ acddetach(struct ata_device *atadev)
 	free(cdp->driver, M_ACD);
 	free(cdp->changer_info, M_ACD);
     }
-    while ((bp = bufq_first(&cdp->queue))) {
-	bp->b_flags |= B_ERROR;
-	bp->b_error = ENXIO;
-	biodone(bp);
+    while ((bio = bioq_first(&cdp->bio_queue))) {
+	bio->bio_buf->b_flags |= B_ERROR;
+	bio->bio_buf->b_error = ENXIO;
+	biodone(bio);
     }
     while ((entry = TAILQ_FIRST(&cdp->dev_list))) {
 	release_dev(entry->dev);
@@ -244,7 +244,7 @@ acd_init_lun(struct ata_device *atadev)
 
     cdp = malloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO);
     TAILQ_INIT(&cdp->dev_list);
-    bufq_init(&cdp->queue);
+    bioq_init(&cdp->bio_queue);
     cdp->device = atadev;
     cdp->lun = ata_get_lun(&acd_lun_map);
     cdp->block_size = 2048;
@@ -1085,29 +1085,31 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 }
 
 static void 
-acdstrategy(struct buf *bp)
+acdstrategy(dev_t dev, struct bio *bio)
 {
-    struct acd_softc *cdp = bp->b_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+    struct acd_softc *cdp = dev->si_drv1;
 
     if (cdp->device->flags & ATA_D_DETACHING) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
-    
-    bp->b_pblkno = bp->b_blkno;
+
+    KKASSERT(bio->bio_blkno != (daddr_t)-1);
+    bio->bio_driver_info = dev;
     bp->b_resid = bp->b_bcount;
 
     crit_enter();
-    bufqdisksort(&cdp->queue, bp);
+    bioqdisksort(&cdp->bio_queue, bio);
     crit_exit();
     ata_start(cdp->device->channel);
 }
@@ -1116,7 +1118,9 @@ void
 acd_start(struct ata_device *atadev)
 {
     struct acd_softc *cdp = atadev->driver;
-    struct buf *bp = bufq_first(&cdp->queue);
+    struct bio *bio = bioq_first(&cdp->bio_queue);
+    struct buf *bp;
+    dev_t dev;
     u_int32_t lba, lastlba, count;
     int8_t ccb[16];
     int track, blocksize;
@@ -1125,58 +1129,60 @@ acd_start(struct ata_device *atadev)
 	int i;
 
 	cdp = cdp->driver[cdp->changer_info->current_slot];
-	bp = bufq_first(&cdp->queue);
+	bio = bioq_first(&cdp->bio_queue);
 
 	/* check for work pending on any other slot */
 	for (i = 0; i < cdp->changer_info->slots; i++) {
 	    if (i == cdp->changer_info->current_slot)
 		continue;
-	    if (bufq_first(&(cdp->driver[i]->queue))) {
-		if (!bp || time_second > (cdp->timestamp + 10)) {
+	    if (bioq_first(&(cdp->driver[i]->bio_queue))) {
+		if (bio == NULL || time_second > (cdp->timestamp + 10)) {
 		    acd_select_slot(cdp->driver[i]);
 		    return;
 		}
 	    }
 	}
     }
-    if (!bp)
+    if (bio == NULL)
 	return;
-    bufq_remove(&cdp->queue, bp);
+    bioq_remove(&cdp->bio_queue, bio);
+    dev = bio->bio_driver_info;
+    bp = bio->bio_buf;
 
     /* reject all queued entries if media changed */
     if (cdp->device->flags & ATA_D_MEDIA_CHANGED) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
     bzero(ccb, sizeof(ccb));
 
-    track = (bp->b_dev->si_udev & 0x00ff0000) >> 16;
+    track = (dev->si_udev & 0x00ff0000) >> 16;
 
     if (track) {
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
 	lastlba = ntohl(cdp->toc.tab[track].addr.lba);
 	if (bp->b_flags & B_PHYS)
-	    lba = bp->b_offset / blocksize;
+	    lba = bio->bio_offset / blocksize;
 	else
-	    lba = bp->b_blkno / (blocksize / DEV_BSIZE);
+	    lba = bio->bio_blkno / (blocksize / DEV_BSIZE);
 	lba += ntohl(cdp->toc.tab[track - 1].addr.lba);
     }
     else {
 	blocksize = cdp->block_size;
 	lastlba = cdp->disk_size;
 	if (bp->b_flags & B_PHYS)
-	    lba = bp->b_offset / blocksize;
+	    lba = bio->bio_offset / blocksize;
 	else
-	    lba = bp->b_blkno / (blocksize / DEV_BSIZE);
+	    lba = bio->bio_blkno / (blocksize / DEV_BSIZE);
     }
 
     if (bp->b_bcount % blocksize != 0) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EINVAL;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
     count = bp->b_bcount / blocksize;
@@ -1187,7 +1193,7 @@ acd_start(struct ata_device *atadev)
 	    /* if we are entirely beyond EOM return EOF */
 	    if (lastlba <= lba) {
 		bp->b_resid = bp->b_bcount;
-		biodone(bp);
+		biodone(bio);
 		return;
 	    }
 	    count = lastlba - lba;
@@ -1220,26 +1226,27 @@ acd_start(struct ata_device *atadev)
     ccb[8] = count;
 
     devstat_start_transaction(cdp->stats);
-    bp->b_caller1 = cdp;
+    bio->bio_caller_info1.ptr = cdp;
     atapi_queue_cmd(cdp->device, ccb, bp->b_data, count * blocksize,
 		    bp->b_flags & B_READ ? ATPR_F_READ : 0, 
-		    (ccb[0] == ATAPI_WRITE_BIG) ? 60 : 30, acd_done, bp);
+		    (ccb[0] == ATAPI_WRITE_BIG) ? 60 : 30, acd_done, bio);
 }
 
 static int 
 acd_done(struct atapi_request *request)
 {
-    struct buf *bp = request->driver;
-    struct acd_softc *cdp = bp->b_caller1;
+    struct bio *bio = request->driver;
+    struct buf *bp = bio->bio_buf;
+    struct acd_softc *cdp = bio->bio_caller_info1.ptr;
     
     if (request->error) {
 	bp->b_error = request->error;
 	bp->b_flags |= B_ERROR;
-    }	
-    else
+    } else {
 	bp->b_resid = bp->b_bcount - request->donecount;
+    }
     devstat_end_transaction_buf(cdp->stats, bp);
-    biodone(bp);
+    biodone(bio);
     return 0;
 }
 

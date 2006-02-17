@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.29 2006/01/13 21:09:27 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.30 2006/02/17 19:18:07 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -711,7 +711,7 @@ msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 		printf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
 		    RB_EMPTY(&vp->v_rbclean_tree),
 		    RB_EMPTY(&vp->v_rbdirty_tree),
-		    vp->v_numoutput, vp->v_type);
+		    vp->v_track_write.bk_active, vp->v_type);
 		printf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
 		    ((u_int *)vp->v_data)[0],

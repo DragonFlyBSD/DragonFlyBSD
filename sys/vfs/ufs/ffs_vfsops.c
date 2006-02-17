@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.34 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.35 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1244,6 +1244,9 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 
 	/*
 	 * First write back the summary information.
+	 *
+	 * NOTE: the getblk is relative to the device vnode so bio1
+	 * contains the device block number.
 	 */
 	blks = howmany(fs->fs_cssize, fs->fs_fsize);
 	space = fs->fs_csp;
@@ -1252,7 +1255,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
 		bp = getblk(mp->um_devvp, fsbtodb(fs, fs->fs_csaddr + i),
-		    size, 0, 0);
+			    size, 0, 0);
 		bcopy(space, bp->b_data, (uint)size);
 		space = (char *)space + size;
 		if (waitfor != MNT_WAIT)

@@ -39,7 +39,7 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -161,7 +161,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
 
 			info.stripe = stripe;
 			info.bp = bp;
-			logrq(loginfo_lockwait, (union rqinfou) &info, bp);
+			logrq(loginfo_lockwait, (union rqinfou) &info, &bp->b_bio1);
 		    }
 #endif
 		    plex->lockwaits++;			    /* waited one more time */
@@ -192,7 +192,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
     crit_exit();
 #ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_lock, (union rqinfou) pos, bp);
+	logrq(loginfo_lock, (union rqinfou) pos, &bp->b_bio1);
 #endif
     return pos;
 }
@@ -214,7 +214,7 @@ unlockrange(int plexno, struct rangelock *lock)
 #endif
 #ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_unlock, (union rqinfou) lock, lock->bp);
+	logrq(loginfo_unlock, (union rqinfou) lock, &lock->bp->b_bio1);
 #endif
     lock->stripe = 0;					    /* no longer used */
     plex->usedlocks--;					    /* one less lock */

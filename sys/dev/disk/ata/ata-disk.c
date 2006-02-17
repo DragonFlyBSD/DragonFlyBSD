@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.25 2005/08/26 14:26:45 hmp Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.26 2006/02/17 19:17:54 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -131,7 +131,7 @@ ad_attach(struct ata_device *atadev, int alreadylocked)
     adp->heads = atadev->param->heads;
     adp->sectors = atadev->param->sectors;
     adp->total_secs = atadev->param->cylinders * adp->heads * adp->sectors;	
-    bufq_init(&adp->queue);
+    bioq_init(&adp->bio_queue);
 
     /* does this device need oldstyle CHS addressing */
     if (!ad_version(atadev->param->version_major) || 
@@ -237,6 +237,7 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 {
     struct ad_softc *adp = atadev->driver;
     struct ad_request *request;
+    struct bio *bio;
     struct buf *bp;
 
     atadev->flags |= ATA_D_DETACHING;
@@ -246,17 +247,18 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 	if (request->softc != adp)
 	    continue;
 	TAILQ_REMOVE(&atadev->channel->ata_queue, request, chain);
-	request->bp->b_error = ENXIO;
-	request->bp->b_flags |= B_ERROR;
-	biodone(request->bp);
+	request->bio->bio_buf->b_error = ENXIO;
+	request->bio->bio_buf->b_flags |= B_ERROR;
+	biodone(request->bio);
 	ad_free(request);
     }
     ata_dmafree(atadev);
-    while ((bp = bufq_first(&adp->queue))) {
-	bufq_remove(&adp->queue, bp); 
+    while ((bio = bioq_first(&adp->bio_queue))) {
+	bioq_remove(&adp->bio_queue, bio); 
+	bp = bio->bio_buf;
 	bp->b_error = ENXIO;
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
     }
     disk_invalidate(&adp->disk);
     devstat_remove_entry(&adp->stats);
@@ -303,18 +305,20 @@ adclose(dev_t dev, int flags, int fmt, struct thread *td)
  * may have been translated through several layers.
  */
 static void 
-adstrategy(struct buf *bp)
+adstrategy(dev_t dev, struct bio *bio)
 {
-    struct ad_softc *adp = bp->b_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+    struct ad_softc *adp = dev->si_drv1;
 
     if (adp->device->flags & ATA_D_DETACHING) {
 	bp->b_error = ENXIO;
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
+    bio->bio_driver_info = dev;
     crit_enter();
-    bufqdisksort(&adp->queue, bp);
+    bioqdisksort(&adp->bio_queue, bio);
     crit_exit();
     ata_start(adp->device->channel);
 }
@@ -390,12 +394,14 @@ void
 ad_start(struct ata_device *atadev)
 {
     struct ad_softc *adp = atadev->driver;
-    struct buf *bp = bufq_first(&adp->queue);
+    struct bio *bio = bioq_first(&adp->bio_queue);
+    struct buf *bp;
     struct ad_request *request;
     int tag = 0;
 
-    if (!bp)
+    if (bio == NULL)
 	return;
+    bp = bio->bio_buf;
 
     /* if tagged queueing enabled get next free tag */
     if (adp->flags & AD_F_TAG_ENABLED) {
@@ -418,8 +424,8 @@ ad_start(struct ata_device *atadev)
 
     /* setup request */
     request->softc = adp;
-    request->bp = bp;
-    request->blockaddr = bp->b_pblkno;
+    request->bio = bio;
+    request->blockaddr = bio->bio_blkno;
     request->bytecount = bp->b_bcount;
     request->data = bp->b_data;
     request->tag = tag;
@@ -439,7 +445,7 @@ ad_start(struct ata_device *atadev)
     adp->tags[tag] = request;
 
     /* remove from drive queue */
-    bufq_remove(&adp->queue, bp); 
+    bioq_remove(&adp->bio_queue, bio); 
 
     /* link onto controller queue */
     TAILQ_INSERT_TAIL(&atadev->channel->ata_queue, request, chain);
@@ -611,11 +617,11 @@ transfer_failed:
 	ad_requeue(adp->device->channel, request);
     else {
 	/* retries all used up, return error */
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
-	request->bp->b_resid = request->bytecount;
-	devstat_end_transaction_buf(&adp->stats, request->bp);
-	biodone(request->bp);
+	request->bio->bio_buf->b_error = EIO;
+	request->bio->bio_buf->b_flags |= B_ERROR;
+	request->bio->bio_buf->b_resid = request->bytecount;
+	devstat_end_transaction_buf(&adp->stats, request->bio->bio_buf);
+	biodone(request->bio);
 	ad_free(request);
     }
     ata_reinit(adp->device->channel);
@@ -627,14 +633,16 @@ ad_interrupt(struct ad_request *request)
 {
     struct ad_softc *adp = request->softc;
     int dma_stat = 0;
+    dev_t dev;
 
     /* finish DMA transfer */
     if (request->flags & ADR_F_DMA_USED)
 	dma_stat = ata_dmadone(adp->device);
 
+    dev = request->bio->bio_driver_info;
     /* do we have a corrected soft error ? */
     if (adp->device->channel->status & ATA_S_CORR)
-	diskerr(request->bp, request->bp->b_dev,
+	diskerr(request->bio, dev,
 		"soft error (ECC corrected)", LOG_PRINTF,
 		request->blockaddr + (request->donecount / DEV_BSIZE),
 		&adp->disk.d_label);
@@ -644,7 +652,7 @@ ad_interrupt(struct ad_request *request)
 	(request->flags & ADR_F_DMA_USED && dma_stat & ATA_BMSTAT_ERROR)) {
 	adp->device->channel->error =
 	    ATA_INB(adp->device->channel->r_io, ATA_ERROR);
-	diskerr(request->bp, request->bp->b_dev,
+	diskerr(request->bio, dev,
 		(adp->device->channel->error & ATA_E_ICRC) ?
 		"UDMA ICRC error" : "hard error", LOG_PRINTF,
 		request->blockaddr + (request->donecount / DEV_BSIZE),
@@ -713,8 +721,8 @@ ad_interrupt(struct ad_request *request)
 
     /* finish up transfer */
     if (request->flags & ADR_F_ERROR) {
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
+	request->bio->bio_buf->b_error = EIO;
+	request->bio->bio_buf->b_flags |= B_ERROR;
     } 
     else {
 	request->bytecount -= request->currentsize;
@@ -728,10 +736,10 @@ ad_interrupt(struct ad_request *request)
     /* disarm timeout for this transfer */
     callout_stop(&request->callout);
 
-    request->bp->b_resid = request->bytecount;
+    request->bio->bio_buf->b_resid = request->bytecount;
 
-    devstat_end_transaction_buf(&adp->stats, request->bp);
-    biodone(request->bp);
+    devstat_end_transaction_buf(&adp->stats, request->bio->bio_buf);
+    biodone(request->bio);
     ad_free(request);
     adp->outstanding--;
 
@@ -924,10 +932,10 @@ ad_timeout(struct ad_request *request)
     }
     else {
 	/* retries all used up, return error */
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
-	devstat_end_transaction_buf(&adp->stats, request->bp);
-	biodone(request->bp);
+	request->bio->bio_buf->b_error = EIO;
+	request->bio->bio_buf->b_flags |= B_ERROR;
+	devstat_end_transaction_buf(&adp->stats, request->bio->bio_buf);
+	biodone(request->bio);
 	ad_free(request);
     }
     ata_reinit(adp->device->channel);

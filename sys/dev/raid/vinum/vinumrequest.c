@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.6 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.7 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -59,11 +59,11 @@ enum requeststatus build_write_request(struct request *rq);
 enum requeststatus build_rq_buffer(struct rqelement *rqe, struct plex *plex);
 int find_alternate_sd(struct request *rq);
 int check_range_covered(struct request *);
-void complete_rqe(struct buf *bp);
+void complete_rqe(struct bio *bio);
 void complete_raid5_write(struct rqelement *);
 int abortrequest(struct request *rq, int error);
-void sdio_done(struct buf *bp);
-int vinum_bounds_check(struct buf *bp, struct volume *vol);
+void sdio_done(struct bio *bio);
+struct bio *vinum_bounds_check(struct bio *bio, struct volume *vol);
 caddr_t allocdatabuf(struct rqelement *rqe);
 void freedatabuf(struct rqelement *rqe);
 
@@ -72,22 +72,26 @@ struct rqinfo rqinfo[RQINFO_SIZE];
 struct rqinfo *rqip = rqinfo;
 
 void
-logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp)
+logrq(enum rqinfo_type type, union rqinfou info, struct bio *ubio)
 {
+    dev_t dev;
+
     crit_enter();
 
     microtime(&rqip->timestamp);			    /* when did this happen? */
     rqip->type = type;
-    rqip->bp = ubp;					    /* user buffer */
+    rqip->bio = ubio;					    /* user buffer */
+
     switch (type) {
     case loginfo_user_bp:
     case loginfo_user_bpl:
     case loginfo_sdio:					    /* subdisk I/O */
     case loginfo_sdiol:					    /* subdisk I/O launch */
     case loginfo_sdiodone:				    /* subdisk I/O complete */
-	bcopy(info.bp, &rqip->info.b, sizeof(struct buf));
-	rqip->devmajor = major(info.bp->b_dev);
-	rqip->devminor = minor(info.bp->b_dev);
+	bcopy(info.bio, &rqip->info.bio, sizeof(struct bio));
+	dev = info.bio->bio_driver_info;
+	rqip->devmajor = major(dev);
+	rqip->devminor = minor(dev);
 	break;
 
     case loginfo_iodone:
@@ -95,8 +99,9 @@ logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp)
     case loginfo_raid5_data:
     case loginfo_raid5_parity:
 	bcopy(info.rqe, &rqip->info.rqe, sizeof(struct rqelement));
-	rqip->devmajor = major(info.rqe->b.b_dev);
-	rqip->devminor = minor(info.rqe->b.b_dev);
+	dev = info.rqe->b.b_bio1.bio_driver_info;
+	rqip->devmajor = major(dev);
+	rqip->devminor = minor(dev);
 	break;
 
     case loginfo_lockwait:
@@ -118,15 +123,18 @@ logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp)
 #endif
 
 void
-vinumstrategy(struct buf *bp)
+vinumstrategy(dev_t dev, struct bio *bio)
 {
-    int volno;
+    struct buf *bp = bio->bio_buf;
+    struct bio *nbio = bio;
     struct volume *vol = NULL;
+    int volno;
 
-    switch (DEVTYPE(bp->b_dev)) {
+    switch (DEVTYPE(dev)) {
     case VINUM_SD_TYPE:
     case VINUM_RAWSD_TYPE:
-	sdio(bp);
+	bio->bio_driver_info = dev;
+	sdio(bio);
 	return;
 
 	/*
@@ -137,20 +145,21 @@ vinumstrategy(struct buf *bp)
     default:
 	bp->b_error = EIO;				    /* I/O error */
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return;
 
     case VINUM_VOLUME_TYPE:				    /* volume I/O */
-	volno = Volno(bp->b_dev);
+	volno = Volno(dev);
 	vol = &VOL[volno];
 	if (vol->state != volume_up) {			    /* can't access this volume */
 	    bp->b_error = EIO;				    /* I/O error */
 	    bp->b_flags |= B_ERROR;
-	    biodone(bp);
+	    biodone(bio);
 	    return;
 	}
-	if (vinum_bounds_check(bp, vol) <= 0) {		    /* don't like them bounds */
-	    biodone(bp);
+	nbio = vinum_bounds_check(bio, vol);
+	if (nbio == NULL) {
+	    biodone(bio);
 	    return;
 	}
 	/* FALLTHROUGH */
@@ -162,7 +171,7 @@ vinumstrategy(struct buf *bp)
     case VINUM_PLEX_TYPE:
     case VINUM_RAWPLEX_TYPE:
 	bp->b_resid = bp->b_bcount;			    /* transfer everything */
-	vinumstart(bp, 0);
+	vinumstart(dev, nbio, 0);
 	return;
     }
 }
@@ -178,30 +187,33 @@ vinumstrategy(struct buf *bp)
  * a currently active revive operation.
  */
 int
-vinumstart(struct buf *bp, int reviveok)
+vinumstart(dev_t dev, struct bio *bio, int reviveok)
 {
+    struct buf *bp = bio->bio_buf;
     int plexno;
     int maxplex;					    /* maximum number of plexes to handle */
     struct volume *vol;
     struct request *rq;					    /* build up our request here */
     enum requeststatus status;
 
+    bio->bio_driver_info = dev;
+
 #if VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_user_bp, (union rqinfou) bp, bp);
+	logrq(loginfo_user_bp, (union rqinfou) bio, bio);
 #endif
 
     if ((bp->b_bcount % DEV_BSIZE) != 0) {		    /* bad length */
 	bp->b_error = EINVAL;				    /* invalid size */
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return -1;
     }
     rq = (struct request *) Malloc(sizeof(struct request)); /* allocate a request struct */
     if (rq == NULL) {					    /* can't do it */
 	bp->b_error = ENOMEM;				    /* can't get memory */
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return -1;
     }
     bzero(rq, sizeof(struct request));
@@ -211,16 +223,16 @@ vinumstart(struct buf *bp, int reviveok)
      * the request building functions use as an
      * indication for single plex I/O
      */
-    rq->bp = bp;					    /* and the user buffer struct */
+    rq->bio = bio;					    /* and the user buffer struct */
 
-    if (DEVTYPE(bp->b_dev) == VINUM_VOLUME_TYPE) {	    /* it's a volume, */
-	rq->volplex.volno = Volno(bp->b_dev);		    /* get the volume number */
+    if (DEVTYPE(dev) == VINUM_VOLUME_TYPE) {	    /* it's a volume, */
+	rq->volplex.volno = Volno(dev);		    /* get the volume number */
 	vol = &VOL[rq->volplex.volno];			    /* and point to it */
 	vol->active++;					    /* one more active request */
 	maxplex = vol->plexes;				    /* consider all its plexes */
     } else {
 	vol = NULL;					    /* no volume */
-	rq->volplex.plexno = Plexno(bp->b_dev);		    /* point to the plex */
+	rq->volplex.plexno = Plexno(dev);		    /* point to the plex */
 	rq->isplex = 1;					    /* note that it's a plex */
 	maxplex = 1;					    /* just the one plex */
     }
@@ -246,7 +258,7 @@ vinumstart(struct buf *bp, int reviveok)
 	    }
 	    status = build_read_request(rq, plexno);	    /* build a request */
 	} else {
-	    daddr_t diskaddr = bp->b_blkno;		    /* start offset of transfer */
+	    daddr_t diskaddr = bio->bio_blkno;		    /* start offset of transfer */
 	    status = bre(rq,				    /* build a request list */
 		rq->volplex.plexno,
 		&diskaddr,
@@ -258,7 +270,7 @@ vinumstart(struct buf *bp, int reviveok)
 		bp->b_error = EIO;			    /* I/O error */
 		bp->b_flags |= B_ERROR;
 	    }
-	    biodone(bp);
+	    biodone(bio);
 	    freerq(rq);
 	    return -1;
 	}
@@ -274,18 +286,18 @@ vinumstart(struct buf *bp, int reviveok)
 	else {						    /* plex I/O */
 	    daddr_t diskstart;
 
-	    diskstart = bp->b_blkno;			    /* start offset of transfer */
+	    diskstart = bio->bio_blkno;			    /* start offset of transfer */
 	    status = bre(rq,
-		Plexno(bp->b_dev),
+		Plexno(dev),
 		&diskstart,
-		bp->b_blkno + (bp->b_bcount / DEV_BSIZE));  /* build requests for the plex */
+		bio->bio_blkno + (bp->b_bcount / DEV_BSIZE));  /* build requests for the plex */
 	}
 	if (status > REQUEST_RECOVERED) {		    /* can't satisfy it */
 	    if (status == REQUEST_DOWN) {		    /* not enough subdisks */
 		bp->b_error = EIO;			    /* I/O error */
 		bp->b_flags |= B_ERROR;
 	    }
-	    biodone(bp);
+	    biodone(bio);
 	    freerq(rq);
 	    return -1;
 	}
@@ -328,16 +340,17 @@ launch_requests(struct request *rq, int reviveok)
 	    sd->waitlist = rq;				    /* hook our request at the front */
 
 #if VINUMDEBUG
-	if (debug & DEBUG_REVIVECONFLICT)
+	if (debug & DEBUG_REVIVECONFLICT) {
 	    log(LOG_DEBUG,
 		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
 		rq->sdno,
 		rq,
-		rq->bp->b_flags & B_READ ? "Read" : "Write",
-		major(rq->bp->b_dev),
-		minor(rq->bp->b_dev),
-		rq->bp->b_blkno,
-		rq->bp->b_bcount);
+		rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+		major(((dev_t)rq->bio->bio_driver_info)),
+		minor(((dev_t)rq->bio->bio_driver_info)),
+		rq->bio->bio_blkno,
+		rq->bio->bio_buf->b_bcount);
+	}
 #endif
 	return 0;					    /* and get out of here */
     }
@@ -347,15 +360,15 @@ launch_requests(struct request *rq, int reviveok)
 	log(LOG_DEBUG,
 	    "Request: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
 	    rq,
-	    rq->bp->b_flags & B_READ ? "Read" : "Write",
-	    major(rq->bp->b_dev),
-	    minor(rq->bp->b_dev),
-	    rq->bp->b_blkno,
-	    rq->bp->b_bcount);
+	    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+	    major(((dev_t)rq->bio->bio_driver_info)),
+	    minor(((dev_t)rq->bio->bio_driver_info)),
+	    rq->bio->bio_blkno,
+	    rq->bio->bio_buf->b_bcount);
     vinum_conf.lastrq = rq;
-    vinum_conf.lastbuf = rq->bp;
+    vinum_conf.lastbio = rq->bio;
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_user_bpl, (union rqinfou) rq->bp, rq->bp);
+	logrq(loginfo_user_bpl, (union rqinfou) rq->bio, rq->bio);
 #endif
 
     /*
@@ -382,9 +395,11 @@ launch_requests(struct request *rq, int reviveok)
     crit_enter();
     for (rqg = rq->rqg; rqg != NULL;) {			    /* through the whole request chain */
 	if (rqg->lockbase >= 0)				    /* this rqg needs a lock first */
-	    rqg->lock = lockrange(rqg->lockbase, rqg->rq->bp, &PLEX[rqg->plexno]);
+	    rqg->lock = lockrange(rqg->lockbase, rqg->rq->bio->bio_buf, &PLEX[rqg->plexno]);
 	rcount = rqg->count;
 	for (rqno = 0; rqno < rcount;) {
+	    dev_t dev;
+
 	    rqe = &rqg->rqe[rqno];
 
 	    /*
@@ -402,22 +417,23 @@ launch_requests(struct request *rq, int reviveok)
 		if (vinum_conf.active >= vinum_conf.maxactive)
 		    vinum_conf.maxactive = vinum_conf.active;
 
+		dev = rqe->b.b_bio1.bio_driver_info;
 #ifdef VINUMDEBUG
 		if (debug & DEBUG_ADDRESSES)
 		    log(LOG_DEBUG,
 			"  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
 			rqe->b.b_flags & B_READ ? "Read" : "Write",
-			major(rqe->b.b_dev),
-			minor(rqe->b.b_dev),
+			major(dev),
+			minor(dev),
 			rqe->sdno,
-			(u_int) (rqe->b.b_blkno - SD[rqe->sdno].driveoffset),
-			rqe->b.b_blkno,
+			(u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
+			rqe->b.b_bio1.bio_blkno,
 			rqe->b.b_bcount);
 		if (debug & DEBUG_LASTREQS)
-		    logrq(loginfo_rqe, (union rqinfou) rqe, rq->bp);
+		    logrq(loginfo_rqe, (union rqinfou) rqe, rq->bio);
 #endif
 		/* fire off the request */
-		BUF_STRATEGY(&rqe->b, 0);
+		dev_dstrategy(dev, &rqe->b.b_bio1);
 	    }
 	}
     }
@@ -453,6 +469,7 @@ bre(struct request *rq,
     int sdno;
     struct sd *sd;
     struct rqgroup *rqg;
+    struct bio *bio;
     struct buf *bp;					    /* user's bp */
     struct plex *plex;
     enum requeststatus status;				    /* return value */
@@ -464,7 +481,8 @@ bre(struct request *rq,
     daddr_t diskstart = *diskaddr;			    /* remember where this transfer starts */
     enum requeststatus s;				    /* temp return value */
 
-    bp = rq->bp;					    /* buffer pointer */
+    bio = rq->bio;					    /* buffer pointer */
+    bp = bio->bio_buf;
     status = REQUEST_OK;				    /* return value: OK until proven otherwise */
     plex = &PLEX[plexno];				    /* point to the plex */
 
@@ -502,7 +520,7 @@ bre(struct request *rq,
 		    s = checksdstate(sd, rq, *diskaddr, diskend); /* do we need to change state? */
 		    if (s == REQUEST_DOWN) {		    /* down? */
 			rqe->flags = XFR_BAD_SUBDISK;	    /* yup */
-			if (rq->bp->b_flags & B_READ)	    /* read request, */
+			if (rq->bio->bio_buf->b_flags & B_READ)	    /* read request, */
 			    return REQUEST_DEGRADED;	    /* give up here */
 			/*
 			 * If we're writing, don't give up
@@ -584,7 +602,7 @@ bre(struct request *rq,
 		    s = checksdstate(sd, rq, *diskaddr, diskend); /* do we need to change state? */
 		    if (s == REQUEST_DOWN) {		    /* down? */
 			rqe->flags = XFR_BAD_SUBDISK;	    /* yup */
-			if (rq->bp->b_flags & B_READ)	    /* read request, */
+			if (rq->bio->bio_buf->b_flags & B_READ)	    /* read request, */
 			    return REQUEST_DEGRADED;	    /* give up here */
 			/*
 			 * If we're writing, don't give up
@@ -613,7 +631,7 @@ bre(struct request *rq,
 			    plex->name,
 			    sd->name,
 			    (u_int) sd->sectors,
-			    bp->b_blkno);
+			    bp->b_bio1.bio_blkno);
 			log(LOG_DEBUG,
 			    "vinum: stripebase %x, stripeoffset %x, blockoffset %x\n",
 			    stripebase,
@@ -665,6 +683,7 @@ enum requeststatus
 build_read_request(struct request *rq,			    /* request */
     int plexindex)
 {							    /* index in the volume's plex table */
+    struct bio *bio;
     struct buf *bp;
     daddr_t startaddr;					    /* offset of previous part of transfer */
     daddr_t diskaddr;					    /* offset of current part of transfer */
@@ -676,8 +695,9 @@ build_read_request(struct request *rq,			    /* request */
     enum requeststatus status = REQUEST_OK;
     int plexmask;					    /* bit mask of plexes, for recovery */
 
-    bp = rq->bp;					    /* buffer pointer */
-    diskaddr = bp->b_blkno;				    /* start offset of transfer */
+    bio = rq->bio;					    /* buffer pointer */
+    bp = bio->bio_buf;
+    diskaddr = bio->bio_blkno;				    /* start offset of transfer */
     diskend = diskaddr + (bp->b_bcount / DEV_BSIZE);	    /* and end offset of transfer */
     rqg = &rq->rqg[plexindex];				    /* plex request */
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
@@ -743,6 +763,7 @@ build_read_request(struct request *rq,			    /* request */
 enum requeststatus
 build_write_request(struct request *rq)
 {							    /* request */
+    struct bio *bio;
     struct buf *bp;
     daddr_t diskstart;					    /* offset of current part of transfer */
     daddr_t diskend;					    /* and end offset of transfer */
@@ -750,12 +771,13 @@ build_write_request(struct request *rq)
     struct volume *vol;					    /* volume in question */
     enum requeststatus status;
 
-    bp = rq->bp;					    /* buffer pointer */
+    bio = rq->bio;					    /* buffer pointer */
+    bp = bio->bio_buf;
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
-    diskend = bp->b_blkno + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
+    diskend = bio->bio_blkno + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
     status = REQUEST_DOWN;				    /* assume the worst */
     for (plexno = 0; plexno < vol->plexes; plexno++) {
-	diskstart = bp->b_blkno;			    /* start offset of transfer */
+	diskstart = bio->bio_blkno;			    /* start offset of transfer */
 	/*
 	 * Build requests for the plex.
 	 * We take the best possible result here (min,
@@ -777,11 +799,13 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     struct volume *vol;
     struct buf *bp;
     struct buf *ubp;					    /* user (high level) buffer header */
+    struct bio *ubio;
 
     vol = &VOL[rqe->rqg->rq->volplex.volno];
     sd = &SD[rqe->sdno];				    /* point to subdisk */
     bp = &rqe->b;
-    ubp = rqe->rqg->rq->bp;				    /* pointer to user buffer header */
+    ubio = rqe->rqg->rq->bio;				    /* pointer to user buffer header */
+    ubp = ubio->bio_buf;
 
     /* Initialize the buf struct */
     /* copy these flags from user bp */
@@ -794,7 +818,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     BUF_LOCK(bp, LK_EXCLUSIVE);				    /* and lock it */
     BUF_KERNPROC(bp);
     rqe->flags |= XFR_BUFLOCKED;
-    bp->b_iodone = complete_rqe;
+    bp->b_bio1.bio_done = complete_rqe;
     /*
      * You'd think that we wouldn't need to even
      * build the request buffer for a dead subdisk,
@@ -805,8 +829,8 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
      * when the drive is dead.
      */
     if ((rqe->flags & XFR_BAD_SUBDISK) == 0)		    /* subdisk is accessible, */
-	bp->b_dev = DRIVE[rqe->driveno].dev;		    /* drive device */
-    bp->b_blkno = rqe->sdoffset + sd->driveoffset;	    /* start address */
+	bp->b_bio1.bio_driver_info = DRIVE[rqe->driveno].dev; /* drive device */
+    bp->b_bio1.bio_blkno = rqe->sdoffset + sd->driveoffset;	/* start address */
     bp->b_bcount = rqe->buflen << DEV_BSHIFT;		    /* number of bytes to transfer */
     bp->b_resid = bp->b_bcount;				    /* and it's still all waiting */
     bp->b_bufsize = bp->b_bcount;			    /* and buffer size */
@@ -846,7 +870,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
 int
 abortrequest(struct request *rq, int error)
 {
-    struct buf *bp = rq->bp;				    /* user buffer */
+    struct buf *bp = rq->bio->bio_buf;			    /* user buffer */
 
     bp->b_error = error;
     freerq(rq);						    /* free everything we're doing */
@@ -868,18 +892,23 @@ check_range_covered(struct request *rq)
 
 /* Perform I/O on a subdisk */
 void
-sdio(struct buf *bp)
+sdio(struct bio *bio)
 {
+    dev_t dev;
+    dev_t sddev;
     struct sd *sd;
     struct sdbuf *sbp;
     daddr_t endoffset;
     struct drive *drive;
+    struct buf *bp = bio->bio_buf;
+
+    dev = bio->bio_driver_info;
 
 #if VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_sdio, (union rqinfou) bp, bp);
+	logrq(loginfo_sdio, (union rqinfou) bio, bio);
 #endif
-    sd = &SD[Sdno(bp->b_dev)];				    /* point to the subdisk */
+    sd = &SD[Sdno(dev)];				    /* point to the subdisk */
     drive = &DRIVE[sd->driveno];
 
     if (drive->state != drive_up) {
@@ -891,7 +920,7 @@ sdio(struct buf *bp)
 	}
 	bp->b_error = EIO;
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
     /*
@@ -901,7 +930,7 @@ sdio(struct buf *bp)
     if (sd->state < sd_empty) {				    /* nothing to talk to, */
 	bp->b_error = EIO;
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
     /* Get a buffer */
@@ -909,30 +938,31 @@ sdio(struct buf *bp)
     if (sbp == NULL) {
 	bp->b_error = ENOMEM;
 	bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
+    sddev = DRIVE[sd->driveno].dev;		    /* device */
     bzero(sbp, sizeof(struct sdbuf));			    /* start with nothing */
     sbp->b.b_flags = bp->b_flags;
     sbp->b.b_bufsize = bp->b_bufsize;			    /* buffer size */
     sbp->b.b_bcount = bp->b_bcount;			    /* number of bytes to transfer */
     sbp->b.b_resid = bp->b_resid;			    /* and amount waiting */
-    sbp->b.b_dev = DRIVE[sd->driveno].dev;		    /* device */
     sbp->b.b_data = bp->b_data;				    /* data buffer */
-    sbp->b.b_blkno = bp->b_blkno + sd->driveoffset;
-    sbp->b.b_iodone = sdio_done;			    /* come here on completion */
     BUF_LOCKINIT(&sbp->b);				    /* get a lock for the buffer */
     BUF_LOCK(&sbp->b, LK_EXCLUSIVE);			    /* and lock it */
     BUF_KERNPROC(&sbp->b);
-    sbp->bp = bp;					    /* note the address of the original header */
+    initbufbio(&sbp->b);
+    sbp->b.b_bio1.bio_blkno = bio->bio_blkno + sd->driveoffset;
+    sbp->b.b_bio1.bio_done = sdio_done;			    /* come here on completion */
+    sbp->bio = bio;					    /* note the address of the original header */
     sbp->sdno = sd->sdno;				    /* note for statistics */
     sbp->driveno = sd->driveno;
-    endoffset = bp->b_blkno + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
+    endoffset = bio->bio_blkno + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
     if (endoffset > sd->sectors) {			    /* beyond the end */
 	sbp->b.b_bcount -= (endoffset - sd->sectors) * DEV_BSIZE; /* trim */
 	if (sbp->b.b_bcount <= 0) {			    /* nothing to transfer */
 	    bp->b_resid = bp->b_bcount;			    /* nothing transferred */
-	    biodone(bp);
+	    biodone(bio);
 	    BUF_UNLOCK(&sbp->b);
 	    BUF_LOCKFREE(&sbp->b);
 	    Free(sbp);
@@ -944,19 +974,19 @@ sdio(struct buf *bp)
 	log(LOG_DEBUG,
 	    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
 	    sbp->b.b_flags & B_READ ? "Read" : "Write",
-	    major(sbp->b.b_dev),
-	    minor(sbp->b.b_dev),
+	    major(sddev),
+	    minor(sddev),
 	    sbp->sdno,
-	    (u_int) (sbp->b.b_blkno - SD[sbp->sdno].driveoffset),
-	    (int) sbp->b.b_blkno,
+	    (u_int) (sbp->b.b_bio1.bio_blkno - SD[sbp->sdno].driveoffset),
+	    (int) sbp->b.b_bio1.bio_blkno,
 	    sbp->b.b_bcount);
 #endif
     crit_enter();
 #if VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_sdiol, (union rqinfou) &sbp->b, &sbp->b);
+	logrq(loginfo_sdiol, (union rqinfou) &sbp->b.b_bio1, &sbp->b.b_bio1);
 #endif
-    BUF_STRATEGY(&sbp->b, 0);
+    dev_dstrategy(sddev, &sbp->b.b_bio1);
     crit_exit();
 }
 
@@ -976,45 +1006,48 @@ sdio(struct buf *bp)
  * one in the first pleace (because it's protected), it wouldn't
  * be a problem.
  */
-int
-vinum_bounds_check(struct buf *bp, struct volume *vol)
+struct bio *
+vinum_bounds_check(struct bio *bio, struct volume *vol)
 {
+    struct buf *bp = bio->bio_buf;
+    struct bio *nbio;
     int maxsize = vol->size;				    /* size of the partition (sectors) */
     int size = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT; /* size of this request (sectors) */
 
     /* Would this transfer overwrite the disk label? */
-    if (bp->b_blkno <= LABELSECTOR			    /* starts before or at the label */
+    if (bio->bio_blkno <= LABELSECTOR			    /* starts before or at the label */
 #if LABELSECTOR != 0
-	&& bp->b_blkno + size > LABELSECTOR		    /* and finishes after */
+	&& bio->bio_blkno + size > LABELSECTOR		    /* and finishes after */
 #endif
 	&& (!(vol->flags & VF_RAW))			    /* and it's not raw */
 	&&((bp->b_flags & B_READ) == 0)			    /* and it's a write */
 	&&(!vol->flags & (VF_WLABEL | VF_LABELLING))) {	    /* and we're not allowed to write the label */
 	bp->b_error = EROFS;				    /* read-only */
 	bp->b_flags |= B_ERROR;
-	return -1;
+	return (NULL);
     }
     if (size == 0)					    /* no transfer specified, */
 	return 0;					    /* treat as EOF */
     /* beyond partition? */
-    if (bp->b_blkno < 0					    /* negative start */
-	|| bp->b_blkno + size > maxsize) {		    /* or goes beyond the end of the partition */
+    if (bio->bio_blkno < 0				    /* negative start */
+	|| bio->bio_blkno + size > maxsize) {		    /* or goes beyond the end of the partition */
 	/* if exactly at end of disk, return an EOF */
-	if (bp->b_blkno == maxsize) {
+	if (bio->bio_blkno == maxsize) {
 	    bp->b_resid = bp->b_bcount;
-	    return 0;
+	    return (NULL);
 	}
 	/* or truncate if part of it fits */
-	size = maxsize - bp->b_blkno;
+	size = maxsize - bio->bio_blkno;
 	if (size <= 0) {				    /* nothing to transfer */
 	    bp->b_error = EINVAL;
 	    bp->b_flags |= B_ERROR;
-	    return -1;
+	    return (NULL);
 	}
 	bp->b_bcount = size << DEV_BSHIFT;
     }
-    bp->b_pblkno = bp->b_blkno;
-    return 1;
+    nbio = push_bio(bio);
+    nbio->bio_blkno = bio->bio_blkno;
+    return (nbio);
 }
 
 /*

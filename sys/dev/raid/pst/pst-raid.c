@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.12 2005/06/10 17:10:26 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ struct pst_softc {
     dev_t			device;
     struct devstat		stats;
     struct disk			disk;
-    struct buf_queue_head	queue;
+    struct bio_queue_head	bio_queue;
     int				outstanding;
 };
 
@@ -90,7 +90,7 @@ struct pst_request {
     struct pst_softc		*psc;		/* pointer to softc */
     u_int32_t			mfa;		/* frame addreess */
     struct callout		timeout;	/* handle for untimeout */
-    struct buf			*bp;		/* associated bio ptr */
+    struct bio			*bio;		/* associated bio ptr */
 };
 
 /* prototypes */
@@ -166,7 +166,7 @@ pst_attach(device_t dev)
     sprintf(name, "%s %s", ident->vendor, ident->product);
     contigfree(reply, PAGE_SIZE, M_PSTRAID);
 
-    bufq_init(&psc->queue);
+    bioq_init(&psc->bio_queue);
 
     psc->device = disk_create(lun, &psc->disk, 0, &pst_cdevsw);
     psc->device->si_drv1 = psc;
@@ -223,12 +223,12 @@ pst_shutdown(device_t dev)
 #endif
 
 static void
-pststrategy(struct buf *bp)
+pststrategy(dev_t dev, struct bio *bio)
 {
-    struct pst_softc *psc = bp->b_dev->si_drv1;
+    struct pst_softc *psc = dev->si_drv1;
 
     crit_enter();
-    bufqdisksort(&psc->queue, bp);
+    bioqdisksort(&psc->bio_queue, bio);
     pst_start(psc);
     crit_exit();
 }
@@ -238,27 +238,29 @@ pst_start(struct pst_softc *psc)
 {
     struct pst_request *request;
     struct buf *bp;
+    struct bio *bio;
     u_int32_t mfa;
 
     if (psc->outstanding < (I2O_IOP_OUTBOUND_FRAME_COUNT - 1) &&
-	(bp = bufq_first(&psc->queue))) {
+	(bio = bioq_first(&psc->bio_queue))) {
 	if ((mfa = iop_get_mfa(psc->iop)) != 0xffffffff) {
 	    request = malloc(sizeof(struct pst_request),
 			       M_PSTRAID, M_INTWAIT | M_ZERO);
 	    psc->outstanding++;
 	    request->psc = psc;
 	    request->mfa = mfa;
-	    request->bp = bp;
+	    request->bio = bio;
 	    callout_init(&request->timeout);
 	    if (!dumping)
 	        callout_reset(&request->timeout, 10 * hz, pst_timeout, request);
-	    bufq_remove(&psc->queue, bp);
+	    bioq_remove(&psc->bio_queue, bio);
+	    bp = bio->bio_buf;
 	    devstat_start_transaction(&psc->stats);
 	    if (pst_rw(request)) {
-		devstat_end_transaction_buf(&psc->stats, request->bp);
-		request->bp->b_error = EIO;
-		request->bp->b_flags |= B_ERROR;
-		biodone(request->bp);
+		devstat_end_transaction_buf(&psc->stats, bp);
+		bp->b_error = EIO;
+		bp->b_flags |= B_ERROR;
+		biodone(bio);
 		iop_free_mfa(request->psc->iop, request->mfa);
 		psc->outstanding--;
 		callout_stop(&request->timeout);
@@ -274,15 +276,16 @@ pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
     struct pst_request *request =
         (struct pst_request *)reply->transaction_context;
     struct pst_softc *psc = request->psc;
+    struct buf *bp = request->bio->bio_buf;
 
     callout_stop(&request->timeout);
-    request->bp->b_resid = request->bp->b_bcount - reply->donecount;
-    devstat_end_transaction_buf(&psc->stats, request->bp);
+    bp->b_resid = bp->b_bcount - reply->donecount;
+    devstat_end_transaction_buf(&psc->stats, bp);
     if (reply->status) {
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
+	bp->b_error = EIO;
+	bp->b_flags |= B_ERROR;
     }
-    biodone(request->bp);
+    biodone(request->bio);
     free(request, M_PSTRAID);
     crit_enter();
     psc->iop->reg->oqueue = mfa;
@@ -295,17 +298,18 @@ static void
 pst_timeout(void *xrequest)
 {
     struct pst_request *request = xrequest;
+    struct buf *bp = request->bio->bio_buf;
 
     crit_enter();
     printf("pst: timeout mfa=0x%08x cmd=%s\n",
-	   request->mfa, request->bp->b_flags & B_READ ? "READ" : "WRITE");
+	   request->mfa, bp->b_flags & B_READ ? "READ" : "WRITE");
     iop_free_mfa(request->psc->iop, request->mfa);
     if ((request->mfa = iop_get_mfa(request->psc->iop)) == 0xffffffff) {
 	printf("pst: timeout no mfa possible\n");
-	devstat_end_transaction_buf(&request->psc->stats, request->bp);
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
-	biodone(request->bp);
+	devstat_end_transaction_buf(&request->psc->stats, bp);
+	bp->b_error = EIO;
+	bp->b_flags |= B_ERROR;
+	biodone(request->bio);
 	request->psc->outstanding--;
 	crit_exit();
 	return;
@@ -314,10 +318,10 @@ pst_timeout(void *xrequest)
 	callout_reset(&request->timeout, 10 * hz, pst_timeout, request);
     if (pst_rw(request)) {
 	iop_free_mfa(request->psc->iop, request->mfa);
-	devstat_end_transaction_buf(&request->psc->stats, request->bp);
-	request->bp->b_error = EIO;
-	request->bp->b_flags |= B_ERROR;
-	biodone(request->bp);
+	devstat_end_transaction_buf(&request->psc->stats, bp);
+	bp->b_error = EIO;
+	bp->b_flags |= B_ERROR;
+	biodone(request->bio);
 	request->psc->outstanding--;
     }
     crit_exit();
@@ -328,6 +332,7 @@ pst_rw(struct pst_request *request)
 {
     struct i2o_bsa_rw_block_message *msg;
     int sgl_flag;
+    struct buf *bp = request->bio->bio_buf;
 
     msg = (struct i2o_bsa_rw_block_message *)
 	  (request->psc->iop->ibase + request->mfa);
@@ -337,7 +342,7 @@ pst_rw(struct pst_request *request)
     msg->message_size = sizeof(struct i2o_bsa_rw_block_message) >> 2;
     msg->target_address = request->psc->lct->local_tid;
     msg->initiator_address = I2O_TID_HOST;
-    if (request->bp->b_flags & B_READ) {
+    if (bp->b_flags & B_READ) {
 	msg->function = I2O_BSA_BLOCK_READ;
 	msg->control_flags = 0x0; /* 0x0c = read cache + readahead */
 	msg->fetch_ahead = 0x0; /* 8 Kb */
@@ -352,10 +357,10 @@ pst_rw(struct pst_request *request)
     msg->initiator_context = (u_int32_t)pst_done;
     msg->transaction_context = (u_int32_t)request;
     msg->time_multiplier = 1;
-    msg->bytecount = request->bp->b_bcount;
-    msg->lba = ((u_int64_t)request->bp->b_pblkno) * (DEV_BSIZE * 1LL);
-    if (!iop_create_sgl((struct i2o_basic_message *)msg, request->bp->b_data,
-			request->bp->b_bcount, sgl_flag))
+    msg->bytecount = bp->b_bcount;
+    msg->lba = ((u_int64_t)request->bio->bio_blkno) * (DEV_BSIZE * 1LL);
+    if (!iop_create_sgl((struct i2o_basic_message *)msg, bp->b_data,
+			bp->b_bcount, sgl_flag))
 	return -1;
     request->psc->iop->reg->iqueue = request->mfa;
     return 0;

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.29 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.30 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -125,7 +125,7 @@ spec_vnoperate(struct vop_generic_args *ap)
 	return (VOCALL(spec_vnode_vops, ap));
 }
 
-static void spec_getpages_iodone (struct buf *bp);
+static void spec_getpages_iodone (struct bio *bio);
 
 /*
  * Open a special file.
@@ -435,16 +435,16 @@ spec_inactive(struct vop_inactive_args *ap)
 /*
  * Just call the device strategy routine
  *
- * spec_strategy(struct vnode *a_vp, struct buf *a_bp)
+ * spec_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 spec_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	struct vnode *vp;
 	struct mount *mp;
 
-	bp = ap->a_bp;
 	if (((bp->b_flags & B_READ) == 0) &&
 		(LIST_FIRST(&bp->b_dep)) != NULL && bioops.io_start)
 		(*bioops.io_start)(bp);
@@ -468,8 +468,7 @@ spec_strategy(struct vop_strategy_args *ap)
 				mp->mnt_stat.f_syncreads++;
 		}
 	}
-	bp->b_dev = vp->v_rdev;
-	BUF_STRATEGY(bp, 0);
+	dev_dstrategy_chain(vp->v_rdev, bio);
 	return (0);
 }
 
@@ -490,11 +489,10 @@ spec_freeblks(struct vop_freeblks_args *ap)
 		return (0);
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF;
-	bp->b_dev = ap->a_vp->v_rdev;
-	bp->b_blkno = ap->a_addr;
-	bp->b_offset = dbtob(ap->a_addr);
+	bp->b_bio1.bio_blkno = ap->a_addr;
+	bp->b_bio1.bio_offset = dbtob(ap->a_addr);
 	bp->b_bcount = ap->a_length;
-	BUF_STRATEGY(bp, 0);
+	dev_dstrategy(ap->a_vp->v_rdev, &bp->b_bio1);
 	return (0);
 }
 
@@ -633,10 +631,10 @@ spec_advlock(struct vop_advlock_args *ap)
 }
 
 static void
-spec_getpages_iodone(struct buf *bp)
+spec_getpages_iodone(struct bio *bio)
 {
-	bp->b_flags |= B_DONE;
-	wakeup(bp);
+	bio->bio_buf->b_flags |= B_DONE;
+	wakeup(bio->bio_buf);
 }
 
 static int
@@ -659,9 +657,9 @@ spec_getpages(struct vop_getpages_args *ap)
 
 	/*
 	 * Calculate the offset of the transfer and do sanity check.
-	 * FreeBSD currently only supports an 8 TB range due to b_blkno
+	 * FreeBSD currently only supports an 8 TB range due to bio_blkno
 	 * being in DEV_BSIZE ( usually 512 ) byte chunks on call to
-	 * VOP_STRATEGY.  XXX
+	 * vn_strategy().  XXX
 	 */
 	offset = IDX_TO_OFF(ap->a_m[0]->pindex) + ap->a_offset;
 
@@ -705,11 +703,8 @@ spec_getpages(struct vop_getpages_args *ap)
 
 	/* Build a minimal buffer header. */
 	bp->b_flags = B_READ;
-	bp->b_iodone = spec_getpages_iodone;
 
 	/* B_PHYS is not set, but it is nice to fill this in. */
-	bp->b_blkno = blkno;
-	bp->b_lblkno = blkno;
 	pbgetvp(ap->a_vp, bp);
 	bp->b_bcount = size;
 	bp->b_bufsize = size;
@@ -717,11 +712,14 @@ spec_getpages(struct vop_getpages_args *ap)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
+	bp->b_bio1.bio_blkno = blkno;
+	bp->b_bio1.bio_done = spec_getpages_iodone;
+
 	mycpu->gd_cnt.v_vnodein++;
 	mycpu->gd_cnt.v_vnodepgsin += pcount;
 
 	/* Do the input. */
-	VOP_STRATEGY(bp->b_vp, bp);
+	vn_strategy(ap->a_vp, &bp->b_bio1);
 
 	crit_enter();
 
@@ -803,7 +801,7 @@ spec_getpages(struct vop_getpages_args *ap)
 		m = ap->a_m[ap->a_reqpage];
 		printf(
 	    "spec_getpages:(%s) I/O read failure: (error=%d) bp %p vp %p\n",
-			devtoname(bp->b_dev), error, bp, bp->b_vp);
+			devtoname(vp->v_rdev), error, bp, bp->b_vp);
 		printf(
 	    "               size: %d, resid: %ld, a_count: %d, valid: 0x%x\n",
 		    size, bp->b_resid, ap->a_count, m->valid);

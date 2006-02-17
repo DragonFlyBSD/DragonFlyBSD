@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.5 2004/02/21 06:37:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.6 2006/02/17 19:18:05 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -37,12 +37,13 @@
 # include <sys/proc.h>			/* old buf style */
 # include <sys/buf.h>			/* old buf style */
 # include <sys/buf2.h>
-typedef struct buf			mlx_bio;
-typedef struct buf_queue_head		mlx_bioq;
-# define MLX_BIO_QINIT(bq)		bufq_init(&bq);
-# define MLX_BIO_QINSERT(bq, bp)	bufq_insert_tail(&bq, bp)
-# define MLX_BIO_QFIRST(bq)		bufq_first(&bq)
-# define MLX_BIO_QREMOVE(bq, bp)	bufq_remove(&bq, bp)
+typedef struct bio			mlx_bio;
+typedef struct bio_queue_head		mlx_bioq;
+#if 0
+# define MLX_BIO_QINIT(bq)		bioq_init(&bq);
+# define MLX_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
+# define MLX_BIO_QFIRST(bq)		bioq_first(&bq)
+# define MLX_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
 # define MLX_BIO_IS_READ(bp)		((bp)->b_flags & B_READ)
 # define MLX_BIO_DATA(bp)		(bp)->b_data
 # define MLX_BIO_LENGTH(bp)		(bp)->b_bcount
@@ -55,6 +56,7 @@ typedef struct buf_queue_head		mlx_bioq;
 # define MLX_BIO_DONE(bp)		biodone(bp)
 # define MLX_BIO_STATS_START(bp)	devstat_start_transaction(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats)
 # define MLX_BIO_STATS_END(bp)		devstat_end_transaction_buf(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats, bp)
+#endif
 #else
 # include <sys/bio.h>
 typedef struct bio			mlx_bio;

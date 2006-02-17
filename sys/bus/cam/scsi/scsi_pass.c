@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.13 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.14 2006/02/17 19:17:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,13 +73,13 @@ typedef enum {
 } pass_ccb_types;
 
 #define ccb_type	ppriv_field0
-#define ccb_bp		ppriv_ptr1
+#define ccb_bio		ppriv_ptr1
 
 struct pass_softc {
 	pass_state	state;
 	pass_flags	flags;
 	u_int8_t	pd_type;
-	struct		buf_queue_head buf_queue;
+	struct		bio_queue_head bio_queue;
 	union ccb	saved_ccb;
 	struct devstat	device_stats;
 };
@@ -181,6 +181,7 @@ passoninvalidate(struct cam_periph *periph)
 {
 	struct pass_softc *softc;
 	struct buf *q_bp;
+	struct bio *q_bio;
 	struct ccb_setasync csa;
 
 	softc = (struct pass_softc *)periph->softc;
@@ -209,12 +210,13 @@ passoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bp = bufq_first(&softc->buf_queue)) != NULL){
-		bufq_remove(&softc->buf_queue, q_bp);
+	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
+		bioq_remove(&softc->bio_queue, q_bio);
+		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;
 		q_bp->b_flags |= B_ERROR;
-		biodone(q_bp);
+		biodone(q_bio);
 	}
 	crit_exit();
 
@@ -304,7 +306,7 @@ passregister(struct cam_periph *periph, void *arg)
 	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->state = PASS_STATE_NORMAL;
 	softc->pd_type = SID_TYPE(&cgd->inq_data);
-	bufq_init(&softc->buf_queue);
+	bioq_init(&softc->bio_queue);
 
 	periph->softc = softc;
 
@@ -448,8 +450,9 @@ passclose(dev_t dev, int flag, int fmt, struct thread *td)
  * only one physical transfer.
  */
 static void
-passstrategy(struct buf *bp)
+passstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	u_int  unit;
@@ -462,9 +465,9 @@ passstrategy(struct buf *bp)
 	bp->b_error = EINVAL;
 	goto bad;
 
-	/* unit = dkunit(bp->b_dev); */
+	/* unit = dkunit(dev); */
 	/* XXX KDM fix this */
-	unit = minor(bp->b_dev) & 0xff;
+	unit = minor(dev) & 0xff;
 
 	periph = cam_extend_get(passperiphs, unit);
 	if (periph == NULL) {
@@ -477,7 +480,7 @@ passstrategy(struct buf *bp)
 	 * Odd number of bytes or negative offset
 	 */
 	/* valid request?  */
-	if (bp->b_blkno < 0) {
+	if (bio->bio_blkno < 0) {
 		bp->b_error = EINVAL;
 		goto bad;
         }
@@ -488,7 +491,7 @@ passstrategy(struct buf *bp)
 	 * clean up one of the buffers.
 	 */
 	crit_enter();
-	bufq_insert_tail(&softc->buf_queue, bp);
+	bioq_insert_tail(&softc->bio_queue, bio);
 	crit_exit();
 	
 	/*
@@ -504,8 +507,7 @@ bad:
 	 * Correctly set the buf to indicate a completed xfer
 	 */
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
-	return;
+	biodone(bio);
 }
 
 static void
@@ -519,9 +521,10 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 	case PASS_STATE_NORMAL:
 	{
 		struct buf *bp;
+		struct bio *bio;
 
 		crit_enter();
-		bp = bufq_first(&softc->buf_queue);
+		bio = bioq_first(&softc->bio_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			start_ccb->ccb_h.ccb_type = PASS_CCB_WAITING;			
 			SLIST_INSERT_HEAD(&periph->ccb_list, &start_ccb->ccb_h,
@@ -529,12 +532,13 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			crit_exit();
 			wakeup(&periph->ccb_list);
-		} else if (bp == NULL) {
+		} else if (bio == NULL) {
 			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
 
-			bufq_remove(&softc->buf_queue, bp);
+			bioq_remove(&softc->bio_queue, bio);
+			bp = bio->bio_buf;
 
 			devstat_start_transaction(&softc->device_stats);
 
@@ -549,14 +553,14 @@ passstart(struct cam_periph *periph, union ccb *start_ccb)
 			bp->b_error = EIO;
 			bp->b_flags |= B_ERROR;
 			bp->b_resid = bp->b_bcount;
-			biodone(bp);
-			bp = bufq_first(&softc->buf_queue);
+			biodone(bio);
+			bio = bioq_first(&softc->bio_queue);
 			crit_exit();
   
 			xpt_action(start_ccb);
 
 		}
-		if (bp != NULL) {
+		if (bio != NULL) {
 			/* Have more work to do, so ensure we stay scheduled */
 			xpt_schedule(periph, /* XXX priority */1);
 		}
@@ -575,6 +579,7 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 	switch (csio->ccb_h.ccb_type) {
 	case PASS_CCB_BUFFER_IO:
 	{
+		struct bio		*bio;
 		struct buf		*bp;
 		cam_status		status;
 		u_int8_t		scsi_status;
@@ -582,7 +587,9 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 
 		status = done_ccb->ccb_h.status;
 		scsi_status = done_ccb->csio.scsi_status;
-		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
+		bio = (struct bio *)done_ccb->ccb_h.ccb_bio;
+		bp = bio->bio_buf;
+
 		/* XXX handle errors */
 		if (!(((status & CAM_STATUS_MASK) == CAM_REQ_CMP)
 		  && (scsi_status == SCSI_STATUS_OK))) {
@@ -612,7 +619,7 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 			ds_flags = DEVSTAT_NO_DATA;
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
-		biodone(bp);
+		biodone(bio);
 		break;
 	}
 	case PASS_CCB_WAITING:

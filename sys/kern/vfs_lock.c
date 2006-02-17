@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.7 2005/04/20 17:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.8 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -459,7 +459,7 @@ allocvnode(int lktimeout, int lkflags)
 #ifdef INVARIANTS
 		if (vp->v_data)
 			panic("cleaned vnode isn't");
-		if (vp->v_numoutput)
+		if (vp->v_track_read.bk_active + vp->v_track_write.bk_active)
 			panic("Clean vnode has pending I/O's");
 		KKASSERT(vp->v_mount == NULL);
 #endif

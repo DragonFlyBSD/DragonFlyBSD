@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.16 2005/10/26 17:15:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.17 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -207,10 +207,10 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 		return (error);
 	}
 
-	if( bp->b_blkno == bp->b_lblkno) {
+	if(bp->b_bio2.bio_blkno == (daddr_t)-1) {
 		if( lbprev >= NDADDR)
 			panic("ffs_realloccg: lbprev out of range");
-		bp->b_blkno = fsbtodb(fs, bprev);
+		bp->b_bio2.bio_blkno = fsbtodb(fs, bprev);
 	}
 
 #ifdef QUOTA
@@ -226,7 +226,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	cg = dtog(fs, bprev);
 	bno = ffs_fragextend(ip, cg, (long)bprev, osize, nsize);
 	if (bno) {
-		if (bp->b_blkno != fsbtodb(fs, bno))
+		if (bp->b_bio2.bio_blkno != fsbtodb(fs, bno))
 			panic("ffs_realloccg: bad blockno");
 		ip->i_blocks += btodb(nsize - osize);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -287,7 +287,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	bno = (ufs_daddr_t)ffs_hashalloc(ip, cg, (long)bpref, request,
 					 ffs_alloccg);
 	if (bno > 0) {
-		bp->b_blkno = fsbtodb(fs, bno);
+		bp->b_bio2.bio_blkno = fsbtodb(fs, bno);
 		if (!DOINGSOFTDEP(ITOV(ip)))
 			ffs_blkfree(ip, bprev, (long)osize);
 		if (nsize < request)
@@ -373,15 +373,15 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 #ifdef DIAGNOSTIC
 	for (i = 0; i < len; i++)
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_blkno), fs->fs_bsize))
+		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 1");
 	for (i = 1; i < len; i++)
 		if (buflist->bs_children[i]->b_lblkno != start_lbn + i)
 			panic("ffs_reallocblks: non-logical cluster");
-	blkno = buflist->bs_children[0]->b_blkno;
+	blkno = buflist->bs_children[0]->b_bio2.bio_blkno;
 	ssize = fsbtodb(fs, fs->fs_frag);
 	for (i = 1; i < len - 1; i++)
-		if (buflist->bs_children[i]->b_blkno != blkno + (i * ssize))
+		if (buflist->bs_children[i]->b_bio2.bio_blkno != blkno + (i * ssize))
 			panic("ffs_reallocblks: non-physical cluster %d", i);
 #endif
 	/*
@@ -389,8 +389,8 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	 * the filesystem has decided to move and do not force it back to
 	 * the previous cylinder group.
 	 */
-	if (dtog(fs, dbtofsb(fs, buflist->bs_children[0]->b_blkno)) !=
-	    dtog(fs, dbtofsb(fs, buflist->bs_children[len - 1]->b_blkno)))
+	if (dtog(fs, dbtofsb(fs, buflist->bs_children[0]->b_bio2.bio_blkno)) !=
+	    dtog(fs, dbtofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_blkno)))
 		return (ENOSPC);
 	if (ufs_getlbns(vp, start_lbn, start_ap, &start_lvl) ||
 	    ufs_getlbns(vp, end_lbn, end_ap, &end_lvl))
@@ -470,9 +470,9 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		}
 #ifdef DIAGNOSTIC
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_blkno), fs->fs_bsize))
+		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 2");
-		if (dbtofsb(fs, buflist->bs_children[i]->b_blkno) != *bap)
+		if (dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno) != *bap)
 			panic("ffs_reallocblks: alloc mismatch");
 #endif
 #ifdef DEBUG
@@ -531,12 +531,12 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	for (blkno = newblk, i = 0; i < len; i++, blkno += fs->fs_frag) {
 		if (!DOINGSOFTDEP(vp))
 			ffs_blkfree(ip,
-			    dbtofsb(fs, buflist->bs_children[i]->b_blkno),
+			    dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno),
 			    fs->fs_bsize);
-		buflist->bs_children[i]->b_blkno = fsbtodb(fs, blkno);
+		buflist->bs_children[i]->b_bio2.bio_blkno = fsbtodb(fs, blkno);
 #ifdef DIAGNOSTIC
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_blkno), fs->fs_bsize))
+		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 3");
 #endif
 #ifdef DEBUG

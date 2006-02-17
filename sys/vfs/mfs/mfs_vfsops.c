@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.24 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
  */
 
 
@@ -142,32 +142,33 @@ mfsclose(dev_t dev, int flags, int mode, struct thread *td)
 }
 
 void
-mfsstrategy(struct buf *bp)
+mfsstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct mfsnode *mfsp;
 
-	if ((mfsp = bp->b_dev->si_drv1) != NULL) {
-		off_t boff = (off_t)bp->b_blkno << DEV_BSHIFT;
+	if ((mfsp = dev->si_drv1) != NULL) {
+		off_t boff = (off_t)bio->bio_blkno << DEV_BSHIFT;
 		off_t eoff = boff + bp->b_bcount;
 
 		if (eoff <= mfsp->mfs_size) {
-			bufq_insert_tail(&mfsp->buf_queue, bp);
+			bioq_insert_tail(&mfsp->bio_queue, bio);
 			wakeup((caddr_t)mfsp);
 		} else if (boff < mfsp->mfs_size) {
 			bp->b_bcount = mfsp->mfs_size - boff;
-			bufq_insert_tail(&mfsp->buf_queue, bp);
+			bioq_insert_tail(&mfsp->bio_queue, bio);
 			wakeup((caddr_t)mfsp);
 		} else if (boff == mfsp->mfs_size) {
 			bp->b_resid = bp->b_bcount;
-			biodone(bp);
+			biodone(bio);
 		} else {
 			bp->b_error = EINVAL;
-			biodone(bp);
+			biodone(bio);
 		}
 	} else {
 		bp->b_error = ENXIO;
 		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		biodone(bio);
 	}
 }
 
@@ -312,7 +313,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mfsp->mfs_dev = reference_dev(dev);
 	mfsp->mfs_td = td;
 	mfsp->mfs_active = 1;
-	bufq_init(&mfsp->buf_queue);
+	bioq_init(&mfsp->bio_queue);
 
 	/* Save "mounted from" info for mount point (NULL pad)*/
 	copyinstr(	args.fspec,			/* device name*/
@@ -362,7 +363,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	struct vnode *vp = VFSTOUFS(mp)->um_devvp;
 	struct mfsnode *mfsp = VTOMFS(vp);
-	struct buf *bp;
+	struct bio *bio;
 	int gotsig = 0, sig;
 
 	/*
@@ -376,14 +377,13 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 	PHOLD(curproc);
 
 	while (mfsp->mfs_active) {
-
 		crit_enter();
 
-		while ((bp = bufq_first(&mfsp->buf_queue)) != NULL) {
-			bufq_remove(&mfsp->buf_queue, bp);
+		while ((bio = bioq_first(&mfsp->bio_queue)) != NULL) {
+			bioq_remove(&mfsp->bio_queue, bio);
 			crit_exit();
-			mfs_doio(bp, mfsp);
-			wakeup((caddr_t)bp);
+			mfs_doio(bio, mfsp);
+			wakeup((caddr_t)bio->bio_buf);
 			crit_enter();
 		}
 

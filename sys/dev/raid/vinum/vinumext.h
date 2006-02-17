@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.5 2005/01/27 02:43:12 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -139,9 +139,9 @@ d_ioctl_t vinumioctl;
 d_dump_t vinumdump;
 d_psize_t vinumsize;
 
-int vinumstart(struct buf *bp, int reviveok);
+int vinumstart(dev_t dev, struct bio *bio, int reviveok);
 int launch_requests(struct request *rq, int reviveok);
-void sdio(struct buf *bp);
+void sdio(struct bio *bio);
 
 /* XXX Do we need this? */
 int vinumpart(dev_t);

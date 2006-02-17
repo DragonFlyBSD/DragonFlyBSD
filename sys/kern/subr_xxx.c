@@ -32,7 +32,7 @@
  *
  *	@(#)subr_xxx.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_xxx.c,v 1.15.2.1 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/Attic/subr_xxx.c,v 1.4 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/subr_xxx.c,v 1.5 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -135,11 +135,11 @@ nopoll(dev_t dev, int events, d_thread_t *td)
 }
 
 void
-nostrategy(struct buf *bp)
+nostrategy(dev_t dev, struct bio *bio)
 {
-	bp->b_flags |= B_ERROR;
-	bp->b_error = EOPNOTSUPP;
-	biodone(bp);
+	bio->bio_buf->b_flags |= B_ERROR;
+	bio->bio_buf->b_error = EOPNOTSUPP;
+	biodone(bio);
 }
 
 int

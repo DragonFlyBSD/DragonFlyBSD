@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.13 2005/11/19 17:58:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.14 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@ int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 
 void ffs_rawread_setup(void);
 
-static void ffs_rawreadwakeup(struct buf *bp);
+static void ffs_rawreadwakeup(struct bio *bio);
 
 
 SYSCTL_DECL(_vfs_ffs);
@@ -96,7 +96,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 
 	/* Check for dirty mmap, pending writes and dirty buffers */
 	crit_enter();
-	if (vp->v_numoutput > 0 ||
+	if (vp->v_track_write.bk_active > 0 ||
 	    !RB_EMPTY(&vp->v_rbdirty_tree) ||
 	    (vp->v_flag & VOBJDIRTY) != 0) {
 		crit_exit();
@@ -117,10 +117,9 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 
 		/* Wait for pending writes to complete */
 		crit_enter();
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			error = tsleep((caddr_t)&vp->v_numoutput, 0,
-				       "rawrdfls", 0);
+		while (vp->v_track_write.bk_active) {
+			vp->v_track_write.bk_waitflag = 1;
+			error = tsleep(&vp->v_track_write, 0, "rawrdfls", 0);
 			if (error != 0) {
 				crit_exit();
 				if (upgraded != 0)
@@ -137,7 +136,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 				return (error);
 			}
 			crit_enter();
-			if (vp->v_numoutput > 0 ||
+			if (vp->v_track_write.bk_active > 0 ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("ffs_rawread_sync: dirty bufs");
 		}
@@ -152,7 +151,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 
 
 static int
-ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
+ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		      size_t len, struct thread *td, struct buf *bp,
 		      caddr_t sa, int *baseticks)
 {
@@ -174,27 +173,28 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
 			bp->b_bcount -= PAGE_SIZE;
 	}
 	bp->b_flags = B_PHYS | B_READ;
-	bp->b_iodone = ffs_rawreadwakeup;
 	bp->b_data = udata;
 	bp->b_saveaddr = sa;
-	bp->b_offset = offset;
-	blockno = bp->b_offset / bsize;
-	blockoff = (bp->b_offset % bsize) / DEV_BSIZE;
-	if ((daddr_t) blockno != blockno) {
+	bp->b_loffset = loffset;
+	blockno = loffset / bsize;
+	blockoff = (loffset % bsize) / DEV_BSIZE;
+	if ((daddr_t)blockno != blockno) {
 		return EINVAL; /* blockno overflow */
 	}
-	
-	bp->b_lblkno = bp->b_blkno = blockno;
-	
-	error = VOP_BMAP(vp, bp->b_lblkno, &dp, &bp->b_blkno, &bforwards,
-			 NULL);
+	bp->b_lblkno = blockno;
+	bp->b_bio2.bio_offset = NOOFFSET;
+	bp->b_bio2.bio_blkno = (daddr_t)-1;
+	bp->b_bio2.bio_done = ffs_rawreadwakeup;
+
+	error = VOP_BMAP(vp, bp->b_lblkno, &dp, &bp->b_bio2.bio_blkno,
+			 &bforwards, NULL);
 	if (error != 0) {
 		return error;
 	}
-	if (bp->b_blkno == -1) {
-
-		/* Fill holes with NULs to preserve semantics */
-		
+	if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+		/* 
+		 * Fill holes with NULs to preserve semantics 
+		 */
 		if (bp->b_bcount + blockoff * DEV_BSIZE > bsize)
 			bp->b_bcount = bsize - blockoff * DEV_BSIZE;
 		bp->b_bufsize = bp->b_bcount;
@@ -218,13 +218,22 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
 	if (bp->b_bcount + blockoff * DEV_BSIZE > bsize * (1 + bforwards))
 		bp->b_bcount = bsize * (1 + bforwards) - blockoff * DEV_BSIZE;
 	bp->b_bufsize = bp->b_bcount;
-	bp->b_blkno += blockoff;
-	bp->b_dev = dp->v_rdev;
+	bp->b_bio2.bio_blkno += blockoff;
 	
 	if (vmapbuf(bp) < 0)
 		return EFAULT;
 	
-	(void) VOP_STRATEGY(dp, bp);
+	/*
+	 * Access the block device layer using the device vnode (dp) and
+	 * the translated block number (bio2) instead of the logical block
+	 * number (bio1).
+	 *
+	 * Even though we are bypassing the vnode layer, we still
+	 * want the vnode state to indicate that an I/O on its behalf
+	 * is in progress.
+	 */
+	bio_start_transaction(&bp->b_bio1, &vp->v_track_read);
+	vn_strategy(dp, &bp->b_bio2);
 	return 0;
 }
 
@@ -294,7 +303,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		
 		crit_enter();
 		while ((bp->b_flags & B_DONE) == 0) {
-			tsleep((caddr_t)bp, 0, "rawrd", 0);
+			tsleep((caddr_t)&bp->b_bio2, 0, "rawrd", 0);
 		}
 		crit_exit();
 		
@@ -310,6 +319,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			error = bp->b_error;
 			break;
 		}
+		clearbiocache(&bp->b_bio2);
 		resid -= iolen;
 		udata += iolen;
 		offset += iolen;
@@ -330,6 +340,8 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			tsa = sa;
 			sa = nsa;
 			nsa = tsa;
+
+			clearbiocache(&nbp->b_bio2);
 			
 			if (resid <= bp->b_bufsize) { /* No more readaheads */
 				relpbuf(nbp, &ffsrawbufcnt);
@@ -361,7 +373,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	if (nbp != NULL) {			/* Run down readahead buffer */
 		crit_enter();
 		while ((nbp->b_flags & B_DONE) == 0) {
-			tsleep((caddr_t)nbp, 0, "rawrd", 0);
+			tsleep(&nbp->b_bio2, 0, "rawrd", 0);
 		}
 		crit_exit();
 		vunmapbuf(nbp);
@@ -442,7 +454,7 @@ ffs_rawread(struct vnode *vp,
 
 
 static void
-ffs_rawreadwakeup(struct buf *bp)
+ffs_rawreadwakeup(struct bio *bio)
 {
-	wakeup((caddr_t) bp);
+	wakeup(bio);
 }

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.19 2005/09/21 18:58:55 hsu Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.20 2006/02/17 19:17:42 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -126,7 +126,7 @@ typedef enum {
 } cd_changer_flags;
 
 #define ccb_state ppriv_field0
-#define ccb_bp ppriv_ptr1
+#define ccb_bio ppriv_ptr1
 
 struct cd_tocdata {
 	struct ioc_toc_header header;
@@ -147,7 +147,7 @@ struct cd_softc {
 	cam_pinfo		pinfo;
 	cd_state		state;
 	volatile cd_flags	flags;
-	struct buf_queue_head	buf_queue;
+	struct bio_queue_head	bio_queue;
 	LIST_HEAD(, ccb_hdr)	pending_ccbs;
 	struct cd_params	params;
 	struct disk	 	disk;
@@ -405,6 +405,7 @@ cdoninvalidate(struct cam_periph *periph)
 {
 	struct cd_softc *softc;
 	struct buf *q_bp;
+	struct bio *q_bio;
 	struct ccb_setasync csa;
 
 	softc = (struct cd_softc *)periph->softc;
@@ -434,12 +435,13 @@ cdoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bp = bufq_first(&softc->buf_queue)) != NULL){
-		bufq_remove(&softc->buf_queue, q_bp);
+	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
+		bioq_remove(&softc->bio_queue, q_bio);
+		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;
 		q_bp->b_flags |= B_ERROR;
-		biodone(q_bp);
+		biodone(q_bio);
 	}
 	crit_exit();
 
@@ -705,7 +707,7 @@ cdregister(struct cam_periph *periph, void *arg)
 	LIST_INIT(&softc->pending_ccbs);
 	STAILQ_INIT(&softc->mode_queue);
 	softc->state = CD_STATE_PROBE;
-	bufq_init(&softc->buf_queue);
+	bioq_init(&softc->bio_queue);
 	if (SID_IS_REMOVABLE(&cgd->inq_data))
 		softc->flags |= CD_FLAG_DISC_REMOVABLE;
 	if ((cgd->inq_data.flags & SID_CmdQue) != 0)
@@ -1119,7 +1121,7 @@ cdshorttimeout(void *arg)
 	 * Check to see if there is any more pending or outstanding I/O for
 	 * this device.  If not, move it out of the active slot.
 	 */
-	if ((bufq_first(&changer->cur_device->buf_queue) == NULL)
+	if ((bioq_first(&changer->cur_device->bio_queue) == NULL)
 	 && (changer->cur_device->device_stats.busy_count == 0)) {
 		changer->flags |= CHANGER_MANUAL_CALL;
 		cdrunchangerqueue(changer);
@@ -1242,7 +1244,7 @@ cdrunchangerqueue(void *arg)
 		 * to do.  If so, requeue it at the end of the queue.  If
 		 * not, there is no need to requeue it.
 		 */
-		if (bufq_first(&changer->cur_device->buf_queue) != NULL) {
+		if (bioq_first(&changer->cur_device->bio_queue) != NULL) {
 
 			changer->cur_device->pinfo.generation =
 				++changer->devq.generation;
@@ -1323,7 +1325,7 @@ cdchangerschedule(struct cd_softc *softc)
 				softc->flags &= ~CD_FLAG_SCHED_ON_COMP;
 				cdrunchangerqueue(softc->changer);
 			}
-		} else if ((bufq_first(&softc->buf_queue) == NULL)
+		} else if ((bioq_first(&softc->bio_queue) == NULL)
 		        && (softc->device_stats.busy_count == 0)) {
 			softc->changer->flags |= CHANGER_MANUAL_CALL;
 			cdrunchangerqueue(softc->changer);
@@ -1431,14 +1433,15 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
  * only one physical transfer.
  */
 static void
-cdstrategy(struct buf *bp)
+cdstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	u_int  unit, part;
 
-	unit = dkunit(bp->b_dev);
-	part = dkpart(bp->b_dev);
+	unit = dkunit(dev);
+	part = dkpart(dev);
 	periph = cam_extend_get(cdperiphs, unit);
 	if (periph == NULL) {
 		bp->b_error = ENXIO;
@@ -1483,7 +1486,7 @@ cdstrategy(struct buf *bp)
 	/*
 	 * Place it in the queue of disk activities for this disk
 	 */
-	bufqdisksort(&softc->buf_queue, bp);
+	bioqdisksort(&softc->bio_queue, bio);
 
 	crit_exit();
 	
@@ -1503,14 +1506,14 @@ bad:
 	 * Correctly set the buf to indicate a completed xfer
 	 */
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
-	return;
+	biodone(bio);
 }
 
 static void
 cdstart(struct cam_periph *periph, union ccb *start_ccb)
 {
 	struct cd_softc *softc;
+	struct bio *bio;
 	struct buf *bp;
 	struct ccb_scsiio *csio;
 	struct scsi_read_capacity_data *rcap;
@@ -1523,7 +1526,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 	case CD_STATE_NORMAL:
 	{
 		crit_enter();
-		bp = bufq_first(&softc->buf_queue);
+		bio = bioq_first(&softc->bio_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			start_ccb->ccb_h.ccb_state = CD_CCB_WAITING;
 
@@ -1532,11 +1535,12 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			crit_exit();
 			wakeup(&periph->ccb_list);
-		} else if (bp == NULL) {
+		} else if (bio == NULL) {
 			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
-			bufq_remove(&softc->buf_queue, bp);
+			bp = bio->bio_buf;
+			bioq_remove(&softc->bio_queue, bio);
 
 			devstat_start_transaction(&softc->device_stats);
 
@@ -1549,7 +1553,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 					/* read */bp->b_flags & B_READ,
 					/* byte2 */ 0,
 					/* minimum_cmd_size */ 10,
-					/* lba */ bp->b_pblkno,
+					/* lba */ bio->bio_blkno,
 					bp->b_bcount / softc->params.blksize,
 					/* data_ptr */ bp->b_data,
 					/* dxfer_len */ bp->b_bcount,
@@ -1571,13 +1575,13 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 				softc->flags &= ~CD_FLAG_RETRY_UA;
 			}
 
-			start_ccb->ccb_h.ccb_bp = bp;
-			bp = bufq_first(&softc->buf_queue);
+			start_ccb->ccb_h.ccb_bio = bio;
+			bio = bioq_first(&softc->bio_queue);
 			crit_exit();
 
 			xpt_action(start_ccb);
 		}
-		if (bp != NULL) {
+		if (bio != NULL) {
 			/* Have more work to do, so ensure we stay scheduled */
 			xpt_schedule(periph, /* XXX priority */1);
 		}
@@ -1595,7 +1599,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 				   rcap,
 				   SSD_FULL_SIZE,
 				   /*timeout*/20000);
-		start_ccb->ccb_h.ccb_bp = NULL;
+		start_ccb->ccb_h.ccb_bio = NULL;
 		start_ccb->ccb_h.ccb_state = CD_CCB_PROBE;
 		xpt_action(start_ccb);
 		break;
@@ -1618,9 +1622,11 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 	case CD_CCB_BUFFER_IO:
 	{
 		struct buf	*bp;
+		struct bio	*bio;
 		int		error;
 
-		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
+		bio = (struct bio *)done_ccb->ccb_h.ccb_bio;
+		bp = bio->bio_buf;
 		error = 0;
 
 		if ((done_ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
@@ -1644,17 +1650,19 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		if (error != 0) {
+			struct bio *q_bio;
 			struct buf *q_bp;
 
 			xpt_print_path(periph->path);
 			printf("cddone: got error %#x back\n", error);
 			crit_enter();
-			while ((q_bp = bufq_first(&softc->buf_queue)) != NULL) {
-				bufq_remove(&softc->buf_queue, q_bp);
+			while ((q_bio = bioq_first(&softc->bio_queue)) != NULL) {
+				bioq_remove(&softc->bio_queue, q_bio);
+				q_bp = q_bio->bio_buf;
 				q_bp->b_resid = q_bp->b_bcount;
 				q_bp->b_error = EIO;
 				q_bp->b_flags |= B_ERROR;
-				biodone(q_bp);
+				biodone(q_bio);
 			}
 			crit_exit();
 			bp->b_resid = bp->b_bcount;
@@ -1687,7 +1695,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 			cdchangerschedule(softc);
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
-		biodone(bp);
+		biodone(bio);
 		break;
 	}
 	case CD_CCB_PROBE:

@@ -35,7 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.5 2004/04/07 05:15:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.6 2006/02/17 19:18:07 dillon Exp $
  */
 
 
@@ -89,10 +89,10 @@ struct	nfsmount {
 	int	nm_numuids;		/* Number of nfsuid mappings */
 	TAILQ_HEAD(, nfsuid) nm_uidlruhead; /* Lists of nfsuid mappings */
 	LIST_HEAD(, nfsuid) nm_uidhashtbl[NFS_MUIDHASHSIZ];
-	TAILQ_HEAD(, buf) nm_bufq;	/* async io buffer queue */
-	short	nm_bufqlen;		/* number of buffers in queue */
-	short	nm_bufqwant;		/* process wants to add to the queue */
-	int	nm_bufqiods;		/* number of iods processing queue */
+	TAILQ_HEAD(, bio) nm_bioq;	/* async io buffer queue */
+	short	nm_bioqlen;		/* number of buffers in queue */
+	short	nm_bioqwant;		/* process wants to add to the queue */
+	int	nm_bioqiods;		/* number of iods processing queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
 	struct ucred *nm_cred;		/* 'root' credential */
 	struct thread *nm_rcvlock_td;	/* debugging */

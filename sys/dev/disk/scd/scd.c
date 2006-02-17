@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.13 2005/06/06 21:48:16 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.14 2006/02/17 19:18:01 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -107,7 +107,7 @@ struct scd_mbx {
 	short		nblk;
 	int		sz;
 	u_long		skip;
-	struct buf	*bp;
+	struct bio	*bio;
 	int		p_offset;
 	short		count;
 };
@@ -131,7 +131,7 @@ static struct scd_data {
 	struct	ioc_play_msf last_play;
 
 	short	audio_status;
-	struct buf_queue_head head;		/* head of buf queue */
+	struct bio_queue_head bio_queue;	/* head of bio queue */
 	struct scd_mbx mbx;
 	struct callout callout;
 } scd_data[NSCD];
@@ -217,7 +217,7 @@ scd_attach(struct isa_device *dev)
 
 	cd->flags = SCDINIT;
 	cd->audio_status = CD_AS_AUDIO_INVALID;
-	bufq_init(&cd->head);
+	bioq_init(&cd->bio_queue);
 
 	cdevsw_add(&scd_cdevsw, dkunitmask(), dkmakeunit(unit));
 	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, 0),
@@ -315,19 +315,21 @@ scdclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static	void
-scdstrategy(struct buf *bp)
+scdstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
+	struct bio *nbio;
 	struct scd_data *cd;
-	int unit = scd_unit(bp->b_dev);
+	int unit = scd_unit(dev);
 
 	cd = scd_data + unit;
 
 	XDEBUG(2, ("scd%d: DEBUG: strategy: block=%ld, bcount=%ld\n",
-		unit, (long)bp->b_blkno, bp->b_bcount));
+		unit, (long)bio->bio_blkno, bp->b_bcount));
 
-	if (unit >= NSCD || bp->b_blkno < 0 || (bp->b_bcount % SCDBLKSIZE)) {
+	if (unit >= NSCD || bio->bio_blkno < 0 || (bp->b_bcount % SCDBLKSIZE)) {
 		printf("scd%d: strategy failure: blkno = %ld, bcount = %ld\n",
-			unit, (long)bp->b_blkno, bp->b_bcount);
+			unit, (long)bio->bio_blkno, bp->b_bcount);
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		goto bad;
@@ -355,15 +357,16 @@ scdstrategy(struct buf *bp)
 		goto bad;
 	}
 	/* adjust transfer if necessary */
-	if (bounds_check_with_label(bp,&cd->dlabel,1) <= 0)
+	nbio = bounds_check_with_label(dev, bio, &cd->dlabel, 1);
+	if (nbio == NULL)
 		goto done;
 
-	bp->b_pblkno = bp->b_blkno;
+	nbio->bio_driver_info = dev;
 	bp->b_resid = 0;
 
 	/* queue it */
 	crit_enter();
-	bufqdisksort(&cd->head, bp);
+	bioqdisksort(&cd->bio_queue, nbio);
 	crit_exit();
 
 	/* now check whether we can perform processing */
@@ -374,16 +377,16 @@ bad:
 	bp->b_flags |= B_ERROR;
 done:
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
-	return;
+	biodone(bio);
 }
 
 static void
 scd_start(int unit)
 {
 	struct scd_data *cd = scd_data + unit;
-	struct buf *bp;
+	struct bio *bio;
 	struct partition *p;
+	dev_t dev;
 
 	crit_enter();
 	if (cd->flags & SCDMBXBSY) {
@@ -391,23 +394,23 @@ scd_start(int unit)
 		return;
 	}
 
-	bp = bufq_first(&cd->head);
-	if (bp != 0) {
-		/* block found to process, dequeue */
-		bufq_remove(&cd->head, bp);
-		cd->flags |= SCDMBXBSY;
-	} else {
+	bio = bioq_first(&cd->bio_queue);
+	if (bio == NULL) {
 		/* nothing to do */
 		crit_exit();
 		return;
 	}
+	/* block found to process, dequeue */
+	bioq_remove(&cd->bio_queue, bio);
+	cd->flags |= SCDMBXBSY;
+	dev = bio->bio_driver_info;
 
-	p = cd->dlabel.d_partitions + scd_part(bp->b_dev);
+	p = cd->dlabel.d_partitions + scd_part(dev);
 
 	cd->mbx.unit = unit;
 	cd->mbx.port = cd->iobase;
 	cd->mbx.retry = 3;
-	cd->mbx.bp = bp;
+	cd->mbx.bio = bio;
 	cd->mbx.p_offset = p->p_offset;
 	crit_exit();
 
@@ -792,7 +795,8 @@ scd_doread(int state, struct scd_mbx *mbxin)
 	struct scd_mbx *mbx = (state!=SCD_S_BEGIN) ? mbxsave : mbxin;
 	int	unit = mbx->unit;
 	int	port = mbx->port;
-	struct	buf *bp = mbx->bp;
+	struct	bio *bio = mbx->bio;
+	struct  buf *bp = bio->bio_buf;
 	struct	scd_data *cd = scd_data + unit;
 	int	reg,i;
 	int	blknum;
@@ -843,7 +847,7 @@ nextblock:
 		if (!(cd->flags & SCDVALID))
 			goto changed;
 
-		blknum 	= (bp->b_blkno / (mbx->sz/DEV_BSIZE))
+		blknum 	= (bio->bio_blkno / (mbx->sz/DEV_BSIZE))
 			+ mbx->p_offset + mbx->skip/mbx->sz;
 
 		XDEBUG(2, ("scd%d: scd_doread: read blknum=%d\n", unit, blknum));
@@ -1026,7 +1030,7 @@ got_param:
 
 		/* return buffer */
 		bp->b_resid = 0;
-		biodone(bp);
+		biodone(bio);
 
 		cd->flags &= ~SCDMBXBSY;
 		scd_start(mbx->unit);
@@ -1044,7 +1048,7 @@ harderr:
 	bp->b_error = EIO;
 	bp->b_flags |= B_ERROR;
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
+	biodone(bio);
 
 	cd->flags &= ~SCDMBXBSY;
 	scd_start(mbx->unit);

@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.5 2005/09/16 04:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -49,8 +49,8 @@
 #include <sys/resourcevar.h>
 
 void complete_raid5_write(struct rqelement *);
-void complete_rqe(struct buf *bp);
-void sdio_done(struct buf *bp);
+void complete_rqe(struct bio *bio);
+void sdio_done(struct bio *bio);
 
 /*
  * Take a completed buffer, transfer the data back if
@@ -61,12 +61,13 @@ void sdio_done(struct buf *bp);
  * includes a couple of extras at the end.
  */
 void
-complete_rqe(struct buf *bp)
+complete_rqe(struct bio *bio)
 {
+    struct buf *bp = bio->bio_buf;
     struct rqelement *rqe;
     struct request *rq;
     struct rqgroup *rqg;
-    struct buf *ubp;					    /* user buffer */
+    struct bio *ubio;					    /* user buffer */
     struct drive *drive;
     struct sd *sd;
     char *gravity;					    /* for error messages */
@@ -74,11 +75,11 @@ complete_rqe(struct buf *bp)
     rqe = (struct rqelement *) bp;			    /* point to the element that completed */
     rqg = rqe->rqg;					    /* and the request group */
     rq = rqg->rq;					    /* and the complete request */
-    ubp = rq->bp;					    /* user buffer */
+    ubio = rq->bio;					    /* user buffer */
 
 #ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_iodone, (union rqinfou) rqe, ubp);
+	logrq(loginfo_iodone, (union rqinfou) rqe, ubio);
 #endif
     drive = &DRIVE[rqe->driveno];
     drive->active--;					    /* one less outstanding I/O on this drive */
@@ -104,7 +105,7 @@ complete_rqe(struct buf *bp)
 		"%s:%s read error, block %d for %ld bytes\n",
 		gravity,
 		sd->name,
-		bp->b_blkno,
+		bio->bio_blkno,
 		bp->b_bcount);
 	} else {					    /* write operation */
 	    if ((rq->error == ENXIO) || (sd->flags & VF_RETRYERRORS) == 0) {
@@ -115,19 +116,19 @@ complete_rqe(struct buf *bp)
 		"%s:%s write error, block %d for %ld bytes\n",
 		gravity,
 		sd->name,
-		bp->b_blkno,
+		bio->bio_blkno,
 		bp->b_bcount);
 	}
 	log(LOG_ERR,
 	    "%s: user buffer block %d for %ld bytes\n",
 	    sd->name,
-	    ubp->b_blkno,
-	    ubp->b_bcount);
+	    ubio->bio_blkno,
+	    ubio->bio_buf->b_bcount);
 	if (rq->error == ENXIO) {			    /* the drive's down too */
 	    log(LOG_ERR,
 		"%s: fatal drive I/O error, block %d for %ld bytes\n",
 		DRIVE[rqe->driveno].label.name,
-		bp->b_blkno,
+		bio->bio_blkno,
 		bp->b_bcount);
 	    DRIVE[rqe->driveno].lasterror = rq->error;
 	    set_drive_state(rqe->driveno,		    /* take the drive down */
@@ -184,7 +185,7 @@ complete_rqe(struct buf *bp)
 	    char *src = &rqe->b.b_data[rqe->dataoffset << DEV_BSHIFT]; /* read data is here */
 	    char *dst;
 
-	    dst = (char *) ubp->b_data + (rqe->useroffset << DEV_BSHIFT); /* where to put it in user buffer */
+	    dst = (char *) ubio->bio_buf->b_data + (rqe->useroffset << DEV_BSHIFT); /* where to put it in user buffer */
 	    length = rqe->datalen << DEV_BSHIFT;	    /* and count involved */
 	    bcopy(src, dst, length);			    /* move it */
 	}
@@ -208,22 +209,22 @@ complete_rqe(struct buf *bp)
     if (rq->active == 0) {				    /* request finished, */
 #ifdef VINUMDEBUG
 	if (debug & DEBUG_RESID) {
-	    if (ubp->b_resid != 0)			    /* still something to transfer? */
+	    if (ubio->bio_buf->b_resid != 0)			    /* still something to transfer? */
 		Debugger("resid");
 	}
 #endif
 
 	if (rq->error) {				    /* did we have an error? */
 	    if (rq->isplex) {				    /* plex operation, */
-		ubp->b_flags |= B_ERROR;		    /* yes, propagate to user */
-		ubp->b_error = rq->error;
+		ubio->bio_buf->b_flags |= B_ERROR;	    /* yes, propagate to user */
+		ubio->bio_buf->b_error = rq->error;
 	    } else					    /* try to recover */
 		queue_daemon_request(daemonrq_ioerror, (union daemoninfo) rq); /* let the daemon complete */
 	} else {
-	    ubp->b_resid = 0;				    /* completed our transfer */
+	    ubio->bio_buf->b_resid = 0;			    /* completed our transfer */
 	    if (rq->isplex == 0)			    /* volume request, */
 		VOL[rq->volplex.volno].active--;	    /* another request finished */
-	    biodone(ubp);				    /* top level buffer completed */
+	    biodone(ubio);				    /* top level buffer completed */
 	    freerq(rq);					    /* return the request storage */
 	}
     }
@@ -257,22 +258,22 @@ freerq(struct request *rq)
 
 /* I/O on subdisk completed */
 void
-sdio_done(struct buf *bp)
+sdio_done(struct bio *bio)
 {
     struct sdbuf *sbp;
 
-    sbp = (struct sdbuf *) bp;
+    sbp = (struct sdbuf *) bio->bio_buf;
     if (sbp->b.b_flags & B_ERROR) {			    /* had an error */
-	sbp->bp->b_flags |= B_ERROR;			    /* propagate upwards */
-	sbp->bp->b_error = sbp->b.b_error;
+	sbp->bio->bio_buf->b_flags |= B_ERROR;			    /* propagate upwards */
+	sbp->bio->bio_buf->b_error = sbp->b.b_error;
     }
 #ifdef VINUMDEBUG
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_sdiodone, (union rqinfou) bp, bp);
+	logrq(loginfo_sdiodone, (union rqinfou)bio, bio);
 #endif
-    sbp->bp->b_resid = sbp->b.b_resid;			    /* copy the resid field */
+    sbp->bio->bio_buf->b_resid = sbp->b.b_resid;			    /* copy the resid field */
     /* Now update the statistics */
-    if (bp->b_flags & B_READ) {				    /* read operation */
+    if (sbp->b.b_flags & B_READ) {			    /* read operation */
 	DRIVE[sbp->driveno].reads++;
 	DRIVE[sbp->driveno].bytes_read += sbp->b.b_bcount;
 	SD[sbp->sdno].reads++;
@@ -283,7 +284,7 @@ sdio_done(struct buf *bp)
 	SD[sbp->sdno].writes++;
 	SD[sbp->sdno].bytes_written += sbp->b.b_bcount;
     }
-    biodone(sbp->bp);					    /* complete the caller's I/O */
+    biodone(sbp->bio);					    /* complete the caller's I/O */
     BUF_UNLOCK(&sbp->b);
     BUF_LOCKFREE(&sbp->b);
     Free(sbp);
@@ -299,15 +300,16 @@ complete_raid5_write(struct rqelement *rqe)
     int count;						    /* loop counter */
     int rqno;						    /* request index */
     int rqoffset;					    /* offset of request data from parity data */
-    struct buf *ubp;					    /* user buffer header */
+    struct bio *ubio;					    /* user buffer header */
     struct request *rq;					    /* pointer to our request */
     struct rqgroup *rqg;				    /* and to the request group */
     struct rqelement *prqe;				    /* point to the parity block */
     struct drive *drive;				    /* drive to access */
+    dev_t dev;
 
     rqg = rqe->rqg;					    /* and to our request group */
     rq = rqg->rq;					    /* point to our request */
-    ubp = rq->bp;					    /* user's buffer header */
+    ubio = rq->bio;					    /* user's buffer header */
     prqe = &rqg->rqe[0];				    /* point to the parity block */
 
     /*
@@ -368,9 +370,9 @@ complete_raid5_write(struct rqelement *rqe)
 		    pdata[count] ^= sdata[count];
 
 		/* "add" the new data block */
-		sdata = (int *) (&ubp->b_data[rqe->useroffset << DEV_BSHIFT]); /* new data */
-		if ((sdata < ((int *) ubp->b_data))
-		    || (&sdata[length] > ((int *) (ubp->b_data + ubp->b_bcount))))
+		sdata = (int *) (&ubio->bio_buf->b_data[rqe->useroffset << DEV_BSHIFT]); /* new data */
+		if ((sdata < ((int *) ubio->bio_buf->b_data))
+		    || (&sdata[length] > ((int *) (ubio->bio_buf->b_data + ubio->bio_buf->b_bcount))))
 		    panic("complete_raid5_write: bounds overflow");
 		for (count = 0; count < length; count++)
 		    pdata[count] ^= sdata[count];
@@ -385,14 +387,15 @@ complete_raid5_write(struct rqelement *rqe)
 		if ((rqe->b.b_flags & B_READ)		    /* this was a read */
 		&&((rqe->flags & XFR_BAD_SUBDISK) == 0)) {  /* and we can write this block */
 		    rqe->b.b_flags &= ~(B_READ | B_DONE);   /* we're writing now */
-		    rqe->b.b_iodone = complete_rqe;	    /* by calling us here */
+		    rqe->b.b_bio1.bio_done = complete_rqe;	    /* by calling us here */
 		    rqe->flags &= ~XFR_PARITYOP;	    /* reset flags that brought us here */
-		    rqe->b.b_data = &ubp->b_data[rqe->useroffset << DEV_BSHIFT]; /* point to the user data */
+		    rqe->b.b_data = &ubio->bio_buf->b_data[rqe->useroffset << DEV_BSHIFT]; /* point to the user data */
 		    rqe->b.b_bcount = rqe->datalen << DEV_BSHIFT; /* length to write */
 		    rqe->b.b_bufsize = rqe->b.b_bcount;	    /* don't claim more */
 		    rqe->b.b_resid = rqe->b.b_bcount;	    /* nothing transferred */
-		    rqe->b.b_blkno += rqe->dataoffset;	    /* point to the correct block */
-		    rqe->b.b_dev = DRIVE[rqe->driveno].dev;
+		    rqe->b.b_bio1.bio_blkno += rqe->dataoffset;	    /* point to the correct block */
+		    dev = DRIVE[rqe->driveno].dev;
+		    rqe->b.b_bio1.bio_driver_info = dev;
 		    rqg->active++;			    /* another active request */
 		    drive = &DRIVE[rqe->driveno];	    /* drive to access */
 
@@ -408,16 +411,16 @@ complete_raid5_write(struct rqelement *rqe)
 			log(LOG_DEBUG,
 			    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
 			    rqe->b.b_flags & B_READ ? "Read" : "Write",
-			    major(rqe->b.b_dev),
-			    minor(rqe->b.b_dev),
+			    major(dev),
+			    minor(dev),
 			    rqe->sdno,
-			    (u_int) (rqe->b.b_blkno - SD[rqe->sdno].driveoffset),
-			    rqe->b.b_blkno,
+			    (u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
+			    rqe->b.b_bio1.bio_blkno,
 			    rqe->b.b_bcount);
 		    if (debug & DEBUG_LASTREQS)
-			logrq(loginfo_raid5_data, (union rqinfou) rqe, ubp);
+			logrq(loginfo_raid5_data, (union rqinfou) rqe, ubio);
 #endif
-		    BUF_STRATEGY(&rqe->b, 0);
+		    dev_dstrategy(dev, &rqe->b.b_bio1);
 		}
 	    }
 	}
@@ -425,12 +428,13 @@ complete_raid5_write(struct rqelement *rqe)
     /* Finally, write the parity block */
     rqe = &rqg->rqe[0];
     rqe->b.b_flags &= ~(B_READ | B_DONE);		    /* we're writing now */
-    rqe->b.b_iodone = complete_rqe;			    /* by calling us here */
+    rqe->b.b_bio1.bio_done = complete_rqe;			    /* by calling us here */
     rqg->flags &= ~XFR_PARITYOP;			    /* reset flags that brought us here */
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */
     rqe->b.b_bufsize = rqe->b.b_bcount;			    /* don't claim we have more */
     rqe->b.b_resid = rqe->b.b_bcount;			    /* nothing transferred */
-    rqe->b.b_dev = DRIVE[rqe->driveno].dev;
+    dev = DRIVE[rqe->driveno].dev;
+    rqe->b.b_bio1.bio_driver_info = dev;
     rqg->active++;					    /* another active request */
     drive = &DRIVE[rqe->driveno];			    /* drive to access */
 
@@ -447,16 +451,16 @@ complete_raid5_write(struct rqelement *rqe)
 	log(LOG_DEBUG,
 	    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
 	    rqe->b.b_flags & B_READ ? "Read" : "Write",
-	    major(rqe->b.b_dev),
-	    minor(rqe->b.b_dev),
+	    major(dev),
+	    minor(dev),
 	    rqe->sdno,
-	    (u_int) (rqe->b.b_blkno - SD[rqe->sdno].driveoffset),
-	    rqe->b.b_blkno,
+	    (u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
+	    rqe->b.b_bio1.bio_blkno,
 	    rqe->b.b_bcount);
     if (debug & DEBUG_LASTREQS)
-	logrq(loginfo_raid5_parity, (union rqinfou) rqe, ubp);
+	logrq(loginfo_raid5_parity, (union rqinfou) rqe, ubio);
 #endif
-    BUF_STRATEGY(&rqe->b, 0);
+    dev_dstrategy(dev, &rqe->b.b_bio1);
 }
 
 /* Local Variables: */

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.6 2004/04/17 00:30:17 cpressey Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.7 2006/02/17 19:18:07 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -1032,10 +1032,11 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 					 * Do the bmap now, as in msdosfs_write
 					 */
 					if (pcbmap(dep,
-					    de_bn2cn(pmp, bp->b_lblkno),
-					    &bp->b_blkno, 0, 0))
-						bp->b_blkno = -1;
-					if (bp->b_blkno == -1)
+					    de_bn2cn(pmp, bp->b_bio1.bio_blkno),
+					    &bp->b_bio2.bio_blkno, 0, 0)) {
+						bp->b_bio2.bio_blkno = (daddr_t)-1;
+					}
+					if (bp->b_bio2.bio_blkno == (daddr_t)-1)
 						panic("extendfile: pcbmap");
 				}
 				clrbuf(bp);

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.10 2005/08/08 01:25:31 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.11 2006/02/17 19:18:05 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -330,7 +330,7 @@ struct aac_softc
 	TAILQ_HEAD(,aac_command) aac_busy;
 	TAILQ_HEAD(,aac_command) aac_complete;	/* commands which have been
 						 * returned by the controller */
-	struct buf_queue_head	aac_bioq;
+	struct bio_queue_head	aac_bioq;
 	struct aac_queue_table	*aac_queues;
 	struct aac_queue_entry	*aac_qentries[AAC_QUEUE_COUNT];
 
@@ -390,8 +390,8 @@ extern int		aac_suspend(device_t dev);
 extern int		aac_resume(device_t dev);
 extern void		aac_intr(void *arg);
 extern devclass_t	aac_devclass;
-extern void		aac_submit_bio(struct buf *bp);
-extern void		aac_biodone(struct buf *bp);
+extern void		aac_submit_bio(struct aac_disk *ad, struct bio *bio);
+extern void		aac_biodone(struct bio *bio, const char *code);
 extern int		aac_dump_enqueue(struct aac_disk *ad, u_int32_t lba,
 					 void *data, int nblks);
 extern void		aac_dump_complete(struct aac_softc *sc);
@@ -557,26 +557,26 @@ aac_initq_bio(struct aac_softc *sc)
 }
 
 static __inline void
-aac_enqueue_bio(struct aac_softc *sc, struct buf *bp)
+aac_enqueue_bio(struct aac_softc *sc, struct bio *bio)
 {
 	crit_enter();
-	bioq_insert_tail(&sc->aac_bioq, bp);
+	bioq_insert_tail(&sc->aac_bioq, bio);
 	AACQ_ADD(sc, AACQ_BIO);
 	crit_exit();
 }
 
-static __inline struct buf *
+static __inline struct bio *
 aac_dequeue_bio(struct aac_softc *sc)
 {
-	struct buf *bp;
+	struct bio *bio;
 
 	crit_enter();
-	if ((bp = bioq_first(&sc->aac_bioq)) != NULL) {
-		bioq_remove(&sc->aac_bioq, bp);
+	if ((bio = bioq_first(&sc->aac_bioq)) != NULL) {
+		bioq_remove(&sc->aac_bioq, bio);
 		AACQ_REMOVE(sc, AACQ_BIO);
 	}
 	crit_exit();
-	return(bp);
+	return(bio);
 }
 
 static __inline void

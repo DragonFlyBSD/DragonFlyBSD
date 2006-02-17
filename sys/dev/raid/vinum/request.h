@@ -35,7 +35,7 @@
  *
  * $Id: request.h,v 1.19 2000/11/24 03:41:51 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/request.h,v 1.17.2.1 2001/03/13 02:59:42 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/request.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/request.h,v 1.3 2006/02/17 19:18:06 dillon Exp $
  */
 
 /* Information needed to set up a transfer */
@@ -129,7 +129,7 @@ struct rqgroup {
  * work we have to do to satisfy it.
  */
 struct request {
-    struct buf *bp;					    /* pointer to the high-level request */
+    struct bio *bio;					    /* pointer to the high-level request */
     enum xferinfo flags;
     union {
 	int volno;					    /* volume index */
@@ -150,7 +150,7 @@ struct request {
  */
 struct sdbuf {
     struct buf b;					    /* our buffer */
-    struct buf *bp;					    /* and pointer to parent */
+    struct bio *bio;					    /* and pointer to parent */
     short driveno;					    /* drive index */
     short sdno;						    /* and subdisk index */
 };
@@ -189,7 +189,7 @@ enum rqinfo_type {
 };
 
 union rqinfou {						    /* info to pass to logrq */
-    struct buf *bp;
+    struct bio *bio;
     struct rqelement *rqe;				    /* address of request, for correlation */
     struct rangelock *lockinfo;
 };
@@ -197,11 +197,12 @@ union rqinfou {						    /* info to pass to logrq */
 struct rqinfo {
     enum rqinfo_type type;				    /* kind of event */
     struct timeval timestamp;				    /* time it happened */
-    struct buf *bp;					    /* point to user buffer */
+    struct bio *bio;					    /* point to user buffer */
     int devmajor;					    /* major and minor device info */
     int devminor;
     union {
 	struct buf b;					    /* yup, the *whole* buffer header */
+	struct bio bio;
 	struct rqelement rqe;				    /* and the whole rqe */
 	struct rangelock lockinfo;
     } info;
@@ -209,7 +210,7 @@ struct rqinfo {
 
 #define RQINFO_SIZE 128					    /* number of info slots in buffer */
 
-void logrq(enum rqinfo_type type, union rqinfou info, struct buf *ubp);
+void logrq(enum rqinfo_type type, union rqinfou info, struct bio *ubio);
 #endif
 
 /* Structures for the daemon */

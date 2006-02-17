@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.26 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.27 2006/02/17 19:17:42 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -119,7 +119,7 @@ typedef enum {
 
 /* Offsets into our private area for storing information */
 #define ccb_state	ppriv_field0
-#define ccb_bp		ppriv_ptr1
+#define ccb_bio		ppriv_ptr1
 
 struct disk_params {
 	u_int8_t  heads;
@@ -130,7 +130,7 @@ struct disk_params {
 };
 
 struct da_softc {
-	struct	 buf_queue_head buf_queue;
+	struct	 bio_queue_head bio_queue;
 	struct	 devstat device_stats;
 	SLIST_ENTRY(da_softc) links;
 	LIST_HEAD(, ccb_hdr) pending_ccbs;
@@ -573,7 +573,7 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 				   rcap,
 				   SSD_FULL_SIZE,
 				   /*timeout*/60000);
-		ccb->ccb_h.ccb_bp = NULL;
+		ccb->ccb_h.ccb_bio = NULL;
 
 		error = cam_periph_runccb(ccb, daerror, /*cam_flags*/0,
 					  /*sense_flags*/SF_RETRY_UA |
@@ -736,15 +736,16 @@ daclose(dev_t dev, int flag, int fmt, struct thread *td)
  * only one physical transfer.
  */
 static void
-dastrategy(struct buf *bp)
+dastrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	u_int  unit;
 	u_int  part;
 	
-	unit = dkunit(bp->b_dev);
-	part = dkpart(bp->b_dev);
+	unit = dkunit(dev);
+	part = dkpart(dev);
 	periph = cam_extend_get(daperiphs, unit);
 	if (periph == NULL) {
 		bp->b_error = ENXIO;
@@ -755,7 +756,7 @@ dastrategy(struct buf *bp)
 	/*
 	 * check it's not too big a transfer for our adapter
 	 */
-	scsi_minphys(bp,&sd_switch);
+	scsi_minphys(bp, &sd_switch);
 #endif
 
 	/*
@@ -777,7 +778,7 @@ dastrategy(struct buf *bp)
 	/*
 	 * Place it in the queue of disk activities for this disk
 	 */
-	bufqdisksort(&softc->buf_queue, bp);
+	bioqdisksort(&softc->bio_queue, bio);
 
 	crit_exit();
 	
@@ -794,8 +795,7 @@ bad:
 	 * Correctly set the buf to indicate a completed xfer
 	 */
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
-	return;
+	biodone(bio);
 }
 
 /* For 2.2-stable support */
@@ -1013,6 +1013,7 @@ static void
 daoninvalidate(struct cam_periph *periph)
 {
 	struct da_softc *softc;
+	struct bio *q_bio;
 	struct buf *q_bp;
 	struct ccb_setasync csa;
 
@@ -1042,12 +1043,13 @@ daoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bp = bufq_first(&softc->buf_queue)) != NULL){
-		bufq_remove(&softc->buf_queue, q_bp);
+	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
+		bioq_remove(&softc->bio_queue, q_bio);
+		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;
 		q_bp->b_flags |= B_ERROR;
-		biodone(q_bp);
+		biodone(q_bio);
 	}
 	crit_exit();
 
@@ -1233,7 +1235,7 @@ daregister(struct cam_periph *periph, void *arg)
 	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
-	bufq_init(&softc->buf_queue);
+	bioq_init(&softc->bio_queue);
 	if (SID_IS_REMOVABLE(&cgd->inq_data))
 		softc->flags |= DA_FLAG_PACK_REMOVABLE;
 	if ((cgd->inq_data.flags & SID_CmdQue) != 0)
@@ -1354,13 +1356,14 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 	case DA_STATE_NORMAL:
 	{
 		/* Pull a buffer from the queue and get going on it */		
+		struct bio *bio;
 		struct buf *bp;
 
 		/*
 		 * See if there is a buf with work for us to do..
 		 */
 		crit_enter();
-		bp = bufq_first(&softc->buf_queue);
+		bio = bioq_first(&softc->bio_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
 					("queuing for immediate ccb\n"));
@@ -1370,13 +1373,14 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			crit_exit();
 			wakeup(&periph->ccb_list);
-		} else if (bp == NULL) {
+		} else if (bio == NULL) {
 			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else {
 			u_int8_t tag_code;
 
-			bufq_remove(&softc->buf_queue, bp);
+			bioq_remove(&softc->bio_queue, bio);
+			bp = bio->bio_buf;
 
 			devstat_start_transaction(&softc->device_stats);
 
@@ -1395,7 +1399,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 					bp->b_flags & B_READ,
 					/*byte2*/0,
 					softc->minimum_cmd_size,
-					bp->b_pblkno,
+					bio->bio_blkno,
 					bp->b_bcount / softc->params.secsize,
 					bp->b_data,
 					bp->b_bcount,
@@ -1416,14 +1420,14 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				softc->flags &= ~DA_FLAG_RETRY_UA;
 			}
 
-			start_ccb->ccb_h.ccb_bp = bp;
-			bp = bufq_first(&softc->buf_queue);
+			start_ccb->ccb_h.ccb_bio = bio;
+			bio = bioq_first(&softc->bio_queue);
 			crit_exit();
 
 			xpt_action(start_ccb);
 		}
 		
-		if (bp != NULL) {
+		if (bio != NULL) {
 			/* Have more work to do, so ensure we stay scheduled */
 			xpt_schedule(periph, /* XXX priority */1);
 		}
@@ -1443,7 +1447,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 				   rcap,
 				   SSD_FULL_SIZE,
 				   /*timeout*/5000);
-		start_ccb->ccb_h.ccb_bp = NULL;
+		start_ccb->ccb_h.ccb_bio = NULL;
 		start_ccb->ccb_h.ccb_state = DA_CCB_PROBE;
 		xpt_action(start_ccb);
 		break;
@@ -1509,8 +1513,10 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 	case DA_CCB_BUFFER_IO:
 	{
 		struct buf *bp;
+		struct bio *bio;
 
-		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
+		bio = (struct bio *)done_ccb->ccb_h.ccb_bio;
+		bp = bio->bio_buf;
 		if ((done_ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 			int error;
 			int sf;
@@ -1531,6 +1537,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				return;
 			}
 			if (error != 0) {
+				struct bio *q_bio;
 				struct buf *q_bp;
 
 				crit_enter();
@@ -1553,13 +1560,14 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 				 * the client can retry these I/Os in the
 				 * proper order should it attempt to recover.
 				 */
-				while ((q_bp = bufq_first(&softc->buf_queue))
+				while ((q_bio = bioq_first(&softc->bio_queue))
 					!= NULL) {
-					bufq_remove(&softc->buf_queue, q_bp);
+					bioq_remove(&softc->bio_queue, q_bio);
+					q_bp = q_bio->bio_buf;
 					q_bp->b_resid = q_bp->b_bcount;
 					q_bp->b_error = EIO;
 					q_bp->b_flags |= B_ERROR;
-					biodone(q_bp);
+					biodone(q_bio);
 				}
 				crit_exit();
 				bp->b_error = error;
@@ -1595,7 +1603,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			softc->flags |= DA_FLAG_WENT_IDLE;
 
 		devstat_end_transaction_buf(&softc->device_stats, bp);
-		biodone(bp);
+		biodone(bio);
 		break;
 	}
 	case DA_CCB_PROBE:

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.14 2005/11/28 17:13:42 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.15 2006/02/17 19:18:05 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -432,7 +432,6 @@ struct _tulip_softc_t {
     struct ifmedia tulip_ifmedia;
     struct callout tulip_timer;
     struct callout tulip_fast_timer;
-    struct lwkt_serialize tulip_serializer;
     bus_space_tag_t tulip_csrs_bst;
     bus_space_handle_t tulip_csrs_bsh;
     tulip_regfile_t tulip_csrs;

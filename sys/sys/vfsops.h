@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.14 2005/09/17 07:43:01 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.15 2006/02/17 19:18:07 dillon Exp $
  */
 
 /*
@@ -337,7 +337,7 @@ struct vop_bmap_args {
 struct vop_strategy_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	struct buf *a_bp;
+	struct bio *a_bio;
 };
 
 struct vop_print_args {
@@ -820,7 +820,7 @@ int vop_unlock(struct vop_ops *ops, struct vnode *vp,
 		int flags, struct thread *td);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn,
 		struct vnode **vpp, daddr_t *bnp, int *runp, int *runb);
-int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp);
+int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio);
 int vop_print(struct vop_ops *ops, struct vnode *vp);
 int vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
 		register_t *retval);
@@ -1075,8 +1075,6 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_unlock(*(vp)->v_ops, vp, flags, td)
 #define VOP_BMAP(vp, bn, vpp, bnp, runp, runb)		\
 	vop_bmap(*(vp)->v_ops, vp, bn, vpp, bnp, runp, runb)
-#define VOP_STRATEGY(vp, bp)				\
-	vop_strategy(*(vp)->v_ops, vp, bp)
 #define VOP_PRINT(vp)					\
 	vop_print(*(vp)->v_ops, vp)
 #define VOP_PATHCONF(vp, name, retval)			\
@@ -1112,6 +1110,7 @@ extern struct vnodeop_desc vop_nrename_desc;
 #define VOP_GETVOBJECT(vp, objpp)			\
 	vop_getvobject(*(vp)->v_ops, vp, objpp)
 /* no VOP_VFSSET() */
+/* VOP_STRATEGY - does not exist, use vn_strategy() */
 
 /*
  * 'OLD' VOP calls.  These calls may only be made by the new API

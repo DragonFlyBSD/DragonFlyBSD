@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.9 2005/06/09 20:47:37 swildner Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.10 2006/02/17 19:17:52 dillon Exp $ 
  *
  */
 
@@ -122,7 +122,7 @@ static struct fla_s {
 	int unit;
 	unsigned nsect;
 	struct doc2k_stat ds;
-	struct buf_queue_head buf_queue;
+	struct bio_queue_head bio_queue;
 	struct devstat stats;
 	struct disk disk;
 	dev_t dev;
@@ -190,41 +190,42 @@ flaioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 }
 
 static void
-flastrategy(struct buf *bp)
+flastrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	int unit, error;
 	struct fla_s *sc;
 	enum doc2k_work what;
 
-	if (fla_debug > 1)
+	if (fla_debug > 1) {
 		printf("flastrategy(%p) %s %lx, %d, %ld, %p)\n",
-		    bp, devtoname(bp->b_dev), bp->b_flags, bp->b_blkno, 
+		    bp, devtoname(dev), bp->b_flags, bio->bio_blkno, 
 		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+	}
 
-	sc = bp->b_dev->si_drv1;
-
+	sc = dev->si_drv1;
+	bio->bio_driver_info = dev;
 	crit_enter();
-
-	bufqdisksort(&sc->buf_queue, bp);
-
+	bioqdisksort(&sc->bio_queue, bio);
 	if (sc->busy) {
 		crit_exit();
 		return;
 	}
-
 	sc->busy++;
 	
 	while (1) {
-		bp = bufq_first(&sc->buf_queue);
-		if (bp)
-			bufq_remove(&sc->buf_queue, bp);
-		crit_exit();
-		if (!bp)
+		bio = bioq_first(&sc->bio_queue);
+		if (bio == NULL) {
+			crit_exit();
 			break;
+		}
+		bioq_remove(&sc->bio_queue, bio);
+		bp = bio->bio_buf;
+		dev = bio->bio_driver_info;
 
 		devstat_start_transaction(&sc->stats);
 		bp->b_resid = bp->b_bcount;
-		unit = dkunit(bp->b_dev);
+		unit = dkunit(dev);
 
 		if (bp->b_flags & B_FREEBUF)
 			what = DOC2K_ERASE;
@@ -235,14 +236,14 @@ flastrategy(struct buf *bp)
 
 		LEAVE();
 
-		error = doc2k_rwe( unit, what, bp->b_pblkno,
-		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+		error = doc2k_rwe(unit, what, bio->bio_blkno,
+				  bp->b_bcount / DEV_BSIZE, bp->b_data);
 
 		ENTER();
 
 		if (fla_debug > 1 || error) {
 			printf("fla%d: %d = rwe(%p, %d, %d, %d, %ld, %p)\n",
-			    unit, error, bp, unit, what, bp->b_pblkno, 
+			    unit, error, bp, unit, what, bio->bio_blkno, 
 			    bp->b_bcount / DEV_BSIZE, bp->b_data);
 		}
 		if (error) {
@@ -252,7 +253,7 @@ flastrategy(struct buf *bp)
 			bp->b_resid = 0;
 		}
 		devstat_end_transaction_buf(&sc->stats, bp);
-		biodone(bp);
+		biodone(bio);
 
 		crit_enter();
 	}
@@ -327,7 +328,7 @@ flaattach (device_t dev)
 		    unit, sc->ds.type, sc->ds.unitSize, sc->ds.mediaSize, 
 		    sc->ds.chipSize, sc->ds.interleaving, sc->ds.window);
 
-	bufq_init(&sc->buf_queue);
+	bioq_init(&sc->bio_queue);
 
 	devstat_add_entry(&softc[unit].stats, "fla", unit, DEV_BSIZE,
 		DEVSTAT_NO_ORDERED_TAGS, 

@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.12 2005/08/26 12:45:53 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ typedef	u_char	bool_t;
 static volatile bool_t ds_debug;
 
 static struct disklabel *clone_label (struct disklabel *lp);
-static void dsiodone (struct buf *bp);
+static void dsiodone (struct bio *bio);
 static char *fixlabel (char *sname, struct diskslice *sp,
 			   struct disklabel *lp, int writeflag);
 static void free_ds_label (struct diskslices *ssp, int slice);
@@ -137,9 +137,11 @@ clone_label(struct disklabel *lp)
  * 'errno' value is also set in bp->b_error and bp->b_flags
  * is marked with B_ERROR.
  */
-int
-dscheck(struct buf *bp, struct diskslices *ssp)
+struct bio *
+dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 {
+	struct buf *bp = bio->bio_buf;
+	struct bio *nbio;
 	daddr_t	blkno;
 	u_long	endsecno;
 	daddr_t	labelsect;
@@ -151,14 +153,14 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 	daddr_t	slicerel_secno;
 	struct diskslice *sp;
 
-	blkno = bp->b_blkno;
+	blkno = bio->bio_blkno;
 	if (blkno < 0) {
-		printf("dscheck(%s): negative b_blkno %ld\n", 
-		    devtoname(bp->b_dev), (long)blkno);
+		printf("dscheck(%s): negative bio_blkno %ld\n", 
+		    devtoname(dev), (long)blkno);
 		bp->b_error = EINVAL;
 		goto bad;
 	}
-	sp = &ssp->dss_slices[dkslice(bp->b_dev)];
+	sp = &ssp->dss_slices[dkslice(dev)];
 	lp = sp->ds_label;
 	if (ssp->dss_secmult == 1) {
 		if (bp->b_bcount % (u_long)DEV_BSIZE)
@@ -188,7 +190,7 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 		labelsect = lp->d_partitions[LABEL_PART].p_offset;
 		if (labelsect != 0)
 			Debugger("labelsect != 0 in dscheck()");
-		pp = &lp->d_partitions[dkpart(bp->b_dev)];
+		pp = &lp->d_partitions[dkpart(dev)];
 		endsecno = pp->p_size;
 		slicerel_secno = pp->p_offset + secno;
 	}
@@ -229,7 +231,8 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 		bp->b_bcount = nsec * ssp->dss_secsize;
 	}
 
-	bp->b_pblkno = sp->ds_offset + slicerel_secno;
+	nbio = push_bio(bio);
+	nbio->bio_blkno = sp->ds_offset + slicerel_secno;
 
 	/*
 	 * Snoop on label accesses if the slice offset is nonzero.  Fudge
@@ -241,18 +244,11 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 	    && slicerel_secno + nsec > LABELSECTOR + labelsect
 #endif
 	    && sp->ds_offset != 0) {
-		struct iodone_chain *ic;
-
-		ic = malloc(sizeof *ic , M_DEVBUF, M_WAITOK);
-		ic->ic_prev_flags = bp->b_flags;
-		ic->ic_prev_iodone = bp->b_iodone;
-		ic->ic_prev_iodone_chain = bp->b_iodone_chain;
-		ic->ic_args[0].ia_long = (LABELSECTOR + labelsect -
-		    slicerel_secno) * ssp->dss_secsize;
-		ic->ic_args[1].ia_ptr = sp;
-		bp->b_iodone = dsiodone;
-		bp->b_iodone_chain = ic;
-		if (!(bp->b_flags & B_READ)) {
+		nbio->bio_done = dsiodone;
+		nbio->bio_caller_info1.ptr = sp;
+		nbio->bio_caller_info2.offset = (off_t)(LABELSECTOR + labelsect -
+					 slicerel_secno) * ssp->dss_secsize;
+		if ((bp->b_flags & B_READ) == 0) {
 			/*
 			 * XXX even disklabel(8) writes directly so we need
 			 * to adjust writes.  Perhaps we should drop support
@@ -262,44 +258,41 @@ dscheck(struct buf *bp, struct diskslices *ssp)
 			 * XXX probably need to copy the data to avoid even
 			 * temporarily corrupting the in-core copy.
 			 */
-			if (bp->b_vp != NULL) {
-				crit_enter();
-				bp->b_vp->v_numoutput++;
-				crit_exit();
-			}
 			/* XXX need name here. */
-			msg = fixlabel((char *)NULL, sp,
-				       (struct disklabel *)
-				       (bp->b_data + ic->ic_args[0].ia_long),
-				       TRUE);
+			msg = fixlabel(
+				NULL, sp,
+			       (struct disklabel *)
+			       (bp->b_data + (int)nbio->bio_caller_info2.offset),
+			       TRUE);
 			if (msg != NULL) {
 				printf("dscheck(%s): %s\n", 
-				    devtoname(bp->b_dev), msg);
+				    devtoname(dev), msg);
 				bp->b_error = EROFS;
+				pop_bio(nbio);
 				goto bad;
 			}
 		}
 	}
-	return (1);
+	return (nbio);
 
 bad_bcount:
 	printf(
 	"dscheck(%s): b_bcount %ld is not on a sector boundary (ssize %d)\n",
-	    devtoname(bp->b_dev), bp->b_bcount, ssp->dss_secsize);
+	    devtoname(dev), bp->b_bcount, ssp->dss_secsize);
 	bp->b_error = EINVAL;
 	goto bad;
 
 bad_blkno:
 	printf(
-	"dscheck(%s): b_blkno %ld is not on a sector boundary (ssize %d)\n",
-	    devtoname(bp->b_dev), (long)blkno, ssp->dss_secsize);
+	"dscheck(%s): bio_blkno %ld is not on a sector boundary (ssize %d)\n",
+	    devtoname(dev), (long)blkno, ssp->dss_secsize);
 	bp->b_error = EINVAL;
 	goto bad;
 
 bad:
 	bp->b_resid = bp->b_bcount;
 	bp->b_flags |= B_ERROR;
-	return (-1);
+	return (NULL);
 }
 
 void
@@ -536,26 +529,22 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 }
 
 static void
-dsiodone(struct buf *bp)
+dsiodone(struct bio *bio)
 {
-	struct iodone_chain *ic;
+	struct buf *bp = bio->bio_buf;
 	char *msg;
 
-	ic = bp->b_iodone_chain;
 	bp->b_flags = bp->b_flags & ~B_DONE;
-	bp->b_iodone = ic->ic_prev_iodone;
-	bp->b_iodone_chain = ic->ic_prev_iodone_chain;
 	if (!(bp->b_flags & B_READ)
 	    || (!(bp->b_flags & B_ERROR) && bp->b_error == 0)) {
-		msg = fixlabel((char *)NULL, ic->ic_args[1].ia_ptr,
+		msg = fixlabel(NULL, bio->bio_caller_info1.ptr,
 			       (struct disklabel *)
-			       (bp->b_data + ic->ic_args[0].ia_long),
+			       (bp->b_data + (int)bio->bio_caller_info2.offset),
 			       FALSE);
 		if (msg != NULL)
 			printf("%s\n", msg);
 	}
-	free(ic, M_DEVBUF);
-	biodone(bp);
+	biodone(bio->bio_prev);
 }
 
 int

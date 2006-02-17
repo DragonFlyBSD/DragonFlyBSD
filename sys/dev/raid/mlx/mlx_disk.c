@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.7 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.8 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -164,51 +164,54 @@ mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
  * be a multiple of a sector in length.
  */
 static void
-mlxd_strategy(mlx_bio *bp)
+mlxd_strategy(dev_t dev, mlx_bio *bio)
 {
-    struct mlxd_softc	*sc = (struct mlxd_softc *)MLX_BIO_SOFTC(bp);
+    struct buf *bp = bio->bio_buf;
+    struct mlxd_softc	*sc = (struct mlxd_softc *)bio->bio_driver_info;
 
     debug_called(1);
 
     /* bogus disk? */
     if (sc == NULL) {
-	MLX_BIO_SET_ERROR(bp, EINVAL);
+	bp->b_error = EINVAL;
+	bp->b_flags |= B_ERROR;
 	goto bad;
     }
 
     /* XXX may only be temporarily offline - sleep? */
     if (sc->mlxd_drive->ms_state == MLX_SYSD_OFFLINE) {
-	MLX_BIO_SET_ERROR(bp, ENXIO);
+	bp->b_error = ENXIO;
+	bp->b_flags |= B_ERROR;
 	goto bad;
     }
 
-    MLX_BIO_STATS_START(bp);
-    mlx_submit_buf(sc->mlxd_controller, bp);
+    devstat_start_transaction(&sc->mlxd_stats);
+    mlx_submit_bio(sc->mlxd_controller, bio);
     return;
 
  bad:
     /*
      * Correctly set the bio to indicate a failed tranfer.
      */
-    MLX_BIO_RESID(bp) = MLX_BIO_LENGTH(bp);
-    MLX_BIO_DONE(bp);
+    bp->b_resid = bp->b_bcount;
+    biodone(bio);
     return;
 }
 
 void
-mlxd_intr(void *data)
+mlxd_intr(struct bio *bio)
 {
-    mlx_bio 		*bp = (mlx_bio *)data;
+    struct buf *bp = bio->bio_buf;
+    struct mlxd_softc	*sc = (struct mlxd_softc *)bio->bio_driver_info;
 
     debug_called(1);
-	
-    if (MLX_BIO_HAS_ERROR(bp))
-	MLX_BIO_SET_ERROR(bp, EIO);
-    else
-	MLX_BIO_RESID(bp) = 0;
 
-    MLX_BIO_STATS_END(bp);
-    MLX_BIO_DONE(bp);
+    if (bp->b_flags & B_ERROR)
+	bp->b_error = EIO;
+    else
+	bp->b_resid = 0;
+    devstat_end_transaction_buf(&sc->mlxd_stats, bp);
+    biodone(bio);
 }
 
 static int

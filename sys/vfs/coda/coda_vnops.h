@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_vnops.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.h,v 1.6 1999/08/28 00:40:58 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.7 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.8 2006/02/17 19:18:07 dillon Exp $
  * 
   */
 
@@ -71,7 +71,7 @@ int coda_rmdir     (void *);
 int coda_symlink   (void *);
 int coda_readdir   (void *);
 int coda_bmap      (void *);
-int coda_strategy  (void *);
+int coda_strategy  (struct vop_strategy_args *);
 int coda_reclaim   (void *);
 int coda_lock      (void *);
 int coda_unlock    (void *);

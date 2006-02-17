@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.24 2005/11/19 17:58:17 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.25 2006/02/17 19:17:57 dillon Exp $
  *
  */
 
@@ -817,7 +817,7 @@ fdc_attach(device_t dev)
 
 	/* reset controller, turn motor off, clear fdout mirror reg */
 	fdout_wr(fdc, ((fdc->fdout = 0)));
-	bufq_init(&fdc->head);
+	bioq_init(&fdc->bio_queue);
 
 	/*
 	 * Probe and attach any children.  We should probably detect
@@ -1381,19 +1381,20 @@ fdclose(dev_t dev, int flags, int mode, struct thread *td)
 /*                               fdstrategy                                 */
 /****************************************************************************/
 void
-fdstrategy(struct buf *bp)
+fdstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	unsigned nblocks, blknum, cando;
  	fdu_t	fdu;
  	fdc_p	fdc;
  	fd_p	fd;
 	size_t	fdblk;
 
- 	fdu = FDUNIT(minor(bp->b_dev));
+ 	fdu = FDUNIT(minor(dev));
 	fd = devclass_get_softc(fd_devclass, fdu);
 	if (fd == 0)
 		panic("fdstrategy: buf for nonexistent device (%#lx, %#lx)",
-		      (u_long)major(bp->b_dev), (u_long)minor(bp->b_dev));
+		      (u_long)major(dev), (u_long)minor(dev));
 	fdc = fd->fdc;
 	if (fd->type == NO_TYPE) {
 		bp->b_error = ENXIO;
@@ -1403,10 +1404,10 @@ fdstrategy(struct buf *bp)
 
 	fdblk = 128 << (fd->ft->secsize);
 	if (!(bp->b_flags & B_FORMAT)) {
-		if (bp->b_blkno < 0) {
+		if (bio->bio_blkno < 0) {
 			printf(
 		"fd%d: fdstrat: bad request blkno = %lu, bcount = %ld\n",
-			       fdu, (u_long)bp->b_blkno, bp->b_bcount);
+			       fdu, (u_long)bio->bio_blkno, bp->b_bcount);
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;
 			goto bad;
@@ -1421,7 +1422,7 @@ fdstrategy(struct buf *bp)
 	/*
 	 * Set up block calculations.
 	 */
-	if (bp->b_blkno > 20000000) {
+	if (bio->bio_blkno > 20000000) {
 		/*
 		 * Reject unreasonably high block number, prevent the
 		 * multiplication below from overflowing.
@@ -1430,7 +1431,7 @@ fdstrategy(struct buf *bp)
 		bp->b_flags |= B_ERROR;
 		goto bad;
 	}
-	blknum = (unsigned) bp->b_blkno * DEV_BSIZE/fdblk;
+	blknum = (unsigned) bio->bio_blkno * DEV_BSIZE/fdblk;
  	nblocks = fd->ft->size;
 	bp->b_resid = 0;
 	if (blknum + (bp->b_bcount / fdblk) > nblocks) {
@@ -1445,9 +1446,9 @@ fdstrategy(struct buf *bp)
 			goto bad;
 		}
 	}
- 	bp->b_pblkno = bp->b_blkno;
 	crit_enter();
-	bufqdisksort(&fdc->head, bp);
+	bio->bio_driver_info = dev;
+	bioqdisksort(&fdc->bio_queue, bio);
 	callout_stop(&fd->toffhandle);
 
 	/* Tell devstat we are starting on the transaction */
@@ -1459,7 +1460,7 @@ fdstrategy(struct buf *bp)
 	return;
 
 bad:
-	biodone(bp);
+	biodone(bio);
 }
 
 /***************************************************************\
@@ -1575,19 +1576,21 @@ fdstate(fdc_p fdc)
 	unsigned blknum = 0, b_cylinder = 0;
 	fdu_t fdu = fdc->fdu;
 	fd_p fd;
+	struct bio *bio;
 	struct buf *bp;
 	struct fd_formb *finfo = NULL;
 	size_t fdblk;
+	dev_t dev;
 
-	bp = fdc->bp;
-	if (bp == NULL) {
-		bp = bufq_first(&fdc->head);
-		if (bp != NULL) {
-			bufq_remove(&fdc->head, bp);
-			fdc->bp = bp;
+	bio = fdc->bio;
+	if (bio == NULL) {
+		bio = bioq_first(&fdc->bio_queue);
+		if (bio != NULL) {
+			bioq_remove(&fdc->bio_queue, bio);
+			fdc->bio = bio;
 		}
 	}
-	if (bp == NULL) {
+	if (bio == NULL) {
 		/***********************************************\
 		* nothing left for this controller to do	*
 		* Force into the IDLE state,			*
@@ -1602,7 +1605,10 @@ fdstate(fdc_p fdc)
 		TRACE1("[fdc%d IDLE]", fdc->fdcu);
  		return (0);
 	}
-	fdu = FDUNIT(minor(bp->b_dev));
+	bp = bio->bio_buf;
+	dev = bio->bio_driver_info;
+
+	fdu = FDUNIT(minor(dev));
 	fd = devclass_get_softc(fd_devclass, fdu);
 	fdblk = 128 << fd->ft->secsize;
 	if (fdc->fd && (fd != fdc->fd))
@@ -1615,7 +1621,7 @@ fdstate(fdc_p fdc)
 			- (char *)finfo;
 	}
 	if (fdc->state == DOSEEK || fdc->state == SEEKCOMPLETE) {
-		blknum = (unsigned) bp->b_pblkno * DEV_BSIZE/fdblk +
+		blknum = (unsigned) bio->bio_blkno * DEV_BSIZE/fdblk +
 			fd->skip/fdblk;
 		b_cylinder = blknum / (fd->ft->sectrac * fd->ft->heads);
 	}
@@ -1958,10 +1964,10 @@ fdstate(fdc_p fdc)
 		} else {
 			/* ALL DONE */
 			fd->skip = 0;
-			fdc->bp = NULL;
+			fdc->bio = NULL;
 			device_unbusy(fd->dev);
 			devstat_end_transaction_buf(&fd->device_stats, bp);
-			biodone(bp);
+			biodone(bio);
 			fdc->fd = (fd_p) 0;
 			fdc->fdu = -1;
 			fdc->state = FINDWORK;
@@ -2071,14 +2077,18 @@ fdstate(fdc_p fdc)
 static int
 retrier(struct fdc_data *fdc)
 {
+	struct bio *bio;
 	struct buf *bp;
 	struct fd_data *fd;
+	dev_t dev;
 	int fdu;
 
-	bp = fdc->bp;
+	bio = fdc->bio;
+	bp = bio->bio_buf;
+	dev = bio->bio_driver_info;
 
 	/* XXX shouldn't this be cached somewhere?  */
-	fdu = FDUNIT(minor(bp->b_dev));
+	fdu = FDUNIT(minor(dev));
 	fd = devclass_get_softc(fd_devclass, fdu);
 	if (fd->options & FDOPT_NORETRY)
 		goto fail;
@@ -2107,9 +2117,9 @@ retrier(struct fdc_data *fdc)
 				 */
 				dev_t subdev;
 
-				subdev = make_sub_dev(bp->b_dev,
-				    (FDUNIT(minor(bp->b_dev))<<3)|RAW_PART);
-				diskerr(bp, subdev,
+				subdev = make_sub_dev(dev,
+				    (FDUNIT(minor(dev))<<3)|RAW_PART);
+				diskerr(bio, subdev,
 					"hard error", LOG_PRINTF,
 					fdc->fd->skip / DEV_BSIZE,
 					(struct disklabel *)NULL);
@@ -2130,11 +2140,11 @@ retrier(struct fdc_data *fdc)
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		bp->b_resid += bp->b_bcount - fdc->fd->skip;
-		fdc->bp = NULL;
+		fdc->bio = NULL;
 		fdc->fd->skip = 0;
 		device_unbusy(fd->dev);
 		devstat_end_transaction_buf(&fdc->fd->device_stats, bp);
-		biodone(bp);
+		biodone(bio);
 		fdc->state = FINDWORK;
 		fdc->flags |= FDC_NEEDS_RESET;
 		fdc->fd = (fd_p) 0;
@@ -2162,26 +2172,24 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/* set up a buffer header for fdstrategy() */
 	bp = malloc(sizeof(struct buf), M_TEMP, M_WAITOK | M_ZERO);
 
-	/*
-	 * keep the process from being swapped
-	 */
 	BUF_LOCKINIT(bp);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
+	initbufbio(bp);
 	bp->b_flags = B_PHYS | B_FORMAT;
 
 	/*
 	 * calculate a fake blkno, so fdstrategy() would initiate a
 	 * seek to the requested cylinder
 	 */
-	bp->b_blkno = (finfo->cyl * (fd->ft->sectrac * fd->ft->heads)
+	bp->b_bio1.bio_blkno = (finfo->cyl * (fd->ft->sectrac * fd->ft->heads)
 		+ finfo->head * fd->ft->sectrac) * fdblk / DEV_BSIZE;
+	bp->b_bio1.bio_driver_info = dev;
 
 	bp->b_bcount = sizeof(struct fd_idfield_data) * finfo->fd_formb_nsecs;
 	bp->b_data = (caddr_t)finfo;
 
 	/* now do the format */
-	bp->b_dev = dev;
-	BUF_STRATEGY(bp, 0);
+	dev_dstrategy(dev, &bp->b_bio1);
 
 	/* ...and wait for it to complete */
 	crit_enter();
@@ -2196,7 +2204,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 		/* timed out */
 		rv = EIO;
 		device_unbusy(fd->dev);
-		biodone(bp);
+		biodone(&bp->b_bio1);
 	}
 	if (bp->b_flags & B_ERROR)
 		rv = bp->b_error;

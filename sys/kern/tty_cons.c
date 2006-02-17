@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.14 2004/09/13 16:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.15 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -305,7 +305,7 @@ console_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 		error = cnclose(&msg->am_close);
 		break;
 	case CDEV_CMD_STRATEGY:
-		nostrategy(msg->am_strategy.bp);
+		nostrategy(msg->am_strategy.msg.dev, msg->am_strategy.bio);
 		error = 0;
 		break;
 	case CDEV_CMD_IOCTL:

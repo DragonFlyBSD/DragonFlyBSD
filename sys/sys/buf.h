@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.21 2005/11/19 17:19:48 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.22 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -67,9 +67,12 @@
 #endif
 
 struct buf;
+struct bio;
 struct mount;
 struct vnode;
 struct xio;
+
+#define NBUF_BIO	4
 
 struct buf_rb_tree;
 RB_PROTOTYPE(buf_rb_tree, buf, b_rbnode, rb_buf_compare);
@@ -94,16 +97,6 @@ extern struct bio_ops {
 	int 	(*io_countdeps) (struct buf *, int);
 } bioops;
 
-struct iodone_chain {
-	long	ic_prev_flags;
-	void	(*ic_prev_iodone) (struct buf *);
-	void	*ic_prev_iodone_chain;
-	struct {
-		long	ia_long;
-		void	*ia_ptr;
-	} ic_args[5];
-};
-
 /*
  * The buffer header describes an I/O operation in the kernel.
  *
@@ -119,13 +112,38 @@ struct iodone_chain {
  *
  *	b_resid.  Number of bytes remaining in I/O.  After an I/O operation
  *	completes, b_resid is usually 0 indicating 100% success.
+ *
+ *	b_bio1 and b_bio2 represent the two primary I/O layers.  Additional
+ *	I/O layers are allocated out of the object cache and may also exist.
+ *
+ *	b_bio1 is the logical layer and contains offset or block number 
+ *	data for the primary vnode, b_vp.  I/O operations are almost
+ *	universally initiated from the logical layer, so you will often
+ *	see things like:  vn_strategy(bp->b_vp, &bp->b_bio1).
+ *
+ *	b_bio2 is the first physical layer (typically the slice-relative
+ *	layer) and contains the translated offset or block number for
+ *	the block device underlying a filesystem.   Filesystems such as UFS
+ *	will maintain cached translations and you may see them initiate
+ *	a 'physical' I/O using vn_strategy(devvp, &bp->b_bio2).  BUT, 
+ *	remember that the layering is relative to bp->b_vp, so the
+ *	device-relative block numbers for buffer cache operations that occur
+ *	directly on a block device will be in the first BIO layer.
+ *
+ *	NOTE!!! Only the BIO subsystem accesses b_bio1 and b_bio2 directly.
+ *	ALL STRATEGY LAYERS FOR BOTH VNODES AND DEVICES ONLY ACCESS THE BIO
+ *	PASSED TO THEM, AND WILL PUSH ANOTHER BIO LAYER IF FORWARDING THE
+ *	I/O DEEPER.  In particular, a vn_strategy() or dev_dstrategy()
+ *	call should not ever access buf->b_vp as this vnode may be totally
+ *	unrelated to the vnode/device whos strategy routine was called.
  */
 struct buf {
 	LIST_ENTRY(buf) b_hash;		/* Hash chain. */
 	RB_ENTRY(buf) b_rbnode;		/* Red-Black node in vnode RB tree */
 	TAILQ_ENTRY(buf) b_freelist;	/* Free list position if not active. */
-	TAILQ_ENTRY(buf) b_act;		/* driver queue when active. *new* */
-	struct bio b_bio;       	/* Underlying I/O */
+	struct buf *b_cluster_next;	/* Next buffer (cluster code) */
+	struct vnode *b_vp;		/* (vp, lblkno) index */
+	struct bio b_bio_array[NBUF_BIO]; /* BIO translation layers */ 
 	long	b_flags;		/* B_* flags. */
 	unsigned short b_qindex;	/* buffer queue index */
 	unsigned char b_xflags;		/* extra flags */
@@ -133,42 +151,25 @@ struct buf {
 	long	b_bufsize;		/* Allocated buffer size. */
 	long	b_runningbufspace;	/* when I/O is running, pipelining */
 	long	b_bcount;		/* Valid bytes in buffer. */
+	long	b_resid;		/* Remaining I/O */
+	int	b_error;		/* Error return */
 	caddr_t	b_data;			/* Memory, superblocks, indirect etc. */
 	caddr_t	b_kvabase;		/* base kva for buffer */
 	int	b_kvasize;		/* size of kva for buffer */
-	daddr_t	b_lblkno;		/* Logical block number. */
-	off_t	b_offset;		/* Offset into file */
-					/* For nested b_iodone's. */
-	struct	iodone_chain *b_iodone_chain;
-	struct	vnode *b_vp;		/* Device vnode. */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
 	void	*b_saveaddr;		/* Original b_addr for physio. */
-	union	pager_info {
-		void	*pg_spc;
-		int	pg_reqpage;
-	} b_pager;
-	union	cluster_info {
-		TAILQ_HEAD(cluster_list_head, buf) cluster_head;
-		TAILQ_ENTRY(buf) cluster_entry;
-	} b_cluster;
-	struct	xio b_xio;  	/* page list management for buffer head. */
+	struct	xio b_xio;  		/* data buffer page list management */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
-	struct chain_info {		/* buffer chaining */
-		struct buf *parent;
-		int count;
-	} b_chain;
 };
 
-#define	b_dev   	b_bio.bio_dev
-#define	b_resid 	b_bio.bio_resid
-#define	b_error 	b_bio.bio_error
-#define	b_blkno  	b_bio.bio_blkno
-#define	b_pblkno	b_bio.bio_pblkno
-#define	b_driver1	b_bio.bio_driver_ctx
-#define	b_caller1	b_bio.bio_caller_ctx
-#define	b_iodone 	b_bio.bio_done
-#define	b_spc   	b_pager.pg_spc
+/*
+ * XXX temporary
+ */
+#define b_bio1		b_bio_array[0]	/* logical layer */
+#define b_bio2		b_bio_array[1]	/* (typically) the disk layer */
+#define b_loffset	b_bio1.bio_offset
+#define b_lblkno	b_bio1.bio_blkno
 
 /*
  * These flags are kept in b_flags.
@@ -284,11 +285,11 @@ extern char *buf_wmesg;			/* Default buffer lock message */
 
 #endif /* _KERNEL */
 
-struct buf_queue_head {
-	TAILQ_HEAD(buf_queue, buf) queue;
-	daddr_t	last_pblkno;
-	struct	buf *insert_point;
-	struct	buf *switch_point;
+struct bio_queue_head {
+	TAILQ_HEAD(bio_queue, bio) queue;
+	daddr_t	last_blkno;
+	struct	bio *insert_point;
+	struct	bio *switch_point;
 };
 
 /*
@@ -343,6 +344,9 @@ caddr_t bufhashinit (caddr_t);
 void	bufinit (void);
 void	bwillwrite (void);
 int	buf_dirty_count_severe (void);
+void	initbufbio(struct buf *);
+void	reinitbufbio(struct buf *);
+void	clearbiocache(struct bio *);
 void	bremfree (struct buf *);
 int	bread (struct vnode *, daddr_t, int, struct buf **);
 int	breadn (struct vnode *, daddr_t, int, daddr_t *, int *, int,
@@ -356,16 +360,18 @@ int	bowrite (struct buf *);
 void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	vfs_bio_awrite (struct buf *);
-struct buf *     getpbuf (int *);
+struct buf *getpbuf (int *);
 struct buf *incore (struct vnode *, daddr_t);
 struct buf *gbincore (struct vnode *, daddr_t);
 int	inmem (struct vnode *, daddr_t);
 struct buf *getblk (struct vnode *, daddr_t, int, int, int);
 struct buf *geteblk (int);
+struct bio *push_bio(struct bio *);
+void pop_bio(struct bio *);
 int	biowait (struct buf *);
-void	biodone (struct buf *);
+void	biodone (struct bio *);
 
-void	cluster_callback (struct buf *);
+void	cluster_append(struct bio *, struct buf *);
 int	cluster_read (struct vnode *, u_quad_t, daddr_t, long,
 	    long, int, struct buf **);
 int	cluster_wbuild (struct vnode *, long, daddr_t, int);
@@ -377,7 +383,6 @@ void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
 void	vfs_busy_pages (struct buf *, int clear_modify);
 void	vfs_unbusy_pages (struct buf *);
-void	vwakeup (struct buf *);
 int	vmapbuf (struct buf *);
 void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);

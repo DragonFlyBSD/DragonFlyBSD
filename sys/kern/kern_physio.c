@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.13 2005/11/19 17:58:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.14 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,9 +33,9 @@
 #include <vm/vm_extern.h>
 
 static void
-physwakeup(struct buf *bp)
+physwakeup(struct bio *bio)
 {
-	wakeup((caddr_t) bp);
+	wakeup(bio);
 }
 
 int
@@ -72,12 +72,13 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 				bp->b_flags = B_PHYS | B_READ;
 			else 
 				bp->b_flags = B_PHYS | B_WRITE;
-			bp->b_dev = dev;
-			bp->b_iodone = physwakeup;
 			bp->b_data = uio->uio_iov[i].iov_base;
 			bp->b_bcount = uio->uio_iov[i].iov_len;
-			bp->b_offset = uio->uio_offset;
 			bp->b_saveaddr = sa;
+
+			reinitbufbio(bp);	/* clear translation cache */
+			bp->b_bio1.bio_offset = uio->uio_offset;
+			bp->b_bio1.bio_done = physwakeup;
 
 			/* Don't exceed drivers iosize limit */
 			if (bp->b_bcount > dev->si_iosize_max)
@@ -97,23 +98,27 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			}
 			bp->b_bufsize = bp->b_bcount;
 
-			blockno = bp->b_offset >> DEV_BSHIFT;
+			/*
+			 * XXX we shouldn't have to set the block
+			 * number.
+			 */
+			blockno = bp->b_bio1.bio_offset >> DEV_BSHIFT;
 			if (chk_blockno && (daddr_t)blockno != blockno) {
 				error = EINVAL; /* blockno overflow */
 				goto doerror;
 			}
-			bp->b_blkno = blockno;
+			bp->b_bio1.bio_blkno = blockno;
 
-			if (uio->uio_segflg == UIO_USERSPACE)
+			if (uio->uio_segflg == UIO_USERSPACE) {
 				if (vmapbuf(bp) < 0) {
 					error = EFAULT;
 					goto doerror;
 				}
-
-			BUF_STRATEGY(bp, 0);
+			}
+			dev_dstrategy(dev, &bp->b_bio1);
 			crit_enter();
 			while ((bp->b_flags & B_DONE) == 0)
-				tsleep((caddr_t)bp, 0, "physstr", 0);
+				tsleep(&bp->b_bio1, 0, "physstr", 0);
 			crit_exit();
 
 			if (uio->uio_segflg == UIO_USERSPACE)

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.5 2005/08/22 21:16:20 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -274,29 +274,30 @@ TWEQ_REQUEST_QUEUE(complete, TWEQ_COMPLETE)
 static __inline void
 twe_initq_bio(struct twe_softc *sc)
 {
-    TWE_BIO_QINIT(sc->twe_bioq);
+    bioq_init(&sc->twe_bioq);
     TWEQ_INIT(sc, TWEQ_BIO);
 }
 
 static __inline void
-twe_enqueue_bio(struct twe_softc *sc, twe_bio *bp)
+twe_enqueue_bio(struct twe_softc *sc, struct bio *bio)
 {
     crit_enter();
-    TWE_BIO_QINSERT(sc->twe_bioq, bp);
+    bioq_insert_tail(&sc->twe_bioq, bio);
     TWEQ_ADD(sc, TWEQ_BIO);
     crit_exit();
 }
 
-static __inline twe_bio *
+static __inline
+struct bio *
 twe_dequeue_bio(struct twe_softc *sc)
 {
-    twe_bio	*bp;
+    struct bio *bio;
 
     crit_enter();
-    if ((bp = TWE_BIO_QFIRST(sc->twe_bioq)) != NULL) {
-	TWE_BIO_QREMOVE(sc->twe_bioq, bp);
+    if ((bio = bioq_first(&sc->twe_bioq)) != NULL) {
+	bioq_remove(&sc->twe_bioq, bio);
 	TWEQ_REMOVE(sc, TWEQ_BIO);
     }
     crit_exit();
-    return(bp);
+    return(bio);
 }

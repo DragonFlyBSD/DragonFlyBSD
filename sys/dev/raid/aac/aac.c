@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.19 2005/08/08 01:25:31 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.20 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -877,18 +877,17 @@ aac_complete(void *context, int pending)
  * Handle a bio submitted from a disk device.
  */
 void
-aac_submit_bio(struct buf *bp)
+aac_submit_bio(struct aac_disk *ad, struct bio *bio)
 {
-	struct aac_disk *ad;
 	struct aac_softc *sc;
 
 	debug_called(2);
 
-	ad = (struct aac_disk *)bp->b_dev->si_drv1;
+	bio->bio_driver_info = ad;
 	sc = ad->ad_controller;
 
 	/* queue the BIO and try to get some work done */
-	aac_enqueue_bio(sc, bp);
+	aac_enqueue_bio(sc, bio);
 	aac_startio(sc);
 }
 
@@ -903,22 +902,24 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 	struct aac_blockread *br;
 	struct aac_blockwrite *bw;
 	struct aac_disk *ad;
+	struct bio *bio;
 	struct buf *bp;
 
 	debug_called(2);
 
 	/* get the resources we will need */
 	cm = NULL;
-	if ((bp = aac_dequeue_bio(sc)) == NULL)
+	if ((bio = aac_dequeue_bio(sc)) == NULL)
 		goto fail;
 	if (aac_alloc_command(sc, &cm))	/* get a command */
 		goto fail;
 
 	/* fill out the command */
+	bp = bio->bio_buf;
 	cm->cm_data = (void *)bp->b_data;
 	cm->cm_datalen = bp->b_bcount;
 	cm->cm_complete = aac_bio_complete;
-	cm->cm_private = bp;
+	cm->cm_private = bio;
 	cm->cm_timestamp = time_second;
 	cm->cm_queue = AAC_ADAP_NORM_CMD_QUEUE;
 
@@ -937,12 +938,12 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 	fib->Header.Size = sizeof(struct aac_fib_header);
 
 	/* build the read/write request */
-	ad = (struct aac_disk *)bp->b_dev->si_drv1;
-	if (BIO_IS_READ(bp)) {
+	ad = (struct aac_disk *)bio->bio_driver_info;
+	if (bp->b_flags & B_READ) {
 		br = (struct aac_blockread *)&fib->data[0];
 		br->Command = VM_CtBlockRead;
 		br->ContainerId = ad->ad_container->co_mntobj.ObjectId;
-		br->BlockNumber = bp->b_pblkno;
+		br->BlockNumber = bio->bio_blkno;
 		br->ByteCount = bp->b_bcount;
 		fib->Header.Size += sizeof(struct aac_blockread);
 		cm->cm_sgtable = &br->SgMap;
@@ -951,7 +952,7 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 		bw = (struct aac_blockwrite *)&fib->data[0];
 		bw->Command = VM_CtBlockWrite;
 		bw->ContainerId = ad->ad_container->co_mntobj.ObjectId;
-		bw->BlockNumber = bp->b_pblkno;
+		bw->BlockNumber = bio->bio_blkno;
 		bw->ByteCount = bp->b_bcount;
 		bw->Stable = CUNSTABLE;	/* XXX what's appropriate here? */
 		fib->Header.Size += sizeof(struct aac_blockwrite);
@@ -963,8 +964,8 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 	return(0);
 
 fail:
-	if (bp != NULL)
-		aac_enqueue_bio(sc, bp);
+	if (bio != NULL)
+		aac_enqueue_bio(sc, bio);
 	if (cm != NULL)
 		aac_release_command(cm);
 	return(ENOMEM);
@@ -978,12 +979,15 @@ aac_bio_complete(struct aac_command *cm)
 {
 	struct aac_blockread_response *brr;
 	struct aac_blockwrite_response *bwr;
+	struct bio *bio;
 	struct buf *bp;
+	const char *code;
 	AAC_FSAStatus status;
 
 	/* fetch relevant status and then release the command */
-	bp = (struct buf *)cm->cm_private;
-	if (BIO_IS_READ(bp)) {
+	bio = (struct bio *)cm->cm_private;
+	bp = bio->bio_buf;
+	if (bp->b_flags & B_READ) {
 		brr = (struct aac_blockread_response *)&cm->cm_fib->data[0];
 		status = brr->Status;
 	} else {
@@ -995,14 +999,14 @@ aac_bio_complete(struct aac_command *cm)
 	/* fix up the bio based on status */
 	if (status == ST_OK) {
 		bp->b_resid = 0;
+		code = 0;
 	} else {
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
 		/* pass an error string out to the disk layer */
-		bp->b_driver1 = aac_describe_code(aac_command_status_table,
-						    status);
+		code = aac_describe_code(aac_command_status_table, status);
 	}
-	aac_biodone(bp);
+	aac_biodone(bio, code);
 }
 
 /*

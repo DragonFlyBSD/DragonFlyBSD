@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65 2005/10/31 21:48:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.66 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -260,25 +260,6 @@ vattr_null(struct vattr *vap)
 }
 
 /*
- * Update outstanding I/O count and do wakeup if requested.
- */
-void
-vwakeup(struct buf *bp)
-{
-	struct vnode *vp;
-
-	if ((vp = bp->b_vp)) {
-		vp->v_numoutput--;
-		if (vp->v_numoutput < 0)
-			panic("vwakeup: neg numoutput");
-		if ((vp->v_numoutput == 0) && (vp->v_flag & VBWAIT)) {
-			vp->v_flag &= ~VBWAIT;
-			wakeup((caddr_t) &vp->v_numoutput);
-		}
-	}
-}
-
-/*
  * Flush out and invalidate all buffers associated with a vnode.
  *
  * vp must be locked.
@@ -306,10 +287,10 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	 */
 	if (flags & V_SAVE) {
 		crit_enter();
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			error = tsleep((caddr_t)&vp->v_numoutput,
-			    slpflag, "vinvlbuf", slptimeo);
+		while (vp->v_track_write.bk_active) {
+			vp->v_track_write.bk_waitflag = 1;
+			error = tsleep(&vp->v_track_write, slpflag,
+					"vinvlbuf", slptimeo);
 			if (error) {
 				crit_exit();
 				return (error);
@@ -320,7 +301,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0)
 				return (error);
 			crit_enter();
-			if (vp->v_numoutput > 0 ||
+			if (vp->v_track_write.bk_active > 0 ||
 			    !RB_EMPTY(&vp->v_rbdirty_tree))
 				panic("vinvalbuf: dirty bufs");
 		}
@@ -351,15 +332,15 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	 * VM object can also have read-I/O in-progress.
 	 */
 	do {
-		while (vp->v_numoutput > 0) {
-			vp->v_flag |= VBWAIT;
-			tsleep(&vp->v_numoutput, 0, "vnvlbv", 0);
+		while (vp->v_track_write.bk_active > 0) {
+			vp->v_track_write.bk_waitflag = 1;
+			tsleep(&vp->v_track_write, 0, "vnvlbv", 0);
 		}
 		if (VOP_GETVOBJECT(vp, &object) == 0) {
 			while (object->paging_in_progress)
 				vm_object_pip_sleep(object, "vnvlbx");
 		}
-	} while (vp->v_numoutput > 0);
+	} while (vp->v_track_write.bk_active > 0);
 
 	crit_exit();
 
@@ -478,9 +459,9 @@ vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 	/*
 	 * Wait for any in-progress I/O to complete before returning (why?)
 	 */
-	while (vp->v_numoutput > 0) {
-		vp->v_flag |= VBWAIT;
-		tsleep(&vp->v_numoutput, 0, "vbtrunc", 0);
+	while (vp->v_track_write.bk_active > 0) {
+		vp->v_track_write.bk_waitflag = 1;
+		tsleep(&vp->v_track_write, 0, "vbtrunc", 0);
 	}
 
 	crit_exit();
@@ -680,9 +661,9 @@ vfsync_wait_output(struct vnode *vp, int (*waitoutput)(struct vnode *, struct th
 {
 	int error = 0;
 
-	while (vp->v_numoutput) {
-		vp->v_flag |= VBWAIT;
-		tsleep(&vp->v_numoutput, 0, "fsfsn", 0);
+	while (vp->v_track_write.bk_active) {
+		vp->v_track_write.bk_waitflag = 1;
+		tsleep(&vp->v_track_write, 0, "fsfsn", 0);
 	}
 	if (waitoutput)
 		error = waitoutput(vp, curthread);
@@ -805,7 +786,6 @@ bgetvp(struct vnode *vp, struct buf *bp)
 
 	vhold(vp);
 	bp->b_vp = vp;
-	bp->b_dev = vn_todev(vp);
 	/*
 	 * Insert onto list for new vnode.
 	 */
@@ -862,7 +842,6 @@ pbgetvp(struct vnode *vp, struct buf *bp)
 
 	bp->b_vp = vp;
 	bp->b_flags |= B_PAGING;
-	bp->b_dev = vn_todev(vp);
 }
 
 /*
@@ -1339,8 +1318,6 @@ vprint(char *label, struct vnode *vp)
 		strcat(buf, "|VTEXT");
 	if (vp->v_flag & VSYSTEM)
 		strcat(buf, "|VSYSTEM");
-	if (vp->v_flag & VBWAIT)
-		strcat(buf, "|VBWAIT");
 	if (vp->v_flag & VFREE)
 		strcat(buf, "|VFREE");
 	if (vp->v_flag & VOBJBUF)

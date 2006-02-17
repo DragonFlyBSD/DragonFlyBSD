@@ -32,7 +32,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fdc.h,v 1.20.2.3 2002/02/03 14:08:46 nyan Exp $
- * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.5 2005/03/05 18:31:52 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.6 2006/02/17 19:17:57 dillon Exp $
  *
  */
 
@@ -65,8 +65,8 @@ struct fdc_data
 	u_int	status[7];	/* copy of the registers */
 	enum	fdc_type fdct;	/* chip version of FDC */
 	int	fdc_errs;	/* number of logged errors */
-	struct	buf_queue_head head;
-	struct	buf *bp;	/* active buffer */
+	struct	bio_queue_head bio_queue;
+	struct	bio *bio;	/* active buffer */
 	int	dma_overruns;	/* number of DMA overruns */
 	struct	resource *res_ioport, *res_ctl, *res_irq, *res_drq;
 	int	rid_ioport, rid_ctl, rid_irq, rid_drq;

@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.10 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.11 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -395,7 +395,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 	 * to blocks to be free'd, and update on disk copy first.  Since
 	 * double(triple) indirect before single(double) indirect, calls
 	 * to bmap on these blocks will fail.  However, we already have
-	 * the on disk address, so we have to set the b_blkno field
+	 * the on disk address, so we have to set the bio_blkno field
 	 * explicitly instead of letting bread do everything for us.
 	 */
 	vp = ITOV(ip);
@@ -405,9 +405,9 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 		bp->b_flags |= B_READ;
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2_indirtrunc: bad buffer size");
-		bp->b_blkno = dbn;
+		bp->b_bio2.bio_blkno = dbn;
 		vfs_busy_pages(bp, 0);
-		VOP_STRATEGY(vp, bp);
+		vn_strategy(vp, &bp->b_bio1);
 		error = biowait(bp);
 	}
 	if (error) {

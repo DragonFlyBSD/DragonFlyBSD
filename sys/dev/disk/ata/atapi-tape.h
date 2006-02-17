@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.h,v 1.11.2.5 2002/03/18 08:37:34 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.h,v 1.3 2004/05/19 22:52:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.h,v 1.4 2006/02/17 19:17:54 dillon Exp $
  */
 
 /* ATAPI tape drive Capabilities and Mechanical Status Page */
@@ -155,7 +155,7 @@ struct ast_softc {
 #define		F_ONSTREAM		0x0100	/* OnStream ADR device */
 
     int				blksize;	/* block size (512 | 1024) */
-    struct buf_queue_head	queue;		/* queue of i/o requests */
+    struct bio_queue_head	bio_queue;	/* queue of i/o requests */
     struct atapi_params		*param;		/* drive parameters table */
     struct ast_cappage		cap;		/* capabilities page info */
     struct devstat		stats;		/* devstat entry */

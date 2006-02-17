@@ -39,7 +39,7 @@
  *
  * $Id: vinumstate.c,v 2.18 2000/05/10 07:30:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumstate.c,v 1.28.2.2 2000/06/08 02:00:23 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumstate.c,v 1.5 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -618,7 +618,7 @@ enum requeststatus
 checksdstate(struct sd *sd, struct request *rq, daddr_t diskaddr, daddr_t diskend)
 {
     struct plex *plex = &PLEX[sd->plexno];
-    int writeop = (rq->bp->b_flags & B_READ) == 0;	    /* note if we're writing */
+    int writeop = (rq->bio->bio_buf->b_flags & B_READ) == 0;	    /* note if we're writing */
 
     switch (sd->state) {
 	/* We shouldn't get called if the subdisk is up */

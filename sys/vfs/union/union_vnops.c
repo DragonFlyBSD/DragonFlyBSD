@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.21 2005/09/14 01:13:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.22 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1838,22 +1838,22 @@ union_advlock(struct vop_advlock_args *ap)
  * vnode in its arguments.
  * This goes away with a merged VM/buffer cache.
  *
- * union_strategy(struct vnode *a_vp, struct buf *a_bp)
+ * union_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 union_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
-	struct vnode *othervp = OTHERVP(bp->b_vp);
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
+	struct vnode *othervp = OTHERVP(ap->a_vp);
 
 #ifdef DIAGNOSTIC
 	if (othervp == NULLVP)
 		panic("union_strategy: nil vp");
-	if (((bp->b_flags & B_READ) == 0) &&
-	    (othervp == LOWERVP(bp->b_vp)))
+	if (((bp->b_flags & B_READ) == 0) && (othervp == LOWERVP(ap->a_vp)))
 		panic("union_strategy: writing to lowervp");
 #endif
-	return (VOP_STRATEGY(othervp, bp));
+	return (vn_strategy(othervp, bio));
 }
 
 /*

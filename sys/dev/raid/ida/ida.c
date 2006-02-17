@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.8 2005/06/10 15:46:31 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.9 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ ida_init(struct ida_softc *ida)
 
 	SLIST_INIT(&ida->free_qcbs);
 	STAILQ_INIT(&ida->qcb_queue);
-        bufq_init(&ida->buf_queue);
+        bioq_init(&ida->bio_queue);
 
 	ida->qcbs = malloc(IDA_QCB_MAX * sizeof(struct ida_qcb), 
 			    M_DEVBUF, M_INTWAIT|M_ZERO);
@@ -372,9 +372,9 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 }
 
 void
-ida_submit_buf(struct ida_softc *ida, struct buf *bp)
+ida_submit_buf(struct ida_softc *ida, struct bio *bio)
 {
-        bufq_insert_tail(&ida->buf_queue, bp);
+        bioq_insert_tail(&ida->bio_queue, bio);
         ida_construct_qcb(ida);
 	ida_start(ida);
 }
@@ -386,22 +386,24 @@ ida_construct_qcb(struct ida_softc *ida)
 	struct ida_qcb *qcb;
 	bus_dmasync_op_t op;
 	struct buf *bp;
+	struct bio *bio;
 
-	bp = bufq_first(&ida->buf_queue);
-	if (bp == NULL)
+	bio = bioq_first(&ida->bio_queue);
+	if (bio == NULL)
 		return;				/* no more buffers */
 
 	qcb = ida_get_qcb(ida);
 	if (qcb == NULL)
 		return;				/* out of resources */
 
-	bufq_remove(&ida->buf_queue, bp);
-	qcb->buf = bp;
+	bioq_remove(&ida->bio_queue, bio);
+	qcb->bio = bio;
 	qcb->flags = 0;
 
 	hwqcb = qcb->hwqcb;
 	bzero(hwqcb, sizeof(struct ida_hdr) + sizeof(struct ida_req));
 
+	bp = bio->bio_buf;
 	bus_dmamap_load(ida->buffer_dmat, qcb->dmamap,
 	    (void *)bp->b_data, bp->b_bcount, ida_setup_dmamap, hwqcb, 0);
 	op = qcb->flags & DMA_DATA_IN ?
@@ -409,11 +411,13 @@ ida_construct_qcb(struct ida_softc *ida)
 	bus_dmamap_sync(ida->buffer_dmat, qcb->dmamap, op);
 
 	{
-		struct idad_softc *drv = (struct idad_softc *)bp->b_driver1;
+		struct idad_softc *drv;
+
+		drv = (struct idad_softc *)bio->bio_driver_info;
 		hwqcb->hdr.drive = drv->drive;
 	}
 
-	hwqcb->req.blkno = bp->b_pblkno;
+	hwqcb->req.blkno = bio->bio_blkno;
 	hwqcb->req.bcount = howmany(bp->b_bcount, DEV_BSIZE);
 	hwqcb->req.command = bp->b_flags & B_READ ? CMD_READ : CMD_WRITE;
 
@@ -532,8 +536,8 @@ ida_done(struct ida_softc *ida, struct ida_qcb *qcb)
 			wakeup(qcb);
 	} else {
 		if (error)
-			qcb->buf->b_flags |= B_ERROR;
-		idad_intr(qcb->buf);
+			qcb->bio->bio_buf->b_flags |= B_ERROR;
+		idad_intr(qcb->bio);
 	}
 
 	qcb->state = QCB_FREE;

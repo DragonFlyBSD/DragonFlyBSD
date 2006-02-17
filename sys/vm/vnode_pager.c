@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.20 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.21 2006/02/17 19:18:08 dillon Exp $
  */
 
 /*
@@ -74,7 +74,7 @@
 
 static vm_offset_t vnode_pager_addr (struct vnode *vp, vm_ooffset_t address,
 					 int *run);
-static void vnode_pager_iodone (struct buf *bp);
+static void vnode_pager_iodone (struct bio *bio);
 static int vnode_pager_input_smlfs (vm_object_t object, vm_page_t m);
 static int vnode_pager_input_old (vm_object_t object, vm_page_t m);
 static void vnode_pager_dealloc (vm_object_t);
@@ -401,8 +401,10 @@ vnode_pager_addr(struct vnode *vp, vm_ooffset_t address, int *run)
  * interrupt routine for I/O completion
  */
 static void
-vnode_pager_iodone(struct buf *bp)
+vnode_pager_iodone(struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
+
 	bp->b_flags |= B_DONE;
 	wakeup(bp);
 }
@@ -451,9 +453,9 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 
 			/* build a minimal buffer header */
 			bp->b_flags = B_READ;
-			bp->b_iodone = vnode_pager_iodone;
 			bp->b_data = (caddr_t) kva + i * bsize;
-			bp->b_blkno = fileaddr;
+			bp->b_bio1.bio_done = vnode_pager_iodone;
+			bp->b_bio1.bio_blkno = fileaddr;
 			pbgetvp(dp, bp);
 			bp->b_bcount = bsize;
 			bp->b_bufsize = bsize;
@@ -461,7 +463,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 			runningbufspace += bp->b_runningbufspace;
 
 			/* do the input */
-			VOP_STRATEGY(bp->b_vp, bp);
+			vn_strategy(dp, &bp->b_bio1);
 
 			/* we definitely need to be at splvm here */
 
@@ -765,9 +767,8 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 
 	/* build a minimal buffer header */
 	bp->b_flags = B_READ;
-	bp->b_iodone = vnode_pager_iodone;
-	/* B_PHYS is not set, but it is nice to fill this in */
-	bp->b_blkno = firstaddr;
+	bp->b_bio1.bio_done = vnode_pager_iodone;
+	bp->b_bio1.bio_blkno = firstaddr;
 	pbgetvp(dp, bp);
 	bp->b_bcount = size;
 	bp->b_bufsize = size;
@@ -778,7 +779,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	mycpu->gd_cnt.v_vnodepgsin += count;
 
 	/* do the input */
-	VOP_STRATEGY(bp->b_vp, bp);
+	vn_strategy(dp, &bp->b_bio1);
 
 	crit_enter();
 	/* we definitely need to be at splvm here */

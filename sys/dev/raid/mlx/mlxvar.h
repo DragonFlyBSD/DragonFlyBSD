@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.6 2005/02/17 13:59:36 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.7 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -239,9 +239,9 @@ struct mlxd_softc
 /*
  * Interface between driver core and disk driver (should be using a bus?)
  */
-extern int	mlx_submit_buf(struct mlx_softc *sc, mlx_bio *bp);
+extern int	mlx_submit_bio(struct mlx_softc *sc, struct bio *bio);
 extern int	mlx_submit_ioctl(struct mlx_softc *sc, struct mlx_sysdrive *drive, u_long cmd, 
 				 caddr_t addr, int32_t flag, d_thread_t *td);
-extern void	mlxd_intr(void *data);
+extern void	mlxd_intr(struct bio *bio);
 
 

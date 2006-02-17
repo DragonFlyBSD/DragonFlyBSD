@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.11 2005/11/19 17:19:48 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.12 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -145,42 +145,42 @@ BUF_REFCNTNB(struct buf *bp)
 		panic("free locked buf")
 
 static __inline void
-bufq_init(struct buf_queue_head *head)
+bioq_init(struct bio_queue_head *head)
 {
 	TAILQ_INIT(&head->queue);
-	head->last_pblkno = 0;
+	head->last_blkno = 0;
 	head->insert_point = NULL;
 	head->switch_point = NULL;
 }
 
 static __inline void
-bufq_insert_tail(struct buf_queue_head *head, struct buf *bp)
+bioq_insert_tail(struct bio_queue_head *head, struct bio *bio)
 {
-	if ((bp->b_flags & B_ORDERED) != 0) {
-		head->insert_point = bp;
+	if ((bio->bio_buf->b_flags & B_ORDERED) != 0) {
+		head->insert_point = bio;
 		head->switch_point = NULL;
 	}
-	TAILQ_INSERT_TAIL(&head->queue, bp, b_act);
+	TAILQ_INSERT_TAIL(&head->queue, bio, bio_act);
 }
 
 static __inline void
-bufq_remove(struct buf_queue_head *head, struct buf *bp)
+bioq_remove(struct bio_queue_head *head, struct bio *bio)
 {
-	if (bp == head->switch_point)
-		head->switch_point = TAILQ_NEXT(bp, b_act);
-	if (bp == head->insert_point) {
-		head->insert_point = TAILQ_PREV(bp, buf_queue, b_act);
+	if (bio == head->switch_point)
+		head->switch_point = TAILQ_NEXT(bio, bio_act);
+	if (bio == head->insert_point) {
+		head->insert_point = TAILQ_PREV(bio, bio_queue, bio_act);
 		if (head->insert_point == NULL)
-			head->last_pblkno = 0;
-	} else if (bp == TAILQ_FIRST(&head->queue))
-		head->last_pblkno = bp->b_pblkno;
-	TAILQ_REMOVE(&head->queue, bp, b_act);
+			head->last_blkno = 0;
+	} else if (bio == TAILQ_FIRST(&head->queue))
+		head->last_blkno = bio->bio_blkno;
+	TAILQ_REMOVE(&head->queue, bio, bio_act);
 	if (TAILQ_FIRST(&head->queue) == head->switch_point)
 		head->switch_point = NULL;
 }
 
-static __inline struct buf *
-bufq_first(struct buf_queue_head *head)
+static __inline struct bio *
+bioq_first(struct bio_queue_head *head)
 {
 	return (TAILQ_FIRST(&head->queue));
 }

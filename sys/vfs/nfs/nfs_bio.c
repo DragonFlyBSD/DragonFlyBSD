@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.25 2005/11/19 17:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.26 2006/02/17 19:18:07 dillon Exp $
  */
 
 
@@ -465,7 +465,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_flags |= (B_READ | B_ASYNC);
 				vfs_busy_pages(rabp, 0);
-				if (nfs_asyncio(rabp, td)) {
+				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
 				    brelse(rabp);
@@ -526,7 +526,7 @@ again:
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
 		    vfs_busy_pages(bp, 0);
-		    error = nfs_doio(bp, td);
+		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			brelse(bp);
 			return (error);
@@ -548,12 +548,12 @@ again:
 	    case VLNK:
 		nfsstats.biocache_readlinks++;
 		bp = nfs_getcacheblk(vp, (daddr_t)0, NFS_MAXPATHLEN, td);
-		if (!bp)
+		if (bp == NULL)
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
 		    vfs_busy_pages(bp, 0);
-		    error = nfs_doio(bp, td);
+		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			bp->b_flags |= B_ERROR;
 			brelse(bp);
@@ -572,12 +572,12 @@ again:
 		lbn = (uoff_t)uio->uio_offset / NFS_DIRBLKSIZ;
 		on = uio->uio_offset & (NFS_DIRBLKSIZ - 1);
 		bp = nfs_getcacheblk(vp, lbn, NFS_DIRBLKSIZ, td);
-		if (!bp)
+		if (bp == NULL)
 		    return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
 		    vfs_busy_pages(bp, 0);
-		    error = nfs_doio(bp, td);
+		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			    brelse(bp);
 		    }
@@ -605,7 +605,7 @@ again:
 			    if ((bp->b_flags & B_CACHE) == 0) {
 				    bp->b_flags |= B_READ;
 				    vfs_busy_pages(bp, 0);
-				    error = nfs_doio(bp, td);
+				    error = nfs_doio(vp, &bp->b_bio2, td);
 				    /*
 				     * no error + B_INVAL == directory EOF,
 				     * use the block.
@@ -648,7 +648,7 @@ again:
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_flags |= (B_READ | B_ASYNC);
 				vfs_busy_pages(rabp, 0);
-				if (nfs_asyncio(rabp, td)) {
+				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
 				    brelse(rabp);
@@ -732,7 +732,6 @@ again:
 int
 nfs_write(struct vop_write_args *ap)
 {
-	int biosize;
 	struct uio *uio = ap->a_uio;
 	struct thread *td = uio->uio_td;
 	struct vnode *vp = ap->a_vp;
@@ -742,9 +741,10 @@ nfs_write(struct vop_write_args *ap)
 	struct vattr vattr;
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	daddr_t lbn;
-	int bcount;
 	int n, on, error = 0, iomode, must_commit;
 	int haverslock = 0;
+	int bcount;
+	int biosize;
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
@@ -918,7 +918,7 @@ again:
 			}
 		}
 
-		if (!bp) {
+		if (bp == NULL) {
 			error = EINTR;
 			break;
 		}
@@ -950,7 +950,7 @@ again:
 		if ((bp->b_flags & B_CACHE) == 0) {
 			bp->b_flags |= B_READ;
 			vfs_busy_pages(bp, 0);
-			error = nfs_doio(bp, td);
+			error = nfs_doio(vp, &bp->b_bio2, td);
 			if (error) {
 				brelse(bp);
 				break;
@@ -972,8 +972,8 @@ again:
 		 */
 
 		if (bp->b_dirtyend > bcount) {
-			printf("NFS append race @%lx:%d\n", 
-			    (long)bp->b_blkno * DEV_BSIZE, 
+			printf("NFS append race @%llx:%d\n", 
+			    (off_t)bp->b_bio2.bio_blkno << DEV_BSHIFT, 
 			    bp->b_dirtyend - bcount);
 			bp->b_dirtyend = bcount;
 		}
@@ -1000,7 +1000,7 @@ again:
 
 		if (bp->b_dirtyend > 0 &&
 		    (on > bp->b_dirtyend || (on + n) < bp->b_dirtyoff)) {
-			if (VOP_BWRITE(bp->b_vp, bp) == EINTR) {
+			if (VOP_BWRITE(vp, bp) == EINTR) {
 				error = EINTR;
 				break;
 			}
@@ -1077,7 +1077,7 @@ again:
 		if ((np->n_flag & NQNFSNONCACHE) || (ioflag & IO_SYNC)) {
 			if (ioflag & IO_INVAL)
 				bp->b_flags |= B_NOCACHE;
-			error = VOP_BWRITE(bp->b_vp, bp);
+			error = VOP_BWRITE(vp, bp);
 			if (error)
 				break;
 			if (np->n_flag & NQNFSNONCACHE) {
@@ -1088,7 +1088,7 @@ again:
 		} else if ((n + on) == biosize &&
 			(nmp->nm_flag & NFSMNT_NQNFS) == 0) {
 			bp->b_flags |= B_ASYNC;
-			(void)nfs_writebp(bp, 0, 0);
+			nfs_writebp(bp, 0, 0);
 		} else {
 			bdwrite(bp);
 		}
@@ -1127,20 +1127,25 @@ nfs_getcacheblk(struct vnode *vp, daddr_t bn, int size, struct thread *td)
 
 	if (nmp->nm_flag & NFSMNT_INT) {
 		bp = getblk(vp, bn, size, PCATCH, 0);
-		while (bp == (struct buf *)0) {
+		while (bp == NULL) {
 			if (nfs_sigintr(nmp, (struct nfsreq *)0, td))
-				return ((struct buf *)0);
+				return (NULL);
 			bp = getblk(vp, bn, size, 0, 2 * hz);
 		}
 	} else {
 		bp = getblk(vp, bn, size, 0, 0);
 	}
 
+	/*
+	 * bio2, the 'device' layer, is normalized to DEV_BSIZE'd blocks.
+	 */
 	if (vp->v_type == VREG) {
 		int biosize;
 
 		biosize = mp->mnt_stat.f_iosize;
-		bp->b_blkno = bn * (biosize / DEV_BSIZE);
+		bp->b_bio2.bio_blkno = ((off_t)bn * biosize) >> DEV_BSHIFT;
+	} else {
+		bp->b_bio2.bio_blkno = ((off_t)bn * NFS_DIRBLKSIZ) >> DEV_BSHIFT;
 	}
 	return (bp);
 }
@@ -1212,8 +1217,9 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
  * is eventually dequeued by the async daemon, nfs_doio() *will*.
  */
 int
-nfs_asyncio(struct buf *bp, struct thread *td)
+nfs_asyncio(struct vnode *vp, struct bio *bio, struct thread *td)
 {
+	struct buf *bp = bio->bio_buf;
 	struct nfsmount *nmp;
 	int i;
 	int gotiod;
@@ -1228,7 +1234,8 @@ nfs_asyncio(struct buf *bp, struct thread *td)
 	if (nfs_numasync == 0)
 		return (EIO);
 
-	nmp = VFSTONFS(bp->b_vp->v_mount);
+	KKASSERT(vp->v_tag == VT_NFS);
+	nmp = VFSTONFS(vp->v_mount);
 
 	/*
 	 * Commits are usually short and sweet so lets save some cpu and 
@@ -1236,7 +1243,7 @@ nfs_asyncio(struct buf *bp, struct thread *td)
 	 * and writes).
 	 */
 	if ((bp->b_flags & (B_READ|B_NEEDCOMMIT)) == B_NEEDCOMMIT &&
-	    (nmp->nm_bufqiods > nfs_numasync / 2)) {
+	    (nmp->nm_bioqiods > nfs_numasync / 2)) {
 		return(EIO);
 	}
 
@@ -1259,7 +1266,7 @@ again:
 				 i, nmp));
 			nfs_iodwant[i] = NULL;
 			nfs_iodmount[i] = nmp;
-			nmp->nm_bufqiods++;
+			nmp->nm_bioqiods++;
 			wakeup((caddr_t)&nfs_iodwant[i]);
 			gotiod = TRUE;
 			break;
@@ -1270,10 +1277,10 @@ again:
 	 * point.  If so, it will process our request.
 	 */
 	if (!gotiod) {
-		if (nmp->nm_bufqiods > 0) {
+		if (nmp->nm_bioqiods > 0) {
 			NFS_DPF(ASYNCIO,
 				("nfs_asyncio: %d iods are already processing mount %p\n",
-				 nmp->nm_bufqiods, nmp));
+				 nmp->nm_bioqiods, nmp));
 			gotiod = TRUE;
 		}
 	}
@@ -1287,11 +1294,11 @@ again:
 		 * Ensure that the queue never grows too large.  We still want
 		 * to asynchronize so we block rather then return EIO.
 		 */
-		while (nmp->nm_bufqlen >= 2*nfs_numasync) {
+		while (nmp->nm_bioqlen >= 2*nfs_numasync) {
 			NFS_DPF(ASYNCIO,
 				("nfs_asyncio: waiting for mount %p queue to drain\n", nmp));
-			nmp->nm_bufqwant = TRUE;
-			error = tsleep(&nmp->nm_bufq, slpflag,
+			nmp->nm_bioqwant = TRUE;
+			error = tsleep(&nmp->nm_bioq, slpflag,
 				       "nfsaio", slptimeo);
 			if (error) {
 				if (nfs_sigintr(nmp, NULL, td))
@@ -1305,15 +1312,22 @@ again:
 			 * We might have lost our iod while sleeping,
 			 * so check and loop if nescessary.
 			 */
-			if (nmp->nm_bufqiods == 0) {
+			if (nmp->nm_bioqiods == 0) {
 				NFS_DPF(ASYNCIO,
 					("nfs_asyncio: no iods after mount %p queue was drained, looping\n", nmp));
 				goto again;
 			}
 		}
 		BUF_KERNPROC(bp);
-		TAILQ_INSERT_TAIL(&nmp->nm_bufq, bp, b_freelist);
-		nmp->nm_bufqlen++;
+
+		/*
+		 * The passed bio's buffer is not necessary associated with
+		 * the NFS vnode it is being written to.  Store the NFS vnode
+		 * in the BIO driver info.
+		 */
+		bio->bio_driver_info = vp;
+		TAILQ_INSERT_TAIL(&nmp->nm_bioq, bio, bio_act);
+		nmp->nm_bioqlen++;
 		return (0);
 	}
 
@@ -1327,22 +1341,22 @@ again:
 
 /*
  * Do an I/O operation to/from a cache block. This may be called
- * synchronously or from an nfsiod.
+ * synchronously or from an nfsiod.  The BIO is normalized for DEV_BSIZE.
  *
  * NOTE! TD MIGHT BE NULL
  */
 int
-nfs_doio(struct buf *bp, struct thread *td)
+nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 {
+	struct buf *bp = bio->bio_buf;
 	struct uio *uiop;
-	struct vnode *vp;
 	struct nfsnode *np;
 	struct nfsmount *nmp;
 	int error = 0, iomode, must_commit = 0;
 	struct uio uio;
 	struct iovec io;
 
-	vp = bp->b_vp;
+	KKASSERT(vp->v_tag == VT_NFS);
 	np = VTONFS(vp);
 	nmp = VFSTONFS(vp->v_mount);
 	uiop = &uio;
@@ -1370,7 +1384,7 @@ nfs_doio(struct buf *bp, struct thread *td)
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    /* mapping was done by vmapbuf() */
 	    io.iov_base = bp->b_data;
-	    uiop->uio_offset = ((off_t)bp->b_blkno) * DEV_BSIZE;
+	    uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
 	    if (bp->b_flags & B_READ) {
 		uiop->uio_rw = UIO_READ;
 		nfsstats.read_physios++;
@@ -1394,7 +1408,7 @@ nfs_doio(struct buf *bp, struct thread *td)
 
 	    switch (vp->v_type) {
 	    case VREG:
-		uiop->uio_offset = ((off_t)bp->b_blkno) * DEV_BSIZE;
+		uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
 		nfsstats.read_bios++;
 		error = nfs_readrpc(vp, uiop);
 
@@ -1427,13 +1441,13 @@ nfs_doio(struct buf *bp, struct thread *td)
 		}
 		break;
 	    case VLNK:
-		uiop->uio_offset = (off_t)0;
+		uiop->uio_offset = 0;
 		nfsstats.readlink_bios++;
 		error = nfs_readlinkrpc(vp, uiop);
 		break;
 	    case VDIR:
 		nfsstats.readdir_bios++;
-		uiop->uio_offset = ((u_quad_t)bp->b_lblkno) * NFS_DIRBLKSIZ;
+		uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
 		if (nmp->nm_flag & NFSMNT_RDIRPLUS) {
 			error = nfs_readdirplusrpc(vp, uiop);
 			if (error == NFSERR_NOTSUPP)
@@ -1464,18 +1478,19 @@ nfs_doio(struct buf *bp, struct thread *td)
 		    int retv;
 		    off_t off;
 
-		    off = ((u_quad_t)bp->b_blkno) * DEV_BSIZE + bp->b_dirtyoff;
-		    retv = nfs_commit(bp->b_vp, off, 
+		    off = ((off_t)bio->bio_blkno << DEV_BSHIFT) + 
+			  bp->b_dirtyoff;
+		    retv = nfs_commit(vp, off, 
 				bp->b_dirtyend - bp->b_dirtyoff, td);
 		    if (retv == 0) {
 			    bp->b_dirtyoff = bp->b_dirtyend = 0;
 			    bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
 			    bp->b_resid = 0;
-			    biodone(bp);
+			    biodone(bio);
 			    return (0);
 		    }
 		    if (retv == NFSERR_STALEWRITEVERF) {
-			    nfs_clearcommit(bp->b_vp->v_mount);
+			    nfs_clearcommit(vp->v_mount);
 		    }
 	    }
 
@@ -1483,13 +1498,13 @@ nfs_doio(struct buf *bp, struct thread *td)
 	     * Setup for actual write
 	     */
 
-	    if ((off_t)bp->b_blkno * DEV_BSIZE + bp->b_dirtyend > np->n_size)
-		bp->b_dirtyend = np->n_size - (off_t)bp->b_blkno * DEV_BSIZE;
+	    if (((off_t)bio->bio_blkno << DEV_BSHIFT) + bp->b_dirtyend > np->n_size)
+		bp->b_dirtyend = np->n_size - ((off_t)bio->bio_blkno << DEV_BSHIFT);
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
 		io.iov_len = uiop->uio_resid = bp->b_dirtyend
 		    - bp->b_dirtyoff;
-		uiop->uio_offset = (off_t)bp->b_blkno * DEV_BSIZE
+		uiop->uio_offset = ((off_t)bio->bio_blkno << DEV_BSHIFT)
 		    + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
@@ -1563,14 +1578,14 @@ nfs_doio(struct buf *bp, struct thread *td)
 		}
 	    } else {
 		bp->b_resid = 0;
-		biodone(bp);
+		biodone(bio);
 		return (0);
 	    }
 	}
 	bp->b_resid = uiop->uio_resid;
 	if (must_commit)
 	    nfs_clearcommit(vp->v_mount);
-	biodone(bp);
+	biodone(bio);
 	return (error);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.17 2005/09/14 01:13:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.18 2006/02/17 19:18:08 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -837,39 +837,40 @@ udf_readlink(struct vop_readlink_args *ap)
 }
 
 static int
-udf_strategy(struct vop_strategy_args *a)
+udf_strategy(struct vop_strategy_args *ap)
 {
+	struct bio *bio;
+	struct bio *nbio;
 	struct buf *bp;
 	struct vnode *vp;
 	struct udf_node *node;
 	int maxsize;
 
-	bp = a->a_bp;
-	vp = bp->b_vp;
+	bio = ap->a_bio;
+	bp = bio->bio_buf;
+	vp = ap->a_vp;
 	node = VTON(vp);
 
-	KASSERT(a->a_vp == a->a_bp->b_vp, ("%s(%p != %p)",
-		__func__, a->a_vp, a->a_bp->b_vp));
-	/* cd9660 has this test reversed, but it seems more logical this way */
-	if (bp->b_blkno != bp->b_lblkno) {
+	nbio = push_bio(bio);
+	if (nbio->bio_blkno == (daddr_t)-1) {
 		/*
 		 * Files that are embedded in the fentry don't translate well
 		 * to a block number.  Reject.
 		 */
-		if (udf_bmap_internal(node, bp->b_lblkno * node->udfmp->bsize,
-		    &bp->b_lblkno, &maxsize)) {
+		if (udf_bmap_internal(node, 
+				     bio->bio_blkno * node->udfmp->bsize,
+				     &nbio->bio_blkno, &maxsize)) {
 			clrbuf(bp);
-			bp->b_blkno = -1;
+			nbio->bio_blkno = -1;
 		}
 	}
-	if ((long)bp->b_blkno == -1) {
-		biodone(bp);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return(0);
 	}
-	vp = node->i_devvp;
-	bp->b_dev = vp->v_rdev;
-	bp->b_offset = dbtob(bp->b_blkno);
-	VOP_STRATEGY(vp, bp);
+	nbio->bio_offset = dbtob(nbio->bio_blkno);
+	vn_strategy(node->i_devvp, nbio);
 	return(0);
 }
 

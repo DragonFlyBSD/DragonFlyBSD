@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.28 2006/01/22 04:44:18 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -672,38 +672,45 @@ hpfs_print(struct vop_print_args *ap)
  * In order to be able to swap to a file, the VOP_BMAP operation may not
  * deadlock on memory.  See hpfs_bmap() for details. XXXXXXX (not impl)
  *
- * hpfs_strategy(struct buf *a_bp)
+ * hpfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 int
 hpfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
-	struct vnode *nvp;
+	struct hpfsnode *hp;
 	int error;
 
 	dprintf(("hpfs_strategy(): \n"));
 
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("hpfs_strategy: spec");
-	if (bp->b_blkno == bp->b_lblkno) {
-		error = VOP_BMAP(vp, bp->b_lblkno, &nvp, &bp->b_blkno, NULL, NULL);
+
+	nbio = push_bio(bio);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
+				 NULL, NULL);
 		if (error) {
 			printf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
-			biodone(bp);
+			/* I/O was never started on nbio, must biodone(bio) */
+			biodone(bio);
 			return (error);
 		}
-		if ((long)bp->b_blkno == -1)
+		if (nbio->bio_blkno == (daddr_t)-1)
 			vfs_bio_clrbuf(bp);
 	}
-	if ((long)bp->b_blkno == -1) {
-		biodone(bp);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return (0);
 	}
-	bp->b_dev = nvp->v_rdev;
-	VOP_STRATEGY(nvp, bp);
+        hp = VTOHP(ap->a_vp);
+	vn_strategy(hp->h_devvp, nbio);
 	return (0);
 }
 

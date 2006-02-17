@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.9 2004/05/19 22:52:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.10 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -252,47 +252,46 @@ amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
  * be a multiple of a sector in length.
  */
 static void
-amrd_strategy(struct bio *bio)
+amrd_strategy(dev_t dev, struct bio *bio)
 {
-    struct amrd_softc	*sc = (struct amrd_softc *)bio->bio_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+    struct amrd_softc *sc = (struct amrd_softc *)dev->si_drv1;
 
     /* bogus disk? */
     if (sc == NULL) {
-	bio->bio_error = EINVAL;
+	bp->b_error = EINVAL;
 	goto bad;
     }
+    bio->bio_driver_info = sc;
 
     devstat_start_transaction(&sc->amrd_stats);
     amr_submit_bio(sc->amrd_controller, bio);
     return;
 
  bad:
-    bio->bio_flags |= BIO_ERROR;
+    bp->b_flags |= B_ERROR;
 
     /*
      * Correctly set the buf to indicate a completed transfer
      */
-    bio->bio_resid = bio->bio_bcount;
+    bp->b_resid = bp->b_bcount;
     biodone(bio);
-    return;
 }
 
 void
-amrd_intr(void *data)
+amrd_intr(struct bio *bio)
 {
-    struct bio *bio = (struct bio *)data;
-    struct amrd_softc *sc = (struct amrd_softc *)bio->bio_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
 
     debug_called(2);
 
-    if (bio->bio_flags & BIO_ERROR) {
-	bio->bio_error = EIO;
+    if (bp->b_flags & B_ERROR) {
+	bp->b_error = EIO;
 	debug(1, "i/o error\n");
     } else {
-	bio->bio_resid = 0;
+	bp->b_resid = 0;
     }
-
-    AMR_BIO_FINISH(bio);
+    biodone(bio);
 }
 
 static int

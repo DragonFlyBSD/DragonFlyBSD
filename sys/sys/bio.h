@@ -31,29 +31,55 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/bio.h,v 1.2 2005/08/12 00:17:26 hmp Exp $
+ * $DragonFly: src/sys/sys/bio.h,v 1.3 2006/02/17 19:18:07 dillon Exp $
  */
+
+#ifndef _SYS_BIO_H_
+#define _SYS_BIO_H_
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 
-typedef void biodone_t(struct buf *);
+struct bio;
+struct bio_track;
+
+typedef void biodone_t(struct bio *);
 
 /*
  * BIO encapsulation for storage drivers and systems that do not require
  * caching support for underlying blocks.
+ *
+ * NOTE: bio_done and bio_caller_info belong to the caller, while
+ * bio_driver_info belongs to the driver.
+ *
+ * bio_track is only non-NULL when an I/O is in progress.
  */
 struct bio {
-	LIST_ENTRY(bio)	bio_chain;	/* Chaining. */
+	TAILQ_ENTRY(bio) bio_act;	/* driver queue when active */
+	struct bio_track *bio_track;	/* BIO tracking structure */
+	struct bio	*bio_prev;	/* BIO stack */
+	struct bio	*bio_next;	/* BIO stack / cached translations */
 	struct buf	*bio_buf;   	/* High-level buffer back-pointer. */
-	daddr_t	bio_blkno;      	/* Underlying physical block number. */
-	daddr_t	bio_pblkno;      	/* Physical block number. */
-	dev_t 	bio_dev;        	/* Device associated to this I/O. */
-	biodone_t	*bio_done;   	/* Completion function (optional). */
-	long 	bio_resid;       	/* Remaining I/O. */
-	int 	bio_flags;      	/* Operational flags. */
-	int 	bio_error;      	/* Error value. */
-	void 	*bio_driver_ctx; 	/* Private context for drivers. */
-	void 	*bio_caller_ctx; 	/* Private context for callers. */
+	biodone_t	*bio_done;   	/* Caller completion function */
+	daddr_t		bio_blkno;     	/* Block number relative to device */
+	off_t		bio_offset;	/* Logical offset relative to device */
+	void		*bio_driver_info;
+	union {
+		void	*ptr;
+		off_t	offset;
+		int	index;
+		struct buf *cluster_head;
+		struct bio *cluster_parent;
+	} bio_caller_info1;
+	union {
+		void	*ptr;
+		off_t	offset;
+		int	index;
+		struct buf *cluster_tail;
+	} bio_caller_info2;
 };
+
+void bio_start_transaction(struct bio *, struct bio_track *);
+
+#endif

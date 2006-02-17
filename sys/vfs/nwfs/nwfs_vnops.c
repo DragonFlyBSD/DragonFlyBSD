@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.23 2005/09/14 01:13:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.24 2006/02/17 19:18:07 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -731,12 +731,13 @@ nwfs_pathconf(struct vop_pathconf_args *ap)
 }
 
 /*
- * nwfs_strategy(struct buf *a_bp)
+ * nwfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 nwfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp=ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	int error = 0;
 	struct thread *td = NULL;
 
@@ -751,7 +752,7 @@ nwfs_strategy(struct vop_strategy_args *ap)
 	 * otherwise just do it ourselves.
 	 */
 	if ((bp->b_flags & B_ASYNC) == 0 )
-		error = nwfs_doio(bp, proc0.p_ucred, td);
+		error = nwfs_doio(ap->a_vp, bio, proc0.p_ucred, td);
 	return (error);
 }
 

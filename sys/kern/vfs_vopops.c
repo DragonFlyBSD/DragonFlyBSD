@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.16 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.17 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -883,7 +883,7 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn, struct vnode **vpp,
 }
 
 int
-vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
+vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 {
 	struct vop_strategy_args ap;
 	int error;
@@ -891,10 +891,10 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
 	ap.a_head.a_desc = &vop_strategy_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_bp = bp;
+	ap.a_bio = bio;
 
 	DO_OPS(ops, error, &ap, vop_strategy);
-	if (error == 0 && (bp->b_flags & B_READ) == 0)
+	if (error == 0 && (bio->bio_buf->b_flags & B_READ) == 0)
 		cache_update_fsmid_vp(vp);
 	return(error);
 }

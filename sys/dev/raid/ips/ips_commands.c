@@ -25,10 +25,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.10 2006/01/01 16:53:15 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.11 2006/02/17 19:18:05 dillon Exp $
  */
 
+#include <sys/devicestat.h>
 #include <dev/raid/ips/ips.h>
+#include <dev/raid/ips/ips_disk.h>
 
 int
 ips_timed_wait(ips_command_t *command, const char *id, int timo)
@@ -71,9 +73,9 @@ ips_wakeup_callback(ips_command_t *command)
 static void
 ips_io_request_finish(ips_command_t *command)
 {
-	struct bio *iobuf = command->arg;
+	struct bio *bio = command->arg;
 
-	if (ips_read_request(iobuf)) {
+	if (ips_read_request(bio)) {
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
 				BUS_DMASYNC_POSTREAD);
 	} else {
@@ -82,11 +84,11 @@ ips_io_request_finish(ips_command_t *command)
 	}
 	bus_dmamap_unload(command->data_dmatag, command->data_dmamap);
 	if (COMMAND_ERROR(&command->status)) {
-		iobuf->bio_flags |=BIO_ERROR;
-		iobuf->bio_error = EIO;
+		bio->bio_buf->b_flags |=B_ERROR;
+		bio->bio_buf->b_error = EIO;
 	}
 	ips_insert_free_cmd(command->sc, command);
-	ipsd_finish(iobuf);
+	ipsd_finish(bio);
 }
 
 static void
@@ -97,7 +99,9 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	ips_command_t *command = cmdptr;
 	ips_sg_element_t *sg_list;
 	ips_io_cmd *command_struct;
-	struct bio *iobuf = command->arg;
+	struct bio *bio = command->arg;
+	struct buf *bp = bio->bio_buf;
+	ipsdisk_softc_t *dsc;
 	int i, length = 0;
 	u_int8_t cmdtype;
 
@@ -105,17 +109,19 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	if (error) {
 		printf("ips: error = %d in ips_sg_request_callback\n", error);
 		bus_dmamap_unload(command->data_dmatag, command->data_dmamap);
-		iobuf->bio_flags |= BIO_ERROR;
-		iobuf->bio_error = ENOMEM;
+		bp->b_flags |= B_ERROR;
+		bp->b_error = ENOMEM;
 		ips_insert_free_cmd(sc, command);
-		ipsd_finish(iobuf);
+		ipsd_finish(bio);
 		return;
 	}
+	dsc = bio->bio_driver_info;
 	command_struct = (ips_io_cmd *)command->command_buffer;
 	command_struct->id = command->id;
-	command_struct->drivenum = (uintptr_t)iobuf->bio_driver1;
+	command_struct->drivenum = dsc->sc->drives[dsc->disk_number].drivenum;
+
 	if (segnum != 1) {
-		if (ips_read_request(iobuf))
+		if (ips_read_request(bio))
 			cmdtype = IPS_SG_READ_CMD;
 		else
 			cmdtype = IPS_SG_WRITE_CMD;
@@ -130,7 +136,7 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 		command_struct->buffaddr =
 		    (u_int32_t)command->command_phys_addr + IPS_COMMAND_LEN;
 	} else {
-		if (ips_read_request(iobuf))
+		if (ips_read_request(bio))
 			cmdtype = IPS_READ_CMD;
 		else
 			cmdtype = IPS_WRITE_CMD;
@@ -138,12 +144,12 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 		length = segments[0].ds_len;
 	}
 	command_struct->command = cmdtype;
-	command_struct->lba = iobuf->bio_pblkno;
+	command_struct->lba = bio->bio_blkno;
 	length = (length + IPS_BLKSIZE - 1)/IPS_BLKSIZE;
 	command_struct->length = length;
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
 			BUS_DMASYNC_PREWRITE);
-	if (ips_read_request(iobuf)) {
+	if (ips_read_request(bio)) {
 		bus_dmamap_sync(command->data_dmatag, command->data_dmamap,
 				BUS_DMASYNC_PREREAD);
 	} else {
@@ -156,7 +162,7 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	 */
 	PRINTF(10, "ips test: command id: %d segments: %d "
 		"pblkno: %lld length: %d, ds_len: %d\n", command->id, segnum,
-		(long long)iobuf->bio_pblkno,
+		(long long)bio->bio_blkno,
 		length, segments[0].ds_len);
 
 	sc->ips_issue_cmd(command);
@@ -164,13 +170,15 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 }
 
 static int
-ips_send_io_request(ips_command_t *command, struct buf *iobuf)
+ips_send_io_request(ips_command_t *command, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
+
 	command->callback = ips_io_request_finish;
-	command->arg = iobuf;
-	PRINTF(10, "ips test: : bcount %ld\n", iobuf->bio_bcount);
+	command->arg = bio;
+	PRINTF(10, "ips test: : bcount %ld\n", bp->b_bcount);
 	bus_dmamap_load(command->data_dmatag, command->data_dmamap,
-			iobuf->bio_data, iobuf->bio_bcount,
+			bp->b_data, bp->b_bcount,
 			ips_io_request_callback, command, 0);
 	return 0;
 }
@@ -179,15 +187,15 @@ void
 ips_start_io_request(ips_softc_t *sc)
 {
 	ips_command_t *command;
-	struct bio *iobuf;
+	struct bio *bio;
 
-	iobuf = bufq_first(&sc->queue);
-	if (iobuf == NULL)
+	bio = bioq_first(&sc->bio_queue);
+	if (bio == NULL)
 		return;
 	if (ips_get_free_cmd(sc, &command, 0) != 0)
 		return;
-	bufq_remove(&sc->queue, iobuf);
-	ips_send_io_request(command, iobuf);
+	bioq_remove(&sc->bio_queue, bio);
+	ips_send_io_request(command, bio);
 }
 
 /*

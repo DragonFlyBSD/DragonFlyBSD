@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/device.h,v 1.3 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/device.h,v 1.4 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -70,11 +70,11 @@ struct cdevmsg_close {
 };
 
 /*
- * void d_strategy(struct buf *bp)
+ * void d_strategy(dev_t dev, struct bio *bio)
  */
 struct cdevmsg_strategy {
     struct cdevmsg msg;
-    struct buf	*bp;
+    struct bio	*bio;
 };
 
 /*
@@ -204,7 +204,8 @@ int dev_dflags(dev_t dev);
 int dev_dmaj(dev_t dev);
 int dev_dopen(dev_t dev, int oflags, int devtype, struct thread *td);
 int dev_dclose(dev_t dev, int fflag, int devtype, struct thread *td);
-void dev_dstrategy(dev_t dev, struct buf *bp);
+void dev_dstrategy(dev_t dev, struct bio *bio);
+void dev_dstrategy_chain(dev_t dev, struct bio *bio);
 int dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td);
 int dev_ddump(dev_t dev);
 int dev_dpsize(dev_t dev);

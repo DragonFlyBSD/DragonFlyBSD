@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.20 2005/12/08 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.21 2006/02/17 19:18:07 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -299,9 +299,9 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
  * Do an I/O operation to/from a cache block.
  */
 int
-smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
+smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td)
 {
-	struct vnode *vp = bp->b_vp;
+	struct buf *bp = bio->bio_buf;
 	struct smbmount *smp = VFSTOSMBFS(vp->v_mount);
 	struct smbnode *np = VTOSMB(vp);
 	struct uio uio, *uiop = &uio;
@@ -322,7 +322,7 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 	    uiop->uio_rw = UIO_READ;
 	    switch (vp->v_type) {
 	      case VREG:
-		uiop->uio_offset = ((off_t)bp->b_blkno) * DEV_BSIZE;
+		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE;
 		error = smb_read(smp->sm_share, np->n_fid, uiop, &scred);
 		if (error)
 			break;
@@ -342,12 +342,12 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 		bp->b_flags |= B_ERROR;
 	    }
 	} else { /* write */
-	    if (((bp->b_blkno * DEV_BSIZE) + bp->b_dirtyend) > np->n_size)
-		bp->b_dirtyend = np->n_size - (bp->b_blkno * DEV_BSIZE);
+	    if ((((off_t)bio->bio_blkno * DEV_BSIZE) + bp->b_dirtyend) > np->n_size)
+		bp->b_dirtyend = np->n_size - ((off_t)bio->bio_blkno * DEV_BSIZE);
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
 		io.iov_len = uiop->uio_resid = bp->b_dirtyend - bp->b_dirtyoff;
-		uiop->uio_offset = ((off_t)bp->b_blkno) * DEV_BSIZE + bp->b_dirtyoff;
+		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
 		error = smb_write(smp->sm_share, np->n_fid, uiop, &scred);
@@ -388,12 +388,12 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 		}
 	    } else {
 		bp->b_resid = 0;
-		biodone(bp);
+		biodone(bio);
 		return 0;
 	    }
 	}
 	bp->b_resid = uiop->uio_resid;
-	biodone(bp);
+	biodone(bio);
 	return error;
 }
 

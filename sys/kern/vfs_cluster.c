@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.15 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -69,6 +69,8 @@ static struct cluster_save *
 static struct buf *
 	cluster_rbuild (struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 			    daddr_t blkno, long size, int run, struct buf *fbp);
+static void cluster_callback (struct bio *);
+
 
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0, "");
@@ -158,10 +160,10 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 		}
 		reqbp = bp = NULL;
 	} else {
-		off_t firstread = bp->b_offset;
+		off_t firstread = bp->b_loffset;
 
-		KASSERT(bp->b_offset != NOOFFSET,
-		    ("cluster_read: no buffer offset"));
+		KASSERT(firstread != NOOFFSET, 
+			("cluster_read: no buffer offset"));
 		if (firstread + totread > filesize)
 			totread = filesize - firstread;
 		if (totread > size) {
@@ -225,7 +227,7 @@ single_block_read:
 			} else {
 				rbp = getblk(vp, lblkno, size, 0, 0);
 				rbp->b_flags |= B_READ | B_ASYNC | B_RAM;
-				rbp->b_blkno = blkno;
+				rbp->b_bio2.bio_blkno = blkno;
 			}
 		}
 	}
@@ -243,9 +245,10 @@ single_block_read:
 			vfs_busy_pages(bp, 0);
 		}
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
-		if ((bp->b_flags & B_ASYNC) || bp->b_iodone != NULL)
+		if ((bp->b_flags & B_ASYNC) || bp->b_bio1.bio_done != NULL)
 			BUF_KERNPROC(bp);
-		error = VOP_STRATEGY(vp, bp);
+		vn_strategy(vp, &bp->b_bio1);
+		error = bp->b_error;
 	}
 
 	/*
@@ -278,9 +281,9 @@ single_block_read:
 				vfs_busy_pages(rbp, 0);
 			}
 			rbp->b_flags &= ~(B_ERROR|B_INVAL);
-			if ((rbp->b_flags & B_ASYNC) || rbp->b_iodone != NULL)
+			if ((rbp->b_flags & B_ASYNC) || rbp->b_bio1.bio_done != NULL)
 				BUF_KERNPROC(rbp);
-			(void) VOP_STRATEGY(vp, rbp);
+			vn_strategy(vp, &rbp->b_bio1);
 		}
 	}
 	if (reqbp)
@@ -323,7 +326,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 		tbp->b_flags |= B_ASYNC | B_READ | B_RAM;
 	}
 
-	tbp->b_blkno = blkno;
+	tbp->b_bio2.bio_blkno = blkno;
 	if( (tbp->b_flags & B_MALLOC) ||
 		((tbp->b_flags & B_VMIO) == 0) || (run <= 1) )
 		return tbp;
@@ -341,14 +344,15 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
 	bp->b_flags = B_ASYNC | B_READ | B_CLUSTER | B_VMIO;
-	bp->b_iodone = cluster_callback;
-	bp->b_blkno = blkno;
+	bp->b_bio1.bio_done = cluster_callback;
+	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
+	bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 	bp->b_lblkno = lbn;
-	bp->b_offset = tbp->b_offset;
-	KASSERT(bp->b_offset != NOOFFSET, ("cluster_rbuild: no buffer offset"));
+	bp->b_loffset = tbp->b_loffset;
+	bp->b_bio2.bio_blkno = (daddr_t)-1;
+	KASSERT(bp->b_loffset != NOOFFSET,
+		("cluster_rbuild: no buffer offset"));
 	pbgetvp(vp, bp);
-
-	TAILQ_INIT(&bp->b_cluster.cluster_head);
 
 	bp->b_bcount = 0;
 	bp->b_bufsize = 0;
@@ -427,9 +431,9 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 			 * expect.
 			 */
 			tbp->b_flags |= B_READ | B_ASYNC;
-			if (tbp->b_blkno == tbp->b_lblkno) {
-				tbp->b_blkno = bn;
-			} else if (tbp->b_blkno != bn) {
+			if (tbp->b_bio2.bio_blkno == (daddr_t)-1) {
+				tbp->b_bio2.bio_blkno = bn;
+			} else if (tbp->b_bio2.bio_blkno != bn) {
 				brelse(tbp);
 				break;
 			}
@@ -439,8 +443,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 		 * to biodone() it in cluster_callback() anyway
 		 */
 		BUF_KERNPROC(tbp);
-		TAILQ_INSERT_TAIL(&bp->b_cluster.cluster_head,
-			tbp, b_cluster.cluster_entry);
+		cluster_append(&bp->b_bio1, tbp);
 		for (j = 0; j < tbp->b_xio.xio_npages; j += 1) {
 			vm_page_t m;
 			m = tbp->b_xio.xio_pages[j];
@@ -495,11 +498,14 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
  * This is complicated by the fact that any of the buffers might have
  * extra memory (if there were no empty buffer headers at allocbuf time)
  * that we will need to shift around.
+ *
+ * The returned bio is &bp->b_bio1
  */
 void
-cluster_callback(struct buf *bp)
+cluster_callback(struct bio *bio)
 {
-	struct buf *nbp, *tbp;
+	struct buf *bp = bio->bio_buf;
+	struct buf *tbp;
 	int error = 0;
 
 	/*
@@ -511,11 +517,11 @@ cluster_callback(struct buf *bp)
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	/*
 	 * Move memory from the large cluster buffer into the component
-	 * buffers and mark IO as done on these.
+	 * buffers and mark IO as done on these.  Since the memory map
+	 * is the same, no actual copying is required.
 	 */
-	for (tbp = TAILQ_FIRST(&bp->b_cluster.cluster_head);
-		tbp; tbp = nbp) {
-		nbp = TAILQ_NEXT(&tbp->b_cluster, cluster_entry);
+	while ((tbp = bio->bio_caller_info1.cluster_head) != NULL) {
+		bio->bio_caller_info1.cluster_head = tbp->b_cluster_next;
 		if (error) {
 			tbp->b_flags |= B_ERROR;
 			tbp->b_error = error;
@@ -532,7 +538,7 @@ cluster_callback(struct buf *bp)
 			if (tbp->b_flags & B_DIRECT)
 				tbp->b_flags |= B_RELBUF;
 		}
-		biodone(tbp);
+		biodone(&tbp->b_bio1);
 	}
 	relpbuf(bp, &cluster_pbuf_freecnt);
 }
@@ -596,14 +602,16 @@ cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 		lblocksize = bp->b_bufsize;
 	}
 	lbn = bp->b_lblkno;
-	KASSERT(bp->b_offset != NOOFFSET, ("cluster_write: no buffer offset"));
+	KASSERT(bp->b_loffset != NOOFFSET, 
+		("cluster_write: no buffer offset"));
 
 	/* Initialize vnode to beginning of file. */
 	if (lbn == 0)
 		vp->v_lasta = vp->v_clen = vp->v_cstart = vp->v_lastw = 0;
 
 	if (vp->v_clen == 0 || lbn != vp->v_lastw + 1 ||
-	    (bp->b_blkno != vp->v_lasta + btodb(lblocksize))) {
+	    bp->b_bio2.bio_blkno == (daddr_t)-1 ||
+	    (bp->b_bio2.bio_blkno != vp->v_lasta + btodb(lblocksize))) {
 		maxclen = vp->v_mount->mnt_iosize_max / lblocksize - 1;
 		if (vp->v_clen != 0) {
 			/*
@@ -623,7 +631,7 @@ cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 			 * flush.
 			 */
 			cursize = vp->v_lastw - vp->v_cstart + 1;
-			if (((u_quad_t) bp->b_offset + lblocksize) != filesize ||
+			if (((u_quad_t) bp->b_loffset + lblocksize) != filesize ||
 			    lbn != vp->v_lastw + 1 || vp->v_clen <= cursize) {
 				if (!async && seqcount > 0) {
 					cluster_wbuild_wb(vp, lblocksize,
@@ -663,7 +671,7 @@ cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 						bdwrite(*bpp);
 					free(buflist, M_SEGMENT);
 					vp->v_lastw = lbn;
-					vp->v_lasta = bp->b_blkno;
+					vp->v_lasta = bp->b_bio2.bio_blkno;
 					return;
 				}
 			}
@@ -674,13 +682,13 @@ cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 		 * existing cluster.
 		 */
 		if ((vp->v_type == VREG) &&
-			((u_quad_t) bp->b_offset + lblocksize) != filesize &&
-		    (bp->b_blkno == bp->b_lblkno) &&
-		    (VOP_BMAP(vp, lbn, NULL, &bp->b_blkno, &maxclen, NULL) ||
-		     bp->b_blkno == -1)) {
+			((u_quad_t) bp->b_loffset + lblocksize) != filesize &&
+		    (bp->b_bio2.bio_blkno == (daddr_t)-1) &&
+		    (VOP_BMAP(vp, lbn, NULL, &bp->b_bio2.bio_blkno, &maxclen, NULL) ||
+		     bp->b_bio2.bio_blkno == (daddr_t)-1)) {
 			bawrite(bp);
 			vp->v_clen = 0;
-			vp->v_lasta = bp->b_blkno;
+			vp->v_lasta = bp->b_bio2.bio_blkno;
 			vp->v_cstart = lbn + 1;
 			vp->v_lastw = lbn;
 			return;
@@ -716,7 +724,7 @@ cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 		bdwrite(bp);
 	}
 	vp->v_lastw = lbn;
-	vp->v_lasta = bp->b_blkno;
+	vp->v_lasta = bp->b_bio2.bio_blkno;
 }
 
 
@@ -777,13 +785,12 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		 * We got a pbuf to make the cluster in.
 		 * so initialise it.
 		 */
-		TAILQ_INIT(&bp->b_cluster.cluster_head);
 		bp->b_bcount = 0;
 		bp->b_bufsize = 0;
 		bp->b_xio.xio_npages = 0;
-		bp->b_blkno = tbp->b_blkno;
 		bp->b_lblkno = tbp->b_lblkno;
-		bp->b_offset = tbp->b_offset;
+		bp->b_loffset = tbp->b_loffset;
+		bp->b_bio2.bio_blkno = tbp->b_bio2.bio_blkno;
 
 		/*
 		 * We are synthesizing a buffer out of vm_page_t's, but
@@ -795,7 +802,9 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
 		bp->b_flags |= B_CLUSTER |
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT | B_NOWDRAIN));
-		bp->b_iodone = cluster_callback;
+		bp->b_bio1.bio_done = cluster_callback;
+		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
+		bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 		pbgetvp(vp, bp);
 		/*
 		 * From this location in the file, scan forward to see
@@ -837,8 +846,8 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				 * and would not be too large
 				 */
 				if ((tbp->b_bcount != size) ||
-				  ((bp->b_blkno + (dbsize * i)) !=
-				    tbp->b_blkno) ||
+				  ((bp->b_bio2.bio_blkno + (dbsize * i)) !=
+				    tbp->b_bio2.bio_blkno) ||
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
 				    (vp->v_mount->mnt_iosize_max / PAGE_SIZE))) {
 					BUF_UNLOCK(tbp);
@@ -854,10 +863,13 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				tbp->b_flags &= ~B_DONE;
 				crit_exit();
 			} /* end of code for non-first buffers only */
-			/* check for latent dependencies to be handled */
-			if ((LIST_FIRST(&tbp->b_dep)) != NULL &&
-			    bioops.io_start)
+
+			/*
+			 * check for latent dependencies to be handled 
+			 */
+			if (LIST_FIRST(&tbp->b_dep) != NULL && bioops.io_start)
 				(*bioops.io_start)(tbp);
+
 			/*
 			 * If the IO is via the VM then we do some
 			 * special VM hackery (yuck).  Since the buffer's
@@ -898,11 +910,9 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 			tbp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
 			tbp->b_flags |= B_ASYNC;
 			reassignbuf(tbp, tbp->b_vp);	/* put on clean list */
-			++tbp->b_vp->v_numoutput;
 			crit_exit();
 			BUF_KERNPROC(tbp);
-			TAILQ_INSERT_TAIL(&bp->b_cluster.cluster_head,
-				tbp, b_cluster.cluster_entry);
+			cluster_append(&bp->b_bio1, tbp);
 		}
 	finishcluster:
 		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
@@ -942,14 +952,28 @@ cluster_collectbufs(struct vnode *vp, struct buf *last_bp)
 	for (lbn = vp->v_cstart, i = 0; i < len; lbn++, i++) {
 		(void) bread(vp, lbn, last_bp->b_bcount, &bp);
 		buflist->bs_children[i] = bp;
-		if (bp->b_blkno == bp->b_lblkno)
-			VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_blkno,
+		if (bp->b_bio2.bio_blkno == (daddr_t)-1)
+			VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_bio2.bio_blkno,
 				NULL, NULL);
 	}
 	buflist->bs_children[i] = bp = last_bp;
-	if (bp->b_blkno == bp->b_lblkno)
-		VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_blkno,
+	if (bp->b_bio2.bio_blkno == (daddr_t)-1)
+		VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_bio2.bio_blkno,
 			NULL, NULL);
 	buflist->bs_nchildren = i + 1;
 	return (buflist);
 }
+
+void
+cluster_append(struct bio *bio, struct buf *tbp)
+{
+	tbp->b_cluster_next = NULL;
+	if (bio->bio_caller_info1.cluster_head == NULL) {
+		bio->bio_caller_info1.cluster_head = tbp;
+		bio->bio_caller_info2.cluster_tail = tbp;
+	} else {
+		bio->bio_caller_info2.cluster_tail->b_cluster_next = tbp;
+		bio->bio_caller_info2.cluster_tail = tbp;
+	}
+}
+

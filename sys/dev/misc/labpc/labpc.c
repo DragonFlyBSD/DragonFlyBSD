@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.14 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.15 2006/02/17 19:18:05 dillon Exp $
  *
  */
 
@@ -52,7 +52,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/buf.h>
-#define b_actf	b_act.tqe_next
+#define bio_actf	bio_act.tqe_next
 #include <sys/dataacq.h>
 #include <sys/conf.h>
 #include <sys/thread2.h>
@@ -124,8 +124,9 @@ struct ctlr
 
 	u_short sample_us;
 
-	struct buf start_queue;	/* Start queue */
-	struct buf *last;	/* End of start queue */
+	struct bio start_queue;	/* Start queue */
+	struct bio *last;	/* End of start queue */
+	int count;
 	u_char *data;
 	u_char *data_end;
 	long tmo;			/* Timeout in Hertz */
@@ -312,29 +313,28 @@ static void labpcintr(void *);
 static void start(struct ctlr *ctlr);
 
 static void
-bp_done(struct buf *bp, int err)
+bp_done(struct bio *bio, int err)
 {
-	bp->b_error = err;
+	struct buf *bp = bio->bio_buf;
 
 	if (err || bp->b_resid)
-	{
 		bp->b_flags |= B_ERROR;
-	}
-
-	biodone(bp);
+	biodone(bio);
 }
 
 static void tmo_stop(void *p);
 
 static void
-done_and_start_next(struct ctlr *ctlr, struct buf *bp, int err)
+done_and_start_next(struct ctlr *ctlr, struct bio *bio, int err)
 {
+	struct buf *bp = bio->bio_buf;
+
 	bp->b_resid = ctlr->data_end - ctlr->data;
 
 	ctlr->data = 0;
 
-	ctlr->start_queue.b_actf = bp->b_actf;
-	bp_done(bp, err);
+	ctlr->start_queue.bio_actf = bio->bio_actf;
+	bp_done(bio, err);
 
 	callout_stop(&ctlr->ch);
 
@@ -592,7 +592,7 @@ static void
 tmo_stop(void *p)
 {
 	struct ctlr *ctlr = (struct ctlr *)p;
-	struct buf *bp;
+	struct bio *bio;
 
 	crit_enter();
 
@@ -607,9 +607,9 @@ tmo_stop(void *p)
 
 	(*ctlr->stop)(ctlr);
 
-	bp = ctlr->start_queue.b_actf;
+	bio = ctlr->start_queue.bio_actf;
 
-	if (bp == 0) {
+	if (bio == NULL) {
 		printf(", Null bp.\n");
 		crit_exit();
 		return;
@@ -617,7 +617,7 @@ tmo_stop(void *p)
 
 	printf("\n");
 
-	done_and_start_next(ctlr, bp, ETIMEDOUT);
+	done_and_start_next(ctlr, bio, ETIMEDOUT);
 
 	crit_exit();
 }
@@ -643,10 +643,10 @@ static void ad_intr(struct ctlr *ctlr)
 	{
 		if ((status & (OVERRUN|OVERFLOW)))
 		{
-			struct buf *bp = ctlr->start_queue.b_actf;
+			struct bio *bio = ctlr->start_queue.bio_actf;
 
 			printf("ad_intr: error: bp %p, data %p, status %x",
-			    (void *)bp, (void *)ctlr->data, status);
+			    bio->bio_buf, ctlr->data, status);
 
 			if (status & OVERRUN)
 				printf(" Conversion overrun (multiple A-D trigger)");
@@ -656,13 +656,10 @@ static void ad_intr(struct ctlr *ctlr)
 
 			printf("\n");
 
-			if (bp)
-			{
-				done_and_start_next(ctlr, bp, EIO);
+			if (bio) {
+				done_and_start_next(ctlr, bio, EIO);
 				return;
-			}
-			else
-			{
+			} else {
 				printf("ad_intr: (should not happen) error between records\n");
 				ctlr->err = status;	/* Set overrun condition */
 				return;
@@ -670,25 +667,22 @@ static void ad_intr(struct ctlr *ctlr)
 		}
 		else	/* FIFO interrupt */
 		{
-			struct buf *bp = ctlr->start_queue.b_actf;
+			struct bio *bio = ctlr->start_queue.bio_actf;
 
-			if (ctlr->data)
-			{
+			if (ctlr->data) {
 				*ctlr->data++ = inb(ADFIFO(ctlr));
-				if (ctlr->data == ctlr->data_end)	/* Normal completion */
-				{
-					done_and_start_next(ctlr, bp, 0);
+				if (ctlr->data == ctlr->data_end) {
+					/* Normal completion */
+					done_and_start_next(ctlr, bio, 0);
 					return;
 				}
-			}
-			else	/* Interrupt with no where to put the data.  */
-			{
+			} else {
+				/* Interrupt with no where to put the data.  */
 				printf("ad_intr: (should not happen) dropped input.\n");
 				(void)inb(ADFIFO(ctlr));
 
 				printf("bp %p, status %x, cr3 %x\n",
-				    (void *)bp, status, ctlr->cr_image[2]);
-
+				    bio->bio_buf, status, ctlr->cr_image[2]);
 				ctlr->err = DROPPED_INPUT;
 				return;
 			}
@@ -770,19 +764,20 @@ labpcclose(dev_t dev, int flags, int fmt, struct thread *td)
 static void
 start(struct ctlr *ctlr)
 {
+	struct bio *bio;
 	struct buf *bp;
 
-	if ((bp = ctlr->start_queue.b_actf) == 0)
-	{
+	if ((bio = ctlr->start_queue.bio_actf) == NULL) {
 		/* We must turn off FIFO interrupts when there is no
 		 * place to put the data.  We have to get back to
 		 * reading before the FIFO overflows.
 		 */
 		CR_EXPR(ctlr, 3, &= ~(FIFOINTEN|ERRINTEN));
 		ctlr->cleared_intr = 1;
-		ctlr->start_queue.b_bcount = 0;
+		ctlr->count = 0;
 		return;
 	}
+	bp = bio->bio_buf;
 
 	ctlr->data = (u_char *)bp->b_data;
 	ctlr->data_end = ctlr->data + bp->b_bcount;
@@ -790,17 +785,16 @@ start(struct ctlr *ctlr)
 	if (ctlr->err)
 	{
 		printf("labpc start: (should not happen) error between records.\n");
-		done_and_start_next(ctlr, bp, EIO);
+		done_and_start_next(ctlr, bio, EIO);
 		return;
 	}
 
 	if (ctlr->data == 0)
 	{
 		printf("labpc start: (should not happen) NULL data pointer.\n");
-		done_and_start_next(ctlr, bp, EIO);
+		done_and_start_next(ctlr, bio, EIO);
 		return;
 	}
-
 
 	(*ctlr->starter)(ctlr, bp->b_bcount);
 
@@ -817,21 +811,18 @@ start(struct ctlr *ctlr)
 }
 
 static void
-ad_strategy(struct buf *bp, struct ctlr *ctlr)
+ad_strategy(struct bio *bio, struct ctlr *ctlr)
 {
 	crit_enter();
-	bp->b_actf = NULL;
+	bio->bio_actf = NULL;
 
-	if (ctlr->start_queue.b_bcount)
-	{
-		ctlr->last->b_actf = bp;
-		ctlr->last = bp;
-	}
-	else
-	{
-		ctlr->start_queue.b_bcount = 1;
-		ctlr->start_queue.b_actf = bp;
-		ctlr->last = bp;
+	if (ctlr->count) {
+		ctlr->last->bio_actf = bio;
+		ctlr->last = bio;
+	} else {
+		ctlr->count = 1;
+		ctlr->start_queue.bio_actf = bio;
+		ctlr->last = bio;
 		start(ctlr);
 	}
 	crit_exit();
@@ -850,14 +841,16 @@ ad_strategy(struct buf *bp, struct ctlr *ctlr)
  * 2. No interrupt support yet.
  */
 static void
-da_strategy(struct buf *bp, struct ctlr *ctlr)
+da_strategy(struct bio *bio, struct ctlr *ctlr)
 {
+	struct buf *bp = bio->bio_buf;
+	dev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
 	int i;
 
-	switch(CHAN(bp->b_dev))
+	switch(CHAN(dev))
 	{
 		case 0:
 			port = DAC0L(ctlr);
@@ -886,18 +879,18 @@ da_strategy(struct buf *bp, struct ctlr *ctlr)
 			}
 
 			bp->b_resid = bp->b_bcount & 3;
-			bp_done(bp, 0);
+			bp_done(bio, 0);
 			return;
 
 		default:
-			bp_done(bp, ENXIO);
+			bp_done(bio, ENXIO);
 			return;
 	}
 
 	/* Port 0 or 1 falls through to here.
 	 */
 	if (bp->b_bcount & 1)	/* Odd transfers are illegal */
-		bp_done(bp, EIO);
+		bp_done(bio, EIO);
 
 	len = bp->b_bcount;
 	data = (u_char *)bp->b_data;
@@ -910,7 +903,7 @@ da_strategy(struct buf *bp, struct ctlr *ctlr)
 
 	bp->b_resid = 0;
 
-	bp_done(bp, 0);
+	bp_done(bio, 0);
 }
 
 /* Input masks for MODE 0 of the ports treating PC as a single
@@ -931,13 +924,15 @@ static void flush_dcr(struct ctlr *ctlr)
 /* do: Digital output
  */
 static void
-digital_out_strategy(struct buf *bp, struct ctlr *ctlr)
+digital_out_strategy(struct bio *bio, struct ctlr *ctlr)
 {
+	struct buf *bp = bio->bio_buf;
+	dev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
 	int i;
-	int chan = CHAN(bp->b_dev);
+	int chan = CHAN(dev);
 
 	ctlr->dcr_val &= ~set_input[chan];	/* Digital out: Clear bit */
 	flush_dcr(ctlr);
@@ -954,19 +949,21 @@ digital_out_strategy(struct buf *bp, struct ctlr *ctlr)
 
 	bp->b_resid = 0;
 
-	bp_done(bp, 0);
+	bp_done(bio, 0);
 }
 
 /* digital_in_strategy: Digital input
  */
 static void
-digital_in_strategy(struct buf *bp, struct ctlr *ctlr)
+digital_in_strategy(struct bio *bio, struct ctlr *ctlr)
 {
+	struct buf *bp = bio->bio_buf;
+	dev_t dev = bio->bio_driver_info;
 	int len;
 	u_char *data;
 	int port;
 	int i;
-	int chan = CHAN(bp->b_dev);
+	int chan = CHAN(dev);
 
 	ctlr->dcr_val |= set_input[chan];	/* Digital in: Set bit */
 	flush_dcr(ctlr);
@@ -982,28 +979,31 @@ digital_in_strategy(struct buf *bp, struct ctlr *ctlr)
 
 	bp->b_resid = 0;
 
-	bp_done(bp, 0);
+	bp_done(bio, 0);
 }
 
 
 static	void
-labpcstrategy(struct buf *bp)
+labpcstrategy(dev_t dev, struct bio *bio)
 {
-	struct ctlr *ctlr = labpcs[UNIT(bp->b_dev)];
+	struct buf *bp = bio->bio_buf;
+	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
-	if (DIGITAL(bp->b_dev)) {
+	bio->bio_driver_info = dev;
+
+	if (DIGITAL(dev)) {
 		if (bp->b_flags & B_READ) {
 			ctlr->starter = null_start;
 			ctlr->stop = all_stop;
 			ctlr->intr = null_intr;
-			digital_in_strategy(bp, ctlr);
+			digital_in_strategy(bio, ctlr);
 		}
 		else
 		{
 			ctlr->starter = null_start;
 			ctlr->stop = all_stop;
 			ctlr->intr = null_intr;
-			digital_out_strategy(bp, ctlr);
+			digital_out_strategy(bio, ctlr);
 		}
 	}
 	else {
@@ -1012,14 +1012,14 @@ labpcstrategy(struct buf *bp)
 			ctlr->starter = INTERVAL(ctlr->dev) ? ad_interval_start : ad_start;
 			ctlr->stop = all_stop;
 			ctlr->intr = ad_intr;
-			ad_strategy(bp, ctlr);
+			ad_strategy(bio, ctlr);
 		}
 		else
 		{
 			ctlr->starter = null_start;
 			ctlr->stop = all_stop;
 			ctlr->intr = null_intr;
-			da_strategy(bp, ctlr);
+			da_strategy(bio, ctlr);
 		}
 	}
 }

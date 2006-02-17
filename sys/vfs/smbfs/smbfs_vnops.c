@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.24 2005/09/14 01:13:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -792,12 +792,13 @@ smbfs_pathconf(struct vop_pathconf_args *ap)
 }
 
 /*
- * smbfs_strategy(struct buf *a_bp)
+ * smbfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 smbfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp=ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	struct thread *td = NULL;
 	int error = 0;
 
@@ -808,7 +809,7 @@ smbfs_strategy(struct vop_strategy_args *ap)
 		td = curthread;		/* XXX */
 
 	if ((bp->b_flags & B_ASYNC) == 0 )
-		error = smbfs_doio(bp, proc0.p_ucred, td);
+		error = smbfs_doio(ap->a_vp, bio, proc0.p_ucred, td);
 	return error;
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.39 2005/09/17 07:43:01 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.40 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -41,6 +41,7 @@
 #include <sys/queue.h>
 #include <sys/lock.h>
 #include <sys/select.h>
+#include <sys/biotrack.h>
 #include <sys/uio.h>
 #include <sys/acl.h>
 #include <sys/namecache.h>
@@ -158,9 +159,11 @@ RB_HEAD(buf_rb_tree, buf);
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
-	int	v_writecount;			/* reference count of writers */
+	int	v_writecount;
 	int	v_holdcnt;			/* page & buffer references */
 	int	v_opencount;			/* number of explicit opens */
+	struct bio_track v_track_read;		/* track I/O's in progress */
+	struct bio_track v_track_write;		/* track I/O's in progress */
 	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
 	struct  vop_ops **v_ops;		/* vnode operations vector */
@@ -169,7 +172,6 @@ struct vnode {
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
 	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
-	long	v_numoutput;			/* num of writes in progress */
 	enum	vtype v_type;			/* vnode type */
 	union {
 		struct mount	*vu_mountedhere;/* ptr to mounted vfs (VDIR) */
@@ -232,7 +234,7 @@ struct vnode {
 /* open for business    0x00080 */
 /* open for business    0x00100 */
 /* open for business    0x00200 */
-#define	VBWAIT		0x00400	/* waiting for output to complete */
+/* open for business	0x00400 */
 /* open for business    0x00800 */
 /* open for business    0x01000 */
 #define	VOBJBUF		0x02000	/* Allocate buffers in VM object */
@@ -622,6 +624,7 @@ int	vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
 		int (*waitoutput)(struct vnode *, struct thread *));
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp, struct thread *td);
+void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags, struct thread *td);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags, struct thread *td);

@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.19 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.20 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -222,7 +222,7 @@ static int	aio_free_entry(struct aiocblist *aiocbe);
 static void	aio_process(struct aiocblist *aiocbe);
 static int	aio_newproc(void);
 static int	aio_aqueue(struct aiocb *job, int type);
-static void	aio_physwakeup(struct buf *bp);
+static void	aio_physwakeup(struct bio *bio);
 static int	aio_fphysio(struct aiocblist *aiocbe);
 static int	aio_qphysio(struct proc *p, struct aiocblist *iocb);
 static void	aio_daemon(void *uproc);
@@ -950,24 +950,23 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 		lj->lioj_buffer_count++;
 
 	/* Create and build a buffer header for a transfer. */
-	bp = (struct buf *)getpbuf(NULL);
+	bp = getpbuf(NULL);
 	BUF_KERNPROC(bp);
 
 	/*
 	 * Get a copy of the kva from the physical buffer.
 	 */
-	bp->b_caller1 = p;
-	bp->b_dev = vp->v_rdev;
+	bp->b_bio1.bio_caller_info1.ptr = p;
 	error = 0;
 
 	bp->b_bcount = cb->aio_nbytes;
 	bp->b_bufsize = cb->aio_nbytes;
 	bp->b_flags = B_PHYS | (cb->aio_lio_opcode == LIO_WRITE ?
 	    B_WRITE : B_READ);
-	bp->b_iodone = aio_physwakeup;
+	bp->b_bio1.bio_done = aio_physwakeup;
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = (void *)(uintptr_t)cb->aio_buf;
-	bp->b_blkno = btodb(cb->aio_offset);
+	bp->b_bio1.bio_blkno = btodb(cb->aio_offset);
 
 	/* Bring buffer into kernel space. */
 	if (vmapbuf(bp) < 0) {
@@ -978,7 +977,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	crit_enter();
 
 	aiocbe->bp = bp;
-	bp->b_spc = (void *)aiocbe;
+	bp->b_bio1.bio_caller_info2.ptr = aiocbe;
 	TAILQ_INSERT_TAIL(&aio_bufjobs, aiocbe, list);
 	TAILQ_INSERT_TAIL(&ki->kaio_bufqueue, aiocbe, plist);
 	aiocbe->jobstate = JOBST_JOBQBUF;
@@ -989,7 +988,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	crit_exit();
 	
 	/* Perform transfer. */
-	BUF_STRATEGY(bp, 0);
+	dev_dstrategy(vp->v_rdev, &bp->b_bio1);
 
 	notify = 0;
 	crit_enter();
@@ -2002,18 +2001,18 @@ process_signal(void *aioj)
  * signals.
  */
 static void
-aio_physwakeup(struct buf *bp)
+aio_physwakeup(struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct aiocblist *aiocbe;
 	struct proc *p;
 	struct kaioinfo *ki;
 	struct aio_liojob *lj;
 
-	wakeup(bp);
+	aiocbe = bio->bio_caller_info2.ptr;
 
-	aiocbe = (struct aiocblist *)bp->b_spc;
 	if (aiocbe) {
-		p = bp->b_caller1;
+		p = bio->bio_caller_info1.ptr;
 
 		aiocbe->jobstate = JOBST_JOBBFINISHED;
 		aiocbe->uaiocb._aiocb_private.status -= bp->b_resid;
@@ -2065,6 +2064,7 @@ aio_physwakeup(struct buf *bp)
 					process_signal, aiocbe);
 		}
 	}
+	wakeup(bp);
 }
 #endif /* VFS_AIO */
 

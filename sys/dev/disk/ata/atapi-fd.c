@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.12 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.13 2006/02/17 19:17:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ afdattach(struct ata_device *atadev)
     fdp->device = atadev;
     fdp->lun = ata_get_lun(&afd_lun_map);
     ata_set_name(atadev, "afd", fdp->lun);
-    bufq_init(&fdp->queue);
+    bioq_init(&fdp->bio_queue);
 
     if (afd_sense(fdp)) {
 	free(fdp, M_AFD);
@@ -131,13 +131,15 @@ void
 afddetach(struct ata_device *atadev)
 {   
     struct afd_softc *fdp = atadev->driver;
+    struct bio *bio;
     struct buf *bp;
     
-    while ((bp = bufq_first(&fdp->queue))) {
-	bufq_remove(&fdp->queue, bp);
+    while ((bio = bioq_first(&fdp->bio_queue))) {
+	bioq_remove(&fdp->bio_queue, bio);
+	bp = bio->bio_buf;
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
-	biodone(bp);
+	biodone(bio);
     }
     disk_invalidate(&fdp->disk);
     disk_destroy(&fdp->disk);
@@ -292,26 +294,27 @@ afdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 }
 
 static void 
-afdstrategy(struct buf *bp)
+afdstrategy(dev_t dev, struct bio *bio)
 {
-    struct afd_softc *fdp = bp->b_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+    struct afd_softc *fdp = dev->si_drv1;
 
     if (fdp->device->flags & ATA_D_DETACHING) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
     crit_enter();
-    bufqdisksort(&fdp->queue, bp);
+    bioqdisksort(&fdp->bio_queue, bio);
     crit_exit();
     ata_start(fdp->device->channel);
 }
@@ -320,26 +323,28 @@ void
 afd_start(struct ata_device *atadev)
 {
     struct afd_softc *fdp = atadev->driver;
-    struct buf *bp = bufq_first(&fdp->queue);
+    struct bio *bio = bioq_first(&fdp->bio_queue);
+    struct buf *bp;
     u_int32_t lba;
     u_int16_t count;
     int8_t ccb[16];
     caddr_t data_ptr;
 
-    if (!bp)
+    if (bio == NULL)
 	return;
 
-    bufq_remove(&fdp->queue, bp);
+    bioq_remove(&fdp->bio_queue, bio);
+    bp = bio->bio_buf;
 
     /* should reject all queued entries if media have changed. */
     if (fdp->device->flags & ATA_D_MEDIA_CHANGED) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
-    lba = bp->b_pblkno;
+    lba = bio->bio_blkno;
     count = bp->b_bcount / fdp->cap.sector_size;
     data_ptr = bp->b_data;
     bp->b_resid = bp->b_bcount; 
@@ -362,13 +367,14 @@ afd_start(struct ata_device *atadev)
 
     atapi_queue_cmd(fdp->device, ccb, data_ptr, count * fdp->cap.sector_size,
 		    (bp->b_flags & B_READ) ? ATPR_F_READ : 0, 30,
-		    afd_done, bp);
+		    afd_done, bio);
 }
 
 static int 
 afd_done(struct atapi_request *request)
 {
-    struct buf *bp = request->driver;
+    struct bio *bio = request->driver;
+    struct buf *bp = bio->bio_buf;
     struct afd_softc *fdp = request->device->driver;
 
     if (request->error || (bp->b_flags & B_ERROR)) {
@@ -378,7 +384,7 @@ afd_done(struct atapi_request *request)
     else
 	bp->b_resid = bp->b_bcount - request->donecount;
     devstat_end_transaction_buf(&fdp->stats, bp);
-    biodone(bp);
+    biodone(bio);
     return 0;
 }
 

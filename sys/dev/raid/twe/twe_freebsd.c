@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.18 2006/01/25 19:56:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.19 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -693,9 +693,12 @@ twed_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle an I/O request.
  */
 static void
-twed_strategy(twe_bio *bp)
+twed_strategy(dev_t dev, struct bio *bio)
 {
-    struct twed_softc	*sc = (struct twed_softc *)TWE_BIO_SOFTC(bp);
+    struct twed_softc *sc = dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+
+    bio->bio_driver_info = sc;
 
     debug_called(4);
 
@@ -703,18 +706,19 @@ twed_strategy(twe_bio *bp)
 
     /* bogus disk? */
     if ((sc == NULL) || (!sc->twed_drive->td_disk)) {
-	TWE_BIO_SET_ERROR(bp, EINVAL);
+	bp->b_error = EINVAL;
+	bp->b_flags |= B_ERROR;
 	printf("twe: bio for invalid disk!\n");
-	TWE_BIO_DONE(bp);
+	biodone(bio);
 	TWED_BIO_OUT;
 	return;
     }
 
     /* perform accounting */
-    TWE_BIO_STATS_START(bp);
+    devstat_start_transaction(&sc->twed_stats);
 
     /* queue the bio on the controller */
-    twe_enqueue_bio(sc->twed_controller, bp);
+    twe_enqueue_bio(sc->twed_controller, bio);
 
     /* poke the controller to start I/O */
     twe_startio(sc->twed_controller);
@@ -781,16 +785,17 @@ twed_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
  * Handle completion of an I/O request.
  */
 void
-twed_intr(twe_bio *bp)
+twed_intr(struct bio *bio)
 {
+    struct buf *bp = bio->bio_buf;
+    struct twed_softc *sc = bio->bio_driver_info;
     debug_called(4);
 
     /* if no error, transfer completed */
-    if (!TWE_BIO_HAS_ERROR(bp))
-	TWE_BIO_RESID(bp) = 0;
-
-    TWE_BIO_STATS_END(bp);
-    TWE_BIO_DONE(bp);
+    if (bp->b_flags & B_ERROR)
+	bp->b_resid = 0;
+    devstat_end_transaction_buf(&sc->twed_stats, bp);
+    biodone(bio);
     TWED_BIO_OUT;
 }
 

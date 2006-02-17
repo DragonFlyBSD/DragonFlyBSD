@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.6 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.7 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -144,11 +144,11 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			if (error)
 				return (error);
 			bp = getblk(vp, bn, nsize, 0, 0);
-			bp->b_blkno = fsbtodb(fs, newb);
+			bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
 			if (flags & B_CLRBUF)
 				vfs_bio_clrbuf(bp);
 		}
-		ip->i_db[bn] = dbtofsb(fs, bp->b_blkno);
+		ip->i_db[bn] = dbtofsb(fs, bp->b_bio2.bio_blkno);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		*bpp = bp;
 		return (0);
@@ -191,7 +191,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			return (error);
 		nb = newb;
 		bp = getblk(vp, indirs[1].in_lbn, fs->s_blocksize, 0, 0);
-		bp->b_blkno = fsbtodb(fs, newb);
+		bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
 		vfs_bio_clrbuf(bp);
 		/*
 		 * Write synchronously so that indirect blocks
@@ -243,7 +243,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		}
 		nb = newb;
 		nbp = getblk(vp, indirs[i].in_lbn, fs->s_blocksize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		vfs_bio_clrbuf(nbp);
 		/*
 		 * Write synchronously so that indirect blocks
@@ -278,7 +278,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		}
 		nb = newb;
 		nbp = getblk(vp, lbn, fs->s_blocksize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		if (flags & B_CLRBUF)
 			vfs_bio_clrbuf(nbp);
 		bap[indirs[i].in_off] = nb;
@@ -303,7 +303,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		}
 	} else {
 		nbp = getblk(vp, lbn, fs->s_blocksize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 	}
 	*bpp = nbp;
 	return (0);

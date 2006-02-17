@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.5 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -311,7 +311,7 @@ struct _vinum_conf {
     int maxactive;					    /* maximum number of requests ever outstanding */
 #if VINUMDEBUG
     struct request *lastrq;
-    struct buf *lastbuf;
+    struct bio *lastbio;
 #endif
 };
 

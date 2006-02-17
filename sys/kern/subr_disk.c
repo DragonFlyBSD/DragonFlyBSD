@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.20 2005/09/10 21:01:20 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.21 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 /*
  * Create a slice and unit managed disk.
  *
- * Our port layer will be responsible for assigning pblkno and handling
+ * Our port layer will be responsible for assigning blkno and handling
  * high level partition operations, then forwarding the requests to the
  * raw device.
  *
@@ -300,7 +300,7 @@ disk_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 			    msg->am_ioctl.td);
 		break;
 	case CDEV_CMD_STRATEGY:
-		diskstrategy(msg->am_strategy.bp);
+		diskstrategy(msg->am_strategy.msg.dev, msg->am_strategy.bio);
 		error = 0;
 		break;
 	case CDEV_CMD_PSIZE:
@@ -452,31 +452,32 @@ diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
  */
 static
 void
-diskstrategy(struct buf *bp)
+diskstrategy(dev_t dev, struct bio *bio)
 {
+	struct bio *nbio;
 	struct disk *dp;
 
-	dp = bp->b_dev->si_disk;
+	dp = dev->si_disk;
 
 	if (dp == NULL) {
-		bp->b_error = ENXIO;
-		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		bio->bio_buf->b_error = ENXIO;
+		bio->bio_buf->b_flags |= B_ERROR;
+		biodone(bio);
 		return;
 	}
-	KKASSERT(bp->b_dev->si_disk == dp);
+	KKASSERT(dev->si_disk == dp);
 
 	/*
 	 * The dscheck() function will also transform the slice relative
-	 * block number i.e. bp->b_blkno into a block number that can be
+	 * block number i.e. bio->bio_blkno into a block number that can be
 	 * passed directly to the underlying raw device.
 	 */
-	if (dscheck(bp, dp->d_slice) <= 0) {
-		biodone(bp);
+	nbio = dscheck(dev, bio, dp->d_slice);
+	if (nbio == NULL) {
+		biodone(bio);
 		return;
 	}
-	bp->b_dev = dp->d_rawdev;
-	dev_dstrategy(dp->d_rawdev, bp);
+	dev_dstrategy(dp->d_rawdev, nbio);
 }
 
 /*
@@ -535,7 +536,7 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
 /*
  * Seek sort for disks.
  *
- * The buf_queue keep two queues, sorted in ascending block order.  The first
+ * The bio_queue keep two queues, sorted in ascending block order.  The first
  * queue holds those requests which are positioned after the current block
  * (in the first request); the second, which starts at queue->switch_point,
  * holds requests which came in after their block number was passed.  Thus
@@ -547,22 +548,22 @@ SYSCTL_INT(_debug_sizeof, OID_AUTO, disk, CTLFLAG_RD,
  * allocated.
  */
 void
-bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
+bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 {
-	struct buf *bq;
-	struct buf *bn;
-	struct buf *be;
+	struct bio *bq;
+	struct bio *bn;
+	struct bio *be;
 	
-	be = TAILQ_LAST(&bufq->queue, buf_queue);
+	be = TAILQ_LAST(&bioq->queue, bio_queue);
 	/*
 	 * If the queue is empty or we are an
 	 * ordered transaction, then it's easy.
 	 */
-	if ((bq = bufq_first(bufq)) == NULL || 
-	    (bp->b_flags & B_ORDERED) != 0) {
-		bufq_insert_tail(bufq, bp);
+	if ((bq = bioq_first(bioq)) == NULL || 
+	    (bio->bio_buf->b_flags & B_ORDERED) != 0) {
+		bioq_insert_tail(bioq, bio);
 		return;
-	} else if (bufq->insert_point != NULL) {
+	} else if (bioq->insert_point != NULL) {
 
 		/*
 		 * A certain portion of the list is
@@ -570,7 +571,7 @@ bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
 		 * we can only insert after the insert
 		 * point.
 		 */
-		bq = bufq->insert_point;
+		bq = bioq->insert_point;
 	} else {
 
 		/*
@@ -579,16 +580,16 @@ bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
 		 * "locked" portion of the list, then we must add ourselves
 		 * to the second request list.
 		 */
-		if (bp->b_pblkno < bufq->last_pblkno) {
+		if (bio->bio_blkno < bioq->last_blkno) {
 
-			bq = bufq->switch_point;
+			bq = bioq->switch_point;
 			/*
 			 * If we are starting a new secondary list,
 			 * then it's easy.
 			 */
 			if (bq == NULL) {
-				bufq->switch_point = bp;
-				bufq_insert_tail(bufq, bp);
+				bioq->switch_point = bio;
+				bioq_insert_tail(bioq, bio);
 				return;
 			}
 			/*
@@ -596,21 +597,21 @@ bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
 			 * insert us before the switch point and move
 			 * the switch point.
 			 */
-			if (bp->b_pblkno < bq->b_pblkno) {
-				bufq->switch_point = bp;
-				TAILQ_INSERT_BEFORE(bq, bp, b_act);
+			if (bio->bio_blkno < bq->bio_blkno) {
+				bioq->switch_point = bio;
+				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
 				return;
 			}
 		} else {
-			if (bufq->switch_point != NULL)
-				be = TAILQ_PREV(bufq->switch_point,
-						buf_queue, b_act);
+			if (bioq->switch_point != NULL)
+				be = TAILQ_PREV(bioq->switch_point,
+						bio_queue, bio_act);
 			/*
-			 * If we lie between last_pblkno and bq,
+			 * If we lie between last_blkno and bq,
 			 * insert before bq.
 			 */
-			if (bp->b_pblkno < bq->b_pblkno) {
-				TAILQ_INSERT_BEFORE(bq, bp, b_act);
+			if (bio->bio_blkno < bq->bio_blkno) {
+				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
 				return;
 			}
 		}
@@ -620,25 +621,25 @@ bufqdisksort(struct buf_queue_head *bufq, struct buf *bp)
 	 * Request is at/after our current position in the list.
 	 * Optimize for sequential I/O by seeing if we go at the tail.
 	 */
-	if (bp->b_pblkno > be->b_pblkno) {
-		TAILQ_INSERT_AFTER(&bufq->queue, be, bp, b_act);
+	if (bio->bio_blkno > be->bio_blkno) {
+		TAILQ_INSERT_AFTER(&bioq->queue, be, bio, bio_act);
 		return;
 	}
 
 	/* Otherwise, insertion sort */
-	while ((bn = TAILQ_NEXT(bq, b_act)) != NULL) {
+	while ((bn = TAILQ_NEXT(bq, bio_act)) != NULL) {
 		
 		/*
 		 * We want to go after the current request if it is the end
 		 * of the first request list, or if the next request is a
 		 * larger cylinder than our request.
 		 */
-		if (bn == bufq->switch_point
-		 || bp->b_pblkno < bn->b_pblkno)
+		if (bn == bioq->switch_point
+		 || bio->bio_blkno < bn->bio_blkno)
 			break;
 		bq = bn;
 	}
-	TAILQ_INSERT_AFTER(&bufq->queue, bq, bp, b_act);
+	TAILQ_INSERT_AFTER(&bioq->queue, bq, bio, bio_act);
 }
 
 
@@ -657,12 +658,11 @@ readdisklabel(dev_t dev, struct disklabel *lp)
 	char *msg = NULL;
 
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_dev = dev;
-	bp->b_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
+	bp->b_bio1.bio_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
 	bp->b_bcount = lp->d_secsize;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_flags |= B_READ;
-	BUF_STRATEGY(bp, 1);
+	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(bp))
 		msg = "I/O error";
 	else for (dlp = (struct disklabel *)bp->b_data;
@@ -748,8 +748,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_dev = dkmodpart(dev, RAW_PART);
-	bp->b_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
+	bp->b_bio1.bio_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
 	bp->b_bcount = lp->d_secsize;
 #if 1
 	/*
@@ -761,7 +760,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 	 */
 	bp->b_flags &= ~B_INVAL;
 	bp->b_flags |= B_READ;
-	BUF_STRATEGY(bp, 1);
+	dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
 	error = biowait(bp);
 	if (error)
 		goto done;
@@ -774,8 +773,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 			*dlp = *lp;
 			bp->b_flags &= ~(B_DONE | B_READ);
 			bp->b_flags |= B_WRITE;
-			bp->b_dev = dkmodpart(dev, RAW_PART);
-			BUF_STRATEGY(bp, 1);
+			dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
 			error = biowait(bp);
 			goto done;
 		}
@@ -811,9 +809,10 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * or addlog, respectively.  There is no trailing space.
  */
 void
-diskerr(struct buf *bp, dev_t dev, char *what, int pri, 
+diskerr(struct bio *bio, dev_t dev, const char *what, int pri, 
 	int blkdone, struct disklabel *lp)
 {
+	struct buf *bp = bio->bio_buf;
 	int unit = dkunit(dev);
 	int slice = dkslice(dev);
 	int part = dkpart(dev);
@@ -824,7 +823,7 @@ diskerr(struct buf *bp, dev_t dev, char *what, int pri,
 	sname = dsname(dev, unit, slice, part, partname);
 	printf("%s%s: %s %sing fsbn ", sname, partname, what,
 	      bp->b_flags & B_READ ? "read" : "writ");
-	sn = bp->b_blkno;
+	sn = bio->bio_blkno;
 	if (bp->b_bcount <= DEV_BSIZE) {
 		printf("%ld", (long)sn);
 	} else {
@@ -832,17 +831,17 @@ diskerr(struct buf *bp, dev_t dev, char *what, int pri,
 			sn += blkdone;
 			printf("%ld of ", (long)sn);
 		}
-		printf("%ld-%ld", (long)bp->b_blkno,
-		    (long)(bp->b_blkno + (bp->b_bcount - 1) / DEV_BSIZE));
+		printf("%ld-%ld", (long)bio->bio_blkno,
+		    (long)(bio->bio_blkno + (bp->b_bcount - 1) / DEV_BSIZE));
 	}
 	if (lp && (blkdone >= 0 || bp->b_bcount <= lp->d_secsize)) {
 		sn += lp->d_partitions[part].p_offset;
 		/*
 		 * XXX should add slice offset and not print the slice,
 		 * but we don't know the slice pointer.
-		 * XXX should print bp->b_pblkno so that this will work
+		 * XXX should print bio->bio_blkno so that this will work
 		 * independent of slices, labels and bad sector remapping,
-		 * but some drivers don't set bp->b_pblkno.
+		 * but some drivers don't set bio->bio_blkno.
 		 */
 		printf(" (%s bn %ld; cn %ld", sname, (long)sn,
 		    (long)(sn / lp->d_secpercyl));
@@ -851,3 +850,4 @@ diskerr(struct buf *bp, dev_t dev, char *what, int pri,
 		    (long)(sn % lp->d_nsectors));
 	}
 }
+

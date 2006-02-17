@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.7 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.8 2006/02/17 19:17:44 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -322,33 +322,33 @@ fwmem_close (dev_t dev, int flags, int fmt, fw_proc *td)
 static void
 fwmem_biodone(struct fw_xfer *xfer)
 {
-	struct bio *bp;
+	struct bio *bio;
+	struct buf *bp;
 
-	bp = (struct bio *)xfer->sc;
-	bp->bio_error = xfer->resp;
+	bio = (struct bio *)xfer->sc;
+	bp = bio->bio_buf;
+	bp->b_error = xfer->resp;
 
-	if (bp->bio_error != 0) {
+	if (bp->b_error != 0) {
 		if (fwmem_debug)
-			printf("%s: err=%d\n", __func__, bp->bio_error);
-		bp->bio_flags |= BIO_ERROR;
-		bp->bio_resid = bp->bio_bcount;
+			printf("%s: err=%d\n", __func__, bp->b_error);
+		bp->b_flags |= B_ERROR;
+		bp->b_resid = bp->b_bcount;
 	}
-
 	fw_xfer_free(xfer);
-	biodone(bp);
+	biodone(bio);
 }
 
 void
-fwmem_strategy(struct bio *bp)
+fwmem_strategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct firewire_softc *sc;
 	struct fwmem_softc *fms;
 	struct fw_device *fwdev;
 	struct fw_xfer *xfer;
-	dev_t dev;
 	int unit, err=0, iolen;
 
-	dev = bp->bio_dev;
 	/* XXX check request length */
 
         unit = DEV2UNIT(dev);
@@ -364,46 +364,51 @@ fwmem_strategy(struct bio *bp)
 		err = EINVAL;
 		goto error;
 	}
+	if (bio->bio_offset == NOOFFSET) {
+		printf("fwmem: offset was not set bp %p\n", bp);
+		err = EINVAL;
+		goto error;
+	}
 
-	iolen = MIN(bp->bio_bcount, MAXLEN);
-	if ((bp->bio_cmd & BIO_READ) == BIO_READ) {
-		if (iolen == 4 && (bp->bio_offset & 3) == 0)
+	iolen = MIN(bp->b_bcount, MAXLEN);
+	if (bp->b_flags & B_READ) {
+		if (iolen == 4 && (bio->bio_offset & 3) == 0)
 			xfer = fwmem_read_quad(fwdev,
-			    (void *) bp, fwmem_speed,
-			    bp->bio_offset >> 32, bp->bio_offset & 0xffffffff,
-			    bp->bio_data, fwmem_biodone);
+			    (void *) bio, fwmem_speed,
+			    bio->bio_offset >> 32, bio->bio_offset & 0xffffffff,
+			    bp->b_data, fwmem_biodone);
 		else
 			xfer = fwmem_read_block(fwdev,
-			    (void *) bp, fwmem_speed,
-			    bp->bio_offset >> 32, bp->bio_offset & 0xffffffff,
-			    iolen, bp->bio_data, fwmem_biodone);
+			    (void *) bio, fwmem_speed,
+			    bio->bio_offset >> 32, bio->bio_offset & 0xffffffff,
+			    iolen, bp->b_data, fwmem_biodone);
 	} else {
-		if (iolen == 4 && (bp->bio_offset & 3) == 0)
+		if (iolen == 4 && (bio->bio_offset & 3) == 0)
 			xfer = fwmem_write_quad(fwdev,
-			    (void *)bp, fwmem_speed,
-			    bp->bio_offset >> 32, bp->bio_offset & 0xffffffff,
-			    bp->bio_data, fwmem_biodone);
+			    (void *)bio, fwmem_speed,
+			    bio->bio_offset >> 32, bio->bio_offset & 0xffffffff,
+			    bp->b_data, fwmem_biodone);
 		else
 			xfer = fwmem_write_block(fwdev,
-			    (void *)bp, fwmem_speed,
-			    bp->bio_offset >> 32, bp->bio_offset & 0xffffffff,
-			    iolen, bp->bio_data, fwmem_biodone);
+			    (void *)bio, fwmem_speed,
+			    bio->bio_offset >> 32, bio->bio_offset & 0xffffffff,
+			    iolen, bp->b_data, fwmem_biodone);
 	}
 	if (xfer == NULL) {
 		err = EIO;
 		goto error;
 	}
 	/* XXX */
-	bp->bio_resid = bp->bio_bcount - iolen;
+	bp->b_resid = bp->b_bcount - iolen;
 error:
 	crit_exit();
 	if (err != 0) {
 		if (fwmem_debug)
 			printf("%s: err=%d\n", __func__, err);
-		bp->bio_error = err;
-		bp->bio_flags |= BIO_ERROR;
-		bp->bio_resid = bp->bio_bcount;
-		biodone(bp);
+		bp->b_error = err;
+		bp->b_flags |= B_ERROR;
+		bp->b_resid = bp->b_bcount;
+		biodone(bio);
 	}
 }
 

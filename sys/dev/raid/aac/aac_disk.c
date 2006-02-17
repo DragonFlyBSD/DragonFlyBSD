@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.10 2005/08/08 01:25:31 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.11 2006/02/17 19:18:05 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -183,26 +183,27 @@ aac_disk_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle an I/O request.
  */
 static void
-aac_disk_strategy(struct buf *bp)
+aac_disk_strategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct aac_disk	*sc;
 
 	debug_called(4);
 
-	sc = (struct aac_disk *)bp->b_dev->si_drv1;
+	sc = (struct aac_disk *)dev->si_drv1;
 
 	/* bogus disk? */
 	if (sc == NULL) {
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EINVAL;
-		biodone(bp);
+		biodone(bio);
 		return;
 	}
 
 	/* do-nothing operation? */
 	if (bp->b_bcount == 0) {
 		bp->b_resid = bp->b_bcount;
-		biodone(bp);
+		biodone(bio);
 		return;
 	}
 
@@ -210,8 +211,7 @@ aac_disk_strategy(struct buf *bp)
 	devstat_start_transaction(&sc->ad_stats);
 
 	/* pass the bio to the controller - it can work out who we are */
-	aac_submit_bio(bp);
-	return;
+	aac_submit_bio(sc, bio);
 }
 
 /*
@@ -294,27 +294,28 @@ retry:
  * Handle completion of an I/O request.
  */
 void
-aac_biodone(struct buf *bp)
+aac_biodone(struct bio *bio, const char *code)
 {
+	struct buf *bp = bio->bio_buf;
 	struct aac_disk	*sc;
 	int blkno;
 
 	debug_called(4);
 
-	sc = (struct aac_disk *)bp->b_dev->si_drv1;
+	sc = (struct aac_disk *)bio->bio_driver_info;
 
-	devstat_end_transaction_bio(&sc->ad_stats, bp);
-	if (bp->b_flags & BIO_ERROR) {
+	devstat_end_transaction_buf(&sc->ad_stats, bp);
+	if (bp->b_flags & B_ERROR) {
 		blkno = (sc->ad_label.d_nsectors) ? 0 : -1;
 #if defined(__FreeBSD__) && __FreeBSD_version > 500005
-		diskerr(bp, bp->b_dev,
-			(char *)bp->bio_driver1, blkno, &sc->ad_label);
+		diskerr(bio, sc->ad_dev_t,
+			code, blkno, &sc->ad_label);
 #else
-		diskerr(bp, bp->b_dev,
-			(char *)bp->b_driver1, 0, blkno, &sc->ad_label);
+		diskerr(bio, sc->ad_dev_t,
+			code, 0, blkno, &sc->ad_label);
 #endif
 	}
-	biodone(bp);
+	biodone(bio);
 }
 
 /*

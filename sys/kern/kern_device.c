@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.15 2005/03/23 02:50:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.16 2006/02/17 19:18:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -34,6 +34,8 @@
 #include <sys/module.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/bio.h>
+#include <sys/buf.h>
 #include <sys/vnode.h>
 #include <sys/queue.h>
 #include <sys/msgport.h>
@@ -93,7 +95,7 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 		    msg->am_close.td);
 	break;
     case CDEV_CMD_STRATEGY:
-	devsw->old_strategy(msg->am_strategy.bp);
+	devsw->old_strategy(msg->am_strategy.msg.dev, msg->am_strategy.bio);
 	error = 0;
 	break;
     case CDEV_CMD_IOCTL:
@@ -194,15 +196,44 @@ dev_dclose(dev_t dev, int fflag, int devtype, thread_t td)
     return(lwkt_domsg(port, &msg.msg.msg));
 }
 
+/*
+ * Core device strategy call, used to issue I/O on a device.  There are
+ * two versions, a non-chained version and a chained version.  The chained
+ * version reuses a BIO set up by vn_strategy().  The only difference is
+ * that, for now, we do not push a new tracking structure when chaining
+ * from vn_strategy.  XXX this will ultimately have to change.
+ */
 void
-dev_dstrategy(dev_t dev, struct buf *bp)
+dev_dstrategy(dev_t dev, struct bio *bio)
+{
+    struct cdevmsg_strategy msg;
+    struct bio_track *track;
+    lwkt_port_t port;
+
+    KKASSERT(bio->bio_track == NULL);
+    if (bio->bio_buf->b_flags & B_READ)
+	track = &dev->si_track_read;
+    else
+	track = &dev->si_track_write;
+    atomic_add_int(&track->bk_active, 1);
+    bio->bio_track = track;
+
+    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_STRATEGY);
+    KKASSERT(port);	/* 'nostrategy' function is NULL YYY */
+    msg.bio = bio;
+    lwkt_domsg(port, &msg.msg.msg);
+}
+
+void
+dev_dstrategy_chain(dev_t dev, struct bio *bio)
 {
     struct cdevmsg_strategy msg;
     lwkt_port_t port;
 
+    KKASSERT(bio->bio_track != NULL);
     port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_STRATEGY);
     KKASSERT(port);	/* 'nostrategy' function is NULL YYY */
-    msg.bp = bp;
+    msg.bio = bio;
     lwkt_domsg(port, &msg.msg.msg);
 }
 

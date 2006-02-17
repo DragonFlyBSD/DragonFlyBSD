@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.5 2005/03/05 18:08:50 swildner Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.6 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -82,9 +82,10 @@ struct diskslices {
 #define	dsgetlabel(dev, ssp)	(ssp->dss_slices[dkslice(dev)].ds_label)
 
 struct buf;
+struct bio;
 struct disklabel;
 
-int	dscheck (struct buf *bp, struct diskslices *ssp);
+struct bio *dscheck (dev_t dev, struct bio *bio, struct diskslices *ssp);
 void	dsclose (dev_t dev, int mode, struct diskslices *ssp);
 void	dsgone (struct diskslices **sspp);
 int	dsinit (dev_t dev, struct disklabel *lp,

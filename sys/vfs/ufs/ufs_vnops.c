@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.32 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.33 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1443,7 +1443,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	}
 	if ((error = UFS_UPDATE(tvp, !(DOINGSOFTDEP(tvp) |
 				       DOINGASYNC(tvp)))) != 0) {
-		(void)VOP_BWRITE(bp->b_vp, bp);
+		VOP_BWRITE(bp->b_vp, bp);
 		goto bad;
 	}
 	/*
@@ -1757,13 +1757,15 @@ ufs_readlink(struct vop_readlink_args *ap)
  * In order to be able to swap to a file, the VOP_BMAP operation may not
  * deadlock on memory.  See ufs_bmap() for details.
  *
- * ufs_strategy(struct vnode *a_vp, struct buf *a_bp)
+ * ufs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static
 int
 ufs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip;
 	int error;
@@ -1771,24 +1773,26 @@ ufs_strategy(struct vop_strategy_args *ap)
 	ip = VTOI(vp);
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("ufs_strategy: spec");
-	if (bp->b_blkno == bp->b_lblkno) {
-		error = VOP_BMAP(vp, bp->b_lblkno, NULL, &bp->b_blkno, NULL, NULL);
+	nbio = push_bio(bio);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
+				 NULL, NULL);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
-			biodone(bp);
+			/* I/O was never started on nbio, must biodone(bio) */
+			biodone(bio);
 			return (error);
 		}
-		if (bp->b_blkno == (daddr_t)-1)
+		if (nbio->bio_blkno == (daddr_t)-1)
 			vfs_bio_clrbuf(bp);
 	}
-	if (bp->b_blkno == (daddr_t)-1) {
-		biodone(bp);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return (0);
 	}
-	vp = ip->i_devvp;
-	bp->b_dev = vp->v_rdev;
-	VOP_STRATEGY(vp, bp);
+	vn_strategy(ip->i_devvp, nbio);
 	return (0);
 }
 

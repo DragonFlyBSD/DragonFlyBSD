@@ -40,7 +40,7 @@
  *
  * $Id: vinumraid5.c,v 1.21 2001/01/09 04:21:27 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumraid5.c,v 1.6.2.2 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.4 2006/02/17 19:18:06 dillon Exp $
  */
 #include "vinumhdr.h"
 #include "request.h"
@@ -124,7 +124,8 @@ bre5(struct request *rq,
     struct metrics m;					    /* most of the information */
     struct sd *sd;
     struct plex *plex;
-    struct buf *bp;					    /* user's bp */
+    struct bio *bio;					    /* user's bp */
+    struct buf *bp;
     struct rqgroup *rqg;				    /* the request group that we will create */
     struct rqelement *rqe;				    /* point to this request information */
     int rsectors;					    /* sectors remaining in this stripe */
@@ -133,7 +134,8 @@ bre5(struct request *rq,
 
     rqg = NULL;						    /* shut up, damn compiler */
     m.diskstart = *diskaddr;				    /* start of transfer */
-    bp = rq->bp;					    /* buffer pointer */
+    bio = rq->bio;					    /* buffer pointer */
+    bp = bio->bio_buf;
     plex = &PLEX[plexno];				    /* point to the plex */
 
 

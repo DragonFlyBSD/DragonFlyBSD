@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.16 2006/02/17 19:18:02 dillon Exp $
  */
 
 /*
@@ -122,12 +122,6 @@ static struct cdevsw vn_cdevsw = {
 	/* dump */	nodump,
 	/* psize */	vnsize
 };
-
-#define	getvnbuf()	\
-	((struct buf *)malloc(sizeof(struct buf), M_DEVBUF, M_WAITOK))
-
-#define putvnbuf(bp)	\
-	free((caddr_t)(bp), M_DEVBUF)
 
 struct vn_softc {
 	int		sc_unit;
@@ -285,20 +279,24 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
  *
  *	Currently B_ASYNC is only partially handled - for OBJT_SWAP I/O only.
  *
- *	NOTE: bp->b_blkno is DEV_BSIZE'd.  We must generate bp->b_pblkno for
- *	our uio or vn_pager_strategy() call that is vn->sc_secsize'd
+ *	NOTE: bio->bio_blkno is DEV_BSIZE'd.  We must generate a new bio
+ *	with a secsize'd blkno.
  */
 
 static	void
-vnstrategy(struct buf *bp)
+vnstrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp;
+	struct bio *nbio;
 	int unit;
 	struct vn_softc *vn;
 	int error;
 
-	unit = dkunit(bp->b_dev);
-	if ((vn = bp->b_dev->si_drv1) == NULL)
-		vn = vnfindvn(bp->b_dev);
+	unit = dkunit(dev);
+	if ((vn = dev->si_drv1) == NULL)
+		vn = vnfindvn(dev);
+
+	bp = bio->bio_buf;
 
 	IFOPT(vn, VN_DEBUG)
 		printf("vnstrategy(%p): unit %d\n", bp, unit);
@@ -306,7 +304,7 @@ vnstrategy(struct buf *bp)
 	if ((vn->sc_flags & VNF_INITED) == 0) {
 		bp->b_error = ENXIO;
 		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		biodone(bio);
 		return;
 	}
 
@@ -320,9 +318,11 @@ vnstrategy(struct buf *bp)
 		 * slices that exist ON the vnode device itself, and
 		 * translate the "slice-relative" block number, again.
 		 */
-		if (vn->sc_slices != NULL && dscheck(bp, vn->sc_slices) <= 0) {
+		if (vn->sc_slices == NULL) {
+			nbio = bio;
+		} else if ((nbio = dscheck(dev, bio, vn->sc_slices)) == NULL) {
 			bp->b_flags |= B_INVAL;
-			biodone(bp);
+			biodone(bio);
 			return;
 		}
 	} else {
@@ -334,14 +334,14 @@ vnstrategy(struct buf *bp)
 		 * multiple of the sector size.
 		 */
 		if (bp->b_bcount % vn->sc_secsize != 0 ||
-		    bp->b_blkno % (vn->sc_secsize / DEV_BSIZE) != 0) {
+		    bio->bio_blkno % (vn->sc_secsize / DEV_BSIZE) != 0) {
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR | B_INVAL;
-			biodone(bp);
+			biodone(bio);
 			return;
 		}
 
-		pbn = bp->b_blkno / (vn->sc_secsize / DEV_BSIZE);
+		pbn = bio->bio_blkno / (vn->sc_secsize / DEV_BSIZE);
 		sz = howmany(bp->b_bcount, vn->sc_secsize);
 
 		/*
@@ -353,7 +353,7 @@ vnstrategy(struct buf *bp)
 				bp->b_error = EINVAL;
 				bp->b_flags |= B_ERROR | B_INVAL;
 			}
-			biodone(bp);
+			biodone(bio);
 			return;
 		}
 
@@ -364,14 +364,18 @@ vnstrategy(struct buf *bp)
 			bp->b_bcount = (vn->sc_size - pbn) * vn->sc_secsize;
 			bp->b_resid = bp->b_bcount;
 		}
-		bp->b_pblkno = pbn;
+		nbio = push_bio(bio);
+		nbio->bio_blkno = pbn;
 	}
 
+	/*
+	 * Use the translated nbio from this point on
+	 */
 	if (vn->sc_vp && (bp->b_flags & B_FREEBUF)) {
 		/*
 		 * Not handled for vnode-backed element yet.
 		 */
-		biodone(bp);
+		biodone(nbio);
 	} else if (vn->sc_vp) {
 		/*
 		 * VNODE I/O
@@ -389,9 +393,9 @@ vnstrategy(struct buf *bp)
 		aiov.iov_len = bp->b_bcount;
 		auio.uio_iov = &aiov;
 		auio.uio_iovcnt = 1;
-		auio.uio_offset = (vm_ooffset_t)bp->b_pblkno * vn->sc_secsize;
+		auio.uio_offset = (vm_ooffset_t)nbio->bio_blkno * vn->sc_secsize;
 		auio.uio_segflg = UIO_SYSSPACE;
-		if( bp->b_flags & B_READ)
+		if (bp->b_flags & B_READ)
 			auio.uio_rw = UIO_READ;
 		else
 			auio.uio_rw = UIO_WRITE;
@@ -409,7 +413,7 @@ vnstrategy(struct buf *bp)
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
 		}
-		biodone(bp);
+		biodone(nbio);
 	} else if (vn->sc_object) {
 		/*
 		 * OBJT_SWAP I/O
@@ -422,14 +426,14 @@ vnstrategy(struct buf *bp)
 		    ("vnstrategy: buffer %p too small for physio", bp));
 
 		if ((bp->b_flags & B_FREEBUF) && TESTOPT(vn, VN_RESERVE)) {
-			biodone(bp);
+			biodone(nbio);
 		} else {
-			vm_pager_strategy(vn->sc_object, bp);
+			vm_pager_strategy(vn->sc_object, nbio);
 		}
 	} else {
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EINVAL;
-		biodone(bp);
+		biodone(nbio);
 	}
 }
 

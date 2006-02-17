@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.28 2006/01/13 21:09:27 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -744,13 +744,14 @@ msdosfs_write(struct vop_write_args *ap)
 			 * Do the bmap now, since pcbmap needs buffers
 			 * for the fat table. (see msdosfs_strategy)
 			 */
-			if (bp->b_blkno == bp->b_lblkno) {
-				error = pcbmap(dep, bp->b_lblkno, &bp->b_blkno, 
-				     0, 0);
+			if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+				error = pcbmap(dep, bp->b_lblkno,
+					       &bp->b_bio2.bio_blkno, 
+					       0, 0);
 				if (error)
-					bp->b_blkno = -1;
+					bp->b_bio2.bio_blkno = (daddr_t)-1;
 			}
-			if (bp->b_blkno == -1) {
+			if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
 				brelse(bp);
 				if (!error)
 					error = EIO;		/* XXX */
@@ -1799,17 +1800,19 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 }
 
 /*
- * msdosfs_strategy(struct vnode *a_vp, struct buf *a_bp)
+ * msdosfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 msdosfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
-	struct denode *dep = VTODE(bp->b_vp);
-	struct vnode *vp;
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
+	struct vnode *vp = ap->a_vp;
+	struct denode *dep = VTODE(vp);
 	int error = 0;
 
-	if (bp->b_vp->v_type == VBLK || bp->b_vp->v_type == VCHR)
+	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("msdosfs_strategy: spec");
 	/*
 	 * If we don't already know the filesystem relative block number
@@ -1817,28 +1820,29 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	 * number as -1 then we've got a hole in the file.  DOS filesystems
 	 * don't allow files with holes, so we shouldn't ever see this.
 	 */
-	if (bp->b_blkno == bp->b_lblkno) {
-		error = pcbmap(dep, bp->b_lblkno, &bp->b_blkno, 0, 0);
+	nbio = push_bio(bio);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		error = pcbmap(dep, bio->bio_blkno, &nbio->bio_blkno, 0, 0);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
-			biodone(bp);
+			/* I/O was never started on nbio, must biodone(bio) */
+			biodone(bio);
 			return (error);
 		}
-		if ((long)bp->b_blkno == -1)
+		if (nbio->bio_blkno == (daddr_t)-1)
 			vfs_bio_clrbuf(bp);
 	}
-	if (bp->b_blkno == -1) {
-		biodone(bp);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return (0);
 	}
 	/*
 	 * Read/write the block from/to the disk that contains the desired
 	 * file block.
 	 */
-	vp = dep->de_devvp;
-	bp->b_dev = vp->v_rdev;
-	VOP_STRATEGY(vp, bp);
+	vn_strategy(dep->de_devvp, nbio);
 	return (0);
 }
 

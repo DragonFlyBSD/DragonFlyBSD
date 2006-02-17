@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.21 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.22 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -918,7 +918,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, defect, CTLFLAG_RW, &nfs_defect, 0, "");
 static int
 nfssvc_iod(struct thread *td)
 {
-	struct buf *bp;
+	struct bio *bio;
 	int i, myiod;
 	struct nfsmount *nmp;
 	int error = 0;
@@ -941,10 +941,10 @@ nfssvc_iod(struct thread *td)
 	 */
 	for (;;) {
 	    while (((nmp = nfs_iodmount[myiod]) == NULL
-	             || TAILQ_EMPTY(&nmp->nm_bufq))
+	             || TAILQ_EMPTY(&nmp->nm_bioq))
 		   && error == 0) {
 		if (nmp)
-		    nmp->nm_bufqiods--;
+		    nmp->nm_bioqiods--;
 		nfs_iodwant[myiod] = td;
 		nfs_iodmount[myiod] = NULL;
 		error = tsleep((caddr_t)&nfs_iodwant[myiod],
@@ -953,31 +953,34 @@ nfssvc_iod(struct thread *td)
 	    if (error) {
 		nfs_asyncdaemon[myiod] = 0;
 		if (nmp)
-		    nmp->nm_bufqiods--;
+		    nmp->nm_bioqiods--;
 		nfs_iodwant[myiod] = NULL;
 		nfs_iodmount[myiod] = NULL;
 		nfs_numasync--;
 		return (error);
 	    }
-	    while ((bp = TAILQ_FIRST(&nmp->nm_bufq)) != NULL) {
-		/* Take one off the front of the list */
-		TAILQ_REMOVE(&nmp->nm_bufq, bp, b_freelist);
-		nmp->nm_bufqlen--;
-		if (nmp->nm_bufqwant && nmp->nm_bufqlen <= nfs_numasync) {
-		    nmp->nm_bufqwant = FALSE;
-		    wakeup(&nmp->nm_bufq);
+	    while ((bio = TAILQ_FIRST(&nmp->nm_bioq)) != NULL) {
+		/* 
+		 * Take one off the front of the list.   The BIO's
+		 * block number is normalized for DEV_BSIZE.
+		 */
+		TAILQ_REMOVE(&nmp->nm_bioq, bio, bio_act);
+		nmp->nm_bioqlen--;
+		if (nmp->nm_bioqwant && nmp->nm_bioqlen <= nfs_numasync) {
+		    nmp->nm_bioqwant = FALSE;
+		    wakeup(&nmp->nm_bioq);
 		}
-		(void) nfs_doio(bp, NULL);
+		nfs_doio((struct vnode *)bio->bio_driver_info, bio, NULL);
 		/*
 		 * If there are more than one iod on this mount, then defect
 		 * so that the iods can be shared out fairly between the mounts
 		 */
-		if (nfs_defect && nmp->nm_bufqiods > 1) {
+		if (nfs_defect && nmp->nm_bioqiods > 1) {
 		    NFS_DPF(ASYNCIO,
 			    ("nfssvc_iod: iod %d defecting from mount %p\n",
 			     myiod, nmp));
 		    nfs_iodmount[myiod] = NULL;
-		    nmp->nm_bufqiods--;
+		    nmp->nm_bioqiods--;
 		    break;
 		}
 	    }

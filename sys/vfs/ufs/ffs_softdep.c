@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.33 2006/01/11 02:46:38 corecode Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.34 2006/02/17 19:18:08 dillon Exp $
  */
 
 /*
@@ -1696,12 +1696,15 @@ setup_allocindir_phase2(bp, ip, aip)
 		newindirdep->ir_state = ATTACHED;
 		LIST_INIT(&newindirdep->ir_deplisthd);
 		LIST_INIT(&newindirdep->ir_donehd);
-		if (bp->b_blkno == bp->b_lblkno) {
-			VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_blkno,
+		if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+			VOP_BMAP(bp->b_vp, bp->b_bio1.bio_blkno, 
+				NULL, &bp->b_bio2.bio_blkno,
 				NULL, NULL);
 		}
+		KKASSERT(bp->b_bio2.bio_blkno != (daddr_t)-1);
 		newindirdep->ir_savebp =
-		    getblk(ip->i_devvp, bp->b_blkno, bp->b_bcount, 0, 0);
+		    getblk(ip->i_devvp, bp->b_bio2.bio_blkno, bp->b_bcount,
+			   0, 0);
 		BUF_KERNPROC(newindirdep->ir_savebp);
 		bcopy(bp->b_data, newindirdep->ir_savebp->b_data, bp->b_bcount);
 	}
@@ -1931,6 +1934,9 @@ deallocate_dependencies(bp, inodedep)
 			 * purpose. Hence we swap the safe copy with the real
 			 * copy, allowing the safe copy to be freed and holding
 			 * on to the real copy for later use in indir_trunc.
+			 *
+			 * NOTE: ir_savebp is relative to the block device
+			 * so b_bio1 contains the device block number.
 			 */
 			if (indirdep->ir_state & GOINGAWAY) {
 				FREE_LOCK(&lk);
@@ -1939,8 +1945,8 @@ deallocate_dependencies(bp, inodedep)
 			indirdep->ir_state |= GOINGAWAY;
 			while ((aip = LIST_FIRST(&indirdep->ir_deplisthd)) != 0)
 				free_allocindir(aip, inodedep);
-			if (bp->b_lblkno >= 0 ||
-			    bp->b_blkno != indirdep->ir_savebp->b_lblkno) {
+			if (bp->b_bio1.bio_blkno >= 0 ||
+			    bp->b_bio2.bio_blkno != indirdep->ir_savebp->b_bio1.bio_blkno) {
 				FREE_LOCK(&lk);
 				panic("deallocate_dependencies: not indir");
 			}
@@ -5059,10 +5065,10 @@ drain_output(vp, islocked)
 
 	if (!islocked)
 		ACQUIRE_LOCK(&lk);
-	while (vp->v_numoutput) {
-		vp->v_flag |= VBWAIT;
-		interlocked_sleep(&lk, SLEEP, (caddr_t)&vp->v_numoutput,
-		    0, "drainvp", 0);
+	while (vp->v_track_write.bk_active) {
+		vp->v_track_write.bk_waitflag = 1;
+		interlocked_sleep(&lk, SLEEP, &vp->v_track_write,
+				  0, "drainvp", 0);
 	}
 	if (!islocked)
 		FREE_LOCK(&lk);

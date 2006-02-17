@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.11 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.12 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -423,15 +423,16 @@ dkunit(dev_t dev)
 }
 
 struct	buf;
-struct	buf_queue_head;
+struct	bio;
+struct	bio_queue_head;
 
-int	bounds_check_with_label (struct buf *bp, struct disklabel *lp,
-				     int wlabel);
-void	diskerr (struct buf *bp, dev_t dev, char *what, int pri, int blkdone,
-		     struct disklabel *lp);
+struct bio *bounds_check_with_label (dev_t dev, struct bio *bio,
+				     struct disklabel *lp, int wlabel);
+void	diskerr (struct bio *bio, dev_t dev, const char *what, int pri,
+		     int blkdone, struct disklabel *lp);
 void	disksort (struct buf *ap, struct buf *bp);
 char	*readdisklabel (dev_t dev, struct disklabel *lp);
-void	bufqdisksort (struct buf_queue_head *ap, struct buf *bp);
+void	bioqdisksort (struct bio_queue_head *ap, struct bio *bio);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
 			  u_long openmask);
 int	writedisklabel (dev_t dev, struct disklabel *lp);

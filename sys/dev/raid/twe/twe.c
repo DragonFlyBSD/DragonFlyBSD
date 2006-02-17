@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.12 2005/08/22 21:16:20 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
  */
 
 /*
@@ -378,7 +378,7 @@ twe_startio(struct twe_softc *sc)
 {
     struct twe_request	*tr;
     TWE_Command		*cmd;
-    twe_bio		*bp;
+    struct bio		*bio;
     int			error;
 
     debug_called(4);
@@ -400,18 +400,18 @@ twe_startio(struct twe_softc *sc)
 		break;
 
 	    /* see if there's work to be done */
-	    if ((bp = twe_dequeue_bio(sc)) == NULL) {
+	    if ((bio = twe_dequeue_bio(sc)) == NULL) {
 		twe_release_request(tr);
 		break;
 	    }
 
 	    /* connect the bio to the command */
 	    tr->tr_complete = twe_completeio;
-	    tr->tr_private = bp;
-	    tr->tr_data = TWE_BIO_DATA(bp);
-	    tr->tr_length = TWE_BIO_LENGTH(bp);
+	    tr->tr_private = bio;
+	    tr->tr_data = bio->bio_buf->b_data;
+	    tr->tr_length = bio->bio_buf->b_bcount;
 	    cmd = &tr->tr_command;
-	    if (TWE_BIO_IS_READ(bp)) {
+	    if (bio->bio_buf->b_flags & B_READ) {
 		tr->tr_flags |= TWE_CMD_DATAIN;
 		cmd->io.opcode = TWE_OP_READ;
 	    } else {
@@ -421,9 +421,9 @@ twe_startio(struct twe_softc *sc)
 	
 	    /* build a suitable I/O command (assumes 512-byte rounded transfers) */
 	    cmd->io.size = 3;
-	    cmd->io.unit = TWE_BIO_UNIT(bp);
+	    cmd->io.unit = ((struct twed_softc *)bio->bio_driver_info)->twed_drive->td_twe_unit;
 	    cmd->io.block_count = (tr->tr_length + TWE_BLOCK_SIZE - 1) / TWE_BLOCK_SIZE;
-	    cmd->io.lba = TWE_BIO_LBA(bp);
+	    cmd->io.lba = bio->bio_blkno;
 	}
 	
 	/* did we find something to do? */
@@ -438,10 +438,11 @@ twe_startio(struct twe_softc *sc)
 		break;
 	    tr->tr_status = TWE_CMD_ERROR;
 	    if (tr->tr_private != NULL) {
-		bp = (twe_bio *)(tr->tr_private);
-		TWE_BIO_SET_ERROR(bp, error);
+		bio = (twe_bio *)tr->tr_private;
+		bio->bio_buf->b_error = error;
+		bio->bio_buf->b_flags |= B_ERROR;
 		tr->tr_private = NULL;
-		twed_intr(bp);
+		twed_intr(bio);
 	        twe_release_request(tr);
 	    } else if (tr->tr_flags & TWE_CMD_SLEEPER)
 		wakeup_one(tr); /* wakeup the sleeping owner */
@@ -940,19 +941,22 @@ static void
 twe_completeio(struct twe_request *tr)
 {
     struct twe_softc	*sc = tr->tr_sc;
-    twe_bio		*bp = (twe_bio *)tr->tr_private;
+    struct bio		*bio = (twe_bio *)tr->tr_private;
+    struct buf		*bp = bio->bio_buf;
 
     debug_called(4);
 
     if (tr->tr_status == TWE_CMD_COMPLETE) {
 	if (tr->tr_command.generic.status)
-		if (twe_report_request(tr))
-			TWE_BIO_SET_ERROR(bp, EIO);
+		if (twe_report_request(tr)) {
+			bp->b_error = EIO;
+			bp->b_flags |= B_ERROR;
+		}
     } else {
 	twe_panic(sc, "twe_completeio on incomplete command");
     }
     tr->tr_private = NULL;
-    twed_intr(bp);
+    twed_intr(bio);
     twe_release_request(tr);
 }
 

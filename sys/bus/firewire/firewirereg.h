@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.8 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.9 2006/02/17 19:17:44 dillon Exp $
  *
  */
 
@@ -317,21 +317,7 @@ extern devclass_t firewire_devclass;
 #define CALLOUT_INIT(x) callout_init(x, 0 /* mpsafe */)
 #endif
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-/* compatibility shim for 4.X */
-#define bio buf
-#define bio_bcount b_bcount
-#define bio_cmd b_flags
-#define bio_count b_count
-#define bio_data b_data
-#define bio_dev b_dev
-#define bio_error b_error
-#define bio_flags b_flags
-#define bio_offset b_offset
-#define bio_resid b_resid
-#define BIO_ERROR B_ERROR
-#define BIO_READ B_READ
-#define BIO_WRITE B_WRITE
+#if defined(__DragonFly__)
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif

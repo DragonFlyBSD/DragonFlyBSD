@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.19 2005/09/17 07:43:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.20 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,33 +148,32 @@ mfs_freeblks(struct vop_freeblks_args *ap)
 
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF | B_ASYNC;
-	bp->b_dev = vp->v_rdev;
-	bp->b_blkno = ap->a_addr;
-	bp->b_offset = dbtob(ap->a_addr);
+	bp->b_bio1.bio_blkno = ap->a_addr;
+	bp->b_bio1.bio_offset = dbtob(ap->a_addr);
 	bp->b_bcount = ap->a_length;
 	BUF_KERNPROC(bp);
-	VOP_STRATEGY(vp, bp);
+	vn_strategy(vp, &bp->b_bio1);
 	return(0);
 }
 
 /*
  * Pass I/O requests to the memory filesystem process.
  *
- * mfs_strategy(struct vnode *a_vp, struct buf *a_bp)
+ * mfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 static int
 mfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
 	struct mfsnode *mfsp;
 	struct thread *td = curthread;		/* XXX */
 
-	bp->b_dev = ap->a_vp->v_rdev;
-	mfsp = bp->b_dev->si_drv1;
+	mfsp = ap->a_vp->v_rdev->si_drv1;
 	if (mfsp == NULL) {
 		bp->b_error = ENXIO;
 		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		biodone(bio);
 		return(0);
 	}
 
@@ -192,27 +191,27 @@ mfs_strategy(struct vop_strategy_args *ap)
 		 */
 		caddr_t base;
 
-		base = mfsp->mfs_baseoff + (bp->b_blkno << DEV_BSHIFT);
+		base = mfsp->mfs_baseoff + (bio->bio_blkno << DEV_BSHIFT);
 		if (bp->b_flags & B_FREEBUF)
 			;
 		if (bp->b_flags & B_READ)
 			bcopy(base, bp->b_data, bp->b_bcount);
 		else
 			bcopy(bp->b_data, base, bp->b_bcount);
-		biodone(bp);
+		biodone(bio);
 	} else if (mfsp->mfs_td == td) {
 		/*
 		 * VOP to self
 		 */
 		crit_exit();
-		mfs_doio(bp, mfsp);
+		mfs_doio(bio, mfsp);
 		crit_enter();
 	} else {
 		/*
 		 * VOP from some other process, queue to MFS process and
 		 * wake it up.
 		 */
-		bufq_insert_tail(&mfsp->buf_queue, bp);
+		bioq_insert_tail(&mfsp->bio_queue, bio);
 		wakeup((caddr_t)mfsp);
 	}
 	crit_exit();
@@ -231,9 +230,10 @@ mfs_strategy(struct vop_strategy_args *ap)
  * implement it for page-aligned requests.
  */
 void
-mfs_doio(struct buf *bp, struct mfsnode *mfsp)
+mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 {
-	caddr_t base = mfsp->mfs_baseoff + (bp->b_blkno << DEV_BSHIFT);
+	struct buf *bp = bio->bio_buf;
+	caddr_t base = mfsp->mfs_baseoff + (bio->bio_blkno << DEV_BSHIFT);
 
 	if (bp->b_flags & B_FREEBUF) {
 		/*
@@ -276,7 +276,7 @@ mfs_doio(struct buf *bp, struct mfsnode *mfsp)
 	}
 	if (bp->b_error)
 		bp->b_flags |= B_ERROR;
-	biodone(bp);
+	biodone(bio);
 }
 
 /*
@@ -309,16 +309,16 @@ mfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct mfsnode *mfsp = VTOMFS(vp);
-	struct buf *bp;
+	struct bio *bio;
 	int error;
 
 	/*
 	 * Finish any pending I/O requests.
 	 */
-	while ((bp = bufq_first(&mfsp->buf_queue)) != NULL) {
-		bufq_remove(&mfsp->buf_queue, bp);
-		mfs_doio(bp, mfsp);
-		wakeup((caddr_t)bp);
+	while ((bio = bioq_first(&mfsp->bio_queue)) != NULL) {
+		bioq_remove(&mfsp->bio_queue, bio);
+		mfs_doio(bio, mfsp);
+		wakeup((caddr_t)bio->bio_buf);
 	}
 	/*
 	 * On last close of a memory filesystem
@@ -333,7 +333,7 @@ mfs_close(struct vop_close_args *ap)
 	 */
 	if (vp->v_usecount > 1)
 		printf("mfs_close: ref count %d > 1\n", vp->v_usecount);
-	if (vp->v_usecount > 1 || (bufq_first(&mfsp->buf_queue) != NULL))
+	if (vp->v_usecount > 1 || (bioq_first(&mfsp->bio_queue) != NULL))
 		panic("mfs_close");
 	/*
 	 * Send a request to the filesystem server to exit.
@@ -360,9 +360,9 @@ mfs_inactive(struct vop_inactive_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct mfsnode *mfsp = VTOMFS(vp);
 
-	if (bufq_first(&mfsp->buf_queue) != NULL)
+	if (bioq_first(&mfsp->bio_queue) != NULL)
 		panic("mfs_inactive: not inactive (next buffer %p)",
-			bufq_first(&mfsp->buf_queue));
+			bioq_first(&mfsp->bio_queue));
 	return (0);
 }
 

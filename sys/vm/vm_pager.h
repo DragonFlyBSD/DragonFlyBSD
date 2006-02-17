@@ -37,7 +37,7 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.5 2005/01/23 13:24:20 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_pager.h,v 1.6 2006/02/17 19:18:08 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 TAILQ_HEAD(pagerlst, vm_object);
 
 struct buf;
+struct bio;
 
 struct pagerops {
 	void (*pgo_init) (void);		/* Initialize pager. */
@@ -61,7 +62,7 @@ struct pagerops {
 	void (*pgo_putpages) (vm_object_t, vm_page_t *, int, int, int *); /* Put (write) page. */
 	boolean_t (*pgo_haspage) (vm_object_t, vm_pindex_t, int *, int *); /* Does pager have page? */
 	void (*pgo_pageunswapped) (vm_page_t);
-	void (*pgo_strategy) (vm_object_t, struct buf *);
+	void (*pgo_strategy) (vm_object_t, struct bio *);
 };
 
 /*
@@ -105,7 +106,7 @@ static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t, int *, in
 void vm_pager_init (void);
 vm_object_t vm_pager_object_lookup (struct pagerlst *, void *);
 void vm_pager_sync (void);
-void vm_pager_strategy (vm_object_t object, struct buf *bp);
+void vm_pager_strategy (vm_object_t object, struct bio *bio);
 struct buf *getchainbuf(struct buf *bp, struct vnode *vp, int flags);
 void flushchainbuf(struct buf *nbp);
 void waitchainbuf(struct buf *bp, int count, int done);

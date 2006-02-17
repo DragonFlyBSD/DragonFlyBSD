@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.12 2005/10/26 14:19:08 sephe Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.13 2006/02/17 19:18:06 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -162,12 +162,13 @@
 # include <sys/buf.h>			/* old buf style */
 # include <sys/buf2.h>  		/* bufq stuff */
 #define FREEBSD_4
-typedef struct buf			twe_bio;
-typedef struct buf_queue_head		twe_bioq;
-# define TWE_BIO_QINIT(bq)		bufq_init(&bq);
-# define TWE_BIO_QINSERT(bq, bp)	bufq_insert_tail(&bq, bp)
-# define TWE_BIO_QFIRST(bq)		bufq_first(&bq)
-# define TWE_BIO_QREMOVE(bq, bp)	bufq_remove(&bq, bp)
+typedef struct bio			twe_bio;
+typedef struct bio_queue_head		twe_bioq;
+#if 0
+# define TWE_BIO_QINIT(bq)		bioq_init(&bq);
+# define TWE_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
+# define TWE_BIO_QFIRST(bq)		bioq_first(&bq)
+# define TWE_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
 # define TWE_BIO_IS_READ(bp)		((bp)->b_flags & B_READ)
 # define TWE_BIO_DATA(bp)		(bp)->b_data
 # define TWE_BIO_LENGTH(bp)		(bp)->b_bcount
@@ -180,6 +181,7 @@ typedef struct buf_queue_head		twe_bioq;
 # define TWE_BIO_DONE(bp)		biodone(bp)
 # define TWE_BIO_STATS_START(bp)	devstat_start_transaction(&((struct twed_softc *)TWE_BIO_SOFTC(bp))->twed_stats)
 # define TWE_BIO_STATS_END(bp)		devstat_end_transaction_buf(&((struct twed_softc *)TWE_BIO_SOFTC(bp))->twed_stats, bp)
+#endif
 #else
 # include <sys/bio.h>
 typedef struct bio			twe_bio;

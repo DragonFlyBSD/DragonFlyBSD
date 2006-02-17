@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.6 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.7 2006/02/17 19:18:05 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -112,32 +112,34 @@ ipsd_close(dev_t dev, int oflags, int devtype, d_thread_t *td)
 
 /* ipsd_finish is called to clean up and return a completed IO request */
 void
-ipsd_finish(struct bio *iobuf)
+ipsd_finish(struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	ipsdisk_softc_t *dsc;
 
-	dsc = iobuf->bio_disk->d_drv1;
-	if (iobuf->bio_flags & BIO_ERROR) {
-		device_printf(dsc->dev, "iobuf error %d\n", iobuf->bio_error);
-	} else
-		iobuf->bio_resid = 0;
-	devstat_end_transaction_buf(&dsc->stats, iobuf);
-	biodone(iobuf);
+	dsc = bio->bio_driver_info;
+	if (bp->b_flags & B_ERROR) {
+		device_printf(dsc->dev, "iobuf error %d\n", bp->b_error);
+	} else {
+		bp->b_resid = 0;
+	}
+	devstat_end_transaction_buf(&dsc->stats, bp);
+	biodone(bio);
 	ips_start_io_request(dsc->sc);
 }
 
 
 static void
-ipsd_strategy(struct bio *iobuf)
+ipsd_strategy(dev_t dev, struct bio *bio)
 {
 	ipsdisk_softc_t *dsc;
 
-	dsc = iobuf->bio_disk->d_drv1;
+	dsc = dev->si_drv1;
 	DEVICE_PRINTF(8, dsc->dev, "in strategy\n");
-	iobuf->bio_driver1 = (void *)(uintptr_t)dsc->sc->drives[dsc->disk_number].drivenum;
+	bio->bio_driver_info = dsc;
 	devstat_start_transaction(&dsc->stats);
 	lwkt_exlock(&dsc->sc->queue_lock, __func__);
-	bufq_insert_tail(&dsc->sc->queue, iobuf);
+	bioq_insert_tail(&dsc->sc->bio_queue, bio);
 	ips_start_io_request(dsc->sc);
 	lwkt_exunlock(&dsc->sc->queue_lock);
 }

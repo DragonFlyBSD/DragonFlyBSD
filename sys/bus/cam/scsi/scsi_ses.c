@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.13 2006/01/22 14:03:51 swildner Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.14 2006/02/17 19:17:42 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -139,7 +139,7 @@ static void ses_log(struct ses_softc *, const char *, ...);
 
 
 #define ccb_state	ppriv_field0
-#define ccb_bp		ppriv_ptr1
+#define ccb_bio		ppriv_ptr1
 
 struct ses_softc {
 	enctyp		ses_type;	/* type of enclosure */

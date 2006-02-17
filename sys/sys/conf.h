@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.9 2005/02/21 18:56:02 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.10 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -45,6 +45,7 @@
 
 #include <sys/queue.h>
 #include <sys/time.h>
+#include <sys/biotrack.h>
 
 #define SPECNAMELEN	15
 
@@ -76,6 +77,8 @@ struct specinfo {
 			int __sid_bsize_best; /* optimal block size */
 		} __si_disk;
 	} __si_u;
+	struct bio_track si_track_read;
+	struct bio_track si_track_write;
 	time_t		si_lastread;		/* time_second */
 	time_t		si_lastwrite;		/* time_second */
 };
@@ -103,6 +106,7 @@ struct specinfo {
  */
 
 struct buf;
+struct bio;
 struct proc;
 struct uio;
 struct knote;
@@ -130,7 +134,7 @@ typedef struct thread d_thread_t;
 typedef int d_clone_t (dev_t dev);
 typedef int d_open_t (dev_t dev, int oflags, int devtype, d_thread_t *td);
 typedef int d_close_t (dev_t dev, int fflag, int devtype, d_thread_t *td);
-typedef void d_strategy_t (struct buf *bp);
+typedef void d_strategy_t (dev_t dev, struct bio *bio);
 typedef int d_ioctl_t (dev_t dev, u_long cmd, caddr_t data,
 			   int fflag, d_thread_t *td);
 typedef int d_dump_t (dev_t dev, u_int count, u_int blkno, u_int secsize);
@@ -152,15 +156,6 @@ typedef int l_rint_t (int c, struct tty *tp);
 typedef int l_start_t (struct tty *tp);
 typedef int l_modem_t (struct tty *tp, int flag);
 
-/*
- * XXX: The dummy argument can be used to do what strategy1() never
- * did anywhere:  Create a per device flag to lock the device during
- * label/slice surgery, all calls with a dummy == 0 gets stalled on
- * a queue somewhere, whereas dummy == 1 are let through.  Once out
- * of surgery, reset the flag and restart all the stuff on the stall
- * queue.
- */
-#define BUF_STRATEGY(bp, dummy) dev_dstrategy((bp)->b_dev, bp)
 /*
  * Types for d_flags.
  */

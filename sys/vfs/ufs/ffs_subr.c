@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.8 2005/10/16 18:48:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.9 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -155,7 +155,7 @@ ffs_checkoverlap(struct buf *bp, struct inode *ip)
 	struct vnode *vp;
 
 	ebp = &buf[nbuf];
-	start = bp->b_blkno;
+	start = bp->b_bio2.bio_blkno;
 	last = start + btodb(bp->b_bcount) - 1;
 	for (ep = buf; ep < ebp; ep++) {
 		if (ep == bp || (ep->b_flags & B_INVAL) ||
@@ -167,13 +167,15 @@ ffs_checkoverlap(struct buf *bp, struct inode *ip)
 		if (vp != ip->i_devvp)
 			continue;
 		/* look for overlap */
-		if (ep->b_bcount == 0 || ep->b_blkno > last ||
-		    ep->b_blkno + btodb(ep->b_bcount) <= start)
+		if (ep->b_bcount == 0 || ep->b_bio2.bio_blkno == (daddr_t)-1 ||
+		    ep->b_bio2.bio_blkno > last ||
+		    ep->b_bio2.bio_blkno + btodb(ep->b_bcount) <= start)
 			continue;
 		vprint("Disk overlap", vp);
 		(void)printf("\tstart %lu, end %lu overlap start %lu, end %lu\n",
-			(u_long)start, (u_long)last, (u_long)ep->b_blkno,
-			(u_long)(ep->b_blkno + btodb(ep->b_bcount) - 1));
+			(u_long)start, (u_long)last, 
+			(u_long)ep->b_bio2.bio_blkno,
+			(u_long)(ep->b_bio2.bio_blkno + btodb(ep->b_bcount) - 1));
 		panic("ffs_checkoverlap: Disk buffer overlap");
 	}
 }

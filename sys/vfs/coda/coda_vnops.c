@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.28 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $
  * 
  */
 
@@ -1652,14 +1652,8 @@ coda_bmap(void *v)
  * int async_daemon_count;
  */
 int
-coda_strategy(void *v)
+coda_strategy(struct vop_strategy_args *ap __unused)
 {
-/* true args */
-    struct vop_strategy_args *ap = v;
-    struct buf *bp __attribute__((unused)) = ap->a_bp;
-/* upcall decl */
-/* locals */
-
 	printf("coda_strategy: called ???\n");
 	return(EOPNOTSUPP);
 }

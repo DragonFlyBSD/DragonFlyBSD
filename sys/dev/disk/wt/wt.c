@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.12 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.13 2006/02/17 19:18:05 dillon Exp $
  *
  */
 
@@ -507,9 +507,10 @@ wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct thread *td)
  * Strategy routine.
  */
 static void
-wtstrategy (struct buf *bp)
+wtstrategy (dev_t dev, struct bio *bio)
 {
-	int u = minor (bp->b_dev) & T_UNIT;
+	struct buf *bp = bio->bio_buf;
+	int u = minor(dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 
 	bp->b_resid = bp->b_bcount;
@@ -576,7 +577,7 @@ wtstrategy (struct buf *bp)
 errxit:		bp->b_error = EIO;
 err2xit:	bp->b_flags |= B_ERROR;
 	}
-xit:    biodone (bp);
+xit:    biodone (bio);
 	return;
 }
 

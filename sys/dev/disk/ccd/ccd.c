@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.21 2005/12/11 01:54:07 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.22 2006/02/17 19:17:55 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -149,7 +149,7 @@ SYSCTL_INT(_debug, OID_AUTO, ccddebug, CTLFLAG_RW, &ccddebug, 0, "");
 
 struct ccdbuf {
 	struct buf	cb_buf;		/* new I/O buf */
-	struct buf	*cb_obp;	/* ptr. to original I/O buf */
+	struct bio	*cb_obio;	/* ptr. to original I/O buf */
 	struct ccdbuf	*cb_freenext;	/* free list link */
 	int		cb_unit;	/* target unit */
 	int		cb_comp;	/* target component */
@@ -198,15 +198,15 @@ static	void ccdattach (void);
 static	int ccd_modevent (module_t, int, void *);
 
 /* called by biodone() at interrupt time */
-static	void ccdiodone (struct ccdbuf *cbp);
+static	void ccdiodone (struct bio *bio);
 
-static	void ccdstart (struct ccd_softc *, struct buf *);
+static	void ccdstart (struct ccd_softc *, struct bio *);
 static	void ccdinterleave (struct ccd_softc *, int);
-static	void ccdintr (struct ccd_softc *, struct buf *);
+static	void ccdintr (struct ccd_softc *, struct bio *);
 static	int ccdinit (struct ccddevice *, char **, struct thread *);
 static	int ccdlookup (char *, struct thread *td, struct vnode **);
 static	void ccdbuffer (struct ccdbuf **ret, struct ccd_softc *,
-		struct buf *, daddr_t, caddr_t, long);
+		struct bio *, daddr_t, caddr_t, long);
 static	void ccdgetdisklabel (dev_t);
 static	void ccdmakedisklabel (struct ccd_softc *);
 static	int ccdlock (struct ccd_softc *);
@@ -241,8 +241,10 @@ getccdbuf(struct ccdbuf *cpy)
 	if ((cbp = ccdfreebufs) != NULL) {
 		ccdfreebufs = cbp->cb_freenext;
 		--numccdfreebufs;
+		reinitbufbio(&cbp->cb_buf);
 	} else {
 		cbp = malloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK);
+		initbufbio(&cbp->cb_buf);
 	}
 
 	/*
@@ -749,9 +751,11 @@ ccdclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static void
-ccdstrategy(struct buf *bp)
+ccdstrategy(dev_t dev, struct bio *bio)
 {
-	int unit = ccdunit(bp->b_dev);
+	int unit = ccdunit(dev);
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	struct ccd_softc *cs = &ccd_softc[unit];
 	int wlabel;
 	struct disklabel *lp;
@@ -777,14 +781,15 @@ ccdstrategy(struct buf *bp)
 	 * error, the bounds check will flag that for us.
 	 */
 	wlabel = cs->sc_flags & (CCDF_WLABEL|CCDF_LABELLING);
-	if (ccdpart(bp->b_dev) != RAW_PART) {
-		if (bounds_check_with_label(bp, lp, wlabel) <= 0)
+	if (ccdpart(dev) != RAW_PART) {
+		nbio = bounds_check_with_label(dev, bio, lp, wlabel);
+		if (nbio == NULL)
 			goto done;
 	} else {
 		int pbn;        /* in sc_secsize chunks */
 		long sz;        /* in sc_secsize chunks */
 
-		pbn = bp->b_blkno / (cs->sc_geom.ccg_secsize / DEV_BSIZE);
+		pbn = bio->bio_blkno / (cs->sc_geom.ccg_secsize / DEV_BSIZE);
 		sz = howmany(bp->b_bcount, cs->sc_geom.ccg_secsize);
 
 		/*
@@ -808,26 +813,34 @@ ccdstrategy(struct buf *bp)
 			bp->b_bcount = (cs->sc_size - pbn) * 
 			    cs->sc_geom.ccg_secsize;
 		}
+		nbio = bio;
 	}
 
 	bp->b_resid = bp->b_bcount;
+	nbio->bio_driver_info = dev;
 
 	/*
 	 * "Start" the unit.
 	 */
 	crit_enter();
-	ccdstart(cs, bp);
+	ccdstart(cs, nbio);
 	crit_exit();
 	return;
+
+	/*
+	 * note: bio, not nbio, is valid at the done label.
+	 */
 done:
-	biodone(bp);
+	biodone(bio);
 }
 
 static void
-ccdstart(struct ccd_softc *cs, struct buf *bp)
+ccdstart(struct ccd_softc *cs, struct bio *bio)
 {
 	long bcount, rcount;
 	struct ccdbuf *cbp[4];
+	struct buf *bp = bio->bio_buf;
+	dev_t dev = bio->bio_driver_info;
 	/* XXX! : 2 reads and 2 writes for RAID 4/5 */
 	caddr_t addr;
 	daddr_t bn;
@@ -844,9 +857,9 @@ ccdstart(struct ccd_softc *cs, struct buf *bp)
 	/*
 	 * Translate the partition-relative block number to an absolute.
 	 */
-	bn = bp->b_blkno;
-	if (ccdpart(bp->b_dev) != RAW_PART) {
-		pp = &cs->sc_label.d_partitions[ccdpart(bp->b_dev)];
+	bn = bio->bio_blkno;
+	if (ccdpart(dev) != RAW_PART) {
+		pp = &cs->sc_label.d_partitions[ccdpart(dev)];
 		bn += pp->p_offset;
 	}
 
@@ -855,7 +868,7 @@ ccdstart(struct ccd_softc *cs, struct buf *bp)
 	 */
 	addr = bp->b_data;
 	for (bcount = bp->b_bcount; bcount > 0; bcount -= rcount) {
-		ccdbuffer(cbp, cs, bp, bn, addr, bcount);
+		ccdbuffer(cbp, cs, bio, bn, addr, bcount);
 		rcount = cbp[0]->cb_buf.b_bcount;
 
 		if (cs->sc_cflags & CCDF_MIRROR) {
@@ -869,12 +882,10 @@ ccdstart(struct ccd_softc *cs, struct buf *bp)
 			 * also try to avoid hogging.
 			 */
 			if ((cbp[0]->cb_buf.b_flags & B_READ) == 0) {
-				cbp[0]->cb_buf.b_vp->v_numoutput++;
-				cbp[1]->cb_buf.b_vp->v_numoutput++;
-				VOP_STRATEGY(cbp[0]->cb_buf.b_vp, 
-				    &cbp[0]->cb_buf);
-				VOP_STRATEGY(cbp[1]->cb_buf.b_vp, 
-				    &cbp[1]->cb_buf);
+				vn_strategy(cbp[0]->cb_buf.b_vp, 
+				    &cbp[0]->cb_buf.b_bio1);
+				vn_strategy(cbp[1]->cb_buf.b_vp, 
+				    &cbp[1]->cb_buf.b_bio1);
 			} else {
 				int pick = cs->sc_pick;
 				daddr_t range = cs->sc_size / 16;
@@ -885,16 +896,15 @@ ccdstart(struct ccd_softc *cs, struct buf *bp)
 					cs->sc_pick = pick = 1 - pick;
 				}
 				cs->sc_blk[pick] = bn + btodb(rcount);
-				VOP_STRATEGY(cbp[pick]->cb_buf.b_vp, 
-				    &cbp[pick]->cb_buf);
+				vn_strategy(cbp[pick]->cb_buf.b_vp, 
+				    &cbp[pick]->cb_buf.b_bio1);
 			}
 		} else {
 			/*
 			 * Not mirroring
 			 */
-			if ((cbp[0]->cb_buf.b_flags & B_READ) == 0)
-				cbp[0]->cb_buf.b_vp->v_numoutput++;
-			VOP_STRATEGY(cbp[0]->cb_buf.b_vp, &cbp[0]->cb_buf);
+			vn_strategy(cbp[0]->cb_buf.b_vp,
+				     &cbp[0]->cb_buf.b_bio1);
 		}
 		bn += btodb(rcount);
 		addr += rcount;
@@ -905,7 +915,7 @@ ccdstart(struct ccd_softc *cs, struct buf *bp)
  * Build a component buffer header.
  */
 static void
-ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
+ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 	  caddr_t addr, long bcount)
 {
 	struct ccdcinfo *ci, *ci2 = NULL;	/* XXX */
@@ -1026,11 +1036,8 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
 	 * Fill in the component buf structure.
 	 */
 	cbp = getccdbuf(NULL);
-	cbp->cb_buf.b_flags = bp->b_flags;
-	cbp->cb_buf.b_iodone = (void (*)(struct buf *))ccdiodone;
-	cbp->cb_buf.b_dev = ci->ci_dev;		/* XXX */
-	cbp->cb_buf.b_blkno = cbn + cboff + CCD_OFFSET;
-	cbp->cb_buf.b_offset = dbtob(cbn + cboff + CCD_OFFSET);
+	cbp->cb_buf.b_flags = bio->bio_buf->b_flags;
+	/*cbp->cb_buf.b_dev = ci->ci_dev; */
 	cbp->cb_buf.b_data = addr;
 	cbp->cb_buf.b_vp = ci->ci_vp;
 	if (cs->sc_ileave == 0)
@@ -1040,17 +1047,23 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
 	cbp->cb_buf.b_bcount = (cbc < bcount) ? cbc : bcount;
  	cbp->cb_buf.b_bufsize = cbp->cb_buf.b_bcount;
 
+	cbp->cb_buf.b_bio1.bio_done = ccdiodone;
+	cbp->cb_buf.b_bio1.bio_caller_info1.ptr = cbp;
+	cbp->cb_buf.b_bio1.bio_blkno = cbn + cboff + CCD_OFFSET;
+	cbp->cb_buf.b_bio1.bio_offset = dbtob(cbn + cboff + CCD_OFFSET);
+
 	/*
 	 * context for ccdiodone
 	 */
-	cbp->cb_obp = bp;
+	cbp->cb_obio = bio;
 	cbp->cb_unit = cs - ccd_softc;
 	cbp->cb_comp = ci - cs->sc_cinfo;
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_IO)
 		printf(" dev %x(u%d): cbp %x bn %d addr %x bcnt %d\n",
-		       ci->ci_dev, ci-cs->sc_cinfo, cbp, cbp->cb_buf.b_blkno,
+		       ci->ci_dev, ci-cs->sc_cinfo, cbp,
+		       cbp->cb_buf.b_bio1.bio_blkno,
 		       cbp->cb_buf.b_data, cbp->cb_buf.b_bcount);
 #endif
 	cb[0] = cbp;
@@ -1062,7 +1075,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
 	if (cs->sc_cflags & CCDF_MIRROR) {
 		/* mirror, setup second I/O */
 		cbp = getccdbuf(cb[0]);
-		cbp->cb_buf.b_dev = ci2->ci_dev;
+		/* cbp->cb_buf.b_dev = ci2->ci_dev; */
 		cbp->cb_buf.b_vp = ci2->ci_vp;
 		cbp->cb_comp = ci2 - cs->sc_cinfo;
 		cb[1] = cbp;
@@ -1075,8 +1088,10 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct buf *bp, daddr_t bn,
 }
 
 static void
-ccdintr(struct ccd_softc *cs, struct buf *bp)
+ccdintr(struct ccd_softc *cs, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
+
 #ifdef DEBUG
 	if (ccddebug & CCDB_FOLLOW)
 		printf("ccdintr(%x, %x)\n", cs, bp);
@@ -1087,7 +1102,7 @@ ccdintr(struct ccd_softc *cs, struct buf *bp)
 	if (bp->b_flags & B_ERROR)
 		bp->b_resid = bp->b_bcount;
 	devstat_end_transaction_buf(&cs->device_stats, bp);
-	biodone(bp);
+	biodone(bio);
 }
 
 /*
@@ -1096,11 +1111,19 @@ ccdintr(struct ccd_softc *cs, struct buf *bp)
  * take a ccd interrupt.
  */
 static void
-ccdiodone(struct ccdbuf *cbp)
+ccdiodone(struct bio *bio)
 {
-	struct buf *bp = cbp->cb_obp;
+	struct ccdbuf *cbp = bio->bio_caller_info1.ptr;
+	struct bio *obio = cbp->cb_obio;
+	struct buf *obp = obio->bio_buf;
 	int unit = cbp->cb_unit;
 	int count;
+
+	/*
+	 * Since we do not have exclusive access to underlying devices,
+	 * we can't keep cache translations around.
+	 */
+	clearbiocache(bio->bio_next);
 
 	crit_enter();
 #ifdef DEBUG
@@ -1108,10 +1131,10 @@ ccdiodone(struct ccdbuf *cbp)
 		printf("ccdiodone(%x)\n", cbp);
 	if (ccddebug & CCDB_IO) {
 		printf("ccdiodone: bp %x bcount %d resid %d\n",
-		       bp, bp->b_bcount, bp->b_resid);
+		       obp, obp->b_bcount, obp->b_resid);
 		printf(" dev %x(u%d), cbp %x bn %d addr %x bcnt %d\n",
 		       cbp->cb_buf.b_dev, cbp->cb_comp, cbp,
-		       cbp->cb_buf.b_blkno, cbp->cb_buf.b_data,
+		       cbp->cb_buf.b_lblkno, cbp->cb_buf.b_data,
 		       cbp->cb_buf.b_bcount);
 	}
 #endif
@@ -1121,7 +1144,6 @@ ccdiodone(struct ccdbuf *cbp)
 	 * set the error in the bp yet because the second read may
 	 * succeed.
 	 */
-
 	if (cbp->cb_buf.b_flags & B_ERROR) {
 		const char *msg = "";
 
@@ -1138,15 +1160,16 @@ ccdiodone(struct ccdbuf *cbp)
 
 			msg = ", trying other disk";
 			cs->sc_pick = 1 - cs->sc_pick;
-			cs->sc_blk[cs->sc_pick] = bp->b_blkno;
+			cs->sc_blk[cs->sc_pick] = obio->bio_blkno;
 		} else {
-			bp->b_flags |= B_ERROR;
-			bp->b_error = cbp->cb_buf.b_error ? 
+			obp->b_flags |= B_ERROR;
+			obp->b_error = cbp->cb_buf.b_error ? 
 			    cbp->cb_buf.b_error : EIO;
 		}
 		printf("ccd%d: error %d on component %d block %d (ccd block %d)%s\n",
-		       unit, bp->b_error, cbp->cb_comp, 
-		       (int)cbp->cb_buf.b_blkno, bp->b_blkno, msg);
+		       unit, obp->b_error, cbp->cb_comp, 
+		       (int)cbp->cb_buf.b_bio2.bio_blkno, 
+		       obio->bio_blkno, msg);
 	}
 
 	/*
@@ -1181,9 +1204,9 @@ ccdiodone(struct ccdbuf *cbp)
 				if (cbp->cb_buf.b_flags & B_ERROR) {
 					cbp->cb_mirror->cb_pflags |= 
 					    CCDPF_MIRROR_DONE;
-					VOP_STRATEGY(
+					vn_strategy(
 					    cbp->cb_mirror->cb_buf.b_vp, 
-					    &cbp->cb_mirror->cb_buf
+					    &cbp->cb_mirror->cb_buf.b_bio1
 					);
 					putccdbuf(cbp);
 					crit_exit();
@@ -1211,11 +1234,11 @@ ccdiodone(struct ccdbuf *cbp)
 	/*
 	 * If all done, "interrupt".
 	 */
-	bp->b_resid -= count;
-	if (bp->b_resid < 0)
+	obp->b_resid -= count;
+	if (obp->b_resid < 0)
 		panic("ccdiodone: count");
-	if (bp->b_resid == 0)
-		ccdintr(&ccd_softc[unit], bp);
+	if (obp->b_resid == 0)
+		ccdintr(&ccd_softc[unit], obio);
 	crit_exit();
 }
 

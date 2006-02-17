@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.44 2005/12/05 17:01:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.45 2006/02/17 19:18:07 dillon Exp $
  */
 
 
@@ -2858,19 +2858,27 @@ nfs_bmap(struct vop_bmap_args *ap)
 
 /*
  * Strategy routine.
+ *
  * For async requests when nfsiod(s) are running, queue the request by
  * calling nfs_asyncio(), otherwise just all nfs_doio() to do the
  * request.
+ *
+ * bio_blkno is NFS block-sized, which depends whether the vnode is a
+ * regular file or a directory.
  */
 static int
 nfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	struct thread *td;
 	int error = 0;
 
-	KASSERT(!(bp->b_flags & B_DONE), ("nfs_strategy: buffer %p unexpectedly marked B_DONE", bp));
-	KASSERT(BUF_REFCNT(bp) > 0, ("nfs_strategy: buffer %p not locked", bp));
+	KASSERT(!(bp->b_flags & B_DONE),
+		("nfs_strategy: buffer %p unexpectedly marked B_DONE", bp));
+	KASSERT(BUF_REFCNT(bp) > 0,
+		("nfs_strategy: buffer %p not locked", bp));
 
 	if (bp->b_flags & B_PHYS)
 		panic("nfs physio");
@@ -2880,14 +2888,30 @@ nfs_strategy(struct vop_strategy_args *ap)
 	else
 		td = curthread;	/* XXX */
 
+        /*
+	 * Convert to DEV_BSIZE'd blocks for nfs_doio/nfs_asyncio
+         */
+	nbio = push_bio(bio);
+
+        if (bp->b_vp->v_type == VREG) {
+                int biosize;
+
+                biosize = bp->b_vp->v_mount->mnt_stat.f_iosize;
+                nbio->bio_blkno = ((off_t)bio->bio_blkno * biosize) >> 
+				  DEV_BSHIFT;
+        } else {
+                nbio->bio_blkno = ((off_t)bio->bio_blkno * NFS_DIRBLKSIZ) >>
+				  DEV_BSHIFT;
+        }
+
+
 	/*
 	 * If the op is asynchronous and an i/o daemon is waiting
 	 * queue the request, wake it up and wait for completion
 	 * otherwise just do it ourselves.
 	 */
-	if ((bp->b_flags & B_ASYNC) == 0 ||
-		nfs_asyncio(bp, td))
-		error = nfs_doio(bp, td);
+	if ((bp->b_flags & B_ASYNC) == 0 || nfs_asyncio(ap->a_vp, nbio, td))
+		error = nfs_doio(ap->a_vp, nbio, td);
 	return (error);
 }
 
@@ -3001,9 +3025,9 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 		 * Wait for pending I/O to complete before checking whether
 		 * any further dirty buffers exist.
 		 */
-		while (waitfor == MNT_WAIT && vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			error = tsleep((caddr_t)&vp->v_numoutput,
+		while (waitfor == MNT_WAIT && vp->v_track_write.bk_active) {
+			vp->v_track_write.bk_waitflag = 1;
+			error = tsleep(&vp->v_track_write,
 				info.slpflag, "nfsfsync", info.slptimeo);
 			if (error) {
 				/*
@@ -3123,7 +3147,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 		vfs_busy_pages(bp, 1);
 
 		info->bvary[info->bvsize] = bp;
-		toff = ((u_quad_t)bp->b_blkno) * DEV_BSIZE +
+		toff = ((u_quad_t)bp->b_bio2.bio_blkno) * DEV_BSIZE +
 			bp->b_dirtyoff;
 		if (info->bvsize == 0 || toff < info->beg_off)
 			info->beg_off = toff;
@@ -3191,15 +3215,18 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 * b_dirtyoff/b_dirtyend seem to be NFS 
 				 * specific.  We should probably move that
 				 * into bundirty(). XXX
+				 *
+				 * We are faking an I/O write, we have to 
+				 * start the transaction in order to
+				 * immediately biodone() it.
 				 */
 				crit_enter();
-				vp->v_numoutput++;
 				bp->b_flags |= B_ASYNC;
 				bundirty(bp);
 				bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
 				crit_exit();
-				biodone(bp);
+				biodone(&bp->b_bio1);
 			}
 		}
 		info->bvsize = 0;
@@ -3289,8 +3316,6 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	crit_enter();
 	bundirty(bp);
 	bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
-
-	bp->b_vp->v_numoutput++;
 	crit_exit();
 
 	/*
@@ -3300,9 +3325,9 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	vfs_busy_pages(bp, 1);
 
 	BUF_KERNPROC(bp);
-	VOP_STRATEGY(bp->b_vp, bp);
+	vn_strategy(bp->b_vp, &bp->b_bio1);
 
-	if( (oldflags & B_ASYNC) == 0) {
+	if((oldflags & B_ASYNC) == 0) {
 		int rtval = biowait(bp);
 
 		if (oldflags & B_DELWRI) {

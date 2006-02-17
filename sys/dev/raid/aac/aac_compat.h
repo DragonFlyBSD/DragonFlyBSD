@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aac/aac_compat.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.6 2005/08/08 01:25:31 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.7 2006/02/17 19:18:05 dillon Exp $
  */
 /*
  * Backwards compatibility support.
@@ -39,13 +39,11 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/buf2.h>
-#define bioq_init(x)				bufq_init(x)
-#define bioq_insert_tail(x, y)		bufq_insert_tail(x, y)
-#define bioq_remove(x, y)			bufq_remove(x, y)
-#define bioq_first(x)				bufq_first(x)
-#define bio_queue_head				buf_queue_head
+
+#if 0
 #define	FREEBSD_4
 #define BIO_ERROR				B_ERROR
 #define devstat_end_transaction_bio(x, y)      devstat_end_transaction_buf(x, y)
 #define BIO_IS_READ(x)				((x)->b_flags & B_READ)
+#endif
 #endif

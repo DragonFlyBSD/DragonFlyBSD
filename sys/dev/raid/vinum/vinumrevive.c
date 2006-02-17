@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.5 2005/06/11 00:05:46 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -61,6 +61,7 @@ revive_block(int sdno)
     struct plex *plex;
     struct volume *vol;
     struct buf *bp;
+    dev_t dev;
     int error = EAGAIN;
     int size;						    /* size of revive block, bytes */
     daddr_t plexblkno;					    /* lblkno in plex */
@@ -151,7 +152,7 @@ revive_block(int sdno)
 	 */
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
-	bp->b_blkno = plexblkno;			    /* start here */
+	bp->b_bio1.bio_blkno = plexblkno;		    /* start here */
 	if (isstriped(plex))				    /* we need to lock striped plexes */
 	    lock = lockrange(plexblkno << DEV_BSHIFT, bp, plex); /* lock it */
 	if (vol != NULL)				    /* it's part of a volume, */
@@ -159,12 +160,12 @@ revive_block(int sdno)
 	       * First, read the data from the volume.  We
 	       * don't care which plex, that's bre's job.
 	     */
-	    bp->b_dev = VINUMDEV(plex->volno, 0, 0, VINUM_VOLUME_TYPE);	/* create the device number */
+	    dev = VINUMDEV(plex->volno, 0, 0, VINUM_VOLUME_TYPE);	/* create the device number */
 	else						    /* it's an unattached plex */
-	    bp->b_dev = VINUM_PLEX(sd->plexno);		    /* create the device number */
+	    dev = VINUM_PLEX(sd->plexno);		    /* create the device number */
 
 	bp->b_flags = B_READ;				    /* either way, read it */
-	vinumstart(bp, 1);
+	vinumstart(dev, &bp->b_bio1, 1);
 	biowait(bp);
     }
 
@@ -173,11 +174,12 @@ revive_block(int sdno)
     else
 	/* Now write to the subdisk */
     {
-	bp->b_dev = VINUM_SD(sdno);			    /* create the device number */
+	dev = VINUM_SD(sdno);			    /* create the device number */
 	bp->b_flags = B_ORDERED | B_WRITE;		    /* and make this an ordered write */
 	bp->b_resid = bp->b_bcount;
-	bp->b_blkno = sd->revived;			    /* write it to here */
-	sdio(bp);					    /* perform the I/O */
+	bp->b_bio1.bio_blkno = sd->revived;		    /* write it to here */
+	bp->b_bio1.bio_driver_info = dev;
+	sdio(&bp->b_bio1);				    /* perform the I/O */
 	biowait(bp);
 	if (bp->b_flags & B_ERROR)
 	    error = bp->b_error;
@@ -196,17 +198,20 @@ revive_block(int sdno)
 	while (sd->waitlist) {				    /* we have waiting requests */
 #if VINUMDEBUG
 	    struct request *rq = sd->waitlist;
+	    dev_t dev;
 
-	    if (debug & DEBUG_REVIVECONFLICT)
+	    if (debug & DEBUG_REVIVECONFLICT) {
+		dev = rq->bio->bio_driver_info;
 		log(LOG_DEBUG,
 		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
 		    rq->sdno,
 		    rq,
-		    rq->bp->b_flags & B_READ ? "Read" : "Write",
-		    major(rq->bp->b_dev),
-		    minor(rq->bp->b_dev),
-		    rq->bp->b_blkno,
-		    rq->bp->b_bcount);
+		    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+		    major(dev),
+		    minor(dev),
+		    rq->bio->bio_blkno,
+		    rq->bio->bio_buf->b_bcount);
+	    }
 #endif
 	    launch_requests(sd->waitlist, 1);		    /* do them now */
 	    sd->waitlist = sd->waitlist->next;		    /* and move on to the next */
@@ -292,7 +297,7 @@ parityops(struct vinum_ioctl_msg *data)
 	    || (op == rebuildandcheckparity)) {
 	    pbp->b_flags &= ~B_READ;
 	    pbp->b_resid = pbp->b_bcount;
-	    sdio(pbp);					    /* write the parity block */
+	    sdio(&pbp->b_bio1);				    /* write the parity block */
 	    biowait(pbp);
 	}
 	if (((op == checkparity)
@@ -405,13 +410,13 @@ parityrebuild(struct plex *plex,
 	    if (sdno == psd)
 		parity_buf = (int *) bpp[sdno]->b_data;
 	    if (sdno == newpsd)				    /* the new one? */
-		bpp[sdno]->b_dev = VINUM_SD(plex->sdnos[psd]); /* write back to the parity SD */
+		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[psd]); /* write back to the parity SD */
 	    else
-		bpp[sdno]->b_dev = VINUM_SD(plex->sdnos[sdno]);	/* device number */
+		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[sdno]);	/* device number */
 	    bpp[sdno]->b_flags = B_READ;		    /* either way, read it */
 	    bpp[sdno]->b_bcount = mysize;
 	    bpp[sdno]->b_resid = bpp[sdno]->b_bcount;
-	    bpp[sdno]->b_blkno = pstripe;		    /* transfer from here */
+	    bpp[sdno]->b_bio1.bio_blkno = pstripe;	    /* transfer from here */
 	}
     }
 
@@ -436,7 +441,7 @@ parityrebuild(struct plex *plex,
      */
     for (sdno = 0; sdno < plex->subdisks; sdno++) {	    /* for each real subdisk */
 	if ((sdno != psd) || (op != rebuildparity)) {
-	    sdio(bpp[sdno]);
+	    sdio(&bpp[sdno]->b_bio1);
 	}
     }
 
@@ -545,11 +550,11 @@ initsd(int sdno, int verify)
 
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
-	bp->b_blkno = sd->initialized;			    /* write it to here */
+	bp->b_bio1.bio_blkno = sd->initialized;		    /* write it to here */
+	bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
 	bzero(bp->b_data, bp->b_bcount);
-	bp->b_dev = VINUM_SD(sdno);			    /* create the device number */
 	bp->b_flags &= ~B_READ;
-	sdio(bp);					    /* perform the I/O */
+	sdio(&bp->b_bio1);		    /* perform the I/O */
 	biowait(bp);
 	if (bp->b_flags & B_ERROR)
 	    error = bp->b_error;
@@ -567,11 +572,11 @@ initsd(int sdno, int verify)
 	    } else {
 		bp->b_bcount = size;
 		bp->b_resid = bp->b_bcount;
-		bp->b_blkno = sd->initialized;		    /* read from here */
-		bp->b_dev = VINUM_SD(sdno);		    /* create the device number */
+		bp->b_bio1.bio_blkno = sd->initialized;	    /* read from here */
+		bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
 		bp->b_flags |= B_READ;			    /* read it back */
 		crit_exit();
-		sdio(bp);
+		sdio(&bp->b_bio1);
 		biowait(bp);
 		/*
 		 * XXX Bug fix code.  This is hopefully no

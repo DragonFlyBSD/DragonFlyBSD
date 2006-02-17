@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.23 2005/11/04 09:38:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.24 2006/02/17 19:18:06 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -313,16 +313,22 @@ boot(int howto)
 		for (bp = &buf[nbuf]; --bp >= buf; ) {
 			if (((bp->b_flags&B_INVAL) == 0 && BUF_REFCNT(bp)) ||
 			    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
+				/*
+				 * XXX we need a way to detect this condition
+				 * Maybe use B_DONE ?
+				 */
+#if 0
 				if (bp->b_dev == NODEV) {
 					mountlist_remove(bp->b_vp->v_mount);
 					continue;
 				}
+#endif
 				nbusy++;
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
 				printf(
-			    "%p %d: dev:%s, flags:%08lx, blkno:%ld, lblkno:%ld\n",
-				    bp, nbusy, devtoname(bp->b_dev),
-				    bp->b_flags, (long)bp->b_blkno,
+			    "%p %d: dev:?, flags:%08lx, blkno:%ld, lblkno:%ld\n",
+				    bp, nbusy,
+				    bp->b_flags, (long)bp->b_bio1.bio_blkno,
 				    (long)bp->b_lblkno);
 #endif
 			}

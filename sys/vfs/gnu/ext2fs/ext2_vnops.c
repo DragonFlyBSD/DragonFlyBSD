@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.24 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -211,9 +211,9 @@ loop:
 		goto loop;
 
 	if (ap->a_waitfor == MNT_WAIT) {
-		while (vp->v_numoutput) {
-			vp->v_flag |= VBWAIT;
-			tsleep(&vp->v_numoutput, 0, "e2fsyn", 0);
+		while (vp->v_track_write.bk_active) {
+			vp->v_track_write.bk_waitflag = 1;
+			tsleep(&vp->v_track_write, 0, "e2fsyn", 0);
 		}
 #if DIAGNOSTIC
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {

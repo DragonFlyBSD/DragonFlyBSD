@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.15 2005/06/09 20:55:05 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.16 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -838,8 +838,8 @@ amr_completeio(struct amr_command *ac)
     struct amr_softc	*sc = ac->ac_sc;
     
     if (ac->ac_status != AMR_STATUS_SUCCESS) {	/* could be more verbose here? */
-	ac->ac_bio->bio_error = EIO;
-	ac->ac_bio->bio_flags |= BIO_ERROR;
+	ac->ac_bio->bio_buf->b_error = EIO;
+	ac->ac_bio->bio_buf->b_flags |= B_ERROR;
 
 	device_printf(sc->amr_dev, "I/O error - 0x%x\n", ac->ac_status);
 /*	amr_printcommand(ac);*/
@@ -884,28 +884,28 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     /* connect the bio to the command */
     ac->ac_complete = amr_completeio;
     ac->ac_bio = bio;
-    ac->ac_data = bio->bio_data;
-    ac->ac_length = bio->bio_bcount;
-    if (BIO_IS_READ(bio)) {
+    ac->ac_data = bio->bio_buf->b_data;
+    ac->ac_length = bio->bio_buf->b_bcount;
+    if (bio->bio_buf->b_flags & B_READ) {
 	ac->ac_flags |= AMR_CMD_DATAIN;
 	cmd = AMR_CMD_LREAD;
     } else {
 	ac->ac_flags |= AMR_CMD_DATAOUT;
 	cmd = AMR_CMD_LWRITE;
     }
-    amrd = (struct amrd_softc *)bio->bio_dev->si_drv1;
+    amrd = (struct amrd_softc *)bio->bio_driver_info;
     driveno = amrd->amrd_drive - sc->amr_drive;
-    blkcount = (bio->bio_bcount + AMR_BLKSIZE - 1) / AMR_BLKSIZE;
+    blkcount = (bio->bio_buf->b_bcount + AMR_BLKSIZE - 1) / AMR_BLKSIZE;
 
     ac->ac_mailbox.mb_command = cmd;
     ac->ac_mailbox.mb_blkcount = blkcount;
-    ac->ac_mailbox.mb_lba = bio->bio_pblkno;
+    ac->ac_mailbox.mb_lba = bio->bio_blkno;
     ac->ac_mailbox.mb_drive = driveno;
     /* we fill in the s/g related data when the command is mapped */
 
-    if ((bio->bio_pblkno + blkcount) > sc->amr_drive[driveno].al_size)
+    if ((bio->bio_blkno + blkcount) > sc->amr_drive[driveno].al_size)
 	device_printf(sc->amr_dev, "I/O beyond end of unit (%lld,%d > %lu)\n", 
-		      (long long)bio->bio_pblkno, blkcount,
+		      (long long)bio->bio_blkno, blkcount,
 		      (u_long)sc->amr_drive[driveno].al_size);
 
 out:

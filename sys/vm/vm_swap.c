@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.20 2006/01/13 20:45:30 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.21 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -76,24 +76,25 @@ struct vnode *swapdev_vp;
 /*
  *	swapdev_strategy:
  *
- *	VOP_STRATEGY() for swapdev_vp.
+ *	vn_strategy() for swapdev_vp.
  *	Perform swap strategy interleave device selection.
  *
  *	The bp is expected to be locked and *not* B_DONE on call.
+ *
+ *	(struct vnode *a_vp, struct bio *b_bio)
  */
 
 static int
-swapdev_strategy(struct vop_strategy_args /* {
-			 struct vnode *a_vp;
-			 struct buf *a_bp;
-		 } */ *ap)
+swapdev_strategy(struct vop_strategy_args *ap)
 {
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	int sz, off, seg, index;
 	struct swdevt *sp;
 	struct vnode *vp;
-	struct buf *bp;
 
-	bp = ap->a_bp;
+	vp = ap->a_vp;
 	sz = howmany(bp->b_bcount, PAGE_SIZE);
 
 	/*
@@ -101,63 +102,56 @@ swapdev_strategy(struct vop_strategy_args /* {
 	 * the block size is left in PAGE_SIZE'd chunks (for the newswap)
 	 * here.
 	 */
+	nbio = push_bio(bio);
 	if (nswdev > 1) {
-		off = bp->b_blkno % dmmax;
+		off = bio->bio_blkno % dmmax;
 		if (off + sz > dmmax) {
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;
-			biodone(bp);
+			biodone(bio);
 			return 0;
 		}
-		seg = bp->b_blkno / dmmax;
+		seg = bio->bio_blkno / dmmax;
 		index = seg % nswdev;
 		seg /= nswdev;
-		bp->b_blkno = seg * dmmax + off;
+		nbio->bio_blkno = seg * dmmax + off;
 	} else {
 		index = 0;
+		nbio->bio_blkno = bio->bio_blkno;
 	}
 	sp = &swdevt[index];
-	if (bp->b_blkno + sz > sp->sw_nblks) {
+	if (nbio->bio_blkno + sz > sp->sw_nblks) {
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return 0;
 	}
-	bp->b_dev = sp->sw_device;
 	if (sp->sw_vp == NULL) {
 		bp->b_error = ENODEV;
 		bp->b_flags |= B_ERROR;
-		biodone(bp);
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return 0;
 	}
 
 	/*
-	 * Convert from PAGE_SIZE'd to DEV_BSIZE'd chunks for the actual I/O
+	 * Convert from PAGE_SIZE'd to DEV_BSIZE'd chunks for the actual I/O.
+	 * Issue a strategy call on the appropriate swap vnode.  Note that
+	 * bp->b_vp is not modified.  Strategy code is always supposed to
+	 * use the passed vp.
+	 *
+	 * XXX do a dev_dstrategy() call on sp->sw_device instead of on
+	 * sp->sw_vp ?
 	 */
-	bp->b_blkno = ctodb(bp->b_blkno);
-
-	vhold(sp->sw_vp);
-	crit_enter();
-	if ((bp->b_flags & B_READ) == 0) {
-		vp = bp->b_vp;
-		if (vp) {
-			vp->v_numoutput--;
-			if ((vp->v_flag & VBWAIT) && vp->v_numoutput <= 0) {
-				vp->v_flag &= ~VBWAIT;
-				wakeup(&vp->v_numoutput);
-			}
-		}
-		sp->sw_vp->v_numoutput++;
-	}
-	pbreassignbuf(bp, sp->sw_vp);
-	crit_exit();
-	VOP_STRATEGY(bp->b_vp, bp);
+	nbio->bio_blkno = ctodb(nbio->bio_blkno);
+	vn_strategy(sp->sw_vp, nbio);
 	return 0;
 }
 
 /*
  * Create a special vnode op vector for swapdev_vp - we only use
- * VOP_STRATEGY(), everything else returns an error.
+ * vn_strategy(), everything else returns an error.
  */
 struct vop_ops *swapdev_vnode_vops;
 static struct vnodeopv_entry_desc swapdev_vnodeop_entries[] = {  

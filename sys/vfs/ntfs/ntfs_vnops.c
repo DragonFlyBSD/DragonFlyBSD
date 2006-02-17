@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.24 2005/09/14 01:13:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
  *
  */
 
@@ -319,13 +319,14 @@ ntfs_print(struct vop_print_args *ap)
  * Calculate the logical to physical mapping if not done already,
  * then call the device strategy routine.
  *
- * ntfs_strategy(struct buf *a_bp)
+ * ntfs_strategy(struct vnode *a_vp, struct bio *a_bio)
  */
 int
 ntfs_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
-	struct vnode *vp = bp->b_vp;
+	struct bio *bio = ap->a_bio;
+	struct buf *bp = bio->bio_buf;
+	struct vnode *vp = ap->a_vp;
 	struct fnode *fp = VTOF(vp);
 	struct ntnode *ip = FTONT(fp);
 	struct ntfsmount *ntmp = ip->i_mp;
@@ -333,11 +334,11 @@ ntfs_strategy(struct vop_strategy_args *ap)
 
 #ifdef __DragonFly__
 	dprintf(("ntfs_strategy: offset: %d, blkno: %d, lblkno: %d\n",
-		(u_int32_t)bp->b_offset,(u_int32_t)bp->b_blkno,
+		(u_int32_t)bp->b_loffset,(u_int32_t)bio->bio_blkno,
 		(u_int32_t)bp->b_lblkno));
 #else
 	dprintf(("ntfs_strategy: blkno: %d, lblkno: %d\n",
-		(u_int32_t)bp->b_blkno,
+		(u_int32_t)bio->bio_blkno,
 		(u_int32_t)bp->b_lblkno));
 #endif
 
@@ -347,17 +348,17 @@ ntfs_strategy(struct vop_strategy_args *ap)
 	if (bp->b_flags & B_READ) {
 		u_int32_t toread;
 
-		if (ntfs_cntob(bp->b_blkno) >= fp->f_size) {
+		if (ntfs_cntob(bio->bio_blkno) >= fp->f_size) {
 			clrbuf(bp);
 			error = 0;
 		} else {
 			toread = min(bp->b_bcount,
-				 fp->f_size-ntfs_cntob(bp->b_blkno));
+				 fp->f_size-ntfs_cntob(bio->bio_blkno));
 			dprintf(("ntfs_strategy: toread: %d, fsize: %d\n",
 				toread,(u_int32_t)fp->f_size));
 
 			error = ntfs_readattr(ntmp, ip, fp->f_attrtype,
-				fp->f_attrname, ntfs_cntob(bp->b_blkno),
+				fp->f_attrname, ntfs_cntob(bio->bio_blkno),
 				toread, bp->b_data, NULL);
 
 			if (error) {
@@ -372,18 +373,18 @@ ntfs_strategy(struct vop_strategy_args *ap)
 		size_t tmp;
 		u_int32_t towrite;
 
-		if (ntfs_cntob(bp->b_blkno) + bp->b_bcount >= fp->f_size) {
+		if (ntfs_cntob(bio->bio_blkno) + bp->b_bcount >= fp->f_size) {
 			printf("ntfs_strategy: CAN'T EXTEND FILE\n");
 			bp->b_error = error = EFBIG;
 			bp->b_flags |= B_ERROR;
 		} else {
 			towrite = min(bp->b_bcount,
-				fp->f_size-ntfs_cntob(bp->b_blkno));
+				fp->f_size-ntfs_cntob(bio->bio_blkno));
 			dprintf(("ntfs_strategy: towrite: %d, fsize: %d\n",
 				towrite,(u_int32_t)fp->f_size));
 
 			error = ntfs_writeattr_plain(ntmp, ip, fp->f_attrtype,	
-				fp->f_attrname, ntfs_cntob(bp->b_blkno),towrite,
+				fp->f_attrname, ntfs_cntob(bio->bio_blkno),towrite,
 				bp->b_data, &tmp, NULL);
 
 			if (error) {
@@ -393,7 +394,7 @@ ntfs_strategy(struct vop_strategy_args *ap)
 			}
 		}
 	}
-	biodone(bp);
+	biodone(bio);
 	return (error);
 }
 

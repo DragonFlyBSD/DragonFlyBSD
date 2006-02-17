@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.12 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.13 2006/02/17 19:17:42 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -131,7 +131,7 @@ typedef enum {
 } ch_quirks;
 
 #define ccb_state	ppriv_field0
-#define ccb_bp		ppriv_ptr1
+#define ccb_bio		ppriv_ptr1
 
 struct scsi_mode_sense_data {
 	struct scsi_mode_header_6 header;
@@ -549,7 +549,7 @@ chstart(struct cam_periph *periph, union ccb *start_ccb)
 				/* sense_len */ SSD_FULL_SIZE,
 				/* timeout */ CH_TIMEOUT_MODE_SENSE);
 
-		start_ccb->ccb_h.ccb_bp = NULL;
+		start_ccb->ccb_h.ccb_bio = NULL;
 		start_ccb->ccb_h.ccb_state = CH_CCB_PROBE;
 		xpt_action(start_ccb);
 		break;

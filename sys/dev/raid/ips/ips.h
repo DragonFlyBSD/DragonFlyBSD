@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.7 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.8 2006/02/17 19:18:05 dillon Exp $
  */
 
 
@@ -198,6 +198,7 @@ MALLOC_DECLARE(M_IPSBUF);
  * for compatibility
  */
 /* struct buf to struct bio changes */
+#if 0
 #define BIO_ERROR	B_ERROR
 #define BIO_READ	B_READ
 #define bio		buf
@@ -211,8 +212,9 @@ MALLOC_DECLARE(M_IPSBUF);
 #define bio_resid	b_resid
 
 /* geom */
-#define bio_disk	bio_dev
 #define d_drv1		si_drv1
+#endif
+
 #define d_maxsize	si_iosize_max
 
 #define disk_open_t	d_open_t
@@ -237,7 +239,7 @@ MALLOC_DECLARE(M_IPSBUF);
 #define ips_write_2(sc,offset,value) 	bus_space_write_2(sc->bustag, sc->bushandle, offset, value)
 #define ips_write_4(sc,offset,value)	bus_space_write_4(sc->bustag, sc->bushandle, offset, value)
 
-#define ips_read_request(iobuf)		((iobuf)->b_flags & B_READ)
+#define ips_read_request(iobuf)		((bio)->bio_buf->b_flags & B_READ)
 
 #define COMMAND_ERROR(status)		(((status)->fields.basic_status & 0x0f) >= IPS_MIN_ERROR)
 
@@ -469,7 +471,7 @@ typedef struct ips_softc {
 	ips_copper_queue_t	*copper_queue;
 
 	struct lwkt_rwlock	queue_lock;
-	struct buf_queue_head   queue;
+	struct bio_queue_head   bio_queue;
 } ips_softc_t;
 
 /* function defines from ips_ioctl.c */

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.18 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.19 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -549,7 +549,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		if (isonum_711(ep->flags)&2)
 			idp->current.de.d_ino = isodirino(ep, imp);
 		else
-			idp->current.de.d_ino = dbtob(bp->b_blkno) +
+			idp->current.de.d_ino = dbtob(bp->b_bio2.bio_blkno) +
 				entryoffsetinblock;
 
 		idp->curroff += reclen;
@@ -722,37 +722,42 @@ cd9660_readlink(struct vop_readlink_args *ap)
  * Calculate the logical to physical mapping if not done already,
  * then call the device strategy routine.
  *
- * cd9660_strategy(struct buf *a_vp, struct buf *a_bp)
+ * cd9660_strategy(struct buf *a_vp, struct buf *a_bio)
  */
 static int
 cd9660_strategy(struct vop_strategy_args *ap)
 {
-	struct buf *bp = ap->a_bp;
-	struct vnode *vp = bp->b_vp;
+	struct bio *bio = ap->a_bio;
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
+	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip;
 	int error;
 
 	ip = VTOI(vp);
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("cd9660_strategy: spec");
-	if (bp->b_blkno == bp->b_lblkno) {
-		if ((error =
-		    VOP_BMAP(vp, bp->b_lblkno, NULL, &bp->b_blkno, NULL, NULL))) {
+	nbio = push_bio(bio);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
+				 NULL, NULL);
+		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
-			biodone(bp);
+			/* I/O was never started on nbio, must biodone(bio) */
+			biodone(bio);
 			return (error);
 		}
-		if ((long)bp->b_blkno == -1)
+		if (nbio->bio_blkno == (daddr_t)-1)
 			clrbuf(bp);
 	}
-	if ((long)bp->b_blkno == -1) {
-		biodone(bp);
+	if (nbio->bio_blkno == (daddr_t)-1) {
+		/* I/O was never started on nbio, must biodone(bio) */
+		biodone(bio);
 		return (0);
 	}
 	vp = ip->i_devvp;
-	bp->b_dev = vp->v_rdev;
-	VOP_STRATEGY(vp, bp);
+	vn_strategy(vp, nbio);
 	return (0);
 }
 

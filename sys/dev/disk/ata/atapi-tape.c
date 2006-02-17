@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.12 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.13 2006/02/17 19:17:54 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -110,7 +110,7 @@ astattach(struct ata_device *atadev)
     stp->device = atadev;
     stp->lun = ata_get_lun(&ast_lun_map);
     ata_set_name(atadev, "ast", stp->lun);
-    bufq_init(&stp->queue);
+    bioq_init(&stp->bio_queue);
 
     if (ast_sense(stp)) {
 	free(stp, M_AST);
@@ -157,12 +157,14 @@ astdetach(struct ata_device *atadev)
 {   
     struct ast_softc *stp = atadev->driver;
     struct buf *bp;
+    struct bio *bio;
     
-    while ((bp = bufq_first(&stp->queue))) {
-	bufq_remove(&stp->queue, bp);
+    while ((bio = bioq_first(&stp->bio_queue))) {
+	bioq_remove(&stp->bio_queue, bio);
+	bp = bio->bio_buf;
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
-	biodone(bp);
+	biodone(bio);
     }
     devstat_remove_entry(&stp->stats);
     cdevsw_remove(&ast_cdevsw, dkunitmask(), dkmakeunit(stp->lun));
@@ -417,27 +419,28 @@ astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 }
 
 static void 
-aststrategy(struct buf *bp)
+aststrategy(dev_t dev, struct bio *bio)
 {
-    struct ast_softc *stp = bp->b_dev->si_drv1;
+    struct buf *bp = bio->bio_buf;
+    struct ast_softc *stp = dev->si_drv1;
 
     if (stp->device->flags & ATA_D_DETACHING) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
     if (!(bp->b_flags & B_READ) && stp->flags & F_WRITEPROTECT) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EPERM;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 	
@@ -447,7 +450,7 @@ aststrategy(struct buf *bp)
 		   stp->blksize);
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EIO;
-	biodone(bp);
+	biodone(bio);
 	return;
     }
 
@@ -461,7 +464,7 @@ aststrategy(struct buf *bp)
     }
 
     crit_enter();
-    bufq_insert_tail(&stp->queue, bp);
+    bioq_insert_tail(&stp->bio_queue, bio);
     crit_exit();
     ata_start(stp->device->channel);
 }
@@ -470,21 +473,22 @@ void
 ast_start(struct ata_device *atadev)
 {
     struct ast_softc *stp = atadev->driver;
-    struct buf *bp = bufq_first(&stp->queue);
+    struct bio *bio = bioq_first(&stp->bio_queue);
+    struct buf *bp;
     u_int32_t blkcount;
     int8_t ccb[16];
     
-    if (!bp)
+    if (bio == NULL)
 	return;
-
     bzero(ccb, sizeof(ccb));
 
+    bp = bio->bio_buf;
     if (bp->b_flags & B_READ)
 	ccb[0] = ATAPI_READ;
     else
 	ccb[0] = ATAPI_WRITE;
     
-    bufq_remove(&stp->queue, bp);
+    bioq_remove(&stp->bio_queue, bio);
     blkcount = bp->b_bcount / stp->blksize;
 
     ccb[1] = 1;
@@ -496,27 +500,27 @@ ast_start(struct ata_device *atadev)
 
     atapi_queue_cmd(stp->device, ccb, bp->b_data, blkcount * stp->blksize, 
 		    (bp->b_flags & B_READ) ? ATPR_F_READ : 0,
-		    120, ast_done, bp);
+		    120, ast_done, bio);
 }
 
 static int 
 ast_done(struct atapi_request *request)
 {
-    struct buf *bp = request->driver;
+    struct bio *bio = request->driver;
+    struct buf *bp = bio->bio_buf;
     struct ast_softc *stp = request->device->driver;
 
     if (request->error) {
 	bp->b_error = request->error;
 	bp->b_flags |= B_ERROR;
-    }
-    else {
+    } else {
 	if (!(bp->b_flags & B_READ))
 	    stp->flags |= F_DATA_WRITTEN;
 	bp->b_resid = bp->b_bcount - request->donecount;
 	ast_total += (bp->b_bcount - bp->b_resid);
     }
     devstat_end_transaction_buf(&stp->stats, bp);
-    biodone(bp);
+    biodone(bio);
     return 0;
 }
 

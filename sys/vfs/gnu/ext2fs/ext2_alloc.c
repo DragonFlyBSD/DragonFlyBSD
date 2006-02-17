@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.8 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.9 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -253,8 +253,8 @@ return ENOSPC;
 	 * the filesystem has decided to move and do not force it back to
 	 * the previous cylinder group.
 	 */
-	if (dtog(fs, dbtofsb(fs, buflist->bs_children[0]->b_blkno)) !=
-	    dtog(fs, dbtofsb(fs, buflist->bs_children[len - 1]->b_blkno)))
+	if (dtog(fs, dbtofsb(fs, buflist->bs_children[0]->b_bio2.bio_blkno)) !=
+	    dtog(fs, dbtofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_blkno)))
 		return (ENOSPC);
 	if (ufs_getlbns(vp, start_lbn, start_ap, &start_lvl) ||
 	    ufs_getlbns(vp, end_lbn, end_ap, &end_lvl))
@@ -311,7 +311,7 @@ return ENOSPC;
 		if (i == ssize)
 			bap = ebap;
 #if DIAGNOSTIC
-		if (buflist->bs_children[i]->b_blkno != fsbtodb(fs, *bap))
+		if (buflist->bs_children[i]->b_bio2.bio_blkno != fsbtodb(fs, *bap))
 			panic("ext2_reallocblks: alloc mismatch");
 #endif
 		*bap++ = blkno;
@@ -349,9 +349,9 @@ return ENOSPC;
 	 * Last, free the old blocks and assign the new blocks to the buffers.
 	 */
 	for (blkno = newblk, i = 0; i < len; i++, blkno += fs->s_frags_per_block) {
-		ext2_blkfree(ip, dbtofsb(fs, buflist->bs_children[i]->b_blkno),
+		ext2_blkfree(ip, dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno),
 		    fs->s_blocksize);
-		buflist->bs_children[i]->b_blkno = fsbtodb(fs, blkno);
+		buflist->bs_children[i]->b_bio2.bio_blkno = fsbtodb(fs, blkno);
 	}
 	return (0);
 

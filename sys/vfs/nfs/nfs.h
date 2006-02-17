@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.10 2005/03/27 23:51:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.11 2006/02/17 19:18:07 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -309,6 +309,7 @@ extern struct callout nfs_timer_handle;
 
 struct uio;
 struct buf;
+struct bio;
 struct vattr;
 struct nlookupdata;
 
@@ -608,8 +609,8 @@ int	nfs_writerpc (struct vnode *, struct uio *, int *, int *);
 int	nfs_commit (struct vnode *vp, u_quad_t offset, int cnt, 
 			struct thread *td);
 int	nfs_readdirrpc (struct vnode *, struct uio *);
-int	nfs_asyncio (struct buf *, struct thread *);
-int	nfs_doio (struct buf *, struct thread *);
+int	nfs_asyncio (struct vnode *vp, struct bio *, struct thread *);
+int	nfs_doio (struct vnode *vp, struct bio *, struct thread *);
 int	nfs_readlinkrpc (struct vnode *, struct uio *);
 int	nfs_sigintr (struct nfsmount *, struct nfsreq *, struct thread *);
 int	nfs_readdirplusrpc (struct vnode *, struct uio *);

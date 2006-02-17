@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.14 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.15 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -450,7 +450,7 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 	 * to blocks to be free'd, and update on disk copy first.  Since
 	 * double(triple) indirect before single(double) indirect, calls
 	 * to bmap on these blocks will fail.  However, we already have
-	 * the on disk address, so we have to set the b_blkno field
+	 * the on disk address, so we have to set the bio_blkno field
 	 * explicitly instead of letting bread do everything for us.
 	 */
 	vp = ITOV(ip);
@@ -460,9 +460,19 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ffs_indirtrunc: bad buffer size");
-		bp->b_blkno = dbn;
+		bp->b_bio2.bio_blkno = dbn;
 		vfs_busy_pages(bp, 0);
-		VOP_STRATEGY(bp->b_vp, bp);
+		/*
+		 * Access the block device layer using the device vnode
+		 * and the translated block number (bio2) instead of the
+		 * file vnode (vp) and logical block number (bio1).
+		 *
+		 * Even though we are bypassing the vnode layer, we still
+		 * want the vnode state to indicate that an I/O on its behalf
+		 * is in progress.
+		 */
+		bio_start_transaction(&bp->b_bio1, &vp->v_track_read);
+		vn_strategy(ip->i_devvp, &bp->b_bio2);
 		error = biowait(bp);
 	}
 	if (error) {

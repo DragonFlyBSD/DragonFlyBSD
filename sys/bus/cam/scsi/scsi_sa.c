@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.14 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.15 2006/02/17 19:17:42 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -113,7 +113,7 @@ typedef enum {
 } sa_state;
 
 #define ccb_pflags	ppriv_field0
-#define ccb_bp	 	ppriv_ptr1
+#define ccb_bio	 	ppriv_ptr1
 
 #define	SA_CCB_BUFFER_IO	0x0
 #define	SA_CCB_WAITING		0x1
@@ -205,7 +205,7 @@ struct sa_softc {
 	sa_state	state;
 	sa_flags	flags;
 	sa_quirks	quirks;
-	struct		buf_queue_head buf_queue;
+	struct		bio_queue_head bio_queue;
 	int		queue_count;
 	struct		devstat device_stats;
 	int		blk_gran;
@@ -661,17 +661,18 @@ saclose(dev_t dev, int flag, int fmt, struct thread *td)
  * only one physical transfer.
  */
 static void
-sastrategy(struct buf *bp)
+sastrategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	u_int  unit;
 	
-	if (SA_IS_CTRL(bp->b_dev)) {
+	if (SA_IS_CTRL(dev)) {
 		bp->b_error = EINVAL;
 		goto bad;
 	}
-	unit = SAUNIT(bp->b_dev);
+	unit = SAUNIT(dev);
 	periph = cam_extend_get(saperiphs, unit);
 	if (periph == NULL) {
 		bp->b_error = ENXIO;
@@ -744,7 +745,7 @@ sastrategy(struct buf *bp)
 	/*
 	 * Place it at the end of the queue.
 	 */
-	bufq_insert_tail(&softc->buf_queue, bp);
+	bioq_insert_tail(&softc->bio_queue, bio);
 
 	softc->queue_count++;
 	CAM_DEBUG(periph->path, CAM_DEBUG_INFO, ("sastrategy: enqueuing a %d "
@@ -768,7 +769,7 @@ done:
 	 * Correctly set the buf to indicate a completed xfer
 	 */
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
+	biodone(bio);
 }
 
 static int
@@ -1307,6 +1308,7 @@ saoninvalidate(struct cam_periph *periph)
 {
 	struct sa_softc *softc;
 	struct buf *q_bp;
+	struct bio *q_bio;
 	struct ccb_setasync csa;
 
 	softc = (struct sa_softc *)periph->softc;
@@ -1335,12 +1337,13 @@ saoninvalidate(struct cam_periph *periph)
 	 * XXX Handle any transactions queued to the card
 	 *     with XPT_ABORT_CCB.
 	 */
-	while ((q_bp = bufq_first(&softc->buf_queue)) != NULL){
-		bufq_remove(&softc->buf_queue, q_bp);
+	while ((q_bio = bioq_first(&softc->bio_queue)) != NULL){
+		bioq_remove(&softc->bio_queue, q_bio);
+		q_bp = q_bio->bio_buf;
 		q_bp->b_resid = q_bp->b_bcount;
 		q_bp->b_error = ENXIO;
 		q_bp->b_flags |= B_ERROR;
-		biodone(q_bp);
+		biodone(q_bio);
 	}
 	softc->queue_count = 0;
 	crit_exit();
@@ -1434,7 +1437,7 @@ saregister(struct cam_periph *periph, void *arg)
 	softc->fileno = (daddr_t) -1;
 	softc->blkno = (daddr_t) -1;
 
-	bufq_init(&softc->buf_queue);
+	bioq_init(&softc->bio_queue);
 	periph->softc = softc;
 	cam_extend_set(saperiphs, periph->unit_number, periph);
 
@@ -1534,12 +1537,13 @@ sastart(struct cam_periph *periph, union ccb *start_ccb)
 	{
 		/* Pull a buffer from the queue and get going on it */		
 		struct buf *bp;
+		struct bio *bio;
 
 		/*
 		 * See if there is a buf with work for us to do..
 		 */
 		crit_enter();
-		bp = bufq_first(&softc->buf_queue);
+		bio = bioq_first(&softc->bio_queue);
 		if (periph->immediate_priority <= periph->pinfo.priority) {
 			CAM_DEBUG_PRINT(CAM_DEBUG_SUBTRACE,
 					("queuing for immediate ccb\n"));
@@ -1549,16 +1553,17 @@ sastart(struct cam_periph *periph, union ccb *start_ccb)
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			crit_exit();
 			wakeup(&periph->ccb_list);
-		} else if (bp == NULL) {
+		} else if (bio == NULL) {
 			crit_exit();
 			xpt_release_ccb(start_ccb);
 		} else if ((softc->flags & SA_FLAG_ERR_PENDING) != 0) {
-			struct buf *done_bp;
+			struct bio *done_bio;
 again:
 			softc->queue_count--;
-			bufq_remove(&softc->buf_queue, bp);
+			bioq_remove(&softc->bio_queue, bio);
+			bp = bio->bio_buf;
 			bp->b_resid = bp->b_bcount;
-			done_bp = bp;
+			done_bio = bio;
 			if ((softc->flags & SA_FLAG_EOM_PENDING) != 0) {
 				/*
 				 * We now just clear errors in this case
@@ -1573,33 +1578,34 @@ again:
 				 * same way.
 				 */
 				bp->b_error = 0;
-				if (bufq_first(&softc->buf_queue) != NULL) {
-					biodone(done_bp);
+				if (bioq_first(&softc->bio_queue) != NULL) {
+					biodone(done_bio);
 					goto again;
 				}
 			} else if ((softc->flags & SA_FLAG_EIO_PENDING) != 0) {
 				bp->b_error = EIO;
 				bp->b_flags |= B_ERROR;
 			}
-			bp = bufq_first(&softc->buf_queue);
+			bio = bioq_first(&softc->bio_queue);
 			/*
 			 * Only if we have no other buffers queued up
 			 * do we clear the pending error flag.
 			 */
-			if (bp == NULL)
+			if (bio == NULL)
 				softc->flags &= ~SA_FLAG_ERR_PENDING;
 			CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
-			    ("sastart- ERR_PENDING now 0x%x, bp is %sNULL, "
+			    ("sastart- ERR_PENDING now 0x%x, bio is %sNULL, "
 			    "%d more buffers queued up\n",
 			    (softc->flags & SA_FLAG_ERR_PENDING),
-			    (bp != NULL)? "not " : " ", softc->queue_count));
+			    (bio != NULL)? "not " : " ", softc->queue_count));
 			crit_exit();
 			xpt_release_ccb(start_ccb);
-			biodone(done_bp);
+			biodone(done_bio);
 		} else {
 			u_int32_t length;
 
-			bufq_remove(&softc->buf_queue, bp);
+			bioq_remove(&softc->bio_queue, bio);
+			bp = bio->bio_buf;
 			softc->queue_count--;
 
 			if ((softc->flags & SA_FLAG_FIXED) != 0) {
@@ -1615,7 +1621,7 @@ again:
 					printf("zero blocksize for "
 					    "FIXED length writes?\n");
 					crit_exit();
-					biodone(bp);
+					biodone(bio);
 					break;
 				}
 				CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
@@ -1655,13 +1661,13 @@ again:
 			    IO_TIMEOUT);
 			start_ccb->ccb_h.ccb_pflags &= ~SA_POSITION_UPDATED;
 			Set_CCB_Type(start_ccb, SA_CCB_BUFFER_IO);
-			start_ccb->ccb_h.ccb_bp = bp;
-			bp = bufq_first(&softc->buf_queue);
+			start_ccb->ccb_h.ccb_bio = bio;
+			bio = bioq_first(&softc->bio_queue);
 			crit_exit();
 			xpt_action(start_ccb);
 		}
 		
-		if (bp != NULL) {
+		if (bio != NULL) {
 			/* Have more work to do, so ensure we stay scheduled */
 			xpt_schedule(periph, 1);
 		}
@@ -1687,10 +1693,12 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 	case SA_CCB_BUFFER_IO:
 	{
 		struct buf *bp;
+		struct bio *bio;
 		int error;
 
 		softc->dsreg = MTIO_DSREG_REST;
-		bp = (struct buf *)done_ccb->ccb_h.ccb_bp;
+		bio = (struct bio *)done_ccb->ccb_h.ccb_bio;
+		bp = bio->bio_buf;
 		error = 0;
 		if ((done_ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP) {
 			if ((error = saerror(done_ccb, 0, 0)) == ERESTART) {
@@ -1703,6 +1711,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 
 		if (error == EIO) {
 			struct buf *q_bp;
+			struct bio *q_bio;
 
 			/*
 			 * Catastrophic error. Mark the tape as frozen
@@ -1717,12 +1726,13 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 
 			crit_enter();
 			softc->flags |= SA_FLAG_TAPE_FROZEN;
-			while ((q_bp = bufq_first(&softc->buf_queue)) != NULL) {
-				bufq_remove(&softc->buf_queue, q_bp);
+			while ((q_bio = bioq_first(&softc->bio_queue)) != NULL) {
+				bioq_remove(&softc->bio_queue, q_bio);
+				q_bp = q_bio->bio_buf;
 				q_bp->b_resid = q_bp->b_bcount;
 				q_bp->b_error = EIO;
 				q_bp->b_flags |= B_ERROR;
-				biodone(q_bp);
+				biodone(q_bio);
 			}
 			crit_exit();
 		}
@@ -1774,7 +1784,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 #endif
 		devstat_end_transaction_buf(&softc->device_stats, bp);
-		biodone(bp);
+		biodone(bio);
 		break;
 	}
 	case SA_CCB_WAITING:

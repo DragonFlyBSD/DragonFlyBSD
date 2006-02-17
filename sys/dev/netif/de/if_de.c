@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.41 2005/11/28 17:13:42 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.42 2006/02/17 19:18:05 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -129,11 +129,11 @@ tulip_timeout_callback(void *arg)
 {
     tulip_softc_t *sc = arg;
 
-    lwkt_serialize_enter(&sc->tulip_serializer);
+    lwkt_serialize_enter(sc->tulip_if.if_serializer);
     sc->tulip_flags &= ~TULIP_TIMEOUTPENDING;
     sc->tulip_probe_timeout -= 1000 / TULIP_HZ;
     (sc->tulip_boardsw->bd_media_poll)(sc, TULIP_MEDIAPOLL_TIMER);
-    lwkt_serialize_exit(&sc->tulip_serializer);
+    lwkt_serialize_exit(sc->tulip_if.if_serializer);
 }
 
 static void
@@ -3945,6 +3945,13 @@ tulip_attach(tulip_softc_t *sc)
 }
 
 static void
+tulip_detach(tulip_softc_t *sc)
+{
+    ifmedia_removeall(&sc->tulip_ifmedia);
+    ether_ifdetach(&sc->tulip_if);
+}
+
+static void
 tulip_initcsrs(tulip_softc_t *sc, tulip_csrptr_t csr_base, size_t csr_size)
 {
     sc->tulip_csrs.csr_busmode		= csr_base +  0 * csr_size;
@@ -4031,12 +4038,12 @@ tulip_shutdown(device_t dev)
 {
     tulip_softc_t *sc = device_get_softc(dev);
 
-    lwkt_serialize_enter(&sc->tulip_serializer);
+    lwkt_serialize_enter(sc->tulip_if.if_serializer);
     TULIP_CSR_WRITE(sc, csr_busmode, TULIP_BUSMODE_SWRESET);
     DELAY(10);	/* Wait 10 microseconds (actually 50 PCI cycles but at 
 		   33MHz that comes to two microseconds but wait a
 		   bit longer anyways) */
-    lwkt_serialize_exit(&sc->tulip_serializer);
+    lwkt_serialize_exit(sc->tulip_if.if_serializer);
     return 0;
 }
 
@@ -4090,7 +4097,6 @@ tulip_pci_attach(device_t dev)
     }
 
     sc = device_get_softc(dev);
-    lwkt_serialize_init(&sc->tulip_serializer);
     sc->tulip_dev = dev;
     sc->tulip_pci_busno = pci_get_bus(dev);
     sc->tulip_pci_devno = pci_get_slot(dev);
@@ -4156,7 +4162,6 @@ tulip_pci_attach(device_t dev)
 		   33MHz that comes to two microseconds but wait a
 		   bit longer anyways) */
 
-    lwkt_serialize_enter(&sc->tulip_serializer);
     if ((retval = tulip_read_macaddr(sc)) < 0) {
 	device_printf(dev, "can't read ENET ROM (why=%d) (", retval);
 	for (idx = 0; idx < 32; idx++)
@@ -4172,6 +4177,7 @@ tulip_pci_attach(device_t dev)
 	if (sc->tulip_features & TULIP_HAVE_SHAREDINTR)
 	    intr_rtn = tulip_intr_shared;
 
+	tulip_attach(sc);
 	if ((sc->tulip_features & TULIP_HAVE_SLAVEDINTR) == 0) {
 	    void *ih;
 
@@ -4180,16 +4186,14 @@ tulip_pci_attach(device_t dev)
 				         RF_SHAREABLE | RF_ACTIVE);
 	    if (res == 0 || bus_setup_intr(dev, res, INTR_NETSAFE,
 					   intr_rtn, sc, &ih,
-					   &sc->tulip_serializer)) {
-		lwkt_serialize_exit(&sc->tulip_serializer);
+					   sc->tulip_if.if_serializer)) {
 		device_printf(dev, "couldn't map interrupt\n");
+		tulip_detach(sc);
 		free((caddr_t) sc->tulip_rxdescs, M_DEVBUF);
 		free((caddr_t) sc->tulip_txdescs, M_DEVBUF);
 		return ENXIO;
 	    }
 	}
-	tulip_attach(sc);
-	lwkt_serialize_exit(&sc->tulip_serializer);
     }
     return 0;
 }

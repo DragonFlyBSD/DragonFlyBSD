@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.9 2005/06/10 15:46:31 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.10 2006/02/17 19:18:05 dillon Exp $
  */
 
 /*
@@ -156,11 +156,12 @@ idad_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * be a multiple of a sector in length.
  */
 static void
-idad_strategy(struct buf *bp)
+idad_strategy(dev_t dev, struct bio *bio)
 {
+	struct buf *bp = bio->bio_buf;
 	struct idad_softc *drv;
 
-	drv = idad_getsoftc(bp->b_dev);
+	drv = idad_getsoftc(dev);
 	if (drv == NULL) {
     		bp->b_error = EINVAL;
 		goto bad;
@@ -180,10 +181,10 @@ idad_strategy(struct buf *bp)
 	if (bp->b_bcount == 0)
 		goto done;
 
-	bp->b_driver1 = drv;
+	bio->bio_driver_info = drv;
 	crit_enter();
 	devstat_start_transaction(&drv->stats);
-	ida_submit_buf(drv->controller, bp);
+	ida_submit_buf(drv->controller, bio);
 	crit_exit();
 	return;
 
@@ -195,8 +196,7 @@ done:
 	 * Correctly set the buf to indicate a completed transfer
 	 */
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
-	return;
+	biodone(bio);
 }
 
 static int
@@ -244,9 +244,10 @@ idad_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 }
 
 void
-idad_intr(struct buf *bp)
+idad_intr(struct bio *bio)
 {
-	struct idad_softc *drv = (struct idad_softc *)bp->b_driver1;
+	struct idad_softc *drv = (struct idad_softc *)bio->bio_driver_info;
+	struct buf *bp = bio->bio_buf;
 
 	if (bp->b_flags & B_ERROR)
 		bp->b_error = EIO;
@@ -254,7 +255,7 @@ idad_intr(struct buf *bp)
 		bp->b_resid = 0;
 
 	devstat_end_transaction_buf(&drv->stats, bp);
-	biodone(bp);
+	biodone(bio);
 }
 
 static int

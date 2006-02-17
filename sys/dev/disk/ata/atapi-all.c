@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.15 2005/06/03 21:56:23 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.16 2006/02/17 19:17:54 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -158,10 +158,10 @@ atapi_detach(struct ata_device *atadev)
 	    continue;
 	TAILQ_REMOVE(&atadev->channel->atapi_queue, request, chain);
 	if (request->driver) {
-	    struct buf *bp = (struct buf *) request->driver;
-	    bp->b_flags |= B_ERROR;
-	    bp->b_error = ENXIO;
-	    biodone(bp);
+	    struct bio *bio = (struct bio *) request->driver;
+	    bio->bio_buf->b_flags |= B_ERROR;
+	    bio->bio_buf->b_error = ENXIO;
+	    biodone(bio);
 	}
 	ata_dmafree(atadev);
 	free(request, M_ATAPI);

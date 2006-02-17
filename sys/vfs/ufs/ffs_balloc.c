@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.13 2005/10/26 17:13:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.14 2006/02/17 19:18:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,11 +129,11 @@ ffs_balloc(struct vop_balloc_args *ap)
 				return (error);
 			if (DOINGSOFTDEP(vp))
 				softdep_setup_allocdirect(ip, nb,
-				    dbtofsb(fs, bp->b_blkno), ip->i_db[nb],
-				    fs->fs_bsize, osize, bp);
+				    dbtofsb(fs, bp->b_bio2.bio_blkno), 
+				    ip->i_db[nb], fs->fs_bsize, osize, bp);
 			/* adjust the inode size, we just grew */
 			ip->i_size = smalllblktosize(fs, nb + 1);
-			ip->i_db[nb] = dbtofsb(fs, bp->b_blkno);
+			ip->i_db[nb] = dbtofsb(fs, bp->b_bio2.bio_blkno);
 			ip->i_flag |= IN_CHANGE | IN_UPDATE;
 			if (flags & B_SYNC)
 				bwrite(bp);
@@ -153,7 +153,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 				brelse(bp);
 				return (error);
 			}
-			bp->b_blkno = fsbtodb(fs, nb);
+			bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 			*ap->a_bpp = bp;
 			return (0);
 		}
@@ -169,7 +169,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 					brelse(bp);
 					return (error);
 				}
-				bp->b_blkno = fsbtodb(fs, nb);
+				bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 			} else {
 				error = ffs_realloccg(ip, lbn,
 				    ffs_blkpref(ip, lbn, (int)lbn,
@@ -178,8 +178,8 @@ ffs_balloc(struct vop_balloc_args *ap)
 					return (error);
 				if (DOINGSOFTDEP(vp))
 					softdep_setup_allocdirect(ip, lbn,
-					    dbtofsb(fs, bp->b_blkno), nb,
-					    nsize, osize, bp);
+					    dbtofsb(fs, bp->b_bio2.bio_blkno),
+					    nb, nsize, osize, bp);
 			}
 		} else {
 			if (ip->i_size < smalllblktosize(fs, lbn + 1))
@@ -192,14 +192,14 @@ ffs_balloc(struct vop_balloc_args *ap)
 			if (error)
 				return (error);
 			bp = getblk(vp, lbn, nsize, 0, 0);
-			bp->b_blkno = fsbtodb(fs, newb);
+			bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
 			if (flags & B_CLRBUF)
 				vfs_bio_clrbuf(bp);
 			if (DOINGSOFTDEP(vp))
 				softdep_setup_allocdirect(ip, lbn, newb, 0,
 				    nsize, 0, bp);
 		}
-		ip->i_db[lbn] = dbtofsb(fs, bp->b_blkno);
+		ip->i_db[lbn] = dbtofsb(fs, bp->b_bio2.bio_blkno);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		*ap->a_bpp = bp;
 		return (0);
@@ -250,7 +250,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		nb = newb;
 		*allocblk++ = nb;
 		bp = getblk(vp, indirs[1].in_lbn, fs->fs_bsize, 0, 0);
-		bp->b_blkno = fsbtodb(fs, nb);
+		bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		vfs_bio_clrbuf(bp);
 		if (DOINGSOFTDEP(vp)) {
 			softdep_setup_allocdirect(ip, NDADDR + indirs[0].in_off,
@@ -299,7 +299,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		nb = newb;
 		*allocblk++ = nb;
 		nbp = getblk(vp, indirs[i].in_lbn, fs->fs_bsize, 0, 0);
-		nbp->b_blkno = fsbtodb(fs, nb);
+		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		vfs_bio_clrbuf(nbp);
 		if (DOINGSOFTDEP(vp)) {
 			softdep_setup_allocindir_meta(nbp, ip, bp,
@@ -353,7 +353,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		dbp->b_blkno = fsbtodb(fs, nb);
+		dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		if (flags & B_CLRBUF)
 			vfs_bio_clrbuf(dbp);
 		if (DOINGSOFTDEP(vp))
@@ -387,7 +387,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		/*
 		 * If B_CLRBUF is set we must validate the invalid portions
 		 * of the buffer.  This typically requires a read-before-
-		 * write.  The strategy call will fill in b_blkno in that
+		 * write.  The strategy call will fill in bio_blkno in that
 		 * case.
 		 *
 		 * If we hit this case we do a cluster read if possible
@@ -408,15 +408,15 @@ ffs_balloc(struct vop_balloc_args *ap)
 			if (error)
 				goto fail;
 		} else {
-			dbp->b_blkno = fsbtodb(fs, nb);
+			dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 		}
 	} else {
 		/*
 		 * If B_CLRBUF is not set the caller intends to overwrite
 		 * the entire contents of the buffer.  We can simply set
-		 * b_blkno and we are done.
+		 * bio_blkno and we are done.
 		 */
-		dbp->b_blkno = fsbtodb(fs, nb);
+		dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
 	}
 	*ap->a_bpp = dbp;
 	return (0);

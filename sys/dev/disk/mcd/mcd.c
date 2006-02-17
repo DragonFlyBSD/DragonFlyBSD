@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.14 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.15 2006/02/17 19:17:59 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -120,7 +120,7 @@ struct mcd_mbx {
 	short		nblk;
 	int		sz;
 	u_long		skip;
-	struct buf	*bp;
+	struct bio	*bio;
 	int		p_offset;
 	short		count;
 	short           mode;
@@ -145,7 +145,7 @@ static struct mcd_data {
 	short   curr_mode;
 	struct mcd_read2 lastpb;
 	short	debug;
-	struct buf_queue_head head;		/* head of buf queue */
+	struct bio_queue_head bio_queue;	/* head of buf queue */
 	struct mcd_mbx mbx;
 	struct callout callout;
 } mcd_data[NMCD];
@@ -253,7 +253,7 @@ int mcd_attach(struct isa_device *dev)
 	cd->flags |= MCDINIT;
 	callout_init(&cd->callout);
 	mcd_soft_reset(unit);
-	bufq_init(&cd->head);
+	bioq_init(&cd->bio_queue);
 
 #ifdef NOTYET
 	/* wire controller for interrupts and dma */
@@ -389,20 +389,22 @@ int mcdclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 void
-mcdstrategy(struct buf *bp)
+mcdstrategy(dev_t dev, struct bio *bio)
 {
+	struct bio *nbio;
+	struct buf *bp = bio->bio_buf;
 	struct mcd_data *cd;
-
-	int unit = mcd_unit(bp->b_dev);
+	int unit = mcd_unit(dev);
 
 	cd = mcd_data + unit;
+	bio->bio_driver_info = dev;
 
 	/* test validity */
 /*MCD_TRACE("strategy: buf=0x%lx, unit=%ld, block#=%ld bcount=%ld\n",
-	bp,unit,bp->b_blkno,bp->b_bcount);*/
-	if (unit >= NMCD || bp->b_blkno < 0) {
+	bp,unit,bio->bio_blkno,bp->b_bcount);*/
+	if (unit >= NMCD || bio->bio_blkno < 0) {
 		printf("mcdstrategy: unit = %d, blkno = %ld, bcount = %ld\n",
-			unit, (long)bp->b_blkno, bp->b_bcount);
+			unit, (long)bio->bio_blkno, bp->b_bcount);
 		printf("mcd: mcdstratregy failure");
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
@@ -427,34 +429,37 @@ MCD_TRACE("strategy: drive not valid\n");
 		goto done;
 
 	/* for non raw access, check partition limits */
-	if (mcd_part(bp->b_dev) != RAW_PART) {
+	if (mcd_part(dev) != RAW_PART) {
 		if (!(cd->flags & MCDLABEL)) {
 			bp->b_error = EIO;
 			goto bad;
 		}
 		/* adjust transfer if necessary */
-		if (bounds_check_with_label(bp,&cd->dlabel,1) <= 0) {
+		nbio = bounds_check_with_label(dev, bio, &cd->dlabel, 1);
+		if (nbio == NULL)
 			goto done;
-		}
 	} else {
-		bp->b_pblkno = bp->b_blkno;
+		nbio = bio;
 		bp->b_resid = 0;
 	}
 
 	/* queue it */
 	crit_enter();
-	bufqdisksort(&cd->head, bp);
+	bioqdisksort(&cd->bio_queue, nbio);
 	crit_exit();
 
 	/* now check whether we can perform processing */
 	mcd_start(unit);
 	return;
 
+	/*
+	 * These cases occur before nbio is set, use bio.
+	 */
 bad:
 	bp->b_flags |= B_ERROR;
 done:
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
+	biodone(bio);
 	return;
 }
 
@@ -462,7 +467,9 @@ static void mcd_start(int unit)
 {
 	struct mcd_data *cd = mcd_data + unit;
 	struct partition *p;
+	struct bio *bio;
 	struct buf *bp;
+	dev_t dev;
 
 	crit_enter();
 	if (cd->flags & MCDMBXBSY) {
@@ -470,17 +477,19 @@ static void mcd_start(int unit)
 		return;
 	}
 
-	bp = bufq_first(&cd->head);
-	if (bp != 0) {
-		/* block found to process, dequeue */
-		/*MCD_TRACE("mcd_start: found block bp=0x%x\n",bp,0,0,0);*/
-		bufq_remove(&cd->head, bp);
-		crit_exit();
-	} else {
+	bio = bioq_first(&cd->bio_queue);
+	if (bio == NULL) {
 		/* nothing to do */
 		crit_exit();
 		return;
 	}
+	bp = bio->bio_buf;
+	dev = bio->bio_driver_info;
+
+	/* block found to process, dequeue */
+	/*MCD_TRACE("mcd_start: found block bp=0x%x\n",bp,0,0,0);*/
+	bioq_remove(&cd->bio_queue, bio);
+	crit_exit();
 
 	/* changed media? */
 	if (!(cd->flags	& MCDVALID)) {
@@ -488,15 +497,15 @@ static void mcd_start(int unit)
 		return;
 	}
 
-	p = cd->dlabel.d_partitions + mcd_part(bp->b_dev);
+	p = cd->dlabel.d_partitions + mcd_part(dev);
 
 	cd->flags |= MCDMBXBSY;
-	if (cd->partflags[mcd_part(bp->b_dev)] & MCDREADRAW)
+	if (cd->partflags[mcd_part(dev)] & MCDREADRAW)
 		cd->flags |= MCDREADRAW;
 	cd->mbx.unit = unit;
 	cd->mbx.port = cd->iobase;
 	cd->mbx.retry = MCD_RETRYS;
-	cd->mbx.bp = bp;
+	cd->mbx.bio = bio;
 	cd->mbx.p_offset = p->p_offset;
 
 	/* calling the read routine */
@@ -991,7 +1000,8 @@ mcd_doread(int state, struct mcd_mbx *mbxin)
 	int	port = mbx->port;
 	int     com_port = mbx->port + mcd_command;
 	int     data_port = mbx->port + mcd_rdata;
-	struct	buf *bp = mbx->bp;
+	struct	bio *bio = mbx->bio;
+	struct  buf *bp = bio->bio_buf;
 	struct	mcd_data *cd = mcd_data + unit;
 
 	int	rm,i,k;
@@ -1089,7 +1099,7 @@ modedone:
 		mbx->skip = 0;
 
 nextblock:
-		blknum 	= (bp->b_blkno / (mbx->sz/DEV_BSIZE))
+		blknum 	= (bio->bio_blkno / (mbx->sz/DEV_BSIZE))
 			+ mbx->p_offset + mbx->skip/mbx->sz;
 
 		MCD_TRACE("mcd_doread: read blknum=%d for bp=%p\n",
@@ -1153,7 +1163,7 @@ retry_read:
 
 				/* return buffer */
 				bp->b_resid = 0;
-				biodone(bp);
+				biodone(bio);
 
 				cd->flags &= ~(MCDMBXBSY|MCDREADRAW);
 				mcd_start(mbx->unit);
@@ -1185,7 +1195,7 @@ harderr:
 	/* invalidate the buffer */
 	bp->b_flags |= B_ERROR;
 	bp->b_resid = bp->b_bcount;
-	biodone(bp);
+	biodone(bio);
 
 	cd->flags &= ~(MCDMBXBSY|MCDREADRAW);
 	mcd_start(mbx->unit);

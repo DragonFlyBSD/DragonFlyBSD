@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.14 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.15 2006/02/17 19:18:05 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -155,7 +155,7 @@ ips_pci_attach(device_t dev)
 	sc->ips_ich.ich_arg = sc;
 	sc->ips_ich.ich_desc = "ips";
 	lwkt_rwlock_init(&sc->queue_lock);
-	bufq_init(&sc->queue);
+	bioq_init(&sc->bio_queue);
 	if (config_intrhook_establish(&sc->ips_ich) != 0) {
 		printf("IPS can't establish configuration hook\n");
 		goto error;

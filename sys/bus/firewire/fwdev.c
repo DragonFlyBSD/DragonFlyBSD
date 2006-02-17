@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.10 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.11 2006/02/17 19:17:44 dillon Exp $
  *
  */
 
@@ -771,20 +771,18 @@ fw_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)
 }
 
 static void
-fw_strategy(struct bio *bp)
+fw_strategy(dev_t dev, struct bio *bio)
 {
-	dev_t dev;
+	struct buf *bp = bio->bio_buf;
 
-	dev = bp->bio_dev;
 	if (DEV_FWMEM(dev)) {
-		fwmem_strategy(bp);
+		fwmem_strategy(dev, bio);
 		return;
 	}
-
-	bp->bio_error = EOPNOTSUPP;
-	bp->bio_flags |= BIO_ERROR;
-	bp->bio_resid = bp->bio_bcount;
-	biodone(bp);
+	bp->b_error = EOPNOTSUPP;
+	bp->b_flags |= B_ERROR;
+	bp->b_resid = bp->b_bcount;
+	biodone(bio);
 }
 
 int

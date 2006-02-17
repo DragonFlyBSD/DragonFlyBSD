@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.34 2006/01/31 19:05:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.35 2006/02/17 19:18:07 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -911,7 +911,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 		nmp = zalloc(nfsmount_zone);
 		bzero((caddr_t)nmp, sizeof (struct nfsmount));
 		TAILQ_INIT(&nmp->nm_uidlruhead);
-		TAILQ_INIT(&nmp->nm_bufq);
+		TAILQ_INIT(&nmp->nm_bioq);
 		mp->mnt_data = (qaddr_t)nmp;
 	}
 	vfs_getnewfsid(mp);
