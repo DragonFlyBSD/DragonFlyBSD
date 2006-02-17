@@ -27,7 +27,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/fsdb/fsdb.8,v 1.12.2.8 2003/02/23 20:17:15 trhodes Exp $
-.\" $DragonFly: src/sbin/fsdb/fsdb.8,v 1.2 2003/06/17 04:27:32 dillon Exp $
+.\" $DragonFly: src/sbin/fsdb/fsdb.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd September 14, 1995
 .Dt FSDB 8
@@ -218,15 +218,6 @@ Exit the program.
 .Xr fs 5 ,
 .Xr clri 8 ,
 .Xr fsck 8
-.Sh BUGS
-Manipulation of ``short'' symlinks doesn't work (in particular, don't
-try changing a symlink's type).
-.Pp
-You must specify modes as numbers rather than symbolic names.
-.Pp
-There are a bunch of other things that you might want to do which
-.Nm
-doesn't implement.
 .Sh HISTORY
 The
 .Nm
@@ -247,3 +238,12 @@ Use this tool with extreme caution--you can damage an FFS file system
 beyond what
 .Xr fsck 8
 can repair.
+.Sh BUGS
+Manipulation of ``short'' symlinks doesn't work (in particular, don't
+try changing a symlink's type).
+.Pp
+You must specify modes as numbers rather than symbolic names.
+.Pp
+There are a bunch of other things that you might want to do which
+.Nm
+doesn't implement.

@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.6 2006/02/10 19:01:09 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.7 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd July 30, 1999
 .Dt DISKLABEL 8
@@ -867,13 +867,6 @@ drivedata: 0
   f:     5g        *    4.2BSD
   g:      *        *    4.2BSD
 .Ed
-.Sh SEE ALSO
-.Xr ccd 4 ,
-.Xr disklabel 5 ,
-.Xr disktab 5 ,
-.Xr boot0cfg 8 ,
-.Xr fdisk 8 ,
-.Xr vinum 8
 .Sh DIAGNOSTICS
 The kernel device drivers will not allow the size of a disk partition
 to be decreased or the offset of a partition to be changed while it is open.
@@ -904,6 +897,13 @@ utility will disallow creation of file systems on FS_BOOT partitions.
 Conversely, if a partition has a type other than FS_UNUSED or FS_BOOT,
 .Nm
 will not install bootstrap code that overlaps it.
+.Sh SEE ALSO
+.Xr ccd 4 ,
+.Xr disklabel 5 ,
+.Xr disktab 5 ,
+.Xr boot0cfg 8 ,
+.Xr fdisk 8 ,
+.Xr vinum 8
 .Sh BUGS
 When a disk name is given without a full pathname,
 the constructed device name uses the

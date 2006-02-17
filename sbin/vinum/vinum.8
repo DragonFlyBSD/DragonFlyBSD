@@ -36,7 +36,7 @@
 .\"
 .\" $Id: vinum.8,v 1.48 2001/01/15 22:15:05 grog Exp $
 .\" $FreeBSD: src/sbin/vinum/vinum.8,v 1.33.2.10 2002/12/29 16:35:38 schweikh Exp $
-.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/sbin/vinum/vinum.8,v 1.4 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd December 20, 2000
 .Dt VINUM 8
@@ -2579,7 +2579,18 @@ and the arguments must be disk slices, such as
 not partitions such as
 .Pa /dev/da0e .
 .El
-.\"XXX.Sh BUGS
+.Sh ENVIRONMENT
+.Bl -tag -width VINUM_DATEFORMAT
+.It Ev VINUM_HISTORY
+The name of the log file, by default
+.Pa /var/log/vinum_history .
+.It Ev VINUM_DATEFORMAT
+The format of dates in the log file, by default
+.Qq Li %e %b %Y %H:%M:%S .
+.It Ev EDITOR
+The name of the editor to use for editing configuration files, by default
+.Nm vi .
+.El
 .Sh FILES
 .Bl -tag -width /dev/vinum/control -compact
 .It Pa /dev/vinum
@@ -2598,18 +2609,6 @@ directory containing device nodes for
 .Nm
 subdisks
 .El
-.Sh ENVIRONMENT
-.Bl -tag -width VINUM_DATEFORMAT
-.It Ev VINUM_HISTORY
-The name of the log file, by default
-.Pa /var/log/vinum_history .
-.It Ev VINUM_DATEFORMAT
-The format of dates in the log file, by default
-.Qq Li %e %b %Y %H:%M:%S .
-.It Ev EDITOR
-The name of the editor to use for editing configuration files, by default
-.Nm vi .
-.El
 .Sh SEE ALSO
 .Xr strftime 3 ,
 .Xr vinum 4 ,
@@ -2618,8 +2617,6 @@ The name of the editor to use for editing configuration files, by default
 .Pp
 .Pa http://www.vinumvm.org/vinum/ ,
 .Pa http://www.vinumvm.org/vinum/how-to-debug.html .
-.Sh AUTHORS
-.An Greg Lehey Aq grog@lemis.com
 .Sh HISTORY
 The
 .Nm
@@ -2630,3 +2627,6 @@ The RAID-5 component of
 was developed for Cybernet Inc.\&
 .Pq Pa www.cybernet.com
 for its NetMAX product.
+.Sh AUTHORS
+.An Greg Lehey Aq grog@lemis.com
+.\"XXX.Sh BUGS

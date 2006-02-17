@@ -1,7 +1,7 @@
 .\" Copyright (c) 1988, 1989, 1991 Carnegie Mellon University
 .\"
 .\" $FreeBSD: src/libexec/bootpd/bootpd.8,v 1.10.2.5 2001/07/22 12:07:21 dd Exp $
-.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.3 2005/08/05 22:35:10 swildner Exp $
+.\" $DragonFly: src/libexec/bootpd/bootpd.8,v 1.4 2006/02/17 19:33:31 swildner Exp $
 .\"
 .Dd November 6, 1993
 .Dt BOOTPD 8
@@ -246,6 +246,20 @@ Internet service numbers.
 Current directory typically used by the TFTP server and
 .Nm .
 .El
+.Sh "SEE ALSO"
+.Xr bootptab 5 ,
+.Xr inetd 8 ,
+.Xr tftpd 8
+.Pp
+DARPA Internet Request For Comments:
+.Bl -tag -width RFC1533 -compact
+.It RFC951
+Bootstrap Protocol
+.It RFC1532
+Clarifications and Extensions for the Bootstrap Protocol
+.It RFC1533
+DHCP Options and BOOTP Vendor Extensions
+.El
 .Sh BUGS
 Individual host entries must not exceed 1024 characters.
 .Sh CREDITS
@@ -277,17 +291,3 @@ Enhancements and bug-fixes have been contributed by:
 .An Jim McKim Aq mckim@lerc.nasa.gov
 .An Gordon W. Ross Aq gwr@mc.com
 .An Jason Zions Aq jazz@hal.com .
-.Sh "SEE ALSO"
-.Xr bootptab 5 ,
-.Xr inetd 8 ,
-.Xr tftpd 8
-.Pp
-DARPA Internet Request For Comments:
-.Bl -tag -width RFC1533 -compact
-.It RFC951
-Bootstrap Protocol
-.It RFC1532
-Clarifications and Extensions for the Bootstrap Protocol
-.It RFC1533
-DHCP Options and BOOTP Vendor Extensions
-.El

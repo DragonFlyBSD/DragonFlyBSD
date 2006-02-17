@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)cat.1	8.3 (Berkeley) 5/2/95
 .\" $FreeBSD: src/bin/cat/cat.1,v 1.10.2.9 2001/12/14 14:22:08 ru Exp $
-.\" $DragonFly: src/bin/cat/cat.1,v 1.4 2005/07/31 11:53:46 asmodai Exp $
+.\" $DragonFly: src/bin/cat/cat.1,v 1.5 2006/02/17 19:33:30 swildner Exp $
 .\"
 .Dd September 15, 2001
 .Dt CAT 1
@@ -109,8 +109,6 @@ characters (with the high bit set) are printed as
 .Ql M-
 (for meta) followed by the character for the low 7 bits.
 .El
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh EXAMPLES
 The command:
 .Bd -literal -offset indent
@@ -161,6 +159,8 @@ would have already been read and printed by
 when it encountered the first
 .Ql \&-
 operand.
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr head 1 ,
 .Xr more 1 ,

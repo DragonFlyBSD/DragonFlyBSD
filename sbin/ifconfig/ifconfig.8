@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.8 2005/10/13 10:57:50 swildner Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.9 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd July 26, 2004
 .Dt IFCONFIG 8
@@ -831,19 +831,6 @@ it (or have need for it).
 Messages indicating the specified interface does not exist, the
 requested address is unknown, or the user is not privileged and
 tried to alter an interface's configuration.
-.Sh BUGS
-Basic IPv6 node operation requires a link-local address on each
-interface configured for IPv6.
-Normally, such an address is automatically configured by the
-kernel on each interface added to the system; this behaviour may
-be disabled by setting the sysctl MIB variable
-.Va net.inet6.ip6.auto_linklocal
-to 0.
-.Pp
-If you delete such an address using
-.Nm ,
-the kernel may act very oddly.
-Do this at your own risk.
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr netintro 4 ,
@@ -857,3 +844,16 @@ The
 .Nm
 utility appeared in
 .Bx 4.2 .
+.Sh BUGS
+Basic IPv6 node operation requires a link-local address on each
+interface configured for IPv6.
+Normally, such an address is automatically configured by the
+kernel on each interface added to the system; this behaviour may
+be disabled by setting the sysctl MIB variable
+.Va net.inet6.ip6.auto_linklocal
+to 0.
+.Pp
+If you delete such an address using
+.Nm ,
+the kernel may act very oddly.
+Do this at your own risk.

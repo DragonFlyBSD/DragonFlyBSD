@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ftpd.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/libexec/ftpd/ftpd.8,v 1.31.2.18 2003/02/11 14:28:28 yar Exp $
-.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.3 2005/10/28 18:06:57 joerg Exp $
+.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.4 2006/02/17 19:33:31 swildner Exp $
 .\"
 .Dd January 27, 2000
 .Dt FTPD 8
@@ -545,6 +545,12 @@ Log file for anonymous transfers.
 .Xr login.conf 5 ,
 .Xr inetd 8 ,
 .Xr syslogd 8
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.Bx 4.2 .
+IPv6 support was added in WIDE Hydrangea IPv6 stack kit.
 .Sh BUGS
 The server must run as the super-user
 to create sockets with privileged port numbers.  It maintains
@@ -552,9 +558,3 @@ an effective user id of the logged in user, reverting to
 the super-user only when binding addresses to sockets.  The
 possible security holes have been extensively
 scrutinized, but are possibly incomplete.
-.Sh HISTORY
-The
-.Nm
-command appeared in
-.Bx 4.2 .
-IPv6 support was added in WIDE Hydrangea IPv6 stack kit.

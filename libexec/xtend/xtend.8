@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/libexec/xtend/xtend.8,v 1.11.2.4 2001/08/16 10:44:22 ru Exp $
-.\" $DragonFly: src/libexec/xtend/xtend.8,v 1.2 2003/06/17 04:27:08 dillon Exp $
+.\" $DragonFly: src/libexec/xtend/xtend.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd October 30, 1993
 .Dt XTEND 8
@@ -148,9 +148,6 @@ perform X-10 transmissions.
 .El
 .Sh OPTIONS
 None.
-.Sh SEE ALSO
-.Xr xten 1 ,
-.Xr tw 4
 .Sh FILES
 .Bl -tag -width /var/spool/xten/status.out -compact
 .It Pa /dev/tw0
@@ -167,6 +164,11 @@ device status file (binary)
 .Tn ASCII
 dump of device status
 .El
+.Sh SEE ALSO
+.Xr xten 1 ,
+.Xr tw 4
+.Sh AUTHORS
+.An Eugene W. Stark Aq stark@cs.sunysb.edu
 .Sh BUGS
 There is currently no timeout on client socket connections, so a hung
 client program can prevent other clients from accessing the daemon.
@@ -176,5 +178,3 @@ does the best it can at trying to track device status, but there is
 usually no way it can tell when a device has been operated manually.
 This is due to the fact that most X-10 devices are not able to
 respond to queries about their status.
-.Sh AUTHORS
-.An Eugene W. Stark Aq stark@cs.sunysb.edu

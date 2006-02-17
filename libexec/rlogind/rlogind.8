@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)rlogind.8	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/libexec/rlogind/rlogind.8,v 1.13.2.4 2001/08/16 10:44:17 ru Exp $
-.\" $DragonFly: src/libexec/rlogind/rlogind.8,v 1.3 2004/07/08 01:21:11 hmp Exp $
+.\" $DragonFly: src/libexec/rlogind/rlogind.8,v 1.4 2006/02/17 19:33:31 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt RLOGIND 8
@@ -158,6 +158,13 @@ Transport-level keepalive messages are enabled unless the
 option is present.
 The use of keepalive messages allows sessions to be timed out
 if the client crashes or becomes unreachable.
+.Sh FILES
+.Bl -tag -width /etc/hostsxxxxxxxx -compact
+.It Pa /etc/hosts
+.It Pa /etc/hosts.equiv
+.It Ev $HOME Ns Pa /.rhosts
+.It Pa /var/run/nologin
+.El
 .Sh DIAGNOSTICS
 All initial diagnostic messages are indicated
 by a leading byte with a value of 1,
@@ -180,13 +187,13 @@ by the server failed.
 .Xr nologin 5 ,
 .Xr services 5 ,
 .Xr rshd 8
-.Sh FILES
-.Bl -tag -width /etc/hostsxxxxxxxx -compact
-.It Pa /etc/hosts
-.It Pa /etc/hosts.equiv
-.It Ev $HOME Ns Pa /.rhosts
-.It Pa /var/run/nologin
-.El
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.Bx 4.2 .
+.Pp
+IPv6 support was added by WIDE/KAME project.
 .Sh BUGS
 The authentication procedure used here assumes the integrity
 of each client machine and the connecting medium.  This is
@@ -198,10 +205,3 @@ A facility to allow all data exchanges to be encrypted should be
 present.
 .Pp
 A more extensible protocol should be used.
-.Sh HISTORY
-The
-.Nm
-command appeared in
-.Bx 4.2 .
-.Pp
-IPv6 support was added by WIDE/KAME project.

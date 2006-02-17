@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)comsat.8	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/libexec/comsat/comsat.8,v 1.6.2.4 2002/08/18 17:30:53 johan Exp $
-.\" $DragonFly: src/libexec/comsat/comsat.8,v 1.2 2003/06/17 04:27:07 dillon Exp $
+.\" $DragonFly: src/libexec/comsat/comsat.8,v 1.3 2006/02/17 19:33:31 swildner Exp $
 .\"
 .Dd August 9, 2002
 .Dt COMSAT 8
@@ -93,6 +93,11 @@ standard mailbox
 .Sh SEE ALSO
 .Xr biff 1 ,
 .Xr inetd 8
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.Bx 4.2 .
 .Sh BUGS
 The message header filtering is prone to error.
 The density of the information presented is near the theoretical minimum.
@@ -102,8 +107,3 @@ machines than the one to which they are currently logged in.
 .Pp
 The notification should appear in a separate window so it
 does not mess up the screen.
-.Sh HISTORY
-The
-.Nm
-command appeared in
-.Bx 4.2 .

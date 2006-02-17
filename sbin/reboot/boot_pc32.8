@@ -39,7 +39,7 @@
 .\"     @(#)boot_i386.8	8.2 (Berkeley) 4/19/94
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
-.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.4 2004/06/25 05:38:00 dillon Exp $
+.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.5 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt BOOT 8 i386
@@ -249,17 +249,6 @@ default kernel
 .It Pa /kernel.old
 typical non-default kernel (optional)
 .El
-.Sh SEE ALSO
-.Xr ddb 4 ,
-.Xr ttys 5 ,
-.Xr boot0cfg 8 ,
-.Xr btxld 8 ,
-.Xr config 8 ,
-.Xr disklabel 8 ,
-.Xr halt 8 ,
-.Xr loader 8 ,
-.Xr reboot 8 ,
-.Xr shutdown 8
 .Sh DIAGNOSTICS
 When disk-related errors occur, these are reported by the second-stage
 bootstrap using the same error codes returned by the BIOS, for example
@@ -298,6 +287,17 @@ BIOS understands the geometry).  When a
 .Dq Disk error 0x1
 is reported by the second-stage bootstrap, it generally means that this
 requirement has not been adhered to.
+.Sh SEE ALSO
+.Xr ddb 4 ,
+.Xr ttys 5 ,
+.Xr boot0cfg 8 ,
+.Xr btxld 8 ,
+.Xr config 8 ,
+.Xr disklabel 8 ,
+.Xr halt 8 ,
+.Xr loader 8 ,
+.Xr reboot 8 ,
+.Xr shutdown 8
 .Sh BUGS
 The
 .Xr disklabel 5

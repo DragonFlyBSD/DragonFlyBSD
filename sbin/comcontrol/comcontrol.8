@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/comcontrol/comcontrol.8,v 1.15.2.7 2002/08/21 18:58:13 trhodes Exp $
-.\" $DragonFly: src/sbin/comcontrol/comcontrol.8,v 1.2 2003/06/17 04:27:32 dillon Exp $
+.\" $DragonFly: src/sbin/comcontrol/comcontrol.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
 .Dd May 15, 1994
 .Dt COMCONTROL 8
 .Os
@@ -46,9 +46,6 @@ The standard way to use
 is to put invocations of it in the
 .Pa /etc/rc.serial
 startup script.
-.Sh SEE ALSO
-.Xr stty 1 ,
-.Xr sio 4
 .Sh FILES
 .Bl -tag -width /dev/ttyd? -compact
 .It Pa /dev/ttyd?
@@ -56,10 +53,13 @@ dialin devices, hardwired terminals
 .It Pa /dev/cuaa?
 dialout devices
 .El
-.Sh AUTHORS
-.An Christopher G. Demetriou
+.Sh SEE ALSO
+.Xr stty 1 ,
+.Xr sio 4
 .Sh HISTORY
 Originally part of cgd's com package patches, version 0.2.1, to
 .Bx 386 0.1 .
 Once controlled bidirectional capabilities.  Little is left to control now
 that these capabilities are standard.
+.Sh AUTHORS
+.An Christopher G. Demetriou

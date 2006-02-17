@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)restore.8	8.4 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/restore/restore.8,v 1.20.2.15 2003/02/23 22:47:13 trhodes Exp $
-.\" $DragonFly: src/sbin/restore/restore.8,v 1.2 2003/06/17 04:27:34 dillon Exp $
+.\" $DragonFly: src/sbin/restore/restore.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd May 1, 1995
 .Dt RESTORE 8
@@ -356,6 +356,24 @@ preceded by its file type.
 Do not ask the user whether to abort the restore in the event of an error.
 Always try to skip over the bad block(s) and continue.
 .El
+.Sh ENVIRONMENT
+.Bl -tag -width ".Ev TMPDIR"
+.It Ev TAPE
+Device from which to read backup.
+.It Ev TMPDIR
+Name of directory where temporary files are to be created.
+.El
+.Sh FILES
+.Bl -tag -width "./restoresymtable" -compact
+.It Pa /dev/sa0
+the default tape drive
+.It Pa /tmp/rstdir*
+file containing directories on the tape.
+.It Pa /tmp/rstmode*
+owner, mode, and time stamps for directories.
+.It Pa \&./restoresymtable
+information passed between incremental restores.
+.El
 .Sh DIAGNOSTICS
 The
 .Nm
@@ -427,29 +445,16 @@ After a dump read error,
 may have to resynchronize itself.
 This message lists the number of blocks that were skipped over.
 .El
-.Sh FILES
-.Bl -tag -width "./restoresymtable" -compact
-.It Pa /dev/sa0
-the default tape drive
-.It Pa /tmp/rstdir*
-file containing directories on the tape.
-.It Pa /tmp/rstmode*
-owner, mode, and time stamps for directories.
-.It Pa \&./restoresymtable
-information passed between incremental restores.
-.El
-.Sh ENVIRONMENT
-.Bl -tag -width ".Ev TMPDIR"
-.It Ev TAPE
-Device from which to read backup.
-.It Ev TMPDIR
-Name of directory where temporary files are to be created.
-.El
 .Sh SEE ALSO
 .Xr dump 8 ,
 .Xr mount 8 ,
 .Xr newfs 8 ,
 .Xr rmt 8
+.Sh HISTORY
+The
+.Nm
+utility appeared in
+.Bx 4.2 .
 .Sh BUGS
 The
 .Nm
@@ -489,8 +494,3 @@ be the same across different processes.
 In all other cases, the files are unique because it is possible to
 have two different dumps started at the same time, and separate
 operations shouldn't conflict with each other.
-.Sh HISTORY
-The
-.Nm
-utility appeared in
-.Bx 4.2 .

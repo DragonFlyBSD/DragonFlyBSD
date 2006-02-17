@@ -32,7 +32,7 @@
 .\"     @(#)slattach.8	6.4 (Berkeley) 3/16/91
 .\"
 .\" $FreeBSD: src/sbin/slattach/slattach.8,v 1.16.2.6 2003/02/23 21:17:43 trhodes Exp $
-.\" $DragonFly: src/sbin/slattach/slattach.8,v 1.2 2003/06/17 04:27:34 dillon Exp $
+.\" $DragonFly: src/sbin/slattach/slattach.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd April 4, 1993
 .Dt SLATTACH 8
@@ -226,6 +226,19 @@ If you use a hard-wired connection rather than a modem, invoke
 with the
 .Fl l
 option in order to ignore carrier on the slip line.
+.Sh FILES
+.Bl -tag -width /usr/share/examples/slattach/* -compact
+.It Pa /var/run/slattach.<tty>.pid
+with
+.Ar tty
+replaced by the terminal path name component of
+.Ar ttyname .
+This file contains the numerical process ID of the
+.Nm
+process and can be examined by scripts in order to send a signal to
+.Nm
+.It Pa /usr/share/examples/slattach/*
+.El
 .Sh EXAMPLES
 .Bd -literal -offset indent -compact
 slattach ttyd8
@@ -247,19 +260,6 @@ utility
 also logs failure to set the controlling terminal or failure to install
 signal handlers.  Upon connection and redial the ttyname and baud rate
 are logged and on shutdown the ttyname is logged.
-.Sh FILES
-.Bl -tag -width /usr/share/examples/slattach/* -compact
-.It Pa /var/run/slattach.<tty>.pid
-with
-.Ar tty
-replaced by the terminal path name component of
-.Ar ttyname .
-This file contains the numerical process ID of the
-.Nm
-process and can be examined by scripts in order to send a signal to
-.Nm
-.It Pa /usr/share/examples/slattach/*
-.El
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr startslip 1 ,

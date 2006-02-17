@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)netgroup.5	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/sbin/mountd/netgroup.5,v 1.10.2.2 2001/07/22 11:32:30 dd Exp $
-.\" $DragonFly: src/sbin/mountd/netgroup.5,v 1.3 2004/03/11 12:28:54 hmp Exp $
+.\" $DragonFly: src/sbin/mountd/netgroup.5,v 1.4 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt NETGROUP 5
@@ -171,12 +171,12 @@ database is large.
 .It Pa /etc/netgroup
 the netgroup database
 .El
-.Sh SEE ALSO
-.Xr getnetgrent 3 ,
-.Xr exports 5
 .Sh COMPATIBILITY
 The file format is compatible with that of various vendors, however it
 appears that not all vendors use an identical format.
+.Sh SEE ALSO
+.Xr getnetgrent 3 ,
+.Xr exports 5
 .Sh BUGS
 The interpretation of access restrictions based on the member tuples of a
 netgroup is left up to the various network applications.

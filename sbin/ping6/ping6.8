@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/sbin/ping6/ping6.8,v 1.3.2.12 2003/02/24 00:56:42 trhodes Exp $
-.\"	$DragonFly: src/sbin/ping6/ping6.8,v 1.3 2005/08/01 01:49:17 swildner Exp $
+.\"	$DragonFly: src/sbin/ping6/ping6.8,v 1.4 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd May 17, 1998
 .Dt PING6 8
@@ -456,6 +456,19 @@ ping6 -a agl dst.foo.com
 .%D August 2000
 .%O work in progress material
 .Re
+.Sh HISTORY
+The
+.Xr ping 8
+command appeared in
+.Bx 4.3 .
+The
+.Nm
+utility with IPv6 support first appeared in WIDE Hydrangea IPv6 protocol stack
+kit.
+.Pp
+IPv6 and IPsec support based on the KAME Project (http://www.kame.net/) stack
+was initially integrated into
+.Fx 4.0
 .Sh BUGS
 There have been many discussions on why we separate
 .Nm
@@ -485,16 +498,3 @@ or
 .Fl 4
 option (or something like those) to specify the particular address family.
 This essentially means that we have two different commands.
-.Sh HISTORY
-The
-.Xr ping 8
-command appeared in
-.Bx 4.3 .
-The
-.Nm
-utility with IPv6 support first appeared in WIDE Hydrangea IPv6 protocol stack
-kit.
-.Pp
-IPv6 and IPsec support based on the KAME Project (http://www.kame.net/) stack
-was initially integrated into
-.Fx 4.0

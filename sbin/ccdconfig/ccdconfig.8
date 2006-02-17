@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/ccdconfig/ccdconfig.8,v 1.9.2.10 2003/01/26 03:38:39 keramida Exp $
-.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.2 2003/06/17 04:27:32 dillon Exp $
+.\" $DragonFly: src/sbin/ccdconfig/ccdconfig.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
 .\"
 .Dd July 17, 1995
 .Dt CCDCONFIG 8
@@ -143,6 +143,24 @@ The component devices need to name partitions of type
 .Dq 4.2BSD
 as shown by
 .Xr disklabel 8 ) .
+.Sh RECOVERY
+An error on a ccd disk is usually unrecoverable unless you are using the
+mirroring option.  But mirroring has its own perils:  It assumes that
+both copies of the data at any given sector are the same.  This holds true
+until a write error occurs or until you replace either side of the mirror.
+This is a poor-man's mirroring implementation.  It works well enough that if
+you begin to get disk errors you should be able to backup the ccd disk,
+replace the broken hardware, and then regenerate the ccd disk.  If you need
+more than this you should look into external hardware RAID SCSI boxes,
+RAID controllers such as the
+.Xr dpt 4
+controller, or software RAID systems such as
+.Xr vinum 8 .
+.Sh FILES
+.Bl -tag -width /etc/ccd.conf -compact
+.It Pa /etc/ccd.conf
+default ccd configuration file
+.El
 .Sh EXAMPLES
 A number of
 .Nm
@@ -191,24 +209,6 @@ Beware that changing any ccd parameters: interleave, flags, or the
 device list making up the ccd disk, will usually destroy any prior
 data on that ccd disk.  If this occurs it is usually a good idea to
 reinitialize the label before [re]constructing your ccd disk.
-.Sh RECOVERY
-An error on a ccd disk is usually unrecoverable unless you are using the
-mirroring option.  But mirroring has its own perils:  It assumes that
-both copies of the data at any given sector are the same.  This holds true
-until a write error occurs or until you replace either side of the mirror.
-This is a poor-man's mirroring implementation.  It works well enough that if
-you begin to get disk errors you should be able to backup the ccd disk,
-replace the broken hardware, and then regenerate the ccd disk.  If you need
-more than this you should look into external hardware RAID SCSI boxes,
-RAID controllers such as the
-.Xr dpt 4
-controller, or software RAID systems such as
-.Xr vinum 8 .
-.Sh FILES
-.Bl -tag -width /etc/ccd.conf -compact
-.It Pa /etc/ccd.conf
-default ccd configuration file
-.El
 .Sh SEE ALSO
 .Xr dd 1 ,
 .Xr ccd 4 ,

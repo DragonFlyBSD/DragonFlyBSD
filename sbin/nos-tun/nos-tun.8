@@ -7,7 +7,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/sbin/nos-tun/nos-tun.8,v 1.6.2.6 2003/02/23 20:53:46 trhodes Exp $
-.\" $DragonFly: src/sbin/nos-tun/nos-tun.8,v 1.3 2004/03/11 12:28:54 hmp Exp $
+.\" $DragonFly: src/sbin/nos-tun/nos-tun.8,v 1.4 2006/02/17 19:33:33 swildner Exp $
 .\"
 .Dd April 11, 1998
 .Dt NOS-TUN 8
@@ -79,8 +79,6 @@ tunnel mode nos
 tunnel destination 192.168.59.34
 tunnel source 192.168.56.45
 .Ed
-.Sh BUGS
-We don't allow for setting our source address for multihomed machines.
 .Sh AUTHORS
 .An -nosplit
 .An Nickolay N. Dudorov Aq nnd@itfs.nsk.su
@@ -89,3 +87,5 @@ wrote the program,
 wrote the man-page.
 .An Isao SEKI Aq iseki@gongon.com
 added a new flag, IP protocol number.
+.Sh BUGS
+We don't allow for setting our source address for multihomed machines.
