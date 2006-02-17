@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)uname.1	8.3 (Berkeley) 4/8/94
 .\" $FreeBSD: src/usr.bin/uname/uname.1,v 1.8.2.4 2002/10/17 07:47:29 jmallett Exp $
-.\" $DragonFly: src/usr.bin/uname/uname.1,v 1.3 2003/10/24 17:19:16 dillon Exp $
+.\" $DragonFly: src/usr.bin/uname/uname.1,v 1.4 2006/02/17 19:39:13 swildner Exp $
 .\"
 .Dd October 24, 2003
 .Dt UNAME 1
@@ -80,8 +80,6 @@ If the
 .Fl a
 flag is specified, or multiple flags are specified, all
 output is written on a single line, separated by spaces.
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh ENVIRONMENT
 An environment variable composed of the string
 .Ev UNAME_
@@ -91,17 +89,19 @@ utility (except for
 .Fl a )
 will allow the corresponding data to be set to the contents
 of the environment variable.
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr sysctl 3 ,
 .Xr uname 3 ,
 .Xr sysctl 8
-.Sh HISTORY
-The
-.Nm
-command appeared in PWB UNIX.
 .Sh STANDARDS
 The
 .Nm
 command is expected to conform to the
 .St -p1003.2
 specification.
+.Sh HISTORY
+The
+.Nm
+command appeared in PWB UNIX.

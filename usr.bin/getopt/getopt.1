@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/usr.bin/getopt/getopt.1,v 1.10.2.5 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/getopt/getopt.1,v 1.3 2006/02/17 19:39:06 swildner Exp $
 .\"
 .Dd April 3, 1999
 .Dt GETOPT 1
@@ -86,15 +86,15 @@ cmd \-oarg -a file file
 cmd \-a \-oarg \-\- file file
 .Pp
 .Ed
-.Sh SEE ALSO
-.Xr sh 1 ,
-.Xr getopt 3
 .Sh DIAGNOSTICS
 The
 .Nm
 utility prints an error message on the standard error output and exits with
 status > 0 when it encounters an option letter not included in
 .Ar optstring .
+.Sh SEE ALSO
+.Xr sh 1 ,
+.Xr getopt 3
 .Sh HISTORY
 Written by
 .An Henry Spencer ,

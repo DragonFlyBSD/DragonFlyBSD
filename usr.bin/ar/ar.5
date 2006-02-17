@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ar.5.5	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/usr.bin/ar/ar.5,v 1.5.2.2 2001/12/14 15:53:29 ru Exp $
-.\" $DragonFly: src/usr.bin/ar/Attic/ar.5,v 1.2 2003/06/17 04:29:25 dillon Exp $
+.\" $DragonFly: src/usr.bin/ar/Attic/ar.5,v 1.3 2006/02/17 19:38:54 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt AR 5
@@ -104,6 +104,11 @@ length, there will be no separation between the fields.
 Objects in the archive are always an even number of bytes long; files
 which are an odd number of bytes long are padded with a newline (``\en'')
 character, although the size in the header does not reflect this.
+.Sh COMPATIBILITY
+No archive format is currently specified by any standard.
+.At V
+has historically distributed archives in a different format from
+all of the above.
 .Sh SEE ALSO
 .Xr ar 1 ,
 .Xr stat 2
@@ -141,8 +146,3 @@ It has been extended for these reasons,
 as described above.
 This format first appeared in
 .Bx 4.4 .
-.Sh COMPATIBILITY
-No archive format is currently specified by any standard.
-.At V
-has historically distributed archives in a different format from
-all of the above.

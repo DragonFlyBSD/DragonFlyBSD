@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)fstat.1	8.3 (Berkeley) 2/25/94
 .\" $FreeBSD: src/usr.bin/fstat/fstat.1,v 1.9.2.7 2002/06/21 15:26:59 charnier Exp $
-.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.3 2005/01/31 18:05:09 dillon Exp $
+.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.4 2006/02/17 19:39:05 swildner Exp $
 .\"
 .Dd February 25, 1994
 .Dt FSTAT 1
@@ -209,11 +209,6 @@ connected unix domain stream socket.
 A unidirectional unix domain socket indicates the direction of flow with
 an arrow (``<-'' or ``->''), and a full duplex socket shows a double arrow
 (``<->'').
-.Sh BUGS
-Since
-.Nm
-takes a snapshot of the system, it is only correct for a very short period
-of time.
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr nfsstat 1 ,
@@ -230,3 +225,8 @@ The
 .Nm
 command appeared in
 .Bx 4.3 tahoe .
+.Sh BUGS
+Since
+.Nm
+takes a snapshot of the system, it is only correct for a very short period
+of time.

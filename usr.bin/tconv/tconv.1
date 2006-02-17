@@ -1,6 +1,6 @@
 .\" @(#) mytinfo tconv.1 3.2 92/02/01 public domain, By Ross Ridge
 .\" $FreeBSD: src/usr.bin/tconv/tconv.1,v 1.10.2.6 2002/06/21 15:29:26 charnier Exp $
-.\" $DragonFly: src/usr.bin/tconv/Attic/tconv.1,v 1.2 2003/06/17 04:29:32 dillon Exp $
+.\" $DragonFly: src/usr.bin/tconv/Attic/tconv.1,v 1.3 2006/02/17 19:39:11 swildner Exp $
 .\"
 .Dd February 1, 1992
 .Dt TCONV 1
@@ -152,16 +152,16 @@ The default filename of the terminfo source file.
 .It Pa /etc/termcap
 The default filename of the termcap database.
 .El
+.Sh DIAGNOSTICS
+The line number of a warning message when translating a file
+may refer to the last line of an entry instead of the line in the entry
+that generated the warning.
 .Sh SEE ALSO
 .Xr curses 3 ,
 .Xr termcap 3 ,
 .Xr term 5 ,
 .Xr termcap 5 ,
 .Xr terminfo 5
-.Sh DIAGNOSTICS
-The line number of a warning message when translating a file
-may refer to the last line of an entry instead of the line in the entry
-that generated the warning.
 .Sh BUGS
 More warning messages could be generated.
 The

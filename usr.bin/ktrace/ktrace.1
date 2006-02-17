@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)ktrace.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/ktrace/ktrace.1,v 1.8.2.8 2002/06/21 15:27:30 charnier Exp $
-.\" $DragonFly: src/usr.bin/ktrace/ktrace.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/ktrace/ktrace.1,v 1.3 2006/02/17 19:39:08 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt KTRACE 1
@@ -165,12 +165,12 @@ on process 67
 .Dl $ ktrace -C
 .Sh SEE ALSO
 .Xr kdump 1
-.Sh BUGS
-Only works if
-.Ar trfile
-is a regular file.
 .Sh HISTORY
 The
 .Nm
 command appeared in
 .Bx 4.4 .
+.Sh BUGS
+Only works if
+.Ar trfile
+is a regular file.

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)last.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/last/last.1,v 1.6.2.8 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/last/last.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/last/last.1,v 1.3 2006/02/17 19:39:09 swildner Exp $
 .\"
 .Dd March 1, 2002
 .Dt LAST 1
@@ -207,6 +207,11 @@ login data base
 .Xr lastcomm 1 ,
 .Xr utmp 5 ,
 .Xr ac 8
+.Sh HISTORY
+A
+.Nm
+utility appeared in
+.Bx 3.0 .
 .Sh BUGS
 If a login shell should terminate abnormally for some reason, it is likely
 that a logout record won't be written to the
@@ -215,8 +220,3 @@ file.
 In this case,
 .Nm
 will indicate the logout time as "shutdown".
-.Sh HISTORY
-A
-.Nm
-utility appeared in
-.Bx 3.0 .

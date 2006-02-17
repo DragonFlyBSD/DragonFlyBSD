@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)strings.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/strings/strings.1,v 1.4.2.3 2002/06/21 15:29:13 charnier Exp $
-.\" $DragonFly: src/usr.bin/strings/Attic/strings.1,v 1.2 2003/06/17 04:29:31 dillon Exp $
+.\" $DragonFly: src/usr.bin/strings/Attic/strings.1,v 1.3 2006/02/17 19:39:11 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt STRINGS 1
@@ -79,13 +79,6 @@ file.
 The
 .Nm
 utility is useful for identifying random binaries, among other things.
-.Sh SEE ALSO
-.Xr hexdump 1
-.Sh BUGS
-The algorithm for identifying strings is extremely primitive.
-In particular, machine code instructions on certain architectures
-can resemble sequences of ASCII bytes, which
-will fool the algorithm.
 .Sh COMPATIBILITY
 Historic implementations of
 .Nm
@@ -94,8 +87,15 @@ This was reasonable as strings were normally stored there.
 Given new compiler technology which installs strings in the
 text portion of the object file, the default behavior was
 changed.
+.Sh SEE ALSO
+.Xr hexdump 1
 .Sh HISTORY
 The
 .Nm
 command appeared in
 .Bx 3.0 .
+.Sh BUGS
+The algorithm for identifying strings is extremely primitive.
+In particular, machine code instructions on certain architectures
+can resemble sequences of ASCII bytes, which
+will fool the algorithm.

@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ipcs/ipcs.1,v 1.9.2.4 2003/04/08 11:07:51 tjr Exp $
-.\" $DragonFly: src/usr.bin/ipcs/ipcs.1,v 1.4 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/usr.bin/ipcs/ipcs.1,v 1.5 2006/02/17 19:39:07 swildner Exp $
 .\"
 .Dd Oct 31, 2004
 .Dt "IPCS" 1
@@ -145,10 +145,6 @@ System data structures may change while
 is running; the output of
 .Nm
 is not guaranteed to be consistent.
-.Sh BUGS
-This manual page is woefully incomplete, because it does not
-at all attempt to explain the information printed by
-.Nm .
 .Sh FILES
 .Bl -tag -width /etc/passwd -compact
 .It Pa /dev/kmem
@@ -160,3 +156,7 @@ default system name list
 .Xr ipcrm 1
 .Sh AUTHORS
 .An Thorsten Lockert Aq tholo@sigmasoft.com
+.Sh BUGS
+This manual page is woefully incomplete, because it does not
+at all attempt to explain the information printed by
+.Nm .

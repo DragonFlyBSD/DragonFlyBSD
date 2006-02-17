@@ -29,7 +29,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/asa/asa.1,v 1.3 2002/05/30 13:33:59 ru Exp $
-.\" $DragonFly: src/usr.bin/asa/asa.1,v 1.3 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/usr.bin/asa/asa.1,v 1.4 2006/02/17 19:38:55 swildner Exp $
 .\"
 .Dd June 20, 2004
 .Dt ASA 1
@@ -73,8 +73,6 @@ before printing the rest of the line.
 Lines beginning with characters other than the above are treated as if they
 begin with
 .Aq space .
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh EXAMPLES
 To view a file containing the output of a
 .Tn FORTRAN
@@ -87,6 +85,8 @@ To format the output of a
 program and redirect it to a line-printer:
 .Pp
 .Dl "a.out | asa | lpr"
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr f77 1
 .Sh STANDARDS

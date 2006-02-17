@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)column.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/column/column.1,v 1.5.2.4 2001/08/16 13:16:46 ru Exp $
-.\" $DragonFly: src/usr.bin/column/column.1,v 1.2 2003/06/17 04:29:25 dillon Exp $
+.\" $DragonFly: src/usr.bin/column/column.1,v 1.3 2006/02/17 19:38:59 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Os
@@ -75,8 +75,6 @@ Useful for pretty-printing displays.
 .It Fl x
 Fill columns before filling rows.
 .El
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh ENVIRONMENT
 .Bl -tag -width COLUMNS
 .It Ev COLUMNS
@@ -89,6 +87,8 @@ the screen if no other information is available.
 .Dl (printf \&"PERM LINKS OWNER GROUP SIZE MONTH DAY \&"\ \&;\ \&\e
 .Dl printf \&"HH:MM/YEAR NAME\en\&"\ \&;\ \&\e
 .Dl ls -l \&| sed 1d) \&| column -t
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh SEE ALSO
 .Xr colrm 1 ,
 .Xr ls 1 ,

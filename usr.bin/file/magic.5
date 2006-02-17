@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/usr.bin/file/magic.5,v 1.11.2.8 2003/03/16 04:47:04 obrien Exp $
-.\" $DragonFly: src/usr.bin/file/Attic/magic.5,v 1.2 2003/06/17 04:29:26 dillon Exp $
+.\" $DragonFly: src/usr.bin/file/Attic/magic.5,v 1.3 2006/02/17 19:39:04 swildner Exp $
 .\"
 .\" install as magic.4 on USG, magic.5 on V7 or Berkeley systems.
 .\"
@@ -226,6 +226,8 @@ test beginning with
 Such a relative offset is specified using
 .Em &
 as a prefix to the offset.
+.Sh SEE ALSO
+.Xr file 1
 .Sh BUGS
 The formats
 .Em long ,
@@ -245,8 +247,6 @@ a system on which the lengths are invariant.
 .Pp
 There is (currently) no support for specified-endian data to be used in
 indirect offsets.
-.Sh SEE ALSO
-.Xr file 1
 .\"
 .\" From: guy@sun.uucp (Guy Harris)
 .\" Newsgroups: net.bugs.usg

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)apply.1	8.2 (Berkeley) 4/4/94
 .\" $FreeBSD: src/usr.bin/apply/apply.1,v 1.8.2.4 2002/07/15 04:07:25 keramida Exp $
-.\" $DragonFly: src/usr.bin/apply/apply.1,v 1.2 2003/06/17 04:29:25 dillon Exp $
+.\" $DragonFly: src/usr.bin/apply/apply.1,v 1.3 2006/02/17 19:38:54 swildner Exp $
 .\"
 .Dd April 4, 1994
 .Dt APPLY 1
@@ -106,6 +106,11 @@ The following environment variable affects the execution of
 Pathname of shell to use.
 If this variable is not defined, the Bourne shell is used.
 .El
+.Sh FILES
+.Bl -tag -width /bin/sh -compact
+.It Pa /bin/sh
+default shell
+.El
 .Sh EXAMPLES
 .Bl -tag -width apply -compact
 .It Li "apply echo a*"
@@ -121,11 +126,11 @@ runs
 links all files in the current directory to the directory
 .Pa /usr/joe .
 .El
-.Sh FILES
-.Bl -tag -width /bin/sh -compact
-.It Pa /bin/sh
-default shell
-.El
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.Bx 4.2 .
 .Sh AUTHORS
 .An Rob Pike
 .Sh BUGS
@@ -134,8 +139,3 @@ Shell metacharacters in
 may have bizarre effects; it is best to enclose complicated
 commands in single quotes
 .Pq '' .
-.Sh HISTORY
-The
-.Nm
-command appeared in
-.Bx 4.2 .

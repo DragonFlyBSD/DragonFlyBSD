@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)checknr.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/checknr/checknr.1,v 1.5.2.5 2002/07/15 04:29:39 keramida Exp $
-.\" $DragonFly: src/usr.bin/checknr/checknr.1,v 1.3 2005/03/04 02:53:55 cpressey Exp $
+.\" $DragonFly: src/usr.bin/checknr/checknr.1,v 1.4 2006/02/17 19:38:57 swildner Exp $
 .\"
 .Dd June 6, 1993
 .Dt CHECKNR 1
@@ -138,26 +138,26 @@ utility knows about the
 and
 .Xr me 7
 macro packages.
-.Sh SEE ALSO
-.Xr nroff 1 ,
-.Xr troff 1 ,
-.Xr me 7 ,
-.Xr ms 7
-.\" .Xr checkeq 1 ,
 .Sh DIAGNOSTICS
 .Bd -ragged -compact
 Complaints about unmatched delimiters.
 Complaints about unrecognized commands.
 Various complaints about the syntax of commands.
 .Ed
+.Sh SEE ALSO
+.Xr nroff 1 ,
+.Xr troff 1 ,
+.Xr me 7 ,
+.Xr ms 7
+.\" .Xr checkeq 1 ,
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.Bx 4.0 .
 .Sh BUGS
 There is no way to define a 1 character macro name using
 .Fl a .
 .Pp
 Does not correctly recognize certain reasonable constructs,
 such as conditionals.
-.Sh HISTORY
-The
-.Nm
-command appeared in
-.Bx 4.0 .

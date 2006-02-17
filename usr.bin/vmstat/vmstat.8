@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)vmstat.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/vmstat/vmstat.8,v 1.16.2.5 2001/08/16 13:17:13 ru Exp $
-.\" $DragonFly: src/usr.bin/vmstat/vmstat.8,v 1.2 2003/06/17 04:29:33 dillon Exp $
+.\" $DragonFly: src/usr.bin/vmstat/vmstat.8,v 1.3 2006/02/17 19:39:15 swildner Exp $
 .\"
 .Dd June 6, 1996
 .Dt VMSTAT 8
@@ -283,6 +283,13 @@ system time
 cpu idle
 .El
 .El
+.Sh FILES
+.Bl -tag -width /dev/kmemxxx -compact
+.It Pa /kernel
+default kernel namelist
+.It Pa /dev/kmem
+default memory file
+.El
 .Sh EXAMPLES
 The command:
 .Dl vmstat -w 5
@@ -297,13 +304,6 @@ The command:
 will tell vmstat to select the first three direct access or CDROM devices
 and display statistics on those devices, as well as other systems
 statistics every second.
-.Sh FILES
-.Bl -tag -width /dev/kmemxxx -compact
-.It Pa /kernel
-default kernel namelist
-.It Pa /dev/kmem
-default memory file
-.El
 .Sh SEE ALSO
 .Xr fstat 1 ,
 .Xr netstat 1 ,

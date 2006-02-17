@@ -31,7 +31,7 @@
 .\"
 .\" From: $OpenBSD: mktemp.1,v 1.8 1998/03/19 06:13:37 millert Exp $
 .\" $FreeBSD: src/usr.bin/mktemp/mktemp.1,v 1.7.2.8 2003/02/24 22:37:42 trhodes Exp $
-.\" $DragonFly: src/usr.bin/mktemp/mktemp.1,v 1.3 2004/03/11 12:28:58 hmp Exp $
+.\" $DragonFly: src/usr.bin/mktemp/mktemp.1,v 1.4 2006/02/17 19:39:09 swildner Exp $
 .\"
 .Dd November 20, 1996
 .Dt MKTEMP 1
@@ -144,11 +144,6 @@ exits.  This is slightly better than
 but still introduces a race condition.  Use of this
 option is not encouraged.
 .El
-.Sh DIAGNOSTICS
-The
-.Nm
-utility
-exits 0 on success, and 1 if an error occurs.
 .Sh EXAMPLES
 The following
 .Xr sh 1
@@ -178,6 +173,11 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 .Ed
+.Sh DIAGNOSTICS
+The
+.Nm
+utility
+exits 0 on success, and 1 if an error occurs.
 .Sh SEE ALSO
 .Xr mkdtemp 3 ,
 .Xr mkstemp 3 ,

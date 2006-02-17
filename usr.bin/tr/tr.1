@@ -34,7 +34,7 @@
 .\"
 .\"     @(#)tr.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/tr/tr.1,v 1.5.2.7 2002/07/29 12:59:33 tjr Exp $
-.\" $DragonFly: src/usr.bin/tr/tr.1,v 1.2 2003/06/17 04:29:33 dillon Exp $
+.\" $DragonFly: src/usr.bin/tr/tr.1,v 1.3 2006/02/17 19:39:12 swildner Exp $
 .\"
 .Dd October 11, 1997
 .Dt TR 1
@@ -234,8 +234,6 @@ environment variables affect the execution of
 .Nm
 as described in
 .Xr environ 7 .
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh EXAMPLES
 The following examples are shown as given to the shell:
 .Pp
@@ -256,6 +254,8 @@ Remove diacritical marks from all accented variants of the letter
 .Sq e :
 .Pp
 .Dl "tr \*q[=e=]\*q \*qe\*q"
+.Sh DIAGNOSTICS
+.Ex -std
 .Sh COMPATIBILITY
 System V has historically implemented character ranges using the syntax
 ``[c-c]'' instead of the ``c-c'' used by historic
