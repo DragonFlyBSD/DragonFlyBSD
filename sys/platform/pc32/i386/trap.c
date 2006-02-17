@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.72 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.73 2006/02/17 06:01:24 dillon Exp $
  */
 
 /*
@@ -1883,8 +1883,8 @@ bad:
 
 	userexit(lp);
 #ifdef SMP
-	KASSERT(td->td_mpcount == 1, ("badmpcount waitsys/end from %p",
-	        (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == have_mplock, 
+		("badmpcount waitsys/end from %p", (void *)frame.tf_eip));
 	if (have_mplock)
 		rel_mplock();
 #endif
