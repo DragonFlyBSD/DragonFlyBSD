@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.14 2006/01/06 15:50:07 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.15 2006/02/19 09:16:26 swildner Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -91,7 +91,6 @@ SC_NO_SYSMOUSE		opt_syscons.h
 SC_NORM_ATTR		opt_syscons.h
 SC_NORM_REV_ATTR	opt_syscons.h
 SC_PIXEL_MODE		opt_syscons.h
-SC_RENDER_DEBUG		opt_syscons.h
 SC_TWOBUTTON_MOUSE	opt_syscons.h
 
 VGA_ALT_SEQACCESS	opt_vga.h

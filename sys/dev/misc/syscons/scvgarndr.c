@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.14 2005/05/26 16:24:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.15 2006/02/19 09:16:26 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -44,10 +44,6 @@
 #include "syscons.h"
 
 #include <bus/isa/isareg.h>
-
-#ifndef SC_RENDER_DEBUG
-#define	SC_RENDER_DEBUG		0
-#endif
 
 static vr_draw_border_t		vga_txtborder;
 static vr_draw_t		vga_txtdraw;

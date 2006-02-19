@@ -26,7 +26,7 @@
  * Copyright (c) 2000 Andrew Miklic
  *
  * $FreeBSD: src/sys/dev/syscons/scgfbrndr.c,v 1.14.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.4 2005/05/26 16:24:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scgfbrndr.c,v 1.5 2006/02/19 09:16:26 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -42,10 +42,6 @@
 
 #include <dev/fb/fbreg.h>
 #include "syscons.h"
-
-#ifndef SC_RENDER_DEBUG
-#define SC_RENDER_DEBUG		0
-#endif
 
 static vr_clear_t		gfb_clear;
 static vr_draw_border_t		gfb_border;
