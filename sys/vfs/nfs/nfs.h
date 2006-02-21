@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.11 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.12 2006/02/21 04:47:56 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -370,6 +370,7 @@ extern TAILQ_HEAD(nfs_reqq, nfsreq) nfs_reqq;
 #define	R_MUSTRESEND	0x0040		/* Must resend request */
 #define	R_GETONEREP	0x0080		/* Probe for one reply only */
 #define R_MASKTIMER	0x0100		/* Timer should ignore this req */
+#define R_LOCKED	0x0200		/* Locked by the timer */
 
 /*
  * A list of nfssvc_sock structures is maintained with all the sockets
