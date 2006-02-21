@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.12 2006/02/21 04:47:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.13 2006/02/21 17:52:52 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -62,6 +62,9 @@
 #define	NFS_MAXGRPS	16		/* Max. size of groups list */
 #ifndef NFS_MINATTRTIMO
 #define	NFS_MINATTRTIMO 3		/* VREG attrib cache timeout in sec */
+#endif
+#ifndef NFS_DEFATTRTIMO
+#define	NFS_DEFATTRTIMO 10		/* VREG attrib cache timeout in sec */
 #endif
 #ifndef NFS_MAXATTRTIMO
 #define	NFS_MAXATTRTIMO 60

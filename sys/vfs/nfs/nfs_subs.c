@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.32 2005/06/09 18:39:05 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.33 2006/02/21 17:52:52 dillon Exp $
  */
 
 /*
@@ -1407,7 +1407,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 	 * Dynamic timeout based on how recently the file was modified.
 	 * n_mtime is always valid.
 	 */
-	timeo = (get_approximate_time_t() - np->n_mtime) / 10;
+	timeo = (get_approximate_time_t() - np->n_mtime) / 60;
 
 #ifdef NFS_ACDEBUG
 	if (nfs_acdebug>1)
