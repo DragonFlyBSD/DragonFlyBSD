@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.24 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.25 2006/02/21 17:36:38 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -314,15 +314,13 @@ boot(int howto)
 			if (((bp->b_flags&B_INVAL) == 0 && BUF_REFCNT(bp)) ||
 			    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
 				/*
-				 * XXX we need a way to detect this condition
-				 * Maybe use B_DONE ?
+				 * Only count buffers undergoing write I/O
+				 * on the related vnode.
 				 */
-#if 0
-				if (bp->b_dev == NODEV) {
-					mountlist_remove(bp->b_vp->v_mount);
+				if (bp->b_vp == NULL || 
+				    bp->b_vp->v_track_write.bk_active == 0) {
 					continue;
 				}
-#endif
 				nbusy++;
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
 				printf(
