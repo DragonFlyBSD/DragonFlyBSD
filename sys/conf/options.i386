@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.13 2005/11/04 23:20:33 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.13.2.1 2006/02/24 01:01:04 joerg Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -25,6 +25,7 @@ BROKEN_KEYBOARD_RESET	opt_reset.h
 # (see src/sys/conf/options), except for broken debugging options.
 IBCS2			opt_dontuse.h
 COMPAT_LINUX		opt_dontuse.h
+LINPROCFS	#Linux compatible procfs
 DEBUG_LINUX		opt_linux.h
 COMPAT_SVR4		opt_dontuse.h
 DEBUG_SVR4		opt_svr4.h
