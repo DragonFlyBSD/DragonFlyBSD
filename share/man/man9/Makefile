@@ -1,8 +1,8 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.26 2005/12/27 22:45:23 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.27 2006/02/25 19:14:53 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
-	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
+	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
 	VFS.9 VFS_FHTOVP.9 VFS_INIT.9 VFS_MOUNT.9 VFS_QUOTACTL.9 \
 	VFS_ROOT.9 VFS_START.9 VFS_STATFS.9 VFS_SYNC.9 VFS_UNMOUNT.9 \
 	VFS_VGET.9 VFS_VPTOFH.9 VFS_CHECKEXP.9 \
@@ -29,7 +29,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	panic.9 pci.9 pfil.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \
 	rman.9 \
-	rtalloc.9 rtentry.9 sleep.9 spl.9 \
+	rtalloc.9 rtentry.9 sleep.9 \
 	store.9 style.9 suser.9 time.9 timeout.9 uio.9 \
 	vget.9 vnode.9 vput.9 vref.9 vrele.9 vslock.9 \
 	microtime.9 microuptime.9 tvtohz.9
@@ -194,10 +194,6 @@ MLINKS+=rtalloc.9 rtalloc1.9 rtalloc.9 rtalloc_ign.9
 MLINKS+=sleep.9 tsleep.9 sleep.9 wakeup.9 sleep.9 wakeup_one.9
 MLINKS+=sleep.9 asleep.9 sleep.9 await.9
 MLINKS+=buf.9 bp.9
-MLINKS+=spl.9 spl0.9
-MLINKS+=spl.9 splbio.9 spl.9 splclock.9 spl.9 splhigh.9 spl.9 splimp.9
-MLINKS+=spl.9 splnet.9 spl.9 splsoftclock.9 spl.9 splsofttty.9
-MLINKS+=spl.9 splstatclock.9 spl.9 spltty.9 spl.9 splvm.9 spl.9 splx.9
 MLINKS+=store.9 subyte.9 store.9 suswintr.9 store.9 susword.9 store.9 suword.9
 MLINKS+=suser.9 suser_cred.9
 MLINKS+=suser.9 suser_proc.9

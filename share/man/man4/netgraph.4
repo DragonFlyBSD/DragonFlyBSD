@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.3 2006/02/25 19:14:53 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -214,8 +214,8 @@ Whenever a node delivers a data or control message, the node
 may need to allow for the possibility of receiving a returning
 message before the original delivery function call returns.
 .It
-Netgraph nodes and support routines generally run at
-.Fn splnet .
+Netgraph nodes and support routines generally run inside critical
+sections.
 However, some nodes may want to send data and control messages
 from a different priority level. Netgraph supplies queueing routines which
 utilize the NETISR system to move message delivery to

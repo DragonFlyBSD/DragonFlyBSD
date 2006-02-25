@@ -35,7 +35,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/timeout.9,v 1.9.2.6 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/callout.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/callout.9,v 1.3 2006/02/25 19:14:53 swildner Exp $
 .\"
 .Dd September 10, 1996
 .Dt TIMEOUT 9
@@ -146,8 +146,7 @@ and
 .Fn untimeout .
 Timeouts are executed from
 .Fn softclock
-at
-.Fn splsoftclock .
+inside a critical section.
 Thus they are protected from re-entrancy.
 .Pp
 The functions
