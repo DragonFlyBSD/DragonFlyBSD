@@ -68,7 +68,7 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.5 2005/12/28 13:35:02 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.6 2006/02/26 09:07:35 swildner Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -257,18 +257,12 @@ but prior to DMA read operations.
 .It Dv BUS_DMASYNC_PREWRITE
 Perform any synchronization required after an update of memory by the CPU
 but prior to DMA write operations.
-.It Dv BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE
-Perform any synchronization required prior to a combination of DMA read
-and write operations.
 .It Dv BUS_DMASYNC_POSTREAD
 Perform any synchronization required after DMA read operations, but prior
 to CPU access of the memory.
 .It Dv BUS_DMASYNC_POSTWRITE
 Perform any synchronization required after DMA write operations, but prior
 to CPU access of the memory.
-.It Dv BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE
-Perform any synchronization required after a combination of DMA read
-and write operations.
 .El
 .El
 .sp
