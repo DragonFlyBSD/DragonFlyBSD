@@ -1,12 +1,14 @@
 #
 # $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/vi/Makefile,v 1.3 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/usr.bin/vi/Makefile,v 1.4 2006/02/26 17:18:04 dillon Exp $
 #
 # This has most of the glue needed to compile tknvi and the perl hooks,
 # but not all.
 #
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
+PATCHES!=       echo ${.CURDIR}/patches/*.patch
+CONTRIBDIR=	${SRCDIR}/vi
 
 .if defined(RELEASE_CRUNCH)
 # When building `vi' for the fixit floppy, don't include any of the
@@ -62,7 +64,7 @@ PLLINKS= pl_PL
 .PATH:	${SRCDIR}/cl
 .PATH:	${SRCDIR}/vi
 
-CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/include
+CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/include -I${SRCDIR}/vi
 
 .if !defined(TKNVI)
 DPADD+=		${LIBNCURSES}
@@ -141,6 +143,7 @@ SRCS+=	getc.c v_at.c v_ch.c v_cmd.c v_delete.c v_ex.c v_increment.c v_init.c \
 	v_replace.c v_right.c v_screen.c v_scroll.c v_search.c v_section.c \
 	v_sentence.c v_status.c v_txt.c v_ulcase.c v_undo.c \
 	v_util.c v_word.c v_xchar.c v_yank.c v_z.c v_zexit.c vi.c
+SRCS+=	${PATCHES}
 
 # Vi screen source.
 SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
