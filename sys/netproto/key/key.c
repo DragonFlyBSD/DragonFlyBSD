@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.13 2005/06/10 22:34:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.13.2.1 2006/02/28 21:21:31 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -7154,7 +7154,7 @@ key_validate_ext(ext, len)
 {
 	const struct sockaddr *sa;
 	enum { NONE, ADDR } checktype = NONE;
-	int baselen;
+	int baselen = 0;
 	const int sal = offsetof(struct sockaddr, sa_len) + sizeof(sa->sa_len);
 
 	if (len != PFKEY_UNUNIT64(ext->sadb_ext_len))
