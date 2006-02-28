@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.10.4.2 2006/02/28 22:01:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.10.4.3 2006/02/28 22:05:23 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -84,7 +84,7 @@
 #define	NFS_MAXASYNCDAEMON 	20	/* Max. number async_daemons runnable */
 #define NFS_MAXGATHERDELAY	100	/* Max. write gather delay (msec) */
 #ifndef NFS_GATHERDELAY
-#define NFS_GATHERDELAY		10	/* Default write gather delay (msec) */
+#define NFS_GATHERDELAY		20	/* Default write gather delay (msec) */
 #endif
 #define	NFS_DIRBLKSIZ	4096		/* Must be a multiple of DIRBLKSIZ */
 #ifdef _KERNEL

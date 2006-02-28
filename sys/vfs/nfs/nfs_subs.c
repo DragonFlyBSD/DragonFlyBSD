@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.32.2.1 2006/02/28 22:01:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.32.2.2 2006/02/28 22:05:23 dillon Exp $
  */
 
 /*
@@ -562,12 +562,17 @@ extern int nfssvc(struct proc *, struct nfssvc_args *, int *);
 
 LIST_HEAD(nfsnodehashhead, nfsnode);
 
+/*
+ * This needs to return a monotonically increasing or close to monotonically
+ * increasing result, otherwise the write gathering queues won't work 
+ * properly.
+ */
 u_quad_t
 nfs_curusec(void) 
 {
 	struct timeval tv;
 	
-	getmicrotime(&tv);
+	getmicrouptime(&tv);
 	return ((u_quad_t)tv.tv_sec * 1000000 + (u_quad_t)tv.tv_usec);
 }
 
