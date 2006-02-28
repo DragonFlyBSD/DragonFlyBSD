@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.54 2005/12/01 18:40:56 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.54.2.1 2006/02/28 21:20:53 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -611,7 +611,7 @@ failed:
  * Deprecated.  Use m_getc() and m_cat() instead.
  */
 struct mbuf *
-m_getm(struct mbuf *m0, int len, int how, int type)
+m_getm(struct mbuf *m0, int len, int type, int how)
 {
 	struct mbuf *nfirst;
 
