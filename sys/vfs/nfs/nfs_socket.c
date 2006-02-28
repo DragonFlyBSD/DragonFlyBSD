@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.30 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.30.2.1 2006/02/28 21:59:37 dillon Exp $
  */
 
 /*
@@ -125,6 +125,7 @@ static int proct[NFS_NPROCS] = {
 static int nfs_realign_test;
 static int nfs_realign_count;
 static int nfs_bufpackets = 4;
+static int nfs_timer_raced;
 
 SYSCTL_DECL(_vfs_nfs);
 
@@ -400,10 +401,12 @@ nfs_reconnect(struct nfsreq *rep)
 	 * Loop through outstanding request list and fix up all requests
 	 * on old socket.
 	 */
+	crit_enter();
 	TAILQ_FOREACH(rp, &nfs_reqq, r_chain) {
 		if (rp->r_nmp == nmp)
 			rp->r_flags |= R_MUSTRESEND;
 	}
+	crit_exit();
 	return (0);
 }
 
@@ -781,7 +784,6 @@ nfs_reply(struct nfsreq *myrep)
 		error = nfs_receive(myrep, &nam, &mrep);
 		nfs_rcvunlock(myrep);
 		if (error) {
-
 			/*
 			 * Ignore routing errors on connectionless protocols??
 			 */
@@ -824,80 +826,90 @@ nfsmout:
 
 		/*
 		 * Loop through the request list to match up the reply
-		 * Iff no match, just drop the datagram
+		 * Iff no match, just drop the datagram.  On match, set
+		 * r_mrep atomically to prevent the timer from messing
+		 * around with the request after we have exited the critical
+		 * section.
 		 */
+		crit_enter();
 		TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
 			if (rep->r_mrep == NULL && rxid == rep->r_xid) {
-				/* Found it.. */
 				rep->r_mrep = mrep;
-				rep->r_md = md;
-				rep->r_dpos = dpos;
-				if (nfsrtton) {
-					struct rttl *rt;
-
-					rt = &nfsrtt.rttl[nfsrtt.pos];
-					rt->proc = rep->r_procnum;
-					rt->rto = NFS_RTO(nmp, proct[rep->r_procnum]);
-					rt->sent = nmp->nm_sent;
-					rt->cwnd = nmp->nm_cwnd;
-					rt->srtt = nmp->nm_srtt[proct[rep->r_procnum] - 1];
-					rt->sdrtt = nmp->nm_sdrtt[proct[rep->r_procnum] - 1];
-					rt->fsid = nmp->nm_mountp->mnt_stat.f_fsid;
-					getmicrotime(&rt->tstamp);
-					if (rep->r_flags & R_TIMING)
-						rt->rtt = rep->r_rtt;
-					else
-						rt->rtt = 1000000;
-					nfsrtt.pos = (nfsrtt.pos + 1) % NFSRTTLOGSIZ;
-				}
-				/*
-				 * Update congestion window.
-				 * Do the additive increase of
-				 * one rpc/rtt.
-				 */
-				if (nmp->nm_cwnd <= nmp->nm_sent) {
-					nmp->nm_cwnd +=
-					   (NFS_CWNDSCALE * NFS_CWNDSCALE +
-					   (nmp->nm_cwnd >> 1)) / nmp->nm_cwnd;
-					if (nmp->nm_cwnd > NFS_MAXCWND)
-						nmp->nm_cwnd = NFS_MAXCWND;
-				}
-				crit_enter();	/* nfs_timer interlock*/
-				if (rep->r_flags & R_SENT) {
-					rep->r_flags &= ~R_SENT;
-					nmp->nm_sent -= NFS_CWNDSCALE;
-				}
-				crit_exit();
-				/*
-				 * Update rtt using a gain of 0.125 on the mean
-				 * and a gain of 0.25 on the deviation.
-				 */
-				if (rep->r_flags & R_TIMING) {
-					/*
-					 * Since the timer resolution of
-					 * NFS_HZ is so course, it can often
-					 * result in r_rtt == 0. Since
-					 * r_rtt == N means that the actual
-					 * rtt is between N+dt and N+2-dt ticks,
-					 * add 1.
-					 */
-					t1 = rep->r_rtt + 1;
-					t1 -= (NFS_SRTT(rep) >> 3);
-					NFS_SRTT(rep) += t1;
-					if (t1 < 0)
-						t1 = -t1;
-					t1 -= (NFS_SDRTT(rep) >> 2);
-					NFS_SDRTT(rep) += t1;
-				}
-				nmp->nm_timeouts = 0;
 				break;
 			}
+		}
+		crit_exit();
+
+		/*
+		 * Fill in the rest of the reply if we found a match.
+		 */
+		if (rep) {
+			rep->r_md = md;
+			rep->r_dpos = dpos;
+			if (nfsrtton) {
+				struct rttl *rt;
+
+				rt = &nfsrtt.rttl[nfsrtt.pos];
+				rt->proc = rep->r_procnum;
+				rt->rto = NFS_RTO(nmp, proct[rep->r_procnum]);
+				rt->sent = nmp->nm_sent;
+				rt->cwnd = nmp->nm_cwnd;
+				rt->srtt = nmp->nm_srtt[proct[rep->r_procnum] - 1];
+				rt->sdrtt = nmp->nm_sdrtt[proct[rep->r_procnum] - 1];
+				rt->fsid = nmp->nm_mountp->mnt_stat.f_fsid;
+				getmicrotime(&rt->tstamp);
+				if (rep->r_flags & R_TIMING)
+					rt->rtt = rep->r_rtt;
+				else
+					rt->rtt = 1000000;
+				nfsrtt.pos = (nfsrtt.pos + 1) % NFSRTTLOGSIZ;
+			}
+			/*
+			 * Update congestion window.
+			 * Do the additive increase of
+			 * one rpc/rtt.
+			 */
+			if (nmp->nm_cwnd <= nmp->nm_sent) {
+				nmp->nm_cwnd +=
+				   (NFS_CWNDSCALE * NFS_CWNDSCALE +
+				   (nmp->nm_cwnd >> 1)) / nmp->nm_cwnd;
+				if (nmp->nm_cwnd > NFS_MAXCWND)
+					nmp->nm_cwnd = NFS_MAXCWND;
+			}
+			crit_enter();	/* nfs_timer interlock for nm_sent */
+			if (rep->r_flags & R_SENT) {
+				rep->r_flags &= ~R_SENT;
+				nmp->nm_sent -= NFS_CWNDSCALE;
+			}
+			crit_exit();
+			/*
+			 * Update rtt using a gain of 0.125 on the mean
+			 * and a gain of 0.25 on the deviation.
+			 */
+			if (rep->r_flags & R_TIMING) {
+				/*
+				 * Since the timer resolution of
+				 * NFS_HZ is so course, it can often
+				 * result in r_rtt == 0. Since
+				 * r_rtt == N means that the actual
+				 * rtt is between N+dt and N+2-dt ticks,
+				 * add 1.
+				 */
+				t1 = rep->r_rtt + 1;
+				t1 -= (NFS_SRTT(rep) >> 3);
+				NFS_SRTT(rep) += t1;
+				if (t1 < 0)
+					t1 = -t1;
+				t1 -= (NFS_SDRTT(rep) >> 2);
+				NFS_SDRTT(rep) += t1;
+			}
+			nmp->nm_timeouts = 0;
 		}
 		/*
 		 * If not matched to a request, drop it.
 		 * If it's mine, get out.
 		 */
-		if (rep == 0) {
+		if (rep == NULL) {
 			nfsstats.rpcunexpected++;
 			m_freem(mrep);
 		} else if (rep == myrep) {
@@ -955,6 +967,7 @@ nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
 	rep->r_vp = vp;
 	rep->r_td = td;
 	rep->r_procnum = procnum;
+	rep->r_mreq = NULL;
 	i = 0;
 	m = mrest;
 	while (m) {
@@ -1043,12 +1056,18 @@ tryagain:
 
 	/*
 	 * If backing off another request or avoiding congestion, don't
-	 * send this one now but let timer do it. If not timing a request,
-	 * do it now.
+	 * send this one now but let timer do it.  If not timing a request,
+	 * do it now. 
+	 *
+	 * Even though the timer will not mess with our request there is
+	 * still the possibility that we will race a reply (which clears
+	 * R_SENT), especially on localhost connections, so be very careful
+	 * when setting R_SENT.  We could set R_SENT prior to calling
+	 * nfs_send() but why bother if the response occurs that quickly?
 	 */
 	if (nmp->nm_so && (nmp->nm_sotype != SOCK_DGRAM ||
-		(nmp->nm_flag & NFSMNT_DUMBTIMR) ||
-		nmp->nm_sent < nmp->nm_cwnd)) {
+	    (nmp->nm_flag & NFSMNT_DUMBTIMR) ||
+	    nmp->nm_sent < nmp->nm_cwnd)) {
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(rep);
 		if (!error) {
@@ -1057,7 +1076,10 @@ tryagain:
 			if (nmp->nm_soflags & PR_CONNREQUIRED)
 				nfs_sndunlock(rep);
 		}
-		if (!error && (rep->r_flags & R_MUSTRESEND) == 0) {
+		if (!error && (rep->r_flags & R_MUSTRESEND) == 0 &&
+		    rep->r_mrep == NULL) {
+			KASSERT((rep->r_flags & R_SENT) == 0,
+				("R_SENT ASSERT %p", rep));
 			nmp->nm_sent += NFS_CWNDSCALE;
 			rep->r_flags |= R_SENT;
 		}
@@ -1069,15 +1091,21 @@ tryagain:
 	 * Let the timer do what it will with the request, then
 	 * wait for the reply from our send or the timer's.
 	 */
-	rep->r_flags &= ~R_MASKTIMER;
-	crit_exit();
-	if (!error || error == EPIPE)
+	if (!error || error == EPIPE) {
+		rep->r_flags &= ~R_MASKTIMER;
+		crit_exit();
 		error = nfs_reply(rep);
+		crit_enter();
+	}
 
 	/*
-	 * RPC done, unlink the request.
+	 * RPC done, unlink the request, but don't rip it out from under
+	 * the callout timer.
 	 */
-	crit_enter();
+	while (rep->r_flags & R_LOCKED) {
+		nfs_timer_raced = 1;
+		tsleep(&nfs_timer_raced, 0, "nfstrac", 0);
+	}
 	TAILQ_REMOVE(&nfs_reqq, rep, r_chain);
 
 	/*
@@ -1387,9 +1415,10 @@ nfs_timer(void *arg /* never used */)
 		nmp = rep->r_nmp;
 		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
 			continue;
+		rep->r_flags |= R_LOCKED;
 		if (nfs_sigintr(nmp, rep, rep->r_td)) {
 			nfs_softterm(rep);
-			continue;
+			goto skip;
 		}
 		if (rep->r_rtt >= 0) {
 			rep->r_rtt++;
@@ -1400,7 +1429,7 @@ nfs_timer(void *arg /* never used */)
 			if (nmp->nm_timeouts > 0)
 				timeo *= nfs_backoff[nmp->nm_timeouts - 1];
 			if (rep->r_rtt <= timeo)
-				continue;
+				goto skip;
 			if (nmp->nm_timeouts < 8)
 				nmp->nm_timeouts++;
 		}
@@ -1417,15 +1446,15 @@ nfs_timer(void *arg /* never used */)
 		if (rep->r_rexmit >= rep->r_retry) {	/* too many */
 			nfsstats.rpctimeouts++;
 			nfs_softterm(rep);
-			continue;
+			goto skip;
 		}
 		if (nmp->nm_sotype != SOCK_DGRAM) {
 			if (++rep->r_rexmit > NFS_MAXREXMIT)
 				rep->r_rexmit = NFS_MAXREXMIT;
-			continue;
+			goto skip;
 		}
 		if ((so = nmp->nm_so) == NULL)
-			continue;
+			goto skip;
 
 		/*
 		 * If there is enough space and the window allows..
@@ -1447,11 +1476,18 @@ nfs_timer(void *arg /* never used */)
 			if (error) {
 				if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
 					so->so_error = 0;
-			} else {
+			} else if (rep->r_mrep == NULL) {
 				/*
 				 * Iff first send, start timing
 				 * else turn timing off, backoff timer
 				 * and divide congestion window by 2.
+				 *
+				 * It is possible for the so_pru_send() to
+				 * block and for us to race a reply so we
+				 * only do this if the reply field has not 
+				 * been filled in.  R_LOCKED will prevent
+				 * the request from being ripped out from under
+				 * us entirely.
 				 */
 				if (rep->r_flags & R_SENT) {
 					rep->r_flags &= ~R_TIMING;
@@ -1468,6 +1504,8 @@ nfs_timer(void *arg /* never used */)
 				rep->r_rtt = 0;
 			}
 		}
+skip:
+		rep->r_flags &= ~R_LOCKED;
 	}
 #ifndef NFS_NOSERVER
 	/*
@@ -1488,6 +1526,15 @@ nfs_timer(void *arg /* never used */)
 		nfsrv_wakenfsd(slp, 1);
 	}
 #endif /* NFS_NOSERVER */
+
+	/*
+	 * Due to possible blocking, a client operation may be waiting for
+	 * us to finish processing this request so it can remove it.
+	 */
+	if (nfs_timer_raced) {
+		nfs_timer_raced = 0;
+		wakeup(&nfs_timer_raced);
+	}
 	crit_exit();
 	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
 }
@@ -1506,8 +1553,9 @@ nfs_nmcancelreqs(struct nfsmount *nmp)
 	crit_enter();
 	TAILQ_FOREACH(req, &nfs_reqq, r_chain) {
 		if (nmp != req->r_nmp || req->r_mrep != NULL ||
-		    (req->r_flags & R_SOFTTERM))
+		    (req->r_flags & R_SOFTTERM)) {
 			continue;
+		}
 		nfs_softterm(req);
 	}
 	crit_exit();

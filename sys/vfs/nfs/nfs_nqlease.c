@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.27 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.27.2.1 2006/02/28 21:59:37 dillon Exp $
  */
 
 
@@ -549,8 +549,7 @@ nqsrv_send_eviction(struct vnode *vp, struct nqlease *lp,
 			    nfs_slplock(lph->lph_slp, 0) == 0)) {
 				m_freem(m);
 			} else {
-				(void) nfs_send(so, nam2, m,
-						(struct nfsreq *)0);
+				nfs_send(so, nam2, m, NULL);
 				if (solockp)
 					nfs_slpunlock(lph->lph_slp);
 			}
@@ -914,7 +913,7 @@ nqnfs_vacated(struct vnode *vp, struct ucred *cred)
 	myrep.r_td = NULL;
 	if (nmp->nm_soflags & PR_CONNREQUIRED)
 		(void) nfs_sndlock(&myrep);
-	(void) nfs_send(nmp->nm_so, nmp->nm_nam, m, &myrep);
+	nfs_send(nmp->nm_so, nmp->nm_nam, m, &myrep);
 	if (nmp->nm_soflags & PR_CONNREQUIRED)
 		nfs_sndunlock(&myrep);
 nfsmout:
