@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.99 2006/02/18 12:50:16 corecode Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.100 2006/02/28 22:37:03 joerg Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -310,45 +310,43 @@ rsync
 
 <TR>
 <TD>packages.stura.uni-rostock.de (Germany)</TD>
-<TD>Master site for binary pkgsrc packages (<B>NOTE: Use other sites if possible!</B>)</TD>
-<TD><a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/DEVELOPMENT/i386/All/">i386 packages</a>,
-<a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+<TD>Master site for binary pkgsrc packages</TD>
+<TD><a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/">i386 packages</a>,
+<a href="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
 <TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>binary pkgsrc packages </TD>
-<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/i386/All/">i386 packages</a>, 
-<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+<TD><a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>, 
+<a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
 <TR>
 <TD>ftp.pvvntnu.no (Norway)</TD>
 <TD>binary pkgsrc packages </TD>
-<TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/DEVELOPMENT/i386/All/">i386 packages</a>, 
-<a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+<TD><a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/i386/All/">i386 packages</a>, 
+<a href="ftp://ftp.pvv.ntnu.no/pub/DragonFly/packages/pkgsrc-current/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
 <TR>
 <TD>TheShell.com (Phoenix, AZ, USA)</TD>
 <TD>binary pkgsrc packages </TD>
-<TD><a href="http://theshell.com/pub/DragonFly/packages/DEVELOPMENT/i386/All/">i386 packages</a>, 
-<a href="http://theshell.com/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+<TD><a href="http://theshell.com/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>, 
+<a href="http://theshell.com/pub/DragonFly/packages/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
-<!--
 <TR>
 <TD> www.gobsd.com (USA)</TD>
 <TD>binary pkgsrc packages </TD>
-<TD><a href="http://www.gobsd.com/pkgsrc/i386/All/">i386 packages</a>,
-<a href="http://www.gobsd.com/bootstrap/">bootstrap kits</a>
+<TD><a href="http://www.gobsd.com/pkgsrc/DragonFly/RELEASE/i386/All/">i386 packages</a>,
+<a href="http://www.gobsd.com/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
--->
 
 <TR>
 <TD>Japan Advanced Institute of Science and Technology (JAIST) (Ishikawa, Japan)</TD>
