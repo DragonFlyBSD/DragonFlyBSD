@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.6 2005/12/10 00:22:29 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.7 2006/02/28 02:25:11 swildner Exp $
 .\"
 .Dd May 25, 2001
 .Dt TUNING 7
@@ -216,7 +216,7 @@ or is intended to hold a large number of very small files.
 Such a filesystem should be created with an 8K or 4K block size.
 This also requires you to specify a smaller
 fragment size.
-We recommend always using a fragment size that is 1/8
+We recommend always using a fragment size that is \(18
 the block size (less testing has been done on other fragment size factors).
 The
 .Xr newfs 8

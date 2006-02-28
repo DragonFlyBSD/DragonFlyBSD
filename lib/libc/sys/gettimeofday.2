@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)gettimeofday.2	8.2 (Berkeley) 5/26/95
 .\" $FreeBSD: src/lib/libc/sys/gettimeofday.2,v 1.9.2.9 2003/02/11 06:05:00 nsayer Exp $
-.\" $DragonFly: src/lib/libc/sys/gettimeofday.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/gettimeofday.2,v 1.3 2006/02/28 02:25:10 swildner Exp $
 .\"
 .Dd May 26, 1995
 .Dt GETTIMEOFDAY 2
@@ -100,7 +100,7 @@ Daylight Saving time applies locally during
 the appropriate part of the year.
 .Pp
 Only the super-user may set the time of day or time zone.
-If the system is running at securelevel >= 2 (see
+If the system is running at securelevel \(>= 2 (see
 .Xr init 8 ) ,
 the time may only be advanced or retarded by a maximum of one second.
 This limitation is imposed to prevent a malicious super-user

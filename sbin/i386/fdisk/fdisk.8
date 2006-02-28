@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.8 2005/11/28 17:43:46 corecode Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.9 2006/02/28 02:25:10 swildner Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -324,9 +324,9 @@ information.
 .Pp
 It is an error if the following is not true:
 .Bd -literal -offset indent
-1 <= number of cylinders
-1 <= number of heads <= 256
-1 <= number of sectors/track < 64
+1 \(<= number of cylinders
+1 \(<= number of heads \(<= 256
+1 \(<= number of sectors/track < 64
 .Ed
 .Pp
 The number of cylinders should be less than or equal to 1024, but this

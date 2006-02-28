@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.10 2005/10/24 18:01:30 dillon Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.11 2006/02/28 02:25:11 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -469,7 +469,7 @@ This value is specified in bytes of KVA space
 and defaults to around 70MBytes.
 Care should be taken
 to not reduce this value such that the actual
-amount of configured swap exceeds 1/2 the
+amount of configured swap exceeds \(12 the
 kernel-supported swap.
 The default 70MB allows
 the kernel to support a maximum of (approximately)

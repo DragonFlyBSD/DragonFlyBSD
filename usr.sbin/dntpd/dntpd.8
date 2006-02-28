@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.8 2006/02/17 19:40:14 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.9 2006/02/28 02:25:11 swildner Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -154,7 +154,7 @@ calculate a running Y-intercept, slope, and correlation factor.  The
 Y-intercept is currently not used but can be an indication of a shift in
 the time source.  The slope basically gives us the drift rate which in
 turn allows us to correct the frequency.  The correlation gives us a
-quality indication, with 0 being the worst and +/- 1.0 being the best.
+quality indication, with 0 being the worst and \(+- 1.0 being the best.
 .Pp
 A standard deviation is calculated for offset corrections.  A standard
 deviation gives us measure of the deviation from the mean of a set of
@@ -167,14 +167,14 @@ this differs from the uncorrected offset error that the linear regression
 uses to calculate the frequency correction.
 .Pp
 In order to make a frequency correction a minimum of 8 samples and a
-correlation >= 0.99, or 16 samples and a correlation >= 0.96 is required.
+correlation \(>= 0.99, or 16 samples and a correlation \(>= 0.96 is required.
 Once these requirements are met a frequency correction will typically be
 made each sampling period.  Frequency corrections do not 'jump' the system
 time or otherwise cause fine-time computations to be inaccurate and thus
 can pretty much be made at will.
 .Pp
 In order to make an offset correction a minimum of 4 samples is required
-and the standard deviation must be less than 1/4 the current calculated
+and the standard deviation must be less than \(14 the current calculated
 offset error.  The system typically applies offset corrections slowly over
 time.  The algorithm will make an offset correction whenever these standards
 are met but the fact that the offset error must be greater than 4 times the

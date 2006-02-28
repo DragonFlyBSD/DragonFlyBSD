@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.3 2005/12/13 01:58:27 corecode Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.4 2006/02/28 02:25:11 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -1280,7 +1280,7 @@ For instance:
 .Bl -tag -width Fl
 .It Ar port 2000:2004
 means
-.Sq all ports >= 2000 and <= 2004 ,
+.Sq all ports \(>= 2000 and \(<= 2004 ,
 hence ports 2000, 2001, 2002, 2003 and 2004.
 .It Ar port 2000 >< 2004
 means
