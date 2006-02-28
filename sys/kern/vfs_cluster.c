@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14 2005/08/03 16:36:33 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14.2.1 2006/02/28 22:04:01 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -854,10 +854,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				tbp->b_flags &= ~B_DONE;
 				crit_exit();
 			} /* end of code for non-first buffers only */
-			/* check for latent dependencies to be handled */
-			if ((LIST_FIRST(&tbp->b_dep)) != NULL &&
-			    bioops.io_start)
-				(*bioops.io_start)(tbp);
+
 			/*
 			 * If the IO is via the VM then we do some
 			 * special VM hackery (yuck).  Since the buffer's
@@ -903,6 +900,11 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 			BUF_KERNPROC(tbp);
 			TAILQ_INSERT_TAIL(&bp->b_cluster.cluster_head,
 				tbp, b_cluster.cluster_entry);
+
+			/* check for latent dependencies to be handled */
+			if ((LIST_FIRST(&tbp->b_dep)) != NULL &&
+			    bioops.io_start)
+				(*bioops.io_start)(tbp);
 		}
 	finishcluster:
 		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
