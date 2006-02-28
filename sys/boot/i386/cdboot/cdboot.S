@@ -14,7 +14,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/cdboot/cdboot.s,v 1.9 2001/11/07 01:20:33 jhb Exp $
- * $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.6 2004/07/19 23:30:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.6.4.1 2006/02/28 21:15:18 dillon Exp $
  */
 
 /*
@@ -448,7 +448,7 @@ putc:		pushal
 twiddle:	push %ax			# Save
 		push %bx			# Save
 		mov twiddle_index,%al		# Load index
-		mov twiddle_chars,%bx		# Address table
+		mov $twiddle_chars,%bx		# Address table
 		inc %al				# Next
 		and $3,%al			#  char
 		mov %al,twiddle_index		# Save index for next call
