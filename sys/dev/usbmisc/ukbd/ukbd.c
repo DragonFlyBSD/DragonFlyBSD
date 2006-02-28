@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.14 2005/06/02 20:40:56 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.15 2006/02/28 18:48:01 dillon Exp $
  */
 
 /*
@@ -1191,9 +1191,7 @@ ukbd_check_char(keyboard_t *kbd)
 	state = (ukbd_state_t *)kbd->kb_data;
 	if (!(state->ks_flags & COMPOSE) && (state->ks_composed_char > 0))
 		return TRUE;
-	if (state->ks_inputs > 0)
-		return TRUE;
-	return FALSE;
+	return (ukbd_check(kbd));
 }
 
 /* some useful control functions */
