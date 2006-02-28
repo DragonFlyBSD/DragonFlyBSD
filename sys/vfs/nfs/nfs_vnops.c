@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.44 2005/12/05 17:01:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.44.2.1 2006/02/28 22:01:11 dillon Exp $
  */
 
 
@@ -252,7 +252,7 @@ int nfs_numasync = 0;
 
 SYSCTL_DECL(_vfs_nfs);
 
-static int	nfsaccess_cache_timeout = NFS_MAXATTRTIMO;
+static int	nfsaccess_cache_timeout = NFS_DEFATTRTIMO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_timeout, CTLFLAG_RW, 
 	   &nfsaccess_cache_timeout, 0, "NFS ACCESS cache timeout");
 
