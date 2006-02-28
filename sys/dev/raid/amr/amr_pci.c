@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_pci.c,v 1.1.2.9 2002/12/20 15:12:04 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.6 2005/10/12 17:35:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_pci.c,v 1.6.2.1 2006/02/28 21:47:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -231,7 +231,7 @@ amr_pci_attach(device_t dev)
 	goto out;
     }
     error = bus_setup_intr(sc->amr_dev, sc->amr_irq, 
-			   INTR_ENTROPY, amr_pci_intr, sc,
+			   0, amr_pci_intr, sc,
 			   &sc->amr_intr, NULL);
     if (error) {
         device_printf(sc->amr_dev, "can't set up interrupt\n");

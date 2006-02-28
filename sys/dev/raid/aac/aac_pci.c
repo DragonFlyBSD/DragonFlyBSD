@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.19 2003/11/01 18:44:51 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.7 2005/10/12 17:35:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.7.2.1 2006/02/28 21:47:58 dillon Exp $
  */
 
 /*
@@ -219,7 +219,7 @@ aac_pci_attach(device_t dev)
 		device_printf(sc->aac_dev, "can't allocate interrupt\n");
 		goto out;
 	}
-	if (bus_setup_intr(sc->aac_dev, sc->aac_irq, INTR_ENTROPY,
+	if (bus_setup_intr(sc->aac_dev, sc->aac_irq, 0,
 			   aac_intr, sc, &sc->aac_intr, NULL)) {
 		device_printf(sc->aac_dev, "can't set up interrupt\n");
 		goto out;

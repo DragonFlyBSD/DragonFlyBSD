@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.17 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.17.2.1 2006/02/28 21:47:58 dillon Exp $
  */
 
 /*
@@ -268,7 +268,7 @@ twe_attach(device_t dev)
 	twe_free(sc);
 	return(ENXIO);
     }
-    if (bus_setup_intr(sc->twe_dev, sc->twe_irq, INTR_ENTROPY,
+    if (bus_setup_intr(sc->twe_dev, sc->twe_irq, 0,
 			twe_pci_intr, sc, &sc->twe_intr, NULL)) {
 	twe_printf(sc, "can't set up interrupt\n");
 	twe_free(sc);

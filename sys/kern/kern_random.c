@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.10 2005/11/02 08:33:30 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.10.2.1 2006/02/28 21:47:58 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -49,6 +49,8 @@
 #include <sys/systm.h>
 #include <sys/systimer.h>
 #include <sys/thread2.h>
+#include <sys/lock.h>
+#include <machine/clock.h>
 
 #ifdef __i386__
 #include <i386/icu/icu.h>
@@ -107,7 +109,15 @@ static struct timer_rand_state irq_timer_state[MAX_INTS];
 static struct timer_rand_state blkdev_timer_state[MAX_BLKDEV];
 #endif
 static struct wait_queue *random_wait;
+static thread_t rand_td;
+static int	rand_td_slot;
 
+static void add_timer_randomness(struct random_bucket *r, 
+				 struct timer_rand_state *state, u_int num);
+
+/*
+ * Called from early boot
+ */
 void
 rand_initialize(void)
 {
@@ -118,6 +128,52 @@ rand_initialize(void)
 	random_state.rsel.si_flags = 0;
 	random_state.rsel.si_pid = 0;
 }
+
+/*
+ * Random number generator helper thread.
+ *
+ * Note that rand_td_slot is initially 0, which means nothing will try
+ * to schedule our thread until we reset it to -1.  This also prevents
+ * any attempt to schedule the thread before it has been initialized.
+ */
+static
+void
+rand_thread_loop(void *dummy)
+{
+	int slot;
+	int count;
+
+	for (;;) {
+		if ((slot = rand_td_slot) >= 0) {
+			add_timer_randomness(&random_state,
+					     &irq_timer_state[slot], slot);
+		}
+
+		/*
+		 * The fewer bits we have, the shorter we sleep, up to a
+		 * point.  We use an interrupt to trigger the thread once
+		 * we have slept the calculated amount of time.
+		 */
+		count = random_state.entropy_count * hz / POOLBITS;
+		if (count < hz / 25)
+			count = hz / 25;
+		if (count > hz)
+			count = hz;
+		tsleep(rand_td, 0, "rwait", count);
+		lwkt_deschedule_self(rand_td);
+		rand_td_slot = -1;
+		lwkt_switch();
+	}
+}
+
+static
+void
+rand_thread_init(void)
+{
+	lwkt_create(rand_thread_loop, NULL, &rand_td, NULL, 0, 0, "random");
+}
+
+SYSINIT(rand, SI_SUB_HELPER_THREADS, SI_ORDER_ANY, rand_thread_init, 0);
 
 /*
  * This function adds an int into the entropy "pool".  It does not
@@ -180,9 +236,15 @@ add_timer_randomness(struct random_bucket *r, struct timer_rand_state *state,
 	int		delta, delta2;
 	u_int		nbits;
 	u_int32_t	time;
+	int		count;
 
 	num ^= sys_cputimer->count() << 16;
-	r->entropy_count += 2;
+	if (tsc_present)
+		num ^= ~(u_int)rdtsc();
+	count = r->entropy_count + 2;
+	if (count > POOLBITS)
+		count = POOLBITS;
+	r->entropy_count = count;
 		
 	time = ticks;
 
@@ -206,14 +268,17 @@ add_timer_randomness(struct random_bucket *r, struct timer_rand_state *state,
 	for (nbits = 0; delta; nbits++)
 		delta >>= 1;
 
-	r->entropy_count += nbits;
-	
 	/* Prevent overflow */
-	if (r->entropy_count > POOLBITS)
-		r->entropy_count = POOLBITS;
+	count = r->entropy_count + nbits;
+	if (count > POOLBITS)
+		count = POOLBITS;
+	cpu_sfence();
+	r->entropy_count = count;
 
-	if (r->entropy_count >= 8)
+	if (count >= 8 && try_mplock()) {
 		selwakeup(&random_state.rsel);
+		rel_mplock();
+	}
 }
 
 void
@@ -222,10 +287,16 @@ add_keyboard_randomness(u_char scancode)
 	add_timer_randomness(&random_state, &keyboard_timer_state, scancode);
 }
 
+/*
+ * This routine is called from an interrupt and must be very efficient.
+ */
 void
 add_interrupt_randomness(int intr)
 {
-	add_timer_randomness(&random_state, &irq_timer_state[intr], intr);
+	if (rand_td_slot < 0) {
+		rand_td_slot = intr;
+		lwkt_schedule(rand_td);
+	}
 }
 
 #ifdef notused
@@ -354,10 +425,13 @@ write_random(const char *buf, u_int nbytes)
 void
 add_true_randomness(int val)
 {
+	int count;
+
 	add_entropy_word(&random_state, val);
-	random_state.entropy_count += 8*sizeof (val);
-	if (random_state.entropy_count > POOLBITS)
-		random_state.entropy_count = POOLBITS;
+	count = random_state.entropy_count + 8 *sizeof(val);
+	if (count > POOLBITS)
+		count = POOLBITS;
+	random_state.entropy_count = count;
 	selwakeup(&random_state.rsel);
 }
 

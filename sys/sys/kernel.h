@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.18 2005/11/14 18:50:11 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.18.2.1 2006/02/28 21:47:58 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -121,6 +121,7 @@ enum sysinit_sub_id {
 	SI_SUB_VFS		= 0x4000000,	/* virtual file system*/
 	SI_SUB_CLOCKS		= 0x4800000,	/* real time and stat clocks*/
 	SI_SUB_FINISH_SMP	= 0x5000000,	/* finish setting up cpus */
+	SI_SUB_HELPER_THREADS	= 0x5400000,	/* misc helper threads */
 	SI_SUB_CLIST		= 0x5800000,	/* clists*/
 	SI_SUB_SYSV_SHM		= 0x6400000,	/* System V shared memory*/
 	SI_SUB_SYSV_SEM		= 0x6800000,	/* System V semaphores*/
