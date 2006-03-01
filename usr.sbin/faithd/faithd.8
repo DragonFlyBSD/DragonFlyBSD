@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/usr.sbin/faithd/faithd.8,v 1.2.2.12 2003/03/12 22:08:14 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/faithd/faithd.8,v 1.3 2006/02/17 19:40:14 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/faithd/faithd.8,v 1.4 2006/03/01 08:08:45 swildner Exp $
 .\"
 .Dd May 17, 1998
 .Dt FAITHD 8
@@ -281,16 +281,6 @@ the traffic will be denied.
 With inetd mode,
 traffic may be filtered by using access control functionality in
 .Xr inetd 8 .
-.Sh RETURN VALUES
-The
-.Nm
-utility exits with
-.Dv EXIT_SUCCESS
-.Pq 0
-on success, and
-.Dv EXIT_FAILURE
-.Pq 1
-on error.
 .Sh EXAMPLES
 Before invoking
 .Nm ,
@@ -381,6 +371,16 @@ setting.
 3ffe:501:ffff::/48 deny 127.0.0.0/8
 3ffe:501:ffff::/48 permit 0.0.0.0/0
 .Ed
+.Sh DIAGNOSTICS
+The
+.Nm
+utility exits with
+.Dv EXIT_SUCCESS
+.Pq 0
+on success, and
+.Dv EXIT_FAILURE
+.Pq 1
+on error.
 .Sh SEE ALSO
 .Xr faith 4 ,
 .Xr route 8 ,

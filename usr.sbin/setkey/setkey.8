@@ -1,6 +1,6 @@
 .\"	$KAME: setkey.8,v 1.49 2001/05/18 05:49:51 sakane Exp $
 .\"	$FreeBSD: src/usr.sbin/setkey/setkey.8,v 1.4.2.15 2003/03/12 22:08:15 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/setkey/setkey.8,v 1.3 2006/02/17 19:40:26 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/setkey/setkey.8,v 1.4 2006/03/01 08:08:45 swildner Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, 1998, and 1999 WIDE Project.
 .\" All rights reserved.
@@ -519,9 +519,6 @@ for detail.
 .El
 .Pp
 .\"
-.Sh RETURN VALUES
-The command exits with 0 on success, and non-zero on errors.
-.\"
 .Sh ALGORITHMS
 The following list shows the supported algorithms.
 .Sy protocol
@@ -611,6 +608,9 @@ spdadd	10.0.11.41/32[21] 10.0.11.33/32[any] any
 		-P out ipsec esp/tunnel/192.168.0.1-192.168.1.2/require ;
 
 .Ed
+.\"
+.Sh DIAGNOSTICS
+The command exits with 0 on success, and non-zero on errors.
 .\"
 .Sh SEE ALSO
 .Xr ipsec_set_policy 3 ,

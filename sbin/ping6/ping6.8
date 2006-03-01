@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/sbin/ping6/ping6.8,v 1.3.2.12 2003/02/24 00:56:42 trhodes Exp $
-.\"	$DragonFly: src/sbin/ping6/ping6.8,v 1.4 2006/02/17 19:33:33 swildner Exp $
+.\"	$DragonFly: src/sbin/ping6/ping6.8,v 1.5 2006/03/01 08:08:44 swildner Exp $
 .\"
 .Dd May 17, 1998
 .Dt PING6 8
@@ -400,11 +400,6 @@ using the
 .Fl p
 option of
 .Nm .
-.Sh RETURN VALUES
-The
-.Nm
-utility returns 0 on success (the host is alive),
-and non-zero if the arguments are incorrect or the host is not responding.
 .Sh EXAMPLES
 Normally,
 .Nm
@@ -432,6 +427,11 @@ The following will probe addresses assigned to the destination node,
 .Bd -literal -offset indent
 ping6 -a agl dst.foo.com
 .Ed
+.Sh DIAGNOSTICS
+The
+.Nm
+utility returns 0 on success (the host is alive),
+and non-zero if the arguments are incorrect or the host is not responding.
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr icmp6 4 ,
