@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.31 2006/02/21 04:47:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.32 2006/03/01 15:09:35 drhodus Exp $
  */
 
 /*
@@ -2283,7 +2283,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 			slp->ns_flag |= SLP_LASTFRAG;
 		else
 			slp->ns_flag &= ~SLP_LASTFRAG;
-		if (slp->ns_reclen > NFS_MAXPACKET) {
+		if (slp->ns_reclen > NFS_MAXPACKET || slp->ns_reclen <= 0) {
 			log(LOG_ERR, "%s (%d) from nfs client\n",
 			    "impossible packet length",
 			    slp->ns_reclen);
