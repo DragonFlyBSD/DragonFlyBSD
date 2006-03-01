@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.25 2005/08/27 20:23:06 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.26 2006/03/01 00:21:58 dillon Exp $
  */
 
 /*
@@ -1684,6 +1684,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			vap->va_mode = 0;
 		if (vap->va_type == VREG || vap->va_type == VSOCK) {
 			nqsrv_getl(dvp, ND_WRITE);
+			vput(dvp);
+			dvp = NULL;
 			error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
 			if (error == 0) {
 			    	nfsrv_object_create(vp);
@@ -1713,6 +1715,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			vap->va_rdev = rdev;
 			nqsrv_getl(dvp, ND_WRITE);
 
+			vput(dvp);
+			dvp = NULL;
 			error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
 			if (error)
 				goto nfsmreply0;
