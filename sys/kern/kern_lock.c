@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.15 2005/11/19 17:19:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.16 2006/03/02 19:07:59 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -137,8 +137,10 @@ acquire(struct lock *lkp, int extflags, int wanted)
 		 */
 		tsleep_interlock(lkp);
 		spin_unlock_quick(&lkp->lk_spinlock);
-		error = tsleep(lkp, lkp->lk_prio, lkp->lk_wmesg, 
-			    ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
+		error = tsleep(lkp, 
+			       ((extflags & LK_PCATCH) ? PCATCH : 0),
+			       lkp->lk_wmesg, 
+			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
 		spin_lock_quick(&lkp->lk_spinlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
@@ -494,9 +496,10 @@ acquiredrain(struct lock *lkp, int extflags)
 		 */
 		tsleep_interlock(&lkp->lk_flags);
 		spin_unlock_quick(&lkp->lk_spinlock);
-		error = tsleep(&lkp->lk_flags, lkp->lk_prio,
-			lkp->lk_wmesg, 
-			((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
+		error = tsleep(&lkp->lk_flags,
+			       ((extflags & LK_PCATCH) ? PCATCH : 0),
+			       lkp->lk_wmesg, 
+			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
 		spin_lock_quick(&lkp->lk_spinlock);
 		if (error)
 			return error;
@@ -511,14 +514,13 @@ acquiredrain(struct lock *lkp, int extflags)
  * Initialize a lock; required before use.
  */
 void
-lockinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
+lockinit(struct lock *lkp, char *wmesg, int timo, int flags)
 {
 	spin_init(&lkp->lk_spinlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
 	lkp->lk_sharecount = 0;
 	lkp->lk_waitcount = 0;
 	lkp->lk_exclusivecount = 0;
-	lkp->lk_prio = prio;
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
 	lkp->lk_lockholder = LK_NOTHREAD;
@@ -530,11 +532,10 @@ lockinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
  * must already hold the interlock.
  */
 void
-lockreinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
+lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
 {
 	lkp->lk_flags = (lkp->lk_flags & ~(LK_EXTFLG_MASK|LK_DRAINING)) |
 			(flags & LK_EXTFLG_MASK);
-	lkp->lk_prio = prio;
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
 }

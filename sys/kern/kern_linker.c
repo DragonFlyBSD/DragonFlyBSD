@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.24 2006/01/19 04:49:45 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.25 2006/03/02 19:07:59 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -66,7 +66,7 @@ static int next_file_id = 1;
 static void
 linker_init(void* arg)
 {
-    lockinit(&lock, 0, "klink", 0, 0);
+    lockinit(&lock, "klink", 0, 0);
     TAILQ_INIT(&classes);
     TAILQ_INIT(&linker_files);
 }

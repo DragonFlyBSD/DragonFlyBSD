@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.18 2005/08/16 16:27:41 joerg Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.19 2006/03/02 19:08:00 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -76,7 +76,7 @@ void
 nwfs_hash_init(void)
 {
 	nwhashtbl = hashinit(desiredvnodes, M_NWFSHASH, &nwnodehash);
-	lockinit(&nwhashlock, 0, "nwfshl", 0, 0);
+	lockinit(&nwhashlock, "nwfshl", 0, 0);
 }
 
 void
@@ -190,7 +190,7 @@ rescan:
 	vp->v_data = np;
 	np->n_fid = fid;
 	np->n_flag |= NNEW;
-	lockinit(&np->n_lock, 0, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
+	lockinit(&np->n_lock, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
 	nhpp = NWNOHASH(fid);
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
 	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);

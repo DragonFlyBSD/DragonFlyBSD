@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.12 2004/10/12 19:20:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.13 2006/03/02 19:08:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ void
 hpfs_hphashinit(void)
 {
 
-	lockinit (&hpfs_hphash_lock, 0, "hpfs_hphashlock", 0, 0);
+	lockinit (&hpfs_hphash_lock, "hpfs_hphashlock", 0, 0);
 	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
 	    &hpfs_hphash);
 	lwkt_token_init(&hpfs_hphash_token);

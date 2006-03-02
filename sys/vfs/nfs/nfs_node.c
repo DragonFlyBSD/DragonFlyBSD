@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.19 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.20 2006/03/02 19:08:00 dillon Exp $
  */
 
 
@@ -91,7 +91,7 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 	struct vnode *vp;
 	struct vnode *nvp;
 	int error;
-	int rsflags;
+	int lkflags;
 	struct nfsmount *nmp;
 
 	/*
@@ -100,9 +100,9 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 	 */
 	nmp = VFSTONFS(mntp);
 	if (nmp->nm_flag & NFSMNT_INT)
-		rsflags = PCATCH;
+		lkflags = LK_PCATCH;
 	else
-		rsflags = 0;
+		lkflags = 0;
 
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
@@ -184,7 +184,7 @@ loop:
 		np->n_fhp = &np->n_fh;
 	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
 	np->n_fhsize = fhsize;
-	lockinit(&np->n_rslock, rsflags, "nfrslk", 0, LK_NOPAUSE);
+	lockinit(&np->n_rslock, "nfrslk", 0, LK_NOPAUSE | lkflags);
 
 	/*
 	 * nvp is locked & refd so effectively so is np.

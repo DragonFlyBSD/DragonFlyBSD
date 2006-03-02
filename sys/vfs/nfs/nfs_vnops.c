@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.46 2006/02/21 17:52:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.47 2006/03/02 19:08:00 dillon Exp $
  */
 
 
@@ -3093,10 +3093,11 @@ nfs_flush_bp(struct buf *bp, void *data)
 		if (info->loops && info->waitfor == MNT_WAIT) {
 			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 			if (error) {
-				error = BUF_TIMELOCK(bp,
-						LK_EXCLUSIVE | LK_SLEEPFAIL,
-						"nfsfsync",
-						info->slpflag, info->slptimeo);
+				int lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
+				if (info->slpflag & PCATCH)
+					lkflags |= LK_PCATCH;
+				error = BUF_TIMELOCK(bp, lkflags, "nfsfsync",
+						     info->slptimeo);
 			}
 		} else {
 			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);

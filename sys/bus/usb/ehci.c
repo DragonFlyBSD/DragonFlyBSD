@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.17 2006/03/02 19:07:54 dillon Exp $
  */
 
 /*
@@ -449,7 +449,7 @@ ehci_init(ehci_softc_t *sc)
 
 	usb_callout_init(sc->sc_tmo_pcd);
 
-	lockinit(&sc->sc_doorbell_lock, 0, "ehcidb", 0, 0);
+	lockinit(&sc->sc_doorbell_lock, "ehcidb", 0, 0);
 
 	/* Turn on controller */
 	EOWRITE4(sc, EHCI_USBCMD,

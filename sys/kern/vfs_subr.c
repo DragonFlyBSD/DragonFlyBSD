@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.66 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.67 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -269,7 +269,7 @@ static int vinvalbuf_bp(struct buf *bp, void *data);
 struct vinvalbuf_bp_info {
 	struct vnode *vp;
 	int slptimeo;
-	int slpflag;
+	int lkflags;
 	int flags;
 };
 
@@ -309,7 +309,9 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
   	}
 	crit_enter();
 	info.slptimeo = slptimeo;
-	info.slpflag = slpflag;
+	info.lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
+	if (slpflag & PCATCH)
+		info.lkflags |= LK_PCATCH;
 	info.flags = flags;
 	info.vp = vp;
 
@@ -364,9 +366,8 @@ vinvalbuf_bp(struct buf *bp, void *data)
 	int error;
 
 	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-		error = BUF_TIMELOCK(bp,
-		    LK_EXCLUSIVE | LK_SLEEPFAIL,
-		    "vinvalbuf", info->slpflag, info->slptimeo);
+		error = BUF_TIMELOCK(bp, info->lkflags,
+				     "vinvalbuf", info->slptimeo);
 		if (error == 0) {
 			BUF_UNLOCK(bp);
 			error = ENOLCK;

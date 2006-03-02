@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.11 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.12 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -300,7 +300,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 		return (ENODEV);
 	mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
-	lockinit(&mp->mnt_lock, 0, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
+	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
 	vfs_busy(mp, LK_NOWAIT, td);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);

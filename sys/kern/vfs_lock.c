@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.8 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.9 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -470,7 +470,7 @@ allocvnode(int lktimeout, int lkflags)
 		vp->v_clen = 0;
 		vp->v_socket = 0;
 		vp->v_writecount = 0;	/* XXX */
-		lockreinit(&vp->v_lock, 0, "vnode", lktimeout, lkflags);
+		lockreinit(&vp->v_lock, "vnode", lktimeout, lkflags);
 		KKASSERT(TAILQ_FIRST(&vp->v_namecache) == NULL);
 	} else {
 		/*
@@ -478,7 +478,7 @@ allocvnode(int lktimeout, int lkflags)
 		 */
 		vp = malloc(sizeof(struct vnode), M_VNODE, M_WAITOK|M_ZERO);
 		lwkt_token_init(&vp->v_pollinfo.vpi_token);
-		lockinit(&vp->v_lock, 0, "vnode", lktimeout, lkflags);
+		lockinit(&vp->v_lock, "vnode", lktimeout, lkflags);
 		TAILQ_INIT(&vp->v_namecache);
 
 		/*

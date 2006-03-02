@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.7 2005/01/31 17:53:57 joerg Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.8 2006/03/02 19:07:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@ static struct lock exec_list_lock;
 static void
 vm_resident_init(void *__dummy)
 {
-	lockinit(&exec_list_lock, 0, "vmres", 0, 0);
+	lockinit(&exec_list_lock, "vmres", 0, 0);
 	TAILQ_INIT(&exec_res_list);
 }
 SYSINIT(vmres, SI_SUB_VM, SI_ORDER_ANY, vm_resident_init, 0);

@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.11 2005/03/01 00:43:02 corecode Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.12 2006/03/02 19:07:57 dillon Exp $
  */
 
 /*
@@ -666,7 +666,7 @@ static int DRM(init)( device_t nbdev )
 	unit = minor(dev->device.dv_unit);
 #endif
 	DRM_SPININIT(dev->count_lock, "drm device");
-	lockinit(&dev->dev_lock, 0, "drmlk", 0, 0);
+	lockinit(&dev->dev_lock, "drmlk", 0, 0);
 	dev->name = DRIVER_NAME;
 	DRM(mem_init)();
 	DRM(sysctl_init)(dev);

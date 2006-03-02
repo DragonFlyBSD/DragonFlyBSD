@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.9 2005/12/06 04:03:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.10 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -223,7 +223,7 @@ smb_co_init(struct smb_connobj *cp, int level, char *objname, struct thread *td)
 {
 	SLIST_INIT(&cp->co_children);
 	smb_sl_init(&cp->co_interlock, objname);
-	lockinit(&cp->co_lock, 0, objname, 0, 0);
+	lockinit(&cp->co_lock, objname, 0, 0);
 	cp->co_level = level;
 	cp->co_usecount = 1;
 	KASSERT(smb_co_lock(cp, NULL, LK_EXCLUSIVE, td) == 0,

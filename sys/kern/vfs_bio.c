@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.54 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.55 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -2280,11 +2280,15 @@ loop:
 		 * once the lock has been obtained.
 		 */
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			if (BUF_TIMELOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL,
-			    "getblk", slpflag, slptimeo) == ENOLCK)
+			int lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
+			if (slpflag & PCATCH)
+				lkflags |= LK_PCATCH;
+			if (BUF_TIMELOCK(bp, lkflags, "getblk", slptimeo) ==
+			    ENOLCK) {
 				goto loop;
+			}
 			crit_exit();
-			return (struct buf *) NULL;
+			return (NULL);
 		}
 
 		/*

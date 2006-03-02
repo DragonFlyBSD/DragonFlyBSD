@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.12 2005/12/19 01:18:58 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.13 2006/03/02 19:07:59 dillon Exp $
  */
 
 /*
@@ -563,7 +563,7 @@ cbb_attach(device_t brdev)
 	struct cbb_softc *sc = (struct cbb_softc *)device_get_softc(brdev);
 	int rid;
 
-	lockinit(&sc->lock, 0, "cbb", 0, 0);
+	lockinit(&sc->lock, "cbb", 0, 0);
 	sc->chipset = cbb_chipset(pci_get_devid(brdev), NULL);
 	sc->dev = brdev;
 	sc->cbdev = NULL;

@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.18 2005/02/05 23:04:28 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.19 2006/03/02 19:07:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -464,8 +464,8 @@ static void sysctl_register_all(void *arg)
 {
 	struct sysctl_oid **oidp;
 
-	lockinit(&sysctl_lkp, 0, "sysctl", 0, 0);
-	lockinit(&sysctl_ctx_lkp, 0, "sysctl ctx", 0, 0);
+	lockinit(&sysctl_lkp, "sysctl", 0, 0);
+	lockinit(&sysctl_ctx_lkp, "sysctl ctx", 0, 0);
 	SET_FOREACH(oidp, sysctl_set)
 		sysctl_register_oid_int(*oidp);
 }

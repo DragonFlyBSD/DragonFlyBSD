@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.12 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.13 2006/03/02 19:08:00 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -59,7 +59,7 @@
  * Initialize a lock.
  */
 #define BUF_LOCKINIT(bp) \
-	lockinit(&(bp)->b_lock, 0, buf_wmesg, 0, 0)
+	lockinit(&(bp)->b_lock, buf_wmesg, 0, 0)
 
 /*
  *
@@ -72,23 +72,24 @@ BUF_LOCK(struct buf *bp, int locktype)
 
 	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = buf_wmesg;
-	bp->b_lock.lk_prio = 0;		/* tsleep flags */
-	/* bp->b_lock.lk_timo = 0;   not necessary */
 	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK,
 			&buftimespinlock, curthread);
 	return ret;
 }
 /*
  * Get a lock sleeping with specified interruptably and timeout.
+ *
+ * XXX different entities calling BUF_TIMELOCK with different timeouts
+ * will conflict, only one of the multiply specified timeouts may wind
+ * up being used.
  */
 static __inline int
-BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
+BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int timo)
 {
 	int ret;
 
 	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = wmesg;
-	bp->b_lock.lk_prio = catch;	/* tsleep flags */
 	bp->b_lock.lk_timo = timo;
 	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK | LK_TIMELOCK,
 			&buftimespinlock, curthread);
