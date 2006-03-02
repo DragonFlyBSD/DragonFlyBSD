@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.39 2005/12/02 22:02:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.39.2.1 2006/03/02 17:20:57 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -246,7 +246,7 @@ cpu_proc_exit(void)
 {
 	struct thread *td = curthread;
 	struct pcb *pcb;
-
+	struct pcb_ext *ext;
 
 #if NNPX > 0
 	KKASSERT(td->td_proc);
@@ -254,17 +254,16 @@ cpu_proc_exit(void)
 #endif	/* NNPX */
 
 	/*
-	 * Cleanup the PCB
+	 * If we were using a private TSS do a forced-switch to ourselves
+	 * to switch back to the common TSS before freeing it.
 	 */
 	pcb = td->td_pcb;
-	if (pcb->pcb_ext != 0) {
-	        /* 
-		 * XXX do we need to move the TSS off the allocated pages 
-		 * before freeing them?  (not done here)
-		 */
-		kmem_free(kernel_map, (vm_offset_t)pcb->pcb_ext,
-		    ctob(IOPAGES + 1));
-		pcb->pcb_ext = 0;
+	if ((ext = pcb->pcb_ext) != NULL) {
+		crit_enter();
+		pcb->pcb_ext = NULL;
+		td->td_switch(td);
+		crit_exit();
+		kmem_free(kernel_map, (caddr_t)ext, ctob(IOPAGES + 1));
 	}
 	user_ldt_free(pcb);
         if (pcb->pcb_flags & PCB_DBREGS) {

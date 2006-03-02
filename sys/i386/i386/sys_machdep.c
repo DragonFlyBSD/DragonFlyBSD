@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.21 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.21.2.1 2006/03/02 17:20:57 dillon Exp $
  *
  */
 
@@ -129,7 +129,6 @@ i386_extend_pcb(struct lwp *lp)
 	ext = (struct pcb_ext *)kmem_alloc(kernel_map, ctob(IOPAGES+1));
 	if (ext == 0)
 		return (ENOMEM);
-	lp->lwp_thread->td_pcb->pcb_ext = ext;
 	bzero(ext, sizeof(struct pcb_ext)); 
 	ext->ext_tss.tss_esp0 = (unsigned)((char *)lp->lwp_thread->td_pcb - 16);
 	ext->ext_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
@@ -151,10 +150,16 @@ i386_extend_pcb(struct lwp *lp)
 	ssd.ssd_base = (unsigned)&ext->ext_tss;
 	ssd.ssd_limit -= ((unsigned)&ext->ext_tss - (unsigned)ext);
 	ssdtosd(&ssd, &ext->ext_tssd);
-	
-	/* switch to the new TSS after syscall completes */
-	need_user_resched();
 
+	/* 
+	 * Put the new TSS where the switch code can find it.  Do
+	 * a forced switch to ourself to activate it.
+	 */
+	crit_enter();
+	lp->lwp_thread->td_pcb->pcb_ext = ext;
+	lp->lwp_thread->td_switch(lp->lwp_thread);
+	crit_exit();
+	
 	return 0;
 }
 
