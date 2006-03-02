@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.90 2005/12/10 18:50:36 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.90.2.1 2006/03/02 17:16:49 dillon Exp $
  */
 
 /*
@@ -395,7 +395,7 @@ lwkt_free_thread(thread_t td)
 	("lwkt_free_thread: did not exit! %p", td));
 
     crit_enter_gd(gd);
-    TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+    TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq); /* Protected by BGL */
     if (gd->gd_tdfreecount < CACHE_NTHREADS &&
 	(td->td_flags & TDF_ALLOCATED_THREAD)
     ) {
