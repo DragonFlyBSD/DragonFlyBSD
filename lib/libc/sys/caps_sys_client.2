@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/caps_sys_client.2,v 1.1 2006/02/28 22:40:49 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/caps_sys_client.2,v 1.2 2006/03/02 19:27:35 swildner Exp $
 .\"
 .Dd February 28, 2006
 .Dt CAPS_SYS_CLIENT 2
@@ -56,8 +56,7 @@ Either
 .Fa uid
 or
 .Fa gid
-can be -1
-.Pq "thereby indicating a wildcard" ,
+can be -1 (thereby indicating a wildcard),
 but not both.
 Programs connecting to a
 .Em generic

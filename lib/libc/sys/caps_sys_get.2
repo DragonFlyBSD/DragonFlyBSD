@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/caps_sys_get.2,v 1.1 2006/02/28 22:40:49 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/caps_sys_get.2,v 1.2 2006/03/02 19:27:35 swildner Exp $
 .\"
 .Dd February 28, 2006
 .Dt CAPS_SYS_GET 2
@@ -66,7 +66,7 @@ The identifier and creds of the message are stored in
 .Fa msgid
 and
 .Fa ccr
-.Pq "which may be NULL" .
+(which may be NULL).
 .Pp
 The message is only stored in the
 .Fa msg
@@ -80,14 +80,12 @@ again with a larger buffer or to call
 .Fn caps_sys_reply
 on the
 .Fa msgid
-without retrieving it
-.Pq "if it does not want to handle the message" .
+without retrieving it (if it does not want to handle the message).
 .Pp
 The returned
 .Fa msg
 can either be a new message from a client, a reply from the service,
-or
-.Pq on the service side only
+or (on the service side only)
 an acknowledgement that a reply made earlier has been processed by
 the client.
 This state information is stored in
@@ -144,17 +142,11 @@ The child process is expected to create its own port.
 This error is also returned if the remote end closed its connection
 and is no longer available.
 .It Bq Er EWOULDBLOCK
-No messages are ready
-.Po
-this applies only to
-.Fn caps_sys_get
-.Pc .
+No messages are ready (this applies only to
+.Fn caps_sys_get ) .
 .It Bq Er EINTR
-The system call was interrupted
-.Po
-this applies only to
-.Fn caps_sys_wait
-.Pc .
+The system call was interrupted (this applies only to
+.Fn caps_sys_wait ) .
 .El
 .Sh SEE ALSO
 .Xr caps_sys_client 2 ,
