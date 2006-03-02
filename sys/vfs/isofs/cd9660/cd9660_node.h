@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.7 2005/09/14 01:13:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.7.2.1 2006/03/02 17:11:22 dillon Exp $
  */
 
 #include <sys/lockf.h>
@@ -78,10 +78,10 @@ struct iso_node {
 	doff_t	i_offset;	/* offset of free space in directory */
 	ino_t	i_ino;		/* inode number of found directory */
 
-	long iso_extent;	/* extent of file */
-	long i_size;
-	long iso_start;		/* actual start of data of file (may be different */
-				/* from iso_extent, if file has extended attributes) */
+	unsigned long iso_extent;	/* extent of file */
+	unsigned long i_size;
+	unsigned long iso_start;	/* actual start of data of file (may be different */
+					/* from iso_extent, if file has extended attributes) */
 	ISO_RRIP_INODE	inode;
 };
 
