@@ -35,7 +35,7 @@
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsscanf.c,v 1.7 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.9 2005/11/20 11:07:30 swildner Exp $
+ * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.10 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <stdio.h>
@@ -72,5 +72,6 @@ vsscanf(const char *str, const char *fmt, va_list ap)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	return (__svfscanf(&f, fmt, ap));
 }

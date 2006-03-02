@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.8 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <stdio.h>
@@ -57,6 +57,7 @@ vasprintf(char **str, const char *fmt, va_list ap)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfprintf(&f, fmt, ap);
 	*f.pub._p = '\0';
 	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);

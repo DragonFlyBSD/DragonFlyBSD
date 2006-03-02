@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.11 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -169,6 +169,7 @@ found:
 	fp->fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	fp->fl_owner = NULL;
 	fp->fl_count = 0;
+	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 	/* fp->_lock = NULL; */
 	return (fp);
 }

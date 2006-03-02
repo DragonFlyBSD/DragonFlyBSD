@@ -35,7 +35,7 @@
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.8 2005/11/20 11:07:30 swildner Exp $
+ * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.9 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <stdio.h>
@@ -73,6 +73,7 @@ sscanf(const char *str, char const *fmt, ...)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	va_start(ap, fmt);
 	ret = __svfscanf(&f, fmt, ap);
 	va_end(ap);
