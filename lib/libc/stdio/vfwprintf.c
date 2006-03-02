@@ -35,7 +35,7 @@
  *
  * $FreeBSD: src/lib/libc/stdio/vfwprintf.c,v 1.24 2005/04/16 22:36:51 das Exp $
  * $NetBSD: vfwprintf.c,v 1.3 2005/06/15 09:31:27 he Exp $
- * $DragonFly: src/lib/libc/stdio/vfwprintf.c,v 1.2 2005/11/20 11:07:30 swildner Exp $
+ * $DragonFly: src/lib/libc/stdio/vfwprintf.c,v 1.2.2.1 2006/03/02 18:09:09 joerg Exp $
  */
 
 /*
@@ -141,6 +141,7 @@ __sbprintf(FILE *fp, const wchar_t *fmt, va_list ap)
 	fake.fl_mutex = fp->fl_mutex;
 	fake.fl_owner = fp->fl_owner;
 	fake.fl_count = fp->fl_count;
+	memset(WCIO_GET(&fake), 0, sizeof(struct wchar_io_data));
 
 	/* set up the buffer */
 	fake._bf._base = fake.pub._p = buf;

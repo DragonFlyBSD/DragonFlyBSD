@@ -35,7 +35,7 @@
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
- * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.7.2.1 2006/03/02 18:09:09 joerg Exp $
  */
 
 #include <limits.h>
@@ -71,6 +71,7 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfprintf(&f, fmt, ap);
 	if (on > 0)
 		*f.pub._p = '\0';

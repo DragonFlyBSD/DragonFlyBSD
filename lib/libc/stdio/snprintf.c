@@ -35,7 +35,7 @@
  *
  * @(#)snprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/snprintf.c,v 1.12 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libc/stdio/snprintf.c,v 1.6 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/snprintf.c,v 1.6.2.1 2006/03/02 18:09:09 joerg Exp $
  */
 
 #include <limits.h>
@@ -67,6 +67,7 @@ snprintf(char *str, size_t n, char const *fmt, ...)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
 	if (on > 0)
 		*f.pub._p = '\0';

@@ -1,5 +1,5 @@
 /*	$NetBSD: vswscanf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.2 2005/11/20 11:07:30 swildner Exp $ */
+/*	$DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.2.2.1 2006/03/02 18:09:09 joerg Exp $ */
 
 /*-
  * Copyright (c) 1990, 1993
@@ -91,7 +91,7 @@ vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
-	memset(&f._wcio, 0, sizeof(f._wcio));
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	r = __vfwscanf_unlocked(&f, fmt, ap);
 	free(mbstr);
 

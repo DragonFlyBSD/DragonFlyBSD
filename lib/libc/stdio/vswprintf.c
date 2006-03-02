@@ -1,5 +1,5 @@
 /*	$NetBSD: vswprintf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vswprintf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdio/vswprintf.c,v 1.1.2.1 2006/03/02 18:09:09 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -66,7 +66,7 @@ vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
-	memset(&f._wcio, 0, sizeof(f._wcio));
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfwprintf_unlocked(&f, fmt, ap);
 	if (ret < 0) {
 		sverrno = errno;

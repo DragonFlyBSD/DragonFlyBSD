@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/asprintf.c,v 1.6 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.7 2005/07/23 23:14:44 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.7.2.1 2006/03/02 18:09:09 joerg Exp $
  */
 
 #include <stdio.h>
@@ -58,6 +58,7 @@ asprintf(char **str, char const *fmt, ...)
 	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
 	f.fl_owner = NULL;
 	f.fl_count = 0;
+	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	va_start(ap, fmt);
 	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
 	va_end(ap);
