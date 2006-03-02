@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.56 2006/03/02 19:26:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.57 2006/03/02 20:28:49 dillon Exp $
  */
 
 /*
@@ -1522,9 +1522,11 @@ gbincore(struct vnode * vp, daddr_t blkno)
  *	This is much better then the old way of writing only one buffer at
  *	a time.  Note that we may not be presented with the buffers in the 
  *	correct order, so we search for the cluster in both directions.
+ *
+ *	The buffer is locked on call.
  */
 int
-vfs_bio_awrite(struct buf * bp)
+vfs_bio_awrite(struct buf *bp)
 {
 	int i;
 	int j;
@@ -1587,13 +1589,13 @@ vfs_bio_awrite(struct buf * bp)
 		 * this is a possible cluster write
 		 */
 		if (ncl != 1) {
+			BUF_UNLOCK(bp);
 			nwritten = cluster_wbuild(vp, size, lblkno - j, ncl);
 			crit_exit();
 			return nwritten;
 		}
 	}
 
-	BUF_LOCK(bp, LK_EXCLUSIVE);
 	bremfree(bp);
 	bp->b_flags |= B_ASYNC;
 
@@ -2029,16 +2031,23 @@ flushbufqueues(void)
 			    (bp->b_flags & B_DEFERRED) == 0 &&
 			    (*bioops.io_countdeps)(bp, 0)) {
 				TAILQ_REMOVE(&bufqueues[BQUEUE_DIRTY],
-				    bp, b_freelist);
+					     bp, b_freelist);
 				TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY],
-				    bp, b_freelist);
+						  bp, b_freelist);
 				bp->b_flags |= B_DEFERRED;
 				bp = TAILQ_FIRST(&bufqueues[BQUEUE_DIRTY]);
 				continue;
 			}
-			vfs_bio_awrite(bp);
-			++r;
-			break;
+
+			/*
+			 * Only write it out if we can successfully lock
+			 * it.
+			 */
+			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
+				vfs_bio_awrite(bp);
+				++r;
+				break;
+			}
 		}
 		bp = TAILQ_NEXT(bp, b_freelist);
 	}
