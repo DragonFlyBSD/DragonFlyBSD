@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.47 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.48 2006/03/02 19:26:19 dillon Exp $
  */
 
 
@@ -3103,6 +3103,8 @@ nfs_flush_bp(struct buf *bp, void *data)
 			error = BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT);
 		}
 		if (error == 0) {
+			KKASSERT(bp->b_vp == info->vp);
+
 			if ((bp->b_flags & B_DELWRI) == 0)
 				panic("nfs_fsync: not dirty");
 			if (bp->b_flags & B_NEEDCOMMIT) {
@@ -3135,6 +3137,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 			break;
 		}
 
+		KKASSERT(bp->b_vp == info->vp);
 		bremfree(bp);
 
 		/*

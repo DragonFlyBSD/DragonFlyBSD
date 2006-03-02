@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.55 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.56 2006/03/02 19:26:14 dillon Exp $
  */
 
 /*
@@ -102,7 +102,6 @@ static void buf_daemon (void);
 vm_page_t bogus_page;
 int vmiodirenable = TRUE;
 int runningbufspace;
-struct spinlock buftimespinlock;  /* Interlock on setting prio and timo */
 
 static int bufspace, maxbufspace,
 	bufmallocspace, maxbufmallocspace, lobufspace, hibufspace;
@@ -417,7 +416,6 @@ bufinit(void)
 	int i;
 
 	LIST_INIT(&invalhash);
-	spin_init(&buftimespinlock);
 
 	for (i = 0; i <= bufhashmask; i++)
 		LIST_INIT(&bufhashtbl[i]);

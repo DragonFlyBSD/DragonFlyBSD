@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.13 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.14 2006/03/02 19:26:17 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -64,36 +64,31 @@
 /*
  *
  * Get a lock sleeping non-interruptably until it becomes available.
+ *
+ * XXX lk_wmesg can race, but should not result in any operational issues.
  */
 static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
-	int ret;
-
-	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = buf_wmesg;
-	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK,
-			&buftimespinlock, curthread);
-	return ret;
+	return (lockmgr(&(bp)->b_lock, locktype, NULL, curthread));
 }
 /*
  * Get a lock sleeping with specified interruptably and timeout.
  *
- * XXX different entities calling BUF_TIMELOCK with different timeouts
- * will conflict, only one of the multiply specified timeouts may wind
- * up being used.
+ * XXX lk_timo can race against other entities calling BUF_TIMELOCK,
+ * but will not interfere with entities calling BUF_LOCK since LK_TIMELOCK
+ * will not be set in that case.
+ *
+ * XXX lk_wmesg can race, but should not result in any operational issues.
  */
 static __inline int
 BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int timo)
 {
-	int ret;
-
-	spin_lock(&buftimespinlock);
 	bp->b_lock.lk_wmesg = wmesg;
 	bp->b_lock.lk_timo = timo;
-	ret = lockmgr(&(bp)->b_lock, locktype | LK_INTERLOCK | LK_TIMELOCK,
-			&buftimespinlock, curthread);
-	return ret;
+	return (lockmgr(&(bp)->b_lock, locktype | LK_TIMELOCK,
+			NULL, curthread));
 }
 /*
  * Release a lock. Only the acquiring process may free the lock unless

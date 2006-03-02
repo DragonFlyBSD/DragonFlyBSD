@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.67 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.68 2006/03/02 19:26:14 dillon Exp $
  */
 
 /*
@@ -321,7 +321,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	while (!RB_EMPTY(&vp->v_rbclean_tree) || 
 	    !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		error = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, NULL,
-			vinvalbuf_bp, &info);
+				vinvalbuf_bp, &info);
 		if (error == 0) {
 			error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 					vinvalbuf_bp, &info);
@@ -376,6 +376,9 @@ vinvalbuf_bp(struct buf *bp, void *data)
 			return(0);
 		return (-error);
 	}
+
+	KKASSERT(bp->b_vp == info->vp);
+
 	/*
 	 * XXX Since there are no node locks for NFS, I
 	 * believe there is a slight chance that a delayed
