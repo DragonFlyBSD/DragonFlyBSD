@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.2 2005/04/15 19:08:13 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.3 2006/03/03 20:25:46 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -395,6 +395,10 @@ struct type *name##_RB_NEXT(struct type *);				\
 struct type *name##_RB_MINMAX(struct name *, int);			\
 RB_SCAN_INFO(name, type)						\
 
+#define RB_PROTOTYPE2(name, type, field, cmp, datatype, datacmp)	\
+RB_PROTOTYPE(name, type, field, cmp);					\
+struct type *name##_RB_LOOKUP(struct name *, datatype value)		\
+
 /* Main rb operation.
  * Moves node close to the key of elm to top
  */
@@ -750,6 +754,60 @@ name##_RB_MINMAX(struct name *head, int val)				\
 	}								\
 	return (parent);						\
 }
+
+/*
+ * This extended version implements a fast LOOKUP function given
+ * a numeric data type.
+ *
+ * The element whos index/offset field is exactly the specified value
+ * will be returned, or NULL.
+ */
+#define RB_GENERATE2(name, type, field, cmp, datatype, indexfield)	\
+RB_GENERATE(name, type, field, cmp)					\
+									\
+struct type *								\
+name##_RB_LOOKUP(struct name *head, datatype value)			\
+{									\
+	struct type *tmp;						\
+									\
+	tmp = RB_ROOT(head);						\
+	while (tmp) {							\
+		if (value > tmp->indexfield) 				\
+			tmp = RB_RIGHT(tmp, field);			\
+		else if (value < tmp->indexfield) 			\
+			tmp = RB_LEFT(tmp, field);			\
+		else 							\
+			return(tmp);					\
+	}								\
+	return(NULL);							\
+}									\
+
+/*
+ * This extended version implements a fast ranged-based LOOKUP function
+ * given a numeric data type, for data types with a beginning and end
+ * (end non-inclusive).
+ *
+ * The element whos range contains the specified value is returned, or NULL
+ */
+#define RB_GENERATE3(name, type, field, cmp, datatype, begfield, endfield) \
+RB_GENERATE2(name, type, field, cmp, datatype, begfield)		\
+									\
+struct type *								\
+name##_RB_RANGED_LOOKUP(struct name *head, datatype value)		\
+{									\
+	struct type *tmp;						\
+									\
+	tmp = RB_ROOT(head);						\
+	while (tmp) {							\
+		if (value >= tmp->begfield && value < tmp->endfield) 	\
+			return(tmp);					\
+		if (value > tmp->begfield) 				\
+			tmp = RB_RIGHT(tmp, field);			\
+		else							\
+			tmp = RB_LEFT(tmp, field);			\
+	}								\
+	return(NULL);							\
+}									\
 
 #define RB_NEGINF	-1
 #define RB_INF	1
