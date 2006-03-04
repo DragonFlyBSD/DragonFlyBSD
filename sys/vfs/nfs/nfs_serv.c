@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.26 2006/03/01 00:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.27 2006/03/04 17:39:08 dillon Exp $
  */
 
 /*
@@ -2057,6 +2057,17 @@ out:
 		if (!error) {
 			nqsrv_getl(dvp, ND_WRITE);
 			nqsrv_getl(vp, ND_WRITE);
+			if (dvp) {
+				if (dvp == vp)
+					vrele(dvp);
+				else
+					vput(dvp);
+				dvp = NULL;
+			}
+			if (vp) {
+				vput(vp);
+				vp = NULL;
+			}
 			error = VOP_NREMOVE(nd.nl_ncp, nd.nl_cred);
 		}
 	}
