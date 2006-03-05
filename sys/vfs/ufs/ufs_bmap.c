@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.7 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.8 2006/03/05 18:38:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,7 +165,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 		 */
 
 		metalbn = xap->in_lbn;
-		if ((daddr == 0 && !incore(vp, metalbn)) || metalbn == bn)
+		if ((daddr == 0 && !findblk(vp, metalbn)) || metalbn == bn)
 			break;
 		/*
 		 * If we get here, we've either got the block in the cache

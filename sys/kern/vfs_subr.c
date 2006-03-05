@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.69 2006/03/02 20:28:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.70 2006/03/05 18:38:34 dillon Exp $
  */
 
 /*
@@ -136,7 +136,8 @@ extern struct vnodeopv_entry_desc spec_vnodeop_entries[];
  * Red black tree functions
  */
 static int rb_buf_compare(struct buf *b1, struct buf *b2);
-RB_GENERATE(buf_rb_tree, buf, b_rbnode, rb_buf_compare);
+RB_GENERATE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, daddr_t, b_lblkno);
+RB_GENERATE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, daddr_t, b_lblkno);
 
 static int
 rb_buf_compare(struct buf *b1, struct buf *b2)
@@ -356,6 +357,8 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 
 	if (!RB_EMPTY(&vp->v_rbdirty_tree) || !RB_EMPTY(&vp->v_rbclean_tree))
 		panic("vinvalbuf: flush failed");
+	if (!RB_EMPTY(&vp->v_rbhash_tree))
+		panic("vinvalbuf: flush failed, buffers still present");
 	return (0);
 }
 
@@ -785,17 +788,22 @@ void
 bgetvp(struct vnode *vp, struct buf *bp)
 {
 	KASSERT(bp->b_vp == NULL, ("bgetvp: not free"));
+	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI)) == 0);
+	KKASSERT((bp->b_xflags & (BX_VNCLEAN|BX_VNDIRTY)) == 0);
 
 	vhold(vp);
-	bp->b_vp = vp;
 	/*
 	 * Insert onto list for new vnode.
 	 */
 	crit_enter();
-	bp->b_xflags |= BX_VNCLEAN;
-	bp->b_xflags &= ~BX_VNDIRTY;
-	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
+	bp->b_vp = vp;
+	bp->b_flags |= B_HASHED;
+	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp))
 		panic("reassignbuf: dup lblk vp %p bp %p", vp, bp);
+
+	bp->b_xflags |= BX_VNCLEAN;
+	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
+		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
 	crit_exit();
 }
 
@@ -821,6 +829,10 @@ brelvp(struct buf *bp)
 			buf_rb_tree_RB_REMOVE(&vp->v_rbclean_tree, bp);
 		bp->b_xflags &= ~(BX_VNDIRTY | BX_VNCLEAN);
 	}
+	if (bp->b_flags & B_HASHED) {
+		buf_rb_hash_RB_REMOVE(&vp->v_rbhash_tree, bp);
+		bp->b_flags &= ~B_HASHED;
+	}
 	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vp->v_flag &= ~VONWORKLST;
 		LIST_REMOVE(vp, v_synclist);
@@ -841,6 +853,7 @@ void
 pbgetvp(struct vnode *vp, struct buf *bp)
 {
 	KASSERT(bp->b_vp == NULL, ("pbgetvp: not free"));
+	KKASSERT((bp->b_flags & B_HASHED) == 0);
 
 	bp->b_vp = vp;
 	bp->b_flags |= B_PAGING;
@@ -853,37 +866,23 @@ void
 pbrelvp(struct buf *bp)
 {
 	KASSERT(bp->b_vp != NULL, ("pbrelvp: NULL"));
+	KKASSERT((bp->b_flags & B_HASHED) == 0);
 
 	bp->b_vp = NULL;
 	bp->b_flags &= ~B_PAGING;
 }
 
-void
-pbreassignbuf(struct buf *bp, struct vnode *newvp)
-{
-	if ((bp->b_flags & B_PAGING) == 0) {
-		panic(
-		    "pbreassignbuf() on non phys bp %p", 
-		    bp
-		);
-	}
-	bp->b_vp = newvp;
-}
-
 /*
- * Reassign a buffer from one vnode to another.
- * Used to assign file specific control information
- * (indirect blocks) to the vnode to which they belong.
+ * Reassign the buffer to the proper clean/dirty list based on B_DELWRI.
+ * This routine is called when the state of the B_DELWRI bit is changed.
  */
 void
-reassignbuf(struct buf *bp, struct vnode *newvp)
+reassignbuf(struct buf *bp)
 {
+	struct vnode *vp = bp->b_vp;
 	int delay;
 
-	if (newvp == NULL) {
-		printf("reassignbuf: NULL");
-		return;
-	}
+	KKASSERT(vp != NULL);
 	++reassignbufcalls;
 
 	/*
@@ -894,34 +893,30 @@ reassignbuf(struct buf *bp, struct vnode *newvp)
 		panic("cannot reassign paging buffer");
 
 	crit_enter();
-	/*
-	 * Delete from old vnode list, if on one.
-	 */
-	if (bp->b_xflags & (BX_VNDIRTY | BX_VNCLEAN)) {
-		if (bp->b_xflags & BX_VNDIRTY)
-			buf_rb_tree_RB_REMOVE(&bp->b_vp->v_rbdirty_tree, bp);
-		else 
-			buf_rb_tree_RB_REMOVE(&bp->b_vp->v_rbclean_tree, bp);
-		bp->b_xflags &= ~(BX_VNDIRTY | BX_VNCLEAN);
-		if (bp->b_vp != newvp) {
-			vdrop(bp->b_vp);
-			bp->b_vp = NULL;	/* for clarification */
-		}
-	}
-	/*
-	 * If dirty, put on list of dirty buffers; otherwise insert onto list
-	 * of clean buffers.
-	 */
 	if (bp->b_flags & B_DELWRI) {
-		if ((newvp->v_flag & VONWORKLST) == 0) {
-			switch (newvp->v_type) {
+		/*
+		 * Move to the dirty list, add the vnode to the worklist
+		 */
+		if (bp->b_xflags & BX_VNCLEAN) {
+			buf_rb_tree_RB_REMOVE(&vp->v_rbclean_tree, bp);
+			bp->b_xflags &= ~BX_VNCLEAN;
+		}
+		if ((bp->b_xflags & BX_VNDIRTY) == 0) {
+			if (buf_rb_tree_RB_INSERT(&vp->v_rbdirty_tree, bp)) {
+				panic("reassignbuf: dup lblk vp %p bp %p",
+				      vp, bp);
+			}
+			bp->b_xflags |= BX_VNDIRTY;
+		}
+		if ((vp->v_flag & VONWORKLST) == 0) {
+			switch (vp->v_type) {
 			case VDIR:
 				delay = dirdelay;
 				break;
 			case VCHR:
 			case VBLK:
-				if (newvp->v_rdev && 
-				    newvp->v_rdev->si_mountpoint != NULL) {
+				if (vp->v_rdev && 
+				    vp->v_rdev->si_mountpoint != NULL) {
 					delay = metadelay;
 					break;
 				}
@@ -929,24 +924,29 @@ reassignbuf(struct buf *bp, struct vnode *newvp)
 			default:
 				delay = filedelay;
 			}
-			vn_syncer_add_to_worklist(newvp, delay);
+			vn_syncer_add_to_worklist(vp, delay);
 		}
-		bp->b_xflags |= BX_VNDIRTY;
-		if (buf_rb_tree_RB_INSERT(&newvp->v_rbdirty_tree, bp))
-			panic("reassignbuf: dup lblk vp %p bp %p", newvp, bp);
 	} else {
-		bp->b_xflags |= BX_VNCLEAN;
-		if (buf_rb_tree_RB_INSERT(&newvp->v_rbclean_tree, bp))
-			panic("reassignbuf: dup lblk vp %p bp %p", newvp, bp);
-		if ((newvp->v_flag & VONWORKLST) &&
-		    RB_EMPTY(&newvp->v_rbdirty_tree)) {
-			newvp->v_flag &= ~VONWORKLST;
-			LIST_REMOVE(newvp, v_synclist);
+		/*
+		 * Move to the clean list, remove the vnode from the worklist
+		 * if no dirty blocks remain.
+		 */
+		if (bp->b_xflags & BX_VNDIRTY) {
+			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
+			bp->b_xflags &= ~BX_VNDIRTY;
 		}
-	}
-	if (bp->b_vp != newvp) {
-		bp->b_vp = newvp;
-		vhold(bp->b_vp);
+		if ((bp->b_xflags & BX_VNCLEAN) == 0) {
+			if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp)) {
+				panic("reassignbuf: dup lblk vp %p bp %p",
+				      vp, bp);
+			}
+			bp->b_xflags |= BX_VNCLEAN;
+		}
+		if ((vp->v_flag & VONWORKLST) &&
+		    RB_EMPTY(&vp->v_rbdirty_tree)) {
+			vp->v_flag &= ~VONWORKLST;
+			LIST_REMOVE(vp, v_synclist);
+		}
 	}
 	crit_exit();
 }

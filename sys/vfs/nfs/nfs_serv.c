@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.27 2006/03/04 17:39:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.28 2006/03/05 18:38:37 dillon Exp $
  */
 
 /*
@@ -3542,9 +3542,10 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * have to lock and write it.  Otherwise the prior
 			 * write is assumed to have already been committed.
 			 */
-			if ((bp = gbincore(vp, lblkno)) != NULL && (bp->b_flags & B_DELWRI)) {
+			if ((bp = findblk(vp, lblkno)) != NULL && (bp->b_flags & B_DELWRI)) {
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
-					BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL);
+					if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL) == 0)
+						BUF_UNLOCK(bp);
 					continue; /* retry */
 				}
 				bremfree(bp);

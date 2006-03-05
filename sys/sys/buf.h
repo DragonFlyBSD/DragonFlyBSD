@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.23 2006/03/02 19:26:17 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.24 2006/03/05 18:38:36 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -75,7 +75,9 @@ struct xio;
 #define NBUF_BIO	4
 
 struct buf_rb_tree;
-RB_PROTOTYPE(buf_rb_tree, buf, b_rbnode, rb_buf_compare);
+struct buf_rb_hash;
+RB_PROTOTYPE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, daddr_t, b_lblkno);
+RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, daddr_t, b_lblkno);
 
 /*
  * To avoid including <ufs/ffs/softdep.h> 
@@ -138,8 +140,8 @@ extern struct bio_ops {
  *	unrelated to the vnode/device whos strategy routine was called.
  */
 struct buf {
-	LIST_ENTRY(buf) b_hash;		/* Hash chain. */
-	RB_ENTRY(buf) b_rbnode;		/* Red-Black node in vnode RB tree */
+	RB_ENTRY(buf) b_rbnode;		/* RB node in vnode clean/dirty tree */
+	RB_ENTRY(buf) b_rbhash;		/* RB node in vnode hash tree */
 	TAILQ_ENTRY(buf) b_freelist;	/* Free list position if not active. */
 	struct buf *b_cluster_next;	/* Next buffer (cluster code) */
 	struct vnode *b_vp;		/* (vp, lblkno) index */
@@ -229,7 +231,7 @@ struct buf {
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
 #define	B_DEFERRED	0x00000010	/* Skipped over for cleaning */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
-#define	B_UNUSED40 	0x00000040 	/* Unused */
+#define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
 #define	B_FREEBUF	0x00000100	/* Instruct driver: free blocks */
 #define	B_DONE		0x00000200	/* I/O completed. */
@@ -339,7 +341,6 @@ extern int	nswbuf;			/* Number of swap I/O buffer headers. */
 
 struct uio;
 
-caddr_t bufhashinit (caddr_t);
 void	bufinit (void);
 void	bwillwrite (void);
 int	buf_dirty_count_severe (void);
@@ -360,9 +361,8 @@ void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	vfs_bio_awrite (struct buf *);
 struct buf *getpbuf (int *);
-struct buf *incore (struct vnode *, daddr_t);
-struct buf *gbincore (struct vnode *, daddr_t);
 int	inmem (struct vnode *, daddr_t);
+struct buf *findblk (struct vnode *, daddr_t);
 struct buf *getblk (struct vnode *, daddr_t, int, int, int);
 struct buf *geteblk (int);
 struct bio *push_bio(struct bio *);
@@ -390,8 +390,7 @@ void	bgetvp (struct vnode *, struct buf *);
 void	pbgetvp (struct vnode *, struct buf *);
 void	pbrelvp (struct buf *);
 int	allocbuf (struct buf *bp, int size);
-void	reassignbuf (struct buf *, struct vnode *);
-void	pbreassignbuf (struct buf *, struct vnode *);
+void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 
 #endif /* _KERNEL */

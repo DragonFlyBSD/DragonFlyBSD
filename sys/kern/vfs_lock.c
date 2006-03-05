@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.9 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.10 2006/03/05 18:38:34 dillon Exp $
  */
 
 /*
@@ -494,6 +494,7 @@ allocvnode(int lktimeout, int lkflags)
 
 	RB_INIT(&vp->v_rbclean_tree);
 	RB_INIT(&vp->v_rbdirty_tree);
+	RB_INIT(&vp->v_rbhash_tree);
 	vp->v_type = VNON;
 	vp->v_tag = 0;
 	vp->v_ops = NULL;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.48 2006/03/02 19:26:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.49 2006/03/05 18:38:37 dillon Exp $
  */
 
 
@@ -3297,11 +3297,7 @@ nfs_bwrite(struct vop_bwrite_args *ap)
 int
 nfs_writebp(struct buf *bp, int force, struct thread *td)
 {
-	int oldflags = bp->b_flags;
-#if 0
-	int retv = 1;
-	off_t off;
-#endif
+	int error;
 
 	if (BUF_REFCNT(bp) == 0)
 		panic("bwrite: buffer is not locked???");
@@ -3316,7 +3312,6 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	/*
 	 * Undirty the bp.  We will redirty it later if the I/O fails.
 	 */
-
 	crit_enter();
 	bundirty(bp);
 	bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
@@ -3327,24 +3322,17 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	 * assign b_runningbufspace.
 	 */
 	vfs_busy_pages(bp, 1);
-
 	BUF_KERNPROC(bp);
-	vn_strategy(bp->b_vp, &bp->b_bio1);
 
-	if((oldflags & B_ASYNC) == 0) {
-		int rtval = biowait(bp);
-
-		if (oldflags & B_DELWRI) {
-			crit_enter();
-			reassignbuf(bp, bp->b_vp);
-			crit_exit();
-		}
-
+	if (bp->b_flags & B_ASYNC) {
+		vn_strategy(bp->b_vp, &bp->b_bio1);
+		error = 0;
+	} else {
+		vn_strategy(bp->b_vp, &bp->b_bio1);
+		error = biowait(bp);
 		brelse(bp);
-		return (rtval);
 	} 
-
-	return (0);
+	return (error);
 }
 
 /*

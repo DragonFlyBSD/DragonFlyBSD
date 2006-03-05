@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.16 2006/02/21 18:46:56 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.17 2006/03/05 18:38:34 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -133,14 +133,14 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 			bp->b_flags &= ~B_RAM;
 			/*
 			 * We do the crit here so that there is no window
-			 * between the incore and the b_usecount increment
+			 * between the findblk and the b_usecount increment
 			 * below.  We opt to keep the crit out of the loop
 			 * for efficiency.
 			 */
 			crit_enter();
 			for (i = 1; i < maxra; i++) {
 
-				if (!(tbp = incore(vp, lblkno+i))) {
+				if (!(tbp = findblk(vp, lblkno+i))) {
 					break;
 				}
 
@@ -371,7 +371,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 			 * would block in the lock.  The same checks have to
 			 * be made again after we officially get the buffer.
 			 */
-			if ((tbp = incore(vp, lbn + i)) != NULL) {
+			if ((tbp = findblk(vp, lbn + i)) != NULL) {
 				if (BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT))
 					break;
 				BUF_UNLOCK(tbp);
@@ -749,7 +749,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		 * is delayed-write but either locked or inval, it cannot 
 		 * partake in the clustered write.
 		 */
-		if (((tbp = gbincore(vp, start_lbn)) == NULL) ||
+		if (((tbp = findblk(vp, start_lbn)) == NULL) ||
 		  ((tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI) ||
 		  BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
 			++start_lbn;
@@ -818,7 +818,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				 * If the adjacent data is not even in core it
 				 * can't need to be written.
 				 */
-				if ((tbp = gbincore(vp, start_lbn)) == NULL) {
+				if ((tbp = findblk(vp, start_lbn)) == NULL) {
 					crit_exit();
 					break;
 				}
@@ -903,7 +903,6 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 			bundirty(tbp);
 			tbp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
 			tbp->b_flags |= B_ASYNC;
-			reassignbuf(tbp, tbp->b_vp);	/* put on clean list */
 			crit_exit();
 			BUF_KERNPROC(tbp);
 			cluster_append(&bp->b_bio1, tbp);

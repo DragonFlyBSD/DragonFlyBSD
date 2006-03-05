@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.26 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.27 2006/03/05 18:38:37 dillon Exp $
  */
 
 
@@ -458,7 +458,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		    for (nra = 0; nra < nmp->nm_readahead && nra < seqcount &&
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
-			if (!incore(vp, rabn)) {
+			if (!findblk(vp, rabn)) {
 			    rabp = nfs_getcacheblk(vp, rabn, biosize, td);
 			    if (!rabp)
 				return (EINTR);
@@ -642,7 +642,7 @@ again:
 		    (np->n_direofoffset == 0 ||
 		    (lbn + 1) * NFS_DIRBLKSIZ < np->n_direofoffset) &&
 		    !(np->n_flag & NQNFSNONCACHE) &&
-		    !incore(vp, lbn + 1)) {
+		    !findblk(vp, lbn + 1)) {
 			rabp = nfs_getcacheblk(vp, lbn + 1, NFS_DIRBLKSIZ, td);
 			if (rabp) {
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {

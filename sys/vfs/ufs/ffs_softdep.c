@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.34 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.35 2006/03/05 18:38:39 dillon Exp $
  */
 
 /*
@@ -2266,8 +2266,11 @@ indir_trunc(ip, dbn, level, lbn, countp)
 	 * Otherwise we have to read the blocks in from the disk.
 	 */
 	ACQUIRE_LOCK(&lk);
-	if ((bp = incore(ip->i_devvp, dbn)) != NULL &&
+	if ((bp = findblk(ip->i_devvp, dbn)) != NULL &&
 	    (wk = LIST_FIRST(&bp->b_dep)) != NULL) {
+		/*
+		 * bp must be ir_savebp, which is held locked for our use.
+		 */
 		if (wk->wk_type != D_INDIRDEP ||
 		    (indirdep = WK_INDIRDEP(wk))->ir_savebp != bp ||
 		    (indirdep->ir_state & GOINGAWAY) == 0) {

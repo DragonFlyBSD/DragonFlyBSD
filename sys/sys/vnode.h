@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.40 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.41 2006/03/05 18:38:36 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -155,6 +155,7 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  *	 journaling is turned on or off.
  */
 RB_HEAD(buf_rb_tree, buf);
+RB_HEAD(buf_rb_hash, buf);
 
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
@@ -171,6 +172,7 @@ struct vnode {
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
+	struct buf_rb_hash v_rbhash_tree;	/* RB tree general lookup */
 	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	enum	vtype v_type;			/* vnode type */
 	union {

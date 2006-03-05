@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.86 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.87 2006/03/05 18:38:32 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -353,7 +353,6 @@ again:
 
 	valloc(swbuf, struct buf, nswbuf);
 	valloc(buf, struct buf, nbuf);
-	v = bufhashinit(v);
 
 	/*
 	 * End of first pass, size has been calculated so allocate memory

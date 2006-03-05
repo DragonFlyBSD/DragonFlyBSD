@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.57 2006/03/02 20:28:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.58 2006/03/05 18:38:34 dillon Exp $
  */
 
 /*
@@ -164,9 +164,6 @@ SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
 SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
 	"sizeof(struct buf)");
 
-static int bufhashmask;
-static int bufhashshift;
-static LIST_HEAD(bufhashhdr, buf) *bufhashtbl, invalhash;
 char *buf_wmesg = BUF_WMESG;
 
 extern int vm_swap_size;
@@ -175,51 +172,6 @@ extern int vm_swap_size;
 #define VFS_BIO_NEED_DIRTYFLUSH	0x02	/* waiting for dirty buffer flush */
 #define VFS_BIO_NEED_FREE	0x04	/* wait for free bufs, hi hysteresis */
 #define VFS_BIO_NEED_BUFSPACE	0x08	/* wait for buf space, lo hysteresis */
-
-/*
- * Buffer hash table code.  Note that the logical block scans linearly, which
- * gives us some L1 cache locality.
- */
-
-static __inline 
-struct bufhashhdr *
-bufhash(struct vnode *vnp, daddr_t bn)
-{
-	u_int64_t hashkey64;
-	int hashkey; 
-	
-	/*
-	 * A variation on the Fibonacci hash that Knuth credits to
-	 * R. W. Floyd, see Knuth's _Art of Computer Programming,
-	 * Volume 3 / Sorting and Searching_
-	 *
-         * We reduce the argument to 32 bits before doing the hash to
-	 * avoid the need for a slow 64x64 multiply on 32 bit platforms.
-	 *
-	 * sizeof(struct vnode) is 168 on i386, so toss some of the lower
-	 * bits of the vnode address to reduce the key range, which
-	 * improves the distribution of keys across buckets.
-	 *
-	 * The file system cylinder group blocks are very heavily
-	 * used.  They are located at invervals of fbg, which is
-	 * on the order of 89 to 94 * 2^10, depending on other
-	 * filesystem parameters, for a 16k block size.  Smaller block
-	 * sizes will reduce fpg approximately proportionally.  This
-	 * will cause the cylinder group index to be hashed using the
-	 * lower bits of the hash multiplier, which will not distribute
-	 * the keys as uniformly in a classic Fibonacci hash where a
-	 * relatively small number of the upper bits of the result
-	 * are used.  Using 2^16 as a close-enough approximation to
-	 * fpg, split the hash multiplier in half, with the upper 16
-	 * bits being the inverse of the golden ratio, and the lower
-	 * 16 bits being a fraction between 1/3 and 3/7 (closer to
-	 * 3/7 in this case), that gives good experimental results.
-	 */
-	hashkey64 = ((u_int64_t)(uintptr_t)vnp >> 3) + (u_int64_t)bn;
-	hashkey = (((u_int32_t)(hashkey64 + (hashkey64 >> 32)) * 0x9E376DB1u) >>
-	    bufhashshift) & bufhashmask;
-	return(&bufhashtbl[hashkey]);
-}
 
 /*
  * numdirtywakeup:
@@ -384,25 +336,6 @@ bd_speedup(void)
 }
 
 /*
- * bufhashinit:
- *
- *	Initialize buffer headers and related structures. 
- */
-
-caddr_t
-bufhashinit(caddr_t vaddr)
-{
-	/* first, make a null hash table */
-	bufhashshift = 29;
-	for (bufhashmask = 8; bufhashmask < nbuf / 4; bufhashmask <<= 1)
-		bufhashshift--;
-	bufhashtbl = (void *)vaddr;
-	vaddr = vaddr + sizeof(*bufhashtbl) * bufhashmask;
-	--bufhashmask;
-	return(vaddr);
-}
-
-/*
  * bufinit:
  *
  *	Load time initialisation of the buffer cache, called from machine
@@ -414,11 +347,6 @@ bufinit(void)
 	struct buf *bp;
 	vm_offset_t bogus_offset;
 	int i;
-
-	LIST_INIT(&invalhash);
-
-	for (i = 0; i <= bufhashmask; i++)
-		LIST_INIT(&bufhashtbl[i]);
 
 	/* next, make a null set of free lists */
 	for (i = 0; i < BUFFER_QUEUES; i++)
@@ -435,7 +363,6 @@ bufinit(void)
 		LIST_INIT(&bp->b_dep);
 		BUF_LOCKINIT(bp);
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_EMPTY], bp, b_freelist);
-		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 	}
 
 	/*
@@ -923,7 +850,7 @@ bdirty(struct buf *bp)
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
 		bp->b_flags |= B_DONE | B_DELWRI;
-		reassignbuf(bp, bp->b_vp);
+		reassignbuf(bp);
 		++numdirtybuffers;
 		bd_wakeup((lodirtybuffers + hidirtybuffers) / 2);
 	}
@@ -949,7 +876,7 @@ bundirty(struct buf *bp)
 {
 	if (bp->b_flags & B_DELWRI) {
 		bp->b_flags &= ~B_DELWRI;
-		reassignbuf(bp, bp->b_vp);
+		reassignbuf(bp);
 		--numdirtybuffers;
 		numdirtywakeup(lodirtybuffers);
 	}
@@ -1274,6 +1201,7 @@ brelse(struct buf * bp)
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
 		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 1");
 		if (bp->b_kvasize) {
@@ -1282,22 +1210,19 @@ brelse(struct buf * bp)
 			bp->b_qindex = BQUEUE_EMPTY;
 		}
 		TAILQ_INSERT_HEAD(&bufqueues[bp->b_qindex], bp, b_freelist);
-		LIST_REMOVE(bp, b_hash);
-		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 	} else if (bp->b_flags & (B_ERROR | B_INVAL | B_NOCACHE | B_RELBUF)) {
 		/*
 		 * Buffers with junk contents.   Again these buffers had better
 		 * already be disassociated from their vnode.
 		 */
 		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 2");
 		bp->b_qindex = BQUEUE_CLEAN;
 		TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
-		LIST_REMOVE(bp, b_hash);
-		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 	} else if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Buffers that are locked.
@@ -1497,25 +1422,6 @@ vfs_vmio_release(struct buf *bp)
 }
 
 /*
- * gbincore:
- *
- *	Check to see if a block is currently memory resident.
- */
-struct buf *
-gbincore(struct vnode * vp, daddr_t blkno)
-{
-	struct buf *bp;
-	struct bufhashhdr *bh;
-
-	bh = bufhash(vp, blkno);
-	LIST_FOREACH(bp, bh, b_hash) {
-		if (bp->b_vp == vp && bp->b_lblkno == blkno)
-			break;
-	}
-	return (bp);
-}
-
-/*
  * vfs_bio_awrite:
  *
  *	Implement clustered async writes for clearing out B_DELWRI buffers.
@@ -1556,7 +1462,7 @@ vfs_bio_awrite(struct buf *bp)
 		maxcl = MAXPHYS / size;
 
 		for (i = 1; i < maxcl; i++) {
-			if ((bpa = gbincore(vp, lblkno + i)) &&
+			if ((bpa = findblk(vp, lblkno + i)) &&
 			    BUF_REFCNT(bpa) == 0 &&
 			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
 			    (B_DELWRI | B_CLUSTEROK)) &&
@@ -1570,7 +1476,7 @@ vfs_bio_awrite(struct buf *bp)
 			}
 		}
 		for (j = 1; i + j <= maxcl && j <= lblkno; j++) {
-			if ((bpa = gbincore(vp, lblkno - j)) &&
+			if ((bpa = findblk(vp, lblkno - j)) &&
 			    BUF_REFCNT(bpa) == 0 &&
 			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
 			    (B_DELWRI | B_CLUSTEROK)) &&
@@ -1785,12 +1691,11 @@ restart:
 		 */
 
 		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08lx vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
+		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
 			(*bioops.io_deallocate)(bp);
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 3");
-		LIST_REMOVE(bp, b_hash);
-		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 
 		/*
 		 * critical section protection is not required when
@@ -2055,26 +1960,10 @@ flushbufqueues(void)
 }
 
 /*
- * incore:
- *
- *	Check to see if a block is currently resident in memory.
- */
-struct buf *
-incore(struct vnode * vp, daddr_t blkno)
-{
-	struct buf *bp;
-
-	crit_enter();
-	bp = gbincore(vp, blkno);
-	crit_exit();
-	return (bp);
-}
-
-/*
  * inmem:
  *
  *	Returns true if no I/O is needed to access the associated VM object.
- *	This is like incore except it also hunts around in the VM system for
+ *	This is like findblk except it also hunts around in the VM system for
  *	the data.
  *
  *	Note that we ignore vm_page_free() races from interrupts against our
@@ -2089,7 +1978,7 @@ inmem(struct vnode * vp, daddr_t blkno)
 	vm_page_t m;
 	vm_ooffset_t off;
 
-	if (incore(vp, blkno))
+	if (findblk(vp, blkno))
 		return 1;
 	if (vp->v_mount == NULL)
 		return 0;
@@ -2208,6 +2097,25 @@ vfs_setdirty(struct buf *bp)
 }
 
 /*
+ * findblk:
+ *
+ *	Locate and return the specified buffer, or NULL if the buffer does
+ *	not exist.  Do not attempt to lock the buffer or manipulate it in
+ *	any way.  The caller must validate that the correct buffer has been
+ *	obtain after locking it.
+ */
+struct buf *
+findblk(struct vnode *vp, daddr_t blkno)
+{
+	struct buf *bp;
+
+	crit_enter();
+	bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, blkno);
+	crit_exit();
+	return(bp);
+}
+
+/*
  * getblk:
  *
  *	Get a block given a specified block and offset into a file/device.
@@ -2251,10 +2159,9 @@ vfs_setdirty(struct buf *bp)
  *	prior to issuing the READ.  biodone() will *not* clear B_INVAL.
  */
 struct buf *
-getblk(struct vnode * vp, daddr_t blkno, int size, int slpflag, int slptimeo)
+getblk(struct vnode *vp, daddr_t blkno, int size, int slpflag, int slptimeo)
 {
 	struct buf *bp;
-	struct bufhashhdr *bh;
 
 	if (size > MAXBSIZE)
 		panic("getblk: size(%d) > MAXBSIZE(%d)", size, MAXBSIZE);
@@ -2266,7 +2173,7 @@ loop:
 	 * to completely exhaust the buffer cache.
          *
          * If this check ever becomes a bottleneck it may be better to
-         * move it into the else, when gbincore() fails.  At the moment
+         * move it into the else, when findblk() fails.  At the moment
          * it isn't a problem.
 	 *
 	 * XXX remove, we cannot afford to block anywhere if holding a vnode
@@ -2279,7 +2186,7 @@ loop:
 		tsleep(&needsbuffer, slpflag, "newbuf", slptimeo);
 	}
 
-	if ((bp = gbincore(vp, blkno))) {
+	if ((bp = findblk(vp, blkno))) {
 		/*
 		 * The buffer was found in the cache, but we need to lock it.
 		 * Even with LK_NOWAIT the lockmgr may break our critical
@@ -2458,7 +2365,7 @@ loop:
 		 * from the point of the duplicate buffer creation through
 		 * to here, and we've locked the buffer.
 		 */
-		if (gbincore(vp, blkno)) {
+		if (findblk(vp, blkno)) {
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			goto loop;
@@ -2466,18 +2373,16 @@ loop:
 
 		/*
 		 * Insert the buffer into the hash, so that it can
-		 * be found by incore.  bgetvp() and bufhash()
-		 * must be synchronized with each other.  Make sure the
-		 * translation layer has been cleared.
+		 * be found by findblk(). 
+		 *
+		 * Make sure the translation layer has been cleared.
 		 */
 		bp->b_lblkno = blkno;
 		bp->b_loffset = offset;
 		bp->b_bio2.bio_blkno = (daddr_t)-1;
+		/* bp->b_bio2.bio_next = NULL; */
 
 		bgetvp(vp, bp);
-		LIST_REMOVE(bp, b_hash);
-		bh = bufhash(vp, blkno);
-		LIST_INSERT_HEAD(bh, bp, b_hash);
 
 		/*
 		 * set B_VMIO bit.  allocbuf() the buffer bigger.  Since the
