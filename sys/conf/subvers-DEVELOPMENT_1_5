@@ -1,3 +1,4 @@
 # Subversion control for DragonFly 1.5.X-DEVELOPMENT
-# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_5,v 1.1 2005/12/23 19:10:52 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_5,v 1.2 2006/03/05 18:44:14 dillon Exp $
 0	-
+1	synchronize before buffer cache block->offset conversion
