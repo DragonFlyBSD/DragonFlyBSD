@@ -21,7 +21,7 @@
  * Display/change(+runprogram)/eval resource limits.
  *
  * $FreeBSD: src/usr.bin/limits/limits.c,v 1.7.2.3 2003/05/22 09:26:57 sheldonh Exp $
- * $DragonFly: src/usr.bin/limits/limits.c,v 1.4 2005/01/12 01:20:26 cpressey Exp $
+ * $DragonFly: src/usr.bin/limits/limits.c,v 1.4.4.1 2006/03/06 20:29:27 swildner Exp $
  */
 
 #include <err.h>
@@ -628,7 +628,7 @@ getshellbyname(const char * shell)
     const char * q;
     const char * p = strrchr(shell, '/');
 
-    p = p ? ++p : shell;
+    p = p ? p + 1 : shell;
     for (i = 0; (q = shellparm[i].name) != NULL; i++) {
 	while (*q) {
 	    int j = strcspn(q, "|");
