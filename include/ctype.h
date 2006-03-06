@@ -33,7 +33,7 @@
  *
  *	@(#)ctype.h	5.3 (Berkeley) 4/3/91
  *	$NetBSD: src/include/ctype.h,v 1.25 2003/10/22 15:51:18 kleink Exp $
- *	$DragonFly: src/include/ctype.h,v 1.16 2005/09/17 14:39:44 joerg Exp $
+ *	$DragonFly: src/include/ctype.h,v 1.17 2006/03/06 02:54:12 swildner Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -80,7 +80,7 @@ int	_tolower(int);
 int	_toupper(int);
 #endif
 
-#if _ISO_C_VISIBLE >= 1999 || _POSIX_VISIBLE >= 200112L || \
+#if __ISO_C_VISIBLE >= 1999 || __POSIX_VISIBLE >= 200112L || \
     __XSI_VISIBLE >= 600
 int	isblank(int);
 #endif
