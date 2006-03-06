@@ -1,8 +1,10 @@
 <!--
      The DragonFly BSD Documentation Project
 
-     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.7 2005/06/28 15:13:03 reed Exp $
+$FreeBSD:
+/repoman/r/dcvs/doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.143
+2006/01/05 20:03:36 delphij Exp $
+$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.8 2006/03/06 05:23:18 justin Exp $
 -->
 
 <chapter id="basics">
@@ -21,12 +23,10 @@
   
   <sect1 id="basics-synopsis">
     <title>Synopsis</title>
-    <indexterm><primary>basics</primary></indexterm>
-
 
    <para>The following chapter will cover the basic commands and
      functionality of the &os; operating system.  Much of this
-     material is relevant for any &unix; like operating system.  Feel
+     material is relevant for any &unix;-like operating system.  Feel
      free to skim over this chapter if you are familiar with the
      material.  If you are new to &os;, then you will definitely
      want to read through this chapter carefully.</para>
@@ -39,7 +39,8 @@
 	  &os;.</para>
       </listitem>
       <listitem>
-	<para>How &unix; file permissions work.</para>
+      <para>How &unix; file permissions work along with
+        understanding file flags in &os;.</para>
       </listitem>
       <listitem>
 	<para>The default &os; file system layout.</para>
@@ -143,7 +144,7 @@ login:</screen>
 
       <para>Every multiuser system needs some way to distinguish one
 	<quote>user</quote> from the rest.  In &os; (and all the
-	&unix; like operating systems), this is accomplished by requiring that
+	&unix;-like operating systems), this is accomplished by requiring that
 	every user must <quote>log into</quote> the system before being able
 	to run programs.  Every user has a unique name (the
 	<quote>username</quote>) and a personal, secret key (the
@@ -319,7 +320,7 @@ console none                            unknown off secure</programlisting>
     <indexterm>
       <primary>file permissions</primary>
     </indexterm>
-    <informaltable frame="none">
+    <informaltable frame="none" pgwide="1">
       <tgroup cols="3">
 	<thead>
 	  <row>
@@ -459,14 +460,14 @@ total 530
       </sect2info>
 
       <title>Symbolic Permissions</title>
-      <indexterm><primary>Permissions</primary><secondary>symbolic</secondary></indexterm>
+      <indexterm><primary>permissions</primary><secondary>symbolic</secondary></indexterm>
 
       <para>Symbolic permissions, sometimes referred to as symbolic expressions,
 	use characters in place of octal values to assign permissions to files
 	or directories.  Symbolic expressions use the syntax of (who) (action)
 	(permissions), where the following values are available:</para>
 
-      <informaltable frame="none">
+      <informaltable frame="none" pgwide="1">
 	<tgroup cols="3">
 	  <thead>
 	    <row>
@@ -573,6 +574,61 @@ total 530
       a file; it does not add or delete them.</para>
 -->
     </sect2>
+
+    <sect2>
+      <sect2info>
+   <authorgroup>
+     <author>
+       <firstname>Tom</firstname>
+       <surname>Rhodes</surname>
+       <contrib>Contributed by </contrib>
+     </author>
+   </authorgroup>
+      </sect2info>
+
+      <title>&os; File Flags</title>
+
+      <para>In addition to file permissions discussed previously, &os;
+   supports the use of <quote>file flags.</quote>  These flags
+   add an additional level of security and control over files, but
+   not directories.</para>
+
+      <para>These file flags add an additional level of control over
+   files, helping to ensure that in some cases not even the
+   <username>root</username> can remove or alter files.</para>
+
+      <para>File flags are altered by using the &man.chflags.1; utility,
+   using a simple interface.  For example, to enable the system
+   undeletable flag on the file <filename>file1</filename>,
+   issue the following command:</para>
+
+   <screen>&prompt.root; <userinput>chflags sunlink
+   <filename>file1</filename></userinput></screen> 
+   
+      <para>And to disable the system undeletable flag, simply
+   issue the previous command with <quote>no</quote> in
+   front of the <option>sunlink</option>.  Observe:</para>
+
+   <screen>&prompt.root; <userinput>chflags nosunlink
+   <filename>file1</filename></userinput></screen>
+
+      <para>To view the flags of this file, use the &man.ls.1;
+   with the <option>-lo</option> flags:</para>
+
+      <screen>&prompt.root; <userinput>ls -lo <filename>file1</filename>
+   </userinput></screen>
+
+      <para>The output should look like the following:</para>
+
+      <programlisting>-rw-r--r--  1 trhodes  trhodes  sunlnk 0 Mar  1 05:54
+file1</programlisting>
+
+      <para>Several flags may only added or removed to files by the
+   <username>root</username> user.  In other cases, the file owner
+   may set these flags.  It is recommended an administrator read
+   over the &man.chflags.1; and &man.chflags.2; manual pages for
+   more information.</para>
+    </sect2>
   </sect1>
   
   <sect1 id="dirstructure">
@@ -589,25 +645,26 @@ total 530
       that you may want to mount.</para>
 
     <para>A mount point is a directory where additional file systems can
-      be grafted onto the root file system.  Standard mount points include
+      be grafted onto the root file system.  
+      This is further described in <xref linkend="disk-organization">.
+      Standard mount points include
       <filename>/usr</filename>, <filename>/var</filename>,
+      <filename>/tmp</filename>, 
       <filename>/mnt</filename>, and <filename>/cdrom</filename>.  These
       directories are usually referenced to entries in the file
       <filename>/etc/fstab</filename>.  <filename>/etc/fstab</filename> is
       a table of various file systems and mount points for reference by the
       system.  Most of the file systems in <filename>/etc/fstab</filename>
       are mounted automatically at boot time from the script &man.rc.8;
-      unless they contain the <option>noauto</option> option.  Consult the
-      &man.fstab.5; manual page for more information on the format of the
-      <filename>/etc/fstab</filename> file and the options it
-      contains.</para>
-
+      unless they contain the <option>noauto</option> option.  
+      Details can be found in <xref linkend="disks-fstab">.</para>
+      
     <para>A complete description of the file system hierarchy is
       available in &man.hier.7;.  For now, a brief overview of the
       most common directories will suffice.</para>
 
     <para>
-      <informaltable frame="none">
+      <informaltable frame="none" pgwide="1">
         <tgroup cols="2">
 	  <thead>
 	    <row>
@@ -615,7 +672,7 @@ total 530
 	      <entry>Description</entry>
 	    </row>
 	  </thead>
-	  <tbody>
+	  <tbody valign="top">
             <row>
 	      <entry><filename class="directory">/</filename></entry>
 	      <entry>Root directory of the file system.</entry>
@@ -710,11 +767,14 @@ total 530
 	    
 	    <row>
 	      <entry><filename class="directory">/tmp/</filename></entry>
-	      <entry>Temporary files, usually a &man.mfs.8;
-		memory-based file system (the contents of <filename
-		class="directory">/tmp</filename> are usually NOT
-		preserved across a system reboot).</entry>
-	    </row>
+	      <entry>Temporary files.  The contents of
+            <filename class="directory">/tmp</filename> are usually NOT
+            preserved across a system reboot.  A memory-based file
+            system is often mounted at
+            <filename class="directory">/tmp</filename>.
+            This can be automated with an entry in
+            <filename>/etc/fstab</filename>; see &man.mfs.8;.</entry>
+        </row>
 	    
 	    
 	    <row>
@@ -750,7 +810,7 @@ total 530
 	    
 	    <row>
 	      <entry><filename class="directory">/usr/libexec/</filename></entry>
-	      <entry>System daemons & system utilities (executed by other
+	      <entry>System daemons &amp; system utilities (executed by other
 		programs).</entry>
 	    </row>
 	    
@@ -799,7 +859,7 @@ total 530
 	    
 	    <row>
 	      <entry><filename class="directory">/usr/sbin/</filename></entry>
-	      <entry>System daemons & system utilities (executed by users).</entry>
+	      <entry>System daemons &amp; system utilities (executed by users).</entry>
 	    </row>
 	    
 	    <row>
@@ -822,8 +882,11 @@ total 530
 	    <row>
 	      <entry><filename class="directory">/var/</filename></entry>
 	      <entry>Multi-purpose log, temporary, transient, and spool files.
-	      </entry>
-	    </row>
+	      A memory-based file system is sometimes mounted at
+          <filename class="directory">/var</filename>.
+          This can be automated with an entry in 
+          <filename>/etc/fstab</filename>; see &man.mfs.8;.</entry>
+        </row>
 	    
 	    
 	    <row>
@@ -844,8 +907,11 @@ total 530
 	    
 	    <row>
 	      <entry><filename class="directory">/var/tmp/</filename></entry>
-	      <entry>Temporary files that are kept between system reboots.</entry>
-	    </row>
+	      <entry>Temporary files.
+          The files are usually preserved across a system reboot,
+          unless <filename class="directory">/var</filename>
+          is a memory-based file system.</entry>
+        </row>
 	    
 	    <row>
 	      <entry><filename>/var/yp</filename></entry>
@@ -867,7 +933,7 @@ total 530
 	<filename>readme.txt</filename> and <filename>README.TXT</filename>
 	are two separate files.  &os; does not use the extension
 	(<filename>.txt</filename>) of a file to determine whether the file is
-	program, or a document, or some other form of data.</para>
+	a program, or a document, or some other form of data.</para>
 
       <para>Files are stored in directories.  A directory may contain no
 	files, or it may contain many hundreds of files.  A directory can also
@@ -884,9 +950,9 @@ total 530
 	<firstterm>path</firstterm> to the file is
 	<filename>foo/bar/readme.txt</filename>.</para>
 
-      <para>Directories and files are stored in a filesystem.  Each filesystem
+      <para>Directories and files are stored in a filesystem.  Each file system
 	contains exactly one directory at the very top level, called the
-	<firstterm>root directory</firstterm> for that filesystem.  This root
+	<firstterm>root directory</firstterm> for that file system.  This root
 	directory can then contain other directories.</para>
 
       <para>So far this is probably similar to any other operating system you
@@ -899,20 +965,20 @@ total 530
 	on &os;.</para>
 
       <para>Instead, one filesystem is designated the <firstterm>root
-	  filesystem</firstterm>.  The root filesystem's root directory is
-	referred to as <literal>/</literal>.  Every other filesystem is then
-	<firstterm>mounted</firstterm> under the root filesystem.  No matter
+	  file system</firstterm>.  The root file system's root directory is
+	referred to as <literal>/</literal>.  Every other file system is then
+	<firstterm>mounted</firstterm> under the root file system.  No matter
 	how many disks you have on your &os; system, every directory
 	appears to be part of the same disk.</para>
 
-      <para>Suppose you have three filesystems, called <literal>A</literal>,
-	<literal>B</literal>, and <literal>C</literal>.  Each filesystem has
+      <para>Suppose you have three file systems, called <literal>A</literal>,
+	<literal>B</literal>, and <literal>C</literal>.  Each file system has
 	one root directory, which contains two other directories, called
 	<literal>A1</literal>, <literal>A2</literal> (and likewise
 	<literal>B1</literal>, <literal>B2</literal> and
 	<literal>C1</literal>, <literal>C2</literal>).</para>
 
-      <para>Call <literal>A</literal> the root filesystem.  If you used the
+      <para>Call <literal>A</literal> the root file system.  If you used the
 	<command>ls</command> command to view the contents of this directory
 	you would see two subdirectories, <literal>A1</literal> and
 	<literal>A2</literal>.  The directory tree looks like this:</para>
@@ -931,8 +997,8 @@ total 530
 	</textobject>
       </mediaobject>
 
-      <para>A filesystem must be mounted on to a directory in another
-	filesystem.  So now suppose that you mount filesystem
+      <para>A file system must be mounted on to a directory in another
+	filesystem.  So now suppose that you mount file system
 	<literal>B</literal> on to the directory <literal>A1</literal>.  The
 	root directory of <literal>B</literal> replaces <literal>A1</literal>,
 	and the directories in <literal>B</literal> appear accordingly:</para>
@@ -986,10 +1052,10 @@ total 530
       <para>and the paths would be <filename>/A2/B1</filename> and
 	<filename>/A2/B2</filename> respectively.</para>
 
-      <para>Filesystems can be mounted on top of one another.  Continuing the
-	last example, the <literal>C</literal> filesystem could be mounted on
+      <para>File systems can be mounted on top of one another.  Continuing the
+	last example, the <literal>C</literal> file system could be mounted on
 	top of the <literal>B1</literal> directory in the <literal>B</literal>
-	filesystem, leading to this arrangement:</para>
+	file system, leading to this arrangement:</para>
 
       <mediaobject>
 	<imageobject>
@@ -1014,7 +1080,7 @@ total 530
       </mediaobject>
 
       <para>Or <literal>C</literal> could be mounted directly on to the
-	<literal>A</literal> filesystem, under the <literal>A1</literal>
+	<literal>A</literal> file system, under the <literal>A1</literal>
 	directory:</para>
 
       <mediaobject>
@@ -1045,67 +1111,67 @@ total 530
 		identical, to the <command>join</command> command.</para>
 
 	      <para>This is not normally something you need to concern yourself with.
-		Typically you create filesystems when installing &os; and decide
+		Typically you create file systems when installing &os; and decide
 		where to mount them, and then never change them unless you add a new
 		disk.</para>
 
-	      <para>It is entirely possible to have one large root filesystem, and not
+	      <para>It is entirely possible to have one large root file system, and not
 		need to create any others.  There are some drawbacks to this approach,
 		and one advantage.</para>
 
 	      <itemizedlist>
-		<title>Benefits of Multiple Filesystems</title>
+		<title>Benefits of Multiple File Systems</title>
 	      
 		<listitem>
-		  <para>Different filesystems can have different <firstterm>mount
+		  <para>Different file systems can have different <firstterm>mount
 		    options</firstterm>.  For example, with careful planning, the
-		    root filesystem can be mounted read-only, making it impossible for
+		    root file system can be mounted read-only, making it impossible for
 		    you to inadvertently delete or edit a critical file.  Separating
-		    user-writable filesystems, such as <filename>/home</filename>,
-		    from other filesystems also allows them to be mounted
+		    user-writable file systems, such as <filename>/home</filename>,
+		    from other file systems also allows them to be mounted
 		    <firstterm>nosuid</firstterm>; this option prevents the
 		    <firstterm>suid</firstterm>/<firstterm>guid</firstterm> bits on
-		    executables stored on the filesystem from taking effect, possibly
+		    executables stored on the file system from taking effect, possibly
 		    improving security.</para>
 		</listitem>
 
 		<listitem>
 		  <para>&os; automatically optimizes the layout of files on a
-		    filesystem, depending on how the filesystem is being used.  So a
-		    filesystem that contains many small files that are written
+		    file system, depending on how the file system is being used.  So a
+		    file system that contains many small files that are written
 		    frequently will have a different optimization to one that contains
 		    fewer, larger files.  By having one big filesystem this
 		    optimization breaks down.</para>
 		</listitem>
 		
 		<listitem>
-		  <para>&os;'s filesystems are very robust should you lose power.
+		  <para>&os;'s file systems are very robust should you lose power.
 		    However, a power loss at a critical point could still damage the
-		    structure of the filesystem.  By splitting your data over multiple
-		    filesystems it is more likely that the system will still come up,
+		    structure of the file system.  By splitting your data over multiple
+		    file systems it is more likely that the system will still come up,
 		    making it easier for you to restore from backup as necessary.</para>
 		</listitem>
 	      </itemizedlist>
 
 	      <itemizedlist>
-		<title>Benefit of a Single Filesystem</title>
+		<title>Benefit of a Single File System</title>
 
 		<listitem>
-		  <para>Filesystems are a fixed size.  If you create a filesystem when
+		  <para>File systems are a fixed size.  If you create a filesystem when
 		    you install &os; and give it a specific size, you may later
 		    discover that you need to make the partition bigger.  The 
 		    &man.growfs.8; command makes it possible to 
-		    increase the size of a filesystem on the fly.</para>
+		    increase the size of a file system on the fly.</para>
 		</listitem>
 	      </itemizedlist>
 	    
-	      <para>Filesystems are contained in partitions.  This does not have the
+	      <para>File systems are contained in partitions.  This does not have the
 		same meaning as the common usage of the term partition (for example, &ms-dos;
 		partition), because of &os;'s &unix; heritage.  Each partition is
 		identified by a letter from <literal>a</literal> through to
-		<literal>h</literal>.  Each partition can contain only one filesystem,
-		which means that filesystems are often described by either their
-		typical mount point in the filesystem hierarchy, or the letter of the
+		<literal>h</literal>.  Each partition can contain only one file system,
+		which means that file systems are often described by either their
+		typical mount point in the file system hierarchy, or the letter of the
 		partition they are contained in.</para>
 
 	      <para>&os; also uses disk space for <firstterm>swap
@@ -1132,11 +1198,11 @@ total 530
 		    </row>
 		  </thead>
 
-		  <tbody>
+		  <tbody valign="top">
 		    <row>
 		      <entry><literal>a</literal></entry>
 
-		      <entry>Normally contains the root filesystem</entry>
+		      <entry>Normally contains the root file system</entry>
 		    </row>
 
 		    <row>
@@ -1152,7 +1218,7 @@ total 530
 			allows utilities that need to work on the entire slice (for
 			example, a bad block scanner) to work on the
 			<literal>c</literal> partition.  You would not normally create
-			a filesystem on this partition.</entry>
+			a file system on this partition.</entry>
 		    </row>
 
 		    <row>
@@ -1167,7 +1233,7 @@ total 530
 		</tgroup>
 	      </informaltable>
 
-	      <para>Each partition-that-contains-a-filesystem is stored in what
+	      <para>Each partition-that-contains-a-file-system is stored in what
 		&os; calls a <firstterm>slice</firstterm>.  Slice is &os;'s term
 		for what the common call partitions, and again, this is because of
 		&os;'s &unix; background.  Slices are numbered, starting at 1,
@@ -1216,8 +1282,8 @@ total 530
 
 	      <para>In order to install &os; you must first configure the disk
 		slices, then create partitions within the slice you will use for
-		&os;, and then create a filesystem (or swap space) in each
-		partition, and decide where that filesystem will be mounted.</para>
+		&os;, and then create a file system (or swap space) in each
+		partition, and decide where that file system will be mounted.</para>
 
 	      <table frame="none" pgwide="1" id="basics-dev-codes">
 		<title>Disk Device Codes</title>
@@ -1315,8 +1381,8 @@ total 530
 		  &os; installation.  This example &os; installation has three
 		  partitions, and a swap partition.</para>
 
-		<para>The three partitions will each hold a filesystem.  Partition
-		  <literal>a</literal> will be used for the root filesystem,
+		<para>The three partitions will each hold a file system.  Partition
+		  <literal>a</literal> will be used for the root file system,
 		  <literal>e</literal> for the <filename>/var</filename> directory
 		  hierarchy, and <literal>f</literal> for the
 		  <filename>/usr</filename> directory hierarchy.</para>
@@ -1333,25 +1399,25 @@ total 530
 	    <literallayout class="monospaced">.-----------------.  --.
 |                 |    |
 |  DOS / Windows  |    |
-:                 :     >  First slice, ad0s1
+:                 :     &gt;  First slice, ad0s1
 :                 :    |
 |                 |    |
 :=================:  ==:                               --.
 |                 |    |  Partition a, mounted as /      |
-|                 |     > referred to as ad0s2a          |
+|                 |     &gt; referred to as ad0s2a          |
 |                 |    |                                 |
 :-----------------:  ==:                                 |
 |                 |    |  Partition b, used as swap      |
-|                 |     > referred to as ad0s2b          |
+|                 |     &gt; referred to as ad0s2b          |
 |                 |    |                                 |
 :-----------------:  ==:                                 |  Partition c, no
-|                 |    |  Partition e, used as /var       > filesystem, all 
-|                 |     > referred to as ad0s2e          |  of &os; slice,
+|                 |    |  Partition e, used as /var       &gt; file system, all 
+|                 |     &gt; referred to as ad0s2e          |  of &os; slice,
 |                 |    |                                 |  ad0s2c
 :-----------------:  ==:                                 |
 |                 |    |                                 |
 :                 :    |  Partition f, used as /usr      |
-:                 :     > referred to as ad0s2f          |
+:                 :     &gt; referred to as ad0s2f          |
 :                 :    |                                 |
 |                 |    |                                 |
 |                 |  --'                                 |
@@ -1470,6 +1536,9 @@ total 530
          </listitem>
 	</varlistentry>
       </variablelist>
+      <para>Consult the &man.fstab.5; manual page for more information
+      on the format of the <filename>/etc/fstab</filename> file
+      and the options it contains.</para>
     </sect2>
 
     <sect2 id="disks-mount">
@@ -1982,7 +2051,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       is a list of common environment variables and what they mean:</para>
     <indexterm><primary>environment variables</primary></indexterm>
 
-    <informaltable frame="none">
+    <informaltable frame="none" pgwide="1">
       <tgroup cols="2">
 	<thead>
 	  <row>
@@ -2118,9 +2187,6 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
 	
       <screen>&prompt.user; <userinput>chsh -s /usr/local/bin/bash</userinput></screen>
 
-      <para>Running <command>chsh</command> with no parameters and editing
-	the shell from there would work also.</para>
-
       <note>
 	<para>The shell that you wish to use <emphasis>must</emphasis> be
 	  present in the <filename>/etc/shells</filename> file.  If you
@@ -2148,11 +2214,14 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>A lot of configuration in &os; is done by editing text files.
       Because of this, it would be a good idea to become familiar
       with a text editor.  &os; comes with a few as part of the base
-      system, and many more are available in the &pkgsrc; and ports collections.</para>
+      system, and many more are available in the &pkgsrc; collections.</para>
 
     <indexterm>
       <primary><command>ee</command></primary>
     </indexterm>
+    <indexterm>
+      <primary>editors</primary>
+      <secondary><command>ee</command></secondary></indexterm>
     <para>The easiest and simplest editor to learn is an editor called
       <application>ee</application>, which stands for easy editor.  To
       start <application>ee</application>, one would type at the command
@@ -2184,13 +2253,13 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <secondary><command>emacs</command></secondary>
     </indexterm>
     <para>&os; also comes with more powerful text editors such as
-      <command>vi</command> as part of the base system, while other editors, like
-      <command>emacs</command> and <command>vim</command>,
+      <application>vi</application> as part of the base system, while other editors, like
+      <application>emacs</application> and <application>vim</application>,
       are part of the &pkgsrc; and FreeBSD Ports collections.  These editors offer much
       more functionality and power at the expense of being a little more
       complicated to learn.  However if you plan on doing a lot of text
       editing, learning a more powerful editor such as
-      <command>vim</command> or <command>emacs</command>
+      <application>vim</application> or <application>emacs</application>
       will save you much more time in the long run.</para>
   </sect1>
 
