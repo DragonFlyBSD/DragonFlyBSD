@@ -4,7 +4,7 @@
 $FreeBSD:
 /repoman/r/dcvs/doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.143
 2006/01/05 20:03:36 delphij Exp $
-$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.8 2006/03/06 05:23:18 justin Exp $
+$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.9 2006/03/06 05:36:04 justin Exp $
 -->
 
 <chapter id="basics">
@@ -950,7 +950,7 @@ file1</programlisting>
 	<firstterm>path</firstterm> to the file is
 	<filename>foo/bar/readme.txt</filename>.</para>
 
-      <para>Directories and files are stored in a filesystem.  Each file system
+      <para>Directories and files are stored in a file system.  Each file system
 	contains exactly one directory at the very top level, called the
 	<firstterm>root directory</firstterm> for that file system.  This root
 	directory can then contain other directories.</para>
@@ -964,7 +964,7 @@ file1</programlisting>
 	path.  You would not write <filename>c:/foo/bar/readme.txt</filename>
 	on &os;.</para>
 
-      <para>Instead, one filesystem is designated the <firstterm>root
+      <para>Instead, one file system is designated the <firstterm>root
 	  file system</firstterm>.  The root file system's root directory is
 	referred to as <literal>/</literal>.  Every other file system is then
 	<firstterm>mounted</firstterm> under the root file system.  No matter
@@ -998,7 +998,7 @@ file1</programlisting>
       </mediaobject>
 
       <para>A file system must be mounted on to a directory in another
-	filesystem.  So now suppose that you mount file system
+	file system.  So now suppose that you mount file system
 	<literal>B</literal> on to the directory <literal>A1</literal>.  The
 	root directory of <literal>B</literal> replaces <literal>A1</literal>,
 	and the directories in <literal>B</literal> appear accordingly:</para>
@@ -1140,7 +1140,7 @@ file1</programlisting>
 		    file system, depending on how the file system is being used.  So a
 		    file system that contains many small files that are written
 		    frequently will have a different optimization to one that contains
-		    fewer, larger files.  By having one big filesystem this
+		    fewer, larger files.  By having one big file system this
 		    optimization breaks down.</para>
 		</listitem>
 		
@@ -1157,7 +1157,7 @@ file1</programlisting>
 		<title>Benefit of a Single File System</title>
 
 		<listitem>
-		  <para>File systems are a fixed size.  If you create a filesystem when
+		  <para>File systems are a fixed size.  If you create a file system when
 		    you install &os; and give it a specific size, you may later
 		    discover that you need to make the partition bigger.  The 
 		    &man.growfs.8; command makes it possible to 
