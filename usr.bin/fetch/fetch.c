@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
- * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.7 2006/03/06 03:21:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -907,7 +907,7 @@ main(int argc, char *argv[])
 		fetchAuthMethod = query_auth;
 	if (N_filename != NULL) {
 		if (setenv("NETRC", N_filename, 1) == -1)
-			err("setenv: cannot set NETRC=%s", N_filename);
+			err(1, "setenv: cannot set NETRC=%s", N_filename);
 	}
 
 	while (argc) {
