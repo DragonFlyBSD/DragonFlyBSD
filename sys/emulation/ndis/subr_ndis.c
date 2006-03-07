@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.10 2005/12/31 23:35:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.11 2006/03/07 20:03:54 dillon Exp $
  */
 
 /*
@@ -2125,9 +2125,7 @@ ndis_sync_with_intr(ndis_miniport_interrupt *intr, void *syncfunc,
 	sc = (struct ndis_softc *)intr->ni_block->nmb_ifp;
 	ifp = &sc->arpcom.ac_if;
 	sync = syncfunc;
-	lwkt_serialize_enter(ifp->if_serializer);
 	rval = sync(syncctx);
-	lwkt_serialize_exit(ifp->if_serializer);
 
 	return(rval);
 }
