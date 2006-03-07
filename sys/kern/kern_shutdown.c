@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.25 2006/02/21 17:36:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.26 2006/03/07 15:48:11 corecode Exp $
  */
 
 #include "opt_ddb.h"
@@ -193,6 +193,7 @@ shutdown_nice(int howto)
 	return;
 }
 static int	waittime = -1;
+static struct thread *dumpthread;
 static struct pcb dumppcb;
 
 static void
@@ -528,6 +529,7 @@ dumpsys(void)
 	int	error;
 
 	savectx(&dumppcb);
+	dumpthread = curthread;
 	if (dumping++) {
 		printf("Dump already in progress, bailing...\n");
 		return;

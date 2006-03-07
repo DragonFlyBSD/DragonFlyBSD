@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/Makefile.amd64,v 1.1 2005/10/01 12:40:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.1 2006/03/07 15:48:11 corecode Exp $
 
 SRCS+=	amd64-nat.c amd64-tdep.c amd64bsd-nat.c amd64fbsd-nat.c
 SRCS+=	amd64fbsd-tdep.c i386-tdep.c i386bsd-tdep.c i386fbsd-tdep.c

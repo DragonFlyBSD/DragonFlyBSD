@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/nm-fbsd.h,v 1.1 2004/10/23 17:02:38 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/Attic/nm-fbsd.h,v 1.1 2006/03/07 15:48:11 corecode Exp $ */
 /* Native-dependent definitions for FreeBSD/i386.
 
    Copyright 1986, 1987, 1989, 1992, 1994, 1996, 1997, 2000, 2001, 2004
@@ -143,28 +143,6 @@ extern CORE_ADDR register_u_addr (CORE_ADDR blockend, int regno);
 #define ld_un		d_un
 #define ld_2		d_sdt
 
-/* kgdb hooks */
-#define KGDB 1
-#define ADDITIONAL_OPTIONS \
-       {"kernel", no_argument, &kernel_debugging, 1}, \
-       {"k", no_argument, &kernel_debugging, 1}, \
-       {"wcore", no_argument, &kernel_writablecore, 1}, \
-       {"w", no_argument, &kernel_writablecore, 1},
-
-#define ADDITIONAL_OPTION_HELP \
-       "\
-  --kernel           Enable kernel debugging.\n\
-  --wcore            Make core file writable (only works for /dev/mem).\n\
-                     This option only works while debugging a kernel !!\n\
-"
-
-#define DEFAULT_PROMPT kernel_debugging?"(kgdb) ":"(gdb) "
-
-/* misuse START_PROGRESS to test whether we're running as kgdb */   
-/* START_PROGRESS is called at the top of main */
-#undef START_PROGRESS
-#define START_PROGRESS(STR,N) \
-  if (!strcmp (STR, "kgdb")) \
-     kernel_debugging = 1;
+#define KGDB
 
 #endif /* nm-fbsd.h */

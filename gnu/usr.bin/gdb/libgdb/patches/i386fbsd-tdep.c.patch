@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/i386fbsd-tdep.c.patch,v 1.1 2005/05/07 19:48:16 corecode Exp $
+$DragonFly: src/gnu/usr.bin/gdb/libgdb/patches/Attic/i386fbsd-tdep.c.patch,v 1.1 2006/03/07 15:48:11 corecode Exp $
 Index: i386fbsd-tdep.c
 ===================================================================
 RCS file: /space/cvs/dragonfly/src/contrib/gdb-6.2.1/gdb/i386fbsd-tdep.c,v

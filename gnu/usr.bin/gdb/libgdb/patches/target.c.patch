@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/target.c.patch,v 1.3 2005/01/12 11:24:24 joerg Exp $
+$DragonFly: src/gnu/usr.bin/gdb/libgdb/patches/Attic/target.c.patch,v 1.1 2006/03/07 15:48:11 corecode Exp $
 
 --- target.c	Mon Aug 26 12:18:33 2002
 +++ target.c	Sun Oct 13 10:51:32 2002

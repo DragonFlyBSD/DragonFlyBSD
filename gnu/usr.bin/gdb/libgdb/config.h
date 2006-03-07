@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/config.h,v 1.1 2004/10/23 17:02:38 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/config.h,v 1.1 2006/03/07 15:48:11 corecode Exp $ */
 /* config.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */
 
