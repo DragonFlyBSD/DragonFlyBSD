@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.8 2006/01/20 20:44:22 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.9 2006/03/08 12:37:47 swildner Exp $
 .\"
-.Dd October 8, 2005
+.Dd March 8, 2006
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -200,6 +200,27 @@ otherwise many programs which have been rebuilt
 .Nm top ,
 etc)
 may not work with the old kernel which is still running.
+.Sh CAVEATS
+The build and install order in the
+.Sx EXAMPLES
+section enforces that the new kernel is installed before the new
+world.
+Sometimes it might be necessary to reboot the system between those two
+steps.
+In this case the
+.Cm installworld
+target will tell you so.
+.Pp
+Also note that you should
+.Em never
+run the
+.Cm upgrade
+target before having installed the new kernel and world because your
+system might (in the worst case) be rendered useless if you do so.
+This can happen because
+.Cm upgrade
+might remove something that the old system still needs for
+functioning correctly.
 .Sh SEE ALSO
 .Xr cc 1 ,
 .Xr install 1 ,
