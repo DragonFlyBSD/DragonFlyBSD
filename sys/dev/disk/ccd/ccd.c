@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.22 2006/02/17 19:17:55 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.23 2006/03/08 17:14:11 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -231,7 +231,7 @@ static	int numccd = 0;
 
 static __inline
 struct ccdbuf *
-getccdbuf(struct ccdbuf *cpy)
+getccdbuf(void)
 {
 	struct ccdbuf *cbp;
 
@@ -243,17 +243,9 @@ getccdbuf(struct ccdbuf *cpy)
 		--numccdfreebufs;
 		reinitbufbio(&cbp->cb_buf);
 	} else {
-		cbp = malloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK);
+		cbp = malloc(sizeof(struct ccdbuf), M_DEVBUF, M_WAITOK|M_ZERO);
 		initbufbio(&cbp->cb_buf);
 	}
-
-	/*
-	 * Used by mirroring code
-	 */
-	if (cpy)
-		bcopy(cpy, cbp, sizeof(struct ccdbuf));
-	else
-		bzero(cbp, sizeof(struct ccdbuf));
 
 	/*
 	 * independant struct buf initialization
@@ -1035,9 +1027,8 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 	/*
 	 * Fill in the component buf structure.
 	 */
-	cbp = getccdbuf(NULL);
+	cbp = getccdbuf();
 	cbp->cb_buf.b_flags = bio->bio_buf->b_flags;
-	/*cbp->cb_buf.b_dev = ci->ci_dev; */
 	cbp->cb_buf.b_data = addr;
 	cbp->cb_buf.b_vp = ci->ci_vp;
 	if (cs->sc_ileave == 0)
@@ -1074,9 +1065,28 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 	 */
 	if (cs->sc_cflags & CCDF_MIRROR) {
 		/* mirror, setup second I/O */
-		cbp = getccdbuf(cb[0]);
-		/* cbp->cb_buf.b_dev = ci2->ci_dev; */
+		cbp = getccdbuf();
+
+		cbp->cb_buf.b_flags = bio->bio_buf->b_flags;
+		cbp->cb_buf.b_data = addr;
 		cbp->cb_buf.b_vp = ci2->ci_vp;
+		if (cs->sc_ileave == 0)
+		      cbc = dbtob((off_t)(ci->ci_size - cbn));
+		else
+		      cbc = dbtob((off_t)(cs->sc_ileave - cboff));
+		cbp->cb_buf.b_bcount = (cbc < bcount) ? cbc : bcount;
+		cbp->cb_buf.b_bufsize = cbp->cb_buf.b_bcount;
+
+		cbp->cb_buf.b_bio1.bio_done = ccdiodone;
+		cbp->cb_buf.b_bio1.bio_caller_info1.ptr = cbp;
+		cbp->cb_buf.b_bio1.bio_blkno = cbn + cboff + CCD_OFFSET;
+		cbp->cb_buf.b_bio1.bio_offset = dbtob(cbn + cboff + CCD_OFFSET);
+
+		/*
+		 * context for ccdiodone
+		 */
+		cbp->cb_obio = bio;
+		cbp->cb_unit = cs - ccd_softc;
 		cbp->cb_comp = ci2 - cs->sc_cinfo;
 		cb[1] = cbp;
 		/* link together the ccdbuf's and clear "mirror done" flag */
