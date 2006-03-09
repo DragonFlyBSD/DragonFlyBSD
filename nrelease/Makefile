@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.51 2006/01/17 23:52:20 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.52 2006/03/09 22:16:40 corecode Exp $
 #
 
 # compat target
@@ -24,7 +24,7 @@ PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
 PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.4.0-RELEASE-BUILD
 
-ENV?=	env
+ENVCMD?=	env
 TAR?=	tar
 
 PKGSRC_CDRECORD?=	cdrecord-2.00.3nb2.tgz
@@ -82,7 +82,7 @@ check:
 	@exit 1
 .endif
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
 		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer_]fetch"; exit 1)
 .endfor
 .if !exists(${PKGBIN_MKISOFS})
@@ -160,7 +160,7 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
+	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
 .endfor
 
 mklocatedb:
@@ -188,7 +188,7 @@ realclean:	clean
 fetch:
 	mkdir -p ${PKGSRC_PKG_PATH}
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENV} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
 	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
 .endfor
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
