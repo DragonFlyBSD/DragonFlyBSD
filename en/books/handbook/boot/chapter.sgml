@@ -1,8 +1,8 @@
 <!--
      The FreeBSD Documentation Project
 
-     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/boot/chapter.sgml,v 1.56 2004/04/11 07:53:49 blackend Exp $
-     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.3 2005/06/27 23:20:42 reed Exp $
+     $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/boot/chapter.sgml,v 1.64 2006/02/17 17:17:17 marck Exp $
+     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.4 2006/03/09 04:42:28 justin Exp $
 -->
 
 <chapter id="boot">
@@ -72,28 +72,48 @@
       load the operating system, which has become shortened to
       <quote>booting</quote>.</para>
 
+    <indexterm><primary>BIOS</primary></indexterm>
+
+    <indexterm><primary>Basic Input/Output
+    System</primary><see>BIOS</see></indexterm>
+
     <para>On x86 hardware the Basic Input/Output System (BIOS) is responsible
       for loading the operating system.  To do this, the BIOS looks on the
       hard disk for the Master Boot Record (MBR), which must be located on a
       specific place on the disk.  The BIOS has enough knowledge to load and
       run the MBR, and assumes that the MBR can then carry out the rest of the
-      tasks involved in loading the operating system.</para>
+      tasks involved in loading the operating system
+      possibly with the help of the BIOS.</para>
+ 
+    <indexterm><primary>Master Boot Record (MBR)</primary></indexterm>
 
-    <indexterm>
-      <primary>BIOS</primary>
-      <secondary>Basic Input/Output System</secondary>
-    </indexterm>
+    <indexterm><primary>Boot Manager</primary></indexterm>
+    
+    <indexterm><primary>Boot Loader</primary></indexterm>
+ 
+    <para>The code within the MBR is usually referred to as a <emphasis>boot
+      manager</emphasis>, especially when it interacts with the user.  In this
+      case the boot manager usually has more code in the first
+      <emphasis>track</emphasis> of the disk or within some OS's file system.
+      (A  boot manager is sometimes also called a <emphasis>boot
+      loader</emphasis>, but FreeBSD uses that term for a later stage of
+      booting.) Popular boot managers include <application>boot0</application>
+      (a.k.a. <application>Boot Easy</application>, the standard &os; boot
+      manager), <application>Grub</application>,
+      <application>GAG</application>, and <application>LILO</application>.
+      (Only <application>boot0</application> fits within the MBR.)</para>
 
-    <para>If you only have one operating system installed on your disks then
-      the standard MBR will suffice.  This MBR searches for the first bootable
-      slice on the disk, and then runs the code on that slice to load the
-      remainder of the operating system.</para>
-
+    <para>If you have only one operating system installed on your disks then
+      a standard PC MBR will suffice.  This MBR searches for the first bootable
+      (a.k.a. active) slice on the disk, and then runs the code on that slice to
+      load the remainder of the operating system.  The MBR installed by
+      &man.fdisk.8;, by default, is such an MBR.  It is based on
+      <filename>/boot/mbr</filename>.</para>
+   
     <para>If you have installed multiple operating systems on your disks then
-      you can install a different MBR, one that can display a list of
+      you can install a different boot manager, one that can display a list of
       different operating systems, and allows you to choose the one to boot
-      from.  &os; comes with one such MBR which can be installed, and other
-      operating system vendors also provide alternative MBRs.</para>
+      from.  Two of these are discussed in the next subsection.</para>
 
     <para>The remainder of the &os; bootstrap system is divided into three
       stages.  The first stage is run by the MBR, which knows just enough to
@@ -119,22 +139,28 @@
   </sect1>
 
   <sect1 id="boot-blocks">
-    <title>The MBR, and Boot Stages One, Two, and Three</title>
+    <title>The Boot Manager and Boot Stages</title>
+
+    <indexterm><primary>Boot Manager</primary></indexterm>
 
     <sect2 id="boot-boot0">
-      <title>MBR, <filename>/boot/boot0</filename></title>
+      <title>The Boot Manager</title>
       <indexterm><primary>Master Boot Record (MBR)</primary></indexterm>
 
-      <para>The &os; MBR is located in <filename>/boot/boot0</filename>.
-	This is a <emphasis>copy</emphasis> of the MBR, as the real MBR must
-	be placed on a special part of the disk, outside the &os;
-	area.</para>
+    <para>The code in the MBR or boot manager is sometimes referred to as
+      <emphasis>stage zero</emphasis> of the boot process.  This subsection
+      discusses two of the boot managers previously mentioned:
+      <application>boot0</application> and <application>LILO</application>.</para>
 
-      <para><filename>boot0</filename> is very simple, since the
-	program in the <abbrev>MBR</abbrev> can only be 512 bytes in
-	size.  If you have installed the &os; MBR and have installed
-	multiple operating systems on your hard disks then you will see a
-	display similar to this one at boot time:</para>
+    <formalpara><title>The <application>boot0</application> Boot Manager:</title>
+      <para>The MBR installed by FreeBSD's installer or &man.boot0cfg.8;, by
+        default, is based on <filename>/boot/boot0</filename>.
+        (The <application>boot0</application> program is very simple, since the
+        program in the <abbrev>MBR</abbrev> can only be 446 bytes long because of the slice
+        table and <literal>0x55AA</literal> identifier at the end of the MBR.)
+        If you have installed <application>boot0</application> and
+        multiple operating systems on your hard disks, then you will see a
+        display similar to this one at boot time:</para></formalpara>
 
       <example id="boot-boot0-example">
 	<title><filename>boot0</filename> Screenshot</title>
@@ -149,64 +175,70 @@ F5 Drive 1
 Default: F2</screen>
       </example>
 
-      <para>Other operating systems, in particular &windows;&nbsp;95, have been known
+      <para>Other operating systems, in particular &windows;, have been known
 	to overwrite an existing MBR with their own.  If this happens to you,
 	or you want to replace your existing MBR with the &os; MBR then use
 	the following command:</para>
 
       <screen>&prompt.root; <userinput>fdisk -B -b /boot/boot0 <replaceable>device</replaceable></userinput></screen>
 
-      <para>Where <replaceable>device</replaceable> is the device that you
+      <para>where <replaceable>device</replaceable> is the device that you
 	boot from, such as <devicename>ad0</devicename> for the first IDE
 	disk, <devicename>ad2</devicename> for the first IDE disk on a second
 	IDE controller, <devicename>da0</devicename> for the first SCSI disk,
-	and so on.</para>
+	and so on. Or, if you want a custom configuration of the MBR,
+    use &man.boot0cfg.8;.</para>
 
-      <para>If you are a Linux user, however, and prefer that
-	<application>LILO</application> control the boot process, you can
-	edit the <filename>/etc/lilo.conf</filename> file for &os;.  
-	If you have installed the
-	&os; boot manager, you can boot back into Linux and modify the
-	<application>LILO</application> configuration file
-	<filename>/etc/lilo.conf</filename> and add the following
-	option:</para>
+   <formalpara><title>The LILO Boot Manager:</title>
 
-      <programlisting>other=/dev/hdXY
-table=/dev/hdb
+    <para>To install this boot manager so it will also boot &os;, first
+      start Linux and add the following to your existing
+      <filename>/etc/lilo.conf</filename> configuration file:</para></formalpara>
+
+   <programlisting>other=/dev/hdXY
+table=/dev/hdX
 loader=/boot/chain.b
 label=&os;</programlisting>
 
-      <para>which will permit the booting of &os; and Linux via
-	<application>LILO</application>.  In our example, we use
-	<replaceable>XY</replaceable> to determine drive number and
-	partition.  If you are using a <acronym>SCSI</acronym> drive, you
-	will want to change <replaceable>/dev/hdXY</replaceable> to read
-	something similar to <replaceable>/dev/sdXY</replaceable>, which
-	again uses the <replaceable>XY</replaceable> syntax.  The
-	<option>loader=/boot/chain.b</option> can be omitted if you have
-	both operating systems on the same drive.  You can now run
-	<command>/sbin/lilo -v</command> to commit your new changes to the
-	system, this should be verified with screen messages.</para>
+    <para>In the above, specify &os;'s primary partition and drive using
+      Linux specifiers, replacing <replaceable>X</replaceable> with the Linux
+      drive letter and <replaceable>Y</replaceable> with the Linux primary
+      partition number.  If you are using a <acronym>SCSI</acronym> drive, you
+      will need to change <replaceable>/dev/hd</replaceable> to read something
+      similar to <replaceable>/dev/sd</replaceable>.  The
+      <option>loader=/boot/chain.b</option> line can be omitted if you have
+      both operating systems on the same drive.  Now run
+      <command>/sbin/lilo&nbsp;-v</command> to commit your new changes to the
+      system; this should be verified by checking its screen messages.</para>
     </sect2>
   
     <sect2 id="boot-boot1">
       <title>Stage One, <filename>/boot/boot1</filename>, and Stage Two,
 	<filename>/boot/boot2</filename></title>
       
-      <para>Conceptually the first and second stages are part of the same
-	program, on the same area of the disk.  Because of space constraints
-	they have been split into two, but you would always install them
-	together.</para>
+    <para>Conceptually the first and second stages are part of the same
+      program, on the same area of the disk.  Because of space constraints
+      they have been split into two, but you would always install them
+      together.  They are copied from the combined file
+      <filename>/boot/boot</filename> by the installer or
+      <application>disklabel</application> (see below).</para>
 
-      <para>They are found on the boot sector of
-	the boot slice, which is where <link
+    <para>They are located outside file systems, in the first track of
+      the boot slice, starting with the first sector.  This is where <link
+      linkend="boot-boot0">boot0</link>, or any other boot manager,
+      expects to find a program to run which will
+      continue the boot process.  The number of sectors used is easily
+      determined from the size of <filename>/boot/boot</filename>.</para>
+
+    <para>They are found on the boot sector of
+      the boot slice, which is where <link
 	  linkend="boot-boot0">boot0</link>, or any other program on the
-	<abbrev>MBR</abbrev> expects to find the program to run to
-	continue the boot process.  The files in the
-	<filename>/boot</filename> directory are copies of the real files,
-	which are stored outside of the &os; file system.</para>
+      <abbrev>MBR</abbrev> expects to find the program to run to
+      continue the boot process.  The files in the
+      <filename>/boot</filename> directory are copies of the real files,
+      which are stored outside of the &os; file system.</para>
 
-      <para><filename>boot1</filename> is very simple, since it too 
+      <para><filename>boot1</filename> is very simple, since it 
 	can only be 512 bytes
 	in size, and knows just enough about the &os;
 	<firstterm>disklabel</firstterm>, which stores information
@@ -227,7 +259,7 @@ label=&os;</programlisting>
 	<title><filename>boot2</filename> Screenshot</title>
 
 	<screen>&gt;&gt; DragonFly/i386 BOOT
-Default: 0:ad(0,a)/kernel
+Default: 0:ad(0,a)/boot/loader
 boot:</screen>
       </example>
 
@@ -674,7 +706,7 @@ console none                            unknown off insecure</programlisting>
       <groupname>operator</groupname> group to run &man.shutdown.8;.
       The &man.halt.8; and &man.reboot.8; commands can also be used,
       please refer to their manual pages and to &man.shutdown.8;'s one
-      for more informations.</para>
+      for more information.</para>
 
     <note>
       <para>Power management requires &man.acpi.4; support in the kernel
