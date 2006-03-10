@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.15 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.16 2006/03/10 20:31:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -629,6 +629,7 @@ arstrategy(dev_t dev, struct bio *bio)
 			BUF_LOCKINIT(&buf2->bp);
 			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
 			initbufbio(&buf2->bp);
+			buf2->bp.b_bio1.bio_blkno = buf1->bp.b_bio1.bio_blkno;
 			buf1->mirror = buf2;
 			buf2->mirror = buf1;
 			buf2->drive = buf1->drive + rdp->width;
