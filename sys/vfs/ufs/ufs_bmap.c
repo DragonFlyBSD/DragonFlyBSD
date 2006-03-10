@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.8 2006/03/05 18:38:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.9 2006/03/10 19:07:53 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
 #include "ufs_extern.h"
 
 /*
- * Bmap converts a the logical block number of a file to its physical block
+ * Bmap converts the logical block number of a file to its physical block
  * number on the disk. The conversion is done by using the logical block
  * number to index into the array of block pointers described by the dinode.
  *
