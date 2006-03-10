@@ -1,6 +1,6 @@
 
 # $FreeBSD: src/sys/modules/aic7xxx/ahc/Makefile,v 1.2.2.1 2002/09/02 05:47:44 scottl Exp $
-# $DragonFly: src/sys/dev/disk/aic7xxx/ahc/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
+# $DragonFly: src/sys/dev/disk/aic7xxx/ahc/Makefile,v 1.4.2.1 2006/03/10 00:27:51 corecode Exp $
 
 .PATH:	${.CURDIR}/..
 KMOD=	ahc
@@ -8,13 +8,13 @@ SUBDIR=	ahc_eisa ahc_pci
 
 BEFORE_DEPEND= aic7xxx_{seq,reg}.h
 
-../aicasm/aicasm:
-	( cd ${.CURDIR}/../aicasm; ${MAKE} aicasm; )
+../aicasm/aicasm.nx:
+	( cd ${.CURDIR}/../aicasm; ${MAKE} aicasm.nx; )
 
 aic7xxx_{seq.h,reg.h,reg_print.c}:					\
 		${.CURDIR}/../aic7xxx.{reg,seq}	\
-		${.CURDIR}/../../../../bus/cam/scsi/scsi_message.h ../aicasm/aicasm
-	${.OBJDIR}/../aicasm/aicasm ${INCLUDES} -I${.CURDIR}/../../../../bus/cam/scsi \
+		${.CURDIR}/../../../../bus/cam/scsi/scsi_message.h ../aicasm/aicasm.nx
+	${.OBJDIR}/../aicasm/aicasm.nx ${INCLUDES} -I${.CURDIR}/../../../../bus/cam/scsi \
 			-I${.CURDIR}/..					 \
 			-o aic7xxx_seq.h -r aic7xxx_reg.h		 \
 			-p aic7xxx_reg_print.c				 \
