@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.13 2005/02/03 01:33:01 drhodus Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.14 2006/03/10 02:24:38 swildner Exp $
 
 $TITLE(DragonFly - Mailing Lists - Forums)
 <p>
@@ -9,7 +9,7 @@ The DragonFly project has several mailing lists for discussion.
 
 
 <p>
-To subscribe to a mailing list, send an email to the one of the following addresses
+To subscribe to a mailing list, send an email to one of the following addresses
 listed below with the word 'subscribe' in the body.  If you need additional help
 please read <a href="misc/bestserv1.html">bestserv1.html</a>, then send a subscription request
 to the appropriate list email address as shown below.  Please use the test
