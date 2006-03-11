@@ -1,8 +1,8 @@
 <!--
      The FreeBSD Documentation Project
 
-     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.9 2005/09/06 00:28:13 reed Exp $
+     $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.169 2004/08/27 12:04:24 blackend Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.10 2006/03/11 04:39:33 justin Exp $
 -->
 
 <chapter id="config-tuning">
@@ -85,9 +85,7 @@
 	    linkend="basics">).</para>
       </listitem>
       <listitem>
-	<para>Be familiar with keeping &os; sources up to date
-	  (<xref linkend="updating-setup">), and
-	  the basics of kernel configuration/compilation
+	<para>Be familiar with the basics of kernel configuration/compilation
 	  (<xref linkend="kernelconfig">).</para>
       </listitem>
     </itemizedlist>
@@ -950,7 +948,7 @@ tun0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500</screen>
 	    is <literal>active</literal>, i.e. the carrier is detected.
 	    For <devicename>dc1</devicename>, we see
 	    <literal>status: no carrier</literal>.  This is normal when
-	    an ethernet cable is not plugged into the card.</para>
+	    an Ethernet cable is not plugged into the card.</para>
 	</listitem>
       </orderedlist>
 
@@ -1146,8 +1144,9 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
 
 <programlisting>ifconfig_fxp0_alias0="inet xxx.xxx.xxx.xxx netmask xxx.xxx.xxx.xxx"</programlisting>
 
-    <para>Note that alias entries must start with alias0 and proceed
-      upwards in order, (for example, _alias1, _alias2, and so on).
+    <para>Note that alias entries must start with 
+      <literal>alias0</literal> and proceed upwards in order, (for example, 
+      <literal>_alias1</literal>, <literal>_alias2</literal>, and so on).
       The configuration process will stop at the first missing number.
     </para>
 
@@ -1155,7 +1154,10 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
       fortunately quite simple.  For a given interface, there must be
       one address which correctly represents the network's netmask.
       Any other addresses which fall within this network must have a
-      netmask of all <literal>1</literal>s.</para>
+      netmask of all <literal>1</literal>s (expressed as either
+      <hostid role="netmask">255.255.255.255</hostid> or 
+      <hostid role="netmask">0xffffffff</hostid>).
+    </para>
 
     <para>For example, consider the case where the
       <devicename>fxp0</devicename> interface is
@@ -1166,7 +1168,15 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
       We want the system to appear at <hostid role="ipaddr">10.1.1.1</hostid>
       through <hostid role="ipaddr">10.1.1.5</hostid> and at
       <hostid role="ipaddr">202.0.75.17</hostid> through
-      <hostid role="ipaddr">202.0.75.20</hostid>.</para>
+      <hostid role="ipaddr">202.0.75.20</hostid>.  As noted above, only the
+      first address in a given network range (in this case,
+      <hostid role="ipaddr">10.0.1.1</hostid> and
+      <hostid role="ipaddr">202.0.75.17</hostid>) should have a real
+      netmask; all the rest (<hostid role="ipaddr">10.1.1.2</hostid>
+      through <hostid role="ipaddr">10.1.1.5</hostid> and
+      <hostid role="ipaddr">202.0.75.18</hostid> through
+      <hostid role="ipaddr">202.0.75.20</hostid>) must be configured with a
+      netmask of <hostid role="netmask">255.255.255.255</hostid>.</para>
 
     <para>The following entries configure the adapter correctly for
       this arrangement:</para>
@@ -1193,6 +1203,8 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
 
       <informaltable frame="none">
 	<tgroup cols="2">
+      <colspec colwidth="1*">
+      <colspec colwidth="2*">
 	  <tbody>
 	    <row>
 	      <entry><filename>/etc</filename></entry>
@@ -1261,6 +1273,8 @@ round-trip min/avg/max/stddev = 0.700/0.729/0.766/0.025 ms</screen>
 
 	<informaltable frame="none">
 	  <tgroup cols="2">
+      <colspec colwidth="1*">
+      <colspec colwidth="2*">
 	    <tbody>
 	      <row>
 		<entry><literal>nameserver</literal></entry>
@@ -1455,7 +1469,7 @@ cron.*                                          /var/log/cron
       </sect3>
     </sect2>
 
-    <sect2>
+    <sect2 id="configtuning-sysctlconf">
       <title><filename>sysctl.conf</filename></title>
 
       <indexterm><primary>sysctl.conf</primary></indexterm>
@@ -1518,6 +1532,12 @@ kern.maxfiles: 2088 -> 5000</screen>
       numbers, or booleans (a  boolean being <literal>1</literal> for yes
       or a <literal>0</literal> for no).</para>
 
+    <para>If you want to set automatically some variables each time
+      the machine boots, add them to the
+      <filename>/etc/sysctl.conf</filename> file.  For more information
+      see the &man.sysctl.conf.5; manual page and the
+      <xref linkend="configtuning-sysctlconf">.</para>
+
   <sect2 id="sysctl-readonly">
     <sect2info>
       <authorgroup>
@@ -1573,18 +1593,18 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  system.  Most directories are small, using just a single
 	  fragment (typically 1&nbsp;K) in the file system and less
 	  (typically 512&nbsp;bytes) in the buffer cache.
-	  However, when operating in the default mode the buffer
+	  With this variable turned off (to 0), the buffer
 	  cache will only cache a fixed number of directories even if
-	  you have a huge amount of memory.  Turning on this sysctl
+	  ou have a huge amount of memory.  When turned on (to 1), this sysctl
 	  allows the buffer cache to use the VM Page Cache to cache the
 	  directories, making all the memory available for caching
 	  directories.  However,
 	  the minimum in-core memory used to cache a directory is the
 	  physical page size (typically 4&nbsp;K) rather than 512&nbsp;
-	  bytes.  We recommend turning this option on if you are running
+	  bytes.  We recommend keeping this option on if you are running
 	  any services which manipulate large numbers of files.  Such
 	  services can include web caches, large mail systems, and news
-	  systems.  Turning on this option will generally not reduce
+	  systems.  Keeping this option on will generally not reduce
 	  performance even with the wasted memory but you should
 	  experiment to find out.</para>
       </sect3>
@@ -1931,7 +1951,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
     <sect2>
       <title>Network Limits</title>
 
-      <para>The <option>NMBCLUSTERS</option> kernel configuration
+      <para>The <literal>NMBCLUSTERS</literal> kernel configuration
 	option dictates the amount of network Mbufs available to the
 	system.  A heavily-trafficked server with a low number of Mbufs
 	will hinder &os;'s ability.  Each cluster represents
@@ -1955,11 +1975,11 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
       <para>For busy servers that make extensive use of the
 	&man.sendfile.2; system call, it may be necessary to increase
 	the number of &man.sendfile.2; buffers via the
-	<option>NSFBUFS</option> kernel configuration option or by
+	<literal>NSFBUFS</literal> kernel configuration option or by
 	setting its value in <filename>/boot/loader.conf</filename>
 	(see &man.loader.8; for details).  A common indicator that
 	this parameter needs to be adjusted is when processes are seen
-	in the <errorname>sfbufa</errorname> state.  The sysctl
+	in the <literal>sfbufa</literal> state.  The sysctl
 	variable <varname>kern.ipc.nsfbufs</varname> is a read-only
 	glimpse at the kernel configured variable.  This parameter
 	nominally scales with <varname>kern.maxusers</varname>,
@@ -2014,7 +2034,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	</indexterm>
 
 	<para>The TCP Bandwidth Delay Product Limiting is similar to
-	  TCP/Vegas in <application>&netbsd;</application>.
+	  TCP/Vegas in NetBSD.
 
 	  <indexterm><primary>&netbsd;</primary></indexterm>
 	  
@@ -2594,7 +2614,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	is usually manifested by kernel console messages like
 	this:</para>
 
-      <screen>ACPI-1287: *** Error: Method execution failed [\\_SB_.PCI0.LPC0.FIGD._STA] (Node 0xc3f6d160), AE_NOT_FOUND</screen>
+      <screen>ACPI-1287: *** Error: Method execution failed [\\_SB_.PCI0.LPC0.FIGD._STA] \\
+(Node 0xc3f6d160), AE_NOT_FOUND</screen>
 
       <para>Often, you can resolve these problems by updating your
 	<acronym>BIOS</acronym> to the latest revision.  Most console
@@ -2656,6 +2677,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  <option>hw.acpi.osname</option>=<quote>Windows 2001</quote>
 	  in <filename>/boot/loader.conf</filename> or other similar
 	  strings you find in the <acronym>ASL</acronym>.</para>
+    </sect3>
 
       <sect3>
 	<title>Missing Return statements</title>
@@ -2697,6 +2719,7 @@ acpi_dsdt_name="/boot/DSDT.aml"</programlisting>
 	<para>Be sure to copy your <filename>DSDT.aml</filename> to the
 	  <filename role="directory">/boot</filename> directory.</para>
       </sect3>
+    </sect2>
 
     <sect2 id="ACPI-debugoutput">
       <title>Getting Debugging Output From
