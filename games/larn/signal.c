@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/games/larn/signal.c,v 1.2 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/larn/signal.c,v 1.3 2006/03/12 12:20:31 swildner Exp $
  */
 
 #include <signal.h>
@@ -109,7 +109,7 @@ static char *signame[NSIG] = { "",
 "SIGPROF", /*	27	 profiling time alarm */
 "","","","" };
 
-#else BSD	/* for system V? */
+#else		/* for system V? */
 
 static char *signame[NSIG] = { "",
 "SIGHUP",  /*	1	 hangup */
