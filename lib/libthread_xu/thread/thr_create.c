@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.5 2005/10/10 13:45:57 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.6 2006/03/12 11:28:06 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -55,16 +55,14 @@ struct start_arg {
 	volatile umtx_t	started;
 };
 
-static void free_thread(struct pthread *curthread, struct pthread *thread);
 static int  create_stack(struct pthread_attr *pattr);
-static void free_stack(struct pthread *curthread, struct pthread_attr *pattr);
 static void thread_start(void *);
 
 __weak_reference(_pthread_create, pthread_create);
 
 int
 _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
-	       void *(*start_routine) (void *), void *arg)
+       void *(*start_routine) (void *), void *arg)
 {
 	struct start_arg start_arg;
 	void *stack;
@@ -152,7 +150,12 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	/* Initialise hooks in the thread structure: */
 	if (new_thread->attr.suspend == THR_CREATE_SUSPENDED)
 		new_thread->flags = THR_FLAGS_NEED_SUSPEND;
+
 	new_thread->state = PS_RUNNING;
+
+	if (new_thread->attr.flags & PTHREAD_CREATE_DETACHED)
+		new_thread->tlflags |= TLFLAGS_DETACHED;
+
 	/*
 	 * Thread created by thr_create() inherits currrent thread
 	 * sigmask, however, before new thread setup itself correctly,
@@ -162,6 +165,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	__sys_sigprocmask(SIG_SETMASK, &sigmask, &oldsigmask);
 	new_thread->sigmask = oldsigmask;
 	/* Add the new thread. */
+	new_thread->refcount = 1;
 	_thr_link(curthread, new_thread);
 	/* Return thread pointer eariler so that new thread can use it. */
 	(*thread) = new_thread;
@@ -190,10 +194,16 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		ret = EAGAIN;
 	}
 	if (ret != 0) {
-		if (locked)
-			THR_THREAD_UNLOCK(curthread, new_thread);
-		_thr_unlink(curthread, new_thread);
-		free_thread(curthread, new_thread);
+		if (!locked)
+			THR_THREAD_LOCK(curthread, new_thread);
+		new_thread->state = PS_DEAD;
+		new_thread->terminated = 1;
+		THR_THREAD_UNLOCK(curthread, new_thread);
+		THREAD_LIST_LOCK(curthread);
+		_thread_active_threads--;
+		new_thread->tlflags |= TLFLAGS_DETACHED;
+		_thr_ref_delete_unlocked(curthread, new_thread);
+		THREAD_LIST_UNLOCK(curthread);
 		(*thread) = 0;
 		ret = EAGAIN;
 	} else if (locked) {
@@ -201,14 +211,6 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		THR_THREAD_UNLOCK(curthread, new_thread);
 	}
 	return (ret);
-}
-
-static void
-free_thread(struct pthread *curthread, struct pthread *thread)
-{
-	free_stack(curthread, &thread->attr);
-	curthread->terminated = 1;
-	_thr_free(curthread, thread);
 }
 
 static int
@@ -225,17 +227,6 @@ create_stack(struct pthread_attr *pattr)
 	else
 		ret = _thr_stack_alloc(pattr);
 	return (ret);
-}
-
-static void
-free_stack(struct pthread *curthread, struct pthread_attr *pattr)
-{
-	if ((pattr->flags & THR_STACK_USER) == 0) {
-		THREAD_LIST_LOCK(curthread);
-		/* Stack routines don't use malloc/free. */
-		_thr_stack_free(pattr);
-		THREAD_LIST_UNLOCK(curthread);
-	}
 }
 
 static void

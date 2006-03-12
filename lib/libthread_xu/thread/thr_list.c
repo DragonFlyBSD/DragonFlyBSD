@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.4 2006/03/12 11:28:06 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -38,7 +38,7 @@
 #include "thr_private.h"
 #include "libc_private.h"
 
-/*#define DEBUG_THREAD_LIST */
+#define DEBUG_THREAD_LIST
 #ifdef DEBUG_THREAD_LIST
 #define DBG_MSG		stdout_debug
 #else
@@ -131,7 +131,6 @@ _thr_gc(struct pthread *curthread)
 			continue;
 		}
 
-		DBG_MSG("Freeing thread %p\n", td);
 		_thr_free(curthread, td);
 	}
 }
@@ -236,8 +235,6 @@ _thr_link(struct pthread *curthread, struct pthread *thread)
 	 */
 	thread->uniqueid = next_uniqueid++;
 	THR_LIST_ADD(thread);
-	if (thread->attr.flags & PTHREAD_DETACHED)
-		thread->tlflags |= TLFLAGS_DETACHED;
 	_thread_active_threads++;
 	THREAD_LIST_UNLOCK(curthread);
 }
@@ -311,13 +308,19 @@ _thr_ref_add(struct pthread *curthread, struct pthread *thread,
 void
 _thr_ref_delete(struct pthread *curthread, struct pthread *thread)
 {
+	THREAD_LIST_LOCK(curthread);
+	_thr_ref_delete_unlocked(curthread, thread);
+	THREAD_LIST_UNLOCK(curthread);
+}
+
+void
+_thr_ref_delete_unlocked(struct pthread *curthread, struct pthread *thread)
+{
 	if (thread != NULL) {
-		THREAD_LIST_LOCK(curthread);
 		thread->refcount--;
-		if ((thread->refcount == 0) &&
-		    (thread->tlflags & TLFLAGS_GC_SAFE) != 0)
+		if ((thread->refcount == 0) && thread->state == PS_DEAD &&
+		    (thread->tlflags & TLFLAGS_DETACHED) != 0)
 			THR_GCLIST_ADD(thread);
-		THREAD_LIST_UNLOCK(curthread);
 	}
 }
 

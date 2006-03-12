@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.3 2005/05/07 09:29:46 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.4 2006/03/12 11:28:06 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -129,12 +129,16 @@ _pthread_exit(void *status)
 		exit(0);
 		/* Never reach! */
 	}
+	THR_LOCK(curthread);
+	curthread->state = PS_DEAD;
+	THR_UNLOCK(curthread);
+	curthread->refcount--;
 	if (curthread->tlflags & TLFLAGS_DETACHED)
 		THR_GCLIST_ADD(curthread);
-	curthread->state = PS_DEAD;
 	THREAD_LIST_UNLOCK(curthread);
 	if (curthread->joiner)
 		_thr_umtx_wake(&curthread->state, INT_MAX);
+
 	/* XXX
 	 * All the code is incorrect on DragonFly.
 	 * DragonFly has race condition here. it should provide

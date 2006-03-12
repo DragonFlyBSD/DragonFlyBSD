@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.7 2005/06/21 07:47:01 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.8 2006/03/12 11:28:06 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -721,6 +721,7 @@ void	_thread_exit(char *, int, char *) __dead2;
 void	_thr_exit_cleanup(void);
 int	_thr_ref_add(struct pthread *, struct pthread *, int);
 void	_thr_ref_delete(struct pthread *, struct pthread *);
+void	_thr_ref_delete_unlocked(struct pthread *, struct pthread *);
 int	_thr_find_thread(struct pthread *, struct pthread *, int);
 void	_thr_rtld_init(void);
 void	_thr_rtld_fini(void);
