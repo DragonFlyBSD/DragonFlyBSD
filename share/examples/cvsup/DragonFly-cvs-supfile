@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.4 2005/12/24 20:21:51 swildner Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.5 2006/03/12 02:18:59 swildner Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -49,6 +49,5 @@
 
 dragonfly-cvs-root
 dragonfly-cvs-src
-#dragonfly-cvs-dfports
 #dragonfly-cvs-site
 #dragonfly-cvs-doc
