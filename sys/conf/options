@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.42 2005/10/24 08:06:16 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.42.2.1 2006/03/12 14:21:14 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -560,7 +560,7 @@ SCTP_DEBUG		opt_sctp.h
 SCTP_TCP_MODEL_SUPPORT	opt_sctp.h
 SCTP_USE_ADLER32	opt_sctp.h
 SCTP_HIGH_SPEED		opt_sctp.h
-SCTP_STAT_LOGGIN	opt_sctp.h
+SCTP_STAT_LOGGING	opt_sctp.h
 SCTP_CWND_LOGGING	opt_sctp.h
 SCTP_BLK_LOGGING	opt_sctp.h
 SCTP_STR_LOGGING	opt_sctp.h
