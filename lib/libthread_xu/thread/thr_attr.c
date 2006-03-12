@@ -93,7 +93,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.4 2006/03/12 11:32:21 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -147,6 +147,8 @@ _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 	if ((ret = _thr_ref_add(curthread, pid, /*include dead*/0)) != 0)
 		return (ret);
 	attr = pid->attr;
+	if (pid->tlflags & TLFLAGS_DETACHED)
+		attr.flags |= PTHREAD_DETACHED;
 	_thr_ref_delete(curthread, pid);
 	memcpy(*dst, &attr, sizeof(struct pthread_attr));
 
