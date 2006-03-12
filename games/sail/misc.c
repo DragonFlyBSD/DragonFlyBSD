@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/misc.c,v 1.5 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/misc.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/misc.c,v 1.3 2006/03/12 14:06:39 swildner Exp $
  */
 
 #include "externs.h"
@@ -183,7 +183,7 @@ struct ship *sp;
 }
 
 #include <sys/file.h>
-log(s)
+write_log(s)
 struct ship *s;
 {
 	FILE *fp;

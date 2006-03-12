@@ -32,7 +32,7 @@
  *
  * @(#)pl_1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_1.c,v 1.2 1999/11/30 03:49:36 billf Exp $
- * $DragonFly: src/games/sail/pl_1.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_1.c,v 1.3 2006/03/12 14:06:39 swildner Exp $
  */
 
 #include "player.h"
@@ -100,7 +100,7 @@ int conditions;
 	}
 
 	if (ms != 0) {
-		log(ms);
+		write_log(ms);
 		if (conditions != LEAVE_SYNC) {
 			makesignal(ms, "Captain %s relinquishing.",
 				(struct ship *)0, mf->captain);
