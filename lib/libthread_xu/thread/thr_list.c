@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.4 2006/03/12 11:28:06 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.5 2006/03/12 12:25:57 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -38,7 +38,7 @@
 #include "thr_private.h"
 #include "libc_private.h"
 
-#define DEBUG_THREAD_LIST
+/* #define DEBUG_THREAD_LIST */
 #ifdef DEBUG_THREAD_LIST
 #define DBG_MSG		stdout_debug
 #else
