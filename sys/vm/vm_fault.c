@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.20 2005/11/14 18:50:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.21 2006/03/15 07:58:37 dillon Exp $
  */
 
 /*
@@ -76,6 +76,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
@@ -99,6 +100,7 @@
 
 static int vm_fault_additional_pages (vm_page_t, int,
 					  int, vm_page_t *, int *);
+static int vm_fault_ratelimit(struct vmspace *vmspace);
 
 #define VM_FAULT_READ_AHEAD 8
 #define VM_FAULT_READ_BEHIND 7
@@ -195,6 +197,8 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	vm_page_t marray[VM_FAULT_READ];
 	int hardfault;
 	int faultcount;
+	int limticks;
+	int didlimit = 0;
 	struct faultstate fs;
 
 	mycpu->gd_cnt.v_vm_faults++;
@@ -376,6 +380,21 @@ RetryFault:
 				crit_exit();
 				unlock_and_deallocate(&fs);
 				return (KERN_PROTECTION_FAILURE);
+			}
+
+			/*
+			 * Ratelimit.
+			 */
+			if (didlimit == 0) {
+				limticks = 
+					vm_fault_ratelimit(curproc->p_vmspace);
+				if (limticks) {
+					crit_exit();
+					unlock_and_deallocate(&fs);
+					tsleep(curproc, 0, "vmrate", limticks);
+					didlimit = 1;
+					goto RetryFault;
+				}
 			}
 
 			/*
@@ -1024,6 +1043,40 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 				vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
 		}
 	}
+}
+
+/*
+ * Reduce the rate at which memory is allocated to a process based
+ * on the perceived load on the VM system. As the load increases
+ * the allocation burst rate goes down and the delay increases. 
+ *
+ * Rate limiting does not apply when faulting active or inactive
+ * pages.  When faulting 'cache' pages, rate limiting only applies
+ * if the system currently has a severe page deficit.
+ *
+ * XXX vm_pagesupply should be increased when a page is freed.
+ *
+ * We sleep up to 1/10 of a second.
+ */
+static int
+vm_fault_ratelimit(struct vmspace *vmspace)
+{
+	if (vm_load_enable == 0)
+		return(0);
+	if (vmspace->vm_pagesupply > 0) {
+		--vmspace->vm_pagesupply;
+		return(0);
+	}
+#ifdef INVARIANTS
+	if (vm_load_debug) {
+		printf("load %-4d give %d pgs, wait %d, pid %-5d (%s)\n",
+			vm_load, 
+			(1000 - vm_load ) / 10, vm_load * hz / 10000,
+			curproc->p_pid, curproc->p_comm);
+	}
+#endif
+	vmspace->vm_pagesupply = (1000 - vm_load) / 10;
+	return(vm_load * hz / 10000);
 }
 
 /*

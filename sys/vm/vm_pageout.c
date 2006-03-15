@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.17 2006/01/13 20:45:30 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.18 2006/03/15 07:58:37 dillon Exp $
  */
 
 /*
@@ -195,6 +195,18 @@ static int pageout_lock_miss;
 SYSCTL_INT(_vm, OID_AUTO, pageout_lock_miss,
 	CTLFLAG_RD, &pageout_lock_miss, 0, "vget() lock misses during pageout");
 
+int vm_load;
+SYSCTL_INT(_vm, OID_AUTO, vm_load,
+	CTLFLAG_RD, &vm_load, 0, "load on the VM system");
+int vm_load_enable = 1;
+SYSCTL_INT(_vm, OID_AUTO, vm_load_enable,
+	CTLFLAG_RW, &vm_load_enable, 0, "enable vm_load rate limiting");
+#ifdef INVARIANTS
+int vm_load_debug;
+SYSCTL_INT(_vm, OID_AUTO, vm_load_debug,
+	CTLFLAG_RW, &vm_load_debug, 0, "debug vm_load");
+#endif
+
 #define VM_PAGEOUT_PAGE_COUNT 16
 int vm_pageout_page_count = VM_PAGEOUT_PAGE_COUNT;
 
@@ -207,6 +219,21 @@ static freeer_fcn_t vm_pageout_object_deactivate_pages;
 static void vm_req_vmdaemon (void);
 #endif
 static void vm_pageout_page_stats(void);
+
+/*
+ * Update
+ */
+void
+vm_fault_ratecheck(void)
+{
+	if (vm_pages_needed) {
+		if (vm_load < 1000)
+			++vm_load;
+	} else {
+		if (vm_load > 0)
+			--vm_load;
+	}
+}
 
 /*
  * vm_pageout_clean:

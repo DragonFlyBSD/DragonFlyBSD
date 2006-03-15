@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.38 2005/11/22 08:41:06 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.39 2006/03/15 07:58:37 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -450,7 +450,7 @@ swapin_request(void)
 /*
  * Swap_idle_threshold1 is the guaranteed swapped in time for a process
  */
-static int swap_idle_threshold1 = 2;
+static int swap_idle_threshold1 = 15;
 SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold1,
 	CTLFLAG_RW, &swap_idle_threshold1, 0, "");
 

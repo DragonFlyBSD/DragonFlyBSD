@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.17 2005/11/19 17:19:52 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.18 2006/03/15 07:58:37 dillon Exp $
  */
 
 /*
@@ -231,6 +231,7 @@ struct vmspace {
 #define vm_endcopy	vm_exitingcnt
 	int	vm_exitingcnt;	/* several procsses zombied in exit1 */
 	int	vm_upccount;	/* number of registered upcalls */
+	int	vm_pagesupply;
 	struct vmupcall *vm_upcalls; /* registered upcalls */
 };
 

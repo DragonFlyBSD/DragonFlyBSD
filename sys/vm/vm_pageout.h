@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.h,v 1.26.2.1 2002/02/26 05:49:28 silby Exp $
- * $DragonFly: src/sys/vm/vm_pageout.h,v 1.5 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.h,v 1.6 2006/03/15 07:58:37 dillon Exp $
  */
 
 #ifndef _VM_VM_PAGEOUT_H_
@@ -80,6 +80,9 @@ extern int vm_page_max_wired;
 extern int vm_pages_needed;	/* should be some "event" structure */
 extern int vm_pageout_pages_needed;
 extern int vm_pageout_deficit;
+extern int vm_load;
+extern int vm_load_enable;
+extern int vm_load_debug;
 
 #define VM_PAGEOUT_ASYNC 0
 #define VM_PAGEOUT_SYNC 1
