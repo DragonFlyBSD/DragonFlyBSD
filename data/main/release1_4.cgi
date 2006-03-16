@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_4.cgi,v 1.2 2006/01/12 18:58:37 dillon Exp $
+# $DragonFly: site/data/main/Attic/release1_4.cgi,v 1.3 2006/03/16 19:19:14 dillon Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Download)
 <h1>Obtaining DragonFly 1.4.x for your system</h1>
@@ -99,12 +99,14 @@ See the 'Download Site' list below for a list of download locations.
 </TD>
 </TR>
 
+<!--
 <TR><TD>BGP4.net (USA)</TD>
 <TD>1.4.0_REL image</TD>
 <TD>
     <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">HTTP</A>
     <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
 </TD></TR>
+-->
 
 <TR><TD>TheShell.com</TD>
 <TD>1.4.0_REL image</TD>
