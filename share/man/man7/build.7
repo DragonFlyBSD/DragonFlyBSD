@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
-.\" $DragonFly: src/share/man/man7/build.7,v 1.9 2006/03/08 12:37:47 swildner Exp $
+.\" $DragonFly: src/share/man/man7/build.7,v 1.10 2006/03/16 18:32:12 swildner Exp $
 .\"
 .Dd March 8, 2006
 .Dt BUILD 7
@@ -34,35 +34,35 @@
 .Sh DESCRIPTION
 The source for the
 .Dx
-system and applications is contained in two different directories,
-normally
-.Pa /usr/src
-and
-.Pa /usr/ports .
-The
-.Pa /usr/src
-directory contains the
+system and applications is located in
+.Pa /usr/src .
+This directory contains the
 .Dq "base system"
 sources, which is loosely defined as the things required to rebuild
 the system to a useful state.
 It also contains the source for the system documentation, including
 manual pages.
-The
-.Pa /usr/ports
-directory
-is a tree that provides a consistent interface for building and
-installing third party applications.
+Third party applications have to be built using the
+.Em pkgsrc
+system.
+The file
+.Pa /usr/src/UPDATING
+gives specifics on how to obtain the tree for building packages while
+.Xr packages 7
+describes the variables and targets that are available.
 .Pp
 The
 .Xr make 1
-command is used in each of these directories to build and install the
-things in that directory. Issuing the
+command is used in
+.Pa /usr/src
+to build and install the things in that directory.
+Issuing the
 .Xr make 1
 command in any directory or
 subdirectory of those directories has the same effect as issuing the
-same command in all subdirectories of that directory. With no target
-specified, the things in that directory are just built. The following
-list provides the names and actions for other targets:
+same command in all subdirectories of that directory.
+With no target specified, the things in that directory are just built.
+The following list provides the names and actions for other targets:
 .Bl -tag -width ".Cm install"
 .It Cm clean
 Removes any files created during the build process.
@@ -106,7 +106,8 @@ Rebuild the kernel and the kernel-modules using native tools.
 Same as
 .Cm buildkernel ,
 but skip the depend step and do not clean out the
-obj modules. This target can be used for incremental upgrades once a full
+obj modules.
+This target can be used for incremental upgrades once a full
 build of the kernel has been done with
 .Cm buildkernel .
 .It Cm installkernel
@@ -131,9 +132,6 @@ Build user commands, no libraries or include files.
 .It Cm installmost
 Install user commands, no libraries or include files.
 .El
-.Pp
-For more information about the ports build process, see
-.Xr ports 7 .
 .Sh ENVIRONMENT
 .Bl -tag -width ".Va TARGET_ARCH"
 .It Va TARGET_ARCH
@@ -160,8 +158,6 @@ installed.
 .It Pa /etc/make.conf
 .It Pa /etc/defaults/make.conf
 .It Pa /usr/src/share/doc/Makefile
-.It Pa /usr/ports/Mk/bsd.port.mk
-.It Pa /usr/ports/Mk/bsd.sites.mk
 .It Pa /usr/src/Makefile
 .It Pa /usr/src/Makefile.inc1
 .El
@@ -227,10 +223,13 @@ functioning correctly.
 .Xr make 1 ,
 .Xr wmake 1 ,
 .Xr make.conf 5 ,
-.Xr ports 7 ,
+.Xr packages 7 ,
 .Xr release 7 ,
 .Xr config 8 ,
 .Xr reboot 8 ,
 .Xr shutdown 8
 .Sh AUTHORS
-.An Mike W. Meyer Aq mwm@mired.org .
+.An -nosplit
+.An Mike W. Meyer Aq mwm@mired.org
+and
+.An Sascha Wildner Aq swildner@gmail.com .
