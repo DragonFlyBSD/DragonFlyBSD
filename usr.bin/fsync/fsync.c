@@ -24,12 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fsync/fsync.c,v 1.1.2.2 2000/07/25 07:48:25 ps Exp $
- * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.4 2004/12/12 17:01:05 liamfoy Exp $
+ * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.5 2006/03/16 15:06:05 swildner Exp $
  */
 
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
