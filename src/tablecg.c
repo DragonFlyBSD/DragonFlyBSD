@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.32 2005/03/11 00:50:42 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.33 2006/03/17 19:03:51 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -25,58 +25,29 @@ static const char *FilePath;
 static const char *FileName;
 static const char *DirPath;
 static const char *DirName;
-static const char *ParentDir;
+static const char *QueryString;
 static char *Av0;
 static char *OBuf;
 static int  OSize;
 static int  OMax;
 static char *Title;
 
-static void generate_side_headers(char *, char *, char * []);
+const char *generate_query_string(void);
+static void generate_menu_layer(const char *path, int baselen, int layer);
 static void process_vars(const char *ptr, int len);
+static void process_element(char *varName, char *varData);
 static void process_command(const char *cmd, char *args);
 static void *safe_malloc(int bytes);
 static char *safe_strdup(const char *str);
 static void read_all(int fd, void *buf, int n);
 static void buildout(const char *ptr, int len);
 static void buildflush(void);
-static const char *choppath(const char *path);
+static char *choppath(const char *path);
 static const char *filecomp(const char *path);
 static time_t parse_http_date(const char *header);
 
 #define	SITE_ROOT	"http://www.dragonflybsd.org"
-
-char *Main[] = {
-    "bugs.cgi",
-    "download.cgi",
-    "forums.cgi",
-    "mascot.cgi",
-    "team.cgi",
-    "FAQ.cgi",
-    NULL
-};
-
-char *Goals[] = {
-    "caching.cgi",
-    "iomodel.cgi",
-    "messaging.cgi",
-    "packages.cgi",
-    "threads.cgi",
-    "userapi.cgi",
-    "vfsmodel.cgi",
-    NULL
-};
-
-char *Status[] = {
-    "diary.cgi",
-    "report-2003.cgi",
-    NULL
-};
-
-char *Docs[] = {
-    "donations.cgi",
-    NULL
-};
+#define HTDOCS_ROOT	"/usr/local/www/site/data"
 
 /*
  * Phrases work is currently commented out.  Remove comments here 
@@ -101,7 +72,6 @@ char *Docs[] = {
 /*
  * suggested but not yet added: "BSD with style(9)"
  */
-
 
 int
 main(int ac, char **av)
@@ -137,9 +107,11 @@ main(int ac, char **av)
 	exit(1);
     }
     FileName = filecomp(FilePath);
-    DirPath = choppath(FilePath);
+    if ((DirPath = choppath(FilePath)) == NULL) {
+	fprintf(stderr, "%s: no directory path\n", av[0]);
+	exit(1);
+    }
     DirName = filecomp(DirPath);
-    ParentDir = choppath(DirPath);
 
     /*
      * Process arguments
@@ -159,6 +131,8 @@ main(int ac, char **av)
     }
     if ((base = getenv("QUERY_STRING")) != NULL)
 	process_vars(base, strlen(base));
+
+    QueryString = generate_query_string();
 
     /*
      * Process body
@@ -274,10 +248,7 @@ main(int ac, char **av)
 
     printf("<tr><td valign=\"top\">");
 
-    generate_side_headers("main", "Main", Main);
-    generate_side_headers("goals", "Goals", Goals);
-    generate_side_headers("status", "Status", Status);
-    generate_side_headers("docs", "Docs", Docs);
+    generate_menu_layer(HTDOCS_ROOT, strlen(HTDOCS_ROOT), 0);
 
     printf("</td><td valign=\"top\" bgcolor=\"#ffffff\">");
     fflush(stdout);
@@ -296,65 +267,107 @@ main(int ac, char **av)
 }
 
 /*
- * The menu is synthesized from arrays above listing the files
- * we want to have available in the side menu.  A peek at the 
- * filesystem is needed so we know where we are, and how to 
- * format accordingly.
- *
- * files[] never includes index.cgi.  We highlight the section name
- * instead.
+ * Generate a menu layer.  Each menu layer contains a menu.ctl file.  This
+ * file holds a list of terminal elements (typically .cgi's), directories,
+ * and full URLs.
  */
 static void
-generate_side_headers(char *section1, char *section2, char *files[])
+generate_menu_layer(const char *dirpath, int baselen, int layer)
 {
+    struct stat st;
+    char buf[256];
+    char *path;
+    const char *relpath;
+    const char *selected;
+    char *nameplate;
+    FILE *fi;
     int len;
-    const char *ptr;
-    int i;
-    const char *fileclass = "";
 
-    printf("\n<table border=\"0\" cellpadding=\"4\" width=\"100%%\">\n");
-    printf("\t<tr>");
+    /*
+     * relpath is either empty or begins with a '/'
+     */
+    relpath = dirpath + baselen;
+    asprintf(&path, "%s/menu.ctl", dirpath);
+    fi = fopen(path, "r");
+    free(path);
 
-    if (strcmp(FileName, "index.cgi") == 0 &&
-	strcmp(section1, DirName) == 0
-    ) {
-	fileclass = " class=\"selected\"";
-    } else {
-	fileclass = " class=\"unselected\"";
-    }
+    if (fi == NULL)
+	return;
 
-    printf("<td%s><a href=\"%s/%s\">%s</a></td></tr>\n",
-	fileclass, SITE_ROOT, section1, section2);
+    if (layer == 0)
+	printf("\n<table border=\"0\" cellpadding=\"4\" width=\"100%%\">\n");
+    else
+	printf("\n<table border=\"0\">\n");
 
-	if (files[0] != NULL) {
-        printf("\t<tr><td>\n");
-	printf("<table border=\"0\" width=\"100%%\">\n");
+    while (fgets(buf, sizeof(buf), fi) != NULL) {
+	if ((len = strlen(buf)) > 0 && buf[len-1] == '\n')
+	    buf[--len] = 0;
+	if (len == 0 || buf[0] == '#')
+	    continue;
+	asprintf(&path, "%s/%s", dirpath, buf);
 
-    	for (i = 0; files[i] != NULL; i++) {
-        	if ((strcmp(files[i], FileName) == 0) &&
-	    	    (strcmp(section1, DirName) == 0) 
-		) {
-        	    fileclass = " class=\"subselected\"";
-		} else {
-        	    fileclass = " class=\"subunselected\"";
-		}
-      
-        	if ((ptr = strchr(files[i], '.')) != NULL &&
-            	(strcmp(ptr + 1, "cgi") == 0 ||
-            	strcmp(ptr + 1, "html") == 0)
-        	) {
-            	len = ptr - files[i];
-            	printf("\t<tr><td%s>", fileclass);
-            	printf("&nbsp;&nbsp;&nbsp;&nbsp;");
-            	printf("<a class=\"nounderline\" ");
-            	printf("href=\"%s/%s/%s\">%*.*s</a></td></tr>\n", SITE_ROOT,
-			section1, 
-			files[i], len, len, files[i]);
-        	}
-    	}
-    	printf("</table>\n</td></tr>\n");
+	/*
+	 * Figure out if this element is part of the path to the current
+	 * page.
+	 */
+	if (strstr(FilePath, buf))
+	    selected = " class=\"selected\"";
+	else
+	    selected = " class=\"unselected\"";
+
+	/*
+	 * Generate the visible label
+	 */
+	if (strchr(buf, ' ')) {
+	    nameplate = strchr(buf, ' ');
+	    while (*nameplate == ' ' || *nameplate == '\t')
+		*nameplate++ = 0;
+	} else if (strchr(buf, '\t')) {
+	    nameplate = strchr(buf, ' ');
+	    while (*nameplate == ' ' || *nameplate == '\t')
+		*nameplate++ = 0;
+	} else if (strrchr(buf, '/')) {
+	    nameplate = strdup(strrchr(buf, '/') + 1);
+	} else {
+	    nameplate = strdup(buf);
 	}
+	if (isalpha(nameplate[0]))
+	    nameplate[0] = toupper(nameplate[0]);
+	if (strchr(nameplate, '.'))
+	    *strchr(nameplate, '.') = 0;
 
+	/*
+	 * Process a URL, directory, or terminal file
+	 */
+	printf("<tr><td%s>", selected);
+	if (layer)
+	    printf("&nbsp;&nbsp;&nbsp;");
+
+	if (stat(path, &st) < 0) {
+	    /*
+	     * Assume a full URL
+	     */
+	    printf("<a href=\"%s%s\">%s</a>",
+		buf, QueryString, nameplate);
+	} else if (S_ISDIR(st.st_mode)) {
+	    /*
+	     * Assume directory containing sub-menu
+	     */
+	    printf("<a href=\"%s%s/%s%s\">%s</a>",
+		SITE_ROOT, relpath, buf, QueryString, nameplate);
+	    printf("<tr><td>");
+	    generate_menu_layer(path, baselen, layer + 1);
+	    printf("</td></tr>");
+	} else {
+	    /*
+	     * Assume terminal element
+	     */
+	    printf("<a href=\"%s%s/%s%s\">%s</a>",
+		SITE_ROOT, relpath, buf, QueryString, nameplate);
+	}
+	printf("</td></tr>\n");
+	free(nameplate);
+    }
     printf("\t<tr><td width=\"100%%\">&nbsp;</td></tr>\n");
     printf("</table>\n");
 }
@@ -362,6 +375,40 @@ generate_side_headers(char *section1, char *section2, char *files[])
 static void
 process_vars(const char *ptr, int len)
 {
+    int i;
+    int j;
+    char *varName;
+    char *varData;
+
+    while (len) {
+	varName = NULL;
+	varData = NULL;
+	for (j = 0; j < len && ptr[j] != '&'; ++j)
+	    ;
+	for (i = 0; i < j && ptr[i] != '='; ++i)
+	    ;
+	asprintf(&varName, "%*.*s", i, i, ptr);
+	if (i < j)
+	    asprintf(&varData, "%*.*s", j - i - 1, j - i - 1, ptr + i + 1);
+	else
+	    asprintf(&varData, "");
+	process_element(varName, varData);
+	free(varName);
+	free(varData);
+	if (j < len)
+	    ++j;
+	len -= j;
+	ptr += j;
+    }
+}
+
+static void
+process_element(char *varName, char *varData)
+{
+#if 0
+    if (strcmp(varName, "test") == 0)
+	TestMode = 1;
+#endif
 }
 
 static void
@@ -370,6 +417,18 @@ process_command(const char *cmd, char *args)
     if (strcmp(cmd, "TITLE") == 0) {
 	Title = safe_strdup(args);
     }
+}
+
+const char *
+generate_query_string(void)
+{
+#if 0
+    if (TestMode)
+	return("?test=1");
+    else
+	return("");
+#endif
+    return("");
 }
 
 static void
@@ -411,7 +470,7 @@ buildflush(void)
 }
 
 static
-const char *
+char *
 choppath(const char *path)
 {
     const char *ptr;
@@ -422,7 +481,7 @@ choppath(const char *path)
 	bcopy(path, nptr, ptr - path);
 	nptr[ptr - path] = 0;
     } else {
-	nptr = ".";
+	nptr = NULL;
     }
     return(nptr);
 }
