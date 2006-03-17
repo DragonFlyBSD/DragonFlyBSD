@@ -1,10 +1,10 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/19/94
 # $FreeBSD: src/games/fortune/datfiles/Makefile,v 1.24.2.3 2002/02/18 15:03:32 ru Exp $
-# $DragonFly: src/games/fortune/datfiles/Makefile,v 1.3 2004/01/31 06:56:36 dillon Exp $
+# $DragonFly: src/games/fortune/datfiles/Makefile,v 1.4 2006/03/17 03:15:16 justin Exp $
 
-FILES=	fortunes fortunes2 freebsd-tips murphy startrek zippy
+FILES=	fortunes fortunes2 dragonfly-tips murphy startrek zippy
 BLDS=	fortunes.dat fortunes2.dat murphy.dat startrek.dat zippy.dat \
-	fortunes-o fortunes-o.dat freebsd-tips.dat
+	fortunes-o fortunes-o.dat dragonfly-funny.dat dragonfly-tips.dat
 
 # TO AVOID INSTALLING THE POTENTIALLY OFFENSIVE FORTUNES, COMMENT OUT THE
 # THREE LINES AND UNCOMMENT THE FOURTH LINE.
@@ -22,7 +22,7 @@ CLEANFILES+=${BLDS}
 
 FILESDIR=	${SHAREDIR}/games/fortune
 
-.for f in fortunes fortunes2 fortunes2-o freebsd-tips limerick murphy murphy-o startrek zippy
+.for f in fortunes fortunes2 fortunes2-o dragonfly-funny dragonfly-tips limerick murphy murphy-o startrek zippy
 $f.dat: $f
 	PATH=$$PATH:/usr/games:${.OBJDIR}/../strfile \
 	    strfile -Crs ${.ALLSRC} ${.TARGET}
