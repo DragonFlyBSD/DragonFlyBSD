@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_nbt.c,v 1.4.2.3 2001/08/01 09:52:26 obrien Exp $
- * $DragonFly: src/lib/libalias/alias_nbt.c,v 1.3 2004/08/20 01:21:36 joerg Exp $
+ * $DragonFly: src/lib/libalias/alias_nbt.c,v 1.4 2006/03/18 19:43:18 swildner Exp $
  *
  *  TODO:
  *       oClean up. 
@@ -112,7 +112,7 @@ static void PrintRcode( u_char rcode )  {
 		case CFT_ERR:
 			printf("\nName in conflict error.\n");
 		default:
-			printf("\n???=%0x\n", rcode );
+			printf("\n??\?=%0x\n", rcode );
 
 	}	
 }

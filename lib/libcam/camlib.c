@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.c,v 1.8.2.2 2002/05/23 04:19:22 ken Exp $
- * $DragonFly: src/lib/libcam/camlib.c,v 1.3 2005/07/14 09:13:27 corecode Exp $
+ * $DragonFly: src/lib/libcam/camlib.c,v 1.4 2006/03/18 19:43:18 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -436,7 +436,7 @@ cam_open_btl(path_id_t path_id, target_id_t target_id, lun_id_t target_lun,
 	}
 	default:
 		sprintf(cam_errbuf, "%s: asked for a peripheral match, but"
-			" got a bus or device match??!!", func_name);
+			" got a bus or device match?\?!!", func_name);
 		goto btl_bailout;
 		break; /* NOTREACHED */
 	}
@@ -627,7 +627,7 @@ cam_real_open_device(const char *path, int flags, struct cam_device *device,
 	 * the device the user gave us.
 	 */
 	if (ccb.cgdl.status == CAM_GDEVLIST_ERROR) {
-		sprintf(cam_errbuf, "%s: passthrough device does not exist??!!",
+		sprintf(cam_errbuf, "%s: passthrough device does not exist?\?!!",
 			func_name);
 		goto crod_bailout;
 	}

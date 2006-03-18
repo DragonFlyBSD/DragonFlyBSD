@@ -30,7 +30,7 @@
  *	$Id: main.c,v 1.16 2000/03/13 16:18:38 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntest/main.c,v 1.7.2.1 2001/08/01 17:45:07 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.5 2005/11/25 00:58:52 swildner Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.6 2006/03/18 19:43:18 swildner Exp $
  *
  *      last edit-date: [Mon Mar 13 17:19:26 2000]
  *
@@ -488,7 +488,7 @@ handle_disconnect(unsigned char *ptr)
 	}
 	else
 	{
-		fprintf(stderr, "isdntest: incoming disconnect indication, cdid %d (???), cause %d\n",
+		fprintf(stderr, "isdntest: incoming disconnect indication, cdid %d (??\?), cause %d\n",
 			mdi->header.cdid, mdi->cause);
 	}		
 }
