@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.7 2006/03/18 20:29:50 dillon Exp $
  */
 
 #include "cron.h"
@@ -71,6 +71,7 @@ static void
 child_process(entry *e, user *u)
 {
 	int stdin_pipe[2], stdout_pipe[2];
+	int jitter;
 	char *input_data;
 	char *usernm, *mailto;
 	int children = 0;
@@ -158,6 +159,12 @@ child_process(entry *e, user *u)
 	case 0:
 		Debug(DPROC, ("[%d] grandchild process Vfork()'ed\n",
 			      getpid()))
+
+		jitter = (e->uid == ROOT_UID) ? RootJitter : Jitter;
+		if (jitter != 0) {
+			srandom(getpid());
+			sleep(random() % jitter);
+		}
 
 		/* write a log message.  we've waited this long to do it
 		 * because it was not until now that we knew the PID that

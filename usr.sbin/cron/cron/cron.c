@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.7 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.8 2006/03/18 20:29:50 dillon Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -50,8 +50,8 @@ usage(void)
 {
     char **dflags;
 
-	fprintf(stderr, "usage: cron [-s] [-o] [-x debugflag[,...]]\n");
-	fprintf(stderr, "\ndebugflags: ");
+	fprintf(stderr, "usage: cron [-j jitter] [-J rootjitter] "
+			"[-s] [-o] [-x debugflag[,...]]\n");
 
         for(dflags = DebugFlagNames; *dflags; dflags++) {
 		fprintf(stderr, "%s ", *dflags);
@@ -413,9 +413,22 @@ static void
 parse_args(int argc, char **argv)
 {
 	int	argch;
+	char	*endp;
 
-	while ((argch = getopt(argc, argv, "osx:")) != -1) {
+	while ((argch = getopt(argc, argv, "j:J:osx:")) != -1) {
 		switch (argch) {
+		case 'j':
+			Jitter = strtoul(optarg, &endp, 10);
+			if (*optarg == '\0' || *endp != '\0' || Jitter > 60)
+				errx(ERROR_EXIT,
+				     "bad value for jitter: %s", optarg);
+			break;
+		case 'J':
+			RootJitter = strtoul(optarg, &endp, 10);
+			if (*optarg == '\0' || *endp != '\0' || RootJitter > 60)
+				errx(ERROR_EXIT,
+				     "bad value for root jitter: %s", optarg);
+			break;
 		case 'o':
 			dst_enabled = 0;
 			break;

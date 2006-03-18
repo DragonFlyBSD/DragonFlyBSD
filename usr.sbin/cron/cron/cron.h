@@ -18,7 +18,7 @@
 /* cron.h - header for vixie's cron
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.h,v 1.9.2.3 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.h,v 1.4 2004/03/10 18:27:26 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.h,v 1.5 2006/03/18 20:29:50 dillon Exp $
  *
  * vix 14nov88 [rest of log is in RCS]
  * vix 14jan87 [0 or 7 can be sunday; thanks, mwm@berkeley]
@@ -269,6 +269,8 @@ char	*DowNames[] = {
 
 char	*ProgramName;
 int	LineNumber;
+unsigned Jitter,
+	RootJitter;
 time_t	TargetTime;
 
 # if DEBUGGING
@@ -284,6 +286,8 @@ extern	char	*copyright[],
 		*DowNames[],
 		*ProgramName;
 extern	int	LineNumber;
+extern unsigned	Jitter,
+		RootJitter;
 extern	time_t	TargetTime;
 # if DEBUGGING
 extern	int	DebugFlags;
