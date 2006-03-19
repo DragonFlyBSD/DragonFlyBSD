@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.31 2005/10/08 12:24:26 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.32 2006/03/19 17:53:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -547,7 +547,7 @@ adjtime(struct adjtime_args *uap)
 
 	if (uap->olddelta) {
 		atv.tv_sec = odelta / 1000000000;
-		atv.tv_usec = odelta % 1000000 / 1000;
+		atv.tv_usec = odelta % 1000000000 / 1000;
 		(void) copyout((caddr_t)&atv, (caddr_t)uap->olddelta,
 		    sizeof(struct timeval));
 	}
