@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.8 2006/03/12 11:28:06 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.9 2006/03/19 13:07:12 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -370,6 +370,12 @@ struct pthread {
 	/* How many low level locks the thread held. */
 	int			locklevel;
 
+	/*
+	 * Set to non-zero when this thread has entered a critical
+	 * region.  We allow for recursive entries into critical regions.
+	 */
+	int			critical_count;
+
 	/* Signal blocked counter. */
 	int			sigblock;
 
@@ -514,6 +520,10 @@ struct pthread {
 	td_event_msg_t		event_buf;
 };
 
+#define	THR_IN_CRITICAL(thrd)				\
+	(((thrd)->locklevel > 0) ||			\
+	((thrd)->critical_count > 0))
+
 #define THR_UMTX_TRYLOCK(thrd, lck)			\
 	_thr_umtx_trylock((lck), (thrd)->tid)
 
@@ -532,14 +542,22 @@ do {							\
 	_thr_umtx_lock(lck, (thrd)->tid);		\
 } while (0)
 
+#ifdef	_PTHREADS_INVARIANTS
+#define	THR_ASSERT_LOCKLEVEL(thrd)			\
+do {							\
+	if (__predict_false((thrd)->locklevel <= 0))	\
+		_thr_assert_lock_level();		\
+} while (0)
+#else
+#define THR_ASSERT_LOCKLEVEL(thrd)
+#endif
+
 #define	THR_LOCK_RELEASE(thrd, lck)			\
 do {							\
-	if ((thrd)->locklevel > 0) {			\
-		_thr_umtx_unlock((lck), (thrd)->tid);	\
-		(thrd)->locklevel--;			\
-	} else { 					\
-		_thr_assert_lock_level();		\
-	}						\
+	THR_ASSERT_LOCKLEVEL(thrd);			\
+	_thr_umtx_unlock((lck), (thrd)->tid);		\
+	(thrd)->locklevel--;				\
+	_thr_ast(thrd);					\
 } while (0)
 
 #define	THR_LOCK(curthrd)		THR_LOCK_ACQUIRE(curthrd, &(curthrd)->lock)
@@ -748,6 +766,7 @@ void	_thr_link(struct pthread *curthread, struct pthread *thread);
 void	_thr_unlink(struct pthread *curthread, struct pthread *thread);
 void	_thr_suspend_check(struct pthread *curthread);
 void	_thr_assert_lock_level() __dead2;
+void	_thr_ast(struct pthread *);
 int	_thr_get_tid(void);
 void	_thr_report_creation(struct pthread *curthread,
 			   struct pthread *newthread);

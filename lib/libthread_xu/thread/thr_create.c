@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.6 2006/03/12 11:28:06 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.7 2006/03/19 13:07:12 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -198,6 +198,10 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 			THR_THREAD_LOCK(curthread, new_thread);
 		new_thread->state = PS_DEAD;
 		new_thread->terminated = 1;
+		if (new_thread->flags & THR_FLAGS_NEED_SUSPEND) {
+			new_thread->cycle++;
+			_thr_umtx_wake(&new_thread->cycle, INT_MAX);
+		}
 		THR_THREAD_UNLOCK(curthread, new_thread);
 		THREAD_LIST_LOCK(curthread);
 		_thread_active_threads--;
@@ -241,11 +245,11 @@ thread_start(void *arg)
 	start_arg->started = 1;
 	_thr_umtx_wake(&start_arg->started, 1);
 
-	THR_LOCK(curthread);
-	THR_UNLOCK(curthread);
-
 	/* Thread was created with all signals blocked, unblock them. */
 	__sys_sigprocmask(SIG_SETMASK, &curthread->sigmask, NULL);
+
+	THR_LOCK(curthread);
+	THR_UNLOCK(curthread);
 
 	if (curthread->flags & THR_FLAGS_NEED_SUSPEND)
 		_thr_suspend_check(curthread);
