@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/altq.4,v 1.16 2006/03/02 19:45:59 thompsa Exp $
-.\" $DragonFly: src/share/man/man4/altq.4,v 1.2 2006/03/19 13:12:15 swildner Exp $
+.\" $DragonFly: src/share/man/man4/altq.4,v 1.3 2006/03/19 17:31:08 swildner Exp $
 .\"
 .Dd March 18, 2006
 .Dt ALTQ 4
@@ -110,79 +110,6 @@ The
 interface, that is required for the configuration process of
 .Nm
 can be loaded as a module.
-.Sh SUPPORTED DEVICES
-The driver modifications described in
-.Xr altq 9
-are required to use a certain network card with
-.Nm .
-They have been applied to the following hardware drivers:
-.Xr an 4 ,
-.Xr aue 4 ,
-.Xr awi 4 ,
-.Xr axe 4 ,
-.Xr bfe 4 ,
-.Xr bge 4 ,
-.Xr cs 4 ,
-.Xr cue 4 ,
-.Xr dc 4 ,
-.Xr ed 4 ,
-.Xr el 4 ,
-.Xr em 4 ,
-.Xr ep 4 ,
-.Xr ex 4 ,
-.Xr fe 4 ,
-.Xr fwe 4 ,
-.Xr fxp 4 ,
-.Xr gx 4 ,
-.Xr ie 4 ,
-.Xr ipw 4 ,
-.Xr iwi 4 ,
-.Xr kue 4 ,
-.Xr le 4 ,
-.Xr lge 4 ,
-.Xr lnc 4 ,
-.Xr my 4 ,
-.Xr nge 4 ,
-.Xr nv 4 ,
-.Xr pcn 4 ,
-.Xr ray 4 ,
-.Xr rdp 4 ,
-.Xr re 4 ,
-.Xr rl 4 ,
-.Xr rue 4 ,
-.Xr sbni 4 ,
-.Xr sbsh 4 ,
-.Xr sf 4 ,
-.Xr sis 4 ,
-.Xr sk 4 ,
-.Xr sn 4 ,
-.Xr ste 4 ,
-.Xr ti 4 ,
-.Xr tl 4 ,
-.Xr tx 4 ,
-.Xr txp 4 ,
-.Xr vr 4 ,
-.Xr vx 4 ,
-.Xr wb 4 ,
-.Xr wi 4 ,
-.Xr wl 4 ,
-.Xr xe 4 ,
-and
-.Xr xl 4 .
-.Pp
-The
-.Xr ndis 4
-framework also has support for
-.Nm
-and thus all encapsulated drivers.
-.Pp
-The
-.Xr tun 4
-.\"and
-.\".Xr ng_iface 4
-.\"pseudo drivers also do support
-pseudo driver also does support
-.Nm .
 .Sh SEE ALSO
 .Xr pf 4 ,
 .Xr pf.conf 5 ,
