@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.60 2006/03/15 04:04:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.61 2006/03/21 18:14:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -931,18 +931,18 @@ cache_check_fsmid_vp(struct vnode *vp, int64_t *fsmid)
 static int cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 				  struct vnode *dvp);
 static int cache_fromdvp_try(struct vnode *dvp, struct ucred *cred, 
-				  struct namecache **saved_ncp);
+				  struct vnode **saved_dvp);
 
 struct namecache *
 cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit)
 {
 	struct namecache *ncp;
-	struct namecache *saved_ncp;
+	struct vnode *saved_dvp;
 	struct vnode *pvp;
 	int error;
 
 	ncp = NULL;
-	saved_ncp = NULL;
+	saved_dvp = NULL;
 
 	/*
 	 * Temporary debugging code to force the directory scanning code
@@ -986,11 +986,11 @@ force:
 		/*
 		 * If we are recursed too deeply resort to an O(n^2)
 		 * algorithm to resolve the namecache topology.  The
-		 * resolved ncp is left referenced in saved_ncp to
+		 * resolved pvp is left referenced in saved_dvp to
 		 * prevent the tree from being destroyed while we loop.
 		 */
 		if (makeit > 20) {
-			error = cache_fromdvp_try(dvp, cred, &saved_ncp);
+			error = cache_fromdvp_try(dvp, cred, &saved_dvp);
 			if (error) {
 				printf("lookupdotdot(longpath) failed %d "
 				       "dvp %p\n", error, dvp);
@@ -1039,8 +1039,8 @@ force:
 	}
 	if (ncp)
 		cache_hold(ncp);
-	if (saved_ncp)
-		cache_drop(saved_ncp);
+	if (saved_dvp)
+		vrele(saved_dvp);
 	return (ncp);
 }
 
@@ -1051,7 +1051,7 @@ force:
 static
 int
 cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
-		  struct namecache **saved_ncp)
+		  struct vnode **saved_dvp)
 {
 	struct namecache *ncp;
 	struct vnode *pvp;
@@ -1096,10 +1096,16 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			ncp->nc_name);
 	}
 	error = cache_inefficient_scan(ncp, cred, dvp);
-	if (*saved_ncp)
-	    cache_drop(*saved_ncp);
-	*saved_ncp = ncp;
-	vrele(dvp);
+
+	/*
+	 * Hopefully dvp now has a namecache record associated with it.
+	 * Leave it referenced to prevent the kernel from recycling the
+	 * vnode.  Otherwise extremely long directory paths could result
+	 * in endless recycling.
+	 */
+	if (*saved_dvp)
+	    vrele(*saved_dvp);
+	*saved_dvp = dvp;
 	return (error);
 }
 
