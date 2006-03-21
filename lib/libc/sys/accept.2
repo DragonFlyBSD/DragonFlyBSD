@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)accept.2	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/sys/accept.2,v 1.10.2.11 2002/05/09 02:24:40 silby Exp $
-.\" $DragonFly: src/lib/libc/sys/accept.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/accept.2,v 1.3 2006/03/21 04:24:28 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt ACCEPT 2
@@ -156,13 +156,13 @@ A connection arrived, but it was closed while waiting
 on the listen queue.
 .El
 .Sh SEE ALSO
-.Xr accept_filter 9 ,
 .Xr bind 2 ,
 .Xr connect 2 ,
 .Xr getpeername 2 ,
 .Xr listen 2 ,
 .Xr select 2 ,
-.Xr socket 2
+.Xr socket 2 ,
+.Xr accept_filter 9
 .Sh HISTORY
 The
 .Fn accept
