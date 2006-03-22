@@ -32,7 +32,7 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/save.c,v 1.8 1999/11/30 03:48:27 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/save.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/save.c,v 1.3 2006/03/22 20:06:13 drhodus Exp $
  */
 
 #include <fcntl.h>
@@ -114,7 +114,6 @@ int	n;
 		writel (cantuse);
 		writel (fname);
 		writel (".\n");
-		close (fdesc);
 		cflag = 1;
 	}
 	write (fdesc,board,sizeof board);
