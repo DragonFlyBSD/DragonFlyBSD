@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/presentations.cgi,v 1.1 2006/03/22 00:17:46 justin Exp $
+# $DragonFly: site/data/docs/Attic/presentations.cgi,v 1.2 2006/03/22 03:25:00 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -74,14 +74,13 @@ $TITLE(DragonFly - Documentation)
 </tr>
 
 <tr>
-	<td>BayLisa timing Slides for SMP Operation with DragonFly</td>
+	<td>BayLISA presentation on SMP timing in DragonFly</td>
 	<td>
 		<a href="./LISA200512/">HTML</a>,
-		<a href="./LISA200512/dfly_baylisa2005.sxd">OpenOffice SXD</a>
+		<a href="./LISA200512/dfly_baylisa2005.sxd">OpenOffice SXD</a>,
+                <a href="http://video.google.com/videoplay?docid=-3205048442935479525">Google Video</a>
 	</td>
 	<td align="right">15 December 2005</td>
 </tr>
-
-
 
 </table>
