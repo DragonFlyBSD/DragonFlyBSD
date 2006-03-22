@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.8 2005/07/25 00:24:31 gshapiro Exp $
+# $DragonFly: src/lib/libsm/Makefile,v 1.9 2006/03/22 18:25:43 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
 .PATH:	${SENDMAIL_DIR}/libsm
 
 CFLAGS+= -I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
@@ -23,7 +23,7 @@ SRCS+=	assert.c debug.c errstring.c exc.c heap.c match.c rpool.c \
 	wbuf.c wsetup.c string.c stringf.c \
 	xtrap.c strto.c test.c path.c strcasecmp.c strrevcmp.c \
 	signal.c clock.c config.c shm.c mbdb.c strexit.c cf.c ldap.c \
-	niprop.c mpeix.c
+	niprop.c mpeix.c memstat.c
 CLEANFILES+=sm_os.h
 
 INTERNALLIB=		true

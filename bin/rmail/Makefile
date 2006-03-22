@@ -1,8 +1,8 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/rmail/Makefile,v 1.8.2.6 2002/03/25 21:31:30 gshapiro Exp $
-# $DragonFly: src/bin/rmail/Makefile,v 1.7 2005/07/25 00:24:31 gshapiro Exp $
+# $DragonFly: src/bin/rmail/Makefile,v 1.8 2006/03/22 18:25:42 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
 .PATH:	${SENDMAIL_DIR}/rmail
 
 WARNS?=	0	# XXX Not yet.

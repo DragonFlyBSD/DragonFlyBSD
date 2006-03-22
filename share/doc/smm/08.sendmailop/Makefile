@@ -1,12 +1,12 @@
 #	From: @(#)Makefile	8.2 (Berkeley) 2/28/94
 # $FreeBSD: src/share/doc/smm/08.sendmailop/Makefile,v 1.5.2.1 2000/10/26 23:05:13 gshapiro Exp $
-# $DragonFly: src/share/doc/smm/08.sendmailop/Makefile,v 1.4 2005/07/25 00:24:31 gshapiro Exp $
+# $DragonFly: src/share/doc/smm/08.sendmailop/Makefile,v 1.5 2006/03/22 18:25:43 gshapiro Exp $
 
 VOLUME=	smm/08.sendmailop
 SRCS=	op.me
 MACROS=	-me
 
-SRCDIR=	${.CURDIR}/../../../../contrib/sendmail-8.13.4/doc/op
+SRCDIR=	${.CURDIR}/../../../../contrib/sendmail-8.13.6/doc/op
 
 USE_PIC=	yes
 USE_EQN=	yes

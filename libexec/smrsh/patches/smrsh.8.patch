@@ -1,6 +1,6 @@
-$DragonFly: src/libexec/smrsh/patches/smrsh.8.patch,v 1.1 2005/07/25 00:24:31 gshapiro Exp $
+$DragonFly: src/libexec/smrsh/patches/smrsh.8.patch,v 1.2 2006/03/22 18:25:43 gshapiro Exp $
 
---- sendmail-8.13.4/smrsh/smrsh.8	2004-08-05 20:55:35.000000000 -0700
+--- sendmail-8.13.6/smrsh/smrsh.8	2004-08-05 20:55:35.000000000 -0700
 +++ sendmail/smrsh/smrsh.8	2005-02-13 18:39:14.000000000 -0800
 @@ -39,7 +39,7 @@
  .I smrsh

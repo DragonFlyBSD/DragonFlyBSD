@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libsmdb/Makefile,v 1.1.2.5 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsmdb/Makefile,v 1.5 2005/07/25 00:24:31 gshapiro Exp $
+# $DragonFly: src/lib/libsmdb/Makefile,v 1.6 2006/03/22 18:25:43 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
 .PATH:	${SENDMAIL_DIR}/libsmdb
 
 CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.

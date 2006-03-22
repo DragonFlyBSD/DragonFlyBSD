@@ -1,22 +1,22 @@
-$DragonFly: src/usr.sbin/sendmail/mci.c.patch,v 1.1 2005/08/23 15:28:06 joerg Exp $
+$DragonFly: src/usr.sbin/sendmail/mci.c.patch,v 1.2 2006/03/22 18:25:43 gshapiro Exp $
 
 Index: mci.c
 ===================================================================
-RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/sendmail-8.13.4/sendmail/mci.c,v
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/sendmail-8.13.6/sendmail/mci.c,v
 retrieving revision 1.1.1.1
 diff -u -r1.1.1.1 mci.c
 --- mci.c	6 Jun 2005 04:25:22 -0000	1.1.1.1
 +++ mci.c	23 Aug 2005 15:04:54 -0000
-@@ -1125,7 +1125,7 @@
+@@ -1123,7 +1123,7 @@
  		size_t len;
  		char *newptr;
  		struct dirent *e;
 -		char newpath[MAXPATHLEN];
 +		char newpath[PATH_MAX];
- 
- 		if ((d = opendir(pathname)) == NULL)
- 		{
-@@ -1134,7 +1134,7 @@
+ #if MAXPATHLEN <= MAXNAMLEN - 3
+  ERROR "MAXPATHLEN <= MAXNAMLEN - 3"
+ #endif /* MAXPATHLEN  <= MAXNAMLEN - 3 */
+@@ -1135,7 +1135,7 @@
  					pathname, sm_errstring(errno));
  			return -1;
  		}
@@ -25,7 +25,7 @@ diff -u -r1.1.1.1 mci.c
  		if (sm_strlcpy(newpath, pathname, len) >= len)
  		{
  			if (tTd(56, 2))
-@@ -1144,6 +1144,7 @@
+@@ -1145,6 +1145,7 @@
  		}
  		newptr = newpath + strlen(newpath);
  		*newptr++ = '/';
@@ -33,7 +33,7 @@ diff -u -r1.1.1.1 mci.c
  
  		/*
  		**  repeat until no file has been removed
-@@ -1160,9 +1161,8 @@
+@@ -1161,9 +1162,8 @@
  				if (e->d_name[0] == '.')
  					continue;
  
