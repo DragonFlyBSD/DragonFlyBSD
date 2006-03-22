@@ -32,7 +32,7 @@
  *
  * @(#)table.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/table.c,v 1.5 1999/11/30 03:48:28 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/table.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/table.c,v 1.3 2006/03/22 20:06:34 drhodus Exp $
  */
 
 #include "back.h"
@@ -303,6 +303,7 @@ rsetbrd ()  {
 	for (i = 0; i < 4; i++)
 		p[i] = g[i] = -1;
 	for (j = 0; j < ncin; j++)
-		n = dotable (cin[j],n);
+		if ((n = dotable(cin[j], n)) < 0)
+			return n;
 	return (n);
 }
