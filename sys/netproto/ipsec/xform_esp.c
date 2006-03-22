@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.9 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.10 2006/03/22 19:57:32 drhodus Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -552,6 +552,23 @@ esp_input_cb(struct cryptop *crp)
 	 * Packet is now decrypted.
 	 */
 	m->m_flags |= M_DECRYPTED;
+
+	/*
+	 * Update replay sequence number, if appropriate.
+	 */
+	if (sav->replay) {
+		u_int32_t seq;
+
+		m_copydata(m, skip + offsetof(struct newesp, esp_seq),
+			   sizeof (seq), (caddr_t) &seq);
+		if (ipsec_updatereplay(ntohl(seq), sav)) {
+			DPRINTF(("%s: packet replay check for %s\n", __func__,
+			    ipsec_logsastr(sav)));
+			espstat.esps_replay++;
+			error = ENOBUFS;
+			goto bad;
+		}
+	}
 
 	/* Determine the ESP header length */
 	if (sav->flags & SADB_X_EXT_OLD)
