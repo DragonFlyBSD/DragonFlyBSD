@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/compat_laptops.txt,v 1.3 2006/01/13 18:19:31 justin Exp $
+$DragonFly: doc/notes/compat_laptops.txt,v 1.4 2006/03/22 01:09:23 reed Exp $
 
 			    Compatible laptops
 
@@ -82,3 +82,13 @@ Justin Sherrill:
     number of different 600E models - the 3 character code after the model 
     describes which.  Some other models may prove less troublesome.
 
+Jeremy C. Reed:
+     I have a GQ (Great Quality) MX-3201 laptop. I believe it
+     is also known as the ECS G320 (or Green320). It has a VIA C3
+     Nehemiah 1.2 GHz processor. The touchpad mouse (psm0) does not
+     work because the "synaptics" support has not been added
+     (available from FreeBSD). (Using serial port with serial mouse
+     works fine with moused.) The VIA VT6102 Rhine II 10/100BaseTX
+     interface works fine as vr0.  Older versions of X do not support
+     the VIA video card, but recent versions of X.org do now support it.
+     TODO: document sound, USB, modem.
