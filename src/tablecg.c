@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.33 2006/03/17 19:03:51 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.34 2006/03/22 17:27:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -322,10 +322,12 @@ generate_menu_layer(const char *dirpath, int baselen, int layer)
 	    nameplate = strchr(buf, ' ');
 	    while (*nameplate == ' ' || *nameplate == '\t')
 		*nameplate++ = 0;
+	    nameplate = strdup(nameplate);
 	} else if (strchr(buf, '\t')) {
 	    nameplate = strchr(buf, ' ');
 	    while (*nameplate == ' ' || *nameplate == '\t')
 		*nameplate++ = 0;
+	    nameplate = strdup(nameplate);
 	} else if (strrchr(buf, '/')) {
 	    nameplate = strdup(strrchr(buf, '/') + 1);
 	} else {
