@@ -45,7 +45,7 @@ License Agreement applies to this software.
 		(skeyinit.c).
 
  $FreeBSD: src/contrib/opie/opiepasswd.c,v 1.1.1.2.6.3 2002/07/15 14:48:43 des Exp $
- $DragonFly: src/contrib/opie/opiepasswd.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
+ $DragonFly: src/contrib/opie/opiepasswd.c,v 1.3 2006/03/22 21:22:39 drhodus Exp $
 */
 #include "opie_cfg.h"
 
@@ -119,11 +119,18 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
   struct opie opie;
   int rval, n = 499, i, mode = MODE_DEFAULT, force = 0;
   char seed[OPIE_SEED_MAX+1];
+  char *username;
+  uid_t ruid;
   struct passwd *pp;
 
   memset(seed, 0, sizeof(seed));
 
-  if (!(pp = getpwnam(getlogin()))) {
+  ruid = getuid();
+  username = getlogin();
+  pp = getpwnam(username);
+  if (username == NULL || pp == NULL || pp->pw_uid != ruid)
+    pp = getpwuid(ruid);
+  if (pp == NULL) {
     fprintf(stderr, "Who are you?");
     return 1;
   }
