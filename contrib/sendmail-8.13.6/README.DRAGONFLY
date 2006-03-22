@@ -41,28 +41,13 @@
 	* extract the archive into /usr/src/contrib, using the subdirectory
 	  that the archive extracts as.
 
-	* redirect the build directory to the new directory:
+	* import the new version:
 
-	  bin/rmail/Makefile
-	  etc/mail/Makefile
-	  etc/sendmail/Makefile
-	  lib/libmilter/Makefile
-	  lib/libsm/Makefile
-	  lib/libsmdb/Makefile
-	  lib/libsmutil/Makefile
-	  libexec/mail.local/Makefile
-	  libexec/smrsh/Makefile
-	  share/doc/smm/08.sendmailop/Makefile
-	  share/sendmail/Makefile
-	  usr.bin/vacation/Makefile
-	  usr.sbin/editmap/Makefile
-	  usr.sbin/mailstats/Makefile
-	  usr.sbin/makemap/Makefile
-	  usr.sbin/praliases/Makefile
-	  usr.sbin/sendmail/Makefile
-	  usr.sbin/mailwrapper/Makefile
+	  cd sendmail-8.13.6
+	  cvs import src/contrib/sendmail-8.13.6 SENDMAIL v8_13_6
 
-	* Add the remainder to CVS.
+	* redirect the build directory to the new directory in the
+	  directories listed above.
 
 	* Once the new archive is in place, the old one can be physically
 	  removed from the DragonFly CVS repository.  The CVS meister would
