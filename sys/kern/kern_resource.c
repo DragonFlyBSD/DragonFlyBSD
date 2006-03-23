@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.24 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.25 2006/03/23 15:21:41 drhodus Exp $
  */
 
 #include "opt_compat.h"
@@ -401,6 +401,8 @@ kern_setrlimit(u_int which, struct rlimit *limp)
 
 /*
  * The rlimit indexed by which is returned in the second argument.
+ *
+ * MP SAFE
  */
 int
 kern_getrlimit(u_int which, struct rlimit *limp)

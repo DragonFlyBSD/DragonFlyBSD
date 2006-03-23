@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.8 2003/11/14 01:53:55 daver Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.9 2006/03/23 15:21:41 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/utsname.h>
 
 /* ARGSUSED */
+/* MP SAFE */
 int
 uname(struct uname_args *uap)
 {
