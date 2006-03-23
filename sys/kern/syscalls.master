@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.29 2006/03/23 15:21:41 drhodus Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.30 2006/03/23 20:55:07 drhodus Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -93,7 +93,7 @@
 36	STD	BSD	{ int sync(void); }
 37	STD	POSIX	{ int kill(int pid, int signum); }
 38	COMPAT	POSIX	{ int stat(char *path, struct ostat *ub); }
-39	MPSAFE	POSIX	{ pid_t getppid(void); }
+39	STD	POSIX	{ pid_t getppid(void); }
 40	COMPAT	POSIX	{ int lstat(char *path, struct ostat *ub); }
 41	STD	POSIX	{ int dup(u_int fd); }
 42	STD	POSIX	{ int pipe(void); }

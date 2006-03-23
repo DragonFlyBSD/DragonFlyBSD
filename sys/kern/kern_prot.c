@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.22 2006/03/23 15:21:41 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.23 2006/03/23 20:55:07 drhodus Exp $
  */
 
 /*
@@ -78,7 +78,6 @@ getpid(struct getpid_args *uap)
 }
 
 /* ARGSUSED */
-/* MP SAFE */
 int
 getppid(struct getppid_args *uap)
 {
