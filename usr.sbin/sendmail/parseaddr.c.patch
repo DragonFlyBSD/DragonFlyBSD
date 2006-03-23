@@ -1,0 +1,58 @@
+$DragonFly: src/usr.sbin/sendmail/Attic/parseaddr.c.patch,v 1.1.2.1 2006/03/23 20:15:01 gshapiro Exp $
+
+--- parseaddr.c	6 Jun 2005 04:25:27 -0000	1.1.1.1
++++ parseaddr.c	23 Mar 2006 19:46:01 -0000
+@@ -1337,7 +1337,7 @@
+ 					/* $&{x} replacement */
+ 					char *mval = macvalue(rp[1], e);
+ 					char **xpvp;
+-					int trsize = 0;
++					size_t trsize = 0;
+ 					static size_t pvpb1_size = 0;
+ 					static char **pvpb1 = NULL;
+ 					char pvpbuf[PSBUFSIZE];
+@@ -1352,7 +1352,7 @@
+ 					/* save the remainder of the input */
+ 					for (xpvp = pvp; *xpvp != NULL; xpvp++)
+ 						trsize += sizeof *xpvp;
+-					if ((size_t) trsize > pvpb1_size)
++					if (trsize > pvpb1_size)
+ 					{
+ 						if (pvpb1 != NULL)
+ 							sm_free(pvpb1);
+@@ -1407,7 +1407,7 @@
+ 		{
+ 			char **hbrvp;
+ 			char **xpvp;
+-			int trsize;
++			size_t trsize;
+ 			char *replac;
+ 			int endtoken;
+ 			STAB *map;
+@@ -1509,7 +1509,7 @@
+ 				*++arg_rvp = NULL;
+ 
+ 			/* save the remainder of the input string */
+-			trsize = (int) (avp - rvp + 1) * sizeof *rvp;
++			trsize = (avp - rvp + 1) * sizeof *rvp;
+ 			memmove((char *) pvpb1, (char *) rvp, trsize);
+ 
+ 			/* look it up */
+@@ -2949,7 +2949,7 @@
+ 	char *logid;
+ {
+ 	char *volatile buf;
+-	int bufsize;
++	size_t bufsize;
+ 	int saveexitstat;
+ 	int volatile rstat = EX_OK;
+ 	char **pvp;
+@@ -3163,7 +3163,7 @@
+ 	int size;
+ {
+ 	char *volatile buf;
+-	int bufsize;
++	size_t bufsize;
+ 	int volatile rstat = EX_OK;
+ 	int rsno;
+ 	bool saveQuickAbort = QuickAbort;

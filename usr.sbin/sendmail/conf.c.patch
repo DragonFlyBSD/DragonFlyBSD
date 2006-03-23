@@ -1,0 +1,51 @@
+$DragonFly: src/usr.sbin/sendmail/Attic/conf.c.patch,v 1.1.2.1 2006/03/23 20:15:01 gshapiro Exp $
+
+--- conf.c	6 Jun 2005 04:25:06 -0000	1.1.1.1
++++ conf.c	23 Mar 2006 19:45:55 -0000
+@@ -5309,8 +5309,8 @@
+ 	va_dcl
+ #endif /* __STDC__ */
+ {
+-	static char *buf = NULL;
+-	static size_t bufsize;
++	char *buf;
++	size_t bufsize;
+ 	char *begin, *end;
+ 	int save_errno;
+ 	int seq = 1;
+@@ -5334,11 +5334,8 @@
+ 	else
+ 		idlen = strlen(id) + SyslogPrefixLen;
+ 
+-	if (buf == NULL)
+-	{
+-		buf = buf0;
+-		bufsize = sizeof buf0;
+-	}
++	buf = buf0;
++	bufsize = sizeof buf0;
+ 
+ 	for (;;)
+ 	{
+@@ -5380,8 +5377,8 @@
+ 			(void) sm_io_fprintf(smioerr, SM_TIME_DEFAULT,
+ 					     "%s: %s\n", id, newstring);
+ #endif /* LOG */
+-		if (buf == buf0)
+-			buf = NULL;
++		if (buf != buf0)
++			sm_free(buf);
+ 		errno = save_errno;
+ 		return;
+ 	}
+@@ -5445,8 +5442,8 @@
+ 		(void) sm_io_fprintf(smioerr, SM_TIME_DEFAULT,
+ 				     "%s[%d]: %s\n", id, seq, begin);
+ #endif /* LOG */
+-	if (buf == buf0)
+-		buf = NULL;
++	if (buf != buf0)
++		sm_free(buf);
+ 	errno = save_errno;
+ }
+ /*

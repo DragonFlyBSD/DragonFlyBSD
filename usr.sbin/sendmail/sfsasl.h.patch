@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/sendmail/Attic/sfsasl.h.patch,v 1.1.2.1 2006/03/23 20:15:01 gshapiro Exp $
+
+--- sfsasl.h	6 Jun 2005 04:25:41 -0000	1.1.1.1
++++ sfsasl.h	23 Mar 2006 19:46:04 -0000
+@@ -17,6 +17,8 @@
+ #endif /* SASL */
+ 
+ # if STARTTLS
++extern int	tls_retry __P((SSL *, int, int, time_t, int, int,
++				const char *));
+ extern int	sfdctls __P((SM_FILE_T **, SM_FILE_T **, SSL *));
+ # endif /* STARTTLS */
+ 

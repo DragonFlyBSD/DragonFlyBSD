@@ -1,13 +1,18 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.13.2.1 2006/03/23 19:56:01 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.13.2.2 2006/03/23 20:15:01 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
 
 CONTRIBDIR=	${SMDIR}
-PATCHES=	mci.c.patch security.patch
+PATCHES=	mci.c.patch
+PATCHES+=	collect.c.patch conf.c.patch deliver.c.patch \
+		headers.c.patch mime.c.patch parseaddr.c.patch \
+		savemail.c.patch sendmail.h.patch sfsasl.c.patch \
+		sfsasl.h.patch srvrsmtp.c.patch usersmtp.c.patch \
+		util.c.patch version.c.patch
 
 BINDIR=	/usr/libexec/sendmail
 

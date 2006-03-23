@@ -1,0 +1,10 @@
+$DragonFly: src/usr.sbin/sendmail/Attic/version.c.patch,v 1.1.2.1 2006/03/23 20:15:01 gshapiro Exp $
+
+--- version.c	6 Jun 2005 04:25:50 -0000	1.1.1.1
++++ version.c	23 Mar 2006 19:46:06 -0000
+@@ -15,4 +15,4 @@
+ 
+ SM_RCSID("@(#)$Id: version.c,v 8.145 2005/03/25 18:44:44 ca Exp $")
+ 
+-char	Version[] = "8.13.4";
++char	Version[] = "8.13.4.20060308";
