@@ -1,0 +1,87 @@
+$DragonFly: src/lib/libsm/Attic/security.patch,v 1.1.2.1 2006/03/23 19:56:01 gshapiro Exp $
+
+--- fflush.c	Tue Jun 14 16:07:20 2005
++++ fflush.c	Fri Mar  3 14:25:00 2006
+@@ -145,6 +145,7 @@
+ 				return SM_IO_EOF;
+ 			}
+ 			SM_IO_WR_TIMEOUT(fp, fd, *timeout);
++			t = 0;
+ 		}
+ 	}
+ 	return 0;
+--- local.h	Tue Jun 14 16:07:20 2005
++++ local.h	Tue Feb 28 10:48:25 2006
+@@ -192,7 +192,7 @@
+ 	else \
+ 	{ \
+ 		(time)->tv_sec = (val) / 1000; \
+-		(time)->tv_usec = ((val) - ((time)->tv_sec * 1000)) * 10; \
++		(time)->tv_usec = ((val) - ((time)->tv_sec * 1000)) * 1000; \
+ 	} \
+ 	if ((val) == SM_TIME_FOREVER) \
+ 	{ \
+@@ -276,7 +276,7 @@
+ 	else \
+ 	{ \
+ 		sm_io_to.tv_sec = (to) / 1000; \
+-		sm_io_to.tv_usec = ((to) - (sm_io_to.tv_sec * 1000)) * 10; \
++		sm_io_to.tv_usec = ((to) - (sm_io_to.tv_sec * 1000)) * 1000; \
+ 	} \
+ 	if (FD_SETSIZE > 0 && (fd) >= FD_SETSIZE) \
+ 	{ \
+@@ -289,8 +289,11 @@
+ 	FD_SET((fd), &sm_io_x_mask); \
+ 	if (gettimeofday(&sm_io_to_before, NULL) < 0) \
+ 		return SM_IO_EOF; \
+-	sm_io_to_sel = select((fd) + 1, NULL, &sm_io_to_mask, &sm_io_x_mask, \
+-			      &sm_io_to); \
++	do \
++	{	\
++		sm_io_to_sel = select((fd) + 1, NULL, &sm_io_to_mask, \
++					&sm_io_x_mask, &sm_io_to); \
++	} while (sm_io_to_sel < 0 && errno == EINTR); \
+ 	if (sm_io_to_sel < 0) \
+ 	{ \
+ 		/* something went wrong, errno set */ \
+@@ -305,10 +308,9 @@
+ 	/* else loop again */ \
+ 	if (gettimeofday(&sm_io_to_after, NULL) < 0) \
+ 		return SM_IO_EOF; \
+-	timersub(&sm_io_to_before, &sm_io_to_after, &sm_io_to_diff); \
+-	timersub(&sm_io_to, &sm_io_to_diff, &sm_io_to); \
+-	(to) -= (sm_io_to.tv_sec * 1000); \
+-	(to) -= (sm_io_to.tv_usec / 10); \
++	timersub(&sm_io_to_after, &sm_io_to_before, &sm_io_to_diff); \
++	(to) -= (sm_io_to_diff.tv_sec * 1000); \
++	(to) -= (sm_io_to_diff.tv_usec / 1000); \
+ 	if ((to) < 0) \
+ 		(to) = 0; \
+ }
+
+--- refill.c	Tue Jun 14 16:07:20 2005
++++ refill.c	Tue Feb 28 10:48:25 2006
+@@ -76,8 +76,11 @@
+ 	FD_SET((fd), &sm_io_x_mask);					\
+ 	if (gettimeofday(&sm_io_to_before, NULL) < 0)			\
+ 		return SM_IO_EOF;					\
+-	(sel_ret) = select((fd) + 1, &sm_io_to_mask, NULL,		\
+-			   &sm_io_x_mask, (to));			\
++	do								\
++	{								\
++		(sel_ret) = select((fd) + 1, &sm_io_to_mask, NULL,	\
++			   	&sm_io_x_mask, (to));			\
++	} while ((sel_ret) < 0 && errno == EINTR);			\
+ 	if ((sel_ret) < 0)						\
+ 	{								\
+ 		/* something went wrong, errno set */			\
+@@ -94,7 +97,7 @@
+ 	/* calulate wall-clock time used */				\
+ 	if (gettimeofday(&sm_io_to_after, NULL) < 0)			\
+ 		return SM_IO_EOF;					\
+-	timersub(&sm_io_to_before, &sm_io_to_after, &sm_io_to_diff);	\
++	timersub(&sm_io_to_after, &sm_io_to_before, &sm_io_to_diff);	\
+ 	timersub((to), &sm_io_to_diff, (to));				\
+ }
+ 
+

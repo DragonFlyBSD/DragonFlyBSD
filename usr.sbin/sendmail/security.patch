@@ -1,0 +1,2820 @@
+$DragonFly: src/usr.sbin/sendmail/Attic/security.patch,v 1.1.2.1 2006/03/23 19:56:01 gshapiro Exp $
+
+--- collect.c	6 Jun 2005 04:25:03 -0000	1.1.1.1
++++ collect.c	23 Mar 2006 19:45:54 -0000
+@@ -15,7 +15,6 @@
+ 
+ SM_RCSID("@(#)$Id: collect.c,v 8.261 2005/02/16 23:38:51 ca Exp $")
+ 
+-static void	collecttimeout __P((int));
+ static void	eatfrom __P((char *volatile, ENVELOPE *));
+ static void	collect_doheader __P((ENVELOPE *));
+ static SM_FILE_T *collect_dfopen __P((ENVELOPE *));
+@@ -263,10 +262,6 @@
+ **		If data file cannot be created, the process is terminated.
+ */
+ 
+-static jmp_buf	CtxCollectTimeout;
+-static bool	volatile CollectProgress;
+-static SM_EVENT	*volatile CollectTimeout = NULL;
+-
+ /* values for input state machine */
+ #define IS_NORM		0	/* middle of line */
+ #define IS_BOL		1	/* beginning of line */
+@@ -288,27 +283,31 @@
+ 	register ENVELOPE *e;
+ 	bool rsetsize;
+ {
+-	register SM_FILE_T *volatile df;
+-	volatile bool ignrdot;
+-	volatile int dbto;
+-	register char *volatile bp;
+-	volatile int c;
+-	volatile bool inputerr;
++	register SM_FILE_T *df;
++	bool ignrdot;
++	int dbto;
++	register char *bp;
++	int c;
++	bool inputerr;
+ 	bool headeronly;
+-	char *volatile buf;
+-	volatile int buflen;
+-	volatile int istate;
+-	volatile int mstate;
+-	volatile int hdrslen;
+-	volatile int numhdrs;
+-	volatile int afd;
+-	unsigned char *volatile pbp;
++	char *buf;
++	int buflen;
++	int istate;
++	int mstate;
++	int hdrslen;
++	int numhdrs;
++	int afd;
++	unsigned char *pbp;
+ 	unsigned char peekbuf[8];
+ 	char bufbuf[MAXLINE];
+ 
+ 	df = NULL;
+ 	ignrdot = smtpmode ? false : IgnrDot;
+-	dbto = smtpmode ? (int) TimeOuts.to_datablock : 0;
++
++	/* timeout for I/O functions is in milliseconds */
++	dbto = smtpmode ? ((int) TimeOuts.to_datablock * 1000)
++			: SM_TIME_FOREVER;
++	sm_io_setinfo(fp, SM_IO_WHAT_TIMEOUT, &dbto);
+ 	c = SM_IO_EOF;
+ 	inputerr = false;
+ 	headeronly = hdrp != NULL;
+@@ -320,7 +319,6 @@
+ 	pbp = peekbuf;
+ 	istate = IS_BOL;
+ 	mstate = SaveFrom ? MS_HEADER : MS_UFROM;
+-	CollectProgress = false;
+ 
+ 	/*
+ 	**  Tell ARPANET to go ahead.
+@@ -341,32 +339,6 @@
+ 	**	the larger picture (e.g., header versus body).
+ 	*/
+ 
+-	if (dbto != 0)
+-	{
+-		/* handle possible input timeout */
+-		if (setjmp(CtxCollectTimeout) != 0)
+-		{
+-			if (LogLevel > 2)
+-				sm_syslog(LOG_NOTICE, e->e_id,
+-					  "timeout waiting for input from %s during message collect",
+-					  CURHOSTNAME);
+-			errno = 0;
+-			if (smtpmode)
+-			{
+-				/*
+-				**  Override e_message in usrerr() as this
+-				**  is the reason for failure that should
+-				**  be logged for undelivered recipients.
+-				*/
+-
+-				e->e_message = NULL;
+-			}
+-			usrerr("451 4.4.1 timeout waiting for input during message collect");
+-			goto readerr;
+-		}
+-		CollectTimeout = sm_setevent(dbto, collecttimeout, dbto);
+-	}
+-
+ 	if (rsetsize)
+ 		e->e_msgsize = 0;
+ 	for (;;)
+@@ -390,9 +362,26 @@
+ 						sm_io_clearerr(fp);
+ 						continue;
+ 					}
++
++					/* timeout? */
++					if (c == SM_IO_EOF && errno == EAGAIN
++					    && smtpmode)
++					{
++						/*
++						**  Override e_message in
++						**  usrerr() as this is the
++						**  reason for failure that
++						**  should be logged for
++						**  undelivered recipients.
++						*/
++
++						e->e_message = NULL;
++						errno = 0;
++						inputerr = true;
++						goto readabort;
++					}
+ 					break;
+ 				}
+-				CollectProgress = true;
+ 				if (TrafficLogFile != NULL && !headeronly)
+ 				{
+ 					if (istate == IS_BOL)
+@@ -538,6 +527,18 @@
+ 					buflen *= 2;
+ 				else
+ 					buflen += MEMCHUNKSIZE;
++				if (buflen <= 0)
++				{
++					sm_syslog(LOG_NOTICE, e->e_id,
++						  "header overflow from %s during message collect",
++						  CURHOSTNAME);
++					errno = 0;
++					e->e_flags |= EF_CLRQUEUE;
++					e->e_status = "5.6.0";
++					usrerrenh(e->e_status,
++						  "552 Headers too large");
++					goto discard;
++				}
+ 				buf = xalloc(buflen);
+ 				memmove(buf, obuf, bp - obuf);
+ 				bp = &buf[bp - obuf];
+@@ -581,6 +582,7 @@
+ 					usrerrenh(e->e_status,
+ 						  "552 Headers too large (%d max)",
+ 						  MaxHeadersLength);
++  discard:
+ 					mstate = MS_DISCARD;
+ 				}
+ 			}
+@@ -620,6 +622,24 @@
+ 				sm_io_clearerr(fp);
+ 				errno = 0;
+ 				c = sm_io_getc(fp, SM_TIME_DEFAULT);
++
++				/* timeout? */
++				if (c == SM_IO_EOF && errno == EAGAIN
++				    && smtpmode)
++				{
++					/*
++					**  Override e_message in
++					**  usrerr() as this is the
++					**  reason for failure that
++					**  should be logged for
++					**  undelivered recipients.
++					*/
++
++					e->e_message = NULL;
++					errno = 0;
++					inputerr = true;
++					goto readabort;
++				}
+ 			} while (c == SM_IO_EOF && errno == EINTR);
+ 			if (c != SM_IO_EOF)
+ 				(void) sm_io_ungetc(fp, SM_TIME_DEFAULT, c);
+@@ -629,8 +649,12 @@
+ 				continue;
+ 			}
+ 
+-			/* trim off trailing CRLF or NL */
+ 			SM_ASSERT(bp > buf);
++
++			/* guaranteed by isheader(buf) */
++			SM_ASSERT(*(bp - 1) != '\n' || bp > buf + 1);
++
++			/* trim off trailing CRLF or NL */
+ 			if (*--bp != '\n' || *--bp != '\r')
+ 				bp++;
+ 			*bp = '\0';
+@@ -696,10 +720,6 @@
+ 		inputerr = true;
+ 	}
+ 
+-	/* reset global timer */
+-	if (CollectTimeout != NULL)
+-		sm_clrevent(CollectTimeout);
+-
+ 	if (headeronly)
+ 		return;
+ 
+@@ -786,6 +806,7 @@
+ 	}
+ 
+ 	/* An EOF when running SMTP is an error */
++  readabort:
+ 	if (inputerr && (OpMode == MD_SMTP || OpMode == MD_DAEMON))
+ 	{
+ 		char *host;
+@@ -808,13 +829,14 @@
+ 				problem, host,
+ 				shortenstring(e->e_from.q_paddr, MAXSHORTSTR));
+ 		if (sm_io_eof(fp))
+-			usrerr("451 4.4.1 collect: %s on connection from %s, from=%s",
++			usrerr("421 4.4.1 collect: %s on connection from %s, from=%s",
+ 				problem, host,
+ 				shortenstring(e->e_from.q_paddr, MAXSHORTSTR));
+ 		else
+-			syserr("451 4.4.1 collect: %s on connection from %s, from=%s",
++			syserr("421 4.4.1 collect: %s on connection from %s, from=%s",
+ 				problem, host,
+ 				shortenstring(e->e_from.q_paddr, MAXSHORTSTR));
++		flush_errors(true);
+ 
+ 		/* don't return an error indication */
+ 		e->e_to = NULL;
+@@ -907,39 +929,6 @@
+ 	}
+ }
+ 
+-static void
+-collecttimeout(timeout)
+-	int timeout;
+-{
+-	int save_errno = errno;
+-
+-	/*
+-	**  NOTE: THIS CAN BE CALLED FROM A SIGNAL HANDLER.  DO NOT ADD
+-	**	ANYTHING TO THIS ROUTINE UNLESS YOU KNOW WHAT YOU ARE
+-	**	DOING.
+-	*/
+-
+-	if (CollectProgress)
+-	{
+-		/* reset the timeout */
+-		CollectTimeout = sm_sigsafe_setevent(timeout, collecttimeout,
+-						     timeout);
+-		CollectProgress = false;
+-	}
+-	else
+-	{
+-		/* event is done */
+-		CollectTimeout = NULL;
+-	}
+-
+-	/* if no progress was made or problem resetting event, die now */
+-	if (CollectTimeout == NULL)
+-	{
+-		errno = ETIMEDOUT;
+-		longjmp(CtxCollectTimeout, 1);
+-	}
+-	errno = save_errno;
+-}
+ /*
+ **  DFERROR -- signal error on writing the data file.
+ **
+--- conf.c	6 Jun 2005 04:25:06 -0000	1.1.1.1
++++ conf.c	23 Mar 2006 19:45:55 -0000
+@@ -5309,8 +5309,8 @@
+ 	va_dcl
+ #endif /* __STDC__ */
+ {
+-	static char *buf = NULL;
+-	static size_t bufsize;
++	char *buf;
++	size_t bufsize;
+ 	char *begin, *end;
+ 	int save_errno;
+ 	int seq = 1;
+@@ -5334,11 +5334,8 @@
+ 	else
+ 		idlen = strlen(id) + SyslogPrefixLen;
+ 
+-	if (buf == NULL)
+-	{
+-		buf = buf0;
+-		bufsize = sizeof buf0;
+-	}
++	buf = buf0;
++	bufsize = sizeof buf0;
+ 
+ 	for (;;)
+ 	{
+@@ -5380,8 +5377,8 @@
+ 			(void) sm_io_fprintf(smioerr, SM_TIME_DEFAULT,
+ 					     "%s: %s\n", id, newstring);
+ #endif /* LOG */
+-		if (buf == buf0)
+-			buf = NULL;
++		if (buf != buf0)
++			sm_free(buf);
+ 		errno = save_errno;
+ 		return;
+ 	}
+@@ -5445,8 +5442,8 @@
+ 		(void) sm_io_fprintf(smioerr, SM_TIME_DEFAULT,
+ 				     "%s[%d]: %s\n", id, seq, begin);
+ #endif /* LOG */
+-	if (buf == buf0)
+-		buf = NULL;
++	if (buf != buf0)
++		sm_free(buf);
+ 	errno = save_errno;
+ }
+ /*
+--- deliver.c	6 Jun 2005 04:25:12 -0000	1.1.1.1
++++ deliver.c	23 Mar 2006 19:45:57 -0000
+@@ -3257,16 +3257,33 @@
+ 	}
+ 	else if (!clever)
+ 	{
++		bool ok;
++
+ 		/*
+ 		**  Format and send message.
+ 		*/
+ 
+-		putfromline(mci, e);
+-		(*e->e_puthdr)(mci, e->e_header, e, M87F_OUTER);
+-		(*e->e_putbody)(mci, e, NULL);
++		rcode = EX_OK;
++		errno = 0;
++		ok = putfromline(mci, e);
++		if (ok)
++			ok = (*e->e_puthdr)(mci, e->e_header, e, M87F_OUTER);
++		if (ok)
++			ok = (*e->e_putbody)(mci, e, NULL);
+ 
+-		/* get the exit status */
++		/*
++		**  Ignore an I/O error that was caused by EPIPE.
++		**  Some broken mailers don't read the entire body
++		**  but just exit() thus causing an I/O error.
++		*/
++
++		if (!ok && (sm_io_error(mci->mci_out) && errno == EPIPE))
++			ok = true;
++
++		/* (always) get the exit status */
+ 		rcode = endmailer(mci, e, pv);
++		if (!ok)
++			rcode = EX_TEMPFAIL;
+ 		if (rcode == EX_TEMPFAIL && SmtpError[0] == '\0')
+ 		{
+ 			/*
+@@ -4430,13 +4447,13 @@
+ **		e -- the envelope.
+ **
+ **	Returns:
+-**		none
++**		true iff line was written successfully
+ **
+ **	Side Effects:
+ **		outputs some text to fp.
+ */
+ 
+-void
++bool
+ putfromline(mci, e)
+ 	register MCI *mci;
+ 	ENVELOPE *e;
+@@ -4446,7 +4463,7 @@
+ 	char xbuf[MAXLINE];
+ 
+ 	if (bitnset(M_NHDR, mci->mci_mailer->m_flags))
+-		return;
++		return true;
+ 
+ 	mci->mci_flags |= MCIF_INHEADER;
+ 
+@@ -4487,8 +4504,9 @@
+ 		}
+ 	}
+ 	expand(template, buf, sizeof buf, e);
+-	putxline(buf, strlen(buf), mci, PXLF_HEADER);
++	return putxline(buf, strlen(buf), mci, PXLF_HEADER);
+ }
++
+ /*
+ **  PUTBODY -- put the body of a message.
+ **
+@@ -4499,7 +4517,7 @@
+ **			not be permitted in the resulting message.
+ **
+ **	Returns:
+-**		none.
++**		true iff message was written successfully
+ **
+ **	Side Effects:
+ **		The message is written onto fp.
+@@ -4510,13 +4528,15 @@
+ #define OS_CR		1	/* read a carriage return */
+ #define OS_INLINE	2	/* putting rest of line */
+ 
+-void
++bool
+ putbody(mci, e, separator)
+ 	register MCI *mci;
+ 	register ENVELOPE *e;
+ 	char *separator;
+ {
+ 	bool dead = false;
++	bool ioerr = false;
++	int save_errno;
+ 	char buf[MAXLINE];
+ #if MIME8TO7
+ 	char *boundaries[MAXMIMENESTING + 1];
+@@ -4546,10 +4566,12 @@
+ 	{
+ 		if (bitset(MCIF_INHEADER, mci->mci_flags))
+ 		{
+-			putline("", mci);
++			if (!putline("", mci))
++				goto writeerr;
+ 			mci->mci_flags &= ~MCIF_INHEADER;
+ 		}
+-		putline("<<< No Message Collected >>>", mci);
++		if (!putline("<<< No Message Collected >>>", mci))
++			goto writeerr;
+ 		goto endofmessage;
+ 	}
+ 
+@@ -4578,26 +4600,31 @@
+ 		*/
+ 
+ 		/* make sure it looks like a MIME message */
+-		if (hvalue("MIME-Version", e->e_header) == NULL)
+-			putline("MIME-Version: 1.0", mci);
++		if (hvalue("MIME-Version", e->e_header) == NULL &&
++		    !putline("MIME-Version: 1.0", mci))
++			goto writeerr;
+ 
+ 		if (hvalue("Content-Type", e->e_header) == NULL)
+ 		{
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 					   "Content-Type: text/plain; charset=%s",
+ 					   defcharset(e));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 
+ 		/* now do the hard work */
+ 		boundaries[0] = NULL;
+ 		mci->mci_flags |= MCIF_INHEADER;
+-		(void) mime8to7(mci, e->e_header, e, boundaries, M87F_OUTER);
++		if (mime8to7(mci, e->e_header, e, boundaries, M87F_OUTER) ==
++								SM_IO_EOF)
++			goto writeerr;
+ 	}
+ # if MIME7TO8
+ 	else if (bitset(MCIF_CVT7TO8, mci->mci_flags))
+ 	{
+-		(void) mime7to8(mci, e->e_header, e);
++		if (!mime7to8(mci, e->e_header, e))
++			goto writeerr;
+ 	}
+ # endif /* MIME7TO8 */
+ 	else if (MaxMimeHeaderLength > 0 || MaxMimeFieldLength > 0)
+@@ -4619,8 +4646,9 @@
+ 		if (bitset(EF_DONT_MIME, e->e_flags))
+ 			SuprErrs = true;
+ 
+-		(void) mime8to7(mci, e->e_header, e, boundaries,
+-				M87F_OUTER|M87F_NO8TO7);
++		if (mime8to7(mci, e->e_header, e, boundaries,
++				M87F_OUTER|M87F_NO8TO7) == SM_IO_EOF)
++			goto writeerr;
+ 
+ 		/* restore SuprErrs */
+ 		SuprErrs = oldsuprerrs;
+@@ -4640,7 +4668,8 @@
+ 
+ 		if (bitset(MCIF_INHEADER, mci->mci_flags))
+ 		{
+-			putline("", mci);
++			if (!putline("", mci))
++				goto writeerr;
+ 			mci->mci_flags &= ~MCIF_INHEADER;
+ 		}
+ 
+@@ -4731,11 +4760,6 @@
+ 						dead = true;
+ 						continue;
+ 					}
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 					pos++;
+ 				}
+ 				for (xp = buf; xp < bp; xp++)
+@@ -4748,11 +4772,6 @@
+ 						dead = true;
+ 						break;
+ 					}
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 				}
+ 				if (dead)
+ 					continue;
+@@ -4763,11 +4782,6 @@
+ 							mci->mci_mailer->m_eol)
+ 							== SM_IO_EOF)
+ 						break;
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 					pos = 0;
+ 				}
+ 				else
+@@ -4801,11 +4815,6 @@
+ 							mci->mci_mailer->m_eol)
+ 							== SM_IO_EOF)
+ 						continue;
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 
+ 					if (TrafficLogFile != NULL)
+ 					{
+@@ -4867,11 +4876,6 @@
+ 							dead = true;
+ 							continue;
+ 						}
+-						else
+-						{
+-							/* record progress for DATA timeout */
+-							DataProgress = true;
+-						}
+ 						pos++;
+ 						continue;
+ 					}
+@@ -4887,11 +4891,6 @@
+ 						dead = true;
+ 						continue;
+ 					}
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 
+ 					if (TrafficLogFile != NULL)
+ 					{
+@@ -4917,11 +4916,6 @@
+ 							mci->mci_mailer->m_eol)
+ 							== SM_IO_EOF)
+ 						continue;
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 					pos = 0;
+ 					ostate = OS_HEAD;
+ 				}
+@@ -4939,11 +4933,6 @@
+ 						dead = true;
+ 						continue;
+ 					}
+-					else
+-					{
+-						/* record progress for DATA timeout */
+-						DataProgress = true;
+-					}
+ 					pos++;
+ 					ostate = OS_INLINE;
+ 				}
+@@ -4970,11 +4959,6 @@
+ 					dead = true;
+ 					break;
+ 				}
+-				else
+-				{
+-					/* record progress for DATA timeout */
+-					DataProgress = true;
+-				}
+ 			}
+ 			pos += bp - buf;
+ 		}
+@@ -4984,11 +4968,9 @@
+ 				(void) sm_io_fputs(TrafficLogFile,
+ 						   SM_TIME_DEFAULT,
+ 						   mci->mci_mailer->m_eol);
+-			(void) sm_io_fputs(mci->mci_out, SM_TIME_DEFAULT,
+-					   mci->mci_mailer->m_eol);
+-
+-			/* record progress for DATA timeout */
+-			DataProgress = true;
++			if (sm_io_fputs(mci->mci_out, SM_TIME_DEFAULT,
++					   mci->mci_mailer->m_eol) == SM_IO_EOF)
++				goto writeerr;
+ 		}
+ 	}
+ 
+@@ -4998,6 +4980,7 @@
+ 		       qid_printqueue(e->e_dfqgrp, e->e_dfqdir),
+ 		       DATAFL_LETTER, e->e_id);
+ 		ExitStat = EX_IOERR;
++		ioerr = true;
+ 	}
+ 
+ endofmessage:
+@@ -5012,23 +4995,35 @@
+ 	**  offset to match.
+ 	*/
+ 
++	save_errno = errno;
+ 	if (e->e_dfp != NULL)
+ 		(void) bfrewind(e->e_dfp);
+ 
+ 	/* some mailers want extra blank line at end of message */
+ 	if (!dead && bitnset(M_BLANKEND, mci->mci_mailer->m_flags) &&
+ 	    buf[0] != '\0' && buf[0] != '\n')
+-		putline("", mci);
++	{
++		if (!putline("", mci))
++			goto writeerr;
++	}
+ 
+-	(void) sm_io_flush(mci->mci_out, SM_TIME_DEFAULT);
+-	if (sm_io_error(mci->mci_out) && errno != EPIPE)
++	if (!dead &&
++	    (sm_io_flush(mci->mci_out, SM_TIME_DEFAULT) == SM_IO_EOF ||
++	     (sm_io_error(mci->mci_out) && errno != EPIPE)))
+ 	{
++		save_errno = errno;
+ 		syserr("putbody: write error");
+ 		ExitStat = EX_IOERR;
++		ioerr = true;
+ 	}
+ 
+-	errno = 0;
++	errno = save_errno;
++	return !dead && !ioerr;
++
++  writeerr:
++	return false;
+ }
++
+ /*
+ **  MAILFILE -- Send a message to a file.
+ **
+@@ -5559,14 +5554,14 @@
+ 		}
+ #endif /* MIME7TO8 */
+ 
+-		putfromline(&mcibuf, e);
+-		(*e->e_puthdr)(&mcibuf, e->e_header, e, M87F_OUTER);
+-		(*e->e_putbody)(&mcibuf, e, NULL);
+-		putline("\n", &mcibuf);
+-		if (sm_io_flush(f, SM_TIME_DEFAULT) != 0 ||
++		if (!putfromline(&mcibuf, e) ||
++		    !(*e->e_puthdr)(&mcibuf, e->e_header, e, M87F_OUTER) ||
++		    !(*e->e_putbody)(&mcibuf, e, NULL) ||
++		    !putline("\n", &mcibuf) ||
++		    (sm_io_flush(f, SM_TIME_DEFAULT) != 0 ||
+ 		    (SuperSafe != SAFE_NO &&
+ 		     fsync(sm_io_getinfo(f, SM_IO_WHAT_FD, NULL)) < 0) ||
+-		    sm_io_error(f))
++		    sm_io_error(f)))
+ 		{
+ 			setstat(EX_IOERR);
+ #if !NOFTRUNCATE
+@@ -6128,86 +6123,23 @@
+ ssl_retry:
+ 	if ((result = SSL_connect(clt_ssl)) <= 0)
+ 	{
+-		int i;
+-		bool timedout;
+-		time_t left;
+-		time_t now = curtime();
+-		struct timeval tv;
++		int i, ssl_err;
+ 
+-		/* what to do in this case? */
+-		i = SSL_get_error(clt_ssl, result);
++		ssl_err = SSL_get_error(clt_ssl, result);
++		i = tls_retry(clt_ssl, rfd, wfd, tlsstart,
++			TimeOuts.to_starttls, ssl_err, "client");
++		if (i > 0)
++			goto ssl_retry;
+ 
+-		/*
+-		**  For SSL_ERROR_WANT_{READ,WRITE}:
+-		**  There is not a complete SSL record available yet
+-		**  or there is only a partial SSL record removed from
+-		**  the network (socket) buffer into the SSL buffer.
+-		**  The SSL_connect will only succeed when a full
+-		**  SSL record is available (assuming a "real" error
+-		**  doesn't happen). To handle when a "real" error
+-		**  does happen the select is set for exceptions too.
+-		**  The connection may be re-negotiated during this time
+-		**  so both read and write "want errors" need to be handled.
+-		**  A select() exception loops back so that a proper SSL
+-		**  error message can be gotten.
+-		*/
+-
+-		left = TimeOuts.to_starttls - (now - tlsstart);
+-		timedout = left <= 0;
+-		if (!timedout)
+-		{
+-			tv.tv_sec = left;
+-			tv.tv_usec = 0;
+-		}
+-
+-		if (!timedout && FD_SETSIZE > 0 &&
+-		    (rfd >= FD_SETSIZE ||
+-		     (i == SSL_ERROR_WANT_WRITE && wfd >= FD_SETSIZE)))
+-		{
+-			if (LogLevel > 5)
+-			{
+-				sm_syslog(LOG_ERR, e->e_id,
+-					  "STARTTLS=client, error: fd %d/%d too large",
+-					  rfd, wfd);
+-			if (LogLevel > 8)
+-				tlslogerr("client");
+-			}
+-			errno = EINVAL;
+-			goto tlsfail;
+-		}
+-		if (!timedout && i == SSL_ERROR_WANT_READ)
+-		{
+-			fd_set ssl_maskr, ssl_maskx;
+-
+-			FD_ZERO(&ssl_maskr);
+-			FD_SET(rfd, &ssl_maskr);
+-			FD_ZERO(&ssl_maskx);
+-			FD_SET(rfd, &ssl_maskx);
+-			if (select(rfd + 1, &ssl_maskr, NULL, &ssl_maskx, &tv)
+-			    > 0)
+-				goto ssl_retry;
+-		}
+-		if (!timedout && i == SSL_ERROR_WANT_WRITE)
+-		{
+-			fd_set ssl_maskw, ssl_maskx;
+-
+-			FD_ZERO(&ssl_maskw);
+-			FD_SET(wfd, &ssl_maskw);
+-			FD_ZERO(&ssl_maskx);
+-			FD_SET(rfd, &ssl_maskx);
+-			if (select(wfd + 1, NULL, &ssl_maskw, &ssl_maskx, &tv)
+-			    > 0)
+-				goto ssl_retry;
+-		}
+ 		if (LogLevel > 5)
+ 		{
+-			sm_syslog(LOG_ERR, e->e_id,
+-				  "STARTTLS=client, error: connect failed=%d, SSL_error=%d, timedout=%d, errno=%d",
+-				  result, i, (int) timedout, errno);
++			sm_syslog(LOG_WARNING, NOQID,
++				  "STARTTLS=client, error: connect failed=%d, SSL_error=%d, errno=%d, retry=%d",
++				  result, ssl_err, errno, i);
+ 			if (LogLevel > 8)
+ 				tlslogerr("client");
+ 		}
+-tlsfail:
++
+ 		SSL_free(clt_ssl);
+ 		clt_ssl = NULL;
+ 		return EX_SOFTWARE;
+--- headers.c	6 Jun 2005 04:25:15 -0000	1.1.1.1
++++ headers.c	23 Mar 2006 19:45:58 -0000
+@@ -18,7 +18,7 @@
+ static HDR	*allocheader __P((char *, char *, int, SM_RPOOL_T *));
+ static size_t	fix_mime_header __P((HDR *, ENVELOPE *));
+ static int	priencode __P((char *));
+-static void	put_vanilla_header __P((HDR *, char *, MCI *));
++static bool	put_vanilla_header __P((HDR *, char *, MCI *));
+ 
+ /*
+ **  SETUPHEADERS -- initialize headers in symbol table
+@@ -993,7 +993,6 @@
+ 	char *name;
+ 	register char *sbp;
+ 	register char *p;
+-	int l;
+ 	char hbuf[MAXNAME + 1];
+ 	char sbuf[MAXLINE + 1];
+ 	char mbuf[MAXNAME + 1];
+@@ -1002,6 +1001,8 @@
+ 	/* XXX do we still need this? sm_syslog() replaces control chars */
+ 	if (msgid != NULL)
+ 	{
++		size_t l;
++
+ 		l = strlen(msgid);
+ 		if (l > sizeof mbuf - 1)
+ 			l = sizeof mbuf - 1;
+@@ -1541,13 +1542,13 @@
+ **		flags -- MIME conversion flags.
+ **
+ **	Returns:
+-**		none.
++**		success
+ **
+ **	Side Effects:
+ **		none.
+ */
+ 
+-void
++bool
+ putheader(mci, hdr, e, flags)
+ 	register MCI *mci;
+ 	HDR *hdr;
+@@ -1682,7 +1683,8 @@
+ 		{
+ 			if (tTd(34, 11))
+ 				sm_dprintf("\n");
+-			put_vanilla_header(h, p, mci);
++			if (!put_vanilla_header(h, p, mci))
++				goto writeerr;
+ 			continue;
+ 		}
+ 
+@@ -1741,7 +1743,8 @@
+ 				/* no other recipient headers: truncate value */
+ 				(void) sm_strlcpyn(obuf, sizeof obuf, 2,
+ 						   h->h_field, ":");
+-				putline(obuf, mci);
++				if (!putline(obuf, mci))
++					goto writeerr;
+ 			}
+ 			continue;
+ 		}
+@@ -1760,7 +1763,8 @@
+ 		}
+ 		else
+ 		{
+-			put_vanilla_header(h, p, mci);
++			if (!put_vanilla_header(h, p, mci))
++				goto writeerr;
+ 		}
+ 	}
+ 
+@@ -1777,18 +1781,25 @@
+ 	    !bitset(MCIF_CVT8TO7|MCIF_CVT7TO8|MCIF_INMIME, mci->mci_flags) &&
+ 	    hvalue("MIME-Version", e->e_header) == NULL)
+ 	{
+-		putline("MIME-Version: 1.0", mci);
++		if (!putline("MIME-Version: 1.0", mci))
++			goto writeerr;
+ 		if (hvalue("Content-Type", e->e_header) == NULL)
+ 		{
+ 			(void) sm_snprintf(obuf, sizeof obuf,
+ 					"Content-Type: text/plain; charset=%s",
+ 					defcharset(e));
+-			putline(obuf, mci);
++			if (!putline(obuf, mci))
++				goto writeerr;
+ 		}
+-		if (hvalue("Content-Transfer-Encoding", e->e_header) == NULL)
+-			putline("Content-Transfer-Encoding: 8bit", mci);
++		if (hvalue("Content-Transfer-Encoding", e->e_header) == NULL
++		    && !putline("Content-Transfer-Encoding: 8bit", mci))
++			goto writeerr;
+ 	}
+ #endif /* MIME8TO7 */
++	return true;
++
++  writeerr:
++	return false;
+ }
+ /*
+ **  PUT_VANILLA_HEADER -- output a fairly ordinary header
+@@ -1799,10 +1810,10 @@
+ **		mci -- the connection info for output
+ **
+ **	Returns:
+-**		none.
++**		success
+ */
+ 
+-static void
++static bool
+ put_vanilla_header(h, v, mci)
+ 	HDR *h;
+ 	char *v;
+@@ -1833,7 +1844,8 @@
+ 			l = SPACELEFT(obuf, obp) - 1;
+ 
+ 		(void) sm_snprintf(obp, SPACELEFT(obuf, obp), "%.*s", l, v);
+-		putxline(obuf, strlen(obuf), mci, putflags);
++		if (!putxline(obuf, strlen(obuf), mci, putflags))
++			goto writeerr;
+ 		v += l + 1;
+ 		obp = obuf;
+ 		if (*v != ' ' && *v != '\t')
+@@ -1843,7 +1855,10 @@
+ 	/* XXX This is broken for SPACELEFT()==0 */
+ 	(void) sm_snprintf(obp, SPACELEFT(obuf, obp), "%.*s",
+ 			   (int) (SPACELEFT(obuf, obp) - 1), v);
+-	putxline(obuf, strlen(obuf), mci, putflags);
++	return putxline(obuf, strlen(obuf), mci, putflags);
++
++  writeerr:
++	return false;
+ }
+ /*
+ **  COMMAIZE -- output a header field, making a comma-translated list.
+@@ -1856,13 +1871,13 @@
+ **		e -- the envelope containing the message.
+ **
+ **	Returns:
+-**		none.
++**		success
+ **
+ **	Side Effects:
+ **		outputs "p" to file "fp".
+ */
+ 
+-void
++bool
+ commaize(h, p, oldstyle, mci, e)
+ 	register HDR *h;
+ 	register char *p;
+@@ -2001,13 +2016,6 @@
+ 		}
+ 		name = denlstring(name, false, true);
+ 
+-		/*
+-		**  record data progress so DNS timeouts
+-		**  don't cause DATA timeouts
+-		*/
+-
+-		DataProgress = true;
+-
+ 		/* output the name with nice formatting */
+ 		opos += strlen(name);
+ 		if (!firstone)
+@@ -2015,7 +2023,8 @@
+ 		if (opos > omax && !firstone)
+ 		{
+ 			(void) sm_strlcpy(obp, ",\n", SPACELEFT(obuf, obp));
+-			putxline(obuf, strlen(obuf), mci, putflags);
++			if (!putxline(obuf, strlen(obuf), mci, putflags))
++				goto writeerr;
+ 			obp = obuf;
+ 			(void) sm_strlcpy(obp, "        ", sizeof obuf);
+ 			opos = strlen(obp);
+@@ -2037,8 +2046,12 @@
+ 		*obp = '\0';
+ 	else
+ 		obuf[sizeof obuf - 1] = '\0';
+-	putxline(obuf, strlen(obuf), mci, putflags);
++	return putxline(obuf, strlen(obuf), mci, putflags);
++
++  writeerr:
++	return false;
+ }
++
+ /*
+ **  COPYHEADER -- copy header list
+ **
+--- mime.c	6 Jun 2005 04:25:25 -0000	1.1.1.1
++++ mime.c	23 Mar 2006 19:46:00 -0000
+@@ -86,6 +86,7 @@
+ **		  MBT_FINAL -- the final boundary
+ **		  MBT_INTERMED -- an intermediate boundary
+ **		  MBT_NOTSEP -- an end of file
++**		  SM_IO_EOF -- I/O error occurred
+ */
+ 
+ struct args
+@@ -298,7 +299,8 @@
+ 		mci->mci_flags |= MCIF_INMIME;
+ 
+ 		/* skip the early "comment" prologue */
+-		putline("", mci);
++		if (!putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 		bt = MBT_FINAL;
+ 		while (sm_io_fgets(e->e_dfp, SM_TIME_DEFAULT, buf, sizeof buf)
+@@ -307,8 +309,9 @@
+ 			bt = mimeboundary(buf, boundaries);
+ 			if (bt != MBT_NOTSEP)
+ 				break;
+-			putxline(buf, strlen(buf), mci,
+-				 PXLF_MAPFROM|PXLF_STRIP8BIT);
++			if (!putxline(buf, strlen(buf), mci,
++					PXLF_MAPFROM|PXLF_STRIP8BIT))
++				goto writeerr;
+ 			if (tTd(43, 99))
+ 				sm_dprintf("  ...%s", buf);
+ 		}
+@@ -319,19 +322,24 @@
+ 			auto HDR *hdr = NULL;
+ 
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2, "--", bbuf);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 			if (tTd(43, 35))
+ 				sm_dprintf("  ...%s\n", buf);
+ 			collect(e->e_dfp, false, &hdr, e, false);
+ 			if (tTd(43, 101))
+ 				putline("+++after collect", mci);
+-			putheader(mci, hdr, e, flags);
++			if (!putheader(mci, hdr, e, flags))
++				goto writeerr;
+ 			if (tTd(43, 101))
+ 				putline("+++after putheader", mci);
+ 			bt = mime8to7(mci, hdr, e, boundaries, flags);
++			if (bt == SM_IO_EOF)
++				goto writeerr;
+ 		}
+ 		(void) sm_strlcpyn(buf, sizeof buf, 3, "--", bbuf, "--");
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 		if (tTd(43, 35))
+ 			sm_dprintf("  ...%s\n", buf);
+ 		boundaries[i] = NULL;
+@@ -344,8 +352,9 @@
+ 			bt = mimeboundary(buf, boundaries);
+ 			if (bt != MBT_NOTSEP)
+ 				break;
+-			putxline(buf, strlen(buf), mci,
+-				 PXLF_MAPFROM|PXLF_STRIP8BIT);
++			if (!putxline(buf, strlen(buf), mci,
++					PXLF_MAPFROM|PXLF_STRIP8BIT))
++				goto writeerr;
+ 			if (tTd(43, 99))
+ 				sm_dprintf("  ...%s", buf);
+ 		}
+@@ -373,18 +382,21 @@
+ 		{
+ 			auto HDR *hdr = NULL;
+ 
+-			putline("", mci);
++			if (!putline("", mci))
++				goto writeerr;
+ 
+ 			mci->mci_flags |= MCIF_INMIME;
+ 			collect(e->e_dfp, false, &hdr, e, false);
+ 			if (tTd(43, 101))
+ 				putline("+++after collect", mci);
+-			putheader(mci, hdr, e, flags);
++			if (!putheader(mci, hdr, e, flags))
++				goto writeerr;
+ 			if (tTd(43, 101))
+ 				putline("+++after putheader", mci);
+ 			if (hvalue("MIME-Version", hdr) == NULL &&
+-			    !bitset(M87F_NO8TO7, flags))
+-				putline("MIME-Version: 1.0", mci);
++			    !bitset(M87F_NO8TO7, flags) &&
++			    !putline("MIME-Version: 1.0", mci))
++				goto writeerr;
+ 			bt = mime8to7(mci, hdr, e, boundaries, flags);
+ 			mci->mci_flags &= ~MCIF_INMIME;
+ 			return bt;
+@@ -480,11 +492,13 @@
+ 
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 				"Content-Transfer-Encoding: %.200s", cte);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 			if (tTd(43, 36))
+ 				sm_dprintf("  ...%s\n", buf);
+ 		}
+-		putline("", mci);
++		if (!putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 		while (sm_io_fgets(e->e_dfp, SM_TIME_DEFAULT, buf, sizeof buf)
+ 			!= NULL)
+@@ -492,7 +506,8 @@
+ 			bt = mimeboundary(buf, boundaries);
+ 			if (bt != MBT_NOTSEP)
+ 				break;
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 		if (sm_io_eof(e->e_dfp))
+ 			bt = MBT_FINAL;
+@@ -505,12 +520,13 @@
+ 
+ 		if (tTd(43, 36))
+ 			sm_dprintf("  ...Content-Transfer-Encoding: base64\n");
+-		putline("Content-Transfer-Encoding: base64", mci);
++		if (!putline("Content-Transfer-Encoding: base64", mci))
++			goto writeerr;
+ 		(void) sm_snprintf(buf, sizeof buf,
+ 			"X-MIME-Autoconverted: from 8bit to base64 by %s id %s",
+ 			MyHostName, e->e_id);
+-		putline(buf, mci);
+-		putline("", mci);
++		if (!putline(buf, mci) || !putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 		while ((c1 = mime_getchar_crlf(e->e_dfp, boundaries, &bt)) !=
+ 			SM_IO_EOF)
+@@ -518,7 +534,8 @@
+ 			if (linelen > 71)
+ 			{
+ 				*bp = '\0';
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 				linelen = 0;
+ 				bp = buf;
+ 			}
+@@ -548,7 +565,8 @@
+ 			*bp++ = Base64Code[c2 & 0x3f];
+ 		}
+ 		*bp = '\0';
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 	}
+ 	else
+ 	{
+@@ -571,12 +589,14 @@
+ 
+ 		if (tTd(43, 36))
+ 			sm_dprintf("  ...Content-Transfer-Encoding: quoted-printable\n");
+-		putline("Content-Transfer-Encoding: quoted-printable", mci);
++		if (!putline("Content-Transfer-Encoding: quoted-printable",
++				mci))
++			goto writeerr;
+ 		(void) sm_snprintf(buf, sizeof buf,
+ 			"X-MIME-Autoconverted: from 8bit to quoted-printable by %s id %s",
+ 			MyHostName, e->e_id);
+-		putline(buf, mci);
+-		putline("", mci);
++		if (!putline(buf, mci) || !putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 		fromstate = 0;
+ 		c2 = '\n';
+@@ -598,7 +618,8 @@
+ 					*bp++ = Base16Code['.' & 0x0f];
+ 				}
+ 				*bp = '\0';
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 				linelen = fromstate = 0;
+ 				bp = buf;
+ 				c2 = c1;
+@@ -627,7 +648,8 @@
+ 					c2 = '\n';
+ 				*bp++ = '=';
+ 				*bp = '\0';
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 				linelen = fromstate = 0;
+ 				bp = buf;
+ 				if (c2 == '.')
+@@ -665,13 +687,17 @@
+ 		if (linelen > 0 || boundaries[0] != NULL)
+ 		{
+ 			*bp = '\0';
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 
+ 	}
+ 	if (tTd(43, 3))
+ 		sm_dprintf("\t\t\tmime8to7=>%s (basic)\n", MimeBoundaryNames[bt]);
+ 	return bt;
++
++  writeerr:
++	return SM_IO_EOF;
+ }
+ /*
+ **  MIME_GETCHAR -- get a character for MIME processing
+@@ -958,7 +984,7 @@
+ **		e -- envelope.
+ **
+ **	Returns:
+-**		none.
++**		true iff body was written successfully
+ */
+ 
+ static char index_64[128] =
+@@ -975,7 +1001,7 @@
+ 
+ # define CHAR64(c)  (((c) < 0 || (c) > 127) ? -1 : index_64[(c)])
+ 
+-void
++bool
+ mime7to8(mci, header, e)
+ 	register MCI *mci;
+ 	HDR *header;
+@@ -1008,25 +1034,31 @@
+ 		{
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 				"Content-Transfer-Encoding: %s", p);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+-		putline("", mci);
++		if (!putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 		while (sm_io_fgets(e->e_dfp, SM_TIME_DEFAULT, buf, sizeof buf)
+ 			!= NULL)
+-			putline(buf, mci);
+-		return;
++		{
++			if (!putline(buf, mci))
++				goto writeerr;
++		}
++		return true;
+ 	}
+ 	cataddr(pvp, NULL, buf, sizeof buf, '\0');
+ 	cte = sm_rpool_strdup_x(e->e_rpool, buf);
+ 
+ 	mci->mci_flags |= MCIF_INHEADER;
+-	putline("Content-Transfer-Encoding: 8bit", mci);
++	if (!putline("Content-Transfer-Encoding: 8bit", mci))
++		goto writeerr;
+ 	(void) sm_snprintf(buf, sizeof buf,
+ 		"X-MIME-Autoconverted: from %.200s to 8bit by %s id %s",
+ 		cte, MyHostName, e->e_id);
+-	putline(buf, mci);
+-	putline("", mci);
++	if (!putline(buf, mci) || !putline("", mci))
++		goto writeerr;
+ 	mci->mci_flags &= ~MCIF_INHEADER;
+ 
+ 	/*
+@@ -1090,7 +1122,8 @@
+ 		if (*fbufp++ == '\n' || fbufp >= &fbuf[MAXLINE])	\
+ 		{							\
+ 			CHK_EOL;					\
+-			putxline((char *) fbuf, fbufp - fbuf, mci, pxflags); \
++			if (!putxline((char *) fbuf, fbufp - fbuf, mci, pxflags)) \
++				goto writeerr;				\
+ 			pxflags &= ~PXLF_NOADDEOL;			\
+ 			fbufp = fbuf;					\
+ 		}	\
+@@ -1127,8 +1160,11 @@
+ 				continue;
+ 
+ 			if (fbufp - fbuf > 0)
+-				putxline((char *) fbuf, fbufp - fbuf - 1, mci,
+-					 pxflags);
++			{
++				if (!putxline((char *) fbuf, fbufp - fbuf - 1,
++						mci, pxflags))
++					goto writeerr;
++			}
+ 			fbufp = fbuf;
+ 			if (off >= 0 && buf[off] != '\0')
+ 			{
+@@ -1144,7 +1180,8 @@
+ 	if (fbufp > fbuf)
+ 	{
+ 		*fbufp = '\0';
+-		putxline((char *) fbuf, fbufp - fbuf, mci, pxflags);
++		if (!putxline((char *) fbuf, fbufp - fbuf, mci, pxflags))
++			goto writeerr;
+ 	}
+ 
+ 	/*
+@@ -1154,10 +1191,15 @@
+ 	**  but so is auto-converting MIME in the first place.
+ 	*/
+ 
+-	putline("", mci);
++	if (!putline("", mci))
++		goto writeerr;
+ 
+ 	if (tTd(43, 3))
+ 		sm_dprintf("\t\t\tmime7to8 => %s to 8bit done\n", cte);
++	return true;
++
++  writeerr:
++	return false;
+ }
+ /*
+ **  The following is based on Borenstein's "codes.c" module, with simplifying
+--- parseaddr.c	6 Jun 2005 04:25:27 -0000	1.1.1.1
++++ parseaddr.c	23 Mar 2006 19:46:01 -0000
+@@ -1337,7 +1337,7 @@
+ 					/* $&{x} replacement */
+ 					char *mval = macvalue(rp[1], e);
+ 					char **xpvp;
+-					int trsize = 0;
++					size_t trsize = 0;
+ 					static size_t pvpb1_size = 0;
+ 					static char **pvpb1 = NULL;
+ 					char pvpbuf[PSBUFSIZE];
+@@ -1352,7 +1352,7 @@
+ 					/* save the remainder of the input */
+ 					for (xpvp = pvp; *xpvp != NULL; xpvp++)
+ 						trsize += sizeof *xpvp;
+-					if ((size_t) trsize > pvpb1_size)
++					if (trsize > pvpb1_size)
+ 					{
+ 						if (pvpb1 != NULL)
+ 							sm_free(pvpb1);
+@@ -1407,7 +1407,7 @@
+ 		{
+ 			char **hbrvp;
+ 			char **xpvp;
+-			int trsize;
++			size_t trsize;
+ 			char *replac;
+ 			int endtoken;
+ 			STAB *map;
+@@ -1509,7 +1509,7 @@
+ 				*++arg_rvp = NULL;
+ 
+ 			/* save the remainder of the input string */
+-			trsize = (int) (avp - rvp + 1) * sizeof *rvp;
++			trsize = (avp - rvp + 1) * sizeof *rvp;
+ 			memmove((char *) pvpb1, (char *) rvp, trsize);
+ 
+ 			/* look it up */
+@@ -2949,7 +2949,7 @@
+ 	char *logid;
+ {
+ 	char *volatile buf;
+-	int bufsize;
++	size_t bufsize;
+ 	int saveexitstat;
+ 	int volatile rstat = EX_OK;
+ 	char **pvp;
+@@ -3163,7 +3163,7 @@
+ 	int size;
+ {
+ 	char *volatile buf;
+-	int bufsize;
++	size_t bufsize;
+ 	int volatile rstat = EX_OK;
+ 	int rsno;
+ 	bool saveQuickAbort = QuickAbort;
+--- savemail.c	6 Jun 2005 04:25:38 -0000	1.1.1.1
++++ savemail.c	23 Mar 2006 19:46:03 -0000
+@@ -15,7 +15,7 @@
+ 
+ SM_RCSID("@(#)$Id: savemail.c,v 8.304 2004/10/06 21:36:06 ca Exp $")
+ 
+-static void	errbody __P((MCI *, ENVELOPE *, char *));
++static bool	errbody __P((MCI *, ENVELOPE *, char *));
+ static bool	pruneroute __P((char *));
+ 
+ /*
+@@ -432,12 +432,13 @@
+ 			p = macvalue('g', e);
+ 			macdefine(&e->e_macro, A_PERM, 'g', e->e_sender);
+ 
+-			putfromline(&mcibuf, e);
+-			(*e->e_puthdr)(&mcibuf, e->e_header, e, M87F_OUTER);
+-			(*e->e_putbody)(&mcibuf, e, NULL);
+-			putline("\n", &mcibuf); /* XXX EOL from FileMailer? */
+-			(void) sm_io_flush(fp, SM_TIME_DEFAULT);
+-			if (sm_io_error(fp) ||
++			if (!putfromline(&mcibuf, e) ||
++			    !(*e->e_puthdr)(&mcibuf, e->e_header, e,
++					M87F_OUTER) ||
++			    !(*e->e_putbody)(&mcibuf, e, NULL) ||
++			    !putline("\n", &mcibuf) ||
++			    sm_io_flush(fp, SM_TIME_DEFAULT) == SM_IO_EOF ||
++			    sm_io_error(fp) ||
+ 			    sm_io_close(fp, SM_TIME_DEFAULT) < 0)
+ 				state = ESM_PANIC;
+ 			else
+@@ -732,14 +733,14 @@
+ **		separator -- any possible MIME separator (unused).
+ **
+ **	Returns:
+-**		none
++**		success
+ **
+ **	Side Effects:
+ **		Outputs the body of an error message.
+ */
+ 
+ /* ARGSUSED2 */
+-static void
++static bool
+ errbody(mci, e, separator)
+ 	register MCI *mci;
+ 	register ENVELOPE *e;
+@@ -757,14 +758,16 @@
+ 
+ 	if (bitset(MCIF_INHEADER, mci->mci_flags))
+ 	{
+-		putline("", mci);
++		if (!putline("", mci))
++			goto writeerr;
+ 		mci->mci_flags &= ~MCIF_INHEADER;
+ 	}
+ 	if (e->e_parent == NULL)
+ 	{
+ 		syserr("errbody: null parent");
+-		putline("   ----- Original message lost -----\n", mci);
+-		return;
++		if (!putline("   ----- Original message lost -----\n", mci))
++			goto writeerr;
++		return true;
+ 	}
+ 
+ 	/*
+@@ -773,11 +776,12 @@
+ 
+ 	if (e->e_msgboundary != NULL)
+ 	{
+-		putline("This is a MIME-encapsulated message", mci);
+-		putline("", mci);
+ 		(void) sm_strlcpyn(buf, sizeof buf, 2, "--", e->e_msgboundary);
+-		putline(buf, mci);
+-		putline("", mci);
++		if (!putline("This is a MIME-encapsulated message", mci) ||
++		    !putline("", mci) ||
++		    !putline(buf, mci) ||
++		    !putline("", mci))
++			goto writeerr;
+ 	}
+ 
+ 	/*
+@@ -799,31 +803,36 @@
+ 	if (!pm_notify && q == NULL &&
+ 	    !bitset(EF_FATALERRS|EF_SENDRECEIPT, e->e_parent->e_flags))
+ 	{
+-		putline("    **********************************************",
+-			mci);
+-		putline("    **      THIS IS A WARNING MESSAGE ONLY      **",
+-			mci);
+-		putline("    **  YOU DO NOT NEED TO RESEND YOUR MESSAGE  **",
+-			mci);
+-		putline("    **********************************************",
+-			mci);
+-		putline("", mci);
++		if (!putline("    **********************************************",
++			mci) ||
++		    !putline("    **      THIS IS A WARNING MESSAGE ONLY      **",
++			mci) ||
++		    !putline("    **  YOU DO NOT NEED TO RESEND YOUR MESSAGE  **",
++			mci) ||
++		    !putline("    **********************************************",
++			mci) ||
++		    !putline("", mci))
++			goto writeerr;
+ 	}
+ 	(void) sm_snprintf(buf, sizeof buf,
+ 		"The original message was received at %s",
+ 		arpadate(ctime(&e->e_parent->e_ctime)));
+-	putline(buf, mci);
++	if (!putline(buf, mci))
++		goto writeerr;
+ 	expand("from \201_", buf, sizeof buf, e->e_parent);
+-	putline(buf, mci);
++	if (!putline(buf, mci))
++		goto writeerr;
+ 
+ 	/* include id in postmaster copies */
+ 	if (pm_notify && e->e_parent->e_id != NULL)
+ 	{
+ 		(void) sm_strlcpyn(buf, sizeof buf, 2, "with id ",
+ 			e->e_parent->e_id);
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 	}
+-	putline("", mci);
++	if (!putline("", mci))
++		goto writeerr;
+ 
+ 	/*
+ 	**  Output error message header (if specified and available).
+@@ -849,17 +858,19 @@
+ 				{
+ 					translate_dollars(buf);
+ 					expand(buf, buf, sizeof buf, e);
+-					putline(buf, mci);
++					if (!putline(buf, mci))
++						goto writeerr;
+ 				}
+ 				(void) sm_io_close(xfile, SM_TIME_DEFAULT);
+-				putline("\n", mci);
++				if (!putline("\n", mci))
++					goto writeerr;
+ 			}
+ 		}
+ 		else
+ 		{
+ 			expand(ErrMsgFile, buf, sizeof buf, e);
+-			putline(buf, mci);
+-			putline("", mci);
++			if (!putline(buf, mci) || !putline("", mci))
++				goto writeerr;
+ 		}
+ 	}
+ 
+@@ -877,21 +888,24 @@
+ 
+ 		if (printheader)
+ 		{
+-			putline("   ----- The following addresses had permanent fatal errors -----",
+-				mci);
++			if (!putline("   ----- The following addresses had permanent fatal errors -----",
++					mci))
++				goto writeerr;
+ 			printheader = false;
+ 		}
+ 
+ 		(void) sm_strlcpy(buf, shortenstring(q->q_paddr, MAXSHORTSTR),
+ 				  sizeof buf);
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 		if (q->q_rstatus != NULL)
+ 		{
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 				"    (reason: %s)",
+ 				shortenstring(exitstat(q->q_rstatus),
+ 					      MAXSHORTSTR));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 		if (q->q_alias != NULL)
+ 		{
+@@ -899,11 +913,12 @@
+ 				"    (expanded from: %s)",
+ 				shortenstring(q->q_alias->q_paddr,
+ 					      MAXSHORTSTR));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 	}
+-	if (!printheader)
+-		putline("", mci);
++	if (!printheader && !putline("", mci))
++		goto writeerr;
+ 
+ 	/* transient non-fatal errors */
+ 	printheader = true;
+@@ -917,25 +932,28 @@
+ 
+ 		if (printheader)
+ 		{
+-			putline("   ----- The following addresses had transient non-fatal errors -----",
+-				mci);
++			if (!putline("   ----- The following addresses had transient non-fatal errors -----",
++					mci))
++				goto writeerr;
+ 			printheader = false;
+ 		}
+ 
+ 		(void) sm_strlcpy(buf, shortenstring(q->q_paddr, MAXSHORTSTR),
+ 				  sizeof buf);
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 		if (q->q_alias != NULL)
+ 		{
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 				"    (expanded from: %s)",
+ 				shortenstring(q->q_alias->q_paddr,
+ 					      MAXSHORTSTR));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 	}
+-	if (!printheader)
+-		putline("", mci);
++	if (!printheader && !putline("", mci))
++		goto writeerr;
+ 
+ 	/* successful delivery notifications */
+ 	printheader = true;
+@@ -968,25 +986,28 @@
+ 
+ 		if (printheader)
+ 		{
+-			putline("   ----- The following addresses had successful delivery notifications -----",
+-				mci);
++			if (!putline("   ----- The following addresses had successful delivery notifications -----",
++					mci))
++				goto writeerr;
+ 			printheader = false;
+ 		}
+ 
+ 		(void) sm_snprintf(buf, sizeof buf, "%s  (%s)",
+ 			 shortenstring(q->q_paddr, MAXSHORTSTR), p);
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 		if (q->q_alias != NULL)
+ 		{
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 				"    (expanded from: %s)",
+ 				shortenstring(q->q_alias->q_paddr,
+ 					      MAXSHORTSTR));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 	}
+-	if (!printheader)
+-		putline("", mci);
++	if (!printheader && !putline("", mci))
++		goto writeerr;
+ 
+ 	/*
+ 	**  Output transcript of errors
+@@ -995,8 +1016,9 @@
+ 	(void) sm_io_flush(smioout, SM_TIME_DEFAULT);
+ 	if (e->e_parent->e_xfp == NULL)
+ 	{
+-		putline("   ----- Transcript of session is unavailable -----\n",
+-			mci);
++		if (!putline("   ----- Transcript of session is unavailable -----\n",
++				mci))
++			goto writeerr;
+ 	}
+ 	else
+ 	{
+@@ -1007,11 +1029,12 @@
+ 		while (sm_io_fgets(e->e_parent->e_xfp, SM_TIME_DEFAULT, buf,
+ 				   sizeof buf) != NULL)
+ 		{
+-			if (printheader)
+-				putline("   ----- Transcript of session follows -----\n",
+-					mci);
++			if (printheader && !putline("   ----- Transcript of session follows -----\n",
++						mci))
++				goto writeerr;
+ 			printheader = false;
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 	}
+ 	errno = 0;
+@@ -1023,11 +1046,12 @@
+ 
+ 	if (e->e_msgboundary != NULL)
+ 	{
+-		putline("", mci);
+ 		(void) sm_strlcpyn(buf, sizeof buf, 2, "--", e->e_msgboundary);
+-		putline(buf, mci);
+-		putline("Content-Type: message/delivery-status", mci);
+-		putline("", mci);
++		if (!putline("", mci) ||
++		    !putline(buf, mci) ||
++		    !putline("Content-Type: message/delivery-status", mci) ||
++		    !putline("", mci))
++			goto writeerr;
+ 
+ 		/*
+ 		**  Output per-message information.
+@@ -1039,13 +1063,15 @@
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 					"Original-Envelope-Id: %.800s",
+ 					xuntextify(e->e_parent->e_envid));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 
+ 		/* Reporting-MTA: is us (required) */
+ 		(void) sm_snprintf(buf, sizeof buf,
+ 				   "Reporting-MTA: dns; %.800s", MyHostName);
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 
+ 		/* DSN-Gateway: not relevant since we are not translating */
+ 
+@@ -1059,13 +1085,15 @@
+ 			(void) sm_snprintf(buf, sizeof buf,
+ 					"Received-From-MTA: %s; %.800s",
+ 					p, RealHostName);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 
+ 		/* Arrival-Date: -- when it arrived here */
+ 		(void) sm_strlcpyn(buf, sizeof buf, 2, "Arrival-Date: ",
+ 				arpadate(ctime(&e->e_parent->e_ctime)));
+-		putline(buf, mci);
++		if (!putline(buf, mci))
++			goto writeerr;
+ 
+ 		/* Deliver-By-Date: -- when it should have been delivered */
+ 		if (IS_DLVR_BY(e->e_parent))
+@@ -1076,7 +1104,8 @@
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2,
+ 					"Deliver-By-Date: ",
+ 					arpadate(ctime(&dbyd)));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 		}
+ 
+ 		/*
+@@ -1119,7 +1148,8 @@
+ 			else
+ 				continue;
+ 
+-			putline("", mci);
++			if (!putline("", mci))
++				goto writeerr;
+ 
+ 			/* Original-Recipient: -- passed from on high */
+ 			if (q->q_orcpt != NULL)
+@@ -1127,7 +1157,8 @@
+ 				(void) sm_snprintf(buf, sizeof buf,
+ 						"Original-Recipient: %.800s",
+ 						q->q_orcpt);
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 
+ 			/* Figure out actual recipient */
+@@ -1176,7 +1207,8 @@
+ 				(void) sm_snprintf(buf, sizeof buf,
+ 						   "Final-Recipient: %s",
+ 						   q->q_finalrcpt);
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 
+ 			/* X-Actual-Recipient: -- the real problem address */
+@@ -1190,13 +1222,15 @@
+ 				(void) sm_snprintf(buf, sizeof buf,
+ 						   "X-Actual-Recipient: %s",
+ 						   actual);
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 
+ 			/* Action: -- what happened? */
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2, "Action: ",
+ 				action);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 
+ 			/* Status: -- what _really_ happened? */
+ 			if (q->q_status != NULL)
+@@ -1208,7 +1242,8 @@
+ 			else
+ 				p = "2.0.0";
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2, "Status: ", p);
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 
+ 			/* Remote-MTA: -- who was I talking to? */
+ 			if (q->q_statmta != NULL)
+@@ -1222,7 +1257,8 @@
+ 				p = &buf[strlen(buf) - 1];
+ 				if (*p == '.')
+ 					*p = '\0';
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 
+ 			/* Diagnostic-Code: -- actual result from other end */
+@@ -1234,7 +1270,8 @@
+ 				(void) sm_snprintf(buf, sizeof buf,
+ 						"Diagnostic-Code: %s; %.800s",
+ 						p, q->q_rstatus);
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 
+ 			/* Last-Attempt-Date: -- fine granularity */
+@@ -1243,7 +1280,8 @@
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2,
+ 					"Last-Attempt-Date: ",
+ 					arpadate(ctime(&q->q_statdate)));
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 
+ 			/* Will-Retry-Until: -- for delayed messages only */
+ 			if (QS_IS_QUEUEUP(q->q_state))
+@@ -1255,7 +1293,8 @@
+ 				(void) sm_strlcpyn(buf, sizeof buf, 2,
+ 					 "Will-Retry-Until: ",
+ 					 arpadate(ctime(&xdate)));
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 		}
+ 	}
+@@ -1265,7 +1304,8 @@
+ 	**  Output text of original message
+ 	*/
+ 
+-	putline("", mci);
++	if (!putline("", mci))
++		goto writeerr;
+ 	if (bitset(EF_HAS_DF, e->e_parent->e_flags))
+ 	{
+ 		sendbody = !bitset(EF_NO_BODY_RETN, e->e_parent->e_flags) &&
+@@ -1273,21 +1313,27 @@
+ 
+ 		if (e->e_msgboundary == NULL)
+ 		{
+-			if (sendbody)
+-				putline("   ----- Original message follows -----\n", mci);
+-			else
+-				putline("   ----- Message header follows -----\n", mci);
++			if (!putline(
++				sendbody
++				? "   ----- Original message follows -----\n"
++				: "   ----- Message header follows -----\n",
++				mci))
++			{
++				goto writeerr;
++			}
+ 		}
+ 		else
+ 		{
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2, "--",
+ 					e->e_msgboundary);
+ 
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 			(void) sm_strlcpyn(buf, sizeof buf, 2, "Content-Type: ",
+ 					sendbody ? "message/rfc822"
+ 						 : "text/rfc822-headers");
+-			putline(buf, mci);
++			if (!putline(buf, mci))
++				goto writeerr;
+ 
+ 			p = hvalue("Content-Transfer-Encoding",
+ 				   e->e_parent->e_header);
+@@ -1301,43 +1347,62 @@
+ 				(void) sm_snprintf(buf, sizeof buf,
+ 						"Content-Transfer-Encoding: %s",
+ 						p);
+-				putline(buf, mci);
++				if (!putline(buf, mci))
++					goto writeerr;
+ 			}
+ 		}
+-		putline("", mci);
++		if (!putline("", mci))
++			goto writeerr;
+ 		save_errno = errno;
+-		putheader(mci, e->e_parent->e_header, e->e_parent, M87F_OUTER);
++		if (!putheader(mci, e->e_parent->e_header, e->e_parent,
++				M87F_OUTER))
++			goto writeerr;
+ 		errno = save_errno;
+ 		if (sendbody)
+-			putbody(mci, e->e_parent, e->e_msgboundary);
++		{
++			if (!putbody(mci, e->e_parent, e->e_msgboundary))
++				goto writeerr;
++		}
+ 		else if (e->e_msgboundary == NULL)
+ 		{
+-			putline("", mci);
+-			putline("   ----- Message body suppressed -----", mci);
++			if (!putline("", mci) ||
++			    !putline("   ----- Message body suppressed -----",
++					mci))
++			{
++				goto writeerr;
++			}
+ 		}
+ 	}
+ 	else if (e->e_msgboundary == NULL)
+ 	{
+-		putline("  ----- No message was collected -----\n", mci);
++		if (!putline("  ----- No message was collected -----\n", mci))
++			goto writeerr;
+ 	}
+ 
+ 	if (e->e_msgboundary != NULL)
+ 	{
+-		putline("", mci);
+ 		(void) sm_strlcpyn(buf, sizeof buf, 3, "--", e->e_msgboundary,
+ 				   "--");
+-		putline(buf, mci);
++		if (!putline("", mci) || !putline(buf, mci))
++			goto writeerr;
+ 	}
+-	putline("", mci);
+-	(void) sm_io_flush(mci->mci_out, SM_TIME_DEFAULT);
++	if (!putline("", mci) ||
++	    sm_io_flush(mci->mci_out, SM_TIME_DEFAULT) == SM_IO_EOF)
++			goto writeerr;
+ 
+ 	/*
+ 	**  Cleanup and exit
+ 	*/
+ 
+ 	if (errno != 0)
++	{
++  writeerr:
+ 		syserr("errbody: I/O error");
++		return false;
++	}
++	return true;
+ }
++
+ /*
+ **  SMTPTODSN -- convert SMTP to DSN status code
+ **
+--- sendmail.h	6 Jun 2005 04:25:41 -0000	1.1.1.1
++++ sendmail.h	23 Mar 2006 19:46:04 -0000
+@@ -809,13 +809,13 @@
+ /* functions */
+ extern void	addheader __P((char *, char *, int, ENVELOPE *));
+ extern unsigned long	chompheader __P((char *, int, HDR **, ENVELOPE *));
+-extern void	commaize __P((HDR *, char *, bool, MCI *, ENVELOPE *));
++extern bool	commaize __P((HDR *, char *, bool, MCI *, ENVELOPE *));
+ extern HDR	*copyheader __P((HDR *, SM_RPOOL_T *));
+ extern void	eatheader __P((ENVELOPE *, bool, bool));
+ extern char	*hvalue __P((char *, HDR *));
+ extern void	insheader __P((int, char *, char *, int, ENVELOPE *));
+ extern bool	isheader __P((char *));
+-extern void	putfromline __P((MCI *, ENVELOPE *));
++extern bool	putfromline __P((MCI *, ENVELOPE *));
+ extern void	setupheaders __P((void));
+ 
+ /*
+@@ -870,9 +870,9 @@
+ 	short		e_sendmode;	/* message send mode */
+ 	short		e_errormode;	/* error return mode */
+ 	short		e_timeoutclass;	/* message timeout class */
+-	void		(*e_puthdr)__P((MCI *, HDR *, ENVELOPE *, int));
++	bool		(*e_puthdr)__P((MCI *, HDR *, ENVELOPE *, int));
+ 					/* function to put header of message */
+-	void		(*e_putbody)__P((MCI *, ENVELOPE *, char *));
++	bool		(*e_putbody)__P((MCI *, ENVELOPE *, char *));
+ 					/* function to put body of message */
+ 	ENVELOPE	*e_parent;	/* the message this one encloses */
+ 	ENVELOPE	*e_sibling;	/* the next envelope of interest */
+@@ -965,8 +965,8 @@
+ extern ENVELOPE	*newenvelope __P((ENVELOPE *, ENVELOPE *, SM_RPOOL_T *));
+ extern void	clrsessenvelope __P((ENVELOPE *));
+ extern void	printenvflags __P((ENVELOPE *));
+-extern void	putbody __P((MCI *, ENVELOPE *, char *));
+-extern void	putheader __P((MCI *, HDR *, ENVELOPE *, int));
++extern bool	putbody __P((MCI *, ENVELOPE *, char *));
++extern bool	putheader __P((MCI *, HDR *, ENVELOPE *, int));
+ 
+ /*
+ **  Message priority classes.
+@@ -1650,7 +1650,7 @@
+ #define M87F_NO8TO7		0x0004	/* don't do 8->7 bit conversions */
+ 
+ /* functions */
+-extern void	mime7to8 __P((MCI *, HDR *, ENVELOPE *));
++extern bool	mime7to8 __P((MCI *, HDR *, ENVELOPE *));
+ extern int	mime8to7 __P((MCI *, HDR *, ENVELOPE *, char **, int));
+ 
+ /*
+@@ -2145,7 +2145,6 @@
+ #if !defined(_USE_SUN_NSSWITCH_) && !defined(_USE_DEC_SVC_CONF_)
+ EXTERN bool	ConfigFileRead;	/* configuration file has been read */
+ #endif /* !defined(_USE_SUN_NSSWITCH_) && !defined(_USE_DEC_SVC_CONF_) */
+-EXTERN bool	volatile DataProgress;	/* have we sent anything since last check */
+ EXTERN bool	DisConnected;	/* running with OutChannel redirect to transcript file */
+ EXTERN bool	DontExpandCnames;	/* do not $[...$] expand CNAMEs */
+ EXTERN bool	DontInitGroups;	/* avoid initgroups() because of NIS cost */
+@@ -2519,8 +2518,8 @@
+ extern void	printqueue __P((void));
+ extern void	printrules __P((void));
+ extern pid_t	prog_open __P((char **, int *, ENVELOPE *));
+-extern void	putline __P((char *, MCI *));
+-extern void	putxline __P((char *, size_t, MCI *, int));
++extern bool	putline __P((char *, MCI *));
++extern bool	putxline __P((char *, size_t, MCI *, int));
+ extern void	queueup_macros __P((int, SM_FILE_T *, ENVELOPE *));
+ extern void	readcf __P((char *, bool, ENVELOPE *));
+ extern SIGFUNC_DECL	reapchild __P((int));
+--- sfsasl.c	6 Jun 2005 04:25:41 -0000	1.1.1.1
++++ sfsasl.c	23 Mar 2006 19:46:04 -0000
+@@ -541,6 +541,125 @@
+ # define MAX_TLS_IOS	4
+ 
+ /*
++**  TLS_RETRY -- check whether a failed SSL operation can be retried
++**
++**	Parameters:
++**		ssl -- TLS structure
++**		rfd -- read fd
++**		wfd -- write fd
++**		tlsstart -- start time of TLS operation
++**		timeout -- timeout for TLS operation
++**		err -- SSL error
++**		where -- description of operation
++**
++**	Results:
++**		>0 on success
++**		0 on timeout
++**		<0 on error
++*/
++
++int
++tls_retry(ssl, rfd, wfd, tlsstart, timeout, err, where)
++	SSL *ssl;
++	int rfd;
++	int wfd;
++	time_t tlsstart;
++	int timeout;
++	int err;
++	const char *where;
++{
++	int ret;
++	time_t left;
++	time_t now = curtime();
++	struct timeval tv;
++
++	ret = -1;
++
++	/*
++	**  For SSL_ERROR_WANT_{READ,WRITE}:
++	**  There is not a complete SSL record available yet
++	**  or there is only a partial SSL record removed from
++	**  the network (socket) buffer into the SSL buffer.
++	**  The SSL_connect will only succeed when a full
++	**  SSL record is available (assuming a "real" error
++	**  doesn't happen). To handle when a "real" error
++	**  does happen the select is set for exceptions too.
++	**  The connection may be re-negotiated during this time
++	**  so both read and write "want errors" need to be handled.
++	**  A select() exception loops back so that a proper SSL
++	**  error message can be gotten.
++	*/
++
++	left = timeout - (now - tlsstart);
++	if (left <= 0)
++		return 0;	/* timeout */
++	tv.tv_sec = left;
++	tv.tv_usec = 0;
++
++	if (LogLevel > 14)
++	{
++		sm_syslog(LOG_INFO, NOQID,
++			  "STARTTLS=%s, info: fds=%d/%d, err=%d",
++			  where, rfd, wfd, err);
++	}
++
++	if (FD_SETSIZE > 0 &&
++	    ((err == SSL_ERROR_WANT_READ && rfd >= FD_SETSIZE) ||
++	     (err == SSL_ERROR_WANT_WRITE && wfd >= FD_SETSIZE)))
++	{
++		if (LogLevel > 5)
++		{
++			sm_syslog(LOG_ERR, NOQID,
++				  "STARTTLS=%s, error: fd %d/%d too large",
++				  where, rfd, wfd);
++		if (LogLevel > 8)
++			tlslogerr(where);
++		}
++		errno = EINVAL;
++	}
++	else if (err == SSL_ERROR_WANT_READ)
++	{
++		fd_set ssl_maskr, ssl_maskx;
++
++		FD_ZERO(&ssl_maskr);
++		FD_SET(rfd, &ssl_maskr);
++		FD_ZERO(&ssl_maskx);
++		FD_SET(rfd, &ssl_maskx);
++		do
++		{
++			ret = select(rfd + 1, &ssl_maskr, NULL, &ssl_maskx,
++					&tv);
++		} while (ret < 0 && errno == EINTR);
++		if (ret < 0 && errno > 0)
++			ret = -errno;
++	}
++	else if (err == SSL_ERROR_WANT_WRITE)
++	{
++		fd_set ssl_maskw, ssl_maskx;
++
++		FD_ZERO(&ssl_maskw);
++		FD_SET(wfd, &ssl_maskw);
++		FD_ZERO(&ssl_maskx);
++		FD_SET(rfd, &ssl_maskx);
++		do
++		{
++			ret = select(wfd + 1, NULL, &ssl_maskw, &ssl_maskx,
++					&tv);
++		} while (ret < 0 && errno == EINTR);
++		if (ret < 0 && errno > 0)
++			ret = -errno;
++	}
++	return ret;
++}
++
++/* errno to force refill() etc to stop (see IS_IO_ERROR()) */
++#ifdef ETIMEDOUT
++# define SM_ERR_TIMEOUT	ETIMEDOUT
++#else /* ETIMEDOUT */
++# define SM_ERR_TIMEOUT	EIO
++#endif /* ETIMEDOUT */
++
++/*
+ **  TLS_READ -- read secured information for the caller
+ **
+ **	Parameters:
+@@ -561,38 +680,42 @@
+ 	char *buf;
+ 	size_t size;
+ {
+-	int r;
+-	static int again = MAX_TLS_IOS;
++	int r, rfd, wfd, try, ssl_err;
+ 	struct tls_obj *so = (struct tls_obj *) fp->f_cookie;
++	time_t tlsstart;
+ 	char *err;
+ 
++	try = 99;
++	err = NULL;
++	tlsstart = curtime();
++
++  retry:
+ 	r = SSL_read(so->con, (char *) buf, size);
+ 
+ 	if (r > 0)
+-	{
+-		again = MAX_TLS_IOS;
+ 		return r;
+-	}
+ 
+ 	err = NULL;
+-	switch (SSL_get_error(so->con, r))
++	switch (ssl_err = SSL_get_error(so->con, r))
+ 	{
+ 	  case SSL_ERROR_NONE:
+ 	  case SSL_ERROR_ZERO_RETURN:
+-		again = MAX_TLS_IOS;
+ 		break;
+ 	  case SSL_ERROR_WANT_WRITE:
+-		if (--again <= 0)
+-			err = "read W BLOCK";
+-		else
+-			errno = EAGAIN;
+-		break;
++		err = "read W BLOCK";
++		/* FALLTHROUGH */
+ 	  case SSL_ERROR_WANT_READ:
+-		if (--again <= 0)
++		if (err == NULL)
+ 			err = "read R BLOCK";
+-		else
+-			errno = EAGAIN;
++		rfd = SSL_get_rfd(so->con);
++		wfd = SSL_get_wfd(so->con);
++		try = tls_retry(so->con, rfd, wfd, tlsstart,
++				TimeOuts.to_datablock, ssl_err, "read");
++		if (try > 0)
++			goto retry;
++		errno = SM_ERR_TIMEOUT;
+ 		break;
++
+ 	  case SSL_ERROR_WANT_X509_LOOKUP:
+ 		err = "write X BLOCK";
+ 		break;
+@@ -625,15 +748,22 @@
+ 		int save_errno;
+ 
+ 		save_errno = (errno == 0) ? EIO : errno;
+-		again = MAX_TLS_IOS;
+-		if (LogLevel > 9)
++		if (try == 0 && save_errno == SM_ERR_TIMEOUT)
++		{
++			if (LogLevel > 7)
++				sm_syslog(LOG_WARNING, NOQID,
++					  "STARTTLS: read error=timeout");
++		}
++		else if (LogLevel > 8)
+ 			sm_syslog(LOG_WARNING, NOQID,
+-				  "STARTTLS: read error=%s (%d), errno=%d, get_error=%s",
++				  "STARTTLS: read error=%s (%d), errno=%d, get_error=%s, retry=%d, ssl_err=%d",
+ 				  err, r, errno,
+-				  ERR_error_string(ERR_get_error(), NULL));
++				  ERR_error_string(ERR_get_error(), NULL), try,
++				  ssl_err);
+ 		else if (LogLevel > 7)
+ 			sm_syslog(LOG_WARNING, NOQID,
+-				  "STARTTLS: read error=%s (%d)", err, r);
++				  "STARTTLS: read error=%s (%d), retry=%d, ssl_err=%d",
++				  err, r, errno, try, ssl_err);
+ 		errno = save_errno;
+ 	}
+ 	return r;
+@@ -660,36 +790,39 @@
+ 	const char *buf;
+ 	size_t size;
+ {
+-	int r;
+-	static int again = MAX_TLS_IOS;
++	int r, rfd, wfd, try, ssl_err;
+ 	struct tls_obj *so = (struct tls_obj *) fp->f_cookie;
++	time_t tlsstart;
+ 	char *err;
+ 
++	try = 99;
++	err = NULL;
++	tlsstart = curtime();
++
++  retry:
+ 	r = SSL_write(so->con, (char *) buf, size);
+ 
+ 	if (r > 0)
+-	{
+-		again = MAX_TLS_IOS;
+ 		return r;
+-	}
+ 	err = NULL;
+-	switch (SSL_get_error(so->con, r))
++	switch (ssl_err = SSL_get_error(so->con, r))
+ 	{
+ 	  case SSL_ERROR_NONE:
+ 	  case SSL_ERROR_ZERO_RETURN:
+-		again = MAX_TLS_IOS;
+ 		break;
+ 	  case SSL_ERROR_WANT_WRITE:
+-		if (--again <= 0)
+-			err = "write W BLOCK";
+-		else
+-			errno = EAGAIN;
+-		break;
++		err = "read W BLOCK";
++		/* FALLTHROUGH */
+ 	  case SSL_ERROR_WANT_READ:
+-		if (--again <= 0)
+-			err = "write R BLOCK";
+-		else
+-			errno = EAGAIN;
++		if (err == NULL)
++			err = "read R BLOCK";
++		rfd = SSL_get_rfd(so->con);
++		wfd = SSL_get_wfd(so->con);
++		try = tls_retry(so->con, rfd, wfd, tlsstart,
++				DATA_PROGRESS_TIMEOUT, ssl_err, "write");
++		if (try > 0)
++			goto retry;
++		errno = SM_ERR_TIMEOUT;
+ 		break;
+ 	  case SSL_ERROR_WANT_X509_LOOKUP:
+ 		err = "write X BLOCK";
+@@ -722,15 +855,22 @@
+ 		int save_errno;
+ 
+ 		save_errno = (errno == 0) ? EIO : errno;
+-		again = MAX_TLS_IOS;
+-		if (LogLevel > 9)
++		if (try == 0 && save_errno == SM_ERR_TIMEOUT)
++		{
++			if (LogLevel > 7)
++				sm_syslog(LOG_WARNING, NOQID,
++					  "STARTTLS: write error=timeout");
++		}
++		else if (LogLevel > 8)
+ 			sm_syslog(LOG_WARNING, NOQID,
+-				  "STARTTLS: write error=%s (%d), errno=%d, get_error=%s",
++				  "STARTTLS: write error=%s (%d), errno=%d, get_error=%s, retry=%d, ssl_err=%d",
+ 				  err, r, errno,
+-				  ERR_error_string(ERR_get_error(), NULL));
++				  ERR_error_string(ERR_get_error(), NULL), try,
++				  ssl_err);
+ 		else if (LogLevel > 7)
+ 			sm_syslog(LOG_WARNING, NOQID,
+-				  "STARTTLS: write error=%s (%d)", err, r);
++				  "STARTTLS: write error=%s (%d), errno=%d, retry=%d, ssl_err=%d",
++				  err, r, errno, try, ssl_err);
+ 		errno = save_errno;
+ 	}
+ 	return r;
+--- sfsasl.h	6 Jun 2005 04:25:41 -0000	1.1.1.1
++++ sfsasl.h	23 Mar 2006 19:46:04 -0000
+@@ -17,6 +17,8 @@
+ #endif /* SASL */
+ 
+ # if STARTTLS
++extern int	tls_retry __P((SSL *, int, int, time_t, int, int,
++				const char *));
+ extern int	sfdctls __P((SM_FILE_T **, SM_FILE_T **, SSL *));
+ # endif /* STARTTLS */
+ 
+--- srvrsmtp.c	6 Jun 2005 04:25:44 -0000	1.1.1.1
++++ srvrsmtp.c	23 Mar 2006 19:46:05 -0000
+@@ -504,7 +504,6 @@
+ #endif /* SASL */
+ 	int r;
+ #if STARTTLS
+-	int fdfl;
+ 	int rfd, wfd;
+ 	volatile bool tls_active = false;
+ 	volatile bool smtps = bitnset(D_SMTPS, d_flags);
+@@ -1693,97 +1692,26 @@
+ #  define SSL_ACC(s)	SSL_accept(s)
+ 
+ 			tlsstart = curtime();
+-			fdfl = fcntl(rfd, F_GETFL);
+-			if (fdfl != -1)
+-				fcntl(rfd, F_SETFL, fdfl|O_NONBLOCK);
+   ssl_retry:
+ 			if ((r = SSL_ACC(srv_ssl)) <= 0)
+ 			{
+-				int i;
+-				bool timedout;
+-				time_t left;
+-				time_t now = curtime();
+-				struct timeval tv;
++				int i, ssl_err;
+ 
+-				/* what to do in this case? */
+-				i = SSL_get_error(srv_ssl, r);
++				ssl_err = SSL_get_error(srv_ssl, r);
++				i = tls_retry(srv_ssl, rfd, wfd, tlsstart,
++						TimeOuts.to_starttls, ssl_err,
++						"server");
++				if (i > 0)
++					goto ssl_retry;
+ 
+-				/*
+-				**  For SSL_ERROR_WANT_{READ,WRITE}:
+-				**  There is no SSL record available yet
+-				**  or there is only a partial SSL record
+-				**  removed from the network (socket) buffer
+-				**  into the SSL buffer. The SSL_accept will
+-				**  only succeed when a full SSL record is
+-				**  available (assuming a "real" error
+-				**  doesn't happen). To handle when a "real"
+-				**  error does happen the select is set for
+-				**  exceptions too.
+-				**  The connection may be re-negotiated
+-				**  during this time so both read and write
+-				**  "want errors" need to be handled.
+-				**  A select() exception loops back so that
+-				**  a proper SSL error message can be gotten.
+-				*/
+-
+-				left = TimeOuts.to_starttls - (now - tlsstart);
+-				timedout = left <= 0;
+-				if (!timedout)
+-				{
+-					tv.tv_sec = left;
+-					tv.tv_usec = 0;
+-				}
+-
+-				if (!timedout && FD_SETSIZE > 0 &&
+-				    (rfd >= FD_SETSIZE ||
+-				     (i == SSL_ERROR_WANT_WRITE &&
+-				      wfd >= FD_SETSIZE)))
+-				{
+-					if (LogLevel > 5)
+-					{
+-						sm_syslog(LOG_ERR, NOQID,
+-							  "STARTTLS=server, error: fd %d/%d too large",
+-							  rfd, wfd);
+-						if (LogLevel > 8)
+-							tlslogerr("server");
+-					}
+-					goto tlsfail;
+-				}
+-
+-				/* XXX what about SSL_pending() ? */
+-				if (!timedout && i == SSL_ERROR_WANT_READ)
+-				{
+-					fd_set ssl_maskr, ssl_maskx;
+-
+-					FD_ZERO(&ssl_maskr);
+-					FD_SET(rfd, &ssl_maskr);
+-					FD_ZERO(&ssl_maskx);
+-					FD_SET(rfd, &ssl_maskx);
+-					if (select(rfd + 1, &ssl_maskr, NULL,
+-						   &ssl_maskx, &tv) > 0)
+-						goto ssl_retry;
+-				}
+-				if (!timedout && i == SSL_ERROR_WANT_WRITE)
+-				{
+-					fd_set ssl_maskw, ssl_maskx;
+-
+-					FD_ZERO(&ssl_maskw);
+-					FD_SET(wfd, &ssl_maskw);
+-					FD_ZERO(&ssl_maskx);
+-					FD_SET(rfd, &ssl_maskx);
+-					if (select(wfd + 1, NULL, &ssl_maskw,
+-						   &ssl_maskx, &tv) > 0)
+-						goto ssl_retry;
+-				}
+ 				if (LogLevel > 5)
+ 				{
+ 					sm_syslog(LOG_WARNING, NOQID,
+-						  "STARTTLS=server, error: accept failed=%d, SSL_error=%d, timedout=%d, errno=%d",
+-						  r, i, (int) timedout, errno);
++						  "STARTTLS=server, error: accept failed=%d, SSL_error=%d, errno=%d, retry=%d",
++						  r, ssl_err, errno, i);
+ 					if (LogLevel > 8)
+ 						tlslogerr("server");
+ 				}
+-tlsfail:
+ 				tls_ok_srv = false;
+ 				SSL_free(srv_ssl);
+ 				srv_ssl = NULL;
+@@ -1798,9 +1726,6 @@
+ 				goto doquit;
+ 			}
+ 
+-			if (fdfl != -1)
+-				fcntl(rfd, F_SETFL, fdfl);
+-
+ 			/* ignore return code for now, it's in {verify} */
+ 			(void) tls_get_info(srv_ssl, true,
+ 					    CurSmtpClient,
+--- usersmtp.c	6 Jun 2005 04:25:48 -0000	1.1.1.1
++++ usersmtp.c	23 Mar 2006 19:46:06 -0000
+@@ -18,7 +18,6 @@
+ #include <sysexits.h>
+ 
+ 
+-static void	datatimeout __P((int));
+ static void	esmtp_check __P((char *, bool, MAILER *, MCI *, ENVELOPE *));
+ static void	helo_options __P((char *, bool, MAILER *, MCI *, ENVELOPE *));
+ static int	smtprcptstat __P((ADDRESS *, MAILER *, MCI *, ENVELOPE *));
+@@ -2491,9 +2490,6 @@
+ **		exit status corresponding to DATA command.
+ */
+ 
+-static jmp_buf	CtxDataTimeout;
+-static SM_EVENT	*volatile DataTimeout = NULL;
+-
+ int
+ smtpdata(m, mci, e, ctladdr, xstart)
+ 	MAILER *m;
+@@ -2629,43 +2625,22 @@
+ 	**  factor.  The main thing is that it should not be infinite.
+ 	*/
+ 
+-	if (setjmp(CtxDataTimeout) != 0)
+-	{
+-		mci->mci_errno = errno;
+-		mci->mci_state = MCIS_ERROR;
+-		mci_setstat(mci, EX_TEMPFAIL, "4.4.2", NULL);
+-
+-		/*
+-		**  If putbody() couldn't finish due to a timeout,
+-		**  rewind it here in the timeout handler.  See
+-		**  comments at the end of putbody() for reasoning.
+-		*/
+-
+-		if (e->e_dfp != NULL)
+-			(void) bfrewind(e->e_dfp);
+-
+-		errno = mci->mci_errno;
+-		syserr("451 4.4.1 timeout writing message to %s", CurHostName);
+-		smtpquit(m, mci, e);
+-		return EX_TEMPFAIL;
+-	}
+-
+ 	if (tTd(18, 101))
+ 	{
+ 		/* simulate a DATA timeout */
+-		timeout = 1;
++		timeout = 10;
+ 	}
+ 	else
+-		timeout = DATA_PROGRESS_TIMEOUT;
+-
+-	DataTimeout = sm_setevent(timeout, datatimeout, 0);
++		timeout = DATA_PROGRESS_TIMEOUT * 1000;
++	sm_io_setinfo(mci->mci_out, SM_IO_WHAT_TIMEOUT, &timeout);
+ 
+ 
+ 	/*
+ 	**  Output the actual message.
+ 	*/
+ 
+-	(*e->e_puthdr)(mci, e->e_header, e, M87F_OUTER);
++	if (!(*e->e_puthdr)(mci, e->e_header, e, M87F_OUTER))
++		goto writeerr;
+ 
+ 	if (tTd(18, 101))
+ 	{
+@@ -2673,14 +2648,13 @@
+ 		(void) sleep(2);
+ 	}
+ 
+-	(*e->e_putbody)(mci, e, NULL);
++	if (!(*e->e_putbody)(mci, e, NULL))
++		goto writeerr;
+ 
+ 	/*
+ 	**  Cleanup after sending message.
+ 	*/
+ 
+-	if (DataTimeout != NULL)
+-		sm_clrevent(DataTimeout);
+ 
+ #if PIPELINING
+ 	}
+@@ -2720,7 +2694,9 @@
+ 	}
+ 
+ 	/* terminate the message */
+-	(void) sm_io_fprintf(mci->mci_out, SM_TIME_DEFAULT, ".%s", m->m_eol);
++	if (sm_io_fprintf(mci->mci_out, SM_TIME_DEFAULT, ".%s", m->m_eol) ==
++								SM_IO_EOF)
++		goto writeerr;
+ 	if (TrafficLogFile != NULL)
+ 		(void) sm_io_fprintf(TrafficLogFile, SM_TIME_DEFAULT,
+ 				     "%05d >>> .\n", (int) CurrentPid);
+@@ -2771,51 +2747,27 @@
+ 			  shortenstring(SmtpReplyBuffer, 403));
+ 	}
+ 	return rstat;
+-}
+ 
+-static void
+-datatimeout(ignore)
+-	int ignore;
+-{
+-	int save_errno = errno;
++  writeerr:
++	mci->mci_errno = errno;
++	mci->mci_state = MCIS_ERROR;
++	mci_setstat(mci, EX_TEMPFAIL, "4.4.2", NULL);
+ 
+ 	/*
+-	**  NOTE: THIS CAN BE CALLED FROM A SIGNAL HANDLER.  DO NOT ADD
+-	**	ANYTHING TO THIS ROUTINE UNLESS YOU KNOW WHAT YOU ARE
+-	**	DOING.
++	**  If putbody() couldn't finish due to a timeout,
++	**  rewind it here in the timeout handler.  See
++	**  comments at the end of putbody() for reasoning.
+ 	*/
+ 
+-	if (DataProgress)
+-	{
+-		time_t timeout;
+-
+-		/* check back again later */
+-		if (tTd(18, 101))
+-		{
+-			/* simulate a DATA timeout */
+-			timeout = 1;
+-		}
+-		else
+-			timeout = DATA_PROGRESS_TIMEOUT;
+-
+-		/* reset the timeout */
+-		DataTimeout = sm_sigsafe_setevent(timeout, datatimeout, 0);
+-		DataProgress = false;
+-	}
+-	else
+-	{
+-		/* event is done */
+-		DataTimeout = NULL;
+-	}
++	if (e->e_dfp != NULL)
++		(void) bfrewind(e->e_dfp);
+ 
+-	/* if no progress was made or problem resetting event, die now */
+-	if (DataTimeout == NULL)
+-	{
+-		errno = ETIMEDOUT;
+-		longjmp(CtxDataTimeout, 1);
+-	}
+-	errno = save_errno;
++	errno = mci->mci_errno;
++	syserr("451 4.4.1 timeout writing message to %s", CurHostName);
++	smtpquit(m, mci, e);
++	return EX_TEMPFAIL;
+ }
++
+ /*
+ **  SMTPGETSTAT -- get status code from DATA in LMTP
+ **
+--- util.c	6 Jun 2005 04:25:50 -0000	1.1.1.1
++++ util.c	23 Mar 2006 19:46:06 -0000
+@@ -456,6 +456,8 @@
+ {
+ 	register char *p;
+ 
++	SM_REQUIRE(sz >= 0);
++
+ 	/* some systems can't handle size zero mallocs */
+ 	if (sz <= 0)
+ 		sz = 1;
+@@ -970,18 +972,18 @@
+ **		mci -- the mailer connection information.
+ **
+ **	Returns:
+-**		none
++**		true iff line was written successfully
+ **
+ **	Side Effects:
+ **		output of l to mci->mci_out.
+ */
+ 
+-void
++bool
+ putline(l, mci)
+ 	register char *l;
+ 	register MCI *mci;
+ {
+-	putxline(l, strlen(l), mci, PXLF_MAPFROM);
++	return putxline(l, strlen(l), mci, PXLF_MAPFROM);
+ }
+ /*
+ **  PUTXLINE -- putline with flags bits.
+@@ -1000,13 +1002,13 @@
+ **		    PXLF_NOADDEOL -- don't add an EOL if one wasn't present.
+ **
+ **	Returns:
+-**		none
++**		true iff line was written successfully
+ **
+ **	Side Effects:
+ **		output of l to mci->mci_out.
+ */
+ 
+-void
++bool
+ putxline(l, len, mci, pxflags)
+ 	register char *l;
+ 	size_t len;
+@@ -1058,11 +1060,6 @@
+ 				if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT,
+ 					       '.') == SM_IO_EOF)
+ 					dead = true;
+-				else
+-				{
+-					/* record progress for DATA timeout */
+-					DataProgress = true;
+-				}
+ 				if (TrafficLogFile != NULL)
+ 					(void) sm_io_putc(TrafficLogFile,
+ 							  SM_TIME_DEFAULT, '.');
+@@ -1075,11 +1072,6 @@
+ 				if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT,
+ 					       '>') == SM_IO_EOF)
+ 					dead = true;
+-				else
+-				{
+-					/* record progress for DATA timeout */
+-					DataProgress = true;
+-				}
+ 				if (TrafficLogFile != NULL)
+ 					(void) sm_io_putc(TrafficLogFile,
+ 							  SM_TIME_DEFAULT,
+@@ -1091,16 +1083,11 @@
+ 			while (l < q)
+ 			{
+ 				if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT,
+-					       (unsigned char) *l++) == SM_IO_EOF)
++				       (unsigned char) *l++) == SM_IO_EOF)
+ 				{
+ 					dead = true;
+ 					break;
+ 				}
+-				else
+-				{
+-					/* record progress for DATA timeout */
+-					DataProgress = true;
+-				}
+ 			}
+ 			if (dead)
+ 				break;
+@@ -1116,11 +1103,6 @@
+ 				dead = true;
+ 				break;
+ 			}
+-			else
+-			{
+-				/* record progress for DATA timeout */
+-				DataProgress = true;
+-			}
+ 			if (TrafficLogFile != NULL)
+ 			{
+ 				for (l = l_base; l < q; l++)
+@@ -1144,11 +1126,9 @@
+ 		{
+ 			if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT, '.') ==
+ 			    SM_IO_EOF)
+-				break;
+-			else
+ 			{
+-				/* record progress for DATA timeout */
+-				DataProgress = true;
++				dead = true;
++				break;
+ 			}
+ 			if (TrafficLogFile != NULL)
+ 				(void) sm_io_putc(TrafficLogFile,
+@@ -1161,11 +1141,9 @@
+ 		{
+ 			if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT, '>') ==
+ 			    SM_IO_EOF)
+-				break;
+-			else
+ 			{
+-				/* record progress for DATA timeout */
+-				DataProgress = true;
++				dead = true;
++				break;
+ 			}
+ 			if (TrafficLogFile != NULL)
+ 				(void) sm_io_putc(TrafficLogFile,
+@@ -1183,11 +1161,6 @@
+ 				dead = true;
+ 				break;
+ 			}
+-			else
+-			{
+-				/* record progress for DATA timeout */
+-				DataProgress = true;
+-			}
+ 		}
+ 		if (dead)
+ 			break;
+@@ -1198,11 +1171,9 @@
+ 		if ((!bitset(PXLF_NOADDEOL, pxflags) || !noeol) &&
+ 		    sm_io_fputs(mci->mci_out, SM_TIME_DEFAULT,
+ 				mci->mci_mailer->m_eol) == SM_IO_EOF)
+-			break;
+-		else
+ 		{
+-			/* record progress for DATA timeout */
+-			DataProgress = true;
++			dead = true;
++			break;
+ 		}
+ 		if (l < end && *l == '\n')
+ 		{
+@@ -1211,11 +1182,9 @@
+ 			{
+ 				if (sm_io_putc(mci->mci_out, SM_TIME_DEFAULT,
+ 					       ' ') == SM_IO_EOF)
+-					break;
+-				else
+ 				{
+-					/* record progress for DATA timeout */
+-					DataProgress = true;
++					dead = true;
++					break;
+ 				}
+ 
+ 				if (TrafficLogFile != NULL)
+@@ -1224,10 +1193,10 @@
+ 			}
+ 		}
+ 
+-		/* record progress for DATA timeout */
+-		DataProgress = true;
+ 	} while (l < end);
++	return !dead;
+ }
++
+ /*
+ **  XUNLINK -- unlink a file, doing logging as appropriate.
+ **
+@@ -2433,6 +2402,7 @@
+ 				*h++ = 'r';
+ 				break;
+ 			  default:
++				SM_ASSERT(l >= 2);
+ 				(void) sm_snprintf(h, l, "%03o",
+ 					(unsigned int)((unsigned char) c));
+ 
+--- version.c	6 Jun 2005 04:25:50 -0000	1.1.1.1
++++ version.c	23 Mar 2006 19:46:06 -0000
+@@ -15,4 +15,4 @@
+ 
+ SM_RCSID("@(#)$Id: version.c,v 8.145 2005/03/25 18:44:44 ca Exp $")
+ 
+-char	Version[] = "8.13.4";
++char	Version[] = "8.13.4.20060308";
