@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.7 2005/11/16 02:24:33 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.8 2006/03/23 14:04:24 drhodus Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -14,6 +14,8 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+
+#define NAME_LENGTH 32
 
 struct proc;
 struct globaldata;
