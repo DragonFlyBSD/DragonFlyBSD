@@ -36,7 +36,7 @@
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strnstr.c,v 1.2.2.1 2001/12/09 06:50:03 mike Exp $
- * $DragonFly: src/lib/libc/string/strnstr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
+ * $DragonFly: src/lib/libc/string/strnstr.c,v 1.3.2.1 2006/03/23 17:34:56 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -56,8 +56,10 @@ strnstr(const char *s, const char *find, size_t slen)
 		len = strlen(find);
 		do {
 			do {
-				if ((sc = *s++) == '\0' || slen-- < 1)
+				if (slen < 1 || (sc = *s) == '\0')
 					return (NULL);
+				--slen;
+				++s;
 			} while (sc != c);
 			if (len > slen)
 				return (NULL);
