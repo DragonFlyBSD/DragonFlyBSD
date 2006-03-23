@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.43 2006/03/12 13:57:45 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.44 2006/03/23 13:45:12 sephe Exp $
 #
 #        On the handling of kernel options
 #
@@ -535,9 +535,6 @@ KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
 KTR_VERBOSE			opt_ktr.h
-
-# bge driver
-BGE_FAKE_AUTONEG	opt_bge.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h

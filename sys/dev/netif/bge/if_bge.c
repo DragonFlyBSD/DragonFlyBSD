@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.52 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.53 2006/03/23 13:45:12 sephe Exp $
  *
  */
 
@@ -71,8 +71,6 @@
  * result, this driver does not implement any support for the mini RX
  * ring.
  */
-
-#include "opt_bge.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -258,6 +256,13 @@ static int	bge_miibus_writereg(device_t, int, int, int);
 static void	bge_miibus_statchg(device_t);
 
 static void	bge_reset(struct bge_softc *);
+
+/*
+ * Set following tunable to 1 for some IBM blade servers with the DNLK
+ * switch module. Auto negotiation is broken for those configurations.
+ */
+static int	bge_fake_autoneg = 0;
+TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
 
 static device_method_t bge_methods[] = {
 	/* Device interface */
@@ -2566,13 +2571,13 @@ bge_ifmedia_upd(struct ifnet *ifp)
 			return(EINVAL);
 		switch(IFM_SUBTYPE(ifm->ifm_media)) {
 		case IFM_AUTO:
-#ifndef BGE_FAKE_AUTONEG
 			/*
 			 * The BCM5704 ASIC appears to have a special
 			 * mechanism for programming the autoneg
 			 * advertisement registers in TBI mode.
 			 */
-			if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
+			if (!bge_fake_autoneg &&
+			    sc->bge_asicrev == BGE_ASICREV_BCM5704) {
 				uint32_t sgdig;
 
 				CSR_WRITE_4(sc, BGE_TX_TBI_AUTONEG, 0);
@@ -2585,7 +2590,6 @@ bge_ifmedia_upd(struct ifnet *ifp)
 				DELAY(5);
 				CSR_WRITE_4(sc, BGE_SGDIG_CFG, sgdig);
 			}
-#endif	/* !BEG_FAKE_AUTONEG */
 			break;
 		case IFM_1000_SX:
 			if ((ifm->ifm_media & IFM_GMASK) == IFM_FDX) {
