@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.13.2.3 2006/03/23 20:18:03 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.13.2.4 2006/03/23 22:21:06 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 SMDIR=	${SENDMAIL_DIR}/sendmail
@@ -8,11 +8,11 @@ SMDIR=	${SENDMAIL_DIR}/sendmail
 
 CONTRIBDIR=	${SMDIR}
 PATCHES=	mci.c.patch
-#PATCHES+=	collect.c.patch conf.c.patch deliver.c.patch \
-#		headers.c.patch mime.c.patch parseaddr.c.patch \
-#		savemail.c.patch sendmail.h.patch sfsasl.c.patch \
-#		sfsasl.h.patch srvrsmtp.c.patch usersmtp.c.patch \
-#		util.c.patch version.c.patch
+PATCHES+=	collect.c.patch conf.c.patch deliver.c.patch \
+		headers.c.patch mime.c.patch parseaddr.c.patch \
+		savemail.c.patch sendmail.h.patch sfsasl.c.patch \
+		sfsasl.h.patch srvrsmtp.c.patch usersmtp.c.patch \
+		util.c.patch version.c.patch
 
 BINDIR=	/usr/libexec/sendmail
 
@@ -41,7 +41,7 @@ NIS=	-DNIS
 # Map extensions
 MAPS=	-DMAP_REGEX -DDNSMAP
 
-CFLAGS+= -I${SMDIR} -I${SENDMAIL_DIR}/include -I.
+CFLAGS+= -I. -I${SMDIR} -I${SENDMAIL_DIR}/include
 CFLAGS+= ${DBMDEF} ${NIS} -DMILTER -DNETINET6 -DTCPWRAPPERS ${MAPS}
 
 DPADD=	${LIBUTIL} ${LIBWRAP}
