@@ -1,10 +1,13 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.8.2.1 2006/03/23 19:56:01 gshapiro Exp $
+# $DragonFly: src/lib/libsm/Makefile,v 1.8.2.2 2006/03/23 20:06:32 gshapiro Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.4
 .PATH:	${SENDMAIL_DIR}/libsm
 
-PATCHES=	security.patch
+LIBSMDIR=	${SENDMAIL_DIR}/libsm
+CONTRIBDIR=	${LIBSMDIR}
+
+PATCHES=fflush.c.patch local.h.patch refill.c.patch
 
 CFLAGS+= -I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNETINET6 -DNEWDB -DNIS -DMAP_REGEX -DNOT_SENDMAIL

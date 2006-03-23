@@ -1,15 +1,5 @@
-$DragonFly: src/lib/libsm/Attic/security.patch,v 1.1.2.1 2006/03/23 19:56:01 gshapiro Exp $
+$DragonFly: src/lib/libsm/Attic/local.h.patch,v 1.1.2.1 2006/03/23 20:06:32 gshapiro Exp $
 
---- fflush.c	Tue Jun 14 16:07:20 2005
-+++ fflush.c	Fri Mar  3 14:25:00 2006
-@@ -145,6 +145,7 @@
- 				return SM_IO_EOF;
- 			}
- 			SM_IO_WR_TIMEOUT(fp, fd, *timeout);
-+			t = 0;
- 		}
- 	}
- 	return 0;
 --- local.h	Tue Jun 14 16:07:20 2005
 +++ local.h	Tue Feb 28 10:48:25 2006
 @@ -192,7 +192,7 @@
@@ -58,30 +48,4 @@ $DragonFly: src/lib/libsm/Attic/security.patch,v 1.1.2.1 2006/03/23 19:56:01 gsh
  	if ((to) < 0) \
  		(to) = 0; \
  }
-
---- refill.c	Tue Jun 14 16:07:20 2005
-+++ refill.c	Tue Feb 28 10:48:25 2006
-@@ -76,8 +76,11 @@
- 	FD_SET((fd), &sm_io_x_mask);					\
- 	if (gettimeofday(&sm_io_to_before, NULL) < 0)			\
- 		return SM_IO_EOF;					\
--	(sel_ret) = select((fd) + 1, &sm_io_to_mask, NULL,		\
--			   &sm_io_x_mask, (to));			\
-+	do								\
-+	{								\
-+		(sel_ret) = select((fd) + 1, &sm_io_to_mask, NULL,	\
-+			   	&sm_io_x_mask, (to));			\
-+	} while ((sel_ret) < 0 && errno == EINTR);			\
- 	if ((sel_ret) < 0)						\
- 	{								\
- 		/* something went wrong, errno set */			\
-@@ -94,7 +97,7 @@
- 	/* calulate wall-clock time used */				\
- 	if (gettimeofday(&sm_io_to_after, NULL) < 0)			\
- 		return SM_IO_EOF;					\
--	timersub(&sm_io_to_before, &sm_io_to_after, &sm_io_to_diff);	\
-+	timersub(&sm_io_to_after, &sm_io_to_before, &sm_io_to_diff);	\
- 	timersub((to), &sm_io_to_diff, (to));				\
- }
- 
 
