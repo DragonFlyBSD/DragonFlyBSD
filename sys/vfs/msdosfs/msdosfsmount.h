@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.6 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.7 2006/03/24 22:39:22 dillon Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -145,7 +145,7 @@ struct msdosfsmount {
 	((cn) << ((pmp)->pm_cnshift - (pmp)->pm_bnshift))
 
 /*
- * Convert file offset to cluster number
+ * Convert file 32 bit offset to cluster number
  */
 #define de_cluster(pmp, off) \
 	((off) >> (pmp)->pm_cnshift)
@@ -157,31 +157,31 @@ struct msdosfsmount {
 	(((size) + (pmp)->pm_bpcluster - 1) >> (pmp)->pm_cnshift)
 
 /*
- * Convert file offset to block number
+ * Convert file 32 bit offset to block number
  */
 #define de_blk(pmp, off) \
 	(de_cn2bn(pmp, de_cluster((pmp), (off))))
 
 /*
- * Convert cluster number to file offset
+ * Convert a logical cluster number to file offset.  This typically 
+ * represents a logical cluster number relative to a file, not relative
+ * to the device.
  */
 #define	de_cn2off(pmp, cn) \
 	((cn) << (pmp)->pm_cnshift)
 
 /*
- * Convert block number to file offset
+ * Convert a device block number to a file offset.  
  */
 #define	de_bn2off(pmp, bn) \
 	((bn) << (pmp)->pm_bnshift)
 
 /*
- * Convert block number to disk offset (for getblk, bread, etc)
+ * Convert a device block number to a 64 bit offset, used for getblk(),
+ * bread(), etc.
  */
 #define	de_bntodoff(pmp, bn) \
 	((off_t)(bn) << (pmp)->pm_bnshift)
-
-#define cntodoff(pmp, cn) \
-	de_bntodoff(pmp, cntobn(pmp, cn))
 
 #define	de_cn2doff(pmp, cn) \
 	((off_t)(cn) << (pmp)->pm_cnshift)
@@ -189,10 +189,19 @@ struct msdosfsmount {
 #define de_off2bn(pmp, off) \
 	((daddr_t)((off) >> (pmp)->pm_bnshift))
 
+#define de_off2cn(pmp, off) \
+	((daddr_t)((off) >> (pmp)->pm_cnshift))
+
 /*
- * Map a cluster number into a filesystem relative block number.
+ * Map an on-disk cluster number into a device relative block number or 
+ * a device relative offset.   This is different from a logical cluster
+ * number.  The cluster numbers stored on-disk are not relative to block 0
+ * on the disk.
  */
-#define	cntobn(pmp, cn) \
+#define xcntodoff(pmp, cn) \
+	de_bntodoff(pmp, xcntobn(pmp, cn))
+
+#define	xcntobn(pmp, cn) \
 	(de_cn2bn((pmp), (cn)-CLUST_FIRST) + (pmp)->pm_firstcluster)
 
 
@@ -209,7 +218,7 @@ struct msdosfsmount {
 #define	detobn(pmp, dirclu, dirofs) \
 	((dirclu) == MSDOSFSROOT \
 	 ? roottobn((pmp), (dirofs)) \
-	 : cntobn((pmp), (dirclu)))
+	 : xcntobn((pmp), (dirclu)))
 
 /*
  * Calculate fsinfo block size

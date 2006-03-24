@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.21 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.22 2006/03/24 22:39:22 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -404,7 +404,7 @@ again:
 
 		nvp->v_type = VDIR;
 		if (ldep->de_StartCluster != MSDOSFSROOT) {
-			error = pcbmap(ldep, 0xffff, 0, &size, 0);
+			error = pcbmap(ldep, 0xffff, NULL, &size, NULL);
 			if (error == E2BIG) {
 				ldep->de_FileSize = de_cn2off(pmp, size);
 				error = 0;
@@ -468,7 +468,7 @@ detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
 	int allerror;
 	u_long eofentry;
 	u_long chaintofree;
-	daddr_t bn;
+	daddr_t bn, cn;
 	int boff;
 	int isadir = dep->de_Attributes & ATTR_DIRECTORY;
 	struct buf *bp;
@@ -512,8 +512,8 @@ detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
 		dep->de_StartCluster = 0;
 		eofentry = ~0;
 	} else {
-		error = pcbmap(dep, de_clcount(pmp, length) - 1, 0, 
-			       &eofentry, 0);
+		error = pcbmap(dep, de_clcount(pmp, length) - 1,
+			       NULL, &eofentry, NULL);
 		if (error) {
 #ifdef MSDOSFS_DEBUG
 			printf("detrunc(): pcbmap fails %d\n", error);
@@ -531,11 +531,11 @@ detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
 	 */
 	if ((boff = length & pmp->pm_crbomask) != 0) {
 		if (isadir) {
-			bn = cntobn(pmp, eofentry);
+			bn = xcntobn(pmp, eofentry);
 			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 		} else {
-			bn = de_blk(pmp, length);
-			error = bread(DETOV(dep), de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
+			cn = de_cluster(pmp, length);
+			error = bread(DETOV(dep), de_cn2doff(pmp, cn), pmp->pm_bpcluster, &bp);
 		}
 		if (error) {
 			brelse(bp);

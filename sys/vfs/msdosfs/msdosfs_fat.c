@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.8 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.9 2006/03/24 22:39:22 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -254,7 +254,7 @@ pcbmap(struct denode *dep,
 		if (bp)
 			brelse(bp);
 		if (bnp)
-			*bnp = cntobn(pmp, cn);
+			*bnp = xcntobn(pmp, cn);
 		if (cnp)
 			*cnp = cn;
 		fc_setcache(dep, FC_LASTMAP, i, cn);
@@ -963,7 +963,7 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 	if (dep->de_fc[FC_LASTFC].fc_frcn == FCE_EMPTY &&
 	    dep->de_StartCluster != 0) {
 		fc_lfcempty++;
-		error = pcbmap(dep, 0xffff, 0, &cn, 0);
+		error = pcbmap(dep, 0xffff, NULL, &cn, NULL);
 		/* we expect it to return E2BIG */
 		if (error != E2BIG)
 			return (error);
@@ -1013,8 +1013,8 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 		}
 
 		/*
-		 * Update the "last cluster of the file" entry in the denode's fat
-		 * cache.
+		 * Update the "last cluster of the file" entry in the
+		 * denode's fat cache.
 		 */
 		fc_setcache(dep, FC_LASTFC, frcn + got - 1, cn + got - 1);
 
@@ -1025,23 +1025,25 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 				 */
 				if (dep->de_Attributes & ATTR_DIRECTORY) {
 					bp = getblk(pmp->pm_devvp,
-						    cntodoff(pmp, cn++),
+						    xcntodoff(pmp, cn),
 						    pmp->pm_bpcluster, 0, 0);
+					++cn;
 				} else {
 					daddr_t dblkno;
 
 					bp = getblk(DETOV(dep),
-						    de_cn2doff(pmp, frcn++),
+						    de_cn2doff(pmp, frcn),
 						    pmp->pm_bpcluster, 0, 0);
+					++frcn;
 					/*
 					 * Do the bmap now, as in msdosfs_write
 					 */
 					if (pcbmap(dep,
 					    de_bn2cn(pmp, de_off2bn(pmp, bp->b_bio1.bio_offset)),
-					    &dblkno, 0, 0)) {
+					    &dblkno, NULL, NULL)) {
 						bp->b_bio2.bio_offset = NOOFFSET;
 					} else {
-						bp->b_bio2.bio_offset = de_cn2doff(pmp, dblkno);
+						bp->b_bio2.bio_offset = de_bntodoff(pmp, dblkno);
 					}
 					if (bp->b_bio2.bio_offset == NOOFFSET)
 						panic("extendfile: pcbmap");

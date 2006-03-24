@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.30 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.31 2006/03/24 22:39:22 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -329,11 +329,11 @@ msdosfs_getattr(struct vop_getattr_args *ap)
 	 * doesn't work.
 	 */
 	if (dep->de_Attributes & ATTR_DIRECTORY) {
-		fileid = cntobn(pmp, dep->de_StartCluster) * dirsperblk;
+		fileid = xcntobn(pmp, dep->de_StartCluster) * dirsperblk;
 		if (dep->de_StartCluster == MSDOSFSROOT)
 			fileid = 1;
 	} else {
-		fileid = cntobn(pmp, dep->de_dirclust) * dirsperblk;
+		fileid = xcntobn(pmp, dep->de_dirclust) * dirsperblk;
 		if (dep->de_dirclust == MSDOSFSROOT)
 			fileid = roottobn(pmp, 0) * dirsperblk;
 		fileid += dep->de_diroffset / sizeof(struct direntry);
@@ -571,17 +571,25 @@ msdosfs_read(struct vop_read_args *ap)
 	do {
 		if (uio->uio_offset >= dep->de_FileSize)
 			break;
-		lbn = de_cluster(pmp, uio->uio_offset);
-		loffset = de_cn2off(pmp, lbn);
+
+		/*
+		 * note: lbn is a cluster number, not a device block number.
+		 */
+		lbn = de_off2cn(pmp, uio->uio_offset);
+		loffset = de_cn2doff(pmp, lbn);
+
 		/*
 		 * If we are operating on a directory file then be sure to
 		 * do i/o with the vnode for the filesystem instead of the
 		 * vnode for the directory.
 		 */
 		if (isadir) {
-			/* convert cluster # to block # */
-			error = pcbmap(dep, lbn, &lbn, 0, &blsize);
-			loffset = de_cn2off(pmp, lbn);
+			/*
+			 * convert cluster # to block #.  lbn is a
+			 * device block number after this.
+			 */
+			error = pcbmap(dep, lbn, &lbn, NULL, &blsize);
+			loffset = de_bntodoff(pmp, lbn);
 			if (error == E2BIG) {
 				error = EINVAL;
 				break;
@@ -591,7 +599,7 @@ msdosfs_read(struct vop_read_args *ap)
 		} else {
 			blsize = pmp->pm_bpcluster;
 			rablock = lbn + 1;
-			raoffset = de_cn2off(pmp, rablock);
+			raoffset = de_cn2doff(pmp, rablock);
 			if (seqcount > 1 &&
 			    raoffset < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
@@ -638,7 +646,7 @@ msdosfs_write(struct vop_write_args *ap)
 	u_long osize;
 	int error = 0;
 	u_long count;
-	daddr_t bn, lastcn;
+	daddr_t cn, lastcn;
 	struct buf *bp;
 	int ioflag = ap->a_ioflag;
 	struct uio *uio = ap->a_uio;
@@ -720,7 +728,7 @@ msdosfs_write(struct vop_write_args *ap)
 		lastcn = de_clcount(pmp, osize) - 1;
 
 	do {
-		if (de_cluster(pmp, uio->uio_offset) > lastcn) {
+		if (de_off2cn(pmp, uio->uio_offset) > lastcn) {
 			error = ENOSPC;
 			break;
 		}
@@ -733,17 +741,17 @@ msdosfs_write(struct vop_write_args *ap)
 			vnode_pager_setsize(vp, dep->de_FileSize);
 		}
 
-		bn = de_cluster(pmp, uio->uio_offset);
+		cn = de_off2cn(pmp, uio->uio_offset);
 		if ((uio->uio_offset & pmp->pm_crbomask) == 0
-		    && (de_cluster(pmp, uio->uio_offset + uio->uio_resid) 
-		        > de_cluster(pmp, uio->uio_offset)
+		    && (de_off2cn(pmp, uio->uio_offset + uio->uio_resid) 
+		        > de_off2cn(pmp, uio->uio_offset)
 			|| uio->uio_offset + uio->uio_resid >= dep->de_FileSize)) {
 			/*
 			 * If either the whole cluster gets written,
 			 * or we write the cluster from its start beyond EOF,
 			 * then no need to read data from disk.
 			 */
-			bp = getblk(thisvp, de_bntodoff(pmp, bn),
+			bp = getblk(thisvp, de_cn2doff(pmp, cn),
 				    pmp->pm_bpcluster, 0, 0);
 			clrbuf(bp);
 			/*
@@ -751,14 +759,15 @@ msdosfs_write(struct vop_write_args *ap)
 			 * for the fat table. (see msdosfs_strategy)
 			 */
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
-				daddr_t lblkno = de_off2bn(pmp, bp->b_loffset);
+				daddr_t lblkno = de_off2cn(pmp, bp->b_loffset);
 				daddr_t dblkno;
 
-				error = pcbmap(dep, lblkno, &dblkno, 0, 0);
+				error = pcbmap(dep, lblkno,
+					       &dblkno, NULL, NULL);
 				if (error || dblkno == (daddr_t)-1) {
 					bp->b_bio2.bio_offset = NOOFFSET;
 				} else {
-					bp->b_bio2.bio_offset = de_cn2doff(pmp, dblkno);
+					bp->b_bio2.bio_offset = de_bntodoff(pmp, dblkno);
 				}
 			}
 			if (bp->b_bio2.bio_offset == NOOFFSET) {
@@ -769,9 +778,11 @@ msdosfs_write(struct vop_write_args *ap)
 			}
 		} else {
 			/*
-			 * The block we need to write into exists, so read it in.
+			 * The block we need to write into exists, so read
+			 * it in.
 			 */
-			error = bread(thisvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
+			error = bread(thisvp, de_cn2doff(pmp, cn),
+				      pmp->pm_bpcluster, &bp);
 			if (error) {
 				brelse(bp);
 				break;
@@ -1239,8 +1250,8 @@ abortit:
 			goto done;
 		}
 		if (!doingdirectory) {
-			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 0,
-				       &new_dirclust, 0);
+			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 
+				       NULL, &new_dirclust, NULL);
 			if (error) {
 				/* XXX should really panic here, fs is corrupt */
 				goto done;
@@ -1263,7 +1274,7 @@ abortit:
 			/* this should never happen */
 			panic("msdosfs_rename(): updating .. in root directory?");
 		} else {
-			bn = cntobn(pmp, cn);
+			bn = xcntobn(pmp, cn);
 		}
 		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 		if (error) {
@@ -1392,7 +1403,7 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	 * the cluster to disk.  This way it is there for the parent
 	 * directory to be pointing at if there were a crash.
 	 */
-	bn = cntobn(pmp, newcluster);
+	bn = xcntobn(pmp, newcluster);
 	/* always succeeds */
 	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
 		    pmp->pm_bpcluster, 0, 0);
@@ -1605,7 +1616,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 			for (n = (int)offset / sizeof(struct direntry); n < 2;
 			     n++) {
 				if (FAT32(pmp))
-					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
+					d_ino = xcntobn(pmp, pmp->pm_rootdirblk)
 					    * dirsperblk;
 				else
 					d_ino = 1;
@@ -1637,7 +1648,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	off = offset;
 
 	while (uio->uio_resid > 0) {
-		lbn = de_cluster(pmp, offset - bias);
+		lbn = de_off2cn(pmp, offset - bias);
 		on = (offset - bias) & pmp->pm_crbomask;
 		n = min(pmp->pm_bpcluster - on, uio->uio_resid);
 		diff = dep->de_FileSize - (offset - bias);
@@ -1713,9 +1724,9 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 					d_ino |= getushort(dentp->deHighClust) << 16;
 				/* if this is the root directory */
 				if (d_ino != MSDOSFSROOT)
-					d_ino = cntobn(pmp, d_ino) * dirsperblk;
+					d_ino = xcntobn(pmp, d_ino) * dirsperblk;
 				else if (FAT32(pmp))
-					d_ino = cntobn(pmp, pmp->pm_rootdirblk)
+					d_ino = xcntobn(pmp, pmp->pm_rootdirblk)
 					    * dirsperblk;
 				else
 					d_ino = 1;
@@ -1811,13 +1822,13 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 	if (ap->a_runb) {
 		*ap->a_runb = 0;
 	}
-	KKASSERT(((int)ap->a_loffset & ((1 << pmp->pm_bnshift) - 1)) == 0);
-	lbn = (daddr_t)(ap->a_loffset >> pmp->pm_bnshift);
-	error = pcbmap(dep, lbn, &dbn, 0, 0);
+	KKASSERT(((int)ap->a_loffset & ((1 << pmp->pm_cnshift) - 1)) == 0);
+	lbn = de_off2cn(pmp, ap->a_loffset);
+	error = pcbmap(dep, lbn, &dbn, NULL, NULL);
 	if (error || dbn == (daddr_t)-1) {
 		*ap->a_doffsetp = NOOFFSET;
 	} else {
-		*ap->a_doffsetp = de_cn2off(pmp, dbn);
+		*ap->a_doffsetp = de_bntodoff(pmp, dbn);
 	}
 	return (error);
 }
@@ -1847,7 +1858,8 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	 */
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
-		error = pcbmap(dep, de_off2bn(pmp, bio->bio_offset), &dblkno, 0, 0);
+		error = pcbmap(dep, de_off2cn(pmp, bio->bio_offset),
+			       &dblkno, NULL, NULL);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
@@ -1859,7 +1871,7 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 			nbio->bio_offset = NOOFFSET;
 			vfs_bio_clrbuf(bp);
 		} else {
-			nbio->bio_offset = de_cn2doff(pmp, dblkno);
+			nbio->bio_offset = de_bntodoff(pmp, dblkno);
 		}
 	}
 	if (nbio->bio_offset == NOOFFSET) {

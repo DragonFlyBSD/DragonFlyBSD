@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.16 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.17 2006/03/24 22:39:22 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -624,7 +624,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 				error = pcbmap(ddep,
 					       de_cluster(pmp,
 							  ddep->de_fndoffset),
-					       &bn, 0, &blsize);
+					       &bn, NULL, &blsize);
 				if (error)
 					return error;
 
@@ -689,7 +689,7 @@ dosdirempty(struct denode *dep)
 	 * we hit end of file.
 	 */
 	for (cn = 0;; cn++) {
-		if ((error = pcbmap(dep, cn, &bn, 0, &blsize)) != 0) {
+		if ((error = pcbmap(dep, cn, &bn, NULL, &blsize)) != 0) {
 			if (error == E2BIG)
 				return (1);	/* it's empty */
 			return (0);
@@ -784,7 +784,7 @@ doscheckpath(struct denode *source, struct denode *target)
 			break;
 		}
 		scn = dep->de_StartCluster;
-		error = bread(pmp->pm_devvp, de_bntodoff(pmp, cntobn(pmp, scn)),
+		error = bread(pmp->pm_devvp, xcntodoff(pmp, scn),
 			      pmp->pm_bpcluster, &bp);
 		if (error)
 			break;
@@ -899,7 +899,8 @@ removede(struct denode *pdep,	/* directory where the entry is removed */
 	offset += sizeof(struct direntry);
 	do {
 		offset -= sizeof(struct direntry);
-		error = pcbmap(pdep, de_cluster(pmp, offset), &bn, 0, &blsize);
+		error = pcbmap(pdep, de_cluster(pmp, offset),
+			       &bn, NULL, &blsize);
 		if (error)
 			return error;
 		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
