@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.50 2005/10/24 08:06:16 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.51 2006/03/24 18:30:33 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -91,6 +91,7 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
+#include <vm/vm_extern.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -485,6 +486,11 @@ hardclock(systimer_t info, struct intrframe *frame)
 	     */
 	    cpu_sfence();
 	    basetime_index = ni;
+
+	    /*
+	     * Figure out how badly the system is starved for memory
+	     */
+	    vm_fault_ratecheck();
 	}
 
 	/*
