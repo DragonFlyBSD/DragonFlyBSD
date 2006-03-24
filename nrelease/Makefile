@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.52 2006/03/09 22:16:40 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.53 2006/03/24 20:19:32 joerg Exp $
 #
 
 # compat target
@@ -19,6 +19,7 @@ KERNCONF ?= GENERIC
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
+PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
@@ -162,6 +163,8 @@ customizeiso:
 .for PKG in ${PKGSRC_PACKAGES}
 	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
 .endfor
+	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
+	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
 
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
