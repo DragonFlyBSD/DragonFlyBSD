@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.20 2006/02/17 19:18:05 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.21 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -943,7 +943,7 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 		br = (struct aac_blockread *)&fib->data[0];
 		br->Command = VM_CtBlockRead;
 		br->ContainerId = ad->ad_container->co_mntobj.ObjectId;
-		br->BlockNumber = bio->bio_blkno;
+		br->BlockNumber = bio->bio_offset / AAC_BLOCK_SIZE;
 		br->ByteCount = bp->b_bcount;
 		fib->Header.Size += sizeof(struct aac_blockread);
 		cm->cm_sgtable = &br->SgMap;
@@ -952,7 +952,7 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 		bw = (struct aac_blockwrite *)&fib->data[0];
 		bw->Command = VM_CtBlockWrite;
 		bw->ContainerId = ad->ad_container->co_mntobj.ObjectId;
-		bw->BlockNumber = bio->bio_blkno;
+		bw->BlockNumber = bio->bio_offset / AAC_BLOCK_SIZE;
 		bw->ByteCount = bp->b_bcount;
 		bw->Stable = CUNSTABLE;	/* XXX what's appropriate here? */
 		fib->Header.Size += sizeof(struct aac_blockwrite);

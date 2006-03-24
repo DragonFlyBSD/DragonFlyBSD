@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.11 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.12 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -144,7 +144,7 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 		length = segments[0].ds_len;
 	}
 	command_struct->command = cmdtype;
-	command_struct->lba = bio->bio_blkno;
+	command_struct->lba = bio->bio_offset / IPS_BLKSIZE;
 	length = (length + IPS_BLKSIZE - 1)/IPS_BLKSIZE;
 	command_struct->length = length;
 	bus_dmamap_sync(sc->command_dmatag, command->command_dmamap,
@@ -162,7 +162,7 @@ ips_io_request_callback(void *cmdptr, bus_dma_segment_t *segments, int segnum,
 	 */
 	PRINTF(10, "ips test: command id: %d segments: %d "
 		"pblkno: %lld length: %d, ds_len: %d\n", command->id, segnum,
-		(long long)bio->bio_blkno,
+		bio->bio_offset / IPS_BLKSIZE,
 		length, segments[0].ds_len);
 
 	sc->ips_issue_cmd(command);

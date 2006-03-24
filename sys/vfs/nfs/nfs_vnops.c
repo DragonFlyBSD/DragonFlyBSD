@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.49 2006/03/05 18:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.50 2006/03/24 18:35:34 dillon Exp $
  */
 
 
@@ -2837,8 +2837,8 @@ nfsmout:
  *    a lot more work than bcopy() and also it currently happens in the
  *    context of the swapper process (2).
  *
- * nfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	    daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * nfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	    off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 nfs_bmap(struct vop_bmap_args *ap)
@@ -2847,8 +2847,8 @@ nfs_bmap(struct vop_bmap_args *ap)
 
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn * btodb(vp->v_mount->mnt_stat.f_iosize);
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
 	if (ap->a_runb != NULL)
@@ -2862,9 +2862,6 @@ nfs_bmap(struct vop_bmap_args *ap)
  * For async requests when nfsiod(s) are running, queue the request by
  * calling nfs_asyncio(), otherwise just all nfs_doio() to do the
  * request.
- *
- * bio_blkno is NFS block-sized, which depends whether the vnode is a
- * regular file or a directory.
  */
 static int
 nfs_strategy(struct vop_strategy_args *ap)
@@ -2889,21 +2886,12 @@ nfs_strategy(struct vop_strategy_args *ap)
 		td = curthread;	/* XXX */
 
         /*
-	 * Convert to DEV_BSIZE'd blocks for nfs_doio/nfs_asyncio
+	 * We probably don't need to push an nbio any more since no
+	 * block conversion is required due to the use of 64 bit byte
+	 * offsets, but do it anyway.
          */
 	nbio = push_bio(bio);
-
-        if (bp->b_vp->v_type == VREG) {
-                int biosize;
-
-                biosize = bp->b_vp->v_mount->mnt_stat.f_iosize;
-                nbio->bio_blkno = ((off_t)bio->bio_blkno * biosize) >> 
-				  DEV_BSHIFT;
-        } else {
-                nbio->bio_blkno = ((off_t)bio->bio_blkno * NFS_DIRBLKSIZ) >>
-				  DEV_BSHIFT;
-        }
-
+	nbio->bio_offset = bio->bio_offset;
 
 	/*
 	 * If the op is asynchronous and an i/o daemon is waiting
@@ -3151,11 +3139,10 @@ nfs_flush_bp(struct buf *bp, void *data)
 		vfs_busy_pages(bp, 1);
 
 		info->bvary[info->bvsize] = bp;
-		toff = ((u_quad_t)bp->b_bio2.bio_blkno) * DEV_BSIZE +
-			bp->b_dirtyoff;
+		toff = bp->b_bio2.bio_offset + bp->b_dirtyoff;
 		if (info->bvsize == 0 || toff < info->beg_off)
 			info->beg_off = toff;
-		toff += (u_quad_t)(bp->b_dirtyend - bp->b_dirtyoff);
+		toff += (off_t)(bp->b_dirtyend - bp->b_dirtyoff);
 		if (info->bvsize == 0 || toff > info->end_off)
 			info->end_off = toff;
 		++info->bvsize;

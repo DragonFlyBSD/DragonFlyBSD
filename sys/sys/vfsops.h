@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.15 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.16 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*
@@ -327,9 +327,9 @@ struct vop_unlock_args {
 struct vop_bmap_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	daddr_t a_bn;
+	off_t a_loffset;
 	struct vnode **a_vpp;
-	daddr_t *a_bnp;
+	off_t *a_doffsetp;
 	int *a_runp;
 	int *a_runb;
 };
@@ -399,8 +399,8 @@ struct vop_putpages_args {
 struct vop_freeblks_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	daddr_t a_addr;
-	daddr_t a_length;
+	off_t a_offset;
+	int a_length;
 };
 
 struct vop_bwrite_args {
@@ -818,8 +818,8 @@ int vop_lock(struct vop_ops *ops, struct vnode *vp,
 		int flags, struct thread *td);
 int vop_unlock(struct vop_ops *ops, struct vnode *vp,
 		int flags, struct thread *td);
-int vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn,
-		struct vnode **vpp, daddr_t *bnp, int *runp, int *runb);
+int vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
+		struct vnode **vpp, off_t *doffsetp, int *runp, int *runb);
 int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio);
 int vop_print(struct vop_ops *ops, struct vnode *vp);
 int vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
@@ -836,7 +836,7 @@ int vop_getpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
 int vop_putpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
 		int count, int sync, int *rtvals, vm_ooffset_t offset);
 int vop_freeblks(struct vop_ops *ops, struct vnode *vp,
-		daddr_t addr, daddr_t length);
+		off_t offset, int length);
 int vop_bwrite(struct vop_ops *ops, struct vnode *vp, struct buf *bp);
 int vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 		struct acl *aclp, struct ucred *cred, struct thread *td);
@@ -1073,8 +1073,8 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_lock(*(vp)->v_ops, vp, flags, td)
 #define VOP_UNLOCK(vp, flags, td)			\
 	vop_unlock(*(vp)->v_ops, vp, flags, td)
-#define VOP_BMAP(vp, bn, vpp, bnp, runp, runb)		\
-	vop_bmap(*(vp)->v_ops, vp, bn, vpp, bnp, runp, runb)
+#define VOP_BMAP(vp, loff, vpp, doffp, runp, runb)	\
+	vop_bmap(*(vp)->v_ops, vp, loff, vpp, doffp, runp, runb)
 #define VOP_PRINT(vp)					\
 	vop_print(*(vp)->v_ops, vp)
 #define VOP_PATHCONF(vp, name, retval)			\
@@ -1089,8 +1089,8 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_getpages(*(vp)->v_ops, vp, m, count, reqpage, off)
 #define VOP_PUTPAGES(vp, m, count, sync, rtvals, off)	\
 	vop_putpages(*(vp)->v_ops, vp, m, count, sync, rtvals, off)
-#define VOP_FREEBLKS(vp, addr, length)			\
-	vop_freeblks(*(vp)->v_ops, vp, addr, length)
+#define VOP_FREEBLKS(vp, offset, length)		\
+	vop_freeblks(*(vp)->v_ops, vp, offset, length)
 #define VOP_BWRITE(vp, bp)				\
 	vop_bwrite(*(vp)->v_ops, vp, bp)
 #define VOP_GETACL(vp, type, aclp, cred, td)		\

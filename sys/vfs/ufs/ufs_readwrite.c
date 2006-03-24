@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.13 2004/10/25 19:14:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.14 2006/03/24 18:35:34 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -73,8 +73,10 @@ ffs_read(struct vop_read_args *ap)
 	FS *fs;
 	struct buf *bp;
 	ufs_daddr_t lbn, nextlbn;
+	off_t nextloffset;
+	off_t loffset;
 	off_t bytesinfile;
-	long size, xfersize, blkoffset;
+	int size, xfersize, blkoffset;
 	int error, orig_resid;
 	u_short mode;
 	int seqcount;
@@ -136,7 +138,9 @@ ffs_read(struct vop_read_args *ap)
 			break;
 
 		lbn = lblkno(fs, uio->uio_offset);
+		loffset = lblktodoff(fs, lbn);
 		nextlbn = lbn + 1;
+		nextloffset = lblktodoff(fs, nextlbn);
 
 		/*
 		 * size of buffer.  The buffer representing the
@@ -164,11 +168,11 @@ ffs_read(struct vop_read_args *ap)
 		if (bytesinfile < xfersize)
 			xfersize = bytesinfile;
 
-		if (lblktosize(fs, nextlbn) >= ip->i_size) {
+		if (nextloffset >= ip->i_size) {
 			/*
 			 * Don't do readahead if this is the end of the file.
 			 */
-			error = bread(vp, lbn, size, &bp);
+			error = bread(vp, loffset, size, &bp);
 		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
 			/* 
 			 * Otherwise if we are allowed to cluster,
@@ -177,8 +181,9 @@ ffs_read(struct vop_read_args *ap)
 			 * XXX  This may not be a win if we are not
 			 * doing sequential access.
 			 */
-			error = cluster_read(vp, ip->i_size, lbn,
-				size, uio->uio_resid, seqcount, &bp);
+			error = cluster_read(vp, (off_t)ip->i_size, 
+					     loffset, size, 
+					     uio->uio_resid, seqcount, &bp);
 		} else if (seqcount > 1) {
 			/*
 			 * If we are NOT allowed to cluster, then
@@ -189,15 +194,15 @@ ffs_read(struct vop_read_args *ap)
 			 * the 6th argument.
 			 */
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
-			error = breadn(vp, lbn,
-			    size, &nextlbn, &nextsize, 1, &bp);
+			error = breadn(vp, loffset,
+			    size, &nextloffset, &nextsize, 1, &bp);
 		} else {
 			/*
 			 * Failing all of the above, just read what the 
 			 * user asked for. Interestingly, the same as
 			 * the first option above.
 			 */
-			error = bread(vp, lbn, size, &bp);
+			error = bread(vp, loffset, size, &bp);
 		}
 		if (error) {
 			brelse(bp);
@@ -460,7 +465,7 @@ ffs_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->fs_bsize) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, ip->i_size, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, seqcount);
 			} else {
 				bawrite(bp);
 			}
@@ -516,8 +521,8 @@ ffs_getpages(struct vop_getpages_args *ap)
 	int bbackwards, bforwards;
 	int pbackwards, pforwards;
 	int firstpage;
-	int reqlblkno;
-	daddr_t reqblkno;
+	off_t reqoffset;
+	off_t doffset;
 	int poff;
 	int pcount;
 	int rtval;
@@ -559,18 +564,19 @@ ffs_getpages(struct vop_getpages_args *ap)
 	/*
 	 * foff is the file offset of the required page
 	 * reqlblkno is the logical block that contains the page
-	 * poff is the index of the page into the logical block
+	 * poff is the bytes offset of the page in the logical block
 	 */
-	reqlblkno = foff / bsize;
-	poff = (foff % bsize) / PAGE_SIZE;
+	poff = (int)(foff % bsize);
+	reqoffset = foff - poff;
 
-	if ( VOP_BMAP( vp, reqlblkno, &dp, &reqblkno,
-		&bforwards, &bbackwards) || (reqblkno == -1)) {
-		for(i = 0; i < pcount; i++) {
+	if (VOP_BMAP(vp, reqoffset, &dp, &doffset,
+		&bforwards, &bbackwards) || (doffset == NOOFFSET)
+	) {
+		for (i = 0; i < pcount; i++) {
 			if (i != ap->a_reqpage)
 				vm_page_free(ap->a_m[i]);
 		}
-		if (reqblkno == -1) {
+		if (doffset == NOOFFSET) {
 			if ((mreq->flags & PG_ZERO) == 0)
 				vm_page_zero_fill(mreq);
 			vm_page_undirty(mreq);
@@ -581,38 +587,50 @@ ffs_getpages(struct vop_getpages_args *ap)
 		}
 	}
 
-	physoffset = (off_t)reqblkno * DEV_BSIZE + poff * PAGE_SIZE;
+	physoffset = doffset + poff;
 	pagesperblock = bsize / PAGE_SIZE;
+
 	/*
-	 * find the first page that is contiguous...
-	 * note that pbackwards is the number of pages that are contiguous
-	 * backwards.
+	 * find the first page that is contiguous.
+	 *
+	 * bforwards and bbackwards are the number of contiguous bytes
+	 * available before and after the block offset.  poff is the page
+	 * offset, in bytes, relative to the block offset.
+	 *
+	 * pforwards and pbackwards are the number of contiguous pages
+	 * relative to the requested page, non-inclusive of the requested
+	 * page (so a pbackwards and  pforwards of 0 indicates just the
+	 * requested page).
 	 */
 	firstpage = 0;
 	if (ap->a_count) {
-		pbackwards = poff + bbackwards * pagesperblock;
+		/*
+		 * Calculate pbackwards and clean up any requested
+		 * pages that are too far back.
+		 */
+		pbackwards = (poff + bbackwards) >> PAGE_SHIFT;
 		if (ap->a_reqpage > pbackwards) {
 			firstpage = ap->a_reqpage - pbackwards;
-			for(i=0;i<firstpage;i++)
+			for (i = 0; i < firstpage; i++)
 				vm_page_free(ap->a_m[i]);
 		}
 
-	/*
-	 * pforwards is the number of pages that are contiguous
-	 * after the current page.
-	 */
-		pforwards = (pagesperblock - (poff + 1)) +
-			bforwards * pagesperblock;
+		/*
+		 * Calculate pforwards
+		 */
+		pforwards = (bforwards - poff - PAGE_SIZE) >> PAGE_SHIFT;
+		if (pforwards < 0)
+			pforwards = 0;
 		if (pforwards < (pcount - (ap->a_reqpage + 1))) {
-			for( i = ap->a_reqpage + pforwards + 1; i < pcount; i++)
+			for(i = ap->a_reqpage + pforwards + 1; i < pcount; i++)
 				vm_page_free(ap->a_m[i]);
 			pcount = ap->a_reqpage + pforwards + 1;
 		}
 
-	/*
-	 * number of pages for I/O corrected for the non-contig pages at
-	 * the beginning of the array.
-	 */
+		/*
+		 * Adjust pcount to be relative to firstpage.  All pages prior
+		 * to firstpage in the array have been cleaned up.
+		 */
 		pcount -= firstpage;
 	}
 
@@ -623,13 +641,14 @@ ffs_getpages(struct vop_getpages_args *ap)
 	size = pcount * PAGE_SIZE;
 
 	if ((IDX_TO_OFF(ap->a_m[firstpage]->pindex) + size) >
-		obj->un_pager.vnp.vnp_size)
+	    obj->un_pager.vnp.vnp_size) {
 		size = obj->un_pager.vnp.vnp_size -
 			IDX_TO_OFF(ap->a_m[firstpage]->pindex);
+	}
 
 	physoffset -= foff;
 	rtval = VOP_GETPAGES(dp, &ap->a_m[firstpage], size,
-		(ap->a_reqpage - firstpage), physoffset);
+			     (ap->a_reqpage - firstpage), physoffset);
 
 	return (rtval);
 }

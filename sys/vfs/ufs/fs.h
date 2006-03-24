@@ -32,7 +32,7 @@
  *
  *	@(#)fs.h	8.13 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/fs.h,v 1.14.2.3 2001/09/21 19:15:22 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.4 2006/03/24 18:35:34 dillon Exp $
  */
 
 #ifndef _UFS_FFS_FS_H_
@@ -67,7 +67,6 @@
 #define	BBOFF		((off_t)(0))
 #define	SBOFF		((off_t)(BBOFF + BBSIZE))
 #define	BBLOCK		((ufs_daddr_t)(0))
-#define	SBLOCK		((ufs_daddr_t)(BBLOCK + BBSIZE / DEV_BSIZE))
 
 /*
  * Addresses stored in inodes are capable of addressing fragments
@@ -430,6 +429,7 @@ struct ocg {
  */
 #define fsbtodb(fs, b)	((b) << (fs)->fs_fsbtodb)
 #define	dbtofsb(fs, b)	((b) >> (fs)->fs_fsbtodb)
+#define	btofsb(fs, b)	((daddr_t)((b) >> ((fs)->fs_fsbtodb + DEV_BSHIFT)))
 
 /*
  * Cylinder group macros to locate things in cylinder groups.
@@ -486,6 +486,20 @@ struct ocg {
 	((loc) & (fs)->fs_qfmask)
 #define lblktosize(fs, blk)	/* calculates ((off_t)blk * fs->fs_bsize) */ \
 	((off_t)(blk) << (fs)->fs_bshift)
+/*
+ * These functions convert filesystem logical block numbers (typ 8K), 
+ * filesystem block numbers (typ 1K), and disk block numbers to 64 bit
+ * offsets for the purposes of bread(), getblk(), etc.
+ *
+ * note: fs_nspf = number of sectors per fragment.  For some reason 
+ * completely lost to me the superblock doesn't actually store the disk
+ * block size.
+ */
+#define lblktodoff(fs, blk)	((off_t)(blk) << (fs)->fs_bshift)
+#define fsbtodoff(fs, b)	((off_t)(b) << (fs)->fs_fshift)
+#define dbtodoff(fs, b)		((off_t)(b) * ((fs)->fs_fsize / (fs)->fs_nspf))
+#define dofftofsb(fs, b)	((ufs_daddr_t)((b) >> (fs)->fs_fshift))
+
 /* Use this only when `blk' is known to be small, e.g., < NDADDR. */
 #define smalllblktosize(fs, blk)    /* calculates (blk * fs->fs_bsize) */ \
 	((blk) << (fs)->fs_bshift)

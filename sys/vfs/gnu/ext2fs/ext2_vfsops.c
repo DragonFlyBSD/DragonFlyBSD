@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.32 2006/01/13 21:09:27 swildner Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.33 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -416,8 +416,8 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
         logic_sb_block = 0;
     
     for (i = 0; i < db_count; i++) {
-	error = bread(devvp , fsbtodb(fs, logic_sb_block + i + 1), 
-		fs->s_blocksize, &fs->s_group_desc[i]);
+	error = bread(devvp, fsbtodoff(fs, logic_sb_block + i + 1), 
+		      fs->s_blocksize, &fs->s_group_desc[i]);
 	if(error) {
 	    for (j = 0; j < i; j++)
 		brelse(fs->s_group_desc[j]);
@@ -495,7 +495,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 	 * Step 2: re-read superblock from disk.
 	 * constants have been adjusted for ext2
 	 */
-	if ((error = bread(devvp, SBLOCK, SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, dbtob(SBLOCK), SBSIZE, &bp)) != 0)
 		return (error);
 	es = (struct ext2_super_block *)bp->b_data;
 	if (ext2_check_sb_compat(es, devvp->v_rdev, 0) != 0) {
@@ -558,8 +558,9 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 * Step 6: re-read inode data for all active vnodes.
 	 */
 	ip = VTOI(vp);
-	error = bread(info->devvp, fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
-		    (int)info->fs->s_blocksize, &bp);
+	error = bread(info->devvp, 
+		      fsbtodoff(info->fs, ino_to_fsba(info->fs, ip->i_number)),
+		      (int)info->fs->s_blocksize, &bp);
 	if (error)
 		return (error);
 	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 
@@ -622,7 +623,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 
 	bp = NULL;
 	ump = NULL;
-	if ((error = bread(devvp, SBLOCK, SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, dbtob(SBLOCK), SBSIZE, &bp)) != 0)
 		goto out;
 	es = (struct ext2_super_block *)bp->b_data;
 	if (ext2_check_sb_compat(es, dev, ronly) != 0) {
@@ -1014,8 +1015,9 @@ restart:
 #if 0
 printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 #endif
-	if ((error = bread(ump->um_devvp, fsbtodb(fs, ino_to_fsba(fs, ino)),
-	    (int)fs->s_blocksize, &bp)) != 0) {
+	error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
+		      (int)fs->s_blocksize, &bp);
+	if (error) {
 		/*
 		 * The inode does not contain anything useful, so it would
 		 * be misleading to leave it on its hash chain. With mode
@@ -1134,7 +1136,7 @@ ext2_sbupdate(struct ufsmount *mp, int waitfor)
 /*
 printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
 */
-	bp = getblk(mp->um_devvp, SBLOCK, SBSIZE, 0, 0);
+	bp = getblk(mp->um_devvp, lblktodoff(fs, SBLOCK), SBSIZE, 0, 0);
 	bcopy((caddr_t)es, bp->b_data, (u_int)sizeof(struct ext2_super_block));
 	if (waitfor == MNT_WAIT)
 		error = bwrite(bp);

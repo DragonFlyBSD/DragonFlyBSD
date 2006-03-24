@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.14 2005/09/17 07:43:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.15 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -179,8 +179,8 @@ dead_lock(struct vop_lock_args *ap)
 /*
  * Wait until the vnode has finished changing state.
  *
- * dead_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * dead_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 dead_bmap(struct vop_bmap_args *ap)

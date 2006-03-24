@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.26 2006/01/31 02:15:10 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.27 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -296,13 +296,14 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 static int
 linprocfs_bmap(struct vop_bmap_args *ap)
 {
-
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
+	if (ap->a_runb != NULL)
+		*ap->a_runb = 0;
 	return (0);
 }
 

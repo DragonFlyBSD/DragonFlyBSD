@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.6 2005/07/23 07:33:15 dillon Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.7 2006/03/24 18:35:28 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -34,9 +34,14 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 # use of code cache tag lines) and uses more stack (less efficient use of data
 # cache tag lines)
 #
+# Prohibit the use of FP registers in the kernel.  The user FP state is
+# only saved and restored under strictly managed conditions and mainline
+# kernel code cannot safely use the FP system.
+#
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-fno-stack-protector
+CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
 .endif
 
 #

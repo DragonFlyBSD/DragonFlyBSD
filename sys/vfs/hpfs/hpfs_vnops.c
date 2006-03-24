@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ hpfs_fsync(struct vop_fsync_args *ap)
 #ifdef DIAGNOSTIC
 loop:
 #endif
-	vfsync(vp, ap->a_waitfor, 0, (daddr_t)-1, NULL, NULL);
+	vfsync(vp, ap->a_waitfor, 0, NOOFFSET, NULL, NULL);
 #ifdef DIAGNOSTIC
 	if (ap->a_waitfor == MNT_WAIT && !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vprint("hpfs_fsync: dirty", vp);
@@ -275,28 +275,35 @@ hpfs_ioctl(struct vop_ioctl_args *ap)
 /*
  * Map file offset to disk offset.
  *
- * hpfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * hpfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
 hpfs_bmap(struct vop_bmap_args *ap)
 {
 	struct hpfsnode *hp = VTOHP(ap->a_vp);
 	int error;
+	daddr_t lbn;
+	daddr_t dbn;
 
 	if (ap->a_vpp != NULL) 
 		*ap->a_vpp = hp->h_devvp;
-#if defined(__DragonFly__)
 	if (ap->a_runb != NULL)
 		*ap->a_runb = 0;
-#endif
-	if (ap->a_bnp == NULL)
+	if (ap->a_doffsetp == NULL)
 		return (0);
 
 	dprintf(("hpfs_bmap(0x%x, 0x%x): ",hp->h_no, ap->a_bn));
 
-	error = hpfs_hpbmap (hp, ap->a_bn, ap->a_bnp, ap->a_runp);
+	lbn = ap->a_loffset >> DEV_BSHIFT;
+	KKASSERT(((int)ap->a_loffset & DEV_BMASK) == 0);
 
+	error = hpfs_hpbmap (hp, lbn, &dbn, ap->a_runp);
+	if (error || dbn == (daddr_t)-1) {
+		*ap->a_doffsetp = NOOFFSET;
+	} else {
+		*ap->a_doffsetp = (off_t)dbn << DEV_BSHIFT;
+	}
 	return (error);
 }
 
@@ -339,7 +346,7 @@ hpfs_read(struct vop_read_args *ap)
 		if (toread == 0) 
 			break;
 
-		error = bread(hp->h_devvp, bn, xfersz, &bp);
+		error = bread(hp->h_devvp, dbtodoff(bn), xfersz, &bp);
 		if (error) {
 			brelse(bp);
 			break;
@@ -403,10 +410,10 @@ hpfs_write(struct vop_write_args *ap)
 			bn, runl, towrite, xfersz));
 
 		if ((off == 0) && (towrite == xfersz)) {
-			bp = getblk(hp->h_devvp, bn, xfersz, 0, 0);
+			bp = getblk(hp->h_devvp, dbtodoff(bn), xfersz, 0, 0);
 			clrbuf(bp);
 		} else {
-			error = bread(hp->h_devvp, bn, xfersz, &bp);
+			error = bread(hp->h_devvp, dbtodoff(bn), xfersz, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -690,8 +697,8 @@ hpfs_strategy(struct vop_strategy_args *ap)
 		panic("hpfs_strategy: spec");
 
 	nbio = push_bio(bio);
-	if (nbio->bio_blkno == (daddr_t)-1) {
-		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
+	if (nbio->bio_offset == NOOFFSET) {
+		error = VOP_BMAP(vp, bio->bio_offset, NULL, &nbio->bio_offset,
 				 NULL, NULL);
 		if (error) {
 			printf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);
@@ -701,10 +708,10 @@ hpfs_strategy(struct vop_strategy_args *ap)
 			biodone(bio);
 			return (error);
 		}
-		if (nbio->bio_blkno == (daddr_t)-1)
+		if (nbio->bio_offset == NOOFFSET)
 			vfs_bio_clrbuf(bp);
 	}
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/* I/O was never started on nbio, must biodone(bio) */
 		biodone(bio);
 		return (0);
@@ -924,7 +931,7 @@ hpfs_readdir(struct vop_readdir_args *ap)
 
 dive:
 	dprintf(("[dive 0x%x] ", lsn));
-	error = bread(hp->h_devvp, lsn, D_BSIZE, &bp);
+	error = bread(hp->h_devvp, dbtodoff(lsn), D_BSIZE, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);

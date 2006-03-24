@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.7 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.8 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -258,7 +258,8 @@ vinumstart(dev_t dev, struct bio *bio, int reviveok)
 	    }
 	    status = build_read_request(rq, plexno);	    /* build a request */
 	} else {
-	    daddr_t diskaddr = bio->bio_blkno;		    /* start offset of transfer */
+	    daddr_t diskaddr = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
+							    /* start offset of transfer */
 	    status = bre(rq,				    /* build a request list */
 		rq->volplex.plexno,
 		&diskaddr,
@@ -285,12 +286,12 @@ vinumstart(dev_t dev, struct bio *bio, int reviveok)
 	    status = build_write_request(rq);		    /* Not all the subdisks are up */
 	else {						    /* plex I/O */
 	    daddr_t diskstart;
+	    daddr_t diskend;
 
-	    diskstart = bio->bio_blkno;			    /* start offset of transfer */
-	    status = bre(rq,
-		Plexno(dev),
-		&diskstart,
-		bio->bio_blkno + (bp->b_bcount / DEV_BSIZE));  /* build requests for the plex */
+	    diskstart = (daddr_t)(bio->bio_offset >> DEV_BSHIFT); /* start offset of transfer */
+	    diskend = diskstart + bp->b_bcount / DEV_BSIZE;
+	    status = bre(rq, Plexno(dev),
+		&diskstart, diskend);  /* build requests for the plex */
 	}
 	if (status > REQUEST_RECOVERED) {		    /* can't satisfy it */
 	    if (status == REQUEST_DOWN) {		    /* not enough subdisks */
@@ -342,13 +343,13 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
 	if (debug & DEBUG_REVIVECONFLICT) {
 	    log(LOG_DEBUG,
-		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
+		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
 		rq->sdno,
 		rq,
 		rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
 		major(((dev_t)rq->bio->bio_driver_info)),
 		minor(((dev_t)rq->bio->bio_driver_info)),
-		rq->bio->bio_blkno,
+		rq->bio->bio_offset,
 		rq->bio->bio_buf->b_bcount);
 	}
 #endif
@@ -358,12 +359,12 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "Request: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
+	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
 	    rq,
 	    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
 	    major(((dev_t)rq->bio->bio_driver_info)),
 	    minor(((dev_t)rq->bio->bio_driver_info)),
-	    rq->bio->bio_blkno,
+	    rq->bio->bio_offset,
 	    rq->bio->bio_buf->b_bcount);
     vinum_conf.lastrq = rq;
     vinum_conf.lastbio = rq->bio;
@@ -421,13 +422,13 @@ launch_requests(struct request *rq, int reviveok)
 #ifdef VINUMDEBUG
 		if (debug & DEBUG_ADDRESSES)
 		    log(LOG_DEBUG,
-			"  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
+			"  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
 			rqe->b.b_flags & B_READ ? "Read" : "Write",
 			major(dev),
 			minor(dev),
 			rqe->sdno,
-			(u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
-			rqe->b.b_bio1.bio_blkno,
+			rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
+			rqe->b.b_bio1.bio_offset,
 			rqe->b.b_bcount);
 		if (debug & DEBUG_LASTREQS)
 		    logrq(loginfo_rqe, (union rqinfou) rqe, rq->bio);
@@ -627,11 +628,11 @@ bre(struct request *rq,
 #if VINUMDEBUG
 		    if (debug & DEBUG_EOFINFO) {	    /* tell on the request */
 			log(LOG_DEBUG,
-			    "vinum: EOF on plex %s, sd %s offset %x (user offset %x)\n",
+			    "vinum: EOF on plex %s, sd %s offset %llx (user offset %x)\n",
 			    plex->name,
 			    sd->name,
 			    (u_int) sd->sectors,
-			    bp->b_bio1.bio_blkno);
+			    bp->b_bio1.bio_offset);
 			log(LOG_DEBUG,
 			    "vinum: stripebase %x, stripeoffset %x, blockoffset %x\n",
 			    stripebase,
@@ -697,7 +698,7 @@ build_read_request(struct request *rq,			    /* request */
 
     bio = rq->bio;					    /* buffer pointer */
     bp = bio->bio_buf;
-    diskaddr = bio->bio_blkno;				    /* start offset of transfer */
+    diskaddr = bio->bio_offset >> DEV_BSHIFT;		    /* start offset of transfer */
     diskend = diskaddr + (bp->b_bcount / DEV_BSIZE);	    /* and end offset of transfer */
     rqg = &rq->rqg[plexindex];				    /* plex request */
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
@@ -774,10 +775,10 @@ build_write_request(struct request *rq)
     bio = rq->bio;					    /* buffer pointer */
     bp = bio->bio_buf;
     vol = &VOL[rq->volplex.volno];			    /* point to volume */
-    diskend = bio->bio_blkno + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
+    diskend = (daddr_t)(bio->bio_offset >> DEV_BSHIFT) + (bp->b_bcount / DEV_BSIZE);	    /* end offset of transfer */
     status = REQUEST_DOWN;				    /* assume the worst */
     for (plexno = 0; plexno < vol->plexes; plexno++) {
-	diskstart = bio->bio_blkno;			    /* start offset of transfer */
+	diskstart = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);			    /* start offset of transfer */
 	/*
 	 * Build requests for the plex.
 	 * We take the best possible result here (min,
@@ -830,7 +831,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
      */
     if ((rqe->flags & XFR_BAD_SUBDISK) == 0)		    /* subdisk is accessible, */
 	bp->b_bio1.bio_driver_info = DRIVE[rqe->driveno].dev; /* drive device */
-    bp->b_bio1.bio_blkno = rqe->sdoffset + sd->driveoffset;	/* start address */
+    bp->b_bio1.bio_offset = (off_t)(rqe->sdoffset + sd->driveoffset) << DEV_BSHIFT;	/* start address */
     bp->b_bcount = rqe->buflen << DEV_BSHIFT;		    /* number of bytes to transfer */
     bp->b_resid = bp->b_bcount;				    /* and it's still all waiting */
     bp->b_bufsize = bp->b_bcount;			    /* and buffer size */
@@ -952,12 +953,12 @@ sdio(struct bio *bio)
     BUF_LOCK(&sbp->b, LK_EXCLUSIVE);			    /* and lock it */
     BUF_KERNPROC(&sbp->b);
     initbufbio(&sbp->b);
-    sbp->b.b_bio1.bio_blkno = bio->bio_blkno + sd->driveoffset;
+    sbp->b.b_bio1.bio_offset = bio->bio_offset + ((off_t)sd->driveoffset << DEV_BSHIFT);
     sbp->b.b_bio1.bio_done = sdio_done;			    /* come here on completion */
     sbp->bio = bio;					    /* note the address of the original header */
     sbp->sdno = sd->sdno;				    /* note for statistics */
     sbp->driveno = sd->driveno;
-    endoffset = bio->bio_blkno + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
+    endoffset = (daddr_t)(bio->bio_offset >> DEV_BSHIFT) + sbp->b.b_bcount / DEV_BSIZE;  /* final sector offset */
     if (endoffset > sd->sectors) {			    /* beyond the end */
 	sbp->b.b_bcount -= (endoffset - sd->sectors) * DEV_BSIZE; /* trim */
 	if (sbp->b.b_bcount <= 0) {			    /* nothing to transfer */
@@ -972,13 +973,13 @@ sdio(struct bio *bio)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
+	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
 	    sbp->b.b_flags & B_READ ? "Read" : "Write",
 	    major(sddev),
 	    minor(sddev),
 	    sbp->sdno,
-	    (u_int) (sbp->b.b_bio1.bio_blkno - SD[sbp->sdno].driveoffset),
-	    (int) sbp->b.b_bio1.bio_blkno,
+	    sbp->b.b_bio1.bio_offset - ((off_t)SD[sbp->sdno].driveoffset << DEV_BSHIFT),
+	    sbp->b.b_bio1.bio_offset,
 	    sbp->b.b_bcount);
 #endif
     crit_enter();
@@ -1013,11 +1014,12 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
     struct bio *nbio;
     int maxsize = vol->size;				    /* size of the partition (sectors) */
     int size = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT; /* size of this request (sectors) */
+    daddr_t blkno = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
 
     /* Would this transfer overwrite the disk label? */
-    if (bio->bio_blkno <= LABELSECTOR			    /* starts before or at the label */
+    if (blkno <= LABELSECTOR			    /* starts before or at the label */
 #if LABELSECTOR != 0
-	&& bio->bio_blkno + size > LABELSECTOR		    /* and finishes after */
+	&& blkno + size > LABELSECTOR		    /* and finishes after */
 #endif
 	&& (!(vol->flags & VF_RAW))			    /* and it's not raw */
 	&&((bp->b_flags & B_READ) == 0)			    /* and it's a write */
@@ -1029,15 +1031,15 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
     if (size == 0)					    /* no transfer specified, */
 	return 0;					    /* treat as EOF */
     /* beyond partition? */
-    if (bio->bio_blkno < 0				    /* negative start */
-	|| bio->bio_blkno + size > maxsize) {		    /* or goes beyond the end of the partition */
+    if (bio->bio_offset < 0				    /* negative start */
+	|| blkno + size > maxsize) {		    /* or goes beyond the end of the partition */
 	/* if exactly at end of disk, return an EOF */
-	if (bio->bio_blkno == maxsize) {
+	if (blkno == maxsize) {
 	    bp->b_resid = bp->b_bcount;
 	    return (NULL);
 	}
 	/* or truncate if part of it fits */
-	size = maxsize - bio->bio_blkno;
+	size = maxsize - blkno;
 	if (size <= 0) {				    /* nothing to transfer */
 	    bp->b_error = EINVAL;
 	    bp->b_flags |= B_ERROR;
@@ -1046,7 +1048,7 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
 	bp->b_bcount = size << DEV_BSHIFT;
     }
     nbio = push_bio(bio);
-    nbio->bio_blkno = bio->bio_blkno;
+    nbio->bio_offset = bio->bio_offset;
     return (nbio);
 }
 

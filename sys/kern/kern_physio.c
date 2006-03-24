@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.14 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.15 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	int error;
 	int chk_blockno;
 	caddr_t sa;
-	off_t blockno;
 	u_int iolen;
 	struct buf *bp;
 
@@ -97,17 +96,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 					bp->b_bcount -= PAGE_SIZE;
 			}
 			bp->b_bufsize = bp->b_bcount;
-
-			/*
-			 * XXX we shouldn't have to set the block
-			 * number.
-			 */
-			blockno = bp->b_bio1.bio_offset >> DEV_BSHIFT;
-			if (chk_blockno && (daddr_t)blockno != blockno) {
-				error = EINVAL; /* blockno overflow */
-				goto doerror;
-			}
-			bp->b_bio1.bio_blkno = blockno;
 
 			if (uio->uio_segflg == UIO_USERSPACE) {
 				if (vmapbuf(bp) < 0) {

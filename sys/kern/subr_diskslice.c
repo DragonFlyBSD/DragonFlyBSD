@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.14 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,6 @@ dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 {
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
-	daddr_t	blkno;
 	u_long	endsecno;
 	daddr_t	labelsect;
 	struct disklabel *lp;
@@ -152,34 +151,37 @@ dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 	daddr_t	secno;
 	daddr_t	slicerel_secno;
 	struct diskslice *sp;
+	int shift;
+	int mask;
 
-	blkno = bio->bio_blkno;
-	if (blkno < 0) {
-		printf("dscheck(%s): negative bio_blkno %ld\n", 
-		    devtoname(dev), (long)blkno);
+	if (bio->bio_offset < 0) {
+		printf("dscheck(%s): negative bio_offset %lld\n", 
+		    devtoname(dev), bio->bio_offset);
 		bp->b_error = EINVAL;
 		goto bad;
 	}
 	sp = &ssp->dss_slices[dkslice(dev)];
 	lp = sp->ds_label;
+
 	if (ssp->dss_secmult == 1) {
-		if (bp->b_bcount % (u_long)DEV_BSIZE)
-			goto bad_bcount;
-		secno = blkno;
-		nsec = bp->b_bcount >> DEV_BSHIFT;
+		shift = DEV_BSHIFT;
+		goto doshift;
 	} else if (ssp->dss_secshift != -1) {
-		if (bp->b_bcount & (ssp->dss_secsize - 1))
+		shift = DEV_BSHIFT + ssp->dss_secshift;
+doshift:
+		mask = (1 << shift) - 1;
+		if ((int)bp->b_bcount & mask)
 			goto bad_bcount;
-		if (blkno & (ssp->dss_secmult - 1))
+		if ((int)bio->bio_offset & mask)
 			goto bad_blkno;
-		secno = blkno >> ssp->dss_secshift;
-		nsec = bp->b_bcount >> (DEV_BSHIFT + ssp->dss_secshift);
+		secno = (daddr_t)(bio->bio_offset >> shift);
+		nsec = bp->b_bcount >> shift;
 	} else {
 		if (bp->b_bcount % ssp->dss_secsize)
 			goto bad_bcount;
-		if (blkno % ssp->dss_secmult)
+		if (bio->bio_offset % ssp->dss_secsize)
 			goto bad_blkno;
-		secno = blkno / ssp->dss_secmult;
+		secno = (daddr_t)(bio->bio_offset / ssp->dss_secsize);
 		nsec = bp->b_bcount / ssp->dss_secsize;
 	}
 	if (lp == NULL) {
@@ -232,7 +234,7 @@ dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 	}
 
 	nbio = push_bio(bio);
-	nbio->bio_blkno = sp->ds_offset + slicerel_secno;
+	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) * ssp->dss_secsize;
 
 	/*
 	 * Snoop on label accesses if the slice offset is nonzero.  Fudge
@@ -277,15 +279,15 @@ dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 
 bad_bcount:
 	printf(
-	"dscheck(%s): b_bcount %ld is not on a sector boundary (ssize %d)\n",
+	"dscheck(%s): b_bcount %d is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bp->b_bcount, ssp->dss_secsize);
 	bp->b_error = EINVAL;
 	goto bad;
 
 bad_blkno:
 	printf(
-	"dscheck(%s): bio_blkno %ld is not on a sector boundary (ssize %d)\n",
-	    devtoname(dev), (long)blkno, ssp->dss_secsize);
+	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
+	    devtoname(dev), bio->bio_offset, ssp->dss_secsize);
 	bp->b_error = EINVAL;
 	goto bad;
 

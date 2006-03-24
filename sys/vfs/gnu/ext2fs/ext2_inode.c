@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.11 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.12 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -63,8 +63,8 @@
 #include "fs.h"
 #include "ext2_extern.h"
 
-static int ext2_indirtrunc (struct inode *, daddr_t, daddr_t, daddr_t, int,
-	    long *);
+static int ext2_indirtrunc (struct inode *, daddr_t, off_t, daddr_t,
+			    int, long *);
 
 /*
  * Update the access, modified, and inode change times as specified by the
@@ -91,9 +91,10 @@ ext2_update(struct vnode *vp, int waitfor)
 	if (vp->v_mount->mnt_flag & MNT_RDONLY)
 		return (0);
 	fs = ip->i_e2fs;
-	if ((error = bread(ip->i_devvp,
-	    fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-		(int)fs->s_blocksize, &bp)) != 0) {
+	error = bread(ip->i_devvp,
+		      fsbtodoff(fs, ino_to_fsba(fs, ip->i_number)),
+		      (int)fs->s_blocksize, &bp);
+	if (error) {
 		brelse(bp);
 		return (error);
 	}
@@ -268,7 +269,7 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		bn = oip->i_ib[level];
 		if (bn != 0) {
 			error = ext2_indirtrunc(oip, indir_lbn[level],
-			    fsbtodb(fs, bn), lastiblock[level], level, &count);
+			    fsbtodoff(fs, bn), lastiblock[level], level, &count);
 			if (error)
 				allerror = error;
 			blocksreleased += count;
@@ -365,7 +366,7 @@ done:
  */
 
 static int
-ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
+ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 		int level, long *countp)
 {
 	int i;
@@ -395,17 +396,18 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 	 * to blocks to be free'd, and update on disk copy first.  Since
 	 * double(triple) indirect before single(double) indirect, calls
 	 * to bmap on these blocks will fail.  However, we already have
-	 * the on disk address, so we have to set the bio_blkno field
+	 * the on disk address, so we have to set the bio_offset field
 	 * explicitly instead of letting bread do everything for us.
 	 */
 	vp = ITOV(ip);
-	bp = getblk(vp, lbn, (int)fs->s_blocksize, 0, 0);
+	bp = getblk(vp, lblktodoff(fs, lbn), (int)fs->s_blocksize, 0, 0);
 	if (bp->b_flags & (B_DONE | B_DELWRI)) {
+		/* nop */
 	} else {
 		bp->b_flags |= B_READ;
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2_indirtrunc: bad buffer size");
-		bp->b_bio2.bio_blkno = dbn;
+		bp->b_bio2.bio_offset = doffset;
 		vfs_busy_pages(bp, 0);
 		vn_strategy(vp, &bp->b_bio1);
 		error = biowait(bp);
@@ -438,7 +440,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 			continue;
 		if (level > SINGLE) {
 			if ((error = ext2_indirtrunc(ip, nlbn,
-			    fsbtodb(fs, nb), (daddr_t)-1, level - 1, &blkcount)) != 0)
+			    fsbtodoff(fs, nb), (daddr_t)-1, level - 1, &blkcount)) != 0)
 				allerror = error;
 			blocksreleased += blkcount;
 		}
@@ -453,8 +455,9 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 		last = lastbn % factor;
 		nb = bap[i];
 		if (nb != 0) {
-			if ((error = ext2_indirtrunc(ip, nlbn, fsbtodb(fs, nb),
-			    last, level - 1, &blkcount)) != 0)
+			error = ext2_indirtrunc(ip, nlbn, fsbtodoff(fs, nb),
+						last, level - 1, &blkcount);
+			if (error)
 				allerror = error;
 			blocksreleased += blkcount;
 		}

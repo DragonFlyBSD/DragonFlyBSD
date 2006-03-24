@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)clri.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $
- * $DragonFly: src/sbin/clri/clri.c,v 1.6 2005/11/06 12:08:12 swildner Exp $
+ * $DragonFly: src/sbin/clri/clri.c,v 1.7 2006/03/24 18:35:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,7 @@ main(int argc, char **argv)
 	/* get the superblock. */
 	if ((fd = open(fs, O_RDWR, 0)) < 0)
 		err(1, "%s", fs);
-	if (lseek(fd, (off_t)(SBLOCK * DEV_BSIZE), SEEK_SET) < 0)
+	if (lseek(fd, (off_t)SBOFF, SEEK_SET) < 0)
 		err(1, "%s", fs);
 	if (read(fd, sblock, sizeof(sblock)) != sizeof(sblock))
 		errx(1, "%s: can't read superblock", fs);

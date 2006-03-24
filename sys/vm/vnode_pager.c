@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.21 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
  */
 
 /*
@@ -72,8 +72,7 @@
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
 
-static vm_offset_t vnode_pager_addr (struct vnode *vp, vm_ooffset_t address,
-					 int *run);
+static off_t vnode_pager_addr (struct vnode *vp, off_t loffset, int *run);
 static void vnode_pager_iodone (struct bio *bio);
 static int vnode_pager_input_smlfs (vm_object_t object, vm_page_t m);
 static int vnode_pager_input_old (vm_object_t object, vm_page_t m);
@@ -183,17 +182,21 @@ vnode_pager_dealloc(vm_object_t object)
 	vp->v_flag &= ~(VTEXT | VOBJBUF);
 }
 
+/*
+ * Return whether the vnode pager has the requested page.  Return the
+ * number of disk-contiguous pages before and after the requested page,
+ * not including the requested page.
+ */
 static boolean_t
 vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
-    int *after)
+		    int *after)
 {
 	struct vnode *vp = object->handle;
-	daddr_t bn;
-	int err;
-	daddr_t reqblock;
-	int poff;
+	off_t loffset;
+	off_t doffset;
+	int voff;
 	int bsize;
-	int pagesperblock, blocksperpage;
+	int error;
 
 	/*
 	 * If no vp or vp is doomed or marked transparent to VM, we do not
@@ -206,48 +209,30 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	 * If filesystem no longer mounted or offset beyond end of file we do
 	 * not have the page.
 	 */
-	if ((vp->v_mount == NULL) ||
-		(IDX_TO_OFF(pindex) >= object->un_pager.vnp.vnp_size))
+	loffset = IDX_TO_OFF(pindex);
+
+	if (vp->v_mount == NULL || loffset >= object->un_pager.vnp.vnp_size)
 		return FALSE;
 
 	bsize = vp->v_mount->mnt_stat.f_iosize;
-	pagesperblock = bsize / PAGE_SIZE;
-	blocksperpage = 0;
-	if (pagesperblock > 0) {
-		reqblock = pindex / pagesperblock;
-	} else {
-		blocksperpage = (PAGE_SIZE / bsize);
-		reqblock = pindex * blocksperpage;
-	}
-	err = VOP_BMAP(vp, reqblock, (struct vnode **) 0, &bn,
-		after, before);
-	if (err)
-		return TRUE;
-	if ( bn == -1)
-		return FALSE;
-	if (pagesperblock > 0) {
-		poff = pindex - (reqblock * pagesperblock);
-		if (before) {
-			*before *= pagesperblock;
-			*before += poff;
-		}
-		if (after) {
-			int numafter;
-			*after *= pagesperblock;
-			numafter = pagesperblock - (poff + 1);
-			if (IDX_TO_OFF(pindex + numafter) > object->un_pager.vnp.vnp_size) {
-				numafter = OFF_TO_IDX((object->un_pager.vnp.vnp_size - IDX_TO_OFF(pindex)));
-			}
-			*after += numafter;
-		}
-	} else {
-		if (before) {
-			*before /= blocksperpage;
-		}
+	voff = loffset % bsize;
 
-		if (after) {
-			*after /= blocksperpage;
-		}
+	error = VOP_BMAP(vp, loffset - voff, NULL, &doffset, after, before);
+	if (error)
+		return TRUE;
+	if (doffset == NOOFFSET)
+		return FALSE;
+
+	if (before) {
+		*before = (*before + voff) >> PAGE_SHIFT;
+	}
+	if (after) {
+		*after -= voff;
+		if (loffset + *after > object->un_pager.vnp.vnp_size)
+			*after = object->un_pager.vnp.vnp_size - loffset;
+		*after >>= PAGE_SHIFT;
+		if (*after < 0)
+			*after = 0;
 	}
 	return TRUE;
 }
@@ -357,44 +342,56 @@ vnode_pager_freepage(vm_page_t m)
 }
 
 /*
- * calculate the linear (byte) disk address of specified virtual
- * file address
+ * calculate the disk byte address of specified logical byte offset.  The
+ * logical offset will be block-aligned.  Return the number of contiguous
+ * pages that may be read from the underlying block device in *run.  If
+ * *run is non-NULL, it will be set to a value of at least 1.
  */
-static vm_offset_t
-vnode_pager_addr(struct vnode *vp, vm_ooffset_t address, int *run)
+static off_t
+vnode_pager_addr(struct vnode *vp, off_t loffset, int *run)
 {
-	int rtaddress;
-	int bsize;
-	daddr_t block;
 	struct vnode *rtvp;
-	int err;
-	daddr_t vblock;
-	int voffset;
+	off_t doffset;
+	int bsize;
+	int error;
+	int voff;
 
-	if (address < 0)
+	if (loffset < 0)
 		return -1;
 
 	if (vp->v_mount == NULL)
 		return -1;
 
+	/*
+	 * Align loffset to a block boundary for the BMAP, then adjust the
+	 * returned disk address appropriately.
+	 */
 	bsize = vp->v_mount->mnt_stat.f_iosize;
-	vblock = address / bsize;
-	voffset = address % bsize;
+	voff = loffset % bsize;
 
-	err = VOP_BMAP(vp, vblock, &rtvp, &block, run, NULL);
+	/*
+	 * Map the block, adjust the disk offset so it represents the
+	 * passed loffset rather then the block containing loffset.
+	 */
+	error = VOP_BMAP(vp, loffset - voff, &rtvp, &doffset, run, NULL);
+	if (error || doffset == NOOFFSET) {
+		doffset = NOOFFSET;
+	} else {
+		doffset += voff;
 
-	if (err || (block == -1))
-		rtaddress = -1;
-	else {
-		rtaddress = block + voffset / DEV_BSIZE;
-		if( run) {
-			*run += 1;
-			*run *= bsize/PAGE_SIZE;
-			*run -= voffset/PAGE_SIZE;
+		/*
+		 * When calculating *run, which is the number of pages
+		 * worth of data which can be read linearly from disk,
+		 * the minimum return value is 1 page.
+		 */
+		if (run) {
+			*run = (*run - voff) >> PAGE_SHIFT;
+			if (*run < 1)
+				*run = 1;
 		}
-	}
 
-	return rtaddress;
+	}
+	return (doffset);
 }
 
 /*
@@ -420,7 +417,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 	struct buf *bp;
 	vm_offset_t kva;
 	struct sf_buf *sf;
-	int fileaddr;
+	off_t doffset;
 	vm_offset_t bsize;
 	int error = 0;
 
@@ -431,31 +428,31 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 	bsize = vp->v_mount->mnt_stat.f_iosize;
 
 
-	VOP_BMAP(vp, 0, &dp, 0, NULL, NULL);
+	VOP_BMAP(vp, (off_t)0, &dp, NULL, NULL, NULL);
 
 	sf = sf_buf_alloc(m, 0);
 	kva = sf_buf_kva(sf);
 
 	for (i = 0; i < PAGE_SIZE / bsize; i++) {
-		vm_ooffset_t address;
+		off_t loffset;
 
 		if (vm_page_bits(i * bsize, bsize) & m->valid)
 			continue;
 
-		address = IDX_TO_OFF(m->pindex) + i * bsize;
-		if (address >= object->un_pager.vnp.vnp_size) {
-			fileaddr = -1;
+		loffset = IDX_TO_OFF(m->pindex) + i * bsize;
+		if (loffset >= object->un_pager.vnp.vnp_size) {
+			doffset = NOOFFSET;
 		} else {
-			fileaddr = vnode_pager_addr(vp, address, NULL);
+			doffset = vnode_pager_addr(vp, loffset, NULL);
 		}
-		if (fileaddr != -1) {
+		if (doffset != NOOFFSET) {
 			bp = getpbuf(&vnode_pbuf_freecnt);
 
 			/* build a minimal buffer header */
 			bp->b_flags = B_READ;
 			bp->b_data = (caddr_t) kva + i * bsize;
 			bp->b_bio1.bio_done = vnode_pager_iodone;
-			bp->b_bio1.bio_blkno = fileaddr;
+			bp->b_bio1.bio_offset = doffset;
 			pbgetvp(dp, bp);
 			bp->b_bcount = bsize;
 			bp->b_bufsize = bsize;
@@ -605,7 +602,8 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	vm_object_t object;
 	vm_offset_t kva;
 	off_t foff, tfoff, nextoff;
-	int i, size, bsize, first, firstaddr;
+	int i, size, bsize, first;
+	off_t firstaddr;
 	struct vnode *dp;
 	int runpg;
 	int runend;
@@ -632,7 +630,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	/*
 	 * if we can't bmap, use old VOP code
 	 */
-	if (VOP_BMAP(vp, 0, &dp, 0, NULL, NULL)) {
+	if (VOP_BMAP(vp, (off_t)0, &dp, NULL, NULL, NULL)) {
 		for (i = 0; i < count; i++) {
 			if (i != reqpage) {
 				vnode_pager_freepage(m[i]);
@@ -689,17 +687,13 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * calculate the run that includes the required page
 	 */
 	for(first = 0, i = 0; i < count; i = runend) {
-		firstaddr = vnode_pager_addr(vp,
-			IDX_TO_OFF(m[i]->pindex), &runpg);
+		firstaddr = vnode_pager_addr(vp, IDX_TO_OFF(m[i]->pindex),
+					     &runpg);
 		if (firstaddr == -1) {
 			if (i == reqpage && foff < object->un_pager.vnp.vnp_size) {
 				/* XXX no %qd in kernel. */
-				panic("vnode_pager_getpages: unexpected missing page: firstaddr: %d, foff: 0x%lx%08lx, vnp_size: 0x%lx%08lx",
-			   	 firstaddr, (u_long)(foff >> 32),
-			   	 (u_long)(u_int32_t)foff,
-				 (u_long)(u_int32_t)
-				 (object->un_pager.vnp.vnp_size >> 32),
-				 (u_long)(u_int32_t)
+				panic("vnode_pager_getpages: unexpected missing page: firstaddr: %012llx, foff: 0x%012llx, vnp_size: 0x%012llx",
+			   	 firstaddr, foff,
 				 object->un_pager.vnp.vnp_size);
 			}
 			vnode_pager_freepage(m[i]);
@@ -768,7 +762,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	/* build a minimal buffer header */
 	bp->b_flags = B_READ;
 	bp->b_bio1.bio_done = vnode_pager_iodone;
-	bp->b_bio1.bio_blkno = firstaddr;
+	bp->b_bio1.bio_offset = firstaddr;
 	pbgetvp(dp, bp);
 	bp->b_bcount = size;
 	bp->b_bufsize = size;

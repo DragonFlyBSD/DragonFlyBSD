@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.30 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $
  */
 
 
@@ -445,7 +445,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 
 	bp = NULL;
 
-	error = bread(devvp, BBLOCK, BBSIZE, &bp);
+	error = bread(devvp, ntfs_bntodoff(BBLOCK), BBSIZE, &bp);
 	if (error)
 		goto out;
 	ntmp = malloc( sizeof *ntmp, M_NTFSMNT, M_WAITOK );

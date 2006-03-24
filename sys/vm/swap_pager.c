@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.18 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -840,8 +840,6 @@ swap_pager_unswapped(vm_page_t m)
  *	Therefore we do not maintain any resident pages.  All I/O goes
  *	directly to and from the swap device.
  *	
- *	Note that bio_blkno is scaled for PAGE_SIZE
- *
  *	We currently attempt to run I/O synchronously or asynchronously as
  *	the caller requests.  This isn't perfect because we loose error
  *	sequencing when we run multiple ops in parallel to satisfy a request.
@@ -854,6 +852,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
 	vm_pindex_t start;
+	vm_pindex_t biox_blkno = 0;
 	int count;
 	char *data;
 	struct bio *biox = NULL;
@@ -872,7 +871,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR | B_INVAL;
 		biodone(bio);
-		printf("swap_pager_strategy: bp %p b_vp %p blk %d size %d, not page bounded\n", bp, bp->b_vp, (int)bio->bio_blkno, (int)bp->b_bcount);
+		printf("swap_pager_strategy: bp %p b_vp %p offset %lld size %d, not page bounded\n", bp, bp->b_vp, bio->bio_offset, (int)bp->b_bcount);
 		return;
 	}
 
@@ -883,7 +882,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	bp->b_flags &= ~B_ERROR;
 	bp->b_resid = bp->b_bcount;
 
-	start = bio->bio_blkno;
+	start = (vm_pindex_t)(bio->bio_offset >> PAGE_SHIFT);
 	count = howmany(bp->b_bcount, PAGE_SIZE);
 	data = bp->b_data;
 
@@ -913,7 +912,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	 * things a bit more efficient.
 	 */
 	nbio = push_bio(bio);
-	nbio->bio_blkno = bio->bio_blkno;
+	nbio->bio_offset = bio->bio_offset;
 	nbio->bio_caller_info1.cluster_head = NULL;
 	nbio->bio_caller_info2.cluster_tail = NULL;
 
@@ -950,8 +949,8 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 */
 
 		if (
-		    biox && (biox->bio_blkno + btoc(bufx->b_bcount) != blk ||
-		     ((biox->bio_blkno ^ blk) & dmmax_mask)
+		    biox && (biox_blkno + btoc(bufx->b_bcount) != blk ||
+		     ((biox_blkno ^ blk) & dmmax_mask)
 		    )
 		) {
 			crit_exit();
@@ -1005,8 +1004,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 						B_ASYNC;
 				pbgetvp(swapdev_vp, bufx);
 				biox->bio_done = swap_chain_iodone;
-				biox->bio_blkno = blk;
+				biox->bio_offset = (off_t)blk << PAGE_SHIFT;
 				biox->bio_caller_info1.cluster_parent = nbio;
+				biox_blkno = blk;
 				bufx->b_bcount = 0;
 				bufx->b_data = data;
 			}
@@ -1254,7 +1254,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	bp->b_bcount = PAGE_SIZE * (j - i);
 	bp->b_bufsize = PAGE_SIZE * (j - i);
 	bio->bio_done = swp_pager_async_iodone;
-	bio->bio_blkno = blk - (reqpage - i);
+	bio->bio_offset = (off_t)(blk - (reqpage - i)) << PAGE_SHIFT;
 	bio->bio_driver_info = (void *)(reqpage - i);
 
 	{
@@ -1288,9 +1288,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 *
 	 * The other pages in our m[] array are also released on completion,
 	 * so we cannot assume they are valid anymore either.
-	 *
-	 * NOTE: bio_blkno may be destroyed by the call to vn_strategy()
-	 * XXX should not be, any more.
 	 */
 
 	BUF_KERNPROC(bp);
@@ -1310,8 +1307,8 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		if (tsleep(mreq, 0, "swread", hz*20)) {
 			printf(
 			    "swap_pager: indefinite wait buffer: "
-				" blkno: %ld, size: %ld\n",
-			    (long)bio->bio_blkno, bp->b_bcount
+				" offset: %lld, size: %d\n",
+			    bio->bio_offset, bp->b_bcount
 			);
 		}
 	}
@@ -1494,7 +1491,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 		bp->b_bcount = PAGE_SIZE * n;
 		bp->b_bufsize = PAGE_SIZE * n;
-		bio->bio_blkno = blk;
+		bio->bio_offset = (off_t)blk << PAGE_SHIFT;
 
 		pbgetvp(swapdev_vp, bp);
 
@@ -1526,9 +1523,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 		/*
 		 * asynchronous
-		 *
-		 * NOTE: bio_blkno is destroyed by the call to vn_strategy()
-		 * XXX it should not be destroyed any more
 		 */
 
 		if (sync == FALSE) {
@@ -1543,9 +1537,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 
 		/*
 		 * synchronous
-		 *
-		 * NOTE: bio_blkno is destroyed by the call to vn_strategy()
-		 * XXX it should not be destroyed any more
 		 */
 
 		bio->bio_done = swp_pager_sync_iodone;
@@ -1626,10 +1617,10 @@ swp_pager_async_iodone(struct bio *bio)
 
 	if (bp->b_flags & B_ERROR) {
 		printf(
-		    "swap_pager: I/O error - %s failed; blkno %ld,"
+		    "swap_pager: I/O error - %s failed; offset %lld,"
 			"size %ld, error %d\n",
 		    ((bp->b_flags & B_READ) ? "pagein" : "pageout"),
-		    (long)bio->bio_blkno, 
+		    bio->bio_offset, 
 		    (long)bp->b_bcount,
 		    bp->b_error
 		);

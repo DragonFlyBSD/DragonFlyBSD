@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.6 2005/06/06 15:09:38 drhodus Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.7 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*
@@ -117,6 +117,17 @@
 
 #define lblktosize(fs, blk)	/* calculates (blk * fs->fs_bsize) */ \
 	((blk) << (fs->s_bshift))
+
+/*
+ * Used when converting logical blocks to offsets for getblk, bread,
+ * etc.
+ */
+#define lblktodoff(fs, blk)	/* calculates (blk * fs->fs_bsize) */ \
+	((off_t)(blk) << (fs)->s_bshift)
+#define fsbtodoff(fs, blk)	/* calculates (blk * fs->fs_fsize) */ \
+	((off_t)(blk) * (fs)->s_frag_size)
+#define dofftofsb(fs, blk)	/* calculates blk / fs->fs_fsize */   \
+	((daddr_t)((blk) / (fs)->s_frag_size))
 
 #define lblkno(fs, loc)		/* calculates (loc / fs->fs_bsize) */ \
 	((loc) >> (fs->s_bshift))

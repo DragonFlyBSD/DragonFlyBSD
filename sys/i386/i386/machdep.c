@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.87 2006/03/05 18:38:32 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.88 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2528,12 +2528,13 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
         int labelsect = lp->d_partitions[0].p_offset;
         int maxsz = p->p_size,
                 sz = (bp->b_bcount + DEV_BSIZE - 1) >> DEV_BSHIFT;
+	daddr_t blkno = (daddr_t)(bio->bio_offset >> DEV_BSHIFT);
 
         /* overwriting disk label ? */
         /* XXX should also protect bootstrap in first 8K */
-        if (bio->bio_blkno + p->p_offset <= LABELSECTOR + labelsect &&
+        if (blkno + p->p_offset <= LABELSECTOR + labelsect &&
 #if LABELSECTOR != 0
-            bio->bio_blkno + p->p_offset + sz > LABELSECTOR + labelsect &&
+            blkno + p->p_offset + sz > LABELSECTOR + labelsect &&
 #endif
             (bp->b_flags & B_READ) == 0 && wlabel == 0) {
                 bp->b_error = EROFS;
@@ -2542,7 +2543,7 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
 
 #if     defined(DOSBBSECTOR) && defined(notyet)
         /* overwriting master boot record? */
-        if (bio->bio_blkno + p->p_offset <= DOSBBSECTOR &&
+        if (blkno + p->p_offset <= DOSBBSECTOR &&
             (bp->b_flags & B_READ) == 0 && wlabel == 0) {
                 bp->b_error = EROFS;
                 goto bad;
@@ -2550,14 +2551,14 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
 #endif
 
         /* beyond partition? */
-        if (bio->bio_blkno < 0 || bio->bio_blkno + sz > maxsz) {
+        if (bio->bio_offset < 0 || blkno + sz > maxsz) {
                 /* if exactly at end of disk, return an EOF */
-                if (bio->bio_blkno == maxsz) {
+                if (blkno == maxsz) {
                         bp->b_resid = bp->b_bcount;
                         return(0);
                 }
                 /* or truncate if part of it fits */
-                sz = maxsz - bio->bio_blkno;
+                sz = maxsz - blkno;
                 if (sz <= 0) {
                         bp->b_error = EINVAL;
                         goto bad;
@@ -2565,7 +2566,7 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
                 bp->b_bcount = sz << DEV_BSHIFT;
         }
 	nbio = push_bio(bio);
-        nbio->bio_blkno = bio->bio_blkno + p->p_offset;
+        nbio->bio_offset = bio->bio_offset + ((off_t)p->p_offset << DEV_BSHIFT);
 	return (nbio);
 
 bad:

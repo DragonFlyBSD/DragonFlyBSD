@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.16 2006/02/17 19:18:05 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -1737,6 +1737,7 @@ mlx_startio(struct mlx_softc *sc)
     int			blkcount;
     int			driveno;
     int			cmd;
+    u_daddr_t		blkno;
 
     /* avoid reentrancy */
     if (mlx_lock_tas(sc, MLX_LOCK_STARTING))
@@ -1783,10 +1784,11 @@ mlx_startio(struct mlx_softc *sc)
 	mlxd = (struct mlxd_softc *)bio->bio_driver_info;
 	driveno = mlxd->mlxd_drive - sc->mlx_sysdrive;
 	blkcount = (bp->b_bcount + MLX_BLKSIZE - 1) / MLX_BLKSIZE;
+	blkno = bio->bio_offset / MLX_BLKSIZE;
 
-	if ((bio->bio_blkno + blkcount) > sc->mlx_sysdrive[driveno].ms_size)
+	if ((blkno + blkcount) > sc->mlx_sysdrive[driveno].ms_size)
 	    device_printf(sc->mlx_dev, "I/O beyond end of unit (%u,%d > %u)\n", 
-			  bio->bio_blkno, blkcount, sc->mlx_sysdrive[driveno].ms_size);
+			  blkno, blkcount, sc->mlx_sysdrive[driveno].ms_size);
 
 	/*
 	 * Build the I/O command.  Note that the SG list type bits are set to zero,
@@ -1795,7 +1797,7 @@ mlx_startio(struct mlx_softc *sc)
 	if (sc->mlx_iftype == MLX_IFTYPE_2) {
 	    mlx_make_type1(mc, (cmd == MLX_CMD_WRITESG) ? MLX_CMD_WRITESG_OLD : MLX_CMD_READSG_OLD,
 			   blkcount & 0xff, 				/* xfer length low byte */
-			   bio->bio_blkno,				/* physical block number */
+			   blkno,				/* physical block number */
 			   driveno,					/* target drive number */
 			   mc->mc_sgphys,				/* location of SG list */
 			   mc->mc_nsgent & 0x3f);			/* size of SG list (top 3 bits clear) */
@@ -1803,7 +1805,7 @@ mlx_startio(struct mlx_softc *sc)
 	    mlx_make_type5(mc, cmd, 
 			   blkcount & 0xff, 				/* xfer length low byte */
 			   (driveno << 3) | ((blkcount >> 8) & 0x07),	/* target and length high 3 bits */
-			   bio->bio_blkno,				/* physical block number */
+			   blkno,				/* physical block number */
 			   mc->mc_sgphys,				/* location of SG list */
 			   mc->mc_nsgent & 0x3f);			/* size of SG list (top 3 bits clear) */
 	}
@@ -1845,8 +1847,8 @@ mlx_completeio(struct mlx_command *mc)
 	default:				/* other I/O error */
 	    device_printf(sc->mlx_dev, "I/O error - %s\n", mlx_diagnose_command(mc));
 #if 0
-	    device_printf(sc->mlx_dev, "  b_bcount %ld  blkcount %ld  b_pblkno %d\n", 
-			  bp->b_bcount, bp->b_bcount / MLX_BLKSIZE, bio->bio_blkno);
+	    device_printf(sc->mlx_dev, "  b_bcount %ld  offset %lld\n", 
+			  bp->b_bcount, bio->bio_offset);
 	    device_printf(sc->mlx_dev, "  %13D\n", mc->mc_mailbox, " ");
 #endif
 	    break;

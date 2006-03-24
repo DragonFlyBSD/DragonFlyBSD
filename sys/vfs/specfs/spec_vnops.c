@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.30 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -419,7 +419,7 @@ spec_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Flush all dirty buffers associated with a block device.
 	 */
-	error = vfsync(vp, ap->a_waitfor, 10000, (daddr_t)-1, NULL, NULL);
+	error = vfsync(vp, ap->a_waitfor, 10000, NOOFFSET, NULL, NULL);
 	return (error);
 }
 
@@ -489,8 +489,7 @@ spec_freeblks(struct vop_freeblks_args *ap)
 		return (0);
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF;
-	bp->b_bio1.bio_blkno = ap->a_addr;
-	bp->b_bio1.bio_offset = dbtob(ap->a_addr);
+	bp->b_bio1.bio_offset = ap->a_offset;
 	bp->b_bcount = ap->a_length;
 	dev_dstrategy(ap->a_vp->v_rdev, &bp->b_bio1);
 	return (0);
@@ -501,26 +500,26 @@ spec_freeblks(struct vop_freeblks_args *ap)
  * returned, and assume that the entire device is contiguous in regards
  * to the contiguous block range (runp and runb).
  *
- * spec_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * spec_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 spec_bmap(struct vop_bmap_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	int runp = 0;
-	int runb = 0;
 
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
-	if (vp->v_mount != NULL)
-		runp = runb = MAXBSIZE / vp->v_mount->mnt_stat.f_iosize;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
-		*ap->a_runp = runp;
-	if (ap->a_runb != NULL)
-		*ap->a_runb = runb;
+		*ap->a_runp = MAXBSIZE;
+	if (ap->a_runb != NULL) {
+		if (ap->a_loffset < MAXBSIZE)
+			*ap->a_runb = (int)ap->a_loffset;
+		else
+			*ap->a_runb = MAXBSIZE;
+	}
 	return (0);
 }
 
@@ -643,7 +642,6 @@ spec_getpages(struct vop_getpages_args *ap)
 	vm_offset_t kva;
 	int error;
 	int i, pcount, size;
-	daddr_t blkno;
 	struct buf *bp;
 	vm_page_t m;
 	vm_ooffset_t offset;
@@ -657,24 +655,8 @@ spec_getpages(struct vop_getpages_args *ap)
 
 	/*
 	 * Calculate the offset of the transfer and do sanity check.
-	 * FreeBSD currently only supports an 8 TB range due to bio_blkno
-	 * being in DEV_BSIZE ( usually 512 ) byte chunks on call to
-	 * vn_strategy().  XXX
 	 */
 	offset = IDX_TO_OFF(ap->a_m[0]->pindex) + ap->a_offset;
-
-#define	DADDR_T_BIT	(sizeof(daddr_t)*8)
-#define	OFFSET_MAX	((1LL << (DADDR_T_BIT + DEV_BSHIFT)) - 1)
-
-	if (offset < 0 || offset > OFFSET_MAX) {
-		/* XXX still no %q in kernel. */
-		printf("spec_getpages: preposterous offset 0x%x%08x\n",
-		       (u_int)((u_quad_t)offset >> 32),
-		       (u_int)(offset & 0xffffffff));
-		return (VM_PAGER_ERROR);
-	}
-
-	blkno = btodb(offset);
 
 	/*
 	 * Round up physical size for real devices.  We cannot round using
@@ -712,7 +694,7 @@ spec_getpages(struct vop_getpages_args *ap)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
-	bp->b_bio1.bio_blkno = blkno;
+	bp->b_bio1.bio_offset = offset;
 	bp->b_bio1.bio_done = spec_getpages_iodone;
 
 	mycpu->gd_cnt.v_vnodein++;
@@ -803,7 +785,7 @@ spec_getpages(struct vop_getpages_args *ap)
 	    "spec_getpages:(%s) I/O read failure: (error=%d) bp %p vp %p\n",
 			devtoname(vp->v_rdev), error, bp, bp->b_vp);
 		printf(
-	    "               size: %d, resid: %ld, a_count: %d, valid: 0x%x\n",
+	    "               size: %d, resid: %d, a_count: %d, valid: 0x%x\n",
 		    size, bp->b_resid, ap->a_count, m->valid);
 		printf(
 	    "               nread: %d, reqpage: %d, pindex: %lu, pcount: %d\n",

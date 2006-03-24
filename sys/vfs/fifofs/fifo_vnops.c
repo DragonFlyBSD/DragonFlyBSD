@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.22 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.23 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -496,16 +496,16 @@ fifo_inactive(struct vop_inactive_args *ap)
 /*
  * This is a noop, simply returning what one has been given.
  *
- * fifo_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * fifo_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	     off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 fifo_bmap(struct vop_bmap_args *ap)
 {
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
 	if (ap->a_runb != NULL)

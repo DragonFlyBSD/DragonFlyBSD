@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.7 2006/02/17 19:18:07 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.8 2006/03/24 18:35:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -224,7 +224,7 @@ pcbmap(struct denode *dep,
 		if (bn != bp_bn) {
 			if (bp)
 				brelse(bp);
-			error = bread(pmp->pm_devvp, bn, bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -351,7 +351,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 				+ ffs(pmp->pm_inusemap[cn / N_INUSEBITS]
 				      ^ (u_int)-1) - 1;
 		}
-		if (bread(pmp->pm_devvp, pmp->pm_fsinfo, fsi_size(pmp), &bpn) != 0) {
+		if (bread(pmp->pm_devvp, de_bntodoff(pmp, pmp->pm_fsinfo), fsi_size(pmp), &bpn) != 0) {
 			/*
 			 * Ignore the error, but turn off FSInfo update for the future.
 			 */
@@ -383,7 +383,8 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 		for (i = 1; i < pmp->pm_FATs; i++) {
 			fatbn += pmp->pm_FATsecs;
 			/* getblk() never fails */
-			bpn = getblk(pmp->pm_devvp, fatbn, bp->b_bcount, 0, 0);
+			bpn = getblk(pmp->pm_devvp, de_bntodoff(pmp, fatbn),
+				     bp->b_bcount, 0, 0);
 			bcopy(bp->b_data, bpn->b_data, bp->b_bcount);
 			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
 				bwrite(bpn);
@@ -521,7 +522,7 @@ fatentry(int function, struct msdosfsmount *pmp, u_long cn, u_long *oldcontents,
 
 	byteoffset = FATOFS(pmp, cn);
 	fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-	error = bread(pmp->pm_devvp, bn, bsize, &bp);
+	error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -604,7 +605,7 @@ fatchain(struct msdosfsmount *pmp, u_long start, u_long count, u_long fillwith)
 	while (count > 0) {
 		byteoffset = FATOFS(pmp, start);
 		fatblock(pmp, byteoffset, &bn, &bsize, &bo);
-		error = bread(pmp->pm_devvp, bn, bsize, &bp);
+		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -825,7 +826,7 @@ freeclusterchain(struct msdosfsmount *pmp, u_long cluster)
 		if (lbn != bn) {
 			if (bp)
 				updatefats(pmp, bp, lbn);
-			error = bread(pmp->pm_devvp, bn, bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -899,7 +900,7 @@ fillinusemap(struct msdosfsmount *pmp)
 			if (bp)
 				brelse(bp);
 			fatblock(pmp, byteoffset, &bn, &bsize, NULL);
-			error = bread(pmp->pm_devvp, bn, bsize, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -1022,21 +1023,27 @@ extendfile(struct denode *dep, u_long count, struct buf **bpp, u_long *ncp,
 				/*
 				 * Get the buf header for the new block of the file.
 				 */
-				if (dep->de_Attributes & ATTR_DIRECTORY)
-					bp = getblk(pmp->pm_devvp, cntobn(pmp, cn++),
+				if (dep->de_Attributes & ATTR_DIRECTORY) {
+					bp = getblk(pmp->pm_devvp,
+						    cntodoff(pmp, cn++),
 						    pmp->pm_bpcluster, 0, 0);
-				else {
-					bp = getblk(DETOV(dep), de_cn2bn(pmp, frcn++),
-					    pmp->pm_bpcluster, 0, 0);
+				} else {
+					daddr_t dblkno;
+
+					bp = getblk(DETOV(dep),
+						    de_cn2doff(pmp, frcn++),
+						    pmp->pm_bpcluster, 0, 0);
 					/*
 					 * Do the bmap now, as in msdosfs_write
 					 */
 					if (pcbmap(dep,
-					    de_bn2cn(pmp, bp->b_bio1.bio_blkno),
-					    &bp->b_bio2.bio_blkno, 0, 0)) {
-						bp->b_bio2.bio_blkno = (daddr_t)-1;
+					    de_bn2cn(pmp, de_off2bn(pmp, bp->b_bio1.bio_offset)),
+					    &dblkno, 0, 0)) {
+						bp->b_bio2.bio_offset = NOOFFSET;
+					} else {
+						bp->b_bio2.bio_offset = de_cn2doff(pmp, dblkno);
 					}
-					if (bp->b_bio2.bio_blkno == (daddr_t)-1)
+					if (bp->b_bio2.bio_offset == NOOFFSET)
 						panic("extendfile: pcbmap");
 				}
 				clrbuf(bp);

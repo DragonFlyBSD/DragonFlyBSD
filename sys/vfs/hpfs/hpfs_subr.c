@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.6 2003/08/15 07:26:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.7 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,8 @@ hpfs_bmdeinit(
 		for (i=0; i<hpmp->hpm_dbnum; i++) {
 			dprintf(("[%d: 0x%x] ", i, hpmp->hpm_bmind[i]));
 
-			bp = getblk(hpmp->hpm_devvp, hpmp->hpm_bmind[i],
+			bp = getblk(hpmp->hpm_devvp,
+				    dbtodoff(hpmp->hpm_bmind[i]),
 				    BMSIZE, 0, 0);
 			clrbuf(bp);
 
@@ -115,7 +116,7 @@ hpfs_bminit(
 	MALLOC(hpmp->hpm_bitmap, u_int8_t *, hpmp->hpm_dbnum * BMSIZE,
 		M_HPFSMNT, M_WAITOK);
 
-	error = bread(hpmp->hpm_devvp, hpmp->hpm_su.su_bitmap.lsn1,
+	error = bread(hpmp->hpm_devvp, dbtodoff(hpmp->hpm_su.su_bitmap.lsn1),
 		((hpmp->hpm_dbnum + 0x7F) & ~(0x7F)) << 2, &bp);
 	if (error) {
 		brelse(bp);
@@ -134,7 +135,7 @@ hpfs_bminit(
 	for (i=0; i<hpmp->hpm_dbnum; i++) {
 		dprintf(("[%d: 0x%x] ", i, hpmp->hpm_bmind[i]));
 
-		error = bread(hpmp->hpm_devvp, hpmp->hpm_bmind[i],
+		error = bread(hpmp->hpm_devvp, dbtodoff(hpmp->hpm_bmind[i]),
 				BMSIZE, &bp);
 		if (error) {
 			brelse(bp);
@@ -216,7 +217,7 @@ hpfs_cpload (
 	struct cpdsec * cpdsp;
 	int error, i;
 
-	error = bread(hpmp->hpm_devvp, cpibp->b_cpdsec, DEV_BSIZE, &bp);
+	error = bread(hpmp->hpm_devvp, dbtodoff(cpibp->b_cpdsec), DEV_BSIZE, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -279,7 +280,7 @@ hpfs_cpinit (
 	lsn = hpmp->hpm_sp.sp_cpi;
 
 	while (cpicnt > 0) {
-		error = bread(hpmp->hpm_devvp, lsn, DEV_BSIZE, &bp);
+		error = bread(hpmp->hpm_devvp, dbtodoff(lsn), DEV_BSIZE, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -552,7 +553,7 @@ dive:
 	dprintf(("[dive 0x%x] ", lsn));
 	if (bp != NULL)
 		brelse(bp);
-	error = bread(dhp->h_devvp, lsn, D_BSIZE, &bp);
+	error = bread(dhp->h_devvp, dbtodoff(lsn), D_BSIZE, &bp);
 	if (error)
 		goto failed;
 
@@ -731,7 +732,7 @@ hpfs_update (
 	if (!(hp->h_flag & H_CHANGE))
 		return (0);
 
-	bp = getblk(hp->h_devvp, hp->h_no, FNODESIZE, 0, 0);
+	bp = getblk(hp->h_devvp, dbtodoff(hp->h_no), FNODESIZE, 0, 0);
 	clrbuf(bp);
 
 	bcopy (&hp->h_fn, bp->b_data, sizeof(struct fnode));
@@ -842,7 +843,7 @@ hpfs_breadstruct (
 
 	*bpp = NULL;
 
-	error = bread(hpmp->hpm_devvp, lsn, len, &bp);
+	error = bread(hpmp->hpm_devvp, dbtodoff(lsn), len, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);

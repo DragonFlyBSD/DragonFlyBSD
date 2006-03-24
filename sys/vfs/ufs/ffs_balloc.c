@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.14 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.15 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,11 +129,11 @@ ffs_balloc(struct vop_balloc_args *ap)
 				return (error);
 			if (DOINGSOFTDEP(vp))
 				softdep_setup_allocdirect(ip, nb,
-				    dbtofsb(fs, bp->b_bio2.bio_blkno), 
+				    dofftofsb(fs, bp->b_bio2.bio_offset), 
 				    ip->i_db[nb], fs->fs_bsize, osize, bp);
 			/* adjust the inode size, we just grew */
 			ip->i_size = smalllblktosize(fs, nb + 1);
-			ip->i_db[nb] = dbtofsb(fs, bp->b_bio2.bio_blkno);
+			ip->i_db[nb] = dofftofsb(fs, bp->b_bio2.bio_offset);
 			ip->i_flag |= IN_CHANGE | IN_UPDATE;
 			if (flags & B_SYNC)
 				bwrite(bp);
@@ -148,12 +148,12 @@ ffs_balloc(struct vop_balloc_args *ap)
 	if (lbn < NDADDR) {
 		nb = ip->i_db[lbn];
 		if (nb != 0 && ip->i_size >= smalllblktosize(fs, lbn + 1)) {
-			error = bread(vp, lbn, fs->fs_bsize, &bp);
+			error = bread(vp, lblktodoff(fs, lbn), fs->fs_bsize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
 			}
-			bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+			bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 			*ap->a_bpp = bp;
 			return (0);
 		}
@@ -164,12 +164,13 @@ ffs_balloc(struct vop_balloc_args *ap)
 			osize = fragroundup(fs, blkoff(fs, ip->i_size));
 			nsize = fragroundup(fs, size);
 			if (nsize <= osize) {
-				error = bread(vp, lbn, osize, &bp);
+				error = bread(vp, lblktodoff(fs, lbn), 
+					      osize, &bp);
 				if (error) {
 					brelse(bp);
 					return (error);
 				}
-				bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+				bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 			} else {
 				error = ffs_realloccg(ip, lbn,
 				    ffs_blkpref(ip, lbn, (int)lbn,
@@ -178,7 +179,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 					return (error);
 				if (DOINGSOFTDEP(vp))
 					softdep_setup_allocdirect(ip, lbn,
-					    dbtofsb(fs, bp->b_bio2.bio_blkno),
+					    dofftofsb(fs, bp->b_bio2.bio_offset),
 					    nb, nsize, osize, bp);
 			}
 		} else {
@@ -191,15 +192,15 @@ ffs_balloc(struct vop_balloc_args *ap)
 			    nsize, cred, &newb);
 			if (error)
 				return (error);
-			bp = getblk(vp, lbn, nsize, 0, 0);
-			bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
+			bp = getblk(vp, lblktodoff(fs, lbn), nsize, 0, 0);
+			bp->b_bio2.bio_offset = fsbtodoff(fs, newb);
 			if (flags & B_CLRBUF)
 				vfs_bio_clrbuf(bp);
 			if (DOINGSOFTDEP(vp))
 				softdep_setup_allocdirect(ip, lbn, newb, 0,
 				    nsize, 0, bp);
 		}
-		ip->i_db[lbn] = dbtofsb(fs, bp->b_bio2.bio_blkno);
+		ip->i_db[lbn] = dofftofsb(fs, bp->b_bio2.bio_offset);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		*ap->a_bpp = bp;
 		return (0);
@@ -222,7 +223,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 * block and then trying to read a data block (which tries to lock
 	 * the underlying VM pages).
 	 */
-	dbp = getblk(vp, lbn, fs->fs_bsize, 0, 0);
+	dbp = getblk(vp, lblktodoff(fs, lbn), fs->fs_bsize, 0, 0);
 
 	/*
 	 * Setup undo history
@@ -249,8 +250,9 @@ ffs_balloc(struct vop_balloc_args *ap)
 			goto fail2;
 		nb = newb;
 		*allocblk++ = nb;
-		bp = getblk(vp, indirs[1].in_lbn, fs->fs_bsize, 0, 0);
-		bp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		bp = getblk(vp, lblktodoff(fs, indirs[1].in_lbn),
+			    fs->fs_bsize, 0, 0);
+		bp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		vfs_bio_clrbuf(bp);
 		if (DOINGSOFTDEP(vp)) {
 			softdep_setup_allocdirect(ip, NDADDR + indirs[0].in_off,
@@ -275,7 +277,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 * Fetch through the indirect blocks, allocating as necessary.
 	 */
 	for (i = 1;;) {
-		error = bread(vp, indirs[i].in_lbn, (int)fs->fs_bsize, &bp);
+		error = bread(vp, lblktodoff(fs, indirs[i].in_lbn), (int)fs->fs_bsize, &bp);
 		if (error) {
 			brelse(bp);
 			goto fail;
@@ -298,8 +300,9 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		nbp = getblk(vp, indirs[i].in_lbn, fs->fs_bsize, 0, 0);
-		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		nbp = getblk(vp, lblktodoff(fs, indirs[i].in_lbn),
+			     fs->fs_bsize, 0, 0);
+		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		vfs_bio_clrbuf(nbp);
 		if (DOINGSOFTDEP(vp)) {
 			softdep_setup_allocindir_meta(nbp, ip, bp,
@@ -353,7 +356,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		dbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		if (flags & B_CLRBUF)
 			vfs_bio_clrbuf(dbp);
 		if (DOINGSOFTDEP(vp))
@@ -387,7 +390,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 		/*
 		 * If B_CLRBUF is set we must validate the invalid portions
 		 * of the buffer.  This typically requires a read-before-
-		 * write.  The strategy call will fill in bio_blkno in that
+		 * write.  The strategy call will fill in bio_offset in that
 		 * case.
 		 *
 		 * If we hit this case we do a cluster read if possible
@@ -399,24 +402,25 @@ ffs_balloc(struct vop_balloc_args *ap)
 			seqcount = (flags & B_SEQMASK) >> B_SEQSHIFT;
 			if (seqcount &&
 			    (vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-				error = cluster_read(vp, ip->i_size, lbn,
+				error = cluster_read(vp, (off_t)ip->i_size,
+					    lblktodoff(fs, lbn),
 					    (int)fs->fs_bsize, 
 					    MAXBSIZE, seqcount, &dbp);
 			} else {
-				error = bread(vp, lbn, (int)fs->fs_bsize, &dbp);
+				error = bread(vp, lblktodoff(fs, lbn), (int)fs->fs_bsize, &dbp);
 			}
 			if (error)
 				goto fail;
 		} else {
-			dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+			dbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		}
 	} else {
 		/*
 		 * If B_CLRBUF is not set the caller intends to overwrite
 		 * the entire contents of the buffer.  We can simply set
-		 * bio_blkno and we are done.
+		 * bio_offset and we are done.
 		 */
-		dbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		dbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 	}
 	*ap->a_bpp = dbp;
 	return (0);
@@ -442,7 +446,7 @@ fail:
 	} else if (unwindidx >= 0) {
 		int r;
 
-		r = bread(vp, indirs[unwindidx].in_lbn, (int)fs->fs_bsize, &bp);
+		r = bread(vp, lblktodoff(fs, indirs[unwindidx].in_lbn), (int)fs->fs_bsize, &bp);
 		if (r) {
 			panic("Could not unwind indirect block, error %d", r);
 			brelse(bp);

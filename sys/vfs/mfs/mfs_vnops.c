@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.20 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.21 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,8 +148,7 @@ mfs_freeblks(struct vop_freeblks_args *ap)
 
 	bp = geteblk(ap->a_length);
 	bp->b_flags |= B_FREEBUF | B_ASYNC;
-	bp->b_bio1.bio_blkno = ap->a_addr;
-	bp->b_bio1.bio_offset = dbtob(ap->a_addr);
+	bp->b_bio1.bio_offset = ap->a_offset;
 	bp->b_bcount = ap->a_length;
 	BUF_KERNPROC(bp);
 	vn_strategy(vp, &bp->b_bio1);
@@ -191,10 +190,10 @@ mfs_strategy(struct vop_strategy_args *ap)
 		 */
 		caddr_t base;
 
-		base = mfsp->mfs_baseoff + (bio->bio_blkno << DEV_BSHIFT);
+		base = mfsp->mfs_baseoff + bio->bio_offset;
 		if (bp->b_flags & B_FREEBUF)
 			;
-		if (bp->b_flags & B_READ)
+		else if (bp->b_flags & B_READ)
 			bcopy(base, bp->b_data, bp->b_bcount);
 		else
 			bcopy(bp->b_data, base, bp->b_bcount);
@@ -233,7 +232,7 @@ void
 mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 {
 	struct buf *bp = bio->bio_buf;
-	caddr_t base = mfsp->mfs_baseoff + (bio->bio_blkno << DEV_BSHIFT);
+	caddr_t base = mfsp->mfs_baseoff + bio->bio_offset;
 
 	if (bp->b_flags & B_FREEBUF) {
 		/*
@@ -282,18 +281,20 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 /*
  * This is a noop, simply returning what one has been given.
  *
- * mfs_bmap(struct vnode *a_vp, ufs_daddr_t a_bn, struct vnode **a_vpp,
- *	    ufs_daddr_t *a_bnp, int *a_runp)
+ * mfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	    off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 mfs_bmap(struct vop_bmap_args *ap)
 {
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
+	if (ap->a_runb != NULL)
+		*ap->a_runb = 0;
 	return (0);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.14 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -358,7 +358,7 @@ pst_rw(struct pst_request *request)
     msg->transaction_context = (u_int32_t)request;
     msg->time_multiplier = 1;
     msg->bytecount = bp->b_bcount;
-    msg->lba = ((u_int64_t)request->bio->bio_blkno) * (DEV_BSIZE * 1LL);
+    msg->lba = request->bio->bio_offset;	/* 64 bits */
     if (!iop_create_sgl((struct i2o_basic_message *)msg, bp->b_data,
 			bp->b_bcount, sgl_flag))
 	return -1;

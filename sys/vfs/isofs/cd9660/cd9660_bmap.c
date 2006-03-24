@@ -37,10 +37,11 @@
  *
  *	@(#)cd9660_bmap.c	8.3 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_bmap.c,v 1.8 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.4 2004/04/12 23:18:55 cpressey Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_bmap.c,v 1.5 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 
@@ -52,15 +53,16 @@
  * number on the disk. The conversion is done by using the logical block
  * number to index into the data block (extent) for the file.
  *
- * cd9660_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *		daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * cd9660_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *		off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
 cd9660_bmap(struct vop_bmap_args *ap)
 {
 	struct iso_node *ip = VTOI(ap->a_vp);
-	daddr_t lblkno = ap->a_bn;
+	off_t loffset = ap->a_loffset;
 	int bshift;
+	int bsize;
 
 	/*
 	 * Check for underlying vnode requests and ensure that logical
@@ -68,34 +70,36 @@ cd9660_bmap(struct vop_bmap_args *ap)
 	 */
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ip->i_devvp;
-	if (ap->a_bnp == NULL)
+	if (ap->a_doffsetp == NULL)
 		return (0);
 
 	/*
 	 * Compute the requested block number
 	 */
 	bshift = ip->i_mnt->im_bshift;
-	*ap->a_bnp = (ip->iso_start + lblkno) << (bshift - DEV_BSHIFT);
+	bsize = 1 << bshift;
+	*ap->a_doffsetp = loffset + ((off_t)ip->iso_start << bshift);
+
+	KKASSERT((loffset & (bsize - 1)) == 0);
 
 	/*
-	 * Determine maximum number of readahead blocks following the
-	 * requested block.
+	 * Determine maximum number of readahead bytes following the
+	 * requested offset.  Align the result to the nearest block
+	 * boundary.  Do not count any non-full blocks(?)
 	 */
 	if (ap->a_runp) {
-		int nblk;
+		off_t nbytes;
 
-		nblk = (ip->i_size >> bshift) - (lblkno + 1);
-		if (nblk <= 0)
+		nbytes = (off_t)ip->i_size - loffset;
+		if (nbytes < bsize)
 			*ap->a_runp = 0;
-		else if (nblk >= (MAXBSIZE >> bshift))
-			*ap->a_runp = (MAXBSIZE >> bshift) - 1;
+		else if (nbytes > MAXBSIZE)
+			*ap->a_runp = MAXBSIZE;
 		else
-			*ap->a_runp = nblk;
+			*ap->a_runp = (int)nbytes & ~(bsize - 1);
 	}
-
 	if (ap->a_runb) {
 		*ap->a_runb = 0;
 	}
-
 	return 0;
 }

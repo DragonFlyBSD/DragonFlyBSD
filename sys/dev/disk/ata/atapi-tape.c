@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.13 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.14 2006/03/24 18:35:30 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -457,7 +457,7 @@ aststrategy(dev_t dev, struct bio *bio)
     /* warn about transfers bigger than the device suggests */
     if (bp->b_bcount > stp->blksize * stp->cap.ctl) {	 
 	if ((stp->flags & F_CTL_WARN) == 0) {
-	    ata_prtdev(stp->device, "WARNING: CTL exceeded %ld>%d\n",
+	    ata_prtdev(stp->device, "WARNING: CTL exceeded %d > %d\n",
 		       bp->b_bcount, stp->blksize * stp->cap.ctl);
 	    stp->flags |= F_CTL_WARN;
 	}

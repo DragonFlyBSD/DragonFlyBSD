@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -814,8 +814,8 @@ smbfs_strategy(struct vop_strategy_args *ap)
 }
 
 /*
- * smbfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	      daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * smbfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	      off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 smbfs_bmap(struct vop_bmap_args *ap)
@@ -824,8 +824,8 @@ smbfs_bmap(struct vop_bmap_args *ap)
 
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn * btodb(vp->v_mount->mnt_stat.f_iosize);
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
 	if (ap->a_runb != NULL)

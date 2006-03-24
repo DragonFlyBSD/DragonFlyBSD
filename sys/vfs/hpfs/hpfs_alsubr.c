@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.6 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.7 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,8 @@ dive:
 
 				if (bp)
 					brelse(bp);
-				error = bread(hp->h_devvp, anp->an_lsn, 
+				error = bread(hp->h_devvp,
+					      dbtodoff(anp->an_lsn), 
 					      DEV_BSIZE, &bp);
 				if (error) {
 					printf("hpfs_hpbmap: bread error\n");
@@ -174,7 +175,7 @@ hpfs_allocalsec(struct hpfsmount *hpmp, lsn_t parlsn, struct buf **bpp)
 	if (error) 
 		return (error);
 
-	bp = getblk(hpmp->hpm_devvp, lsn, DEV_BSIZE, 0, 0);
+	bp = getblk(hpmp->hpm_devvp, dbtodoff(lsn), DEV_BSIZE, 0, 0);
 	clrbuf(bp);
 
 	/* Fill AlSec info */

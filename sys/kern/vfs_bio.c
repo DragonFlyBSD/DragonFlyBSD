@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.58 2006/03/05 18:38:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.59 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*
@@ -442,14 +442,12 @@ initbufbio(struct buf *bp)
 {
 	bp->b_bio1.bio_buf = bp;
 	bp->b_bio1.bio_prev = NULL;
-	bp->b_bio1.bio_blkno = (daddr_t)-1;
 	bp->b_bio1.bio_offset = NOOFFSET;
 	bp->b_bio1.bio_next = &bp->b_bio2;
 	bp->b_bio1.bio_done = NULL;
 
 	bp->b_bio2.bio_buf = bp;
 	bp->b_bio2.bio_prev = &bp->b_bio1;
-	bp->b_bio2.bio_blkno = (daddr_t)-1;
 	bp->b_bio2.bio_offset = NOOFFSET;
 	bp->b_bio2.bio_next = NULL;
 	bp->b_bio2.bio_done = NULL;
@@ -466,7 +464,6 @@ reinitbufbio(struct buf *bp)
 
 	for (bio = &bp->b_bio1; bio; bio = bio->bio_next) {
 		bio->bio_done = NULL;
-		bio->bio_blkno = (daddr_t)-1;
 		bio->bio_offset = NOOFFSET;
 	}
 }
@@ -490,7 +487,6 @@ push_bio(struct bio *bio)
 		bio->bio_next = nbio;
 		nbio->bio_prev = bio;
 		nbio->bio_buf = bio->bio_buf;
-		nbio->bio_blkno = (daddr_t)-1;
 		nbio->bio_offset = NOOFFSET;
 		nbio->bio_done = NULL;
 		nbio->bio_next = NULL;
@@ -509,7 +505,6 @@ void
 clearbiocache(struct bio *bio)
 {
 	while (bio) {
-		bio->bio_blkno = (daddr_t)-1;
 		bio->bio_offset = NOOFFSET;
 		bio = bio->bio_next;
 	}
@@ -600,11 +595,11 @@ bremfree(struct buf * bp)
  *	getblk() ).
  */
 int
-bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
+bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
 {
 	struct buf *bp;
 
-	bp = getblk(vp, blkno, size, 0, 0);
+	bp = getblk(vp, loffset, size, 0, 0);
 	*bpp = bp;
 
 	/* if not found in cache, do some I/O */
@@ -628,14 +623,14 @@ bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
  *	and we do not have to do anything.
  */
 int
-breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
+breadn(struct vnode * vp, off_t loffset, int size, off_t *raoffset,
 	int *rabsize, int cnt, struct buf ** bpp)
 {
 	struct buf *bp, *rabp;
 	int i;
 	int rv = 0, readwait = 0;
 
-	*bpp = bp = getblk(vp, blkno, size, 0, 0);
+	*bpp = bp = getblk(vp, loffset, size, 0, 0);
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
@@ -646,10 +641,10 @@ breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
 		++readwait;
 	}
 
-	for (i = 0; i < cnt; i++, rablkno++, rabsize++) {
-		if (inmem(vp, *rablkno))
+	for (i = 0; i < cnt; i++, raoffset++, rabsize++) {
+		if (inmem(vp, *raoffset))
 			continue;
-		rabp = getblk(vp, *rablkno, *rabsize, 0, 0);
+		rabp = getblk(vp, *raoffset, *rabsize, 0, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
 			rabp->b_flags |= B_READ | B_ASYNC;
@@ -790,8 +785,8 @@ bdwrite(struct buf *bp)
 	 * requesting a sync -- there might not be enough memory to do
 	 * the bmap then...  So, this is important to do.
 	 */
-	if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
-		VOP_BMAP(bp->b_vp, bp->b_lblkno, NULL, &bp->b_bio2.bio_blkno,
+	if (bp->b_bio2.bio_offset == NOOFFSET) {
+		VOP_BMAP(bp->b_vp, bp->b_loffset, NULL, &bp->b_bio2.bio_offset,
 			 NULL, NULL);
 	}
 
@@ -1165,7 +1160,7 @@ brelse(struct buf * bp)
 		if (bp->b_flags & (B_INVAL | B_RELBUF)) {
 #if 0
 			if (bp->b_vp)
-				printf("brelse bp %p %08x/%08lx: Warning, caught and fixed brelvp bug\n", bp, saved_flags, bp->b_flags);
+				printf("brelse bp %p %08x/%08x: Warning, caught and fixed brelvp bug\n", bp, saved_flags, bp->b_flags);
 #endif
 			if (bp->b_bufsize)
 				allocbuf(bp, 0);
@@ -1200,7 +1195,7 @@ brelse(struct buf * bp)
 		 */
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
-		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("losing buffer 1");
@@ -1215,7 +1210,7 @@ brelse(struct buf * bp)
 		 * Buffers with junk contents.   Again these buffers had better
 		 * already be disassociated from their vnode.
 		 */
-		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08lx vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		bp->b_flags |= B_INVAL;
 		bp->b_xflags &= ~BX_BKGRDWRITE;
@@ -1436,13 +1431,12 @@ vfs_bio_awrite(struct buf *bp)
 {
 	int i;
 	int j;
-	daddr_t lblkno = bp->b_lblkno;
+	off_t loffset = bp->b_loffset;
 	struct vnode *vp = bp->b_vp;
-	int ncl;
+	int nbytes;
 	struct buf *bpa;
 	int nwritten;
 	int size;
-	int maxcl;
 
 	crit_enter();
 	/*
@@ -1450,53 +1444,52 @@ vfs_bio_awrite(struct buf *bp)
 	 * we find a clusterable block we could be in the middle of a cluster
 	 * rather then at the beginning.
 	 *
-	 * NOTE: b_bio1 contains the logical loffset/lblkno and is aliased
-	 * to b_lblkno and b_loffset.  b_bio2 contains the translated block
-	 * number.
+	 * NOTE: b_bio1 contains the logical loffset and is aliased
+	 * to b_loffset.  b_bio2 contains the translated block number.
 	 */
 	if ((vp->v_type == VREG) && 
 	    (vp->v_mount != 0) && /* Only on nodes that have the size info */
 	    (bp->b_flags & (B_CLUSTEROK | B_INVAL)) == B_CLUSTEROK) {
 
 		size = vp->v_mount->mnt_stat.f_iosize;
-		maxcl = MAXPHYS / size;
 
-		for (i = 1; i < maxcl; i++) {
-			if ((bpa = findblk(vp, lblkno + i)) &&
+		for (i = size; i < MAXPHYS; i += size) {
+			if ((bpa = findblk(vp, loffset + i)) &&
 			    BUF_REFCNT(bpa) == 0 &&
 			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
 			    (B_DELWRI | B_CLUSTEROK)) &&
 			    (bpa->b_bufsize == size)) {
-				if ((bpa->b_bio2.bio_blkno == (daddr_t)-1) ||
-				    (bpa->b_bio2.bio_blkno !=
-				     bp->b_bio2.bio_blkno + ((i * size) >> DEV_BSHIFT)))
+				if ((bpa->b_bio2.bio_offset == NOOFFSET) ||
+				    (bpa->b_bio2.bio_offset !=
+				     bp->b_bio2.bio_offset + i))
 					break;
 			} else {
 				break;
 			}
 		}
-		for (j = 1; i + j <= maxcl && j <= lblkno; j++) {
-			if ((bpa = findblk(vp, lblkno - j)) &&
+		for (j = size; i + j <= MAXPHYS && j <= loffset; j += size) {
+			if ((bpa = findblk(vp, loffset - j)) &&
 			    BUF_REFCNT(bpa) == 0 &&
 			    ((bpa->b_flags & (B_DELWRI | B_CLUSTEROK | B_INVAL)) ==
 			    (B_DELWRI | B_CLUSTEROK)) &&
 			    (bpa->b_bufsize == size)) {
-				if ((bpa->b_bio2.bio_blkno == (daddr_t)-1) ||
-				    (bpa->b_bio2.bio_blkno !=
-				     bp->b_bio2.bio_blkno - ((j * size) >> DEV_BSHIFT)))
+				if ((bpa->b_bio2.bio_offset == NOOFFSET) ||
+				    (bpa->b_bio2.bio_offset !=
+				     bp->b_bio2.bio_offset - j))
 					break;
 			} else {
 				break;
 			}
 		}
-		--j;
-		ncl = i + j;
+		j -= size;
+		nbytes = (i + j);
 		/*
 		 * this is a possible cluster write
 		 */
-		if (ncl != 1) {
+		if (nbytes != size) {
 			BUF_UNLOCK(bp);
-			nwritten = cluster_wbuild(vp, size, lblkno - j, ncl);
+			nwritten = cluster_wbuild(vp, size,
+						  loffset - j, nbytes);
 			crit_exit();
 			return nwritten;
 		}
@@ -1690,7 +1683,7 @@ restart:
 		 * valid after this operation.
 		 */
 
-		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08lx vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
+		KASSERT(bp->b_vp == NULL, ("bp3 %p flags %08x vnode %p qindex %d unexpectededly still associated!", bp, bp->b_flags, bp->b_vp, qindex));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
 			(*bioops.io_deallocate)(bp);
@@ -1971,14 +1964,13 @@ flushbufqueues(void)
  *	be any more valid then otherwise once we exit the critical section.
  */
 int
-inmem(struct vnode * vp, daddr_t blkno)
+inmem(struct vnode *vp, off_t loffset)
 {
 	vm_object_t obj;
 	vm_offset_t toff, tinc, size;
 	vm_page_t m;
-	vm_ooffset_t off;
 
-	if (findblk(vp, blkno))
+	if (findblk(vp, loffset))
 		return 1;
 	if (vp->v_mount == NULL)
 		return 0;
@@ -1988,17 +1980,16 @@ inmem(struct vnode * vp, daddr_t blkno)
 	size = PAGE_SIZE;
 	if (size > vp->v_mount->mnt_stat.f_iosize)
 		size = vp->v_mount->mnt_stat.f_iosize;
-	off = (vm_ooffset_t)blkno * (vm_ooffset_t)vp->v_mount->mnt_stat.f_iosize;
 
 	for (toff = 0; toff < vp->v_mount->mnt_stat.f_iosize; toff += tinc) {
-		m = vm_page_lookup(obj, OFF_TO_IDX(off + toff));
-		if (!m)
+		m = vm_page_lookup(obj, OFF_TO_IDX(loffset + toff));
+		if (m == NULL)
 			return 0;
 		tinc = size;
-		if (tinc > PAGE_SIZE - ((toff + off) & PAGE_MASK))
-			tinc = PAGE_SIZE - ((toff + off) & PAGE_MASK);
+		if (tinc > PAGE_SIZE - ((toff + loffset) & PAGE_MASK))
+			tinc = PAGE_SIZE - ((toff + loffset) & PAGE_MASK);
 		if (vm_page_is_valid(m,
-		    (vm_offset_t) ((toff + off) & PAGE_MASK), tinc) == 0)
+		    (vm_offset_t) ((toff + loffset) & PAGE_MASK), tinc) == 0)
 			return 0;
 	}
 	return 1;
@@ -2105,12 +2096,12 @@ vfs_setdirty(struct buf *bp)
  *	obtain after locking it.
  */
 struct buf *
-findblk(struct vnode *vp, daddr_t blkno)
+findblk(struct vnode *vp, off_t loffset)
 {
 	struct buf *bp;
 
 	crit_enter();
-	bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, blkno);
+	bp = buf_rb_hash_RB_LOOKUP(&vp->v_rbhash_tree, loffset);
 	crit_exit();
 	return(bp);
 }
@@ -2159,7 +2150,7 @@ findblk(struct vnode *vp, daddr_t blkno)
  *	prior to issuing the READ.  biodone() will *not* clear B_INVAL.
  */
 struct buf *
-getblk(struct vnode *vp, daddr_t blkno, int size, int slpflag, int slptimeo)
+getblk(struct vnode *vp, off_t loffset, int size, int slpflag, int slptimeo)
 {
 	struct buf *bp;
 
@@ -2186,7 +2177,7 @@ loop:
 		tsleep(&needsbuffer, slpflag, "newbuf", slptimeo);
 	}
 
-	if ((bp = findblk(vp, blkno))) {
+	if ((bp = findblk(vp, loffset))) {
 		/*
 		 * The buffer was found in the cache, but we need to lock it.
 		 * Even with LK_NOWAIT the lockmgr may break our critical
@@ -2211,8 +2202,8 @@ loop:
 		 * will have b_vp == NULL, so this takes care of that check
 		 * as well.
 		 */
-		if (bp->b_vp != vp || bp->b_lblkno != blkno) {
-			printf("Warning buffer %p (vp %p lblkno %d) was recycled\n", bp, vp, (int)blkno);
+		if (bp->b_vp != vp || bp->b_loffset != loffset) {
+			printf("Warning buffer %p (vp %p loffset %lld) was recycled\n", bp, vp, loffset);
 			BUF_UNLOCK(bp);
 			goto loop;
 		}
@@ -2221,8 +2212,8 @@ loop:
 		 * Make sure that B_INVAL buffers do not have a cached
 		 * block number translation.
 		 */
-		if ((bp->b_flags & B_INVAL) && (bp->b_bio2.bio_blkno != (daddr_t)-1)) {
-			printf("Warning invalid buffer %p (vp %p lblkno %d) did not have cleared bio_blkno cache\n", bp, vp, (int)blkno);
+		if ((bp->b_flags & B_INVAL) && (bp->b_bio2.bio_offset != NOOFFSET)) {
+			printf("Warning invalid buffer %p (vp %p loffset %lld) did not have cleared bio_offset cache\n", bp, vp, loffset);
 			clearbiocache(&bp->b_bio2);
 		}
 
@@ -2333,7 +2324,6 @@ loop:
 		 * non-NULL v_mountedhere) is not a special case.
 		 */
 		int bsize, maxsize, vmio;
-		off_t offset;
 
 		if (vp->v_type == VBLK || vp->v_type == VCHR)
 			bsize = DEV_BSIZE;
@@ -2342,9 +2332,8 @@ loop:
 		else
 			bsize = size;
 
-		offset = (off_t)blkno * bsize;
 		vmio = (VOP_GETVOBJECT(vp, NULL) == 0) && (vp->v_flag & VOBJBUF);
-		maxsize = vmio ? size + (offset & PAGE_MASK) : size;
+		maxsize = vmio ? size + (loffset & PAGE_MASK) : size;
 		maxsize = imax(maxsize, bsize);
 
 		if ((bp = getnewbuf(slpflag, slptimeo, size, maxsize)) == NULL) {
@@ -2365,7 +2354,7 @@ loop:
 		 * from the point of the duplicate buffer creation through
 		 * to here, and we've locked the buffer.
 		 */
-		if (findblk(vp, blkno)) {
+		if (findblk(vp, loffset)) {
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 			goto loop;
@@ -2377,9 +2366,8 @@ loop:
 		 *
 		 * Make sure the translation layer has been cleared.
 		 */
-		bp->b_lblkno = blkno;
-		bp->b_loffset = offset;
-		bp->b_bio2.bio_blkno = (daddr_t)-1;
+		bp->b_loffset = loffset;
+		bp->b_bio2.bio_offset = NOOFFSET;
 		/* bp->b_bio2.bio_next = NULL; */
 
 		bgetvp(vp, bp);
@@ -2984,13 +2972,13 @@ biodone(struct bio *bio)
 				    (int) m->pindex, (int)(foff >> 32),
 						(int) foff & 0xffffffff, resid, i);
 				if (!vn_isdisk(vp, NULL))
-					printf(" iosize: %ld, lblkno: %d, flags: 0x%lx, npages: %d\n",
+					printf(" iosize: %ld, loffset: %lld, flags: 0x%08x, npages: %d\n",
 					    bp->b_vp->v_mount->mnt_stat.f_iosize,
-					    (int) bp->b_lblkno,
+					    bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
 				else
-					printf(" VDEV, lblkno: %d, flags: 0x%lx, npages: %d\n",
-					    (int) bp->b_lblkno,
+					printf(" VDEV, loffset: %lld, flags: 0x%08x, npages: %d\n",
+					    bp->b_loffset,
 					    bp->b_flags, bp->b_xio.xio_npages);
 				printf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
 				    m->valid, m->dirty, m->wire_count);
@@ -3402,8 +3390,8 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 		p = bp->b_xio.xio_pages[index];
 		if (p && (index < bp->b_xio.xio_npages)) {
 			if (p->busy) {
-				printf("vm_hold_free_pages: blkno: %d, lblkno: %d\n",
-					bp->b_bio2.bio_blkno, bp->b_lblkno);
+				printf("vm_hold_free_pages: doffset: %lld, loffset: %lld\n",
+					bp->b_bio2.bio_offset, bp->b_loffset);
 			}
 			bp->b_xio.xio_pages[index] = NULL;
 			pmap_kremove(pg);
@@ -3559,11 +3547,11 @@ DB_SHOW_COMMAND(buffer, db_show_buffer)
 	}
 
 	db_printf("b_flags = 0x%b\n", (u_int)bp->b_flags, PRINT_BUF_FLAGS);
-	db_printf("b_error = %d, b_bufsize = %ld, b_bcount = %ld, "
-		  "b_resid = %ld\n, b_data = %p, "
-		  "bio_blkno(disk) = %d, bio_blkno(phys) = %d\n",
+	db_printf("b_error = %d, b_bufsize = %d, b_bcount = %d, "
+		  "b_resid = %d\n, b_data = %p, "
+		  "bio_offset(disk) = %lld, bio_offset(phys) = %lld\n",
 		  bp->b_error, bp->b_bufsize, bp->b_bcount, bp->b_resid,
-		  bp->b_data, bp->b_bio2.bio_blkno, (bp->b_bio2.bio_next ? bp->b_bio2.bio_next->bio_blkno : (daddr_t)-1));
+		  bp->b_data, bp->b_bio2.bio_offset, (bp->b_bio2.bio_next ? bp->b_bio2.bio_next->bio_offset : (off_t)-1));
 	if (bp->b_xio.xio_npages) {
 		int i;
 		db_printf("b_xio.xio_npages = %d, pages(OBJ, IDX, PA): ",

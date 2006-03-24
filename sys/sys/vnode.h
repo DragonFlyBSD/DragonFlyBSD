@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.41 2006/03/05 18:38:36 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.42 2006/03/24 18:35:33 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -186,10 +186,10 @@ struct vnode {
 		struct fifoinfo	*vu_fifoinfo;	/* fifo (VFIFO) */
 	} v_un;
 	struct	nqlease *v_lease;		/* Soft reference to lease */
-	daddr_t v_lazyw;			/* lazy write iterator */
-	daddr_t	v_lastw;			/* last write (write cluster) */
-	daddr_t	v_cstart;			/* start block of cluster */
-	daddr_t	v_lasta;			/* last allocation */
+	off_t	v_lazyw;			/* lazy write iterator */
+	off_t	v_lastw;			/* last write (write cluster) */
+	off_t	v_cstart;			/* start block of cluster */
+	off_t	v_lasta;			/* last allocation */
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
 	struct	lock v_lock;			/* file/dir ops lock */
@@ -621,7 +621,7 @@ int	vinvalbuf (struct vnode *vp, int save,
 	    struct thread *td, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, struct thread *td,
 		off_t length, int blksize);
-int	vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
+int	vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
 void	vprint (char *label, struct vnode *vp);

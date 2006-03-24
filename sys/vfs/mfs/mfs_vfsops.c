@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
  */
 
 
@@ -148,10 +148,13 @@ mfsstrategy(dev_t dev, struct bio *bio)
 	struct mfsnode *mfsp;
 
 	if ((mfsp = dev->si_drv1) != NULL) {
-		off_t boff = (off_t)bio->bio_blkno << DEV_BSHIFT;
+		off_t boff = bio->bio_offset;
 		off_t eoff = boff + bp->b_bcount;
 
-		if (eoff <= mfsp->mfs_size) {
+		if (boff < 0) {
+			bp->b_error = EINVAL;
+			biodone(bio);
+		} else if (eoff <= mfsp->mfs_size) {
 			bioq_insert_tail(&mfsp->bio_queue, bio);
 			wakeup((caddr_t)mfsp);
 		} else if (boff < mfsp->mfs_size) {
@@ -364,6 +367,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 	struct vnode *vp = VFSTOUFS(mp)->um_devvp;
 	struct mfsnode *mfsp = VTOMFS(vp);
 	struct bio *bio;
+	struct buf *bp;
 	int gotsig = 0, sig;
 
 	/*
@@ -382,8 +386,9 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 		while ((bio = bioq_first(&mfsp->bio_queue)) != NULL) {
 			bioq_remove(&mfsp->bio_queue, bio);
 			crit_exit();
+			bp = bio->bio_buf;
 			mfs_doio(bio, mfsp);
-			wakeup((caddr_t)bio->bio_buf);
+			wakeup(bp);
 			crit_enter();
 		}
 

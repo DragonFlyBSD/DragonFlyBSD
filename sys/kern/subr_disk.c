@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.21 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.22 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -469,7 +469,7 @@ diskstrategy(dev_t dev, struct bio *bio)
 
 	/*
 	 * The dscheck() function will also transform the slice relative
-	 * block number i.e. bio->bio_blkno into a block number that can be
+	 * block number i.e. bio->bio_offset into a block number that can be
 	 * passed directly to the underlying raw device.
 	 */
 	nbio = dscheck(dev, bio, dp->d_slice);
@@ -580,8 +580,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		 * "locked" portion of the list, then we must add ourselves
 		 * to the second request list.
 		 */
-		if (bio->bio_blkno < bioq->last_blkno) {
-
+		if (bio->bio_offset < bioq->last_offset) {
 			bq = bioq->switch_point;
 			/*
 			 * If we are starting a new secondary list,
@@ -597,7 +596,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 			 * insert us before the switch point and move
 			 * the switch point.
 			 */
-			if (bio->bio_blkno < bq->bio_blkno) {
+			if (bio->bio_offset < bq->bio_offset) {
 				bioq->switch_point = bio;
 				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
 				return;
@@ -607,10 +606,10 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 				be = TAILQ_PREV(bioq->switch_point,
 						bio_queue, bio_act);
 			/*
-			 * If we lie between last_blkno and bq,
+			 * If we lie between last_offset and bq,
 			 * insert before bq.
 			 */
-			if (bio->bio_blkno < bq->bio_blkno) {
+			if (bio->bio_offset < bq->bio_offset) {
 				TAILQ_INSERT_BEFORE(bq, bio, bio_act);
 				return;
 			}
@@ -621,7 +620,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 	 * Request is at/after our current position in the list.
 	 * Optimize for sequential I/O by seeing if we go at the tail.
 	 */
-	if (bio->bio_blkno > be->bio_blkno) {
+	if (bio->bio_offset > be->bio_offset) {
 		TAILQ_INSERT_AFTER(&bioq->queue, be, bio, bio_act);
 		return;
 	}
@@ -635,7 +634,7 @@ bioqdisksort(struct bio_queue_head *bioq, struct bio *bio)
 		 * larger cylinder than our request.
 		 */
 		if (bn == bioq->switch_point
-		 || bio->bio_blkno < bn->bio_blkno)
+		 || bio->bio_offset < bn->bio_offset)
 			break;
 		bq = bn;
 	}
@@ -658,7 +657,7 @@ readdisklabel(dev_t dev, struct disklabel *lp)
 	char *msg = NULL;
 
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
+	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
 	bp->b_flags &= ~B_INVAL;
 	bp->b_flags |= B_READ;
@@ -748,7 +747,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 	if (lp->d_partitions[RAW_PART].p_offset != 0)
 		return (EXDEV);			/* not quite right */
 	bp = geteblk((int)lp->d_secsize);
-	bp->b_bio1.bio_blkno = LABELSECTOR * ((int)lp->d_secsize/DEV_BSIZE);
+	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
 #if 1
 	/*
@@ -810,7 +809,7 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  */
 void
 diskerr(struct bio *bio, dev_t dev, const char *what, int pri, 
-	int blkdone, struct disklabel *lp)
+	int donecnt, struct disklabel *lp)
 {
 	struct buf *bp = bio->bio_buf;
 	int unit = dkunit(dev);
@@ -818,36 +817,12 @@ diskerr(struct bio *bio, dev_t dev, const char *what, int pri,
 	int part = dkpart(dev);
 	char partname[2];
 	char *sname;
-	daddr_t sn;
 
 	sname = dsname(dev, unit, slice, part, partname);
-	printf("%s%s: %s %sing fsbn ", sname, partname, what,
+	printf("%s%s: %s %sing ", sname, partname, what,
 	      bp->b_flags & B_READ ? "read" : "writ");
-	sn = bio->bio_blkno;
-	if (bp->b_bcount <= DEV_BSIZE) {
-		printf("%ld", (long)sn);
-	} else {
-		if (blkdone >= 0) {
-			sn += blkdone;
-			printf("%ld of ", (long)sn);
-		}
-		printf("%ld-%ld", (long)bio->bio_blkno,
-		    (long)(bio->bio_blkno + (bp->b_bcount - 1) / DEV_BSIZE));
-	}
-	if (lp && (blkdone >= 0 || bp->b_bcount <= lp->d_secsize)) {
-		sn += lp->d_partitions[part].p_offset;
-		/*
-		 * XXX should add slice offset and not print the slice,
-		 * but we don't know the slice pointer.
-		 * XXX should print bio->bio_blkno so that this will work
-		 * independent of slices, labels and bad sector remapping,
-		 * but some drivers don't set bio->bio_blkno.
-		 */
-		printf(" (%s bn %ld; cn %ld", sname, (long)sn,
-		    (long)(sn / lp->d_secpercyl));
-		sn %= (long)lp->d_secpercyl;
-		printf(" tn %ld sn %ld)", (long)(sn / lp->d_nsectors),
-		    (long)(sn % lp->d_nsectors));
-	}
+	printf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
+	if (donecnt)
+		printf(" (%d bytes completed)", donecnt);
 }
 

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.16 2006/02/17 19:18:02 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -48,17 +48,13 @@
  * Block/character interface to a vnode.  Allows one to treat a file
  * as a disk (e.g. build a filesystem in it, mount it, etc.).
  *
- * NOTE 1: This uses the VOP_BMAP/VOP_STRATEGY interface to the vnode
- * instead of a simple VOP_RDWR.  We do this to avoid distorting the
- * local buffer cache.
- *
- * NOTE 2: There is a security issue involved with this driver.
+ * NOTE 1: There is a security issue involved with this driver.
  * Once mounted all access to the contents of the "mapped" file via
  * the special file is controlled by the permissions on the special
  * file, the protection of the mapped file is ignored (effectively,
  * by using root credentials in all transactions).
  *
- * NOTE 3: Doesn't interact with leases, should it?
+ * NOTE 2: Doesn't interact with leases, should it?
  */
 
 #include <sys/param.h>
@@ -75,7 +71,6 @@
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/stat.h>
-#include <sys/conf.h>
 #include <sys/module.h>
 #include <sys/vnioctl.h>
 
@@ -278,9 +273,6 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
  *	vm_object-backed vn's.
  *
  *	Currently B_ASYNC is only partially handled - for OBJT_SWAP I/O only.
- *
- *	NOTE: bio->bio_blkno is DEV_BSIZE'd.  We must generate a new bio
- *	with a secsize'd blkno.
  */
 
 static	void
@@ -334,14 +326,14 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 * multiple of the sector size.
 		 */
 		if (bp->b_bcount % vn->sc_secsize != 0 ||
-		    bio->bio_blkno % (vn->sc_secsize / DEV_BSIZE) != 0) {
+		    bio->bio_offset % vn->sc_secsize != 0) {
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR | B_INVAL;
 			biodone(bio);
 			return;
 		}
 
-		pbn = bio->bio_blkno / (vn->sc_secsize / DEV_BSIZE);
+		pbn = bio->bio_offset / vn->sc_secsize;
 		sz = howmany(bp->b_bcount, vn->sc_secsize);
 
 		/*
@@ -365,7 +357,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 			bp->b_resid = bp->b_bcount;
 		}
 		nbio = push_bio(bio);
-		nbio->bio_blkno = pbn;
+		nbio->bio_offset = pbn * vn->sc_secsize;
 	}
 
 	/*
@@ -393,7 +385,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		aiov.iov_len = bp->b_bcount;
 		auio.uio_iov = &aiov;
 		auio.uio_iovcnt = 1;
-		auio.uio_offset = (vm_ooffset_t)nbio->bio_blkno * vn->sc_secsize;
+		auio.uio_offset = nbio->bio_offset;
 		auio.uio_segflg = UIO_SYSSPACE;
 		if (bp->b_flags & B_READ)
 			auio.uio_rw = UIO_READ;

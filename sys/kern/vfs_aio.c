@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.20 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.21 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*
@@ -966,7 +966,7 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	bp->b_bio1.bio_done = aio_physwakeup;
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = (void *)(uintptr_t)cb->aio_buf;
-	bp->b_bio1.bio_blkno = btodb(cb->aio_offset);
+	bp->b_bio1.bio_offset = cb->aio_offset;
 
 	/* Bring buffer into kernel space. */
 	if (vmapbuf(bp) < 0) {

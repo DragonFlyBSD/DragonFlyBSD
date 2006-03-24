@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.27 2005/11/20 02:23:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.28 2006/03/24 18:35:34 dillon Exp $
  */
 
 /*
@@ -323,18 +323,20 @@ procfs_ioctl(struct vop_ioctl_args *ap)
  * usual no-op bmap, although returning
  * (EIO) would be a reasonable alternative.
  *
- * procfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *		daddr_t *a_bnp, int *a_runp)
+ * procfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *		off_t *a_doffsetp, int *a_runp)
  */
 static int
 procfs_bmap(struct vop_bmap_args *ap)
 {
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
+	if (ap->a_runb != NULL)
+		*ap->a_runb = 0;
 	return (0);
 }
 

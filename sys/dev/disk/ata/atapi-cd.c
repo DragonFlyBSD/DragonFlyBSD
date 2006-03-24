@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.20 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.21 2006/03/24 18:35:30 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1104,7 +1104,7 @@ acdstrategy(dev_t dev, struct bio *bio)
 	return;
     }
 
-    KKASSERT(bio->bio_blkno != (daddr_t)-1);
+    KKASSERT(bio->bio_offset != NOOFFSET);
     bio->bio_driver_info = dev;
     bp->b_resid = bp->b_bcount;
 
@@ -1164,19 +1164,13 @@ acd_start(struct ata_device *atadev)
     if (track) {
 	blocksize = (cdp->toc.tab[track - 1].control & 4) ? 2048 : 2352;
 	lastlba = ntohl(cdp->toc.tab[track].addr.lba);
-	if (bp->b_flags & B_PHYS)
-	    lba = bio->bio_offset / blocksize;
-	else
-	    lba = bio->bio_blkno / (blocksize / DEV_BSIZE);
+	lba = bio->bio_offset / blocksize;
 	lba += ntohl(cdp->toc.tab[track - 1].addr.lba);
     }
     else {
 	blocksize = cdp->block_size;
 	lastlba = cdp->disk_size;
-	if (bp->b_flags & B_PHYS)
-	    lba = bio->bio_offset / blocksize;
-	else
-	    lba = bio->bio_blkno / (blocksize / DEV_BSIZE);
+	lba = bio->bio_offset / blocksize;
     }
 
     if (bp->b_bcount % blocksize != 0) {

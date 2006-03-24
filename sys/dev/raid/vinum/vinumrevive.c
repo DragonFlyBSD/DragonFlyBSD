@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.7 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -152,7 +152,7 @@ revive_block(int sdno)
 	 */
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
-	bp->b_bio1.bio_blkno = plexblkno;		    /* start here */
+	bp->b_bio1.bio_offset = (off_t)plexblkno << DEV_BSHIFT;		    /* start here */
 	if (isstriped(plex))				    /* we need to lock striped plexes */
 	    lock = lockrange(plexblkno << DEV_BSHIFT, bp, plex); /* lock it */
 	if (vol != NULL)				    /* it's part of a volume, */
@@ -177,7 +177,7 @@ revive_block(int sdno)
 	dev = VINUM_SD(sdno);			    /* create the device number */
 	bp->b_flags = B_ORDERED | B_WRITE;		    /* and make this an ordered write */
 	bp->b_resid = bp->b_bcount;
-	bp->b_bio1.bio_blkno = sd->revived;		    /* write it to here */
+	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = dev;
 	sdio(&bp->b_bio1);				    /* perform the I/O */
 	biowait(bp);
@@ -203,13 +203,13 @@ revive_block(int sdno)
 	    if (debug & DEBUG_REVIVECONFLICT) {
 		dev = rq->bio->bio_driver_info;
 		log(LOG_DEBUG,
-		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%x, length %ld\n",
+		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
 		    rq->sdno,
 		    rq,
 		    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
 		    major(dev),
 		    minor(dev),
-		    rq->bio->bio_blkno,
+		    rq->bio->bio_offset,
 		    rq->bio->bio_buf->b_bcount);
 	    }
 #endif
@@ -416,7 +416,7 @@ parityrebuild(struct plex *plex,
 	    bpp[sdno]->b_flags = B_READ;		    /* either way, read it */
 	    bpp[sdno]->b_bcount = mysize;
 	    bpp[sdno]->b_resid = bpp[sdno]->b_bcount;
-	    bpp[sdno]->b_bio1.bio_blkno = pstripe;	    /* transfer from here */
+	    bpp[sdno]->b_bio1.bio_offset = (off_t)pstripe << DEV_BSHIFT;	    /* transfer from here */
 	}
     }
 
@@ -550,7 +550,7 @@ initsd(int sdno, int verify)
 
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
-	bp->b_bio1.bio_blkno = sd->initialized;		    /* write it to here */
+	bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
 	bzero(bp->b_data, bp->b_bcount);
 	bp->b_flags &= ~B_READ;
@@ -572,7 +572,7 @@ initsd(int sdno, int verify)
 	    } else {
 		bp->b_bcount = size;
 		bp->b_resid = bp->b_bcount;
-		bp->b_bio1.bio_blkno = sd->initialized;	    /* read from here */
+		bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;	    /* read from here */
 		bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
 		bp->b_flags |= B_READ;			    /* read it back */
 		crit_exit();

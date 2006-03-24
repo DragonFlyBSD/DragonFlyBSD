@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.21 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -322,7 +322,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 	    uiop->uio_rw = UIO_READ;
 	    switch (vp->v_type) {
 	      case VREG:
-		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE;
+		uiop->uio_offset = bio->bio_offset;
 		error = smb_read(smp->sm_share, np->n_fid, uiop, &scred);
 		if (error)
 			break;
@@ -342,12 +342,12 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		bp->b_flags |= B_ERROR;
 	    }
 	} else { /* write */
-	    if ((((off_t)bio->bio_blkno * DEV_BSIZE) + bp->b_dirtyend) > np->n_size)
-		bp->b_dirtyend = np->n_size - ((off_t)bio->bio_blkno * DEV_BSIZE);
+	    if (bio->bio_offset + bp->b_dirtyend > np->n_size)
+		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
 		io.iov_len = uiop->uio_resid = bp->b_dirtyend - bp->b_dirtyoff;
-		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE + bp->b_dirtyoff;
+		uiop->uio_offset = bio->bio_offset + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
 		error = smb_write(smp->sm_share, np->n_fid, uiop, &scred);

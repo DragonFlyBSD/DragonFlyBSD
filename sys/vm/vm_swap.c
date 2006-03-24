@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.21 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -90,12 +90,13 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
-	int sz, off, seg, index;
+	int sz, off, seg, index, blkno, nblkno;
 	struct swdevt *sp;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
 	sz = howmany(bp->b_bcount, PAGE_SIZE);
+	blkno = (int)(bio->bio_offset >> PAGE_SHIFT);
 
 	/*
 	 * Convert interleaved swap into per-device swap.  Note that
@@ -104,23 +105,24 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	 */
 	nbio = push_bio(bio);
 	if (nswdev > 1) {
-		off = bio->bio_blkno % dmmax;
+		off = blkno % dmmax;
 		if (off + sz > dmmax) {
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;
 			biodone(bio);
 			return 0;
 		}
-		seg = bio->bio_blkno / dmmax;
+		seg = blkno / dmmax;
 		index = seg % nswdev;
 		seg /= nswdev;
-		nbio->bio_blkno = seg * dmmax + off;
+		nbio->bio_offset = (off_t)(seg * dmmax + off) << PAGE_SHIFT;
 	} else {
 		index = 0;
-		nbio->bio_blkno = bio->bio_blkno;
+		nbio->bio_offset = bio->bio_offset;
 	}
+	nblkno = (int)(nbio->bio_offset >> PAGE_SHIFT);
 	sp = &swdevt[index];
-	if (nbio->bio_blkno + sz > sp->sw_nblks) {
+	if (nblkno + sz > sp->sw_nblks) {
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		/* I/O was never started on nbio, must biodone(bio) */
@@ -136,7 +138,6 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	}
 
 	/*
-	 * Convert from PAGE_SIZE'd to DEV_BSIZE'd chunks for the actual I/O.
 	 * Issue a strategy call on the appropriate swap vnode.  Note that
 	 * bp->b_vp is not modified.  Strategy code is always supposed to
 	 * use the passed vp.
@@ -144,7 +145,6 @@ swapdev_strategy(struct vop_strategy_args *ap)
 	 * XXX do a dev_dstrategy() call on sp->sw_device instead of on
 	 * sp->sw_vp ?
 	 */
-	nbio->bio_blkno = ctodb(nbio->bio_blkno);
 	vn_strategy(sp->sw_vp, nbio);
 	return 0;
 }

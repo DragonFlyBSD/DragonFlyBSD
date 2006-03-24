@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.24 2006/03/05 18:38:36 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.25 2006/03/24 18:35:33 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -76,8 +76,8 @@ struct xio;
 
 struct buf_rb_tree;
 struct buf_rb_hash;
-RB_PROTOTYPE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, daddr_t, b_lblkno);
-RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, daddr_t, b_lblkno);
+RB_PROTOTYPE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, off_t, b_loffset);
+RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t, b_loffset);
 
 /*
  * To avoid including <ufs/ffs/softdep.h> 
@@ -144,16 +144,17 @@ struct buf {
 	RB_ENTRY(buf) b_rbhash;		/* RB node in vnode hash tree */
 	TAILQ_ENTRY(buf) b_freelist;	/* Free list position if not active. */
 	struct buf *b_cluster_next;	/* Next buffer (cluster code) */
-	struct vnode *b_vp;		/* (vp, lblkno) index */
+	struct vnode *b_vp;		/* (vp, loffset) index */
 	struct bio b_bio_array[NBUF_BIO]; /* BIO translation layers */ 
-	long	b_flags;		/* B_* flags. */
+	u_int32_t b_flags;		/* B_* flags. */
 	unsigned short b_qindex;	/* buffer queue index */
 	unsigned char b_xflags;		/* extra flags */
+	unsigned char b_unused01;
 	struct lock b_lock;		/* Buffer lock */
-	long	b_bufsize;		/* Allocated buffer size. */
-	long	b_runningbufspace;	/* when I/O is running, pipelining */
-	long	b_bcount;		/* Valid bytes in buffer. */
-	long	b_resid;		/* Remaining I/O */
+	int	b_bufsize;		/* Allocated buffer size. */
+	int	b_runningbufspace;	/* when I/O is running, pipelining */
+	int	b_bcount;		/* Valid bytes in buffer. */
+	int	b_resid;		/* Remaining I/O */
 	int	b_error;		/* Error return */
 	caddr_t	b_data;			/* Memory, superblocks, indirect etc. */
 	caddr_t	b_kvabase;		/* base kva for buffer */
@@ -171,7 +172,6 @@ struct buf {
 #define b_bio1		b_bio_array[0]	/* logical layer */
 #define b_bio2		b_bio_array[1]	/* (typically) the disk layer */
 #define b_loffset	b_bio1.bio_offset
-#define b_lblkno	b_bio1.bio_blkno
 
 /*
  * These flags are kept in b_flags.
@@ -288,21 +288,15 @@ extern char *buf_wmesg;			/* Default buffer lock message */
 
 struct bio_queue_head {
 	TAILQ_HEAD(bio_queue, bio) queue;
-	daddr_t	last_blkno;
+	off_t	last_offset;
 	struct	bio *insert_point;
 	struct	bio *switch_point;
 };
 
 /*
- * This structure describes a clustered I/O.  It is stored in the b_saveaddr
- * field of the buffer on which I/O is done.  At I/O completion, cluster
- * callback uses the structure to parcel I/O's to individual buffers, and
- * then free's this structure.
+ * This structure describes a clustered I/O.
  */
 struct cluster_save {
-	long	bs_bcount;		/* Saved b_bcount. */
-	long	bs_bufsize;		/* Saved b_bufsize. */
-	void	*bs_saveaddr;		/* Saved b_addr. */
 	int	bs_nchildren;		/* Number of associated buffers. */
 	struct buf **bs_children;	/* List of associated buffers. */
 };
@@ -348,8 +342,8 @@ void	initbufbio(struct buf *);
 void	reinitbufbio(struct buf *);
 void	clearbiocache(struct bio *);
 void	bremfree (struct buf *);
-int	bread (struct vnode *, daddr_t, int, struct buf **);
-int	breadn (struct vnode *, daddr_t, int, daddr_t *, int *, int,
+int	bread (struct vnode *, off_t, int, struct buf **);
+int	breadn (struct vnode *, off_t, int, off_t *, int *, int,
 	    struct buf **);
 int	bwrite (struct buf *);
 void	bdwrite (struct buf *);
@@ -361,9 +355,9 @@ void	brelse (struct buf *);
 void	bqrelse (struct buf *);
 int	vfs_bio_awrite (struct buf *);
 struct buf *getpbuf (int *);
-int	inmem (struct vnode *, daddr_t);
-struct buf *findblk (struct vnode *, daddr_t);
-struct buf *getblk (struct vnode *, daddr_t, int, int, int);
+int	inmem (struct vnode *, off_t);
+struct buf *findblk (struct vnode *, off_t);
+struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *geteblk (int);
 struct bio *push_bio(struct bio *);
 void pop_bio(struct bio *);
@@ -371,10 +365,10 @@ int	biowait (struct buf *);
 void	biodone (struct bio *);
 
 void	cluster_append(struct bio *, struct buf *);
-int	cluster_read (struct vnode *, u_quad_t, daddr_t, long,
-	    long, int, struct buf **);
-int	cluster_wbuild (struct vnode *, long, daddr_t, int);
-void	cluster_write (struct buf *, u_quad_t, int);
+int	cluster_read (struct vnode *, off_t, off_t, int,
+	    int, int, struct buf **);
+int	cluster_wbuild (struct vnode *, int, off_t, int);
+void	cluster_write (struct buf *, off_t, int);
 int	physio (dev_t dev, struct uio *uio, int ioflag);
 #define physread physio
 #define physwrite physio

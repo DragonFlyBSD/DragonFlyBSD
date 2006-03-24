@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.35 2006/03/05 18:38:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.36 2006/03/24 18:35:34 dillon Exp $
  */
 
 /*
@@ -167,8 +167,7 @@ static	struct dirrem *newdirrem(struct buf *, struct inode *,
 	    struct inode *, int, struct dirrem **);
 static	void free_diradd(struct diradd *);
 static	void free_allocindir(struct allocindir *, struct inodedep *);
-static	int indir_trunc (struct inode *, ufs_daddr_t, int, ufs_lbn_t,
-	    long *);
+static	int indir_trunc (struct inode *, off_t, int, ufs_lbn_t, long *);
 static	void deallocate_dependencies(struct buf *, struct inodedep *);
 static	void free_allocdirect(struct allocdirectlst *,
 	    struct allocdirect *, int);
@@ -1120,8 +1119,8 @@ softdep_mount(devvp, mp, fs)
 		return (0);
 	bzero(&cstotal, sizeof cstotal);
 	for (cyl = 0; cyl < fs->fs_ncg; cyl++) {
-		if ((error = bread(devvp, fsbtodb(fs, cgtod(fs, cyl)),
-		    fs->fs_cgsize, &bp)) != 0) {
+		if ((error = bread(devvp, fsbtodoff(fs, cgtod(fs, cyl)),
+				   fs->fs_cgsize, &bp)) != 0) {
 			brelse(bp);
 			return (error);
 		}
@@ -1617,7 +1616,7 @@ setup_allocindir_phase2(bp, ip, aip)
 	struct freefrag *freefrag;
 	struct newblk *newblk;
 
-	if (bp->b_lblkno >= 0)
+	if (bp->b_loffset >= 0)
 		panic("setup_allocindir_phase2: not indir blk");
 	for (indirdep = NULL, newindirdep = NULL; ; ) {
 		ACQUIRE_LOCK(&lk);
@@ -1696,15 +1695,15 @@ setup_allocindir_phase2(bp, ip, aip)
 		newindirdep->ir_state = ATTACHED;
 		LIST_INIT(&newindirdep->ir_deplisthd);
 		LIST_INIT(&newindirdep->ir_donehd);
-		if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
-			VOP_BMAP(bp->b_vp, bp->b_bio1.bio_blkno, 
-				NULL, &bp->b_bio2.bio_blkno,
+		if (bp->b_bio2.bio_offset == NOOFFSET) {
+			VOP_BMAP(bp->b_vp, bp->b_bio1.bio_offset, 
+				NULL, &bp->b_bio2.bio_offset,
 				NULL, NULL);
 		}
-		KKASSERT(bp->b_bio2.bio_blkno != (daddr_t)-1);
-		newindirdep->ir_savebp =
-		    getblk(ip->i_devvp, bp->b_bio2.bio_blkno, bp->b_bcount,
-			   0, 0);
+		KKASSERT(bp->b_bio2.bio_offset != NOOFFSET);
+		newindirdep->ir_savebp = getblk(ip->i_devvp,
+						bp->b_bio2.bio_offset,
+					        bp->b_bcount, 0, 0);
 		BUF_KERNPROC(newindirdep->ir_savebp);
 		bcopy(bp->b_data, newindirdep->ir_savebp->b_data, bp->b_bcount);
 	}
@@ -1792,7 +1791,7 @@ softdep_setup_freeblocks(ip, length)
 	 * the buffer can be safely released.
 	 */
 	if ((error = bread(ip->i_devvp,
-	    fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
+			    fsbtodoff(fs, ino_to_fsba(fs, ip->i_number)),
 	    (int)fs->fs_bsize, &bp)) != 0)
 		softdep_error("softdep_setup_freeblocks", error);
 	*((struct dinode *)bp->b_data + ino_to_fsbo(fs, ip->i_number)) =
@@ -1945,8 +1944,8 @@ deallocate_dependencies(bp, inodedep)
 			indirdep->ir_state |= GOINGAWAY;
 			while ((aip = LIST_FIRST(&indirdep->ir_deplisthd)) != 0)
 				free_allocindir(aip, inodedep);
-			if (bp->b_bio1.bio_blkno >= 0 ||
-			    bp->b_bio2.bio_blkno != indirdep->ir_savebp->b_bio1.bio_blkno) {
+			if (bp->b_bio1.bio_offset >= 0 ||
+			    bp->b_bio2.bio_offset != indirdep->ir_savebp->b_bio1.bio_offset) {
 				FREE_LOCK(&lk);
 				panic("deallocate_dependencies: not indir");
 			}
@@ -2200,7 +2199,7 @@ handle_workitem_freeblocks(freeblks)
 	for (level = (NIADDR - 1); level >= 0; level--) {
 		if ((bn = freeblks->fb_iblks[level]) == 0)
 			continue;
-		if ((error = indir_trunc(&tip, fsbtodb(fs, bn), level,
+		if ((error = indir_trunc(&tip, fsbtodoff(fs, bn), level,
 		    baselbns[level], &blocksreleased)) == 0)
 			allerror = error;
 		ffs_blkfree(&tip, bn, fs->fs_bsize);
@@ -2228,14 +2227,14 @@ handle_workitem_freeblocks(freeblks)
 
 /*
  * Release blocks associated with the inode ip and stored in the indirect
- * block dbn. If level is greater than SINGLE, the block is an indirect block
- * and recursive calls to indirtrunc must be used to cleanse other indirect
- * blocks.
+ * block at doffset. If level is greater than SINGLE, the block is an
+ * indirect block and recursive calls to indirtrunc must be used to
+ * cleanse other indirect blocks.
  */
 static int
-indir_trunc(ip, dbn, level, lbn, countp)
+indir_trunc(ip, doffset, level, lbn, countp)
 	struct inode *ip;
-	ufs_daddr_t dbn;
+	off_t doffset;
 	int level;
 	ufs_lbn_t lbn;
 	long *countp;
@@ -2266,7 +2265,7 @@ indir_trunc(ip, dbn, level, lbn, countp)
 	 * Otherwise we have to read the blocks in from the disk.
 	 */
 	ACQUIRE_LOCK(&lk);
-	if ((bp = findblk(ip->i_devvp, dbn)) != NULL &&
+	if ((bp = findblk(ip->i_devvp, doffset)) != NULL &&
 	    (wk = LIST_FIRST(&bp->b_dep)) != NULL) {
 		/*
 		 * bp must be ir_savebp, which is held locked for our use.
@@ -2286,7 +2285,7 @@ indir_trunc(ip, dbn, level, lbn, countp)
 		FREE_LOCK(&lk);
 	} else {
 		FREE_LOCK(&lk);
-		error = bread(ip->i_devvp, dbn, (int)fs->fs_bsize, &bp);
+		error = bread(ip->i_devvp, doffset, (int)fs->fs_bsize, &bp);
 		if (error)
 			return (error);
 	}
@@ -2299,7 +2298,7 @@ indir_trunc(ip, dbn, level, lbn, countp)
 		if ((nb = bap[i]) == 0)
 			continue;
 		if (level != 0) {
-			if ((error = indir_trunc(ip, fsbtodb(fs, nb),
+			if ((error = indir_trunc(ip, fsbtodoff(fs, nb),
 			     level - 1, lbn + (i * lbnadd), countp)) != 0)
 				allerror = error;
 		}
@@ -4093,7 +4092,7 @@ softdep_fsync(vp)
 		/*
 		 * Flush directory page containing the inode's name.
 		 */
-		error = bread(pvp, lbn, blksize(fs, VTOI(pvp), lbn), &bp);
+		error = bread(pvp, lblktodoff(fs, lbn), blksize(fs, VTOI(pvp), lbn), &bp);
 		if (error == 0)
 			error = VOP_BWRITE(bp->b_vp, bp);
 		vput(pvp);
@@ -4657,7 +4656,7 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 		 */
 		FREE_LOCK(&lk);
 		if ((error = bread(ump->um_devvp,
-		    fsbtodb(ump->um_fs, ino_to_fsba(ump->um_fs, inum)),
+			fsbtodoff(ump->um_fs, ino_to_fsba(ump->um_fs, inum)),
 		    (int)ump->um_fs->fs_bsize, &bp)) != 0)
 			break;
 		if ((error = VOP_BWRITE(bp->b_vp, bp)) != 0)

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.15 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.16 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -97,8 +97,9 @@ ffs_update(struct vnode *vp, int waitfor)
 		ip->i_din.di_ouid = ip->i_uid;		/* XXX */
 		ip->i_din.di_ogid = ip->i_gid;		/* XXX */
 	}						/* XXX */
-	error = bread(ip->i_devvp, fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-		(int)fs->fs_bsize, &bp);
+	error = bread(ip->i_devvp, 
+		      fsbtodoff(fs, ino_to_fsba(fs, ip->i_number)),
+		      (int)fs->fs_bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -450,17 +451,17 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 	 * to blocks to be free'd, and update on disk copy first.  Since
 	 * double(triple) indirect before single(double) indirect, calls
 	 * to bmap on these blocks will fail.  However, we already have
-	 * the on disk address, so we have to set the bio_blkno field
+	 * the on disk address, so we have to set the bio_offset field
 	 * explicitly instead of letting bread do everything for us.
 	 */
 	vp = ITOV(ip);
-	bp = getblk(vp, lbn, (int)fs->fs_bsize, 0, 0);
+	bp = getblk(vp, lblktodoff(fs, lbn), (int)fs->fs_bsize, 0, 0);
 	if ((bp->b_flags & B_CACHE) == 0) {
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ffs_indirtrunc: bad buffer size");
-		bp->b_bio2.bio_blkno = dbn;
+		bp->b_bio2.bio_offset = dbtodoff(fs, dbn);
 		vfs_busy_pages(bp, 0);
 		/*
 		 * Access the block device layer using the device vnode

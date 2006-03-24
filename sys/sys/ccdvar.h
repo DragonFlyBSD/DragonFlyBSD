@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
-/* $DragonFly: src/sys/sys/ccdvar.h,v 1.2 2003/06/17 04:28:58 dillon Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.3 2006/03/24 18:35:33 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 
@@ -193,7 +193,7 @@ struct ccd_softc {
 	struct disklabel sc_label;		/* generic disk device info */
 	int		 sc_openmask;
 	int		 sc_pick;		/* side of mirror picked */
-	daddr_t		 sc_blk[2];		/* mirror localization */
+	off_t		 sc_blk[2];		/* mirror localization */
 };
 
 /* sc_flags */

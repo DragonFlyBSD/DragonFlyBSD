@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.13 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.14 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,24 +111,24 @@ static int
 ffs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	daddr_t lbn;
+	off_t loffset;
 	int error;
 
 	if (vn_isdisk(vp, NULL)) {
-		lbn = INT_MAX;
+		loffset = LLONG_MAX;
 		if (vp->v_rdev && vp->v_rdev->si_mountpoint != NULL &&
 		    (vp->v_rdev->si_mountpoint->mnt_flag & MNT_SOFTDEP))
 			softdep_fsync_mountdev(vp);
 	} else {
 		struct inode *ip;
 		ip = VTOI(vp);
-		lbn = lblkno(ip->i_fs, (ip->i_size + ip->i_fs->fs_bsize - 1));
+		loffset = ip->i_size;
 	}
 
 	/*
 	 * Flush all dirty buffers associated with a vnode.
 	 */
-	error = vfsync(vp, ap->a_waitfor, NIADDR + 1, lbn, ffs_checkdeferred, softdep_sync_metadata);
+	error = vfsync(vp, ap->a_waitfor, NIADDR + 1, loffset, ffs_checkdeferred, softdep_sync_metadata);
 	if (error == 0)
 		error = UFS_UPDATE(vp, (ap->a_waitfor == MNT_WAIT));
 	return (error);

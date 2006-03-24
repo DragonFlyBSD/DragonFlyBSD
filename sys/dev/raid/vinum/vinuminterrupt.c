@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.6 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.7 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -102,10 +102,10 @@ complete_rqe(struct bio *bio)
 		set_sd_state(rqe->sdno, sd_crashed, setstate_force); /* subdisk is crashed */
 	    }
 	    log(LOG_ERR,
-		"%s:%s read error, block %d for %ld bytes\n",
+		"%s:%s read error, offset %lld for %d bytes\n",
 		gravity,
 		sd->name,
-		bio->bio_blkno,
+		bio->bio_offset,
 		bp->b_bcount);
 	} else {					    /* write operation */
 	    if ((rq->error == ENXIO) || (sd->flags & VF_RETRYERRORS) == 0) {
@@ -113,22 +113,22 @@ complete_rqe(struct bio *bio)
 		set_sd_state(rqe->sdno, sd_stale, setstate_force); /* subdisk is stale */
 	    }
 	    log(LOG_ERR,
-		"%s:%s write error, block %d for %ld bytes\n",
+		"%s:%s write error, offset %lld for %d bytes\n",
 		gravity,
 		sd->name,
-		bio->bio_blkno,
+		bio->bio_offset,
 		bp->b_bcount);
 	}
 	log(LOG_ERR,
-	    "%s: user buffer block %d for %ld bytes\n",
+	    "%s: user buffer offset %lld for %d bytes\n",
 	    sd->name,
-	    ubio->bio_blkno,
+	    ubio->bio_offset,
 	    ubio->bio_buf->b_bcount);
 	if (rq->error == ENXIO) {			    /* the drive's down too */
 	    log(LOG_ERR,
-		"%s: fatal drive I/O error, block %d for %ld bytes\n",
+		"%s: fatal drive I/O error, offset %lld for %d bytes\n",
 		DRIVE[rqe->driveno].label.name,
-		bio->bio_blkno,
+		bio->bio_offset,
 		bp->b_bcount);
 	    DRIVE[rqe->driveno].lasterror = rq->error;
 	    set_drive_state(rqe->driveno,		    /* take the drive down */
@@ -393,7 +393,7 @@ complete_raid5_write(struct rqelement *rqe)
 		    rqe->b.b_bcount = rqe->datalen << DEV_BSHIFT; /* length to write */
 		    rqe->b.b_bufsize = rqe->b.b_bcount;	    /* don't claim more */
 		    rqe->b.b_resid = rqe->b.b_bcount;	    /* nothing transferred */
-		    rqe->b.b_bio1.bio_blkno += rqe->dataoffset;	    /* point to the correct block */
+		    rqe->b.b_bio1.bio_offset += (off_t)rqe->dataoffset << DEV_BSHIFT;	    /* point to the correct block */
 		    dev = DRIVE[rqe->driveno].dev;
 		    rqe->b.b_bio1.bio_driver_info = dev;
 		    rqg->active++;			    /* another active request */
@@ -409,13 +409,13 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
-			    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
+			    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
 			    rqe->b.b_flags & B_READ ? "Read" : "Write",
 			    major(dev),
 			    minor(dev),
 			    rqe->sdno,
-			    (u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
-			    rqe->b.b_bio1.bio_blkno,
+			    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
+			    rqe->b.b_bio1.bio_offset,
 			    rqe->b.b_bcount);
 		    if (debug & DEBUG_LASTREQS)
 			logrq(loginfo_raid5_data, (union rqinfou) rqe, ubio);
@@ -449,13 +449,13 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%x, devoffset 0x%x, length %ld\n",
+	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
 	    rqe->b.b_flags & B_READ ? "Read" : "Write",
 	    major(dev),
 	    minor(dev),
 	    rqe->sdno,
-	    (u_int) (rqe->b.b_bio1.bio_blkno - SD[rqe->sdno].driveoffset),
-	    rqe->b.b_bio1.bio_blkno,
+	    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
+	    rqe->b.b_bio1.bio_offset,
 	    rqe->b.b_bcount);
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_raid5_parity, (union rqinfou) rqe, ubio);

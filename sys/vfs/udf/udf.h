@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf.h,v 1.6 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf.h,v 1.1 2004/03/12 22:38:15 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/udf.h,v 1.2 2006/03/24 18:35:34 dillon Exp $
  */
 
 #define UDF_HASHTBLSIZE 100
@@ -86,7 +86,7 @@ struct udf_dirstream {
  * XXX Can the block layer be forced to use a different block size?
  */
 #define	RDSECTOR(devvp, sector, size, bp) \
-	bread(devvp, sector << (udfmp->bshift - DEV_BSHIFT), size, bp)
+	bread(devvp, (off_t)(sector) << udfmp->bshift, size, bp)
 
 MALLOC_DECLARE(M_UDFFENTRY);
 MALLOC_DECLARE(M_UDFNODE);
@@ -101,16 +101,17 @@ udf_readlblks(struct udf_mnt *udfmp, int sector, int size, struct buf **bp)
 static __inline int
 udf_readalblks(struct udf_mnt *udfmp, int lsector, int size, struct buf **bp)
 {
-	daddr_t rablock, lblk;
+	off_t raoffset;
+	off_t loffset;
 	int rasize;
 
-	lblk = (lsector + udfmp->part_start) << (udfmp->bshift - DEV_BSHIFT);
-	rablock = (lblk + 1) << udfmp->bshift;
+	loffset = (off_t)(lsector + udfmp->part_start) << udfmp->bshift;
+	raoffset = loffset + (1 << udfmp->bshift);
 	rasize = size;
 
-	return (breadn(udfmp->im_devvp, lblk,
+	return (breadn(udfmp->im_devvp, loffset,
 		       (size + udfmp->bmask) & ~udfmp->bmask,
-		       &rablock, &rasize, 1, bp));
+		       &raoffset, &rasize, 1, bp));
 }
 
 /*

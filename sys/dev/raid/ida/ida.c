@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.9 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.10 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -417,7 +417,7 @@ ida_construct_qcb(struct ida_softc *ida)
 		hwqcb->hdr.drive = drv->drive;
 	}
 
-	hwqcb->req.blkno = bio->bio_blkno;
+	hwqcb->req.blkno = bio->bio_offset >> DEV_BSHIFT;
 	hwqcb->req.bcount = howmany(bp->b_bcount, DEV_BSIZE);
 	hwqcb->req.command = bp->b_flags & B_READ ? CMD_READ : CMD_WRITE;
 

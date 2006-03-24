@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.14 2005/02/14 16:11:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.15 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -437,7 +437,7 @@ isodirino(struct iso_directory_record *isodir, struct iso_mnt *imp)
 {
 	ino_t ino;
 
-	ino = (isonum_733(isodir->extent) + isonum_711(isodir->ext_attr_length))
-	      << imp->im_bshift;
+	ino = (ino_t)(isonum_733(isodir->extent) + 
+		    isonum_711(isodir->ext_attr_length)) << imp->im_bshift;
 	return (ino);
 }

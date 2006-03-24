@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.9 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.10 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ ext2_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	bsize = blksize(fs, ip, lbn);
 
 	*bpp = NULL;
-	if ((error = bread(vp, lbn, bsize, &bp)) != 0) {
+	if ((error = bread(vp, lblktodoff(fs, lbn), bsize, &bp)) != 0) {
 		brelse(bp);
 		return (error);
 	}
@@ -95,28 +95,29 @@ void
 ext2_checkoverlap(struct buf *bp, struct inode *ip)
 {
 	struct buf *ebp, *ep;
-	daddr_t start, last;
+	off_t start;
+	off_t last;
 	struct vnode *vp;
 
 	ebp = &buf[nbuf];
-	start = bp->b_bio2.bio_blkno;
-	last = start + btodb(bp->b_bcount) - 1;
+	start = bp->b_bio2.bio_offset;
+	last = start + bp->b_bcount - 1;
 	for (ep = buf; ep < ebp; ep++) {
 		if (ep == bp || (ep->b_flags & B_INVAL) ||
-		    ep->b_vp == NULLVP || ep->b_bio2.bio_blkno == (daddr_t)-1)
+		    ep->b_vp == NULLVP || ep->b_bio2.bio_offset == NOOFFSET)
 			continue;
-		if (VOP_BMAP(ep->b_vp, (daddr_t)0, &vp, NULL, NULL, NULL))
+		if (VOP_BMAP(ep->b_vp, (off_t)0, &vp, NULL, NULL, NULL))
 			continue;
 		if (vp != ip->i_devvp)
 			continue;
 		/* look for overlap */
-		if (ep->b_bcount == 0 || ep->b_bio2.bio_blkno > last ||
-		    ep->b_bio2.bio_blkno + btodb(ep->b_bcount) <= start)
+		if (ep->b_bcount == 0 || ep->b_bio2.bio_offset > last ||
+		    ep->b_bio2.bio_offset + ep->b_bcount <= start)
 			continue;
 		vprint("Disk overlap", vp);
-		printf("\tstart %d, end %d overlap start %d, end %d\n",
-			start, last, ep->b_bio2.bio_blkno,
-			ep->b_bio2.bio_blkno + btodb(ep->b_bcount) - 1);
+		printf("\tstart %lld, end %lld overlap start %lld, end %lld\n",
+			start, last, ep->b_bio2.bio_offset,
+			ep->b_bio2.bio_offset + ep->b_bcount - 1);
 		panic("Disk buffer overlap");
 	}
 }

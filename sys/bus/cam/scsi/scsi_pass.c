@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.14 2006/02/17 19:17:42 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.15 2006/03/24 18:35:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -480,7 +480,7 @@ passstrategy(dev_t dev, struct bio *bio)
 	 * Odd number of bytes or negative offset
 	 */
 	/* valid request?  */
-	if (bio->bio_blkno < 0) {
+	if (bio->bio_offset < 0) {
 		bp->b_error = EINVAL;
 		goto bad;
         }

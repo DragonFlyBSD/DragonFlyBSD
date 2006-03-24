@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.28 2006/03/05 18:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.29 2006/03/24 18:35:34 dillon Exp $
  */
 
 /*
@@ -3513,7 +3513,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 */
 		int iosize = vp->v_mount->mnt_stat.f_iosize;
 		int iomask = iosize - 1;
-		daddr_t lblkno;
+		off_t loffset;
 
 		/*
 		 * Align to iosize boundry, super-align to page boundry.
@@ -3526,7 +3526,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			cnt += off & PAGE_MASK;
 			off &= ~(u_quad_t)PAGE_MASK;
 		}
-		lblkno = off / iosize;
+		loffset = off;
 
 		if (vp->v_object &&
 		   (vp->v_object->flags & OBJ_MIGHTBEDIRTY)) {
@@ -3542,7 +3542,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * have to lock and write it.  Otherwise the prior
 			 * write is assumed to have already been committed.
 			 */
-			if ((bp = findblk(vp, lblkno)) != NULL && (bp->b_flags & B_DELWRI)) {
+			if ((bp = findblk(vp, loffset)) != NULL && (bp->b_flags & B_DELWRI)) {
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
 					if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_SLEEPFAIL) == 0)
 						BUF_UNLOCK(bp);
@@ -3557,7 +3557,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (cnt < iosize)
 				break;
 			cnt -= iosize;
-			++lblkno;
+			loffset += iosize;
 		}
 		crit_exit();
 	}

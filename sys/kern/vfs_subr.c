@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.70 2006/03/05 18:38:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.71 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*
@@ -136,15 +136,15 @@ extern struct vnodeopv_entry_desc spec_vnodeop_entries[];
  * Red black tree functions
  */
 static int rb_buf_compare(struct buf *b1, struct buf *b2);
-RB_GENERATE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, daddr_t, b_lblkno);
-RB_GENERATE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, daddr_t, b_lblkno);
+RB_GENERATE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, off_t, b_loffset);
+RB_GENERATE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t, b_loffset);
 
 static int
 rb_buf_compare(struct buf *b1, struct buf *b2)
 {
-	if (b1->b_lblkno < b2->b_lblkno)
+	if (b1->b_loffset < b2->b_loffset)
 		return(-1);
-	if (b1->b_lblkno > b2->b_lblkno)
+	if (b1->b_loffset > b2->b_loffset)
 		return(1);
 	return(0);
 }
@@ -428,24 +428,27 @@ static int vtruncbuf_bp_metasync(struct buf *bp, void *data);
 int
 vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
 {
-	daddr_t trunclbn;
+	off_t truncloffset;
 	int count;
 
 	/*
-	 * Round up to the *next* lbn, then destroy the buffers in question.  
+	 * Round up to the *next* block, then destroy the buffers in question.  
 	 * Since we are only removing some of the buffers we must rely on the
 	 * scan count to determine whether a loop is necessary.
 	 */
-	trunclbn = (length + blksize - 1) / blksize;
+	if ((count = (int)(length % blksize)) != 0)
+		truncloffset = length + (blksize - count);
+	else
+		truncloffset = length;
 
 	crit_enter();
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
 				vtruncbuf_bp_trunc_cmp,
-				vtruncbuf_bp_trunc, &trunclbn);
+				vtruncbuf_bp_trunc, &truncloffset);
 		count += RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
 				vtruncbuf_bp_trunc_cmp,
-				vtruncbuf_bp_trunc, &trunclbn);
+				vtruncbuf_bp_trunc, &truncloffset);
 	} while(count);
 
 	/*
@@ -485,7 +488,7 @@ static
 int
 vtruncbuf_bp_trunc_cmp(struct buf *bp, void *data)
 {
-	if (bp->b_lblkno >= *(daddr_t *)data)
+	if (bp->b_loffset >= *(off_t *)data)
 		return(0);
 	return(-1);
 }
@@ -513,13 +516,13 @@ vtruncbuf_bp_trunc(struct buf *bp, void *data)
 
 /*
  * Fsync all meta-data after truncating a file to be non-zero.  Only metadata
- * blocks (with a negative lblkno) are scanned.
+ * blocks (with a negative loffset) are scanned.
  * Note that the compare function must conform to the RB_SCAN's requirements.
  */
 static int
 vtruncbuf_bp_metasync_cmp(struct buf *bp, void *data)
 {
-	if (bp->b_lblkno < 0)
+	if (bp->b_loffset < 0)
 		return(0);
 	return(1);
 }
@@ -578,12 +581,13 @@ struct vfsync_info {
 	int syncdeps;
 	int lazycount;
 	int lazylimit;
-	daddr_t lbn;
+	int skippedbufs;
+	off_t loffset;
 	int (*checkdef)(struct buf *);
 };
 
 int
-vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
+vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
 	int (*checkdef)(struct buf *),
 	int (*waitoutput)(struct vnode *, struct thread *))
 {
@@ -592,7 +596,7 @@ vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
 
 	bzero(&info, sizeof(info));
 	info.vp = vp;
-	info.lbn = lbn;
+	info.loffset = loffset;
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
 
@@ -638,9 +642,12 @@ vfsync(struct vnode *vp, int waitfor, int passes, daddr_t lbn,
 			vfsync_bp, &info);
 		error = vfsync_wait_output(vp, waitoutput);
 		if (error == 0) {
+			info.skippedbufs = 0;
 			RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 				vfsync_bp, &info);
 			error = vfsync_wait_output(vp, waitoutput);
+			if (info.skippedbufs)
+				printf("Warning: vfsync skipped %d dirty bufs in pass2!\n", info.skippedbufs);
 		}
 		while (error == 0 && passes > 0 &&
 		    !RB_EMPTY(&vp->v_rbdirty_tree)) {
@@ -679,7 +686,7 @@ vfsync_wait_output(struct vnode *vp, int (*waitoutput)(struct vnode *, struct th
 static int
 vfsync_data_only_cmp(struct buf *bp, void *data)
 {
-	if (bp->b_lblkno < 0)
+	if (bp->b_loffset < 0)
 		return(-1);
 	return(0);
 }
@@ -687,7 +694,7 @@ vfsync_data_only_cmp(struct buf *bp, void *data)
 static int
 vfsync_meta_only_cmp(struct buf *bp, void *data)
 {
-	if (bp->b_lblkno < 0)
+	if (bp->b_loffset < 0)
 		return(0);
 	return(1);
 }
@@ -696,7 +703,7 @@ static int
 vfsync_lazy_range_cmp(struct buf *bp, void *data)
 {
 	struct vfsync_info *info = data;
-	if (bp->b_lblkno < info->vp->v_lazyw)
+	if (bp->b_loffset < info->vp->v_lazyw)
 		return(-1);
 	return(0);
 }
@@ -718,8 +725,11 @@ vfsync_bp(struct buf *bp, void *data)
 	/*
 	 * Ignore buffers that we cannot immediately lock.  XXX
 	 */
-	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
+	if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+		printf("Warning: vfsync_bp skipping dirty buffer %p\n", bp);
+		++info->skippedbufs;
 		return(0);
+	}
 	if ((bp->b_flags & B_DELWRI) == 0)
 		panic("vfsync_bp: buffer not dirty");
 	if (vp != bp->b_vp)
@@ -740,8 +750,8 @@ vfsync_bp(struct buf *bp, void *data)
 	 * (LEGACY FROM UFS, REMOVE WHEN POSSIBLE) - invalidate any dirty
 	 * buffers beyond the file EOF. 
 	 */
-	if (info->lbn != (daddr_t)-1 && vp->v_type == VREG && 
-	    bp->b_lblkno >= info->lbn) {
+	if (info->loffset != NOOFFSET && vp->v_type == VREG && 
+	    bp->b_loffset >= info->loffset) {
 		bremfree(bp);
 		bp->b_flags |= B_INVAL | B_NOCACHE;
 		crit_exit();
@@ -763,7 +773,7 @@ vfsync_bp(struct buf *bp, void *data)
 		 * stops the scan and is not considered an error.  We use
 		 * this to support limited MNT_LAZY flushes.
 		 */
-		vp->v_lazyw = bp->b_lblkno;
+		vp->v_lazyw = bp->b_loffset;
 		if ((vp->v_flag & VOBJBUF) && (bp->b_flags & B_CLUSTEROK)) {
 			info->lazycount += vfs_bio_awrite(bp);
 		} else {

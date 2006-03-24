@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.vinum,v 1.2 2006/02/17 19:18:06 dillon Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.vinum,v 1.3 2006/03/24 18:35:32 dillon Exp $
 define rq
 rqq rq
 end
@@ -63,7 +63,7 @@ output/x rq->prq[0].rqe[0].b.b_data
 printf " length: " 
 output/x rq->prq[0].rqe[0].b.b_bcount
 printf " drive offset: " 
-output/x rq->prq[0].rqe[0].b.b_bio1.bio_blkno
+output/x rq->prq[0].rqe[0].b.b_bio1.bio_offset
 printf " subdisk offset: " 
 output/x rq->prq[0].rqe[0].sdoffset
 printf "\nFlags: " 
@@ -89,7 +89,7 @@ output/x rq->prq[0].rqe[1].b.b_data
 printf " length: " 
 output/x rq->prq[0].rqe[1].b.b_bcount
 printf " drive offset: " 
-output/x rq->prq[0].rqe[1].b.b_bio1.bio_blkno
+output/x rq->prq[0].rqe[1].b.b_bio1.bio_offset
 printf " subdisk offset: " 
 output/x rq->prq[0].rqe[1].sdoffset
 printf "\nFlags: " 
@@ -106,7 +106,7 @@ output/x rq->prq[1].rqe[0].b.b_data
 printf " length: " 
 output/x rq->prq[1].rqe[0].b.b_bcount
 printf " drive offset: " 
-output/x rq->prq[1].rqe[0].b.b_bio1.bio_blkno
+output/x rq->prq[1].rqe[0].b.b_bio1.bio_offset
 printf " subdisk offset: " 
 output/x rq->prq[1].rqe[0].sdoffset
 printf "\nFlags: " 
@@ -115,9 +115,9 @@ printf "\nrq->prq [1].rqe[1].sdno: "
 output/x rq->prq[1].rqe[1].sdno
 printf "\nBuffer: device: " 
 output/x rq->prq[1].rqe[1].b.b_dev
-printf " data: 0x%x  length 0x%x  drive offset 0x%x  sd offset 0x%x\n" rq->prq[1].rqe[1].b.b_data,
+printf " data: 0x%x  length 0x%x  drive offset 0x%llx  sd offset 0x%x\n" rq->prq[1].rqe[1].b.b_data,
  rq->prq[1].rqe[1].b.b_bcount,
- rq->prq[1].rqe[1].b.b_bio1.bio_blkno,
+ rq->prq[1].rqe[1].b.b_bio1.bio_offset,
  rq->prq[1].rqe[1].sdoffset
 printf "\nFlags: " 
 output/x rq->prq[1].rqe[1].b.b_flags
@@ -187,7 +187,7 @@ define rqinfo
 	  else
 	    printf "1VS Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_blkno, $rqip->info.b.b_bcount
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_offset, $rqip->info.b.b_bcount
 	end
 	
       if ($rqip->type == loginfo_user_bpl)
@@ -196,7 +196,7 @@ define rqinfo
 	  else
 	    printf "2LR Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_blkno, $rqip->info.b.b_bcount
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_offset, $rqip->info.b.b_bcount
 	end
 	 
       if ($rqip->type == loginfo_rqe)
@@ -205,7 +205,7 @@ define rqinfo
 	  else
 	    printf "3RQ Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_blkno, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_offset, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
 	end
 	
       if ($rqip->type == loginfo_iodone)
@@ -214,7 +214,7 @@ define rqinfo
 	  else
 	    printf "4DN Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_blkno, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_offset, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
 	end
 	
       if ($rqip->type == loginfo_raid5_data)
@@ -223,7 +223,7 @@ define rqinfo
 	  else
 	    printf "5RD Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_blkno, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_offset, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
 	end
 	
       if ($rqip->type == loginfo_raid5_parity)
@@ -232,7 +232,7 @@ define rqinfo
 	  else
 	    printf "6RP Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_blkno, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\t%d\t%x\t%x\t%x\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.rqe.b.b_bio1.bio_offset, $rqip->info.rqe.b.b_bcount, $rqip->info.rqe.sdno, $rqip->info.rqe.sdoffset, $rqip->info.rqe.dataoffset, $rqip->info.rqe.groupoffset
 	end
 
       if ($rqip->type == loginfo_sdio)
@@ -241,7 +241,7 @@ define rqinfo
 	  else
 	    printf "7VS Write"
 	  end
-	printf "\t%p\t\t  0x%-9x\t%ld\t%d\n", $rqip->bp, $rqip->info.b.b_bio1.bio_blkno, $rqip->info.b.b_bcount, $rqip->devminor & 0xff
+	printf "\t%p\t\t  0x%-9llx\t%ld\t%d\n", $rqip->bp, $rqip->info.b.b_bio1.bio_offset, $rqip->info.b.b_bcount, $rqip->devminor & 0xff
 	end
 
       if ($rqip->type == loginfo_sdiol)
@@ -250,7 +250,7 @@ define rqinfo
 	  else
 	    printf "8LR Write"
 	  end
-	printf "\t%p\t%d.%d\t0x%-9x\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_blkno, $rqip->info.b.b_bcount
+	printf "\t%p\t%d.%d\t0x%-9llx\t%ld\n", $rqip->bp, $rqip->devmajor, $rqip->devminor & 0xff, $rqip->info.b.b_bio1.bio_offset, $rqip->info.b.b_bcount
 	end
 	 
       if ($rqip->type == loginfo_lockwait)
@@ -271,7 +271,7 @@ define rqinfo
 	  else
 	    printf "9DN Write"
 	  end
-	printf "\t%p\t\t  0x%-9x\t%ld\t%d\n", $rqip->bp, $rqip->info.b.b_bio1.bio_blkno, $rqip->info.b.b_bcount, $rqip->devminor
+	printf "\t%p\t\t  0x%-9llx\t%ld\t%d\n", $rqip->bp, $rqip->info.b.b_bio1.bio_offset, $rqip->info.b.b_bcount, $rqip->devminor
 	end
 
 	end

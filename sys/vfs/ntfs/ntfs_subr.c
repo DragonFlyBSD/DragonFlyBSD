@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.19 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.20 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -275,7 +275,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 			ntmp->ntm_bpmftrec * ip->i_number;
 
 		error = bread(ntmp->ntm_devvp,
-			      bn, ntfs_bntob(ntmp->ntm_bpmftrec), &bp);
+			      ntfs_bntodoff(bn), ntfs_bntob(ntmp->ntm_bpmftrec), &bp);
 		if (error) {
 			printf("ntfs_loadntnode: BREAD FAILED\n");
 			brelse(bp);
@@ -1400,11 +1400,12 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 				(u_int32_t) left));
 			if ((off == 0) && (tocopy == ntfs_cntob(cl)))
 			{
-				bp = getblk(ntmp->ntm_devvp, ntfs_cntobn(cn),
+				bp = getblk(ntmp->ntm_devvp, ntfs_cntodoff(cn),
 					    ntfs_cntob(cl), 0, 0);
 				clrbuf(bp);
 			} else {
-				error = bread(ntmp->ntm_devvp, ntfs_cntobn(cn),
+				error = bread(ntmp->ntm_devvp,
+					      ntfs_cntodoff(cn),
 					      ntfs_cntob(cl), &bp);
 				if (error) {
 					brelse(bp);
@@ -1502,7 +1503,7 @@ ntfs_readntvattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 						(u_int32_t) tocopy, 
 						(u_int32_t) left));
 					error = bread(ntmp->ntm_devvp,
-						      ntfs_cntobn(cn),
+						      ntfs_cntodoff(cn),
 						      ntfs_cntob(cl),
 						      &bp);
 					if (error) {

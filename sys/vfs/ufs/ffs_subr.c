@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.9 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.10 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ ffs_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	bsize = blksize(fs, ip, lbn);
 
 	*bpp = NULL;
-	error = bread(vp, lbn, bsize, &bp);
+	error = bread(vp, lblktodoff(fs, lbn), bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -151,31 +151,30 @@ void
 ffs_checkoverlap(struct buf *bp, struct inode *ip)
 {
 	struct buf *ebp, *ep;
-	ufs_daddr_t start, last;
+	off_t start, last;
 	struct vnode *vp;
 
 	ebp = &buf[nbuf];
-	start = bp->b_bio2.bio_blkno;
-	last = start + btodb(bp->b_bcount) - 1;
+	start = bp->b_bio2.bio_offset;
+	last = start + bp->b_bcount - 1;
 	for (ep = buf; ep < ebp; ep++) {
 		if (ep == bp || (ep->b_flags & B_INVAL) ||
 		    ep->b_vp == NULLVP)
 			continue;
-		if (VOP_BMAP(ep->b_vp, (ufs_daddr_t)0, &vp, (ufs_daddr_t *)NULL,
-		    (int *)NULL, (int *)NULL))
+		if (VOP_BMAP(ep->b_vp, (off_t)0, &vp, NULL, NULL, NULL))
 			continue;
 		if (vp != ip->i_devvp)
 			continue;
 		/* look for overlap */
-		if (ep->b_bcount == 0 || ep->b_bio2.bio_blkno == (daddr_t)-1 ||
-		    ep->b_bio2.bio_blkno > last ||
-		    ep->b_bio2.bio_blkno + btodb(ep->b_bcount) <= start)
+		if (ep->b_bcount == 0 || ep->b_bio2.bio_offset == NOOFFSET ||
+		    ep->b_bio2.bio_offset > last ||
+		    ep->b_bio2.bio_offset + ep->b_bcount <= start)
 			continue;
 		vprint("Disk overlap", vp);
-		(void)printf("\tstart %lu, end %lu overlap start %lu, end %lu\n",
-			(u_long)start, (u_long)last, 
-			(u_long)ep->b_bio2.bio_blkno,
-			(u_long)(ep->b_bio2.bio_blkno + btodb(ep->b_bcount) - 1));
+		printf("\tstart %lld, end %lld overlap start %lld, end %lld\n",
+			start, last, 
+			ep->b_bio2.bio_offset,
+			ep->b_bio2.bio_offset + ep->b_bcount - 1);
 		panic("ffs_checkoverlap: Disk buffer overlap");
 	}
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.29 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -323,7 +323,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	for (iso_blknum = 16 + argp->ssector;
 	     iso_blknum < 100 + argp->ssector;
 	     iso_blknum++) {
-		if ((error = bread(devvp, iso_blknum * btodb(iso_bsize),
+		if ((error = bread(devvp, (off_t)iso_blknum * iso_bsize,
 				  iso_bsize, &bp)) != 0)
 			goto out;
 		
@@ -447,8 +447,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	/* Check the Rock Ridge Extention support */
 	if (!(argp->flags & ISOFSMNT_NORRIP)) {
 		if ((error = bread(isomp->im_devvp,
-				  (isomp->root_extent + isonum_711(rootp->ext_attr_length)) <<
-				  (isomp->im_bshift - DEV_BSHIFT),
+				  lblktooff(isomp, isomp->root_extent + isonum_711(rootp->ext_attr_length)),
 				  isomp->logical_block_size, &bp)) != 0)
 		    goto out;
 		
@@ -753,7 +752,7 @@ again:
 		}
 	
 		error = bread(imp->im_devvp,
-			      lbn << (imp->im_bshift - DEV_BSHIFT),
+			      lblktooff(imp, lbn),
 			      imp->logical_block_size, &bp);
 		if (error) {
 			vx_put(vp);

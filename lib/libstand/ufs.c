@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.7 2005/12/11 02:27:26 swildner Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.8 2006/03/24 18:35:22 dillon Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -424,7 +424,7 @@ ufs_open(const char *upath, struct open_file *f)
 	fp->f_fs = fs;
 	twiddle();
 	rc = (f->f_dev->dv_strategy)(f->f_devdata, F_READ,
-		SBLOCK, SBSIZE, (char *)fs, &buf_size);
+		SBOFF / DEV_BSIZE, SBSIZE, (char *)fs, &buf_size);
 	if (rc)
 		goto out;
 

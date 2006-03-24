@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.15 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.16 2006/03/24 18:35:34 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -275,7 +275,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	 * XXX Should also check sector n - 256, n, and 512.
 	 */
 	sector = 256;
-	if ((error = bread(devvp, sector * btodb(bsize), bsize, &bp)) != 0)
+	if ((error = bread(devvp, (off_t)sector * bsize, bsize, &bp)) != 0)
 		goto bail;
 	if ((error = udf_checktag((struct desc_tag *)bp->b_data, TAGID_ANCHOR)))
 		goto bail;
@@ -293,7 +293,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	mvds_start = avdp.main_vds_ex.loc;
 	mvds_end = mvds_start + (avdp.main_vds_ex.len - 1) / bsize;
 	for (sector = mvds_start; sector < mvds_end; sector++) {
-		if ((error = bread(devvp, sector * btodb(bsize), bsize,
+		if ((error = bread(devvp, (off_t)sector * bsize, bsize,
 				   &bp)) != 0) {
 			printf("Can't read sector %d of VDS\n", sector);
 			goto bail;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.13 2006/02/17 19:18:06 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.14 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -423,7 +423,7 @@ twe_startio(struct twe_softc *sc)
 	    cmd->io.size = 3;
 	    cmd->io.unit = ((struct twed_softc *)bio->bio_driver_info)->twed_drive->td_twe_unit;
 	    cmd->io.block_count = (tr->tr_length + TWE_BLOCK_SIZE - 1) / TWE_BLOCK_SIZE;
-	    cmd->io.lba = bio->bio_blkno;
+	    cmd->io.lba = (u_int32_t)(bio->bio_offset / TWE_BLOCK_SIZE);
 	}
 	
 	/* did we find something to do? */

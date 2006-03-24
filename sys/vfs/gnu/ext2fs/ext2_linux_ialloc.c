@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.7 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.8 2006/03/24 18:35:33 dillon Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -106,7 +106,7 @@ read_inode_bitmap(struct mount *mp, unsigned long block_group,
 
 	gdp = get_group_desc (mp, block_group, NULL);
 	if ((error = bread (VFSTOUFS(mp)->um_devvp, 
-			    fsbtodb(sb, gdp->bg_inode_bitmap), 
+			    fsbtodoff(sb, gdp->bg_inode_bitmap), 
 			    sb->s_blocksize, &bh)) != 0)
 		panic ( "read_inode_bitmap:"
 			    "Cannot read inode bitmap - "
@@ -266,7 +266,7 @@ inc_inode_version(struct inode *inode, struct ext2_group_desc *gdp, int mode)
 	inode_block = gdp->bg_inode_table + (((inode->i_number - 1) %
 			EXT2_INODES_PER_GROUP(inode->i_sb)) /
 			EXT2_INODES_PER_BLOCK(inode->i_sb));
-	bh = bread (inode->i_sb->s_dev, inode_block, inode->i_sb->s_blocksize);
+	bh = bread (inode->i_sb->s_dev, dbtob(inode_block), inode->i_sb->s_blocksize);
 	if (!bh) {
 		printf ("inc_inode_version Cannot load inode table block - "
 			    "inode=%lu, inode_block=%lu\n",

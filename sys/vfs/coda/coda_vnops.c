@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
  * 
  */
 
@@ -1615,33 +1615,25 @@ int
 coda_bmap(void *v)
 {
     /* XXX on the global proc */
-/* true args */
     struct vop_bmap_args *ap = v;
-    struct vnode *vp __attribute__((unused)) = ap->a_vp;	/* file's vnode */
-    daddr_t bn __attribute__((unused)) = ap->a_bn;	/* fs block number */
-    struct vnode **vpp = ap->a_vpp;			/* RETURN vp of device */
-    daddr_t *bnp __attribute__((unused)) = ap->a_bnp;	/* RETURN device block number */
-/* upcall decl */
-/* locals */
+    int ret = 0;
+    struct cnode *cp;
 
-	int ret = 0;
-	struct cnode *cp;
-
-	cp = VTOC(vp);
-	if (cp->c_ovp) {
-		return EINVAL;
-		ret =  VOP_BMAP(cp->c_ovp, bn, vpp, bnp, ap->a_runp, ap->a_runb);
-#if	0
-		printf("VOP_BMAP(cp->c_ovp %p, bn %p, vpp %p, bnp %p, ap->a_runp %p, ap->a_runb %p) = %d\n",
-			cp->c_ovp, bn, vpp, bnp, ap->a_runp, ap->a_runb, ret);
+    cp = VTOC(ap->a_vp);
+    if (cp->c_ovp) {
+	    return EINVAL;
+#if 0
+	    ret =  VOP_BMAP(cp->c_ovp, bn, vpp, bnp, ap->a_runp, ap->a_runb);
+	    printf("VOP_BMAP(cp->c_ovp %p, bn %p, vpp %p, bnp %p, ap->a_runp %p, ap->a_runb %p) = %d\n",
+		    cp->c_ovp, bn, vpp, bnp, ap->a_runp, ap->a_runb, ret);
 #endif
-		return ret;
-	} else {
-#if	0
-		printf("coda_bmap: no container\n");
+	    return ret;
+    } else {
+#if 0
+	    printf("coda_bmap: no container\n");
 #endif
-		return(EOPNOTSUPP);
-	}
+	    return(EOPNOTSUPP);
+    }
 }
 
 /*

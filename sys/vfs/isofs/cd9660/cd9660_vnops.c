@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.19 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.20 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -285,6 +285,8 @@ cd9660_read(struct vop_read_args *ap)
 	struct iso_mnt *imp;
 	struct buf *bp;
 	daddr_t lbn, rablock;
+	off_t raoffset;
+	off_t loffset;
 	off_t diff;
 	int rasize, error = 0;
 	int seqcount;
@@ -300,6 +302,7 @@ cd9660_read(struct vop_read_args *ap)
 	imp = ip->i_mnt;
 	do {
 		lbn = lblkno(imp, uio->uio_offset);
+		loffset = lblktooff(imp, lbn);
 		on = blkoff(imp, uio->uio_offset);
 		n = min((u_int)(imp->logical_block_size - on),
 			uio->uio_resid);
@@ -310,21 +313,23 @@ cd9660_read(struct vop_read_args *ap)
 			n = diff;
 		size = blksize(imp, ip, lbn);
 		rablock = lbn + 1;
+		raoffset = lblktooff(imp, rablock);
 		if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			if (lblktosize(imp, rablock) < ip->i_size)
+			if (raoffset < ip->i_size)
 				error = cluster_read(vp, (off_t)ip->i_size,
-				         lbn, size, uio->uio_resid,
+				         loffset, size,
+					 uio->uio_resid,
 					 (ap->a_ioflag >> 16), &bp);
 			else
-				error = bread(vp, lbn, size, &bp);
+				error = bread(vp, loffset, size, &bp);
 		} else {
 			if (seqcount > 1 &&
 			    lblktosize(imp, rablock) < ip->i_size) {
 				rasize = blksize(imp, ip, rablock);
-				error = breadn(vp, lbn, size, &rablock,
+				error = breadn(vp, loffset, size, &raoffset,
 					       &rasize, 1, &bp);
 			} else
-				error = bread(vp, lbn, size, &bp);
+				error = bread(vp, loffset, size, &bp);
 		}
 		n = min(n, size - bp->b_resid);
 		if (error) {
@@ -549,8 +554,8 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		if (isonum_711(ep->flags)&2)
 			idp->current.de.d_ino = isodirino(ep, imp);
 		else
-			idp->current.de.d_ino = dbtob(bp->b_bio2.bio_blkno) +
-				entryoffsetinblock;
+			idp->current.de.d_ino = bp->b_bio2.bio_offset +
+						entryoffsetinblock;
 
 		idp->curroff += reclen;
 
@@ -658,8 +663,7 @@ cd9660_readlink(struct vop_readlink_args *ap)
 	 * Get parents directory record block that this inode included.
 	 */
 	error = bread(imp->im_devvp,
-		      (ip->i_number >> imp->im_bshift) <<
-		      (imp->im_bshift - DEV_BSHIFT),
+			(off_t)ip->i_number & ~((1 << imp->im_bshift) - 1),
 		      imp->logical_block_size, &bp);
 	if (error) {
 		brelse(bp);
@@ -738,9 +742,9 @@ cd9660_strategy(struct vop_strategy_args *ap)
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("cd9660_strategy: spec");
 	nbio = push_bio(bio);
-	if (nbio->bio_blkno == (daddr_t)-1) {
-		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
-				 NULL, NULL);
+	if (nbio->bio_offset == NOOFFSET) {
+		error = VOP_BMAP(vp, bio->bio_offset, NULL,
+				 &nbio->bio_offset, NULL, NULL);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
@@ -748,10 +752,10 @@ cd9660_strategy(struct vop_strategy_args *ap)
 			biodone(bio);
 			return (error);
 		}
-		if (nbio->bio_blkno == (daddr_t)-1)
+		if (nbio->bio_offset == NOOFFSET)
 			clrbuf(bp);
 	}
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/* I/O was never started on nbio, must biodone(bio) */
 		biodone(bio);
 		return (0);

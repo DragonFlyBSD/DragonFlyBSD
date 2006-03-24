@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.16 2006/02/17 19:18:05 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
  */
 
 /*
@@ -867,6 +867,7 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     int			blkcount;
     int			driveno;
     int			cmd;
+    u_int32_t		lba;
 
     ac = NULL;
     error = 0;
@@ -896,16 +897,17 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     amrd = (struct amrd_softc *)bio->bio_driver_info;
     driveno = amrd->amrd_drive - sc->amr_drive;
     blkcount = (bio->bio_buf->b_bcount + AMR_BLKSIZE - 1) / AMR_BLKSIZE;
+    lba = bio->bio_offset / AMR_BLKSIZE;
 
     ac->ac_mailbox.mb_command = cmd;
     ac->ac_mailbox.mb_blkcount = blkcount;
-    ac->ac_mailbox.mb_lba = bio->bio_blkno;
+    ac->ac_mailbox.mb_lba = lba;
     ac->ac_mailbox.mb_drive = driveno;
     /* we fill in the s/g related data when the command is mapped */
 
-    if ((bio->bio_blkno + blkcount) > sc->amr_drive[driveno].al_size)
-	device_printf(sc->amr_dev, "I/O beyond end of unit (%lld,%d > %lu)\n", 
-		      (long long)bio->bio_blkno, blkcount,
+    if ((lba + blkcount) > sc->amr_drive[driveno].al_size)
+	device_printf(sc->amr_dev, "I/O beyond end of unit (%ud,%d > %lu)\n", 
+		      lba, blkcount,
 		      (u_long)sc->amr_drive[driveno].al_size);
 
 out:

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.30 2006/02/17 19:18:07 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -561,7 +561,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		pmp->pm_fatblocksize = MSDOSFS_DFLTBSIZE;
 
 	pmp->pm_fatblocksec = pmp->pm_fatblocksize / DEV_BSIZE;
-	pmp->pm_bnshift = ffs(DEV_BSIZE) - 1;
+	pmp->pm_bnshift = DEV_BSHIFT;
 
 	/*
 	 * Compute mask and shift value for isolating cluster relative byte
@@ -592,7 +592,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if (pmp->pm_fsinfo) {
 		struct fsinfo *fp;
 
-		if ((error = bread(devvp, pmp->pm_fsinfo, fsi_size(pmp), &bp)) != 0)
+		if ((error = bread(devvp, de_bntodoff(pmp, pmp->pm_fsinfo), fsi_size(pmp), &bp)) != 0)
 			goto error_exit;
 		fp = (struct fsinfo *)bp->b_data;
 		if (!bcmp(fp->fsisig1, "RRaA", 4)

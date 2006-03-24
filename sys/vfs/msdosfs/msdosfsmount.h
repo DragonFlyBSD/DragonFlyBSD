@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.5 2004/02/05 21:03:37 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.6 2006/03/24 18:35:34 dillon Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -173,11 +173,28 @@ struct msdosfsmount {
  */
 #define	de_bn2off(pmp, bn) \
 	((bn) << (pmp)->pm_bnshift)
+
+/*
+ * Convert block number to disk offset (for getblk, bread, etc)
+ */
+#define	de_bntodoff(pmp, bn) \
+	((off_t)(bn) << (pmp)->pm_bnshift)
+
+#define cntodoff(pmp, cn) \
+	de_bntodoff(pmp, cntobn(pmp, cn))
+
+#define	de_cn2doff(pmp, cn) \
+	((off_t)(cn) << (pmp)->pm_cnshift)
+
+#define de_off2bn(pmp, off) \
+	((daddr_t)((off) >> (pmp)->pm_bnshift))
+
 /*
  * Map a cluster number into a filesystem relative block number.
  */
 #define	cntobn(pmp, cn) \
 	(de_cn2bn((pmp), (cn)-CLUST_FIRST) + (pmp)->pm_firstcluster)
+
 
 /*
  * Calculate block number for directory entry in root dir, offset dirofs

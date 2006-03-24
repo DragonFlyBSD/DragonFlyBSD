@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_balloc.c,v 1.11.2.3 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.6 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_balloc.c,v 1.7 2006/03/24 18:35:33 dillon Exp $
  */
 /*
  *  linux/fs/ext2/balloc.c
@@ -69,12 +69,15 @@ read_block_bitmap(struct mount *mp, unsigned int block_group,
 	int    error;
 	
 	gdp = get_group_desc (mp, block_group, NULL);
-	if ((error = bread (VFSTOUFS(mp)->um_devvp, 
-		fsbtodb(sb, gdp->bg_block_bitmap),sb->s_blocksize, &bh)) != 0)
+	error = bread(VFSTOUFS(mp)->um_devvp, 
+		      fsbtodoff(sb, gdp->bg_block_bitmap),
+		      sb->s_blocksize, &bh);
+	if (error) {
 		panic ( "read_block_bitmap: "
 			    "Cannot read block bitmap - "
 			    "block_group = %d, block_bitmap = %lu",
 			    block_group, (unsigned long) gdp->bg_block_bitmap);
+	}
 	sb->s_block_bitmap_number[bitmap_nr] = block_group;
 	sb->s_block_bitmap[bitmap_nr] = bh;
 	LCK_BUF(bh)

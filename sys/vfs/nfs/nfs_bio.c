@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.27 2006/03/05 18:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.28 2006/03/24 18:35:34 dillon Exp $
  */
 
 
@@ -67,8 +67,8 @@
 #include "nqnfs.h"
 #include "nfsnode.h"
 
-static struct buf *nfs_getcacheblk (struct vnode *vp, daddr_t bn, int size,
-					struct thread *td);
+static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
+				   int size, struct thread *td);
 
 extern int nfs_numasync;
 extern int nfs_pbuf_freecnt;
@@ -339,6 +339,8 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	struct thread *td;
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	daddr_t lbn, rabn;
+	off_t raoffset;
+	off_t loffset;
 	int bcount;
 	int seqcount;
 	int nra, error = 0, n = 0, on = 0;
@@ -450,6 +452,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		nfsstats.biocache_reads++;
 		lbn = uio->uio_offset / biosize;
 		on = uio->uio_offset & (biosize - 1);
+		loffset = (off_t)lbn * biosize;
 
 		/*
 		 * Start the read ahead(s), as required.
@@ -458,8 +461,9 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		    for (nra = 0; nra < nmp->nm_readahead && nra < seqcount &&
 			(off_t)(lbn + 1 + nra) * biosize < np->n_size; nra++) {
 			rabn = lbn + 1 + nra;
-			if (!findblk(vp, rabn)) {
-			    rabp = nfs_getcacheblk(vp, rabn, biosize, td);
+			raoffset = (off_t)rabn * biosize;
+			if (!findblk(vp, raoffset)) {
+			    rabp = nfs_getcacheblk(vp, raoffset, biosize, td);
 			    if (!rabp)
 				return (EINTR);
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
@@ -492,10 +496,10 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 
 again:
 		bcount = biosize;
-		if ((off_t)lbn * biosize >= np->n_size) {
+		if (loffset >= np->n_size) {
 			bcount = 0;
-		} else if ((off_t)(lbn + 1) * biosize > np->n_size) {
-			bcount = np->n_size - (off_t)lbn * biosize;
+		} else if (loffset + biosize > np->n_size) {
+			bcount = np->n_size - loffset;
 		}
 		if (bcount != biosize) {
 			switch(nfs_rslock(np, td)) {
@@ -511,7 +515,7 @@ again:
 			}
 		}
 
-		bp = nfs_getcacheblk(vp, lbn, bcount, td);
+		bp = nfs_getcacheblk(vp, loffset, bcount, td);
 
 		if (bcount != biosize)
 			nfs_rsunlock(np, td);
@@ -547,7 +551,7 @@ again:
 		break;
 	    case VLNK:
 		nfsstats.biocache_readlinks++;
-		bp = nfs_getcacheblk(vp, (daddr_t)0, NFS_MAXPATHLEN, td);
+		bp = nfs_getcacheblk(vp, (off_t)0, NFS_MAXPATHLEN, td);
 		if (bp == NULL)
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
@@ -571,7 +575,8 @@ again:
 		}
 		lbn = (uoff_t)uio->uio_offset / NFS_DIRBLKSIZ;
 		on = uio->uio_offset & (NFS_DIRBLKSIZ - 1);
-		bp = nfs_getcacheblk(vp, lbn, NFS_DIRBLKSIZ, td);
+		loffset = uio->uio_offset - on;
+		bp = nfs_getcacheblk(vp, loffset, NFS_DIRBLKSIZ, td);
 		if (bp == NULL)
 		    return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
@@ -599,7 +604,8 @@ again:
 			    if (np->n_direofoffset
 				&& (i * NFS_DIRBLKSIZ) >= np->n_direofoffset)
 				    return (0);
-			    bp = nfs_getcacheblk(vp, i, NFS_DIRBLKSIZ, td);
+			    bp = nfs_getcacheblk(vp, (off_t)i * NFS_DIRBLKSIZ,
+						 NFS_DIRBLKSIZ, td);
 			    if (!bp)
 				return (EINTR);
 			    if ((bp->b_flags & B_CACHE) == 0) {
@@ -640,10 +646,11 @@ again:
 		if (nfs_numasync > 0 && nmp->nm_readahead > 0 &&
 		    (bp->b_flags & B_INVAL) == 0 &&
 		    (np->n_direofoffset == 0 ||
-		    (lbn + 1) * NFS_DIRBLKSIZ < np->n_direofoffset) &&
+		    loffset + NFS_DIRBLKSIZ < np->n_direofoffset) &&
 		    !(np->n_flag & NQNFSNONCACHE) &&
-		    !findblk(vp, lbn + 1)) {
-			rabp = nfs_getcacheblk(vp, lbn + 1, NFS_DIRBLKSIZ, td);
+		    !findblk(vp, loffset + NFS_DIRBLKSIZ)) {
+			rabp = nfs_getcacheblk(vp, loffset + NFS_DIRBLKSIZ,
+					       NFS_DIRBLKSIZ, td);
 			if (rabp) {
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_flags |= (B_READ | B_ASYNC);
@@ -741,6 +748,7 @@ nfs_write(struct vop_write_args *ap)
 	struct vattr vattr;
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	daddr_t lbn;
+	off_t loffset;
 	int n, on, error = 0, iomode, must_commit;
 	int haverslock = 0;
 	int bcount;
@@ -869,6 +877,7 @@ restart:
 		nfsstats.biocache_writes++;
 		lbn = uio->uio_offset / biosize;
 		on = uio->uio_offset & (biosize-1);
+		loffset = uio->uio_offset - on;
 		n = min((unsigned)(biosize - on), uio->uio_resid);
 again:
 		/*
@@ -884,7 +893,7 @@ again:
 			 * readers from reading garbage.
 			 */
 			bcount = on;
-			bp = nfs_getcacheblk(vp, lbn, bcount, td);
+			bp = nfs_getcacheblk(vp, loffset, bcount, td);
 
 			if (bp != NULL) {
 				long save;
@@ -904,13 +913,13 @@ again:
 			 * adjust the file's size as appropriate.
 			 */
 			bcount = on + n;
-			if ((off_t)lbn * biosize + bcount < np->n_size) {
-				if ((off_t)(lbn + 1) * biosize < np->n_size)
+			if (loffset + bcount < np->n_size) {
+				if (loffset + biosize < np->n_size)
 					bcount = biosize;
 				else
-					bcount = np->n_size - (off_t)lbn * biosize;
+					bcount = np->n_size - loffset;
 			}
-			bp = nfs_getcacheblk(vp, lbn, bcount, td);
+			bp = nfs_getcacheblk(vp, loffset, bcount, td);
 			if (uio->uio_offset + n > np->n_size) {
 				np->n_size = uio->uio_offset + n;
 				np->n_flag |= NLMODIFIED;
@@ -972,8 +981,8 @@ again:
 		 */
 
 		if (bp->b_dirtyend > bcount) {
-			printf("NFS append race @%llx:%d\n", 
-			    (off_t)bp->b_bio2.bio_blkno << DEV_BSHIFT, 
+			printf("NFS append race @%08llx:%d\n", 
+			    bp->b_bio2.bio_offset,
 			    bp->b_dirtyend - bcount);
 			bp->b_dirtyend = bcount;
 		}
@@ -1116,7 +1125,7 @@ again:
  * its EOF.
  */
 static struct buf *
-nfs_getcacheblk(struct vnode *vp, daddr_t bn, int size, struct thread *td)
+nfs_getcacheblk(struct vnode *vp, off_t loffset, int size, struct thread *td)
 {
 	struct buf *bp;
 	struct mount *mp;
@@ -1126,27 +1135,21 @@ nfs_getcacheblk(struct vnode *vp, daddr_t bn, int size, struct thread *td)
 	nmp = VFSTONFS(mp);
 
 	if (nmp->nm_flag & NFSMNT_INT) {
-		bp = getblk(vp, bn, size, PCATCH, 0);
+		bp = getblk(vp, loffset, size, PCATCH, 0);
 		while (bp == NULL) {
 			if (nfs_sigintr(nmp, (struct nfsreq *)0, td))
 				return (NULL);
-			bp = getblk(vp, bn, size, 0, 2 * hz);
+			bp = getblk(vp, loffset, size, 0, 2 * hz);
 		}
 	} else {
-		bp = getblk(vp, bn, size, 0, 0);
+		bp = getblk(vp, loffset, size, 0, 0);
 	}
 
 	/*
-	 * bio2, the 'device' layer, is normalized to DEV_BSIZE'd blocks.
+	 * bio2, the 'device' layer.  Since BIOs use 64 bit byte offsets
+	 * now, no translation is necessary.
 	 */
-	if (vp->v_type == VREG) {
-		int biosize;
-
-		biosize = mp->mnt_stat.f_iosize;
-		bp->b_bio2.bio_blkno = ((off_t)bn * biosize) >> DEV_BSHIFT;
-	} else {
-		bp->b_bio2.bio_blkno = ((off_t)bn * NFS_DIRBLKSIZ) >> DEV_BSHIFT;
-	}
+	bp->b_bio2.bio_offset = loffset;
 	return (bp);
 }
 
@@ -1384,7 +1387,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    /* mapping was done by vmapbuf() */
 	    io.iov_base = bp->b_data;
-	    uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
+	    uiop->uio_offset = bio->bio_offset;
 	    if (bp->b_flags & B_READ) {
 		uiop->uio_rw = UIO_READ;
 		nfsstats.read_physios++;
@@ -1408,7 +1411,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 
 	    switch (vp->v_type) {
 	    case VREG:
-		uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
+		uiop->uio_offset = bio->bio_offset;
 		nfsstats.read_bios++;
 		error = nfs_readrpc(vp, uiop);
 
@@ -1447,7 +1450,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		break;
 	    case VDIR:
 		nfsstats.readdir_bios++;
-		uiop->uio_offset = (off_t)bio->bio_blkno << DEV_BSHIFT;
+		uiop->uio_offset = bio->bio_offset;
 		if (nmp->nm_flag & NFSMNT_RDIRPLUS) {
 			error = nfs_readdirplusrpc(vp, uiop);
 			if (error == NFSERR_NOTSUPP)
@@ -1478,8 +1481,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		    int retv;
 		    off_t off;
 
-		    off = ((off_t)bio->bio_blkno << DEV_BSHIFT) + 
-			  bp->b_dirtyoff;
+		    off = bio->bio_offset + bp->b_dirtyoff;
 		    retv = nfs_commit(vp, off, 
 				bp->b_dirtyend - bp->b_dirtyoff, td);
 		    if (retv == 0) {
@@ -1498,14 +1500,13 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	     * Setup for actual write
 	     */
 
-	    if (((off_t)bio->bio_blkno << DEV_BSHIFT) + bp->b_dirtyend > np->n_size)
-		bp->b_dirtyend = np->n_size - ((off_t)bio->bio_blkno << DEV_BSHIFT);
+	    if (bio->bio_offset + bp->b_dirtyend > np->n_size)
+		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
 		io.iov_len = uiop->uio_resid = bp->b_dirtyend
 		    - bp->b_dirtyoff;
-		uiop->uio_offset = ((off_t)bio->bio_blkno << DEV_BSHIFT)
-		    + bp->b_dirtyoff;
+		uiop->uio_offset = bio->bio_offset + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
 		nfsstats.write_bios++;
@@ -1610,6 +1611,7 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 	if (np->n_size < tsize) {
 		struct buf *bp;
 		daddr_t lbn;
+		off_t loffset;
 		int bufsize;
 
 		/*
@@ -1620,7 +1622,8 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 		error = vtruncbuf(vp, td, nsize, biosize);
 		lbn = nsize / biosize;
 		bufsize = nsize & (biosize - 1);
-		bp = nfs_getcacheblk(vp, lbn, bufsize, td);
+		loffset = nsize - bufsize;
+		bp = nfs_getcacheblk(vp, loffset, bufsize, td);
 		if (bp->b_dirtyoff > bp->b_bcount)
 			bp->b_dirtyoff = bp->b_bcount;
 		if (bp->b_dirtyend > bp->b_bcount)

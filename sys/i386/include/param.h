@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.8 2006/03/08 04:54:05 reed Exp $
+ * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.9 2006/03/24 18:35:33 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -110,7 +110,8 @@
 #define PDRMASK		(NBPDR-1)
 
 #define DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
-#define DEV_BSIZE	(1<<DEV_BSHIFT)
+#define DEV_BSIZE	(1 << DEV_BSHIFT)
+#define DEV_BMASK	(DEV_BSIZE - 1)
 
 #ifndef BLKDEV_IOSIZE
 #define BLKDEV_IOSIZE	PAGE_SIZE	/* default block device I/O size */

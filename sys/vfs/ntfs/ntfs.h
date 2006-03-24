@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.7 2004/10/12 19:21:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.8 2006/03/24 18:35:34 dillon Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -280,12 +280,19 @@ struct ntfsmount {
 #define	VTOF(v)		((struct fnode *)((v)->v_data))
 #define	FTOV(f)		((f)->f_vp)
 #define	FTONT(f)	((f)->f_ip)
+
+/*
+ * Misc block conversion macros.  The 'doff' macros convert to linear disk
+ * byte offsets suitable for bread, getblk, etc.
+ */
 #define ntfs_cntobn(cn)	(daddr_t)((cn) * (ntmp->ntm_spc))
-#define ntfs_cntob(cn)	(off_t)((cn) * (ntmp)->ntm_spc * (ntmp)->ntm_bps)
+#define ntfs_cntodoff(cn) ((off_t)(cn) * (ntmp)->ntm_spc * (ntmp)->ntm_bps)
+#define ntfs_cntob(cn)	((off_t)(cn) * (ntmp)->ntm_spc * (ntmp)->ntm_bps)
 #define ntfs_btocn(off)	(cn_t)((off) / ((ntmp)->ntm_spc * (ntmp)->ntm_bps))
 #define ntfs_btocl(off)	(cn_t)((off + ntfs_cntob(1) - 1) / ((ntmp)->ntm_spc * (ntmp)->ntm_bps))
 #define ntfs_btocnoff(off)	(off_t)((off) % ((ntmp)->ntm_spc * (ntmp)->ntm_bps))
 #define ntfs_bntob(bn)	(daddr_t)((bn) * (ntmp)->ntm_bps)
+#define ntfs_bntodoff(bn)	((off_t)(bn) * (ntmp)->ntm_bps)
 
 #define	ntfs_bpbl	(daddr_t)((ntmp)->ntm_bps)
 

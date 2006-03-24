@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.9 2006/02/17 19:18:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.10 2006/03/24 18:35:32 dillon Exp $
  *
  */
 
@@ -149,9 +149,9 @@ mdstrategy(dev_t dev, struct bio *bio)
 	struct md_s *sc;
 
 	if (md_debug > 1) {
-		printf("mdstrategy(%p) %s %lx, %d, %ld, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_blkno, 
-		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+		printf("mdstrategy(%p) %s %08x, %lld, %d, %p)\n",
+		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp->b_bcount, bp->b_data);
 	}
 	bio->bio_driver_info = dev;
 	sc = dev->si_drv1;
@@ -174,9 +174,9 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 	int i;
 
 	if (md_debug > 1)
-		printf("mdstrategy_malloc(%p) %s %lx, %d, %ld, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_blkno, 
-		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+		printf("mdstrategy_malloc(%p) %s %08xx, %lld, %d, %p)\n",
+		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp->b_bcount, bp->b_data);
 
 	sc = dev->si_drv1;
 
@@ -208,8 +208,8 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 		else
 			dop = DEVSTAT_WRITE;
 
-		nsec = bp->b_bcount / DEV_BSIZE;
-		secno = bio->bio_blkno;
+		nsec = bp->b_bcount >> DEV_BSHIFT;
+		secno = (unsigned)(bio->bio_offset >> DEV_BSHIFT);
 		dst = bp->b_data;
 		while (nsec--) {
 			if (secno < sc->nsecp) {
@@ -227,7 +227,7 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 				secval = 0;
 			}
 			if (md_debug > 2)
-				printf("%lx %p %p %d\n", bp->b_flags, secpp, secp, secval);
+				printf("%08x %p %p %d\n", bp->b_flags, secpp, secp, secval);
 
 			if (bp->b_flags & B_FREEBUF) {
 				if (secpp) {
@@ -297,9 +297,9 @@ mdstrategy_preload(dev_t dev, struct bio *bio)
 	struct md_s *sc;
 
 	if (md_debug > 1)
-		printf("mdstrategy_preload(%p) %s %lx, %d, %ld, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_blkno, 
-		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+		printf("mdstrategy_preload(%p) %s %08x, %lld, %d, %p)\n",
+		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp->b_bcount, bp->b_data);
 
 	sc = dev->si_drv1;
 
@@ -328,10 +328,12 @@ mdstrategy_preload(dev_t dev, struct bio *bio)
 			dop = DEVSTAT_NO_DATA;
 		} else if (bp->b_flags & B_READ) {
 			dop = DEVSTAT_READ;
-			bcopy(sc->pl_ptr + (bio->bio_blkno << DEV_BSHIFT), bp->b_data, bp->b_bcount);
+			bcopy(sc->pl_ptr + bio->bio_offset, 
+			       bp->b_data, bp->b_bcount);
 		} else {
 			dop = DEVSTAT_WRITE;
-			bcopy(bp->b_data, sc->pl_ptr + (bio->bio_blkno << DEV_BSHIFT), bp->b_bcount);
+			bcopy(bp->b_data, sc->pl_ptr + bio->bio_offset,
+			      bp->b_bcount);
 		}
 		bp->b_resid = 0;
 		devstat_end_transaction_buf(&sc->stats, bp);

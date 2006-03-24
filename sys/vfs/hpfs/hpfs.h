@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.14 2004/10/12 19:20:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.15 2006/03/24 18:35:33 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -383,6 +383,7 @@ MALLOC_DECLARE(M_HPFSNO);
 #define	VTOHP(v)	((struct hpfsnode *)((v)->v_data))
 #define	HPTOV(h)	((struct vnode *)((h)->h_vp))
 #define	FID(f)		(*((lsn_t *)(f)->fid_data))
+#define dbtodoff(dbn)	((off_t)(dbn) << DEV_BSHIFT)
 
 #if defined(__NetBSD__)
 #define MALLOC_DEFINE(a, b, c)

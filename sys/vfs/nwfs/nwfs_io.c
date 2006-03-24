@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.18 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -282,7 +282,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 	    uiop->uio_rw = UIO_READ;
 	    switch (vp->v_type) {
 	      case VREG:
-		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE;
+		uiop->uio_offset = bio->bio_offset;
 		error = ncp_read(NWFSTOCONN(nmp), &np->n_fh, uiop, cr);
 		if (error)
 			break;
@@ -295,7 +295,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		break;
 /*	    case VDIR:
 		nfsstats.readdir_bios++;
-		uiop->uio_offset = ((u_quad_t)bio->bio_blkno) * NFS_DIRBLKSIZ;
+		uiop->uio_offset = bio->bio_offset;
 		if (nmp->nm_flag & NFSMNT_RDIRPLUS) {
 			error = nfs_readdirplusrpc(vp, uiop, cr);
 			if (error == NFSERR_NOTSUPP)
@@ -316,12 +316,12 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		bp->b_error = error;
 	    }
 	} else { /* write */
-	    if (((bio->bio_blkno * DEV_BSIZE) + bp->b_dirtyend) > np->n_size)
-		bp->b_dirtyend = np->n_size - (bio->bio_blkno * DEV_BSIZE);
+	    if (bio->bio_offset + bp->b_dirtyend > np->n_size)
+		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
 	    if (bp->b_dirtyend > bp->b_dirtyoff) {
 		io.iov_len = uiop->uio_resid = bp->b_dirtyend - bp->b_dirtyoff;
-		uiop->uio_offset = ((off_t)bio->bio_blkno) * DEV_BSIZE + bp->b_dirtyoff;
+		uiop->uio_offset = bio->bio_offset + bp->b_dirtyoff;
 		io.iov_base = (char *)bp->b_data + bp->b_dirtyoff;
 		uiop->uio_rw = UIO_WRITE;
 		error = ncp_write(NWFSTOCONN(nmp), &np->n_fh, uiop, cr);

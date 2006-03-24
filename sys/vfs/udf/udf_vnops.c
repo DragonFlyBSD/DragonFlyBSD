@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.18 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -845,6 +845,7 @@ udf_strategy(struct vop_strategy_args *ap)
 	struct vnode *vp;
 	struct udf_node *node;
 	int maxsize;
+	daddr_t dblkno;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -852,24 +853,25 @@ udf_strategy(struct vop_strategy_args *ap)
 	node = VTON(vp);
 
 	nbio = push_bio(bio);
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/*
 		 * Files that are embedded in the fentry don't translate well
 		 * to a block number.  Reject.
 		 */
 		if (udf_bmap_internal(node, 
-				     bio->bio_blkno * node->udfmp->bsize,
-				     &nbio->bio_blkno, &maxsize)) {
+				     bio->bio_offset,
+				     &dblkno, &maxsize)) {
 			clrbuf(bp);
-			nbio->bio_blkno = -1;
+			nbio->bio_offset = NOOFFSET;
+		} else {
+			nbio->bio_offset = dbtob(dblkno);
 		}
 	}
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/* I/O was never started on nbio, must biodone(bio) */
 		biodone(bio);
 		return(0);
 	}
-	nbio->bio_offset = dbtob(nbio->bio_blkno);
 	vn_strategy(node->i_devvp, nbio);
 	return(0);
 }
@@ -886,23 +888,23 @@ udf_bmap(struct vop_bmap_args *a)
 
 	if (a->a_vpp != NULL)
 		*a->a_vpp = node->i_devvp;
-	if (a->a_bnp == NULL)
+	if (a->a_doffsetp == NULL)
 		return(0);
-	if (a->a_runb)
-		*a->a_runb = 0;
 
-	error = udf_bmap_internal(node, a->a_bn * node->udfmp->bsize, &lsector,
-				  &max_size);
+	KKASSERT(a->a_loffset % node->udfmp->bsize == 0);
+
+	error = udf_bmap_internal(node, a->a_loffset, &lsector, &max_size);
 	if (error)
 		return(error);
 
 	/* Translate logical to physical sector number */
-	*a->a_bnp = lsector << (node->udfmp->bshift - DEV_BSHIFT);
+	*a->a_doffsetp = (off_t)lsector << node->udfmp->bshift;
 
 	/* Punt on read-ahead for now */
 	if (a->a_runp)
 		*a->a_runp = 0;
-
+	if (a->a_runb)
+		*a->a_runb = 0;
 	return(0);
 }
 

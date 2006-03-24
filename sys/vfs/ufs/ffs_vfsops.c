@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.35 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.36 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -464,8 +464,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = DEV_BSIZE;
 	else
 		size = dpart.disklab->d_secsize;
-	if ((error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, &bp)) != 0)
-	{
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0) {
 		brelse(bp);
 		return (error);
 	}
@@ -507,7 +506,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size, &bp);
+		error = bread(devvp, fsbtodoff(fs, fs->fs_csaddr + i), size, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -558,8 +557,8 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	ip = VTOI(vp);
 	error = bread(info->devvp,
-			fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
-			(int)info->fs->fs_bsize, &bp);
+		    fsbtodoff(info->fs, ino_to_fsba(info->fs, ip->i_number)),
+		    (int)info->fs->fs_bsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -637,7 +636,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 
 	bp = NULL;
 	ump = NULL;
-	if ((error = bread(devvp, SBLOCK, SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
 		goto out;
 	fs = (struct fs *)bp->b_data;
 	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
@@ -695,8 +694,8 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		if ((error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
-		    &bp)) != 0) {
+		if ((error = bread(devvp, fsbtodoff(fs, fs->fs_csaddr + i),
+				   size, &bp)) != 0) {
 			free(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
@@ -1116,7 +1115,7 @@ restart:
 	vp->v_data = ip;
 
 	/* Read in the disk contents for the inode, copy into the inode. */
-	error = bread(ump->um_devvp, fsbtodb(fs, ino_to_fsba(fs, ino)),
+	error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
 	    (int)fs->fs_bsize, &bp);
 	if (error) {
 		/*
@@ -1254,7 +1253,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		bp = getblk(mp->um_devvp, fsbtodb(fs, fs->fs_csaddr + i),
+		bp = getblk(mp->um_devvp, fsbtodoff(fs, fs->fs_csaddr + i),
 			    size, 0, 0);
 		bcopy(space, bp->b_data, (uint)size);
 		space = (char *)space + size;
@@ -1270,7 +1269,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 	 */
 	if (allerror)
 		return (allerror);
-	bp = getblk(mp->um_devvp, SBLOCK, (int)fs->fs_sbsize, 0, 0);
+	bp = getblk(mp->um_devvp, SBOFF, (int)fs->fs_sbsize, 0, 0);
 	fs->fs_fmod = 0;
 	fs->fs_time = time_second;
 	bcopy((caddr_t)fs, bp->b_data, (uint)fs->fs_sbsize);

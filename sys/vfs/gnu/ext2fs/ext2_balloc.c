@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.7 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.8 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,8 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		/* no new block is to be allocated, and no need to expand
 		   the file */
 		if (nb != 0 && ip->i_size >= (bn + 1) * fs->s_blocksize) {
-			error = bread(vp, bn, fs->s_blocksize, &bp);
+			error = bread(vp, lblktodoff(fs, bn), 
+				      fs->s_blocksize, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -116,7 +117,8 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			osize = fragroundup(fs, blkoff(fs, ip->i_size));
 			nsize = fragroundup(fs, size);
 			if (nsize <= osize) {
-				error = bread(vp, bn, osize, &bp);
+				error = bread(vp, lblktodoff(fs, bn),
+					      osize, &bp);
 				if (error) {
 					brelse(bp);
 					return (error);
@@ -143,12 +145,12 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			    nsize, cred, &newb);
 			if (error)
 				return (error);
-			bp = getblk(vp, bn, nsize, 0, 0);
-			bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
+			bp = getblk(vp, lblktodoff(fs, bn), nsize, 0, 0);
+			bp->b_bio2.bio_offset = fsbtodoff(fs, newb);
 			if (flags & B_CLRBUF)
 				vfs_bio_clrbuf(bp);
 		}
-		ip->i_db[bn] = dbtofsb(fs, bp->b_bio2.bio_blkno);
+		ip->i_db[bn] = dofftofsb(fs, bp->b_bio2.bio_offset);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		*bpp = bp;
 		return (0);
@@ -190,8 +192,9 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 		    cred, &newb)) != 0)
 			return (error);
 		nb = newb;
-		bp = getblk(vp, indirs[1].in_lbn, fs->s_blocksize, 0, 0);
-		bp->b_bio2.bio_blkno = fsbtodb(fs, newb);
+		bp = getblk(vp, lblktodoff(fs, indirs[1].in_lbn),
+			    fs->s_blocksize, 0, 0);
+		bp->b_bio2.bio_offset = fsbtodoff(fs, newb);
 		vfs_bio_clrbuf(bp);
 		/*
 		 * Write synchronously so that indirect blocks
@@ -209,7 +212,8 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	 */
 	for (i = 1;;) {
 		error = bread(vp,
-		    indirs[i].in_lbn, (int)fs->s_blocksize, &bp);
+			      lblktodoff(fs, indirs[i].in_lbn), 
+			      (int)fs->s_blocksize, &bp);
 		if (error) {
 			brelse(bp);
 			return (error);
@@ -232,7 +236,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			 * Also, will it ever succeed ?
 			 */
 			pref = ext2_blkpref(ip, lbn, indirs[i].in_off, bap,
-						bp->b_lblkno);
+						lblkno(fs, bp->b_loffset));
 #else
 			pref = ext2_blkpref(ip, lbn, 0, (daddr_t *)0, 0);
 #endif
@@ -242,8 +246,9 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			return (error);
 		}
 		nb = newb;
-		nbp = getblk(vp, indirs[i].in_lbn, fs->s_blocksize, 0, 0);
-		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		nbp = getblk(vp, lblktodoff(fs, indirs[i].in_lbn),
+			     fs->s_blocksize, 0, 0);
+		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		vfs_bio_clrbuf(nbp);
 		/*
 		 * Write synchronously so that indirect blocks
@@ -270,15 +275,15 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	 */
 	if (nb == 0) {
 		pref = ext2_blkpref(ip, lbn, indirs[i].in_off, &bap[0], 
-				bp->b_lblkno);
+				lblkno(fs, bp->b_loffset));
 		if ((error = ext2_alloc(ip,
 		    lbn, pref, (int)fs->s_blocksize, cred, &newb)) != 0) {
 			brelse(bp);
 			return (error);
 		}
 		nb = newb;
-		nbp = getblk(vp, lbn, fs->s_blocksize, 0, 0);
-		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		nbp = getblk(vp, lblktodoff(fs, lbn), fs->s_blocksize, 0, 0);
+		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 		if (flags & B_CLRBUF)
 			vfs_bio_clrbuf(nbp);
 		bap[indirs[i].in_off] = nb;
@@ -296,14 +301,15 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	}
 	brelse(bp);
 	if (flags & B_CLRBUF) {
-		error = bread(vp, lbn, (int)fs->s_blocksize, &nbp);
+		error = bread(vp, lblktodoff(fs, lbn),
+			      (int)fs->s_blocksize, &nbp);
 		if (error) {
 			brelse(nbp);
 			return (error);
 		}
 	} else {
-		nbp = getblk(vp, lbn, fs->s_blocksize, 0, 0);
-		nbp->b_bio2.bio_blkno = fsbtodb(fs, nb);
+		nbp = getblk(vp, lblktodoff(fs, lbn), fs->s_blocksize, 0, 0);
+		nbp->b_bio2.bio_offset = fsbtodoff(fs, nb);
 	}
 	*bpp = nbp;
 	return (0);

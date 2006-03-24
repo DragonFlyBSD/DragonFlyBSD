@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.20 2006/01/13 21:09:27 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.21 2006/03/24 18:35:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -532,10 +532,10 @@ detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
 	if ((boff = length & pmp->pm_crbomask) != 0) {
 		if (isadir) {
 			bn = cntobn(pmp, eofentry);
-			error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster, &bp);
+			error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 		} else {
 			bn = de_blk(pmp, length);
-			error = bread(DETOV(dep), bn, pmp->pm_bpcluster, &bp);
+			error = bread(DETOV(dep), de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 		}
 		if (error) {
 			brelse(bp);

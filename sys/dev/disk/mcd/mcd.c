@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.15 2006/02/17 19:17:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.16 2006/03/24 18:35:32 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -400,11 +400,11 @@ mcdstrategy(dev_t dev, struct bio *bio)
 	bio->bio_driver_info = dev;
 
 	/* test validity */
-/*MCD_TRACE("strategy: buf=0x%lx, unit=%ld, block#=%ld bcount=%ld\n",
-	bp,unit,bio->bio_blkno,bp->b_bcount);*/
-	if (unit >= NMCD || bio->bio_blkno < 0) {
-		printf("mcdstrategy: unit = %d, blkno = %ld, bcount = %ld\n",
-			unit, (long)bio->bio_blkno, bp->b_bcount);
+/*MCD_TRACE("strategy: buf=0x%lx, unit=%ld, offset=%lld bcount=%ld\n",
+	bp,unit,bio->bio_offset,bp->b_bcount);*/
+	if (unit >= NMCD || bio->bio_offset < 0) {
+		printf("mcdstrategy: unit = %d, offset = %lld, bcount = %ld\n",
+			unit, bio->bio_offset, bp->b_bcount);
 		printf("mcd: mcdstratregy failure");
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
@@ -1099,8 +1099,8 @@ modedone:
 		mbx->skip = 0;
 
 nextblock:
-		blknum 	= (bio->bio_blkno / (mbx->sz/DEV_BSIZE))
-			+ mbx->p_offset + mbx->skip/mbx->sz;
+		blknum 	= (bio->bio_offset / mbx->sz)
+			  + mbx->p_offset + mbx->skip/mbx->sz;
 
 		MCD_TRACE("mcd_doread: read blknum=%d for bp=%p\n",
 			blknum, bp);

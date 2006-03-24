@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.13 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.14 2006/03/24 18:35:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -344,7 +344,9 @@ afd_start(struct ata_device *atadev)
 	return;
     }
 
-    lba = bio->bio_blkno;
+    KKASSERT(bio->bio_offset % fdp->cap.sector_size == 0);
+
+    lba = bio->bio_offset / fdp->cap.sector_size;
     count = bp->b_bcount / fdp->cap.sector_size;
     data_ptr = bp->b_data;
     bp->b_resid = bp->b_bcount; 

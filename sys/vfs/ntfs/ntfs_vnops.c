@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.25 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
  *
  */
 
@@ -124,8 +124,8 @@ ntfs_putpages(struct vop_putpages_args *ap)
 /*
  * This is a noop, simply returning what one has been given.
  *
- * ntfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * ntfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	     daddr_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
 ntfs_bmap(struct vop_bmap_args *ap)
@@ -133,8 +133,8 @@ ntfs_bmap(struct vop_bmap_args *ap)
 	dprintf(("ntfs_bmap: vn: %p, blk: %d\n", ap->a_vp,(u_int32_t)ap->a_bn));
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = ap->a_vp;
-	if (ap->a_bnp != NULL)
-		*ap->a_bnp = ap->a_bn;
+	if (ap->a_doffsetp != NULL)
+		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
 #if !defined(__NetBSD__)
@@ -180,7 +180,7 @@ ntfs_read(struct vop_read_args *ap)
 
 		toread = min(off + resid, ntfs_cntob(1));
 
-		error = bread(vp, cn, ntfs_cntob(1), &bp);
+		error = bread(vp, ntfs_cntodoff(cn), ntfs_cntob(1), &bp);
 		if (error) {
 			brelse(bp);
 			break;
@@ -332,15 +332,8 @@ ntfs_strategy(struct vop_strategy_args *ap)
 	struct ntfsmount *ntmp = ip->i_mp;
 	int error;
 
-#ifdef __DragonFly__
-	dprintf(("ntfs_strategy: offset: %d, blkno: %d, lblkno: %d\n",
-		(u_int32_t)bp->b_loffset,(u_int32_t)bio->bio_blkno,
-		(u_int32_t)bp->b_lblkno));
-#else
-	dprintf(("ntfs_strategy: blkno: %d, lblkno: %d\n",
-		(u_int32_t)bio->bio_blkno,
-		(u_int32_t)bp->b_lblkno));
-#endif
+	dprintf(("ntfs_strategy: loffset: %lld, doffset: %lld\n",
+		bp->b_loffset, bio->bio_offset));
 
 	dprintf(("strategy: bcount: %d flags: 0x%lx\n", 
 		(u_int32_t)bp->b_bcount,bp->b_flags));
@@ -348,17 +341,17 @@ ntfs_strategy(struct vop_strategy_args *ap)
 	if (bp->b_flags & B_READ) {
 		u_int32_t toread;
 
-		if (ntfs_cntob(bio->bio_blkno) >= fp->f_size) {
+		if (bio->bio_offset >= fp->f_size) {
 			clrbuf(bp);
 			error = 0;
 		} else {
 			toread = min(bp->b_bcount,
-				 fp->f_size-ntfs_cntob(bio->bio_blkno));
+				 fp->f_size - bio->bio_offset);
 			dprintf(("ntfs_strategy: toread: %d, fsize: %d\n",
 				toread,(u_int32_t)fp->f_size));
 
 			error = ntfs_readattr(ntmp, ip, fp->f_attrtype,
-				fp->f_attrname, ntfs_cntob(bio->bio_blkno),
+				fp->f_attrname, bio->bio_offset,
 				toread, bp->b_data, NULL);
 
 			if (error) {
@@ -373,18 +366,18 @@ ntfs_strategy(struct vop_strategy_args *ap)
 		size_t tmp;
 		u_int32_t towrite;
 
-		if (ntfs_cntob(bio->bio_blkno) + bp->b_bcount >= fp->f_size) {
+		if (bio->bio_offset + bp->b_bcount >= fp->f_size) {
 			printf("ntfs_strategy: CAN'T EXTEND FILE\n");
 			bp->b_error = error = EFBIG;
 			bp->b_flags |= B_ERROR;
 		} else {
 			towrite = min(bp->b_bcount,
-				fp->f_size-ntfs_cntob(bio->bio_blkno));
+				      fp->f_size - bio->bio_offset);
 			dprintf(("ntfs_strategy: towrite: %d, fsize: %d\n",
 				towrite,(u_int32_t)fp->f_size));
 
 			error = ntfs_writeattr_plain(ntmp, ip, fp->f_attrtype,	
-				fp->f_attrname, ntfs_cntob(bio->bio_blkno),towrite,
+				fp->f_attrname, bio->bio_offset,towrite,
 				bp->b_data, &tmp, NULL);
 
 			if (error) {

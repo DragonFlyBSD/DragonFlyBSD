@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.9 2005/02/03 09:20:27 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.10 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -537,8 +537,7 @@ cd9660_rrip_loop(struct iso_directory_record *isodir, ISO_RRIP_ANALYZE *ana,
 			if (ana->iso_ce_blk >= ana->imp->volume_space_size
 			    || ana->iso_ce_off + ana->iso_ce_len > ana->imp->logical_block_size
 			    || bread(ana->imp->im_devvp,
-				     ana->iso_ce_blk <<
-				     (ana->imp->im_bshift - DEV_BSHIFT),
+				     lblktooff(ana->imp, ana->iso_ce_blk),
 				     ana->imp->logical_block_size, &bp))
 				/* what to do now? */
 				break;

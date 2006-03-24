@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.29 2006/02/17 19:18:07 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.30 2006/03/24 18:35:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -543,6 +543,8 @@ msdosfs_read(struct vop_read_args *ap)
 	u_long on;
 	daddr_t lbn;
 	daddr_t rablock;
+	off_t raoffset;
+	off_t loffset;
 	int rasize;
 	int seqcount;
 	struct buf *bp;
@@ -570,6 +572,7 @@ msdosfs_read(struct vop_read_args *ap)
 		if (uio->uio_offset >= dep->de_FileSize)
 			break;
 		lbn = de_cluster(pmp, uio->uio_offset);
+		loffset = de_cn2off(pmp, lbn);
 		/*
 		 * If we are operating on a directory file then be sure to
 		 * do i/o with the vnode for the filesystem instead of the
@@ -578,22 +581,24 @@ msdosfs_read(struct vop_read_args *ap)
 		if (isadir) {
 			/* convert cluster # to block # */
 			error = pcbmap(dep, lbn, &lbn, 0, &blsize);
+			loffset = de_cn2off(pmp, lbn);
 			if (error == E2BIG) {
 				error = EINVAL;
 				break;
 			} else if (error)
 				break;
-			error = bread(pmp->pm_devvp, lbn, blsize, &bp);
+			error = bread(pmp->pm_devvp, loffset, blsize, &bp);
 		} else {
 			blsize = pmp->pm_bpcluster;
 			rablock = lbn + 1;
+			raoffset = de_cn2off(pmp, rablock);
 			if (seqcount > 1 &&
-			    de_cn2off(pmp, rablock) < dep->de_FileSize) {
+			    raoffset < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
-				error = breadn(vp, lbn, blsize,
-				    &rablock, &rasize, 1, &bp); 
+				error = breadn(vp, loffset, blsize,
+						&raoffset, &rasize, 1, &bp); 
 			} else {
-				error = bread(vp, lbn, blsize, &bp);
+				error = bread(vp, loffset, blsize, &bp);
 			}
 		}
 		if (error) {
@@ -738,20 +743,25 @@ msdosfs_write(struct vop_write_args *ap)
 			 * or we write the cluster from its start beyond EOF,
 			 * then no need to read data from disk.
 			 */
-			bp = getblk(thisvp, bn, pmp->pm_bpcluster, 0, 0);
+			bp = getblk(thisvp, de_bntodoff(pmp, bn),
+				    pmp->pm_bpcluster, 0, 0);
 			clrbuf(bp);
 			/*
 			 * Do the bmap now, since pcbmap needs buffers
 			 * for the fat table. (see msdosfs_strategy)
 			 */
-			if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
-				error = pcbmap(dep, bp->b_lblkno,
-					       &bp->b_bio2.bio_blkno, 
-					       0, 0);
-				if (error)
-					bp->b_bio2.bio_blkno = (daddr_t)-1;
+			if (bp->b_bio2.bio_offset == NOOFFSET) {
+				daddr_t lblkno = de_off2bn(pmp, bp->b_loffset);
+				daddr_t dblkno;
+
+				error = pcbmap(dep, lblkno, &dblkno, 0, 0);
+				if (error || dblkno == (daddr_t)-1) {
+					bp->b_bio2.bio_offset = NOOFFSET;
+				} else {
+					bp->b_bio2.bio_offset = de_cn2doff(pmp, dblkno);
+				}
 			}
-			if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+			if (bp->b_bio2.bio_offset == NOOFFSET) {
 				brelse(bp);
 				if (!error)
 					error = EIO;		/* XXX */
@@ -761,7 +771,7 @@ msdosfs_write(struct vop_write_args *ap)
 			/*
 			 * The block we need to write into exists, so read it in.
 			 */
-			error = bread(thisvp, bn, pmp->pm_bpcluster, &bp);
+			error = bread(thisvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 			if (error) {
 				brelse(bp);
 				break;
@@ -838,7 +848,7 @@ msdosfs_fsync(struct vop_fsync_args *ap)
 #ifdef DIAGNOSTIC
 loop:
 #endif
-	vfsync(vp, ap->a_waitfor, 0, (daddr_t)-1, NULL, NULL);
+	vfsync(vp, ap->a_waitfor, 0, NOOFFSET, NULL, NULL);
 #ifdef DIAGNOSTIC
 	if (ap->a_waitfor == MNT_WAIT && !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vprint("msdosfs_fsync: dirty", vp);
@@ -1255,7 +1265,7 @@ abortit:
 		} else {
 			bn = cntobn(pmp, cn);
 		}
-		error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster, &bp);
+		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), pmp->pm_bpcluster, &bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
@@ -1384,7 +1394,8 @@ msdosfs_mkdir(struct vop_old_mkdir_args *ap)
 	 */
 	bn = cntobn(pmp, newcluster);
 	/* always succeeds */
-	bp = getblk(pmp->pm_devvp, bn, pmp->pm_bpcluster, 0, 0);
+	bp = getblk(pmp->pm_devvp, de_bntodoff(pmp, bn),
+		    pmp->pm_bpcluster, 0, 0);
 	bzero(bp->b_data, pmp->pm_bpcluster);
 	bcopy(&dosdirtemplate, bp->b_data, sizeof dosdirtemplate);
 	denp = (struct direntry *)bp->b_data;
@@ -1636,7 +1647,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		error = pcbmap(dep, lbn, &bn, &cn, &blsize);
 		if (error)
 			break;
-		error = bread(pmp->pm_devvp, bn, blsize, &bp);
+		error = bread(pmp->pm_devvp, de_bntodoff(pmp, bn), blsize, &bp);
 		if (error) {
 			brelse(bp);
 			free(d_name_storage, M_TEMP);
@@ -1775,17 +1786,21 @@ out:
  *	 containing the file of interest
  * bnp - address of where to return the filesystem relative block number
  *
- * msdosfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
- *		daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * msdosfs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *		off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 static int
 msdosfs_bmap(struct vop_bmap_args *ap)
 {
 	struct denode *dep = VTODE(ap->a_vp);
+	struct msdosfsmount *pmp = dep->de_pmp;
+	daddr_t lbn;
+	daddr_t dbn;
+	int error;
 
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = dep->de_devvp;
-	if (ap->a_bnp == NULL)
+	if (ap->a_doffsetp == NULL)
 		return (0);
 	if (ap->a_runp) {
 		/*
@@ -1796,7 +1811,15 @@ msdosfs_bmap(struct vop_bmap_args *ap)
 	if (ap->a_runb) {
 		*ap->a_runb = 0;
 	}
-	return (pcbmap(dep, ap->a_bn, ap->a_bnp, 0, 0));
+	KKASSERT(((int)ap->a_loffset & ((1 << pmp->pm_bnshift) - 1)) == 0);
+	lbn = (daddr_t)(ap->a_loffset >> pmp->pm_bnshift);
+	error = pcbmap(dep, lbn, &dbn, 0, 0);
+	if (error || dbn == (daddr_t)-1) {
+		*ap->a_doffsetp = NOOFFSET;
+	} else {
+		*ap->a_doffsetp = de_cn2off(pmp, dbn);
+	}
+	return (error);
 }
 
 /*
@@ -1810,7 +1833,9 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	struct buf *bp = bio->bio_buf;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
+	struct msdosfsmount *pmp = dep->de_pmp;
 	int error = 0;
+	daddr_t dblkno;
 
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("msdosfs_strategy: spec");
@@ -1821,8 +1846,8 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 	 * don't allow files with holes, so we shouldn't ever see this.
 	 */
 	nbio = push_bio(bio);
-	if (nbio->bio_blkno == (daddr_t)-1) {
-		error = pcbmap(dep, bio->bio_blkno, &nbio->bio_blkno, 0, 0);
+	if (nbio->bio_offset == NOOFFSET) {
+		error = pcbmap(dep, de_off2bn(pmp, bio->bio_offset), &dblkno, 0, 0);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
@@ -1830,10 +1855,14 @@ msdosfs_strategy(struct vop_strategy_args *ap)
 			biodone(bio);
 			return (error);
 		}
-		if (nbio->bio_blkno == (daddr_t)-1)
+		if (dblkno == (daddr_t)-1) {
+			nbio->bio_offset = NOOFFSET;
 			vfs_bio_clrbuf(bp);
+		} else {
+			nbio->bio_offset = de_cn2doff(pmp, dblkno);
+		}
 	}
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/* I/O was never started on nbio, must biodone(bio) */
 		biodone(bio);
 		return (0);

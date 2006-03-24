@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.16 2006/03/10 20:31:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.17 2006/03/24 18:35:30 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -485,6 +485,8 @@ arstrategy(dev_t dev, struct bio *bio)
     struct buf *bp = bio->bio_buf;
     struct ar_softc *rdp = dev->si_drv1;
     int blkno, count, chunk, lba, lbs, tmplba;
+    int orig_blkno;
+    int buf1_blkno;
     int drv = 0, change = 0;
     caddr_t data;
 
@@ -495,9 +497,13 @@ arstrategy(dev_t dev, struct bio *bio)
 	return;
     }
 
+    KKASSERT((bio->bio_offset & DEV_BMASK) == 0);
+
     bp->b_resid = bp->b_bcount;
-    blkno = bio->bio_blkno;
+    blkno = (int)(bio->bio_offset >> DEV_BSHIFT);
+    orig_blkno = blkno;
     data = bp->b_data;
+
     for (count = howmany(bp->b_bcount, DEV_BSIZE); count > 0; 
 	 count -= chunk, blkno += chunk, data += (chunk * DEV_BSIZE)) {
 	struct ar_buf *buf1, *buf2;
@@ -546,15 +552,16 @@ arstrategy(dev_t dev, struct bio *bio)
 	BUF_LOCKINIT(&buf1->bp);
 	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	initbufbio(&buf1->bp);
-	buf1->bp.b_bio1.bio_blkno = lba;
+	buf1->bp.b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
 	if ((buf1->drive = drv) > 0)
-	    buf1->bp.b_bio1.bio_blkno += rdp->offset;
+	    buf1->bp.b_bio1.bio_offset += (off_t)rdp->offset << DEV_BSHIFT;
 	buf1->bp.b_bio1.bio_caller_info1.ptr = (void *)rdp;
 	buf1->bp.b_bcount = chunk * DEV_BSIZE;
 	buf1->bp.b_data = data;
 	buf1->bp.b_flags = bp->b_flags;
 	buf1->bp.b_bio1.bio_done = ar_done;
 	buf1->org = bio;
+	buf1_blkno = (int)(buf1->bp.b_bio1.bio_offset >> DEV_BSHIFT);
 
 	switch (rdp->flags & (AR_F_RAID0 | AR_F_RAID1 | AR_F_SPAN)) {
 	case AR_F_SPAN:
@@ -577,10 +584,10 @@ arstrategy(dev_t dev, struct bio *bio)
 	case AR_F_RAID1:
 	case AR_F_RAID0 | AR_F_RAID1:
 	    if ((rdp->flags & AR_F_REBUILDING) && !(bp->b_flags & B_READ)) {
-		if ((bio->bio_blkno >= rdp->lock_start &&
-		     bio->bio_blkno < rdp->lock_end) ||
-		    ((bio->bio_blkno + chunk) > rdp->lock_start &&
-		     (bio->bio_blkno + chunk) <= rdp->lock_end)) {
+		if ((orig_blkno >= rdp->lock_start &&
+		     orig_blkno < rdp->lock_end) ||
+		    ((orig_blkno + chunk) > rdp->lock_start &&
+		     (orig_blkno + chunk) <= rdp->lock_end)) {
 		    tsleep(rdp, 0, "arwait", 0);
 		}
 	    }
@@ -607,36 +614,34 @@ arstrategy(dev_t dev, struct bio *bio)
 		return;
 	    }
 	    if (bp->b_flags & B_READ) {
-		if ((buf1->bp.b_bio1.bio_blkno <
+		if ((buf1_blkno <
 		     (rdp->disks[buf1->drive].last_lba - AR_PROXIMITY) ||
-		     buf1->bp.b_bio1.bio_blkno >
+		     buf1_blkno >
 		     (rdp->disks[buf1->drive].last_lba + AR_PROXIMITY) ||
 		     !(rdp->disks[buf1->drive].flags & AR_DF_ONLINE)) &&
 		     (rdp->disks[buf1->drive+rdp->width].flags & AR_DF_ONLINE))
 			buf1->drive = buf1->drive + rdp->width;
-	    }
-	    else {
+	    } else {
 		if ((rdp->disks[buf1->drive+rdp->width].flags & AR_DF_ONLINE) ||
 		    ((rdp->flags & AR_F_REBUILDING) &&
 		     (rdp->disks[buf1->drive+rdp->width].flags & AR_DF_SPARE) &&
-		     buf1->bp.b_bio1.bio_blkno < rdp->lock_start)) {
+		     buf1_blkno < rdp->lock_start)) {
 		    if ((rdp->disks[buf1->drive].flags & AR_DF_ONLINE) ||
 			((rdp->flags & AR_F_REBUILDING) &&
 			 (rdp->disks[buf1->drive].flags & AR_DF_SPARE) &&
-			 buf1->bp.b_bio1.bio_blkno < rdp->lock_start)) {
+			 buf1_blkno < rdp->lock_start)) {
 			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT);
 			bcopy(buf1, buf2, sizeof(struct ar_buf));
 			BUF_LOCKINIT(&buf2->bp);
 			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
 			initbufbio(&buf2->bp);
-			buf2->bp.b_bio1.bio_blkno = buf1->bp.b_bio1.bio_blkno;
+			buf2->bp.b_bio1.bio_offset = buf1->bp.b_bio1.bio_offset;
 			buf1->mirror = buf2;
 			buf2->mirror = buf1;
 			buf2->drive = buf1->drive + rdp->width;
 			dev_dstrategy(AD_SOFTC(rdp->disks[buf2->drive])->dev,
 				      &buf2->bp.b_bio1);
-			rdp->disks[buf2->drive].last_lba =
-			    buf2->bp.b_bio1.bio_blkno + chunk;
+			rdp->disks[buf2->drive].last_lba = buf1_blkno + chunk;
 		    }
 		    else
 			buf1->drive = buf1->drive + rdp->width;
@@ -644,7 +649,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	    }
 	    dev_dstrategy(AD_SOFTC(rdp->disks[buf1->drive])->dev,
 			  &buf1->bp.b_bio1);
-	    rdp->disks[buf1->drive].last_lba = buf1->bp.b_bio1.bio_blkno + chunk;
+	    rdp->disks[buf1->drive].last_lba = buf1_blkno + chunk;
 	    break;
 
 	default:
@@ -1390,7 +1395,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     BUF_LOCK(bp, LK_EXCLUSIVE);
     initbufbio(bp);
     bp->b_data = data;
-    bp->b_bio1.bio_blkno = lba;
+    bp->b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
     bp->b_bcount = count;
     if (flags & AR_WAIT)
 	bp->b_bio1.bio_done = (void *)wakeup;

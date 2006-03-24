@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.31 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.32 2006/03/24 18:35:33 dillon Exp $
  */
 
 
@@ -269,14 +269,14 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	bzero(hpmp, sizeof(struct hpfsmount));
 
 	/* Read in SuperBlock */
-	error = bread(devvp, SUBLOCK, SUSIZE, &bp);
+	error = bread(devvp, dbtodoff(SUBLOCK), SUSIZE, &bp);
 	if (error)
 		goto failed;
 	bcopy(bp->b_data, &hpmp->hpm_su, sizeof(struct sublock));
 	brelse(bp); bp = NULL;
 
 	/* Read in SpareBlock */
-	error = bread(devvp, SPBLOCK, SPSIZE, &bp);
+	error = bread(devvp, dbtodoff(SPBLOCK), SPSIZE, &bp);
 	if (error)
 		goto failed;
 	bcopy(bp->b_data, &hpmp->hpm_sp, sizeof(struct spblock));
@@ -531,7 +531,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	LOCKMGR(&hpfs_hphash_lock, LK_RELEASE, NULL, NULL);
 
-	error = bread(hpmp->hpm_devvp, ino, FNODESIZE, &bp);
+	error = bread(hpmp->hpm_devvp, dbtodoff(ino), FNODESIZE, &bp);
 	if (error) {
 		printf("hpfs_vget: can't read ino %"PRId64"\n",ino);
 		vx_put(vp);

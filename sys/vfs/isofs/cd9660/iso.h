@@ -37,7 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.6 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.7 2006/03/24 18:35:33 dillon Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -253,6 +253,7 @@ struct iso_mnt {
 
 #define blkoff(imp, loc)	((loc) & (imp)->im_bmask)
 #define lblktosize(imp, blk)	((blk) << (imp)->im_bshift)
+#define lblktooff(imp, blk)	((off_t)(blk) << (imp)->im_bshift)
 #define lblkno(imp, loc)	((loc) >> (imp)->im_bshift)
 #define blksize(imp, ip, lbn)	((imp)->logical_block_size)
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.23 2006/03/08 17:14:11 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.24 2006/03/24 18:35:32 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -206,7 +206,7 @@ static	void ccdintr (struct ccd_softc *, struct bio *);
 static	int ccdinit (struct ccddevice *, char **, struct thread *);
 static	int ccdlookup (char *, struct thread *td, struct vnode **);
 static	void ccdbuffer (struct ccdbuf **ret, struct ccd_softc *,
-		struct bio *, daddr_t, caddr_t, long);
+		struct bio *, off_t, caddr_t, long);
 static	void ccdgetdisklabel (dev_t);
 static	void ccdmakedisklabel (struct ccd_softc *);
 static	int ccdlock (struct ccd_softc *);
@@ -781,7 +781,7 @@ ccdstrategy(dev_t dev, struct bio *bio)
 		int pbn;        /* in sc_secsize chunks */
 		long sz;        /* in sc_secsize chunks */
 
-		pbn = bio->bio_blkno / (cs->sc_geom.ccg_secsize / DEV_BSIZE);
+		pbn = (int)(bio->bio_offset / cs->sc_geom.ccg_secsize);
 		sz = howmany(bp->b_bcount, cs->sc_geom.ccg_secsize);
 
 		/*
@@ -835,7 +835,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 	dev_t dev = bio->bio_driver_info;
 	/* XXX! : 2 reads and 2 writes for RAID 4/5 */
 	caddr_t addr;
-	daddr_t bn;
+	off_t doffset;
 	struct partition *pp;
 
 #ifdef DEBUG
@@ -849,10 +849,10 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 	/*
 	 * Translate the partition-relative block number to an absolute.
 	 */
-	bn = bio->bio_blkno;
+	doffset = bio->bio_offset;
 	if (ccdpart(dev) != RAW_PART) {
 		pp = &cs->sc_label.d_partitions[ccdpart(dev)];
-		bn += pp->p_offset;
+		doffset += pp->p_offset * cs->sc_label.d_secsize;
 	}
 
 	/*
@@ -860,7 +860,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 	 */
 	addr = bp->b_data;
 	for (bcount = bp->b_bcount; bcount > 0; bcount -= rcount) {
-		ccdbuffer(cbp, cs, bio, bn, addr, bcount);
+		ccdbuffer(cbp, cs, bio, doffset, addr, bcount);
 		rcount = cbp[0]->cb_buf.b_bcount;
 
 		if (cs->sc_cflags & CCDF_MIRROR) {
@@ -880,14 +880,14 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 				    &cbp[1]->cb_buf.b_bio1);
 			} else {
 				int pick = cs->sc_pick;
-				daddr_t range = cs->sc_size / 16;
+				daddr_t range = cs->sc_size / 16 * cs->sc_label.d_secsize;
 
-				if (bn < cs->sc_blk[pick] - range ||
-				    bn > cs->sc_blk[pick] + range
+				if (doffset < cs->sc_blk[pick] - range ||
+				    doffset > cs->sc_blk[pick] + range
 				) {
 					cs->sc_pick = pick = 1 - pick;
 				}
-				cs->sc_blk[pick] = bn + btodb(rcount);
+				cs->sc_blk[pick] = doffset + rcount;
 				vn_strategy(cbp[pick]->cb_buf.b_vp, 
 				    &cbp[pick]->cb_buf.b_bio1);
 			}
@@ -898,7 +898,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 			vn_strategy(cbp[0]->cb_buf.b_vp,
 				     &cbp[0]->cb_buf.b_bio1);
 		}
-		bn += btodb(rcount);
+		doffset += rcount;
 		addr += rcount;
 	}
 }
@@ -907,12 +907,12 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
  * Build a component buffer header.
  */
 static void
-ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
-	  caddr_t addr, long bcount)
+ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
+	  off_t doffset, caddr_t addr, long bcount)
 {
 	struct ccdcinfo *ci, *ci2 = NULL;	/* XXX */
 	struct ccdbuf *cbp;
-	daddr_t cbn, cboff;
+	daddr_t bn, cbn, cboff;
 	off_t cbc;
 
 #ifdef DEBUG
@@ -923,6 +923,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 	/*
 	 * Determine which component bn falls in.
 	 */
+	bn = (daddr_t)(doffset / cs->sc_geom.ccg_secsize);
 	cbn = bn;
 	cboff = 0;
 
@@ -1040,7 +1041,6 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 
 	cbp->cb_buf.b_bio1.bio_done = ccdiodone;
 	cbp->cb_buf.b_bio1.bio_caller_info1.ptr = cbp;
-	cbp->cb_buf.b_bio1.bio_blkno = cbn + cboff + CCD_OFFSET;
 	cbp->cb_buf.b_bio1.bio_offset = dbtob(cbn + cboff + CCD_OFFSET);
 
 	/*
@@ -1052,9 +1052,9 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_IO)
-		printf(" dev %x(u%d): cbp %x bn %d addr %x bcnt %d\n",
+		printf(" dev %x(u%d): cbp %x off %lld addr %x bcnt %d\n",
 		       ci->ci_dev, ci-cs->sc_cinfo, cbp,
-		       cbp->cb_buf.b_bio1.bio_blkno,
+		       cbp->cb_buf.b_bio1.bio_offset,
 		       cbp->cb_buf.b_data, cbp->cb_buf.b_bcount);
 #endif
 	cb[0] = cbp;
@@ -1079,7 +1079,6 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio, daddr_t bn,
 
 		cbp->cb_buf.b_bio1.bio_done = ccdiodone;
 		cbp->cb_buf.b_bio1.bio_caller_info1.ptr = cbp;
-		cbp->cb_buf.b_bio1.bio_blkno = cbn + cboff + CCD_OFFSET;
 		cbp->cb_buf.b_bio1.bio_offset = dbtob(cbn + cboff + CCD_OFFSET);
 
 		/*
@@ -1142,9 +1141,9 @@ ccdiodone(struct bio *bio)
 	if (ccddebug & CCDB_IO) {
 		printf("ccdiodone: bp %x bcount %d resid %d\n",
 		       obp, obp->b_bcount, obp->b_resid);
-		printf(" dev %x(u%d), cbp %x bn %d addr %x bcnt %d\n",
+		printf(" dev %x(u%d), cbp %x off %lld addr %x bcnt %d\n",
 		       cbp->cb_buf.b_dev, cbp->cb_comp, cbp,
-		       cbp->cb_buf.b_lblkno, cbp->cb_buf.b_data,
+		       cbp->cb_buf.b_loffset, cbp->cb_buf.b_data,
 		       cbp->cb_buf.b_bcount);
 	}
 #endif
@@ -1170,16 +1169,16 @@ ccdiodone(struct bio *bio)
 
 			msg = ", trying other disk";
 			cs->sc_pick = 1 - cs->sc_pick;
-			cs->sc_blk[cs->sc_pick] = obio->bio_blkno;
+			cs->sc_blk[cs->sc_pick] = obio->bio_offset;
 		} else {
 			obp->b_flags |= B_ERROR;
 			obp->b_error = cbp->cb_buf.b_error ? 
 			    cbp->cb_buf.b_error : EIO;
 		}
-		printf("ccd%d: error %d on component %d block %d (ccd block %d)%s\n",
+		printf("ccd%d: error %d on component %d offset %lld (ccd offset %lld)%s\n",
 		       unit, obp->b_error, cbp->cb_comp, 
-		       (int)cbp->cb_buf.b_bio2.bio_blkno, 
-		       obio->bio_blkno, msg);
+		       cbp->cb_buf.b_bio2.bio_offset, 
+		       obio->bio_offset, msg);
 	}
 
 	/*

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.26 2006/02/17 19:17:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.27 2006/03/24 18:35:30 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -422,10 +422,12 @@ ad_start(struct ata_device *atadev)
 	return;
     }
 
+    KKASSERT((bio->bio_offset & DEV_BMASK) == 0);
+
     /* setup request */
     request->softc = adp;
     request->bio = bio;
-    request->blockaddr = bio->bio_blkno;
+    request->blockaddr = (u_int32_t)(bio->bio_offset >> DEV_BSHIFT);
     request->bytecount = bp->b_bcount;
     request->data = bp->b_data;
     request->tag = tag;
@@ -644,8 +646,7 @@ ad_interrupt(struct ad_request *request)
     if (adp->device->channel->status & ATA_S_CORR)
 	diskerr(request->bio, dev,
 		"soft error (ECC corrected)", LOG_PRINTF,
-		request->blockaddr + (request->donecount / DEV_BSIZE),
-		&adp->disk.d_label);
+		request->donecount, &adp->disk.d_label);
 
     /* did any real errors happen ? */
     if ((adp->device->channel->status & ATA_S_ERROR) ||
@@ -655,8 +656,7 @@ ad_interrupt(struct ad_request *request)
 	diskerr(request->bio, dev,
 		(adp->device->channel->error & ATA_E_ICRC) ?
 		"UDMA ICRC error" : "hard error", LOG_PRINTF,
-		request->blockaddr + (request->donecount / DEV_BSIZE),
-		&adp->disk.d_label);
+		request->donecount, &adp->disk.d_label);
 
 	/* if this is a UDMA CRC error, reinject request */
 	if (request->flags & ADR_F_DMA_USED &&

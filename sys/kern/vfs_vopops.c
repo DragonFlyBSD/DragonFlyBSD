@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.17 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.18 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -863,8 +863,8 @@ vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
 }
 
 int
-vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn, struct vnode **vpp,
-	daddr_t *bnp, int *runp, int *runb)
+vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
+	struct vnode **vpp, off_t *doffsetp, int *runp, int *runb)
 {
 	struct vop_bmap_args ap;
 	int error;
@@ -872,9 +872,9 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn, struct vnode **vpp,
 	ap.a_head.a_desc = &vop_bmap_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_bn = bn;
+	ap.a_loffset = loffset;
 	ap.a_vpp = vpp;
-	ap.a_bnp = bnp;
+	ap.a_doffsetp = doffsetp;
 	ap.a_runp = runp;
 	ap.a_runb = runb;
 
@@ -1028,8 +1028,7 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 }
 
 int
-vop_freeblks(struct vop_ops *ops, struct vnode *vp,
-	daddr_t addr, daddr_t length)
+vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 {
 	struct vop_freeblks_args ap;
 	int error;
@@ -1037,7 +1036,7 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp,
 	ap.a_head.a_desc = &vop_freeblks_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_addr = addr;
+	ap.a_offset = offset;
 	ap.a_length = length;
 
 	DO_OPS(ops, error, &ap, vop_freeblks);

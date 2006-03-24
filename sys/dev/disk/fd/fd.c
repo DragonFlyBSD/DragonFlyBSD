@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.25 2006/02/17 19:17:57 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.26 2006/03/24 18:35:32 dillon Exp $
  *
  */
 
@@ -1404,10 +1404,10 @@ fdstrategy(dev_t dev, struct bio *bio)
 
 	fdblk = 128 << (fd->ft->secsize);
 	if (!(bp->b_flags & B_FORMAT)) {
-		if (bio->bio_blkno < 0) {
+		if (bio->bio_offset < 0) {
 			printf(
-		"fd%d: fdstrat: bad request blkno = %lu, bcount = %ld\n",
-			       fdu, (u_long)bio->bio_blkno, bp->b_bcount);
+		"fd%d: fdstrat: bad request offset = %lld, bcount = %d\n",
+			       fdu, bio->bio_offset, bp->b_bcount);
 			bp->b_error = EINVAL;
 			bp->b_flags |= B_ERROR;
 			goto bad;
@@ -1422,7 +1422,7 @@ fdstrategy(dev_t dev, struct bio *bio)
 	/*
 	 * Set up block calculations.
 	 */
-	if (bio->bio_blkno > 20000000) {
+	if (bio->bio_offset > 20000000LL * fdblk) {
 		/*
 		 * Reject unreasonably high block number, prevent the
 		 * multiplication below from overflowing.
@@ -1431,7 +1431,7 @@ fdstrategy(dev_t dev, struct bio *bio)
 		bp->b_flags |= B_ERROR;
 		goto bad;
 	}
-	blknum = (unsigned) bio->bio_blkno * DEV_BSIZE/fdblk;
+	blknum = (unsigned)(bio->bio_offset / fdblk);
  	nblocks = fd->ft->size;
 	bp->b_resid = 0;
 	if (blknum + (bp->b_bcount / fdblk) > nblocks) {
@@ -1621,8 +1621,8 @@ fdstate(fdc_p fdc)
 			- (char *)finfo;
 	}
 	if (fdc->state == DOSEEK || fdc->state == SEEKCOMPLETE) {
-		blknum = (unsigned) bio->bio_blkno * DEV_BSIZE/fdblk +
-			fd->skip/fdblk;
+		blknum = (unsigned)(bio->bio_offset / fdblk) +
+			 fd->skip  /fdblk;
 		b_cylinder = blknum / (fd->ft->sectrac * fd->ft->heads);
 	}
 	TRACE1("fd%d", fdu);
@@ -2121,8 +2121,7 @@ retrier(struct fdc_data *fdc)
 				    (FDUNIT(minor(dev))<<3)|RAW_PART);
 				diskerr(bio, subdev,
 					"hard error", LOG_PRINTF,
-					fdc->fd->skip / DEV_BSIZE,
-					(struct disklabel *)NULL);
+					fdc->fd->skip, NULL);
 			}
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)
@@ -2181,8 +2180,9 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	 * calculate a fake blkno, so fdstrategy() would initiate a
 	 * seek to the requested cylinder
 	 */
-	bp->b_bio1.bio_blkno = (finfo->cyl * (fd->ft->sectrac * fd->ft->heads)
-		+ finfo->head * fd->ft->sectrac) * fdblk / DEV_BSIZE;
+	bp->b_bio1.bio_offset = (off_t)(finfo->cyl * 
+		(fd->ft->sectrac * fd->ft->heads)
+		+ finfo->head * fd->ft->sectrac) * fdblk;
 	bp->b_bio1.bio_driver_info = dev;
 
 	bp->b_bcount = sizeof(struct fd_idfield_data) * finfo->fd_formb_nsecs;

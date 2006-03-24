@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.14 2006/02/17 19:18:01 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.15 2006/03/24 18:35:32 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -324,12 +324,12 @@ scdstrategy(dev_t dev, struct bio *bio)
 
 	cd = scd_data + unit;
 
-	XDEBUG(2, ("scd%d: DEBUG: strategy: block=%ld, bcount=%ld\n",
-		unit, (long)bio->bio_blkno, bp->b_bcount));
+	XDEBUG(2, ("scd%d: DEBUG: strategy: offset=%lld, bcount=%ld\n",
+		unit, bio->bio_offset, bp->b_bcount));
 
-	if (unit >= NSCD || bio->bio_blkno < 0 || (bp->b_bcount % SCDBLKSIZE)) {
-		printf("scd%d: strategy failure: blkno = %ld, bcount = %ld\n",
-			unit, (long)bio->bio_blkno, bp->b_bcount);
+	if (unit >= NSCD || bio->bio_offset < 0 || (bp->b_bcount % SCDBLKSIZE)) {
+		printf("scd%d: strategy failure: offset = %lld, bcount = %ld\n",
+			unit, bio->bio_offset, bp->b_bcount);
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;
 		goto bad;
@@ -847,8 +847,8 @@ nextblock:
 		if (!(cd->flags & SCDVALID))
 			goto changed;
 
-		blknum 	= (bio->bio_blkno / (mbx->sz/DEV_BSIZE))
-			+ mbx->p_offset + mbx->skip/mbx->sz;
+		blknum 	= (bio->bio_offset / mbx->sz) +
+			  mbx->p_offset + mbx->skip/mbx->sz;
 
 		XDEBUG(2, ("scd%d: scd_doread: read blknum=%d\n", unit, blknum));
 

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.33 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.34 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1774,8 +1774,8 @@ ufs_strategy(struct vop_strategy_args *ap)
 	if (vp->v_type == VBLK || vp->v_type == VCHR)
 		panic("ufs_strategy: spec");
 	nbio = push_bio(bio);
-	if (nbio->bio_blkno == (daddr_t)-1) {
-		error = VOP_BMAP(vp, bio->bio_blkno, NULL, &nbio->bio_blkno,
+	if (nbio->bio_offset == NOOFFSET) {
+		error = VOP_BMAP(vp, bio->bio_offset, NULL, &nbio->bio_offset,
 				 NULL, NULL);
 		if (error) {
 			bp->b_error = error;
@@ -1784,10 +1784,10 @@ ufs_strategy(struct vop_strategy_args *ap)
 			biodone(bio);
 			return (error);
 		}
-		if (nbio->bio_blkno == (daddr_t)-1)
+		if (nbio->bio_offset == NOOFFSET)
 			vfs_bio_clrbuf(bp);
 	}
-	if (nbio->bio_blkno == (daddr_t)-1) {
+	if (nbio->bio_offset == NOOFFSET) {
 		/* I/O was never started on nbio, must biodone(bio) */
 		biodone(bio);
 		return (0);

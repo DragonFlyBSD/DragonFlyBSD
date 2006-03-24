@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.14 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.15 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -176,22 +176,15 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 	bp->b_data = udata;
 	bp->b_saveaddr = sa;
 	bp->b_loffset = loffset;
-	blockno = loffset / bsize;
-	blockoff = (loffset % bsize) / DEV_BSIZE;
-	if ((daddr_t)blockno != blockno) {
-		return EINVAL; /* blockno overflow */
-	}
-	bp->b_lblkno = blockno;
 	bp->b_bio2.bio_offset = NOOFFSET;
-	bp->b_bio2.bio_blkno = (daddr_t)-1;
 	bp->b_bio2.bio_done = ffs_rawreadwakeup;
 
-	error = VOP_BMAP(vp, bp->b_lblkno, &dp, &bp->b_bio2.bio_blkno,
+	error = VOP_BMAP(vp, bp->b_loffset, &dp, &bp->b_bio2.bio_offset,
 			 &bforwards, NULL);
 	if (error != 0) {
 		return error;
 	}
-	if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
+	if (bp->b_bio2.bio_offset == NOOFFSET) {
 		/* 
 		 * Fill holes with NULs to preserve semantics 
 		 */
@@ -215,10 +208,10 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		return 0;
 	}
 	
-	if (bp->b_bcount + blockoff * DEV_BSIZE > bsize * (1 + bforwards))
-		bp->b_bcount = bsize * (1 + bforwards) - blockoff * DEV_BSIZE;
+	if (bp->b_bcount + blockoff * DEV_BSIZE > bforwards)
+		bp->b_bcount = bforwards - blockoff * DEV_BSIZE;
 	bp->b_bufsize = bp->b_bcount;
-	bp->b_bio2.bio_blkno += blockoff;
+	bp->b_bio2.bio_offset += blockoff * DEV_BSIZE;
 	
 	if (vmapbuf(bp) < 0)
 		return EFAULT;
@@ -247,7 +240,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	uint iolen;
 	int baseticks = ticks;
 	caddr_t udata;
-	long resid;
+	int resid;
 	off_t offset;
 	struct thread *td;
 	

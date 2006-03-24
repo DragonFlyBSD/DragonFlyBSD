@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.8 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.9 2006/03/24 18:35:33 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -61,6 +61,7 @@ ext2_read(struct vop_read_args *ap)
 	FS *fs;
 	struct buf *bp;
 	daddr_t lbn, nextlbn;
+	off_t nextloffset;
 	off_t bytesinfile;
 	long size, xfersize, blkoffset;
 	int error, orig_resid;
@@ -94,6 +95,7 @@ ext2_read(struct vop_read_args *ap)
 			break;
 		lbn = lblkno(fs, uio->uio_offset);
 		nextlbn = lbn + 1;
+		nextloffset = lblktodoff(fs, nextlbn);
 		size = BLKSIZE(fs, ip, lbn);
 		blkoffset = blkoff(fs, uio->uio_offset);
 
@@ -103,17 +105,20 @@ ext2_read(struct vop_read_args *ap)
 		if (bytesinfile < xfersize)
 			xfersize = bytesinfile;
 
-		if (lblktosize(fs, nextlbn) >= ip->i_size)
-			error = bread(vp, lbn, size, &bp);
-		else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0)
-			error = cluster_read(vp, ip->i_size, lbn, size, 
-				uio->uio_resid, (ap->a_ioflag >> 16), &bp);
-		else if (seqcount > 1) {
+		if (nextloffset >= ip->i_size) {
+			error = bread(vp, lblktodoff(fs, lbn), size, &bp);
+		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
+			error = cluster_read(vp, (off_t)ip->i_size,
+					     lblktodoff(fs, lbn), size, 
+					     uio->uio_resid, 
+					     (ap->a_ioflag >> 16), &bp);
+		} else if (seqcount > 1) {
 			int nextsize = BLKSIZE(fs, ip, nextlbn);
-			error = breadn(vp, lbn,
-			    size, &nextlbn, &nextsize, 1, &bp);
-		} else
-			error = bread(vp, lbn, size, &bp);
+			error = breadn(vp, lblktodoff(fs, lbn),
+					size, &nextloffset, &nextsize, 1, &bp);
+		} else {
+			error = bread(vp, lblktodoff(fs, lbn), size, &bp);
+		}
 		if (error) {
 			brelse(bp);
 			bp = NULL;
@@ -266,7 +271,7 @@ ext2_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->s_frag_size) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, ip->i_size, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, seqcount);
 			} else {
 				bawrite(bp);
 			}

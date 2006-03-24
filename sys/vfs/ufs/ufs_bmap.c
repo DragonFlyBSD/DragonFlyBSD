@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.9 2006/03/10 19:07:53 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.10 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,29 +53,53 @@
 #include "inode.h"
 #include "ufsmount.h"
 #include "ufs_extern.h"
+#include "fs.h"
 
 /*
  * Bmap converts the logical block number of a file to its physical block
  * number on the disk. The conversion is done by using the logical block
  * number to index into the array of block pointers described by the dinode.
  *
- * ufs_bmap(struct vnode *a_vp, ufs_daddr_t a_bn, struct vnode **a_vpp,
- *	    ufs_daddr_t *a_bnp, int *a_runp, int *a_runb)
+ * BMAP must return the contiguous before and after run in bytes, inclusive
+ * of the returned block.
+ *
+ * ufs_bmap(struct vnode *a_vp, off_t a_loffset, struct vnode **a_vpp,
+ *	    off_t *a_doffsetp, int *a_runp, int *a_runb)
  */
 int
 ufs_bmap(struct vop_bmap_args *ap)
 {
+	struct fs *fs;
+	ufs_daddr_t lbn;
+	ufs_daddr_t dbn;
+	int error;
+
 	/*
 	 * Check for underlying vnode requests and ensure that logical
 	 * to physical mapping is requested.
 	 */
 	if (ap->a_vpp != NULL)
 		*ap->a_vpp = VTOI(ap->a_vp)->i_devvp;
-	if (ap->a_bnp == NULL)
+	if (ap->a_doffsetp == NULL)
 		return (0);
 
-	return (ufs_bmaparray(ap->a_vp, ap->a_bn, ap->a_bnp, NULL, NULL,
-	    ap->a_runp, ap->a_runb));
+	fs = VTOI(ap->a_vp)->i_fs;
+	KKASSERT(((int)ap->a_loffset & ((1 << fs->fs_bshift) - 1)) == 0);
+	lbn = ap->a_loffset >> fs->fs_bshift;
+
+	error = ufs_bmaparray(ap->a_vp, lbn, &dbn, NULL, NULL,
+			      ap->a_runp, ap->a_runb);
+
+	if (error || dbn == (ufs_daddr_t)-1) {
+		*ap->a_doffsetp = NOOFFSET;
+	} else {
+		*ap->a_doffsetp = dbtodoff(fs, dbn);
+		if (ap->a_runp)
+			*ap->a_runp = (*ap->a_runp + 1) << fs->fs_bshift;
+		if (ap->a_runb)
+			*ap->a_runb = *ap->a_runb << fs->fs_bshift;
+	}
+	return (error);
 }
 
 /*
@@ -91,7 +115,6 @@ ufs_bmap(struct vop_bmap_args *ap)
  * Each entry contains the offset into that block that gets you to the
  * next block and the disk address of the block (if it is assigned).
  */
-
 int
 ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 	      struct indir *ap, int *nump, int *runp, int *runb)
@@ -101,6 +124,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 	struct ufsmount *ump;
 	struct mount *mp;
 	struct vnode *devvp;
+	struct fs *fs;
 	struct indir a[NIADDR+1], *xap;
 	ufs_daddr_t daddr;
 	long metalbn;
@@ -110,6 +134,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 	mp = vp->v_mount;
 	ump = VFSTOUFS(mp);
 	devvp = ump->um_devvp;
+	fs = ip->i_fs;
 #ifdef DIAGNOSTIC
 	if ((ap != NULL && nump == NULL) || (ap == NULL && nump != NULL))
 		panic("ufs_bmaparray: invalid arguments");
@@ -165,7 +190,7 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 		 */
 
 		metalbn = xap->in_lbn;
-		if ((daddr == 0 && !findblk(vp, metalbn)) || metalbn == bn)
+		if ((daddr == 0 && !findblk(vp, dbtodoff(fs, metalbn))) || metalbn == bn)
 			break;
 		/*
 		 * If we get here, we've either got the block in the cache
@@ -175,13 +200,14 @@ ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
 			bqrelse(bp);
 
 		xap->in_exists = 1;
-		bp = getblk(vp, metalbn, mp->mnt_stat.f_iosize, 0, 0);
+		bp = getblk(vp, lblktodoff(fs, metalbn),
+			    mp->mnt_stat.f_iosize, 0, 0);
 		if ((bp->b_flags & B_CACHE) == 0) {
 #ifdef DIAGNOSTIC
 			if (!daddr)
 				panic("ufs_bmaparray: indirect block not in cache");
 #endif
-			bp->b_bio2.bio_blkno = blkptrtodb(ump, daddr);
+			bp->b_bio2.bio_offset = fsbtodoff(fs, daddr);
 			bp->b_flags |= B_READ;
 			bp->b_flags &= ~(B_INVAL|B_ERROR);
 			vfs_busy_pages(bp, 0);

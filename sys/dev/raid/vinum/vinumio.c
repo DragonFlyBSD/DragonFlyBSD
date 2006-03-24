@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.10 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.11 2006/03/24 18:35:32 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -324,7 +324,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, int flag)
 
 	bp = geteblk(len);				    /* get a buffer header */
 	bp->b_flags = flag;
-	bp->b_bio1.bio_blkno = offset / drive->partinfo.disklab->d_secsize; /* block number */
+	bp->b_bio1.bio_offset = offset;			    /* disk offset */
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = buf;
 	bp->b_bcount = len;
@@ -793,7 +793,7 @@ write_volume_label(int volno)
      */
     bp = geteblk((int) lp->d_secsize);			    /* get a buffer */
     dev = make_adhoc_dev(&vinum_cdevsw, vol->volno);
-    bp->b_bio1.bio_blkno = LABELSECTOR * ((int) lp->d_secsize / DEV_BSIZE);
+    bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
     bp->b_bcount = lp->d_secsize;
     bzero(bp->b_data, lp->d_secsize);
     dlp = (struct disklabel *) bp->b_data;

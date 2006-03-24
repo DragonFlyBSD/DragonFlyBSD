@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.10 2006/02/17 19:17:52 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.11 2006/03/24 18:35:29 dillon Exp $ 
  *
  */
 
@@ -198,9 +198,9 @@ flastrategy(dev_t dev, struct bio *bio)
 	enum doc2k_work what;
 
 	if (fla_debug > 1) {
-		printf("flastrategy(%p) %s %lx, %d, %ld, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_blkno, 
-		    bp->b_bcount / DEV_BSIZE, bp->b_data);
+		printf("flastrategy(%p) %s %lx, %lld, %ld, %p)\n",
+		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+		    bp->b_bcount, bp->b_data);
 	}
 
 	sc = dev->si_drv1;
@@ -236,15 +236,16 @@ flastrategy(dev_t dev, struct bio *bio)
 
 		LEAVE();
 
-		error = doc2k_rwe(unit, what, bio->bio_blkno,
+		error = doc2k_rwe(unit, what,
+				  (unsigned)(bio->bio_offset >> DEV_BSHIFT),
 				  bp->b_bcount / DEV_BSIZE, bp->b_data);
 
 		ENTER();
 
 		if (fla_debug > 1 || error) {
-			printf("fla%d: %d = rwe(%p, %d, %d, %d, %ld, %p)\n",
-			    unit, error, bp, unit, what, bio->bio_blkno, 
-			    bp->b_bcount / DEV_BSIZE, bp->b_data);
+			printf("fla%d: %d = rwe(%p, %d, %d, %lld, %ld, %p)\n",
+			    unit, error, bp, unit, what, bio->bio_offset, 
+			    bp->b_bcount, bp->b_data);
 		}
 		if (error) {
 			bp->b_error = EIO;

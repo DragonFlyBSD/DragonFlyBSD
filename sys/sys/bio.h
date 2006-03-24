@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/bio.h,v 1.3 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/sys/bio.h,v 1.4 2006/03/24 18:35:33 dillon Exp $
  */
 
 #ifndef _SYS_BIO_H_
@@ -62,7 +62,6 @@ struct bio {
 	struct bio	*bio_next;	/* BIO stack / cached translations */
 	struct buf	*bio_buf;   	/* High-level buffer back-pointer. */
 	biodone_t	*bio_done;   	/* Caller completion function */
-	daddr_t		bio_blkno;     	/* Block number relative to device */
 	off_t		bio_offset;	/* Logical offset relative to device */
 	void		*bio_driver_info;
 	union {

@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.10 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.11 2006/03/24 18:35:33 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -132,6 +132,7 @@ vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
 	struct vop_ops *ops;
 
 	node = malloc(sizeof(*node), M_VNODEOP, M_ZERO|M_WAITOK);
+	KKASSERT(*vops_pp == NULL);
 	if ((ops = *vops_pp) == NULL) {
 		ops = malloc(sizeof(struct vop_ops),
 				M_VNODEOP, M_ZERO|M_WAITOK);

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.14 2006/03/02 19:26:17 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.15 2006/03/24 18:35:33 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -144,7 +144,7 @@ static __inline void
 bioq_init(struct bio_queue_head *head)
 {
 	TAILQ_INIT(&head->queue);
-	head->last_blkno = 0;
+	head->last_offset = 0;
 	head->insert_point = NULL;
 	head->switch_point = NULL;
 }
@@ -167,9 +167,9 @@ bioq_remove(struct bio_queue_head *head, struct bio *bio)
 	if (bio == head->insert_point) {
 		head->insert_point = TAILQ_PREV(bio, bio_queue, bio_act);
 		if (head->insert_point == NULL)
-			head->last_blkno = 0;
+			head->last_offset = 0;
 	} else if (bio == TAILQ_FIRST(&head->queue))
-		head->last_blkno = bio->bio_blkno;
+		head->last_offset = bio->bio_offset;
 	TAILQ_REMOVE(&head->queue, bio, bio_act);
 	if (TAILQ_FIRST(&head->queue) == head->switch_point)
 		head->switch_point = NULL;

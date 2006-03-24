@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.3 2006/02/17 19:18:06 dillon Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.4 2006/03/24 18:35:32 dillon Exp $
 set remotebaud 38400
 set remotetimeout 1
 set complaints 1
@@ -229,19 +229,19 @@ end
 define bpp
 set $bp = (struct buf *) $arg0
     if $bp->b_dev
-      printf "  Buffer at 0x%x: dev 0x%x  data 0x%x  bcount 0x%x  blkno 0x%x resid 0x%x\n", \
+      printf "  Buffer at 0x%x: dev 0x%x  data 0x%x  bcount 0x%x  doffset 0x%llx resid 0x%x\n", \
         $bp, \
         $bp->b_dev->si_udev, \
         $bp->b_data, \
         $bp->b_bcount, \
-        $bp->b_bio->bio_blkno, \
+        $bp->b_bio_array[1].bio_offset, \
         $bp->b_resid
     else
-      printf "  Buffer at 0x%x: dev (none) data 0x%x  bcount 0x%x  blkno 0x%x resid 0x%x\n", \
+      printf "  Buffer at 0x%x: dev (none) data 0x%x  bcount 0x%x  doffset 0x%llx resid 0x%x\n", \
         $bp, \
         $bp->b_data, \
         $bp->b_bcount, \
-        $bp->b_bio->bio_blkno, \
+        $bp->b_bio_array[1].bio_offset, \
         $bp->b_resid
     end
     printf "   flags 0x%x: ", $bp->b_flags
@@ -289,10 +289,10 @@ printf "\nb_data:       "
 output $bp->b_data
 printf "\nb_kvasize:    "
 output $bp->b_kvasize
-printf "\nb_lblkno:     "
-output $bp->b_lblkno
-printf "\nb_blkno:      "
-output $bp->b_bio->bio_blkno
+printf "\nb_loffset:     "
+output $bp->b_bio_array[0].bio_offset
+printf "\nb_doffset:      "
+output $bp->b_bio_array[1].bio_offset
 printf "\nb_iodone:     "
 output $bp->b_bio->bio_done
 printf "\nb_vp: "
@@ -307,8 +307,8 @@ printf "\nb_validoff:   "
 output $bp->b_validoff
 printf "\nb_validend:   "
 output $bp->b_validend
-printf "\nb_pblkno:     "
-output $bp->b_pblkno
+printf "\nb_poffset:     "
+output $bp->b_bio_array[2].bio_offset
 printf "\nb_saveaddr:   "
 output $bp->b_saveaddr
 printf "\nb_savekva:    "
@@ -375,8 +375,8 @@ printf "\n b_data "
 output/x bp->b_data
 printf "\n b_kvasize " 
 output/x bp->b_kvasize
-printf "\n b_blkno " 
-output/x bp->b_bio->bio_blkno
+printf "\n b_doffset " 
+output/x bp->b_bio_array[1].bio_offset
 printf "\n b_vp " 
 output/x bp->b_vp
 printf "\n b_dirtyoff " 

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.17 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.18 2006/03/24 18:35:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -201,16 +201,16 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	/*
 	 * Allocate the extra space in the buffer.
 	 */
-	error = bread(ITOV(ip), lbprev, osize, &bp);
+	error = bread(ITOV(ip), lblktodoff(fs, lbprev), osize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
 	}
 
-	if(bp->b_bio2.bio_blkno == (daddr_t)-1) {
+	if(bp->b_bio2.bio_offset == NOOFFSET) {
 		if( lbprev >= NDADDR)
 			panic("ffs_realloccg: lbprev out of range");
-		bp->b_bio2.bio_blkno = fsbtodb(fs, bprev);
+		bp->b_bio2.bio_offset = fsbtodoff(fs, bprev);
 	}
 
 #ifdef QUOTA
@@ -226,7 +226,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	cg = dtog(fs, bprev);
 	bno = ffs_fragextend(ip, cg, (long)bprev, osize, nsize);
 	if (bno) {
-		if (bp->b_bio2.bio_blkno != fsbtodb(fs, bno))
+		if (bp->b_bio2.bio_offset != fsbtodoff(fs, bno))
 			panic("ffs_realloccg: bad blockno");
 		ip->i_blocks += btodb(nsize - osize);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -287,7 +287,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	bno = (ufs_daddr_t)ffs_hashalloc(ip, cg, (long)bpref, request,
 					 ffs_alloccg);
 	if (bno > 0) {
-		bp->b_bio2.bio_blkno = fsbtodb(fs, bno);
+		bp->b_bio2.bio_offset = fsbtodoff(fs, bno);
 		if (!DOINGSOFTDEP(ITOV(ip)))
 			ffs_blkfree(ip, bprev, (long)osize);
 		if (nsize < request)
@@ -356,6 +356,9 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	ufs_daddr_t *bap, *sbap, *ebap = 0;
 	struct cluster_save *buflist;
 	ufs_daddr_t start_lbn, end_lbn, soff, newblk, blkno;
+#ifdef DIAGNOSTIC
+	off_t boffset;
+#endif
 	struct indir start_ap[NIADDR + 1], end_ap[NIADDR + 1], *idp;
 	int i, len, slen, start_lvl, end_lvl, pref, ssize;
 
@@ -368,20 +371,21 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		return (ENOSPC);
 	buflist = ap->a_buflist;
 	len = buflist->bs_nchildren;
-	start_lbn = buflist->bs_children[0]->b_lblkno;
+	start_lbn = lblkno(fs, buflist->bs_children[0]->b_loffset);
 	end_lbn = start_lbn + len - 1;
 #ifdef DIAGNOSTIC
 	for (i = 0; i < len; i++)
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
+		   dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 1");
-	for (i = 1; i < len; i++)
-		if (buflist->bs_children[i]->b_lblkno != start_lbn + i)
+	for (i = 1; i < len; i++) {
+		if (buflist->bs_children[i]->b_loffset != lblktodoff(fs, start_lbn) + lblktodoff(fs, i))
 			panic("ffs_reallocblks: non-logical cluster");
-	blkno = buflist->bs_children[0]->b_bio2.bio_blkno;
-	ssize = fsbtodb(fs, fs->fs_frag);
+	}
+	boffset = buflist->bs_children[0]->b_bio2.bio_offset;
+	ssize = (int)fsbtodoff(fs, fs->fs_frag);
 	for (i = 1; i < len - 1; i++)
-		if (buflist->bs_children[i]->b_bio2.bio_blkno != blkno + (i * ssize))
+		if (buflist->bs_children[i]->b_bio2.bio_offset != boffset + (i * ssize))
 			panic("ffs_reallocblks: non-physical cluster %d", i);
 #endif
 	/*
@@ -389,8 +393,8 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	 * the filesystem has decided to move and do not force it back to
 	 * the previous cylinder group.
 	 */
-	if (dtog(fs, dbtofsb(fs, buflist->bs_children[0]->b_bio2.bio_blkno)) !=
-	    dtog(fs, dbtofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_blkno)))
+	if (dtog(fs, dofftofsb(fs, buflist->bs_children[0]->b_bio2.bio_offset)) !=
+	    dtog(fs, dofftofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_offset)))
 		return (ENOSPC);
 	if (ufs_getlbns(vp, start_lbn, start_ap, &start_lvl) ||
 	    ufs_getlbns(vp, end_lbn, end_ap, &end_lvl))
@@ -405,7 +409,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		slen = NDADDR - soff;
 	} else {
 		idp = &start_ap[start_lvl - 1];
-		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &sbp)) {
+		if (bread(vp, lblktodoff(fs, idp->in_lbn), (int)fs->fs_bsize, &sbp)) {
 			brelse(sbp);
 			return (ENOSPC);
 		}
@@ -428,7 +432,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 			panic("ffs_reallocblk: start == end");
 #endif
 		ssize = len - (idp->in_off + 1);
-		if (bread(vp, idp->in_lbn, (int)fs->fs_bsize, &ebp))
+		if (bread(vp, lblktodoff(fs, idp->in_lbn), (int)fs->fs_bsize, &ebp))
 			goto fail;
 		ebap = (ufs_daddr_t *)ebp->b_data;
 	}
@@ -470,9 +474,9 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 		}
 #ifdef DIAGNOSTIC
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
+		   dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 2");
-		if (dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno) != *bap)
+		if (dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset) != *bap)
 			panic("ffs_reallocblks: alloc mismatch");
 #endif
 #ifdef DEBUG
@@ -531,12 +535,12 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	for (blkno = newblk, i = 0; i < len; i++, blkno += fs->fs_frag) {
 		if (!DOINGSOFTDEP(vp))
 			ffs_blkfree(ip,
-			    dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno),
+			    dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset),
 			    fs->fs_bsize);
-		buflist->bs_children[i]->b_bio2.bio_blkno = fsbtodb(fs, blkno);
+		buflist->bs_children[i]->b_bio2.bio_offset = fsbtodoff(fs, blkno);
 #ifdef DIAGNOSTIC
 		if (!ffs_checkblk(ip,
-		   dbtofsb(fs, buflist->bs_children[i]->b_bio2.bio_blkno), fs->fs_bsize))
+		   dofftofsb(fs, buflist->bs_children[i]->b_bio2.bio_offset), fs->fs_bsize))
 			panic("ffs_reallocblks: unallocated block 3");
 #endif
 #ifdef DEBUG
@@ -926,7 +930,7 @@ ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 		return (0);
 	}
 	KKASSERT(blknum(fs, bprev) == blknum(fs, bprev + frags - 1));
-	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
+	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
 		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
@@ -1004,7 +1008,7 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nbfree == 0 && size == fs->fs_bsize)
 		return (0);
-	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
+	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
 		(int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
@@ -1238,9 +1242,10 @@ ffs_clusteralloc(struct inode *ip, int cg, ufs_daddr_t bpref, int len)
 	fs = ip->i_fs;
 	if (fs->fs_maxcluster[cg] < len)
 		return (0);
-	if (bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)), (int)fs->fs_cgsize,
-	    &bp))
+	if (bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
+		  (int)fs->fs_cgsize, &bp)) {
 		goto fail;
+	}
 	cgp = (struct cg *)bp->b_data;
 	if (!cg_chkmagic(cgp))
 		goto fail;
@@ -1360,8 +1365,8 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nifree == 0)
 		return (0);
-	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, &bp);
+	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
+		      (int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (0);
@@ -1488,7 +1493,7 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	uint8_t *blksfree;
 
 	fs = ip->i_fs;
-	VOP_FREEBLKS(ip->i_devvp, fsbtodb(fs, bno), size);
+	VOP_FREEBLKS(ip->i_devvp, fsbtodoff(fs, bno), size);
 	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0 ||
 	    fragnum(fs, bno) + numfrags(fs, size) > fs->fs_frag) {
 		printf("dev=%s, bno = %ld, bsize = %ld, size = %ld, fs = %s\n",
@@ -1507,8 +1512,8 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	/*
 	 * Load the cylinder group
 	 */
-	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, &bp);
+	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
+		      (int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return;
@@ -1627,8 +1632,8 @@ ffs_checkblk(struct inode *ip, ufs_daddr_t bno, long size)
 	}
 	if ((uint)bno >= fs->fs_size)
 		panic("ffs_checkblk: bad block %d", bno);
-	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, dtog(fs, bno))),
-		(int)fs->fs_cgsize, &bp);
+	error = bread(ip->i_devvp, fsbtodoff(fs, cgtod(fs, dtog(fs, bno))),
+		      (int)fs->fs_cgsize, &bp);
 	if (error)
 		panic("ffs_checkblk: cg bread failed");
 	cgp = (struct cg *)bp->b_data;
@@ -1685,8 +1690,8 @@ ffs_freefile(struct vnode *pvp, ino_t ino, int mode)
 		panic("ffs_vfree: range: dev = (%d,%d), ino = %"PRId64", fs = %s",
 		    major(pip->i_dev), minor(pip->i_dev), ino, fs->fs_fsmnt);
 	cg = ino_to_cg(fs, ino);
-	error = bread(pip->i_devvp, fsbtodb(fs, cgtod(fs, cg)),
-		(int)fs->fs_cgsize, &bp);
+	error = bread(pip->i_devvp, fsbtodoff(fs, cgtod(fs, cg)),
+		      (int)fs->fs_cgsize, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);

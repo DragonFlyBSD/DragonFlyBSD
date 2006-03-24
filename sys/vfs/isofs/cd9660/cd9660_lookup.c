@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.17 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.18 2006/03/24 18:35:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -243,8 +243,8 @@ searchloop:
 					if (isoflags & 2)
 						ino = isodirino(ep, imp);
 					else
-						ino = dbtob(bp->b_bio2.bio_blkno)
-							+ entryoffsetinblock;
+						ino = bp->b_bio2.bio_offset +
+						      entryoffsetinblock;
 					saveoffset = dp->i_offset;
 				} else if (ino)
 					goto foundino;
@@ -260,7 +260,8 @@ searchloop:
 			if (isonum_711(ep->flags)&2)
 				ino = isodirino(ep, imp);
 			else
-				ino = dbtob(bp->b_bio2.bio_blkno) + entryoffsetinblock;
+				ino = bp->b_bio2.bio_offset +
+				      entryoffsetinblock;
 			dp->i_ino = ino;
 			cd9660_rrip_getname(ep,altname,&namelen,&dp->i_ino,imp);
 			if (namelen == cnp->cn_namelen
@@ -401,24 +402,25 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	lbn = lblkno(imp, offset);
 	bsize = blksize(imp, ip, lbn);
 
-	if ((error = bread(vp, lbn, bsize, &bp)) != 0) {
+	if ((error = bread(vp, lblktooff(imp, lbn), bsize, &bp)) != 0) {
 		brelse(bp);
 		*bpp = NULL;
 		return (error);
 	}
 
 	/*
-	 * We must BMAP the buffer because the directory code may use bio_blkno
-	 * to calculate the inode for certain types of directory entries.
-	 * We could get away with not doing it before we VMIO-backed the
-	 * directories because the buffers would get freed atomically with
-	 * the invalidation of their data.  But with VMIO-backed buffers
-	 * the buffers may be freed and then later reconstituted - and the
-	 * reconstituted buffer will have no knowledge of bio_blkno.
+	 * We must BMAP the buffer because the directory code may use 
+	 * bio_offset to calculate the inode for certain types of directory
+	 * entries.  We could get away with not doing it before we
+	 * VMIO-backed the directories because the buffers would get freed
+	 * atomically with the invalidation of their data.  But with
+	 * VMIO-backed buffers the buffers may be freed and then later
+	 * reconstituted - and the reconstituted buffer will have no
+	 * knowledge of bio_offset.
 	 */
-	if (bp->b_bio2.bio_blkno == (daddr_t)-1) {
-		error = VOP_BMAP(vp, bp->b_bio1.bio_blkno, NULL, 
-			    	 &bp->b_bio2.bio_blkno, NULL, NULL);
+	if (bp->b_bio2.bio_offset == NOOFFSET) {
+		error = VOP_BMAP(vp, bp->b_bio1.bio_offset, NULL, 
+			    	 &bp->b_bio2.bio_offset, NULL, NULL);
 		if (error) {
                         bp->b_error = error;
                         bp->b_flags |= B_ERROR;
