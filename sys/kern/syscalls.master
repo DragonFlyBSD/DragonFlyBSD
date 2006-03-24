@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.30 2006/03/23 20:55:07 drhodus Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.31 2006/03/24 06:45:04 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -97,7 +97,7 @@
 40	COMPAT	POSIX	{ int lstat(char *path, struct ostat *ub); }
 41	STD	POSIX	{ int dup(u_int fd); }
 42	STD	POSIX	{ int pipe(void); }
-43	MPSAFE	POSIX	{ gid_t getegid(void); }
+43	STD	POSIX	{ gid_t getegid(void); }
 44	STD	BSD	{ int profil(caddr_t samples, size_t size, \
 			    size_t offset, u_int scale); }
 45	STD	BSD	{ int ktrace(const char *fname, int ops, int facs, \
@@ -259,7 +259,7 @@
 161	STD	BSD	{ int getfh(char *fname, struct fhandle *fhp); }
 162	STD	BSD	{ int getdomainname(char *domainname, int len); }
 163	STD	BSD	{ int setdomainname(char *domainname, int len); }
-164	MPSAFE	BSD	{ int uname(struct utsname *name); }
+164	STD	BSD	{ int uname(struct utsname *name); }
 165	STD	BSD	{ int sysarch(int op, char *parms); }
 166	STD	BSD	{ int rtprio(int function, pid_t pid, \
 			    struct rtprio *rtp); }
@@ -299,7 +299,7 @@
 191	STD	POSIX	{ int pathconf(char *path, int name); }
 192	STD	POSIX	{ int fpathconf(int fd, int name); }
 193	UNIMPL	NOHIDE	nosys
-194	MPSAFE	BSD	{ int getrlimit(u_int which, \
+194	STD	BSD	{ int getrlimit(u_int which, \
 			    struct rlimit *rlp); } \
 			    getrlimit __getrlimit_args int
 195	STD	BSD	{ int setrlimit(u_int which, \
