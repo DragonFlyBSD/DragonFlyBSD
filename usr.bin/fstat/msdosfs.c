@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.5 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.6 2006/03/25 05:47:14 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -133,12 +133,12 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 	 */
 	dirsperblk = mnt->data.pm_BytesPerSec / sizeof(struct direntry);
 	if (denode.de_Attributes & ATTR_DIRECTORY) {
-		fileid = cntobn(&mnt->data, denode.de_StartCluster)
+		fileid = xcntobn(&mnt->data, denode.de_StartCluster)
 		    * dirsperblk;
 		if (denode.de_StartCluster == MSDOSFSROOT)
 			fileid = 1;
 	} else {
-		fileid = cntobn(&mnt->data, denode.de_dirclust) * dirsperblk;
+		fileid = xcntobn(&mnt->data, denode.de_dirclust) * dirsperblk;
 		if (denode.de_dirclust == MSDOSFSROOT)
 			fileid = roottobn(&mnt->data, 0) * dirsperblk;
 		fileid += denode.de_diroffset / sizeof(struct direntry);
