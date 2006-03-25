@@ -1,9 +1,12 @@
-$DragonFly: doc/notes/compat_laptops.txt,v 1.4 2006/03/22 01:09:23 reed Exp $
+$DragonFly: doc/notes/compat_laptops.txt,v 1.5 2006/03/25 23:14:13 justin Exp $
 
 			    Compatible laptops
 
     This file contains a very incomplete list of laptops known to work 
     reasonably well with DragonFly.
+
+    Anoter resource that may apply:
+    http://gerda.univie.ac.at/freebsd-laptops/
 
 Craig Dooley:
     I have an hp pavilion zt3020us (also sold as the hp pavilion nx7000 i
@@ -77,10 +80,8 @@ Justin Sherrill:
     600E series laptops who did manage to get it working.  The CD drive, 
     xorg, keyboard, etc. all work.
 
-    I hate to do it, but I won't be running DragonFly on it because of 
-    the above problems.  However, it appears that there are a large 
-    number of different 600E models - the 3 character code after the model 
-    describes which.  Some other models may prove less troublesome.
+    The card troubles may be due to physical damage; It's used, and 
+    I saw the same problems with the card slot under other operating systems.
 
 Jeremy C. Reed:
      I have a GQ (Great Quality) MX-3201 laptop. I believe it
@@ -92,3 +93,35 @@ Jeremy C. Reed:
      interface works fine as vr0.  Older versions of X do not support
      the VIA video card, but recent versions of X.org do now support it.
      TODO: document sound, USB, modem.
+
+Sascha Wildner:
+    For what it's worth, it's running fine here on a Dell Inspiron 9300. The 
+    SD card reader doesn't work and messing with the iwi card has had mixed 
+    results (but I guess those are software problems).
+
+    pciconf -lv is here:
+
+    http://yoyodyne.ath.cx/tmp/9300pciconf.txt
+
+Johannes Hofmann:
+    I am running DragonFly on a Thinkpad T42p for quite a while now.
+    The builtin em(4) ethernet card, sound, wifi (ipw(4)), and pcmcia 
+    slots work out of the box.
+    I added /usr/ports/sysutils/est from FreeBSD to reduce the power usage.
+    It's also good to set the DynamicClocks options of the radeon(4) driver
+    in xorg.conf, to keep the system cool.
+    Suspend to memory does basically work, but some drivers have issues after
+    resume, so I prefer booting the system.
+    Accellerated 3d graphics and Bluetooth do not yet work, but that's not 
+    a high priority for me.
+
+Erik Wikstrom:
+    I have a IBM T41, but unfortunately I have not been able to use DFly 
+    much lately, however everything seems to be working. I'm running 1.5 
+    from late February patched with the ath(4)-patch from Adrian.
+    http://leaf.dragonflybsd.org/mailarchive/submit/2006-02/msg00036.html
+
+    dmesg: http://www.itstud.chalmers.se/~eriwik/dmesg
+    pciconf: http://www.itstud.chalmers.se/~eriwik/pciconf
+
+
