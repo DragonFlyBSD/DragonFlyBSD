@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.11 2005/08/19 14:35:53 joerg Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.12 2006/03/25 06:52:44 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -2536,7 +2536,9 @@ product TI	PCI4451LYNX	0x8027	PCI4451 OHCI IEEE 1394 HOST Controller w/ PCI-Card
 product TI	PCI4510LYNX	0x8029	PCI4510 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge
 product TI	PCI4520LYNX	0x802A	PCI4520 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge
 product TI	PCI7410LYNX	0x802B	PCI7[4-6]10 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge
-product TI	ACX100		0x8400	ACX100 802.11b
+product TI	ACX100A		0x8400	ACX100A 802.11b
+product TI	ACX100B		0x8401	ACX100B 802.11b
+product TI	ACX111		0x9066	ACX111 802.11b/g
 product TI	PCI1130		0xac12	PCI1130 PCI-CardBus Bridge
 product TI	PCI1031		0xac13	PCI1031 PCI-PCMCIA Bridge
 product TI	PCI1131		0xac15	PCI1131 PCI-CardBus Bridge
