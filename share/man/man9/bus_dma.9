@@ -68,7 +68,7 @@
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man9/bus_dma.9,v 1.7 2003/07/27 14:05:29 mux Exp $
 .\" $NetBSD: bus_dma.9,v 1.25 2002/10/14 13:43:16 wiz Exp $
-.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.6 2006/02/26 09:07:35 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_dma.9,v 1.7 2006/03/25 03:05:03 swildner Exp $
 .\"
 .Dd March 17, 2004
 .Dt BUS_DMA 9
@@ -444,7 +444,7 @@ specified as
 .El
 .Pp
 Return values to the caller are as follows:
-.Bl -tag -width EINPROGRESS -compact
+.Bl -tag -width ".Er EINPROGRESS" -compact
 .It 0
 The callback has been called and completed.
 The status of the mapping has been delivered to the callback.
@@ -476,7 +476,7 @@ argument used to create the dma tag
 When the callback is called, it is presented with an error value
 indicating the disposition of the mapping.
 Error may be one of the following:
-.Bl -tag -width EINPROGRESS -compact
+.Bl -tag -width ".Er EINPROGRESS" -compact
 .It 0
 The mapping was successful and the
 .Fa dm_segs
