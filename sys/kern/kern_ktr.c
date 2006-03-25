@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.12 2005/12/12 08:15:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.13 2006/03/25 21:28:07 swildner Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -439,30 +439,31 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 	int cpu;
 
 	cpu = mycpu->gd_cpuid;
-	if (ktr_buf[cpu]) {
-		crit_enter();
-		entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
-		++ktr_idx[cpu];
-		if (cpu_feature & CPUID_TSC) {
+	if (!ktr_buf[cpu])
+		return;
+
+	crit_enter();
+	entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
+	++ktr_idx[cpu];
+	if (cpu_feature & CPUID_TSC) {
 #ifdef SMP
-			entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
+		entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
 #else
-			entry->ktr_timestamp = rdtsc();
+		entry->ktr_timestamp = rdtsc();
 #endif
-		} else {
-			entry->ktr_timestamp = get_approximate_time_t();
-		}
-		entry->ktr_info = info;
-		entry->ktr_file = file;
-		entry->ktr_line = line;
-		crit_exit();
-		if (info->kf_data_size > KTR_BUFSIZE)
-			bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
-		else if (info->kf_data_size)
-			bcopyi(ptr, entry->ktr_data, info->kf_data_size);
-		if (ktr_stacktrace)
-			cpu_ktr_caller(entry);
+	} else {
+		entry->ktr_timestamp = get_approximate_time_t();
 	}
+	entry->ktr_info = info;
+	entry->ktr_file = file;
+	entry->ktr_line = line;
+	crit_exit();
+	if (info->kf_data_size > KTR_BUFSIZE)
+		bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
+	else if (info->kf_data_size)
+		bcopyi(ptr, entry->ktr_data, info->kf_data_size);
+	if (ktr_stacktrace)
+		cpu_ktr_caller(entry);
 #ifdef KTR_VERBOSE
 	if (ktr_verbose && info->kf_format) {
 #ifdef SMP
