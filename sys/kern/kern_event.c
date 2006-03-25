@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.19 2006/03/23 20:48:09 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.20 2006/03/25 18:32:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -951,11 +951,8 @@ knote_enqueue(struct knote *kn)
 	struct kqueue *kq = kn->kn_kq;
 
 	crit_enter();
+	KASSERT((kn->kn_status & KN_QUEUED) == 0, ("knote already queued"));
 
-	if (kn->kn_status & KN_QUEUED) {
-		crit_exit();
-		return;
-	}
 	TAILQ_INSERT_TAIL(&kq->kq_head, kn, kn_tqe); 
 	kn->kn_status |= KN_QUEUED;
 	kq->kq_count++;
