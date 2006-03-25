@@ -33,10 +33,15 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.14 2005/01/05 09:14:34 maxim Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.11 2005/12/15 22:20:49 corecode Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.12 2006/03/25 07:46:58 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
+
 #include <sys/param.h>
+
+#undef _KERNEL_STRUCTURES
+
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/syslog.h>
@@ -54,6 +59,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <err.h>
 
 extern FILE *zopen(const char *fname, const char *mode);
 
@@ -76,6 +82,8 @@ struct nlist current_nl[] = {	/* Namelist for currently running system. */
 	{ "_dumpmag", 0, 0, 0, 0 },
 #define	X_KERNBASE	6
 	{ "_kernbase", 0, 0, 0, 0 },
+#define	X_MAXMEM	7
+	{ "_Maxmem", 0, 0, 0, 0 },
 	{ "", 0, 0, 0, 0 },
 };
 int cursyms[] = { X_DUMPLO, X_VERSION, X_DUMPMAG, -1 };
@@ -89,6 +97,7 @@ struct nlist dump_nl[] = {               /* Name list for dumped system. */
 	{ "_panicstr", 0, 0, 0, 0 },
 	{ "_dumpmag", 0, 0, 0, 0 },
 	{ "_kernbase", 0, 0, 0, 0 },
+	{ "_Maxmem", 0, 0, 0, 0 },
 	{ "", 0, 0, 0, 0 },
 };
 
@@ -108,12 +117,14 @@ time_t	now;				/* current date */
 char	panic_mesg[1024];		/* panic message */
 int	panicstr;		        /* flag: dump was caused by panic */
 char	vers[1024];			/* version of kernel that crashed */
+char    *physmem;			/* physmem value used with dumped session */
+long    dkdumplo;			/* directly specified kernel dumplo value */
 
 #ifdef __i386__
 u_long	kernbase;			/* offset of kvm to core file */
 #endif
 
-static int	clear, compress, force, verbose;	/* flags */
+static int	clear, compress, force, verbose, directdumplo;	/* flags */
 static int	keep;			/* keep dump on device */
 
 static void	check_kmem(void);
@@ -133,15 +144,17 @@ static void	save_core(void);
 static void	usage(void);
 static int	verify_dev(char *, dev_t);
 static void	Write(int, void *, int);
+static void	kdumplo_adjust(char *cp, int kmem, long *kdumplop);
 
 int
 main(int argc, char **argv)
 {
 	int ch;
+	char *ep;
 
 	openlog("savecore", LOG_PERROR, LOG_DAEMON);
 
-	while ((ch = getopt(argc, argv, "cdfkN:vz")) != -1)
+	while ((ch = getopt(argc, argv, "cdfkN:vzP:B:")) != -1)
 		switch(ch) {
 		case 'c':
 			clear = 1;
@@ -161,6 +174,15 @@ main(int argc, char **argv)
 			break;
 		case 'z':
 			compress = 1;
+			break;
+		case 'P':
+			physmem = optarg;
+			break;
+		case 'B':
+			directdumplo = 1;
+			dkdumplo = strtol(optarg, &ep, 10);
+			if (*ep != '\0')
+				errx(1, "invalid offset: '%s'", optarg);
 			break;
 		case '?':
 		default:
@@ -262,9 +284,15 @@ kmem_setup(void)
 	}
 
 	kmem = Open(_PATH_KMEM, O_RDONLY);
-	Lseek(kmem, (off_t)current_nl[X_DUMPLO].n_value, L_SET);
-	Read(kmem, &kdumplo, sizeof(kdumplo));
-	dumplo = (off_t)kdumplo * DEV_BSIZE;
+	if (directdumplo)
+		kdumplo = dkdumplo;
+	else {
+		Lseek(kmem, (off_t)current_nl[X_DUMPLO].n_value, L_SET);
+		Read(kmem, &kdumplo, sizeof(kdumplo));
+		if (physmem)
+			kdumplo_adjust(physmem, kmem, &kdumplo);
+	}
+		dumplo = (off_t)kdumplo * DEV_BSIZE;
 	if (verbose)
 		printf("dumplo = %lld (%ld * %d)\n",
 		    (long long)dumplo, kdumplo, DEV_BSIZE);
@@ -754,8 +782,48 @@ Write(int fd, void *bp, int size)
 }
 
 static void
+kdumplo_adjust(char *cp, int kmem, long *kdumplop)
+{
+	uint64_t AllowMem, sanity, Maxmem, CurrMaxmem;
+	char *ep;
+
+	/* based on getmemsize() in i386/i386/machdep.c */ 
+	sanity = AllowMem = strtouq(cp, &ep, 0);
+	if ((ep != cp) && (*ep != 0)) {
+		switch(*ep) {
+		case 'g':
+		case 'G':
+			AllowMem <<= 10;
+		case 'm':
+		case 'M':
+			AllowMem <<= 10;
+		case 'k':
+		case 'K':
+			AllowMem <<= 10;
+			break;
+		default:
+			AllowMem = 0;
+		}
+		if (AllowMem < sanity)
+			AllowMem = 0;
+	}
+	if (AllowMem == 0)
+		errx(1, "invalid memory size: '%s'\n", cp);
+	else
+		Maxmem = atop(AllowMem);
+	
+	Lseek(kmem, (off_t)current_nl[X_MAXMEM].n_value, L_SET);
+	Read(kmem, &CurrMaxmem, sizeof(CurrMaxmem));
+
+	/* based on setdumpdev() in kern_shutdown.c */
+	*kdumplop += CurrMaxmem * (PAGE_SIZE / DEV_BSIZE);
+	*kdumplop -= Maxmem * (PAGE_SIZE / DEV_BSIZE);
+}
+
+static void
 usage(void)
 {
-	syslog(LOG_ERR, "usage: savecore [-cfkvz] [-N system] directory");
+	syslog(LOG_ERR,
+	       "usage: savecore [-cfkvz] [-N system] [-P physmem|-B blkno] directory");
 	exit(1);
 }

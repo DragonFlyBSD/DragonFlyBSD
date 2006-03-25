@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)savecore.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/savecore/savecore.8,v 1.8.2.6 2002/06/20 23:09:09 charnier Exp $
-.\" $DragonFly: src/sbin/savecore/savecore.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
+.\" $DragonFly: src/sbin/savecore/savecore.8,v 1.4 2006/03/25 07:46:58 dillon Exp $
 .\"
 .Dd September 23, 1994
 .Dt SAVECORE 8
@@ -45,6 +45,8 @@
 .Nm
 .Op Fl fkvz
 .Op Fl N Ar system
+.Op Fl P Ar physmem
+.Op Fl B Ar blkno
 .Ar directory
 .Sh DESCRIPTION
 The
@@ -71,6 +73,12 @@ Use
 .Ar system
 as the kernel instead of the running kernel (as determined from
 .Xr getbootfile 3 ) .
+.It Fl P
+Specify physical memory size used at dumptime (cf. the
+.Va hw.physmem
+kernel environment variable).
+.It Fl B 
+Specify offset of dump in blocks (as printed at dumptime).
 .It Fl v
 Print out some additional debugging information.
 .It Fl z
@@ -123,7 +131,8 @@ is meant to be called near the end of the initialization file
 .Xr gzip 1 ,
 .Xr getbootfile 3 ,
 .Xr dumpon 8 ,
-.Xr syslogd 8
+.Xr syslogd 8 ,
+.Xr loader 8
 .Sh HISTORY
 The
 .Nm
