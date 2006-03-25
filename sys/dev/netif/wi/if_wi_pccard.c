@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.8 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.9 2006/03/25 04:14:05 sephe Exp $
  */
 
 /*
@@ -193,11 +193,11 @@ wi_pccard_probe(device_t dev)
 	if (error)
 		return (error);
 
-	wi_free(dev);
-
 	/* Make sure interrupts are disabled. */
 	CSR_WRITE_2(sc, WI_INT_EN, 0);
 	CSR_WRITE_2(sc, WI_EVENT_ACK, 0xFFFF);
+
+	wi_free(dev);
 
 	return (0);
 }
@@ -231,9 +231,10 @@ wi_pccard_attach(device_t dev)
 		    spectrum24t_primsym, sizeof(spectrum24t_primsym),
 		    spectrum24t_secsym, sizeof(spectrum24t_secsym))) {
 			device_printf(dev, "couldn't load firmware\n");
+			return (ENXIO);
 		}
 #else
-		device_printf(dev, 
+		device_printf(dev,
 		    "Symbol LA4100 needs 'option WI_SYMBOL_FIRMWARE'\n");
 		wi_free(dev);
 		return (ENXIO);
