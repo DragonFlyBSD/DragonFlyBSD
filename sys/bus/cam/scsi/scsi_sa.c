@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.15 2006/02/17 19:17:42 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.16 2006/03/25 21:30:41 swildner Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1779,7 +1779,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 #ifdef	CAMDEBUG
 		if (error || bp->b_resid) {
 			CAM_DEBUG(periph->path, CAM_DEBUG_INFO,
-			    	  ("error %d resid %ld count %ld\n", error,
+			    	  ("error %d resid %d count %d\n", error,
 				  bp->b_resid, bp->b_bcount));
 		}
 #endif
