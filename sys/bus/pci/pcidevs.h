@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.11 2005/08/19 14:36:21 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.12 2006/03/25 06:54:22 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -2543,7 +2543,9 @@
 #define	PCI_PRODUCT_TI_PCI4510LYNX	0x8029		/* PCI4510 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge */
 #define	PCI_PRODUCT_TI_PCI4520LYNX	0x802A		/* PCI4520 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge */
 #define	PCI_PRODUCT_TI_PCI7410LYNX	0x802B		/* PCI7[4-6]10 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge */
-#define	PCI_PRODUCT_TI_ACX100	0x8400		/* ACX100 802.11b */
+#define	PCI_PRODUCT_TI_ACX100A	0x8400		/* ACX100A 802.11b */
+#define	PCI_PRODUCT_TI_ACX100B	0x8401		/* ACX100B 802.11b */
+#define	PCI_PRODUCT_TI_ACX111	0x9066		/* ACX111 802.11b/g */
 #define	PCI_PRODUCT_TI_PCI1130	0xac12		/* PCI1130 PCI-CardBus Bridge */
 #define	PCI_PRODUCT_TI_PCI1031	0xac13		/* PCI1031 PCI-PCMCIA Bridge */
 #define	PCI_PRODUCT_TI_PCI1131	0xac15		/* PCI1131 PCI-CardBus Bridge */

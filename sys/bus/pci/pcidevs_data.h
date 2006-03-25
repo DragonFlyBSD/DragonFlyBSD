@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.11 2005/08/19 14:36:21 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.12 2006/03/25 06:54:22 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -9311,10 +9311,22 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "PCI7[4-6]10 OHCI IEEE 1394 HOST Controller w/ PCI-CardBus Bridge",
 	},
 	{
-	    PCI_VENDOR_TI, PCI_PRODUCT_TI_ACX100,
+	    PCI_VENDOR_TI, PCI_PRODUCT_TI_ACX100A,
 	    0,
 	    "Texas Instruments",
-	    "ACX100 802.11b",
+	    "ACX100A 802.11b",
+	},
+	{
+	    PCI_VENDOR_TI, PCI_PRODUCT_TI_ACX100B,
+	    0,
+	    "Texas Instruments",
+	    "ACX100B 802.11b",
+	},
+	{
+	    PCI_VENDOR_TI, PCI_PRODUCT_TI_ACX111,
+	    0,
+	    "Texas Instruments",
+	    "ACX111 802.11b/g",
 	},
 	{
 	    PCI_VENDOR_TI, PCI_PRODUCT_TI_PCI1130,
