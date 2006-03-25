@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.25 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.26 2006/03/25 21:46:38 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -76,8 +76,8 @@ struct xio;
 
 struct buf_rb_tree;
 struct buf_rb_hash;
-RB_PROTOTYPE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, off_t, b_loffset);
-RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t, b_loffset);
+RB_PROTOTYPE2(buf_rb_tree, buf, b_rbnode, rb_buf_compare, off_t);
+RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t);
 
 /*
  * To avoid including <ufs/ffs/softdep.h> 

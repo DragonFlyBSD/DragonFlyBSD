@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.3 2006/03/03 20:25:46 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.4 2006/03/25 21:46:38 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -395,9 +395,26 @@ struct type *name##_RB_NEXT(struct type *);				\
 struct type *name##_RB_MINMAX(struct name *, int);			\
 RB_SCAN_INFO(name, type)						\
 
-#define RB_PROTOTYPE2(name, type, field, cmp, datatype, datacmp)	\
+/*
+ * A version which supplies a fast lookup routine for an exact match
+ * on a numeric field.
+ */
+#define RB_PROTOTYPE2(name, type, field, cmp, datatype)			\
 RB_PROTOTYPE(name, type, field, cmp);					\
-struct type *name##_RB_LOOKUP(struct name *, datatype value)		\
+struct type *name##_RB_LOOKUP(struct name *, datatype)			\
+
+/*
+ * A version which supplies a fast lookup routine for a numeric
+ * field which resides within a ranged object, either using (begin,end),
+ * or using (begin,size).
+ */
+#define RB_PROTOTYPE3(name, type, field, cmp, datatype)			\
+RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
+struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
+
+#define RB_PROTOTYPE4(name, type, field, cmp, datatype)			\
+RB_PROTOTYPE2(name, type, field, cmp, datatype);			\
+struct type *name##_RB_RLOOKUP(struct name *, datatype)			\
 
 /* Main rb operation.
  * Moves node close to the key of elm to top
@@ -787,13 +804,16 @@ name##_RB_LOOKUP(struct name *head, datatype value)			\
  * given a numeric data type, for data types with a beginning and end
  * (end non-inclusive).
  *
+ * WARNING: The full range of the data type is not supported due to a
+ * boundary condition at the end.
+ *
  * The element whos range contains the specified value is returned, or NULL
  */
 #define RB_GENERATE3(name, type, field, cmp, datatype, begfield, endfield) \
 RB_GENERATE2(name, type, field, cmp, datatype, begfield)		\
 									\
 struct type *								\
-name##_RB_RANGED_LOOKUP(struct name *head, datatype value)		\
+name##_RB_RLOOKUP(struct name *head, datatype value)			\
 {									\
 	struct type *tmp;						\
 									\
@@ -809,17 +829,51 @@ name##_RB_RANGED_LOOKUP(struct name *head, datatype value)		\
 	return(NULL);							\
 }									\
 
+/*
+ * This extended version implements a fast ranged-based LOOKUP function
+ * given a numeric data type, for data types with a beginning and size.
+ *
+ * WARNING: The full range of the data type is not supported due to a
+ * boundary condition at the end, where (beginning + size) might overflow.
+ *
+ * The element whos range contains the specified value is returned, or NULL
+ */
+#define RB_GENERATE4(name, type, field, cmp, datatype, begfield, sizefield) \
+RB_GENERATE2(name, type, field, cmp, datatype, begfield)		\
+									\
+struct type *								\
+name##_RB_RLOOKUP(struct name *head, datatype value)			\
+{									\
+	struct type *tmp;						\
+									\
+	tmp = RB_ROOT(head);						\
+	while (tmp) {							\
+		if (value >= tmp->begfield &&				\
+		    value < tmp->begfield + tmp->sizefield) { 		\
+			return(tmp);					\
+		}							\
+		if (value > tmp->begfield) 				\
+			tmp = RB_RIGHT(tmp, field);			\
+		else							\
+			tmp = RB_LEFT(tmp, field);			\
+	}								\
+	return(NULL);							\
+}									\
+
+
 #define RB_NEGINF	-1
 #define RB_INF	1
 
-#define RB_INSERT(name, x, y)	name##_RB_INSERT(x, y)
-#define RB_REMOVE(name, x, y)	name##_RB_REMOVE(x, y)
-#define RB_FIND(name, x, y)	name##_RB_FIND(x, y)
-#define RB_SCAN(name, root, cmp, callback, data) 		\
+#define RB_INSERT(name, root, elm)	name##_RB_INSERT(root, elm)
+#define RB_REMOVE(name, root, elm)	name##_RB_REMOVE(root, elm)
+#define RB_FIND(name, root, elm)	name##_RB_FIND(root, elm)
+#define RB_LOOKUP(name, root, value)	name##_RB_LOOKUP(root, value)
+#define RB_RLOOKUP(name, root, value)	name##_RB_RLOOKUP(root, value)
+#define RB_SCAN(name, root, cmp, callback, data) 			\
 				name##_RB_SCAN(root, cmp, callback, data)
-#define RB_NEXT(name, x, y)	name##_RB_NEXT(y)
-#define RB_MIN(name, x)		name##_RB_MINMAX(x, RB_NEGINF)
-#define RB_MAX(name, x)		name##_RB_MINMAX(x, RB_INF)
+#define RB_NEXT(name, root, elm)	name##_RB_NEXT(elm)
+#define RB_MIN(name, root)		name##_RB_MINMAX(root, RB_NEGINF)
+#define RB_MAX(name, root)		name##_RB_MINMAX(root, RB_INF)
 
 #define RB_FOREACH(x, name, head)					\
 	for ((x) = RB_MIN(name, head);					\
