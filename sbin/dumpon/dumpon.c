@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)swapon.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dumpon/dumpon.c,v 1.10.2.2 2001/07/30 10:30:05 dd Exp $
- * $DragonFly: src/sbin/dumpon/dumpon.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dumpon/dumpon.c,v 1.5 2006/03/25 07:44:14 dillon Exp $
  */
 
 #include <err.h>
@@ -98,7 +98,7 @@ main(int argc, char **argv)
 		if (stab.st_rdev == NODEV) {
 			printf("dumpon: crash dumps disabled\n");
 		} else {
-			printf("dumpon: crash dumps to %s (%lu, %lu)\n",
+			printf("dumpon: crash dumps to %s (%lu, %#lx)\n",
 			       argv[0],
 			       (unsigned long)major(stab.st_rdev),
 			       (unsigned long)minor(stab.st_rdev));
