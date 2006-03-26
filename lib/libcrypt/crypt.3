@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/lib/libcrypt/crypt.3,v 1.6.2.14 2002/12/29 16:35:35 schweikh Exp $
-.\"	$DragonFly: src/lib/libcrypt/crypt.3,v 1.4 2006/02/17 19:35:07 swildner Exp $
+.\"	$DragonFly: src/lib/libcrypt/crypt.3,v 1.5 2006/03/26 22:56:56 swildner Exp $
 .\"
 .\" Manual page, using -mandoc macros
 .\"
@@ -183,7 +183,6 @@ Other crypt formats may be easily added.  An example salt would be:
 .Bl -tag -offset indent
 .It Cm "$3$thesalt$rest"
 .El
-.Pp
 .Ss "Traditional" crypt:
 The algorithm used will depend upon whether
 .Fn crypt_set_format

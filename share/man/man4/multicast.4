@@ -24,7 +24,7 @@
 .\" DEALINGS IN THE SOFTWARE.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/multicast.4,v 1.1 2003/10/17 15:12:01 bmah Exp $
-.\" $DragonFly: src/share/man/man4/multicast.4,v 1.2 2005/08/01 01:49:17 swildner Exp $
+.\" $DragonFly: src/share/man/man4/multicast.4,v 1.3 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd September 4, 2003
 .Dt MULTICAST 4
@@ -387,7 +387,6 @@ memset(&mreq, 0, sizeof(mreq));
 mreq.mifi = vif_index;
 ioctl(mrouter_s6, SIOCGETMIFCNT_IN6, &mreq);
 .Ed
-.Pp
 .Ss Advanced Multicast API Programming Guide
 If we want to add new features in the kernel, it becomes difficult
 to preserve backward compatibility (binary and API),
@@ -886,7 +885,6 @@ deliver a signal if bw >= 1 packet, the first packet will trigger a
 signal, but the next upcall will be triggered no earlier than
 .Dq bu_threshold.b_time
 after the previous upcall.
-.Pp
 .\"
 .Sh SEE ALSO
 .Xr getsockopt 2 ,
@@ -902,7 +900,6 @@ after the previous upcall.
 .Xr ip6 4 ,
 .Xr pim 4
 .\"
-.Pp
 .Sh AUTHORS
 The original multicast code was written by David Waitzman (BBN Labs),
 and later modified by the following individuals:

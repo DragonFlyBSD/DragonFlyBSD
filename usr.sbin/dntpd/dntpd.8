@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.9 2006/02/28 02:25:11 swildner Exp $
+.\" $DragonFly: src/usr.sbin/dntpd/dntpd.8,v 1.10 2006/03/26 22:56:57 swildner Exp $
 .\"
 .\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
 .\"
@@ -139,7 +139,6 @@ a configuration file of
 .Pa /dev/null
 if you want to disable it otherwise.
 .El
-.Pp
 .Sh ALGORITHM
 .Nm
 runs two linear regressions for each target against the uncorrected system
@@ -201,7 +200,6 @@ failed state which polls the target at the nominal polling rate
 .Nm
 will either go back to the 5-second startup mode or to the 5-minute
 acquisition mode depending on how long the target was in the failed state.
-.Pp
 .Sh TIME SYNCHRONIZATION ISSUES
 If the system clock is naturally off-frequency
 .Nm
@@ -225,7 +223,6 @@ It is difficult to calculate the packet latency for an internet time source
 and in some cases this can result in time sources which disagree as much as
 20ms with each other.  If you specify multiple targets and run in
 debug or a high-logging mode you may observe this issue.
-.Pp
 .Sh CONFIGURATION FILE
 The
 .Pa /etc/dntpd.conf
@@ -233,7 +230,6 @@ file contains a list of servers in the 'server <servername>' format, one
 per line.  Any information after a '#' is assumed to be a comment.  Any
 number of servers may be specified but it is usually wasteful to have more
 than four.
-.Pp
 .Sh FILES
 .Bl -tag -compact
 .It Pa /var/run/dntpd.pid
@@ -246,7 +242,6 @@ this file is used to obtain the pid.
 .It Pa /etc/dntpd.conf
 The default configuration file.
 .El
-.Pp
 .Sh AUTHORS
 This program was written by Matthew Dillon.
 .Sh BUGS

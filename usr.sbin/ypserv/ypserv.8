@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/ypserv/ypserv.8,v 1.22.2.8 2002/12/29 16:35:44 schweikh Exp $
-.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.4 2006/02/17 19:40:31 swildner Exp $
+.\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.5 2006/03/26 22:56:58 swildner Exp $
 .\"
 .Dd February 4, 1995
 .Dt YPSERV 8
@@ -216,7 +216,6 @@ clients to perform user
 authentication through
 .Tn NIS .
 .El
-.Pp
 .Ss Security
 In general, any remote user can issue an RPC to
 .Nm
@@ -299,7 +298,6 @@ security, they, like the privileged port test, are both vulnerable
 to
 .Dq IP spoofing
 attacks.
-.Pp
 .Ss NIS v1 compatibility
 This version of
 .Nm

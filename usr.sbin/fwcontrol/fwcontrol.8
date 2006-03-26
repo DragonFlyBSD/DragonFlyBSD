@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.1.2.6 2003/05/01 06:35:00 simokawa Exp $
-.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.6 2006/03/21 04:24:28 swildner Exp $
+.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.7 2006/03/26 22:56:58 swildner Exp $
 .\"
 .\"
 .Dd December 30, 2002
@@ -115,7 +115,6 @@ cat second.dv first.dv | fwcontrol -S /dev/stdin
 Swap first and second 30 frames and send them to DV recorder.
 .Pp
 For PAL, replace 'bs=120000' with 'bs=144000'.
-.Pp
 .Sh SEE ALSO
 .Xr firewire 4 ,
 .Xr fwe 4 ,
@@ -126,7 +125,6 @@ The
 .Nm
 utility first appeared in
 .Fx 5.0 .
-.Pp
 .Sh AUTHORS
 .An Hidetoshi Shimokawa Aq simokawa@FreeBSD.org
 .Sh BUGS

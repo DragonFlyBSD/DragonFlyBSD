@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.9 2006/03/08 09:53:30 swildner Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.10 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -49,7 +49,6 @@
 .Op Fl s Ar size[k,m,g,t]
 .Op Fl w/W Ar journal_prefix
 .Op Ar journal_prefix/file
-.Pp
 .Sh DESCRIPTION
 The
 .Nm
@@ -243,9 +242,7 @@ assumed.  Note that when generating a mirror from a stdin stream, the
 mirror will not be restartable unless
 .Fl w/W
 is also used.
-.Pp
 .El
-.Pp
 .Sh OPERATIONAL NOTES
 It is often important to be able to quickly stage journaled data through
 a dedicated backup machine on a LAN.  There are several places where data
@@ -285,7 +282,6 @@ will be forced to buffer meta-transactions (for mirroring) entirely in
 memory, which could present a serious problem since a single meta-transaction
 can exceed a gigabyte (e.g. if someone were to do a single write() system
 call writing a gigabyte all in one go).
-.Pp
 .Sh SEE ALSO
 .Xr mountctl 8
 .Sh CAVEATS

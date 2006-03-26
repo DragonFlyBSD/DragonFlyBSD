@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.6 2006/02/17 19:33:32 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.7 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -508,7 +508,6 @@ Once the limit is reached, logging can be re-enabled by
 clearing the logging counter or the packet counter for that entry, see the
 .Cm resetlog
 command.
-.Pp
 .El
 .Ss RULE ACTIONS
 A rule can be associated with one of the following actions, which
@@ -1275,7 +1274,6 @@ bandwidth proportionally to their weights.
 Note that weights are not priorities; a flow with a lower weight
 is still guaranteed to get its fraction of the bandwidth even if a
 flow with a higher weight is permanently backlogged.
-.Pp
 .El
 In practice,
 .Em pipes
@@ -1660,7 +1658,6 @@ and reinstalled (the same effect can be achieved by adding
 to
 .Nm /etc/make.conf
 before a buildworld).
-.Pp
 .Sh IPFW2 ENHANCEMENTS
 This Section lists the features that have been introduced in
 .Nm ipfw2
@@ -1772,7 +1769,6 @@ pipes/queues is not supported:
 There are far too many possible uses of
 .Nm
 so this Section will only give a small set of examples.
-.Pp
 .Ss BASIC PACKET FILTERING
 This command adds an entry which denies all tcp packets from
 .Em cracker.evil.org
@@ -1881,7 +1877,6 @@ Next rule diverts all incoming packets from 192.168.2.0/24
 to divert port 5000:
 .Pp
 .Dl ipfw divert 5000 ip from 192.168.2.0/24 to any in
-.Pp
 .Ss TRAFFIC SHAPING
 The following rules show some of the applications of
 .Nm

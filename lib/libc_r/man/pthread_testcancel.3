@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/lib/libc_r/man/pthread_testcancel.3,v 1.2.2.5 2001/12/17 10:08:26 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_testcancel.3,v 1.2 2003/06/17 04:26:48 dillon Exp $
+.\" $DragonFly: src/lib/libc_r/man/pthread_testcancel.3,v 1.3 2006/03/26 22:56:56 swildner Exp $
 .Dd January 17, 1999
 .Dt PTHREAD_TESTCANCEL 3
 .Os
@@ -70,7 +70,6 @@ function creates a cancellation point in the calling thread.
 The
 .Fn pthread_testcancel
 function has no effect if cancelability is disabled.
-.Pp
 .Ss Cancelability States
 The cancelability state of a thread determines the action taken upon
 receipt of a cancellation request.

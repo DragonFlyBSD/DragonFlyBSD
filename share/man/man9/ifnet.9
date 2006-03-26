@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
-.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.4 2006/02/25 19:14:53 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ifnet.9,v 1.5 2006/03/26 22:56:57 swildner Exp $
 .Dd January 15, 1997
 .Os
 .Dt IFNET 9
@@ -207,7 +207,6 @@ Interfaces are also associated with an output queue, defined as a
 .Vt "struct ifqueue" ;
 this structure is used to hold packets while the interface is in the
 process of sending another.
-.Pp
 .Ss The Vt ifnet Ss structure
 The fields of
 .Vt "struct ifnet"

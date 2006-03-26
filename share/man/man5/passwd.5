@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)passwd.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/passwd.5,v 1.26.2.5 2002/02/01 15:51:18 ru Exp $
-.\" $DragonFly: src/share/man/man5/passwd.5,v 1.6 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man5/passwd.5,v 1.7 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd September 29, 1994
 .Dt PASSWD 5
@@ -526,7 +526,6 @@ will prevent anybody from logging in) and to remap all UIDs and GIDs
 to 0 (which will make everybody appear to be the superuser). The
 second case just maps all UIDs and GIDs to 0, which means that
 all users will appear to be root!
-.Pp
 .Ss Compatibility of NIS override evaluation
 When Sun originally added NIS support to their
 .Xr getpwent 3
@@ -648,7 +647,6 @@ indistinguishable from that of
 or other similar systems.
 Even
 so, users should be aware of these architectural differences.
-.Pp
 .Ss Using groups instead of netgroups for NIS overrides
 .Dx
 offers the capability to do override matching based on

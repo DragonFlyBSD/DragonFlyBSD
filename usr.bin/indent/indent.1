@@ -33,7 +33,7 @@
 .\"
 .\"	@(#)indent.1	8.1 (Berkeley) 7/1/93
 .\" $FreeBSD: src/usr.bin/indent/indent.1,v 1.8.2.6 2002/06/21 15:27:13 charnier Exp $
-.\" $DragonFly: src/usr.bin/indent/indent.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/indent/indent.1,v 1.3 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd July 1, 1993
 .Dt INDENT 1
@@ -379,7 +379,6 @@ precedence over the one in your login directory.  If
 is run and a profile file exists, then it is read to set up the program's
 defaults.  Switches on the command line, though, always override profile
 switches.  The switches should be separated by spaces, tabs or newlines.
-.Pp
 .Ss Comments
 .Sq Em Box
 .Em comments .
@@ -398,7 +397,6 @@ The
 .Nm
 utility fits as many words (separated by blanks, tabs, or newlines) on a
 line as possible.  Blank lines break paragraphs.
-.Pp
 .Ss Comment indentation
 If a comment is on a line with code it is started in the `comment column',
 which is set by the
@@ -412,7 +410,6 @@ is specified by the
 command line parameter.  If the code on a line extends past the comment
 column, the comment starts further to the right, and the right margin may be
 automatically extended in extreme cases.
-.Pp
 .Ss Preprocessor lines
 In general,
 .Nm
@@ -424,7 +421,6 @@ is recognized and
 .Nm
 attempts to correctly
 compensate for the syntactic peculiarities introduced.
-.Pp
 .Ss C syntax
 The
 .Nm

@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bridge.4,v 1.6.2.11 2002/02/18 02:00:21 luigi Exp $
-.\" $DragonFly: src/share/man/man4/Attic/oldbridge.4,v 1.2 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/Attic/oldbridge.4,v 1.3 2006/03/26 22:56:57 swildner Exp $
 .\"
 .Dd February 15, 2002
 .Dt OLDBRIDGE 4
@@ -99,7 +99,6 @@ modified, bridging is enabled, or new interfaces are created or
 destroyed. Interfaces that are in the list but cannot be used
 for bridging (because they are non-existing, or not Ethernet or VLAN)
 are not used and a warning message is generated.
-.Pp
 .El
 .Pp
 Bridging requires interfaces to be put in promiscuous mode,
@@ -110,7 +109,6 @@ do not support this functionality.
 Also, bridging is not compatible with interfaces which
 use hardware loopback, because there is no way to tell locally
 generated packets from externally generated ones.
-.Pp
 .Sh EXAMPLES
 A simple bridge configuration with three interfaces in the same
 cluster can be set as follows. No cluster-id is specified here, which
@@ -156,7 +154,6 @@ is performed by the
 devices.
 When using vlan devices, care must be taken by not creating loops
 between these devices and their parent interfaces.
-.Pp
 .Sh SEE ALSO
 .Xr ip 4 ,
 .Xr ng_bridge 4 ,
