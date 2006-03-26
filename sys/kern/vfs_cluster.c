@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.19 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.20 2006/03/26 07:56:54 swildner Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -245,7 +245,7 @@ no_read_ahead:
 	if (bp) {
 #if defined(CLUSTERDEBUG)
 		if (rcluster)
-			printf("S(%lld,%ld,%d) ",
+			printf("S(%lld,%d,%d) ",
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0) {
@@ -272,12 +272,12 @@ no_read_ahead:
 #if defined(CLUSTERDEBUG)
 			if (rcluster) {
 				if (bp)
-					printf("A+(%lld,%ld,%lld,%d) ",
+					printf("A+(%lld,%d,%lld,%d) ",
 					    rbp->b_loffset, rbp->b_bcount,
 					    rbp->b_loffset - origoffset,
 					    seqcount);
 				else
-					printf("A(%lld,%ld,%lld,%d) ",
+					printf("A(%lld,%d,%lld,%d) ",
 					    rbp->b_loffset, rbp->b_bcount,
 					    rbp->b_loffset - origoffset,
 					    seqcount);

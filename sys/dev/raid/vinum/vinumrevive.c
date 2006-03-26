@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.7 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.8 2006/03/26 07:56:54 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -203,7 +203,7 @@ revive_block(int sdno)
 	    if (debug & DEBUG_REVIVECONFLICT) {
 		dev = rq->bio->bio_driver_info;
 		log(LOG_DEBUG,
-		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
+		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 		    rq->sdno,
 		    rq,
 		    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",

@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.15 2006/03/24 18:35:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.16 2006/03/26 07:56:54 swildner Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -324,11 +324,11 @@ scdstrategy(dev_t dev, struct bio *bio)
 
 	cd = scd_data + unit;
 
-	XDEBUG(2, ("scd%d: DEBUG: strategy: offset=%lld, bcount=%ld\n",
+	XDEBUG(2, ("scd%d: DEBUG: strategy: offset=%lld, bcount=%d\n",
 		unit, bio->bio_offset, bp->b_bcount));
 
 	if (unit >= NSCD || bio->bio_offset < 0 || (bp->b_bcount % SCDBLKSIZE)) {
-		printf("scd%d: strategy failure: offset = %lld, bcount = %ld\n",
+		printf("scd%d: strategy failure: offset = %lld, bcount = %d\n",
 			unit, bio->bio_offset, bp->b_bcount);
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR;

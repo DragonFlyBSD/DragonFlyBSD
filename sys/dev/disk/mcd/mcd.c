@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.16 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.17 2006/03/26 07:56:54 swildner Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -403,7 +403,7 @@ mcdstrategy(dev_t dev, struct bio *bio)
 /*MCD_TRACE("strategy: buf=0x%lx, unit=%ld, offset=%lld bcount=%ld\n",
 	bp,unit,bio->bio_offset,bp->b_bcount);*/
 	if (unit >= NMCD || bio->bio_offset < 0) {
-		printf("mcdstrategy: unit = %d, offset = %lld, bcount = %ld\n",
+		printf("mcdstrategy: unit = %d, offset = %lld, bcount = %d\n",
 			unit, bio->bio_offset, bp->b_bcount);
 		printf("mcd: mcdstratregy failure");
 		bp->b_error = EINVAL;

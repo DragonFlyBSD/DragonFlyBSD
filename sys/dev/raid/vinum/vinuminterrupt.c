@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.7 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.8 2006/03/26 07:56:54 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -409,7 +409,7 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
-			    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
+			    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 			    rqe->b.b_flags & B_READ ? "Read" : "Write",
 			    major(dev),
 			    minor(dev),
@@ -449,7 +449,7 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
+	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 	    rqe->b.b_flags & B_READ ? "Read" : "Write",
 	    major(dev),
 	    minor(dev),

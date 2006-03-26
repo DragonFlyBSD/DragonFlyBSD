@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.8 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.9 2006/03/26 07:56:54 swildner Exp $
  */
 
 #include "vinumhdr.h"
@@ -343,7 +343,7 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
 	if (debug & DEBUG_REVIVECONFLICT) {
 	    log(LOG_DEBUG,
-		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
+		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 		rq->sdno,
 		rq,
 		rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
@@ -359,7 +359,7 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %ld\n",
+	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 	    rq,
 	    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
 	    major(((dev_t)rq->bio->bio_driver_info)),
@@ -422,7 +422,7 @@ launch_requests(struct request *rq, int reviveok)
 #ifdef VINUMDEBUG
 		if (debug & DEBUG_ADDRESSES)
 		    log(LOG_DEBUG,
-			"  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
+			"  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 			rqe->b.b_flags & B_READ ? "Read" : "Write",
 			major(dev),
 			minor(dev),
@@ -973,7 +973,7 @@ sdio(struct bio *bio)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %ld\n",
+	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
 	    sbp->b.b_flags & B_READ ? "Read" : "Write",
 	    major(sddev),
 	    minor(sddev),
