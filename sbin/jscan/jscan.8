@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.10 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/sbin/jscan/jscan.8,v 1.11 2006/03/27 16:45:44 swildner Exp $
 .\"
 .Dd March 6, 2005
 .Dt JSCAN 8
@@ -87,7 +87,7 @@ Generate a mirror in the directory specified by
 or, if not specified, the current directory.
 The
 .Ar mirror_transid_file
-will be used to track the transaction id representing the current 
+will be used to track the transaction id representing the current
 syncnronization point for the mirror.  The keyword
 .Ar none
 may be specified if no tracking file is desired.  However, if no tracking
@@ -122,13 +122,13 @@ The
 .Fl o
 option indicates a half-duplex output stream while the
 .Fl O
-option indicates a full-duplex (ACK protocol) output stream.  
+option indicates a full-duplex (ACK protocol) output stream.
 .Pp
 This option is not really designed to output to regular files because it
 does NOT necessarily weed out duplicate records.  When both the input
 stream and output stream are full-duplex and
 .Fl w/W
-is not specified, 
+is not specified,
 .Nm
 acts as a stateless transceiver and the input stream is not acked until
 an ack is received from the output stream.
@@ -184,7 +184,7 @@ The received journaling stream is recorded in journaling files named
 and the current transaction id is tracked in a file named
 .Ar <prefix>.transid .
 A journaling file is closed out and a new file with the next sequence
-number is created once the file surpasses 100MB. 
+number is created once the file surpasses 100MB.
 .Pp
 This option is robust across restarts.  The current transaction id
 will be read and the input stream will be skipped until it is reached.
@@ -208,7 +208,7 @@ Similar to
 .Fl w
 except that the journaling files created are strictly temporary and will
 be deleted once they exceed the size limit AND the related meta-transactions
-have been completed. 
+have been completed.
 .Pp
 If combined with
 .Fl m ,
@@ -218,7 +218,7 @@ to build if a particularly large meta-transaction is coming down the pipe.
 .Pp
 If combined with
 .Fl o/O ,
-the meta-transactions are considered to be completed when the data has 
+the meta-transactions are considered to be completed when the data has
 been successfully written out to the pipe in half duplex mode, or when
 the ACK has been received in full-duplex mode.
 .Pp
@@ -246,7 +246,7 @@ is also used.
 .Sh OPERATIONAL NOTES
 It is often important to be able to quickly stage journaled data through
 a dedicated backup machine on a LAN.  There are several places where data
-can be buffered and staged out.  
+can be buffered and staged out.
 .Pp
 The machine generating the journal typically buffers several megabytes of
 journal data in the kernel.  This local machine can pipe that data to
@@ -262,7 +262,7 @@ option, and then runs other
 .Nm
 programs from scripts or cron to take that data and copy it to your
 off-site backup machine.  Other jscan programs may use the same data
-set to generate mirrors or other backup streams.  
+set to generate mirrors or other backup streams.
 .Pp
 It should be noted that if
 .Fl w/W
@@ -278,7 +278,7 @@ If
 is not specified then neither the mirroring or output modes will fork.  Under
 these conditions, if the input is a stream rather then a file
 .Nm
-will be forced to buffer meta-transactions (for mirroring) entirely in 
+will be forced to buffer meta-transactions (for mirroring) entirely in
 memory, which could present a serious problem since a single meta-transaction
 can exceed a gigabyte (e.g. if someone were to do a single write() system
 call writing a gigabyte all in one go).

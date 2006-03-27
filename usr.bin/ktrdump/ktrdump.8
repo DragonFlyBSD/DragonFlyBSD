@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2005/03/08 06:58:56 hmp Exp $
-.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.6 2005/12/10 21:19:29 dillon Exp $
+.\" $DragonFly: src/usr.bin/ktrdump/ktrdump.8,v 1.7 2006/03/27 16:45:44 swildner Exp $
 .\"
 .Dd May 5, 2004
 .Dt KTRDUMP 8
@@ -104,7 +104,7 @@ between cores on multi-core cpus.  Enabling synchronization between cpus
 via the
 .Va debug.ktr.resynchronize
 sysctl will impose additional system overheads and will generally only be
-accurate to within 100ns or so (and perhaps not even that good).  
+accurate to within 100ns or so (and perhaps not even that good).
 Resynchronization only occurs 10 times a second and serious drift will
 cause a great deal of measurement noise when trying to compare events occuring
 on two different cpus.
@@ -149,6 +149,6 @@ This manual page was originally written by
 .An Chad David Aq davidc@FreeBSD.org .
 The program and manual page were rewritten pretty much from
 scratch by
-.An Matthew Dillon 
+.An Matthew Dillon
 for
 .Dx .

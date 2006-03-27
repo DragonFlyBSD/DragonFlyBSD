@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/BUS_SETUP_INTR.9,v 1.1.2.6 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/BUS_SETUP_INTR.9,v 1.3 2005/12/20 13:16:14 swildner Exp $
+.\" $DragonFly: src/share/man/man9/BUS_SETUP_INTR.9,v 1.4 2006/03/27 16:45:44 swildner Exp $
 .\"
 .Dd December 20, 2005
 .Dt BUS_SETUP_INTR 9
@@ -63,7 +63,7 @@ interrupt handler to be directly called from the context of the thread
 being interrupted, but is not recommended for most drivers.
 Other interrupt flags exist for special purposes.
 .Pp
-If 
+If
 .Fa serializer
 is non-NULL the interrupt handler will be called with the serializer held.
 The serializer replaces the obsolete SPL calls that are no longer relevant on
