@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.16 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.17 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -100,8 +100,7 @@ extern struct pagerops physpagerops;
 int cluster_pbuf_freecnt = -1;	/* unlimited to begin with */
 
 static int dead_pager_getpages (vm_object_t, vm_page_t *, int, int);
-static vm_object_t dead_pager_alloc (void *, vm_ooffset_t, vm_prot_t,
-	vm_ooffset_t);
+static vm_object_t dead_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dead_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t dead_pager_haspage (vm_object_t, vm_pindex_t, int *, int *);
 static void dead_pager_dealloc (vm_object_t);
@@ -113,8 +112,7 @@ dead_pager_getpages(vm_object_t obj, vm_page_t *ma, int count, int req)
 }
 
 static vm_object_t
-dead_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
-    vm_ooffset_t off)
+dead_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t off)
 {
 	return NULL;
 }
@@ -231,8 +229,8 @@ vm_pager_bufferinit(void)
  * need to perform page-level validation (e.g. the device pager).
  */
 vm_object_t
-vm_pager_allocate(objtype_t type, void *handle, vm_ooffset_t size, vm_prot_t prot,
-		  vm_ooffset_t off)
+vm_pager_allocate(objtype_t type, void *handle, vm_ooffset_t size,
+		  vm_prot_t prot, off_t off)
 {
 	struct pagerops *ops;
 

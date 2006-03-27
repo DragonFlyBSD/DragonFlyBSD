@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.14 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.15 2006/03/27 01:54:17 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -637,13 +637,10 @@ ffs_getpages(struct vop_getpages_args *ap)
 	/*
 	 * calculate the size of the transfer
 	 */
-
 	size = pcount * PAGE_SIZE;
 
-	if ((IDX_TO_OFF(ap->a_m[firstpage]->pindex) + size) >
-	    obj->un_pager.vnp.vnp_size) {
-		size = obj->un_pager.vnp.vnp_size -
-			IDX_TO_OFF(ap->a_m[firstpage]->pindex);
+	if ((IDX_TO_OFF(ap->a_m[firstpage]->pindex) + size) > vp->v_filesize) {
+		size = vp->v_filesize - IDX_TO_OFF(ap->a_m[firstpage]->pindex);
 	}
 
 	physoffset -= foff;

@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.20 2006/03/27 01:54:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -182,8 +182,8 @@ vm_zone_t		swap_zone;
  */
 
 static vm_object_t
-		swap_pager_alloc (void *handle, vm_ooffset_t size,
-				      vm_prot_t prot, vm_ooffset_t offset);
+		swap_pager_alloc (void *handle, off_t size,
+				  vm_prot_t prot, off_t offset);
 static void	swap_pager_dealloc (vm_object_t object);
 static int	swap_pager_getpages (vm_object_t, vm_page_t *, int, int);
 static void	swap_pager_init (void);
@@ -402,8 +402,7 @@ swap_pager_swap_init(void)
  */
 
 static vm_object_t
-swap_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
-		 vm_ooffset_t offset)
+swap_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	vm_object_t object;
 

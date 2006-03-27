@@ -37,7 +37,7 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.6 2006/02/17 19:18:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.h,v 1.7 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -98,7 +98,7 @@ extern vm_map_t pager_map;
 extern int pager_map_size;
 extern struct pagerops *pagertab[];
 
-vm_object_t vm_pager_allocate (objtype_t, void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
+vm_object_t vm_pager_allocate (objtype_t, void *, off_t, vm_prot_t, off_t);
 void vm_pager_bufferinit (void);
 void vm_pager_deallocate (vm_object_t);
 static __inline int vm_pager_get_pages (vm_object_t, vm_page_t *, int, int);

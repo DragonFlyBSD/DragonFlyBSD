@@ -37,7 +37,7 @@
  * is maintained whenever a resident page also has swap backing store.
  *
  * $FreeBSD: src/sys/vm/default_pager.c,v 1.23 1999/11/07 20:03:53 alc Exp $
- * $DragonFly: src/sys/vm/default_pager.c,v 1.4 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/default_pager.c,v 1.5 2006/03/27 01:54:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,8 +49,7 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 
-static vm_object_t default_pager_alloc (void *, vm_ooffset_t, vm_prot_t,
-		vm_ooffset_t);
+static vm_object_t default_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void default_pager_dealloc (vm_object_t);
 static int default_pager_getpages (vm_object_t, vm_page_t *, int, int);
 static void default_pager_putpages (vm_object_t, vm_page_t *, int, 
@@ -74,8 +73,7 @@ struct pagerops defaultpagerops = {
  * no_pager_alloc just returns an initialized object.
  */
 static vm_object_t
-default_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
-		    vm_ooffset_t offset)
+default_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	if (handle != NULL)
 		panic("default_pager_alloc: handle specified");

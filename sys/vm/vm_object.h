@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.7 2005/07/07 16:54:02 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.8 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -128,15 +128,6 @@ struct vm_object {
 	void *handle;
 	vm_object_lock_t range_locks;
 	union {
-		/*
-		 * VNode pager
-		 *
-		 *	vnp_size - current size of file
-		 */
-		struct {
-			off_t vnp_size;
-		} vnp;
-
 		/*
 		 * Device pager
 		 *

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.18 2006/03/27 01:54:14 dillon Exp $
  */
 
 /*
@@ -647,8 +647,9 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 
 	vn->sc_secsize = PAGE_SIZE;
 	vn->sc_size = vio->vn_size;
-	vn->sc_object = 
-	 vm_pager_allocate(OBJT_SWAP, NULL, vn->sc_secsize * (vm_ooffset_t)vio->vn_size, VM_PROT_DEFAULT, 0);
+	vn->sc_object = vm_pager_allocate(OBJT_SWAP, NULL,
+					  vn->sc_secsize * (off_t)vio->vn_size,
+					  VM_PROT_DEFAULT, 0);
 	IFOPT(vn, VN_RESERVE) {
 		if (swap_pager_reserve(vn->sc_object, 0, vn->sc_size) < 0) {
 			vm_pager_deallocate(vn->sc_object);

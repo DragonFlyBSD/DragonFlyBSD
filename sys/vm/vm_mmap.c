@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.23 2006/01/13 20:45:30 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.24 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -921,7 +921,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	struct vnode *vp = NULL;
 	objtype_t type;
 	int rv = KERN_SUCCESS;
-	vm_ooffset_t objsize;
+	off_t objsize;
 	int docow;
 	struct thread *td = curthread;	/* XXX */
 	struct proc *p = td->td_proc;
@@ -981,7 +981,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			error = VOP_GETATTR(vp, &vat, td);
 			if (error)
 				return (error);
-			objsize = round_page(vat.va_size);
+			objsize = vat.va_size;
 			type = OBJT_VNODE;
 			/*
 			 * if it is a regular file without any references
@@ -997,8 +997,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		object = NULL;
 		docow = 0;
 	} else {
-		object = vm_pager_allocate(type,
-			handle, objsize, prot, foff);
+		object = vm_pager_allocate(type, handle, objsize, prot, foff);
 		if (object == NULL)
 			return (type == OBJT_DEVICE ? EINVAL : ENOMEM);
 		docow = MAP_PREFAULT_PARTIAL;

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.33 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.34 2006/03/27 01:54:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -229,8 +229,8 @@ elf_check_header(const Elf_Ehdr *hdr)
 
 static int
 elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, 
-		 vm_offset_t offset, caddr_t vmaddr, size_t memsz, size_t filsz, 
-		 vm_prot_t prot)
+		 vm_offset_t offset, caddr_t vmaddr, size_t memsz,
+		 size_t filsz, vm_prot_t prot)
 {
 	size_t map_len;
 	vm_offset_t map_addr;
@@ -253,8 +253,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	 * While I'm here, might as well check for something else that
 	 * is invalid: filsz cannot be greater than memsz.
 	 */
-	if ((off_t)filsz + offset > object->un_pager.vnp.vnp_size ||
-	    filsz > memsz) {
+	if ((off_t)filsz + offset > vp->v_filesize || filsz > memsz) {
 		uprintf("elf_load_section: truncated ELF file\n");
 		return (ENOEXEC);
 	}

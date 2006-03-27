@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.23 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -98,8 +98,7 @@ int vnode_pbuf_freecnt = -1;	/* start out unlimited */
  * Handle is a vnode pointer.
  */
 vm_object_t
-vnode_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
-		  vm_ooffset_t offset)
+vnode_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t offset)
 {
 	vm_object_t object;
 	struct vnode *vp;
@@ -147,16 +146,15 @@ vnode_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 		 */
 		object = vm_object_allocate(OBJT_VNODE, OFF_TO_IDX(round_page(size)));
 		object->flags = 0;
-
-		object->un_pager.vnp.vnp_size = size;
-
 		object->handle = handle;
 		vp->v_object = object;
-		vp->v_usecount++;
+		vp->v_filesize = size;
 	} else {
 		object->ref_count++;
-		vp->v_usecount++;
+		if (vp->v_filesize != size)
+			printf("vnode_pager_alloc: Warning, filesize mismatch %lld/%lld\n", vp->v_filesize, size);
 	}
+	vp->v_usecount++;
 
 	vp->v_flag &= ~VOLOCK;
 	if (vp->v_flag & VOWANT) {
@@ -179,6 +177,7 @@ vnode_pager_dealloc(vm_object_t object)
 	object->handle = NULL;
 	object->type = OBJT_DEAD;
 	vp->v_object = NULL;
+	vp->v_filesize = NOOFFSET;
 	vp->v_flag &= ~(VTEXT | VOBJBUF);
 }
 
@@ -211,7 +210,7 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	 */
 	loffset = IDX_TO_OFF(pindex);
 
-	if (vp->v_mount == NULL || loffset >= object->un_pager.vnp.vnp_size)
+	if (vp->v_mount == NULL || loffset >= vp->v_filesize)
 		return FALSE;
 
 	bsize = vp->v_mount->mnt_stat.f_iosize;
@@ -228,8 +227,8 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	}
 	if (after) {
 		*after -= voff;
-		if (loffset + *after > object->un_pager.vnp.vnp_size)
-			*after = object->un_pager.vnp.vnp_size - loffset;
+		if (loffset + *after > vp->v_filesize)
+			*after = vp->v_filesize - loffset;
 		*after >>= PAGE_SHIFT;
 		if (*after < 0)
 			*after = 0;
@@ -242,8 +241,11 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
  * We adjust our own internal size and flush any cached pages in
  * the associated object that are affected by the size change.
  *
- * Note: this routine may be invoked as a result of a pager put
+ * NOTE: This routine may be invoked as a result of a pager put
  * operation (possibly at object termination time), so we must be careful.
+ *
+ * NOTE: vp->v_filesize is initialized to NOOFFSET (-1), be sure that
+ * we do not blow up on the case.  nsize will always be >= 0, however.
  */
 void
 vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
@@ -257,7 +259,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	/*
 	 * Hasn't changed size
 	 */
-	if (nsize == object->un_pager.vnp.vnp_size)
+	if (nsize == vp->v_filesize)
 		return;
 
 	nobjsize = OFF_TO_IDX(nsize + PAGE_MASK);
@@ -265,7 +267,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	/*
 	 * File has shrunk. Toss any cached pages beyond the new EOF.
 	 */
-	if (nsize < object->un_pager.vnp.vnp_size) {
+	if (nsize < vp->v_filesize) {
 		vm_freeze_copyopts(object, OFF_TO_IDX(nsize), object->size);
 		if (nobjsize < object->size) {
 			vm_object_page_remove(object, nobjsize, object->size,
@@ -331,7 +333,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			}
 		}
 	}
-	object->un_pager.vnp.vnp_size = nsize;
+	vp->v_filesize = nsize;
 	object->size = nobjsize;
 }
 
@@ -440,7 +442,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 			continue;
 
 		loffset = IDX_TO_OFF(m->pindex) + i * bsize;
-		if (loffset >= object->un_pager.vnp.vnp_size) {
+		if (loffset >= vp->v_filesize) {
 			doffset = NOOFFSET;
 		} else {
 			doffset = vnode_pager_addr(vp, loffset, NULL);
@@ -508,18 +510,20 @@ vnode_pager_input_old(vm_object_t object, vm_page_t m)
 	int size;
 	vm_offset_t kva;
 	struct sf_buf *sf;
+	struct vnode *vp;
 
 	error = 0;
+	vp = object->handle;
 
 	/*
 	 * Return failure if beyond current EOF
 	 */
-	if (IDX_TO_OFF(m->pindex) >= object->un_pager.vnp.vnp_size) {
+	if (IDX_TO_OFF(m->pindex) >= vp->v_filesize) {
 		return VM_PAGER_BAD;
 	} else {
 		size = PAGE_SIZE;
-		if (IDX_TO_OFF(m->pindex) + size > object->un_pager.vnp.vnp_size)
-			size = object->un_pager.vnp.vnp_size - IDX_TO_OFF(m->pindex);
+		if (IDX_TO_OFF(m->pindex) + size > vp->v_filesize)
+			size = vp->v_filesize - IDX_TO_OFF(m->pindex);
 
 		/*
 		 * Allocate a kernel virtual address and initialize so that
@@ -690,11 +694,10 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 		firstaddr = vnode_pager_addr(vp, IDX_TO_OFF(m[i]->pindex),
 					     &runpg);
 		if (firstaddr == -1) {
-			if (i == reqpage && foff < object->un_pager.vnp.vnp_size) {
+			if (i == reqpage && foff < vp->v_filesize) {
 				/* XXX no %qd in kernel. */
-				panic("vnode_pager_getpages: unexpected missing page: firstaddr: %012llx, foff: 0x%012llx, vnp_size: 0x%012llx",
-			   	 firstaddr, foff,
-				 object->un_pager.vnp.vnp_size);
+				panic("vnode_pager_getpages: unexpected missing page: firstaddr: %012llx, foff: 0x%012llx, v_filesize: 0x%012llx",
+			   	 firstaddr, foff, vp->v_filesize);
 			}
 			vnode_pager_freepage(m[i]);
 			runend = i + 1;
@@ -739,8 +742,8 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * calculate the size of the transfer
 	 */
 	size = count * PAGE_SIZE;
-	if ((foff + size) > object->un_pager.vnp.vnp_size)
-		size = object->un_pager.vnp.vnp_size - foff;
+	if ((foff + size) > vp->v_filesize)
+		size = vp->v_filesize - foff;
 
 	/*
 	 * round up physical size for real devices.
@@ -802,7 +805,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 		nextoff = tfoff + PAGE_SIZE;
 		mt = m[i];
 
-		if (nextoff <= object->un_pager.vnp.vnp_size) {
+		if (nextoff <= vp->v_filesize) {
 			/*
 			 * Read filled up entire page.
 			 */
@@ -820,8 +823,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 			 * we just try to clear the piece that we couldn't
 			 * read.
 			 */
-			vm_page_set_validclean(mt, 0,
-			    object->un_pager.vnp.vnp_size - tfoff);
+			vm_page_set_validclean(mt, 0, vp->v_filesize - tfoff);
 			/* handled by vm_fault now */
 			/* vm_page_zero_invalid(mt, FALSE); */
 		}
@@ -956,11 +958,11 @@ vnode_pager_generic_putpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	 * We do not under any circumstances truncate the valid bits, as
 	 * this will screw up bogus page replacement.
 	 */
-	if (maxsize + poffset > object->un_pager.vnp.vnp_size) {
-		if (object->un_pager.vnp.vnp_size > poffset) {
+	if (maxsize + poffset > vp->v_filesize) {
+		if (vp->v_filesize > poffset) {
 			int pgoff;
 
-			maxsize = object->un_pager.vnp.vnp_size - poffset;
+			maxsize = vp->v_filesize - poffset;
 			ncount = btoc(maxsize);
 			if ((pgoff = (int)maxsize & PAGE_MASK) != 0) {
 				vm_page_clear_dirty(m[ncount - 1], pgoff,

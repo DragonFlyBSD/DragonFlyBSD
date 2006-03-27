@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.59 2005/12/01 18:40:56 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.60 2006/03/27 01:54:15 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1490,7 +1490,7 @@ retry_lookup:
 		 * Calculate the amount to transfer. Not to exceed a page,
 		 * the EOF, or the passed in nbytes.
 		 */
-		xfsize = obj->un_pager.vnp.vnp_size - off;
+		xfsize = vp->v_filesize - off;
 		if (xfsize > PAGE_SIZE)
 			xfsize = PAGE_SIZE;
 		pgoff = (vm_offset_t)(off & PAGE_MASK);

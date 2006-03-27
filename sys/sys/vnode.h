@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.42 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.43 2006/03/27 01:54:16 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -153,6 +153,9 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  *	 typically points to &v_mount->mnt_vn_use_ops.  We use a double
  *	 pointer because mnt_vn_use_ops may change dynamically when e.g.
  *	 journaling is turned on or off.
+ *
+ * NOTE: v_filesize is currently only applicable when a VM object is
+ *	 associated with the vnode.  Otherwise it will be set to NOOFFSET.
  */
 RB_HEAD(buf_rb_tree, buf);
 RB_HEAD(buf_rb_hash, buf);
@@ -186,6 +189,7 @@ struct vnode {
 		struct fifoinfo	*vu_fifoinfo;	/* fifo (VFIFO) */
 	} v_un;
 	struct	nqlease *v_lease;		/* Soft reference to lease */
+	off_t	v_filesize;			/* file EOF or NOOFFSET */
 	off_t	v_lazyw;			/* lazy write iterator */
 	off_t	v_lastw;			/* last write (write cluster) */
 	off_t	v_cstart;			/* start block of cluster */

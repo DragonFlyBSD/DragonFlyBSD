@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.24 2005/10/09 18:07:55 corecode Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.25 2006/03/27 01:54:17 dillon Exp $
  */
 
 /*
@@ -144,6 +144,7 @@ portal_lookup(struct vop_old_lookup_args *ap)
 	}
 	fvp->v_type = VREG;
 	fvp->v_data = pt;
+
 	/*
 	 * Save all of the remaining pathname and
 	 * advance the namei next pointer to the end

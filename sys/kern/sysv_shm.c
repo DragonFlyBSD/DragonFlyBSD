@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.15 2004/07/23 14:07:46 joerg Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.16 2006/03/27 01:54:15 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -508,8 +508,7 @@ shmget_allocate_segment(p, uap, mode)
 	shmseg->shm_perm.mode = SHMSEG_ALLOCATED | SHMSEG_REMOVED;
 	shmseg->shm_perm.key = uap->key;
 	shmseg->shm_perm.seq = (shmseg->shm_perm.seq + 1) & 0x7fff;
-	shm_handle = (struct shm_handle *)
-	    malloc(sizeof(struct shm_handle), M_SHM, M_WAITOK);
+	shm_handle = malloc(sizeof(struct shm_handle), M_SHM, M_WAITOK);
 	shmid = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
 	
 	/*

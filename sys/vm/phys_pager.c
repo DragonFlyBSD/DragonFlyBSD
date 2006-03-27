@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/vm/phys_pager.c,v 1.3.2.3 2000/12/17 02:05:41 alfred Exp $
- * $DragonFly: src/sys/vm/phys_pager.c,v 1.4 2004/10/12 19:29:34 dillon Exp $
+ * $DragonFly: src/sys/vm/phys_pager.c,v 1.5 2006/03/27 01:54:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,7 @@ phys_pager_init(void)
 }
 
 static vm_object_t
-phys_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
-		 vm_ooffset_t foff)
+phys_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
 	vm_object_t object;
 

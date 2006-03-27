@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.31 2006/03/27 01:54:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -809,7 +809,7 @@ again:
 	ip->iso_extent = isonum_733(isodir->extent);
 	ip->i_size = isonum_733(isodir->size);
 	ip->iso_start = isonum_711(isodir->ext_attr_length) + ip->iso_extent;
-	
+
 	/*
 	 * Setup time stamp, attribute
 	 */
@@ -842,7 +842,9 @@ again:
 	/*
 	 * Initialize the associated vnode
 	 */
-	switch (vp->v_type = IFTOVT(ip->inode.iso_mode)) {
+	vp->v_type = IFTOVT(ip->inode.iso_mode);
+
+	switch (vp->v_type) {
 	case VFIFO:
 		vp->v_ops = &mp->mnt_vn_fifo_ops;
 		break;

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.34 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.35 2006/03/27 01:54:17 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -2032,6 +2032,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 
 	vp = *vpp;
 	ip = VTOI(vp);
+
 	switch(vp->v_type = IFTOVT(ip->i_mode)) {
 	case VCHR:
 	case VBLK:
@@ -2045,6 +2046,7 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 		break;
 
 	}
+
 	if (ip->i_number == ROOTINO)
 		vp->v_flag |= VROOT;
 	/*

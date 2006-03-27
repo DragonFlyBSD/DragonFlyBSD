@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.9 2004/11/12 00:09:56 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.10 2006/03/27 01:54:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,7 @@
 #include <vm/vm_zone.h>
 
 static void dev_pager_init (void);
-static vm_object_t dev_pager_alloc (void *, vm_ooffset_t, vm_prot_t,
-		vm_ooffset_t);
+static vm_object_t dev_pager_alloc (void *, off_t, vm_prot_t, off_t);
 static void dev_pager_dealloc (vm_object_t);
 static int dev_pager_getpages (vm_object_t, vm_page_t *, int, int);
 static void dev_pager_putpages (vm_object_t, vm_page_t *, int, 
@@ -93,7 +92,7 @@ dev_pager_init(void)
 }
 
 static vm_object_t
-dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t foff)
+dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 {
 	dev_t dev;
 	vm_object_t object;

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.41 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.42 2006/03/27 01:54:18 dillon Exp $
  */
 
 /*
@@ -2491,8 +2491,8 @@ vm_map_split(vm_map_entry_t entry)
 	offidxend = offidxstart + OFF_TO_IDX(e - s);
 	size = offidxend - offidxstart;
 
-	new_object = vm_pager_allocate(orig_object->type,
-		NULL, IDX_TO_OFF(size), VM_PROT_ALL, 0LL);
+	new_object = vm_pager_allocate(orig_object->type, NULL,
+				       IDX_TO_OFF(size), VM_PROT_ALL, 0);
 	if (new_object == NULL)
 		return;
 

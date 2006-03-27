@@ -37,14 +37,14 @@
  *
  *	@(#)vnode_pager.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vnode_pager.h,v 1.14 1999/12/29 04:55:12 peter Exp $
- * $DragonFly: src/sys/vm/vnode_pager.h,v 1.4 2004/05/08 04:11:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.h,v 1.5 2006/03/27 01:54:18 dillon Exp $
  */
 
 #ifndef	_VNODE_PAGER_
 #define	_VNODE_PAGER_	1
 
 #ifdef _KERNEL
-vm_object_t vnode_pager_alloc (void *, vm_ooffset_t, vm_prot_t, vm_ooffset_t);
+vm_object_t vnode_pager_alloc (void *, off_t, vm_prot_t, off_t);
 void vnode_pager_freepage (vm_page_t);
 struct vnode *vnode_pager_lock (vm_object_t);
 
