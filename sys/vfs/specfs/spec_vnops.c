@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.32 2006/03/27 16:18:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,6 @@ struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) spec_getpages },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) spec_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) spec_ioctl },
-	{ &vop_lease_desc,		vop_null },
 	{ &vop_old_link_desc,		vop_panic },
 	{ &vop_old_mkdir_desc,		vop_panic },
 	{ &vop_old_mknod_desc,		vop_panic },

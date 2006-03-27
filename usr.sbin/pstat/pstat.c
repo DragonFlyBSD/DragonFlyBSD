@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.17 2006/02/08 08:34:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.18 2006/03/27 16:18:15 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -533,10 +533,6 @@ nfs_print(struct vnode *vp)
 		*flags++ = 'R';
 	if (flag & NWRITEERR)
 		*flags++ = 'E';
-	if (flag & NQNFSNONCACHE)
-		*flags++ = 'X';
-	if (flag & NQNFSWRITE)
-		*flags++ = 'O';
 	if (flag & NQNFSEVICTED)
 		*flags++ = 'G';
 	if (flag & NACC)

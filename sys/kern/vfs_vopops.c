@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.18 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.19 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -224,7 +224,6 @@ VNODEOP_DESC_INIT_VP(getattr);
 VNODEOP_DESC_INIT_VP_CRED(setattr);
 VNODEOP_DESC_INIT_VP_CRED(read);
 VNODEOP_DESC_INIT_VP_CRED(write);
-VNODEOP_DESC_INIT_VP_CRED(lease);
 VNODEOP_DESC_INIT_VP_CRED(ioctl);
 VNODEOP_DESC_INIT_VP_CRED(poll);
 VNODEOP_DESC_INIT_VP(kqfilter);
@@ -528,24 +527,6 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	DO_OPS(ops, error, &ap, vop_write);
 	if (error == 0)
 		cache_update_fsmid_vp(vp);
-	return(error);
-}
-
-int
-vop_lease(struct vop_ops *ops, struct vnode *vp, struct thread *td,
-	struct ucred *cred, int flag)
-{
-	struct vop_lease_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_lease_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_td = td;
-	ap.a_cred = cred;
-	ap.a_flag = flag;
-
-	DO_OPS(ops, error, &ap, vop_lease);
 	return(error);
 }
 
@@ -1644,15 +1625,6 @@ vop_write_ap(struct vop_write_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_write);
-	return(error);
-}
-
-int
-vop_lease_ap(struct vop_lease_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_lease);
 	return(error);
 }
 

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.23 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.24 2006/03/27 16:19:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,6 @@ static int	union_fsync (struct vop_fsync_args *ap);
 static int	union_getattr (struct vop_getattr_args *ap);
 static int	union_inactive (struct vop_inactive_args *ap);
 static int	union_ioctl (struct vop_ioctl_args *ap);
-static int	union_lease (struct vop_lease_args *ap);
 static int	union_link (struct vop_old_link_args *ap);
 static int	union_lock (struct vop_lock_args *ap);
 static int	union_lookup (struct vop_old_lookup_args *ap);
@@ -1108,20 +1107,6 @@ union_write(struct vop_read_args *ap)
 }
 
 /*
- * union_lease(struct vnode *a_vp, struct thread *a_td, struct ucred *a_cred,
- *		int a_flag)
- */
-static int
-union_lease(struct vop_lease_args *ap)
-{
-	struct vnode *ovp = OTHERVP(ap->a_vp);
-
-	ap->a_head.a_ops = *ovp->v_ops;
-	ap->a_vp = ovp;
-	return (vop_lease_ap(ap));
-}
-
-/*
  * union_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data, int a_fflag,
  *		struct ucred *a_cred, struct thread *a_td)
  */
@@ -1873,7 +1858,6 @@ struct vnodeopv_entry_desc union_vnodeop_entries[] = {
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) union_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) union_ioctl },
 	{ &vop_islocked_desc,		vop_stdislocked },
-	{ &vop_lease_desc,		(vnodeopv_entry_t) union_lease },
 	{ &vop_old_link_desc,		(vnodeopv_entry_t) union_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) union_lock },
 	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) union_lookup },

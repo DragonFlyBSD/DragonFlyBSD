@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.50 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.51 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -83,7 +83,6 @@
 #include "nfsnode.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
-#include "nqnfs.h"
 
 #include <net/if.h>
 #include <netinet/in.h>
@@ -159,7 +158,6 @@ struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_putpages_desc,		(vnodeopv_entry_t) nfs_putpages },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) nfs_inactive },
 	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_lease_desc,		vop_null },
 	{ &vop_old_link_desc,		(vnodeopv_entry_t) nfs_link },
 	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
 	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) nfs_lookup },
@@ -477,7 +475,6 @@ nfs_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
-	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct vattr vattr;
 	int error;
 
@@ -497,62 +494,41 @@ nfs_open(struct vop_open_args *ap)
 	if (ap->a_mode & FWRITE)
 		np->n_attrstamp = 0;
 
-	if (nmp->nm_flag & NFSMNT_NQNFS) {
-		/*
-		 * If NQNFS is active, get a valid lease
-		 */
-		if (NQNFS_CKINVALID(vp, np, ND_READ)) {
-		    do {
-			error = nqnfs_getlease(vp, ND_READ, ap->a_td);
-		    } while (error == NQNFS_EXPIRED);
-		    if (error)
-			return (error);
-		    if (np->n_lrev != np->n_brev ||
-			(np->n_flag & NQNFSNONCACHE)) {
-			if ((error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1))
-			    == EINTR) {
-				return (error);
-			}
-			np->n_brev = np->n_lrev;
-		    }
-		}
-	} else {
-		/*
-		 * For normal NFS, reconcile changes made locally verses 
-		 * changes made remotely.  Note that VOP_GETATTR only goes
-		 * to the wire if the cached attribute has timed out or been
-		 * cleared.
-		 *
-		 * If local modifications have been made clear the attribute
-		 * cache to force an attribute and modified time check.  If
-		 * GETATTR detects that the file has been changed by someone
-		 * other then us it will set NRMODIFIED.
-		 *
-		 * If we are opening a directory and local changes have been
-		 * made we have to invalidate the cache in order to ensure
-		 * that we get the most up-to-date information from the
-		 * server.  XXX
-		 */
-		if (np->n_flag & NLMODIFIED) {
-			np->n_attrstamp = 0;
-			if (vp->v_type == VDIR) {
-				error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
-				if (error == EINTR)
-					return (error);
-				nfs_invaldir(vp);
-			}
-		}
-		error = VOP_GETATTR(vp, &vattr, ap->a_td);
-		if (error)
-			return (error);
-		if (np->n_flag & NRMODIFIED) {
-			if (vp->v_type == VDIR)
-				nfs_invaldir(vp);
+	/*
+	 * For normal NFS, reconcile changes made locally verses 
+	 * changes made remotely.  Note that VOP_GETATTR only goes
+	 * to the wire if the cached attribute has timed out or been
+	 * cleared.
+	 *
+	 * If local modifications have been made clear the attribute
+	 * cache to force an attribute and modified time check.  If
+	 * GETATTR detects that the file has been changed by someone
+	 * other then us it will set NRMODIFIED.
+	 *
+	 * If we are opening a directory and local changes have been
+	 * made we have to invalidate the cache in order to ensure
+	 * that we get the most up-to-date information from the
+	 * server.  XXX
+	 */
+	if (np->n_flag & NLMODIFIED) {
+		np->n_attrstamp = 0;
+		if (vp->v_type == VDIR) {
 			error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
 			if (error == EINTR)
 				return (error);
-			np->n_flag &= ~NRMODIFIED;
+			nfs_invaldir(vp);
 		}
+	}
+	error = VOP_GETATTR(vp, &vattr, ap->a_td);
+	if (error)
+		return (error);
+	if (np->n_flag & NRMODIFIED) {
+		if (vp->v_type == VDIR)
+			nfs_invaldir(vp);
+		error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
+		if (error == EINTR)
+			return (error);
+		np->n_flag &= ~NRMODIFIED;
 	}
 
 	return (0);
@@ -600,8 +576,7 @@ nfs_close(struct vop_close_args *ap)
 	int error = 0;
 
 	if (vp->v_type == VREG) {
-	    if ((VFSTONFS(vp->v_mount)->nm_flag & NFSMNT_NQNFS) == 0 &&
-		(np->n_flag & NLMODIFIED)) {
+	    if (np->n_flag & NLMODIFIED) {
 		if (NFS_ISV3(vp)) {
 		    /*
 		     * Under NFSv3 we have dirty buffers to dispose of.  We
@@ -2147,13 +2122,8 @@ nfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (np->n_direofoffset > 0 && uio->uio_offset >= np->n_direofoffset &&
 	    (np->n_flag & (NLMODIFIED|NRMODIFIED)) == 0) {
-		if (VFSTONFS(vp->v_mount)->nm_flag & NFSMNT_NQNFS) {
-			if (NQNFS_CKCACHABLE(vp, ND_READ)) {
-				nfsstats.direofcache_hits++;
-				return (0);
-			}
-		} else if (VOP_GETATTR(vp, &vattr, uio->uio_td) == 0 &&
-			(np->n_flag & (NLMODIFIED|NRMODIFIED)) == 0
+		if (VOP_GETATTR(vp, &vattr, uio->uio_td) == 0 &&
+		    (np->n_flag & (NLMODIFIED|NRMODIFIED)) == 0
 		) {
 			nfsstats.direofcache_hits++;
 			return (0);

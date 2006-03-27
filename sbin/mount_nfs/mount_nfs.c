@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.11 2005/11/06 12:34:21 swildner Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.12 2006/03/27 16:18:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,6 @@
 #include <vfs/nfs/rpcv2.h>
 #include <vfs/nfs/nfsproto.h>
 #include <vfs/nfs/nfs.h>
-#include <vfs/nfs/nqnfs.h>
 
 #include <arpa/inet.h>
 
@@ -79,7 +78,7 @@
 #define	ALTF_MNTUDP	0x80
 #define ALTF_RESVPORT	0x100
 #define ALTF_SEQPACKET	0x200
-#define ALTF_NQNFS	0x400
+#define ALTF_UNUSED400	0x400
 #define ALTF_SOFT	0x800
 #define ALTF_TCP	0x1000
 #define ALTF_PORT	0x2000
@@ -105,7 +104,6 @@ struct mntopt mopts[] = {
 	{ "rdirplus", 0, ALTF_RDIRPLUS, 1 },
 	{ "mntudp", 0, ALTF_MNTUDP, 1 },
 	{ "resvport", 0, ALTF_RESVPORT, 1 },
-	{ "nqnfs", 0, ALTF_NQNFS, 1 },
 	{ "soft", 0, ALTF_SOFT, 1 },
 	{ "tcp", 0, ALTF_TCP, 1 },
 	{ "port=", 0, ALTF_PORT, 1 },
@@ -133,8 +131,8 @@ struct nfs_args nfsdefargs = {
 	NFS_RETRANS,
 	NFS_MAXGRPS,
 	NFS_DEFRAHEAD,
-	NQ_DEFLEASE,
-	NQ_DEADTHRESH,
+	0,
+	NFS_DEADTHRESH,
 	(char *)0,
 	/* args version 4 */
 	NFS_MINATTRTIMO,
@@ -232,7 +230,6 @@ set_flags(int* altflags, int* nfsflags, int dir)
 #endif
 	F(RDIRPLUS);
 	F(RESVPORT);
-	F(NQNFS);
 	F(SOFT);
 	F(ACREGMIN);
 	F(ACREGMAX);
@@ -272,7 +269,7 @@ main(int argc, char **argv)
 	nfsargs = nfsdefargs;
 	nfsargsp = &nfsargs;
 	while ((c = getopt(argc, argv,
-	    "23a:bcdD:g:I:iKL:lm:No:PqR:r:sTt:w:x:U")) != -1)
+	    "23a:bcdD:g:I:iKlm:No:PR:r:sTt:w:x:U")) != -1)
 		switch (c) {
 		case '2':
 			mountmode = V2;
@@ -326,13 +323,6 @@ main(int argc, char **argv)
 			nfsargsp->flags |= NFSMNT_KERB;
 			break;
 #endif
-		case 'L':
-			num = strtol(optarg, &p, 10);
-			if (*p || num < 2)
-				errx(1, "illegal -L value -- %s", optarg);
-			nfsargsp->leaseterm = num;
-			nfsargsp->flags |= NFSMNT_LEASETERM;
-			break;
 		case 'l':
 			nfsargsp->flags |= NFSMNT_RDIRPLUS;
 			break;
@@ -388,10 +378,6 @@ main(int argc, char **argv)
 			break;
 		case 'P':
 			/* obsolete for NFSMNT_RESVPORT, now default */
-			break;
-		case 'q':
-			mountmode = V3;
-			nfsargsp->flags |= NFSMNT_NQNFS;
 			break;
 		case 'R':
 			num = strtol(optarg, &p, 10);
@@ -473,7 +459,7 @@ main(int argc, char **argv)
 
 	if (mount(vfc.vfc_name, mntpath, mntflags, nfsargsp))
 		err(1, "%s", mntpath);
-	if (nfsargsp->flags & (NFSMNT_NQNFS | NFSMNT_KERB)) {
+	if (nfsargsp->flags & NFSMNT_KERB) {
 		if ((opflags & ISBGRND) == 0) {
 			if (daemon(0, 0) != 0)
 				err(1, "daemon");
@@ -992,8 +978,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
-"usage: mount_nfs [-23KNPTUbcdilqs] [-D deadthresh] [-I readdirsize]",
-"                 [-L leaseterm] [-R retrycnt] [-a maxreadahead]",
+"usage: mount_nfs [-23KNPTUbcdils] [-D deadthresh] [-I readdirsize]",
+"                 [-R retrycnt] [-a maxreadahead]",
 "                 [-g maxgroups] [-m realm] [-o options] [-r readsize]",
 "                 [-t timeout] [-w writesize] [-x retrans] rhost:path node");
 	exit(1);

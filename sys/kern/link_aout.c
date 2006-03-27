@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.14 2005/04/30 23:04:21 swildner Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.15 2006/03/27 16:18:34 dillon Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -250,7 +250,6 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     /*
      * Read the text and data sections and zero the bss.
      */
-    VOP_LEASE(vp, td, p->p_ucred, LEASE_READ);
     error = vn_rdwr(UIO_READ, vp, (void*) af->address,
 		    header.a_text + header.a_data, 0,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);

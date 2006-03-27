@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.32 2006/03/19 17:53:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.33 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,18 +70,9 @@ static int	nanosleep1 (struct timespec *rqt,
 		    struct timespec *rmt);
 static int	settime (struct timeval *);
 static void	timevalfix (struct timeval *);
-static void	no_lease_updatetime (int);
 
 static int     sleep_hard_us = 100;
 SYSCTL_INT(_kern, OID_AUTO, sleep_hard_us, CTLFLAG_RW, &sleep_hard_us, 0, "")
-
-static void 
-no_lease_updatetime(deltat)
-	int deltat;
-{
-}
-
-void (*lease_updatetime) (int)  = no_lease_updatetime;
 
 static int
 settime(tv)
@@ -140,7 +131,6 @@ settime(tv)
 	ts.tv_sec = tv->tv_sec;
 	ts.tv_nsec = tv->tv_usec * 1000;
 	set_timeofday(&ts);
-	lease_updatetime(delta.tv_sec);
 	crit_exit();
 
 	if (origcpu != 0)

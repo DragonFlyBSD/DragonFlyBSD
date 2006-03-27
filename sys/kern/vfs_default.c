@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.29 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.30 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,6 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lease_desc,		vop_null },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
 	{ &vop_old_lookup_desc,		(void *) vop_nolookup },
@@ -374,7 +373,6 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	 */
 	if (error == EJUSTRETURN) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_CREATE(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -457,7 +455,6 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	 */
 	if (error == EJUSTRETURN) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_MKDIR(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -540,7 +537,6 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	 */
 	if (error == EJUSTRETURN) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_MKNOD(dvp, ap->a_vpp, &cnp, ap->a_vap);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -622,8 +618,6 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	 */
 	if (error == EJUSTRETURN) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
-		VOP_LEASE(ap->a_vp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_LINK(dvp, ap->a_vp, &cnp);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -696,7 +690,6 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 	if (error == EJUSTRETURN) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_SYMLINK(dvp, &vp, &cnp, ap->a_vap, ap->a_target);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -787,7 +780,6 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 		error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 		if (error == EJUSTRETURN) {
 			KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-			VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
 			error = VOP_OLD_WHITEOUT(dvp, &cnp, ap->a_flags);
 			if (error == 0)
 				cache_setunresolved(ncp);
@@ -870,8 +862,6 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 		error = EPERM;
 	if (error == 0) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
-		VOP_LEASE(vp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_REMOVE(dvp, vp, &cnp);
 		if (error == 0) {
 			cache_setunresolved(ncp);
@@ -950,8 +940,6 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 		error = EBUSY;
 	if (error == 0) {
 		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
-		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
-		VOP_LEASE(vp, td, ap->a_cred, LEASE_WRITE);
 		error = VOP_OLD_RMDIR(dvp, vp, &cnp);
 
 		/*

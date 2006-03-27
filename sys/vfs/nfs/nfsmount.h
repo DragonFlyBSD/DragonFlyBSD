@@ -35,7 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.6 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.7 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -71,13 +71,11 @@ struct	nfsmount {
 	int	nm_wsize;		/* Max size of write rpc */
 	int	nm_readdirsize;		/* Size of a readdir rpc */
 	int	nm_readahead;		/* Num. of blocks to readahead */
-	int	nm_leaseterm;		/* Term (sec) for NQNFS lease */
+	int	nm_unused01;		/* Term (sec) for NQNFS lease */
 	int	nm_acdirmin;		/* Directory attr cache min lifetime */
 	int	nm_acdirmax;		/* Directory attr cache max lifetime */
 	int	nm_acregmin;		/* Reg file attr cache min lifetime */
 	int	nm_acregmax;		/* Reg file attr cache max lifetime */
-	CIRCLEQ_HEAD(, nfsnode) nm_timerhead; /* Head of lease timer queue */
-	struct vnode *nm_inprog;	/* Vnode in prog by nqnfs_clientd() */
 	uid_t	nm_authuid;		/* Uid for authenticator */
 	int	nm_authtype;		/* Authenticator type */
 	int	nm_authlen;		/* and length */

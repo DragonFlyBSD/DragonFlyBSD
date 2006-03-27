@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.43 2006/03/27 01:54:16 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.44 2006/03/27 16:18:35 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -188,7 +188,6 @@ struct vnode {
 		} vu_spec;
 		struct fifoinfo	*vu_fifoinfo;	/* fifo (VFIFO) */
 	} v_un;
-	struct	nqlease *v_lease;		/* Soft reference to lease */
 	off_t	v_filesize;			/* file EOF or NOOFFSET */
 	off_t	v_lazyw;			/* lazy write iterator */
 	off_t	v_lastw;			/* last write (write cluster) */
@@ -360,15 +359,6 @@ extern	int vfs_ioopt;
 extern	int numvnodes;
 extern	int freevnodes;
 extern  int vfs_fastdev;		/* fast specfs device access */
-
-/*
- * Macro/function to check for client cache inconsistency w.r.t. leasing.
- */
-#define	LEASE_READ	0x1		/* Check lease for readers */
-#define	LEASE_WRITE	0x2		/* Check lease for modifiers */
-
-
-extern void	(*lease_updatetime) (int deltat);
 
 #endif /* _KERNEL */
 
@@ -589,8 +579,6 @@ struct vattr;
 struct vnode;
 struct vop_bwrite_args;
 
-extern int	(*lease_check_hook) (struct vop_lease_args *);
-
 void	addaliasu (struct vnode *vp, udev_t nvp_udev);
 int	v_associate_rdev(struct vnode *vp, dev_t dev);
 void	v_release_rdev(struct vnode *vp);
@@ -601,7 +589,6 @@ int	getnewvnode (enum vtagtype tag, struct mount *mp,
 int	getspecialvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vop_ops **ops, struct vnode **vpp, int timo, 
 		    int lkflags);
-int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
 void	vattr_null (struct vattr *vap);

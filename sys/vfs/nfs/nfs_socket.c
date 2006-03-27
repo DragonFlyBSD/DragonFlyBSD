@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.32 2006/03/01 15:09:35 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.33 2006/03/27 16:18:39 dillon Exp $
  */
 
 /*
@@ -73,7 +73,6 @@
 #include "nfsmount.h"
 #include "nfsnode.h"
 #include "nfsrtt.h"
-#include "nqnfs.h"
 
 #define	TRUE	1
 #define	FALSE	0
@@ -103,8 +102,7 @@
 extern u_int32_t rpc_reply, rpc_msgdenied, rpc_mismatch, rpc_vers,
 	rpc_auth_unix, rpc_msgaccepted, rpc_call, rpc_autherr,
 	rpc_auth_kerb;
-extern u_int32_t nfs_prog, nqnfs_prog;
-extern time_t nqnfsstarttime;
+extern u_int32_t nfs_prog;
 extern struct nfsstats nfsstats;
 extern int nfsv3_procid[NFS_NPROCS];
 extern int nfs_ticks;
@@ -191,8 +189,8 @@ int (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 	nfsrv_fsinfo,
 	nfsrv_pathconf,
 	nfsrv_commit,
-	nqnfsrv_getlease,
-	nqnfsrv_vacated,
+	nfsrv_noop,
+	nfsrv_noop,
 	nfsrv_noop,
 	nfsrv_noop
 };
@@ -806,18 +804,8 @@ nfs_reply(struct nfsreq *myrep)
 		nfsm_dissect(tl, u_int32_t *, 2*NFSX_UNSIGNED);
 		rxid = *tl++;
 		if (*tl != rpc_reply) {
-#ifndef NFS_NOSERVER
-			if (nmp->nm_flag & NFSMNT_NQNFS) {
-				if (nqnfs_callback(nmp, mrep, md, dpos))
-					nfsstats.rpcinvalid++;
-			} else {
-				nfsstats.rpcinvalid++;
-				m_freem(mrep);
-			}
-#else
 			nfsstats.rpcinvalid++;
 			m_freem(mrep);
-#endif
 nfsmout:
 			if (myrep->r_flags & R_GETONEREP)
 				return (0);
@@ -943,16 +931,14 @@ nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
 	int i;
 	struct nfsmount *nmp;
 	struct mbuf *m, *md, *mheadend;
-	struct nfsnode *np;
 	char nickv[RPCX_NICKVERF];
-	time_t reqtime, waituntil;
+	time_t waituntil;
 	caddr_t dpos, cp2;
-	int t1, nqlflag, cachable, error = 0, mrest_len, auth_len, auth_type;
-	int trylater_delay = NQ_TRYLATERDEL, trylater_cnt = 0, failed_auth = 0;
+	int t1, error = 0, mrest_len, auth_len, auth_type;
+	int trylater_delay = 15, trylater_cnt = 0, failed_auth = 0;
 	int verf_len, verf_type;
 	int retdummy;
 	u_int32_t xid;
-	u_quad_t frev;
 	char *auth_str, *verf_str;
 	NFSKERBKEY_T key;		/* save session key */
 
@@ -1050,9 +1036,6 @@ tryagain:
 	 */
 	crit_enter();
 	TAILQ_INSERT_TAIL(&nfs_reqq, rep, r_chain);
-
-	/* Get send time for nqnfs */
-	reqtime = time_second;
 
 	/*
 	 * If backing off another request or avoiding congestion, don't
@@ -1208,24 +1191,6 @@ tryagain:
 			return (error);
 		}
 
-		/*
-		 * For nqnfs, get any lease in reply
-		 */
-		if (nmp->nm_flag & NFSMNT_NQNFS) {
-			nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
-			if (*tl) {
-				np = VTONFS(vp);
-				nqlflag = fxdr_unsigned(int, *tl);
-				nfsm_dissect(tl, u_int32_t *, 4*NFSX_UNSIGNED);
-				cachable = fxdr_unsigned(int, *tl++);
-				reqtime += fxdr_unsigned(int, *tl++);
-				if (reqtime > time_second) {
-				    frev = fxdr_hyper(tl);
-				    nqnfs_clientlease(nmp, np, nqlflag,
-					cachable, reqtime, frev);
-				}
-			}
-		}
 		*mrp = mrep;
 		*mdp = md;
 		*dposp = dpos;
@@ -1248,8 +1213,7 @@ nfsmout:
  */
 int
 nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
-	    int err, int cache, u_quad_t *frev, struct mbuf **mrq,
-	    struct mbuf **mbp, caddr_t *bposp)
+	    int err, struct mbuf **mrq, struct mbuf **mbp, caddr_t *bposp)
 {
 	u_int32_t *tl;
 	struct mbuf *mreq;
@@ -1335,13 +1299,8 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 		case EPROGMISMATCH:
 			*tl = txdr_unsigned(RPC_PROGMISMATCH);
 			nfsm_build(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
-			if (nd->nd_flag & ND_NQNFS) {
-				*tl++ = txdr_unsigned(3);
-				*tl = txdr_unsigned(3);
-			} else {
-				*tl++ = txdr_unsigned(2);
-				*tl = txdr_unsigned(3);
-			}
+			*tl++ = txdr_unsigned(2);
+			*tl = txdr_unsigned(3);
 			break;
 		case EPROCUNAVAIL:
 			*tl = txdr_unsigned(RPC_PROCUNAVAIL);
@@ -1362,21 +1321,6 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 		};
 	}
 
-	/*
-	 * For nqnfs, piggyback lease as requested.
-	 */
-	if ((nd->nd_flag & ND_NQNFS) && err == 0) {
-		if (nd->nd_flag & ND_LEASE) {
-			nfsm_build(tl, u_int32_t *, 5 * NFSX_UNSIGNED);
-			*tl++ = txdr_unsigned(nd->nd_flag & ND_LEASE);
-			*tl++ = txdr_unsigned(cache);
-			*tl++ = txdr_unsigned(nd->nd_duration);
-			txdr_hyper(*frev, tl);
-		} else {
-			nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED);
-			*tl = 0;
-		}
-	}
 	if (mrq != NULL)
 	    *mrq = mreq;
 	*mbp = mb;
@@ -1404,7 +1348,6 @@ nfs_timer(void *arg /* never used */)
 	int timeo;
 	int error;
 #ifndef NFS_NOSERVER
-	static long lasttime = 0;
 	struct nfssvc_sock *slp;
 	u_quad_t cur_usec;
 #endif /* NFS_NOSERVER */
@@ -1508,13 +1451,6 @@ skip:
 		rep->r_flags &= ~R_LOCKED;
 	}
 #ifndef NFS_NOSERVER
-	/*
-	 * Call the nqnfs server timer once a second to handle leases.
-	 */
-	if (lasttime != time_second) {
-		lasttime = time_second;
-		nqnfs_serverd();
-	}
 
 	/*
 	 * Scan the write gathering queues for writes that need to be
@@ -1835,7 +1771,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 	caddr_t dpos, cp2, cp;
 	u_int32_t nfsvers, auth_type;
 	uid_t nickuid;
-	int error = 0, nqnfs = 0, ticklen;
+	int error = 0, ticklen;
 	struct mbuf *mrep, *md;
 	struct nfsuid *nuidp;
 	struct timeval tvin, tvout;
@@ -1863,31 +1799,24 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 		return (0);
 	}
 	if (*tl != nfs_prog) {
-		if (*tl == nqnfs_prog)
-			nqnfs++;
-		else {
-			nd->nd_repstat = EPROGUNAVAIL;
-			nd->nd_procnum = NFSPROC_NOOP;
-			return (0);
-		}
+		nd->nd_repstat = EPROGUNAVAIL;
+		nd->nd_procnum = NFSPROC_NOOP;
+		return (0);
 	}
 	tl++;
 	nfsvers = fxdr_unsigned(u_int32_t, *tl++);
-	if (((nfsvers < NFS_VER2 || nfsvers > NFS_VER3) && !nqnfs) ||
-		(nfsvers != NQNFS_VER3 && nqnfs)) {
+	if (nfsvers < NFS_VER2 || nfsvers > NFS_VER3) {
 		nd->nd_repstat = EPROGMISMATCH;
 		nd->nd_procnum = NFSPROC_NOOP;
 		return (0);
 	}
-	if (nqnfs)
-		nd->nd_flag = (ND_NFSV3 | ND_NQNFS);
-	else if (nfsvers == NFS_VER3)
+	if (nfsvers == NFS_VER3)
 		nd->nd_flag = ND_NFSV3;
 	nd->nd_procnum = fxdr_unsigned(u_int32_t, *tl++);
 	if (nd->nd_procnum == NFSPROC_NULL)
 		return (0);
 	if (nd->nd_procnum >= NFS_NPROCS ||
-		(!nqnfs && nd->nd_procnum >= NQNFSPROC_GETLEASE) ||
+		(nd->nd_procnum >= NQNFSPROC_GETLEASE) ||
 		(!nd->nd_flag && nd->nd_procnum > NFSV2PROC_STATFS)) {
 		nd->nd_repstat = EPROCUNAVAIL;
 		nd->nd_procnum = NFSPROC_NOOP;
@@ -2043,19 +1972,6 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 		return (0);
 	}
 
-	/*
-	 * For nqnfs, get piggybacked lease request.
-	 */
-	if (nqnfs && nd->nd_procnum != NQNFSPROC_EVICTED) {
-		nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
-		nd->nd_flag |= fxdr_unsigned(int, *tl);
-		if (nd->nd_flag & ND_LEASE) {
-			nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
-			nd->nd_duration = fxdr_unsigned(int32_t, *tl);
-		} else
-			nd->nd_duration = NQ_MINLEASE;
-	} else
-		nd->nd_duration = NQ_MINLEASE;
 	nd->nd_md = md;
 	nd->nd_dpos = dpos;
 	return (0);

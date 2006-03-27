@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.22 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.23 2006/03/27 16:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,6 @@
 #include "nfsrvcache.h"
 #include "nfsmount.h"
 #include "nfsnode.h"
-#include "nqnfs.h"
 #include "nfsrtt.h"
 
 #include <sys/thread2.h>
@@ -82,8 +81,6 @@ extern int32_t (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 					    struct thread *td,
 					    struct mbuf **mreqp);
 extern int nfs_numasync;
-extern time_t nqnfsstarttime;
-extern int nqsrv_writeslack;
 extern int nfsrtton;
 extern struct nfsstats nfsstats;
 extern int nfsrvw_procrastinate;
@@ -106,8 +103,6 @@ SYSCTL_DECL(_vfs_nfs);
 int nfsd_waiting = 0;
 static struct nfsdrt nfsdrt;
 static int nfs_numnfsd = 0;
-static int notstarted = 1;
-static int modify_flag = 0;
 static void	nfsd_rt (int sotype, struct nfsrv_descript *nd,
 			     int cacherep);
 static int	nfssvc_addsock (struct file *, struct sockaddr *,
@@ -196,8 +191,8 @@ nfssvc(struct nfssvc_args *uap)
 			(uap->flag & NFSSVC_GOTAUTH) == 0)
 			return (0);
 		nmp->nm_state |= NFSSTA_MNTD;
-		error = nqnfs_clientd(nmp, td->td_proc->p_ucred, &ncd, uap->flag,
-			uap->argp, td);
+		error = nfs_clientd(nmp, td->td_proc->p_ucred, &ncd, uap->flag,
+				    uap->argp, td);
 	} else if (uap->flag & NFSSVC_ADDSOCK) {
 		error = copyin(uap->argp, (caddr_t)&nfsdarg, sizeof(nfsdarg));
 		if (error)
@@ -548,30 +543,11 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    !copyout((caddr_t)nsd, argp, sizeof (*nsd)))
 			    return (ENEEDAUTH);
 			cacherep = RC_DROPIT;
-		    } else
+		    } else {
 			cacherep = nfsrv_getcache(nd, slp, &mreq);
-
-		    /*
-		     * Check for just starting up for NQNFS and send
-		     * fake "try again later" replies to the NQNFS clients.
-		     */
-		    if (notstarted && nqnfsstarttime <= time_second) {
-			if (modify_flag) {
-				nqnfsstarttime = time_second + nqsrv_writeslack;
-				modify_flag = 0;
-			} else
-				notstarted = 0;
 		    }
-		    if (notstarted) {
-			if ((nd->nd_flag & ND_NQNFS) == 0)
-				cacherep = RC_DROPIT;
-			else if (nd->nd_procnum != NFSPROC_WRITE) {
-				nd->nd_procnum = NFSPROC_NOOP;
-				nd->nd_repstat = NQNFS_TRYLATER;
-				cacherep = RC_DOIT;
-			} else
-				modify_flag = 1;
-		    } else if (nfsd->nfsd_flag & NFSD_AUTHFAIL) {
+
+		    if (nfsd->nfsd_flag & NFSD_AUTHFAIL) {
 			nfsd->nfsd_flag &= ~NFSD_AUTHFAIL;
 			nd->nd_procnum = NFSPROC_NOOP;
 			nd->nd_repstat = (NFSERR_AUTHERR | AUTH_TOOWEAK);
@@ -608,12 +584,14 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			else
 			    procrastinate = nfsrvw_procrastinate;
 			if (writes_todo || (nd->nd_procnum == NFSPROC_WRITE &&
-			    procrastinate > 0 && !notstarted))
+			    procrastinate > 0)
+			) {
 			    error = nfsrv_writegather(&nd, slp,
 				nfsd->nfsd_td, &mreq);
-			else
+			} else {
 			    error = (*(nfsrv3_procs[nd->nd_procnum]))(nd,
 				slp, nfsd->nfsd_td, &mreq);
+			}
 			if (mreq == NULL)
 				break;
 			if (error != 0 && error != NFSERR_RETVOID) {
@@ -892,9 +870,7 @@ nfsd_rt(int sotype, struct nfsrv_descript *nd, int cacherep)
 		rt->flag = DRT_CACHEDROP;
 	if (sotype == SOCK_STREAM)
 		rt->flag |= DRT_TCP;
-	if (nd->nd_flag & ND_NQNFS)
-		rt->flag |= DRT_NQNFS;
-	else if (nd->nd_flag & ND_NFSV3)
+	if (nd->nd_flag & ND_NFSV3)
 		rt->flag |= DRT_NFSV3;
 	rt->proc = nd->nd_procnum;
 	if (nd->nd_nam->sa_family == AF_INET)

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.43 2006/03/09 08:32:42 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.44 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1687,7 +1687,6 @@ coredump(struct proc *p)
 	VATTR_NULL(&vattr);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	vattr.va_size = 0;
-	VOP_LEASE(vp, td, cred, LEASE_WRITE);
 	VOP_SETATTR(vp, &vattr, cred, td);
 	p->p_acflag |= ACORE;
 	VOP_UNLOCK(vp, 0, td);

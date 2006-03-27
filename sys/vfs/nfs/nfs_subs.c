@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.34 2006/02/21 19:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.35 2006/03/27 16:18:39 dillon Exp $
  */
 
 /*
@@ -74,7 +74,6 @@
 #include "nfsnode.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
-#include "nqnfs.h"
 #include "nfsrtt.h"
 
 #include <netinet/in.h>
@@ -87,7 +86,7 @@ u_int32_t nfs_xdrneg1;
 u_int32_t rpc_call, rpc_vers, rpc_reply, rpc_msgdenied, rpc_autherr,
 	rpc_mismatch, rpc_auth_unix, rpc_msgaccepted,
 	rpc_auth_kerb;
-u_int32_t nfs_prog, nqnfs_prog, nfs_true, nfs_false;
+u_int32_t nfs_prog, nfs_true, nfs_false;
 
 /* And other global data */
 static u_int32_t nfs_xid = 0;
@@ -107,17 +106,13 @@ int nfssvc_sockhead_flag;
 struct nfsd_head nfsd_head;
 int nfsd_head_flag;
 struct nfs_bufq nfs_bufq;
-struct nqtimerhead nqtimerhead;
 struct nqfhhashhead *nqfhhashtbl;
 u_long nqfhhash;
 
-static void (*nfs_prev_lease_updatetime) (int);
 static int nfs_prev_nfssvc_sy_narg;
 static sy_call_t *nfs_prev_nfssvc_sy_call;
 
 #ifndef NFS_NOSERVER
-
-static int (*nfs_prev_vop_lease_check)(struct vop_lease_args *);
 
 /*
  * Mapping of old NFS Version 2 RPC numbers to generic numbers.
@@ -546,12 +541,7 @@ static short *nfsrv_v3errmap[] = {
 #endif /* NFS_NOSERVER */
 
 extern struct nfsrtt nfsrtt;
-extern time_t nqnfsstarttime;
-extern int nqsrv_clockskew;
-extern int nqsrv_writeslack;
-extern int nqsrv_maxlease;
 extern struct nfsstats nfsstats;
-extern int nqnfs_piggy[NFS_NPROCS];
 extern nfstype nfsv2_type[9];
 extern nfstype nfsv3_type[9];
 extern struct nfsnodehashhead *nfsnodehashtbl;
@@ -585,33 +575,12 @@ struct mbuf *
 nfsm_reqh(struct vnode *vp, u_long procid, int hsiz, caddr_t *bposp)
 {
 	struct mbuf *mb;
-	u_int32_t *tl;
 	caddr_t bpos;
-	struct mbuf *mb2;
-	struct nfsmount *nmp;
-	int nqflag;
 
 	mb = m_getl(hsiz, MB_WAIT, MT_DATA, 0, NULL);
 	mb->m_len = 0;
 	bpos = mtod(mb, caddr_t);
 
-	/*
-	 * For NQNFS, add lease request.
-	 */
-	if (vp) {
-		nmp = VFSTONFS(vp->v_mount);
-		if (nmp->nm_flag & NFSMNT_NQNFS) {
-			nqflag = NQNFS_NEEDLEASE(vp, procid);
-			if (nqflag) {
-				nfsm_build(tl, u_int32_t *, 2*NFSX_UNSIGNED);
-				*tl++ = txdr_unsigned(nqflag);
-				*tl = txdr_unsigned(nmp->nm_leaseterm);
-			} else {
-				nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED);
-				*tl = 0;
-			}
-		}
-	}
 	/* Finally, return values */
 	*bposp = bpos;
 	return (mb);
@@ -666,16 +635,11 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	*tl++ = *xidp = txdr_unsigned(nfs_xid);
 	*tl++ = rpc_call;
 	*tl++ = rpc_vers;
-	if (nmflag & NFSMNT_NQNFS) {
-		*tl++ = txdr_unsigned(NQNFS_PROG);
-		*tl++ = txdr_unsigned(NQNFS_VER3);
-	} else {
-		*tl++ = txdr_unsigned(NFS_PROG);
-		if (nmflag & NFSMNT_NFSV3)
-			*tl++ = txdr_unsigned(NFS_VER3);
-		else
-			*tl++ = txdr_unsigned(NFS_VER2);
-	}
+	*tl++ = txdr_unsigned(NFS_PROG);
+	if (nmflag & NFSMNT_NFSV3)
+		*tl++ = txdr_unsigned(NFS_VER3);
+	else
+		*tl++ = txdr_unsigned(NFS_VER2);
 	if (nmflag & NFSMNT_NFSV3)
 		*tl++ = txdr_unsigned(procid);
 	else
@@ -1084,7 +1048,6 @@ nfs_init(struct vfsconf *vfsp)
 	rpc_auth_unix = txdr_unsigned(RPCAUTH_UNIX);
 	rpc_auth_kerb = txdr_unsigned(RPCAUTH_KERB4);
 	nfs_prog = txdr_unsigned(NFS_PROG);
-	nqnfs_prog = txdr_unsigned(NQNFS_PROG);
 	nfs_true = txdr_unsigned(TRUE);
 	nfs_false = txdr_unsigned(FALSE);
 	nfs_xdrneg1 = txdr_unsigned(-1);
@@ -1103,33 +1066,12 @@ nfs_init(struct vfsconf *vfsp)
 #endif
 
 	/*
-	 * Initialize the nqnfs server stuff.
-	 */
-	if (nqnfsstarttime == 0) {
-		nqnfsstarttime = boottime.tv_sec + nqsrv_maxlease
-			+ nqsrv_clockskew + nqsrv_writeslack;
-		NQLOADNOVRAM(nqnfsstarttime);
-		CIRCLEQ_INIT(&nqtimerhead);
-		nqfhhashtbl = hashinit(NQLCHSZ, M_NQLEASE, &nqfhhash);
-	}
-
-	/*
 	 * Initialize reply list and start timer
 	 */
 	TAILQ_INIT(&nfs_reqq);
 
 	nfs_timer(0);
 
-	/*
-	 * Set up lease_check and lease_updatetime so that other parts
-	 * of the system can call us, if we are loadable.
-	 */
-#ifndef NFS_NOSERVER
-	nfs_prev_vop_lease_check = default_vnode_vops->vop_lease;
-	default_vnode_vops->vop_lease = nqnfs_vop_lease_check;
-#endif
-	nfs_prev_lease_updatetime = lease_updatetime;
-	lease_updatetime = nfs_lease_updatetime;
 	nfs_prev_nfssvc_sy_narg = sysent[SYS_nfssvc].sy_narg;
 	sysent[SYS_nfssvc].sy_narg = 2;
 	nfs_prev_nfssvc_sy_call = sysent[SYS_nfssvc].sy_call;
@@ -1145,10 +1087,6 @@ nfs_uninit(struct vfsconf *vfsp)
 {
 	callout_stop(&nfs_timer_handle);
 	nfs_mount_type = -1;
-#ifndef NFS_NOSERVER
-	default_vnode_vops->vop_lease = nfs_prev_vop_lease_check;
-#endif
-	lease_updatetime = nfs_prev_lease_updatetime;
 	sysent[SYS_nfssvc].sy_narg = nfs_prev_nfssvc_sy_narg;
 	sysent[SYS_nfssvc].sy_call = nfs_prev_nfssvc_sy_call;
 	return (0);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.29 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.30 2006/03/27 16:18:39 dillon Exp $
  */
 
 /*
@@ -95,7 +95,6 @@
 #include "nfs.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
-#include "nqnfs.h"
 
 #ifdef NFSRV_DEBUG
 #define nfsdbprintf(info)	printf info
@@ -164,17 +163,13 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, getret;
+	int error = 0, rdonly, getret;
 	char *cp2;
 	struct mbuf *mb, *mreq, *mb2;
 	struct vattr vattr, *vap = &vattr;
 	u_long testmode, nfsmode;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
@@ -238,10 +233,9 @@ nfsrv_getattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache;
+	int error = 0, rdonly;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
@@ -253,7 +247,6 @@ nfsrv_getattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	nqsrv_getl(vp, ND_READ);
 	error = VOP_GETATTR(vp, vap, td);
 	vput(vp);
 	vp = NULL;
@@ -293,11 +286,10 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, preat_ret = 1, postat_ret = 1;
+	int error = 0, rdonly, preat_ret = 1, postat_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3), gcheck = 0;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	u_quad_t frev;
 	struct timespec guard;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
@@ -359,7 +351,6 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * vp now an active resource, pay careful attention to cleanup
 	 */
 
-	nqsrv_getl(vp, ND_WRITE);
 	if (v3) {
 		error = preat_ret = VOP_GETATTR(vp, &preat, td);
 		if (!error && gcheck &&
@@ -440,12 +431,11 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache = 0, len, dirattr_ret = 1;
+	int error = 0, len, dirattr_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3), pubflag;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vattr va, dirattr, *vap = &va;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -562,11 +552,6 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		goto nfsmout;
 	}
 
-#if 0
-	/* XXX not sure how to deal with this */
-	nqsrv_getl(ndp->ni_startdir, ND_READ);
-#endif
-
 	/*
 	 * Clear out some resources prior to potentially blocking.  This
 	 * is not as critical as ni_dvp resources in other routines, but
@@ -627,7 +612,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, i, tlen, len, getret;
+	int error = 0, rdonly, i, tlen, len, getret;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mb2, *mp2, *mp3, *mreq;
@@ -636,7 +621,6 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct uio io, *uiop = &io;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
@@ -688,7 +672,6 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = ENXIO;
 		goto out;
 	}
-	nqsrv_getl(vp, ND_READ);
 	error = VOP_READLINK(vp, uiop, cred);
 out:
 	getret = VOP_GETATTR(vp, &attr, td);
@@ -738,7 +721,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int32_t t1;
 	int i;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, cnt, len, left, siz, tlen, getret;
+	int error = 0, rdonly, cnt, len, left, siz, tlen, getret;
 	int v3 = (nfsd->nd_flag & ND_NFSV3), reqlen;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
@@ -751,7 +734,6 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nfsheur *nh;
 	off_t off;
 	int ioflag = 0;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
@@ -788,7 +770,6 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = (vp->v_type == VDIR) ? EISDIR : EACCES;
 	}
 	if (!error) {
-	    nqsrv_getl(vp, ND_READ);
 	    if ((error = nfsrv_access(vp, VREAD, cred, rdonly, td, 1)) != 0)
 		error = nfsrv_access(vp, VEXEC, cred, rdonly, td, 1);
 	}
@@ -987,7 +968,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, len, forat_ret = 1;
+	int error = 0, rdonly, len, forat_ret = 1;
 	int ioflags, aftat_ret = 1, retlen, zeroing, adjust;
 	int stable = NFSV3WRITE_FILESYNC;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
@@ -998,7 +979,6 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	fhandle_t *fhp;
 	struct uio io, *uiop = &io;
 	off_t off;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	if (mrep == NULL) {
@@ -1078,7 +1058,6 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = (vp->v_type == VDIR) ? EISDIR : EACCES;
 	}
 	if (!error) {
-		nqsrv_getl(vp, ND_WRITE);
 		error = nfsrv_access(vp, VWRITE, cred, rdonly, td, 1);
 	}
 	if (error) {
@@ -1191,13 +1170,13 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos, dpos;
-	int error = 0, rdonly, cache, len, forat_ret = 1;
+	int error = 0, rdonly, len, forat_ret = 1;
 	int ioflags, aftat_ret = 1, adjust, v3, zeroing;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq, *mrep, *md;
 	struct vnode *vp = NULL;
 	struct uio io, *uiop = &io;
-	u_quad_t frev, cur_usec;
+	u_quad_t cur_usec;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
@@ -1364,7 +1343,6 @@ loop1:
 		    vp = NULL;
 		}
 		if (!error) {
-		    nqsrv_getl(vp, ND_WRITE);
 		    error = nfsrv_access(vp, VWRITE, cred, rdonly, td, 1);
 		}
     
@@ -1562,7 +1540,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nlookupdata nd;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdev, cache, len, tsize, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, rdev, len, tsize, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3), how, exclusive_flag = 0;
 	caddr_t cp;
 	char *cp2;
@@ -1572,7 +1550,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev, tempsize;
+	u_quad_t tempsize;
 	u_char cverf[NFSX_V3CREATEVERF];
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
@@ -1683,7 +1661,6 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		if (vap->va_mode == (mode_t)VNOVAL)
 			vap->va_mode = 0;
 		if (vap->va_type == VREG || vap->va_type == VSOCK) {
-			nqsrv_getl(dvp, ND_WRITE);
 			vput(dvp);
 			dvp = NULL;
 			error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
@@ -1713,7 +1690,6 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				goto nfsmreply0;
                         }
 			vap->va_rdev = rdev;
-			nqsrv_getl(dvp, ND_WRITE);
 
 			vput(dvp);
 			dvp = NULL;
@@ -1766,7 +1742,6 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = nfsrv_access(vp, VWRITE, cred,
 			    (nd.nl_flags & NLC_NFS_RDONLY), td, 0);
 			if (!error) {
-				nqsrv_getl(vp, ND_WRITE);
 				tempsize = vap->va_size;
 				VATTR_NULL(vap);
 				vap->va_size = tempsize;
@@ -1842,7 +1817,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nlookupdata nd;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache, len, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, dirfor_ret = 1, diraft_ret = 1;
 	u_int32_t major, minor;
 	enum vtype vtyp;
 	char *cp2;
@@ -1852,7 +1827,6 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -1907,12 +1881,10 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
 	if (vtyp == VSOCK) {
-		nqsrv_getl(dvp, ND_WRITE);
 		error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
 	} else {
 		if (vtyp != VFIFO && (error = suser_cred(cred, 0)))
 			goto out;
-		nqsrv_getl(dvp, ND_WRITE);
 
 		error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
 		if (error)
@@ -2012,7 +1984,7 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache, len, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
@@ -2022,7 +1994,6 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr dirfor, diraft;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -2055,8 +2026,6 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		}
 out:
 		if (!error) {
-			nqsrv_getl(dvp, ND_WRITE);
-			nqsrv_getl(vp, ND_WRITE);
 			if (dvp) {
 				if (dvp == vp)
 					vrele(dvp);
@@ -2107,7 +2076,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache = 0, len, len2, fdirfor_ret = 1, fdiraft_ret = 1;
+	int error = 0, len, len2, fdirfor_ret = 1, fdiraft_ret = 1;
 	int tdirfor_ret = 1, tdiraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
@@ -2119,7 +2088,6 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr fdirfor, fdiraft, tdirfor, tdiraft;
 	nfsfh_t fnfh, tnfh;
 	fhandle_t *ffhp, *tfhp;
-	u_quad_t frev;
 	uid_t saved_uid;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
@@ -2272,14 +2240,6 @@ out:
 		 * locks prior to returning so we need to clear the pointers
 		 * to bypass cleanup code later on.
 		 */
-#if 0
-		/* XXX should be handled by NRENAME */
-		nqsrv_getl(fdvp, ND_WRITE);
-		nqsrv_getl(tdvp, ND_WRITE);
-		if (tvp) {
-			nqsrv_getl(tvp, ND_WRITE);
-		}
-#endif
 		error = VOP_NRENAME(fromnd.nl_ncp, tond.nl_ncp, tond.nl_cred);
 	} else {
 		if (error == -1)
@@ -2325,7 +2285,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache = 0, len, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, rdonly, len, dirfor_ret = 1, diraft_ret = 1;
 	int getret = 1, v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
@@ -2336,7 +2296,6 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr dirfor, diraft, at;
 	nfsfh_t nfh, dnfh;
 	fhandle_t *fhp, *dfhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -2381,10 +2340,6 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = EXDEV;
 out:
 	if (!error) {
-#if 0
-		nqsrv_getl(xp, ND_WRITE);
-		nqsrv_getl(vp, ND_WRITE);
-#endif
 		error = VOP_NLINK(nd.nl_ncp, xp, nd.nl_cred);
 	}
 	/* fall through */
@@ -2439,14 +2394,13 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *bpos, *pathcp = (char *)0, *cp2;
 	struct uio io;
 	struct iovec iv;
-	int error = 0, cache = 0, len, len2, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, len2, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	struct mbuf *mb, *mreq, *mb2;
 	struct vnode *dirp;
 	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -2493,9 +2447,6 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
-#if 0
-	nqsrv_getl(dvp, ND_WRITE);
-#endif
 	error = VOP_NSYMLINK(nd.nl_ncp, &vp, nd.nl_cred, vap, pathcp);
 	if (error == 0) {
 		bzero((caddr_t)fhp, sizeof(nfh));
@@ -2594,7 +2545,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache = 0, len, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
@@ -2602,7 +2553,6 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -2652,9 +2602,6 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
-#if 0
-	nqsrv_getl(nd.ni_dvp, ND_WRITE);
-#endif
 	error = VOP_NMKDIR(nd.nl_ncp, &vp, nd.nl_cred, vap);
 
 	if (error == 0) {
@@ -2705,7 +2652,7 @@ nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, cache = 0, len, dirfor_ret = 1, diraft_ret = 1;
+	int error = 0, len, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
@@ -2715,7 +2662,6 @@ nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct nlookupdata nd;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
@@ -2755,10 +2701,6 @@ out:
 	 * component is freed by the VOP after either.
 	 */
 	if (!error) {
-#if 0
-		nqsrv_getl(nd.ni_dvp, ND_WRITE);
-		nqsrv_getl(vp, ND_WRITE);
-#endif
 		vput(vp);
 		vp = NULL;
 		error = VOP_NRMDIR(nd.nl_ncp, nd.nl_cred);
@@ -2845,9 +2787,9 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct uio io;
 	struct iovec iv;
 	int len, nlen, rem, xfer, tsiz, i, error = 0, getret = 1;
-	int siz, cnt, fullsiz, eofflag, rdonly, cache, ncookies;
+	int siz, cnt, fullsiz, eofflag, rdonly, ncookies;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
-	u_quad_t frev, off, toff, verf;
+	u_quad_t off, toff, verf;
 	u_long *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
@@ -2891,7 +2833,6 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * Obtain lock on vnode for this section of the code
 	 */
 
-	nqsrv_getl(vp, ND_READ);
 	if (v3) {
 		error = getret = VOP_GETATTR(vp, &at, td);
 #if 0
@@ -3139,8 +3080,8 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr va, at, *vap = &va;
 	struct nfs_fattr *fp;
 	int len, nlen, rem, xfer, tsiz, i, error = 0, getret = 1;
-	int siz, cnt, fullsiz, eofflag, rdonly, cache, dirlen, ncookies;
-	u_quad_t frev, off, toff, verf;
+	int siz, cnt, fullsiz, eofflag, rdonly, dirlen, ncookies;
+	u_quad_t off, toff, verf;
 	u_long *cookies = NULL, *cookiep; /* needs to be int64_t or off_t */
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
@@ -3183,7 +3124,6 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = NFSERR_BAD_COOKIE;
 #endif
 	if (!error) {
-		nqsrv_getl(vp, ND_READ);
 		error = nfsrv_access(vp, VEXEC, cred, rdonly, td, 0);
 	}
 	if (error) {
@@ -3466,15 +3406,12 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, for_ret = 1, aft_ret = 1, cnt, cache;
+	int error = 0, rdonly, for_ret = 1, aft_ret = 1, cnt;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	u_quad_t frev, off;
+	u_quad_t off;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_dissect(tl, u_int32_t *, 3 * NFSX_UNSIGNED);
@@ -3598,7 +3535,7 @@ nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, getret = 1;
+	int error = 0, rdonly, getret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
@@ -3607,12 +3544,9 @@ nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct statfs statfs;
-	u_quad_t frev, tval;
+	u_quad_t tval;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
@@ -3681,20 +3615,17 @@ nfsrv_fsinfo(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nfsv3_fsinfo *sip;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, getret = 1, pref;
+	int error = 0, rdonly, getret = 1, pref;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vnode *vp = NULL;
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev, maxfsize;
+	u_quad_t maxfsize;
 	struct statfs sb;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
@@ -3760,7 +3691,7 @@ nfsrv_pathconf(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nfsv3_pathconf *pc;
 	int32_t t1;
 	caddr_t bpos;
-	int error = 0, rdonly, cache, getret = 1;
+	int error = 0, rdonly, getret = 1;
 	register_t linkmax, namemax, chownres, notrunc;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
@@ -3768,12 +3699,8 @@ nfsrv_pathconf(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
@@ -3830,14 +3757,10 @@ nfsrv_null(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 {
 	struct mbuf *mrep = nfsd->nd_mrep;
 	caddr_t bpos;
-	int error = NFSERR_RETVOID, cache;
+	int error = NFSERR_RETVOID;
 	struct mbuf *mb, *mreq;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	nfsm_reply(0);
 	nfsm_srvdone;
 }
@@ -3852,14 +3775,10 @@ nfsrv_noop(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 {
 	struct mbuf *mrep = nfsd->nd_mrep;
 	caddr_t bpos;
-	int error, cache;
+	int error;
 	struct mbuf *mb, *mreq;
-	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-#ifndef nolint
-	cache = 0;
-#endif
 	if (nfsd->nd_repstat)
 		error = nfsd->nd_repstat;
 	else

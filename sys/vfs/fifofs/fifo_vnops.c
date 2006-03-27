@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.23 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.24 2006/03/27 16:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,6 @@ static struct vnodeopv_entry_desc fifo_vnodeop_entries[] = {
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) fifo_inactive },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) fifo_ioctl },
 	{ &vop_kqfilter_desc,		(vnodeopv_entry_t) fifo_kqfilter },
-	{ &vop_lease_desc,		(vnodeopv_entry_t) vop_null },
 	{ &vop_old_link_desc,		(vnodeopv_entry_t) fifo_badop },
 	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) fifo_lookup },
 	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) fifo_badop },

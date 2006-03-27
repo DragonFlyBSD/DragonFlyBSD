@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.34 2005/10/27 13:33:19 sephe Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.35 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -258,7 +258,6 @@ again:
 	}
 	if (fmode & O_TRUNC) {
 		VOP_UNLOCK(vp, 0, td);			/* XXX */
-		VOP_LEASE(vp, td, cred, LEASE_WRITE);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
@@ -420,9 +419,6 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 
 /*
  * Package up an I/O request on a vnode into a uio and do it.
- *
- * We are going to assume the caller has done the appropriate
- * VOP_LEASE() call before calling vn_rdwr()
  */
 int
 vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
@@ -540,7 +536,6 @@ vn_read(fp, uio, cred, flags, td)
 		ioflag |= IO_NDELAY;
 	if (fp->f_flag & O_DIRECT)
 		ioflag |= IO_DIRECT;
-	VOP_LEASE(vp, td, cred, LEASE_READ);
 	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
@@ -635,7 +630,6 @@ vn_write(fp, uio, cred, flags, td)
 	if ((fp->f_flag & O_FSYNC) ||
 	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
 		ioflag |= IO_SYNC;
-	VOP_LEASE(vp, td, cred, LEASE_WRITE);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;

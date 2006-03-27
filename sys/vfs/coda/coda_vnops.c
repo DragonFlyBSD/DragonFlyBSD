@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.31 2006/03/27 16:18:36 dillon Exp $
  * 
  */
 
@@ -144,7 +144,6 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
     { &vop_pathconf_desc, (vnodeopv_entry_t)coda_vop_error },	/* pathconf */
     { &vop_advlock_desc, (vnodeopv_entry_t)coda_vop_nop },	/* advlock */
     { &vop_bwrite_desc, (vnodeopv_entry_t)coda_vop_error },	/* bwrite */
-    { &vop_lease_desc, (vnodeopv_entry_t)coda_vop_nop },	/* lease */
     { &vop_poll_desc, (vnodeopv_entry_t)vop_stdpoll },		/* poll */
     { &vop_getpages_desc, (vnodeopv_entry_t)coda_fbsd_getpages }, /* pager intf.*/
     { &vop_putpages_desc, (vnodeopv_entry_t)coda_fbsd_putpages }, /* pager intf.*/

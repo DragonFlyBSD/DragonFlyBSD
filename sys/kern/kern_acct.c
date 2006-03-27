@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.19 2005/10/08 19:46:50 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.20 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -261,7 +261,6 @@ acct_process(struct proc *p)
 	/*
 	 * Write the accounting information to the file.
 	 */
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	return (vn_rdwr(UIO_WRITE, vp, (caddr_t)&acct, sizeof (acct),
 	    (off_t)0, UIO_SYSSPACE, IO_APPEND|IO_UNIT, p->p_ucred,
 	    (int *)0, td));

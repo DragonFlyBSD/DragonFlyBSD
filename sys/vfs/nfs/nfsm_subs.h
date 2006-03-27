@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.8 2005/05/29 10:08:36 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.9 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -437,11 +437,9 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 	do { \
 		nfsd->nd_repstat = error; \
 		if (error && !(nfsd->nd_flag & ND_NFSV3)) \
-		   (void) nfs_rephead(0, nfsd, slp, error, cache, &frev, \
-			mrq, &mb, &bpos); \
+		    nfs_rephead(0, nfsd, slp, error, mrq, &mb, &bpos); \
 		else \
-		   (void) nfs_rephead((s), nfsd, slp, error, cache, &frev, \
-			mrq, &mb, &bpos); \
+		    nfs_rephead((s), nfsd, slp, error, mrq, &mb, &bpos); \
 		if (mrep != NULL) { \
 			m_freem(mrep); \
 			mrep = NULL; \
@@ -458,11 +456,9 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 	do { \
 		nfsd->nd_repstat = error; \
 		if (error && !(v3)) \
-		   (void) nfs_rephead(0, nfsd, slp, error, cache, &frev, \
-			&mreq, &mb, &bpos); \
+		    nfs_rephead(0, nfsd, slp, error, &mreq, &mb, &bpos); \
 		else \
-		   (void) nfs_rephead((s), nfsd, slp, error, cache, &frev, \
-			&mreq, &mb, &bpos); \
+		    nfs_rephead((s), nfsd, slp, error, &mreq, &mb, &bpos); \
 	} while (0)
 
 #define	nfsm_adv(s) \

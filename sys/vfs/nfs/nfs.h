@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.14 2006/02/21 19:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.15 2006/03/27 16:18:39 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -75,6 +75,10 @@
 #ifndef NFS_MAXDIRATTRTIMO
 #define	NFS_MAXDIRATTRTIMO 60
 #endif
+#ifndef NFS_DEADTHRESH
+#define NFS_DEADTHRESH	NFS_NEVERDEAD
+#endif
+#define NFS_NEVERDEAD	9
 #define	NFS_WSIZE	8192		/* Def. write data size <= 8192 */
 #define	NFS_RSIZE	8192		/* Def. read data size <= 8192 */
 #define NFS_READDIRSIZE	8192		/* Def. readdir size */
@@ -137,7 +141,7 @@ struct nfs_args {
 	int		retrans;	/* times to retry send */
 	int		maxgrouplist;	/* Max. size of group list */
 	int		readahead;	/* # of blocks to readahead */
-	int		leaseterm;	/* Term (sec) of lease */
+	int		unused01;	/* Term (sec) of lease */
 	int		deadthresh;	/* Retrans threshold */
 	char		*hostname;	/* server's name */
 	int		acregmin;	/* cache attrs for reg files min time */
@@ -157,11 +161,11 @@ struct nfs_args {
 #define	NFSMNT_MAXGRPS		0x00000020  /* set maximum grouplist size */
 #define	NFSMNT_INT		0x00000040  /* allow interrupts on hard mount */
 #define	NFSMNT_NOCONN		0x00000080  /* Don't Connect the socket */
-#define	NFSMNT_NQNFS		0x00000100  /* Use Nqnfs protocol */
+#define	NFSMNT_UNUSED0100	0x00000100
 #define	NFSMNT_NFSV3		0x00000200  /* Use NFS Version 3 protocol */
 #define	NFSMNT_KERB		0x00000400  /* Use Kerberos authentication */
 #define	NFSMNT_DUMBTIMR		0x00000800  /* Don't estimate rtt dynamically */
-#define	NFSMNT_LEASETERM	0x00001000  /* set lease term (nqnfs) */
+#define	NFSMNT_UNUSED1000	0x00001000  /* set lease term (nqnfs) */
 #define	NFSMNT_READAHEAD	0x00002000  /* set read ahead */
 #define	NFSMNT_DEADTHRESH	0x00004000  /* set dead server retry thresh */
 #define	NFSMNT_RESVPORT		0x00008000  /* Allocate a reserved port */
@@ -298,7 +302,6 @@ MALLOC_DECLARE(M_NFSREQ);
 MALLOC_DECLARE(M_NFSDIROFF);
 MALLOC_DECLARE(M_NFSRVDESC);
 MALLOC_DECLARE(M_NFSUID);
-MALLOC_DECLARE(M_NQLEASE);
 MALLOC_DECLARE(M_NFSD);
 MALLOC_DECLARE(M_NFSBIGFH);
 MALLOC_DECLARE(M_NFSHASH);
@@ -516,19 +519,17 @@ struct nfsrv_descript {
 	int			nd_len;		/* Length of this write */
 	int			nd_repstat;	/* Reply status */
 	u_int32_t		nd_retxid;	/* Reply xid */
-	u_int32_t		nd_duration;	/* Lease duration */
 	struct timeval		nd_starttime;	/* Time RPC initiated */
 	fhandle_t		nd_fh;		/* File handle */
 	struct ucred		nd_cr;		/* Credentials */
 };
 
 /* Bits for "nd_flag" */
-#define	ND_READ		LEASE_READ
-#define ND_WRITE	LEASE_WRITE
+#define	ND_READ		0x01
+#define ND_WRITE	0x02
 #define ND_CHECK	0x04
-#define ND_LEASE	(ND_READ | ND_WRITE | ND_CHECK)
 #define ND_NFSV3	0x08
-#define ND_NQNFS	0x10
+#define ND_UNUSED010	0x10
 #define ND_KERBNICK	0x20
 #define ND_KERBFULL	0x40
 #define ND_KERBAUTH	(ND_KERBNICK | ND_KERBFULL)
@@ -600,8 +601,7 @@ int	nfs_getreq (struct nfsrv_descript *,struct nfsd *,int);
 int	nfs_send (struct socket *, struct sockaddr *, struct mbuf *, 
 		      struct nfsreq *);
 int	nfs_rephead (int, struct nfsrv_descript *, struct nfssvc_sock *,
-			 int, int, u_quad_t *, struct mbuf **, struct mbuf **,
-			 caddr_t *);
+			 int, struct mbuf **, struct mbuf **, caddr_t *);
 int	nfs_sndlock (struct nfsreq *);
 void	nfs_sndunlock (struct nfsreq *);
 int	nfs_slplock (struct nfssvc_sock *, int);
@@ -737,6 +737,10 @@ int	nfsrv_write (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 void	nfsrv_rcv (struct socket *so, void *arg, int waitflag);
 void	nfsrv_slpderef (struct nfssvc_sock *slp);
 int	nfs_meta_setsize (struct vnode *vp, struct thread *td, u_quad_t nsize);
+int	nfs_clientd(struct nfsmount *nmp, struct ucred *cred,
+			struct nfsd_cargs *ncd, int flag, caddr_t argp,
+			struct thread *td);
+
 
 #endif	/* _KERNEL */
 

@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.14 2005/08/27 20:23:06 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.15 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -107,10 +107,8 @@ struct nfsdmap {
  */
 struct nfsnode {
 	LIST_ENTRY(nfsnode)	n_hash;		/* Hash chain */
-	CIRCLEQ_ENTRY(nfsnode)	n_timer;	/* Nqnfs timer chain */
 	u_quad_t		n_size;		/* Current size of file */
 	u_quad_t		n_brev;		/* Modify rev when cached */
-	u_quad_t		n_lrev;		/* Modify rev for lease */
 	struct vattr		n_vattr;	/* Vnode attribute cache */
 	time_t			n_attrstamp;	/* Attr. cache timestamp */
 	u_int32_t		n_mode;		/* ACCESS mode cache */
@@ -157,8 +155,8 @@ struct nfsnode {
 #define	NFLUSHINPROG	0x0002	/* Avoid multiple calls to vinvalbuf() */
 #define	NLMODIFIED	0x0004	/* Client has pending modifications */
 #define	NWRITEERR	0x0008	/* Flag write errors so close will know */
-#define	NQNFSNONCACHE	0x0020	/* Non-cachable lease */
-#define	NQNFSWRITE	0x0040	/* Write lease */
+#define	NDONTCACHE	0x0020	/* Non-cachable */
+#define	NUNUSED040	0x0040
 #define	NQNFSEVICTED	0x0080	/* Has been evicted */
 #define	NACC		0x0100	/* Special file accessed */
 #define	NUPD		0x0200	/* Special file updated */
@@ -226,7 +224,6 @@ nfs_vpcred(struct vnode *vp, int ndflag)
 int	nfs_getpages (struct vop_getpages_args *);
 int	nfs_putpages (struct vop_putpages_args *);
 int	nfs_write (struct vop_write_args *);
-int	nqnfs_vop_lease_check (struct vop_lease_args *);
 int	nfs_inactive (struct vop_inactive_args *);
 int	nfs_reclaim (struct vop_reclaim_args *);
 int	nfs_flush (struct vnode *, int, struct thread *, int);
@@ -236,8 +233,6 @@ int	nfs_removeit (struct sillyrename *);
 int	nfs_nget (struct mount *,nfsfh_t *,int,struct nfsnode **);
 nfsuint64 *nfs_getcookie (struct nfsnode *, off_t, int);
 void	nfs_invaldir (struct vnode *);
-
-#define	nqnfs_lease_updatetime	nfs_lease_updatetime
 
 #endif /* _KERNEL */
 

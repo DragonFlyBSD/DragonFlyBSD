@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.29 2006/03/24 19:08:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.30 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -64,7 +64,6 @@
 #include "nfsproto.h"
 #include "nfs.h"
 #include "nfsmount.h"
-#include "nqnfs.h"
 #include "nfsnode.h"
 
 static struct buf *nfs_getcacheblk(struct vnode *vp, off_t loffset,
@@ -386,56 +385,26 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	 *		cleared which means GETATTR may use cached data and
 	 *		not immediately detect changes made on the server.
 	 */
-	if ((nmp->nm_flag & NFSMNT_NQNFS) == 0) {
-		if ((np->n_flag & NLMODIFIED) && vp->v_type == VDIR) {
-			nfs_invaldir(vp);
-			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-			if (error)
-				return (error);
-			np->n_attrstamp = 0;
-		}
-		error = VOP_GETATTR(vp, &vattr, td);
+	if ((np->n_flag & NLMODIFIED) && vp->v_type == VDIR) {
+		nfs_invaldir(vp);
+		error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
 		if (error)
 			return (error);
-		if (np->n_flag & NRMODIFIED) {
-			if (vp->v_type == VDIR)
-				nfs_invaldir(vp);
-			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-			if (error)
-				return (error);
-			np->n_flag &= ~NRMODIFIED;
-		}
+		np->n_attrstamp = 0;
+	}
+	error = VOP_GETATTR(vp, &vattr, td);
+	if (error)
+		return (error);
+	if (np->n_flag & NRMODIFIED) {
+		if (vp->v_type == VDIR)
+			nfs_invaldir(vp);
+		error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+		if (error)
+			return (error);
+		np->n_flag &= ~NRMODIFIED;
 	}
 	do {
-
-	    /*
-	     * Get a valid lease. If cached data is stale, flush it.
-	     */
-	    if (nmp->nm_flag & NFSMNT_NQNFS) {
-		if (NQNFS_CKINVALID(vp, np, ND_READ)) {
-		    do {
-			error = nqnfs_getlease(vp, ND_READ, td);
-		    } while (error == NQNFS_EXPIRED);
-		    if (error)
-			return (error);
-		    if (np->n_lrev != np->n_brev ||
-			(np->n_flag & NQNFSNONCACHE) ||
-			((np->n_flag & NLMODIFIED) && vp->v_type == VDIR)) {
-			if (vp->v_type == VDIR)
-			    nfs_invaldir(vp);
-			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-			if (error)
-			    return (error);
-			np->n_brev = np->n_lrev;
-		    }
-		} else if (vp->v_type == VDIR && (np->n_flag & NLMODIFIED)) {
-		    nfs_invaldir(vp);
-		    error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-		    if (error)
-			return (error);
-		}
-	    }
-	    if (np->n_flag & NQNFSNONCACHE) {
+	    if (np->n_flag & NDONTCACHE) {
 		switch (vp->v_type) {
 		case VREG:
 			return (nfs_readrpc(vp, uio));
@@ -444,8 +413,8 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		case VDIR:
 			break;
 		default:
-			printf(" NQNFSNONCACHE: type %x unexpected\n",	
-				vp->v_type);
+			printf(" NDONTCACHE: type %x unexpected\n", vp->v_type);
+			break;
 		};
 	    }
 	    switch (vp->v_type) {
@@ -649,7 +618,7 @@ again:
 		    (bp->b_flags & B_INVAL) == 0 &&
 		    (np->n_direofoffset == 0 ||
 		    loffset + NFS_DIRBLKSIZ < np->n_direofoffset) &&
-		    !(np->n_flag & NQNFSNONCACHE) &&
+		    (np->n_flag & NDONTCACHE) == 0 &&
 		    !findblk(vp, loffset + NFS_DIRBLKSIZ)) {
 			rabp = nfs_getcacheblk(vp, loffset + NFS_DIRBLKSIZ,
 					       NFS_DIRBLKSIZ, td);
@@ -734,7 +703,7 @@ again:
 		 * Invalidate buffer if caching is disabled, forcing a
 		 * re-read from the remote later.
 		 */
-		if (np->n_flag & NQNFSNONCACHE)
+		if (np->n_flag & NDONTCACHE)
 			bp->b_flags |= B_INVAL;
 		break;
 	    default:
@@ -887,25 +856,7 @@ restart:
 	biosize = vp->v_mount->mnt_stat.f_iosize;
 
 	do {
-		/*
-		 * Check for a valid write lease.
-		 */
-		if ((nmp->nm_flag & NFSMNT_NQNFS) &&
-		    NQNFS_CKINVALID(vp, np, ND_WRITE)) {
-			do {
-				error = nqnfs_getlease(vp, ND_WRITE, td);
-			} while (error == NQNFS_EXPIRED);
-			if (error)
-				break;
-			if (np->n_lrev != np->n_brev ||
-			    (np->n_flag & NQNFSNONCACHE)) {
-				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-				if (error)
-					break;
-				np->n_brev = np->n_lrev;
-			}
-		}
-		if ((np->n_flag & NQNFSNONCACHE) && uio->uio_iovcnt == 1) {
+		if ((np->n_flag & NDONTCACHE) && uio->uio_iovcnt == 1) {
 		    iomode = NFSV3WRITE_FILESYNC;
 		    error = nfs_writerpc(vp, uio, &iomode, &must_commit);
 		    if (must_commit)
@@ -1054,30 +1005,6 @@ again:
 			goto again;
 		}
 
-		/*
-		 * Check for valid write lease and get one as required.
-		 * In case getblk() and/or bwrite() delayed us.
-		 */
-		if ((nmp->nm_flag & NFSMNT_NQNFS) &&
-		    NQNFS_CKINVALID(vp, np, ND_WRITE)) {
-			do {
-				error = nqnfs_getlease(vp, ND_WRITE, td);
-			} while (error == NQNFS_EXPIRED);
-			if (error) {
-				brelse(bp);
-				break;
-			}
-			if (np->n_lrev != np->n_brev ||
-			    (np->n_flag & NQNFSNONCACHE)) {
-				brelse(bp);
-				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-				if (error)
-					break;
-				np->n_brev = np->n_lrev;
-				goto again;
-			}
-		}
-
 		error = uiomove((char *)bp->b_data + on, n, uio);
 
 		/*
@@ -1121,19 +1048,18 @@ again:
 		 * IO_INVAL appears to be unused.  The idea appears to be
 		 * to turn off caching in this case.  Very odd.  XXX
 		 */
-		if ((np->n_flag & NQNFSNONCACHE) || (ioflag & IO_SYNC)) {
+		if ((np->n_flag & NDONTCACHE) || (ioflag & IO_SYNC)) {
 			if (ioflag & IO_INVAL)
 				bp->b_flags |= B_NOCACHE;
 			error = VOP_BWRITE(vp, bp);
 			if (error)
 				break;
-			if (np->n_flag & NQNFSNONCACHE) {
+			if (np->n_flag & NDONTCACHE) {
 				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
 				if (error)
 					break;
 			}
-		} else if ((n + on) == biosize &&
-			(nmp->nm_flag & NFSMNT_NQNFS) == 0) {
+		} else if ((n + on) == biosize) {
 			bp->b_flags |= B_ASYNC;
 			nfs_writebp(bp, 0, 0);
 		} else {
@@ -1472,11 +1398,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		    }
 		}
 		if (td && td->td_proc && (vp->v_flag & VTEXT) &&
-			(((nmp->nm_flag & NFSMNT_NQNFS) &&
-			  NQNFS_CKINVALID(vp, np, ND_READ) &&
-			  np->n_lrev != np->n_brev) ||
-			 (!(nmp->nm_flag & NFSMNT_NQNFS) &&
-			  np->n_mtime != np->n_vattr.va_mtime.tv_sec))) {
+		    np->n_mtime != np->n_vattr.va_mtime.tv_sec) {
 			uprintf("Process killed due to text file modification\n");
 			psignal(td->td_proc, SIGKILL);
 		}

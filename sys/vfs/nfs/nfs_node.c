@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.21 2006/03/27 01:54:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.22 2006/03/27 16:18:39 dillon Exp $
  */
 
 
@@ -260,7 +260,6 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
-	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct nfsdmap *dp, *dp2;
 
 	if (prtactive && vp->v_usecount != 0)
@@ -268,13 +267,6 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 
 	if (np->n_hash.le_prev != NULL)
 		LIST_REMOVE(np, n_hash);
-
-	/*
-	 * For nqnfs, take it off the timer queue as required.
-	 */
-	if ((nmp->nm_flag & NFSMNT_NQNFS) && np->n_timer.cqe_next != 0) {
-		CIRCLEQ_REMOVE(&nmp->nm_timerhead, np, n_timer);
-	}
 
 	/*
 	 * Free up any directory cookie structures and

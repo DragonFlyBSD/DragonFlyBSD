@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.16 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.17 2006/03/27 16:18:35 dillon Exp $
  */
 
 /*
@@ -177,14 +177,6 @@ struct vop_write_args {
 	struct uio *a_uio;
 	int a_ioflag;
 	struct ucred *a_cred;
-};
-
-struct vop_lease_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	struct thread *a_td;
-	struct ucred *a_cred;
-	int a_flag;
 };
 
 struct vop_ioctl_args {
@@ -600,7 +592,7 @@ struct vop_ops {
 	int	(*vop_setattr)(struct vop_setattr_args *);
 	int	(*vop_read)(struct vop_read_args *);
 	int	(*vop_write)(struct vop_write_args *);
-	int	(*vop_lease)(struct vop_lease_args *);
+	int	(*vop_unused04)(void *);
 	int	(*vop_ioctl)(struct vop_ioctl_args *);
 	int	(*vop_poll)(struct vop_poll_args *);
 	int	(*vop_kqfilter)(struct vop_kqfilter_args *);
@@ -689,7 +681,6 @@ union vop_args_union {
 	struct vop_setattr_args vu_setattr;
 	struct vop_read_args vu_read;
 	struct vop_write_args vu_write;
-	struct vop_lease_args vu_lease;
 	struct vop_ioctl_args vu_ioctl;
 	struct vop_poll_args vu_poll;
 	struct vop_kqfilter_args vu_kqfilter;
@@ -777,8 +768,6 @@ int vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int ioflag, struct ucred *cred);
 int vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int ioflag, struct ucred *cred);
-int vop_lease(struct vop_ops *ops, struct vnode *vp, struct thread *td,
-		struct ucred *cred, int flag);
 int vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command,
 		caddr_t data, int fflag,
 		struct ucred *cred, struct thread *td);
@@ -903,7 +892,6 @@ int vop_getattr_ap(struct vop_getattr_args *ap);
 int vop_setattr_ap(struct vop_setattr_args *ap);
 int vop_read_ap(struct vop_read_args *ap);
 int vop_write_ap(struct vop_write_args *ap);
-int vop_lease_ap(struct vop_lease_args *ap);
 int vop_ioctl_ap(struct vop_ioctl_args *ap);
 int vop_poll_ap(struct vop_poll_args *ap);
 int vop_kqfilter_ap(struct vop_kqfilter_args *ap);
@@ -973,7 +961,6 @@ extern struct vnodeop_desc vop_getattr_desc;
 extern struct vnodeop_desc vop_setattr_desc;
 extern struct vnodeop_desc vop_read_desc;
 extern struct vnodeop_desc vop_write_desc;
-extern struct vnodeop_desc vop_lease_desc;
 extern struct vnodeop_desc vop_ioctl_desc;
 extern struct vnodeop_desc vop_poll_desc;
 extern struct vnodeop_desc vop_kqfilter_desc;
@@ -1047,8 +1034,6 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred)
 #define VOP_WRITE(vp, uio, ioflag, cred)		\
 	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred)
-#define VOP_LEASE(vp, td, cred, flag)			\
-	vop_lease(*(vp)->v_ops, vp, td, cred, flag)
 #define VOP_IOCTL(vp, command, data, fflag, cred, td)	\
 	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred, td)
 #define VOP_POLL(vp, events, cred, td)			\

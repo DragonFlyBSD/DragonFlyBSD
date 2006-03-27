@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.77 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.78 2006/03/27 16:18:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2098,7 +2098,6 @@ setfflags(struct vnode *vp, int flags)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_flags = flags;
@@ -2167,7 +2166,6 @@ setfmode(struct vnode *vp, int mode)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_mode = mode & ALLPERMS;
@@ -2262,7 +2260,6 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_uid = uid;
@@ -2373,7 +2370,6 @@ setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_atime = ts[0];
@@ -2508,7 +2504,6 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		return (error);
 	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
 		return (error);
-	VOP_LEASE(vp, nd->nl_td, nd->nl_cred, LEASE_WRITE);
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, nd->nl_td)) != 0) {
 		vrele(vp);
 		return (error);
@@ -2560,7 +2555,6 @@ kern_ftruncate(int fd, off_t length)
 	if ((fp->f_flag & FWRITE) == 0)
 		return (EINVAL);
 	vp = (struct vnode *)fp->f_data;
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type == VDIR)
 		error = EISDIR;
@@ -3171,7 +3165,6 @@ fhopen(struct fhopen_args *uap)
 	}
 	if (fmode & O_TRUNC) {
 		VOP_UNLOCK(vp, 0, td);			/* XXX */
-		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;

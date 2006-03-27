@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.35 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.36 2006/03/27 16:18:39 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -72,7 +72,6 @@
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
 #include "nfsdiskless.h"
-#include "nqnfs.h"
 #include "nfsmountrpc.h"
 
 extern int	nfs_mountroot(struct mount *mp);
@@ -89,7 +88,6 @@ MALLOC_DEFINE(M_NFSD, "NFS daemon", "Nfs server daemon structure");
 MALLOC_DEFINE(M_NFSDIROFF, "NFSV3 diroff", "NFS directory offset data");
 MALLOC_DEFINE(M_NFSRVDESC, "NFSV3 srvdesc", "NFS server socket descriptor");
 MALLOC_DEFINE(M_NFSUID, "NFS uid", "Nfs uid mapping structure");
-MALLOC_DEFINE(M_NQLEASE, "NQNFS Lease", "Nqnfs lease");
 MALLOC_DEFINE(M_NFSHASH, "NFS hash", "NFS hash tables");
 
 vm_zone_t nfsmount_zone;
@@ -769,17 +767,11 @@ nfs_decode_args(nmp, argp)
 		else
 			nmp->nm_readahead = NFS_MAXRAHEAD;
 	}
-	if ((argp->flags & NFSMNT_LEASETERM) && argp->leaseterm >= 2) {
-		if (argp->leaseterm <= NQ_MAXLEASE)
-			nmp->nm_leaseterm = argp->leaseterm;
-		else
-			nmp->nm_leaseterm = NQ_MAXLEASE;
-	}
 	if ((argp->flags & NFSMNT_DEADTHRESH) && argp->deadthresh >= 1) {
-		if (argp->deadthresh <= NQ_NEVERDEAD)
+		if (argp->deadthresh <= NFS_NEVERDEAD)
 			nmp->nm_deadthresh = argp->deadthresh;
 		else
-			nmp->nm_deadthresh = NQ_NEVERDEAD;
+			nmp->nm_deadthresh = NFS_NEVERDEAD;
 	}
 
 	adjsock |= ((nmp->nm_sotype != argp->sotype) ||
@@ -848,12 +840,12 @@ nfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			return (EIO);
 		/*
 		 * When doing an update, we can't change from or to
-		 * v3 and/or nqnfs, or change cookie translation
+		 * v3, or change cookie translation
 		 */
 		args.flags = (args.flags &
-		    ~(NFSMNT_NFSV3|NFSMNT_NQNFS /*|NFSMNT_XLATECOOKIE*/)) |
+		    ~(NFSMNT_NFSV3/*|NFSMNT_XLATECOOKIE*/)) |
 		    (nmp->nm_flag &
-			(NFSMNT_NFSV3|NFSMNT_NQNFS /*|NFSMNT_XLATECOOKIE*/));
+			(NFSMNT_NFSV3/*|NFSMNT_XLATECOOKIE*/));
 		nfs_decode_args(nmp, &args);
 		return (0);
 	}
@@ -916,15 +908,6 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	}
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
-	if (argp->flags & NFSMNT_NQNFS) {
-		/*
-		 * We have to set mnt_maxsymlink to a non-zero value so
-		 * that COMPAT_43 routines will know that we are setting
-		 * the d_type field in directories (and can zero it for
-		 * unsuspecting binaries).
-		 */
-		mp->mnt_maxsymlinklen = 1;
-	}
 
 	/*
 	 * V2 can only handle 32 bit filesizes.  A 4GB-1 limit may be too
@@ -948,10 +931,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	nmp->nm_readdirsize = NFS_READDIRSIZE;
 	nmp->nm_numgrps = NFS_MAXGRPS;
 	nmp->nm_readahead = NFS_DEFRAHEAD;
-	nmp->nm_leaseterm = NQ_DEFLEASE;
-	nmp->nm_deadthresh = NQ_DEADTHRESH;
-	CIRCLEQ_INIT(&nmp->nm_timerhead);
-	nmp->nm_inprog = NULLVP;
+	nmp->nm_deadthresh = NFS_DEFDEADTHRESH;
 	nmp->nm_fhsize = argp->fhsize;
 	bcopy((caddr_t)argp->fh, (caddr_t)nmp->nm_fh, argp->fhsize);
 	bcopy(hst, mp->mnt_stat.f_mntfromname, MNAMELEN);
@@ -1053,11 +1033,9 @@ nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 			return (error);
 	}
 	/*
-	 * Must handshake with nqnfs_clientd() if it is active.
+	 * Must handshake with nfs_clientd() if it is active. XXX
 	 */
 	nmp->nm_state |= NFSSTA_DISMINPROG;
-	while (nmp->nm_inprog != NULLVP)
-		(void) tsleep((caddr_t)&lbolt, 0, "nfsdism", 0);
 
 	/* We hold 1 extra ref on the root vnode; see comment in mountnfs(). */
 	error = vflush(mp, 1, flags);
@@ -1070,13 +1048,13 @@ nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	 * We are now committed to the unmount.
 	 * For NQNFS, let the server daemon free the nfsmount structure.
 	 */
-	if (nmp->nm_flag & (NFSMNT_NQNFS | NFSMNT_KERB))
+	if (nmp->nm_flag & NFSMNT_KERB)
 		nmp->nm_state |= NFSSTA_DISMNT;
 
 	nfs_disconnect(nmp);
 	FREE(nmp->nm_nam, M_SONAME);
 
-	if ((nmp->nm_flag & (NFSMNT_NQNFS | NFSMNT_KERB)) == 0)
+	if ((nmp->nm_flag & NFSMNT_KERB) == 0)
 		nfs_free_mount(nmp);
 	return (0);
 }

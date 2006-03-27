@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.11 2006/03/27 01:54:15 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.12 2006/03/27 16:18:34 dillon Exp $
  */
 
 /*
@@ -454,8 +454,6 @@ allocvnode(int lktimeout, int lkflags)
 	 * If we have a vp it will be refd and VX locked.
 	 */
 	if (vp) {
-		vp->v_lease = NULL;
-
 #ifdef INVARIANTS
 		if (vp->v_data)
 			panic("cleaned vnode isn't");
