@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/killall/killall.1,v 1.11.2.11 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/killall/killall.1,v 1.3 2003/08/28 02:35:54 hmp Exp $
+.\" $DragonFly: src/usr.bin/killall/killall.1,v 1.4 2006/03/27 09:02:07 joerg Exp $
 .\"
 .Dd June 25, 1995
 .Os
@@ -43,6 +43,7 @@
 .Op Fl u Ar user
 .Op Fl t Ar tty
 .Op Fl c Ar procname
+.Op Fl j Ar jail
 .Op Fl SIGNAL
 .Op Ar procname ...
 .Sh DESCRIPTION
@@ -100,6 +101,9 @@ the specified
 Limit potentially matching processes to those running on
 the specified
 .Ar tty .
+.It Fl j Ar jailid
+Limit potentially matching processes to those running in the jail with id
+.Ar jailid .
 .It Fl c Ar procname
 When used with the
 .Fl u
