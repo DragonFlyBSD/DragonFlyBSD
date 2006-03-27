@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.36 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.37 2006/03/27 17:01:18 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -240,7 +240,6 @@ nfs_convert_oargs(args, oargs)
 	args->retrans = oargs->retrans;
 	args->maxgrouplist = oargs->maxgrouplist;
 	args->readahead = oargs->readahead;
-	args->leaseterm = oargs->leaseterm;
 	args->deadthresh = oargs->deadthresh;
 	args->hostname = oargs->hostname;
 }
@@ -931,7 +930,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	nmp->nm_readdirsize = NFS_READDIRSIZE;
 	nmp->nm_numgrps = NFS_MAXGRPS;
 	nmp->nm_readahead = NFS_DEFRAHEAD;
-	nmp->nm_deadthresh = NFS_DEFDEADTHRESH;
+	nmp->nm_deadthresh = NFS_DEADTHRESH;
 	nmp->nm_fhsize = argp->fhsize;
 	bcopy((caddr_t)argp->fh, (caddr_t)nmp->nm_fh, argp->fhsize);
 	bcopy(hst, mp->mnt_stat.f_mntfromname, MNAMELEN);
