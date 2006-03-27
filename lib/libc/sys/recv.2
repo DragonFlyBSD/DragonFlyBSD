@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.3 2005/04/02 16:22:41 liamfoy Exp $
+.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.4 2006/03/27 07:35:45 swildner Exp $
 .\"
 .Dd February 21, 1994
 .Dt RECV 2
@@ -187,8 +187,8 @@ struct cmsghdr {
 /* followed by
 	u_char	cmsg_data[]; */
 };
-.Pp
 .Ed
+.Pp
 As an example, one could use this to learn of changes in the data-stream
 in XNS/SPP, or in ISO, to obtain user-connection-request data by requesting
 a recvmsg with no data buffer provided immediately after an
