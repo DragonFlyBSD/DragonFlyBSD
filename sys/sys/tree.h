@@ -1,6 +1,6 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.4 2006/03/25 21:46:38 dillon Exp $ */
+/*	$DragonFly: src/sys/sys/tree.h,v 1.5 2006/03/28 22:17:05 dillon Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -392,6 +392,7 @@ struct type *name##_RB_FIND(struct name *, struct type *);		\
 int name##_RB_SCAN(struct name *, int (*)(struct type *, void *),	\
 			int (*)(struct type *, void *), void *);	\
 struct type *name##_RB_NEXT(struct type *);				\
+struct type *name##_RB_PREV(struct type *);				\
 struct type *name##_RB_MINMAX(struct name *, int);			\
 RB_SCAN_INFO(name, type)						\
 
@@ -757,6 +758,28 @@ name##_RB_NEXT(struct type *elm)					\
 	return (elm);							\
 }									\
 									\
+/* ARGSUSED */								\
+struct type *								\
+name##_RB_PREV(struct type *elm)					\
+{									\
+	if (RB_LEFT(elm, field)) {					\
+		elm = RB_LEFT(elm, field);				\
+		while (RB_RIGHT(elm, field))				\
+			elm = RB_RIGHT(elm, field);			\
+	} else {							\
+		if (RB_PARENT(elm, field) &&				\
+		    (elm == RB_RIGHT(RB_PARENT(elm, field), field)))	\
+			elm = RB_PARENT(elm, field);			\
+		else {							\
+			while (RB_PARENT(elm, field) &&			\
+			    (elm == RB_LEFT(RB_PARENT(elm, field), field)))\
+				elm = RB_PARENT(elm, field);		\
+			elm = RB_PARENT(elm, field);			\
+		}							\
+	}								\
+	return (elm);							\
+}									\
+									\
 struct type *								\
 name##_RB_MINMAX(struct name *head, int val)				\
 {									\
@@ -802,10 +825,7 @@ name##_RB_LOOKUP(struct name *head, datatype value)			\
 /*
  * This extended version implements a fast ranged-based LOOKUP function
  * given a numeric data type, for data types with a beginning and end
- * (end non-inclusive).
- *
- * WARNING: The full range of the data type is not supported due to a
- * boundary condition at the end.
+ * (end is inclusive).
  *
  * The element whos range contains the specified value is returned, or NULL
  */
@@ -819,7 +839,7 @@ name##_RB_RLOOKUP(struct name *head, datatype value)			\
 									\
 	tmp = RB_ROOT(head);						\
 	while (tmp) {							\
-		if (value >= tmp->begfield && value < tmp->endfield) 	\
+		if (value >= tmp->begfield && value <= tmp->endfield) 	\
 			return(tmp);					\
 		if (value > tmp->begfield) 				\
 			tmp = RB_RIGHT(tmp, field);			\
@@ -872,6 +892,7 @@ name##_RB_RLOOKUP(struct name *head, datatype value)			\
 #define RB_SCAN(name, root, cmp, callback, data) 			\
 				name##_RB_SCAN(root, cmp, callback, data)
 #define RB_NEXT(name, root, elm)	name##_RB_NEXT(elm)
+#define RB_PREV(name, root, elm)	name##_RB_PREV(elm)
 #define RB_MIN(name, root)		name##_RB_MINMAX(root, RB_NEGINF)
 #define RB_MAX(name, root)		name##_RB_MINMAX(root, RB_INF)
 
