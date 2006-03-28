@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/images.cgi,v 1.1 2006/03/26 07:40:28 justin Exp $
+# $DragonFly: site/data/docs/Attic/images.cgi,v 1.2 2006/03/28 02:03:53 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -21,7 +21,7 @@ mailing list before using any of these files.
 
 <tr>
 <td><a href="images/FullLogo.gif">FullLogo.gif</a></td>
-<td>Created by Joe Angerson - official logo</td>
+<td>Created by Joe Angrisano - official logo</td>
 </tr>
 
 <tr>
@@ -29,7 +29,7 @@ mailing list before using any of these files.
 	<a href="images/image.gif">image.gif</a>
 </td>
 <td>
-	Created by Joe Angerson. 
+	Created by Joe Angrisano. 
 </td>
 </tr>
 
@@ -57,7 +57,7 @@ mailing list before using any of these files.
 </td>
 														
 <td>	
-	Alternate, vector-based formats of the Joe Angerson logo.<br />
+	Alternate, vector-based formats of the Joe Angrisano logo.<br />
 	Created by Devon H. O'Dell.
 </td>
 </tr>
