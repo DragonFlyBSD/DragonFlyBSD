@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.9 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.10 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -179,7 +179,7 @@ exec_aout_imgact(struct image_params *imgp)
 	map = &vmspace->vm_map;
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	VOP_GETVOBJECT(vp, &object);
+	object = vp->v_object;
 	vm_object_reference(object);
 
 	text_end = virtual_offset + a_out->a_text;

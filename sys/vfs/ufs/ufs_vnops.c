@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.35 2006/03/27 01:54:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.36 2006/03/29 18:45:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -263,12 +263,22 @@ static
 int
 ufs_open(struct vop_open_args *ap)
 {
+	struct vnode *vp = ap->a_vp;
+
 	/*
 	 * Files marked append-only must be opened for appending.
 	 */
-	if ((VTOI(ap->a_vp)->i_flags & APPEND) &&
-	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE)
+	if ((VTOI(vp)->i_flags & APPEND) &&
+	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE) {
 		return (EPERM);
+	}
+
+	/*
+	 * The buffer cache is used for VREG and VDIR files
+	 */
+	if (vp->v_type == VREG || vp->v_type == VDIR)
+		vinitvmio(vp);
+
 	return (0);
 }
 

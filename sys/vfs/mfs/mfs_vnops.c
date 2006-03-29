@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.21 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.22 2006/03/29 18:44:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,12 +74,9 @@ static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) mfs_bmap },
 	{ &vop_bwrite_desc,		vop_defaultop },
 	{ &vop_close_desc,		(vnodeopv_entry_t) mfs_close },
-	{ &vop_createvobject_desc,	(vnodeopv_entry_t) vop_stdcreatevobject },
-	{ &vop_destroyvobject_desc,	(vnodeopv_entry_t) vop_stddestroyvobject },
 	{ &vop_freeblks_desc,		(vnodeopv_entry_t) mfs_freeblks },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) mfs_fsync },
 	{ &vop_getpages_desc,		(vnodeopv_entry_t) mfs_getpages },
-	{ &vop_getvobject_desc,		(vnodeopv_entry_t) vop_stdgetvobject },
 	{ &vop_inactive_desc,		(vnodeopv_entry_t) mfs_inactive },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		vop_defaultop },

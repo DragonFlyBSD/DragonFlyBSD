@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.9 2006/01/13 21:09:26 swildner Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.10 2006/03/29 18:44:53 dillon Exp $
  * 
  */
 
@@ -148,11 +148,10 @@ printf("coda_getp: Internally Opening %p\n", vp);
 		return (error);
 	}
 	if (vp->v_type == VREG) {
-	    error = vfs_object_create(vp, p, cred);
-	    if (error != 0) {
-		printf("coda_getpage: vfs_object_create() returns %d\n", error);
+	    if (vp->v_object == NULL) {
+		printf("coda_getpage: vp %p has no VM object\n", vp);
 		vput(vp);
-		return(error);
+		return(EINVAL);
 	    }
 	}
 

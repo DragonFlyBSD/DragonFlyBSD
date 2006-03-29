@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.24 2006/03/27 16:19:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.25 2006/03/29 18:45:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -742,18 +742,13 @@ union_open(struct vop_open_args *ap)
 	}
 
 	/*
-	 * We are holding the correct vnode, open it
+	 * We are holding the correct vnode, open it.  Note
+	 * that in DragonFly, VOP_OPEN is responsible for associating
+	 * a VM object with the vnode if the vnode is mappable or the
+	 * underlying filesystem uses buffer cache calls on it.
 	 */
-
 	if (error == 0)
 		error = VOP_OPEN(tvp, mode, cred, NULL, td);
-
-	/*
-	 * Absolutely necessary or UFS will blowup
-	 */
-        if (error == 0 && vn_canvmio(tvp) == TRUE) {
-                error = vfs_object_create(tvp, td);
-        }
 
 	/*
 	 * Release any locks held

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.71 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.72 2006/03/29 18:44:50 dillon Exp $
  */
 
 /*
@@ -339,7 +339,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 			vp->v_track_write.bk_waitflag = 1;
 			tsleep(&vp->v_track_write, 0, "vnvlbv", 0);
 		}
-		if (VOP_GETVOBJECT(vp, &object) == 0) {
+		if ((object = vp->v_object) != NULL) {
 			while (object->paging_in_progress)
 				vm_object_pip_sleep(object, "vnvlbx");
 		}
@@ -350,7 +350,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	/*
 	 * Destroy the copy in the VM cache, too.
 	 */
-	if (VOP_GETVOBJECT(vp, &object) == 0) {
+	if ((object = vp->v_object) != NULL) {
 		vm_object_page_remove(object, 0, 0,
 			(flags & V_SAVE) ? TRUE : FALSE);
 	}
@@ -1056,6 +1056,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 {
 	int active;
 	int retflags = 0;
+	vm_object_t object;
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
@@ -1081,10 +1082,20 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 
 	/*
 	 * Clean out any buffers associated with the vnode and destroy its
-	 * object, if it has one.
+	 * object, if it has one. 
 	 */
 	vinvalbuf(vp, V_SAVE, td, 0, 0);
-	VOP_DESTROYVOBJECT(vp);
+
+	if ((object = vp->v_object) != NULL) {
+		if (object->ref_count == 0) {
+			if ((object->flags & OBJ_DEAD) == 0)
+				vm_object_terminate(object);
+		} else {
+			vm_pager_deallocate(object);
+		}
+		vp->v_flag &= ~VOBJBUF;
+	}
+	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
 	/*
 	 * If purging an active vnode, it must be closed and
@@ -1304,6 +1315,58 @@ vcount(struct vnode *vp)
 		return(0);
 	return(count_dev(vp->v_rdev));
 }
+
+/*
+ * Initialize VMIO for a vnode.  This routine MUST be called from a VFS's
+ * VOP_OPEN function for any vnode on which buffer cache access or memory
+ * mapping will be allowed.
+ */
+int
+vinitvmio(struct vnode *vp)
+{
+	thread_t td = curthread;
+	struct vattr vat;
+	vm_object_t object;
+	int error = 0;
+
+retry:
+	if ((object = vp->v_object) == NULL) {
+		if (vp->v_type == VREG || vp->v_type == VDIR) {
+			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
+				goto retn;
+			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
+		} else if (vp->v_rdev && dev_is_good(vp->v_rdev)) {
+			/*
+			 * XXX v_rdev uses NULL/non-NULL instead of NODEV
+			 *
+			 * This simply allocates the biggest object possible
+			 * for a disk vnode.  This should be fixed, but doesn't
+			 * cause any problems (yet).
+			 */
+			object = vnode_pager_alloc(vp, IDX_TO_OFF(INT_MAX), 0, 0);
+		} else {
+			goto retn;
+		}
+		/*
+		 * Dereference the reference we just created.  This assumes
+		 * that the object is associated with the vp.
+		 */
+		object->ref_count--;
+		vp->v_usecount--;
+	} else {
+		if (object->flags & OBJ_DEAD) {
+			VOP_UNLOCK(vp, 0, td);
+			tsleep(object, 0, "vodead", 0);
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+			goto retry;
+		}
+	}
+	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
+	vp->v_flag |= VOBJBUF;
+retn:
+	return (error);
+}
+
 
 /*
  * Print out a description of a vnode.
@@ -1826,28 +1889,13 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if (vp->v_flag & VRECLAIMED)
 		return(0);
 
-	if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
-	    (vp->v_flag & VOBJDIRTY)) {
-		if (VOP_GETVOBJECT(vp, &obj) == 0) {
+	if ((mp->mnt_flag & MNT_RDONLY) == 0 && (vp->v_flag & VOBJDIRTY)) {
+		if ((obj = vp->v_object) != NULL) {
 			vm_object_page_clean(obj, 0, 0, 
 			 flags == MNT_WAIT ? OBJPC_SYNC : OBJPC_NOSYNC);
 		}
 	}
 	return(0);
-}
-
-/*
- * Create the VM object needed for VMIO and mmap support.  This
- * is done for all VREG files in the system.  Some filesystems might
- * afford the additional metadata buffering capability of the
- * VMIO code by making the device node be VMIO mode also.
- *
- * vp must be locked when vfs_object_create is called.
- */
-int
-vfs_object_create(struct vnode *vp, struct thread *td)
-{
-	return (VOP_CREATEVOBJECT(vp, td));
 }
 
 /*
@@ -2041,3 +2089,4 @@ vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 
 	return(0);
 }
+

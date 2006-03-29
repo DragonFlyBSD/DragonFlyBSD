@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.32 2006/03/27 16:18:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.33 2006/03/29 18:45:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,9 +257,14 @@ spec_open(struct vop_open_args *ap)
 		}
 	}
 
+	/*
+	 * If this is 'disk' or disk-like device, associate a VM object
+	 * with it.
+	 */
 	if (vn_isdisk(vp, NULL)) {
 		if (!dev->si_bsize_phys)
 			dev->si_bsize_phys = DEV_BSIZE;
+		vinitvmio(vp);
 	}
 	if ((dev_dflags(dev) & D_DISK) == 0) {
 		cp = devtoname(dev);

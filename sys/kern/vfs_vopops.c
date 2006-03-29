@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.19 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.20 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -275,9 +275,6 @@ VNODEOP_DESC_INIT_VP_CRED(setacl);
 VNODEOP_DESC_INIT_VP_CRED(aclcheck);
 VNODEOP_DESC_INIT_VP_CRED(getextattr);
 VNODEOP_DESC_INIT_VP_CRED(setextattr);
-VNODEOP_DESC_INIT_VP(createvobject);
-VNODEOP_DESC_INIT_VP(destroyvobject);
-VNODEOP_DESC_INIT_VP(getvobject);
 VNODEOP_DESC_INIT_SIMPLE(mountctl);
 
 VNODEOP_DESC_INIT_NCP_CRED(nresolve);
@@ -1141,50 +1138,6 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 }
 
 int
-vop_createvobject(struct vop_ops *ops, struct vnode *vp, struct thread *td)
-{
-	struct vop_createvobject_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_createvobject_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_td = td;
-
-	DO_OPS(ops, error, &ap, vop_createvobject);
-	return(error);
-}
-
-int
-vop_destroyvobject(struct vop_ops *ops, struct vnode *vp)
-{
-	struct vop_destroyvobject_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_destroyvobject_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-
-	DO_OPS(ops, error, &ap, vop_destroyvobject);
-	return(error);
-}
-
-int
-vop_getvobject(struct vop_ops *ops, struct vnode *vp, struct vm_object **objpp)
-{
-	struct vop_getvobject_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_getvobject_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_objpp = objpp;
-
-	DO_OPS(ops, error, &ap, vop_getvobject);
-	return(error);
-}
-
-int
 vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
 	    const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
@@ -1877,33 +1830,6 @@ vop_setextattr_ap(struct vop_setextattr_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_setextattr);
-	return(error);
-}
-
-int
-vop_createvobject_ap(struct vop_createvobject_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_createvobject);
-	return(error);
-}
-
-int
-vop_destroyvobject_ap(struct vop_destroyvobject_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_destroyvobject);
-	return(error);
-}
-
-int
-vop_getvobject_ap(struct vop_getvobject_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_getvobject);
 	return(error);
 }
 

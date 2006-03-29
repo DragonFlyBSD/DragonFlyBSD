@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.44 2006/03/27 16:18:35 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.45 2006/03/29 18:44:52 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -551,20 +551,6 @@ typedef int (*vocall_func_t)(struct vop_generic_args *);
 #define	VOFFSET(OP) (VDESC(OP)->vdesc_offset)
 
 /*
- * VMIO support inline
- */
-
-extern int vmiodirenable;
- 
-static __inline int
-vn_canvmio(struct vnode *vp) 
-{
-    if (vp && (vp->v_type == VREG || (vmiodirenable && vp->v_type == VDIR)))
-        return(TRUE); 
-    return(FALSE); 
-}
-
-/*
  * Public vnode manipulation functions.
  */
 struct file;
@@ -615,6 +601,7 @@ int	vtruncbuf (struct vnode *vp, struct thread *td,
 int	vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
+int	vinitvmio(struct vnode *vp);
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp, struct thread *td);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
@@ -642,7 +629,6 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    struct ucred *cred, int *aresid, struct thread *td);
 int	vn_stat (struct vnode *vp, struct stat *sb, struct thread *td);
 dev_t	vn_todev (struct vnode *vp);
-int	vfs_object_create (struct vnode *vp, struct thread *td);
 void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
@@ -661,9 +647,6 @@ int	vop_enotty (struct vop_generic_args *ap);
 int	vop_defaultop (struct vop_generic_args *ap);
 int	vop_null (struct vop_generic_args *ap);
 int	vop_panic (struct vop_generic_args *ap);
-int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
-int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
-int	vop_stdgetvobject (struct vop_getvobject_args *ap);
 int	vop_write_dirent(int *, struct uio *, ino_t, uint8_t, uint16_t,
 			 const char *);
 

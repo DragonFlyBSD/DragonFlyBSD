@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.34 2006/03/27 01:54:15 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.35 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -241,7 +241,7 @@ elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	vm_offset_t file_addr;
 	vm_offset_t data_buf = 0;
 
-	VOP_GETVOBJECT(vp, &object);
+	object = vp->v_object;
 	error = 0;
 
 	/*

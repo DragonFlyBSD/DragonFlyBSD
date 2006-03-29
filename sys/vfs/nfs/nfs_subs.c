@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.35 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.36 2006/03/29 18:45:00 dillon Exp $
  */
 
 /*
@@ -1864,7 +1864,8 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 	else
 		*rdonlyp = 0;
 
-	nfsrv_object_create(*vpp);
+	if ((*vpp)->v_type == VREG && (*vpp)->v_object)
+		vinitvmio(*vpp);
 
 	if (!lockflag)
 		VOP_UNLOCK(*vpp, 0, td);
@@ -2058,16 +2059,6 @@ nfsrv_errmap(struct nfsrv_descript *nd, int err)
 	if (err <= ELAST)
 		return ((int)nfsrv_v2errmap[err - 1]);
 	return (NFSERR_IO);
-}
-
-int
-nfsrv_object_create(struct vnode *vp)
-{
-	struct thread *td = curthread;
-
-	if (vp == NULL || vp->v_type != VREG)
-		return (1);
-	return (vfs_object_create(vp, td));
 }
 
 /*

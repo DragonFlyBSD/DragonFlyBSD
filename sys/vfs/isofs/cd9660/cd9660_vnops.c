@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.20 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.21 2006/03/29 18:44:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,6 +69,7 @@ static int cd9660_advlock (struct vop_advlock_args *);
 static int cd9660_getattr (struct vop_getattr_args *);
 static int cd9660_ioctl (struct vop_ioctl_args *);
 static int cd9660_pathconf (struct vop_pathconf_args *);
+static int cd9660_open (struct vop_open_args *);
 static int cd9660_read (struct vop_read_args *);
 static int cd9660_setattr (struct vop_setattr_args *);
 struct isoreaddir;
@@ -268,6 +269,22 @@ cd9660_ioctl(struct vop_ioctl_args *ap)
         default:
                 return (ENOTTY);
         }
+}
+
+/*
+ * open is called when the kernel intends to read or memory map a vnode.
+ */
+static int
+cd9660_open(struct vop_open_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	/*
+	 * Both regular file and directory operations use the buffer cache.
+	 */
+	if (vp->v_type == VREG || vp->v_type == VDIR)
+		vinitvmio(vp);
+	return(0);
 }
 
 /*
@@ -855,6 +872,7 @@ cd9660_advlock(struct vop_advlock_args *ap)
  */
 struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
 	{ &vop_default_desc,		(vnodeopv_entry_t) vop_defaultop },
+	{ &vop_open_desc,		(vnodeopv_entry_t) cd9660_open},
 	{ &vop_access_desc,		(vnodeopv_entry_t) cd9660_access },
 	{ &vop_advlock_desc,            (vnodeopv_entry_t) cd9660_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) cd9660_bmap },

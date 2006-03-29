@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.12 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.13 2006/03/29 18:44:50 dillon Exp $
  */
 
 /*
@@ -192,7 +192,6 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	 * VNON prevents it from being messed with, however.
 	 */
 	insmntque(vp, mp);
-	vfs_object_create(vp, curthread);
 
 	/*
 	 * A VX locked & refd vnode is returned.
@@ -224,7 +223,6 @@ getspecialvnode(enum vtagtype tag, struct mount *mp,
 	 * VNON prevents it from being messed with, however.
 	 */
 	insmntque(vp, mp);
-	vfs_object_create(vp, curthread);
 
 	/*
 	 * A VX locked & refd vnode is returned.

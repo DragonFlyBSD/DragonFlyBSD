@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.60 2006/03/27 01:54:15 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.61 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1447,7 +1447,11 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	off_t hbytes = 0;
 	int error = 0;
 
-	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
+	if (vp->v_type != VREG) {
+		error = EINVAL;
+		goto done0;
+	}
+	if ((obj = vp->v_object) == NULL) {
 		error = EINVAL;
 		goto done0;
 	}

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.12 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.13 2006/03/29 18:44:50 dillon Exp $
  */
 
 /*
@@ -189,16 +189,6 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp, td);
     if (error)
 	goto bad1;
-
-    /*
-     * Make sure that a VM object is created for VMIO support.
-     */
-    if (vn_canvmio(vp) == TRUE) {
-	if ((error = vfs_object_create(vp, td)) != 0) {
-	    VOP_CLOSE(vp, flags, td);
-	    goto bad1;
-	}
-    }
 
     /*
      * All done, update v_writecount now that no more errors can occur.
@@ -511,9 +501,9 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
      * Get the proper underlying object
      */
     if (vp->v_type == VREG) {
-	if (VOP_GETVOBJECT(vp, &obj) != 0)
+	if ((obj = vp->v_object) == NULL)
 	    return (EINVAL);
-	vp = (struct vnode*)obj->handle;
+	KKASSERT(vp == (struct vnode *)obj->handle);
     }
 
     /*

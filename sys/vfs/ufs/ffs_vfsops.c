@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.36 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.37 2006/03/29 18:45:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -447,15 +447,13 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		panic("ffs_reload: dirty1");
 
 	dev = devvp->v_rdev;
+
 	/*
-	 * Only VMIO the backing device if the backing device is a real
-	 * block device.  See ffs_mountmfs() for more details.
+	 * The backing device must be VMIO-capable because we use getblk().
+	 * NOTE: the MFS driver now returns a VMIO-enabled descriptor.
 	 */
-	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		vfs_object_create(devvp, td);
-		VOP_UNLOCK(devvp, 0, td);
-	}
+	if (devvp->v_object == NULL)
+		panic("ffs_reload: devvp has no VM object!");
 
 	/*
 	 * Step 2: re-read superblock from disk.
@@ -616,18 +614,13 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		mp->mnt_iosize_max = MAXPHYS;
 
 	/*
-	 * Only VMIO the backing device if the backing device is a real
-	 * block device.  This excludes the original MFS implementation.
-	 * Note that it is optional that the backing device be VMIOed.  This
-	 * increases the opportunity for metadata caching.
-	 *
-	 * This call must be made after the VOP_OPEN.
+	 * The backing device must be VMIO-capable because we use getblk().
+	 * NOTE: the MFS driver now returns a VMIO-enabled descriptor.
+	 * The VOP_OPEN() call above should have associated a VM object
+	 * with devvp.
 	 */
-	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		vfs_object_create(devvp, td);
-		VOP_UNLOCK(devvp, 0, td);
-	}
+	if (devvp->v_object == NULL)
+		panic("ffs_reload: devvp has no VM object!");
 
 	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred, td) != 0)
 		size = DEV_BSIZE;

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.30 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.31 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,10 +78,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_advlock_desc,		vop_einval },
 	{ &vop_bwrite_desc,		(void *) vop_stdbwrite },
 	{ &vop_close_desc,		vop_null },
-	{ &vop_createvobject_desc,	(void *) vop_stdcreatevobject },
-	{ &vop_destroyvobject_desc,	(void *) vop_stddestroyvobject },
 	{ &vop_fsync_desc,		vop_null },
-	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
@@ -1283,117 +1280,6 @@ vop_stdbwrite(ap)
 	struct vop_bwrite_args *ap;
 {
 	return (bwrite(ap->a_bp));
-}
-
-int
-vop_stdcreatevobject(ap)
-	struct vop_createvobject_args /* {
-		struct vnode *a_vp;
-		struct proc *a_td;
-	} */ *ap;
-{
-	struct vnode *vp = ap->a_vp;
-	struct thread *td = ap->a_td;
-	struct vattr vat;
-	vm_object_t object;
-	int error = 0;
-
-	if (!vn_isdisk(vp, NULL) && vn_canvmio(vp) == FALSE)
-		return (0);
-
-retry:
-	if ((object = vp->v_object) == NULL) {
-		if (vp->v_type == VREG || vp->v_type == VDIR) {
-			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
-				goto retn;
-			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
-		} else if (vp->v_rdev && dev_is_good(vp->v_rdev)) {
-			/*
-			 * XXX v_rdev uses NULL/non-NULL instead of NODEV
-			 *
-			 * This simply allocates the biggest object possible
-			 * for a disk vnode.  This should be fixed, but doesn't
-			 * cause any problems (yet).
-			 */
-			object = vnode_pager_alloc(vp, IDX_TO_OFF(INT_MAX), 0, 0);
-		} else {
-			goto retn;
-		}
-		/*
-		 * Dereference the reference we just created.  This assumes
-		 * that the object is associated with the vp.
-		 */
-		object->ref_count--;
-		vp->v_usecount--;
-	} else {
-		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, 0, td);
-			tsleep(object, 0, "vodead", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-			goto retry;
-		}
-	}
-
-	KASSERT(vp->v_object != NULL, ("vfs_object_create: NULL object"));
-	vp->v_flag |= VOBJBUF;
-
-retn:
-	return (error);
-}
-
-int
-vop_stddestroyvobject(ap)
-	struct vop_destroyvobject_args /* {
-		struct vnode *vp;
-	} */ *ap;
-{
-	struct vnode *vp = ap->a_vp;
-	vm_object_t obj = vp->v_object;
-
-	if (vp->v_object == NULL)
-		return (0);
-
-	if (obj->ref_count == 0) {
-		/*
-		 * vclean() may be called twice. The first time
-		 * removes the primary reference to the object,
-		 * the second time goes one further and is a
-		 * special-case to terminate the object.
-		 *
-		 * don't double-terminate the object.
-		 */
-		if ((obj->flags & OBJ_DEAD) == 0)
-			vm_object_terminate(obj);
-	} else {
-		/*
-		 * Woe to the process that tries to page now :-).
-		 */
-		vm_pager_deallocate(obj);
-	}
-	return (0);
-}
-
-/*
- * Return the underlying VM object.  This routine may be called with or
- * without the vnode interlock held.  If called without, the returned
- * object is not guarenteed to be valid.  The syncer typically gets the
- * object without holding the interlock in order to quickly test whether
- * it might be dirty before going heavy-weight.  vm_object's use zalloc
- * and thus stable-storage, so this is safe.
- */
-int
-vop_stdgetvobject(ap)
-	struct vop_getvobject_args /* {
-		struct vnode *vp;
-		struct vm_object **objpp;
-	} */ *ap;
-{
-	struct vnode *vp = ap->a_vp;
-	struct vm_object **objpp = ap->a_objpp;
-
-	if (objpp)
-		*objpp = vp->v_object;
-	return (vp->v_object ? 0 : EINVAL);
 }
 
 /* 

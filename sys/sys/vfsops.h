@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.17 2006/03/27 16:18:35 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.18 2006/03/29 18:44:52 dillon Exp $
  */
 
 /*
@@ -446,23 +446,6 @@ struct vop_setextattr_args {
 	struct thread *a_td;
 };
 
-struct vop_createvobject_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	struct thread *a_td;
-};
-
-struct vop_destroyvobject_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-};
-
-struct vop_getvobject_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	struct vm_object **a_objpp;
-};
-
 struct vop_mountctl_args {
 	struct vop_generic_args a_head;
 	int a_op;
@@ -627,9 +610,9 @@ struct vop_ops {
 	int	(*vop_aclcheck)(struct vop_aclcheck_args *);
 	int	(*vop_getextattr)(struct vop_getextattr_args *);
 	int	(*vop_setextattr)(struct vop_setextattr_args *);
-	int	(*vop_createvobject)(struct vop_createvobject_args *);
-	int	(*vop_destroyvobject)(struct vop_destroyvobject_args *);
-	int	(*vop_getvobject)(struct vop_getvobject_args *);
+	int	(*vop_unused05)(void *);
+	int	(*vop_unused06)(void *);
+	int	(*vop_unused07)(void *);
 	int	(*vop_mountctl)(struct vop_mountctl_args *);
 
 	int	(*vop_nresolve)(struct vop_nresolve_args *);
@@ -715,9 +698,6 @@ union vop_args_union {
 	struct vop_aclcheck_args vu_aclcheck;
 	struct vop_getextattr_args vu_getextattr;
 	struct vop_setextattr_args vu_setextattr;
-	struct vop_createvobject_args vu_createvobject;
-	struct vop_destroyvobject_args vu_destroyvobject;
-	struct vop_getvobject_args vu_getvobject;
 	struct vop_mountctl_args vu_mountctl;
 
 	struct vop_nresolve_args vu_nresolve;
@@ -837,11 +817,6 @@ int vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 		struct uio *uio, struct ucred *cred, struct thread *td);
 int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
 		struct uio *uio, struct ucred *cred, struct thread *td);
-int vop_createvobject(struct vop_ops *ops,
-		struct vnode *vp, struct thread *td);
-int vop_destroyvobject(struct vop_ops *ops, struct vnode *vp);
-int vop_getvobject(struct vop_ops *ops,
-		struct vnode *vp, struct vm_object **objpp);
 int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
 		const void *ctl, int ctllen, void *buf, int buflen, int *res);
 int vop_nresolve(struct vop_ops *ops, struct namecache *ncp,
@@ -926,9 +901,6 @@ int vop_setacl_ap(struct vop_setacl_args *ap);
 int vop_aclcheck_ap(struct vop_aclcheck_args *ap);
 int vop_getextattr_ap(struct vop_getextattr_args *ap);
 int vop_setextattr_ap(struct vop_setextattr_args *ap);
-int vop_createvobject_ap(struct vop_createvobject_args *ap);
-int vop_destroyvobject_ap(struct vop_destroyvobject_args *ap);
-int vop_getvobject_ap(struct vop_getvobject_args *ap);
 int vop_mountctl_ap(struct vop_mountctl_args *ap);
 
 int vop_nresolve_ap(struct vop_nresolve_args *ap);
@@ -995,9 +967,6 @@ extern struct vnodeop_desc vop_setacl_desc;
 extern struct vnodeop_desc vop_aclcheck_desc;
 extern struct vnodeop_desc vop_getextattr_desc;
 extern struct vnodeop_desc vop_setextattr_desc;
-extern struct vnodeop_desc vop_createvobject_desc;
-extern struct vnodeop_desc vop_destroyvobject_desc;
-extern struct vnodeop_desc vop_getvobject_desc;
 extern struct vnodeop_desc vop_mountctl_desc;
 
 extern struct vnodeop_desc vop_nresolve_desc;
@@ -1088,12 +1057,6 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred, td)
 #define VOP_SETEXTATTR(vp, name, uio, cred, td)		\
 	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred, td)
-#define VOP_CREATEVOBJECT(vp, td)			\
-	vop_createvobject(*(vp)->v_ops, vp, td)
-#define VOP_DESTROYVOBJECT(vp)				\
-	vop_destroyvobject(*(vp)->v_ops, vp)
-#define VOP_GETVOBJECT(vp, objpp)			\
-	vop_getvobject(*(vp)->v_ops, vp, objpp)
 /* no VOP_VFSSET() */
 /* VOP_STRATEGY - does not exist, use vn_strategy() */
 

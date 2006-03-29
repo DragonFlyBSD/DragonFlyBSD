@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.11 2005/04/19 17:54:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.12 2006/03/29 18:44:50 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -583,10 +583,6 @@ nlookup(struct nlookupdata *nd)
 		break;
 	    }
 	}
-
-	/*
-	 * XXX vnode canvmio (test in mmap(), read(), and write())
-	 */
 
 	/*
 	 * Termination: no more elements.  If NLC_CREATE was set the

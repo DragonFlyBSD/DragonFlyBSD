@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.31 2006/03/24 22:39:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.32 2006/03/29 18:44:59 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -84,6 +84,7 @@
  */
 static int msdosfs_create (struct vop_old_create_args *);
 static int msdosfs_mknod (struct vop_old_mknod_args *);
+static int msdosfs_open (struct vop_open_args *);
 static int msdosfs_close (struct vop_close_args *);
 static int msdosfs_access (struct vop_access_args *);
 static int msdosfs_getattr (struct vop_getattr_args *);
@@ -207,6 +208,19 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 		return (EINVAL);
 	}
 	/* NOTREACHED */
+}
+
+/*
+ * msdosfs_open(struct vnode *a_vp)
+ */
+static int
+msdosfs_open(struct vop_open_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	if (vp->v_type == VREG || vp->v_type == VDIR)
+		vinitvmio(vp);
+	return(0);
 }
 
 /*
@@ -1966,6 +1980,7 @@ struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_access_desc,		(vnodeopv_entry_t) msdosfs_access },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) msdosfs_bmap },
 	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) msdosfs_lookup },
+	{ &vop_open_desc,		(vnodeopv_entry_t) msdosfs_open },
 	{ &vop_close_desc,		(vnodeopv_entry_t) msdosfs_close },
 	{ &vop_old_create_desc,		(vnodeopv_entry_t) msdosfs_create },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) msdosfs_fsync },

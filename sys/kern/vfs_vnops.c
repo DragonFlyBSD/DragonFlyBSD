@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.35 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.36 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -311,21 +311,13 @@ again:
 	if (fmode & FWRITE)
 		vp->v_writecount++;
 
+#if 0
 	/*
-	 * Make sure that a VM object is created for VMIO support.  If this
-	 * fails we have to be sure to match VOP_CLOSE's with VOP_OPEN's.
-	 * Cleanup the fp so we can just vput() the vp in 'bad'.
+	 * Assert that VREG files have been setup for vmio.
 	 */
-	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td)) != 0) {
-			if (fp) {
-				fp->f_data = NULL;
-				fp->f_ops = &badfileops;
-			}
-			VOP_CLOSE(vp, fmode, td);
-			goto bad;
-		}
-	}
+	KASSERT(vp->v_type != VREG || vp->v_object != NULL,
+		("vn_open: regular file was not VMIO enabled!"));
+#endif
 
 	/*
 	 * Return the vnode.  XXX needs some cleaning up.  The vnode is

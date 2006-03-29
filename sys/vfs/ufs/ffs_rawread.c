@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.17 2006/03/25 21:31:21 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.18 2006/03/29 18:45:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		/* Attempt to msync mmap() regions to clean dirty mmap */ 
 		if ((vp->v_flag & VOBJDIRTY) != 0) {
 			struct vm_object *obj;
-			if (VOP_GETVOBJECT(vp, &obj) == 0)
+			if ((obj = vp->v_object) != NULL)
 				vm_object_page_clean(obj, 0, 0, OBJPC_SYNC);
 		}
 

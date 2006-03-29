@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.27 2006/03/29 18:45:01 dillon Exp $
  *
  */
 
@@ -519,12 +519,19 @@ ntfs_access(struct vop_access_args *ap)
 static int
 ntfs_open(struct vop_open_args *ap)
 {
-#if NTFS_DEBUG
 	struct vnode *vp = ap->a_vp;
+#if NTFS_DEBUG
 	struct ntnode *ip = VTONT(vp);
 
 	printf("ntfs_open: %d\n",ip->i_number);
 #endif
+
+	/*
+	 * We use the buffer cache, so files at least have to have a
+	 * VM object.
+	 */
+	if (vp->v_type == VREG || vp->v_type == VDIR)
+		vinitvmio(vp);
 
 	/*
 	 * Files marked append-only must be opened for appending.

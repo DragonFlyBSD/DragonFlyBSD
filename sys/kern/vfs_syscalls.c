@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.78 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.79 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1398,9 +1398,14 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		}
 		fp->f_flag |= FHASLOCK;
 	}
-	/* assert that vn_open created a backing object if one is needed */
-	KASSERT(!vn_canvmio(vp) || VOP_GETVOBJECT(vp, NULL) == 0,
-		("open: vmio vnode has no backing object after vn_open"));
+
+#if 0
+	/*
+	 * Assert that all regular file vnodes were created with a object.
+	 */
+	KASSERT(vp->v_type != VREG || vp->v_object != NULL,
+		("open: regular file has no backing object after vn_open"));
+#endif
 
 	vrele(vp);
 
@@ -2602,7 +2607,7 @@ fsync(struct fsync_args *uap)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	if (VOP_GETVOBJECT(vp, &obj) == 0)
+	if ((obj = vp->v_object) != NULL)
 		vm_object_page_clean(obj, 0, 0, 0);
 	if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) == 0 &&
 	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
@@ -3211,14 +3216,12 @@ fhopen(struct fhopen_args *uap)
 	vref(vp);
 
 	/*
-	 * Make sure that a VM object is created for VMIO support.  If this
-	 * fails just fdrop() normally to clean up.
+	 * Assert that all regular files must be created with a VM object.
 	 */
-	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td)) != 0) {
-			fdrop(fp, td);
-			goto bad;
-		}
+	if (vp->v_type == VREG && vp->v_object == NULL) {
+		printf("fhopen: regular file did not have VM object: %p\n", vp);
+		fdrop(fp, td);
+		goto bad;
 	}
 
 	/*
@@ -3264,8 +3267,6 @@ fhopen(struct fhopen_args *uap)
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 		fp->f_flag |= FHASLOCK;
 	}
-	if ((vp->v_type == VREG) && (VOP_GETVOBJECT(vp, NULL) != 0))
-		vfs_object_create(vp, td);
 
 	vput(vp);
 	fdrop(fp, td);

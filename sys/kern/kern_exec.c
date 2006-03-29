@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.35 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.36 2006/03/29 18:44:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -526,23 +526,14 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_t ma[VM_INITIAL_PAGEIN];
 	vm_page_t m;
 	vm_object_t object;
-	int error;
 
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
 	/*
-	 * XXX the callers should really use vn_open so we don't have to
-	 * do this junk.
+	 * The file has to be mappable.
 	 */
-	if ((error = VOP_GETVOBJECT(imgp->vp, &object)) != 0) {
-		if (vn_canvmio(imgp->vp) == TRUE) {
-			error = vfs_object_create(imgp->vp, curthread);
-			if (error == 0)
-				error = VOP_GETVOBJECT(imgp->vp, &object);
-		}
-	}
-	if (error)
+	if ((object = imgp->vp->v_object) == NULL)
 		return (EIO);
 
 	/*
@@ -950,8 +941,9 @@ exec_check_permissions(struct image_params *imgp)
 		return (ETXTBSY);
 
 	/*
-	 * Call filesystem specific open routine (which does nothing in the
-	 * general case).
+	 * Call filesystem specific open routine, which allows us to read,
+	 * write, and mmap the file.  Without the VOP_OPEN we can only
+	 * stat the file.
 	 */
 	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL, td);
 	if (error)

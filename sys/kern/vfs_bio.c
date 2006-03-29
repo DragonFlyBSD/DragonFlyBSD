@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.59 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.60 2006/03/29 18:44:50 dillon Exp $
  */
 
 /*
@@ -100,7 +100,6 @@ static void buf_daemon (void);
  * but the code is intricate enough already.
  */
 vm_page_t bogus_page;
-int vmiodirenable = TRUE;
 int runningbufspace;
 
 static int bufspace, maxbufspace,
@@ -128,8 +127,6 @@ SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 	"Maximum amount of buffer space to usable for active I/O");
-SYSCTL_INT(_vfs, OID_AUTO, vmiodirenable, CTLFLAG_RW, &vmiodirenable, 0,
-	"Use the VM system for performing directory writes");
 /*
  * Sysctls determining current state of the buffer cache.
  */
@@ -1077,7 +1074,7 @@ brelse(struct buf * bp)
 			 * no critical section protection is necessary.
 			 */
 			if (m == bogus_page) {
-				VOP_GETVOBJECT(vp, &obj);
+				obj = vp->v_object;
 				poff = OFF_TO_IDX(bp->b_loffset);
 
 				for (j = i; j < bp->b_xio.xio_npages; j++) {
@@ -1974,8 +1971,8 @@ inmem(struct vnode *vp, off_t loffset)
 		return 1;
 	if (vp->v_mount == NULL)
 		return 0;
-	if (VOP_GETVOBJECT(vp, &obj) != 0 || (vp->v_flag & VOBJBUF) == 0)
- 		return 0;
+	if ((obj = vp->v_object) == NULL)
+		return 0;
 
 	size = PAGE_SIZE;
 	if (size > vp->v_mount->mnt_stat.f_iosize)
@@ -2156,6 +2153,8 @@ getblk(struct vnode *vp, off_t loffset, int size, int slpflag, int slptimeo)
 
 	if (size > MAXBSIZE)
 		panic("getblk: size(%d) > MAXBSIZE(%d)", size, MAXBSIZE);
+	if (vp->v_object == NULL)
+		panic("getblk: vnode %p has no object!", vp);
 
 	crit_enter();
 loop:
@@ -2323,7 +2322,7 @@ loop:
 		 * mechanism is such that the underlying directory (with a
 		 * non-NULL v_mountedhere) is not a special case.
 		 */
-		int bsize, maxsize, vmio;
+		int bsize, maxsize;
 
 		if (vp->v_type == VBLK || vp->v_type == VCHR)
 			bsize = DEV_BSIZE;
@@ -2332,8 +2331,7 @@ loop:
 		else
 			bsize = size;
 
-		vmio = (VOP_GETVOBJECT(vp, NULL) == 0) && (vp->v_flag & VOBJBUF);
-		maxsize = vmio ? size + (loffset & PAGE_MASK) : size;
+		maxsize = size + (loffset & PAGE_MASK);
 		maxsize = imax(maxsize, bsize);
 
 		if ((bp = getnewbuf(slpflag, slptimeo, size, maxsize)) == NULL) {
@@ -2378,13 +2376,8 @@ loop:
 		 * allocbuf() for the VMIO case prior to it testing the
 		 * backing store for validity.
 		 */
-
-		if (vmio) {
+		if (vp->v_object) {
 			bp->b_flags |= B_VMIO;
-#if defined(VFS_BIO_DEBUG)
-			if (vn_canvmio(vp) != TRUE)
-				printf("getblk: vmioing file type %d???\n", vp->v_type);
-#endif
 		} else {
 			bp->b_flags &= ~B_VMIO;
 		}
@@ -2601,7 +2594,7 @@ allocbuf(struct buf *bp, int size)
 			 * busycheck/wiring call.
 			 */
 			vp = bp->b_vp;
-			VOP_GETVOBJECT(vp, &obj);
+			obj = vp->v_object;
 
 			crit_enter();
 			while (bp->b_xio.xio_npages < desiredpages) {
@@ -2810,7 +2803,6 @@ void
 biodone(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
-	int error;
 
 	crit_enter();
 
@@ -2879,28 +2871,19 @@ biodone(struct bio *bio)
 		int iosize;
 		struct vnode *vp = bp->b_vp;
 
-		error = VOP_GETVOBJECT(vp, &obj);
+		obj = vp->v_object;
 
 #if defined(VFS_BIO_DEBUG)
-		if (vp->v_holdcnt == 0) {
+		if (vp->v_holdcnt == 0)
 			panic("biodone: zero vnode hold count");
-		}
-
-		if (error) {
-			panic("biodone: missing VM object");
-		}
-
-		if ((vp->v_flag & VOBJBUF) == 0) {
+		if ((vp->v_flag & VOBJBUF) == 0)
 			panic("biodone: vnode is not setup for merged cache");
-		}
 #endif
 
 		foff = bp->b_loffset;
 		KASSERT(foff != NOOFFSET, ("biodone: no buffer offset"));
+		KASSERT(obj != NULL, ("biodone: missing VM object"));
 
-		if (error) {
-			panic("biodone: no object");
-		}
 #if defined(VFS_BIO_DEBUG)
 		if (obj->paging_in_progress < bp->b_xio.xio_npages) {
 			printf("biodone: paging in progress(%d) < bp->b_xio.xio_npages(%d)\n",
@@ -3027,7 +3010,7 @@ vfs_unbusy_pages(struct buf *bp)
 		struct vnode *vp = bp->b_vp;
 		vm_object_t obj;
 
-		VOP_GETVOBJECT(vp, &obj);
+		obj = vp->v_object;
 
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
@@ -3117,7 +3100,7 @@ vfs_busy_pages(struct buf *bp, int clear_modify)
 		vm_object_t obj;
 		vm_ooffset_t foff;
 
-		VOP_GETVOBJECT(vp, &obj);
+		obj = vp->v_object;
 		foff = bp->b_loffset;
 		KASSERT(bp->b_loffset != NOOFFSET,
 			("vfs_busy_pages: no buffer offset"));

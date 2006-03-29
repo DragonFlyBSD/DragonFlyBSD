@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.51 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.52 2006/03/29 18:45:00 dillon Exp $
  */
 
 
@@ -484,6 +484,14 @@ nfs_open(struct vop_open_args *ap)
 #endif
 		return (EOPNOTSUPP);
 	}
+
+	/*
+	 * Regular files are mmapable and we use the buffer cache.  We also
+	 * use the buffer cache for directories internally, so those
+	 * vnodes need a VM object.
+	 */
+	if (vp->v_type == VREG || vp->v_type == VDIR)
+		vinitvmio(vp);
 
 	/*
 	 * Clear the attribute cache only if opening with write access.  It

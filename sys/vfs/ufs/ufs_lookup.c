@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.18 2005/09/14 01:13:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.19 2006/03/29 18:45:04 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -153,6 +153,12 @@ ufs_lookup(struct vop_old_lookup_args *ap)
 	dp = VTOI(vdp);
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
+
+	/*
+	 * We need to be able to perform buffer cache operations on
+	 * the directory.
+	 */
+	vinitvmio(vdp);
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.

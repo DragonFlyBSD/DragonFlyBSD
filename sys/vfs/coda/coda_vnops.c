@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.31 2006/03/27 16:18:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.32 2006/03/29 18:44:53 dillon Exp $
  * 
  */
 
@@ -147,9 +147,6 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
     { &vop_poll_desc, (vnodeopv_entry_t)vop_stdpoll },		/* poll */
     { &vop_getpages_desc, (vnodeopv_entry_t)coda_fbsd_getpages }, /* pager intf.*/
     { &vop_putpages_desc, (vnodeopv_entry_t)coda_fbsd_putpages }, /* pager intf.*/
-    { &vop_createvobject_desc,      (vnodeopv_entry_t)vop_stdcreatevobject },
-    { &vop_destroyvobject_desc,     (vnodeopv_entry_t)vop_stddestroyvobject },
-    { &vop_getvobject_desc,         (vnodeopv_entry_t)vop_stdgetvobject },
 
 #if	0
 
@@ -298,9 +295,9 @@ coda_open(void *v)
     }
 /* grab (above) does this when it calls newvnode unless it's in the cache*/
     if (vp->v_type == VREG) {
-    	error = vfs_object_create(vp, td);
-	if (error != 0) {
-	    printf("coda_open: vfs_object_create() returns %d\n", error);
+	if (vp->v_object == NULL) {
+	    error = EINVAL;
+	    printf("coda_open: cache file vp %p has no VM object!\n", vp);
 	    vput(vp);
 	}
     }
@@ -449,9 +446,9 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
 		return (error);
 	    }
 	    if (vp->v_type == VREG) {
-		error = vfs_object_create(vp, td);
-		if (error != 0) {
-		    printf("coda_rdwr: vfs_object_create() returns %d\n", error);
+		if (vp->v_object == NULL) {
+		    error = EINVAL;
+		    printf("coda_rdwr: vnode %p has no VM object!\n", vp);
 		    vput(vp);
 		}
 	    }
@@ -1578,9 +1575,9 @@ printf("coda_readdir: Internally Opening %p\n", vp);
 		return (error);
 	    }
 	    if (vp->v_type == VREG) {
-		error = vfs_object_create(vp, td);
-		if (error != 0) {
-		    printf("coda_readdir: vfs_object_create() returns %d\n", error);
+		if (vp->v_object == NULL) {
+		    error = EINVAL;
+		    printf("coda_readdir: vnode %p has no VM object!\n", vp);
 		    vput(vp);
 		}
 	    }

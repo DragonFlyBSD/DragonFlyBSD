@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.30 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.31 2006/03/29 18:45:00 dillon Exp $
  */
 
 /*
@@ -1665,7 +1665,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			dvp = NULL;
 			error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
 			if (error == 0) {
-			    	nfsrv_object_create(vp);
+				if (vap->va_type == VREG)
+					vinitvmio(vp);
 				if (exclusive_flag) {
 					exclusive_flag = 0;
 					VATTR_NULL(vap);

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.20 2006/03/27 16:19:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.21 2006/03/29 18:45:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -746,8 +746,6 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		 */
 		vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_OPEN(lvp, FREAD, cred, NULL, td);
-		if (error == 0 && vn_canvmio(lvp) == TRUE)
-			error = vfs_object_create(lvp, td);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
 			VOP_UNLOCK(lvp, 0, td);
@@ -776,10 +774,6 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		for (i = 0; i < un->un_openl; i++) {
 			VOP_CLOSE(lvp, FREAD, td);
 			VOP_OPEN(uvp, FREAD, cred, NULL, td);
-		}
-		if (un->un_openl) {
-			if (vn_canvmio(uvp) == TRUE)
-				error = vfs_object_create(uvp, td);
 		}
 		un->un_openl = 0;
 	}
@@ -1039,8 +1033,6 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 		return (error);
 
 	error = VOP_OPEN(vp, fmode, cred, NULL, td);
-	if (error == 0 && vn_canvmio(vp) == TRUE)
-		error = vfs_object_create(vp, td);
 	if (error) {
 		vput(vp);
 		return (error);
@@ -1253,8 +1245,6 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 
 		if (lvp != NULLVP) {
 			error = VOP_OPEN(lvp, FREAD, fp->f_cred, NULL, td);
-			if (error == 0 && vn_canvmio(lvp) == TRUE)
-				error = vfs_object_create(lvp, td);
 			if (error) {
 				vput(lvp);
 				return (error);
