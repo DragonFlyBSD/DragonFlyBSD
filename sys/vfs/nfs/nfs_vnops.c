@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.52 2006/03/29 18:45:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.53 2006/03/29 21:07:21 dillon Exp $
  */
 
 
@@ -1156,6 +1156,8 @@ nfs_readlink(struct vop_readlink_args *ap)
 
 	if (vp->v_type != VLNK)
 		return (EINVAL);
+	if (vp->v_object == NULL)
+		vinitvmio(vp);
 	return (nfs_bioread(vp, ap->a_uio, 0));
 }
 
