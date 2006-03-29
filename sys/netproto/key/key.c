@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.15 2006/01/22 04:30:27 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.16 2006/03/29 23:17:16 joerg Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -7104,6 +7104,7 @@ key_init(void)
 #endif
 
 #ifndef IPSEC_DEBUG2
+	callout_init(&key_timehandler_ch);
 	callout_reset(&key_timehandler_ch, hz, key_timehandler, NULL);
 #endif /*IPSEC_DEBUG2*/
 
