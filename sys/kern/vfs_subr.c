@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.72 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.73 2006/03/29 20:46:05 dillon Exp $
  */
 
 /*
@@ -1335,6 +1335,8 @@ retry:
 			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
 				goto retn;
 			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
+		} else if (vp->v_type == VLNK) {
+			object = vnode_pager_alloc(vp, MAXPATHLEN, 0, 0);
 		} else if (vp->v_rdev && dev_is_good(vp->v_rdev)) {
 			/*
 			 * XXX v_rdev uses NULL/non-NULL instead of NODEV

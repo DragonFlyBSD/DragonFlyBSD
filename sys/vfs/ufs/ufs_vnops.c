@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.36 2006/03/29 18:45:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.37 2006/03/29 20:46:07 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1420,18 +1420,23 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 		goto bad;
 
 	/*
+	 * The vnode must have a VM object in order to issue buffer cache
+	 * ops on it.
+	 */
+	vinitvmio(tvp);
+
+	/*
 	 * Initialize directory with "." and ".." from static template.
 	 */
-	if (dvp->v_mount->mnt_maxsymlinklen > 0
-	)
+	if (dvp->v_mount->mnt_maxsymlinklen > 0)
 		dtp = &mastertemplate;
 	else
 		dtp = (struct dirtemplate *)&omastertemplate;
 	dirtemplate = *dtp;
 	dirtemplate.dot_ino = ip->i_number;
 	dirtemplate.dotdot_ino = dp->i_number;
-	if ((error = VOP_BALLOC(tvp, (off_t)0, DIRBLKSIZ, cnp->cn_cred,
-	    B_CLRBUF, &bp)) != 0)
+	error = VOP_BALLOC(tvp, 0LL, DIRBLKSIZ, cnp->cn_cred, B_CLRBUF, &bp);
+	if (error)
 		goto bad;
 	ip->i_size = DIRBLKSIZ;
 	ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -1610,7 +1615,7 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 	int len, error;
 
 	error = ufs_makeinode(IFLNK | ap->a_vap->va_mode, ap->a_dvp,
-	    vpp, ap->a_cnp);
+			      vpp, ap->a_cnp);
 	if (error)
 		return (error);
 	VN_KNOTE(ap->a_dvp, NOTE_WRITE);
@@ -1621,10 +1626,17 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 		bcopy(ap->a_target, (char *)ip->i_shortlink, len);
 		ip->i_size = len;
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
-	} else
+	} else {
+		/*
+		 * Make sure we have a VM object in order to use
+		 * the buffer cache.
+		 */
+		if (vp->v_object == NULL)
+			vinitvmio(vp);
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
-		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred,
-		    (int *)0, NULL);
+				UIO_SYSSPACE, IO_NODELOCKED, 
+				ap->a_cnp->cn_cred, NULL, NULL);
+	}
 	if (error)
 		vput(vp);
 	return (error);
@@ -1757,6 +1769,13 @@ ufs_readlink(struct vop_readlink_args *ap)
 		uiomove((char *)ip->i_shortlink, isize, ap->a_uio);
 		return (0);
 	}
+
+	/*
+	 * Perform the equivalent of an OPEN on vp so we can issue a
+	 * VOP_READ.
+	 */
+	if (vp->v_object == NULL)
+		vinitvmio(vp);
 	return (VOP_READ(vp, ap->a_uio, 0, ap->a_cred));
 }
 
