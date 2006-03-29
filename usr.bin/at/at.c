@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.18.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.5 2004/09/20 13:11:54 joerg Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.6 2006/03/29 19:37:43 swildner Exp $
  */
 
 #define _USE_BSD 1
@@ -498,6 +498,8 @@ list_jobs(void)
 	       (S_IXUSR & buf.st_mode) ? "":"(done)", 
 	       jobno);
     }
+    closedir(spool);
+
     PRIV_END
 }
 
@@ -569,6 +571,7 @@ process_jobs(int argc, char **argv, int what)
 			while((ch = getc(fp)) != EOF) {
 			    putchar(ch);
 			}
+			fclose(fp);
 		    }
 		    break;
 
@@ -579,6 +582,7 @@ process_jobs(int argc, char **argv, int what)
 	    }
 	}
     }
+    closedir(spool);
 } /* delete_jobs */
 
 int
