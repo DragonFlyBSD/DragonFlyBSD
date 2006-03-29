@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.37 2005/09/12 10:42:24 swildner Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.38 2006/03/29 02:27:52 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -46,7 +46,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:joe 'at' angerson 'dot' com">Joe Angerson</a></td>
+<tr><td valign="top"><a href="mailto:joe 'at' digisquid 'dot' com">Joe Angrisano</a></td>
 <td valign="top">The DragonFly Mascot Artwork</td>
 </tr>
 
