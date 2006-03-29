@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.1 2006/03/29 01:47:35 justin Exp $
+# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.2 2006/03/29 02:13:04 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -53,7 +53,7 @@ a networked-clustered environment, getting us a long ways towards achieving
 a single-system-image capability.</p>
 <p>
 Such a caching infrastructure would, for example, protect a write() from a
-conflicting ftruncate(), and would preserve atomicy between read() and
+conflicting ftruncate(), and would preserve atomicity between read() and
 write().  The same caching infrastructure would actively invalidate or
 reload memory mappings, effectively replacing most of what VNODE locking
 is used for now.</p>
