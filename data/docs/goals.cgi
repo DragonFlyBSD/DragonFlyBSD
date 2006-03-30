@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.2 2006/03/29 02:13:04 justin Exp $
+# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.3 2006/03/30 03:41:42 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -68,7 +68,7 @@ infrastructure to maintain locks between operations in a scaleable fashion.
 In such cases cache operations such as invalidation or, say,
 Exclusive->Shared transitions, would generate a message to the holding 
 entity asking it to downgrade or release its range lock.
-In otherwords, the caching system being contemplated is 
+In other words, the caching system being contemplated is 
 an <i>actively managed</i> system.</p>
 
 <a name="iomodel"><h2>New I/O Device Model</h2></a>
@@ -118,7 +118,7 @@ installation and flawless operation.  We have come to the conclusion that
 the crux of the problem is that even seemingly minor updates to third
 party libraries (that we have no control over) can screw up an
 already-installed application.  A packaging system <em>CAN</em> walk the
-dependancy tree and upgrade everything that needs upgrading.  The
+dependency tree and upgrade everything that needs upgrading.  The
 problem is that the packaging system might not actually have a new
 version of the package or packages that need to be upgraded due to some
 third party library being upgraded.</p>
@@ -141,7 +141,7 @@ we would wind up with /usr/local/etc/X:VERSION1 and /usr/local/etc/X:VERSION2.
 </p>
 <p>
 It is possible to accomplish this goal by explicitly versioning
-dependancies and tagging the package binary with an 'environment'...  A
+dependencies and tagging the package binary with an 'environment'...  A
 filesystem overlay, you could call it, which applies to supporting
 directories like /usr/lib, /usr/local/lib, even /usr/local/etc, which 
 makes only the particular version of the particular libraries
