@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/bus/pccard/Makefile,v 1.1 2004/03/15 17:16:23 dillon Exp $
+# $DragonFly: src/sys/bus/pccard/Makefile,v 1.2 2006/03/30 11:09:08 swildner Exp $
 #
-# Makefile for the IEEE1394 OHCI chipset
+# Makefile for the PCCARD subsystem
 
 KMOD= pccard
 SRCS=	bus_if.h device_if.h pci_if.h \
