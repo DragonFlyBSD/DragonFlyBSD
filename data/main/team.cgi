@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.38 2006/03/29 02:27:52 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.39 2006/03/31 05:53:34 y0netan1 Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -152,8 +152,8 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:qhwt+dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">multi-talented kernel hacker, ACPI, device drivers, RAID (commit access)
+<tr><td valign="top"><a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
+<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build problems, testing patches (commit access)
 </td>
 </tr>
 
