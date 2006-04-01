@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.8 2006/02/27 02:50:48 corecode Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.9 2006/04/01 21:55:13 dillon Exp $
  */
 
 #include <sys/lockf.h>
@@ -115,6 +115,7 @@ int cd9660_inactive (struct vop_inactive_args *);
 int cd9660_reclaim (struct vop_reclaim_args *);
 int cd9660_bmap (struct vop_bmap_args *);
 int cd9660_blkatoff (struct vnode *vp, off_t offset, char **res, struct buf **bpp);
+int cd9660_devblkatoff (struct vnode *vp, off_t offset, char **res, struct buf **bpp);
 
 void cd9660_defattr (struct iso_directory_record *,
 			struct iso_node *, struct buf *, enum ISO_FTYPE);

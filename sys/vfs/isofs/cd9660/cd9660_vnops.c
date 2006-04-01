@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.22 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.23 2006/04/01 21:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -514,7 +514,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	idp->curroff = uio->uio_offset;
 
 	if ((entryoffsetinblock = idp->curroff & bmask) &&
-	    (error = cd9660_blkatoff(vdp, (off_t)idp->curroff, NULL, &bp))) {
+	    (error = cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp))) {
 		FREE(idp, M_TEMP);
 		return (error);
 	}
@@ -530,7 +530,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 			if (bp != NULL)
 				brelse(bp);
 			if ((error =
-			    cd9660_blkatoff(vdp, (off_t)idp->curroff, NULL, &bp)) != 0)
+			    cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp)) != 0)
 				break;
 			entryoffsetinblock = 0;
 		}
@@ -571,7 +571,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		if (isonum_711(ep->flags)&2)
 			idp->current.de.d_ino = isodirino(ep, imp);
 		else
-			idp->current.de.d_ino = bp->b_bio2.bio_offset +
+			idp->current.de.d_ino = bp->b_bio1.bio_offset +
 						entryoffsetinblock;
 
 		idp->curroff += reclen;

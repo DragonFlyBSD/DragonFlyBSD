@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.15 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.16 2006/04/01 21:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -270,7 +270,7 @@ cd9660_defattr(struct iso_directory_record *isodir, struct iso_node *inop,
 	if (!bp
 	    && ((imp = inop->i_mnt)->im_flags & ISOFSMNT_EXTATT)
 	    && (off = isonum_711(isodir->ext_attr_length))) {
-		cd9660_blkatoff(ITOV(inop), (off_t)-(off << imp->im_bshift), NULL,
+		cd9660_devblkatoff(ITOV(inop), (off_t)-(off << imp->im_bshift), NULL,
 			     &bp2);
 		bp = bp2;
 	}
@@ -319,7 +319,7 @@ cd9660_deftstamp(struct iso_directory_record *isodir, struct iso_node *inop,
 	if (!bp
 	    && ((imp = inop->i_mnt)->im_flags & ISOFSMNT_EXTATT)
 	    && (off = isonum_711(isodir->ext_attr_length))) {
-		cd9660_blkatoff(ITOV(inop), (off_t)-(off << imp->im_bshift), NULL,
+		cd9660_devblkatoff(ITOV(inop), (off_t)-(off << imp->im_bshift), NULL,
 			     &bp2);
 		bp = bp2;
 	}

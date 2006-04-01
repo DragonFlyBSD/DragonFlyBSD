@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.31 2006/03/27 01:54:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.32 2006/04/01 21:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -733,7 +733,7 @@ again:
 	}
 	vp->v_data = ip;
 
-	if (isodir == 0) {
+	if (isodir == NULL) {
 		int lbn, off;
 
 		lbn = lblkno(imp, ino);
@@ -765,7 +765,7 @@ again:
 		if (off + isonum_711(isodir->length) >
 		    imp->logical_block_size) {
 			vx_put(vp);
-			if (bp != 0)
+			if (bp != NULL)
 				brelse(bp);
 			printf("fhtovp: directory crosses block boundary %d[off=%d/len=%d]\n",
 			       off +isonum_711(isodir->length), off,
@@ -776,7 +776,7 @@ again:
 #if 0
 		if (isonum_733(isodir->extent) +
 		    isonum_711(isodir->ext_attr_length) != ifhp->ifid_start) {
-			if (bp != 0)
+			if (bp != NULL)
 				brelse(bp);
 			printf("fhtovp: file start miss %d vs %d\n",
 			       isonum_733(isodir->extent) + isonum_711(isodir->ext_attr_length),
@@ -797,9 +797,9 @@ again:
 		 * read the `.' entry out of a dir.
 		 */
 		ip->iso_start = ino >> imp->im_bshift;
-		if (bp != 0)
+		if (bp != NULL)
 			brelse(bp);
-		if ((error = cd9660_blkatoff(vp, (off_t)0, NULL, &bp)) != 0) {
+		if ((error = cd9660_devblkatoff(vp, (off_t)0, NULL, &bp)) != 0) {
 			vx_put(vp);
 			return (error);
 		}
@@ -821,7 +821,7 @@ again:
 		int off;
 		if ((imp->im_flags & ISOFSMNT_EXTATT)
 		    && (off = isonum_711(isodir->ext_attr_length)))
-			cd9660_blkatoff(vp, (off_t)-(off << imp->im_bshift), NULL,
+			cd9660_devblkatoff(vp, (off_t)-(off << imp->im_bshift), NULL,
 				     &bp2);
 		else
 			bp2 = NULL;
@@ -836,7 +836,7 @@ again:
 		break;
 	}
 
-	if (bp != 0)
+	if (bp != NULL)
 		brelse(bp);
 
 	/*

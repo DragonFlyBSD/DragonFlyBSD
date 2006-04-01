@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.19 2006/03/29 18:44:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.20 2006/04/01 21:55:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +171,7 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	} else {
 		dp->i_offset = dp->i_diroff;
 		if ((entryoffsetinblock = dp->i_offset & bmask) &&
-		    (error = cd9660_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
+		    (error = cd9660_devblkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
 				return (error);
 		numdirpasses = 2;
 		gd->gd_nchstats->ncs_2passes++;
@@ -189,7 +189,7 @@ searchloop:
 			if (bp != NULL)
 				brelse(bp);
 			if ((error =
-			    cd9660_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)) != 0)
+			    cd9660_devblkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)) != 0)
 				return (error);
 			entryoffsetinblock = 0;
 		}
@@ -248,7 +248,7 @@ searchloop:
 					if (isoflags & 2)
 						ino = isodirino(ep, imp);
 					else
-						ino = bp->b_bio2.bio_offset +
+						ino = bp->b_bio1.bio_offset +
 						      entryoffsetinblock;
 					saveoffset = dp->i_offset;
 				} else if (ino)
@@ -265,7 +265,7 @@ searchloop:
 			if (isonum_711(ep->flags)&2)
 				ino = isodirino(ep, imp);
 			else
-				ino = bp->b_bio2.bio_offset +
+				ino = bp->b_bio1.bio_offset +
 				      entryoffsetinblock;
 			dp->i_ino = ino;
 			cd9660_rrip_getname(ep,altname,&namelen,&dp->i_ino,imp);
@@ -286,7 +286,7 @@ foundino:
 			    lblkno(imp, saveoffset)) {
 				if (bp != NULL)
 					brelse(bp);
-				if ((error = cd9660_blkatoff(vdp,
+				if ((error = cd9660_devblkatoff(vdp,
 				    (off_t)saveoffset, NULL, &bp)) != 0)
 					return (error);
 			}
@@ -389,7 +389,7 @@ found:
 }
 
 /*
- * Return buffer with the contents of block "offset" from the beginning of
+ * Return a buffer with the contents of block "offset" from the beginning of
  * directory "ip".  If "res" is non-zero, fill it in with a pointer to the
  * remaining space in the directory.
  */
@@ -435,6 +435,50 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
                 }
         }
 
+	if (res)
+		*res = (char *)bp->b_data + blkoff(imp, offset);
+	*bpp = bp;
+	return (0);
+}
+
+
+/*
+ * Return a buffer with the contents of block "offset" from the beginning of
+ * directory "ip".  If "res" is non-zero, fill it in with a pointer to the
+ * remaining space in the directory.
+ *
+ * Use the underlying device vnode rather then the passed vnode for the
+ * buffer cache operation.  This allows us to access meta-data conveniently
+ * without having to instantiate a VM object for the vnode.
+ *
+ * WARNING!  Callers of this routine need to be careful when accessing
+ * the bio_offset.  Since this is a device buffer, the device offset will
+ * be in bio1.bio_offset, not bio2.bio_offset.
+ */
+int
+cd9660_devblkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
+{
+	struct iso_node *ip;
+	struct iso_mnt *imp;
+	struct buf *bp;
+	daddr_t lbn;
+	off_t doffset;
+	int bsize, error;
+
+	ip = VTOI(vp);
+	imp = ip->i_mnt;
+	lbn = lblkno(imp, offset);
+	bsize = blksize(imp, ip, lbn);
+
+	error = VOP_BMAP(vp, lblktooff(imp, lbn), NULL, &doffset, NULL, NULL);
+	if (error)
+		return (error);
+
+	if ((error = bread(imp->im_devvp, doffset, bsize, &bp)) != 0) {
+		brelse(bp);
+		*bpp = NULL;
+		return (error);
+	}
 	if (res)
 		*res = (char *)bp->b_data + blkoff(imp, offset);
 	*bpp = bp;
