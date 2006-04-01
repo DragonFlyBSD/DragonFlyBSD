@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_param.h,v 1.13.2.1 2001/11/03 01:41:10 ps Exp $
- * $DragonFly: src/sys/vm/vm_param.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_param.h,v 1.3 2006/04/01 22:20:19 dillon Exp $
  */
 
 /*
@@ -120,8 +120,6 @@
 
 #ifndef ASSEMBLER
 #ifdef _KERNEL
-#define num_pages(x) \
-	((vm_offset_t)((((vm_offset_t)(x)) + PAGE_MASK) >> PAGE_SHIFT))
 extern	u_quad_t maxtsiz;
 extern	u_quad_t dfldsiz;
 extern	u_quad_t maxdsiz;

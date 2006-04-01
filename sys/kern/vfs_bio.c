@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.60 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.61 2006/04/01 22:20:18 dillon Exp $
  */
 
 /*
@@ -2208,6 +2208,11 @@ loop:
 		}
 
 		/*
+		 * All vnode-based buffers must be backed by a VM object.
+		 */
+		KKASSERT(bp->b_flags & B_VMIO);
+
+		/*
 		 * Make sure that B_INVAL buffers do not have a cached
 		 * block number translation.
 		 */
@@ -2218,50 +2223,31 @@ loop:
 
 		/*
 		 * The buffer is locked.  B_CACHE is cleared if the buffer is 
-		 * invalid.  Otherwise, for a non-VMIO buffer, B_CACHE is set
-		 * and for a VMIO buffer B_CACHE is adjusted according to the
-		 * backing VM cache.
+		 * invalid.
 		 */
 		if (bp->b_flags & B_INVAL)
 			bp->b_flags &= ~B_CACHE;
-		else if ((bp->b_flags & (B_VMIO | B_INVAL)) == 0)
-			bp->b_flags |= B_CACHE;
 		bremfree(bp);
 
 		/*
-		 * check for size inconsistancies for non-VMIO case.
+		 * Any size inconsistancy with a dirty buffer or a buffer
+		 * with a softupdates dependancy must be resolved.  Resizing
+		 * the buffer in such circumstances can lead to problems.
 		 */
-
-		if (bp->b_bcount != size) {
-			if ((bp->b_flags & B_VMIO) == 0 ||
-			    (size > bp->b_kvasize)) {
-				if (bp->b_flags & B_DELWRI) {
-					bp->b_flags |= B_NOCACHE;
-					VOP_BWRITE(bp->b_vp, bp);
-				} else {
-					if ((bp->b_flags & B_VMIO) &&
-					   (LIST_FIRST(&bp->b_dep) == NULL)) {
-						bp->b_flags |= B_RELBUF;
-						brelse(bp);
-					} else {
-						bp->b_flags |= B_NOCACHE;
-						VOP_BWRITE(bp->b_vp, bp);
-					}
-				}
-				goto loop;
+		if (size != bp->b_bcount) {
+			if (bp->b_flags & B_DELWRI) {
+				bp->b_flags |= B_NOCACHE;
+				VOP_BWRITE(bp->b_vp, bp);
+			} else if (LIST_FIRST(&bp->b_dep)) {
+				bp->b_flags |= B_NOCACHE;
+				VOP_BWRITE(bp->b_vp, bp);
+			} else {
+				bp->b_flags |= B_RELBUF;
+				brelse(bp);
 			}
+			goto loop;
 		}
-
-		/*
-		 * If the size is inconsistant in the VMIO case, we can resize
-		 * the buffer.  This might lead to B_CACHE getting set or
-		 * cleared.  If the size has not changed, B_CACHE remains
-		 * unchanged from its previous state.
-		 */
-
-		if (bp->b_bcount != size)
-			allocbuf(bp, size);
-
+		KKASSERT(size <= bp->b_kvasize);
 		KASSERT(bp->b_loffset != NOOFFSET, 
 			("getblk: no buffer offset"));
 
@@ -2371,16 +2357,10 @@ loop:
 		bgetvp(vp, bp);
 
 		/*
-		 * set B_VMIO bit.  allocbuf() the buffer bigger.  Since the
-		 * buffer size starts out as 0, B_CACHE will be set by
-		 * allocbuf() for the VMIO case prior to it testing the
-		 * backing store for validity.
+		 * All vnode-based buffers must be backed by a VM object.
 		 */
-		if (vp->v_object) {
-			bp->b_flags |= B_VMIO;
-		} else {
-			bp->b_flags &= ~B_VMIO;
-		}
+		KKASSERT(vp->v_object != NULL);
+		bp->b_flags |= B_VMIO;
 
 		allocbuf(bp, size);
 
@@ -2491,7 +2471,7 @@ allocbuf(struct buf *bp, int size)
 			 * and revert to page-allocated memory when the buffer
 			 * grows.
 			 */
-			if ( (bufmallocspace < maxbufmallocspace) &&
+			if ((bufmallocspace < maxbufmallocspace) &&
 				(bp->b_bufsize == 0) &&
 				(mbsize <= PAGE_SIZE/2)) {
 
@@ -2505,8 +2485,9 @@ allocbuf(struct buf *bp, int size)
 			origbuf = NULL;
 			origbufsize = 0;
 			/*
-			 * If the buffer is growing on its other-than-first allocation,
-			 * then we revert to the page-allocation scheme.
+			 * If the buffer is growing on its other-than-first
+			 * allocation, then we revert to the page-allocation
+			 * scheme.
 			 */
 			if (bp->b_flags & B_MALLOC) {
 				origbuf = bp->b_data;
@@ -2534,8 +2515,9 @@ allocbuf(struct buf *bp, int size)
 		int desiredpages;
 
 		newbsize = (size + DEV_BSIZE - 1) & ~(DEV_BSIZE - 1);
-		desiredpages = (size == 0) ? 0 :
-			num_pages((bp->b_loffset & PAGE_MASK) + newbsize);
+		desiredpages = ((int)(bp->b_loffset & PAGE_MASK) +
+				newbsize + PAGE_MASK) >> PAGE_SHIFT;
+		KKASSERT(desiredpages <= XIO_INTERNAL_PAGES);
 
 		if (bp->b_flags & B_MALLOC)
 			panic("allocbuf: VMIO buffer can't be malloced");
