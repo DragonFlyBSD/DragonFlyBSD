@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.105 2006/02/25 19:14:53 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.106 2006/04/01 10:06:39 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -394,6 +394,7 @@ upgrade_etc:	preupgrade
 .for splman in 0 bio clock high imp net softclock softtty statclock tty vm x
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/spl${splman}.9.gz"
 .endfor
+	rm -f ${DESTDIR}/modules/if_owi.ko
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
