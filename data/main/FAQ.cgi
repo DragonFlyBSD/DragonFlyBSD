@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.13 2006/01/08 03:08:17 swildner Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.14 2006/04/01 23:04:45 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
@@ -46,7 +46,7 @@ As in any open source project, if you find problems reporting them increases the
 <p>Try make buildworld or buildkernel instead.
 </p>
 <a name="What_will_be_used_to_handle_third-party_applications.3F_.28like_ports.2C_RPM.2C_apt-get.2C_etc..29"></a><b> What will be used to handle third-party applications? (like ports, RPM, apt-get, etc.) </b>
-<p>As of 1.4, DragonFly uses the NetBSD Packages Collection <a href='http://www.pkgsrc.org' class='external' title="http://www.pkgsrc.org">pkgsrc</a> for third-party applications. pkgsrc is a packaging system much like FreeBSD ports, and there are many pre-built packages available. For a quick guide see the <a href="/index.php/Set_up_and_use_pkgsrc" title ="Set up and use pkgsrc">pkgsrc HOWTO</a>. Eventually, DragonFly will have a homegrown port system, using the VFS mechanisms that are as of this writing not complete yet. For more information, check the <a href='http://www.dragonflybsd.org/goals/packages.cgi' class='external' title="http://www.dragonflybsd.org/goals/packages.cgi">existing packaging description</a>.
+<p>As of 1.4, DragonFly uses the NetBSD Packages Collection <a href='http://www.pkgsrc.org' class='external' title="http://www.pkgsrc.org">pkgsrc</a> for third-party applications. pkgsrc is a packaging system much like FreeBSD ports, and there are many pre-built packages available. For a quick guide see the <a href="http://wiki.dragonflybsd.org/index.php/Set_up_and_use_pkgsrc" title ="Set up and use pkgsrc">pkgsrc HOWTO</a>. Eventually, DragonFly will have a homegrown port system, using the VFS mechanisms that are as of this writing not complete yet. For more information, check the <a href='http://www.dragonflybsd.org/goals/packages.cgi' class='external' title="http://www.dragonflybsd.org/goals/packages.cgi">existing packaging description</a>.
 </p>
 <a name="What_architectures_does_DragonFly_support.3F"></a><b> What architectures does DragonFly support? </b>
 <p>DragonFly is currently targeted at the x86 line of processors; it should work on 386 and up, though a 386 is certainly not recommended. Work is also being done on support for the new 64-bit processors from AMD. There are currently no plans for support of other processor types. However, support for Sparc or PowerPC or other systems is possible in the future. If you plan to submit code to the DragonFly project, please keep this in mind.

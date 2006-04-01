@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.7 2005/12/05 02:04:12 corecode Exp $
+# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.8 2006/04/01 23:04:45 justin Exp $
 
 $TITLE(DragonFly - Reporting Bugs)
 <p>
@@ -19,7 +19,7 @@ painless an affair as possible by providing several ways to report them.</p>
 <p>
 The email and newsgroup bug reporting methods are meant to be casual affairs.
 Being able to post a bug report should give you a good feeling regardless of
-whether we are able to act on or respond to it.  Your report will archived
+whether we are able to act on or respond to it.  Your report will be archived
 indefinitely so even if we are not able to deal with or respond to it
 immediately it will still be registered for possible future action.</p>
 <p>

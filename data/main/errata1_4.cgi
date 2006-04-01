@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.3 2006/01/31 18:39:22 dillon Exp $
+# $DragonFly: site/data/main/Attic/errata1_4.cgi,v 1.4 2006/04/01 23:04:45 justin Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Errata Page)
 <h1>Errata Page for DragonFly 1.4.x</h1>
@@ -32,7 +32,7 @@ sh ./convert.sh
 	libc.so.6 and cannot be mixed and matched.  A complete reinstall of
 	third party packages via the new pkgsrc system is recommended.  That
 	means basically backing up and then wiping /usr/local and starting
-	fresh with pkgsrc.  However, we realize that pkgsrc coversage is
+	fresh with pkgsrc.  However, we realize that pkgsrc coverage is
 	not (yet) as extensive as ports coverage and there will be a number
 	of packages that cannot be easily installed via the pkgsrc system.
     </p></li>
@@ -81,8 +81,8 @@ pkg_admin rebuild
     </pre>
     </p></li>
     <li><p>
-	Binary packages are not yet generated for the release.  This space
-	will have a reference as soon as it is available.
+	Binary packages are available
+	<A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/packages/RELEASE/i386/All/">here</A>.
     </p></li>
     <li><p>
 	The newaliases command must be run as root, otherwise sendmail will
@@ -94,7 +94,7 @@ newaliases
     <li><p>
 	The skeleton .cshrc and .profile for newly added users does not
 	contain the pkgsrc binary paths, and rc.shutdown also did not contain
-	the required path.  The commit and diffs is avaliable at this
+	the required path.  The commit and diff is available at this
 	URL: <A HREF="http://leaf.dragonflybsd.org/mailarchive/commits/2006-01/msg00038.html">SkeletonFixes</A>
     </p></li>
 </ul>

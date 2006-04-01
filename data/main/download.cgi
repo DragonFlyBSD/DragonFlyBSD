@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.101 2006/03/16 19:19:14 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.102 2006/04/01 23:04:45 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -48,7 +48,7 @@ the following tags:
     <tr><td><b>CVS Tag</b></td><td><b>Description</b></td></tr>
     <tr>
 	<td>HEAD</td>
-	<td>Represents the bleeding edge of Dragonfly development.  Kernels
+	<td>Represents the bleeding edge of DragonFly development.  Kernels
 	    compiled from these sources will be marked DEVELOPMENT.</td>
     </tr>
     <tr>
@@ -89,13 +89,6 @@ preview snapshots of current development.  First-time DragonFly users are
 probably best served using a preview snapshot.  These snapshots can be
 located at <a href="ftp://ftp.dragonflybsd.org/iso-images/">ftp://ftp.dragonflybsd.org/iso-images</a>. 
 Daily snapshots are available at <a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>.
-</p>
-<p>
-We are building both gcc-2.95.x and gcc-3.4 based daily snapshots.  
-<b><i>gcc-3.4 based systems are considered experimental and should only
-be used for testing and development purposes!</i></b>.  Most DragonFly users
-and, indeed, most developers, are using pain-free gcc-2.95.x snapshots.
-Both compilers are available for use in all DragonFly snapshots.</p>
 </p>
 
 <p>
@@ -479,8 +472,8 @@ addresses.
 
 <TR>
 <TD><B>Crescent Anchor</B><br>
-Crescent Anchor will be providing DragonFly 1.0A on CD-ROM for a
-nominal fee.  Part of your purchase from Crescent Anchor will be contributed
+Crescent Anchor provides DragonFly on CD-ROM for a nominal fee.
+Part of your purchase from Crescent Anchor will be contributed
 back to support continuing DragonFly development via the forthcoming 
 nonprofit company.  Please visit the Crescent Anchor site for details, 
 pricing, and other offers.  </TD>
@@ -491,8 +484,7 @@ pricing, and other offers.  </TD>
 <TD><B>Ikarios</B><br>
 Ikarios is a low-cost supplier (mail-order only) of CDs, shipping in most
 European countries.<br>
-Each industrially-produced and tested CD-R of "DragonFly BSD 1.0A RELEASE"
-CD-R costs at most 1.99 euro (decreasing rate).<br>
+Each industrially-produced and tested CD costs at most 1.99 euro (decreasing rate).<br>
 </TD>
 <TD><A HREF="http://www.ikarios.com/form#dfbsd">http://www.ikarios.com/</A></TD>
 </TR>
