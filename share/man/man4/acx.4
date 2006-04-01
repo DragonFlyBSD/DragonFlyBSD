@@ -1,0 +1,137 @@
+.\"
+.\" Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man4/acx.4,v 1.1 2006/04/01 02:55:36 sephe Exp $
+.\"
+.Dd March 24, 2006
+.Dt ACX 4
+.Os
+.Sh NAME
+.Nm acx
+.Nd Texas Instruments ACX100/TNETW1130(ACX111) IEEE 802.11 driver
+.Sh SYNOPSIS
+To compile this driver into the kernel, place the following lines in
+your kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device acx"
+.Cd "device wlan"
+.Ed
+.Pp
+Alternatively, to load the driver as a module at boot time, place the
+following line in
+.Pa /boot/loader.conf :
+.Bd -literal -offset indent
+if_acx_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Texas Instruments ACX100 or
+TNETW1130 (aka ACX111) based PCI and Cardbus network adapters.
+.Pp
+By default, the
+.Nm
+driver configures the adapter for BSS operation (infrastructure mode).
+This mode requires the use of an access point. In addition, IBSS
+operation (adhoc mode) is also supported.
+For more
+information on configuring this device, see
+.Xr ifconfig 8 .
+.Ss MIB Variables
+A number of per-interface variables are implemented in the
+.Va hw.acx Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width ".Va txrate_sample_threshold"
+.It Va txrate_upd_intvl_min
+Minumum number of seconds to wait before raising the TX rate.
+.It Va txrate_upd_intvl_max
+Maximum number of seconds to wait before raising the TX rate.
+.It Va txrate_sample_threshold
+Number of packets to be sampled before raising the TX rate.
+.It Va long_retry_limit
+Maximum number of retries for RTS packets.
+.It Va short_retry_limit
+Maximum number of retries for non-RTS packets.
+.It Va msdu_lifetime
+MSDU life time.
+.El
+.Sh HARDWARE
+The following cards are known to work with the
+.Nm
+driver:
+.Pp
+.Bl -bullet -compact
+.It
+D-Link DWL-520+
+.It
+D-Link DWL-650+
+.It
+D-Link DWL-G520+
+.It
+D-Link DWL-G650+
+.El
+.Sh FILES
+The firmware for the adapter is not shipped with
+.Dx
+and must be obtained seperately.
+Check the disk/CD shipped with the adapter or
+.Pp
+.Pa ftp://ftp.dlink.co.uk/wireless
+.Pp
+See
+.Xr acxcontrol 8
+for more information on loading firmware.
+.\" XXX .Sh DIAGNOSTICS
+.Sh SEE ALSO
+.Xr acxcontrol 8 ,
+.Xr ifconfig 8 ,
+.Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Dx 1.5 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+driver was written by
+.An Sepherosa Ziehau .
+The manual page was written by
+.An Sascha Wildner .
+Both are based on the
+.Pa http://wlan.kewl.org
+project team's original code.
+.Pp
+The hardware specification was reverse engineered by the good folks at
+.Pa http://acx100.sourceforge.net .
+Without them this driver would not have been possible.
