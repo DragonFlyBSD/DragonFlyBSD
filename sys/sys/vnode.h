@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.45 2006/03/29 18:44:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.46 2006/04/01 20:46:49 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -145,9 +145,6 @@ vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
  * occur in multiple stages.  The range locks will also eventually be used to
  * deal with clustered cache coherency issues and, more immediately, to
  * protect operations associated with the kernel-managed journaling module.
- *
- * NOTE: XXX v_opencount currently only used by specfs.  It should be used
- *	 universally.  
  *
  * NOTE: The vnode operations vector, v_ops, is a double-indirect that
  *	 typically points to &v_mount->mnt_vn_use_ops.  We use a double
@@ -631,6 +628,8 @@ int	vn_stat (struct vnode *vp, struct stat *sb, struct thread *td);
 dev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
+int	vop_stdopen (struct vop_open_args *ap);
+int	vop_stdclose (struct vop_close_args *ap);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
 int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);

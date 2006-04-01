@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.27 2006/03/29 18:45:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.28 2006/04/01 20:46:53 dillon Exp $
  *
  */
 
@@ -537,7 +537,7 @@ ntfs_open(struct vop_open_args *ap)
 	 * Files marked append-only must be opened for appending.
 	 */
 
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 /*
@@ -559,7 +559,7 @@ ntfs_close(struct vop_close_args *ap)
 	printf("ntfs_close: %d\n",ip->i_number);
 #endif
 
-	return (0);
+	return (vop_stdclose(ap));
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.37 2006/03/29 20:46:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.38 2006/04/01 20:46:54 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -279,7 +279,7 @@ ufs_open(struct vop_open_args *ap)
 	if (vp->v_type == VREG || vp->v_type == VDIR)
 		vinitvmio(vp);
 
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 /*
@@ -299,7 +299,7 @@ ufs_close(struct vop_close_args *ap)
 
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	return (0);
+	return (vop_stdclose(ap));
 }
 
 /*

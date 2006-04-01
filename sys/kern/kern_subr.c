@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.20 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.21 2006/04/01 20:46:47 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -63,7 +63,7 @@ SYSCTL_INT(_kern, KERN_IOV_MAX, iov_max, CTLFLAG_RD, NULL, UIO_MAXIOV,
 
 /*
  * UIO_READ:	copy the kernelspace cp to the user or kernelspace UIO
- * UIO_WRITE:	copy the user or kernelspace UIO to cp
+ * UIO_WRITE:	copy the user or kernelspace UIO to the kernelspace cp
  *
  * For userspace UIO's, uio_td must be the current thread.
  */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.13 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.14 2006/04/01 20:46:47 dillon Exp $
  */
 
 /*
@@ -181,21 +181,12 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     fp = *fpp;
     if ((flags & O_ROOTCRED) == 0 && td->td_proc)
 	fsetcred(fp, td->td_proc->p_ucred);
-    fp->f_type = DTYPE_VNODE;
-    fp->f_flag = flags;
-    fp->f_ops = &vnode_fileops;
-    fp->f_data = vp;
 
     error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp, td);
     if (error)
 	goto bad1;
 
-    /*
-     * All done, update v_writecount now that no more errors can occur.
-     */
-    if (flags & FWRITE)
-	vp->v_writecount++;
-    VOP_UNLOCK(vp, 0, td);
+    vput(vp);
     return (0);
 bad1:
     fp->f_ops = &badfileops;	/* open failed, don't close */

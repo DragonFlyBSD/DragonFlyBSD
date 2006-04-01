@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.53 2006/03/29 21:07:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.54 2006/04/01 20:46:53 dillon Exp $
  */
 
 
@@ -539,7 +539,7 @@ nfs_open(struct vop_open_args *ap)
 		np->n_flag &= ~NRMODIFIED;
 	}
 
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 /*
@@ -612,6 +612,7 @@ nfs_close(struct vop_close_args *ap)
 		error = np->n_error;
 	    }
 	}
+	vop_stdclose(ap);
 	return (error);
 }
 

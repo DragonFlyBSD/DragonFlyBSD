@@ -37,13 +37,15 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.31 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.32 2006/04/01 20:46:47 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
+#include <sys/fcntl.h>
+#include <sys/file.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
@@ -77,14 +79,14 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_eopnotsupp },
 	{ &vop_advlock_desc,		vop_einval },
 	{ &vop_bwrite_desc,		(void *) vop_stdbwrite },
-	{ &vop_close_desc,		vop_null },
 	{ &vop_fsync_desc,		vop_null },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
 	{ &vop_old_lookup_desc,		(void *) vop_nolookup },
-	{ &vop_open_desc,		vop_null },
+	{ &vop_open_desc,		(void *) vop_stdopen },
+	{ &vop_close_desc,		(void *) vop_stdclose },
 	{ &vop_pathconf_desc,		vop_einval },
 	{ &vop_poll_desc,		(void *) vop_nopoll },
 	{ &vop_readlink_desc,		vop_einval },
@@ -1182,6 +1184,65 @@ vop_stdpathconf(ap)
 			return (EINVAL);
 	}
 	/* NOTREACHED */
+}
+
+/*
+ * Standard open.
+ *
+ * (struct vnode *a_vp, int a_mode, struct ucred *a_ucred, struct file *a_fp,
+ *  struct thread *a_td)
+ *
+ * a_mode: note, 'F' modes, e.g. FREAD, FWRITE
+ */
+int
+vop_stdopen(struct vop_open_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct file *fp;
+
+	if ((fp = ap->a_fp) != NULL) {
+		switch(vp->v_type) {
+		case VFIFO:
+			fp->f_type = DTYPE_FIFO;
+			break;
+		default:
+			fp->f_type = DTYPE_VNODE;
+			break;
+		}
+		fp->f_flag = ap->a_mode & FMASK;
+		fp->f_ops = &vnode_fileops;
+		fp->f_data = vp;
+		vref(vp);
+	}
+	if (ap->a_mode & FWRITE)
+		++vp->v_writecount;
+	KKASSERT(vp->v_opencount >= 0 && vp->v_opencount != INT_MAX);
+	++vp->v_opencount;
+	return (0);
+}
+
+/*
+ * Standard close.
+ *
+ * (struct vnode *a_vp, int a_fflag, struct thread *a_td)
+ *
+ * a_fflag: note, 'F' modes, e.g. FREAD, FWRITE.  same as a_mode in stdopen?
+ */
+int
+vop_stdclose(struct vop_close_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	KASSERT(vp->v_opencount > 0,
+		("VOP_STDCLOSE: BAD OPENCOUNT %p %d\n", vp, vp->v_opencount));
+	if (ap->a_fflag & FWRITE) {
+		KASSERT(vp->v_writecount > 0,
+			("VOP_STDCLOSE: BAD WRITECOUNT %p %d\n", 
+			vp, vp->v_writecount));
+		--vp->v_writecount;
+	}
+	--vp->v_opencount;
+	return (0);
 }
 
 /*

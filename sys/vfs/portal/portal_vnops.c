@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.25 2006/03/27 01:54:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.26 2006/04/01 20:46:53 dillon Exp $
  */
 
 /*
@@ -229,7 +229,7 @@ portal_open(struct vop_open_args *ap)
 	 * Nothing to do when opening the root node.
 	 */
 	if (vp->v_flag & VROOT)
-		return (0);
+		return (vop_stdopen(ap));
 
 	/*
 	 * Can't be opened unless the caller is set up
@@ -415,6 +415,7 @@ portal_open(struct vop_open_args *ap)
 	 * happen in vn_open.  The whole concept is, well, hmmm.
 	 */
 	td->td_lwp->lwp_dupfd = fd;
+	vop_stdopen(ap);
 	error = ENXIO;
 
 bad:;

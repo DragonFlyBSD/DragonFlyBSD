@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.27 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.28 2006/04/01 20:46:50 dillon Exp $
  */
 
 /*
@@ -147,13 +147,12 @@ linprocfs_open(struct vop_open_args *ap)
 		if (ap->a_mode & FWRITE)
 			pfs->pfs_flags = ap->a_mode & (FWRITE|O_EXCL);
 
-		return (0);
-
+		break;
 	default:
 		break;
 	}
 
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 /*
@@ -193,8 +192,7 @@ linprocfs_close(struct vop_close_args *ap)
 	default:
 		break;
 	}
-
-	return (0);
+	return (vop_stdclose(ap));
 }
 
 /*

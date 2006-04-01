@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.25 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.26 2006/04/01 20:46:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -183,11 +183,13 @@ nwfs_open(struct vop_open_args *ap)
 			return (error);
 		np->n_atime = 0;
 		error = VOP_GETATTR(vp, &vattr, ap->a_td);
-		if (error) return (error);
+		if (error) 
+			return (error);
 		np->n_mtime = vattr.va_mtime.tv_sec;
 	} else {
 		error = VOP_GETATTR(vp, &vattr, ap->a_td);
-		if (error) return (error);
+		if (error) 
+			return (error);
 		if (np->n_mtime != vattr.va_mtime.tv_sec) {
 			if ((error = nwfs_vinvalbuf(vp, V_SAVE,	ap->a_td, 1)) == EINTR)
 				return (error);
@@ -196,7 +198,7 @@ nwfs_open(struct vop_open_args *ap)
 	}
 	if (np->opened) {
 		np->opened++;
-		return 0;
+		return (vop_stdopen(ap));
 	}
 	nwm = AR_READ;
 	if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0)
@@ -210,12 +212,13 @@ nwfs_open(struct vop_open_args *ap)
 		error = ncp_open_create_file_or_subdir(nmp, vp, 0, NULL, OC_MODE_OPEN, 0,
 						   nwm, &no, ap->a_td,ap->a_cred);
 	}
-	if (!error) {
+	np->n_atime = 0;
+	if (error == 0) {
 		np->opened++;
 		np->n_fh = no.fh;
 		np->n_origfh = no.origfh;
+		error = vop_stdopen(ap);
 	}
-	np->n_atime = 0;
 	return (error);
 }
 
@@ -232,20 +235,23 @@ nwfs_close(struct vop_close_args *ap)
 
 	NCPVNDEBUG("name=%s,td=%p,c=%d\n",np->n_name,ap->a_td,np->opened);
 
-	if (vp->v_type == VDIR) return 0;	/* nothing to do now */
 	error = 0;
-	if (np->opened == 0) {
-		return 0;
-	}
+	if (vp->v_type == VDIR)
+		goto done;
+	if (np->opened == 0)
+		goto done;
 	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
 	if (np->opened == 0) {
-		return 0;
+		error = 0;	/* huh? */
+		goto done;
 	}
 	if (--np->opened == 0) {
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, 
 		   ap->a_td, proc0.p_ucred);
 	} 
 	np->n_atime = 0;
+done:
+	vop_stdclose(ap);
 	return (error);
 }
 

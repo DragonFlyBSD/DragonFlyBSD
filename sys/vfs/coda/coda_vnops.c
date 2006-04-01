@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.32 2006/03/29 18:44:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.33 2006/04/01 20:46:51 dillon Exp $
  * 
  */
 
@@ -241,15 +241,17 @@ coda_open(void *v)
 	/* if (WRITEABLE(flag)) */ 
 	if (flag & (FWRITE | O_TRUNC | O_CREAT | O_EXCL)) {
 	    MARK_INT_FAIL(CODA_OPEN_STATS);
-	    return(EACCES);
+	    error = EACCES;
+	    goto done;
 	}
 	MARK_INT_SAT(CODA_OPEN_STATS);
-	return(0);
+	error = 0;
+	goto done;
     }
 
     error = venus_open(vtomi((*vpp)), &cp->c_fid, flag, cred, td, &dev, &inode);
     if (error)
-	return (error);
+	goto done;
     if (!error) {
 	CODADEBUG( CODA_OPEN,myprintf(("open: dev %#lx inode %lu result %d\n",
 				       (u_long)dev2udev(dev), (u_long)inode,
@@ -260,7 +262,7 @@ coda_open(void *v)
        an inode pointer. */
     error = coda_grab_vnode(dev, inode, &vp);
     if (error)
-	return (error);
+	goto done;
 
     /* We get the vnode back locked.  Needs unlocked */
     VOP_UNLOCK(vp, 0, td);
@@ -291,7 +293,7 @@ coda_open(void *v)
     error = VOP_OPEN(vp, flag, cred, NULL, td); 
     if (error) {
     	printf("coda_open: VOP_OPEN on container failed %d\n", error);
-	return (error);
+	goto done;
     }
 /* grab (above) does this when it calls newvnode unless it's in the cache*/
     if (vp->v_type == VREG) {
@@ -301,7 +303,9 @@ coda_open(void *v)
 	    vput(vp);
 	}
     }
-
+done:
+    if (error == 0)
+	vop_stdopen(ap);
     return(error);
 }
 
@@ -325,7 +329,8 @@ coda_close(void *v)
     /* Check for close of control file. */
     if (IS_CTL_VP(vp)) {
 	MARK_INT_SAT(CODA_CLOSE_STATS);
-	return(0);
+	error = 0;
+	goto done;
     }
 
     if (IS_UNMOUNTING(cp)) {
@@ -345,7 +350,8 @@ coda_close(void *v)
 	    printf("coda_close: NO container vp %p/cp %p\n", vp, cp);
 #endif
 	}
-	return ENODEV;
+	error = ENODEV;
+	goto done;
     } else {
 	VOP_CLOSE(cp->c_ovp, flag, td); /* Do errors matter here? */
 	vrele(cp->c_ovp);
@@ -361,6 +367,8 @@ coda_close(void *v)
     vrele(CTOV(cp));
 
     CODADEBUG(CODA_CLOSE, myprintf(("close: result %d\n",error)); )
+done:
+    vop_stdclose(ap);
     return(error);
 }
 

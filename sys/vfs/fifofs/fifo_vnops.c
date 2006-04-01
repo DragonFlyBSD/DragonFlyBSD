@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.24 2006/03/27 16:18:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.25 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -254,7 +254,7 @@ fifo_open(struct vop_open_args *ap)
 			}
 		}
 	}
-	return (0);
+	return (vop_stdopen(ap));
 bad:
 	VOP_CLOSE(vp, ap->a_mode, ap->a_td);
 	return (error);
@@ -536,14 +536,17 @@ fifo_close(struct vop_close_args *ap)
 		if (fip->fi_writers == 0)
 			socantrcvmore(fip->fi_readsock);
 	}
-	if (vp->v_usecount > 1)
+	if (vp->v_usecount > 1) {
+		vop_stdclose(ap);
 		return (0);
+	}
 	error1 = soclose(fip->fi_readsock);
 	error2 = soclose(fip->fi_writesock);
 	FREE(fip, M_FIFOINFO);
 	vp->v_fifoinfo = NULL;
 	if (error1)
 		return (error1);
+	vop_stdclose(ap);
 	return (error2);
 }
 

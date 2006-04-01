@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.22 2006/03/29 18:44:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.23 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ mfs_open(struct vop_open_args *ap)
 	if (vp->v_type != VCHR)
 		panic("mfs_open not VCHR");
 	v_associate_rdev(vp, udev2dev(vp->v_udev, 0));
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 static int
@@ -324,7 +324,7 @@ mfs_close(struct vop_close_args *ap)
 	 * we can, free up its vnode.
 	 */
 	if ((error = vinvalbuf(vp, 1, ap->a_td, 0, 0)) != 0)
-		return (error);
+		goto done;
 	/*
 	 * There should be no way to have any more uses of this
 	 * vnode, so if we find any other uses, it is a panic.
@@ -343,7 +343,9 @@ mfs_close(struct vop_close_args *ap)
 		mfsp->mfs_dev = NULL;
 	}
 	wakeup((caddr_t)mfsp);
-	return (0);
+done:
+	vop_stdclose(ap);
+	return (error);
 }
 
 /*

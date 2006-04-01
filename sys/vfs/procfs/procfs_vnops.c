@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.28 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.29 2006/04/01 20:46:53 dillon Exp $
  */
 
 /*
@@ -161,13 +161,13 @@ procfs_open(struct vop_open_args *ap)
 		if (ap->a_mode & FWRITE)
 			pfs->pfs_flags = ap->a_mode & (FWRITE|O_EXCL);
 
-		return (0);
+		break;
 
 	default:
 		break;
 	}
 
-	return (0);
+	return (vop_stdopen(ap));
 }
 
 /*
@@ -219,7 +219,7 @@ procfs_close(struct vop_close_args *ap)
 		break;
 	}
 
-	return (0);
+	return (vop_stdclose(ap));
 }
 
 /*

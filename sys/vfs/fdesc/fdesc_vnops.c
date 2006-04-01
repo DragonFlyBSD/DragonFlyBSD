@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.24 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.25 2006/04/01 20:46:53 dillon Exp $
  */
 
 /*
@@ -251,7 +251,7 @@ fdesc_open(struct vop_open_args *ap)
 	KKASSERT(lp);
 
 	if (VTOFDESC(vp)->fd_type == Froot)
-		return (0);
+		return (vop_stdopen(ap));
 
 	/*
 	 * XXX Kludge: set lp->lwp_dupfd to contain the value of the the file

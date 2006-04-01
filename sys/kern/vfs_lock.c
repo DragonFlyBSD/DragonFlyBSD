@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.12 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.13 2006/04/01 20:46:47 dillon Exp $
  */
 
 /*
@@ -467,6 +467,7 @@ allocvnode(int lktimeout, int lkflags)
 		vp->v_cstart = 0;
 		vp->v_clen = 0;
 		vp->v_socket = 0;
+		vp->v_opencount = 0;
 		vp->v_writecount = 0;	/* XXX */
 		lockreinit(&vp->v_lock, "vnode", lktimeout, lkflags);
 		KKASSERT(TAILQ_FIRST(&vp->v_namecache) == NULL);

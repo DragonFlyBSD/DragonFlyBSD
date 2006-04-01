@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.21 2006/03/29 18:44:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.22 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +284,7 @@ cd9660_open(struct vop_open_args *ap)
 	 */
 	if (vp->v_type == VREG || vp->v_type == VDIR)
 		vinitvmio(vp);
-	return(0);
+	return(vop_stdopen(ap));
 }
 
 /*

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.27 2006/04/01 20:46:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -181,7 +181,7 @@ smbfs_open(struct vop_open_args *ap)
 		if (np->n_opencount == 0)
 			np->n_cached_cred = crhold(ap->a_cred);
 		np->n_opencount++;
-		return 0;
+		return (vop_stdopen(ap));
 	}
 	if (np->n_flag & NMODIFIED) {
 		if ((error = smbfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1)) == EINTR)
@@ -204,7 +204,7 @@ smbfs_open(struct vop_open_args *ap)
 	}
 	if (np->n_opencount) {
 		np->n_opencount++;
-		return 0;
+		return (vop_stdopen(ap));
 	}
 	accmode = SMB_AM_OPENREAD;
 	if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0)
@@ -222,6 +222,8 @@ smbfs_open(struct vop_open_args *ap)
 		np->n_opencount++;
 	}
 	smbfs_attr_cacheremove(vp);
+	if (error == 0)
+		vop_stdopen(ap);
 	return error;
 }
 
@@ -238,25 +240,25 @@ smbfs_closel(struct vop_close_args *ap)
 	SMBVDEBUG("name=%s, pid=%d, c=%d\n",np->n_name, p->p_pid, np->n_opencount);
 
 	smb_makescred(&scred, td, proc0.p_ucred);
+	error = 0;
 
 	if (np->n_opencount == 0) {
 		if (vp->v_type != VDIR)
 			SMBERROR("Negative opencount\n");
-		return 0;
+		goto done;
 	}
 	np->n_opencount--;
 	if (vp->v_type == VDIR) {
 		if (np->n_opencount)
-			return 0;
+			goto done;
 		if (np->n_dirseq) {
 			smbfs_findclose(np->n_dirseq, &scred);
 			np->n_dirseq = NULL;
 		}
-		error = 0;
 	} else {
 		error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
 		if (np->n_opencount)
-			return error;
+			goto done;
 		VOP_GETATTR(vp, &vattr, td);
 		error = smbfs_smb_close(np->n_mount->sm_share, np->n_fid, 
 			   &np->n_mtime, &scred);
@@ -264,6 +266,8 @@ smbfs_closel(struct vop_close_args *ap)
 	crfree(np->n_cached_cred);
 	np->n_cached_cred = NULL;
 	smbfs_attr_cacheremove(vp);
+done:
+	vop_stdclose(ap);
 	return error;
 }
 

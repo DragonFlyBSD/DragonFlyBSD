@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.73 2006/03/29 20:46:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.74 2006/04/01 20:46:47 dillon Exp $
  */
 
 /*
@@ -1017,13 +1017,7 @@ v_release_rdev(struct vnode *vp)
 	if ((dev = vp->v_rdev) != NULL) {
 		lwkt_gettoken(&ilock, &spechash_token);
 		SLIST_REMOVE(&dev->si_hlist, vp, vnode, v_specnext);
-		if (dev_ref_debug && vp->v_opencount != 0) {
-			printf("releasing rdev with non-0 "
-				"v_opencount(%d) (revoked?)\n",
-				vp->v_opencount);
-		}
 		vp->v_rdev = NULL;
-		vp->v_opencount = 0;
 		release_dev(dev);
 		lwkt_reltoken(&ilock);
 	}
@@ -1056,6 +1050,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 {
 	int active;
 	int retflags = 0;
+	int n;
 	vm_object_t object;
 
 	/*
@@ -1098,14 +1093,25 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	KKASSERT((vp->v_flag & VOBJBUF) == 0);
 
 	/*
-	 * If purging an active vnode, it must be closed and
-	 * deactivated before being reclaimed.   XXX
+	 * If purging an active vnode (typically during a forced unmount
+	 * or reboot), it must be closed and deactivated before being
+	 * reclaimed.  This isn't really all that safe, but what can
+	 * we do? XXX.
 	 *
 	 * Note that neither of these routines unlocks the vnode.
 	 */
-	if (active) {
-		if (flags & DOCLOSE)
-			VOP_CLOSE(vp, FNONBLOCK, td);
+	if (active && (flags & DOCLOSE)) {
+		while ((n = vp->v_opencount) != 0) {
+			if (vp->v_writecount)
+				VOP_CLOSE(vp, FWRITE|FNONBLOCK, td);
+			else
+				VOP_CLOSE(vp, FNONBLOCK, td);
+			if (vp->v_opencount == n) {
+				printf("Warning: unable to force-close"
+				       " vnode %p\n", vp);
+				break;
+			}
+		}
 	}
 
 	/*

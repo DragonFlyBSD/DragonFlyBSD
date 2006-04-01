@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.15 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.16 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/vnode.h>
+#include <sys/fcntl.h>
 #include <sys/buf.h>
 #include <sys/poll.h>
 
@@ -52,6 +53,7 @@ static int	dead_ioctl (struct vop_ioctl_args *);
 static int	dead_lock (struct vop_lock_args *);
 static int	dead_lookup (struct vop_old_lookup_args *);
 static int	dead_open (struct vop_open_args *);
+static int	dead_close (struct vop_close_args *);
 static int	dead_poll (struct vop_poll_args *);
 static int	dead_print (struct vop_print_args *);
 static int	dead_read (struct vop_read_args *);
@@ -74,6 +76,7 @@ static struct vnodeopv_entry_desc dead_vnodeop_entries[] = {
 	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_mmap_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_open_desc,		(vnodeopv_entry_t) dead_open },
+	{ &vop_close_desc,		(vnodeopv_entry_t) dead_close },
 	{ &vop_pathconf_desc,		vop_ebadf },	/* per pathconf(2) */
 	{ &vop_poll_desc,		(vnodeopv_entry_t) dead_poll },
 	{ &vop_print_desc,		(vnodeopv_entry_t) dead_print },
@@ -119,6 +122,24 @@ static int
 dead_open(struct vop_open_args *ap)
 {
 	return (ENXIO);
+}
+
+/*
+ * Close always succeeds, and does not warn or panic if v_opencount or
+ * v_writecount is incorrect, because a forced unmount or revocation
+ * might have closed the file out from under the descriptor.
+ */
+static int
+dead_close(struct vop_close_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	if (vp->v_opencount > 0) {
+		if ((ap->a_fflag & FWRITE) && vp->v_writecount > 0)
+			--vp->v_writecount;
+		--vp->v_opencount;
+	}
+	return (0);
 }
 
 /*

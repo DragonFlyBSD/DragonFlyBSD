@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.30 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.31 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,8 +82,6 @@ static int	hpfs_print (struct vop_print_args *ap);
 static int	hpfs_reclaim (struct vop_reclaim_args *ap);
 static int	hpfs_strategy (struct vop_strategy_args *ap);
 static int	hpfs_access (struct vop_access_args *ap);
-static int	hpfs_open (struct vop_open_args *ap);
-static int	hpfs_close (struct vop_close_args *ap);
 static int	hpfs_readdir (struct vop_readdir_args *ap);
 static int	hpfs_lookup (struct vop_old_lookup_args *ap);
 static int	hpfs_create (struct vop_old_create_args *);
@@ -794,54 +792,6 @@ hpfs_access(struct vop_access_args *ap)
 	return ((hp->h_mode & mask) == mask ? 0 : EACCES);
 }
 
-/*
- * Open called.
- *
- * Nothing to do.
- *
- * hpfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	     struct proc *a_td)
- */
-/* ARGSUSED */
-static int
-hpfs_open(struct vop_open_args *ap)
-{
-#if HPFS_DEBUG
-	struct vnode *vp = ap->a_vp;
-	struct hpfsnode *hp = VTOHP(vp);
-
-	printf("hpfs_open(0x%x):\n",hp->h_no);
-#endif
-
-	/*
-	 * Files marked append-only must be opened for appending.
-	 */
-
-	return (0);
-}
-
-/*
- * Close called.
- *
- * Update the times on the inode.
- *
- * hpfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	      struct proc *a_td)
- */
-/* ARGSUSED */
-static int
-hpfs_close(struct vop_close_args *ap)
-{
-#if HPFS_DEBUG
-	struct vnode *vp = ap->a_vp;
-	struct hpfsnode *hp = VTOHP(vp);
-
-	printf("hpfs_close: %d\n",hp->h_no);
-#endif
-
-	return (0);
-}
-
 static int
 hpfs_de_uiomove(int *error, struct hpfsmount *hpmp, struct hpfsdirent *dep,
 		struct uio *uio)
@@ -1284,8 +1234,6 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_lock_desc, (vnodeopv_entry_t)vop_stdlock },
 	{ &vop_old_lookup_desc, (vnodeopv_entry_t)hpfs_lookup },
 	{ &vop_access_desc, (vnodeopv_entry_t)hpfs_access },
-	{ &vop_close_desc, (vnodeopv_entry_t)hpfs_close },
-	{ &vop_open_desc, (vnodeopv_entry_t)hpfs_open },
 	{ &vop_readdir_desc, (vnodeopv_entry_t)hpfs_readdir },
 	{ &vop_fsync_desc, (vnodeopv_entry_t)hpfs_fsync },
 	{ &vop_bmap_desc, (vnodeopv_entry_t)hpfs_bmap },
@@ -1306,8 +1254,6 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_old_lookup_desc, (vnodeopv_entry_t) hpfs_lookup }, /* lookup */
 	{ &vop_old_create_desc, genfs_eopnotsupp },		/* create */
 	{ &vop_old_mknod_desc, genfs_eopnotsupp },		/* mknod */
-	{ &vop_open_desc, (vnodeopv_entry_t) hpfs_open },	/* open */
-	{ &vop_close_desc,(vnodeopv_entry_t) hpfs_close },	/* close */
 	{ &vop_access_desc, (vnodeopv_entry_t) hpfs_access },	/* access */
 	{ &vop_getattr_desc, (vnodeopv_entry_t) hpfs_getattr },	/* getattr */
 	{ &vop_setattr_desc, genfs_eopnotsupp },	/* setattr */

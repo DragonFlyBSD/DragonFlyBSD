@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.36 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.37 2006/04/01 20:46:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -268,15 +268,10 @@ again:
 
 	/*
 	 * Setup the fp so VOP_OPEN can override it.  No descriptor has been
-	 * associated with the fp yet so we own it clean.  f_data will inherit
-	 * our vp reference as long as we do not shift f_ops to &badfileops.
-	 * f_ncp inherits nl_ncp .
+	 * associated with the fp yet so we own it clean.  f_ncp inherits
+	 * nl_ncp .
 	 */
 	if (fp) {
-		fp->f_type = (vp->v_type == VFIFO ? DTYPE_FIFO : DTYPE_VNODE);
-		fp->f_flag = fmode & FMASK;
-		fp->f_ops = &vnode_fileops;
-		fp->f_data = vp;
 		if (vp->v_type == VDIR) {
 			fp->f_ncp = nd->nl_ncp;
 			nd->nl_ncp = NULL;
@@ -308,8 +303,6 @@ again:
 		}
 		goto bad;
 	}
-	if (fmode & FWRITE)
-		vp->v_writecount++;
 
 #if 0
 	/*
@@ -321,8 +314,7 @@ again:
 
 	/*
 	 * Return the vnode.  XXX needs some cleaning up.  The vnode is
-	 * only returned in the fp == NULL case, otherwise the vnode ref
-	 * is inherited by the fp and we unconditionally unlock it.
+	 * only returned in the fp == NULL case.
 	 */
 	if (fp == NULL) {
 		nd->nl_open_vp = vp;
@@ -330,7 +322,7 @@ again:
 		if ((nd->nl_flags & NLC_LOCKVP) == 0)
 			VOP_UNLOCK(vp, 0, td);
 	} else {
-		VOP_UNLOCK(vp, 0, td);
+		vput(vp);
 	}
 	return (0);
 bad:
@@ -366,8 +358,6 @@ vn_close(struct vnode *vp, int flags, struct thread *td)
 {
 	int error;
 
-	if (flags & FWRITE)
-		vp->v_writecount--;
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
 		error = VOP_CLOSE(vp, flags, td);
 		VOP_UNLOCK(vp, 0, td);

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.33 2006/03/29 18:45:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.34 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ static void spec_getpages_iodone (struct bio *bio);
  * Open a special file.
  *
  * spec_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	     struct thread *a_td)
+ *	     struct file *a_fp, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
@@ -183,7 +183,6 @@ spec_open(struct vop_open_args *ap)
 	/*
 	 * Prevent degenerate open/close sequences from nulling out rdev.
 	 */
-	++vp->v_opencount;
 	dev = vp->v_rdev;
 	KKASSERT(dev != NULL);
 
@@ -287,9 +286,10 @@ spec_open(struct vop_open_args *ap)
 		printf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
 done:
 	if (error) {
-		KKASSERT(vp->v_opencount > 0);
-		if (--vp->v_opencount == 0)
+		if (vp->v_opencount == 0)
 			v_release_rdev(vp);
+	} else {
+		vop_stdopen(ap);
 	}
 	return (error);
 }
@@ -596,15 +596,16 @@ spec_close(struct vop_close_args *ap)
 	 * tracking occurs.
 	 */
 	if (dev) {
-		KKASSERT(vp->v_opencount > 0);
+		/*KKASSERT(vp->v_opencount > 0);*/
 		if (dev_ref_debug) {
 			printf("spec_close: %s %d\n",
 				dev->si_name, vp->v_opencount - 1);
 		}
-		if (--vp->v_opencount == 0)
+		if (vp->v_opencount == 1)
 			v_release_rdev(vp);
 		release_dev(dev);
 	}
+	vop_stdclose(ap);
 	return(error);
 }
 

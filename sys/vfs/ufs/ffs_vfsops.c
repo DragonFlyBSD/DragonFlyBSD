@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.37 2006/03/29 18:45:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.38 2006/04/01 20:46:54 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -146,6 +146,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
+	devvp = NULL;
 	error = 0;
 
 	/*
@@ -167,6 +168,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			/* fs specific cleanup (if any)*/
 			goto error_1;
 		}
+		devvp = rootvp;
 
 		goto dostatfs;		/* success*/
 
@@ -212,8 +214,9 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			}
 			ronly = 1;
 		}
-		if (!error && (mp->mnt_flag & MNT_RELOAD))
+		if (!error && (mp->mnt_flag & MNT_RELOAD)) {
 			error = ffs_reload(mp, NULL, td);
+		}
 		if (error) {
 			goto error_1;
 		}
@@ -254,7 +257,6 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				if (error)
 					goto error_1;
 			}
-
 			ronly = 0;
 		}
 		/*
@@ -313,16 +315,17 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 
 	if (mp->mnt_flag & MNT_UPDATE) {
 		/*
-		 ********************
-		 * UPDATE
-		 * If it's not the same vnode, or at least the same device
-		 * then it's not correct.  NOTE: devvp->v_rdev may be NULL
-		 * since we haven't opened it, so we compare udev instead.
-		 ********************
+		 * UPDATE - make sure the resolved vnode represents the same
+		 * device.  Note that devvp->v_rdev may be NULL since we 
+		 * haven't opened it, so compare udev instead.
+		 *
+		 * Our current open/writecount state is associated with
+		 * um_devvp, so continue using um_devvp and throw away devvp.
 		 */
 		if (devvp != ump->um_devvp) {
 			if (devvp->v_udev == ump->um_devvp->v_udev) {
 				vrele(devvp);
+				devvp = ump->um_devvp;
 			} else {
 				printf("cannot update mount, udev does"
 					" not match %08x vs %08x\n",
@@ -390,6 +393,20 @@ success:
 			fs->fs_ronly = ronly;
 			fs->fs_clean = ronly &&
 			    (fs->fs_flags & FS_UNCLEAN) == 0 ? 1 : 0;
+
+			/*
+			 * The device must be re-opened as appropriate or
+			 * the device close at unmount time will panic.
+			 */
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			if (ronly) {
+				VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
+				VOP_CLOSE(devvp, FREAD|FWRITE, td);
+			} else {
+				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL, td);
+				VOP_CLOSE(devvp, FREAD, td);
+			}
+			VOP_UNLOCK(devvp, 0, td);
 			ffs_sbupdate(ump, MNT_WAIT);
 		}
 	}

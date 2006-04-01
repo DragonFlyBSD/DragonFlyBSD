@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.33 2006/03/24 18:35:33 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.34 2006/04/01 20:46:53 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -150,6 +150,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	if (mp->mnt_flag & MNT_UPDATE) {
 		ump = VFSTOUFS(mp);
 		fs = ump->um_e2fs;
+		devvp = ump->um_devvp;
 		error = 0;
 		if (fs->s_rd_only == 0 && (mp->mnt_flag & MNT_RDONLY)) {
 			flags = WRITECLOSE;
@@ -164,12 +165,15 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 				ext2_sbupdate(ump, MNT_WAIT);
 			}
 			fs->s_rd_only = 1;
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
+			VOP_CLOSE(devvp, FREAD|FWRITE, td);
+			VOP_UNLOCK(devvp, 0, td);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
 			error = ext2_reload(mp, proc0.p_ucred, td);
 		if (error)
 			return (error);
-		devvp = ump->um_devvp;
 		if (ext2_check_sb_compat(fs->s_es, devvp->v_rdev,
 		    (mp->mnt_kern_flag & MNTK_WANTRDWR) == 0) != 0)
 			return (EPERM);
@@ -204,6 +208,10 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			fs->s_es->s_state &= ~EXT2_VALID_FS;
 			ext2_sbupdate(ump, MNT_WAIT);
 			fs->s_rd_only = 0;
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL, td);
+			VOP_CLOSE(devvp, FREAD, td);
+			VOP_UNLOCK(devvp, 0, td);
 		}
 		if (args.fspec == 0) {
 			/*

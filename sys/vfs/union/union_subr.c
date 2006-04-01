@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.21 2006/03/29 18:45:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.22 2006/04/01 20:46:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1037,7 +1037,6 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 		vput(vp);
 		return (error);
 	}
-	vp->v_writecount++;
 	*vpp = vp;
 	return (0);
 }
@@ -1046,8 +1045,6 @@ static int
 union_vn_close(struct vnode *vp, int fmode, struct ucred *cred,
 	       struct thread *td)
 {
-	if (fmode & FWRITE)
-		--vp->v_writecount;
 	return (VOP_CLOSE(vp, fmode, td));
 }
 

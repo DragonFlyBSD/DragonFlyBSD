@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.79 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.80 2006/04/01 20:46:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3189,11 +3189,6 @@ fhopen(struct fhopen_args *uap)
 		goto bad;
 	fp = nfp;
 
-	fp->f_type = DTYPE_VNODE;
-	fp->f_flag = fmode & FMASK;
-	fp->f_ops = &vnode_fileops;
-	fp->f_data = vp;
-
 	error = VOP_OPEN(vp, fmode, p->p_ucred, fp, td);
 	if (error) {
 		/*
@@ -3206,16 +3201,10 @@ fhopen(struct fhopen_args *uap)
 		fdrop(fp, td);
 		goto bad;
 	}
-	if (fmode & FWRITE)
-		vp->v_writecount++;
 
 	/*
-	 * The fp now owns a reference on the vnode.  We still have our own
-	 * ref+lock.
-	 */
-	vref(vp);
-
-	/*
+	 * The fp is given its own reference, we still have our ref and lock.
+	 *
 	 * Assert that all regular files must be created with a VM object.
 	 */
 	if (vp->v_type == VREG && vp->v_object == NULL) {
@@ -3228,8 +3217,6 @@ fhopen(struct fhopen_args *uap)
 	 * The open was successful, associate it with a file descriptor.
 	 */
 	if ((error = fsetfd(p, fp, &indx)) != 0) {
-		if (fmode & FWRITE)
-			vp->v_writecount--;
 		fdrop(fp, td);
 		goto bad;
 	}

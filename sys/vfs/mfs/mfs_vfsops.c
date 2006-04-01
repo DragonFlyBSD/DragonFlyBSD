@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.26 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.27 2006/04/01 20:46:53 dillon Exp $
  */
 
 
@@ -270,8 +270,10 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			if (err)
 				goto error_1;
 		}
-		if (fs->fs_ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR))
+		if (fs->fs_ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+			/* XXX reopen the device vnode read-write */
 			fs->fs_ronly = 0;
+		}
 		/* if not updating name...*/
 		if (args.fspec == 0) {
 			/*
