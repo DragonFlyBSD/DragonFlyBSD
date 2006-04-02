@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.88 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.89 2006/04/02 20:50:33 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1897,7 +1897,14 @@ init386(int first)
 	/* spinlocks and the BGL */
 	init_locks();
 
-	/* exceptions */
+	/*
+	 * Setup the hardware exception table.  Most exceptions use
+	 * SDT_SYS386TGT, known as a 'trap gate'.  Trap gates leave
+	 * interrupts enabled.  VM page faults use SDT_SYS386IGT, known as
+	 * an 'interrupt trap gate', which disables interrupts on entry,
+	 * in order to be able to poll the appropriate CRn register to
+	 * determine the fault address.
+	 */
 	for (x = 0; x < NIDT; x++) {
 #ifdef DEBUG_INTERRUPTS
 		setidt(x, Xrsvdary[x], SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
