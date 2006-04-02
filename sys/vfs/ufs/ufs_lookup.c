@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.19 2006/03/29 18:45:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.20 2006/04/02 04:13:40 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -1067,6 +1067,13 @@ ufs_dirempty(struct inode *ip, ino_t parentino, struct ucred *cred)
 	struct direct *dp = (struct direct *)&dbuf;
 	int error, count, namlen;
 #define	MINDIRSIZ (sizeof (struct dirtemplate) / 2)
+
+	/*
+	 * The buffer cache needs a VM object and there might not be one
+	 * since the vnode might not have been opened.
+	 */
+	if (ITOV(ip)->v_object == NULL)
+		vinitvmio(ITOV(ip));
 
 	for (off = 0; off < ip->i_size; off += dp->d_reclen) {
 		error = vn_rdwr(UIO_READ, ITOV(ip), (caddr_t)dp, MINDIRSIZ, off,
