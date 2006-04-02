@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.22 2006/03/27 09:02:07 joerg Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.23 2006/04/02 17:24:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -137,11 +137,11 @@ static const VAR var[] = {
 	{"nwchan", "WCHAN", NULL, 0, tvar, NULL, 8, TOFF(td_wchan), KPTR, "lx", NULL},
 	{"oublk", "OUBLK", NULL, USER, rvar, NULL, 4, ROFF(ru_oublock), LONG, "ld",
 		NULL},
-	{"oublock", "", "oublk", 0, NULL, NULL, 0, 0 ,0, NULL, NULL},
+	{"oublock", "", "oublk", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"p_ru", "P_RU", NULL, 0, pvar, NULL, 6, POFF(p_ru), KPTR, "lx", NULL},
 	{"paddr", "PADDR", NULL, 0, evar, NULL, 8, EOFF(e_paddr), KPTR, "lx", NULL},
 	{"pagein", "PAGEIN", NULL, USER, pagein, NULL, 6, 0, 0, NULL, NULL},
-	{"pcpu", "", "%cpu", 0, NULL, NULL, 0, 0,0, NULL, NULL},
+	{"pcpu", "", "%cpu", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"pending", "", "sig", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"pgid", "PGID", NULL, 0, evar, NULL, PIDLEN, EOFF(e_pgid), UINT, PIDFMT,
 		NULL},
