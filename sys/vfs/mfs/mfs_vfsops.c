@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.27 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.28 2006/04/02 01:35:34 dillon Exp $
  */
 
 
@@ -51,8 +51,13 @@
 #include <sys/linker.h>
 #include <sys/fcntl.h>
 
-#include <sys/buf2.h>
+#include <vm/vm.h>
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
+#include <vm/vm_pager.h>
+#include <vm/vnode_pager.h>
 
+#include <sys/buf2.h>
 #include <sys/thread2.h>
 
 #include <vfs/ufs/quota.h>
@@ -319,6 +324,21 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mfsp->mfs_td = td;
 	mfsp->mfs_active = 1;
 	bioq_init(&mfsp->bio_queue);
+
+	/*
+	 * Our 'block' device must be backed by a VM object.  Theoretically
+	 * we could use the anonymous memory VM object supplied by userland,
+	 * but it would be somewhat of a complex task to deal with it
+	 * that way since it would result in I/O requests which supply
+	 * the VM pages from our own object.
+	 *
+	 * vnode_pager_alloc() is typically called when a VM object is
+	 * being referenced externally.  We have to undo the refs for
+	 * the self reference between vnode and object.
+	 */
+	vnode_pager_alloc(devvp, args.size, 0, 0);
+	--devvp->v_usecount;
+	--devvp->v_object->ref_count;
 
 	/* Save "mounted from" info for mount point (NULL pad)*/
 	copyinstr(	args.fspec,			/* device name*/

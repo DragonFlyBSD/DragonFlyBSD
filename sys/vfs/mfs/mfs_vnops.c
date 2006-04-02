@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.23 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.24 2006/04/02 01:35:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,8 +46,13 @@
 #include <sys/mman.h>
 #include <sys/conf.h>
 
-#include <sys/buf2.h>
+#include <vm/vm.h>
+#include <vm/vm_object.h>
+#include <vm/vm_page.h>
+#include <vm/vm_pager.h>
+#include <vm/vnode_pager.h>
 
+#include <sys/buf2.h>
 #include <sys/thread2.h>
 
 #include "mfsnode.h"
@@ -308,7 +313,7 @@ mfs_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct mfsnode *mfsp = VTOMFS(vp);
 	struct bio *bio;
-	int error;
+	int error = 0;
 
 	/*
 	 * Finish any pending I/O requests.
@@ -318,13 +323,27 @@ mfs_close(struct vop_close_args *ap)
 		mfs_doio(bio, mfsp);
 		wakeup((caddr_t)bio->bio_buf);
 	}
+
 	/*
-	 * On last close of a memory filesystem
-	 * we must invalidate any in core blocks, so that
-	 * we can, free up its vnode.
+	 * We really only care about the last close
 	 */
-	if ((error = vinvalbuf(vp, 1, ap->a_td, 0, 0)) != 0)
+	if (vp->v_opencount > 1)
 		goto done;
+
+	/*
+	 * Synchronize any remaining buffers and then destroy them.
+	 */
+	if ((error = vinvalbuf(vp, V_SAVE, ap->a_td, 0, 0)) != 0)
+		goto done;
+
+	/*
+	 * Get rid of the pseudo-backing object.  Since the object is
+	 * not directly memory mapped, we don't have to worry about 
+	 * synchronizing it.
+	 */
+	if (vp->v_object)
+		vm_pager_deallocate(vp->v_object);
+
 	/*
 	 * There should be no way to have any more uses of this
 	 * vnode, so if we find any other uses, it is a panic.
