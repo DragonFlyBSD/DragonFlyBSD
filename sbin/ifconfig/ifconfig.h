@@ -31,41 +31,115 @@
  *
  * so there!
  *
- * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.12 2004/03/30 22:59:22 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.5 2005/04/25 17:33:26 swildner Exp $
+ * $FreeBSD: src/sbin/ifconfig/ifconfig.h,v 1.16.2.1 2005/07/21 12:25:40 rwatson Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.h,v 1.6 2006/04/02 03:33:59 sephe Exp $
  */
 
-extern struct ifreq ifr;
+#define	__constructor	__attribute__((constructor))
 
-extern char name[IFNAMSIZ];	/* name of interface */
-extern int allmedia;
-extern int supmedia;
 struct afswtch;
+struct cmd;
 
-extern void setmedia(const char *, int, int, const struct afswtch *rafp);
-extern void setmediamode(const char *, int, int, const struct afswtch *rafp);
-extern void setmediaopt(const char *, int, int, const struct afswtch *rafp);
-extern void unsetmediaopt(const char *, int, int, const struct afswtch *rafp);
-extern void media_status(int s, struct rt_addrinfo *);
+typedef	void c_func(const char *cmd, int arg, int s, const struct afswtch *afp);
+typedef	void c_func2(const char *arg1, const char *arg2, int s, const struct afswtch *afp);
 
-extern void setvlantag(const char *, int, int, const struct afswtch *rafp);
-extern void setvlandev(const char *, int, int, const struct afswtch *rafp);
-extern void unsetvlandev(const char *, int, int, const struct afswtch *rafp);
-extern void vlan_status(int s, struct rt_addrinfo *);
+struct cmd {
+	const char *c_name;
+	int	c_parameter;
+#define	NEXTARG		0xffffff	/* has following arg */
+#define	NEXTARG2	0xfffffe	/* has 2 following args */
+#define	OPTARG		0xfffffd	/* has optional following arg */
+	union {
+		c_func	*c_func;
+		c_func2	*c_func2;
+	} c_u;
+	struct cmd *c_next;
+};
+void	cmd_register(struct cmd *);
 
-extern void set80211ssid(const char *, int, int, const struct afswtch *rafp);
-extern void set80211stationname(const char *, int, int, const struct afswtch *rafp);
-extern void set80211channel(const char *, int, int, const struct afswtch *rafp);
-extern void set80211authmode(const char *, int, int, const struct afswtch *rafp);
-extern void set80211powersave(const char *, int, int, const struct afswtch *rafp);
-extern void set80211powersavemode(const char *, int, int, const struct afswtch *rafp);
-extern void set80211powersavesleep(const char *, int, int, const struct afswtch *rafp);
-extern void set80211wepmode(const char *, int, int, const struct afswtch *rafp);
-extern void set80211wep(const char *, int, int, const struct afswtch *rafp);
-extern void set80211weptxkey(const char *, int, int, const struct afswtch *rafp);
-extern void set80211wepkey(const char *, int, int, const struct afswtch *rafp);
-extern void set80211nwkey(const char *, int, int, const struct afswtch *rafp);
-extern void set80211rtsthreshold(const char *, int, int, const struct afswtch *rafp);
-extern void set80211protmode(const char *, int, int, const struct afswtch *rafp);
-extern void set80211txpower(const char *, int, int, const struct afswtch *rafp);
-extern void ieee80211_status(int s, struct rt_addrinfo *);
+typedef	void callback_func(int s, void *);
+void	callback_register(callback_func *, void *);
+
+/*
+ * Macros for declaring command functions and initializing entries.
+ */
+#define	DECL_CMD_FUNC(name, cmd, arg)		\
+	void name(const char *cmd, int arg, int s, const struct afswtch *afp)
+#define	DECL_CMD_FUNC2(name, arg1, arg2)	\
+	void name(const char *arg1, const char *arg2, int s, const struct afswtch *afp)
+
+#define	DEF_CMD(name, param, func)	{ name, param, { .c_func = func } }
+#define	DEF_CMD_ARG(name, func)		\
+	{ .c_name = name, .c_parameter = NEXTARG, .c_u = { .c_func = func } }
+#define	DEF_CMD_OPTARG(name, func)	{ name, OPTARG, { .c_func = func } }
+#define	DEF_CMD_ARG2(name, func)	{ name, NEXTARG2, { .c_func2 = func } }
+
+struct rt_addrinfo;
+struct addrinfo;
+
+enum {
+	RIDADDR,
+	ADDR,
+	MASK,
+	DSTADDR,
+};
+
+struct afswtch {
+	const char	*af_name;	/* as given on cmd line, e.g. "inet" */
+	short		af_af;		/* AF_* */
+	/*
+	 * Status is handled one of two ways; if there is an
+	 * address associated with the interface then the
+	 * associated address family af_status method is invoked
+	 * with the appropriate addressin info.  Otherwise, if
+	 * all possible info is to be displayed and af_other_status
+	 * is defined then it is invoked after all address status
+	 * is presented.
+	 */
+	void		(*af_status)(int, const struct rt_addrinfo *);
+	void		(*af_other_status)(int);
+					/* parse address method */
+	void		(*af_getaddr)(const char *, int);
+					/* parse prefix method (IPv6) */
+	void		(*af_getprefix)(const char *, int);
+	void		(*af_postproc)(int s, const struct afswtch *);
+	u_long		af_difaddr;	/* set dst if address ioctl */
+	u_long		af_aifaddr;	/* set if address ioctl */
+	void		*af_ridreq;	/* */
+	void		*af_addreq;	/* */
+	struct afswtch	*af_next;
+
+	/* XXX doesn't fit model */
+	void		(*af_status_tunnel)(int);
+	void		(*af_settunnel)(int s, struct addrinfo *srcres,
+				struct addrinfo *dstres);
+};
+void	af_register(struct afswtch *);
+
+struct option {
+	const char *opt;
+	const char *opt_usage;
+	void	(*cb)(const char *arg);
+	struct option *next;
+};
+void	opt_register(struct option *);
+
+extern	struct ifreq ifr;
+extern	char name[IFNAMSIZ];	/* name of interface */
+extern	int allmedia;
+extern	int supmedia;
+extern	int printkeys;
+extern	int printname;
+extern	int flags;
+extern	int newaddr;
+extern	int verbose;
+extern	int setipdst;
+
+void	setifcap(const char *, int value, int s, const struct afswtch *);
+
+void	Perror(const char *cmd);
+void	printb(const char *s, unsigned value, const char *bits);
+
+void	ifmaybeload(char *);
+
+void	clone_create(void);

@@ -1,33 +1,45 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 6/5/93
-# $FreeBSD: src/sbin/ifconfig/Makefile,v 1.14.2.7 2002/02/15 03:58:37 luigi Exp $
-# $DragonFly: src/sbin/ifconfig/Makefile,v 1.3 2005/03/04 02:29:19 cpressey Exp $
+# $FreeBSD: src/sbin/ifconfig/Makefile,v 1.29 2005/06/05 03:32:51 thompsa Exp $
+# $DragonFly: src/sbin/ifconfig/Makefile,v 1.4 2006/04/02 03:33:59 sephe Exp $
 
 PROG=	ifconfig
-WARNS?=	6
-SRCS=	ifconfig.c
 
-#comment out to exclude SIOC[GS]IFMEDIA support
-SRCS+=	ifmedia.c
-CFLAGS+=-DUSE_IF_MEDIA
-CFLAGS+=-DINET6
+SRCS=	ifconfig.c		# base support
 
-#comment out to exclude SIOC[GS]ETVLAN support
-SRCS+=	ifvlan.c
-CFLAGS+=-DUSE_VLANS
+#
+# NB: The order here defines the order in which the constructors
+#     are called.  This in turn defines the default order in which
+#     status is displayed.  Probably should add a priority mechanism
+#     to the registration process so we don't depend on this aspect
+#     of the toolchain.
+#
+SRCS+=	af_link.c		# LLC support
+SRCS+=	af_inet.c		# IPv4 support
+SRCS+=	af_inet6.c		# IPv6 support
+SRCS+=	af_atalk.c		# AppleTalk support
 
-#comment out to exclude SIOC[GS]IEEE80211 support
-SRCS+=	ifieee80211.c
-CFLAGS+=-DUSE_IEEE80211
+SRCS+=	ifclone.c		# clone device support
+#SRCS+=	ifmac.c			# MAC support
+SRCS+=	ifmedia.c		# SIOC[GS]IFMEDIA support
+SRCS+=	ifvlan.c		# SIOC[GS]ETVLAN support
+SRCS+=	ifieee80211.c		# SIOC[GS]IEEE80211 support
+
+#SRCS+=	ifcarp.c		# SIOC[GS]VH support
+#SRCS+=	ifpfsync.c		# pfsync(4) support
+
+SRCS+=	ifbridge.c		# bridge support
+
+.ifndef RELEASE_CRUNCH
+SRCS+=	af_ipx.c		# IPX support
+DPADD=	${LIBIPX}
+LDADD=	-lipx
+.else
+CFLAGS+= -DNO_IPX
+.endif
 
 MAN=	ifconfig.8
 
-.if defined(RELEASE_CRUNCH)
-CFLAGS+=-DNO_IPX
-.else
-DPADD=	${LIBIPX}
-LDADD=	-lipx
-.endif
-
-CFLAGS+=-DNS -I..
+CFLAGS+= -Wall -Wmissing-prototypes -Wcast-qual -Wwrite-strings -Wnested-externs
+WARNS=	0
 
 .include <bsd.prog.mk>
