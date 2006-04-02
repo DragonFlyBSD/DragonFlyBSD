@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.4 2006/02/25 19:35:46 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.5 2006/04/02 16:50:05 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -799,14 +799,14 @@ into the kernel or else loaded dynamically as a KLD via
 .Xr kldload 8 .
 In the former case, include
 .Pp
-.Dl options NETGRAPH
+.D1 Cd options NETGRAPH
 .Pp
 in your kernel configuration file. You may also include selected
 node types in the kernel compilation, for example:
-.Bd -literal -offset indent
-options NETGRAPH
-options NETGRAPH_SOCKET
-options NETGRAPH_ECHO
+.Bd -unfilled -offset indent
+.Cd options NETGRAPH
+.Cd options NETGRAPH_SOCKET
+.Cd options NETGRAPH_ECHO
 .Ed
 .Pp
 Once the

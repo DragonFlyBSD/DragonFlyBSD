@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bktr.4,v 1.9.2.9 2002/03/29 09:55:39 schweikh Exp $
-.\" $DragonFly: src/share/man/man4/bktr.4,v 1.5 2006/03/30 09:52:48 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bktr.4,v 1.6 2006/04/02 16:50:05 swildner Exp $
 .\"
 .Dd March 30, 2006
 .Dt BKTR 4
@@ -56,7 +56,7 @@ support.
 .Pp
 The following kernel parameters may be used to further configure the driver:
 .Pp
-.Em options "BROOKTREE_ALLOC_PAGES=xxx"
+.Cd options "BROOKTREE_ALLOC_PAGES=xxx"
 specifies the number of contiguous pages to allocate when successfully
 probed.
 The default number of pages allocated by the kernel is 216.

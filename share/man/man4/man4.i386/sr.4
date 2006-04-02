@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sr.4,v 1.15.2.4 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.4 2006/04/02 16:50:05 swildner Exp $
 .\"
 .Dd July 4, 1996
 .Dt SR 4 i386
@@ -100,7 +100,7 @@ The card only supports IRQ 3, 4, 5, 7, 10, 11, 12 and 15.
 The iomem area is a 16Kb block and must start at a 16Kb boundary.
 .Sh NETGRAPH SUPPORT
 If the kernel is compiled with
-.Dv "options NETGRAPH"
+.Cd "options NETGRAPH"
 then the sppp and Cisco HDLC modes are disabled (and the sppp driver
 is unneeded), and this driver functions as a
 .Xr netgraph 4

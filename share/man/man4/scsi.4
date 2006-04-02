@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/scsi.4,v 1.18.2.7 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/scsi.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/scsi.4,v 1.3 2006/04/02 16:50:05 swildner Exp $
 .Dd October 15, 1998
 .Dt SCSI 4
 .Os
@@ -195,7 +195,9 @@ subsystem.
 .Sh FILES
 see other scsi device entries.
 .Sh DIAGNOSTICS
-When the kernel is compiled with options CAMDEBUG, an XPT_DEBUG CCB can be
+When the kernel is compiled with
+.Cd "options CAMDEBUG" ,
+an XPT_DEBUG CCB can be
 used to enable various amounts of tracing information on any
 specific device.
 Devices not being traced will not produce trace information.
