@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.29 2005/11/04 08:57:31 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.30 2006/04/02 20:43:27 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -746,7 +746,9 @@ static char fpetable[128] = {
  * solution for signals other than SIGFPE.
  *
  * The MP lock is not held on entry (see i386/i386/exception.s) and
- * should not be held on exit.
+ * should not be held on exit.  Interrupts are enabled.  We must enter
+ * a critical section to stabilize the FP system and prevent an interrupt
+ * or preemption from changing the FP state out from under us.
  */
 void
 npx_intr(void *dummy)
@@ -756,6 +758,21 @@ npx_intr(void *dummy)
 	struct intrframe *frame;
 	u_long *exstat;
 
+	crit_enter();
+
+	/*
+	 * This exception can only occur with CR0_TS clear, otherwise we
+	 * would get a DNA exception.  However, since interrupts were
+	 * enabled a preemption could have sneaked in and used the FP system
+	 * before we entered our critical section.  If that occured, the
+	 * TS bit will be set and npxthread will be NULL.
+	 */
+	if (npx_exists && (rcr0() & CR0_TS)) {
+		KASSERT(mdcpu->gd_npxthread == NULL, ("gd_npxthread was %p with TS set!", mdcpu->gd_npxthread));
+		npxdna();
+		crit_exit();
+		return;
+	}
 	if (mdcpu->gd_npxthread == NULL || !npx_exists) {
 		get_mplock();
 		printf("npxintr: npxthread = %p, curthread = %p, npx_exists = %d\n",
@@ -819,12 +836,16 @@ npx_intr(void *dummy)
 		psignal(curproc, SIGFPE);
 	}
 	rel_mplock();
+	crit_exit();
 }
 
 /*
  * Implement the device not available (DNA) exception.  gd_npxthread had 
  * better be NULL.  Restore the current thread's FP state and set gd_npxthread
  * to curthread.
+ *
+ * Interrupts are enabled and preemption can occur.  Enter a critical
+ * section to stabilize the FP state.
  */
 int
 npxdna(void)
