@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.12 2005/01/29 05:48:17 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.13 2006/04/03 21:32:23 dillon Exp $
  */
 
 /*
@@ -43,6 +43,7 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/lock.h>
+#include <sys/fcntl.h>
 #include <sys/proc.h>
 #include <sys/ttycom.h>
 #include <sys/vnode.h>
@@ -78,7 +79,11 @@ struct cdevsw ctty_cdevsw = {
 
 #define cttyvp(p) ((p)->p_flag & P_CONTROLT ? (p)->p_session->s_ttyvp : NULL)
 
-/*ARGSUSED*/
+/*
+ * This opens /dev/tty.  Because multiple opens of /dev/tty only
+ * generate a single open to the actual tty, the file modes are
+ * locked to FREAD|FWRITE.
+ */
 static	int
 cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 {
@@ -94,7 +99,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 		} else {
 			vsetflags(ttyvp, VCTTYISOPEN);
 			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
-			error = VOP_OPEN(ttyvp, flag, NOCRED, NULL, td);
+			error = VOP_OPEN(ttyvp, FREAD|FWRITE, NOCRED, NULL, td);
 			if (error)
 				vclrflags(ttyvp, VCTTYISOPEN);
 			VOP_UNLOCK(ttyvp, 0, td);
@@ -105,6 +110,11 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 	return (error);
 }
 
+/*
+ * This closes /dev/tty.  Because multiple opens of /dev/tty only
+ * generate a single open to the actual tty, the file modes are
+ * locked to FREAD|FWRITE.
+ */
 static int
 cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 {
@@ -125,7 +135,7 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 		vclrflags(ttyvp, VCTTYISOPEN);
 		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
 		if (error == 0) {
-			error = VOP_CLOSE(ttyvp, fflag, td);
+			error = VOP_CLOSE(ttyvp, FREAD|FWRITE, td);
 			VOP_UNLOCK(ttyvp, 0, td);
 		}
 	} else {
@@ -134,7 +144,12 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 	return(error);
 }
 
-/*ARGSUSED*/
+/*
+ * Read from the controlling terminal (/dev/tty).  The tty is refed as
+ * of the cttyvp(), but the ref can get ripped out from under us if
+ * the controlling terminal is revoked while we are blocked on the lock,
+ * so use vget() instead of VOP_LOCK.
+ */
 static	int
 cttyread(dev, uio, flag)
 	dev_t dev;
@@ -150,13 +165,19 @@ cttyread(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_READ(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, 0, td);
+	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+		error = VOP_READ(ttyvp, uio, flag, NOCRED);
+		vput(ttyvp);
+	}
 	return (error);
 }
 
-/*ARGSUSED*/
+/*
+ * Read from the controlling terminal (/dev/tty).  The tty is refed as
+ * of the cttyvp(), but the ref can get ripped out from under us if
+ * the controlling terminal is revoked while we are blocked on the lock,
+ * so use vget() instead of VOP_LOCK.
+ */
 static	int
 cttywrite(dev, uio, flag)
 	dev_t dev;
@@ -172,9 +193,10 @@ cttywrite(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, 0, td);
+	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+		error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
+		vput(ttyvp);
+	}
 	return (error);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.20 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.21 2006/04/03 21:32:23 dillon Exp $
  */
 
 /*-
@@ -295,7 +295,9 @@ ttyclearsession(struct tty *tp)
 
 /*
  * Terminate the tty vnode association for a session.  This is the 
- * 'other half' of the close.
+ * 'other half' of the close.  Because multiple opens of /dev/tty
+ * only generate a single open to the actual tty, the file modes
+ * are locked to FREAD|FWRITE.
  */
 void
 ttyclosesession(struct session *sp, int dorele)
@@ -309,7 +311,7 @@ ttyclosesession(struct session *sp, int dorele)
 	if (vp->v_flag & VCTTYISOPEN) {
 		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY, td) == 0) {
 			vclrflags(vp, VCTTYISOPEN);
-			VOP_CLOSE(vp, 0, td);
+			VOP_CLOSE(vp, FREAD|FWRITE, td);
 			VOP_UNLOCK(vp, 0, td);
 		}
 	}
