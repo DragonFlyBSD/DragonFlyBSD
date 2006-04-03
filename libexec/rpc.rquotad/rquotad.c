@@ -4,7 +4,7 @@
  * There is no copyright, you can use it as you want.
  *
  * $FreeBSD: src/libexec/rpc.rquotad/rquotad.c,v 1.3.2.1 2001/07/02 23:46:27 mikeh Exp $
- * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.4 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.5 2006/04/03 01:59:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,7 @@ void rquota_service (struct svc_req *request, SVCXPRT *transp);
 void sendquota (struct svc_req *request, SVCXPRT *transp);
 void printerr_reply (SVCXPRT *transp);
 void initfs (void);
-int getfsquota (long id, char *path, struct dqblk *dqblk);
+int getfsquota (long id, char *path, struct ufs_dqblk *dqblk);
 int hasquota (struct fstab *fs, char **qfnamep);
 
 /*
@@ -140,7 +140,7 @@ sendquota(request, transp)
 {
 	struct getquota_args getq_args;
 	struct getquota_rslt getq_rslt;
-	struct dqblk dqblk;
+	struct ufs_dqblk dqblk;
 	struct timeval timev;
 
 	bzero((char *)&getq_args, sizeof(getq_args));
@@ -247,7 +247,7 @@ int
 getfsquota(id, path, dqblk)
 	long id;
 	char   *path;
-	struct dqblk *dqblk;
+	struct ufs_dqblk *dqblk;
 {
 	struct stat st_path;
 	struct fs_stat *fs;
@@ -271,20 +271,20 @@ getfsquota(id, path, dqblk)
 			syslog(LOG_ERR, "open error: %s: %m", fs->qfpathname);
 			return (0);
 		}
-		if (lseek(fd, (off_t)(id * sizeof(struct dqblk)), L_SET) == (off_t)-1) {
+		if (lseek(fd, (off_t)(id * sizeof(struct ufs_dqblk)), L_SET) == (off_t)-1) {
 			close(fd);
 			return (1);
 		}
-		switch (read(fd, dqblk, sizeof(struct dqblk))) {
+		switch (read(fd, dqblk, sizeof(struct ufs_dqblk))) {
 		case 0:
 			/*
                          * Convert implicit 0 quota (EOF)
                          * into an explicit one (zero'ed dqblk)
                          */
-			bzero((caddr_t) dqblk, sizeof(struct dqblk));
+			bzero((caddr_t) dqblk, sizeof(struct ufs_dqblk));
 			ret = 1;
 			break;
-		case sizeof(struct dqblk):	/* OK */
+		case sizeof(struct ufs_dqblk):	/* OK */
 			ret = 1;
 			break;
 		default:	/* ERROR */

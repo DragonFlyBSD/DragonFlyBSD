@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
- * $DragonFly: src/usr.bin/quota/quota.c,v 1.6 2005/09/05 02:43:10 swildner Exp $
+ * $DragonFly: src/usr.bin/quota/quota.c,v 1.7 2006/04/03 01:59:28 dillon Exp $
  */
 
 /*
@@ -73,7 +73,7 @@ const char *qfextension[] = INITQFNAMES;
 struct quotause {
 	struct	quotause *next;
 	long	flags;
-	struct	dqblk dqblk;
+	struct	ufs_dqblk dqblk;
 	char	fsname[MAXPATHLEN + 1];
 };
 #define	FOUND	0x01
@@ -539,16 +539,16 @@ getufsquota(struct fstab *fs, struct quotause *qup, long id, int quotatype)
 			warn("%s", qfpathname);
 			return (0);
 		}
-		lseek(fd, (off_t)(id * sizeof(struct dqblk)), L_SET);
-		switch (read(fd, &qup->dqblk, sizeof(struct dqblk))) {
+		lseek(fd, (off_t)(id * sizeof(struct ufs_dqblk)), L_SET);
+		switch (read(fd, &qup->dqblk, sizeof(struct ufs_dqblk))) {
 		case 0:				/* EOF */
 			/*
 			 * Convert implicit 0 quota (EOF)
 			 * into an explicit one (zero'ed dqblk)
 			 */
-			bzero(&qup->dqblk, sizeof(struct dqblk));
+			bzero(&qup->dqblk, sizeof(struct ufs_dqblk));
 			break;
-		case sizeof(struct dqblk):	/* OK */
+		case sizeof(struct ufs_dqblk):	/* OK */
 			break;
 		default:		/* ERROR */
 			warn("read error: %s", qfpathname);
@@ -565,7 +565,7 @@ getnfsquota(struct statfs *fst, struct quotause *qup, long id, int quotatype)
 {
 	struct getquota_args gq_args;
 	struct getquota_rslt gq_rslt;
-	struct dqblk *dqp = &qup->dqblk;
+	struct ufs_dqblk *dqp = &qup->dqblk;
 	struct timeval tv;
 	char *cp;
 
