@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.38 2006/04/01 20:46:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.39 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -578,7 +578,7 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 		brelse(bp);
 		return (error);
 	}
-	ip->i_din = *((struct dinode *)bp->b_data +
+	ip->i_din = *((struct ufs1_dinode *)bp->b_data +
 	    ino_to_fsbo(info->fs, ip->i_number));
 	ip->i_effnlink = ip->i_nlink;
 	brelse(bp);
@@ -887,7 +887,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
-			quotaoff(td, mp, i);
+			ufs_quotaoff(td, mp, i);
 		}
 		/*
 		 * Here we fall through to vflush again to ensure
@@ -988,7 +988,7 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 		VOP_UNLOCK(ump->um_devvp, 0, td);
 	}
 #ifdef QUOTA
-	qsync(mp);
+	ufs_qsync(mp);
 #endif
 	/*
 	 * Write back modified superblock.
@@ -1139,7 +1139,7 @@ restart:
 		*vpp = NULL;
 		return (error);
 	}
-	ip->i_din = *((struct dinode *)bp->b_data + ino_to_fsbo(fs, ino));
+	ip->i_din = *((struct ufs1_dinode *)bp->b_data + ino_to_fsbo(fs, ino));
 	if (DOINGSOFTDEP(vp))
 		softdep_load_inodeblock(ip);
 	else

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.38 2006/04/01 20:46:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.39 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -333,7 +333,7 @@ ufs_access(struct vop_access_args *ap)
 			if (vp->v_mount->mnt_flag & MNT_RDONLY)
 				return (EROFS);
 #ifdef QUOTA
-			if ((error = getinoquota(ip)) != 0)
+			if ((error = ufs_getinoquota(ip)) != 0)
 				return (error);
 #endif
 			break;
@@ -621,65 +621,65 @@ ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred,
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
 #ifdef QUOTA
-	if ((error = getinoquota(ip)) != 0)
+	if ((error = ufs_getinoquota(ip)) != 0)
 		return (error);
 	if (ouid == uid) {
-		dqrele(vp, ip->i_dquot[USRQUOTA]);
+		ufs_dqrele(vp, ip->i_dquot[USRQUOTA]);
 		ip->i_dquot[USRQUOTA] = NODQUOT;
 	}
 	if (ogid == gid) {
-		dqrele(vp, ip->i_dquot[GRPQUOTA]);
+		ufs_dqrele(vp, ip->i_dquot[GRPQUOTA]);
 		ip->i_dquot[GRPQUOTA] = NODQUOT;
 	}
 	change = ip->i_blocks;
-	(void) chkdq(ip, -change, cred, CHOWN);
-	(void) chkiq(ip, -1, cred, CHOWN);
+	(void) ufs_chkdq(ip, -change, cred, CHOWN);
+	(void) ufs_chkiq(ip, -1, cred, CHOWN);
 	for (i = 0; i < MAXQUOTAS; i++) {
-		dqrele(vp, ip->i_dquot[i]);
+		ufs_dqrele(vp, ip->i_dquot[i]);
 		ip->i_dquot[i] = NODQUOT;
 	}
 #endif
 	ip->i_gid = gid;
 	ip->i_uid = uid;
 #ifdef QUOTA
-	if ((error = getinoquota(ip)) == 0) {
+	if ((error = ufs_getinoquota(ip)) == 0) {
 		if (ouid == uid) {
-			dqrele(vp, ip->i_dquot[USRQUOTA]);
+			ufs_dqrele(vp, ip->i_dquot[USRQUOTA]);
 			ip->i_dquot[USRQUOTA] = NODQUOT;
 		}
 		if (ogid == gid) {
-			dqrele(vp, ip->i_dquot[GRPQUOTA]);
+			ufs_dqrele(vp, ip->i_dquot[GRPQUOTA]);
 			ip->i_dquot[GRPQUOTA] = NODQUOT;
 		}
-		if ((error = chkdq(ip, change, cred, CHOWN)) == 0) {
-			if ((error = chkiq(ip, 1, cred, CHOWN)) == 0)
+		if ((error = ufs_chkdq(ip, change, cred, CHOWN)) == 0) {
+			if ((error = ufs_chkiq(ip, 1, cred, CHOWN)) == 0)
 				goto good;
 			else
-				(void) chkdq(ip, -change, cred, CHOWN|FORCE);
+				(void)ufs_chkdq(ip, -change, cred, CHOWN|FORCE);
 		}
 		for (i = 0; i < MAXQUOTAS; i++) {
-			dqrele(vp, ip->i_dquot[i]);
+			ufs_dqrele(vp, ip->i_dquot[i]);
 			ip->i_dquot[i] = NODQUOT;
 		}
 	}
 	ip->i_gid = ogid;
 	ip->i_uid = ouid;
-	if (getinoquota(ip) == 0) {
+	if (ufs_getinoquota(ip) == 0) {
 		if (ouid == uid) {
-			dqrele(vp, ip->i_dquot[USRQUOTA]);
+			ufs_dqrele(vp, ip->i_dquot[USRQUOTA]);
 			ip->i_dquot[USRQUOTA] = NODQUOT;
 		}
 		if (ogid == gid) {
-			dqrele(vp, ip->i_dquot[GRPQUOTA]);
+			ufs_dqrele(vp, ip->i_dquot[GRPQUOTA]);
 			ip->i_dquot[GRPQUOTA] = NODQUOT;
 		}
-		(void) chkdq(ip, change, cred, FORCE|CHOWN);
-		(void) chkiq(ip, 1, cred, FORCE|CHOWN);
-		(void) getinoquota(ip);
+		(void) ufs_chkdq(ip, change, cred, FORCE|CHOWN);
+		(void) ufs_chkiq(ip, 1, cred, FORCE|CHOWN);
+		(void) ufs_getinoquota(ip);
 	}
 	return (error);
 good:
-	if (getinoquota(ip))
+	if (ufs_getinoquota(ip))
 		panic("ufs_chown: lost quota");
 #endif /* QUOTA */
 	ip->i_flag |= IN_CHANGE;
@@ -1376,8 +1376,8 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 		} else
 			ip->i_uid = cnp->cn_cred->cr_uid;
 #ifdef QUOTA
-		if ((error = getinoquota(ip)) ||
-	    	    (error = chkiq(ip, 1, ucp, 0))) {
+		if ((error = ufs_getinoquota(ip)) ||
+	    	    (error = ufs_chkiq(ip, 1, ucp, 0))) {
 			UFS_VFREE(tvp, ip->i_number, dmode);
 			vput(tvp);
 			return (error);
@@ -1387,8 +1387,8 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 #else	/* !SUIDDIR */
 	ip->i_uid = cnp->cn_cred->cr_uid;
 #ifdef QUOTA
-	if ((error = getinoquota(ip)) ||
-	    (error = chkiq(ip, 1, cnp->cn_cred, 0))) {
+	if ((error = ufs_getinoquota(ip)) ||
+	    (error = ufs_chkiq(ip, 1, cnp->cn_cred, 0))) {
 		UFS_VFREE(tvp, ip->i_number, dmode);
 		vput(tvp);
 		return (error);
@@ -2147,8 +2147,8 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 			ip->i_uid = cnp->cn_cred->cr_uid;
 
 #ifdef QUOTA
-		if ((error = getinoquota(ip)) ||
-	    	    (error = chkiq(ip, 1, ucp, 0))) {
+		if ((error = ufs_getinoquota(ip)) ||
+	    	    (error = ufs_chkiq(ip, 1, ucp, 0))) {
 			UFS_VFREE(tvp, ip->i_number, mode);
 			vput(tvp);
 			return (error);
@@ -2158,8 +2158,8 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 #else	/* !SUIDDIR */
 	ip->i_uid = cnp->cn_cred->cr_uid;
 #ifdef QUOTA
-	if ((error = getinoquota(ip)) ||
-	    (error = chkiq(ip, 1, cnp->cn_cred, 0))) {
+	if ((error = ufs_getinoquota(ip)) ||
+	    (error = ufs_chkiq(ip, 1, cnp->cn_cred, 0))) {
 		UFS_VFREE(tvp, ip->i_number, mode);
 		vput(tvp);
 		return (error);

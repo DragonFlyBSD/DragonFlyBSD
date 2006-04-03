@@ -32,14 +32,14 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.10 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.11 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include <sys/param.h>
-#include "fs.h"
 
 #ifndef _KERNEL
 #include "dinode.h"
+#include "fs.h"
 #else
 #include "opt_ddb.h"
 
@@ -51,6 +51,7 @@
 
 #include "quota.h"
 #include "inode.h"
+#include "fs.h"
 #include "ffs_extern.h"
 
 #ifdef DDB

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.15 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.16 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -467,7 +467,7 @@ fail:
 		/*
 		 * Restore user's disk quota because allocation failed.
 		 */
-		(void) chkdq(ip, (long)-btodb(deallocated), cred, FORCE);
+		(void) ufs_chkdq(ip, (long)-btodb(deallocated), cred, FORCE);
 #endif
 		ip->i_blocks -= btodb(deallocated);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;

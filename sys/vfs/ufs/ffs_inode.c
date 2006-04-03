@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.17 2006/03/29 21:59:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.18 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -108,7 +108,7 @@ ffs_update(struct vnode *vp, int waitfor)
 		softdep_update_inodeblock(ip, bp, waitfor);
 	else if (ip->i_effnlink != ip->i_nlink)
 		panic("ffs_update: bad link cnt");
-	*((struct dinode *)bp->b_data +
+	*((struct ufs1_dinode *)bp->b_data +
 	    ino_to_fsbo(fs, ip->i_number)) = ip->i_din;
 	if (waitfor && !DOINGASYNC(vp)) {
 		return (bwrite(bp));
@@ -170,7 +170,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 	if (fs->fs_ronly)
 		panic("ffs_truncate: read-only filesystem");
 #ifdef QUOTA
-	error = getinoquota(oip);
+	error = ufs_getinoquota(oip);
 	if (error)
 		return (error);
 #endif
@@ -197,7 +197,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 				return (error);
 		} else {
 #ifdef QUOTA
-			(void) chkdq(oip, -oip->i_blocks, NOCRED, 0);
+			(void) ufs_chkdq(oip, -oip->i_blocks, NOCRED, 0);
 #endif
 			softdep_setup_freeblocks(oip, length);
 			vinvalbuf(ovp, 0, td, 0, 0);
@@ -413,7 +413,7 @@ done:
 		oip->i_blocks = 0;
 	oip->i_flag |= IN_CHANGE;
 #ifdef QUOTA
-	(void) chkdq(oip, -blocksreleased, NOCRED, 0);
+	(void) ufs_chkdq(oip, -blocksreleased, NOCRED, 0);
 #endif
 	return (allerror);
 }

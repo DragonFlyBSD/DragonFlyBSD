@@ -32,11 +32,11 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.9 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.10 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_FFS_EXTERN_H
-#define	_UFS_FFS_EXTERN_H
+#ifndef _VFS_UFS_EXTERN_H
+#define	_VFS_UFS_EXTERN_H
 
 /*
  * Sysctl values for the fast filesystem.
@@ -123,4 +123,4 @@ void	softdep_setup_allocindir_page(struct inode *, ufs_lbn_t,
 void	softdep_fsync_mountdev(struct vnode *);
 int	softdep_sync_metadata(struct vnode *, struct thread *);
 
-#endif /* !_UFS_FFS_EXTERN_H */
+#endif /* !_VFS_UFS_EXTERN_H */

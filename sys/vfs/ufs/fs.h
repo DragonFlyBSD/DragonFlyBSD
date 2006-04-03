@@ -32,11 +32,11 @@
  *
  *	@(#)fs.h	8.13 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/fs.h,v 1.14.2.3 2001/09/21 19:15:22 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.4 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/fs.h,v 1.5 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_FFS_FS_H_
-#define _UFS_FFS_FS_H_
+#ifndef _VFS_UFS_FS_H_
+#define _VFS_UFS_FS_H_
 
 /*
  * Each disk drive contains some number of filesystems.
@@ -567,4 +567,4 @@ struct ocg {
 extern int inside[], around[];
 extern u_char *fragtbl[];
 
-#endif /* !_UFS_FFS_FS_H_ */
+#endif /* !_VFS_UFS_FS_H_ */

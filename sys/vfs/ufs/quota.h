@@ -35,11 +35,11 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.5 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.6 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_QUOTA_H_
-#define	_UFS_UFS_QUOTA_H_
+#ifndef _VFS_UFS_QUOTA_H_
+#define	_VFS_UFS_QUOTA_H_
 
 /*
  * Definitions for disk quotas imposed on the average user
@@ -98,7 +98,7 @@
  * the vnode for each quota file (a pointer is retained in the ufsmount
  * structure).
  */
-struct dqblk {
+struct ufs_dqblk {
 	uint32_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
 	uint32_t dqb_bsoftlimit;	/* preferred limit on disk blks */
 	uint32_t dqb_curblocks;	/* current block count */
@@ -119,15 +119,15 @@ struct dqblk {
  * filesystem for the current user or group. A cache is kept of recently
  * used entries.
  */
-struct dquot {
-	LIST_ENTRY(dquot) dq_hash;	/* hash list */
-	TAILQ_ENTRY(dquot) dq_freelist;	/* free list */
+struct ufs_dquot {
+	LIST_ENTRY(ufs_dquot) dq_hash;	/* hash list */
+	TAILQ_ENTRY(ufs_dquot) dq_freelist;	/* free list */
 	uint16_t dq_flags;		/* flags, see below */
 	uint16_t dq_type;		/* quota type of this dquot */
 	uint32_t dq_cnt;		/* count of active references */
 	uint32_t dq_id;		/* identifier this applies to */
 	struct	ufsmount *dq_ump;	/* filesystem that this is taken from */
-	struct	dqblk dq_dqb;		/* actual usage & quotas */
+	struct	ufs_dqblk dq_dqb;	/* actual usage & quotas */
 };
 /*
  * Flag values.
@@ -158,7 +158,7 @@ struct dquot {
 #define	NODQUOT		NULL
 
 /*
- * Flags to chkdq() and chkiq()
+ * Flags to ufs_chkdq() and ufs_chkiq()
  */
 #define	FORCE	0x01	/* force usage changes independent of limits */
 #define	CHOWN	0x02	/* (advisory) change initiated by chown */
@@ -167,7 +167,7 @@ struct dquot {
  * Macros to avoid subroutine calls to trivial functions.
  */
 #ifdef DIAGNOSTIC
-#define	DQREF(dq)	dqref(dq)
+#define	DQREF(dq)	ufs_dqref(dq)
 #else
 #define	DQREF(dq)	(dq)->dq_cnt++
 #endif
@@ -179,17 +179,17 @@ struct thread;
 struct ucred;
 struct vnode;
 
-int	chkdq(struct inode *, long, struct ucred *, int);
-int	chkiq(struct inode *, long, struct ucred *, int);
-void	dqinit(void);
-void	dqrele(struct vnode *, struct dquot *);
-int	getinoquota(struct inode *);
-int	getquota(struct mount *, u_long, int, caddr_t);
-int	qsync(struct mount *mp);
-int	quotaoff(struct thread *, struct mount *, int);
-int	quotaon(struct thread *, struct mount *, int, caddr_t);
-int	setquota(struct mount *, u_long, int, caddr_t);
-int	setuse(struct mount *, u_long, int, caddr_t);
+int	ufs_chkdq(struct inode *, long, struct ucred *, int);
+int	ufs_chkiq(struct inode *, long, struct ucred *, int);
+void	ufs_dqinit(void);
+void	ufs_dqrele(struct vnode *, struct ufs_dquot *);
+int	ufs_getinoquota(struct inode *);
+int	ufs_getquota(struct mount *, u_long, int, caddr_t);
+int	ufs_qsync(struct mount *mp);
+int	ufs_quotaoff(struct thread *, struct mount *, int);
+int	ufs_quotaon(struct thread *, struct mount *, int, caddr_t);
+int	ufs_setquota(struct mount *, u_long, int, caddr_t);
+int	ufs_setuse(struct mount *, u_long, int, caddr_t);
 int	ufs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 
 #else /* !_KERNEL */
@@ -202,4 +202,4 @@ __END_DECLS
 
 #endif /* _KERNEL */
 
-#endif /* !_UFS_UFS_QUOTA_H_ */
+#endif /* !_VFS_UFS_QUOTA_H_ */

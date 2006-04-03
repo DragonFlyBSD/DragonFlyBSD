@@ -32,11 +32,11 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.6 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.7 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_UFSMOUNT_H_
-#define _UFS_UFS_UFSMOUNT_H_
+#ifndef _VFS_UFS_UFSMOUNT_H_
+#define _VFS_UFS_UFSMOUNT_H_
 
 /*
  * Arguments to mount UFS-based filesystems
@@ -127,4 +127,4 @@ struct ufsmount {
 #define	is_sequential(ump, a, b)	((b) == (a) + ump->um_seqinc)
 #endif /* _KERNEL */
 
-#endif /* !_UFS_UFS_UFSMOUNT_H_ */
+#endif /* !_VFS_UFS_UFSMOUNT_H_ */

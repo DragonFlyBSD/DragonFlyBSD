@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.18 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.19 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -128,7 +128,7 @@ ffs_alloc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t bpref, int size,
 	    freespace(fs, fs->fs_minfree) - numfrags(fs, size) < 0)
 		goto nospace;
 #ifdef QUOTA
-	error = chkdq(ip, (long)btodb(size), cred, 0);
+	error = ufs_chkdq(ip, (long)btodb(size), cred, 0);
 	if (error)
 		return (error);
 #endif
@@ -150,7 +150,7 @@ ffs_alloc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t bpref, int size,
 	/*
 	 * Restore user's disk quota because allocation failed.
 	 */
-	(void) chkdq(ip, (long)-btodb(size), cred, FORCE);
+	(void) ufs_chkdq(ip, (long)-btodb(size), cred, FORCE);
 #endif
 nospace:
 	ffs_fserr(fs, cred->cr_uid, "filesystem full");
@@ -214,7 +214,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	}
 
 #ifdef QUOTA
-	error = chkdq(ip, (long)btodb(nsize - osize), cred, 0);
+	error = ufs_chkdq(ip, (long)btodb(nsize - osize), cred, 0);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -305,7 +305,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	/*
 	 * Restore user's disk quota because allocation failed.
 	 */
-	(void) chkdq(ip, (long)-btodb(nsize - osize), cred, FORCE);
+	(void) ufs_chkdq(ip, (long)-btodb(nsize - osize), cred, FORCE);
 #endif
 	brelse(bp);
 nospace:

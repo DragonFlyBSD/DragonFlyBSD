@@ -37,7 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.10 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.11 2006/04/03 02:02:37 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -88,14 +88,8 @@ struct inode {
 	dev_t	  i_dev;	/* Device associated with the inode. */
 	ino_t	  i_number;	/* The identity of the inode. */
 	int	  i_effnlink;	/* i_nlink when I/O completes */
-
-	union {			/* Associated filesystem. */
-		struct	fs *fs;		/* FFS */
-		struct	ext2_sb_info *e2fs;	/* EXT2FS */
-	} inode_u;
-#define	i_fs	inode_u.fs
-#define	i_e2fs	inode_u.e2fs
-	struct	 dquot *i_dquot[MAXQUOTAS]; /* Dquot structures. */
+	struct fs *i_fs;	/* Associated filesystem */
+	struct	 ufs_dquot *i_dquot[MAXQUOTAS]; /* Dquot structures. */
 	u_quad_t i_modrev;	/* Revision level for NFS lease. */
 	struct	 lockf i_lockf;/* Head of byte-level lock list. */
 	/*
@@ -111,9 +105,9 @@ struct inode {
 
 	struct dirhash *i_dirhash; /* Hashing for large directories */
 	/*
-	 * The on-disk dinode itself.
+	 * The on-disk dinode itself (128 bytes)
 	 */
-	struct	dinode i_din;	/* 128 bytes of the on-disk dinode. */
+	struct	ufs1_dinode i_din;
 };
 
 #define	i_atime		i_din.di_atime

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.15 2005/09/29 20:20:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.16 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -83,8 +83,8 @@ ufs_inactive(struct vop_inactive_args *ap)
 		goto out;
 	if (ip->i_nlink <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 #ifdef QUOTA
-		if (!getinoquota(ip))
-			(void)chkiq(ip, -1, NOCRED, FORCE);
+		if (!ufs_getinoquota(ip))
+			(void)ufs_chkiq(ip, -1, NOCRED, FORCE);
 #endif
 		error = UFS_TRUNCATE(vp, (off_t)0, 0, NOCRED, td);
 		ip->i_rdev = 0;
@@ -157,7 +157,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 #ifdef QUOTA
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ip->i_dquot[i] != NODQUOT) {
-				dqrele(vp, ip->i_dquot[i]);
+				ufs_dqrele(vp, ip->i_dquot[i]);
 				ip->i_dquot[i] = NODQUOT;
 			}
 		}

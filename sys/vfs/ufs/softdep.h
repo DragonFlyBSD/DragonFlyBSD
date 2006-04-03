@@ -37,7 +37,7 @@
  *
  *	@(#)softdep.h	9.7 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/softdep.h,v 1.7.2.1 2000/06/22 19:27:42 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.4 2005/07/31 22:25:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.5 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include <sys/queue.h>
@@ -238,7 +238,7 @@ struct inodedep {
 	struct	fs *id_fs;		/* associated filesystem */
 	ino_t	id_ino;			/* dependent inode */
 	nlink_t	id_nlinkdelta;		/* saved effective link count */
-	struct	dinode *id_savedino;	/* saved dinode contents */
+	struct	ufs1_dinode *id_savedino; /* saved dinode contents */
 	LIST_ENTRY(inodedep) id_deps;	/* bmsafemap's list of inodedep's */
 	struct	buf *id_buf;		/* related bmsafemap (if pending) */
 	off_t	id_savedsize;		/* file size saved during rollback */

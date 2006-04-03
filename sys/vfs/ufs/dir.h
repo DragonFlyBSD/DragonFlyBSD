@@ -37,11 +37,11 @@
  *
  *	@(#)dir.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dir.h,v 1.9 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dir.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/dir.h,v 1.4 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_DIR_H_
-#define	_UFS_UFS_DIR_H_
+#ifndef _VFS_UFS_DIR_H_
+#define	_VFS_UFS_DIR_H_
 
 /*
  * Theoretically, directories can be more than 2Gb in length, however, in
@@ -157,4 +157,4 @@ struct odirtemplate {
 	uint16_t	dotdot_namlen;
 	char		dotdot_name[4];	/* ditto */
 };
-#endif /* !_DIR_H_ */
+#endif /* !_VFS_UFS_DIR_H_ */

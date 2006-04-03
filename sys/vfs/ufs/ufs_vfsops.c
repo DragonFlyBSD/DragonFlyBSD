@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.11 2005/07/26 15:43:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.12 2006/04/03 02:02:37 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -124,27 +124,27 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	switch (cmd) {
 
 	case Q_QUOTAON:
-		error = quotaon(td, mp, type, arg);
+		error = ufs_quotaon(td, mp, type, arg);
 		break;
 
 	case Q_QUOTAOFF:
-		error = quotaoff(td, mp, type);
+		error = ufs_quotaoff(td, mp, type);
 		break;
 
 	case Q_SETQUOTA:
-		error = setquota(mp, uid, type, arg);
+		error = ufs_setquota(mp, uid, type, arg);
 		break;
 
 	case Q_SETUSE:
-		error = setuse(mp, uid, type, arg);
+		error = ufs_setuse(mp, uid, type, arg);
 		break;
 
 	case Q_GETQUOTA:
-		error = getquota(mp, uid, type, arg);
+		error = ufs_getquota(mp, uid, type, arg);
 		break;
 
 	case Q_SYNC:
-		error = qsync(mp);
+		error = ufs_qsync(mp);
 		break;
 
 	default:
@@ -169,7 +169,7 @@ ufs_init(struct vfsconf *vfsp)
 	done = 1;
 	ufs_ihashinit();
 #ifdef QUOTA
-	dqinit();
+	ufs_dqinit();
 #endif
 	return (0);
 }

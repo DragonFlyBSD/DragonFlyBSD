@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.14 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.15 2006/04/03 02:02:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,8 @@
 #include <sys/device.h>
 #include <sys/thread2.h>
 
-#include <vfs/ufs/fs.h>
+#include <vfs/ufs/dinode.h>	/* XXX used only for fs.h */
+#include <vfs/ufs/fs.h>		/* XXX used only to get BBSIZE/SBSIZE */
 
 #define TRACE(str)	do { if (ds_debug) printf str; } while (0)
 

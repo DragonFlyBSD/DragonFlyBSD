@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.11 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.12 2006/04/03 02:02:30 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -96,7 +96,6 @@ typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__int32_t	segsz_t;	/* segment size */
 typedef	__int32_t	swblk_t;	/* swap offset */
-typedef	__int32_t	ufs_daddr_t;
 typedef	__uint32_t	uid_t;		/* user id */
 
 #ifdef _KERNEL

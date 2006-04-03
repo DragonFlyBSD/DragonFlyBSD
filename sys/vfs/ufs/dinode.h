@@ -37,11 +37,11 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.5 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.6 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_DINODE_H_
-#define _UFS_UFS_DINODE_H_
+#ifndef _VFS_UFS_DINODE_H_
+#define _VFS_UFS_DINODE_H_
 
 typedef __uint32_t	ufs1_ino_t;
 
@@ -68,11 +68,12 @@ typedef __uint32_t	ufs1_ino_t;
  * are defined by types with precise widths.
  */
 
-/* typedef int32_t ufs_daddr_t; */
+typedef __int32_t       ufs_daddr_t;
+
 #define	NDADDR	12			/* Direct addresses in inode. */
 #define	NIADDR	3			/* Indirect addresses in inode. */
 
-struct dinode {
+struct ufs1_dinode {
 	uint16_t	di_mode;	/*   0: IFMT, permissions; see below. */
 	int16_t		di_nlink;	/*   2: File link count. */
 	union {
@@ -134,4 +135,4 @@ struct dinode {
 #define	IFSOCK		0140000		/* UNIX domain socket. */
 #define	IFWHT		0160000		/* Whiteout. */
 
-#endif /* !_UFS_UFS_DINODE_H_ */
+#endif /* !_VFS_UFS_DINODE_H_ */

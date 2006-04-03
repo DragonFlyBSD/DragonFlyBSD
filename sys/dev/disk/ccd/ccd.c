@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.24 2006/03/24 18:35:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.25 2006/04/03 02:02:32 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -102,17 +102,18 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/disklabel.h>
-#include <vfs/ufs/fs.h> 
 #include <sys/devicestat.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
 #include <sys/buf2.h>
-
 #include <sys/ccdvar.h>
 
-#include <sys/thread2.h>
-
 #include <vm/vm_zone.h>
+
+#include <vfs/ufs/dinode.h> 	/* XXX Used only for fs.h */
+#include <vfs/ufs/fs.h> 	/* XXX used only to get BBSIZE and SBSIZE */
+
+#include <sys/thread2.h>
 
 #if defined(CCDDEBUG) && !defined(DEBUG)
 #define DEBUG

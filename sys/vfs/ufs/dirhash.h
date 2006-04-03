@@ -23,11 +23,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/dirhash.h,v 1.2.2.1 2001/08/01 19:33:39 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/dirhash.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/dirhash.h,v 1.4 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_DIRHASH_H_
-#define _UFS_UFS_DIRHASH_H_
+#ifndef _VFS_UFS_DIRHASH_H_
+#define _VFS_UFS_DIRHASH_H_
 
 /*
  * XXX DR: On the current directory hashing method; the performance
@@ -124,4 +124,4 @@ void	ufsdirhash_free(struct inode *);
 
 void	ufsdirhash_checkblock(struct inode *, char *, doff_t);
 
-#endif /* !_UFS_UFS_DIRHASH_H_ */
+#endif /* !_VFS_UFS_DIRHASH_H_ */

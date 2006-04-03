@@ -32,11 +32,11 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.13 2005/09/14 01:13:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.14 2006/04/03 02:02:37 dillon Exp $
  */
 
-#ifndef _UFS_UFS_EXTERN_H_
-#define	_UFS_UFS_EXTERN_H_
+#ifndef _VFS_UFS_EXTERN_H_
+#define	_VFS_UFS_EXTERN_H_
 
 struct componentname;
 struct direct;
@@ -108,4 +108,4 @@ void	softdep_setup_directory_change(struct buf *, struct inode *,
 void	softdep_change_linkcnt(struct inode *);
 int	softdep_slowdown(struct vnode *);
 
-#endif /* !_UFS_UFS_EXTERN_H_ */
+#endif /* !_VFS_UFS_EXTERN_H_ */

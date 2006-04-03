@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.36 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.37 2006/04/03 02:02:37 dillon Exp $
  */
 
 /*
@@ -1794,7 +1794,7 @@ softdep_setup_freeblocks(ip, length)
 			    fsbtodoff(fs, ino_to_fsba(fs, ip->i_number)),
 	    (int)fs->fs_bsize, &bp)) != 0)
 		softdep_error("softdep_setup_freeblocks", error);
-	*((struct dinode *)bp->b_data + ino_to_fsbo(fs, ip->i_number)) =
+	*((struct ufs1_dinode *)bp->b_data + ino_to_fsbo(fs, ip->i_number)) =
 	    ip->i_din;
 	/*
 	 * Find and eliminate any inode dependencies.
@@ -3163,8 +3163,8 @@ initiate_write_inodeblock(inodedep, bp)
 	struct buf *bp;			/* The inode block */
 {
 	struct allocdirect *adp, *lastadp;
-	struct dinode *dp;
-	struct dinode *sip;
+	struct ufs1_dinode *dp;
+	struct ufs1_dinode *sip;
 	struct fs *fs;
 	ufs_lbn_t prevlbn = 0;
 	int i, deplist;
@@ -3173,7 +3173,7 @@ initiate_write_inodeblock(inodedep, bp)
 		panic("initiate_write_inodeblock: already started");
 	inodedep->id_state |= IOSTARTED;
 	fs = inodedep->id_fs;
-	dp = (struct dinode *)bp->b_data +
+	dp = (struct ufs1_dinode *)bp->b_data +
 	    ino_to_fsbo(fs, inodedep->id_ino);
 	/*
 	 * If the bitmap is not yet written, then the allocated
@@ -3182,11 +3182,11 @@ initiate_write_inodeblock(inodedep, bp)
 	if ((inodedep->id_state & DEPCOMPLETE) == 0) {
 		if (inodedep->id_savedino != NULL)
 			panic("initiate_write_inodeblock: already doing I/O");
-		MALLOC(sip, struct dinode *,
-		    sizeof(struct dinode), M_INODEDEP, M_SOFTDEP_FLAGS);
+		MALLOC(sip, struct ufs1_dinode *,
+		    sizeof(struct ufs1_dinode), M_INODEDEP, M_SOFTDEP_FLAGS);
 		inodedep->id_savedino = sip;
 		*inodedep->id_savedino = *dp;
-		bzero((caddr_t)dp, sizeof(struct dinode));
+		bzero((caddr_t)dp, sizeof(struct ufs1_dinode));
 		dp->di_gen = inodedep->id_savedino->di_gen;
 		return;
 	}
@@ -3546,7 +3546,7 @@ handle_written_inodeblock(inodedep, bp)
 {
 	struct worklist *wk, *filefree;
 	struct allocdirect *adp, *nextadp;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	int hadchanges;
 
 	if ((inodedep->id_state & IOSTARTED) == 0) {
@@ -3554,7 +3554,7 @@ handle_written_inodeblock(inodedep, bp)
 		panic("handle_written_inodeblock: not started");
 	}
 	inodedep->id_state &= ~IOSTARTED;
-	dp = (struct dinode *)bp->b_data +
+	dp = (struct ufs1_dinode *)bp->b_data +
 	    ino_to_fsbo(inodedep->id_fs, inodedep->id_ino);
 	/*
 	 * If we had to rollback the inode allocation because of
