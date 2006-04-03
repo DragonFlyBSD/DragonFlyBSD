@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2000/12/12 19:30:55 tomsoft Exp $
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
- * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.3 2006/04/03 01:58:49 dillon Exp $
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
@@ -88,7 +88,7 @@ static struct csum	*fscs;
 static void	rdfs(daddr_t, size_t, void *, int);
 static void	usage(void);
 static struct disklabel	*get_disklabel(int);
-static struct dinode	*ginode(ino_t, int);
+static struct ufs1_dinode	*ginode(ino_t, int);
 static void	dump_whole_inode(ino_t, int, int);
 
 /* ************************************************************** rdfs ***** */
@@ -423,7 +423,7 @@ void
 dump_whole_inode(ino_t inode, int fsi, int level)
 {
 	DBG_FUNC("dump_whole_inode")
-	struct dinode	*ino;
+	struct ufs1_dinode	*ino;
 	int	rb;
 	unsigned int	ind2ctr, ind3ctr;
 	ufs_daddr_t	*ind2ptr, *ind3ptr;
@@ -607,17 +607,17 @@ usage(void)
  * not  read the same block again and again if we iterate linearly  over  all
  * inodes.
  */
-struct dinode *
+struct ufs1_dinode *
 ginode(ino_t inumber, int fsi)
 {
 	DBG_FUNC("ginode")
 	ufs_daddr_t	iblk;
 	static ino_t	startinum=0;	/* first inode in cached block */
-	struct dinode	*pi;
+	struct ufs1_dinode	*pi;
 
 	DBG_ENTER;
 
-	pi=(struct dinode *)(void *)ablk;
+	pi=(struct ufs1_dinode *)(void *)ablk;
 	if (startinum == 0 || inumber < startinum ||
 	    inumber >= startinum + INOPB(&sblock)) {
 		/*

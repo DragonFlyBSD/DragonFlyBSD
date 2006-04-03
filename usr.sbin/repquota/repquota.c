@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)repquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/repquota/repquota.c,v 1.9.2.2 2002/03/15 22:18:25 mikeh Exp $
- * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.7 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ const char *qfextension[] = INITQFNAMES;
 
 struct fileusage {
 	struct	fileusage *fu_next;
-	struct	dqblk fu_dqblk;
+	struct	ufs_dqblk fu_dqblk;
 	u_long	fu_id;
 	char	fu_name[1];
 	/* actually bigger */
@@ -185,8 +185,8 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 	struct fileusage *fup;
 	FILE *qf;
 	u_long id;
-	struct dqblk dqbuf;
-	static struct dqblk zerodqblk;
+	struct ufs_dqblk dqbuf;
+	static struct ufs_dqblk zerodqblk;
 	static int warned = 0;
 	static int multiple = 0;
 
@@ -206,7 +206,7 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 		return (1);
 	}
 	for (id = 0; ; id++) {
-		fread(&dqbuf, sizeof(struct dqblk), 1, qf);
+		fread(&dqbuf, sizeof(struct ufs_dqblk), 1, qf);
 		if (feof(qf))
 			break;
 		if (dqbuf.dqb_curinodes == 0 && dqbuf.dqb_curblocks == 0)

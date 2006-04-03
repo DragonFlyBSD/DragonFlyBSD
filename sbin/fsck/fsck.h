@@ -32,7 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.4 2003/11/03 19:51:04 eirikn Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.5 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <unistd.h>
@@ -89,7 +89,7 @@ struct bufarea {
 		ufs_daddr_t *b_indir;		/* indirect block */
 		struct fs *b_fs;		/* super block */
 		struct cg *b_cg;		/* cylinder group */
-		struct dinode *b_dinode;	/* inode block */
+		struct ufs1_dinode *b_dinode;	/* inode block */
 	} b_un;
 	char b_dirty;
 };
@@ -222,7 +222,7 @@ ufs_daddr_t n_files;		/* number of files in use */
 int	got_siginfo;		/* received a SIGINFO */
 
 #define	clearinode(dp)	(*(dp) = zino)
-struct	dinode zino;
+struct	ufs1_dinode zino;
 
 #define	setbmap(blkno)	setbit(blockmap, blkno)
 #define	testbmap(blkno)	isset(blockmap, blkno)
@@ -248,7 +248,7 @@ char	       *blockcheck(char *name);
 int		bread(int fd, char *buf, ufs_daddr_t blk, long size);
 void		bufinit(void);
 void		bwrite(int fd, char *buf, ufs_daddr_t blk, long size);
-void		cacheino(struct dinode *dp, ino_t inumber);
+void		cacheino(struct ufs1_dinode *dp, ino_t inumber);
 void		catch(int);
 void		catchquit(int);
 int		changeino(ino_t dir, char *name, ino_t newnum);
@@ -257,7 +257,7 @@ int		checkfstab(int preen, int maxrun,
 			int (*chkit)(char *, char *, long, int));
 int		chkrange(ufs_daddr_t blk, int cnt);
 void		ckfini(int markclean);
-int		ckinode(struct dinode *dp, struct inodesc *);
+int		ckinode(struct ufs1_dinode *dp, struct inodesc *);
 void		clri(struct inodesc *, char *type, int flag);
 int		clearentry(struct inodesc *);
 void		direrror(ino_t ino, char *errmesg);
@@ -274,13 +274,13 @@ void		flush(int fd, struct bufarea *bp);
 void		freeblk(ufs_daddr_t blkno, long frags);
 void		freeino(ino_t ino);
 void		freeinodebuf(void);
-int		ftypeok(struct dinode *dp);
+int		ftypeok(struct ufs1_dinode *dp);
 void		getblk(struct bufarea *bp, ufs_daddr_t blk, long size);
 struct bufarea *getdatablk(ufs_daddr_t blkno, long size);
 struct inoinfo *getinoinfo(ino_t inumber);
-struct dinode  *getnextinode(ino_t inumber);
+struct ufs1_dinode  *getnextinode(ino_t inumber);
 void		getpathname(char *namebuf, ino_t curdir, ino_t ino);
-struct dinode  *ginode(ino_t inumber);
+struct ufs1_dinode  *ginode(ino_t inumber);
 void		infohandler(int sig);
 void		inocleanup(void);
 void		inodirty(void);

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)restore.h 8.3 (Berkeley) 9/13/94
- * $DragonFly: src/sbin/restore/restore.h,v 1.2 2005/08/28 04:35:14 dillon Exp $
+ * $DragonFly: src/sbin/restore/restore.h,v 1.3 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ struct entry {
 struct context {
 	char	*name;		/* name of file */
 	ufs1_ino_t ino;		/* inumber of file */
-	struct	dinode *dip;	/* pointer to inode */
+	struct	ufs1_dinode *dip;	/* pointer to inode */
 	char	action;		/* action being taken on this file */
 } curfile;
 /* actions */

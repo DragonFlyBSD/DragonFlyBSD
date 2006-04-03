@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.7 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ char tmpfil[] = _PATH_TMP;
 struct quotause {
 	struct	quotause *next;
 	long	flags;
-	struct	dqblk dqblk;
+	struct	ufs_dqblk dqblk;
 	char	fsname[MAXPATHLEN + 1];
 	char	qfname[1];	/* actually longer */
 };
@@ -361,18 +361,18 @@ getprivs(long id, int quotatype, char *fspath)
 				    getentry(quotagroup, GRPQUOTA));
 				fchmod(fd, 0640);
 			}
-			lseek(fd, (long)(id * sizeof(struct dqblk)), L_SET);
-			switch (read(fd, &qup->dqblk, sizeof(struct dqblk))) {
+			lseek(fd, (long)(id * sizeof(struct ufs_dqblk)), L_SET);
+			switch (read(fd, &qup->dqblk, sizeof(struct ufs_dqblk))) {
 			case 0:			/* EOF */
 				/*
 				 * Convert implicit 0 quota (EOF)
 				 * into an explicit one (zero'ed dqblk)
 				 */
 				bzero((caddr_t)&qup->dqblk,
-				    sizeof(struct dqblk));
+				    sizeof(struct ufs_dqblk));
 				break;
 
-			case sizeof(struct dqblk):	/* OK */
+			case sizeof(struct ufs_dqblk):	/* OK */
 				break;
 
 			default:		/* ERROR */
@@ -412,9 +412,9 @@ putprivs(long id, int quotatype, struct quotause *quplist)
 		if ((fd = open(qup->qfname, O_WRONLY)) < 0) {
 			warn("%s", qup->qfname);
 		} else {
-			lseek(fd, (long)id * (long)sizeof(struct dqblk), 0);
-			if (write(fd, &qup->dqblk, sizeof(struct dqblk)) !=
-			    sizeof(struct dqblk)) {
+			lseek(fd, (long)id * (long)sizeof(struct ufs_dqblk), 0);
+			if (write(fd, &qup->dqblk, sizeof(struct ufs_dqblk)) !=
+			    sizeof(struct ufs_dqblk)) {
 				warn("%s", qup->qfname);
 			}
 			close(fd);
@@ -506,7 +506,7 @@ readprivs(struct quotause *quplist, char *inname)
 	unsigned long ihardlimit, isoftlimit, curinodes;
 	int cnt;
 	char *cp;
-	struct dqblk dqblk;
+	struct ufs_dqblk dqblk;
 	char *fsp, line1[BUFSIZ], line2[BUFSIZ];
 
 	fd = fopen(inname, "r");

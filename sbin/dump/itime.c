@@ -32,21 +32,15 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.9 2005/04/13 16:07:15 joerg Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.10 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/time.h>
-#ifdef sunos
-#include <sys/vnode.h>
 
-#include <ufs/fsdir.h>
-#include <ufs/inode.h>
-#include <ufs/fs.h>
-#else
 #include <vfs/ufs/dinode.h>
-#endif
+#include <vfs/ufs/fs.h>
 
 #include <protocols/dumprestore.h>
 

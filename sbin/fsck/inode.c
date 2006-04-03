@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,12 +53,12 @@ static ino_t startinum;
 static int iblock(struct inodesc *, long ilevel, quad_t isize);
 
 int
-ckinode(struct dinode *dp, struct inodesc *idesc)
+ckinode(struct ufs1_dinode *dp, struct inodesc *idesc)
 {
 	ufs_daddr_t *ap;
 	int ret;
 	long n, ndb, offset;
-	struct dinode dino;
+	struct ufs1_dinode dino;
 	quad_t remsize, sizepb;
 	mode_t mode;
 	char pathbuf[MAXPATHLEN + 1];
@@ -151,7 +151,7 @@ iblock(struct inodesc *idesc, long ilevel, quad_t isize)
 	quad_t sizepb;
 	char buf[BUFSIZ];
 	char pathbuf[MAXPATHLEN + 1];
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 
 	if (idesc->id_type == ADDR) {
 		func = idesc->id_func;
@@ -268,7 +268,7 @@ chkrange(ufs_daddr_t blk, int cnt)
 /*
  * General purpose interface for reading inodes.
  */
-struct dinode *
+struct ufs1_dinode *
 ginode(ino_t inumber)
 {
 	ufs_daddr_t iblk;
@@ -292,14 +292,14 @@ ginode(ino_t inumber)
  */
 ino_t nextino, lastinum;
 long readcnt, readpercg, fullcnt, inobufsize, partialcnt, partialsize;
-struct dinode *inodebuf;
+struct ufs1_dinode *inodebuf;
 
-struct dinode *
+struct ufs1_dinode *
 getnextinode(ino_t inumber)
 {
 	long size;
 	ufs_daddr_t dblk;
-	static struct dinode *dp;
+	static struct ufs1_dinode *dp;
 
 	if (inumber != nextino++ || inumber > maxino)
 		errx(EEXIT, "bad inode number %d to nextinode", inumber);
@@ -336,17 +336,17 @@ setinodebuf(ino_t inum)
 	if (inodebuf != NULL)
 		return;
 	inobufsize = blkroundup(&sblock, INOBUFSIZE);
-	fullcnt = inobufsize / sizeof(struct dinode);
+	fullcnt = inobufsize / sizeof(struct ufs1_dinode);
 	readpercg = sblock.fs_ipg / fullcnt;
 	partialcnt = sblock.fs_ipg % fullcnt;
-	partialsize = partialcnt * sizeof(struct dinode);
+	partialsize = partialcnt * sizeof(struct ufs1_dinode);
 	if (partialcnt != 0) {
 		readpercg++;
 	} else {
 		partialcnt = fullcnt;
 		partialsize = inobufsize;
 	}
-	if ((inodebuf = (struct dinode *)malloc((unsigned)inobufsize)) == NULL)
+	if ((inodebuf = (struct ufs1_dinode *)malloc((unsigned)inobufsize)) == NULL)
 		errx(EEXIT, "cannot allocate space for inode buffer");
 }
 
@@ -367,7 +367,7 @@ freeinodebuf(void)
  * Enter inodes into the cache.
  */
 void
-cacheino(struct dinode *dp, ino_t inumber)
+cacheino(struct ufs1_dinode *dp, ino_t inumber)
 {
 	struct inoinfo *inp;
 	struct inoinfo **inpp;
@@ -443,7 +443,7 @@ inodirty(void)
 void
 clri(struct inodesc *idesc, char *type, int flag)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 
 	dp = ginode(idesc->id_number);
 	if (flag == 1) {
@@ -506,7 +506,7 @@ clearentry(struct inodesc *idesc)
 void
 pinode(ino_t ino)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	char *p;
 	struct passwd *pw;
 	time_t t;
@@ -562,7 +562,7 @@ ino_t
 allocino(ino_t request, int type)
 {
 	ino_t ino;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct cg *cgp = &cgrp;
 	int cg;
 
@@ -621,7 +621,7 @@ void
 freeino(ino_t ino)
 {
 	struct inodesc idesc;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 
 	memset(&idesc, 0, sizeof(struct inodesc));
 	idesc.id_type = ADDR;

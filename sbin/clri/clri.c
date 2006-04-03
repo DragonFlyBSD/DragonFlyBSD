@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)clri.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $
- * $DragonFly: src/sbin/clri/clri.c,v 1.7 2006/03/24 18:35:25 dillon Exp $
+ * $DragonFly: src/sbin/clri/clri.c,v 1.8 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,9 @@ int
 main(int argc, char **argv)
 {
 	struct fs *sbp;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	int fd;
-	struct dinode ibuf[MAXBSIZE / sizeof (struct dinode)];
+	struct ufs1_dinode ibuf[MAXBSIZE / sizeof (struct ufs1_dinode)];
 	long generation, bsize;
 	off_t offset;
 	int inonum;

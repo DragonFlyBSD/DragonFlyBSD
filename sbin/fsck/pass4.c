@@ -32,7 +32,7 @@
  *
  * @(#)pass4.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass4.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass4.c,v 1.5 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/pass4.c,v 1.6 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@ pass4(void)
 {
 	ino_t inumber;
 	struct zlncnt *zlnp;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct inodesc idesc;
 	int i, n, cg;
 

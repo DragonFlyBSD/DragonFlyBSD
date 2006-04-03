@@ -33,12 +33,12 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.11 2005/08/28 04:35:12 dillon Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.12 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
 
-#define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
+#define MAXINOPB	(MAXBSIZE / sizeof(struct ufs1_dinode))
 #define MAXNINDIR	(MAXBSIZE / sizeof(daddr_t))
 
 /*
@@ -111,8 +111,8 @@ void	timeest(void);
 time_t	unctime(const char *);
 
 /* mapping rouintes */
-struct	dinode;
-long	blockest(struct dinode *);
+struct	ufs1_dinode;
+long	blockest(struct ufs1_dinode *);
 int	mapfiles(ufs1_ino_t maxino, long *);
 int	mapdirs(ufs1_ino_t maxino, long *);
 
@@ -120,7 +120,7 @@ int	mapdirs(ufs1_ino_t maxino, long *);
 void	blksout(daddr_t *, int, ufs1_ino_t);
 void	bread(daddr_t, char *, int);
 ssize_t cread(int, void *, size_t, off_t);
-void	dumpino(struct dinode *, ufs1_ino_t);
+void	dumpino(struct ufs1_dinode *, ufs1_ino_t);
 void	dumpmap(const char *, int, ufs1_ino_t);
 void	writeheader(ufs1_ino_t);
 
@@ -137,7 +137,7 @@ void	dumpabort(int);
 void	getfstab(void);
 
 char	*rawname(char *);
-struct	dinode *getino(ufs1_ino_t);
+struct	ufs1_dinode *getino(ufs1_ino_t);
 
 /* rdump routines */
 #if defined(RDUMP) || defined(RRESTORE)

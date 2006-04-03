@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdbutil.c,v 1.9.2.2 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.7 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,7 @@
 
 static int charsperline(void);
 static int printindir(ufs_daddr_t blk, int level, char *bufp);
-static void printblocks(ino_t inum, struct dinode *dp);
+static void printblocks(ino_t inum, struct ufs1_dinode *dp);
 
 char **
 crack(char *line, int *argc)
@@ -83,7 +83,7 @@ argcount(struct cmdtable *cmdp, int argc, char **argv)
 }
 
 void
-printstat(const char *cp, ino_t inum, struct dinode *dp)
+printstat(const char *cp, ino_t inum, struct ufs1_dinode *dp)
 {
     struct group *grp;
     struct passwd *pw;
@@ -230,7 +230,7 @@ printindir(ufs_daddr_t blk, int level, char *bufp)
  * Print the block pointers for one inode.
  */
 static void
-printblocks(ino_t inum, struct dinode *dp)
+printblocks(ino_t inum, struct ufs1_dinode *dp)
 {
     char *bufp;
     int i, nfrags;

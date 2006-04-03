@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.8 2006/03/24 18:35:22 dillon Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.9 2006/04/03 01:58:45 dillon Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -102,7 +102,7 @@ struct fs_ops ufs_fsops = {
 struct file {
 	off_t		f_seekp;	/* seek pointer */
 	struct fs	*f_fs;		/* pointer to super-block */
-	struct dinode	f_di;		/* copy of on-disk inode */
+	struct ufs1_dinode f_di;	/* copy of on-disk inode */
 	int		f_nindir[NIADDR];
 					/* number of blocks mapped by
 					   indirect block at level i */
@@ -155,9 +155,9 @@ read_inode(ino_t inumber, struct open_file *f)
 	}
 
 	{
-		struct dinode *dp;
+		struct ufs1_dinode *dp;
 
-		dp = (struct dinode *)buf;
+		dp = (struct ufs1_dinode *)buf;
 		fp->f_di = dp[ino_to_fsbo(fs, inumber)];
 	}
 

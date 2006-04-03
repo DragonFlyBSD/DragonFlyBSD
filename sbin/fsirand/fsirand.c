@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.7 2005/02/13 19:12:26 cpressey Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/disklabel.h>
@@ -38,8 +38,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <vfs/ufs/fs.h>
 #include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <errno.h>
@@ -102,7 +102,7 @@ main(int argc, char **argv)
 int
 fsirand(char *device)
 {
-	static struct dinode *inodebuf;
+	static struct ufs1_dinode *inodebuf;
 	static ssize_t oldibufsize = 0;
 	ssize_t ibufsize;
 	struct fs *sblock;
@@ -186,7 +186,7 @@ fsirand(char *device)
 	sblock = (struct fs *)&sbuf;
 
 	/* XXX - should really cap buffer at 512kb or so */
-	ibufsize = sizeof(struct dinode) * sblock->fs_ipg;
+	ibufsize = sizeof(struct ufs1_dinode) * sblock->fs_ipg;
 	if (oldibufsize < ibufsize) {
 		if ((inodebuf = realloc(inodebuf, ibufsize)) == NULL)
 			errx(1, "can't allocate memory for inode buffer");

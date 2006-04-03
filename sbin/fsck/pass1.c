@@ -32,7 +32,7 @@
  *
  * @(#)pass1.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1.c,v 1.16.2.5 2002/06/23 22:34:58 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1.c,v 1.7 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/pass1.c,v 1.8 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,7 @@ pass1(void)
 static void
 checkinode(ino_t inumber, struct inodesc *idesc)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct zlncnt *zlnp;
 	u_int64_t kernmaxfilesize;
 	ufs_daddr_t ndb, j;

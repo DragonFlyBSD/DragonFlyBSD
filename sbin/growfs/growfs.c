@@ -39,7 +39,7 @@
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $
- * $DragonFly: src/sbin/growfs/growfs.c,v 1.4 2005/11/06 12:16:44 swildner Exp $
+ * $DragonFly: src/sbin/growfs/growfs.c,v 1.5 2006/04/03 01:58:49 dillon Exp $
  */
 
 /* ********************************************************** INCLUDES ***** */
@@ -98,7 +98,7 @@ enum pointer_source {
 
 static struct csum	*fscs;		/* cylinder summary */
 
-static struct dinode	zino[MAXBSIZE/sizeof(struct dinode)]; /* some inodes */
+static struct ufs1_dinode	zino[MAXBSIZE/sizeof(struct ufs1_dinode)]; /* some inodes */
 
 /*
  * An  array of elements of type struct gfs_bpp describes all blocks  to
@@ -129,7 +129,7 @@ static void	updjcg(int, time_t, int, int, unsigned int);
 static void	updcsloc(time_t, int, int, unsigned int);
 static struct disklabel	*get_disklabel(int);
 static void	return_disklabel(int, struct disklabel *, unsigned int);
-static struct dinode	*ginode(ino_t, int, int);
+static struct ufs1_dinode	*ginode(ino_t, int, int);
 static void	frag_adjust(daddr_t, int);
 static void	cond_bl_upd(ufs_daddr_t *, struct gfs_bpp *,
     enum pointer_source, int, unsigned int);
@@ -421,7 +421,7 @@ initcg(int cylno, time_t utime, int fso, unsigned int Nflag)
 		}
 	for (i = 0; i < sblock.fs_ipg / INOPF(&sblock); i += sblock.fs_frag) {
 #ifdef FSIRAND
-		for (j = 0; j < sblock.fs_bsize / sizeof(struct dinode); j++) {
+		for (j = 0; j < sblock.fs_bsize / sizeof(struct ufs1_dinode); j++) {
 			zino[j].di_gen = random();
 		}
 #endif
@@ -1848,17 +1848,17 @@ setblock(struct fs *fs, unsigned char *cp, int h)
  * not  read the same block again and again if we iterate linearly  over  all
  * inodes.
  */
-static struct dinode *
+static struct ufs1_dinode *
 ginode(ino_t inumber, int fsi, int cg)
 {
 	DBG_FUNC("ginode")
 	ufs_daddr_t	iblk;
 	static ino_t	startinum=0;	/* first inode in cached block */
-	struct dinode	*pi;
+	struct ufs1_dinode	*pi;
 
 	DBG_ENTER;
 
-	pi=(struct dinode *)(void *)ablk;
+	pi=(struct ufs1_dinode *)(void *)ablk;
 	inumber+=(cg * sblock.fs_ipg);
 	if (startinum == 0 || inumber < startinum ||
 	    inumber >= startinum + INOPB(&sblock)) {
@@ -2363,7 +2363,7 @@ updrefs(int cg, ino_t in, struct gfs_bpp *bp, int fsi, int fso, unsigned int
 	DBG_FUNC("updrefs")
 	unsigned int	ictr, ind2ctr, ind3ctr;
 	ufs_daddr_t	*iptr, *ind2ptr, *ind3ptr;
-	struct dinode	*ino;
+	struct ufs1_dinode	*ino;
 	int	remaining_blocks;
 
 	DBG_ENTER;

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.8 2005/11/06 12:45:58 swildner Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 /*
@@ -106,7 +106,7 @@ extern int checkfstab(int, int, int (*)(struct fstab *),
 				int (*)(char *, char *, long, int));
 int	 chkquota(char *, char *, struct quotaname *);
 void	 freeinodebuf(void);
-struct dinode *
+struct ufs1_dinode *
 	 getnextinode(ino_t);
 int	 getquotagid(void);
 int	 hasquota(struct fstab *, int, char **);
@@ -234,7 +234,7 @@ int
 chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 {
 	struct fileusage *fup;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	int cg, i, mode, errs = 0;
 	ino_t ino;
 
@@ -302,9 +302,9 @@ update(char *fsname, char *quotafile, int type)
 	FILE *qfi, *qfo;
 	u_long id, lastid;
 	off_t offset;
-	struct dqblk dqbuf;
+	struct ufs_dqblk dqbuf;
 	static int warned = 0;
-	static struct dqblk zerodqbuf;
+	static struct ufs_dqblk zerodqbuf;
 	static struct fileusage zerofileusage;
 
 	if ((qfo = fopen(quotafile, "r+")) == NULL) {
@@ -332,8 +332,8 @@ update(char *fsname, char *quotafile, int type)
 		    "Quotas are not compiled into this kernel");
 	}
 	for (lastid = highid[type], id = 0, offset = 0; id <= lastid; 
-	    id++, offset += sizeof(struct dqblk)) {
-		if (fread((char *)&dqbuf, sizeof(struct dqblk), 1, qfi) == 0)
+	    id++, offset += sizeof(struct ufs_dqblk)) {
+		if (fread((char *)&dqbuf, sizeof(struct ufs_dqblk), 1, qfi) == 0)
 			dqbuf = zerodqbuf;
 		if ((fup = lookup(id, type)) == 0)
 			fup = &zerofileusage;
@@ -375,7 +375,7 @@ update(char *fsname, char *quotafile, int type)
 			warn("%s: seek failed", quotafile);
 			return(1);
 		}
-		fwrite((char *)&dqbuf, sizeof(struct dqblk), 1, qfo);
+		fwrite((char *)&dqbuf, sizeof(struct ufs_dqblk), 1, qfo);
 		quotactl(fsname, QCMD(Q_SETUSE, type), id,
 		    (caddr_t)&dqbuf);
 		fup->fu_curinodes = 0;
@@ -384,7 +384,7 @@ update(char *fsname, char *quotafile, int type)
 	fclose(qfi);
 	fflush(qfo);
 	ftruncate(fileno(qfo),
-	    (off_t)((highid[type] + 1) * sizeof(struct dqblk)));
+	    (off_t)((highid[type] + 1) * sizeof(struct ufs_dqblk)));
 	fclose(qfo);
 	return (0);
 }
@@ -511,15 +511,15 @@ addid(u_long id, int type, char *name)
  */
 ino_t nextino, lastinum;
 long readcnt, readpercg, fullcnt, inobufsize, partialcnt, partialsize;
-struct dinode *inodebuf;
+struct ufs1_dinode *inodebuf;
 #define	INOBUFSIZE	56*1024	/* size of buffer to read inodes */
 
-struct dinode *
+struct ufs1_dinode *
 getnextinode(ino_t inumber)
 {
 	long size;
 	daddr_t dblk;
-	static struct dinode *dp;
+	static struct ufs1_dinode *dp;
 
 	if (inumber != nextino++ || inumber > maxino)
 		errx(1, "bad inode number %d to nextinode", inumber);
@@ -550,10 +550,10 @@ resetinodebuf(void)
 	lastinum = 0;
 	readcnt = 0;
 	inobufsize = blkroundup(&sblock, INOBUFSIZE);
-	fullcnt = inobufsize / sizeof(struct dinode);
+	fullcnt = inobufsize / sizeof(struct ufs1_dinode);
 	readpercg = sblock.fs_ipg / fullcnt;
 	partialcnt = sblock.fs_ipg % fullcnt;
-	partialsize = partialcnt * sizeof(struct dinode);
+	partialsize = partialcnt * sizeof(struct ufs1_dinode);
 	if (partialcnt != 0) {
 		readpercg++;
 	} else {

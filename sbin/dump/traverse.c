@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.13 2005/08/28 04:35:12 dillon Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.14 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ static	int searchdir(ufs1_ino_t, daddr_t, long, long, long *, int);
  * hence the estimate may be high.
  */
 long
-blockest(struct dinode *dp)
+blockest(struct ufs1_dinode *dp)
 {
 	long blkest, sizeest;
 
@@ -138,7 +138,7 @@ mapfiles(ufs1_ino_t maxino, long *tape_size)
 {
 	int mode;
 	ufs1_ino_t ino;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	int anydirskipped = 0;
 
 	for (ino = ROOTINO; ino < maxino; ino++) {
@@ -191,11 +191,11 @@ mapfiles(ufs1_ino_t maxino, long *tape_size)
 int
 mapdirs(ufs1_ino_t maxino, long *tape_size)
 {
-	struct	dinode *dp;
+	struct	ufs1_dinode *dp;
 	int i, isdir, nodump;
 	char *map;
 	ufs1_ino_t ino;
-	struct dinode di;
+	struct ufs1_dinode di;
 	long filesize;
 	int ret, change = 0;
 
@@ -303,7 +303,7 @@ searchdir(ufs1_ino_t ino, daddr_t blkno, long size, long filesize,
           long *tape_size, int nodump)
 {
 	struct direct *dp;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	long loc, ret = 0;
 	char dblk[MAXBSIZE];
 
@@ -362,7 +362,7 @@ searchdir(ufs1_ino_t ino, daddr_t blkno, long size, long filesize,
  * Dump the contents of an inode to tape.
  */
 void
-dumpino(struct dinode *dp, ufs1_ino_t ino)
+dumpino(struct ufs1_dinode *dp, ufs1_ino_t ino)
 {
 	int ind_level, cnt;
 	fsizeT size;
@@ -538,11 +538,11 @@ writeheader(ufs1_ino_t ino)
 	writerec(&spcl, 1);
 }
 
-struct dinode *
+struct ufs1_dinode *
 getino(ufs1_ino_t inum)
 {
 	static daddr_t minino, maxino;
-	static struct dinode inoblock[MAXINOPB];
+	static struct ufs1_dinode inoblock[MAXINOPB];
 
 	curino = inum;
 	if (inum >= minino && inum < maxino)

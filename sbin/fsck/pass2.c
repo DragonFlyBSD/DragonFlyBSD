@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,11 +53,11 @@ static int pass2check(struct inodesc *);
 void
 pass2(void)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct inoinfo **inpp, *inp;
 	struct inoinfo **inpend;
 	struct inodesc curino;
-	struct dinode dino;
+	struct ufs1_dinode dino;
 	char pathbuf[MAXPATHLEN + 1];
 
 	switch (inoinfo(ROOTINO)->ino_state) {
@@ -168,7 +168,7 @@ pass2(void)
 				dp = &dino;
 			}
 		}
-		memset(&dino, 0, sizeof(struct dinode));
+		memset(&dino, 0, sizeof(struct ufs1_dinode));
 		dino.di_mode = IFDIR;
 		dp->di_size = inp->i_isize;
 		memmove(&dp->di_db[0], &inp->i_blks[0], (size_t)inp->i_numblks);
@@ -220,7 +220,7 @@ pass2check(struct inodesc *idesc)
 	struct direct *dirp = idesc->id_dirp;
 	struct inoinfo *inp;
 	int n, entrysize, ret = 0;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	char *errmsg;
 	struct direct proto;
 	char namebuf[MAXPATHLEN + 1];

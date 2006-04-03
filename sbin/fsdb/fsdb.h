@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.h,v 1.4.2.1 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.h,v 1.3 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.h,v 1.4 2006/04/03 01:58:49 dillon Exp $
  */
 
 extern int bread(int fd, char *buf, daddr_t blk, long size);
@@ -51,12 +51,12 @@ struct cmdtable {
 #define	FL_WR	0x0001		/* wants to write */
 	int (*handler)(int argc, char *argv[]);
 };
-extern struct dinode *curinode;
+extern struct ufs1_dinode *curinode;
 extern ino_t curinum;
 
 int argcount(struct cmdtable *cmdp, int argc, char *argv[]);
 char **crack(char *line, int *argc);
-void printstat(const char *cp, ino_t inum, struct dinode *dp);
+void printstat(const char *cp, ino_t inum, struct ufs1_dinode *dp);
 int printactive(int doblocks);
 int checkactive(void);
 int checkactivedir(void);

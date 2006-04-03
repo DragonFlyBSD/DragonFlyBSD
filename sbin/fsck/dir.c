@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.8 2005/11/06 12:13:53 swildner Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ struct	odirtemplate odirhead = {
 
 static int chgino(struct inodesc *);
 static int dircheck(struct inodesc *, struct direct *);
-static int expanddir(struct dinode *dp, char *name);
+static int expanddir(struct ufs1_dinode *dp, char *name);
 static void freedir(ino_t ino, ino_t parent);
 static struct direct *fsck_readdir(struct inodesc *);
 static struct bufarea *getdirblk(ufs_daddr_t blkno, long size);
@@ -272,7 +272,7 @@ direrror(ino_t ino, char *errmesg)
 void
 fileerror(ino_t cwd, ino_t ino, char *errmesg)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	char pathbuf[MAXPATHLEN + 1];
 
 	pwarn("%s ", errmesg);
@@ -294,7 +294,7 @@ fileerror(ino_t cwd, ino_t ino, char *errmesg)
 void
 adjust(struct inodesc *idesc, int lcnt)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	int saveresolved;
 
 	dp = ginode(idesc->id_number);
@@ -410,7 +410,7 @@ chgino(struct inodesc *idesc)
 int
 linkup(ino_t orphan, ino_t parentdir, char *name)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	int lostdir;
 	ino_t oldlfdir;
 	struct inodesc idesc;
@@ -543,7 +543,7 @@ changeino(ino_t dir, char *name, ino_t newnum)
 int
 makeentry(ino_t parent, ino_t ino, char *name)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct inodesc idesc;
 	char pathbuf[MAXPATHLEN + 1];
 
@@ -575,7 +575,7 @@ makeentry(ino_t parent, ino_t ino, char *name)
  * Attempt to expand the size of a directory
  */
 static int
-expanddir(struct dinode *dp, char *name)
+expanddir(struct ufs1_dinode *dp, char *name)
 {
 	ufs_daddr_t lastbn, newblk;
 	struct bufarea *bp;
@@ -634,7 +634,7 @@ allocdir(ino_t parent, ino_t request, int mode)
 {
 	ino_t ino;
 	char *cp;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct bufarea *bp;
 	struct dirtemplate *dirp;
 
@@ -687,7 +687,7 @@ allocdir(ino_t parent, ino_t request, int mode)
 static void
 freedir(ino_t ino, ino_t parent)
 {
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 
 	if (ino != parent) {
 		dp = ginode(parent);

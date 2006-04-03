@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.9 2005/11/06 12:49:25 swildner Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.10 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,7 +116,7 @@ struct odirect {
 	char	d_name[ODIRSIZ];
 };
 
-static struct inotab	*allocinotab(ufs1_ino_t, struct dinode *, long);
+static struct inotab	*allocinotab(ufs1_ino_t, struct ufs1_dinode *, long);
 static void		 dcvt(struct odirect *, struct direct *);
 static void		 flushent(void);
 static struct inotab	*inotablookup(ufs1_ino_t);
@@ -137,7 +137,7 @@ void
 extractdirs(int genmode)
 {
 	int i;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	struct inotab *itp;
 	struct direct nulldir;
 	int fd;
@@ -688,7 +688,7 @@ inodetype(ufs1_ino_t ino)
  * If requested, save its pertinent mode, owner, and time info.
  */
 static struct inotab *
-allocinotab(ufs1_ino_t ino, struct dinode *dip, long seekpt)
+allocinotab(ufs1_ino_t ino, struct ufs1_dinode *dip, long seekpt)
 {
 	struct inotab	*itp;
 	struct modeinfo node;

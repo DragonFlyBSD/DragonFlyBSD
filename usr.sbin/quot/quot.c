@@ -29,15 +29,17 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.5 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.6 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/time.h>
+
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/inode.h>
 #include <vfs/ufs/fs.h>
 #include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
 
 #include <err.h>
 #include <fcntl.h>
@@ -59,9 +61,9 @@ static long blocksize;
 static char *header;
 static int headerlen;
 
-static struct dinode *get_inode(int, struct fs *, ino_t);
-static int	virtualblocks(struct fs *, struct dinode *);
-static int	isfree(struct dinode *);
+static struct ufs1_dinode *get_inode(int, struct fs *, ino_t);
+static int	virtualblocks(struct fs *, struct ufs1_dinode *);
+static int	isfree(struct ufs1_dinode *);
 static void	inituser(void);
 static void	usrrehash(void);
 static struct user *user(uid_t);
@@ -92,12 +94,12 @@ static void	quot(char *, char *);
 #endif
 
 #define	INOCNT(fs)	((fs)->fs_ipg)
-#define	INOSZ(fs)	(sizeof(struct dinode) * INOCNT(fs))
+#define	INOSZ(fs)	(sizeof(struct ufs1_dinode) * INOCNT(fs))
 
-static struct dinode *
+static struct ufs1_dinode *
 get_inode(int fd, struct fs *super, ino_t ino)
 {
-	static struct dinode *ip;
+	static struct ufs1_dinode *ip;
 	static ino_t last;
 	
 	if (fd < 0) {		/* flush cache */
@@ -110,7 +112,7 @@ get_inode(int fd, struct fs *super, ino_t ino)
 	
 	if (!ip || ino < last || ino >= last + INOCNT(super)) {
 		if (!ip
-		    && !(ip = (struct dinode *)malloc(INOSZ(super))))
+		    && !(ip = (struct ufs1_dinode *)malloc(INOSZ(super))))
 			errx(1, "allocate inodes");
 		last = (ino / INOCNT(super)) * INOCNT(super);
 		if (lseek(fd, (off_t)ino_to_fsba(super, last) << super->fs_fshift, 0) < (off_t)0
@@ -128,7 +130,7 @@ get_inode(int fd, struct fs *super, ino_t ino)
 #endif
 
 static int
-virtualblocks(struct fs *super, struct dinode *ip)
+virtualblocks(struct fs *super, struct ufs1_dinode *ip)
 {
 	off_t nblk, sz;
 	
@@ -161,7 +163,7 @@ virtualblocks(struct fs *super, struct dinode *ip)
 }
 
 static int
-isfree(struct dinode *ip)
+isfree(struct ufs1_dinode *ip)
 {
 #ifdef	COMPAT
 	return (ip->di_mode&IFMT) == 0;
@@ -330,7 +332,7 @@ static void
 dofsizes(int fd, struct fs *super, char *name)
 {
 	ino_t inode, maxino;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	daddr_t sz, ksz;
 	struct fsizes *fp, **fsp;
 	int i;
@@ -402,7 +404,7 @@ douser(int fd, struct fs *super, char *name)
 {
 	ino_t inode, maxino;
 	struct user *usr, *usrs;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	int n;
 
 	maxino = super->fs_ncg * super->fs_ipg - 1;
@@ -443,7 +445,7 @@ donames(int fd, struct fs *super, char *name)
 	int c;
 	ino_t inode, inode1;
 	ino_t maxino;
-	struct dinode *ip;
+	struct ufs1_dinode *ip;
 	
 	maxino = super->fs_ncg * super->fs_ipg - 1;
 	/* first skip the name of the filesystem */

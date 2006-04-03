@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.8 2005/11/13 11:58:30 corecode Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.9 2006/04/03 01:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -272,7 +272,7 @@ cmdloop(void)
     return rval;
 }
 
-struct dinode *curinode;
+struct ufs1_dinode *curinode;
 ino_t curinum, ocurrent;
 
 #define GETINUM(ac,inum)    inum = strtoul(argv[ac], &cp, 0); \
@@ -309,7 +309,7 @@ CMDFUNCSTART(back)
 CMDFUNCSTART(zapi)
 {
     ino_t inum;
-    struct dinode *dp;
+    struct ufs1_dinode *dp;
     char *cp;
 
     GETINUM(1,inum);

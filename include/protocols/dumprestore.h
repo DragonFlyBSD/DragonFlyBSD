@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * @(#)dumprestore.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/protocols/dumprestore.h,v 1.2 2005/12/30 17:54:30 dillon Exp $
+ * $DragonFly: src/include/protocols/dumprestore.h,v 1.3 2006/04/03 01:58:44 dillon Exp $
  */
 
 #ifndef _PROTOCOLS_DUMPRESTORE_H_
@@ -76,7 +76,7 @@ union u_spcl {
 		u_int32_t c_inumber;	    /* number of inode */
 		int32_t	c_magic;	    /* magic number (see above) */
 		int32_t	c_checksum;	    /* record checksum */
-		struct	dinode	c_dinode;   /* ownership and mode of inode */
+		struct	ufs1_dinode c_dinode; /* ownership and mode of inode */
 		int32_t	c_count;	    /* number of valid c_addr entries */
 		char	c_addr[TP_NINDIR];  /* 1 => data; 0 => hole in inode */
 		char	c_label[LBLSIZE];   /* dump label */

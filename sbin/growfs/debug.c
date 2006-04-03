@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/growfs/debug.c,v 1.3 2000/12/12 19:31:00 tomsoft Exp $
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
+ * $DragonFly: src/sbin/growfs/debug.c,v 1.4 2006/04/03 01:58:49 dillon Exp $
  *
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
  */
@@ -591,7 +591,7 @@ dbg_dump_sptbl(struct fs *sb, const char *comment, struct cg *cgr)
  * Dump an inode structure.
  */
 void
-dbg_dump_ino(struct fs *sb, const char *comment, struct dinode *ino)
+dbg_dump_ino(struct fs *sb, const char *comment, struct ufs1_dinode *ino)
 {
 	int ictr;
 	int remaining_blocks;

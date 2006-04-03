@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/growfs/debug.h,v 1.2 2000/11/16 18:43:50 tom Exp $
  * $FreeBSD: src/sbin/growfs/debug.h,v 1.1.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.h,v 1.3 2003/08/08 04:18:38 dillon Exp $
+ * $DragonFly: src/sbin/growfs/debug.h,v 1.4 2006/04/03 01:58:49 dillon Exp $
  *
  */
 
@@ -55,7 +55,7 @@ void dbg_dump_hex(struct fs *, const char *, unsigned char *);
 void dbg_dump_fs(struct fs *, const char *);
 void dbg_dump_cg(const char *, struct cg *);
 void dbg_dump_csum(const char *, struct csum *);
-void dbg_dump_ino(struct fs *, const char *, struct dinode *);
+void dbg_dump_ino(struct fs *, const char *, struct ufs1_dinode *);
 void dbg_dump_iblk(struct fs *, const char *, char *, size_t);
 void dbg_dump_inmap(struct fs *, const char *, struct cg *);
 void dbg_dump_frmap(struct fs *, const char *, struct cg *);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.13 2005/08/28 04:35:12 dillon Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.14 2006/04/03 01:58:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ main(int argc, char **argv)
 	struct stat sb;
 	ufs1_ino_t ino;
 	int dirty;
-	struct dinode *dp;
+	struct ufs1_dinode *dp;
 	struct	fstab *dt;
 	char *map;
 	int ch;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.10 2005/02/15 01:53:05 cpressey Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.11 2006/04/03 01:58:46 dillon Exp $
  */
 
 /*
@@ -49,8 +49,8 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <vfs/ufs/fs.h>
 #include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <errno.h>
