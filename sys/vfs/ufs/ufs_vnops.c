@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.39 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.40 2006/04/03 02:18:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1659,15 +1659,22 @@ int
 ufs_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
-	int count, error;
-
+	struct vnode *vp = ap->a_vp;
 	struct direct *edp, *dp;
-	int ncookies;
 	struct uio auio;
 	struct iovec aiov;
 	caddr_t dirbuf;
 	int readcnt, retval;
+	int count, error;
+	int ncookies;
 	off_t startoffset = uio->uio_offset;
+
+	/*
+	 * The NFS server may call us without opening the vnode, make sure
+	 * we have a VM object XXX
+	 */
+	if (vp->v_object == NULL)
+		vinitvmio(vp);
 
 	count = uio->uio_resid;
 	/*
@@ -1690,7 +1697,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	aiov.iov_len = count;
 	MALLOC(dirbuf, caddr_t, count, M_TEMP, M_WAITOK);
 	aiov.iov_base = dirbuf;
-	error = VOP_READ(ap->a_vp, &auio, 0, ap->a_cred);
+	error = VOP_READ(vp, &auio, 0, ap->a_cred);
 	if (error == 0) {
 		readcnt = count - auio.uio_resid;
 		edp = (struct direct *)&dirbuf[readcnt];
@@ -1702,7 +1709,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 				break;
 			}
 #if BYTE_ORDER == LITTLE_ENDIAN
-			if (OFSFMT(ap->a_vp)) {
+			if (OFSFMT(vp)) {
 				retval = vop_write_dirent(&error, uio,
 				    dp->d_ino, dp->d_namlen, dp->d_type,
 				    dp->d_name);
@@ -1746,7 +1753,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	}
 	FREE(dirbuf, M_TEMP);
 	if (ap->a_eofflag)
-		*ap->a_eofflag = VTOI(ap->a_vp)->i_size <= uio->uio_offset;
+		*ap->a_eofflag = VTOI(vp)->i_size <= uio->uio_offset;
         return (error);
 }
 
