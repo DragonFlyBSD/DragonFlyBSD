@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ports/chapter.sgml,v 1.218 2004/05/06 11:37:25 den Exp $
-     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.5 2005/09/06 17:34:23 reed Exp $
+     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.6 2006/04/04 01:45:30 justin Exp $
 -->
 
 <chapter id="ports">
@@ -24,15 +24,11 @@
       straight off the network.</para>
       
     <note>
-      <para>&os; currently uses the FreeBSD Ports Collection; it works in 
-      most cases with no problems.  In the relatively rare case that a port 
-      will not build under &os;, an 'override' is created in a file 
-      collection called dfports, described here.  Since the ports and 
-      packages systems are inherited from FreeBSD, references to both 
-      &os; and FreeBSD mix throughout this chapter.</para>
-      
-      <para>It's expected a new system that renders this borrowed system obsolete 
-      will be built before &os; reaches version 2.0.</para> 
+      <para>&os; uses pkgsrc to handle third-party software installation.  
+      The instructions in this chapter are out of date and will soon 
+      be replaced.  In the meantime, more documentation on pkgsrc can 
+      be found at <ulink
+      url="http://www.pkgsrc.org/">pkgsrc.org</ulink></para>
     </note>
     
     <para>After reading this chapter, you will know:</para>
