@@ -25,11 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
- */
-
-/*
- * Part of these code is derived from /usr/src/test/debug/umtx.c.
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.3 2006/04/04 14:04:39 davidxu Exp $
  */
 
 #include <assert.h>
@@ -39,112 +35,50 @@
 
 #include "thr_private.h"
 
-static int get_contested(volatile umtx_t *mtx, int timo);
-
+/*
+ * This function is used to acquire a contested lock.
+ */
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int timo)
 {
-    int v;
-    int ret;
+	int v, ret = 0;
 
-    for (;;) {
-	v = *mtx;
-	if ((v & UMTX_LOCKED) == 0) {
-	    /* not locked, attempt to lock. */
-	    if (atomic_cmpset_acq_int(mtx, v, v | UMTX_LOCKED)) {
-		ret = 0;
-		break;
-	    }
-	} else {
-	    /*
-	     * Locked, bump the contested count and obtain
-	     * the contested mutex.
-	     */
-	    if (atomic_cmpset_acq_int(mtx, v, v + 1)) {
-		ret = get_contested(mtx, timo);
-		break;
-	    }
-	}
-    }
-
-    return (ret);
-}
-
-static int
-get_contested(volatile umtx_t *mtx, int timo)
-{
-    int ret = 0;
-    int v;
-
-    for (;;) {
-	v = *mtx;
-	assert(v & ~UMTX_LOCKED); /* our contesting count still there */
-	if ((v & UMTX_LOCKED) == 0) {
-	    /*
-	     * Not locked, attempt to remove our contested
-	     * count and lock at the same time.
-	     */
-	    if (atomic_cmpset_acq_int(mtx, v, (v - 1) | UMTX_LOCKED)) {
-		ret = 0;
-		break;
-	    }
-	} else {
-	    /*
-	     * Retried after resuming from umtx_sleep, try to leave if there
-	     * was error, e.g, timeout.
-	     */
-	    if (ret) {
-		if (atomic_cmpset_acq_int(mtx, v, v - 1))
-			break;
-		else
-			continue;
-	    }
-
-	    /*
-	     * Still locked, sleep and try again.
-	     */
-	    if (timo == 0) {
-		umtx_sleep(mtx, v, 0);
-	    } else {
-		if (umtx_sleep(mtx, v, timo) < 0) {
-		    if (errno == EAGAIN)
-			ret = ETIMEDOUT;
+	/* contested */
+	do {
+		v = *mtx;
+		if (v == 2 || atomic_cmpset_acq_int(mtx, 1, 2)) {
+			if (timo == 0)
+				umtx_sleep(mtx, 2, timo);
+			else if (umtx_sleep(mtx, 2, timo) < 0) {
+				if (errno == EAGAIN) {
+					if (atomic_cmpset_acq_int(mtx, 0, 2))
+						ret = 0;
+					else
+						ret = ETIMEDOUT;
+					break;
+				}
+			}
 		}
-	    }
-	}
-    }
+	} while (!atomic_cmpset_acq_int(mtx, 0, 2));
 
-    return (ret);
+	return (ret);
 }
 
 void
 __thr_umtx_unlock(volatile umtx_t *mtx)
 {
-    int v;
+	int v;
 
-    for (;;) {
-	v = *mtx;
-	assert(v & UMTX_LOCKED);	/* we still have it locked */
-	if (v == UMTX_LOCKED) {
-	    /*
-	     * We hold an uncontested lock, try to set to an unlocked
-	     * state.
-	     */
-	    if (atomic_cmpset_acq_int(mtx, UMTX_LOCKED, 0))
-		return;
-	} else {
-	    /*
-	     * We hold a contested lock, unlock and wakeup exactly
-	     * one sleeper. It is possible for this to race a new
-	     * thread obtaining a lock, in which case any contested
-	     * sleeper we wake up will simply go back to sleep.
-	     */
-	    if (atomic_cmpset_acq_int(mtx, v, v & ~UMTX_LOCKED)) {
-		umtx_wakeup(mtx, 1);
-		return;
-	    }
+	for (;;) {
+		v = *mtx;
+		if (atomic_cmpset_acq_int(mtx, v, v-1)) {
+			if (v != 1) {
+				*mtx = 0;
+				umtx_wakeup(mtx, 1);
+			}
+			break;
+		}
 	}
-    }
 }
 
 int
