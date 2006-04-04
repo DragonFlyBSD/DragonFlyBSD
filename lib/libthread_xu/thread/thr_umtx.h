@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.3 2006/04/04 14:23:04 davidxu Exp $
  */
 
 #ifndef _THR_DFLY_UMTX_H_
@@ -31,7 +31,8 @@
 
 #include <unistd.h>
 
-#define UMTX_LOCKED	0x80000000
+#define	UMTX_LOCKED	1
+#define UMTX_CONTESTED	2
 
 typedef int umtx_t;
 
@@ -49,7 +50,7 @@ _thr_umtx_init(volatile umtx_t *mtx)
 static inline int
 _thr_umtx_trylock(volatile umtx_t *mtx, long id)
 {
-    if (atomic_cmpset_acq_int(mtx, 0, UMTX_LOCKED))
+    if (atomic_cmpset_acq_int(mtx, 0, 1))
 	return (0);
     return (EBUSY);
 }
@@ -57,7 +58,7 @@ _thr_umtx_trylock(volatile umtx_t *mtx, long id)
 static inline int
 _thr_umtx_lock(volatile umtx_t *mtx, long id)
 {
-    if (atomic_cmpset_acq_int(mtx, 0, UMTX_LOCKED))
+    if (atomic_cmpset_acq_int(mtx, 0, 1))
 	return (0);
     return (__thr_umtx_lock(mtx, 0));
 }
@@ -66,7 +67,7 @@ static inline int
 _thr_umtx_timedlock(volatile umtx_t *mtx, long id,
     const struct timespec *timeout)
 {
-    if (atomic_cmpset_acq_int(mtx, 0, UMTX_LOCKED))
+    if (atomic_cmpset_acq_int(mtx, 0, 1))
 	return (0);
     return (__thr_umtx_timedlock(mtx, timeout));
 }
@@ -74,7 +75,7 @@ _thr_umtx_timedlock(volatile umtx_t *mtx, long id,
 static inline void
 _thr_umtx_unlock(volatile umtx_t *mtx, long id)
 {
-    if (atomic_cmpset_acq_int(mtx, UMTX_LOCKED, 0))
+    if (atomic_cmpset_acq_int(mtx, 1, 0))
 	return;
     __thr_umtx_unlock(mtx);
 }
