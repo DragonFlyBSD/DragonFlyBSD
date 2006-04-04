@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.32 2006/04/04 16:50:44 dillon Exp $
  */
 
 
@@ -629,11 +629,12 @@ static int
 ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct ntfsmount *ntmp;
-	int error, ronly = 0, flags, i;
+	int error, ronly, flags, i;
 
 	dprintf(("ntfs_unmount: unmounting...\n"));
 	ntmp = VFSTONTFS(mp);
 
+	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	flags = 0;
 	if(mntflags & MNT_FORCE)
 		flags |= FORCECLOSE;
