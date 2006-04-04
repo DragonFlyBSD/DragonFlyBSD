@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.10 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.11 2006/04/04 17:34:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -53,9 +53,9 @@
 
 #include <machine/inttypes.h>
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
-#include <vfs/ufs/ufsmount.h>
+#include "quota.h"
+#include "inode.h"
+#include "ext2mount.h"
 
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
@@ -126,7 +126,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 		fs->s_es->s_free_blocks_count < fs->s_es->s_r_blocks_count)
 		goto nospace;
 #if QUOTA
-	if ((error = chkdq(ip, (long)btodb(size), cred, 0)) != 0)
+	if ((error = ext2_chkdq(ip, (long)btodb(size), cred, 0)) != 0)
 		return (error);
 #endif
 	if (bpref >= fs->s_es->s_blocks_count)
@@ -180,7 +180,7 @@ ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
 	/*
 	 * Restore user's disk quota because allocation failed.
 	 */
-	chkdq(ip, (long)-btodb(size), cred, FORCE);
+	ext2_chkdq(ip, (long)-btodb(size), cred, FORCE);
 #endif
 nospace:
 	ext2_fserr(fs, cred->cr_uid, "file system full");
@@ -257,8 +257,8 @@ return ENOSPC;
 	if (dtog(fs, dofftofsb(fs, buflist->bs_children[0]->b_bio2.bio_offset)) !=
 	    dtog(fs, dofftofsb(fs, buflist->bs_children[len - 1]->b_bio2.bio_offset)))
 		return (ENOSPC);
-	if (ufs_getlbns(vp, start_lbn, start_ap, &start_lvl) ||
-	    ufs_getlbns(vp, end_lbn, end_ap, &end_lvl))
+	if (ext2_getlbns(vp, start_lbn, start_ap, &start_lvl) ||
+	    ext2_getlbns(vp, end_lbn, end_ap, &end_lvl))
 		return (ENOSPC);
 	/*
 	 * Get the starting offset and block map for the first block.
@@ -339,7 +339,7 @@ return ENOSPC;
 	} else {
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		if (!doasyncfree)
-			UFS_UPDATE(vp, 1);
+			EXT2_UPDATE(vp, 1);
 	}
 	if (ssize < len)
 		if (doasyncfree)
@@ -394,7 +394,7 @@ ext2_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 		goto noinodes;
 	error = VFS_VGET(pvp->v_mount, ino, vpp);
 	if (error) {
-		UFS_VFREE(pvp, ino, mode);
+		EXT2_VFREE(pvp, ino, mode);
 		return (error);
 	}
 	ip = VTOI(*vpp);

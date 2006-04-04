@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.9 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.10 2006/04/04 17:34:32 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -292,12 +292,12 @@ ext2_write(struct vop_write_args *ap)
 		ip->i_mode &= ~(ISUID | ISGID);
 	if (error) {
 		if (ioflag & IO_UNIT) {
-			UFS_TRUNCATE(vp, osize,
+			EXT2_TRUNCATE(vp, osize,
 			    ioflag & IO_SYNC, ap->a_cred, uio->uio_td);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		}
 	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC))
-		error = UFS_UPDATE(vp, 1);
+		error = EXT2_UPDATE(vp, 1);
 	return (error);
 }

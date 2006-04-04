@@ -38,18 +38,19 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.9 2005/09/14 01:13:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.10 2006/04/04 17:34:32 dillon Exp $
  */
 
-#ifndef _SYS_GNU_EXT2FS_EXT2_EXTERN_H_
-#define	_SYS_GNU_EXT2FS_EXT2_EXTERN_H_
+#ifndef _VFS_GNU_EXT2FS_EXT2_EXTERN_H_
+#define	_VFS_GNU_EXT2FS_EXT2_EXTERN_H_
 
-struct dinode;
+struct ext2_dinode;
 struct ext2_inode;
 struct inode;
 struct mount;
 struct vfsconf;
 struct vnode;
+struct indir;
 
 int	ext2_alloc (struct inode *,
 	    daddr_t, daddr_t, int, struct ucred *, daddr_t *);
@@ -68,7 +69,7 @@ int	ext2_valloc (struct vnode *, int, struct ucred *, struct vnode **);
 int	ext2_vfree (struct vnode *, ino_t, int);
 int 	ext2_lookup (struct vop_old_lookup_args *);
 int 	ext2_readdir (struct vop_readdir_args *);
-void	ext2_print_dinode (struct dinode *);
+void	ext2_print_dinode (struct ext2_dinode *);
 void	ext2_print_inode (struct inode *);
 int	ext2_direnter (struct inode *, 
 		struct vnode *, struct componentname *);
@@ -90,9 +91,26 @@ unsigned long ext2_count_free (struct buf *map, unsigned int numchars);
 void	ext2_free_blocks (struct mount * mp, unsigned long block,
 			      unsigned long count);
 void	ext2_free_inode (struct inode * inode);
-void	ext2_ei2di (struct ext2_inode *ei, struct dinode *di);
-void	ext2_di2ei (struct dinode *di, struct ext2_inode *ei);
+void	ext2_ei2di (struct ext2_inode *ei, struct ext2_dinode *di);
+void	ext2_di2ei (struct ext2_dinode *di, struct ext2_inode *ei);
 void	mark_buffer_dirty (struct buf *bh);
+
+int	ext2_getlbns(struct vnode *, ext2_daddr_t, struct indir *, int *);
+void	ext2_itimes(struct vnode *vp);
+struct vnode *ext2_ihashget(dev_t, ino_t);
+int	ext2_ihashins(struct inode *);
+void	ext2_ihashrem(struct inode *);
+void	ext2_dirbad(struct inode *, doff_t, char *);
+int	ext2_check_export(struct mount *, struct sockaddr *, int *,
+			struct ucred **);
+int	ext2_vinit(struct mount *, struct vnode **);
+int	ext2_vnoperate(struct vop_generic_args *);
+int	ext2_vnoperatefifo(struct vop_generic_args *);
+int	ext2_vnoperatespec(struct vop_generic_args *);
+int	ext2_uninit(struct vfsconf *);
+void	ext2_ihashinit(void);
+struct vnode *ext2_ihashlookup(dev_t dev, ino_t inum);
+int	ext2_ihashcheck(dev_t dev, ino_t inum);
 
 /*
  * This macro allows the ufs code to distinguish between an EXT2 and a
@@ -100,4 +118,4 @@ void	mark_buffer_dirty (struct buf *bh);
  */
 #define  IS_EXT2_VNODE(vp) (vp->v_mount->mnt_stat.f_type == MOUNT_EXT2FS)
 
-#endif /* !_SYS_GNU_EXT2FS_EXT2_EXTERN_H_ */
+#endif /* !_VFS_GNU_EXT2FS_EXT2_EXTERN_H_ */

@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.7 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.8 2006/04/04 17:34:32 dillon Exp $
  */
 
 /*
@@ -128,6 +128,8 @@
 	((off_t)(blk) * (fs)->s_frag_size)
 #define dofftofsb(fs, blk)	/* calculates blk / fs->fs_fsize */   \
 	((daddr_t)((blk) / (fs)->s_frag_size))
+#define dbtodoff(fs, b)		/* calculates diskblk * fs->fs_size */ \
+	((off_t)(b) << ((fs)->s_bshift - (fs)->s_fsbtodb))
 
 #define lblkno(fs, loc)		/* calculates (loc / fs->fs_bsize) */ \
 	((loc) >> (fs->s_bshift))
@@ -164,7 +166,7 @@ extern u_char *fragtbl[];
  * I haven't figured out yet what BSD does
  * I think I'll try a VOP_LOCK/VOP_UNLOCK on the device vnode
  */
-#define  DEVVP(inode)		(VFSTOUFS(ITOV(inode)->v_mount)->um_devvp)
+#define  DEVVP(inode)		(VFSTOEXT2(ITOV(inode)->v_mount)->um_devvp)
 #define  lock_super(devvp)   	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, curthread)
 #define  unlock_super(devvp) 	VOP_UNLOCK(devvp, 0, curthread)
 

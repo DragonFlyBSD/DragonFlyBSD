@@ -1,13 +1,15 @@
-/* $FreeBSD: src/sys/gnu/ext2fs/i386-bitops.h,v 1.5 1999/11/15 23:16:06 obrien Exp $ */
-/* $DragonFly: src/sys/vfs/gnu/ext2fs/i386-bitops.h,v 1.3 2006/01/13 21:09:27 swildner Exp $ */
+/*
+ * $FreeBSD: src/sys/gnu/ext2fs/i386-bitops.h,v 1.5 1999/11/15 23:16:06 obrien Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/i386-bitops.h,v 1.4 2006/04/04 17:34:32 dillon Exp $
+ */
 /*
  * this is mixture of i386/bitops.h and asm/string.h
  * taken from the Linux source tree 
  *
  * XXX replace with Mach routines or reprogram in C
  */
-#ifndef _SYS_GNU_EXT2FS_I386_BITOPS_H_
-#define	_SYS_GNU_EXT2FS_I386_BITOPS_H_
+#ifndef _VFS_GNU_EXT2FS_I386_BITOPS_H_
+#define	_VFS_GNU_EXT2FS_I386_BITOPS_H_
 
 /*
  * Copyright 1992, Linus Torvalds.
@@ -168,4 +170,4 @@ memscan(void *addr, unsigned char c, int size)
         return addr;
 }
 
-#endif /* !_SYS_GNU_EXT2FS_I386_BITOPS_H_ */
+#endif /* _VFS_GNU_EXT2FS_I386_BITOPS_H_ */

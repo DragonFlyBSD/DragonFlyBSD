@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.12 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.13 2006/04/04 17:34:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -53,10 +53,9 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
-#include <vfs/ufs/ufsmount.h>
-#include <vfs/ufs/ufs_extern.h>
+#include "quota.h"
+#include "inode.h"
+#include "ext2mount.h"
 
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
@@ -83,7 +82,7 @@ ext2_update(struct vnode *vp, int waitfor)
 	struct inode *ip;
 	int error;
 
-	ufs_itimes(vp);
+	ext2_itimes(vp);
 	ip = VTOI(vp);
 	if ((ip->i_flag & IN_MODIFIED) == 0)
 		return (0);
@@ -154,14 +153,14 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		bzero((char *)&oip->i_shortlink, (u_int)oip->i_size);
 		oip->i_size = 0;
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 1));
+		return (EXT2_UPDATE(ovp, 1));
 	}
 	if (oip->i_size == length) {
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 0));
+		return (EXT2_UPDATE(ovp, 0));
 	}
 #if QUOTA
-	if ((error = getinoquota(oip)) != 0)
+	if ((error = ext2_getinoquota(oip)) != 0)
 		return (error);
 #endif
 	fs = oip->i_e2fs;
@@ -188,7 +187,7 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 		else
 			bawrite(bp);
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 1));
+		return (EXT2_UPDATE(ovp, 1));
 	}
 	/*
 	 * Shorten the size of the file. If the file is not being
@@ -244,7 +243,7 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	for (i = NDADDR - 1; i > lastblock; i--)
 		oip->i_db[i] = 0;
 	oip->i_flag |= IN_CHANGE | IN_UPDATE;
-	allerror = UFS_UPDATE(ovp, 1);
+	allerror = EXT2_UPDATE(ovp, 1);
 
 	/*
 	 * Having written the new inode to disk, save its new configuration
@@ -350,7 +349,7 @@ done:
 	oip->i_flag |= IN_CHANGE;
 	vnode_pager_setsize(ovp, length);
 #if QUOTA
-	chkdq(oip, -blocksreleased, NOCRED, 0);
+	ext2_chkdq(oip, -blocksreleased, NOCRED, 0);
 #endif
 	return (allerror);
 }
@@ -468,13 +467,113 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 }
 
 /*
- *	discard preallocated blocks
+ * Last reference to an inode.  If necessary, write or delete it.
  *
- * ext2_inactive(struct vnode *a_vp)
+ * ext2_inactive(struct vnode *a_vp, struct thread *a_td)
  */
 int
 ext2_inactive(struct vop_inactive_args *ap)
 {
-	ext2_discard_prealloc(VTOI(ap->a_vp));
-	return ufs_inactive(ap);
+	struct vnode *vp = ap->a_vp;
+	struct inode *ip = VTOI(vp);
+	struct thread *td = ap->a_td;
+	int mode, error = 0;
+
+	ext2_discard_prealloc(ip);
+	if (prtactive && vp->v_usecount != 1)
+		vprint("ext2_inactive: pushing active", vp);
+
+	/*
+	 * Ignore inodes related to stale file handles.
+	 */
+	if (ip == NULL || ip->i_mode == 0)
+		goto out;
+	if (ip->i_nlink <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
+#ifdef QUOTA
+		if (!ext2_getinoquota(ip))
+			(void)ext2_chkiq(ip, -1, NOCRED, FORCE);
+#endif
+		error = EXT2_TRUNCATE(vp, (off_t)0, 0, NOCRED, td);
+		ip->i_rdev = 0;
+		mode = ip->i_mode;
+		ip->i_mode = 0;
+		ip->i_flag |= IN_CHANGE | IN_UPDATE;
+		EXT2_VFREE(vp, ip->i_number, mode);
+	}
+	if (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))
+		EXT2_UPDATE(vp, 0);
+out:
+	/*
+	 * If we are done with the inode, reclaim it
+	 * so that it can be reused immediately.
+	 */
+	if (ip == NULL || ip->i_mode == 0)
+		vrecycle(vp, td);
+	return (error);
+}
+
+/*
+ * Reclaim an inode so that it can be used for other purposes.
+ *
+ * ext2_reclaim(struct vnode *a_vp, struct thread *a_td)
+ */
+int
+ext2_reclaim(struct vop_reclaim_args *ap)
+{
+	struct inode *ip;
+	struct vnode *vp = ap->a_vp;
+#ifdef QUOTA
+	int i;
+#endif
+
+	if (prtactive && vp->v_usecount != 1)
+		vprint("ext2_reclaim: pushing active", vp);
+	ip = VTOI(vp);
+
+	/*
+	 * Lazy updates.
+	 */
+	if (ip) {
+		if (ap->a_retflags & NCF_FSMID) {
+			++ip->i_fsmid;
+			ip->i_flag |= IN_LAZYMOD;
+		}
+		if (ip->i_flag & IN_LAZYMOD) {
+			ip->i_flag |= IN_MODIFIED;
+			EXT2_UPDATE(vp, 0);
+		}
+	}
+#ifdef INVARIANTS
+	if (ip && (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))) {
+		printf("WARNING: INODE %ld flags %08x: modified inode being released!\n", (long)ip->i_number, (int)ip->i_flag);
+		ip->i_flag |= IN_MODIFIED;
+		EXT2_UPDATE(vp, 0);
+	}
+#endif
+	/*
+	 * Remove the inode from its hash chain and purge namecache
+	 * data associated with the vnode.
+	 */
+	vp->v_data = NULL;
+	if (ip) {
+		ext2_ihashrem(ip);
+		if (ip->i_devvp) {
+			vrele(ip->i_devvp);
+			ip->i_devvp = 0;
+		}
+#ifdef QUOTA
+		for (i = 0; i < MAXQUOTAS; i++) {
+			if (ip->i_dquot[i] != NODQUOT) {
+				ext2_dqrele(vp, ip->i_dquot[i]);
+				ip->i_dquot[i] = NODQUOT;
+			}
+		}
+#endif
+#ifdef UFS_DIRHASH
+		if (ip->i_dirhash != NULL)
+			ext2dirhash_free(ip);
+#endif
+		free(ip, VFSTOEXT2(vp->v_mount)->um_malloctype);
+	}
+	return (0);
 }

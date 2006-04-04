@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.8 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.9 2006/04/04 17:34:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,10 +48,8 @@
 #include <sys/ucred.h>
 #include <sys/vnode.h>
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
-#include <vfs/ufs/ufs_extern.h>
-
+#include "quota.h"
+#include "inode.h"
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
 #include "fs.h"
@@ -159,11 +157,11 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	 * Determine the number of levels of indirection.
 	 */
 	pref = 0;
-	if ((error = ufs_getlbns(vp, bn, indirs, &num)) != 0)
+	if ((error = ext2_getlbns(vp, bn, indirs, &num)) != 0)
 		return(error);
 #if DIAGNOSTIC
 	if (num < 1)
-		panic ("ext2_balloc: ufs_bmaparray returned indirect block");
+		panic ("ext2_balloc: ext2_bmaparray returned indirect block");
 #endif
 	/*
 	 * Fetch the first indirect block allocating if necessary.

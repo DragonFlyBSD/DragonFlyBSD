@@ -1,5 +1,5 @@
 $FreeBSD: src/sys/gnu/ext2fs/COPYRIGHT.INFO,v 1.3 2000/01/01 11:27:50 bde Exp $
-$DragonFly: src/sys/vfs/gnu/ext2fs/COPYRIGHT.INFO,v 1.2 2003/06/17 04:28:33 dillon Exp $
+$DragonFly: src/sys/vfs/gnu/ext2fs/COPYRIGHT.INFO,v 1.3 2006/04/04 17:34:32 dillon Exp $
 
 Most of the files in this directory are written by Godmar Back or modified
 by him using the CSRG sources.  Those files are covered by the Berkeley-style
@@ -33,4 +33,25 @@ control of his code....
 
 John
 dyson@freebsd.org
+
+		-----------------------------------------
+				04 April 2006
+
+    EXT2 has been divorced from UFS.  The following files have been copied
+    from the UFS tree and renamed:
+
+	dinode.h
+	dir.h
+	ext2_bmap.c
+	ext2_ihash.c
+	ext2_quota.c
+	ext2mount.h
+	inode.h
+	quota.h
+
+    In addition, all other UFS procedures that EXT2 used to call,
+    especially in ext2_vnops.c and ext2_vfsops.c, have been copied from
+    the UFS tree into the EXT2 tree and renamed.
+
+				Matthew Dillon <dillon@apollo.backplane.com>
 

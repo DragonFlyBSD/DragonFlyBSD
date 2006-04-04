@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.34 2006/04/01 20:46:53 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.35 2006/04/04 17:34:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -56,18 +56,18 @@
 #include <sys/disklabel.h>
 #include <sys/malloc.h>
 #include <sys/stat.h>
+#include <vm/vm_zone.h>
+
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/ufsmount.h>
-#include <vfs/ufs/inode.h>
-#include <vfs/ufs/ufs_extern.h>
-
-#include <vm/vm_zone.h>
+#include "quota.h"
+#include "dinode.h"
+#include "inode.h"
+#include "ext2mount.h"
+#include "ext2_extern.h"
 
 #include "fs.h"
-#include "ext2_extern.h"
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
 
@@ -79,30 +79,33 @@ static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags, struct thread *td);
 static int ext2_mount (struct mount *, char *, caddr_t, struct thread *);
 static int ext2_mountfs (struct vnode *, struct mount *, struct thread *);
+static int ext2_root(struct mount *, struct vnode **);
 static int ext2_reload (struct mount *mountp, struct ucred *cred,
 			struct thread *p);
-static int ext2_sbupdate (struct ufsmount *, int);
+static int ext2_sbupdate (struct ext2mount *, int);
 static int ext2_statfs (struct mount *, struct statfs *, struct thread *);
 static int ext2_sync (struct mount *, int, struct thread *);
 static int ext2_unmount (struct mount *, int, struct thread *);
 static int ext2_vget (struct mount *, ino_t, struct vnode **);
+static int ext2_init(struct vfsconf *);
 static int ext2_vptofh (struct vnode *, struct fid *);
 
 static MALLOC_DEFINE(M_EXT2NODE, "EXT2 node", "EXT2 vnode private part");
+MALLOC_DEFINE(M_EXT2MNT, "EXT2 mount", "EXT2 mount structure");
 
 static struct vfsops ext2fs_vfsops = {
 	.vfs_mount =    	ext2_mount,
 	.vfs_unmount =   	ext2_unmount,
-	.vfs_root =     	ufs_root,	/* root inode via vget */
-	.vfs_quotactl =   	ufs_quotactl,	/* quota operations */
+	.vfs_root =     	ext2_root,	/* root inode via vget */
+	.vfs_quotactl =   	ext2_quotactl,	/* quota operations */
 	.vfs_statfs =     	ext2_statfs,
 	.vfs_sync =     	ext2_sync,
 	.vfs_vget =      	ext2_vget,
 	.vfs_fhtovp =     	ext2_fhtovp,
-	.vfs_checkexp =    	ufs_check_export,
+	.vfs_checkexp =    	ext2_check_export,
 	.vfs_vptofh =     	ext2_vptofh,
-	.vfs_init =     	ufs_init,
-	.vfs_uninit =    	ufs_uninit
+	.vfs_init =     	ext2_init,
+	.vfs_uninit =    	ext2_uninit
 };
 
 VFS_SET(ext2fs_vfsops, ext2fs, 0);
@@ -117,21 +120,137 @@ static int	compute_sb_data (struct vnode * devvp,
 				     struct ext2_super_block * es,
 				     struct ext2_sb_info * fs);
 
+static int
+ext2_root(struct mount *mp, struct vnode **vpp)
+{
+	struct vnode *nvp;
+	int error;
+
+	error = VFS_VGET(mp, (ino_t)ROOTINO, &nvp);
+	if (error)
+		return (error);
+	*vpp = nvp;
+	return (0);
+}
+
+/*
+ * Do operations associated with quotas
+ */
+int
+ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
+	     struct thread *td)
+{
+#ifndef QUOTA
+	return (EOPNOTSUPP);
+#else
+	struct proc *p = td->td_proc;
+	int cmd, type, error;
+
+	if (p == NULL)
+		return (EOPNOTSUPP);
+
+	type = cmds & SUBCMDMASK;
+	cmd = cmds >> SUBCMDSHIFT;
+
+	if (uid == -1) {
+		switch(type) {
+			case USRQUOTA:
+				uid = p->p_ucred->cr_ruid;
+				break;
+			case GRPQUOTA:
+				uid = p->p_ucred->cr_rgid;
+				break;
+			default:
+				return (EINVAL);
+		}
+	}
+					
+	switch (cmd) {
+	case Q_SYNC:
+		break;
+	case Q_GETQUOTA:
+		if (uid == p->p_ucred->cr_ruid)
+			break;
+		/* fall through */
+	default:
+		if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
+			return (error);
+	}
+
+	type = cmds & SUBCMDMASK;
+	if ((uint)type >= MAXQUOTAS)
+		return (EINVAL);
+	if (vfs_busy(mp, LK_NOWAIT, td))
+		return (0);
+
+	switch (cmd) {
+
+	case Q_QUOTAON:
+		error = ext2_quotaon(td, mp, type, arg);
+		break;
+
+	case Q_QUOTAOFF:
+		error = ext2_quotaoff(td, mp, type);
+		break;
+
+	case Q_SETQUOTA:
+		error = ext2_setquota(mp, uid, type, arg);
+		break;
+
+	case Q_SETUSE:
+		error = ext2_setuse(mp, uid, type, arg);
+		break;
+
+	case Q_GETQUOTA:
+		error = ext2_getquota(mp, uid, type, arg);
+		break;
+
+	case Q_SYNC:
+		error = ext2_qsync(mp);
+		break;
+
+	default:
+		error = EINVAL;
+		break;
+	}
+	vfs_unbusy(mp, td);
+	return (error);
+#endif
+}
+
+/*
+ * Initial UFS filesystems, done only once.
+ */
+int
+ext2_init(struct vfsconf *vfsp)
+{
+	static int done;
+
+	if (done)
+		return (0);
+	done = 1;
+	ext2_ihashinit();
+#ifdef QUOTA
+	ext2_dqinit();
+#endif
+	return (0);
+}
+
 /*
  * VFS Operations.
  *
  * mount system call
  *
  * Parameters:
- *	data:	this is actually a (struct ufs_args *)
+ *	data:	this is actually a (struct ext2_args *)
  */
 static int
 ext2_mount(struct mount *mp, char *path, caddr_t data,
 	   struct thread *td)
 {
 	struct vnode *devvp;
-	struct ufs_args args;
-	struct ufsmount *ump = 0;
+	struct ext2_args args;
+	struct ext2mount *ump = 0;
 	struct ext2_sb_info *fs;
 	size_t size;
 	int error, flags;
@@ -139,7 +258,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	struct ucred *cred;
 	struct nlookupdata nd;
 
-	if ((error = copyin(data, (caddr_t)&args, sizeof (struct ufs_args))) != 0)
+	if ((error = copyin(data, (caddr_t)&args, sizeof (struct ext2_args))) != 0)
 		return (error);
 
 	cred = td->td_proc->p_ucred;
@@ -148,7 +267,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	 * read/write; if there is no device name, that's all we do.
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
-		ump = VFSTOUFS(mp);
+		ump = VFSTOEXT2(mp);
 		fs = ump->um_e2fs;
 		devvp = ump->um_devvp;
 		error = 0;
@@ -267,7 +386,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 		vrele(devvp);
 		return (error);
 	}
-	ump = VFSTOUFS(mp);
+	ump = VFSTOEXT2(mp);
 	fs = ump->um_e2fs;
 	copyinstr(path, fs->fs_fsmnt, sizeof(fs->fs_fsmnt) - 1, &size);
 	bzero(fs->fs_fsmnt + size, sizeof(fs->fs_fsmnt) - size);
@@ -414,7 +533,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
     V(s_db_per_group)
 
     fs->s_group_desc = bsd_malloc(db_count * sizeof (struct buf *),
-		M_UFSMNT, M_WAITOK);
+		M_EXT2MNT, M_WAITOK);
 
     /* adjust logic_sb_block */
     if(fs->s_blocksize > SBSIZE) 
@@ -429,7 +548,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
 	if(error) {
 	    for (j = 0; j < i; j++)
 		brelse(fs->s_group_desc[j]);
-	    bsd_free(fs->s_group_desc, M_UFSMNT);
+	    bsd_free(fs->s_group_desc, M_EXT2MNT);
 	    printf("EXT2-fs: unable to read group descriptors (%d)\n", error);
 	    return EIO;
 	}
@@ -439,7 +558,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
     if(!ext2_check_descriptors(fs)) {
 	    for (j = 0; j < db_count; j++)
 		    ULCK_BUF(fs->s_group_desc[j])
-	    bsd_free(fs->s_group_desc, M_UFSMNT);
+	    bsd_free(fs->s_group_desc, M_EXT2MNT);
 	    printf("EXT2-fs: (ext2_check_descriptors failure) "
 		   "unable to read group descriptors\n");
 	    return EIO;
@@ -496,7 +615,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 	/*
 	 * Step 1: invalidate all cached meta-data.
 	 */
-	devvp = VFSTOUFS(mountp)->um_devvp;
+	devvp = VFSTOEXT2(mountp)->um_devvp;
 	if (vinvalbuf(devvp, 0, td, 0, 0))
 		panic("ext2_reload: dirty1");
 	/*
@@ -510,7 +629,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 		brelse(bp);
 		return (EIO);		/* XXX needs translation */
 	}
-	fs = VFSTOUFS(mountp)->um_e2fs;
+	fs = VFSTOEXT2(mountp)->um_e2fs;
 	bcopy(bp->b_data, fs->s_es, sizeof(struct ext2_super_block));
 
 	if((error = compute_sb_data(devvp, es, fs)) != 0) {
@@ -584,7 +703,7 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 static int
 ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 {
-	struct ufsmount *ump;
+	struct ext2mount *ump;
 	struct buf *bp;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block * es;
@@ -650,7 +769,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 			goto out;
 		}
 	}
-	ump = bsd_malloc(sizeof *ump, M_UFSMNT, M_WAITOK);
+	ump = bsd_malloc(sizeof *ump, M_EXT2MNT, M_WAITOK);
 	bzero((caddr_t)ump, sizeof *ump);
 	ump->um_malloctype = M_EXT2NODE;
 	ump->um_blkatoff = ext2_blkatoff;
@@ -663,9 +782,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	   while Linux keeps the super block in a locked buffer
 	 */
 	ump->um_e2fs = bsd_malloc(sizeof(struct ext2_sb_info), 
-		M_UFSMNT, M_WAITOK);
+		M_EXT2MNT, M_WAITOK);
 	ump->um_e2fs->s_es = bsd_malloc(sizeof(struct ext2_super_block), 
-		M_UFSMNT, M_WAITOK);
+		M_EXT2MNT, M_WAITOK);
 	bcopy(es, ump->um_e2fs->s_es, (u_int)sizeof(struct ext2_super_block));
 	if ((error = compute_sb_data(devvp, ump->um_e2fs->s_es, ump->um_e2fs)))
 		goto out;
@@ -694,7 +813,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	ump->um_dev = dev;
 	ump->um_devvp = devvp;
 	/* setting those two parameters allows us to use 
-	   ufs_bmap w/o changse !
+	   ext2_bmap w/o changse !
 	*/
 	ump->um_nindir = EXT2_ADDR_PER_BLOCK(fs);
 	ump->um_bptrtodb = fs->s_es->s_log_block_size + 1;
@@ -718,9 +837,9 @@ out:
 		brelse(bp);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	if (ump) {
-		bsd_free(ump->um_e2fs->s_es, M_UFSMNT);
-		bsd_free(ump->um_e2fs, M_UFSMNT);
-		bsd_free(ump, M_UFSMNT);
+		bsd_free(ump->um_e2fs->s_es, M_EXT2MNT);
+		bsd_free(ump->um_e2fs, M_EXT2MNT);
+		bsd_free(ump, M_EXT2MNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return (error);
@@ -732,7 +851,7 @@ out:
 static int
 ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
-	struct ufsmount *ump;
+	struct ext2mount *ump;
 	struct ext2_sb_info *fs;
 	int error, flags, ronly, i;
 
@@ -744,7 +863,7 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 	}
 	if ((error = ext2_flushfiles(mp, flags, td)) != 0)
 		return (error);
-	ump = VFSTOUFS(mp);
+	ump = VFSTOEXT2(mp);
 	fs = ump->um_e2fs;
 	ronly = fs->s_rd_only;
 	if (ronly == 0) {
@@ -756,7 +875,7 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 	/* release buffers containing group descriptors */
 	for(i = 0; i < fs->s_db_per_group; i++) 
 		ULCK_BUF(fs->s_group_desc[i])
-	bsd_free(fs->s_group_desc, M_UFSMNT);
+	bsd_free(fs->s_group_desc, M_EXT2MNT);
 
 	/* release cached inode/block bitmaps */
         for (i = 0; i < EXT2_MAX_GROUP_LOADED; i++)
@@ -770,9 +889,9 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 	ump->um_devvp->v_rdev->si_mountpoint = NULL;
 	error = VOP_CLOSE(ump->um_devvp, ronly ? FREAD : FREAD|FWRITE, td);
 	vrele(ump->um_devvp);
-	bsd_free(fs->s_es, M_UFSMNT);
-	bsd_free(fs, M_UFSMNT);
-	bsd_free(ump, M_UFSMNT);
+	bsd_free(fs->s_es, M_EXT2MNT);
+	bsd_free(fs, M_EXT2MNT);
+	bsd_free(ump, M_EXT2MNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);
@@ -784,13 +903,13 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 static int
 ext2_flushfiles(struct mount *mp, int flags, struct thread *td)
 {
-	struct ufsmount *ump;
+	struct ext2mount *ump;
 	int error;
 #if QUOTA
 	int i;
 #endif
 
-	ump = VFSTOUFS(mp);
+	ump = VFSTOEXT2(mp);
 #if QUOTA
 	if (mp->mnt_flag & MNT_QUOTA) {
 		if ((error = vflush(mp, 0, SKIPSYSTEM|flags)) != 0)
@@ -798,7 +917,7 @@ ext2_flushfiles(struct mount *mp, int flags, struct thread *td)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
-			quotaoff(td, mp, i);
+			ext2_quotaoff(td, mp, i);
 		}
 		/*
 		 * Here we fall through to vflush again to ensure
@@ -818,12 +937,12 @@ static int
 ext2_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
         unsigned long overhead;
-	struct ufsmount *ump;
+	struct ext2mount *ump;
 	struct ext2_sb_info *fs;
 	struct ext2_super_block *es;
 	int i, nsb;
 
-	ump = VFSTOUFS(mp);
+	ump = VFSTOEXT2(mp);
 	fs = ump->um_e2fs;
 	es = fs->s_es;
 
@@ -874,7 +993,7 @@ static int ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 static int
 ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 {
-	struct ufsmount *ump = VFSTOUFS(mp);
+	struct ext2mount *ump = VFSTOEXT2(mp);
 	struct ext2_sb_info *fs;
 	struct scaninfo scaninfo;
 	int error;
@@ -908,7 +1027,7 @@ ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 		VOP_UNLOCK(ump->um_devvp, 0, td);
 	}
 #if QUOTA
-	qsync(mp);
+	ext2_qsync(mp);
 #endif
 	/*
 	 * Write back modified superblock.
@@ -952,17 +1071,17 @@ ext2_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	struct ext2_sb_info *fs;
 	struct inode *ip;
-	struct ufsmount *ump;
+	struct ext2mount *ump;
 	struct buf *bp;
 	struct vnode *vp;
 	dev_t dev;
 	int i, error;
 	int used_blocks;
 
-	ump = VFSTOUFS(mp);
+	ump = VFSTOEXT2(mp);
 	dev = ump->um_dev;
 restart:
-	if ((*vpp = ufs_ihashget(dev, ino)) != NULL)
+	if ((*vpp = ext2_ihashget(dev, ino)) != NULL)
 		return (0);
 
 	/*
@@ -989,7 +1108,7 @@ restart:
 	MALLOC(ip, struct inode *, sizeof(struct inode), M_EXT2NODE, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	if ((error = getnewvnode(VT_UFS, mp, &vp, 0, LK_CANRECURSE)) != 0) {
+	if ((error = getnewvnode(VT_EXT2FS, mp, &vp, 0, LK_CANRECURSE)) != 0) {
 		if (ext2fs_inode_hash_lock < 0)
 			wakeup(&ext2fs_inode_hash_lock);
 		ext2fs_inode_hash_lock = 0;
@@ -1013,7 +1132,7 @@ restart:
 	 * sleeping waiting for old data structures to be purged or for the
 	 * contents of the disk portion of this inode to be read.
 	 */
-	ufs_ihashins(ip);
+	ext2_ihashins(ip);
 
 	if (ext2fs_inode_hash_lock < 0)
 		wakeup(&ext2fs_inode_hash_lock);
@@ -1063,7 +1182,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 	 * Initialize the vnode from the inode, check for aliases.
 	 * Note that the underlying vnode may have changed.
 	 */
-	if ((error = ufs_vinit(mp, &vp)) != 0) {
+	if ((error = ext2_vinit(mp, &vp)) != 0) {
 		vx_put(vp);
 		*vpp = NULL;
 		return (error);
@@ -1104,13 +1223,32 @@ ext2_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct ufid *ufhp;
 	struct ext2_sb_info *fs;
+	struct inode *ip;
+        struct vnode *nvp;
+        int error;
 
 	ufhp = (struct ufid *)fhp;
-	fs = VFSTOUFS(mp)->um_e2fs;
+	fs = VFSTOEXT2(mp)->um_e2fs;
 	if (ufhp->ufid_ino < ROOTINO ||
 	    ufhp->ufid_ino > fs->s_groups_count * fs->s_es->s_inodes_per_group)
 		return (ESTALE);
-	return (ufs_fhtovp(mp, ufhp, vpp));
+
+	error = VFS_VGET(mp, ufhp->ufid_ino, &nvp);
+	if (error) {
+		*vpp = NULLVP;
+		return (error);
+	}
+	ip = VTOI(nvp);
+	if (ip->i_mode == 0 ||
+	    ip->i_gen != ufhp->ufid_gen ||
+	    (VFSTOEXT2(mp)->um_i_effnlink_valid ? ip->i_effnlink :
+	    ip->i_nlink) <= 0) {
+		vput(nvp);
+		*vpp = NULLVP;
+		return (ESTALE);
+	}
+	*vpp = nvp;
+	return (0);
 }
 
 /*
@@ -1132,10 +1270,36 @@ ext2_vptofh(struct vnode *vp, struct fid *fhp)
 }
 
 /*
+ * This is the generic part of fhtovp called after the underlying
+ * filesystem has validated the file handle.
+ *
+ * Verify that a host should have access to a filesystem.
+ */
+int
+ext2_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+                 struct ucred **credanonp)
+{
+	struct netcred *np;
+	struct ext2mount *ump;;
+	 
+	ump = VFSTOEXT2(mp);
+	/*
+	 * Get the export permission structure for this <mp, client> tuple.
+	 */
+	np = vfs_export_lookup(mp, &ump->um_export, nam);
+	if (np == NULL)
+		return (EACCES);
+
+	*exflagsp = np->netc_exflags;
+	*credanonp = &np->netc_anon;
+	return (0);
+}
+
+/*
  * Write a superblock and associated information back to disk.
  */
 static int
-ext2_sbupdate(struct ufsmount *mp, int waitfor)
+ext2_sbupdate(struct ext2mount *mp, int waitfor)
 {
 	struct ext2_sb_info *fs = mp->um_e2fs;
 	struct ext2_super_block *es = fs->s_es;

@@ -20,7 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.5 2005/08/02 13:03:55 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.6 2006/04/04 17:34:32 dillon Exp $
  */
 
 /*
@@ -34,34 +34,15 @@
 
 #include <machine/inttypes.h>
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
+#include "quota.h"
 
-/*
- * Undo the definitions in <ufs/ufs/inode.h> that would destroy the include
- * of <gnu/ext2fs/ext2_fs.h>.
- */
-#undef i_atime
-#undef i_blocks
-#undef i_ctime
-#undef i_db
-#undef i_flags
-#undef i_gen
-#undef i_gid
-#undef i_ib
-#undef i_mode
-#undef i_mtime
-#undef i_nlink
-#undef i_rdev
-#undef i_shortlink
-#undef i_size
-#undef i_uid
-
+#define NO_I_DEFINES
+#include "inode.h"
 #include "ext2_fs.h"
 #include "ext2_extern.h"
 
 void
-ext2_print_dinode(struct dinode *di)
+ext2_print_dinode(struct ext2_dinode *di)
 {
 	int i;
 	printf( /* "Inode: %5d" */
@@ -92,7 +73,7 @@ ext2_print_inode(struct inode *in)
  *	raw ext2 inode to dinode
  */
 void
-ext2_ei2di(struct ext2_inode *ei, struct dinode *di)
+ext2_ei2di(struct ext2_inode *ei, struct ext2_dinode *di)
 {
         int     i;
 
@@ -125,7 +106,7 @@ ext2_ei2di(struct ext2_inode *ei, struct dinode *di)
  *	dinode to raw ext2 inode
  */
 void
-ext2_di2ei(struct dinode *di, struct ext2_inode *ei)
+ext2_di2ei(struct ext2_dinode *di, struct ext2_inode *ei)
 {
         int     i;
 
