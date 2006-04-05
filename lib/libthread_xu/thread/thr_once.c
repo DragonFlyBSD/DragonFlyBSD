@@ -30,13 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_once.c,v 1.9 2003/09/09 22:38:12 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_once.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_once.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_once, pthread_once);
 
 #define ONCE_NEVER_DONE		PTHREAD_NEEDS_INIT
 #define ONCE_DONE		PTHREAD_DONE_INIT
@@ -94,3 +92,4 @@ _pthread_once(pthread_once_t *once_control, void (*init_routine) (void))
 	return (0);
 }
 
+__strong_reference(_pthread_once, pthread_once);

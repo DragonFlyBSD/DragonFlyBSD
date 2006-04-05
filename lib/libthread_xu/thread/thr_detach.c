@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_detach.c,v 1.23 2003/07/23 02:11:07 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_detach.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_detach.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <sys/types.h>
 #include <machine/atomic.h>
@@ -39,8 +39,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_detach, pthread_detach);
 
 int
 _pthread_detach(pthread_t pthread)
@@ -73,3 +71,5 @@ _pthread_detach(pthread_t pthread)
 
 	return (0);
 }
+
+__strong_reference(_pthread_detach, pthread_detach);

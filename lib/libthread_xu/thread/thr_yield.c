@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_yield.c,v 1.15 2003/08/18 03:58:29 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_yield.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_yield.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_yield, pthread_yield);
 
 /* Draft 4 yield */
 void
@@ -43,3 +41,5 @@ _pthread_yield(void)
 {
 	__sys_sched_yield();
 }
+
+__strong_reference(_pthread_yield, pthread_yield);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_pspinlock.c,v 1.2 2003/11/04 19:56:12 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -35,12 +35,6 @@
 #include "thr_private.h"
 
 #define SPIN_COUNT 100000
-
-__weak_reference(_pthread_spin_init, pthread_spin_init);
-__weak_reference(_pthread_spin_destroy, pthread_spin_destroy);
-__weak_reference(_pthread_spin_trylock, pthread_spin_trylock);
-__weak_reference(_pthread_spin_lock, pthread_spin_lock);
-__weak_reference(_pthread_spin_unlock, pthread_spin_unlock);
 
 int
 _pthread_spin_init(pthread_spinlock_t *lock, int pshared)
@@ -134,3 +128,10 @@ _pthread_spin_unlock(pthread_spinlock_t *lock)
 	}
 	return (ret);
 }
+
+__strong_reference(_pthread_spin_init, pthread_spin_init);
+__strong_reference(_pthread_spin_destroy, pthread_spin_destroy);
+__strong_reference(_pthread_spin_trylock, pthread_spin_trylock);
+__strong_reference(_pthread_spin_lock, pthread_spin_lock);
+__strong_reference(_pthread_spin_unlock, pthread_spin_unlock);
+

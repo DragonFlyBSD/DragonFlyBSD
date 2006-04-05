@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_multi_np.c,v 1.7 2002/05/24 04:32:28 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_multi_np.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_multi_np.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <pthread.h>
 #include <pthread_np.h>
-
-__weak_reference(_pthread_multi_np, pthread_multi_np);
 
 int
 _pthread_multi_np()
@@ -49,3 +47,5 @@ _pthread_multi_np()
 	pthread_resume_all_np();
 	return (0);
 }
+
+__strong_reference(_pthread_multi_np, pthread_multi_np);

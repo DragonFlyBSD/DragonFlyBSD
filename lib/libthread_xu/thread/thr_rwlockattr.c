@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlockattr.c,v 1.8 2002/09/16 08:45:35 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlockattr.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlockattr.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <errno.h>
@@ -32,11 +32,6 @@
 
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_rwlockattr_destroy, pthread_rwlockattr_destroy);
-__weak_reference(_pthread_rwlockattr_getpshared, pthread_rwlockattr_getpshared);
-__weak_reference(_pthread_rwlockattr_init, pthread_rwlockattr_init);
-__weak_reference(_pthread_rwlockattr_setpshared, pthread_rwlockattr_setpshared);
 
 int
 _pthread_rwlockattr_destroy(pthread_rwlockattr_t *rwlockattr)
@@ -96,4 +91,9 @@ _pthread_rwlockattr_setpshared(pthread_rwlockattr_t *rwlockattr, int pshared)
 
 	return(0);
 }
+
+__strong_reference(_pthread_rwlockattr_destroy, pthread_rwlockattr_destroy);
+__strong_reference(_pthread_rwlockattr_getpshared, pthread_rwlockattr_getpshared);
+__strong_reference(_pthread_rwlockattr_init, pthread_rwlockattr_init);
+__strong_reference(_pthread_rwlockattr_setpshared, pthread_rwlockattr_setpshared);
 

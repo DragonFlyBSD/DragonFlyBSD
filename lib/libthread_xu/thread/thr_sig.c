@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.5 2006/03/19 13:07:12 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.6 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -134,8 +134,6 @@ _thr_signal_deinit(void)
 {
 }
 
-__weak_reference(_sigaction, sigaction);
-
 int
 _sigaction(int sig, const struct sigaction * act, struct sigaction * oact)
 {
@@ -149,7 +147,7 @@ _sigaction(int sig, const struct sigaction * act, struct sigaction * oact)
 	return __sys_sigaction(sig, act, oact);
 }
 
-__weak_reference(_sigprocmask, sigprocmask);
+__strong_reference(_sigaction, sigaction);
 
 int
 _sigprocmask(int how, const sigset_t *set, sigset_t *oset)
@@ -167,7 +165,7 @@ _sigprocmask(int how, const sigset_t *set, sigset_t *oset)
 	return (__sys_sigprocmask(how, p, oset));
 }
 
-__weak_reference(_pthread_sigmask, pthread_sigmask);
+__strong_reference(_sigprocmask, sigprocmask);
 
 int
 _pthread_sigmask(int how, const sigset_t *set, sigset_t *oset)
@@ -177,7 +175,7 @@ _pthread_sigmask(int how, const sigset_t *set, sigset_t *oset)
 	return (0);
 }
 
-__weak_reference(_sigsuspend, sigsuspend);
+__strong_reference(_pthread_sigmask, pthread_sigmask);
 
 int
 _sigsuspend(const sigset_t * set)
@@ -202,9 +200,7 @@ _sigsuspend(const sigset_t * set)
 	return (ret);
 }
 
-__weak_reference(__sigwait, sigwait);
-__weak_reference(__sigtimedwait, sigtimedwait);
-__weak_reference(__sigwaitinfo, sigwaitinfo);
+__strong_reference(_sigsuspend, sigsuspend);
 
 int
 __sigtimedwait(const sigset_t *set, siginfo_t *info,
@@ -228,6 +224,8 @@ __sigtimedwait(const sigset_t *set, siginfo_t *info,
 	return (ret);
 }
 
+__strong_reference(__sigtimedwait, sigtimedwait);
+
 int
 __sigwaitinfo(const sigset_t *set, siginfo_t *info)
 {
@@ -250,6 +248,8 @@ __sigwaitinfo(const sigset_t *set, siginfo_t *info)
 	return (ret);
 }
 
+__strong_reference(__sigwaitinfo, sigwaitinfo);
+
 int
 __sigwait(const sigset_t *set, int *sig)
 {
@@ -262,3 +262,6 @@ __sigwait(const sigset_t *set, int *sig)
 	}
 	return (errno);
 }
+
+__strong_reference(__sigwait, sigwait);
+

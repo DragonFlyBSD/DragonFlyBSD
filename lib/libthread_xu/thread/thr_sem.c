@@ -28,7 +28,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_sem.c,v 1.16 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <sys/queue.h>
@@ -43,17 +43,6 @@
 #include <time.h>
 
 #include "thr_private.h"
-
-__weak_reference(_sem_close, sem_close);
-__weak_reference(_sem_destroy, sem_destroy);
-__weak_reference(_sem_getvalue, sem_getvalue);
-__weak_reference(_sem_init, sem_init);
-__weak_reference(_sem_open, sem_open);
-__weak_reference(_sem_trywait, sem_trywait);
-__weak_reference(_sem_wait, sem_wait);
-__weak_reference(_sem_timedwait, sem_timedwait);
-__weak_reference(_sem_post, sem_post);
-__weak_reference(_sem_unlink, sem_unlink);
 
 /*
  * Semaphore definitions.
@@ -253,3 +242,15 @@ _sem_post(sem_t *sem)
 	_thr_umtx_wake(&(*sem)->count, val + 1);
 	return (0);
 }
+
+__strong_reference(_sem_close, sem_close);
+__strong_reference(_sem_destroy, sem_destroy);
+__strong_reference(_sem_getvalue, sem_getvalue);
+__strong_reference(_sem_init, sem_init);
+__strong_reference(_sem_open, sem_open);
+__strong_reference(_sem_trywait, sem_trywait);
+__strong_reference(_sem_wait, sem_wait);
+__strong_reference(_sem_timedwait, sem_timedwait);
+__strong_reference(_sem_post, sem_post);
+__strong_reference(_sem_unlink, sem_unlink);
+

@@ -23,18 +23,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cancel.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cancel.c,v 1.3 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <machine/tls.h>
 
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_cancel, pthread_cancel);
-__weak_reference(_pthread_setcancelstate, pthread_setcancelstate);
-__weak_reference(_pthread_setcanceltype, pthread_setcanceltype);
-__weak_reference(_pthread_testcancel, pthread_testcancel);
 
 int _pthread_setcanceltype(int type, int *oldtype);
 
@@ -161,3 +156,9 @@ _thr_cancel_leave(struct pthread *curthread, int previous)
 	if (!(previous & THR_CANCEL_AT_POINT))
 		atomic_clear_int(&curthread->cancelflags, THR_CANCEL_AT_POINT);
 }
+
+__strong_reference(_pthread_cancel, pthread_cancel);
+__strong_reference(_pthread_setcancelstate, pthread_setcancelstate);
+__strong_reference(_pthread_setcanceltype, pthread_setcanceltype);
+__strong_reference(_pthread_testcancel, pthread_testcancel);
+

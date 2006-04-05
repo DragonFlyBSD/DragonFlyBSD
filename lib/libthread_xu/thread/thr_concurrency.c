@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_concurrency.c,v 1.8 2004/03/14 05:24:27 bde Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_concurrency.c,v 1.2 2005/02/21 13:40:54 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_concurrency.c,v 1.3 2006/04/05 00:24:35 davidxu Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -35,9 +35,6 @@
 #include "thr_private.h"
 
 static int level = 0;
-
-__weak_reference(_pthread_getconcurrency, pthread_getconcurrency);
-__weak_reference(_pthread_setconcurrency, pthread_setconcurrency);
 
 int
 _pthread_getconcurrency(void)
@@ -53,3 +50,6 @@ _pthread_setconcurrency(int new_level)
 	level = new_level;
 	return 0;
 }
+
+__strong_reference(_pthread_getconcurrency, pthread_getconcurrency);
+__strong_reference(_pthread_setconcurrency, pthread_setconcurrency);

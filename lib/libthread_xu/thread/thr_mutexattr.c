@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutexattr.c,v 1.2 2005/10/24 23:58:01 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutexattr.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
  */
 
 /*
@@ -71,13 +71,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_mutexattr_init, pthread_mutexattr_init);
-__weak_reference(_pthread_mutexattr_setkind_np, pthread_mutexattr_setkind_np);
-__weak_reference(_pthread_mutexattr_getkind_np, pthread_mutexattr_getkind_np);
-__weak_reference(_pthread_mutexattr_gettype, pthread_mutexattr_gettype);
-__weak_reference(_pthread_mutexattr_settype, pthread_mutexattr_settype);
-__weak_reference(_pthread_mutexattr_destroy, pthread_mutexattr_destroy);
 
 int
 _pthread_mutexattr_init(pthread_mutexattr_t *attr)
@@ -192,3 +185,11 @@ _pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared)
 
 	return (0);
 }
+
+__strong_reference(_pthread_mutexattr_init, pthread_mutexattr_init);
+__strong_reference(_pthread_mutexattr_setkind_np, pthread_mutexattr_setkind_np);
+__strong_reference(_pthread_mutexattr_getkind_np, pthread_mutexattr_getkind_np);
+__strong_reference(_pthread_mutexattr_gettype, pthread_mutexattr_gettype);
+__strong_reference(_pthread_mutexattr_settype, pthread_mutexattr_settype);
+__strong_reference(_pthread_mutexattr_destroy, pthread_mutexattr_destroy);
+

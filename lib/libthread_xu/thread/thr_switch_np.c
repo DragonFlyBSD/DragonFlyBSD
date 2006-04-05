@@ -30,16 +30,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_switch_np.c,v 1.7 2003/04/18 05:04:16 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_switch_np.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_switch_np.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <errno.h>
 #include <pthread.h>
 #include <pthread_np.h>
 #include "thr_private.h"
-
-
-__weak_reference(_pthread_switch_add_np, pthread_switch_add_np);
-__weak_reference(_pthread_switch_delete_np, pthread_switch_delete_np);
 
 int
 _pthread_switch_add_np(pthread_switch_routine_t routine)
@@ -52,3 +48,7 @@ _pthread_switch_delete_np(pthread_switch_routine_t routine)
 {
 	return (ENOTSUP);
 }
+
+__strong_reference(_pthread_switch_add_np, pthread_switch_add_np);
+__strong_reference(_pthread_switch_delete_np, pthread_switch_delete_np);
+

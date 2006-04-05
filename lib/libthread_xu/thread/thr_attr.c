@@ -1,40 +1,9 @@
 /*
  * Copyright (c) 2003 Craig Rodrigues <rodrigc@attbi.com>.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Craig Rodrigues.
- * 4. Neither the name of the author nor the names of any co-contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY CRAIG RODRIGUES AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- */
-
-/*
- * Copyright (c) 1998 Daniel Eischen <eischen@vigrid.com>.
- * Copyright (C) 2001 Jason Evans <jasone@freebsd.org>.
  * Copyright (c) 2002,2003 Alexey Zelkin <phantom@FreeBSD.org>
+ * Copyright (C) 2001 Jason Evans <jasone@freebsd.org>.
+ * Copyright (c) 1998 Daniel Eischen <eischen@vigrid.com>.
+ * Copyright (c) 1996 John Birrell <jb@cimlogic.com.au>.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,40 +29,8 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
- * Copyright (c) 1996 John Birrell <jb@cimlogic.com.au>.
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by John Birrell.
- * 4. Neither the name of the author nor the names of any co-contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY JOHN BIRRELL AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.4 2006/03/12 11:32:21 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.5 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -105,8 +42,6 @@
 #include <pthread_np.h>
 
 #include "thr_private.h"
-
-__weak_reference(_pthread_attr_destroy, pthread_attr_destroy);
 
 int
 _pthread_attr_destroy(pthread_attr_t *attr)
@@ -131,7 +66,7 @@ _pthread_attr_destroy(pthread_attr_t *attr)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_get_np, pthread_attr_get_np);
+__strong_reference(_pthread_attr_destroy, pthread_attr_destroy);
 
 int
 _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
@@ -155,7 +90,7 @@ _pthread_attr_get_np(pthread_t pid, pthread_attr_t *dst)
 	return (0);
 }
 
-__weak_reference(_pthread_attr_getdetachstate, pthread_attr_getdetachstate);
+__strong_reference(_pthread_attr_get_np, pthread_attr_get_np);
 
 int
 _pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate)
@@ -178,7 +113,7 @@ _pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getguardsize, pthread_attr_getguardsize);
+__strong_reference(_pthread_attr_getdetachstate, pthread_attr_getdetachstate);
 
 int
 _pthread_attr_getguardsize(const pthread_attr_t *attr, size_t *guardsize)
@@ -196,7 +131,7 @@ _pthread_attr_getguardsize(const pthread_attr_t *attr, size_t *guardsize)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getinheritsched, pthread_attr_getinheritsched);
+__strong_reference(_pthread_attr_getguardsize, pthread_attr_getguardsize);
 
 int
 _pthread_attr_getinheritsched(const pthread_attr_t *attr, int *sched_inherit)
@@ -211,7 +146,7 @@ _pthread_attr_getinheritsched(const pthread_attr_t *attr, int *sched_inherit)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getschedparam, pthread_attr_getschedparam);
+__strong_reference(_pthread_attr_getinheritsched, pthread_attr_getinheritsched);
 
 int
 _pthread_attr_getschedparam(const pthread_attr_t *attr, struct sched_param *param)
@@ -226,7 +161,7 @@ _pthread_attr_getschedparam(const pthread_attr_t *attr, struct sched_param *para
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getschedpolicy, pthread_attr_getschedpolicy);
+__strong_reference(_pthread_attr_getschedparam, pthread_attr_getschedparam);
 
 int
 _pthread_attr_getschedpolicy(const pthread_attr_t *attr, int *policy)
@@ -241,7 +176,7 @@ _pthread_attr_getschedpolicy(const pthread_attr_t *attr, int *policy)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getscope, pthread_attr_getscope);
+__strong_reference(_pthread_attr_getschedpolicy, pthread_attr_getschedpolicy);
 
 int
 _pthread_attr_getscope(const pthread_attr_t *attr, int *contentionscope)
@@ -259,7 +194,7 @@ _pthread_attr_getscope(const pthread_attr_t *attr, int *contentionscope)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getstack, pthread_attr_getstack);
+__strong_reference(_pthread_attr_getscope, pthread_attr_getscope);
 
 int
 _pthread_attr_getstack(const pthread_attr_t * __restrict attr,
@@ -281,7 +216,7 @@ _pthread_attr_getstack(const pthread_attr_t * __restrict attr,
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getstackaddr, pthread_attr_getstackaddr);
+__strong_reference(_pthread_attr_getstack, pthread_attr_getstack);
 
 int
 _pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr)
@@ -299,7 +234,7 @@ _pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_getstacksize, pthread_attr_getstacksize);
+__strong_reference(_pthread_attr_getstackaddr, pthread_attr_getstackaddr);
 
 int
 _pthread_attr_getstacksize(const pthread_attr_t *attr, size_t *stacksize)
@@ -317,7 +252,7 @@ _pthread_attr_getstacksize(const pthread_attr_t *attr, size_t *stacksize)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_init, pthread_attr_init);
+__strong_reference(_pthread_attr_getstacksize, pthread_attr_getstacksize);
 
 int
 _pthread_attr_init(pthread_attr_t *attr)
@@ -343,7 +278,7 @@ _pthread_attr_init(pthread_attr_t *attr)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setcreatesuspend_np, pthread_attr_setcreatesuspend_np);
+__strong_reference(_pthread_attr_init, pthread_attr_init);
 
 int
 _pthread_attr_setcreatesuspend_np(pthread_attr_t *attr)
@@ -359,7 +294,7 @@ _pthread_attr_setcreatesuspend_np(pthread_attr_t *attr)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setdetachstate, pthread_attr_setdetachstate);
+__strong_reference(_pthread_attr_setcreatesuspend_np, pthread_attr_setcreatesuspend_np);
 
 int
 _pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
@@ -384,7 +319,7 @@ _pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setguardsize, pthread_attr_setguardsize);
+__strong_reference(_pthread_attr_setdetachstate, pthread_attr_setdetachstate);
 
 int
 _pthread_attr_setguardsize(pthread_attr_t *attr, size_t guardsize)
@@ -402,7 +337,7 @@ _pthread_attr_setguardsize(pthread_attr_t *attr, size_t guardsize)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setinheritsched, pthread_attr_setinheritsched);
+__strong_reference(_pthread_attr_setguardsize, pthread_attr_setguardsize);
 
 int
 _pthread_attr_setinheritsched(pthread_attr_t *attr, int sched_inherit)
@@ -420,7 +355,7 @@ _pthread_attr_setinheritsched(pthread_attr_t *attr, int sched_inherit)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setschedparam, pthread_attr_setschedparam);
+__strong_reference(_pthread_attr_setinheritsched, pthread_attr_setinheritsched);
 
 int
 _pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *param)
@@ -441,7 +376,7 @@ _pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *para
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setschedpolicy, pthread_attr_setschedpolicy);
+__strong_reference(_pthread_attr_setschedparam, pthread_attr_setschedparam);
 
 int
 _pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
@@ -458,7 +393,7 @@ _pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setscope, pthread_attr_setscope);
+__strong_reference(_pthread_attr_setschedpolicy, pthread_attr_setschedpolicy);
 
 int
 _pthread_attr_setscope(pthread_attr_t *attr, int contentionscope)
@@ -479,7 +414,7 @@ _pthread_attr_setscope(pthread_attr_t *attr, int contentionscope)
 	return (ret);
 }
 
-__weak_reference(_pthread_attr_setstack, pthread_attr_setstack);
+__strong_reference(_pthread_attr_setscope, pthread_attr_setscope);
 
 int
 _pthread_attr_setstack(pthread_attr_t *attr, void *stackaddr,
@@ -500,7 +435,7 @@ _pthread_attr_setstack(pthread_attr_t *attr, void *stackaddr,
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setstackaddr, pthread_attr_setstackaddr);
+__strong_reference(_pthread_attr_setstack, pthread_attr_setstack);
 
 int
 _pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr)
@@ -518,7 +453,7 @@ _pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr)
 	return(ret);
 }
 
-__weak_reference(_pthread_attr_setstacksize, pthread_attr_setstacksize);
+__strong_reference(_pthread_attr_setstackaddr, pthread_attr_setstackaddr);
 
 int
 _pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
@@ -535,3 +470,6 @@ _pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_attr_setstacksize, pthread_attr_setstacksize);
+

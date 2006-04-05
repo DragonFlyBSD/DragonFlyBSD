@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_getschedparam.c,v 1.10 2003/07/07 04:28:23 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_getschedparam.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_getschedparam.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -38,8 +38,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_getschedparam, pthread_getschedparam);
 
 int
 _pthread_getschedparam(pthread_t pthread, int *policy, 
@@ -77,3 +75,5 @@ _pthread_getschedparam(pthread_t pthread, int *policy,
 	}
 	return (ret);
 }
+
+__strong_reference(_pthread_getschedparam, pthread_getschedparam);

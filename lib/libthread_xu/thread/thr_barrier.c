@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrier.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.4 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.5 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -34,10 +34,6 @@
 #include <pthread.h>
 
 #include "thr_private.h"
-
-__weak_reference(_pthread_barrier_init,		pthread_barrier_init);
-__weak_reference(_pthread_barrier_wait,		pthread_barrier_wait);
-__weak_reference(_pthread_barrier_destroy,	pthread_barrier_destroy);
 
 int
 _pthread_barrier_destroy(pthread_barrier_t *barrier)
@@ -57,7 +53,7 @@ _pthread_barrier_destroy(pthread_barrier_t *barrier)
 
 int
 _pthread_barrier_init(pthread_barrier_t *barrier,
-		      const pthread_barrierattr_t *attr, int count)
+		      const pthread_barrierattr_t *attr, unsigned count)
 {
 	pthread_barrier_t	bar;
 
@@ -108,3 +104,7 @@ _pthread_barrier_wait(pthread_barrier_t *barrier)
 	}
 	return (ret);
 }
+
+__strong_reference(_pthread_barrier_init,	pthread_barrier_init);
+__strong_reference(_pthread_barrier_wait,	pthread_barrier_wait);
+__strong_reference(_pthread_barrier_destroy,	pthread_barrier_destroy);

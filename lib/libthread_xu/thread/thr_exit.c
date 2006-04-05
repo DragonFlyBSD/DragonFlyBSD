@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.4 2006/03/12 11:28:06 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.5 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -45,8 +45,6 @@
 #include "thr_private.h"
 
 void	_pthread_exit(void *status);
-
-__weak_reference(_pthread_exit, pthread_exit);
 
 void
 _thread_exit(char *fname, int lineno, char *msg)
@@ -153,3 +151,5 @@ _pthread_exit(void *status)
 	PANIC("thr_exit() returned");
 	/* Never reach! */
 }
+
+__strong_reference(_pthread_exit, pthread_exit);

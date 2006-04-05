@@ -30,12 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_equal.c,v 1.6 2002/09/16 08:45:34 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_equal.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_equal.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_equal, pthread_equal);
 
 int
 _pthread_equal(pthread_t t1, pthread_t t2)
@@ -43,3 +41,5 @@ _pthread_equal(pthread_t t1, pthread_t t2)
 	/* Compare the two thread pointers: */
 	return (t1 == t2);
 }
+
+__strong_reference(_pthread_equal, pthread_equal);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_join.c,v 1.28 2003/12/09 02:20:56 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.5 2005/12/20 00:19:41 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.6 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -40,9 +40,6 @@
 #include "thr_private.h"
 
 static int join_common(pthread_t, void **, const struct timespec *);
-
-__weak_reference(_pthread_join, pthread_join);
-__weak_reference(_pthread_timedjoin_np, pthread_timedjoin_np);
 
 static void backout_join(void *arg)
 {
@@ -147,3 +144,7 @@ join_common(pthread_t pthread, void **thread_return,
 	}
 	return (ret);
 }
+
+__strong_reference(_pthread_join, pthread_join);
+__strong_reference(_pthread_timedjoin_np, pthread_timedjoin_np);
+

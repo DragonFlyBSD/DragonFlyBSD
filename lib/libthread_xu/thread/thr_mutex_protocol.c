@@ -30,16 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex_protocol.c,v 1.7 2003/04/18 05:04:16 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex_protocol.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex_protocol.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_mutexattr_getprotocol, pthread_mutexattr_getprotocol);
-__weak_reference(_pthread_mutexattr_setprotocol, pthread_mutexattr_setprotocol);
 
 int
 _pthread_mutexattr_getprotocol(pthread_mutexattr_t *mattr, int *protocol)
@@ -68,4 +65,7 @@ _pthread_mutexattr_setprotocol(pthread_mutexattr_t *mattr, int protocol)
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_mutexattr_getprotocol, pthread_mutexattr_getprotocol);
+__strong_reference(_pthread_mutexattr_setprotocol, pthread_mutexattr_setprotocol);
 

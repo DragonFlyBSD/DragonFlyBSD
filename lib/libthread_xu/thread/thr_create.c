@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.7 2006/03/19 13:07:12 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.8 2006/04/05 00:24:35 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -57,8 +57,6 @@ struct start_arg {
 
 static int  create_stack(struct pthread_attr *pattr);
 static void thread_start(void *);
-
-__weak_reference(_pthread_create, pthread_create);
 
 int
 _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
@@ -260,3 +258,5 @@ thread_start(void *arg)
 	/* This point should never be reached. */
 	PANIC("Thread has resumed after exit");
 }
+
+__strong_reference(_pthread_create, pthread_create);

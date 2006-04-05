@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_resume_np.c,v 1.18 2003/07/23 02:11:07 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_resume_np.c,v 1.3 2006/03/19 13:07:12 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_resume_np.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -38,9 +38,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_resume_np, pthread_resume_np);
-__weak_reference(_pthread_resume_all_np, pthread_resume_all_np);
 
 static void resume_common(struct pthread *thread);
 
@@ -91,3 +88,7 @@ resume_common(struct pthread *thread)
 	thread->cycle++;
 	_thr_umtx_wake(&thread->cycle, 1);
 }
+
+__strong_reference(_pthread_resume_np, pthread_resume_np);
+__strong_reference(_pthread_resume_all_np, pthread_resume_all_np);
+

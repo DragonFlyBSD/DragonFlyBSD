@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.4 2005/04/12 14:01:31 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.5 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -38,16 +38,6 @@
 
 /* maximum number of times a read lock may be obtained */
 #define	MAX_READ_LOCKS		(INT_MAX - 1)
-
-__weak_reference(_pthread_rwlock_destroy, pthread_rwlock_destroy);
-__weak_reference(_pthread_rwlock_init, pthread_rwlock_init);
-__weak_reference(_pthread_rwlock_rdlock, pthread_rwlock_rdlock);
-__weak_reference(_pthread_rwlock_timedrdlock, pthread_rwlock_timedrdlock);
-__weak_reference(_pthread_rwlock_tryrdlock, pthread_rwlock_tryrdlock);
-__weak_reference(_pthread_rwlock_trywrlock, pthread_rwlock_trywrlock);
-__weak_reference(_pthread_rwlock_unlock, pthread_rwlock_unlock);
-__weak_reference(_pthread_rwlock_wrlock, pthread_rwlock_wrlock);
-__weak_reference(_pthread_rwlock_timedwrlock, pthread_rwlock_timedwrlock);
 
 /*
  * Prototypes
@@ -419,3 +409,14 @@ _pthread_rwlock_timedwrlock (pthread_rwlock_t *rwlock,
 {
 	return (rwlock_wrlock_common (rwlock, abstime));
 }
+
+__strong_reference(_pthread_rwlock_destroy, pthread_rwlock_destroy);
+__strong_reference(_pthread_rwlock_init, pthread_rwlock_init);
+__strong_reference(_pthread_rwlock_rdlock, pthread_rwlock_rdlock);
+__strong_reference(_pthread_rwlock_timedrdlock, pthread_rwlock_timedrdlock);
+__strong_reference(_pthread_rwlock_tryrdlock, pthread_rwlock_tryrdlock);
+__strong_reference(_pthread_rwlock_trywrlock, pthread_rwlock_trywrlock);
+__strong_reference(_pthread_rwlock_unlock, pthread_rwlock_unlock);
+__strong_reference(_pthread_rwlock_wrlock, pthread_rwlock_wrlock);
+__strong_reference(_pthread_rwlock_timedwrlock, pthread_rwlock_timedwrlock);
+

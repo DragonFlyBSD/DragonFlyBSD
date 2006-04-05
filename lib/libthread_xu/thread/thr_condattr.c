@@ -29,20 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.3 2005/03/15 12:01:51 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.4 2006/04/05 00:24:35 davidxu Exp $
  */
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_condattr_init, pthread_condattr_init);
-__weak_reference(_pthread_condattr_destroy, pthread_condattr_destroy);
-__weak_reference(_pthread_condattr_getclock, pthread_condattr_getclock);
-__weak_reference(_pthread_condattr_setclock, pthread_condattr_setclock);
-__weak_reference(_pthread_condattr_getpshared, pthread_condattr_getpshared);
-__weak_reference(_pthread_condattr_setpshared, pthread_condattr_setpshared);
 
 int
 _pthread_condattr_init(pthread_condattr_t *attr)
@@ -121,3 +114,11 @@ _pthread_condattr_setpshared(pthread_condattr_t *attr, int pshared)
 		return (EINVAL);
 	return (0);
 }
+
+__strong_reference(_pthread_condattr_init, pthread_condattr_init);
+__strong_reference(_pthread_condattr_destroy, pthread_condattr_destroy);
+__strong_reference(_pthread_condattr_getclock, pthread_condattr_getclock);
+__strong_reference(_pthread_condattr_setclock, pthread_condattr_setclock);
+__strong_reference(_pthread_condattr_getpshared, pthread_condattr_getpshared);
+__strong_reference(_pthread_condattr_setpshared, pthread_condattr_setpshared);
+

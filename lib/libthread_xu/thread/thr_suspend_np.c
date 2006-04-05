@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_suspend_np.c,v 1.19 2003/05/04 16:17:01 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_suspend_np.c,v 1.3 2006/03/19 13:07:12 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_suspend_np.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <errno.h>
@@ -40,9 +40,6 @@
 
 static int suspend_common(struct pthread *, struct pthread *,
 		int);
-
-__weak_reference(_pthread_suspend_np, pthread_suspend_np);
-__weak_reference(_pthread_suspend_all_np, pthread_suspend_all_np);
 
 /* Suspend a thread: */
 int
@@ -128,8 +125,8 @@ suspend_common(struct pthread *curthread, struct pthread *thread,
 	      !(thread->flags & THR_FLAGS_SUSPENDED)) {
 		thread->flags |= THR_FLAGS_NEED_SUSPEND;
 		tmp = thread->cycle;
-		THR_THREAD_UNLOCK(curthread, thread);
 		_thr_send_sig(thread, SIGCANCEL);
+		THR_THREAD_UNLOCK(curthread, thread);
 		if (waitok) {
 			_thr_umtx_wait(&thread->cycle, tmp, NULL, 0);
 			THR_THREAD_LOCK(curthread, thread);
@@ -141,3 +138,7 @@ suspend_common(struct pthread *curthread, struct pthread *thread,
 
 	return (1);
 }
+
+__strong_reference(_pthread_suspend_np, pthread_suspend_np);
+__strong_reference(_pthread_suspend_all_np, pthread_suspend_all_np);
+

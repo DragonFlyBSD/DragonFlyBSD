@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.8 2006/03/12 12:02:28 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.9 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -90,16 +90,6 @@ static pthread_t	mutex_queue_deq(pthread_mutex_t);
 #endif
 static void		mutex_queue_remove(pthread_mutex_t, pthread_t);
 static void		mutex_queue_enq(pthread_mutex_t, pthread_t);
-
-__weak_reference(__pthread_mutex_init, pthread_mutex_init);
-__weak_reference(__pthread_mutex_lock, pthread_mutex_lock);
-__weak_reference(__pthread_mutex_timedlock, pthread_mutex_timedlock);
-__weak_reference(__pthread_mutex_trylock, pthread_mutex_trylock);
-
-/* Single underscore versions provided for libc internal usage: */
-/* No difference between libc and application usage of these: */
-__weak_reference(_pthread_mutex_destroy, pthread_mutex_destroy);
-__weak_reference(_pthread_mutex_unlock, pthread_mutex_unlock);
 
 static int
 mutex_init(pthread_mutex_t *mutex,
@@ -1622,3 +1612,14 @@ mutex_queue_enq(pthread_mutex_t mutex, pthread_t pthread)
 	}
 	pthread->sflags |= THR_FLAGS_IN_SYNCQ;
 }
+
+__strong_reference(__pthread_mutex_init, pthread_mutex_init);
+__strong_reference(__pthread_mutex_lock, pthread_mutex_lock);
+__strong_reference(__pthread_mutex_timedlock, pthread_mutex_timedlock);
+__strong_reference(__pthread_mutex_trylock, pthread_mutex_trylock);
+
+/* Single underscore versions provided for libc internal usage: */
+/* No difference between libc and application usage of these: */
+__strong_reference(_pthread_mutex_destroy, pthread_mutex_destroy);
+__strong_reference(_pthread_mutex_unlock, pthread_mutex_unlock);
+

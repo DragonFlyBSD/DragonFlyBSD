@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.5 2005/04/05 23:04:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.6 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -43,19 +43,6 @@ static int cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
 static int cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		    const struct timespec *abstime, int cancel);
 static int cond_signal_common(pthread_cond_t *cond, int broadcast);
-
-/*
- * Double underscore versions are cancellation points.  Single underscore
- * versions are not and are provided for libc internal usage (which
- * shouldn't introduce cancellation points).
- */
-__weak_reference(__pthread_cond_wait, pthread_cond_wait);
-__weak_reference(__pthread_cond_timedwait, pthread_cond_timedwait);
-
-__weak_reference(_pthread_cond_init, pthread_cond_init);
-__weak_reference(_pthread_cond_destroy, pthread_cond_destroy);
-__weak_reference(_pthread_cond_signal, pthread_cond_signal);
-__weak_reference(_pthread_cond_broadcast, pthread_cond_broadcast);
 
 static int
 cond_init(pthread_cond_t *cond, const pthread_condattr_t *cond_attr)
@@ -342,3 +329,17 @@ _pthread_cond_broadcast(pthread_cond_t * cond)
 
 	return (cond_signal_common(cond, 1));
 }
+
+/*
+ * Double underscore versions are cancellation points.  Single underscore
+ * versions are not and are provided for libc internal usage (which
+ * shouldn't introduce cancellation points).
+ */
+__strong_reference(__pthread_cond_wait, pthread_cond_wait);
+__strong_reference(__pthread_cond_timedwait, pthread_cond_timedwait);
+
+__strong_reference(_pthread_cond_init, pthread_cond_init);
+__strong_reference(_pthread_cond_destroy, pthread_cond_destroy);
+__strong_reference(_pthread_cond_signal, pthread_cond_signal);
+__strong_reference(_pthread_cond_broadcast, pthread_cond_broadcast);
+

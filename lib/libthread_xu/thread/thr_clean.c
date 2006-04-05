@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_clean.c,v 1.9 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.3 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -40,9 +40,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_cleanup_push, pthread_cleanup_push);
-__weak_reference(_pthread_cleanup_pop, pthread_cleanup_pop);
 
 void
 _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
@@ -76,3 +73,7 @@ _pthread_cleanup_pop(int execute)
 			free(old);
 	}
 }
+
+__strong_reference(_pthread_cleanup_push, pthread_cleanup_push);
+__strong_reference(_pthread_cleanup_pop, pthread_cleanup_pop);
+

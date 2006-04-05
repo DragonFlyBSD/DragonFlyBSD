@@ -59,7 +59,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_fork.c,v 1.34 2003/11/05 18:18:45 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -74,8 +74,6 @@
 
 #include "libc_private.h"
 #include "thr_private.h"
-
-__weak_reference(_pthread_atfork, pthread_atfork);
 
 int
 _pthread_atfork(void (*prepare)(void), void (*parent)(void),
@@ -104,8 +102,6 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
  * export the malloc lock.
  */
 #pragma weak __malloc_lock
-
-__weak_reference(_fork, fork);
 
 pid_t
 _fork(void)
@@ -229,3 +225,7 @@ _fork(void)
 	/* Return the process ID: */
 	return (ret);
 }
+
+__strong_reference(_fork, fork);
+__strong_reference(_pthread_atfork, pthread_atfork);
+

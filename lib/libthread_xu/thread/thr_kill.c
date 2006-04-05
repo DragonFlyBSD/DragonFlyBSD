@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_kill.c,v 1.16 2003/06/28 09:55:02 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_kill.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_kill.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -39,8 +39,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_kill, pthread_kill);
 
 int
 _pthread_kill(pthread_t pthread, int sig)
@@ -67,3 +65,5 @@ _pthread_kill(pthread_t pthread, int sig)
 	/* Return the completion status: */
 	return (ret);
 }
+
+__strong_reference(_pthread_kill, pthread_kill);

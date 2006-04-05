@@ -28,7 +28,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.5 2005/11/02 23:41:17 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_syscalls.c,v 1.6 2006/04/05 00:24:36 davidxu Exp $
  */
 
 /*
@@ -105,7 +105,6 @@ extern pid_t __wait(int *);
 extern pid_t __sys_wait4(pid_t, int *, int, struct rusage *);
 extern pid_t __waitpid(pid_t, int *, int);
 
-__weak_reference(__accept, accept);
 int
 __accept(int s, struct sockaddr *addr, socklen_t *addrlen)
 {
@@ -121,7 +120,7 @@ __accept(int s, struct sockaddr *addr, socklen_t *addrlen)
  	return (ret);
 }
 
-__weak_reference(_aio_suspend, aio_suspend);
+__strong_reference(__accept, accept);
 
 int
 _aio_suspend(const struct aiocb * const iocbs[], int niocb, const struct
@@ -138,7 +137,7 @@ _aio_suspend(const struct aiocb * const iocbs[], int niocb, const struct
 	return (ret);
 }
 
-__weak_reference(__close, close);
+__strong_reference(_aio_suspend, aio_suspend);
 
 int
 __close(int fd)
@@ -154,7 +153,7 @@ __close(int fd)
 	return (ret);
 }
 
-__weak_reference(__connect, connect);
+__strong_reference(__close, close);
 
 int
 __connect(int fd, const struct sockaddr *name, socklen_t namelen)
@@ -170,7 +169,7 @@ __connect(int fd, const struct sockaddr *name, socklen_t namelen)
  	return (ret);
 }
 
-__weak_reference(___creat, creat);
+__strong_reference(__connect, connect);
 
 int
 ___creat(const char *path, mode_t mode)
@@ -186,7 +185,7 @@ ___creat(const char *path, mode_t mode)
 	return ret;
 }
 
-__weak_reference(__fcntl, fcntl);
+__strong_reference(___creat, creat);
 
 int
 __fcntl(int fd, int cmd,...)
@@ -221,7 +220,7 @@ __fcntl(int fd, int cmd,...)
 	return (ret);
 }
 
-__weak_reference(__fsync, fsync);
+__strong_reference(__fcntl, fcntl);
 
 int
 __fsync(int fd)
@@ -237,7 +236,7 @@ __fsync(int fd)
 	return (ret);
 }
 
-__weak_reference(__msync, msync);
+__strong_reference(__fsync, fsync);
 
 int
 __msync(void *addr, size_t len, int flags)
@@ -253,7 +252,7 @@ __msync(void *addr, size_t len, int flags)
 	return ret;
 }
 
-__weak_reference(__nanosleep, nanosleep);
+__strong_reference(__msync, msync);
 
 int
 __nanosleep(const struct timespec *time_to_sleep,
@@ -270,7 +269,7 @@ __nanosleep(const struct timespec *time_to_sleep,
 	return (ret);
 }
 
-__weak_reference(___open, open);
+__strong_reference(__nanosleep, nanosleep);
 
 int
 ___open(const char *path, int flags,...)
@@ -298,7 +297,7 @@ ___open(const char *path, int flags,...)
 	return ret;
 }
 
-__weak_reference(_pause, pause);
+__strong_reference(___open, open);
 
 int
 _pause(void)
@@ -314,7 +313,7 @@ _pause(void)
 	return ret;
 }
 
-__weak_reference(__poll, poll);
+__strong_reference(_pause, pause);
 
 int
 __poll(struct pollfd *fds, unsigned int nfds, int timeout)
@@ -330,8 +329,8 @@ __poll(struct pollfd *fds, unsigned int nfds, int timeout)
 	return ret;
 }
 
+__strong_reference(__poll, poll);
 #if 0
-__weak_reference(_pselect, pselect);
 
 int 
 _pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds, 
@@ -347,9 +346,9 @@ _pselect(int count, fd_set *rfds, fd_set *wfds, fd_set *efds,
 
 	return (ret);
 }
+__strong_reference(_pselect, pselect);
 #endif
 
-__weak_reference(_raise, raise);
 
 int
 _raise(int sig)
@@ -363,7 +362,7 @@ _raise(int sig)
 	return (ret);
 }
 
-__weak_reference(__read, read);
+__strong_reference(_raise, raise);
 
 ssize_t
 __read(int fd, void *buf, size_t nbytes)
@@ -379,7 +378,7 @@ __read(int fd, void *buf, size_t nbytes)
 	return ret;
 }
 
-__weak_reference(__readv, readv);
+__strong_reference(__read, read);
 
 ssize_t
 __readv(int fd, const struct iovec *iov, int iovcnt)
@@ -395,7 +394,7 @@ __readv(int fd, const struct iovec *iov, int iovcnt)
 	return ret;
 }
 
-__weak_reference(__recvfrom, recvfrom);
+__strong_reference(__readv, readv);
 
 ssize_t
 __recvfrom(int s, void *b, size_t l, int f, struct sockaddr *from,
@@ -411,7 +410,7 @@ __recvfrom(int s, void *b, size_t l, int f, struct sockaddr *from,
 	return (ret);
 }
 
-__weak_reference(__recvmsg, recvmsg);
+__strong_reference(__recvfrom, recvfrom);
 
 ssize_t
 __recvmsg(int s, struct msghdr *m, int f)
@@ -426,7 +425,7 @@ __recvmsg(int s, struct msghdr *m, int f)
 	return (ret);
 }
 
-__weak_reference(__select, select);
+__strong_reference(__recvmsg, recvmsg);
 
 int 
 __select(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
@@ -442,7 +441,7 @@ __select(int numfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 	return ret;
 }
 
-__weak_reference(__sendmsg, sendmsg);
+__strong_reference(__select, select);
 
 ssize_t
 __sendmsg(int s, const struct msghdr *m, int f)
@@ -457,7 +456,7 @@ __sendmsg(int s, const struct msghdr *m, int f)
 	return (ret);
 }
 
-__weak_reference(__sendto, sendto);
+__strong_reference(__sendmsg, sendmsg);
 
 ssize_t
 __sendto(int s, const void *m, size_t l, int f, const struct sockaddr *t,
@@ -473,6 +472,8 @@ __sendto(int s, const void *m, size_t l, int f, const struct sockaddr *t,
 	return (ret);
 }
 
+__strong_reference(__sendto, sendto);
+
 unsigned int
 _sleep(unsigned int seconds)
 {
@@ -486,8 +487,6 @@ _sleep(unsigned int seconds)
 	
 	return (ret);
 }
-
-__weak_reference(_system, system);
 
 int
 _system(const char *string)
@@ -503,7 +502,7 @@ _system(const char *string)
 	return ret;
 }
 
-__weak_reference(_tcdrain, tcdrain);
+__strong_reference(_system, system);
 
 int
 _tcdrain(int fd)
@@ -519,7 +518,7 @@ _tcdrain(int fd)
 	return (ret);
 }
 
-__weak_reference(___usleep, usleep);
+__strong_reference(_tcdrain, tcdrain);
 
 int
 ___usleep(unsigned int useconds)
@@ -535,7 +534,7 @@ ___usleep(unsigned int useconds)
 	return (ret);
 }
 
-__weak_reference(_vfork, vfork);
+__strong_reference(___usleep, usleep);
 
 int
 _vfork(void)
@@ -543,7 +542,7 @@ _vfork(void)
 	return (fork());
 }
 
-__weak_reference(_wait, wait);
+__strong_reference(_vfork, vfork);
 
 pid_t
 _wait(int *istat)
@@ -559,7 +558,7 @@ _wait(int *istat)
 	return ret;
 }
 
-__weak_reference(__wait4, wait4);
+__strong_reference(_wait, wait);
 
 pid_t
 __wait4(pid_t pid, int *istat, int options, struct rusage *rusage)
@@ -575,7 +574,7 @@ __wait4(pid_t pid, int *istat, int options, struct rusage *rusage)
 	return ret;
 }
 
-__weak_reference(_waitpid, waitpid);
+__strong_reference(__wait4, wait4);
 
 pid_t
 _waitpid(pid_t wpid, int *status, int options)
@@ -591,7 +590,7 @@ _waitpid(pid_t wpid, int *status, int options)
 	return ret;
 }
 
-__weak_reference(__write, write);
+__strong_reference(_waitpid, waitpid);
 
 ssize_t
 __write(int fd, const void *buf, size_t nbytes)
@@ -607,7 +606,7 @@ __write(int fd, const void *buf, size_t nbytes)
 	return ret;
 }
 
-__weak_reference(__writev, writev);
+__strong_reference(__write, write);
 
 ssize_t
 __writev(int fd, const struct iovec *iov, int iovcnt)
@@ -622,3 +621,6 @@ __writev(int fd, const struct iovec *iov, int iovcnt)
 
 	return ret;
 }
+
+__strong_reference(__writev, writev);
+

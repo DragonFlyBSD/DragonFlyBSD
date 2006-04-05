@@ -30,18 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex_prioceiling.c,v 1.8 2003/07/07 04:28:23 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex_prioceiling.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex_prioceiling.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
  */
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_mutexattr_getprioceiling, pthread_mutexattr_getprioceiling);
-__weak_reference(_pthread_mutexattr_setprioceiling, pthread_mutexattr_setprioceiling);
-__weak_reference(_pthread_mutex_getprioceiling, pthread_mutex_getprioceiling);
-__weak_reference(_pthread_mutex_setprioceiling, pthread_mutex_setprioceiling);
 
 int
 _pthread_mutexattr_getprioceiling(pthread_mutexattr_t *mattr, int *prioceiling)
@@ -114,3 +109,9 @@ _pthread_mutex_setprioceiling(pthread_mutex_t *mutex,
 	}
 	return(ret);
 }
+
+__strong_reference(_pthread_mutexattr_getprioceiling, pthread_mutexattr_getprioceiling);
+__strong_reference(_pthread_mutexattr_setprioceiling, pthread_mutexattr_setprioceiling);
+__strong_reference(_pthread_mutex_getprioceiling, pthread_mutex_getprioceiling);
+__strong_reference(_pthread_mutex_setprioceiling, pthread_mutex_setprioceiling);
+

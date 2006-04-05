@@ -26,20 +26,13 @@
  * DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrierattr.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrierattr.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_barrierattr.c,v 1.2 2006/04/05 00:24:35 davidxu Exp $
  */
 
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include "thr_private.h"
-
-__weak_reference(_pthread_barrierattr_destroy, pthread_barrierattr_destroy);
-__weak_reference(_pthread_barrierattr_init, pthread_barrierattr_init);
-__weak_reference(_pthread_barrierattr_setpshared,
-	pthread_barrierattr_setpshared);
-__weak_reference(_pthread_barrierattr_getpshared,
-	pthread_barrierattr_getpshared);
 
 int
 _pthread_barrierattr_destroy(pthread_barrierattr_t *attr)
@@ -92,3 +85,11 @@ _pthread_barrierattr_setpshared(pthread_barrierattr_t *attr, int pshared)
 	(*attr)->pshared = pshared;
 	return (0);
 }
+
+__strong_reference(_pthread_barrierattr_destroy, pthread_barrierattr_destroy);
+__strong_reference(_pthread_barrierattr_init, pthread_barrierattr_init);
+__strong_reference(_pthread_barrierattr_setpshared,
+	pthread_barrierattr_setpshared);
+__strong_reference(_pthread_barrierattr_getpshared,
+	pthread_barrierattr_getpshared);
+
