@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_init.c,v 1.66 2004/08/21 11:49:19 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.5 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.6 2006/04/05 00:48:50 davidxu Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -85,6 +85,92 @@ static void init_main_thread(struct pthread *thread);
 
 static int	init_once = 0;
 
+/* thr_attr.c */
+STATIC_LIB_REQUIRE(_pthread_attr_init);
+/* thr_barrier.c */
+STATIC_LIB_REQUIRE(_pthread_barrier_init);
+/* thr_barrierattr.c */
+STATIC_LIB_REQUIRE(_pthread_barrierattr_init);
+/* thr_cancel.c */
+STATIC_LIB_REQUIRE(_pthread_cancel);
+/* thr_clean.c */
+STATIC_LIB_REQUIRE(_pthread_cleanup_push);
+/* thr_concurrency.c */
+STATIC_LIB_REQUIRE(_pthread_get_concurrency);
+/* thr_cond.c */
+STATIC_LIB_REQUIRE(_pthread_cond_init);
+/* thr_condattr.c */
+STATIC_LIB_REQUIRE(_pthread_condattr_init);
+/* thr_create.c */
+STATIC_LIB_REQUIRE(_pthread_create);
+/* thr_detach.c */
+STATIC_LIB_REQUIRE(_pthread_detach);
+/* thr_equal.c */
+STATIC_LIB_REQUIRE(_pthread_equal);
+/* thr_exit.c */
+STATIC_LIB_REQUIRE(_pthread_exit);
+/* thr_fork.c */
+STATIC_LIB_REQUIRE(_pthread_atfork);
+STATIC_LIB_REQUIRE(_fork);
+/* thr_getprio.c */
+STATIC_LIB_REQUIRE(_pthread_getprio);
+/* thr_getschedparam.c */
+STATIC_LIB_REQUIRE(_pthread_getschedparam);
+/* thr_info.c */
+STATIC_LIB_REQUIRE(_pthread_set_name_np);
+/* thr_join.c */
+STATIC_LIB_REQUIRE(_pthread_join);
+/* thr_kill.c */
+STATIC_LIB_REQUIRE(_pthread_kill);
+/* thr_main_np.c */
+STATIC_LIB_REQUIRE(_pthread_main_np);
+/* thr_multi_np.c */
+STATIC_LIB_REQUIRE(_pthread_multi_np);
+/* thr_mutex.c */
+STATIC_LIB_REQUIRE(_pthread_mutex_init);
+/* thr_mutex_prioceiling.c */
+STATIC_LIB_REQUIRE(_pthread_mutexattr_getprioceiling);
+/* thr_mutex_protocol.c */
+STATIC_LIB_REQUIRE(_pthread_mutexattr_getprotocol);
+/* thr_mutexattr.c */
+STATIC_LIB_REQUIRE(_pthread_mutexattr_init);
+/* thr_once.c */
+STATIC_LIB_REQUIRE(_pthread_once);
+/* thr_pspinlock.c */
+STATIC_LIB_REQUIRE(_pthread_spin_init);
+/* thr_resume_np.c */
+STATIC_LIB_REQUIRE(_pthread_resume_np);
+/* thr_rwlock.c */
+STATIC_LIB_REQUIRE(_pthread_rwlock_init);
+/* thr_rwlockattr.c */
+STATIC_LIB_REQUIRE(_pthread_rwlockattr_init);
+/* thr_self.c */
+STATIC_LIB_REQUIRE(_pthread_self);
+/* thr_sem.c */
+STATIC_LIB_REQUIRE(_sem_init);
+/* thr_setprio.c */
+STATIC_LIB_REQUIRE(_pthread_setprio);
+/* thr_setschedparam.c */
+STATIC_LIB_REQUIRE(_pthread_setschedparam);
+/* thr_sig.c */
+STATIC_LIB_REQUIRE(_sigwait);
+/* thr_single_np.c */
+STATIC_LIB_REQUIRE(_pthread_single_np);
+/* thr_spec.c */
+STATIC_LIB_REQUIRE(_pthread_key_create);
+/* thr_spinlock.c */
+STATIC_LIB_REQUIRE(_spinlock);
+/* thr_suspend_np.c */
+STATIC_LIB_REQUIRE(_pthread_suspend_np);
+/* thr_switch_np.c */
+STATIC_LIB_REQUIRE(_pthread_switch_add_np);
+/* thr_symbols.c */
+STATIC_LIB_REQUIRE(_thread_state_running);
+/* thr_syscalls.c */
+STATIC_LIB_REQUIRE(__wait4);
+/* thr_yield.c */
+STATIC_LIB_REQUIRE(_pthread_yield);
+
 /*
  * Threaded process initialization.
  *
@@ -106,9 +192,6 @@ _libpthread_init(struct pthread *curthread)
 	if ((_thr_initial != NULL) && (curthread == NULL))
 		/* Only initialize the threaded application once. */
 		return;
-
-	/* Pull debug symbols in for static binary */
-	_thread_state_running = PS_RUNNING;
 
 	/*
 	 * Check for the special case of this process running as

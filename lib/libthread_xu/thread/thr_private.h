@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.9 2006/03/19 13:07:12 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.10 2006/04/05 00:48:50 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -94,6 +94,12 @@
 } while (0)
 #else
 #define THR_ASSERT(cond, msg)
+#endif
+
+#ifdef PIC
+#define	STATIC_LIB_REQUIRE(name)
+#else
+#define STATIC_LIB_REQUIRE(name)	__asm(".globl " #name)
 #endif
 
 #define	TIMESPEC_ADD(dst, src, val)				\
