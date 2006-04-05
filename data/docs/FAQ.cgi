@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.14 2006/04/01 23:04:45 justin Exp $
+# $DragonFly: site/data/docs/Attic/FAQ.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 

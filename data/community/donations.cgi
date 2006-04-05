@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.7 2005/03/13 11:03:23 corecode Exp $
+# $DragonFly: site/data/community/Attic/donations.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
 
 $TITLE(DragonFly - Donations)
 

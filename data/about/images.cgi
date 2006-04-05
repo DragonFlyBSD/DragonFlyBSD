@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/images.cgi,v 1.2 2006/03/28 02:03:53 justin Exp $
+# $DragonFly: site/data/about/Attic/images.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
