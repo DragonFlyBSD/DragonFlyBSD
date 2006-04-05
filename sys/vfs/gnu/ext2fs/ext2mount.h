@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.1 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.2 2006/04/05 21:06:22 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_EXT2MOUNT_H_
@@ -116,7 +116,7 @@ struct ext2mount {
 
 /*
  * Macros to access filesystem parameters in the ext2mount structure.
- * Used by ufs_bmap.
+ * Used by ext2_bmap.
  */
 #define MNINDIR(ump)			((ump)->um_nindir)
 #define	blkptrtodb(ump, b)		((b) << (ump)->um_bptrtodb)

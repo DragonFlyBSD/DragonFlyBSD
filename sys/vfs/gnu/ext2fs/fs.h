@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.8 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.9 2006/04/05 21:06:22 dillon Exp $
  */
 
 /*
@@ -92,8 +92,8 @@
 #define ino_to_cg(fs, x)	(((x) - 1) / EXT2_INODES_PER_GROUP(fs))
 
 /* get block containing inode from its number x */
-#define	ino_to_fsba(fs, x)	fs_cs(fs, ino_to_cg(fs, x)).bg_inode_table + \
-	(((x)-1) % EXT2_INODES_PER_GROUP(fs))/EXT2_INODES_PER_BLOCK(fs)
+#define	ino_to_fsba(fs, x)	(fs_cs(fs, ino_to_cg(fs, x)).bg_inode_table + \
+	(((x)-1) % EXT2_INODES_PER_GROUP(fs))/EXT2_INODES_PER_BLOCK(fs))
 
 /* get offset for inode in block */
 #define	ino_to_fsbo(fs, x)	((x-1) % EXT2_INODES_PER_BLOCK(fs))
@@ -128,8 +128,8 @@
 	((off_t)(blk) * (fs)->s_frag_size)
 #define dofftofsb(fs, blk)	/* calculates blk / fs->fs_fsize */   \
 	((daddr_t)((blk) / (fs)->s_frag_size))
-#define dbtodoff(fs, b)		/* calculates diskblk * fs->fs_size */ \
-	((off_t)(b) << ((fs)->s_bshift - (fs)->s_fsbtodb))
+#define dbtodoff(fs, b)		/* calculates diskblk * sectorsize */ \
+	((off_t)(b) * ((fs)->s_frag_size >> (fs)->s_fsbtodb))
 
 #define lblkno(fs, loc)		/* calculates (loc / fs->fs_bsize) */ \
 	((loc) >> (fs->s_bshift))

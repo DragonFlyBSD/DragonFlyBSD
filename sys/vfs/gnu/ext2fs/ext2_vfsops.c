@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.35 2006/04/04 17:34:32 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.36 2006/04/05 21:06:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1142,6 +1142,11 @@ restart:
 #if 0
 printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 #endif
+	printf("BREAD MP %p FS %p INODE %d INO_TO_FSBA %d DOFF %lld\n",
+		mp, fs,
+		(int)ino, (int)ino_to_fsba(fs, ino),
+		 fsbtodoff(fs, ino_to_fsba(fs, ino)));
+
 	error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
 		      (int)fs->s_blocksize, &bp);
 	if (error) {
@@ -1173,9 +1178,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		for(i = used_blocks; i < EXT2_NDIR_BLOCKS; i++)
 			ip->i_db[i] = 0;
 	}
-/*
 	ext2_print_inode(ip);
-*/
 	brelse(bp);
 
 	/*
@@ -1187,6 +1190,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		*vpp = NULL;
 		return (error);
 	}
+
 	/*
 	 * Finish inode initialization now that aliasing has been resolved.
 	 */

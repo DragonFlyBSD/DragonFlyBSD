@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.26 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.27 2006/04/05 21:06:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -939,6 +939,12 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 	error = EXT2_UPDATE(tvp, 1);
 
 	/*
+	 * The vnode must have a VM object in order to issue buffer cache
+	 * ops on it.
+	 */
+	vinitvmio(tvp);
+
+	/*
 	 * Bump link count in parent directory
 	 * to reflect work done below.  Should
 	 * be done before reference is created
@@ -1094,6 +1100,13 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 		ip->i_size = len;
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	} else
+		/*
+		 * Make sure we have a VM object in order to use
+		 * the buffer cache.
+		 */
+		if (vp->v_object == NULL)
+			vinitvmio(vp);
+
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred, (int *)0,
 		    NULL);
@@ -1422,17 +1435,6 @@ ext2_getattr(struct vop_getattr_args *ap)
 	struct inode *ip = VTOI(vp);
 	struct vattr *vap = ap->a_vap;
 
-	/*
-	 * This may cause i_fsmid to be updated even if no change (0)
-	 * is returned, but we should only write out the inode if non-zero
-	 * is returned and if the mount is read-write.
-	 */
-	if (cache_check_fsmid_vp(vp, &ip->i_fsmid) &&
-	    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0
-	) {
-		ip->i_flag |= IN_LAZYMOD;
-	}
-
 	ext2_itimes(vp);
 	/*
 	 * Copy from inode table
@@ -1458,7 +1460,6 @@ ext2_getattr(struct vop_getattr_args *ap)
 	vap->va_bytes = dbtob((u_quad_t)ip->i_blocks);
 	vap->va_type = IFTOVT(ip->i_mode);
 	vap->va_filerev = ip->i_modrev;
-	vap->va_fsmid = ip->i_fsmid;
 	return (0);
 }
 
@@ -2060,6 +2061,9 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 		break;
 	case VFIFO:
 		vp->v_ops = &mntp->mnt_vn_fifo_ops;
+		break;
+	case VDIR:
+		vinitvmio(vp);
 		break;
 	default:
 		break;
