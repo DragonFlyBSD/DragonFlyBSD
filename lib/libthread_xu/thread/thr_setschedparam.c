@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_setschedparam.c,v 1.13 2003/04/21 04:02:56 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -45,9 +45,6 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 	const struct sched_param *param)
 {
 	struct pthread *curthread = tls_get_curthread();
-	int	in_syncq;
-	int	in_readyq = 0;
-	int	old_prio;
 	int	ret = 0;
 
 	if ((param == NULL) || (policy < SCHED_FIFO) || (policy > SCHED_RR)) {
@@ -71,7 +68,6 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 			_thr_ref_delete(curthread, pthread);
 			return (ESRCH);
 		}
-		in_syncq = pthread->sflags & THR_FLAGS_IN_SYNCQ;
 
 		/* Set the scheduling policy: */
 		pthread->attr.sched_policy = policy;
@@ -84,51 +80,15 @@ _pthread_setschedparam(pthread_t pthread, int policy,
 			 */
 			THR_THREAD_UNLOCK(curthread, pthread);
 		else {
-			/*
-			 * Remove the thread from its current priority
-			 * queue before any adjustments are made to its
-			 * active priority:
-			 */
-			old_prio = pthread->active_priority;
-			/* if ((pthread->flags & THR_FLAGS_IN_RUNQ) != 0) */ {
-				in_readyq = 1;
-				/* THR_RUNQ_REMOVE(pthread); */
-			}
-
 			/* Set the thread base priority: */
-			pthread->base_priority &=
-			    (THR_SIGNAL_PRIORITY | THR_RT_PRIORITY);
 			pthread->base_priority = param->sched_priority;
 
 			/* Recalculate the active priority: */
 			pthread->active_priority = MAX(pthread->base_priority,
 			    pthread->inherited_priority);
 
-			if (in_readyq) {
-				if ((pthread->priority_mutex_count > 0) &&
-				    (old_prio > pthread->active_priority)) {
-					/*
-					 * POSIX states that if the priority is
-					 * being lowered, the thread must be
-					 * inserted at the head of the queue for
-					 * its priority if it owns any priority
-					 * protection or inheritence mutexes.
-					 */
-					/* THR_RUNQ_INSERT_HEAD(pthread); */
-				}
-				else
-					/* THR_RUNQ_INSERT_TAIL(pthread)*/ ;
-			}
-
 			/* Unlock the threads scheduling queue: */
 			THR_THREAD_UNLOCK(curthread, pthread);
-
-			/*
-			 * Check for any mutex priority adjustments.  This
-			 * includes checking for a priority mutex on which
-			 * this thread is waiting.
-			 */
-			_mutex_notify_priochange(curthread, pthread, in_syncq);
 		}
 		_thr_ref_delete(curthread, pthread);
 	}

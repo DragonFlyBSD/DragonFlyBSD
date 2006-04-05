@@ -30,40 +30,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_init.c,v 1.66 2004/08/21 11:49:19 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.6 2006/04/05 00:48:50 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.7 2006/04/05 12:12:23 davidxu Exp $
  */
-
-/* Allocate space for global thread variables here: */
-#define GLOBAL_PTHREAD_PRIVATE
 
 #include "namespace.h"
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/signalvar.h>
-#include <machine/reg.h>
-#include <machine/tls.h>
 
 #include <sys/ioctl.h>
-#include <sys/mount.h>
-#include <sys/uio.h>
-#include <sys/socket.h>
-#include <sys/event.h>
-#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/ttycom.h>
-#include <sys/wait.h>
 #include <sys/mman.h>
 
-#include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <pthread.h>
-#include <pthread_np.h>
 #include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -71,19 +54,6 @@
 
 #include "libc_private.h"
 #include "thr_private.h"
-
-extern int _thread_state_running;
-
-int	__pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *);
-int	__pthread_mutex_lock(pthread_mutex_t *);
-int	__pthread_mutex_trylock(pthread_mutex_t *);
-
-void	_thread_init(void) __attribute__ ((constructor));
-
-static void init_private(void);
-static void init_main_thread(struct pthread *thread);
-
-static int	init_once = 0;
 
 /* thr_attr.c */
 STATIC_LIB_REQUIRE(_pthread_attr_init);
@@ -170,6 +140,27 @@ STATIC_LIB_REQUIRE(_thread_state_running);
 STATIC_LIB_REQUIRE(__wait4);
 /* thr_yield.c */
 STATIC_LIB_REQUIRE(_pthread_yield);
+
+void		*_usrstack;
+struct pthread	*_thr_initial;
+int		_thread_scope_system;
+
+pid_t		_thr_pid;
+int		_thr_guard_default;
+int		_thr_stack_default =	THR_STACK_DEFAULT;
+int		_thr_stack_initial =	THR_STACK_INITIAL;
+int		_thr_page_size;
+
+static void	init_private(void);
+static void	init_main_thread(struct pthread *thread);
+static int	init_once = 0;
+
+void	_thread_init(void) __attribute__ ((constructor));
+void
+_thread_init(void)
+{
+	_libpthread_init(NULL);
+}
 
 /*
  * Threaded process initialization.
@@ -301,7 +292,6 @@ init_main_thread(struct pthread *thread)
 
 	/* Initialize the mutex queue: */
 	TAILQ_INIT(&thread->mutexq);
-	TAILQ_INIT(&thread->pri_mutexq);
 
 	thread->state = PS_RUNNING;
 	thread->uniqueid = 0;
@@ -337,7 +327,7 @@ init_private(void)
 			PANIC("Cannot get kern.usrstack from sysctl");
 		_thr_page_size = getpagesize();
 		_thr_guard_default = _thr_page_size;
-	 	_pthread_attr_default.guardsize_attr = _thr_guard_default;
+		_pthread_attr_default.guardsize_attr = _thr_guard_default;
 		
 		TAILQ_INIT(&_thr_atfork_list);
 #ifdef SYSTEM_SCOPE_ONLY
@@ -351,12 +341,3 @@ init_private(void)
 	}
 	init_once = 1;
 }
-
-void
-_thread_init(void)
-{
-	_libpthread_init(NULL);
-}
-
-extern int _thread_autoinit_dummy_decl;
-int _thread_autoinit_dummy_decl = 0;

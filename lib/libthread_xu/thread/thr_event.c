@@ -23,10 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_event.c,v 1.1 2005/05/07 09:29:46 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_event.c,v 1.2 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include "thr_private.h"
+
+int		_thread_event_mask;
+struct pthread	*_thread_last_event;
+umtx_t		_thr_event_lock;
 
 void
 _thread_bp_create(void)

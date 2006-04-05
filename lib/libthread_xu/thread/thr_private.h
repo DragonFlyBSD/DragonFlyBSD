@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.10 2006/04/05 00:48:50 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.11 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -58,17 +58,6 @@
 #include "pthread_md.h"
 #include "thr_umtx.h"
 #include "thread_db.h"
-
-/*
- * Evaluate the storage class specifier.
- */
-#ifdef GLOBAL_PTHREAD_PRIVATE
-#define SCLASS
-#define SCLASS_PRESET(x...)	= x
-#else
-#define SCLASS			extern
-#define SCLASS_PRESET(x...)
-#endif
 
 /* Signal to do cancellation */
 #define	SIGCANCEL		32
@@ -101,6 +90,9 @@
 #else
 #define STATIC_LIB_REQUIRE(name)	__asm(".globl " #name)
 #endif
+
+TAILQ_HEAD(thread_head, pthread)	thread_head;
+TAILQ_HEAD(atfork_head, pthread_atfork)	atfork_head;
 
 #define	TIMESPEC_ADD(dst, src, val)				\
 	do { 							\
@@ -257,7 +249,6 @@ struct pthread_attr {
 #define	THR_STACK_USER		0x100	/* 0xFF reserved for <pthread.h> */
 	int	flags;
 	void	*arg_attr;
-	void	(*cleanup_attr)();
 	void	*stackaddr_attr;
 	size_t	stacksize_attr;
 	size_t	guardsize_attr;
@@ -448,9 +439,6 @@ struct pthread {
 	/* Wait data. */
 	union pthread_wait_data data;
 
-	int			sflags;
-#define THR_FLAGS_IN_SYNCQ	0x0001
-
 	/* Miscellaneous flags; only set with scheduling lock held. */
 	int			flags;
 #define THR_FLAGS_PRIVATE	0x0001
@@ -495,9 +483,6 @@ struct pthread {
 
 	/* Queue of currently owned simple type mutexes. */
 	TAILQ_HEAD(, pthread_mutex)	mutexq;
-
-	/* Queue of currently owned priority type mutexs. */
-	TAILQ_HEAD(, pthread_mutex)	pri_mutexq;
 
 	void				*ret;
 	struct pthread_specific_elem	*specific;
@@ -603,18 +588,18 @@ do {								\
 	if (((thrd)->tlflags & TLFLAGS_IN_GCLIST) == 0) {	\
 		TAILQ_INSERT_HEAD(&_thread_gc_list, thrd, gcle);\
 		(thrd)->tlflags |= TLFLAGS_IN_GCLIST;		\
-		_gc_count++;					\
+		_thr_gc_count++;					\
 	}							\
 } while (0)
 #define	THR_GCLIST_REMOVE(thrd) do {				\
 	if (((thrd)->tlflags & TLFLAGS_IN_GCLIST) != 0) {	\
 		TAILQ_REMOVE(&_thread_gc_list, thrd, gcle);	\
 		(thrd)->tlflags &= ~TLFLAGS_IN_GCLIST;		\
-		_gc_count--;					\
+		_thr_gc_count--;					\
 	}							\
 } while (0)
 
-#define GC_NEEDED()	(_gc_count >= 5)
+#define GC_NEEDED()	(_thr_gc_count >= 5)
 
 #define	THR_IN_SYNCQ(thrd)	(((thrd)->sflags & THR_FLAGS_IN_SYNCQ) != 0)
 
@@ -625,81 +610,50 @@ do {								\
 extern int __isthreaded;
 
 /*
- * Global variables for the pthread kernel.
+ * Global variables for the pthread library.
  */
-
-SCLASS void		*_usrstack	SCLASS_PRESET(NULL);
-SCLASS struct pthread	*_thr_initial	SCLASS_PRESET(NULL);
-SCLASS int		_thread_scope_system	SCLASS_PRESET(0);
+extern void		*_usrstack;
+extern struct pthread	*_thr_initial;
+extern int		_thread_scope_system;
 
 /* For debugger */
-SCLASS int		_libthread_xu_debug	SCLASS_PRESET(0);
-SCLASS int		_thread_event_mask	SCLASS_PRESET(0);
-SCLASS struct pthread	*_thread_last_event;
+extern int		_libthread_xu_debug;
+extern int		_thread_event_mask;
+extern struct pthread	*_thread_last_event;
 
-/* List of all threads: */
-SCLASS TAILQ_HEAD(, pthread)	_thread_list
-    SCLASS_PRESET(TAILQ_HEAD_INITIALIZER(_thread_list));
+/* List of all threads */
+extern struct thread_head	_thread_list;
 
-/* List of threads needing GC: */
-SCLASS TAILQ_HEAD(, pthread)	_thread_gc_list
-    SCLASS_PRESET(TAILQ_HEAD_INITIALIZER(_thread_gc_list));
+/* List of threads needing GC */
+extern struct thread_head	_thread_gc_list;
 
-SCLASS int	_thread_active_threads  SCLASS_PRESET(1);
+extern int	_thread_active_threads;
 
-SCLASS TAILQ_HEAD(atfork_head, pthread_atfork) _thr_atfork_list;
-SCLASS umtx_t	_thr_atfork_lock;
+extern struct	atfork_head	_thr_atfork_list;
+extern umtx_t	_thr_atfork_lock;
 
-/* Default thread attributes: */
-SCLASS struct pthread_attr _pthread_attr_default
-    SCLASS_PRESET({
-	.sched_policy = SCHED_RR,
-	.sched_inherit = 0,
-	.sched_interval = TIMESLICE_USEC,
-	.prio = THR_DEFAULT_PRIORITY,
-	.suspend = THR_CREATE_RUNNING,
-	.flags = 0,
-	.arg_attr = NULL,
-	.cleanup_attr = NULL,
-	.stackaddr_attr = NULL,
-	.stacksize_attr = THR_STACK_DEFAULT,
-	.guardsize_attr = 0
-    });
+/* Default thread attributes */
+extern struct pthread_attr _pthread_attr_default;
 
-/* Default mutex attributes: */
-SCLASS struct pthread_mutex_attr _pthread_mutexattr_default
-    SCLASS_PRESET({
-	.m_type = PTHREAD_MUTEX_DEFAULT,
-	.m_protocol = PTHREAD_PRIO_NONE,
-	.m_ceiling = 0,
-	.m_flags = 0
-    });
+/* Default mutex attributes */
+extern struct pthread_mutex_attr _pthread_mutexattr_default;
 
-/* Default condition variable attributes: */
-SCLASS struct pthread_cond_attr _pthread_condattr_default
-    SCLASS_PRESET({
-	.c_pshared = PTHREAD_PROCESS_PRIVATE,
-	.c_clockid = CLOCK_REALTIME
-    });
+/* Default condition variable attributes */
+extern struct pthread_cond_attr _pthread_condattr_default;
 
-SCLASS pid_t		_thr_pid		SCLASS_PRESET(0);
-SCLASS int		_thr_guard_default;
-SCLASS int		_thr_stack_default	SCLASS_PRESET(THR_STACK_DEFAULT);
-SCLASS int		_thr_stack_initial	SCLASS_PRESET(THR_STACK_INITIAL);
-SCLASS int		_thr_page_size;
-/* Garbage thread count. */
-SCLASS int              _gc_count               SCLASS_PRESET(0);
+extern pid_t	_thr_pid;
+extern int	_thr_guard_default;
+extern int	_thr_stack_default;
+extern int	_thr_stack_initial;
+extern int	_thr_page_size;
+extern int	_thr_gc_count;
 
-SCLASS umtx_t		_mutex_static_lock;
-SCLASS umtx_t		_cond_static_lock;
-SCLASS umtx_t		_rwlock_static_lock;
-SCLASS umtx_t		_keytable_lock;
-SCLASS umtx_t		_thr_list_lock;
-SCLASS umtx_t		_thr_event_lock;
-
-/* Undefine the storage class and preset specifiers: */
-#undef  SCLASS
-#undef	SCLASS_PRESET
+extern umtx_t	_mutex_static_lock;
+extern umtx_t	_cond_static_lock;
+extern umtx_t	_rwlock_static_lock;
+extern umtx_t	_keytable_lock;
+extern umtx_t	_thr_list_lock;
+extern umtx_t	_thr_event_lock;
 
 /*
  * Function prototype definitions.

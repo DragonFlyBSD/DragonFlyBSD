@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.6 2006/04/05 00:24:35 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.7 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -35,6 +35,8 @@
 #include <limits.h>
 
 #include "thr_private.h"
+
+umtx_t		_cond_static_lock;
 
 /*
  * Prototypes

@@ -59,7 +59,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_fork.c,v 1.34 2003/11/05 18:18:45 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.5 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -74,6 +74,9 @@
 
 #include "libc_private.h"
 #include "thr_private.h"
+
+struct atfork_head	_thr_atfork_list;
+umtx_t	_thr_atfork_lock;
 
 int
 _pthread_atfork(void (*prepare)(void), void (*parent)(void),

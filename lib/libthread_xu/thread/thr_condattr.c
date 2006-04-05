@@ -29,13 +29,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.4 2006/04/05 00:24:35 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.5 2006/04/05 12:12:23 davidxu Exp $
  */
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
+
+/* Default condition variable attributes. */
+struct pthread_cond_attr _pthread_condattr_default = {
+	.c_pshared = PTHREAD_PROCESS_PRIVATE,
+	.c_clockid = CLOCK_REALTIME
+};
 
 int
 _pthread_condattr_init(pthread_condattr_t *attr)

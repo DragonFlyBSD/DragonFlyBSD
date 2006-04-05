@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.5 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.6 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -108,9 +108,7 @@ _pthread_exit(void *status)
 	while (curthread->cleanup != NULL) {
 		pthread_cleanup_pop(1);
 	}
-	if (curthread->attr.cleanup_attr != NULL) {
-		curthread->attr.cleanup_attr(curthread->attr.arg_attr);
-	}
+
 	/* Check if there is thread specific data: */
 	if (curthread->specific != NULL) {
 		/* Run the thread-specific data destructors: */

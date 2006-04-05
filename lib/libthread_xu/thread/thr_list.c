@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.5 2006/03/12 12:25:57 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.6 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -44,6 +44,20 @@
 #else
 #define DBG_MSG(x...)
 #endif
+
+/* List of all threads */
+struct thread_head _thread_list = TAILQ_HEAD_INITIALIZER(_thread_list);
+
+/* List of threads needing GC */
+struct thread_head _thread_gc_list = TAILQ_HEAD_INITIALIZER(_thread_gc_list);
+
+/* Number of active threads */
+int	_thread_active_threads = 1;
+
+/* Garbage thread count. */
+int	_thr_gc_count;
+
+umtx_t	_thr_list_lock;
 
 /*
  * Define a high water mark for the maximum number of threads that
@@ -76,7 +90,7 @@ _thr_list_init(void)
 {
 	int i;
 
-	_gc_count = 0;
+	_thr_gc_count = 0;
 	_thr_umtx_init(&_thr_list_lock);
 	TAILQ_INIT(&_thread_list);
 	TAILQ_INIT(&free_threadq);

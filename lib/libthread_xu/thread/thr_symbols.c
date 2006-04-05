@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_symbols.c,v 1.1 2004/08/16 03:25:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.3 2005/05/07 09:29:46 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <stddef.h>
@@ -43,6 +43,7 @@
 
 /* A collection of symbols needed by debugger */
 
+int _libthread_xu_debug;
 int _thread_max_keys = PTHREAD_KEYS_MAX;
 int _thread_off_attr_flags = offsetof(struct pthread, attr.flags);
 int _thread_off_event_buf = offsetof(struct pthread, event_buf);

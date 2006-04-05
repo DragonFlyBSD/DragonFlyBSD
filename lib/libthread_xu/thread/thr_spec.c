@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_spec.c,v 1.22 2004/07/13 22:49:58 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -42,8 +42,8 @@
 #include <pthread.h>
 #include "thr_private.h"
 
-/* Static variables: */
 struct pthread_key _thread_keytable[PTHREAD_KEYS_MAX];
+umtx_t	_keytable_lock;
 
 int
 _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
