@@ -1,0 +1,54 @@
+# DRAGONFLY-CVS-SUPFILE
+#
+# $DragonFly: site/data/community/dragonfly-cvs-sys-supfile,v 1.1 2006/04/05 15:11:19 justin Exp $
+#
+# This file will by default maintain a copy of the DragonFly BSD CVS tree
+# in /home/dcvs.
+#
+# If not running X, or invoking cvsup from a non-interactive script, then
+# run it as follows:
+#
+#	cvsup -g -L 2 dragonfly-cvs-sys-supfile
+#
+# You may wish to change some of the settings in this file to better
+# suit your system:
+#
+# host=<mirror_site>
+#		This specifies the server host which will supply the
+#		file updates.  If you leave it at its default a random
+#		mirror site will be used.
+#
+# base=/usr
+#		This specifies the root where CVSup will store information
+#		about the collections you have transferred to your system.
+#		A setting of "/usr" will generate this information in
+#		/usr/sup.  Even if you are CVSupping a large number of
+#		collections, you will be hard pressed to generate more than
+#		~1MB of data in this directory.  You can override the
+#		"base" setting on the command line with cvsup's "-b base"
+#		option.  This directory must exist in order to run CVSup.
+#
+# prefix=/home/dcvs
+#		This specifies where to place the requested files.  A
+#		setting of "/home/ncvs" will place all of the files
+#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
+#		"/home/ncvs/ports/archivers").  The prefix directory
+#		must exist in order to run CVSup.
+#
+# If you want to use a 'checked out' copy of the DragonFly source tree, make
+# sure to use prefix=/usr and release=cvs tag=.
+#
+*default host=cvsup.dragonflybsd.org
+*default base=/usr
+*default prefix=/home/dcvs
+#*default prefix=/usr
+*default release=cvs
+#*default release=cvs tag=.
+*default delete use-rel-suffix
+*default compress
+
+dragonfly-cvs-root
+# note: dragonfly-cvs-src includes dragonfly-cvs-sys
+#dragonfly-cvs-src
+dragonfly-cvs-sys
+

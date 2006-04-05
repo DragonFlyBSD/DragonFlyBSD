@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/history.cgi,v 1.2 2006/04/05 12:24:10 justin Exp $
+# $DragonFly: site/data/about/Attic/history.cgi,v 1.3 2006/04/05 15:11:22 justin Exp $
 
 $TITLE(The History of DragonFly)
 
@@ -20,7 +20,7 @@ been made and changes from other BSDs have been brought in.
 
 <p>
 Further information on the project <a href="/docs/goals.cgi">goals</a> 
-and <a href="status/diary.cgi">status</a> are available on 
+and <a href="/status/diary.cgi">status</a> are available on 
 this website, and discussion of the project is possible on a variety of 
 <a href="/community/news.cgi">newsgroups</a> and 
 <a href="/community/mail.cgi">mailing lists</a>.
