@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.3 2006/03/30 03:41:42 justin Exp $
+# $DragonFly: site/data/docs/Attic/goals.cgi,v 1.4 2006/04/05 15:38:09 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -64,7 +64,7 @@ data.   Some operations, such as a read() or write(), would obtain the
 appropriate range lock on the VM object, issue their I/O, then release the
 lock.  Long-term caching operations might collapse ranges together to
 bound the number of range locks being maintained, which allows the 
-infrastructure to maintain locks between operations in a scaleable fashion.
+infrastructure to maintain locks between operations in a scalable fashion.
 In such cases cache operations such as invalidation or, say,
 Exclusive->Shared transitions, would generate a message to the holding 
 entity asking it to downgrade or release its range lock.
@@ -148,7 +148,7 @@ makes only the particular version of the particular libraries
 and/or files the package needs visible to it.  Everything else would
 be invisible to that package.  By enforcing visibility you would 
 know very quickly if you specified your 
-package dependancies incorrectly, because your package would not
+package dependencies incorrectly, because your package would not
 be able to find incorrectly placed libraries or supporting files,  
 because they were not made accessible when the package was installed.
 For example, if the package says a program depends on version 1.5 of the
@@ -167,7 +167,7 @@ after you've updated all the packages that used to depend on it.</p>
 Another real advantage of enforced visibility is that it provides us
 with proof-positive that a package does or does not need something.  We
 would not have to rely on the packaging system to find out what the
-dependancies were; we could just look at the environment tagged to the
+dependencies were; we could just look at the environment tagged to the
 binary!</p>
 
 <a name="messaging"><h2>The Port/Messaging Model</h2></a>
@@ -220,7 +220,7 @@ such as try_mplock() in order to deal with the request without having to
 resort to more expensive queueing / switching.</p>
 <p>
 The key thing to remember here is that our best case optimization is direct
-execution by mp_SendMsg() with virtually no more overhead then a simple
+execution by mp_SendMsg() with virtually no more overhead than a simple
 subroutine call would otherwise entail.  No queueing, no messing around
 with the reply port...  If a message can be acted upon synchronously, then we
 are talking about an extremely inexpensive operation.  It is this key feature
@@ -275,7 +275,7 @@ between cpus.</p>
     A cpu which attempts to schedule a thread belonging to another cpu
     will issue an IPI-based message to the target cpu to execute the operation.
     These messages are asynchronous by default and while IPIs may entail some
-    latency, they don't necessary waste cpu cycles due to that fact.  Threads
+    latency, they don't necessarily waste cpu cycles due to that fact.  Threads
     can block such operations by entering a critical section and, in fact,
     that is what the LWKT scheduler does.  Entering and exiting a critical 
     section are considered to be cheap operations and require no locking
@@ -286,7 +286,7 @@ between cpus.</p>
     queue while waiting for its outgoing queue to unstall.  The IPI messaging
     subsystem specifically does not switch threads under these circumstances
     which allows the software to treat it as a non-blocking API even though
-    some spinning might occassionally occur.</p></li>
+    some spinning might occasionally occur.</p></li>
 </ol>
 <p>
 In addition to these key features, the LWKT model allows for both FAST
@@ -441,11 +441,11 @@ And there you have it.  The only 'real' system calls DragonFly would implement
 would be message-passing primitives for sending, receiving, and waiting.
 Everything else would go through the emulation layer.  Of course, on the
 kernel side the message command will wind up hitting a dispatch table almost
-as big as the one that exist in FreeBSD 4.x.  But as more and more 
+as big as the one that existed in FreeBSD 4.x.  But as more and more 
 subsystems become message-based, the syscall messages
 become more integrated with those subsystems
 and the overhead of dealing with a 'message' could actually wind up being
-less then the overhead of dealing with discrete system calls.  Portability
+less than the overhead of dealing with discrete system calls.  Portability
 becomes far easier to accomplish because the 'emulation layer' provides a
 black box which separates what a userland program expects from what the
 kernel expects, and the emulation layer can be updated along with the kernel
@@ -495,7 +495,7 @@ filesystem code, would either have to be asynchronized, which is difficult,
 Initially we can take the (huge) performance hit and serialize the VOP
 operations into a single thread, then we can optimize the filesystems we
 care about like UFS.  It should be noted that a massive reentrancy model
-is not going to perform all that much better then, say, a 16-thread model
+is not going to perform all that much better than, say, a 16-thread model
 for a filesystem because in both cases the bottleneck is the I/O.  As
 long as one thread is free to handle non-blocking (cached) requests we can
 achieve 95% of the performance of a massive reentrancy model.</p>
@@ -511,5 +511,5 @@ to run in userspace for debugging or even in a deployment when one
 absolutely cannot afford a crash.  Why run msdosfs or cd9660 in the
 kernel and risk a crash when it would operate just as well in userland?
 Debugging and filesystem development are other good reasons for having a
-messaging API rather then a massively reentrant API.</p>
+messaging API rather than a massively reentrant API.</p>
 
