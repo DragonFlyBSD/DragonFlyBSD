@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/history.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
+# $DragonFly: site/data/about/Attic/history.cgi,v 1.2 2006/04/05 12:24:10 justin Exp $
 
 $TITLE(The History of DragonFly)
 
@@ -15,7 +15,7 @@ is "the logical continuation of the FreeBSD 4.x series", as quoted in
 DragonFly has been going through rapid development ever since, working 
 towards the goal of creating a single system image across multiple computers.  
 In the process of moving towards this goal, improvements to the code have 
-been made and a changes from other BSDs have been brought in.
+been made and changes from other BSDs have been brought in.
 </p>
 
 <p>
