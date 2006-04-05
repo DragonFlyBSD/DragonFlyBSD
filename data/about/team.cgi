@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.2 2006/04/05 19:41:07 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -23,7 +23,7 @@ Matt is the founder of the DragonFly BSD project.  Matt is also the
 principal code contributor to DragonFly, and supports the website and 
 other online resources for this project.  He has been working on or 
 completed DragonFly projects such as variant symlinks, MPIPE, the slab 
-allocator, the namecache, LWKT, dfports, the 'live CD', AMD64 work, 
+allocator, the namecache, LWKT, the 'live CD', AMD64 work, 
 and much more, including coordination on projects other 
 contributors have submitted.
 </p>
