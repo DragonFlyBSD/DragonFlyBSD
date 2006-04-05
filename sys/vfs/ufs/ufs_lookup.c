@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.20 2006/04/02 04:13:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.21 2006/04/05 20:22:30 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -153,12 +153,6 @@ ufs_lookup(struct vop_old_lookup_args *ap)
 	dp = VTOI(vdp);
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
-
-	/*
-	 * We need to be able to perform buffer cache operations on
-	 * the directory.
-	 */
-	vinitvmio(vdp);
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.
@@ -1067,13 +1061,6 @@ ufs_dirempty(struct inode *ip, ino_t parentino, struct ucred *cred)
 	struct direct *dp = (struct direct *)&dbuf;
 	int error, count, namlen;
 #define	MINDIRSIZ (sizeof (struct dirtemplate) / 2)
-
-	/*
-	 * The buffer cache needs a VM object and there might not be one
-	 * since the vnode might not have been opened.
-	 */
-	if (ITOV(ip)->v_object == NULL)
-		vinitvmio(ITOV(ip));
 
 	for (off = 0; off < ip->i_size; off += dp->d_reclen) {
 		error = vn_rdwr(UIO_READ, ITOV(ip), (caddr_t)dp, MINDIRSIZ, off,

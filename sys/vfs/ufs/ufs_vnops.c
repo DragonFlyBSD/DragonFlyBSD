@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.40 2006/04/03 02:18:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.41 2006/04/05 20:22:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1669,13 +1669,6 @@ ufs_readdir(struct vop_readdir_args *ap)
 	int ncookies;
 	off_t startoffset = uio->uio_offset;
 
-	/*
-	 * The NFS server may call us without opening the vnode, make sure
-	 * we have a VM object XXX
-	 */
-	if (vp->v_object == NULL)
-		vinitvmio(vp);
-
 	count = uio->uio_resid;
 	/*
 	 * Avoid complications for partial directory entries by adjusting
@@ -2058,6 +2051,10 @@ ufs_advlock(struct vop_advlock_args *ap)
 /*
  * Initialize the vnode associated with a new inode, handle aliased
  * vnodes.
+ *
+ * Make sure directories have their VM object now rather then later,
+ * saving us from having to check on all the myrid directory VOPs
+ * that might be executed without a VOP_OPEN being performed.
  */
 int
 ufs_vinit(struct mount *mntp, struct vnode **vpp)
@@ -2077,6 +2074,9 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 		break;
 	case VFIFO:
 		vp->v_ops = &mntp->mnt_vn_fifo_ops;
+		break;
+	case VDIR:
+		vinitvmio(vp);
 		break;
 	default:
 		break;
