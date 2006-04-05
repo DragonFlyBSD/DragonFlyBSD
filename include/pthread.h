@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/include/pthread.h,v 1.7 2005/03/15 12:27:43 davidxu Exp $
+ * $DragonFly: src/include/pthread.h,v 1.8 2006/04/05 06:53:27 davidxu Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
@@ -227,8 +227,8 @@ int		pthread_condattr_getpshared(pthread_condattr_t *, int *);
 int		pthread_condattr_setpshared(pthread_condattr_t *, int);
 #endif
 
-int		pthread_condattr_getclock(const pthread_condattr_t *, int *);
-int		pthread_condattr_setclock(pthread_condattr_t *, int);
+int		pthread_condattr_getclock(const pthread_condattr_t *, clockid_t *);
+int		pthread_condattr_setclock(pthread_condattr_t *, clockid_t);
 
 int		pthread_cond_broadcast(pthread_cond_t *);
 int		pthread_cond_destroy(pthread_cond_t *);
