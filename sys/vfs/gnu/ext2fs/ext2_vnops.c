@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.27 2006/04/05 21:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.28 2006/04/06 17:04:30 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -1175,7 +1175,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 		}
 	
 #ifdef QUOTA
-		if ((error = getinoquota(ip)) ||
+		if ((error = ext2_getinoquota(ip)) ||
 	    	(error = ext2_chkiq(ip, 1, ucp, 0))) {
 			EXT2_VFREE(tvp, ip->i_number, mode);
 			vput(tvp);
