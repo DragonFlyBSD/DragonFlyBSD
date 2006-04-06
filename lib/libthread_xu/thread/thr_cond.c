@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.8 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.9 2006/04/06 13:05:35 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -182,7 +182,7 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info cci;
 	pthread_cond_t  cv;
-	long		seq, oldseq;
+	int		seq, oldseq;
 	int		oldcancel;
 	int		ret = 0;
 
