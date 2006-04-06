@@ -29,10 +29,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_spec.c,v 1.22 2004/07/13 22:49:58 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <signal.h>
@@ -40,6 +40,8 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 struct pthread_key _thread_keytable[PTHREAD_KEYS_MAX];
@@ -99,7 +101,7 @@ _thread_cleanupspecific(void)
 {
 	struct pthread	*curthread = tls_get_curthread();
 	void		(*destructor)( void *);
-	void		*data = NULL;
+	const void	*data = NULL;
 	int		key;
 	int		i;
 
@@ -118,7 +120,7 @@ _thread_cleanupspecific(void)
 			    (curthread->specific[key].data != NULL)) {
 				if (curthread->specific[key].seqno ==
 				    _thread_keytable[key].seqno) {
-					data = (void *)
+					data = 
 					    curthread->specific[key].data;
 					destructor = _thread_keytable[key].destructor;
 				}
@@ -136,7 +138,7 @@ _thread_cleanupspecific(void)
 				 * destructor:
 				 */
 				THR_LOCK_RELEASE(curthread, &_keytable_lock);
-				destructor(data);
+				destructor(__DECONST(void *, data));
 				THR_LOCK_ACQUIRE(curthread, &_keytable_lock);
 			}
 		}
@@ -199,7 +201,7 @@ void *
 _pthread_getspecific(pthread_key_t key)
 {
 	struct pthread	*pthread;
-	void		*data;
+	const void	*data;
 
 	/* Point to the running thread: */
 	pthread = tls_get_curthread();
@@ -210,7 +212,7 @@ _pthread_getspecific(pthread_key_t key)
 		if (_thread_keytable[key].allocated &&
 		    (pthread->specific[key].seqno == _thread_keytable[key].seqno)) {
 			/* Return the value: */
-			data = (void *) pthread->specific[key].data;
+			data = pthread->specific[key].data;
 		} else {
 			/*
 			 * This key has not been used before, so return NULL
@@ -221,7 +223,7 @@ _pthread_getspecific(pthread_key_t key)
 	} else
 		/* No specific data has been created, so just return NULL: */
 		data = NULL;
-	return (data);
+	return __DECONST(void *, data);
 }
 
 __strong_reference(_pthread_key_create, pthread_key_create);

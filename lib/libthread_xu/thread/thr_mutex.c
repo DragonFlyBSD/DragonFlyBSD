@@ -30,17 +30,19 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.10 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.11 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
-#include <stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
-#include <sys/param.h>
 #include <sys/queue.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 #if defined(_PTHREADS_INVARIANTS)
@@ -78,10 +80,17 @@ umtx_t	_mutex_static_lock;
 /*
  * Prototypes
  */
-static int	mutex_self_trylock(struct pthread *, pthread_mutex_t);
-static int	mutex_self_lock(struct pthread *, pthread_mutex_t,
+static int	mutex_self_trylock(pthread_mutex_t);
+static int	mutex_self_lock(pthread_mutex_t,
 			const struct timespec *abstime);
 static int	mutex_unlock_common(pthread_mutex_t *, int);
+
+int __pthread_mutex_init(pthread_mutex_t *mutex,
+	const pthread_mutexattr_t *mutex_attr);
+int __pthread_mutex_trylock(pthread_mutex_t *mutex);
+int __pthread_mutex_lock(pthread_mutex_t *mutex);
+int __pthread_mutex_timedlock(pthread_mutex_t *mutex,
+	const struct timespec *abs_timeout);
 
 static int
 mutex_init(pthread_mutex_t *mutex,
@@ -265,7 +274,7 @@ mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
 		TAILQ_INSERT_TAIL(&curthread->mutexq,
 		    (*mutex), m_qe);
 	} else if ((*mutex)->m_owner == curthread) {
-		ret = mutex_self_trylock(curthread, *mutex);
+		ret = mutex_self_trylock(*mutex);
 	} /* else {} */
 
 	return (ret);
@@ -327,7 +336,7 @@ mutex_lock_common(struct pthread *curthread, pthread_mutex_t *m,
 		TAILQ_INSERT_TAIL(&curthread->mutexq,
 		    (*m), m_qe);
 	} else if ((*m)->m_owner == curthread) {
-		ret = mutex_self_lock(curthread, *m, abstime);
+		ret = mutex_self_lock(*m, abstime);
 	} else {
 		if (abstime == NULL) {
 			THR_UMTX_LOCK(curthread, &(*m)->m_lock);
@@ -462,7 +471,7 @@ _mutex_cv_lock(pthread_mutex_t *m)
 }
 
 static int
-mutex_self_trylock(struct pthread *curthread, pthread_mutex_t m)
+mutex_self_trylock(pthread_mutex_t m)
 {
 	int	ret;
 
@@ -491,8 +500,7 @@ mutex_self_trylock(struct pthread *curthread, pthread_mutex_t m)
 }
 
 static int
-mutex_self_lock(struct pthread *curthread, pthread_mutex_t m,
-	const struct timespec *abstime)
+mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 {
 	struct timespec ts1, ts2;
 	int ret;
@@ -520,10 +528,6 @@ mutex_self_lock(struct pthread *curthread, pthread_mutex_t m,
 		 * deadlock on attempts to get a lock you already own.
 		 */
 		ret = 0;
-		if (m->m_protocol != PTHREAD_PRIO_NONE) {
-			/* Unlock the mutex structure: */
-			THR_LOCK_RELEASE(curthread, &m->m_lock);
-		}
 		if (abstime) {
 			clock_gettime(CLOCK_REALTIME, &ts1);
 			TIMESPEC_SUB(&ts2, abstime, &ts1);
@@ -607,7 +611,7 @@ _mutex_unlock_private(pthread_t pthread)
 	for (m = TAILQ_FIRST(&pthread->mutexq); m != NULL; m = m_next) {
 		m_next = TAILQ_NEXT(m, m_qe);
 		if ((m->m_flags & MUTEX_FLAGS_PRIVATE) != 0)
-			pthread_mutex_unlock(&m);
+			_pthread_mutex_unlock(&m);
 	}
 }
 

@@ -29,11 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_once.c,v 1.9 2003/09/09 22:38:12 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_once.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_once.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 #define ONCE_NEVER_DONE		PTHREAD_NEEDS_INIT

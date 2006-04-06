@@ -29,12 +29,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.5 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.6 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 /* Default condition variable attributes. */

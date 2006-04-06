@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_stack.c,v 1.9 2004/10/06 08:11:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -115,7 +115,7 @@ static LIST_HEAD(, stack)	mstackq = LIST_HEAD_INITIALIZER(mstackq);
  * high memory
  *
  */
-static void *last_stack = NULL;
+static char *last_stack = NULL;
 
 /*
  * Round size up to the nearest multiple of
@@ -238,8 +238,8 @@ _thr_stack_free(struct pthread_attr *attr)
 
 	if ((attr != NULL) && ((attr->flags & THR_STACK_USER) == 0)
 	    && (attr->stackaddr_attr != NULL)) {
-		spare_stack = (attr->stackaddr_attr + attr->stacksize_attr
-		    - sizeof(struct stack));
+		spare_stack = (struct stack *)((char *)attr->stackaddr_attr +
+		 	attr->stacksize_attr - sizeof(struct stack));
 		spare_stack->stacksize = round_up(attr->stacksize_attr);
 		spare_stack->guardsize = round_up(attr->guardsize_attr);
 		spare_stack->stackaddr = attr->stackaddr_attr;

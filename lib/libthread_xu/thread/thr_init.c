@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.7 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.8 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -141,14 +141,14 @@ STATIC_LIB_REQUIRE(__wait4);
 /* thr_yield.c */
 STATIC_LIB_REQUIRE(_pthread_yield);
 
-void		*_usrstack;
+char		*_usrstack;
 struct pthread	*_thr_initial;
 int		_thread_scope_system;
 
 pid_t		_thr_pid;
-int		_thr_guard_default;
-int		_thr_stack_default =	THR_STACK_DEFAULT;
-int		_thr_stack_initial =	THR_STACK_INITIAL;
+size_t		_thr_guard_default;
+size_t		_thr_stack_default =	THR_STACK_DEFAULT;
+size_t		_thr_stack_initial =	THR_STACK_INITIAL;
 int		_thr_page_size;
 
 static void	init_private(void);
@@ -257,7 +257,7 @@ init_main_thread(struct pthread *thread)
 	 * resource limits, so this stack needs an explicitly mapped
 	 * red zone to protect the thread stack that is just beyond.
 	 */
-	if (mmap((void *)_usrstack - _thr_stack_initial -
+	if (mmap(_usrstack - _thr_stack_initial -
 	    _thr_guard_default, _thr_guard_default, 0, MAP_ANON,
 	    -1, 0) == MAP_FAILED)
 		PANIC("Cannot allocate red zone for initial thread");
@@ -271,7 +271,7 @@ init_main_thread(struct pthread *thread)
 	 *       actually free() it; it just puts it in the free
 	 *       stack queue for later reuse.
 	 */
-	thread->attr.stackaddr_attr = (void *)_usrstack - _thr_stack_initial;
+	thread->attr.stackaddr_attr = _usrstack - _thr_stack_initial;
 	thread->attr.stacksize_attr = _thr_stack_initial;
 	thread->attr.guardsize_attr = _thr_guard_default;
 	thread->attr.flags |= THR_STACK_USER;

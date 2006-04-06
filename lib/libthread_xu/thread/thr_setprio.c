@@ -29,10 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_setprio.c,v 1.10 2002/09/16 08:45:36 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_setprio.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_setprio.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 int
@@ -41,9 +44,9 @@ _pthread_setprio(pthread_t pthread, int prio)
 	int ret, policy;
 	struct sched_param param;
 
-	if ((ret = pthread_getschedparam(pthread, &policy, &param)) == 0) {
+	if ((ret = _pthread_getschedparam(pthread, &policy, &param)) == 0) {
 		param.sched_priority = prio;
-		ret = pthread_setschedparam(pthread, policy, &param);
+		ret = _pthread_setschedparam(pthread, policy, &param);
 	}
 
 	/* Return the error status: */

@@ -27,12 +27,10 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_sem.c,v 1.16 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.4 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
-#include <sys/queue.h>
-
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <errno.h>
@@ -41,7 +39,7 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include "un-namespace.h"
 #include "thr_private.h"
 
 /*
@@ -116,27 +114,6 @@ _sem_destroy(sem_t *sem)
 	return (0);
 }
 
-sem_t *
-_sem_open(const char *name, int oflag, ...)
-{
-	errno = ENOSYS;
-	return SEM_FAILED;
-}
-
-int
-_sem_close(sem_t *sem)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
-int
-_sem_unlink(const char *name)
-{
-	errno = ENOSYS;
-	return -1;
-}
-
 int
 _sem_getvalue(sem_t * __restrict sem, int * __restrict sval)
 {
@@ -187,6 +164,7 @@ _sem_wait(sem_t *sem)
 	return (-1);
 }
 
+#if 0
 int
 _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 {
@@ -223,6 +201,7 @@ _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 	errno = retval;
 	return (-1);
 }
+#endif
 
 int
 _sem_post(sem_t *sem)
@@ -243,14 +222,13 @@ _sem_post(sem_t *sem)
 	return (0);
 }
 
-__strong_reference(_sem_close, sem_close);
 __strong_reference(_sem_destroy, sem_destroy);
 __strong_reference(_sem_getvalue, sem_getvalue);
 __strong_reference(_sem_init, sem_init);
-__strong_reference(_sem_open, sem_open);
 __strong_reference(_sem_trywait, sem_trywait);
 __strong_reference(_sem_wait, sem_wait);
+#if 0
 __strong_reference(_sem_timedwait, sem_timedwait);
+#endif
 __strong_reference(_sem_post, sem_post);
-__strong_reference(_sem_unlink, sem_unlink);
 

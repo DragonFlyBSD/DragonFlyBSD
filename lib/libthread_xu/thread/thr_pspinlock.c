@@ -23,15 +23,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_pspinlock.c,v 1.2 2003/11/04 19:56:12 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.3 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <pthread_np.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 #define SPIN_COUNT 100000

@@ -29,20 +29,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.6 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
-#include <sys/param.h>
+#include "namespace.h"
 #include <sys/signalvar.h>
 
 #include <machine/tls.h>
 
 #include <signal.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include "un-namespace.h"
 
 #include "thr_private.h"
 
@@ -53,13 +52,19 @@
 #define DBG_MSG(x...)
 #endif
 
+int	__sigwait(const sigset_t *set, int *sig);
+int	__sigwaitinfo(const sigset_t *set, siginfo_t *info);
+int	__sigtimedwait(const sigset_t *set, siginfo_t *info,
+		const struct timespec * timeout);
+
 static void
-sigcancel_handler(int sig, siginfo_t *info, ucontext_t *ucp)
+sigcancel_handler(int sig __unused, siginfo_t *info __unused,
+	ucontext_t *ucp __unused)
 {
 	struct pthread *curthread = tls_get_curthread();
 
 	if (curthread->cancelflags & THR_CANCEL_AT_POINT)
-		pthread_testcancel();
+		_pthread_testcancel();
 	_thr_ast(curthread);
 }
 

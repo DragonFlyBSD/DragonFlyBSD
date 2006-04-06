@@ -32,8 +32,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.9 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.10 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +48,7 @@
 
 #include <pthread.h>
 #include <sys/signalvar.h>
+#include "un-namespace.h"
 
 #include "thr_private.h"
 #include "libc_private.h"
@@ -252,7 +255,7 @@ thread_start(void *arg)
 		_thr_suspend_check(curthread);
 
 	/* Run the current thread's start routine with argument: */
-	pthread_exit(curthread->start_routine(curthread->arg));
+	_pthread_exit(curthread->start_routine(curthread->arg));
 
 	/* This point should never be reached. */
 	PANIC("Thread has resumed after exit");

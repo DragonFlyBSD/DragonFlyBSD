@@ -24,16 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.6 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 /* maximum number of times a read lock may be obtained */
@@ -42,7 +44,7 @@
 umtx_t	_rwlock_static_lock;
 
 static int
-rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr)
+rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr __unused)
 {
 	pthread_rwlock_t prwlock;
 	int ret;

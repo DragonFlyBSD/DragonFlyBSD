@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.11 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.12 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -213,7 +213,7 @@ struct pthread_spinlock {
  */
 struct pthread_cleanup {
 	struct pthread_cleanup	*next;
-	void			(*routine)();
+	void			(*routine)(void *);
 	void			*routine_arg;
 	int			onstack;
 };
@@ -530,7 +530,7 @@ struct pthread {
 #define	THR_LOCK_ACQUIRE(thrd, lck)			\
 do {							\
 	(thrd)->locklevel++;				\
-	_thr_umtx_lock(lck, (thrd)->tid);		\
+	_thr_umtx_lock((lck), (thrd)->tid);		\
 } while (0)
 
 #ifdef	_PTHREADS_INVARIANTS
@@ -612,7 +612,7 @@ extern int __isthreaded;
 /*
  * Global variables for the pthread library.
  */
-extern void		*_usrstack;
+extern char		*_usrstack;
 extern struct pthread	*_thr_initial;
 extern int		_thread_scope_system;
 
@@ -642,9 +642,9 @@ extern struct pthread_mutex_attr _pthread_mutexattr_default;
 extern struct pthread_cond_attr _pthread_condattr_default;
 
 extern pid_t	_thr_pid;
-extern int	_thr_guard_default;
-extern int	_thr_stack_default;
-extern int	_thr_stack_initial;
+extern size_t	_thr_guard_default;
+extern size_t	_thr_stack_default;
+extern size_t	_thr_stack_initial;
 extern int	_thr_page_size;
 extern int	_thr_gc_count;
 
@@ -667,35 +667,8 @@ int	_mutex_reinit(pthread_mutex_t *);
 void	_mutex_fork(struct pthread *curthread);
 void	_mutex_unlock_private(struct pthread *);
 void	_libpthread_init(struct pthread *);
-void	*_pthread_getspecific(pthread_key_t);
-int	_pthread_cond_init(pthread_cond_t *, const pthread_condattr_t *);
-int	_pthread_cond_destroy(pthread_cond_t *);
-int	_pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *);
-int	_pthread_cond_timedwait(pthread_cond_t *, pthread_mutex_t *,
-	    const struct timespec *);
-int	_pthread_cond_signal(pthread_cond_t *);
-int	_pthread_cond_broadcast(pthread_cond_t *);
-int	_pthread_key_create(pthread_key_t *, void (*) (void *));
-int	_pthread_key_delete(pthread_key_t);
-int	_pthread_mutex_destroy(pthread_mutex_t *);
-int	_pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *);
-int	_pthread_mutex_lock(pthread_mutex_t *);
-int	_pthread_mutex_trylock(pthread_mutex_t *);
-int	_pthread_mutex_unlock(pthread_mutex_t *);
-int	_pthread_mutexattr_init(pthread_mutexattr_t *);
-int	_pthread_mutexattr_destroy(pthread_mutexattr_t *);
-int	_pthread_mutexattr_settype(pthread_mutexattr_t *, int);
-int	_pthread_once(pthread_once_t *, void (*) (void));
-int	_pthread_rwlock_init(pthread_rwlock_t *, const pthread_rwlockattr_t *);
-int	_pthread_rwlock_destroy (pthread_rwlock_t *);
-struct pthread *_pthread_self(void);
-int	_pthread_setspecific(pthread_key_t, const void *);
-void	_pthread_testcancel(void);
-void	_pthread_yield(void);
-void	_pthread_cleanup_push(void (*routine) (void *), void *routine_arg);
-void	_pthread_cleanup_pop(int execute);
 struct pthread *_thr_alloc(struct pthread *);
-void	_thread_exit(char *, int, char *) __dead2;
+void	_thread_exit(const char *, int, const char *) __dead2;
 void	_thr_exit_cleanup(void);
 int	_thr_ref_add(struct pthread *, struct pthread *, int);
 void	_thr_ref_delete(struct pthread *, struct pthread *);
@@ -718,14 +691,14 @@ void	_thr_signal_unblock(struct pthread *);
 void	_thr_signal_init(void);
 void	_thr_signal_deinit(void);
 int	_thr_send_sig(struct pthread *, int sig);
-void	_thr_list_init();
+void	_thr_list_init(void);
 void	_thr_hash_add(struct pthread *);
 void	_thr_hash_remove(struct pthread *);
 struct pthread *_thr_hash_find(struct pthread *);
 void	_thr_link(struct pthread *curthread, struct pthread *thread);
 void	_thr_unlink(struct pthread *curthread, struct pthread *thread);
 void	_thr_suspend_check(struct pthread *curthread);
-void	_thr_assert_lock_level() __dead2;
+void	_thr_assert_lock_level(void) __dead2;
 void	_thr_ast(struct pthread *);
 int	_thr_get_tid(void);
 void	_thr_report_creation(struct pthread *curthread,

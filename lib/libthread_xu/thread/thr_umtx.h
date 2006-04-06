@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.3 2006/04/04 14:23:04 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.h,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #ifndef _THR_DFLY_UMTX_H_
@@ -48,7 +48,7 @@ _thr_umtx_init(volatile umtx_t *mtx)
 }
 
 static inline int
-_thr_umtx_trylock(volatile umtx_t *mtx, long id)
+_thr_umtx_trylock(volatile umtx_t *mtx, int id __unused)
 {
     if (atomic_cmpset_acq_int(mtx, 0, 1))
 	return (0);
@@ -56,7 +56,7 @@ _thr_umtx_trylock(volatile umtx_t *mtx, long id)
 }
 
 static inline int
-_thr_umtx_lock(volatile umtx_t *mtx, long id)
+_thr_umtx_lock(volatile umtx_t *mtx, int id __unused)
 {
     if (atomic_cmpset_acq_int(mtx, 0, 1))
 	return (0);
@@ -64,7 +64,7 @@ _thr_umtx_lock(volatile umtx_t *mtx, long id)
 }
 
 static inline int
-_thr_umtx_timedlock(volatile umtx_t *mtx, long id,
+_thr_umtx_timedlock(volatile umtx_t *mtx, int id __unused,
     const struct timespec *timeout)
 {
     if (atomic_cmpset_acq_int(mtx, 0, 1))
@@ -73,7 +73,7 @@ _thr_umtx_timedlock(volatile umtx_t *mtx, long id,
 }
 
 static inline void
-_thr_umtx_unlock(volatile umtx_t *mtx, long id)
+_thr_umtx_unlock(volatile umtx_t *mtx, int id __unused)
 {
     if (atomic_cmpset_acq_int(mtx, 1, 0))
 	return;

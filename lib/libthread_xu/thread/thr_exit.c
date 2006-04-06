@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.6 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -47,7 +47,7 @@
 void	_pthread_exit(void *status);
 
 void
-_thread_exit(char *fname, int lineno, char *msg)
+_thread_exit(const char *fname, int lineno, const char *msg)
 {
 
 	/* Write an error message to the standard error file descriptor: */

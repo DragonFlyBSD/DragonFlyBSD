@@ -25,11 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_main_np.c,v 1.5 2003/04/18 05:04:16 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_main_np.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_main_np.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <pthread.h>
 #include <pthread_np.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 /*
@@ -42,7 +45,7 @@ _pthread_main_np()
 	if (!_thr_initial)
 		return (-1);
 	else
-		return (pthread_equal(pthread_self(), _thr_initial) ? 1 : 0);
+		return (_pthread_equal(_pthread_self(), _thr_initial) ? 1 : 0);
 }
 
 __strong_reference(_pthread_main_np, pthread_main_np);

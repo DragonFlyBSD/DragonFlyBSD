@@ -29,15 +29,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_setschedparam.c,v 1.13 2003/04/21 04:02:56 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.4 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_setschedparam.c,v 1.5 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
-#include <errno.h>
 #include <sys/param.h>
+#include <errno.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 int

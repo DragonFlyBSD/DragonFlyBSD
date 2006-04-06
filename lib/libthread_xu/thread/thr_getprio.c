@@ -29,11 +29,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_getprio.c,v 1.9 2002/09/16 08:45:34 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_getprio.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_getprio.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <errno.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 int
@@ -42,7 +45,7 @@ _pthread_getprio(pthread_t pthread)
 	int policy, ret;
 	struct sched_param param;
 
-	if ((ret = pthread_getschedparam(pthread, &policy, &param)) == 0)
+	if ((ret = _pthread_getschedparam(pthread, &policy, &param)) == 0)
 		ret = param.sched_priority;
 	else {
 		/* Invalid thread: */

@@ -29,16 +29,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_spinlock.c,v 1.21 2003/12/09 02:37:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_spinlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_spinlock.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <machine/atomic.h>
 #include <machine/tls.h>
 #include <pthread.h>
 #include <libc_private.h>
 #include "spinlock.h"
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 #define	MAX_SPINLOCKS	20
@@ -68,7 +70,7 @@ _spinunlock(spinlock_t *lck)
 {
 	struct pthread *curthread = tls_get_curthread();
 
-	THR_UMTX_UNLOCK(curthread, (umtx_t *)&lck->access_lock);
+	THR_UMTX_UNLOCK(curthread, (volatile umtx_t *)&lck->access_lock);
 }
 
 void
@@ -84,11 +86,11 @@ _spinlock(spinlock_t *lck)
 		init_spinlock(lck);
 
 	curthread = tls_get_curthread();
-	THR_UMTX_LOCK(curthread, (umtx_t *)&lck->access_lock);
+	THR_UMTX_LOCK(curthread, (volatile umtx_t *)&lck->access_lock);
 }
 
 void
-_spinlock_debug(spinlock_t *lck, char *fname, int lineno)
+_spinlock_debug(spinlock_t *lck, char *fname __unused, int lineno __unused)
 {
 	_spinlock(lck);
 }
@@ -126,7 +128,8 @@ _thr_spinlock_init(void)
 		 * it is better to do pthread_atfork in libc.
 		 */
 		for (i = 0; i < spinlock_count; i++)
-			_thr_umtx_init((umtx_t *)&extra[i].owner->access_lock);
+			_thr_umtx_init((volatile umtx_t *)
+				&extra[i].owner->access_lock);
 	} else {
 		initialized = 1;
 	}

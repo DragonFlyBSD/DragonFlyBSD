@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.6 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -328,7 +328,8 @@ _thr_ref_delete(struct pthread *curthread, struct pthread *thread)
 }
 
 void
-_thr_ref_delete_unlocked(struct pthread *curthread, struct pthread *thread)
+_thr_ref_delete_unlocked(struct pthread *curthread __unused,
+	struct pthread *thread)
 {
 	if (thread != NULL) {
 		thread->refcount--;
@@ -339,7 +340,7 @@ _thr_ref_delete_unlocked(struct pthread *curthread, struct pthread *thread)
 }
 
 int
-_thr_find_thread(struct pthread *curthread, struct pthread *thread,
+_thr_find_thread(struct pthread *curthread __unused, struct pthread *thread,
     int include_dead)
 {
 	struct pthread *pthread;

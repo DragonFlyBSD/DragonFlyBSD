@@ -29,17 +29,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_single_np.c,v 1.6 2002/05/24 04:32:28 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_single_np.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_single_np.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <pthread.h>
 #include <pthread_np.h>
+#include "un-namespace.h"
 
 int _pthread_single_np()
 {
 
 	/* Enter single-threaded (non-POSIX) scheduling mode: */
-	pthread_suspend_all_np();
+	_pthread_suspend_all_np();
 	/*
 	 * XXX - Do we want to do this?
 	 * __is_threaded = 0;

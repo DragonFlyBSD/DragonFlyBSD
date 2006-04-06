@@ -29,11 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_multi_np.c,v 1.7 2002/05/24 04:32:28 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_multi_np.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_multi_np.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <pthread.h>
 #include <pthread_np.h>
+#include "un-namespace.h"
 
 int
 _pthread_multi_np()
@@ -44,7 +46,7 @@ _pthread_multi_np()
 	 * XXX - Do we want to do this?
 	 * __is_threaded = 1;
 	 */
-	pthread_resume_all_np();
+	_pthread_resume_all_np();
 	return (0);
 }
 

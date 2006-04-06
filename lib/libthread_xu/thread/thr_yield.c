@@ -29,10 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpthread/thread/thr_yield.c,v 1.15 2003/08/18 03:58:29 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_yield.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_yield.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
+
+#include "namespace.h"
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 /* Draft 4 yield */

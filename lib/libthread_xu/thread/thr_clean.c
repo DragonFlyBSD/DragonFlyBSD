@@ -30,15 +30,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_clean.c,v 1.9 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.3 2006/04/05 00:24:35 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.4 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
-#include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 void

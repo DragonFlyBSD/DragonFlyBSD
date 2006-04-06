@@ -23,21 +23,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.7 2006/04/05 12:12:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.8 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <stdlib.h>
-#include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include <limits.h>
+#include "un-namespace.h"
 
 #include "thr_private.h"
 
 umtx_t		_cond_static_lock;
 
+int	__pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
+int	__pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
+		       const struct timespec *abstime);
 /*
  * Prototypes
  */

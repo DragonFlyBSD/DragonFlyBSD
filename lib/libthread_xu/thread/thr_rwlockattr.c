@@ -24,13 +24,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlockattr.c,v 1.8 2002/09/16 08:45:35 mini Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlockattr.c,v 1.2 2006/04/05 00:24:36 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlockattr.c,v 1.3 2006/04/06 13:03:09 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <errno.h>
 #include <stdlib.h>
 
 #include <pthread.h>
+#include "un-namespace.h"
+
 #include "thr_private.h"
 
 int
