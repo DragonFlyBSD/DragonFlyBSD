@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.11 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.12 2006/04/06 23:50:13 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -83,7 +83,7 @@ umtx_t	_mutex_static_lock;
 static int	mutex_self_trylock(pthread_mutex_t);
 static int	mutex_self_lock(pthread_mutex_t,
 			const struct timespec *abstime);
-static int	mutex_unlock_common(pthread_mutex_t *, int);
+static int	mutex_unlock_common(pthread_mutex_t *, int, int *);
 
 int __pthread_mutex_init(pthread_mutex_t *mutex,
 	const pthread_mutexattr_t *mutex_attr);
@@ -451,22 +451,24 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 int
 _pthread_mutex_unlock(pthread_mutex_t *m)
 {
-	return (mutex_unlock_common(m, /* add reference */ 0));
+	return (mutex_unlock_common(m, 0, NULL));
 }
 
 int
-_mutex_cv_unlock(pthread_mutex_t *m)
+_mutex_cv_unlock(pthread_mutex_t *m, int *count)
 {
-	return (mutex_unlock_common(m, /* add reference */ 1));
+	return (mutex_unlock_common(m, 1, count));
 }
 
 int
-_mutex_cv_lock(pthread_mutex_t *m)
+_mutex_cv_lock(pthread_mutex_t *m, int count)
 {
 	int	ret;
 
-	if ((ret = _pthread_mutex_lock(m)) == 0)
+	if ((ret = _pthread_mutex_lock(m)) == 0) {
 		(*m)->m_refcount--;
+		(*m)->m_count += count;
+	}
 	return (ret);
 }
 
@@ -559,46 +561,45 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 }
 
 static int
-mutex_unlock_common(pthread_mutex_t *m, int add_reference)
+mutex_unlock_common(pthread_mutex_t *mutex, int cv, int *count)
 {
 	struct pthread *curthread = tls_get_curthread();
+	struct pthread_mutex *m = *mutex;
 	int ret = 0;
 
-	if (m == NULL || *m == NULL)
-		ret = EINVAL;
-	else {
+	if (m == NULL)
+		return (EINVAL);
+	/*
+	 * Check if the running thread is not the owner of the mutex:
+	 */
+	if (__predict_false(m->m_owner != curthread))
+		return (EPERM);
+
+	if (cv) {
+		*count = m->m_count;
+		m->m_count = 0;
+	}
+
+	if (__predict_false(
+		m->m_type == PTHREAD_MUTEX_RECURSIVE &&
+		m->m_count > 0)) {
+		m->m_count--;
+	} else {
 		/*
-		 * Check if the running thread is not the owner of the
-		 * mutex:
+		 * Clear the count in case this is a recursive mutex.
 		 */
-		if (__predict_false((*m)->m_owner != curthread)) {
-			ret = EPERM;
-		} else if (__predict_false(
-			  (*m)->m_type == PTHREAD_MUTEX_RECURSIVE &&
-		          (*m)->m_count > 0)) {
-			/* Decrement the count: */
-			(*m)->m_count--;
-			if (add_reference)
-				(*m)->m_refcount++;
-		} else {
-			/*
-			 * Clear the count in case this is a recursive
-			 * mutex.
-			 */
-			(*m)->m_count = 0;
-			(*m)->m_owner = NULL;
-			/* Remove the mutex from the threads queue. */
-			MUTEX_ASSERT_IS_OWNED(*m);
-			TAILQ_REMOVE(&curthread->mutexq, (*m), m_qe);
-			MUTEX_INIT_LINK(*m);
-			if (add_reference)
-				(*m)->m_refcount++;
-			/*
-			 * Hand off the mutex to the next waiting
-			 * thread.
-			 */
-			_thr_umtx_unlock(&(*m)->m_lock, curthread->tid);
-		}
+		m->m_count = 0;
+		m->m_owner = NULL;
+		/* Remove the mutex from the threads queue. */
+		MUTEX_ASSERT_IS_OWNED(m);
+		TAILQ_REMOVE(&curthread->mutexq, m, m_qe);
+		MUTEX_INIT_LINK(m);
+		if (cv)
+			m->m_refcount++;
+		/*
+		 * Hand off the mutex to the next waiting thread.
+		 */
+		THR_UMTX_UNLOCK(curthread, &m->m_lock);
 	}
 	return (ret);
 }

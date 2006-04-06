@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.9 2006/04/06 13:05:35 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.10 2006/04/06 23:50:13 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -148,19 +148,20 @@ struct cond_cancel_info
 {
 	pthread_mutex_t	*mutex;
 	pthread_cond_t	*cond;
-	long		seqno;
+	int		seqno;
+	int		count;	
 };
 
 static void
 cond_cancel_handler(void *arg)
 {
 	struct pthread *curthread = tls_get_curthread();
-	struct cond_cancel_info *cci = (struct cond_cancel_info *)arg;
+	struct cond_cancel_info *info = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
 
-	cv = *(cci->cond);
+	cv = *(info->cond);
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	if (cv->c_seqno != cci->seqno && cv->c_wakeups != 0) {
+	if (cv->c_seqno != info->seqno && cv->c_wakeups != 0) {
 		if (cv->c_waiters > 0) {
 			cv->c_seqno++;
 			_thr_umtx_wake(&cv->c_seqno, 1);
@@ -171,7 +172,7 @@ cond_cancel_handler(void *arg)
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
 
-	_mutex_cv_lock(cci->mutex);
+	_mutex_cv_lock(info->mutex, info->count);
 }
 
 static int
@@ -180,7 +181,7 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 {
 	struct pthread	*curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
-	struct cond_cancel_info cci;
+	struct cond_cancel_info info;
 	pthread_cond_t  cv;
 	int		seq, oldseq;
 	int		oldcancel;
@@ -196,15 +197,15 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 
 	cv = *cond;
 	THR_LOCK_ACQUIRE(curthread, &cv->c_lock);
-	ret = _mutex_cv_unlock(mutex);
+	ret = _mutex_cv_unlock(mutex, &info.count);
 	if (ret) {
 		THR_LOCK_RELEASE(curthread, &cv->c_lock);
 		return (ret);
 	}
 	oldseq = seq = cv->c_seqno;
-	cci.mutex = mutex;
-	cci.cond  = cond;
-	cci.seqno = oldseq;
+	info.mutex = mutex;
+	info.cond  = cond;
+	info.seqno = oldseq;
 
 	cv->c_waiters++;
 	do {
@@ -218,7 +219,7 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 			tsp = NULL;
 
 		if (cancel) {
-			THR_CLEANUP_PUSH(curthread, cond_cancel_handler, &cci);
+			THR_CLEANUP_PUSH(curthread, cond_cancel_handler, &info);
 			oldcancel = _thr_cancel_enter(curthread);
 			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp,
 				cv->c_clockid);
@@ -247,7 +248,7 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		cv->c_waiters--;
 	}
 	THR_LOCK_RELEASE(curthread, &cv->c_lock);
-	_mutex_cv_lock(mutex);
+	_mutex_cv_lock(mutex, info.count);
 	return (ret);
 }
 

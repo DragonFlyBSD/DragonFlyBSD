@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.12 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.13 2006/04/06 23:50:13 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -660,8 +660,8 @@ extern umtx_t	_thr_event_lock;
  */
 __BEGIN_DECLS
 int	_thr_setthreaded(int);
-int	_mutex_cv_lock(pthread_mutex_t *);
-int	_mutex_cv_unlock(pthread_mutex_t *);
+int	_mutex_cv_lock(pthread_mutex_t *, int count);
+int	_mutex_cv_unlock(pthread_mutex_t *, int *count);
 void	_mutex_notify_priochange(struct pthread *, struct pthread *, int);
 int	_mutex_reinit(pthread_mutex_t *);
 void	_mutex_fork(struct pthread *curthread);
