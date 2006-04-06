@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.8 2006/03/27 09:02:07 joerg Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.9 2006/04/06 17:26:54 swildner Exp $
 .\"
-.Dd April 18, 1994
+.Dd April 6, 2006
 .Dt PS 1
 .Os
 .Sh NAME
@@ -57,8 +57,7 @@ The
 utility
 displays a header line followed by lines containing information about your
 processes that have controlling terminals.
-This information is sorted by controlling terminal, then by process
-.Tn ID .
+This information is sorted by controlling terminal, then by process ID.
 .Pp
 The information displayed is selected based on a set of keywords (see the
 .Fl L
@@ -66,9 +65,8 @@ The information displayed is selected based on a set of keywords (see the
 and
 .Fl o
 options).
-The default output format includes, for each process, the process'
-.Tn ID ,
-controlling terminal, cpu time (including both user and system time),
+The default output format includes, for each process, the process' ID,
+controlling terminal, CPU time (including both user and system time),
 state, and associated command.
 .Pp
 The process file system (see
@@ -88,8 +86,8 @@ sysctl to zero.
 Change the ``command'' column output to just contain the executable name,
 rather than the full command line.
 .It Fl C
-Change the way the cpu percentage is calculated by using a ``raw''
-cpu calculation that ignores ``resident'' time (this normally has
+Change the way the CPU percentage is calculated by using a ``raw''
+CPU calculation that ignores ``resident'' time (this normally has
 no effect).
 .It Fl e
 Display the environment as well.
@@ -113,15 +111,13 @@ Extract values associated with the name list from the specified core
 instead of the default
 .Pa /dev/kmem .
 .It Fl m
-Sort by memory usage, instead of by process
-.Tn ID .
+Sort by memory usage, instead of by process ID.
 .It Fl N
 Extract the name list from the specified system instead of the default
 .Pa /kernel .
 .It Fl O
 Add the information associated with the space or comma separated list
-of keywords specified, after the process
-.Tn ID ,
+of keywords specified, after the process ID,
 in the default information
 display.
 Keywords may be appended with an equals (``='') sign and a string.
@@ -134,11 +130,9 @@ Keywords may be appended with an equals (``='') sign and a string.
 This causes the printed header to use the specified string instead of
 the standard header.
 .It Fl p
-Display information associated with the specified process
-.Tn ID .
+Display information associated with the specified process ID.
 .It Fl r
-Sort by current cpu usage, instead of by process
-.Tn ID .
+Sort by current CPU usage, instead of by process ID.
 .It Fl S
 Change the way the process time is calculated by summing all exited
 children to their parent process.
@@ -190,7 +184,7 @@ A complete list of the available keywords are listed below.
 Some of these keywords are further specified as follows:
 .Bl -tag -width indent
 .It %cpu
-The cpu utilization of the process; this is a decaying average over up to
+The CPU utilization of the process; this is a decaying average over up to
 a minute of previous (real) time.
 Since the time base over which this is computed varies (since processes may
 be very young) it is possible for the sum of all
@@ -201,25 +195,36 @@ The percentage of real memory used by this process.
 .It flags
 The flags associated with the process as in
 the include file
-.Aq Pa sys/proc.h :
-.Bl -column P_NOCLDSTOP P_NOCLDSTOP
+.In sys/proc.h :
+.Bl -column P_BREAKTSLEEP 0x10000000
 .It Dv "P_ADVLOCK" Ta No "0x00001	Process may hold a POSIX advisory lock"
 .It Dv "P_CONTROLT" Ta No "0x00002	Has a controlling terminal"
 .It Dv "P_SWAPPEDOUT" Ta No "0x00004	Swapped out of memory"
-.It Dv "P_NOCLDSTOP" Ta No "0x00008	No SIGCHLD when children stop"
+.It Dv "P_BREAKTSLEEP" Ta No "0x00008	Event pending, break tsleep on sigcont"
 .It Dv "P_PPWAIT" Ta No "0x00010	Parent is waiting for child to exec/exit"
 .It Dv "P_PROFIL" Ta No "0x00020	Has started profiling"
-.It Dv "P_SELECT" Ta No "0x00040	Selecting; wakeup/waiting danger"
+.It Dv "P_SELECT" Ta No "0x00040 	Selecting; wakeup/waiting danger"
 .It Dv "P_SINTR" Ta No "0x00080		Sleep is interruptible"
 .It Dv "P_SUGID" Ta No "0x00100		Had set id privileges since last exec"
 .It Dv "P_SYSTEM" Ta No "0x00200	System proc: no sigs, stats or swapping"
-.It Dv "P_TIMEOUT" Ta No "0x00400	Timing out during sleep"
+.It Dv "P_STOPPED" Ta No "0x00400	SIGSTOP status"
 .It Dv "P_TRACED" Ta No "0x00800	Debugged process being traced"
-.It Dv "P_WAITED" Ta No "0x01000	Debugging process has waited for child"
+.It Dv "P_WAITED" Ta No "0x01000	SIGSTOP status was returned by wait3/4"
 .It Dv "P_WEXIT" Ta No "0x02000		Working on exiting"
 .It Dv "P_EXEC" Ta No "0x04000		Process called exec"
-.It Dv "P_OWEUPC" Ta No "0x20000	Owe process an addupc() call at next ast"
-.It Dv "P_SWAPPING" Ta No "0x40000	Process is being swapped"
+.It Dv "P_UPCALLPEND" Ta No "0x20000	An upcall is pending"
+.It Dv "P_SWAPWAIT" Ta No "0x40000	Waiting for a swapin"
+.It Dv "P_ZOMBIE" Ta No "0x80000	Now in a zombied state"
+.It Dv "P_ONRUNQ" Ta No "0x100000	On a user scheduling run queue"
+.It Dv "P_KTHREADP" Ta No "0x200000	Process is really a kernel thread"
+.It Dv "P_IDLESWAP" Ta No "0x400000	Swapout was due to idleswap, not load"
+.It Dv "P_DEADLKTREAT" Ta No "0x800000	Lock aquisition - deadlock treatment"
+.It Dv "P_JAILED" Ta No "0x1000000	Process is in jail"
+.It Dv "P_OLDMASK" Ta No "0x2000000	Need to restore mask before pause"
+.It Dv "P_ALTSTACK" Ta No "0x4000000	have alternate signal stack"
+.It Dv "P_INEXEC" Ta No "0x8000000	Process is in execve()"
+.It Dv "P_PASSIVE_ACQ" Ta No "0x10000000	Passive acquire cpu (see kern_switch)"
+.It Dv "P_UPCALLWAIT" Ta No "0x20000000	Wait for upcall or signal"
 .El
 .It lim
 The soft limit on memory used, specified via a call to
@@ -272,9 +277,7 @@ information:
 .It +
 The process is in the foreground process group of its control terminal.
 .It <
-The process has raised
-.Tn CPU
-scheduling priority.
+The process has raised CPU scheduling priority.
 .It >
 The process has specified a soft limit on memory requirements and is
 currently exceeding that limit; such a process is (necessarily) not
@@ -297,14 +300,10 @@ On SMP systems indicates a process or thread which is
 .Em not
 holding the MP lock (the Big Giant Lock).
 .It N
-The process has reduced
-.Tn CPU
-scheduling priority (see
+The process has reduced CPU scheduling priority (see
 .Xr setpriority 2 ) .
 .It S
-The process has asked for
-.Tn FIFO
-page replacement
+The process has asked for FIFO page replacement
 .Pf ( Dv MADV_SEQUENTIAL ,
 from
 .Xr madvise 2 ,
@@ -352,148 +351,158 @@ The following is a complete list of the available keywords and their
 meanings.
 Several of them have aliases (keywords which are synonyms).
 .Pp
-.Bl -tag -width sigignore -compact
-.It %cpu
-percentage cpu usage (alias pcpu)
-.It %mem
-percentage memory usage (alias pmem)
-.It acflag
-accounting flag (alias acflg)
-.It command
+.Bl -tag -width ".Cm sigignore" -compact
+.It Cm %cpu
+percentage CPU usage (alias
+.Cm pcpu )
+.It Cm %mem
+percentage memory usage (alias
+.Cm pmem )
+.It Cm acflag
+accounting flag (alias
+.Cm acflg )
+.It Cm batch
+batchness of the process (higher numbers mean less interactivity)
+.It Cm command
 command and arguments
-.It cpu
-short-term cpu usage factor (for scheduling)
-.It flags
-the process flags, in hexadecimal (alias f)
-.It inblk
-total blocks read (alias inblock)
-.It jail
-jail id
-.It jobc
+.It Cm cpu
+short-term CPU usage factor (for scheduling)
+.It Cm f
+the process flags, in hexadecimal (alias
+.Cm flags )
+.It Cm inblk
+total blocks read (alias
+.Cm inblock )
+.It Cm jail
+jail ID
+.It Cm jobc
 job control count
-.It ktrace
+.It Cm ktrace
 tracing flags
-.It ktracep
+.It Cm ktracep
 tracing vnode
-.It lim
+.It Cm lastcpu
+CPU ID the process was last scheduled on
+.It Cm lim
 memoryuse limit
-.It logname
-login name of user who started the process
-.It lstart
+.It Cm login
+login name of user who started the process (alias
+.Cm logname )
+.It Cm lstart
 time started
-.It majflt
+.It Cm majflt
 total page faults
-.It minflt
+.It Cm minflt
 total page reclaims
-.It msgrcv
+.It Cm msgrcv
 total messages received (reads from pipes/sockets)
-.It msgsnd
+.It Cm msgsnd
 total messages sent (writes on pipes/sockets)
-.It nice
-nice value (alias ni)
-.It nivcsw
+.It Cm nice
+nice value (alias
+.Cm ni )
+.It Cm nivcsw
 total involuntary context switches
-.It nsigs
-total signals taken (alias nsignals)
-.It nswap
+.It Cm nsigs
+total signals taken (alias
+.Cm nsignals )
+.It Cm nswap
 total swaps in/out
-.It nvcsw
+.It Cm nvcsw
 total voluntary context switches
-.It nwchan
+.It Cm nwchan
 wait channel (as an address)
-.It oublk
-total blocks written (alias oublock)
-.It p_ru
+.It Cm oublk
+total blocks written (alias
+.Cm oublock )
+.It Cm p_ru
 resource usage (valid only for zombie)
-.It paddr
+.It Cm paddr
 swap address
-.It pagein
-pageins (same as majflt)
-.It pgid
+.It Cm pagein
+pageins (same as
+.Cm majflt )
+.It Cm pgid
 process group number
-.It pid
-process
-.Tn ID
-.It poip
-pageouts in progress
-.It ppid
-parent process
-.Tn ID
-.It pri
+.It Cm pid
+process ID
+.It Cm ppid
+parent process ID
+.It Cm pri
 scheduling priority (lower == better)
-.It re
+.It Cm re
 core residency time (in seconds; 127 = infinity)
-.It rgid
-real group
-.Tn ID
-.It rlink
+.It Cm rgid
+real group ID
+.It Cm rlink
 reverse link on run queue, or 0
-.It rss
+.It Cm rss
 resident set size
-.It rsz
-resident set size + (text size / text use count) (alias rssize)
-.It rtprio
+.It Cm rsz
+resident set size + (text size / text use count) (alias
+.Cm rssize )
+.It Cm rtprio
 realtime priority (101 = not a realtime process)
-.It ruid
-real user
-.Tn ID
-.It ruser
+.It Cm ruid
+real user ID
+.It Cm ruser
 user name (from ruid)
-.It sess
+.It Cm sess
 session pointer
-.It sig
-pending signals (alias pending)
-.It sigcatch
-caught signals (alias caught)
-.It sigignore
-ignored signals (alias ignored)
-.It sigmask
-blocked signals (alias blocked)
-.It sl
+.It Cm sig
+pending signals (alias
+.Cm pending )
+.It Cm sigcatch
+caught signals (alias
+.Cm caught )
+.It Cm sigignore
+ignored signals (alias
+.Cm ignored )
+.It Cm sigmask
+blocked signals (alias
+.Cm blocked )
+.It Cm sl
 sleep time (in seconds; 127 = infinity)
-.It start
+.It Cm start
 time started
-.It state
-symbolic process state (alias stat)
-.It svgid
+.It Cm state
+symbolic process state (alias
+.Cm stat )
+.It Cm svgid
 saved gid from a setgid executable
-.It svuid
+.It Cm svuid
 saved uid from a setuid executable
-.It tdev
+.It Cm tdev
 control terminal device number
-.It tdpri
+.It Cm tdpri
 LWKT thread priority (0-31, 31 highest), and critical section count
-.It time
-accumulated cpu time, user + system (alias cputime)
-.It tpgid
-control terminal process group
-.Tn ID
-.\".It trss
+.It Cm time
+accumulated CPU time, user + system (alias
+.Cm cputime )
+.It Cm tpgid
+control terminal process group ID
+.\".It Cm trss
 .\"text resident set size (in Kbytes)
-.It tsess
+.It Cm tsess
 control terminal session pointer
-.It tsiz
+.It Cm tsiz
 text size (in Kbytes)
-.It tt
+.It Cm tt
 control terminal name (two letter abbreviation)
-.It tty
+.It Cm tty
 full name of control terminal
-.It uprocp
-process pointer
-.It ucomm
+.It Cm ucomm
 name to be used for accounting
-.It uid
-effective user
-.Tn ID
-.It upr
-scheduling priority on return from system call (alias usrpri)
-.It user
+.It Cm uid
+effective user ID
+.It Cm user
 user name (from uid)
-.It vsz
-virtual size in Kbytes (alias vsize)
-.It wchan
+.It Cm vsz
+virtual size in Kbytes (alias
+.Cm vsize )
+.It Cm wchan
 wait channel (as a symbolic name)
-.It xstat
+.It Cm xstat
 exit or stop status (valid only for stopped or zombie process)
 .El
 .Sh FILES
@@ -518,6 +527,11 @@ the mount point of
 .Xr procfs 5 ,
 .Xr pstat 8 ,
 .Xr sysctl 8
+.Sh HISTORY
+The
+.Nm
+command appeared in
+.At v4 .
 .Sh BUGS
 Since
 .Nm
