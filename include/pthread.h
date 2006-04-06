@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/include/pthread.h,v 1.8 2006/04/05 06:53:27 davidxu Exp $
+ * $DragonFly: src/include/pthread.h,v 1.9 2006/04/06 13:00:44 davidxu Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
@@ -195,13 +195,17 @@ enum pthread_mutextype {
  * Thread function prototype definitions:
  */
 __BEGIN_DECLS
+int		pthread_atfork(void (*)(void), void (*)(void), void (*)(void));
 int		pthread_attr_destroy(pthread_attr_t *);
+int		pthread_attr_getguardsize(const pthread_attr_t * __restrict,
+			size_t *);
 int		pthread_attr_getstack(const pthread_attr_t * __restrict,
 				      void ** __restrict, size_t * __restrict);
 int		pthread_attr_getstacksize(const pthread_attr_t *, size_t *);
 int		pthread_attr_getstackaddr(const pthread_attr_t *, void **);
 int		pthread_attr_getdetachstate(const pthread_attr_t *, int *);
 int		pthread_attr_init(pthread_attr_t *);
+int		pthread_attr_setguardsize(pthread_attr_t *, size_t);
 int		pthread_attr_setstack(pthread_attr_t *, void *, size_t);
 int		pthread_attr_setstacksize(pthread_attr_t *, size_t);
 int		pthread_attr_setstackaddr(pthread_attr_t *, void *);
