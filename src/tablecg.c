@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.34 2006/03/22 17:27:03 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.35 2006/04/06 12:59:45 justin Exp $
  */
 
 #include <sys/types.h>
@@ -225,7 +225,7 @@ main(int ac, char **av)
 
     printf("<table border=\"0\" width=\"760\" bgcolor=\"#FFFFFF\">\n");
     printf("<tr><td width=\"134\">"
-		"<img src=\"%s/smalldf.jpg\" alt=\"\"/></td>\n", SITE_ROOT);
+		"<a href=\"/\"><img src=\"%s/smalldf.jpg\" border=\"0\" alt=\"\"/></a></td>\n", SITE_ROOT);
     printf("<td valign=\"bottom\">");
 
     if (Title)
