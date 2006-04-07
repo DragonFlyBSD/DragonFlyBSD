@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.9 2006/04/06 17:26:54 swildner Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.10 2006/04/07 09:57:37 swildner Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -99,13 +99,17 @@ Repeat the information header as often as necessary to guarantee one
 header per page of information.
 .It Fl j
 Print information associated with the following keywords:
-user, pid, ppid, pgid, sess, jobc, state, tt, time and command.
+.Cm user , pid , ppid , pgid , sess , jobc , state , tt , time ,
+and
+.Cm command .
 .It Fl L
 List the set of available keywords.
 .It Fl l
 Display information associated with the following keywords:
-uid, pid, ppid, cpu, pri, nice, vsz, rss, wchan, state, tt, time
-and command.
+.Cm uid , pid , ppid , cpu , pri , nice , vsz , rss , wchan , state ,
+.Cm tt , time ,
+and
+.Cm command .
 .It Fl M
 Extract values associated with the name list from the specified core
 instead of the default
@@ -147,7 +151,9 @@ Display the processes belonging to the specified
 .Ar username .
 .It Fl u
 Display information associated with the following keywords:
-user, pid, %cpu, %mem, vsz, rss, tt, state, start, time and command.
+.Cm user , pid, %cpu , %mem , vsz , rss , tt , state , start , time ,
+and
+.Cm command .
 The
 .Fl u
 option implies the
@@ -155,8 +161,10 @@ option implies the
 option.
 .It Fl v
 Display information associated with the following keywords:
-pid, state, time, sl, re, pagein, vsz, rss, lim, tsiz,
-%cpu, %mem and command.
+.Cm pid , state , time , sl , re , pagein , vsz , rss , lim , tsiz ,
+.Cm %cpu , %mem
+and
+.Cm command .
 The
 .Fl v
 option implies the
@@ -174,7 +182,9 @@ will use as many columns as necessary without regard for your window size.
 Display information about processes without controlling terminals.
 .It Fl y
 Display information associated with the following keywords:
-uid, pid, ppid, cpu, pri, iac, nice, wchan, state, tt, time, and command.
+.Cm uid , pid , ppid , cpu , pri , iac , nice , wchan , state , tt , time ,
+and
+.Cm command .
 Sort by iac (interactivity measure).
 .It Fl Y
 Sort by iac (interactivity measure).
@@ -182,17 +192,17 @@ Sort by iac (interactivity measure).
 .Pp
 A complete list of the available keywords are listed below.
 Some of these keywords are further specified as follows:
-.Bl -tag -width indent
-.It %cpu
+.Bl -tag -width ".Cm lstart"
+.It Cm %cpu
 The CPU utilization of the process; this is a decaying average over up to
 a minute of previous (real) time.
 Since the time base over which this is computed varies (since processes may
 be very young) it is possible for the sum of all
-.Tn \&%CPU
+.Cm %cpu
 fields to exceed 100%.
-.It %mem
+.It Cm %mem
 The percentage of real memory used by this process.
-.It flags
+.It Cm flags
 The flags associated with the process as in
 the include file
 .In sys/proc.h :
@@ -226,18 +236,18 @@ the include file
 .It Dv "P_PASSIVE_ACQ" Ta No "0x10000000	Passive acquire cpu (see kern_switch)"
 .It Dv "P_UPCALLWAIT" Ta No "0x20000000	Wait for upcall or signal"
 .El
-.It lim
+.It Cm lim
 The soft limit on memory used, specified via a call to
 .Xr setrlimit 2 .
-.It lstart
+.It Cm lstart
 The exact time the command started, using the ``%c'' format described in
 .Xr strftime 3 .
-.It nice
+.It Cm nice
 The process scheduling increment (see
 .Xr setpriority 2 ) .
-.It rss
+.It Cm rss
 the real memory (resident set) size of the process (in 1024 byte units).
-.It start
+.It Cm start
 The time the command started.
 If the command started less than 24 hours ago, the start time is
 displayed using the ``%l:ps.1p'' format described in
@@ -245,44 +255,45 @@ displayed using the ``%l:ps.1p'' format described in
 If the command started less than 7 days ago, the start time is
 displayed using the ``%a6.15p'' format.
 Otherwise, the start time is displayed using the ``%e%b%y'' format.
-.It state
+.It Cm state
 The state is given by a sequence of letters, for example,
-.Dq Tn RWNA .
+.Dq Li RWNA .
 The first letter indicates the run state of the process:
 .Pp
 .Bl -tag -width indent -compact
-.It D
+.It Li D
 Marks a process in disk (or other short term, uninterruptible) wait.
-.It I
+.It Li I
 Marks a process that is idle (sleeping for longer than about 20 seconds).
-.It J
+.It Li J
 Marks a process which is in
 .Xr jail 2 .
 The hostname of the prison can be found in
-.Sq Li /proc/<pid>/status .
-.It R
+.Pa /proc/ Ns Ao Ar pid Ac Ns Pa /status .
+.It Li R
 Marks a runnable process.
-.It S
+.It Li S
 Marks a process that is sleeping for less than about 20 seconds.
-.It T
+.It Li T
 Marks a stopped process.
-.It Z
-Marks a dead process (a ``zombie'').
+.It Li Z
+Marks a dead process (a
+.Dq zombie ) .
 .El
 .Pp
 Additional characters after these, if any, indicate additional state
 information:
 .Pp
 .Bl -tag -width indent -compact
-.It +
+.It Li +
 The process is in the foreground process group of its control terminal.
-.It <
+.It Li <
 The process has raised CPU scheduling priority.
-.It >
+.It Li >
 The process has specified a soft limit on memory requirements and is
 currently exceeding that limit; such a process is (necessarily) not
 swapped.
-.It A
+.It Li A
 the process has asked for random page replacement
 .Pf ( Dv MADV_RANDOM ,
 from
@@ -290,50 +301,52 @@ from
 for example,
 .Xr lisp 1
 in a garbage collect).
-.It E
+.It Li E
 The process is trying to exit.
-.It L
+.It Li L
 The process has pages locked in core (for example, for raw
 .Tn I/O ) .
-.It M
+.It Li M
 On SMP systems indicates a process or thread which is
 .Em not
 holding the MP lock (the Big Giant Lock).
-.It N
+.It Li N
 The process has reduced CPU scheduling priority (see
 .Xr setpriority 2 ) .
-.It S
+.It Li S
 The process has asked for FIFO page replacement
 .Pf ( Dv MADV_SEQUENTIAL ,
 from
 .Xr madvise 2 ,
 for example, a large image processing program using virtual memory to
 sequentially address voluminous data).
-.It s
+.It Li s
 The process is a session leader.
-.It V
+.It Li V
 The process is suspended during a
 .Xr vfork .
-.It W
+.It Li W
 The process is swapped out.
-.It X
+.It Li X
 The process is being traced or debugged.
 .El
-.It tt
+.It Cm tt
 An abbreviation for the pathname of the controlling terminal, if any.
 The abbreviation consists of the three letters following
 .Pa /dev/tty ,
 or, for the console, ``con''.
 This is followed by a ``-'' if the process can no longer reach that
 controlling terminal (i.e., it has been revoked).
-.It wchan
+.It Cm wchan
 The event (an address in the system) on which a process waits.
 When printed numerically, the initial part of the address is
 trimmed off and the result is printed in hex, for example, 0x80324000 prints
 as 324000.
 .El
 .Pp
-When printing using the command keyword, a process that has exited and
+When printing using the
+.Cm command
+keyword, a process that has exited and
 has a parent that has not yet waited for the process (in other words, a zombie)
 is listed as ``<defunct>'', and a process which is blocked while trying
 to exit is listed as ``<exiting>''.
@@ -345,7 +358,9 @@ process was created by examining memory or the swap area.
 The method is inherently somewhat unreliable and in any event a process
 is entitled to destroy this information, so the names cannot be depended
 on too much.
-The ucomm (accounting) keyword can, however, be depended on.
+The
+.Cm ucomm
+(accounting) keyword can, however, be depended on.
 .Sh KEYWORDS
 The following is a complete list of the available keywords and their
 meanings.
