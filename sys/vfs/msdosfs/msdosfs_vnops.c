@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.33 2006/04/01 20:46:53 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.34 2006/04/07 06:38:32 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -216,10 +216,6 @@ msdosfs_mknod(struct vop_old_mknod_args *ap)
 static int
 msdosfs_open(struct vop_open_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	if (vp->v_type == VREG || vp->v_type == VDIR)
-		vinitvmio(vp);
 	return(vop_stdopen(ap));
 }
 

@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.28 2006/04/06 17:04:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.29 2006/04/07 06:38:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -942,7 +942,7 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 	 * The vnode must have a VM object in order to issue buffer cache
 	 * ops on it.
 	 */
-	vinitvmio(tvp);
+	vinitvmio(tvp, 0);
 
 	/*
 	 * Bump link count in parent directory
@@ -1105,7 +1105,7 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 		 * the buffer cache.
 		 */
 		if (vp->v_object == NULL)
-			vinitvmio(vp);
+			vinitvmio(vp, 0);
 
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred, (int *)0,
@@ -1204,6 +1204,13 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 
 	if (cnp->cn_flags & CNP_ISWHITEOUT)
 		ip->i_flags |= UF_OPAQUE;
+
+	/*
+	 * Regular files and directories need VM objects.  Softlinks do 
+	 * not (not immediately anyway).
+	 */
+	if (tvp->v_type == VREG || tvp->v_type == VDIR)
+		vinitvmio(tvp, 0);
 
 	/*
 	 * Make sure inode goes to disk before directory entry.
@@ -1309,13 +1316,6 @@ ext2_open(struct vop_open_args *ap)
 	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE) {
 		return (EPERM);
 	}
-
-	/*
-	 * The buffer cache is used for VREG and VDIR files
-	 */
-	if (vp->v_type == VREG || vp->v_type == VDIR)
-		vinitvmio(vp);
-
 	return (vop_stdopen(ap));
 }
 
@@ -1760,13 +1760,6 @@ ext2_readlink(struct vop_readlink_args *ap)
 		uiomove((char *)ip->i_shortlink, isize, ap->a_uio);
 		return (0);
 	}
-
-	/*
-	 * Perform the equivalent of an OPEN on vp so we can issue a
-	 * VOP_READ.
-	 */
-	if (vp->v_object == NULL)
-		vinitvmio(vp);
 	return (VOP_READ(vp, ap->a_uio, 0, ap->a_cred));
 }
 
@@ -2063,7 +2056,15 @@ ext2_vinit(struct mount *mntp, struct vnode **vpp)
 		vp->v_ops = &mntp->mnt_vn_fifo_ops;
 		break;
 	case VDIR:
-		vinitvmio(vp);
+	case VREG:
+		vinitvmio(vp, ip->i_size);
+		break;
+	case VLNK:
+		if ((ip->i_size >= vp->v_mount->mnt_maxsymlinklen) &&
+		    ip->i_din.di_blocks != 0
+		) {
+			vinitvmio(vp, ip->i_size);
+		}
 		break;
 	default:
 		break;

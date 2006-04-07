@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.22 2006/03/24 22:39:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.23 2006/04/07 06:38:32 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -419,6 +419,7 @@ again:
 	SETLOW(ldep->de_modrev, tv.tv_usec * 4294);
 	ldep->de_devvp = pmp->pm_devvp;
 	vref(ldep->de_devvp);
+	vinitvmio(nvp, ldep->de_FileSize);
 	/*
 	 * Leave nvp locked and refd so the returned inode is effectively
 	 * locked and refd.

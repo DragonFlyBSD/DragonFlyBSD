@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.37 2006/03/27 17:01:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.38 2006/04/07 06:38:33 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -574,9 +574,9 @@ nfs_mountroot(mp)
 		 * Since the swap file is not the root dir of a file system,
 		 * hack it to a regular file.
 		 */
-		vp->v_type = VREG;
 		vp->v_flag = 0;
 		vref(vp);
+		nfs_setvtype(vp, VREG);
 		swaponvp(td, vp, nd->swap_nblks);
 	}
 
@@ -1102,7 +1102,7 @@ nfs_root(mp, vpp)
 	    }
 	}
 	if (vp->v_type == VNON)
-	    vp->v_type = VDIR;
+	    nfs_setvtype(vp, VDIR);
 	vp->v_flag = VROOT;
 	*vpp = vp;
 	return (0);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.74 2006/04/01 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.75 2006/04/07 06:38:27 dillon Exp $
  */
 
 /*
@@ -1323,38 +1323,20 @@ vcount(struct vnode *vp)
 }
 
 /*
- * Initialize VMIO for a vnode.  This routine MUST be called from a VFS's
- * VOP_OPEN function for any vnode on which buffer cache access or memory
- * mapping will be allowed.
+ * Initialize VMIO for a vnode.  This routine MUST be called before a
+ * VFS can issue buffer cache ops on a vnode.  It is typically called
+ * when a vnode is initialized from its inode.
  */
 int
-vinitvmio(struct vnode *vp)
+vinitvmio(struct vnode *vp, off_t filesize)
 {
 	thread_t td = curthread;
-	struct vattr vat;
 	vm_object_t object;
 	int error = 0;
 
 retry:
 	if ((object = vp->v_object) == NULL) {
-		if (vp->v_type == VREG || vp->v_type == VDIR) {
-			if ((error = VOP_GETATTR(vp, &vat, td)) != 0)
-				goto retn;
-			object = vnode_pager_alloc(vp, vat.va_size, 0, 0);
-		} else if (vp->v_type == VLNK) {
-			object = vnode_pager_alloc(vp, MAXPATHLEN, 0, 0);
-		} else if (vp->v_rdev && dev_is_good(vp->v_rdev)) {
-			/*
-			 * XXX v_rdev uses NULL/non-NULL instead of NODEV
-			 *
-			 * This simply allocates the biggest object possible
-			 * for a disk vnode.  This should be fixed, but doesn't
-			 * cause any problems (yet).
-			 */
-			object = vnode_pager_alloc(vp, IDX_TO_OFF(INT_MAX), 0, 0);
-		} else {
-			goto retn;
-		}
+		object = vnode_pager_alloc(vp, filesize, 0, 0);
 		/*
 		 * Dereference the reference we just created.  This assumes
 		 * that the object is associated with the vp.

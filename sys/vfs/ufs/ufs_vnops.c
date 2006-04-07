@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.41 2006/04/05 20:22:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.42 2006/04/07 06:38:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -272,12 +272,6 @@ ufs_open(struct vop_open_args *ap)
 	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE) {
 		return (EPERM);
 	}
-
-	/*
-	 * The buffer cache is used for VREG and VDIR files
-	 */
-	if (vp->v_type == VREG || vp->v_type == VDIR)
-		vinitvmio(vp);
 
 	return (vop_stdopen(ap));
 }
@@ -1423,7 +1417,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	 * The vnode must have a VM object in order to issue buffer cache
 	 * ops on it.
 	 */
-	vinitvmio(tvp);
+	vinitvmio(tvp, DIRBLKSIZ);
 
 	/*
 	 * Initialize directory with "." and ".." from static template.
@@ -1632,7 +1626,7 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 		 * the buffer cache.
 		 */
 		if (vp->v_object == NULL)
-			vinitvmio(vp);
+			vinitvmio(vp, 0);
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
 				ap->a_cnp->cn_cred, NULL, NULL);
@@ -1774,8 +1768,6 @@ ufs_readlink(struct vop_readlink_args *ap)
 	 * Perform the equivalent of an OPEN on vp so we can issue a
 	 * VOP_READ.
 	 */
-	if (vp->v_object == NULL)
-		vinitvmio(vp);
 	return (VOP_READ(vp, ap->a_uio, 0, ap->a_cred));
 }
 
@@ -2066,7 +2058,9 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 	vp = *vpp;
 	ip = VTOI(vp);
 
-	switch(vp->v_type = IFTOVT(ip->i_mode)) {
+	vp->v_type = IFTOVT(ip->i_mode);
+
+	switch(vp->v_type) {
 	case VCHR:
 	case VBLK:
 		vp->v_ops = &mntp->mnt_vn_spec_ops;
@@ -2076,7 +2070,12 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 		vp->v_ops = &mntp->mnt_vn_fifo_ops;
 		break;
 	case VDIR:
-		vinitvmio(vp);
+	case VREG:
+		vinitvmio(vp, ip->i_size);
+		break;
+	case VLNK:
+		if (ip->i_size >= vp->v_mount->mnt_maxsymlinklen)
+			vinitvmio(vp, ip->i_size);
 		break;
 	default:
 		break;
@@ -2187,6 +2186,13 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 
 	if (cnp->cn_flags & CNP_ISWHITEOUT)
 		ip->i_flags |= UF_OPAQUE;
+
+	/*
+	 * Regular files and directories need VM objects.  Softlinks do
+	 * not (not immediately anyway).
+	 */
+	if (tvp->v_type == VREG || tvp->v_type == VDIR)
+		vinitvmio(tvp, 0);
 
 	/*
 	 * Make sure inode goes to disk before directory entry.

@@ -35,7 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.7 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.8 2006/04/07 06:38:33 dillon Exp $
  */
 
 
@@ -103,6 +103,7 @@ struct	nfsmount {
  */
 #define VFSTONFS(mp)	((struct nfsmount *)((mp)->mnt_data))
 extern void nfs_free_mount(struct nfsmount *nmp);
+extern void nfs_setvtype(struct vnode *, enum vtype);
 
 #endif
 

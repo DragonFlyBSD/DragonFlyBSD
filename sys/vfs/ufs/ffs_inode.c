@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.18 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.19 2006/04/07 06:38:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -174,13 +174,6 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 	if (error)
 		return (error);
 #endif
-	/*
-	 * truncation can occur for a variety of reasons where an OPEN has
-	 * not been performed.  truncate(), rmdir(), and remove() being
-	 * examples.   Vnode-based buffer cache ops require a VM object.
-	 */
-	if (vp->v_object == NULL)
-		vinitvmio(vp);
 	ovp->v_lasta = ovp->v_clen = ovp->v_cstart = ovp->v_lastw = 0;
 	if (DOINGSOFTDEP(ovp)) {
 		if (length > 0 || softdep_slowdown(ovp)) {

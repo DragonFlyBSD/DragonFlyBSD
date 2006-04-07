@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.20 2006/04/01 21:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.21 2006/04/07 06:38:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,11 +130,6 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
-
-	/*
-	 * We use the buffer cache on the directory vnode
-	 */
-	vinitvmio(vdp);
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.

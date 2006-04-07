@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.23 2006/04/01 21:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.24 2006/04/07 06:38:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -277,13 +277,6 @@ cd9660_ioctl(struct vop_ioctl_args *ap)
 static int
 cd9660_open(struct vop_open_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	/*
-	 * Both regular file and directory operations use the buffer cache.
-	 */
-	if (vp->v_type == VREG || vp->v_type == VDIR)
-		vinitvmio(vp);
 	return(vop_stdopen(ap));
 }
 

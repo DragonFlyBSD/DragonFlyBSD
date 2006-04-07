@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.14 2006/04/05 21:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.15 2006/04/07 06:38:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -163,14 +163,6 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	if ((error = ext2_getinoquota(oip)) != 0)
 		return (error);
 #endif
-	/*
-	 * truncation can occur for a variety of reasons where an OPEN has
-	 * not been performed.  truncate(), rmdir(), and remove() being
-	 * examples.   Vnode-based buffer cache ops require a VM object.
-	 */
-	if (vp->v_object == NULL)
-		vinitvmio(vp);
-
 	fs = oip->i_e2fs;
 	osize = oip->i_size;
 	ext2_discard_prealloc(oip);

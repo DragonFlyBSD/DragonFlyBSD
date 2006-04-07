@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.46 2006/04/01 20:46:49 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.47 2006/04/07 06:38:29 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -598,7 +598,7 @@ int	vtruncbuf (struct vnode *vp, struct thread *td,
 int	vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
-int	vinitvmio(struct vnode *vp);
+int	vinitvmio(struct vnode *vp, off_t filesize);
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp, struct thread *td);
 void	vn_strategy(struct vnode *vp, struct bio *bio);

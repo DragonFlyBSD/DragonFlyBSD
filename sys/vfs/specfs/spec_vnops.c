@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.34 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.35 2006/04/07 06:38:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
+
+#include <machine/limits.h>
 
 #include <sys/buf2.h>
 
@@ -263,7 +265,7 @@ spec_open(struct vop_open_args *ap)
 	if (vn_isdisk(vp, NULL)) {
 		if (!dev->si_bsize_phys)
 			dev->si_bsize_phys = DEV_BSIZE;
-		vinitvmio(vp);
+		vinitvmio(vp, IDX_TO_OFF(INT_MAX));
 	}
 	if ((dev_dflags(dev) & D_DISK) == 0) {
 		cp = devtoname(dev);

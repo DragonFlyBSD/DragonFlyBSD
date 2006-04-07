@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.36 2006/03/29 18:45:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.37 2006/04/07 06:38:33 dillon Exp $
  */
 
 /*
@@ -1184,7 +1184,7 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	 */
 	np = VTONFS(vp);
 	if (vp->v_type != vtyp) {
-		vp->v_type = vtyp;
+		nfs_setvtype(vp, vtyp);
 		if (vp->v_type == VFIFO) {
 			vp->v_ops = &vp->v_mount->mnt_vn_fifo_ops;
 		} else if (vp->v_type == VCHR || vp->v_type == VBLK) {
@@ -1864,9 +1864,6 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 	else
 		*rdonlyp = 0;
 
-	if ((*vpp)->v_type == VREG && (*vpp)->v_object)
-		vinitvmio(*vpp);
-
 	if (!lockflag)
 		VOP_UNLOCK(*vpp, 0, td);
 	return (0);
@@ -1990,6 +1987,26 @@ nfs_invaldir(struct vnode *vp)
 	np->n_cookieverf.nfsuquad[1] = 0;
 	if (np->n_cookies.lh_first)
 		np->n_cookies.lh_first->ndm_eocookie = 0;
+}
+
+/*
+ * Set the v_type field for an NFS client's vnode and initialize for
+ * buffer cache operations if necessary.
+ */
+void
+nfs_setvtype(struct vnode *vp, enum vtype vtyp)
+{
+	vp->v_type = vtyp;
+
+	switch(vtyp) {
+	case VREG:
+	case VDIR:
+	case VLNK:
+		vinitvmio(vp, 0);	/* needs VMIO, size not yet known */
+		break;
+	default:
+		break;
+	}
 }
 
 /*
