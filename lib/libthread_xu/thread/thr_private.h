@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.13 2006/04/06 23:50:13 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.14 2006/04/07 14:11:22 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -70,11 +70,6 @@
 /* Output debug messages like this: */
 #define stdout_debug(args...)	_thread_printf(STDOUT_FILENO, ##args)
 #define stderr_debug(args...)	_thread_printf(STDOUT_FILENO, ##args)
-
-#ifdef __DragonFly__
-#define __predict_true(exp)	(exp)
-#define	__predict_false(exp)	(exp)
-#endif
 
 #ifdef _PTHREADS_INVARIANTS
 #define THR_ASSERT(cond, msg) do {	\
