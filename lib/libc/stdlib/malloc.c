@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.11 2006/02/12 21:19:07 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.12 2006/04/07 16:44:51 swildner Exp $
  *
  */
 
@@ -652,6 +652,8 @@ malloc_init(void)
 		case 'R': malloc_realloc  = 1; break;
 		case 'u': malloc_utrace	  = 0; break;
 		case 'U': malloc_utrace	  = 1; break;
+		case 'v': malloc_sysv     = 0; break;
+		case 'V': malloc_sysv     = 1; break;
 		case 'x': malloc_xmalloc  = 0; break;
 		case 'X': malloc_xmalloc  = 1; break;
 		case 'z': malloc_zero	  = 0; break;
@@ -1741,7 +1743,10 @@ malloc(size_t size)
 	malloc_recurse();
 	return (NULL);
     }
-    r = imalloc(size);
+    if (malloc_sysv && !size)
+       r = 0;
+    else
+       r = imalloc(size);
     UTRACE(0, size, r);
     malloc_active--;
     THREAD_UNLOCK();
@@ -1780,7 +1785,10 @@ realloc(void *ptr, size_t size)
 	return (NULL);
     }
 
-    if (ptr == NULL)
+    if (malloc_sysv && !size) {
+        ifree(ptr);
+        r = 0;
+    } else if (ptr == NULL)
 	r = imalloc(size);
     else
   	r = irealloc(ptr, size);
