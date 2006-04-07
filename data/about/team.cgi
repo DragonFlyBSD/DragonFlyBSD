@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.2 2006/04/05 19:41:07 justin Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.3 2006/04/07 18:23:50 reed Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -67,7 +67,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top"><a href="mailto:reed 'at' reedmedia 'dot' net">Jeremy C. Reed</a></td>
-<td valign="top">Pkgsrc/Documentation (commit access)</td>
+<td valign="top">Pkgsrc, documentation (commit access)</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
