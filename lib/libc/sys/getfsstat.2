@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getfsstat.2	8.3 (Berkeley) 5/25/95
 .\" $FreeBSD: src/lib/libc/sys/getfsstat.2,v 1.7.2.4 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getfsstat.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getfsstat.2,v 1.3 2006/04/08 08:17:06 swildner Exp $
 .\"
 .Dd May 25, 1995
 .Dt GETFSSTAT 2
@@ -52,7 +52,7 @@
 returns information about all mounted filesystems.
 .Fa Buf
 is a pointer to
-.Xr statfs
+.Vt statfs
 structures defined as follows:
 .Bd -literal
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */

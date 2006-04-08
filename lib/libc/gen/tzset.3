@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)tzset.3	8.2 (Berkeley) 11/17/93
 .\" $FreeBSD: src/lib/libc/gen/tzset.3,v 1.6.2.5 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/tzset.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/tzset.3,v 1.3 2006/04/08 08:17:06 swildner Exp $
 .\"
 .Dd November 17, 1993
 .Dt TZSET 3
@@ -109,7 +109,7 @@ The
 .Fn tzsetwall
 function
 sets things up so that
-.Xr localtime
+.Xr localtime 3
 returns the best available approximation of local wall clock time.
 .Sh SPECIFICATION FORMAT
 When

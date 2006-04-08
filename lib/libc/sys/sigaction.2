@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.5 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.6 2006/04/08 08:17:06 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -123,7 +123,7 @@ must arrange to restore the previous context itself.
 When a signal is delivered to a process a new signal mask is
 installed for the duration of the process' signal handler
 (or until a
-.Xr sigprocmask
+.Xr sigprocmask 2
 call is made).
 This mask is formed by taking the union of the current signal mask set,
 the signal to be delivered, and

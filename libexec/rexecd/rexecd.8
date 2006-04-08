@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)rexecd.8	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/libexec/rexecd/rexecd.8,v 1.9.2.4 2001/08/16 10:44:16 ru Exp $
-.\" $DragonFly: src/libexec/rexecd/rexecd.8,v 1.3 2006/02/17 19:33:31 swildner Exp $
+.\" $DragonFly: src/libexec/rexecd/rexecd.8,v 1.4 2006/04/08 08:17:07 swildner Exp $
 .\"
 .Dd September 23, 1994
 .Dt REXECD 8
@@ -136,8 +136,8 @@ No password file entry for the user name existed.
 The wrong password was supplied.
 .It Sy \&No remote directory.
 The
-.Xr chdir
-command to the home directory failed.
+.Xr chdir 2
+to the home directory failed.
 .It Sy Try again.
 A
 .Xr fork 2

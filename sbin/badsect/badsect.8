@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)badsect.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/badsect/badsect.8,v 1.10.2.6 2002/08/21 18:58:06 trhodes Exp $
-.\" $DragonFly: src/sbin/badsect/badsect.8,v 1.3 2006/02/17 19:33:32 swildner Exp $
+.\" $DragonFly: src/sbin/badsect/badsect.8,v 1.4 2006/04/08 08:17:07 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt BADSECT 8
@@ -90,7 +90,7 @@ and run
 .Xr fsck 8
 on the file system.  The bad sectors should show up in two files
 or in the bad sector files and the free list.  Have
-.Xr fsck
+.Xr fsck 8
 remove files containing the offending bad sectors, but
 .Em do not
 have it remove the

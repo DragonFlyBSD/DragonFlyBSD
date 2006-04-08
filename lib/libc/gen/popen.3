@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)popen.3	8.2 (Berkeley) 5/3/95
 .\" $FreeBSD: src/lib/libc/gen/popen.3,v 1.10.2.4 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/popen.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/popen.3,v 1.4 2006/04/08 08:17:06 swildner Exp $
 .\"
 .Dd May 3, 1995
 .Dt POPEN 3
@@ -148,7 +148,7 @@ command, if
 already
 .Dq pclosed ,
 or if
-.Xr wait4
+.Xr wait4 2
 returns an error.
 .Sh ERRORS
 The

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ftpd.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/libexec/ftpd/ftpd.8,v 1.31.2.18 2003/02/11 14:28:28 yar Exp $
-.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.4 2006/02/17 19:33:31 swildner Exp $
+.\" $DragonFly: src/libexec/ftpd/ftpd.8,v 1.5 2006/04/08 08:17:07 swildner Exp $
 .\"
 .Dd January 27, 2000
 .Dt FTPD 8
@@ -441,10 +441,10 @@ The files pwd.db (see
 and
 .Xr group 5
 must be present for the
-.Xr ls
+.Xr ls 1
 command to be able to produce owner names rather than numbers.
 The password field in
-.Xr passwd
+.Xr passwd 5
 is not used, and should not contain real passwords.
 The file
 .Pa ftpmotd ,
