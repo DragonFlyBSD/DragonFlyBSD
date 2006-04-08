@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.21 2005/10/11 22:10:22 corecode Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.21.2.1 2006/04/08 17:15:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,6 @@ static const VAR var[] = {
 	{"command", "COMMAND", NULL, COMM|LJUST|USER, command, NULL, 16, 0, 0, NULL,
 		NULL},
 	{"cpu", "CPU", NULL, 0, pest, NULL, 3, POFF(p_usdata.bsd4.estcpu), UINT, "d", NULL},
-	{"lastcpu", "C", NULL, 0, pvar, NULL, 3, EOFF(e_cpuid), UINT, "d", NULL},
 	{"cputime", "", "time", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
 	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(p_flag), INT, "x", NULL},
 	{"flags", "", "f", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
@@ -104,11 +103,13 @@ static const VAR var[] = {
 	{"inblk", "INBLK", NULL, USER, rvar, NULL, 4, ROFF(ru_inblock), LONG, "ld",
 		NULL},
 	{"inblock", "", "inblk", 0, NULL, NULL, 0, 0, 0, NULL, NULL},
+	{"jail", "JAIL", NULL, 0, evar, NULL, 3, EOFF(e_jailid), INT, "d", NULL},
 	{"jobc", "JOBC", NULL, 0, evar, NULL, 4, EOFF(e_jobc), SHORT, "d", NULL},
 	{"ktrace", "KTRACE", NULL, 0, pvar, NULL, 8, POFF(p_traceflag), INT, "x",
 		NULL},
 	{"ktracep", "KTRACEP", NULL, 0, pvar, NULL, 8, POFF(p_tracep), LONG, "lx",
 		NULL},
+	{"lastcpu", "C", NULL, 0, evar, NULL, 3, EOFF(e_cpuid), UINT, "d", NULL},
 	{"lim", "LIM", NULL, 0, maxrss, NULL, 5, 0, 0, NULL, NULL},
 	{"login", "LOGIN", NULL, LJUST, logname, NULL, MAXLOGNAME-1, 0, 0, NULL,
 		NULL},

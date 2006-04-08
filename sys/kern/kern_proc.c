@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.22 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.22.2.1 2006/04/08 17:15:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -453,6 +453,8 @@ fill_eproc(struct proc *p, struct eproc *ep)
 	} else {
 		ep->e_tdev = NOUDEV;
 	}
+	if (p->p_ucred->cr_prison)
+		ep->e_jailid = p->p_ucred->cr_prison->pr_id;
 }
 
 struct proc *

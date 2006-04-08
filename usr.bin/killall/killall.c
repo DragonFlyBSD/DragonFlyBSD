@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.7 2004/09/14 00:33:53 drhodus Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.7.4.1 2006/04/08 17:15:12 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -52,7 +52,7 @@ static void __dead2
 usage(void)
 {
 
-	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] [-u user] [-t tty] [-c cmd] [cmd]...\n", prog);
+	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] [-u user] [-j jail] [-t tty] [-c cmd] [cmd]...\n", prog);
 	fprintf(stderr, "At least one option or argument to specify processes must be given.\n");
 	exit(1);
 }
@@ -112,6 +112,7 @@ main(int ac, char **av)
 	int		qflag = 0;
 	int		vflag = 0;
 	int		sflag = 0;
+	int		jflag = 0, jailid = 0;
 	int		dflag = 0;
 	int		mflag = 0;
 	uid_t		uid = 0;
@@ -167,6 +168,20 @@ main(int ac, char **av)
 				--ac;
 				cmd = *av;
 				break;
+			case 'j':
+			{
+				const char *errstr;
+				++*av;
+				if (**av == '\0')
+					++av;
+				--ac;
+				jailid = strtonum(*av, 1, INT_MAX, &errstr);
+
+				if (errstr)
+					errx(1, "jail id is %s: %s", errstr, *av);
+				jflag++;
+				break;
+			}
 			case 'q':
 				qflag++;
 				break;
@@ -210,7 +225,7 @@ main(int ac, char **av)
 		}
 	}
 
-	if (user == NULL && tty == NULL && cmd == NULL && ac == 0)
+	if (user == NULL && tty == NULL && cmd == NULL && jflag == 0 && ac == 0)
 		usage();
 
 	if (tty) {
@@ -308,6 +323,10 @@ main(int ac, char **av)
 			if (thistdev != tdev)
 				matched = 0;
 		}
+		if (jflag) {
+			if (procs[i].kp_eproc.e_jailid != jailid)
+				matched = 0;
+		}
 		if (cmd) {
 			if (mflag) {
 				if (regcomp(&rgx, cmd,
@@ -330,31 +349,33 @@ main(int ac, char **av)
 		}
 		if (matched == 0)
 			continue;
-		matched = 0;
-		for (j = 0; j < ac; j++) {
-			if (mflag) {
-				if (regcomp(&rgx, av[j],
-				    REG_EXTENDED|REG_NOSUB) != 0) {
-					mflag = 0;
-					warnx("%s: illegal regexp", av[j]);
+		if (ac > 0) {
+			matched = 0;
+			for (j = 0; j < ac; j++) {
+				if (mflag) {
+					if (regcomp(&rgx, av[j],
+					    REG_EXTENDED|REG_NOSUB) != 0) {
+						mflag = 0;
+						warnx("%s: illegal regexp", av[j]);
+					}
 				}
+				if (mflag) {
+					pmatch.rm_so = 0;
+					pmatch.rm_eo = strlen(thiscmd);
+					if (regexec(&rgx, thiscmd, 0, &pmatch,
+					    REG_STARTEND) == 0)
+						matched = 1;
+					regfree(&rgx);
+				} else {
+					if (strcmp(thiscmd, av[j]) == 0)
+						matched = 1;
+				}
+				if (matched)
+					break;
 			}
-			if (mflag) {
-				pmatch.rm_so = 0;
-				pmatch.rm_eo = strlen(thiscmd);
-				if (regexec(&rgx, thiscmd, 0, &pmatch,
-				    REG_STARTEND) == 0)
-					matched = 1;
-				regfree(&rgx);
-			} else {
-				if (strcmp(thiscmd, av[j]) == 0)
-					matched = 1;
-			}
-			if (matched)
-				break;
+			if (matched == 0)
+				continue;
 		}
-		if (matched == 0)
-			continue;
 		if (dflag)
 			printf("sig:%d, cmd:%s, pid:%d, dev:0x%x uid:%d\n", sig,
 			    thiscmd, thispid, thistdev, thisuid);
