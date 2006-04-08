@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.19 2005/12/06 17:49:22 joerg Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.20 2006/04/08 14:12:36 swildner Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -58,7 +58,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 isalnum.3 isalpha.3 isascii.3 isblank.3 \
 	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
-	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 \
+	isspace.3 isupper.3 isxdigit.3 isinf.3 isfinite.3 isnan.3 isnormal.3 \
 	ldexp.3 lockf.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
 	nice.3 nlist.3 pause.3 popen.3 psignal.3 pwcache.3 \
 	raise.3 rand48.3 readpassphrase.3 rfork_thread.3 \
