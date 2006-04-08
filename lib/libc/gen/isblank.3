@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)isblank.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/locale/isblank.3,v 1.4.2.3 2001/12/14 18:33:54 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/isblank.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/isblank.3,v 1.3 2006/04/08 08:57:00 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt ISBLANK 3
@@ -51,9 +51,7 @@ The
 function tests for a space or tab character.
 For single C
 .Va char Ns s
-locales (see
-.Xr multibyte 3 )
-the value of the argument is
+locales the value of the argument is
 representable as an
 .Li unsigned char
 or the value of
@@ -65,5 +63,4 @@ function returns zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh SEE ALSO
 .Xr ctype 3 ,
-.Xr multibyte 3 ,
 .Xr ascii 7
