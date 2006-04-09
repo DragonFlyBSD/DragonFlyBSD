@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.33 2006/04/09 17:51:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.34 2006/04/09 17:56:48 dillon Exp $
  */
 
 
@@ -926,7 +926,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	 * Normal files use the buffer cache
 	 */
 	if (f_type == VREG)
-		vinitvmio(vp);
+		vinitvmio(vp, fp->f_size);
 
 	ntfs_ntput(ip);
 
