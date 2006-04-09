@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.29 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.30 2006/04/09 17:51:28 dillon Exp $
  *
  */
 
@@ -268,7 +268,7 @@ ntfs_inactive(struct vop_inactive_args *ap)
 
 	dprintf(("ntfs_inactive: vnode: %p, ntnode: %d\n", vp, ip->i_number));
 
-	if (ntfs_prtactive && vp->v_usecount != 0)
+	if (ntfs_prtactive && vp->v_usecount != 1)
 		vprint("ntfs_inactive: pushing active", vp);
 
 	/*
@@ -293,7 +293,7 @@ ntfs_reclaim(struct vop_reclaim_args *ap)
 
 	dprintf(("ntfs_reclaim: vnode: %p, ntnode: %d\n", vp, ip->i_number));
 
-	if (ntfs_prtactive && vp->v_usecount != 0)
+	if (ntfs_prtactive && vp->v_usecount != 1)
 		vprint("ntfs_reclaim: pushing active", vp);
 
 	if ((error = ntfs_ntget(ip)) != 0)
