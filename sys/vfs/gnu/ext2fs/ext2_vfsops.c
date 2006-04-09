@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.36 2006/04/05 21:06:22 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.37 2006/04/09 20:07:43 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -622,7 +622,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 	 * Step 2: re-read superblock from disk.
 	 * constants have been adjusted for ext2
 	 */
-	if ((error = bread(devvp, dbtob(SBLOCK), SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
 		return (error);
 	es = (struct ext2_super_block *)bp->b_data;
 	if (ext2_check_sb_compat(es, devvp->v_rdev, 0) != 0) {
@@ -750,7 +750,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 
 	bp = NULL;
 	ump = NULL;
-	if ((error = bread(devvp, dbtob(SBLOCK), SBSIZE, &bp)) != 0)
+	if ((error = bread(devvp, SBOFF, SBSIZE, &bp)) != 0)
 		goto out;
 	es = (struct ext2_super_block *)bp->b_data;
 	if (ext2_check_sb_compat(es, dev, ronly) != 0) {
@@ -1312,7 +1312,7 @@ ext2_sbupdate(struct ext2mount *mp, int waitfor)
 /*
 printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
 */
-	bp = getblk(mp->um_devvp, lblktodoff(fs, SBLOCK), SBSIZE, 0, 0);
+	bp = getblk(mp->um_devvp, SBOFF, SBSIZE, 0, 0);
 	bcopy((caddr_t)es, bp->b_data, (u_int)sizeof(struct ext2_super_block));
 	if (waitfor == MNT_WAIT)
 		error = bwrite(bp);
