@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.37 2006/04/09 20:07:43 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.38 2006/04/09 20:47:56 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1142,11 +1142,6 @@ restart:
 #if 0
 printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 #endif
-	printf("BREAD MP %p FS %p INODE %d INO_TO_FSBA %d DOFF %lld\n",
-		mp, fs,
-		(int)ino, (int)ino_to_fsba(fs, ino),
-		 fsbtodoff(fs, ino_to_fsba(fs, ino)));
-
 	error = bread(ump->um_devvp, fsbtodoff(fs, ino_to_fsba(fs, ino)),
 		      (int)fs->s_blocksize, &bp);
 	if (error) {
@@ -1178,7 +1173,9 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		for(i = used_blocks; i < EXT2_NDIR_BLOCKS; i++)
 			ip->i_db[i] = 0;
 	}
+#if 0
 	ext2_print_inode(ip);
+#endif
 	brelse(bp);
 
 	/*
