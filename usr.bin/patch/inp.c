@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: inp.c,v 1.32 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/inp.c,v 1.3 2004/12/26 15:55:23 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/inp.c,v 1.4 2006/04/10 08:11:43 joerg Exp $
  */
 
 /*
@@ -176,9 +176,14 @@ plan_a(const char *filename)
 	    ((filestat.st_mode & 0022) == 0 && filestat.st_uid != getuid())) {
 		const char	*cs = NULL, *filebase, *filedir;
 		struct stat	cstat;
+		char *tmp_filename1, *tmp_filename2;
 
-		filebase = basename(filename);
-		filedir = dirname(filename);
+		tmp_filename1 = strdup(filename);
+		tmp_filename2 = strdup(filename);
+		if (tmp_filename1 == NULL || tmp_filename2 == NULL)
+			fatal("strdupping filename");
+		filebase = basename(tmp_filename1);
+		filedir = dirname(tmp_filename2);
 
 		/* Leave room in lbuf for the diff command.  */
 		s = lbuf + 20;
@@ -199,6 +204,10 @@ plan_a(const char *filename)
 			cs = "SCCS";
 		} else if (statfailed)
 			fatal("can't find %s\n", filename);
+
+		free(tmp_filename1);
+		free(tmp_filename2);
+
 		/*
 		 * else we can't write to it but it's not under a version
 		 * control system, so just proceed.
@@ -461,11 +470,11 @@ rev_in_string(const char *string)
 	if (revision == NULL)
 		return true;
 	patlen = strlen(revision);
-	if (strnEQ(string, revision, patlen) && isspace(string[patlen]))
+	if (strnEQ(string, revision, patlen) && isspace((unsigned char)string[patlen]))
 		return true;
 	for (s = string; *s; s++) {
-		if (isspace(*s) && strnEQ(s + 1, revision, patlen) &&
-		    isspace(s[patlen + 1])) {
+		if (isspace((unsigned char)*s) && strnEQ(s + 1, revision, patlen) &&
+		    isspace((unsigned char)s[patlen + 1])) {
 			return true;
 		}
 	}

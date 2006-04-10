@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: backupfile.c,v 1.18 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.2 2004/09/28 19:09:50 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.3 2006/04/10 08:11:43 joerg Exp $
  */
 
 /*
@@ -30,7 +30,7 @@
 #include "backupfile.h"
 
 
-#define ISDIGIT(c) (isascii (c) && isdigit (c))
+#define ISDIGIT(c) (isascii ((unsigned char)c) && isdigit ((unsigned char)c))
 
 /* Which type of backup file names are generated. */
 enum backup_type backup_type = none;
@@ -56,21 +56,32 @@ static void	invalid_arg(const char *, const char *, int);
 char *
 find_backup_file_name(const char *file)
 {
-	char	*dir, *base_versions;
+	char	*dir, *base_versions, *tmp_file;
 	int	highest_backup;
 
 	if (backup_type == simple)
 		return concat(file, simple_backup_suffix);
-	base_versions = concat(basename(file), ".~");
+	tmp_file = strdup(file);
+	if (tmp_file == NULL)
+		return NULL;
+	base_versions = concat(basename(tmp_file), ".~");
+	free(tmp_file);
 	if (base_versions == NULL)
 		return NULL;
-	dir = dirname(file);
+	tmp_file = strdup(file);
+	if (tmp_file == NULL) {
+		free(base_versions);
+		return NULL;
+	}
+	dir = dirname(tmp_file);
 	if (dir == NULL) {
 		free(base_versions);
+		free(tmp_file);
 		return NULL;
 	}
 	highest_backup = max_backup_version(base_versions, dir);
 	free(base_versions);
+	free(tmp_file);
 	if (backup_type == numbered_existing && highest_backup == 0)
 		return concat(file, simple_backup_suffix);
 	return make_version_name(file, highest_backup + 1);

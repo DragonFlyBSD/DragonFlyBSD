@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.43 2004/11/19 20:08:11 otto Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.4 2005/01/10 21:45:33 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.5 2006/04/10 08:11:43 joerg Exp $
  */
 
 /*
@@ -506,7 +506,7 @@ get_some_switches(void)
 			break;
 		case 'D':
 			do_defines = true;
-			if (!isalpha(*optarg) && *optarg != '_')
+			if (!isalpha((unsigned char)*optarg) && *optarg != '_')
 				fatal("argument to -D is not an identifier\n");
 			snprintf(if_defined, sizeof if_defined,
 			    "#ifdef %s\n", optarg);
@@ -1033,12 +1033,12 @@ static bool
 similar(const char *a, const char *b, int len)
 {
 	while (len) {
-		if (isspace(*b)) {	/* whitespace (or \n) to match? */
-			if (!isspace(*a))	/* no corresponding whitespace? */
+		if (isspace((unsigned char)*b)) {	/* whitespace (or \n) to match? */
+			if (!isspace((unsigned char)*a))	/* no corresponding whitespace? */
 				return false;
-			while (len && isspace(*b) && *b != '\n')
+			while (len && isspace((unsigned char)*b) && *b != '\n')
 				b++, len--;	/* skip pattern whitespace */
-			while (isspace(*a) && *a != '\n')
+			while (isspace((unsigned char)*a) && *a != '\n')
 				a++;	/* skip target whitespace */
 			if (*a == '\n' || *b == '\n')
 				return (*a == *b);	/* should end in sync */
