@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.30 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.31 2006/04/10 17:46:44 dillon Exp $
  */
 
 
@@ -369,8 +369,6 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	 * Although RFC1094 does not specify the criteria, the following is
 	 * believed to be compatible with the reference port.
 	 *
-	 * NQNFS:	Full cache coherency is maintained within the loop.
-	 *
 	 * NFS:		If local changes have been made and this is a
 	 *		directory, the directory must be invalidated and
 	 *		the attribute cache must be cleared.
@@ -379,7 +377,6 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	 *
 	 *		If remote changes are detected local data is flushed
 	 *		and the cache is invalidated.
-	 *
 	 *
 	 *		NOTE: In the normal case the attribute cache is not
 	 *		cleared which means GETATTR may use cached data and
@@ -520,8 +517,9 @@ again:
 			n = min((unsigned)(bcount - on), uio->uio_resid);
 		break;
 	    case VLNK:
+		biosize = min(NFS_MAXPATHLEN, np->n_size);
 		nfsstats.biocache_readlinks++;
-		bp = nfs_getcacheblk(vp, (off_t)0, NFS_MAXPATHLEN, td);
+		bp = nfs_getcacheblk(vp, (off_t)0, biosize, td);
 		if (bp == NULL)
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
@@ -534,7 +532,7 @@ again:
 			return (error);
 		    }
 		}
-		n = min(uio->uio_resid, NFS_MAXPATHLEN - bp->b_resid);
+		n = min(uio->uio_resid, bp->b_bcount - bp->b_resid);
 		on = 0;
 		break;
 	    case VDIR:
