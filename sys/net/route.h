@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.15 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.16 2006/04/11 06:59:36 dillon Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -382,6 +382,10 @@ int	 rtrequest_global (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
 int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, void *);
+
+void	rt_print(struct rt_addrinfo *, struct rtentry *);
+void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
+void	sockaddr_print(struct sockaddr *);
 
 static __inline void
 RTFREE(struct rtentry *rt)

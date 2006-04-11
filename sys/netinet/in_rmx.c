@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.13 2006/01/31 19:05:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.14 2006/04/11 06:59:34 dillon Exp $
  */
 
 /*
@@ -369,6 +369,10 @@ in_inithead(void **head, int off)
  * get rid of are things like ARP entries, since the user might down
  * the interface, walk over to a completely different network, and
  * plug back in.
+ *
+ * in_ifadown() is typically called when an interface is being brought
+ * down.  We must iterate through all per-cpu route tables and clean
+ * them up.
  */
 struct in_ifadown_arg {
 	struct radix_node_head *rnh;
@@ -407,14 +411,30 @@ in_ifadown(struct ifaddr *ifa, int delete)
 {
 	struct in_ifadown_arg arg;
 	struct radix_node_head *rnh;
+	int origcpu;
+	int cpu;
 
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return 1;
 
-	arg.rnh = rnh = rt_tables[mycpuid][AF_INET];
-	arg.ifa = ifa;
-	arg.del = delete;
-	rnh->rnh_walktree(rnh, in_ifadownkill, &arg);
-	ifa->ifa_flags &= ~IFA_ROUTE;
+	/*
+	 * XXX individual requests are not independantly chained,
+	 * which means that the per-cpu route tables will not be
+	 * consistent in the middle of the operation.  If routes
+	 * related to the interface are manipulated while we are
+	 * doing this the inconsistancy could trigger a panic.
+	 */
+	origcpu = mycpuid;
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		lwkt_migratecpu(cpu);
+
+		arg.rnh = rnh = rt_tables[cpu][AF_INET];
+		arg.ifa = ifa;
+		arg.del = delete;
+		rnh->rnh_walktree(rnh, in_ifadownkill, &arg);
+		ifa->ifa_flags &= ~IFA_ROUTE;
+	}
+	lwkt_migratecpu(origcpu);
 	return 0;
 }
+

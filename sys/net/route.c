@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.24 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.25 2006/04/11 06:59:36 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -130,6 +130,12 @@ static int rtrequest1_msghandler(struct lwkt_msg *lmsg);
 #endif
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
+
+#ifdef ROUTE_DEBUG
+static int route_debug = 1;
+SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
+           &route_debug, 0, "");
+#endif
 
 /*
  * Initialize the route table(s) for protocol domains and
@@ -740,7 +746,7 @@ rtrequest1_msghandler(struct lwkt_msg *lmsg)
 	if (error && msg->req != RTM_DELETE) {
 		if (mycpuid != 0) {
 			panic("rtrequest1_msghandler: rtrequest table "
-			      "error was not on cpu #0: %p", msg);
+			      "error was not on cpu #0: %p", msg->rtinfo);
 		}
 		lwkt_replymsg(&msg->lmsg, error);
 	} else if (nextcpu < ncpus) {
@@ -765,6 +771,11 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	int error = 0;
 
 #define gotoerr(x) { error = x ; goto bad; }
+
+#ifdef ROUTE_DEBUG
+	if (route_debug)
+		rt_addrinfo_print(req, rtinfo);
+#endif
 
 	crit_enter();
 	/*
@@ -816,6 +827,11 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		 * rt to get freed prematurely.
 		 */
 		rt->rt_flags &= ~RTF_UP;
+
+#ifdef ROUTE_DEBUG
+		if (route_debug)
+			rt_print(rtinfo, rt);
+#endif
 
 		/* Give the protocol a chance to keep things in sync. */
 		if ((ifa = rt->rt_ifa) && ifa->ifa_rtrequest)
@@ -963,6 +979,10 @@ makeroute:
 					       rt_fixchange, &arg);
 		}
 
+#ifdef ROUTE_DEBUG
+		if (route_debug)
+			rt_print(rtinfo, rt);
+#endif
 		/*
 		 * Return the resulting rtentry,
 		 * increasing the number of references by one.
@@ -976,6 +996,14 @@ makeroute:
 		error = EOPNOTSUPP;
 	}
 bad:
+#ifdef ROUTE_DEBUG
+	if (route_debug) {
+		if (error)
+			printf("rti %p failed error %d\n", rtinfo, error);
+		else
+			printf("rti %p succeeded\n", rtinfo);
+	}
+#endif
 	crit_exit();
 	return (error);
 }
@@ -1263,6 +1291,153 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 	*drt = rt;
 	return 0;
 }
+
+#ifdef ROUTE_DEBUG
+
+/*
+ * Print out a route table entry
+ */
+void
+rt_print(struct rt_addrinfo *rtinfo, struct rtentry *rn)
+{
+	printf("rti %p cpu %d route %p flags %08lx: ", 
+		rtinfo, mycpuid, rn, rn->rt_flags);
+	sockaddr_print(rt_key(rn));
+	printf(" mask ");
+	sockaddr_print(rt_mask(rn));
+	printf(" gw ");
+	sockaddr_print(rn->rt_gateway);
+	printf(" ifc \"%s\"", rn->rt_ifp ? rn->rt_ifp->if_dname : "?");
+	printf(" ifa %p\n", rn->rt_ifa);
+}
+
+void
+rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
+{
+	int didit = 0;
+	int i;
+
+#ifdef ROUTE_DEBUG
+	if (cmd == RTM_DELETE && route_debug > 1)
+		db_print_backtrace();
+#endif
+
+	switch(cmd) {
+	case RTM_ADD:
+		printf("ADD ");
+		break;
+	case RTM_RESOLVE:
+		printf("RES ");
+		break;
+	case RTM_DELETE:
+		printf("DEL ");
+		break;
+	default:
+		printf("C%02d ", cmd);
+		break;
+	}
+	printf("rti %p cpu %d ", rti, mycpuid);
+	for (i = 0; i < rti->rti_addrs; ++i) {
+		if (rti->rti_info[i] == NULL)
+			continue;
+		if (didit)
+			printf(" ,");
+		switch(i) {
+		case RTAX_DST:
+			printf("(DST ");
+			break;
+		case RTAX_GATEWAY:
+			printf("(GWY ");
+			break;
+		case RTAX_NETMASK:
+			printf("(MSK ");
+			break;
+		case RTAX_GENMASK:
+			printf("(GEN ");
+			break;
+		case RTAX_IFP:
+			printf("(IFP ");
+			break;
+		case RTAX_IFA:
+			printf("(IFA ");
+			break;
+		case RTAX_AUTHOR:
+			printf("(AUT ");
+			break;
+		case RTAX_BRD:
+			printf("(BRD ");
+			break;
+		default:
+			printf("(?%02d ", i);
+			break;
+		}
+		sockaddr_print(rti->rti_info[i]);
+		printf(")");
+		didit = 1;
+	}
+	printf("\n");
+}
+
+void
+sockaddr_print(struct sockaddr *sa)
+{
+	struct sockaddr_in *sa4;
+	struct sockaddr_in6 *sa6;
+	int len;
+	int i;
+
+	if (sa == NULL) {
+		printf("NULL");
+		return;
+	}
+
+	len = sa->sa_len - offsetof(struct sockaddr, sa_data[0]);
+
+	switch(sa->sa_family) {
+	case AF_INET:
+	case AF_INET6:
+	default:
+		switch(sa->sa_family) {
+		case AF_INET:
+			sa4 = (struct sockaddr_in *)sa;
+			printf("INET %d %d.%d.%d.%d",
+				ntohs(sa4->sin_port),
+				(ntohl(sa4->sin_addr.s_addr) >> 24) & 255,
+				(ntohl(sa4->sin_addr.s_addr) >> 16) & 255,
+				(ntohl(sa4->sin_addr.s_addr) >> 8) & 255,
+				(ntohl(sa4->sin_addr.s_addr) >> 0) & 255
+			);
+			break;
+		case AF_INET6:
+			sa6 = (struct sockaddr_in6 *)sa;
+			printf("INET6 %d %04x:%04x%04x:%04x:%04x:%04x:%04x:%04x",
+				ntohs(sa6->sin6_port),
+				sa6->sin6_addr.s6_addr16[0],
+				sa6->sin6_addr.s6_addr16[1],
+				sa6->sin6_addr.s6_addr16[2],
+				sa6->sin6_addr.s6_addr16[3],
+				sa6->sin6_addr.s6_addr16[4],
+				sa6->sin6_addr.s6_addr16[5],
+				sa6->sin6_addr.s6_addr16[6],
+				sa6->sin6_addr.s6_addr16[7]
+			);
+			break;
+		default:
+			printf("AF%d ", sa->sa_family);
+			while (len > 0 && sa->sa_data[len-1] == 0)
+				--len;
+
+			for (i = 0; i < len; ++i) {
+				if (i)
+					printf(".");
+				printf("%d", (unsigned char)sa->sa_data[i]);
+			}
+			break;
+		}
+	}
+}
+
+#endif
 
 /*
  * Set up a routing table entry, normally for an interface.
