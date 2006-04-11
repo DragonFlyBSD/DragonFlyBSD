@@ -34,7 +34,7 @@
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
 .\" $FreeBSD: src/bin/sh/sh.1,v 1.39.2.25 2003/02/13 19:28:08 fanf Exp $
-.\" $DragonFly: src/bin/sh/sh.1,v 1.2 2003/06/17 04:22:50 dillon Exp $
+.\" $DragonFly: src/bin/sh/sh.1,v 1.3 2006/04/11 11:57:00 reed Exp $
 .\"
 .Dd May 5, 1995
 .Dt SH 1
@@ -1232,13 +1232,17 @@ A character class matches any of the characters between the square brackets.
 A range of characters may be specified using a minus sign.
 The character class may be complemented by making an exclamation point
 .Pq Li !\&
+or the caret
+.Pq Li ^\&
 the first character of the character class.
 .Pp
 To include a
 .Dq Li \&]
 in a character class, make it the first character listed
 (after the
-.Dq Li \&! ,
+.Dq Li \&!
+or
+.Dq Li \&^ ,
 if any).
 To include a
 .Dq Li - ,
