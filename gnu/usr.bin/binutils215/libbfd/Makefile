@@ -1,8 +1,10 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile,v 1.2 2005/10/01 12:40:32 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/libbfd/Attic/Makefile,v 1.3 2006/04/11 12:14:00 joerg Exp $
 
 .include "../Makefile.inc0"
 
 .PATH: ${SRCDIR}/bfd ${SRCDIR}/opcodes
+
+CONTRIBDIR=	${SRCDIR}/bfd
 
 LIB=	bfd
 SRCS+=	archive.c archive64.c archures.c bfd.c bfdio.c binary.c cache.c \
