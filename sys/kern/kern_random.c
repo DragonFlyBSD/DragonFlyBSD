@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.12 2006/01/26 08:19:48 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.13 2006/04/12 18:20:54 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -82,7 +82,15 @@
 #error No primitive polynomial available for chosen POOLWORDS
 #endif
 
-#define WRITEBUFFER 512 /* size in bytes */
+#define WRITEBUFFER	512 /* size in bytes */
+
+/*
+ * This is the number of bits represented by entropy_count.  A value of
+ * 8 would represent an ultra-conservative value, while a value of 2
+ * would be ultra-liberal.  Use a value of 4.
+ */
+#define STATE_BITS	4
+#define MIN_BITS	(STATE_BITS*4)
 
 /* There is actually only one of these, globally. */
 struct random_bucket {
@@ -102,13 +110,15 @@ struct timer_rand_state {
 
 static struct random_bucket random_state;
 static u_int32_t random_pool[POOLWORDS];
+static struct random_bucket urandom_state;
+static u_int32_t urandom_pool[POOLWORDS];
 static struct timer_rand_state keyboard_timer_state;
+static struct timer_rand_state keyboard_utimer_state;
 static struct timer_rand_state extract_timer_state;
 static struct timer_rand_state irq_timer_state[MAX_INTS];
 #ifdef notyet
 static struct timer_rand_state blkdev_timer_state[MAX_BLKDEV];
 #endif
-static struct wait_queue *random_wait;
 static thread_t rand_td;
 static int	rand_td_slot;
 
@@ -121,12 +131,8 @@ static void add_timer_randomness(struct random_bucket *r,
 void
 rand_initialize(void)
 {
-	random_state.add_ptr = 0;
-	random_state.entropy_count = 0;
 	random_state.pool = random_pool;
-	random_wait = NULL;
-	random_state.rsel.si_flags = 0;
-	random_state.rsel.si_pid = 0;
+	urandom_state.pool = urandom_pool;
 }
 
 /*
@@ -142,17 +148,31 @@ rand_thread_loop(void *dummy)
 {
 	int slot;
 	int count;
+	int flipper = 0;
 
 	for (;;) {
 		if ((slot = rand_td_slot) >= 0) {
-			add_timer_randomness(&random_state,
-					     &irq_timer_state[slot], slot);
+			if (flipper) {
+				add_timer_randomness(&urandom_state,
+						     &irq_timer_state[slot],
+						     slot);
+			} else {
+				add_timer_randomness(&random_state,
+						     &irq_timer_state[slot],
+						     slot);
+			}
+			flipper = 1 - flipper;
 		}
 
 		/*
 		 * The fewer bits we have, the shorter we sleep, up to a
 		 * point.  We use an interrupt to trigger the thread once
 		 * we have slept the calculated amount of time.
+		 *
+		 * Use /dev/random's entropy count rather than /dev/urandom's.
+		 * Things like the stacksmash code use /dev/urandom on program
+		 * startup all the time, and it is not likely to ever have
+		 * good entropy.
 		 */
 		count = random_state.entropy_count * hz / POOLBITS;
 		if (count < hz / 25)
@@ -231,7 +251,7 @@ add_entropy_word(struct random_bucket *r, const u_int32_t input)
  */
 static void
 add_timer_randomness(struct random_bucket *r, struct timer_rand_state *state,
-	u_int num)
+		     u_int num)
 {
 	int		delta, delta2;
 	u_int		nbits;
@@ -275,8 +295,8 @@ add_timer_randomness(struct random_bucket *r, struct timer_rand_state *state,
 	cpu_sfence();
 	r->entropy_count = count;
 
-	if (count >= 8 && try_mplock()) {
-		selwakeup(&random_state.rsel);
+	if (count >= MIN_BITS && try_mplock()) {
+		selwakeup(&r->rsel);
 		rel_mplock();
 	}
 }
@@ -285,6 +305,7 @@ void
 add_keyboard_randomness(u_char scancode)
 {
 	add_timer_randomness(&random_state, &keyboard_timer_state, scancode);
+	add_timer_randomness(&urandom_state, &keyboard_utimer_state, scancode);
 }
 
 /*
@@ -336,8 +357,8 @@ extract_entropy(struct random_bucket *r, char *buf, int nbytes)
 		nbytes = 32768;
 
 	ret = nbytes;
-	if (r->entropy_count / 8 >= nbytes)
-		r->entropy_count -= nbytes*8;
+	if (r->entropy_count > nbytes * STATE_BITS)
+		r->entropy_count -= nbytes * STATE_BITS;
 	else
 		r->entropy_count = 0;
 
@@ -390,8 +411,10 @@ get_random_bytes(void *buf, u_int nbytes)
 u_int
 read_random(void *buf, u_int nbytes)
 {
-	if ((nbytes * 8) > random_state.entropy_count)
-		nbytes = random_state.entropy_count / 8;
+	if (random_state.entropy_count < MIN_BITS)
+		return 0;
+	if ((nbytes * STATE_BITS) > random_state.entropy_count)
+		nbytes = random_state.entropy_count / STATE_BITS;
 	
 	return extract_entropy(&random_state, (char *)buf, nbytes);
 }
@@ -399,7 +422,7 @@ read_random(void *buf, u_int nbytes)
 u_int
 read_random_unlimited(void *buf, u_int nbytes)
 {
-	return extract_entropy(&random_state, (char *)buf, nbytes);
+	return extract_entropy(&urandom_state, (char *)buf, nbytes);
 }
 
 #ifdef notused
@@ -435,6 +458,10 @@ add_true_randomness(int val)
 	selwakeup(&random_state.rsel);
 }
 
+/*
+ * Returns whether /dev/random has data or not.  entropy_count must be 
+ * at least STATE_BITS.
+ */
 int
 random_poll(dev_t dev, int events, struct thread *td)
 {
@@ -442,7 +469,7 @@ random_poll(dev_t dev, int events, struct thread *td)
 
 	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
-		if (random_state.entropy_count >= 8)
+		if (random_state.entropy_count >= MIN_BITS)
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
 			selrecord(td, &random_state.rsel);
