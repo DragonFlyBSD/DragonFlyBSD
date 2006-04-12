@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/as/amd64-dragonfly/Attic/Makefile,v 1.2 2004/12/20 13:21:38 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/as/amd64-dragonfly/Attic/Makefile,v 1.3 2006/04/12 19:39:55 swildner Exp $
 
 DEFAULT_ARCH=           x86_64 
 EMULATIONS=             &i386elf,
@@ -10,7 +10,6 @@ TARGET_CPU=             x86_64
 .include "${.CURDIR}/../Makefile.inc0"
 
 CFLAGS += -I${.OBJDIR}/../../libbfd
-NOMAN=	true
 .if ${TARGET_ARCH} != "amd64"
 BINDIR=	/usr/libexec/cross/amd64-dragonfly
 .endif
