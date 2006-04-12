@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.13 2006/04/12 18:20:54 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.14 2006/04/12 18:28:30 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -116,6 +116,7 @@ static struct timer_rand_state keyboard_timer_state;
 static struct timer_rand_state keyboard_utimer_state;
 static struct timer_rand_state extract_timer_state;
 static struct timer_rand_state irq_timer_state[MAX_INTS];
+static struct timer_rand_state irq_utimer_state[MAX_INTS];
 #ifdef notyet
 static struct timer_rand_state blkdev_timer_state[MAX_BLKDEV];
 #endif
@@ -148,30 +149,27 @@ rand_thread_loop(void *dummy)
 {
 	int slot;
 	int count;
-	int flipper = 0;
 
 	for (;;) {
 		if ((slot = rand_td_slot) >= 0) {
-			if (flipper) {
-				add_timer_randomness(&urandom_state,
-						     &irq_timer_state[slot],
-						     slot);
-			} else {
-				add_timer_randomness(&random_state,
-						     &irq_timer_state[slot],
-						     slot);
-			}
-			flipper = 1 - flipper;
+			add_timer_randomness(&urandom_state,
+					     &irq_timer_state[slot],
+					     slot);
+			add_timer_randomness(&random_state,
+					     &irq_utimer_state[slot],
+					     slot);
 		}
 
 		/*
 		 * The fewer bits we have, the shorter we sleep, up to a
 		 * point.  We use an interrupt to trigger the thread once
-		 * we have slept the calculated amount of time.
+		 * we have slept the calculated amount of time.  This limits
+		 * the wakeup rate AND gives us a good interrupt-based
+		 * timer value at the same time.
 		 *
 		 * Use /dev/random's entropy count rather than /dev/urandom's.
 		 * Things like the stacksmash code use /dev/urandom on program
-		 * startup all the time, and it is not likely to ever have
+		 * exec all the time, and it is not likely to ever have
 		 * good entropy.
 		 */
 		count = random_state.entropy_count * hz / POOLBITS;
