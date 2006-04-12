@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/as/i386-dragonfly/Attic/Makefile,v 1.2 2004/12/20 13:21:38 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/as/i386-dragonfly/Attic/Makefile,v 1.3 2006/04/12 19:21:23 swildner Exp $
 
 DEFAULT_ARCH=		i386
 EMULATIONS=		&i386elf,
@@ -10,7 +10,6 @@ TARGET_CPU=		i386
 .include "${.CURDIR}/../Makefile.inc0"
 
 CFLAGS += -I${.OBJDIR}/../../libbfd
-NOMAN=	true
 .if ${TARGET_ARCH} != "i386"
 BINDIR=	/usr/libexec/cross/i386-dragonfly
 .endif
