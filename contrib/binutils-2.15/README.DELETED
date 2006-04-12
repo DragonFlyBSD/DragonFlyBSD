@@ -729,7 +729,6 @@
 ./gas/doc/as.info-10
 ./gas/doc/as.info-11
 ./gas/doc/as.info-12
-./gas/doc/as.1
 ./gas/po/
 ./gas/testsuite/
 ./gas/make-gas.com
