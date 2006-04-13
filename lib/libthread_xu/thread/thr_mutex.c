@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.13 2006/04/07 13:53:50 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.14 2006/04/13 11:53:39 davidxu Exp $
  */
 
 #include "namespace.h"
@@ -83,7 +83,7 @@ umtx_t	_mutex_static_lock;
 static int	mutex_self_trylock(pthread_mutex_t);
 static int	mutex_self_lock(pthread_mutex_t,
 			const struct timespec *abstime);
-static int	mutex_unlock_common(pthread_mutex_t *, int, int *);
+static int	mutex_unlock_common(pthread_mutex_t *);
 
 int __pthread_mutex_init(pthread_mutex_t *mutex,
 	const pthread_mutexattr_t *mutex_attr);
@@ -291,7 +291,7 @@ __pthread_mutex_trylock(pthread_mutex_t *m)
 	 */
 	if (__predict_false(*m == NULL)) {
 		ret = init_static(curthread, m);
-		if (__predict_false(ret))
+		if (__predict_false(ret != 0))
 			return (ret);
 	}
 	return (mutex_trylock_common(curthread, m));
@@ -309,7 +309,7 @@ _pthread_mutex_trylock(pthread_mutex_t *m)
 	 */
 	if (__predict_false(*m == NULL)) {
 		ret = init_static_private(curthread, m);
-		if (__predict_false(ret))
+		if (__predict_false(ret != 0))
 			return (ret);
 	}
 	return (mutex_trylock_common(curthread, m));
@@ -457,25 +457,7 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 int
 _pthread_mutex_unlock(pthread_mutex_t *m)
 {
-	return (mutex_unlock_common(m, 0, NULL));
-}
-
-int
-_mutex_cv_unlock(pthread_mutex_t *m, int *count)
-{
-	return (mutex_unlock_common(m, 1, count));
-}
-
-int
-_mutex_cv_lock(pthread_mutex_t *m, int count)
-{
-	int	ret;
-
-	if ((ret = _pthread_mutex_lock(m)) == 0) {
-		(*m)->m_refcount--;
-		(*m)->m_count += count;
-	}
-	return (ret);
+	return (mutex_unlock_common(m));
 }
 
 static int
@@ -567,25 +549,16 @@ mutex_self_lock(pthread_mutex_t m, const struct timespec *abstime)
 }
 
 static int
-mutex_unlock_common(pthread_mutex_t *mutex, int cv, int *count)
+mutex_unlock_common(pthread_mutex_t *mutex)
 {
 	struct pthread *curthread = tls_get_curthread();
 	struct pthread_mutex *m;
-	int ret = 0;
 
 	if (__predict_false((m = *mutex)== NULL))
 		return (EINVAL);
-	/*
-	 * Check if the running thread is not the owner of the mutex:
-	 */
+
 	if (__predict_false(m->m_owner != curthread))
 		return (EPERM);
-
-	if (cv) {
-		*count = m->m_count;
-		m->m_count = 0;
-		m->m_refcount++;
-	}
 
 	if (__predict_false(
 		m->m_type == PTHREAD_MUTEX_RECURSIVE &&
@@ -606,7 +579,43 @@ mutex_unlock_common(pthread_mutex_t *mutex, int cv, int *count)
 		 */
 		THR_UMTX_UNLOCK(curthread, &m->m_lock);
 	}
+	return (0);
+}
+
+int
+_mutex_cv_lock(pthread_mutex_t *m, int count)
+{
+	int	ret;
+
+	if ((ret = _pthread_mutex_lock(m)) == 0) {
+		(*m)->m_refcount--;
+		(*m)->m_count += count;
+	}
 	return (ret);
+}
+
+int
+_mutex_cv_unlock(pthread_mutex_t *mutex, int *count)
+{
+	struct pthread *curthread = tls_get_curthread();
+	struct pthread_mutex *m;
+
+	if (__predict_false((m = *mutex)== NULL))
+		return (EINVAL);
+
+	if (__predict_false(m->m_owner != curthread))
+		return (EPERM);
+
+	*count = m->m_count;
+	m->m_count = 0;
+	m->m_refcount++;
+	m->m_owner = NULL;
+	/* Remove the mutex from the threads queue. */
+	MUTEX_ASSERT_IS_OWNED(m);
+	TAILQ_REMOVE(&curthread->mutexq, m, m_qe);
+	MUTEX_INIT_LINK(m);
+	THR_UMTX_UNLOCK(curthread, &m->m_lock);
+	return (0);
 }
 
 void
