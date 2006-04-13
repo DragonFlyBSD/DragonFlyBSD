@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.20 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.21 2006/04/13 19:25:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -967,8 +967,13 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 					goto fail;
 				}
 			}
-
 			nfp->f_flag &= ~FN_VALID;
+
+			/*
+			 * Normal files use the buffer cache
+			 */
+			if (nvp->v_type == VREG)
+				vinitvmio(nvp, nfp->f_size);
 			*vpp = nvp;
 			goto fail;
 		}
