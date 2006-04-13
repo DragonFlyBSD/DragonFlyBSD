@@ -1,12 +1,12 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 #	$FreeBSD: src/share/man/man5/Makefile,v 1.27.2.12 2003/05/23 22:20:24 dwhite Exp $
-#	$DragonFly: src/share/man/man5/Makefile,v 1.8 2006/01/18 07:04:29 reed Exp $
+#	$DragonFly: src/share/man/man5/Makefile,v 1.9 2006/04/13 18:41:05 swildner Exp $
 
 #MISSING: dump.5 plot.5
 MAN=	a.out.5 acct.5 core.5 dir.5 devices.conf.5 \
 	disktab.5 elf.5 euc.5 \
 	ethers.5 eui64.5 fbtab.5 fdesc.5 forward.5 fs.5 fstab.5 \
-	gb18030.5 group.5 \
+	gb18030.5 gbk.5 group.5 \
 	host.conf.5 \
 	hosts.5 hosts.equiv.5 hosts.lpd.5 intro.5 kernel.conf.5 link.5 \
 	linprocfs.5 mailer.conf.5 make.conf.5 motd.5 msdos.5 networks.5 \
