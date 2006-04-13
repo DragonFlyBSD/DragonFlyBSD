@@ -30,9 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.7 2006/04/06 13:03:09 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.8 2006/04/13 11:48:35 davidxu Exp $
  */
 
+#include "namespace.h"
 #include <machine/tls.h>
 
 #include <errno.h>
@@ -42,9 +43,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include "thr_private.h"
+#include "un-namespace.h"
 
-void	_pthread_exit(void *status);
+#include "thr_private.h"
 
 void
 _thread_exit(const char *fname, int lineno, const char *msg)
@@ -106,7 +107,7 @@ _pthread_exit(void *status)
 	/* Save the return value: */
 	curthread->ret = status;
 	while (curthread->cleanup != NULL) {
-		pthread_cleanup_pop(1);
+		_pthread_cleanup_pop(1);
 	}
 
 	/* Check if there is thread specific data: */
