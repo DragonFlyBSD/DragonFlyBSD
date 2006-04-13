@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.14 2006/04/07 14:11:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.15 2006/04/13 11:48:01 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -152,13 +152,12 @@ struct pthread_mutex {
  */
 #define MUTEX_FLAGS_PRIVATE	0x01
 #define MUTEX_FLAGS_INITED	0x02
-#define MUTEX_FLAGS_BUSY	0x04
 
 struct pthread_mutex_attr {
 	enum pthread_mutextype	m_type;
 	int			m_protocol;
 	int			m_ceiling;
-	long			m_flags;
+	int			m_flags;
 };
 
 #define PTHREAD_MUTEXATTR_STATIC_INITIALIZER \
@@ -181,6 +180,12 @@ struct pthread_cond_attr {
 	int		c_clockid;
 };
 
+/*
+ * Flags for condition variables.
+ */
+#define COND_FLAGS_PRIVATE	0x01
+#define COND_FLAGS_INITED	0x02
+
 struct pthread_barrier {
 	volatile umtx_t	b_lock;
 	volatile umtx_t	b_cycle;
@@ -195,13 +200,6 @@ struct pthread_barrierattr {
 struct pthread_spinlock {
 	volatile umtx_t	s_lock;
 };
-
-/*
- * Flags for condition variables.
- */
-#define COND_FLAGS_PRIVATE	0x01
-#define COND_FLAGS_INITED	0x02
-#define COND_FLAGS_BUSY		0x04
 
 /*
  * Cleanup definitions.
@@ -243,7 +241,6 @@ struct pthread_attr {
 	int	suspend;
 #define	THR_STACK_USER		0x100	/* 0xFF reserved for <pthread.h> */
 	int	flags;
-	void	*arg_attr;
 	void	*stackaddr_attr;
 	size_t	stacksize_attr;
 	size_t	guardsize_attr;
@@ -314,10 +311,6 @@ struct pthread_rwlock {
 enum pthread_state {
 	PS_RUNNING,
 	PS_DEAD
-};
-
-union pthread_wait_data {
-	pthread_mutex_t	mutex;
 };
 
 struct pthread_specific_elem {
@@ -430,9 +423,6 @@ struct pthread {
 	 * This is the synchronization queue link.
 	 */
 	TAILQ_ENTRY(pthread)	sqe;
-
-	/* Wait data. */
-	union pthread_wait_data data;
 
 	/* Miscellaneous flags; only set with scheduling lock held. */
 	int			flags;
