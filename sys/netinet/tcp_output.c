@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.30 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.31 2006/04/14 21:18:24 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -631,18 +631,29 @@ send:
 #endif
 
 	/*
-	 * Adjust data length if insertion of options will
-	 * bump the packet length beyond the t_maxopd length.
-	 * Clear the FIN bit because we cut off the tail of
-	 * the segment.
+	 * Adjust data length if insertion of options will bump the packet
+	 * length beyond the t_maxopd length.  Clear FIN to prevent premature
+	 * closure since there is still more data to send after this (now
+	 * truncated) packet.
+	 *
+	 * If just the options do not fit we are in a no-win situation and
+	 * we treat it as an unreachable host.
 	 */
 	if (len + optlen + ipoptlen > tp->t_maxopd) {
-		/*
-		 * If there is still more to send, don't close the connection.
-		 */
-		flags &= ~TH_FIN;
-		len = tp->t_maxopd - optlen - ipoptlen;
-		sendalot = TRUE;
+		if (tp->t_maxopd <= optlen + ipoptlen) {
+			static time_t last_optlen_report;
+
+			if (last_optlen_report != time_second) {
+				last_optlen_report = time_second;
+				printf("tcpcb %p: MSS (%d) too small to hold options!\n", tp, tp->t_maxopd);
+			}
+			error = EHOSTUNREACH;
+			goto out;
+		} else {
+			flags &= ~TH_FIN;
+			len = tp->t_maxopd - optlen - ipoptlen;
+			sendalot = TRUE;
+		}
 	}
 
 #ifdef INET6
