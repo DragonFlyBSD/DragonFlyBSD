@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.58 2006/04/14 01:00:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.59 2006/04/14 20:08:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -764,11 +764,15 @@ wakeup_mycpu_one(void *ident)
 void
 wakeup_oncpu(globaldata_t gd, void *ident)
 {
+#ifdef SMP
     if (gd == mycpu) {
 	_wakeup(ident, PWAKEUP_MYCPU);
     } else {
 	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU);
     }
+#else
+    _wakeup(ident, PWAKEUP_MYCPU);
+#endif
 }
 
 /*
@@ -778,11 +782,15 @@ wakeup_oncpu(globaldata_t gd, void *ident)
 void
 wakeup_oncpu_one(globaldata_t gd, void *ident)
 {
+#ifdef SMP
     if (gd == mycpu) {
 	_wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
     } else {
 	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
     }
+#else
+    _wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+#endif
 }
 
 /*
