@@ -1,5 +1,6 @@
 # Subversion control for DragonFly 1.5.X-DEVELOPMENT
-# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_5,v 1.3 2006/03/24 18:07:56 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-DEVELOPMENT_1_5,v 1.4 2006/04/14 21:06:35 dillon Exp $
 0	-
 1	synchronize before buffer cache block->offset conversion
 2	synchronize buffer buf/bio conversion to 64 bit offsets
+3	stabilization, many bub fixes, fixe installer segfault & mail aliases
