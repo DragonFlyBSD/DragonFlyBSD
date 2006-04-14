@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.44 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.45 2006/04/14 00:59:05 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -384,8 +384,10 @@ again:
 	 * Duplicate sub-structures as needed.
 	 * Increase reference counts on shared objects.
 	 * The p_stats and p_sigacts substructs are set in vm_fork.
+	 * p_lock is in the copy area and must be cleared.
 	 */
 	p2->p_flag = 0;
+	p2->p_lock = 0;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
