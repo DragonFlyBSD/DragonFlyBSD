@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.4 2005/07/13 16:06:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.5 2006/04/14 01:06:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -343,7 +343,7 @@ retry:
 	if ((ocflags & (M_WAITOK|M_NULLOK)) == M_WAITOK) {
 		++cpucache->waiting;
 		++depot->waiting;
-		tsleep(depot, PCATCH, "objcache_get", 0);
+		tsleep(depot, 0, "objcache_get", 0);
 		--cpucache->waiting;
 		--depot->waiting;
 		lwkt_reltoken(&ilock);
@@ -428,7 +428,7 @@ retry:
 	if (!MAGAZINE_FULL(loadedmag)) {
 		loadedmag->objects[loadedmag->rounds++] = obj;
 		if (cpucache->waiting)
-			wakeup(&oc->depot[myclusterid]);
+			wakeup_mycpu(&oc->depot[myclusterid]);
 		crit_exit();
 		return;
 	}
@@ -441,7 +441,7 @@ retry:
 		loadedmag = cpucache->loaded_magazine;
 		loadedmag->objects[loadedmag->rounds++] = obj;
 		if (cpucache->waiting)
-			wakeup(&oc->depot[myclusterid]);
+			wakeup_mycpu(&oc->depot[myclusterid]);
 		crit_exit();
 		return;
 	}
