@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.35 2006/03/12 20:44:43 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.36 2006/04/14 01:00:16 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -301,9 +301,12 @@ void	tsleep_interlock (void *chan);
 void	tstop (struct proc *);
 void	wakeup (void *chan);
 void	wakeup_one (void *chan);
+void	wakeup_mycpu (void *chan);
+void	wakeup_mycpu_one (void *chan);
+void	wakeup_oncpu (struct globaldata *gd, void *chan);
+void	wakeup_oncpu_one (struct globaldata *gd, void *chan);
 void	wakeup_domain (void *chan, int domain);
 void	wakeup_domain_one (void *chan, int domain);
-void	wakeup_oncpu (void *, int, int);
 
 /*
  * Common `dev_t' stuff are declared here to avoid #include poisoning

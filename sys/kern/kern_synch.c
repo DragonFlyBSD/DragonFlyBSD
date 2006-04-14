@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.57 2005/12/10 18:27:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.58 2006/04/14 01:00:15 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -654,7 +654,9 @@ restart:
 	 * should be ok since we are passing idents in the IPI rather then
 	 * thread pointers.
 	 */
-	if ((mask = slpque_cpumasks[id]) != 0) {
+	if ((domain & PWAKEUP_MYCPU) == 0 && 
+	    (mask = slpque_cpumasks[id]) != 0
+	) {
 		/*
 		 * Look for a cpu that might have work to do.  Mask out cpus
 		 * which have already been processed.
@@ -715,12 +717,18 @@ done:
 	crit_exit();
 }
 
+/*
+ * Wakeup all threads tsleep()ing on the specified ident, on all cpus
+ */
 void
 wakeup(void *ident)
 {
     _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid));
 }
 
+/*
+ * Wakeup one thread tsleep()ing on the specified ident, on any cpu.
+ */
 void
 wakeup_one(void *ident)
 {
@@ -728,12 +736,69 @@ wakeup_one(void *ident)
     _wakeup(ident, PWAKEUP_ENCODE(0, mycpu->gd_cpuid) | PWAKEUP_ONE);
 }
 
+/*
+ * Wakeup threads tsleep()ing on the specified ident on the current cpu
+ * only.
+ */
+void
+wakeup_mycpu(void *ident)
+{
+    _wakeup(ident, PWAKEUP_MYCPU);
+}
+
+/*
+ * Wakeup one thread tsleep()ing on the specified ident on the current cpu
+ * only.
+ */
+void
+wakeup_mycpu_one(void *ident)
+{
+    /* XXX potentially round-robin the first responding cpu */
+    _wakeup(ident, PWAKEUP_MYCPU|PWAKEUP_ONE);
+}
+
+/*
+ * Wakeup all thread tsleep()ing on the specified ident on the specified cpu
+ * only.
+ */
+void
+wakeup_oncpu(globaldata_t gd, void *ident)
+{
+    if (gd == mycpu) {
+	_wakeup(ident, PWAKEUP_MYCPU);
+    } else {
+	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU);
+    }
+}
+
+/*
+ * Wakeup one thread tsleep()ing on the specified ident on the specified cpu
+ * only.
+ */
+void
+wakeup_oncpu_one(globaldata_t gd, void *ident)
+{
+    if (gd == mycpu) {
+	_wakeup(ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+    } else {
+	lwkt_send_ipiq2(gd, _wakeup, ident, PWAKEUP_MYCPU | PWAKEUP_ONE);
+    }
+}
+
+/*
+ * Wakeup all threads waiting on the specified ident that slept using
+ * the specified domain, on all cpus.
+ */
 void
 wakeup_domain(void *ident, int domain)
 {
     _wakeup(ident, PWAKEUP_ENCODE(domain, mycpu->gd_cpuid));
 }
 
+/*
+ * Wakeup one thread waiting on the specified ident that slept using
+ * the specified  domain, on any cpu.
+ */
 void
 wakeup_domain_one(void *ident, int domain)
 {
