@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.53 2006/03/24 20:19:32 joerg Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.54 2006/04/14 20:56:53 dillon Exp $
 #
 
 # compat target
@@ -23,7 +23,7 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.4.0-RELEASE-BUILD
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.4.4-RELEASE-BUILD
 
 ENVCMD?=	env
 TAR?=	tar
@@ -42,9 +42,9 @@ REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
 .if defined(WITH_INSTALLER)
-PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6.tgz dfuife_curses-1.5.tgz
-PKGSRC_PACKAGES+=	gettext-lib-0.11.5nb6.tgz libaura-3.1.tgz \
-			libdfui-4.1.tgz libinstaller-5.1.tgz
+PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6a.tgz dfuife_curses-1.5.tgz
+PKGSRC_PACKAGES+=	gettext-lib-0.14.5.tgz libaura-3.1.tgz \
+			libdfui-4.2.tgz libinstaller-5.1.tgz
 ROOTSKELS+=		installer
 .endif
 
@@ -83,7 +83,7 @@ check:
 	@exit 1
 .endif
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
 		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer_]fetch"; exit 1)
 .endfor
 .if !exists(${PKGBIN_MKISOFS})
@@ -127,6 +127,7 @@ buildiso:
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cp -p ${.CURDIR}/mk.conf.pkgsrc ${ISOROOT}/etc/mk.conf
+	chroot ${ISOROOT} /usr/bin/newaliases
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
@@ -191,7 +192,7 @@ realclean:	clean
 fetch:
 	mkdir -p ${PKGSRC_PKG_PATH}
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
 	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
 .endfor
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
