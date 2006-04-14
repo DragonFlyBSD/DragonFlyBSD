@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.5 2006/04/14 01:06:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.6 2006/04/14 02:58:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,20 +257,24 @@ retry:
 
 	/*
 	 * Both magazines empty.  Get a full magazine from the depot and
-	 * move one of the empty ones to the depot.  Do this even if we
-	 * block on the token to avoid a non-optimal corner case.
+	 * move one of the empty ones to the depot.
 	 *
 	 * Obtain the depot token.
 	 */
 	depot = &oc->depot[myclusterid];
-#if 0
-	if (!lwkt_trytoken(&ilock, &depot->token)) {
-		lwkt_gettoken(&ilock, &depot->token);
-		++depot->contested;
-	}
-#else
 	lwkt_gettoken(&ilock, &depot->token);
-#endif
+
+	/*
+	 * We might have blocked obtaining the token, we must recheck
+	 * the cpucache before potentially falling through to the blocking
+	 * code or we might deadlock the tsleep() on a low-memory machine.
+	 */
+	if (MAGAZINE_NOTEMPTY(cpucache->loaded_magazine) ||
+	    MAGAZINE_NOTEMPTY(cpucache->previous_magazine)
+	) {
+		lwkt_reltoken(&ilock);
+		goto retry;
+	}
 
 	/* Check if depot has a full magazine. */
 	if (!SLIST_EMPTY(&depot->fullmagazines)) {
@@ -280,21 +284,11 @@ retry:
 		SLIST_REMOVE_HEAD(&depot->fullmagazines, nextmagazine);
 
 		/*
-		 * Return emptymag to the depot.  Due to blocking it may
-		 * not be entirely empty.
+		 * Return emptymag to the depot.
 		 */
-		if (MAGAZINE_EMPTY(emptymag)) {
-			SLIST_INSERT_HEAD(&depot->emptymagazines,
-					  emptymag, nextmagazine);
-		} else {
-			/*
-			 * NOTE: magazine is not necessarily entirely full
-			 */
-			SLIST_INSERT_HEAD(&depot->fullmagazines,
-					  emptymag, nextmagazine);
-			if (depot->waiting)
-				wakeup(depot);
-		}
+		KKASSERT(MAGAZINE_EMPTY(emptymag));
+		SLIST_INSERT_HEAD(&depot->emptymagazines,
+				  emptymag, nextmagazine);
 		lwkt_reltoken(&ilock);
 		goto retry;
 	}
@@ -456,14 +450,7 @@ retry:
 	 * Obtain the depot token.
 	 */
 	depot = &oc->depot[myclusterid];
-#if 0
-	if (!lwkt_trytoken(&ilock, &depot->token)) {
-		lwkt_gettoken(&ilock, &depot->token);
-		++depot->contested;
-	}
-#else
 	lwkt_gettoken(&ilock, &depot->token);
-#endif
 
 	/*
 	 * If an empty magazine is available in the depot, cycle it
@@ -518,14 +505,7 @@ objcache_dtor(struct objcache *oc, void *obj)
 	lwkt_tokref ilock;
 
 	depot = &oc->depot[myclusterid];
-#if 0
-	if (!lwkt_trytoken(&ilock, &depot->token)) {
-		lwkt_gettoken(&ilock, &depot->token);
-		++depot->contested;
-	}
-#else
 	lwkt_gettoken(&ilock, &depot->token);
-#endif
 	++depot->unallocated_objects;
 	if (depot->waiting)
 		wakeup(depot);
