@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man8/Makefile,v 1.13.2.12 2002/07/16 14:05:30 ru Exp $
-# $DragonFly: src/share/man/man8/Makefile,v 1.7 2005/08/05 15:19:35 swildner Exp $
+# $DragonFly: src/share/man/man8/Makefile,v 1.8 2006/04/15 07:44:48 swildner Exp $
 
 MAN=	adding_user.8 \
 	crash.8 \
@@ -12,7 +12,7 @@ MAN=	adding_user.8 \
 	sticky.8 \
 	yp.8
 
-MLINKS=	rc.8 rc.early.8 rc.8 rc.serial.8 rc.8 rc.network.8
+MLINKS=	rc.8 rc.d.8 rc.8 rc.early.8 rc.8 rc.serial.8 rc.8 rc.network.8
 MLINKS+=rc.8 rc.firewall.8 rc.8 rc.atm.8 rc.8 rc.local.8 rc.8 rc.shutdown.8
 MLINKS+=yp.8 YP.8 yp.8 NIS.8 yp.8 nis.8
 
