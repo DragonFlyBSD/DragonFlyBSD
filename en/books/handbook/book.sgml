@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/book.sgml,v 1.147 2004/05/05 12:52:47 den Exp $
-     $DragonFly: doc/en/books/handbook/book.sgml,v 1.3 2006/04/02 04:54:37 justin Exp $
+     $DragonFly: doc/en/books/handbook/book.sgml,v 1.4 2006/04/15 07:53:02 reed Exp $
 -->
 
 <!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
@@ -136,7 +136,7 @@
     
     <abstract>
       <para>Welcome to &os;! This handbook covers the installation and day
-        to day use of <emphasis>&os;</emphasis>.
+        to day use of the <emphasis>&os;</emphasis> operating system.
         This manual is a <emphasis>work in progress</emphasis> and is the work
         of many individuals.  Many sections do not yet exist and some of those
         that do exist need to be updated.  If you are interested in helping
