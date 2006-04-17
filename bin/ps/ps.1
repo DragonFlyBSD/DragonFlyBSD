@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.10 2006/04/07 09:57:37 swildner Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.11 2006/04/17 18:01:37 swildner Exp $
 .\"
 .Dd April 6, 2006
 .Dt PS 1
@@ -324,7 +324,7 @@ sequentially address voluminous data).
 The process is a session leader.
 .It Li V
 The process is suspended during a
-.Xr vfork .
+.Xr vfork 2 .
 .It Li W
 The process is swapped out.
 .It Li X

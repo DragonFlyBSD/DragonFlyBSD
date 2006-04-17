@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)fstab.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/fstab.5,v 1.11.2.8 2003/02/10 12:21:08 des Exp $
-.\" $DragonFly: src/share/man/man5/fstab.5,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man5/fstab.5,v 1.3 2006/04/17 18:01:37 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt FSTAB 5
@@ -154,7 +154,7 @@ mounted at system startup.
 This is recommended for all remote filesystems other than NFS,
 since only NFS mounts are delayed until after network initialization
 by the
-.Xr rc
+.Xr rc 8
 startup scripts.
 .Pp
 The type of the mount is extracted from the

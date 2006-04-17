@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)tset.1	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/usr.bin/tset/tset.1,v 1.5.2.5 2003/02/24 22:37:42 trhodes Exp $
-.\" $DragonFly: src/usr.bin/tset/tset.1,v 1.3 2006/02/17 19:39:12 swildner Exp $
+.\" $DragonFly: src/usr.bin/tset/tset.1,v 1.4 2006/04/17 18:01:38 swildner Exp $
 .\"
 .Dd June 9, 1993
 .Dt TSET 1
@@ -174,9 +174,9 @@ option is specified, the terminal type and the termcap entry are written
 to the standard output, separated by a space and without a terminating
 newline.
 This can be assigned to an array by
-.Nm csh
+.Xr csh 1
 and
-.Nm ksh
+.Xr ksh 1
 users and then used like any other shell array.
 .Pp
 When the
@@ -186,11 +186,11 @@ shell's environment are written to the standard output.
 If the
 .Ev SHELL
 environment variable ends in ``csh'', the commands are for the
-.Nm csh ,
+.Xr csh 1 ,
 otherwise, they are for
-.Xr sh .
+.Xr sh 1 .
 Note, the
-.Nm csh
+.Xr csh 1
 commands set and unset the shell variable
 .Dq noglob ,
 leaving it unset.
@@ -317,7 +317,7 @@ option argument.
 Also, to avoid problems with metacharacters, it is suggested that the entire
 .Fl m
 option argument be placed within single quote characters, and that
-.Nm csh
+.Xr csh 1
 users insert a backslash character (``\e'') before any exclamation
 marks (``!'').
 .Sh ENVIRONMENT

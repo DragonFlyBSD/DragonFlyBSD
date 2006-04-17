@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)lpd.8	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/lpr/lpd/lpd.8,v 1.14.2.13 2002/12/29 16:35:42 schweikh Exp $
-.\" $DragonFly: src/usr.sbin/lpr/lpd/lpd.8,v 1.2 2003/06/17 04:29:56 dillon Exp $
+.\" $DragonFly: src/usr.sbin/lpr/lpd/lpd.8,v 1.3 2006/04/17 18:01:38 swildner Exp $
 .\"
 .Dd June 06, 2001
 .Dt LPD 8
@@ -186,13 +186,13 @@ Title.  String to be used as the title for
 .Xr pr 1 .
 .It H
 Host Name.  Name of the machine where
-.Xr lpr
+.Xr lpr 1
 was invoked.
 .It P
 Person.  Login name of the person who invoked
-.Xr lpr .
+.Xr lpr 1 .
 This is used to verify ownership by
-.Xr lprm .
+.Xr lprm 1 .
 .It M
 Send mail to the specified user when the current print job completes.
 .It f
@@ -247,7 +247,7 @@ Unlink.  Name of file to remove upon completion of printing.
 .It N
 File name.  The name of the file which is being printed, or a blank
 for the standard input (when
-.Xr lpr
+.Xr lpr 1
 is invoked in a pipeline).
 .It Z
 Locale.  String to be used as the locale for

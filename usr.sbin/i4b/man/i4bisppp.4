@@ -25,7 +25,7 @@
 .\"	$Id: i4bisppp.4,v 1.13 2000/08/31 08:45:07 hm Exp $
 .\"
 .\" $FreeBSD: src/usr.sbin/i4b/man/i4bisppp.4,v 1.7.2.7 2003/03/13 03:10:59 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/i4b/man/i4bisppp.4,v 1.5 2005/08/04 20:45:57 swildner Exp $
+.\" $DragonFly: src/usr.sbin/i4b/man/i4bisppp.4,v 1.6 2006/04/17 18:01:38 swildner Exp $
 .\"
 .\"	last edit-date: [Thu Aug 31 10:40:17 2000]
 .\"
@@ -59,7 +59,7 @@ driver to support more i4b/ISDN specific options. As a consequence it is no
 longer necessary to add a "options sppp" to your kernel
 .Xr config 8
 file. For configuration of the i4bsppp driver, either the
-.Xr ispppcontrol 8
+.Xr spppcontrol 8
 utility is used or it is configured via
 .Xr isdnd 8
 and its associated
@@ -80,7 +80,7 @@ with the
 interfaces.
 .Pp
 The
-.Xr ispppcontrol 8
+.Xr spppcontrol 8
 utility is used to configure all aspects of PPP required to connect to a
 remote site.
 .Sh LINK0 and LINK1
@@ -119,7 +119,7 @@ for a more detailed discussion of the flags,
 .Xr sppp 4 ,
 .Xr isdnd.rc 5 ,
 .Xr isdnd 8 ,
-.Xr ispppcontrol 8
+.Xr spppcontrol 8
 .Sh AUTHORS
 .An -nosplit
 The

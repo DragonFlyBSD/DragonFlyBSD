@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_bridge.4,v 1.1.2.6 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_bridge.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ng_bridge.4,v 1.3 2006/04/17 18:01:37 swildner Exp $
 .\"
 .Dd August 31, 2000
 .Dt NG_BRIDGE 4
@@ -88,12 +88,12 @@ etc.
 Typically these hooks are connected to the
 .Dv lower
 hooks of one or more
-.Xr ng_ether
+.Xr ng_ether 4
 nodes.
 To connect the host machine to a bridged network, simply connect the
 .Dv upper
 hook of an
-.Xr ng_ether
+.Xr ng_ether 4
 node to the bridge node.
 .Sh CONTROL MESSAGES
 This node type supports the generic control messages, plus the

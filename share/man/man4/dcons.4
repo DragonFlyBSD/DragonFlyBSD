@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/dcons.4,v 1.5 2004/06/17 19:51:17 ru Exp $
-.\" $DragonFly: src/share/man/man4/dcons.4,v 1.2 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/dcons.4,v 1.3 2006/04/17 18:01:37 swildner Exp $
 .\"
 .Dd February 11, 2003
 .Dt DCONS 4
@@ -64,7 +64,7 @@ If you want to run
 on
 .Nm ,
 insert the following line into
-.Xr /etc/ttys 5
+.Pa /etc/ttys
 and send a
 .Dv HUP
 signal to
@@ -76,7 +76,7 @@ dcons	"/usr/libexec/getty std.9600"	vt100	on  secure
 .Ed
 .Pp
 Once the
-.Xr fwochi 4
+.Xr fwohci 4
 device is initialized to allow physical access,
 the buffer can be accessed from another host via a
 .Xr firewire 4
