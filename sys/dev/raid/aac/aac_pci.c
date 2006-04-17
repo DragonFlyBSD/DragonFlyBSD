@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_pci.c,v 1.3.2.19 2003/11/01 18:44:51 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.8 2006/01/25 19:56:26 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_pci.c,v 1.9 2006/04/17 15:59:55 dillon Exp $
  */
 
 /*
@@ -126,6 +126,12 @@ struct aac_ident
 	"Dell PERC 320/DC"},
 	{0x9005, 0x0285, 0x9005, 0x0286, AAC_HWIF_I960RX, AAC_FLAGS_NO4GB,
 	"Adaptec SCSI RAID 2120S"},
+	{0x9005, 0x0285, 0x9005, 0x0290, AAC_HWIF_I960RX, AAC_FLAGS_NO4GB,
+	 "Adaptec SCSI RAID 2410SA"},
+	{0x9005, 0x0285, 0x1028, 0x0291, AAC_HWIF_I960RX, AAC_FLAGS_NO4GB,
+	 "Dell CERC SATA RAID 2"},
+	{0x9005, 0x0285, 0x9005, 0x0292, AAC_HWIF_I960RX, AAC_FLAGS_NO4GB,
+	 "Adaptec SCSI RAID 2810SA"},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 

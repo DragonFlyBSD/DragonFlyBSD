@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.21 2006/03/24 18:35:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.22 2006/04/17 15:59:54 dillon Exp $
  */
 
 /*
@@ -340,8 +340,8 @@ aac_startup(void *arg)
 	struct aac_fib *fib;
 	struct aac_mntinfo *mi;
 	struct aac_mntinforesp *mir = NULL;
-	int i = 0;
-
+	int count = 0, i = 0;
+	
 	debug_called(1);
 
 	sc = (struct aac_softc *)arg;
@@ -361,14 +361,18 @@ aac_startup(void *arg)
 		mi->MntCount = i;
 		if (aac_sync_fib(sc, ContainerCommand, 0, fib,
 				 sizeof(struct aac_mntinfo))) {
-			debug(2, "error probing container %d", i);
+			device_printf(sc->aac_dev,
+			    "error probing container %d", i);
+
 			continue;
 		}
 
 		mir = (struct aac_mntinforesp *)&fib->data[0];
+		/* XXX Need to check if count changed */
+		count = mir->MntRespCount;
 		aac_add_container(sc, mir, 0);
 		i++;
-	} while ((i < mir->MntRespCount) && (i < AAC_MAX_CONTAINERS));
+	} while ((i < count) && (i < AAC_MAX_CONTAINERS));
 
 	aac_release_sync_fib(sc);
 
@@ -1822,6 +1826,13 @@ aac_enqueue_fib(struct aac_softc *sc, int queue, struct aac_command *cm)
 		error = EBUSY;
 		goto out;
 	}
+	/*
+	 * To avoid a race with its completion interrupt, place this command on
+	 * the busy queue prior to advertising it to the controller.
+	 */
+	aac_enqueue_busy(cm);
+
+
 
 	/* populate queue entry */
 	(sc->aac_qentries[queue] + pi)->aq_fib_size = fib_size;
@@ -1829,12 +1840,6 @@ aac_enqueue_fib(struct aac_softc *sc, int queue, struct aac_command *cm)
 
 	/* update producer index */
 	sc->aac_queues->qt_qindex[queue][AAC_PRODUCER_INDEX] = pi + 1;
-
-	/*
-	 * To avoid a race with its completion interrupt, place this command on
-	 * the busy queue prior to advertising it to the controller.
-	 */
-	aac_enqueue_busy(cm);
 
 	/* notify the adapter if we know how */
 	if (aac_qinfo[queue].notify != 0)
@@ -1872,7 +1877,11 @@ aac_dequeue_fib(struct aac_softc *sc, int queue, u_int32_t *fib_size,
 		error = ENOENT;
 		goto out;
 	}
-	
+
+	/* wrap the pi so the following test works */
+	if (pi >= aac_qinfo[queue].size)
+		pi = 0;
+
 	notify = 0;
 	if (ci == pi + 1)
 		notify++;
@@ -1970,7 +1979,7 @@ aac_timeout(void *xsc)
 	struct aac_softc *sc = xsc;
 	struct aac_command *cm;
 	time_t deadline;
-
+	int timedout, code;
 #if 0
 	/* simulate an interrupt to handle possibly-missed interrupts */
 	/*
@@ -1991,6 +2000,7 @@ aac_timeout(void *xsc)
 	 * traverse the busy command list, bitch about late commands once
 	 * only.
 	 */
+	timedout = 0;
 	deadline = time_second - AAC_CMD_TIMEOUT;
 	crit_enter();
 	TAILQ_FOREACH(cm, &sc->aac_busy, cm_link) {
@@ -2001,6 +2011,15 @@ aac_timeout(void *xsc)
 				      "COMMAND %p TIMEOUT AFTER %d SECONDS\n",
 				      cm, (int)(time_second-cm->cm_timestamp));
 			AAC_PRINT_FIB(sc, cm->cm_fib);
+			timedout++;
+		}
+	}
+	if (timedout) {
+		code = AAC_GET_FWSTATUS(sc);
+		if (code != AAC_UP_AND_RUNNING) {
+			device_printf(sc->aac_dev, "WARNING! Controller is no "
+				      "longer running! code= 0x%x\n", code);
+
 		}
 	}
 	crit_exit();
@@ -2553,7 +2572,7 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 	struct aac_mntinforesp *mir = NULL;
 	u_int16_t rsize;
 	int next, found;
-	int added = 0, i = 0;
+	int count = 0, added = 0, i = 0;
 
 	debug_called(2);
 
@@ -2588,11 +2607,15 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 				rsize = sizeof(mir);
 				if (aac_sync_fib(sc, ContainerCommand, 0, fib,
 						 sizeof(struct aac_mntinfo))) {
-					debug(2, "Error probing container %d\n",
-					      i);
+					device_printf(sc->aac_dev,
+					    "Error probing container %d\n", i);
+
 					continue;
 				}
 				mir = (struct aac_mntinforesp *)&fib->data[0];
+				/* XXX Need to check if count changed */
+				count = mir->MntRespCount;
+
 				/*
 				 * Check the container against our list.
 				 * co->co_found was already set to 0 in a
@@ -2627,8 +2650,7 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 					added = 1;
 				}
 				i++;
-			} while ((i < mir->MntRespCount) &&
-				 (i < AAC_MAX_CONTAINERS));
+			} while ((i < count) && (i < AAC_MAX_CONTAINERS));
 			aac_release_sync_fib(sc);
 
 			/*
