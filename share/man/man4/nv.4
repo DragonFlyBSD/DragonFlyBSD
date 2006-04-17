@@ -1,6 +1,4 @@
-.\"
 .\" Copyright (c) 2003 Quinton Dolan
-.\"
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -15,7 +13,7 @@
 .\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
 .\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 .\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
 .\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,52 +23,84 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $Id: nvnet.4,v 1.1 2003/10/09 16:48:01 q Exp $
-.\" $DragonFly: src/share/man/man4/Attic/nv.4,v 1.4 2006/03/26 22:56:57 swildner Exp $
 .\"
-.Dd October 5, 2003
+.\" $FreeBSD: src/share/man/man4/nve.4,v 1.7 2005/11/24 09:25:09 joel Exp $
+.\" $DragonFly: src/share/man/man4/Attic/nv.4,v 1.5 2006/04/17 20:13:57 swildner Exp $
+.\"
+.Dd August 9, 2005
 .Dt NV 4
 .Os
 .Sh NAME
 .Nm nv
-.Nd NVIDIA nForce MCP network adapter device driver
+.Nd "NVIDIA nForce MCP Networking Adapter device driver"
 .Sh SYNOPSIS
-.Cd "kldload if_nv.ko"
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device miibus"
+.Cd "device nv"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+if_nv_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the NVIDIA nForce MCP and nForce2 MCP2 networking
-adapter that is embedded in the southbridge of most nForce and nForce2
-motherboards. This driver is a reimplementation of the NVIDIA supported Linux
-nvnet driver, and uses the same closed source API library to access the
-underlying hardware. There is currently no programming documentation available
-for this device, and therefore little is known about the internal architecture
+driver provides support for the NVIDIA nForce MCP and nForce2 MCP2
+networking adapter that is embedded in the southbridge of most
+nForce and nForce2 motherboards.
+.Pp
+This driver is a reimplementation of the NVIDIA supported Linux
+.Nm nvnet
+driver and uses the same closed source API library to access
+the underlying hardware.
+There is currently no programming documentation available for this
+device, and therefore little is known about the internal architecture
 of the MAC engine itself.
 .Pp
 The
 .Nm
 driver supports the following media types:
-.Pp
-.Bl -tag -width xxxxxxxxxxxxxxxxxxxx
-.It autoselect
-Enable autoselection of the media type and options
-.It 10baseT/UTP
-Set 10Mbps operation
-.It 100baseTX
-Set 100Mbps (fast ethernet) operation
+.Bl -tag -width ".Cm 10baseT/UTP"
+.It Cm autoselect
+Enable autoselection of the media type and options.
+.It Cm 10baseT/UTP
+Set 10Mbps operation.
+.It Cm 100baseTX
+Set 100Mbps (Fast Ethernet) operation.
 .El
 .Pp
 The
 .Nm
 driver supports the following media options:
-.Pp
-.Bl -tag -width xxxxxxxxxxxxxxxxxxxx
-.It full-duplex
-Set full duplex operation
+.Bl -tag -width ".Cm 10baseT/UTP"
+.It Cm full-duplex
+Set full duplex operation.
 .El
 .Pp
-Note that the nForce3 MCP3 may also work when run in 32/64bit compatibility
-mode but as yet has not been tested. For further information on configuring this device, see
+For more information on configuring this device, see
 .Xr ifconfig 8 .
+.Sh HARDWARE
+The
+.Nm
+driver supports the NVIDIA MCP onboard adapters of mainboards with
+the following chipsets:
+.Pp
+.Bl -bullet -compact
+.It
+nForce
+.It
+nForce2
+.It
+nForce3
+.It
+nForce4
+.El
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "nv%d: couldn't map memory"
@@ -78,7 +108,7 @@ A fatal initialization error has occurred.
 .It "nv%d: couldn't map interrupt"
 A fatal initialization error has occurred.
 .It "nv%d: failed to allocate memory"
-There are not enough mbuf's available for allocation.
+There are not enough mbufs available for allocation.
 .It "nv%d: device timeout"
 The device has stopped responding to the network, or there is a problem with
 the network connection (cable).
@@ -89,9 +119,18 @@ the network connection (cable).
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
 .Xr ifconfig 8
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 6.0 .
+It was imported into
+.Dx 1.1 .
 .Sh AUTHORS
 .An -nosplit
 The
 .Nm
-device driver was written by
-.An Quinton Dolan <q@onthenet.com.au> .
+driver was written by
+.An Quinton Dolan Aq q@onthenet.com.au
+and
+.An "David E. O'Brien" Aq obrien@FreeBSD.org .
