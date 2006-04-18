@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: util.c,v 1.29 2004/11/19 20:00:57 otto Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.7 2006/04/10 08:11:43 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.8 2006/04/18 22:11:35 joerg Exp $
  */
 
 /*
@@ -67,7 +67,7 @@ move_file(const char *from, const char *to)
 		fromfd = open(from, O_RDONLY);
 		if (fromfd < 0)
 			pfatal("internal error, can't reopen %s", from);
-		while ((i = read(fromfd, buf, sizeof buf)) > 0)
+		while ((i = read(fromfd, buf, buf_len)) > 0)
 			if (write(STDOUT_FILENO, buf, i) != i)
 				pfatal("write failed");
 		close(fromfd);
@@ -175,7 +175,7 @@ copy_file(const char *from, const char *to)
 	fromfd = open(from, O_RDONLY, 0);
 	if (fromfd < 0)
 		pfatal("internal error, can't reopen %s", from);
-	while ((i = read(fromfd, buf, sizeof buf)) > 0)
+	while ((i = read(fromfd, buf, buf_len)) > 0)
 		if (write(tofd, buf, i) != i)
 			pfatal("write to %s failed", to);
 	close(fromfd);
@@ -266,7 +266,7 @@ ask(const char *fmt, ...)
 	if (ttyfd < 0)
 		ttyfd = open(_PATH_TTY, O_RDONLY);
 	if (ttyfd >= 0) {
-		if ((nr = read(ttyfd, buf, sizeof(buf))) > 0 &&
+		if ((nr = read(ttyfd, buf, buf_len)) > 0 &&
 		    buf[nr - 1] == '\n')
 			buf[nr - 1] = '\0';
 	}
@@ -326,8 +326,8 @@ makedirs(const char *filename, bool striplast)
 			return;	/* nothing to be done */
 		*s = '\0';
 	}
-	if (snprintf(buf, sizeof(buf), "%s -p %s", _PATH_MKDIR, tmpbuf)
-	    >= (int)sizeof(buf))
+	if (snprintf(buf, buf_len, "%s -p %s", _PATH_MKDIR, tmpbuf)
+	    >= (int)buf_len)
 		fatal("buffer too small to hold %.20s...\n", tmpbuf);
 
 	if (system(buf))

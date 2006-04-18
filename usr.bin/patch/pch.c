@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: pch.c,v 1.35 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/pch.c,v 1.3 2006/04/10 08:11:43 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/pch.c,v 1.4 2006/04/18 22:11:35 joerg Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ open_patch_file(const char *filename)
 		pfp = fopen(TMPPATNAME, "w");
 		if (pfp == NULL)
 			pfatal("can't create %s", TMPPATNAME);
-		while (fgets(buf, sizeof buf, stdin) != NULL)
+		while (fgets(buf, buf_len, stdin) != NULL)
 			fputs(buf, pfp);
 		fclose(pfp);
 		filename = TMPPATNAME;
@@ -266,7 +266,7 @@ intuit_diff_type(void)
 		this_line = ftell(pfp);
 		indent = 0;
 		p_input_line++;
-		if (fgets(buf, sizeof buf, pfp) == NULL) {
+		if (fgets(buf, buf_len, pfp) == NULL) {
 			if (first_command_line >= 0L) {
 				/* nothing but deletes!? */
 				p_start = first_command_line;
@@ -431,7 +431,7 @@ skip_to(LINENUM file_pos, LINENUM file_line)
 		fseek(pfp, p_base, SEEK_SET);
 		say("The text leading up to this was:\n--------------------------\n");
 		while (ftell(pfp) < file_pos) {
-			ret = fgets(buf, sizeof buf, pfp);
+			ret = fgets(buf, buf_len, pfp);
 			if (ret == NULL)
 				fatal("Unexpected end of file\n");
 			say("|%s", buf);
@@ -516,7 +516,7 @@ another_hunk(void)
 		repl_patch_line = 0;
 		ptrn_copiable = 0;
 
-		ret = pgets(buf, sizeof buf, pfp);
+		ret = pgets(buf, buf_len, pfp);
 		p_input_line++;
 		if (ret == NULL || strnNE(buf, "********", 8)) {
 			next_intuit_at(line_beginning, p_input_line);
@@ -526,12 +526,12 @@ another_hunk(void)
 		p_hunk_beg = p_input_line + 1;
 		while (p_end < p_max) {
 			line_beginning = ftell(pfp);
-			ret = pgets(buf, sizeof buf, pfp);
+			ret = pgets(buf, buf_len, pfp);
 			p_input_line++;
 			if (ret == NULL) {
 				if (p_max - p_end < 4) {
 					/* assume blank lines got chopped */
-					strlcpy(buf, "  \n", sizeof buf);
+					strlcpy(buf, "  \n", buf_len);
 				} else {
 					if (repl_beginning && repl_could_be_missing) {
 						repl_missing = true;
@@ -677,7 +677,7 @@ another_hunk(void)
 				repl_could_be_missing = false;
 		change_line:
 				if (buf[1] == '\n' && canonicalize)
-					strlcpy(buf + 1, " \n", sizeof buf - 1);
+					strlcpy(buf + 1, " \n", buf_len - 1);
 				if (!isspace((unsigned char)buf[1]) && buf[1] != '>' &&
 				    buf[1] != '<' &&
 				    repl_beginning && repl_could_be_missing) {
@@ -843,7 +843,7 @@ hunk_done:
 		char	ch;
 
 		line_beginning = ftell(pfp); /* file pos of the current line */
-		ret = pgets(buf, sizeof buf, pfp);
+		ret = pgets(buf, buf_len, pfp);
 		p_input_line++;
 		if (ret == NULL || strnNE(buf, "@@ -", 4)) {
 			next_intuit_at(line_beginning, p_input_line);
@@ -886,7 +886,7 @@ hunk_done:
 		fillold = 1;
 		fillnew = fillold + p_ptrn_lines;
 		p_end = fillnew + p_repl_lines;
-		snprintf(buf, sizeof buf, "*** %ld,%ld ****\n", p_first,
+		snprintf(buf, buf_len, "*** %ld,%ld ****\n", p_first,
 		    p_first + p_ptrn_lines - 1);
 		p_line[0] = savestr(buf);
 		if (out_of_mem) {
@@ -894,7 +894,7 @@ hunk_done:
 			return false;
 		}
 		p_char[0] = '*';
-		snprintf(buf, sizeof buf, "--- %ld,%ld ----\n", p_newfirst,
+		snprintf(buf, buf_len, "--- %ld,%ld ----\n", p_newfirst,
 		    p_newfirst + p_repl_lines - 1);
 		p_line[fillnew] = savestr(buf);
 		if (out_of_mem) {
@@ -907,12 +907,12 @@ hunk_done:
 		p_hunk_beg = p_input_line + 1;
 		while (fillold <= p_ptrn_lines || fillnew <= p_end) {
 			line_beginning = ftell(pfp);
-			ret = pgets(buf, sizeof buf, pfp);
+			ret = pgets(buf, buf_len, pfp);
 			p_input_line++;
 			if (ret == NULL) {
 				if (p_max - fillnew < 3) {
 					/* assume blank lines got chopped */
-					strlcpy(buf, " \n", sizeof buf);
+					strlcpy(buf, " \n", buf_len);
 				} else {
 					fatal("unexpected end of file in patch\n");
 				}
@@ -1011,7 +1011,7 @@ hunk_done:
 
 		line_beginning = ftell(pfp);
 		p_context = 0;
-		ret = pgets(buf, sizeof buf, pfp);
+		ret = pgets(buf, buf_len, pfp);
 		p_input_line++;
 		if (ret == NULL || !isdigit((unsigned char)*buf)) {
 			next_intuit_at(line_beginning, p_input_line);
@@ -1046,7 +1046,7 @@ hunk_done:
 			grow_hunkmax();
 		p_newfirst = min;
 		p_repl_lines = max - min + 1;
-		snprintf(buf, sizeof buf, "*** %ld,%ld\n", p_first,
+		snprintf(buf, buf_len, "*** %ld,%ld\n", p_first,
 		    p_first + p_ptrn_lines - 1);
 		p_line[0] = savestr(buf);
 		if (out_of_mem) {
@@ -1055,7 +1055,7 @@ hunk_done:
 		}
 		p_char[0] = '*';
 		for (i = 1; i <= p_ptrn_lines; i++) {
-			ret = pgets(buf, sizeof buf, pfp);
+			ret = pgets(buf, buf_len, pfp);
 			p_input_line++;
 			if (ret == NULL)
 				fatal("unexpected end of file in patch at line %ld\n",
@@ -1077,7 +1077,7 @@ hunk_done:
 			(p_line[i - 1])[p_len[i - 1]] = 0;
 		}
 		if (hunk_type == 'c') {
-			ret = pgets(buf, sizeof buf, pfp);
+			ret = pgets(buf, buf_len, pfp);
 			p_input_line++;
 			if (ret == NULL)
 				fatal("unexpected end of file in patch at line %ld\n",
@@ -1086,7 +1086,7 @@ hunk_done:
 				fatal("--- expected at line %ld of patch\n",
 				    p_input_line);
 		}
-		snprintf(buf, sizeof(buf), "--- %ld,%ld\n", min, max);
+		snprintf(buf, buf_len, "--- %ld,%ld\n", min, max);
 		p_line[i] = savestr(buf);
 		if (out_of_mem) {
 			p_end = i - 1;
@@ -1094,7 +1094,7 @@ hunk_done:
 		}
 		p_char[i] = '=';
 		for (i++; i <= p_end; i++) {
-			ret = pgets(buf, sizeof buf, pfp);
+			ret = pgets(buf, buf_len, pfp);
 			p_input_line++;
 			if (ret == NULL)
 				fatal("unexpected end of file in patch at line %ld\n",
@@ -1158,7 +1158,7 @@ pgets(char *bf, int sz, FILE *fp)
 			else
 				indent++;
 		}
-		if (buf != s && strlcpy(buf, s, sizeof(buf)) >= sizeof(buf))
+		if (buf != s && strlcpy(buf, s, buf_len) >= buf_len)
 			fatal("buffer too small in pgets()\n");
 	}
 	return ret;
@@ -1377,13 +1377,13 @@ do_ed_script(void)
 			unlink(TMPOUTNAME);
 			fatal("can't create temp file %s", TMPOUTNAME);
 		}
-		snprintf(buf, sizeof buf, "%s%s%s", _PATH_ED,
+		snprintf(buf, buf_len, "%s%s%s", _PATH_ED,
 		    verbose ? " " : " -s ", TMPOUTNAME);
 		pipefp = popen(buf, "w");
 	}
 	for (;;) {
 		beginning_of_this_line = ftell(pfp);
-		if (pgets(buf, sizeof buf, pfp) == NULL) {
+		if (pgets(buf, buf_len, pfp) == NULL) {
 			next_intuit_at(beginning_of_this_line, p_input_line);
 			break;
 		}
@@ -1396,7 +1396,7 @@ do_ed_script(void)
 			if (pipefp != NULL)
 				fputs(buf, pipefp);
 			if (*t != 'd') {
-				while (pgets(buf, sizeof buf, pfp) != NULL) {
+				while (pgets(buf, buf_len, pfp) != NULL) {
 					p_input_line++;
 					if (pipefp != NULL)
 						fputs(buf, pipefp);

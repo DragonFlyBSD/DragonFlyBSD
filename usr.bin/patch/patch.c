@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.43 2004/11/19 20:08:11 otto Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.5 2006/04/10 08:11:43 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.6 2006/04/18 22:11:35 joerg Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 int		filemode = 0644;
 
 char		buf[MAXLINELEN];	/* general purpose buffer */
+size_t		buf_len = sizeof(buf);
 
 bool		using_plan_a = true;	/* try to keep everything in memory */
 bool		out_of_mem = false;	/* ran out of memory in plan a */

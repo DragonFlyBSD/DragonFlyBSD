@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: common.h,v 1.25 2003/10/31 20:20:45 millert Exp $
- * $DragonFly: src/usr.bin/patch/common.h,v 1.2 2004/10/11 21:36:48 dillon Exp $
+ * $DragonFly: src/usr.bin/patch/common.h,v 1.3 2006/04/18 22:11:35 joerg Exp $
  */
 
 /*
@@ -74,6 +74,7 @@ typedef long    LINENUM;	/* must be signed */
 extern int	filemode;
 
 extern char	buf[MAXLINELEN];/* general purpose buffer */
+extern size_t	buf_len;
 
 extern bool	using_plan_a;	/* try to keep everything in memory */
 extern bool	out_of_mem;	/* ran out of memory in plan a */

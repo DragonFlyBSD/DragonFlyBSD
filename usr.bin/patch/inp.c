@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: inp.c,v 1.32 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/inp.c,v 1.4 2006/04/10 08:11:43 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/inp.c,v 1.5 2006/04/18 22:11:35 joerg Exp $
  */
 
 /*
@@ -194,12 +194,12 @@ plan_a(const char *filename)
 		if (try("%s/RCS/%s%s", filedir, filebase, RCSSUFFIX) ||
 		    try("%s/RCS/%s%s", filedir, filebase, "") ||
 		    try("%s/%s%s", filedir, filebase, RCSSUFFIX)) {
-			snprintf(buf, sizeof buf, CHECKOUT, filename);
+			snprintf(buf, buf_len, CHECKOUT, filename);
 			snprintf(lbuf, sizeof lbuf, RCSDIFF, filename);
 			cs = "RCS";
 		} else if (try("%s/SCCS/%s%s", filedir, SCCSPREFIX, filebase) ||
 		    try("%s/%s%s", filedir, SCCSPREFIX, filebase)) {
-			snprintf(buf, sizeof buf, GET, s);
+			snprintf(buf, buf_len, GET, s);
 			snprintf(lbuf, sizeof lbuf, SCCSDIFF, s, filename);
 			cs = "SCCS";
 		} else if (statfailed)
@@ -358,7 +358,7 @@ plan_b(const char *filename)
 	unlink(TMPINNAME);
 	if ((tifd = open(TMPINNAME, O_EXCL | O_CREAT | O_WRONLY, 0666)) < 0)
 		pfatal("can't open file %s", TMPINNAME);
-	while (fgets(buf, sizeof buf, ifp) != NULL) {
+	while (fgets(buf, buf_len, ifp) != NULL) {
 		if (revision != NULL && !found_revision && rev_in_string(buf))
 			found_revision = true;
 		if ((i = strlen(buf)) > maxlen)
