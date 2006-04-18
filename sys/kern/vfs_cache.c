@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.59 2005/09/17 08:29:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.59.2.1 2006/04/18 17:40:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -923,23 +923,31 @@ cache_check_fsmid_vp(struct vnode *vp, int64_t *fsmid)
  * under the caller.  
  *
  * Callers must always check for a NULL return no matter the value of 'makeit'.
+ *
+ * To avoid underflowing the kernel stack each recursive call increments
+ * the makeit variable.
  */
 
 static int cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 				  struct vnode *dvp);
+static int cache_fromdvp_try(struct vnode *dvp, struct ucred *cred, 
+				  struct namecache **saved_ncp);
 
 struct namecache *
 cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit)
 {
 	struct namecache *ncp;
+	struct namecache *saved_ncp;
 	struct vnode *pvp;
 	int error;
+
+	ncp = NULL;
+	saved_ncp = NULL;
 
 	/*
 	 * Temporary debugging code to force the directory scanning code
 	 * to be exercised.
 	 */
-	ncp = NULL;
 	if (ncvp_debug >= 3 && makeit && TAILQ_FIRST(&dvp->v_namecache)) {
 		ncp = TAILQ_FIRST(&dvp->v_namecache);
 		printf("cache_fromdvp: forcing %s\n", ncp->nc_name);
@@ -976,21 +984,35 @@ force:
 		}
 
 		/*
+		 * If we are recursed too deeply resort to an O(n^2)
+		 * algorithm to resolve the namecache topology.  The
+		 * resolved ncp is left referenced in saved_ncp to
+		 * prevent the tree from being destroyed while we loop.
+		 */
+		if (makeit > 20) {
+			error = cache_fromdvp_try(dvp, cred, &saved_ncp);
+			if (error) {
+				printf("lookupdotdot(longpath) failed %d "
+				       "dvp %p\n", error, dvp);
+				break;
+			}
+			continue;
+		}
+
+		/*
 		 * Get the parent directory and resolve its ncp.
 		 */
 		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
 		if (error) {
-			printf("lookupdotdot failed %d %p\n", error, pvp);
+			printf("lookupdotdot failed %d dvp %p\n", error, dvp);
 			break;
 		}
 		VOP_UNLOCK(pvp, 0, curthread);
 
 		/*
-		 * XXX this recursion could run the kernel out of stack,
-		 * change to a less efficient algorithm if we get too deep
-		 * (use 'makeit' for a depth counter?)
+		 * Reuse makeit as a recursion depth counter.
 		 */
-		ncp = cache_fromdvp(pvp, cred, makeit);
+		ncp = cache_fromdvp(pvp, cred, makeit + 1);
 		vrele(pvp);
 		if (ncp == NULL)
 			break;
@@ -1017,8 +1039,70 @@ force:
 	}
 	if (ncp)
 		cache_hold(ncp);
+	if (saved_ncp)
+		cache_drop(saved_ncp);
 	return (ncp);
 }
+
+/*
+ * Go up the chain of parent directories until we find something
+ * we can resolve into the namecache.  This is very inefficient.
+ */
+static
+int
+cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
+		  struct namecache **saved_ncp)
+{
+	struct namecache *ncp;
+	struct vnode *pvp;
+	int error;
+	static time_t last_fromdvp_report;
+
+	/*
+	 * Loop getting the parent directory vnode until we get something we
+	 * can resolve in the namecache.
+	 */
+	vref(dvp);
+	for (;;) {
+		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
+		if (error) {
+			vrele(dvp);
+			return (error);
+		}
+		VOP_UNLOCK(pvp, 0, curthread);
+		if ((ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
+			cache_hold(ncp);
+			vrele(pvp);
+			break;
+		}
+		if (pvp->v_flag & VROOT) {
+			ncp = cache_get(pvp->v_mount->mnt_ncp);
+			error = cache_resolve_mp(ncp);
+			cache_unlock(ncp);
+			vrele(pvp);
+			if (error) {
+				cache_drop(ncp);
+				vrele(dvp);
+				return (error);
+			}
+			break;
+		}
+		vrele(dvp);
+		dvp = pvp;
+	}
+	if (last_fromdvp_report != time_second) {
+		last_fromdvp_report = time_second;
+		printf("Warning: extremely inefficient path resolution on %s\n",
+			ncp->nc_name);
+	}
+	error = cache_inefficient_scan(ncp, cred, dvp);
+	if (*saved_ncp)
+	    cache_drop(*saved_ncp);
+	*saved_ncp = ncp;
+	vrele(dvp);
+	return (error);
+}
+
 
 /*
  * Do an inefficient scan of the directory represented by ncp looking for
