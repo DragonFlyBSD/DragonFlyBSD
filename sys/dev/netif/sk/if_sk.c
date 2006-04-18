@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.41.2.1 2006/01/01 00:59:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.41.2.2 2006/04/18 17:43:31 dillon Exp $
  */
 
 /*
@@ -1025,6 +1025,7 @@ sk_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			error = EINVAL;
 		else {
 			ifp->if_mtu = ifr->ifr_mtu;
+			ifp->if_flags &= ~IFF_RUNNING;
 			sk_init(sc_if);
 		}
 		break;
@@ -1672,6 +1673,7 @@ sk_watchdog(struct ifnet *ifp)
 	sc_if = ifp->if_softc;
 
 	printf("sk%d: watchdog timeout\n", sc_if->sk_unit);
+	ifp->if_flags &= ~IFF_RUNNING;
 	sk_init(sc_if);
 
 	if (!ifq_is_empty(&ifp->if_snd))
@@ -2273,6 +2275,11 @@ sk_init(void *xsc)
 	uint16_t reg;
 
 	crit_enter();
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		crit_exit();
+		return;
+	}
 
 	/* Cancel pending I/O and free all RX/TX buffers. */
 	sk_stop(sc_if);
