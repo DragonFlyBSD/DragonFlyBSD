@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.25 2005/11/19 17:58:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.25.2.1 2006/04/18 17:55:33 dillon Exp $
  */
 
 
@@ -69,6 +69,7 @@
 
 static struct buf *nfs_getcacheblk (struct vnode *vp, daddr_t bn, int size,
 					struct thread *td);
+static int nfs_check_dirent(struct nfs_dirent *dp, int maxlen);
 
 extern int nfs_numasync;
 extern int nfs_pbuf_freecnt;
@@ -574,6 +575,7 @@ again:
 		bp = nfs_getcacheblk(vp, lbn, NFS_DIRBLKSIZ, td);
 		if (!bp)
 		    return (EINTR);
+
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
 		    vfs_busy_pages(bp, 0);
@@ -695,13 +697,26 @@ again:
 		    caddr_t cpos, epos;
 		    struct nfs_dirent *dp;
 
+		    /*
+		     * We are casting cpos to nfs_dirent, it must be
+		     * int-aligned.
+		     */
+		    if (on & 3) {
+			error = EINVAL;
+			break;
+		    }
+
 		    cpos = bp->b_data + on;
 		    epos = bp->b_data + on + n;
 		    while (cpos < epos && error == 0 && uio->uio_resid > 0) {
 			    dp = (struct nfs_dirent *)cpos;
-			    if (vop_write_dirent(&error, uio, dp->nfs_ino,
-				dp->nfs_type, dp->nfs_namlen, dp->nfs_name))
+			    error = nfs_check_dirent(dp, (int)(epos - cpos));
+			    if (error)
 				    break;
+			    if (vop_write_dirent(&error, uio, dp->nfs_ino,
+				dp->nfs_type, dp->nfs_namlen, dp->nfs_name)) {
+				    break;
+			    }
 			    cpos += dp->nfs_reclen;
 		    }
 		    n = 0;
@@ -721,6 +736,29 @@ again:
 	    brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n > 0);
 	return (error);
+}
+
+/*
+ * Userland can supply any 'seek' offset when reading a NFS directory.
+ * Validate the structure so we don't panic the kernel.  Note that
+ * the element name is nul terminated and the nul is not included
+ * in nfs_namlen.
+ */
+static
+int
+nfs_check_dirent(struct nfs_dirent *dp, int maxlen)
+{
+	int nfs_name_off = offsetof(struct nfs_dirent, nfs_name[0]);
+
+	if (nfs_name_off >= maxlen)
+	       return (EINVAL);
+	if (dp->nfs_reclen < nfs_name_off || dp->nfs_reclen > maxlen)
+	       return (EINVAL);
+	if (nfs_name_off + dp->nfs_namlen >= dp->nfs_reclen)
+	       return (EINVAL);
+	if (dp->nfs_reclen & 3)
+	       return (EINVAL);
+	return (0);
 }
 
 /*
