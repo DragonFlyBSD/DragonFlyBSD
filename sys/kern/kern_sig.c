@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.42 2005/12/02 19:31:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.42.2.1 2006/04/18 17:19:35 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1143,6 +1143,9 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 		bzero(info, sizeof(*info));
 		info->si_signo = sig;
 		SIGDELSET(p->p_siglist, sig);	/* take the signal! */
+
+		if (sig == SIGKILL)
+			sigexit(p, sig);
 	}
 	return (error);
 }
