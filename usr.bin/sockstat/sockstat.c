@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sockstat/sockstat.c,v 1.12 2004/12/06 09:28:05 ru Exp $
- * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.5 2005/05/14 09:29:22 joerg Exp $
+ * $DragonFly: src/usr.bin/sockstat/sockstat.c,v 1.5.2.1 2006/04/18 18:26:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -506,8 +506,9 @@ display(void)
 		case AF_INET:
 		case AF_INET6:
 			pos += printaddr(s->family, &s->laddr);
-			while (pos < 58)
+			while (pos < 57)
 				pos += xprintf(" ");
+			pos += xprintf(" ");
 			pos += printaddr(s->family, &s->faddr);
 			break;
 		case AF_UNIX:
