@@ -1,0 +1,78 @@
+$DragonFly: src/gnu/usr.bin/binutils215/libbfd/patches/Attic/elf32-i386.c.patch,v 1.1.2.2 2006/04/18 17:04:33 dillon Exp $
+From binutils PR ld/2513.
+
+Index: elf32-i386.c
+===================================================================
+RCS file: /cvs/src/contrib/binutils-2.15/bfd/elf32-i386.c,v
+retrieving revision 1.1
+diff -u -r1.1 elf32-i386.c
+--- elf32-i386.c	18 Dec 2004 20:21:20 -0000	1.1
++++ elf32-i386.c	11 Apr 2006 11:37:15 -0000
+@@ -552,6 +552,10 @@
+ #define GOT_TLS_IE_POS	5
+ #define GOT_TLS_IE_NEG	6
+ #define GOT_TLS_IE_BOTH 7
++#define GOT_TLS_MASK	0x0f
++#define GOT_TLS_IE_IE	0x10
++#define GOT_TLS_IE_GD	0x20
++#define GOT_TLS_IE_MASK	0x30
+   unsigned char tls_type;
+ };
+ 
+@@ -918,12 +922,25 @@
+ 	      case R_386_TLS_IE_32:
+ 		if (ELF32_R_TYPE (rel->r_info) == r_type)
+ 		  tls_type = GOT_TLS_IE_NEG;
++		else if (h
++			 && ELF32_R_TYPE (rel->r_info) == R_386_TLS_GD)
++		  /* If this is a GD->IE transition, we may use either
++		     of R_386_TLS_TPOFF and R_386_TLS_TPOFF32.  But if
++		     we may have both R_386_TLS_IE and R_386_TLS_GD,
++		     we can't share the same R_386_TLS_TPOFF since
++		     they require different offsets. So we remember
++		     it comes from R_386_TLS_GD.  */
++		  tls_type = GOT_TLS_IE | GOT_TLS_IE_GD;
+ 		else
+-		  /* If this is a GD->IE transition, we may use either of
+-		     R_386_TLS_TPOFF and R_386_TLS_TPOFF32.  */
+ 		  tls_type = GOT_TLS_IE;
+ 		break;
+ 	      case R_386_TLS_IE:
++		if (h)
++		  {
++		    /* We remember it comes from R_386_TLS_IE.  */
++		    tls_type = GOT_TLS_IE_POS | GOT_TLS_IE_IE;
++		    break;
++		  }
+ 	      case R_386_TLS_GOTIE:
+ 		tls_type = GOT_TLS_IE_POS; break;
+ 	      }
+@@ -1551,6 +1568,14 @@
+       asection *s;
+       bfd_boolean dyn;
+       int tls_type = elf_i386_hash_entry(h)->tls_type;
++      
++      /* If we have both R_386_TLS_IE and R_386_TLS_GD, GOT_TLS_IE_BOTH
++	 should be used.  */
++      if ((tls_type & GOT_TLS_IE_MASK)
++	  == (GOT_TLS_IE_IE | GOT_TLS_IE_GD))
++	tls_type = GOT_TLS_IE_BOTH;
++      else
++	tls_type &= GOT_TLS_MASK;
+ 
+       /* Make sure this symbol is output as a dynamic symbol.
+ 	 Undefined weak syms won't yet be marked as dynamic.  */
+@@ -2419,6 +2444,13 @@
+ 	  else if (h != NULL)
+ 	    {
+ 	      tls_type = elf_i386_hash_entry(h)->tls_type;
++	      /* If we have both R_386_TLS_IE and R_386_TLS_GD,
++		 GOT_TLS_IE_BOTH should be used.  */
++	      if ((tls_type & GOT_TLS_IE_MASK)
++		  == (GOT_TLS_IE_IE | GOT_TLS_IE_GD))
++		tls_type = GOT_TLS_IE_BOTH;
++	      else
++		tls_type &= GOT_TLS_MASK;
+ 	      if (!info->shared && h->dynindx == -1 && (tls_type & GOT_TLS_IE))
+ 		r_type = R_386_TLS_LE_32;
+ 	    }
