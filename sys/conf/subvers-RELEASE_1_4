@@ -1,6 +1,7 @@
 # Subversion control for DragonFly 1.4.X-RELEASE
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_4,v 1.1.2.5 2006/03/24 02:55:16 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_4,v 1.1.2.6 2006/04/18 18:40:15 dillon Exp $
 0	-
 1	-
 2	pcb_ext, softupdates, vesa restore, module refcnt, random number entropy, sysmouse termio, slip, nfs races, nfs access cache, nfs export of msdosfs, wchar
 3	sendmail security fix
+4	misc VFS races, ndis, nrelease, NFS issues, adjtime, ipsec, security fixes, fork/exit blocking, low memory / networking, /dev/random, linker bug
