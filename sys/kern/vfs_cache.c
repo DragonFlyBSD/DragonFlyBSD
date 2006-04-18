@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.59.2.2 2006/04/18 17:45:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.59.2.3 2006/04/18 18:02:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -338,11 +338,12 @@ cache_drop(struct namecache *ncp)
  * The lock owner has full authority to associate/disassociate vnodes
  * and resolve/unresolve the locked ncp.
  *
- * In particular, if a vnode is associated with a locked cache entry
- * that vnode will *NOT* be recycled.  We accomplish this by vhold()ing the
- * vnode.  XXX we should find a more efficient way to prevent the vnode
- * from being recycled, but remember that any given vnode may have multiple
- * namecache associations (think hardlinks).
+ * WARNING!  Holding a locked ncp will prevent a vnode from being destroyed
+ * or recycled, but it does NOT help you if the vnode had already initiated
+ * a recyclement.  If this is important, use cache_get() rather then 
+ * cache_lock() (and deal with the differences in the way the refs counter
+ * is handled).  Or, alternatively, make an unconditional call to 
+ * cache_validate() or cache_resolve() after cache_lock() returns.
  */
 void
 cache_lock(struct namecache *ncp)
@@ -362,6 +363,12 @@ cache_lock(struct namecache *ncp)
 			 * The vp associated with a locked ncp must be held
 			 * to prevent it from being recycled (which would
 			 * cause the ncp to become unresolved).
+			 *
+			 * WARNING!  If VRECLAIMED is set the vnode could
+			 * already be in the middle of a recycle.  Callers
+			 * should not assume that nc_vp is usable when
+			 * not NULL.  cache_vref() or cache_vget() must be
+			 * called.
 			 *
 			 * XXX loop on race for later MPSAFE work.
 			 */
@@ -409,6 +416,12 @@ cache_lock_nonblock(struct namecache *ncp)
 		 * to prevent it from being recycled (which would
 		 * cause the ncp to become unresolved).
 		 *
+		 * WARNING!  If VRECLAIMED is set the vnode could
+		 * already be in the middle of a recycle.  Callers
+		 * should not assume that nc_vp is usable when
+		 * not NULL.  cache_vref() or cache_vget() must be
+		 * called.
+		 *
 		 * XXX loop on race for later MPSAFE work.
 		 */
 		if (ncp->nc_vp)
@@ -440,12 +453,19 @@ cache_unlock(struct namecache *ncp)
 
 /*
  * ref-and-lock, unlock-and-deref functions.
+ *
+ * This function is primarily used by nlookup.  Even though cache_lock
+ * holds the vnode, it is possible that the vnode may have already
+ * initiated a recyclement.  We want cache_get() to return a definitively
+ * usable vnode or a definitively unresolved ncp.
  */
 struct namecache *
 cache_get(struct namecache *ncp)
 {
 	_cache_hold(ncp);
 	cache_lock(ncp);
+	if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+		cache_setunresolved(ncp);
 	return(ncp);
 }
 
@@ -456,6 +476,8 @@ cache_get_nonblock(struct namecache *ncp)
 	if (ncp->nc_exlocks == 0 || ncp->nc_locktd == curthread) {
 		_cache_hold(ncp);
 		cache_lock(ncp);
+		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+			cache_setunresolved(ncp);
 		return(0);
 	}
 	return(EWOULDBLOCK);
@@ -784,14 +806,28 @@ again:
 		error = 0;
 	}
 	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
+		/*
+		 * Accessing the vnode from the namecache is a bit 
+		 * dangerous.  Because there are no refs on the vnode, it
+		 * could be in the middle of a reclaim.
+		 */
+		if (vp->v_flag & VRECLAIMED) {
+			printf("Warning: vnode reclaim race detected in cache_vget on %p (%s)\n", vp, ncp->nc_name);
+			cache_lock(ncp);
+			cache_setunresolved(ncp);
+			cache_unlock(ncp);
+			goto again;
+		}
 		error = vget(vp, lk_type, curthread);
 		if (error) {
-			if (vp != ncp->nc_vp)	/* handle cache_zap race */
+			if (vp != ncp->nc_vp)
 				goto again;
 			vp = NULL;
-		} else if (vp != ncp->nc_vp) {	/* handle cache_zap race */
+		} else if (vp != ncp->nc_vp) {
 			vput(vp);
 			goto again;
+		} else if (vp->v_flag & VRECLAIMED) {
+			panic("vget succeeded on a VRECLAIMED node! vp %p", vp);
 		}
 	}
 	if (error == 0 && vp == NULL)
@@ -816,11 +852,22 @@ again:
 		error = 0;
 	}
 	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
-		vref(vp);
-		if (vp != ncp->nc_vp) {		/* handle cache_zap race */
-			vrele(vp);
+		/*
+		 * Since we did not obtain any locks, a cache zap 
+		 * race can occur here if the vnode is in the middle
+		 * of being reclaimed and has not yet been able to
+		 * clean out its cache node.  If that case occurs,
+		 * we must lock and unresolve the cache, then loop
+		 * to retry.
+		 */
+		if (vp->v_flag & VRECLAIMED) {
+			printf("Warning: vnode reclaim race detected on cache_vref %p (%s)\n", vp, ncp->nc_name);
+			cache_lock(ncp);
+			cache_setunresolved(ncp);
+			cache_unlock(ncp);
 			goto again;
 		}
+		vref(vp);
 	}
 	if (error == 0 && vp == NULL)
 		error = ENOENT;
@@ -853,6 +900,11 @@ cache_update_fsmid(struct namecache *ncp)
 	struct vnode *vp;
 	struct namecache *scan;
 
+	/*
+	 * Warning: even if we get a non-NULL vp it could still be in the
+	 * middle of a recyclement.  Don't do anything fancy, just set
+	 * NCF_FSMID.
+	 */
 	if ((vp = ncp->nc_vp) != NULL) {
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
 			for (scan = ncp; scan; scan = scan->nc_parent) {
@@ -1488,6 +1540,19 @@ found:
 }
 
 /*
+ * Given a locked ncp, validate that the vnode, if present, is actually
+ * usable.  If it is not usable set the ncp to an unresolved state.
+ */
+void
+cache_validate(struct namecache *ncp)
+{
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+			cache_setunresolved(ncp);
+	}
+}
+
+/*
  * Resolve an unresolved namecache entry, generally by looking it up.
  * The passed ncp must be locked and refd. 
  *
@@ -1496,6 +1561,11 @@ found:
  * direct parent of the cache entry we are trying to resolve should
  * have a valid vnode.  If not then generate an error that we can 
  * determine is related to a resolver bug.
+ *
+ * However, if a vnode was in the middle of a recyclement when the NCP
+ * got locked, ncp->nc_vp might point to a vnode that is about to become
+ * invalid.  cache_resolve() handles this case by unresolving the entry
+ * and then re-resolving it.
  *
  * Note that successful resolution does not necessarily return an error
  * code of 0.  If the ncp resolves to a negative cache hit then ENOENT
@@ -1509,10 +1579,16 @@ cache_resolve(struct namecache *ncp, struct ucred *cred)
 
 restart:
 	/*
-	 * If the ncp is already resolved we have nothing to do.
+	 * If the ncp is already resolved we have nothing to do.  However,
+	 * we do want to guarentee that a usable vnode is returned when
+	 * a vnode is present, so make sure it hasn't been reclaimed.
 	 */
-	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
-		return (ncp->nc_error);
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+			cache_setunresolved(ncp);
+		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
+			return (ncp->nc_error);
+	}
 
 	/*
 	 * Mount points need special handling because the parent does not
@@ -1641,6 +1717,17 @@ cache_resolve_mp(struct namecache *ncp)
 	int error;
 
 	KKASSERT(mp != NULL);
+
+	/*
+	 * If the ncp is already resolved we have nothing to do.  However,
+	 * we do want to guarentee that a usable vnode is returned when
+	 * a vnode is present, so make sure it hasn't been reclaimed.
+	 */
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
+		if (ncp->nc_vp && (ncp->nc_vp->v_flag & VRECLAIMED))
+			cache_setunresolved(ncp);
+	}
+
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
 		cache_unlock(ncp);
 		while (vfs_busy(mp, 0, curthread))
