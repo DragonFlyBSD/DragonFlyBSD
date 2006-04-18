@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65 2005/10/31 21:48:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65.2.1 2006/04/18 17:12:25 dillon Exp $
  */
 
 /*
@@ -406,7 +406,6 @@ vinvalbuf_bp(struct buf *bp, void *data)
 	    (info->flags & V_SAVE)) {
 		if (bp->b_vp == info->vp) {
 			if (bp->b_flags & B_CLUSTEROK) {
-				BUF_UNLOCK(bp);
 				vfs_bio_awrite(bp);
 			} else {
 				bremfree(bp);
@@ -778,7 +777,6 @@ vfsync_bp(struct buf *bp, void *data)
 		 */
 		vp->v_lazyw = bp->b_lblkno;
 		if ((vp->v_flag & VOBJBUF) && (bp->b_flags & B_CLUSTEROK)) {
-			BUF_UNLOCK(bp);
 			info->lazycount += vfs_bio_awrite(bp);
 		} else {
 			info->lazycount += bp->b_bufsize;
