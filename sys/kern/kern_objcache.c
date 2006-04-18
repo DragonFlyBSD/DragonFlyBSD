@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.4 2005/07/13 16:06:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.4.2.1 2006/04/18 18:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -343,7 +343,7 @@ retry:
 	if ((ocflags & (M_WAITOK|M_NULLOK)) == M_WAITOK) {
 		++cpucache->waiting;
 		++depot->waiting;
-		tsleep(depot, PCATCH, "objcache_get", 0);
+		tsleep(depot, 0, "objcache_get", 0);
 		--cpucache->waiting;
 		--depot->waiting;
 		lwkt_reltoken(&ilock);
