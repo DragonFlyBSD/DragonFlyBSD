@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14.2.1 2006/02/28 22:04:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.14.2.2 2006/04/18 18:16:19 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -177,7 +177,7 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 				nblks = racluster;
 
 	    		error = VOP_BMAP(vp, lblkno, NULL,
-				&blkno, &ncontigafter, NULL);
+					 &blkno, &ncontigafter, NULL);
 			if (error)
 				goto single_block_read;
 			if (blkno == -1)
@@ -188,7 +188,7 @@ cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno,
 				nblks = ncontigafter + 1;
 
 			bp = cluster_rbuild(vp, filesize, lblkno,
-				blkno, size, nblks, bp);
+					    blkno, size, nblks, bp);
 			lblkno += (bp->b_bufsize / size);
 		} else {
 single_block_read:
@@ -202,36 +202,46 @@ single_block_read:
 	}
 
 	/*
-	 * if we have been doing sequential I/O, then do some read-ahead
+	 * If we have been doing sequential I/O, then do some read-ahead.
 	 */
 	rbp = NULL;
-	if (seqcount && (lblkno < (origblkno + seqcount))) {
-		/*
-		 * we now build the read-ahead buffer if it is desirable.
-		 */
-		if (((u_quad_t)(lblkno + 1) * size) <= filesize &&
-		    !(error = VOP_BMAP(vp, lblkno, NULL, &blkno, &num_ra, NULL)) &&
-		    blkno != -1) {
+	if (seqcount &&
+	    lblkno < origblkno + seqcount &&
+	    (u_quad_t)(lblkno + 1) * size <= filesize
+	) {
+		rbp = getblk(vp, lblkno, size, 0, 0);
+		if ((rbp->b_flags & B_CACHE) == 0) {
 			int nblksread;
-			int ntoread = num_ra + 1;
+			int ntoread;
+
+			error = VOP_BMAP(vp, lblkno, NULL,
+					 &blkno, &num_ra, NULL);
+			if (error || blkno == (daddr_t)-1) {
+				rbp->b_flags &= ~(B_ASYNC | B_READ);
+				brelse(rbp);
+				rbp = NULL;
+				goto no_read_ahead;
+			}
+			ntoread = num_ra + 1;
 			nblksread = (origtotread + size - 1) / size;
 			if (seqcount < nblksread)
 				seqcount = nblksread;
 			if (seqcount < ntoread)
 				ntoread = seqcount;
+
+			rbp->b_flags |= B_READ | B_ASYNC | B_RAM;
 			if (num_ra) {
 				rbp = cluster_rbuild(vp, filesize, lblkno,
-					blkno, size, ntoread, NULL);
+						     blkno, size, ntoread, rbp);
 			} else {
-				rbp = getblk(vp, lblkno, size, 0, 0);
-				rbp->b_flags |= B_READ | B_ASYNC | B_RAM;
 				rbp->b_blkno = blkno;
 			}
 		}
 	}
+no_read_ahead:
 
 	/*
-	 * handle the synchronous read
+	 * Handle the synchronous read
 	 */
 	if (bp) {
 #if defined(CLUSTERDEBUG)
@@ -249,7 +259,7 @@ single_block_read:
 	}
 
 	/*
-	 * and if we have read-aheads, do them too
+	 * And if we have read-aheads, do them too
 	 */
 	if (rbp) {
 		if (error) {
@@ -313,16 +323,8 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 		--run;
 	}
 
-	if (fbp) {
-		tbp = fbp;
-		tbp->b_flags |= B_READ; 
-	} else {
-		tbp = getblk(vp, lbn, size, 0, 0);
-		if (tbp->b_flags & B_CACHE)
-			return tbp;
-		tbp->b_flags |= B_ASYNC | B_READ | B_RAM;
-	}
-
+	tbp = fbp;
+	tbp->b_flags |= B_READ;
 	tbp->b_blkno = blkno;
 	if( (tbp->b_flags & B_MALLOC) ||
 		((tbp->b_flags & B_VMIO) == 0) || (run <= 1) )
@@ -416,7 +418,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 			/*
 			 * Set a read-ahead mark as appropriate
 			 */
-			if ((fbp && (i == 1)) || (i == (run - 1)))
+			if (i == 1 || i == (run - 1))
 				tbp->b_flags |= B_RAM;
 
 			/*
