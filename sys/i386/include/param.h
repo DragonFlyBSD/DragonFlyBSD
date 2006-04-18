@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.7 2004/03/20 16:27:41 drhodus Exp $
+ * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.7.4.1 2006/04/18 17:17:42 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -189,7 +189,9 @@
 #define trunc_4mpage(x)		((x) & ~PDRMASK)
 #define round_4mpage(x)		((((x)) + PDRMASK) & ~PDRMASK)
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define atop(x)			((x) >> PAGE_SHIFT)
+#endif
 #define ptoa(x)			((x) << PAGE_SHIFT)
 
 #define i386_btop(x)		((x) >> PAGE_SHIFT)
