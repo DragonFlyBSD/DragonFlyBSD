@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/groff/Makefile.inc,v 2.11 2005/06/10 07:06:07 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.3 2005/09/01 20:47:11 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/groff/Makefile.inc,v 1.3.2.1 2006/04/18 17:46:23 dillon Exp $
 
 BINDIR?=	/usr/bin
 SHELL=		/bin/sh
@@ -117,7 +117,7 @@ revision=`sed -e 's/^0$$//' -e 's/^[1-9].*$$/.&/' $(GROFF_DIST)/REVISION`
 	-e "s;@TMAC_MDIR@;$(tmacdir)/mm;g" \
 	-e "s;@BROKEN_SPOOLER_FLAGS@;$(BROKEN_SPOOLER_FLAGS);g" \
 	-e "s;@VERSION@;$(version)$(revision);g" \
-	-e "s;@MDATE@;`$(SHELL) ${GROFF_DIST}/mdate.sh $<`;g" \
+	-e "s;@MDATE@;`stat -f %Sm -t '%d %B %Y' $<`;g" \
 	-e "s;@g@;$(g);g" \
 	-e "s;@G@;`echo $(g) | LC_ALL=C tr a-z A-Z`;g" \
 	$< >$@
