@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.1 2005/11/16 02:24:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.1.2.1 2006/04/18 17:50:26 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -142,12 +142,16 @@ usched_set(struct usched_set_args *uap)
 	struct proc *p = curthread->td_proc;
 	struct usched *item;	/* temporaly for TAILQ processing */
 	int error;
+	char buffer[NAME_LENGTH];
 
 	if ((error = suser(curthread)) != 0)
 		return (error);
+
+	if ((error = copyinstr(uap->name, buffer, sizeof(buffer), NULL)) != 0)
+		return (error);
 	
 	TAILQ_FOREACH(item, &usched_list, entry) {
-		if (strcmp(item->name, uap->name) == 0)
+		if ((strcmp(item->name, buffer) == 0))
 			break;
 	}
 
