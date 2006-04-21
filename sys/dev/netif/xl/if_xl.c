@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.42.2.1 2006/01/01 00:59:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.42.2.2 2006/04/21 13:06:13 sephe Exp $
  */
 
 /*
@@ -1818,7 +1818,7 @@ xl_dma_free(device_t dev)
 			if (cd->xl_rx_chain[i].xl_mbuf != NULL) {
 				bus_dmamap_unload(sc->xl_mtag,
 						  cd->xl_rx_chain[i].xl_map);
-				m_free(cd->xl_rx_chain[i].xl_mbuf);
+				m_freem(cd->xl_rx_chain[i].xl_mbuf);
 			}
 			bus_dmamap_destroy(sc->xl_mtag,
 					   cd->xl_rx_chain[i].xl_map);
@@ -1830,7 +1830,7 @@ xl_dma_free(device_t dev)
 			if (cd->xl_tx_chain[i].xl_mbuf != NULL) {
 				bus_dmamap_unload(sc->xl_mtag,
 						  cd->xl_tx_chain[i].xl_map);
-				m_free(cd->xl_tx_chain[i].xl_mbuf);
+				m_freem(cd->xl_tx_chain[i].xl_mbuf);
 			}
 			bus_dmamap_destroy(sc->xl_mtag,
 					   cd->xl_tx_chain[i].xl_map);
