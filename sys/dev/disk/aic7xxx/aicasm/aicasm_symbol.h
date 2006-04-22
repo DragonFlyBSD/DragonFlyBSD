@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_symbol.h#17 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_symbol.h,v 1.11.2.4 2002/08/31 07:26:06 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_symbol.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_symbol.h,v 1.3 2006/04/22 16:15:26 dillon Exp $
  */
 
 #ifdef __linux__
@@ -191,7 +191,7 @@ void	symtable_open(void);
 void	symtable_close(void);
 
 symbol_t *
-	symtable_get(char *name);
+	symtable_get(const char *name);
 
 symbol_node_t *
 	symlist_search(symlist_t *symlist, char *symname);

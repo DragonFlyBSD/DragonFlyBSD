@@ -41,7 +41,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_scan.l#18 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_scan.l,v 1.13.2.6 2002/09/27 15:46:28 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_scan.l,v 1.3 2005/12/11 01:54:07 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_scan.l,v 1.4 2006/04/22 16:15:26 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -68,7 +68,13 @@ static char string_buf[MAX_STR_CONST];
 static char *string_buf_ptr;
 static int  parren_count;
 static int  quote_count;
-static char buf[255];
+static char msgbuf[255];
+
+extern int yylex(void);
+extern int mmlex(void);
+extern int mmparse(void);
+extern void mm_switch_to_buffer(YY_BUFFER_STATE);
+extern void mm_delete_buffer(YY_BUFFER_STATE);
 %}
 
 PATH		([/]*[-A-Za-z0-9_.])+
@@ -314,10 +320,10 @@ else			{ return T_ELSE; }
 				return ')';
 			}
 <MACROARGLIST>.		{
-				snprintf(buf, sizeof(buf), "Invalid character "
+				snprintf(msgbuf, sizeof(msgbuf), "Invalid character "
 					 "'%c' in macro argument list",
 					 yytext[0]);
-				stop(buf, EX_DATAERR);
+				stop(msgbuf, EX_DATAERR);
 			}
 <MACROCALLARGS>{SPACE}  ;
 <MACROCALLARGS>\(	{
@@ -421,9 +427,9 @@ else			{ return T_ELSE; }
 				}
 			}
 .			{ 
-				snprintf(buf, sizeof(buf), "Invalid character "
+				snprintf(msgbuf, sizeof(msgbuf), "Invalid character "
 					 "'%c'", yytext[0]);
-				stop(buf, EX_DATAERR);
+				stop(msgbuf, EX_DATAERR);
 			}
 %%
 

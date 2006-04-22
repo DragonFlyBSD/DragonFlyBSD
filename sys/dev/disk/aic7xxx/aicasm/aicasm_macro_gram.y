@@ -41,7 +41,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aicasm/aicasm_macro_gram.y#5 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.1.2.2 2002/08/31 07:26:06 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aicasm/aicasm_macro_gram.y,v 1.3 2006/04/22 16:15:26 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -66,6 +66,9 @@
 static symbol_t *macro_symbol;
 
 static void add_macro_arg(const char *argtext, int position);
+
+extern int mmlex(void);
+extern int mmparse(void);
 
 %}
 
@@ -158,7 +161,7 @@ add_macro_arg(const char *argtext, int argnum)
 	}
 }
 
-void
+static void
 mmerror(const char *string)
 {
 	stop(string, EX_DATAERR);
