@@ -1,7 +1,7 @@
 /*
- * mutex2.c
+ * mutex1.c
  *
- * $DragonFly: src/test/sysperf/mutex2.c,v 1.2 2006/04/22 22:32:52 dillon Exp $
+ * $DragonFly: src/test/sysperf/mutex1.c,v 1.1 2006/04/22 22:32:52 dillon Exp $
  */
 
 #include "blib.h"
@@ -26,29 +26,34 @@ main(int ac, char **av)
     counter = mtx + 64;
     while (stop_timing(0, NULL) == 0) {
 	for (j = 0; j < 100; ++j) {
-	    get_mtx(1);
-	    rel_mtx();
+	    try_spin_mtx();
+	    rel_spin_mtx();
 	}
 	count += 100;
     }
     max = count;
     *mtx = 0;
 
+    /*
+     * Single cpu case
+     */
     start_timing();
     for (count = 0; count < max; count += 100) {
 	for (j = 0; j < 100; ++j) {
-	    get_mtx(1);
-	    rel_mtx();	/* release */
+	    while (try_spin_mtx(1) != 0)
+		;
+	    rel_spin_mtx();	/* release */
 	    ++counter[64];
 	}
     }
-    stop_timing(count, "complex_mtx(uncontested/1cpu)");
+    stop_timing(count, "simple_mtx(uncontested/1cpu)");
 
     if ((pid = fork()) == 0) {
 	for (;;) {
 	    for (j = 0; j < 100; ++j) {
-		get_mtx(2);
-		rel_mtx();	/* release */
+		while (try_spin_mtx() != 0)
+		    ;
+		rel_spin_mtx();	/* release */
 		++counter[128];
 	    }
 	}
@@ -56,12 +61,13 @@ main(int ac, char **av)
 	start_timing();
 	for (count = 0; count < max; count += 100) {
 	    for (j = 0; j < 100; ++j) {
-		get_mtx(1);
-		rel_mtx();	/* release */
+		while (try_spin_mtx() != 0)
+		    ;
+		rel_spin_mtx();	/* release */
 		++counter[64];
 	    }
 	}
-	stop_timing(count, "complex_mtx");
+	stop_timing(count, "simple_mtx");
 	printf("proc1=%d proc2=%d\n", counter[64], counter[128]);
 	kill(pid, 9);
     }

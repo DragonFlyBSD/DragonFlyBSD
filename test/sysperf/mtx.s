@@ -1,9 +1,11 @@
 		/*
-		 * $DragonFly: src/test/sysperf/mtx.s,v 1.1 2003/08/12 02:29:44 dillon Exp $
+		 * $DragonFly: src/test/sysperf/mtx.s,v 1.2 2006/04/22 22:32:52 dillon Exp $
 		 */
 		.text
 		.globl	get_mtx
 		.globl	rel_mtx
+		.globl	try_spin_mtx
+		.globl	rel_spin_mtx
 
 get_mtx:
 		movl	mtx,%edx
@@ -16,4 +18,15 @@ get_mtx:
 rel_mtx:
 		movl	mtx,%edx
 		movl $0,(%edx)
+		ret
+
+try_spin_mtx:
+		movl	mtx,%edx
+		movl	$1,%eax
+		xchgl	%eax,(%edx)
+		ret
+
+rel_spin_mtx:
+		movl	mtx,%edx
+		movl	$0,(%edx)
 		ret

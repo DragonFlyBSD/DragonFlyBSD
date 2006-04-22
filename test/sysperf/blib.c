@@ -3,7 +3,7 @@
  *
  * Simple benchmarking library
  *
- * $DragonFly: src/test/sysperf/blib.c,v 1.4 2004/03/20 02:02:20 dillon Exp $
+ * $DragonFly: src/test/sysperf/blib.c,v 1.5 2006/04/22 22:32:52 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -71,3 +71,7 @@ get_timing(void)
     return(us);
 }
 
+void
+nop(void)
+{
+}

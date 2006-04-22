@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.13 2005/08/03 13:37:27 hmp Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.14 2006/04/22 22:32:52 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
@@ -69,6 +69,9 @@ all:	$(TARGETS)
 
 /tmp/mbw1: mbwtest.c
 	$(CC) -O mbwtest.c -o /tmp/mbw1
+
+/tmp/mt1: mutex1.c blib.c mtx.s
+	$(CC) $(CFLAGS) mutex1.c blib.c mtx.s -o /tmp/mt1
 
 /tmp/mt2: mutex2.c blib.c mtx.s
 	$(CC) $(CFLAGS) mutex2.c blib.c mtx.s -o /tmp/mt2
