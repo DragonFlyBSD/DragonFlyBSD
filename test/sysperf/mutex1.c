@@ -1,7 +1,7 @@
 /*
  * mutex1.c
  *
- * $DragonFly: src/test/sysperf/mutex1.c,v 1.1 2006/04/22 22:32:52 dillon Exp $
+ * $DragonFly: src/test/sysperf/mutex1.c,v 1.2 2006/04/22 22:34:06 dillon Exp $
  */
 
 #include "blib.h"
@@ -40,7 +40,7 @@ main(int ac, char **av)
     start_timing();
     for (count = 0; count < max; count += 100) {
 	for (j = 0; j < 100; ++j) {
-	    while (try_spin_mtx(1) != 0)
+	    while (try_spin_mtx() != 0)
 		;
 	    rel_spin_mtx();	/* release */
 	    ++counter[64];
