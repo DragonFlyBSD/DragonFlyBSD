@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.17 2006/03/02 19:07:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.18 2006/04/22 23:41:43 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -271,8 +271,8 @@ int
 agp_generic_detach(device_t dev)
 {
 	struct agp_softc *sc = device_get_softc(dev);
+
 	bus_release_resource(dev, SYS_RES_MEMORY, AGP_APBASE, sc->as_aperture);
-	lockmgr(&sc->as_lock, LK_DRAIN | LK_PCATCH, NULL, curthread); /* XXX */
 	agp_flush_cache();
 	cdevsw_remove(&agp_cdevsw, -1, device_get_unit(dev));
 	return 0;
@@ -485,10 +485,11 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	vm_page_t m;
 	int error;
 
-	lockmgr(&sc->as_lock, LK_EXCLUSIVE | LK_PCATCH, NULL, curthread); /* XXX */
+	lockmgr(&sc->as_lock, LK_EXCLUSIVE, NULL, curthread);
 
 	if (mem->am_is_bound) {
 		device_printf(dev, "memory already bound\n");
+		lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 		return EINVAL;
 	}
 	
@@ -499,6 +500,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 			      (int) offset, (int)mem->am_size,
 			      (int)AGP_GET_APERTURE(dev));
 		printf("Check BIOS's aperature size vs X\n");
+		lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 		return EINVAL;
 	}
 
@@ -546,7 +548,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 							   OFF_TO_IDX(k));
 					vm_page_unwire(m, 0);
 				}
-				lockmgr(&sc->as_lock, LK_RELEASE | LK_PCATCH, NULL, curthread); /* XXX */
+				lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 				return error;
 			}
 		}
@@ -567,7 +569,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	mem->am_offset = offset;
 	mem->am_is_bound = 1;
 
-	lockmgr(&sc->as_lock, LK_RELEASE | LK_PCATCH, NULL, curthread); /* XXX */
+	lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 
 	return 0;
 }
@@ -579,10 +581,11 @@ agp_generic_unbind_memory(device_t dev, struct agp_memory *mem)
 	vm_page_t m;
 	int i;
 
-	lockmgr(&sc->as_lock, LK_EXCLUSIVE | LK_PCATCH, NULL, curthread); /* XXX */
+	lockmgr(&sc->as_lock, LK_EXCLUSIVE, NULL, curthread);
 
 	if (!mem->am_is_bound) {
 		device_printf(dev, "memory is not bound\n");
+		lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 		return EINVAL;
 	}
 
@@ -604,7 +607,7 @@ agp_generic_unbind_memory(device_t dev, struct agp_memory *mem)
 	mem->am_offset = 0;
 	mem->am_is_bound = 0;
 
-	lockmgr(&sc->as_lock, LK_RELEASE | LK_PCATCH, NULL, curthread); /* XXX */
+	lockmgr(&sc->as_lock, LK_RELEASE, NULL, curthread);
 
 	return 0;
 }
