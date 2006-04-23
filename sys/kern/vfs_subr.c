@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.75 2006/04/07 06:38:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.76 2006/04/23 00:47:10 dillon Exp $
  */
 
 /*
@@ -1353,7 +1353,6 @@ retry:
 	}
 	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
 	vp->v_flag |= VOBJBUF;
-retn:
 	return (error);
 }
 
