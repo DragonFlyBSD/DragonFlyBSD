@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.7 2005/12/23 10:08:14 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.8 2006/04/23 17:48:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -937,9 +937,13 @@ bsd4_recalculate_estcpu(struct lwp *lp)
 		 * time if we are in the same tick. 
 		 * 
 		 * First calculate the number of ticks in the measurement
-		 * interval.
+		 * interval.  The nticks calculation can wind up 0 due to
+		 * a bug in the handling of lwp_slptime  (as yet not found),
+		 * so make sure we do not get a divide by 0 panic.
 		 */
 		nticks = (cpbase - lp->lwp_cpbase) / gd->gd_schedclock.periodic;
+		if (nticks <= 0)
+			nticks = 1;
 		updatepcpu(lp, lp->lwp_cpticks, nticks);
 
 		if ((nleft = nticks - lp->lwp_cpticks) < 0)
