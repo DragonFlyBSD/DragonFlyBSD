@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.17 2006/04/23 02:41:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.18 2006/04/23 03:08:02 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -167,11 +167,10 @@ acquire(struct lock *lkp, int extflags, int wanted)
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
-	struct thread *td)
+lockmgr(struct lock *lkp, u_int flags, struct thread *td)
 #else
-debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
-	struct thread *td, const char *name, const char *file, int line)
+debuglockmgr(struct lock *lkp, u_int flags, struct thread *td,
+	     const char *name, const char *file, int line)
 #endif
 {
 	int error;
@@ -186,8 +185,6 @@ debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 #ifndef DEBUG_LOCKS
 		    if (lockmgr_from_int == 2) {
 			    didpanic = 1;
-			    if (flags & LK_INTERLOCK)
-				    spin_unlock(interlkp);
 			    panic(
 				"lockmgr %s from %p: called from interrupt",
 				lkp->lk_wmesg, ((int **)&lkp)[-1]);
@@ -200,8 +197,6 @@ debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 #else
 		    if (lockmgr_from_int == 2) {
 			    didpanic = 1;
-			    if (flags & LK_INTERLOCK)
-				    spin_unlock(interlkp);
 			    panic(
 				"lockmgr %s from %s:%d: called from interrupt",
 				lkp->lk_wmesg, file, line);
@@ -215,8 +210,6 @@ debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 	}
 
 	spin_lock(&lkp->lk_spinlock);
-	if (flags & LK_INTERLOCK)
-		spin_unlock(interlkp);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 

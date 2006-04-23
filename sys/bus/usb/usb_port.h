@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.68 2005/07/30 06:14:50 skrll Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.14 2005/11/28 17:13:23 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.15 2006/04/23 03:07:58 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -213,8 +213,6 @@ typedef struct proc *usb_proc_ptr;
 #define usb_kthread_create1	kthread_create
 #define usb_kthread_create	kthread_create_deferred
 
-#define usb_lockmgr(lk, mode, ptr) lockmgr(lk, mode, ptr, curproc)
-
 #define	config_pending_incr()
 #define	config_pending_decr()
 
@@ -397,8 +395,6 @@ typedef struct callout usb_callout_t;
 #define usb_callout_init(h)     callout_init(&(h))
 #define usb_callout(h, t, f, d) callout_reset(&(h), (t), (f), (d))
 #define usb_uncallout(h, f, d)  callout_stop(&(h))
-
-#define usb_lockmgr lockmgr
 
 #define	ETHER_ALIGN		2
 

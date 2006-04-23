@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.13 2006/04/23 02:41:14 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.14 2006/04/23 03:08:04 dillon Exp $
  */
 
 /*
@@ -259,7 +259,7 @@ smb_co_gone(struct smb_connobj *cp, struct smb_cred *scred)
 		SLIST_REMOVE(&parent->co_children, cp, smb_connobj, co_next);
 		smb_co_put(parent, scred);
 	}
-	lockmgr(&cp->co_lock, LK_RELEASE, NULL, scred->scr_td);
+	lockmgr(&cp->co_lock, LK_RELEASE, scred->scr_td);
 	while (cp->co_usecount > 0) {
 		tsleep(&cp->co_lock, 0, "smbgone", hz);
 	}
@@ -295,7 +295,7 @@ smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred)
 	if ((cp->co_flags & SMBO_GONE) == 0) {
 		cp->co_flags |= SMBO_GONE;
 		SMB_CO_UNLOCK(cp);
-		lockmgr(&cp->co_lock, LK_EXCLUSIVE, NULL, td);
+		lockmgr(&cp->co_lock, LK_EXCLUSIVE, td);
 		smb_co_gone(cp, scred);
 	} else {
 		SMB_CO_UNLOCK(cp);
@@ -325,7 +325,7 @@ smb_co_get(struct smb_connobj *cp, int flags, struct smb_cred *scred)
 			if ((cp->co_flags & SMBO_GONE) == 0) {
 				cp->co_flags |= SMBO_GONE;
 				SMB_CO_UNLOCK(cp);
-				lockmgr(&cp->co_lock, LK_EXCLUSIVE, NULL, scred->scr_td);
+				lockmgr(&cp->co_lock, LK_EXCLUSIVE, scred->scr_td);
 				smb_co_gone(cp, scred);
 			} else {
 				SMB_CO_UNLOCK(cp);
@@ -345,7 +345,7 @@ smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 	if (cp->co_usecount > 1) {
 		cp->co_usecount--;
 		SMB_CO_UNLOCK(cp);
-		lockmgr(&cp->co_lock, LK_RELEASE, NULL, td);
+		lockmgr(&cp->co_lock, LK_RELEASE, td);
 		return;
 	}
 	if (cp->co_usecount <= 0) {
@@ -357,12 +357,12 @@ smb_co_put(struct smb_connobj *cp, struct smb_cred *scred)
 	if ((cp->co_flags & SMBO_GONE) == 0) {
 		cp->co_flags |= SMBO_GONE;
 		SMB_CO_UNLOCK(cp);
-		lockmgr(&cp->co_lock, LK_RELEASE, NULL, td);
-		lockmgr(&cp->co_lock, LK_EXCLUSIVE, NULL, td);
+		lockmgr(&cp->co_lock, LK_RELEASE, td);
+		lockmgr(&cp->co_lock, LK_EXCLUSIVE, td);
 		smb_co_gone(cp, scred);
 	} else {
 		SMB_CO_UNLOCK(cp);
-		lockmgr(&cp->co_lock, LK_RELEASE, NULL, td);
+		lockmgr(&cp->co_lock, LK_RELEASE, td);
 		wakeup(&cp->co_lock);
 	}
 }
@@ -388,9 +388,9 @@ smb_co_lock(struct smb_connobj *cp, int flags, struct thread *td)
 		SMBERROR("recursive lock for object %d\n", cp->co_level);
 		return 0;
 	}
-	error = lockmgr(&cp->co_lock, flags, NULL, td);
+	error = lockmgr(&cp->co_lock, flags, td);
 	if (error == 0 && (cp->co_flags & SMBO_GONE)) {
-		lockmgr(&cp->co_lock, LK_RELEASE, NULL, td);
+		lockmgr(&cp->co_lock, LK_RELEASE, td);
 		error = EINVAL;
 	}
 	return (error);
@@ -399,7 +399,7 @@ smb_co_lock(struct smb_connobj *cp, int flags, struct thread *td)
 void
 smb_co_unlock(struct smb_connobj *cp, int flags, struct thread *td)
 {
-	lockmgr(&cp->co_lock, flags | LK_RELEASE, NULL, td);
+	lockmgr(&cp->co_lock, flags | LK_RELEASE, td);
 }
 
 static void

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.22 2006/04/23 02:43:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.23 2006/04/23 03:08:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -350,7 +350,7 @@ ntfs_ntget(struct ntnode *ip)
 		ip->i_number, ip, ip->i_usecount));
 
 	ip->i_usecount++;	/* ZZZ */
-	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE, NULL);
+	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE);
 
 	return 0;
 }
@@ -377,7 +377,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 			*ipp = ip;
 			return (0);
 		}
-	} while (LOCKMGR(&ntfs_hashlock, LK_EXCLUSIVE | LK_SLEEPFAIL, NULL));
+	} while (LOCKMGR(&ntfs_hashlock, LK_EXCLUSIVE | LK_SLEEPFAIL));
 
 	MALLOC(ip, struct ntnode *, sizeof(struct ntnode),
 	       M_NTFSNTNODE, M_WAITOK);
@@ -400,7 +400,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 
 	ntfs_nthashins(ip);
 
-	LOCKMGR(&ntfs_hashlock, LK_RELEASE, NULL);
+	LOCKMGR(&ntfs_hashlock, LK_RELEASE);
 
 	*ipp = ip;
 
@@ -437,7 +437,7 @@ ntfs_ntput(struct ntnode *ip)
 
 	if (ip->i_usecount > 0) {
 		spin_unlock(&ip->i_interlock);
-		LOCKMGR(&ip->i_lock, LK_RELEASE, NULL);
+		LOCKMGR(&ip->i_lock, LK_RELEASE);
 		return;
 	}
 
@@ -1853,7 +1853,7 @@ ntfs_toupper_use(struct mount *mp, struct ntfsmount *ntmp)
 	struct vnode *vp;
 
 	/* get exclusive access */
-	LOCKMGR(&ntfs_toupper_lock, LK_EXCLUSIVE, NULL);
+	LOCKMGR(&ntfs_toupper_lock, LK_EXCLUSIVE);
 	
 	/* only read the translation data from a file if it hasn't been
 	 * read already */
@@ -1876,7 +1876,7 @@ ntfs_toupper_use(struct mount *mp, struct ntfsmount *ntmp)
 
     out:
 	ntfs_toupper_usecount++;
-	LOCKMGR(&ntfs_toupper_lock, LK_RELEASE, NULL);
+	LOCKMGR(&ntfs_toupper_lock, LK_RELEASE);
 	return (error);
 }
 
@@ -1888,7 +1888,7 @@ void
 ntfs_toupper_unuse(void)
 {
 	/* get exclusive access */
-	LOCKMGR(&ntfs_toupper_lock, LK_EXCLUSIVE, NULL);
+	LOCKMGR(&ntfs_toupper_lock, LK_EXCLUSIVE);
 
 	ntfs_toupper_usecount--;
 	if (ntfs_toupper_usecount == 0) {
@@ -1903,7 +1903,7 @@ ntfs_toupper_unuse(void)
 #endif
 	
 	/* release the lock */
-	LOCKMGR(&ntfs_toupper_lock, LK_RELEASE, NULL);
+	LOCKMGR(&ntfs_toupper_lock, LK_RELEASE);
 } 
 
 int

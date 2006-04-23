@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.13 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.14 2006/04/23 03:08:02 dillon Exp $
  */
 
 /*
@@ -261,7 +261,7 @@ vfs_busy(struct mount *mp, int flags, struct thread *td)
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED | LK_NOPAUSE;
-	if (lockmgr(&mp->mnt_lock, lkflags, NULL, td))
+	if (lockmgr(&mp->mnt_lock, lkflags, td))
 		panic("vfs_busy: unexpected lock failure");
 	return (0);
 }
@@ -272,7 +272,7 @@ vfs_busy(struct mount *mp, int flags, struct thread *td)
 void
 vfs_unbusy(struct mount *mp, struct thread *td)
 {
-	lockmgr(&mp->mnt_lock, LK_RELEASE, NULL, td);
+	lockmgr(&mp->mnt_lock, LK_RELEASE, td);
 }
 
 /*

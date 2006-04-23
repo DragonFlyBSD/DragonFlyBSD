@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.32 2006/04/01 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.33 2006/04/23 03:08:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1260,10 +1260,9 @@ vop_stdlock(ap)
 	int error;
 
 #ifndef	DEBUG_LOCKS
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags, NULL, ap->a_td);
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags, ap->a_td);
 #else
-	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags,
-			NULL, ap->a_td,
+	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags, ap->a_td,
 			"vop_stdlock", ap->a_vp->filename, ap->a_vp->line);
 #endif
 	return(error);
@@ -1279,8 +1278,7 @@ vop_stdunlock(ap)
 {
 	int error;
 
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE,
-			NULL, ap->a_td);
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE, ap->a_td);
 	return(error);
 }
 

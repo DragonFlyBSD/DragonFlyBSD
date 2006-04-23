@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.17 2006/03/02 19:07:54 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.18 2006/04/23 03:07:58 dillon Exp $
  */
 
 /*
@@ -1397,7 +1397,7 @@ ehci_sync_hc(ehci_softc_t *sc)
 	}
 	DPRINTFN(2,("ehci_sync_hc: enter\n"));
 	/* get doorbell */
-	lockmgr(&sc->sc_doorbell_lock, LK_EXCLUSIVE, NULL, NULL);
+	lockmgr(&sc->sc_doorbell_lock, LK_EXCLUSIVE, NULL);
 	crit_enter();
 	/* ask for doorbell */
 	EOWRITE4(sc, EHCI_USBCMD, EOREAD4(sc, EHCI_USBCMD) | EHCI_CMD_IAAD);
@@ -1408,7 +1408,7 @@ ehci_sync_hc(ehci_softc_t *sc)
 		    EOREAD4(sc, EHCI_USBCMD), EOREAD4(sc, EHCI_USBSTS)));
 	crit_exit();
 	/* release doorbell */
-	lockmgr(&sc->sc_doorbell_lock, LK_RELEASE, NULL, NULL);
+	lockmgr(&sc->sc_doorbell_lock, LK_RELEASE, NULL);
 #ifdef DIAGNOSTIC
 	if (error)
 		printf("ehci_sync_hc: tsleep() = %d\n", error);

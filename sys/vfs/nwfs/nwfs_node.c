@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.19 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.20 2006/04/23 03:08:04 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -144,11 +144,11 @@ nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 	int error;
 
 loop:
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, td);
 rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
-		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+		lockmgr(&nwhashlock, LK_RELEASE, td);
 		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
 		if (nwfs_hashlookup(nmp, fid, &np) || NWTOV(np) != vp) {
@@ -158,7 +158,7 @@ rescan:
 		*vpp = vp;
 		return(0);
 	}
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+	lockmgr(&nwhashlock, LK_RELEASE, td);
 
 	/*
 	 * Do the MALLOC before the getnewvnode since doing so afterward
@@ -179,7 +179,7 @@ rescan:
 	 * Another process can create vnode while we blocked in malloc() or
 	 * getnewvnode(). Rescan list again.
 	 */
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, td);
 	if (nwfs_hashlookup(nmp, fid, NULL) == 0) {
 		np->n_vnode = NULL;
 		vx_put(vp);
@@ -193,7 +193,7 @@ rescan:
 	lockinit(&np->n_lock, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
 	nhpp = NWNOHASH(fid);
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+	lockmgr(&nwhashlock, LK_RELEASE, td);
 	return 0;
 }
 
@@ -203,9 +203,9 @@ nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 {
 	int error;
 
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, td);
 	error = nwfs_hashlookup(nmp, fid, npp);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+	lockmgr(&nwhashlock, LK_RELEASE, td);
 	return error;
 }
 
@@ -232,9 +232,9 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 		}
 	}
 	if (np) {
-		lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+		lockmgr(&nwhashlock, LK_EXCLUSIVE, td);
 		LIST_REMOVE(np, n_hash);
-		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+		lockmgr(&nwhashlock, LK_RELEASE, td);
 	}
 	if (nmp->n_root == np)
 		nmp->n_root = NULL;

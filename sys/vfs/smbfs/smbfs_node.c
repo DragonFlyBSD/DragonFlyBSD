@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.17 2005/06/06 15:35:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.18 2006/04/23 03:08:04 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -56,8 +56,8 @@
 #include "smbfs_subr.h"
 
 #define	SMBFS_NOHASH(smp, hval)	(&(smp)->sm_hash[(hval) & (smp)->sm_hashlen])
-#define	smbfs_hash_lock(smp, td)	lockmgr(&smp->sm_hashlock, LK_EXCLUSIVE, NULL, td)
-#define	smbfs_hash_unlock(smp, td)	lockmgr(&smp->sm_hashlock, LK_RELEASE, NULL, td)
+#define	smbfs_hash_lock(smp, td)	lockmgr(&smp->sm_hashlock, LK_EXCLUSIVE, td)
+#define	smbfs_hash_unlock(smp, td)	lockmgr(&smp->sm_hashlock, LK_RELEASE, td)
 
 
 MALLOC_DEFINE(M_SMBNODE, "SMBFS node", "SMBFS vnode private part");

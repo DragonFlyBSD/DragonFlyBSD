@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.33 2006/04/01 20:46:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.34 2006/04/23 03:08:04 dillon Exp $
  * 
  */
 
@@ -1709,9 +1709,9 @@ coda_lock(void *v)
     }
 
 #ifndef	DEBUG_LOCKS
-    return (lockmgr(&vp->v_lock, ap->a_flags, NULL, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags, td));
 #else
-    return (debuglockmgr(&vp->v_lock, ap->a_flags, NULL, td,
+    return (debuglockmgr(&vp->v_lock, ap->a_flags, td,
 			 "coda_lock", vp->filename, vp->line));
 #endif
 }
@@ -1733,7 +1733,7 @@ coda_unlock(void *v)
 		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
     }
 
-    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, NULL, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, td));
 }
 
 int

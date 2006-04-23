@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.13 2006/04/23 02:41:15 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.14 2006/04/23 03:08:04 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -150,8 +150,7 @@ struct lock {
  *
  * Non-persistent external flags.
  */
-#define LK_INTERLOCK	0x00010000 /* unlock passed simple lock after
-				      getting lk_spinlock */
+#define LK_UNUSED10000	0x00010000
 #define LK_RETRY	0x00020000 /* vn_lock: retry until locked */
 #define	LK_NOOBJ	0x00040000 /* vget: don't create object */
 #define	LK_THISLAYER	0x00080000 /* vn_lock: lock/unlock only current layer */
@@ -194,16 +193,14 @@ void	lockinit (struct lock *, char *wmesg, int timo, int flags);
 void	lockreinit (struct lock *, char *wmesg, int timo, int flags);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,
-			struct spinlock *, struct thread *p,
+			struct thread *p,
 			const char *,
 			const char *,
 			int);
-#define lockmgr(lockp, flags, slockp, td) \
-	debuglockmgr((lockp), (flags), (slockp), (td), \
-	    "lockmgr", __FILE__, __LINE__)
+#define lockmgr(lockp, flags, td) \
+	debuglockmgr((lockp), (flags), (td), "lockmgr", __FILE__, __LINE__)
 #else
-int	lockmgr (struct lock *, u_int flags,
-			struct spinlock *, struct thread *td);
+int	lockmgr (struct lock *, u_int flags, struct thread *td);
 #endif
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);

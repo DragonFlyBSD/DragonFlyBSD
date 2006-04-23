@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.h,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.h,v 1.3 2006/04/23 03:08:04 dillon Exp $
  */
 
 #define	hpfs_bmmarkfree(hpmp, bn,bl) hpfs_bmmark(hpmp, bn, bl, 1)
@@ -77,11 +77,6 @@ int		hpfs_breadstruct (struct hpfsmount *, lsn_t, u_int, u_int32_t,
 	hpfs_breadstruct(hpmp, lsn, DEV_BSIZE, AS_MAGIC, bpp)
 #define	hpfs_breaddirblk(hpmp, lsn, bpp) \
 	hpfs_breadstruct(hpmp, lsn, D_BSIZE, D_MAGIC, bpp)
-
-#if 0
-#define	hpfs_hplock(hp, p)	LOCKMGR(&(hp)->h_intlock, LK_EXCLUSIVE, (p))
-#define	hpfs_hpunlock(hp, p)	LOCKMGR(&(hp)->h_intlock, LK_RELEASE, (p))
-#endif
 
 int		hpfs_hpbmap (struct hpfsnode *, daddr_t, daddr_t *, int *);
 int		hpfs_truncatealblk (struct hpfsmount *, alblk_t *, lsn_t,int *);
