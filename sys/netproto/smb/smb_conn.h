@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.h,v 1.1.2.3 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.6 2005/12/06 04:03:56 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.7 2006/04/23 02:29:33 dillon Exp $
  */
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
@@ -355,16 +355,6 @@ int  smb_sm_done(void);
 int  smb_sm_lookup(struct smb_vcspec *vcspec,
 	struct smb_sharespec *shspec, struct smb_cred *scred,
 	struct smb_vc **vcpp);
-
-/*
- * Connection object
- */
-void smb_co_ref(struct smb_connobj *cp, struct thread *td);
-void smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred);
-int  smb_co_get(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct smb_cred *scred);
-void smb_co_put(struct smb_connobj *cp, struct smb_cred *scred);
-int  smb_co_lock(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct thread *td);
-void smb_co_unlock(struct smb_connobj *cp, struct smb_slock *sl, int flags, struct thread *td);
 
 /*
  * session level functions
