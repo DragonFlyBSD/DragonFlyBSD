@@ -25,9 +25,9 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.3 2004/12/22 07:12:24 hmp Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.4 2006/04/23 16:23:12 swildner Exp $
 .\"
-.Dd July 9, 2001
+.Dd April 23, 2006
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -47,7 +47,7 @@
 .Ft int
 .Fn lockcountnb "struct lock *lkp"
 .Ft int
-.Fn lockmgr "struct lock *lkp" "u_int flags" "lwkt_tokref_t interlkp" "struct thread *td"
+.Fn lockmgr "struct lock *lkp" "u_int flags" "struct thread *td"
 .Ft int
 .Fn lockstatus "struct lock *lkp" "struct thread *td"
 .Ft void
@@ -80,8 +80,6 @@ Do not sleep while acquiring the lock.
 Fail after a sleep.
 .It Dv LK_CANRECURSE
 Allow recursive exclusive locks.
-.It Dv LK_REENABLE
-Re-enable the lock after a drain.
 .It Dv LK_NOPAUSE
 Disable the spinlock while acquiring the lock.
 .It Dv LK_TIMELOCK
@@ -112,7 +110,7 @@ support for shared and exclusive locks, and recursion.
 is also able to upgrade and downgrade locks.
 .Pp
 Its arguments are:
-.Bl -tag -width ".Fa interlkp"
+.Bl -tag -width ".Fa flags"
 .It Fa lkp
 A pointer to the lock to manipulate.
 .It Fa flags
@@ -148,14 +146,6 @@ Attempts to upgrade an exclusive lock will cause a
 Release the lock.
 Releasing a lock that is not held can cause a
 .Xr panic 9 .
-.It Dv LK_DRAIN
-Wait for all activity on the lock to end, then mark it decommissioned.
-This is used before freeing a lock that is part of a piece of memory that is
-about to be freed.
-.Po
-As documented in
-.Pa sys/lock.h .
-.Pc
 .It Dv LK_SLEEPFAIL
 Fail if operation has slept.
 .It Dv LK_NOWAIT
@@ -164,20 +154,7 @@ This can be used to test the lock.
 .It Dv LK_CANRECURSE
 Allow recursion on an exclusive lock.
 For every lock there must be a release.
-.It Dv LK_INTERLOCK
-Unlock the interlock (which should be locked already).
 .El
-.It Fa interlkp
-An interlock mutex for controlling group access to the lock.
-If
-.Dv LK_INTERLOCK
-is specified,
-.Fn lockmgr
-assumes
-.Fa interlkp
-is currently owned and not recursed, and will return it unlocked.
-See
-.Xr mtx_assert 9 .
 .It Fa td
 A thread responsible for this call.
 .Dv NULL
@@ -254,18 +231,6 @@ and the system call is to be restarted.
 a non-zero timeout was given, and the timeout expired.
 .El
 .Sh LOCKS
-If
-.Dv LK_INTERLOCK
-is passed in the
-.Fa flags
-argument to
-.Fn lockmgr ,
-the
-.Fa interlkp
-must be held prior to calling
-.Fn lockmgr ,
-and will be returned unlocked.
-.Pp
 Upgrade attempts that fail result in the loss of the lock that
 is currently held.
 Also, it is invalid to upgrade an

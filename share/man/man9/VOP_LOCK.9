@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_LOCK.9,v 1.8.2.3 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VOP_LOCK.9,v 1.5 2004/06/01 11:36:53 hmp Exp $
+.\" $DragonFly: src/share/man/man9/VOP_LOCK.9,v 1.6 2006/04/23 16:23:12 swildner Exp $
 .\"
-.Dd July 24, 1996
+.Dd April 23, 2006
 .Os
 .Dt VOP_LOCK 9
 .Sh NAME
@@ -66,7 +66,6 @@ One of the lock request types:
 .It Dv LK_EXCLUPGRADE Ta "First shared-to-exclusive upgrade"
 .It Dv LK_DOWNGRADE Ta "Exclusive-to-shared downgrade"
 .It Dv LK_RELEASE Ta "Release any type of lock"
-.It Dv LK_DRAIN Ta "Wait for all lock activity to end"
 .El
 .Pp
 The lock type may be
@@ -76,16 +75,13 @@ with these lock flags:
 .It Dv LK_NOWAIT Ta "Do not sleep to wait for lock"
 .It Dv LK_SLEEPFAIL Ta "Sleep, then return failure"
 .It Dv LK_CANRECURSE Ta "Allow recursive exclusive lock"
-.It Dv LK_REENABLE Ta "Lock is to be reenabled after drain"
 .It Dv LK_NOPAUSE Ta "No spinloop"
 .El
 .Pp
 The lock type may be
 .Em or Ns 'ed
 with these control flags:
-.Bl -column LK_INTERLOCK -offset indent
-.It Dv LK_INTERLOCK Ta "Specify when the caller already has a simple lock \
-(VOP_LOCK will unlock the simple lock after getting the lock)"
+.Bl -column LK_RETRY -offset indent
 .It Dv LK_RETRY Ta "Retry until locked"
 .It Dv LK_NOOBJ Ta "Don't create object"
 .El
