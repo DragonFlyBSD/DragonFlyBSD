@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.80 2006/04/01 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.81 2006/04/23 00:54:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -520,6 +520,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	struct vnode *coveredvp;
 	int error;
 	int async_flag;
+	int lflags;
 
 	/*
 	 * Exclusive access for unmounting purposes
@@ -532,8 +533,8 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	 */
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
-	error = lockmgr(&mp->mnt_lock, LK_DRAIN | 
-	    ((flags & MNT_FORCE) ? 0 : LK_NOWAIT), NULL, td);
+	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_NOWAIT);
+	error = lockmgr(&mp->mnt_lock, lflags, NULL, td);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
@@ -559,7 +560,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 			vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
-		lockmgr(&mp->mnt_lock, LK_RELEASE | LK_REENABLE, NULL, td);
+		lockmgr(&mp->mnt_lock, LK_RELEASE, NULL, td);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
 		return (error);
