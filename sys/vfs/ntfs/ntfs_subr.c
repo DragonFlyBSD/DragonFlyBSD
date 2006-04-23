@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.21 2006/04/13 19:25:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.22 2006/04/23 02:43:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -436,7 +436,8 @@ ntfs_ntput(struct ntnode *ip)
 #endif
 
 	if (ip->i_usecount > 0) {
-		LOCKMGR(&ip->i_lock, LK_RELEASE|LK_INTERLOCK, &ip->i_interlock);
+		spin_unlock(&ip->i_interlock);
+		LOCKMGR(&ip->i_lock, LK_RELEASE, NULL);
 		return;
 	}
 
