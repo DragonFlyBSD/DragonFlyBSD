@@ -1,11 +1,11 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/release1_4.cgi,v 1.1 2006/04/05 15:11:19 justin Exp $
+# $DragonFly: site/data/community/Attic/release1_4.cgi,v 1.2 2006/04/23 21:33:57 dillon Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.4.x Download)
 <h1>Obtaining DragonFly 1.4.x for your system</h1>
 
-<h2>1.4.0 ISO Images for CDs</h2>
+<h2>1.4.4 ISO Images for CDs</h2>
 
 <p>
 DragonFly CDs are 'live', which means that the CD will boot your system 
@@ -35,6 +35,7 @@ See the 'Download Site' list below for a list of download locations.
 <p>
 <b>The MD5 for the release is:
 <br />MD5 (dfly-1.4.0_REL.iso.gz) = 5dc706f0dc57d691a8291f44cd19998c
+<br />MD5 (dfly-1.4.4_REL.iso.gz) = dcc9c9670144d6afa7982b528544ea71
 
 </b><br /> </p>
 
@@ -59,10 +60,10 @@ See the 'Download Site' list below for a list of download locations.
 <TH></TH>
 </TR>
 <TR>
-<TD>1.4.0</TD>
-<TD>07-Jan-2006</TD>
+<TD>1.4.4</TD>
+<TD>23-Apr-2006</TD>
 <TD>RELEASE CD</TD>
-<TD><A HREF="errata1_4.cgi">Errata</A></TD>
+<TD><A HREF="errata1_4_4.cgi">Errata</A></TD>
 </TR>
 </TABLE>
 
@@ -79,54 +80,75 @@ See the 'Download Site' list below for a list of download locations.
 <TH>Access methods</TH>
 </TR>
 
-<TR><TD>Machdep.com (USA)</TD>
-<TD>1.4.0_REL image</TD>
-<TD>
-    <A HREF="http://dl1.machdep.com/dfly-1.4.0_REL.iso.gz">HTTP (East Coast)</A>
-    <br>
-    <A HREF="http://dl2.machdep.com/dfly-1.4.0_REL.iso.gz">HTTP (West Coast)</A>
-</TD></TR>
-
 <TR><TD>Fortunaty.net</TD>
-<TD>1.4.0_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.4.4_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.4.0_REL image</TD>
+<TD>1.4.4_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
 <!--
 <TR><TD>BGP4.net (USA)</TD>
-<TD>1.4.0_REL image</TD>
+<TD>1.4.4_REL image</TD>
 <TD>
-    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
+    <A HREF="http://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://mirror.bgp4.net/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">FTP</A>
 </TD></TR>
 -->
 
 <TR><TD>TheShell.com</TD>
-<TD>1.4.0_REL image</TD>
+<TD>1.4.4_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.4.4_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/dfly-1.4.4_REL.iso.gz.torrent">TORRENT</A>
 </TD></TR>
 
-<TR><TD>FrostBit.org</TD>
-<TD>1.4.0_REL image</TD>
-<TD>
-    <A HREF="http://torrent.frostbit.org/dfly-1.4.0_REL.iso.gz.torrent">TORRENT</A>
-</TD></TR>
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>1.4.0_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.4.0_REL.iso.gz">FTP</A>
+<TD>1.4.4_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.4.4_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
+
+<h1>Release Notes for DragonFly 1.4.4</h1>
+
+<p>
+1.4.4 is the fourth bug-fix sub-release in the 1.4 release branch.
+</p>
+<p>
+<ul>
+    <li>Fixed a bug in pcb_ext, used when mapping I/O.
+    <li>Fixed a number of bugs in UFS's softupdates.
+    <li>Fixed a bug related vesa mode screen restore.
+    <li>Fixed a module ref counting bug.
+    <li>Reengineered the Random Number Entropy gathering algorithm.
+    <li>Sysmouse termio defaults are now correct by default.
+    <li>Various NFS races have been fixed.
+    <li>A bug in the NFS access cache was fixed, related to coarse
+	offset adjustments to the time of day.
+    <li>MSDOS filesystems can now be exported via NFS.
+    <li>A number of wchar related fixes have been made.
+    <li>A serious sendmail security fix was brought in.
+    <li>Numerous kernel memory disclosure holes have been closed.
+    <li>Various VFS races which could lead to filesystem corruption
+	have been fixed.
+    <li>Various bugs in NDIS have been fixed.
+    <li>A microseconds vs nanoseconds mixup in adjtime() has been fixed.
+    <li>A number of IPSEC related bugs have been fixed
+    <li>A bug in the fork/exit code that could result in a hung process
+	has been fixed.
+    <li>Numerous networking issues have been fixed.
+    <li>A linker bug related to TLS vs non-TLS storage has been fixed.
+    <li>Numerous installer errata has been fixed.
+</ul>
+</p>
 
 <h1>Release Notes for DragonFly 1.4.0</h1>
 
