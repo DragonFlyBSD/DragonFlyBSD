@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.15 2005/09/14 01:13:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.16 2006/04/23 00:54:57 dillon Exp $
  */
 
 /*
@@ -355,8 +355,6 @@ umap_getattr(struct vop_getattr_args *ap)
 static int
 umap_lock(struct vop_lock_args *ap)
 {
-	if ((ap->a_flags & LK_TYPE_MASK) == LK_DRAIN)
-		return (0);
 	return (null_bypass(&ap->a_head));
 }
 
