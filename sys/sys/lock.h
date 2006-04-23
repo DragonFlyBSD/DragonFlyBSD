@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.14 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.15 2006/04/23 06:31:47 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -124,14 +124,13 @@ struct lock {
  * External lock flags.
  *
  * The first three flags may be set in lock_init to set their mode permanently,
- * or passed in as arguments to the lock manager. The LK_REENABLE flag may be
- * set only at the release of a lock obtained by drain.
+ * or passed in as arguments to the lock manager.
  */
 #define LK_EXTFLG_MASK	0x07000070	/* mask of external flags */
 #define LK_NOWAIT	0x00000010	/* do not sleep to await lock */
 #define LK_SLEEPFAIL	0x00000020	/* sleep, then return failure */
 #define LK_CANRECURSE	0x00000040	/* allow recursive exclusive lock */
-#define LK_REENABLE	0x00000080	/* lock is be reenabled after drain */
+#define LK_UNUSED0080	0x00000080
 #define	LK_NOPAUSE	0x01000000	/* no spinloop */
 #define LK_TIMELOCK	0x02000000
 #define LK_PCATCH	0x04000000	/* timelocked with signal catching */
