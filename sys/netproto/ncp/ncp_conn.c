@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.9 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.10 2006/04/23 02:33:23 dillon Exp $
  *
  * Connection tables
  */
@@ -104,12 +104,16 @@ ncp_conn_access(struct ncp_conn *conn, struct ucred *cred, mode_t mode)
 	return error;
 }
 
+/*
+ * NOTE: The lockmgr() call is protected by nc_lwant
+ */
 int
 ncp_conn_lock_any(struct ncp_conn *conn, struct thread *td, struct ucred *cred)
 {
 	int error;
 
-	if (conn->nc_id == 0) return EACCES;
+	if (conn->nc_id == 0) 
+		return EACCES;
 	error = lockmgr(&conn->nc_lock, LK_EXCLUSIVE | LK_CANRECURSE, NULL, td);
 	if (error == ERESTART)
 		return EINTR;
@@ -128,6 +132,10 @@ ncp_conn_lock_any(struct ncp_conn *conn, struct thread *td, struct ucred *cred)
 	return 0;
 }
 
+/*
+ * NOTE: The lockmgr() call should be protected by nc_lwant, but it
+ * is unclear whether callers have coded this correctly.
+ */
 int
 ncp_conn_lock(struct ncp_conn *conn, struct thread *td,
 	struct ucred *cred, int mode)
@@ -218,45 +226,39 @@ ncp_conn_free(struct ncp_conn *ncp)
 	int error;
 	struct ncp_conn *ncp1;
 
+	if (ncp == NULL) {
+		NCPFATAL("conn==NULL !\n");
+		return(EIO);
+	}
 	if (ncp->nc_id == 0) {
 		printf("already!!!!\n");
 		return EACCES;
 	}
-	if (ncp==NULL) {
-		NCPFATAL("conn==NULL !\n");
-		return(EIO);
-	}
 	error = ncp_conn_assert_locked(ncp, __func__, ncp->td);
-	if (error) return error;
+	if (error)
+		return error;
 	if (ncp->ref_cnt) {
 		NCPFATAL("there are %d referenses left\n",ncp->ref_cnt);
 		return(EBUSY);
 	}
+
 	/*
-	 * Mark conn as died and wait for other process
+	 * Mark conn as died and wait for other process.  This also
+	 * interlocks against other ncp_conn_free() ops.
 	 */
 	ncp->nc_id = 0;
-	ncp_conn_unlock(ncp, ncp->td);
-	/*
-	 * if signal is raised - how I do react ?
-	 */
-	lockmgr(&ncp->nc_lock, LK_DRAIN, NULL, ncp->td);
 	while (ncp->nc_lwant) {
+		ncp_conn_unlock(ncp, ncp->td);
 		printf("lwant = %d\n", ncp->nc_lwant);
 		tsleep(&ncp->nc_lwant, 0, "ncpdr", 2*hz);
+		lockmgr(&ncp->nc_lock, LK_EXCLUSIVE, NULL, ncp->td);
 	}
 	ncp_conn_locklist(LK_EXCLUSIVE, ncp->td);
-	/*
-	 * It is possible, that other process destroy connection while we draining,
-	 * and free it. So, we must rescan list
-	 */
 	SLIST_FOREACH(ncp1, &conn_list, nc_next) {
-		if (ncp1 == ncp) break;
+		if (ncp1 == ncp)
+			break;
 	}
-	if (ncp1 == NULL) {
-		ncp_conn_unlocklist(ncp->td);
-		return 0;
-	}
+	KKASSERT(ncp1 == ncp);
 	SLIST_REMOVE(&conn_list, ncp, ncp_conn, nc_next);
 	ncp_conn_cnt--;
 	ncp_conn_unlocklist(ncp->td);
