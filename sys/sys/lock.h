@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.12 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.13 2006/04/23 02:41:15 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -106,9 +106,6 @@ struct lock {
  *	(recursive) exclusive locks, they will all be downgraded to shared
  *	locks.
  *   LK_RELEASE - release one instance of a lock.
- *   LK_DRAIN - wait for all activity on the lock to end, then mark it
- *	decommissioned. This feature is used before freeing a lock that
- *	is part of a piece of memory that is about to be freed.
  *   LK_EXCLOTHER - return for lockstatus().  Used when another process
  *	holds the lock exclusively.
  *
@@ -121,7 +118,7 @@ struct lock {
 #define LK_EXCLUPGRADE	0x00000004	/* first shared-to-exclusive upgrade */
 #define LK_DOWNGRADE	0x00000005	/* exclusive-to-shared downgrade */
 #define LK_RELEASE	0x00000006	/* release any type of lock */
-#define LK_DRAIN	0x00000007	/* wait for all lock activity to end */
+#define LK_UNUSED07	0x00000007
 #define LK_EXCLOTHER	0x00000008	/* other process holds lock */
 /*
  * External lock flags.
@@ -146,8 +143,8 @@ struct lock {
 #define LK_WANT_UPGRADE	0x00000100	/* waiting for share-to-excl upgrade */
 #define LK_WANT_EXCL	0x00000200	/* exclusive lock sought */
 #define LK_HAVE_EXCL	0x00000400	/* exclusive lock obtained */
-#define LK_WAITDRAIN	0x00000800	/* process waiting for lock to drain */
-#define LK_DRAINING	0x00004000	/* lock is being drained */
+#define LK_UNUSED0800	0x00000800
+#define LK_UNUSED4000	0x00004000
 /*
  * Control flags
  *

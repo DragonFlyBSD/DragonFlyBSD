@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.16 2006/03/02 19:07:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.17 2006/04/23 02:41:12 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -84,7 +84,6 @@ SYSCTL_INT(_debug, OID_AUTO, lockmgr_from_int, CTLFLAG_RW, &lockmgr_from_int, 0,
 	LK_SHARE_NONZERO | LK_WAIT_NONZERO)
 
 static int acquire(struct lock *lkp, int extflags, int wanted);
-static int acquiredrain(struct lock *lkp, int extflags) ;
 
 static LOCK_INLINE void
 sharelock(struct lock *lkp, int incr) {
@@ -429,85 +428,14 @@ debuglockmgr(struct lock *lkp, u_int flags, struct spinlock *interlkp,
 			wakeup((void *)lkp);
 		break;
 
-	case LK_DRAIN:
-		/*
-		 * Check that we do not already hold the lock, as it can 
-		 * never drain if we do. Unfortunately, we have no way to
-		 * check for holding a shared lock, but at least we can
-		 * check for an exclusive one.
-		 */
-		if (lkp->lk_lockholder == td) {
-			spin_unlock(&lkp->lk_spinlock);
-			panic("lockmgr: draining against myself");
-		}
-
-		error = acquiredrain(lkp, extflags);
-		if (error)
-			break;
-		lkp->lk_flags |= LK_DRAINING | LK_HAVE_EXCL;
-		lkp->lk_lockholder = td;
-		lkp->lk_exclusivecount = 1;
-#if defined(DEBUG_LOCKS)
-			lkp->lk_filename = file;
-			lkp->lk_lineno = line;
-			lkp->lk_lockername = name;
-#endif
-		COUNT(td, 1);
-		break;
-
 	default:
 		spin_unlock(&lkp->lk_spinlock);
 		panic("lockmgr: unknown locktype request %d",
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
 	}
-	if ((lkp->lk_flags & LK_WAITDRAIN) &&
-	    (lkp->lk_flags & (LK_HAVE_EXCL | LK_WANT_EXCL | LK_WANT_UPGRADE |
-		LK_SHARE_NONZERO | LK_WAIT_NONZERO)) == 0) {
-		lkp->lk_flags &= ~LK_WAITDRAIN;
-		wakeup((void *)&lkp->lk_flags);
-	}
 	spin_unlock(&lkp->lk_spinlock);
 	return (error);
-}
-
-/*
- * lock acquisition helper routine.  Called with the lock's spinlock held.
- */
-static int
-acquiredrain(struct lock *lkp, int extflags)
-{
-	int error;
-
-	if ((extflags & LK_NOWAIT) && (lkp->lk_flags & LK_ALL)) {
-		return EBUSY;
-	}
-
-	if ((lkp->lk_flags & LK_ALL) == 0)
-		return 0;
-
-	while (lkp->lk_flags & LK_ALL) {
-		lkp->lk_flags |= LK_WAITDRAIN;
-		/*
-		 * Use the _quick version so the critical section is left
-		 * intact, protecting the tsleep interlock.  See 
-		 * tsleep_interlock() for a description of what is
-		 * happening here.
-		 */
-		tsleep_interlock(&lkp->lk_flags);
-		spin_unlock_quick(&lkp->lk_spinlock);
-		error = tsleep(&lkp->lk_flags,
-			       ((extflags & LK_PCATCH) ? PCATCH : 0),
-			       lkp->lk_wmesg, 
-			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		spin_lock_quick(&lkp->lk_spinlock);
-		if (error)
-			return error;
-		if (extflags & LK_SLEEPFAIL) {
-			return ENOLCK;
-		}
-	}
-	return 0;
 }
 
 /*
@@ -534,7 +462,7 @@ lockinit(struct lock *lkp, char *wmesg, int timo, int flags)
 void
 lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
 {
-	lkp->lk_flags = (lkp->lk_flags & ~(LK_EXTFLG_MASK|LK_DRAINING)) |
+	lkp->lk_flags = (lkp->lk_flags & ~LK_EXTFLG_MASK) |
 			(flags & LK_EXTFLG_MASK);
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;

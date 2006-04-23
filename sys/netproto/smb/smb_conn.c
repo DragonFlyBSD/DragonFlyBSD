@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.12 2006/04/23 02:29:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.13 2006/04/23 02:41:14 dillon Exp $
  */
 
 /*
@@ -523,7 +523,6 @@ smb_vc_free(struct smb_connobj *cp)
 
 /*
  * Called when use count of VC dropped to zero.
- * VC should be locked on enter with LK_DRAIN.
  */
 static void
 smb_vc_gone(struct smb_connobj *cp, struct smb_cred *scred)
