@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.15 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.16 2006/04/24 19:15:47 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -105,13 +105,6 @@
 #define NFS_SRVMAXDATA(n) \
 		(((n)->nd_flag & ND_NFSV3) ? (((n)->nd_nam2) ? \
 		 NFS_MAXDGRAMDATA : NFS_MAXDATA) : NFS_V2MAXDATA)
-
-/*
- * XXX
- * The B_INVAFTERWRITE flag should be set to whatever is required by the
- * buffer cache code to say "Invalidate the block after it is written back".
- */
-#define	B_INVAFTERWRITE	B_NOCACHE
 
 /*
  * The IO_METASYNC flag should be implemented for local file systems.
