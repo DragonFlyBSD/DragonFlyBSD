@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.61 2006/04/01 22:20:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.62 2006/04/24 21:44:52 dillon Exp $
  */
 
 /*
@@ -838,6 +838,13 @@ void
 bdirty(struct buf *bp)
 {
 	KASSERT(bp->b_qindex == BQUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
+	if (bp->b_flags & B_NOCACHE) {
+		printf("bdirty: clearing B_NOCACHE on buf %p\n", bp);
+		bp->b_flags &= ~B_NOCACHE;
+	}
+	if (bp->b_flags & B_INVAL) {
+		printf("bdirty: warning, dirtying invalid buffer %p\n", bp);
+	}
 	bp->b_flags &= ~(B_READ|B_RELBUF);
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
@@ -961,6 +968,11 @@ brelse(struct buf * bp)
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	crit_enter();
+
+	if ((bp->b_flags & (B_NOCACHE|B_DIRTY)) == (B_NOCACHE|B_DIRTY)) {
+		printf("warning: buf %p marked dirty & B_NOCACHE, clearing B_NOCACHE\n", bp);
+		bp->b_flags &= ~B_NOCACHE;
+	}
 
 	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_ERROR;
@@ -1268,10 +1280,12 @@ brelse(struct buf * bp)
 	if (bp->b_bufsize || bp->b_kvasize)
 		bufspacewakeup();
 
-	/* unlock */
-	BUF_UNLOCK(bp);
+	/*
+	 * Clean up temporary flags and unlock the buffer.
+	 */
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF |
 			B_DIRECT | B_NOWDRAIN);
+	BUF_UNLOCK(bp);
 	crit_exit();
 }
 
@@ -2842,6 +2856,9 @@ biodone(struct bio *bio)
 		return;
 	}
 
+	/*
+	 * Warning: softupdates may re-dirty the buffer.
+	 */
 	if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_complete)
 		(*bioops.io_complete)(bp);
 
