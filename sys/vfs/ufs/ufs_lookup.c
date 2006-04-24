@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.21 2006/04/05 20:22:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.22 2006/04/24 21:45:47 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -716,6 +716,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		 */
 		if (dp->i_offset & (DIRBLKSIZ - 1))
 			panic("ufs_direnter: newblk");
+		vnode_pager_setsize(dvp, dp->i_offset + DIRBLKSIZ);
 		flags = B_CLRBUF;
 		if (!DOINGSOFTDEP(dvp) && !DOINGASYNC(dvp))
 			flags |= B_SYNC;
@@ -727,7 +728,6 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		}
 		dp->i_size = dp->i_offset + DIRBLKSIZ;
 		dp->i_flag |= IN_CHANGE | IN_UPDATE;
-		vnode_pager_setsize(dvp, (u_long)dp->i_size);
 		dirp->d_reclen = DIRBLKSIZ;
 		blkoff = dp->i_offset &
 		    (VFSTOUFS(dvp->v_mount)->um_mountp->mnt_stat.f_iosize - 1);
