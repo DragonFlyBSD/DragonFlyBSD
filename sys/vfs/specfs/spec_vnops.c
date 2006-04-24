@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.35 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.36 2006/04/24 22:01:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -425,7 +425,7 @@ spec_fsync(struct vop_fsync_args *ap)
 	/*
 	 * Flush all dirty buffers associated with a block device.
 	 */
-	error = vfsync(vp, ap->a_waitfor, 10000, NOOFFSET, NULL, NULL);
+	error = vfsync(vp, ap->a_waitfor, 10000, NULL, NULL);
 	return (error);
 }
 

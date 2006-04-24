@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.31 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.32 2006/04/24 22:01:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,7 @@ hpfs_fsync(struct vop_fsync_args *ap)
 #ifdef DIAGNOSTIC
 loop:
 #endif
-	vfsync(vp, ap->a_waitfor, 0, NOOFFSET, NULL, NULL);
+	vfsync(vp, ap->a_waitfor, 0, NULL, NULL);
 #ifdef DIAGNOSTIC
 	if (ap->a_waitfor == MNT_WAIT && !RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vprint("hpfs_fsync: dirty", vp);

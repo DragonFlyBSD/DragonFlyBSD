@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.76 2006/04/23 00:47:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.77 2006/04/24 22:01:18 dillon Exp $
  */
 
 /*
@@ -582,12 +582,11 @@ struct vfsync_info {
 	int lazycount;
 	int lazylimit;
 	int skippedbufs;
-	off_t loffset;
 	int (*checkdef)(struct buf *);
 };
 
 int
-vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
+vfsync(struct vnode *vp, int waitfor, int passes,
 	int (*checkdef)(struct buf *),
 	int (*waitoutput)(struct vnode *, struct thread *))
 {
@@ -596,7 +595,6 @@ vfsync(struct vnode *vp, int waitfor, int passes, off_t loffset,
 
 	bzero(&info, sizeof(info));
 	info.vp = vp;
-	info.loffset = loffset;
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
 
@@ -744,19 +742,6 @@ vfsync_bp(struct buf *bp, void *data)
 	if (bp->b_flags & B_NEEDCOMMIT) {
 		BUF_UNLOCK(bp);
 		return(0);
-	}
-
-	/*
-	 * (LEGACY FROM UFS, REMOVE WHEN POSSIBLE) - invalidate any dirty
-	 * buffers beyond the file EOF. 
-	 */
-	if (info->loffset != NOOFFSET && vp->v_type == VREG && 
-	    bp->b_loffset >= info->loffset) {
-		bremfree(bp);
-		bp->b_flags |= B_INVAL | B_NOCACHE;
-		crit_exit();
-		brelse(bp);
-		crit_enter();
 	}
 
 	if (info->synchronous) {
