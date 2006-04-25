@@ -31,17 +31,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.5 2005/04/04 17:42:51 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.6 2006/04/25 16:37:44 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__
 #define	__FSTAT_H__
-
-/*
- * a kvm_read that returns true if everything is read
- */
-#define KVM_READ(kaddr, paddr, len) \
-	(kvm_read(kd, (u_long)(kaddr), (char *)(paddr), (len)) == (ssize_t)(len))
 
 #define dprintf	if (vflg) fprintf
 
@@ -65,10 +59,11 @@ extern kvm_t *kd;
 extern int vflg;
 extern int Pid;
 
-udev_t dev2udev(dev_t dev);
+udev_t dev2udev(void *dev);
 
 /* Additional filesystem types */
 int isofs_filestat(struct vnode *vp, struct filestat *fsp);
 int msdosfs_filestat(struct vnode *vp, struct filestat *fsp);
+ssize_t kread(const void *kaddr, void *uaddr, size_t nbytes);
 
 #endif /* __FSTAT_H__ */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/cd9660.c,v 1.1.2.3 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.5 2004/08/17 20:34:38 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.6 2006/04/25 16:37:44 dillon Exp $
  */
 
 /*
@@ -63,7 +63,7 @@ isofs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct iso_node isonode;
 
-	if (!KVM_READ(VTOI(vp), &isonode, sizeof (isonode))) {
+	if (!kread(VTOI(vp), &isonode, sizeof (isonode))) {
 		dprintf(stderr, "can't read iso_node at %p for pid %d\n",
 		    (void *)VTOI(vp), Pid);
 		return 0;

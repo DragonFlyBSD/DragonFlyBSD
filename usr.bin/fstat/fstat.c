@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.14 2005/06/22 01:50:03 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.15 2006/04/25 16:37:44 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -312,7 +312,7 @@ dofiles(struct kinfo_proc *kp)
 
 	if (p->p_fd == NULL)
 		return;
-	if (!KVM_READ(p->p_fd, &filed, sizeof (filed))) {
+	if (!kread(p->p_fd, &filed, sizeof (filed))) {
 		dprintf(stderr, "can't read filedesc at %p for pid %d\n",
 		    (void *)p->p_fd, Pid);
 		return;
@@ -340,7 +340,7 @@ dofiles(struct kinfo_proc *kp)
 	 * open files
 	 */
 	ALLOC_OFILES(filed.fd_lastfile+1);
-	if (!KVM_READ(filed.fd_files, ofiles,
+	if (!kread(filed.fd_files, ofiles,
 	    (filed.fd_lastfile+1) * sizeof(struct fdnode))) {
 		dprintf(stderr,
 		    "can't read file structures at %p for pid %d\n",
@@ -350,7 +350,7 @@ dofiles(struct kinfo_proc *kp)
 	for (i = 0; i <= filed.fd_lastfile; i++) {
 		if (ofiles[i].fp == NULL)
 			continue;
-		if (!KVM_READ(ofiles[i].fp, &file, sizeof (struct file))) {
+		if (!kread(ofiles[i].fp, &file, sizeof (struct file))) {
 			dprintf(stderr, "can't read file %d at %p for pid %d\n",
 			    i, (void *)ofiles[i].fp, Pid);
 			continue;
@@ -396,7 +396,7 @@ dommap(struct kinfo_proc *kp)
 	vm_object_t objp;
 	int prot, fflags;
 
-	if (!KVM_READ(p->p_vmspace, &vmspace, sizeof(vmspace))) {
+	if (!kread(p->p_vmspace, &vmspace, sizeof(vmspace))) {
 		dprintf(stderr, "can't read vmspace at %p for pid %d\n",
 		    (void *)p->p_vmspace, Pid);
 		return;
@@ -406,7 +406,7 @@ dommap(struct kinfo_proc *kp)
 
 	for (entryp = map->header.next; entryp != &p->p_vmspace->vm_map.header;
 	    entryp = entry.next) {
-		if (!KVM_READ(entryp, &entry, sizeof(entry))) {
+		if (!kread(entryp, &entry, sizeof(entry))) {
 			dprintf(stderr,
 			    "can't read vm_map_entry at %p for pid %d\n",
 			    (void *)entryp, Pid);
@@ -420,7 +420,7 @@ dommap(struct kinfo_proc *kp)
 			continue;
 
 		for (; objp; objp = object.backing_object) {
-			if (!KVM_READ(objp, &object, sizeof(object))) {
+			if (!kread(objp, &object, sizeof(object))) {
 				dprintf(stderr,
 				    "can't read vm_object at %p for pid %d\n",
 				    (void *)objp, Pid);
@@ -452,7 +452,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 	const char *badtype = NULL, *filename;
 
 	filename = badtype = NULL;
-	if (!KVM_READ(vp, &vn, sizeof (struct vnode))) {
+	if (!kread(vp, &vn, sizeof (struct vnode))) {
 		dprintf(stderr, "can't read vnode at %p for pid %d\n",
 		    (void *)vp, Pid);
 		return;
@@ -555,7 +555,7 @@ ufs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct inode inode;
 
-	if (!KVM_READ(VTOI(vp), &inode, sizeof (inode))) {
+	if (!kread(VTOI(vp), &inode, sizeof (inode))) {
 		dprintf(stderr, "can't read inode at %p for pid %d\n",
 		    (void *)VTOI(vp), Pid);
 		return 0;
@@ -580,7 +580,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	struct nfsnode nfsnode;
 	mode_t mode;
 
-	if (!KVM_READ(VTONFS(vp), &nfsnode, sizeof (nfsnode))) {
+	if (!kread(VTONFS(vp), &nfsnode, sizeof (nfsnode))) {
 		dprintf(stderr, "can't read nfsnode at %p for pid %d\n",
 		    (void *)VTONFS(vp), Pid);
 		return 0;
@@ -650,7 +650,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 		i = sizeof(path) - 1;
 		path[i] = 0;
 		while (ncp) {
-			if (!KVM_READ(ncp, &ncp_copy, sizeof(ncp_copy))) {
+			if (!kread(ncp, &ncp_copy, sizeof(ncp_copy))) {
 				warnx("can't read ncp at %p", ncp);
 				return (NULL);
 			}
@@ -661,7 +661,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 			if (i <= ncp_copy.nc_nlen)
 				break;
 			i -= ncp_copy.nc_nlen;
-			if (!KVM_READ(ncp_copy.nc_name, path + i, ncp_copy.nc_nlen)) {
+			if (!kread(ncp_copy.nc_name, path + i, ncp_copy.nc_nlen)) {
 				warnx("can't read ncp %p path component at %p", ncp, ncp_copy.nc_name);
 				return (NULL);
 			}
@@ -681,7 +681,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 		if (m == mt->m)
 			return (mt->mntonname);
 	}
-	if (!KVM_READ(m, &mount_l, sizeof(struct mount))) {
+	if (!kread(m, &mount_l, sizeof(struct mount))) {
 		warnx("can't read mount table at %p", (void *)m);
 		return (NULL);
 	}
@@ -703,7 +703,7 @@ pipetrans(struct pipe *pi, int i, int flag)
 	PREFIX(i);
 
 	/* fill in socket */
-	if (!KVM_READ(pi, &pip, sizeof(struct pipe))) {
+	if (!kread(pi, &pip, sizeof(struct pipe))) {
 		dprintf(stderr, "can't read pipe at %p\n", (void *)pi);
 		goto bad;
 	}
@@ -746,20 +746,20 @@ socktrans(struct socket *sock, int i)
 	PREFIX(i);
 
 	/* fill in socket */
-	if (!KVM_READ(sock, &so, sizeof(struct socket))) {
+	if (!kread(sock, &so, sizeof(struct socket))) {
 		dprintf(stderr, "can't read sock at %p\n", (void *)sock);
 		goto bad;
 	}
 
 	/* fill in protosw entry */
-	if (!KVM_READ(so.so_proto, &proto, sizeof(struct protosw))) {
+	if (!kread(so.so_proto, &proto, sizeof(struct protosw))) {
 		dprintf(stderr, "can't read protosw at %p",
 		    (void *)so.so_proto);
 		goto bad;
 	}
 
 	/* fill in domain */
-	if (!KVM_READ(proto.pr_domain, &dom, sizeof(struct domain))) {
+	if (!kread(proto.pr_domain, &dom, sizeof(struct domain))) {
 		dprintf(stderr, "can't read domain at %p\n",
 		    (const void *)proto.pr_domain);
 		goto bad;
@@ -851,14 +851,14 @@ bad:
  * in order to work out the associated udev_t
  */
 udev_t
-dev2udev(dev_t dev)
+dev2udev(void *dev)
 {
 	struct specinfo si;
 
-	if (KVM_READ(dev, &si, sizeof si)) {
+	if (kread(dev, &si, sizeof si)) {
 		return si.si_udev;
 	} else {
-		dprintf(stderr, "can't convert dev_t %x to a udev_t\n", dev);
+		dprintf(stderr, "can't convert dev_t %p to a udev_t\n", dev);
 		return -1;
 	}
 }
@@ -921,3 +921,16 @@ make_printable(char *buf, int len)
 	--len;
     }
 }
+
+ssize_t
+kread(const void *kaddr, void *uaddr, size_t nbytes)
+{
+    if (nbytes > 0x10000000)
+	return(0);
+
+    if (kvm_read(kd, (u_long)kaddr, (char *)uaddr, nbytes) == (ssize_t)nbytes)
+	return(1);
+    else
+	return(0);
+}
+

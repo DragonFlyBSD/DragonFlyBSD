@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.6 2006/03/25 05:47:14 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.7 2006/04/25 16:37:44 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -81,7 +81,7 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 	u_long dirsperblk;
 	int fileid;
 
-	if (!KVM_READ(VTODE(vp), &denode, sizeof (denode))) {
+	if (!kread(VTODE(vp), &denode, sizeof (denode))) {
 		dprintf(stderr, "can't read denode at %p for pid %d\n",
 		    (void *)VTODE(vp), Pid);
 		return 0;
@@ -101,7 +101,7 @@ msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 		mnt->next = mounts;
 		mounts = mnt;
 		mnt->kptr = denode.de_pmp;
-		if (!KVM_READ(denode.de_pmp, &mnt->data, sizeof mnt->data)) {
+		if (!kread(denode.de_pmp, &mnt->data, sizeof mnt->data)) {
 			dprintf(stderr,
 			    "can't read mount info at %p for pid %d\n",
 			    (void *)denode.de_pmp, Pid);
