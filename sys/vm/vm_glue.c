@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.39 2006/03/15 07:58:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.40 2006/04/25 16:22:32 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -131,6 +131,12 @@ kernacc(c_caddr_t addr, int len, int rw)
 
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
 	    ("illegal ``rw'' argument to kernacc (%x)\n", rw));
+
+	if ((vm_offset_t)addr + len > kernel_map->max_offset ||
+	    (vm_offset_t)addr + len < (vm_offset_t)addr) {
+		return (FALSE);
+	}
+
 	prot = rw;
 	saddr = trunc_page((vm_offset_t)addr);
 	eaddr = round_page((vm_offset_t)addr + len);
