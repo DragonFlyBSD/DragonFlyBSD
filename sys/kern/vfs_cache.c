@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.62 2006/03/30 02:39:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.63 2006/04/25 19:36:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,6 +286,7 @@ static struct namecache *
 cache_alloc(int nlen)
 {
 	struct namecache *ncp;
+	static int fsmid_roller;
 
 	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
 	if (nlen)
@@ -294,7 +295,15 @@ cache_alloc(int nlen)
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
-	ncp->nc_fsmid = 1;
+
+	/*
+	 * Construct a fake FSMID based on the time of day and a 32 bit
+	 * roller for uniqueness.  This is used to generate a useful
+	 * FSMID for filesystems which do not support it.
+	 */
+	ncp->nc_fsmid = ((int64_t)time_second << 32) |
+			(fsmid_roller & 0x7FFFFFFF);
+	++fsmid_roller;
 	TAILQ_INIT(&ncp->nc_list);
 	cache_lock(ncp);
 	return(ncp);
