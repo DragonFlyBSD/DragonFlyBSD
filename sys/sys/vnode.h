@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.48 2006/04/24 22:01:20 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.49 2006/04/25 22:11:29 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -158,7 +158,7 @@ RB_HEAD(buf_rb_tree, buf);
 RB_HEAD(buf_rb_hash, buf);
 
 struct vnode {
-	u_long	v_flag;				/* vnode flags (see below) */
+	int	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
 	int	v_writecount;
 	int	v_holdcnt;			/* page & buffer references */
@@ -232,7 +232,7 @@ struct vnode {
 #define	VISTTY		0x00008	/* vnode represents a tty */
 #define VCTTYISOPEN	0x00010	/* controlling terminal tty is open */
 #define VCKPT		0x00020	/* checkpoint-restored vnode */
-/* open for business    0x00040 */
+#define VFSMID		0x00040	/* request FSMID update */
 /* open for business    0x00080 */
 /* open for business    0x00100 */
 /* open for business    0x00200 */
@@ -591,6 +591,7 @@ void	insmntque(struct vnode *vp, struct mount *mp);
 
 void	vclean (struct vnode *vp, int flags, struct thread *td);
 void	vgone (struct vnode *vp);
+void	vupdatefsmid (struct vnode *vp);
 int	vinvalbuf (struct vnode *vp, int save, 
 	    struct thread *td, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, struct thread *td,

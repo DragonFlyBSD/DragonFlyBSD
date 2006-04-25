@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.20 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.21 2006/04/25 22:11:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -793,7 +793,7 @@ vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_reclaim(struct vop_ops *ops, struct vnode *vp, int retflags, struct thread *td)
+vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 {
 	struct vop_reclaim_args ap;
 	int error;
@@ -802,7 +802,6 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp, int retflags, struct thread *
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
-	ap.a_retflags = retflags;	/* return to filesystem inode */
 
 	DO_OPS(ops, error, &ap, vop_reclaim);
 	return(error);

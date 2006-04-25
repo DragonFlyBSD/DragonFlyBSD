@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.33 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.34 2006/04/25 22:11:31 dillon Exp $
  */
 
 /*
@@ -937,7 +937,6 @@ nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
 	int t1, error = 0, mrest_len, auth_len, auth_type;
 	int trylater_delay = 15, trylater_cnt = 0, failed_auth = 0;
 	int verf_len, verf_type;
-	int retdummy;
 	u_int32_t xid;
 	char *auth_str, *verf_str;
 	NFSKERBKEY_T key;		/* save session key */
@@ -1176,8 +1175,7 @@ tryagain:
 			 * lookup cache, just in case.
 			 */
 			if (error == ESTALE) {
-				retdummy = 0;
-				cache_inval_vp(vp, CINV_CHILDREN, &retdummy);
+				cache_inval_vp(vp, CINV_CHILDREN);
 			}
 			if (nmp->nm_flag & NFSMNT_NFSV3) {
 				*mrp = mrep;

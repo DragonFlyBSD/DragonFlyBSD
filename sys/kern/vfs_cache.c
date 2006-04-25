@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.63 2006/04/25 19:36:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.64 2006/04/25 22:11:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,7 +286,6 @@ static struct namecache *
 cache_alloc(int nlen)
 {
 	struct namecache *ncp;
-	static int fsmid_roller;
 
 	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
 	if (nlen)
@@ -301,9 +300,7 @@ cache_alloc(int nlen)
 	 * roller for uniqueness.  This is used to generate a useful
 	 * FSMID for filesystems which do not support it.
 	 */
-	ncp->nc_fsmid = ((int64_t)time_second << 32) |
-			(fsmid_roller & 0x7FFFFFFF);
-	++fsmid_roller;
+	ncp->nc_fsmid = cache_getnewfsmid();
 	TAILQ_INIT(&ncp->nc_list);
 	cache_lock(ncp);
 	return(ncp);
@@ -576,8 +573,6 @@ cache_setunresolved(struct namecache *ncp)
 
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		ncp->nc_flag |= NCF_UNRESOLVED;
-		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK|
-				  NCF_FSMID);
 		ncp->nc_timeout = 0;
 		ncp->nc_error = ENOTCONN;
 		++numunres;
@@ -592,6 +587,8 @@ cache_setunresolved(struct namecache *ncp)
 			 * ncp is held by that ncp.  These conditions must be
 			 * undone when the vp is cleared out from the ncp.
 			 */
+			if (ncp->nc_flag & NCF_FSMID)
+				vupdatefsmid(vp);
 			if (!TAILQ_EMPTY(&ncp->nc_list))
 				vdrop(vp);
 			if (ncp->nc_exlocks)
@@ -600,6 +597,8 @@ cache_setunresolved(struct namecache *ncp)
 			TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
 			--numneg;
 		}
+		ncp->nc_flag &= ~(NCF_WHITEOUT|NCF_ISDIR|NCF_ISSYMLINK|
+				  NCF_FSMID);
 	}
 }
 
@@ -700,7 +699,7 @@ cache_inval(struct namecache *ncp, int flags)
  * any time if not locked, even if held.
  */
 int
-cache_inval_vp(struct vnode *vp, int flags, int *retflags)
+cache_inval_vp(struct vnode *vp, int flags)
 {
 	struct namecache *ncp;
 	struct namecache *next;
@@ -722,7 +721,6 @@ restart:
 				cache_drop(next);
 			goto restart;
 		}
-		*retflags |= ncp->nc_flag & NCF_FSMID;
 		cache_inval(ncp, flags);
 		cache_put(ncp);		/* also releases reference */
 		ncp = next;
@@ -1906,17 +1904,13 @@ vfs_cache_setroot(struct vnode *nvp, struct namecache *ncp)
  * XXX: v_id wraparound.  The period of resistance can be extended
  * XXX: by incrementing each vnodes v_id individually instead of
  * XXX: using the global v_id.
- *
- * Does not support NCP_FSMID accumulation on invalidation (retflags is
- * not used).
  */
 void
 cache_purge(struct vnode *vp)
 {
 	static u_long nextid;
-	int retflags = 0;
 
-	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN, &retflags);
+	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
 
 	/*
 	 * Calculate a new unique id for ".." handling
@@ -1960,6 +1954,22 @@ cache_purgevfs(struct mount *mp)
 		}
 	}
 }
+
+/*
+ * Create a new (theoretically) unique fsmid
+ */
+int64_t
+cache_getnewfsmid(void)
+{
+	static int fsmid_roller;
+	int64_t fsmid;
+
+	++fsmid_roller;
+	fsmid = ((int64_t)time_second << 32) |
+			(fsmid_roller & 0x7FFFFFFF);
+	return (fsmid);
+}
+
 
 static int disablecwd;
 SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0, "");

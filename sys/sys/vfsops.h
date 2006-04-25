@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.18 2006/03/29 18:44:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.19 2006/04/25 22:11:29 dillon Exp $
  */
 
 /*
@@ -299,7 +299,6 @@ struct vop_reclaim_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	struct thread *a_td;
-	int a_retflags;
 };
 
 struct vop_lock_args {
@@ -781,8 +780,7 @@ int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
 int vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_reclaim(struct vop_ops *ops, struct vnode *vp, int retflags,
-		struct thread *td);
+int vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td);
 int vop_lock(struct vop_ops *ops, struct vnode *vp,
 		int flags, struct thread *td);
 int vop_unlock(struct vop_ops *ops, struct vnode *vp,
@@ -1021,8 +1019,8 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_readlink(*(vp)->v_ops, vp, uio, cred)
 #define VOP_INACTIVE(vp, td)				\
 	vop_inactive(*(vp)->v_ops, vp, td)
-#define VOP_RECLAIM(vp, retflags, td)			\
-	vop_reclaim(*(vp)->v_ops, vp, retflags, td)
+#define VOP_RECLAIM(vp, td)				\
+	vop_reclaim(*(vp)->v_ops, vp, td)
 #define VOP_LOCK(vp, flags, td)				\
 	vop_lock(*(vp)->v_ops, vp, flags, td)
 #define VOP_UNLOCK(vp, flags, td)			\

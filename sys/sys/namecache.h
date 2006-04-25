@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.23 2006/03/30 02:39:48 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.24 2006/04/25 22:11:29 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -156,7 +156,7 @@ void	cache_setunresolved(struct namecache *ncp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
 struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
 int	cache_inval(struct namecache *ncp, int flags);
-int	cache_inval_vp(struct vnode *vp, int flags, int *retflags);
+int	cache_inval_vp(struct vnode *vp, int flags);
 void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
 
 int	cache_resolve(struct namecache *ncp, struct ucred *cred);
@@ -177,6 +177,7 @@ int	cache_fullpath(struct proc *, struct namecache *, char **, char **);
 void	cache_update_fsmid(struct namecache *);
 void	cache_update_fsmid_vp(struct vnode *);
 int	cache_check_fsmid_vp(struct vnode *, int64_t *);
+int64_t cache_getnewfsmid(void);
 
 #endif
 

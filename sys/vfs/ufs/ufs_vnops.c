@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.43 2006/04/24 21:45:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.44 2006/04/25 22:11:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -2172,6 +2172,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	}
 #endif
 #endif	/* !SUIDDIR */
+	ip->i_fsmid = cache_getnewfsmid();
 	ip->i_flag |= IN_ACCESS | IN_CHANGE | IN_UPDATE;
 	ip->i_mode = mode;
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.16 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.17 2006/04/25 22:11:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -127,7 +127,8 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	 * Lazy updates.
 	 */
 	if (ip) {
-		if (ap->a_retflags & NCF_FSMID) {
+		if (vp->v_flag & VFSMID) {
+			vp->v_flag &= ~VFSMID;
 			++ip->i_fsmid;
 			ip->i_flag |= IN_LAZYMOD;
 		}
