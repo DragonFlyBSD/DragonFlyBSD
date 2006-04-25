@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.5 2004/08/25 01:38:50 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.6 2006/04/25 21:30:45 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -40,6 +40,48 @@ mprintf(const char *ctl, ...)
     va_end(va);
     assert(ptr != NULL);
     return(ptr);
+}
+
+char *
+fextract(FILE *fi, int n, int *pc, int skip)
+{
+    int i;
+    int c;
+    int imax;
+    char *s;
+
+    i = 0;
+    c = *pc;
+    imax = (n < 0) ? 64 : n + 1;
+
+    s = malloc(imax);
+    if (s == NULL) {
+	fprintf(stderr, "out of memory\n");
+	exit(EXIT_FAILURE);
+    }
+
+    while (c != EOF) {
+	if (n == 0 || (n < 0 && (c == ' ' || c == '\n')))
+	    break;
+
+	s[i++] = c;
+	if (i == imax) {
+	    imax += 64;
+	    s = realloc(s, imax);
+    	    if (s == NULL) {
+                fprintf(stderr, "out of memory\n");
+  	        exit(EXIT_FAILURE);
+ 	    }
+	}
+	if (n > 0)
+	    --n;
+	c = getc(fi);
+    }
+    if (c == skip && skip != EOF)
+	c = getc(fi);
+    *pc = c;
+    s[i] = 0;
+    return(s);
 }
 
 void

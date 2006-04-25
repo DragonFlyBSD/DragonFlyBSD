@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.8 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.9 2006/04/25 21:30:45 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -23,6 +23,11 @@
 .Op Fl m
 .Oo
 .Fl M
+.Ar file
+.Oc
+.Op Fl k
+.Oo
+.Fl K
 .Ar file
 .Oc
 .Oo
@@ -83,7 +88,7 @@ Quiet operation
 .It Fl o
 Do not remove any files, just overwrite/add.
 .It Fl m
-Generate and maintain an MD5 checkfile in each directory on the source
+Generate and maintain a MD5 checkfile in each directory on the source
 and do an MD5 check on each file of the destination when the destination
 appears to be the same as the source.  If the check fails,
 .Nm
@@ -93,10 +98,34 @@ even if modifications are made to a source file.  If you do not specify a
 destination directory the
 .Nm
 command forcefully regenerates the MD5 checkfile for every file in the source.
-.It Fl M
+.It Fl M Ar file
 Works the same as
 .Fl m
 but allows you to specify the name of the MD5 checkfile.
+.It Fl k
+Generate and maintain a FSMID checkfile called .FSMID.CHECK in each
+directory on the target.
+.Nm
+will check the FSMID for each source file or directory against the checkfile
+on the target and will not copy the file or recurse through the directory
+when a match occurs.  Any source file or directory with the same name as the
+checkfile will be ignored.  The FSMID will be re-checked after the copy
+has been completed and
+.Nm
+will loop on that directory or file until it is sure it has an exact copy. 
+.Pp
+Warning: FSMID is not always supported by a filesystem and may not be 
+synchronized if a crash occurs.  DragonFly will simulate an FSMID when
+it is otherwise not supported by the filesystem, and users should be aware
+that simulated FSMIDs may change state in such cases even if the underlying
+hierarchy does not due to cache flushes. 
+Additionally, the FSMID may not reflect changes made to remote filesystems
+by other hosts.  For example, using these options with NFS mounted sources
+will not work well.
+.It Fl K Ar file
+Works the same as 
+.Fl k
+but allows you to specify the name of the FSMID checkfile.
 .It Fl x
 Causes
 .Nm
@@ -105,7 +134,7 @@ determine which files to ignore.  When this option is used, the exclusion
 filename itself is automatically excluded from the copy.  If this option is
 not used then the filename ".cpignore" is not considered special and will
 be copied along with everything else.
-.It Fl X
+.It Fl X Ar file
 Works the same as
 .Fl x
 but allows you to specify the name of the exclusion file.  This file is

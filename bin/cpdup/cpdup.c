@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.9 2005/10/15 19:09:17 swildner Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.10 2006/04/25 21:30:45 dillon Exp $
  */
 
 /*-
@@ -57,8 +57,6 @@
 #define HSIZE	16384
 #define HMASK	(HSIZE-1)
 #define HASHF 16
-
-const char *MD5CacheFile;
 
 typedef struct Node {
     struct Node *no_Next;
@@ -83,14 +81,6 @@ struct hlink {
 
 struct hlink *hltable[HASHF];
 
-typedef struct MD5Node {
-    struct MD5Node *md_Next;
-    char *md_Name;
-    char *md_Code;
-    int md_Accessed;
-} MD5Node;
-
-
 void RemoveRecur(const char *dpath, dev_t devNo);
 void InitList(List *list);
 void ResetList(List *list);
@@ -103,35 +93,28 @@ int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 int WildCmp(const char *s1, const char *s2);
-static MD5Node *md5_lookup(const char *sfile);
-static int md5_check(const char *spath, const char *dpath);
-static void md5_flush(void);
-static void md5_cache(const char *spath, int sdirlen);
-static char *fextract(FILE *fi, int n, int *pc, int skip);
 int DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo);
-char *doMD5File(const char *filename, char *buf);
 
 int AskConfirmation = 1;
 int SafetyOpt = 1;
-int ForceOpt = 0;
-int VerboseOpt = 0;
-int QuietOpt = 0;
-int NoRemoveOpt = 0;
-int UseMD5Opt = 0;
-int SummaryOpt = 0;
+int ForceOpt;
+int VerboseOpt;
+int QuietOpt;
+int NoRemoveOpt;
+int UseMD5Opt;
+int UseFSMIDOpt;
+int SummaryOpt;
+int EnableDirectoryRetries;
 const char *UseCpFile;
+const char *MD5CacheFile;
+const char *FSMIDCacheFile;
 
-int64_t CountSourceBytes = 0;
-int64_t CountSourceItems = 0;
-int64_t CountCopiedItems = 0;
-int64_t CountReadBytes = 0;
-int64_t CountWriteBytes = 0;
-int64_t CountRemovedItems = 0;
-
-char *MD5SCache;		/* cache source directory name */
-MD5Node *MD5Base;
-int MD5SCacheDirLen;
-int MD5SCacheDirty;
+int64_t CountSourceBytes;
+int64_t CountSourceItems;
+int64_t CountCopiedItems;
+int64_t CountReadBytes;
+int64_t CountWriteBytes;
+int64_t CountRemovedItems;
 
 int
 main(int ac, char **av)
@@ -196,6 +179,14 @@ main(int ac, char **av)
 	case 'q':
 	    QuietOpt = v;
 	    break;
+	case 'k':
+	    UseFSMIDOpt = v;
+	    FSMIDCacheFile = ".FSMID.CHECK";
+	    break;
+	case 'K':
+	    UseFSMIDOpt = v;
+	    FSMIDCacheFile = av[++i];
+	    break;
 	case 'M':
 	    UseMD5Opt = v;
 	    MD5CacheFile = av[++i];
@@ -229,6 +220,7 @@ main(int ac, char **av)
 	i = DoCopy(src, NULL, (dev_t)-1, (dev_t)-1);
     }
     md5_flush();
+    fsmid_flush();
 
     if (SummaryOpt && i == 0) {
 	long duration;
@@ -325,14 +317,13 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 {
     struct stat st1;
     struct stat st2;
-    int r, mres, st2Valid;
+    int r, mres, fres, st2Valid;
     struct hlink *hln;
     List list;
     u_int64_t size;
 
     InitList(&list);
-
-    r = mres = st2Valid = 0;
+    r = mres = fres = st2Valid = 0;
     size = 0;
     hln = NULL;
 
@@ -415,7 +406,8 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 
     /*
      * Do we need to copy the file/dir/link/whatever?  Early termination
-     * if we do not.  Always traverse directories.  Always redo links.
+     * if we do not.  Always redo links.  Directories are always traversed
+     * except when the FSMID options are used.
      *
      * NOTE: st2Valid is true only if dpath != NULL *and* dpath stats good.
      */
@@ -426,7 +418,23 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	st1.st_flags == st2.st_flags
     ) {
 	if (S_ISLNK(st1.st_mode) || S_ISDIR(st1.st_mode)) {
-	    ;
+	    /*
+	     * If FSMID tracking is turned on we can avoid recursing through
+	     * an entire directory subtree if the FSMID matches.
+	     */
+#ifdef _ST_FSMID_PRESENT_
+	    if (ForceOpt == 0 &&
+		(UseFSMIDOpt && (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
+	    ) {
+		if (VerboseOpt >= 3) {
+		    if (UseFSMIDOpt)
+			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
+		    else
+			logstd("%-32s nochange\n", (dpath ? dpath : spath));
+		}
+		return(0);
+	    }
+#endif
 	} else {
 	    if (ForceOpt == 0 &&
 		st1.st_size == st2.st_size &&
@@ -434,12 +442,17 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 		st1.st_gid == st2.st_gid &&
 		st1.st_mtime == st2.st_mtime
 		&& (UseMD5Opt == 0 || (mres = md5_check(spath, dpath)) == 0)
+#ifdef _ST_FSMID_PRESENT_
+		&& (UseFSMIDOpt == 0 || (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
+#endif
 	    ) {
                 if (hln)
                     hln->dino = st2.st_ino;
 		if (VerboseOpt >= 3) {
 		    if (UseMD5Opt)
 			logstd("%-32s md5-nochange\n", (dpath ? dpath : spath));
+		    else if (UseFSMIDOpt)
+			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
 		    else
 			logstd("%-32s nochange\n", (dpath ? dpath : spath));
 		}
@@ -467,9 +480,14 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	    RemoveRecur(dpath, ddevNo);
     }
 
+    /*
+     * The various comparisons failed, copy it.
+     */
     if (S_ISDIR(st1.st_mode)) {
 	DIR *dir;
 
+	if (fres < 0)
+	    logerr("%-32s/ fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 	if ((dir = opendir(spath)) != NULL) {
 	    struct dirent *den;
 	    int noLoop = 0;
@@ -550,9 +568,14 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	    /*
 	     * Automatically exclude MD5CacheFile that we create on the
 	     * source from the copy to the destination.
+	     *
+	     * Automatically exclude a FSMIDCacheFile on the source that
+	     * would otherwise overwrite the one we maintain on the target.
 	     */
 	    if (UseMD5Opt)
 		AddList(&list, MD5CacheFile, 1);
+	    if (UseFSMIDOpt)
+		AddList(&list, FSMIDCacheFile, 1);
 
 	    while (noLoop == 0 && (den = readdir(dir)) != NULL) {
 		/*
@@ -661,6 +684,8 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	 */
 	if (mres < 0)
 	    logerr("%-32s md5-CHECK-FAILED\n", (dpath) ? dpath : spath);
+	else if (fres < 0)
+	    logerr("%-32s fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 
 	if ((fd1 = open(spath, O_RDONLY)) >= 0) {
 	    if ((fd2 = open(path, O_WRONLY|O_CREAT|O_EXCL, 0600)) < 0) {
@@ -836,7 +861,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	CountSourceItems++;
     }
     ResetList(&list);
-    return(r);
+    return (r);
 }
 
 /*
@@ -1072,235 +1097,6 @@ YesNo(const char *path)
     return ((first == 'y' || first == 'Y'));
 }
 
-static void 
-md5_flush(void)
-{
-    if (MD5SCacheDirty && MD5SCache) {
-	FILE *fo;
-
-	if ((fo = fopen(MD5SCache, "w")) != NULL) {
-	    MD5Node *node;
-
-	    for (node = MD5Base; node; node = node->md_Next) {
-		if (node->md_Accessed && node->md_Code) {
-		    fprintf(fo, "%s %d %s\n", 
-			node->md_Code, 
-			strlen(node->md_Name),
-			node->md_Name
-		    );
-		}
-	    }
-	    fclose(fo);
-	}
-    }
-
-    MD5SCacheDirty = 0;
-
-    if (MD5SCache) {
-	MD5Node *node;
-
-	while ((node = MD5Base) != NULL) {
-	    MD5Base = node->md_Next;
-
-	    if (node->md_Code)
-		free(node->md_Code);
-	    if (node->md_Name)
-		free(node->md_Name);
-	    free(node);
-	}
-	free(MD5SCache);
-	MD5SCache = NULL;
-    }
-}
-
-static void
-md5_cache(const char *spath, int sdirlen)
-{
-    FILE *fi;
-
-    /*
-     * Already cached
-     */
-
-    if (
-	MD5SCache &&
-	sdirlen == MD5SCacheDirLen &&
-	strncmp(spath, MD5SCache, sdirlen) == 0
-    ) {
-	return;
-    }
-
-    /*
-     * Different cache, flush old cache
-     */
-
-    if (MD5SCache != NULL)
-	md5_flush();
-
-    /*
-     * Create new cache
-     */
-
-    MD5SCacheDirLen = sdirlen;
-    MD5SCache = mprintf("%*.*s%s", sdirlen, sdirlen, spath, MD5CacheFile);
-
-    if ((fi = fopen(MD5SCache, "r")) != NULL) {
-	MD5Node **pnode = &MD5Base;
-	int c;
-
-	c = fgetc(fi);
-	while (c != EOF) {
-	    MD5Node *node = *pnode = malloc(sizeof(MD5Node));
-	    char *s;
-	    int nlen;
-
-	    nlen = 0;
-
-	    if (pnode == NULL || node == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	    }
-
-	    bzero(node, sizeof(MD5Node));
-	    node->md_Code = fextract(fi, -1, &c, ' ');
-	    node->md_Accessed = 1;
-	    if ((s = fextract(fi, -1, &c, ' ')) != NULL) {
-		nlen = strtol(s, NULL, 0);
-		free(s);
-	    }
-	    /*
-	     * extracting md_Name - name may contain embedded control 
-	     * characters.
-	     */
-	    CountReadBytes += nlen+1;
-	    node->md_Name = fextract(fi, nlen, &c, EOF);
-	    if (c != '\n') {
-		fprintf(stderr, "Error parsing MD5 Cache: %s (%c)\n", MD5SCache, c);
-		while (c != EOF && c != '\n')
-		    c = fgetc(fi);
-	    }
-	    if (c != EOF)
-		c = fgetc(fi);
-	    pnode = &node->md_Next;
-	}
-	fclose(fi);
-    }
-}
-
-/*
- * md5_lookup:	lookup/create md5 entry
- */
-
-static MD5Node *
-md5_lookup(const char *sfile)
-{
-    MD5Node **pnode;
-    MD5Node *node;
-
-    for (pnode = &MD5Base; (node = *pnode) != NULL; pnode = &node->md_Next) {
-	if (strcmp(sfile, node->md_Name) == 0) {
-	    break;
-	}
-    }
-    if (node == NULL) {
-
-	if ((node = *pnode = malloc(sizeof(MD5Node))) == NULL) {
-		fprintf(stderr,"out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-
-	bzero(node, sizeof(MD5Node));
-	node->md_Name = strdup(sfile);
-    }
-    node->md_Accessed = 1;
-    return(node);
-}
-
-/*
- * md5_check:  check MD5 against file
- *
- *	Return -1 if check failed
- *	Return 0  if check succeeded
- *
- * dpath can be NULL, in which case we are force-updating
- * the source MD5.
- */
-
-static int
-md5_check(const char *spath, const char *dpath)
-{
-    const char *sfile;
-    char *dcode;
-    int sdirlen;
-    int r;
-    MD5Node *node;
-
-    r = -1;
-
-    if ((sfile = strrchr(spath, '/')) != NULL)
-	++sfile;
-    else
-	sfile = spath;
-    sdirlen = sfile - spath;
-
-    md5_cache(spath, sdirlen);
-
-    node = md5_lookup(sfile);
-
-    /*
-     * If dpath == NULL, we are force-updating the source .MD5* files
-     */
-
-    if (dpath == NULL) {
-	char *scode = doMD5File(spath, NULL);
-
-	r = 0;
-	if (node->md_Code == NULL) {
-	    r = -1;
-	    node->md_Code = scode;
-	    MD5SCacheDirty = 1;
-	} else if (strcmp(scode, node->md_Code) != 0) {
-	    r = -1;
-	    free(node->md_Code);
-	    node->md_Code = scode;
-	    MD5SCacheDirty = 1;
-	} else {
-	    free(scode);
-	}
-	return(r);
-    }
-
-    /*
-     * Otherwise the .MD5* file is used as a cache.
-     */
-
-    if (node->md_Code == NULL) {
-	node->md_Code = doMD5File(spath, NULL);
-	MD5SCacheDirty = 1;
-    }
-
-    dcode = doMD5File(dpath, NULL);
-    if (dcode) {
-	if (strcmp(node->md_Code, dcode) == 0) {
-	    r = 0;
-	} else {
-	    char *scode = doMD5File(spath, NULL);
-
-	    if (strcmp(node->md_Code, scode) == 0) {
-		    free(scode);
-	    } else {
-		    free(node->md_Code);
-		    node->md_Code = scode;
-		    MD5SCacheDirty = 1;
-		    if (strcmp(node->md_Code, dcode) == 0)
-			r = 0;
-	    }
-	}
-	free(dcode);
-    }
-    return(r);
-}
-
 /*
  * xrename() - rename with override
  *
@@ -1341,59 +1137,3 @@ xlink(const char *src, const char *dst, u_long flags)
     return(r);
 }
 
-static char *
-fextract(FILE *fi, int n, int *pc, int skip)
-{
-    int i;
-    int c;
-    int imax;
-    char *s;
-
-    i = 0;
-    c = *pc;
-    imax = (n < 0) ? 64 : n + 1;
-
-    s = malloc(imax);
-    if (s == NULL) {
-	fprintf(stderr, "out of memory\n");
-	exit(EXIT_FAILURE);
-    }
-
-    while (c != EOF) {
-	if (n == 0 || (n < 0 && (c == ' ' || c == '\n')))
-	    break;
-
-	s[i++] = c;
-	if (i == imax) {
-	    imax += 64;
-	    s = realloc(s, imax);
-    	    if (s == NULL) {
-                fprintf(stderr, "out of memory\n");
-  	        exit(EXIT_FAILURE);
- 	    }
-	}
-	if (n > 0)
-	    --n;
-	c = getc(fi);
-    }
-    if (c == skip && skip != EOF)
-	c = getc(fi);
-    *pc = c;
-    s[i] = 0;
-    return(s);
-}
-
-char *
-doMD5File(const char *filename, char *buf)
-{
-    if (SummaryOpt) {
-	struct stat st;
-	if (stat(filename, &st) == 0) {
-	    u_int64_t size = st.st_blocks * 512;
-	    if (st.st_size % 512) 
-		size += st.st_size % 512 - 512;
-	    CountReadBytes += size;
-	}
-    }
-    return MD5File(filename, buf);
-}
