@@ -1,7 +1,6 @@
 DragonFlyBSD Documentation.
 
-Please read `README.BUILD' before building the documentation.  If a
-problem is encountered, please contact the documentaton list at:
+If a problem is encountered, please contact the documentaton list at:
 
 	dragonfly.docs (newsgroup)
 
@@ -14,4 +13,4 @@ project mailing lists and newsgroups:
 		Hiten Pandya
 		hmp@backplane.com
 
-$DragonFly: doc/README,v 1.6 2004/04/02 09:43:02 hmp Exp $
+$DragonFly: doc/README,v 1.7 2006/04/26 02:47:20 justin Exp $
