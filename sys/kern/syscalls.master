@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.31 2006/03/24 06:45:04 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.32 2006/04/26 17:17:56 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -428,8 +428,9 @@
 286	UNIMPL	NOHIDE	nosys
 287	UNIMPL	NOHIDE	nosys
 288	UNIMPL	NOHIDE	nosys
-289	UNIMPL	NOHIDE	nosys
-290	UNIMPL	NOHIDE	nosys
+; 289 and 290 from NetBSD (OpenBSD: 267 and 268)
+289	STD	BSD	{ ssize_t preadv(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
+290	STD	BSD	{ ssize_t pwritev(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
 291	UNIMPL	NOHIDE	nosys
 292	UNIMPL	NOHIDE	nosys
 293	UNIMPL	NOHIDE	nosys

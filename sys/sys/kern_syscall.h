@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.28 2005/08/09 20:14:16 joerg Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.29 2006/04/26 17:17:57 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -91,8 +91,8 @@ int kern_kill(int sig, int id);
 /*
  * Prototypes for syscalls in kern/sys_generic.c
  */
-int kern_readv(int fd, struct uio *auio, int flags, int *res);
-int kern_writev(int fd, struct uio *auio, int flags, int *res);
+int kern_preadv(int fd, struct uio *auio, int flags, int *res);
+int kern_pwritev(int fd, struct uio *auio, int flags, int *res);
 
 /*
  * Prototypes for syscalls in kern/kern_resource.c

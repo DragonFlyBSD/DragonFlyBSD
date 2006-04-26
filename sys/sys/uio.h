@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.9 2004/07/27 13:11:22 hmp Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.10 2006/04/26 17:17:57 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -110,8 +110,10 @@ iovec_free(struct iovec **kiov, struct iovec *siov)
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-ssize_t	readv (int, const struct iovec *, int);
-ssize_t	writev (int, const struct iovec *, int);
+ssize_t	readv(int, const struct iovec *, int);
+ssize_t	writev(int, const struct iovec *, int);
+ssize_t	preadv(int, const struct iovec *, int, off_t);
+ssize_t	pwritev(int, const struct iovec *, int, off_t);
 __END_DECLS
 
 #endif /* _KERNEL */

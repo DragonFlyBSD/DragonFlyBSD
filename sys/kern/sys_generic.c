@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.23 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.24 2006/04/26 17:17:56 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -80,6 +80,9 @@ MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
 static int	selscan (struct proc *, fd_mask **, fd_mask **,
 			int, int *);
+static int	dofileread(int, struct file *, struct uio *, int, int *);
+static int	dofilewrite(int, struct file *, struct uio *, int, int *);
+
 
 struct file*
 holdfp(fdp, fd, flag)
@@ -108,6 +111,8 @@ read(struct read_args *uap)
 	struct iovec aiov;
 	int error;
 
+	if (uap->nbyte > INT_MAX)
+		return (EINVAL);
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -118,13 +123,13 @@ read(struct read_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_readv(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
 
 	return(error);
 }
 
 /*
- * Pread system call
+ * Positioned (Pread) read system call
  */
 int
 pread(struct pread_args *uap)
@@ -134,6 +139,8 @@ pread(struct pread_args *uap)
 	struct iovec aiov;
 	int error;
 
+	if (uap->nbyte > INT_MAX)
+		return (EINVAL);
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -144,11 +151,14 @@ pread(struct pread_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_readv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 
 	return(error);
 }
 
+/*
+ * Scatter read system call.
+ */
 int
 readv(struct readv_args *uap)
 {
@@ -168,24 +178,49 @@ readv(struct readv_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_readv(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
 
 	iovec_free(&iov, aiov);
 	return (error);
 }
 
+
+/*
+ * Scatter positioned read system call.
+ */
 int
-kern_readv(int fd, struct uio *auio, int flags, int *res)
+preadv(struct preadv_args *uap)
+{
+	struct thread *td = curthread;
+	struct uio auio;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	int error;
+
+	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
+	    &auio.uio_resid);
+	if (error)
+		return (error);
+	auio.uio_iov = iov;
+	auio.uio_iovcnt = uap->iovcnt;
+	auio.uio_offset = uap->offset;
+	auio.uio_rw = UIO_READ;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_td = td;
+
+	error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+
+	iovec_free(&iov, aiov);
+	return(error);
+}
+
+int
+kern_preadv(int fd, struct uio *auio, int flags, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp = p->p_fd;
-	int len, error;
-#ifdef KTRACE
-	struct iovec *ktriov = NULL;
-	struct uio ktruio;
-#endif
+	int error;
 
 	KKASSERT(p);
 
@@ -194,12 +229,31 @@ kern_readv(int fd, struct uio *auio, int flags, int *res)
 		return (EBADF);
 	if (flags & FOF_OFFSET && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
-		goto done;
-	}
-	if (auio->uio_resid < 0) {
+	} else if (auio->uio_resid < 0) {
 		error = EINVAL;
-		goto done;
+	} else {
+		error = dofileread(fd, fp, auio, flags, res);
 	}
+	fdrop(fp, td);
+	return(error);
+}
+
+/*
+ * Common code for readv and preadv that reads data in
+ * from a file using the passed in uio, offset, and flags.
+ */
+static int
+dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	ssize_t len;
+	int error;
+#ifdef KTRACE
+	struct iovec *ktriov = NULL;
+	struct uio ktruio;
+#endif
+
 #ifdef KTRACE
 	/*
 	 * if tracing, save a copy of iovec
@@ -231,9 +285,8 @@ kern_readv(int fd, struct uio *auio, int flags, int *res)
 #endif
 	if (error == 0)
 		*res = len - auio->uio_resid;
-done:
-	fdrop(fp, td);
-	return (error);
+
+	return(error);
 }
 
 /*
@@ -257,7 +310,7 @@ write(struct write_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_writev(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
 
 	return(error);
 }
@@ -283,7 +336,7 @@ pwrite(struct pwrite_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_writev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 
 	return(error);
 }
@@ -307,41 +360,85 @@ writev(struct writev_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_writev(uap->fd, &auio, 0, &uap->sysmsg_result);
+	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
 
 	iovec_free(&iov, aiov);
 	return (error);
 }
 
+
 /*
- * Gather write system call
+ * Gather positioned write system call
  */
 int
-kern_writev(int fd, struct uio *auio, int flags, int *res)
+pwritev(struct pwritev_args *uap)
+{
+	struct thread *td = curthread;
+	struct uio auio;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	int error;
+
+	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
+	    &auio.uio_resid);
+	if (error)
+		return (error);
+	auio.uio_iov = iov;
+	auio.uio_iovcnt = uap->iovcnt;
+	auio.uio_offset = uap->offset;
+	auio.uio_rw = UIO_WRITE;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_td = td;
+
+	error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+
+	iovec_free(&iov, aiov);
+	return(error);
+}
+
+int
+kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp = p->p_fd;
-	long len, error;
-#ifdef KTRACE
-	struct iovec *ktriov = NULL;
-	struct uio ktruio;
-#endif
+	int error;
 
 	KKASSERT(p);
 
 	fp = holdfp(fdp, fd, FWRITE);
 	if (fp == NULL)
 		return (EBADF);
-	if ((flags & FOF_OFFSET) && fp->f_type != DTYPE_VNODE) {
+	else if ((flags & FOF_OFFSET) && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
-		goto done;
+	} else {
+		error = dofilewrite(fd, fp, auio, flags, res);
 	}
+	
+	fdrop(fp, td);
+	return (error);
+}
+
+/*
+ * Common code for writev and pwritev that writes data to
+ * a file using the passed in uio, offset, and flags.
+ */
+static int
+dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
+{	
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	ssize_t len;
+	int error;
+#ifdef KTRACE
+	struct iovec *ktriov = NULL;
+	struct uio ktruio;
+#endif
+
 	if (auio->uio_resid < 0) {
-		error = EINVAL;
-		goto done;
+		return(EINVAL);
 	}
+
 #ifdef KTRACE
 	/*
 	 * if tracing, save a copy of iovec and uio
@@ -362,6 +459,7 @@ kern_writev(int fd, struct uio *auio, int flags, int *res)
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
+		/* Socket layer is responsible for issuing SIGPIPE. */
 		if (error == EPIPE)
 			psignal(p, SIGPIPE);
 	}
@@ -377,9 +475,8 @@ kern_writev(int fd, struct uio *auio, int flags, int *res)
 #endif
 	if (error == 0)
 		*res = len - auio->uio_resid;
-done:
-	fdrop(fp, td);
-	return (error);
+
+	return(error);
 }
 
 /*
