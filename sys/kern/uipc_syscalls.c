@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.61 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.62 2006/04/26 17:42:53 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -687,7 +687,7 @@ sendmsg(struct sendmsg_args *uap)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		goto cleanup;
 	auio.uio_iov = iov;
@@ -883,7 +883,7 @@ recvmsg(struct recvmsg_args *uap)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
@@ -1373,7 +1373,7 @@ sendfile(struct sendfile_args *uap)
 		 */
 		if (hdtr.headers) {
 			error = iovec_copyin(hdtr.headers, &iov, aiov,
-			    hdtr.hdr_cnt, &hbytes);
+					     hdtr.hdr_cnt, &hbytes);
 			if (error)
 				goto done;
 			auio.uio_iov = iov;
@@ -1402,7 +1402,7 @@ sendfile(struct sendfile_args *uap)
 	 */
 	if (uap->hdtr != NULL && hdtr.trailers != NULL) {
 		error = iovec_copyin(hdtr.trailers, &iov, aiov,
-		    hdtr.trl_cnt, &auio.uio_resid);
+				     hdtr.trl_cnt, &auio.uio_resid);
 		if (error)
 			goto done;
 		auio.uio_iov = iov;

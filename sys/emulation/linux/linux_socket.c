@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.19 2005/04/22 02:09:15 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.20 2006/04/26 17:42:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -832,7 +832,7 @@ linux_sendmsg(struct linux_sendmsg_args *args, int *res)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	   &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		goto cleanup;
 	auio.uio_iov = iov;
@@ -932,7 +932,7 @@ linux_recvmsg(struct linux_recvmsg_args *args, int *res)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;

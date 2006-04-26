@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.24 2006/04/26 17:17:56 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.25 2006/04/26 17:42:53 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -111,8 +111,6 @@ read(struct read_args *uap)
 	struct iovec aiov;
 	int error;
 
-	if (uap->nbyte > INT_MAX)
-		return (EINVAL);
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -123,8 +121,10 @@ read(struct read_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
-
+	if (auio.uio_resid < 0)
+		error = EINVAL;
+	else
+		error = kern_preadv(uap->fd, &auio, 0, &uap->sysmsg_result);
 	return(error);
 }
 
@@ -139,8 +139,6 @@ pread(struct pread_args *uap)
 	struct iovec aiov;
 	int error;
 
-	if (uap->nbyte > INT_MAX)
-		return (EINVAL);
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
 	auio.uio_iov = &aiov;
@@ -151,8 +149,10 @@ pread(struct pread_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
-
+	if (auio.uio_resid < 0)
+		error = EINVAL;
+	else
+		error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 	return(error);
 }
 
@@ -168,7 +168,7 @@ readv(struct readv_args *uap)
 	int error;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
@@ -197,7 +197,7 @@ preadv(struct preadv_args *uap)
 	int error;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
@@ -247,8 +247,8 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	ssize_t len;
 	int error;
+	int len;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
@@ -310,7 +310,10 @@ write(struct write_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
+	if (auio.uio_resid < 0)
+		error = EINVAL;
+	else
+		error = kern_pwritev(uap->fd, &auio, 0, &uap->sysmsg_result);
 
 	return(error);
 }
@@ -336,7 +339,10 @@ pwrite(struct pwrite_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+	if (auio.uio_resid < 0)
+		error = EINVAL;
+	else
+		error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 
 	return(error);
 }
@@ -350,7 +356,7 @@ writev(struct writev_args *uap)
 	int error;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
@@ -379,7 +385,7 @@ pwritev(struct pwritev_args *uap)
 	int error;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
@@ -428,16 +434,12 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 {	
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	ssize_t len;
 	int error;
+	int len;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
 	struct uio ktruio;
 #endif
-
-	if (auio->uio_resid < 0) {
-		return(EINVAL);
-	}
 
 #ifdef KTRACE
 	/*

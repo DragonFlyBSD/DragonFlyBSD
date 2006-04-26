@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.21 2006/04/01 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.22 2006/04/26 17:42:53 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -325,7 +325,7 @@ phashinit(elements, type, nentries)
  */
 int
 iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
-    size_t iov_cnt, size_t *iov_len)
+	     size_t iov_cnt, int *iov_len)
 {
 	struct iovec *iovp;
 	int error, i;
@@ -339,13 +339,19 @@ iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,
 		*kiov = siov;
 	}
 	error = copyin(uiov, *kiov, iov_cnt * sizeof(struct iovec));
-	if (error)
-		goto cleanup;
-	*iov_len = 0;
-	for (i = 0, iovp = *kiov; i < iov_cnt; i++, iovp++)
-		*iov_len += iovp->iov_len;
-
-cleanup:
+	if (error == 0) {
+		*iov_len = 0;
+		for (i = 0, iovp = *kiov; i < iov_cnt; i++, iovp++) {
+			/*
+			 * Check for both *iov_len overflows and out of
+			 * range iovp->iov_len's.  We limit to the
+			 * capabilities of signed integers.
+			 */
+			if (*iov_len + (int)iovp->iov_len < *iov_len)
+				error = EINVAL;
+			*iov_len += (int)iovp->iov_len;
+		}
+	}
 	if (error)
 		iovec_free(kiov, siov);
 	return (error);

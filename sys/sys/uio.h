@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.10 2006/04/26 17:17:57 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.11 2006/04/26 17:42:55 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -94,7 +94,7 @@ int     uiomove_fromphys(struct vm_page *ma[], vm_offset_t offset, int n,
 int	uiomoveco (caddr_t, int, struct uio *, struct vm_object *);
 int	uioread (int, struct uio *, struct vm_object *, int *);
 int	iovec_copyin(struct iovec *, struct iovec **, struct iovec *,
-	size_t, size_t *);
+			    size_t, int *);
 
 static __inline void
 iovec_free(struct iovec **kiov, struct iovec *siov)

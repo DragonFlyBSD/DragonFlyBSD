@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.5 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.6 2006/04/26 17:42:50 dillon Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -231,7 +231,7 @@ osendmsg(struct osendmsg_args *uap)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		goto cleanup;
 	auio.uio_iov = iov;
@@ -397,7 +397,7 @@ orecvmsg(struct orecvmsg_args *uap)
 	 * Populate auio.
 	 */
 	error = iovec_copyin(msg.msg_iov, &iov, aiov, msg.msg_iovlen,
-	    &auio.uio_resid);
+			     &auio.uio_resid);
 	if (error)
 		return (error);
 	auio.uio_iov = iov;
