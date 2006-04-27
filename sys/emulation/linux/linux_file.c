@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.25 2006/04/26 17:42:52 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.26 2006/04/27 08:03:56 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -820,7 +820,7 @@ linux_pread(struct linux_pread_args *uap)
 	if (auio.uio_resid < 0)
 		error = EINVAL;
 	else
-		error = kern_readv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+		error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 	return(error);
 }
 
@@ -845,7 +845,7 @@ linux_pwrite(struct linux_pwrite_args *uap)
 	if (auio.uio_resid < 0)
 		error = EINVAL;
 	else
-		error = kern_writev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+		error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
 
 	return(error);
 }
