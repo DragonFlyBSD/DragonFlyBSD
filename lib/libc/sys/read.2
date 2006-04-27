@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)read.2	8.4 (Berkeley) 2/26/94
 .\" $FreeBSD: src/lib/libc/sys/read.2,v 1.9.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/read.2,v 1.4 2006/04/27 15:49:57 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/read.2,v 1.5 2006/04/27 16:01:33 swildner Exp $
 .\"
 .Dd April 27, 2006
 .Dt READ 2
@@ -223,14 +223,14 @@ functions are expected to conform to
 .St -xpg4.2 .
 .Sh HISTORY
 The
+.Fn preadv
+function call was added in
+.Dx 1.5 .
+The
 .Fn pread
 function call
 appeared in
 .At V.4 .
-The
-.Fn preadv
-function call was added in
-.Dx 1.5 .
 The
 .Fn readv
 function call
