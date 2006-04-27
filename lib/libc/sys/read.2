@@ -31,15 +31,16 @@
 .\"
 .\"     @(#)read.2	8.4 (Berkeley) 2/26/94
 .\" $FreeBSD: src/lib/libc/sys/read.2,v 1.9.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/read.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/read.2,v 1.3 2006/04/27 15:36:00 swildner Exp $
 .\"
-.Dd February 26, 1994
+.Dd April 27, 2006
 .Dt READ 2
 .Os
 .Sh NAME
 .Nm read ,
 .Nm readv ,
-.Nm pread
+.Nm pread ,
+.Nm preadv
 .Nd read input
 .Sh LIBRARY
 .Lb libc
@@ -53,6 +54,8 @@
 .Fn readv "int d" "const struct iovec *iov" "int iovcnt"
 .Ft ssize_t
 .Fn pread "int d" "void *buf" "size_t nbytes" "off_t offset"
+.Ft ssize_t
+.Fn preadv "int d" "const struct iovec *iov" "int iovcnt" "off_t offset"
 .Sh DESCRIPTION
 .Fn Read
 attempts to read
@@ -68,12 +71,17 @@ into the
 buffers specified by the members of the
 .Fa iov
 array: iov[0], iov[1], ..., iov[iovcnt\|\-\|1].
-.Fn Pread
-performs the same function, but reads from the specified position in
+The
+.Fn pread
+and
+.Fn preadv
+calls perform the same function, but read from the specified position in
 the file without modifying the file pointer.
 .Pp
 For
-.Fn readv ,
+.Fn readv
+and
+.Fn preadv ,
 the
 .Fa iovec
 structure is defined as:
@@ -90,6 +98,8 @@ Each
 entry specifies the base address and length of an area
 in memory where data should be placed.
 .Fn Readv
+and
+.Fn preadv
 will always fill an area completely before proceeding
 to the next.
 .Pp
@@ -111,8 +121,9 @@ object is undefined.
 Upon successful completion,
 .Fn read ,
 .Fn readv ,
+.Fn pread ,
 and
-.Fn pread
+.Fn preadv
 return the number of bytes actually read and placed in the buffer.
 The system guarantees to read the number of bytes requested if
 the descriptor references a normal file that has that many bytes left
@@ -128,8 +139,9 @@ is set to indicate the error.
 .Sh ERRORS
 .Fn Read ,
 .Fn readv ,
+.Fn pread ,
 and
-.Fn pread
+.Fn preadv
 will succeed unless:
 .Bl -tag -width Er
 .It Bq Er EBADF
@@ -154,6 +166,8 @@ and no data were ready to be read.
 .Pp
 In addition,
 .Fn readv
+and
+.Fn preadv
 may return one of the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
@@ -179,7 +193,9 @@ points outside the process's allocated address space.
 .Pp
 The
 .Fn pread
-call may also return the following errors:
+and
+.Fn preadv
+calls may also return the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The specified file offset is invalid.

@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.17 2006/02/28 22:40:49 swildner Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.18 2006/04/27 15:36:00 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -136,7 +136,7 @@ MLINKS+=mlock.2 munlock.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
 MLINKS+=pathconf.2 fpathconf.2
-MLINKS+=read.2 pread.2 read.2 readv.2
+MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
 MLINKS+=send.2 sendmsg.2 send.2 sendto.2
 MLINKS+=setpgid.2 setpgrp.2
@@ -150,7 +150,7 @@ MLINKS+=truncate.2 ftruncate.2
 MLINKS+=upc_register.2 upc_control.2
 MLINKS+=utimes.2 futimes.2 utimes.2 lutimes.2
 MLINKS+=wait.2 wait3.2 wait.2 wait4.2 wait.2 waitpid.2
-MLINKS+=write.2 pwrite.2 write.2 writev.2
+MLINKS+=write.2 pwrite.2 write.2 pwritev.2 write.2 writev.2
 .if !defined(NO_P1003_1B)
 MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
 	sched_get_priority_max.2 sched_rr_get_interval.2

@@ -31,15 +31,16 @@
 .\"
 .\"     @(#)write.2	8.5 (Berkeley) 4/2/94
 .\" $FreeBSD: src/lib/libc/sys/write.2,v 1.12.2.8 2002/10/13 17:42:14 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/write.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/write.2,v 1.3 2006/04/27 15:36:00 swildner Exp $
 .\"
-.Dd April 2, 1994
+.Dd April 27, 2006
 .Dt WRITE 2
 .Os
 .Sh NAME
 .Nm write ,
 .Nm writev ,
-.Nm pwrite
+.Nm pwrite ,
+.Nm pwritev
 .Nd write output
 .Sh LIBRARY
 .Lb libc
@@ -53,6 +54,8 @@
 .Fn writev "int d" "const struct iovec *iov" "int iovcnt"
 .Ft ssize_t
 .Fn pwrite "int d" "const void *buf" "size_t nbytes" "off_t offset"
+.Ft ssize_t
+.Fn pwritev "int d" "const struct iovec *iov" "int iovcnt" "off_t offset"
 .Sh DESCRIPTION
 .Fn Write
 attempts to write
@@ -62,18 +65,24 @@ of data to the object referenced by the descriptor
 from the buffer pointed to by
 .Fa buf .
 .Fn Writev
-performs the same action, but gathers the output data
+and
+.Fn pwritev
+perform the same action, but gather the output data
 from the
 .Fa iovcnt
 buffers specified by the members of the
 .Fa iov
 array: iov[0], iov[1], ..., iov[iovcnt\|-\|1].
 .Fn Pwrite
-performs the same function, but writes to the specified position in
+and
+.Fn pwritev
+perform the same function, but write to the specified position in
 the file without modifying the file pointer.
 .Pp
 For
-.Fn writev ,
+.Fn writev
+and
+.Fn pwritev ,
 the
 .Fa iovec
 structure is defined as:
@@ -90,6 +99,8 @@ Each
 entry specifies the base address and length of an area
 in memory from which data should be written.
 .Fn Writev
+and
+.Fn pwritev
 will always write a complete area before proceeding
 to the next.
 .Pp
@@ -133,8 +144,9 @@ is set to indicate the error.
 .Sh ERRORS
 .Fn Write ,
 .Fn writev ,
+.Fn pwrite ,
 and
-.Fn pwrite
+.Fn pwritev
 will fail and the file pointer will remain unchanged if:
 .Bl -tag -width Er
 .It Bq Er EBADF
@@ -183,6 +195,8 @@ to enable writing on the disk label area.
 .Pp
 In addition,
 .Fn writev
+and
+.Fn pwritev
 may return one of the following errors:
 .Bl -tag -width Er
 .It Bq Er EDESTADDRREQ
@@ -213,7 +227,9 @@ The mbuf pool has been completely exhausted when writing to a socket.
 .Pp
 The
 .Fn pwrite
-call may also return the following errors:
+and
+.Fn pwritev
+calls may also return the following errors:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 The specified file offset is invalid.
