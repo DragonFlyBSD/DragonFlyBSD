@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)write.2	8.5 (Berkeley) 4/2/94
 .\" $FreeBSD: src/lib/libc/sys/write.2,v 1.12.2.8 2002/10/13 17:42:14 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/write.2,v 1.3 2006/04/27 15:36:00 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/write.2,v 1.4 2006/04/27 15:49:57 swildner Exp $
 .\"
 .Dd April 27, 2006
 .Dt WRITE 2
@@ -259,6 +259,10 @@ The
 function call
 appeared in
 .At V.4 .
+The
+.Fn pwritev
+function call was added in
+.Dx 1.5 .
 The
 .Fn writev
 function call
