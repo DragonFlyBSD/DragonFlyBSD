@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.62 2006/04/24 21:44:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.63 2006/04/27 23:28:32 dillon Exp $
  */
 
 /*
@@ -3479,6 +3479,26 @@ vunmapbuf(struct buf *bp)
 		vm_page_unhold(*m++);
 
 	bp->b_data = bp->b_saveaddr;
+}
+
+/*
+ * Scan all buffers in the system and issue the callback.
+ */
+int
+scan_all_buffers(int (*callback)(struct buf *, void *), void *info)
+{
+	int count = 0;
+	int error;
+	int n;
+
+	for (n = 0; n < nbuf; ++n) {
+		if ((error = callback(&buf[n], info)) < 0) {
+			count = error;
+			break;
+		}
+		count += error;
+	}
+	return (count);
 }
 
 /*

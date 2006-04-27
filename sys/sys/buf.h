@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.26 2006/03/25 21:46:38 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.27 2006/04/27 23:28:34 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -327,7 +327,7 @@ extern int	maxswzone;		/* Max KVA for swap structures */
 extern int	maxbcache;		/* Max KVA for buffer cache */
 extern int	runningbufspace;
 extern int      buf_maxio;              /* nominal maximum I/O for buffer */
-extern struct	buf *buf;		/* The buffer headers. */
+extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */
 extern int	bufpages;		/* Number of memory pages in the buffer pool. */
 extern struct	buf *swbuf;		/* Swap I/O buffer headers. */
@@ -384,6 +384,7 @@ void	bgetvp (struct vnode *, struct buf *);
 void	pbgetvp (struct vnode *, struct buf *);
 void	pbrelvp (struct buf *);
 int	allocbuf (struct buf *bp, int size);
+int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 

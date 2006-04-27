@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.27 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.28 2006/04/27 23:28:32 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -142,6 +142,8 @@ static void print_uptime (void);
 static void shutdown_halt (void *junk, int howto);
 static void shutdown_panic (void *junk, int howto);
 static void shutdown_reset (void *junk, int howto);
+static int shutdown_busycount1(struct buf *bp, void *info);
+static int shutdown_busycount2(struct buf *bp, void *info);
 
 /* register various local shutdown events */
 static void 
@@ -264,7 +266,6 @@ boot(int howto)
 	 * Now sync filesystems
 	 */
 	if (!cold && (howto & RB_NOSYNC) == 0 && waittime < 0) {
-		struct buf *bp;
 		int iter, nbusy, pbusy;
 
 		waittime = 0;
@@ -278,17 +279,7 @@ boot(int howto)
 		 * buffers are written.
 		 */
 		for (iter = pbusy = 0; iter < 20; iter++) {
-			nbusy = 0;
-			for (bp = &buf[nbuf]; --bp >= buf; ) {
-				if ((bp->b_flags & B_INVAL) == 0 &&
-				    BUF_REFCNT(bp) > 0) {
-					nbusy++;
-				} else if ((bp->b_flags & (B_DELWRI | B_INVAL))
-						== B_DELWRI) {
-					/* bawrite(bp);*/
-					nbusy++;
-				}
-			}
+			nbusy = scan_all_buffers(shutdown_busycount1, NULL);
 			if (nbusy == 0)
 				break;
 			printf("%d ", nbusy);
@@ -310,28 +301,7 @@ boot(int howto)
 		 * Count only busy local buffers to prevent forcing 
 		 * a fsck if we're just a client of a wedged NFS server
 		 */
-		nbusy = 0;
-		for (bp = &buf[nbuf]; --bp >= buf; ) {
-			if (((bp->b_flags&B_INVAL) == 0 && BUF_REFCNT(bp)) ||
-			    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
-				/*
-				 * Only count buffers undergoing write I/O
-				 * on the related vnode.
-				 */
-				if (bp->b_vp == NULL || 
-				    bp->b_vp->v_track_write.bk_active == 0) {
-					continue;
-				}
-				nbusy++;
-#if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
-				printf(
-			    "%p %d: dev:?, flags:%08lx, loffset:%lld, doffset:%lld\n",
-				    bp, nbusy,
-				    bp->b_flags, bp->b_loffset,
-				    bp->b_bio2.bio_offset);
-#endif
-			}
-		}
+		nbusy = scan_all_buffers(shutdown_busycount2, NULL);
 		if (nbusy) {
 			/*
 			 * Failed to sync all blocks. Indicate this and don't
@@ -369,6 +339,41 @@ boot(int howto)
 
 	for(;;) ;	/* safety against shutdown_reset not working */
 	/* NOTREACHED */
+}
+
+static int
+shutdown_busycount1(struct buf *bp, void *info)
+{
+	if ((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp) > 0)
+		return(1);
+	if ((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI)
+		return (1);
+	return (0);
+}
+
+static int
+shutdown_busycount2(struct buf *bp, void *info)
+{
+	if (((bp->b_flags & B_INVAL) == 0 && BUF_REFCNT(bp)) ||
+	    ((bp->b_flags & (B_DELWRI|B_INVAL)) == B_DELWRI)) {
+		/*
+		 * Only count buffers undergoing write I/O
+		 * on the related vnode.
+		 */
+		if (bp->b_vp == NULL || 
+		    bp->b_vp->v_track_write.bk_active == 0) {
+			return (0);
+		}
+#if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
+		printf(
+	    "%p %d: dev:?, flags:%08lx, loffset:%lld, doffset:%lld\n",
+		    bp, nbusy,
+		    bp->b_flags, bp->b_loffset,
+		    bp->b_bio2.bio_offset);
+#endif
+		return(1);
+	}
+	return(0);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.11 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.12 2006/04/27 23:28:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,10 +53,6 @@
 #include "inode.h"
 #include "fs.h"
 #include "ffs_extern.h"
-
-#ifdef DDB
-void	ffs_checkoverlap (struct buf *, struct inode *);
-#endif
 
 /*
  * Return buffer with the contents of block "offset" from the beginning of
@@ -146,40 +142,6 @@ ffs_fragacct(struct fs *fs, int fragmap, int32_t fraglist[], int cnt)
 		}
 	}
 }
-
-#ifdef DDB
-void
-ffs_checkoverlap(struct buf *bp, struct inode *ip)
-{
-	struct buf *ebp, *ep;
-	off_t start, last;
-	struct vnode *vp;
-
-	ebp = &buf[nbuf];
-	start = bp->b_bio2.bio_offset;
-	last = start + bp->b_bcount - 1;
-	for (ep = buf; ep < ebp; ep++) {
-		if (ep == bp || (ep->b_flags & B_INVAL) ||
-		    ep->b_vp == NULLVP)
-			continue;
-		if (VOP_BMAP(ep->b_vp, (off_t)0, &vp, NULL, NULL, NULL))
-			continue;
-		if (vp != ip->i_devvp)
-			continue;
-		/* look for overlap */
-		if (ep->b_bcount == 0 || ep->b_bio2.bio_offset == NOOFFSET ||
-		    ep->b_bio2.bio_offset > last ||
-		    ep->b_bio2.bio_offset + ep->b_bcount <= start)
-			continue;
-		vprint("Disk overlap", vp);
-		printf("\tstart %lld, end %lld overlap start %lld, end %lld\n",
-			start, last, 
-			ep->b_bio2.bio_offset,
-			ep->b_bio2.bio_offset + ep->b_bcount - 1);
-		panic("ffs_checkoverlap: Disk buffer overlap");
-	}
-}
-#endif /* DDB */
 
 /*
  * block operations
