@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.29 2006/04/07 06:38:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.30 2006/04/27 08:19:29 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -1099,7 +1099,7 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 		bcopy(ap->a_target, (char *)ip->i_shortlink, len);
 		ip->i_size = len;
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
-	} else
+	} else {
 		/*
 		 * Make sure we have a VM object in order to use
 		 * the buffer cache.
@@ -1110,6 +1110,8 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred, (int *)0,
 		    NULL);
+	}
+
 	if (error)
 		vput(vp);
 	return (error);
