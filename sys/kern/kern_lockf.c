@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.24 2005/04/14 08:14:31 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.25 2006/04/28 00:13:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -496,7 +496,7 @@ restart:
 		if (lf_count_change(owner, 1)) {
 			if (orig_first_match != NULL) {
 				orig_first_match->lf_end = orig_end;
-				orig_first_match->lf_flags = orig_end;
+				orig_first_match->lf_flags = orig_flags;
 			}
 			error = ENOLCK;
 			goto do_cleanup;
