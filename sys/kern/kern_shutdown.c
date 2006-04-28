@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.28 2006/04/27 23:28:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.29 2006/04/28 16:06:50 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -366,8 +366,8 @@ shutdown_busycount2(struct buf *bp, void *info)
 		}
 #if defined(SHOW_BUSYBUFS) || defined(DIAGNOSTIC)
 		printf(
-	    "%p %d: dev:?, flags:%08lx, loffset:%lld, doffset:%lld\n",
-		    bp, nbusy,
+	    "%p dev:?, flags:%08lx, loffset:%lld, doffset:%lld\n",
+		    bp, 
 		    bp->b_flags, bp->b_loffset,
 		    bp->b_bio2.bio_offset);
 #endif
