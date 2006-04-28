@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.12 2004/11/23 06:32:34 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.13 2006/04/28 18:23:45 swildner Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -197,7 +197,7 @@ void	postsig (int sig);
 void	psignal (struct proc *p, int sig);
 void	siginit (struct proc *p);
 void	trapsignal (struct proc *p, int sig, u_long code);
-int	__cursig (struct proc *p);
+static int __cursig (struct proc *p);
 
 /*
  * Machine-dependent functions:
@@ -220,7 +220,7 @@ int	checkpoint_signal_handler(struct proc *p);
  *
  * MP SAFE
  */
-extern __inline int __cursig(struct proc *p)
+static __inline int __cursig(struct proc *p)
 {
 	sigset_t tmpset;
 	int r;
