@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.15 2006/04/03 02:02:35 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.16 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -537,7 +537,7 @@ dsiodone(struct bio *bio)
 	struct buf *bp = bio->bio_buf;
 	char *msg;
 
-	bp->b_flags = bp->b_flags & ~B_DONE;
+	bp->b_flags &= ~B_DONE;
 	if (!(bp->b_flags & B_READ)
 	    || (!(bp->b_flags & B_ERROR) && bp->b_error == 0)) {
 		msg = fixlabel(NULL, bio->bio_caller_info1.ptr,

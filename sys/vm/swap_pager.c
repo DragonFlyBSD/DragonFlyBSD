@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.20 2006/03/27 01:54:18 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.21 2006/04/28 16:34:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -870,7 +870,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		bp->b_error = EINVAL;
 		bp->b_flags |= B_ERROR | B_INVAL;
 		biodone(bio);
-		printf("swap_pager_strategy: bp %p b_vp %p offset %lld size %d, not page bounded\n", bp, bp->b_vp, bio->bio_offset, (int)bp->b_bcount);
+		printf("swap_pager_strategy: bp %p offset %lld size %d, not page bounded\n", bp, bio->bio_offset, (int)bp->b_bcount);
 		return;
 	}
 
@@ -970,7 +970,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				if ((bufx->b_flags & B_READ) == 0)
 					bufx->b_dirtyend = bufx->b_bcount;
 				BUF_KERNPROC(bufx);
-				vn_strategy(bufx->b_vp, biox);
+				vn_strategy(swapdev_vp, biox);
 			} else {
 				biodone(biox);
 			}
@@ -998,10 +998,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				bufx = getpbuf(NULL);
 				biox = &bufx->b_bio1;
 				cluster_append(nbio, bufx);
-				bufx->b_flags = (bufx->b_flags & B_ORDERED) |
+				bufx->b_flags |= (bufx->b_flags & B_ORDERED) |
 						(bp->b_flags & B_READ) |
 						B_ASYNC;
-				pbgetvp(swapdev_vp, bufx);
 				biox->bio_done = swap_chain_iodone;
 				biox->bio_offset = (off_t)blk << PAGE_SHIFT;
 				biox->bio_caller_info1.cluster_parent = nbio;
@@ -1037,7 +1036,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			if ((bufx->b_flags & B_READ) == 0)
 				bufx->b_dirtyend = bufx->b_bcount;
 			BUF_KERNPROC(bufx);
-			vn_strategy(bufx->b_vp, biox);
+			vn_strategy(swapdev_vp, biox);
 		} else {
 			biodone(biox);
 		}
@@ -1242,13 +1241,11 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 
 	/*
 	 * map our page(s) into kva for input
-	 *
-	 * NOTE: B_PAGING is set by pbgetvp()
 	 */
 
 	pmap_qenter(kva, m + i, j - i);
 
-	bp->b_flags = B_READ;
+	bp->b_flags |= B_READ;
 	bp->b_data = (caddr_t) kva;
 	bp->b_bcount = PAGE_SIZE * (j - i);
 	bp->b_bufsize = PAGE_SIZE * (j - i);
@@ -1265,8 +1262,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		}
 	}
 	bp->b_xio.xio_npages = j - i;
-
-	pbgetvp(swapdev_vp, bp);
 
 	mycpu->gd_cnt.v_swapin++;
 	mycpu->gd_cnt.v_swappgsin += bp->b_xio.xio_npages;
@@ -1474,15 +1469,13 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		/*
 		 * All I/O parameters have been satisfied, build the I/O
 		 * request and assign the swap space.
-		 *
-		 * NOTE: B_PAGING is set by pbgetvp()
 		 */
 
 		if (sync == TRUE) {
 			bp = getpbuf(&nsw_wcount_sync);
 		} else {
 			bp = getpbuf(&nsw_wcount_async);
-			bp->b_flags = B_ASYNC;
+			bp->b_flags |= B_ASYNC;
 		}
 		bio = &bp->b_bio1;
 
@@ -1491,8 +1484,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		bp->b_bcount = PAGE_SIZE * n;
 		bp->b_bufsize = PAGE_SIZE * n;
 		bio->bio_offset = (off_t)blk << PAGE_SHIFT;
-
-		pbgetvp(swapdev_vp, bp);
 
 		for (j = 0; j < n; ++j) {
 			vm_page_t mreq = m[i+j];

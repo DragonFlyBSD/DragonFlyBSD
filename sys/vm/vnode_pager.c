@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.23 2006/03/27 01:54:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.24 2006/04/28 16:34:02 dillon Exp $
  */
 
 /*
@@ -451,11 +451,10 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 			bp = getpbuf(&vnode_pbuf_freecnt);
 
 			/* build a minimal buffer header */
-			bp->b_flags = B_READ;
+			bp->b_flags |= B_READ;
 			bp->b_data = (caddr_t) kva + i * bsize;
 			bp->b_bio1.bio_done = vnode_pager_iodone;
 			bp->b_bio1.bio_offset = doffset;
-			pbgetvp(dp, bp);
 			bp->b_bcount = bsize;
 			bp->b_bufsize = bsize;
 			bp->b_runningbufspace = bp->b_bufsize;
@@ -763,10 +762,9 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *m, int bytecount,
 	pmap_qenter(kva, m, count);
 
 	/* build a minimal buffer header */
-	bp->b_flags = B_READ;
+	bp->b_flags |= B_READ;
 	bp->b_bio1.bio_done = vnode_pager_iodone;
 	bp->b_bio1.bio_offset = firstaddr;
-	pbgetvp(dp, bp);
 	bp->b_bcount = size;
 	bp->b_bufsize = size;
 	bp->b_runningbufspace = bp->b_bufsize;

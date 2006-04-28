@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.78 2006/04/25 22:11:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.79 2006/04/28 16:34:01 dillon Exp $
  */
 
 /*
@@ -841,36 +841,6 @@ brelvp(struct buf *bp)
 	crit_exit();
 	bp->b_vp = NULL;
 	vdrop(vp);
-}
-
-/*
- * Associate a p-buffer with a vnode.
- *
- * Also sets B_PAGING flag to indicate that vnode is not fully associated
- * with the buffer.  i.e. the bp has not been linked into the vnode or
- * ref-counted.
- */
-void
-pbgetvp(struct vnode *vp, struct buf *bp)
-{
-	KASSERT(bp->b_vp == NULL, ("pbgetvp: not free"));
-	KKASSERT((bp->b_flags & B_HASHED) == 0);
-
-	bp->b_vp = vp;
-	bp->b_flags |= B_PAGING;
-}
-
-/*
- * Disassociate a p-buffer from a vnode.
- */
-void
-pbrelvp(struct buf *bp)
-{
-	KASSERT(bp->b_vp != NULL, ("pbrelvp: NULL"));
-	KKASSERT((bp->b_flags & B_HASHED) == 0);
-
-	bp->b_vp = NULL;
-	bp->b_flags &= ~B_PAGING;
 }
 
 /*

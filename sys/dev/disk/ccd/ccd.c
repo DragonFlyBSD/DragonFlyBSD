@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.25 2006/04/03 02:02:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.26 2006/04/28 16:33:59 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -150,6 +150,7 @@ SYSCTL_INT(_debug, OID_AUTO, ccddebug, CTLFLAG_RW, &ccddebug, 0, "");
 
 struct ccdbuf {
 	struct buf	cb_buf;		/* new I/O buf */
+	struct vnode	*cb_vp;		/* related vnode */
 	struct bio	*cb_obio;	/* ptr. to original I/O buf */
 	struct ccdbuf	*cb_freenext;	/* free list link */
 	int		cb_unit;	/* target unit */
@@ -875,10 +876,10 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 			 * also try to avoid hogging.
 			 */
 			if ((cbp[0]->cb_buf.b_flags & B_READ) == 0) {
-				vn_strategy(cbp[0]->cb_buf.b_vp, 
-				    &cbp[0]->cb_buf.b_bio1);
-				vn_strategy(cbp[1]->cb_buf.b_vp, 
-				    &cbp[1]->cb_buf.b_bio1);
+				vn_strategy(cbp[0]->cb_vp, 
+					    &cbp[0]->cb_buf.b_bio1);
+				vn_strategy(cbp[1]->cb_vp, 
+					    &cbp[1]->cb_buf.b_bio1);
 			} else {
 				int pick = cs->sc_pick;
 				daddr_t range = cs->sc_size / 16 * cs->sc_label.d_secsize;
@@ -889,14 +890,14 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 					cs->sc_pick = pick = 1 - pick;
 				}
 				cs->sc_blk[pick] = doffset + rcount;
-				vn_strategy(cbp[pick]->cb_buf.b_vp, 
-				    &cbp[pick]->cb_buf.b_bio1);
+				vn_strategy(cbp[pick]->cb_vp, 
+					    &cbp[pick]->cb_buf.b_bio1);
 			}
 		} else {
 			/*
 			 * Not mirroring
 			 */
-			vn_strategy(cbp[0]->cb_buf.b_vp,
+			vn_strategy(cbp[0]->cb_vp,
 				     &cbp[0]->cb_buf.b_bio1);
 		}
 		doffset += rcount;
@@ -1030,9 +1031,9 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 	 * Fill in the component buf structure.
 	 */
 	cbp = getccdbuf();
-	cbp->cb_buf.b_flags = bio->bio_buf->b_flags;
+	cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
 	cbp->cb_buf.b_data = addr;
-	cbp->cb_buf.b_vp = ci->ci_vp;
+	cbp->cb_vp = ci->ci_vp;
 	if (cs->sc_ileave == 0)
               cbc = dbtob((off_t)(ci->ci_size - cbn));
 	else
@@ -1068,9 +1069,9 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		/* mirror, setup second I/O */
 		cbp = getccdbuf();
 
-		cbp->cb_buf.b_flags = bio->bio_buf->b_flags;
+		cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
 		cbp->cb_buf.b_data = addr;
-		cbp->cb_buf.b_vp = ci2->ci_vp;
+		cbp->cb_vp = ci2->ci_vp;
 		if (cs->sc_ileave == 0)
 		      cbc = dbtob((off_t)(ci->ci_size - cbn));
 		else
@@ -1215,7 +1216,7 @@ ccdiodone(struct bio *bio)
 					cbp->cb_mirror->cb_pflags |= 
 					    CCDPF_MIRROR_DONE;
 					vn_strategy(
-					    cbp->cb_mirror->cb_buf.b_vp, 
+					    cbp->cb_mirror->cb_vp, 
 					    &cbp->cb_mirror->cb_buf.b_bio1
 					);
 					putccdbuf(cbp);

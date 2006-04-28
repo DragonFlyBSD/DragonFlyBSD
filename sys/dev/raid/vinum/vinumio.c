@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.11 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.12 2006/04/28 16:34:00 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -323,7 +323,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, int flag)
 	int len = min(length, MAXBSIZE);		    /* maximum block device transfer is MAXBSIZE */
 
 	bp = geteblk(len);				    /* get a buffer header */
-	bp->b_flags = flag;
+	bp->b_flags |= flag;
 	bp->b_bio1.bio_offset = offset;			    /* disk offset */
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = buf;

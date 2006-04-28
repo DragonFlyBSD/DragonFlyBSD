@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.29 2006/04/28 06:13:55 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.30 2006/04/28 16:34:01 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -374,15 +374,13 @@ int	physio (dev_t dev, struct uio *uio, int ioflag);
 #define physwrite physio
 void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
-void	vfs_busy_pages (struct buf *, int clear_modify);
+void	vfs_busy_pages (struct vnode *, struct buf *, int clear_modify);
 void	vfs_unbusy_pages (struct buf *);
 int	vmapbuf (struct buf *);
 void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);
 void	bgetvp (struct vnode *, struct buf *);
-void	pbgetvp (struct vnode *, struct buf *);
-void	pbrelvp (struct buf *);
 int	allocbuf (struct buf *bp, int size);
 int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);

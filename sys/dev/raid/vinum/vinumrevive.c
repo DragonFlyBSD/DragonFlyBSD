@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.8 2006/03/26 07:56:54 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.9 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -164,7 +164,7 @@ revive_block(int sdno)
 	else						    /* it's an unattached plex */
 	    dev = VINUM_PLEX(sd->plexno);		    /* create the device number */
 
-	bp->b_flags = B_READ;				    /* either way, read it */
+	bp->b_flags = B_READ | B_PAGING;		    /* either way, read it */
 	vinumstart(dev, &bp->b_bio1, 1);
 	biowait(bp);
     }
@@ -175,7 +175,7 @@ revive_block(int sdno)
 	/* Now write to the subdisk */
     {
 	dev = VINUM_SD(sdno);			    /* create the device number */
-	bp->b_flags = B_ORDERED | B_WRITE;		    /* and make this an ordered write */
+	bp->b_flags = B_ORDERED | B_WRITE | B_PAGING;    /* and make this an ordered write */
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */
 	bp->b_bio1.bio_driver_info = dev;
@@ -413,7 +413,7 @@ parityrebuild(struct plex *plex,
 		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[psd]); /* write back to the parity SD */
 	    else
 		bpp[sdno]->b_bio1.bio_driver_info = VINUM_SD(plex->sdnos[sdno]);	/* device number */
-	    bpp[sdno]->b_flags = B_READ;		    /* either way, read it */
+	    bpp[sdno]->b_flags = B_READ | B_PAGING;	    /* either way, read it */
 	    bpp[sdno]->b_bcount = mysize;
 	    bpp[sdno]->b_resid = bpp[sdno]->b_bcount;
 	    bpp[sdno]->b_bio1.bio_offset = (off_t)pstripe << DEV_BSHIFT;	    /* transfer from here */

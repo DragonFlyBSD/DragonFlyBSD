@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.12 2006/04/28 00:24:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.13 2006/04/28 16:33:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -598,7 +598,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		mapinfo->bp[i]->b_bufsize = lengths[i];
 
 		/* set the flags */
-		mapinfo->bp[i]->b_flags = flags[i];
+		mapinfo->bp[i]->b_flags |= flags[i];
 
 		/* map the buffer into kernel memory */
 		if (vmapbuf(mapinfo->bp[i]) < 0) {

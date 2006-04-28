@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.32 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.33 2006/04/28 16:34:01 dillon Exp $
  */
 
 
@@ -434,8 +434,8 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    if (!rabp)
 				return (EINTR);
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
-				rabp->b_flags |= (B_READ | B_ASYNC);
-				vfs_busy_pages(rabp, 0);
+				rabp->b_flags |= B_READ | B_ASYNC;
+				vfs_busy_pages(vp, rabp, 0);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
@@ -496,7 +496,7 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(bp, 0);
+		    vfs_busy_pages(vp, bp, 0);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			brelse(bp);
@@ -524,7 +524,7 @@ again:
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(bp, 0);
+		    vfs_busy_pages(vp, bp, 0);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			bp->b_flags |= B_ERROR;
@@ -550,7 +550,7 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(bp, 0);
+		    vfs_busy_pages(vp, bp, 0);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			    brelse(bp);
@@ -579,7 +579,7 @@ again:
 				return (EINTR);
 			    if ((bp->b_flags & B_CACHE) == 0) {
 				    bp->b_flags |= B_READ;
-				    vfs_busy_pages(bp, 0);
+				    vfs_busy_pages(vp, bp, 0);
 				    error = nfs_doio(vp, &bp->b_bio2, td);
 				    /*
 				     * no error + B_INVAL == directory EOF,
@@ -623,7 +623,7 @@ again:
 			if (rabp) {
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
 				rabp->b_flags |= (B_READ | B_ASYNC);
-				vfs_busy_pages(rabp, 0);
+				vfs_busy_pages(vp, rabp, 0);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
@@ -945,7 +945,7 @@ again:
 
 		if ((bp->b_flags & B_CACHE) == 0) {
 			bp->b_flags |= B_READ;
-			vfs_busy_pages(bp, 0);
+			vfs_busy_pages(vp, bp, 0);
 			error = nfs_doio(vp, &bp->b_bio2, td);
 			if (error) {
 				brelse(bp);

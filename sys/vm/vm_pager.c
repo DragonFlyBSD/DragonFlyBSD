@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.17 2006/03/27 01:54:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.18 2006/04/28 16:34:02 dillon Exp $
  */
 
 /*
@@ -319,7 +319,7 @@ initpbuf(struct buf *bp)
 	bp->b_kvabase = bp->b_data;
 	bp->b_kvasize = MAXPHYS;
 	bp->b_xflags = 0;
-	bp->b_flags = 0;
+	bp->b_flags = B_PAGING;
 	bp->b_error = 0;
 	initbufbio(bp);
 	xio_init(&bp->b_xio);
@@ -410,9 +410,7 @@ relpbuf(struct buf *bp, int *pfreecnt)
 {
 	crit_enter();
 
-	if (bp->b_vp)
-		pbrelvp(bp);
-
+	KKASSERT(bp->b_flags & B_PAGING);
 	BUF_UNLOCK(bp);
 
 	TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);

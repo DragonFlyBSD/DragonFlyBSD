@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.56 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.57 2006/04/28 16:34:01 dillon Exp $
  */
 
 
@@ -93,15 +93,6 @@
 /* Defs */
 #define	TRUE	1
 #define	FALSE	0
-
-/*
- * Ifdef for FreeBSD-current merged buffer cache. It is unfortunate that these
- * calls are not in getblk() and brelse() so that they would not be necessary
- * here.
- */
-#ifndef B_VMIO
-#define vfs_busy_pages(bp, f)
-#endif
 
 static int	nfsspec_read (struct vop_read_args *);
 static int	nfsspec_write (struct vop_write_args *);
@@ -3104,7 +3095,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 		 * Note: to avoid loopback deadlocks, we do not
 		 * assign b_runningbufspace.
 		 */
-		vfs_busy_pages(bp, 1);
+		vfs_busy_pages(bp->b_vp, bp, 1);
 
 		info->bvary[info->bvsize] = bp;
 		toff = bp->b_bio2.bio_offset + bp->b_dirtyoff;
@@ -3276,7 +3267,7 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	 * Note: to avoid loopback deadlocks, we do not
 	 * assign b_runningbufspace.
 	 */
-	vfs_busy_pages(bp, 1);
+	vfs_busy_pages(bp->b_vp, bp, 1);
 	BUF_KERNPROC(bp);
 
 	if (bp->b_flags & B_ASYNC) {

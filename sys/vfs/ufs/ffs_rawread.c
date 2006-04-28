@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.19 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.20 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +171,8 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		if (iolen != 0)
 			bp->b_bcount -= PAGE_SIZE;
 	}
-	bp->b_flags = B_READ;
+	bp->b_flags &= ~(/*B_READ|*/B_DONE|B_ERROR);
+	bp->b_flags |= B_READ;
 	bp->b_data = udata;
 	bp->b_saveaddr = sa;
 	bp->b_loffset = loffset;
@@ -264,7 +265,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			/* XXX: Leave some bufs for swap */
 			bp = getpbuf(&ffsrawbufcnt);
 			sa = bp->b_data;
-			bp->b_vp = vp; 
 			error = ffs_rawread_readahead(vp, udata, offset, resid,
 				    td, bp, sa, &baseticks);
 			if (error != 0)
@@ -278,7 +278,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 					nbp = NULL;
 				if (nbp != NULL) {
 					nsa = nbp->b_data;
-					nbp->b_vp = vp;
 					
 					nerror = ffs_rawread_readahead(
 							vp, 

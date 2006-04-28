@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.15 2006/04/07 06:38:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.16 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -402,12 +402,13 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 	bp = getblk(vp, lblktodoff(fs, lbn), (int)fs->s_blocksize, 0, 0);
 	if (bp->b_flags & (B_DONE | B_DELWRI)) {
 		/* nop */
-	} else {
+	} else if ((bp->b_flags & B_CACHE) == 0) {
 		bp->b_flags |= B_READ;
+		bp->b_flags &= ~(B_ERROR | B_INVAL);
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2_indirtrunc: bad buffer size");
 		bp->b_bio2.bio_offset = doffset;
-		vfs_busy_pages(bp, 0);
+		vfs_busy_pages(bp->b_vp, bp, 0);
 		vn_strategy(vp, &bp->b_bio1);
 		error = biowait(bp);
 	}

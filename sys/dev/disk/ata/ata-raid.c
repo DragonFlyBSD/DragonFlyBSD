@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.17 2006/03/24 18:35:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.18 2006/04/28 16:33:58 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -558,7 +558,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	buf1->bp.b_bio1.bio_caller_info1.ptr = (void *)rdp;
 	buf1->bp.b_bcount = chunk * DEV_BSIZE;
 	buf1->bp.b_data = data;
-	buf1->bp.b_flags = bp->b_flags;
+	buf1->bp.b_flags = bp->b_flags | B_PAGING;
 	buf1->bp.b_bio1.bio_done = ar_done;
 	buf1->org = bio;
 	buf1_blkno = (int)(buf1->bp.b_bio1.bio_offset >> DEV_BSHIFT);
@@ -692,7 +692,7 @@ ar_done(struct bio *bio)
 			buf->drive = buf->drive + rdp->width;
 		    else
 			buf->drive = buf->drive - rdp->width;
-		    buf->bp.b_flags = buf->org->bio_buf->b_flags;
+		    buf->bp.b_flags = buf->org->bio_buf->b_flags | B_PAGING;
 		    buf->bp.b_error = 0;
 		    dev_dstrategy(AD_SOFTC(rdp->disks[buf->drive])->dev,
 				  &buf->bp.b_bio1);

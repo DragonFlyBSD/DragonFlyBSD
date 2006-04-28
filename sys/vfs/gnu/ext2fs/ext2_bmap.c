@@ -37,7 +37,7 @@
  *
  * @(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_bmap.c,v 1.1 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_bmap.c,v 1.2 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -217,7 +217,7 @@ ext2_bmaparray(struct vnode *vp, ext2_daddr_t bn, ext2_daddr_t *bnp,
 			bp->b_bio2.bio_offset = fsbtodoff(fs, daddr);
 			bp->b_flags |= B_READ;
 			bp->b_flags &= ~(B_INVAL|B_ERROR);
-			vfs_busy_pages(bp, 0);
+			vfs_busy_pages(bp->b_vp, bp, 0);
 			vn_strategy(bp->b_vp, &bp->b_bio1);
 			error = biowait(bp);
 			if (error) {

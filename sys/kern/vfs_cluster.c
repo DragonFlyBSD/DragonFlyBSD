@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.20 2006/03/26 07:56:54 swildner Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.21 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -240,7 +240,8 @@ single_block_read:
 no_read_ahead:
 
 	/*
-	 * Handle the synchronous read
+	 * Handle the synchronous read.  This only occurs if B_CACHE was
+	 * not set.
 	 */
 	if (bp) {
 #if defined(CLUSTERDEBUG)
@@ -249,7 +250,7 @@ no_read_ahead:
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
 		if ((bp->b_flags & B_CLUSTER) == 0) {
-			vfs_busy_pages(bp, 0);
+			vfs_busy_pages(vp, bp, 0);
 		}
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		if ((bp->b_flags & B_ASYNC) || bp->b_bio1.bio_done != NULL)
@@ -285,7 +286,7 @@ no_read_ahead:
 #endif
 
 			if ((rbp->b_flags & B_CLUSTER) == 0) {
-				vfs_busy_pages(rbp, 0);
+				vfs_busy_pages(vp, rbp, 0);
 			}
 			rbp->b_flags &= ~(B_ERROR|B_INVAL);
 			if ((rbp->b_flags & B_ASYNC) || rbp->b_bio1.bio_done != NULL)
@@ -331,7 +332,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 		return tbp;
 
 	bp = trypbuf(&cluster_pbuf_freecnt);
-	if (bp == 0)
+	if (bp == NULL)
 		return tbp;
 
 	/*
@@ -342,7 +343,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	 */
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-	bp->b_flags = B_ASYNC | B_READ | B_CLUSTER | B_VMIO;
+	bp->b_flags |= B_ASYNC | B_READ | B_CLUSTER | B_VMIO;
 	bp->b_bio1.bio_done = cluster_callback;
 	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 	bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
@@ -350,7 +351,6 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	bp->b_bio2.bio_offset = NOOFFSET;
 	KASSERT(bp->b_loffset != NOOFFSET,
 		("cluster_rbuild: no buffer offset"));
-	pbgetvp(vp, bp);
 
 	bp->b_bcount = 0;
 	bp->b_bufsize = 0;
@@ -800,12 +800,12 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		 */
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-		bp->b_flags |= B_CLUSTER |
+		bp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
+		bp->b_flags |= B_CLUSTER | B_ASYNC |
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT | B_NOWDRAIN));
 		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 		bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
-		pbgetvp(vp, bp);
 		/*
 		 * From this location in the file, scan forward to see
 		 * if there are buffers with adjacent data that need to
@@ -925,7 +925,12 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		totalwritten += bp->b_bufsize;
 		bp->b_dirtyoff = 0;
 		bp->b_dirtyend = bp->b_bufsize;
-		bawrite(bp);
+
+		vfs_busy_pages(vp, bp, 1);
+		bp->b_runningbufspace = bp->b_bufsize;
+		runningbufspace += bp->b_runningbufspace;
+		BUF_KERNPROC(bp);	/* B_ASYNC */
+		vn_strategy(vp, &bp->b_bio1);
 
 		bytes -= i;
 	}

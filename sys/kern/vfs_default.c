@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.33 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.34 2006/04/28 16:34:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1145,7 +1145,6 @@ vop_nostrategy (struct vop_strategy_args *ap)
 {
 	printf("No strategy for buffer at %p\n", ap->a_bio->bio_buf);
 	vprint("", ap->a_vp);
-	vprint("", ap->a_bio->bio_buf->b_vp);
 	ap->a_bio->bio_buf->b_flags |= B_ERROR;
 	ap->a_bio->bio_buf->b_error = EOPNOTSUPP;
 	biodone(ap->a_bio);

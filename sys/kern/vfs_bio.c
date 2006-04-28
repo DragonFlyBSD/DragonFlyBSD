@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.65 2006/04/28 06:13:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.66 2006/04/28 16:34:01 dillon Exp $
  */
 
 /*
@@ -604,7 +604,7 @@ bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
 		KASSERT(!(bp->b_flags & B_ASYNC), ("bread: illegal async bp %p", bp));
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		vfs_busy_pages(bp, 0);
+		vfs_busy_pages(vp, bp, 0);
 		vn_strategy(vp, &bp->b_bio1);
 		return (biowait(bp));
 	}
@@ -620,7 +620,7 @@ bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
  *	and we do not have to do anything.
  */
 int
-breadn(struct vnode * vp, off_t loffset, int size, off_t *raoffset,
+breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 	int *rabsize, int cnt, struct buf ** bpp)
 {
 	struct buf *bp, *rabp;
@@ -633,7 +633,7 @@ breadn(struct vnode * vp, off_t loffset, int size, off_t *raoffset,
 	if ((bp->b_flags & B_CACHE) == 0) {
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		vfs_busy_pages(bp, 0);
+		vfs_busy_pages(vp, bp, 0);
 		vn_strategy(vp, &bp->b_bio1);
 		++readwait;
 	}
@@ -646,7 +646,7 @@ breadn(struct vnode * vp, off_t loffset, int size, off_t *raoffset,
 		if ((rabp->b_flags & B_CACHE) == 0) {
 			rabp->b_flags |= B_READ | B_ASYNC;
 			rabp->b_flags &= ~(B_ERROR | B_INVAL);
-			vfs_busy_pages(rabp, 0);
+			vfs_busy_pages(vp, rabp, 0);
 			BUF_KERNPROC(rabp);
 			vn_strategy(vp, &rabp->b_bio1);
 		} else {
@@ -695,7 +695,7 @@ bwrite(struct buf * bp)
 	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
 	bp->b_flags |= B_CACHE;
 
-	vfs_busy_pages(bp, 1);
+	vfs_busy_pages(bp->b_vp, bp, 1);
 
 	/*
 	 * Normal bwrites pipeline writes
@@ -3064,13 +3064,18 @@ vfs_page_set_valid(struct buf *bp, vm_ooffset_t off, int pageno, vm_page_t m)
  *	and should be ignored.
  */
 void
-vfs_busy_pages(struct buf *bp, int clear_modify)
+vfs_busy_pages(struct vnode *vp, struct buf *bp, int clear_modify)
 {
 	int i, bogus;
 	struct proc *p = curthread->td_proc;
 
+	/*
+	 * clear_modify is 0 when setting up for a read.  B_CACHE
+	 * had better not be set.
+	 */
+	KKASSERT(clear_modify || (bp->b_flags & B_CACHE) == 0);
+
 	if (bp->b_flags & B_VMIO) {
-		struct vnode *vp = bp->b_vp;
 		vm_object_t obj;
 		vm_ooffset_t foff;
 
@@ -3114,10 +3119,9 @@ retry:
 			 */
 
 			vm_page_protect(m, VM_PROT_NONE);
-			if (clear_modify)
+			if (clear_modify) {
 				vfs_page_set_valid(bp, foff, i, m);
-			else if (m->valid == VM_PAGE_BITS_ALL &&
-				(bp->b_flags & B_CACHE) == 0) {
+			} else if (m->valid == VM_PAGE_BITS_ALL) {
 				bp->b_xio.xio_pages[i] = bogus_page;
 				bogus++;
 			}
