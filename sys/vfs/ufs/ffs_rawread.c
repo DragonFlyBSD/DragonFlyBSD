@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.18 2006/03/29 18:45:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.19 2006/04/28 00:24:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +171,7 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		if (iolen != 0)
 			bp->b_bcount -= PAGE_SIZE;
 	}
-	bp->b_flags = B_PHYS | B_READ;
+	bp->b_flags = B_READ;
 	bp->b_data = udata;
 	bp->b_saveaddr = sa;
 	bp->b_loffset = loffset;

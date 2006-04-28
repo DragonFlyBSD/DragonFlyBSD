@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.55 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.56 2006/04/28 00:24:46 dillon Exp $
  */
 
 
@@ -2847,9 +2847,6 @@ nfs_strategy(struct vop_strategy_args *ap)
 		("nfs_strategy: buffer %p unexpectedly marked B_DONE", bp));
 	KASSERT(BUF_REFCNT(bp) > 0,
 		("nfs_strategy: buffer %p not locked", bp));
-
-	if (bp->b_flags & B_PHYS)
-		panic("nfs physio");
 
 	if (bp->b_flags & B_ASYNC)
 		td = NULL;

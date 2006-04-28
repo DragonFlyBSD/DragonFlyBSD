@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.11 2005/06/02 20:40:29 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.12 2006/04/28 00:24:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -598,7 +598,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		mapinfo->bp[i]->b_bufsize = lengths[i];
 
 		/* set the flags */
-		mapinfo->bp[i]->b_flags = flags[i] | B_PHYS;
+		mapinfo->bp[i]->b_flags = flags[i];
 
 		/* map the buffer into kernel memory */
 		if (vmapbuf(mapinfo->bp[i]) < 0) {
@@ -609,7 +609,6 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 				(u_long)lengths[i]);
 			for (j = 0; j < i; ++j) {
 				*data_ptrs[j] = mapinfo->bp[j]->b_saveaddr;
-				mapinfo->bp[j]->b_flags &= ~B_PHYS;
 				relpbuf(mapinfo->bp[j], NULL);
 			}
 			return(EACCES);
@@ -667,9 +666,6 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 		/* unmap the buffer */
 		vunmapbuf(mapinfo->bp[i]);
-
-		/* clear the flags we set above */
-		mapinfo->bp[i]->b_flags &= ~B_PHYS;
 
 		/* release the buffer */
 		relpbuf(mapinfo->bp[i], NULL);

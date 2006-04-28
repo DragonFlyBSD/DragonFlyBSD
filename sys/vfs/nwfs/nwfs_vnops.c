@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.26 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.27 2006/04/28 00:24:46 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -748,8 +748,6 @@ nwfs_strategy(struct vop_strategy_args *ap)
 	struct thread *td = NULL;
 
 	NCPVNDEBUG("\n");
-	if (bp->b_flags & B_PHYS)
-		panic("nwfs physio");
 	if ((bp->b_flags & B_ASYNC) == 0)
 		td = curthread;		/* YYY dunno if this is legal */
 	/*

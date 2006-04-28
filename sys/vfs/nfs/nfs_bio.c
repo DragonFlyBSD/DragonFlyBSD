@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.31 2006/04/10 17:46:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.32 2006/04/28 00:24:46 dillon Exp $
  */
 
 
@@ -1339,34 +1339,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 
 	KASSERT(!(bp->b_flags & B_DONE), ("nfs_doio: bp %p already marked done", bp));
 
-	/*
-	 * Historically, paging was done with physio, but no more.
-	 */
-	if (bp->b_flags & B_PHYS) {
-	    /*
-	     * ...though reading /dev/drum still gets us here.
-	     */
-	    io.iov_len = uiop->uio_resid = bp->b_bcount;
-	    /* mapping was done by vmapbuf() */
-	    io.iov_base = bp->b_data;
-	    uiop->uio_offset = bio->bio_offset;
-	    if (bp->b_flags & B_READ) {
-		uiop->uio_rw = UIO_READ;
-		nfsstats.read_physios++;
-		error = nfs_readrpc(vp, uiop);
-	    } else {
-		int com;
-
-		iomode = NFSV3WRITE_DATASYNC;
-		uiop->uio_rw = UIO_WRITE;
-		nfsstats.write_physios++;
-		error = nfs_writerpc(vp, uiop, &iomode, &com);
-	    }
-	    if (error) {
-		bp->b_flags |= B_ERROR;
-		bp->b_error = error;
-	    }
-	} else if (bp->b_flags & B_READ) {
+	if (bp->b_flags & B_READ) {
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;

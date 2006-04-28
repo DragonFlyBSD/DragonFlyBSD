@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.27 2006/04/27 23:28:34 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.28 2006/04/28 00:24:46 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -243,7 +243,7 @@ struct buf {
 #define	B_NOCACHE	0x00008000	/* Do not cache block after use. */
 #define	B_MALLOC	0x00010000	/* malloced b_data */
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
-#define	B_PHYS		0x00040000	/* I/O to user memory. */
+#define	B_UNUSED40000	0x00040000
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
 #define	B_READ		0x00100000	/* Read buffer. */
 #define	B_DIRTY		0x00200000	/* Needs writing later. */

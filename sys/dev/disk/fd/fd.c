@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.26 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.27 2006/04/28 00:24:45 dillon Exp $
  *
  */
 
@@ -2174,7 +2174,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	BUF_LOCKINIT(bp);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
 	initbufbio(bp);
-	bp->b_flags = B_PHYS | B_FORMAT;
+	bp->b_flags = B_FORMAT;
 
 	/*
 	 * calculate a fake blkno, so fdstrategy() would initiate a

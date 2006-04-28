@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.27 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.28 2006/04/28 00:24:46 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -807,8 +807,6 @@ smbfs_strategy(struct vop_strategy_args *ap)
 	int error = 0;
 
 	SMBVDEBUG("\n");
-	if (bp->b_flags & B_PHYS)
-		panic("smbfs physio");
 	if ((bp->b_flags & B_ASYNC) == 0)
 		td = curthread;		/* XXX */
 

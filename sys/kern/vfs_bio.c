@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.63 2006/04/27 23:28:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.64 2006/04/28 00:24:46 dillon Exp $
  */
 
 /*
@@ -3403,8 +3403,6 @@ vmapbuf(struct buf *bp)
 	int i;
 	struct vm_page *m;
 
-	if ((bp->b_flags & B_PHYS) == 0)
-		panic("vmapbuf");
 	if (bp->b_bufsize < 0)
 		return (-1);
 	for (v = bp->b_saveaddr,
@@ -3467,9 +3465,6 @@ vunmapbuf(struct buf *bp)
 	int pidx;
 	int npages;
 	vm_page_t *m;
-
-	if ((bp->b_flags & B_PHYS) == 0)
-		panic("vunmapbuf");
 
 	npages = bp->b_xio.xio_npages;
 	pmap_qremove(trunc_page((vm_offset_t)bp->b_data),
