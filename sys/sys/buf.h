@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.28 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.29 2006/04/28 06:13:55 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -270,9 +270,9 @@ struct buf {
  */
 #define	BX_VNDIRTY	0x00000001	/* On vnode dirty list */
 #define	BX_VNCLEAN	0x00000002	/* On vnode clean list */
-#define	BX_BKGRDWRITE	0x00000004	/* Do writes in background */
-#define	BX_BKGRDINPROG	0x00000008	/* Background write in progress */
-#define	BX_BKGRDWAIT	0x00000010	/* Background write waiting */
+#define	BX_UNUSED0004	0x00000004
+#define	BX_UNUSED0008	0x00000008
+#define	BX_UNUSED0010	0x00000010
 #define BX_AUTOCHAINDONE 0x00000020	/* pager I/O chain auto mode */
 
 #define	NOOFFSET	(-1LL)		/* No buffer offset calculated yet */

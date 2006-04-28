@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.19 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.20 2006/04/28 06:13:56 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -941,7 +941,6 @@ ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 		brelse(bp);
 		return (0);
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
 	cgp->cg_time = time_second;
 	bno = dtogd(fs, bprev);
 	blksfree = cg_blksfree(cgp);
@@ -1020,7 +1019,6 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 		brelse(bp);
 		return (0);
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
 	cgp->cg_time = time_second;
 	if (size == fs->fs_bsize) {
 		bno = ffs_alloccgblk(ip, bp, bpref);
@@ -1249,7 +1247,7 @@ ffs_clusteralloc(struct inode *ip, int cg, ufs_daddr_t bpref, int len)
 	cgp = (struct cg *)bp->b_data;
 	if (!cg_chkmagic(cgp))
 		goto fail;
-	bp->b_xflags |= BX_BKGRDWRITE;
+
 	/*
 	 * Check to see if a cluster of the needed size (or bigger) is
 	 * available in this cylinder group.
@@ -1457,7 +1455,6 @@ gotit:
 		printf("Warning: inode free race avoided %d times\n",
 			icheckmiss);
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
 	cgp->cg_time = time_second;
 	if (DOINGSOFTDEP(ITOV(ip)))
 		softdep_setup_inomapdep(bp, ip, ibase + ipref);
@@ -1523,7 +1520,6 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		brelse(bp);
 		return;
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
 	cgp->cg_time = time_second;
 	bno = dtogd(fs, bno);
 	blksfree = cg_blksfree(cgp);
@@ -1639,7 +1635,6 @@ ffs_checkblk(struct inode *ip, ufs_daddr_t bno, long size)
 	cgp = (struct cg *)bp->b_data;
 	if (!cg_chkmagic(cgp))
 		panic("ffs_checkblk: cg magic mismatch");
-	bp->b_xflags |= BX_BKGRDWRITE;
 	blksfree = cg_blksfree(cgp);
 	bno = dtogd(fs, bno);
 	if (size == fs->fs_bsize) {
@@ -1701,7 +1696,6 @@ ffs_freefile(struct vnode *pvp, ino_t ino, int mode)
 		brelse(bp);
 		return (0);
 	}
-	bp->b_xflags |= BX_BKGRDWRITE;
 	cgp->cg_time = time_second;
 	inosused = cg_inosused(cgp);
 	ino %= fs->fs_ipg;

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.64 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.65 2006/04/28 06:13:54 dillon Exp $
  */
 
 /*
@@ -688,22 +688,6 @@ bwrite(struct buf * bp)
 	if (BUF_REFCNTNB(bp) == 0)
 		panic("bwrite: buffer is not busy???");
 	crit_enter();
-	/*
-	 * If a background write is already in progress, delay
-	 * writing this block if it is asynchronous. Otherwise
-	 * wait for the background write to complete.
-	 */
-	if (bp->b_xflags & BX_BKGRDINPROG) {
-		if (bp->b_flags & B_ASYNC) {
-			crit_exit();
-			bdwrite(bp);
-			return (0);
-		}
-		bp->b_xflags |= BX_BKGRDWAIT;
-		tsleep(&bp->b_xflags, 0, "biord", 0);
-		if (bp->b_xflags & BX_BKGRDINPROG)
-			panic("bwrite: still writing");
-	}
 
 	/* Mark the buffer clean */
 	bundirty(bp);
@@ -1017,7 +1001,7 @@ brelse(struct buf * bp)
 	 */
 	if (bp->b_flags & B_DELWRI)
 		bp->b_flags &= ~B_RELBUF;
-	else if (vm_page_count_severe() && !(bp->b_xflags & BX_BKGRDINPROG))
+	else if (vm_page_count_severe())
 		bp->b_flags |= B_RELBUF;
 
 	/*
@@ -1203,11 +1187,8 @@ brelse(struct buf * bp)
 		 * marked B_INVAL and disassociated from their vnode.
 		 */
 		bp->b_flags |= B_INVAL;
-		bp->b_xflags &= ~BX_BKGRDWRITE;
 		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
-		if (bp->b_xflags & BX_BKGRDINPROG)
-			panic("losing buffer 1");
 		if (bp->b_kvasize) {
 			bp->b_qindex = BQUEUE_EMPTYKVA;
 		} else {
@@ -1222,9 +1203,6 @@ brelse(struct buf * bp)
 		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		bp->b_flags |= B_INVAL;
-		bp->b_xflags &= ~BX_BKGRDWRITE;
-		if (bp->b_xflags & BX_BKGRDINPROG)
-			panic("losing buffer 2");
 		bp->b_qindex = BQUEUE_CLEAN;
 		TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 	} else if (bp->b_flags & B_LOCKED) {
@@ -1698,8 +1676,6 @@ restart:
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_deallocate)
 			(*bioops.io_deallocate)(bp);
-		if (bp->b_xflags & BX_BKGRDINPROG)
-			panic("losing buffer 3");
 
 		/*
 		 * critical section protection is not required when
@@ -1925,8 +1901,7 @@ flushbufqueues(void)
 
 	while (bp) {
 		KASSERT((bp->b_flags & B_DELWRI), ("unexpected clean buffer %p", bp));
-		if ((bp->b_flags & B_DELWRI) != 0 &&
-		    (bp->b_xflags & BX_BKGRDINPROG) == 0) {
+		if (bp->b_flags & B_DELWRI) {
 			if (bp->b_flags & B_INVAL) {
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
 					panic("flushbufqueues: locked buf");

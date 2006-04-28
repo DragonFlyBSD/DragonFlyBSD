@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.37 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.38 2006/04/28 06:13:56 dillon Exp $
  */
 
 /*
@@ -4149,8 +4149,7 @@ softdep_fsync_mountdev_bp(struct buf *bp, void *data)
 	 * dependencies.
 	 */
 	if ((wk = LIST_FIRST(&bp->b_dep)) == NULL ||
-	    wk->wk_type != D_BMSAFEMAP ||
-	    (bp->b_xflags & BX_BKGRDINPROG)) {
+	    wk->wk_type != D_BMSAFEMAP) {
 		BUF_UNLOCK(bp);
 		return(0);
 	}
@@ -5027,17 +5026,8 @@ getdirtybuf(bpp, waitfor)
 	for (;;) {
 		if ((bp = *bpp) == NULL)
 			return (0);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
-			if ((bp->b_xflags & BX_BKGRDINPROG) == 0)
-				break;
-			BUF_UNLOCK(bp);
-			if (waitfor != MNT_WAIT)
-				return (0);
-			bp->b_xflags |= BX_BKGRDWAIT;
-			interlocked_sleep(&lk, SLEEP, &bp->b_xflags, 0,
-			    "getbuf", 0);
-			continue;
-		}
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0)
+			break;
 		if (waitfor != MNT_WAIT)
 			return (0);
 		error = interlocked_sleep(&lk, LOCKBUF, bp,
