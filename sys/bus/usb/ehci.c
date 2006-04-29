@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.18 2006/04/23 03:07:58 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.19 2006/04/29 22:05:21 dillon Exp $
  */
 
 /*
@@ -1575,6 +1575,8 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 		break;
 	case C(UR_GET_DESCRIPTOR, UT_READ_DEVICE):
 		DPRINTFN(8,("ehci_root_ctrl_start wValue=0x%04x\n", value));
+		if (len == 0)
+			break;
 		switch(value >> 8) {
 		case UDESC_DEVICE:
 			if ((value & 0xff) != 0) {
@@ -1623,8 +1625,6 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 			memcpy(buf, &ehci_endpd, l);
 			break;
 		case UDESC_STRING:
-			if (len == 0)
-				break;
 			*(u_int8_t *)buf = 0;
 			totlen = 1;
 			switch (value & 0xff) {
@@ -1753,6 +1753,8 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 #endif
 		break;
 	case C(UR_GET_DESCRIPTOR, UT_READ_CLASS_DEVICE):
+		if (len == 0)
+			break;
 		if ((value & 0xff) != 0) {
 			err = USBD_IOERROR;
 			goto ret;

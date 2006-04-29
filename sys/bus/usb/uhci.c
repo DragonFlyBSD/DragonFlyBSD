@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.12 2005/06/02 20:40:40 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.13 2006/04/29 22:05:21 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -1150,13 +1150,13 @@ uhci_intr(void *arg)
 	if (sc->sc_dying)
 		return (0);
 
-	DPRINTFN(15,("uhci_intr: real interrupt\n"));
 	if (sc->sc_bus.use_polling) {
 #ifdef DIAGNOSTIC
-		printf("uhci_intr: ignored interrupt while polling\n");
+		DPRINTFN(16, ("uhci_intr: ignored interrupt while polling\n"));
 #endif
 		return (0);
 	}
+
 	return (uhci_intr1(sc));
 }
 
@@ -1964,6 +1964,7 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 #endif
 	usb_transfer_complete(xfer);
 	crit_exit();
+	return;
 }
 
 /* Close a device bulk pipe. */
@@ -3161,6 +3162,8 @@ uhci_root_ctrl_start(usbd_xfer_handle xfer)
 		break;
 	case C(UR_GET_DESCRIPTOR, UT_READ_DEVICE):
 		DPRINTFN(2,("uhci_root_ctrl_control wValue=0x%04x\n", value));
+		if (len == 0)
+			break;
 		switch(value >> 8) {
 		case UDESC_DEVICE:
 			if ((value & 0xff) != 0) {
@@ -3190,8 +3193,6 @@ uhci_root_ctrl_start(usbd_xfer_handle xfer)
 			memcpy(buf, &uhci_endpd, l);
 			break;
 		case UDESC_STRING:
-			if (len == 0)
-				break;
 			*(u_int8_t *)buf = 0;
 			totlen = 1;
 			switch (value & 0xff) {
@@ -3323,6 +3324,8 @@ uhci_root_ctrl_start(usbd_xfer_handle xfer)
 		}
 		break;
 	case C(UR_GET_DESCRIPTOR, UT_READ_CLASS_DEVICE):
+		if (len == 0)
+			break;
 		if (value != 0) {
 			err = USBD_IOERROR;
 			goto ret;

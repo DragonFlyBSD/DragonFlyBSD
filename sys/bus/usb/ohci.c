@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ohci.c,v 1.138 2003/02/08 03:32:50 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/ohci.c,v 1.141 2003/12/22 15:40:10 shiba Exp $
- * $DragonFly: src/sys/bus/usb/ohci.c,v 1.12 2005/07/18 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ohci.c,v 1.13 2006/04/29 22:05:21 dillon Exp $
  */
 /* Also, already ported:
  *	$NetBSD: ohci.c,v 1.140 2003/05/13 04:42:00 gson Exp $
@@ -2274,6 +2274,7 @@ ohci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		usb_uncallout(xfer->timeout_handle, ohci_timeout, xfer);
 		usb_transfer_complete(xfer);
 		crit_exit();
+		return;
 	}
 
 	if (xfer->device->bus->intr_context /* || !curproc REMOVED DFly */)
