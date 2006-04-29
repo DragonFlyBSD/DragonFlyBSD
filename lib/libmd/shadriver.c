@@ -1,6 +1,6 @@
 /* SHADRIVER.C - test driver for SHA-1 (and SHA-0)
  * $FreeBSD: src/lib/libmd/shadriver.c,v 1.2 1999/08/28 00:05:09 peter Exp $
- * $DragonFly: src/lib/libmd/shadriver.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libmd/shadriver.c,v 1.3 2006/04/29 22:19:26 dillon Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All
@@ -28,8 +28,11 @@
 #include <time.h>
 #include <string.h>
 #include "sha.h"
+#include "sha256.h"
 #if SHA == 1
 #define SHA_Data SHA1_Data
+#elif SHA == 256
+#define SHA_Data SHA256_Data
 #endif
 
 /* Digests a string and prints the result.
@@ -37,7 +40,7 @@
 static void SHAString (string)
 char *string;
 {
-  char buf[2*20+1];
+  char buf[2*32+1];
 
   printf ("SHA-%d (\"%s\") = %s\n", 
 	SHA, string, SHA_Data(string,strlen(string),buf));
