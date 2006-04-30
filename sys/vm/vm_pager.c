@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.20 2006/04/30 18:25:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.21 2006/04/30 18:52:37 dillon Exp $
  */
 
 /*
@@ -205,21 +205,29 @@ vm_pager_bufferinit(void)
 	struct buf *bp;
 	int i;
 
-	bp = swbuf;
 	/*
-	 * Now set up swap and physical I/O buffer headers.
+	 * Reserve KVM space for pbuf data.
 	 */
-	for (i = 0; i < nswbuf; i++, bp++) {
+	swapbkva = kmem_alloc_pageable(pager_map, nswbuf * MAXPHYS);
+	if (!swapbkva)
+		panic("Not enough pager_map VM space for physical buffers");
+
+	/*
+	 * Initial pbuf setup.
+	 */
+	bp = swbuf;
+	for (i = 0; i < nswbuf; ++i, ++bp) {
+		bp->b_kvabase = (caddr_t)(i * MAXPHYS) + swapbkva;
+		bp->b_kvasize = MAXPHYS;
 		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);
 		LIST_INIT(&bp->b_dep);
 	}
 
+	/*
+	 * Allow the clustering code to use half of our pbufs.
+	 */
 	cluster_pbuf_freecnt = nswbuf / 2;
-
-	swapbkva = kmem_alloc_pageable(pager_map, nswbuf * MAXPHYS);
-	if (!swapbkva)
-		panic("Not enough pager_map VM space for physical buffers");
 }
 
 /*
@@ -307,16 +315,13 @@ vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
 }
 
 /*
- * initialize a physical buffer
+ * Initialize a physical buffer.
  */
-
 static void
 initpbuf(struct buf *bp)
 {
 	bp->b_qindex = 0; /* BQUEUE_NONE */
-	bp->b_data = (caddr_t) (MAXPHYS * (bp - swbuf)) + swapbkva;
-	bp->b_kvabase = bp->b_data;
-	bp->b_kvasize = MAXPHYS;
+	bp->b_data = bp->b_kvabase;
 	bp->b_flags = B_PAGING;
 	bp->b_cmd = BUF_CMD_DONE;
 	bp->b_error = 0;

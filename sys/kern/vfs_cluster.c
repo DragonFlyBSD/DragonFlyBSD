@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.22 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.23 2006/04/30 18:52:36 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -484,10 +484,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			bp->b_xio.xio_pages[j] = bogus_page;
 		}
 	}
-	if (bp->b_bufsize > bp->b_kvasize)
+	if (bp->b_bufsize > bp->b_kvasize) {
 		panic("cluster_rbuild: b_bufsize(%d) > b_kvasize(%d)",
 		    bp->b_bufsize, bp->b_kvasize);
-	bp->b_kvasize = bp->b_bufsize;
+	}
 
 	pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
 		(vm_page_t *)bp->b_xio.xio_pages, bp->b_xio.xio_npages);
@@ -922,11 +922,11 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 	finishcluster:
 		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
 			(vm_page_t *) bp->b_xio.xio_pages, bp->b_xio.xio_npages);
-		if (bp->b_bufsize > bp->b_kvasize)
+		if (bp->b_bufsize > bp->b_kvasize) {
 			panic(
 			    "cluster_wbuild: b_bufsize(%d) > b_kvasize(%d)\n",
 			    bp->b_bufsize, bp->b_kvasize);
-		bp->b_kvasize = bp->b_bufsize;
+		}
 		totalwritten += bp->b_bufsize;
 		bp->b_dirtyoff = 0;
 		bp->b_dirtyend = bp->b_bufsize;

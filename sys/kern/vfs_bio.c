@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.68 2006/04/30 18:25:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.69 2006/04/30 18:52:36 dillon Exp $
  */
 
 /*
@@ -519,7 +519,7 @@ clearbiocache(struct bio *bio)
  *	Since this call frees up buffer space, we call bufspacewakeup().
  */
 static void
-bfreekva(struct buf * bp)
+bfreekva(struct buf *bp)
 {
 	int count;
 
@@ -2429,7 +2429,7 @@ allocbuf(struct buf *bp, int size)
 
 		if (newbsize < bp->b_bufsize) {
 			/*
-			 * malloced buffers are not shrunk
+			 * Malloced buffers are not shrunk
 			 */
 			if (bp->b_flags & B_MALLOC) {
 				if (newbsize) {
