@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.69 2006/04/30 18:52:36 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.70 2006/04/30 20:23:24 dillon Exp $
  */
 
 /*
@@ -3374,40 +3374,49 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 /*
  * vmapbuf:
  *
- *	Map an IO request into kernel virtual address space.
- *
- *	All requests are (re)mapped into kernel VA space.
- *	Notice that we use b_bufsize for the size of the buffer
- *	to be mapped.  b_bcount might be modified by the driver.
+ *	Map a user buffer into KVM via a pbuf.  On return the buffer's
+ *	b_data, b_bufsize, and b_bcount will be set, and its XIO page array
+ *	initialized.
  */
 int
-vmapbuf(struct buf *bp)
+vmapbuf(struct buf *bp, caddr_t udata, int bytes)
 {
-	caddr_t addr, v, kva;
+	caddr_t addr;
 	vm_paddr_t pa;
 	int pidx;
 	int i;
+	int vmprot;
 	struct vm_page *m;
 
 	/* 
-	 * bp had better have a command
+	 * bp had better have a command and it better be a pbuf.
 	 */
 	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+	KKASSERT(bp->b_flags & B_PAGING);
 
-	if (bp->b_bufsize < 0)
+	if (bytes < 0)
 		return (-1);
-	for (v = bp->b_saveaddr,
-		     addr = (caddr_t)trunc_page((vm_offset_t)bp->b_data),
-		     pidx = 0;
-	     addr < bp->b_data + bp->b_bufsize;
-	     addr += PAGE_SIZE, v += PAGE_SIZE, pidx++) {
+
+	/*
+	 * Map the user data into KVM.  Mappings have to be page-aligned.
+	 */
+	addr = (caddr_t)trunc_page((vm_offset_t)udata);
+	pidx = 0;
+
+	vmprot = VM_PROT_READ;
+	if (bp->b_cmd == BUF_CMD_READ)
+		vmprot |= VM_PROT_WRITE;
+
+	while (addr < udata + bytes) {
 		/*
 		 * Do the vm_fault if needed; do the copy-on-write thing
 		 * when reading stuff off device into memory.
 		 */
 retry:
-		i = vm_fault_quick((addr >= bp->b_data) ? addr : bp->b_data,
-			(bp->b_cmd == BUF_CMD_READ)?(VM_PROT_READ|VM_PROT_WRITE):VM_PROT_READ);
+		if (addr >= udata)
+			i = vm_fault_quick(addr, vmprot);
+		else
+			i = vm_fault_quick(udata, vmprot);
 		if (i < 0) {
 			for (i = 0; i < pidx; ++i) {
 			    vm_page_unhold(bp->b_xio.xio_pages[i]);
@@ -3417,13 +3426,9 @@ retry:
 		}
 
 		/*
-		 * WARNING!  If sparc support is MFCd in the future this will
-		 * have to be changed from pmap_kextract() to pmap_extract()
-		 * ala -current.
+		 * Extract from current process's address map.  Since the
+		 * fault succeeded, an empty page indicates a race.
 		 */
-#ifdef __sparc64__
-#error "If MFCing sparc support use pmap_extract"
-#endif
 		pa = pmap_kextract((vm_offset_t)addr);
 		if (pa == 0) {
 			printf("vmapbuf: warning, race against user address during I/O");
@@ -3432,15 +3437,22 @@ retry:
 		m = PHYS_TO_VM_PAGE(pa);
 		vm_page_hold(m);
 		bp->b_xio.xio_pages[pidx] = m;
+		addr += PAGE_SIZE;
+		++pidx;
 	}
+
+	/*
+	 * Map the page array and set the buffer fields to point to
+	 * the mapped data buffer.
+	 */
 	if (pidx > btoc(MAXPHYS))
 		panic("vmapbuf: mapped more than MAXPHYS");
-	pmap_qenter((vm_offset_t)bp->b_saveaddr, bp->b_xio.xio_pages, pidx);
-	
-	kva = bp->b_saveaddr;
+	pmap_qenter((vm_offset_t)bp->b_kvabase, bp->b_xio.xio_pages, pidx);
+
 	bp->b_xio.xio_npages = pidx;
-	bp->b_saveaddr = bp->b_data;
-	bp->b_data = kva + (((vm_offset_t) bp->b_data) & PAGE_MASK);
+	bp->b_data = bp->b_kvabase + ((int)(intptr_t)udata & PAGE_MASK);
+	bp->b_bcount = bytes;
+	bp->b_bufsize = bytes;
 	return(0);
 }
 
@@ -3455,16 +3467,17 @@ vunmapbuf(struct buf *bp)
 {
 	int pidx;
 	int npages;
-	vm_page_t *m;
+
+	KKASSERT(bp->b_flags & B_PAGING);
 
 	npages = bp->b_xio.xio_npages;
-	pmap_qremove(trunc_page((vm_offset_t)bp->b_data),
-		     npages);
-	m = bp->b_xio.xio_pages;
-	for (pidx = 0; pidx < npages; pidx++)
-		vm_page_unhold(*m++);
-
-	bp->b_data = bp->b_saveaddr;
+	pmap_qremove(trunc_page((vm_offset_t)bp->b_data), npages);
+	for (pidx = 0; pidx < npages; ++pidx) {
+		vm_page_unhold(bp->b_xio.xio_pages[pidx]);
+		bp->b_xio.xio_pages[pidx] = NULL;
+	}
+	bp->b_xio.xio_npages = 0;
+	bp->b_data = bp->b_kvabase;
 }
 
 /*

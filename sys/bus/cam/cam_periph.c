@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.14 2006/04/30 17:22:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.15 2006/04/30 20:23:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -587,29 +587,25 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		 */
 		mapinfo->bp[i] = getpbuf(NULL);
 
-		/* save the buffer's data address */
-		mapinfo->bp[i]->b_saveaddr = mapinfo->bp[i]->b_data;
-
-		/* put our pointer in the data slot */
-		mapinfo->bp[i]->b_data = *data_ptrs[i];
-
-		/* set the transfer length, we know it's < DFLTPHYS */
-		mapinfo->bp[i]->b_bufsize = lengths[i];
+		/* save the original user pointer */
+		mapinfo->saved_ptrs[i] = *data_ptrs[i];
 
 		/* set the flags */
 		mapinfo->bp[i]->b_cmd = cmd[i];
 
-		/* map the buffer into kernel memory */
-		if (vmapbuf(mapinfo->bp[i]) < 0) {
+		/* map the user buffer into kernel memory */
+		if (vmapbuf(mapinfo->bp[i], *data_ptrs[i], lengths[i]) < 0) {
 			printf("cam_periph_mapmem: error, "
 				"address %p, length %lu isn't "
 				"user accessible any more\n",
 				(void *)*data_ptrs[i],
 				(u_long)lengths[i]);
 			for (j = 0; j < i; ++j) {
-				*data_ptrs[j] = mapinfo->bp[j]->b_saveaddr;
+				*data_ptrs[j] = mapinfo->saved_ptrs[j];
+				vunmapbuf(mapinfo->bp[j]);
 				relpbuf(mapinfo->bp[j], NULL);
 			}
+			mapinfo->num_bufs_used -= i;
 			return(EACCES);
 		}
 
@@ -661,7 +657,7 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 	for (i = 0; i < numbufs; i++) {
 		/* Set the user's pointer back to the original value */
-		*data_ptrs[i] = mapinfo->bp[i]->b_saveaddr;
+		*data_ptrs[i] = mapinfo->saved_ptrs[i];
 
 		/* unmap the buffer */
 		vunmapbuf(mapinfo->bp[i]);

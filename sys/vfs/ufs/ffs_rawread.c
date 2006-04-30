@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.21 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.22 2006/04/30 20:23:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 
 static int ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
 				 size_t len, struct thread *td, struct buf *bp,
-				 caddr_t sa, int *baseticks);
+				 int *baseticks);
 static int ffs_rawread_main(struct vnode *vp,
 			    struct uio *uio);
 
@@ -153,27 +153,27 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 static int
 ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		      size_t len, struct thread *td, struct buf *bp,
-		      caddr_t sa, int *baseticks)
+		      int *baseticks)
 {
 	int error;
-	uint iolen;
+	int iolen;
 	int blockoff;
 	int bsize;
 	struct vnode *dp;
 	int bforwards;
 	
 	bsize = vp->v_mount->mnt_stat.f_iosize;
-	
-	iolen = ((vm_offset_t) udata) & PAGE_MASK;
-	bp->b_bcount = len;
-	if (bp->b_bcount + iolen > bp->b_kvasize) {
-		bp->b_bcount = bp->b_kvasize;
+
+	/*
+	 * Make sure it fits into the pbuf
+	 */
+	iolen = (int)(intptr_t)udata & PAGE_MASK;
+	if (len + iolen > bp->b_kvasize) {
+		len = bp->b_kvasize;
 		if (iolen != 0)
-			bp->b_bcount -= PAGE_SIZE;
+			len -= PAGE_SIZE;
 	}
 	bp->b_flags &= ~B_ERROR;
-	bp->b_data = udata;
-	bp->b_saveaddr = sa;
 	bp->b_loffset = loffset;
 	bp->b_bio2.bio_offset = NOOFFSET;
 	bp->b_bio2.bio_done = ffs_rawreadwakeup;
@@ -189,18 +189,17 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		/* 
 		 * Fill holes with NULs to preserve semantics 
 		 */
-		if (bp->b_bcount + blockoff * DEV_BSIZE > bsize)
-			bp->b_bcount = bsize - blockoff * DEV_BSIZE;
-		bp->b_bufsize = bp->b_bcount;
+		if (len + blockoff * DEV_BSIZE > bsize)
+			len = bsize - blockoff * DEV_BSIZE;
 		
-		if (vmapbuf(bp) < 0)
+		if (vmapbuf(bp, udata, len) < 0)
 			return EFAULT;
 		
 		if (ticks - *baseticks >= hogticks) {
 			*baseticks = ticks;
 			uio_yield();
 		}
-		bzero(bp->b_data, bp->b_bufsize);
+		bzero(bp->b_data, bp->b_bcount);
 
 		/* Mark operation completed (similar to bufdone()) */
 
@@ -208,12 +207,11 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		return 0;
 	}
 	
-	if (bp->b_bcount + blockoff * DEV_BSIZE > bforwards)
-		bp->b_bcount = bforwards - blockoff * DEV_BSIZE;
-	bp->b_bufsize = bp->b_bcount;
+	if (len + blockoff * DEV_BSIZE > bforwards)
+		len = bforwards - blockoff * DEV_BSIZE;
 	bp->b_bio2.bio_offset += blockoff * DEV_BSIZE;
 	
-	if (vmapbuf(bp) < 0)
+	if (vmapbuf(bp, udata, len) < 0)
 		return EFAULT;
 	
 	/*
@@ -231,14 +229,12 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 	return 0;
 }
 
-
 static int
 ffs_rawread_main(struct vnode *vp, struct uio *uio)
 {
 	int error, nerror;
 	struct buf *bp, *nbp, *tbp;
-	caddr_t sa, nsa, tsa;
-	uint iolen;
+	int iolen;
 	int baseticks = ticks;
 	caddr_t udata;
 	int resid;
@@ -255,17 +251,14 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	
 	bp = NULL;
 	nbp = NULL;
-	sa = NULL;
-	nsa = NULL;
 	
 	while (resid > 0) {
 		
 		if (bp == NULL) { /* Setup first read */
 			/* XXX: Leave some bufs for swap */
 			bp = getpbuf(&ffsrawbufcnt);
-			sa = bp->b_data;
 			error = ffs_rawread_readahead(vp, udata, offset, resid,
-				    td, bp, sa, &baseticks);
+				    td, bp, &baseticks);
 			if (error != 0)
 				break;
 			
@@ -276,15 +269,12 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 				else
 					nbp = NULL;
 				if (nbp != NULL) {
-					nsa = nbp->b_data;
-					
 					nerror = ffs_rawread_readahead(
 							vp, 
 							udata + bp->b_bufsize,
 							offset + bp->b_bufsize,
 							resid - bp->b_bufsize,
-							td, nbp, nsa,
-							&baseticks);
+							td, nbp, &baseticks);
 					if (nerror) {
 						relpbuf(nbp, &ffsrawbufcnt);
 						nbp = NULL;
@@ -318,8 +308,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			/* Incomplete read.  Try to read remaining part */
 			error = ffs_rawread_readahead(
 				    vp, udata, offset,
-				    bp->b_bufsize - iolen, td, bp,
-				    sa, &baseticks);
+				    bp->b_bufsize - iolen, td, bp, &baseticks);
 			if (error != 0)
 				break;
 		} else if (nbp != NULL) { /* Complete read with readahead */
@@ -328,10 +317,6 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			bp = nbp;
 			nbp = tbp;
 			
-			tsa = sa;
-			sa = nsa;
-			nsa = tsa;
-
 			clearbiocache(&nbp->b_bio2);
 			
 			if (resid <= bp->b_bufsize) { /* No more readaheads */
@@ -342,7 +327,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 						vp, udata + bp->b_bufsize,
 				   		offset + bp->b_bufsize,
 						resid - bp->b_bufsize,
-						td, nbp, nsa, &baseticks);
+						td, nbp, &baseticks);
 				if (nerror != 0) {
 					relpbuf(nbp, &ffsrawbufcnt);
 					nbp = NULL;
@@ -352,7 +337,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			break;		
 		}  else if (resid > 0) { /* More to read, no readahead */
 			error = ffs_rawread_readahead(vp, udata, offset,
-						      resid, td, bp, sa,
+						      resid, td, bp,
 						      &baseticks);
 			if (error != 0)
 				break;

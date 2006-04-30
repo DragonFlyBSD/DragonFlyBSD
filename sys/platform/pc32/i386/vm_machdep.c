@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.40 2006/02/28 18:30:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.41 2006/04/30 20:23:22 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -263,7 +263,7 @@ cpu_proc_exit(void)
 		pcb->pcb_ext = NULL;
 		td->td_switch(td);
 		crit_exit();
-		kmem_free(kernel_map, (caddr_t)ext, ctob(IOPAGES + 1));
+		kmem_free(kernel_map, (vm_offset_t)ext, ctob(IOPAGES + 1));
 	}
 	user_ldt_free(pcb);
         if (pcb->pcb_flags & PCB_DBREGS) {

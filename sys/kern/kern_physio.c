@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.18 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.19 2006/04/30 20:23:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,12 +46,11 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	int error;
 	int chk_blockno;
 	int saflags;
-	caddr_t sa;
-	u_int iolen;
+	int iolen;
+	int bcount;
 	struct buf *bp;
 
 	bp = getpbuf(NULL);
-	sa = bp->b_data;
 	saflags = bp->b_flags;
 	error = 0;
 
@@ -75,17 +74,15 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			else 
 				bp->b_cmd = BUF_CMD_WRITE;
 			bp->b_flags = saflags;
-			bp->b_data = uio->uio_iov[i].iov_base;
-			bp->b_bcount = uio->uio_iov[i].iov_len;
-			bp->b_saveaddr = sa;
+			bcount = uio->uio_iov[i].iov_len;
 
 			reinitbufbio(bp);	/* clear translation cache */
 			bp->b_bio1.bio_offset = uio->uio_offset;
 			bp->b_bio1.bio_done = physwakeup;
 
 			/* Don't exceed drivers iosize limit */
-			if (bp->b_bcount > dev->si_iosize_max)
-				bp->b_bcount = dev->si_iosize_max;
+			if (bcount > dev->si_iosize_max)
+				bcount = dev->si_iosize_max;
 
 			/* 
 			 * Make sure the pbuf can map the request
@@ -94,18 +91,20 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			 * XXX: page aligned or it will be fragmented.
 			 */
 			iolen = ((vm_offset_t) bp->b_data) & PAGE_MASK;
-			if ((bp->b_bcount + iolen) > bp->b_kvasize) {
-				bp->b_bcount = bp->b_kvasize;
+			if ((bcount + iolen) > bp->b_kvasize) {
+				bcount = bp->b_kvasize;
 				if (iolen != 0)
-					bp->b_bcount -= PAGE_SIZE;
+					bcount -= PAGE_SIZE;
 			}
-			bp->b_bufsize = bp->b_bcount;
-
 			if (uio->uio_segflg == UIO_USERSPACE) {
-				if (vmapbuf(bp) < 0) {
+				if (vmapbuf(bp, uio->uio_iov[i].iov_base, bcount) < 0) {
 					error = EFAULT;
 					goto doerror;
 				}
+			} else {
+				bp->b_data = uio->uio_iov[i].iov_base;
+				bp->b_bcount = bcount;
+				bp->b_bufsize = bcount;
 			}
 			dev_dstrategy(dev, &bp->b_bio1);
 			crit_enter();
@@ -129,7 +128,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 		}
 	}
 doerror:
-	bp->b_data = sa;
 	relpbuf(bp, NULL);
 	return (error);
 }

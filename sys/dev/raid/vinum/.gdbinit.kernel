@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.4 2006/03/24 18:35:32 dillon Exp $
+# $DragonFly: src/sys/dev/raid/vinum/.gdbinit.kernel,v 1.5 2006/04/30 20:23:21 dillon Exp $
 set remotebaud 38400
 set remotetimeout 1
 set complaints 1
@@ -309,8 +309,6 @@ printf "\nb_validend:   "
 output $bp->b_validend
 printf "\nb_poffset:     "
 output $bp->b_bio_array[2].bio_offset
-printf "\nb_saveaddr:   "
-output $bp->b_saveaddr
 printf "\nb_savekva:    "
 output $bp->b_savekva
 printf "\nb_driver1:    "

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.32 2006/04/30 18:25:36 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.33 2006/04/30 20:23:25 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -169,7 +169,6 @@ struct buf {
 	int	b_kvasize;		/* size of kva for buffer */
 	int	b_dirtyoff;		/* Offset in buffer of dirty region. */
 	int	b_dirtyend;		/* Offset of end of dirty region. */
-	void	*b_saveaddr;		/* Original b_addr for physio. */
 	struct	xio b_xio;  		/* data buffer page list management */
 	struct	workhead b_dep;		/* List of filesystem dependencies. */
 };
@@ -374,7 +373,7 @@ void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
 void	vfs_busy_pages (struct vnode *, struct buf *);
 void	vfs_unbusy_pages (struct buf *);
-int	vmapbuf (struct buf *);
+int	vmapbuf (struct buf *, caddr_t, int);
 void	vunmapbuf (struct buf *);
 void	relpbuf (struct buf *, int *);
 void	brelvp (struct buf *);

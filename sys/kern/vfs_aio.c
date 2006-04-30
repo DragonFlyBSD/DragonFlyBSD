@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.24 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.25 2006/04/30 20:23:24 dillon Exp $
  */
 
 /*
@@ -959,17 +959,13 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 	bp->b_bio1.bio_caller_info1.ptr = p;
 	error = 0;
 
-	bp->b_bcount = cb->aio_nbytes;
-	bp->b_bufsize = cb->aio_nbytes;
 	bp->b_cmd = (cb->aio_lio_opcode == LIO_WRITE) ?
 		    BUF_CMD_WRITE : BUF_CMD_READ;
 	bp->b_bio1.bio_done = aio_physwakeup;
-	bp->b_saveaddr = bp->b_data;
-	bp->b_data = (void *)(uintptr_t)cb->aio_buf;
 	bp->b_bio1.bio_offset = cb->aio_offset;
 
 	/* Bring buffer into kernel space. */
-	if (vmapbuf(bp) < 0) {
+	if (vmapbuf(bp, __DEVOLATILE(char *, cb->aio_buf), cb->aio_nbytes) < 0) {
 		error = EFAULT;
 		goto doerror;
 	}

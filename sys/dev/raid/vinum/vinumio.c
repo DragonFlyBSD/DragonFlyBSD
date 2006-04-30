@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.13 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.14 2006/04/30 20:23:21 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -317,6 +317,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 {
     int error;
     struct buf *bp;
+    caddr_t saveaddr;
 
     error = 0;						    /* to keep the compiler happy */
     while (length) {					    /* divide into small enough blocks */
@@ -325,12 +326,12 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t c
 	bp = geteblk(len);				    /* get a buffer header */
 	bp->b_cmd = cmd;
 	bp->b_bio1.bio_offset = offset;			    /* disk offset */
-	bp->b_saveaddr = bp->b_data;
+	saveaddr = bp->b_data;
 	bp->b_data = buf;
 	bp->b_bcount = len;
 	dev_dstrategy(drive->dev, &bp->b_bio1);
 	error = biowait(bp);
-	bp->b_data = bp->b_saveaddr;
+	bp->b_data = saveaddr;
 	bp->b_flags |= B_INVAL | B_AGE;
 	bp->b_flags &= ~B_ERROR;
 	brelse(bp);
