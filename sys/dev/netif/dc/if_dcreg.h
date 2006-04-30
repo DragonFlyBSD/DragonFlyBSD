@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.9 2005/12/30 13:39:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.10 2006/04/30 02:02:06 sephe Exp $
  */
 
 /*
@@ -858,6 +858,7 @@ struct dc_softc {
  */
 #define DC_DEVICEID_AL981	0x0981
 #define DC_DEVICEID_AN985	0x0985
+#define DC_DEVICEID_FA511	0x1985
 #define DC_DEVICEID_ADM9511	0x9511
 #define DC_DEVICEID_ADM9513	0x9513
 

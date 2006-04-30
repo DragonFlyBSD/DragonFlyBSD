@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.49 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.50 2006/04/30 02:02:06 sephe Exp $
  */
 
 /*
@@ -44,6 +44,7 @@
  * ASIX Electronics AX88141 (www.asix.com.tw)
  * ADMtek AL981 (www.admtek.com.tw)
  * ADMtek AN985 (www.admtek.com.tw)
+ * Netgear FA511 (www.netgear.com) Appears to be rebadged ADMTek AN985
  * Davicom DM9100, DM9102, DM9102A (www.davicom8.com)
  * Accton EN1217 (www.accton.com)
  * Xircom X3201 (www.xircom.com)
@@ -152,6 +153,8 @@ static const struct dc_type dc_devs[] = {
 		"ADMtek AL981 10/100BaseTX" },
 	{ DC_VENDORID_ADMTEK, DC_DEVICEID_AN985,
 		"ADMtek AN985 10/100BaseTX" },
+	{ DC_VENDORID_ADMTEK, DC_DEVICEID_FA511,
+		"Netgear FA511 10/100BaseTX" },
 	{ DC_VENDORID_ADMTEK, DC_DEVICEID_ADM9511,
 		"ADMtek ADM9511 10/100BaseTX" },
 	{ DC_VENDORID_ADMTEK, DC_DEVICEID_ADM9513,
@@ -1916,6 +1919,7 @@ dc_attach(device_t dev)
 	case DC_DEVICEID_AN985:
 	case DC_DEVICEID_ADM9511:
 	case DC_DEVICEID_ADM9513:
+	case DC_DEVICEID_FA511:
 	case DC_DEVICEID_EN2242:
 	case DC_DEVICEID_3CSOHOB:
 		sc->dc_type = DC_TYPE_AN985;
