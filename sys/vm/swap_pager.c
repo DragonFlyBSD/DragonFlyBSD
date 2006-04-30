@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.21 2006/04/28 16:34:02 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.22 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -861,7 +861,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	/*
 	 * tracking for swapdev vnode I/Os
 	 */
-	if (bp->b_flags & B_READ)
+	if (bp->b_cmd == BUF_CMD_READ)
 		track = &swapdev_vp->v_track_read;
 	else
 		track = &swapdev_vp->v_track_write;
@@ -888,9 +888,9 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	crit_enter();
 
 	/*
-	 * Deal with B_FREEBUF
+	 * Deal with BUF_CMD_FREEBLKS
 	 */
-	if (bp->b_flags & B_FREEBUF) {
+	if (bp->b_cmd == BUF_CMD_FREEBLKS) {
 		/*
 		 * FREE PAGE(s) - destroy underlying swap that is no longer
 		 *		  needed.
@@ -928,7 +928,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		 */
 
 		blk = swp_pager_meta_ctl(object, start, 0);
-		if ((blk == SWAPBLK_NONE) && (bp->b_flags & B_READ) == 0) {
+		if ((blk == SWAPBLK_NONE) && bp->b_cmd != BUF_CMD_READ) {
 			blk = swp_pager_getswapspace(1);
 			if (blk == SWAPBLK_NONE) {
 				bp->b_error = ENOMEM;
@@ -953,7 +953,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		    )
 		) {
 			crit_exit();
-			if (bp->b_flags & B_READ) {
+			if (bp->b_cmd == BUF_CMD_READ) {
 				++mycpu->gd_cnt.v_swapin;
 				mycpu->gd_cnt.v_swappgsin += btoc(bufx->b_bcount);
 			} else {
@@ -967,7 +967,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			 */
 			if (bufx->b_bcount) {
 				bufx->b_bufsize = bufx->b_bcount;
-				if ((bufx->b_flags & B_READ) == 0)
+				if (bufx->b_cmd != BUF_CMD_READ)
 					bufx->b_dirtyend = bufx->b_bcount;
 				BUF_KERNPROC(bufx);
 				vn_strategy(swapdev_vp, biox);
@@ -999,8 +999,8 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 				biox = &bufx->b_bio1;
 				cluster_append(nbio, bufx);
 				bufx->b_flags |= (bufx->b_flags & B_ORDERED) |
-						(bp->b_flags & B_READ) |
 						B_ASYNC;
+				bufx->b_cmd = bp->b_cmd;
 				biox->bio_done = swap_chain_iodone;
 				biox->bio_offset = (off_t)blk << PAGE_SHIFT;
 				biox->bio_caller_info1.cluster_parent = nbio;
@@ -1023,7 +1023,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	if (biox) {
 		if ((bp->b_flags & B_ASYNC) == 0)
 			bufx->b_flags &= ~B_ASYNC;
-		if (bufx->b_flags & B_READ) {
+		if (bufx->b_cmd == BUF_CMD_READ) {
 			++mycpu->gd_cnt.v_swapin;
 			mycpu->gd_cnt.v_swappgsin += btoc(bufx->b_bcount);
 		} else {
@@ -1033,7 +1033,7 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 		}
 		if (bufx->b_bcount) {
 			bufx->b_bufsize = bufx->b_bcount;
-			if ((bufx->b_flags & B_READ) == 0)
+			if (bufx->b_cmd != BUF_CMD_READ)
 				bufx->b_dirtyend = bufx->b_bcount;
 			BUF_KERNPROC(bufx);
 			vn_strategy(swapdev_vp, biox);
@@ -1127,7 +1127,6 @@ swap_chain_iodone(struct bio *biox)
 		}
 		biodone(nbio->bio_prev);
         }
-        bufx->b_flags |= B_DONE;
         bufx->b_flags &= ~B_ASYNC;
         relpbuf(bufx, NULL);
 }
@@ -1245,7 +1244,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 
 	pmap_qenter(kva, m + i, j - i);
 
-	bp->b_flags |= B_READ;
 	bp->b_data = (caddr_t) kva;
 	bp->b_bcount = PAGE_SIZE * (j - i);
 	bp->b_bufsize = PAGE_SIZE * (j - i);
@@ -1284,6 +1282,7 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 	 * so we cannot assume they are valid anymore either.
 	 */
 
+	bp->b_cmd = BUF_CMD_READ;
 	BUF_KERNPROC(bp);
 	vn_strategy(swapdev_vp, bio);
 
@@ -1471,12 +1470,10 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		 * request and assign the swap space.
 		 */
 
-		if (sync == TRUE) {
+		if (sync == TRUE)
 			bp = getpbuf(&nsw_wcount_sync);
-		} else {
+		else
 			bp = getpbuf(&nsw_wcount_async);
-			bp->b_flags |= B_ASYNC;
-		}
 		bio = &bp->b_bio1;
 
 		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);
@@ -1500,22 +1497,21 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 			bp->b_xio.xio_pages[j] = mreq;
 		}
 		bp->b_xio.xio_npages = n;
-		/*
-		 * Must set dirty range for NFS to work.
-		 */
-		bp->b_dirtyoff = 0;
-		bp->b_dirtyend = bp->b_bcount;
 
 		mycpu->gd_cnt.v_swapout++;
 		mycpu->gd_cnt.v_swappgsout += bp->b_xio.xio_npages;
 
 		crit_exit();
 
+		bp->b_dirtyoff = 0;		/* req'd for NFS */
+		bp->b_dirtyend = bp->b_bcount;	/* req'd for NFS */
+		bp->b_cmd = BUF_CMD_WRITE;
+
 		/*
 		 * asynchronous
 		 */
-
 		if (sync == FALSE) {
+			bp->b_flags |= B_ASYNC;
 			bio->bio_done = swp_pager_async_iodone;
 			BUF_KERNPROC(bp);
 			vn_strategy(swapdev_vp, bio);
@@ -1540,9 +1536,8 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		 */
 		crit_enter();
 
-		while ((bp->b_flags & B_DONE) == 0) {
+		while (bp->b_cmd != BUF_CMD_DONE)
 			tsleep(bp, 0, "swwrt", 0);
-		}
 
 		for (j = 0; j < n; ++j)
 			rtvals[i+j] = VM_PAGER_PEND;
@@ -1572,8 +1567,8 @@ swp_pager_sync_iodone(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 
-	bp->b_flags |= B_DONE;
 	bp->b_flags &= ~B_ASYNC;
+	bp->b_cmd = BUF_CMD_DONE;
 	wakeup(bp);
 }
 
@@ -1598,18 +1593,16 @@ swp_pager_async_iodone(struct bio *bio)
 	struct buf *bp = bio->bio_buf;
 	vm_object_t object = NULL;
 	int i;
-
-	bp->b_flags |= B_DONE;
+	int *nswptr;
 
 	/*
 	 * report error
 	 */
-
 	if (bp->b_flags & B_ERROR) {
 		printf(
 		    "swap_pager: I/O error - %s failed; offset %lld,"
 			"size %ld, error %d\n",
-		    ((bp->b_flags & B_READ) ? "pagein" : "pageout"),
+		    ((bp->b_cmd == BUF_CMD_READ) ? "pagein" : "pageout"),
 		    bio->bio_offset, 
 		    (long)bp->b_bcount,
 		    bp->b_error
@@ -1652,7 +1645,7 @@ swp_pager_async_iodone(struct bio *bio)
 			 * interrupt.
 			 */
 
-			if (bp->b_flags & B_READ) {
+			if (bp->b_cmd == BUF_CMD_READ) {
 				/*
 				 * When reading, reqpage needs to stay
 				 * locked for the parent, but all other
@@ -1700,7 +1693,7 @@ swp_pager_async_iodone(struct bio *bio)
 				vm_page_activate(m);
 				vm_page_io_finish(m);
 			}
-		} else if (bp->b_flags & B_READ) {
+		} else if (bp->b_cmd == BUF_CMD_READ) {
 			/*
 			 * For read success, clear dirty bits.  Nobody should
 			 * have this page mapped but don't take any chances,
@@ -1771,16 +1764,14 @@ swp_pager_async_iodone(struct bio *bio)
 	/*
 	 * release the physical I/O buffer
 	 */
-
-	relpbuf(
-	    bp, 
-	    ((bp->b_flags & B_READ) ? &nsw_rcount : 
-		((bp->b_flags & B_ASYNC) ? 
-		    &nsw_wcount_async : 
-		    &nsw_wcount_sync
-		)
-	    )
-	);
+	if (bp->b_cmd == BUF_CMD_READ)
+		nswptr = &nsw_rcount;
+	else if (bp->b_flags & B_ASYNC)
+		nswptr = &nsw_wcount_async;
+	else
+		nswptr = &nsw_wcount_sync;
+	bp->b_cmd = BUF_CMD_DONE;
+	relpbuf(bp, nswptr);
 	crit_exit();
 }
 

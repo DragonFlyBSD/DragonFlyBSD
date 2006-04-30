@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.28 2006/04/28 16:34:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.29 2006/04/30 17:22:16 dillon Exp $
  *
  */
 
@@ -91,9 +91,6 @@
 #include "fdreg.h"
 #include "fdc.h"
 #include <bus/isa/rtc.h>
-
-/* misuse a flag to identify format operation */
-#define B_FORMAT B_XXX
 
 /* configuration flags */
 #define FDC_PRETEND_D0	(1 << 0)	/* pretend drive 0 to be there */
@@ -1403,7 +1400,7 @@ fdstrategy(dev_t dev, struct bio *bio)
 	};
 
 	fdblk = 128 << (fd->ft->secsize);
-	if (!(bp->b_flags & B_FORMAT)) {
+	if (bp->b_cmd != BUF_CMD_FORMAT) {
 		if (bio->bio_offset < 0) {
 			printf(
 		"fd%d: fdstrat: bad request offset = %lld, bcount = %d\n",
@@ -1545,11 +1542,11 @@ fdc_intr(void *xfdc)
 /*
  * fdcpio(): perform programmed IO read/write for YE PCMCIA floppy
  */
-static int fdcpio(fdc_p fdc, long flags, caddr_t addr, u_int count)
+static int fdcpio(fdc_p fdc, buf_cmd_t cmd, caddr_t addr, u_int count)
 {
 	u_char *cptr = (u_char *)addr;
 
-	if (flags & B_READ) {
+	if (cmd == BUF_CMD_READ) {
 		if (fdc->state != PIOREAD) {
 			fdc->state = PIOREAD;
 			return(0);
@@ -1613,8 +1610,8 @@ fdstate(fdc_p fdc)
 	fdblk = 128 << fd->ft->secsize;
 	if (fdc->fd && (fd != fdc->fd))
 		device_printf(fd->dev, "confused fd pointers\n");
-	read = bp->b_flags & B_READ;
-	format = bp->b_flags & B_FORMAT;
+	read = (bp->b_cmd == BUF_CMD_READ);
+	format = (bp->b_cmd == BUF_CMD_FORMAT);
 	if (format) {
 		finfo = (struct fd_formb *)bp->b_data;
 		fd->skip = (char *)&(finfo->fd_formb_cylno(0))
@@ -1759,9 +1756,11 @@ fdstate(fdc_p fdc)
 		}
 
 		fd->track = b_cylinder;
-		if (!(fdc->flags & FDC_NODMA))
-			isa_dmastart(bp->b_flags, bp->b_data+fd->skip,
+		if (!(fdc->flags & FDC_NODMA)) {
+			isa_dmastart(isa_dmabp(bp),
+				     bp->b_data+fd->skip,
 				format ? bp->b_bcount : fdblk, fdc->dmachan);
+		}
 		sectrac = fd->ft->sectrac;
 		sec = blknum %  (sectrac * fd->ft->heads);
 		head = sec / sectrac;
@@ -1775,7 +1774,7 @@ fdstate(fdc_p fdc)
 			{
 				/* stuck controller? */
 				if (!(fdc->flags & FDC_NODMA))
-					isa_dmadone(bp->b_flags,
+					isa_dmadone(isa_dmabp(bp),
 						    bp->b_data + fd->skip,
 						    format ? bp->b_bcount : fdblk,
 						    fdc->dmachan);
@@ -1819,7 +1818,7 @@ fdstate(fdc_p fdc)
 				 */
 				SET_BCDR(fdc, 1, bp->b_bcount, 0);
 
-				(void)fdcpio(fdc,bp->b_flags,
+				(void)fdcpio(fdc,bp->b_cmd,
 					bp->b_data+fd->skip,
 					bp->b_bcount);
 
@@ -1832,7 +1831,7 @@ fdstate(fdc_p fdc)
 				  finfo->fd_formb_fillbyte, 0)) {
 				/* controller fell over */
 				if (!(fdc->flags & FDC_NODMA))
-					isa_dmadone(bp->b_flags,
+					isa_dmadone(isa_dmabp(bp),
 						    bp->b_data + fd->skip,
 						    format ? bp->b_bcount : fdblk,
 						    fdc->dmachan);
@@ -1852,7 +1851,7 @@ fdstate(fdc_p fdc)
 				 * the WRITE command is sent
 				 */
 				if (!read)
-					(void)fdcpio(fdc,bp->b_flags,
+					(void)fdcpio(fdc,bp->b_cmd,
 					    bp->b_data+fd->skip,
 					    fdblk);
 			}
@@ -1869,7 +1868,7 @@ fdstate(fdc_p fdc)
 				   0)) {
 				/* the beast is sleeping again */
 				if (!(fdc->flags & FDC_NODMA))
-					isa_dmadone(bp->b_flags,
+					isa_dmadone(isa_dmabp(bp),
 						    bp->b_data + fd->skip,
 						    format ? bp->b_bcount : fdblk,
 						    fdc->dmachan);
@@ -1882,7 +1881,7 @@ fdstate(fdc_p fdc)
 			 * if this is a read, then simply await interrupt
 			 * before performing PIO
 			 */
-			if (read && !fdcpio(fdc,bp->b_flags,
+			if (read && !fdcpio(fdc,bp->b_cmd,
 			    bp->b_data+fd->skip,fdblk)) {
 				callout_reset(&fd->tohandle, hz,
 						fd_iotimeout, fdc);
@@ -1901,17 +1900,19 @@ fdstate(fdc_p fdc)
 		 * actually perform the PIO read.  The IOCOMPLETE case
 		 * removes the timeout for us.  
 		 */
-		(void)fdcpio(fdc,bp->b_flags,bp->b_data+fd->skip,fdblk);
+		(void)fdcpio(fdc,bp->b_cmd,bp->b_data+fd->skip,fdblk);
 		fdc->state = IOCOMPLETE;
 		/* FALLTHROUGH */
 	case IOCOMPLETE: /* IO DONE, post-analyze */
 		callout_stop(&fd->tohandle);
 
 		if (fd_read_status(fdc, fd->fdsu)) {
-			if (!(fdc->flags & FDC_NODMA))
-				isa_dmadone(bp->b_flags, bp->b_data + fd->skip,
+			if (!(fdc->flags & FDC_NODMA)) {
+				isa_dmadone(isa_dmabp(bp),
+					    bp->b_data + fd->skip,
 					    format ? bp->b_bcount : fdblk,
 					    fdc->dmachan);
+			}
 			if (fdc->retry < 6)
 				fdc->retry = 6;	/* force a reset */
 			return (retrier(fdc));
@@ -1922,9 +1923,11 @@ fdstate(fdc_p fdc)
 		/* FALLTHROUGH */
 
 	case IOTIMEDOUT:
-		if (!(fdc->flags & FDC_NODMA))
-			isa_dmadone(bp->b_flags, bp->b_data + fd->skip,
+		if (!(fdc->flags & FDC_NODMA)) {
+			isa_dmadone(isa_dmabp(bp),
+				    bp->b_data + fd->skip,
 				format ? bp->b_bcount : fdblk, fdc->dmachan);
+		}
 		if (fdc->status[0] & NE7_ST0_IC) {
                         if ((fdc->status[0] & NE7_ST0_IC) == NE7_ST0_IC_AT
 			    && fdc->status[1] & NE7_ST1_OR) {
@@ -2174,7 +2177,8 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	BUF_LOCKINIT(bp);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
 	initbufbio(bp);
-	bp->b_flags = B_FORMAT | B_PAGING;
+	bp->b_flags = B_PAGING;
+	bp->b_cmd = BUF_CMD_FORMAT;
 
 	/*
 	 * calculate a fake blkno, so fdstrategy() would initiate a
@@ -2193,7 +2197,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 
 	/* ...and wait for it to complete */
 	crit_enter();
-	while(!(bp->b_flags & B_DONE)) {
+	while (bp->b_cmd != BUF_CMD_DONE) {
 		rv = tsleep((caddr_t)bp, 0, "fdform", 20 * hz);
 		if (rv == EWOULDBLOCK)
 			break;

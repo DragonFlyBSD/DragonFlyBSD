@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.9 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.10 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -106,7 +106,7 @@ vinum_daemon(void)
 		    log(LOG_WARNING,
 			"vinum: recovering I/O request: %p\n%s dev %d.%d, offset 0x%012llx, length %d\n",
 			rq,
-			rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+			(rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			major((dev_t)rq->bio->bio_driver_info),
 			minor((dev_t)rq->bio->bio_driver_info),
 			rq->bio->bio_offset,

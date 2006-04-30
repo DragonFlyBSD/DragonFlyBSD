@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.21 2006/03/24 18:35:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.22 2006/04/30 17:22:15 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1552,7 +1552,7 @@ cdstart(struct cam_periph *periph, union ccb *start_ccb)
 					(bp->b_flags & B_ORDERED) != 0 ?
 					    MSG_ORDERED_Q_TAG : 
 					    MSG_SIMPLE_Q_TAG,
-					/* read */bp->b_flags & B_READ,
+					/* read */(bp->b_cmd == BUF_CMD_READ),
 					/* byte2 */ 0,
 					/* minimum_cmd_size */ 10,
 					/* lba */ 

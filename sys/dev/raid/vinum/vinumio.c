@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.12 2006/04/28 16:34:00 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.13 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -304,8 +304,8 @@ remove_drive(int driveno)
 
 /*
  * Transfer drive data.  Usually called from one of these defines;
- * #define read_drive(a, b, c, d) driveio (a, b, c, d, B_READ)
- * #define write_drive(a, b, c, d) driveio (a, b, c, d, B_WRITE)
+ * #define read_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_READ)
+ * #define write_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_WRITE)
  *
  * length and offset are in bytes, but must be multiples of sector
  * size.  The function *does not check* for this condition, and
@@ -313,7 +313,7 @@ remove_drive(int driveno)
  * Return error number
  */
 int
-driveio(struct drive *drive, char *buf, size_t length, off_t offset, int flag)
+driveio(struct drive *drive, char *buf, size_t length, off_t offset, buf_cmd_t cmd)
 {
     int error;
     struct buf *bp;
@@ -323,7 +323,7 @@ driveio(struct drive *drive, char *buf, size_t length, off_t offset, int flag)
 	int len = min(length, MAXBSIZE);		    /* maximum block device transfer is MAXBSIZE */
 
 	bp = geteblk(len);				    /* get a buffer header */
-	bp->b_flags |= flag;
+	bp->b_cmd = cmd;
 	bp->b_bio1.bio_offset = offset;			    /* disk offset */
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = buf;
@@ -799,7 +799,7 @@ write_volume_label(int volno)
     dlp = (struct disklabel *) bp->b_data;
     *dlp = *lp;
     bp->b_flags &= ~B_INVAL;
-    bp->b_flags |= B_WRITE;
+    bp->b_cmd = BUF_CMD_WRITE;
 
     /*
      * This should read:

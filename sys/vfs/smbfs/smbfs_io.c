@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.23 2006/04/30 17:22:18 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -316,7 +316,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 
 	smb_makescred(&scred, td, cr);
 
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
@@ -342,6 +342,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 		bp->b_flags |= B_ERROR;
 	    }
 	} else { /* write */
+	    KKASSERT(bp->b_cmd == BUF_CMD_WRITE);
 	    if (bio->bio_offset + bp->b_dirtyend > np->n_size)
 		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
@@ -372,10 +373,8 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
-			if ((bp->b_flags & B_PAGING) == 0) {
+			if ((bp->b_flags & B_PAGING) == 0)
 			    bdirty(bp);
-			    bp->b_flags &= ~B_DONE;
-			}
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
 			crit_exit();

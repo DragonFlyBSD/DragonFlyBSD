@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.27 2006/03/24 18:35:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.28 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -432,7 +432,7 @@ ad_start(struct ata_device *atadev)
     request->data = bp->b_data;
     request->tag = tag;
     callout_init(&request->callout);
-    if (bp->b_flags & B_READ) 
+    if (bp->b_cmd == BUF_CMD_READ)
 	request->flags |= ADR_F_READ;
     if (adp->device->mode >= ATA_DMA) {
 	if (ata_dmaalloc(atadev, M_NOWAIT) != 0) {

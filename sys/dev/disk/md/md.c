@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.10 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.11 2006/04/30 17:22:16 dillon Exp $
  *
  */
 
@@ -201,12 +201,19 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 
 		devstat_start_transaction(&sc->stats);
 
-		if (bp->b_flags & B_FREEBUF) 
+		switch(bp->b_cmd) {
+		case BUF_CMD_FREEBLKS:
 			dop = DEVSTAT_NO_DATA;
-		else if (bp->b_flags & B_READ)
+			break;
+		case BUF_CMD_READ:
 			dop = DEVSTAT_READ;
-		else
+			break;
+		case BUF_CMD_WRITE:
 			dop = DEVSTAT_WRITE;
+			break;
+		default:
+			panic("md: bad b_cmd %d", bp->b_cmd);
+		}
 
 		nsec = bp->b_bcount >> DEV_BSHIFT;
 		secno = (unsigned)(bio->bio_offset >> DEV_BSHIFT);
@@ -229,13 +236,15 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 			if (md_debug > 2)
 				printf("%08x %p %p %d\n", bp->b_flags, secpp, secp, secval);
 
-			if (bp->b_flags & B_FREEBUF) {
+			switch(bp->b_cmd) {
+			case BUF_CMD_FREEBLKS:
 				if (secpp) {
 					if (secp)
 						FREE(secp, M_MDSECT);
 					*secpp = 0;
 				}
-			} else if (bp->b_flags & B_READ) {
+				break;
+			case BUF_CMD_READ:
 				if (secp) {
 					bcopy(secp, dst, DEV_BSIZE);
 				} else if (secval) {
@@ -244,7 +253,8 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 				} else {
 					bzero(dst, DEV_BSIZE);
 				}
-			} else {
+				break;
+			case BUF_CMD_WRITE:
 				uc = dst[0];
 				for (i = 1; i < DEV_BSIZE; i++) 
 					if (dst[i] != uc)
@@ -276,6 +286,10 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 						*secpp = secp;
 					}
 				}
+				break;
+			default:
+				panic("md: bad b_cmd %d", bp->b_cmd);
+
 			}
 			secno++;
 			dst += DEV_BSIZE;
@@ -324,16 +338,22 @@ mdstrategy_preload(dev_t dev, struct bio *bio)
 
 		devstat_start_transaction(&sc->stats);
 
-		if (bp->b_flags & B_FREEBUF) {
+		switch(bp->b_cmd) {
+		case BUF_CMD_FREEBLKS:
 			dop = DEVSTAT_NO_DATA;
-		} else if (bp->b_flags & B_READ) {
+			break;
+		case BUF_CMD_READ:
 			dop = DEVSTAT_READ;
 			bcopy(sc->pl_ptr + bio->bio_offset, 
 			       bp->b_data, bp->b_bcount);
-		} else {
+			break;
+		case BUF_CMD_WRITE:
 			dop = DEVSTAT_WRITE;
 			bcopy(bp->b_data, sc->pl_ptr + bio->bio_offset,
 			      bp->b_bcount);
+			break;
+		default:
+			panic("md: bad cmd %d\n", bp->b_cmd);
 		}
 		bp->b_resid = 0;
 		devstat_end_transaction_buf(&sc->stats, bp);

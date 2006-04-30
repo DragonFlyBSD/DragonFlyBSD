@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.16 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.17 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -204,14 +204,14 @@ doshift:
 #if LABELSECTOR != 0
 	    slicerel_secno + nsec > LABELSECTOR + labelsect &&
 #endif
-	    (bp->b_flags & B_READ) == 0 && sp->ds_wlabel == 0) {
+	    bp->b_cmd != BUF_CMD_READ && sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
 		goto bad;
 	}
 
 #if defined(DOSBBSECTOR) && defined(notyet)
 	/* overwriting master boot record? */
-	if (slicerel_secno <= DOSBBSECTOR && (bp->b_flags & B_READ) == 0 &&
+	if (slicerel_secno <= DOSBBSECTOR && bp->b_cmd != BUF_CMD_READ &&
 	    sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
 		goto bad;
@@ -251,7 +251,7 @@ doshift:
 		nbio->bio_caller_info1.ptr = sp;
 		nbio->bio_caller_info2.offset = (off_t)(LABELSECTOR + labelsect -
 					 slicerel_secno) * ssp->dss_secsize;
-		if ((bp->b_flags & B_READ) == 0) {
+		if (bp->b_cmd != BUF_CMD_READ) {
 			/*
 			 * XXX even disklabel(8) writes directly so we need
 			 * to adjust writes.  Perhaps we should drop support
@@ -531,14 +531,16 @@ dsioctl(dev_t dev, u_long cmd, caddr_t data,
 	}
 }
 
+/*
+ * Chain the bio_done.  b_cmd remains valid through such chaining.
+ */
 static void
 dsiodone(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
 	char *msg;
 
-	bp->b_flags &= ~B_DONE;
-	if (!(bp->b_flags & B_READ)
+	if (bp->b_cmd != BUF_CMD_READ
 	    || (!(bp->b_flags & B_ERROR) && bp->b_error == 0)) {
 		msg = fixlabel(NULL, bio->bio_caller_info1.ptr,
 			       (struct disklabel *)

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.16 2006/03/25 21:30:41 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.17 2006/04/30 17:22:15 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -751,7 +751,7 @@ sastrategy(dev_t dev, struct bio *bio)
 	CAM_DEBUG(periph->path, CAM_DEBUG_INFO, ("sastrategy: enqueuing a %d "
 	    "%s byte %s queue count now %d\n", (int) bp->b_bcount,
 	     (softc->flags & SA_FLAG_FIXED)?  "fixed" : "variable",
-	     (bp->b_flags & B_READ)? "read" : "write", softc->queue_count));
+	     (bp->b_cmd == BUF_CMD_READ)? "read" : "write", softc->queue_count));
 
 	crit_exit();
 	
@@ -1652,10 +1652,10 @@ again:
 			 * have to do deal with 512 byte or 1KB intermediate
 			 * records.
 			 */
-			softc->dsreg = (bp->b_flags & B_READ)?
+			softc->dsreg = (bp->b_cmd == BUF_CMD_READ) ?
 			    MTIO_DSREG_RD : MTIO_DSREG_WR;
 			scsi_sa_read_write(&start_ccb->csio, 0, sadone,
-			    MSG_SIMPLE_Q_TAG, (bp->b_flags & B_READ) != 0,
+			    MSG_SIMPLE_Q_TAG, (bp->b_cmd == BUF_CMD_READ) != 0,
 			    FALSE, (softc->flags & SA_FLAG_FIXED) != 0,
 			    length, bp->b_data, bp->b_bcount, SSD_FULL_SIZE,
 			    IO_TIMEOUT);
@@ -1749,7 +1749,7 @@ sadone(struct cam_periph *periph, union ccb *done_ccb)
 			if (csio->resid != 0) {
 				bp->b_flags |= B_ERROR;
 			}
-			if ((bp->b_flags & B_READ) == 0) {
+			if (bp->b_cmd != BUF_CMD_READ) {
 				softc->flags |= SA_FLAG_TAPE_WRITTEN;
 				softc->filemarks = 0;
 			}

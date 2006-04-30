@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.22 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.23 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -660,7 +660,7 @@ readdisklabel(dev_t dev, struct disklabel *lp)
 	bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
 	bp->b_flags &= ~B_INVAL;
-	bp->b_flags |= B_READ;
+	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(bp))
 		msg = "I/O error";
@@ -758,7 +758,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 	 * (also stupid.. how do you write the first one? by raw writes?)
 	 */
 	bp->b_flags &= ~B_INVAL;
-	bp->b_flags |= B_READ;
+	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
 	error = biowait(bp);
 	if (error)
@@ -770,8 +770,7 @@ writedisklabel(dev_t dev, struct disklabel *lp)
 		if (dlp->d_magic == DISKMAGIC && dlp->d_magic2 == DISKMAGIC &&
 		    dkcksum(dlp) == 0) {
 			*dlp = *lp;
-			bp->b_flags &= ~(B_DONE | B_READ);
-			bp->b_flags |= B_WRITE;
+			bp->b_cmd = BUF_CMD_WRITE;
 			dev_dstrategy(dkmodpart(dev, RAW_PART), &bp->b_bio1);
 			error = biowait(bp);
 			goto done;
@@ -784,7 +783,7 @@ done:
 	dlp = (struct disklabel *)bp->b_data;
 	*dlp = *lp;
 	bp->b_flags &= ~B_INVAL;
-	bp->b_flags |= B_WRITE;
+	bp->b_cmd = BUF_CMD_WRITE;
 	BUF_STRATEGY(bp, 1);
 	error = biowait(bp);
 #endif
@@ -820,7 +819,7 @@ diskerr(struct bio *bio, dev_t dev, const char *what, int pri,
 
 	sname = dsname(dev, unit, slice, part, partname);
 	printf("%s%s: %s %sing ", sname, partname, what,
-	      bp->b_flags & B_READ ? "read" : "writ");
+	      (bp->b_cmd == BUF_CMD_READ) ? "read" : "writ");
 	printf("offset %012llx for %d", bio->bio_offset, bp->b_bcount);
 	if (donecnt)
 		printf(" (%d bytes completed)", donecnt);

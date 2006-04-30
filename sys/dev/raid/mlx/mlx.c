@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
  */
 
 /*
@@ -1769,7 +1769,7 @@ mlx_startio(struct mlx_softc *sc)
 	mc->mc_private = bp;
 	mc->mc_data = bp->b_data;
 	mc->mc_length = bp->b_bcount;
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 	    mc->mc_flags |= MLX_CMD_DATAIN;
 	    cmd = MLX_CMD_READSG;
 	} else {

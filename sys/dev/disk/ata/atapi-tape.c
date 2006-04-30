@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.14 2006/03/24 18:35:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -437,7 +437,7 @@ aststrategy(dev_t dev, struct bio *bio)
 	biodone(bio);
 	return;
     }
-    if (!(bp->b_flags & B_READ) && stp->flags & F_WRITEPROTECT) {
+    if (bp->b_cmd != BUF_CMD_READ && (stp->flags & F_WRITEPROTECT)) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EPERM;
 	biodone(bio);
@@ -483,7 +483,7 @@ ast_start(struct ata_device *atadev)
     bzero(ccb, sizeof(ccb));
 
     bp = bio->bio_buf;
-    if (bp->b_flags & B_READ)
+    if (bp->b_cmd == BUF_CMD_READ)
 	ccb[0] = ATAPI_READ;
     else
 	ccb[0] = ATAPI_WRITE;
@@ -499,7 +499,7 @@ ast_start(struct ata_device *atadev)
     devstat_start_transaction(&stp->stats);
 
     atapi_queue_cmd(stp->device, ccb, bp->b_data, blkcount * stp->blksize, 
-		    (bp->b_flags & B_READ) ? ATPR_F_READ : 0,
+		    ((bp->b_cmd == BUF_CMD_READ) ? ATPR_F_READ : 0),
 		    120, ast_done, bio);
 }
 
@@ -514,7 +514,7 @@ ast_done(struct atapi_request *request)
 	bp->b_error = request->error;
 	bp->b_flags |= B_ERROR;
     } else {
-	if (!(bp->b_flags & B_READ))
+	if (bp->b_cmd != BUF_CMD_READ)
 	    stp->flags |= F_DATA_WRITTEN;
 	bp->b_resid = bp->b_bcount - request->donecount;
 	ast_total += (bp->b_bcount - bp->b_resid);

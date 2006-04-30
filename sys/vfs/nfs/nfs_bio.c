@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.33 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.34 2006/04/30 17:22:18 dillon Exp $
  */
 
 
@@ -434,8 +434,9 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    if (!rabp)
 				return (EINTR);
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
-				rabp->b_flags |= B_READ | B_ASYNC;
-				vfs_busy_pages(vp, rabp, 0);
+				rabp->b_flags |= B_ASYNC;
+				rabp->b_cmd = BUF_CMD_READ;
+				vfs_busy_pages(vp, rabp);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
@@ -495,8 +496,8 @@ again:
 		 */
 
 		if ((bp->b_flags & B_CACHE) == 0) {
-		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(vp, bp, 0);
+		    bp->b_cmd = BUF_CMD_READ;
+		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			brelse(bp);
@@ -523,8 +524,8 @@ again:
 		if (bp == NULL)
 			return (EINTR);
 		if ((bp->b_flags & B_CACHE) == 0) {
-		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(vp, bp, 0);
+		    bp->b_cmd = BUF_CMD_READ;
+		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			bp->b_flags |= B_ERROR;
@@ -549,8 +550,8 @@ again:
 		    return (EINTR);
 
 		if ((bp->b_flags & B_CACHE) == 0) {
-		    bp->b_flags |= B_READ;
-		    vfs_busy_pages(vp, bp, 0);
+		    bp->b_cmd = BUF_CMD_READ;
+		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
 			    brelse(bp);
@@ -578,8 +579,8 @@ again:
 			    if (!bp)
 				return (EINTR);
 			    if ((bp->b_flags & B_CACHE) == 0) {
-				    bp->b_flags |= B_READ;
-				    vfs_busy_pages(vp, bp, 0);
+				    bp->b_cmd = BUF_CMD_READ;
+				    vfs_busy_pages(vp, bp);
 				    error = nfs_doio(vp, &bp->b_bio2, td);
 				    /*
 				     * no error + B_INVAL == directory EOF,
@@ -622,8 +623,9 @@ again:
 					       NFS_DIRBLKSIZ, td);
 			if (rabp) {
 			    if ((rabp->b_flags & (B_CACHE|B_DELWRI)) == 0) {
-				rabp->b_flags |= (B_READ | B_ASYNC);
-				vfs_busy_pages(vp, rabp, 0);
+				rabp->b_flags |= B_ASYNC;
+				rabp->b_cmd = BUF_CMD_READ;
+				vfs_busy_pages(vp, rabp);
 				if (nfs_asyncio(vp, &rabp->b_bio2, td)) {
 				    rabp->b_flags |= B_INVAL|B_ERROR;
 				    vfs_unbusy_pages(rabp);
@@ -944,8 +946,8 @@ again:
 		}
 
 		if ((bp->b_flags & B_CACHE) == 0) {
-			bp->b_flags |= B_READ;
-			vfs_busy_pages(vp, bp, 0);
+			bp->b_cmd = BUF_CMD_READ;
+			vfs_busy_pages(vp, bp);
 			error = nfs_doio(vp, &bp->b_bio2, td);
 			if (error) {
 				brelse(bp);
@@ -1207,7 +1209,7 @@ nfs_asyncio(struct vnode *vp, struct bio *bio, struct thread *td)
 	 * leave the async daemons for more important rpc's (such as reads
 	 * and writes).
 	 */
-	if ((bp->b_flags & (B_READ|B_NEEDCOMMIT)) == B_NEEDCOMMIT &&
+	if (bp->b_cmd == BUF_CMD_WRITE && (bp->b_flags & B_NEEDCOMMIT) &&
 	    (nmp->nm_bioqiods > nfs_numasync / 2)) {
 		return(EIO);
 	}
@@ -1337,9 +1339,11 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	 */
 	bp->b_flags &= ~(B_ERROR | B_INVAL);
 
-	KASSERT(!(bp->b_flags & B_DONE), ("nfs_doio: bp %p already marked done", bp));
 
-	if (bp->b_flags & B_READ) {
+	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
+		("nfs_doio: bp %p already marked done!", bp));
+
+	if (bp->b_cmd == BUF_CMD_READ) {
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
@@ -1408,6 +1412,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    /* 
 	     * If we only need to commit, try to commit
 	     */
+	    KKASSERT(bp->b_cmd == BUF_CMD_WRITE);
 	    if (bp->b_flags & B_NEEDCOMMIT) {
 		    int retv;
 		    off_t off;
@@ -1493,10 +1498,8 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		    || (!error && (bp->b_flags & B_NEEDCOMMIT))) {
 			crit_enter();
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
-			if ((bp->b_flags & B_PAGING) == 0) {
+			if ((bp->b_flags & B_PAGING) == 0)
 			    bdirty(bp);
-			    bp->b_flags &= ~B_DONE;
-			}
 			if (error && (bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
 			crit_exit();

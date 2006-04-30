@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.22 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.23 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -79,7 +79,7 @@ struct vnode *swapdev_vp;
  *	vn_strategy() for swapdev_vp.
  *	Perform swap strategy interleave device selection.
  *
- *	The bp is expected to be locked and *not* B_DONE on call.
+ *	The bp is expected to be locked and on call.
  *
  *	(struct vnode *a_vp, struct bio *b_bio)
  */

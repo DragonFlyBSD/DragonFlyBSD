@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.8 2006/03/26 07:56:54 swildner Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.9 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -96,7 +96,7 @@ complete_rqe(struct bio *bio)
 	else if (rq->error == 0)			    /* no: do we have one already? */
 	    rq->error = EIO;				    /* no: catchall "I/O error" */
 	sd->lasterror = rq->error;
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 	    if ((rq->error == ENXIO) || (sd->flags & VF_RETRYERRORS) == 0) {
 		gravity = " fatal";
 		set_sd_state(rqe->sdno, sd_crashed, setstate_force); /* subdisk is crashed */
@@ -137,7 +137,7 @@ complete_rqe(struct bio *bio)
 	}
     }
     /* Now update the statistics */
-    if (bp->b_flags & B_READ) {				    /* read operation */
+    if (bp->b_cmd == BUF_CMD_READ) { 				/* read operation */
 	DRIVE[rqe->driveno].reads++;
 	DRIVE[rqe->driveno].bytes_read += bp->b_bcount;
 	SD[rqe->sdno].reads++;
@@ -273,7 +273,7 @@ sdio_done(struct bio *bio)
 #endif
     sbp->bio->bio_buf->b_resid = sbp->b.b_resid;			    /* copy the resid field */
     /* Now update the statistics */
-    if (sbp->b.b_flags & B_READ) {			    /* read operation */
+    if (sbp->b.b_cmd == BUF_CMD_READ) {			    /* read operation */
 	DRIVE[sbp->driveno].reads++;
 	DRIVE[sbp->driveno].bytes_read += sbp->b.b_bcount;
 	SD[sbp->sdno].reads++;
@@ -384,9 +384,9 @@ complete_raid5_write(struct rqelement *rqe)
 		} else
 		    panic("complete_raid5_write: malloc conflict");
 
-		if ((rqe->b.b_flags & B_READ)		    /* this was a read */
+		if ((rqe->b.b_cmd == BUF_CMD_READ)	    /* this was a read */
 		&&((rqe->flags & XFR_BAD_SUBDISK) == 0)) {  /* and we can write this block */
-		    rqe->b.b_flags &= ~(B_READ | B_DONE);   /* we're writing now */
+		    rqe->b.b_cmd = BUF_CMD_WRITE;   /* we're writing now */
 		    rqe->b.b_bio1.bio_done = complete_rqe;	    /* by calling us here */
 		    rqe->flags &= ~XFR_PARITYOP;	    /* reset flags that brought us here */
 		    rqe->b.b_data = &ubio->bio_buf->b_data[rqe->useroffset << DEV_BSHIFT]; /* point to the user data */
@@ -410,7 +410,7 @@ complete_raid5_write(struct rqelement *rqe)
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
 			    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
-			    rqe->b.b_flags & B_READ ? "Read" : "Write",
+			    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			    major(dev),
 			    minor(dev),
 			    rqe->sdno,
@@ -427,7 +427,7 @@ complete_raid5_write(struct rqelement *rqe)
     }
     /* Finally, write the parity block */
     rqe = &rqg->rqe[0];
-    rqe->b.b_flags &= ~(B_READ | B_DONE);		    /* we're writing now */
+    rqe->b.b_cmd = BUF_CMD_WRITE;		    /* we're writing now */
     rqe->b.b_bio1.bio_done = complete_rqe;			    /* by calling us here */
     rqg->flags &= ~XFR_PARITYOP;			    /* reset flags that brought us here */
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */
@@ -450,7 +450,7 @@ complete_raid5_write(struct rqelement *rqe)
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
 	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
-	    rqe->b.b_flags & B_READ ? "Read" : "Write",
+	    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    major(dev),
 	    minor(dev),
 	    rqe->sdno,

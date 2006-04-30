@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.21 2006/04/25 22:11:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.22 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -871,7 +871,7 @@ vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio)
 	ap.a_bio = bio;
 
 	DO_OPS(ops, error, &ap, vop_strategy);
-	if (error == 0 && (bio->bio_buf->b_flags & B_READ) == 0)
+	if (error == 0 && bio->bio_buf->b_cmd != BUF_CMD_READ)
 		cache_update_fsmid_vp(vp);
 	return(error);
 }

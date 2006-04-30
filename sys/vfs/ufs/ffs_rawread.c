@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.20 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.21 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,8 +171,7 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		if (iolen != 0)
 			bp->b_bcount -= PAGE_SIZE;
 	}
-	bp->b_flags &= ~(/*B_READ|*/B_DONE|B_ERROR);
-	bp->b_flags |= B_READ;
+	bp->b_flags &= ~B_ERROR;
 	bp->b_data = udata;
 	bp->b_saveaddr = sa;
 	bp->b_loffset = loffset;
@@ -206,7 +205,6 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 		/* Mark operation completed (similar to bufdone()) */
 
 		bp->b_resid = 0;
-		bp->b_flags |= B_DONE;
 		return 0;
 	}
 	
@@ -227,6 +225,7 @@ ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
 	 * want the vnode state to indicate that an I/O on its behalf
 	 * is in progress.
 	 */
+	bp->b_cmd = BUF_CMD_READ;
 	bio_start_transaction(&bp->b_bio1, &vp->v_track_read);
 	vn_strategy(dp, &bp->b_bio2);
 	return 0;
@@ -295,9 +294,8 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		}
 		
 		crit_enter();
-		while ((bp->b_flags & B_DONE) == 0) {
+		while (bp->b_cmd != BUF_CMD_DONE)
 			tsleep((caddr_t)&bp->b_bio2, 0, "rawrd", 0);
-		}
 		crit_exit();
 		
 		vunmapbuf(bp);
@@ -365,9 +363,8 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 		relpbuf(bp, &ffsrawbufcnt);
 	if (nbp != NULL) {			/* Run down readahead buffer */
 		crit_enter();
-		while ((nbp->b_flags & B_DONE) == 0) {
+		while (nbp->b_cmd != BUF_CMD_DONE)
 			tsleep(&nbp->b_bio2, 0, "rawrd", 0);
-		}
 		crit_exit();
 		vunmapbuf(nbp);
 		relpbuf(nbp, &ffsrawbufcnt);
@@ -449,5 +446,6 @@ ffs_rawread(struct vnode *vp,
 static void
 ffs_rawreadwakeup(struct bio *bio)
 {
+	bio->bio_buf->b_cmd = BUF_CMD_DONE;
 	wakeup(bio);
 }

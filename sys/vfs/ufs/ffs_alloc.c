@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.20 2006/04/28 06:13:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.21 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -231,7 +231,6 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 		ip->i_blocks += btodb(nsize - osize);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		allocbuf(bp, nsize);
-		bp->b_flags |= B_DONE;
 		bzero((char *)bp->b_data + osize, (uint)nsize - osize);
 		*bpp = bp;
 		return (0);
@@ -296,7 +295,6 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 		ip->i_blocks += btodb(nsize - osize);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		allocbuf(bp, nsize);
-		bp->b_flags |= B_DONE;
 		bzero((char *)bp->b_data + osize, (uint)nsize - osize);
 		*bpp = bp;
 		return (0);

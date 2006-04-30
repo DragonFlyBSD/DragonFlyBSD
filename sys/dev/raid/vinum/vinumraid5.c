@@ -40,7 +40,7 @@
  *
  * $Id: vinumraid5.c,v 1.21 2001/01/09 04:21:27 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumraid5.c,v 1.6.2.2 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.4 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumraid5.c,v 1.5 2006/04/30 17:22:17 dillon Exp $
  */
 #include "vinumhdr.h"
 #include "request.h"
@@ -363,7 +363,7 @@ bre5(struct request *rq,
 	}
 	if (SD[plex->sdnos[m.psdno]].state < sd_reborn)	    /* is our parity subdisk down? */
 	    m.badsdno = m.psdno;			    /* note that it's down */
-	if (bp->b_flags & B_READ) {			    /* read operation */
+	if (bp->b_cmd == BUF_CMD_READ) {		    /* read operation */
 	    for (mysdno = m.firstsdno; rsectors > 0; mysdno++) {
 		if (mysdno == m.psdno)			    /* ignore parity on read */
 		    mysdno++;
@@ -495,7 +495,7 @@ bre5(struct request *rq,
 	    rqe->driveno = sd->driveno;
 	    if (build_rq_buffer(rqe, plex))		    /* build the buffer */
 		return REQUEST_ENOMEM;			    /* can't do it */
-	    rqe->b.b_flags |= B_READ;			    /* we must read first */
+	    rqe->b.b_cmd = BUF_CMD_READ;		    /* we must read first */
 	    m.sdcount++;				    /* adjust the subdisk count */
 	    rqno++;					    /* and point to the next request */
 	}
@@ -536,7 +536,7 @@ bre5(struct request *rq,
 		return REQUEST_ENOMEM;			    /* can't do it */
 	    if ((m.flags & XFR_PARITYOP)		    /* parity operation, */
 	    &&((m.flags & XFR_BAD_SUBDISK) == 0))	    /* and not the bad subdisk, */
-		rqe->b.b_flags |= B_READ;		    /* we must read first */
+		rqe->b.b_cmd = BUF_CMD_READ;		    /* we must read first */
 
 	    /* Now update pointers for the next block */
 	    *diskaddr += m.datalen;			    /* skip past what we've done */
@@ -579,7 +579,7 @@ bre5(struct request *rq,
 		rqe->driveno = sd->driveno;
 		if (build_rq_buffer(rqe, plex))		    /* build the buffer */
 		    return REQUEST_ENOMEM;		    /* can't do it */
-		rqe->b.b_flags |= B_READ;		    /* we must read first */
+		rqe->b.b_cmd = BUF_CMD_READ;		    /* we must read first */
 	    }
 	}
 	/*

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.66 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.67 2006/04/30 17:22:17 dillon Exp $
  */
 
 /*
@@ -354,6 +354,7 @@ bufinit(void)
 		bp = &buf[i];
 		bzero(bp, sizeof *bp);
 		bp->b_flags = B_INVAL;	/* we're just an empty header */
+		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_qindex = BQUEUE_EMPTY;
 		initbufbio(bp);
 		xio_init(&bp->b_xio);
@@ -602,9 +603,9 @@ bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
 		KASSERT(!(bp->b_flags & B_ASYNC), ("bread: illegal async bp %p", bp));
-		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		vfs_busy_pages(vp, bp, 0);
+		bp->b_cmd = BUF_CMD_READ;
+		vfs_busy_pages(vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
 		return (biowait(bp));
 	}
@@ -631,9 +632,9 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
-		vfs_busy_pages(vp, bp, 0);
+		bp->b_cmd = BUF_CMD_READ;
+		vfs_busy_pages(vp, bp);
 		vn_strategy(vp, &bp->b_bio1);
 		++readwait;
 	}
@@ -644,9 +645,10 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
 		rabp = getblk(vp, *raoffset, *rabsize, 0, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
-			rabp->b_flags |= B_READ | B_ASYNC;
+			rabp->b_flags |= B_ASYNC;
 			rabp->b_flags &= ~(B_ERROR | B_INVAL);
-			vfs_busy_pages(vp, rabp, 0);
+			rabp->b_cmd = BUF_CMD_READ;
+			vfs_busy_pages(vp, rabp);
 			BUF_KERNPROC(rabp);
 			vn_strategy(vp, &rabp->b_bio1);
 		} else {
@@ -692,10 +694,10 @@ bwrite(struct buf * bp)
 	/* Mark the buffer clean */
 	bundirty(bp);
 
-	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
+	bp->b_flags &= ~B_ERROR;
 	bp->b_flags |= B_CACHE;
-
-	vfs_busy_pages(bp->b_vp, bp, 1);
+	bp->b_cmd = BUF_CMD_WRITE;
+	vfs_busy_pages(bp->b_vp, bp);
 
 	/*
 	 * Normal bwrites pipeline writes
@@ -802,18 +804,14 @@ bdwrite(struct buf *bp)
 /*
  * bdirty:
  *
- *	Turn buffer into delayed write request.  We must clear B_READ and
- *	B_RELBUF, and we must set B_DELWRI.  We reassign the buffer to 
- *	itself to properly update it in the dirty/clean lists.  We mark it
- *	B_DONE to ensure that any asynchronization of the buffer properly
- *	clears B_DONE ( else a panic will occur later ).  
+ *	Turn buffer into delayed write request by marking it B_DELWRI.
+ *	B_RELBUF and B_NOCACHE must be cleared.
  *
- *	bdirty() is kinda like bdwrite() - we have to clear B_INVAL which
- *	might have been set pre-getblk().  Unlike bwrite/bdwrite, bdirty()
- *	should only be called if the buffer is known-good.
+ *	We reassign the buffer to itself to properly update it in the
+ *	dirty/clean lists. 
  *
- *	Since the buffer is not on a queue, we do not update the numfreebuffers
- *	count.
+ *	Since the buffer is not on a queue, we do not update the 
+ *	numfreebuffers count.
  *
  *	Must be called from a critical section.
  *	The buffer must be on BQUEUE_NONE.
@@ -829,10 +827,10 @@ bdirty(struct buf *bp)
 	if (bp->b_flags & B_INVAL) {
 		printf("bdirty: warning, dirtying invalid buffer %p\n", bp);
 	}
-	bp->b_flags &= ~(B_READ|B_RELBUF);
+	bp->b_flags &= ~B_RELBUF;
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
-		bp->b_flags |= B_DONE | B_DELWRI;
+		bp->b_flags |= B_DELWRI;
 		reassignbuf(bp);
 		++numdirtybuffers;
 		bd_wakeup((lodirtybuffers + hidirtybuffers) / 2);
@@ -961,7 +959,8 @@ brelse(struct buf * bp)
 	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_ERROR;
 
-	if ((bp->b_flags & (B_READ | B_ERROR | B_INVAL)) == B_ERROR) {
+	if (bp->b_cmd == BUF_CMD_WRITE &&
+	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
 		/*
 		 * Failed write, redirty.  Must clear B_ERROR to prevent
 		 * pages from being scrapped.  If B_INVAL is set then
@@ -971,8 +970,8 @@ brelse(struct buf * bp)
 		 */
 		bp->b_flags &= ~B_ERROR;
 		bdirty(bp);
-	} else if ((bp->b_flags & (B_NOCACHE | B_INVAL | B_ERROR | B_FREEBUF)) ||
-	    (bp->b_bufsize <= 0)) {
+	} else if ((bp->b_flags & (B_NOCACHE | B_INVAL | B_ERROR)) ||
+		   (bp->b_bufsize <= 0) || bp->b_cmd == BUF_CMD_FREEBLKS) {
 		/*
 		 * Either a failed I/O or we were asked to free or not
 		 * cache the buffer.
@@ -984,7 +983,7 @@ brelse(struct buf * bp)
 			--numdirtybuffers;
 			numdirtywakeup(lodirtybuffers);
 		}
-		bp->b_flags &= ~(B_DELWRI | B_CACHE | B_FREEBUF);
+		bp->b_flags &= ~(B_DELWRI | B_CACHE);
 	}
 
 	/*
@@ -1008,6 +1007,7 @@ brelse(struct buf * bp)
 	 * At this point destroying the buffer is governed by the B_INVAL 
 	 * or B_RELBUF flags.
 	 */
+	bp->b_cmd = BUF_CMD_DONE;
 
 	/*
 	 * VMIO buffer rundown.  It is not very necessary to keep a VMIO buffer
@@ -1686,6 +1686,7 @@ restart:
 			allocbuf(bp, 0);
 
 		bp->b_flags = 0;
+		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_xflags = 0;
 		bp->b_vp = NULL;
 		bp->b_error = 0;
@@ -2096,10 +2097,8 @@ findblk(struct vnode *vp, off_t loffset)
  * getblk:
  *
  *	Get a block given a specified block and offset into a file/device.
- *	The buffers B_DONE bit will be cleared on return, making it almost
- * 	ready for an I/O initiation.  B_INVAL may or may not be set on 
- *	return.  The caller should clear B_INVAL prior to initiating a
- *	READ.
+ * 	B_INVAL may or may not be set on return.  The caller should clear
+ *	B_INVAL prior to initiating a READ.
  *
  *	IT IS IMPORTANT TO UNDERSTAND THAT IF YOU CALL GETBLK() AND B_CACHE
  *	IS NOT SET, YOU MUST INITIALIZE THE RETURNED BUFFER, ISSUE A READ,
@@ -2200,6 +2199,7 @@ loop:
 		 * All vnode-based buffers must be backed by a VM object.
 		 */
 		KKASSERT(bp->b_flags & B_VMIO);
+		KKASSERT(bp->b_cmd == BUF_CMD_DONE);
 
 		/*
 		 * Make sure that B_INVAL buffers do not have a cached
@@ -2273,9 +2273,7 @@ loop:
 			VOP_BWRITE(bp->b_vp, bp);
 			goto loop;
 		}
-
 		crit_exit();
-		bp->b_flags &= ~B_DONE;
 	} else {
 		/*
 		 * Buffer is not in-core, create new buffer.  The buffer
@@ -2350,11 +2348,11 @@ loop:
 		 */
 		KKASSERT(vp->v_object != NULL);
 		bp->b_flags |= B_VMIO;
+		KKASSERT(bp->b_cmd == BUF_CMD_DONE);
 
 		allocbuf(bp, size);
 
 		crit_exit();
-		bp->b_flags &= ~B_DONE;
 	}
 	return (bp);
 }
@@ -2693,15 +2691,18 @@ allocbuf(struct buf *bp, int size)
  * biowait:
  *
  *	Wait for buffer I/O completion, returning error status.  The buffer
- *	is left locked and B_DONE on return.  B_EINTR is converted into an
- *	EINTR error and cleared.
+ *	is left locked on return.  B_EINTR is converted into an EINTR error
+ *	and cleared.
+ *
+ *	NOTE!  The original b_cmd is lost on return, since b_cmd will be
+ *	set to BUF_CMD_DONE.
  */
 int
 biowait(struct buf * bp)
 {
 	crit_enter();
-	while ((bp->b_flags & B_DONE) == 0) {
-		if (bp->b_flags & B_READ)
+	while (bp->b_cmd != BUF_CMD_DONE) {
+		if (bp->b_cmd == BUF_CMD_READ)
 			tsleep(bp, 0, "biord", 0);
 		else
 			tsleep(bp, 0, "biowr", 0);
@@ -2741,7 +2742,8 @@ vn_strategy(struct vnode *vp, struct bio *bio)
 {
 	struct bio_track *track;
 
-        if (bio->bio_buf->b_flags & B_READ)
+	KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
+        if (bio->bio_buf->b_cmd == BUF_CMD_READ)
                 track = &vp->v_track_read;
         else
                 track = &vp->v_track_write;
@@ -2774,19 +2776,19 @@ void
 biodone(struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
+	buf_cmd_t cmd;
 
 	crit_enter();
 
 	KASSERT(BUF_REFCNTNB(bp) > 0, 
 		("biodone: bp %p not busy %d", bp, BUF_REFCNTNB(bp)));
-	KASSERT(!(bp->b_flags & B_DONE),
-		("biodone: bp %p already done", bp));
+	KASSERT(bp->b_cmd != BUF_CMD_DONE, 
+		("biodone: bp %p already done!", bp));
 
-	bp->b_flags |= B_DONE;
 	runningbufwakeup(bp);
 
 	/*
-	 * Run up the chain of BIO's. 
+	 * Run up the chain of BIO's.   Leave b_cmd intact for the duration.
 	 */
 	while (bio) {
 		biodone_t *done_func; 
@@ -2812,6 +2814,8 @@ biodone(struct bio *bio)
 		 * A bio_done function terminates the loop.  The function
 		 * will be responsible for any further chaining and/or 
 		 * buffer management.
+		 *
+		 * WARNING!  The done function can deallocate the buffer!
 		 */
 		if ((done_func = bio->bio_done) != NULL) {
 			bio->bio_done = NULL;
@@ -2822,10 +2826,13 @@ biodone(struct bio *bio)
 		bio = bio->bio_prev;
 	}
 
+	cmd = bp->b_cmd;
+	bp->b_cmd = BUF_CMD_DONE;
+
 	/*
-	 * Special case (XXX) - not a read or write.
+	 * Only reads and writes are processed past this point.
 	 */
-	if (bp->b_flags & B_FREEBUF) {
+	if (cmd != BUF_CMD_READ && cmd != BUF_CMD_WRITE) {
 		brelse(bp);
 		crit_exit();
 		return;
@@ -2871,7 +2878,7 @@ biodone(struct bio *bio)
 		 * routines.
 		 */
 		iosize = bp->b_bcount - bp->b_resid;
-		if ((bp->b_flags & (B_READ|B_FREEBUF|B_INVAL|B_NOCACHE|B_ERROR)) == B_READ) {
+		if (cmd == BUF_CMD_READ && (bp->b_flags & (B_INVAL|B_NOCACHE|B_ERROR)) == 0) {
 			bp->b_flags |= B_CACHE;
 		}
 
@@ -2912,7 +2919,7 @@ biodone(struct bio *bio)
 			 * already changed correctly ( see bdwrite() ), so we 
 			 * only need to do this here in the read case.
 			 */
-			if ((bp->b_flags & B_READ) && !bogusflag && resid > 0) {
+			if (cmd == BUF_CMD_READ && !bogusflag && resid > 0) {
 				vfs_page_set_valid(bp, foff, i, m);
 			}
 			vm_page_flag_clear(m, PG_ZERO);
@@ -3064,16 +3071,18 @@ vfs_page_set_valid(struct buf *bp, vm_ooffset_t off, int pageno, vm_page_t m)
  *	and should be ignored.
  */
 void
-vfs_busy_pages(struct vnode *vp, struct buf *bp, int clear_modify)
+vfs_busy_pages(struct vnode *vp, struct buf *bp)
 {
 	int i, bogus;
 	struct proc *p = curthread->td_proc;
 
 	/*
-	 * clear_modify is 0 when setting up for a read.  B_CACHE
-	 * had better not be set.
+	 * The buffer's I/O command must already be set.  If reading,
+	 * B_CACHE must be 0 (double check against callers only doing
+	 * I/O when B_CACHE is 0).
 	 */
-	KKASSERT(clear_modify || (bp->b_flags & B_CACHE) == 0);
+	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+	KKASSERT(bp->b_cmd == BUF_CMD_WRITE || (bp->b_flags & B_CACHE) == 0);
 
 	if (bp->b_flags & B_VMIO) {
 		vm_object_t obj;
@@ -3103,23 +3112,22 @@ retry:
 			}
 
 			/*
-			 * When readying a buffer for a read ( i.e
-			 * clear_modify == 0 ), it is important to do
-			 * bogus_page replacement for valid pages in 
-			 * partially instantiated buffers.  Partially 
-			 * instantiated buffers can, in turn, occur when
-			 * reconstituting a buffer from its VM backing store
-			 * base.  We only have to do this if B_CACHE is
-			 * clear ( which causes the I/O to occur in the
-			 * first place ).  The replacement prevents the read
-			 * I/O from overwriting potentially dirty VM-backed
-			 * pages.  XXX bogus page replacement is, uh, bogus.
-			 * It may not work properly with small-block devices.
-			 * We need to find a better way.
+			 * When readying a vnode-backed buffer for a write
+			 * we must zero-fill any invalid portions of the
+			 * backing VM pages.
+			 *
+			 * When readying a vnode-backed buffer for a read
+			 * we must replace any dirty pages with a bogus
+			 * page so we do not destroy dirty data when
+			 * filling in gaps.  Dirty pages might not
+			 * necessarily be marked dirty yet, so use m->valid
+			 * as a reasonable test.
+			 *
+			 * Bogus page replacement is, uh, bogus.  We need
+			 * to find a better way.
 			 */
-
 			vm_page_protect(m, VM_PROT_NONE);
-			if (clear_modify) {
+			if (bp->b_cmd == BUF_CMD_WRITE) {
 				vfs_page_set_valid(bp, foff, i, m);
 			} else if (m->valid == VM_PAGE_BITS_ALL) {
 				bp->b_xio.xio_pages[i] = bogus_page;
@@ -3137,7 +3145,7 @@ retry:
 	 * for now.
 	 */
 	if (p != NULL) {
-		if (bp->b_flags & B_READ)
+		if (bp->b_cmd == BUF_CMD_READ)
 			p->p_stats->p_ru.ru_inblock++;
 		else
 			p->p_stats->p_ru.ru_oublock++;
@@ -3382,6 +3390,11 @@ vmapbuf(struct buf *bp)
 	int i;
 	struct vm_page *m;
 
+	/* 
+	 * bp had better have a command
+	 */
+	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+
 	if (bp->b_bufsize < 0)
 		return (-1);
 	for (v = bp->b_saveaddr,
@@ -3395,7 +3408,7 @@ vmapbuf(struct buf *bp)
 		 */
 retry:
 		i = vm_fault_quick((addr >= bp->b_data) ? addr : bp->b_data,
-			(bp->b_flags&B_READ)?(VM_PROT_READ|VM_PROT_WRITE):VM_PROT_READ);
+			(bp->b_cmd == BUF_CMD_READ)?(VM_PROT_READ|VM_PROT_WRITE):VM_PROT_READ);
 		if (i < 0) {
 			for (i = 0; i < pidx; ++i) {
 			    vm_page_unhold(bp->b_xio.xio_pages[i]);
@@ -3523,6 +3536,7 @@ DB_SHOW_COMMAND(buffer, db_show_buffer)
 	}
 
 	db_printf("b_flags = 0x%b\n", (u_int)bp->b_flags, PRINT_BUF_FLAGS);
+	db_printf("b_cmd = %d\n", bp->b_cmd);
 	db_printf("b_error = %d, b_bufsize = %d, b_bcount = %d, "
 		  "b_resid = %d\n, b_data = %p, "
 		  "bio_offset(disk) = %lld, bio_offset(phys) = %lld\n",

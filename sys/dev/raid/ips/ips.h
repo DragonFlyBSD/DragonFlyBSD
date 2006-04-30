@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.8 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.9 2006/04/30 17:22:16 dillon Exp $
  */
 
 
@@ -198,22 +198,6 @@ MALLOC_DECLARE(M_IPSBUF);
  * for compatibility
  */
 /* struct buf to struct bio changes */
-#if 0
-#define BIO_ERROR	B_ERROR
-#define BIO_READ	B_READ
-#define bio		buf
-#define bio_error	b_error
-#define bio_flags	b_flags
-#define bio_driver1	b_driver1
-#define bio_pblkno	b_pblkno
-#define bio_data	b_data
-#define bio_bcount	b_bcount
-#define bio_dev		b_dev
-#define bio_resid	b_resid
-
-/* geom */
-#define d_drv1		si_drv1
-#endif
 
 #define d_maxsize	si_iosize_max
 
@@ -239,7 +223,7 @@ MALLOC_DECLARE(M_IPSBUF);
 #define ips_write_2(sc,offset,value) 	bus_space_write_2(sc->bustag, sc->bushandle, offset, value)
 #define ips_write_4(sc,offset,value)	bus_space_write_4(sc->bustag, sc->bushandle, offset, value)
 
-#define ips_read_request(iobuf)		((bio)->bio_buf->b_flags & B_READ)
+#define ips_read_request(iobuf)		((bio)->bio_buf->b_cmd == BUF_CMD_READ)
 
 #define COMMAND_ERROR(status)		(((status)->fields.basic_status & 0x0f) >= IPS_MIN_ERROR)
 

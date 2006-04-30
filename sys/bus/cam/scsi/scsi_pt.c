@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.13 2006/02/17 19:17:42 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.14 2006/04/30 17:22:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -533,7 +533,7 @@ ptstart(struct cam_periph *periph, union ccb *start_ccb)
 				  /*retries*/4,
 				  ptdone,
 				  MSG_SIMPLE_Q_TAG,
-				  bp->b_flags & B_READ,
+				  (bp->b_cmd == BUF_CMD_READ),
 				  /*byte2*/0,
 				  bp->b_bcount,
 				  bp->b_data,

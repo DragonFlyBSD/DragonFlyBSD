@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.11 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.12 2006/04/30 17:22:16 dillon Exp $
  *
  */
 
@@ -1671,7 +1671,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 		ctr &= ~IRQENABLE;
 		w_ctr(ppc, ctr);
 
-		ppc->ppc_dmaflags = 0;
+		ppc->ppc_dmaflags = ISADMA_WRITE;
 		ppc->ppc_dmaddr = (caddr_t)buf;
 		ppc->ppc_dmacnt = (u_int)len;
 
@@ -1732,8 +1732,9 @@ ppc_write(device_t dev, char *buf, int len, int how)
 #endif
 			/* stop DMA */
 			isa_dmadone(
-				ppc->ppc_dmaflags, ppc->ppc_dmaddr,
-				ppc->ppc_dmacnt, ppc->ppc_dmachan);
+				ppc->ppc_dmaflags, 
+				ppc->ppc_dmaddr, ppc->ppc_dmacnt,
+				ppc->ppc_dmachan);
 
 			/* no dma, no interrupt, flush the fifo */
 			w_ecr(ppc, PPC_ECR_RESET);

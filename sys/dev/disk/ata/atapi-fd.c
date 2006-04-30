@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.14 2006/03/24 18:35:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -353,7 +353,7 @@ afd_start(struct ata_device *atadev)
 
     bzero(ccb, sizeof(ccb));
 
-    if (bp->b_flags & B_READ)
+    if (bp->b_cmd == BUF_CMD_READ)
 	ccb[0] = ATAPI_READ_BIG;
     else
 	ccb[0] = ATAPI_WRITE_BIG;
@@ -368,8 +368,8 @@ afd_start(struct ata_device *atadev)
     devstat_start_transaction(&fdp->stats);
 
     atapi_queue_cmd(fdp->device, ccb, data_ptr, count * fdp->cap.sector_size,
-		    (bp->b_flags & B_READ) ? ATPR_F_READ : 0, 30,
-		    afd_done, bio);
+		    ((bp->b_cmd == BUF_CMD_READ) ? ATPR_F_READ : 0),
+		    30, afd_done, bio);
 }
 
 static int 

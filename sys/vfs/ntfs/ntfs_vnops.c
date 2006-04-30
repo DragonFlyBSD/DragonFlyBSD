@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.30 2006/04/09 17:51:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.31 2006/04/30 17:22:18 dillon Exp $
  *
  */
 
@@ -330,6 +330,9 @@ ntfs_strategy(struct vop_strategy_args *ap)
 	struct fnode *fp = VTOF(vp);
 	struct ntnode *ip = FTONT(fp);
 	struct ntfsmount *ntmp = ip->i_mp;
+	u_int32_t toread;
+	u_int32_t towrite;
+	size_t tmp;
 	int error;
 
 	dprintf(("ntfs_strategy: loffset: %lld, doffset: %lld\n",
@@ -338,9 +341,10 @@ ntfs_strategy(struct vop_strategy_args *ap)
 	dprintf(("strategy: bcount: %d flags: 0x%lx\n", 
 		(u_int32_t)bp->b_bcount,bp->b_flags));
 
-	if (bp->b_flags & B_READ) {
-		u_int32_t toread;
+	bp->b_error = 0;
 
+	switch(bp->b_cmd) {
+	case BUF_CMD_READ:
 		if (bio->bio_offset >= fp->f_size) {
 			clrbuf(bp);
 			error = 0;
@@ -362,10 +366,8 @@ ntfs_strategy(struct vop_strategy_args *ap)
 
 			bzero(bp->b_data + toread, bp->b_bcount - toread);
 		}
-	} else {
-		size_t tmp;
-		u_int32_t towrite;
-
+		break;
+	case BUF_CMD_WRITE:
 		if (bio->bio_offset + bp->b_bcount >= fp->f_size) {
 			printf("ntfs_strategy: CAN'T EXTEND FILE\n");
 			bp->b_error = error = EFBIG;
@@ -386,6 +388,9 @@ ntfs_strategy(struct vop_strategy_args *ap)
 				bp->b_flags |= B_ERROR;
 			}
 		}
+		break;
+	default:
+		panic("ntfs: bad b_cmd %d\n", bp->b_cmd);
 	}
 	biodone(bio);
 	return (error);

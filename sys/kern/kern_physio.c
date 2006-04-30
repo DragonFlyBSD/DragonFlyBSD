@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.17 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.18 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 static void
 physwakeup(struct bio *bio)
 {
+	bio->bio_buf->b_cmd = BUF_CMD_DONE;
 	wakeup(bio);
 }
 
@@ -70,9 +71,10 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	for (i = 0; i < uio->uio_iovcnt; i++) {
 		while (uio->uio_iov[i].iov_len) {
 			if (uio->uio_rw == UIO_READ)
-				bp->b_flags = saflags | B_READ;
+				bp->b_cmd = BUF_CMD_READ;
 			else 
-				bp->b_flags = saflags | B_WRITE;
+				bp->b_cmd = BUF_CMD_WRITE;
+			bp->b_flags = saflags;
 			bp->b_data = uio->uio_iov[i].iov_base;
 			bp->b_bcount = uio->uio_iov[i].iov_len;
 			bp->b_saveaddr = sa;
@@ -107,7 +109,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			}
 			dev_dstrategy(dev, &bp->b_bio1);
 			crit_enter();
-			while ((bp->b_flags & B_DONE) == 0)
+			while (bp->b_cmd != BUF_CMD_DONE)
 				tsleep(&bp->b_bio1, 0, "physstr", 0);
 			crit_exit();
 

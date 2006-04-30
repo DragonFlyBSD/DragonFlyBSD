@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.26 2006/04/28 16:33:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.27 2006/04/30 17:22:16 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -875,7 +875,7 @@ ccdstart(struct ccd_softc *cs, struct bio *bio)
 			 * to writes when making this determination and we
 			 * also try to avoid hogging.
 			 */
-			if ((cbp[0]->cb_buf.b_flags & B_READ) == 0) {
+			if (cbp[0]->cb_buf.b_cmd != BUF_CMD_READ) {
 				vn_strategy(cbp[0]->cb_vp, 
 					    &cbp[0]->cb_buf.b_bio1);
 				vn_strategy(cbp[1]->cb_vp, 
@@ -1159,7 +1159,7 @@ ccdiodone(struct bio *bio)
 		const char *msg = "";
 
 		if ((ccd_softc[unit].sc_cflags & CCDF_MIRROR) &&
-		    (cbp->cb_buf.b_flags & B_READ) &&
+		    (cbp->cb_buf.b_cmd == BUF_CMD_READ) &&
 		    (cbp->cb_pflags & CCDPF_MIRROR_DONE) == 0) {
 			/*
 			 * We will try our read on the other disk down
@@ -1193,7 +1193,7 @@ ccdiodone(struct bio *bio)
 	 */
 
 	if (ccd_softc[unit].sc_cflags & CCDF_MIRROR) {
-		if ((cbp->cb_buf.b_flags & B_READ) == 0) {
+		if (cbp->cb_buf.b_cmd != BUF_CMD_READ) {
 			/*
 			 * When writing, handshake with the second buffer
 			 * to determine when both are done.  If both are not

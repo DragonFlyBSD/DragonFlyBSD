@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.24 2006/04/02 01:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.25 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -133,7 +133,7 @@ mfs_fsync(struct vop_fsync_args *ap)
 /*
  * mfs_freeblks() - hook to allow us to free physical memory.
  *
- *	We implement the B_FREEBUF strategy.  We can't just madvise()
+ *	We implement the BUF_CMD_FREEBLKS strategy.  We can't just madvise()
  *	here because we have to do it in the correct order vs other bio
  *	requests, so we queue it.
  *
@@ -149,7 +149,8 @@ mfs_freeblks(struct vop_freeblks_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	bp = geteblk(ap->a_length);
-	bp->b_flags |= B_FREEBUF | B_ASYNC;
+	bp->b_flags |= B_ASYNC;
+	bp->b_cmd = BUF_CMD_FREEBLKS;
 	bp->b_bio1.bio_offset = ap->a_offset;
 	bp->b_bcount = ap->a_length;
 	BUF_KERNPROC(bp);
@@ -187,18 +188,25 @@ mfs_strategy(struct vop_strategy_args *ap)
 
 	if (mfsp->mfs_td == NULL) {
 		/*
-		 * mini-root.  Note: B_FREEBUF not supported at the moment,
-		 * I'm not sure what kind of dataspace b_data is in.
+		 * mini-root.  Note: BUF_CMD_FREEBLKS not supported at the
+		 * moment, since we do not know what kind of dataspace
+		 * b_data is in.
 		 */
 		caddr_t base;
 
 		base = mfsp->mfs_baseoff + bio->bio_offset;
-		if (bp->b_flags & B_FREEBUF)
-			;
-		else if (bp->b_flags & B_READ)
+		switch(bp->b_cmd) {
+		case BUF_CMD_FREEBLKS:
+			break;
+		case BUF_CMD_READ:
 			bcopy(base, bp->b_data, bp->b_bcount);
-		else
+			break;
+		case BUF_CMD_WRITE:
 			bcopy(bp->b_data, base, bp->b_bcount);
+			break;
+		default:
+			panic("mfs: bad b_cmd %d\n", bp->b_cmd);
+		}
 		biodone(bio);
 	} else if (mfsp->mfs_td == td) {
 		/*
@@ -226,7 +234,7 @@ mfs_strategy(struct vop_strategy_args *ap)
  *
  * Read and Write are handled with a simple copyin and copyout.    
  *
- * We also partially support VOP_FREEBLKS() via B_FREEBUF.  We can't implement
+ * We also partially support VOP_FREEBLKS().  We can't implement
  * completely -- for example, on fragments or inode metadata, but we can
  * implement it for page-aligned requests.
  */
@@ -235,16 +243,18 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 {
 	struct buf *bp = bio->bio_buf;
 	caddr_t base = mfsp->mfs_baseoff + bio->bio_offset;
+	int bytes;
 
-	if (bp->b_flags & B_FREEBUF) {
+	switch(bp->b_cmd) {
+	case BUF_CMD_FREEBLKS:
 		/*
-		 * Implement B_FREEBUF, which allows the filesystem to tell
+		 * Implement FREEBLKS, which allows the filesystem to tell
 		 * a block device when blocks are no longer needed (like when
 		 * a file is deleted).  We use the hook to MADV_FREE the VM.
 		 * This makes an MFS filesystem work as well or better then
 		 * a sun-style swap-mounted filesystem.
 		 */
-		int bytes = bp->b_bcount;
+		bytes = bp->b_bcount;
 
 		if ((vm_offset_t)base & PAGE_MASK) {
 			int n = PAGE_SIZE - ((vm_offset_t)base & PAGE_MASK);
@@ -264,16 +274,21 @@ mfs_doio(struct bio *bio, struct mfsnode *mfsp)
 			}
                 }
 		bp->b_error = 0;
-	} else if (bp->b_flags & B_READ) {
+		break;
+	case BUF_CMD_READ:
 		/*
 		 * Read data from our 'memory' disk
 		 */
 		bp->b_error = copyin(base, bp->b_data, bp->b_bcount);
-	} else {
+		break;
+	case BUF_CMD_WRITE:
 		/*
 		 * Write data to our 'memory' disk
 		 */
 		bp->b_error = copyout(bp->b_data, base, bp->b_bcount);
+		break;
+	default:
+		panic("mfs: bad b_cmd %d\n", bp->b_cmd);
 	}
 	if (bp->b_error)
 		bp->b_flags |= B_ERROR;

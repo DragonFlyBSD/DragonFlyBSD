@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.15 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.16 2006/04/30 17:22:16 dillon Exp $
  *
  */
 
@@ -992,7 +992,7 @@ labpcstrategy(dev_t dev, struct bio *bio)
 	bio->bio_driver_info = dev;
 
 	if (DIGITAL(dev)) {
-		if (bp->b_flags & B_READ) {
+		if (bp->b_cmd == BUF_CMD_READ) {
 			ctlr->starter = null_start;
 			ctlr->stop = all_stop;
 			ctlr->intr = null_intr;
@@ -1007,7 +1007,7 @@ labpcstrategy(dev_t dev, struct bio *bio)
 		}
 	}
 	else {
-		if (bp->b_flags & B_READ) {
+		if (bp->b_cmd == BUF_CMD_READ) {
 
 			ctlr->starter = INTERVAL(ctlr->dev) ? ad_interval_start : ad_start;
 			ctlr->stop = all_stop;

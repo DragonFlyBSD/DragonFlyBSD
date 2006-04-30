@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.34 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.35 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1134,10 +1134,10 @@ vop_nolookup(ap)
  *	Strategy routine for VFS devices that have none.
  *
  *	B_ERROR and B_INVAL must be cleared prior to calling any strategy
- *	routine.  Typically this is done for a B_READ strategy call.  Typically
- *	B_INVAL is assumed to already be clear prior to a write and should not
- *	be cleared manually unless you just made the buffer invalid.  B_ERROR
- *	should be cleared either way.
+ *	routine.  Typically this is done for a BUF_CMD_READ strategy call.
+ *	Typically B_INVAL is assumed to already be clear prior to a write
+ *	and should not be cleared manually unless you just made the buffer
+ *	invalid.  B_ERROR should be cleared either way.
  */
 
 static int

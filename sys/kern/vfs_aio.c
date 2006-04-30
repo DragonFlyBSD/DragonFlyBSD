@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.23 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.24 2006/04/30 17:22:17 dillon Exp $
  */
 
 /*
@@ -961,7 +961,8 @@ aio_qphysio(struct proc *p, struct aiocblist *aiocbe)
 
 	bp->b_bcount = cb->aio_nbytes;
 	bp->b_bufsize = cb->aio_nbytes;
-	bp->b_flags |= (cb->aio_lio_opcode == LIO_WRITE ?  B_WRITE : B_READ);
+	bp->b_cmd = (cb->aio_lio_opcode == LIO_WRITE) ?
+		    BUF_CMD_WRITE : BUF_CMD_READ;
 	bp->b_bio1.bio_done = aio_physwakeup;
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = (void *)(uintptr_t)cb->aio_buf;
@@ -1044,13 +1045,14 @@ aio_fphysio(struct aiocblist *iocb)
 	bp = iocb->bp;
 
 	crit_enter();
-	while ((bp->b_flags & B_DONE) == 0) {
+	while (bp->b_cmd != BUF_CMD_DONE) {
 		if (tsleep(bp, 0, "physstr", aiod_timeout)) {
-			if ((bp->b_flags & B_DONE) == 0) {
+			if (bp->b_cmd != BUF_CMD_DONE) {
 				crit_exit();
 				return EINPROGRESS;
-			} else
+			} else {
 				break;
+			}
 		}
 	}
 	crit_exit();
@@ -2063,6 +2065,7 @@ aio_physwakeup(struct bio *bio)
 					process_signal, aiocbe);
 		}
 	}
+	bp->b_cmd = BUF_CMD_DONE;
 	wakeup(bp);
 }
 #endif /* VFS_AIO */

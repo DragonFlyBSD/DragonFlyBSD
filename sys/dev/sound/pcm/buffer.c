@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.3 2003/07/30 00:20:39 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.4 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.3 2003/07/30 00:20:39 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.4 2006/04/30 17:22:17 dillon Exp $");
 
 #define SNDBUF_NAMELEN	48
 struct snd_dbuf {
@@ -43,13 +43,14 @@ struct snd_dbuf {
 	volatile int rl; /* length of ready area */
 	volatile int hp;
 	volatile u_int32_t total, prev_total;
-	int isadmachan, dir;       /* dma channel */
+	int isadmachan;       /* dma channel */
 	u_int32_t fmt, spd, bps;
 	unsigned int blksz, blkcnt;
 	int xrun;
 	u_int32_t flags;
 	bus_dmamap_t dmamap;
 	bus_dma_tag_t dmatag;
+	unsigned dmaflags;
 	struct selinfo sel;
 	char name[SNDBUF_NAMELEN];
 };
@@ -599,7 +600,7 @@ sndbuf_isadmasetdir(struct snd_dbuf *b, int dir)
 	KASSERT(b, ("sndbuf_isadmasetdir called with b == NULL"));
 	KASSERT(sndbuf_getflags(b) & SNDBUF_F_ISADMA, ("sndbuf_isadmasetdir called on non-ISA buffer"));
 
-	b->dir = (dir == PCMDIR_PLAY)? ISADMA_WRITE : ISADMA_READ;
+	b->dmaflags = (dir == PCMDIR_PLAY)? ISADMA_WRITE : ISADMA_READ;
 	return 0;
 }
 
@@ -612,13 +613,13 @@ sndbuf_isadma(struct snd_dbuf *b, int go)
 	switch (go) {
 	case PCMTRIG_START:
 		/* isa_dmainit(b->chan, size); */
-		isa_dmastart(b->dir | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
+		isa_dmastart(b->dmaflags | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
 		break;
 
 	case PCMTRIG_STOP:
 	case PCMTRIG_ABORT:
 		isa_dmastop(b->isadmachan);
-		isa_dmadone(b->dir | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
+		isa_dmadone(b->dmaflags | ISADMA_RAW, b->buf, b->bufsize, b->isadmachan);
 		break;
 	}
 

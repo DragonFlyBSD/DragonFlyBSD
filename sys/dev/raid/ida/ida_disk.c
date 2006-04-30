@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.10 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.11 2006/04/30 17:22:16 dillon Exp $
  */
 
 /*
@@ -170,7 +170,7 @@ idad_strategy(dev_t dev, struct bio *bio)
 	/*
 	 * software write protect check
 	 */
-	if (drv->flags & DRV_WRITEPROT && (bp->b_flags & B_READ) == 0) {
+	if ((drv->flags & DRV_WRITEPROT) && bp->b_cmd != BUF_CMD_READ) {
 		bp->b_error = EROFS;
 		goto bad;
 	}

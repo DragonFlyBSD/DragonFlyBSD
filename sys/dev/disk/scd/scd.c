@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.16 2006/03/26 07:56:54 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.17 2006/04/30 17:22:16 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -343,7 +343,7 @@ scdstrategy(dev_t dev, struct bio *bio)
 	}
 
 	/* read only */
-	if (!(bp->b_flags & B_READ)) {
+	if (bp->b_cmd != BUF_CMD_READ) {
 		bp->b_error = EROFS;
 		goto bad;
 	}

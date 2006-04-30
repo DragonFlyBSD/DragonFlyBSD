@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.30 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.31 2006/04/30 17:22:17 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -99,6 +99,14 @@ extern struct bio_ops {
 	int 	(*io_countdeps) (struct buf *, int);
 } bioops;
 
+typedef enum buf_cmd {
+	BUF_CMD_DONE = 0,
+	BUF_CMD_READ,
+	BUF_CMD_WRITE,
+	BUF_CMD_FREEBLKS,
+	BUF_CMD_FORMAT
+} buf_cmd_t;
+
 /*
  * The buffer header describes an I/O operation in the kernel.
  *
@@ -151,6 +159,7 @@ struct buf {
 	unsigned char b_xflags;		/* extra flags */
 	unsigned char b_unused01;
 	struct lock b_lock;		/* Buffer lock */
+	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */
 	int	b_runningbufspace;	/* when I/O is running, pipelining */
 	int	b_bcount;		/* Valid bytes in buffer. */
@@ -194,7 +203,7 @@ struct buf {
  *			B_DELWRI can also be cleared.  See the comments for
  *			getblk() in kern/vfs_bio.c.  If B_CACHE is clear,
  *			the caller is expected to clear B_ERROR|B_INVAL,
- *			set B_READ, and initiate an I/O.
+ *			set BUF_CMD_READ, and initiate an I/O.
  *
  *			The 'entire buffer' is defined to be the range from
  *			0 through b_bcount.
@@ -233,8 +242,8 @@ struct buf {
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
 #define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
-#define	B_FREEBUF	0x00000100	/* Instruct driver: free blocks */
-#define	B_DONE		0x00000200	/* I/O completed. */
+#define	B_UNUSED0100	0x00000100
+#define	B_UNUSED0200	0x00000200
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */
 #define	B_UNUSED1000	0x00001000	/* Unused */
@@ -245,13 +254,12 @@ struct buf {
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_UNUSED40000	0x00040000
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
-#define	B_READ		0x00100000	/* Read buffer. */
+#define	B_UNUSED100000	0x00100000	
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
 #define	B_WANT		0x00800000	/* Used by vm_pager.c */
-#define	B_WRITE		0x00000000	/* Write buffer (pseudo flag). */
 #define	B_UNUSED1000000	0x01000000	/* Unused */
-#define	B_XXX		0x02000000	/* Debugging flag. */
+#define	B_UNUSED2000000	0x02000000
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
 #define	B_ORDERED	0x08000000	/* Must guarantee I/O ordering */
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
@@ -374,7 +382,7 @@ int	physio (dev_t dev, struct uio *uio, int ioflag);
 #define physwrite physio
 void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
-void	vfs_busy_pages (struct vnode *, struct buf *, int clear_modify);
+void	vfs_busy_pages (struct vnode *, struct buf *);
 void	vfs_unbusy_pages (struct buf *);
 int	vmapbuf (struct buf *);
 void	vunmapbuf (struct buf *);

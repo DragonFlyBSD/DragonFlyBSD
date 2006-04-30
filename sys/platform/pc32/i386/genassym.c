@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.48 2005/12/01 18:30:13 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.49 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -165,7 +165,6 @@ ASSYM(SIGF_HANDLER, offsetof(struct sigframe, sf_ahu.sf_handler));
 ASSYM(SIGF_UC, offsetof(struct sigframe, sf_uc));
 ASSYM(UC_EFLAGS, offsetof(ucontext_t, uc_mcontext.mc_eflags));
 ASSYM(UC_GS, offsetof(ucontext_t, uc_mcontext.mc_gs));
-ASSYM(B_READ, B_READ);
 ASSYM(ENOENT, ENOENT);
 ASSYM(EFAULT, EFAULT);
 ASSYM(ENAMETOOLONG, ENAMETOOLONG);

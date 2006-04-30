@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.9 2005/12/01 18:30:11 dillon Exp $
+ * $DragonFly: src/sys/amd64/amd64/Attic/genassym.c,v 1.10 2006/04/30 17:22:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +171,6 @@ ASSYM(SIGF_UC, offsetof(struct sigframe, sf_uc));
 ASSYM(UC_EFLAGS, offsetof(ucontext_t, uc_mcontext.mc_eflags));
 ASSYM(UC_GS, offsetof(ucontext_t, uc_mcontext.mc_gs));
 #endif
-ASSYM(B_READ, B_READ);
 ASSYM(ENOENT, ENOENT);
 ASSYM(EFAULT, EFAULT);
 ASSYM(ENAMETOOLONG, ENAMETOOLONG);

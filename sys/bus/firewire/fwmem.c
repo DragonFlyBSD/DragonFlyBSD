@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.8 2006/02/17 19:17:44 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.9 2006/04/30 17:22:15 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -371,7 +371,7 @@ fwmem_strategy(dev_t dev, struct bio *bio)
 	}
 
 	iolen = MIN(bp->b_bcount, MAXLEN);
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 		if (iolen == 4 && (bio->bio_offset & 3) == 0)
 			xfer = fwmem_read_quad(fwdev,
 			    (void *) bio, fwmem_speed,

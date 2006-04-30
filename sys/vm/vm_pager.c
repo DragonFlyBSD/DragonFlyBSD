@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.18 2006/04/28 16:34:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.19 2006/04/30 17:22:18 dillon Exp $
  */
 
 /*
@@ -320,6 +320,7 @@ initpbuf(struct buf *bp)
 	bp->b_kvasize = MAXPHYS;
 	bp->b_xflags = 0;
 	bp->b_flags = B_PAGING;
+	bp->b_cmd = BUF_CMD_DONE;
 	bp->b_error = 0;
 	initbufbio(bp);
 	xio_init(&bp->b_xio);

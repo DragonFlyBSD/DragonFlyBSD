@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.11 2006/03/24 18:35:29 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.12 2006/04/30 17:22:15 dillon Exp $ 
  *
  */
 
@@ -227,12 +227,19 @@ flastrategy(dev_t dev, struct bio *bio)
 		bp->b_resid = bp->b_bcount;
 		unit = dkunit(dev);
 
-		if (bp->b_flags & B_FREEBUF)
+		switch(bp->b_cmd) {
+		case BUF_CMD_FREEBLKS:
 			what = DOC2K_ERASE;
-		else if (bp->b_flags & B_READ)
+			break;
+		case BUF_CMD_READ:
 			what = DOC2K_READ;
-		else 
+			break;
+		case BUF_CMD_WRITE:
 			what = DOC2K_WRITE;
+			break;
+		default:
+			panic("fla: bad b_cmd %d", bp->b_cmd);
+		}
 
 		LEAVE();
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.14 2006/03/24 18:35:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.15 2006/04/30 17:22:17 dillon Exp $
  */
 
 /*
@@ -411,7 +411,7 @@ twe_startio(struct twe_softc *sc)
 	    tr->tr_data = bio->bio_buf->b_data;
 	    tr->tr_length = bio->bio_buf->b_bcount;
 	    cmd = &tr->tr_command;
-	    if (bio->bio_buf->b_flags & B_READ) {
+	    if (bio->bio_buf->b_cmd == BUF_CMD_READ) {
 		tr->tr_flags |= TWE_CMD_DATAIN;
 		cmd->io.opcode = TWE_OP_READ;
 	    } else {

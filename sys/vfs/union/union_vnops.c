@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.25 2006/03/29 18:45:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.26 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1830,7 +1830,7 @@ union_strategy(struct vop_strategy_args *ap)
 #ifdef DIAGNOSTIC
 	if (othervp == NULLVP)
 		panic("union_strategy: nil vp");
-	if (((bp->b_flags & B_READ) == 0) && (othervp == LOWERVP(ap->a_vp)))
+	if (bp->b_cmd != BUF_CMD_READ && (othervp == LOWERVP(ap->a_vp)))
 		panic("union_strategy: writing to lowervp");
 #endif
 	return (vn_strategy(othervp, bio));

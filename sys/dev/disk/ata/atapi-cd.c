@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.21 2006/03/24 18:35:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.22 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1181,7 +1181,7 @@ acd_start(struct ata_device *atadev)
     }
     count = bp->b_bcount / blocksize;
 
-    if (bp->b_flags & B_READ) {
+    if (bp->b_cmd == BUF_CMD_READ) {
 	/* if transfer goes beyond range adjust it to be within limits */
 	if (lba + count > lastlba) {
 	    /* if we are entirely beyond EOM return EOF */
@@ -1222,7 +1222,7 @@ acd_start(struct ata_device *atadev)
     devstat_start_transaction(cdp->stats);
     bio->bio_caller_info1.ptr = cdp;
     atapi_queue_cmd(cdp->device, ccb, bp->b_data, count * blocksize,
-		    bp->b_flags & B_READ ? ATPR_F_READ : 0, 
+		    ((bp->b_cmd == BUF_CMD_READ) ? ATPR_F_READ : 0), 
 		    (ccb[0] == ATAPI_WRITE_BIG) ? 60 : 30, acd_done, bio);
 }
 

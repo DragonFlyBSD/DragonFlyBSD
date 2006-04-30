@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.14 2006/03/24 18:35:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -302,7 +302,7 @@ pst_timeout(void *xrequest)
 
     crit_enter();
     printf("pst: timeout mfa=0x%08x cmd=%s\n",
-	   request->mfa, bp->b_flags & B_READ ? "READ" : "WRITE");
+	   request->mfa, (bp->b_cmd == BUF_CMD_READ) ? "READ" : "WRITE");
     iop_free_mfa(request->psc->iop, request->mfa);
     if ((request->mfa = iop_get_mfa(request->psc->iop)) == 0xffffffff) {
 	printf("pst: timeout no mfa possible\n");
@@ -342,7 +342,7 @@ pst_rw(struct pst_request *request)
     msg->message_size = sizeof(struct i2o_bsa_rw_block_message) >> 2;
     msg->target_address = request->psc->lct->local_tid;
     msg->initiator_address = I2O_TID_HOST;
-    if (bp->b_flags & B_READ) {
+    if (bp->b_cmd == BUF_CMD_READ) {
 	msg->function = I2O_BSA_BLOCK_READ;
 	msg->control_flags = 0x0; /* 0x0c = read cache + readahead */
 	msg->fetch_ahead = 0x0; /* 8 Kb */

@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.17 2006/03/26 07:56:54 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -419,7 +419,7 @@ MCD_TRACE("strategy: drive not valid\n");
 	}
 
 	/* read only */
-	if (!(bp->b_flags & B_READ)) {
+	if (bp->b_cmd != BUF_CMD_READ) {
 		bp->b_error = EROFS;
 		goto bad;
 	}

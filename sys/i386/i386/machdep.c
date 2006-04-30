@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.89 2006/04/02 20:50:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.90 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2543,7 +2543,7 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
 #if LABELSECTOR != 0
             blkno + p->p_offset + sz > LABELSECTOR + labelsect &&
 #endif
-            (bp->b_flags & B_READ) == 0 && wlabel == 0) {
+            bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
                 bp->b_error = EROFS;
                 goto bad;
         }
@@ -2551,7 +2551,7 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
 #if     defined(DOSBBSECTOR) && defined(notyet)
         /* overwriting master boot record? */
         if (blkno + p->p_offset <= DOSBBSECTOR &&
-            (bp->b_flags & B_READ) == 0 && wlabel == 0) {
+            bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
                 bp->b_error = EROFS;
                 goto bad;
         }

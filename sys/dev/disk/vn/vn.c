@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.18 2006/03/27 01:54:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.19 2006/04/30 17:22:16 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ static	d_strategy_t	vnstrategy;
 /*
  * cdevsw
  *	D_DISK		we want to look like a disk
- *	D_CANFREE	We support B_FREEBUF
+ *	D_CANFREE	We support BUF_CMD_FREEBLKS
  */
 
 static struct cdevsw vn_cdevsw = {
@@ -363,9 +363,9 @@ vnstrategy(dev_t dev, struct bio *bio)
 	/*
 	 * Use the translated nbio from this point on
 	 */
-	if (vn->sc_vp && (bp->b_flags & B_FREEBUF)) {
+	if (vn->sc_vp && bp->b_cmd == BUF_CMD_FREEBLKS) {
 		/*
-		 * Not handled for vnode-backed element yet.
+		 * Freeblks is not handled for vnode-backed elements yet.
 		 */
 		biodone(nbio);
 	} else if (vn->sc_vp) {
@@ -387,14 +387,14 @@ vnstrategy(dev_t dev, struct bio *bio)
 		auio.uio_iovcnt = 1;
 		auio.uio_offset = nbio->bio_offset;
 		auio.uio_segflg = UIO_SYSSPACE;
-		if (bp->b_flags & B_READ)
+		if (bp->b_cmd == BUF_CMD_READ)
 			auio.uio_rw = UIO_READ;
 		else
 			auio.uio_rw = UIO_WRITE;
 		auio.uio_resid = bp->b_bcount;
 		auio.uio_td = curthread;
 		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curthread);
-		if (bp->b_flags & B_READ)
+		if (bp->b_cmd == BUF_CMD_READ)
 			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
 		else
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
@@ -412,12 +412,12 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 *
 		 * ( handles read, write, freebuf )
 		 *
-		 * Note: if we pre-reserved swap, B_FREEBUF is disabled
+		 * Note: freeblks is not supported with pre-reserved swap.
 		 */
 		KASSERT((bp->b_bufsize & (vn->sc_secsize - 1)) == 0,
 		    ("vnstrategy: buffer %p too small for physio", bp));
 
-		if ((bp->b_flags & B_FREEBUF) && TESTOPT(vn, VN_RESERVE)) {
+		if (bp->b_cmd == BUF_CMD_FREEBLKS && TESTOPT(vn, VN_RESERVE)) {
 			biodone(nbio);
 		} else {
 			vm_pager_strategy(vn->sc_object, nbio);

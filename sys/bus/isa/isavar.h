@@ -24,14 +24,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.8 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.9 2006/04/30 17:22:15 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
 #define _ISA_ISAVAR_H_
 
+struct buf;
 struct isa_config;
 struct isa_pnp_id;
+
 typedef void isa_config_cb(void *arg, struct isa_config *config, int enable);
 
 #include "isa_if.h"
@@ -55,9 +57,10 @@ typedef void isa_config_cb(void *arg, struct isa_config *config, int enable);
 #define	ISA_NIRQ	2
 #define	ISA_NDRQ	2
 
-#define ISADMA_READ	0x00100000
-#define ISADMA_WRITE	0
-#define ISADMA_RAW	0x00080000
+#define ISADMA_READ     0x00000001
+#define ISADMA_WRITE    0x00000002
+#define ISADMA_RAW      0x00000004
+
 /*
  * Plug and play cards can support a range of resource
  * configurations. This structure is used by the isapnp parser to
@@ -172,6 +175,7 @@ extern int	isa_dma_acquire (int chan);
 extern void	isa_dma_release (int chan);
 extern int	isa_dmastatus (int chan);
 extern int	isa_dmastop (int chan);
+unsigned isa_dmabp (struct buf *);
 
 int isab_attach(device_t dev);
 

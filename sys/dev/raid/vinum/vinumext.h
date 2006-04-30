@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.7 2006/04/30 17:22:17 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -47,8 +47,8 @@ extern int debug;					    /* debug flags */
 #endif
 
 /* Physical read and write drive */
-#define read_drive(a, b, c, d) driveio (a, b, c, d, B_READ)
-#define write_drive(a, b, c, d) driveio (a, b, c, d, B_WRITE)
+#define read_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_READ)
+#define write_drive(a, b, c, d) driveio (a, b, c, d, BUF_CMD_WRITE)
 
 #define CHECKALLOC(ptr, msg) \
   if (ptr == NULL) \
@@ -116,7 +116,7 @@ void checkdiskconfig(char *);
 int open_drive(struct drive *, struct proc *, int);
 void close_drive(struct drive *drive);
 void close_locked_drive(struct drive *drive);
-int driveio(struct drive *, char *, size_t, off_t, int);
+int driveio(struct drive *, char *, size_t, off_t, buf_cmd_t);
 int set_drive_parms(struct drive *drive);
 int init_drive(struct drive *, int);
 /* void throw_rude_remark (int, struct _ioctl_reply *, char *, ...); XXX */

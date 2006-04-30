@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.13 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.14 2006/04/30 17:22:17 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -164,24 +164,6 @@
 #define FREEBSD_4
 typedef struct bio			twe_bio;
 typedef struct bio_queue_head		twe_bioq;
-#if 0
-# define TWE_BIO_QINIT(bq)		bioq_init(&bq);
-# define TWE_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
-# define TWE_BIO_QFIRST(bq)		bioq_first(&bq)
-# define TWE_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
-# define TWE_BIO_IS_READ(bp)		((bp)->b_flags & B_READ)
-# define TWE_BIO_DATA(bp)		(bp)->b_data
-# define TWE_BIO_LENGTH(bp)		(bp)->b_bcount
-# define TWE_BIO_LBA(bp)		(bp)->b_pblkno
-# define TWE_BIO_SOFTC(bp)		(bp)->b_dev->si_drv1
-# define TWE_BIO_UNIT(bp)		((struct twed_softc *)(TWE_BIO_SOFTC(bp)))->twed_drive->td_twe_unit
-# define TWE_BIO_SET_ERROR(bp, err)	do { (bp)->b_error = err; (bp)->b_flags |= B_ERROR;} while(0)
-# define TWE_BIO_HAS_ERROR(bp)		((bp)->b_flags & B_ERROR)
-# define TWE_BIO_RESID(bp)		(bp)->b_resid
-# define TWE_BIO_DONE(bp)		biodone(bp)
-# define TWE_BIO_STATS_START(bp)	devstat_start_transaction(&((struct twed_softc *)TWE_BIO_SOFTC(bp))->twed_stats)
-# define TWE_BIO_STATS_END(bp)		devstat_end_transaction_buf(&((struct twed_softc *)TWE_BIO_SOFTC(bp))->twed_stats, bp)
-#endif
 #else
 # include <sys/bio.h>
 typedef struct bio			twe_bio;

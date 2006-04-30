@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.20 2006/04/30 17:22:18 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -276,7 +276,8 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 	uiop->uio_iovcnt = 1;
 	uiop->uio_segflg = UIO_SYSSPACE;
 	uiop->uio_td = td;
-	if (bp->b_flags & B_READ) {
+
+	if (bp->b_cmd == BUF_CMD_READ) {
 	    io.iov_len = uiop->uio_resid = bp->b_bcount;
 	    io.iov_base = bp->b_data;
 	    uiop->uio_rw = UIO_READ;
@@ -316,6 +317,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 		bp->b_error = error;
 	    }
 	} else { /* write */
+	    KKASSERT(bp->b_cmd == BUF_CMD_WRITE);
 	    if (bio->bio_offset + bp->b_dirtyend > np->n_size)
 		bp->b_dirtyend = np->n_size - bio->bio_offset;
 
@@ -346,10 +348,8 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 			bp->b_flags &= ~(B_INVAL|B_NOCACHE);
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
-			if ((bp->b_flags & B_PAGING) == 0) {
+			if ((bp->b_flags & B_PAGING) == 0)
 			    bdirty(bp);
-			    bp->b_flags &= ~B_DONE;
-			}
 			if ((bp->b_flags & B_ASYNC) == 0)
 			    bp->b_flags |= B_EINTR;
 			crit_exit();

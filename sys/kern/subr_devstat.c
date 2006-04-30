@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_devstat.c,v 1.17.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_devstat.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_devstat.c,v 1.3 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -234,13 +234,17 @@ devstat_end_transaction_buf(struct devstat *ds, struct buf *bp)
 {
 	devstat_trans_flags flg;
 
-	if (bp->b_flags & B_FREEBUF)
+	switch(bp->b_cmd) {
+	case BUF_CMD_FREEBLKS:
 		flg = DEVSTAT_FREE;
-	else if (bp->b_flags & B_READ)
+		break;
+	case BUF_CMD_READ:
 		flg = DEVSTAT_READ;
-	else
+		break;
+	default:
 		flg = DEVSTAT_WRITE;
-
+		break;
+	}
 	devstat_end_transaction(ds, bp->b_bcount - bp->b_resid,
 				(bp->b_flags & B_ORDERED) ?
 				DEVSTAT_TAG_ORDERED : DEVSTAT_TAG_SIMPLE, flg);

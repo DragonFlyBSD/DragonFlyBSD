@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sound.h,v 1.10.2.11 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.7 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sound.h,v 1.8 2006/04/30 17:22:17 dillon Exp $
  */
 
 /*
@@ -97,11 +97,6 @@ struct snd_mixer;
 
 #define SND_STATUSLEN	64
 /* descriptor of audio device */
-#ifndef ISADMA_WRITE
-#define ISADMA_WRITE B_WRITE
-#define ISADMA_READ B_READ
-#define ISADMA_RAW B_RAW
-#endif
 
 #define PCM_MODVER	1
 

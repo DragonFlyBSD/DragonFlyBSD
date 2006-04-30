@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.13 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.14 2006/04/30 17:22:16 dillon Exp $
  *
  */
 
@@ -163,7 +163,7 @@ static wtinfo_t wttab[NWT];                    /* tape info by unit number */
 
 static int wtwait (wtinfo_t *t, int catch, char *msg);
 static int wtcmd (wtinfo_t *t, int cmd);
-static int wtstart (wtinfo_t *t, unsigned mode, void *vaddr, unsigned len);
+static int wtstart (wtinfo_t *t, unsigned flags, void *vaddr, unsigned len);
 static void wtdma (wtinfo_t *t);
 static timeout_t wtimer;
 static void wtclock (wtinfo_t *t);
@@ -512,6 +512,7 @@ wtstrategy (dev_t dev, struct bio *bio)
 	struct buf *bp = bio->bio_buf;
 	int u = minor(dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
+	unsigned flags;
 
 	bp->b_resid = bp->b_bcount;
 	if (u >= NWT || t->type == UNKNOWN) {
@@ -528,7 +529,7 @@ wtstrategy (dev_t dev, struct bio *bio)
 		goto err2xit;
 	}
 
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 		/* Check read access and no previous write to this tape. */
 		if (! (t->flags & TPREAD) || (t->flags & TPWANY))
 			goto errxit;
@@ -544,6 +545,7 @@ wtstrategy (dev_t dev, struct bio *bio)
 			}
 			t->flags |= TPRO | TPRANY;
 		}
+		flags = ISADMA_READ;
 	} else {
 		/* Check write access and write protection. */
 		/* No previous read from this tape allowed. */
@@ -560,6 +562,7 @@ wtstrategy (dev_t dev, struct bio *bio)
 			}
 			t->flags |= TPWO | TPWANY;
 		}
+		flags = ISADMA_WRITE;
 	}
 
 	if (! bp->b_bcount)
@@ -567,8 +570,8 @@ wtstrategy (dev_t dev, struct bio *bio)
 
 	t->flags &= ~TPEXCEP;
 	crit_enter();
-	if (wtstart (t, bp->b_flags & B_READ ? ISADMA_READ : ISADMA_WRITE, bp->b_data, bp->b_bcount)) {
-		wtwait (t, 0, (bp->b_flags & B_READ) ? "wtread" : "wtwrite");
+	if (wtstart (t, flags, bp->b_data, bp->b_bcount)) {
+		wtwait (t, 0, (flags & ISADMA_READ) ? "wtread" : "wtwrite");
 		bp->b_resid -= t->dmacount;
 	}
 	crit_exit();

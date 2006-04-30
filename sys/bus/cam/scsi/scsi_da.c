@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.28 2006/03/24 18:35:27 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.29 2006/04/30 17:22:15 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -1399,7 +1399,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 					/*retries*/da_retry_count,
 					dadone,
 					tag_code,
-					bp->b_flags & B_READ,
+					(bp->b_cmd == BUF_CMD_READ),
 					/*byte2*/0,
 					softc->minimum_cmd_size,
 					bio->bio_offset / softc->params.secsize,

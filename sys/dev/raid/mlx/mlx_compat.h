@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.6 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.7 2006/04/30 17:22:16 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -39,24 +39,6 @@
 # include <sys/buf2.h>
 typedef struct bio			mlx_bio;
 typedef struct bio_queue_head		mlx_bioq;
-#if 0
-# define MLX_BIO_QINIT(bq)		bioq_init(&bq);
-# define MLX_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
-# define MLX_BIO_QFIRST(bq)		bioq_first(&bq)
-# define MLX_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
-# define MLX_BIO_IS_READ(bp)		((bp)->b_flags & B_READ)
-# define MLX_BIO_DATA(bp)		(bp)->b_data
-# define MLX_BIO_LENGTH(bp)		(bp)->b_bcount
-# define MLX_BIO_LBA(bp)		(bp)->b_pblkno
-# define MLX_BIO_SOFTC(bp)		(bp)->b_dev->si_drv1
-# define MLX_BIO_UNIT(bp)		*(int *)((bp)->b_dev->si_drv2)
-# define MLX_BIO_SET_ERROR(bp, err)	do { (bp)->b_error = err; (bp)->b_flags |= B_ERROR;} while(0)
-# define MLX_BIO_HAS_ERROR(bp)		((bp)->b_flags & B_ERROR)
-# define MLX_BIO_RESID(bp)		(bp)->b_resid
-# define MLX_BIO_DONE(bp)		biodone(bp)
-# define MLX_BIO_STATS_START(bp)	devstat_start_transaction(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats)
-# define MLX_BIO_STATS_END(bp)		devstat_end_transaction_buf(&((struct mlxd_softc *)MLX_BIO_SOFTC(bp))->mlxd_stats, bp)
-#endif
 #else
 # include <sys/bio.h>
 typedef struct bio			mlx_bio;

@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.21 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.22 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -69,7 +69,8 @@ static struct cluster_save *
 			    int lblocksize);
 static struct buf *
 	cluster_rbuild (struct vnode *vp, off_t filesize, off_t loffset,
-			    off_t doffset, int size, int run, struct buf *fbp);
+			    off_t doffset, int size, int run, 
+			    struct buf *fbp, int doasync);
 static void cluster_callback (struct bio *);
 
 
@@ -185,7 +186,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 				nblks = burstbytes / size;
 
 			bp = cluster_rbuild(vp, filesize, loffset,
-					    doffset, size, nblks, bp);
+					    doffset, size, nblks, bp, 0);
 			loffset += bp->b_bufsize;
 		} else {
 single_block_read:
@@ -193,7 +194,7 @@ single_block_read:
 			 * if it isn't in the cache, then get a chunk from
 			 * disk if sequential, otherwise just get the block.
 			 */
-			bp->b_flags |= B_READ | B_RAM;
+			bp->b_flags |= B_RAM;
 			loffset += size;
 		}
 	}
@@ -215,7 +216,6 @@ single_block_read:
 			error = VOP_BMAP(vp, loffset, NULL,
 					 &doffset, &burstbytes, NULL);
 			if (error || doffset == NOOFFSET) {
-				rbp->b_flags &= ~(B_ASYNC | B_READ);
 				brelse(rbp);
 				rbp = NULL;
 				goto no_read_ahead;
@@ -227,11 +227,11 @@ single_block_read:
 			if (seqcount < ntoread)
 				ntoread = seqcount;
 
-			rbp->b_flags |= B_READ | B_ASYNC | B_RAM;
+			rbp->b_flags |= B_RAM;
 			if (burstbytes) {
 				rbp = cluster_rbuild(vp, filesize, loffset,
 						     doffset, size, 
-						     ntoread, rbp);
+						     ntoread, rbp, 1);
 			} else {
 				rbp->b_bio2.bio_offset = doffset;
 			}
@@ -241,7 +241,9 @@ no_read_ahead:
 
 	/*
 	 * Handle the synchronous read.  This only occurs if B_CACHE was
-	 * not set.
+	 * not set.  bp (and rbp) could be either a cluster bp or a normal
+	 * bp depending on the what cluster_rbuild() decided to do.  If
+	 * it is a cluster bp, vfs_busy_pages() has already been called.
 	 */
 	if (bp) {
 #if defined(CLUSTERDEBUG)
@@ -249,9 +251,9 @@ no_read_ahead:
 			printf("S(%lld,%d,%d) ",
 			    bp->b_loffset, bp->b_bcount, seqcount);
 #endif
-		if ((bp->b_flags & B_CLUSTER) == 0) {
-			vfs_busy_pages(vp, bp, 0);
-		}
+		bp->b_cmd = BUF_CMD_READ;
+		if ((bp->b_flags & B_CLUSTER) == 0)
+			vfs_busy_pages(vp, bp);
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		if ((bp->b_flags & B_ASYNC) || bp->b_bio1.bio_done != NULL)
 			BUF_KERNPROC(bp);
@@ -260,14 +262,12 @@ no_read_ahead:
 	}
 
 	/*
-	 * And if we have read-aheads, do them too
+	 * And if we have read-aheads, do them too. 
 	 */
 	if (rbp) {
 		if (error) {
-			rbp->b_flags &= ~(B_ASYNC | B_READ);
 			brelse(rbp);
 		} else if (rbp->b_flags & B_CACHE) {
-			rbp->b_flags &= ~(B_ASYNC | B_READ);
 			bqrelse(rbp);
 		} else {
 #if defined(CLUSTERDEBUG)
@@ -284,11 +284,12 @@ no_read_ahead:
 					    seqcount);
 			}
 #endif
-
-			if ((rbp->b_flags & B_CLUSTER) == 0) {
-				vfs_busy_pages(vp, rbp, 0);
-			}
 			rbp->b_flags &= ~(B_ERROR|B_INVAL);
+			rbp->b_flags |= B_ASYNC;
+			rbp->b_cmd = BUF_CMD_READ;
+
+			if ((rbp->b_flags & B_CLUSTER) == 0)
+				vfs_busy_pages(vp, rbp);
 			if ((rbp->b_flags & B_ASYNC) || rbp->b_bio1.bio_done != NULL)
 				BUF_KERNPROC(rbp);
 			vn_strategy(vp, &rbp->b_bio1);
@@ -307,7 +308,7 @@ no_read_ahead:
  */
 static struct buf *
 cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, 
-	off_t doffset, int size, int run, struct buf *fbp)
+	off_t doffset, int size, int run, struct buf *fbp, int doasync)
 {
 	struct buf *bp, *tbp;
 	off_t boffset;
@@ -325,11 +326,11 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	}
 
 	tbp = fbp;
-	tbp->b_flags |= B_READ; 
 	tbp->b_bio2.bio_offset = doffset;
-	if( (tbp->b_flags & B_MALLOC) ||
-		((tbp->b_flags & B_VMIO) == 0) || (run <= 1) )
+	if((tbp->b_flags & B_MALLOC) ||
+	    ((tbp->b_flags & B_VMIO) == 0) || (run <= 1)) {
 		return tbp;
+	}
 
 	bp = trypbuf(&cluster_pbuf_freecnt);
 	if (bp == NULL)
@@ -343,7 +344,8 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	 */
 	bp->b_data = (char *)((vm_offset_t)bp->b_data |
 	    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-	bp->b_flags |= B_ASYNC | B_READ | B_CLUSTER | B_VMIO;
+	bp->b_flags |= B_ASYNC | B_CLUSTER | B_VMIO;
+	bp->b_cmd = BUF_CMD_READ;
 	bp->b_bio1.bio_done = cluster_callback;
 	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 	bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
@@ -357,7 +359,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	bp->b_xio.xio_npages = 0;
 
 	for (boffset = doffset, i = 0; i < run; ++i, boffset += size) {
-		if (i != 0) {
+		if (i) {
 			if ((bp->b_xio.xio_npages * PAGE_SIZE) +
 			    round_page(size) > vp->v_mount->mnt_iosize_max) {
 				break;
@@ -421,13 +423,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 				tbp->b_flags |= B_RAM;
 
 			/*
-			 * Set the buffer up for an async read (XXX should
-			 * we do this only if we do not wind up brelse()ing?).
 			 * Set the block number if it isn't set, otherwise
 			 * if it is make sure it matches the block number we
 			 * expect.
 			 */
-			tbp->b_flags |= B_READ | B_ASYNC;
 			if (tbp->b_bio2.bio_offset == NOOFFSET) {
 				tbp->b_bio2.bio_offset = boffset;
 			} else if (tbp->b_bio2.bio_offset != boffset) {
@@ -436,9 +435,14 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			}
 		}
 		/*
-		 * XXX fbp from caller may not be B_ASYNC, but we are going
-		 * to biodone() it in cluster_callback() anyway
+		 * The first buffer is setup async if doasync is specified.
+		 * All other buffers in the cluster are setup async.  This
+		 * way the caller can decide how to deal with the requested
+		 * buffer.
 		 */
+		if (i || doasync)
+			tbp->b_flags |= B_ASYNC;
+		tbp->b_cmd = BUF_CMD_READ;
 		BUF_KERNPROC(tbp);
 		cluster_append(&bp->b_bio1, tbp);
 		for (j = 0; j < tbp->b_xio.xio_npages; ++j) {
@@ -759,7 +763,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 			continue;
 		}
 		bremfree(tbp);
-		tbp->b_flags &= ~B_DONE;
+		KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
 		crit_exit();
 
 		/*
@@ -800,8 +804,8 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		 */
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
-		bp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
-		bp->b_flags |= B_CLUSTER | B_ASYNC |
+		bp->b_flags &= ~B_ERROR;
+		bp->b_flags |= B_CLUSTER | 
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT | B_NOWDRAIN));
 		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;
@@ -860,7 +864,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 				 * and mark it busy. We will use it.
 				 */
 				bremfree(tbp);
-				tbp->b_flags &= ~B_DONE;
+				KKASSERT(tbp->b_cmd == BUF_CMD_DONE);
 				crit_exit();
 			} /* end of code for non-first buffers only */
 
@@ -901,8 +905,9 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 
 			crit_enter();
 			bundirty(tbp);
-			tbp->b_flags &= ~(B_READ | B_DONE | B_ERROR);
+			tbp->b_flags &= ~B_ERROR;
 			tbp->b_flags |= B_ASYNC;
+			tbp->b_cmd = BUF_CMD_WRITE;
 			crit_exit();
 			BUF_KERNPROC(tbp);
 			cluster_append(&bp->b_bio1, tbp);
@@ -925,8 +930,9 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		totalwritten += bp->b_bufsize;
 		bp->b_dirtyoff = 0;
 		bp->b_dirtyend = bp->b_bufsize;
-
-		vfs_busy_pages(vp, bp, 1);
+		bp->b_flags |= B_ASYNC;
+		bp->b_cmd = BUF_CMD_WRITE;
+		vfs_busy_pages(vp, bp);
 		bp->b_runningbufspace = bp->b_bufsize;
 		runningbufspace += bp->b_runningbufspace;
 		BUF_KERNPROC(bp);	/* B_ASYNC */

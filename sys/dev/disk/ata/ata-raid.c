@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.18 2006/04/28 16:33:58 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.19 2006/04/30 17:22:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -559,6 +559,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	buf1->bp.b_bcount = chunk * DEV_BSIZE;
 	buf1->bp.b_data = data;
 	buf1->bp.b_flags = bp->b_flags | B_PAGING;
+	buf1->bp.b_cmd = bp->b_cmd;
 	buf1->bp.b_bio1.bio_done = ar_done;
 	buf1->org = bio;
 	buf1_blkno = (int)(buf1->bp.b_bio1.bio_offset >> DEV_BSHIFT);
@@ -583,7 +584,7 @@ arstrategy(dev_t dev, struct bio *bio)
 
 	case AR_F_RAID1:
 	case AR_F_RAID0 | AR_F_RAID1:
-	    if ((rdp->flags & AR_F_REBUILDING) && !(bp->b_flags & B_READ)) {
+	    if ((rdp->flags & AR_F_REBUILDING) && bp->b_cmd != BUF_CMD_READ) {
 		if ((orig_blkno >= rdp->lock_start &&
 		     orig_blkno < rdp->lock_end) ||
 		    ((orig_blkno + chunk) > rdp->lock_start &&
@@ -613,7 +614,7 @@ arstrategy(dev_t dev, struct bio *bio)
 		biodone(bio);
 		return;
 	    }
-	    if (bp->b_flags & B_READ) {
+	    if (bp->b_cmd == BUF_CMD_READ) {
 		if ((buf1_blkno <
 		     (rdp->disks[buf1->drive].last_lba - AR_PROXIMITY) ||
 		     buf1_blkno >
@@ -687,7 +688,7 @@ ar_done(struct bio *bio)
 	    rdp->disks[buf->drive].flags &= ~AR_DF_ONLINE;
 	    ar_config_changed(rdp, 1);
 	    if (rdp->flags & AR_F_READY) {
-		if (buf->bp.b_flags & B_READ) {
+		if (buf->bp.b_cmd == BUF_CMD_READ) {
 		    if (buf->drive < rdp->width)
 			buf->drive = buf->drive + rdp->width;
 		    else
@@ -715,7 +716,7 @@ ar_done(struct bio *bio)
 	    }
 	} 
 	else {
-	    if (!(buf->bp.b_flags & B_READ)) {
+	    if (buf->bp.b_cmd != BUF_CMD_READ) {
 		if (buf->mirror && !(buf->flags & AB_F_DONE)){
 		    buf->mirror->flags |= AB_F_DONE;
 		    break;
@@ -1402,14 +1403,15 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     else
 	bp->b_bio1.bio_done = ar_rw_done;
     if (flags & AR_READ)
-	bp->b_flags |= B_READ;
+	bp->b_cmd = BUF_CMD_READ;
     if (flags & AR_WRITE)
-	bp->b_flags |= B_WRITE;
+	bp->b_cmd = BUF_CMD_WRITE;
+    KKASSERT(bp->b_cmd != BUF_CMD_DONE);
 
     dev_dstrategy(adp->dev, &bp->b_bio1);
 
     if (flags & AR_WAIT) {
-	while ((retry++ < (15*hz/10)) && (error = !(bp->b_flags & B_DONE)))
+	while ((retry++ < (15*hz/10)) && (error = !(bp->b_cmd == BUF_CMD_DONE)))
 	    error = tsleep(&bp->b_bio1, 0, "arrw", 10);
 	if (!error && (bp->b_flags & B_ERROR))
 	    error = bp->b_error;

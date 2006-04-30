@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.10 2005/06/10 23:25:08 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.11 2006/04/30 17:22:17 dillon Exp $
  *
  */
 
@@ -327,7 +327,7 @@ buffer_read(struct gsc_unit *scu)
   outb( scu->clrp, 0 );
   stb = inb( scu->stat );
 
-  isa_dmastart(ISADMA_READ, scu->sbuf.base, scu->sbuf.size, scu->channel);
+  isa_dmastart(BUF_CMD_READ, 0, scu->sbuf.base, scu->sbuf.size, scu->channel);
 
   chan_bit = 0x01 << scu->channel;
 
@@ -347,7 +347,7 @@ buffer_read(struct gsc_unit *scu)
 	break;
     }
   crit_exit();
-  isa_dmadone(ISADMA_READ, scu->sbuf.base, scu->sbuf.size, scu->channel);
+  isa_dmadone(BUF_CMD_READ, 0, scu->sbuf.base, scu->sbuf.size, scu->channel);
   outb( scu->clrp, 0 );
 
   if(res != SUCCESS)

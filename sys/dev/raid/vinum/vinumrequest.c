@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.10 2006/04/28 16:34:00 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.11 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -237,7 +237,7 @@ vinumstart(dev_t dev, struct bio *bio, int reviveok)
 	maxplex = 1;					    /* just the one plex */
     }
 
-    if (bp->b_flags & B_READ) {
+    if (bp->b_cmd == BUF_CMD_READ) {
 	/*
 	 * This is a read request.  Decide
 	 * which plex to read from.
@@ -346,7 +346,7 @@ launch_requests(struct request *rq, int reviveok)
 		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 		rq->sdno,
 		rq,
-		rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+		(rq->bio->bio_buf->b_cmd & BUF_CMD_READ) ? "Read" : "Write",
 		major(((dev_t)rq->bio->bio_driver_info)),
 		minor(((dev_t)rq->bio->bio_driver_info)),
 		rq->bio->bio_offset,
@@ -361,7 +361,7 @@ launch_requests(struct request *rq, int reviveok)
 	log(LOG_DEBUG,
 	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
 	    rq,
-	    rq->bio->bio_buf->b_flags & B_READ ? "Read" : "Write",
+	    (rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    major(((dev_t)rq->bio->bio_driver_info)),
 	    minor(((dev_t)rq->bio->bio_driver_info)),
 	    rq->bio->bio_offset,
@@ -423,7 +423,7 @@ launch_requests(struct request *rq, int reviveok)
 		if (debug & DEBUG_ADDRESSES)
 		    log(LOG_DEBUG,
 			"  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
-			rqe->b.b_flags & B_READ ? "Read" : "Write",
+			(rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			major(dev),
 			minor(dev),
 			rqe->sdno,
@@ -521,7 +521,7 @@ bre(struct request *rq,
 		    s = checksdstate(sd, rq, *diskaddr, diskend); /* do we need to change state? */
 		    if (s == REQUEST_DOWN) {		    /* down? */
 			rqe->flags = XFR_BAD_SUBDISK;	    /* yup */
-			if (rq->bio->bio_buf->b_flags & B_READ)	    /* read request, */
+			if (rq->bio->bio_buf->b_cmd == BUF_CMD_READ)    /* read request, */
 			    return REQUEST_DEGRADED;	    /* give up here */
 			/*
 			 * If we're writing, don't give up
@@ -603,7 +603,7 @@ bre(struct request *rq,
 		    s = checksdstate(sd, rq, *diskaddr, diskend); /* do we need to change state? */
 		    if (s == REQUEST_DOWN) {		    /* down? */
 			rqe->flags = XFR_BAD_SUBDISK;	    /* yup */
-			if (rq->bio->bio_buf->b_flags & B_READ)	    /* read request, */
+			if (rq->bio->bio_buf->b_cmd == BUF_CMD_READ)	    /* read request, */
 			    return REQUEST_DEGRADED;	    /* give up here */
 			/*
 			 * If we're writing, don't give up
@@ -810,7 +810,8 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
 
     /* Initialize the buf struct */
     /* copy these flags from user bp */
-    bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE | B_READ | B_ASYNC);
+    bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE | B_ASYNC);
+    bp->b_cmd = ubp->b_cmd;
     bp->b_flags |= B_PAGING;
 #ifdef VINUMDEBUG
     if (rqe->flags & XFR_BUFLOCKED)			    /* paranoia */
@@ -915,7 +916,7 @@ sdio(struct bio *bio)
 
     if (drive->state != drive_up) {
 	if (sd->state >= sd_crashed) {
-	    if ((bp->b_flags & B_READ) == 0)		    /* writing, */
+	    if (bp->b_cmd != BUF_CMD_READ)		    /* writing, */
 		set_sd_state(sd->sdno, sd_stale, setstate_force);
 	    else
 		set_sd_state(sd->sdno, sd_crashed, setstate_force);
@@ -975,7 +976,7 @@ sdio(struct bio *bio)
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
 	    "  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
-	    sbp->b.b_flags & B_READ ? "Read" : "Write",
+	    (sbp->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    major(sddev),
 	    minor(sddev),
 	    sbp->sdno,
@@ -1023,7 +1024,7 @@ vinum_bounds_check(struct bio *bio, struct volume *vol)
 	&& blkno + size > LABELSECTOR		    /* and finishes after */
 #endif
 	&& (!(vol->flags & VF_RAW))			    /* and it's not raw */
-	&&((bp->b_flags & B_READ) == 0)			    /* and it's a write */
+	&& (bp->b_cmd != BUF_CMD_READ)			    /* and it's a write */
 	&&(!vol->flags & (VF_WLABEL | VF_LABELLING))) {	    /* and we're not allowed to write the label */
 	bp->b_error = EROFS;				    /* read-only */
 	bp->b_flags |= B_ERROR;

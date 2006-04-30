@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.38 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.39 2006/04/30 17:22:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -451,9 +451,10 @@ spec_strategy(struct vop_strategy_args *ap)
 	struct vnode *vp;
 	struct mount *mp;
 
-	if (((bp->b_flags & B_READ) == 0) &&
-		(LIST_FIRST(&bp->b_dep)) != NULL && bioops.io_start)
+	if (bp->b_cmd != BUF_CMD_READ &&
+	    (LIST_FIRST(&bp->b_dep)) != NULL && bioops.io_start) {
 		(*bioops.io_start)(bp);
+	}
 
 	/*
 	 * Collect statistics on synchronous and asynchronous read
@@ -462,16 +463,16 @@ spec_strategy(struct vop_strategy_args *ap)
 	vp = ap->a_vp;
 	KKASSERT(vp->v_rdev != NULL);	/* XXX */
 	if (vn_isdisk(vp, NULL) && (mp = vp->v_rdev->si_mountpoint) != NULL) {
-		if ((bp->b_flags & B_READ) == 0) {
-			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
-				mp->mnt_stat.f_asyncwrites++;
-			else
-				mp->mnt_stat.f_syncwrites++;
-		} else {
+		if (bp->b_cmd == BUF_CMD_READ) {
 			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
 				mp->mnt_stat.f_asyncreads++;
 			else
 				mp->mnt_stat.f_syncreads++;
+		} else {
+			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
+				mp->mnt_stat.f_asyncwrites++;
+			else
+				mp->mnt_stat.f_syncwrites++;
 		}
 	}
 	dev_dstrategy_chain(vp->v_rdev, bio);
@@ -494,7 +495,7 @@ spec_freeblks(struct vop_freeblks_args *ap)
 	if ((dev_dflags(ap->a_vp->v_rdev) & D_CANFREE) == 0)
 		return (0);
 	bp = geteblk(ap->a_length);
-	bp->b_flags |= B_FREEBUF;
+	bp->b_cmd = BUF_CMD_FREEBLKS;
 	bp->b_bio1.bio_offset = ap->a_offset;
 	bp->b_bcount = ap->a_length;
 	dev_dstrategy(ap->a_vp->v_rdev, &bp->b_bio1);
@@ -639,7 +640,7 @@ spec_advlock(struct vop_advlock_args *ap)
 static void
 spec_getpages_iodone(struct bio *bio)
 {
-	bio->bio_buf->b_flags |= B_DONE;
+	bio->bio_buf->b_cmd = BUF_CMD_DONE;
 	wakeup(bio->bio_buf);
 }
 
@@ -691,8 +692,7 @@ spec_getpages(struct vop_getpages_args *ap)
 	pmap_qenter(kva, ap->a_m, pcount);
 
 	/* Build a minimal buffer header. */
-	bp->b_flags |= B_READ;
-
+	bp->b_cmd = BUF_CMD_READ;
 	bp->b_bcount = size;
 	bp->b_bufsize = size;
 	bp->b_resid = 0;
@@ -711,9 +711,8 @@ spec_getpages(struct vop_getpages_args *ap)
 	crit_enter();
 
 	/* We definitely need to be at splbio here. */
-	while ((bp->b_flags & B_DONE) == 0) {
+	while (bp->b_cmd != BUF_CMD_DONE)
 		tsleep(bp, 0, "spread", 0);
-	}
 
 	crit_exit();
 

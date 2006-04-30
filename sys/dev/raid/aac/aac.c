@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.22 2006/04/17 15:59:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.23 2006/04/30 17:22:16 dillon Exp $
  */
 
 /*
@@ -943,7 +943,7 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 
 	/* build the read/write request */
 	ad = (struct aac_disk *)bio->bio_driver_info;
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 		br = (struct aac_blockread *)&fib->data[0];
 		br->Command = VM_CtBlockRead;
 		br->ContainerId = ad->ad_container->co_mntobj.ObjectId;
@@ -991,7 +991,7 @@ aac_bio_complete(struct aac_command *cm)
 	/* fetch relevant status and then release the command */
 	bio = (struct bio *)cm->cm_private;
 	bp = bio->bio_buf;
-	if (bp->b_flags & B_READ) {
+	if (bp->b_cmd == BUF_CMD_READ) {
 		brr = (struct aac_blockread_response *)&cm->cm_fib->data[0];
 		status = brr->Status;
 	} else {

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.57 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.58 2006/04/30 17:22:18 dillon Exp $
  */
 
 
@@ -2834,8 +2834,8 @@ nfs_strategy(struct vop_strategy_args *ap)
 	struct thread *td;
 	int error = 0;
 
-	KASSERT(!(bp->b_flags & B_DONE),
-		("nfs_strategy: buffer %p unexpectedly marked B_DONE", bp));
+	KASSERT(bp->b_cmd != BUF_CMD_DONE,
+		("nfs_strategy: buffer %p unexpectedly marked done", bp));
 	KASSERT(BUF_REFCNT(bp) > 0,
 		("nfs_strategy: buffer %p not locked", bp));
 
@@ -3088,15 +3088,18 @@ nfs_flush_bp(struct buf *bp, void *data)
 		bremfree(bp);
 
 		/*
-		 * NOTE: we are not clearing B_DONE here, so we have
-		 * to do it later on in this routine if we intend to 
-		 * initiate I/O on the bp.
+		 * NOTE: storing the bp in the bvary[] basically sets
+		 * it up for a commit operation.
+		 *
+		 * We must call vfs_busy_pages() now so the commit operation
+		 * is interlocked with user modifications to memory mapped
+		 * pages.
 		 *
 		 * Note: to avoid loopback deadlocks, we do not
 		 * assign b_runningbufspace.
 		 */
-		vfs_busy_pages(bp->b_vp, bp, 1);
-
+		bp->b_cmd = BUF_CMD_WRITE;
+		vfs_busy_pages(bp->b_vp, bp);
 		info->bvary[info->bvsize] = bp;
 		toff = bp->b_bio2.bio_offset + bp->b_dirtyoff;
 		if (info->bvsize == 0 || toff < info->beg_off)
@@ -3157,6 +3160,7 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				 * Error, leave B_DELWRI intact
 				 */
 				vfs_unbusy_pages(bp);
+				bp->b_cmd = BUF_CMD_DONE;
 				brelse(bp);
 			} else {
 				/*
@@ -3173,7 +3177,7 @@ nfs_flush_docommit(struct nfs_flush_info *info, int error)
 				crit_enter();
 				bp->b_flags |= B_ASYNC;
 				bundirty(bp);
-				bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
+				bp->b_flags &= ~B_ERROR;
 				bp->b_dirtyoff = bp->b_dirtyend = 0;
 				crit_exit();
 				biodone(&bp->b_bio1);
@@ -3226,8 +3230,6 @@ nfs_print(struct vop_print_args *ap)
 /*
  * Just call nfs_writebp() with the force argument set to 1.
  *
- * NOTE: B_DONE may or may not be set in a_bp on call.
- *
  * nfs_bwrite(struct vnode *a_bp)
  */
 static int
@@ -3260,14 +3262,15 @@ nfs_writebp(struct buf *bp, int force, struct thread *td)
 	 */
 	crit_enter();
 	bundirty(bp);
-	bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
+	bp->b_flags &= ~B_ERROR;
+	bp->b_cmd = BUF_CMD_WRITE;
 	crit_exit();
 
 	/*
 	 * Note: to avoid loopback deadlocks, we do not
 	 * assign b_runningbufspace.
 	 */
-	vfs_busy_pages(bp->b_vp, bp, 1);
+	vfs_busy_pages(bp->b_vp, bp);
 	BUF_KERNPROC(bp);
 
 	if (bp->b_flags & B_ASYNC) {

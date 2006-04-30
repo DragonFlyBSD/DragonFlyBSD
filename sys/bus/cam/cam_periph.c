@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.13 2006/04/28 16:33:57 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.14 2006/04/30 17:22:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -481,7 +481,7 @@ int
 cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 {
 	int numbufs, i, j;
-	int flags[CAM_PERIPH_MAXMAPS];
+	buf_cmd_t cmd[CAM_PERIPH_MAXMAPS];
 	u_int8_t **data_ptrs[CAM_PERIPH_MAXMAPS];
 	u_int32_t lengths[CAM_PERIPH_MAXMAPS];
 	u_int32_t dirs[CAM_PERIPH_MAXMAPS];
@@ -528,8 +528,12 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 	 * have to unmap any previously mapped buffers.
 	 */
 	for (i = 0; i < numbufs; i++) {
-
-		flags[i] = 0;
+		/*
+		 * Its kinda bogus, we need a R+W command.  For now the
+		 * buffer needs some sort of command.  Use BUF_CMD_WRITE
+		 * to indicate a write and BUF_CMD_READ to indicate R+W.
+		 */
+		cmd[i] = BUF_CMD_WRITE;
 
 		/*
 		 * The userland data pointer passed in may not be page
@@ -550,7 +554,6 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		}
 
 		if (dirs[i] & CAM_DIR_OUT) {
-			flags[i] = B_WRITE;
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_READ)) {
 				printf("cam_periph_mapmem: error, "
@@ -562,12 +565,8 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 			}
 		}
 
-		/*
-		 * XXX this check is really bogus, since B_WRITE currently
-		 * is all 0's, and so it is "set" all the time.
-		 */
 		if (dirs[i] & CAM_DIR_IN) {
-			flags[i] |= B_READ;
+			cmd[i] = BUF_CMD_READ;
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_WRITE)) {
 				printf("cam_periph_mapmem: error, "
@@ -598,7 +597,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		mapinfo->bp[i]->b_bufsize = lengths[i];
 
 		/* set the flags */
-		mapinfo->bp[i]->b_flags |= flags[i];
+		mapinfo->bp[i]->b_cmd = cmd[i];
 
 		/* map the buffer into kernel memory */
 		if (vmapbuf(mapinfo->bp[i]) < 0) {

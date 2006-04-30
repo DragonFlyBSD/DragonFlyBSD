@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.17 2006/03/24 18:35:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
  */
 
 /*
@@ -887,7 +887,7 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     ac->ac_bio = bio;
     ac->ac_data = bio->bio_buf->b_data;
     ac->ac_length = bio->bio_buf->b_bcount;
-    if (bio->bio_buf->b_flags & B_READ) {
+    if (bio->bio_buf->b_cmd == BUF_CMD_READ) {
 	ac->ac_flags |= AMR_CMD_DATAIN;
 	cmd = AMR_CMD_LREAD;
     } else {

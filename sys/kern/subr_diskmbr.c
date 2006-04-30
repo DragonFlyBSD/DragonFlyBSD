@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.12 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.13 2006/04/30 17:22:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -179,7 +179,7 @@ reread_mbr:
 	bp = geteblk((int)lp->d_secsize);
 	bp->b_bio1.bio_offset = (off_t)mbr_offset * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
-	bp->b_flags |= B_READ;
+	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(wdev, &bp->b_bio1);
 	if (biowait(bp) != 0) {
 		diskerr(&bp->b_bio1, wdev, 
@@ -388,7 +388,7 @@ mbr_extended(dev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	bp = geteblk((int)lp->d_secsize);
 	bp->b_bio1.bio_offset = (off_t)ext_offset * lp->d_secsize;
 	bp->b_bcount = lp->d_secsize;
-	bp->b_flags |= B_READ;
+	bp->b_cmd = BUF_CMD_READ;
 	dev_dstrategy(dev, &bp->b_bio1);
 	if (biowait(bp) != 0) {
 		diskerr(&bp->b_bio1, dev,

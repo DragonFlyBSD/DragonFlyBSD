@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.c,v 1.4.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.7 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_dma.c,v 1.8 2006/04/30 17:22:15 dillon Exp $
  */
 
 /*
@@ -50,13 +50,16 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bus.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/buf.h>
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
 #include "isa.h"
-#include "isa_dma.h"
 #include <i386/isa/ic/i8237.h>
+#include <bus/isa/isavar.h>
 
 /*
 **  Register definitions for DMA controller 1 (channels 0..3):
@@ -239,7 +242,7 @@ isa_dmastart(int flags, caddr_t addr, u_int nbytes, int chan)
 		newaddr = dma_bouncebuf[chan];
 
 		/* copy bounce buffer on write */
-		if (!(flags & ISADMA_READ))
+		if (flags & ISADMA_WRITE)
 			bcopy(addr, newaddr, nbytes);
 		addr = newaddr;
 	}
@@ -491,3 +494,21 @@ isa_dmastop(int chan)
 	}
 	return(isa_dmastatus(chan));
 }
+
+unsigned
+isa_dmabp(struct buf *bp)
+{
+	unsigned flags = 0;
+
+	KKASSERT(bp->b_cmd != BUF_CMD_DONE);
+	if (bp->b_flags & B_RAW)
+		flags |= ISADMA_RAW;
+	if (bp->b_cmd == BUF_CMD_READ) {
+		flags |= ISADMA_READ;
+	} else	{
+		/* BUF_CMD_WRITE, BUF_CMD_FORMAT */
+		flags |= ISADMA_WRITE;
+	}
+	return(flags);
+}
+

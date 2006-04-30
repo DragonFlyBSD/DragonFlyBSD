@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.16 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.17 2006/04/30 17:22:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -211,7 +211,8 @@ dev_dstrategy(dev_t dev, struct bio *bio)
     lwkt_port_t port;
 
     KKASSERT(bio->bio_track == NULL);
-    if (bio->bio_buf->b_flags & B_READ)
+    KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
+    if (bio->bio_buf->b_cmd == BUF_CMD_READ)
 	track = &dev->si_track_read;
     else
 	track = &dev->si_track_write;
