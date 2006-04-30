@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.22 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.23 2006/04/30 18:25:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,6 +134,8 @@
 
 #define SWM_FREE	0x02	/* free, period			*/
 #define SWM_POP		0x04	/* pop out			*/
+
+#define AUTOCHAINDONE	((struct buf *)(intptr_t)-1)
 
 /*
  * vm_swap_size is in page-sized chunks now.  It was DEV_BSIZE'd chunks
@@ -1044,14 +1046,16 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 	}
 
 	/*
-	 * Wait for completion.
+	 * Wait for completion.  Now that we are no longer using
+	 * cluster_append, use the cluster_tail field to indicate
+	 * auto-completion if there are still I/O's in progress.
 	 */
 	if (bp->b_flags & B_ASYNC) {
 		crit_enter();
 		if (nbio->bio_caller_info1.cluster_head == NULL) {
 			biodone(bio);
 		} else {
-			bp->b_xflags |= BX_AUTOCHAINDONE;
+			nbio->bio_caller_info2.cluster_tail = AUTOCHAINDONE;
 		}
 		crit_exit();
 	} else {
@@ -1097,7 +1101,10 @@ swap_chain_iodone(struct bio *biox)
 
 	/*
 	 * Remove us from the chain.  It is sufficient to clean up 
-	 * cluster_head.  We do not have to clean up cluster_tail.
+	 * cluster_head.  Once the chain is operational cluster_tail
+	 * may be used to indicate AUTOCHAINDONE.  Note that I/O's
+	 * can complete while the swap system is still appending new
+	 * BIOs to the chain.
 	 */
 	nextp = &nbio->bio_caller_info1.cluster_head;
 	while (*nextp != bufx) {
@@ -1112,15 +1119,16 @@ swap_chain_iodone(struct bio *biox)
 
 	/*
 	 * Clean up bufx.  If this was the last buffer in the chain
-	 * and BX_AUTOCHAINDONE was set, finish off the original I/O
+	 * and AUTOCHAINDONE was set, finish off the original I/O
 	 * as well.
 	 *
 	 * nbio was just a fake BIO layer to hold the cluster links,
 	 * we can issue the biodone() on the layer above it.
 	 */
 	if (nbio->bio_caller_info1.cluster_head == NULL &&
-	    (bp->b_xflags & BX_AUTOCHAINDONE)) {
-		bp->b_xflags &= ~BX_AUTOCHAINDONE;
+	    nbio->bio_caller_info2.cluster_tail == AUTOCHAINDONE
+	) {
+		nbio->bio_caller_info2.cluster_tail = NULL;
 		if (bp->b_resid != 0 && !(bp->b_flags & B_ERROR)) {
 			bp->b_flags |= B_ERROR;
 			bp->b_error = EINVAL;

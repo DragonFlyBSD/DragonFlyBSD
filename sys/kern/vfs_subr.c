@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.79 2006/04/28 16:34:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.80 2006/04/30 18:25:35 dillon Exp $
  */
 
 /*
@@ -789,8 +789,7 @@ void
 bgetvp(struct vnode *vp, struct buf *bp)
 {
 	KASSERT(bp->b_vp == NULL, ("bgetvp: not free"));
-	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI)) == 0);
-	KKASSERT((bp->b_xflags & (BX_VNCLEAN|BX_VNDIRTY)) == 0);
+	KKASSERT((bp->b_flags & (B_HASHED|B_DELWRI|B_VNCLEAN|B_VNDIRTY)) == 0);
 
 	vhold(vp);
 	/*
@@ -802,7 +801,7 @@ bgetvp(struct vnode *vp, struct buf *bp)
 	if (buf_rb_hash_RB_INSERT(&vp->v_rbhash_tree, bp))
 		panic("reassignbuf: dup lblk vp %p bp %p", vp, bp);
 
-	bp->b_xflags |= BX_VNCLEAN;
+	bp->b_flags |= B_VNCLEAN;
 	if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp))
 		panic("reassignbuf: dup lblk/clean vp %p bp %p", vp, bp);
 	crit_exit();
@@ -823,12 +822,12 @@ brelvp(struct buf *bp)
 	 */
 	vp = bp->b_vp;
 	crit_enter();
-	if (bp->b_xflags & (BX_VNDIRTY | BX_VNCLEAN)) {
-		if (bp->b_xflags & BX_VNDIRTY)
+	if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN)) {
+		if (bp->b_flags & B_VNDIRTY)
 			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
 		else
 			buf_rb_tree_RB_REMOVE(&vp->v_rbclean_tree, bp);
-		bp->b_xflags &= ~(BX_VNDIRTY | BX_VNCLEAN);
+		bp->b_flags &= ~(B_VNDIRTY | B_VNCLEAN);
 	}
 	if (bp->b_flags & B_HASHED) {
 		buf_rb_hash_RB_REMOVE(&vp->v_rbhash_tree, bp);
@@ -868,16 +867,16 @@ reassignbuf(struct buf *bp)
 		/*
 		 * Move to the dirty list, add the vnode to the worklist
 		 */
-		if (bp->b_xflags & BX_VNCLEAN) {
+		if (bp->b_flags & B_VNCLEAN) {
 			buf_rb_tree_RB_REMOVE(&vp->v_rbclean_tree, bp);
-			bp->b_xflags &= ~BX_VNCLEAN;
+			bp->b_flags &= ~B_VNCLEAN;
 		}
-		if ((bp->b_xflags & BX_VNDIRTY) == 0) {
+		if ((bp->b_flags & B_VNDIRTY) == 0) {
 			if (buf_rb_tree_RB_INSERT(&vp->v_rbdirty_tree, bp)) {
 				panic("reassignbuf: dup lblk vp %p bp %p",
 				      vp, bp);
 			}
-			bp->b_xflags |= BX_VNDIRTY;
+			bp->b_flags |= B_VNDIRTY;
 		}
 		if ((vp->v_flag & VONWORKLST) == 0) {
 			switch (vp->v_type) {
@@ -902,16 +901,16 @@ reassignbuf(struct buf *bp)
 		 * Move to the clean list, remove the vnode from the worklist
 		 * if no dirty blocks remain.
 		 */
-		if (bp->b_xflags & BX_VNDIRTY) {
+		if (bp->b_flags & B_VNDIRTY) {
 			buf_rb_tree_RB_REMOVE(&vp->v_rbdirty_tree, bp);
-			bp->b_xflags &= ~BX_VNDIRTY;
+			bp->b_flags &= ~B_VNDIRTY;
 		}
-		if ((bp->b_xflags & BX_VNCLEAN) == 0) {
+		if ((bp->b_flags & B_VNCLEAN) == 0) {
 			if (buf_rb_tree_RB_INSERT(&vp->v_rbclean_tree, bp)) {
 				panic("reassignbuf: dup lblk vp %p bp %p",
 				      vp, bp);
 			}
-			bp->b_xflags |= BX_VNCLEAN;
+			bp->b_flags |= B_VNCLEAN;
 		}
 		if ((vp->v_flag & VONWORKLST) &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {

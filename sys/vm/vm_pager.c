@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.19 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.20 2006/04/30 18:25:37 dillon Exp $
  */
 
 /*
@@ -213,7 +213,6 @@ vm_pager_bufferinit(void)
 		TAILQ_INSERT_HEAD(&bswlist, bp, b_freelist);
 		BUF_LOCKINIT(bp);
 		LIST_INIT(&bp->b_dep);
-		bp->b_xflags = 0;
 	}
 
 	cluster_pbuf_freecnt = nswbuf / 2;
@@ -318,7 +317,6 @@ initpbuf(struct buf *bp)
 	bp->b_data = (caddr_t) (MAXPHYS * (bp - swbuf)) + swapbkva;
 	bp->b_kvabase = bp->b_data;
 	bp->b_kvasize = MAXPHYS;
-	bp->b_xflags = 0;
 	bp->b_flags = B_PAGING;
 	bp->b_cmd = BUF_CMD_DONE;
 	bp->b_error = 0;

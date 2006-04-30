@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.67 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.68 2006/04/30 18:25:35 dillon Exp $
  */
 
 /*
@@ -1687,7 +1687,6 @@ restart:
 
 		bp->b_flags = 0;
 		bp->b_cmd = BUF_CMD_DONE;
-		bp->b_xflags = 0;
 		bp->b_vp = NULL;
 		bp->b_error = 0;
 		bp->b_resid = 0;

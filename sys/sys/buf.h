@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.31 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.32 2006/04/30 18:25:36 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -156,8 +156,7 @@ struct buf {
 	struct bio b_bio_array[NBUF_BIO]; /* BIO translation layers */ 
 	u_int32_t b_flags;		/* B_* flags. */
 	unsigned short b_qindex;	/* buffer queue index */
-	unsigned char b_xflags;		/* extra flags */
-	unsigned char b_unused01;
+	unsigned short b_unused01;
 	struct lock b_lock;		/* Buffer lock */
 	buf_cmd_t b_cmd;		/* I/O command */
 	int	b_bufsize;		/* Allocated buffer size. */
@@ -254,12 +253,12 @@ struct buf {
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_UNUSED40000	0x00040000
 #define	B_RAW		0x00080000	/* Set by physio for raw transfers. */
-#define	B_UNUSED100000	0x00100000	
+#define	B_UNUSED100000	0x00100000
 #define	B_DIRTY		0x00200000	/* Needs writing later. */
 #define	B_RELBUF	0x00400000	/* Release VMIO buffer. */
 #define	B_WANT		0x00800000	/* Used by vm_pager.c */
-#define	B_UNUSED1000000	0x01000000	/* Unused */
-#define	B_UNUSED2000000	0x02000000
+#define	B_VNCLEAN	0x01000000	/* On vnode clean list */
+#define	B_VNDIRTY	0x02000000	/* On vnode dirty list */
 #define	B_PAGING	0x04000000	/* volatile paging I/O -- bypass VMIO */
 #define	B_ORDERED	0x08000000	/* Must guarantee I/O ordering */
 #define B_RAM		0x10000000	/* Read ahead mark (flag) */
@@ -267,21 +266,12 @@ struct buf {
 #define B_CLUSTER	0x40000000	/* pagein op, so swap() can count it */
 #define B_NOWDRAIN	0x80000000	/* Avoid wdrain deadlock */
 
-#define PRINT_BUF_FLAGS "\20\40nowdrain\37cluster\36vmio\35ram\34ordered" \
-	"\33paging\32xxx\31writeinprog\30want\27relbuf\26dirty" \
-	"\25read\24raw\23phys\22clusterok\21malloc\20nocache" \
-	"\17locked\16inval\15scanned\14error\13eintr\12done\11freebuf" \
-	"\10delwri\7call\6cache\4direct\3async\2needcommit\1age"
-
-/*
- * These flags are kept in b_xflags.
- */
-#define	BX_VNDIRTY	0x00000001	/* On vnode dirty list */
-#define	BX_VNCLEAN	0x00000002	/* On vnode clean list */
-#define	BX_UNUSED0004	0x00000004
-#define	BX_UNUSED0008	0x00000008
-#define	BX_UNUSED0010	0x00000010
-#define BX_AUTOCHAINDONE 0x00000020	/* pager I/O chain auto mode */
+#define PRINT_BUF_FLAGS "\20"	\
+	"\40nowdrain\37cluster\36vmio\35ram\34ordered" \
+	"\33paging\32vndirty\31vnclean\30want\27relbuf\26dirty" \
+	"\25unused20\24raw\23unused18\22clusterok\21malloc\20nocache" \
+	"\17locked\16inval\15unused12\14error\13eintr\12unused9\11unused8" \
+	"\10delwri\7hashed\6cache\5deferred\4direct\3async\2needcommit\1age"
 
 #define	NOOFFSET	(-1LL)		/* No buffer offset calculated yet */
 
