@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.10 2004/11/30 19:21:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.11 2006/05/01 16:25:41 dillon Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -502,9 +502,9 @@ ah4_input(struct mbuf *m, ...)
 				goto fail;
 			}
 			m_adj(n, stripsiz);
-			m_cat(m, n);
 			/* m_cat does not update m_pkthdr.len */
 			m->m_pkthdr.len += n->m_pkthdr.len;
+			m_cat(m, n);
 		}
 #endif
 
@@ -857,7 +857,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 		}
 
 		if (netisr_queue(NETISR_IPV6, m)) {
-			ipsecstat.in_inval++;
+			ipsec6stat.in_inval++;
 			m = NULL;
 			goto fail;
 		}
@@ -910,9 +910,9 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 				goto fail;
 			}
 			m_adj(n, stripsiz);
-			m_cat(m, n);
 			/* m_cat does not update m_pkthdr.len */
 			m->m_pkthdr.len += n->m_pkthdr.len;
+			m_cat(m, n);
 		}
 #endif
 		ip6 = mtod(m, struct ip6_hdr *);
