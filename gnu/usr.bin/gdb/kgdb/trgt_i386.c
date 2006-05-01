@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2005/09/11 05:36:30 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.1 2006/03/07 15:48:11 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.2 2006/05/01 16:56:01 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -88,6 +88,8 @@ kgdb_trgt_fetch_registers(int regno __unused)
 		supply_register(I386_EBX_REGNUM, &regs[2]);
 		supply_register(I386_EBP_REGNUM, &regs[3]);
 		supply_register(I386_EIP_REGNUM, &regs[4]);
+		sp += 7 * sizeof(regs[0]);
+		supply_register(I386_ESP_REGNUM, &sp);
 		return;
 	}
 
