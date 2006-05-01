@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.14 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.15 2006/05/01 01:32:11 swildner Exp $
  *
  */
 
@@ -69,10 +69,12 @@
 #include <sys/mtio.h>
 #include <sys/conf.h>
 #include <sys/thread2.h>
+#include <sys/bus.h>
 
 #include <machine/clock.h>
 
 #include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isavar.h>
 #include "wtreg.h"
 
 
