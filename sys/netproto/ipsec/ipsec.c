@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.14 2006/04/23 17:56:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.15 2006/05/01 16:24:43 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1258,6 +1258,7 @@ ipsec_get_reqlevel(struct ipsecrequest *isr)
 				level = ah_net_deflev;
 			else
 				level = ah_trans_deflev;
+			break;
 		case IPPROTO_IPCOMP:
 			/*
 			 * we don't really care, as IPcomp document says that
@@ -1843,6 +1844,8 @@ xform_init(struct secasvar *sav, int xftype)
 {
 	struct xformsw *xsp;
 
+	if (sav->tdb_xform != NULL)     /* previously initialized */
+		return 0;
 	for (xsp = xforms; xsp; xsp = xsp->xf_next)
 		if (xsp->xf_type == xftype)
 			return (*xsp->xf_init)(sav, xsp);
