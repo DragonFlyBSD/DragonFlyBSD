@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.8 2006/05/01 16:26:29 dillon Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -676,7 +676,7 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 
 	/* skip bodyoff */
 	while (soff < bodyoff) {
-		if (soff + s->m_len > bodyoff) {
+		if (soff + s->m_len >= bodyoff) {
 			sn = bodyoff - soff;
 			break;
 		}
@@ -881,7 +881,7 @@ esp_cbc_encrypt(struct mbuf *m, size_t off, size_t plen, struct secasvar *sav,
 
 	/* skip bodyoff */
 	while (soff < bodyoff) {
-		if (soff + s->m_len > bodyoff) {
+		if (soff + s->m_len >= bodyoff) {
 			sn = bodyoff - soff;
 			break;
 		}
