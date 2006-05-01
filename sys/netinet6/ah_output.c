@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_output.c,v 1.1.2.5 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_output.c,v 1.7 2006/05/01 16:26:09 dillon Exp $	*/
 /*	$KAME: ah_output.c,v 1.31 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -268,7 +268,7 @@ ah4_output(struct mbuf *m, struct ipsecrequest *isr)
 		 * XXX sequence number must not be cycled, if the SA is
 		 * installed by IKE daemon.
 		 */
-		ahdr->ah_seq = htonl(sav->replay->count);
+		ahdr->ah_seq = htonl(sav->replay->count & 0xffffffff);
 		bzero(ahdr + 1, plen);
 	}
 
@@ -405,7 +405,7 @@ ah6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	/* fix plen */
 	if (m->m_pkthdr.len - sizeof(struct ip6_hdr) > IPV6_MAXPACKET) {
 		ipseclog((LOG_ERR,
-		    "ip6_output: AH with IPv6 jumbogram is not supported\n"));
+		    "ah6_output: AH with IPv6 jumbogram is not supported\n"));
 		m_freem(m);
 		return EINVAL;
 	}
