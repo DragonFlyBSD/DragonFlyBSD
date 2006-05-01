@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.7 2006/05/01 16:27:35 dillon Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -400,7 +400,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 		 * XXX sequence number must not be cycled, if the SA is
 		 * installed by IKE daemon.
 		 */
-		nesp->esp_seq = htonl(sav->replay->count);
+		nesp->esp_seq = htonl(sav->replay->count & 0xffffffff);
 	}
 
     {
@@ -581,7 +581,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 		goto noantireplay;
 	if (!sav->key_auth)
 		goto noantireplay;
-	if (sav->key_auth == SADB_AALG_NONE)
+	if (sav->alg_auth == SADB_AALG_NONE)
 		goto noantireplay;
 
     {
