@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/svr4.4,v 1.12 2005/02/13 23:45:49 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/Attic/svr4.4,v 1.1 2006/04/30 18:46:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/Attic/svr4.4,v 1.2 2006/05/01 09:06:33 swildner Exp $
 .Dd October 28, 2003
 .Dt SVR4 4 i386
 .Os
@@ -196,12 +196,10 @@ Connection-oriented STREAMS appear to be functional.
 Ironically, this SVR4 emulator does not (yet) support SVR4 semaphores or
 shared memory.
 .Pp
-.Xr ports 7
-to automatically create the
-.Pa /compat/svr4
-environment do not exist.
 .Xr tar 1
-archives containing pre-populated trees can be obtained from
+archives containing pre-populated
+.Pa /compat/svr4
+trees can be obtained from
 .Pa http://people.FreeBSD.org/~newton/freebsd-svr4/ .
 .Pp
 Extensive testing has only really been carried out with Solaris 2.x binaries,
