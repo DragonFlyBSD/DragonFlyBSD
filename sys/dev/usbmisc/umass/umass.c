@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.15 2005/10/08 11:34:25 corecode Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.16 2006/05/02 16:08:44 dillon Exp $
  */
 
 /*
@@ -2200,8 +2200,10 @@ umass_cam_rescan(void *addr)
 
 	if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->umass_sim),
 			    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD)
-	    != CAM_REQ_CMP)
-		return;
+	    != CAM_REQ_CMP) {
+		free(ccb, M_USBDEV);
+ 		return;
+	}
 
 	xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
 	ccb->ccb_h.func_code = XPT_SCAN_BUS;
