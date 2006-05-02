@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.51 2005/12/01 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.52 2006/05/02 21:30:43 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1622,7 +1622,7 @@ closef(struct file *fp, struct thread *td)
 				lf.l_type = F_UNLCK;
 				vp = (struct vnode *)fp->f_data;
 				(void) VOP_ADVLOCK(vp,
-						   (caddr_t)p->p_leader,
+						   (caddr_t)fdtol->fdl_leader,
 						   F_UNLCK, &lf, F_POSIX);
 				fdtol->fdl_holdcount--;
 				if (fdtol->fdl_holdcount == 0 &&
