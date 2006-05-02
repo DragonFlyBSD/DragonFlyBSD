@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.9 2005/10/12 17:35:49 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.10 2006/05/02 16:12:01 dillon Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #define PCI_EHCI_VENDORID_SIS		0x1039
 #define PCI_EHCI_VENDORID_NVIDIA	0x12D2
 #define PCI_EHCI_VENDORID_NVIDIA2	0x10DE
+#define PCI_EHCI_VENDORID_VIA		0x1106
 
 /* AcerLabs/ALi */
 #define PCI_EHCI_DEVICEID_M5239		0x523910b9
@@ -134,6 +135,11 @@ static const char *ehci_device_nf4 = "NVIDIA nForce4 USB 2.0 controller";
 #define PCI_EHCI_DEVICEID_ISP156X	0x15621131
 static const char *ehci_device_isp156x = "Philips ISP156x USB 2.0 controller";
 
+/* VIA */
+#define PCI_EHCI_DEVICEID_VIA		0x31041106
+static const char *ehci_device_via = "VIA VT6202 USB 2.0 controller";
+
+/* Generic */
 static const char *ehci_device_generic = "EHCI (generic) USB 2.0 controller";
 
 #define PCI_EHCI_BASE_REG	0x10
@@ -180,6 +186,8 @@ ehci_pci_match(device_t self)
 		return (ehci_device_nf4);
 	case PCI_EHCI_DEVICEID_ISP156X:
 		return (ehci_device_isp156x);
+ 	case PCI_EHCI_DEVICEID_VIA:
+ 		return (ehci_device_via);
 	default:
 		if (pci_get_class(self) == PCIC_SERIALBUS
 		    && pci_get_subclass(self) == PCIS_SERIALBUS_USB
@@ -278,6 +286,9 @@ ehci_pci_attach(device_t self)
 	case PCI_EHCI_VENDORID_CMDTECH:
 		sprintf(sc->sc_vendor, "CMDTECH");
 		break;
+	case PCI_EHCI_VENDORID_INTEL:
+		sprintf(sc->sc_vendor, "Intel");
+		break;
 	case PCI_EHCI_VENDORID_NEC:
 		sprintf(sc->sc_vendor, "NEC");
 		break;
@@ -290,6 +301,9 @@ ehci_pci_attach(device_t self)
 	case PCI_EHCI_VENDORID_NVIDIA:
 	case PCI_EHCI_VENDORID_NVIDIA2:
 		sprintf(sc->sc_vendor, "nVidia");
+		break;
+	case PCI_EHCI_VENDORID_VIA:
+		sprintf(sc->sc_vendor, "VIA");
 		break;
 	default:
 		if (bootverbose)
@@ -305,6 +319,19 @@ ehci_pci_attach(device_t self)
 		sc->ih = NULL;
 		ehci_pci_detach(self);
 		return ENXIO;
+	}
+
+	/* Enable workaround for dropped interrupts as required */
+	switch (pci_get_vendor(self)) {
+	case PCI_EHCI_VENDORID_ATI:
+	case PCI_EHCI_VENDORID_VIA:
+		sc->sc_flags |= EHCI_SCFLG_LOSTINTRBUG;
+		if (bootverbose)
+			device_printf(self,
+			    "Dropped interrupts workaround enabled\n");
+		break;
+	default:
+		break;
 	}
 
 	/*

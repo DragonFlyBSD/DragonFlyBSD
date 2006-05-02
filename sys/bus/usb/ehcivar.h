@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehcivar.h,v 1.19 2005/04/29 15:04:29 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehcivar.h,v 1.2 2004/08/01 18:47:42 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.6 2005/08/27 14:03:23 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ehcivar.h,v 1.7 2006/05/02 16:12:01 dillon Exp $
  */
 
 /*
@@ -89,6 +89,7 @@ struct ehci_soft_islot {
 
 #define EHCI_HASH_SIZE 128
 #define EHCI_COMPANION_MAX 8
+#define EHCI_SCFLG_LOSTINTRBUG	0x0002	/* workaround for VIA chipsets */
 
 typedef struct ehci_softc {
 	struct usbd_bus sc_bus;		/* base device */
@@ -102,6 +103,7 @@ typedef struct ehci_softc {
 	struct resource *irq_res;
 #endif
 	u_int sc_offs;			/* offset to operational regs */
+	int sc_flags;			/* misc flags */
 
 	char sc_vendor[32];		/* vendor string for root hub */
 	int sc_id_vendor;		/* vendor ID for root hub */
@@ -145,6 +147,7 @@ typedef struct ehci_softc {
 	struct lock sc_doorbell_lock;
 
 	usb_callout_t sc_tmo_pcd;
+	usb_callout_t sc_tmo_intrlist;
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	device_ptr_t sc_child;		/* /dev/usb# device */
