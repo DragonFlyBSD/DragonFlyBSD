@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.19 2006/04/30 20:23:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.20 2006/05/02 19:21:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,8 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			 * XXX: larger than MAXPHYS - PAGE_SIZE must be
 			 * XXX: page aligned or it will be fragmented.
 			 */
-			iolen = ((vm_offset_t) bp->b_data) & PAGE_MASK;
+			iolen = ((vm_offset_t) uio->uio_iov[i].iov_base) &
+				PAGE_MASK;
 			if ((bcount + iolen) > bp->b_kvasize) {
 				bcount = bp->b_kvasize;
 				if (iolen != 0)
