@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.23 2006/04/30 18:52:36 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -510,10 +510,14 @@ cluster_callback(struct bio *bio)
 	int error = 0;
 
 	/*
-	 * Must propogate errors to all the components.
+	 * Must propogate errors to all the components.  A short read (EOF)
+	 * is a critical error.
 	 */
-	if (bp->b_flags & B_ERROR)
+	if (bp->b_flags & B_ERROR) {
 		error = bp->b_error;
+	} else if (bp->b_bcount != bp->b_bufsize) {
+		panic("cluster_callback: unexpected EOF on cluster %p!", bio);
+	}
 
 	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	/*
@@ -787,8 +791,10 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		}
 
 		/*
-		 * We got a pbuf to make the cluster in.
-		 * so initialise it.
+		 * Set up the pbuf.  Track our append point with b_bcount
+		 * and b_bufsize.  b_bufsize is not used by the device but
+		 * our caller uses it to loop clusters and we use it to
+		 * detect a premature EOF on the block device.
 		 */
 		bp->b_bcount = 0;
 		bp->b_bufsize = 0;

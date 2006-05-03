@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.20 2006/05/02 19:21:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.21 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,7 +105,6 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			} else {
 				bp->b_data = uio->uio_iov[i].iov_base;
 				bp->b_bcount = bcount;
-				bp->b_bufsize = bcount;
 			}
 			dev_dstrategy(dev, &bp->b_bio1);
 			crit_enter();

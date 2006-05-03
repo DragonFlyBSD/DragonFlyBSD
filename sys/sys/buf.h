@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.33 2006/04/30 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.34 2006/05/03 20:44:49 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -111,17 +111,32 @@ typedef enum buf_cmd {
  * The buffer header describes an I/O operation in the kernel.
  *
  * NOTES:
- *	b_bufsize, b_bcount.  b_bufsize is the allocation size of the
- *	buffer, either DEV_BSIZE or PAGE_SIZE aligned.  b_bcount is the
- *	originally requested buffer size and can serve as a bounds check
- *	against EOF.  For most, but not all uses, b_bcount == b_bufsize.
+ *	b_bufsize represents the filesystem block size (for this particular
+ *	block) and/or the allocation size or original request size.  This
+ *	field is NOT USED by lower device layers.  VNode and device
+ *	strategy routines WILL NEVER ACCESS THIS FIELD.
+ *
+ *	b_bcount represents the EOF-clipped request size.  It is typically
+ *	set to b_bufsize prior to I/O initiation and may be modified by
+ *	the driver chain (for example, to clip upon encountering the end
+ *	of the block device).  b_bcount may only be clipped to represent
+ *	EOF - for example, it would be clipped to the symlink length when
+ *	reading a symlink, or to the file EOF.  It is never clipped due to
+ *	an error, nor is it clipped on a zero-fill short read.  For byte
+ *	oriented files b_bcount is typically set to b_bufsize to initiate
+ *	the read or write to the underlying block device, then clipped to
+ *	the file EOF upon completion of the read or write.
+ *
+ *	b_resid.  Number of bytes remaining in I/O.  After an I/O operation
+ *	completes, b_resid is usually 0 indicating 100% success.  Note however
+ *	that if the device chain encounters an EOF, both b_resid and b_bcount
+ *	will be truncated.  So b_resid will also be 0 if a short-read (EOF)
+ *	occurs and the caller must check for the EOF condition by comparing
+ *	b_bcount against (typically) b_bufsize.
  *
  *	b_dirtyoff, b_dirtyend.  Buffers support piecemeal, unaligned
  *	ranges of dirty data that need to be written to backing store.
- *	The range is typically clipped at b_bcount ( not b_bufsize ).
- *
- *	b_resid.  Number of bytes remaining in I/O.  After an I/O operation
- *	completes, b_resid is usually 0 indicating 100% success.
+ *	The range is typically clipped at b_bcount (not b_bufsize).
  *
  *	b_bio1 and b_bio2 represent the two primary I/O layers.  Additional
  *	I/O layers are allocated out of the object cache and may also exist.

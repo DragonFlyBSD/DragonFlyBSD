@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.11 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.12 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -836,7 +836,6 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     bp->b_bio1.bio_offset = (off_t)(rqe->sdoffset + sd->driveoffset) << DEV_BSHIFT;	/* start address */
     bp->b_bcount = rqe->buflen << DEV_BSHIFT;		    /* number of bytes to transfer */
     bp->b_resid = bp->b_bcount;				    /* and it's still all waiting */
-    bp->b_bufsize = bp->b_bcount;			    /* and buffer size */
 
     if (rqe->flags & XFR_MALLOCED) {			    /* this operation requires a malloced buffer */
 	bp->b_data = Malloc(bp->b_bcount);		    /* get a buffer to put it in */
@@ -947,7 +946,6 @@ sdio(struct bio *bio)
     sddev = DRIVE[sd->driveno].dev;		    /* device */
     bzero(sbp, sizeof(struct sdbuf));			    /* start with nothing */
     sbp->b.b_flags = bp->b_flags | B_PAGING;
-    sbp->b.b_bufsize = bp->b_bufsize;			    /* buffer size */
     sbp->b.b_bcount = bp->b_bcount;			    /* number of bytes to transfer */
     sbp->b.b_resid = bp->b_resid;			    /* and amount waiting */
     sbp->b.b_data = bp->b_data;				    /* data buffer */

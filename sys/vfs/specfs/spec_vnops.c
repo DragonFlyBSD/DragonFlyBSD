@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.39 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.40 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -694,9 +694,8 @@ spec_getpages(struct vop_getpages_args *ap)
 	/* Build a minimal buffer header. */
 	bp->b_cmd = BUF_CMD_READ;
 	bp->b_bcount = size;
-	bp->b_bufsize = size;
 	bp->b_resid = 0;
-	bp->b_runningbufspace = bp->b_bufsize;
+	bp->b_runningbufspace = size;
 	runningbufspace += bp->b_runningbufspace;
 
 	bp->b_bio1.bio_offset = offset;
@@ -716,21 +715,24 @@ spec_getpages(struct vop_getpages_args *ap)
 
 	crit_exit();
 
-	if ((bp->b_flags & B_ERROR) != 0) {
+	if (bp->b_flags & B_ERROR) {
 		if (bp->b_error)
 			error = bp->b_error;
 		else
 			error = EIO;
 	}
 
-	nread = size - bp->b_resid;
-
-	if (nread < ap->a_count) {
-		bzero((caddr_t)kva + nread,
-			ap->a_count - nread);
-	}
+	/*
+	 * If EOF is encountered we must zero-extend the result in order
+	 * to ensure that the page does not contain garabge.  When no
+	 * error occurs, an early EOF is indicated if b_bcount got truncated.
+	 * b_resid is relative to b_bcount and should be 0, but some devices
+	 * might indicate an EOF with b_resid instead of truncating b_bcount.
+	 */
+	nread = bp->b_bcount - bp->b_resid;
+	if (nread < ap->a_count)
+		bzero((caddr_t)kva + nread, ap->a_count - nread);
 	pmap_qremove(kva, pcount);
-
 
 	gotreqpage = 0;
 	for (i = 0, toff = 0; i < pcount; i++, toff = nextoff) {

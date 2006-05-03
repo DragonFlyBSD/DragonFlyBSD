@@ -96,7 +96,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.23 2006/04/30 18:25:37 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -968,7 +968,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			 * Flush the biox to the swap device.
 			 */
 			if (bufx->b_bcount) {
-				bufx->b_bufsize = bufx->b_bcount;
 				if (bufx->b_cmd != BUF_CMD_READ)
 					bufx->b_dirtyend = bufx->b_bcount;
 				BUF_KERNPROC(bufx);
@@ -1034,7 +1033,6 @@ swap_pager_strategy(vm_object_t object, struct bio *bio)
 			bufx->b_dirtyend = bufx->b_bcount;
 		}
 		if (bufx->b_bcount) {
-			bufx->b_bufsize = bufx->b_bcount;
 			if (bufx->b_cmd != BUF_CMD_READ)
 				bufx->b_dirtyend = bufx->b_bcount;
 			BUF_KERNPROC(bufx);
@@ -1254,7 +1252,6 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 
 	bp->b_data = (caddr_t) kva;
 	bp->b_bcount = PAGE_SIZE * (j - i);
-	bp->b_bufsize = PAGE_SIZE * (j - i);
 	bio->bio_done = swp_pager_async_iodone;
 	bio->bio_offset = (off_t)(blk - (reqpage - i)) << PAGE_SHIFT;
 	bio->bio_driver_info = (void *)(reqpage - i);
@@ -1487,7 +1484,6 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		pmap_qenter((vm_offset_t)bp->b_data, &m[i], n);
 
 		bp->b_bcount = PAGE_SIZE * n;
-		bp->b_bufsize = PAGE_SIZE * n;
 		bio->bio_offset = (off_t)blk << PAGE_SHIFT;
 
 		for (j = 0; j < n; ++j) {

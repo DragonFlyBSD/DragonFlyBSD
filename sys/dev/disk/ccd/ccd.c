@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.27 2006/04/30 17:22:16 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.28 2006/05/03 20:44:46 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1029,6 +1029,10 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 
 	/*
 	 * Fill in the component buf structure.
+	 *
+	 * NOTE: devices do not use b_bufsize, only b_bcount, but b_bcount
+	 * will be truncated on device EOF so we use b_bufsize to detect
+	 * the case.
 	 */
 	cbp = getccdbuf();
 	cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
@@ -1150,6 +1154,16 @@ ccdiodone(struct bio *bio)
 	}
 #endif
 	/*
+	 * An early EOF is considered an error
+	 */
+	if (cbp->cb_buf.b_bcount != cbp->cb_buf.b_bufsize) {
+		if ((cbp->cb_buf.b_flags & B_ERROR) == 0) {
+			cbp->cb_buf.b_flags |= B_ERROR;
+			cbp->cb_buf.b_error = EIO;
+		}
+	}
+
+	/*
 	 * If an error occured, report it.  If this is a mirrored 
 	 * configuration and the first of two possible reads, do not
 	 * set the error in the bp yet because the second read may
@@ -1231,13 +1245,7 @@ ccdiodone(struct bio *bio)
 	}
 
 	/*
-	 * use b_bufsize to determine how big the original request was rather
-	 * then b_bcount, because b_bcount may have been truncated for EOF.
-	 *
-	 * XXX We check for an error, but we do not test the resid for an
-	 * aligned EOF condition.  This may result in character & block
-	 * device access not recognizing EOF properly when read or written 
-	 * sequentially, but will not effect filesystems.
+	 * Use our saved b_bufsize to determine if an unexpected EOF occured.
 	 */
 	count = cbp->cb_buf.b_bufsize;
 	putccdbuf(cbp);

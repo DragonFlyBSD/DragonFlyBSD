@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.23 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -470,14 +470,14 @@ diskstrategy(dev_t dev, struct bio *bio)
 	/*
 	 * The dscheck() function will also transform the slice relative
 	 * block number i.e. bio->bio_offset into a block number that can be
-	 * passed directly to the underlying raw device.
+	 * passed directly to the underlying raw device.  If dscheck()
+	 * returns NULL it will have handled the bio for us (e.g. EOF
+	 * or error due to being beyond the device size).
 	 */
-	nbio = dscheck(dev, bio, dp->d_slice);
-	if (nbio == NULL) {
+	if ((nbio = dscheck(dev, bio, dp->d_slice)) != NULL)
+		dev_dstrategy(dp->d_rawdev, nbio);
+	else
 		biodone(bio);
-		return;
-	}
-	dev_dstrategy(dp->d_rawdev, nbio);
 }
 
 /*

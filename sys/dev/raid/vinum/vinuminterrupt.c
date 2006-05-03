@@ -41,7 +41,7 @@
  *
  * $Id: vinuminterrupt.c,v 1.12 2000/11/24 03:41:42 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinuminterrupt.c,v 1.25.2.3 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.9 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinuminterrupt.c,v 1.10 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -391,7 +391,6 @@ complete_raid5_write(struct rqelement *rqe)
 		    rqe->flags &= ~XFR_PARITYOP;	    /* reset flags that brought us here */
 		    rqe->b.b_data = &ubio->bio_buf->b_data[rqe->useroffset << DEV_BSHIFT]; /* point to the user data */
 		    rqe->b.b_bcount = rqe->datalen << DEV_BSHIFT; /* length to write */
-		    rqe->b.b_bufsize = rqe->b.b_bcount;	    /* don't claim more */
 		    rqe->b.b_resid = rqe->b.b_bcount;	    /* nothing transferred */
 		    rqe->b.b_bio1.bio_offset += (off_t)rqe->dataoffset << DEV_BSHIFT;	    /* point to the correct block */
 		    dev = DRIVE[rqe->driveno].dev;
@@ -431,7 +430,6 @@ complete_raid5_write(struct rqelement *rqe)
     rqe->b.b_bio1.bio_done = complete_rqe;			    /* by calling us here */
     rqg->flags &= ~XFR_PARITYOP;			    /* reset flags that brought us here */
     rqe->b.b_bcount = rqe->buflen << DEV_BSHIFT;	    /* length to write */
-    rqe->b.b_bufsize = rqe->b.b_bcount;			    /* don't claim we have more */
     rqe->b.b_resid = rqe->b.b_bcount;			    /* nothing transferred */
     dev = DRIVE[rqe->driveno].dev;
     rqe->b.b_bio1.bio_driver_info = dev;

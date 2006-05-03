@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.17 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.18 2006/05/03 20:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -220,10 +220,15 @@ doshift:
 
 	/* beyond partition? */
 	if (secno + nsec > endsecno) {
-		/* if exactly at end of disk, return an EOF */
+		/*
+		 * If exactly at end of disk, return an EOF.  There's no
+		 * point keeping the buffer around so mark it B_INVAL as
+		 * well.
+		 */
 		if (secno == endsecno) {
 			bp->b_resid = bp->b_bcount;
-			return (0);
+			bp->b_flags |= B_INVAL;
+			return (NULL);
 		}
 		/* or truncate if part of it fits */
 		nsec = endsecno - secno;
@@ -290,11 +295,15 @@ bad_blkno:
 	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bio->bio_offset, ssp->dss_secsize);
 	bp->b_error = EINVAL;
-	goto bad;
+	/* fall through */
 
 bad:
+	/*
+	 * Terminate the I/O with a ranging error.  Since the buffer is
+	 * either illegal or beyond the file EOF, mark it B_INVAL as well.
+	 */
 	bp->b_resid = bp->b_bcount;
-	bp->b_flags |= B_ERROR;
+	bp->b_flags |= B_ERROR | B_INVAL;
 	return (NULL);
 }
 

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.70 2006/04/30 20:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.71 2006/05/03 20:44:49 dillon Exp $
  */
 
 /*
@@ -700,7 +700,8 @@ bwrite(struct buf * bp)
 	vfs_busy_pages(bp->b_vp, bp);
 
 	/*
-	 * Normal bwrites pipeline writes
+	 * Normal bwrites pipeline writes.  NOTE: b_bufsize is only
+	 * valid for vnode-backed buffers.
 	 */
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
@@ -1021,10 +1022,7 @@ brelse(struct buf * bp)
 	 *
 	 * Normally we can do this whether a buffer is B_DELWRI or not.  If
 	 * the buffer is an NFS buffer, it is tracking piecemeal writes or
-	 * the commit state and we cannot afford to lose the buffer. If the
-	 * buffer has a background write in progress, we need to keep it
-	 * around to prevent it from being reconstituted and starting a second
-	 * background write.
+	 * the commit state and we cannot afford to lose the buffer.
 	 */
 	if ((bp->b_flags & B_VMIO)
 	    && !(bp->b_vp->v_tag == VT_NFS &&

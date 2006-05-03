@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.19 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.20 2006/05/03 20:44:48 dillon Exp $
  */
 
 /*
@@ -274,7 +274,6 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
  *
  *	Currently B_ASYNC is only partially handled - for OBJT_SWAP I/O only.
  */
-
 static	void
 vnstrategy(dev_t dev, struct bio *bio)
 {
@@ -309,11 +308,12 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 * The dscheck() function is called for validating the
 		 * slices that exist ON the vnode device itself, and
 		 * translate the "slice-relative" block number, again.
+		 * dscheck() will call biodone() and return NULL if
+		 * we are at EOF or beyond the device size.
 		 */
 		if (vn->sc_slices == NULL) {
 			nbio = bio;
 		} else if ((nbio = dscheck(dev, bio, vn->sc_slices)) == NULL) {
-			bp->b_flags |= B_INVAL;
 			biodone(bio);
 			return;
 		}
@@ -367,6 +367,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		/*
 		 * Freeblks is not handled for vnode-backed elements yet.
 		 */
+		bp->b_resid = 0;
 		biodone(nbio);
 	} else if (vn->sc_vp) {
 		/*
@@ -414,9 +415,6 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 *
 		 * Note: freeblks is not supported with pre-reserved swap.
 		 */
-		KASSERT((bp->b_bufsize & (vn->sc_secsize - 1)) == 0,
-		    ("vnstrategy: buffer %p too small for physio", bp));
-
 		if (bp->b_cmd == BUF_CMD_FREEBLKS && TESTOPT(vn, VN_RESERVE)) {
 			biodone(nbio);
 		} else {
