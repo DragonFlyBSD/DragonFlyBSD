@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.19 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.20 2006/05/03 06:28:01 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -76,6 +76,7 @@ static struct cdevsw ar_cdevsw = {
 /* prototypes */
 static void ar_attach_raid(struct ar_softc *, int);
 static void ar_done(struct bio *);
+static void ar_sync_done(struct bio *);
 static void ar_config_changed(struct ar_softc *, int);
 static int ar_rebuild(struct ar_softc *);
 static int ar_highpoint_read_conf(struct ad_softc *, struct ar_softc **);
@@ -732,6 +733,13 @@ ar_done(struct bio *bio)
 	printf("ar%d: unknown array type in ar_done\n", rdp->lun);
     }
     free(buf, M_AR);
+}
+
+static void
+ar_sync_done(struct bio *bio)
+{
+    bio->bio_buf->b_cmd = BUF_CMD_DONE;
+    wakeup(bio);
 }
 
 static void
@@ -1399,7 +1407,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     bp->b_bio1.bio_offset = (off_t)lba << DEV_BSHIFT;
     bp->b_bcount = count;
     if (flags & AR_WAIT)
-	bp->b_bio1.bio_done = (void *)wakeup;
+	bp->b_bio1.bio_done = ar_sync_done;
     else
 	bp->b_bio1.bio_done = ar_rw_done;
     if (flags & AR_READ)
