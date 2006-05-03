@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.45 2006/04/14 00:59:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.46 2006/05/03 15:18:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -281,17 +281,19 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
 	 */
-	if ((flags & RFTHREAD) != 0) {
+	if (flags & RFTHREAD) {
 		newproc->p_peers = p1->p_peers;
 		p1->p_peers = newproc;
 		newproc->p_leader = p1->p_leader;
 	} else {
-		newproc->p_peers = 0;
+		newproc->p_peers = NULL;
 		newproc->p_leader = newproc;
 	}
 
 	newproc->p_wakeup = 0;
 	newproc->p_vmspace = NULL;
+	newproc->p_numposixlocks = 0;
+	newproc->p_emuldata = NULL;
 	TAILQ_INIT(&newproc->p_lwp.lwp_sysmsgq);
 	LIST_INIT(&newproc->p_lwps);
 
@@ -301,6 +303,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	lp2->lwp_tid = 0;
 	LIST_INSERT_HEAD(&newproc->p_lwps, lp2, lwp_list);
 	newproc->p_nthreads = 1;
+	newproc->p_nstopped = 0;
+	newproc->p_lasttid = 0;
 
 	/*
 	 * Find an unused process ID.  We remember a range of unused IDs
