@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.44 2006/04/25 22:11:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.45 2006/05/03 19:57:54 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1809,11 +1809,14 @@ ufs_strategy(struct vop_strategy_args *ap)
 			vfs_bio_clrbuf(bp);
 	}
 	if (nbio->bio_offset == NOOFFSET) {
-		/* I/O was never started on nbio, must biodone(bio) */
+		/*
+		 * We hit a hole in the file.  The buffer has been zero-filled
+		 * so just biodone() it.
+		 */
 		biodone(bio);
-		return (0);
+	} else {
+		vn_strategy(ip->i_devvp, nbio);
 	}
-	vn_strategy(ip->i_devvp, nbio);
 	return (0);
 }
 
