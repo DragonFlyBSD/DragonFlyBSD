@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.19 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.20 2006/05/03 16:34:16 dillon Exp $
  */
 
 /*
@@ -792,7 +792,7 @@ twed_intr(struct bio *bio)
     debug_called(4);
 
     /* if no error, transfer completed */
-    if (bp->b_flags & B_ERROR)
+    if ((bp->b_flags & B_ERROR) == 0)
 	bp->b_resid = 0;
     devstat_end_transaction_buf(&sc->twed_stats, bp);
     biodone(bio);
