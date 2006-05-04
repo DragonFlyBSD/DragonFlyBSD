@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.29 2006/05/04 08:00:59 y0netan1 Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.30 2006/05/04 18:32:19 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -256,6 +256,7 @@ getccdbuf(void)
 	BUF_LOCKINIT(&cbp->cb_buf);
 	BUF_LOCK(&cbp->cb_buf, LK_EXCLUSIVE);
 	BUF_KERNPROC(&cbp->cb_buf);
+	cbp->cb_buf.b_flags = B_PAGING | B_BNOCLIP;
 
 	return(cbp);
 }
@@ -760,13 +761,14 @@ ccdstrategy(dev_t dev, struct bio *bio)
 #endif
 	if ((cs->sc_flags & CCDF_INITED) == 0) {
 		bp->b_error = ENXIO;
-		bp->b_flags |= B_ERROR;
-		goto done;
+		goto error;
 	}
 
 	/* If it's a nil transfer, wake up the top half now. */
-	if (bp->b_bcount == 0)
+	if (bp->b_bcount == 0) {
+		bp->b_resid = 0;
 		goto done;
+	}
 
 	lp = &cs->sc_label;
 
@@ -787,25 +789,26 @@ ccdstrategy(dev_t dev, struct bio *bio)
 		sz = howmany(bp->b_bcount, cs->sc_geom.ccg_secsize);
 
 		/*
-		 * If out of bounds return an error. If at the EOF point,
-		 * simply read or write less.
+		 * If out of bounds return an error.  If the request goes
+		 * past EOF, clip the request as appropriate.  If exactly
+		 * at EOF, return success (don't clip), but with 0 bytes
+		 * of I/O.
+		 *
+		 * Mark EOF B_INVAL (just like bad), indicating that the
+		 * contents of the buffer, if any, is invalid.
 		 */
-
-		if (pbn < 0 || pbn >= cs->sc_size) {
-			bp->b_resid = bp->b_bcount;
-			if (pbn != cs->sc_size) {
-				bp->b_error = EINVAL;
-				bp->b_flags |= B_ERROR | B_INVAL;
-			}
-			goto done;
-		}
-
-		/*
-		 * If the request crosses EOF, truncate the request.
-		 */
+		if (pbn < 0)
+			goto bad;
 		if (pbn + sz > cs->sc_size) {
-			bp->b_bcount = (cs->sc_size - pbn) * 
-			    cs->sc_geom.ccg_secsize;
+			if (pbn > cs->sc_size || (bp->b_flags & B_BNOCLIP))
+				goto bad;
+			if (pbn == cs->sc_size) {
+				bp->b_resid = bp->b_bcount;
+				bp->b_flags |= B_INVAL;
+				goto done;
+			}
+			sz = cs->sc_size - pbn;
+			bp->b_bcount = sz * cs->sc_geom.ccg_secsize;
 		}
 		nbio = bio;
 	}
@@ -824,6 +827,11 @@ ccdstrategy(dev_t dev, struct bio *bio)
 	/*
 	 * note: bio, not nbio, is valid at the done label.
 	 */
+bad:
+	bp->b_error = EINVAL;
+error:
+	bp->b_resid = bp->b_bcount;
+	bp->b_flags |= B_ERROR | B_INVAL;
 done:
 	biodone(bio);
 }
@@ -1036,7 +1044,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 	 */
 	cbp = getccdbuf();
 	cbp->cb_buf.b_cmd = bio->bio_buf->b_cmd;
-	cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
+	cbp->cb_buf.b_flags |= bio->bio_buf->b_flags;
 	cbp->cb_buf.b_data = addr;
 	cbp->cb_vp = ci->ci_vp;
 	if (cs->sc_ileave == 0)
@@ -1075,7 +1083,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		cbp = getccdbuf();
 
 		cbp->cb_buf.b_cmd = bio->bio_buf->b_cmd;
-		cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
+		cbp->cb_buf.b_flags |= bio->bio_buf->b_flags;
 		cbp->cb_buf.b_data = addr;
 		cbp->cb_vp = ci2->ci_vp;
 		if (cs->sc_ileave == 0)
@@ -1155,15 +1163,6 @@ ccdiodone(struct bio *bio)
 		       cbp->cb_buf.b_bcount);
 	}
 #endif
-	/*
-	 * An early EOF is considered an error
-	 */
-	if (cbp->cb_buf.b_bcount != cbp->cb_buf.b_bufsize) {
-		if ((cbp->cb_buf.b_flags & B_ERROR) == 0) {
-			cbp->cb_buf.b_flags |= B_ERROR;
-			cbp->cb_buf.b_error = EIO;
-		}
-	}
 
 	/*
 	 * If an error occured, report it.  If this is a mirrored 

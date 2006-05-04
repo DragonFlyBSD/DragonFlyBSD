@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.20 2006/05/03 20:44:48 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.21 2006/05/04 18:32:20 dillon Exp $
  */
 
 /*
@@ -314,8 +314,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		if (vn->sc_slices == NULL) {
 			nbio = bio;
 		} else if ((nbio = dscheck(dev, bio, vn->sc_slices)) == NULL) {
-			biodone(bio);
-			return;
+			goto done;
 		}
 	} else {
 		int pbn;	/* in sc_secsize chunks */
@@ -327,34 +326,26 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 */
 		if (bp->b_bcount % vn->sc_secsize != 0 ||
 		    bio->bio_offset % vn->sc_secsize != 0) {
-			bp->b_error = EINVAL;
-			bp->b_flags |= B_ERROR | B_INVAL;
-			biodone(bio);
-			return;
+			goto bad;
 		}
 
 		pbn = bio->bio_offset / vn->sc_secsize;
 		sz = howmany(bp->b_bcount, vn->sc_secsize);
 
 		/*
-		 * If out of bounds return an error.  If at the EOF point,
-		 * simply read or write less.
+		 * Check for an illegal pbn or EOF truncation
 		 */
-		if (pbn < 0 || pbn >= vn->sc_size) {
-			if (pbn != vn->sc_size) {
-				bp->b_error = EINVAL;
-				bp->b_flags |= B_ERROR | B_INVAL;
-			}
-			biodone(bio);
-			return;
-		}
-
-		/*
-		 * If the request crosses EOF, truncate the request.
-		 */
+		if (pbn < 0)
+			goto bad;
 		if (pbn + sz > vn->sc_size) {
+			if (pbn > vn->sc_size || (bp->b_flags & B_BNOCLIP))
+				goto bad;
+			if (pbn == vn->sc_size) {
+				bp->b_resid = bp->b_bcount;
+				bp->b_flags |= B_INVAL;
+				goto done;
+			}
 			bp->b_bcount = (vn->sc_size - pbn) * vn->sc_secsize;
-			bp->b_resid = bp->b_bcount;
 		}
 		nbio = push_bio(bio);
 		nbio->bio_offset = pbn * vn->sc_secsize;
@@ -368,7 +359,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		 * Freeblks is not handled for vnode-backed elements yet.
 		 */
 		bp->b_resid = 0;
-		biodone(nbio);
+		/* operation complete */
 	} else if (vn->sc_vp) {
 		/*
 		 * VNODE I/O
@@ -401,30 +392,44 @@ vnstrategy(dev_t dev, struct bio *bio)
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
 		VOP_UNLOCK(vn->sc_vp, 0, curthread);
 		bp->b_resid = auio.uio_resid;
-
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;
 		}
-		biodone(nbio);
+		/* operation complete */
 	} else if (vn->sc_object) {
 		/*
-		 * OBJT_SWAP I/O
+		 * OBJT_SWAP I/O (handles read, write, freebuf)
 		 *
-		 * ( handles read, write, freebuf )
-		 *
-		 * Note: freeblks is not supported with pre-reserved swap.
+		 * We have nothing to do if freeing  blocks on a reserved
+		 * swap area, othrewise execute the op.
 		 */
 		if (bp->b_cmd == BUF_CMD_FREEBLKS && TESTOPT(vn, VN_RESERVE)) {
-			biodone(nbio);
+			bp->b_resid = 0;
+			/* operation complete */
 		} else {
 			vm_pager_strategy(vn->sc_object, nbio);
+			return;
+			/* NOT REACHED */
 		}
 	} else {
-		bp->b_flags |= B_ERROR;
+		bp->b_resid = bp->b_bcount;
+		bp->b_flags |= B_ERROR | B_INVAL;
 		bp->b_error = EINVAL;
-		biodone(nbio);
+		/* operation complete */
 	}
+	biodone(nbio);
+	return;
+
+	/*
+	 * Shortcuts / check failures on the original bio (not nbio).
+	 */
+bad:
+	bp->b_error = EINVAL;
+error:
+	bp->b_flags |= B_ERROR | B_INVAL;
+done:
+	biodone(bio);
 }
 
 /* ARGSUSED */

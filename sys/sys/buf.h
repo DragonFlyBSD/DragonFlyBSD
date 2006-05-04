@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.34 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.35 2006/05/04 18:32:23 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -116,23 +116,20 @@ typedef enum buf_cmd {
  *	field is NOT USED by lower device layers.  VNode and device
  *	strategy routines WILL NEVER ACCESS THIS FIELD.
  *
- *	b_bcount represents the EOF-clipped request size.  It is typically
- *	set to b_bufsize prior to I/O initiation and may be modified by
- *	the driver chain (for example, to clip upon encountering the end
- *	of the block device).  b_bcount may only be clipped to represent
- *	EOF - for example, it would be clipped to the symlink length when
- *	reading a symlink, or to the file EOF.  It is never clipped due to
- *	an error, nor is it clipped on a zero-fill short read.  For byte
- *	oriented files b_bcount is typically set to b_bufsize to initiate
- *	the read or write to the underlying block device, then clipped to
- *	the file EOF upon completion of the read or write.
+ *	b_bcount represents the I/O request size.  Unless B_NOBCLIP is set,
+ *	the device chain is allowed to clip b_bcount to accomodate the device
+ *	EOF.  Note that this is different from the byte oriented file EOF.
+ *	If B_NOBCLIP is set, the device chain is required to generate an
+ *	error if it would othrewise have to clip the request.  Buffers 
+ *	obtained via getblk() automatically set B_NOBCLIP.  It is important
+ *	to note that EOF clipping via b_bcount is different from EOF clipping
+ *	via returning a b_actual < b_bcount.  B_NOBCLIP only effects block
+ *	oriented EOF clipping (b_bcount modifications).
  *
- *	b_resid.  Number of bytes remaining in I/O.  After an I/O operation
- *	completes, b_resid is usually 0 indicating 100% success.  Note however
- *	that if the device chain encounters an EOF, both b_resid and b_bcount
- *	will be truncated.  So b_resid will also be 0 if a short-read (EOF)
- *	occurs and the caller must check for the EOF condition by comparing
- *	b_bcount against (typically) b_bufsize.
+ *	b_actual represents the number of bytes of I/O that actually occured,
+ *	whether an error occured or not.  b_actual must be initialized to 0
+ *	prior to initiating I/O as the device drivers will assume it to
+ *	start at 0.
  *
  *	b_dirtyoff, b_dirtyend.  Buffers support piecemeal, unaligned
  *	ranges of dirty data that need to be written to backing store.
@@ -255,7 +252,7 @@ struct buf {
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
 #define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */
-#define	B_UNUSED0100	0x00000100
+#define	B_BNOCLIP	0x00000100	/* EOF clipping b_bcount not allowed */
 #define	B_UNUSED0200	0x00000200
 #define	B_EINTR		0x00000400	/* I/O was interrupted */
 #define	B_ERROR		0x00000800	/* I/O error occurred. */

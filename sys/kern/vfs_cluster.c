@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.25 2006/05/04 18:32:22 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -811,7 +811,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		bp->b_data = (char *)((vm_offset_t)bp->b_data |
 		    ((vm_offset_t)tbp->b_data & PAGE_MASK));
 		bp->b_flags &= ~B_ERROR;
-		bp->b_flags |= B_CLUSTER | 
+		bp->b_flags |= B_CLUSTER | B_BNOCLIP |
 			(tbp->b_flags & (B_VMIO | B_NEEDCOMMIT | B_NOWDRAIN));
 		bp->b_bio1.bio_done = cluster_callback;
 		bp->b_bio1.bio_caller_info1.cluster_head = NULL;

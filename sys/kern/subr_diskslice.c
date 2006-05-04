@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.18 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.19 2006/05/04 18:32:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -158,7 +158,6 @@ dscheck(dev_t dev, struct bio *bio, struct diskslices *ssp)
 	if (bio->bio_offset < 0) {
 		printf("dscheck(%s): negative bio_offset %lld\n", 
 		    devtoname(dev), bio->bio_offset);
-		bp->b_error = EINVAL;
 		goto bad;
 	}
 	sp = &ssp->dss_slices[dkslice(dev)];
@@ -206,7 +205,7 @@ doshift:
 #endif
 	    bp->b_cmd != BUF_CMD_READ && sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
-		goto bad;
+		goto error;
 	}
 
 #if defined(DOSBBSECTOR) && defined(notyet)
@@ -214,33 +213,42 @@ doshift:
 	if (slicerel_secno <= DOSBBSECTOR && bp->b_cmd != BUF_CMD_READ &&
 	    sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
-		goto bad;
+		goto error;
 	}
 #endif
 
-	/* beyond partition? */
+	/*
+	 * EOF handling
+	 */
 	if (secno + nsec > endsecno) {
 		/*
-		 * If exactly at end of disk, return an EOF.  There's no
-		 * point keeping the buffer around so mark it B_INVAL as
-		 * well.
+		 * Return an error if beyond the end of the disk, or
+		 * if B_BNOCLIP is set.  Tell the system that we do not
+		 * need to keep the buffer around.
+		 */
+		if (secno > endsecno || (bp->b_flags & B_BNOCLIP))
+			goto bad;
+
+		/*
+		 * If exactly at end of disk, return an EOF.  Throw away
+		 * the buffer contents, if any, by setting B_INVAL.
 		 */
 		if (secno == endsecno) {
 			bp->b_resid = bp->b_bcount;
 			bp->b_flags |= B_INVAL;
-			return (NULL);
+			goto done;
 		}
-		/* or truncate if part of it fits */
+
+		/*
+		 * Else truncate
+		 */
 		nsec = endsecno - secno;
-		if (nsec <= 0) {
-			bp->b_error = EINVAL;
-			goto bad;
-		}
 		bp->b_bcount = nsec * ssp->dss_secsize;
 	}
 
 	nbio = push_bio(bio);
-	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) * ssp->dss_secsize;
+	nbio->bio_offset = (off_t)(sp->ds_offset + slicerel_secno) * 
+			   ssp->dss_secsize;
 
 	/*
 	 * Snoop on label accesses if the slice offset is nonzero.  Fudge
@@ -277,7 +285,7 @@ doshift:
 				    devtoname(dev), msg);
 				bp->b_error = EROFS;
 				pop_bio(nbio);
-				goto bad;
+				goto error;
 			}
 		}
 	}
@@ -287,23 +295,27 @@ bad_bcount:
 	printf(
 	"dscheck(%s): b_bcount %d is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bp->b_bcount, ssp->dss_secsize);
-	bp->b_error = EINVAL;
 	goto bad;
 
 bad_blkno:
 	printf(
 	"dscheck(%s): bio_offset %lld is not on a sector boundary (ssize %d)\n",
 	    devtoname(dev), bio->bio_offset, ssp->dss_secsize);
+bad:
 	bp->b_error = EINVAL;
 	/* fall through */
-
-bad:
+error:
 	/*
 	 * Terminate the I/O with a ranging error.  Since the buffer is
 	 * either illegal or beyond the file EOF, mark it B_INVAL as well.
 	 */
 	bp->b_resid = bp->b_bcount;
 	bp->b_flags |= B_ERROR | B_INVAL;
+done:
+	/*
+	 * Caller must biodone() the originally passed bio if NULL is
+	 * returned.
+	 */
 	return (NULL);
 }
 

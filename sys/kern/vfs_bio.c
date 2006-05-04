@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.71 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.72 2006/05/04 18:32:22 dillon Exp $
  */
 
 /*
@@ -1683,7 +1683,7 @@ restart:
 		if (bp->b_bufsize)
 			allocbuf(bp, 0);
 
-		bp->b_flags = 0;
+		bp->b_flags = B_BNOCLIP;
 		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_vp = NULL;
 		bp->b_error = 0;

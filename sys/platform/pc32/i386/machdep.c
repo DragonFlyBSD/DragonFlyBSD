@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.90 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.91 2006/05/04 18:32:21 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2545,7 +2545,7 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
 #endif
             bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
                 bp->b_error = EROFS;
-                goto bad;
+                goto error;
         }
 
 #if     defined(DOSBBSECTOR) && defined(notyet)
@@ -2553,31 +2553,48 @@ bounds_check_with_label(dev_t dev, struct bio *bio,
         if (blkno + p->p_offset <= DOSBBSECTOR &&
             bp->b_cmd != BUF_CMD_READ && wlabel == 0) {
                 bp->b_error = EROFS;
-                goto bad;
+                goto error;
         }
 #endif
 
-        /* beyond partition? */
-        if (bio->bio_offset < 0 || blkno + sz > maxsz) {
-                /* if exactly at end of disk, return an EOF */
+	/*
+	 * Check for out of bounds, EOF, and EOF clipping.
+	 */
+	if (bio->bio_offset < 0)
+		goto bad;
+	if (blkno + sz > maxsz) {
+		/*
+		 * Past EOF or B_BNOCLIP flag was set, the request is bad.
+		 */
+		if (blkno > maxsz || (bp->b_flags & B_BNOCLIP))
+			goto bad;
+
+		/*
+		 * If exactly on EOF just complete the I/O with no bytes
+		 * transfered.  B_INVAL must be set to throw away the
+		 * contents of the buffer.  Otherwise clip b_bcount.
+		 */
                 if (blkno == maxsz) {
                         bp->b_resid = bp->b_bcount;
-                        return(0);
+			bp->b_flags |= B_INVAL;
+			goto done;
                 }
-                /* or truncate if part of it fits */
-                sz = maxsz - blkno;
-                if (sz <= 0) {
-                        bp->b_error = EINVAL;
-                        goto bad;
-                }
-                bp->b_bcount = sz << DEV_BSHIFT;
+                bp->b_bcount = (maxsz - blkno) << DEV_BSHIFT;
         }
 	nbio = push_bio(bio);
         nbio->bio_offset = bio->bio_offset + ((off_t)p->p_offset << DEV_BSHIFT);
 	return (nbio);
 
+	/*
+	 * The caller is responsible for calling biodone() on the passed bio
+	 * when we return NULL.
+	 */
 bad:
-        bp->b_flags |= B_ERROR;
+	bp->b_error = EINVAL;
+error:
+	bp->b_resid = bp->b_bcount;
+        bp->b_flags |= B_ERROR | B_INVAL;
+done:
 	return (NULL);
 }
 

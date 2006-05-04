@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.28 2006/04/02 01:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.29 2006/05/04 18:32:23 dillon Exp $
  */
 
 
@@ -150,34 +150,48 @@ void
 mfsstrategy(dev_t dev, struct bio *bio)
 {
 	struct buf *bp = bio->bio_buf;
+	off_t boff = bio->bio_offset;
+	off_t eoff = boff + bp->b_bcount;
 	struct mfsnode *mfsp;
 
-	if ((mfsp = dev->si_drv1) != NULL) {
-		off_t boff = bio->bio_offset;
-		off_t eoff = boff + bp->b_bcount;
-
-		if (boff < 0) {
-			bp->b_error = EINVAL;
-			biodone(bio);
-		} else if (eoff <= mfsp->mfs_size) {
-			bioq_insert_tail(&mfsp->bio_queue, bio);
-			wakeup((caddr_t)mfsp);
-		} else if (boff < mfsp->mfs_size) {
-			bp->b_bcount = mfsp->mfs_size - boff;
-			bioq_insert_tail(&mfsp->bio_queue, bio);
-			wakeup((caddr_t)mfsp);
-		} else if (boff == mfsp->mfs_size) {
-			bp->b_resid = bp->b_bcount;
-			biodone(bio);
-		} else {
-			bp->b_error = EINVAL;
-			biodone(bio);
-		}
-	} else {
+	if ((mfsp = dev->si_drv1) == NULL) {
 		bp->b_error = ENXIO;
-		bp->b_flags |= B_ERROR;
-		biodone(bio);
+		goto error;
 	}
+	if (boff < 0)
+		goto bad;
+	if (eoff > mfsp->mfs_size) {
+		if (boff > mfsp->mfs_size || (bp->b_flags & B_BNOCLIP))
+			goto bad;
+		/*
+		 * Return EOF by completing the I/O with 0 bytes transfered.
+		 * Set B_INVAL to indicate that any data in the buffer is not
+		 * valid.
+		 */
+		if (boff == mfsp->mfs_size) {
+			bp->b_resid = bp->b_bcount;
+			bp->b_flags |= B_INVAL;
+			goto done;
+		}
+		bp->b_bcount = mfsp->mfs_size - boff;
+	}
+
+	/*
+	 * Initiate I/O
+	 */
+	bioq_insert_tail(&mfsp->bio_queue, bio);
+	wakeup((caddr_t)mfsp);
+	return;
+
+	/*
+	 * Failure conditions on bio
+	 */
+bad:
+	bp->b_error = EINVAL;
+error:
+	bp->b_flags |= B_ERROR | B_INVAL;
+done:
+	biodone(bio);
 }
 
 /*
