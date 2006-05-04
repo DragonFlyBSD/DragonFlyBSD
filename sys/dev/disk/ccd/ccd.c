@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.28 2006/05/03 20:44:46 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.29 2006/05/04 08:00:59 y0netan1 Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1035,6 +1035,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 	 * the case.
 	 */
 	cbp = getccdbuf();
+	cbp->cb_buf.b_cmd = bio->bio_buf->b_cmd;
 	cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
 	cbp->cb_buf.b_data = addr;
 	cbp->cb_vp = ci->ci_vp;
@@ -1073,6 +1074,7 @@ ccdbuffer(struct ccdbuf **cb, struct ccd_softc *cs, struct bio *bio,
 		/* mirror, setup second I/O */
 		cbp = getccdbuf();
 
+		cbp->cb_buf.b_cmd = bio->bio_buf->b_cmd;
 		cbp->cb_buf.b_flags = bio->bio_buf->b_flags | B_PAGING;
 		cbp->cb_buf.b_data = addr;
 		cbp->cb_vp = ci2->ci_vp;
