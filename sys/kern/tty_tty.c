@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.13 2006/04/03 21:32:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.14 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -98,11 +98,11 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 			error = 0;
 		} else {
 			vsetflags(ttyvp, VCTTYISOPEN);
-			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 			error = VOP_OPEN(ttyvp, FREAD|FWRITE, NOCRED, NULL, td);
 			if (error)
 				vclrflags(ttyvp, VCTTYISOPEN);
-			VOP_UNLOCK(ttyvp, 0, td);
+			VOP_UNLOCK(ttyvp, 0);
 		}
 	} else {
 		error = ENXIO;
@@ -133,10 +133,10 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 		error = 0;
 	} else if (ttyvp->v_flag & VCTTYISOPEN) {
 		vclrflags(ttyvp, VCTTYISOPEN);
-		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 		if (error == 0) {
 			error = VOP_CLOSE(ttyvp, FREAD|FWRITE, td);
-			VOP_UNLOCK(ttyvp, 0, td);
+			VOP_UNLOCK(ttyvp, 0);
 		}
 	} else {
 		error = 0;

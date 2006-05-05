@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.21 2006/04/07 06:38:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.22 2006/05/05 21:15:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -120,7 +120,6 @@ cd9660_lookup(struct vop_old_lookup_args *ap)
 	struct componentname *cnp = ap->a_cnp;
 	int flags = cnp->cn_flags;
 	int nameiop = cnp->cn_nameiop;
-	struct thread *td = cnp->cn_td;
 
 	bp = NULL;
 	*vpp = NULL;
@@ -347,16 +346,16 @@ found:
 	 * it's a relocated directory.
 	 */
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0, td);	/* race to get the inode */
+		VOP_UNLOCK(pdp, 0);	/* race to get the inode */
 		error = cd9660_vget_internal(vdp->v_mount, dp->i_ino, &tdp,
 					     dp->i_ino != ino, ep);
 		brelse(bp);
 		if (error) {
-			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY);
 			return (error);
 		}
 		if (lockparent) {
-			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
+			if ((error = vn_lock(pdp, LK_EXCLUSIVE)) != 0) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(tdp);
 				return (error);
@@ -376,7 +375,7 @@ found:
 			return (error);
 		if (!lockparent) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(pdp, 0, td);
+			VOP_UNLOCK(pdp, 0);
 		}
 		*vpp = tdp;
 	}

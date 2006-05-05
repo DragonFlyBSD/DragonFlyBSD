@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.23 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.24 2006/05/05 21:15:11 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -262,9 +262,9 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	}
 	return EINVAL;
     found:
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL, td);
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	if (error)
 		return (error);
 

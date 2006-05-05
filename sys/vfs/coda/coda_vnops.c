@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.36 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.37 2006/05/05 21:15:09 dillon Exp $
  * 
  */
 
@@ -264,7 +264,7 @@ coda_open(void *v)
 	goto done;
 
     /* We get the vnode back locked.  Needs unlocked */
-    VOP_UNLOCK(vp, 0, td);
+    VOP_UNLOCK(vp, 0);
     /* Keep a reference until the close comes in. */
     vref(*vpp);                
 
@@ -440,7 +440,7 @@ coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw, int ioflag,
 	     * We get the vnode back locked in both Mach and
 	     * NetBSD.  Needs unlocked 
 	     */
-	    VOP_UNLOCK(cfvp, 0, td);
+	    VOP_UNLOCK(cfvp, 0);
 	}
 	else {
 	    opened_internally = 1;
@@ -1036,7 +1036,7 @@ coda_lookup(void *v)
      */
     if (!error || (error == EJUSTRETURN)) {
 	if ((cnp->cn_flags & CNP_LOCKPARENT) == 0) {
-	    if ((error = VOP_UNLOCK(dvp, 0, td))) {
+	    if ((error = VOP_UNLOCK(dvp, 0))) {
 		return error; 
 	    }	    
 	    /* 
@@ -1044,7 +1044,7 @@ coda_lookup(void *v)
 	     * lock it without bothering to check anything else. 
 	     */
 	    if (*ap->a_vpp) {
-		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1053,7 +1053,7 @@ coda_lookup(void *v)
 	    /* The parent is locked, and may be the same as the child */
 	    if (*ap->a_vpp && (*ap->a_vpp != dvp)) {
 		/* Different, go ahead and lock it. */
-		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1140,7 +1140,7 @@ coda_create(void *v)
     }
 
     if (!error) {
-	if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+	if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE))) {
 	    printf("coda_create: ");
 	    panic("unlocked parent but couldn't lock child");
 	}

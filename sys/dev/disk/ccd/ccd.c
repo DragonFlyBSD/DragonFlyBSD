@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.30 2006/05/04 18:32:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.31 2006/05/05 21:15:06 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1598,7 +1598,7 @@ ccdlookup(char *path, struct thread *td, struct vnode **vpp)
 		vprint("ccdlookup: vnode info", vp);
 #endif
 
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	nd.nl_open_vp = NULL;
 	nlookup_done(&nd);
 	*vpp = vp;				/* leave ref intact  */

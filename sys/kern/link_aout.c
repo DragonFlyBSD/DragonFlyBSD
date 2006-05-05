@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.15 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.16 2006/05/05 21:15:08 dillon Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -289,7 +289,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     *result = lf;
 
 out:
-    VOP_UNLOCK(vp, 0, td);
+    VOP_UNLOCK(vp, 0);
     vn_close(vp, FREAD, td);
 
     return error;

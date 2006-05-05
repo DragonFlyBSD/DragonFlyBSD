@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.1 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.2 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -401,7 +401,7 @@ ext2_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	nd.nl_open_vp = NULL;
 	nlookup_done(&nd);
 
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	if (*vpp != vp)
 		ext2_quotaoff(td, mp, type);
 	ump->um_qflags[type] |= QTF_OPENING;
@@ -725,7 +725,6 @@ static int
 ext2_dqget(struct vnode *vp, u_long id, struct ext2mount *ump, int type,
       struct ext2_dquot **dqp)
 {
-	struct thread *td = curthread;		/* XXX */
 	struct ext2_dquot *dq;
 	struct ext2_dqhash *dqh;
 	struct vnode *dqvp;
@@ -781,7 +780,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2mount *ump, int type,
 	 * Initialize the contents of the dquot structure.
 	 */
 	if (vp != dqvp)
-		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY);
 	LIST_INSERT_HEAD(dqh, dq, dq_hash);
 	DQREF(dq);
 	dq->dq_flags = DQ_LOCK;
@@ -801,7 +800,7 @@ ext2_dqget(struct vnode *vp, u_long id, struct ext2mount *ump, int type,
 	if (auio.uio_resid == sizeof(struct ext2_dqblk) && error == 0)
 		bzero((caddr_t)&dq->dq_dqb, sizeof(struct ext2_dqblk));
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, 0, td);
+		VOP_UNLOCK(dqvp, 0);
 	if (dq->dq_flags & DQ_WANT)
 		wakeup((caddr_t)dq);
 	dq->dq_flags = 0;
@@ -868,7 +867,6 @@ ext2_dqrele(struct vnode *vp, struct ext2_dquot *dq)
 static int
 ext2_dqsync(struct vnode *vp, struct ext2_dquot *dq)
 {
-	struct thread *td = curthread;		/* XXX */
 	struct vnode *dqvp;
 	struct iovec aiov;
 	struct uio auio;
@@ -881,13 +879,13 @@ ext2_dqsync(struct vnode *vp, struct ext2_dquot *dq)
 	if ((dqvp = dq->dq_ump->um_quotas[dq->dq_type]) == NULLVP)
 		panic("dqsync: file");
 	if (vp != dqvp)
-		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY);
 	while (dq->dq_flags & DQ_LOCK) {
 		dq->dq_flags |= DQ_WANT;
 		(void) tsleep((caddr_t)dq, 0, "dqsync", 0);
 		if ((dq->dq_flags & DQ_MOD) == 0) {
 			if (vp != dqvp)
-				VOP_UNLOCK(dqvp, 0, td);
+				VOP_UNLOCK(dqvp, 0);
 			return (0);
 		}
 	}
@@ -908,7 +906,7 @@ ext2_dqsync(struct vnode *vp, struct ext2_dquot *dq)
 		wakeup((caddr_t)dq);
 	dq->dq_flags &= ~(DQ_MOD|DQ_LOCK|DQ_WANT);
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, 0, td);
+		VOP_UNLOCK(dqvp, 0);
 	return (error);
 }
 

@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.19 2006/01/04 03:09:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.20 2006/05/05 21:15:10 dillon Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
 			 null_vnodeop_entries, 0);
 
-	VOP_UNLOCK(rootvp, 0, td);
+	VOP_UNLOCK(rootvp, 0);
 
 	/*
 	 * Keep a held reference to the root vnode.
@@ -181,7 +181,6 @@ nullfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 static int
 nullfs_root(struct mount *mp, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 	NULLFSDEBUG("nullfs_root(mp = %p, vp = %p)\n", (void *)mp,
@@ -200,7 +199,7 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 		return (EDEADLK);
 	}
 #endif
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	*vpp = vp;
 	return 0;
 }

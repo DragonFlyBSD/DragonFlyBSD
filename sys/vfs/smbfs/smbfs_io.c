@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.23 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.24 2006/05/05 21:15:10 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -207,10 +207,10 @@ smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 	if (vp->v_type == VDIR) {
 		lks = LK_EXCLUSIVE;/*lockstatus(&vp->v_lock, td);*/
 		if (lks == LK_SHARED)
-			vn_lock(vp, LK_UPGRADE | LK_RETRY, td);
+			vn_lock(vp, LK_UPGRADE | LK_RETRY);
 		error = smbfs_readvdir(vp, uiop, cred);
 		if (lks == LK_SHARED)
-			vn_lock(vp, LK_DOWNGRADE | LK_RETRY, td);
+			vn_lock(vp, LK_DOWNGRADE | LK_RETRY);
 		return error;
 	}
 

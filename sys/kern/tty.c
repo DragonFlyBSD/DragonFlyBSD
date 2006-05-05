@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.21 2006/04/03 21:32:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.22 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*-
@@ -309,10 +309,10 @@ ttyclosesession(struct session *sp, int dorele)
 		return;
 	sp->s_ttyvp = NULL;
 	if (vp->v_flag & VCTTYISOPEN) {
-		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY, td) == 0) {
+		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY) == 0) {
 			vclrflags(vp, VCTTYISOPEN);
 			VOP_CLOSE(vp, FREAD|FWRITE, td);
-			VOP_UNLOCK(vp, 0, td);
+			VOP_UNLOCK(vp, 0);
 		}
 	}
 	if (dorele)

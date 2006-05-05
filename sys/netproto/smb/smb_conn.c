@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.15 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.16 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -278,8 +278,6 @@ smb_co_ref(struct smb_connobj *cp, struct thread *td)
 void
 smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred)
 {
-	struct thread *td = scred->scr_td;
-
 	SMB_CO_LOCK(cp);
 	if (cp->co_usecount > 1) {
 		cp->co_usecount--;

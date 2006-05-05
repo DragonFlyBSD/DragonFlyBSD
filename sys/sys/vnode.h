@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.50 2006/05/05 16:35:03 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.51 2006/05/05 21:15:09 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -604,11 +604,11 @@ int	vrecycle (struct vnode *vp, struct thread *td);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags, struct thread *td);
 int	vn_isdisk (struct vnode *vp, int *errp);
-int	vn_lock (struct vnode *vp, int flags, struct thread *td);
+int	vn_lock (struct vnode *vp, int flags);
 #ifdef	DEBUG_LOCKS
-int	debug_vn_lock (struct vnode *vp, int flags, struct thread *td,
-	    const char *filename, int line);
-#define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
+int	debug_vn_lock (struct vnode *vp, int flags,
+		const char *filename, int line);
+#define vn_lock(vp,flags)	debug_vn_lock(vp, flags, __FILE__, __LINE__)
 #endif
 
 int	vn_get_namelen(struct vnode *, int *);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.35 2006/04/24 22:01:52 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.36 2006/05/05 21:15:10 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -978,7 +978,6 @@ msdosfs_rename(struct vop_old_rename_args *ap)
 	struct vnode *tvp = ap->a_tvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
-	struct thread *td = fcnp->cn_td;
 	struct denode *ip, *xp, *dp, *zp;
 	u_char toname[11], oldname[11];
 	u_long from_diroffset, to_diroffset;
@@ -1027,7 +1026,7 @@ abortit:
 	 * fvp, fdvp are unlocked, tvp, tdvp are locked.  Lock fvp and note
 	 * that we have to unlock it to use the abortit target.
 	 */
-	error = vn_lock(fvp, LK_EXCLUSIVE, td);
+	error = vn_lock(fvp, LK_EXCLUSIVE);
 	if (error)
 		goto abortit;
 	dp = VTODE(fdvp);
@@ -1048,7 +1047,7 @@ abortit:
 		    (fcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (tcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (ip->de_flag & DE_RENAME)) {
-			VOP_UNLOCK(fvp, 0, td);
+			VOP_UNLOCK(fvp, 0);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -1082,7 +1081,7 @@ abortit:
 	 * call to doscheckpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, 0);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
 
@@ -1186,7 +1185,7 @@ abortit:
 	fcnp->cn_flags &= ~CNP_MODMASK;
 	fcnp->cn_flags |= CNP_LOCKPARENT;
 	if (newparent == 0)
-		VOP_UNLOCK(tdvp, 0, td);
+		VOP_UNLOCK(tdvp, 0);
 	error = relookup(fdvp, &fvp, fcnp);
 	if (error || fvp == NULL) {
 		/*
@@ -1518,13 +1517,13 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	 * directory.  Since dos filesystems don't do this we just purge
 	 * the name cache.
 	 */
-	VOP_UNLOCK(dvp, 0, td);
+	VOP_UNLOCK(dvp, 0);
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC, td);
 
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 out:
 	return (error);
 }

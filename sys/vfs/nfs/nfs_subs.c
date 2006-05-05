@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.37 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.38 2006/05/05 21:15:10 dillon Exp $
  */
 
 /*
@@ -1803,7 +1803,6 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 	     struct ucred *cred, struct nfssvc_sock *slp, struct sockaddr *nam,
 	     int *rdonlyp, int kerbflag, int pubflag)
 {
-	struct thread *td = curthread; /* XXX */
 	struct mount *mp;
 	int i;
 	struct ucred *credanon;
@@ -1865,7 +1864,7 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 		*rdonlyp = 0;
 
 	if (!lockflag)
-		VOP_UNLOCK(*vpp, 0, td);
+		VOP_UNLOCK(*vpp, 0);
 	return (0);
 }
 

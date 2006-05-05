@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.37 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.38 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -228,9 +228,9 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	 */
 	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0)
-		VOP_UNLOCK(vp, 0, curthread);
+		VOP_UNLOCK(vp, 0);
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, curthread);
+		VOP_UNLOCK(dvp, 0);
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		/* was resolved by another process while we were unlocked */
 		if (error == 0)
@@ -300,7 +300,7 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	 */
 	error = vop_old_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
 	if (error == 0)
-		VOP_UNLOCK(*ap->a_vpp, 0, curthread);
+		VOP_UNLOCK(*ap->a_vpp, 0);
 	if (cnp.cn_flags & CNP_PDIRUNLOCK)
 		vrele(ap->a_dvp);
 	else
@@ -385,7 +385,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -467,7 +467,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -549,7 +549,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -628,7 +628,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 		}
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -703,7 +703,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 		KKASSERT(vp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -798,7 +798,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 		break;
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -873,7 +873,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 			vput(vp);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -956,7 +956,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 			vput(vp);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	vrele(dvp);
 	return (error);
 }
@@ -1030,13 +1030,13 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	}
 	if ((fcnp.cn_flags & CNP_PDIRUNLOCK) == 0) {
 		fcnp.cn_flags |= CNP_PDIRUNLOCK;
-		VOP_UNLOCK(fdvp, 0, td);
+		VOP_UNLOCK(fdvp, 0);
 	}
 	if (error) {
 		vrele(fdvp);
 		return (error);
 	}
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, 0);
 
 	/*
 	 * fdvp and fvp are now referenced and unlocked.
@@ -1252,7 +1252,6 @@ vop_stdlock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct thread *a_td;
 	} */ *ap;
 {               
 	int error;
@@ -1271,7 +1270,6 @@ vop_stdunlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct thread *a_td;
 	} */ *ap;
 {
 	int error;

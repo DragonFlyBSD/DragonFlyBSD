@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.35 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.36 2006/05/05 21:15:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -391,7 +391,6 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	u_long rbase;
 	u_long base_addr = 0;
 	int error, i, numsegs;
-	struct thread *td = p->p_thread;
 
 	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_WAITOK);
 	nd = &tempdata->nd;
@@ -421,7 +420,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(imgp->vp, 0, td);
+		VOP_UNLOCK(imgp->vp, 0);
 		goto fail;
 	}
 
@@ -432,7 +431,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	if (error == 0)
 		imgp->vp->v_flag |= VTEXT;
-	VOP_UNLOCK(imgp->vp, 0, td);
+	VOP_UNLOCK(imgp->vp, 0);
 	if (error)
                 goto fail;
 
@@ -910,7 +909,7 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
 	fp->f_ops = &vnode_fileops;
 	fp->f_data = vp;
-	VOP_UNLOCK(vp, 0, p->p_thread);
+	VOP_UNLOCK(vp, 0);
 	
 	error = generic_elf_coredump(p, fp, limit);
 

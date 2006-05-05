@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.28 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.29 2006/05/05 21:15:10 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1095,7 +1095,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			if (error)
 				return error;
 			if (!lockparent) {
-				VOP_UNLOCK(dvp, 0, td);
+				VOP_UNLOCK(dvp, 0);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			return (EJUSTRETURN);
@@ -1121,7 +1121,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			return error;
 		*vpp = vp;
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
@@ -1137,20 +1137,20 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			return error;
 		*vpp = vp;
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
 	}
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 		error = smbfs_nget(mp, dvp, name, nmlen, NULL, &vp);
 		if (error) {
-			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			return error;
 		}
 		if (lockparent) {
-			error = vn_lock(dvp, LK_EXCLUSIVE, td);
+			error = vn_lock(dvp, LK_EXCLUSIVE);
 			if (error) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(vp);
@@ -1168,7 +1168,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 		*vpp = vp;
 		SMBVDEBUG("lookup: getnewvp!\n");
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.11 2006/03/07 20:03:54 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.12 2006/05/05 21:15:08 dillon Exp $
  */
 
 /*
@@ -2315,7 +2315,7 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 
 	/* Get the file size. */
 	VOP_GETATTR(vp, vap, td);
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 
 	fh->nf_vp = vp;
 	fh->nf_map = NULL;

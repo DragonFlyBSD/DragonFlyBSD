@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.17 2006/03/24 22:39:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.18 2006/05/05 21:15:10 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -109,7 +109,6 @@ msdosfs_lookup(struct vop_old_lookup_args *ap)
 	u_char dosfilename[12];
 	int flags = cnp->cn_flags;
 	int nameiop = cnp->cn_nameiop;
-	struct thread *td = cnp->cn_td;
 	int unlen;
 
 	int wincnt = 1;
@@ -362,7 +361,7 @@ notfound:
 		 * information cannot be used.
 		 */
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, td);
+			VOP_UNLOCK(vdp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
@@ -448,7 +447,7 @@ foundroot:
 			return (error);
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, td);
+			VOP_UNLOCK(vdp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -479,7 +478,7 @@ foundroot:
 			return (error);
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0, td);
+			VOP_UNLOCK(vdp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -506,16 +505,16 @@ foundroot:
 	 */
 	pdp = vdp;
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0, td);
+		VOP_UNLOCK(pdp, 0);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = deget(pmp, cluster, blkoff,  &tdp);
 		if (error) {
-			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td); 
+			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY); 
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
 		if (lockparent) {
-			error = vn_lock(pdp, LK_EXCLUSIVE, td);
+			error = vn_lock(pdp, LK_EXCLUSIVE);
 			if (error) {
 				vput(DETOV(tdp));
 				return (error);
@@ -530,7 +529,7 @@ foundroot:
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
 		if (!lockparent) {
-			VOP_UNLOCK(pdp, 0, td);
+			VOP_UNLOCK(pdp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);

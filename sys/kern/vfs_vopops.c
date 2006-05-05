@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.23 2006/05/05 16:35:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.24 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -807,7 +807,7 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_lock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
+vop_lock(struct vop_ops *ops, struct vnode *vp, int flags)
 {
 	struct vop_lock_args ap;
 	int error;
@@ -816,14 +816,13 @@ vop_lock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_flags = flags;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_lock);
 	return(error);
 }
 
 int
-vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
+vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags)
 {
 	struct vop_unlock_args ap;
 	int error;
@@ -832,7 +831,6 @@ vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_flags = flags;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_unlock);
 	return(error);

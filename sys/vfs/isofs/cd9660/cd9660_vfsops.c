@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.33 2006/04/07 06:38:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.34 2006/05/05 21:15:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,9 +151,9 @@ iso_mountroot(struct mount *mp, struct thread *td)
 	}
 	args.flags = ISOFSMNT_ROOT;
 
-	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(rootvp, FREAD, FSCRED, NULL, td);
-	VOP_UNLOCK(rootvp, 0, td);
+	VOP_UNLOCK(rootvp, 0);
 	if (error)
 		return (error);
 
@@ -231,7 +231,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * or has superuser abilities
 	 */
 	accessmode = VREAD;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_ACCESS(devvp, accessmode, td->td_proc->p_ucred, td);
 	if (error) 
 		error = suser(td);
@@ -239,7 +239,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		vput(devvp);
 		return (error);
 	}
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = iso_mountfs(devvp, mp, td, &args);
@@ -300,9 +300,9 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);
 
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return error;
 	dev = devvp->v_rdev;

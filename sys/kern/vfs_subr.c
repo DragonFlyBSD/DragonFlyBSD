@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.81 2006/05/05 16:35:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.82 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -1289,7 +1289,6 @@ vcount(struct vnode *vp)
 int
 vinitvmio(struct vnode *vp, off_t filesize)
 {
-	thread_t td = curthread;
 	vm_object_t object;
 	int error = 0;
 
@@ -1304,9 +1303,9 @@ retry:
 		vp->v_usecount--;
 	} else {
 		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, 0, td);
+			VOP_UNLOCK(vp, 0);
 			tsleep(object, 0, "vodead", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			goto retry;
 		}
 	}

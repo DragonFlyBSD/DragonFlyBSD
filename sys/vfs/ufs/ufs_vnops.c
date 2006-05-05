@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.46 2006/05/05 16:35:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.47 2006/05/05 21:15:10 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -737,7 +737,6 @@ ufs_link(struct vop_old_link_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
 	struct componentname *cnp = ap->a_cnp;
-	struct thread *td = cnp->cn_td;
 	struct inode *ip;
 	struct direct newdir;
 	int error;
@@ -746,7 +745,7 @@ ufs_link(struct vop_old_link_args *ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
+	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -778,7 +777,7 @@ ufs_link(struct vop_old_link_args *ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 out2:
 	VN_KNOTE(vp, NOTE_LINK);
 	VN_KNOTE(tdvp, NOTE_WRITE);
@@ -874,7 +873,6 @@ ufs_rename(struct vop_old_rename_args *ap)
 	struct vnode *fdvp = ap->a_fdvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
-	struct thread *td = fcnp->cn_td;
 	struct inode *ip, *xp, *dp;
 	struct direct newdir;
 	ino_t oldparent = 0, newparent = 0;
@@ -915,7 +913,7 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vn_lock(fvp, LK_EXCLUSIVE)) != 0)
 		goto abortit;
 
 	/*
@@ -925,13 +923,13 @@ abortit:
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
 	if (ip->i_nlink >= LINK_MAX) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, 0);
 		error = EMLINK;
 		goto abortit;
 	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, 0);
 		error = EPERM;
 		goto abortit;
 	}
@@ -942,7 +940,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0, td);
+			VOP_UNLOCK(fvp, 0);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -979,7 +977,7 @@ abortit:
 		softdep_change_linkcnt(ip);
 	if ((error = UFS_UPDATE(fvp, !(DOINGSOFTDEP(fvp) |
 				       DOINGASYNC(fvp)))) != 0) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, 0);
 		goto bad;
 	}
 
@@ -994,7 +992,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, 0);
 
 	/*
 	 * We are now back to where we were in that fvp, fdvp are unlocked
@@ -1281,7 +1279,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
+	if (vn_lock(fvp, LK_EXCLUSIVE) == 0) {
 		ip->i_effnlink--;
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;

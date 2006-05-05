@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.17 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.18 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -142,7 +142,6 @@ fdesc_unmount(struct mount *mp, int mntflags, struct thread *td)
 int
 fdesc_root(struct mount *mp, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 	/*
@@ -150,7 +149,7 @@ fdesc_root(struct mount *mp, struct vnode **vpp)
 	 */
 	vp = VFSTOFDESC(mp)->f_root;
 	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	*vpp = vp;
 	return (0);
 }

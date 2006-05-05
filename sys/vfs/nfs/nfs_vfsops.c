@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.38 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.39 2006/05/05 21:15:10 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -997,7 +997,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(*vpp, 0, curthread);
+	VOP_UNLOCK(*vpp, 0);
 
 	return (0);
 bad:

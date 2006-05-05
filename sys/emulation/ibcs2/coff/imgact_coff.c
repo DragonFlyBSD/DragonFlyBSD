@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.14 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.15 2006/05/05 21:15:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -212,7 +212,7 @@ coff_load_file(struct thread *td, char *name)
 	 * Lose the lock on the vnode. It's no longer needed, and must not
 	 * exist for the pagefault paging to work below.
 	 */
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 
   	if ((error = vm_mmap(kernel_map,
 			    (vm_offset_t *) &ptr,
@@ -285,7 +285,7 @@ coff_load_file(struct thread *td, char *name)
     		panic("%s: vm_map_remove failed", __func__);
 
  fail:
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
  unlocked_fail:
 	vrele(vp);
 done:

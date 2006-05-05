@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.37 2006/04/01 20:46:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.38 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,8 +257,8 @@ again:
 		}
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, 0, td);			/* XXX */
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
+		VOP_UNLOCK(vp, 0);			/* XXX */
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
 		error = VOP_SETATTR(vp, vap, cred, td);
@@ -320,7 +320,7 @@ again:
 		nd->nl_open_vp = vp;
 		nd->nl_vp_fmode = fmode;
 		if ((nd->nl_flags & NLC_LOCKVP) == 0)
-			VOP_UNLOCK(vp, 0, td);
+			VOP_UNLOCK(vp, 0);
 	} else {
 		vput(vp);
 	}
@@ -358,9 +358,9 @@ vn_close(struct vnode *vp, int flags, struct thread *td)
 {
 	int error;
 
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
 		error = VOP_CLOSE(vp, flags, td);
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 	}
 	vrele(vp);
 	return (error);
@@ -420,7 +420,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 	int error;
 
 	if ((ioflg & IO_NODELOCKED) == 0)
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	auio.uio_iov = &aiov;
 	auio.uio_iovcnt = 1;
 	aiov.iov_base = base;
@@ -441,7 +441,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 		if (auio.uio_resid && error == 0)
 			error = EIO;
 	if ((ioflg & IO_NODELOCKED) == 0)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 	return (error);
 }
 
@@ -518,7 +518,7 @@ vn_read(fp, uio, cred, flags, td)
 		ioflag |= IO_NDELAY;
 	if (fp->f_flag & O_DIRECT)
 		ioflag |= IO_DIRECT;
-	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
+	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -528,7 +528,7 @@ vn_read(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	return (error);
 }
 
@@ -612,7 +612,7 @@ vn_write(fp, uio, cred, flags, td)
 	if ((fp->f_flag & O_FSYNC) ||
 	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
 		ioflag |= IO_SYNC;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
@@ -620,7 +620,7 @@ vn_write(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	return (error);
 }
 
@@ -900,10 +900,9 @@ vn_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
  */
 int
 #ifndef	DEBUG_LOCKS
-vn_lock(struct vnode *vp, int flags, struct thread *td)
+vn_lock(struct vnode *vp, int flags)
 #else
-debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
-		const char *filename, int line)
+debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 #endif
 {
 	int error;
@@ -913,7 +912,7 @@ debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
 		vp->filename = filename;
 		vp->line = line;
 #endif
-		error = VOP_LOCK(vp, flags | LK_NOPAUSE, td);
+		error = VOP_LOCK(vp, flags | LK_NOPAUSE);
 		if (error == 0)
 			break;
 	} while (flags & LK_RETRY);
@@ -924,7 +923,7 @@ debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
 	 * refs go away.  So we can just check the flag.
 	 */
 	if (error == 0 && (vp->v_flag & VRECLAIMED)) {
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 		error = ENOENT;
 	}
 	return (error);

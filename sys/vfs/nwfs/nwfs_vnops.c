@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.27 2006/04/28 00:24:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.28 2006/05/05 21:15:10 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -905,7 +905,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		/* Handle RENAME or CREATE case... */
 		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent) {
 			if (!lockparent)
-				VOP_UNLOCK(dvp, 0, td);
+				VOP_UNLOCK(dvp, 0);
 			return (EJUSTRETURN);
 		}
 		return ENOENT;
@@ -924,7 +924,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		if (!lockparent) VOP_UNLOCK(dvp, 0, td);
+		if (!lockparent) VOP_UNLOCK(dvp, 0);
 		return (0);
 	}
 	if (nameiop == NAMEI_RENAME && wantparent) {
@@ -935,17 +935,17 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		if (error) return (error);
 		*vpp = vp;
 		if (!lockparent)
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 		return (0);
 	}
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0, td);	/* race to get the inode */
+		VOP_UNLOCK(dvp, 0);	/* race to get the inode */
 		error = nwfs_nget(mp, fid, NULL, NULL, &vp);
 		if (error) {
-			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			return (error);
 		}
-		if (lockparent && (error = vn_lock(dvp, LK_EXCLUSIVE, td))) {
+		if (lockparent && (error = vn_lock(dvp, LK_EXCLUSIVE))) {
 		    	vput(vp);
 			return (error);
 		}
@@ -959,7 +959,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		*vpp = vp;
 		NCPVNDEBUG("lookup: getnewvp!\n");
 		if (!lockparent)
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 	}
 #if 0
 	/* XXX MOVE TO NREMOVE */

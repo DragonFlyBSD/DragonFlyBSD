@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.10 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.11 2006/05/05 21:15:10 dillon Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -324,9 +324,9 @@ typedef int (vop_t) (void *);
 #define	LOCKMGR(a, b)		lockmgr((a), (b), NULL)
 #else /* !NetBSD */
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b), (c))
+#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b))
 #define VGET(a, b, c)		vget((a), (b), (c))
-#define VN_LOCK(a, b, c)	vn_lock((a), (b), (c))
+#define VN_LOCK(a, b, c)	vn_lock((a), (b))
 #define	LOCKMGR(a, b)		lockmgr((a), (b))
 
 #endif /* NetBSD */

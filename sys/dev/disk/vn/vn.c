@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.22 2006/05/05 09:28:05 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.23 2006/05/05 21:15:08 dillon Exp $
  */
 
 /*
@@ -385,12 +385,12 @@ vnstrategy(dev_t dev, struct bio *bio)
 			auio.uio_rw = UIO_WRITE;
 		auio.uio_resid = bp->b_bcount;
 		auio.uio_td = curthread;
-		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curthread);
+		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 		if (bp->b_cmd == BUF_CMD_READ)
 			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
 		else
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0, curthread);
+		VOP_UNLOCK(vn->sc_vp, 0);
 		bp->b_resid = auio.uio_resid;
 		if (error) {
 			bp->b_error = error;
@@ -572,7 +572,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 			error = EINVAL;
 		goto done;
 	}
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	vn->sc_secsize = DEV_BSIZE;
 	vn->sc_vp = vp;
 	nd.nl_open_vp = NULL;
@@ -724,9 +724,9 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 		auio.uio_rw = UIO_READ;
 		auio.uio_segflg = UIO_SYSSPACE;
 		auio.uio_resid = aiov.iov_len;
-		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY, curthread);
+		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_READ(vn->sc_vp, &auio, 0, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0, curthread);
+		VOP_UNLOCK(vn->sc_vp, 0);
 		free(tmpbuf, M_TEMP);
 	}
 	return (error);

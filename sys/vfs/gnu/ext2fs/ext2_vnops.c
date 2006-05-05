@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.31 2006/04/28 16:45:34 swildner Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.32 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -355,7 +355,6 @@ ext2_link(struct vop_old_link_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
 	struct componentname *cnp = ap->a_cnp;
-	struct thread *td = cnp->cn_td;
 	struct inode *ip;
 	int error;
 
@@ -363,7 +362,7 @@ ext2_link(struct vop_old_link_args *ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
+	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -386,7 +385,7 @@ ext2_link(struct vop_old_link_args *ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 out2:
 	return (error);
 }
@@ -408,7 +407,6 @@ ext2_rename(struct vop_old_rename_args *ap)
 	struct vnode *fdvp = ap->a_fdvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
-	struct thread *td = fcnp->cn_td;
 	struct inode *ip, *xp, *dp;
 	struct dirtemplate dirbuf;
 	int doingdirectory = 0, oldparent = 0, newparent = 0;
@@ -449,7 +447,7 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vn_lock(fvp, LK_EXCLUSIVE)) != 0)
 		goto abortit;
 
 	/*
@@ -459,13 +457,13 @@ abortit:
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
  	if (ip->i_nlink >= LINK_MAX) {
- 		VOP_UNLOCK(fvp, 0, td);
+ 		VOP_UNLOCK(fvp, 0);
  		error = EMLINK;
  		goto abortit;
  	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, 0);
 		error = EPERM;
 		goto abortit;
 	}
@@ -476,7 +474,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0, td);
+			VOP_UNLOCK(fvp, 0);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -505,7 +503,7 @@ abortit:
 	ip->i_nlink++;
 	ip->i_flag |= IN_CHANGE;
 	if ((error = EXT2_UPDATE(fvp, 1)) != 0) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, 0);
 		goto bad;
 	}
 
@@ -520,7 +518,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, 0);
 
 	/*
 	 * tvp (if not NULL) and tdvp are locked.  fvp and fdvp are not.
@@ -828,7 +826,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
+	if (vn_lock(fvp, LK_EXCLUSIVE) == 0) {
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ip->i_flag &= ~IN_RENAME;
@@ -1055,7 +1053,7 @@ ext2_rmdir(struct vop_old_rmdir_args *ap)
 		goto out;
 	dp->i_nlink--;
 	dp->i_flag |= IN_CHANGE;
-	VOP_UNLOCK(dvp, 0, td);
+	VOP_UNLOCK(dvp, 0);
 	/*
 	 * Truncate inode.  The only stuff left
 	 * in the directory is "." and "..".  The
@@ -1069,7 +1067,7 @@ ext2_rmdir(struct vop_old_rmdir_args *ap)
 	 */
 	ip->i_nlink -= 2;
 	error = EXT2_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, td);
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 out:
 	return (error);
 }

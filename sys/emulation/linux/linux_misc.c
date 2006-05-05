@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.25 2005/10/08 11:41:11 corecode Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.26 2006/05/05 21:15:08 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -308,7 +308,7 @@ linux_uselib(struct linux_uselib_args *args)
 	/*
 	 * Lock no longer needed
 	 */
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	locked = 0;
 
 	/* Pull in executable header into kernel_map */
@@ -447,7 +447,7 @@ cleanup:
 	/* Unlock/release vnode */
 	if (vp) {
 		if (locked)
-			VOP_UNLOCK(vp, 0, td);
+			VOP_UNLOCK(vp, 0);
 		vrele(vp);
 	}
 	/* Release the kernel mapping. */

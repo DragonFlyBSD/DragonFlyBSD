@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.17 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.18 2006/05/05 21:15:10 dillon Exp $
  */
 
 /*
@@ -197,7 +197,6 @@ portal_unmount(struct mount *mp, int mntflags, struct thread *td)
 static int
 portal_root(struct mount *mp, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 	/*
@@ -205,7 +204,7 @@ portal_root(struct mount *mp, struct vnode **vpp)
 	 */
 	vp = VFSTOPORTAL(mp)->pm_root;
 	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	*vpp = vp;
 	return (0);
 }

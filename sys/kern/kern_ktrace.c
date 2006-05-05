@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.20 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.21 2006/05/05 21:15:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -274,7 +274,7 @@ ktrace(struct ktrace_args *uap)
 		vp = nd.nl_open_vp;
 		nd.nl_open_vp = NULL;
 		nlookup_done(&nd);
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, 0);
 	}
 	/*
 	 * Clear all uses of the tracefile.  XXX umm, what happens to the
@@ -495,12 +495,12 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 		if (uio != NULL)
 			kth->ktr_len += uio->uio_resid;
 	}
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_WRITE(vp, &auio, IO_UNIT | IO_APPEND, p->p_ucred);
 	if (error == 0 && uio != NULL) {
 		error = VOP_WRITE(vp, uio, IO_UNIT | IO_APPEND, p->p_ucred);
 	}
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	vrele(vp);
 	if (!error)
 		return;

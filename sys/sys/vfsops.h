@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.20 2006/05/05 16:35:03 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.21 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -305,14 +305,12 @@ struct vop_lock_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_flags;
-	struct thread *a_td;
 };
 
 struct vop_unlock_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_flags;
-	struct thread *a_td;
 };
 
 struct vop_bmap_args {
@@ -774,10 +772,8 @@ int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
 int vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td);
 int vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_lock(struct vop_ops *ops, struct vnode *vp,
-		int flags, struct thread *td);
-int vop_unlock(struct vop_ops *ops, struct vnode *vp,
-		int flags, struct thread *td);
+int vop_lock(struct vop_ops *ops, struct vnode *vp, int flags);
+int vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 		struct vnode **vpp, off_t *doffsetp, int *runp, int *runb);
 int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio);
@@ -1011,10 +1007,10 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_inactive(*(vp)->v_ops, vp, td)
 #define VOP_RECLAIM(vp, td)				\
 	vop_reclaim(*(vp)->v_ops, vp, td)
-#define VOP_LOCK(vp, flags, td)				\
-	vop_lock(*(vp)->v_ops, vp, flags, td)
-#define VOP_UNLOCK(vp, flags, td)			\
-	vop_unlock(*(vp)->v_ops, vp, flags, td)
+#define VOP_LOCK(vp, flags)				\
+	vop_lock(*(vp)->v_ops, vp, flags)
+#define VOP_UNLOCK(vp, flags)				\
+	vop_unlock(*(vp)->v_ops, vp, flags)
 #define VOP_BMAP(vp, loff, vpp, doffp, runp, runb)	\
 	vop_bmap(*(vp)->v_ops, vp, loff, vpp, doffp, runp, runb)
 #define VOP_PRINT(vp)					\

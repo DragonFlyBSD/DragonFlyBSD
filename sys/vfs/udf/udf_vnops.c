@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.19 2006/03/24 18:35:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.20 2006/05/05 21:15:10 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -1009,7 +1009,7 @@ lookloop:
 				gd->gd_nchstats->ncs_pass2++;
 			if ((flags & CNP_LOCKPARENT) == 0) {
 				a->a_cnp->cn_flags |= CNP_PDIRUNLOCK;
-				VOP_UNLOCK(dvp, 0, td);
+				VOP_UNLOCK(dvp, 0);
 			}
 
 			*vpp = tdp;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.59 2006/05/05 16:35:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.60 2006/05/05 21:15:10 dillon Exp $
  */
 
 
@@ -962,7 +962,6 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 	struct nfsnode *np;
 	int lockparent, wantparent, error = 0, attrflag, fhsize;
 	int v3 = NFS_ISV3(dvp);
-	struct thread *td = cnp->cn_td;
 
 	/*
 	 * Read-only mount check and directory check.
@@ -1028,24 +1027,24 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		*vpp = newvp;
 		m_freem(mrep);
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
 
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
 		if (error) {
-			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error); /* NOTE: return error from nget */
 		}
 		newvp = NFSTOV(np);
 		if (lockparent) {
-			error = vn_lock(dvp, LK_EXCLUSIVE, td);
+			error = vn_lock(dvp, LK_EXCLUSIVE);
 			if (error) {
 				vput(newvp);
 				return (error);
@@ -1062,7 +1061,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			return (error);
 		}
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0, td);
+			VOP_UNLOCK(dvp, 0);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		newvp = NFSTOV(np);
@@ -1091,7 +1090,7 @@ nfsmout:
 		     cnp->cn_nameiop == NAMEI_RENAME) &&
 		    error == ENOENT) {
 			if (!lockparent) {
-				VOP_UNLOCK(dvp, 0, td);
+				VOP_UNLOCK(dvp, 0);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			if (dvp->v_mount->mnt_flag & MNT_RDONLY)

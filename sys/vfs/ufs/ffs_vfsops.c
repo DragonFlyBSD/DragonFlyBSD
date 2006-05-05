@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.39 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.40 2006/05/05 21:15:10 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -226,13 +226,13 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			 * that user has necessary permissions on the device.
 			 */
 			if (cred->cr_uid != 0) {
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred, td)) != 0) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, 0);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, 0);
 			}
 
 			fs->fs_flags &= ~FS_UNCLEAN;
@@ -305,12 +305,12 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, 0);
 	}
 
 	if (mp->mnt_flag & MNT_UPDATE) {
@@ -398,7 +398,7 @@ success:
 			 * The device must be re-opened as appropriate or
 			 * the device close at unmount time will panic.
 			 */
-			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (ronly) {
 				VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
 				VOP_CLOSE(devvp, FREAD|FWRITE, td);
@@ -406,7 +406,7 @@ success:
 				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL, td);
 				VOP_CLOSE(devvp, FREAD, td);
 			}
-			VOP_UNLOCK(devvp, 0, td);
+			VOP_UNLOCK(devvp, 0);
 			ffs_sbupdate(ump, MNT_WAIT);
 		}
 	}
@@ -457,9 +457,9 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 * Step 1: invalidate all cached meta-data.
 	 */
 	devvp = VFSTOUFS(mp)->um_devvp;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, 0, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		panic("ffs_reload: dirty1");
 
@@ -612,16 +612,16 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		return (error);
 	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -903,9 +903,9 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 	/*
 	 * Flush filesystem metadata.
 	 */
-	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, td);
-	VOP_UNLOCK(ump->um_devvp, 0, td);
+	VOP_UNLOCK(ump->um_devvp, 0);
 	return (error);
 }
 
@@ -982,10 +982,10 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 	if (waitfor != MNT_LAZY) {
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
-		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0, td);
+		VOP_UNLOCK(ump->um_devvp, 0);
 	}
 #ifdef QUOTA
 	ufs_qsync(mp);

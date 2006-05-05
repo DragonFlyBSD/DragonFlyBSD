@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.18 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.19 2006/05/05 21:15:11 dillon Exp $
  */
 
 /*
@@ -205,7 +205,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Unlock the node (either the lower or the alias)
 	 */
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, 0);
 	/*
 	 * Make sure the node alias worked
 	 */
@@ -290,7 +290,7 @@ umapfs_root(struct mount *mp, struct vnode **vpp)
 	 */
 	vp = MOUNTTOUMAPMOUNT(mp)->umapm_rootvp;
 	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	*vpp = vp;
 	return (0);
 }

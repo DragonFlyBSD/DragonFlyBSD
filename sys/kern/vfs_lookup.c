@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.21 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.22 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -79,7 +79,6 @@ SYSCTL_INT(_vfs, OID_AUTO, varsym_enable, CTLFLAG_RW, &varsym_enable, 0,
 int
 relookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 {
-	struct thread *td = cnp->cn_td;
 	int rdonly;			/* lookup read-only flag bit */
 	int error = 0;
 
@@ -88,7 +87,7 @@ relookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 	 */
 	KKASSERT(cnp->cn_flags & CNP_LOCKPARENT);
 	KKASSERT(cnp->cn_flags & CNP_PDIRUNLOCK);
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
 	*vpp = NULL;
@@ -152,7 +151,7 @@ relookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 bad:
 	if ((cnp->cn_flags & CNP_PDIRUNLOCK) == 0) {
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, 0);
 	}
 	if (*vpp) {
 		vput(*vpp);

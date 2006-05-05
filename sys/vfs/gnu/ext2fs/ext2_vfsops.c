@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.38 2006/04/09 20:47:56 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.39 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -284,10 +284,10 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 				ext2_sbupdate(ump, MNT_WAIT);
 			}
 			fs->s_rd_only = 1;
-			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
 			VOP_CLOSE(devvp, FREAD|FWRITE, td);
-			VOP_UNLOCK(devvp, 0, td);
+			VOP_UNLOCK(devvp, 0);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
 			error = ext2_reload(mp, proc0.p_ucred, td);
@@ -302,13 +302,13 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			 * that user has necessary permissions on the device.
 			 */
 			if (cred->cr_uid != 0) {
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred, td)) != 0) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, 0);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, 0);
 			}
 
 			if ((fs->s_es->s_state & EXT2_VALID_FS) == 0 ||
@@ -327,10 +327,10 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			fs->s_es->s_state &= ~EXT2_VALID_FS;
 			ext2_sbupdate(ump, MNT_WAIT);
 			fs->s_rd_only = 0;
-			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL, td);
 			VOP_CLOSE(devvp, FREAD, td);
-			VOP_UNLOCK(devvp, 0, td);
+			VOP_UNLOCK(devvp, 0);
 		}
 		if (args.fspec == 0) {
 			/*
@@ -366,12 +366,12 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, 0);
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
@@ -731,9 +731,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 #endif
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -1021,10 +1021,10 @@ ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 	 * Force stale file system control information to be flushed.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0, td);
+		VOP_UNLOCK(ump->um_devvp, 0);
 	}
 #if QUOTA
 	ext2_qsync(mp);

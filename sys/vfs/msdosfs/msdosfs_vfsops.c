@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.31 2006/03/24 18:35:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.32 2006/05/05 21:15:10 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -205,14 +205,14 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			 */
 			if (p->p_ucred->cr_uid != 0) {
 				devvp = pmp->pm_devvp;
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE,
 						   p->p_ucred, td);
 				if (error) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, 0);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, 0);
 			}
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
@@ -257,13 +257,13 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_ACCESS(devvp, accessmode, p->p_ucred, td);
 		if (error) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, 0);
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = mountmsdosfs(devvp, mp, td, &args);
@@ -325,16 +325,16 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		return (error);
 	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -809,10 +809,10 @@ msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
 	 * Flush filesystem control info.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, td)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(pmp->pm_devvp, 0, td);
+		VOP_UNLOCK(pmp->pm_devvp, 0);
 	}
 	return (scaninfo.allerror);
 }

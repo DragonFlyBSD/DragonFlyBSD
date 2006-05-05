@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.25 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.26 2006/05/05 21:15:09 dillon Exp $
  */
 
 /*
@@ -192,11 +192,11 @@ fdesc_lookup(struct vop_old_lookup_args *ap)
 		goto bad;
 	}
 
-	VOP_UNLOCK(dvp, 0, td);
+	VOP_UNLOCK(dvp, 0);
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		vref(dvp);	
-		vn_lock(dvp, LK_SHARED | LK_RETRY, td);
+		vn_lock(dvp, LK_SHARED | LK_RETRY);
 		return (0);
 	}
 
@@ -228,12 +228,12 @@ fdesc_lookup(struct vop_old_lookup_args *ap)
 	if (error)
 		goto bad;
 	VTOFDESC(fvp)->fd_fd = fd;
-	vn_lock(fvp, LK_SHARED | LK_RETRY, td);
+	vn_lock(fvp, LK_SHARED | LK_RETRY);
 	*vpp = fvp;
 	return (0);
 
 bad:
-	vn_lock(dvp, LK_SHARED | LK_RETRY, td);
+	vn_lock(dvp, LK_SHARED | LK_RETRY);
 	*vpp = NULL;
 	return (error);
 }

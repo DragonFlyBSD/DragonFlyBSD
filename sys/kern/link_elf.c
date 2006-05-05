@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.17 2005/03/04 00:01:30 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.18 2006/05/05 21:15:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -695,7 +695,7 @@ out:
 	free(shdr, M_LINKER);
     if (firstpage)
 	free(firstpage, M_LINKER);
-    VOP_UNLOCK(vp, 0, td);
+    VOP_UNLOCK(vp, 0);
     vn_close(vp, FREAD, td);
 
     return error;
