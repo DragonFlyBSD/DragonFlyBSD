@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.72 2006/05/04 18:32:22 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.73 2006/05/05 16:15:56 dillon Exp $
  */
 
 /*
@@ -78,13 +78,13 @@ struct	bio_ops bioops;		/* I/O operation notification */
 
 struct buf *buf;		/* buffer header pool */
 
-static void vm_hold_free_pages(struct buf * bp, vm_offset_t from,
+static void vm_hold_free_pages(struct buf *bp, vm_offset_t from,
 		vm_offset_t to);
-static void vm_hold_load_pages(struct buf * bp, vm_offset_t from,
+static void vm_hold_load_pages(struct buf *bp, vm_offset_t from,
 		vm_offset_t to);
 static void vfs_page_set_valid(struct buf *bp, vm_ooffset_t off,
 			       int pageno, vm_page_t m);
-static void vfs_clean_pages(struct buf * bp);
+static void vfs_clean_pages(struct buf *bp);
 static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(void);
@@ -546,7 +546,7 @@ bfreekva(struct buf *bp)
  *	Remove the buffer from the appropriate free list.
  */
 void
-bremfree(struct buf * bp)
+bremfree(struct buf *bp)
 {
 	int old_qindex;
 
@@ -593,7 +593,7 @@ bremfree(struct buf * bp)
  *	getblk() ).
  */
 int
-bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
+bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 {
 	struct buf *bp;
 
@@ -622,7 +622,7 @@ bread(struct vnode * vp, off_t loffset, int size, struct buf ** bpp)
  */
 int
 breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
-	int *rabsize, int cnt, struct buf ** bpp)
+	int *rabsize, int cnt, struct buf **bpp)
 {
 	struct buf *bp, *rabp;
 	int i;
@@ -676,7 +676,7 @@ breadn(struct vnode *vp, off_t loffset, int size, off_t *raoffset,
  *	here.
  */
 int
-bwrite(struct buf * bp)
+bwrite(struct buf *bp)
 {
 	int oldflags;
 
@@ -878,7 +878,7 @@ bundirty(struct buf *bp)
  *	B_INVAL buffers.  Not us.
  */
 void
-bawrite(struct buf * bp)
+bawrite(struct buf *bp)
 {
 	bp->b_flags |= B_ASYNC;
 	(void) VOP_BWRITE(bp->b_vp, bp);
@@ -893,7 +893,7 @@ bawrite(struct buf * bp)
  *	anyway ) is responsible for handling B_INVAL buffers.
  */
 int
-bowrite(struct buf * bp)
+bowrite(struct buf *bp)
 {
 	bp->b_flags |= B_ORDERED | B_ASYNC;
 	return (VOP_BWRITE(bp->b_vp, bp));
@@ -942,7 +942,7 @@ buf_dirty_count_severe(void)
  *	to be accessed later as a cache entity or reused for other purposes.
  */
 void
-brelse(struct buf * bp)
+brelse(struct buf *bp)
 {
 #ifdef INVARIANTS
 	int saved_flags = bp->b_flags;
@@ -1279,7 +1279,7 @@ brelse(struct buf * bp)
  *	XXX we should be able to leave the B_RELBUF hint set on completion.
  */
 void
-bqrelse(struct buf * bp)
+bqrelse(struct buf *bp)
 {
 	crit_enter();
 
@@ -2695,7 +2695,7 @@ allocbuf(struct buf *bp, int size)
  *	set to BUF_CMD_DONE.
  */
 int
-biowait(struct buf * bp)
+biowait(struct buf *bp)
 {
 	crit_enter();
 	while (bp->b_cmd != BUF_CMD_DONE) {
