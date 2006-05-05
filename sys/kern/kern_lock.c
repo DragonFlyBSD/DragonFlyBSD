@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.18 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.19 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -167,12 +167,13 @@ acquire(struct lock *lkp, int extflags, int wanted)
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags, struct thread *td)
+lockmgr(struct lock *lkp, u_int flags)
 #else
-debuglockmgr(struct lock *lkp, u_int flags, struct thread *td,
+debuglockmgr(struct lock *lkp, u_int flags,
 	     const char *name, const char *file, int line)
 #endif
 {
+	thread_t td;
 	int error;
 	int extflags;
 	static int didpanic;
@@ -212,6 +213,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct thread *td,
 	spin_lock(&lkp->lk_spinlock);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
+	td = curthread;
 
 	switch (flags & LK_TYPE_MASK) {
 	case LK_SHARED:
@@ -429,6 +431,16 @@ debuglockmgr(struct lock *lkp, u_int flags, struct thread *td,
 	}
 	spin_unlock(&lkp->lk_spinlock);
 	return (error);
+}
+
+void
+lockmgr_kernproc(struct lock *lp)
+{
+	struct thread *td = curthread;
+
+	KASSERT(lp->lk_lockholder == td, ("lockmgr_kernproc: lock not owned by curthread %p", td));
+	COUNT(td, -1);
+	lp->lk_lockholder = LK_KERNTHREAD;
 }
 
 /*

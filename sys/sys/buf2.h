@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.16 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.17 2006/05/05 20:15:01 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -71,7 +71,7 @@ static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
 	bp->b_lock.lk_wmesg = buf_wmesg;
-	return (lockmgr(&(bp)->b_lock, locktype, curthread));
+	return (lockmgr(&(bp)->b_lock, locktype));
 }
 /*
  * Get a lock sleeping with specified interruptably and timeout.
@@ -87,7 +87,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int timo)
 {
 	bp->b_lock.lk_wmesg = wmesg;
 	bp->b_lock.lk_timo = timo;
-	return (lockmgr(&(bp)->b_lock, locktype | LK_TIMELOCK, curthread));
+	return (lockmgr(&(bp)->b_lock, locktype | LK_TIMELOCK));
 }
 /*
  * Release a lock. Only the acquiring process may free the lock unless
@@ -96,7 +96,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int timo)
 static __inline void
 BUF_UNLOCK(struct buf *bp)
 {
-	lockmgr(&(bp)->b_lock, LK_RELEASE, curthread);
+	lockmgr(&(bp)->b_lock, LK_RELEASE);
 }
 
 /*
@@ -108,11 +108,7 @@ BUF_UNLOCK(struct buf *bp)
 static __inline void
 BUF_KERNPROC(struct buf *bp)
 {
-	struct thread *td = curthread;
-
-	if (bp->b_lock.lk_lockholder == td)
-		td->td_locks--;
-	bp->b_lock.lk_lockholder = LK_KERNTHREAD;
+	lockmgr_kernproc(&(bp)->b_lock);
 }
 /*
  * Find out the number of references to a lock.

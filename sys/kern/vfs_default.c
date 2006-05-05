@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.36 2006/05/05 16:35:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.37 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1252,15 +1252,15 @@ vop_stdlock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
 		int a_flags;
-		struct proc *a_p;
+		struct thread *a_td;
 	} */ *ap;
 {               
 	int error;
 
 #ifndef	DEBUG_LOCKS
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags, ap->a_td);
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags);
 #else
-	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags, ap->a_td,
+	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags,
 			"vop_stdlock", ap->a_vp->filename, ap->a_vp->line);
 #endif
 	return(error);
@@ -1276,7 +1276,7 @@ vop_stdunlock(ap)
 {
 	int error;
 
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE, ap->a_td);
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE);
 	return(error);
 }
 

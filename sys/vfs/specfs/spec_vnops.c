@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.40 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.41 2006/05/05 20:15:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -464,12 +464,12 @@ spec_strategy(struct vop_strategy_args *ap)
 	KKASSERT(vp->v_rdev != NULL);	/* XXX */
 	if (vn_isdisk(vp, NULL) && (mp = vp->v_rdev->si_mountpoint) != NULL) {
 		if (bp->b_cmd == BUF_CMD_READ) {
-			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
+			if (bp->b_flags & B_ASYNC)
 				mp->mnt_stat.f_asyncreads++;
 			else
 				mp->mnt_stat.f_syncreads++;
 		} else {
-			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
+			if (bp->b_flags & B_ASYNC)
 				mp->mnt_stat.f_asyncwrites++;
 			else
 				mp->mnt_stat.f_syncwrites++;

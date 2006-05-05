@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.35 2006/05/05 16:35:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.36 2006/05/05 20:15:01 dillon Exp $
  * 
  */
 
@@ -1696,7 +1696,6 @@ coda_lock(void *v)
     struct vop_lock_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    struct thread *td = ap->a_td;
 /* upcall decl */
 /* locals */
 
@@ -1708,9 +1707,9 @@ coda_lock(void *v)
     }
 
 #ifndef	DEBUG_LOCKS
-    return (lockmgr(&vp->v_lock, ap->a_flags, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags));
 #else
-    return (debuglockmgr(&vp->v_lock, ap->a_flags, td,
+    return (debuglockmgr(&vp->v_lock, ap->a_flags,
 			 "coda_lock", vp->filename, vp->line));
 #endif
 }
@@ -1722,7 +1721,6 @@ coda_unlock(void *v)
     struct vop_unlock_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    struct thread *td = ap->a_td;
 /* upcall decl */
 /* locals */
 
@@ -1732,7 +1730,7 @@ coda_unlock(void *v)
 		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
     }
 
-    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE));
 }
 
 int

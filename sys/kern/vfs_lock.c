@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.14 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.15 2006/05/05 20:15:01 dillon Exp $
  */
 
 /*
@@ -235,13 +235,13 @@ vdrop(struct vnode *vp)
 static int
 __vxlock(struct vnode *vp, int flags)
 {
-	return(lockmgr(&vp->v_lock, flags, curthread));
+	return(lockmgr(&vp->v_lock, flags));
 }
 
 static void
 __vxunlock(struct vnode *vp)
 {
-	lockmgr(&vp->v_lock, LK_RELEASE, curthread);
+	lockmgr(&vp->v_lock, LK_RELEASE);
 }
 
 int

@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.16 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.17 2006/05/05 20:15:01 dillon Exp $
  */
 
 
@@ -195,14 +195,14 @@ int
 nfs_rslock(struct nfsnode *np, struct thread *td)
 {
         return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE |
-		       LK_SLEEPFAIL, td));
+		       LK_SLEEPFAIL));
 }
 
 static __inline
 void
 nfs_rsunlock(struct nfsnode *np, struct thread *td)
 {
-	lockmgr(&np->n_rslock, LK_RELEASE, td);
+	lockmgr(&np->n_rslock, LK_RELEASE);
 }
 
 static __inline

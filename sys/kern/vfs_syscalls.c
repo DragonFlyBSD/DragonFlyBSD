@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.82 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.83 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -534,7 +534,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (flags & MNT_FORCE)
 		mp->mnt_kern_flag |= MNTK_UNMOUNTF;
 	lflags = LK_EXCLUSIVE | ((flags & MNT_FORCE) ? 0 : LK_NOWAIT);
-	error = lockmgr(&mp->mnt_lock, lflags, td);
+	error = lockmgr(&mp->mnt_lock, lflags);
 	if (error) {
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
@@ -560,7 +560,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 			vfs_allocate_syncvnode(mp);
 		mp->mnt_kern_flag &= ~(MNTK_UNMOUNT | MNTK_UNMOUNTF);
 		mp->mnt_flag |= async_flag;
-		lockmgr(&mp->mnt_lock, LK_RELEASE, td);
+		lockmgr(&mp->mnt_lock, LK_RELEASE);
 		if (mp->mnt_kern_flag & MNTK_MWAIT)
 			wakeup(mp);
 		return (error);
@@ -593,7 +593,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
 		panic("unmount: dangling vnode");
-	lockmgr(&mp->mnt_lock, LK_RELEASE, td);
+	lockmgr(&mp->mnt_lock, LK_RELEASE);
 	if (mp->mnt_kern_flag & MNTK_MWAIT)
 		wakeup(mp);
 	free(mp, M_MOUNT);

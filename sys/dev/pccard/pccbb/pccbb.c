@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.14 2006/04/23 03:08:01 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.15 2006/05/05 20:15:01 dillon Exp $
  */
 
 /*
@@ -703,9 +703,9 @@ cbb_release_helper(device_t brdev)
 {
 	struct cbb_softc *sc = device_get_softc(brdev);
 
-	lockmgr(&sc->lock, LK_EXCLUSIVE, curthread);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	sc->flags |= CBB_KTHREAD_DONE;
-	lockmgr(&sc->lock, LK_RELEASE, curthread);
+	lockmgr(&sc->lock, LK_RELEASE);
 	if (sc->flags & CBB_KTHREAD_RUNNING) {
 		wakeup(sc);
 		tsleep(cbb_detach, 0, "pccbb", 2);
@@ -916,7 +916,7 @@ cbb_event_thread(void *arg)
 		 * if there's a card already inserted, we do the
 		 * right thing.
 		 */
-		lockmgr(&sc->lock, LK_EXCLUSIVE, curthread);
+		lockmgr(&sc->lock, LK_EXCLUSIVE);
 		if (sc->flags & CBB_KTHREAD_DONE)
 			break;
 
@@ -926,7 +926,7 @@ cbb_event_thread(void *arg)
 			cbb_insert(sc);
 		else
 			cbb_removal(sc);
-		lockmgr(&sc->lock, LK_RELEASE, curthread);
+		lockmgr(&sc->lock, LK_RELEASE);
 		/* mtx_unlock(&Giant); */
 
 		/*
@@ -940,7 +940,7 @@ cbb_event_thread(void *arg)
 			err = tsleep(sc, 0, "pccbb", 1 * hz);
 	}
 	sc->flags &= ~CBB_KTHREAD_RUNNING;
-	lockmgr(&sc->lock, LK_RELEASE, curthread);
+	lockmgr(&sc->lock, LK_RELEASE);
 	/* mtx_lock(&Giant); */
 	kthread_exit();
 }
@@ -1041,9 +1041,9 @@ cbb_intr(void *arg)
 		 * excellent results.
 		 */
 		if (sockevent & CBB_SOCKET_EVENT_CD) {
-			lockmgr(&sc->lock, LK_EXCLUSIVE, curthread);
+			lockmgr(&sc->lock, LK_EXCLUSIVE);
 			sc->flags &= ~CBB_CARD_OK;
-			lockmgr(&sc->lock, LK_RELEASE, curthread);
+			lockmgr(&sc->lock, LK_RELEASE);
 			wakeup(sc);
 		}
 		if (sockevent & CBB_SOCKET_EVENT_CSTS) {

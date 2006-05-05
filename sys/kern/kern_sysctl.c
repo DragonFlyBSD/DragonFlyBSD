@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.20 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.21 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1289,23 +1289,24 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 static void
 sysctl_lock(int flag)
 {
-	lockmgr(&sysctl_lkp, flag, curthread);
+	lockmgr(&sysctl_lkp, flag);
 }
 
 static void
 sysctl_unlock(void)
 {
-	lockmgr(&sysctl_lkp, LK_RELEASE, curthread);
+	lockmgr(&sysctl_lkp, LK_RELEASE);
 }
 
 static void
 sysctl_ctx_lock(int flag)
 {
-	lockmgr(&sysctl_ctx_lkp, flag, curthread);
+	lockmgr(&sysctl_ctx_lkp, flag);
 }
 
 static void
 sysctl_ctx_unlock(void)
 {
-	lockmgr(&sysctl_ctx_lkp, LK_RELEASE, curthread);
+	lockmgr(&sysctl_ctx_lkp, LK_RELEASE);
 }
+

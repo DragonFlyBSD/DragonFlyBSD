@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.19 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.20 2006/05/05 20:15:02 dillon Exp $
  */
 
 /*
@@ -569,7 +569,7 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 	vm_object_t obj, bigobj;
 	int nothingwired;
 
-	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT, curthread)) {
+	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT)) {
 		return;
 	}
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.9 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.10 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 	if (!req->oldptr)
 	    return SYSCTL_OUT(req, 0, exec_res_id);
 
-	lockmgr(&exec_list_lock, LK_SHARED, td);
+	lockmgr(&exec_list_lock, LK_SHARED);
 	TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 		struct xresident xres;
 		error = fill_xresident(vmres, &xres, td);
@@ -154,7 +154,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 		if (error != 0)
 			break;
 	}
-	lockmgr(&exec_list_lock, LK_RELEASE, td);
+	lockmgr(&exec_list_lock, LK_RELEASE);
 
 	return (error);
 }
@@ -210,9 +210,9 @@ exec_sys_register(struct exec_sys_register_args *uap)
     vmres->vr_entry_addr = (intptr_t)uap->entry;
     vmres->vr_vmspace = vmspace_fork(p->p_vmspace); /* XXX order */
 
-    lockmgr(&exec_list_lock, LK_EXCLUSIVE, curthread);
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
-    lockmgr(&exec_list_lock, LK_RELEASE, curthread);
+    lockmgr(&exec_list_lock, LK_RELEASE);
 
     return(0);
 }
@@ -249,7 +249,7 @@ exec_sys_unregister(struct exec_sys_unregister_args *uap)
     error = ENOENT;
     count = 0;
 
-    lockmgr(&exec_list_lock, LK_EXCLUSIVE, curthread);
+    lockmgr(&exec_list_lock, LK_EXCLUSIVE);
 restart:
     TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
 	if (id == -2 || vmres->vr_id == id) {
@@ -270,7 +270,7 @@ restart:
 	    goto restart;
 	}
     }
-    lockmgr(&exec_list_lock, LK_RELEASE, curthread);
+    lockmgr(&exec_list_lock, LK_RELEASE);
     if (error == 0)
 	uap->sysmsg_result = count;
     return(error);

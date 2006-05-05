@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.26 2006/04/23 03:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.27 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -326,14 +326,14 @@ linker_find_file_by_name(const char* filename)
 	goto out;
     sprintf(koname, "%s.ko", filename);
 
-    lockmgr(&lock, LK_SHARED, curthread);
+    lockmgr(&lock, LK_SHARED);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
 	if (!strcmp(lf->filename, koname))
 	    break;
 	if (!strcmp(lf->filename, filename))
 	    break;
     }
-    lockmgr(&lock, LK_RELEASE, curthread);
+    lockmgr(&lock, LK_RELEASE);
 
 out:
     if (koname)
@@ -346,11 +346,11 @@ linker_find_file_by_id(int fileid)
 {
     linker_file_t lf = 0;
 
-    lockmgr(&lock, LK_SHARED, curthread);
+    lockmgr(&lock, LK_SHARED);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link))
 	if (lf->id == fileid)
 	    break;
-    lockmgr(&lock, LK_RELEASE, curthread);
+    lockmgr(&lock, LK_RELEASE);
 
     return lf;
 }
@@ -369,7 +369,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 	filename = pathname;
 
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
-    lockmgr(&lock, LK_EXCLUSIVE, curthread);
+    lockmgr(&lock, LK_EXCLUSIVE);
     namelen = strlen(filename) + 1;
     lf = malloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
     if (!lf)
@@ -392,7 +392,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     TAILQ_INSERT_TAIL(&linker_files, lf, link);
 
 out:
-    lockmgr(&lock, LK_RELEASE, curthread);
+    lockmgr(&lock, LK_RELEASE);
     return lf;
 }
 
@@ -409,7 +409,7 @@ linker_file_unload(linker_file_t file)
 	return EPERM; 
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
-    lockmgr(&lock, LK_EXCLUSIVE, curthread);
+    lockmgr(&lock, LK_EXCLUSIVE);
     if (file->refs == 1) {
 	KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
 	/*
@@ -430,7 +430,7 @@ linker_file_unload(linker_file_t file)
 	    if ((error = module_unload(mod)) != 0) {
 		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
 			       mod));
-		lockmgr(&lock, LK_RELEASE, curthread);
+		lockmgr(&lock, LK_RELEASE);
 		file->refs--;
 		goto out;
 	    }
@@ -460,7 +460,7 @@ linker_file_unload(linker_file_t file)
 
     file->refs--;
     if (file->refs > 0) {
-	lockmgr(&lock, LK_RELEASE, curthread);
+	lockmgr(&lock, LK_RELEASE);
 	goto out;
     }
 
@@ -471,7 +471,7 @@ linker_file_unload(linker_file_t file)
     }
 
     TAILQ_REMOVE(&linker_files, file, link);
-    lockmgr(&lock, LK_RELEASE, curthread);
+    lockmgr(&lock, LK_RELEASE);
 
     for (i = 0; i < file->ndeps; i++)
 	linker_file_unload(file->deps[i]);

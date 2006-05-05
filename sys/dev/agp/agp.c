@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.19 2006/04/23 03:07:59 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.20 2006/05/05 20:15:01 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -485,11 +485,11 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	vm_page_t m;
 	int error;
 
-	lockmgr(&sc->as_lock, LK_EXCLUSIVE, curthread);
+	lockmgr(&sc->as_lock, LK_EXCLUSIVE);
 
 	if (mem->am_is_bound) {
 		device_printf(dev, "memory already bound\n");
-		lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+		lockmgr(&sc->as_lock, LK_RELEASE);
 		return EINVAL;
 	}
 	
@@ -500,7 +500,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 			      (int) offset, (int)mem->am_size,
 			      (int)AGP_GET_APERTURE(dev));
 		printf("Check BIOS's aperature size vs X\n");
-		lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+		lockmgr(&sc->as_lock, LK_RELEASE);
 		return EINVAL;
 	}
 
@@ -548,7 +548,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 							   OFF_TO_IDX(k));
 					vm_page_unwire(m, 0);
 				}
-				lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+				lockmgr(&sc->as_lock, LK_RELEASE);
 				return error;
 			}
 		}
@@ -569,7 +569,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	mem->am_offset = offset;
 	mem->am_is_bound = 1;
 
-	lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+	lockmgr(&sc->as_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -581,11 +581,11 @@ agp_generic_unbind_memory(device_t dev, struct agp_memory *mem)
 	vm_page_t m;
 	int i;
 
-	lockmgr(&sc->as_lock, LK_EXCLUSIVE, curthread);
+	lockmgr(&sc->as_lock, LK_EXCLUSIVE);
 
 	if (!mem->am_is_bound) {
 		device_printf(dev, "memory is not bound\n");
-		lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+		lockmgr(&sc->as_lock, LK_RELEASE);
 		return EINVAL;
 	}
 
@@ -607,7 +607,7 @@ agp_generic_unbind_memory(device_t dev, struct agp_memory *mem)
 	mem->am_offset = 0;
 	mem->am_is_bound = 0;
 
-	lockmgr(&sc->as_lock, LK_RELEASE, curthread);
+	lockmgr(&sc->as_lock, LK_RELEASE);
 
 	return 0;
 }
