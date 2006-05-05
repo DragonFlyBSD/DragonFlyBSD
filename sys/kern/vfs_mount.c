@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.15 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.16 2006/05/05 21:27:53 dillon Exp $
  */
 
 /*
@@ -242,7 +242,7 @@ getspecialvnode(enum vtagtype tag, struct mount *mp,
  * be unmountable until the lock is released.
  */
 int
-vfs_busy(struct mount *mp, int flags, struct thread *td)
+vfs_busy(struct mount *mp, int flags)
 {
 	int lkflags;
 
@@ -270,7 +270,7 @@ vfs_busy(struct mount *mp, int flags, struct thread *td)
  * Free a busy filesystem.
  */
 void
-vfs_unbusy(struct mount *mp, struct thread *td)
+vfs_unbusy(struct mount *mp)
 {
 	lockmgr(&mp->mnt_lock, LK_RELEASE);
 }
@@ -284,7 +284,6 @@ vfs_unbusy(struct mount *mp, struct thread *td)
 int
 vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct vfsconf *vfsp;
 	struct mount *mp;
 
@@ -299,7 +298,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
 	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
-	vfs_busy(mp, LK_NOWAIT, td);
+	vfs_busy(mp, LK_NOWAIT);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	TAILQ_INIT(&mp->mnt_jlist);
@@ -766,10 +765,10 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		while ((mp = info.msi_node) != NULL) {
 			if (how & MNTSCAN_NOBUSY) {
 				count = callback(mp, data);
-			} else if (vfs_busy(mp, LK_NOWAIT, td) == 0) {
+			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
 				count = callback(mp, data);
 				if (mp == info.msi_node)
-					vfs_unbusy(mp, td);
+					vfs_unbusy(mp);
 			} else {
 				count = 0;
 			}
@@ -784,10 +783,10 @@ mountlist_scan(int (*callback)(struct mount *, void *), void *data, int how)
 		while ((mp = info.msi_node) != NULL) {
 			if (how & MNTSCAN_NOBUSY) {
 				count = callback(mp, data);
-			} else if (vfs_busy(mp, LK_NOWAIT, td) == 0) {
+			} else if (vfs_busy(mp, LK_NOWAIT) == 0) {
 				count = callback(mp, data);
 				if (mp == info.msi_node)
-					vfs_unbusy(mp, td);
+					vfs_unbusy(mp);
 			} else {
 				count = 0;
 			}

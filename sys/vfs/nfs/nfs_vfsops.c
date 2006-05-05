@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.39 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.40 2006/05/05 21:27:57 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -565,7 +565,7 @@ nfs_mountroot(mp)
 			crit_exit();
 			return (error);
 		}
-		vfs_unbusy(swap_mp, td);
+		vfs_unbusy(swap_mp);
 
 		VTONFS(vp)->n_size = VTONFS(vp)->n_vattr.va_size = 
 				nd->swap_nblks * DEV_BSIZE ;
@@ -582,7 +582,7 @@ nfs_mountroot(mp)
 
 	mp->mnt_flag |= MNT_ROOTFS;
 	mp->mnt_vnodecovered = NULLVP;
-	vfs_unbusy(mp, td);
+	vfs_unbusy(mp);
 
 	/*
 	 * This is not really an nfs issue, but it is much easier to
@@ -644,7 +644,7 @@ haderror:
 #endif
 		printf("nfs_mountroot: mount %s on %s: %d", path, which, error);
 		mp->mnt_vfc->vfc_refcount--;
-		vfs_unbusy(mp, td);
+		vfs_unbusy(mp);
 		if (didalloc)
 			free(mp, M_MOUNT);
 		FREE(nam, M_SONAME);

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.65 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.66 2006/05/05 21:27:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1737,7 +1737,7 @@ cache_resolve_mp(struct namecache *ncp)
 
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
 		cache_unlock(ncp);
-		while (vfs_busy(mp, 0, curthread))
+		while (vfs_busy(mp, 0))
 			;
 		error = VFS_ROOT(mp, &vp);
 		cache_lock(ncp);
@@ -1757,7 +1757,7 @@ cache_resolve_mp(struct namecache *ncp)
 		} else if (error == 0) {
 			vput(vp);
 		}
-		vfs_unbusy(mp, curthread);
+		vfs_unbusy(mp);
 	}
 	return(ncp->nc_error);
 }

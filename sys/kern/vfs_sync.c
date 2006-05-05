@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.8 2005/11/14 18:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.9 2006/05/05 21:27:53 dillon Exp $
  */
 
 /*
@@ -400,7 +400,7 @@ sync_fsync(struct vop_fsync_args *ap)
 	 * the VM issues and must be called whether the mount is readonly
 	 * or not.
 	 */
-	if (vfs_busy(mp, LK_NOWAIT, td) != 0)
+	if (vfs_busy(mp, LK_NOWAIT) != 0)
 		return (0);
 	if (mp->mnt_flag & MNT_RDONLY) {
 		vfs_msync(mp, MNT_NOWAIT);
@@ -412,7 +412,7 @@ sync_fsync(struct vop_fsync_args *ap)
 		if (asyncflag)
 			mp->mnt_flag |= MNT_ASYNC;
 	}
-	vfs_unbusy(mp, td);
+	vfs_unbusy(mp);
 	return (0);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.12 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.13 2006/05/05 21:27:58 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -118,7 +118,7 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	type = cmds & SUBCMDMASK;
 	if ((uint)type >= MAXQUOTAS)
 		return (EINVAL);
-	if (vfs_busy(mp, LK_NOWAIT, td))
+	if (vfs_busy(mp, LK_NOWAIT))
 		return (0);
 
 	switch (cmd) {
@@ -151,7 +151,7 @@ ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 		error = EINVAL;
 		break;
 	}
-	vfs_unbusy(mp, td);
+	vfs_unbusy(mp);
 	return (error);
 #endif
 }

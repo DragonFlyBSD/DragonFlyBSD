@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.39 2006/05/05 21:15:09 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.40 2006/05/05 21:27:56 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -180,7 +180,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	type = cmds & SUBCMDMASK;
 	if ((uint)type >= MAXQUOTAS)
 		return (EINVAL);
-	if (vfs_busy(mp, LK_NOWAIT, td))
+	if (vfs_busy(mp, LK_NOWAIT))
 		return (0);
 
 	switch (cmd) {
@@ -213,7 +213,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 		error = EINVAL;
 		break;
 	}
-	vfs_unbusy(mp, td);
+	vfs_unbusy(mp);
 	return (error);
 #endif
 }
@@ -275,10 +275,10 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			if (vfs_busy(mp, LK_NOWAIT, td))
+			if (vfs_busy(mp, LK_NOWAIT))
 				return (EBUSY);
 			error = ext2_flushfiles(mp, flags, td);
-			vfs_unbusy(mp, td);
+			vfs_unbusy(mp);
 			if (!error && fs->s_wasvalid) {
 				fs->s_es->s_state |= EXT2_VALID_FS;
 				ext2_sbupdate(ump, MNT_WAIT);

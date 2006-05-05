@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.84 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.85 2006/05/05 21:27:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -198,7 +198,7 @@ mount(struct mount_args *uap)
 			vput(vp);
 			return (error);
 		}
-		if (vfs_busy(mp, LK_NOWAIT, td)) {
+		if (vfs_busy(mp, LK_NOWAIT)) {
 			cache_drop(ncp);
 			vput(vp);
 			return (EBUSY);
@@ -206,7 +206,7 @@ mount(struct mount_args *uap)
 		if ((vp->v_flag & VMOUNT) != 0 ||
 		    vp->v_mountedhere != NULL) {
 			cache_drop(ncp);
-			vfs_unbusy(mp, td);
+			vfs_unbusy(mp);
 			vput(vp);
 			return (EBUSY);
 		}
@@ -294,7 +294,7 @@ mount(struct mount_args *uap)
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	lockinit(&mp->mnt_lock, "vfslock", 0, LK_NOPAUSE);
-	vfs_busy(mp, LK_NOWAIT, td);
+	vfs_busy(mp, LK_NOWAIT);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;
 	vfsp->vfc_refcount++;
@@ -336,7 +336,7 @@ update:
 			mp->mnt_flag = flag;
 			mp->mnt_kern_flag = flag2;
 		}
-		vfs_unbusy(mp, td);
+		vfs_unbusy(mp);
 		vp->v_flag &= ~VMOUNT;
 		vrele(vp);
 		cache_drop(ncp);
@@ -370,7 +370,7 @@ update:
 		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
 		VOP_UNLOCK(vp, 0);
 		error = vfs_allocate_syncvnode(mp);
-		vfs_unbusy(mp, td);
+		vfs_unbusy(mp);
 		if ((error = VFS_START(mp, 0, td)) != 0)
 			vrele(vp);
 	} else {
@@ -381,7 +381,7 @@ update:
 		vfs_rm_vnodeops(&mp->mnt_vn_fifo_ops);
 		vp->v_flag &= ~VMOUNT;
 		mp->mnt_vfc->vfc_refcount--;
-		vfs_unbusy(mp, td);
+		vfs_unbusy(mp);
 		free(mp, M_MOUNT);
 		cache_drop(ncp);
 		vput(vp);
