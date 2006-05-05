@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.21 2006/05/04 18:32:20 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.22 2006/05/05 09:28:05 swildner Exp $
  */
 
 /*
@@ -426,7 +426,6 @@ vnstrategy(dev_t dev, struct bio *bio)
 	 */
 bad:
 	bp->b_error = EINVAL;
-error:
 	bp->b_flags |= B_ERROR | B_INVAL;
 done:
 	biodone(bio);
