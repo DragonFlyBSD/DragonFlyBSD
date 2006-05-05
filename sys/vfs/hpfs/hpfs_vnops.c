@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.32 2006/04/24 22:01:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.33 2006/05/05 16:35:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1240,7 +1240,6 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_getpages_desc, (vnodeopv_entry_t) hpfs_getpages },
 	{ &vop_putpages_desc, (vnodeopv_entry_t) hpfs_putpages },
 	{ &vop_strategy_desc, (vnodeopv_entry_t)hpfs_strategy },
-	{ &vop_bwrite_desc, (vnodeopv_entry_t)vop_stdbwrite },
 	{ &vop_read_desc, (vnodeopv_entry_t)hpfs_read },
 	{ &vop_write_desc, (vnodeopv_entry_t)hpfs_write },
 	{ &vop_ioctl_desc, (vnodeopv_entry_t)hpfs_ioctl },

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.58 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.59 2006/05/05 16:35:08 dillon Exp $
  */
 
 
@@ -129,7 +129,6 @@ static int	nfsspec_access (struct vop_access_args *);
 static int	nfs_readlink (struct vop_readlink_args *);
 static int	nfs_print (struct vop_print_args *);
 static int	nfs_advlock (struct vop_advlock_args *);
-static int	nfs_bwrite (struct vop_bwrite_args *);
 
 static	int	nfs_nresolve (struct vop_nresolve_args *);
 /*
@@ -140,7 +139,6 @@ struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_access_desc,		(vnodeopv_entry_t) nfs_access },
 	{ &vop_advlock_desc,		(vnodeopv_entry_t) nfs_advlock },
 	{ &vop_bmap_desc,		(vnodeopv_entry_t) nfs_bmap },
-	{ &vop_bwrite_desc,		(vnodeopv_entry_t) nfs_bwrite },
 	{ &vop_close_desc,		(vnodeopv_entry_t) nfs_close },
 	{ &vop_old_create_desc,		(vnodeopv_entry_t) nfs_create },
 	{ &vop_fsync_desc,		(vnodeopv_entry_t) nfs_fsync },
@@ -3063,7 +3061,7 @@ nfs_flush_bp(struct buf *bp, void *data)
 
 			bp->b_flags |= B_ASYNC;
 			crit_exit();
-			VOP_BWRITE(bp->b_vp, bp);
+			bwrite(bp);
 		} else {
 			crit_exit();
 			error = 0;
@@ -3225,63 +3223,6 @@ nfs_print(struct vop_print_args *ap)
 		fifo_printinfo(vp);
 	printf("\n");
 	return (0);
-}
-
-/*
- * Just call nfs_writebp() with the force argument set to 1.
- *
- * nfs_bwrite(struct vnode *a_bp)
- */
-static int
-nfs_bwrite(struct vop_bwrite_args *ap)
-{
-	return (nfs_writebp(ap->a_bp, 1, curthread));
-}
-
-/*
- * This is a clone of vn_bwrite(), except that it also handles the
- * B_NEEDCOMMIT flag.  We set B_CACHE if this is a VMIO buffer.
- */
-int
-nfs_writebp(struct buf *bp, int force, struct thread *td)
-{
-	int error;
-
-	if (BUF_REFCNT(bp) == 0)
-		panic("bwrite: buffer is not locked???");
-
-	if (bp->b_flags & B_INVAL) {
-		brelse(bp);
-		return(0);
-	}
-
-	bp->b_flags |= B_CACHE;
-
-	/*
-	 * Undirty the bp.  We will redirty it later if the I/O fails.
-	 */
-	crit_enter();
-	bundirty(bp);
-	bp->b_flags &= ~B_ERROR;
-	bp->b_cmd = BUF_CMD_WRITE;
-	crit_exit();
-
-	/*
-	 * Note: to avoid loopback deadlocks, we do not
-	 * assign b_runningbufspace.
-	 */
-	vfs_busy_pages(bp->b_vp, bp);
-	BUF_KERNPROC(bp);
-
-	if (bp->b_flags & B_ASYNC) {
-		vn_strategy(bp->b_vp, &bp->b_bio1);
-		error = 0;
-	} else {
-		vn_strategy(bp->b_vp, &bp->b_bio1);
-		error = biowait(bp);
-		brelse(bp);
-	} 
-	return (error);
 }
 
 /*

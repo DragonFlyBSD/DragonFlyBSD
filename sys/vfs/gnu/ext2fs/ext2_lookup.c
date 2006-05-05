@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.19 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.20 2006/05/05 16:35:05 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -843,7 +843,7 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 		ep = (struct ext2_dir_entry_2 *)((char *)ep + dsize);
 	}
 	bcopy((caddr_t)&newdir, (caddr_t)ep, (u_int)newentrysize);
-	error = VOP_BWRITE(bp->b_vp, bp);
+	error = bwrite(bp);
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	if (!error && dp->i_endoff && dp->i_endoff < dp->i_size)
 		error = EXT2_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC,
@@ -880,7 +880,7 @@ ext2_dirremove(struct vnode *dvp, struct componentname *cnp)
 		    EXT2_BLKATOFF(dvp, (off_t)dp->i_offset, (char **)&ep, &bp)) != 0)
 			return (error);
 		ep->inode = 0;
-		error = VOP_BWRITE(bp->b_vp, bp);
+		error = bwrite(bp);
 		dp->i_flag |= IN_CHANGE | IN_UPDATE;
 		return (error);
 	}
@@ -891,7 +891,7 @@ ext2_dirremove(struct vnode *dvp, struct componentname *cnp)
 	    (char **)&ep, &bp)) != 0)
 		return (error);
 	ep->rec_len += dp->i_reclen;
-	error = VOP_BWRITE(bp->b_vp, bp);
+	error = bwrite(bp);
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	return (error);
 }
@@ -917,7 +917,7 @@ ext2_dirrewrite(struct inode *dp, struct inode *ip, struct componentname *cnp)
 		ep->file_type = DTTOFT(IFTODT(ip->i_mode));
 	else
 		ep->file_type = EXT2_FT_UNKNOWN;
-	error = VOP_BWRITE(bp->b_vp, bp);
+	error = bwrite(bp);
 	dp->i_flag |= IN_CHANGE | IN_UPDATE;
 	return (error);
 }

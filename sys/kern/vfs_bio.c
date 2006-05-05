@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.73 2006/05/05 16:15:56 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.74 2006/05/05 16:35:00 dillon Exp $
  */
 
 /*
@@ -881,7 +881,7 @@ void
 bawrite(struct buf *bp)
 {
 	bp->b_flags |= B_ASYNC;
-	(void) VOP_BWRITE(bp->b_vp, bp);
+	bwrite(bp);
 }
 
 /*
@@ -896,7 +896,7 @@ int
 bowrite(struct buf *bp)
 {
 	bp->b_flags |= B_ORDERED | B_ASYNC;
-	return (VOP_BWRITE(bp->b_vp, bp));
+	return (bwrite(bp));
 }
 
 /*
@@ -1492,7 +1492,7 @@ vfs_bio_awrite(struct buf *bp)
 	 * XXX returns b_bufsize instead of b_bcount for nwritten?
 	 */
 	nwritten = bp->b_bufsize;
-	(void) VOP_BWRITE(bp->b_vp, bp);
+	bwrite(bp);
 
 	return nwritten;
 }
@@ -2117,7 +2117,7 @@ findblk(struct vnode *vp, off_t loffset)
  *	case it is returned with B_INVAL clear and B_CACHE set based on the
  *	backing VM.
  *
- *	getblk() also forces a VOP_BWRITE() for any B_DELWRI buffer whos
+ *	getblk() also forces a bwrite() for any B_DELWRI buffer whos
  *	B_CACHE bit is clear.
  *	
  *	What this means, basically, is that the caller should use B_CACHE to
@@ -2223,10 +2223,10 @@ loop:
 		if (size != bp->b_bcount) {
 			if (bp->b_flags & B_DELWRI) {
 				bp->b_flags |= B_NOCACHE;
-				VOP_BWRITE(bp->b_vp, bp);
+				bwrite(bp);
 			} else if (LIST_FIRST(&bp->b_dep)) {
 				bp->b_flags |= B_NOCACHE;
-				VOP_BWRITE(bp->b_vp, bp);
+				bwrite(bp);
 			} else {
 				bp->b_flags |= B_RELBUF;
 				brelse(bp);
@@ -2267,7 +2267,7 @@ loop:
 
 		if ((bp->b_flags & (B_CACHE|B_DELWRI)) == B_DELWRI) {
 			bp->b_flags |= B_NOCACHE;
-			VOP_BWRITE(bp->b_vp, bp);
+			bwrite(bp);
 			goto loop;
 		}
 		crit_exit();

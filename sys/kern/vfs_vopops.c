@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.22 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.23 2006/05/05 16:35:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -269,7 +269,6 @@ VNODEOP_DESC_INIT_VP(reallocblks);
 VNODEOP_DESC_INIT_VP(getpages);
 VNODEOP_DESC_INIT_VP(putpages);
 VNODEOP_DESC_INIT_VP(freeblks);
-VNODEOP_DESC_INIT_VP(bwrite);
 VNODEOP_DESC_INIT_VP_CRED(getacl);
 VNODEOP_DESC_INIT_VP_CRED(setacl);
 VNODEOP_DESC_INIT_VP_CRED(aclcheck);
@@ -1021,23 +1020,6 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 }
 
 int
-vop_bwrite(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
-{
-	struct vop_bwrite_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_bwrite_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_bp = bp;
-
-	DO_OPS(ops, error, &ap, vop_bwrite);
-	if (error == 0)
-		cache_update_fsmid_vp(vp);
-	return(error);
-}
-
-int
 vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred, struct thread *td)
 {
@@ -1775,15 +1757,6 @@ vop_freeblks_ap(struct vop_freeblks_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_freeblks);
-	return(error);
-}
-
-int
-vop_bwrite_ap(struct vop_bwrite_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_bwrite);
 	return(error);
 }
 

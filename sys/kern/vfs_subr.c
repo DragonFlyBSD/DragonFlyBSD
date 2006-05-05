@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.80 2006/04/30 18:25:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.81 2006/05/05 16:35:00 dillon Exp $
  */
 
 /*
@@ -393,8 +393,8 @@ vinvalbuf_bp(struct buf *bp, void *data)
 	 * believe there is a slight chance that a delayed
 	 * write will occur while sleeping just above, so
 	 * check for it.  Note that vfs_bio_awrite expects
-	 * buffers to reside on a queue, while VOP_BWRITE and
-	 * brelse do not.
+	 * buffers to reside on a queue, while bwrite() and
+	 * brelse() do not.
 	 */
 	if (((bp->b_flags & (B_DELWRI | B_INVAL)) == B_DELWRI) &&
 	    (info->flags & V_SAVE)) {
@@ -404,11 +404,11 @@ vinvalbuf_bp(struct buf *bp, void *data)
 			} else {
 				bremfree(bp);
 				bp->b_flags |= B_ASYNC;
-				VOP_BWRITE(bp->b_vp, bp);
+				bwrite(bp);
 			}
 		} else {
 			bremfree(bp);
-			VOP_BWRITE(bp->b_vp, bp);
+			bwrite(bp);
 		}
 	} else {
 		bremfree(bp);
@@ -554,7 +554,7 @@ vtruncbuf_bp_metasync(struct buf *bp, void *data)
 			} else {
 				bp->b_flags &= ~B_ASYNC;
 			}
-			VOP_BWRITE(bp->b_vp, bp);
+			bwrite(bp);
 		}
 		return(1);
 	} else {

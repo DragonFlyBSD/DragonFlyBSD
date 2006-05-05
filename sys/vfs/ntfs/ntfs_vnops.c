@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.31 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.32 2006/05/05 16:35:10 dillon Exp $
  *
  */
 
@@ -862,7 +862,6 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_getpages_desc,	(vnodeopv_entry_t)ntfs_getpages },
 	{ &vop_putpages_desc,	(vnodeopv_entry_t)ntfs_putpages },
 	{ &vop_strategy_desc,	(vnodeopv_entry_t)ntfs_strategy },
-	{ &vop_bwrite_desc,	(vnodeopv_entry_t)vop_stdbwrite },
 	{ &vop_read_desc,	(vnodeopv_entry_t)ntfs_read },
 	{ &vop_write_desc,	(vnodeopv_entry_t)ntfs_write },
 

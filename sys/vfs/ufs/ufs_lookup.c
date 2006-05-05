@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.22 2006/04/24 21:45:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.23 2006/05/05 16:35:11 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -762,7 +762,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 			bdwrite(bp);
 			return (UFS_UPDATE(dvp, 0));
 		}
-		error = VOP_BWRITE(bp->b_vp, bp);
+		error = bwrite(bp);
 		ret = UFS_UPDATE(dvp, 1);
 		if (error == 0)
 			return (ret);
@@ -982,7 +982,7 @@ out:
 			softdep_setup_remove(bp, dp, ip, isrmdir);
 		}
 		if (softdep_slowdown(dvp)) {
-			error = VOP_BWRITE(bp->b_vp, bp);
+			error = bwrite(bp);
 		} else {
 			bdwrite(bp);
 			error = 0;
@@ -994,7 +994,7 @@ out:
 			ip->i_flag |= IN_CHANGE;
 		}
 		if (flags & CNP_DOWHITEOUT)
-			error = VOP_BWRITE(bp->b_vp, bp);
+			error = bwrite(bp);
 		else if (DOINGASYNC(dvp) && dp->i_count != 0) {
 			bdwrite(bp);
 			error = 0;

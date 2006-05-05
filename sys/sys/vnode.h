@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.49 2006/04/25 22:11:29 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.50 2006/05/05 16:35:03 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -560,7 +560,6 @@ struct ucred;
 struct uio;
 struct vattr;
 struct vnode;
-struct vop_bwrite_args;
 
 void	addaliasu (struct vnode *vp, udev_t nvp_udev);
 int	v_associate_rdev(struct vnode *vp, dev_t dev);
@@ -631,7 +630,6 @@ void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
-int	vop_stdbwrite (struct vop_bwrite_args *ap);
 int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);
 int	vop_stdrlock (struct vop_lock_args *ap);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.34 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.35 2006/05/05 16:35:08 dillon Exp $
  */
 
 
@@ -998,7 +998,7 @@ again:
 
 		if (bp->b_dirtyend > 0 &&
 		    (on > bp->b_dirtyend || (on + n) < bp->b_dirtyoff)) {
-			if (VOP_BWRITE(vp, bp) == EINTR) {
+			if (bwrite(bp) == EINTR) {
 				error = EINTR;
 				break;
 			}
@@ -1051,7 +1051,7 @@ again:
 		if ((np->n_flag & NDONTCACHE) || (ioflag & IO_SYNC)) {
 			if (ioflag & IO_INVAL)
 				bp->b_flags |= B_NOCACHE;
-			error = VOP_BWRITE(vp, bp);
+			error = bwrite(bp);
 			if (error)
 				break;
 			if (np->n_flag & NDONTCACHE) {
@@ -1061,7 +1061,7 @@ again:
 			}
 		} else if ((n + on) == biosize) {
 			bp->b_flags |= B_ASYNC;
-			nfs_writebp(bp, 0, 0);
+			bwrite(bp);
 		} else {
 			bdwrite(bp);
 		}

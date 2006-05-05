@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.32 2006/04/07 06:38:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.33 2006/05/05 16:35:08 dillon Exp $
  */
 
 /*
@@ -3486,7 +3486,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				}
 				bremfree(bp);
 				bp->b_flags &= ~B_ASYNC;
-				VOP_BWRITE(bp->b_vp, bp);
+				bwrite(bp);
 				++nfs_commit_miss;
 			}
 			++nfs_commit_blks;

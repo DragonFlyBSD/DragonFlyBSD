@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.45 2006/05/03 19:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.46 2006/05/05 16:35:11 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1452,7 +1452,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	}
 	if ((error = UFS_UPDATE(tvp, !(DOINGSOFTDEP(tvp) |
 				       DOINGASYNC(tvp)))) != 0) {
-		VOP_BWRITE(bp->b_vp, bp);
+		bwrite(bp);
 		goto bad;
 	}
 	/*
@@ -1468,7 +1468,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	 */
 	if (DOINGASYNC(dvp))
 		bdwrite(bp);
-	else if (!DOINGSOFTDEP(dvp) && ((error = VOP_BWRITE(bp->b_vp, bp))))
+	else if (!DOINGSOFTDEP(dvp) && (error = bwrite(bp)) != 0)
 		goto bad;
 	ufs_makedirentry(ip, cnp, &newdir);
 	error = ufs_direnter(dvp, tvp, &newdir, cnp, bp);

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.35 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.36 2006/05/05 16:35:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,6 @@ struct vop_ops *default_vnode_vops;
 static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_eopnotsupp },
 	{ &vop_advlock_desc,		vop_einval },
-	{ &vop_bwrite_desc,		(void *) vop_stdbwrite },
 	{ &vop_fsync_desc,		vop_null },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
@@ -1331,13 +1330,6 @@ vop_stdpoll(ap)
 	if (ap->a_events & ~POLLSTANDARD)
 		return (vn_pollrecord(ap->a_vp, ap->a_td, ap->a_events));
 	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
-}
-
-int
-vop_stdbwrite(ap)
-	struct vop_bwrite_args *ap;
-{
-	return (bwrite(ap->a_bp));
 }
 
 /* 

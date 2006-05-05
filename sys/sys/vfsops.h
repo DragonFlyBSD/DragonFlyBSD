@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.19 2006/04/25 22:11:29 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.20 2006/05/05 16:35:03 dillon Exp $
  */
 
 /*
@@ -394,12 +394,6 @@ struct vop_freeblks_args {
 	int a_length;
 };
 
-struct vop_bwrite_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	struct buf *a_bp;
-};
-
 struct vop_getacl_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
@@ -603,15 +597,15 @@ struct vop_ops {
 	int	(*vop_getpages)(struct vop_getpages_args *);
 	int	(*vop_putpages)(struct vop_putpages_args *);
 	int	(*vop_freeblks)(struct vop_freeblks_args *);
-	int	(*vop_bwrite)(struct vop_bwrite_args *);
+	int	(*vop_unused05)(void *);
 	int	(*vop_getacl)(struct vop_getacl_args *);
 	int	(*vop_setacl)(struct vop_setacl_args *);
 	int	(*vop_aclcheck)(struct vop_aclcheck_args *);
 	int	(*vop_getextattr)(struct vop_getextattr_args *);
 	int	(*vop_setextattr)(struct vop_setextattr_args *);
-	int	(*vop_unused05)(void *);
 	int	(*vop_unused06)(void *);
 	int	(*vop_unused07)(void *);
+	int	(*vop_unused08)(void *);
 	int	(*vop_mountctl)(struct vop_mountctl_args *);
 
 	int	(*vop_nresolve)(struct vop_nresolve_args *);
@@ -691,7 +685,6 @@ union vop_args_union {
 	struct vop_getpages_args vu_getpages;
 	struct vop_putpages_args vu_putpages;
 	struct vop_freeblks_args vu_freeblks;
-	struct vop_bwrite_args vu_bwrite;
 	struct vop_getacl_args vu_getacl;
 	struct vop_setacl_args vu_setacl;
 	struct vop_aclcheck_args vu_aclcheck;
@@ -804,7 +797,6 @@ int vop_putpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
 		int count, int sync, int *rtvals, vm_ooffset_t offset);
 int vop_freeblks(struct vop_ops *ops, struct vnode *vp,
 		off_t offset, int length);
-int vop_bwrite(struct vop_ops *ops, struct vnode *vp, struct buf *bp);
 int vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 		struct acl *aclp, struct ucred *cred, struct thread *td);
 int vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
@@ -893,7 +885,6 @@ int vop_reallocblks_ap(struct vop_reallocblks_args *ap);
 int vop_getpages_ap(struct vop_getpages_args *ap);
 int vop_putpages_ap(struct vop_putpages_args *ap);
 int vop_freeblks_ap(struct vop_freeblks_args *ap);
-int vop_bwrite_ap(struct vop_bwrite_args *ap);
 int vop_getacl_ap(struct vop_getacl_args *ap);
 int vop_setacl_ap(struct vop_setacl_args *ap);
 int vop_aclcheck_ap(struct vop_aclcheck_args *ap);
@@ -959,7 +950,6 @@ extern struct vnodeop_desc vop_reallocblks_desc;
 extern struct vnodeop_desc vop_getpages_desc;
 extern struct vnodeop_desc vop_putpages_desc;
 extern struct vnodeop_desc vop_freeblks_desc;
-extern struct vnodeop_desc vop_bwrite_desc;
 extern struct vnodeop_desc vop_getacl_desc;
 extern struct vnodeop_desc vop_setacl_desc;
 extern struct vnodeop_desc vop_aclcheck_desc;
@@ -1043,8 +1033,6 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_putpages(*(vp)->v_ops, vp, m, count, sync, rtvals, off)
 #define VOP_FREEBLKS(vp, offset, length)		\
 	vop_freeblks(*(vp)->v_ops, vp, offset, length)
-#define VOP_BWRITE(vp, bp)				\
-	vop_bwrite(*(vp)->v_ops, vp, bp)
 #define VOP_GETACL(vp, type, aclp, cred, td)		\
 	vop_getacl(*(vp)->v_ops, vp, type, aclp, cred, td)
 #define VOP_SETACL(vp, type, aclp, cred, td)		\

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.16 2006/04/24 19:15:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.17 2006/05/05 16:35:08 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -660,7 +660,6 @@ void	nfs_clearcommit (struct mount *);
 int	nfsrv_errmap (struct nfsrv_descript *, int);
 void	nfsrvw_sort (gid_t *, int);
 void	nfsrv_setcred (struct ucred *, struct ucred *);
-int	nfs_writebp (struct buf *, int, struct thread *);
 int	nfsrv_object_create (struct vnode *);
 void	nfsrv_wakenfsd (struct nfssvc_sock *slp, int nparallel);
 int	nfsrv_writegather (struct nfsrv_descript **, struct nfssvc_sock *,
