@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.113.2.4 2006/02/09 10:48:43 yar Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.26 2006/04/02 03:33:59 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.27 2006/05/05 14:53:41 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1046,8 +1046,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("staticarp",	IFF_STATICARP,	setifflags),
 	DEF_CMD("-staticarp",	-IFF_STATICARP,	setifflags),
 #endif
-	DEF_CMD("polling",	IFF_POLLING,	setifcap),
-	DEF_CMD("-polling",	-IFF_POLLING,	setifcap),
+	DEF_CMD("polling",	IFF_POLLING,	setifflags),
+	DEF_CMD("-polling",	-IFF_POLLING,	setifflags),
 	DEF_CMD("rxcsum",	IFCAP_RXCSUM,	setifcap),
 	DEF_CMD("-rxcsum",	-IFCAP_RXCSUM,	setifcap),
 	DEF_CMD("txcsum",	IFCAP_TXCSUM,	setifcap),
