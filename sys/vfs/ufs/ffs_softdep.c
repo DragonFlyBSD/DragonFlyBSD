@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.42 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.43 2006/05/06 16:20:19 dillon Exp $
  */
 
 /*
@@ -778,7 +778,7 @@ softdep_move_dependencies(oldbp, newbp)
  * Purge the work list of all items associated with a particular mount point.
  */
 int
-softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
+softdep_flushfiles(struct mount *oldmnt, int flags)
 {
 	struct vnode *devvp;
 	int error, loopcnt;
@@ -793,7 +793,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 	}
 	softdep_worklist_busy = -1;
 
-	if ((error = ffs_flushfiles(oldmnt, flags, td)) != 0) {
+	if ((error = ffs_flushfiles(oldmnt, flags)) != 0) {
 		softdep_worklist_busy = 0;
 		if (softdep_worklist_req)
 			wakeup(&softdep_worklist_req);
@@ -813,7 +813,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 			 * Do another flush in case any vnodes were brought in
 			 * as part of the cleanup operations.
 			 */
-			if ((error = ffs_flushfiles(oldmnt, flags, td)) != 0)
+			if ((error = ffs_flushfiles(oldmnt, flags)) != 0)
 				break;
 			/*
 			 * If we still found nothing to do, we are really done.

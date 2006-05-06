@@ -33,7 +33,7 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.7 2005/04/15 19:08:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.8 2006/05/06 16:20:19 dillon Exp $
  */
 
 /* 
@@ -56,7 +56,7 @@
 #include "ufs_extern.h"
 
 int
-softdep_flushfiles(struct mount *oldmnt, int flags, thread_t td)
+softdep_flushfiles(struct mount *oldmnt, int flags)
 {
 	panic("softdep_flushfiles called");
 }

@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.21 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.22 2006/05/06 16:20:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -361,7 +361,6 @@ ufs_chkdquot(struct inode *ip)
  */
 
 struct scaninfo {
-	thread_t td;
 	int rescan;
 	int type;
 };
@@ -372,18 +371,14 @@ struct scaninfo {
 static int ufs_quotaon_scan(struct mount *mp, struct vnode *vp, void *data);
 
 int
-ufs_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
+ufs_quotaon(struct ucred *cred, struct mount *mp, int type, caddr_t fname)
 {
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct vnode *vp, **vpp;
 	struct ufs_dquot *dq;
 	int error;
 	struct nlookupdata nd;
-	struct ucred *cred;
 	struct scaninfo scaninfo;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	vpp = &ump->um_quotas[type];
 	error = nlookup_init(&nd, fname, UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
@@ -401,7 +396,7 @@ ufs_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 
 	VOP_UNLOCK(vp, 0);
 	if (*vpp != vp)
-		ufs_quotaoff(td, mp, type);
+		ufs_quotaoff(mp, type);
 	ump->um_qflags[type] |= QTF_OPENING;
 	mp->mnt_flag |= MNT_QUOTA;
 	vp->v_flag |= VSYSTEM;
@@ -427,7 +422,6 @@ ufs_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	 * NB: only need to add dquot's for inodes being modified.
 	 */
 	scaninfo.rescan = 1;
-	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		error = vmntvnodescan(mp, VMSC_GETVP,
@@ -437,7 +431,7 @@ ufs_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	}
 	ump->um_qflags[type] &= ~QTF_OPENING;
 	if (error)
-		ufs_quotaoff(td, mp, type);
+		ufs_quotaoff(mp, type);
 	return (error);
 }
 
@@ -460,16 +454,12 @@ ufs_quotaon_scan(struct mount *mp, struct vnode *vp, void *data)
 static int ufs_quotaoff_scan(struct mount *mp, struct vnode *vp, void *data);
 
 int
-ufs_quotaoff(struct thread *td, struct mount *mp, int type)
+ufs_quotaoff(struct mount *mp, int type)
 {
 	struct vnode *qvp;
 	struct ufsmount *ump = VFSTOUFS(mp);
-	struct ucred *cred;
 	int error;
 	struct scaninfo scaninfo;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	if ((qvp = ump->um_quotas[type]) == NULLVP)
 		return (0);
@@ -480,7 +470,6 @@ ufs_quotaoff(struct thread *td, struct mount *mp, int type)
 	 * deleting any references to quota file being closed.
 	 */
 	scaninfo.rescan = 1;
-	scaninfo.td = td;
 	scaninfo.type = type;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
@@ -647,7 +636,6 @@ int
 ufs_qsync(struct mount *mp)
 {
 	struct ufsmount *ump = VFSTOUFS(mp);
-	struct thread *td = curthread;		/* XXX */
 	struct scaninfo scaninfo;
 	int i;
 
@@ -665,7 +653,6 @@ ufs_qsync(struct mount *mp)
 	 * synchronizing any modified ufs_dquot structures.
 	 */
 	scaninfo.rescan = 1;
-	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT,

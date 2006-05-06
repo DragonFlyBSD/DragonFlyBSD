@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.11 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.12 2006/05/06 16:20:19 dillon Exp $
  */
 
 #ifndef _VFS_UFS_EXTERN_H
@@ -79,13 +79,12 @@ ufs_daddr_t ffs_blkpref(struct inode *, ufs_daddr_t, int, ufs_daddr_t *);
 int	ffs_bmap(struct vop_bmap_args *);
 void	ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
 int	ffs_fhtovp(struct mount *, struct fid *, struct vnode **);
-int	ffs_flushfiles(struct mount *, int, struct thread *);
+int	ffs_flushfiles(struct mount *, int);
 void	ffs_fragacct(struct fs *, int, int32_t [], int);
 int	ffs_freefile( struct vnode *, ino_t, int );
 int	ffs_isblock(struct fs *, u_char *, ufs_daddr_t);
 int	ffs_isfreeblock(struct fs *, unsigned char *, ufs_daddr_t);
-int	ffs_mountfs(struct vnode *, struct mount *, struct thread *,
-	     struct malloc_type *);
+int	ffs_mountfs(struct vnode *, struct mount *, struct malloc_type *);
 int	ffs_mountroot(void);
 int	ffs_reallocblks(struct vop_reallocblks_args *);
 int	ffs_realloccg(struct inode *,
@@ -107,7 +106,7 @@ int	ffs_vptofh(struct vnode *, struct fid *);
  */
 void	softdep_initialize(void);
 int	softdep_mount(struct vnode *, struct mount *, struct fs *);
-int	softdep_flushfiles(struct mount *, int, struct thread *);
+int	softdep_flushfiles(struct mount *, int);
 void	softdep_update_inodeblock(struct inode *, struct buf *, int);
 void	softdep_load_inodeblock(struct inode *);
 void	softdep_freefile(struct vnode *, ino_t, int);

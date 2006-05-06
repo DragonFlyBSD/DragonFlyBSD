@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.29 2006/05/04 18:32:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.30 2006/05/06 16:20:18 dillon Exp $
  */
 
 
@@ -285,7 +285,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			err = ffs_flushfiles(mp, flags, td);
+			err = ffs_flushfiles(mp, flags);
 			if (err)
 				goto error_1;
 		}
@@ -362,7 +362,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
 	vx_unlock(devvp);
-	if ((err = ffs_mountfs(devvp, mp, td, M_MFSNODE)) != 0) { 
+	if ((err = ffs_mountfs(devvp, mp, M_MFSNODE)) != 0) { 
 		mfsp->mfs_active = 0;
 		goto error_2;
 	}

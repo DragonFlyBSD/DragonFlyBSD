@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.41 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.42 2006/05/06 16:20:19 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -65,7 +65,7 @@
 static MALLOC_DEFINE(M_FFSNODE, "FFS node", "FFS vnode private part");
 
 static int	ffs_sbupdate (struct ufsmount *, int);
-static int	ffs_reload (struct mount *,struct ucred *,struct thread *);
+static int	ffs_reload (struct mount *, struct ucred *);
 static int	ffs_oldfscompat (struct fs *);
 static int	ffs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	ffs_init (struct vfsconf *);
@@ -164,7 +164,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			return (error);
 		}
 
-		if( ( error = ffs_mountfs(rootvp, mp, td, M_FFSNODE)) != 0) {
+		if( ( error = ffs_mountfs(rootvp, mp, M_FFSNODE)) != 0) {
 			/* fs specific cleanup (if any)*/
 			goto error_1;
 		}
@@ -208,14 +208,14 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
 			if (mp->mnt_flag & MNT_SOFTDEP) {
-				error = softdep_flushfiles(mp, flags, td);
+				error = softdep_flushfiles(mp, flags);
 			} else {
-				error = ffs_flushfiles(mp, flags, td);
+				error = ffs_flushfiles(mp, flags);
 			}
 			ronly = 1;
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD)) {
-			error = ffs_reload(mp, NULL, td);
+			error = ffs_reload(mp, NULL);
 		}
 		if (error) {
 			goto error_1;
@@ -360,7 +360,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				&size);				/* real size*/
 		bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-		error = ffs_mountfs(devvp, mp, td, M_FFSNODE);
+		error = ffs_mountfs(devvp, mp, M_FFSNODE);
 	}
 	if (error) {
 		goto error_2;
@@ -433,13 +433,12 @@ struct scaninfo {
 	int rescan;
 	struct fs *fs;
 	struct vnode *devvp;
-	thread_t td;
 	int waitfor;
 	int allerror;
 };
 
 static int
-ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
+ffs_reload(struct mount *mp, struct ucred *cred)
 {
 	struct vnode *devvp;
 	void *space;
@@ -542,7 +541,6 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	scaninfo.rescan = 0;
 	scaninfo.fs = fs;
 	scaninfo.devvp = devvp;
-	scaninfo.td = td;
 	while (error == 0 && scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		error = vmntvnodescan(mp, VMSC_GETVX, 
@@ -589,8 +587,7 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
  * Common code for mount and mountroot
  */
 int
-ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
-	    struct malloc_type *malloctype)
+ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 {
 	struct ufsmount *ump;
 	struct buf *bp;
@@ -677,7 +674,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	}
 	ump = malloc(sizeof *ump, M_UFSMNT, M_WAITOK);
 	bzero((caddr_t)ump, sizeof *ump);
-	ump->um_malloctype = malloctype;
+	ump->um_malloctype = mtype;
 	ump->um_i_effnlink_valid = 1;
 	ump->um_fs = malloc((u_long)fs->fs_sbsize, M_UFSMNT,
 	    M_WAITOK);
@@ -836,10 +833,10 @@ ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
 		flags |= FORCECLOSE;
 	}
 	if (mp->mnt_flag & MNT_SOFTDEP) {
-		if ((error = softdep_flushfiles(mp, flags, td)) != 0)
+		if ((error = softdep_flushfiles(mp, flags)) != 0)
 			return (error);
 	} else {
-		if ((error = ffs_flushfiles(mp, flags, td)) != 0)
+		if ((error = ffs_flushfiles(mp, flags)) != 0)
 			return (error);
 	}
 	ump = VFSTOUFS(mp);
@@ -871,7 +868,7 @@ ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
  * Flush out all the files in a filesystem.
  */
 int
-ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
+ffs_flushfiles(struct mount *mp, int flags)
 {
 	struct ufsmount *ump;
 	int error;
@@ -887,7 +884,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
-			ufs_quotaoff(td, mp, i);
+			ufs_quotaoff(mp, i);
 		}
 		/*
 		 * Here we fall through to vflush again to ensure
