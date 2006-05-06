@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.23 2006/05/05 20:15:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.24 2006/05/06 23:53:34 dillon Exp $
  */
 
 /*
@@ -385,7 +385,7 @@ RetryFault:
 			/*
 			 * Ratelimit.
 			 */
-			if (didlimit == 0) {
+			if (didlimit == 0 && curproc != NULL) {
 				limticks = 
 					vm_fault_ratelimit(curproc->p_vmspace);
 				if (limticks) {
@@ -571,9 +571,12 @@ readrest:
 			 * the same time that we are.
 			 */
 
-			if (rv == VM_PAGER_ERROR)
-				printf("vm_fault: pager read error, pid %d (%s)\n",
-				    curproc->p_pid, curproc->p_comm);
+			if (rv == VM_PAGER_ERROR) {
+				if (curproc)
+					printf("vm_fault: pager read error, pid %d (%s)\n", curproc->p_pid, curproc->p_comm);
+				else
+					printf("vm_fault: pager read error, thread %p (%s)\n", curthread, curproc->p_comm);
+			}
 			/*
 			 * Data outside the range of the pager or an I/O error
 			 */
