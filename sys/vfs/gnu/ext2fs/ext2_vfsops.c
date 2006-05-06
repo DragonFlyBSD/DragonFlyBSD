@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.41 2006/05/06 02:43:13 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.42 2006/05/06 16:33:26 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -76,12 +76,11 @@ extern struct vnodeopv_entry_desc ext2_specop_entries[];
 extern struct vnodeopv_entry_desc ext2_fifoop_entries[];
 
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
-static int ext2_flushfiles (struct mount *mp, int flags, struct thread *td);
+static int ext2_flushfiles (struct mount *mp, int flags);
 static int ext2_mount (struct mount *, char *, caddr_t, struct thread *);
-static int ext2_mountfs (struct vnode *, struct mount *, struct thread *);
+static int ext2_mountfs (struct vnode *, struct mount *);
 static int ext2_root(struct mount *, struct vnode **);
-static int ext2_reload (struct mount *mountp, struct ucred *cred,
-			struct thread *p);
+static int ext2_reload (struct mount *mountp, struct ucred *cred);
 static int ext2_sbupdate (struct ext2mount *, int);
 static int ext2_statfs (struct mount *, struct statfs *, struct thread *);
 static int ext2_sync (struct mount *, int);
@@ -190,7 +189,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 		break;
 
 	case Q_QUOTAOFF:
-		error = ext2_quotaoff(td, mp, type);
+		error = ext2_quotaoff(mp, type);
 		break;
 
 	case Q_SETQUOTA:
@@ -277,7 +276,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 				flags |= FORCECLOSE;
 			if (vfs_busy(mp, LK_NOWAIT))
 				return (EBUSY);
-			error = ext2_flushfiles(mp, flags, td);
+			error = ext2_flushfiles(mp, flags);
 			vfs_unbusy(mp);
 			if (!error && fs->s_wasvalid) {
 				fs->s_es->s_state |= EXT2_VALID_FS;
@@ -290,7 +289,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			VOP_UNLOCK(devvp, 0);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
-			error = ext2_reload(mp, proc0.p_ucred, td);
+			error = ext2_reload(mp, proc0.p_ucred);
 		if (error)
 			return (error);
 		if (ext2_check_sb_compat(fs->s_es, devvp->v_rdev,
@@ -375,7 +374,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
-		error = ext2_mountfs(devvp, mp, td);
+		error = ext2_mountfs(devvp, mp);
 	} else {
 		if (devvp != ump->um_devvp)
 			error = EINVAL;	/* needs translation */
@@ -600,7 +599,7 @@ struct scaninfo {
 };
 
 static int
-ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
+ext2_reload(struct mount *mountp, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct buf *bp;
@@ -699,7 +698,7 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
  * Common code for mount and mountroot
  */
 static int
-ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
+ext2_mountfs(struct vnode *devvp, struct mount *mp)
 {
 	struct ext2mount *ump;
 	struct buf *bp;
@@ -859,7 +858,7 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 			return (EINVAL);
 		flags |= FORCECLOSE;
 	}
-	if ((error = ext2_flushfiles(mp, flags, td)) != 0)
+	if ((error = ext2_flushfiles(mp, flags)) != 0)
 		return (error);
 	ump = VFSTOEXT2(mp);
 	fs = ump->um_e2fs;
@@ -899,7 +898,7 @@ ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
  * Flush out all the files in a filesystem.
  */
 static int
-ext2_flushfiles(struct mount *mp, int flags, struct thread *td)
+ext2_flushfiles(struct mount *mp, int flags)
 {
 	struct ext2mount *ump;
 	int error;
@@ -915,7 +914,7 @@ ext2_flushfiles(struct mount *mp, int flags, struct thread *td)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
-			ext2_quotaoff(td, mp, i);
+			ext2_quotaoff(mp, i);
 		}
 		/*
 		 * Here we fall through to vflush again to ensure
