@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.21 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.22 2006/05/06 06:38:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,7 +382,7 @@ linux_connect(struct linux_connect_args *args, int *res)
 			error = so->so_error;
 		so->so_emuldata = (void *)1;
 	}
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 

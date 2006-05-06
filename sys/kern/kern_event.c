@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.21 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.22 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -379,7 +379,7 @@ kqueue(struct kqueue_args *uap)
 	TAILQ_INIT(&kq->kq_head);
 	fp->f_data = kq;
 	uap->sysmsg_result = fd;
-	fdrop(fp, curthread);
+	fdrop(fp);
 	if (fdp->fd_knlistsize < 0)
 		fdp->fd_knlistsize = 0;		/* this process has a kq */
 	kq->kq_fdp = fdp;
@@ -455,7 +455,7 @@ kevent(struct kevent_args *uap)
 	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, td, &uap->sysmsg_result);
 done:
 	if (fp != NULL)
-		fdrop(fp, p->p_thread);
+		fdrop(fp);
 	return (error);
 }
 
@@ -585,7 +585,7 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 
 done:
 	if (fp != NULL)
-		fdrop(fp, td);
+		fdrop(fp);
 	return (error);
 }
 
@@ -795,7 +795,7 @@ kqueue_close(struct file *fp)
 			kn0 = SLIST_NEXT(kn, kn_link);
 			if (kq == kn->kn_kq) {
 				kn->kn_fop->f_detach(kn);
-				fdrop(kn->kn_fp, td);
+				fdrop(kn->kn_fp);
 				knote_free(kn);
 				*knp = kn0;
 			} else {
@@ -939,7 +939,7 @@ knote_drop(struct knote *kn, struct thread *td)
 	if (kn->kn_status & KN_QUEUED)
 		knote_dequeue(kn);
 	if (kn->kn_fop->f_isfd)
-		fdrop(kn->kn_fp, td);
+		fdrop(kn->kn_fp);
 	knote_free(kn);
 }
 

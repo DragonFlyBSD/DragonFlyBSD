@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.26 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.27 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -234,7 +234,7 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
 	} else {
 		error = dofileread(fd, fp, auio, flags, res);
 	}
-	fdrop(fp, td);
+	fdrop(fp);
 	return(error);
 }
 
@@ -421,7 +421,7 @@ kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 		error = dofilewrite(fd, fp, auio, flags, res);
 	}
 	
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -625,7 +625,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			if (error) {
 				if (memp != NULL)
 					free(memp, M_IOCTLOPS);
-				fdrop(fp, td);
+				fdrop(fp);
 				return(error);
 			}
 		} else {
@@ -678,7 +678,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	}
 	if (memp != NULL)
 		free(memp, M_IOCTLOPS);
-	fdrop(fp, td);
+	fdrop(fp);
 	return(error);
 }
 

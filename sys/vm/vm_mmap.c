@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.26 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.27 2006/05/06 06:38:39 dillon Exp $
  */
 
 /*
@@ -373,7 +373,7 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 		*res = (void *)(addr + pageoff);
 done:
 	if (fp)
-		fdrop(fp, td);
+		fdrop(fp);
 	return (error);
 }
 

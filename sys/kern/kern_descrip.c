@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.53 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.54 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -241,31 +241,31 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		tmp = fp->f_flag & FNONBLOCK;
 		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
 		if (error) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (error);
 		}
 		tmp = fp->f_flag & FASYNC;
 		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
 		if (!error) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (0);
 		}
 		fp->f_flag &= ~FNONBLOCK;
 		tmp = 0;
 		fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
-		fdrop(fp, td);
+		fdrop(fp);
 		return (error);
 
 	case F_GETOWN:
 		fhold(fp);
 		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner, cred);
-		fdrop(fp, td);
+		fdrop(fp);
 		return(error);
 
 	case F_SETOWN:
 		fhold(fp);
 		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner, cred);
-		fdrop(fp, td);
+		fdrop(fp);
 		return(error);
 
 	case F_SETLKW:
@@ -321,7 +321,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 			(void) VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
 					   F_UNLCK, &dat->fc_flock, F_POSIX);
 		}
-		fdrop(fp, td);
+		fdrop(fp);
 		return(error);
 
 	case F_GETLK:
@@ -335,14 +335,14 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		if (dat->fc_flock.l_type != F_RDLCK &&
 		    dat->fc_flock.l_type != F_WRLCK &&
 		    dat->fc_flock.l_type != F_UNLCK) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (EINVAL);
 		}
 		if (dat->fc_flock.l_whence == SEEK_CUR)
 			dat->fc_flock.l_start += fp->f_offset;
 		error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_GETLK,
 			    &dat->fc_flock, F_POSIX);
-		fdrop(fp, td);
+		fdrop(fp);
 		return(error);
 	default:
 		return (EINVAL);
@@ -450,7 +450,7 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	if (type == DUP_VARIABLE || new >= fdp->fd_nfiles) {
 		error = fdalloc(p, new, &newfd);
 		if (error) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (error);
 		}
 		fdalloced = TRUE;
@@ -473,7 +473,7 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 			    fdp->fd_files[fdp->fd_lastfile].fp == NULL)
 				fdp->fd_lastfile--;
 		}
-		fdrop(fp, td);
+		fdrop(fp);
 		return (EBADF);
 	}
 	KASSERT(old != new, ("new fd is same as old"));
@@ -760,7 +760,7 @@ kern_shutdown(int fd, int how)
 		return (EBADF);
 	fhold(fp);
 	error = fo_shutdown(fp, how);
-	fdrop(fp, td);
+	fdrop(fp);
 
 	return (error);
 }
@@ -792,7 +792,7 @@ kern_fstat(int fd, struct stat *ub)
 		return (EBADF);
 	fhold(fp);
 	error = fo_stat(fp, ub, p->p_ucred);
-	fdrop(fp, td);
+	fdrop(fp);
 
 	return (error);
 }
@@ -854,7 +854,7 @@ fpathconf(struct fpathconf_args *uap)
 		error = EOPNOTSUPP;
 		break;
 	}
-	fdrop(fp, td);
+	fdrop(fp);
 	return(error);
 }
 
@@ -1084,7 +1084,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
 	if (resultfd) {
 		if ((error = fsetfd(p, fp, resultfd)) != 0) {
-			fdrop(fp, p->p_thread);
+			fdrop(fp);
 			fp = NULL;
 		}
 	} else {
@@ -1334,7 +1334,7 @@ fdfree(struct proc *p)
 						   F_UNLCK,
 						   &lf,
 						   F_POSIX);
-				fdrop(fp, p->p_thread);
+				fdrop(fp);
 				/* reload due to possible reallocation */
 				fdnode = &fdp->fd_files[i];
 			}
@@ -1520,7 +1520,6 @@ fdcloseexec(struct proc *p)
 int
 fdcheckstd(struct proc *p)
 {
-	struct thread *td = p->p_thread;
 	struct nlookupdata nd;
 	struct filedesc *fdp;
 	struct file *fp;
@@ -1546,7 +1545,7 @@ fdcheckstd(struct proc *p)
 				error = vn_open(&nd, fp, flags, 0);
 			if (error == 0)
 				error = fsetfd(p, fp, &fd);
-			fdrop(fp, td);
+			fdrop(fp);
 			nlookup_done(&nd);
 			if (error)
 				break;
@@ -1632,11 +1631,11 @@ closef(struct file *fp, struct thread *td)
 			}
 		}
 	}
-	return (fdrop(fp, td));
+	return (fdrop(fp));
 }
 
 int
-fdrop(struct file *fp, struct thread *td)
+fdrop(struct file *fp)
 {
 	struct flock lf;
 	struct vnode *vp;
@@ -1784,7 +1783,7 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, curthread);
+			fdrop(fp);
 		return (0);
 
 	case ENXIO:
@@ -1805,7 +1804,7 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 * used to own.  Release it.
 		 */
 		if (fp)
-			fdrop(fp, curthread);
+			fdrop(fp);
 		/*
 		 * Complete the clean up of the filedesc structure by
 		 * recomputing the various hints.

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file2.h,v 1.4 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/file2.h,v 1.5 2006/05/06 06:38:39 dillon Exp $
  */
 
 #ifndef _SYS_FILE2_H_
@@ -57,7 +57,7 @@ fo_read(
 
 	fhold(fp);
 	error = (*fp->f_ops->fold_read)(fp, uio, cred, flags);
-	fdrop(fp, curthread);
+	fdrop(fp);
 	return (error);
 }
 
@@ -72,7 +72,7 @@ fo_write(
 
 	fhold(fp);
 	error = (*fp->f_ops->fold_write)(fp, uio, cred, flags);
-	fdrop(fp, curthread);
+	fdrop(fp);
 	return (error);
 }
 
@@ -87,7 +87,7 @@ fo_ioctl(
 
 	fhold(fp);
 	error = (*fp->f_ops->fold_ioctl)(fp, com, data, cred);
-	fdrop(fp, curthread);
+	fdrop(fp);
 	return (error);
 }
 
@@ -101,7 +101,7 @@ fo_poll(
 
 	fhold(fp);
 	error = (*fp->f_ops->fold_poll)(fp, events, cred);
-	fdrop(fp, curthread);
+	fdrop(fp);
 	return (error);
 }
 
@@ -112,7 +112,7 @@ fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 
 	fhold(fp);
 	error = (*fp->f_ops->fold_stat)(fp, sb, cred);
-	fdrop(fp, curthread);
+	fdrop(fp);
 	return (error);
 }
 

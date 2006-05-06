@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.18 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.19 2006/05/06 06:38:39 dillon Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		return (error);
 	so = (struct socket *) fp->f_data;
 	if (so->so_proto->pr_domain->dom_family != AF_UNIX) {
-		fdrop(fp, td);
+		fdrop(fp);
 		return (ESOCKTNOSUPPORT);
 	}
 
@@ -119,7 +119,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	if (error) {
 		FREE(fmp, M_PORTALFSMNT);
 		FREE(pn, M_TEMP);
-		fdrop(fp, td);
+		fdrop(fp);
 		return (error);
 	}
 
@@ -147,7 +147,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	vx_unlock(rvp);
 
 	(void)portal_statfs(mp, &mp->mnt_stat, td);
-	fdrop(fp, td);
+	fdrop(fp);
 	return (0);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.24 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.25 2006/05/06 06:38:38 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -432,7 +432,7 @@ journal_restart(struct mount *mp, struct file *fp,
     journal_destroy_threads(jo, flags);
 
     if (jo->fp)
-	fdrop(jo->fp, curthread);
+	fdrop(jo->fp);
 
     /*
      * Associate the new descriptor, reset the FIFO index, and recreate
@@ -497,7 +497,7 @@ journal_destroy(struct mount *mp, struct journal *jo, int flags)
     journal_destroy_threads(jo, flags);
 
     if (jo->fp)
-	fdrop(jo->fp, curthread);
+	fdrop(jo->fp);
     if (jo->fifo.membase)
 	free(jo->fifo.membase, M_JFIFO);
     free(jo, M_JOURNAL);

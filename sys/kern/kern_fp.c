@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.16 2006/05/06 06:38:38 dillon Exp $
  */
 
 /*
@@ -115,7 +115,7 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	error = vn_open(&nd, fp, flags, mode);
     nlookup_done(&nd);
     if (error) {
-	fdrop(fp, td);
+	fdrop(fp);
 	*fpp = NULL;
     }
     return(error);
@@ -191,7 +191,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
 bad1:
     fp->f_ops = &badfileops;	/* open failed, don't close */
     fp->f_data = NULL;
-    fdrop(fp, td);
+    fdrop(fp);
     /* leave the vnode intact, but fall through and unlock it anyway */
 bad2:
     *fpp = NULL;
@@ -588,7 +588,7 @@ done:
 int
 fp_close(file_t fp)
 {
-    return(fdrop(fp, curthread));
+    return(fdrop(fp));
 }
 
 int

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.86 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.87 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -757,7 +757,7 @@ mountctl(struct mountctl_args *uap)
 	 */
 	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
 	if (fp)
-		fdrop(fp, td);
+		fdrop(fp);
 	if (error == 0 && uap->sysmsg_result > 0)
 		error = copyout(buf, uap->buf, uap->sysmsg_result);
 done:
@@ -1318,16 +1318,16 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 				error = dupfdopen(fdp, indx, lp->lwp_dupfd, flags, error);
 				if (error == 0) {
 					*res = indx;
-					fdrop(fp, td);	/* our ref */
+					fdrop(fp);	/* our ref */
 					return (0);
 				}
 				if (fdp->fd_files[indx].fp == fp) {
 					funsetfd(fdp, indx);
-					fdrop(fp, td);	/* fd_files[] ref */
+					fdrop(fp);	/* fd_files[] ref */
 				}
 			}
 		}
-		fdrop(fp, td);	/* our ref */
+		fdrop(fp);	/* our ref */
 		if (error == ERESTART)
 			error = EINTR;
 		return (error);
@@ -1341,7 +1341,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	if ((error = fsetfd(p, fp, &indx)) != 0) {
-		fdrop(fp, td);
+		fdrop(fp);
 		vrele(vp);
 		return (error);
 	}
@@ -1365,7 +1365,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		    ("Open file descriptor lost all refs"));
 		vrele(vp);
 		fo_close(fp);
-		fdrop(fp, td);
+		fdrop(fp);
 		*res = indx;
 		return 0;
 	}
@@ -1392,9 +1392,9 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			vrele(vp);
 			if (fdp->fd_files[indx].fp == fp) {
 				funsetfd(fdp, indx);
-				fdrop(fp, td);
+				fdrop(fp);
 			}
-			fdrop(fp, td);
+			fdrop(fp);
 			return (error);
 		}
 		fp->f_flag |= FHASLOCK;
@@ -1414,7 +1414,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
-	fdrop(fp, td);
+	fdrop(fp);
 	*res = indx;
 	return (0);
 }
@@ -3197,7 +3197,7 @@ fhopen(struct fhopen_args *uap)
 		 */
 		fp->f_ops = &badfileops;
 		fp->f_data = NULL;
-		fdrop(fp, td);
+		fdrop(fp);
 		goto bad;
 	}
 
@@ -3208,7 +3208,7 @@ fhopen(struct fhopen_args *uap)
 	 */
 	if (vp->v_type == VREG && vp->v_object == NULL) {
 		printf("fhopen: regular file did not have VM object: %p\n", vp);
-		fdrop(fp, td);
+		fdrop(fp);
 		goto bad;
 	}
 
@@ -3216,7 +3216,7 @@ fhopen(struct fhopen_args *uap)
 	 * The open was successful, associate it with a file descriptor.
 	 */
 	if ((error = fsetfd(p, fp, &indx)) != 0) {
-		fdrop(fp, td);
+		fdrop(fp);
 		goto bad;
 	}
 
@@ -3240,13 +3240,13 @@ fhopen(struct fhopen_args *uap)
 			 */
 			if (fdp->fd_files[indx].fp == fp) {
 				funsetfd(fdp, indx);
-				fdrop(fp, td);
+				fdrop(fp);
 			}
 
 			/*
 			 * release our private reference.
 			 */
-			fdrop(fp, td);
+			fdrop(fp);
 			vrele(vp);
 			return (error);
 		}
@@ -3255,7 +3255,7 @@ fhopen(struct fhopen_args *uap)
 	}
 
 	vput(vp);
-	fdrop(fp, td);
+	fdrop(fp);
 	uap->sysmsg_result = indx;
 	return (0);
 

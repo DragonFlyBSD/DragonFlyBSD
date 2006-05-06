@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.26 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.27 2006/05/06 06:38:38 dillon Exp $
  */
 
 /*
@@ -386,7 +386,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 	}
 	aiocbe->jobstate = JOBST_NULL;
 	callout_stop(&aiocbe->timeout);
-	fdrop(aiocbe->fd_file, curthread);
+	fdrop(aiocbe->fd_file);
 	TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 	return 0;
 }
@@ -1214,7 +1214,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 		jobrefid++;
 	
 	if (opcode == LIO_NOP) {
-		fdrop(fp, p->p_thread);
+		fdrop(fp);
 		TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 		if (type == 0) {
 			suword(&job->_aiocb_private.error, 0);
@@ -1264,7 +1264,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 	error = kqueue_register(kq, &kev, p->p_thread);
 aqueue_fail:
 	if (error) {
-		fdrop(fp, p->p_thread);
+		fdrop(fp);
 		TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 		if (type == 0)
 			suword(&job->_aiocb_private.error, error);

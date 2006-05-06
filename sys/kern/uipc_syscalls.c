@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.64 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.65 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -120,7 +120,7 @@ kern_socket(int domain, int type, int protocol, int *res)
 	if (error) {
 		if (fdp->fd_files[fd].fp == fp) {
 			funsetfd(fdp, fd);
-			fdrop(fp, td);
+			fdrop(fp);
 		}
 	} else {
 		fp->f_type = DTYPE_SOCKET;
@@ -129,7 +129,7 @@ kern_socket(int domain, int type, int protocol, int *res)
 		fp->f_data = so;
 		*res = fd;
 	}
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -157,7 +157,7 @@ kern_bind(int s, struct sockaddr *sa)
 	if (error)
 		return (error);
 	error = sobind((struct socket *)fp->f_data, sa, td);
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -192,7 +192,7 @@ kern_listen(int s, int backlog)
 	if (error)
 		return (error);
 	error = solisten((struct socket *)fp->f_data, backlog, td);
-	fdrop(fp, td);
+	fdrop(fp);
 	return(error);
 }
 
@@ -274,7 +274,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	error = falloc(p, &nfp, &fd);
 	if (error) {		/* Probably ran out of file descriptors. */
 		*res = -1;
-		fdrop(lfp, td);
+		fdrop(lfp);
 		return (error);
 	}
 	*res = fd;
@@ -353,7 +353,7 @@ done:
 		*res = -1;
 		if (fdp->fd_files[fd].fp == nfp) {
 			funsetfd(fdp, fd);
-			fdrop(nfp, td);
+			fdrop(nfp);
 		}
 	}
 
@@ -361,8 +361,8 @@ done:
 	 * Release explicitly held references before returning.
 	 */
 	if (nfp)
-		fdrop(nfp, td);
-	fdrop(lfp, td);
+		fdrop(nfp);
+	fdrop(lfp);
 	return (error);
 }
 
@@ -463,7 +463,7 @@ bad:
 	if (error == ERESTART)
 		error = EINTR;
 done:
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -527,21 +527,21 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
 	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
 	fp1->f_ops = fp2->f_ops = &socketops;
-	fdrop(fp1, td);
-	fdrop(fp2, td);
+	fdrop(fp1);
+	fdrop(fp2);
 	return (error);
 free4:
 	if (fdp->fd_files[sv[1]].fp == fp2) {
 		funsetfd(fdp, sv[1]);
-		fdrop(fp2, td);
+		fdrop(fp2);
 	}
-	fdrop(fp2, td);
+	fdrop(fp2);
 free3:
 	if (fdp->fd_files[sv[0]].fp == fp1) {
 		funsetfd(fdp, sv[0]);
-		fdrop(fp1, td);
+		fdrop(fp1);
 	}
-	fdrop(fp1, td);
+	fdrop(fp1);
 free2:
 	(void)soclose(so2);
 free1:
@@ -617,7 +617,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	if (error == 0)
 		*res  = len - auio->uio_resid;
 done:
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -786,7 +786,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	if (error == 0)
 		*res = len - auio->uio_resid;
 done:
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -975,7 +975,7 @@ kern_setsockopt(int s, struct sockopt *sopt)
 		return (error);
 
 	error = sosetopt((struct socket *)fp->f_data, sopt);
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -1022,7 +1022,7 @@ kern_getsockopt(int s, struct sockopt *sopt)
 		return (error);
 
 	error = sogetopt((struct socket *)fp->f_data, sopt);
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -1080,7 +1080,7 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
 	if (error)
 		return (error);
 	if (*namelen < 0) {
-		fdrop(fp, td);
+		fdrop(fp);
 		return (EINVAL);
 	}
 	so = (struct socket *)fp->f_data;
@@ -1094,7 +1094,7 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
 		}
 	}
 
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -1144,12 +1144,12 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 	if (error)
 		return (error);
 	if (*namelen < 0) {
-		fdrop(fp, td);
+		fdrop(fp);
 		return (EINVAL);
 	}
 	so = (struct socket *)fp->f_data;
 	if ((so->so_state & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) {
-		fdrop(fp, td);
+		fdrop(fp);
 		return (ENOTCONN);
 	}
 	error = so_pru_peeraddr(so, &sa);
@@ -1162,7 +1162,7 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 		}
 	}
 
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 
@@ -1353,12 +1353,12 @@ sendfile(struct sendfile_args *uap)
 		return (EBADF);
 	}
 	if (fp->f_type != DTYPE_VNODE) {
-		fdrop(fp, td);
+		fdrop(fp);
 		return (EINVAL);
 	}
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
-	fdrop(fp, td);
+	fdrop(fp);
 
 	/*
 	 * If specified, get the pointer to the sf_hdtr struct for
@@ -1710,7 +1710,7 @@ retry_space:
 	sbunlock(&so->so_snd);
 
 done:
-	fdrop(fp, td);
+	fdrop(fp);
 done0:
 	if (mheader != NULL)
 		m_freem(mheader);
@@ -1792,7 +1792,7 @@ noconnection:
 	if (error) {
 		if (fdp->fd_files[fd].fp == nfp) {
 			funsetfd(fdp, fd);
-			fdrop(nfp, td);
+			fdrop(nfp);
 		}
 	}
 	crit_exit();
@@ -1801,8 +1801,8 @@ noconnection:
 	 */
 done:
 	if (nfp != NULL)
-		fdrop(nfp, td);
-	fdrop(lfp, td);
+		fdrop(nfp);
+	fdrop(lfp);
 	return (error);
 #else /* SCTP */
 	return(EOPNOTSUPP);

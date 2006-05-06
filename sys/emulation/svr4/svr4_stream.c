@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.16 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.17 2006/05/06 06:38:37 dillon Exp $
  */
 
 /*
@@ -180,14 +180,14 @@ svr4_sendit(struct thread *td, int s, struct msghdr *mp, int flags,
 	iov = mp->msg_iov;
 	for (i = 0; i < mp->msg_iovlen; i++, iov++) {
 		if ((auio.uio_resid += iov->iov_len) < 0) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (EINVAL);
 		}
 	}
 	if (mp->msg_name) {
 		error = getsockaddr(&to, mp->msg_name, mp->msg_namelen);
 		if (error) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (error);
 		}
 	} else {
@@ -245,7 +245,7 @@ svr4_sendit(struct thread *td, int s, struct msghdr *mp, int flags,
 	}
 #endif
 bad:
-	fdrop(fp, td);
+	fdrop(fp);
 	if (to)
 		FREE(to, M_SONAME);
 	return (error);
@@ -285,7 +285,7 @@ svr4_recvit(struct thread *td, int s, struct msghdr *mp, caddr_t namelenp,
 	iov = mp->msg_iov;
 	for (i = 0; i < mp->msg_iovlen; i++, iov++) {
 		if ((auio.uio_resid += iov->iov_len) < 0) {
-			fdrop(fp, td);
+			fdrop(fp);
 			return (EINVAL);
 		}
 	}
@@ -372,7 +372,7 @@ out:
 		FREE(fromsa, M_SONAME);
 	if (control)
 		m_freem(control);
-	fdrop(fp, td);
+	fdrop(fp);
 	return (error);
 }
 

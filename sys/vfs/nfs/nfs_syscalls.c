@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.23 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.24 2006/05/06 06:38:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -209,12 +209,12 @@ nfssvc(struct nfssvc_args *uap)
 			error = getsockaddr(&nam, nfsdarg.name,
 					    nfsdarg.namelen);
 			if (error) {
-				fdrop(fp, td);
+				fdrop(fp);
 				return (error);
 			}
 		}
 		error = nfssvc_addsock(fp, nam, td);
-		fdrop(fp, td);
+		fdrop(fp);
 	} else {
 		error = copyin(uap->argp, (caddr_t)nsd, sizeof (*nsd));
 		if (error)

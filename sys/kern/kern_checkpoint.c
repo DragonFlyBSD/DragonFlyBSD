@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.6 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.7 2006/05/06 06:38:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -710,7 +710,7 @@ sys_checkpoint(struct sys_checkpoint_args *uap)
 		else
 			error = ckpt_freeze_proc(p, fp);
 		if (fp)
-			fdrop(fp, curthread);
+			fdrop(fp);
 		break;
 	case CKPT_THAW:
 		if (uap->pid != -1)
@@ -719,7 +719,7 @@ sys_checkpoint(struct sys_checkpoint_args *uap)
 			return EBADF;
 		uap->sysmsg_result = uap->retval;
 	        error = ckpt_thaw_proc(p, fp);
-		fdrop(fp, curthread);
+		fdrop(fp);
 		break;
 	default:
 	        error = EOPNOTSUPP;
