@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.36 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.37 2006/05/06 16:01:21 dillon Exp $
  */
 
 
@@ -470,7 +470,7 @@ again:
 			bcount = np->n_size - loffset;
 		}
 		if (bcount != biosize) {
-			switch(nfs_rslock(np, td)) {
+			switch(nfs_rslock(np)) {
 			case ENOLCK:
 				goto again;
 				/* not reached */
@@ -486,7 +486,7 @@ again:
 		bp = nfs_getcacheblk(vp, loffset, bcount, td);
 
 		if (bcount != biosize)
-			nfs_rsunlock(np, td);
+			nfs_rsunlock(np);
 		if (!bp)
 			return (EINTR);
 
@@ -827,7 +827,7 @@ restart:
 	 */
 	if ((ioflag & IO_APPEND) ||
 	    uio->uio_offset + uio->uio_resid > np->n_size) {
-		switch(nfs_rslock(np, td)) {
+		switch(nfs_rslock(np)) {
 		case ENOLCK:
 			goto restart;
 			/* not reached */
@@ -849,7 +849,7 @@ restart:
 	      td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		psignal(td->td_proc, SIGXFSZ);
 		if (haverslock)
-			nfs_rsunlock(np, td);
+			nfs_rsunlock(np);
 		return (EFBIG);
 	}
 
@@ -1068,7 +1068,7 @@ again:
 	} while (uio->uio_resid > 0 && n > 0);
 
 	if (haverslock)
-		nfs_rsunlock(np, td);
+		nfs_rsunlock(np);
 
 	return (error);
 }

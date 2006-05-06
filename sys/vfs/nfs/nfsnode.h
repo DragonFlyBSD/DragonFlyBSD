@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.17 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.18 2006/05/06 16:01:21 dillon Exp $
  */
 
 
@@ -192,7 +192,7 @@ extern struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 
 static __inline
 int
-nfs_rslock(struct nfsnode *np, struct thread *td)
+nfs_rslock(struct nfsnode *np)
 {
         return(lockmgr(&np->n_rslock, LK_EXCLUSIVE | LK_CANRECURSE |
 		       LK_SLEEPFAIL));
@@ -200,7 +200,7 @@ nfs_rslock(struct nfsnode *np, struct thread *td)
 
 static __inline
 void
-nfs_rsunlock(struct nfsnode *np, struct thread *td)
+nfs_rsunlock(struct nfsnode *np)
 {
 	lockmgr(&np->n_rslock, LK_RELEASE);
 }
