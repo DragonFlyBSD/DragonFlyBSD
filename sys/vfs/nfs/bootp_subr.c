@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.13 2006/01/31 19:05:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.14 2006/05/06 03:16:44 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -739,7 +739,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 			sin = (struct sockaddr_in *) &ifctx->ireq.ifr_addr;
 			clear_sinaddr(sin);
 			error = ifioctl(ifctx->so, SIOCSIFNETMASK,
-					(caddr_t) &ifctx->ireq, td);
+					(caddr_t) &ifctx->ireq, proc0.p_ucred);
 			if (error != 0)
 				panic("bootpc_call:"
 				      "set if netmask, error=%d",
@@ -761,7 +761,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 			clear_sinaddr(sin);
 			sin->sin_addr.s_addr = htonl(0xff000000u);
 			error = ifioctl(ifctx->so, SIOCSIFNETMASK,
-					(caddr_t) &ifctx->ireq, td);
+					(caddr_t) &ifctx->ireq, proc0.p_ucred);
 			if (error != 0)
 				panic("bootpc_call:"
 				      "set if netmask, error=%d",
@@ -991,11 +991,11 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	 * Get the old interface flags and or IFF_UP into them; if
 	 * IFF_UP set blindly, interface selection can be clobbered.
 	 */
-	error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, td);
+	error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, proc0.p_ucred);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: GIFFLAGS, error=%d", error);
 	ireq->ifr_flags |= IFF_UP;
-	error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, td);
+	error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, proc0.p_ucred);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: SIFFLAGS, error=%d", error);
 	
@@ -1008,7 +1008,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	
 	sin = (struct sockaddr_in *) &ireq->ifr_addr;
 	clear_sinaddr(sin);
-	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, td);
+	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, proc0.p_ucred);
 	if (error != 0 && (error != EEXIST || ifctx == gctx->interfaces))
 		panic("bootpc_fakeup_interface: "
 		      "set if addr, error=%d", error);
@@ -1018,7 +1018,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	sin = (struct sockaddr_in *) &ireq->ifr_addr;
 	clear_sinaddr(sin);
 	sin->sin_addr.s_addr = htonl(0xff000000u);
-	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t)ireq, td);
+	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t)ireq, proc0.p_ucred);
 	if (error != 0)
 		panic("bootpc_fakeup_interface: set if netmask, error=%d",
 		      error);
@@ -1031,7 +1031,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	sin->sin_addr.s_addr = htonl(INADDR_BROADCAST);
 	ifctx->broadcast.sin_addr.s_addr = sin->sin_addr.s_addr;
 	
-	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t)ireq, td);
+	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t)ireq, proc0.p_ucred);
 	if (error != 0 && error != EADDRNOTAVAIL)
 		panic("bootpc_fakeup_interface: "
 		      "set if broadcast addr, error=%d",
@@ -1083,19 +1083,19 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 		/* Shutdown interfaces where BOOTP failed */
 		
 		printf("Shutdown interface %s\n", ifctx->ireq.ifr_name);
-		error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, td);
+		error = ifioctl(so, SIOCGIFFLAGS, (caddr_t)ireq, proc0.p_ucred);
 		if (error != 0)
 			panic("bootpc_adjust_interface: "
 			      "SIOCGIFFLAGS, error=%d", error);
 		ireq->ifr_flags &= ~IFF_UP;
-		error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, td);
+		error = ifioctl(so, SIOCSIFFLAGS, (caddr_t)ireq, proc0.p_ucred);
 		if (error != 0)
 			panic("bootpc_adjust_interface: "
 			      "SIOCSIFFLAGS, error=%d", error);
 		
 		sin = (struct sockaddr_in *) &ireq->ifr_addr;
 		clear_sinaddr(sin);
-		error = ifioctl(so, SIOCDIFADDR, (caddr_t) ireq, td);
+		error = ifioctl(so, SIOCDIFADDR, (caddr_t) ireq, proc0.p_ucred);
 		if (error != 0 && (error != EADDRNOTAVAIL ||
 				   ifctx == gctx->interfaces))
 			panic("bootpc_adjust_interface: "
@@ -1110,7 +1110,7 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	 * can talk to the servers.  (just set the address)
 	 */
 	bcopy(netmask, &ireq->ifr_addr, sizeof(*netmask));
-	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t) ireq, td);
+	error = ifioctl(so, SIOCSIFNETMASK, (caddr_t) ireq, proc0.p_ucred);
 	if (error != 0)
 		panic("bootpc_adjust_interface: "
 		      "set if netmask, error=%d", error);
@@ -1121,13 +1121,13 @@ bootpc_adjust_interface(struct bootpc_ifcontext *ifctx,
 	clear_sinaddr(sin);
 	sin->sin_addr.s_addr = myaddr->sin_addr.s_addr |
 		~ netmask->sin_addr.s_addr;
-	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t) ireq, td);
+	error = ifioctl(so, SIOCSIFBRDADDR, (caddr_t) ireq, proc0.p_ucred);
 	if (error != 0)
 		panic("bootpc_adjust_interface: "
 		      "set if broadcast addr, error=%d", error);
 	
 	bcopy(myaddr, &ireq->ifr_addr, sizeof(*myaddr));
-	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, td);
+	error = ifioctl(so, SIOCSIFADDR, (caddr_t) ireq, proc0.p_ucred);
 	if (error != 0 && (error != EEXIST || ifctx == gctx->interfaces))
 		panic("bootpc_adjust_interface: "
 		      "set if addr, error=%d", error);
