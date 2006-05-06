@@ -24,11 +24,11 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $Id: clog.8,v 1.2 2001/10/02 04:41:21 jdw Exp $
-.\" $DragonFly: src/usr.sbin/clog/clog.8,v 1.4 2006/03/21 04:24:28 swildner Exp $
+.\" $DragonFly: src/usr.sbin/clog/clog.8,v 1.5 2006/05/06 17:39:29 swildner Exp $
 .\"
-.Dd October 1, 2001
+.Dd May 6, 2006
 .Dt CLOG 8
-.Os BSD 4
+.Os
 .Sh NAME
 .Nm clog
 .Nd "display or initialize a circular system log"
@@ -85,7 +85,7 @@ Circular logfiles are primarily useful for their ability to control the amount
 of storage devoted to logfiles.  This may be valuable when storage space is
 at a premium or when the consequences of running out of storage space are
 unacceptable.  Circular logfiles can safely be used on a memory disk (see
-.Xr md 4 ).
+.Xr md 4 ) .
 .Pp
 Circular logfiles are also useful to catch messages that are generated rapidly
 but soon lose relevance, such as messages logged at debug priority.
@@ -95,4 +95,5 @@ but soon lose relevance, such as messages logged at debug priority.
 .Sh HISTORY
 The
 .Nm
-command was written for FreeBSD 4.3 but is not yet part of a BSD distribution.
+command was written for FreeBSD 4.3 and was imported into
+.Dx 1.1 .
