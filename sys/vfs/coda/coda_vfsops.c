@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.23 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.24 2006/05/06 18:48:52 dillon Exp $
  * 
  */
 
@@ -113,7 +113,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 	   char *path,		/* path covered: ignored by the fs-layer */
 	   caddr_t data,	/* Need to define a data type for this in
 				 * netbsd? */
-	   struct thread *td)	/* The ever-famous proc pointer */
+	   struct ucred *cred)	/* Mount credential */
 {
     struct vnode *dvp;
     struct cnode *cp;
@@ -238,7 +238,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 }
 
 int
-coda_unmount(struct mount *vfsp, int mntflags, struct thread *td)
+coda_unmount(struct mount *vfsp, int mntflags)
 {
     struct coda_mntinfo *mi = vftomi(vfsp);
     int active, error = 0;
@@ -363,7 +363,7 @@ coda_root(struct mount *vfsp, struct vnode **vpp)
  * Get file system statistics.
  */
 int
-coda_nb_statfs(struct mount *vfsp, struct statfs *sbp, struct thread *td)
+coda_nb_statfs(struct mount *vfsp, struct statfs *sbp, struct ucred *cred)
 {
     ENTRY;
 /*  MARK_ENTRY(CODA_STATFS_STATS); */

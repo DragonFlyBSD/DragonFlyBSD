@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.11 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.12 2006/05/06 18:48:51 dillon Exp $
  */
 
 /*
@@ -58,11 +58,10 @@
 extern struct vnodeopv_entry_desc linprocfs_vnodeop_entries[];
 
 static int	linprocfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct thread *td);
+				  struct ucred *cred);
 static int	linprocfs_statfs (struct mount *mp, struct statfs *sbp,
-				   struct thread *td);
-static int	linprocfs_unmount (struct mount *mp, int mntflags,
-				    struct thread *td);
+				   struct ucred *cred);
+static int	linprocfs_unmount (struct mount *mp, int mntflags);
 
 /*
  * VFS Operations.
@@ -71,7 +70,7 @@ static int	linprocfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	size_t size;
 	int error;
@@ -94,7 +93,7 @@ linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	size = sizeof("linprocfs") - 1;
 	bcopy("linprocfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)linprocfs_statfs(mp, &mp->mnt_stat, td);
+	(void)linprocfs_statfs(mp, &mp->mnt_stat, cred);
 
 	return (0);
 }
@@ -103,7 +102,7 @@ linprocfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
  * unmount system call
  */
 static int
-linprocfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+linprocfs_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
@@ -132,7 +131,7 @@ linprocfs_root(struct mount *mp, struct vnode **vpp)
  * Get file system statistics.
  */
 static int
-linprocfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+linprocfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	sbp->f_bsize = PAGE_SIZE;
 	sbp->f_iosize = PAGE_SIZE;

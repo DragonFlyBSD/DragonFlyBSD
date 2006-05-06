@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.22 2006/05/05 21:15:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.23 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -62,18 +62,17 @@ static MALLOC_DEFINE(M_UNIONFSMNT, "UNION mount", "UNION mount structure");
 
 extern int	union_init (struct vfsconf *);
 static int	union_mount (struct mount *mp, char *path, caddr_t data,
-				 struct thread *td);
+				 struct ucred *cred);
 static int	union_root (struct mount *mp, struct vnode **vpp);
 static int	union_statfs (struct mount *mp, struct statfs *sbp,
-				  struct thread *td);
-static int	union_unmount (struct mount *mp, int mntflags,
-				   struct thread *td);
+				struct ucred *cred);
+static int	union_unmount (struct mount *mp, int mntflags);
 
 /*
  * Mount union filesystem
  */
 static int
-union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+union_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	int error = 0;
 	struct union_args args;
@@ -87,8 +86,6 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	u_int size;
 
 	UDEBUG(("union_mount(mp = %p)\n", (void *)mp));
-
-	KKASSERT(td->td_proc);
 
 	/*
 	 * Disable clustered write, otherwise system becomes unstable.
@@ -218,8 +215,14 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			goto bad;
 	}
 
-	um->um_cred = crhold(td->td_proc->p_ucred);
-	um->um_cmode = UN_DIRMODE & ~td->td_proc->p_fd->fd_cmask;
+	/*
+	 * File creds and modes for shadowed files are based on the user
+	 * that did the mount.
+	 */
+	um->um_cred = crhold(cred);
+	um->um_cmode = UN_DIRMODE;
+	if (curproc)
+		um->um_cmode &= ~curproc->p_fd->fd_cmask;
 
 	/*
 	 * Depending on what you think the MNT_LOCAL flag might mean,
@@ -272,7 +275,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops,
 			 union_vnodeop_entries, 0);
 
-	(void)union_statfs(mp, &mp->mnt_stat, td);
+	(void)union_statfs(mp, &mp->mnt_stat, cred);
 
 	return (0);
 
@@ -298,7 +301,7 @@ bad:
  * Free reference to union layer
  */
 static int
-union_unmount(struct mount *mp, int mntflags, struct thread *td)
+union_unmount(struct mount *mp, int mntflags)
 {
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
 	int error;
@@ -378,7 +381,7 @@ union_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+union_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	int error;
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
@@ -391,7 +394,7 @@ union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	bzero(&mstat, sizeof(mstat));
 
 	if (um->um_lowervp) {
-		error = VFS_STATFS(um->um_lowervp->v_mount, &mstat, td);
+		error = VFS_STATFS(um->um_lowervp->v_mount, &mstat, cred);
 		if (error)
 			return (error);
 	}
@@ -410,7 +413,7 @@ union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	sbp->f_files = mstat.f_files;
 	sbp->f_ffree = mstat.f_ffree;
 
-	error = VFS_STATFS(um->um_uppervp->v_mount, &mstat, td);
+	error = VFS_STATFS(um->um_uppervp->v_mount, &mstat, cred);
 	if (error)
 		return (error);
 

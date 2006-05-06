@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.18 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.19 2006/05/06 18:48:53 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -99,10 +99,10 @@ MALLOC_DEFINE(M_UDFNODE, "UDF node", "UDF node structure");
 MALLOC_DEFINE(M_UDFMOUNT, "UDF mount", "UDF mount structure");
 MALLOC_DEFINE(M_UDFFENTRY, "UDF fentry", "UDF file entry structure");
 
-static int udf_mount(struct mount *, char *, caddr_t, struct thread *);
-static int udf_unmount(struct mount *, int, struct thread *);
+static int udf_mount(struct mount *, char *, caddr_t, struct ucred *);
+static int udf_unmount(struct mount *, int);
 static int udf_root(struct mount *, struct vnode **);
-static int udf_statfs(struct mount *, struct statfs *, struct thread *);
+static int udf_statfs(struct mount *, struct statfs *, struct ucred *);
 static int udf_fhtovp(struct mount *, struct fid *, struct vnode **);
 static int udf_vptofh(struct vnode *, struct fid *);
 
@@ -122,10 +122,10 @@ VFS_SET(udf_vfsops, udf, VFCF_READONLY);
 
 MODULE_VERSION(udf, 1);
 
-static int udf_mountfs(struct vnode *, struct mount *, struct thread *);
+static int udf_mountfs(struct vnode *, struct mount *);
 
 static int
-udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+udf_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;	/* vnode of the mount device */
 	struct udf_args args;
@@ -171,16 +171,16 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	/* Check the access rights on the mount device */
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(devvp, VREAD, td->td_proc->p_ucred);
+	error = VOP_ACCESS(devvp, VREAD, cred);
 	if (error)
-		error = suser(td);
+		error = suser_cred(cred, 0);
 	if (error) {
 		vput(devvp);
 		return(error);
 	}
 	VOP_UNLOCK(devvp, 0);
 
-	if ((error = udf_mountfs(devvp, mp, td))) {
+	if ((error = udf_mountfs(devvp, mp))) {
 		vrele(devvp);
 		return(error);
 	}
@@ -191,7 +191,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	udf_statfs(mp, &mp->mnt_stat, td);
+	udf_statfs(mp, &mp->mnt_stat, cred);
 	return(0);
 }
 
@@ -221,7 +221,7 @@ udf_checktag(struct desc_tag *tag, uint16_t id)
 }
 
 static int
-udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td) 
+udf_mountfs(struct vnode *devvp, struct mount *mp)
 {
 	struct buf *bp = NULL;
 	struct anchor_vdp avdp;
@@ -399,7 +399,7 @@ bail:
 }
 
 static int
-udf_unmount(struct mount *mp, int mntflags, struct thread *td)
+udf_unmount(struct mount *mp, int mntflags)
 {
 	struct udf_mnt *udfmp;
 	int error, flags = 0;
@@ -452,7 +452,7 @@ udf_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-udf_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+udf_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct udf_mnt *udfmp;
 

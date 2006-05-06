@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.30 2006/05/06 16:20:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.31 2006/05/06 18:48:53 dillon Exp $
  */
 
 
@@ -76,10 +76,10 @@ MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 extern struct vop_ops *mfs_vnode_vops;
 
 static int	mfs_mount (struct mount *mp,
-			char *path, caddr_t data, struct thread *td);
-static int	mfs_start (struct mount *mp, int flags, struct thread *td);
-static int	mfs_statfs (struct mount *mp, struct statfs *sbp, 
-			struct thread *td);
+			char *path, caddr_t data, struct ucred *td);
+static int	mfs_start (struct mount *mp, int flags);
+static int	mfs_statfs (struct mount *mp, struct statfs *sbp,
+			struct ucred *cred); 
 static int	mfs_init (struct vfsconf *);
 
 d_open_t	mfsopen;
@@ -233,7 +233,7 @@ done:
  */
 /* ARGSUSED */
 static int
-mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct mfs_args args;
@@ -335,7 +335,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mfsp->mfs_size = args.size;
 	mfsp->mfs_vnode = devvp;
 	mfsp->mfs_dev = reference_dev(dev);
-	mfsp->mfs_td = td;
+	mfsp->mfs_td = curthread;
 	mfsp->mfs_active = 1;
 	bioq_init(&mfsp->bio_queue);
 
@@ -373,7 +373,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	VFS_STATFS(mp, &mp->mnt_stat, td);
+	VFS_STATFS(mp, &mp->mnt_stat, cred);
 
 	goto success;
 
@@ -398,13 +398,14 @@ success:
  */
 /* ARGSUSED */
 static int
-mfs_start(struct mount *mp, int flags, struct thread *td)
+mfs_start(struct mount *mp, int flags)
 {
 	struct vnode *vp = VFSTOUFS(mp)->um_devvp;
 	struct mfsnode *mfsp = VTOMFS(vp);
 	struct bio *bio;
 	struct buf *bp;
 	int gotsig = 0, sig;
+	thread_t td = curthread;
 
 	/*
 	 * We must prevent the system from trying to swap
@@ -415,6 +416,8 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 	 */
 	KKASSERT(curproc);
 	PHOLD(curproc);
+
+	mfsp->mfs_td = td;
 
 	while (mfsp->mfs_active) {
 		crit_enter();
@@ -443,7 +446,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 		 */
 		if (gotsig) {
 			gotsig = 0;
-			if (dounmount(mp, 0, td) != 0) {
+			if (dounmount(mp, 0) != 0) {
 				KKASSERT(td->td_proc);
 				sig = CURSIG(td->td_proc);
 				if (sig)
@@ -463,11 +466,11 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
  * Get file system statistics.
  */
 static int
-mfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+mfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	int error;
 
-	error = ffs_statfs(mp, sbp, td);
+	error = ffs_statfs(mp, sbp, cred);
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
 	return (error);
 }

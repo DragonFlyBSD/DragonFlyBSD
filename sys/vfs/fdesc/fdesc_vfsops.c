@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.18 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.19 2006/05/06 18:48:52 dillon Exp $
  */
 
 /*
@@ -62,17 +62,16 @@ extern struct vnodeopv_entry_desc fdesc_vnodeop_entries[];
 static MALLOC_DEFINE(M_FDESCMNT, "FDESC mount", "FDESC mount structure");
 
 static int	fdesc_mount (struct mount *mp, char *path, caddr_t data,
-				 struct thread *td);
-static int	fdesc_unmount (struct mount *mp, int mntflags,
-				   struct thread *td);
+				struct ucred *cred);
+static int	fdesc_unmount (struct mount *mp, int mntflags);
 static int	fdesc_statfs (struct mount *mp, struct statfs *sbp,
-				  struct thread *td);
+				struct ucred *cred);
   
 /*
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+fdesc_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	int error = 0;
 	struct fdescmount *fmp;
@@ -90,7 +89,7 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
 			 fdesc_vnodeop_entries, 0);
 
-	error = fdesc_allocvp(Froot, FD_ROOT, mp, &rvp, td);
+	error = fdesc_allocvp(Froot, FD_ROOT, mp, &rvp);
 	if (error)
 		return (error);
 
@@ -106,12 +105,12 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	bzero(mp->mnt_stat.f_mntfromname, MNAMELEN);
 	bcopy("fdesc", mp->mnt_stat.f_mntfromname, sizeof("fdesc"));
-	fdesc_statfs(mp, &mp->mnt_stat, td);
+	fdesc_statfs(mp, &mp->mnt_stat, cred);
 	return (0);
 }
 
 static int
-fdesc_unmount(struct mount *mp, int mntflags, struct thread *td)
+fdesc_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
@@ -155,46 +154,16 @@ fdesc_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-fdesc_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+fdesc_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	int lim;
-	int i;
-	int last;
-	int freefd;
-
-	KKASSERT(p);
-
-	/*
-	 * Compute number of free file descriptors.
-	 * [ Strange results will ensue if the open file
-	 * limit is ever reduced below the current number
-	 * of open files... ]
-	 */
-	lim = p->p_rlimit[RLIMIT_NOFILE].rlim_cur;
-	fdp = p->p_fd;
-	last = min(fdp->fd_nfiles, lim);
-	freefd = 0;
-	for (i = fdp->fd_freefile; i < last; i++)
-		if (fdp->fd_files[i].fp == NULL)
-			freefd++;
-
-	/*
-	 * Adjust for the fact that the fdesc array may not
-	 * have been fully allocated yet.
-	 */
-	if (fdp->fd_nfiles < lim)
-		freefd += (lim - fdp->fd_nfiles);
-
 	sbp->f_flags = 0;
 	sbp->f_bsize = DEV_BSIZE;
 	sbp->f_iosize = DEV_BSIZE;
 	sbp->f_blocks = 2;		/* 1K to keep df happy */
 	sbp->f_bfree = 0;
 	sbp->f_bavail = 0;
-	sbp->f_files = lim + 1;		/* Allow for "." */
-	sbp->f_ffree = freefd;		/* See comments above */
+	sbp->f_files = 0;		/* dummy up these fields */
+	sbp->f_ffree = 0;
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
 		bcopy(&mp->mnt_stat.f_fsid, &sbp->f_fsid, sizeof(sbp->f_fsid));

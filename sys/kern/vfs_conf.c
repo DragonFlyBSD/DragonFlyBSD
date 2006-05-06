@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.15 2006/05/05 21:27:53 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.16 2006/05/06 18:48:52 dillon Exp $
  */
 
 /*
@@ -188,7 +188,6 @@ vfs_mountroot(void *junk)
 static int
 vfs_mountroot_try(const char *mountfrom)
 {
-	struct thread	*td = curthread;
         struct mount	*mp;
 	char		*vfsname, *devname;
 	int		error;
@@ -234,7 +233,7 @@ vfs_mountroot_try(const char *mountfrom)
 		mp->mnt_flag &= ~MNT_RDONLY;
 	}
 
-	error = VFS_MOUNT(mp, NULL, NULL, td);
+	error = VFS_MOUNT(mp, NULL, NULL, proc0.p_ucred);
 
 done:
 	if (vfsname != NULL)

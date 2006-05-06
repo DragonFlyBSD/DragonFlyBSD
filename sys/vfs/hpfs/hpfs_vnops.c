@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.34 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.35 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1064,16 +1064,16 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		dprintf(("hpfs_lookup(0x%x,...): .. faked (0x%x)\n",
 			dhp->h_no, dhp->h_fn.fn_parent));
 
-		VOP__UNLOCK(dvp,0,cnp->cn_td);
+		VOP__UNLOCK(dvp, 0);
 
 		error = VFS_VGET(hpmp->hpm_mp,
 				 dhp->h_fn.fn_parent, ap->a_vpp); 
 		if (error) {
-			VOP__LOCK(dvp, 0, cnp->cn_td);
+			VOP__LOCK(dvp, 0);
 			return(error);
 		}
 
-		if (lockparent && (error = VOP__LOCK(dvp, 0, cnp->cn_td))) {
+		if (lockparent && (error = VOP__LOCK(dvp, 0))) {
 			vput( *(ap->a_vpp) );
 			return (error);
 		}
@@ -1089,7 +1089,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 			if (error == ENOENT && 
 			    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {
 				if(!lockparent)
-					VOP__UNLOCK(dvp, 0, cnp->cn_td);
+					VOP__UNLOCK(dvp, 0);
 				return (EJUSTRETURN);
 			}
 
@@ -1134,7 +1134,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		brelse(bp);
 
 		if(!lockparent)
-			VOP__UNLOCK(dvp, 0, cnp->cn_td);
+			VOP__UNLOCK(dvp, 0);
 	}
 	return (error);
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.19 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.20 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -392,18 +392,18 @@ MALLOC_DECLARE(M_HPFSNO);
 typedef int (vop_t) (void *);
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (c), (d))
 #define bqrelse(bp)		brelse(bp)
-#define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b) ? LK_EXCLUSIVE : LK_SHARED)
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), 0)
+#define VOP__LOCK(a, b)		VOP_LOCK((a), (b) ? LK_EXCLUSIVE : LK_SHARED)
+#define VOP__UNLOCK(a, b)	VOP_UNLOCK((a), 0)
 #define VGET(a, b, c)		vget((a), LK_EXCLUSIVE)
-#define VN_LOCK(a, b, c)	vn_lock((a), LK_EXCLUSIVE)
-#define	LOCKMGR(a, b, d)	lockmgr((a), (b), NULL)
+#define VN_LOCK(a, b)		vn_lock((a), LK_EXCLUSIVE)
+#define	LOCKMGR(a, b)		lockmgr((a), (b), NULL)
 #else  /* defined(__DragonFly__) */
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
-#define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b))
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b))
+#define VOP__LOCK(a, b)		VOP_LOCK((a), (b))
+#define VOP__UNLOCK(a, b)	VOP_UNLOCK((a), (b))
 #define VGET(a, b, c)		vget((a), (b))
-#define VN_LOCK(a, b, c)	vn_lock((a), (b))
-#define	LOCKMGR(a, b, d)	lockmgr((a), (b))
+#define VN_LOCK(a, b)		vn_lock((a), (b))
+#define	LOCKMGR(a, b)		lockmgr((a), (b))
 #endif
 
 struct vfsconf;

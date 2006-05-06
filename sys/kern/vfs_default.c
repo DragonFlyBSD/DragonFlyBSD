@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.39 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.40 2006/05/06 18:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1334,13 +1334,13 @@ vop_stdpoll(ap)
  * used to fill the vfs fucntion table to get reasonable default return values.
  */
 int 
-vfs_stdmount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+vfs_stdmount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	return (0);
 }
 
 int	
-vfs_stdunmount(struct mount *mp, int mntflags, struct thread *td)
+vfs_stdunmount(struct mount *mp, int mntflags)
 {
 	return (0);
 }
@@ -1352,7 +1352,7 @@ vfs_stdroot(struct mount *mp, struct vnode **vpp)
 }
 
 int	
-vfs_stdstatfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+vfs_stdstatfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	return (EOPNOTSUPP);
 }
@@ -1364,14 +1364,14 @@ vfs_stdvptofh(struct vnode *vp, struct fid *fhp)
 }
 
 int	
-vfs_stdstart(struct mount *mp, int flags, struct thread *td)
+vfs_stdstart(struct mount *mp, int flags)
 {
 	return (0);
 }
 
 int	
 vfs_stdquotactl(struct mount *mp, int cmds, uid_t uid,
-	caddr_t arg, struct thread *td)
+	caddr_t arg, struct ucred *cred)
 {
 	return (EOPNOTSUPP);
 }
@@ -1421,7 +1421,7 @@ vfs_stduninit(struct vfsconf *vfsp)
 
 int
 vfs_stdextattrctl(struct mount *mp, int cmd, const char *attrname,
-	caddr_t arg, struct thread *td)
+	caddr_t arg, struct ucred *cred)
 {
 	return(EOPNOTSUPP);
 }

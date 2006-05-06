@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.10 2006/01/13 21:09:27 swildner Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.11 2006/05/06 18:48:52 dillon Exp $
  * 
  */
 
@@ -214,7 +214,7 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 #endif
     }
 
-    err = dounmount(mi->mi_vfsp, flag, td);
+    err = dounmount(mi->mi_vfsp, flag);
     if (err)
 	myprintf(("Error %d unmounting vfs in vcclose(%d)\n", 
 	           err, minor(dev)));

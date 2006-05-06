@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.33 2006/05/06 02:43:14 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.34 2006/05/06 18:48:53 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -90,18 +90,18 @@ static MALLOC_DEFINE(M_MSDOSFSFAT, "MSDOSFS FAT", "MSDOSFS file allocation table
 
 static int	update_mp (struct mount *mp, struct msdosfs_args *argp);
 static int	mountmsdosfs (struct vnode *devvp, struct mount *mp,
-				  struct thread *td, struct msdosfs_args *argp);
+				  struct msdosfs_args *argp);
 static int	msdosfs_fhtovp (struct mount *, struct fid *,
 				    struct vnode **);
 static int	msdosfs_checkexp (struct mount *, struct sockaddr *, 
 				    int *, struct ucred **);
 static int	msdosfs_mount (struct mount *, char *, caddr_t,
-				   struct thread *);
+				   struct ucred *);
 static int	msdosfs_root (struct mount *, struct vnode **);
 static int	msdosfs_statfs (struct mount *, struct statfs *,
-				    struct thread *);
+				struct ucred *);
 static int	msdosfs_sync (struct mount *, int);
-static int	msdosfs_unmount (struct mount *, int, struct thread *);
+static int	msdosfs_unmount (struct mount *, int);
 static int	msdosfs_vptofh (struct vnode *, struct fid *);
 
 static int
@@ -161,7 +161,7 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
  * special file to treat as a filesystem.
  */
 static int
-msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;	  /* vnode for blk device to mount */
 	struct msdosfs_args args; /* will hold data from mount request */
@@ -170,10 +170,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	size_t size;
 	int error, flags;
 	mode_t accessmode;
-	struct proc *p = td->td_proc;
 	struct nlookupdata nd;
-
-	KKASSERT(p);
 
 	error = copyin(data, (caddr_t)&args, sizeof(struct msdosfs_args));
 	if (error)
@@ -203,11 +200,10 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.
 			 */
-			if (p->p_ucred->cr_uid != 0) {
+			if (cred->cr_uid != 0) {
 				devvp = pmp->pm_devvp;
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-				error = VOP_ACCESS(devvp, VREAD | VWRITE,
-						   p->p_ucred);
+				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
 					VOP_UNLOCK(devvp, 0);
 					return (error);
@@ -253,12 +249,12 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * If mount by non-root, then verify that user has necessary
 	 * permissions on the device.
 	 */
-	if (p->p_ucred->cr_uid != 0) {
+	if (cred->cr_uid != 0) {
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_ACCESS(devvp, accessmode, p->p_ucred);
+		error = VOP_ACCESS(devvp, accessmode, cred);
 		if (error) {
 			vput(devvp);
 			return (error);
@@ -266,7 +262,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		VOP_UNLOCK(devvp, 0);
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
-		error = mountmsdosfs(devvp, mp, td, &args);
+		error = mountmsdosfs(devvp, mp, &args);
 #ifdef MSDOSFS_DEBUG		/* only needed for the printf below */
 		pmp = VFSTOMSDOSFS(mp);
 #endif
@@ -283,13 +279,13 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	error = update_mp(mp, &args);
 	if (error) {
-		msdosfs_unmount(mp, MNT_FORCE, td);
+		msdosfs_unmount(mp, MNT_FORCE);
 		return error;
 	}
 
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	msdosfs_statfs(mp, &mp->mnt_stat, td);
+	msdosfs_statfs(mp, &mp->mnt_stat, cred);
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_mount(): mp %p, pmp %p, inusemap %p\n", mp, pmp, pmp->pm_inusemap);
 #endif
@@ -297,8 +293,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 }
 
 static int
-mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
-	     struct msdosfs_args *argp)
+mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 {
 	struct msdosfsmount *pmp;
 	struct buf *bp;
@@ -683,7 +678,7 @@ error_exit:
  * Unmount the filesystem described by mp.
  */
 static int
-msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+msdosfs_unmount(struct mount *mp, int mntflags)
 {
 	struct msdosfsmount *pmp;
 	int error, flags;
@@ -746,7 +741,7 @@ msdosfs_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct msdosfsmount *pmp;
 

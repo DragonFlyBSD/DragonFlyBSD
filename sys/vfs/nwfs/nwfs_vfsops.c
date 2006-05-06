@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.22 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.23 2006/05/06 18:48:53 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -69,11 +69,11 @@ SYSCTL_NODE(_vfs, OID_AUTO, nwfs, CTLFLAG_RW, 0, "Netware file system");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, version, CTLFLAG_RD, &nwfs_version, 0, "");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, debuglevel, CTLFLAG_RW, &nwfs_debuglevel, 0, "");
 
-static int nwfs_mount(struct mount *, char *, caddr_t, struct thread *);
+static int nwfs_mount(struct mount *, char *, caddr_t, struct ucred *);
 static int nwfs_root(struct mount *, struct vnode **);
-static int nwfs_statfs(struct mount *, struct statfs *, struct thread *);
+static int nwfs_statfs(struct mount *, struct statfs *, struct ucred *);
 static int nwfs_sync(struct mount *, int);
-static int nwfs_unmount(struct mount *, int, struct thread *);
+static int nwfs_unmount(struct mount *, int);
 static int nwfs_init(struct vfsconf *vfsp);
 static int nwfs_uninit(struct vfsconf *vfsp);
 
@@ -133,7 +133,7 @@ nwfs_initnls(struct nwmount *nmp) {
  * data - addr in user space of mount params 
  */
 static int
-nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct nwfs_args args; 	  /* will hold data from mount request */
 	int error;
@@ -142,10 +142,6 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct ncp_handle *handle = NULL;
 	struct vnode *vp;
 	char *pc,*pe;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	if (data == NULL) {
 		nwfs_printf("missing data argument\n");
@@ -162,7 +158,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		nwfs_printf("mount version mismatch: kernel=%d, mount=%d\n",NWFS_VERSION,args.version);
 		return (1);
 	}
-	error = ncp_conn_getbyref(args.connRef,td,cred,NCPM_EXECUTE,&conn);
+	error = ncp_conn_getbyref(args.connRef,curthread,cred,NCPM_EXECUTE,&conn);
 	if (error) {
 		nwfs_printf("invalid connection refernce %d\n",args.connRef);
 		return (error);
@@ -172,7 +168,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		nwfs_printf("can't get connection handle\n");
 		return (error);
 	}
-	ncp_conn_unlock(conn,td);	/* we keep the ref */
+	ncp_conn_unlock(conn,curthread);	/* we keep the ref */
 	mp->mnt_stat.f_iosize = conn->buffer_size;
         /* We must malloc our own mount info */
         MALLOC(nmp,struct nwmount *,sizeof(struct nwmount),M_NWFSDATA, M_WAITOK|M_USE_RESERVE|M_ZERO);
@@ -230,15 +226,11 @@ bad:
 
 /* Unmount the filesystem described by mp. */
 static int
-nwfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+nwfs_unmount(struct mount *mp, int mntflags)
 {
 	struct nwmount *nmp = VFSTONWFS(mp);
 	struct ncp_conn *conn;
 	int error, flags;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	NCPVODEBUG("nwfs_unmount: flags=%04x\n",mntflags);
 	flags = 0;
@@ -250,9 +242,9 @@ nwfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 		return (error);
 	conn = NWFSTOCONN(nmp);
 	ncp_conn_puthandle(nmp->connh,NULL,0);
-	if (ncp_conn_lock(conn,td,cred,NCPM_WRITE | NCPM_EXECUTE) == 0) {
+	if (ncp_conn_lock(conn, curthread, proc0.p_ucred, NCPM_WRITE | NCPM_EXECUTE) == 0) {
 		if(ncp_disconnect(conn))
-			ncp_conn_unlock(conn,td);
+			ncp_conn_unlock(conn, curthread);
 	}
 	mp->mnt_data = (qaddr_t)0;
 	if (nmp->m.flags & NWFS_MOUNT_HAVE_NLS)
@@ -394,19 +386,16 @@ nwfs_uninit(struct vfsconf *vfsp)
  * nwfs_statfs call
  */
 int
-nwfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+nwfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct nwmount *nmp = VFSTONWFS(mp);
 	int error = 0, secsize;
 	struct nwnode *np = nmp->n_root;
 	struct ncp_volume_info vi;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	if (np == NULL) return EINVAL;
-	error = ncp_get_volume_info_with_number(NWFSTOCONN(nmp), nmp->n_volume, &vi,td,cred);
+	error = ncp_get_volume_info_with_number(NWFSTOCONN(nmp), nmp->n_volume,
+						&vi, curthread, cred);
 	if (error) return error;
 	secsize = 512;			/* XXX how to get real value ??? */
 	sbp->f_spare2=0;		/* placeholder */

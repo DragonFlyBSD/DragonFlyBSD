@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.23 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.24 2006/05/06 18:48:52 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -374,15 +374,14 @@ struct mbuf;
 #endif
 
 typedef int vfs_mount_t(struct mount *mp, char *path, caddr_t data,
-				    struct thread *td);
-typedef int vfs_start_t(struct mount *mp, int flags, struct thread *td);
-typedef int vfs_unmount_t(struct mount *mp, int mntflags,
-				    struct thread *td);
+				    struct ucred *cred);
+typedef int vfs_start_t(struct mount *mp, int flags);
+typedef int vfs_unmount_t(struct mount *mp, int mntflags);
 typedef int vfs_root_t(struct mount *mp, struct vnode **vpp);
 typedef int vfs_quotactl_t(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
-				    struct thread *td);
+				    struct ucred *cred);
 typedef int vfs_statfs_t(struct mount *mp, struct statfs *sbp,
-				    struct thread *td);
+				    struct ucred *cred);
 typedef int vfs_sync_t(struct mount *mp, int waitfor);
 typedef int vfs_vget_t(struct mount *mp, ino_t ino, struct vnode **vpp);
 typedef int vfs_fhtovp_t(struct mount *mp, struct fid *fhp,
@@ -393,7 +392,7 @@ typedef int vfs_vptofh_t(struct vnode *vp, struct fid *fhp);
 typedef int vfs_init_t(struct vfsconf *);
 typedef int vfs_uninit_t(struct vfsconf *);
 typedef int vfs_extattrctl_t(struct mount *mp, int cmd,const char *attrname,
-	            caddr_t arg, struct thread *td);
+	            caddr_t arg, struct ucred *cred);
 
 struct vfsops {
 	vfs_mount_t 	*vfs_mount;
@@ -412,22 +411,23 @@ struct vfsops {
 	vfs_extattrctl_t 	*vfs_extattrctl;
 };
 
-#define VFS_MOUNT(MP, PATH, DATA, P) \
-	(*(MP)->mnt_op->vfs_mount)(MP, PATH, DATA, P)
-#define VFS_START(MP, FLAGS, P)	  (*(MP)->mnt_op->vfs_start)(MP, FLAGS, P)
-#define VFS_UNMOUNT(MP, FORCE, P) (*(MP)->mnt_op->vfs_unmount)(MP, FORCE, P)
+#define VFS_MOUNT(MP, PATH, DATA, CRED) \
+	(*(MP)->mnt_op->vfs_mount)(MP, PATH, DATA, CRED)
+#define VFS_START(MP, FLAGS)	  (*(MP)->mnt_op->vfs_start)(MP, FLAGS)
+#define VFS_UNMOUNT(MP, FORCE)	  (*(MP)->mnt_op->vfs_unmount)(MP, FORCE)
 #define VFS_ROOT(MP, VPP)	  (*(MP)->mnt_op->vfs_root)(MP, VPP)
-#define VFS_QUOTACTL(MP,C,U,A,P)  (*(MP)->mnt_op->vfs_quotactl)(MP, C, U, A, P)
-#define VFS_STATFS(MP, SBP, P)	  (*(MP)->mnt_op->vfs_statfs)(MP, SBP, P)
+#define VFS_QUOTACTL(MP,C,U,A,CRED)	\
+	(*(MP)->mnt_op->vfs_quotactl)(MP, C, U, A, CRED)
+#define VFS_STATFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statfs)(MP, SBP, CRED)
 #define VFS_SYNC(MP, WAIT)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT)
 #define VFS_VGET(MP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, INO, VPP)
-#define VFS_FHTOVP(MP, FIDP, VPP) \
+#define VFS_FHTOVP(MP, FIDP, VPP) 	\
 	(*(MP)->mnt_op->vfs_fhtovp)(MP, FIDP, VPP)
 #define	VFS_VPTOFH(VP, FIDP)	  (*(VP)->v_mount->mnt_op->vfs_vptofh)(VP, FIDP)
 #define VFS_CHECKEXP(MP, NAM, EXFLG, CRED) \
 	(*(MP)->mnt_op->vfs_checkexp)(MP, NAM, EXFLG, CRED)
-#define VFS_EXTATTRCTL(MP, C, N, A, P) \
-	(*(MP)->mnt_op->vfs_extattrctl)(MP, C, N, A, P)
+#define VFS_EXTATTRCTL(MP, C, N, A, CRED) \
+	(*(MP)->mnt_op->vfs_extattrctl)(MP, C, N, A, CRED)
 
 #endif
 
@@ -485,7 +485,7 @@ extern	char *mountrootfsname;
 /*
  * exported vnode operations
  */
-int	dounmount (struct mount *, int, struct thread *);
+int	dounmount (struct mount *, int);
 int	vfs_setpublicfs			    /* set publicly exported fs */
 	  (struct mount *, struct netexport *, struct export_args *);
 int	vfs_lock (struct mount *);         /* lock a vfs */
@@ -529,7 +529,7 @@ vfs_checkexp_t 	vfs_stdcheckexp;
 vfs_vptofh_t 	vfs_stdvptofh;
 vfs_init_t  	vfs_stdinit;
 vfs_uninit_t 	vfs_stduninit;
-vfs_extattrctl_t 	vfs_stdextattrctl;
+vfs_extattrctl_t vfs_stdextattrctl;
 
 int     journal_mountctl(struct vop_mountctl_args *ap);
 void	journal_remove_all_journals(struct mount *mp, int flags);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.12 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.13 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -318,15 +318,15 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 typedef int (vop_t) (void *);
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (c), (d))
 #define bqrelse(bp)		brelse(bp)
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b))
-#define VGET(a, b, c)		vget((a), (b))
-#define VN_LOCK(a, b, c)	vn_lock((a), (b))
+#define VOP__UNLOCK(a, b)	VOP_UNLOCK((a), (b))
+#define VGET(a, b)		vget((a), (b))
+#define VN_LOCK(a, b)		vn_lock((a), (b))
 #define	LOCKMGR(a, b)		lockmgr((a), (b), NULL)
 #else /* !NetBSD */
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b))
-#define VGET(a, b, c)		vget((a), (b))
-#define VN_LOCK(a, b, c)	vn_lock((a), (b))
+#define VOP__UNLOCK(a, b)	VOP_UNLOCK((a), (b))
+#define VGET(a, b)		vget((a), (b))
+#define VN_LOCK(a, b)		vn_lock((a), (b))
 #define	LOCKMGR(a, b)		lockmgr((a), (b))
 
 #endif /* NetBSD */

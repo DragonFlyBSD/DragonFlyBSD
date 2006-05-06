@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.36 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.37 2006/05/06 18:48:53 dillon Exp $
  */
 
 
@@ -80,13 +80,11 @@ MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
 #endif
 
 static int	ntfs_root (struct mount *, struct vnode **);
-static int	ntfs_statfs (struct mount *, struct statfs *,
-				 struct thread *);
-static int	ntfs_unmount (struct mount *, int, struct thread *);
-static int	ntfs_vget (struct mount *mp, ino_t ino,
-			       struct vnode **vpp);
+static int	ntfs_statfs (struct mount *, struct statfs *, struct ucred *cred);
+static int	ntfs_unmount (struct mount *, int);
+static int	ntfs_vget (struct mount *mp, ino_t ino, struct vnode **vpp);
 static int	ntfs_mountfs (struct vnode *, struct mount *, 
-				  struct ntfs_args *, struct thread *);
+				  struct ntfs_args *, struct ucred *);
 static int	ntfs_vptofh (struct vnode *, struct fid *);
 static int	ntfs_fhtovp (struct mount *, struct fid *,
 				 struct vnode **);
@@ -101,7 +99,7 @@ static int	ntfs_sync (struct mount *, int, struct ucred *,
 
 #if defined(__DragonFly__)
 struct sockaddr;
-static int	ntfs_mount (struct mount *, char *, caddr_t, struct thread *);
+static int	ntfs_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int	ntfs_init (struct vfsconf *);
 static int	ntfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
@@ -182,7 +180,7 @@ ntfs_mountroot(void)
 	args.gid = 0;
 	args.mode = 0777;
 
-	if ((error = ntfs_mountfs(rootvp, mp, &args, td)) != 0) {
+	if ((error = ntfs_mountfs(rootvp, mp, &args, proc0.p_ucred)) != 0) {
 		mp->mnt_op->vfs_refcount--;
 		vfs_unbusy(mp);
 		free(mp, M_MOUNT);
@@ -190,7 +188,7 @@ ntfs_mountroot(void)
 		return (error);
 	}
 	mountlist_insert(mp, MNTINS_LAST);
-	(void)ntfs_statfs(mp, &mp->mnt_stat, td);
+	(void)ntfs_statfs(mp, &mp->mnt_stat, proc0.p_ucred);
 	vfs_unbusy(mp);
 	return (0);
 }
@@ -215,13 +213,7 @@ ntfs_init(struct vfsconf *vcp)
 #endif /* NetBSD */
 
 static int
-ntfs_mount(struct mount *mp,
-#if defined(__DragonFly__)
-	   char *path, caddr_t data,
-#else
-	   const char *path, void *data,
-#endif
-	   struct thread *td)
+ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	size_t		size;
 	int		error;
@@ -254,7 +246,7 @@ ntfs_mount(struct mount *mp,
 		/*
 		 * Attempt mount
 		 */
-		if( ( error = ntfs_mountfs(rootvp, mp, &args, td)) != 0) {
+		if( ( error = ntfs_mountfs(rootvp, mp, &args, cred)) != 0) {
 			/* fs specific cleanup (if any)*/
 			goto error_1;
 		}
@@ -361,7 +353,7 @@ ntfs_mount(struct mount *mp,
 				&size);				/* real size*/
 		bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-		error = ntfs_mountfs(devvp, mp, &args, td);
+		error = ntfs_mountfs(devvp, mp, &args, cred);
 	}
 	if (error) {
 		goto error_2;
@@ -376,7 +368,7 @@ dostatfs:
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	(void)VFS_STATFS(mp, &mp->mnt_stat, td);
+	(void)VFS_STATFS(mp, &mp->mnt_stat, cred);
 
 	goto success;
 
@@ -397,17 +389,13 @@ success:
  */
 int
 ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
-	     struct thread *td)
+	     struct ucred *cred)
 {
 	struct buf *bp;
 	struct ntfsmount *ntmp;
 	dev_t dev;
 	int error, ronly, ncount, i;
 	struct vnode *vp;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	/*
 	 * Disallow multiple mounts of the same device.
@@ -426,9 +414,9 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	if (ncount > 1)
 		return (EBUSY);
 #if defined(__DragonFly__)
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-	VOP__UNLOCK(devvp, 0, td);
+	VOP__UNLOCK(devvp, 0);
 #else
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 #endif
@@ -436,9 +424,9 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
-	VOP__UNLOCK(devvp, 0, td);
+	VOP__UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -538,7 +526,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		struct attrdef ad;
 
 		/* Open $AttrDef */
-		error = VFS_VGET(mp, NTFS_ATTRDEFINO, &vp );
+		error = VFS_VGET(mp, NTFS_ATTRDEFINO, &vp);
 		if(error) 
 			goto out1;
 
@@ -607,9 +595,9 @@ out:
 
 #if defined __NetBSD__
 	/* lock the device vnode before calling VOP_CLOSE() */
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
-	VOP__UNLOCK(devvp, 0, td);
+	VOP__UNLOCK(devvp, 0);
 #else
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 #endif
@@ -626,7 +614,7 @@ ntfs_start(struct mount *mp, int flags, struct thread *td)
 #endif
 
 static int
-ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+ntfs_unmount(struct mount *mp, int mntflags)
 {
 	struct ntfsmount *ntmp;
 	int error, ronly, flags, i;
@@ -673,7 +661,7 @@ ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	/* lock the device vnode before calling VOP_CLOSE() */
 	VOP_LOCK(ntmp->ntm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
-	VOP__UNLOCK(ntmp->ntm_devvp, 0, td);
+	VOP__UNLOCK(ntmp->ntm_devvp, 0);
 #else
 	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
 #endif
@@ -752,7 +740,7 @@ ntfs_calccfree(struct ntfsmount *ntmp, cn_t *cfreep)
 }
 
 static int
-ntfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct ntfsmount *ntmp = VFSTONTFS(mp);
 	u_int64_t mftsize,mftallocated;
@@ -901,7 +889,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	}
 
 	if (FTOV(fp)) {
-		VGET(FTOV(fp), lkflags, td);
+		VGET(FTOV(fp), lkflags);
 		*vpp = FTOV(fp);
 		ntfs_ntput(ip);
 		return (0);

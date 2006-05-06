@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.19 2006/05/06 06:38:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.20 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -63,18 +63,17 @@ extern struct vnodeopv_entry_desc portal_vnodeop_entries[];
 static MALLOC_DEFINE(M_PORTALFSMNT, "PORTAL mount", "PORTAL mount structure");
 
 static int	portal_mount (struct mount *mp, char *path, caddr_t data,
-				  struct thread *td);
-static int	portal_unmount (struct mount *mp, int mntflags,
-				    struct thread *td);
+				  struct ucred *cred);
+static int	portal_unmount (struct mount *mp, int mntflags);
 static int	portal_root (struct mount *mp, struct vnode **vpp);
 static int	portal_statfs (struct mount *mp, struct statfs *sbp,
-				   struct thread *td);
+				struct ucred *);
 
 /*
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+portal_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct file *fp;
 	struct portal_args args;
@@ -95,8 +94,8 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	if (error)
 		return (error);
 
-	KKASSERT(td->td_proc);
-	error = holdsock(td->td_proc->p_fd, args.pa_socket, &fp);
+	KKASSERT(curproc != NULL);
+	error = holdsock(curproc->p_fd, args.pa_socket, &fp);
 	if (error)
 		return (error);
 	so = (struct socket *) fp->f_data;
@@ -146,13 +145,13 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 #endif
 	vx_unlock(rvp);
 
-	(void)portal_statfs(mp, &mp->mnt_stat, td);
+	(void)portal_statfs(mp, &mp->mnt_stat, cred);
 	fdrop(fp);
 	return (0);
 }
 
 static int
-portal_unmount(struct mount *mp, int mntflags, struct thread *td)
+portal_unmount(struct mount *mp, int mntflags)
 {
 	int error, flags = 0;
 
@@ -210,9 +209,8 @@ portal_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-portal_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+portal_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
-
 	sbp->f_flags = 0;
 	sbp->f_bsize = DEV_BSIZE;
 	sbp->f_iosize = DEV_BSIZE;

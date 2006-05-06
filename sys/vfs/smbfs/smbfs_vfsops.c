@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.26 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.27 2006/05/06 18:48:53 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -81,11 +81,11 @@ SYSCTL_INT(_vfs_smbfs, OID_AUTO, debuglevel, CTLFLAG_RW, &smbfs_debuglevel, 0, "
 static MALLOC_DEFINE(M_SMBFSHASH, "SMBFS hash", "SMBFS hash table");
 
 
-static int smbfs_mount(struct mount *, char *, caddr_t, struct thread *);
+static int smbfs_mount(struct mount *, char *, caddr_t, struct ucred *);
 static int smbfs_root(struct mount *, struct vnode **);
-static int smbfs_statfs(struct mount *, struct statfs *, struct thread *);
+static int smbfs_statfs(struct mount *, struct statfs *, struct ucred *);
 static int smbfs_sync(struct mount *, int);
-static int smbfs_unmount(struct mount *, int, struct thread *);
+static int smbfs_unmount(struct mount *, int);
 static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
 
@@ -117,7 +117,7 @@ MODULE_DEPEND(smbfs, libmchain, 1, 1, 1);
 int smbfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 static int
-smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct smbfs_args args; 	  /* will hold data from mount request */
 	struct smbmount *smp = NULL;
@@ -125,14 +125,8 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct smb_share *ssp = NULL;
 	struct vnode *vp;
 	struct smb_cred scred;
-	struct ucred *cred;
 	int error;
 	char *pc, *pe;
-
-	if (td->td_proc)
-	    cred = td->td_proc->p_ucred;
-	else
-	    cred = proc0.p_ucred;
 
 	if (data == NULL) {
 		printf("missing data argument\n");
@@ -150,14 +144,14 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		    SMBFS_VERSION, args.version);
 		return EINVAL;
 	}
-	smb_makescred(&scred, td, cred);
+	smb_makescred(&scred, curthread, cred);
 	error = smb_dev2share(args.dev, SMBM_EXEC, &scred, &ssp);
 	if (error) {
 		printf("invalid device handle %d (%d)\n", args.dev, error);
 		return error;
 	}
 	vcp = SSTOVC(ssp);
-	smb_share_unlock(ssp, 0, td);
+	smb_share_unlock(ssp, 0, curthread);
 	mp->mnt_stat.f_iosize = SSTOVC(ssp)->vc_txmax;
 
 #ifdef SMBFS_USEZONE
@@ -172,6 +166,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
         }
 	bzero(smp, sizeof(*smp));
         mp->mnt_data = (qaddr_t)smp;
+	smp->sm_cred = crhold(cred);
 	smp->sm_hash = hashinit(desiredvnodes, M_SMBFSHASH, &smp->sm_hashlen);
 	if (smp->sm_hash == NULL)
 		goto bad;
@@ -219,6 +214,8 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	return error;
 bad:
         if (smp) {
+		if (smp->sm_cred)
+			crfree(smp->sm_cred);
 		if (smp->sm_hash)
 			free(smp->sm_hash, M_SMBFSHASH);
 		lockdestroy(&smp->sm_hashlock);
@@ -235,17 +232,11 @@ bad:
 
 /* Unmount the filesystem described by mp. */
 static int
-smbfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+smbfs_unmount(struct mount *mp, int mntflags)
 {
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct smb_cred scred;
-	struct ucred *cred;
 	int error, flags;
-
-	if (td->td_proc)
-	    cred = td->td_proc->p_ucred;
-	else
-	    cred = proc0.p_ucred;
 
 	SMBVDEBUG("smbfs_unmount: flags=%04x\n", mntflags);
 	flags = 0;
@@ -266,10 +257,12 @@ smbfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	} while (error == EBUSY && smp->sm_didrele != 0);
 	if (error)
 		return error;
-	smb_makescred(&scred, td, cred);
+	smb_makescred(&scred, curthread, smp->sm_cred);
 	smb_share_put(smp->sm_share, &scred);
 	mp->mnt_data = (qaddr_t)0;
 
+	if (smp->sm_cred)
+		crfree(smp->sm_cred);
 	if (smp->sm_hash)
 		free(smp->sm_hash, M_SMBFSHASH);
 	lockdestroy(&smp->sm_hashlock);
@@ -348,26 +341,20 @@ smbfs_uninit(struct vfsconf *vfsp)
  * smbfs_statfs call
  */
 int
-smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+smbfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct smbnode *np = smp->sm_root;
 	struct smb_share *ssp = smp->sm_share;
 	struct smb_cred scred;
-	struct ucred *cred;
 	int error = 0;
-
-	if (td->td_proc)
-	    cred = td->td_proc->p_ucred;
-	else
-	    cred = proc0.p_ucred;
 
 	if (np == NULL)
 		return EINVAL;
 	
 	sbp->f_iosize = SSTOVC(ssp)->vc_txmax;		/* optimal transfer block size */
 	sbp->f_spare2 = 0;			/* placeholder */
-	smb_makescred(&scred, td, cred);
+	smb_makescred(&scred, curthread, cred);
 
 	if (SMB_DIALECT(SSTOVC(ssp)) >= SMB_DIALECT_LANMAN2_0)
 		error = smbfs_smb_statfs2(ssp, sbp, &scred);

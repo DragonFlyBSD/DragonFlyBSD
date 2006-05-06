@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.42 2006/05/06 16:33:26 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.43 2006/05/06 18:48:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -77,14 +77,14 @@ extern struct vnodeopv_entry_desc ext2_fifoop_entries[];
 
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags);
-static int ext2_mount (struct mount *, char *, caddr_t, struct thread *);
+static int ext2_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int ext2_mountfs (struct vnode *, struct mount *);
 static int ext2_root(struct mount *, struct vnode **);
 static int ext2_reload (struct mount *mountp, struct ucred *cred);
 static int ext2_sbupdate (struct ext2mount *, int);
-static int ext2_statfs (struct mount *, struct statfs *, struct thread *);
+static int ext2_statfs (struct mount *, struct statfs *, struct ucred *);
 static int ext2_sync (struct mount *, int);
-static int ext2_unmount (struct mount *, int, struct thread *);
+static int ext2_unmount (struct mount *, int);
 static int ext2_vget (struct mount *, ino_t, struct vnode **);
 static int ext2_init(struct vfsconf *);
 static int ext2_vptofh (struct vnode *, struct fid *);
@@ -137,16 +137,12 @@ ext2_root(struct mount *mp, struct vnode **vpp)
  */
 int
 ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
-	     struct thread *td)
+	     struct ucred *cred)
 {
 #ifndef QUOTA
 	return (EOPNOTSUPP);
 #else
-	struct proc *p = td->td_proc;
 	int cmd, type, error;
-
-	if (p == NULL)
-		return (EOPNOTSUPP);
 
 	type = cmds & SUBCMDMASK;
 	cmd = cmds >> SUBCMDSHIFT;
@@ -154,10 +150,10 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	if (uid == -1) {
 		switch(type) {
 			case USRQUOTA:
-				uid = p->p_ucred->cr_ruid;
+				uid = cred->cr_ruid;
 				break;
 			case GRPQUOTA:
-				uid = p->p_ucred->cr_rgid;
+				uid = cred->cr_rgid;
 				break;
 			default:
 				return (EINVAL);
@@ -168,11 +164,11 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	case Q_SYNC:
 		break;
 	case Q_GETQUOTA:
-		if (uid == p->p_ucred->cr_ruid)
+		if (uid == cred->cr_ruid)
 			break;
 		/* fall through */
 	default:
-		if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
+		if ((error = suser_cred(cred, PRISON_ROOT)) != 0)
 			return (error);
 	}
 
@@ -185,7 +181,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 	switch (cmd) {
 
 	case Q_QUOTAON:
-		error = ext2_quotaon(td, mp, type, arg);
+		error = ext2_quotaon(cred, mp, type, arg);
 		break;
 
 	case Q_QUOTAOFF:
@@ -244,8 +240,7 @@ ext2_init(struct vfsconf *vfsp)
  *	data:	this is actually a (struct ext2_args *)
  */
 static int
-ext2_mount(struct mount *mp, char *path, caddr_t data,
-	   struct thread *td)
+ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct ext2_args args;
@@ -254,13 +249,11 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	size_t size;
 	int error, flags;
 	mode_t accessmode;
-	struct ucred *cred;
 	struct nlookupdata nd;
 
 	if ((error = copyin(data, (caddr_t)&args, sizeof (struct ext2_args))) != 0)
 		return (error);
 
-	cred = td->td_proc->p_ucred;
 	/*
 	 * If updating, check whether changing from read-only to
 	 * read/write; if there is no device name, that's all we do.
@@ -289,7 +282,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			VOP_UNLOCK(devvp, 0);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
-			error = ext2_reload(mp, proc0.p_ucred);
+			error = ext2_reload(mp, cred);
 		if (error)
 			return (error);
 		if (ext2_check_sb_compat(fs->s_es, devvp->v_rdev,
@@ -302,8 +295,8 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 			 */
 			if (cred->cr_uid != 0) {
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
-				    cred)) != 0) {
+				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
+				if (error) {
 					VOP_UNLOCK(devvp, 0);
 					return (error);
 				}
@@ -391,7 +384,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data,
 	bzero(fs->fs_fsmnt + size, sizeof(fs->fs_fsmnt) - size);
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	ext2_statfs(mp, &mp->mnt_stat, td);
+	ext2_statfs(mp, &mp->mnt_stat, cred);
 	return (0);
 }
 
@@ -846,7 +839,7 @@ out:
  * unmount system call
  */
 static int
-ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
+ext2_unmount(struct mount *mp, int mntflags)
 {
 	struct ext2mount *ump;
 	struct ext2_sb_info *fs;
@@ -931,7 +924,7 @@ ext2_flushfiles(struct mount *mp, int flags)
  * taken from ext2/super.c ext2_statfs
  */
 static int
-ext2_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+ext2_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
         unsigned long overhead;
 	struct ext2mount *ump;

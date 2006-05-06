@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.42 2006/05/06 16:20:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.43 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -67,7 +67,7 @@ static MALLOC_DEFINE(M_FFSNODE, "FFS node", "FFS vnode private part");
 static int	ffs_sbupdate (struct ufsmount *, int);
 static int	ffs_reload (struct mount *, struct ucred *);
 static int	ffs_oldfscompat (struct fs *);
-static int	ffs_mount (struct mount *, char *, caddr_t, struct thread *);
+static int	ffs_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int	ffs_init (struct vfsconf *);
 
 static struct vfsops ufs_vfsops = {
@@ -129,7 +129,7 @@ static int
 ffs_mount(struct mount *mp,		/* mount struct pointer */
           char *path,			/* path to mount point */
           caddr_t data,			/* arguments to FS specific mount */
-          struct thread	*td)		/* process requesting mount */
+          struct ucred	*cred)		/* process requesting mount */
 {
 	size_t		size;
 	int		error;
@@ -140,12 +140,9 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	struct fs *fs;
 	int flags, ronly = 0;
 	mode_t accessmode;
-	struct ucred *cred;
 	struct nlookupdata nd;
 	struct vnode *rootvp;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 	devvp = NULL;
 	error = 0;
 
@@ -373,7 +370,7 @@ dostatfs:
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	(void)VFS_STATFS(mp, &mp->mnt_stat, td);
+	(void)VFS_STATFS(mp, &mp->mnt_stat, cred);
 
 	goto success;
 
@@ -822,7 +819,7 @@ ffs_oldfscompat(struct fs *fs)
  * unmount system call
  */
 int
-ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
+ffs_unmount(struct mount *mp, int mntflags)
 {
 	struct ufsmount *ump;
 	struct fs *fs;
@@ -910,7 +907,7 @@ ffs_flushfiles(struct mount *mp, int flags)
  * Get filesystem statistics.
  */
 int
-ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+ffs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct ufsmount *ump;
 	struct fs *fs;

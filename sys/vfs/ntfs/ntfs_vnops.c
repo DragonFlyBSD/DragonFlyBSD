@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.32 2006/05/05 16:35:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.33 2006/05/06 18:48:53 dillon Exp $
  *
  */
 
@@ -737,7 +737,7 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 		if(error)
 			return (error);
 
-		VOP__UNLOCK(dvp,0,cnp->cn_td);
+		VOP__UNLOCK(dvp, 0);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 
 		dprintf(("ntfs_lookup: parentdir: %d\n",
@@ -746,13 +746,13 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 				 vap->va_a_name->n_pnumber,ap->a_vpp); 
 		ntfs_ntvattrrele(vap);
 		if (error) {
-			if (VN_LOCK(dvp,LK_EXCLUSIVE|LK_RETRY,cnp->cn_td)==0)
+			if (VN_LOCK(dvp, LK_EXCLUSIVE | LK_RETRY) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
 
 		if (lockparent) {
-			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_td);
+			error = VN_LOCK(dvp, LK_EXCLUSIVE);
 			if (error) {
 				vput(*ap->a_vpp);
 				*ap->a_vpp = NULL;
@@ -771,7 +771,7 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 			VTONT(*ap->a_vpp)->i_number));
 
 		if (!lockparent)
-			VOP__UNLOCK(dvp, 0, cnp->cn_td);
+			VOP__UNLOCK(dvp, 0);
 	}
 	return (error);
 }

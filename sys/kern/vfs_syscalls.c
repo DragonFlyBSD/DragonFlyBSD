@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.87 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.88 2006/05/06 18:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,9 +114,10 @@ mount(struct mount_args *uap)
 	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
 	struct nlcomponent nlc;
+	struct ucred *cred = p->p_ucred;
 
 	KKASSERT(p);
-	if (p->p_ucred->cr_prison != NULL)
+	if (cred->cr_prison != NULL)
 		return (EPERM);
 	if (usermount == 0 && (error = suser(td)))
 		return (error);
@@ -192,7 +193,7 @@ mount(struct mount_args *uap)
 		 * Only root, or the user that did the original mount is
 		 * permitted to update it.
 		 */
-		if (mp->mnt_stat.f_owner != p->p_ucred->cr_uid &&
+		if (mp->mnt_stat.f_owner != cred->cr_uid &&
 		    (error = suser(td))) {
 			cache_drop(ncp);
 			vput(vp);
@@ -221,8 +222,7 @@ mount(struct mount_args *uap)
 	 * onto which we are attempting to mount.
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
-	    (va.va_uid != p->p_ucred->cr_uid &&
-	     (error = suser(td)))) {
+	    (va.va_uid != cred->cr_uid && (error = suser(td)))) {
 		cache_drop(ncp);
 		vput(vp);
 		return (error);
@@ -302,7 +302,7 @@ mount(struct mount_args *uap)
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
 	mp->mnt_vnodecovered = vp;
-	mp->mnt_stat.f_owner = p->p_ucred->cr_uid;
+	mp->mnt_stat.f_owner = cred->cr_uid;
 	mp->mnt_iosize_max = DFLTPHYS;
 	VOP_UNLOCK(vp, 0);
 update:
@@ -326,7 +326,7 @@ update:
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
 	 * get. 
 	 */
-	error = VFS_MOUNT(mp, uap->path, uap->data, td);
+	error = VFS_MOUNT(mp, uap->path, uap->data, cred);
 	if (mp->mnt_flag & MNT_UPDATE) {
 		if (mp->mnt_kern_flag & MNTK_WANTRDWR)
 			mp->mnt_flag &= ~MNT_RDONLY;
@@ -371,7 +371,7 @@ update:
 		VOP_UNLOCK(vp, 0);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp);
-		if ((error = VFS_START(mp, 0, td)) != 0)
+		if ((error = VFS_START(mp, 0)) != 0)
 			vrele(vp);
 	} else {
 		vfs_rm_vnodeops(&mp->mnt_vn_coherency_ops);
@@ -499,7 +499,7 @@ out:
 	nlookup_done(&nd);
 	if (error)
 		return (error);
-	return (dounmount(mp, uap->flags, td));
+	return (dounmount(mp, uap->flags));
 }
 
 /*
@@ -515,7 +515,7 @@ dounmount_interlock(struct mount *mp)
 }
 
 int
-dounmount(struct mount *mp, int flags, struct thread *td)
+dounmount(struct mount *mp, int flags)
 {
 	struct vnode *coveredvp;
 	int error;
@@ -554,7 +554,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (((mp->mnt_flag & MNT_RDONLY) ||
 	     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
 	    (flags & MNT_FORCE))
-		error = VFS_UNMOUNT(mp, flags, td);
+		error = VFS_UNMOUNT(mp, flags);
 	if (error) {
 		if (mp->mnt_syncer == NULL)
 			vfs_allocate_syncvnode(mp);
@@ -674,7 +674,7 @@ quotactl(struct quotactl_args *uap)
 	if (error == 0) {
 		mp = nd.nl_ncp->nc_mount;
 		error = VFS_QUOTACTL(mp, uap->cmd, uap->uid,
-				    uap->arg, nd.nl_td);
+				    uap->arg, nd.nl_cred);
 	}
 	nlookup_done(&nd);
 	return (error);
@@ -824,7 +824,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 		return (error);
 	mp = nd->nl_ncp->nc_mount;
 	sp = &mp->mnt_stat;
-	if ((error = VFS_STATFS(mp, sp, td)) != 0)
+	if ((error = VFS_STATFS(mp, sp, nd->nl_cred)) != 0)
 		return (error);
 
 	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
@@ -881,8 +881,10 @@ kern_fstatfs(int fd, struct statfs *buf)
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	if (mp == NULL)
 		return (EBADF);
+	if (fp->f_cred == NULL)
+		return (EINVAL);
 	sp = &mp->mnt_stat;
-	error = VFS_STATFS(mp, sp, td);
+	error = VFS_STATFS(mp, sp, fp->f_cred);
 	if (error)
 		return (error);
 
@@ -933,7 +935,6 @@ struct getfsstat_info {
 	int error;
 	int flags;
 	int is_chrooted;
-	struct thread *td;
 	struct proc *p;
 };
 
@@ -957,7 +958,6 @@ getfsstat(struct getfsstat_args *uap)
 	info.sfsp = uap->buf;
 	info.count = 0;
 	info.flags = uap->flags;
-	info.td = td;
 	info.p = p;
 
 	mountlist_scan(getfsstat_callback, &info, MNTSCAN_FORWARD);
@@ -989,7 +989,7 @@ getfsstat_callback(struct mount *mp, void *data)
 		 */
 		if (((info->flags & (MNT_LAZY|MNT_NOWAIT)) == 0 ||
 		    (info->flags & MNT_WAIT)) &&
-		    (error = VFS_STATFS(mp, sp, info->td))) {
+		    (error = VFS_STATFS(mp, sp, info->p->p_ucred))) {
 			return(0);
 		}
 		sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
@@ -3337,7 +3337,7 @@ fhstatfs(struct fhstatfs_args *uap)
 	mp = vp->v_mount;
 	sp = &mp->mnt_stat;
 	vput(vp);
-	if ((error = VFS_STATFS(mp, sp, td)) != 0)
+	if ((error = VFS_STATFS(mp, sp, p->p_ucred)) != 0)
 		return (error);
 
 	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
@@ -3383,7 +3383,7 @@ extattrctl(struct extattrctl_args *uap)
 		mp = nd.nl_ncp->nc_mount;
 		error = VFS_EXTATTRCTL(mp, uap->cmd, 
 				uap->attrname, uap->arg, 
-				nd.nl_td);
+				nd.nl_cred);
 	}
 	nlookup_done(&nd);
 	return (error);

@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.13 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.14 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -55,11 +55,10 @@
 extern struct vnodeopv_entry_desc procfs_vnodeop_entries[];
 
 static int	procfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct thread *td);
+				  struct ucred *cred);
 static int	procfs_statfs (struct mount *mp, struct statfs *sbp,
-				   struct thread *td);
-static int	procfs_unmount (struct mount *mp, int mntflags,
-				    struct thread *td);
+				struct ucred *cred);
+static int	procfs_unmount (struct mount *mp, int mntflags);
 
 /*
  * VFS Operations.
@@ -68,7 +67,7 @@ static int	procfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+procfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	size_t size;
 	int error;
@@ -88,7 +87,7 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	size = sizeof("procfs") - 1;
 	bcopy("procfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	procfs_statfs(mp, &mp->mnt_stat, td);
+	procfs_statfs(mp, &mp->mnt_stat, cred);
 	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops,
 			 procfs_vnodeop_entries, 0);
 
@@ -99,7 +98,7 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
  * unmount system call
  */
 static int
-procfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+procfs_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
@@ -130,7 +129,7 @@ procfs_root(struct mount *mp, struct vnode **vpp)
  * Get file system statistics.
  */
 static int
-procfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+procfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	sbp->f_bsize = PAGE_SIZE;
 	sbp->f_iosize = PAGE_SIZE;

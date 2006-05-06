@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.4 2006/05/06 16:33:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.5 2006/05/06 18:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -373,18 +373,14 @@ struct scaninfo {
 static int ext2_quotaon_scan(struct mount *mp, struct vnode *vp, void *data);
 
 int
-ext2_quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
+ext2_quotaon(struct ucred *cred, struct mount *mp, int type, caddr_t fname)
 {
 	struct ext2mount *ump = VFSTOEXT2(mp);
 	struct vnode *vp, **vpp;
 	struct ext2_dquot *dq;
 	int error;
 	struct nlookupdata nd;
-	struct ucred *cred;
 	struct scaninfo scaninfo;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	vpp = &ump->um_quotas[type];
 	error = nlookup_init(&nd, fname, UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
@@ -642,7 +638,6 @@ int
 ext2_qsync(struct mount *mp)
 {
 	struct ext2mount *ump = VFSTOEXT2(mp);
-	struct thread *td = curthread;		/* XXX */
 	struct scaninfo scaninfo;
 	int i;
 

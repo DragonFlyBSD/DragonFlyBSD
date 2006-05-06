@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.19 2006/05/05 21:15:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.20 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -64,26 +64,25 @@ static int	umapfs_fhtovp (struct mount *mp, struct fid *fidp,
 static int	umapfs_checkexp (struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
 static int	umapfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct thread *td);
+				  struct ucred *cred);
 static int	umapfs_quotactl (struct mount *mp, int cmd, uid_t uid,
-				     caddr_t arg, struct thread *td);
+				     caddr_t arg, struct ucred *cred);
 static int	umapfs_root (struct mount *mp, struct vnode **vpp);
 static int	umapfs_statfs (struct mount *mp, struct statfs *sbp,
-				   struct thread *td);
-static int	umapfs_unmount (struct mount *mp, int mntflags,
-				    struct thread *td);
+				struct ucred *cred);
+static int	umapfs_unmount (struct mount *mp, int mntflags);
 static int	umapfs_vget (struct mount *mp, ino_t ino,
 				 struct vnode **vpp);
 static int	umapfs_vptofh (struct vnode *vp, struct fid *fhp);
 static int	umapfs_extattrctl (struct mount *mp, int cmd,
 				       const char *attrname, caddr_t arg,
-				       struct thread *td);
+				       struct ucred *cred);
 
 /*
  * Mount umap layer
  */
 static int
-umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+umapfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct umap_args args;
 	struct vnode *lowerrootvp, *vp;
@@ -99,7 +98,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Only for root
 	 */
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(cred, 0)) != 0)
 		return (error);
 
 #ifdef DEBUG
@@ -230,7 +229,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)umapfs_statfs(mp, &mp->mnt_stat, td);
+	(void)umapfs_statfs(mp, &mp->mnt_stat, cred);
 	return (0);
 }
 
@@ -238,7 +237,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
  * Free reference to umap layer
  */
 static int
-umapfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+umapfs_unmount(struct mount *mp, int mntflags)
 {
 	int error;
 	int flags = 0;
@@ -276,7 +275,6 @@ umapfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 static int
 umapfs_root(struct mount *mp, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
 
 #ifdef DEBUG
@@ -297,13 +295,13 @@ umapfs_root(struct mount *mp, struct vnode **vpp)
 
 static int
 umapfs_quotactl(struct mount *mp, int cmd, uid_t uid, 
-	caddr_t arg, struct thread *td)
+	caddr_t arg, struct ucred *cred)
 {
-	return (VFS_QUOTACTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, uid, arg, td));
+	return (VFS_QUOTACTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, uid, arg, cred));
 }
 
 static int
-umapfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+umapfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	int error;
 	struct statfs mstat;
@@ -316,7 +314,7 @@ umapfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 
 	bzero(&mstat, sizeof(mstat));
 
-	error = VFS_STATFS(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, &mstat, td);
+	error = VFS_STATFS(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, &mstat, cred);
 	if (error)
 		return (error);
 
@@ -368,10 +366,10 @@ umapfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 static int
 umapfs_extattrctl(struct mount *mp, int cmd, const char *attrname,
-	caddr_t arg, struct thread *td)
+	caddr_t arg, struct ucred *cred)
 {
 	return (VFS_EXTATTRCTL(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, cmd, attrname,
-	    arg, td));
+	    arg, cred));
 } 
 
 

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.35 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.36 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,10 +69,10 @@ extern struct vnodeopv_entry_desc cd9660_fifoop_entries[];
 MALLOC_DEFINE(M_ISOFSMNT, "ISOFS mount", "ISOFS mount structure");
 MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
 
-static int cd9660_mount (struct mount *, char *, caddr_t, struct thread *);
-static int cd9660_unmount (struct mount *, int, struct thread *);
+static int cd9660_mount (struct mount *, char *, caddr_t, struct ucred *);
+static int cd9660_unmount (struct mount *, int);
 static int cd9660_root (struct mount *, struct vnode **);
-static int cd9660_statfs (struct mount *, struct statfs *, struct thread *);
+static int cd9660_statfs (struct mount *, struct statfs *, struct ucred *);
 static int cd9660_vget (struct mount *, ino_t, struct vnode **);
 static int cd9660_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int cd9660_checkexp (struct mount *, struct sockaddr *,
@@ -100,9 +100,9 @@ MODULE_VERSION(cd9660, 1);
  * Called by vfs_mountroot when iso is going to be mounted as root.
  */
 
-static int iso_get_ssector (dev_t dev, struct thread *td);
+static int iso_get_ssector (dev_t dev);
 static int iso_mountfs (struct vnode *devvp, struct mount *mp,
-			    struct thread *td, struct iso_args *argp);
+			    struct iso_args *argp);
 
 /*
  * Try to find the start of the last data track on this CD-ROM.  This
@@ -110,10 +110,11 @@ static int iso_mountfs (struct vnode *devvp, struct mount *mp,
  * and return 0 if we fail, this is always a safe bet.
  */
 static int
-iso_get_ssector(dev_t dev, struct thread *td)
+iso_get_ssector(dev_t dev)
 {
 	struct ioc_toc_header h;
 	struct ioc_read_toc_single_entry t;
+	thread_t td = curthread;
 	int i;
 
 	if (dev_dioctl(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD, td) != 0)
@@ -136,10 +137,8 @@ iso_get_ssector(dev_t dev, struct thread *td)
 	return ntohl(t.entry.addr.lba);
 }
 
-static int iso_mountroot (struct mount *mp, struct thread *td);
-
 static int
-iso_mountroot(struct mount *mp, struct thread *td)
+iso_mountroot(struct mount *mp)
 {
 	struct iso_args args;
 	struct vnode *rootvp;
@@ -157,17 +156,17 @@ iso_mountroot(struct mount *mp, struct thread *td)
 	if (error)
 		return (error);
 
-	args.ssector = iso_get_ssector(rootdev, td);
+	args.ssector = iso_get_ssector(rootdev);
 
 	VOP_CLOSE(rootvp, FREAD);
 
 	if (bootverbose)
 		printf("iso_mountroot(): using session at block %d\n",
 		       args.ssector);
-	if ((error = iso_mountfs(rootvp, mp, td, &args)) != 0)
+	if ((error = iso_mountfs(rootvp, mp, &args)) != 0)
 		return (error);
 
-	cd9660_statfs(mp, &mp->mnt_stat, td);
+	cd9660_statfs(mp, &mp->mnt_stat, proc0.p_ucred);
 	return (0);
 }
 
@@ -177,7 +176,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
  * mount system call
  */
 static int
-cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	struct vnode *devvp;
 	struct iso_args args;
@@ -188,15 +187,13 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct nlookupdata nd;
 
 	if ((mp->mnt_flag & (MNT_ROOTFS|MNT_UPDATE)) == MNT_ROOTFS) {
-		return (iso_mountroot(mp, td));
+		return (iso_mountroot(mp));
 	}
 	if ((error = copyin(data, (caddr_t)&args, sizeof (struct iso_args))))
 		return (error);
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		return (EROFS);
-
-	KKASSERT(td->td_proc);
 
 	/*
 	 * If updating, check whether changing from read-only to
@@ -232,9 +229,9 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 */
 	accessmode = VREAD;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(devvp, accessmode, td->td_proc->p_ucred);
+	error = VOP_ACCESS(devvp, accessmode, cred);
 	if (error) 
-		error = suser(td);
+		error = suser_cred(cred, 0);
 	if (error) {
 		vput(devvp);
 		return (error);
@@ -242,7 +239,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	VOP_UNLOCK(devvp, 0);
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
-		error = iso_mountfs(devvp, mp, td, &args);
+		error = iso_mountfs(devvp, mp, &args);
 	} else {
 		if (devvp != imp->im_devvp)
 			error = EINVAL;	/* needs translation */
@@ -257,7 +254,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	cd9660_statfs(mp, &mp->mnt_stat, td);
+	cd9660_statfs(mp, &mp->mnt_stat, cred);
 	return 0;
 }
 
@@ -265,8 +262,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
  * Common code for mount and mountroot
  */
 static int
-iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
-	    struct iso_args *argp)
+iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 {
 	struct iso_mnt *isomp = NULL;
 	struct buf *bp = NULL;
@@ -536,7 +532,7 @@ out:
  * unmount system call
  */
 static int
-cd9660_unmount(struct mount *mp, int mntflags, struct thread *td)
+cd9660_unmount(struct mount *mp, int mntflags)
 {
 	struct iso_mnt *isomp;
 	int error, flags = 0;
@@ -585,7 +581,7 @@ cd9660_root(struct mount *mp, struct vnode **vpp)
  * Get file system statistics.
  */
 int
-cd9660_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+cd9660_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct iso_mnt *isomp;
 
@@ -694,7 +690,6 @@ int
 cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 		     int relocated, struct iso_directory_record *isodir)
 {
-	/*struct thread *td = curthread;*/
 	struct iso_mnt *imp;
 	struct iso_node *ip;
 	struct buf *bp;

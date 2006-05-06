@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.27 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.28 2006/05/06 18:48:52 dillon Exp $
  */
 
 /*
@@ -103,8 +103,7 @@ fdesc_uninit(struct vfsconf *vfsp)
 	return (0);
 }
 int
-fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp,
-	      struct thread *td)
+fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp)
 {
 	struct fdhashhead *fc;
 	struct fdescnode *fd;
@@ -224,7 +223,7 @@ fdesc_lookup(struct vop_old_lookup_args *ap)
 		goto bad;
 	}
 
-	error = fdesc_allocvp(Fdesc, FD_DESC+fd, dvp->v_mount, &fvp, td);
+	error = fdesc_allocvp(Fdesc, FD_DESC+fd, dvp->v_mount, &fvp);
 	if (error)
 		goto bad;
 	VTOFDESC(fvp)->fd_fd = fd;

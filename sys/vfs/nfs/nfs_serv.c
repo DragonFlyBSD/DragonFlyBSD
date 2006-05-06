@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.35 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.36 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -3557,7 +3557,7 @@ nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		goto nfsmout;
 	}
 	sf = &statfs;
-	error = VFS_STATFS(vp->v_mount, sf, td);
+	error = VFS_STATFS(vp->v_mount, sf, proc0.p_ucred);
 	getret = VOP_GETATTR(vp, &at);
 	vput(vp);
 	vp = NULL;
@@ -3637,7 +3637,7 @@ nfsrv_fsinfo(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 
 	/* XXX Try to make a guess on the max file size. */
-	VFS_STATFS(vp->v_mount, &sb, td);
+	VFS_STATFS(vp->v_mount, &sb, proc0.p_ucred);
 	maxfsize = (u_quad_t)0x80000000 * sb.f_bsize - 1;
 
 	getret = VOP_GETATTR(vp, &at);

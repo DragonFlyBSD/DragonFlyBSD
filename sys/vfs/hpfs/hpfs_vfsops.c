@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.34 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.35 2006/05/06 18:48:53 dillon Exp $
  */
 
 
@@ -66,20 +66,19 @@ MALLOC_DEFINE(M_HPFSMNT, "HPFS mount", "HPFS mount structure");
 MALLOC_DEFINE(M_HPFSNO, "HPFS node", "HPFS node structure");
 
 static int	hpfs_root (struct mount *, struct vnode **);
-static int	hpfs_statfs (struct mount *, struct statfs *,
-				 struct thread *);
-static int	hpfs_unmount (struct mount *, int, struct thread *);
+static int	hpfs_statfs (struct mount *, struct statfs *, struct ucred *);
+static int	hpfs_unmount (struct mount *, int);
 static int	hpfs_vget (struct mount *mp, ino_t ino,
 			       struct vnode **vpp);
 static int	hpfs_mountfs (struct vnode *, struct mount *, 
-				  struct hpfs_args *, struct thread *);
+				  struct hpfs_args *);
 static int	hpfs_vptofh (struct vnode *, struct fid *);
 static int	hpfs_fhtovp (struct mount *, struct fid *,
 				 struct vnode **);
 
 
 struct sockaddr;
-static int	hpfs_mount (struct mount *, char *, caddr_t, struct thread *);
+static int	hpfs_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int	hpfs_init (struct vfsconf *);
 static int	hpfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
@@ -115,9 +114,7 @@ hpfs_init(struct vfsconf *vcp)
 }
 
 static int
-hpfs_mount(struct mount *mp,
-	   char *path, caddr_t data,
-	   struct thread *td)
+hpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	u_int		size;
 	int		error;
@@ -193,7 +190,7 @@ hpfs_mount(struct mount *mp,
 			&size);				/* real size*/
 	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-	error = hpfs_mountfs(devvp, mp, &args, td);
+	error = hpfs_mountfs(devvp, mp, &args);
 	if (error)
 		goto error_2;
 
@@ -203,7 +200,7 @@ hpfs_mount(struct mount *mp,
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	VFS_STATFS(mp, &mp->mnt_stat, td);
+	VFS_STATFS(mp, &mp->mnt_stat, cred);
 	return (error);
 
 error_2:	/* error with devvp held*/
@@ -221,8 +218,7 @@ success:
  * Common code for mount and mountroot
  */
 int
-hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
-	     struct thread *td)
+hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp)
 {
 	int error, ncount, ronly;
 	struct sublock *sup;
@@ -248,16 +244,16 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	if (ncount > 0)
 		return (EBUSY);
 
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-	VOP__UNLOCK(devvp, 0, td);
+	VOP__UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
-	VOP__UNLOCK(devvp, 0, td);
+	VOP__UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -344,7 +340,7 @@ failed:
 
 
 static int
-hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+hpfs_unmount(struct mount *mp, int mntflags)
 {
 	int error, flags, ronly;
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
@@ -399,7 +395,7 @@ hpfs_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-hpfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+hpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 
@@ -524,11 +520,11 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 			vx_put(vp);
 			return (0);
 		}
-	} while(LOCKMGR(&hpfs_hphash_lock,LK_EXCLUSIVE|LK_SLEEPFAIL,NULL));
+	} while (LOCKMGR(&hpfs_hphash_lock, LK_EXCLUSIVE | LK_SLEEPFAIL));
 
 	hpfs_hphashins(hp);
 
-	LOCKMGR(&hpfs_hphash_lock, LK_RELEASE, NULL);
+	LOCKMGR(&hpfs_hphash_lock, LK_RELEASE);
 
 	error = bread(hpmp->hpm_devvp, dbtodoff(ino), FNODESIZE, &bp);
 	if (error) {

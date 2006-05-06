@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.22 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.23 2006/05/06 18:48:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -321,7 +321,7 @@ acctwatch(void *a)
 			savacctp = NULLVP;
 			return;
 		}
-		(void)VFS_STATFS(savacctp->v_mount, &sb, NULL);
+		(void)VFS_STATFS(savacctp->v_mount, &sb, proc0.p_ucred);
 		if (sb.f_bavail > acctresume * sb.f_blocks / 100) {
 			acctp = savacctp;
 			savacctp = NULLVP;
@@ -335,7 +335,7 @@ acctwatch(void *a)
 			acctp = NULLVP;
 			return;
 		}
-		(void)VFS_STATFS(acctp->v_mount, &sb, NULL);
+		(void)VFS_STATFS(acctp->v_mount, &sb, proc0.p_ucred);
 		if (sb.f_bavail <= acctsuspend * sb.f_blocks / 100) {
 			savacctp = acctp;
 			acctp = NULLVP;

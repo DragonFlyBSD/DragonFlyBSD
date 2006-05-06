@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.41 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.42 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -117,12 +117,11 @@ static void	nfs_decode_args (struct nfsmount *nmp,
 static int	mountnfs (struct nfs_args *,struct mount *,
 			struct sockaddr *,char *,char *,struct vnode **);
 static int	nfs_mount ( struct mount *mp, char *path, caddr_t data,
-			struct thread *td);
-static int	nfs_unmount ( struct mount *mp, int mntflags,
-			struct thread *td);
+			struct ucred *cred);
+static int	nfs_unmount ( struct mount *mp, int mntflags);
 static int	nfs_root ( struct mount *mp, struct vnode **vpp);
 static int	nfs_statfs ( struct mount *mp, struct statfs *sbp,
-			struct thread *td);
+			struct ucred *cred);
 static int	nfs_sync ( struct mount *mp, int waitfor);
 
 /*
@@ -293,7 +292,7 @@ nfs_convert_diskless()
  * nfs statfs call
  */
 int
-nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+nfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	struct vnode *vp;
 	struct nfs_statfs *sfp;
@@ -302,9 +301,9 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	int32_t t1, t2;
 	caddr_t bpos, dpos, cp2;
 	struct nfsmount *nmp = VFSTONFS(mp);
+	thread_t td = curthread;
 	int error = 0, v3 = (nmp->nm_flag & NFSMNT_NFSV3), retattr;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
-	struct ucred *cred;
 	struct nfsnode *np;
 	u_quad_t tquad;
 
@@ -315,6 +314,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	if (error)
 		return (error);
 	vp = NFSTOV(np);
+	/* ignore the passed cred */
 	cred = crget();
 	cred->cr_ngroups = 1;
 	if (v3 && (nmp->nm_state & NFSSTA_GOTFSINFO) == 0)
@@ -438,8 +438,7 @@ nfsmout:
  * - build the rootfs mount point and call mountnfs() to do the rest.
  */
 int
-nfs_mountroot(mp)
-	struct mount *mp;
+nfs_mountroot(struct mount *mp)
 {
 	struct mount  *swap_mp;
 	struct nfsv3_diskless *nd = &nfsv3_diskless;
@@ -798,7 +797,7 @@ nfs_decode_args(nmp, argp)
  */
 /* ARGSUSED */
 static int
-nfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+nfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	int error;
 	struct nfs_args args;
@@ -1010,7 +1009,7 @@ bad:
  * unmount system call
  */
 static int
-nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+nfs_unmount(struct mount *mp, int mntflags)
 {
 	struct nfsmount *nmp;
 	int error, flags = 0;

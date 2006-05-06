@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.17 2005/08/09 18:45:09 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.18 2006/05/06 18:48:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -296,7 +296,6 @@ struct l_ustat
 int
 linux_ustat(struct linux_ustat_args *args)
 {
-	struct thread *td = curthread;
 	struct l_ustat lu;
 	dev_t dev;
 	struct vnode *vp;
@@ -327,7 +326,7 @@ linux_ustat(struct linux_ustat_args *args)
 			return (EINVAL);
 		}
 		stat = &(vp->v_mount->mnt_stat);
-		error = VFS_STATFS(vp->v_mount, stat, td);
+		error = VFS_STATFS(vp->v_mount, stat, curproc->p_ucred);
 		if (error) {
 			return (error);
 		}

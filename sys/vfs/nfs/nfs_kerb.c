@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_kerb.c,v 1.1 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_kerb.c,v 1.2 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,7 +132,7 @@ nfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 		    error = tsleep((caddr_t)&nmp->nm_authstr, PCATCH,
 			"nqnfstimr", hz / 3);
 		    if (error == EINTR || error == ERESTART)
-			(void) dounmount(nmp->nm_mountp, 0, td);
+			(void) dounmount(nmp->nm_mountp, 0);
 	    }
 	}
 

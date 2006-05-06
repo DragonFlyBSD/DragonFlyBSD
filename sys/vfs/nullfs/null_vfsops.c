@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.20 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.21 2006/05/06 18:48:53 dillon Exp $
  */
 
 /*
@@ -59,24 +59,15 @@ extern struct vnodeopv_entry_desc null_vnodeop_entries[];
 
 static MALLOC_DEFINE(M_NULLFSMNT, "NULLFS mount", "NULLFS mount structure");
 
-static int	nullfs_checkexp(struct mount *mp, struct sockaddr *nam,
-				    int *extflagsp, struct ucred **credanonp);
-static int	nullfs_mount(struct mount *mp, char *path, caddr_t data,
-				  struct thread *td);
-static int	nullfs_quotactl(struct mount *mp, int cmd, uid_t uid,
-				     caddr_t arg, struct thread *td);
 static int	nullfs_root(struct mount *mp, struct vnode **vpp);
 static int	nullfs_statfs(struct mount *mp, struct statfs *sbp,
-				   struct thread *td);
-static int	nullfs_unmount(struct mount *mp, int mntflags, struct thread *td);
-static int	nullfs_extattrctl(struct mount *mp, int cmd,
-			const char *attrname, caddr_t arg, struct thread *td);
+				struct ucred *cred);
 
 /*
  * Mount null layer
  */
 static int
-nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
+nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 {
 	int error = 0;
 	struct null_args args;
@@ -149,7 +140,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)nullfs_statfs(mp, &mp->mnt_stat, td);
+	(void)nullfs_statfs(mp, &mp->mnt_stat, cred);
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
 		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 	return (0);
@@ -159,7 +150,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
  * Free reference to null layer
  */
 static int
-nullfs_unmount(struct mount *mp, int mntflags, struct thread *td)
+nullfs_unmount(struct mount *mp, int mntflags)
 {
 	void *mntdata;
 	int flags = 0;
@@ -206,13 +197,13 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 
 static int
 nullfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
-		struct thread *td)
+		struct ucred *cred)
 {
-	return VFS_QUOTACTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, uid, arg, td);
+	return VFS_QUOTACTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, uid, arg, cred);
 }
 
 static int
-nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
+nullfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 {
 	int error;
 	struct statfs mstat;
@@ -222,7 +213,7 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 
 	bzero(&mstat, sizeof(mstat));
 
-	error = VFS_STATFS(MOUNTTONULLMOUNT(mp)->nullm_vfs, &mstat, td);
+	error = VFS_STATFS(MOUNTTONULLMOUNT(mp)->nullm_vfs, &mstat, cred);
 	if (error)
 		return (error);
 
@@ -254,10 +245,10 @@ nullfs_checkexp(struct mount *mp, struct sockaddr *nam, int *extflagsp,
 
 static int                        
 nullfs_extattrctl(struct mount *mp, int cmd, const char *attrname, caddr_t arg,
-		  struct thread *td)
+		  struct ucred *cred)
 {
 	return VFS_EXTATTRCTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, attrname,
-	    arg, td);
+	    arg, cred);
 }
 
 

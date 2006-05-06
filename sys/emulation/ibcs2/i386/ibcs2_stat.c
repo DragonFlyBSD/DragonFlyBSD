@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.12 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.13 2006/05/06 18:48:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,6 @@ cvt_statfs(struct statfs *sp, caddr_t buf, int len)
 int
 ibcs2_statfs(struct ibcs2_statfs_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
@@ -113,7 +112,7 @@ ibcs2_statfs(struct ibcs2_statfs_args *uap)
 	if (error == 0) {
 		mp = nd.nl_ncp->nc_mount;
 		sp = &mp->mnt_stat;
-		error = VFS_STATFS(mp, sp, td);
+		error = VFS_STATFS(mp, sp, curproc->p_ucred);
 		if (error == 0) {
 			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 			error = cvt_statfs(sp, (caddr_t)SCARG(uap, buf),
@@ -138,7 +137,7 @@ ibcs2_fstatfs(struct ibcs2_fstatfs_args *uap)
 		return (error);
 	mp = ((struct vnode *)fp->f_data)->v_mount;
 	sp = &mp->mnt_stat;
-	if ((error = VFS_STATFS(mp, sp, td)) != 0)
+	if ((error = VFS_STATFS(mp, sp, curproc->p_ucred)) != 0)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	return cvt_statfs(sp, (caddr_t)SCARG(uap, buf), SCARG(uap, len));

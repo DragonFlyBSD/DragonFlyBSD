@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.14 2006/05/06 16:20:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.15 2006/05/06 18:48:53 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -76,17 +76,12 @@ ufs_root(struct mount *mp, struct vnode **vpp)
  */
 int
 ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
-	     struct thread *td)
+	     struct ucred *cred)
 {
 #ifndef QUOTA
 	return (EOPNOTSUPP);
 #else
-	struct ucred *cred;
 	int cmd, type, error;
-
-	if (td->td_proc == NULL)
-		return (EOPNOTSUPP);
-	cred = td->td_proc->p_ucred;
 
 	type = cmds & SUBCMDMASK;
 	cmd = cmds >> SUBCMDSHIFT;

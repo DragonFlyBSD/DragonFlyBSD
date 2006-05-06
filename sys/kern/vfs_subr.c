@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.83 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.84 2006/05/06 18:48:52 dillon Exp $
  */
 
 /*
@@ -1493,7 +1493,7 @@ vfs_unmountall(void)
 
 	do {
 		count = mountlist_scan(vfs_umountall_callback, 
-					&td, MNTSCAN_REVERSE|MNTSCAN_NOBUSY);
+					NULL, MNTSCAN_REVERSE|MNTSCAN_NOBUSY);
 	} while (count);
 }
 
@@ -1501,10 +1501,9 @@ static
 int
 vfs_umountall_callback(struct mount *mp, void *data)
 {
-	struct thread *td = *(struct thread **)data;
 	int error;
 
-	error = dounmount(mp, MNT_FORCE, td);
+	error = dounmount(mp, MNT_FORCE);
 	if (error) {
 		mountlist_remove(mp);
 		printf("unmount of filesystem mounted from %s failed (", 

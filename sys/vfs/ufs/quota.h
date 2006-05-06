@@ -35,7 +35,7 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.7 2006/05/06 16:20:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.8 2006/05/06 18:48:53 dillon Exp $
  */
 
 #ifndef _VFS_UFS_QUOTA_H_
@@ -190,7 +190,7 @@ int	ufs_quotaoff(struct mount *, int);
 int	ufs_quotaon(struct ucred *, struct mount *, int, caddr_t);
 int	ufs_setquota(struct mount *, u_long, int, caddr_t);
 int	ufs_setuse(struct mount *, u_long, int, caddr_t);
-int	ufs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
+int	ufs_quotactl(struct mount *, int, uid_t, caddr_t, struct ucred *);
 
 #else /* !_KERNEL */
 

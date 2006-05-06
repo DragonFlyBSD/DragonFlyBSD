@@ -35,7 +35,7 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/quota.h,v 1.2 2006/05/06 16:33:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/quota.h,v 1.3 2006/05/06 18:48:52 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_QUOTA_H_
@@ -187,10 +187,10 @@ int	ext2_getinoquota(struct inode *);
 int	ext2_getquota(struct mount *, u_long, int, caddr_t);
 int	ext2_qsync(struct mount *mp);
 int	ext2_quotaoff(struct mount *, int);
-int	ext2_quotaon(struct thread *, struct mount *, int, caddr_t);
+int	ext2_quotaon(struct ucred *, struct mount *, int, caddr_t);
 int	ext2_setquota(struct mount *, u_long, int, caddr_t);
 int	ext2_setuse(struct mount *, u_long, int, caddr_t);
-int	ext2_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
+int	ext2_quotactl(struct mount *, int, uid_t, caddr_t, struct ucred *);
 
 #else /* !_KERNEL */
 
