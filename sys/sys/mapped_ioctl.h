@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/mapped_ioctl.h,v 1.2 2005/03/01 00:43:02 corecode Exp $
+ * $DragonFly: src/sys/sys/mapped_ioctl.h,v 1.3 2006/05/06 02:43:13 dillon Exp $
  */
 #ifndef _SYS_MAPPED_IOCTL_H_
 #define _SYS_MAPPED_IOCTL_H_
@@ -40,10 +40,11 @@
 
 struct file;
 struct thread;
+struct ucred;
 struct ioctl_map_entry;
 
-typedef int	(ioctl_wrap_func)(struct file *, u_long, u_long, caddr_t,
-				 struct thread *);
+typedef int	(ioctl_wrap_func)(struct file *, u_long, u_long, caddr_t, 
+				  struct ucred *);
 typedef u_long	(ioctl_map_func)(u_long, u_long, u_long, u_long, u_long, u_long);
 
 struct ioctl_map_range {

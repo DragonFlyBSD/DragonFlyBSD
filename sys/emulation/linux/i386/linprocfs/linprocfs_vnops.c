@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.29 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.30 2006/05/06 02:43:11 dillon Exp $
  */
 
 /*
@@ -204,13 +204,11 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *procp;
-	struct thread *td;
 	int error;
 	int signo;
 	struct procfs_status *psp;
 	unsigned char flags;
 
-	td = ap->a_td;
 	procp = pfind(pfs->pfs_pid);
 	if (procp == NULL) {
 		return ENOTTY;
@@ -557,7 +555,7 @@ linprocfs_access(struct vop_access_args *ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_td);
+	error = VOP_GETATTR(ap->a_vp, vap);
 	if (error)
 		return (error);
 

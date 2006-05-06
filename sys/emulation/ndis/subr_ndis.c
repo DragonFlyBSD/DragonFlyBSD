@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.12 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.13 2006/05/06 02:43:11 dillon Exp $
  */
 
 /*
@@ -2283,7 +2283,6 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 	       ndis_unicode_string *filename, ndis_physaddr highestaddr)
 {
 	char			*afilename = NULL;
-	struct thread		*td = curthread;
 	struct nlookupdata	nd;
 	int			error;
 	struct vattr		vat;
@@ -2314,7 +2313,7 @@ ndis_open_file(ndis_status *status, ndis_handle *filehandle, uint32_t *filelengt
 	nd.nl_open_vp = NULL;
 
 	/* Get the file size. */
-	VOP_GETATTR(vp, vap, td);
+	VOP_GETATTR(vp, vap);
 	VOP_UNLOCK(vp, 0);
 
 	fh->nf_vp = vp;
@@ -2332,7 +2331,6 @@ __stdcall static void
 ndis_map_file(ndis_status *status, void **mappedbuffer, ndis_handle filehandle)
 {
 	ndis_fh			*fh;
-	struct thread		*td = curthread;
 	int			error, resid;
 
 	if (filehandle == NULL) {
@@ -2355,7 +2353,7 @@ ndis_map_file(ndis_status *status, void **mappedbuffer, ndis_handle filehandle)
 	fh->nf_map = malloc(fh->nf_maplen, M_DEVBUF, M_WAITOK);
 
 	error = vn_rdwr(UIO_READ, fh->nf_vp, fh->nf_map, fh->nf_maplen, 0,
-	    UIO_SYSSPACE, 0, proc0.p_ucred, &resid, td);
+			UIO_SYSSPACE, 0, proc0.p_ucred, &resid);
 
 	if (error)
 		*status = NDIS_STATUS_FAILURE;
@@ -2384,7 +2382,6 @@ ndis_unmap_file(ndis_handle filehandle)
 __stdcall static void
 ndis_close_file(ndis_handle filehandle)
 {
-	struct thread		*td = curthread;
 	ndis_fh			*fh;
 
 	if (filehandle == NULL)
@@ -2399,7 +2396,7 @@ ndis_close_file(ndis_handle filehandle)
 	if (fh->nf_vp == NULL)
 		return;
 
-	vn_close(fh->nf_vp, FREAD, td);
+	vn_close(fh->nf_vp, FREAD);
 
 	fh->nf_vp = NULL;
 	free(fh, M_DEVBUF);

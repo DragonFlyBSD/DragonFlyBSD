@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.13 2006/03/02 19:08:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.14 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -109,7 +109,7 @@ hpfs_hphashlookup(dev_t dev, lsn_t ino)
 }
 
 struct vnode *
-hpfs_hphashvget(dev_t dev, lsn_t ino, struct thread *td)
+hpfs_hphashvget(dev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;
@@ -122,7 +122,7 @@ loop:
 			continue;
 		vp = HPTOV(hp);
 
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped

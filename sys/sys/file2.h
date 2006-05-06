@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file2.h,v 1.3 2005/07/13 01:38:53 dillon Exp $
+ * $DragonFly: src/sys/sys/file2.h,v 1.4 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _SYS_FILE2_H_
@@ -51,14 +51,13 @@ fo_read(
 	struct file *fp,
 	struct uio *uio,
 	struct ucred *cred,
-	int flags,
-	struct thread *td
+	int flags
 ) {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_read)(fp, uio, cred, flags, td);
-	fdrop(fp, td);
+	error = (*fp->f_ops->fold_read)(fp, uio, cred, flags);
+	fdrop(fp, curthread);
 	return (error);
 }
 
@@ -67,14 +66,13 @@ fo_write(
 	struct file *fp,
 	struct uio *uio,
 	struct ucred *cred,
-	int flags,
-	struct thread *td
+	int flags
 ) {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_write)(fp, uio, cred, flags, td);
-	fdrop(fp, td);
+	error = (*fp->f_ops->fold_write)(fp, uio, cred, flags);
+	fdrop(fp, curthread);
 	return (error);
 }
 
@@ -83,13 +81,13 @@ fo_ioctl(
 	struct file *fp,
 	u_long com,
 	caddr_t data,
-	struct thread *td
+	struct ucred *cred
 ) {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_ioctl)(fp, com, data, td);
-	fdrop(fp, td);
+	error = (*fp->f_ops->fold_ioctl)(fp, com, data, cred);
+	fdrop(fp, curthread);
 	return (error);
 }
 
@@ -97,38 +95,37 @@ static __inline int
 fo_poll(
 	struct file *fp,
 	int events,
-	struct ucred *cred,
-	struct thread *td
+	struct ucred *cred
 ) {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_poll)(fp, events, cred, td);
-	fdrop(fp, td);
+	error = (*fp->f_ops->fold_poll)(fp, events, cred);
+	fdrop(fp, curthread);
 	return (error);
 }
 
 static __inline int
-fo_stat(struct file *fp, struct stat *sb, struct thread *td)
+fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_stat)(fp, sb, td);
-	fdrop(fp, td);
+	error = (*fp->f_ops->fold_stat)(fp, sb, cred);
+	fdrop(fp, curthread);
 	return (error);
 }
 
 static __inline int
-fo_close(struct file *fp, struct thread *td)
+fo_close(struct file *fp)
 {
-	return ((*fp->f_ops->fold_close)(fp, td));
+	return ((*fp->f_ops->fold_close)(fp));
 }
 
 static __inline int
-fo_shutdown(struct file *fp, int how, struct thread *td)
+fo_shutdown(struct file *fp, int how)
 {
-	return ((*fp->f_ops->fold_shutdown)(fp, how, td));
+	return ((*fp->f_ops->fold_shutdown)(fp, how));
 }
 
 static __inline int

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.26 2006/05/05 16:35:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.27 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -347,7 +347,7 @@ mfs_close(struct vop_close_args *ap)
 	/*
 	 * Synchronize any remaining buffers and then destroy them.
 	 */
-	if ((error = vinvalbuf(vp, V_SAVE, ap->a_td, 0, 0)) != 0)
+	if ((error = vinvalbuf(vp, V_SAVE, 0, 0)) != 0)
 		goto done;
 
 	/*

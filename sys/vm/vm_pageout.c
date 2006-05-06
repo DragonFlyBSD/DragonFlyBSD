@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.20 2006/05/05 20:15:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.21 2006/05/06 02:43:15 dillon Exp $
  */
 
 /*
@@ -912,7 +912,7 @@ rescan0:
 			if (object->type == OBJT_VNODE) {
 				vp = object->handle;
 
-				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
+				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK)) {
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;

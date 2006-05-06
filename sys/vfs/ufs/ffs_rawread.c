@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.23 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.24 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		/* Flush dirty buffers */
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			crit_exit();
-			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0) {
+			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0) {
 				if (upgraded != 0)
 					VOP_LOCK(vp, LK_DOWNGRADE);
 				return (error);

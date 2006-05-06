@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.30 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.31 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_sctp.h"
@@ -1175,7 +1175,7 @@ sysctl_iflist(int af, struct walkarg *w)
 			if (af && af != ifa->ifa_addr->sa_family)
 				continue;
 			if (curproc->p_ucred->cr_prison &&
-			    prison_if(curthread, ifa->ifa_addr))
+			    prison_if(curproc->p_ucred, ifa->ifa_addr))
 				continue;
 			rtinfo.rti_ifaaddr = ifa->ifa_addr;
 			rtinfo.rti_netmask = ifa->ifa_netmask;

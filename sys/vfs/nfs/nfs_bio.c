@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.35 2006/05/05 16:35:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.36 2006/05/06 02:43:14 dillon Exp $
  */
 
 
@@ -384,18 +384,18 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 	 */
 	if ((np->n_flag & NLMODIFIED) && vp->v_type == VDIR) {
 		nfs_invaldir(vp);
-		error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+		error = nfs_vinvalbuf(vp, V_SAVE, 1);
 		if (error)
 			return (error);
 		np->n_attrstamp = 0;
 	}
-	error = VOP_GETATTR(vp, &vattr, td);
+	error = VOP_GETATTR(vp, &vattr);
 	if (error)
 		return (error);
 	if (np->n_flag & NRMODIFIED) {
 		if (vp->v_type == VDIR)
 			nfs_invaldir(vp);
-		error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+		error = nfs_vinvalbuf(vp, V_SAVE, 1);
 		if (error)
 			return (error);
 		np->n_flag &= ~NRMODIFIED;
@@ -559,7 +559,7 @@ again:
 		    while (error == NFSERR_BAD_COOKIE) {
 			printf("got bad cookie vp %p bp %p\n", vp, bp);
 			nfs_invaldir(vp);
-			error = nfs_vinvalbuf(vp, 0, td, 1);
+			error = nfs_vinvalbuf(vp, 0, 1);
 			/*
 			 * Yuck! The directory has been modified on the
 			 * server. The only way to get the block is by
@@ -785,7 +785,7 @@ nfs_write(struct vop_write_args *ap)
 		if (np->n_flag & NLMODIFIED) {
 			np->n_attrstamp = 0;
 			error = nfs_flush(vp, MNT_WAIT, td, 0);
-			/* error = nfs_vinvalbuf(vp, V_SAVE, td, 1); */
+			/* error = nfs_vinvalbuf(vp, V_SAVE, 1); */
 			if (error)
 				return (error);
 		}
@@ -798,7 +798,7 @@ nfs_write(struct vop_write_args *ap)
 restart:
 	if (ioflag & IO_APPEND) {
 		np->n_attrstamp = 0;
-		error = VOP_GETATTR(vp, &vattr, td);
+		error = VOP_GETATTR(vp, &vattr);
 		if (error)
 			return (error);
 		uio->uio_offset = np->n_size;
@@ -1055,7 +1055,7 @@ again:
 			if (error)
 				break;
 			if (np->n_flag & NDONTCACHE) {
-				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+				error = nfs_vinvalbuf(vp, V_SAVE, 1);
 				if (error)
 					break;
 			}
@@ -1122,12 +1122,12 @@ nfs_getcacheblk(struct vnode *vp, off_t loffset, int size, struct thread *td)
  * doing the flush, just wait for completion.
  */
 int
-nfs_vinvalbuf(struct vnode *vp, int flags,
-	      struct thread *td, int intrflg)
+nfs_vinvalbuf(struct vnode *vp, int flags, int intrflg)
 {
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int error = 0, slpflag, slptimeo;
+	thread_t td = curthread;
 
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
@@ -1147,7 +1147,7 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
 		error = tsleep((caddr_t)&np->n_flag, 0, "nfsvinval", slptimeo);
-		if (error && intrflg && nfs_sigintr(nmp, (struct nfsreq *)0, td))
+		if (error && intrflg && nfs_sigintr(nmp, NULL, td))
 			return (EINTR);
 	}
 
@@ -1155,9 +1155,9 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 	 * Now, flush as required.
 	 */
 	np->n_flag |= NFLUSHINPROG;
-	error = vinvalbuf(vp, flags, td, slpflag, 0);
+	error = vinvalbuf(vp, flags, slpflag, 0);
 	while (error) {
-		if (intrflg && nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
+		if (intrflg && nfs_sigintr(nmp, NULL, td)) {
 			np->n_flag &= ~NFLUSHINPROG;
 			if (np->n_flag & NFLUSHWANT) {
 				np->n_flag &= ~NFLUSHWANT;
@@ -1165,7 +1165,7 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 			}
 			return (EINTR);
 		}
-		error = vinvalbuf(vp, flags, td, 0, slptimeo);
+		error = vinvalbuf(vp, flags, 0, slptimeo);
 	}
 	np->n_flag &= ~(NLMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {
@@ -1553,7 +1553,7 @@ nfs_meta_setsize(struct vnode *vp, struct thread *td, u_quad_t nsize)
 		 * truncation point.  We may have a B_DELWRI and/or B_CACHE
 		 * buffer that now needs to be truncated.
 		 */
-		error = vtruncbuf(vp, td, nsize, biosize);
+		error = vtruncbuf(vp, nsize, biosize);
 		lbn = nsize / biosize;
 		bufsize = nsize & (biosize - 1);
 		loffset = nsize - bufsize;

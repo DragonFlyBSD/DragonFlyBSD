@@ -32,7 +32,7 @@
  *
  * @(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.1 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_ihash.c,v 1.2 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,6 @@ ext2_ihashlookup(dev_t dev, ino_t inum)
 struct vnode *
 ext2_ihashget(dev_t dev, ino_t inum)
 {
-	struct thread *td = curthread;	/* XXX */
 	lwkt_tokref ilock;
 	struct inode *ip;
 	struct vnode *vp;
@@ -128,7 +127,7 @@ loop:
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped

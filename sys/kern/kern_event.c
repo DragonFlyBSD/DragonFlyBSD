@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.20 2006/03/25 18:32:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.21 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,16 +58,16 @@ static int	kqueue_scan(struct file *fp, int maxevents,
 		    struct kevent *ulistp, const struct timespec *timeout,
 		    struct thread *td, int *res);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
-		    struct ucred *cred, int flags, struct thread *td);
+		    struct ucred *cred, int flags);
 static int	kqueue_write(struct file *fp, struct uio *uio,
-		    struct ucred *cred, int flags, struct thread *td);
+		    struct ucred *cred, int flags);
 static int	kqueue_ioctl(struct file *fp, u_long com, caddr_t data,
-		    struct thread *td);
-static int 	kqueue_poll(struct file *fp, int events, struct ucred *cred,
-		    struct thread *td);
+		    struct ucred *cred);
+static int 	kqueue_poll(struct file *fp, int events, struct ucred *cred);
 static int 	kqueue_kqfilter(struct file *fp, struct knote *kn);
-static int 	kqueue_stat(struct file *fp, struct stat *st, struct thread *td);
-static int 	kqueue_close(struct file *fp, struct thread *td);
+static int 	kqueue_stat(struct file *fp, struct stat *st,
+		    struct ucred *cred);
+static int 	kqueue_close(struct file *fp);
 static void 	kqueue_wakeup(struct kqueue *kq);
 
 static struct fileops kqueueops = {
@@ -723,30 +723,28 @@ done:
  */
 /*ARGSUSED*/
 static int
-kqueue_read(struct file *fp, struct uio *uio, struct ucred *cred,
-	int flags, struct thread *td)
+kqueue_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	return (ENXIO);
 }
 
 /*ARGSUSED*/
 static int
-kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred,
-	 int flags, struct thread *td)
+kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	return (ENXIO);
 }
 
 /*ARGSUSED*/
 static int
-kqueue_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
+kqueue_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
 {
 	return (ENOTTY);
 }
 
 /*ARGSUSED*/
 static int
-kqueue_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
+kqueue_poll(struct file *fp, int events, struct ucred *cred)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	int revents = 0;
@@ -756,7 +754,7 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
                 if (kq->kq_count) {
                         revents |= events & (POLLIN | POLLRDNORM);
 		} else {
-                        selrecord(td, &kq->kq_sel);
+                        selrecord(curthread, &kq->kq_sel);
 			kq->kq_state |= KQ_SEL;
 		}
 	}
@@ -766,7 +764,7 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 
 /*ARGSUSED*/
 static int
-kqueue_stat(struct file *fp, struct stat *st, struct thread *td)
+kqueue_stat(struct file *fp, struct stat *st, struct ucred *cred)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 
@@ -779,8 +777,9 @@ kqueue_stat(struct file *fp, struct stat *st, struct thread *td)
 
 /*ARGSUSED*/
 static int
-kqueue_close(struct file *fp, struct thread *td)
+kqueue_close(struct file *fp)
 {
+	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	struct filedesc *fdp;

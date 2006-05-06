@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.37 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.38 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -898,11 +898,10 @@ exec_check_permissions(struct image_params *imgp)
 	struct proc *p = imgp->proc;
 	struct vnode *vp = imgp->vp;
 	struct vattr *attr = imgp->attr;
-	struct thread *td = p->p_thread;
 	int error;
 
 	/* Get file attributes */
-	error = VOP_GETATTR(vp, attr, td);
+	error = VOP_GETATTR(vp, attr);
 	if (error)
 		return (error);
 
@@ -929,7 +928,7 @@ exec_check_permissions(struct image_params *imgp)
 	/*
 	 *  Check for execute permission to file based on current credentials.
 	 */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
+	error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
 	if (error)
 		return (error);
 
@@ -945,7 +944,7 @@ exec_check_permissions(struct image_params *imgp)
 	 * write, and mmap the file.  Without the VOP_OPEN we can only
 	 * stat the file.
 	 */
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL, td);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL);
 	if (error)
 		return (error);
 

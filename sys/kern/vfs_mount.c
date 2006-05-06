@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.16 2006/05/05 21:27:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.17 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -461,7 +461,7 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
 	if (vp->v_holdcnt && visleaf(vp)) {
-		vinvalbuf(vp, V_SAVE, NULL, 0, 0);
+		vinvalbuf(vp, V_SAVE, 0, 0);
 #if 0	/* DEBUG */
 		printf((vp->v_holdcnt ? "vrecycle: vp %p failed: %s\n" :
 			"vrecycle: vp %p succeeded: %s\n"), vp,
@@ -909,11 +909,10 @@ vmntvnodescan(
 
 			switch(flags) {
 			case VMSC_GETVP:
-				error = vget(vp, LK_EXCLUSIVE, curthread);
+				error = vget(vp, LK_EXCLUSIVE);
 				break;
 			case VMSC_GETVP|VMSC_NOWAIT:
-				error = vget(vp, LK_EXCLUSIVE|LK_NOWAIT,
-						curthread);
+				error = vget(vp, LK_EXCLUSIVE|LK_NOWAIT);
 				break;
 			case VMSC_GETVX:
 				error = vx_get(vp);
@@ -1073,7 +1072,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	 */
 	if ((info->flags & WRITECLOSE) &&
 	    (vp->v_type == VNON ||
-	    (VOP_GETATTR(vp, &vattr, info->td) == 0 &&
+	    (VOP_GETATTR(vp, &vattr) == 0 &&
 	    vattr.va_nlink > 0)) &&
 	    (vp->v_writecount == 0 || vp->v_type != VREG)) {
 		return(0);
@@ -1097,7 +1096,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 		if (vp->v_type != VBLK && vp->v_type != VCHR) {
 			vgone(vp);
 		} else {
-			vclean(vp, 0, info->td);
+			vclean(vp, 0);
 			vp->v_ops = &spec_vnode_vops;
 			insmntque(vp, NULL);
 		}

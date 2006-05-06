@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.66 2006/05/05 21:27:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.67 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -825,7 +825,7 @@ again:
 			cache_unlock(ncp);
 			goto again;
 		}
-		error = vget(vp, lk_type, curthread);
+		error = vget(vp, lk_type);
 		if (error) {
 			if (vp != ncp->nc_vp)
 				goto again;
@@ -1211,7 +1211,7 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 	int error;
 
 	vat.va_blocksize = 0;
-	if ((error = VOP_GETATTR(dvp, &vat, curthread)) != 0)
+	if ((error = VOP_GETATTR(dvp, &vat)) != 0)
 		return (error);
 	if ((error = cache_vget(ncp, cred, LK_SHARED, &pvp)) != 0)
 		return (error);

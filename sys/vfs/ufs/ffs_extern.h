@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.10 2006/04/03 02:02:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.11 2006/05/06 02:43:14 dillon Exp $
  */
 
 #ifndef _VFS_UFS_EXTERN_H
@@ -92,8 +92,8 @@ int	ffs_realloccg(struct inode *,
 	    ufs_daddr_t, ufs_daddr_t, int, int, struct ucred *, struct buf **);
 void	ffs_setblock(struct fs *, u_char *, ufs_daddr_t);
 int	ffs_statfs(struct mount *, struct statfs *, struct thread *);
-int	ffs_sync(struct mount *, int, struct thread *);
-int	ffs_truncate(struct vnode *, off_t, int, struct ucred *, struct thread *);
+int	ffs_sync(struct mount *, int);
+int	ffs_truncate(struct vnode *, off_t, int, struct ucred *);
 int	ffs_unmount(struct mount *, int, struct thread *);
 int	ffs_update(struct vnode *, int);
 int	ffs_valloc(struct vnode *, int, struct ucred *, struct vnode **);

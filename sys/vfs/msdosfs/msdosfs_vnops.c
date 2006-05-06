@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.36 2006/05/05 21:15:10 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.37 2006/05/06 02:43:14 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -485,7 +485,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		default:
 			break;
 		}
-		error = detrunc(dep, vap->va_size, 0, ap->a_td);
+		error = detrunc(dep, vap->va_size, 0);
 		if (error)
 			return error;
 	}
@@ -495,7 +495,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != pmp->pm_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred, ap->a_td))))
+		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred))))
 			return (error);
 		if (vp->v_type != VDIR) {
 			if ((pmp->pm_flags & MSDOSFSMNT_NOWIN95) == 0 &&
@@ -836,11 +836,11 @@ msdosfs_write(struct vop_write_args *ap)
 errexit:
 	if (error) {
 		if (ioflag & IO_UNIT) {
-			detrunc(dep, osize, ioflag & IO_SYNC, NULL);
+			detrunc(dep, osize, ioflag & IO_SYNC);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		} else {
-			detrunc(dep, dep->de_FileSize, ioflag & IO_SYNC, NULL);
+			detrunc(dep, dep->de_FileSize, ioflag & IO_SYNC);
 			if (uio->uio_resid != resid)
 				error = 0;
 		}
@@ -1080,7 +1080,7 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to doscheckpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
+	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
 	VOP_UNLOCK(fvp, 0);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
@@ -1481,9 +1481,7 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
-	struct componentname *cnp = ap->a_cnp;
 	struct denode *ip, *dp;
-	struct thread *td = cnp->cn_td;
 	int error;
 	
 	ip = VTODE(vp);
@@ -1521,7 +1519,7 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
-	error = detrunc(ip, (u_long)0, IO_SYNC, td);
+	error = detrunc(ip, (u_long)0, IO_SYNC);
 
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 out:

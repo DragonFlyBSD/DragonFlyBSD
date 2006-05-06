@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.22 2006/03/27 16:18:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.23 2006/05/06 02:43:14 dillon Exp $
  */
 
 
@@ -85,7 +85,6 @@ static int nfs_node_hash_lock;
 int
 nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct nfsnode *np, *np2;
 	struct nfsnodehashhead *nhpp;
 	struct vnode *vp;
@@ -113,7 +112,7 @@ loop:
 			continue;
 		}
 		vp = NFSTOV(np);
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
 			if (mntp == NFSTOV(np)->v_mount &&
@@ -227,7 +226,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 		 * associated with discarding the buffers.  The vnode
 		 * is already locked.
 		 */
-		nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
+		nfs_vinvalbuf(ap->a_vp, 0, 1);
 
 		/*
 		 * Either we have the only ref or we were vgone()'d via

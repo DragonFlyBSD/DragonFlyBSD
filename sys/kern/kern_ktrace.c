@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.21 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.22 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -286,7 +286,7 @@ ktrace(struct ktrace_args *uap)
 				if (ktrcanset(curp, p) && p->p_tracep == vp) {
 					p->p_tracep = NULL;
 					p->p_traceflag = 0;
-					vn_close(vp, FREAD|FWRITE, td);
+					vn_close(vp, FREAD|FWRITE);
 				} else {
 					error = EPERM;
 				}
@@ -337,7 +337,7 @@ ktrace(struct ktrace_args *uap)
 		error = EPERM;
 done:
 	if (vp != NULL)
-		vn_close(vp, FWRITE, td);
+		vn_close(vp, FWRITE);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
 	return (error);
 #else

@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.22 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.23 2006/05/06 02:43:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@
 #include <emulation/svr4/svr4_stropts.h>
 #include <emulation/svr4/svr4_socket.h>
 
-static int svr4_soo_close (struct file *, struct thread *);
+static int svr4_soo_close (struct file *);
 static int svr4_ptm_alloc (struct thread *);
 static  d_open_t	streamsopen;
 
@@ -366,14 +366,13 @@ svr4_delete_socket(struct thread *td, struct file *fp)
 }
 
 static int
-svr4_soo_close(struct file *fp, struct thread *td)
+svr4_soo_close(struct file *fp)
 {
         struct socket *so = (struct socket *)fp->f_data;
 	
 	/*	CHECKUNIT_DIAG(ENXIO);*/
 
-	svr4_delete_socket(td, fp);
+	svr4_delete_socket(curthread, fp);	/* XXX curthread */
 	free(so->so_emuldata, M_TEMP);
-	return soo_close(fp, td);
-	return (0);
+	return (soo_close(fp));
 }

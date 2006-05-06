@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.14 2006/04/01 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -168,7 +168,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     if (flags & FREAD)
 	vmode |= VREAD;
     if (vmode) {
-	error = VOP_ACCESS(vp, vmode, td->td_proc->p_ucred, td);
+	error = VOP_ACCESS(vp, vmode, td->td_proc->p_ucred);
 	if (error)
 	    goto bad2;
     }
@@ -182,7 +182,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     if ((flags & O_ROOTCRED) == 0 && td->td_proc)
 	fsetcred(fp, td->td_proc->p_ucred);
 
-    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp, td);
+    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp);
     if (error)
 	goto bad1;
 
@@ -230,7 +230,7 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_td = curthread;
 
     count = nbytes;
-    error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET, auio.uio_td);
+    error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)
@@ -277,7 +277,7 @@ fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res, int all)
      */
     do {
 	lastresid = auio.uio_resid;
-	error = fo_read(fp, &auio, fp->f_cred, 0, auio.uio_td);
+	error = fo_read(fp, &auio, fp->f_cred, 0);
     } while (all && auio.uio_resid &&
 	     ((error == 0 && auio.uio_resid != lastresid) || 
 	     error == ERESTART || error == EINTR));
@@ -331,7 +331,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_td = curthread;
 
     count = nbytes;
-    error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET, auio.uio_td);
+    error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)
@@ -373,7 +373,7 @@ fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res)
     auio.uio_td = curthread;
 
     count = nbytes;
-    error = fo_write(fp, &auio, fp->f_cred, 0, auio.uio_td);
+    error = fo_write(fp, &auio, fp->f_cred, 0);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)
@@ -392,7 +392,7 @@ fp_stat(file_t fp, struct stat *ub)
 {
     int error;
 
-    error = fo_stat(fp, ub, curthread);
+    error = fo_stat(fp, ub, fp->f_cred);
     return(error);
 }
 
@@ -559,7 +559,7 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	) {
 	    if ((fp->f_flag & FWRITE) != 0) {
 		struct vattr va;
-		if ((error = VOP_GETATTR(vp, &va, td))) {
+		if ((error = VOP_GETATTR(vp, &va))) {
 		    goto done;
 		}
 		if ((va.va_flags & (IMMUTABLE|APPEND)) == 0) {
@@ -594,6 +594,6 @@ fp_close(file_t fp)
 int
 fp_shutdown(file_t fp, int how)
 {
-    return(fo_shutdown(fp, how, curthread));
+    return(fo_shutdown(fp, how));
 }
 

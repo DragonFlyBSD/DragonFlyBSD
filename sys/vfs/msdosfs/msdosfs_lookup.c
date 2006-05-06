@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.18 2006/05/05 21:15:10 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.19 2006/05/06 02:43:14 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -337,7 +337,7 @@ notfound:
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 		/*
@@ -429,7 +429,7 @@ foundroot:
 		/*
 		 * Write access to directory required to delete files.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 
@@ -463,7 +463,7 @@ foundroot:
 		if (blkoff == MSDOSFSROOT_OFS)
 			return EROFS;			/* really? XXX */
 
-		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
+		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred);
 		if (error)
 			return (error);
 
@@ -575,7 +575,7 @@ createde(struct denode *dep, struct denode *ddep, struct denode **depp,
 		dirclust = de_clcount(pmp, diroffset);
 		error = extendfile(ddep, dirclust, 0, 0, DE_CLEAR);
 		if (error) {
-			detrunc(ddep, ddep->de_FileSize, 0, NULL);
+			detrunc(ddep, ddep->de_FileSize, 0);
 			return error;
 		}
 

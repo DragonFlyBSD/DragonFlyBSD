@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.20 2006/04/26 17:42:52 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.21 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -461,7 +461,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	kern_fcntl(*res, F_SETFL, &dat);
+	kern_fcntl(*res, F_SETFL, &dat, curproc->p_ucred);
 	return (0);
 }
 

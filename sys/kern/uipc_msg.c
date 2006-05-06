@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.13 2004/07/08 22:07:34 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.14 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -175,11 +175,10 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 }
 
 int
-so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
-    struct thread *td)
+so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp)
 {
 	return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data, ifp,
-	    td));
+	    curthread));
 #ifdef gag	/* does copyin and copyout deep inside stack XXX JH */
 	int error;
 	struct netmsg_pru_control msg;
@@ -373,8 +372,7 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 }
 
 int
-so_pru_sopoll(struct socket *so, int events, struct ucred *cred,
-    struct thread *td)
+so_pru_sopoll(struct socket *so, int events, struct ucred *cred)
 {
 	int error;
 	struct netmsg_pru_sopoll msg;
@@ -387,7 +385,7 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred,
 	msg.nm_so = so;
 	msg.nm_events = events;
 	msg.nm_cred = cred;
-	msg.nm_td = td;
+	msg.nm_td = curthread;
 	error = lwkt_domsg(port, &msg.nm_lmsg);
 	return (error);
 }

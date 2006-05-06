@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.32 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.33 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -93,8 +93,8 @@
 
 static int ext2_access (struct vop_access_args *);
 static int ext2_advlock (struct vop_advlock_args *);
-static int ext2_chmod (struct vnode *, int, struct ucred *, struct thread *);
-static int ext2_chown (struct vnode *, uid_t, gid_t, struct ucred *, struct thread *);
+static int ext2_chmod (struct vnode *, int, struct ucred *);
+static int ext2_chown (struct vnode *, uid_t, gid_t, struct ucred *);
 static int ext2_close (struct vop_close_args *);
 static int ext2_getattr (struct vop_getattr_args *);
 static int ext2_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
@@ -517,7 +517,7 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to checkpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
+	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
 	VOP_UNLOCK(fvp, 0);
 
 	/*
@@ -692,7 +692,7 @@ abortit:
 			if (--xp->i_nlink != 0)
 				panic("ext2_rename: linked directory");
 			error = EXT2_TRUNCATE(tvp, (off_t)0, IO_SYNC,
-			    tcnp->cn_cred, tcnp->cn_td);
+					      tcnp->cn_cred);
 		}
 		xp->i_flag |= IN_CHANGE;
 		vput(tvp);
@@ -783,9 +783,9 @@ abortit:
 			dp->i_nlink--;
 			dp->i_flag |= IN_CHANGE;
 			error = vn_rdwr(UIO_READ, fvp, (caddr_t)&dirbuf,
-				sizeof (struct dirtemplate), (off_t)0,
-				UIO_SYSSPACE, IO_NODELOCKED,
-				tcnp->cn_cred, (int *)0, NULL);
+					sizeof (struct dirtemplate), (off_t)0,
+					UIO_SYSSPACE, IO_NODELOCKED,
+					tcnp->cn_cred, (int *)0);
 			if (error == 0) {
 				/* Like ext2 little-endian: */
 				namlen = dirbuf.dotdot_type;
@@ -797,12 +797,11 @@ abortit:
 				} else {
 					dirbuf.dotdot_ino = newparent;
 					vn_rdwr(UIO_WRITE, fvp,
-					    (caddr_t)&dirbuf,
-					    sizeof (struct dirtemplate),
-					    (off_t)0, UIO_SYSSPACE,
-					    IO_NODELOCKED|IO_SYNC,
-					    tcnp->cn_cred, (int *)0,
-					    NULL);
+						(caddr_t)&dirbuf,
+						sizeof (struct dirtemplate),
+						(off_t)0, UIO_SYSSPACE,
+						IO_NODELOCKED|IO_SYNC,
+						tcnp->cn_cred, (int *)0);
 				}
 			}
 		}
@@ -970,8 +969,8 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 #define DIRBLKSIZ  VTOI(dvp)->i_e2fs->s_blocksize
 	dirtemplate.dotdot_reclen = DIRBLKSIZ - 12;
 	error = vn_rdwr(UIO_WRITE, tvp, (caddr_t)&dirtemplate,
-	    sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE,
-	    IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0, NULL);
+			sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE,
+			IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0);
 	if (error) {
 		dp->i_nlink--;
 		dp->i_flag |= IN_CHANGE;
@@ -1019,7 +1018,6 @@ ext2_rmdir(struct vop_old_rmdir_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
 	struct componentname *cnp = ap->a_cnp;
-	struct thread *td = cnp->cn_td;
 	struct inode *ip, *dp;
 	int error;
 
@@ -1066,7 +1064,7 @@ ext2_rmdir(struct vop_old_rmdir_args *ap)
 	 * worry about them later.
 	 */
 	ip->i_nlink -= 2;
-	error = EXT2_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, td);
+	error = EXT2_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred);
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 out:
 	return (error);
@@ -1106,8 +1104,8 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 			vinitvmio(vp, 0);
 
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
-		    UIO_SYSSPACE, IO_NODELOCKED, ap->a_cnp->cn_cred, (int *)0,
-		    NULL);
+				UIO_SYSSPACE, IO_NODELOCKED, 
+				ap->a_cnp->cn_cred, (int *)0);
 
 		if (error)
 			vput(vp);
@@ -1300,8 +1298,7 @@ ext2_itimes(struct vnode *vp)
  *
  * Nothing to do.
  *
- * ext2_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	    struct thread *a_td)
+ * ext2_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static
@@ -1325,8 +1322,7 @@ ext2_open(struct vop_open_args *ap)
  *
  * Update the times on the inode.
  *
- * ext2_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *	     struct thread *a_td)
+ * ext2_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static
@@ -1341,8 +1337,7 @@ ext2_close(struct vop_close_args *ap)
 }
 
 /*
- * ext2_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * ext2_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static
 int
@@ -1424,8 +1419,7 @@ ext2_access(struct vop_access_args *ap)
 }
 
 /*
- * ext2_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		struct thread *a_td)
+ * ext2_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
 /* ARGSUSED */
 static
@@ -1467,8 +1461,7 @@ ext2_getattr(struct vop_getattr_args *ap)
 /*
  * Set attribute vnode op. called from several syscalls
  *
- * ext2_setattr(struct vnode *a_vp, struct vattr *a_vap,
- *		struct ucred *a_cred, struct thread *a_td)
+ * ext2_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static
 int
@@ -1527,7 +1520,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
-		if ((error = ext2_chown(vp, vap->va_uid, vap->va_gid, cred, ap->a_td)) != 0)
+		if ((error = ext2_chown(vp, vap->va_uid, vap->va_gid, cred)) != 0)
 			return (error);
 	}
 	if (vap->va_size != VNOVAL) {
@@ -1547,7 +1540,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		default:
 			break;
 		}
-		if ((error = EXT2_TRUNCATE(vp, vap->va_size, 0, cred, ap->a_td)) != 0)
+		if ((error = EXT2_TRUNCATE(vp, vap->va_size, 0, cred)) != 0)
 			return (error);
 	}
 	ip = VTOI(vp);
@@ -1557,7 +1550,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != ip->i_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred, ap->a_td))))
+		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			ip->i_flag |= IN_ACCESS;
@@ -1580,7 +1573,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
-		error = ext2_chmod(vp, (int)vap->va_mode, cred, ap->a_td);
+		error = ext2_chmod(vp, (int)vap->va_mode, cred);
 	}
 	VN_KNOTE(vp, NOTE_ATTRIB);
 	return (error);
@@ -1591,7 +1584,7 @@ ext2_setattr(struct vop_setattr_args *ap)
  * Inode must be locked before calling.
  */
 static int
-ext2_chmod(struct vnode *vp, int mode, struct ucred *cred, struct thread *td)
+ext2_chmod(struct vnode *vp, int mode, struct ucred *cred)
 {
 	struct inode *ip = VTOI(vp);
 	int error;
@@ -1618,8 +1611,7 @@ ext2_chmod(struct vnode *vp, int mode, struct ucred *cred, struct thread *td)
  * inode must be locked prior to call.
  */
 static int
-ext2_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred,
-	  struct thread *td)
+ext2_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 {
 	struct inode *ip = VTOI(vp);
 	uid_t ouid;
@@ -1719,8 +1711,7 @@ good:
  *
  * NB Currently unsupported.
  *
- * ext2_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
- *	    struct thread *a_td)
+ * ext2_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static
@@ -1887,8 +1878,7 @@ ext2spec_write(struct vop_write_args *ap)
  *
  * Update the times on the inode then do device close.
  *
- * ext2spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * ext2spec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred)
  */
 static 
 int
@@ -1953,8 +1943,7 @@ ext2fifo_write(struct vop_write_args *ap)
  *
  * Update the times on the inode then do device close.
  *
- * ext2fifo_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		 struct thread *a_td)
+ * ext2fifo_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred)
  */
 static
 int

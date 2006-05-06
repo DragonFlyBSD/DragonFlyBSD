@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.31 2006/05/05 21:15:06 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.32 2006/05/06 02:43:02 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -409,7 +409,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct thread *td)
 		 * Get partition information for the component.
 		 */
 		if ((error = VOP_IOCTL(vp, DIOCGPART, (caddr_t)&dpart,
-		    FREAD, cred, td)) != 0) {
+				       FREAD, cred)) != 0) {
 #ifdef DEBUG
 			if (ccddebug & (CCDB_FOLLOW|CCDB_INIT))
 				 printf("ccd%d: %s: ioctl failed, error = %d\n",
@@ -1352,7 +1352,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 #endif
 			if ((error = ccdlookup(cpp[i], td, &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
-					(void)vn_close(vpp[j], FREAD|FWRITE, td);
+					(void)vn_close(vpp[j], FREAD|FWRITE);
 				free(vpp, M_DEVBUF);
 				free(cpp, M_DEVBUF);
 				ccdunlock(cs);
@@ -1369,7 +1369,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		 */
 		if ((error = ccdinit(&ccd, cpp, td)) != 0) {
 			for (j = 0; j < lookedup; ++j)
-				(void)vn_close(vpp[j], FREAD|FWRITE, td);
+				(void)vn_close(vpp[j], FREAD|FWRITE);
 			bzero(&ccd_softc[unit], sizeof(struct ccd_softc));
 			free(vpp, M_DEVBUF);
 			free(cpp, M_DEVBUF);
@@ -1424,7 +1424,7 @@ ccdioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 				vprint("CCDIOCCLR: vnode info",
 				    cs->sc_cinfo[i].ci_vp);
 #endif
-			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE, td);
+			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE);
 			free(cs->sc_cinfo[i].ci_path, M_DEVBUF);
 		}
 

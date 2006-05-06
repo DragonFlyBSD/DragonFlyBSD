@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.21 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.22 2006/05/06 02:43:14 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -72,7 +72,7 @@ SYSCTL_INT(_vfs_nwfs, OID_AUTO, debuglevel, CTLFLAG_RW, &nwfs_debuglevel, 0, "")
 static int nwfs_mount(struct mount *, char *, caddr_t, struct thread *);
 static int nwfs_root(struct mount *, struct vnode **);
 static int nwfs_statfs(struct mount *, struct statfs *, struct thread *);
-static int nwfs_sync(struct mount *, int, struct thread *);
+static int nwfs_sync(struct mount *, int);
 static int nwfs_unmount(struct mount *, int, struct thread *);
 static int nwfs_init(struct vfsconf *vfsp);
 static int nwfs_uninit(struct vfsconf *vfsp);
@@ -283,7 +283,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 	conn = NWFSTOCONN(nmp);
 	if (nmp->n_root) {
 		*vpp = NWTOV(nmp->n_root);
-		while (vget(*vpp, LK_EXCLUSIVE, curthread) != 0) /* XXX */
+		while (vget(*vpp, LK_EXCLUSIVE) != 0) /* XXX */
 			;
 		return 0;
 	}
@@ -350,7 +350,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 	if (nmp->m.root_path[0] == 0)
 		np->n_flag |= NVOLUME;
 	nmp->n_root = np;
-/*	error = VOP_GETATTR(vp, &vattr, cred, td);
+/*	error = VOP_GETATTR(vp, &vattr);
 	if (error) {
 		vput(vp);
 		NCPFATAL("Can't get root directory entry\n");
@@ -440,7 +440,7 @@ nwfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  */
 /* ARGSUSED */
 static int
-nwfs_sync(struct mount *mp, int waitfor, struct thread *td)
+nwfs_sync(struct mount *mp, int waitfor)
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -460,10 +460,10 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		/* XXX vp may not be retained */
-		error = VOP_FSYNC(vp, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor);
 		if (error)
 			allerror = error;
 		vput(vp);

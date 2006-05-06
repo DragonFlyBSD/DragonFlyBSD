@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.6 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.7 2006/05/06 02:43:13 dillon Exp $
  */
 
 /*
@@ -89,7 +89,7 @@ int so_pru_bind (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect2 (struct socket *so1, struct socket *so2);
 int so_pru_control (struct socket *so, u_long cmd, caddr_t data,
-		    struct ifnet *ifp, struct thread *td);
+		    struct ifnet *ifp);
 int so_pru_detach (struct socket *so);
 int so_pru_disconnect (struct socket *so);
 int so_pru_listen (struct socket *so, struct thread *td);
@@ -102,8 +102,7 @@ int so_pru_send (struct socket *so, int flags, struct mbuf *m,
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
-int so_pru_sopoll (struct socket *so, int events, struct ucred *cred,
-		   struct thread *td);
+int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
 int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
 
 #endif

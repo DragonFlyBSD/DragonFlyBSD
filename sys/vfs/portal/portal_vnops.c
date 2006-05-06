@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.26 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.27 2006/05/06 02:43:14 dillon Exp $
  */
 
 /*
@@ -209,7 +209,7 @@ portal_open(struct vop_open_args *ap)
 {
 	struct socket *so = 0;
 	struct portalnode *pt;
-	struct thread *td = ap->a_td;
+	struct thread *td = curthread;
 	struct vnode *vp = ap->a_vp;
 	struct uio auio;
 	struct iovec aiov[2];
@@ -246,7 +246,7 @@ portal_open(struct vop_open_args *ap)
 	/*
 	 * Create a new socket.
 	 */
-	error = socreate(AF_UNIX, &so, SOCK_STREAM, 0, ap->a_td);
+	error = socreate(AF_UNIX, &so, SOCK_STREAM, 0, td);
 	if (error)
 		goto bad;
 

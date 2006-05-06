@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.27 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.28 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -144,7 +144,7 @@ linux_open(struct linux_open_args *args)
 		struct file *fp = fdp->fd_files[args->sysmsg_result].fp;
 
 		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
+			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p->p_ucred);
     }
 #ifdef DEBUG
 	if (ldebug(open))
@@ -268,7 +268,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	if (vp->v_type != VDIR)
 		return (EINVAL);
 
-	if ((error = VOP_GETATTR(vp, &va, td)))
+	if ((error = VOP_GETATTR(vp, &va)))
 		return (error);
 
 	nbytes = args->count;
@@ -1056,7 +1056,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		return (EINVAL);
 	}
 
-	error = kern_fcntl(args->fd, cmd, &dat);
+	error = kern_fcntl(args->fd, cmd, &dat, p->p_ucred);
 
 	if (error == 0) {
 		switch (args->cmd) {
@@ -1156,7 +1156,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 			return (error);
 		linux_to_bsd_flock64(&linux_flock, &dat.fc_flock);
 
-		error = kern_fcntl(args->fd, cmd, &dat);
+		error = kern_fcntl(args->fd, cmd, &dat, curproc->p_ucred);
 
 		if (error == 0 && args->cmd == LINUX_F_GETLK64) {
 			bsd_to_linux_flock64(&dat.fc_flock, &linux_flock);

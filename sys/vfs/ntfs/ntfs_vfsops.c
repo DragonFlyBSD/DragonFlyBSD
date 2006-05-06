@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.35 2006/04/23 02:43:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.36 2006/05/06 02:43:14 dillon Exp $
  */
 
 
@@ -427,17 +427,17 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		return (EBUSY);
 #if defined(__DragonFly__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	VOP__UNLOCK(devvp, 0, td);
 #else
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 #endif
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
@@ -608,10 +608,10 @@ out:
 #if defined __NetBSD__
 	/* lock the device vnode before calling VOP_CLOSE() */
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	VOP__UNLOCK(devvp, 0, td);
 #else
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 #endif
 	
 	return (error);
@@ -667,15 +667,15 @@ ntfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	if (ntmp->ntm_devvp->v_type != VBAD)
 		ntmp->ntm_devvp->v_rdev->si_mountpoint = NULL;
 
-	vinvalbuf(ntmp->ntm_devvp, V_SAVE, td, 0, 0);
+	vinvalbuf(ntmp->ntm_devvp, V_SAVE, 0, 0);
 
 #if defined(__NetBSD__)
 	/* lock the device vnode before calling VOP_CLOSE() */
 	VOP_LOCK(ntmp->ntm_devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
 	VOP__UNLOCK(ntmp->ntm_devvp, 0, td);
 #else
-	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
 #endif
 
 	vrele(ntmp->ntm_devvp);

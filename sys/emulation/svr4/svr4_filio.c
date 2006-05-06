@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.9 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -213,7 +213,7 @@ svr4_fil_ioctl(struct file *fp, struct thread *td, register_t *retval,
 #ifdef SVR4_DEBUG
 		if (cmd == FIOASYNC) DPRINTF(("FIOASYNC\n"));
 #endif
-		error = fo_ioctl(fp, cmd, (caddr_t) &num, td);
+		error = fo_ioctl(fp, cmd, (caddr_t) &num, p->p_ucred);
 
 		if (error)
 			return error;

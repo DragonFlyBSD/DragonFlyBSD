@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.18 2005/04/22 02:09:15 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.19 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,12 +67,12 @@
 
 
 static int
-linux_ioctl_BLKGETSIZE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_BLKGETSIZE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	int error;
 	struct disklabel dl;
 
-	error = fo_ioctl(fp, DIOCGDINFO, (caddr_t)&dl, td);
+	error = fo_ioctl(fp, DIOCGDINFO, (caddr_t)&dl, cred);
 	if (error)
 		return (error);
 	bcopy(&(dl.d_secperunit), data, sizeof(dl.d_secperunit));
@@ -469,13 +469,13 @@ linux_to_bsd_termio(struct linux_termio *lio, struct termios *bios)
 }
 
 static int
-linux_ioctl_TCGETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCGETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termios lios;
 	int error;
 
-	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
+	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, cred);
 	if (error)
 		return (error);
 	bsd_to_linux_termios(&bios, &lios);
@@ -484,46 +484,46 @@ linux_ioctl_TCGETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 }
 
 static int
-linux_ioctl_TCSETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termios lios;
 
 	bcopy(data, &lios, sizeof(lios));
 	linux_to_bsd_termios(&lios, &bios);
-	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCSETSW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETSW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termios lios;
 
 	bcopy(data, &lios, sizeof(lios));
 	linux_to_bsd_termios(&lios, &bios);
-	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCSETSF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETSF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termios lios;
 
 	bcopy(data, &lios, sizeof(lios));
 	linux_to_bsd_termios(&lios, &bios);
-	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCGETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCGETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termio lio;
 	int error;
 
-	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
+	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, cred);
 	if (error)
 		return (error);
 	bsd_to_linux_termio(&bios, &lio);
@@ -532,40 +532,40 @@ linux_ioctl_TCGETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 }
 
 static int
-linux_ioctl_TCSETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termio lio;
 
 	bcopy(data, &lio, sizeof(lio));
 	linux_to_bsd_termio(&lio, &bios);
-	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCSETAW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETAW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termio lio;
 
 	bcopy(data, &lio, sizeof(lio));
 	linux_to_bsd_termio(&lio, &bios);
-	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCSETAF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCSETAF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct termios bios;
 	struct linux_termio lio;
 
 	bcopy(data, &lio, sizeof(lio));
 	linux_to_bsd_termio(&lio, &bios);
-	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
+	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, cred));
 }
 
 static int
-linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	switch ((u_long)data) {
 	case LINUX_TCOOFF:
@@ -579,7 +579,7 @@ linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 		struct termios bios;
 		int error, c;
 		
-		error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
+		error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, cred);
 		if (error)
 			return (error);
 		c = ((u_long)data == LINUX_TCIOFF) ? VSTOP : VSTART;
@@ -596,9 +596,9 @@ linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 			auio.uio_resid = sizeof(*bios.c_cc);
 			auio.uio_rw = UIO_WRITE;
 			auio.uio_segflg = UIO_SYSSPACE;
-			auio.uio_td = td;
+			auio.uio_td = curthread;
 
-			return (fo_write(fp, &auio, fp->f_cred, 0, td));
+			return (fo_write(fp, &auio, fp->f_cred, 0));
 		}
 
 		return (0);
@@ -606,11 +606,11 @@ linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 	default:
 		return (EINVAL);
 	}
-	return (fo_ioctl(fp, cmd, 0, td));
+	return (fo_ioctl(fp, cmd, 0, cred));
 }
 
 static int
-linux_ioctl_TCFLSH(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TCFLSH(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	switch ((u_long)data) {
 	case LINUX_TCIFLUSH:
@@ -625,11 +625,11 @@ linux_ioctl_TCFLSH(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struc
 	default:
 		return (EINVAL);
 	}
-	return (fo_ioctl(fp, TIOCFLUSH, data, td));
+	return (fo_ioctl(fp, TIOCFLUSH, data, cred));
 }
 
 static int
-linux_ioctl_TIOCGSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TIOCGSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct linux_serial_struct lss;
 
@@ -641,7 +641,7 @@ linux_ioctl_TIOCGSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 }
 
 static int
-linux_ioctl_TIOCSSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TIOCSSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 #if 0
 	struct linux_serial_struct lss;
@@ -655,7 +655,7 @@ linux_ioctl_TIOCSSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 }
 
 static int
-linux_ioctl_TIOCSETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TIOCSETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	int line;
 
@@ -672,16 +672,16 @@ linux_ioctl_TIOCSETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, str
 	default:
 		return (EINVAL);
 	}
-	return (fo_ioctl(fp, TIOCSETD, (caddr_t)&line, td));
+	return (fo_ioctl(fp, TIOCSETD, (caddr_t)&line, cred));
 }
 
 static int
-linux_ioctl_TIOCGETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_TIOCGETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	int linux_line, error;
 	int bsd_line = TTYDISC;
 
-	error = fo_ioctl(fp, TIOCGETD, (caddr_t)&bsd_line, td);
+	error = fo_ioctl(fp, TIOCGETD, (caddr_t)&bsd_line, cred);
 	if (error)
 		return (error);
 	switch (bsd_line) {
@@ -780,13 +780,13 @@ set_linux_cdrom_addr(union linux_cdrom_addr *addr, int format, int lba)
 }
 
 static int
-linux_ioctl_CDROMREADTOCHDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_CDROMREADTOCHDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct ioc_toc_header th;
 	struct linux_cdrom_tochdr lth;
 	int error;
 
-	error = fo_ioctl(fp, CDIOREADTOCHEADER, (caddr_t)&th, td);
+	error = fo_ioctl(fp, CDIOREADTOCHEADER, (caddr_t)&th, cred);
 	if (error)
 		return (error);
 	lth.cdth_trk0 = th.starting_track;
@@ -796,7 +796,7 @@ linux_ioctl_CDROMREADTOCHDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t da
 }
 
 static int
-linux_ioctl_CDROMREADTOCENTRY(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_CDROMREADTOCENTRY(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct linux_cdrom_tocentry *ltep = (struct linux_cdrom_tocentry *)data;
 	struct ioc_read_toc_single_entry irtse;
@@ -804,7 +804,7 @@ linux_ioctl_CDROMREADTOCENTRY(struct file *fp, u_long cmd, u_long ocmd, caddr_t 
 
 	irtse.address_format = ltep->cdte_format;
 	irtse.track = ltep->cdte_track;
-	error = fo_ioctl(fp, CDIOREADTOCENTRY, (caddr_t)&irtse, td);
+	error = fo_ioctl(fp, CDIOREADTOCENTRY, (caddr_t)&irtse, cred);
 	if (error)
 		return (error);
 
@@ -816,7 +816,7 @@ linux_ioctl_CDROMREADTOCENTRY(struct file *fp, u_long cmd, u_long ocmd, caddr_t 
 }	
 
 static int
-linux_ioctl_CDROMSUBCHNL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_CDROMSUBCHNL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct linux_cdrom_subchnl *sc = (struct linux_cdrom_subchnl *)data;
 	struct ioc_read_subchannel bsdsc;
@@ -830,7 +830,7 @@ linux_ioctl_CDROMSUBCHNL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 	bsdsc.track = 0;
 	bsdsc.data_len = sizeof(struct cd_sub_channel_info);
 	bsdsc.data = bsdinfo;
-	error = fo_ioctl(fp, CDIOCREADSUBCHANNEL, (caddr_t)&bsdsc, td);
+	error = fo_ioctl(fp, CDIOCREADSUBCHANNEL, (caddr_t)&bsdsc, cred);
 	if (error)
 		return (error);
 	sc->cdsc_audiostatus = bsdinfo->header.audio_status;
@@ -849,9 +849,9 @@ linux_ioctl_CDROMSUBCHNL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
  */
 
 static int
-linux_ioctl_OSS_GETVERSION(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_OSS_GETVERSION(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
-	int version = linux_get_oss_version(td);
+	int version = linux_get_oss_version(curthread);
 
 	bcopy(&version, data, sizeof(int));
 	return (0);
@@ -865,7 +865,7 @@ linux_ioctl_OSS_GETVERSION(struct file *fp, u_long cmd, u_long ocmd, caddr_t dat
 #define ISSIGVALID(sig)		((sig) > 0 && (sig) < NSIG)
 
 static int
-linux_ioctl_KDSKBMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_KDSKBMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	int kbdmode;
 
@@ -882,17 +882,17 @@ linux_ioctl_KDSKBMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, st
 	default:
 		return (EINVAL);
 	}
-	return (fo_ioctl(fp, KDSKBMODE, (caddr_t)&kbdmode, td));
+	return (fo_ioctl(fp, KDSKBMODE, (caddr_t)&kbdmode, cred));
 }
 
 static int
-linux_ioctl_VT_SETMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_VT_SETMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct vt_mode *mode = (struct vt_mode *)data;
 
 	if (!ISSIGVALID(mode->frsig) && ISSIGVALID(mode->acqsig))
 		mode->frsig = mode->acqsig;
-	return (fo_ioctl(fp, VT_SETMODE, data, td));
+	return (fo_ioctl(fp, VT_SETMODE, data, cred));
 }
 
 
@@ -973,7 +973,7 @@ ifname_linux_to_bsd(const char *lxname, char *bsdname)
 }
 
 static int
-linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct ifconf *ifc = (struct ifconf *)data;
 	struct l_ifreq ifr;
@@ -992,7 +992,7 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 	uio.uio_resid = ifc->ifc_len;
 	uio.uio_segflg = UIO_USERSPACE;
 	uio.uio_rw = UIO_READ;
-	uio.uio_td = td;
+	uio.uio_td = curthread;
 
 	/* Keep track of eth interfaces */
 	ethno = 0;
@@ -1035,7 +1035,7 @@ linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, 
 }
 
 static int
-linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct l_ifreq *ifr = (struct l_ifreq *)data;
 	struct ifnet *ifp;
@@ -1047,7 +1047,7 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 		 *      we don't translate the ifname and
 		 *      use l_ifreq instead of ifreq
 		 */
-		return (fo_ioctl(fp, SIOCGIFFLAGS, data, td));
+		return (fo_ioctl(fp, SIOCGIFFLAGS, data, cred));
 	}
 
 	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
@@ -1069,7 +1069,7 @@ linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 #define ARPHRD_LOOPBACK	772
 
 static int
-linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct l_ifreq *ifr = (struct l_ifreq *)data;
 	struct ifnet *ifp;
@@ -1103,7 +1103,7 @@ linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data,
 }
 
 static int
-linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct ucred *cred)
 {
 	struct ifnet *ifp;
 	int error;
@@ -1121,7 +1121,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 		/* not a socket - probably a tap / vmnet device */
 		if (ocmd == LINUX_SIOCGIFADDR || ocmd == LINUX_SIOCSIFADDR) {
 			cmd = (ocmd == LINUX_SIOCGIFADDR) ? SIOCGIFADDR : SIOCSIFADDR;
-			return (fo_ioctl(fp, cmd, data, td));
+			return (fo_ioctl(fp, cmd, data, cred));
 		} else
 			return (ENOIOCTL);
 	}
@@ -1144,7 +1144,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 		lifname, oifname);
 #endif
 
-	error = fo_ioctl(fp, cmd, data, td);
+	error = fo_ioctl(fp, cmd, data, cred);
 
 clean_ifname:
 	bcopy(lifname, oifname, LINUX_IFNAMSIZ);

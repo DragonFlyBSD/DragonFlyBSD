@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.16 2006/04/01 21:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.17 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,6 @@ cd9660_uninit(struct vfsconf *vfsp)
 struct vnode *
 cd9660_ihashget(dev_t dev, ino_t inum)
 {
-	struct thread *td = curthread;		/* XXX */
 	struct iso_node *ip;
 	lwkt_tokref ilock;
 	struct vnode *vp;
@@ -119,7 +118,7 @@ loop:
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped
@@ -190,13 +189,12 @@ cd9660_ihashrem(struct iso_node *ip)
  * Last reference to an inode, write the inode out and if necessary,
  * truncate and deallocate the file.
  *
- * cd9660_inactive(struct vnode *a_vp, struct thread *a_td)
+ * cd9660_inactive(struct vnode *a_vp)
  */
 int
 cd9660_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct thread *td = ap->a_td;
 	struct iso_node *ip = VTOI(vp);
 	int error = 0;
 
@@ -210,7 +208,7 @@ cd9660_inactive(struct vop_inactive_args *ap)
 	 * so that it can be reused immediately.
 	 */
 	if (ip == NULL || ip->inode.iso_mode == 0)
-		vrecycle(vp, td);
+		vrecycle(vp);
 	return error;
 }
 

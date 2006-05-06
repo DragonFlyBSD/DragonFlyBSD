@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.40 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.41 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -199,7 +199,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			/*
 			 * Flush any dirty data.
 			 */
-			VFS_SYNC(mp, MNT_WAIT, td);
+			VFS_SYNC(mp, MNT_WAIT);
 			/*
 			 * Check for and optionally get rid of files open
 			 * for writing.
@@ -228,7 +228,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			if (cred->cr_uid != 0) {
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
-				    cred, td)) != 0) {
+				    cred)) != 0) {
 					VOP_UNLOCK(devvp, 0);
 					return (error);
 				}
@@ -306,7 +306,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
+		if ((error = VOP_ACCESS(devvp, accessmode, cred)) != 0) {
 			vput(devvp);
 			return (error);
 		}
@@ -400,11 +400,11 @@ success:
 			 */
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (ronly) {
-				VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
-				VOP_CLOSE(devvp, FREAD|FWRITE, td);
+				VOP_OPEN(devvp, FREAD, FSCRED, NULL);
+				VOP_CLOSE(devvp, FREAD|FWRITE);
 			} else {
-				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL, td);
-				VOP_CLOSE(devvp, FREAD, td);
+				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
+				VOP_CLOSE(devvp, FREAD);
 			}
 			VOP_UNLOCK(devvp, 0);
 			ffs_sbupdate(ump, MNT_WAIT);
@@ -458,7 +458,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 */
 	devvp = VFSTOUFS(mp)->um_devvp;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = vinvalbuf(devvp, 0, td, 0, 0);
+	error = vinvalbuf(devvp, 0, 0, 0);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		panic("ffs_reload: dirty1");
@@ -475,7 +475,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	/*
 	 * Step 2: re-read superblock from disk.
 	 */
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, NOCRED, td) != 0)
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, NOCRED) != 0)
 		size = DEV_BSIZE;
 	else
 		size = dpart.disklab->d_secsize;
@@ -562,10 +562,10 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 	/*
 	 * Try to recycle
 	 */
-	if (vrecycle(vp, info->td))
+	if (vrecycle(vp))
 		return(0);
 
-	if (vinvalbuf(vp, 0, info->td, 0, 0))
+	if (vinvalbuf(vp, 0, 0, 0))
 		panic("ffs_reload: dirty2");
 	/*
 	 * Step 6: re-read inode data for all active vnodes.
@@ -613,14 +613,14 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
@@ -639,7 +639,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if (devvp->v_object == NULL)
 		panic("ffs_reload: devvp has no VM object!");
 
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred, td) != 0)
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred) != 0)
 		size = DEV_BSIZE;
 	else
 		size = dpart.disklab->d_secsize;
@@ -782,7 +782,7 @@ out:
 	dev->si_mountpoint = NULL;
 	if (bp)
 		brelse(bp);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	if (ump) {
 		free(ump->um_fs, M_UFSMNT);
 		free(ump, M_UFSMNT);
@@ -854,8 +854,8 @@ ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	}
 	ump->um_devvp->v_rdev->si_mountpoint = NULL;
 
-	vinvalbuf(ump->um_devvp, V_SAVE, td, 0, 0);
-	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE, td);
+	vinvalbuf(ump->um_devvp, V_SAVE, 0, 0);
+	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE);
 
 	vrele(ump->um_devvp);
 
@@ -904,7 +904,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 	 * Flush filesystem metadata.
 	 */
 	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, td);
+	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT);
 	VOP_UNLOCK(ump->um_devvp, 0);
 	return (error);
 }
@@ -951,7 +951,7 @@ static int ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 int
-ffs_sync(struct mount *mp, int waitfor, struct thread *td)
+ffs_sync(struct mount *mp, int waitfor)
 {
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct fs *fs;
@@ -983,7 +983,7 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
+		if ((error = VOP_FSYNC(ump->um_devvp, waitfor)) != 0)
 			scaninfo.allerror = error;
 		VOP_UNLOCK(ump->um_devvp, 0);
 	}
@@ -1025,7 +1025,6 @@ static int
 ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
-	thread_t td = curthread;	/* XXX */
 	struct inode *ip;
 	int error;
 
@@ -1039,7 +1038,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		return(0);
 	}
 	if (vp->v_type != VCHR) {
-		if ((error = VOP_FSYNC(vp, info->waitfor, td)) != 0)
+		if ((error = VOP_FSYNC(vp, info->waitfor)) != 0)
 			info->allerror = error;
 	} else {
 		/*

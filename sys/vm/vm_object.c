@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.22 2005/06/02 20:57:21 swildner Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.23 2006/05/06 02:43:15 dillon Exp $
  */
 
 /*
@@ -440,7 +440,7 @@ vm_object_terminate(vm_object_t object)
 		vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
 
 		vp = (struct vnode *) object->handle;
-		vinvalbuf(vp, V_SAVE, NULL, 0, 0);
+		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
 
 	/*
@@ -716,10 +716,6 @@ again:
 		}
 	}
 	crit_exit();
-
-#if 0
-	VOP_FSYNC(vp, NULL, (pagerflags & VM_PAGER_PUT_SYNC)?MNT_WAIT:0, curproc);
-#endif
 
 	vm_object_clear_flag(object, OBJ_CLEANING);
 	return;

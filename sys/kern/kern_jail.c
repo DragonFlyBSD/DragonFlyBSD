@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.9 2005/10/08 11:43:02 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
  *
  */
 
@@ -232,15 +232,13 @@ prison_remote_ip(struct thread *td, int flag, u_int32_t *ip)
 }
 
 int
-prison_if(struct thread *td, struct sockaddr *sa)
+prison_if(struct ucred *cred, struct sockaddr *sa)
 {
 	struct prison *pr;
 	struct sockaddr_in *sai = (struct sockaddr_in*) sa;
 	int ok;
 
-	if (td->td_proc == NULL)
-		return(0);
-	pr = td->td_proc->p_ucred->cr_prison;
+	pr = cred->cr_prison;
 
 	if ((sai->sin_family != AF_INET) && jail_socket_unixiproute_only)
 		ok = 1;

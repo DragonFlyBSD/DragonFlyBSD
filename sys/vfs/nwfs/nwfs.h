@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs.h,v 1.3 1999/12/29 04:54:56 peter Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs.h,v 1.7 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs.h,v 1.8 2006/05/06 02:43:14 dillon Exp $
  */
 
 #ifndef _NWFS_H_
@@ -77,7 +77,7 @@ struct nwmount {
 int ncp_conn_logged_in(struct nwmount *);
 int nwfs_ioctl(struct vop_ioctl_args *ap);
 int nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td);
-int nwfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg);
+int nwfs_vinvalbuf(struct vnode *vp, int flags, int intrflg);
 #endif	/* _KERNEL */
 
 #endif /* _NWFS_H_ */

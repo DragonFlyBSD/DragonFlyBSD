@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.19 2006/05/05 20:15:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.20 2006/05/06 02:43:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -162,7 +162,6 @@ smbfs_node_alloc(struct mount *mp, struct vnode *dvp,
 		 const char *name, int nmlen, struct smbfattr *fap,
 		 struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct smbmount *smp = VFSTOSMBFS(mp);
 	struct smbnode_hashhead *nhpp;
 	struct smbnode *np, *np2, *dnp;
@@ -179,7 +178,7 @@ smbfs_node_alloc(struct mount *mp, struct vnode *dvp,
 		if (dvp == NULL)
 			return EINVAL;
 		vp = VTOSMB(VTOSMB(dvp)->n_parent)->n_vnode;
-		error = vget(vp, LK_EXCLUSIVE, td);
+		error = vget(vp, LK_EXCLUSIVE);
 		if (error == 0)
 			*vpp = vp;
 		return error;
@@ -203,7 +202,7 @@ loop:
 			continue;
 		vp = SMBTOV(np);
 		smbfs_hash_unlock(smp, td);
-		if (vget(vp, LK_EXCLUSIVE, td) != 0)
+		if (vget(vp, LK_EXCLUSIVE) != 0)
 			goto retry;
 		/*
 		 * relookup after we blocked.
@@ -338,7 +337,6 @@ smbfs_reclaim(struct vop_reclaim_args *ap)
 int
 smbfs_inactive(struct vop_inactive_args *ap)
 {
-	struct thread *td = ap->a_td;
 	struct ucred *cred;
 	struct vnode *vp = ap->a_vp;
 	struct smbnode *np = VTOSMB(vp);
@@ -347,10 +345,10 @@ smbfs_inactive(struct vop_inactive_args *ap)
 
 	SMBVDEBUG("%s: %d\n", VTOSMB(vp)->n_name, vp->v_usecount);
 	if (np->n_opencount) {
-		error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
+		error = smbfs_vinvalbuf(vp, V_SAVE, 1);
 		cred = np->n_cached_cred;
 		np->n_cached_cred = NULL;
-		smb_makescred(&scred, td, cred);
+		smb_makescred(&scred, curthread, cred);
 		error = smbfs_smb_close(np->n_mount->sm_share, np->n_fid, 
 		   &np->n_mtime, &scred);
 		np->n_opencount = 0;

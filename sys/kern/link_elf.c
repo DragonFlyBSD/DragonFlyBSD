@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.18 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.19 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -452,7 +452,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     }
     hdr = (Elf_Ehdr *)firstpage;
     error = vn_rdwr(UIO_READ, vp, firstpage, PAGE_SIZE, 0,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
     nbytes = PAGE_SIZE - resid;
     if (error)
 	goto out;
@@ -576,7 +576,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	caddr_t segbase = mapbase + segs[i]->p_vaddr - base_vaddr;
 	error = vn_rdwr(UIO_READ, vp,
 			segbase, segs[i]->p_filesz, segs[i]->p_offset,
-			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
+			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
 	if (error) {
 #ifdef SPARSE_MAPPING
 	    vm_map_remove(kernel_map, (vm_offset_t) ef->address,
@@ -643,7 +643,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     }
     error = vn_rdwr(UIO_READ, vp,
 		    (caddr_t)shdr, nbytes, hdr->e_shoff,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
     if (error)
 	goto out;
     symtabindex = -1;
@@ -668,12 +668,12 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     }
     error = vn_rdwr(UIO_READ, vp,
 		    ef->symbase, symcnt, shdr[symtabindex].sh_offset,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
     if (error)
 	goto out;
     error = vn_rdwr(UIO_READ, vp,
 		    ef->strbase, strcnt, shdr[symstrindex].sh_offset,
-		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
+		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
     if (error)
 	goto out;
 
@@ -696,7 +696,7 @@ out:
     if (firstpage)
 	free(firstpage, M_LINKER);
     VOP_UNLOCK(vp, 0);
-    vn_close(vp, FREAD, td);
+    vn_close(vp, FREAD);
 
     return error;
 }

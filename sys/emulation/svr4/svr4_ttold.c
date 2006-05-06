@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ttold.c,v 1.7 1999/12/08 12:00:49 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.6 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.7 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +168,8 @@ int
 svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 		 int fd, u_long cmd, caddr_t data)
 {
-	int			error;
+	struct ucred *cred = curproc->p_ucred;
+	int error;
 
 	*retval = 0;
 
@@ -177,7 +178,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 		{
 			pid_t pid;
 
-			if ((error = fo_ioctl(fp, TIOCGPGRP, (caddr_t) &pid, td)) != 0)
+			if ((error = fo_ioctl(fp, TIOCGPGRP, (caddr_t) &pid, cred)) != 0)
 			    return error;
 
 			DPRINTF(("TIOCGPGRP %d\n", pid));
@@ -196,14 +197,14 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 
 			DPRINTF(("TIOCSPGRP %d\n", pid));
 
-			return fo_ioctl(fp, TIOCSPGRP, (caddr_t) &pid, td);
+			return fo_ioctl(fp, TIOCSPGRP, (caddr_t) &pid, cred);
 		}
 
 	case SVR4_TIOCGSID:
 		{
 #if defined(TIOCGSID)
 			pid_t pid;
-			if ((error = fo_ioctl(fp, TIOCGSID, (caddr_t) &pid, td)) != 0)
+			if ((error = fo_ioctl(fp, TIOCGSID, (caddr_t) &pid, cred)) != 0)
 				return error;
 
 			DPRINTF(("TIOCGSID %d\n", pid));
@@ -220,7 +221,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			struct sgttyb bs;
 			struct svr4_sgttyb ss;
 
-			error = fo_ioctl(fp, TIOCGETP, (caddr_t) &bs, td);
+			error = fo_ioctl(fp, TIOCGETP, (caddr_t) &bs, cred);
 			if (error)
 				return error;
 
@@ -245,7 +246,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			print_svr4_sgttyb("SVR4_TIOCSET{P,N}", &ss);
 #endif /* DEBUG_SVR4 */
 			cmd = (cmd == SVR4_TIOCSETP) ? TIOCSETP : TIOCSETN;
-			return fo_ioctl(fp, cmd, (caddr_t) &bs, td);
+			return fo_ioctl(fp, cmd, (caddr_t) &bs, cred);
 		}
 
 	case SVR4_TIOCGETC:
@@ -253,7 +254,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			struct tchars bt;
 			struct svr4_tchars st;
 
-			error = fo_ioctl(fp, TIOCGETC, (caddr_t) &bt, td);
+			error = fo_ioctl(fp, TIOCGETC, (caddr_t) &bt, cred);
 			if (error)
 				return error;
 
@@ -276,7 +277,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 #ifdef DEBUG_SVR4
 			print_svr4_tchars("SVR4_TIOCSETC", &st);
 #endif /* DEBUG_SVR4 */
-			return fo_ioctl(fp, TIOCSETC, (caddr_t) &bt, td);
+			return fo_ioctl(fp, TIOCSETC, (caddr_t) &bt, cred);
 		}
 
 	case SVR4_TIOCGLTC:
@@ -284,7 +285,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			struct ltchars bl;
 			struct svr4_ltchars sl;
 
-			error = fo_ioctl(fp, TIOCGLTC, (caddr_t) &bl, td);
+			error = fo_ioctl(fp, TIOCGLTC, (caddr_t) &bl, cred);
 			if (error)
 				return error;
 
@@ -307,13 +308,13 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 #ifdef DEBUG_SVR4
 			print_svr4_ltchars("SVR4_TIOCSLTC", &sl);
 #endif /* DEBUG_SVR4 */
-			return fo_ioctl(fp, TIOCSLTC, (caddr_t) &bl, td);
+			return fo_ioctl(fp, TIOCSLTC, (caddr_t) &bl, cred);
 		}
 
 	case SVR4_TIOCLGET:
 		{
 			int flags;
-			if ((error = fo_ioctl(fp, TIOCLGET, (caddr_t) &flags, td)) != 0)
+			if ((error = fo_ioctl(fp, TIOCLGET, (caddr_t) &flags, cred)) != 0)
 				return error;
 			DPRINTF(("SVR4_TIOCLGET %o\n", flags));
 			return copyout(&flags, data, sizeof(flags));
@@ -341,7 +342,7 @@ svr4_ttold_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			}
 
 			DPRINTF(("SVR4_TIOCL{SET,BIS,BIC} %o\n", flags));
-			return fo_ioctl(fp, cmd, (caddr_t) &flags, td);
+			return fo_ioctl(fp, cmd, (caddr_t) &flags, cred);
 		}
 
 	default:

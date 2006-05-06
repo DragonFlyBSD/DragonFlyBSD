@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.10 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.11 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_EXT2_EXTERN_H_
@@ -63,7 +63,7 @@ int	ext2_bmap (struct vop_bmap_args *);
 int	ext2_reallocblks (struct vop_reallocblks_args *);
 int	ext2_reclaim (struct vop_reclaim_args *);
 void	ext2_setblock (struct ext2_sb_info *, u_char *, daddr_t);
-int	ext2_truncate (struct vnode *, off_t, int, struct ucred *, struct thread *);
+int	ext2_truncate (struct vnode *, off_t, int, struct ucred *);
 int	ext2_update (struct vnode *, int);
 int	ext2_valloc (struct vnode *, int, struct ucred *, struct vnode **);
 int	ext2_vfree (struct vnode *, ino_t, int);

@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.27 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.28 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 #include <sys/vnode.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -50,6 +51,9 @@
 #include <sys/event.h>
 #include <sys/poll.h>
 #include <sys/un.h>
+
+#include <sys/thread2.h>
+
 #include "fifo.h"
 
 /*
@@ -162,6 +166,7 @@ fifo_lookup(struct vop_old_lookup_args *ap)
 static int
 fifo_open(struct vop_open_args *ap)
 {
+	struct thread *td = curthread;
 	struct vnode *vp = ap->a_vp;
 	struct fifoinfo *fip;
 	struct socket *rso, *wso;
@@ -170,14 +175,14 @@ fifo_open(struct vop_open_args *ap)
 	if ((fip = vp->v_fifoinfo) == NULL) {
 		MALLOC(fip, struct fifoinfo *, sizeof(*fip), M_FIFOINFO, M_WAITOK);
 		vp->v_fifoinfo = fip;
-		error = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, ap->a_td);
+		error = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, td);
 		if (error) {
 			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
 		}
 		fip->fi_readsock = rso;
-		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, ap->a_td);
+		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, td);
 		if (error) {
 			soclose(rso);
 			free(fip, M_FIFOINFO);
@@ -257,7 +262,7 @@ fifo_open(struct vop_open_args *ap)
 	return (vop_stdopen(ap));
 bad:
 	vop_stdopen(ap);	/* bump opencount/writecount as appropriate */
-	VOP_CLOSE(vp, ap->a_mode, ap->a_td);
+	VOP_CLOSE(vp, ap->a_mode);
 	return (error);
 }
 
@@ -339,13 +344,13 @@ fifo_ioctl(struct vop_ioctl_args *ap)
 		return (0);
 	if (ap->a_fflag & FREAD) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
-		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_td);
+		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_cred);
 		if (error)
 			return (error);
 	}
 	if (ap->a_fflag & FWRITE) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
-		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_td);
+		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_cred);
 		if (error)
 			return (error);
 	}
@@ -463,8 +468,7 @@ fifo_poll(struct vop_poll_args *ap)
 		
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
 		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, events, ap->a_cred,
-			    ap->a_td);
+			revents |= soo_poll(&filetmp, events, ap->a_cred);
 
 		/* Reverse the above conversion. */
 		if ((revents & POLLINIGNEOF) &&
@@ -477,8 +481,7 @@ fifo_poll(struct vop_poll_args *ap)
 	if (events) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_writesock;
 		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, events, ap->a_cred,
-			    ap->a_td);
+			revents |= soo_poll(&filetmp, events, ap->a_cred);
 	}
 	return (revents);
 }

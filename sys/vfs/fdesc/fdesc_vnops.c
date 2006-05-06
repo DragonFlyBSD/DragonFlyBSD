@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.26 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.27 2006/05/06 02:43:13 dillon Exp $
  */
 
 /*
@@ -114,7 +114,7 @@ fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp,
 loop:
 	LIST_FOREACH(fd, fc, fd_hash) {
 		if (fd->fd_ix == ix && fd->fd_vnode->v_mount == mp) {
-			if (vget(fd->fd_vnode, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
+			if (vget(fd->fd_vnode, LK_EXCLUSIVE|LK_SLEEPFAIL))
 				goto loop;
 			*vpp = fd->fd_vnode;
 			return (error);
@@ -239,14 +239,13 @@ bad:
 }
 
 /*
- * fdesc_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	      struct thread *a_td)
+ * fdesc_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 fdesc_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct lwp *lp = ap->a_td->td_lwp;
+	struct lwp *lp = curthread->td_lwp;
 
 	KKASSERT(lp);
 
@@ -266,13 +265,12 @@ fdesc_open(struct vop_open_args *ap)
 }
 
 /*
- * fdesc_getattr(struct vnode *a_vp, struct vattr *a_vap,
- *		 struct ucred *a_cred, struct thread *a_td)
+ * fdesc_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static int
 fdesc_getattr(struct vop_getattr_args *ap)
 {
-	struct proc *p = ap->a_td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
 	struct filedesc *fdp;
@@ -312,7 +310,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 			return (EBADF);
 
 		bzero(&stb, sizeof(stb));
-		error = fo_stat(fp, &stb, ap->a_td);
+		error = fo_stat(fp, &stb, curproc->p_ucred);
 		if (error == 0) {
 			VATTR_NULL(vap);
 			vap->va_type = IFTOVT(stb.st_mode);
@@ -369,7 +367,7 @@ fdesc_getattr(struct vop_getattr_args *ap)
 static int
 fdesc_setattr(struct vop_setattr_args *ap)
 {
-	struct proc *p = ap->a_td->td_proc;
+	struct proc *p = curproc;
 	struct vattr *vap = ap->a_vap;
 	struct file *fp;
 	unsigned fd;
@@ -489,7 +487,7 @@ done:
 static int
 fdesc_poll(struct vop_poll_args *ap)
 {
-	return seltrue(0, ap->a_events, ap->a_td);
+	return seltrue(0, ap->a_events, curthread);
 }
 
 /*

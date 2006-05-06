@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.21 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.22 2006/05/06 02:43:13 dillon Exp $
  */
 
 /*
@@ -130,14 +130,12 @@ struct vop_open_args {
 	int a_mode;
 	struct ucred *a_cred;
 	struct file *a_fp;		/* optional fp for fileops override */
-	struct thread *a_td;
 };
 
 struct vop_close_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_fflag;
-	struct thread *a_td;
 };
 
 struct vop_access_args {
@@ -145,14 +143,12 @@ struct vop_access_args {
 	struct vnode *a_vp;
 	int a_mode;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_getattr_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	struct vattr *a_vap;
-	struct thread *a_td;
 };
 
 struct vop_setattr_args {
@@ -160,7 +156,6 @@ struct vop_setattr_args {
 	struct vnode *a_vp;
 	struct vattr *a_vap;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_read_args {
@@ -186,7 +181,6 @@ struct vop_ioctl_args {
 	caddr_t a_data;
 	int a_fflag;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_poll_args {
@@ -194,7 +188,6 @@ struct vop_poll_args {
 	struct vnode *a_vp;
 	int a_events;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_kqfilter_args {
@@ -214,14 +207,12 @@ struct vop_mmap_args {
 	struct vnode *a_vp;
 	int a_fflags;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_fsync_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_waitfor;
-	struct thread *a_td;
 };
 
 struct vop_old_remove_args {
@@ -292,13 +283,11 @@ struct vop_readlink_args {
 struct vop_inactive_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	struct thread *a_td;
 };
 
 struct vop_reclaim_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	struct thread *a_td;
 };
 
 struct vop_lock_args {
@@ -398,7 +387,6 @@ struct vop_getacl_args {
 	acl_type_t a_type;
 	struct acl *a_aclp;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_setacl_args {
@@ -407,7 +395,6 @@ struct vop_setacl_args {
 	acl_type_t a_type;
 	struct acl *a_aclp;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_aclcheck_args {
@@ -416,7 +403,6 @@ struct vop_aclcheck_args {
 	acl_type_t a_type;
 	struct acl *a_aclp;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_getextattr_args {
@@ -425,7 +411,6 @@ struct vop_getextattr_args {
 	char *a_name;
 	struct uio *a_uio;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_setextattr_args {
@@ -434,7 +419,6 @@ struct vop_setextattr_args {
 	char *a_name;
 	struct uio *a_uio;
 	struct ucred *a_cred;
-	struct thread *a_td;
 };
 
 struct vop_mountctl_args {
@@ -725,30 +709,26 @@ int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
-		struct ucred *cred, struct file *file, struct thread *td);
-int vop_close(struct vop_ops *ops, struct vnode *vp,
-		int fflag, struct thread *td);
+		struct ucred *cred, struct file *file);
+int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag);
 int vop_access(struct vop_ops *ops, struct vnode *vp, int mode,
-		struct ucred *cred, struct thread *td);
-int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-		struct thread *td);
+		struct ucred *cred);
+int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
 int vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-		struct ucred *cred, struct thread *td);
+		struct ucred *cred);
 int vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int ioflag, struct ucred *cred);
 int vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int ioflag, struct ucred *cred);
 int vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command,
-		caddr_t data, int fflag,
-		struct ucred *cred, struct thread *td);
+		caddr_t data, int fflag, struct ucred *cred);
 int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
-		struct ucred *cred, struct thread *td);
+		struct ucred *cred);
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
 int vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
-		struct ucred *cred, struct thread *td);
-int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor,
-		struct thread *td);
+		struct ucred *cred);
+int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor);
 int vop_old_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
 int vop_old_link(struct vop_ops *ops, struct vnode *tdvp,
@@ -770,8 +750,8 @@ int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		int *ncookies, u_long **cookies);
 int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
-int vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td);
+int vop_inactive(struct vop_ops *ops, struct vnode *vp);
+int vop_reclaim(struct vop_ops *ops, struct vnode *vp);
 int vop_lock(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
@@ -794,15 +774,15 @@ int vop_putpages(struct vop_ops *ops, struct vnode *vp, struct vm_page **m,
 int vop_freeblks(struct vop_ops *ops, struct vnode *vp,
 		off_t offset, int length);
 int vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-		struct acl *aclp, struct ucred *cred, struct thread *td);
+		struct acl *aclp, struct ucred *cred);
 int vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-		struct acl *aclp, struct ucred *cred, struct thread *td);
+		struct acl *aclp, struct ucred *cred);
 int vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-		struct acl *aclp, struct ucred *cred, struct thread *td);
+		struct acl *aclp, struct ucred *cred);
 int vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-		struct uio *uio, struct ucred *cred, struct thread *td);
+		struct uio *uio, struct ucred *cred);
 int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-		struct uio *uio, struct ucred *cred, struct thread *td);
+		struct uio *uio, struct ucred *cred);
 int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
 		const void *ctl, int ctllen, void *buf, int buflen, int *res);
 int vop_nresolve(struct vop_ops *ops, struct namecache *ncp,
@@ -973,40 +953,40 @@ extern struct vnodeop_desc vop_nrename_desc;
  */
 #define VOP_ISLOCKED(vp, td)				\
 	vop_islocked(*(vp)->v_ops, vp, td)
-#define VOP_OPEN(vp, mode, cred, fp, td)		\
-	vop_open(*(vp)->v_ops, vp, mode, cred, fp, td)
-#define VOP_CLOSE(vp, fflag, td)			\
-	vop_close(*(vp)->v_ops, vp, fflag, td)
-#define VOP_ACCESS(vp, mode, cred, td)			\
-	vop_access(*(vp)->v_ops, vp, mode, cred, td)
-#define VOP_GETATTR(vp, vap, td)			\
-	vop_getattr(*(vp)->v_ops, vp, vap, td)
-#define VOP_SETATTR(vp, vap, cred, td)			\
-	vop_setattr(*(vp)->v_ops, vp, vap, cred, td)
+#define VOP_OPEN(vp, mode, cred, fp)			\
+	vop_open(*(vp)->v_ops, vp, mode, cred, fp)
+#define VOP_CLOSE(vp, fflag)				\
+	vop_close(*(vp)->v_ops, vp, fflag)
+#define VOP_ACCESS(vp, mode, cred)			\
+	vop_access(*(vp)->v_ops, vp, mode, cred)
+#define VOP_GETATTR(vp, vap)				\
+	vop_getattr(*(vp)->v_ops, vp, vap)
+#define VOP_SETATTR(vp, vap, cred)			\
+	vop_setattr(*(vp)->v_ops, vp, vap, cred)
 #define VOP_READ(vp, uio, ioflag, cred)			\
 	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred)
 #define VOP_WRITE(vp, uio, ioflag, cred)		\
 	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred)
-#define VOP_IOCTL(vp, command, data, fflag, cred, td)	\
-	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred, td)
-#define VOP_POLL(vp, events, cred, td)			\
-	vop_poll(*(vp)->v_ops, vp, events, cred, td)
+#define VOP_IOCTL(vp, command, data, fflag, cred)	\
+	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred)
+#define VOP_POLL(vp, events, cred)			\
+	vop_poll(*(vp)->v_ops, vp, events, cred)
 #define VOP_KQFILTER(vp, kn)				\
 	vop_kqfilter(*(vp)->v_ops, vp, kn)
 #define VOP_REVOKE(vp, flags)				\
 	vop_revoke(*(vp)->v_ops, vp, flags)
-#define VOP_MMAP(vp, fflags, cred, td)			\
-	vop_mmap(*(vp)->v_ops, vp, fflags, cred, td)
-#define VOP_FSYNC(vp, waitfor, td)			\
-	vop_fsync(*(vp)->v_ops, vp, waitfor, td)
+#define VOP_MMAP(vp, fflags, cred)			\
+	vop_mmap(*(vp)->v_ops, vp, fflags, cred)
+#define VOP_FSYNC(vp, waitfor)				\
+	vop_fsync(*(vp)->v_ops, vp, waitfor)
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
 	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
 #define VOP_READLINK(vp, uio, cred)			\
 	vop_readlink(*(vp)->v_ops, vp, uio, cred)
-#define VOP_INACTIVE(vp, td)				\
-	vop_inactive(*(vp)->v_ops, vp, td)
-#define VOP_RECLAIM(vp, td)				\
-	vop_reclaim(*(vp)->v_ops, vp, td)
+#define VOP_INACTIVE(vp)				\
+	vop_inactive(*(vp)->v_ops, vp)
+#define VOP_RECLAIM(vp)					\
+	vop_reclaim(*(vp)->v_ops, vp)
 #define VOP_LOCK(vp, flags)				\
 	vop_lock(*(vp)->v_ops, vp, flags)
 #define VOP_UNLOCK(vp, flags)				\
@@ -1029,16 +1009,16 @@ extern struct vnodeop_desc vop_nrename_desc;
 	vop_putpages(*(vp)->v_ops, vp, m, count, sync, rtvals, off)
 #define VOP_FREEBLKS(vp, offset, length)		\
 	vop_freeblks(*(vp)->v_ops, vp, offset, length)
-#define VOP_GETACL(vp, type, aclp, cred, td)		\
-	vop_getacl(*(vp)->v_ops, vp, type, aclp, cred, td)
-#define VOP_SETACL(vp, type, aclp, cred, td)		\
-	vop_setacl(*(vp)->v_ops, vp, type, aclp, cred, td)
-#define VOP_ACLCHECK(vp, type, aclp, cred, td)		\
-	vop_aclcheck(*(vp)->v_ops, vp, type, aclp, cred, td)
-#define VOP_GETEXTATTR(vp, name, uio, cred, td)		\
-	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred, td)
-#define VOP_SETEXTATTR(vp, name, uio, cred, td)		\
-	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred, td)
+#define VOP_GETACL(vp, type, aclp, cred)		\
+	vop_getacl(*(vp)->v_ops, vp, type, aclp, cred)
+#define VOP_SETACL(vp, type, aclp, cred)		\
+	vop_setacl(*(vp)->v_ops, vp, type, aclp, cred)
+#define VOP_ACLCHECK(vp, type, aclp, cred)		\
+	vop_aclcheck(*(vp)->v_ops, vp, type, aclp, cred)
+#define VOP_GETEXTATTR(vp, name, uio, cred)		\
+	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred)
+#define VOP_SETEXTATTR(vp, name, uio, cred)		\
+	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred)
 /* no VOP_VFSSET() */
 /* VOP_STRATEGY - does not exist, use vn_strategy() */
 

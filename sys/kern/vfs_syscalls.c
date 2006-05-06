@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.85 2006/05/05 21:27:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.86 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -160,7 +160,7 @@ mount(struct mount_args *uap)
 	 * now we have the locked ref'd ncp and unreferenced vnode.
 	 */
 	vp = ncp->nc_vp;
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(vp, LK_EXCLUSIVE)) != 0) {
 		cache_put(ncp);
 		return (error);
 	}
@@ -220,14 +220,14 @@ mount(struct mount_args *uap)
 	 * If the user is not root, ensure that they own the directory
 	 * onto which we are attempting to mount.
 	 */
-	if ((error = VOP_GETATTR(vp, &va, td)) ||
+	if ((error = VOP_GETATTR(vp, &va)) ||
 	    (va.va_uid != p->p_ucred->cr_uid &&
 	     (error = suser(td)))) {
 		cache_drop(ncp);
 		vput(vp);
 		return (error);
 	}
-	if ((error = vinvalbuf(vp, V_SAVE, td, 0, 0)) != 0) {
+	if ((error = vinvalbuf(vp, V_SAVE, 0, 0)) != 0) {
 		cache_drop(ncp);
 		vput(vp);
 		return (error);
@@ -552,7 +552,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if (mp->mnt_syncer != NULL)
 		vrele(mp->mnt_syncer);
 	if (((mp->mnt_flag & MNT_RDONLY) ||
-	     (error = VFS_SYNC(mp, MNT_WAIT, td)) == 0) ||
+	     (error = VFS_SYNC(mp, MNT_WAIT)) == 0) ||
 	    (flags & MNT_FORCE))
 		error = VFS_UNMOUNT(mp, flags, td);
 	if (error) {
@@ -636,7 +636,7 @@ sync_callback(struct mount *mp, void *data __unused)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_NOWAIT, curthread);
+		VFS_SYNC(mp, MNT_NOWAIT);
 		mp->mnt_flag |= asyncflag;
 	}
 	return(0);
@@ -1042,7 +1042,7 @@ fchdir(struct fchdir_args *uap)
 	if (vp->v_type != VDIR || fp->f_ncp == NULL)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
+		error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
 	if (error) {
 		vput(vp);
 		return (error);
@@ -1054,7 +1054,7 @@ fchdir(struct fchdir_args *uap)
 			cache_unlock(nct);	/* leave ref intact */
 			vput(vp);
 			vp = nct->nc_vp;
-			error = vget(vp, LK_SHARED, td);
+			error = vget(vp, LK_SHARED);
 			KKASSERT(error == 0);
 			cache_drop(ncp);
 			ncp = nct;
@@ -1089,7 +1089,7 @@ kern_chdir(struct nlookupdata *nd)
 		return (error);
 	if ((vp = nd->nl_ncp->nc_vp) == NULL)
 		return (ENOENT);
-	if ((error = vget(vp, LK_SHARED, td)) != 0)
+	if ((error = vget(vp, LK_SHARED)) != 0)
 		return (error);
 
 	error = checkvp_chdir(vp, td);
@@ -1196,7 +1196,7 @@ kern_chroot(struct namecache *ncp)
 	if ((vp = ncp->nc_vp) == NULL)
 		return (ENOENT);
 
-	if ((error = vget(vp, LK_SHARED, td)) != 0)
+	if ((error = vget(vp, LK_SHARED)) != 0)
 		return (error);
 
 	/*
@@ -1260,7 +1260,7 @@ checkvp_chdir(struct vnode *vp, struct thread *td)
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, td->td_proc->p_ucred, td);
+		error = VOP_ACCESS(vp, VEXEC, td->td_proc->p_ucred);
 	return (error);
 }
 
@@ -1364,7 +1364,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		KASSERT(fdp->fd_files[indx].fp != fp,
 		    ("Open file descriptor lost all refs"));
 		vrele(vp);
-		fo_close(fp, td);
+		fo_close(fp);
 		fdrop(fp, td);
 		*res = indx;
 		return 0;
@@ -1607,7 +1607,7 @@ can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
 	 * same user or group.  Note that any group is allowed if
 	 * the file is owned by the caller.
 	 */
-	error = VOP_GETATTR(vp, &va, td);
+	error = VOP_GETATTR(vp, &va);
 	if (error != 0)
 		return (error);
 	
@@ -1643,7 +1643,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	KKASSERT(vp != NULL);
 	if (vp->v_type == VDIR)
 		return (EPERM);		/* POSIX */
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vget(vp, LK_EXCLUSIVE)) != 0)
 		return (error);
 
 	/*
@@ -1825,7 +1825,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		fp->f_offset += offset;
 		break;
 	case L_XTND:
-		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr, td);
+		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr);
 		if (error)
 			return (error);
 		fp->f_offset = offset + vattr.va_size;
@@ -1859,7 +1859,6 @@ lseek(struct lseek_args *uap)
 int
 kern_access(struct nlookupdata *nd, int aflags)
 {
-	struct thread *td = curthread;
 	struct vnode *vp;
 	int error, flags;
 
@@ -1880,7 +1879,7 @@ retry:
 		if (aflags & X_OK)
 			flags |= VEXEC;
 		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
-			error = VOP_ACCESS(vp, flags, nd->nl_cred, td);
+			error = VOP_ACCESS(vp, flags, nd->nl_cred);
 
 		/*
 		 * If the file handle is stale we have to re-resolve the
@@ -1932,9 +1931,9 @@ again:
 		return (ENOENT);
 
 	td = curthread;
-	if ((error = vget(vp, LK_SHARED, td)) != 0)
+	if ((error = vget(vp, LK_SHARED)) != 0)
 		return (error);
-	error = vn_stat(vp, st, td);
+	error = vn_stat(vp, st, nd->nl_cred);
 
 	/*
 	 * If the file handle is stale we have to re-resolve the entry.  This
@@ -2104,10 +2103,10 @@ setfflags(struct vnode *vp, int flags)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_flags = flags;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
 		vput(vp);
 	}
 	return (error);
@@ -2172,10 +2171,10 @@ setfmode(struct vnode *vp, int mode)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_mode = mode & ALLPERMS;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
 		vput(vp);
 	}
 	return error;
@@ -2266,11 +2265,11 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_uid = uid;
 		vattr.va_gid = gid;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
 		vput(vp);
 	}
 	return error;
@@ -2376,13 +2375,13 @@ setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 	 * note: vget is required for any operation that might mod the vnode
 	 * so VINACTIVE is properly cleared.
 	 */
-	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+	if ((error = vget(vp, LK_EXCLUSIVE)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_atime = ts[0];
 		vattr.va_mtime = ts[1];
 		if (nullflag)
 			vattr.va_vaflags |= VA_UTIMES_NULL;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred);
 		vput(vp);
 	}
 	return error;
@@ -2517,10 +2516,10 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
 	} else if ((error = vn_writechk(vp)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred, nd->nl_td)) == 0) {
+	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
-		error = VOP_SETATTR(vp, &vattr, nd->nl_cred, nd->nl_td);
+		error = VOP_SETATTR(vp, &vattr, nd->nl_cred);
 	}
 	vput(vp);
 	return (error);
@@ -2567,7 +2566,7 @@ kern_ftruncate(int fd, off_t length)
 	else if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
-		error = VOP_SETATTR(vp, &vattr, fp->f_cred, td);
+		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
 	}
 	VOP_UNLOCK(vp, 0);
 	return (error);
@@ -2610,7 +2609,7 @@ fsync(struct fsync_args *uap)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if ((obj = vp->v_object) != NULL)
 		vm_object_page_clean(obj, 0, 0, 0);
-	if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) == 0 &&
+	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 &&
 	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
 	    bioops.io_fsync)
 		error = (*bioops.io_fsync)(vp);
@@ -2996,7 +2995,6 @@ umask(struct umask_args *uap)
 int
 revoke(struct revoke_args *uap)
 {
-	struct thread *td = curthread;
 	struct nlookupdata nd;
 	struct vattr vattr;
 	struct vnode *vp;
@@ -3015,7 +3013,7 @@ revoke(struct revoke_args *uap)
 		if (vp->v_type != VCHR && vp->v_type != VBLK)
 			error = EINVAL;
 		if (error == 0)
-			error = VOP_GETATTR(vp, &vattr, td);
+			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
 			error = suser_cred(cred, PRISON_ROOT);
 		if (error == 0 && count_udev(vp->v_udev) > 0) {
@@ -3165,7 +3163,7 @@ fhopen(struct fhopen_args *uap)
 	if (fmode & FREAD)
 		mode |= VREAD;
 	if (mode) {
-		error = VOP_ACCESS(vp, mode, p->p_ucred, td);
+		error = VOP_ACCESS(vp, mode, p->p_ucred);
 		if (error)
 			goto bad;
 	}
@@ -3174,7 +3172,7 @@ fhopen(struct fhopen_args *uap)
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
-		error = VOP_SETATTR(vp, vap, p->p_ucred, td);
+		error = VOP_SETATTR(vp, vap, p->p_ucred);
 		if (error)
 			goto bad;
 	}
@@ -3190,7 +3188,7 @@ fhopen(struct fhopen_args *uap)
 		goto bad;
 	fp = nfp;
 
-	error = VOP_OPEN(vp, fmode, p->p_ucred, fp, td);
+	error = VOP_OPEN(vp, fmode, p->p_ucred, fp);
 	if (error) {
 		/*
 		 * setting f_ops this way prevents VOP_CLOSE from being
@@ -3294,7 +3292,7 @@ fhstat(struct fhstat_args *uap)
 		return (ESTALE);
 	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
 		return (error);
-	error = vn_stat(vp, &sb, td);
+	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
 	vput(vp);
 	if (error)
 		return (error);
@@ -3457,7 +3455,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_SETEXTATTR(vp, attrname, &auio, nd.nl_cred, nd.nl_td);
+	error = VOP_SETEXTATTR(vp, attrname, &auio, nd.nl_cred);
 	cnt -= auio.uio_resid;
 	uap->sysmsg_result = cnt;
 done:
@@ -3534,7 +3532,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_GETEXTATTR(vp, attrname, &auio, nd.nl_cred, nd.nl_td);
+	error = VOP_GETEXTATTR(vp, attrname, &auio, nd.nl_cred);
 	cnt -= auio.uio_resid;
 	uap->sysmsg_result = cnt;
 done:
@@ -3572,7 +3570,7 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 		return (error);
 	}
 
-	error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred, nd.nl_td);
+	error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred);
 	vput(vp);
 	nlookup_done(&nd);
 	return(error);

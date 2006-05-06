@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.20 2005/07/23 07:28:36 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.21 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -318,16 +318,15 @@ struct knote;
  * File operations on sockets.
  */
 int	soo_read (struct file *fp, struct uio *uio, struct ucred *cred,
-	    int flags, struct thread *td);
+	    int flags);
 int	soo_write (struct file *fp, struct uio *uio, struct ucred *cred,
-	    int flags, struct thread *td);
-int	soo_close (struct file *fp, struct thread *td);
-int	soo_shutdown (struct file *fp, int how, struct thread *td);
+	    int flags);
+int	soo_close (struct file *fp);
+int	soo_shutdown (struct file *fp, int how);
 int	soo_ioctl (struct file *fp, u_long cmd, caddr_t data,
-	    struct thread *td);
-int	soo_poll (struct file *fp, int events, struct ucred *cred,
-	    struct thread *td);
-int	soo_stat (struct file *fp, struct stat *ub, struct thread *td);
+	    struct ucred *cred);
+int	soo_poll (struct file *fp, int events, struct ucred *cred);
+int	soo_stat (struct file *fp, struct stat *ub, struct ucred *cred);
 int	sokqfilter (struct file *fp, struct knote *kn);
 
 /*

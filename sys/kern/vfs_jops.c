@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.23 2005/09/17 07:43:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.24 2006/05/06 02:43:12 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -1289,7 +1289,7 @@ jreclist_undo_file(struct jrecord_list *jreclist, struct vnode *vp,
 
     error = 0;
     if (jrflags & JRUNDO_GETVP)
-	error = vget(vp, LK_SHARED, curthread);
+	error = vget(vp, LK_SHARED);
     if (error == 0) {
 	TAILQ_FOREACH(jrec, jreclist, user_entry) {
 	    if (jrec->jo->flags & MC_JOURNAL_WANT_REVERSABLE) {
@@ -1962,7 +1962,7 @@ jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
     while (bytes) {
 	n = (bytes > bufsize) ? bufsize : (int)bytes;
 	error = vn_rdwr(UIO_READ, vp, buf, n, off, UIO_SYSSPACE, IO_NODELOCKED,
-			proc0.p_ucred, NULL, curthread);
+			proc0.p_ucred, NULL);
 	if (error) {
 	    jrecord_leaf(jrec, JLEAF_ERROR, &error, sizeof(error));
 	    break;
@@ -1997,7 +1997,7 @@ jrecord_undo_file(struct jrecord *jrec, struct vnode *vp, int jrflags,
      * and retrieve attribute info.
      */
     save1 = jrecord_push(jrec, JTYPE_UNDO);
-    error = VOP_GETATTR(vp, &attr, curthread);
+    error = VOP_GETATTR(vp, &attr);
     if (error)
 	goto done;
 
@@ -2138,7 +2138,7 @@ journal_setattr(struct vop_setattr_args *ap)
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
 	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
-	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_cred(jrec, curthread, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_vattr(jrec, ap->a_vap);
@@ -2314,7 +2314,7 @@ journal_setacl(struct vop_setacl_args *ap)
 	    if ((jo->flags & MC_JOURNAL_WANT_REVERSABLE))
 		jrecord_undo_file(jrec, ap->a_vp, JRUNDO_XXX, 0, 0);
 #endif
-	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_cred(jrec, curthread, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 #if 0
 	    save = jrecord_push(jrec, JTYPE_REDO);
@@ -2350,7 +2350,7 @@ journal_setextattr(struct vop_setextattr_args *ap)
 	    if ((jo->flags & MC_JOURNAL_WANT_REVERSABLE))
 		jrecord_undo_file(jrec, ap->a_vp, JRUNDO_XXX, 0, 0);
 #endif
-	    jrecord_write_cred(jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_cred(jrec, curthread, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    jrecord_leaf(jrec, JLEAF_ATTRNAME, ap->a_name, strlen(ap->a_name));
 	    save = jrecord_push(jrec, JTYPE_REDO);

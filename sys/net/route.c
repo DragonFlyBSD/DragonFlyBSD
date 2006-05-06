@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.25 2006/04/11 06:59:36 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.26 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -514,7 +514,7 @@ rtredirect_msghandler(struct lwkt_msg *lmsg)
 * Routing table ioctl interface.
 */
 int
-rtioctl(u_long req, caddr_t data, struct thread *td)
+rtioctl(u_long req, caddr_t data, struct ucred *cred)
 {
 #ifdef INET
 	/* Multicast goop, grrr... */

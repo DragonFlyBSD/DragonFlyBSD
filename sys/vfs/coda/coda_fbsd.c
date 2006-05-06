@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.10 2006/03/29 18:44:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.11 2006/05/06 02:43:13 dillon Exp $
  * 
  */
 
@@ -116,67 +116,10 @@ coda_fbsd_getpages(void *v)
     struct vop_getpages_args *ap = v;
     int ret = 0;
 
-#if	1
-	/* ??? a_offset */
-	ret = vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
-	return ret;
-#else
-  {
-    struct vnode *vp = ap->a_vp;
-    struct cnode *cp = VTOC(vp);
-    struct vnode *cfvp = cp->c_ovp;
-    int opened_internally = 0;
-    struct ucred *cred = (struct ucred *) 0;
-    struct proc *p = curproc;
-    int error = 0;
-	
-    if (IS_CTL_VP(vp)) {
-	return(EINVAL);
-    }
-
-    /* Redirect the request to UFS. */
-
-    if (cfvp == NULL) {
-	opened_internally = 1;
-
-	error = VOP_OPEN(vp, FREAD, cred, NULL, p);
-printf("coda_getp: Internally Opening %p\n", vp);
-
-	if (error) {
-	    printf("coda_getpage: VOP_OPEN on container failed %d\n", error);
-		return (error);
-	}
-	if (vp->v_type == VREG) {
-	    if (vp->v_object == NULL) {
-		printf("coda_getpage: vp %p has no VM object\n", vp);
-		vput(vp);
-		return(EINVAL);
-	    }
-	}
-
-	cfvp = cp->c_ovp;
-    } else {
-printf("coda_getp: has container %p\n", cfvp);
-    }
-
-printf("coda_fbsd_getpages: using container ");
-/*
-    error = vnode_pager_generic_getpages(cfvp, ap->a_m, ap->a_count,
-	ap->a_reqpage);
-*/
-    error = VOP_GETPAGES(cfvp, ap->a_m, ap->a_count,
-	ap->a_reqpage, ap->a_offset);
-printf("error = %d\n", error);
-
-    /* Do an internal close if necessary. */
-    if (opened_internally) {
-	VOP_CLOSE(vp, FREAD, cred, p);
-    }
-
-    return(error);
-  }
-#endif
+    /* ??? a_offset */
+    ret = vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
+				       ap->a_reqpage);
+    return ret;
 }
 
 int

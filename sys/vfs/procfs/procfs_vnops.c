@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.30 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.31 2006/05/06 02:43:14 dillon Exp $
  */
 
 /*
@@ -129,8 +129,7 @@ static pid_t atopid (const char *, u_int);
  * is to support exclusive open on process
  * memory images.
  *
- * procfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *		struct thread *a_td)
+ * procfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 static int
 procfs_open(struct vop_open_args *ap)
@@ -150,7 +149,7 @@ procfs_open(struct vop_open_args *ap)
 		    ((pfs->pfs_flags & O_EXCL) && (ap->a_mode & FWRITE)))
 			return (EBUSY);
 
-		p1 = ap->a_td->td_proc;
+		p1 = curproc;
 		KKASSERT(p1);
 		/* Can't trace a process that's currently exec'ing. */ 
 		if ((p2->p_flag & P_INEXEC) != 0)
@@ -177,8 +176,7 @@ procfs_open(struct vop_open_args *ap)
  * nothing to do for procfs other than undo
  * any exclusive open flag (see _open above).
  *
- * procfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
- *		struct thread *a_td)
+ * procfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred)
  */
 static int
 procfs_close(struct vop_close_args *ap)
@@ -240,7 +238,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	procp = pfind(pfs->pfs_pid);
 	if (procp == NULL)
 		return ENOTTY;
-	p = ap->a_td->td_proc;
+	p = curproc;
 	if (p == NULL)
 		return EINVAL;
 
@@ -630,7 +628,7 @@ procfs_access(struct vop_access_args *ap)
 		return (0);
 
 	vap = &vattr;
-	error = VOP_GETATTR(ap->a_vp, vap, ap->a_td);
+	error = VOP_GETATTR(ap->a_vp, vap);
 	if (error)
 		return (error);
 

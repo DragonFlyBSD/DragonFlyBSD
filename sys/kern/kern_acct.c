@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.21 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.22 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -162,7 +162,7 @@ acct(struct acct_args *uap)
 	if (acctp != NULLVP || savacctp != NULLVP) {
 		callout_stop(&acctwatch_handle);
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
-				FWRITE | O_APPEND, td);
+				FWRITE | O_APPEND);
 		acctp = savacctp = NULLVP;
 	}
 
@@ -197,7 +197,6 @@ acct_process(struct proc *p)
 	struct timeval ut, st, tmp;
 	int t;
 	struct vnode *vp;
-	struct thread *td = p->p_thread;
 
 	/* If accounting isn't enabled, don't bother */
 	vp = acctp;
@@ -263,7 +262,7 @@ acct_process(struct proc *p)
 	 */
 	return (vn_rdwr(UIO_WRITE, vp, (caddr_t)&acct, sizeof (acct),
 	    (off_t)0, UIO_SYSSPACE, IO_APPEND|IO_UNIT, p->p_ucred,
-	    (int *)0, td));
+	    (int *)0));
 }
 
 /*
@@ -318,7 +317,7 @@ acctwatch(void *a)
 
 	if (savacctp != NULLVP) {
 		if (savacctp->v_type == VBAD) {
-			(void) vn_close(savacctp, FWRITE | O_APPEND, NULL);
+			(void) vn_close(savacctp, FWRITE | O_APPEND);
 			savacctp = NULLVP;
 			return;
 		}
@@ -332,7 +331,7 @@ acctwatch(void *a)
 		if (acctp == NULLVP)
 			return;
 		if (acctp->v_type == VBAD) {
-			(void) vn_close(acctp, FWRITE | O_APPEND, NULL);
+			(void) vn_close(acctp, FWRITE | O_APPEND);
 			acctp = NULLVP;
 			return;
 		}

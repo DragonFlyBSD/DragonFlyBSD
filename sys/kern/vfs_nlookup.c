@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.14 2006/05/05 21:27:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -227,7 +227,7 @@ nlookup_done(struct nlookupdata *nd)
 		VOP_UNLOCK(nd->nl_open_vp, 0);
 		nd->nl_flags &= ~NLC_LOCKVP;
 	}
-	vn_close(nd->nl_open_vp, nd->nl_vp_fmode, nd->nl_td);
+	vn_close(nd->nl_open_vp, nd->nl_vp_fmode);
 	nd->nl_open_vp = NULL;
     }
     nd->nl_flags = 0;	/* clear remaining flags (just clear everything) */
@@ -743,7 +743,7 @@ naccess(struct namecache *ncp, int vmode, struct ucred *cred)
 		error = 0;
 	} else if (error == 0) {
 	    /* XXX cache the va in the namecache or in the vnode */
-	    if ((error = VOP_GETATTR(vp, &va, curthread)) == 0) {
+	    if ((error = VOP_GETATTR(vp, &va)) == 0) {
 		if ((vmode & VWRITE) && vp->v_mount) {
 		    if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			error = EROFS;

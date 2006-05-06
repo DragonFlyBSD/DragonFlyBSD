@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.32 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.33 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -93,16 +93,15 @@
  * interfaces to the outside world
  */
 static int pipe_read (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
+		struct ucred *cred, int flags);
 static int pipe_write (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
-static int pipe_close (struct file *fp, struct thread *td);
-static int pipe_shutdown (struct file *fp, int how, struct thread *td);
-static int pipe_poll (struct file *fp, int events, struct ucred *cred,
-		struct thread *td);
+		struct ucred *cred, int flags);
+static int pipe_close (struct file *fp);
+static int pipe_shutdown (struct file *fp, int how);
+static int pipe_poll (struct file *fp, int events, struct ucred *cred);
 static int pipe_kqfilter (struct file *fp, struct knote *kn);
-static int pipe_stat (struct file *fp, struct stat *sb, struct thread *td);
-static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct thread *td);
+static int pipe_stat (struct file *fp, struct stat *sb, struct ucred *cred);
+static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct ucred *cred);
 
 static struct fileops pipeops = {
 	NULL,	/* port */
@@ -419,8 +418,7 @@ pipeselwakeup(cpipe)
 
 /* ARGSUSED */
 static int
-pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
-	int flags, struct thread *td)
+pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct pipe *rpipe = (struct pipe *) fp->f_data;
 	int error;
@@ -854,8 +852,7 @@ error2:
 #endif
 	
 static int
-pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
-	int flags, struct thread *td)
+pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	int error = 0;
 	int orig_resid;
@@ -1131,7 +1128,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
 int
-pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
+pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct pipe *mpipe = (struct pipe *)fp->f_data;
 
@@ -1178,7 +1175,7 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 }
 
 int
-pipe_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
+pipe_poll(struct file *fp, int events, struct ucred *cred)
 {
 	struct pipe *rpipe = (struct pipe *)fp->f_data;
 	struct pipe *wpipe;
@@ -1204,12 +1201,12 @@ pipe_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 
 	if (revents == 0) {
 		if (events & (POLLIN | POLLRDNORM)) {
-			selrecord(td, &rpipe->pipe_sel);
+			selrecord(curthread, &rpipe->pipe_sel);
 			rpipe->pipe_state |= PIPE_SEL;
 		}
 
 		if (events & (POLLOUT | POLLWRNORM)) {
-			selrecord(td, &wpipe->pipe_sel);
+			selrecord(curthread, &wpipe->pipe_sel);
 			wpipe->pipe_state |= PIPE_SEL;
 		}
 	}
@@ -1218,7 +1215,7 @@ pipe_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 }
 
 static int
-pipe_stat(struct file *fp, struct stat *ub, struct thread *td)
+pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 {
 	struct pipe *pipe = (struct pipe *)fp->f_data;
 
@@ -1244,7 +1241,7 @@ pipe_stat(struct file *fp, struct stat *ub, struct thread *td)
 
 /* ARGSUSED */
 static int
-pipe_close(struct file *fp, struct thread *td)
+pipe_close(struct file *fp)
 {
 	struct pipe *cpipe = (struct pipe *)fp->f_data;
 
@@ -1260,7 +1257,7 @@ pipe_close(struct file *fp, struct thread *td)
  */
 /* ARGSUSED */
 static int
-pipe_shutdown(struct file *fp, int how, struct thread *td)
+pipe_shutdown(struct file *fp, int how)
 {
 	struct pipe *rpipe = (struct pipe *)fp->f_data;
 	struct pipe *wpipe;

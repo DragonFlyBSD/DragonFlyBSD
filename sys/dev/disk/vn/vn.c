@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.23 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.24 2006/05/06 02:43:03 dillon Exp $
  */
 
 /*
@@ -567,7 +567,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 	}
 	vp = nd.nl_open_vp;
 	if (vp->v_type != VREG ||
-	    (error = VOP_GETATTR(vp, &vattr, td))) {
+	    (error = VOP_GETATTR(vp, &vattr))) {
 		if (error == 0)
 			error = EINVAL;
 		goto done;
@@ -588,7 +588,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 	error = vnsetcred(vn, p->p_ucred);
 	if (error) {
 		vn->sc_vp = NULL;
-		vn_close(vp, flags, td);
+		vn_close(vp, flags);
 		goto done;
 	}
 	vn->sc_flags |= VNF_INITED;
@@ -735,16 +735,14 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 void
 vnclear(struct vn_softc *vn)
 {
-	struct thread *td = curthread;		/* XXX */
-
 	IFOPT(vn, VN_FOLLOW)
 		printf("vnclear(%p): vp=%p\n", vn, vn->sc_vp);
 	if (vn->sc_slices != NULL)
 		dsgone(&vn->sc_slices);
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
-		vn_close(vn->sc_vp, vn->sc_flags & VNF_READONLY ?
-		    FREAD : (FREAD|FWRITE), td);
+		vn_close(vn->sc_vp,
+		    (vn->sc_flags & VNF_READONLY) ?  FREAD : (FREAD|FWRITE));
 		vn->sc_vp = NULL;
 	}
 	vn->sc_flags &= ~VNF_READONLY;

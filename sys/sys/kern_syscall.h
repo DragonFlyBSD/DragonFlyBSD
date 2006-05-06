@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.29 2006/04/26 17:17:57 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.30 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -59,12 +59,13 @@ struct timeval;
 struct uio;
 struct vnode;
 struct file;
+struct ucred;
 
 /*
  * Prototypes for syscalls in kern/kern_descrip.c
  */
 int kern_dup(enum dup_type type, int old, int new, int *res);
-int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
+int kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred);
 int kern_fstat(int fd, struct stat *st);
 
 /*

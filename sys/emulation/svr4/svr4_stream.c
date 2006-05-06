@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.15 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.16 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -1209,6 +1209,7 @@ i_nread(struct file *fp, struct thread *td, register_t *retval,
 {
 	int error;
 	int nread = 0;	
+	struct ucred *cred = curproc->p_ucred;
 
 	/*
 	 * We are supposed to return the message length in nread, and the
@@ -1217,7 +1218,7 @@ i_nread(struct file *fp, struct thread *td, register_t *retval,
 	 * for us, and if we do, then we assume that we have at least one
 	 * message waiting for us.
 	 */
-	if ((error = fo_ioctl(fp, FIONREAD, (caddr_t) &nread, td)) != 0)
+	if ((error = fo_ioctl(fp, FIONREAD, (caddr_t) &nread, cred)) != 0)
 		return error;
 
 	if (nread != 0)

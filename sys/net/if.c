@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.44 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.45 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -101,7 +101,7 @@ static int	ifq_classic_request(struct ifaltq *, int, void *);
 
 static void	if_attachdomain(void *);
 static void	if_attachdomain1(struct ifnet *);
-static int ifconf (u_long, caddr_t, struct thread *);
+static int ifconf (u_long, caddr_t, struct ucred *);
 static void ifinit (void *);
 static void if_slowtimo (void *);
 static void link_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
@@ -1060,7 +1060,7 @@ if_withname(struct sockaddr *sa)
  * Interface ioctls.
  */
 int
-ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
+ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct ifnet *ifp;
 	struct ifreq *ifr;
@@ -1077,14 +1077,14 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 
 	case SIOCGIFCONF:
 	case OSIOCGIFCONF:
-		return (ifconf(cmd, data, td));
+		return (ifconf(cmd, data, cred));
 	}
 	ifr = (struct ifreq *)data;
 
 	switch (cmd) {
 	case SIOCIFCREATE:
 	case SIOCIFDESTROY:
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cred, 0)) != 0)
 			return (error);
 		return ((cmd == SIOCIFCREATE) ?
 			if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name)) :
@@ -1122,7 +1122,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		break;
 
 	case SIOCSIFFLAGS:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		new_flags = (ifr->ifr_flags & 0xffff) |
@@ -1161,25 +1161,25 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		}
 		if (ifp->if_ioctl) {
 			lwkt_serialize_enter(ifp->if_serializer);
-			ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+			ifp->if_ioctl(ifp, cmd, data, cred);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 		getmicrotime(&ifp->if_lastchange);
 		break;
 
 	case SIOCSIFCAP:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
 			return (EINVAL);
 		lwkt_serialize_enter(ifp->if_serializer);
-		ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		ifp->if_ioctl(ifp, cmd, data, cred);
 		lwkt_serialize_exit(ifp->if_serializer);
 		break;
 
 	case SIOCSIFNAME:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error != 0)
 			return (error);
 		error = copyinstr(ifr->ifr_data, new_name, IFNAMSIZ, NULL);
@@ -1225,7 +1225,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		break;
 
 	case SIOCSIFMETRIC:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		ifp->if_metric = ifr->ifr_metric;
@@ -1233,13 +1233,13 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		break;
 
 	case SIOCSIFPHYS:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return error;
 		if (!ifp->if_ioctl)
 		        return EOPNOTSUPP;
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		lwkt_serialize_exit(ifp->if_serializer);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
@@ -1249,7 +1249,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 	{
 		u_long oldmtu = ifp->if_mtu;
 
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == NULL)
@@ -1257,7 +1257,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		if (ifr->ifr_mtu < IF_MINMTU || ifr->ifr_mtu > IF_MAXMTU)
 			return (EINVAL);
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		lwkt_serialize_exit(ifp->if_serializer);
 		if (error == 0) {
 			getmicrotime(&ifp->if_lastchange);
@@ -1276,7 +1276,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 
@@ -1306,13 +1306,13 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 	case SIOCSLIFPHYADDR:
         case SIOCSIFMEDIA:
 	case SIOCSIFGENERIC:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		lwkt_serialize_exit(ifp->if_serializer);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
@@ -1330,12 +1330,12 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
+		error = ifp->if_ioctl(ifp, cmd, data, cred);
 		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);
 
 	case SIOCSIFLLADDR:
-		error = suser(td);
+		error = suser_cred(cred, 0);
 		if (error)
 			return (error);
 		return if_setlladdr(ifp,
@@ -1346,7 +1346,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		if (so->so_proto == 0)
 			return (EOPNOTSUPP);
 #ifndef COMPAT_43
-		error = so_pru_control(so, cmd, data, ifp, td);
+		error = so_pru_control(so, cmd, data, ifp);
 #else
 	    {
 		int ocmd = cmd;
@@ -1384,7 +1384,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		case OSIOCGIFNETMASK:
 			cmd = SIOCGIFNETMASK;
 		}
-		error =  so_pru_control(so, cmd, data, ifp, td);
+		error =  so_pru_control(so, cmd, data, ifp);
 		switch (ocmd) {
 
 		case OSIOCGIFADDR:
@@ -1471,7 +1471,7 @@ ifpromisc(struct ifnet *ifp, int pswitch)
  * other information.
  */
 static int
-ifconf(u_long cmd, caddr_t data, struct thread *td)
+ifconf(u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct ifconf *ifc = (struct ifconf *)data;
 	struct ifnet *ifp;
@@ -1503,8 +1503,8 @@ ifconf(u_long cmd, caddr_t data, struct thread *td)
 			if (space <= sizeof ifr)
 				break;
 			sa = ifa->ifa_addr;
-			if (td->td_proc->p_ucred->cr_prison &&
-			    prison_if(td, sa))
+			if (cred->cr_prison &&
+			    prison_if(cred, sa))
 				continue;
 			addrs++;
 #ifdef COMPAT_43

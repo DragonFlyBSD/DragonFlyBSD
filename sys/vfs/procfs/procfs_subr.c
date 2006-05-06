@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.12 2004/12/17 00:18:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.13 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,6 @@ static int pfsvplock;
 int
 procfs_allocvp(struct mount *mp, struct vnode **vpp, long pid, pfstype pfs_type)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
@@ -95,7 +94,7 @@ loop:
 		if (pfs->pfs_pid == pid && pfs->pfs_type == pfs_type &&
 		    PFSTOV(pfs)->v_mount == mp) {
 			vp = PFSTOV(pfs);
-			if (vget(vp, LK_EXCLUSIVE, td))
+			if (vget(vp, LK_EXCLUSIVE))
 				goto loop;
 
 			/*

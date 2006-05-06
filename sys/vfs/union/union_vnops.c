@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.28 2006/05/05 21:27:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.29 2006/05/06 02:43:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -398,7 +398,7 @@ union_lookup(struct vop_old_lookup_args *ap)
 			} else if (lowerdvp != NULLVP) {
 				int terror;
 
-				terror = VOP_GETATTR(upperdvp, &va, cnp->cn_td);
+				terror = VOP_GETATTR(upperdvp, &va);
 				if (terror == 0 && (va.va_flags & OPAQUE))
 					iswhiteout = 1;
 			}
@@ -748,7 +748,7 @@ union_open(struct vop_open_args *ap)
 	 * underlying filesystem uses buffer cache calls on it.
 	 */
 	if (error == 0)
-		error = VOP_OPEN(tvp, mode, cred, NULL, td);
+		error = VOP_OPEN(tvp, mode, cred, NULL);
 
 	/*
 	 * Release any locks held
@@ -899,7 +899,7 @@ union_getattr(struct vop_getattr_args *ap)
 	vap = ap->a_vap;
 
 	if ((vp = un->un_uppervp) != NULLVP) {
-		error = VOP_GETATTR(vp, vap, ap->a_td);
+		error = VOP_GETATTR(vp, vap);
 		if (error)
 			return (error);
 		/* XXX isn't this dangerouso without a lock? */
@@ -916,7 +916,7 @@ union_getattr(struct vop_getattr_args *ap)
 	}
 
 	if (vp != NULLVP) {
-		error = VOP_GETATTR(vp, vap, ap->a_td);
+		error = VOP_GETATTR(vp, vap);
 		if (error)
 			return (error);
 		/* XXX isn't this dangerous without a lock? */
@@ -970,8 +970,7 @@ union_setattr(struct vop_setattr_args *ap)
 	 */
 	error = EROFS;
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
-		error = VOP_SETATTR(un->un_uppervp, ap->a_vap,
-					ap->a_cred, ap->a_td);
+		error = VOP_SETATTR(un->un_uppervp, ap->a_vap, ap->a_cred);
 		if ((error == 0) && (ap->a_vap->va_size != VNOVAL))
 			union_newsize(ap->a_vp, ap->a_vap->va_size, VNOVAL);
 		union_unlock_upper(uppervp, td);
@@ -1181,7 +1180,7 @@ union_fsync(struct vop_fsync_args *ap)
 	struct union_node *un = VTOUNION(ap->a_vp);
 
 	if ((targetvp = union_lock_other(un, td)) != NULLVP) {
-		error = VOP_FSYNC(targetvp, ap->a_waitfor, td);
+		error = VOP_FSYNC(targetvp, ap->a_waitfor);
 		union_unlock_other(targetvp, td);
 	}
 

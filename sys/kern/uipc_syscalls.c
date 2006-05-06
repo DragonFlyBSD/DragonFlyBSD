@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.63 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.64 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -319,9 +319,9 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	nfp->f_data = so;
 	/* Sync socket nonblocking/async state with file flags */
 	tmp = fflag & FNONBLOCK;
-	(void) fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, td);
+	(void) fo_ioctl(nfp, FIONBIO, (caddr_t)&tmp, p->p_ucred);
 	tmp = fflag & FASYNC;
-	(void) fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, td);
+	(void) fo_ioctl(nfp, FIOASYNC, (caddr_t)&tmp, p->p_ucred);
 
 	sa = NULL;
 	error = soaccept(so, &sa);

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.51 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.52 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -588,21 +588,19 @@ int	vmntvnodescan(struct mount *mp, int flags,
 	    void *data);
 void	insmntque(struct vnode *vp, struct mount *mp);
 
-void	vclean (struct vnode *vp, int flags, struct thread *td);
+void	vclean (struct vnode *vp, int flags);
 void	vgone (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
-int	vinvalbuf (struct vnode *vp, int save, 
-	    struct thread *td, int slpflag, int slptimeo);
-int	vtruncbuf (struct vnode *vp, struct thread *td,
-		off_t length, int blksize);
+int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
+int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
 int	vfsync(struct vnode *vp, int waitfor, int passes,
 		int (*checkdef)(struct buf *),
 		int (*waitoutput)(struct vnode *, struct thread *));
 int	vinitvmio(struct vnode *vp, off_t filesize);
 void	vprint (char *label, struct vnode *vp);
-int	vrecycle (struct vnode *vp, struct thread *td);
+int	vrecycle (struct vnode *vp);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
-int	vn_close (struct vnode *vp, int flags, struct thread *td);
+int	vn_close (struct vnode *vp, int flags);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags);
 #ifdef	DEBUG_LOCKS
@@ -617,14 +615,14 @@ int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf
 int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
 void	vn_pollevent (struct vnode *vp, int events);
 void	vn_pollgone (struct vnode *vp);
-int	vn_pollrecord (struct vnode *vp, struct thread *td, int events);
+int	vn_pollrecord (struct vnode *vp, int events);
 int 	vn_rdwr (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct thread *td);
+	    struct ucred *cred, int *aresid);
 int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct thread *td);
-int	vn_stat (struct vnode *vp, struct stat *sb, struct thread *td);
+	    struct ucred *cred, int *aresid);
+int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 dev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
@@ -665,7 +663,7 @@ void	vx_unlock (struct vnode *vp);
 int	vx_get (struct vnode *vp);
 int	vx_get_nonblock (struct vnode *vp);
 void	vx_put (struct vnode *vp);
-int	vget (struct vnode *vp, int lockflag, struct thread *td);
+int	vget (struct vnode *vp, int lockflag);
 void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
 void	vdrop (struct vnode *);

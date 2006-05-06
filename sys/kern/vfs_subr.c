@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.82 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.83 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -281,8 +281,7 @@ vupdatefsmid(struct vnode *vp)
 }
 
 int
-vinvalbuf(struct vnode *vp, int flags, struct thread *td,
-	int slpflag, int slptimeo)
+vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 {
 	struct vinvalbuf_bp_info info;
 	int error;
@@ -305,7 +304,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 		}
 		if (!RB_EMPTY(&vp->v_rbdirty_tree)) {
 			crit_exit();
-			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0)
+			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
 				return (error);
 			crit_enter();
 			if (vp->v_track_write.bk_active > 0 ||
@@ -432,7 +431,7 @@ static int vtruncbuf_bp_metasync_cmp(struct buf *bp, void *data);
 static int vtruncbuf_bp_metasync(struct buf *bp, void *data);
 
 int
-vtruncbuf(struct vnode *vp, struct thread *td, off_t length, int blksize)
+vtruncbuf(struct vnode *vp, off_t length, int blksize)
 {
 	off_t truncloffset;
 	int count;
@@ -1006,7 +1005,7 @@ addaliasu(struct vnode *nvp, udev_t nvp_udev)
  * to VOP_CLOSE the vnode before we can deactivate and reclaim it.
  */
 void
-vclean(struct vnode *vp, int flags, struct thread *td)
+vclean(struct vnode *vp, int flags)
 {
 	int active;
 	int n;
@@ -1038,7 +1037,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	 * Clean out any buffers associated with the vnode and destroy its
 	 * object, if it has one. 
 	 */
-	vinvalbuf(vp, V_SAVE, td, 0, 0);
+	vinvalbuf(vp, V_SAVE, 0, 0);
 
 	if ((object = vp->v_object) != NULL) {
 		if (object->ref_count == 0) {
@@ -1062,9 +1061,9 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	if (active && (flags & DOCLOSE)) {
 		while ((n = vp->v_opencount) != 0) {
 			if (vp->v_writecount)
-				VOP_CLOSE(vp, FWRITE|FNONBLOCK, td);
+				VOP_CLOSE(vp, FWRITE|FNONBLOCK);
 			else
-				VOP_CLOSE(vp, FNONBLOCK, td);
+				VOP_CLOSE(vp, FNONBLOCK);
 			if (vp->v_opencount == n) {
 				printf("Warning: unable to force-close"
 				       " vnode %p\n", vp);
@@ -1078,13 +1077,13 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	 */
 	if ((vp->v_flag & VINACTIVE) == 0) {
 		vp->v_flag |= VINACTIVE;
-		VOP_INACTIVE(vp, td);
+		VOP_INACTIVE(vp);
 	}
 
 	/*
 	 * Reclaim the vnode.
 	 */
-	if (VOP_RECLAIM(vp, td))
+	if (VOP_RECLAIM(vp))
 		panic("vclean: cannot reclaim");
 
 	/*
@@ -1156,7 +1155,7 @@ vop_stdrevoke(struct vop_revoke_args *ap)
  * 0 otherwise.
  */
 int
-vrecycle(struct vnode *vp, struct thread *td)
+vrecycle(struct vnode *vp)
 {
 	if (vp->v_usecount == 1) {
 		vgone(vp);
@@ -1195,7 +1194,7 @@ vgone(struct vnode *vp)
 	 * Clean out the filesystem specific data and set the VRECLAIMED
 	 * bit.  Also deactivate the vnode if necessary.
 	 */
-	vclean(vp, DOCLOSE, curthread);
+	vclean(vp, DOCLOSE);
 
 	/*
 	 * Delete from old mount point vnode list, if on one.
@@ -1854,9 +1853,11 @@ vfs_msync_scan2(struct mount *mp, struct vnode *vp, void *data)
  * to avoid race conditions.)
  */
 int
-vn_pollrecord(struct vnode *vp, struct thread *td, int events)
+vn_pollrecord(struct vnode *vp, int events)
 {
 	lwkt_tokref ilock;
+
+	KKASSERT(curthread->td_proc != NULL);
 
 	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	if (vp->v_pollinfo.vpi_revents & events) {
@@ -1874,7 +1875,7 @@ vn_pollrecord(struct vnode *vp, struct thread *td, int events)
 		return events;
 	}
 	vp->v_pollinfo.vpi_events |= events;
-	selrecord(td, &vp->v_pollinfo.vpi_selinfo);
+	selrecord(curthread, &vp->v_pollinfo.vpi_selinfo);
 	lwkt_reltoken(&ilock);
 	return 0;
 }

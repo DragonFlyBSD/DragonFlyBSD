@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.28 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.29 2006/05/06 02:43:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -157,13 +157,13 @@ nwfs_access(struct vop_access_args *ap)
 /*
  * nwfs_open vnode op
  *
- * nwfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
- *	     struct thread *a_td)
+ * nwfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
 nwfs_open(struct vop_open_args *ap)
 {
+ 	thread_t td = curthread; /* XXX */
 	struct vnode *vp = ap->a_vp;
 	int mode = ap->a_mode;
 	struct nwnode *np = VTONW(vp);
@@ -179,19 +179,19 @@ nwfs_open(struct vop_open_args *ap)
 	}
 	if (vp->v_type == VDIR) return 0;	/* nothing to do now */
 	if (np->n_flag & NMODIFIED) {
-		if ((error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1)) == EINTR)
+		if ((error = nwfs_vinvalbuf(vp, V_SAVE, 1)) == EINTR)
 			return (error);
 		np->n_atime = 0;
-		error = VOP_GETATTR(vp, &vattr, ap->a_td);
+		error = VOP_GETATTR(vp, &vattr);
 		if (error) 
 			return (error);
 		np->n_mtime = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, ap->a_td);
+		error = VOP_GETATTR(vp, &vattr);
 		if (error) 
 			return (error);
 		if (np->n_mtime != vattr.va_mtime.tv_sec) {
-			if ((error = nwfs_vinvalbuf(vp, V_SAVE,	ap->a_td, 1)) == EINTR)
+			if ((error = nwfs_vinvalbuf(vp, V_SAVE,	1)) == EINTR)
 				return (error);
 			np->n_mtime = vattr.va_mtime.tv_sec;
 		}
@@ -204,13 +204,13 @@ nwfs_open(struct vop_open_args *ap)
 	if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0)
 		nwm |= AR_WRITE;
 	error = ncp_open_create_file_or_subdir(nmp, vp, 0, NULL, OC_MODE_OPEN,
-					       0, nwm, &no, ap->a_td, ap->a_cred);
+					       0, nwm, &no, td, ap->a_cred);
 	if (error) {
 		if (mode & FWRITE)
 			return EACCES;
 		nwm = AR_READ;
 		error = ncp_open_create_file_or_subdir(nmp, vp, 0, NULL, OC_MODE_OPEN, 0,
-						   nwm, &no, ap->a_td,ap->a_cred);
+						   nwm, &no, td, ap->a_cred);
 	}
 	np->n_atime = 0;
 	if (error == 0) {
@@ -229,6 +229,7 @@ nwfs_open(struct vop_open_args *ap)
 static int
 nwfs_close(struct vop_close_args *ap)
 {
+	thread_t td = curthread; /* XXX */
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 	int error;
@@ -240,14 +241,14 @@ nwfs_close(struct vop_close_args *ap)
 		goto done;
 	if (np->opened == 0)
 		goto done;
-	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
+	error = nwfs_vinvalbuf(vp, V_SAVE, 1);
 	if (np->opened == 0) {
 		error = 0;	/* huh? */
 		goto done;
 	}
 	if (--np->opened == 0) {
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, 
-		   ap->a_td, proc0.p_ucred);
+		   td, proc0.p_ucred);
 	} 
 	np->n_atime = 0;
 done:
@@ -264,6 +265,7 @@ done:
 static int
 nwfs_getattr(struct vop_getattr_args *ap)
 {
+	thread_t td = curthread; /* XXX */
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 	struct vattr *va=ap->a_vap;
@@ -279,10 +281,10 @@ nwfs_getattr(struct vop_getattr_args *ap)
 	oldsize = np->n_size;
 	if (np->n_flag & NVOLUME) {
 		error = ncp_obtain_info(nmp, np->n_fid.f_id, 0, NULL, &fattr,
-		    ap->a_td,proc0.p_ucred);
+		    td,proc0.p_ucred);
 	} else {
 		error = ncp_obtain_info(nmp, np->n_fid.f_parent, np->n_nmlen, 
-		    np->n_name, &fattr, ap->a_td, proc0.p_ucred);
+		    np->n_name, &fattr, td, proc0.p_ucred);
 	}
 	if (error) {
 		NCPVNDEBUG("error %d\n", error);
@@ -297,12 +299,12 @@ nwfs_getattr(struct vop_getattr_args *ap)
 /*
  * nwfs_setattr call from vfs.
  *
- * nwfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
- *		struct thread *a_td)
+ * nwfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static int
 nwfs_setattr(struct vop_setattr_args *ap)
 {
+	thread_t td = curthread; /* XXX */
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 	struct vattr *vap = ap->a_vap;
@@ -338,13 +340,13 @@ nwfs_setattr(struct vop_setattr_args *ap)
 			return EINVAL;
   		};
   	}
-	error = ncp_setattr(vp, vap, ap->a_cred, ap->a_td);
+	error = ncp_setattr(vp, vap, ap->a_cred, td);
 	if (error && vap->va_size != VNOVAL) {
 		np->n_size = tsize;
 		vnode_pager_setsize(vp, (u_long)tsize);
 	}
 	np->n_atime = 0;	/* invalidate cache */
-	VOP_GETATTR(vp, vap, ap->a_td);
+	VOP_GETATTR(vp, vap);
 	np->n_mtime = vap->va_mtime.tv_sec;
 	return (0);
 }
@@ -415,7 +417,7 @@ nwfs_create(struct vop_old_create_args *ap)
 	*vpp = NULL;
 	if (vap->va_type == VSOCK)
 		return (EOPNOTSUPP);
-	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_td))) {
+	if ((error = VOP_GETATTR(dvp, &vattr))) {
 		return (error);
 	}
 	fmode = AR_READ | AR_WRITE;
@@ -603,7 +605,7 @@ nwfs_mkdir(struct vop_old_mkdir_args *ap)
 	struct vattr vattr;
 	char *name=cnp->cn_nameptr;
 
-	if ((error = VOP_GETATTR(dvp, &vattr, cnp->cn_td))) {
+	if ((error = VOP_GETATTR(dvp, &vattr))) {
 		return (error);
 	}	
 	if ((name[0] == '.') && ((len == 1) || ((len == 2) && (name[1] == '.')))) {
@@ -855,7 +857,7 @@ nwfs_lookup(struct vop_old_lookup_args *ap)
 
 	if ((mp->mnt_flag & MNT_RDONLY) && nameiop != NAMEI_LOOKUP)
 		return (EROFS);
-	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)))
+	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred)))
 		return (error);
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
@@ -914,7 +916,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	}*/
 	/* handle DELETE case ... */
 	if (nameiop == NAMEI_DELETE) { 	/* delete last component */
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
+		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) {	/* we found ourselfs */
 			vref(dvp);
@@ -928,7 +930,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		return (0);
 	}
 	if (nameiop == NAMEI_RENAME && wantparent) {
-		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
+		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) return EISDIR;
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);

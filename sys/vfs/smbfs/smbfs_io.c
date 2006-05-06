@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.24 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.25 2006/05/06 02:43:14 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -217,16 +217,16 @@ smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 /*	biosize = SSTOCN(smp->sm_share)->sc_txmax;*/
 	if (np->n_flag & NMODIFIED) {
 		smbfs_attr_cacheremove(vp);
-		error = VOP_GETATTR(vp, &vattr, td);
+		error = VOP_GETATTR(vp, &vattr);
 		if (error)
 			return error;
 		np->n_mtime.tv_sec = vattr.va_mtime.tv_sec;
 	} else {
-		error = VOP_GETATTR(vp, &vattr, td);
+		error = VOP_GETATTR(vp, &vattr);
 		if (error)
 			return error;
 		if (np->n_mtime.tv_sec != vattr.va_mtime.tv_sec) {
-			error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
+			error = smbfs_vinvalbuf(vp, V_SAVE, 1);
 			if (error)
 				return error;
 			np->n_mtime.tv_sec = vattr.va_mtime.tv_sec;
@@ -259,7 +259,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
 		if (np->n_flag & NMODIFIED) {
 			smbfs_attr_cacheremove(vp);
-			error = smbfs_vinvalbuf(vp, V_SAVE, td, 1);
+			error = smbfs_vinvalbuf(vp, V_SAVE, 1);
 			if (error)
 				return error;
 		}
@@ -269,7 +269,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 			 * File size can be changed by another client
 			 */
 			smbfs_attr_cacheremove(vp);
-			error = VOP_GETATTR(vp, &vattr, td);
+			error = VOP_GETATTR(vp, &vattr);
 			if (error) return (error);
 #endif
 			uiop->uio_offset = np->n_size;
@@ -549,10 +549,10 @@ smbfs_putpages(struct vop_putpages_args *ap)
 #ifdef SMBFS_RWGENERIC
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
-	VOP_OPEN(vp, FWRITE, cred, NULL, td);
+	VOP_OPEN(vp, FWRITE, cred, NULL);
 	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
-	VOP_CLOSE(vp, FWRITE, cred, td);
+	VOP_CLOSE(vp, FWRITE, cred);
 	return error;
 #else
 	struct uio uio;
@@ -569,7 +569,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
-/*	VOP_OPEN(vp, FWRITE, cred, td);*/
+/*	VOP_OPEN(vp, FWRITE, cred, NULL);*/
 	np = VTOSMB(vp);
 	smp = VFSTOSMBFS(vp->v_mount);
 	pages = ap->a_m;
@@ -616,7 +616,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 		error = smb_write(smp->sm_share, np->n_fid, &uio, &scred);
 	if (doclose)
 		smbfs_smb_close(smp->sm_share, np->n_fid, NULL, &scred);
-/*	VOP_CLOSE(vp, FWRITE, cred, td);*/
+/*	VOP_CLOSE(vp, FWRITE, cred);*/
 	SMBVDEBUG("paged write done: %d\n", error);
 
 	pmap_qremove(kva, npages);
@@ -638,7 +638,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
  * doing the flush, just wait for completion.
  */
 int
-smbfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
+smbfs_vinvalbuf(struct vnode *vp, int flags, int intrflg)
 {
 	struct smbnode *np = VTOSMB(vp);
 	int error = 0, slpflag, slptimeo;
@@ -655,12 +655,12 @@ smbfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
 		error = tsleep((caddr_t)&np->n_flag, 0, "smfsvinv", slptimeo);
-		error = smb_proc_intr(td);
+		error = smb_proc_intr(curthread);
 		if (error == EINTR && intrflg)
 			return EINTR;
 	}
 	np->n_flag |= NFLUSHINPROG;
-	error = vinvalbuf(vp, flags, td, slpflag, 0);
+	error = vinvalbuf(vp, flags, slpflag, 0);
 	while (error) {
 		if (intrflg && (error == ERESTART || error == EINTR)) {
 			np->n_flag &= ~NFLUSHINPROG;
@@ -670,7 +670,7 @@ smbfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
 			}
 			return EINTR;
 		}
-		error = vinvalbuf(vp, flags, td, slpflag, 0);
+		error = vinvalbuf(vp, flags, slpflag, 0);
 	}
 	np->n_flag &= ~(NMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {

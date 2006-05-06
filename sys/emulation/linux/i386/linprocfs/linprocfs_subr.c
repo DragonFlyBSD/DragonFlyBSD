@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.16 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.17 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,6 @@ int
 linprocfs_allocvp(struct mount *mp, struct vnode **vpp, long pid,
 		  pfstype pfs_type)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
@@ -100,7 +99,7 @@ loop:
 		if (pfs->pfs_pid == pid &&
 		    pfs->pfs_type == pfs_type &&
 		    vp->v_mount == mp) {
-			if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
+			if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL))
 				goto loop;
 			*vpp = vp;
 			return (0);

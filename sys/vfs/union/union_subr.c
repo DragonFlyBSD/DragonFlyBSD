@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.23 2006/05/05 21:15:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.24 2006/05/06 02:43:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,8 +88,7 @@ static int union_copyfile (struct vnode *, struct vnode *,
 					struct ucred *, struct thread *);
 static int union_vn_create (struct vnode **, struct union_node *,
 				struct thread *);
-static int union_vn_close (struct vnode *, int, struct ucred *,
-				struct thread *);
+static int union_vn_close (struct vnode *, int, struct ucred *);
 
 int
 union_init(void)
@@ -392,8 +391,7 @@ loop:
 			    (un->un_uppervp == uppervp ||
 			     un->un_uppervp == NULLVP) &&
 			    (UNIONTOV(un)->v_mount == mp)) {
-				if (vget(UNIONTOV(un), LK_EXCLUSIVE|LK_SLEEPFAIL,
-				    cnp ? cnp->cn_td : NULL)) {
+				if (vget(UNIONTOV(un), LK_EXCLUSIVE|LK_SLEEPFAIL)) {
 					union_list_unlock(hash);
 					goto loop;
 				}
@@ -727,7 +725,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 	 * be copied to upper layer.
 	 */
 	vn_lock(un->un_lowervp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(un->un_lowervp, VREAD, cred, td);
+	error = VOP_ACCESS(un->un_lowervp, VREAD, cred);
 	VOP_UNLOCK(un->un_lowervp, 0);
 	if (error)
 		return (error);
@@ -745,11 +743,11 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		 * from VOP_CLOSE
 		 */
 		vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_OPEN(lvp, FREAD, cred, NULL, td);
+		error = VOP_OPEN(lvp, FREAD, cred, NULL);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
 			VOP_UNLOCK(lvp, 0);
-			(void) VOP_CLOSE(lvp, FREAD, td);
+			(void) VOP_CLOSE(lvp, FREAD);
 		}
 		if (error == 0)
 			UDEBUG(("union: copied up %s\n", un->un_path));
@@ -758,7 +756,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 	VOP_UNLOCK(uvp, 0);
 	union_newupper(un, uvp);
 	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
-	union_vn_close(uvp, FWRITE, cred, td);
+	union_vn_close(uvp, FWRITE, cred);
 	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
 	/*
 	 * Subsequent IOs will go to the top layer, so
@@ -772,8 +770,8 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		int i;
 
 		for (i = 0; i < un->un_openl; i++) {
-			VOP_CLOSE(lvp, FREAD, td);
-			VOP_OPEN(uvp, FREAD, cred, NULL, td);
+			VOP_CLOSE(lvp, FREAD);
+			VOP_OPEN(uvp, FREAD, cred, NULL);
 		}
 		un->un_openl = 0;
 	}
@@ -1032,7 +1030,7 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	if (error)
 		return (error);
 
-	error = VOP_OPEN(vp, fmode, cred, NULL, td);
+	error = VOP_OPEN(vp, fmode, cred, NULL);
 	if (error) {
 		vput(vp);
 		return (error);
@@ -1042,10 +1040,9 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 }
 
 static int
-union_vn_close(struct vnode *vp, int fmode, struct ucred *cred,
-	       struct thread *td)
+union_vn_close(struct vnode *vp, int fmode, struct ucred *cred)
 {
-	return (VOP_CLOSE(vp, fmode, td));
+	return (VOP_CLOSE(vp, fmode));
 }
 
 #if 0
@@ -1095,7 +1092,7 @@ union_dowhiteout(struct union_node *un, struct ucred *cred, struct thread *td)
 	if (un->un_lowervp != NULLVP)
 		return (1);
 
-	if (VOP_GETATTR(un->un_uppervp, &va, td) == 0 &&
+	if (VOP_GETATTR(un->un_uppervp, &va) == 0 &&
 	    (va.va_flags & OPAQUE))
 		return (1);
 
@@ -1233,7 +1230,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 			 * If the directory is opaque,
 			 * then don't show lower entries
 			 */
-			error = VOP_GETATTR(*vp, &va, td);
+			error = VOP_GETATTR(*vp, &va);
 			if (va.va_flags & OPAQUE) {
 				vput(lvp);
 				lvp = NULL;
@@ -1241,7 +1238,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 		}
 
 		if (lvp != NULLVP) {
-			error = VOP_OPEN(lvp, FREAD, fp->f_cred, NULL, td);
+			error = VOP_OPEN(lvp, FREAD, fp->f_cred, NULL);
 			if (error) {
 				vput(lvp);
 				return (error);
@@ -1249,7 +1246,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 			VOP_UNLOCK(lvp, 0);
 			fp->f_data = lvp;
 			fp->f_offset = 0;
-			error = vn_close(*vp, FREAD, td);
+			error = vn_close(*vp, FREAD);
 			if (error)
 				return (error);
 			*vp = lvp;

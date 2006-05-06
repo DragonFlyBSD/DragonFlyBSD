@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sockio.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.8 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.9 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,6 +75,7 @@ int
 svr4_sock_ioctl(struct file *fp, struct thread *td, register_t *retval,
 		int fd, u_long cmd, caddr_t data)
 {
+	struct ucred *cred = curproc->p_ucred;
 	int error;
 
 	*retval = 0;
@@ -120,7 +121,7 @@ svr4_sock_ioctl(struct file *fp, struct thread *td, register_t *retval,
 			(void) strncpy(br.ifr_name, sr.svr4_ifr_name,
 			    sizeof(br.ifr_name));
 			if ((error = fo_ioctl(fp, SIOCGIFFLAGS, 
-					    (caddr_t) &br, td)) != 0) {
+					    (caddr_t) &br, cred)) != 0) {
 				DPRINTF(("SIOCGIFFLAGS (%s) %s: error %d\n", 
 					 br.ifr_name, sr.svr4_ifr_name, error));
 				return error;
@@ -144,7 +145,7 @@ svr4_sock_ioctl(struct file *fp, struct thread *td, register_t *retval,
 				sc.svr4_ifc_len));
 
 			if ((error = fo_ioctl(fp, OSIOCGIFCONF,
-					    (caddr_t) &sc, td)) != 0)
+					    (caddr_t) &sc, cred)) != 0)
 				return error;
 
 			DPRINTF(("SIOCGIFCONF\n"));

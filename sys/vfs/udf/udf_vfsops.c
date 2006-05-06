@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.17 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.18 2006/05/06 02:43:14 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -171,7 +171,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	/* Check the access rights on the mount device */
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_ACCESS(devvp, VREAD, td->td_proc->p_ucred, td);
+	error = VOP_ACCESS(devvp, VREAD, td->td_proc->p_ucred);
 	if (error)
 		error = suser(td);
 	if (error) {
@@ -246,11 +246,11 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 		return(error);
 	if (count_udev(devvp->v_udev) > 0)
 		return(EBUSY);
-	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
+	if ((error = vinvalbuf(devvp, V_SAVE, 0, 0)))
 		return(error);
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
+	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return(error);
@@ -394,7 +394,7 @@ bail:
 	if (bp != NULL)
 		brelse(bp);
 	if (needclose)
-		VOP_CLOSE(devvp, FREAD, td);
+		VOP_CLOSE(devvp, FREAD);
 	return(error);
 }
 
@@ -413,7 +413,7 @@ udf_unmount(struct mount *mp, int mntflags, struct thread *td)
 		return (error);
 
 	udfmp->im_devvp->v_rdev->si_mountpoint = NULL;
-	error = VOP_CLOSE(udfmp->im_devvp, FREAD, td);
+	error = VOP_CLOSE(udfmp->im_devvp, FREAD);
 	vrele(udfmp->im_devvp);
 
 	if (udfmp->s_table)

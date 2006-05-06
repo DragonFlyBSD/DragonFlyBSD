@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.22 2005/07/23 07:28:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.23 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -182,9 +182,9 @@ sonewconn(struct socket *head, int connstatus)
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
 		return ((struct socket *)0);
-	so = soalloc(0);
+	so = soalloc(1);
 	if (so == NULL)
-		return ((struct socket *)0);
+		return (NULL);
 	if ((head->so_options & SO_ACCEPTFILTER) != 0)
 		connstatus = 0;
 	so->so_head = head;

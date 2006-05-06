@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.2 2006/04/05 21:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2mount.h,v 1.3 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _VFS_GNU_EXT2FS_EXT2MOUNT_H_
@@ -90,8 +90,7 @@ struct ext2mount {
 	struct malloc_type *um_malloctype;	/* The inodes malloctype */
 	int	um_i_effnlink_valid;		/* i_effnlink valid? */
 	int	(*um_blkatoff) (struct vnode *, off_t, char **, struct buf **);
-	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *,
-				struct thread *);
+	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *);
 	int	(*um_update) (struct vnode *, int);
 	int	(*um_valloc) (struct vnode *, int, struct ucred *, struct vnode **);
 	int	(*um_vfree) (struct vnode *, ino_t, int);
@@ -100,7 +99,7 @@ struct ext2mount {
 #define	um_e2fsb um_e2fs->s_es
 
 #define EXT2_BLKATOFF(aa, bb, cc, dd) VFSTOEXT2((aa)->v_mount)->um_blkatoff(aa, bb, cc, dd)
-#define EXT2_TRUNCATE(aa, bb, cc, dd, ee) VFSTOEXT2((aa)->v_mount)->um_truncate(aa, bb, cc, dd, ee)
+#define EXT2_TRUNCATE(aa, bb, cc, dd) VFSTOEXT2((aa)->v_mount)->um_truncate(aa, bb, cc, dd)
 #define EXT2_UPDATE(aa, bb) VFSTOEXT2((aa)->v_mount)->um_update(aa, bb)
 #define EXT2_VALLOC(aa, bb, cc, dd) VFSTOEXT2((aa)->v_mount)->um_valloc(aa, bb, cc, dd)
 #define EXT2_VFREE(aa, bb, cc) VFSTOEXT2((aa)->v_mount)->um_vfree(aa, bb, cc)

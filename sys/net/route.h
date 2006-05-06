@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.16 2006/04/11 06:59:36 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.17 2006/05/06 02:43:12 dillon Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -324,6 +324,7 @@ extern struct lwkt_port *rt_ports[MAXCPU];
 
 struct ifmultiaddr;
 struct proc;
+struct ucred;
 
 void	 route_init (void);
 void	 rt_dstmsg(int type, struct sockaddr *dst, int error);
@@ -373,7 +374,7 @@ typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
 
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
-int	 rtioctl (u_long, caddr_t, struct thread *);
+int	 rtioctl (u_long, caddr_t, struct ucred *);
 void	 rtredirect (struct sockaddr *, struct sockaddr *,
 	    struct sockaddr *, int, struct sockaddr *);
 int	 rtrequest (int, struct sockaddr *,

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.16 2006/04/23 00:54:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.17 2006/05/06 02:43:15 dillon Exp $
  */
 
 /*
@@ -387,7 +387,7 @@ umap_inactive(struct vop_inactive_args *ap)
 	 * cache and reusable.
 	 *
 	 */
-	VOP_INACTIVE(lowervp, ap->a_td);
+	VOP_INACTIVE(lowervp);
 	return (0);
 }
 

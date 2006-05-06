@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.10 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.11 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -140,13 +140,13 @@ ibcs2_emul_find(caddr_t *sgp, const char *prefix, char *path,
 			error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
 		if (error) 
 			goto done;
-		error = VOP_GETATTR(vp, &vat, nd.nl_td);
+		error = VOP_GETATTR(vp, &vat);
 		vrele(vp);
 		if (error == 0)
 			error = cache_vref(ndroot.nl_ncp, nd.nl_cred, &vp);
 		if (error)
 			goto done;
-		error = VOP_GETATTR(vp, &vatroot, nd.nl_td);
+		error = VOP_GETATTR(vp, &vatroot);
 		vrele(vp);
 		if (error)
 			goto done;

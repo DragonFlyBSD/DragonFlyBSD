@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.42 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.43 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -241,7 +241,7 @@ spec_open(struct vop_open_args *ap)
 	 * only called for the last close unless D_TRACKCLOSE is set.
 	 */
 	VOP_UNLOCK(vp, 0);
-	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_td);
+	error = dev_dopen(dev, ap->a_mode, S_IFCHR, curthread);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	if (error)
@@ -374,7 +374,7 @@ spec_ioctl(struct vop_ioctl_args *ap)
 		return (EBADF);		/* device was revoked */
 
 	return (dev_dioctl(dev, ap->a_command, ap->a_data,
-		    ap->a_fflag, ap->a_td));
+		    ap->a_fflag,curthread));
 }
 
 /*
@@ -389,7 +389,7 @@ spec_poll(struct vop_poll_args *ap)
 
 	if ((dev = ap->a_vp->v_rdev) == NULL)
 		return (EBADF);		/* device was revoked */
-	return (dev_dpoll(dev, ap->a_events, ap->a_td));
+	return (dev_dpoll(dev, ap->a_events, curthread));
 }
 
 /*
@@ -542,7 +542,7 @@ spec_bmap(struct vop_bmap_args *ap)
 static int
 spec_close(struct vop_close_args *ap)
 {
-	struct proc *p = ap->a_td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
 	dev_t dev = vp->v_rdev;
 	int error;
@@ -581,11 +581,11 @@ spec_close(struct vop_close_args *ap)
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
 		needrelock = 0;
-		if (VOP_ISLOCKED(vp, ap->a_td)) {
+		if (VOP_ISLOCKED(vp, curthread)) {
 			needrelock = 1;
 			VOP_UNLOCK(vp, 0);
 		}
-		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td);
+		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, curthread);
 		if (needrelock)
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	} else {

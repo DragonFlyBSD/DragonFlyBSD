@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.24 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.25 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -390,7 +390,7 @@ vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 
 int
 vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
-	struct file *fp, struct thread *td)
+	struct file *fp)
 {
 	struct vop_open_args ap;
 	int error;
@@ -401,14 +401,13 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_fp = fp;
 	ap.a_mode = mode;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_open);
 	return(error);
 }
 
 int
-vop_close(struct vop_ops *ops, struct vnode *vp, int fflag, struct thread *td)
+vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
 {
 	struct vop_close_args ap;
 	int error;
@@ -417,15 +416,13 @@ vop_close(struct vop_ops *ops, struct vnode *vp, int fflag, struct thread *td)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_fflag = fflag;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_close);
 	return(error);
 }
 
 int
-vop_access(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
-	struct thread *td)
+vop_access(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred)
 {
 	struct vop_access_args ap;
 	int error;
@@ -435,15 +432,13 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_vp = vp;
 	ap.a_mode = mode;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_access);
 	return(error);
 }
 
 int
-vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-	struct thread *td)
+vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 {
 	struct vop_getattr_args ap;
 	struct namecache *ncp;
@@ -453,7 +448,6 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_vap = vap;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_getattr);
 	if ((ops->vv_flags & VVF_SUPPORTS_FSMID) == 0) {
@@ -470,7 +464,7 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 
 int
 vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
-	struct ucred *cred, struct thread *td)
+	struct ucred *cred)
 {
 	struct vop_setattr_args ap;
 	int error;
@@ -480,7 +474,6 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_vp = vp;
 	ap.a_vap = vap;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setattr);
 	if (error == 0)
@@ -528,8 +521,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 
 int
 vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
-	int fflag, struct ucred *cred,
-	struct thread *td)
+	int fflag, struct ucred *cred)
 {
 	struct vop_ioctl_args ap;
 	int error;
@@ -541,15 +533,13 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	ap.a_data = data;
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_ioctl);
 	return(error);
 }
 
 int
-vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred,
-	struct thread *td)
+vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred)
 {
 	struct vop_poll_args ap;
 	int error;
@@ -559,7 +549,6 @@ vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred,
 	ap.a_vp = vp;
 	ap.a_events = events;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_poll);
 	return(error);
@@ -596,8 +585,7 @@ vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags)
 }
 
 int
-vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred,
-	struct thread *td)
+vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred)
 {
 	struct vop_mmap_args ap;
 	int error;
@@ -607,14 +595,13 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred,
 	ap.a_vp = vp;
 	ap.a_fflags = fflags;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_mmap);
 	return(error);
 }
 
 int
-vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, struct thread *td)
+vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor)
 {
 	struct vop_fsync_args ap;
 	int error;
@@ -623,7 +610,6 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, struct thread *td)
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_waitfor = waitfor;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_fsync);
 	return(error);
@@ -777,7 +763,7 @@ vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 }
 
 int
-vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td)
+vop_inactive(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_inactive_args ap;
 	int error;
@@ -785,14 +771,13 @@ vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 	ap.a_head.a_desc = &vop_inactive_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_inactive);
 	return(error);
 }
 
 int
-vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
+vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_reclaim_args ap;
 	int error;
@@ -800,7 +785,6 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 	ap.a_head.a_desc = &vop_reclaim_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_reclaim);
 	return(error);
@@ -1019,7 +1003,7 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp, off_t offset, int length)
 
 int
 vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-	struct acl *aclp, struct ucred *cred, struct thread *td)
+	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_getacl_args ap;
 	int error;
@@ -1030,7 +1014,6 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_type = type;
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_getacl);
 	return(error);
@@ -1038,7 +1021,7 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 
 int
 vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-	struct acl *aclp, struct ucred *cred, struct thread *td)
+	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_setacl_args ap;
 	int error;
@@ -1049,7 +1032,6 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_type = type;
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setacl);
 	if (error == 0)
@@ -1059,7 +1041,7 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 
 int
 vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
-	struct acl *aclp, struct ucred *cred, struct thread *td)
+	struct acl *aclp, struct ucred *cred)
 {
 	struct vop_aclcheck_args ap;
 	int error;
@@ -1070,7 +1052,6 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_type = type;
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_aclcheck);
 	return(error);
@@ -1078,7 +1059,7 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 
 int
 vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-	struct uio *uio, struct ucred *cred, struct thread *td)
+	struct uio *uio, struct ucred *cred)
 {
 	struct vop_getextattr_args ap;
 	int error;
@@ -1089,7 +1070,6 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_name = name;
 	ap.a_uio = uio;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_getextattr);
 	return(error);
@@ -1097,7 +1077,7 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 
 int
 vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name, 
-	struct uio *uio, struct ucred *cred, struct thread *td)
+	struct uio *uio, struct ucred *cred)
 {
 	struct vop_setextattr_args ap;
 	int error;
@@ -1108,7 +1088,6 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_name = name;
 	ap.a_uio = uio;
 	ap.a_cred = cred;
-	ap.a_td = td;
 
 	DO_OPS(ops, error, &ap, vop_setextattr);
 	if (error == 0)

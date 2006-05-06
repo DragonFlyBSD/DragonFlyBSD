@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.24 2006/05/05 21:15:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.25 2006/05/06 02:43:15 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -202,7 +202,7 @@ swapon(struct swapon_args *uap)
 	if (vn_isdisk(vp, &error))
 		error = swaponvp(td, vp, 0);
 	else if (vp->v_type == VREG && vp->v_tag == VT_NFS &&
-	    (error = VOP_GETATTR(vp, &attr, td)) == 0) {
+	    (error = VOP_GETATTR(vp, &attr)) == 0) {
 		/*
 		 * Allow direct swapping to NFS regular files in the same
 		 * way that nfs_mountroot() sets up diskless swapping.
@@ -263,7 +263,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	return EINVAL;
     found:
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL, td);
+	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL);
 	VOP_UNLOCK(vp, 0);
 	if (error)
 		return (error);
@@ -278,11 +278,11 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 		dev = NODEV;
 
 	if (nblks == 0 && dev != NODEV && ((nblks = dev_dpsize(dev)) == -1)) {
-		VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE);
 		return (ENXIO);
 	}
 	if (nblks == 0) {
-		VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE);
 		return (ENXIO);
 	}
 
@@ -293,7 +293,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	if (nblks > 0x40000000 / BLIST_META_RADIX / nswdev) {
 		printf("exceeded maximum of %d blocks per swap unit\n",
 			0x40000000 / BLIST_META_RADIX / nswdev);
-		VOP_CLOSE(vp, FREAD | FWRITE, td);
+		VOP_CLOSE(vp, FREAD | FWRITE);
 		return (ENXIO);
 	}
 	/*

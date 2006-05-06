@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.12 2005/09/02 07:16:58 hsu Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.13 2006/05/06 02:43:13 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -83,12 +83,12 @@ struct fcrypt {
 };
 
 static	int cryptof_rw(struct file *fp, struct uio *uio,
-		    struct ucred *cred, int flags, struct thread *);
-static	int cryptof_ioctl(struct file *, u_long, caddr_t, struct thread *);
-static	int cryptof_poll(struct file *, int, struct ucred *, struct thread *);
+		    struct ucred *cred, int flags);
+static	int cryptof_ioctl(struct file *, u_long, caddr_t, struct ucred *);
+static	int cryptof_poll(struct file *, int, struct ucred *);
 static	int cryptof_kqfilter(struct file *, struct knote *);
-static	int cryptof_stat(struct file *, struct stat *, struct thread *);
-static	int cryptof_close(struct file *, struct thread *);
+static	int cryptof_stat(struct file *, struct stat *, struct ucred *);
+static	int cryptof_close(struct file *);
 
 static struct fileops cryptofops = {
     NULL,	/* port */
@@ -111,8 +111,7 @@ static struct csession *csecreate(struct fcrypt *, u_int64_t, caddr_t,
     struct auth_hash *);
 static int csefree(struct csession *);
 
-static	int cryptodev_op(struct csession *, struct crypt_op *,
-			struct thread *td);
+static	int cryptodev_op(struct csession *, struct crypt_op *);
 static	int cryptodev_key(struct crypt_kop *);
 
 static int
@@ -120,8 +119,7 @@ cryptof_rw(
 	struct file *fp,
 	struct uio *uio,
 	struct ucred *active_cred,
-	int flags,
-	struct thread *td)
+	int flags)
 {
 
 	return (EIO);
@@ -133,7 +131,7 @@ cryptof_ioctl(
 	struct file *fp,
 	u_long cmd,
 	caddr_t data,
-	struct thread *td)
+	struct ucred *cred)
 {
 	struct cryptoini cria, crie;
 	struct fcrypt *fcr = (struct fcrypt *)fp->f_data;
@@ -291,7 +289,7 @@ bail:
 		cse = csefind(fcr, cop->ses);
 		if (cse == NULL)
 			return (EINVAL);
-		error = cryptodev_op(cse, cop, td);
+		error = cryptodev_op(cse, cop);
 		break;
 	case CIOCKEY:
 		error = cryptodev_key((struct crypt_kop *)data);
@@ -309,10 +307,7 @@ static int cryptodev_cb(void *);
 
 
 static int
-cryptodev_op(
-	struct csession *cse,
-	struct crypt_op *cop,
-	struct thread *td)
+cryptodev_op(struct csession *cse, struct crypt_op *cop)
 {
 	struct cryptop *crp = NULL;
 	struct cryptodesc *crde = NULL, *crda = NULL;
@@ -329,7 +324,7 @@ cryptodev_op(
 	cse->uio.uio_resid = 0;
 	cse->uio.uio_segflg = UIO_SYSSPACE;
 	cse->uio.uio_rw = UIO_WRITE;
-	cse->uio.uio_td = td;
+	cse->uio.uio_td = curthread;
 	cse->uio.uio_iov = cse->iovec;
 	bzero(&cse->iovec, sizeof(cse->iovec));
 	cse->uio.uio_iov[0].iov_len = cop->len;
@@ -574,13 +569,8 @@ fail:
 
 /* ARGSUSED */
 static int
-cryptof_poll(
-	struct file *fp,
-	int events,
-	struct ucred *active_cred,
-	struct thread *td)
+cryptof_poll(struct file *fp, int events, struct ucred *active_cred)
 {
-
 	return (0);
 }
 
@@ -594,18 +584,14 @@ cryptof_kqfilter(struct file *fp, struct knote *kn)
 
 /* ARGSUSED */
 static int
-cryptof_stat(
-	struct file *fp,
-	struct stat *sb,
-	struct thread *td)
+cryptof_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
-
 	return (EOPNOTSUPP);
 }
 
 /* ARGSUSED */
 static int
-cryptof_close(struct file *fp, struct thread *td)
+cryptof_close(struct file *fp)
 {
 	struct fcrypt *fcr = (struct fcrypt *)fp->f_data;
 	struct csession *cse;

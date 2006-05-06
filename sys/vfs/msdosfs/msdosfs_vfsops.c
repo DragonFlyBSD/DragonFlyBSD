@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.32 2006/05/05 21:15:10 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.33 2006/05/06 02:43:14 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -100,7 +100,7 @@ static int	msdosfs_mount (struct mount *, char *, caddr_t,
 static int	msdosfs_root (struct mount *, struct vnode **);
 static int	msdosfs_statfs (struct mount *, struct statfs *,
 				    struct thread *);
-static int	msdosfs_sync (struct mount *, int, struct thread *);
+static int	msdosfs_sync (struct mount *, int);
 static int	msdosfs_unmount (struct mount *, int, struct thread *);
 static int	msdosfs_vptofh (struct vnode *, struct fid *);
 
@@ -207,7 +207,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 				devvp = pmp->pm_devvp;
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE,
-						   p->p_ucred, td);
+						   p->p_ucred);
 				if (error) {
 					VOP_UNLOCK(devvp, 0);
 					return (error);
@@ -258,7 +258,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_ACCESS(devvp, accessmode, p->p_ucred, td);
+		error = VOP_ACCESS(devvp, accessmode, p->p_ucred);
 		if (error) {
 			vput(devvp);
 			return (error);
@@ -326,14 +326,14 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
 	VOP_UNLOCK(devvp, 0);
 	if (error)
 		return (error);
@@ -353,7 +353,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		 * that the size of a disk block will always be 512 bytes.
 		 * Let's check it...
 		 */
-		error = VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, td);
+		error = VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD);
 		if (error)
 			goto error_exit;
 		tmp   = dpart.part->p_fstype;
@@ -669,7 +669,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 error_exit:
 	if (bp)
 		brelse(bp);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
 	if (pmp) {
 		if (pmp->pm_inusemap)
 			free(pmp->pm_inusemap, M_MSDOSFSFAT);
@@ -719,8 +719,7 @@ msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	}
 #endif
 	error = VOP_CLOSE(pmp->pm_devvp,
-		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
-		    td);
+		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE);
 	vrele(pmp->pm_devvp);
 	free(pmp->pm_inusemap, M_MSDOSFSFAT);
 	free(pmp, M_MSDOSFSMNT);
@@ -771,13 +770,12 @@ struct scaninfo {
 	int rescan;
 	int allerror;
 	int waitfor;
-	thread_t td;
 };
 
 static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 
 static int
-msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
+msdosfs_sync(struct mount *mp, int waitfor)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct scaninfo scaninfo;
@@ -799,7 +797,6 @@ msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
 	 */
 	scaninfo.allerror = 0;
 	scaninfo.rescan = 1;
-	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT, NULL, msdosfs_sync_scan, &scaninfo);
@@ -810,7 +807,7 @@ msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
 	 */
 	if (waitfor != MNT_LAZY) {
 		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
-		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, td)) != 0)
+		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor)) != 0)
 			scaninfo.allerror = error;
 		VOP_UNLOCK(pmp->pm_devvp, 0);
 	}
@@ -831,7 +828,7 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 	    (RB_EMPTY(&vp->v_rbdirty_tree) || info->waitfor == MNT_LAZY))) {
 		return(0);
 	}
-	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)
+	if ((error = VOP_FSYNC(vp, info->waitfor)) != 0)
 		info->allerror = error;
 	return(0);
 }

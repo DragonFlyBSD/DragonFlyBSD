@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.21 2006/05/05 20:15:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.22 2006/05/06 02:43:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -136,7 +136,6 @@ nwfs_hashlookup(struct nwmount *nmp, ncpfid fid, struct nwnode **npp)
 int
 nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct nwnode *np;
 	struct nwnode_hash_head *nhpp;
 	struct nwmount *nmp = VFSTONWFS(mp);
@@ -149,7 +148,7 @@ rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
 		lockmgr(&nwhashlock, LK_RELEASE);
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		if (nwfs_hashlookup(nmp, fid, &np) || NWTOV(np) != vp) {
 			vput(vp);
@@ -220,7 +219,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *dvp = NULL, *vp = ap->a_vp;
 	struct nwnode *dnp, *np = VTONW(vp);
 	struct nwmount *nmp = VTONWFS(vp);
-	struct thread *td = ap->a_td;
+	struct thread *td = curthread;	/* XXX */
 	
 	NCPVNDEBUG("%s,%d\n", (np ? np->n_name : "?"), vp->v_usecount);
 	if (np && np->n_refparent) {
@@ -252,18 +251,18 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 int
 nwfs_inactive(struct vop_inactive_args *ap)
 {
-	struct thread *td = ap->a_td;
+	struct thread *td = curthread;	/* XXX */
 	struct ucred *cred;
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
 	int error;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
+	KKASSERT(td->td_proc);		/* XXX */
+	cred = td->td_proc->p_ucred;	/* XXX */
 
 	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_usecount);
 	if (np && np->opened) {
-		error = nwfs_vinvalbuf(vp, V_SAVE, td, 1);
+		error = nwfs_vinvalbuf(vp, V_SAVE, 1);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}

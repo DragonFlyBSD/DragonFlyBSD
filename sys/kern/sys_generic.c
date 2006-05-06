@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.25 2006/04/26 17:42:53 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.26 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -267,7 +267,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 	}
 #endif
 	len = auio->uio_resid;
-	error = fo_read(fp, auio, fp->f_cred, flags, td);
+	error = fo_read(fp, auio, fp->f_cred, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -456,7 +456,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 	len = auio->uio_resid;
 	if (fp->f_type == DTYPE_VNODE)
 		bwillwrite();
-	error = fo_write(fp, auio, fp->f_cred, flags, td);
+	error = fo_write(fp, auio, fp->f_cred, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -507,6 +507,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct ucred *cred;
 	struct file *fp;
 	struct filedesc *fdp;
 	struct ioctl_map_range *iomc = NULL;
@@ -522,6 +523,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	} ubuf;
 
 	KKASSERT(p);
+	cred = p->p_ucred;
 	fdp = p->p_fd;
 	if ((u_int)fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_files[fd].fp) == NULL)
@@ -646,7 +648,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			fp->f_flag |= FNONBLOCK;
 		else
 			fp->f_flag &= ~FNONBLOCK;
-		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
+		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
 		break;
 
 	case FIOASYNC:
@@ -654,7 +656,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			fp->f_flag |= FASYNC;
 		else
 			fp->f_flag &= ~FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, td);
+		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
 		break;
 
 	default:
@@ -663,9 +665,9 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		 *  call it instead of directly routing the call
 		 */
 		if (map != NULL && iomc->wrapfunc != NULL)
-			error = iomc->wrapfunc(fp, com, ocom, data, td);
+			error = iomc->wrapfunc(fp, com, ocom, data, cred);
 		else
-			error = fo_ioctl(fp, com, data, td);
+			error = fo_ioctl(fp, com, data, cred);
 		/*
 		 * Copy any data to user, size was
 		 * already set and checked above.
@@ -857,7 +859,6 @@ done:
 static int
 selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 {
-	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	int msk, i, fd;
 	fd_mask bits;
@@ -878,7 +879,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 				fp = fdp->fd_files[fd].fp;
 				if (fp == NULL)
 					return (EBADF);
-				if (fo_poll(fp, flag[msk], fp->f_cred, td)) {
+				if (fo_poll(fp, flag[msk], fp->f_cred)) {
 					obits[msk][(fd)/NFDBITS] |=
 					    ((fd_mask)1 << ((fd) % NFDBITS));
 					n++;
@@ -982,7 +983,6 @@ out:
 static int
 pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 {
-	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 	struct file *fp;
@@ -1005,7 +1005,7 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 				 * POLLERR if appropriate.
 				 */
 				fds->revents = fo_poll(fp, fds->events,
-				    fp->f_cred, td);
+							fp->f_cred);
 				if (fds->revents != 0)
 					n++;
 			}

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.22 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.23 2006/05/06 02:43:13 dillon Exp $
  * 
  */
 
@@ -310,7 +310,7 @@ coda_root(struct mount *vfsp, struct vnode **vpp)
 	    { /* Found valid root. */
 		*vpp = mi->mi_rootvp;
 		/* On Mach, this is vref.  On NetBSD, VOP_LOCK */
-		vget(*vpp, LK_EXCLUSIVE, td);
+		vget(*vpp, LK_EXCLUSIVE);
 		MARK_INT_SAT(CODA_ROOT_STATS);
 		return(0);
 	    }
@@ -328,7 +328,7 @@ coda_root(struct mount *vfsp, struct vnode **vpp)
 	coda_save(VTOC(mi->mi_rootvp));
 
 	*vpp = mi->mi_rootvp;
-	vget(*vpp, LK_EXCLUSIVE, td);
+	vget(*vpp, LK_EXCLUSIVE);
 
 	MARK_INT_SAT(CODA_ROOT_STATS);
 	goto exit;
@@ -343,7 +343,7 @@ coda_root(struct mount *vfsp, struct vnode **vpp)
 	 * will fail.
 	 */
 	*vpp = mi->mi_rootvp;
-	vget(*vpp, LK_EXCLUSIVE, td);
+	vget(*vpp, LK_EXCLUSIVE);
 
 	MARK_INT_FAIL(CODA_ROOT_STATS);
 	error = 0;
@@ -397,7 +397,7 @@ coda_nb_statfs(struct mount *vfsp, struct statfs *sbp, struct thread *td)
  * Flush any pending I/O.
  */
 int
-coda_sync(struct mount *vfsp, int waitfor, struct thread *td)
+coda_sync(struct mount *vfsp, int waitfor)
 {
     ENTRY;
     MARK_ENTRY(CODA_SYNC_STATS);

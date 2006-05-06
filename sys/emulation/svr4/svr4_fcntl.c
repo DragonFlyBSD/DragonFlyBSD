@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.17 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.18 2006/05/06 02:43:12 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -260,7 +260,7 @@ fd_revoke(struct thread *td, int fd)
 		goto out;
 	}
 
-	if ((error = VOP_GETATTR(vp, &vattr, td)) != 0)
+	if ((error = VOP_GETATTR(vp, &vattr)) != 0)
 		goto out;
 
 	if (p->p_ucred->cr_uid != vattr.va_uid &&
@@ -300,7 +300,7 @@ fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 	if (fp->f_type != DTYPE_VNODE || vp->v_type == VFIFO)
 		return ESPIPE;
 
-	if ((error = VOP_GETATTR(vp, &vattr, td)) != 0)
+	if ((error = VOP_GETATTR(vp, &vattr)) != 0)
 		return error;
 
 	length = vattr.va_size;
@@ -368,7 +368,7 @@ svr4_sys_open(struct svr4_sys_open_args *uap)
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p);
+			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, cred);
 #endif
 	}
 	return error;

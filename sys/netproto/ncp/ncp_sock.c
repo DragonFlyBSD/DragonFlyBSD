@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.12 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.13 2006/05/06 02:43:13 dillon Exp $
  *
  * Low level socket routines
  */
@@ -191,10 +191,9 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 }
 
 int
-ncp_poll(struct socket *so, int events){
-    struct thread *td = curthread; /* XXX */
-    struct ucred *cred=NULL;
-    return so_pru_sopoll(so, events, cred, td);
+ncp_poll(struct socket *so, int events)
+{
+    return (so_pru_sopoll(so, events, NULL));
 }
 
 int

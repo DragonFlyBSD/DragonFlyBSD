@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.33 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.34 2006/05/06 02:43:13 dillon Exp $
  */
 
 
@@ -249,14 +249,14 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 		return (EBUSY);
 
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
+	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
@@ -338,7 +338,7 @@ failed:
 		brelse (bp);
 	mp->mnt_data = (qaddr_t)NULL;
 	dev->si_mountpoint = NULL;
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	return (error);
 }
 
@@ -367,8 +367,8 @@ hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 
 	hpmp->hpm_devvp->v_rdev->si_mountpoint = NULL;
 
-	vinvalbuf(hpmp->hpm_devvp, V_SAVE, td, 0, 0);
-	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE, td);
+	vinvalbuf(hpmp->hpm_devvp, V_SAVE, 0, 0);
+	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE);
 
 	vrele(hpmp->hpm_devvp);
 
@@ -463,7 +463,6 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	struct vnode *vp;
 	struct hpfsnode *hp;
 	struct buf *bp;
-	struct thread *td = curthread;	/* XXX */
 	int error;
 
 	dprintf(("hpfs_vget(0x%x): ",ino));
@@ -472,7 +471,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	hp = NULL;
 	vp = NULL;
 
-	if ((*vpp = hpfs_hphashvget(hpmp->hpm_dev, ino, td)) != NULL) {
+	if ((*vpp = hpfs_hphashvget(hpmp->hpm_dev, ino)) != NULL) {
 		dprintf(("hashed\n"));
 		return (0);
 	}
@@ -520,7 +519,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	vref(hp->h_devvp);
 
 	do {
-		if ((*vpp = hpfs_hphashvget(hpmp->hpm_dev, ino, td)) != NULL) {
+		if ((*vpp = hpfs_hphashvget(hpmp->hpm_dev, ino)) != NULL) {
 			dprintf(("hashed2\n"));
 			vx_put(vp);
 			return (0);

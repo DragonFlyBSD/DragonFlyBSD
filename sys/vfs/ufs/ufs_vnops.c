@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.47 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.48 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -80,8 +80,8 @@
 
 static int ufs_access (struct vop_access_args *);
 static int ufs_advlock (struct vop_advlock_args *);
-static int ufs_chmod (struct vnode *, int, struct ucred *, struct thread *);
-static int ufs_chown (struct vnode *, uid_t, gid_t, struct ucred *, struct thread *);
+static int ufs_chmod (struct vnode *, int, struct ucred *);
+static int ufs_chown (struct vnode *, uid_t, gid_t, struct ucred *);
 static int ufs_close (struct vop_close_args *);
 static int ufs_create (struct vop_old_create_args *);
 static int ufs_getattr (struct vop_getattr_args *);
@@ -495,7 +495,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
-		if ((error = ufs_chown(vp, vap->va_uid, vap->va_gid, cred, ap->a_td)) != 0)
+		if ((error = ufs_chown(vp, vap->va_uid, vap->va_gid, cred)) != 0)
 			return (error);
 	}
 	if (vap->va_size != VNOVAL) {
@@ -515,7 +515,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		default:
 			break;
 		}
-		if ((error = UFS_TRUNCATE(vp, vap->va_size, 0, cred, ap->a_td)) != 0)
+		if ((error = UFS_TRUNCATE(vp, vap->va_size, 0, cred)) != 0)
 			return (error);
 	}
 	ip = VTOI(vp);
@@ -525,7 +525,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != ip->i_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred, ap->a_td))))
+		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			ip->i_flag |= IN_ACCESS;
@@ -548,7 +548,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
-		error = ufs_chmod(vp, (int)vap->va_mode, cred, ap->a_td);
+		error = ufs_chmod(vp, (int)vap->va_mode, cred);
 	}
 	VN_KNOTE(vp, NOTE_ATTRIB);
 	return (error);
@@ -559,7 +559,7 @@ ufs_setattr(struct vop_setattr_args *ap)
  * Inode must be locked before calling.
  */
 static int
-ufs_chmod(struct vnode *vp, int mode, struct ucred *cred, struct thread *td)
+ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 {
 	struct inode *ip = VTOI(vp);
 	int error;
@@ -586,8 +586,7 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred, struct thread *td)
  * inode must be locked prior to call.
  */
 static int
-ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred,
-	  struct thread *td)
+ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 {
 	struct inode *ip = VTOI(vp);
 	uid_t ouid;
@@ -991,7 +990,7 @@ abortit:
 	 * to namei, as the parent directory is unlocked by the
 	 * call to checkpath().
 	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
+	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
 	VOP_UNLOCK(fvp, 0);
 
 	/*
@@ -1189,8 +1188,9 @@ abortit:
 			xp->i_nlink--;
 			xp->i_flag |= IN_CHANGE;
 			ioflag = DOINGASYNC(tvp) ? 0 : IO_SYNC;
-			if ((error = UFS_TRUNCATE(tvp, (off_t)0, ioflag,
-			    tcnp->cn_cred, tcnp->cn_td)) != 0)
+			error = UFS_TRUNCATE(tvp, (off_t)0, ioflag,
+					     tcnp->cn_cred);
+			if (error)
 				goto bad;
 		}
 		VN_KNOTE(tdvp, NOTE_WRITE);
@@ -1577,8 +1577,7 @@ ufs_rmdir(struct vop_old_rmdir_args *ap)
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ioflag = DOINGASYNC(vp) ? 0 : IO_SYNC;
-		error = UFS_TRUNCATE(vp, (off_t)0, ioflag, cnp->cn_cred,
-		    cnp->cn_td);
+		error = UFS_TRUNCATE(vp, (off_t)0, ioflag, cnp->cn_cred);
 	}
 	/* cache_purge removed - handled by VFS compat layer */
 #ifdef UFS_DIRHASH
@@ -1627,7 +1626,7 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 			vinitvmio(vp, 0);
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
-				ap->a_cnp->cn_cred, NULL, NULL);
+				ap->a_cnp->cn_cred, NULL);
 	}
 	if (error)
 		vput(vp);

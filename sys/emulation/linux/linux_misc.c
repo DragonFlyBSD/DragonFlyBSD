@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.26 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.27 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -280,7 +280,7 @@ linux_uselib(struct linux_uselib_args *args)
 	}
 
 	/* Executable? */
-	error = VOP_GETATTR(vp, &attr, td);
+	error = VOP_GETATTR(vp, &attr);
 	if (error)
 		goto cleanup;
 
@@ -297,11 +297,11 @@ linux_uselib(struct linux_uselib_args *args)
 	}
 
 	/* Can we access it? */
-	error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
+	error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
 	if (error)
 		goto cleanup;
 
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL, td);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL);
 	if (error)
 		goto cleanup;
 

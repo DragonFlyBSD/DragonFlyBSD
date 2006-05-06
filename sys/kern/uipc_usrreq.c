@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.23 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.24 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -654,7 +654,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		error = ENOTSOCK;
 		goto bad;
 	}
-	error = VOP_ACCESS(vp, VWRITE, p->p_ucred, td);
+	error = VOP_ACCESS(vp, VWRITE, p->p_ucred);
 	if (error)
 		goto bad;
 	so2 = vp->v_socket;

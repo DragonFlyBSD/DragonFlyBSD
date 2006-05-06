@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.33 2006/05/05 16:35:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.34 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -496,7 +496,6 @@ hpfs_setattr(struct vop_setattr_args *ap)
 	struct hpfsnode *hp = VTOHP(vp);
 	struct vattr *vap = ap->a_vap;
 	struct ucred *cred = ap->a_cred;
-	struct thread *td = ap->a_td;
 	int error;
 
 	dprintf(("hpfs_setattr(0x%x):\n", hp->h_no));
@@ -537,7 +536,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 		if (cred->cr_uid != hp->h_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred, td))))
+		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			hp->h_atime = vap->va_atime.tv_sec;
@@ -562,7 +561,7 @@ hpfs_setattr(struct vop_setattr_args *ap)
 
 		if (vap->va_size < hp->h_fn.fn_size) {
 #if defined(__DragonFly__)
-			error = vtruncbuf(vp, td, vap->va_size, DEV_BSIZE);
+			error = vtruncbuf(vp, vap->va_size, DEV_BSIZE);
 			if (error)
 				return (error);
 #else /* defined(__NetBSD__) */
@@ -618,7 +617,7 @@ hpfs_inactive(struct vop_inactive_args *ap)
 
 	if (hp->h_flag & H_INVAL) {
 #if defined(__DragonFly__)
-		vrecycle(vp, ap->a_td);
+		vrecycle(vp);
 #else /* defined(__NetBSD__) */
 		vgone(vp);
 #endif
@@ -1048,7 +1047,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 		return (EOPNOTSUPP);
 	}
 
-	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_td);
+	error = VOP_ACCESS(dvp, VEXEC, cred);
 	if(error)
 		return (error);
 
@@ -1101,7 +1100,7 @@ hpfs_lookup(struct vop_old_lookup_args *ap)
 			 dep->de_fnode, dep->de_cpid));
 
 		if (nameiop == NAMEI_DELETE) {
-			error = VOP_ACCESS(dvp, VWRITE, cred, cnp->cn_td);
+			error = VOP_ACCESS(dvp, VWRITE, cred);
 			if (error) {
 				brelse(bp);
 				return (error);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.20 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.21 2006/05/06 02:43:14 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -109,7 +109,7 @@ loop:
 		if (node->hash_id != id)
 			continue;
 		vp = node->i_vnode;
-		if (vget(vp, LK_EXCLUSIVE, curthread))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.10 2004/11/12 00:09:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.11 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,6 @@ const char      linux_emul_path[] = "/compat/linux";
 int
 linux_copyin_path(char *uname, char **kname, int flags)
 {
-	struct thread *td = curthread;
 	struct nlookupdata nd, ndroot;
 	struct vattr vat, vatroot;
 	struct vnode *vp, *vproot;
@@ -141,9 +140,9 @@ linux_copyin_path(char *uname, char **kname, int flags)
 			goto dont_translate;
 		}
 		
-		error = VOP_GETATTR(vp, &vat, td);
+		error = VOP_GETATTR(vp, &vat);
 		if (error == 0) {
-			error = VOP_GETATTR(vproot, &vatroot, td);
+			error = VOP_GETATTR(vproot, &vatroot);
 			if (error == 0) {
 				if (vat.va_fsid == vatroot.va_fsid &&
 				    vat.va_fileid == vatroot.va_fileid)

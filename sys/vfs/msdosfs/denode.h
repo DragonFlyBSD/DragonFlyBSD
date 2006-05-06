@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/denode.h,v 1.20 1999/12/29 04:54:52 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.10 2005/09/14 01:13:38 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.11 2006/05/06 02:43:14 dillon Exp $ */
 /*	$NetBSD: denode.h,v 1.25 1997/11/17 15:36:28 ws Exp $	*/
 
 /*-
@@ -278,6 +278,6 @@ int dosdirempty (struct denode *dep);
 int createde (struct denode *dep, struct denode *ddep, struct denode **depp, struct componentname *cnp);
 int deupdat (struct denode *dep, int waitfor);
 int removede (struct denode *pdep, struct denode *dep);
-int detrunc (struct denode *dep, u_long length, int flags, struct thread *td);
+int detrunc (struct denode *dep, u_long length, int flags);
 int doscheckpath ( struct denode *source, struct denode *target);
 #endif	/* _KERNEL */

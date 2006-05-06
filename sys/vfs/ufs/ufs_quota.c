@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.20 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.21 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -488,7 +488,7 @@ ufs_quotaoff(struct thread *td, struct mount *mp, int type)
 	}
 	ufs_dqflush(qvp);
 	qvp->v_flag &= ~VSYSTEM;
-	error = vn_close(qvp, FREAD|FWRITE, td);
+	error = vn_close(qvp, FREAD|FWRITE);
 	ump->um_quotas[type] = NULLVP;
 	crfree(ump->um_cred[type]);
 	ump->um_cred[type] = NOCRED;

@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.14 2005/12/21 16:37:15 corecode Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.15 2006/05/06 02:43:12 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -346,8 +346,9 @@ __END_DECLS
 
 #ifdef _KERNEL
 struct thread;
+struct ucred;
 
-int	prison_if (struct thread *td, struct sockaddr *sa);
+int	prison_if (struct ucred *cred, struct sockaddr *sa);
 
 /* XXX - this should go away soon. */
 #include <net/if_var.h>

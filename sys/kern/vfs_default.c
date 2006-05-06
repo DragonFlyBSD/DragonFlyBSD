@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.38 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.39 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -208,7 +208,7 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	 * variable, in the directory inode.  That needs to be fixed and the
 	 * other VFS's audited before we can switch to LK_SHARED.
 	 */
-	if ((error = vget(dvp, LK_EXCLUSIVE, curthread)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -279,7 +279,7 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	 * other VFS's audited before we can switch to LK_SHARED.
 	 */
 	*ap->a_vpp = NULL;
-	if ((error = vget(ap->a_dvp, LK_EXCLUSIVE, curthread)) != 0)
+	if ((error = vget(ap->a_dvp, LK_EXCLUSIVE)) != 0)
 		return (error);
 	if (ap->a_dvp->v_type != VDIR) {
 		vput(ap->a_dvp);
@@ -338,7 +338,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -420,7 +420,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -502,7 +502,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -583,7 +583,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -655,7 +655,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -740,7 +740,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -829,7 +829,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -903,7 +903,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			ncp, ncp->nc_name);
 		return(EAGAIN);
@@ -1004,7 +1004,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	 * the source, it is believed that the only side effect that matters
 	 * is the permissions check.
 	 */
-	if ((error = vget(fdvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(fdvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			fncp, fncp->nc_name);
 		return(EAGAIN);
@@ -1057,7 +1057,7 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 		vrele(fvp);
 		return (error);
 	}
-	if ((error = vget(tdvp, LK_EXCLUSIVE, td)) != 0) {
+	if ((error = vget(tdvp, LK_EXCLUSIVE)) != 0) {
 		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
 			tncp, tncp->nc_name);
 		vrele(fdvp);
@@ -1322,11 +1322,10 @@ vop_stdpoll(ap)
 		struct vnode *a_vp;
 		int  a_events;
 		struct ucred *a_cred;
-		struct thread *a_td;
 	} */ *ap;
 {
 	if (ap->a_events & ~POLLSTANDARD)
-		return (vn_pollrecord(ap->a_vp, ap->a_td, ap->a_events));
+		return (vn_pollrecord(ap->a_vp, ap->a_events));
 	return (ap->a_events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }
 
@@ -1378,13 +1377,13 @@ vfs_stdquotactl(struct mount *mp, int cmds, uid_t uid,
 }
 
 int	
-vfs_stdsync(struct mount *mp, int waitfor, struct thread *td)
+vfs_stdsync(struct mount *mp, int waitfor)
 {
 	return (0);
 }
 
 int
-vfs_stdnosync(struct mount *mp, int waitfor, struct thread *td)
+vfs_stdnosync(struct mount *mp, int waitfor)
 {
 	return (EOPNOTSUPP);
 }

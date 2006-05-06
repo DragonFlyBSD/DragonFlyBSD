@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.52 2006/05/02 21:30:43 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.53 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -132,15 +132,14 @@ static struct cdevsw fildesc_cdevsw = {
 };
 
 static int badfo_readwrite (struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags, struct thread *td);
+    struct ucred *cred, int flags);
 static int badfo_ioctl (struct file *fp, u_long com, caddr_t data,
-    struct thread *td);
-static int badfo_poll (struct file *fp, int events,
-    struct ucred *cred, struct thread *td);
+    struct ucred *cred);
+static int badfo_poll (struct file *fp, int events, struct ucred *cred);
 static int badfo_kqfilter (struct file *fp, struct knote *kn);
-static int badfo_stat (struct file *fp, struct stat *sb, struct thread *td);
-static int badfo_close (struct file *fp, struct thread *td);
-static int badfo_shutdown (struct file *fp, int how, struct thread *td);
+static int badfo_stat (struct file *fp, struct stat *sb, struct ucred *cred);
+static int badfo_close (struct file *fp);
+static int badfo_shutdown (struct file *fp, int how);
 
 /*
  * Descriptor management.
@@ -195,7 +194,7 @@ dup(struct dup_args *uap)
 }
 
 int
-kern_fcntl(int fd, int cmd, union fcntl_dat *dat)
+kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -240,32 +239,32 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat)
 		fp->f_flag &= ~FCNTLFLAGS;
 		fp->f_flag |= FFLAGS(dat->fc_flags & ~O_ACCMODE) & FCNTLFLAGS;
 		tmp = fp->f_flag & FNONBLOCK;
-		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
+		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
 		if (error) {
 			fdrop(fp, td);
 			return (error);
 		}
 		tmp = fp->f_flag & FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, td);
+		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
 		if (!error) {
 			fdrop(fp, td);
 			return (0);
 		}
 		fp->f_flag &= ~FNONBLOCK;
 		tmp = 0;
-		fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
+		fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
 		fdrop(fp, td);
 		return (error);
 
 	case F_GETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner, td);
+		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner, cred);
 		fdrop(fp, td);
 		return(error);
 
 	case F_SETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner, td);
+		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner, cred);
 		fdrop(fp, td);
 		return(error);
 
@@ -383,7 +382,7 @@ fcntl(struct fcntl_args *uap)
 		break;
 	}
 
-	error = kern_fcntl(uap->fd, uap->cmd, &dat);
+	error = kern_fcntl(uap->fd, uap->cmd, &dat, curproc->p_ucred);
 
 	if (error == 0) {
 		switch (uap->cmd) {
@@ -760,7 +759,7 @@ kern_shutdown(int fd, int how)
 	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_shutdown(fp, how, td);
+	error = fo_shutdown(fp, how);
 	fdrop(fp, td);
 
 	return (error);
@@ -792,7 +791,7 @@ kern_fstat(int fd, struct stat *ub)
 	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_stat(fp, ub, td);
+	error = fo_stat(fp, ub, p->p_ucred);
 	fdrop(fp, td);
 
 	return (error);
@@ -1656,7 +1655,7 @@ fdrop(struct file *fp, struct thread *td)
 		(void) VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, F_FLOCK);
 	}
 	if (fp->f_ops != &badfileops)
-		error = fo_close(fp, td);
+		error = fo_close(fp);
 	else
 		error = 0;
 	ffree(fp);
@@ -1975,20 +1974,19 @@ badfo_readwrite(
 	struct file *fp,
 	struct uio *uio,
 	struct ucred *cred,
-	int flags,
-	struct thread *td
+	int flags
 ) {
 	return (EBADF);
 }
 
 static int
-badfo_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
+badfo_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
 {
 	return (EBADF);
 }
 
 static int
-badfo_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
+badfo_poll(struct file *fp, int events, struct ucred *cred)
 {
 	return (0);
 }
@@ -2000,25 +1998,25 @@ badfo_kqfilter(struct file *fp, struct knote *kn)
 }
 
 static int
-badfo_stat(struct file *fp, struct stat *sb, struct thread *td)
+badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	return (EBADF);
 }
 
 static int
-badfo_close(struct file *fp, struct thread *td)
+badfo_close(struct file *fp)
 {
 	return (EBADF);
 }
 
 static int
-badfo_shutdown(struct file *fp, int how, struct thread *td)
+badfo_shutdown(struct file *fp, int how)
 {
 	return (EBADF);
 }
 
 int
-nofo_shutdown(struct file *fp, int how, struct thread *td)
+nofo_shutdown(struct file *fp, int how)
 {
 	return (EOPNOTSUPP);
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.10 2006/03/29 18:44:50 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.11 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -262,15 +262,13 @@ aout_coredump(p, vp, limit)
 	if (error == 0)
 		error = vn_rdwr_inchunks(UIO_WRITE, vp, vm->vm_daddr,
 		    (int)ctob(vm->vm_dsize), (off_t)ctob(UPAGES), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL,
-		    p->p_thread);
+		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL);
 	if (error == 0)
 		error = vn_rdwr_inchunks(UIO_WRITE, vp,
 		    (caddr_t) trunc_page(USRSTACK - ctob(vm->vm_ssize)),
 		    round_page(ctob(vm->vm_ssize)),
 		    (off_t)ctob(UPAGES) + ctob(vm->vm_dsize), UIO_USERSPACE,
-		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL,
-		    p->p_thread);
+		    IO_UNIT | IO_DIRECT | IO_CORE, cred, (int *) NULL);
 	return (error);
 }
 

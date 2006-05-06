@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.41 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.42 2006/05/06 02:43:14 dillon Exp $
  */
 
 /*
@@ -822,7 +822,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 				break;
 		}
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = VOP_FSYNC(devvp, MNT_WAIT, td);
+		error = VOP_FSYNC(devvp, MNT_WAIT);
 		VOP_UNLOCK(devvp, 0);
 		if (error)
 			break;
@@ -2864,7 +2864,6 @@ static void
 handle_workitem_remove(dirrem)
 	struct dirrem *dirrem;
 {
-	struct thread *td = curthread;	/* XXX */
 	struct inodedep *inodedep;
 	struct vnode *vp;
 	struct inode *ip;
@@ -2913,7 +2912,7 @@ handle_workitem_remove(dirrem)
 	}
 	inodedep->id_nlinkdelta = ip->i_nlink - ip->i_effnlink;
 	FREE_LOCK(&lk);
-	if ((error = UFS_TRUNCATE(vp, (off_t)0, 0, proc0.p_ucred, td)) != 0)
+	if ((error = UFS_TRUNCATE(vp, (off_t)0, 0, proc0.p_ucred)) != 0)
 		softdep_error("handle_workitem_remove: truncate", error);
 	/*
 	 * Rename a directory to a new parent. Since, we are both deleting
@@ -4268,7 +4267,7 @@ top:
 	if (vn_isdisk(vp, NULL) && 
 	    vp->v_rdev &&
 	    vp->v_rdev->si_mountpoint && !VOP_ISLOCKED(vp, NULL) &&
-	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT, td)) != 0)
+	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT)) != 0)
 		return (error);
 	return (0);
 }
@@ -4554,7 +4553,6 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 	struct mount *mp;
 	struct diraddhd *diraddhdp;
 {
-	struct thread *td = curthread;		/* XXX */
 	struct inodedep *inodedep;
 	struct ufsmount *ump;
 	struct diradd *dap;
@@ -4601,8 +4599,8 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 			FREE_LOCK(&lk);
 			if ((error = VFS_VGET(mp, inum, &vp)) != 0)
 				break;
-			if ((error=VOP_FSYNC(vp, MNT_NOWAIT, td)) ||
-			    (error=VOP_FSYNC(vp, MNT_NOWAIT, td))) {
+			if ((error=VOP_FSYNC(vp, MNT_NOWAIT)) ||
+			    (error=VOP_FSYNC(vp, MNT_NOWAIT))) {
 				vput(vp);
 				break;
 			}
@@ -4823,7 +4821,7 @@ clear_remove(struct thread *td)
 				softdep_error("clear_remove: vget", error);
 				return;
 			}
-			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT)))
 				softdep_error("clear_remove: fsync", error);
 			drain_output(vp, 0);
 			vput(vp);
@@ -4912,10 +4910,10 @@ clear_inodedeps(struct thread *td)
 			return;
 		}
 		if (ino == lastino) {
-			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_WAIT)))
 				softdep_error("clear_inodedeps: fsync1", error);
 		} else {
-			if ((error = VOP_FSYNC(vp, MNT_NOWAIT, td)))
+			if ((error = VOP_FSYNC(vp, MNT_NOWAIT)))
 				softdep_error("clear_inodedeps: fsync2", error);
 			drain_output(vp, 0);
 		}

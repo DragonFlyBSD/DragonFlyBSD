@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.10 2004/11/12 00:09:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.11 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -192,7 +192,6 @@ xenix_scoinfo(struct xenix_scoinfo_args *uap)
 int     
 xenix_eaccess(struct xenix_eaccess_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct proc *p = curproc;
 	struct ucred *cred = p->p_ucred;
 	struct vnode *vp;
@@ -220,7 +219,7 @@ xenix_eaccess(struct xenix_eaccess_args *uap)
                 if (SCARG(uap, flags) & IBCS2_X_OK)
                         flags |= VEXEC;
                 if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
-                        error = VOP_ACCESS(vp, flags, cred, td);
+                        error = VOP_ACCESS(vp, flags, cred);
         }
         vput(vp);
 done:

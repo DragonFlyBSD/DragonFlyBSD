@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_termios.c,v 1.5 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_termios.c,v 1.6 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_termios.c,v 1.7 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -475,6 +475,7 @@ svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
 	struct svr4_termios	st;
 	struct svr4_termio	t;
 	int			error, new;
+	struct ucred *cred = curproc->p_ucred;
 
 	*retval = 0;
 
@@ -484,7 +485,7 @@ svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
 	case SVR4_TCGETA:
 	case SVR4_TCGETS:
 		DPRINTF(("ioctl(TCGET%c);\n", cmd == SVR4_TCGETA ? 'A' : 'S'));
-		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t) &bt, td)) != 0)
+		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t) &bt, cred)) != 0)
 			return error;
 
 		memset(&st, 0, sizeof(st));
@@ -511,7 +512,7 @@ svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
 	case SVR4_TCSETSF:
 	        DPRINTF(("TCSET{A,S,AW,SW,AF,SF}\n"));
 		/* get full BSD termios so we don't lose information */
-		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t) &bt, td)) != 0)
+		if ((error = fo_ioctl(fp, TIOCGETA, (caddr_t) &bt, cred)) != 0)
 			return error;
 
 		switch (cmd) {
@@ -562,14 +563,14 @@ svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
 		print_svr4_termios(&st);
 #endif /* DEBUG_SVR4 */
 
-		return fo_ioctl(fp, cmd, (caddr_t) &bt, td);
+		return fo_ioctl(fp, cmd, (caddr_t) &bt, cred);
 
 	case SVR4_TIOCGWINSZ:
 	        DPRINTF(("TIOCGWINSZ\n"));
 		{
 			struct svr4_winsize ws;
 
-			error = fo_ioctl(fp, TIOCGWINSZ, (caddr_t) &ws, td);
+			error = fo_ioctl(fp, TIOCGWINSZ, (caddr_t) &ws, cred);
 			if (error)
 				return error;
 			return copyout(&ws, data, sizeof(ws));
@@ -582,7 +583,7 @@ svr4_term_ioctl(struct file *fp, struct thread *td, register_t *retval,
 
 			if ((error = copyin(data, &ws, sizeof(ws))) != 0)
 				return error;
-			return fo_ioctl(fp, TIOCSWINSZ, (caddr_t) &ws, td);
+			return fo_ioctl(fp, TIOCSWINSZ, (caddr_t) &ws, cred);
 		}
 
 	default:

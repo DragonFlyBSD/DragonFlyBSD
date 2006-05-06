@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.15 2005/09/02 07:16:58 hsu Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.16 2006/05/06 02:43:13 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -60,24 +60,21 @@ struct namecache;
 
 struct	fileops {
 	struct lwkt_port *fo_port;
-	int	(*fo_clone)(struct file *);	/* additional work after dup */
+	int (*fo_clone)		(struct file *);/* additional work after dup */
 
-	int	(*fold_read)	(struct file *fp, struct uio *uio,
-				    struct ucred *cred, int flags,
-				    struct thread *td);
-	int	(*fold_write)	(struct file *fp, struct uio *uio,
-				    struct ucred *cred, int flags,
-				    struct thread *td);
-	int	(*fold_ioctl)	(struct file *fp, u_long com,
-				    caddr_t data, struct thread *td);
-	int	(*fold_poll)	(struct file *fp, int events,
-				    struct ucred *cred, struct thread *td);
-	int	(*fold_kqfilter)	(struct file *fp,
-				    struct knote *kn);
-	int	(*fold_stat)	(struct file *fp, struct stat *sb,
-				    struct thread *td);
-	int	(*fold_close)	(struct file *fp, struct thread *td);
-	int	(*fold_shutdown)	(struct file *fp, int how, struct thread *td);
+	int (*fold_read)	(struct file *fp, struct uio *uio,
+				 struct ucred *cred, int flags);
+	int (*fold_write)	(struct file *fp, struct uio *uio,
+				 struct ucred *cred, int flags);
+	int (*fold_ioctl)	(struct file *fp, u_long com, caddr_t data,
+				 struct ucred *cred);
+	int (*fold_poll)	(struct file *fp, int events,
+				 struct ucred *cred);
+	int (*fold_kqfilter)	(struct file *fp, struct knote *kn);
+	int (*fold_stat)	(struct file *fp, struct stat *sb,
+				 struct ucred *cred);
+	int (*fold_close)	(struct file *fp);
+	int (*fold_shutdown)	(struct file *fp, int how);
 };
 
 #define	FOF_OFFSET	1	/* fo_read(), fo_write() flags */
@@ -134,7 +131,7 @@ extern int fp_write(struct file *fp, void *buf, size_t nbytes, ssize_t *res);
 extern int fp_stat(struct file *fp, struct stat *ub);
 extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp, off_t pos, void **resp);
 
-extern int nofo_shutdown(struct file *fp, int how, struct thread *td);
+extern int nofo_shutdown(struct file *fp, int how);
 
 extern int fp_close(struct file *fp);
 extern int fp_shutdown(struct file *fp, int how);

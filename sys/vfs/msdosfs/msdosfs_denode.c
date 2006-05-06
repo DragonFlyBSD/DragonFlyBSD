@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.23 2006/04/07 06:38:32 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.24 2006/05/06 02:43:14 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -124,7 +124,6 @@ msdosfs_uninit(struct vfsconf *vfsp)
 static struct denode *
 msdosfs_hashget(dev_t dev, u_long dirclust, u_long diroff)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct denode *dep;
 	lwkt_tokref ilock;
 	struct vnode *vp;
@@ -139,7 +138,7 @@ loop:
 			continue;
 		}
 		vp = DETOV(dep);
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
 
 		/*
@@ -463,7 +462,7 @@ deupdat(struct denode *dep, int waitfor)
  * Truncate the file described by dep to the length specified by length.
  */
 int
-detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
+detrunc(struct denode *dep, u_long length, int flags)
 {
 	int error;
 	int allerror;
@@ -562,7 +561,7 @@ detrunc(struct denode *dep, u_long length, int flags, struct thread *td)
 	dep->de_FileSize = length;
 	if (!isadir)
 		dep->de_flag |= DE_UPDATE|DE_MODIFIED;
-	allerror = vtruncbuf(DETOV(dep), td, length, pmp->pm_bpcluster);
+	allerror = vtruncbuf(DETOV(dep), length, pmp->pm_bpcluster);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
 		printf("detrunc(): vtruncbuf error %d\n", allerror);
@@ -637,7 +636,7 @@ deextend(struct denode *dep, u_long length)
 		error = extendfile(dep, count, NULL, NULL, DE_CLEAR);
 		if (error) {
 			/* truncate the added clusters away again */
-			detrunc(dep, dep->de_FileSize, 0, NULL);
+			detrunc(dep, dep->de_FileSize, 0);
 			return (error);
 		}
 	}
@@ -710,7 +709,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	       dep, dep->de_refcnt, vp->v_mount->mnt_flag, MNT_RDONLY);
 #endif
 	if (dep->de_refcnt <= 0 && (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
-		error = detrunc(dep, (u_long) 0, 0, ap->a_td);
+		error = detrunc(dep, (u_long) 0, 0);
 		dep->de_flag |= DE_UPDATE;
 		dep->de_Name[0] = SLOT_DELETED;
 	}
@@ -726,6 +725,6 @@ out:
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
-		vrecycle(vp, ap->a_td);
+		vrecycle(vp);
 	return (error);
 }

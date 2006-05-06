@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.16 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.17 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -155,8 +155,6 @@ vref(struct vnode *vp)
 void
 vrele(struct vnode *vp)
 {
-	thread_t td = curthread;
-
 	crit_enter();
 	if (vp->v_usecount == 1) {
 		KASSERT(lockcountnb(&vp->v_lock) == 0, ("last vrele vp %p still locked", vp));
@@ -170,7 +168,7 @@ vrele(struct vnode *vp)
 				if ((vp->v_flag & VINACTIVE) == 0 &&
 				    vp->v_usecount == 1) {
 					vp->v_flag |= VINACTIVE;
-					VOP_INACTIVE(vp, td);
+					VOP_INACTIVE(vp);
 				}
 				vx_unlock(vp);
 			}
@@ -309,7 +307,7 @@ vx_put(struct vnode *vp)
  * VX lock after the normal unlock.  XXX make it more efficient.
  */
 int
-vget(struct vnode *vp, int flags, thread_t td)
+vget(struct vnode *vp, int flags)
 {
 	int error;
 

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.37 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.38 2006/05/06 02:43:13 dillon Exp $
  * 
  */
 
@@ -153,7 +153,7 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
 #define UFS_BLKATOFF(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_blkatoff(aa, bb, cc, dd)
 #define UFS_VALLOC(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_valloc(aa, bb, cc, dd)
 #define UFS_VFREE(aa, bb, cc) VFSTOUFS((aa)->v_mount)->um_vfree(aa, bb, cc)
-#define UFS_TRUNCATE(aa, bb, cc, dd, ee) VFSTOUFS((aa)->v_mount)->um_truncate(aa, bb, cc, dd, ee)
+#define UFS_TRUNCATE(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_truncate(aa, bb, cc, dd)
 #define UFS_UPDATE(aa, bb) VFSTOUFS((aa)->v_mount)->um_update(aa, bb)
 
     missing
@@ -225,7 +225,7 @@ coda_open(void *v)
     struct cnode *cp = VTOC(*vpp);
     int flag = ap->a_mode & (~O_EXCL);
     struct ucred *cred = ap->a_cred;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
     struct vnode *vp;
@@ -289,7 +289,7 @@ coda_open(void *v)
     cp->c_inode = inode;
 
     /* Open the cache file. */
-    error = VOP_OPEN(vp, flag, cred, NULL, td); 
+    error = VOP_OPEN(vp, flag, cred, NULL); 
     if (error) {
     	printf("coda_open: VOP_OPEN on container failed %d\n", error);
 	goto done;
@@ -319,7 +319,7 @@ coda_close(void *v)
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     int flag = ap->a_fflag;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
 
@@ -341,7 +341,7 @@ coda_close(void *v)
 #ifdef	hmm
 	    vgone(cp->c_ovp);
 #else
-	    VOP_CLOSE(cp->c_ovp, flag, td); /* Do errors matter here? */
+	    VOP_CLOSE(cp->c_ovp, flag); /* Do errors matter here? */
 	    vrele(cp->c_ovp);
 #endif
 	} else {
@@ -352,7 +352,7 @@ coda_close(void *v)
 	error = ENODEV;
 	goto done;
     } else {
-	VOP_CLOSE(cp->c_ovp, flag, td); /* Do errors matter here? */
+	VOP_CLOSE(cp->c_ovp, flag); /* Do errors matter here? */
 	vrele(cp->c_ovp);
     }
 
@@ -445,8 +445,7 @@ coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw, int ioflag,
 	else {
 	    opened_internally = 1;
 	    MARK_INT_GEN(CODA_OPEN_STATS);
-	    error = VOP_OPEN(vp, (rw == UIO_READ ? FREAD : FWRITE), 
-			     cred, NULL, td);
+	    error = VOP_OPEN(vp, (rw == UIO_READ ? FREAD : FWRITE), cred, NULL);
 printf("coda_rdwr: Internally Opening %p\n", vp);
 	    if (error) {
 		printf("coda_rdwr: VOP_OPEN on container failed %d\n", error);
@@ -481,7 +480,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
 
 	{   struct vattr attr;
 
-	    if (VOP_GETATTR(cfvp, &attr, td) == 0) {
+	    if (VOP_GETATTR(cfvp, &attr) == 0) {
 		vnode_pager_setsize(vp, attr.va_size);
 	    }
 	}
@@ -495,7 +494,7 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
     /* Do an internal close if necessary. */
     if (opened_internally) {
 	MARK_INT_GEN(CODA_CLOSE_STATS);
-	VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE), td);
+	VOP_CLOSE(vp, (rw == UIO_READ ? FREAD : FWRITE));
     }
 
     /* Invalidate cached attributes if writing. */
@@ -514,7 +513,7 @@ coda_ioctl(void *v)
     caddr_t data = ap->a_data;
     int flag = ap->a_fflag;
     struct ucred *cred = ap->a_cred;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
     struct vnode *tvp;
@@ -600,7 +599,7 @@ coda_getattr(void *v)
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vattr *vap = ap->a_vap;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
 
@@ -666,7 +665,7 @@ coda_setattr(void *v)
     struct cnode *cp = VTOC(vp);
     struct vattr *vap = ap->a_vap;
     struct ucred *cred = ap->a_cred;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
 
@@ -705,7 +704,7 @@ coda_access(void *v)
     struct cnode *cp = VTOC(vp);
     int mode = ap->a_mode;
     struct ucred *cred = ap->a_cred;
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     int error;
 
@@ -797,7 +796,7 @@ coda_fsync(void *v)
     struct vop_fsync_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    struct thread *td = ap->a_td;
+    struct thread *td = curthread;
 /* locals */
     struct vnode *convp = cp->c_ovp;
     int error;
@@ -820,7 +819,7 @@ coda_fsync(void *v)
     }
 
     if (convp)
-    	VOP_FSYNC(convp, MNT_WAIT, td);
+    	VOP_FSYNC(convp, MNT_WAIT);
 
     /*
      * We see fsyncs with usecount == 1 then usecount == 0.
@@ -1550,7 +1549,6 @@ coda_readdir(void *v)
     int *eofflag = ap->a_eofflag;
     u_long **cookies = ap->a_cookies;
     int *ncookies = ap->a_ncookies;
-    struct thread *td = ap->a_uio->uio_td;
 /* upcall decl */
 /* locals */
     int error = 0;
@@ -1575,7 +1573,7 @@ coda_readdir(void *v)
 	if (cp->c_ovp == NULL) {
 	    opened_internally = 1;
 	    MARK_INT_GEN(CODA_OPEN_STATS);
-	    error = VOP_OPEN(vp, FREAD, cred, NULL, td);
+	    error = VOP_OPEN(vp, FREAD, cred, NULL);
 printf("coda_readdir: Internally Opening %p\n", vp);
 	    if (error) {
 		printf("coda_readdir: VOP_OPEN on container failed %d\n", error);
@@ -1604,7 +1602,7 @@ printf("coda_readdir: Internally Opening %p\n", vp);
 	/* Do an "internal close" if necessary. */ 
 	if (opened_internally) {
 	    MARK_INT_GEN(CODA_CLOSE_STATS);
-	    VOP_CLOSE(vp, FREAD, td);
+	    VOP_CLOSE(vp, FREAD);
 	}
     }
 

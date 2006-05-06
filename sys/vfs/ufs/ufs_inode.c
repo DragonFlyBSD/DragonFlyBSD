@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.17 2006/04/25 22:11:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.18 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -63,14 +63,13 @@ int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
 /*
  * Last reference to an inode.  If necessary, write or delete it.
  *
- * ufs_inactive(struct vnode *a_vp, struct thread *a_td)
+ * ufs_inactive(struct vnode *a_vp)
  */
 int
 ufs_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
-	struct thread *td = ap->a_td;
 	int mode, error = 0;
 
 	if (prtactive && vp->v_usecount != 1)
@@ -86,7 +85,7 @@ ufs_inactive(struct vop_inactive_args *ap)
 		if (!ufs_getinoquota(ip))
 			(void)ufs_chkiq(ip, -1, NOCRED, FORCE);
 #endif
-		error = UFS_TRUNCATE(vp, (off_t)0, 0, NOCRED, td);
+		error = UFS_TRUNCATE(vp, (off_t)0, 0, NOCRED);
 		ip->i_rdev = 0;
 		mode = ip->i_mode;
 		ip->i_mode = 0;
@@ -101,14 +100,14 @@ out:
 	 * so that it can be reused immediately.
 	 */
 	if (ip == NULL || ip->i_mode == 0)
-		vrecycle(vp, td);
+		vrecycle(vp);
 	return (error);
 }
 
 /*
  * Reclaim an inode so that it can be used for other purposes.
  *
- * ufs_reclaim(struct vnode *a_vp, struct thread *a_td)
+ * ufs_reclaim(struct vnode *a_vp)
  */
 int
 ufs_reclaim(struct vop_reclaim_args *ap)

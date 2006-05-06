@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.14 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -323,7 +323,7 @@ svr4_emul_find(caddr_t *sgp, const char *prefix, char *path, char **pbuf,
 			free(buf, M_TEMP);
 			return (error);
 		}
-		error = VOP_GETATTR(vp, &vat, td);
+		error = VOP_GETATTR(vp, &vat);
 		vrele(vp);
 		if (error)
 			goto done;
@@ -348,7 +348,7 @@ svr4_emul_find(caddr_t *sgp, const char *prefix, char *path, char **pbuf,
 			free(buf, M_TEMP);
 			return (error);
 		}
-		error = VOP_GETATTR(vp, &vatroot, td);
+		error = VOP_GETATTR(vp, &vatroot);
 		vrele(vp);
 		if (error)
 			goto done;

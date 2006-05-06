@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.14 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 		} else {
 			vsetflags(ttyvp, VCTTYISOPEN);
 			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
-			error = VOP_OPEN(ttyvp, FREAD|FWRITE, NOCRED, NULL, td);
+			error = VOP_OPEN(ttyvp, FREAD|FWRITE, NOCRED, NULL);
 			if (error)
 				vclrflags(ttyvp, VCTTYISOPEN);
 			VOP_UNLOCK(ttyvp, 0);
@@ -135,7 +135,7 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 		vclrflags(ttyvp, VCTTYISOPEN);
 		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 		if (error == 0) {
-			error = VOP_CLOSE(ttyvp, FREAD|FWRITE, td);
+			error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
 			VOP_UNLOCK(ttyvp, 0);
 		}
 	} else {
@@ -165,7 +165,7 @@ cttyread(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
 		error = VOP_READ(ttyvp, uio, flag, NOCRED);
 		vput(ttyvp);
 	}
@@ -193,7 +193,7 @@ cttywrite(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
 		error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
 		vput(ttyvp);
 	}
@@ -225,7 +225,7 @@ cttyioctl(dev, cmd, addr, flag, td)
 		} else
 			return (EINVAL);
 	}
-	return (VOP_IOCTL(ttyvp, cmd, addr, flag, NOCRED, td));
+	return (VOP_IOCTL(ttyvp, cmd, addr, flag, NOCRED));
 }
 
 /*ARGSUSED*/
@@ -240,7 +240,7 @@ cttypoll(dev_t dev, int events, struct thread *td)
 	if (ttyvp == NULL)
 		/* try operation to get EOF/failure */
 		return (seltrue(dev, events, td));
-	return (VOP_POLL(ttyvp, events, p->p_ucred, td));
+	return (VOP_POLL(ttyvp, events, p->p_ucred));
 }
 
 static void ctty_drvinit (void *unused);

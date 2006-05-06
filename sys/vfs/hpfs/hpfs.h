@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.18 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.19 2006/05/06 02:43:13 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -401,7 +401,7 @@ typedef int (vop_t) (void *);
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
 #define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b))
 #define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b))
-#define VGET(a, b, c)		vget((a), (b), (c))
+#define VGET(a, b, c)		vget((a), (b))
 #define VN_LOCK(a, b, c)	vn_lock((a), (b))
 #define	LOCKMGR(a, b, d)	lockmgr((a), (b))
 #endif
@@ -413,7 +413,7 @@ void hpfs_hphashinit (void);
 int hpfs_hphash_uninit (struct vfsconf *);
 struct hpfsnode *hpfs_hphashlookup (dev_t, lsn_t);
 struct hpfsnode *hpfs_hphashget (dev_t, lsn_t);
-struct vnode *hpfs_hphashvget (dev_t, lsn_t, struct thread *);
+struct vnode *hpfs_hphashvget (dev_t, lsn_t);
 void hpfs_hphashins (struct hpfsnode *);
 void hpfs_hphashrem (struct hpfsnode *);
 extern struct lock hpfs_hphash_lock;

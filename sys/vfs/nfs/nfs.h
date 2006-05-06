@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.17 2006/05/05 16:35:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.18 2006/05/06 02:43:14 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -600,7 +600,7 @@ void	nfs_sndunlock (struct nfsreq *);
 int	nfs_slplock (struct nfssvc_sock *, int);
 void	nfs_slpunlock (struct nfssvc_sock *);
 int	nfs_disct (struct mbuf **, caddr_t *, int, int, caddr_t *);
-int	nfs_vinvalbuf (struct vnode *, int, struct thread *, int);
+int	nfs_vinvalbuf (struct vnode *, int, int);
 int	nfs_readrpc (struct vnode *, struct uio *);
 int	nfs_writerpc (struct vnode *, struct uio *, int *, int *);
 int	nfs_commit (struct vnode *vp, u_quad_t offset, int cnt, 

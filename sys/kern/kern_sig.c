@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.45 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.46 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1628,7 +1628,6 @@ coredump(struct proc *p)
 {
 	struct vnode *vp;
 	struct ucred *cred = p->p_ucred;
-	struct thread *td = p->p_thread;
 	struct flock lf;
 	struct nlookupdata nd;
 	struct vattr vattr;
@@ -1679,7 +1678,7 @@ coredump(struct proc *p)
 
 	/* Don't dump to non-regular files or files with links. */
 	if (vp->v_type != VREG ||
-	    VOP_GETATTR(vp, &vattr, td) || vattr.va_nlink != 1) {
+	    VOP_GETATTR(vp, &vattr) || vattr.va_nlink != 1) {
 		error = EFAULT;
 		goto out1;
 	}
@@ -1687,7 +1686,7 @@ coredump(struct proc *p)
 	VATTR_NULL(&vattr);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	vattr.va_size = 0;
-	VOP_SETATTR(vp, &vattr, cred, td);
+	VOP_SETATTR(vp, &vattr, cred);
 	p->p_acflag |= ACORE;
 	VOP_UNLOCK(vp, 0);
 
@@ -1698,7 +1697,7 @@ out1:
 	lf.l_type = F_UNLCK;
 	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, F_FLOCK);
 out2:
-	error1 = vn_close(vp, FWRITE, td);
+	error1 = vn_close(vp, FWRITE);
 	if (error == 0)
 		error = error1;
 	return (error);

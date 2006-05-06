@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.17 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.18 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -119,8 +119,7 @@ ext2_update(struct vnode *vp, int waitfor)
  * disk blocks.
  */
 int
-ext2_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
-	      struct thread *td)
+ext2_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 {
 	struct vnode *ovp = vp;
 	daddr_t lastblock;
@@ -254,7 +253,7 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	bcopy((caddr_t)&oip->i_db[0], (caddr_t)newblks, sizeof newblks);
 	bcopy((caddr_t)oldblks, (caddr_t)&oip->i_db[0], sizeof oldblks);
 	oip->i_size = osize;
-	error = vtruncbuf(ovp, td, length, (int)fs->s_blocksize);
+	error = vtruncbuf(ovp, length, (int)fs->s_blocksize);
 	if (error && (allerror == 0))
 		allerror = error;
 
@@ -468,14 +467,13 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, off_t doffset, daddr_t lastbn,
 /*
  * Last reference to an inode.  If necessary, write or delete it.
  *
- * ext2_inactive(struct vnode *a_vp, struct thread *a_td)
+ * ext2_inactive(struct vnode *a_vp)
  */
 int
 ext2_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
-	struct thread *td = ap->a_td;
 	int mode, error = 0;
 
 	ext2_discard_prealloc(ip);
@@ -492,7 +490,7 @@ ext2_inactive(struct vop_inactive_args *ap)
 		if (!ext2_getinoquota(ip))
 			(void)ext2_chkiq(ip, -1, NOCRED, FORCE);
 #endif
-		error = EXT2_TRUNCATE(vp, (off_t)0, 0, NOCRED, td);
+		error = EXT2_TRUNCATE(vp, (off_t)0, 0, NOCRED);
 		ip->i_rdev = 0;
 		mode = ip->i_mode;
 		ip->i_mode = 0;
@@ -507,14 +505,14 @@ out:
 	 * so that it can be reused immediately.
 	 */
 	if (ip == NULL || ip->i_mode == 0)
-		vrecycle(vp, td);
+		vrecycle(vp);
 	return (error);
 }
 
 /*
  * Reclaim an inode so that it can be used for other purposes.
  *
- * ext2_reclaim(struct vnode *a_vp, struct thread *a_td)
+ * ext2_reclaim(struct vnode *a_vp)
  */
 int
 ext2_reclaim(struct vop_reclaim_args *ap)

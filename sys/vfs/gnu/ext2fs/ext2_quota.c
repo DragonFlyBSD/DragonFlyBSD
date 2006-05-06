@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.2 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_quota.c,v 1.3 2006/05/06 02:43:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -490,7 +490,7 @@ ext2_quotaoff(struct thread *td, struct mount *mp, int type)
 	}
 	ext2_dqflush(qvp);
 	qvp->v_flag &= ~VSYSTEM;
-	error = vn_close(qvp, FREAD|FWRITE, td);
+	error = vn_close(qvp, FREAD|FWRITE);
 	ump->um_quotas[type] = NULLVP;
 	crfree(ump->um_cred[type]);
 	ump->um_cred[type] = NOCRED;

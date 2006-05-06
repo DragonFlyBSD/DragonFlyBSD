@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.24 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.25 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -380,7 +380,7 @@ notfound:
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td);
+		error = VOP_ACCESS(vdp, VWRITE, cred);
 		if (error)
 			return (error);
 		/*
@@ -464,7 +464,7 @@ found:
 		/*
 		 * Write access to directory required to delete files.
 		 */
-		error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td);
+		error = VOP_ACCESS(vdp, VWRITE, cred);
 		if (error)
 			return (error);
 		/*
@@ -519,7 +519,7 @@ found:
 	 * regular file, or empty directory.
 	 */
 	if (nameiop == NAMEI_RENAME && wantparent) {
-		if ((error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td)) != 0)
+		if ((error = VOP_ACCESS(vdp, VWRITE, cred)) != 0)
 			return (error);
 		/*
 		 * Careful about locking second inode.
@@ -903,7 +903,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		if (dp->i_dirhash != NULL)
 			ufsdirhash_dirtrunc(dp, dp->i_endoff);
 #endif
-		(void)UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred, td);
+		(void)UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred);
 		if (tvp != NULL)
 			vn_lock(tvp, LK_EXCLUSIVE | LK_RETRY);
 	}
@@ -1063,7 +1063,7 @@ ufs_dirempty(struct inode *ip, ino_t parentino, struct ucred *cred)
 
 	for (off = 0; off < ip->i_size; off += dp->d_reclen) {
 		error = vn_rdwr(UIO_READ, ITOV(ip), (caddr_t)dp, MINDIRSIZ, off,
-		   UIO_SYSSPACE, IO_NODELOCKED, cred, &count, NULL);
+			        UIO_SYSSPACE, IO_NODELOCKED, cred, &count);
 		/*
 		 * Since we read MINDIRSIZ, residual must
 		 * be 0 unless we're at end of file.
@@ -1131,8 +1131,8 @@ ufs_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 			break;
 		}
 		error = vn_rdwr(UIO_READ, vp, (caddr_t)&dirbuf,
-			sizeof (struct dirtemplate), (off_t)0, UIO_SYSSPACE,
-			IO_NODELOCKED, cred, (int *)0, NULL);
+				sizeof (struct dirtemplate), (off_t)0,
+				UIO_SYSSPACE, IO_NODELOCKED, cred, (int *)0);
 		if (error != 0)
 			break;
 #		if (BYTE_ORDER == LITTLE_ENDIAN)

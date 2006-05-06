@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.25 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.26 2006/05/06 02:43:14 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -84,7 +84,7 @@ static MALLOC_DEFINE(M_SMBFSHASH, "SMBFS hash", "SMBFS hash table");
 static int smbfs_mount(struct mount *, char *, caddr_t, struct thread *);
 static int smbfs_root(struct mount *, struct vnode **);
 static int smbfs_statfs(struct mount *, struct statfs *, struct thread *);
-static int smbfs_sync(struct mount *, int, struct thread *);
+static int smbfs_sync(struct mount *, int);
 static int smbfs_unmount(struct mount *, int, struct thread *);
 static int smbfs_init(struct vfsconf *vfsp);
 static int smbfs_uninit(struct vfsconf *vfsp);
@@ -303,7 +303,7 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 	}
 	if (smp->sm_root) {
 		*vpp = SMBTOV(smp->sm_root);
-		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
+		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY);
 	}
 	if (td->td_proc)
 		cred = td->td_proc->p_ucred;
@@ -391,7 +391,7 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  */
 /* ARGSUSED */
 static int
-smbfs_sync(struct mount *mp, int waitfor, struct thread *td)
+smbfs_sync(struct mount *mp, int waitfor)
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -411,9 +411,9 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE))
 			goto loop;
-		error = VOP_FSYNC(vp, waitfor, td);
+		error = VOP_FSYNC(vp, waitfor);
 		if (error)
 			allerror = error;
 		vput(vp);

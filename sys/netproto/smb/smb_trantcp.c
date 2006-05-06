@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.13 2005/12/08 20:20:34 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.14 2006/05/06 02:43:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -96,7 +96,7 @@ nb_setsockopt_int(struct socket *so, int level, int name, int val)
 static __inline int
 nb_poll(struct nbpcb *nbp, int events, struct thread *td)
 {
-	return so_pru_sopoll(nbp->nbp_tso, events, NULL, td);
+	return so_pru_sopoll(nbp->nbp_tso, events, NULL);
 }
 
 static int

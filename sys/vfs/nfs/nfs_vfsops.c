@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.40 2006/05/05 21:27:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.41 2006/05/06 02:43:14 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -123,8 +123,7 @@ static int	nfs_unmount ( struct mount *mp, int mntflags,
 static int	nfs_root ( struct mount *mp, struct vnode **vpp);
 static int	nfs_statfs ( struct mount *mp, struct statfs *sbp,
 			struct thread *td);
-static int	nfs_sync ( struct mount *mp, int waitfor,
-			struct thread *td);
+static int	nfs_sync ( struct mount *mp, int waitfor);
 
 /*
  * nfs vfs operations.
@@ -497,7 +496,7 @@ nfs_mountroot(mp)
 			nd->myif.ifra_addr.sa_family, error);
 	}
 
-	error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, td);
+	error = ifioctl(so, SIOCAIFADDR, (caddr_t)&nd->myif, proc0.p_ucred);
 	if (error)
 		panic("nfs_mountroot: SIOCAIFADDR: %d", error);
 
@@ -1096,7 +1095,7 @@ nfs_root(mp, vpp)
 		nfs_fsinfo(nmp, vp, curthread);
 		mp->mnt_stat.f_iosize = nfs_iosize(1, nmp->nm_sotype);
 	    } else {
-		if ((error = VOP_GETATTR(vp, &attrs, curthread)) == 0)
+		if ((error = VOP_GETATTR(vp, &attrs)) == 0)
 			nmp->nm_state |= NFSSTA_GOTFSINFO;
 		
 	    }
@@ -1112,7 +1111,6 @@ extern int syncprt;
 
 struct scaninfo {
 	int rescan;
-	thread_t td;
 	int waitfor;
 	int allerror;
 };
@@ -1125,13 +1123,12 @@ static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
  */
 /* ARGSUSED */
 static int
-nfs_sync(struct mount *mp, int waitfor, struct thread *td)
+nfs_sync(struct mount *mp, int waitfor)
 {
 	struct scaninfo scaninfo;
 	int error;
 
 	scaninfo.rescan = 0;
-	scaninfo.td = td;
 	scaninfo.waitfor = waitfor;
 	scaninfo.allerror = 0;
 
@@ -1167,7 +1164,7 @@ nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
     struct scaninfo *info = data;
     int error;
 
-    error = VOP_FSYNC(vp, info->waitfor, info->td);
+    error = VOP_FSYNC(vp, info->waitfor);
     if (error)
 	info->allerror = error;
     return(0);

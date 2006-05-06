@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.9 2006/05/05 21:27:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
  */
 
 /*
@@ -210,8 +210,8 @@ sched_sync(void)
 		crit_exit();
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
-			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT, td) == 0) {
-				VOP_FSYNC(vp, MNT_LAZY, td);
+			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
+				VOP_FSYNC(vp, MNT_LAZY);
 				vput(vp);
 			}
 			crit_enter();
@@ -379,7 +379,6 @@ sync_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *syncvp = ap->a_vp;
 	struct mount *mp = syncvp->v_mount;
-	struct thread *td = ap->a_td;
 	int asyncflag;
 
 	/*
@@ -408,7 +407,7 @@ sync_fsync(struct vop_fsync_args *ap)
 		asyncflag = mp->mnt_flag & MNT_ASYNC;
 		mp->mnt_flag &= ~MNT_ASYNC;	/* ZZZ hack */
 		vfs_msync(mp, MNT_NOWAIT);
-		VFS_SYNC(mp, MNT_LAZY, td);
+		VFS_SYNC(mp, MNT_LAZY);
 		if (asyncflag)
 			mp->mnt_flag |= MNT_ASYNC;
 	}

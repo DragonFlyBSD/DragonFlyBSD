@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.11 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.12 2006/05/06 02:43:11 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -191,7 +191,7 @@ ibcs2_open(struct ibcs2_open_args *uap)
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
+			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p->p_ucred);
 	}
 	return ret;
 }

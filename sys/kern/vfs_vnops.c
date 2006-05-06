@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.38 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.39 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,21 +55,20 @@
 #include <sys/conf.h>
 #include <sys/syslog.h>
 
-static int vn_closefile (struct file *fp, struct thread *td);
-static int vn_ioctl (struct file *fp, u_long com, caddr_t data, 
-		struct thread *td);
+static int vn_closefile (struct file *fp);
+static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
+		struct ucred *cred);
 static int vn_read (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
+		struct ucred *cred, int flags);
 static int svn_read (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
-static int vn_poll (struct file *fp, int events, struct ucred *cred,
-		struct thread *td);
+		struct ucred *cred, int flags);
+static int vn_poll (struct file *fp, int events, struct ucred *cred);
 static int vn_kqfilter (struct file *fp, struct knote *kn);
-static int vn_statfile (struct file *fp, struct stat *sb, struct thread *td);
+static int vn_statfile (struct file *fp, struct stat *sb, struct ucred *cred);
 static int vn_write (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
+		struct ucred *cred, int flags);
 static int svn_write (struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td);
+		struct ucred *cred, int flags);
 
 struct fileops vnode_fileops = {
 	NULL,	/* port */
@@ -120,7 +119,6 @@ int
 vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 {
 	struct vnode *vp;
-	struct thread *td = nd->nl_td;
 	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
@@ -238,7 +236,7 @@ again:
 		if (fmode & FREAD)
 			mode |= VREAD;
 		if (mode) {
-		        error = VOP_ACCESS(vp, mode, cred, td);
+		        error = VOP_ACCESS(vp, mode, cred);
 			if (error) {
 				/*
 				 * Special stale handling, re-resolve the
@@ -261,7 +259,7 @@ again:
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
-		error = VOP_SETATTR(vp, vap, cred, td);
+		error = VOP_SETATTR(vp, vap, cred);
 		if (error)
 			goto bad;
 	}
@@ -290,7 +288,7 @@ again:
 		nd->nl_ncp = NULL;
 	}
 
-	error = VOP_OPEN(vp, fmode, cred, fp, td);
+	error = VOP_OPEN(vp, fmode, cred, fp);
 	if (error) {
 		/*
 		 * setting f_ops to &badfileops will prevent the descriptor
@@ -354,12 +352,12 @@ vn_writechk(vp)
  * Vnode close call
  */
 int
-vn_close(struct vnode *vp, int flags, struct thread *td)
+vn_close(struct vnode *vp, int flags)
 {
 	int error;
 
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
-		error = VOP_CLOSE(vp, flags, td);
+		error = VOP_CLOSE(vp, flags);
 		VOP_UNLOCK(vp, 0);
 	}
 	vrele(vp);
@@ -403,17 +401,9 @@ sequential_heuristic(struct uio *uio, struct file *fp)
  * Package up an I/O request on a vnode into a uio and do it.
  */
 int
-vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
-	enum uio_rw rw;
-	struct vnode *vp;
-	caddr_t base;
-	int len;
-	off_t offset;
-	enum uio_seg segflg;
-	int ioflg;
-	struct ucred *cred;
-	int *aresid;
-	struct thread *td;
+vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
+	off_t offset, enum uio_seg segflg, int ioflg, 
+	struct ucred *cred, int *aresid)
 {
 	struct uio auio;
 	struct iovec aiov;
@@ -429,7 +419,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 	auio.uio_offset = offset;
 	auio.uio_segflg = segflg;
 	auio.uio_rw = rw;
-	auio.uio_td = td;
+	auio.uio_td = curthread;
 	if (rw == UIO_READ) {
 		error = VOP_READ(vp, &auio, ioflg, cred);
 	} else {
@@ -454,17 +444,9 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
  * core'ing the same binary, or unrelated processes scanning the directory).
  */
 int
-vn_rdwr_inchunks(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
-	enum uio_rw rw;
-	struct vnode *vp;
-	caddr_t base;
-	int len;
-	off_t offset;
-	enum uio_seg segflg;
-	int ioflg;
-	struct ucred *cred;
-	int *aresid;
-	struct thread *td;
+vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
+		 off_t offset, enum uio_seg segflg, int ioflg,
+		 struct ucred *cred, int *aresid)
 {
 	int error = 0;
 
@@ -484,7 +466,7 @@ vn_rdwr_inchunks(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 		if (rw != UIO_READ && vp->v_type == VREG)
 			bwillwrite();
 		error = vn_rdwr(rw, vp, base, chunk, offset, segflg,
-			    ioflg, cred, aresid, td);
+			    ioflg, cred, aresid);
 		len -= chunk;	/* aresid calc already includes length */
 		if (error)
 			break;
@@ -501,17 +483,13 @@ vn_rdwr_inchunks(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
  * File table vnode read routine.
  */
 static int
-vn_read(fp, uio, cred, flags, td)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct thread *td;
-	int flags;
+vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct vnode *vp;
 	int error, ioflag;
 
-	KASSERT(uio->uio_td == td, ("uio_td %p is not td %p", uio->uio_td, td));
+	KASSERT(uio->uio_td == curthread,
+		("uio_td %p is not td %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
 	ioflag = 0;
 	if (fp->f_flag & FNONBLOCK)
@@ -539,19 +517,15 @@ vn_read(fp, uio, cred, flags, td)
  * filesystems just route to specfs and can make this optimization.
  */
 static int
-svn_read(fp, uio, cred, flags, td)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct thread *td;
-	int flags;
+svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct vnode *vp;
 	int ioflag;
 	int error;
 	dev_t dev;
 
-	KASSERT(uio->uio_td == td, ("uio_td %p is not td %p", uio->uio_td, td));
+	KASSERT(uio->uio_td == curthread,
+		("uio_td %p is not td %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
 	if (vp == NULL || vp->v_type == VBAD)
@@ -586,18 +560,13 @@ svn_read(fp, uio, cred, flags, td)
  * File table vnode write routine.
  */
 static int
-vn_write(fp, uio, cred, flags, td)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct thread *td;
-	int flags;
+vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct vnode *vp;
 	int error, ioflag;
 
-	KASSERT(uio->uio_td == td, ("uio_procp %p is not p %p", 
-	    uio->uio_td, td));
+	KASSERT(uio->uio_td == curthread,
+		("uio_procp %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
 	if (vp->v_type == VREG)
 		bwillwrite();
@@ -631,20 +600,15 @@ vn_write(fp, uio, cred, flags, td)
  * filesystems just route to specfs and can make this optimization.
  */
 static int
-svn_write(fp, uio, cred, flags, td)
-	struct file *fp;
-	struct uio *uio;
-	struct ucred *cred;
-	struct thread *td;
-	int flags;
+svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct vnode *vp;
 	int ioflag;
 	int error;
 	dev_t dev;
 
-	KASSERT(uio->uio_td == td, ("uio_procp %p is not p %p", 
-	    uio->uio_td, td));
+	KASSERT(uio->uio_td == curthread,
+		("uio_procp %p is not p %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
 	if (vp == NULL || vp->v_type == VBAD)
@@ -686,15 +650,15 @@ svn_write(fp, uio, cred, flags, td)
  * File table vnode stat routine.
  */
 static int
-vn_statfile(struct file *fp, struct stat *sb, struct thread *td)
+vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	struct vnode *vp = (struct vnode *)fp->f_data;
 
-	return vn_stat(vp, sb, td);
+	return vn_stat(vp, sb, cred);
 }
 
 int
-vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
+vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 {
 	struct vattr vattr;
 	struct vattr *vap;
@@ -703,7 +667,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	dev_t dev;
 
 	vap = &vattr;
-	error = VOP_GETATTR(vp, vap, td);
+	error = VOP_GETATTR(vp, vap);
 	if (error)
 		return (error);
 
@@ -810,7 +774,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 	}
 	
 	sb->st_flags = vap->va_flags;
-	if (suser(td))
+	if (suser_cred(cred, 0))
 		sb->st_gen = 0;
 	else
 		sb->st_gen = vap->va_gen;
@@ -829,22 +793,18 @@ vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
  * File table vnode ioctl routine.
  */
 static int
-vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
+vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 {
 	struct vnode *vp = ((struct vnode *)fp->f_data);
 	struct vnode *ovp;
-	struct ucred *ucred;
 	struct vattr vattr;
 	int error;
-
-	KKASSERT(td->td_proc != NULL);
-	ucred = td->td_proc->p_ucred;
 
 	switch (vp->v_type) {
 	case VREG:
 	case VDIR:
 		if (com == FIONREAD) {
-			error = VOP_GETATTR(vp, &vattr, td);
+			error = VOP_GETATTR(vp, &vattr);
 			if (error)
 				return (error);
 			*(int *)data = vattr.va_size - fp->f_offset;
@@ -866,10 +826,15 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 			*(int *)data = dev_dflags(vp->v_rdev) & D_TYPEMASK;
 			return (0);
 		}
-		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred, td);
+		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred);
 		if (error == 0 && com == TIOCSCTTY) {
-			struct session *sess = td->td_proc->p_session;
+			struct proc *p = curthread->td_proc;
+			struct session *sess;
 
+			if (p == NULL)
+				return (ENOTTY);
+
+			sess = p->p_session;
 			/* Do nothing if reassigning same control tty */
 			if (sess->s_ttyvp == vp)
 				return (0);
@@ -889,9 +854,9 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
  * File table vnode poll routine.
  */
 static int
-vn_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
+vn_poll(struct file *fp, int events, struct ucred *cred)
 {
-	return (VOP_POLL(((struct vnode *)fp->f_data), events, cred, td));
+	return (VOP_POLL(((struct vnode *)fp->f_data), events, cred));
 }
 
 /*
@@ -933,12 +898,12 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
  * File table vnode close routine.
  */
 static int
-vn_closefile(struct file *fp, struct thread *td)
+vn_closefile(struct file *fp)
 {
 	int err;
 
 	fp->f_ops = &badfileops;
-	err = vn_close(((struct vnode *)fp->f_data), fp->f_flag, td);
+	err = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
 	return(err);
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.8 2005/07/13 01:38:50 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.9 2006/05/06 02:43:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,8 +61,7 @@ struct	fileops socketops = {
 
 /* ARGSUSED */
 int
-soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
-    struct thread *td)
+soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct socket *so = (struct socket *)fp->f_data;
 
@@ -71,8 +70,7 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
 
 /* ARGSUSED */
 int
-soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
-    struct thread *td)
+soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	struct socket *so = (struct socket *)fp->f_data;
 
@@ -80,7 +78,7 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
 }
 
 int
-soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
+soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct socket *so = (struct socket *)fp->f_data;
 
@@ -133,21 +131,21 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 	 * different entry since a socket's unnecessary
 	 */
 	if (IOCGROUP(cmd) == 'i')
-		return (ifioctl(so, cmd, data, td));
+		return (ifioctl(so, cmd, data, cred));
 	if (IOCGROUP(cmd) == 'r')
-		return (rtioctl(cmd, data, td));
-	return (so_pru_control(so, cmd, data, NULL, td));
+		return (rtioctl(cmd, data, cred));
+	return (so_pru_control(so, cmd, data, NULL));
 }
 
 int
-soo_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
+soo_poll(struct file *fp, int events, struct ucred *cred)
 {
 	struct socket *so = (struct socket *)fp->f_data;
-	return (so_pru_sopoll(so, events, cred, td));
+	return (so_pru_sopoll(so, events, cred));
 }
 
 int
-soo_stat(struct file *fp, struct stat *ub, struct thread *td)
+soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 {
 	struct socket *so = (struct socket *)fp->f_data;
 
@@ -170,7 +168,7 @@ soo_stat(struct file *fp, struct stat *ub, struct thread *td)
 
 /* ARGSUSED */
 int
-soo_close(struct file *fp, struct thread *td)
+soo_close(struct file *fp)
 {
 	int error = 0;
 
@@ -183,7 +181,7 @@ soo_close(struct file *fp, struct thread *td)
 
 /* ARGSUSED */
 int
-soo_shutdown(struct file *fp, int how, struct thread *td)
+soo_shutdown(struct file *fp, int how)
 {
 	int error = 0;
 
