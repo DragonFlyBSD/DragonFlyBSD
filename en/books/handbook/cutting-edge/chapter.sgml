@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/cutting-edge/chapter.sgml,v 1.200 2004/05/17 19:48:36 simon Exp $
-     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.3 2005/06/27 23:22:08 reed Exp $
+     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.4 2006/05/07 02:58:28 justin Exp $
 -->
 
 <chapter id="updating">
@@ -19,15 +19,15 @@
 
   <sect1 id="updating-setup">
     <title>Initial Setup</title>
-      <para>Updates to the DragonFly source, the ports system, and the dfports 
-      system are all performed using <application>cvsup</application>.  
+      <para>Updates to the DragonFly source code
+      is performed using <application>cvsup</application>.  
       <application>cvsup</application> compares your local system source or 
       ports files to a remote repository, and downloads any changes.  Only the 
       differences in the files are downloaded, saving on bandwidth and time.</para>
   
       <para><application>cvsup</application> exists as a port 
       (<filename role="package">net/cvsup</filename>) and traditionally had to be 
-      installed separately on FreeBSD.  With &os;, the port is installed as part 
+      installed separately on FreeBSD.  With &os;, the binary is installed as part 
       of the base system.</para>
   </sect1>
   
@@ -49,34 +49,26 @@
 
 
 cvs-src
-cvs-dfports</programlisting>
+</programlisting>
 
-      <para>Alternately, the file <filename>/usr/share/examples/cvsup/DragonFly-src-supfile</filename> 
-      can be used as-is to update system source.  Add the line <userinput>cvs-dfports</userinput> to 
-      also update the dfports collection.</para>
+      <para>Alternately, the file 
+      <filename>/usr/share/examples/cvsup/DragonFly-src-supfile</filename> 
+      can be used as-is to update system source.  
 
 
 <!--
-TODO: link to an explanation of ports and dfports, so people know why to go through this.
+TODO: link to an explanation of pkgsrc, which is similar.  Also, 
+an explanation of the different tags; this example goes to bleeding-edge.
 -->
 
       <para>Run cvsup using <filename>/usr/share/examples/cvsup/DragonFly-src-supfile</filename> 
       as an argument or with a separate file containing the above example text.  Your system 
-      source files will be updated, and (if you include <userinput>cvs-dfports</userinput>) 
-      your dfports overrides will also be up-to-date.</para>  
+      source files will be updated.
+      </para>  
 
   </sect1>
-  <sect1 id="updating-ports">
-    <title>Port updates</title>
-      <para>Assuming you have already completed the above steps to update your system 
-      source and dfports, updating ports is very simple:</para>
 
-      <screen>cvsup -h <userinput>hostname</userinput> /usr/src/share/examples/cvsup/FreeBSD-ports-supfile</screen>
-
-      <para><userinput>hostname</userinput> should be the closest mirror to you.  A 
-      list of mirrors sites can be found on the 
-      <ulink url="http://www.dragonflybsd.org/main/download.cgi">&os; website</ulink>.</para>
-  </sect1>
+<!-- TODO: pkgsrc section here -->
 
   <sect1 id="updating-before-building">
     <title>Preparing to Update</title>
