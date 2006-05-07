@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.24 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.25 2006/05/07 00:24:58 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -163,6 +163,8 @@ struct mount {
 	struct namecache *mnt_ncp;		/* NCF_MNTPT ncp */
 
 	struct journallst mnt_jlist;		/* list of active journals */
+	u_int8_t	*mnt_jbitmap;		/* streamid bitmap */
+	int16_t		mnt_streamid;		/* last streamid */
 };
 
 #endif /* _KERNEL || _KERNEL_STRUCTURES */

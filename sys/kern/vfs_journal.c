@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.25 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.26 2006/05/07 00:24:56 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -294,16 +294,22 @@ journal_mountctl(struct vop_mountctl_args *ap)
 static int
 journal_attach(struct mount *mp)
 {
+    KKASSERT(mp->mnt_jbitmap == NULL);
     vfs_add_vnodeops(mp, &mp->mnt_vn_journal_ops, 
 		     journal_vnodeop_entries, 0);
+    mp->mnt_jbitmap = malloc(JREC_STREAMID_JMAX/8, M_JOURNAL, M_WAITOK|M_ZERO);
+    mp->mnt_streamid = JREC_STREAMID_JMIN;
     return(0);
 }
 
 static void
 journal_detach(struct mount *mp)
 {
+    KKASSERT(mp->mnt_jbitmap != NULL);
     if (mp->mnt_vn_journal_ops)
 	vfs_rm_vnodeops(&mp->mnt_vn_journal_ops);
+    free(mp->mnt_jbitmap, M_JOURNAL);
+    mp->mnt_jbitmap = NULL;
 }
 
 /*
@@ -501,6 +507,7 @@ journal_destroy(struct mount *mp, struct journal *jo, int flags)
     if (jo->fifo.membase)
 	free(jo->fifo.membase, M_JFIFO);
     free(jo, M_JOURNAL);
+
     return(0);
 }
 
@@ -1229,18 +1236,50 @@ jreclist_init(struct mount *mp, struct jrecord_list *jreclist,
 {
     struct journal *jo;
     struct jrecord *jrec;
-    int wantrev = 0;
-    int count = 0;
+    int wantrev;
+    int count;
+    int16_t streamid;
 
-    TAILQ_INIT(jreclist);
+    TAILQ_INIT(&jreclist->list);
+
+    /*
+     * Select the stream ID to use for the transaction.  We must select
+     * a stream ID that is not currently in use by some other parallel
+     * transaction.  
+     *
+     * Don't bother calculating the next streamid when reassigning
+     * mnt_streamid, since parallel transactions are fairly rare.  This
+     * also allows someone observing the raw records to clearly see
+     * when parallel transactions occur.
+     */
+    streamid = mp->mnt_streamid;
+    count = 0;
+    while (mp->mnt_jbitmap[streamid >> 3] & (1 << (streamid & 7))) {
+	if (++streamid == JREC_STREAMID_JMAX)
+		streamid = JREC_STREAMID_JMIN;
+	if (++count == JREC_STREAMID_JMAX - JREC_STREAMID_JMIN) {
+		printf("jreclist_init: all streamid's in use! sleeping\n");
+		tsleep(jreclist, 0, "jsidfl", hz * 10);
+		count = 0;
+	}
+    }
+    mp->mnt_jbitmap[streamid >> 3] |= 1 << (streamid & 7);
+    mp->mnt_streamid = streamid;
+    jreclist->streamid = streamid;
+
+    /*
+     * Now initialize a stream on each journal.
+     */
+    count = 0;
+    wantrev = 0;
     TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	if (count == 0)
 	    jrec = jreccache;
 	else
 	    jrec = malloc(sizeof(*jrec), M_JOURNAL, M_WAITOK);
-	jrecord_init(jo, jrec, -1);
+	jrecord_init(jo, jrec, streamid);
 	jrec->user_save = jrecord_push(jrec, rectype);
-	TAILQ_INSERT_TAIL(jreclist, jrec, user_entry);
+	TAILQ_INSERT_TAIL(&jreclist->list, jrec, user_entry);
 	if (jo->flags & MC_JOURNAL_WANT_REVERSABLE)
 	    wantrev = 1;
 	++count;
@@ -1254,22 +1293,34 @@ jreclist_init(struct mount *mp, struct jrecord_list *jreclist,
  */
 static
 void
-jreclist_done(struct jrecord_list *jreclist, int error)
+jreclist_done(struct mount *mp, struct jrecord_list *jreclist, int error)
 {
     struct jrecord *jrec;
     int count;
 
-    TAILQ_FOREACH(jrec, jreclist, user_entry) {
+    /*
+     * Cleanup the jrecord state on each journal.
+     */
+    TAILQ_FOREACH(jrec, &jreclist->list, user_entry) {
 	jrecord_pop(jrec, jrec->user_save);
 	jrecord_done(jrec, error);
     }
+
+    /*
+     * Free allocated jrec's (the first is always supplied)
+     */
     count = 0;
-    while ((jrec = TAILQ_FIRST(jreclist)) != NULL) {
-	TAILQ_REMOVE(jreclist, jrec, user_entry);
+    while ((jrec = TAILQ_FIRST(&jreclist->list)) != NULL) {
+	TAILQ_REMOVE(&jreclist->list, jrec, user_entry);
 	if (count)
 	    free(jrec, M_JOURNAL);
 	++count;
     }
+
+    /*
+     * Clear the streamid so it can be reused.
+     */
+    mp->mnt_jbitmap[jreclist->streamid >> 3] &= ~(1 << (jreclist->streamid & 7));
 }
 
 /*
@@ -1291,7 +1342,7 @@ jreclist_undo_file(struct jrecord_list *jreclist, struct vnode *vp,
     if (jrflags & JRUNDO_GETVP)
 	error = vget(vp, LK_SHARED);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist->list, user_entry) {
 	    if (jrec->jo->flags & MC_JOURNAL_WANT_REVERSABLE) {
 		jrecord_undo_file(jrec, vp, jrflags, off, bytes);
 	    }
@@ -1309,8 +1360,6 @@ jreclist_undo_file(struct jrecord_list *jreclist, struct vnode *vp,
  *		 in the logical streams managed by the journal_*() routines.
  */
 
-static int16_t sid = JREC_STREAMID_JMIN;
-
 /*
  * Initialize the passed jrecord structure and start a new stream transaction
  * by reserving an initial build space in the journal's memory FIFO.
@@ -1320,11 +1369,6 @@ jrecord_init(struct journal *jo, struct jrecord *jrec, int16_t streamid)
 {
     bzero(jrec, sizeof(*jrec));
     jrec->jo = jo;
-    if (streamid < 0) {
-	streamid = sid++;	/* XXX need to track stream ids! */
-	if (sid == JREC_STREAMID_JMAX)
-	    sid = JREC_STREAMID_JMIN;
-    }
     jrec->streamid = streamid;
     jrec->stream_residual = JREC_DEFAULTSIZE;
     jrec->stream_reserved = jrec->stream_residual;
@@ -2137,7 +2181,7 @@ journal_setattr(struct vop_setattr_args *ap)
     }
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, curthread, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
@@ -2145,7 +2189,7 @@ journal_setattr(struct vop_setattr_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2214,7 +2258,7 @@ journal_write(struct vop_write_args *ap)
      * Output the write data to the journal.
      */
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
@@ -2222,7 +2266,7 @@ journal_write(struct vop_write_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
 
     if (uio_copy.uio_iov != &uio_one_iovec)
 	free(uio_copy.uio_iov, M_JOURNAL);
@@ -2280,7 +2324,7 @@ journal_putpages(struct vop_putpages_args *ap)
     }
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0 && ap->a_count > 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_vnode_ref(jrec, ap->a_vp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
 	    jrecord_write_pagelist(jrec, JLEAF_FILEDATA, ap->a_m, ap->a_rtvals, 
@@ -2288,7 +2332,7 @@ journal_putpages(struct vop_putpages_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2309,7 +2353,7 @@ journal_setacl(struct vop_setacl_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SETACL);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 #if 0
 	    if ((jo->flags & MC_JOURNAL_WANT_REVERSABLE))
 		jrecord_undo_file(jrec, ap->a_vp, JRUNDO_XXX, 0, 0);
@@ -2323,7 +2367,7 @@ journal_setacl(struct vop_setacl_args *ap)
 #endif
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2345,7 +2389,7 @@ journal_setextattr(struct vop_setextattr_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SETEXTATTR);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 #if 0
 	    if ((jo->flags & MC_JOURNAL_WANT_REVERSABLE))
 		jrecord_undo_file(jrec, ap->a_vp, JRUNDO_XXX, 0, 0);
@@ -2358,7 +2402,7 @@ journal_setextattr(struct vop_setextattr_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2380,7 +2424,7 @@ journal_ncreate(struct vop_ncreate_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_CREATE);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	    if (*ap->a_vpp)
@@ -2390,7 +2434,7 @@ journal_ncreate(struct vop_ncreate_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2412,7 +2456,7 @@ journal_nmknod(struct vop_nmknod_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_MKNOD);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
@@ -2422,7 +2466,7 @@ journal_nmknod(struct vop_nmknod_args *ap)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2444,7 +2488,7 @@ journal_nlink(struct vop_nlink_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_LINK);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	    /* XXX PATH to VP and inode number */
@@ -2455,7 +2499,7 @@ journal_nlink(struct vop_nlink_args *ap)
 	    jrecord_pop(jrec, save);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2477,7 +2521,7 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SYMLINK);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	    save = jrecord_push(jrec, JTYPE_REDO);
@@ -2488,7 +2532,7 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2509,12 +2553,12 @@ journal_nwhiteout(struct vop_nwhiteout_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_WHITEOUT);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2540,12 +2584,12 @@ journal_nremove(struct vop_nremove_args *ap)
     }
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2566,7 +2610,7 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_MKDIR);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 #if 0
 	    if (jo->flags & MC_JOURNAL_WANT_AUDIT) {
 		jrecord_write_audit(jrec);
@@ -2580,7 +2624,7 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
 		jrecord_write_vnode_ref(jrec, *ap->a_vpp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2604,12 +2648,12 @@ journal_nrmdir(struct vop_nrmdir_args *ap)
     }
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_ncp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 
@@ -2635,13 +2679,13 @@ journal_nrename(struct vop_nrename_args *ap)
     }
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
-	TAILQ_FOREACH(jrec, &jreclist, user_entry) {
+	TAILQ_FOREACH(jrec, &jreclist.list, user_entry) {
 	    jrecord_write_cred(jrec, NULL, ap->a_cred);
 	    jrecord_write_path(jrec, JLEAF_PATH1, ap->a_fncp);
 	    jrecord_write_path(jrec, JLEAF_PATH2, ap->a_tncp);
 	}
     }
-    jreclist_done(&jreclist, error);
+    jreclist_done(mp, &jreclist, error);
     return (error);
 }
 

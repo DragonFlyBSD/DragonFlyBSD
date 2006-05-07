@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.10 2005/08/24 20:28:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.11 2006/05/07 00:24:58 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -187,7 +187,10 @@ struct jrecord {
 	void *user_save;
 };
 
-TAILQ_HEAD(jrecord_list, jrecord);
+struct jrecord_list {
+	TAILQ_HEAD(, jrecord) list;
+	int16_t		streamid;
+};
 
 #endif
 #endif

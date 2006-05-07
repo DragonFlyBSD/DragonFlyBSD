@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.10 2005/09/07 19:04:16 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.11 2006/05/07 00:24:58 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -103,6 +103,15 @@
  * 16 byte aligned, not 24 byte aligned, and dead space is not allowed.
  * So the pad record must fit into any dead space.  THEREFORE, THE TRANSID
  * FIELD FOR A PAD RECORD MUST BE IGNORED.
+ *
+ * NOTE: ENDIAN HANDLING.  Data records can be in little or big endian form.
+ * The receiver detects the state by observing the 'begmagic' field.  Each
+ * direction in a full-duplex connection can be operating with different
+ * endianess.  Checksum data is always calculated on the raw record (including
+ * dead space) in a byte-stream fashion, and then converted to the transmit
+ * endianess like everything else.  If the receiver's endianess is different
+ * it must convert it back to host normal form to compare it against the
+ * calculated checksum.
  */
 struct journal_rawrecbeg {
 	u_int16_t begmagic;	/* recovery scan, endianess detection */
