@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.46 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.47 2006/05/07 19:17:13 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1672,7 +1672,7 @@ coredump(struct proc *p)
 	lf.l_start = 0;
 	lf.l_len = 0;
 	lf.l_type = F_WRLCK;
-	error = VOP_ADVLOCK(vp, (caddr_t)p, F_SETLK, &lf, F_FLOCK);
+	error = VOP_ADVLOCK(vp, (caddr_t)p, F_SETLK, &lf, 0);
 	if (error)
 		goto out2;
 
@@ -1695,7 +1695,7 @@ coredump(struct proc *p)
 
 out1:
 	lf.l_type = F_UNLCK;
-	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, F_FLOCK);
+	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, 0);
 out2:
 	error1 = vn_close(vp, FWRITE);
 	if (error == 0)

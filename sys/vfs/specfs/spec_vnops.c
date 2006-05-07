@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.43 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.44 2006/05/07 19:17:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -634,7 +634,7 @@ spec_print(struct vop_print_args *ap)
 static int
 spec_advlock(struct vop_advlock_args *ap)
 {
-	return (ap->a_flags & F_FLOCK ? EOPNOTSUPP : EINVAL);
+	return ((ap->a_flags & F_POSIX) ? EINVAL : EOPNOTSUPP);
 }
 
 static void

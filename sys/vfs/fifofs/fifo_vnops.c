@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.28 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.29 2006/05/07 19:17:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -615,7 +615,7 @@ fifo_pathconf(struct vop_pathconf_args *ap)
 static int
 fifo_advlock(struct vop_advlock_args *ap)
 {
-	return (ap->a_flags & F_FLOCK ? EOPNOTSUPP : EINVAL);
+	return ((ap->a_flags & F_POSIX) ? EINVAL : EOPNOTSUPP);
 }
 
 /*

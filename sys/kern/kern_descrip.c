@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.54 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.55 2006/05/07 19:17:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1651,7 +1651,7 @@ fdrop(struct file *fp)
 		lf.l_len = 0;
 		lf.l_type = F_UNLCK;
 		vp = (struct vnode *)fp->f_data;
-		(void) VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, F_FLOCK);
+		(void) VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, 0);
 	}
 	if (fp->f_ops != &badfileops)
 		error = fo_close(fp);
@@ -1689,7 +1689,7 @@ flock(struct flock_args *uap)
 	if (uap->how & LOCK_UN) {
 		lf.l_type = F_UNLCK;
 		fp->f_flag &= ~FHASLOCK;
-		return (VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, F_FLOCK));
+		return (VOP_ADVLOCK(vp, (caddr_t)fp, F_UNLCK, &lf, 0));
 	}
 	if (uap->how & LOCK_EX)
 		lf.l_type = F_WRLCK;
@@ -1699,8 +1699,8 @@ flock(struct flock_args *uap)
 		return (EBADF);
 	fp->f_flag |= FHASLOCK;
 	if (uap->how & LOCK_NB)
-		return (VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_FLOCK));
-	return (VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_FLOCK|F_WAIT));
+		return (VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, 0));
+	return (VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, F_WAIT));
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.88 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.89 2006/05/07 19:17:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1378,9 +1378,10 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			lf.l_type = F_WRLCK;
 		else
 			lf.l_type = F_RDLCK;
-		type = F_FLOCK;
-		if ((flags & FNONBLOCK) == 0)
-			type |= F_WAIT;
+		if (flags & FNONBLOCK)
+			type = 0;
+		else
+			type = F_WAIT;
 
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
@@ -3228,9 +3229,10 @@ fhopen(struct fhopen_args *uap)
 			lf.l_type = F_WRLCK;
 		else
 			lf.l_type = F_RDLCK;
-		type = F_FLOCK;
-		if ((fmode & FNONBLOCK) == 0)
-			type |= F_WAIT;
+		if (fmode & FNONBLOCK)
+			type = 0;
+		else
+			type = F_WAIT;
 		VOP_UNLOCK(vp, 0);
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
