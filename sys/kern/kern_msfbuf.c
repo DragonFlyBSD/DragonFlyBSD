@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.16 2005/08/01 20:05:53 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.17 2006/05/07 00:22:37 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -63,18 +63,21 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
+#include <sys/proc.h>
 #include <sys/sfbuf.h>
 #include <sys/sysctl.h>
 #include <sys/thread.h>
 #include <sys/xio.h>
 #include <sys/msfbuf.h>
 #include <sys/uio.h>
+#include <sys/lock.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_page.h>
+#include <vm/vm_map.h>
 #include <vm/pmap.h>
 
 #include <sys/thread2.h>
@@ -270,7 +273,7 @@ msf_map_ubuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
 		return (ERANGE);
 	}
 
-	if ((paddr = pmap_kextract((vm_offset_t)base)) != 0)
+	if ((paddr = pmap_extract(&curproc->p_vmspace->vm_pmap, (vm_offset_t)base)) != 0)
 		msf = msf_alloc(PHYS_TO_VM_PAGE(paddr), flags);
 	else
 		msf = msf_alloc(NULL, flags);
