@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.10 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.11 2006/05/07 00:23:08 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -115,7 +115,7 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 	for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
 	    if (vm_fault_quick((caddr_t)addr, vmprot) < 0)
 		break;
-	    if ((paddr = pmap_kextract(addr)) == 0)
+	    if ((paddr = pmap_extract(&curproc->p_vmspace->vm_pmap, addr)) == 0)
 		break;
 	    crit_enter();
 	    m = PHYS_TO_VM_PAGE(paddr);
