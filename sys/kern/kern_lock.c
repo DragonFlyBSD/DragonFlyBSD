@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.19 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.20 2006/05/07 00:51:11 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -438,9 +438,12 @@ lockmgr_kernproc(struct lock *lp)
 {
 	struct thread *td = curthread;
 
-	KASSERT(lp->lk_lockholder == td, ("lockmgr_kernproc: lock not owned by curthread %p", td));
-	COUNT(td, -1);
-	lp->lk_lockholder = LK_KERNTHREAD;
+	if (lp->lk_lockholder != LK_KERNTHREAD) {
+		KASSERT(lp->lk_lockholder == td, 
+		    ("lockmgr_kernproc: lock not owned by curthread %p", td));
+		COUNT(td, -1);
+		lp->lk_lockholder = LK_KERNTHREAD;
+	}
 }
 
 /*
