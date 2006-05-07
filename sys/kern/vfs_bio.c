@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.74 2006/05/05 16:35:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.75 2006/05/07 00:24:02 dillon Exp $
  */
 
 /*
@@ -3427,7 +3427,7 @@ retry:
 		 * Extract from current process's address map.  Since the
 		 * fault succeeded, an empty page indicates a race.
 		 */
-		pa = pmap_kextract((vm_offset_t)addr);
+		pa = pmap_extract(&curproc->p_vmspace->vm_pmap, (vm_offset_t)addr);
 		if (pa == 0) {
 			printf("vmapbuf: warning, race against user address during I/O");
 			goto retry;
