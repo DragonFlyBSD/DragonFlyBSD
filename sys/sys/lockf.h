@@ -35,7 +35,7 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.8 2006/05/08 00:38:59 dillon Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
@@ -64,9 +64,11 @@ struct lockf_range {
 	TAILQ_ENTRY(lockf_range) lf_link;
 };
 
+TAILQ_HEAD(lockf_range_list, lockf_range);
+
 struct lockf {
-	TAILQ_HEAD(, lockf_range) lf_range;
-	TAILQ_HEAD(, lockf_range) lf_blocked;
+	struct lockf_range_list lf_range;
+	struct lockf_range_list lf_blocked;
 	int init_done;
 };
 

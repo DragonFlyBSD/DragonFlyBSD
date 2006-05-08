@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
+ * Copyright (c) 2006 Matthew Dillon <dillon@backplane.com>.  All rights reserved.
  *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.27 2006/05/07 19:17:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.28 2006/05/08 00:38:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,25 +76,50 @@ static void _lf_printf(const char *, ...);
 static MALLOC_DEFINE(M_LOCKF, "lockf", "Byte-range locking structures");
 
 static void	lf_wakeup(struct lockf *, off_t, off_t);
-static int	lf_overlap(const struct lockf_range *, off_t, off_t);
-static int	lf_overlap_left(const struct lockf_range *, off_t, off_t);
-static int	lf_overlap_right(const struct lockf_range *, off_t, off_t);
-static int	lf_overlap_left2(const struct lockf_range *, off_t, off_t);
-static int	lf_overlap_right2(const struct lockf_range *, off_t, off_t);
-static int	lf_overlap_embedded(const struct lockf_range *, off_t, off_t);
 static struct lockf_range *lf_alloc_range(void);
 static void	lf_create_range(struct lockf_range *, struct proc *, int, int,
 				off_t, off_t);
+static void	lf_insert(struct lockf_range_list *list,
+				struct lockf_range *elm,
+				struct lockf_range *insert_point);
 static void	lf_destroy_range(struct lockf_range *);
 
 static int	lf_setlock(struct lockf *, struct proc *, int, int,
 			   off_t, off_t);
-static int	lf_clearlock(struct lockf *, struct proc *, int, int,
-			     off_t, off_t);
 static int	lf_getlock(struct flock *, struct lockf *, struct proc *,
 			   int, int, off_t, off_t);
 
 static int	lf_count_change(struct proc *, int);
+
+/*
+ * Return TRUE (non-zero) if the type and posix flags match.
+ */
+static __inline
+int
+lf_match(struct lockf_range *range, int type, int flags)
+{
+	if (range->lf_type != type)
+		return(0);
+	if ((range->lf_flags ^ flags) & F_POSIX)
+		return(0);
+	return(1);
+}
+
+/*
+ * Check whether range and [start, end] overlap.
+ */
+static __inline
+int
+lf_overlap(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_start >= start && range->lf_start <= end)
+		return(1);
+	else if (start >= range->lf_start && start <= range->lf_end)
+		return(1);
+	else
+		return(0);
+}
+
 
 /*
  * Change the POSIX lock accounting for the given process.
@@ -217,7 +243,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		break;
 
 	case F_UNLCK:
-		error = lf_clearlock(lock, owner, type, flags, start, end);
+		error = lf_setlock(lock, owner, type, flags, start, end);
 		break;
 
 	case F_GETLK:
@@ -236,46 +262,90 @@ static int
 lf_setlock(struct lockf *lock, struct proc *owner, int type, int flags,
 	   off_t start, off_t end)
 {
-	struct lockf_range *range, *first_match, *insert_point;
-	int wakeup_needed, lock_needed;
-	/* pre-allocation to avoid blocking in the middle of the algorithm */
-	struct lockf_range *new_range1 = NULL, *new_range2 = NULL;
+	struct lockf_range *range;
+	struct lockf_range *brange;
+	struct lockf_range *next;
+	struct lockf_range *first_match;
+	struct lockf_range *last_match;
+	struct lockf_range *insert_point;
+	struct lockf_range *new_range1;
+	struct lockf_range *new_range2;
+	int wakeup_needed;
+	int double_clip;
 	int error = 0;
 	int count;
-	
-	/* for restauration in case of hitting the POSIX lock limit below */
-	struct lockf_range *orig_first_match = NULL;
-	off_t orig_end = -1;
-	int orig_flags = 0;
+	struct lockf_range_list deadlist;
+
+	new_range1 = NULL;
+	new_range2 = NULL;
+	count = 0;
 
 restart:
+	/*
+	 * Preallocate two ranges so we don't have to worry about blocking
+	 * in the middle of the lock code.
+	 */
 	if (new_range1 == NULL)
 		new_range1 = lf_alloc_range();
 	if (new_range2 == NULL)
 		new_range2 = lf_alloc_range();
 	first_match = NULL;
+	last_match = NULL;
 	insert_point = NULL;
 	wakeup_needed = 0;
 
 	lf_print_lock(lock);
 
+	/*
+	 * Locate the insertion point for the new lock (the first range
+	 * with an lf_start >= start).
+	 *
+	 * Locate the first and latch ranges owned by us that overlap
+	 * the requested range.
+	 */
 	TAILQ_FOREACH(range, &lock->lf_range, lf_link) {
 		if (insert_point == NULL && range->lf_start >= start)
 			insert_point = range;
-		if (lf_overlap(range, start, end) == 0)
+
+		/*
+		 * Skip non-overlapping locks.  Locks are sorted by lf_start
+		 * So we can terminate the search when lf_start exceeds the
+		 * requested range (insert_point is still guarenteed to be
+		 * set properly).
+		 */
+		if (range->lf_end < start)
 			continue;
+		if (range->lf_start > end) {
+			range = NULL;
+			break;
+		}
+
+		/*
+		 * Overlapping lock.  Set first_match and last_match if we
+		 * are the owner.
+		 */
 		if (range->lf_owner == owner) {
 			if (first_match == NULL)
 				first_match = range;
+			last_match = range;
 			continue;
 		}
-		if (type == F_WRLCK || range->lf_type == F_WRLCK)
-			break;
+
+		/*
+		 * If we aren't the owner check for a conflicting lock.  Only
+		 * if not unlocking.
+		 */
+		if (type != F_UNLCK) {
+			if (type == F_WRLCK || range->lf_type == F_WRLCK)
+				break;
+		}
 	}
 
+	/*
+	 * If a conflicting lock was observed, block or fail as appropriate.
+	 * (this code is skipped when unlocking)
+	 */
 	if (range != NULL) {
-		struct lockf_range *brange;
-
 		if ((flags & F_WAIT) == 0) {
 			error = EAGAIN;
 			goto do_cleanup;
@@ -311,7 +381,7 @@ restart:
 		 * waiting for an exclusive lock.
 		 */
 		if ((flags & F_POSIX) == 0 && type == F_WRLCK)
-			lf_clearlock(lock, owner, type, flags, start, end);
+			lf_setlock(lock, owner, F_UNLCK, 0, start, end);
 
 		brange = new_range1;
 		new_range1 = NULL;
@@ -326,10 +396,15 @@ restart:
 		 * process releasing/downgrading a lock (in which case
 		 * we have already been removed from the blocked list
 		 * and our lf_flags field is 1).
+		 *
+		 * Sleep if it looks like we might be livelocking.
 		 */
 		if (brange->lf_flags == 0)
 			TAILQ_REMOVE(&lock->lf_blocked, brange, lf_link);
-		tsleep(brange, 0, "lockfz", 2); /* XXX debug livelock */
+		if (count == 2)
+			tsleep(brange, 0, "lockfz", 2);
+		else
+			++count;
 		lf_destroy_range(brange);
 
 		if (error)
@@ -337,7 +412,13 @@ restart:
 		goto restart;
 	}
 
+	/*
+	 * If there are no overlapping locks owned by us then creating
+	 * the new lock is easy.  This is the most common case.
+	 */
 	if (first_match == NULL) {
+		if (type == F_UNLCK)
+			goto do_wakeup;
 		if (flags & F_POSIX) {
 			if (lf_count_change(owner, 1)) {
 				error = ENOLCK;
@@ -347,219 +428,235 @@ restart:
 		range = new_range1;
 		new_range1 = NULL;
 		lf_create_range(range, owner, type, flags, start, end);
-		if (insert_point != NULL)
-			TAILQ_INSERT_BEFORE(insert_point, range, lf_link);
-		else
-			TAILQ_INSERT_TAIL(&lock->lf_range, range, lf_link);
+		lf_insert(&lock->lf_range, range, insert_point);
 		goto do_wakeup;
 	}
 
-	lock_needed = 1;
+	/*
+	 * This is a special case that we need to check for in a couple
+	 * of places.
+	 */
+	if (first_match == last_match && first_match->lf_start < start &&
+	    last_match->lf_end > end) {
+		double_clip = 1;
+	} else {
+		double_clip = 0;
+	}
 
-	if (lf_overlap_left(first_match, start, end)) {
-		KKASSERT((flags & F_POSIX) != 0);
-		if (first_match->lf_end > end) {
-			if (first_match->lf_type == type)
-				goto do_wakeup;
-
-			/*
-			 * first_match might not be F_POSIX
-			 */
-			count = (first_match->lf_flags & F_POSIX) ? 2 : 1;
-			if (lf_count_change(owner, count)) {
-				error = ENOLCK;
-				goto do_cleanup;
-			}
-			range = new_range1;
-			new_range1 = NULL;
-			lf_create_range(range, owner, type, flags, start, end);
-			if (insert_point != NULL)
-				TAILQ_INSERT_BEFORE(insert_point, range,
-						    lf_link);
+	/*
+	 * Figure out the worst case net increase in POSIX locks and account
+	 * for it now before we start modifying things.  If neither the
+	 * first or last locks match we have an issue.  If there is only
+	 * one overlapping range which needs to be clipped on both ends
+	 * we wind up having to create up to two new locks, else only one.
+	 *
+	 * count represents the 'cleanup' adjustment needed.  It starts
+	 * negative, is incremented whenever we create a new POSIX lock,
+	 * and decremented whenever we delete an existing one.  At the
+	 * end of the day it had better be <= 0 or we didn't calculate the
+	 * worse case properly here.
+	 */
+	count = 0;
+	if (flags & F_POSIX) {
+		if (!lf_match(first_match, type, flags) &&
+		    !lf_match(last_match, type, flags)
+		) {
+			if (double_clip)
+				count = -2;
 			else
-				TAILQ_INSERT_TAIL(&lock->lf_range, range,
-						  lf_link);
-			insert_point = range;
-			range = new_range2;
-			new_range2 = NULL;
-			lf_create_range(range, owner, first_match->lf_type,
-					first_match->lf_flags, end + 1,
-					first_match->lf_end);
-			TAILQ_INSERT_AFTER(&lock->lf_range, insert_point,
-					   range, lf_link);
-			first_match->lf_flags &= ~F_NOEND;
-			first_match->lf_end = start - 1;
-			if (type == F_RDLCK)
-				wakeup_needed = 1;
-			goto do_wakeup;
+				count = -1;
 		}
-
-		/*
-		 * left match, but not right match
-		 *
-		 * handle the lf_type != type case directly,
-		 * merge the other case with the !lock_needed path.
-		 */
-		if (first_match->lf_type != type) {
-			/*
-			 * This is needed if the lockf acquisition below fails.
-			 */
-			orig_first_match = first_match;
-			orig_end = first_match->lf_end;
-			orig_flags = first_match->lf_flags;
-			first_match->lf_end = start - 1;
-			first_match->lf_flags &= ~F_NOEND;
-			if (type == F_RDLCK)
-				wakeup_needed = 1;
-			/* Try to find the next matching range */
-			range = TAILQ_NEXT(first_match, lf_link);
-			while (range != NULL) {
-				if (range->lf_owner == owner &&
-				    lf_overlap(range, start, end))
-					break;
-				range = TAILQ_NEXT(range, lf_link);
-			}
-			if (range == NULL)
-				goto do_wakeup;
-			first_match = range;
-			/* fall through to !left_match behaviour */
-		} else {
-			if ((first_match->lf_flags & F_POSIX) == 0) {
-				if (lf_count_change(owner, 1)) {
-					error = ENOLCK;
-					goto do_cleanup;
-				}
-			}
-			first_match->lf_end = end;
-			first_match->lf_flags |= flags & F_NOEND;
-			lock_needed = 0;
+		if (count && lf_count_change(owner, -count)) {
+			error = ENOLCK;
+			goto do_cleanup;
 		}
 	}
 
 	/*
-	 * (start,end) completely encloses first_match, expand first_match
-	 * on both sides.
+	 * Create and insert the lock represented the requested range.
+	 * Adjust the net POSIX lock count.  We have to move our insertion
+	 * point since brange now represents the first record >= start.
+	 *
+	 * When unlocking, no new lock is inserted but we still clip.
 	 */
-	if (lf_overlap_embedded(first_match, start, end)) {
-		/*
-		 * Fixup posix counts
-		 */
-		if ((flags & F_POSIX) && !(first_match->lf_flags & F_POSIX)) {
-			if (lf_count_change(owner, 1))
-				goto failed_with_orig_restore;
-		} else if (!(flags & F_POSIX) && (first_match->lf_flags & F_POSIX)) {
-			lf_count_change(owner, -1);
-		}
-
-		/*
-		 * Expand the lock.  If the insertion point needs to change
-		 * due to the expansion, move the lock.
-		 */
-		if (first_match != insert_point) {
-			TAILQ_REMOVE(&lock->lf_range, first_match, lf_link);
-			TAILQ_INSERT_BEFORE(insert_point, first_match, lf_link);
-		}
-		first_match->lf_start = start;
-		first_match->lf_end = end;
-		first_match->lf_flags &= ~F_POSIX;
-		first_match->lf_flags |= flags & F_NOEND;
-		first_match->lf_type = type;
-		lock_needed = 0;		
+	if (type != F_UNLCK) {
+		brange = new_range1;
+		new_range1 = NULL;
+		lf_create_range(brange, owner, type, flags, start, end);
+		lf_insert(&lock->lf_range, brange, insert_point);
+		insert_point = brange;
+		if (flags & F_POSIX)
+			++count;
+	} else {
+		brange = NULL;
 	}
 
-	if (lock_needed == 0) {
-		struct lockf_range *nrange;
+	/*
+	 * Handle the double_clip case.  This is the only case where
+	 * we wind up having to add TWO locks.
+	 */
+	if (double_clip) {
+		KKASSERT(first_match == last_match);
+		last_match = new_range2;
+		new_range2 = NULL;
+		lf_create_range(last_match, first_match->lf_owner,
+				first_match->lf_type, first_match->lf_flags,
+				end + 1, first_match->lf_end);
+		first_match->lf_end = start - 1;
+		first_match->lf_flags &= ~F_NOEND;
 
-		range = TAILQ_NEXT(first_match, lf_link);
-		while (range != NULL) {
-			if (range->lf_owner != owner) {
-				range = TAILQ_NEXT(range, lf_link);
-				continue;
+		/*
+		 * Figure out where to insert the right side clip.
+		 */
+		lf_insert(&lock->lf_range, last_match, first_match);
+		if (last_match->lf_flags & F_POSIX)
+			++count;
+	}
+
+	/*
+	 * Clip or destroy the locks between first_match and last_match,
+	 * inclusive.  Ignore the primary lock we created (brange).  Note
+	 * that if double-clipped, first_match and last_match will be
+	 * outside our clipping range.  Otherwise first_match and last_match
+	 * will be deleted.
+	 *
+	 * We have already taken care of any double clipping.
+	 *
+	 * insert_point may become invalid as we delete records, do not
+	 * use that pointer any more.
+	 *
+	 * NOTE: brange will be NULL if F_UNLCKing.
+	 */
+	TAILQ_INIT(&deadlist);
+	next = first_match;
+
+	while ((range = next) != NULL) {
+		next = TAILQ_NEXT(range, lf_link);
+
+		/*
+		 * Ignore elements that we do not own and ignore the
+		 * primary request range which we just created.
+		 */
+		if (range->lf_owner != owner || range == brange)
+			continue;
+
+		/*
+		 * We may have to wakeup a waiter when downgrading a lock.
+		 */
+		if (type == F_UNLCK)
+			wakeup_needed = 1;
+		if (type == F_RDLCK && range->lf_type == F_WRLCK)
+			wakeup_needed = 1;
+
+		/*
+		 * Clip left.  This can only occur on first_match.  If
+		 * we have already double-clipped it there is nothing to do.
+		 */
+		if (range->lf_start < start) {
+			KKASSERT(range == first_match);
+			if (range->lf_end >= start) {
+				range->lf_end = start - 1;
+				range->lf_flags &= ~F_NOEND;
 			}
-			if (lf_overlap_embedded(range, start, end)) {
-				nrange = TAILQ_NEXT(range, lf_link);
-				TAILQ_REMOVE(&lock->lf_range, range,
-					     lf_link);
-				if (range->lf_flags & F_POSIX)
-					lf_count_change(owner, -1);
-				lf_destroy_range(range);
-				range = nrange;
-				continue;
-			}
-			if (lf_overlap_right(range, start, end) == 0) {
-				range = TAILQ_NEXT(range, lf_link);
-				continue;
-			}
-			if (range->lf_type != type) {
-				range->lf_start = end + 1;
-				nrange = TAILQ_NEXT(range, lf_link);
-				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
-				while (nrange != NULL) {
-					if (nrange->lf_start >= end + 1)
-						break;
-					nrange = TAILQ_NEXT(nrange, lf_link);
-				}
-				if (nrange != NULL)
-					TAILQ_INSERT_BEFORE(nrange, range,
-							    lf_link);
-				else
-					TAILQ_INSERT_TAIL(&lock->lf_range,
-							  range, lf_link);
+			if (range == last_match)
 				break;
-			}
+			continue;
+		}
 
-			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
-			if (range->lf_flags & F_POSIX)
-				lf_count_change(owner, -1);
-			first_match->lf_end = range->lf_end;
-			first_match->lf_flags |= range->lf_flags & F_NOEND;
-			lf_destroy_range(range);
+		/*
+		 * Clip right.  This can only occur on last_match.  If
+		 * we have already double-clipped it there is nothing to do.
+		 *
+		 * Since we are adjusting lf_start, we have to move the
+		 * record to maintain the sorted list.  Since lf_start is
+		 * only getting larger we can use the next element as the
+		 * insert point (we don't have to backtrack).
+		 */
+		if (range->lf_end > end) {
+			KKASSERT(range == last_match);
+			if (last_match->lf_start <= end) {
+				last_match->lf_start = end + 1;
+				TAILQ_REMOVE(&lock->lf_range, last_match, lf_link);
+				lf_insert(&lock->lf_range, last_match, next);
+			}
+			/* range == last_match, we are done */
 			break;
 		}
-		goto do_wakeup;
+
+		/*
+		 * The record must be entirely enclosed.  Note that the
+		 * record could be first_match or last_match, and will be
+		 * deleted.
+		 */
+		KKASSERT(range->lf_start >= start && range->lf_end <= end);
+		TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+		if (range->lf_flags & F_POSIX)
+			--count;
+		TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
+		if (range == last_match)
+			break;
 	}
 
-	if (lf_overlap_right(first_match, start, end)) {
-		KKASSERT((flags & F_POSIX) != 0);
-		if (first_match->lf_type == type) {
-			first_match->lf_start = start;
-			if (first_match != insert_point) {
-				TAILQ_REMOVE(&lock->lf_range, first_match,
-					     lf_link);
-				TAILQ_INSERT_BEFORE(insert_point, first_match,
-						    lf_link);
-			}
-			goto do_wakeup;
+	/*
+	 * Attempt to merge locks adjacent to brange.  For example, we may
+	 * have had to clip first_match and/or last_match, and they might
+	 * be adjacent.  Or there might simply have been an adjacent lock
+	 * already there.
+	 *
+	 * Don't get fancy, just check adjacent elements in the list if they
+	 * happen to be owned by us.
+	 */
+	if (brange) {
+		range = TAILQ_PREV(brange, lockf_range_list, lf_link);
+		if (range &&
+		    range->lf_owner == owner && 
+		    range->lf_end == brange->lf_start - 1 &&
+		    lf_match(range, type, flags)
+		) {
+			/*
+			 * Scrap brange
+			 */
+			range->lf_end = brange->lf_end;
+			range->lf_flags |= brange->lf_flags & F_NOEND;
+			TAILQ_REMOVE(&lock->lf_range, brange, lf_link);
+			if (brange->lf_flags & F_POSIX)
+				--count;
+			TAILQ_INSERT_TAIL(&deadlist, brange, lf_link);
+			brange = range;
 		}
-		if (lf_count_change(owner, 1)) {
-failed_with_orig_restore:
-			if (orig_first_match != NULL) {
-				orig_first_match->lf_end = orig_end;
-				orig_first_match->lf_flags = orig_flags;
-			}
-			error = ENOLCK;
-			goto do_cleanup;
+		range = TAILQ_NEXT(brange, lf_link);
+		if (range &&
+		    range->lf_owner == owner &&
+		    range->lf_start == brange->lf_end + 1 &&
+		    lf_match(range, type, flags)
+		) {
+			/*
+			 * Scrap range
+			 */
+			brange->lf_end = range->lf_end;
+			brange->lf_flags |= brange->lf_flags & F_NOEND;
+			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+			if (range->lf_flags & F_POSIX)
+				--count;
+			TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
 		}
-		first_match->lf_start = end + 1;
-		KKASSERT(new_range1 != NULL);
-		range = new_range1;
-		new_range1 = NULL;
-		lf_create_range(range, owner, type, flags, start, end);
-		TAILQ_INSERT_BEFORE(insert_point, range, lf_link);
-		range = TAILQ_NEXT(first_match, lf_link);
-		TAILQ_REMOVE(&lock->lf_range, first_match, lf_link);
-		while (range != NULL) {
-			if (range->lf_start >= first_match->lf_start)
-				break;
-			range = TAILQ_NEXT(range, lf_link);
-		}
-		if (range != NULL)
-			TAILQ_INSERT_BEFORE(range, first_match, lf_link);
-		else
-			TAILQ_INSERT_TAIL(&lock->lf_range, first_match, lf_link);
-		goto do_wakeup;
 	}
 
+	/*
+	 * Destroy deleted elements.  We didn't want to do it in the loop
+	 * because the free() might have blocked.
+	 *
+	 * Adjust the count for any posix locks we thought we might create
+	 * but didn't.
+	 */
+	while ((range = TAILQ_FIRST(&deadlist)) != NULL) {
+		TAILQ_REMOVE(&deadlist, range, lf_link);
+		lf_destroy_range(range);
+	}
+
+	KKASSERT(count <= 0);
+	if (count < 0)
+		lf_count_change(owner, count);
 do_wakeup:
 	lf_print_lock(lock);
 	if (wakeup_needed)
@@ -570,93 +667,6 @@ do_cleanup:
 		lf_destroy_range(new_range1);
 	if (new_range2 != NULL)
 		lf_destroy_range(new_range2);
-	return(error);
-}
-
-static int
-lf_clearlock(struct lockf *lock, struct proc *owner, int type, int flags,
-	     off_t start, off_t end)
-{
-	struct lockf_range *range, *trange;
-	struct lockf_range *new_range;
-	int error = 0;
-
-	new_range = lf_alloc_range();
-
-	TAILQ_FOREACH_MUTABLE(range, &lock->lf_range, lf_link, trange) {
-		if (range->lf_end < start)
-			continue;
-		if (range->lf_start > end)
-			break;
-		if (range->lf_owner != owner)
-			continue;
-		if (lf_overlap_embedded(range, start, end)) {
-			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
-			/* flock-locks are equal */
-			if (range->lf_flags & F_POSIX)
-				lf_count_change(owner, -1);
-			lf_destroy_range(range);
-			continue;
-		}
-		if (lf_overlap_left2(range, start, end)) {
-			KKASSERT(range->lf_flags & F_POSIX);
-			if (lf_overlap_right2(range, start, end)) {
-				struct lockf_range *nrange;
-
-				if (lf_count_change(owner, 1)) {
-					error = ENOLCK;
-					goto do_cleanup;
-				}
-				nrange = new_range;
-				new_range = NULL;
-				lf_create_range(nrange, range->lf_owner,
-				    range->lf_type, range->lf_flags,
-				    end + 1, range->lf_end);
-				range->lf_end = start;
-				range->lf_flags &= ~F_NOEND;
-				for (; range != NULL;
-				     range = TAILQ_NEXT(range, lf_link))
-					if (range->lf_start >= nrange->lf_start)
-						break;
-				if (range != NULL)
-					TAILQ_INSERT_BEFORE(range, nrange,
-							    lf_link);
-				else
-					TAILQ_INSERT_TAIL(&lock->lf_range,
-							  nrange, lf_link);
-				break;
-			}
-			range->lf_end = start - 1;
-			range->lf_flags &= ~F_NOEND;
-			continue;
-		}
-		if (lf_overlap_right2(range, start, end)) {
-			struct lockf_range *nrange = range;
-
-			KKASSERT(range->lf_flags & F_POSIX);
-
-			range  = TAILQ_NEXT(range, lf_link);
-			TAILQ_REMOVE(&lock->lf_range, nrange, lf_link);
-			for (; range != NULL;
-			     range = TAILQ_NEXT(range, lf_link))
-				if (range->lf_start >= nrange->lf_start)
-					break;
-			if (range != NULL)
-				TAILQ_INSERT_BEFORE(range, nrange, lf_link);
-			else
-				TAILQ_INSERT_TAIL(&lock->lf_range, nrange,
-						  lf_link);
-			break;
-		}
-	}
-
-	lf_wakeup(lock, start, end);
-	error = 0;
-
-do_cleanup:
-	if (new_range != NULL)
-		lf_destroy_range(new_range);
-
 	return(error);
 }
 
@@ -694,20 +704,6 @@ lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
 }
 
 /*
- * Check whether range and [start, end] overlap.
- */
-static int
-lf_overlap(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_start >= start && range->lf_start <= end)
-		return(1);
-	else if (start >= range->lf_start && start <= range->lf_end)
-		return(1);
-	else
-		return(0);
-}
-
-/*
  * Wakeup pending lock attempts.
  */
 static void
@@ -720,60 +716,9 @@ lf_wakeup(struct lockf *lock, off_t start, off_t end)
 		TAILQ_REMOVE(&lock->lf_blocked, range, lf_link);
 		range->lf_flags = 1;
 		wakeup(range);
-		if (lf_overlap_embedded(range, start, end))
+		if (range->lf_start >= start && range->lf_end <= end)
 			break;
 	}
-}
-
-static int
-lf_overlap_left(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_start < start && range->lf_end >= start - 1 &&
-	    range->lf_end <= end)
-		return(1);
-	else
-		return(0);
-		
-}
-
-static int
-lf_overlap_right(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_end > end && range->lf_start >= start &&
-	    range->lf_start - 1 <= end)
-		return(1);
-	else
-		return(0);
-}
-
-static int
-lf_overlap_left2(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_start < start && range->lf_end >= start &&
-	    range->lf_end <= end)
-		return(1);
-	else
-		return(0);
-		
-}
-
-static int
-lf_overlap_right2(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_end > end && range->lf_start >= start &&
-	    range->lf_start <= end)
-		return(1);
-	else
-		return(0);
-}
-
-static int
-lf_overlap_embedded(const struct lockf_range *range, off_t start, off_t end)
-{
-	if (range->lf_start >= start && range->lf_end <= end)
-		return(1);
-	else
-		return(0);
 }
 
 /*
@@ -791,6 +736,18 @@ lf_alloc_range(void)
 	range = malloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
 	range->lf_owner = NULL;
 	return(range);
+}
+
+static void
+lf_insert(struct lockf_range_list *list, struct lockf_range *elm,
+	  struct lockf_range *insert_point)
+{
+	while (insert_point && insert_point->lf_start < elm->lf_start)
+		insert_point = TAILQ_NEXT(insert_point, lf_link);
+	if (insert_point != NULL)
+		TAILQ_INSERT_BEFORE(insert_point, elm, lf_link);
+	else
+		TAILQ_INSERT_TAIL(list, elm, lf_link);
 }
 
 static void
