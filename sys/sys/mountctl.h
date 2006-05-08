@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.11 2006/05/07 00:24:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.12 2006/05/08 18:45:53 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
@@ -192,5 +192,54 @@ struct jrecord_list {
 	int16_t		streamid;
 };
 
-#endif
-#endif
+#endif	/* kernel or kernel structures */
+
+#if defined(_KERNEL)
+
+struct vnode;
+struct vattr;
+struct vm_page;
+struct uio;
+
+void journal_create_threads(struct journal *jo);
+void journal_destroy_threads(struct journal *jo, int flags);
+
+/*
+ * Primary journal record support procedures
+ */
+void jrecord_init(struct journal *jo,
+			struct jrecord *jrec, int16_t streamid);
+struct journal_subrecord *jrecord_push(
+			struct jrecord *jrec, int16_t rectype);
+void jrecord_pop(struct jrecord *jrec, struct journal_subrecord *parent);
+void jrecord_leaf(struct jrecord *jrec,
+			 int16_t rectype, void *ptr, int bytes);
+struct journal_subrecord *jrecord_write(struct jrecord *jrec,
+			int16_t rectype, int bytes);
+void jrecord_data(struct jrecord *jrec, const void *buf, int bytes);
+void jrecord_done(struct jrecord *jrec, int abortit);
+
+/*
+ * Rollup journal record support procedures
+ */
+void jrecord_write_path(struct jrecord *jrec,
+			int16_t rectype, struct namecache *ncp);
+void jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat);
+void jrecord_write_cred(struct jrecord *jrec, struct thread *td,
+			struct ucred *cred);
+void jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp);
+void jrecord_write_vnode_link(struct jrecord *jrec, struct vnode *vp,
+			struct namecache *notncp);
+void jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
+			struct vm_page **pglist, int *rtvals, int pgcount,
+			off_t offset);
+void jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio);
+void jrecord_file_data(struct jrecord *jrec, struct vnode *vp,
+			off_t off, off_t bytes);
+
+MALLOC_DECLARE(M_JOURNAL);
+MALLOC_DECLARE(M_JFIFO);
+
+#endif	/* kernel */
+
+#endif	/* header */
