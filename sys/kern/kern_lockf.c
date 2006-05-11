@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.28 2006/05/08 00:38:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.29 2006/05/11 19:50:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -450,6 +450,9 @@ restart:
 	 * one overlapping range which needs to be clipped on both ends
 	 * we wind up having to create up to two new locks, else only one.
 	 *
+	 * When unlocking the worst case is always 1 new lock if our
+	 * unlock request cuts the middle out of an existing lock range.
+	 *
 	 * count represents the 'cleanup' adjustment needed.  It starts
 	 * negative, is incremented whenever we create a new POSIX lock,
 	 * and decremented whenever we delete an existing one.  At the
@@ -461,7 +464,7 @@ restart:
 		if (!lf_match(first_match, type, flags) &&
 		    !lf_match(last_match, type, flags)
 		) {
-			if (double_clip)
+			if (double_clip && type != F_UNLCK)
 				count = -2;
 			else
 				count = -1;
@@ -471,6 +474,7 @@ restart:
 			goto do_cleanup;
 		}
 	}
+	/* else flock style lock which encompasses entire range */
 
 	/*
 	 * Create and insert the lock represented the requested range.
@@ -522,8 +526,10 @@ restart:
 	 *
 	 * We have already taken care of any double clipping.
 	 *
-	 * insert_point may become invalid as we delete records, do not
-	 * use that pointer any more.
+	 * The insert_point may become invalid as we delete records, do not
+	 * use that pointer any more.  Also, when removing something other
+	 * then 'range' we have to check to see if the item we are removing
+	 * is 'next' and adjust 'next' properly.
 	 *
 	 * NOTE: brange will be NULL if F_UNLCKing.
 	 */
@@ -549,14 +555,35 @@ restart:
 			wakeup_needed = 1;
 
 		/*
-		 * Clip left.  This can only occur on first_match.  If
-		 * we have already double-clipped it there is nothing to do.
+		 * Clip left.  This can only occur on first_match. 
+		 *
+		 * Merge the left clip with brange if possible.  This must
+		 * be done specifically, not in the optimized merge heuristic
+		 * below, since we may have counted on it in our 'count'
+		 * calculation above.
 		 */
 		if (range->lf_start < start) {
 			KKASSERT(range == first_match);
-			if (range->lf_end >= start) {
+			if (brange &&
+			    range->lf_end >= start - 1 &&
+			    lf_match(range, type, flags)) {
+				range->lf_end = brange->lf_end;
+				range->lf_flags |= brange->lf_flags & F_NOEND;
+				/*
+				 * Removing something other then 'range',
+				 * adjust 'next' if necessary.
+				 */
+				if (next == brange)
+					next = TAILQ_NEXT(next, lf_link);
+				TAILQ_REMOVE(&lock->lf_range, brange, lf_link);
+				if (brange->lf_flags & F_POSIX)
+					--count;
+				TAILQ_INSERT_TAIL(&deadlist, brange, lf_link);
+				brange = range;
+			} else if (range->lf_end >= start) {
 				range->lf_end = start - 1;
-				range->lf_flags &= ~F_NOEND;
+				if (type != F_UNLCK)
+					range->lf_flags &= ~F_NOEND;
 			}
 			if (range == last_match)
 				break;
@@ -564,8 +591,12 @@ restart:
 		}
 
 		/*
-		 * Clip right.  This can only occur on last_match.  If
-		 * we have already double-clipped it there is nothing to do.
+		 * Clip right.  This can only occur on last_match. 
+		 *
+		 * Merge the right clip if possible.  This must be done
+		 * specifically, not in the optimized merge heuristic
+		 * below, since we may have counted on it in our 'count'
+		 * calculation.
 		 *
 		 * Since we are adjusting lf_start, we have to move the
 		 * record to maintain the sorted list.  Since lf_start is
@@ -574,10 +605,19 @@ restart:
 		 */
 		if (range->lf_end > end) {
 			KKASSERT(range == last_match);
-			if (last_match->lf_start <= end) {
-				last_match->lf_start = end + 1;
-				TAILQ_REMOVE(&lock->lf_range, last_match, lf_link);
-				lf_insert(&lock->lf_range, last_match, next);
+			if (brange &&
+			    range->lf_start <= end + 1 && 
+			    lf_match(range, type, flags)) {
+				brange->lf_end = range->lf_end;
+				brange->lf_flags |= range->lf_flags & F_NOEND;
+				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+				if (range->lf_flags & F_POSIX)
+					--count;
+				TAILQ_INSERT_TAIL(&deadlist, range, lf_link);
+			} else if (range->lf_start <= end) {
+				range->lf_start = end + 1;
+				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+				lf_insert(&lock->lf_range, range, next);
 			}
 			/* range == last_match, we are done */
 			break;
@@ -605,6 +645,10 @@ restart:
 	 *
 	 * Don't get fancy, just check adjacent elements in the list if they
 	 * happen to be owned by us.
+	 *
+	 * This case only gets hit if we have a situation where a shared
+	 * and exclusive lock are adjacent, and the exclusive lock is 
+	 * downgraded to shared or the shared lock is upgraded to exclusive.
 	 */
 	if (brange) {
 		range = TAILQ_PREV(brange, lockf_range_list, lf_link);
@@ -614,7 +658,7 @@ restart:
 		    lf_match(range, type, flags)
 		) {
 			/*
-			 * Scrap brange
+			 * Extend range to cover brange and scrap brange.
 			 */
 			range->lf_end = brange->lf_end;
 			range->lf_flags |= brange->lf_flags & F_NOEND;
@@ -631,7 +675,7 @@ restart:
 		    lf_match(range, type, flags)
 		) {
 			/*
-			 * Scrap range
+			 * Extend brange to cover range and scrap range.
 			 */
 			brange->lf_end = range->lf_end;
 			brange->lf_flags |= brange->lf_flags & F_NOEND;
