@@ -5,7 +5,7 @@
 	?
 
 	The help command displays help on commands and their usage.
-	$DragonFly: src/sys/boot/common/help.common,v 1.3 2004/12/20 13:13:19 joerg Exp $
+	$DragonFly: src/sys/boot/common/help.common,v 1.4 2006/05/11 08:23:19 swildner Exp $
 
 	In command help, a term enclosed with <...> indicates a value as
 	described by the term.  A term enclosed with [...] is optional,
@@ -245,7 +245,7 @@
 		Set the number of sendfile buffers to be allocated.  This
 		overrides the value determined when the kernel was compiled.
 
-	set kern.vm.kmem.size=<value>		VM_KMEM_SIZE
+	set kern.vm.kmem.size=<value>
 
 		Sets the size of kernel memory (bytes).  This overrides
 		the value determined when the kernel was compiled.

@@ -3,9 +3,9 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.7 2006/02/28 02:25:11 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.8 2006/05/11 08:23:19 swildner Exp $
 .\"
-.Dd May 25, 2001
+.Dd May 11, 2006
 .Dt TUNING 7
 .Os
 .Sh NAME
@@ -756,17 +756,12 @@ and drivers you do not have will reduce the size of your kernel, sometimes
 by a megabyte or more, leaving more memory available for applications.
 .Pp
 .Dv SCSI_DELAY
-and
-.Dv IDE_DELAY
 may be used to reduce system boot times.
-The defaults are fairly high and
+The default is fairly high and
 can be responsible for 15+ seconds of delay in the boot process.
 Reducing
 .Dv SCSI_DELAY
 to 5 seconds usually works (especially with modern drives).
-Reducing
-.Dv IDE_DELAY
-also works but you have to be a little more careful.
 .Pp
 There are a number of
 .Dv *_CPU

@@ -29,7 +29,7 @@
  * from: svr4_util.h,v 1.5 1994/11/18 02:54:31 christos Exp
  * from: linux_util.h,v 1.2 1995/03/05 23:23:50 fvdl Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.h,v 1.12.2.2 2000/11/02 23:31:28 obrien Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.7 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.h,v 1.8 2006/05/11 08:23:20 swildner Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
 #ifndef	_LINUX_UTIL_H_
 #define	_LINUX_UTIL_H_
 
-#include "opt_linux.h"
+#include "opt_global.h"
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>

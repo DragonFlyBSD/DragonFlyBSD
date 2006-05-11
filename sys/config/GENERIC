@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.32 2005/12/03 18:32:32 dillon Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.33 2006/05/11 08:23:20 swildner Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -29,7 +29,6 @@ options 	NFS			#Network Filesystem
 options 	NFS_ROOT		#NFS usable as root device, NFS required
 options 	MSDOSFS			#MSDOS Filesystem
 options 	CD9660			#ISO 9660 Filesystem
-options 	CD9660_ROOT		#CD-ROM usable as root, CD9660 required
 options 	PROCFS			#Process filesystem
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
@@ -64,7 +63,6 @@ options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
-options 	INVARIANT_SUPPORT
 
 
 

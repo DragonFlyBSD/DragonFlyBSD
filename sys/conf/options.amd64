@@ -1,8 +1,7 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.6 2006/02/19 09:16:26 swildner Exp $
+# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.7 2006/05/11 08:23:19 swildner Exp $
 
 DISABLE_PSE
-IDE_DELAY
 MATH_EMULATE		opt_math_emulate.h
 PMAP_SHPGPERPROC	opt_pmap.h
 PPC_PROBE_CHIPSET	opt_ppc.h
@@ -25,7 +24,6 @@ BROKEN_KEYBOARD_RESET	opt_reset.h
 # (see src/sys/conf/options), except for broken debugging options.
 IBCS2			opt_dontuse.h
 COMPAT_LINUX		opt_dontuse.h
-DEBUG_LINUX		opt_linux.h
 COMPAT_SVR4		opt_dontuse.h
 DEBUG_SVR4		opt_svr4.h
 
@@ -57,7 +55,6 @@ CPU_LOOP_EN			opt_cpu.h
 CPU_PPRO2CELERON		opt_cpu.h
 CPU_RSTK_EN			opt_cpu.h
 CPU_SUSP_HLT			opt_cpu.h
-CPU_UPGRADE_HW_CACHE		opt_cpu.h
 CPU_WT_ALLOC			opt_cpu.h
 CYRIX_CACHE_WORKS		opt_cpu.h
 CYRIX_CACHE_REALLY_WORKS	opt_cpu.h
@@ -150,7 +147,6 @@ COMPAQ_M610		opt_i4b.h
 # isdn4bsd: passive PCI cards
 # -------------------------------
 ELSA_QS1PCI		opt_i4b.h
-AVM_A1_PCI		opt_i4b.h
 # -------------------------------
 # isdn4bsd: passive PCMCIA cards
 # -------------------------------
@@ -163,14 +159,6 @@ I4B_SMP_WORKAROUND      opt_i4b.h
 # enable VJ compression code for ipr i/f
 IPR_VJ			opt_i4b.h
 IPR_LOG			opt_i4b.h
-
-# -------------------------------
-# oltr: build options
-# -------------------------------
-# Exclude microcode options
-OLTR_NO_TMS_MAC		opt_oltr.h
-OLTR_NO_HAWKEYE_MAC	opt_oltr.h
-OLTR_NO_BULLSEYE_MAC	opt_oltr.h
 
 # Total number of ports controlled by the dgb(4) driver.
 # Defaults to NDGB*16.

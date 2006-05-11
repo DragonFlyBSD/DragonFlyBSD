@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.71 2006/04/01 02:55:36 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.72 2006/05/11 08:23:20 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -341,6 +341,11 @@ options 	MSGTQL=41	# max amount of messages in the system
 options 	DDB
 
 #
+# Print a stack trace on kernel panic.
+#
+options 	DDB_TRACE
+
+#
 # Don't drop into DDB for a panic. Intended for unattended operation
 # where you may want to drop to DDB from the console, but still want
 # the machine to recover from a panic
@@ -369,16 +374,6 @@ options 	KTRACE			#kernel tracing
 # programming errors.
 #
 options 	INVARIANTS
-
-#
-# The INVARIANT_SUPPORT option makes us compile in support for
-# verifying some of the internal structures.  It is a prerequisite for
-# 'INVARIANTS', as enabling 'INVARIANTS' will make these functions be
-# called.  The intent is that you can set 'INVARIANTS' for single
-# source files (by changing the source file or specifying it on the
-# command line) if you have 'INVARIANT_SUPPORT' enabled.
-#
-options 	INVARIANT_SUPPORT
 
 #
 # The DIAGNOSTIC option is used to enable extra debugging information
@@ -478,10 +473,11 @@ options 	LIBMCHAIN		#mbuf management library
 # listed below; however, this is not strictly necessary as netgraph
 # will automatically load the corresponding KLD module if the node type
 # is not already compiled into the kernel. Each type below has a
-# corresponding man page, e.g., ng_async(8).
+# corresponding man page, e.g., ng_async(4).
 options 	NETGRAPH		#netgraph(4) system
 options 	NETGRAPH_ASYNC
 options 	NETGRAPH_BPF
+options 	NETGRAPH_BRIDGE
 options 	NETGRAPH_CISCO
 options 	NETGRAPH_ECHO
 options 	NETGRAPH_ETHER
@@ -744,7 +740,6 @@ options 	NFS			#Network filesystem
 #options 	NFS_NOSERVER		#Disable the NFS-server code.
 options 	CD9660			#ISO 9660 filesystem
 options 	FDESC			#File descriptor filesystem
-options 	KERNFS			#Kernel filesystem
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 # YYY-DR Till we rework the VOP methods for this filesystem
@@ -758,7 +753,6 @@ options		UDF			#UDF filesystem
 #options 	UMAPFS			#UID map filesystem
 #options 	UNION			#Union filesystem
 # The xFS_ROOT options REQUIRE the associated ``options xFS''
-options 	CD9660_ROOT		#CD-ROM usable as root device
 options 	FFS_ROOT		#FFS usable as root device
 options 	NFS_ROOT		#NFS usable as root device
 
@@ -1088,15 +1082,6 @@ options 	MAXMEM="(128*1024)"
 
 options 	PPS_SYNC
 
-# If you see the "calcru: negative time of %ld usec for pid %d (%s)\n"
-# message you probably have some broken sw/hw which disables interrupts
-# for too long.  You can make the system more resistant to this by
-# choosing a high value for NTIMECOUNTER.  The default is 5, there
-# is no upper limit but more than a couple of hundred are not productive.
-# A better strategy may be to sysctl -w kern.timecounter.method=1
-
-options 	NTIMECOUNTER=20
-
 # The keyboard controller; it controls the keyboard and the PS/2 mouse.
 device		atkbdc0	at isa? port IO_KBD
 
@@ -1263,6 +1248,8 @@ device		amr		# AMI MegaRAID
 #
 device		twe		# 3ware ATA RAID
 device		twa		# 3ware SATA RAID
+options 	TWA_DEBUG=10	# enable debug messages
+options 	TWA_FLASH_FIRMWARE
 
 #
 # Promise Supertrack SX6000
@@ -1680,6 +1667,10 @@ device		agp
 
 # The `ahc' device provides support for the Adaptec 29/3940(U)(W)
 # and motherboard based AIC7870/AIC7880 adapters.
+options 	AHC_DEBUG
+options 	AHC_DEBUG_OPTS=0xffffffff
+options 	AHC_REG_PRETTY_PRINT
+options 	AHC_TMODE_ENABLE
 #
 # The 'ahd' device provides support for the Adaptec 79xx Ultra320
 # SCSI adapters. Options are documented in the ahd(4) manpage:
@@ -1843,9 +1834,9 @@ options 	AHD_REG_PRETTY_PRINT
 # The current values for xxx are found in src/sys/dev/bktr/bktr_card.h
 # Using sysctl(8) run-time overrides on a per-card basis can be made
 #
-# options 	BROOKTREE_SYSTEM_DEFAULT=BROOKTREE_PAL
+# options 	BKTR_SYSTEM_DEFAULT=BROOKTREE_PAL
 # or
-# options 	BROOKTREE_SYSTEM_DEFAULT=BROOKTREE_NTSC
+# options 	BKTR_SYSTEM_DEFAULT=BROOKTREE_NTSC
 # Specifes the default video capture mode.
 # This is required for Dual Crystal (28&35Mhz) boards where PAL is used
 # to prevent hangs during initialisation.  eg VideoLogic Captivator PCI.
@@ -1874,6 +1865,13 @@ options 	AHD_REG_PRETTY_PRINT
 # Use new, more complete initialization scheme for the msp34* soundchip.
 # Should fix stereo autodetection if the old driver does only output
 # mono sound.
+#
+# options	BKTR_OVERRIDE_CARD=xxx
+# options	BKTR_OVERRIDE_DBX=xxx
+# options	BKTR_OVERRIDE_MSP=xxx
+# options	BKTR_OVERRIDE_TUNER=xxx
+# These options can be used to select a specific device, regardless of
+# the autodetection and i2c device checks (see comments in bktr_card.c).
 #
 #
 # The oltr driver supports the following Olicom PCI token-ring adapters
@@ -2147,6 +2145,10 @@ options 	ASUSCOM_IPAC
 options       EICON_DIVA
 #device 	isic
 #
+# Compaq Microcom 610
+options       COMPAQ_M610
+#device 	isic
+#
 # PCI bus Cards:
 # --------------
 #
@@ -2370,17 +2372,6 @@ options 	NMBCLUSTERS=1024
 #
 options 	NMBUFS=4096
 
-# Tune the kernel malloc area parameters.  VM_KMEM_SIZE represents the 
-# minimum, in bytes, and is typically (12*1024*1024) (12MB). 
-# VM_KMEM_SIZE_MAX represents the maximum, typically 200 megabytes.
-# VM_KMEM_SIZE_SCALE can be set to adjust the auto-tuning factor, which
-# typically defaults to 4 (kernel malloc area size is physical memory 
-# divided by the scale factor).
-#
-options 	VM_KMEM_SIZE="(10*1024*1024)"
-options 	VM_KMEM_SIZE_MAX="(100*1024*1024)"
-options 	VM_KMEM_SIZE_SCALE="4"
-
 # Tune the buffer cache maximum KVA reservation, in bytes.  The maximum is
 # usually capped at 200 MB, effecting machines with > 1GB of ram.  Note
 # that the buffer cache only really governs write buffering and disk block
@@ -2483,7 +2474,6 @@ device		dpt
 options 	DPT_TIMEOUT_FACTOR=4
 options 	DPT_LOST_IRQ
 options 	DPT_RESET_HBA
-options 	DPT_ALLOW_MEMIO
 
 #
 # Compaq "CISS" RAID controllers (SmartRAID 5* series)
@@ -2611,10 +2601,12 @@ device		rndtest		# FIPS 140-2 entropy tester
 
 device		hifn		# Hifn 7951, 7781, etc.
 options		HIFN_DEBUG	# enable debugging support: hw.hifn.debug
+#options	HIFN_NO_RNG	# for devices without RNG
 options		HIFN_RNDTEST	# enable rndtest support
 
 device		ubsec		# Broadcom 5501, 5601, 58xx
 options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
+#options	UBSEC_NO_RNG	# for devices without RNG
 options		UBSEC_RNDTEST	# enable rndtest support
 
 device		acpi		# basic ACPI support
@@ -2636,6 +2628,7 @@ device		radeondrm
 device		tdfxdrm
 
 options 	DRM_DEBUG
+options 	DRM_LINUX
 
 #
 # Embedded system options:
@@ -2651,15 +2644,20 @@ options 	NPX_DEBUG       # enable npx debugging (FPU/math emu)
 # More undocumented options for linting.
 # Note that documenting these are not considered an affront.
 
+options 	ACPI_DEBUG
+#options	ACPI_NO_SEMAPHORES
 options 	AHC_DUMP_EEPROM
-options 	AHC_TMODE_ENABLE
+#options 	BKTR_ALLOC_PAGES=xxx
 options 	CAM_DEBUG_DELAY
 options 	CLUSTERDEBUG
 options 	COMPAT_LINUX
-options 	CPU_UPGRADE_HW_CACHE
+options 	COMPAT_SUNOS
 options 	DEBUG
-options 	DEBUG_LINUX
+options 	DEBUG_CRIT_SECTIONS
+options 	DEBUG_INTERRUPTS
+options 	DEVICE_SYSCTLS
 #options 	DISABLE_PSE
+#options	ED_NO_MIIBUS
 options 	ENABLE_ALART
 options 	FB_DEBUG
 options 	FB_INSTALL_CDEV
@@ -2667,17 +2665,20 @@ options 	FE_8BIT_SUPPORT
 options 	I4B_SMP_WORKAROUND
 options 	I586_PMC_GUPROF=0x70000
 options 	IBCS2
+options 	IPFW2
 options 	KBDIO_DEBUG=2
 options 	KBD_MAXRETRY=4
 options 	KBD_MAXWAIT=6
 options 	KBD_RESETDELAY=201
+options 	KERN_TIMESTAMP
 options 	KEY
+options 	LINPROCFS
 options 	LOCKF_DEBUG
 options 	LOUTB
+#options	MAXFILES=xxx
+options 	METEOR_TEST_VIDEO
 options 	NETATALKDEBUG
-#options 	OLTR_NO_BULLSEYE_MAC
-#options 	OLTR_NO_HAWKEYE_MAC
-#options 	OLTR_NO_TMS_MAC
+options 	PANIC_DEBUG
 options 	PSM_DEBUG=1
 options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
@@ -2687,12 +2688,18 @@ options 	SHOW_BUSYBUFS	# List buffers that prevent root unmount
 options 	SIMPLELOCK_DEBUG
 options 	SI_DEBUG
 options 	SLIP_IFF_OPTS
+options 	SOCKBUF_DEBUG
 options 	SPX_HACK
 options 	TIMER_FREQ="((14318182+6)/12)"
 options 	VFS_BIO_DEBUG
+options 	WI_SYMBOL_FIRMWARE
 options 	XBONEHACK
 
 options	KTR
+#options KTR_IPIQ
+#options KTR_MEMORY
+#options KTR_TOKENS
+#options KTR_USB_MEMORY
 options KTR_ALL
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1

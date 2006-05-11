@@ -58,8 +58,8 @@
 .\" 	[90/08/30            dbg]
 .\"
 .\" $FreeBSD: src/share/man/man4/ddb.4,v 1.7.2.6 2001/08/17 13:08:37 ru Exp $
-.\" $DragonFly: src/share/man/man4/ddb.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
-.Dd January 16, 1996
+.\" $DragonFly: src/share/man/man4/ddb.4,v 1.3 2006/05/11 08:23:19 swildner Exp $
+.Dd May 11, 2006
 .Dt DDB 4
 .Os
 .Sh NAME
@@ -68,8 +68,7 @@
 .Sh SYNOPSIS
 .Cd options DDB
 .Pp
-To prevent activation of the debugger on kernel
-.Xr panic 9 :
+.Cd options DDB_TRACE
 .Cd options DDB_UNATTENDED
 .Sh DESCRIPTION
 The
@@ -92,6 +91,16 @@ MIB variable is set non-zero,
 which is the default
 unless the
 .Dv DDB_UNATTENDED
+option is specified.
+If set, the
+.Va debug.trace_on_panic
+.Xr sysctl 8
+MIB variable will cause
+.Nm
+to print a stack trace on
+.Xr panic 9 .
+It is zero by default unless the
+.Dv DDB_TRACE
 option is specified.
 .Pp
 The current location is called `dot'.  The `dot' is displayed with

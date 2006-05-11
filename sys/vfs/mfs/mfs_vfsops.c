@@ -32,11 +32,9 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.31 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.32 2006/05/11 08:23:20 swildner Exp $
  */
 
-
-#include "opt_mfs.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

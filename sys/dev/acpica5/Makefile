@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.9 2005/11/04 09:23:01 dillon Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.10 2006/05/11 08:23:19 swildner Exp $
 
 .PATH:	${.CURDIR}/../../${MACHINE_ARCH}/acpica5	\
 	${.CURDIR}/../../${MACHINE_ARCH}/isa		\
@@ -59,9 +59,6 @@ DBSRC+=	dbinput.c dbstats.c dbutils.c dbxface.c
 DBSRC+=	dmbuffer.c dmnames.c dmopcode.c dmobject.c dmresrc.c dmresrcl.c
 DBSRC+=	dmresrcs.c dmutils.c dmwalk.c
 
-.if ACPI_MAX_THREADS
-CFLAGS+=-DACPI_MAX_THREADS=${ACPI_MAX_THREADS}
-.endif
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES
 .endif

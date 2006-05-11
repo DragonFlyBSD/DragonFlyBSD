@@ -23,11 +23,11 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.12 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.13 2006/05/11 08:23:19 swildner Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd March 14, 1999
+.Dd May 11, 2006
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -458,8 +458,6 @@ Toggles the mmx optimizations for the bcopy/copyin/copyout routines
 .It Va kern.vm.kmem.size
 Sets the size of kernel memory (bytes).
 This overrides the value determined when the kernel was compiled.
-Modifies
-.Va VM_KMEM_SIZE .
 .It Va kern.maxswzone
 Limits the amount of KVM to be used to hold swap
 meta information, which directly governs the

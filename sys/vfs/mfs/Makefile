@@ -1,8 +1,8 @@
 # $FreeBSD: src/sys/modules/mfs/Makefile,v 1.8 1999/12/12 16:47:26 peter Exp $
-# $DragonFly: src/sys/vfs/mfs/Makefile,v 1.4 2004/08/13 17:51:11 dillon Exp $
+# $DragonFly: src/sys/vfs/mfs/Makefile,v 1.5 2006/05/11 08:23:20 swildner Exp $
 
 KMOD=	mfs
-SRCS=	mfs_vfsops.c mfs_vnops.c opt_mfs.h
+SRCS=	mfs_vfsops.c mfs_vnops.c
 NOMAN=
 
 .include <bsd.kmod.mk>

@@ -7,11 +7,10 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.11 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.12 2006/05/11 08:23:20 swildner Exp $
  *
  */
 
-#include "opt_mfs.h"		/* We have adopted some tasks from MFS */
 #include "opt_md.h"		/* We have adopted some tasks from MFS */
 
 #include <sys/param.h>
@@ -37,16 +36,6 @@ MALLOC_DEFINE(M_MDSECT, "MD sectors", "Memory Disk Sectors");
 
 static int md_debug;
 SYSCTL_INT(_debug, OID_AUTO, mddebug, CTLFLAG_RW, &md_debug, 0, "");
-
-#if defined(MFS_ROOT) && !defined(MD_ROOT)
-#define MD_ROOT MFS_ROOT
-#warning "option MFS_ROOT has been superceeded by MD_ROOT"
-#endif
-
-#if defined(MFS_ROOT_SIZE) && !defined(MD_ROOT_SIZE)
-#define MD_ROOT_SIZE MFS_ROOT_SIZE
-#warning "option MFS_ROOT_SIZE has been superceeded by MD_ROOT_SIZE"
-#endif
 
 #if defined(MD_ROOT) && defined(MD_ROOT_SIZE)
 /* Image gets put here: */

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
-# $DragonFly: src/sys/emulation/linux/Makefile,v 1.8 2005/09/10 10:41:40 swildner Exp $
+# $DragonFly: src/sys/emulation/linux/Makefile,v 1.9 2006/05/11 08:23:20 swildner Exp $
 
 .PATH: ${.CURDIR}/../../emulation/linux ${.CURDIR}/../../emulation/linux/${MACHINE_ARCH}
 
@@ -8,7 +8,7 @@ KMOD=	linux
 SRCS=	linux_dummy.c linux_file.c linux_getcwd.c linux_ioctl.c linux_ipc.c \
 	linux_machdep.c linux_mib.c linux_misc.c linux_signal.c linux_socket.c \
 	linux_stats.c linux_sysctl.c linux_sysent.c linux_sysvec.c \
-	linux_util.c opt_compat.h opt_linux.h opt_vmpage.h
+	linux_util.c opt_compat.h opt_global.h opt_vmpage.h
 OBJS=	linux_locore.o
 
 SUBDIR= i386/linprocfs
