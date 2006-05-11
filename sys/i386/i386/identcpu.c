@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.9 2005/11/06 07:28:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.10 2006/05/11 16:44:43 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -529,8 +529,30 @@ printcpuinfo(void)
 		case 0x580:
 			strcpy(cpu_model, "IDT WinChip 2");
 			break;
+		case 0x660:
+			strcpy(cpu_model, "VIA C3 Samuel");
+			break;
 		case 0x670:
-			strcpy(cpu_model, "VIA C3 Samuel 2");
+			if (cpu_id & 0x8)
+				strcpy(cpu_model, "VIA C3 Ezra");
+			else
+				strcpy(cpu_model, "VIA C3 Samuel 2");
+			break;
+		case 0x680:
+			strcpy(cpu_model, "VIA C3 Ezra-T");
+			break;
+		case 0x690:
+			strcpy(cpu_model, "VIA C3 Nehemiah");
+			do_cpuid(0xc0000000, regs);
+			if (regs[0] == 0xc0000001) {
+				do_cpuid(0xc0000001, regs);
+				if ((cpu_id & 0xf) >= 3)
+					if ((regs[3] & 0x0c) == 0x0c)
+						strcat(cpu_model, "+RNG");
+				if ((cpu_id & 0xf) >= 8)
+					if ((regs[3] & 0xc0) == 0xc0)
+						strcat(cpu_model, "+ACE");
+			}
 			break;
 		default:
 			strcpy(cpu_model, "VIA/IDT Unknown");
