@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.15 2005/12/11 13:00:16 swildner Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.16 2006/05/11 00:52:03 hsu Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -257,10 +257,10 @@ gre_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			ip = mtod(m, struct ip *);
 
 			/*
-			 * RFC2004 specifies that fragmented diagrams shouldn't
+			 * RFC2004 specifies that fragmented datagrams shouldn't
 			 * be encapsulated.
 			 */
-			if ((ip->ip_off & IP_MF) != 0) {
+			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
 				IF_DROP(&ifp->if_snd);
 				m_freem(m);
 				error = EINVAL;    /* is there better errno? */
