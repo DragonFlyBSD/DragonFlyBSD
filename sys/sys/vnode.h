@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.52 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.53 2006/05/12 22:26:47 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -399,19 +399,12 @@ extern  int vfs_fastdev;		/* fast specfs device access */
 struct vnodeop_desc {
 	int	vdesc_offset;		/* offset in vector--first for speed */
 	char    *vdesc_name;		/* a readable name for debugging */
-	int	vdesc_flags;		/* VDESC_* flags */
-
-	/*
-	 * These ops are used by bypass routines to map and locate arguments.
-	 * Creds and procs are not needed in bypass routines, but sometimes
-	 * they are useful to (for example) transport layers.
-	 * Nameidata is useful because it has a cred in it.
-	 */
-	int	*vdesc_vp_offsets;	/* list ended by VDESC_NO_OFFSET */
-	int	vdesc_vpp_offset;	/* return vpp location */
-	int	vdesc_cred_offset;	/* cred location, if any */
-	int	vdesc_proc_offset;	/* proc location, if any */
-	int	vdesc_componentname_offset; /* if any */
+	int	vdesc_unused01;
+	int	*vdesc_unused02;
+	int	vdesc_unused03;
+	int	vdesc_unused04;
+	int	vdesc_unused05;
+	int	vdesc_unused06;
 };
 
 #ifdef _KERNEL
@@ -545,7 +538,6 @@ typedef int (*vocall_func_t)(struct vop_generic_args *);
 	(*(vocall_func_t *)((char *)(vops)+((ap)->a_desc->vdesc_offset)))(ap)
 
 #define	VDESC(OP) (& __CONCAT(OP,_desc))
-#define	VOFFSET(OP) (VDESC(OP)->vdesc_offset)
 
 /*
  * Public vnode manipulation functions.

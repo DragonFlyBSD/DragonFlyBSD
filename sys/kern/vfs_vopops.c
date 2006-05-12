@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.25 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.26 2006/05/12 22:26:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,218 +75,77 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 
-#define VOFFNAME(name)	__CONCAT(__CONCAT(vop_,name),_vp_offsets)
 #define VDESCNAME(name)	__CONCAT(__CONCAT(vop_,name),_desc)
 #define VARGSSTRUCT(name) struct __CONCAT(__CONCAT(vop_,name),_args)
 
-#define VNODEOP_DESC_INIT(name, flags, vpoffs, vpp, cred, proc, comp)	\
+#define VNODEOP_DESC_INIT(name)						\
 	struct vnodeop_desc VDESCNAME(name) = {				\
 		__offsetof(struct vop_ops, __CONCAT(vop_, name)),	\
-		#name, flags, vpoffs, vpp, cred, proc, comp }
+		#name }
 
 #define VNODEOP_DESC_INIT_SIMPLE(name)					\
-	VNODEOP_DESC_INIT(name, 0, NULL,				\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_VP(name)					\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_vp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_VP_VPP(name)					\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_vp), 			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name),			\
-		__offsetof(VARGSSTRUCT(name), a_vpp),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_VP_CRED(name)					\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_vp), 			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name),			\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_NCP(name)					\
-	VNODEOP_DESC_INIT(name, 0, NULL, 				\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_NCP2_CRED(name)				\
-	VNODEOP_DESC_INIT(name, 0, NULL, 				\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_NCP_CRED(name)				\
-	VNODEOP_DESC_INIT(name, 0, NULL, 				\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_NCP_VP_CRED(name)				\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_vp), 			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_NCP_CRED_VPP(name)				\
-	VNODEOP_DESC_INIT(name, 0, NULL, 				\
-		__offsetof(VARGSSTRUCT(name), a_vpp),			\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_DVP_VPP_CNP(name)				\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_dvp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		__offsetof(VARGSSTRUCT(name), a_vpp),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cnp))
-
-#define VNODEOP_DESC_INIT_DVP_VPP_CRED(name)				\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_dvp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		__offsetof(VARGSSTRUCT(name), a_vpp),			\
-		__offsetof(VARGSSTRUCT(name), a_cred),			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET)
-
-#define VNODEOP_DESC_INIT_DVP_CNP(name)					\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_dvp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cnp))
-
-#define VNODEOP_DESC_INIT_DVP_VP_CNP(name)				\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_dvp),			\
-		__offsetof(VARGSSTRUCT(name), a_vp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		VDESC_NO_OFFSET, 					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cnp))
-
-#define VNODEOP_DESC_INIT_TDVP_VP_CNP(name)				\
-	static int VOFFNAME(name)[] = { 				\
-		__offsetof(VARGSSTRUCT(name), a_tdvp),			\
-		__offsetof(VARGSSTRUCT(name), a_vp),			\
-		VDESC_NO_OFFSET };					\
-	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		VDESC_NO_OFFSET,					\
-		__offsetof(VARGSSTRUCT(name), a_cnp))
+	VNODEOP_DESC_INIT(name)
 
 VNODEOP_DESC_INIT_SIMPLE(default);
-VNODEOP_DESC_INIT_VP(islocked);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(old_lookup);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(old_create);
-VNODEOP_DESC_INIT_DVP_CNP(old_whiteout);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(old_mknod);
-VNODEOP_DESC_INIT_VP_CRED(open);
-VNODEOP_DESC_INIT_VP(close);
-VNODEOP_DESC_INIT_VP_CRED(access);
-VNODEOP_DESC_INIT_VP(getattr);
-VNODEOP_DESC_INIT_VP_CRED(setattr);
-VNODEOP_DESC_INIT_VP_CRED(read);
-VNODEOP_DESC_INIT_VP_CRED(write);
-VNODEOP_DESC_INIT_VP_CRED(ioctl);
-VNODEOP_DESC_INIT_VP_CRED(poll);
-VNODEOP_DESC_INIT_VP(kqfilter);
-VNODEOP_DESC_INIT_VP(revoke);
-VNODEOP_DESC_INIT_VP_CRED(mmap);
-VNODEOP_DESC_INIT_VP(fsync);
-VNODEOP_DESC_INIT_DVP_VP_CNP(old_remove);
-VNODEOP_DESC_INIT_TDVP_VP_CNP(old_link);
+VNODEOP_DESC_INIT_SIMPLE(islocked);
+VNODEOP_DESC_INIT_SIMPLE(old_lookup);
+VNODEOP_DESC_INIT_SIMPLE(old_create);
+VNODEOP_DESC_INIT_SIMPLE(old_whiteout);
+VNODEOP_DESC_INIT_SIMPLE(old_mknod);
+VNODEOP_DESC_INIT_SIMPLE(open);
+VNODEOP_DESC_INIT_SIMPLE(close);
+VNODEOP_DESC_INIT_SIMPLE(access);
+VNODEOP_DESC_INIT_SIMPLE(getattr);
+VNODEOP_DESC_INIT_SIMPLE(setattr);
+VNODEOP_DESC_INIT_SIMPLE(read);
+VNODEOP_DESC_INIT_SIMPLE(write);
+VNODEOP_DESC_INIT_SIMPLE(ioctl);
+VNODEOP_DESC_INIT_SIMPLE(poll);
+VNODEOP_DESC_INIT_SIMPLE(kqfilter);
+VNODEOP_DESC_INIT_SIMPLE(revoke);
+VNODEOP_DESC_INIT_SIMPLE(mmap);
+VNODEOP_DESC_INIT_SIMPLE(fsync);
+VNODEOP_DESC_INIT_SIMPLE(old_remove);
+VNODEOP_DESC_INIT_SIMPLE(old_link);
+VNODEOP_DESC_INIT_SIMPLE(old_rename);
 
-static int VOFFNAME(old_rename)[] = { 
-	__offsetof(VARGSSTRUCT(old_rename), a_fdvp),
-	__offsetof(VARGSSTRUCT(old_rename), a_fvp),
-	__offsetof(VARGSSTRUCT(old_rename), a_tdvp),
-	__offsetof(VARGSSTRUCT(old_rename), a_tvp),
-	VDESC_NO_OFFSET
-};
-VNODEOP_DESC_INIT(old_rename, 
-	VDESC_VP0_WILLRELE|VDESC_VP1_WILLRELE|
-	 VDESC_VP2_WILLRELE|VDESC_VP3_WILLRELE|
-	 VDESC_VP2_WILLUNLOCK|VDESC_VP3_WILLUNLOCK, /* tdvp and tvp */
-	VOFFNAME(old_rename),
-	VDESC_NO_OFFSET,
-	VDESC_NO_OFFSET,
-	VDESC_NO_OFFSET,
-	__offsetof(VARGSSTRUCT(old_rename), a_fcnp));
-
-VNODEOP_DESC_INIT_DVP_VPP_CNP(old_mkdir);
-VNODEOP_DESC_INIT_DVP_VP_CNP(old_rmdir);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(old_symlink);
-VNODEOP_DESC_INIT_VP_CRED(readdir);
-VNODEOP_DESC_INIT_VP_CRED(readlink);
-VNODEOP_DESC_INIT_VP(inactive);
-VNODEOP_DESC_INIT_VP(reclaim);
-VNODEOP_DESC_INIT_VP(lock);
-VNODEOP_DESC_INIT_VP(unlock);
-VNODEOP_DESC_INIT_VP_VPP(bmap);
-VNODEOP_DESC_INIT_VP(strategy);
-VNODEOP_DESC_INIT_VP(print);
-VNODEOP_DESC_INIT_VP(pathconf);
-VNODEOP_DESC_INIT_VP(advlock);
-VNODEOP_DESC_INIT_VP_CRED(balloc);
-VNODEOP_DESC_INIT_VP(reallocblks);
-VNODEOP_DESC_INIT_VP(getpages);
-VNODEOP_DESC_INIT_VP(putpages);
-VNODEOP_DESC_INIT_VP(freeblks);
-VNODEOP_DESC_INIT_VP_CRED(getacl);
-VNODEOP_DESC_INIT_VP_CRED(setacl);
-VNODEOP_DESC_INIT_VP_CRED(aclcheck);
-VNODEOP_DESC_INIT_VP_CRED(getextattr);
-VNODEOP_DESC_INIT_VP_CRED(setextattr);
+VNODEOP_DESC_INIT_SIMPLE(old_mkdir);
+VNODEOP_DESC_INIT_SIMPLE(old_rmdir);
+VNODEOP_DESC_INIT_SIMPLE(old_symlink);
+VNODEOP_DESC_INIT_SIMPLE(readdir);
+VNODEOP_DESC_INIT_SIMPLE(readlink);
+VNODEOP_DESC_INIT_SIMPLE(inactive);
+VNODEOP_DESC_INIT_SIMPLE(reclaim);
+VNODEOP_DESC_INIT_SIMPLE(lock);
+VNODEOP_DESC_INIT_SIMPLE(unlock);
+VNODEOP_DESC_INIT_SIMPLE(bmap);
+VNODEOP_DESC_INIT_SIMPLE(strategy);
+VNODEOP_DESC_INIT_SIMPLE(print);
+VNODEOP_DESC_INIT_SIMPLE(pathconf);
+VNODEOP_DESC_INIT_SIMPLE(advlock);
+VNODEOP_DESC_INIT_SIMPLE(balloc);
+VNODEOP_DESC_INIT_SIMPLE(reallocblks);
+VNODEOP_DESC_INIT_SIMPLE(getpages);
+VNODEOP_DESC_INIT_SIMPLE(putpages);
+VNODEOP_DESC_INIT_SIMPLE(freeblks);
+VNODEOP_DESC_INIT_SIMPLE(getacl);
+VNODEOP_DESC_INIT_SIMPLE(setacl);
+VNODEOP_DESC_INIT_SIMPLE(aclcheck);
+VNODEOP_DESC_INIT_SIMPLE(getextattr);
+VNODEOP_DESC_INIT_SIMPLE(setextattr);
 VNODEOP_DESC_INIT_SIMPLE(mountctl);
 
-VNODEOP_DESC_INIT_NCP_CRED(nresolve);
-VNODEOP_DESC_INIT_DVP_VPP_CRED(nlookupdotdot);
-VNODEOP_DESC_INIT_NCP_CRED_VPP(ncreate);
-VNODEOP_DESC_INIT_NCP_CRED_VPP(nmkdir);
-VNODEOP_DESC_INIT_NCP_CRED_VPP(nmknod);
-VNODEOP_DESC_INIT_NCP_VP_CRED(nlink);
-VNODEOP_DESC_INIT_NCP_CRED_VPP(nsymlink);
-VNODEOP_DESC_INIT_NCP_CRED(nwhiteout);
-VNODEOP_DESC_INIT_NCP_CRED(nremove);
-VNODEOP_DESC_INIT_NCP_CRED(nrmdir);
-VNODEOP_DESC_INIT_NCP2_CRED(nrename);
+VNODEOP_DESC_INIT_SIMPLE(nresolve);
+VNODEOP_DESC_INIT_SIMPLE(nlookupdotdot);
+VNODEOP_DESC_INIT_SIMPLE(ncreate);
+VNODEOP_DESC_INIT_SIMPLE(nmkdir);
+VNODEOP_DESC_INIT_SIMPLE(nmknod);
+VNODEOP_DESC_INIT_SIMPLE(nlink);
+VNODEOP_DESC_INIT_SIMPLE(nsymlink);
+VNODEOP_DESC_INIT_SIMPLE(nwhiteout);
+VNODEOP_DESC_INIT_SIMPLE(nremove);
+VNODEOP_DESC_INIT_SIMPLE(nrmdir);
+VNODEOP_DESC_INIT_SIMPLE(nrename);
 
 #define DO_OPS(ops, error, ap, vop_field)	\
 	error = ops->vop_field(ap);
