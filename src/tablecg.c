@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.35 2006/04/06 12:59:45 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.36 2006/05/12 02:46:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -441,7 +441,7 @@ read_all(int fd, void *buf, int n)
 
     while (n > 0) {
 	r = read(fd, buf, n);
-	if (r < 0) {
+	if (r <= 0) {
 	    fprintf(stderr, "%s: post read failed %d/%d: %s page %s\n",
 		Av0, t, n, strerror(errno), FilePath);
 	    exit(1);
