@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.119 2006/05/08 18:45:50 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.120 2006/05/12 22:07:21 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -632,9 +632,6 @@ vfs/procfs/procfs_vfsops.c	optional procfs
 vfs/procfs/procfs_vnops.c	optional procfs
 vfs/procfs/procfs_rlimit.c	optional procfs
 vfs/specfs/spec_vnops.c	standard
-vfs/umapfs/umap_subr.c	optional umapfs
-vfs/umapfs/umap_vfsops.c	optional umapfs
-vfs/umapfs/umap_vnops.c	optional umapfs
 vfs/union/union_subr.c	optional union
 vfs/union/union_vfsops.c	optional union
 vfs/union/union_vnops.c	optional union
