@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_linux_ialloc.c,v 1.13.2.2 2001/08/14 18:03:19 gallatin Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.9 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_linux_ialloc.c,v 1.10 2006/05/12 07:43:56 swildner Exp $
  */
 /*
  *  linux/fs/ext2/ialloc.c
@@ -50,8 +50,6 @@
 
 #ifdef __i386__
 #include "i386-bitops.h"
-#elif defined(__alpha__)
-#include "alpha-bitops.h"
 #else
 #error please provide bit operation functions
 #endif
