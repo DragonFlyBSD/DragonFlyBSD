@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/games/grdc/grdc.6,v 1.2.12.1 2001/10/02 11:51:49 ru Exp $
-.\" $DragonFly: src/games/grdc/grdc.6,v 1.3 2004/03/25 23:55:13 cpressey Exp $
+.\" $DragonFly: src/games/grdc/grdc.6,v 1.4 2006/05/12 14:05:39 swildner Exp $
 .Dd September 25, 2001
 .Dt GRDC 6
 .Sh NAME
@@ -15,7 +15,7 @@
 displays a digital clock made of reverse-video blanks
 centered on a curses-compatible terminal.
 .Pp
-By default, the clock runs indefinately.
+By default, the clock runs indefinitely.
 When the optional numeric argument
 .Ar n
 is given, it stops after
@@ -28,7 +28,8 @@ flag makes digits scroll as they change.
 Over slow links, the scrolling option may have trouble keeping up.
 .Pp
 The default time taken to scroll the digits into view is 120
-milliseconds.  The
+milliseconds.
+The
 .Fl d
 option, which implies
 .Fl s ,
