@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.15 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.16 2006/05/14 17:28:36 dillon Exp $
  */
 
 /*
@@ -373,6 +373,7 @@ cbb_probe(device_t brdev)
 	const char *name;
 	uint32_t progif;
 	uint32_t subclass;
+	uint32_t class;
 
 	/*
 	 * Do we know that we support the chipset?  If so, then we
@@ -391,9 +392,10 @@ cbb_probe(device_t brdev)
 	 * are supported by the pcic driver.  This should help us be more
 	 * future proof.
 	 */
+	class = pci_get_class(brdev);
 	subclass = pci_get_subclass(brdev);
 	progif = pci_get_progif(brdev);
-	if (subclass == PCIS_BRIDGE_CARDBUS && progif == 0) {
+	if (class == PCIC_BRIDGE && subclass == PCIS_BRIDGE_CARDBUS && progif == 0) {
 		device_set_desc(brdev, "PCI-CardBus Bridge");
 		return (0);
 	}
