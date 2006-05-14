@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.4 2006/04/04 17:34:31 dillon Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.5 2006/05/14 18:00:04 swildner Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -100,8 +100,8 @@ enum vtype	{ VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD };
  */
 enum vtagtype	{
 	VT_NON, VT_UFS, VT_NFS, VT_MFS, VT_PC, VT_LFS, VT_LOFS, VT_FDESC,
-	VT_PORTAL, VT_NULL, VT_UMAP, VT_KERNFS, VT_PROCFS, VT_AFS, VT_ISOFS,
-	VT_UNION, VT_MSDOSFS, VT_TFS, VT_VFS, VT_CODA, VT_NTFS,
+	VT_PORTAL, VT_NULL, VT_UNUSED10, VT_KERNFS, VT_PROCFS, VT_AFS,
+	VT_ISOFS, VT_UNION, VT_MSDOSFS, VT_TFS, VT_VFS, VT_CODA, VT_NTFS,
 	VT_HPFS, VT_NWFS, VT_SMBFS, VT_UDF, VT_EXT2FS
 };
 

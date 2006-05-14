@@ -1,6 +1,6 @@
 /* 
  * $FreeBSD: src/usr.sbin/amd/include/config.h,v 1.15.2.1 2001/08/29 08:46:52 alfred Exp $
- * $DragonFly: src/usr.sbin/amd/include/config.h,v 1.3 2003/08/08 04:18:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/amd/include/config.h,v 1.4 2006/05/14 18:00:05 swildner Exp $
  *
  * portions derived from 
  *	$NetBSD: config.h,v 1.11 1998/08/08 22:33:37 christos Exp $
@@ -148,9 +148,6 @@
 /* Define if have UNIONFS filesystem */
 #define HAVE_FS_UNIONFS 1
 
-/* Define if have UMAPFS (uid/gid mapping) filesystem */
-#define HAVE_FS_UMAPFS 1
-
 
 /*
  * Check for the type of the mount(2) system name for a filesystem.
@@ -209,9 +206,6 @@
 /* Mount(2) type/name for UNIONFS filesystem */
 #define MOUNT_TYPE_UNIONFS "union"
 
-/* Mount(2) type/name for UMAPFS (uid/gid mapping) filesystem */
-#define MOUNT_TYPE_UMAPFS "umap"
-
 
 /*
  * Check for the string name for the mount-table of a filesystem.
@@ -264,9 +258,6 @@
 
 /* Mount-table entry name for UNIONFS filesystem */
 #define MNTTAB_TYPE_UNIONFS "union"
-
-/* Mount-table entry name for UMAPFS (uid/gid mapping) filesystem */
-#define MNTTAB_TYPE_UMAPFS "umap"
 
 /*
  * Name of mount table file name.

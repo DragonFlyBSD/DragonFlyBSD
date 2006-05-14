@@ -4,7 +4,7 @@
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998
 #
 # $FreeBSD: src/usr.sbin/amd/amd/Makefile,v 1.17.2.1 2001/04/25 12:09:12 ru Exp $
-# $DragonFly: src/usr.sbin/amd/amd/Makefile,v 1.2 2003/06/17 04:29:52 dillon Exp $
+# $DragonFly: src/usr.sbin/amd/amd/Makefile,v 1.3 2006/05/14 18:00:04 swildner Exp $
 #
 
 .PATH:		${.CURDIR}/../../../contrib/amd/amd
@@ -20,7 +20,7 @@ SRCS+=		amfs_union.c amq_subr.c amq_svc.c autil.c clock.c conf.c
 SRCS+=		get_args.c info_file.c info_ndbm.c info_nis.c info_passwd.c 
 SRCS+=		info_union.c map.c mapc.c mntfs.c nfs_prot_svc.c nfs_start.c 
 SRCS+=		nfs_subr.c ops_cdfs.c ops_lofs.c ops_mfs.c ops_nfs.c ops_nfs3.c 
-SRCS+=		ops_nullfs.c ops_pcfs.c ops_tfs.c ops_ufs.c ops_umapfs.c 
+SRCS+=		ops_nullfs.c ops_pcfs.c ops_tfs.c ops_ufs.c
 SRCS+=		ops_unionfs.c opts.c restart.c rpc_fwd.c sched.c
 SRCS+=		srvr_amfs_auto.c srvr_nfs.c
 

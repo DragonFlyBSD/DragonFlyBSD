@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.106 2006/04/01 10:06:39 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.107 2006/05/14 18:00:04 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -395,6 +395,9 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/spl${splman}.9.gz"
 .endfor
 	rm -f ${DESTDIR}/modules/if_owi.ko
+	rm -f ${DESTDIR}/modules/umap.ko
+	rm -f ${DESTDIR}/sbin/mount_umap
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/mount_umap.8.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)

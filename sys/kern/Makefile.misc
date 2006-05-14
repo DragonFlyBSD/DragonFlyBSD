@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/kern/Makefile.misc,v 1.2 2005/07/07 11:49:57 corecode Exp $
+# $DragonFly: src/sys/kern/Makefile.misc,v 1.3 2006/05/14 18:00:04 swildner Exp $
 #
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -41,7 +41,7 @@ DGEN=	conf \
 	kern libkern \
 	vfs vfs/deadfs vfs/fdesc vfs/fifofs \
 	vfs/nullfs vfs/portal vfs/procfs \
-	vfs/specfs vfs/umapfs vfs/union \
+	vfs/specfs vfs/union \
 	vfs/ufs vfs/mfs vfs/nfs \
 	net netinet netns sys \
 	vm
