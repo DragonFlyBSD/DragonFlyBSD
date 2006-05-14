@@ -4,7 +4,7 @@
 # 	This file is under a "BSD" copyright (c) by David O'Brien 1998
 #
 # $FreeBSD: src/usr.sbin/amd/amd/Makefile,v 1.17.2.1 2001/04/25 12:09:12 ru Exp $
-# $DragonFly: src/usr.sbin/amd/amd/Makefile,v 1.3 2006/05/14 18:00:04 swildner Exp $
+# $DragonFly: src/usr.sbin/amd/amd/Makefile,v 1.4 2006/05/14 18:07:29 swildner Exp $
 #
 
 .PATH:		${.CURDIR}/../../../contrib/amd/amd

@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.107 2006/05/14 18:00:04 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.108 2006/05/14 18:07:29 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail

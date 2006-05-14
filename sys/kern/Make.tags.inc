@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/kern/Make.tags.inc,v 1.6.2.2 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Make.tags.inc,v 1.7 2006/05/14 18:00:04 swildner Exp $
+# $DragonFly: src/sys/kern/Make.tags.inc,v 1.8 2006/05/14 18:07:29 swildner Exp $
 #	@(#)Make.tags.inc	8.1 (Berkeley) 6/11/93
 
 SYS?=	/sys

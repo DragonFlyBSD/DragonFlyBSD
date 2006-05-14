@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/kern/Makefile.misc,v 1.3 2006/05/14 18:00:04 swildner Exp $
+# $DragonFly: src/sys/kern/Makefile.misc,v 1.4 2006/05/14 18:07:29 swildner Exp $
 #
 # Makefile for kernel tags files, init_sysent, etc.
 

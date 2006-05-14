@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.5 2006/05/14 18:00:04 swildner Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.6 2006/05/14 18:07:29 swildner Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
