@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.15 2005/10/13 00:02:46 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.16 2006/05/16 12:34:15 sephe Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -338,5 +338,30 @@ atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
 }
 
 #endif
+
+/*
+ * Atomic compare and set
+ *
+ * if (*dst == exp) *dst = src (all 32 bit words)
+ *
+ * Returns 0 on failure, non-zero on success
+ */
+#if defined(KLD_MODULE)
+extern int atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src);
+#else
+static __inline int
+atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
+{
+	int res = exp;
+
+	__asm __volatile(MPLOCKED "cmpxchgl %2,%1; " \
+			 "setz %%al; " \
+			 "movzbl %%al,%0; " \
+			 : "+a" (res), "=m" (*dst) \
+			 : "r" (src), "m" (*dst) \
+			 : "memory");
+	return res;
+}
+#endif	/* KLD_MODULE */
 
 #endif /* ! _MACHINE_ATOMIC_H_ */

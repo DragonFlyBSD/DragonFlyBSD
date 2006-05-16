@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/i386/include/pthread_md.h,v 1.13 2004/11/06 03:35:51 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.5 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.6 2006/05/16 12:34:15 sephe Exp $
  */
 
 /*
@@ -39,25 +39,6 @@
 #include <machine/tls.h>
 
 struct pthread;
-
-static __inline int
-atomic_cmpset_int(volatile int *dst, int exp, int src)
-{
-	int res = exp;
-
-	__asm __volatile (
-	"	lock cmpxchgl %1,%2 ;	"
-	"       setz	%%al ;		"
-	"	movzbl	%%al,%0 ;	"
-	"1:				"
-	"# atomic_cmpset_int"
-	: "+a" (res)			/* 0 (result) */
-	: "r" (src),			/* 1 */
-	  "m" (*(dst))			/* 2 */
-	: "memory");				 
-
-	return (res);
-}
 
 #define atomic_cmpset_acq_int	atomic_cmpset_int
 

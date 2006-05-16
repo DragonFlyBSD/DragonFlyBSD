@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.15 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.16 2006/05/16 12:34:15 sephe Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -247,29 +247,6 @@ typedef u_int8_t u8;
 #define atomic_sub(n, p)	atomic_subtract_int(p, n)
 
 /* Fake this */
-
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-/* The extra atomic functions from 5.0 haven't been merged to 4.x */
-static __inline int
-atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
-{
-	int res = exp;
-
-	__asm __volatile (
-	"	lock ;			"
-	"	cmpxchgl %1,%2 ;	"
-	"       setz	%%al ;		"
-	"	movzbl	%%al,%0 ;	"
-	"1:				"
-	"# atomic_cmpset_int"
-	: "+a" (res)			/* 0 (result) */
-	: "r" (src),			/* 1 */
-	  "m" (*(dst))			/* 2 */
-	: "memory");				 
-
-	return (res);
-}
-#endif
 
 static __inline atomic_t
 test_and_set_bit(int b, volatile void *p)
