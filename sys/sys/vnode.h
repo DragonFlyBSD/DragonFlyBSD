@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.53 2006/05/12 22:26:47 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.54 2006/05/16 18:09:19 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -466,48 +466,8 @@ struct vnodeopv_node {
  * is a pretty good test.
  */
 
-/*
- * [dfr] Kludge until I get around to fixing all the vfs locking.
- */
-#define IS_LOCKING_VFS(vp)	((vp)->v_tag == VT_UFS		\
-				 || (vp)->v_tag == VT_MFS	\
-				 || (vp)->v_tag == VT_NFS	\
-				 || (vp)->v_tag == VT_LFS	\
-				 || (vp)->v_tag == VT_ISOFS	\
-				 || (vp)->v_tag == VT_MSDOSFS)
-
 #define	ASSERT_VOP_LOCKED(vp, str) assert_vop_locked(vp, str)
 #define	ASSERT_VOP_UNLOCKED(vp, str) assert_vop_unlocked(vp, str);
-
-#define ASSERT_VOP_ELOCKED(vp, str)					\
-do {									\
-	struct vnode *_vp = (vp);					\
-									\
-	if (_vp && IS_LOCKING_VFS(_vp) &&				\
-	    VOP_ISLOCKED(_vp, curthread) != LK_EXCLUSIVE)		\
-		panic("%s: %p is not exclusive locked but should be",	\
-		    str, _vp);						\
-} while (0)
-
-#define ASSERT_VOP_ELOCKED_OTHER(vp, str)				\
-do {									\
-	struct vnode *_vp = (vp);					\
-									\
-	if (_vp && IS_LOCKING_VFS(_vp) &&				\
-	    VOP_ISLOCKED(_vp, curthread) != LK_EXCLOTHER)		\
-		panic("%s: %p is not exclusive locked by another proc",	\
-		    str, _vp);						\
-} while (0)
-
-#define ASSERT_VOP_SLOCKED(vp, str)					\
-do {									\
-	struct vnode *_vp = (vp);					\
-									\
-	if (_vp && IS_LOCKING_VFS(_vp) &&				\
-	    VOP_ISLOCKED(_vp, NULL) != LK_SHARED)			\
-		panic("%s: %p is not locked shared but should be",	\
-		    str, _vp);						\
-} while (0)
 
 void	assert_vop_locked(struct vnode *vp, const char *str);
 void	assert_vop_unlocked(struct vnode *vp, const char *str);
