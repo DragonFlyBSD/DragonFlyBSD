@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.85 2006/05/16 18:09:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.86 2006/05/16 18:20:30 dillon Exp $
  */
 
 /*
@@ -435,6 +435,7 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 {
 	off_t truncloffset;
 	int count;
+	const char *filename;
 
 	/*
 	 * Round up to the *next* block, then destroy the buffers in question.  
@@ -471,16 +472,45 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	}
 
 	/*
-	 * Wait for any in-progress I/O to complete before returning (why?)
+	 * Clean out any left over VM backing store.
 	 */
-	while (vp->v_track_write.bk_active > 0) {
+	crit_exit();
+	vnode_pager_setsize(vp, length);
+	crit_enter();
+
+	/*
+	 * Wait for any in-progress I/O to complete before returning (why?)
+	 * XXX shouldn't have to do this, the buffer scan should have caught
+	 * any buffers undergoing I/O and looped.  Perhaps a buffer wound up
+	 * getting initiated during the VM page scan?
+	 */
+	filename = TAILQ_FIRST(&vp->v_namecache) ?
+		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
+
+	while ((count = vp->v_track_write.bk_active) > 0) {
 		vp->v_track_write.bk_waitflag = 1;
 		tsleep(&vp->v_track_write, 0, "vbtrunc", 0);
+		printf("Warning: vtruncbuf(): Had to wait for %d buffer I/Os "
+		       "to finish in %s\n", count, filename);
 	}
 
-	crit_exit();
-
-	vnode_pager_setsize(vp, length);
+	/*
+	 * Make sure no buffers were instantiated while we were trying
+	 * to clean out the remaining VM pages.  This could occur due
+	 * to busy dirty VM pages being flushed out to disk.
+	 */
+	do {
+		count = RB_SCAN(buf_rb_tree, &vp->v_rbclean_tree, 
+				vtruncbuf_bp_trunc_cmp,
+				vtruncbuf_bp_trunc, &truncloffset);
+		count += RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree,
+				vtruncbuf_bp_trunc_cmp,
+				vtruncbuf_bp_trunc, &truncloffset);
+		if (count) {
+			printf("Warning: vtruncbuf():  Had to re-clean %d "
+			       "left over buffers in %s\n", count, filename);
+		}
+	} while(count);
 
 	return (0);
 }

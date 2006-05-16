@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.27 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.28 2006/05/16 18:20:32 dillon Exp $
  */
 
 /*
@@ -251,6 +251,7 @@ void
 vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 {
 	vm_pindex_t nobjsize;
+	vm_pindex_t oobjsize;
 	vm_object_t object = vp->v_object;
 
 	if (object == NULL)
@@ -262,16 +263,24 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	if (nsize == vp->v_filesize)
 		return;
 
+	/*
+	 * Has changed size.  Adjust the VM object's size and v_filesize
+	 * before we start scanning pages to prevent new pages from being
+	 * allocated during the scan.
+	 */
 	nobjsize = OFF_TO_IDX(nsize + PAGE_MASK);
+	oobjsize = object->size;
+	object->size = nobjsize;
+	vp->v_filesize = nsize;
 
 	/*
 	 * File has shrunk. Toss any cached pages beyond the new EOF.
 	 */
 	if (nsize < vp->v_filesize) {
-		vm_freeze_copyopts(object, OFF_TO_IDX(nsize), object->size);
-		if (nobjsize < object->size) {
-			vm_object_page_remove(object, nobjsize, object->size,
-				FALSE);
+		vm_freeze_copyopts(object, OFF_TO_IDX(nsize), oobjsize);
+		if (nobjsize < oobjsize) {
+			vm_object_page_remove(object, nobjsize, oobjsize,
+					      FALSE);
 		}
 		/*
 		 * This gets rid of garbage at the end of a page that is now
@@ -333,8 +342,6 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			}
 		}
 	}
-	vp->v_filesize = nsize;
-	object->size = nobjsize;
 }
 
 void
