@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.16 2006/05/16 12:34:15 sephe Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.17 2006/05/16 14:24:06 sephe Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -345,6 +345,10 @@ atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
  * if (*dst == exp) *dst = src (all 32 bit words)
  *
  * Returns 0 on failure, non-zero on success
+ *
+ * WARNING:
+ * This is a !I386_CPU function.  For I386_CPU, a _slower and horrible_
+ * version may be used by the dynamic linker
  */
 #if defined(KLD_MODULE)
 extern int atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src);
