@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.65 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.66 2006/05/17 18:30:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -609,7 +609,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			ktrgenio(p->p_tracep, s, UIO_WRITE, &ktruio, error);
+			ktrgenio(p, s, UIO_WRITE, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}
@@ -778,7 +778,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			ktrgenio(p->p_tracep, s, UIO_READ, &ktruio, error);
+			ktrgenio(p, s, UIO_READ, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}

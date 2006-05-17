@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.5 2006/05/17 18:30:22 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -159,12 +159,12 @@ struct ktr_csw {
 #define KTRFAC_ACTIVE	0x20000000	/* ktrace logging in progress, ignore */
 
 #ifdef	_KERNEL
-void	ktrnamei (struct vnode *,char *);
-void	ktrcsw (struct vnode *,int,int);
-void	ktrpsig (struct vnode *, int, sig_t, sigset_t *, int);
-void	ktrgenio (struct vnode *, int, enum uio_rw, struct uio *, int);
-void	ktrsyscall (struct vnode *, int, int narg, register_t args[]);
-void	ktrsysret (struct vnode *, int, int, register_t);
+void	ktrnamei (struct proc *,char *);
+void	ktrcsw (struct proc *,int,int);
+void	ktrpsig (struct proc *, int, sig_t, sigset_t *, int);
+void	ktrgenio (struct proc *, int, enum uio_rw, struct uio *, int);
+void	ktrsyscall (struct proc *, int, int narg, register_t args[]);
+void	ktrsysret (struct proc *, int, int, register_t);
 
 #else
 

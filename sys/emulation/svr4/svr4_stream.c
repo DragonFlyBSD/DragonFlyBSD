@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.17 2006/05/06 06:38:37 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.18 2006/05/17 18:30:16 dillon Exp $
  */
 
 /*
@@ -239,7 +239,7 @@ svr4_sendit(struct thread *td, int s, struct msghdr *mp, int flags,
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = *retval;
-			ktrgenio(p->p_tracep, s, UIO_WRITE, &ktruio, error);
+			ktrgenio(p, s, UIO_WRITE, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}
@@ -312,7 +312,7 @@ svr4_recvit(struct thread *td, int s, struct msghdr *mp, caddr_t namelenp,
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio.uio_resid;
-			ktrgenio(p->p_tracep, s, UIO_READ, &ktruio, error);
+			ktrgenio(p, s, UIO_READ, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.27 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.28 2006/05/17 18:30:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -278,7 +278,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			ktrgenio(p->p_tracep, fd, UIO_READ, &ktruio, error);
+			ktrgenio(p, fd, UIO_READ, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}
@@ -470,7 +470,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
-			ktrgenio(p->p_tracep, fd, UIO_WRITE, &ktruio, error);
+			ktrgenio(p, fd, UIO_WRITE, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
 	}

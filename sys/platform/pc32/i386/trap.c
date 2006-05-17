@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.73 2006/02/17 06:01:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.74 2006/05/17 18:30:18 dillon Exp $
  */
 
 /*
@@ -1379,7 +1379,7 @@ syscall2(struct trapframe frame)
 			if (KTRPOINT(td, KTR_SYSCALL)) {
 				MAKEMPSAFE(have_mplock);
 				
-				ktrsyscall(p->p_tracep, code, narg,
+				ktrsyscall(p, code, narg,
 					(void *)(&args.nosys.usrmsg + 1));
 			}
 #endif
@@ -1390,7 +1390,7 @@ syscall2(struct trapframe frame)
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
+		ktrsyscall(p, code, narg, (void *)(&args.nosys.usrmsg + 1));
 	}
 #endif
 
@@ -1475,7 +1475,7 @@ bad:
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsysret(p->p_tracep, code, error, args.sysmsg_result);
+		ktrsysret(p, code, error, args.sysmsg_result);
 	}
 #endif
 
@@ -1654,7 +1654,7 @@ sendsys2(struct trapframe frame)
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSCALL)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysun->nosys.usrmsg + 1));
+		ktrsyscall(p, code, narg, (void *)(&sysun->nosys.usrmsg + 1));
 	}
 #endif
 	sysun->lmsg.u.ms_fds[0] = 0;
@@ -1732,7 +1732,7 @@ bad2:
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsysret(p->p_tracep, code, error, result);
+		ktrsysret(p, code, error, result);
 	}
 #endif
 
@@ -1870,7 +1870,7 @@ bad:
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
 		MAKEMPSAFE(have_mplock);
-		ktrsysret(p->p_tracep, code, error, result);
+		ktrsysret(p, code, error, result);
 	}
 #endif
 
@@ -1925,7 +1925,7 @@ fork_return(p, frame)
 	userret(lp, &frame, 0);
 #ifdef KTRACE
 	if (KTRPOINT(lp->lwp_thread, KTR_SYSRET))
-		ktrsysret(p->p_tracep, SYS_fork, 0, 0);
+		ktrsysret(p, SYS_fork, 0, 0);
 #endif
 	p->p_flag |= P_PASSIVE_ACQ;
 	userexit(lp);

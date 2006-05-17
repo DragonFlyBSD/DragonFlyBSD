@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.47 2006/05/07 19:17:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.48 2006/05/17 18:30:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -722,7 +722,7 @@ trapsignal(struct proc *p, int sig, u_long code)
 		p->p_stats->p_ru.ru_nsignals++;
 #ifdef KTRACE
 		if (KTRPOINT(p->p_thread, KTR_PSIG))
-			ktrpsig(p->p_tracep, sig, ps->ps_sigact[_SIG_IDX(sig)],
+			ktrpsig(p, sig, ps->ps_sigact[_SIG_IDX(sig)],
 				&p->p_sigmask, code);
 #endif
 		(*p->p_sysent->sv_sendsig)(ps->ps_sigact[_SIG_IDX(sig)], sig,
@@ -1426,8 +1426,8 @@ postsig(int sig)
 	action = ps->ps_sigact[_SIG_IDX(sig)];
 #ifdef KTRACE
 	if (KTRPOINT(p->p_thread, KTR_PSIG))
-		ktrpsig(p->p_tracep, sig, action, p->p_flag & P_OLDMASK ?
-		    &p->p_oldsigmask : &p->p_sigmask, 0);
+		ktrpsig(p, sig, action, p->p_flag & P_OLDMASK ?
+			&p->p_oldsigmask : &p->p_sigmask, 0);
 #endif
 	STOPEVENT(p, S_SIG, sig);
 
