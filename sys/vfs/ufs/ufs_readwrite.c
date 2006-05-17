@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.16 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.17 2006/05/17 17:47:56 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -81,7 +81,6 @@ ffs_read(struct vop_read_args *ap)
 	u_short mode;
 	int seqcount;
 	int ioflag;
-	vm_object_t object;
 
 	vp = ap->a_vp;
 	seqcount = ap->a_ioflag >> 16;
@@ -117,17 +116,12 @@ ffs_read(struct vop_read_args *ap)
 	if (orig_resid <= 0)
 		return (0);
 
-	object = vp->v_object;
-
 	bytesinfile = ip->i_size - uio->uio_offset;
 	if (bytesinfile <= 0) {
 		if ((vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
 			ip->i_flag |= IN_ACCESS;
 		return 0;
 	}
-
-	if (object)
-		vm_object_reference(object);
 
 	/*
 	 * Ok so we couldn't do it all in one vm trick...
@@ -284,8 +278,6 @@ ffs_read(struct vop_read_args *ap)
 		}
 	}
 
-	if (object)
-		vm_object_vndeallocate(object);
 	if ((error == 0 || uio->uio_resid != orig_resid) &&
 	    (vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
 		ip->i_flag |= IN_ACCESS;
@@ -310,7 +302,6 @@ ffs_write(struct vop_write_args *ap)
 	off_t osize;
 	int seqcount;
 	int blkoffset, error, extended, flags, ioflag, resid, size, xfersize;
-	vm_object_t object;
 	struct thread *td;
 
 	extended = 0;
@@ -319,10 +310,6 @@ ffs_write(struct vop_write_args *ap)
 	uio = ap->a_uio;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
-
-	object = vp->v_object;
-	if (object)
-		vm_object_reference(object);
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
@@ -333,11 +320,8 @@ ffs_write(struct vop_write_args *ap)
 	case VREG:
 		if (ioflag & IO_APPEND)
 			uio->uio_offset = ip->i_size;
-		if ((ip->i_flags & APPEND) && uio->uio_offset != ip->i_size) {
-			if (object)
-				vm_object_vndeallocate(object);
+		if ((ip->i_flags & APPEND) && uio->uio_offset != ip->i_size)
 			return (EPERM);
-		}
 		/* FALLTHROUGH */
 	case VLNK:
 		break;
@@ -354,8 +338,6 @@ ffs_write(struct vop_write_args *ap)
 	fs = ip->I_FS;
 	if (uio->uio_offset < 0 ||
 	    (uint64_t)uio->uio_offset + uio->uio_resid > fs->fs_maxfilesize) {
-		if (object)
-			vm_object_vndeallocate(object);
 		return (EFBIG);
 	}
 	/*
@@ -367,8 +349,6 @@ ffs_write(struct vop_write_args *ap)
 	    uio->uio_offset + uio->uio_resid >
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		psignal(td->td_proc, SIGXFSZ);
-		if (object)
-			vm_object_vndeallocate(object);
 		return (EFBIG);
 	}
 
@@ -385,12 +365,6 @@ ffs_write(struct vop_write_args *ap)
 		flags = seqcount << B_SEQSHIFT;
 	if ((ioflag & IO_SYNC) && !DOINGASYNC(vp))
 		flags |= B_SYNC;
-
-	if (object && (object->flags & OBJ_OPT)) {
-		vm_freeze_copyopts(object,
-			OFF_TO_IDX(uio->uio_offset),
-			OFF_TO_IDX(uio->uio_offset + uio->uio_resid + PAGE_MASK));
-	}
 
 	for (error = 0; uio->uio_resid > 0;) {
 		lbn = lblkno(fs, uio->uio_offset);
@@ -496,11 +470,9 @@ ffs_write(struct vop_write_args *ap)
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		}
-	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC))
+	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC)) {
 		error = UFS_UPDATE(vp, 1);
-
-	if (object)
-		vm_object_vndeallocate(object);
+	}
 
 	return (error);
 }

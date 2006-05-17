@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.23 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.24 2006/05/17 17:47:58 dillon Exp $
  */
 
 /*
@@ -248,26 +248,14 @@ vm_object_reference(vm_object_t object)
 	if (object == NULL)
 		return;
 
-#if 0
-	/* object can be re-referenced during final cleaning */
-	KASSERT(!(object->flags & OBJ_DEAD),
-	    ("vm_object_reference: attempting to reference dead obj"));
-#endif
-
 	object->ref_count++;
 	if (object->type == OBJT_VNODE) {
 		vref(object->handle);
 		/* XXX what if the vnode is being destroyed? */
-#if 0
-		while (vget((struct vnode *) object->handle, 
-		    LK_RETRY|LK_NOOBJ, curthread)) {
-			printf("vm_object_reference: delay in getting object\n");
-		}
-#endif
 	}
 }
 
-void
+static void
 vm_object_vndeallocate(vm_object_t object)
 {
 	struct vnode *vp = (struct vnode *) object->handle;
@@ -283,10 +271,8 @@ vm_object_vndeallocate(vm_object_t object)
 #endif
 
 	object->ref_count--;
-	if (object->ref_count == 0) {
+	if (object->ref_count == 0)
 		vp->v_flag &= ~VTEXT;
-		vm_object_clear_flag(object, OBJ_OPT);
-	}
 	vrele(vp);
 }
 
@@ -307,7 +293,6 @@ vm_object_deallocate(vm_object_t object)
 	vm_object_t temp;
 
 	while (object != NULL) {
-
 		if (object->type == OBJT_VNODE) {
 			vm_object_vndeallocate(object);
 			return;
@@ -380,8 +365,6 @@ doterm:
 		if (temp) {
 			LIST_REMOVE(object, shadow_list);
 			temp->shadow_count--;
-			if (temp->ref_count == 0)
-				vm_object_clear_flag(temp, OBJ_OPT);
 			temp->generation++;
 			object->backing_object = NULL;
 		}
@@ -428,11 +411,6 @@ vm_object_terminate(vm_object_t object)
 	 */
 	if (object->type == OBJT_VNODE) {
 		struct vnode *vp;
-
-		/*
-		 * Freeze optimized copies.
-		 */
-		vm_freeze_copyopts(object, 0, object->size);
 
 		/*
 		 * Clean pages and flush buffers.

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.24 2006/05/06 23:53:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.25 2006/05/17 17:47:58 dillon Exp $
  */
 
 /*
@@ -270,12 +270,6 @@ RetryFault:
 	vm_object_reference(fs.first_object);
 	fs.vp = vnode_pager_lock(fs.first_object);
 	vm_object_pip_add(fs.first_object, 1);
-
-	if ((fault_type & VM_PROT_WRITE) &&
-		(fs.first_object->type == OBJT_VNODE)) {
-		vm_freeze_copyopts(fs.first_object,
-			fs.first_pindex, fs.first_pindex + 1);
-	}
 
 	fs.lookup_still_valid = TRUE;
 

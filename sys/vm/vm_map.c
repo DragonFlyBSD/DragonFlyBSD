@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.43 2006/05/05 21:15:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.44 2006/05/17 17:47:58 dillon Exp $
  */
 
 /*
@@ -3285,82 +3285,6 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 	vm_map_unlock_read(map);
 	if (count)
 		vm_map_entry_release(count);
-}
-
-/*
- * Performs the copy_on_write operations necessary to allow the virtual copies
- * into user space to work.  This has to be called for write(2) system calls
- * from other processes, file unlinking, and file size shrinkage.
- */
-void
-vm_freeze_copyopts(vm_object_t object, vm_pindex_t froma, vm_pindex_t toa)
-{
-	int rv;
-	vm_object_t robject;
-	vm_pindex_t idx;
-
-	if ((object == NULL) ||
-		((object->flags & OBJ_OPT) == 0))
-		return;
-
-	if (object->shadow_count > object->ref_count)
-		panic("vm_freeze_copyopts: sc > rc");
-
-	while ((robject = LIST_FIRST(&object->shadow_head)) != NULL) {
-		vm_pindex_t bo_pindex;
-		vm_page_t m_in, m_out;
-
-		bo_pindex = OFF_TO_IDX(robject->backing_object_offset);
-
-		vm_object_reference(robject);
-
-		vm_object_pip_wait(robject, "objfrz");
-
-		if (robject->ref_count == 1) {
-			vm_object_deallocate(robject);
-			continue;
-		}
-
-		vm_object_pip_add(robject, 1);
-
-		for (idx = 0; idx < robject->size; idx++) {
-
-			m_out = vm_page_grab(robject, idx,
-					    VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-			if (m_out->valid == 0) {
-				m_in = vm_page_grab(object, bo_pindex + idx,
-					    VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-				if (m_in->valid == 0) {
-					rv = vm_pager_get_pages(object, &m_in, 1, 0);
-					if (rv != VM_PAGER_OK) {
-						printf("vm_freeze_copyopts: cannot read page from file: %lx\n", (long)m_in->pindex);
-						continue;
-					}
-					vm_page_deactivate(m_in);
-				}
-
-				vm_page_protect(m_in, VM_PROT_NONE);
-				pmap_copy_page(VM_PAGE_TO_PHYS(m_in), VM_PAGE_TO_PHYS(m_out));
-				m_out->valid = m_in->valid;
-				vm_page_dirty(m_out);
-				vm_page_activate(m_out);
-				vm_page_wakeup(m_in);
-			}
-			vm_page_wakeup(m_out);
-		}
-
-		object->shadow_count--;
-		object->ref_count--;
-		LIST_REMOVE(robject, shadow_list);
-		robject->backing_object = NULL;
-		robject->backing_object_offset = 0;
-
-		vm_object_pip_wakeup(robject);
-		vm_object_deallocate(robject);
-	}
-
-	vm_object_clear_flag(object, OBJ_OPT);
 }
 
 #include "opt_ddb.h"

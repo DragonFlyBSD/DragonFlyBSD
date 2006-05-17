@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.28 2006/05/16 18:20:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.29 2006/05/17 17:47:58 dillon Exp $
  */
 
 /*
@@ -277,7 +277,6 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	 * File has shrunk. Toss any cached pages beyond the new EOF.
 	 */
 	if (nsize < vp->v_filesize) {
-		vm_freeze_copyopts(object, OFF_TO_IDX(nsize), oobjsize);
 		if (nobjsize < oobjsize) {
 			vm_object_page_remove(object, nobjsize, oobjsize,
 					      FALSE);
