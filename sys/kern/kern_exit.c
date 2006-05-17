@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.52 2005/12/28 19:13:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.53 2006/05/17 20:20:49 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -49,6 +49,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/ktrace.h>
 #include <sys/pioctl.h>
 #include <sys/tty.h>
 #include <sys/wait.h>
@@ -294,11 +295,9 @@ exit1(int rv)
 	/*
 	 * release trace file
 	 */
-	p->p_traceflag = 0;	/* don't trace the vrele() */
-	if ((vtmp = p->p_tracep) != NULL) {
-		p->p_tracep = NULL;
-		vrele(vtmp);
-	}
+	if (p->p_tracenode)
+		ktrdestroy(&p->p_tracenode);
+	p->p_traceflag = 0;
 #endif
 	/*
 	 * Release reference to text vnode

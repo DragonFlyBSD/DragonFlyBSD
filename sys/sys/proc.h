@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.73 2005/12/01 18:30:10 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.74 2006/05/17 20:20:55 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -130,6 +130,7 @@ struct	pargs {
  */
 
 struct jail;
+struct ktrace_node;
 
 struct lwp {
 	TAILQ_ENTRY(lwp) lwp_procq;	/* run/sleep queue. */
@@ -228,7 +229,7 @@ struct	proc {
 	struct itimerval p_timer[3];	/* Virtual-time timers. */
 
 	int		p_traceflag;	/* Kernel trace points. */
-	struct vnode	*p_tracep;	/* Trace to vnode. */
+	struct ktrace_node *p_tracenode; /* Trace to vnode. */
 
 	sigset_t	p_siglist;	/* Signals arrived but not delivered. */
 

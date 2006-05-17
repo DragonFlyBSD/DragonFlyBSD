@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.46 2006/05/03 15:18:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.47 2006/05/17 20:20:49 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -521,12 +521,11 @@ again:
 	/*
 	 * Copy traceflag and tracefile if enabled.  If not inherited,
 	 * these were zeroed above but we still could have a trace race
-	 * so make sure p2's p_tracep is NULL.
+	 * so make sure p2's p_tracenode is NULL.
 	 */
-	if ((p1->p_traceflag & KTRFAC_INHERIT) && p2->p_tracep == NULL) {
+	if ((p1->p_traceflag & KTRFAC_INHERIT) && p2->p_tracenode == NULL) {
 		p2->p_traceflag = p1->p_traceflag;
-		if ((p2->p_tracep = p1->p_tracep) != NULL)
-			vref(p2->p_tracep);
+		p2->p_tracenode = ktrinherit(p1->p_tracenode);
 	}
 #endif
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.38 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.39 2006/05/17 20:20:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/wait.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/ktrace.h>
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
 #include <sys/nlookup.h>
@@ -366,14 +367,9 @@ interpret:
 		 * we do not regain any tracing during a possible block.
 		 */
 		setsugid();
-		if (p->p_tracep && suser(td)) {
-			struct vnode *vtmp;
-
-			if ((vtmp = p->p_tracep) != NULL) {
-				p->p_tracep = NULL;
-				p->p_traceflag = 0;
-				vrele(vtmp);
-			}
+		if (p->p_tracenode && suser(td) != 0) {
+			ktrdestroy(&p->p_tracenode);
+			p->p_traceflag = 0;
 		}
 		/* Close any file descriptors 0..2 that reference procfs */
 		setugidsafety(p);

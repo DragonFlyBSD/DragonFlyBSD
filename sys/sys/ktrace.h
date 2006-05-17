@@ -32,11 +32,23 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.5 2006/05/17 18:30:22 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.6 2006/05/17 20:20:55 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
 #define _SYS_KTRACE_H_
+
+#ifndef _SYS_UIO_H_
+#include <sys/uio.h>
+#endif
+
+struct ktrace_node {
+	struct vnode	*kn_vp;
+	int		kn_refs;
+};
+
+typedef struct ktrace_node *ktrace_node_t;
+
 
 /*
  * operations to ktrace system call  (KTROP(op))
@@ -165,6 +177,8 @@ void	ktrpsig (struct proc *, int, sig_t, sigset_t *, int);
 void	ktrgenio (struct proc *, int, enum uio_rw, struct uio *, int);
 void	ktrsyscall (struct proc *, int, int narg, register_t args[]);
 void	ktrsysret (struct proc *, int, int, register_t);
+void	ktrdestroy (struct ktrace_node **);
+struct ktrace_node *ktrinherit (struct ktrace_node *);
 
 #else
 
