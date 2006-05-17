@@ -11,7 +11,7 @@
  * ====================================================
  *
  * $NetBSD: math.h,v 1.40 2005/02/03 04:39:32 perry Exp $
- * $DragonFly: src/include/math.h,v 1.7 2005/08/26 20:44:25 joerg Exp $
+ * $DragonFly: src/include/math.h,v 1.8 2006/05/17 14:06:36 swildner Exp $
  */
 
 /*
@@ -382,8 +382,6 @@ double	lgamma_r(double, int *);
 /* float versions of ANSI/POSIX functions */
 
 float	gammaf(float);
-int	isinff(float);
-int	isnanf(float);
 int	finitef(float);
 float	j0f(float);
 float	j1f(float);
