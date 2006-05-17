@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.24 2006/05/17 20:20:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.25 2006/05/17 20:35:33 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -366,7 +366,6 @@ ktrdestroy(struct ktrace_node **tracenodep)
 		/* XXX not MP safe yet */
 		--tracenode->kn_refs;
 		if (tracenode->kn_refs == 0) {
-			printf("DESTROY %p\n", tracenode);
 			vn_close(tracenode->kn_vp, FREAD|FWRITE);
 			tracenode->kn_vp = NULL;
 			FREE(tracenode, M_KTRACE);
@@ -377,8 +376,10 @@ ktrdestroy(struct ktrace_node **tracenodep)
 ktrace_node_t
 ktrinherit(ktrace_node_t tracenode)
 {
-	KKASSERT(tracenode->kn_refs > 0);
-	++tracenode->kn_refs;
+	if (tracenode) {
+		KKASSERT(tracenode->kn_refs > 0);
+		++tracenode->kn_refs;
+	}
 	return(tracenode);
 }
 
@@ -392,7 +393,7 @@ ktrops(struct proc *curp, struct proc *p, int ops, int facs,
 	if (!ktrcanset(curp, p))
 		return (0);
 	if (ops == KTROP_SET) {
-		if ((oldnode = p->p_tracenode) != NULL) {
+		if ((oldnode = p->p_tracenode) != tracenode) {
 			p->p_tracenode = ktrinherit(tracenode);
 			ktrdestroy(&oldnode);
 		}
@@ -484,21 +485,21 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 			  	  IO_UNIT | IO_APPEND, p->p_ucred);
 	}
 	VOP_UNLOCK(tracenode->kn_vp, 0);
-	if (!error)
-		return;
-
-	/*
-	 * If an error occured, give up tracing on all processes using this
-	 * tracenode.  This is not MP safe but is blocking-safe.
-	 */
-	log(LOG_NOTICE, "ktrace write failed, errno %d, tracing stopped\n",
-	    error);
+	if (error) {
+		/*
+		 * If an error occured, give up tracing on all processes
+		 * using this tracenode.  This is not MP safe but is
+		 * blocking-safe.
+		 */
+		log(LOG_NOTICE,
+		    "ktrace write failed, errno %d, tracing stopped\n", error);
 retry:
-	FOREACH_PROC_IN_SYSTEM(p) {
-		if (p->p_tracenode == tracenode) {
-			ktrdestroy(&p->p_tracenode);
-			p->p_traceflag = 0;
-			goto retry;
+		FOREACH_PROC_IN_SYSTEM(p) {
+			if (p->p_tracenode == tracenode) {
+				ktrdestroy(&p->p_tracenode);
+				p->p_traceflag = 0;
+				goto retry;
+			}
 		}
 	}
 	ktrdestroy(&tracenode);
