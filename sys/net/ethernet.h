@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.11 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.12 2006/05/18 13:51:45 sephe Exp $
  *
  */
 
@@ -326,6 +326,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 #define	ETHERTYPE_PPPOEDISC	0x8863	/* PPP Over Ethernet Discovery Stage */
 #define	ETHERTYPE_PPPOE		0x8864	/* PPP Over Ethernet Session Stage */
 #define	ETHERTYPE_LANPROBE	0x8888	/* HP LanProbe test? */
+#define	ETHERTYPE_PAE		0x888e	/* EAPOL PAE/802.1x */
 #define	ETHERTYPE_LOOPBACK	0x9000	/* Loopback: used to test interfaces */
 #define	ETHERTYPE_LBACK		ETHERTYPE_LOOPBACK	/* DEC MOP loopback */
 #define	ETHERTYPE_XNSSM		0x9001	/* 3Com (Formerly Bridge Communications), XNS Systems Management */

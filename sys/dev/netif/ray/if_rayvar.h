@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_rayvar.h,v 1.12.2.4 2001/08/14 22:54:07 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_rayvar.h,v 1.4 2005/02/20 12:49:34 asmodai Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_rayvar.h,v 1.5 2006/05/18 13:51:45 sephe Exp $
  *
  */
 
@@ -322,3 +322,41 @@ static int mib_info[RAY_MIB_MAX+1][3] = RAY_MIB_INFO;
 #ifndef RAY_MAP_CM
 #define RAY_MAP_CM(sc)
 #endif /* RAY_MAP_CM */
+
+/*
+ * Management information element payloads
+ */
+union ieee80211_information {
+	char	ssid[IEEE80211_NWID_LEN+1];
+	struct rates {
+		uint8_t	*p;
+	} rates;
+	struct fh {
+		uint16_t	dwell;
+		uint8_t		set;
+		uint8_t		pattern;
+		uint8_t		index;
+	} fh;
+	struct ds {
+		uint8_t		channel;
+	} ds;
+	struct cf {
+		uint8_t		count;
+		uint8_t		period;
+		uint8_t		maxdur[2];
+		uint8_t		dur[2];
+	} cf;
+	struct tim {
+		uint8_t		count;
+		uint8_t		period;
+		uint8_t		bitctl;
+		/* uint8_t	pvt[251]; The driver needs to use this. */
+	} tim;
+	struct ibss {
+		uint16_t	atim;
+	} ibss;
+	struct challenge {
+		uint8_t		*p;
+		uint8_t		len;
+	} challenge;
+};

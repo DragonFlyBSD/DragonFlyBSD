@@ -25,7 +25,8 @@
  * SUCH DAMAGE.
  *
  * $Id: if_ipwvar.h,v 1.2.2.1 2005/01/13 20:01:04 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.5 2005/11/29 17:15:56 dillon Exp $
+ * $FreeBSD: src/sys/dev/ipw/if_ipwvar.h,v 1.3 2005/06/10 16:49:11 brooks Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.6 2006/05/18 13:51:45 sephe Exp $
  */
 
 struct ipw_firmware {
@@ -98,14 +99,16 @@ struct ipw_softc {
 #define IPW_FLAG_FW_CACHED          (1 << 0)
 #define IPW_FLAG_FW_INITED          (1 << 1)
 #define IPW_FLAG_HAS_RADIO_SWITCH   (1 << 2)
+#define IPW_FLAG_FW_WARNED	    (1 << 3)
 
+	int				irq_rid;
+	int				mem_rid;
 	struct resource			*irq;
 	struct resource			*mem;
 	bus_space_tag_t			sc_st;
 	bus_space_handle_t		sc_sh;
 	void 				*sc_ih;
 
-	int				authmode;
 	int				sc_tx_timer;
 
 	bus_dma_tag_t			tbd_dmat;
@@ -146,6 +149,8 @@ struct ipw_softc {
 	u_int32_t			txold;
 	int				txfree;
 	u_int32_t			rxcur;
+
+	int				dwelltime;
 
 	struct bpf_if			*sc_drvbpf;
 

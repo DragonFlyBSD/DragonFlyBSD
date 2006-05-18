@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.35 2005/12/31 14:25:04 sephe Exp $
+ * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.180.2.7 2005/10/05 13:16:29 avatar Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.36 2006/05/18 13:51:45 sephe Exp $
  */
 
 /*
@@ -143,6 +143,8 @@ static int  wi_mwrite_bap(struct wi_softc *, int, int, struct mbuf *, int);
 static int  wi_read_rid(struct wi_softc *, int, void *, int *);
 static int  wi_write_rid(struct wi_softc *, int, void *, int);
 
+static int  wi_key_alloc(struct ieee80211com *, const struct ieee80211_key *,
+		ieee80211_keyix *, ieee80211_keyix *);
 static int  wi_newstate(struct ieee80211com *, enum ieee80211_state, int);
 
 static int  wi_scan_ap(struct wi_softc *, u_int16_t, u_int16_t);
@@ -252,7 +254,9 @@ wi_attach(device_t dev)
 	ifp->if_softc = sc;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
+	sc->sc_firmware_type = WI_NOTYPE;
 	sc->wi_cmd_count = 500;
+
 	/* Reset the NIC. */
 	error = wi_reset(sc);
 	if (error)
@@ -297,8 +301,11 @@ wi_attach(device_t dev)
 
 	ic->ic_phytype = IEEE80211_T_DS;
 	ic->ic_opmode = IEEE80211_M_STA;
-	ic->ic_caps = IEEE80211_C_PMGT | IEEE80211_C_AHDEMO;
+	ic->ic_caps = IEEE80211_C_PMGT |
+		      IEEE80211_C_IBSS |
+		      IEEE80211_C_WEP;
 	ic->ic_state = IEEE80211_S_INIT;
+	ic->ic_max_aid = WI_MAX_AID;
 
 	/*
 	 * Query the card for available channels and setup the
@@ -457,11 +464,13 @@ wi_attach(device_t dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ieee80211_ifattach(ifp);
+	ieee80211_ifattach(ic);
 	/* override state transition method */
 	sc->sc_newstate = ic->ic_newstate;
+	sc->sc_key_alloc = ic->ic_crypto.cs_key_alloc;
+	ic->ic_crypto.cs_key_alloc = wi_key_alloc;
 	ic->ic_newstate = wi_newstate;
-	ieee80211_media_init(ifp, wi_media_change, wi_media_status);
+	ieee80211_media_init(ic, wi_media_change, wi_media_status);
 
 	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
 		sizeof(struct ieee80211_frame) + sizeof(sc->sc_tx_th),
@@ -483,15 +492,18 @@ wi_attach(device_t dev)
 	sc->sc_rx_th.wr_ihdr.it_len = htole16(sc->sc_rx_th_len);
 	sc->sc_rx_th.wr_ihdr.it_present = htole32(WI_RX_RADIOTAP_PRESENT);
 
-
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       wi_intr, sc, &sc->wi_intrhand,
 			       ifp->if_serializer);
 	if (error) {
-		ieee80211_ifdetach(ifp);
+		bpfdetach(ifp);
+		ieee80211_ifdetach(ic);
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		goto fail;
 	}
+
+	if (bootverbose)
+		ieee80211_announce(ic);
 
 	return(0);
 
@@ -515,7 +527,8 @@ wi_detach(device_t dev)
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
-	ieee80211_ifdetach(ifp);
+	bpfdetach(ifp);
+	ieee80211_ifdetach(&sc->sc_ic);
 	wi_free(dev);
 	return (0);
 }
@@ -674,8 +687,10 @@ wi_init(void *arg)
 	IEEE80211_ADDR_COPY(ic->ic_myaddr, IF_LLADDR(ifp));
 	wi_write_rid(sc, WI_RID_MAC_NODE, ic->ic_myaddr, IEEE80211_ADDR_LEN);
 
-	wi_write_val(sc, WI_RID_PM_ENABLED,
-	    (ic->ic_flags & IEEE80211_F_PMGTON) ? 1 : 0);
+	if (ic->ic_caps & IEEE80211_C_PMGT) {
+		wi_write_val(sc, WI_RID_PM_ENABLED,
+		    (ic->ic_flags & IEEE80211_F_PMGTON) ? 1 : 0);
+	}
 
 	/* not yet common 802.11 configuration */
 	wi_write_val(sc, WI_RID_MAX_DATALEN, sc->sc_max_datalen);
@@ -695,10 +710,10 @@ wi_init(void *arg)
 
 	if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
 	    sc->sc_firmware_type == WI_INTERSIL) {
-		wi_write_val(sc, WI_RID_OWN_BEACON_INT, ic->ic_lintval);
+		wi_write_val(sc, WI_RID_OWN_BEACON_INT, ic->ic_bintval);
 		wi_write_val(sc, WI_RID_BASIC_RATE, 0x03);   /* 1, 2 */
 		wi_write_val(sc, WI_RID_SUPPORT_RATE, 0x0f); /* 1, 2, 5.5, 11 */
-		wi_write_val(sc, WI_RID_DTIM_PERIOD, 1);
+		wi_write_val(sc, WI_RID_DTIM_PERIOD, ic->ic_dtim_period);
 	}
 
 	/*
@@ -717,8 +732,12 @@ wi_init(void *arg)
 	}
 
 	/* Configure WEP. */
-	if (ic->ic_caps & IEEE80211_C_WEP)
+	if (ic->ic_caps & IEEE80211_C_WEP) {
+		sc->sc_cnfauthmode = ic->ic_bss->ni_authmode;
 		wi_write_wep(sc);
+	} else {
+		sc->sc_encryption = 0;
+	}
 
 	/* Set multicast filter. */
 	wi_write_multi(sc);
@@ -749,9 +768,10 @@ wi_init(void *arg)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 	if (ic->ic_opmode == IEEE80211_M_AHDEMO ||
+	    ic->ic_opmode == IEEE80211_M_IBSS ||
 	    ic->ic_opmode == IEEE80211_M_MONITOR ||
 	    ic->ic_opmode == IEEE80211_M_HOSTAP)
-		ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+		ieee80211_create_ibss(ic, ic->ic_ibss_chan);
 
 	/* Enable interrupts if not polling */
 #ifdef DEVICE_POLLING
@@ -799,7 +819,6 @@ wi_stop(struct ifnet *ifp, int disable)
 
 	DELAY(100000);
 
-	ifp->if_flags &= ~(IFF_OACTIVE | IFF_RUNNING);
 	ieee80211_new_state(ic, IEEE80211_S_INIT, -1);
 	if (sc->sc_enabled && !sc->wi_gone) {
 		CSR_WRITE_2(sc, WI_INT_EN, 0);
@@ -816,9 +835,9 @@ wi_stop(struct ifnet *ifp, int disable)
 
 	sc->sc_tx_timer = 0;
 	sc->sc_scan_timer = 0;
-	sc->sc_syn_timer = 0;
 	sc->sc_false_syns = 0;
 	sc->sc_naps = 0;
+	ifp->if_flags &= ~(IFF_OACTIVE | IFF_RUNNING);
 	ifp->if_timer = 0;
 }
 
@@ -833,10 +852,7 @@ wi_start(struct ifnet *ifp)
 	struct wi_frame frmhdr;
 	int cur, fid, off, error;
 
-	if (sc->wi_gone)
-		return;
-
-	if (sc->sc_flags & WI_FLAGS_OUTRANGE)
+	if (sc->wi_gone || (sc->sc_flags & WI_FLAGS_OUTRANGE))
 		return;
 
 	memset(&frmhdr, 0, sizeof(frmhdr));
@@ -866,6 +882,8 @@ wi_start(struct ifnet *ifp)
 			frmhdr.wi_ehdr.ether_type = 0;
                         wh = mtod(m0, struct ieee80211_frame *);
 		} else {
+			struct ether_header *eh;
+
 			if (ic->ic_state != IEEE80211_S_RUN)
 				break;
 			m0 = ifq_poll(&ifp->if_snd);
@@ -875,33 +893,50 @@ wi_start(struct ifnet *ifp)
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
+
 			ifq_dequeue(&ifp->if_snd, m0);
+			if (m0->m_len < sizeof(struct ether_header)) {
+				m0 = m_pullup(m0, sizeof(struct ether_header));
+				if (m0 == NULL) {
+					ifp->if_oerrors++;
+					continue;
+				}
+			}
+
+			eh = mtod(m0, struct ether_header *);
+			ni = ieee80211_find_txnode(ic, eh->ether_dhost);
+			if (ni == NULL) {
+				m_freem(m0);
+       				ifp->if_oerrors++;
+				continue;
+			}
+
 			ifp->if_opackets++;
 			m_copydata(m0, 0, ETHER_HDR_LEN, 
 			    (caddr_t)&frmhdr.wi_ehdr);
 			BPF_MTAP(ifp, m0);
 
-			m0 = ieee80211_encap(ifp, m0, &ni);
+			m0 = ieee80211_encap(ic, m0, ni);
 			if (m0 == NULL) {
+				ieee80211_free_node(ni);
 				ifp->if_oerrors++;
 				continue;
 			}
                         wh = mtod(m0, struct ieee80211_frame *);
-			if (ic->ic_flags & IEEE80211_F_WEPON)
-				wh->i_fc[1] |= IEEE80211_FC1_WEP;
-
 		}
 
 		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m0);
 
 		frmhdr.wi_tx_ctl = htole16(WI_ENC_TX_802_11|WI_TXCNTL_TX_EX);
-		if (ic->ic_opmode == IEEE80211_M_HOSTAP &&
-		    (wh->i_fc[1] & IEEE80211_FC1_WEP)) {
-			if ((m0 = ieee80211_wep_crypt(ifp, m0, 1)) == NULL) {
+		/* XXX check key for SWCRYPT instead of using operating mode */
+		if ((wh->i_fc[1] & IEEE80211_FC1_WEP) &&
+		    (sc->sc_encryption & HOST_ENCRYPT)) {
+			if (ieee80211_crypto_encap(ic, ni, m0) == NULL) {
+				if (ni != NULL)
+					ieee80211_free_node(ni);
+				m_freem(m0);
 				ifp->if_oerrors++;
-				if (ni && ni != ic->ic_bss)
-					ieee80211_free_node(ic, ni);
 				continue;
 			}
 			frmhdr.wi_tx_ctl |= htole16(WI_TXCNTL_NOCRYPT);
@@ -925,8 +960,8 @@ wi_start(struct ifnet *ifp)
 		error = wi_write_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr)) != 0
 		     || wi_mwrite_bap(sc, fid, off, m0, m0->m_pkthdr.len) != 0;
 		m_freem(m0);
-		if (ni && ni != ic->ic_bss)
-			ieee80211_free_node(ic, ni);
+		if (ni != NULL)
+			ieee80211_free_node(ni);
 		if (error) {
 			ifp->if_oerrors++;
 			continue;
@@ -1014,20 +1049,8 @@ wi_watchdog(struct ifnet *ifp)
 			ifp->if_timer = 1;
 	}
 
-	if (sc->sc_syn_timer) {
-		if (--sc->sc_syn_timer == 0) {
-			struct ieee80211com *ic = (struct ieee80211com *) ifp;
-			DPRINTF2((ifp, "wi_watchdog: %d false syns\n",
-			    sc->sc_false_syns));
-			sc->sc_false_syns = 0;
-			ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
-			sc->sc_syn_timer = 5;
-		}
-		ifp->if_timer = 1;
-	}
-
 	/* TODO: rate control */
-	ieee80211_watchdog(ifp);
+	ieee80211_watchdog(&sc->sc_ic);
 }
 
 static int
@@ -1120,7 +1143,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 					ireq->i_len);
 			break;
 		default:
-			error = ieee80211_ioctl(ifp, cmd, data, cr);
+			error = ieee80211_ioctl(ic, cmd, data, cr);
 			break;
 		}
 		break;
@@ -1150,7 +1173,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			sc->sc_nodelen = ireq->i_len;
 			break;
 		default:
-			error = ieee80211_ioctl(ifp, cmd, data, cr);
+			error = ieee80211_ioctl(ic, cmd, data, cr);
 			break;
 		}
 		break;
@@ -1159,7 +1182,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			wi_init(sc);
 		break;
 	default:
-		error = ieee80211_ioctl(ifp, cmd, data, cr);
+		error = ieee80211_ioctl(ic, cmd, data, cr);
 		break;
 	}
 	if (error == ENETRESET) {
@@ -1194,7 +1217,7 @@ wi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 	u_int16_t val;
 	int rate, len;
 
-	if (sc->wi_gone || !sc->sc_enabled) {
+	if (sc->wi_gone) {	/* hardware gone (e.g. ejected) */
 		imr->ifm_active = IFM_IEEE80211 | IFM_NONE;
 		imr->ifm_status = 0;
 		return;
@@ -1202,26 +1225,30 @@ wi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 
 	imr->ifm_status = IFM_AVALID;
 	imr->ifm_active = IFM_IEEE80211;
+	if (!sc->sc_enabled) {	/* port !enabled, have no status */
+		imr->ifm_active |= IFM_NONE;
+		return;
+	}
 	if (ic->ic_state == IEEE80211_S_RUN &&
 	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0)
 		imr->ifm_status |= IFM_ACTIVE;
 	len = sizeof(val);
-	if (wi_read_rid(sc, WI_RID_CUR_TX_RATE, &val, &len) != 0)
-		rate = 0;
-	else {
+	if (wi_read_rid(sc, WI_RID_CUR_TX_RATE, &val, &len) == 0 &&
+	    len == sizeof(val)) {
 		/* convert to 802.11 rate */
+		val = le16toh(val);
 		rate = val * 2;
 		if (sc->sc_firmware_type == WI_LUCENT) {
-			if (rate == 4 * 2)
+			if (rate == 10)
 				rate = 11;	/* 5.5Mbps */
-			else if (rate == 5 * 2)
-				rate = 22;	/* 11Mbps */
 		} else {
 			if (rate == 4*2)
 				rate = 11;	/* 5.5Mbps */
 			else if (rate == 8*2)
 				rate = 22;	/* 11Mbps */
 		}
+	} else {
+		rate = 0;
 	}
 	imr->ifm_active |= ieee80211_rate2media(ic, rate, IEEE80211_MODE_11B);
 	switch (ic->ic_opmode) {
@@ -1260,10 +1287,19 @@ wi_sync_bssid(struct wi_softc *sc, u_int8_t new_bssid[IEEE80211_ADDR_LEN])
 	 * change-of-BSSID indications.
 	 */
 	if ((ifp->if_flags & IFF_PROMISC) != 0 &&
-	    sc->sc_false_syns >= WI_MAX_FALSE_SYNS)
+	    !ppsratecheck(&sc->sc_last_syn, &sc->sc_false_syns,
+	                 WI_MAX_FALSE_SYNS))
 		return;
 
-	ieee80211_new_state(ic, IEEE80211_S_RUN, -1);
+	sc->sc_false_syns = MAX(0, sc->sc_false_syns - 1);
+	/*
+	 * XXX hack; we should create a new node with the new bssid
+	 * and replace the existing ic_bss with it but since we don't
+	 * process management frames to collect state we cheat by
+	 * reusing the existing node as we know wi_newstate will be
+	 * called and it will overwrite the node state.
+	 */
+	ieee80211_sta_join(ic, ieee80211_ref_node(ni));
 }
 
 static void
@@ -1435,6 +1471,17 @@ wi_rx_intr(struct wi_softc *sc)
 
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
 
+	wh = mtod(m, struct ieee80211_frame *);
+	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
+		/*
+		 * WEP is decrypted by hardware and the IV
+		 * is stripped.  Clear WEP bit so we don't
+		 * try to process it in ieee80211_input.
+		 * XXX fix for TKIP, et. al.
+		 */
+		wh->i_fc[1] &= ~IEEE80211_FC1_WEP;
+	}
+
 	if (sc->sc_drvbpf) {
 		/* XXX replace divide by table */
 		sc->sc_rx_th.wr_rate = frmhdr.wi_rx_rate / 5;
@@ -1446,15 +1493,6 @@ wi_rx_intr(struct wi_softc *sc)
 		bpf_ptap(sc->sc_drvbpf, m, &sc->sc_rx_th, sc->sc_rx_th_len);
 	}
 
-	wh = mtod(m, struct ieee80211_frame *);
-	if (wh->i_fc[1] & IEEE80211_FC1_WEP) {
-		/*
-		 * WEP is decrypted by hardware. Clear WEP bit
-		 * header for ieee80211_input().
-		 */
-		wh->i_fc[1] &= ~IEEE80211_FC1_WEP;
-	}
-
 	/* synchronize driver's BSSID with firmware's BSSID */
 	dir = wh->i_fc[1] & IEEE80211_FC1_DIR_MASK;
 	if (ic->ic_opmode == IEEE80211_M_IBSS && dir == IEEE80211_FC1_DIR_NODS)
@@ -1463,29 +1501,19 @@ wi_rx_intr(struct wi_softc *sc)
 	/*
 	 * Locate the node for sender, track state, and
 	 * then pass this node (referenced) up to the 802.11
-	 * layer for its use.  We are required to pass
-	 * something so we fallback to ic_bss when this frame
-	 * is from an unknown sender.
+	 * layer for its use.
 	 */
-	if (ic->ic_opmode != IEEE80211_M_STA) {
-		ni = ieee80211_find_node(ic, wh->i_addr2);
-		if (ni == NULL)
-			ni = ieee80211_ref_node(ic->ic_bss);
-	} else
-		ni = ieee80211_ref_node(ic->ic_bss);
+	ni = ieee80211_find_rxnode(ic, (struct ieee80211_frame_min *) wh);
 	/*
 	 * Send frame up for processing.
 	 */
-	ieee80211_input(ifp, m, ni, rssi, rstamp);
+	ieee80211_input(ic, m, ni, rssi, rstamp);
 	/*
 	 * The frame may have caused the node to be marked for
 	 * reclamation (e.g. in response to a DEAUTH message)
 	 * so use free_node here instead of unref_node.
 	 */
-	if (ni == ic->ic_bss)
-		ieee80211_unref_node(&ni);
-	else
-		ieee80211_free_node(ic, ni);
+	ieee80211_free_node(ni);
 }
 
 static void
@@ -1804,7 +1832,7 @@ wi_get_cfg(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case WI_RID_TX_CRYPT_KEY:
 	case WI_RID_DEFLT_CRYPT_KEYS:
 	case WI_RID_TX_RATE:
-		return ieee80211_cfgget(ifp, cmd, data, cr);
+		return ieee80211_cfgget(ic, cmd, data, cr);
 
 	case WI_RID_MICROWAVE_OVEN:
 		if (sc->sc_enabled && (sc->sc_flags & WI_FLAGS_HAS_MOR)) {
@@ -1858,7 +1886,7 @@ wi_get_cfg(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case WI_RID_READ_APS:
 		if (ic->ic_opmode == IEEE80211_M_HOSTAP)
-			return ieee80211_cfgget(ifp, cmd, data, cr);
+			return ieee80211_cfgget(ic, cmd, data, cr);
 		if (sc->sc_scan_timer > 0) {
 			error = EINPROGRESS;
 			break;
@@ -1895,11 +1923,11 @@ wi_get_cfg(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case WI_RID_READ_CACHE:
-		return ieee80211_cfgget(ifp, cmd, data, cr);
+		return ieee80211_cfgget(ic, cmd, data, cr);
 
 	case WI_RID_SCAN_RES:		/* compatibility interface */
 		if (ic->ic_opmode == IEEE80211_M_HOSTAP)
-			return ieee80211_cfgget(ifp, cmd, data, cr);
+			return ieee80211_cfgget(ic, cmd, data, cr);
 		if (sc->sc_scan_timer > 0) {
 			error = EINPROGRESS;
 			break;
@@ -1981,7 +2009,7 @@ wi_get_cfg(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			    sc->sc_nodelen);
 			break;
 		default:
-			return ieee80211_cfgget(ifp, cmd, data, cr);
+			return ieee80211_cfgget(ic, cmd, data, cr);
 		}
 		break;
 	}
@@ -2080,7 +2108,7 @@ wi_set_cfg(struct ifnet *ifp, u_long cmd, caddr_t data)
 	case WI_RID_TX_RATE:
 		switch (le16toh(wreq.wi_val[0])) {
 		case 3:
-			ic->ic_fixed_rate = -1;
+			ic->ic_fixed_rate = IEEE80211_FIXED_RATE_NONE;
 			break;
 		default:
 			rs = &ic->ic_sup_rates[IEEE80211_MODE_11B];
@@ -2153,7 +2181,7 @@ wi_set_cfg(struct ifnet *ifp, u_long cmd, caddr_t data)
 			if (error)
 				break;
 		}
-		error = ieee80211_cfgset(ifp, cmd, data);
+		error = ieee80211_cfgset(ic, cmd, data);
 		break;
 	}
 	return error;
@@ -2166,7 +2194,7 @@ wi_write_txrate(struct wi_softc *sc)
 	int i;
 	u_int16_t rate;
 
-	if (ic->ic_fixed_rate < 0)
+	if (ic->ic_fixed_rate == IEEE80211_FIXED_RATE_NONE)
 		rate = 0;	/* auto */
 	else
 		rate = (ic->ic_sup_rates[IEEE80211_MODE_11B].rs_rates[ic->ic_fixed_rate] &
@@ -2215,6 +2243,24 @@ wi_write_txrate(struct wi_softc *sc)
 }
 
 static int
+wi_key_alloc(struct ieee80211com *ic, const struct ieee80211_key *k,
+	ieee80211_keyix *keyix, ieee80211_keyix *rxkeyix)
+{
+	struct wi_softc *sc = ic->ic_ifp->if_softc;
+
+	/*
+	 * When doing host encryption of outbound frames fail requests
+	 * for keys that are not marked w/ the SWCRYPT flag so the
+	 * net80211 layer falls back to s/w crypto.  Note that we also
+	 * fixup existing keys below to handle mode changes.
+	 */
+	if ((sc->sc_encryption & HOST_ENCRYPT) &&
+	    (k->wk_flags & IEEE80211_KEY_SWCRYPT) == 0)
+		return 0;
+	return sc->sc_key_alloc(ic, k, keyix, rxkeyix);
+}
+
+static int
 wi_write_wep(struct wi_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
@@ -2225,27 +2271,30 @@ wi_write_wep(struct wi_softc *sc)
 
 	switch (sc->sc_firmware_type) {
 	case WI_LUCENT:
-		val = (ic->ic_flags & IEEE80211_F_WEPON) ? 1 : 0;
+		val = (ic->ic_flags & IEEE80211_F_PRIVACY) ? 1 : 0;
 		error = wi_write_val(sc, WI_RID_ENCRYPTION, val);
 		if (error)
 			break;
-		error = wi_write_val(sc, WI_RID_TX_CRYPT_KEY, ic->ic_wep_txkey);
+		if (!(ic->ic_flags & IEEE80211_F_PRIVACY))
+			break;
+		error = wi_write_val(sc, WI_RID_TX_CRYPT_KEY, ic->ic_def_txkey);
 		if (error)
 			break;
 		memset(wkey, 0, sizeof(wkey));
 		for (i = 0; i < IEEE80211_WEP_NKID; i++) {
-			keylen = ic->ic_nw_keys[i].wk_len;
+			keylen = ic->ic_nw_keys[i].wk_keylen;
 			wkey[i].wi_keylen = htole16(keylen);
 			memcpy(wkey[i].wi_keydat, ic->ic_nw_keys[i].wk_key,
 			    keylen);
 		}
 		error = wi_write_rid(sc, WI_RID_DEFLT_CRYPT_KEYS,
 		    wkey, sizeof(wkey));
+		sc->sc_encryption = 0;
 		break;
 
 	case WI_INTERSIL:
 	case WI_SYMBOL:
-		if (ic->ic_flags & IEEE80211_F_WEPON) {
+		if (ic->ic_flags & IEEE80211_F_PRIVACY) {
 			/*
 			 * ONLY HWB3163 EVAL-CARD Firmware version
 			 * less than 0.8 variant2
@@ -2262,6 +2311,7 @@ wi_write_wep(struct wi_softc *sc)
 			}
 			wi_write_val(sc, WI_RID_CNFAUTHMODE,
 			    sc->sc_cnfauthmode);
+			/* XXX should honor IEEE80211_F_DROPUNENC */
 			val = PRIVACY_INVOKED | EXCLUDE_UNENCRYPTED;
 			/*
 			 * Encryption firmware has a bug for HostAP mode.
@@ -2277,9 +2327,14 @@ wi_write_wep(struct wi_softc *sc)
 		error = wi_write_val(sc, WI_RID_P2_ENCRYPTION, val);
 		if (error)
 			break;
+		sc->sc_encryption = val;
+		if ((val & PRIVACY_INVOKED) == 0)
+			break;
 		error = wi_write_val(sc, WI_RID_P2_TX_CRYPT_KEY,
-		    ic->ic_wep_txkey);
+		    ic->ic_def_txkey);
 		if (error)
+			break;
+		if (val & HOST_DECRYPT)
 			break;
 		/*
 		 * It seems that the firmware accept 104bit key only if
@@ -2287,7 +2342,10 @@ wi_write_wep(struct wi_softc *sc)
 		 * the transmit key and use it for all other keys.
 		 * Perhaps we should use software WEP for such situation.
 		 */
-		keylen = ic->ic_nw_keys[ic->ic_wep_txkey].wk_len;
+		if (ic->ic_def_txkey != IEEE80211_KEYIX_NONE)
+			keylen = ic->ic_nw_keys[ic->ic_def_txkey].wk_keylen;
+		else	/* XXX should not hapen */
+			keylen = IEEE80211_WEP_KEYLEN;
 		if (keylen > IEEE80211_WEP_KEYLEN)
 			keylen = 13;	/* 104bit keys */
 		else
@@ -2300,6 +2358,19 @@ wi_write_wep(struct wi_softc *sc)
 		}
 		break;
 	}
+	/*
+	 * XXX horrible hack; insure pre-existing keys are
+	 * setup properly to do s/w crypto.
+	 */
+	for (i = 0; i < IEEE80211_WEP_NKID; i++) {
+		struct ieee80211_key *k = &ic->ic_nw_keys[i];
+		if (k->wk_flags & IEEE80211_KEY_XMIT) {
+			if (sc->sc_encryption & HOST_ENCRYPT)
+				k->wk_flags |= IEEE80211_KEY_SWCRYPT;
+			else
+				k->wk_flags &= ~IEEE80211_KEY_SWCRYPT;
+		}
+	}
 	return error;
 }
 
@@ -2307,14 +2378,9 @@ static int
 wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 {
 	int			i, s = 0;
-	static volatile int count  = 0;
 	
 	if (sc->wi_gone)
 		return (ENODEV);
-
-	if (count > 0)
-		panic("Hey partner, hold on there!");
-	count++;
 
 	/* wait for the busy bit to clear */
 	for (i = sc->wi_cmd_count; i > 0; i--) {	/* 500ms */
@@ -2325,7 +2391,6 @@ wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 	if (i == 0) {
 		if_printf(&sc->sc_ic.ic_if, "wi_cmd: busy bit won't clear.\n" );
 		sc->wi_gone = 1;
-		count--;
 		return(ETIMEDOUT);
 	}
 
@@ -2349,7 +2414,6 @@ wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 			s = CSR_READ_2(sc, WI_STATUS);
 			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_CMD);
 			if (s & WI_STAT_CMD_RESULT) {
-				count--;
 				return(EIO);
 			}
 			break;
@@ -2357,7 +2421,6 @@ wi_cmd(struct wi_softc *sc, int cmd, int val0, int val1, int val2)
 		DELAY(WI_DELAY);
 	}
 
-	count--;
 	if (i == WI_TIMEOUT) {
 		if_printf(&sc->sc_ic.ic_if,
 		    "timeout in wi_cmd 0x%04x; event status 0x%04x\n", cmd, s);
@@ -2514,11 +2577,11 @@ wi_alloc_fid(struct wi_softc *sc, int len, int *idp)
 	for (i = 0; i < WI_TIMEOUT; i++) {
 		if (CSR_READ_2(sc, WI_EVENT_STAT) & WI_EV_ALLOC)
 			break;
-		if (i == WI_TIMEOUT) {
-			if_printf(&sc->sc_ic.ic_if, "timeout in alloc\n");
-			return ETIMEDOUT;
-		}
 		DELAY(1);
+	}
+	if (i == WI_TIMEOUT) {
+		if_printf(&sc->sc_ic.ic_if, "timeout in alloc\n");
+		return ETIMEDOUT;
 	}
 	*idp = CSR_READ_2(sc, WI_ALLOC_FID);
 	CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_ALLOC);
@@ -2590,40 +2653,48 @@ wi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		ieee80211_state_name[ic->ic_state],
 		ieee80211_state_name[nstate]));
 
+	/*
+	 * Internal to the driver the INIT and RUN states are used
+	 * so bypass the net80211 state machine for other states.
+	 * Beware however that this requires use to net80211 state
+	 * management that otherwise would be handled for us.
+	 */
 	switch (nstate) {
 	case IEEE80211_S_INIT:
-		ic->ic_flags &= ~IEEE80211_F_SIBSS;
 		sc->sc_flags &= ~WI_FLAGS_OUTRANGE;
-		return (*sc->sc_newstate)(ic, nstate, arg);
+		return sc->sc_newstate(ic, nstate, arg);
 
 	case IEEE80211_S_RUN:
 		sc->sc_flags &= ~WI_FLAGS_OUTRANGE;
 		buflen = IEEE80211_ADDR_LEN;
+		IEEE80211_ADDR_COPY(old_bssid, ni->ni_bssid);
 		wi_read_rid(sc, WI_RID_CURRENT_BSSID, ni->ni_bssid, &buflen);
 		IEEE80211_ADDR_COPY(ni->ni_macaddr, ni->ni_bssid);
 		buflen = sizeof(val);
 		wi_read_rid(sc, WI_RID_CURRENT_CHAN, &val, &buflen);
 		/* XXX validate channel */
 		ni->ni_chan = &ic->ic_channels[le16toh(val)];
+		ic->ic_curchan = ni->ni_chan;
+		ic->ic_ibss_chan = ni->ni_chan;
+
 		sc->sc_tx_th.wt_chan_freq = sc->sc_rx_th.wr_chan_freq =
 			htole16(ni->ni_chan->ic_freq);
 		sc->sc_tx_th.wt_chan_flags = sc->sc_rx_th.wr_chan_flags =
 			htole16(ni->ni_chan->ic_flags);
 
-		if (IEEE80211_ADDR_EQ(old_bssid, ni->ni_bssid))
-			sc->sc_false_syns++;
-		else
-			sc->sc_false_syns = 0;
-
-		if (ic->ic_opmode == IEEE80211_M_HOSTAP) {
-			ni->ni_esslen = ic->ic_des_esslen;
-			memcpy(ni->ni_essid, ic->ic_des_essid, ni->ni_esslen);
-			ni->ni_rates = ic->ic_sup_rates[IEEE80211_MODE_11B];
-			ni->ni_intval = ic->ic_lintval;
-			ni->ni_capinfo = IEEE80211_CAPINFO_ESS;
-			if (ic->ic_flags & IEEE80211_F_WEPON)
-				ni->ni_capinfo |= IEEE80211_CAPINFO_PRIVACY;
-		} else {
+		/*
+		 * XXX hack; unceremoniously clear 
+		 * IEEE80211_F_DROPUNENC when operating with
+		 * wep enabled so we don't drop unencoded frames
+		 * at the 802.11 layer.  This is necessary because
+		 * we must strip the WEP bit from the 802.11 header
+		 * before passing frames to ieee80211_input because
+		 * the card has already stripped the WEP crypto 
+		 * header from the packet.
+		 */
+		if (ic->ic_flags & IEEE80211_F_PRIVACY)
+			ic->ic_flags &= ~IEEE80211_F_DROPUNENC;
+		if (ic->ic_opmode != IEEE80211_M_HOSTAP) {
 			/* XXX check return value */
 			buflen = sizeof(ssid);
 			wi_read_rid(sc, WI_RID_CURRENT_SSID, &ssid, &buflen);
@@ -2632,7 +2703,7 @@ wi_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 				ni->ni_esslen = IEEE80211_NWID_LEN;	/*XXX*/
 			memcpy(ni->ni_essid, ssid.wi_ssid, ni->ni_esslen);
 		}
-		break;
+		return sc->sc_newstate(ic, nstate, arg);
 
 	case IEEE80211_S_SCAN:
 	case IEEE80211_S_AUTH:
@@ -2657,8 +2728,8 @@ wi_scan_ap(struct wi_softc *sc, u_int16_t chanmask, u_int16_t txrate)
 		(void)wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_SCAN_RESULTS, 0, 0);
 		break;
 	case WI_INTERSIL:
-		val[0] = chanmask;	/* channel */
-		val[1] = txrate;	/* tx rate */
+		val[0] = htole16(chanmask);	/* channel */
+		val[1] = htole16(txrate);	/* tx rate */
 		error = wi_write_rid(sc, WI_RID_SCAN_REQ, val, sizeof(val));
 		break;
 	case WI_SYMBOL:

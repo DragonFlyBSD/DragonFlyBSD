@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -274,8 +274,8 @@ static void	acx111_set_fw_txdesc_rate(struct acx_softc *,
 					  struct acx_txbuf *, int);
 static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
 
-static int	acx111_set_wepkey(struct acx_softc *,
-				  struct ieee80211_wepkey *, int);
+static int	acx111_set_wepkey(struct acx_softc *, struct ieee80211_key *,
+				  int);
 
 void
 acx111_set_param(device_t dev)
@@ -478,11 +478,11 @@ acx111_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 }
 
 static int
-acx111_set_wepkey(struct acx_softc *sc, struct ieee80211_wepkey *wk, int wk_idx)
+acx111_set_wepkey(struct acx_softc *sc, struct ieee80211_key *wk, int wk_idx)
 {
 	struct acx111_wepkey wepkey;
 
-	if (wk->wk_len > ACX111_WEPKEY_LEN) {
+	if (wk->wk_keylen > ACX111_WEPKEY_LEN) {
 		if_printf(&sc->sc_ic.ic_if, "%dth WEP key size beyond %d\n",
 			  wk_idx, ACX111_WEPKEY_LEN);
 		return EINVAL;
@@ -492,9 +492,9 @@ acx111_set_wepkey(struct acx_softc *sc, struct ieee80211_wepkey *wk, int wk_idx)
 	wepkey.action = htole16(ACX111_WEPKEY_ACT_ADD);
 	wepkey.key_type = ACX111_WEPKEY_TYPE_DEFAULT;
 	wepkey.index = 0; /* XXX ignored? */
-	wepkey.key_len = wk->wk_len;
+	wepkey.key_len = wk->wk_keylen;
 	wepkey.key_idx = wk_idx;
-	bcopy(wk->wk_key, wepkey.key, wk->wk_len);
+	bcopy(wk->wk_key, wepkey.key, wk->wk_keylen);
 	if (acx_exec_command(sc, ACXCMD_WEP_MGMT, &wepkey, sizeof(wepkey),
 			     NULL, 0) != 0) {
 		if_printf(&sc->sc_ic.ic_if, "%s set %dth WEP key failed\n",

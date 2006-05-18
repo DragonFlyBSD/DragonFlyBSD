@@ -31,8 +31,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.22 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.9 2005/12/16 21:05:48 dillon Exp $
+ * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.25.2.1 2005/10/05 13:13:46 avatar Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.10 2006/05/18 13:51:45 sephe Exp $
  */
 
 #if 0
@@ -60,10 +60,15 @@
 #define WI_RID_ROAMING_MODE	0xFC2D
 #define WI_RID_CUR_TX_RATE	0xFD44 /* current TX rate */
 
+#define WI_MAX_AID		256	/* max stations for ap operation */
+
 struct wi_softc	{
 	struct ieee80211com	sc_ic;
 	int			(*sc_newstate)(struct ieee80211com *,
 					enum ieee80211_state, int);
+	int			(*sc_key_alloc)(struct ieee80211com *,
+					const struct ieee80211_key *,
+					ieee80211_keyix *, ieee80211_keyix *);
 	int			wi_gone;
 	int			sc_enabled;
 	int			sc_reset;
@@ -114,6 +119,7 @@ struct wi_softc	{
 	u_int16_t		sc_roaming_mode;
 	u_int16_t		sc_microwave_oven;
 	u_int16_t		sc_authtype;
+	u_int16_t		sc_encryption;
 
 	int			sc_nodelen;
 	char			sc_nodename[IEEE80211_NWID_LEN];
@@ -130,7 +136,6 @@ struct wi_softc	{
 	int			sc_txcur;		/* index of current TX*/
 	int			sc_tx_timer;
 	int			sc_scan_timer;
-	int			sc_syn_timer;
 
 	struct wi_counters	sc_stats;
 	u_int16_t		sc_ibss_port;
@@ -156,6 +161,7 @@ struct wi_softc	{
 		u_int16_t               wi_confbits_param0;
 	} wi_debug;
 
+	struct timeval		sc_last_syn;
 	int			sc_false_syns;
 
 	u_int16_t		sc_txbuf[IEEE80211_MAX_LEN/2];

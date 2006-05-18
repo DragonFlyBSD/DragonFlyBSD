@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
  */
 
 /*
@@ -142,7 +142,9 @@ static int	acx_config(struct acx_softc *);
 static int	acx_read_config(struct acx_softc *, struct acx_config *);
 static int	acx_write_config(struct acx_softc *, struct acx_config *);
 static int	acx_set_wepkeys(struct acx_softc *);
+#ifdef foo
 static void	acx_begin_scan(struct acx_softc *);
+#endif
 static void	acx_next_scan(void *);
 
 static void	acx_start(struct ifnet *);
@@ -163,7 +165,7 @@ static int	acx_init_tx_ring(struct acx_softc *);
 static int	acx_init_rx_ring(struct acx_softc *);
 static int	acx_newbuf(struct acx_softc *, struct acx_rxbuf *, int);
 static int	acx_encap(struct acx_softc *, struct acx_txbuf *,
-			  struct mbuf *, struct acx_node *, int);
+			  struct mbuf *, struct ieee80211_node *, int);
 
 static int	acx_reset(struct acx_softc *);
 
@@ -186,15 +188,11 @@ static int	acx_load_radio_firmware(struct acx_softc *, const uint8_t *,
 static int	acx_load_base_firmware(struct acx_softc *, const uint8_t *,
 				       uint32_t);
 
-static struct ieee80211_node *acx_node_alloc(struct ieee80211com *);
-static void	acx_node_free(struct ieee80211com *, struct ieee80211_node *);
+static struct ieee80211_node *acx_node_alloc(struct ieee80211_node_table *);
 static void	acx_node_init(struct acx_softc *, struct acx_node *);
 static void	acx_node_update(struct acx_softc *, struct acx_node *,
 				uint8_t, uint8_t);
 static int	acx_newstate(struct ieee80211com *, enum ieee80211_state, int);
-
-/* XXX */
-static void	acx_media_status(struct ifnet *, struct ifmediareq *);
 
 static int	acx_sysctl_txrate_upd_intvl_min(SYSCTL_HANDLER_ARGS);
 static int	acx_sysctl_txrate_upd_intvl_max(SYSCTL_HANDLER_ARGS);
@@ -425,17 +423,16 @@ acx_attach(device_t dev)
 					&ic->ic_myaddr[i]);
 	}
 
-	ieee80211_ifattach(ifp);
+	ieee80211_ifattach(ic);
 
-	/* Override alloc/free */
+	/* Override node alloc */
 	ic->ic_node_alloc = acx_node_alloc;
-	ic->ic_node_free = acx_node_free;
 
 	/* Override newstate */
 	sc->sc_newstate = ic->ic_newstate;
 	ic->ic_newstate = acx_newstate;
 
-	ieee80211_media_init(ifp, ieee80211_media_change, acx_media_status);
+	ieee80211_media_init(ic, ieee80211_media_change, ieee80211_media_status);
 
 	sc->sc_txrate_upd_intvl_min = 10;	/* 10 seconds */
 	sc->sc_txrate_upd_intvl_max = 300;	/* 5 minutes */
@@ -503,9 +500,12 @@ acx_attach(device_t dev)
 		goto fail1;
 	}
 
+	if (bootverbose)
+		ieee80211_announce(ic);
+
 	return 0;
 fail1:
-	ieee80211_ifdetach(ifp);
+	ieee80211_ifdetach(ic);
 fail:
 	acx_detach(dev);
 	return error;
@@ -517,7 +517,8 @@ acx_detach(device_t dev)
 	struct acx_softc *sc = device_get_softc(dev);
 
 	if (device_is_attached(dev)) {
-		struct ifnet *ifp = &sc->sc_ic.ic_if;
+		struct ieee80211com *ic = &sc->sc_ic;
+		struct ifnet *ifp = &ic->ic_if;
 
 		lwkt_serialize_enter(ifp->if_serializer);
 
@@ -527,7 +528,7 @@ acx_detach(device_t dev)
 
 		lwkt_serialize_exit(ifp->if_serializer);
 
-		ieee80211_ifdetach(ifp);
+		ieee80211_ifdetach(ic);
 	}
 
 	if (sc->sc_sysctl_tree != NULL)
@@ -629,10 +630,11 @@ acx_init(void *arg)
 		goto back;
 
 	/* Setup WEP */
-	if (sc->sc_ic.ic_flags & IEEE80211_WEP_ON) {
+	if (sc->sc_ic.ic_flags & IEEE80211_F_PRIVACY) {
 		error = acx_set_wepkeys(sc);
 		if (error)
 			goto back;
+		sc->sc_ic.ic_flags &= ~IEEE80211_F_DROPUNENC;
 	}
 
 	/* Turn on power led */
@@ -644,7 +646,12 @@ acx_init(void *arg)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	/* Begin background scanning */
+#ifdef foo
 	acx_begin_scan(sc);
+#else
+	ieee80211_new_state(&sc->sc_ic, IEEE80211_S_SCAN, -1);
+#endif
+
 back:
 	if (error)
 		acx_stop(sc);
@@ -662,21 +669,28 @@ acx_set_wepkeys(struct acx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_conf_wep_txkey wep_txkey;
-	int i, error;
+	int i, error, got_wk = 0;
 
 	for (i = 0; i < IEEE80211_WEP_NKID; ++i) {
-		struct ieee80211_wepkey *wk = &ic->ic_nw_keys[i];
+		struct ieee80211_key *wk = &ic->ic_nw_keys[i];
 
-		if (wk->wk_len == 0)
+		if (wk->wk_keylen == 0)
 			continue;
 
 		error = sc->chip_set_wepkey(sc, wk, i);
 		if (error)
 			return error;
+
+		if (sc->sc_softwep && (wk->wk_flags & IEEE80211_KEY_XMIT))
+			wk->wk_flags |= IEEE80211_KEY_SWCRYPT;
+		got_wk = 1;
 	}
 
+	if (!got_wk || ic->ic_def_txkey == IEEE80211_KEYIX_NONE)
+		return 0;
+
 	/* Set current WEP key index */
-	wep_txkey.wep_txkey = ic->ic_wep_txkey;
+	wep_txkey.wep_txkey = ic->ic_def_txkey;
 	if (acx_set_wep_txkey_conf(sc, &wep_txkey) != 0) {
 		if_printf(&ic->ic_if, "set WEP txkey failed\n");
 		return ENXIO;
@@ -684,13 +698,14 @@ acx_set_wepkeys(struct acx_softc *sc)
 	return 0;
 }
 
+#ifdef foo
 static void
 acx_begin_scan(struct acx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	uint8_t chan;
 
-	ieee80211_begin_scan(&ic->ic_if);
+	ieee80211_begin_scan(ic, 1);
 
 	chan = ieee80211_chan2ieee(ic, ic->ic_bss->ni_chan);
 
@@ -701,6 +716,7 @@ acx_begin_scan(struct acx_softc *sc)
 	callout_reset(&sc->sc_chanscan_timer, hz / acx_chanscan_rate,
 		      acx_next_scan, sc);
 }
+#endif
 
 static void
 acx_next_scan(void *arg)
@@ -712,10 +728,13 @@ acx_next_scan(void *arg)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	if (ic->ic_state == IEEE80211_S_SCAN) {
+#if 0
 		uint8_t chan;
+#endif
 
-		ieee80211_next_scan(ifp);
+		ieee80211_next_scan(ic);
 
+#if 0
 		chan = ieee80211_chan2ieee(ic, ic->ic_bss->ni_chan);
 
 		ACX_ENABLE_TXCHAN(sc, chan);
@@ -723,6 +742,7 @@ acx_next_scan(void *arg)
 
 		callout_reset(&sc->sc_chanscan_timer, hz / acx_chanscan_rate,
 			      acx_next_scan, sc);
+#endif
 	}
 
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -768,13 +788,13 @@ acx_stop(struct acx_softc *sc)
 		if (buf->tb_mbuf != NULL) {
 			bus_dmamap_unload(bd->mbuf_dma_tag,
 					  buf->tb_mbuf_dmamap);
-			m_free(buf->tb_mbuf);
+			m_freem(buf->tb_mbuf);
 			buf->tb_mbuf = NULL;
 		}
 
 		ni = (struct ieee80211_node *)buf->tb_node;
-		if (ni != NULL && ni != ic->ic_bss)
-			ieee80211_free_node(ic, ni);
+		if (ni != NULL)
+			ieee80211_free_node(ni);
 		buf->tb_node = NULL;
 	}
 
@@ -786,7 +806,7 @@ acx_stop(struct acx_softc *sc)
 		if (bd->rx_buf[i].rb_mbuf != NULL) {
 			bus_dmamap_unload(bd->mbuf_dma_tag,
 					  bd->rx_buf[i].rb_mbuf_dmamap);
-			m_free(bd->rx_buf[i].rb_mbuf);
+			m_freem(bd->rx_buf[i].rb_mbuf);
 			bd->rx_buf[i].rb_mbuf = NULL;
 		}
 	}
@@ -1021,14 +1041,14 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	switch (cmd) {
 	case SIOCSLOADFW:
-		error = suser(curthread);
+		error = suser_cred(cr, NULL_CRED_OKAY);
 		if (error)
 			break;
 
 		error = acx_copyin_firmware(sc, req);
 		break;
 	case SIOCSKILLFW:
-		error = suser(curthread);
+		error = suser_cred(cr, NULL_CRED_OKAY);
 		if (error)
 			break;
 		acx_free_firmware(sc);
@@ -1063,7 +1083,7 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		/* TODO */
 		break;
 	default:
-		error = ieee80211_ioctl(ifp, cmd, data, cr);
+		error = ieee80211_ioctl(&sc->sc_ic, cmd, data, cr);
 		break;
 	}
 
@@ -1074,18 +1094,6 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = 0;
 	}
 	return error;
-}
-
-static __inline struct mbuf *
-acx_softwep(struct ieee80211com *ic, struct mbuf *m, struct acx_node *node)
-{
-	m = ieee80211_wep_crypt(&ic->ic_if, m, 1);
-	if (m != NULL)
-		return m;
-
-	if (node != NULL && (struct ieee80211_node *)node != ic->ic_bss)
-		ieee80211_free_node(ic, (struct ieee80211_node *)node);
-	return NULL;
 }
 
 static void
@@ -1114,70 +1122,70 @@ acx_start(struct ifnet *ifp)
 	trans = 0;
 	for (buf = &bd->tx_buf[idx]; buf->tb_mbuf == NULL;
 	     buf = &bd->tx_buf[idx]) {
-		struct acx_node *node;
+		struct ieee80211_frame *f;
+		struct ieee80211_node *ni = NULL;
 		struct mbuf *m;
 		int rate;
 
-		node = NULL;
 		if (!IF_QEMPTY(&ic->ic_mgtq)) {
-			struct ieee80211_node *ni;
-
 			IF_DEQUEUE(&ic->ic_mgtq, m);
 
 			ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 			m->m_pkthdr.rcvif = NULL;
 
+#if 0
 			/*
 			 * Since mgmt data are transmitted at fixed rate
 			 * they will not be used to do rate control.
 			 */
-			if (ni && ni != ic->ic_bss)
-				ieee80211_free_node(ic, ni);
-
+			if (ni != NULL)
+				ieee80211_free_node(ni);
+#endif
 			rate = 4;	/* XXX 2Mb/s for mgmt packet */
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
-			struct ieee80211_frame *f;
+			struct ether_header *eh;
+			struct acx_node *node;
 
-			/* XXX */
-#if 0
 			if (ic->ic_state != IEEE80211_S_RUN) {
 				if_printf(ifp, "data packet dropped due to "
 					  "not RUN.  Current state %d\n",
 					  ic->ic_state);
 				break;
 			}
-#endif
 
 			m = ifq_dequeue(&ifp->if_snd, NULL);
 			if (m == NULL)
 				break;
 
-			m = ieee80211_encap(ifp, m,
-					    (struct ieee80211_node **)&node);
-			if (m == NULL) {
+			if (m->m_len < sizeof(struct ether_header)) {
+				m = m_pullup(m, sizeof(struct ether_header));
+				if (m == NULL) {
+					ifp->if_oerrors++;
+					continue;
+				}
+			}
+			eh = mtod(m, struct ether_header *);
+
+			ni = ieee80211_find_txnode(ic, eh->ether_dhost);
+			if (ni == NULL) {
+				m_freem(m);
 				ifp->if_oerrors++;
 				continue;
 			}
-			f = mtod(m, struct ieee80211_frame *);
 
-			if (ic->ic_flags & IEEE80211_F_WEPON) {
-				f->i_fc[1] |= IEEE80211_FC1_WEP;
-				if (sc->sc_softwep) {
-					m = acx_softwep(ic, m, node);
-					if (m == NULL) {
-						/*
-						 * axc_softwep() will free
-						 * `node' for us if it fails
-						 */
-						ifp->if_oerrors++;
-						node = NULL;
-						continue;
-					}
-				}
+			/* TODO power save */
+
+			m = ieee80211_encap(ic, m, ni);
+			if (m == NULL) {
+				ieee80211_free_node(ni);
+				ifp->if_oerrors++;
+				continue;
 			}
 
+			node = (struct acx_node *)ni;
 			if (node->nd_txrate < 0) {
 				acx_node_init(sc, node);
+#if 0
 				if (ic->ic_opmode == IEEE80211_M_IBSS) {
 					/* XXX
 					 * Add extra reference here,
@@ -1186,9 +1194,9 @@ acx_start(struct ifnet *ifp)
 					 * they are allocated, which
 					 * make TX rate control impossible
 					 */
-					ieee80211_ref_node(
-						(struct ieee80211_node *)node);
+					ieee80211_ref_node(ni);
 				}
+#endif
 			}
 
 			rate = node->nd_rates.rs_rates[node->nd_txrate];
@@ -1198,16 +1206,27 @@ acx_start(struct ifnet *ifp)
 			break;
 		}
 
+		f = mtod(m, struct ieee80211_frame *);
+		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && sc->sc_softwep) {
+			KASSERT(ni != NULL, ("TX node is NULL (WEP)\n"));
+			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
+				ieee80211_free_node(ni);
+				m_freem(m);
+				ifp->if_oerrors++;
+				continue;
+			}
+		}
+
 		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m);
 
-		if (acx_encap(sc, buf, m, node, rate) != 0) {
-			struct ieee80211_node *ni;
-
-			ni = (struct ieee80211_node *)node;
-			if (ni != NULL && ni != ic->ic_bss)
-				ieee80211_free_node(ic, ni);
-
+		if (acx_encap(sc, buf, m, ni, rate) != 0) {
+			/*
+			 * NOTE: `m' will be freed in acx_encap()
+			 * if we reach here.
+			 */
+			if (ni != NULL)
+				ieee80211_free_node(ni);
 			ifp->if_oerrors++;
 			continue;
 		}
@@ -1310,7 +1329,7 @@ acx_txeof(struct acx_softc *sc)
 			break;
 
 		bus_dmamap_unload(bd->mbuf_dma_tag, buf->tb_mbuf_dmamap);
-		m_free(buf->tb_mbuf);
+		m_freem(buf->tb_mbuf);
 		buf->tb_mbuf = NULL;
 
 		error = FW_TXDESC_GETFIELD_1(sc, buf, f_tx_error);
@@ -1329,8 +1348,7 @@ acx_txeof(struct acx_softc *sc)
 			ni = (struct ieee80211_node *)buf->tb_node;
 
 			acx_node_update(sc, buf->tb_node, buf->tb_rate, error);
-			if (ni != ic->ic_bss)
-				ieee80211_free_node(ic, ni);
+			ieee80211_free_node(ni);
 			buf->tb_node = NULL;
 		}
 
@@ -1497,37 +1515,30 @@ acx_rxeof(struct acx_softc *sc)
 				 sc->chip_rxbuf_exhdr);
 			f = mtod(m, struct ieee80211_frame *);
 
-			if (ic->ic_opmode == IEEE80211_M_STA) {
-				ni = ieee80211_ref_node(ic->ic_bss);
-			} else {
-				ni = ieee80211_find_node(ic, f->i_addr2);
-				if (ni == NULL)
-					ni = ieee80211_ref_node(ic->ic_bss);
-			}
-
 			if (f->i_fc[1] & IEEE80211_FC1_WEP) {
 				/* Short circuit software WEP */
 				f->i_fc[1] &= ~IEEE80211_FC1_WEP;
 
 				/* Do chip specific RX buffer processing */
-				if (sc->chip_proc_wep_rxbuf != NULL)
+				if (sc->chip_proc_wep_rxbuf != NULL) {
 					sc->chip_proc_wep_rxbuf(sc, m, &len);
+					f = mtod(m, struct ieee80211_frame *);
+				}
 			}
+
+			ni = ieee80211_find_rxnode(ic,
+				(struct ieee80211_frame_min *)f);
 
 			m->m_len = m->m_pkthdr.len = len;
 			m->m_pkthdr.rcvif = &ic->ic_if;
 
-			ieee80211_input(&ic->ic_if, m, ni, head->rbh_level,
+			ieee80211_input(ic, m, ni, head->rbh_level,
 					le32toh(head->rbh_time));
 
-			if (ni == ic->ic_bss)
-				ieee80211_unref_node(&ni);
-			else
-				ieee80211_free_node(ic, ni);
-
+			ieee80211_free_node(ni);
 			ifp->if_ipackets++;
 		} else {
-			m_free(m);
+			m_freem(m);
 			ifp->if_ierrors++;
 		}
 
@@ -1842,15 +1853,12 @@ acx_load_firmware(struct acx_softc *sc, uint32_t offset, const uint8_t *data,
 	return 0;
 }
 
-MALLOC_DECLARE(ACX_NODE);
-MALLOC_DEFINE(ACX_NODE, "acx_node", "acx(4) wrapper for ieee80211_node");
-
 static struct ieee80211_node *
-acx_node_alloc(struct ieee80211com *ic)
+acx_node_alloc(struct ieee80211_node_table *nt __unused)
 {
 	struct acx_node *node;
 
-	node = malloc(sizeof(struct acx_node), ACX_NODE, M_NOWAIT | M_ZERO);
+	node = malloc(sizeof(struct acx_node), M_80211_NODE, M_NOWAIT | M_ZERO);
 	node->nd_txrate = -1;
 	return (struct ieee80211_node *)node;
 }
@@ -2008,12 +2016,6 @@ acx_node_update(struct acx_softc *sc, struct acx_node *node, uint8_t rate,
 #undef IEEERATE
 }
 
-static void
-acx_node_free(struct ieee80211com *ic, struct ieee80211_node *n)
-{
-	free(n, ACX_NODE);
-}
-
 static int
 acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
@@ -2023,6 +2025,19 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 	ASSERT_SERIALIZED(ic->ic_if.if_serializer);
 
 	switch (nstate) {
+	case IEEE80211_S_SCAN:
+		if (ic->ic_state != IEEE80211_S_INIT) {
+			uint8_t chan;
+
+			chan = ieee80211_chan2ieee(ic, ic->ic_curchan);
+			ACX_ENABLE_TXCHAN(sc, chan);
+			ACX_ENABLE_RXCHAN(sc, chan);
+
+			callout_reset(&sc->sc_chanscan_timer,
+				      hz / acx_chanscan_rate,
+				      acx_next_scan, sc);
+		}
+		break;
 	case IEEE80211_S_AUTH:
 		if (ic->ic_opmode == IEEE80211_M_STA) {
 			struct ieee80211_node *ni;
@@ -2301,7 +2316,7 @@ acx_dma_free(struct acx_softc *sc)
 			if (bd->rx_buf[i].rb_mbuf != NULL) {
 				bus_dmamap_unload(bd->mbuf_dma_tag,
 						  bd->rx_buf[i].rb_mbuf_dmamap);
-				m_free(bd->rx_buf[i].rb_mbuf);
+				m_freem(bd->rx_buf[i].rb_mbuf);
 			}
 			bus_dmamap_destroy(bd->mbuf_dma_tag,
 					   bd->rx_buf[i].rb_mbuf_dmamap);
@@ -2313,7 +2328,7 @@ acx_dma_free(struct acx_softc *sc)
 			if (bd->tx_buf[i].tb_mbuf != NULL) {
 				bus_dmamap_unload(bd->mbuf_dma_tag,
 						  bd->tx_buf[i].tb_mbuf_dmamap);
-				m_free(bd->tx_buf[i].tb_mbuf);
+				m_freem(bd->tx_buf[i].tb_mbuf);
 			}
 			bus_dmamap_destroy(bd->mbuf_dma_tag,
 					   bd->tx_buf[i].tb_mbuf_dmamap);
@@ -2425,7 +2440,7 @@ acx_newbuf(struct acx_softc *sc, struct acx_rxbuf *rb, int wait)
 				     m, acx_buf_dma_addr, &paddr,
 				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
 	if (error) {
-		m_free(m);
+		m_freem(m);
 		if_printf(&sc->sc_ic.ic_if, "can't map rx mbuf %d\n", error);
 		return error;
 	}
@@ -2449,10 +2464,11 @@ acx_newbuf(struct acx_softc *sc, struct acx_rxbuf *rb, int wait)
 
 static int
 acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
-	  struct acx_node *node, int rate)
+	  struct ieee80211_node *ni, int rate)
 {
 	struct acx_buf_data *bd = &sc->sc_buf_data;
 	struct acx_ring_data *rd = &sc->sc_ring_data;
+	struct acx_node *node = (struct acx_node *)ni;
 	uint32_t paddr;
 	uint8_t ctrl;
 	int error;
@@ -2567,18 +2583,8 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	CSR_WRITE_2(sc, ACXREG_INTR_TRIG, ACXRV_TRIG_TX_FINI);
 back:
 	if (error)
-		m_free(m);
+		m_freem(m);
 	return error;
-}
-
-/* XXX C&P of ieee80211_add_ssid() */
-static uint8_t *
-my_ieee80211_add_ssid(uint8_t *frm, const uint8_t *ssid, u_int len)
-{
-	*frm++ = IEEE80211_ELEMID_SSID;
-	*frm++ = len;
-	memcpy(frm, ssid, len);
-	return frm + len;
 }
 
 static int
@@ -2615,7 +2621,7 @@ acx_set_probe_req_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len)
 	IEEE80211_ADDR_COPY(f->i_addr3, etherbroadcastaddr);
 
 	v = req.data.u_data.var;
-	v = my_ieee80211_add_ssid(v, ssid, ssid_len);
+	v = ieee80211_add_ssid(v, ssid, ssid_len);
 	v = ieee80211_add_rates(v, &sc->sc_ic.ic_sup_rates[sc->chip_phymode]);
 	v = ieee80211_add_xrates(v, &sc->sc_ic.ic_sup_rates[sc->chip_phymode]);
 	vlen = v - req.data.u_data.var;
@@ -2648,7 +2654,7 @@ acx_set_probe_resp_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len,
 	resp.data.u_data.cap = htole16(IEEE80211_CAPINFO_IBSS);
 
 	v = resp.data.u_data.var;
-	v = my_ieee80211_add_ssid(v, ssid, ssid_len);
+	v = ieee80211_add_ssid(v, ssid, ssid_len);
 	v = ieee80211_add_rates(v, &ic->ic_sup_rates[sc->chip_phymode]);
 
 	*v++ = IEEE80211_ELEMID_DSPARMS;
@@ -2694,7 +2700,7 @@ acx_set_beacon_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len,
 	beacon.data.u_data.cap = htole16(IEEE80211_CAPINFO_IBSS);
 
 	v = beacon.data.u_data.var;
-	v = my_ieee80211_add_ssid(v, ssid, ssid_len);
+	v = ieee80211_add_ssid(v, ssid, ssid_len);
 	v = ieee80211_add_rates(v, &ic->ic_sup_rates[sc->chip_phymode]);
 
 	*v++ = IEEE80211_ELEMID_DSPARMS;
@@ -2712,64 +2718,6 @@ acx_set_beacon_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len,
 	vlen = v - beacon.data.u_data.var;
 
 	return _acx_set_beacon_tmplt(sc, &beacon, ACX_TMPLT_BEACON_SIZ(vlen));
-}
-
-/*
- * XXX
- * C&P of ieee80211_media_status(), only
- * imr->ifm_status |= IFM_ACTIVE; is added
- */
-static void
-acx_media_status(struct ifnet *ifp, struct ifmediareq *imr)
-{
-	struct ieee80211com *ic = (void *)ifp;
-	struct ieee80211_node *ni = NULL;
-
-	imr->ifm_status = IFM_AVALID;
-	imr->ifm_active = IFM_IEEE80211;
-
-	if (ic->ic_state == IEEE80211_S_RUN)
-		imr->ifm_status |= IFM_ACTIVE;
-
-	imr->ifm_active |= IFM_AUTO;
-	switch (ic->ic_opmode) {
-	case IEEE80211_M_STA:
-		ni = ic->ic_bss;
-		/* calculate rate subtype */
-		imr->ifm_active |= ieee80211_rate2media(ic,
-			ni->ni_rates.rs_rates[ni->ni_txrate], ic->ic_curmode);
-		break;
-	case IEEE80211_M_IBSS:
-		imr->ifm_active |= IFM_IEEE80211_ADHOC;
-		break;
-	case IEEE80211_M_AHDEMO:
-		/* should not come here */
-		break;
-	case IEEE80211_M_HOSTAP:
-		imr->ifm_active |= IFM_IEEE80211_HOSTAP;
-		break;
-	case IEEE80211_M_MONITOR:
-		imr->ifm_active |= IFM_IEEE80211_MONITOR;
-		break;
-	}
-	switch (ic->ic_curmode) {
-	case IEEE80211_MODE_11A:
-		imr->ifm_active |= IFM_IEEE80211_11A;
-		break;
-	case IEEE80211_MODE_11B:
-		imr->ifm_active |= IFM_IEEE80211_11B;
-		break;
-	case IEEE80211_MODE_11G:
-		imr->ifm_active |= IFM_IEEE80211_11G;
-		break;
-	case IEEE80211_MODE_FH:
-		imr->ifm_active |= IFM_IEEE80211_FH;
-		break;
-	case IEEE80211_MODE_TURBO:
-		imr->ifm_active |= IFM_IEEE80211_11A
-				|  IFM_IEEE80211_TURBO;
-		break;
-	}
 }
 
 static int

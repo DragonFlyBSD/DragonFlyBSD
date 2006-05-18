@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.27 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.28 2006/05/18 13:51:45 sephe Exp $
  *
  */
 
@@ -336,7 +336,8 @@ static void	ray_rx_data		(struct ray_softc *sc, struct mbuf *m0, u_int8_t siglev
 static void	ray_rx_mgt		(struct ray_softc *sc, struct mbuf *m0);
 static void	ray_rx_mgt_auth		(struct ray_softc *sc, struct mbuf *m0);
 static void	ray_rx_mgt_beacon	(struct ray_softc *sc, struct mbuf *m0);
-static void	ray_rx_mgt_info		(struct ray_softc *sc, struct mbuf *m0, struct ieee80211_information *elements);
+static void	ray_rx_mgt_info		(struct ray_softc *sc, struct mbuf *m0,
+					 union ieee80211_information *elements);
 static void	ray_rx_update_cache	(struct ray_softc *sc, u_int8_t *src, u_int8_t siglev, u_int8_t antenna);
 static void	ray_stop		(struct ray_softc *sc, struct ray_comq_entry *com);
 static int	ray_stop_user		(struct ray_softc *sc);
@@ -2178,7 +2179,7 @@ ray_rx_mgt_beacon(struct ray_softc *sc, struct mbuf *m0)
 {
 	struct ieee80211_frame *header = mtod(m0, struct ieee80211_frame *);
 	ieee80211_mgt_beacon_t beacon = (u_int8_t *)(header+1);
-	struct ieee80211_information elements;
+	union ieee80211_information elements;
 
 	u_int64_t *timestamp;
 
@@ -2195,7 +2196,8 @@ RAY_DPRINTF(sc, RAY_DBG_MGT, "capability\t0x%x", IEEE80211_BEACON_CAPABILITY(bea
 }
 
 static void
-ray_rx_mgt_info(struct ray_softc *sc, struct mbuf *m0, struct ieee80211_information *elements)
+ray_rx_mgt_info(struct ray_softc *sc, struct mbuf *m0,
+		union ieee80211_information *elements)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct ieee80211_frame *header = mtod(m0, struct ieee80211_frame *);

@@ -1,8 +1,10 @@
-# $DragonFly: src/sys/netproto/802_11/wlan/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
+# $DragonFly: src/sys/netproto/802_11/wlan/Makefile,v 1.5 2006/05/18 13:51:46 sephe Exp $
 
 KMOD	= wlan
-SRCS	= ieee80211.c ieee80211_crypto.c ieee80211_input.c ieee80211_ioctl.c
-SRCS	+= ieee80211_node.c ieee80211_output.c ieee80211_proto.c
+SRCS	= ieee80211.c ieee80211_ioctl.c ieee80211_node.c ieee80211_proto.c
+SRCS	+= ieee80211_crypto.c ieee80211_crypto_none.c
+SRCS	+= ieee80211_input.c ieee80211_output.c
+SRCS	+= ieee80211_dragonfly.c
 SRCS	+= bus_if.h device_if.h opt_inet.h opt_ipx.h
 
 .if !defined(BUILDING_WITH_KERNEL)

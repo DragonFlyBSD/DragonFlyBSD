@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.75 2006/05/14 18:07:29 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.76 2006/05/18 13:51:45 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1411,10 +1411,15 @@ device sr0 at isa? port 0x300 irq 5 iomem 0xd0000
 device sn0 at isa? port 0x300 irq 10
 
 # Wlan support is mandatory for some wireless LAN devices.
-device		wlan		# Wireless LAN support
+device		wlan		# 802.11 support
+device		wlan_acl	# 802.11 MAC-based access control for AP
+device		wlan_ccmp	# 802.11 CCMP support
+device		wlan_tkip	# 802.11 TKIP support
+device		wlan_wep	# 802.11 WEP support
+device		wlan_xauth	# 802.11 WPA or 802.1x authentication for AP
 options 	WLCACHE		# enables the signal-strength cache
 options 	WLDEBUG		# enables verbose debugging output
-device		awi		# AMD PCnetMobile
+#device		awi		# AMD PCnetMobile
 device		an		# Aironet Communications 4500/4800
 device		ipw		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG

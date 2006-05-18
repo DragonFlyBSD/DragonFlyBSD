@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.17 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.18 2006/05/18 13:51:45 sephe Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -262,6 +262,7 @@ struct rt_msghdr {
 #define	RTM_NEWMADDR	0xf	/* mcast group membership being added to if */
 #define	RTM_DELMADDR	0x10	/* mcast group membership being deleted */
 #define	RTM_IFANNOUNCE	0x11	/* iface arrival/departure */
+#define	RTM_IEEE80211	0x12	/* IEEE80211 wireless event */
 
 /*
  * Bitmask values for rtm_inits and rmx_locks.
@@ -329,6 +330,7 @@ struct ucred;
 void	 route_init (void);
 void	 rt_dstmsg(int type, struct sockaddr *dst, int error);
 int	 rt_getifa (struct rt_addrinfo *);
+void	 rt_ieee80211msg(struct ifnet *, int, void *, size_t);
 void	 rt_ifannouncemsg (struct ifnet *, int);
 void	 rt_ifmsg (struct ifnet *);
 int	 rt_llroute (struct sockaddr *dst, struct rtentry *rt0,

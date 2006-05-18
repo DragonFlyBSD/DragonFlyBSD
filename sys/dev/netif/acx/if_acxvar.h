@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.2 2006/05/18 13:51:45 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -406,7 +406,7 @@ struct acx_softc {
 
 	int			(*chip_set_wepkey)	/* non-NULL */
 				(struct acx_softc *,
-				 struct ieee80211_wepkey *, int);
+				 struct ieee80211_key *, int);
 
 	int			(*chip_read_config)
 				(struct acx_softc *, struct acx_config *);

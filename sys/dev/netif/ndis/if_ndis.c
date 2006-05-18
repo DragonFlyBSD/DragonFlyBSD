@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.14 2005/12/31 23:35:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.15 2006/05/18 13:51:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -640,8 +640,8 @@ nonettypes:
 		if (r == 0)
 			ic->ic_caps |= IEEE80211_C_PMGT;
 		bcopy(eaddr, &ic->ic_myaddr, sizeof(eaddr));
-		ieee80211_ifattach(ifp);
-		ieee80211_media_init(ifp, ieee80211_media_change,
+		ieee80211_ifattach(ic);
+		ieee80211_media_init(ic, ieee80211_media_change,
 		    ndis_media_status);
 		ic->ic_ibss_chan = IEEE80211_CHAN_ANYC;
 		ic->ic_bss->ni_chan = ic->ic_ibss_chan;
@@ -709,7 +709,7 @@ ndis_detach(dev)
 		lwkt_serialize_exit(ifp->if_serializer);
 
 		if (sc->ndis_80211)
-			ieee80211_ifdetach(ifp);
+			ieee80211_ifdetach(&sc->ic);
 		else
 			ether_ifdetach(ifp);
 	}
@@ -1402,15 +1402,15 @@ ndis_setstate_80211(sc)
 
 	/* Set WEP */
 
-#ifdef IEEE80211_F_WEPON
-	if (ic->ic_flags & IEEE80211_F_WEPON) {
+#ifdef IEEE80211_F_PRIVACY
+	if (ic->ic_flags & IEEE80211_F_PRIVACY) {
 #else
 	if (ic->ic_wep_mode >= IEEE80211_WEP_ON) {
 #endif
 		for (i = 0; i < IEEE80211_WEP_NKID; i++) {
-			if (ic->ic_nw_keys[i].wk_len) {
+			if (ic->ic_nw_keys[i].wk_keylen) {
 				bzero((char *)&wep, sizeof(wep));
-				wep.nw_keylen = ic->ic_nw_keys[i].wk_len;
+				wep.nw_keylen = ic->ic_nw_keys[i].wk_keylen;
 #ifdef notdef
 				/* 5 and 13 are the only valid key lengths */
 				if (ic->ic_nw_keys[i].wk_len < 5)
@@ -1422,7 +1422,7 @@ ndis_setstate_80211(sc)
 				wep.nw_keyidx = i;
 				wep.nw_length = (sizeof(uint32_t) * 3)
 				    + wep.nw_keylen;
-				if (i == ic->ic_wep_txkey)
+				if (i == ic->ic_def_txkey)
 					wep.nw_keyidx |= NDIS_80211_WEPKEY_TX;
 				bcopy(ic->ic_nw_keys[i].wk_key,
 				    wep.nw_keydata, wep.nw_length);
@@ -1440,7 +1440,7 @@ ndis_setstate_80211(sc)
 		if (rval)
 			device_printf(sc->ndis_dev,
 			    "enable WEP failed: %d\n", rval);
-#ifndef IEEE80211_F_WEPON
+#ifndef IEEE80211_F_PRIVACY
 		if (ic->ic_wep_mode != IEEE80211_WEP_8021X &&
 		    ic->ic_wep_mode != IEEE80211_WEP_ON)
 			arg = NDIS_80211_PRIVFILT_ACCEPTALL;
@@ -1564,7 +1564,7 @@ ndis_setstate_80211(sc)
 static void
 ndis_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 {
-        struct ieee80211com *ic = (void *)ifp;
+        struct ieee80211com *ic = (void *)ifp;	/* XXX */
         struct ieee80211_node *ni = NULL;
 
         imr->ifm_status = IFM_AVALID;
@@ -1606,7 +1606,7 @@ ndis_media_status(struct ifnet *ifp, struct ifmediareq *imr)
         case IEEE80211_MODE_11G:
                 imr->ifm_active |= IFM_MAKEMODE(IFM_IEEE80211_11G);
                 break;
-        case IEEE80211_MODE_TURBO:
+        case IEEE80211_MODE_TURBO_A:
                 imr->ifm_active |= IFM_MAKEMODE(IFM_IEEE80211_11A)
                                 |  IFM_IEEE80211_TURBO;
                 break;
@@ -1855,7 +1855,7 @@ ndis_ioctl(ifp, command, data, cr)
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
 		if (sc->ndis_80211) {
-			error = ieee80211_ioctl(ifp, command, data, cr);
+			error = ieee80211_ioctl(&sc->ic, command, data, cr);
 			if (error == ENETRESET) {
 				ndis_setstate_80211(sc);
 				/*ndis_init(sc);*/
@@ -1886,7 +1886,7 @@ ndis_ioctl(ifp, command, data, cr)
 	default:
 		sc->ndis_skip = 1;
 		if (sc->ndis_80211) {
-			error = ieee80211_ioctl(ifp, command, data, cr);
+			error = ieee80211_ioctl(&sc->ic, command, data, cr);
 			if (error == ENETRESET) {
 				ndis_setstate_80211(sc);
 				error = 0;

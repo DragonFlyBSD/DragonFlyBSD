@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -155,6 +155,7 @@ acx_join_bss(struct acx_softc *sc, uint8_t mode, struct ieee80211_node *node)
 	bj->esslen = node->ni_esslen;
 	bcopy(node->ni_essid, bj->essid, node->ni_esslen);
 
+	DPRINTF((&sc->sc_ic.ic_if, "join BSS/IBSS on channel %d\n", bj->channel));
 	return acx_exec_command(sc, ACXCMD_JOIN_BSS,
 				bj, BSS_JOIN_PARAM_SIZE(bj), NULL, 0);
 }

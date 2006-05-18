@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.2 2005/12/05 01:04:01 swildner Exp $
+ * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.3 2006/05/18 13:51:45 sephe Exp $
  */
 
 #include <sys/cdefs.h>
@@ -52,8 +52,7 @@
 #include <unistd.h>
 
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
-#define SIOCSLOADIBSSFW	 _IOW('i', 138, struct ifreq)
-#define SIOCSKILLFW	 _IOW('i', 139, struct ifreq)
+#define SIOCSKILLFW	 _IOW('i', 138, struct ifreq)
 
 struct firmware {
 	char	*boot;
@@ -221,8 +220,7 @@ load_firmware(const char *iface, const char *path, const char *mode)
 	snprintf(filename, sizeof filename, "%s/iwi-%s.fw", path, mode);
 	mmap_file(filename, &fw.main, &fw.main_size);
 
-	if (do_req(iface, strstr(mode,"ibss") 
-                           ? SIOCSLOADIBSSFW : SIOCSLOADFW, &fw) == -1)
+	if (do_req(iface, SIOCSLOADFW, &fw) == -1)
 		err(EX_OSERR, "Can't load firmware to driver");
 }
 

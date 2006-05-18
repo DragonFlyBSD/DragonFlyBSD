@@ -2,7 +2,7 @@
  * Copyright (c) 2004, 2005
  *      Damien Bergamini <damien.bergamini@free.fr>.
  * Copyright (c) 2004, 2005
- *	Andrew Atrens <atrens@nortelnetworks.com>.
+ *     Andrew Atrens <atrens@nortelnetworks.com>.
  *
  * All rights reserved.
  *
@@ -28,7 +28,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.4 2005/12/18 02:47:34 sephe Exp $
+ * $FreeBSD: src/sys/dev/iwi/if_iwivar.h,v 1.4.2.1 2005/09/26 17:31:36 damien Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.5 2006/05/18 13:51:45 sephe Exp $
  */
 
 struct iwi_firmware {
@@ -42,13 +43,12 @@ struct iwi_firmware {
 
 struct iwi_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
-	u_int8_t	wr_flags;
-	u_int8_t	wr_rate;
-	u_int16_t	wr_chan_freq;
-	u_int16_t	wr_chan_flags;
-	u_int8_t	wr_antsignal;
-	u_int8_t	wr_antnoise;
-	u_int8_t	wr_antenna;
+	uint8_t		wr_flags;
+	uint8_t		wr_rate;
+	uint16_t	wr_chan_freq;
+	uint16_t	wr_chan_flags;
+	uint8_t		wr_antsignal;
+	uint8_t		wr_antenna;
 };
 
 #define IWI_RX_RADIOTAP_PRESENT						\
@@ -56,80 +56,102 @@ struct iwi_rx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL) |				\
 	 (1 << IEEE80211_RADIOTAP_DB_ANTSIGNAL) |			\
-	 (1 << IEEE80211_RADIOTAP_DB_ANTNOISE) |			\
 	 (1 << IEEE80211_RADIOTAP_ANTENNA))
 
 struct iwi_tx_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
-	u_int8_t	wt_flags;
-	u_int16_t	wt_chan_freq;
-	u_int16_t	wt_chan_flags;
+	uint8_t		wt_flags;
+	uint16_t	wt_chan_freq;
+	uint16_t	wt_chan_flags;
 };
 
 #define IWI_TX_RADIOTAP_PRESENT						\
 	((1 << IEEE80211_RADIOTAP_FLAGS) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
 
+struct iwi_cmd_ring {
+	bus_dma_tag_t		desc_dmat;
+	bus_dmamap_t		desc_map;
+	bus_addr_t		physaddr;
+	struct iwi_cmd_desc	*desc;
+	int			count;
+	int			queued;
+	int			cur;
+	int			next;
+};
+
+struct iwi_tx_data {
+	bus_dmamap_t		map;
+	struct mbuf		*m;
+	struct ieee80211_node	*ni;
+};
+
+struct iwi_tx_ring {
+	bus_dma_tag_t		desc_dmat;
+	bus_dma_tag_t		data_dmat;
+	bus_dmamap_t		desc_map;
+	bus_addr_t		physaddr;
+	bus_addr_t		csr_ridx;
+	bus_addr_t		csr_widx;
+	struct iwi_tx_desc	*desc;
+	struct iwi_tx_data	*data;
+	int			count;
+	int			queued;
+	int			cur;
+	int			next;
+};
+
+struct iwi_rx_data {
+	bus_dmamap_t	map;
+	bus_addr_t	physaddr;
+	uint32_t	reg;
+	struct mbuf	*m;
+};
+
+struct iwi_rx_ring {
+	bus_dma_tag_t		data_dmat;
+	struct iwi_rx_data	*data;
+	int			count;
+	int			cur;
+};
+
+struct iwi_node {
+	struct ieee80211_node	in_node;
+	int			in_station;
+#define IWI_MAX_IBSSNODE_NBYTE	4
+#define IWI_MAX_IBSSNODE	(IWI_MAX_IBSSNODE_NBYTE * NBBY)
+};
+
 struct iwi_softc {
+	struct ifnet		*sc_ifp;
 	struct ieee80211com	sc_ic;
 	int			(*sc_newstate)(struct ieee80211com *,
 				    enum ieee80211_state, int);
+	void			(*sc_node_free)(struct ieee80211_node *);
 	device_t		sc_dev;
 
-
 	struct iwi_firmware	fw;
-	u_int32_t		flags;
+	uint32_t		flags;
 #define IWI_FLAG_FW_CACHED	(1 << 0)
-#define IWI_FLAG_FW_IBSS	(1 << 1)
-#define IWI_FLAG_FW_INITED	(1 << 2)
-#define IWI_FLAG_SCANNING       (1 << 3)
-#define IWI_FLAG_SCAN_COMPLETE  (1 << 4)
-#define IWI_FLAG_SCAN_ABORT     (1 << 5)
-#define IWI_FLAG_ASSOCIATED     (1 << 6)
-#define IWI_FLAG_RF_DISABLED    (1 << 7)
-#define IWI_FLAG_RESET          (1 << 8)
-#define IWI_FLAG_EXIT           (1 << 9)
+#define IWI_FLAG_FW_INITED	(1 << 1)
+#define IWI_FLAG_FW_WARNED	(1 << 2)
+#define IWI_FLAG_SCANNING	(1 << 3)
 
-	struct iwi_tx_desc	*tx_desc;
-	bus_dma_tag_t		iwi_parent_tag;
-	bus_dma_tag_t		tx_ring_dmat;
-	bus_dmamap_t		tx_ring_map;
-	bus_addr_t		tx_ring_pa;
-	bus_dma_tag_t		tx_buf_dmat;
-
-	struct iwi_tx_buf {
-		bus_dmamap_t		map;
-		struct mbuf		*m;
-		struct ieee80211_node	*ni;
-	} tx_buf[IWI_TX_RING_SIZE];
-
-	int			tx_cur;
-	int			tx_old;
-	int			tx_queued;
-
-	struct iwi_cmd_desc	*cmd_desc;
-	bus_dma_tag_t		cmd_ring_dmat;
-	bus_dmamap_t		cmd_ring_map;
-	bus_addr_t		cmd_ring_pa;
-	int			cmd_cur;
-
-	bus_dma_tag_t		rx_buf_dmat;
-
-	struct iwi_rx_buf {
-		bus_dmamap_t	map;
-		bus_addr_t	physaddr;
-		struct mbuf	*m;
-	} rx_buf[IWI_RX_RING_SIZE];
-
-	int			rx_cur;
+	struct iwi_cmd_ring	cmdq;
+	struct iwi_tx_ring	txq[WME_NUM_AC];
+	struct iwi_rx_ring	rxq;
 
 	struct resource		*irq;
 	struct resource		*mem;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
 	void 			*sc_ih;
+	int			mem_rid;
+	int			irq_rid;
 
-	int			authmode;
+	int			antenna;
+	int			dwelltime;
+	int			bluetooth;
 
 	int			sc_tx_timer;
 
@@ -137,53 +159,26 @@ struct iwi_softc {
 
 	union {
 		struct iwi_rx_radiotap_header th;
-		u_int8_t	pad[64];
-	} sc_rxtapu;
+		uint8_t	pad[64];
+	}			sc_rxtapu;
 #define sc_rxtap	sc_rxtapu.th
 	int			sc_rxtap_len;
 
 	union {
 		struct iwi_tx_radiotap_header th;
-		u_int8_t	pad[64];
-	} sc_txtapu;
+		uint8_t	pad[64];
+	}			sc_txtapu;
 #define sc_txtap	sc_txtapu.th
 	int			sc_txtap_len;
-	int 			num_stations;
-	u_int8_t                stations[IWI_FW_MAX_STATIONS][ETHER_ADDR_LEN];
 
-	struct lwkt_token       sc_lock;
-	struct lwkt_token       sc_intrlock;
+	uint8_t			sc_ibss_node[IWI_MAX_IBSSNODE_NBYTE];
 
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
-
-	int			debug_level;
-
-	int			enable_bg_autodetect;
-	int			enable_bt_coexist;
-	int			enable_cts_to_self;
-	int			antenna_diversity; /* 1 = A, 3 = B, 0 = A + B */
-	int			enable_neg_best_first;
-	int			disable_unicast_decryption;
-	int			disable_multicast_decryption;
-
-	struct thread		*event_thread;
-
-	struct iwi_associate	assoc;
-
-	int			scan_counter;
-
 };
 
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
-#define SIOCSLOADIBSSFW	 _IOW('i', 138, struct ifreq)
-#define SIOCSKILLFW	 _IOW('i', 139, struct ifreq)
+#define SIOCSKILLFW	 _IOW('i', 138, struct ifreq)
 
-/* tsleepable events */
-#define IWI_FW_WAKE_MONITOR(sc)      (sc + 1)
-#define IWI_FW_INITIALIZED(sc)       (sc + 2)
-#define IWI_FW_CMD_ACKED(sc)         (sc + 3)
-#define IWI_FW_SCAN_COMPLETED(sc)    (sc + 4)
-#define IWI_FW_DEASSOCIATED(sc)      (sc + 5)
-#define IWI_FW_MON_EXIT(sc)          (sc + 6)
-
+#define IWI_FW_INITIALIZED(sc)	(sc + 1)
+#define IWI_FW_CMD_ACKED(sc)	(sc + 2)
