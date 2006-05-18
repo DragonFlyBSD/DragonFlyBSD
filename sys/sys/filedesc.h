@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.11 2005/06/22 01:33:22 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.12 2006/05/18 18:58:27 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -112,9 +112,6 @@ struct filedesc_to_leader {
  * Per-process open flags.
  */
 #define	UF_EXCLOSE 	0x01		/* auto-close on exec */
-#if 0
-#define	UF_MAPPED 	0x02		/* mapped from device */
-#endif
 
 /*
  * This structure that holds the information needed to send a SIGIO or

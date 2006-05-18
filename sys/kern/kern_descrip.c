@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.55 2006/05/07 19:17:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.56 2006/05/18 18:58:26 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -495,10 +495,6 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 		holdleaders = 0;
 	KASSERT(delfp == NULL || type == DUP_FIXED,
 	    ("dup() picked an open file"));
-#if 0
-	if (delfp && (fdp->fd_files[new].fileflags & UF_MAPPED))
-		(void) munmapfd(p, new);
-#endif
 
 	/*
 	 * Duplicate the source descriptor, update lastfile
@@ -705,10 +701,6 @@ kern_close(int fd)
 	if ((unsigned)fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_files[fd].fp) == NULL)
 		return (EBADF);
-#if 0
-	if (fdp->fd_files[fd].fileflags & UF_MAPPED)
-		(void) munmapfd(p, fd);
-#endif
 	funsetfd(fdp, fd);
 	holdleaders = 0;
 	if (p->p_fdtol != NULL) {
@@ -1449,10 +1441,6 @@ setugidsafety(struct proc *p)
 		if (fdp->fd_files[i].fp && is_unsafe(fdp->fd_files[i].fp)) {
 			struct file *fp;
 
-#if 0
-			if ((fdp->fd_files[i].fileflags & UF_MAPPED) != 0)
-				(void) munmapfd(p, i);
-#endif
 			if (i < fdp->fd_knlistsize)
 				knote_fdclose(p, i);
 			/*
@@ -1491,10 +1479,6 @@ fdcloseexec(struct proc *p)
 		    (fdp->fd_files[i].fileflags & UF_EXCLOSE)) {
 			struct file *fp;
 
-#if 0
-			if (fdp->fd_files[i].fileflags & UF_MAPPED)
-				(void) munmapfd(p, i);
-#endif
 			if (i < fdp->fd_knlistsize)
 				knote_fdclose(p, i);
 			/*
@@ -1769,10 +1753,6 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		if (((mode & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag)
 			return (EACCES);
 		fp = fdp->fd_files[indx].fp;
-#if 0
-		if (fp && fdp->fd_files[indx].fileflags & UF_MAPPED)
-			(void) munmapfd(p, indx);
-#endif
 		fdp->fd_files[indx].fp = wfp;
 		fdp->fd_files[indx].fileflags = fdp->fd_files[dfd].fileflags;
 		fhold(wfp);
@@ -1791,10 +1771,6 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 * Steal away the file pointer from dfd, and stuff it into indx.
 		 */
 		fp = fdp->fd_files[indx].fp;
-#if 0
-		if (fp && fdp->fd_files[indx].fileflags & UF_MAPPED)
-			(void) munmapfd(p, indx);
-#endif
 		fdp->fd_files[indx].fp = fdp->fd_files[dfd].fp;
 		fdp->fd_files[indx].fileflags = fdp->fd_files[dfd].fileflags;
 		funsetfd(fdp, dfd);

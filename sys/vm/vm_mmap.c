@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.27 2006/05/06 06:38:39 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.28 2006/05/18 18:58:28 dillon Exp $
  */
 
 /*
@@ -500,17 +500,6 @@ munmap(struct munmap_args *uap)
 	vm_map_remove(map, addr, addr + size);
 	return (0);
 }
-
-#if 0
-void
-munmapfd(struct proc *p, int fd)
-{
-	/*
-	 * XXX should unmap any regions mapped to this file
-	 */
-	p->p_fd->fd_files[fd].fileflags &= ~UF_MAPPED;
-}
-#endif
 
 /*
  * mprotect_args(const void *addr, size_t len, int prot)
