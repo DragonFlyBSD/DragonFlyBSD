@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.93 2006/05/18 16:25:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.94 2006/05/18 17:53:45 dillon Exp $
  */
 
 /*
@@ -515,9 +515,10 @@ lwkt_switch(void)
 	    lwkt_relalltokens(td);
 
     /*
-     * We had better not be holding any spin locks.
+     * We had better not be holding any spin locks, but don't get into an
+     * endless panic loop.
      */
-    KASSERT(td->td_spinlocks == 0, 
+    KASSERT(td->td_spinlocks == 0 || panicstr != NULL, 
 	    ("lwkt_switch: still holding %d spinlocks!", td->td_spinlocks));
 
 

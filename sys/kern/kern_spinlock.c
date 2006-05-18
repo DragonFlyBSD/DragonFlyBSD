@@ -29,12 +29,21 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.2 2005/09/16 21:50:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.3 2006/05/18 17:53:45 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/types.h>
+#include <sys/kernel.h>
+#include <sys/sysctl.h>
+#ifdef INVARIANTS
+#include <sys/proc.h>
+#endif
+#include <ddb/ddb.h>
 #include <machine/atomic.h>
+#include <machine/cpufunc.h>
+#include <machine/clock.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 
@@ -43,19 +52,113 @@
 
 #ifdef SMP
 
+static void spin_lock_contested_long(struct spinlock *mtx);
+
+#ifdef INVARIANTS
+static int spin_lock_test_mode;
+#endif
+
+static int64_t spinlocks_contested1;
+SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD, &spinlocks_contested1, 0, "");
+static int64_t spinlocks_contested2;
+SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD, &spinlocks_contested2, 0, "");
+
 void
 spin_lock_contested(struct spinlock *mtx)
 {
-	int i, backoff = BACKOFF_INITIAL;
+	int i;
+	int backoff = BACKOFF_INITIAL;
 
+	++spinlocks_contested1;
 	do {
 		/* exponential backoff to reduce contention */
 		for (i = 0; i < backoff; i++)
 			cpu_nop();
-		if (backoff < BACKOFF_LIMIT)
+		if (backoff < BACKOFF_LIMIT) {
 			backoff <<= 1;
+		} else {
+			spin_lock_contested_long(mtx);
+			return;
+		}
 		/* do non-bus-locked check first */
 	} while (mtx->lock != 0 || atomic_swap_int(&mtx->lock, 1) != 0);
 }
+
+
+/*
+ * This code deals with indefinite waits.  If the system is handling a
+ * panic we hand the spinlock over to the caller after 1 second.  After
+ * 10 seconds we attempt to print a debugger backtrace.  We also run
+ * pending interrupts in order to allow a console break into DDB.
+ */
+static void
+spin_lock_contested_long(struct spinlock *mtx)
+{
+	sysclock_t base;
+	sysclock_t count;
+	int nsec;
+
+	++spinlocks_contested2;
+	base = sys_cputimer->count();
+	nsec = 0;
+
+	for (;;) {
+		if (mtx->lock == 0 && atomic_swap_int(&mtx->lock, 1) == 0)
+			return;
+		count = sys_cputimer->count();
+		if (count - base > sys_cputimer->freq) {
+			printf("spin_lock: %p, indefinite wait!\n", mtx);
+			if (panicstr)
+				return;
+#ifdef INVARIANTS
+			if (spin_lock_test_mode) {
+				db_print_backtrace();
+				return;
+			}
+#endif
+			if (++nsec == 10) {
+				nsec = 0;
+				db_print_backtrace();
+			}
+			splz();
+			base = count;
+		}
+	}
+}
+
+/*
+ * If INVARIANTS is enabled an indefinite wait spinlock test can be
+ * executed with 'sysctl debug.spin_lock_test=1'
+ */
+
+#ifdef INVARIANTS
+
+static int
+sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
+{
+        struct spinlock mtx;
+	int error;
+	int value = 0;
+
+	if ((error = suser(curthread)) != 0)
+		return (error);
+	if ((error = SYSCTL_IN(req, &value, sizeof(value))) != 0)
+		return (error);
+
+	if (value == 1) {
+		mtx.lock = 1;
+		spin_lock_test_mode = 1;
+		spin_lock(&mtx);
+		spin_unlock(&mtx);
+		spin_lock_test_mode = 0;
+	}
+        return (0);
+}
+
+SYSCTL_PROC(_debug, KERN_PROC_ALL, spin_lock_test, CTLFLAG_RW|CTLTYPE_INT,
+        0, 0, sysctl_spin_lock_test, "I", "Test spinlock wait code");
+
+
+#endif
 
 #endif
