@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.15 2006/04/25 16:37:44 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.16 2006/05/18 08:25:23 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -55,6 +55,7 @@
 #include <sys/pipe.h>
 #include <sys/conf.h>
 #include <sys/file.h>
+#include <sys/ktrace.h>
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
 #include <sys/mount.h>
@@ -302,6 +303,7 @@ dofiles(struct kinfo_proc *kp)
 	int i;
 	struct file file;
 	struct filedesc filed;
+	struct ktrace_node ktrace_node;
 	struct proc *p = &kp->kp_proc;
 	struct eproc *ep = &kp->kp_eproc;
 
@@ -329,8 +331,10 @@ dofiles(struct kinfo_proc *kp)
 	/*
 	 * ktrace vnode, if one
 	 */
-	if (p->p_tracep)
-		vtrans(p->p_tracep, NULL, TRACE, FREAD|FWRITE);
+	if (p->p_tracenode) {
+		if (kread(p->p_tracenode, &ktrace_node, sizeof (ktrace_node)))
+			vtrans(ktrace_node.kn_vp, NULL, TRACE, FREAD|FWRITE);
+	}
 	/*
 	 * text vnode, if one
 	 */
