@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.15 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.16 2006/05/18 16:25:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -114,17 +114,6 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 				gd->gd_curthread->td_preempted);
 	    }
 
-	    if (gd->gd_tokreqbase) {
-		lwkt_tokref_t ref;
-
-		if (db_more(&nl) < 0)
-		    return;
-		db_printf("      tokenrequests:");
-		for (ref = gd->gd_tokreqbase; ref; ref = ref->tr_next) {
-		    db_printf(" [r=%p,t=%p]", ref, ref->tr_tok);
-		}
-		db_printf("\n");
-	    }
 	    if (db_more(&nl) < 0)
 		return;
 	    db_printf("      INCOMMING IPIQS:");
@@ -216,14 +205,8 @@ db_dump_td_tokens(thread_t td)
 		tok = ref->tr_tok;
 
 		db_printf(" %p[tok=%p", ref, ref->tr_tok);
-		if (td->td_gd == tok->t_cpu)
+		if (td == tok->t_owner)
 		    db_printf(",held");
-		if (ref->tr_magic == LWKT_TOKREF_MAGIC1)
-		    ;
-		else if (ref->tr_magic == LWKT_TOKREF_MAGIC2)
-		    db_printf(",wait");
-		else
-		    db_printf(",badmagic");
 		db_printf("]");
 	}
 	db_printf("\n");

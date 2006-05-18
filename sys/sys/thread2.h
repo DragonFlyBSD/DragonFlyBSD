@@ -8,7 +8,7 @@
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.25 2005/11/08 20:47:02 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.26 2006/05/18 16:25:20 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -198,9 +198,8 @@ crit_test(thread_t td)
 static __inline void
 lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok)
 {
-    ref->tr_magic = LWKT_TOKREF_MAGIC1;
     ref->tr_tok = tok;
-    ref->tr_flags = 0;
+    ref->tr_state = 0;
 }
 
 /*

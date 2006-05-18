@@ -35,16 +35,18 @@
  * 
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.8 2005/06/20 07:31:05 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.9 2006/05/18 16:25:19 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/spinlock.h>
 #include <sys/proc.h>
 #include <sys/rtprio.h>
 #include <sys/queue.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 /*
  * lwkt_rwlock_init() (MP SAFE)
@@ -82,11 +84,9 @@ lwkt_rwlock_uninit(lwkt_rwlock_t lock)
 void
 lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 {
-    lwkt_tokref ilock;
     int gen;
 
-    lwkt_gettoken(&ilock, &lock->rw_token);
-    crit_enter();
+    spin_lock(&lock->rw_spinlock);
     gen = lock->rw_wait.wa_gen;
     while (lock->rw_owner != curthread) {
 	if (lock->rw_owner == NULL && lock->rw_count == 0) {
@@ -94,12 +94,13 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 	    break;
 	}
 	++lock->rw_requests;
+	spin_unlock(&lock->rw_spinlock);
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
+	spin_lock(&lock->rw_spinlock);
 	--lock->rw_requests;
     }
     ++lock->rw_count;
-    lwkt_reltoken(&ilock);
-    crit_exit();
+    spin_unlock(&lock->rw_spinlock);
 }
 
 /*
@@ -108,20 +109,19 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 void
 lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
 {
-    lwkt_tokref ilock;
     int gen;
 
-    lwkt_gettoken(&ilock, &lock->rw_token);
-    crit_enter();
+    spin_lock(&lock->rw_spinlock);
     gen = lock->rw_wait.wa_gen;
     while (lock->rw_owner != NULL) {
 	++lock->rw_requests;
+	spin_unlock(&lock->rw_spinlock);
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
+	spin_lock(&lock->rw_spinlock);
 	--lock->rw_requests;
     }
     ++lock->rw_count;
-    lwkt_reltoken(&ilock);
-    crit_exit();
+    spin_unlock(&lock->rw_spinlock);
 }
 
 /*
@@ -130,19 +130,18 @@ lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
 void
 lwkt_exunlock(lwkt_rwlock_t lock)
 {
-    lwkt_tokref ilock;
-
-    lwkt_gettoken(&ilock, &lock->rw_token);
-    crit_enter();
     KASSERT(lock->rw_owner != NULL, ("lwkt_exunlock: shared lock"));
     KASSERT(lock->rw_owner == curthread, ("lwkt_exunlock: not owner"));
+    spin_lock(&lock->rw_spinlock);
     if (--lock->rw_count == 0) {
 	lock->rw_owner = NULL;
-	if (lock->rw_requests)
+	if (lock->rw_requests) {
+	    spin_unlock(&lock->rw_spinlock);
 	    lwkt_signal(&lock->rw_wait, 1);
+	    return;
+	}
     }
-    lwkt_reltoken(&ilock);
-    crit_exit();
+    spin_unlock(&lock->rw_spinlock);
 }
 
 /*
@@ -151,16 +150,15 @@ lwkt_exunlock(lwkt_rwlock_t lock)
 void
 lwkt_shunlock(lwkt_rwlock_t lock)
 {
-    lwkt_tokref ilock;
-
-    lwkt_gettoken(&ilock, &lock->rw_token);
-    crit_enter();
     KASSERT(lock->rw_owner == NULL, ("lwkt_shunlock: exclusive lock"));
+    spin_lock(&lock->rw_spinlock);
     if (--lock->rw_count == 0) {
-	if (lock->rw_requests)
+	if (lock->rw_requests) {
+	    spin_unlock(&lock->rw_spinlock);
 	    lwkt_signal(&lock->rw_wait, 1);
+	    return;
+	}
     }
-    lwkt_reltoken(&ilock);
-    crit_exit();
+    spin_unlock(&lock->rw_spinlock);
 }
 

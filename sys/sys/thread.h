@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.77 2006/01/31 19:05:44 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.78 2006/05/18 16:25:20 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -27,6 +27,9 @@
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>   	/* struct timeval */
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 struct globaldata;
@@ -94,41 +97,19 @@ struct intrframe;
  * may reference the same token.
  */
 typedef struct lwkt_token {
-    struct globaldata	*t_cpu;		/* the current owner of the token */
-    struct globaldata	*t_reqcpu;	/* requesting cpu */
-    int			t_unused01;	/* (used to be generation number) */
+    struct spinlock	t_spinlock;	/* Controls access */
+    struct thread	*t_owner;	/* The current owner of the token */
+    int			t_count;	/* Recursive count */
 } lwkt_token;
 
 typedef struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
-    __uint32_t		tr_magic;	/* sanity check */
     lwkt_tokref_t	tr_next;	/* linked list */
-    lwkt_tokref_t	tr_gdreqnext;	/* based at gd_tokreqbase */
-    struct globaldata	*tr_reqgd;	/* requesting cpu */
-    int          	tr_flags;	/* token state and debug flags */
+    int			tr_state;	/* 0 = don't have, 1 = have */
 } lwkt_tokref;
 
-/*
- * Token state and debug flags.
- */
-#define	LWKT_TOKREF_CONTENDED	0x002	/* token ownership contention */
-
-/*
- * The magic number indicates the trans-cpu state of a token reference.
- *
- * MAGIC1 - token reference is not in transit to another cpu
- * MAGIC2 - token reference is in transit to another cpu
- * MAGIC3 - token reference is in a state where it should not be
- *	    checked by lwkt_chktoken().
- */
-#define LWKT_TOKREF_MAGIC1		\
-			((__uint32_t)0x544f4b52)	/* normal */
-#define LWKT_TOKREF_MAGIC2		\
-			((__uint32_t)0x544f4b53)	/* pending req */
-#define LWKT_TOKREF_MAGIC3		\
-			((__uint32_t)0x544f4b54)	/* indeterminant */
 #define LWKT_TOKREF_INIT(tok)		\
-			{ tok, LWKT_TOKREF_MAGIC1 }
+			{ tok, NULL, 0 }
 #define LWKT_TOKREF_DECLARE(name, tok)	\
 			lwkt_tokref name = LWKT_TOKREF_INIT(tok)
 
@@ -138,7 +119,7 @@ typedef struct lwkt_tokref {
  */
 typedef struct lwkt_wait {
     lwkt_queue	wa_waitq;	/* list of waiting threads */
-    lwkt_token	wa_token;	/* who currently owns the list */
+    struct spinlock wa_spinlock;
     int		wa_gen;
     int		wa_count;
 } lwkt_wait;
@@ -206,7 +187,7 @@ typedef struct lwkt_rwlock {
     int		rw_requests;
 } lwkt_rwlock;
 
-#define rw_token	rw_wait.wa_token
+#define rw_spinlock	rw_wait.wa_spinlock
 
 /*
  * Thread structure.  Note that ownership of a thread structure is special
@@ -382,14 +363,13 @@ extern void lwkt_rele(thread_t td);
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w, int count);
 
-extern int lwkt_havetoken(lwkt_token_t tok);
-extern int lwkt_havetokref(lwkt_tokref_t xref);
 extern void lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok);
 extern int lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok);
 extern void lwkt_gettokref(lwkt_tokref_t ref);
 extern int  lwkt_trytokref(lwkt_tokref_t ref);
 extern void lwkt_reltoken(lwkt_tokref_t ref);
-extern int  lwkt_chktokens(thread_t td);
+extern int  lwkt_getalltokens(thread_t td);
+extern void lwkt_relalltokens(thread_t td);
 extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t tok);
 extern void lwkt_token_uninit(lwkt_token_t tok);

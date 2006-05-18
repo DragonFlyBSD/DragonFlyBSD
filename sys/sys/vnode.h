@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.54 2006/05/16 18:09:19 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.55 2006/05/18 16:25:20 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -216,6 +216,7 @@ struct vnode {
 #define	v_rdev		v_un.vu_spec.vu_specinfo
 #define	v_specnext	v_un.vu_spec.vu_specnext
 #define	v_fifoinfo	v_un.vu_fifoinfo
+#define	v_spinlock	v_lock.lk_spinlock
 
 #define	VN_POLLEVENT(vp, events)				\
 	do {							\

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.92 2006/03/01 00:17:55 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.93 2006/05/18 16:25:19 dillon Exp $
  */
 
 /*
@@ -49,12 +49,15 @@
 #include <sys/proc.h>
 #include <sys/rtprio.h>
 #include <sys/queue.h>
-#include <sys/thread2.h>
 #include <sys/sysctl.h>
 #include <sys/kthread.h>
 #include <machine/cpu.h>
 #include <sys/lock.h>
 #include <sys/caps.h>
+#include <sys/spinlock.h>
+
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -216,7 +219,7 @@ lwkt_gdinit(struct globaldata *gd)
 void
 lwkt_wait_init(lwkt_wait_t w)
 {
-    lwkt_token_init(&w->wa_token);
+    spin_init(&w->wa_spinlock);
     TAILQ_INIT(&w->wa_waitq);
     w->wa_gen = 0;
     w->wa_count = 0;
@@ -462,11 +465,6 @@ lwkt_switch(void)
 #endif
 
     /*
-     * We had better not be holding any spin locks.
-     */
-    KKASSERT(td->td_spinlocks == 0);
-
-    /*
      * Switching from within a 'fast' (non thread switched) interrupt or IPI
      * is illegal.  However, we may have to do it anyway if we hit a fatal
      * kernel trap or we have paniced.
@@ -513,6 +511,15 @@ lwkt_switch(void)
 	    td->td_release(td);
 
     crit_enter_gd(gd);
+    if (td->td_toks)
+	    lwkt_relalltokens(td);
+
+    /*
+     * We had better not be holding any spin locks.
+     */
+    KASSERT(td->td_spinlocks == 0, 
+	    ("lwkt_switch: still holding %d spinlocks!", td->td_spinlocks));
+
 
 #ifdef SMP
     /*
@@ -584,15 +591,6 @@ lwkt_switch(void)
 	 */
 
 	/*
-	 * We are switching threads.  If there are any pending requests for
-	 * tokens we can satisfy all of them here.
-	 */
-#ifdef SMP
-	if (gd->gd_tokreqbase)
-		lwkt_drain_token_requests();
-#endif
-
-	/*
 	 * If an LWKT reschedule was requested, well that is what we are
 	 * doing now so clear it.
 	 */
@@ -615,15 +613,15 @@ again:
 	     *
 	     * NOTE: the mpheld variable invalid after this conditional, it
 	     * can change due to both cpu_try_mplock() returning success
-	     * AND interactions in lwkt_chktokens() due to the fact that
+	     * AND interactions in lwkt_getalltokens() due to the fact that
 	     * we are trying to check the mpcount of a thread other then
 	     * the current thread.  Because of this, if the current thread
 	     * is not holding td_mpcount, an IPI indirectly run via
-	     * lwkt_chktokens() can obtain and release the MP lock and
+	     * lwkt_getalltokens() can obtain and release the MP lock and
 	     * cause the core MP lock to be released. 
 	     */
 	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
-		(ntd->td_toks && lwkt_chktokens(ntd) == 0)
+		(ntd->td_toks && lwkt_getalltokens(ntd) == 0)
 	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
 
@@ -641,11 +639,11 @@ again:
 			}
 
 			/*
-			 * mpheld state invalid after chktokens call returns
+			 * mpheld state invalid after getalltokens call returns
 			 * failure, but the variable is only needed for
 			 * the loop.
 			 */
-			if (ntd->td_toks && !lwkt_chktokens(ntd)) {
+			if (ntd->td_toks && !lwkt_getalltokens(ntd)) {
 			    /* spinning due to token contention */
 #ifdef	INVARIANTS
 			    ++token_contention_count;
@@ -1015,28 +1013,22 @@ lwkt_schedule(thread_t td)
 	 * section if the token is owned by our cpu.
 	 */
 	if ((w = td->td_wait) != NULL) {
-	    if (w->wa_token.t_cpu == mygd) {
-		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
-		--w->wa_count;
-		td->td_wait = NULL;
+	    spin_lock_quick(&w->wa_spinlock);
+	    TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
+	    --w->wa_count;
+	    td->td_wait = NULL;
+	    spin_unlock_quick(&w->wa_spinlock);
 #ifdef SMP
-		if (td->td_gd == mygd) {
-		    _lwkt_enqueue(td);
-		    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-		} else {
-		    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
-		}
-#else
+	    if (td->td_gd == mygd) {
 		_lwkt_enqueue(td);
 		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-#endif
 	    } else {
-#ifdef SMP
-		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc1_t)lwkt_schedule, td);
-#else
-		panic("bad token %p", &w->wa_token);
-#endif
+		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 	    }
+#else
+	    _lwkt_enqueue(td);
+	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
+#endif
 	} else {
 	    /*
 	     * If the wait structure is NULL and we own the thread, there
@@ -1278,10 +1270,8 @@ void
 lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 {
     thread_t td = curthread;
-    lwkt_tokref ilock;
 
-    lwkt_gettoken(&ilock, &w->wa_token);
-    crit_enter();
+    spin_lock(&w->wa_spinlock);
     if (w->wa_gen == *gen) {
 	_lwkt_dequeue(td);
 	td->td_flags |= TDF_BLOCKQ;
@@ -1289,13 +1279,15 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 	++w->wa_count;
 	td->td_wait = w;
 	td->td_wmesg = wmesg;
+	spin_unlock(&w->wa_spinlock);
 	lwkt_switch();
 	KKASSERT((td->td_flags & TDF_BLOCKQ) == 0);
 	td->td_wmesg = NULL;
+	*gen = w->wa_gen;
+    } else {
+	*gen = w->wa_gen;
+	spin_unlock(&w->wa_spinlock);
     }
-    crit_exit();
-    *gen = w->wa_gen;
-    lwkt_reltoken(&ilock);
 }
 
 /*
@@ -1310,11 +1302,9 @@ void
 lwkt_signal(lwkt_wait_t w, int count)
 {
     thread_t td;
-    lwkt_tokref ilock;
 
-    lwkt_gettoken(&ilock, &w->wa_token);
+    spin_lock(&w->wa_spinlock);
     ++w->wa_gen;
-    crit_enter();
     if (count < 0)
 	count = w->wa_count;
     while ((td = TAILQ_FIRST(&w->wa_waitq)) != NULL && count) {
@@ -1324,6 +1314,7 @@ lwkt_signal(lwkt_wait_t w, int count)
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_flags &= ~TDF_BLOCKQ;
 	td->td_wait = NULL;
+	spin_unlock(&w->wa_spinlock);
 	KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
 #ifdef SMP
 	if (td->td_gd == mycpu) {
@@ -1334,9 +1325,9 @@ lwkt_signal(lwkt_wait_t w, int count)
 #else
 	_lwkt_enqueue(td);
 #endif
+	spin_lock(&w->wa_spinlock);
     }
-    crit_exit();
-    lwkt_reltoken(&ilock);
+    spin_unlock(&w->wa_spinlock);
 }
 
 /*

@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.5 2006/04/22 22:19:19 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.6 2006/05/18 16:25:20 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -41,22 +41,47 @@
 
 #ifdef SMP
 
-static __inline void
-spin_lock_debug(int count)
-{
 #ifdef INVARIANTS
-	curthread->td_spinlocks += count;
-#endif
+
+static __inline void
+spin_lock_debug(thread_t td, int count)
+{
+	td->td_spinlocks += count;
 }
 
+#endif
+
+/*
+ * Attempt to obtain a spinlock on behalf of the specified thread.  Returns
+ * FALSE on failure, TRUE on success.
+ */
 static __inline boolean_t
-spin_trylock(struct spinlock *mtx)
+spin_trylock(thread_t td, struct spinlock *mtx)
 {
 	if (atomic_swap_int(&mtx->lock, 1) == 0) {
-		spin_lock_debug(1);
+#ifdef INVARIANTS
+		spin_lock_debug(td, 1);
+#endif
 		return (TRUE);
 	}
 	return (FALSE);
+}
+
+/*
+ * Relase a spinlock obtained via spin_trylock() on behalf of the specified
+ * thread.  This function always succeeds.  It exists because the other
+ * standard release functions only operate on the current thread.
+ */
+static __inline void
+spin_tryunlock(thread_t td, struct spinlock *mtx)
+{
+#ifdef INVARIANTS
+	if (td->td_spinlocks <= 0)
+		panic("spin_tryunlock: wasn't locked!");
+	spin_lock_debug(td, -1);
+#endif
+	cpu_sfence();
+	mtx->lock = 0;		/* non-bus-locked lock release */
 }
 
 extern void spin_lock_contested(struct spinlock *mtx);
@@ -64,24 +89,40 @@ extern void spin_lock_contested(struct spinlock *mtx);
 /*
  * The quick versions should be used only if you are already
  * in a critical section or you know the spinlock will never
- * be used by an hard interrupt or soft interrupt.
+ * be used by an hard interrupt, IPI, or soft interrupt.
+ *
+ * Obtain a spinlock and return.
  */
 static __inline void
 spin_lock_quick(struct spinlock *mtx)
 {
-	spin_lock_debug(1);
+#ifdef INVARIANTS
+	spin_lock_debug(curthread, 1);
+#endif
 	if (atomic_swap_int(&mtx->lock, 1) != 0)
 		spin_lock_contested(mtx);	/* slow path */
 }
 
+/*
+ * Release a spinlock previously obtained by the current thread.
+ */
 static __inline void
 spin_unlock_quick(struct spinlock *mtx)
 {
-	spin_lock_debug(-1);
+#ifdef INVARIANTS
+	if (curthread->td_spinlocks <= 0)
+		panic("spin_unlock_quick: wasn't locked!");
+	spin_lock_debug(curthread, -1);
+#endif
 	cpu_sfence();
 	mtx->lock = 0;		/* non-bus-locked lock release */
 }
 
+/*
+ * Returns whether a spinlock is locked or not.  0 indicates not locked,
+ * non-zero indicates locked (by any thread, not necessarily the current
+ * thread).
+ */
 static __inline boolean_t
 spin_is_locked(struct spinlock *mtx)
 {
@@ -103,9 +144,14 @@ spin_uninit(struct spinlock *mtx)
 #else	/* SMP */
 
 static __inline boolean_t
-spin_trylock(struct spinlock *mtx)
+spin_trylock(thread_t td, struct spinlock *mtx)
 {
 	return (TRUE);
+}
+
+static __inline void
+spin_tryunlock(thread_t td, struct spinlock *mtx)
+{
 }
 
 static __inline boolean_t
