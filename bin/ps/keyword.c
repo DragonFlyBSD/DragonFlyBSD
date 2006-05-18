@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.23 2006/04/02 17:24:56 swildner Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.24 2006/05/18 08:17:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,7 @@ static const VAR var[] = {
 	{"jobc", "JOBC", NULL, 0, evar, NULL, 4, EOFF(e_jobc), SHORT, "d", NULL},
 	{"ktrace", "KTRACE", NULL, 0, pvar, NULL, 8, POFF(p_traceflag), INT, "x",
 		NULL},
-	{"ktracep", "KTRACEP", NULL, 0, pvar, NULL, 8, POFF(p_tracep), LONG, "lx",
+	{"ktracep", "KTRACEP", NULL, 0, pvar, NULL, 8, POFF(p_tracenode), LONG, "lx",
 		NULL},
 	{"lastcpu", "C", NULL, 0, evar, NULL, 3, EOFF(e_cpuid), UINT, "d", NULL},
 	{"lim", "LIM", NULL, 0, maxrss, NULL, 5, 0, 0, NULL, NULL},
