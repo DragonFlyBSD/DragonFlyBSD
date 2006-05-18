@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.c,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.8 2005/11/08 12:48:18 sephe Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.9 2006/05/18 12:43:24 sephe Exp $*/
 /* if_em_hw.c
  * Shared functions for accessing and configuring the MAC
  */
@@ -5313,7 +5313,7 @@ em_get_cable_length(struct em_hw *hw,
 {
     int32_t ret_val;
     uint16_t agc_value = 0;
-    uint16_t cur_agc, min_agc = IGP01E1000_AGC_LENGTH_TABLE_SIZE;
+    uint16_t cur_agc, min_agc = IGP01E1000_AGC_LENGTH_TABLE_SIZE - 1;
     uint16_t max_agc = 0;
     uint16_t i, phy_data;
     uint16_t cable_length;
