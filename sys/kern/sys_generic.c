@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.29 2006/05/19 05:15:34 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.30 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -202,12 +202,11 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	struct filedesc *fdp = p->p_fd;
 	int error;
 
 	KKASSERT(p);
 
-	fp = holdfp(fdp, fd, FREAD);
+	fp = holdfp(p->p_fd, fd, FREAD);
 	if (fp == NULL)
 		return (EBADF);
 	if (flags & FOF_OFFSET && fp->f_type != DTYPE_VNODE) {
@@ -390,12 +389,11 @@ kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	struct filedesc *fdp = p->p_fd;
 	int error;
 
 	KKASSERT(p);
 
-	fp = holdfp(fdp, fd, FWRITE);
+	fp = holdfp(p->p_fd, fd, FWRITE);
 	if (fp == NULL)
 		return (EBADF);
 	else if ((flags & FOF_OFFSET) && fp->f_type != DTYPE_VNODE) {
@@ -492,7 +490,6 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	struct proc *p = td->td_proc;
 	struct ucred *cred;
 	struct file *fp;
-	struct filedesc *fdp;
 	struct ioctl_map_range *iomc = NULL;
 	int error;
 	u_int size;
@@ -507,12 +504,9 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 
 	KKASSERT(p);
 	cred = p->p_ucred;
-	fdp = p->p_fd;
-	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL)
-		return(EBADF);
 
-	if ((fp->f_flag & (FREAD | FWRITE)) == 0)
+	fp = holdfp(p->p_fd, fd, FREAD|FWRITE);
+	if (fp == NULL)
 		return(EBADF);
 
 	if (map != NULL) {	/* obey translation map */
@@ -544,7 +538,8 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			       map->sys, fd, maskcmd,
 			       (int)((maskcmd >> 8) & 0xff),
 			       (int)(maskcmd & 0xff));
-			return(EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 
 		/*
@@ -571,18 +566,19 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 				       map->sys, fd, maskcmd,
 				       (int)((maskcmd >> 8) & 0xff),
 				       (int)(maskcmd & 0xff));
-				return(EINVAL);
+				error = EINVAL;
+				goto done;
 			}
 		}
 	}
 
 	switch (com) {
 	case FIONCLEX:
-		fdp->fd_files[fd].fileflags &= ~UF_EXCLOSE;
-		return(0);
+		error = fclrfdflags(p->p_fd, fd, UF_EXCLOSE);
+		goto done;
 	case FIOCLEX:
-		fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
-		return(0);
+		error = fsetfdflags(p->p_fd, fd, UF_EXCLOSE);
+		goto done;
 	}
 
 	/*
@@ -590,10 +586,10 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	 * copied to/from the user's address space.
 	 */
 	size = IOCPARM_LEN(com);
-	if (size > IOCPARM_MAX)
-		return(ENOTTY);
-
-	fhold(fp);
+	if (size > IOCPARM_MAX) {
+		error = ENOTTY;
+		goto done;
+	}
 
 	memp = NULL;
 	if (size > sizeof (ubuf.stkbuf)) {
@@ -608,8 +604,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			if (error) {
 				if (memp != NULL)
 					free(memp, M_IOCTLOPS);
-				fdrop(fp);
-				return(error);
+				goto done;
 			}
 		} else {
 			*(caddr_t *)data = uspc_data;
@@ -661,6 +656,7 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	}
 	if (memp != NULL)
 		free(memp, M_IOCTLOPS);
+done:
 	fdrop(fp);
 	return(error);
 }
@@ -842,7 +838,6 @@ done:
 static int
 selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 {
-	struct filedesc *fdp = p->p_fd;
 	int msk, i, fd;
 	fd_mask bits;
 	struct file *fp;
@@ -859,7 +854,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 			for (fd = i; bits && fd < nfd; fd++, bits >>= 1) {
 				if (!(bits & 1))
 					continue;
-				fp = fdp->fd_files[fd].fp;
+				fp = holdfp(p->p_fd, fd, -1);
 				if (fp == NULL)
 					return (EBADF);
 				if (fo_poll(fp, flag[msk], fp->f_cred)) {
@@ -867,6 +862,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 					    ((fd_mask)1 << ((fd) % NFDBITS));
 					n++;
 				}
+				fdrop(fp);
 			}
 		}
 	}
@@ -966,19 +962,18 @@ out:
 static int
 pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 {
-	struct filedesc *fdp = p->p_fd;
 	int i;
 	struct file *fp;
 	int n = 0;
 
 	for (i = 0; i < nfd; i++, fds++) {
-		if (fds->fd >= fdp->fd_nfiles) {
+		if (fds->fd >= p->p_fd->fd_nfiles) {
 			fds->revents = POLLNVAL;
 			n++;
 		} else if (fds->fd < 0) {
 			fds->revents = 0;
 		} else {
-			fp = fdp->fd_files[fds->fd].fp;
+			fp = holdfp(p->p_fd, fds->fd, -1);
 			if (fp == NULL) {
 				fds->revents = POLLNVAL;
 				n++;
@@ -991,6 +986,7 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 							fp->f_cred);
 				if (fds->revents != 0)
 					n++;
+				fdrop(fp);
 			}
 		}
 	}

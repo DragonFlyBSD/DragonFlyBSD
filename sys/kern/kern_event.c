@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.22 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.23 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -391,7 +391,6 @@ kevent(struct kevent_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct kevent *kevp;
 	struct kqueue *kq;
 	struct file *fp = NULL;
@@ -399,14 +398,14 @@ kevent(struct kevent_args *uap)
 	int i, n, nerrors, error;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
-        if (((u_int)uap->fd) >= fdp->fd_nfiles ||
-            (fp = fdp->fd_files[uap->fd].fp) == NULL ||
-	    (fp->f_type != DTYPE_KQUEUE))
+	fp = holdfp(p->p_fd, uap->fd, -1);
+	if (fp == NULL)
 		return (EBADF);
-
-	fhold(fp);
+	if (fp->f_type != DTYPE_KQUEUE) {
+		fdrop(fp);
+		return (EBADF);
+	}
 
 	if (uap->timeout != NULL) {
 		error = copyin(uap->timeout, &ts, sizeof(ts));
@@ -484,10 +483,9 @@ kqueue_register(struct kqueue *kq, struct kevent *kev, struct thread *td)
 
 	if (fops->f_isfd) {
 		/* validate descriptor */
-		if ((u_int)kev->ident >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_files[kev->ident].fp) == NULL)
+		fp = holdfp(fdp, kev->ident, -1);
+		if (fp == NULL)
 			return (EBADF);
-		fhold(fp);
 
 		if (kev->ident < fdp->fd_knlistsize) {
 			SLIST_FOREACH(kn, &fdp->fd_knlist[kev->ident], kn_link)

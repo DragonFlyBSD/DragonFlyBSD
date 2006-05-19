@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.52 2006/05/05 21:15:08 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.53 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -272,7 +272,6 @@ SYSINIT(leavecrit, SI_SUB_LEAVE_CRIT, SI_ORDER_ANY, leavecrit, NULL)
 static void
 proc0_init(void *dummy __unused)
 {
-	struct filedesc	*fdp;
 	struct proc *p;
 	struct lwp *lp;
 	unsigned i;
@@ -336,13 +335,7 @@ proc0_init(void *dummy __unused)
 	siginit(&proc0);
 
 	/* Create the file descriptor table. */
-	fdp = &filedesc0;
-	p->p_fd = fdp;
-	p->p_fdtol = NULL;
-	fdp->fd_refcnt = 1;
-	fdp->fd_cmask = cmask;
-	fdp->fd_files = fdp->fd_builtin_files;
-	fdp->fd_nfiles = NDFILE;
+	fdinit_bootstrap(p, &filedesc0, cmask);
 
 	/* Create the limits structures. */
 	p->p_limit = &limit0;

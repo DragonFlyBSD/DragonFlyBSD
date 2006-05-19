@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.37 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.38 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1415,17 +1415,22 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 	 * ignore STDIN/STDERR/STDOUT.
 	 */
 	for (i = 3; error == 0 && i < p->p_fd->fd_nfiles; i++) {
-		if ((fp = p->p_fd->fd_files[i].fp) == NULL)
+		fp = holdfp(p->p_fd, i, -1);
+		if (fp == NULL)
 			continue;
 		/* 
 		 * XXX Only checkpoint vnodes for now.
 		 */
-		if (fp->f_type != DTYPE_VNODE)
+		if (fp->f_type != DTYPE_VNODE) {
+			fdrop(fp);
 			continue;
+		}
 		cfi = target_reserve(target, sizeof(struct ckpt_fileinfo),
 					&error);
-		if (cfi == NULL)
+		if (cfi == NULL) {
+			fdrop(fp);
 			continue;
+		}
 		cfi->cfi_index = -1;
 		cfi->cfi_type = fp->f_type;
 		cfi->cfi_flags = fp->f_flag;
@@ -1452,6 +1457,7 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 		default:
 			break;
 		}
+		fdrop(fp);
 	}
 	return(error);
 }

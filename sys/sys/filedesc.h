@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.13 2006/05/19 05:15:36 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.14 2006/05/19 07:33:45 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -151,8 +151,11 @@ int	fdavail (struct proc *p, int n);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
 int	fdealloc (struct proc *p, struct file *fp, int fd);
 int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
+int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
+int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);
 void	fsetcred (struct file *fp, struct ucred *cr);
 void	ffree (struct file *);
+void	fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask);
 struct	filedesc *fdinit (struct proc *p);
 struct	filedesc *fdshare (struct proc *p);
 struct	filedesc *fdcopy (struct proc *p);

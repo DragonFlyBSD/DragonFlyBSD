@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.28 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.29 2006/05/19 07:33:43 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -140,12 +140,15 @@ linux_open(struct linux_open_args *args)
 
 	if (error == 0 && !(flags & O_NOCTTY) && 
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
-		struct filedesc *fdp = p->p_fd;
-		struct file *fp = fdp->fd_files[args->sysmsg_result].fp;
+		struct file *fp;
 
-		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p->p_ucred);
-    }
+		fp = holdfp(p->p_fd, args->sysmsg_result, -1);
+		if (fp) {
+			if (fp->f_type == DTYPE_VNODE)
+				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred);
+			fdrop(fp);
+		}
+	}
 #ifdef DEBUG
 	if (ldebug(open))
 		printf(LMSG("open returns error %d"), error);
@@ -992,7 +995,6 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 {
 	struct proc *p = curproc;
 	struct l_flock linux_flock;
-	struct filedesc *fdp;
 	struct file *fp;
 	union fcntl_dat dat;
 	int error, cmd;
@@ -1043,12 +1045,14 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 		 * significant effect for pipes (SIGIO is not delivered for
 		 * pipes under Linux-2.2.35 at least).
 		 */
-		fdp = p->p_fd;
-		if ((u_int)args->fd >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_files[args->fd].fp) == NULL)
+		fp = holdfp(p->p_fd, args->fd, -1);
+		if (fp == NULL)
 			return (EBADF);
-		if (fp->f_type == DTYPE_PIPE)
+		if (fp->f_type == DTYPE_PIPE) {
+			fdrop(fp);
 			return (EINVAL);
+		}
+		fdrop(fp);
 		cmd = F_SETOWN;
 		dat.fc_owner = args->arg;
 		break;

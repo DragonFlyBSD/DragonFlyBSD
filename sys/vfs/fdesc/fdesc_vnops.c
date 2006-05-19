@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.28 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.29 2006/05/19 07:33:46 dillon Exp $
  */
 
 /*
@@ -272,14 +272,13 @@ fdesc_getattr(struct vop_getattr_args *ap)
 	struct proc *p = curproc;
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
-	struct filedesc *fdp;
 	struct file *fp;
 	struct stat stb;
 	u_int fd;
 	int error = 0;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
+
 	switch (VTOFDESC(vp)->fd_type) {
 	case Froot:
 		VATTR_NULL(vap);
@@ -305,11 +304,14 @@ fdesc_getattr(struct vop_getattr_args *ap)
 	case Fdesc:
 		fd = VTOFDESC(vp)->fd_fd;
 
-		if (fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
+		fp = holdfp(p->p_fd, fd, -1);
+		if (fp == NULL)
 			return (EBADF);
 
 		bzero(&stb, sizeof(stb));
 		error = fo_stat(fp, &stb, curproc->p_ucred);
+		fdrop(fp);
+
 		if (error == 0) {
 			VATTR_NULL(vap);
 			vap->va_type = IFTOVT(stb.st_mode);

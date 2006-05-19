@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.11 2006/05/19 07:33:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +95,6 @@ int
 svr4_sys_read(struct svr4_sys_read_args *uap)
 {
      struct read_args ra;
-     struct filedesc *fdp = p->p_fd;
      struct file *fp;
      struct socket *so = NULL;
      int so_state;
@@ -106,10 +105,9 @@ svr4_sys_read(struct svr4_sys_read_args *uap)
      SCARG(&ra, buf) = SCARG(uap, buf);
      SCARG(&ra, nbyte) = SCARG(uap, nbyte);
 
-     if ((fp = fdp->fd_files[SCARG(uap, fd)].fp) == NULL) {
-       DPRINTF(("Something fishy with the user-supplied file descriptor...\n"));
+     fp = holdfp(p->p_fd, SCARG(uap, fd), -1);
+     if (fp == NULL)
        return EBADF;
-     }
 
      if (fp->f_type == DTYPE_SOCKET) {
        so = (struct socket *)fp->f_data;
@@ -123,6 +121,7 @@ svr4_sys_read(struct svr4_sys_read_args *uap)
        so->so_state &= ~SS_NBIO;
 #endif
      }
+     fdrop(fp);
 
      ra.sysmsg_result = 0;
      rv = read(&ra);
@@ -152,8 +151,6 @@ int
 svr4_sys_write(struct svr4_sys_write_args *uap)
 {
      struct write_args wa;
-     struct filedesc *fdp;
-     struct file *fp;
      int rv;
 
      SCARG(&wa, fd) = SCARG(uap, fd);
@@ -178,21 +175,18 @@ svr4_fil_ioctl(struct file *fp, struct thread *td, register_t *retval,
 	struct proc *p = td->td_proc;
 	int error;
 	int num;
-	struct filedesc *fdp;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
 	*retval = 0;
 
 	switch (cmd) {
 	case SVR4_FIOCLEX:
-		fdp->fd_files[fd].fileflags |= UF_EXCLOSE;
-		return 0;
-
+		error = fsetfdflags(p->p_fd, fd, UF_EXCLOSE);
+		break;
 	case SVR4_FIONCLEX:
-		fdp->fd_files[fd].fileflags &= ~UF_EXCLOSE;
-		return 0;
+		error = fclrfdflags(p->p_fd, fd, UF_EXCLOSE);
+		break;
 
 	case SVR4_FIOGETOWN:
 	case SVR4_FIOSETOWN:
@@ -200,7 +194,7 @@ svr4_fil_ioctl(struct file *fp, struct thread *td, register_t *retval,
 	case SVR4_FIONBIO:
 	case SVR4_FIONREAD:
 		if ((error = copyin(data, &num, sizeof(num))) != 0)
-			return error;
+			break;
 
 		switch (cmd) {
 		case SVR4_FIOGETOWN:	cmd = FIOGETOWN; break;
@@ -214,14 +208,14 @@ svr4_fil_ioctl(struct file *fp, struct thread *td, register_t *retval,
 		if (cmd == FIOASYNC) DPRINTF(("FIOASYNC\n"));
 #endif
 		error = fo_ioctl(fp, cmd, (caddr_t) &num, p->p_ucred);
-
-		if (error)
-			return error;
-
-		return copyout(&num, data, sizeof(num));
+		if (error == 0)
+			error = copyout(&num, data, sizeof(num));
+		break;
 
 	default:
 		DPRINTF(("Unknown svr4 filio %lx\n", cmd));
-		return 0;	/* ENOSYS really */
+		error = 0;	/* ENOSYS really */
+		break;
 	}
+	return (error);
 }

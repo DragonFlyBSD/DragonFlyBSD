@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.28 2006/05/18 18:58:28 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.29 2006/05/19 07:33:46 dillon Exp $
  */
 
 /*
@@ -149,7 +149,6 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 {
 	struct thread *td = curthread;
  	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *fp = NULL;
 	struct vnode *vp;
 	vm_offset_t addr;
@@ -242,11 +241,13 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 		 * Mapping file, get fp for validation. Obtain vnode and make
 		 * sure it is of appropriate type.
 		 */
-		if (((unsigned) fd) >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_files[fd].fp) == NULL)
+		fp = holdfp(p->p_fd, fd, -1);
+		if (fp == NULL)
 			return (EBADF);
-		if (fp->f_type != DTYPE_VNODE)
-			return (EINVAL);
+		if (fp->f_type != DTYPE_VNODE) {
+			error = EINVAL;
+			goto done;
+		}
 		/*
 		 * POSIX shared-memory objects are defined to have
 		 * kernel persistence, and are not defined to support
@@ -258,21 +259,20 @@ kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd,
 		if (fp->f_flag & FPOSIXSHM)
 			flags |= MAP_NOSYNC;
 		vp = (struct vnode *) fp->f_data;
-		if (vp->v_type != VREG && vp->v_type != VCHR)
-			return (EINVAL);
+		if (vp->v_type != VREG && vp->v_type != VCHR) {
+			error = EINVAL;
+			goto done;
+		}
 		if (vp->v_type == VREG) {
 			/*
 			 * Get the proper underlying object
 			 */
-			if ((obj = vp->v_object) == NULL)
-				return (EINVAL);
+			if ((obj = vp->v_object) == NULL) {
+				error = EINVAL;
+				goto done;
+			}
 			KKASSERT(vp == (struct vnode *)obj->handle);
 		}
-
-		/*
-		 * don't let the descriptor disappear on us if we block
-		 */
-		fhold(fp);
 
 		/*
 		 * XXX hack to handle use of /dev/zero to map anon memory (ala

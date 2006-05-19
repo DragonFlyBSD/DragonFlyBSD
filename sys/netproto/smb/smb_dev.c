@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.11 2005/06/22 01:33:31 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.12 2006/05/19 07:33:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -373,22 +373,6 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 
 DEV_MODULE (dev_netsmb, nsmb_dev_load, 0);
 
-
-/*
- * Convert a file descriptor to appropriate smb_share pointer
- */
-static struct file*
-nsmb_getfp(struct filedesc* fdp, int fd, int flag)
-{
-	struct file* fp;
-
-	if (((u_int)fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL ||
-	    (fp->f_flag & flag) == 0)
-		return (NULL);
-	return (fp);
-}
-
 int
 smb_dev2share(int fd, int mode, struct smb_cred *scred,
 	struct smb_share **sspp)
@@ -402,24 +386,31 @@ smb_dev2share(int fd, int mode, struct smb_cred *scred,
 
 	KKASSERT(scred->scr_td->td_proc);
 
-	if ((fp = nsmb_getfp(scred->scr_td->td_proc->p_fd,
-	    fd, FREAD | FWRITE)) == NULL) {
+	fp = holdfp(scred->scr_td->td_proc->p_fd, fd, FREAD|FWRITE);
+	if (fp == NULL)
 		return EBADF;
-	}
+
 	vp = (struct vnode*)fp->f_data;
-	if (vp == NULL)
-		return EBADF;
+	if (vp == NULL) {
+		error = EBADF;
+		goto done;
+	}
 	dev = vn_todev(vp);
-	if (dev == NODEV)
-		return EBADF;
+	if (dev == NODEV) {
+		error = EBADF;
+		goto done;
+	}
 	SMB_CHECKMINOR(dev);
 	ssp = sdp->sd_share;
-	if (ssp == NULL)
-		return ENOTCONN;
+	if (ssp == NULL) {
+		error = ENOTCONN;
+		goto done;
+	}
 	error = smb_share_get(ssp, LK_EXCLUSIVE, scred);
-	if (error)
-		return error;
-	*sspp = ssp;
-	return 0;
+	if (error == 0)
+		*sspp = ssp;
+done:
+	fdrop(fp);
+	return (error);
 }
 

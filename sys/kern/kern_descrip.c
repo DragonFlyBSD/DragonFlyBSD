@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.57 2006/05/19 05:15:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.58 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1140,6 +1140,28 @@ funsetfd(struct filedesc *fdp, int fd)
 		fdp->fd_freefile = fd;
 }
 
+int
+fsetfdflags(struct filedesc *fdp, int fd, int add_flags)
+{
+	if (((u_int)fd) >= fdp->fd_nfiles)
+		return (EBADF);
+	if (fdp->fd_files[fd].fp == NULL)
+		return (EBADF);
+	fdp->fd_files[fd].fileflags |= add_flags;
+	return (0);
+}
+
+int
+fclrfdflags(struct filedesc *fdp, int fd, int rem_flags)
+{
+	if (((u_int)fd) >= fdp->fd_nfiles)
+		return (EBADF);
+	if (fdp->fd_files[fd].fp == NULL)
+		return (EBADF);
+	fdp->fd_files[fd].fileflags &= ~rem_flags;
+	return (0);
+}
+
 void
 fsetcred(struct file *fp, struct ucred *cr)
 {
@@ -1163,6 +1185,20 @@ ffree(struct file *fp)
 	}
 	nfiles--;
 	free(fp, M_FILE);
+}
+
+/*
+ * called from init_main, initialize filedesc0 for proc0.
+ */
+void
+fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask)
+{
+	p0->p_fd = fdp0;
+	p0->p_fdtol = NULL;
+	fdp0->fd_refcnt = 1;
+	fdp0->fd_cmask = cmask;
+	fdp0->fd_files = fdp0->fd_builtin_files;
+	fdp0->fd_nfiles = NDFILE;
 }
 
 /*
@@ -1460,6 +1496,23 @@ holdsock(struct filedesc *fdp, int fdes, struct file **fpp)
 	fhold(fp);
 	*fpp = fp;
 	return (error);
+}
+
+/*
+ * Convert a user file descriptor to a kernel file entry.
+ */
+int
+getvnode(struct filedesc *fdp, int fd, struct file **fpp)
+{
+	struct file *fp;
+		  
+	if ((u_int)fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_files[fd].fp) == NULL)
+		return (EBADF);
+	if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO)
+		return (EINVAL);
+	*fpp = fp;
+	return (0);
 }
 
 /*

@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.12 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.13 2006/05/19 07:33:41 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -186,12 +186,15 @@ ibcs2_open(struct ibcs2_open_args *uap)
 	} else
 #endif /* SPX_HACK */
 	if (!ret && !noctty && p && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
-		struct filedesc *fdp = p->p_fd;
-		struct file *fp = fdp->fd_files[uap->sysmsg_result].fp;
+		struct file *fp;
 
 		/* ignore any error, just give it a try */
-		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, p->p_ucred);
+		fp = holdfp(p->p_fd, uap->sysmsg_result, -1);
+		if (fp) {
+			if (fp->f_type == DTYPE_VNODE)
+				fo_ioctl(fp, TIOCSCTTY, NULL, p->p_ucred);
+			fdrop(fp);
+		}
 	}
 	return ret;
 }

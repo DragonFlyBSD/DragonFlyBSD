@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.12 2005/06/22 01:33:29 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.13 2006/05/19 07:33:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,6 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	struct proc 	*p = td->td_proc;
 	int             *retval;
 	struct file	*fp;
-	struct filedesc	*fdp;
 	u_long		 cmd;
 	int (*fun) (struct file *, struct thread *, register_t *,
 			int, u_long, caddr_t);
@@ -96,6 +95,7 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	char		 c;
 	int		 num;
 	int		 argsiz;
+	int		 error;
 
 	KKASSERT(p);
 
@@ -106,14 +106,10 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	    dir, c, num, argsiz, SCARG(uap, data)));
 #endif
 	retval = &uap->sysmsg_result;
-	fdp = p->p_fd;
 	cmd = SCARG(uap, com);
 
-	if ((u_int)SCARG(uap, fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[SCARG(uap, fd)].fp) == NULL)
-		return EBADF;
-
-	if ((fp->f_flag & (FREAD | FWRITE)) == 0)
+	fp = holdfp(p->p_fd, SCARG(uap, fd), FREAD|FWRITE);
+	if (fp == NULL)
 		return EBADF;
 
 #if defined(DEBUG_SVR4)
@@ -151,11 +147,13 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 
 	case SVR4_XIOC:
 		/* We do not support those */
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 
 	default:
 		DPRINTF(("Unimplemented ioctl %lx\n", cmd));
-		return 0;	/* XXX: really ENOSYS */
+		error = 0;	/* XXX: really ENOSYS */
+		goto done;
 	}
 #if defined(DEBUG_SVR4)
 	if (fp->f_type == DTYPE_SOCKET) {
@@ -163,5 +161,8 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 		DPRINTF((">>> OUT: so_state = 0x%x\n", so->so_state));
 	}
 #endif
-	return (*fun)(fp, td, retval, SCARG(uap, fd), cmd, SCARG(uap, data));
+	error = (*fun)(fp, td, retval, SCARG(uap, fd), cmd, SCARG(uap, data));
+done:
+	fdrop(fp);
+	return (error);
 }

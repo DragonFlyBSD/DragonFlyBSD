@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.90 2006/05/19 05:15:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.91 2006/05/19 07:33:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1800,34 +1800,40 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct vattr vattr;
 	int error;
 
-	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL)
+	fp = holdfp(p->p_fd, fd, -1);
+	if (fp == NULL)
 		return (EBADF);
-	if (fp->f_type != DTYPE_VNODE)
-		return (ESPIPE);
+	if (fp->f_type != DTYPE_VNODE) {
+		error = ESPIPE;
+		goto done;
+	}
+
 	switch (whence) {
 	case L_INCR:
 		fp->f_offset += offset;
+		error = 0;
 		break;
 	case L_XTND:
-		error=VOP_GETATTR((struct vnode *)fp->f_data, &vattr);
-		if (error)
-			return (error);
-		fp->f_offset = offset + vattr.va_size;
+		error = VOP_GETATTR((struct vnode *)fp->f_data, &vattr);
+		if (error == 0)
+			fp->f_offset = offset + vattr.va_size;
 		break;
 	case L_SET:
 		fp->f_offset = offset;
+		error = 0;
 		break;
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		break;
 	}
 	*res = fp->f_offset;
-	return (0);
+done:
+	fdrop(fp);
+	return (error);
 }
 
 /*
@@ -3019,22 +3025,6 @@ revoke(struct revoke_args *uap)
 	return (error);
 }
 
-/*
- * Convert a user file descriptor to a kernel file entry.
- */
-int
-getvnode(struct filedesc *fdp, int fd, struct file **fpp)
-{
-	struct file *fp;
-
-	if ((u_int)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL)
-		return (EBADF);
-	if (fp->f_type != DTYPE_VNODE && fp->f_type != DTYPE_FIFO)
-		return (EINVAL);
-	*fpp = fp;
-	return (0);
-}
 /*
  * getfh_args(char *fname, fhandle_t *fhp)
  *

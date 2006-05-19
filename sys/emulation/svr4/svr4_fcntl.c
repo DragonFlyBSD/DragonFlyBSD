@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.18 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.19 2006/05/19 07:33:44 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -235,7 +235,6 @@ static int
 fd_revoke(struct thread *td, int fd)
 {
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct file *fp;
 	struct vnode *vp;
 	struct vattr vattr;
@@ -243,17 +242,18 @@ fd_revoke(struct thread *td, int fd)
 
 	KKASSERT(p);
 
-	fdp = p->p_fd;
-	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
+	fp = holdfp(p->p_fd, fd, -1);
+	if (fp == NULL)
 		return EBADF;
+	if (fp->f_type != DTYPE_VNODE)  {
+		error = EINVAL;
+		goto out2;
+	}
 
-	if (fp->f_type != DTYPE_VNODE) 
-		return EINVAL;
-
-	vp = (struct vnode *) fp->f_data;
+	vp = (struct vnode *)fp->f_data;
 
 	if ((error = vx_get(vp)) != 0)
-		return (error);
+		goto out2;
 
 	if (vp->v_type != VCHR && vp->v_type != VBLK) {
 		error = EINVAL;
@@ -271,6 +271,8 @@ fd_revoke(struct thread *td, int fd)
 		VOP_REVOKE(vp, REVOKEALL);
 out:
 	vx_put(vp);
+out2:
+	fdrop(fp);
 	return error;
 }
 
@@ -279,7 +281,6 @@ static int
 fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 {
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct file *fp;
 	off_t start, length;
 	struct vnode *vp;
@@ -288,20 +289,22 @@ fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 	struct ftruncate_args ft;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
 	/*
 	 * We only support truncating the file.
 	 */
-	if ((u_int)fd >= fdp->fd_nfiles || (fp = fdp->fd_files[fd].fp) == NULL)
+	fp = holdfp(p->p_fd, fd, -1);
+	if (fp == NULL)
 		return EBADF;
 
 	vp = (struct vnode *)fp->f_data;
-	if (fp->f_type != DTYPE_VNODE || vp->v_type == VFIFO)
-		return ESPIPE;
+	if (fp->f_type != DTYPE_VNODE || vp->v_type == VFIFO) {
+		error = ESPIPE;
+		goto done;
+	}
 
 	if ((error = VOP_GETATTR(vp, &vattr)) != 0)
-		return error;
+		goto done;
 
 	length = vattr.va_size;
 
@@ -319,18 +322,22 @@ fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 		break;
 
 	default:
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 
 	if (start + flp->l_len < length) {
 		/* We don't support free'ing in the middle of the file */
-		return EINVAL;
+		error = EINVAL;
+		goto done;
 	}
 
 	SCARG(&ft, fd) = fd;
 	SCARG(&ft, length) = start;
 	error = ftruncate(&ft);
 	*retval = ft.sysmsg_result;
+done:
+	fdrop(fp);
 	return(error);
 }
 
@@ -363,12 +370,15 @@ svr4_sys_open(struct svr4_sys_open_args *uap)
 	if (!(SCARG(&cup, flags) & O_NOCTTY) && SESS_LEADER(p) &&
 	    !(p->p_flag & P_CONTROLT)) {
 #if defined(NOTYET)
-		struct filedesc	*fdp = p->p_fd;
-		struct file	*fp = fdp->fd_files[retval].fp;
+		struct file *fp;
 
 		/* ignore any error, just give it a try */
-		if (fp->f_type == DTYPE_VNODE)
-			fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, cred);
+		fp = holdfp(p->p_fd, retval, -1);
+		if (fp) {
+			if (fp->f_type == DTYPE_VNODE)
+				fo_ioctl(fp, TIOCSCTTY, NULL, cred);
+			fdrop(fp);
+		}
 #endif
 	}
 	return error;
