@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.89 2006/05/07 19:17:13 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.90 2006/05/19 05:15:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -696,7 +696,6 @@ mountctl(struct mountctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	void *ctl = NULL;
 	void *buf = NULL;
@@ -742,15 +741,11 @@ mountctl(struct mountctl_args *uap)
 	/*
 	 * Validate the descriptor
 	 */
-	if (uap->fd == -1) {
-		fp = NULL;
-	} else if ((u_int)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[uap->fd].fp) == NULL) {
+	fp = holdfp(p->p_fd, uap->fd, -1);
+	if (fp == NULL) {
 		error = EBADF;
 		goto done;
 	}
-	if (fp)
-		fhold(fp);
 
 	/*
 	 * Execute the internal kernel function and clean up.
@@ -1321,10 +1316,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 					fdrop(fp);	/* our ref */
 					return (0);
 				}
-				if (fdp->fd_files[indx].fp == fp) {
-					funsetfd(fdp, indx);
-					fdrop(fp);	/* fd_files[] ref */
-				}
+				fdealloc(p, fp, indx);
 			}
 		}
 		fdrop(fp);	/* our ref */
@@ -1391,10 +1383,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 			 * owned by the descriptor array, the other by us.
 			 */
 			vrele(vp);
-			if (fdp->fd_files[indx].fp == fp) {
-				funsetfd(fdp, indx);
-				fdrop(fp);
-			}
+			fdealloc(p, fp, indx);
 			fdrop(fp);
 			return (error);
 		}
@@ -3104,7 +3093,6 @@ fhopen(struct fhopen_args *uap)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	struct flock lf;
-	struct filedesc *fdp = p->p_fd;
 	int fmode, mode, error, type;
 	struct file *nfp; 
 	struct file *fp;
@@ -3240,10 +3228,7 @@ fhopen(struct fhopen_args *uap)
 			 * but handle the case where someone might have dup()d
 			 * or close()d it when we weren't looking.
 			 */
-			if (fdp->fd_files[indx].fp == fp) {
-				funsetfd(fdp, indx);
-				fdrop(fp);
-			}
+			fdealloc(p, fp, indx);
 
 			/*
 			 * release our private reference.

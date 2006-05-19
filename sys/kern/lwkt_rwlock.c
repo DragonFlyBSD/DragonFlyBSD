@@ -1,7 +1,7 @@
 /*
  * LWKT_RWLOCK.C (MP SAFE)
  *
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003-2006 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -35,7 +35,7 @@
  * 
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.9 2006/05/18 16:25:19 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.10 2006/05/19 05:15:34 dillon Exp $
  */
 
 #include <sys/param.h>

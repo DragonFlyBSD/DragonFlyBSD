@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.21 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.22 2006/05/19 05:15:36 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -333,7 +333,6 @@ int	sokqfilter (struct file *fp, struct knote *kn);
  * From uipc_socket and friends
  */
 struct	sockaddr *dup_sockaddr (const struct sockaddr *sa);
-int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
 int	getsockaddr (struct sockaddr **namp, caddr_t uaddr, size_t len);
 void	sbappend (struct sockbuf *sb, struct mbuf *m);
 int	sbappendaddr (struct sockbuf *sb, const struct sockaddr *asa,

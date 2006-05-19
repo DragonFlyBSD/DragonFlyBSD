@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.34 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.35 2006/05/19 05:15:35 dillon Exp $
  */
 
 /*
@@ -201,13 +201,11 @@ pipe(struct pipe_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct file *rf, *wf;
 	struct pipe *rpipe, *wpipe;
 	int fd1, fd2, error;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
 	rpipe = wpipe = NULL;
 	if (pipe_create(&rpipe) || pipe_create(&wpipe)) {
@@ -266,10 +264,7 @@ pipe(struct pipe_args *uap)
 	rf->f_data = rpipe;
 	error = falloc(p, &wf, &fd2);
 	if (error) {
-		if (fdp->fd_files[fd1].fp == rf) {
-			funsetfd(fdp, fd1);
-			fdrop(rf);
-		}
+		fdealloc(p, rf, fd1);
 		fdrop(rf);
 		/* rpipe has been closed by fdrop(). */
 		pipeclose(wpipe);

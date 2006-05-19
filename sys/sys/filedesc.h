@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.12 2006/05/18 18:58:27 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.13 2006/05/19 05:15:36 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -148,10 +148,9 @@ struct proc;
 int	dupfdopen (struct filedesc *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
-void	fdreserve (struct filedesc *fdp, int fd0, int incr);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
+int	fdealloc (struct proc *p, struct file *fp, int fd);
 int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
-void	funsetfd (struct filedesc *fdp, int fd);
 void	fsetcred (struct file *fp, struct ucred *cr);
 void	ffree (struct file *);
 struct	filedesc *fdinit (struct proc *p);
@@ -162,6 +161,7 @@ int	closef (struct file *fp, struct thread *td);
 void	fdcloseexec (struct proc *p);
 int	fdcheckstd (struct proc *p);
 struct	file *holdfp (struct filedesc *fdp, int fd, int flag);
+int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
 int	getvnode (struct filedesc *fdp, int fd, struct file **fpp);
 int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);

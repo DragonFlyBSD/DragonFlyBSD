@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.66 2006/05/17 18:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.67 2006/05/19 05:15:35 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -105,23 +105,18 @@ kern_socket(int domain, int type, int protocol, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct socket *so;
 	struct file *fp;
 	int fd, error;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
 	error = falloc(p, &fp, &fd);
 	if (error)
 		return (error);
 	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
-		if (fdp->fd_files[fd].fp == fp) {
-			funsetfd(fdp, fd);
-			fdrop(fp);
-		}
+		fdealloc(p, fp, fd);
 	} else {
 		fp->f_type = DTYPE_SOCKET;
 		fp->f_flag = FREAD | FWRITE;
@@ -253,7 +248,6 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
 	struct sockaddr *sa;
@@ -267,7 +261,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	if (name && namelen && *namelen < 0)
 		return (EINVAL);
 
-	error = holdsock(fdp, s, &lfp);
+	error = holdsock(p->p_fd, s, &lfp);
 	if (error)
 		return (error);
 
@@ -351,10 +345,7 @@ done:
 	 */
 	if (error) {
 		*res = -1;
-		if (fdp->fd_files[fd].fp == nfp) {
-			funsetfd(fdp, fd);
-			fdrop(nfp);
-		}
+		fdealloc(p, nfp, fd);
 	}
 
 	/*
@@ -490,13 +481,11 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
 	int fd, error;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 	error = socreate(domain, &so1, type, protocol, td);
 	if (error)
 		return (error);
@@ -531,16 +520,10 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	fdrop(fp2);
 	return (error);
 free4:
-	if (fdp->fd_files[sv[1]].fp == fp2) {
-		funsetfd(fdp, sv[1]);
-		fdrop(fp2);
-	}
+	fdealloc(p, fp2, sv[1]);
 	fdrop(fp2);
 free3:
-	if (fdp->fd_files[sv[0]].fp == fp1) {
-		funsetfd(fdp, sv[0]);
-		fdrop(fp1);
-	}
+	fdealloc(p, fp1, sv[0]);
 	fdrop(fp1);
 free2:
 	(void)soclose(so2);
@@ -1223,29 +1206,6 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
 }
 
 /*
- * holdsock() - load the struct file pointer associated
- * with a socket into *fpp.  If an error occurs, non-zero
- * will be returned and *fpp will be set to NULL.
- */
-int
-holdsock(struct filedesc *fdp, int fdes, struct file **fpp)
-{
-	struct file *fp;
-	int error = 0;
-
-	*fpp = NULL;
-	if ((unsigned)fdes >= fdp->fd_nfiles)
-		return EBADF;
-	if ((fp = fdp->fd_files[fdes].fp) == NULL)
-		return EBADF;
-	if (fp->f_type != DTYPE_SOCKET)
-		return ENOTSOCK;
-	fhold(fp);
-	*fpp = fp;
-	return (error);
-}
-
-/*
  * Detach a mapped page and release resources back to the system.
  * We must release our wiring and if the object is ripped out
  * from under the vm_page we become responsible for freeing the
@@ -1332,7 +1292,6 @@ sendfile(struct sendfile_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	struct filedesc *fdp;
 	struct vnode *vp = NULL;
 	struct sf_hdtr hdtr;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
@@ -1342,13 +1301,12 @@ sendfile(struct sendfile_args *uap)
 	int error, hbytes = 0, tbytes;
 
 	KKASSERT(p);
-	fdp = p->p_fd;
 
 	/*
 	 * Do argument checking. Must be a regular file in, stream
 	 * type and connected socket out, positive offset.
 	 */
-	fp = holdfp(fdp, uap->fd, FREAD);
+	fp = holdfp(p->p_fd, uap->fd, FREAD);
 	if (fp == NULL) {
 		return (EBADF);
 	}
@@ -1723,7 +1681,6 @@ sctp_peeloff(struct sctp_peeloff_args *uap)
 #ifdef SCTP
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
 	struct file *lfp = NULL;
 	struct file *nfp = NULL;
 	int error;
@@ -1733,7 +1690,7 @@ sctp_peeloff(struct sctp_peeloff_args *uap)
 	short fflag;		/* type must match fp->f_flag */
 
 	assoc_id = uap->name;
-	error = holdsock(fdp, uap->sd, &lfp);
+	error = holdsock(p->p_fd, uap->sd, &lfp);
 	if (error) {
 		return (error);
 	}
@@ -1789,12 +1746,8 @@ noconnection:
 	 * close the new descriptor, assuming someone hasn't ripped it
 	 * out from under us.
 	 */
-	if (error) {
-		if (fdp->fd_files[fd].fp == nfp) {
-			funsetfd(fdp, fd);
-			fdrop(nfp);
-		}
-	}
+	if (error)
+		fdealloc(p, nfp, fd);
 	crit_exit();
 	/*
 	 * Release explicitly held references before returning.

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.28 2006/05/17 18:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.29 2006/05/19 05:15:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -82,23 +82,6 @@ static int	selscan (struct proc *, fd_mask **, fd_mask **,
 			int, int *);
 static int	dofileread(int, struct file *, struct uio *, int, int *);
 static int	dofilewrite(int, struct file *, struct uio *, int, int *);
-
-
-struct file*
-holdfp(fdp, fd, flag)
-	struct filedesc* fdp;
-	int fd, flag;
-{
-	struct file* fp;
-
-	if (((u_int)fd) >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL ||
-	    (fp->f_flag & flag) == 0) {
-		return (NULL);
-	}
-	fhold(fp);
-	return (fp);
-}
 
 /*
  * Read system call.

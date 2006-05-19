@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.56 2006/05/18 18:58:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.57 2006/05/19 05:15:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -101,6 +101,9 @@
 
 #include <sys/thread2.h>
 #include <sys/file2.h>
+
+static void fdreserve (struct filedesc *fdp, int fd0, int incr);
+static void funsetfd (struct filedesc *fdp, int fd);
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
 static MALLOC_DEFINE(M_FILEDESC_TO_LEADER, "file desc to leader",
@@ -920,6 +923,7 @@ left_ancestor(int n)
 	return ((n & (n + 1)) - 1);
 }
 
+static
 void
 fdreserve(struct filedesc *fdp, int fd, int incr)
 {
@@ -1088,6 +1092,26 @@ done:
 }
 
 /*
+ * fdealloc - deallocate a descriptor allocated with falloc.  The deallocation
+ * only occurs if the passed file pointer matches the descriptor.
+ */
+int
+fdealloc(struct proc *p, struct file *fp, int fd)
+{
+	struct filedesc *fdp = p->p_fd;
+
+	if (((u_int)fd) >= fdp->fd_nfiles || fdp->fd_files[fd].fp != fp)
+		return(FALSE);
+	fdp->fd_files[fd].fp = NULL;
+	fdp->fd_files[fd].fileflags = 0;
+	fdreserve(fdp, fd, -1);
+	if (fd < fdp->fd_freefile)
+	       fdp->fd_freefile = fd;
+	fdrop(fp);
+	return (TRUE);
+}
+
+/*
  * Associate a file pointer with a file descriptor.  On success the fp
  * will have an additional ref representing the fd_files[] association.
  */
@@ -1105,6 +1129,7 @@ fsetfd(struct proc *p, struct file *fp, int *resultfd)
 	return (error);
 }
 
+static 
 void
 funsetfd(struct filedesc *fdp, int fd)
 {
@@ -1394,6 +1419,47 @@ fdfree(struct proc *p)
 	if (fdp->fd_knhash)
 		free(fdp->fd_knhash, M_KQUEUE);
 	free(fdp, M_FILEDESC);
+}
+
+/*
+ * Retrieve and reference the file pointer associated with a descriptor.
+ */
+struct file *
+holdfp(struct filedesc *fdp, int fd, int flag)
+{
+	struct file* fp;
+
+	if (((u_int)fd) >= fdp->fd_nfiles)
+		return (NULL);
+	if ((fp = fdp->fd_files[fd].fp) == NULL)
+		return (NULL);
+	if ((fp->f_flag & flag) == 0 && flag != -1)
+		return (NULL);
+	fhold(fp);
+	return (fp);
+}
+
+/*
+ * holdsock() - load the struct file pointer associated
+ * with a socket into *fpp.  If an error occurs, non-zero
+ * will be returned and *fpp will be set to NULL.
+ */
+int
+holdsock(struct filedesc *fdp, int fdes, struct file **fpp)
+{
+	struct file *fp;
+	int error = 0;
+
+	*fpp = NULL;
+	if ((unsigned)fdes >= fdp->fd_nfiles)
+		return EBADF;
+	if ((fp = fdp->fd_files[fdes].fp) == NULL)
+		return EBADF;
+	if (fp->f_type != DTYPE_SOCKET)
+		return ENOTSOCK;
+	fhold(fp);
+	*fpp = fp;
+	return (error);
 }
 
 /*
