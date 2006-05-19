@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.16 2006/05/18 16:25:17 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.17 2006/05/19 18:26:27 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -205,8 +205,10 @@ db_dump_td_tokens(thread_t td)
 		tok = ref->tr_tok;
 
 		db_printf(" %p[tok=%p", ref, ref->tr_tok);
+#ifdef SMP
 		if (td == tok->t_owner)
 		    db_printf(",held");
+#endif
 		db_printf("]");
 	}
 	db_printf("\n");

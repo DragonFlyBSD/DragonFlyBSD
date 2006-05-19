@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.78 2006/05/18 16:25:20 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.79 2006/05/19 18:26:29 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -82,9 +82,9 @@ struct intrframe;
 
 /*
  * Tokens are used to serialize access to information.  They are 'soft'
- * serialization entities that only stay in effect while the thread is
+ * serialization entities that only stay in effect while a thread is
  * running.  If the thread blocks, other threads can run holding the same
- * tokens.  The tokens are reacquired when the original thread resumes.
+ * token(s).  The tokens are reacquired when the original thread resumes.
  *
  * A thread can depend on its serialization remaining intact through a
  * preemption.  An interrupt which attempts to use the same token as the
@@ -95,12 +95,29 @@ struct intrframe;
  * Tokens are managed through a helper reference structure, lwkt_tokref,
  * which is typically declared on the caller's stack.  Multiple tokref's
  * may reference the same token.
+ *
+ * We do not actually have to track any information in the token itself
+ * on UP systems.  Simply linking the reference into the thread's td_toks
+ * list is sufficient.  We still track a global t_globalcount on UP for
+ * debugging purposes.
  */
+#ifdef SMP
+
 typedef struct lwkt_token {
     struct spinlock	t_spinlock;	/* Controls access */
     struct thread	*t_owner;	/* The current owner of the token */
-    int			t_count;	/* Recursive count */
+    int			t_count;	/* Per-thread count */
 } lwkt_token;
+
+#else
+
+typedef struct lwkt_token {
+    struct spinlock	t_unused01;
+    struct thread	*t_unused02;
+    int			t_globalcount;	/* Global reference count */
+} lwkt_token;
+
+#endif
 
 typedef struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */

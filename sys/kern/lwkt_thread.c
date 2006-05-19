@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.94 2006/05/18 17:53:45 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.95 2006/05/19 18:26:28 dillon Exp $
  */
 
 /*
@@ -511,8 +511,10 @@ lwkt_switch(void)
 	    td->td_release(td);
 
     crit_enter_gd(gd);
+#ifdef SMP
     if (td->td_toks)
 	    lwkt_relalltokens(td);
+#endif
 
     /*
      * We had better not be holding any spin locks, but don't get into an

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.24 2006/05/18 16:25:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.25 2006/05/19 18:26:28 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -135,6 +135,11 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 /*
  * Obtain all the tokens required by the specified thread on the current
  * cpu, return 0 on failure and non-zero on success.
+ *
+ * NOTE: This code does not work with UP 'degenerate' spinlocks.  SMP only.
+ *
+ * The preemption code will not allow a target thread holding spinlocks to
+ * preempt the current thread so we do not have to implement this for UP.
  */
 int
 lwkt_getalltokens(thread_t td)
@@ -196,13 +201,21 @@ lwkt_relalltokens(thread_t td)
 #endif
 
 /*
- * Acquire a serializing token
+ * Acquire a serializing token.  This routine can block.
+ *
+ * On SMP systems we track ownership and a per-owner counter.  Tokens are
+ * released when a thread switches out and reacquired when a thread
+ * switches back in.  On UP systems we track a global counter for debugging
+ * but otherwise the only issue we have is if a preempting thread wants a
+ * token that is being held by the preempted thread.
  */
-
 static __inline
 void
 _lwkt_gettokref(lwkt_tokref_t ref)
 {
+#ifndef SMP
+    lwkt_tokref_t scan;
+#endif
     lwkt_token_t tok;
     thread_t td;
 
@@ -217,8 +230,9 @@ _lwkt_gettokref(lwkt_tokref_t ref)
     cpu_ccfence();
     td->td_toks = ref;
 
+#ifdef SMP
     /*
-     * Gain ownership of the token's spinlock.
+     * Gain ownership of the token's spinlock, SMP version.
      */
     if (tok->t_owner != td) {
 	if (spin_trylock(td, &tok->t_spinlock) == 0) {
@@ -228,14 +242,35 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 	KKASSERT(tok->t_owner == NULL && tok->t_count == 0);
 	tok->t_owner = td;
     }
-    ref->tr_state = 1;
     ++tok->t_count;
+#else
+    /*
+     * Gain ownership of the token, UP version.   All we have to do
+     * is check the token if we are preempting someone owning the
+     * same token.  If we are, we yield the cpu back to the originator
+     * and we will get rescheduled as non-preemptive.
+     */
+    while ((td = td->td_preempted) != NULL) {
+	for (scan = td->td_toks; scan; scan = scan->tr_next) {
+	    if (scan->tr_tok == tok) {
+		lwkt_yield();
+		return;
+	    }
+	}
+    }
+    /* NOTE: 'td' invalid after loop */
+    ++tok->t_globalcount;
+#endif
+    ref->tr_state = 1;
 }
 
 static __inline
 int
 _lwkt_trytokref(lwkt_tokref_t ref)
 {
+#ifndef SMP
+    lwkt_tokref_t scan;
+#endif
     lwkt_token_t tok;
     thread_t td;
 
@@ -250,8 +285,9 @@ _lwkt_trytokref(lwkt_tokref_t ref)
     cpu_ccfence();
     td->td_toks = ref;
 
+#ifdef SMP
     /*
-     * Gain ownership of the token's spinlock.
+     * Gain ownership of the token's spinlock, SMP version.
      */
     if (tok->t_owner != td) {
 	if (spin_trylock(td, &tok->t_spinlock) == 0) {
@@ -261,8 +297,26 @@ _lwkt_trytokref(lwkt_tokref_t ref)
 	KKASSERT(tok->t_owner == NULL && tok->t_count == 0);
 	tok->t_owner = td;
     }
-    ref->tr_state = 1;
     ++tok->t_count;
+#else
+    /*
+     * Gain ownership of the token, UP version.   All we have to do
+     * is check the token if we are preempting someone owning the
+     * same token.  If we are, we yield the cpu back to the originator
+     * and we will get rescheduled as non-preemptive.
+     */
+    while ((td = td->td_preempted) != NULL) {
+	for (scan = td->td_toks; scan; scan = scan->tr_next) {
+	    if (scan->tr_tok == tok) {
+		td->td_toks = ref->tr_next;
+		return (FALSE);
+	    }
+	}
+    }
+    /* NOTE: 'td' invalid after loop */
+    ++tok->t_globalcount;
+#endif
+    ref->tr_state = 1;
     return (TRUE);
 }
 
@@ -308,16 +362,26 @@ lwkt_reltoken(lwkt_tokref *ref)
 
     td = curthread;
     tok = ref->tr_tok;
+
+#ifdef SMP
     KKASSERT(ref->tr_state == 1 && tok->t_owner == td && tok->t_count > 0);
+#else
+    KKASSERT(ref->tr_state == 1 && tok->t_globalcount > 0);
+#endif
 
     for (scanp = &td->td_toks; *scanp != ref; scanp = &((*scanp)->tr_next))
 	;
     *scanp = ref->tr_next;
     ref->tr_state = 0;
+
+#ifdef SMP
     if (--tok->t_count == 0) {
 	tok->t_owner = NULL;
 	spin_unlock_quick(&tok->t_spinlock);
     }
+#else
+    --tok->t_globalcount;
+#endif
     logtoken(release, ref);
 }
 
@@ -353,9 +417,13 @@ lwkt_token_pool_get(void *ptraddr)
 void
 lwkt_token_init(lwkt_token_t tok)
 {
+#ifdef SMP
     spin_init(&tok->t_spinlock);
     tok->t_owner = NULL;
     tok->t_count = 0;
+#else
+    tok->t_globalcount = 0;
+#endif
 }
 
 void

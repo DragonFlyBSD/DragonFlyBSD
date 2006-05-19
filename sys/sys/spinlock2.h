@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.6 2006/05/18 16:25:20 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.7 2006/05/19 18:26:29 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -143,22 +143,16 @@ spin_uninit(struct spinlock *mtx)
 
 #else	/* SMP */
 
-static __inline boolean_t
-spin_trylock(thread_t td, struct spinlock *mtx)
-{
-	return (TRUE);
-}
-
-static __inline void
-spin_tryunlock(thread_t td, struct spinlock *mtx)
-{
-}
-
-static __inline boolean_t
-spin_is_locked(struct spinlock *mtx)
-{
-	return (FALSE);
-}
+/*
+ * There is no spin_trylock(), spin_tryunlock(), or spin_is_locked()
+ * for UP builds.  These functions are used by the kernel only in
+ * situations where the spinlock actually has to work.
+ *
+ * We provide the rest of the calls for UP as degenerate inlines (note
+ * that the non-quick versions still obtain/release a critical section!).
+ * This way we don't have to have a billion #ifdef's floating around
+ * the rest of the kernel.
+ */
 
 static __inline void	spin_lock_quick(struct spinlock *mtx) { }
 static __inline void	spin_unlock_quick(struct spinlock *mtx) { }
