@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.10 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.11 2006/05/20 16:48:51 dillon Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -50,9 +50,6 @@
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
-#endif
-#ifndef _SYS_MBUF_H_
-#include <sys/mbuf.h>
 #endif
 
 /* BSD style release date */
@@ -368,6 +365,8 @@ struct bpf_dltlist {
 
 #ifdef _KERNEL
 struct bpf_if;
+struct ifnet;
+struct mbuf;
 
 int	 bpf_validate(const struct bpf_insn *, int);
 void	 bpf_tap(struct bpf_if *, u_char *, u_int);
