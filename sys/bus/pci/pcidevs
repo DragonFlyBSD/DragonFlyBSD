@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.12 2006/03/25 06:52:44 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.13 2006/05/20 03:24:53 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -2709,6 +2709,7 @@ product VIATECH VT8366		0x3099	VT8366 (Apollo KT266) CPU-PCI Bridge
 product VIATECH VT8653		0x3101	VT8653 (Apollo Pro 266T) CPU-PCI Bridge
 product VIATECH VT8237_EHCI	0x3104	VT8237 EHCI USB Controller
 product VIATECH VT6105		0x3106	VT6105 (Rhine III) 10/100 Ethernet
+product VIATECH	VT612X		0x3119	VT612X 10/100/1000 Ethernet
 product	VIATECH	VT8623_VGA	0x3122	VT8623 (Apollo CLE266) VGA Controller
 product	VIATECH	VT8623		0x3123	VT8623 (Apollo CLE266) CPU-PCI Bridge
 product VIATECH VT8233A		0x3147	VT8233A PCI-ISA Bridge
