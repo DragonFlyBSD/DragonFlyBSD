@@ -24,18 +24,28 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.6 2005/02/21 21:40:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb_ext.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
  */
 
-#ifndef _I386_PCB_EXT_H_
-#define _I386_PCB_EXT_H_
+#ifndef _MACHINE_PCB_EXT_H_
+#define _MACHINE_PCB_EXT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Extension to the 386 process control block
  */
+#ifndef _MACHINE_TSS_H_
 #include "tss.h"
+#endif
+#ifndef _MACHINE_VM86_H_
 #include "vm86.h"
+#endif
+#ifndef _MACHINE_SEGMENTS_H_
 #include "segments.h"
+#endif
 
 struct pcb_ext {
 	struct 	segment_descriptor ext_tssd;	/* tss descriptor */
@@ -53,6 +63,8 @@ struct pcb_ldt {
 };
 
 #ifdef _KERNEL
+
+struct pcb;
 
 void set_user_ldt (struct pcb *);
 struct pcb_ldt *user_ldt_alloc (struct pcb *, int);

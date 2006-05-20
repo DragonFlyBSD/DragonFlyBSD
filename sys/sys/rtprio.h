@@ -29,11 +29,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rtprio.h,v 1.9 1999/12/29 04:24:46 peter Exp $
- * $DragonFly: src/sys/sys/rtprio.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/rtprio.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_RTPRIO_H_
 #define _SYS_RTPRIO_H_
+
+#if !defined(_SYS_TYPES_H_) && !defined(LOCORE)
+#include <sys/types.h>
+#endif
 
 /*
  * Process realtime-priority specifications to rtprio.

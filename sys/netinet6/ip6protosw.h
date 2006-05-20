@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.6 2004/06/03 16:21:22 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
 
 /*
@@ -72,6 +72,10 @@
 #ifndef _NETINET6_IP6PROTOSW_H_
 #define _NETINET6_IP6PROTOSW_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 /*
  * Protocol switch table for IPv6.
  * All other definitions should refer to sys/protosw.h
@@ -80,6 +84,7 @@
 struct mbuf;
 struct sockaddr;
 struct socket;
+struct sockopt;
 struct domain;
 struct proc;
 struct ip6_hdr;

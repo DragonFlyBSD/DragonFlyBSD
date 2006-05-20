@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
- * $DragonFly: src/sys/sys/camlib.h,v 1.1 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/sys/camlib.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI
@@ -62,8 +62,8 @@
  */
 
 
-#ifndef _SYS_CAMLIB_H
-#define _SYS_CAMLIB_H
+#ifndef _SYS_CAMLIB_H_
+#define _SYS_CAMLIB_H_
 
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -176,4 +176,4 @@ int csio_encode_visit(struct ccb_scsiio *csio, char *fmt,
 		      void *gethook);
 __END_DECLS
 
-#endif /* _CAMLIB_H */
+#endif /* _SYS_CAMLIB_H_ */

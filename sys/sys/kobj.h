@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.9 2005/03/08 17:43:33 joerg Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
 #define _SYS_KOBJ_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

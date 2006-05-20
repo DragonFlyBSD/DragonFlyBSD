@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.16 2005/11/14 18:50:15 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.17 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
@@ -70,24 +70,22 @@
  *	section.  [For machine-dependent section, see "machine/pmap.h".]
  */
 
-#ifndef	_PMAP_VM_
-#define	_PMAP_VM_
+#ifndef	_VM_PMAP_H_
+#define	_VM_PMAP_H_
 
-/*
- * Each machine dependent implementation is expected to
- * keep certain statistics.  They may do this anyway they
- * so choose, but are expected to return the statistics
- * in the following structure.
- */
-struct pmap_statistics {
-	long resident_count;	/* # of pages mapped (total) */
-	long wired_count;	/* # of pages wired */
-};
-typedef struct pmap_statistics *pmap_statistics_t;
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
+#ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
+#endif
 
 #ifdef _KERNEL
+
+#ifndef _VM_VM_H_
+#include <vm/vm.h>
+#endif
 
 struct proc;
 struct thread;
@@ -149,4 +147,4 @@ void		 pmap_init2 (void);
 
 #endif /* _KERNEL */
 
-#endif /* _PMAP_VM_ */
+#endif /* _VM_PMAP_H_ */

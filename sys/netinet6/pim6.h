@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/pim6.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6.h,v 1.3 2004/09/23 16:46:02 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/pim6.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: pim6.h,v 1.3 2000/03/25 07:23:58 sumikawa Exp $	*/
 
 /*
@@ -30,6 +30,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _NETINET6_PIM6_H_
+#define _NETINET6_PIM6_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
+
 /*
  * Protocol Independent Multicast (PIM) definitions
  *
@@ -42,6 +53,7 @@
  * PIM packet header
  */
 #define PIM_VERSION	2
+
 struct pim {
 #if _BYTE_ORDER == _LITTLE_ENDIAN
 	u_char	pim_type:4, /* the PIM message type, currently they are:
@@ -70,3 +82,5 @@ struct pim {
 
 /* second bit in reg_head is the null bit */
 #define PIM_NULL_REGISTER 0x40000000
+
+#endif

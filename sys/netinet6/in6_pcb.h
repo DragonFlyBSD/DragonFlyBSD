@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.7 2005/03/06 05:09:25 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.8 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*
@@ -71,15 +71,29 @@
 #define	_NETINET6_IN6_PCB_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))
 #define	ifatoia6(ifa)	((struct in6_ifaddr *)(ifa))
 
+struct mbuf;
+struct ifnet;
+struct thread;
+struct socket;
+struct sockaddr;
+struct inpcb;
 struct in6pcb;
 struct inpcbinfo;
 struct inpcbhead;
 struct ip6_moptions;
 struct ip6_pktopts;
+struct in6_addr;
+struct route_in6;
+struct sockaddr_in6;
 
 void	in6_pcbpurgeif0 (struct in6pcb *, struct ifnet *);
 void	in6_losing (struct inpcb *);
@@ -113,6 +127,7 @@ struct	in6_addr *in6_selectsrc (struct sockaddr_in6 *,
 int	in6_selecthlim (struct in6pcb *, struct ifnet *);
 int	in6_pcbsetport (struct in6_addr *, struct inpcb *, struct thread *);
 void	init_sin6 (struct sockaddr_in6 *sin6, struct mbuf *m);
+
 #endif /* _KERNEL */
 
 #endif /* !_NETINET6_IN6_PCB_H_ */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.5 2004/12/21 02:54:15 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip6.h,v 1.6 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -68,6 +68,17 @@
 
 #ifndef _NETINET_IP6_H_
 #define _NETINET_IP6_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
+
 
 /*
  * Definition for internet protocol version 6.

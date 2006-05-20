@@ -62,11 +62,15 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.h,v 1.26.2.1 2002/02/26 05:49:28 silby Exp $
- * $DragonFly: src/sys/vm/vm_pageout.h,v 1.6 2006/03/15 07:58:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.h,v 1.7 2006/05/20 02:42:15 dillon Exp $
  */
 
 #ifndef _VM_VM_PAGEOUT_H_
 #define _VM_VM_PAGEOUT_H_
+
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
+#endif
 
 /*
  *	Header file for pageout daemon.
@@ -114,4 +118,4 @@ void vm_pageout_page_free (vm_page_t);
 
 #endif
 
-#endif
+#endif	/* _VM_VM_PAGEOUT_H_ */

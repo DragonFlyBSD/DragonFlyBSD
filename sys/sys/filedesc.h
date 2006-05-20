@@ -32,13 +32,19 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.14 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.15 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
 #define _SYS_FILEDESC_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 /*
  * This structure is used for the management of descriptors.  It may be

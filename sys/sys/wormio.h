@@ -1,11 +1,16 @@
 /* Shared between kernel & process */
 /* $FreeBSD: src/sys/sys/wormio.h,v 1.6 1999/10/01 14:10:50 peter Exp $ */
-/* $DragonFly: src/sys/sys/Attic/wormio.h,v 1.2 2003/06/17 04:28:59 dillon Exp $ */
+/* $DragonFly: src/sys/sys/Attic/wormio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $ */
 
 #ifndef	_SYS_WORMIO_H_
 #define	_SYS_WORMIO_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 /***************************************************************\
 * Ioctls for the WORM drive					*

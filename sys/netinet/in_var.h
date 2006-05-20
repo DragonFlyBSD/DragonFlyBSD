@@ -32,14 +32,24 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.10 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.11 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
 #define _NETINET_IN_VAR_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_FNV_HASH_H_
 #include <sys/fnv_hash.h>
+#endif
+#ifndef _NET_IF_VAR_H_
+#include <net/if_var.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 /*
  * Interface address, Internet version.  One of these structures

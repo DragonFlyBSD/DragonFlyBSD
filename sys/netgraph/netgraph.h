@@ -37,16 +37,28 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/netgraph.h,v 1.6.2.7 2002/04/14 23:31:08 julian Exp $
- * $DragonFly: src/sys/netgraph/netgraph.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph.h,v 1.3 2006/05/20 02:42:11 dillon Exp $
  * $Whistle: netgraph.h,v 1.29 1999/11/01 07:56:13 julian Exp $
  */
 
 #ifndef _NETGRAPH_NETGRAPH_H_
-#define _NETGRAPH_NETGRAPH_H_ 1
+#define _NETGRAPH_NETGRAPH_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
+#endif
+#ifndef _SYS_MODULE_H_
 #include <sys/module.h>
+#endif
+#ifndef _SYS_MBUF_H_
+#include <sys/mbuf.h>
+#endif
+#ifndef _NETGRAPH_NG_MESSAGE_H_
+#include <netgraph/ng_message.h>
+#endif
 
 #ifndef _KERNEL
 #error "This file should not be included in user level programs"

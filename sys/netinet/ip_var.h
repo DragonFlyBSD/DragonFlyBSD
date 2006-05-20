@@ -32,13 +32,32 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.18 2006/01/31 19:05:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.19 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
 #define	_NETINET_IP_VAR_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
+#ifndef _MACHINE_PARAM_H_
+#include <machine/param.h>
+#endif
+
+#endif
 
 /*
  * Overlay for ip header used by other protocols (tcp, udp).
@@ -107,6 +126,7 @@ struct ip_moptions {
 
 struct ip_stats;
 extern struct ip_stats	ipstats_percpu[MAXCPU];
+
 #endif
 
 /*
@@ -227,7 +247,7 @@ ip_newid(void)
     if (ip_do_randomid)
 	return ip_randomid();
     else
-	return htons(ip_id++);
+	return __htons(ip_id++);
 }
 
 #endif /* _KERNEL */

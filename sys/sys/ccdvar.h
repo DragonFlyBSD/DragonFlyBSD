@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/ccdvar.h,v 1.11.2.1 2001/09/11 09:49:54 kris Exp $ */
-/* $DragonFly: src/sys/sys/ccdvar.h,v 1.3 2006/03/24 18:35:33 dillon Exp $ */
+/* $DragonFly: src/sys/sys/ccdvar.h,v 1.4 2006/05/20 02:42:13 dillon Exp $ */
 
 /*	$NetBSD: ccdvar.h,v 1.7.2.1 1995/10/12 21:30:18 thorpej Exp $	*/
 
@@ -77,6 +77,9 @@
  *	@(#)cdvar.h	8.1 (Berkeley) 6/10/93
  */
 
+#ifndef _SYS_CCDVAR_H_
+#define _SYS_CCDVAR_H_
+
 /*
  * Dynamic configuration and disklabel support by:
  *	Jason R. Thorpe <thorpej@nas.nasa.gov>
@@ -85,6 +88,16 @@
  *	NASA Ames Research Center
  *	Moffett Field, CA 94035
  */
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_DEVICESTAT_H_
+#include <sys/devicestat.h>
+#endif
+#ifndef _SYS_DISKLABEL_H_
+#include <sys/disklabel.h>
+#endif
 
 /*
  * A concatenated disk is described at initialization time by this structure.
@@ -212,3 +225,5 @@ struct ccd_softc {
  */
 #define CCDIOCSET	_IOWR('F', 16, struct ccd_ioctl)   /* enable ccd */
 #define CCDIOCCLR	_IOW('F', 17, struct ccd_ioctl)    /* disable ccd */
+
+#endif

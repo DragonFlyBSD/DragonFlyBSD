@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.h,v 1.2.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip6_mroute.h,v 1.19 2001/06/14 06:12:55 suz Exp $	*/
 
 /*
@@ -47,6 +47,19 @@
 
 #ifndef _NETINET6_IP6_MROUTE_H_
 #define _NETINET6_IP6_MROUTE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 /*
  * Multicast Routing set/getsockopt commands.
@@ -268,6 +281,9 @@ struct rtdetq {		/* XXX: rtdetq is also defined in ip_mroute.h */
 #endif
 
 #define MAX_UPQ6	4		/* max. no of pkts in upcall Q */
+
+struct sockopt;
+struct socket;
 
 int	ip6_mrouter_set (struct socket *so, struct sockopt *sopt);
 int	ip6_mrouter_get (struct socket *so, struct sockopt *sopt);

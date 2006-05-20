@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keydb.h,v 1.2.2.3 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keydb.h,v 1.4 2003/08/23 10:06:24 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keydb.h,v 1.5 2006/05/20 02:42:13 dillon Exp $	*/
 /*	$KAME: keydb.h,v 1.14 2000/08/02 17:58:26 sakane Exp $	*/
 
 /*
@@ -35,6 +35,22 @@
 #define _NETKEY_KEYDB_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+#ifndef _NET_ROUTE_H_
+#include <net/route.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 #include "key_var.h"
 

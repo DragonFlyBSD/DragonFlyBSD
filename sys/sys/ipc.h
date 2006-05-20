@@ -42,7 +42,7 @@
  *
  *	@(#)ipc.h	8.4 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/ipc.h,v 1.15 1999/12/29 04:24:43 peter Exp $
- * $DragonFly: src/sys/sys/ipc.h,v 1.4 2003/08/27 02:03:22 dillon Exp $
+ * $DragonFly: src/sys/sys/ipc.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 /*
@@ -50,6 +50,10 @@
  */
 #ifndef _SYS_IPC_H_
 #define _SYS_IPC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 struct ipc_perm {
 	ushort	cuid;	/* creator user id */

@@ -37,11 +37,18 @@
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  *	from: Id: in_cksum.c,v 1.8 1995/12/03 18:35:19 bde Exp
  * $FreeBSD: src/sys/i386/include/in_cksum.h,v 1.7.2.2 2002/07/02 04:03:04 jdp Exp $
- * $DragonFly: src/sys/sys/in_cksum.h,v 1.3 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/sys/in_cksum.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_IN_CKSUM_H_
 #define	_SYS_IN_CKSUM_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 
 #ifdef _KERNEL
 

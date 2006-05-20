@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec6.h,v 1.3.2.2 2001/07/03 11:01:54 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec6.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec6.h,v 1.5 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ipsec.h,v 1.44 2001/03/23 08:08:47 itojun Exp $	*/
 
 /*
@@ -42,6 +42,14 @@
 #include <netproto/key/keydb.h>
 
 #ifdef _KERNEL
+
+struct mbuf;
+struct inpcb;
+struct tcp6cb;
+struct ip6_hdr;
+struct secasvar;
+struct ipsec_output_state;
+
 extern struct ipsecstat ipsec6stat;
 extern struct secpolicy ip6_def_policy;
 extern int ip6_esp_trans_deflev;
@@ -56,8 +64,6 @@ extern struct secpolicy *ipsec6_getpolicybysock
 extern struct secpolicy *ipsec6_getpolicybyaddr
 	(struct mbuf *, u_int, int, int *);
 
-struct inpcb;
-
 extern int ipsec6_in_reject_so (struct mbuf *, struct socket *);
 extern int ipsec6_delete_pcbpolicy (struct inpcb *);
 extern int ipsec6_set_policy (struct inpcb *inp, int optname,
@@ -66,11 +72,8 @@ extern int ipsec6_get_policy
 	(struct inpcb *inp, caddr_t request, size_t len, struct mbuf **mp);
 extern int ipsec6_in_reject (struct mbuf *, struct inpcb *);
 
-struct tcp6cb;
-
 extern size_t ipsec6_hdrsiz (struct mbuf *, u_int, struct inpcb *);
 
-struct ip6_hdr;
 extern const char *ipsec6_logpacketstr (struct ip6_hdr *, u_int32_t);
 
 extern int ipsec6_output_trans (struct ipsec_output_state *, u_char *,
@@ -79,6 +82,7 @@ extern int ipsec6_output_tunnel (struct ipsec_output_state *,
 	struct secpolicy *, int);
 extern int ipsec6_tunnel_validate (struct mbuf *, int, u_int,
 	struct secasvar *);
+
 #endif /*_KERNEL*/
 
 #endif /*_NETINET6_IPSEC6_H_*/

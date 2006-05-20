@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/acpica_machdep.h,v 1.5 2003/09/10 01:14:42 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.2 2004/06/27 08:52:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.3 2006/05/20 02:42:06 dillon Exp $
  */
 
 /******************************************************************************
@@ -34,8 +34,8 @@
  *
  *****************************************************************************/
 
-#ifndef __ACPICA_MACHDEP_H__
-#define __ACPICA_MACHDEP_H__
+#ifndef _MACHINE_ACPICA_MACHDEP_H__
+#define _MACHINE_ACPICA_MACHDEP_H__
 
 #ifdef _KERNEL
 /*
@@ -123,4 +123,4 @@
 
 void    acpi_SetDefaultIntrModel(int model);
 
-#endif /* __ACPICA_MACHDEP_H__ */
+#endif /* _MACHINE_ACPICA_MACHDEP_H__ */

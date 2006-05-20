@@ -26,11 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/dvdio.h,v 1.2.2.2 2002/03/18 08:34:53 sos Exp $
- * $DragonFly: src/sys/sys/dvdio.h,v 1.3 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/sys/dvdio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_DVDIO_H_
 #define _SYS_DVDIO_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 struct dvd_layer {
 	u_int8_t book_type	:4;

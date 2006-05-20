@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.7 2005/02/28 16:23:55 joerg Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -32,7 +32,18 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _MACHINE_ELF_H_
 #include <machine/elf.h>
+#endif
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_LINKER);

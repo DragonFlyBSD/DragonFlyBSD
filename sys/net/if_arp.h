@@ -32,11 +32,21 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/if_arp.h,v 1.5 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.6 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_IF_ARP_H_
 #define	_NET_IF_ARP_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+#ifndef _NET_IF_H_
+#include <net/if.h>
+#endif
 
 /*
  * Address Resolution Protocol.

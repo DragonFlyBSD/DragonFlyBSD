@@ -32,13 +32,21 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.11 2006/04/26 17:42:55 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.12 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
 #define	_SYS_UIO_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>		/* Needed to inline iovec_free(). */
+#endif
 
 /*
  * XXX

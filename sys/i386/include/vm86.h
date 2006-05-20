@@ -27,11 +27,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.6 2005/11/22 08:41:02 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_VM86_H_
-#define _MACHINE_VM86_H_ 1
+#define _MACHINE_VM86_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /* standard register representation */
 typedef union {
@@ -148,7 +152,8 @@ struct vm86_intcall_args {
 extern	int in_vm86call;
 extern 	pt_entry_t *vm86paddr;
 
-struct proc;
+struct lwp;
+
 extern	int vm86_emulate (struct vm86frame *);
 extern	int vm86_sysarch (struct lwp *, char *);
 extern void vm86_trap (struct vm86frame *, int);

@@ -31,11 +31,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.9 2005/11/21 21:59:52 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
 #define	_SYS_SYSENT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 struct proc;
 

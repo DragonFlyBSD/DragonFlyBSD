@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/agpio.h,v 1.1.2.2 2001/12/20 10:36:57 ru Exp $
- *	$DragonFly: src/sys/sys/agpio.h,v 1.3 2003/12/09 23:43:36 drhodus Exp $
+ *	$DragonFly: src/sys/sys/agpio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_AGPIO_H_
 #define _SYS_AGPIO_H_
+
+#ifndef _SYS_TYPES_H_ 
+#include <sys/types.h>
+#endif
 
 /*
  * The AGP gatt uses 4k pages irrespective of the host page size.

@@ -24,11 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/nexusvar.h,v 1.1 2000/09/28 00:37:31 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/nexusvar.h,v 1.1 2004/01/13 18:31:58 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/include/nexusvar.h,v 1.2 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_NEXUSVAR_H_
-#define	_MACHINE_NEXUSVAR_H_	1
+#define	_MACHINE_NEXUSVAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_CONF_H_
+#include <sys/bus.h>
+#endif
 
 enum nexus_device_ivars {
 	NEXUS_IVAR_PCIBUS

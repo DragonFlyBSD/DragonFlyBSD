@@ -31,12 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/bio.h,v 1.4 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/sys/bio.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_BIO_H_
 #define _SYS_BIO_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif

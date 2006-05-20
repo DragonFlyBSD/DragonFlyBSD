@@ -31,11 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.5 2005/04/27 14:31:19 hmp Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_KINFO_H_
 #define _SYS_KINFO_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
 
 struct kinfo_file {
 	size_t	 f_size;	/* size of struct kinfo_file */

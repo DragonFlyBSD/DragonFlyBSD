@@ -30,11 +30,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/firmware.h,v 1.1 2005/03/19 14:54:50 joerg Exp $
+ * $DragonFly: src/sys/sys/firmware.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
 
-#ifndef _SYS_FIRMWARE_H
-#define _SYS_FIRMWARE_H
+#ifndef _SYS_FIRMWARE_H_
+#define _SYS_FIRMWARE_H_
 
 #ifndef _KERNEL
 #error "No user-servicable parts inside"

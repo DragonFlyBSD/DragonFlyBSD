@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.h,v 1.1.2.2 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: in6_prefix.h,v 1.10 2001/02/08 16:30:30 itojun Exp $	*/
 
 /*
@@ -31,7 +31,24 @@
  * SUCH DAMAGE.
  */
 
+#ifndef NETINET6_IN6_PREFIX_H_
+#define NETINET6_IN6_PREFIX_H_
+
+#ifndef _SYS_CALLOUT_H_
 #include <sys/callout.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _NET_IF_VAR_H_
+#include <net/if_var.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _NETINET6_IN6_VAR_H_
+#include <netinet6/in6_var.h>
+#endif
 
 struct rr_prefix {
 	struct ifprefix	rp_ifpr;
@@ -90,3 +107,5 @@ extern struct rr_prhead rr_prefix;
 void in6_rr_timer (void *);
 extern struct callout in6_rr_timer_ch;
 int delete_each_prefix  (struct rr_prefix *rpp, u_char origin);
+
+#endif

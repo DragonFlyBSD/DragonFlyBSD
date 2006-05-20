@@ -26,11 +26,21 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sigframe.h,v 1.5 1999/12/04 10:40:24 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/sigframe.h,v 1.3 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/i386/include/Attic/sigframe.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGFRAME_H_
 #define	_MACHINE_SIGFRAME_H_
+
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>
+#endif
+#ifndef _SYS_SIGNAL_H_
+#include <sys/signal.h>
+#endif
+#ifndef _SYS_UCONTEXT_H_
+#include <sys/ucontext.h>
+#endif
 
 /*
  * Signal frames, arguments passed to application signal handlers.

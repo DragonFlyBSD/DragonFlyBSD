@@ -63,7 +63,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfscache.h,v 1.6 2006/05/14 18:07:29 swildner Exp $
+ * $DragonFly: src/sys/sys/vfscache.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 /*
  * This module serves as a focal point for virtually all filesystem and
@@ -84,6 +84,12 @@
 #ifndef _SYS_VFSCACHE_H_
 #define _SYS_VFSCACHE_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 #ifndef _SYS_VFSOPS_H_
 #include <sys/vfsops.h>
 #endif

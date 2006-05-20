@@ -35,7 +35,7 @@
  *
  *	from: @(#)reg.h	5.5 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/reg.h,v 1.22.2.2 2002/11/07 22:47:55 alfred Exp $
- * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.4 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/cpu/i386/include/reg.h,v 1.5 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_REG_H_
@@ -142,6 +142,10 @@ struct dbreg {
 
 #ifdef _KERNEL
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 struct proc;
 struct lwp;
 
@@ -152,6 +156,7 @@ int	set_fpregs (struct lwp *, struct fpreg *);
 int	set_regs (struct lwp *lp, struct reg *regs);
 void	setregs (struct proc *, u_long, u_long, u_long);
 int	set_dbregs (struct lwp *lp, struct dbreg *dbregs);
+
 #endif
 
 #endif /* !_MACHINE_REG_H_ */

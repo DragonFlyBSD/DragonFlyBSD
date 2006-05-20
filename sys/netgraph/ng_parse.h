@@ -38,11 +38,15 @@
  *
  * $Whistle: ng_parse.h,v 1.2 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.h,v 1.2.4.4 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_parse.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_parse.h,v 1.3 2006/05/20 02:42:11 dillon Exp $
  */
 
 #ifndef _NETGRAPH_PARSE_H_
 #define _NETGRAPH_PARSE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
 

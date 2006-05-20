@@ -32,7 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.3 2004/07/27 08:09:56 asmodai Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_SPECIALREG_H_
@@ -352,8 +352,15 @@
 #define	AMD_WT_ALLOC_PRE	0x20000	/* programmable range enable */
 #define	AMD_WT_ALLOC_FRE	0x10000	/* fixed (A0000-FFFFF) range enable */
 
-
 #ifndef LOCORE
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_CPUFUNC_H_
+#include "cpufunc.h"
+#endif
+
 static __inline u_char
 read_cyrix_reg(u_char reg)
 {

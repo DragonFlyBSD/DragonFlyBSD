@@ -7,12 +7,22 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.6 2005/07/20 20:31:19 dillon Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  *
  */
 
 #ifndef _SYS_JAIL_H_
 #define _SYS_JAIL_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_UCRED_H_
+#include <sys/ucred.h>
+#endif
 
 struct jail {
 	uint32_t	version;

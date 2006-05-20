@@ -27,13 +27,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.8 2005/08/07 00:31:31 joerg Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_RMAN_H_
-#define	_SYS_RMAN_H_	1
+#define	_SYS_RMAN_H_
 
-#ifndef	_KERNEL
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 #ifndef _MACHINE_BUS_H_

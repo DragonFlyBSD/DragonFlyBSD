@@ -32,11 +32,15 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.15 2005/07/15 17:54:48 eirikn Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.16 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
 #define _SYS_PROTOSW_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /* Forward declare these structures referenced from prototypes below. */
 struct mbuf;

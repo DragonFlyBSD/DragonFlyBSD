@@ -62,20 +62,38 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.9 2006/05/17 17:47:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.10 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
  *	Virtual memory object module definitions.
  */
 
-#ifndef	_VM_OBJECT_
-#define	_VM_OBJECT_
+#ifndef	_VM_VM_OBJECT_H_
+#define	_VM_VM_OBJECT_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#if defined(_KERNEL) && !defined(_SYS_SYSTM_H_)
+#include <sys/systm.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
+#endif
+#ifndef _VM_VM_H_
+#include <vm/vm.h>
+#endif
+
 #ifdef _KERNEL
+
+#ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
+
 #endif
 
 enum obj_type { 
@@ -269,4 +287,4 @@ void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
 #endif				/* _KERNEL */
 
-#endif				/* _VM_OBJECT_ */
+#endif				/* _VM_VM_OBJECT_H_ */

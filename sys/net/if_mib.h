@@ -27,11 +27,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.h,v 1.6 1999/08/28 00:48:19 peter Exp $
- * $DragonFly: src/sys/net/if_mib.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/if_mib.h,v 1.3 2006/05/20 02:42:08 dillon Exp $
  */
 
-#ifndef _NET_IF_MIB_H
-#define	_NET_IF_MIB_H	1
+#ifndef _NET_IF_MIB_H_
+#define	_NET_IF_MIB_H_
+
+#ifndef _NET_IF_H_
+#include <net/if.h>
+#endif
 
 struct ifmibdata {
 	char	ifmd_name[IFNAMSIZ]; /* name of interface */
@@ -168,4 +172,4 @@ enum {
  * Put other types of interface MIBs here, or in interface-specific
  * header files if convenient ones already exist.
  */
-#endif /* _NET_IF_MIB_H */
+#endif /* _NET_IF_MIB_H_ */

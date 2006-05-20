@@ -82,16 +82,24 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.19 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.20 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
 #define _NETINET_IN_PCB_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_SYSCTL_H_
 #include <sys/sysctl.h>
-
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _NET_ROUTE_H_
 #include <net/route.h>
+#endif
 
 #define	in6pcb		inpcb	/* for KAME src sync over BSD*'s */
 #define	in6p_sp		inp_sp	/* for KAME src sync over BSD*'s */

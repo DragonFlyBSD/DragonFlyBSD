@@ -37,12 +37,16 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_message.h,v 1.4.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/ng_message.h,v 1.3 2005/02/03 20:48:08 joerg Exp $
+ * $DragonFly: src/sys/netgraph/ng_message.h,v 1.4 2006/05/20 02:42:11 dillon Exp $
  * $Whistle: ng_message.h,v 1.12 1999/01/25 01:17:44 archie Exp $
  */
 
 #ifndef _NETGRAPH_NG_MESSAGE_H_
-#define _NETGRAPH_NG_MESSAGE_H_ 1
+#define _NETGRAPH_NG_MESSAGE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /* ASCII string size limits */
 #define NG_TYPELEN	15	/* max type name len (16 with null) */

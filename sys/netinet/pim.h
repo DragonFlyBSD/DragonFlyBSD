@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/pim.h,v 1.1.2.1 2003/08/24 17:04:44 hsu Exp $
- * $DragonFly: src/sys/netinet/pim.h,v 1.3 2004/09/23 16:44:32 joerg Exp $
+ * $DragonFly: src/sys/netinet/pim.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_PIM_H_
@@ -43,7 +43,13 @@
  * Modified by Pavlin Radoslavov, USC/ISI, May 1998, October 2000.
  */
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
+
 
 /*
  * PIM packet header

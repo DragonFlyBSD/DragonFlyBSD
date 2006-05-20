@@ -37,12 +37,12 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
  */
 
 
 #ifndef _MACHINE_VMPARAM_H_
-#define _MACHINE_VMPARAM_H_ 1
+#define _MACHINE_VMPARAM_H_
 
 /*
  * Machine dependent constants for 386.

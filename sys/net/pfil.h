@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.4 2004/07/14 08:01:16 asmodai Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.5 2006/05/20 02:42:08 dillon Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -32,7 +32,15 @@
 #ifndef _NET_PFIL_H_
 #define _NET_PFIL_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 struct mbuf;
 struct ifnet;

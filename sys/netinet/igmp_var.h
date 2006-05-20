@@ -36,11 +36,23 @@
  *
  *	from: @(#)igmp_var.h	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp_var.h,v 1.17 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/igmp_var.h,v 1.4 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/igmp_var.h,v 1.5 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IGMP_VAR_H_
 #define _NETINET_IGMP_VAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+
+#endif
 
 /*
  * Internet Group Management Protocol (IGMP),
@@ -85,6 +97,9 @@ struct igmpstat {
  * this amount of time.
  */
 #define IGMP_AGE_THRESHOLD			540
+
+struct mbuf;
+struct in_multi;
 
 void	igmp_init (void);
 void	igmp_input (struct mbuf *, ...);

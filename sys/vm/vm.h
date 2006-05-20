@@ -60,11 +60,15 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm.h,v 1.16.2.1 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/vm/vm.h,v 1.4 2004/12/15 09:44:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vm.h,v 1.5 2006/05/20 02:42:15 dillon Exp $
  */
 
-#ifndef VM_H
-#define VM_H
+#ifndef VM_VM_H_
+#define VM_VM_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 typedef char vm_inherit_t;	/* inheritance codes */
 
@@ -110,4 +114,4 @@ struct vm_page;
 typedef struct vm_page *vm_page_t;
 #endif
 
-#endif				/* VM_H */
+#endif				/* VM_VM_H_ */

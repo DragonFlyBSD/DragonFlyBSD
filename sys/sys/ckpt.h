@@ -22,10 +22,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.6 2005/02/26 20:32:37 dillon Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_MOUNT_H_
+#include <sys/mount.h>
+#endif
+#ifndef _SYS_PROC_H_
+#include <sys/proc.h>
+#endif
+#ifndef _SYS_SIGNALVAR_H_
+#include <sys/signalvar.h>
+#endif
 
 #define CKPT_MAXTHREADS	256
 
@@ -63,11 +76,20 @@ struct ckpt_siginfo {
 	int		csi_reserved[6];
 };
 
+/*
+ * Elf_Phdr is based on the inclusion of elf32 or elf64.  If neither was
+ * included, we don't know what to do with it.  If the source needs the
+ * structure, generate a compile-time error.
+ */
+#ifdef __ELF_WORD_SIZE
+
 struct vn_hdr {
 	fhandle_t	vnh_fh;
 	Elf_Phdr	vnh_phdr;
 	int		vnh_reserved[8];
 };
+
+#endif
 
 #ifdef _KERNEL
 #ifdef DEBUG

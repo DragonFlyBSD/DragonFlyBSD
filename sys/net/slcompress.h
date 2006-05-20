@@ -35,11 +35,18 @@
  *	Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
  * $FreeBSD: src/sys/net/slcompress.h,v 1.14.2.1 2000/05/05 13:37:06 jlemon Exp $
- * $DragonFly: src/sys/net/slcompress.h,v 1.3 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/slcompress.h,v 1.4 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_SLCOMPRESS_H_
 #define _NET_SLCOMPRESS_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET_IP_H_
+#include <netinet/ip.h>
+#endif
 
 #define MAX_STATES 16		/* must be > 2 and < 256 */
 #define MAX_HDR 128

@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.6 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.7 2006/05/20 02:42:08 dillon Exp $
  */
 /*
  * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
@@ -38,10 +38,29 @@
  * section will no longer be required.
  */
 
-#ifndef _NET_IFQ_VAR_H
-#define _NET_IFQ_VAR_H
+#ifndef _NET_IFQ_VAR_H_
+#define _NET_IFQ_VAR_H_
 
+#if defined(_KERNEL) && !defined(_SYS_SYSTM_H_)
+#include <sys/systm.h>
+#endif
+#ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
+#ifndef _SYS_SERIALIZE_H_
+#include <sys/serialize.h>
+#endif
+#ifndef _SYS_MBUF_H_
+#include <sys/mbuf.h>
+#endif
+#ifndef _NET_IF_VAR_H_
+#include <net/if_var.h>
+#endif
+#ifndef _NET_ALTQ_IF_ALTQ_H_
+#include <net/altq/if_altq.h>
+#endif
+
+struct ifaltq;
 
 #ifdef ALTQ
 static __inline int

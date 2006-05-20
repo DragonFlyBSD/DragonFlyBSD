@@ -32,11 +32,15 @@
  *
  *	@(#)if_dl.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_dl.h,v 1.10 2000/03/01 02:46:25 archie Exp $
- * $DragonFly: src/sys/net/if_dl.h,v 1.3 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/if_dl.h,v 1.4 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_IF_DL_H_
 #define _NET_IF_DL_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * A Link-Level Sockaddr may specify the interface in one of two

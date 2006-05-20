@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.9 2005/03/30 04:29:32 swildner Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
 #define _SYS_MODULE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Module metadata types

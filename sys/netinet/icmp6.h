@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/icmp6.h,v 1.2.2.5 2002/06/29 18:31:11 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.6 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: icmp6.h,v 1.46 2001/04/27 15:09:48 itojun Exp $	*/
 
 /*
@@ -68,6 +68,16 @@
 
 #ifndef _NETINET_ICMP6_H_
 #define _NETINET_ICMP6_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET6_IN6_H_
+#include <netinet/in.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
 
 #define ICMPV6_PLD_MAXLEN	1232	/* IPV6_MMTU - sizeof(struct ip6_hdr)
 					   - sizeof(struct icmp6_hdr) */

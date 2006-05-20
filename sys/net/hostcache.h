@@ -27,11 +27,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.h,v 1.4 1999/12/29 04:38:32 peter Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.h,v 1.3 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.h,v 1.4 2006/05/20 02:42:08 dillon Exp $
  */
 
-#ifndef _NET_HOSTCACHE_H
-#define	_NET_HOSTCACHE_H	1
+#ifndef _NET_HOSTCACHE_H_
+#define	_NET_HOSTCACHE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 
 /*
  * This file defines the interface between network protocols and
@@ -93,4 +100,4 @@ int	hc_insert(struct hcentry *hc);
 int	hc_delete(struct hcentry *hc);
 #endif
 
-#endif /* _NET_HOSTCACHE_H */
+#endif /* _NET_HOSTCACHE_H_ */

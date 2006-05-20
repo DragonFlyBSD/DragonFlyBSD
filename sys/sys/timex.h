@@ -45,7 +45,7 @@
  *      Created file
  *
  * $FreeBSD: src/sys/sys/timex.h,v 1.12.2.1 2001/04/22 11:19:39 jhay Exp $
- * $DragonFly: src/sys/sys/timex.h,v 1.5 2004/02/06 03:20:47 rob Exp $
+ * $DragonFly: src/sys/sys/timex.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 /*
  * This header file defines the Network Time Protocol (NTP) interfaces
@@ -95,11 +95,15 @@
  */
 #ifndef _SYS_TIMEX_H_
 #define _SYS_TIMEX_H_ 1
+
 #define NTP_API		4	/* NTP API version */
 
-#ifndef MSDOS			/* Microsoft specific */
+#ifndef _SYS_SYSCALL_H_
 #include <sys/syscall.h>
-#endif /* MSDOS */
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 
 /*
  * The following defines establish the performance envelope of the

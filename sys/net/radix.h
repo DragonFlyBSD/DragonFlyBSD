@@ -32,11 +32,15 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.9 2005/02/28 11:31:20 hsu Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.10 2006/05/20 02:42:08 dillon Exp $
  */
 
-#ifndef _RADIX_H_
-#define	_RADIX_H_
+#ifndef _NET_RADIX_H_
+#define	_NET_RADIX_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_RTABLE);
@@ -177,4 +181,4 @@ struct radix_node	*rn_addmask (char *, boolean_t, int),
 				    struct radix_node_head *head),
 			*rn_match (char *, struct radix_node_head *);
 
-#endif /* _RADIX_H_ */
+#endif /* _NET_RADIX_H_ */

@@ -24,13 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf32.h,v 1.7 1999/08/28 00:51:41 peter Exp $
- * $DragonFly: src/sys/sys/elf32.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/elf32.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_ELF32_H_
 #define _SYS_ELF32_H_ 1
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_ELF_COMMON_H_
 #include <sys/elf_common.h>
+#endif
 
 /*
  * ELF definitions common to all 32-bit architectures.

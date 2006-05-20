@@ -32,11 +32,15 @@
  *
  *	@(#)udp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp.h,v 1.7 1999/08/28 00:49:34 peter Exp $
- * $DragonFly: src/sys/netinet/udp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp.h,v 1.3 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_UDP_H_
 #define _NETINET_UDP_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Udp protocol header.

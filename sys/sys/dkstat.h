@@ -37,11 +37,15 @@
  *
  *	@(#)dkstat.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/dkstat.h,v 1.12.2.1 2000/09/22 08:01:00 des Exp $
- * $DragonFly: src/sys/sys/dkstat.h,v 1.4 2005/04/27 14:31:19 hmp Exp $
+ * $DragonFly: src/sys/sys/dkstat.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_DKSTAT_H_
 #define _SYS_DKSTAT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

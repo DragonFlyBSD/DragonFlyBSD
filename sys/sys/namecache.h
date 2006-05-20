@@ -62,13 +62,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.24 2006/04/25 22:11:29 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.25 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
 #define	_SYS_NAMECACHE_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
 struct vnode;
+struct ucred;
+struct proc;
 
 TAILQ_HEAD(namecache_list, namecache);
 

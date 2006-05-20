@@ -2,12 +2,16 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.12 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.13 2006/05/20 02:42:08 dillon Exp $
  *
  */
 
 #ifndef _NET_ETHERNET_H_
 #define _NET_ETHERNET_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * The number of bytes in an ethernet (MAC) address.

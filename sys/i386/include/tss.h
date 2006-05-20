@@ -35,11 +35,11 @@
  *
  *	from: @(#)tss.h	5.4 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/tss.h,v 1.11 1999/12/29 04:33:09 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/tss.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tss.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_TSS_H_
-#define _MACHINE_TSS_H_ 1
+#define _MACHINE_TSS_H_
 
 /*
  * Intel 386 Context Data Type

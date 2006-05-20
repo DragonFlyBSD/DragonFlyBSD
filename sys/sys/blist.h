@@ -54,11 +54,15 @@
  *		eats around 32 KBytes of memory. 
  *
  * $FreeBSD: src/sys/sys/blist.h,v 1.2.2.1 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/sys/blist.h,v 1.5 2005/06/11 16:24:36 hmp Exp $
+ * $DragonFly: src/sys/sys/blist.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_BLIST_H_
 #define _SYS_BLIST_H_
+
+#ifndef _SYS_TYPES_H_ 
+#include <sys/types.h>
+#endif
 
 /*
  * blmeta and bl_bitmap_t MUST be a power of 2 in size.

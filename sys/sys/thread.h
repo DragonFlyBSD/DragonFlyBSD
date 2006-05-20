@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.79 2006/05/19 18:26:29 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.80 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -30,6 +30,9 @@
 #endif
 #ifndef _SYS_SPINLOCK_H_
 #include <sys/spinlock.h>
+#endif
+#ifndef _MACHINE_THREAD_H_
+#include <machine/thread.h>
 #endif
 
 struct globaldata;

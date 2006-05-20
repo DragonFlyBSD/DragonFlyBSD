@@ -31,11 +31,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.11 2006/05/07 00:24:58 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.12 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
 #define _SYS_JOURNAL_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 
 /*
  * Physical file format (binary)

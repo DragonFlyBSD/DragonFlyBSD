@@ -32,11 +32,15 @@
  *
  *	from: @(#)exec.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/imgact_aout.h,v 1.13 1999/12/29 04:24:41 peter Exp $
- * $DragonFly: src/sys/sys/imgact_aout.h,v 1.4 2004/10/25 08:57:50 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact_aout.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_IMGACT_AOUT_H_
 #define	_IMGACT_AOUT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #define N_GETMAGIC(ex) \
 	( (ex).a_midmag & 0xffff )

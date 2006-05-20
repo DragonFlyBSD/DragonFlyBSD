@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
- *	$DragonFly: src/sys/sys/event.h,v 1.5 2004/02/25 17:38:51 joerg Exp $
+ *	$DragonFly: src/sys/sys/event.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_EVENT_H_
 #define _SYS_EVENT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #define EVFILT_READ		(-1)
 #define EVFILT_WRITE		(-2)

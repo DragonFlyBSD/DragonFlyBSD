@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/acl.h,v 1.8 2000/01/28 15:22:51 rwatson Exp $
- * $DragonFly: src/sys/sys/acl.h,v 1.3 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/acl.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 /* 
@@ -34,8 +34,12 @@
  * http://www.watson.org/fbsd-hardening/posix1e/
  */
 
-#ifndef _SYS_ACL_H
-#define	_SYS_ACL_H
+#ifndef _SYS_ACL_H_
+#define	_SYS_ACL_H_
+
+#ifndef _SYS_TYPES_H_ 
+#include <sys/types.h>
+#endif
 
 /*
  * POSIX.1e ACL types and related constants
@@ -146,4 +150,4 @@ __END_DECLS
 
 #endif /* !_KERNEL */
 
-#endif /* !_SYS_ACL_H */
+#endif /* !_SYS_ACL_H_ */

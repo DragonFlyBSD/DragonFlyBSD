@@ -37,13 +37,18 @@
  *
  *	from: @(#)cons.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/sys/cons.h,v 1.24 2000/01/11 14:54:01 yokota Exp $
- * $DragonFly: src/sys/sys/cons.h,v 1.4 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/cons.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _MACHINE_CONS_H_
 #define	_MACHINE_CONS_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 struct consdev;
+
 typedef	void	cn_probe_t (struct consdev *);
 typedef	void	cn_init_t (struct consdev *);
 typedef	void	cn_term_t (struct consdev *);

@@ -32,11 +32,27 @@
  *
  *	@(#)tcp_debug.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.h,v 1.11 2000/01/29 11:49:05 shin Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_DEBUG_H_
 #define	_NETINET_TCP_DEBUG_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET_IN_SYSTM_H_
+#include <netinet/in_systm.h>
+#endif
+#ifndef _NETINET_TCPIP_H_
+#include <netinet/tcpip.h>
+#endif
+#ifndef _NETINET_TCP_H_
+#include <netinet/tcp.h>
+#endif
+#ifndef _NETINET_TCP_VAR_H_
+#include <netinet/tcp_var.h>
+#endif
 
 struct	tcp_debug {
 	n_time	td_time;

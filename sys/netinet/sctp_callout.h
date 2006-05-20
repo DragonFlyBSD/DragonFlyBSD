@@ -1,8 +1,12 @@
 /*	$KAME: sctp_callout.h,v 1.8 2005/01/25 07:35:42 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_callout.h,v 1.2 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_callout.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __SCTP_CALLOUT__
-#define __SCTP_CALLOUT__
+#ifndef _NETINET_SCTP_CALLOUT_H_
+#define _NETINET_SCTP_CALLOUT_H_
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,

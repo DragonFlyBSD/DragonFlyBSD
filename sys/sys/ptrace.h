@@ -32,11 +32,15 @@
  *
  *	@(#)ptrace.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ptrace.h,v 1.10.2.2 2003/01/02 20:39:13 kan Exp $
- * $DragonFly: src/sys/sys/ptrace.h,v 1.6 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/sys/ptrace.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_PTRACE_H_
 #define	_SYS_PTRACE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #define	PT_TRACE_ME	0	/* child declares it's being traced */
 #define	PT_READ_I	1	/* read word in child's I space */
@@ -54,7 +58,10 @@
 #define	PT_IO		12	/* do I/O to/from stopped process. */
 
 #define	PT_FIRSTMACH	32	/* for machine-specific requests */
+
+#ifndef _MACHINE_PTRACE_H_
 #include <machine/ptrace.h>	/* machine-specific requests, if any */
+#endif
 
 struct ptrace_io_desc {
 	int	piod_op;	/* I/O operation */
@@ -64,23 +71,30 @@ struct ptrace_io_desc {
 };
 
 /*
- *  * Operations in piod_op.
- *   */
+ *  Operations in piod_op.
+ */
 #define	PIOD_READ_D	1	/* Read from D space */
 #define	PIOD_WRITE_D	2	/* Write to D space */
 #define	PIOD_READ_I	3	/* Read from I space */
 #define	PIOD_WRITE_I	4	/* Write to I space */
 
 #ifdef _KERNEL
+
+struct proc;
+struct lwp;
+
 void	proc_reparent (struct proc *child, struct proc *newparent);
 int	ptrace_set_pc (struct proc *p, unsigned long addr);
 int	ptrace_single_step (struct lwp *lp);
 int	ptrace_write_u (struct proc *p, vm_offset_t off, long data);
 int	kern_ptrace (struct proc *p, int req, pid_t pid, void *addr,
 		int data, int *res);
+
 #else /* !_KERNEL */
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 int	ptrace (int, pid_t, caddr_t, int);

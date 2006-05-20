@@ -34,13 +34,21 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.32 2005/07/15 17:54:48 eirikn Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.33 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
 #define	_SYS_MBUF_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 /*
  * Mbufs are of a single size, MSIZE (machine/param.h), which

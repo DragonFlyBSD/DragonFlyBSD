@@ -24,14 +24,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.h,v 1.2 2000/01/27 23:37:39 brian Exp $
- * $DragonFly: src/sys/net/Attic/intrq.h,v 1.3 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.h,v 1.4 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_INTRQ_H_
 #define	_NET_INTRQ_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+
+struct mbuf;
+
 extern int	family_enqueue (sa_family_t, struct mbuf *);
+
 #endif
 
 #endif /* _NET_INTRQ_H_ */

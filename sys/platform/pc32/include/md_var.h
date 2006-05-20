@@ -27,11 +27,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.17 2005/10/27 03:15:47 sephe Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.18 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
 #define	_MACHINE_MD_VAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Miscellaneous machine-dependent declarations.

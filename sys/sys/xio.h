@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/xio.h,v 1.6 2005/03/01 23:35:16 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 
 /*
@@ -52,8 +52,17 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_UIO_H_
+#include <sys/uio.h>
+#endif
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>
+#endif
+#ifndef _MACHINE_PARAM_H_
+#include <machine/param.h>
 #endif
 
 #define XIO_INTERNAL_PAGES	btoc(MAXPHYS)

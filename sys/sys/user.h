@@ -32,13 +32,11 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.13 2006/03/27 09:02:07 joerg Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.14 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
 #define _SYS_USER_H_
-
-#ifndef _KERNEL
 
 /*
  * stuff that *used* to be included by user.h, or is now needed.  The
@@ -52,27 +50,55 @@
 #ifndef _KERNEL_STRUCTURES
 #define _KERNEL_STRUCTURES
 #endif
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_ERRNO_H_
 #include <sys/errno.h>
+#endif
+#ifndef _SYS_TIME_H_
 #include <sys/time.h>
+#endif
+#ifndef _SYS_RESOURCE_H_
 #include <sys/resource.h>
+#endif
+#ifndef _SYS_UCRED_H_
 #include <sys/ucred.h>
+#endif
+#ifndef _SYS_UIO_H_
 #include <sys/uio.h>
+#endif
+#ifndef _SYS_PROC_H_
 #include <sys/proc.h>
+#endif
+#ifndef _SYS_LOCK_H_
 #include <sys/lock.h>		/* XXX */
+#endif
+#ifndef _VM_VM_H_
 #include <vm/vm.h>		/* XXX */
+#endif
+#ifndef _VM_PARAM_H_
 #include <vm/vm_param.h>	/* XXX */
+#endif
+#ifndef _VM_PMAP_H_
 #include <vm/pmap.h>		/* XXX */
+#endif
+#ifndef _VM_MAP_H_
 #include <vm/vm_map.h>		/* XXX */
-#endif /* !_KERNEL */
+#endif
 #ifndef _SYS_RESOURCEVAR_H_
 #include <sys/resourcevar.h>
 #endif
 #ifndef _SYS_SIGNALVAR_H_
 #include <sys/signalvar.h>
 #endif
-
+#ifndef _MACHINE_PCB_H_
 #include <machine/pcb.h>
+#endif
+#ifndef _MACHINE_COREDUMP_H_
 #include <machine/coredump.h>
+#endif
 
 /*
  * KERN_PROC subtype ops return arrays of augmented proc structures:

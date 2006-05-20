@@ -62,24 +62,42 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.22 2005/08/27 00:56:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.23 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
  *	Resident memory system definitions.
  */
 
-#ifndef	_VM_PAGE_H_
-#define	_VM_PAGE_H_
+#ifndef	_VM_VM_PAGE_H_
+#define	_VM_VM_PAGE_H_
 
 #if !defined(KLD_MODULE) && defined(_KERNEL)
 #include "opt_vmpage.h"
 #endif
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#if defined(_KERNEL) && !defined(_SYS_SYSTM_H_)
+#include <sys/systm.h>
+#endif
+#ifndef _MACHINE_PMAP_H_
+#include <machine/pmap.h>
+#endif
+#ifndef _VM_PMAP_H_
 #include <vm/pmap.h>
+#endif
+#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
+#endif
+
 #ifdef _KERNEL
+
+#ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
+
 #endif
 
 /*
@@ -583,4 +601,4 @@ vm_page_undirty(vm_page_t m)
 }
 
 #endif				/* _KERNEL */
-#endif				/* !_VM_PAGE_ */
+#endif				/* !_VM_VM_PAGE_H_ */

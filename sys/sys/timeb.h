@@ -37,11 +37,15 @@
  *
  *	@(#)timeb.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/timeb.h,v 1.6.2.1 2001/12/10 20:33:59 dwmalone Exp $
- * $DragonFly: src/sys/sys/timeb.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/timeb.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_TIMEB_H_
 #define _SYS_TIMEB_H_
+
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 
 /* The ftime(2) system call structure -- deprecated. */
 struct timeb {
@@ -52,7 +56,10 @@ struct timeb {
 };
 
 #ifndef _KERNEL
+
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 int ftime (struct timeb *);

@@ -1,8 +1,12 @@
 /*	$KAME: sctp_asconf.h,v 1.7 2004/08/17 04:06:16 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_asconf.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_asconf.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
 #ifndef _NETINET_SCTP_ASCONF_H_
 #define _NETINET_SCTP_ASCONF_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -32,9 +36,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <sys/malloc.h>
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
+
+struct mbuf;
+struct sockaddr;
+struct sctp_inpcb;
+struct sctp_asconf_ack_chunk;
+struct sctp_asconf_chunk;
+struct sctp_tcb;
+struct sctp_nets;
+struct ifaddr;
 
 extern void sctp_asconf_cleanup(struct sctp_tcb *, struct sctp_nets *);
 

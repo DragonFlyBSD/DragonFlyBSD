@@ -31,11 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kcore.h,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/sys/sys/kcore.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
 
-#ifndef _SYS_KCORE_H
-#define _SYS_KCORE_H
+#ifndef _SYS_KCORE_H_
+#define _SYS_KCORE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 struct kinfo_file;
 struct file;

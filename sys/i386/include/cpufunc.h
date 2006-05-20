@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.14 2005/08/28 15:27:05 hsu Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.15 2006/05/20 02:42:06 dillon Exp $
  */
 
 /*
@@ -41,7 +41,12 @@
 #ifndef _MACHINE_CPUFUNC_H_
 #define	_MACHINE_CPUFUNC_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 #define readb(va)	(*(volatile u_int8_t *) (va))

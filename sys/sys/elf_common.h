@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.18 2005/07/13 19:40:58 asmodai Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.19 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
 #define _SYS_ELF_COMMON_H_ 1
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * ELF definitions that are independent of architecture or word size.

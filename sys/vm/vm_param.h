@@ -62,17 +62,22 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_param.h,v 1.13.2.1 2001/11/03 01:41:10 ps Exp $
- * $DragonFly: src/sys/vm/vm_param.h,v 1.3 2006/04/01 22:20:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_param.h,v 1.4 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
  *	Machine independent virtual memory parameters.
  */
 
-#ifndef	_VM_PARAM_
-#define	_VM_PARAM_
+#ifndef	_VM_VM_PARAM_H_
+#define	_VM_VM_PARAM_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>
+#endif
 
 /*
  * CTL_VM identifiers
@@ -128,4 +133,4 @@ extern	u_quad_t maxssiz;
 extern	u_quad_t sgrowsiz;
 #endif				/* _KERNEL */
 #endif				/* ASSEMBLER */
-#endif				/* _VM_PARAM_ */
+#endif				/* _VM_VM_PARAM_H_ */

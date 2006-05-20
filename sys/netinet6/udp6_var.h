@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/udp6_var.h,v 1.3.2.1 2000/07/15 07:14:38 kris Exp $
- * $DragonFly: src/sys/netinet6/udp6_var.h,v 1.4 2003/08/23 11:02:46 rob Exp $
+ * $DragonFly: src/sys/netinet6/udp6_var.h,v 1.5 2006/05/20 02:42:12 dillon Exp $
  */
 
 /*
@@ -69,9 +69,19 @@
 #define _NETINET6_UDP6_VAR_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+
 SYSCTL_DECL(_net_inet6_udp6);
 
 extern struct	pr_usrreqs udp6_usrreqs;
+
+struct thread;
+struct mbuf;
+struct inpcb;
+struct sockaddr;
 
 void	udp6_ctlinput (int, struct sockaddr *, void *);
 int	udp6_input (struct mbuf **, int *, int);

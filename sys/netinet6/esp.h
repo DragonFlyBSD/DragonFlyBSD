@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp.h,v 1.2.2.3 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp.h,v 1.6 2004/10/16 23:24:24 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: esp.h,v 1.19 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -38,6 +38,10 @@
 #ifndef _NETINET6_ESP_H_
 #define _NETINET6_ESP_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 #if defined(_KERNEL) && !defined(_LKM)
 #include "opt_inet.h"
 #endif
@@ -69,7 +73,10 @@ struct esptail {
 };
 
 #ifdef _KERNEL
+
+struct mbuf;
 struct secasvar;
+struct ipsecrequest;
 
 struct esp_algorithm {
 	size_t padbound;	/* pad boundary, in byte */

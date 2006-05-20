@@ -35,14 +35,21 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.16 2005/08/07 03:17:37 hmp Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.17 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
 #define	_SYS_SYSCTL_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS__POSIX_H_
 #include <sys/_posix.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 /*
  * Definitions for sysctl call.  The sysctl call uses a hierarchical name

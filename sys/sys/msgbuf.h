@@ -32,11 +32,15 @@
  *
  *	@(#)msgbuf.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/msgbuf.h,v 1.14.2.1 2001/01/16 12:26:21 phk Exp $
- * $DragonFly: src/sys/sys/msgbuf.h,v 1.4 2005/10/27 00:07:17 dillon Exp $
+ * $DragonFly: src/sys/sys/msgbuf.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_MSGBUF_H_
 #define _SYS_MSGBUF_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 struct	msgbuf {
 #define	MSG_MAGIC	0x063062

@@ -14,15 +14,30 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/sys/aio.h,v 1.13.2.8 2002/08/31 03:18:23 alc Exp $
- * $DragonFly: src/sys/sys/aio.h,v 1.3 2004/09/16 04:42:55 dillon Exp $
+ * $DragonFly: src/sys/sys/aio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_AIO_H_
 #define	_SYS_AIO_H_
 
-#include <sys/time.h>
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
+#ifndef _SYS_SIGNAL_H_
 #include <sys/signal.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_CALLOUT_H_
+#include <sys/callout.h>
+#endif
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
+#endif
 
 /*
  * Returned by aio_cancel:

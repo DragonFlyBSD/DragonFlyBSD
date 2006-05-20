@@ -32,20 +32,27 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.17 2006/05/06 06:38:39 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.18 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
 #define	_SYS_FILE_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_FCNTL_H_
 #include <sys/fcntl.h>
+#endif
+#ifndef _SYS_UNISTD_H_
 #include <sys/unistd.h>
 #endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 struct stat;
 struct proc;

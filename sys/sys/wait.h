@@ -32,7 +32,7 @@
  *
  *	@(#)wait.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/wait.h,v 1.11 1999/12/29 04:24:50 peter Exp $
- * $DragonFly: src/sys/sys/wait.h,v 1.4 2004/09/23 16:11:47 joerg Exp $
+ * $DragonFly: src/sys/sys/wait.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_WAIT_H_
@@ -91,7 +91,9 @@
 #define	WAIT_ANY	(-1)	/* any process */
 #define	WAIT_MYPGRP	0	/* any process in my process group */
 
+#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
+#endif
 
 /*
  * Deprecated:
@@ -148,8 +150,12 @@ union wait {
 #endif /* _POSIX_SOURCE */
 
 #ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 struct rusage;	/* forward declaration */

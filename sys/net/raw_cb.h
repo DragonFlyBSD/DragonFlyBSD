@@ -32,13 +32,24 @@
  *
  *	@(#)raw_cb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.h,v 1.12 1999/12/29 04:38:37 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.h,v 1.5 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/raw_cb.h,v 1.6 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_RAW_CB_H_
 #define _NET_RAW_CB_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_RESOURCE_H_
+#include <sys/resource.h>
+#endif
+#ifndef _SYS_MBUF_H_
+#include <sys/mbuf.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
 
 /*
  * Raw protocol interface control block.  Used

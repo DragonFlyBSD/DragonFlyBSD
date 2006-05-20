@@ -30,11 +30,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bootinfo.h,v 1.14 1999/12/29 04:32:57 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/bootinfo.h,v 1.4 2004/03/04 01:37:53 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/bootinfo.h,v 1.5 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef	_MACHINE_BOOTINFO_H_
 #define	_MACHINE_BOOTINFO_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /* Only change the version number if you break compatibility. */
 #define	BOOTINFO_VERSION	1

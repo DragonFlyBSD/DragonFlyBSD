@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arc.h,v 1.13 1999/11/19 20:41:19 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_arc.h,v 1.2.2.3 2003/01/28 11:19:05 fjoe Exp $ */
-/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.5 2005/11/28 17:13:45 dillon Exp $ */
+/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.6 2006/05/20 02:42:08 dillon Exp $ */
 
 /*
  * Copyright (c) 1982, 1986, 1993
@@ -40,6 +40,13 @@
 
 #ifndef _NET_IF_ARC_H_
 #define _NET_IF_ARC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NET_IF_VAR_H_
+#include <net/if_var.h>
+#endif
 
 /*
  * Arcnet address - 1 octets

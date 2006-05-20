@@ -1,8 +1,8 @@
 /*	$KAME: sctp_output.h,v 1.13 2004/08/17 04:06:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_output_h__
-#define __sctp_output_h__
+#ifndef _NETINET_SCTP_OUTPUT_H_
+#define _NETINET_SCTP_OUTPUT_H_
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -33,10 +33,19 @@
  * SUCH DAMAGE.
  */
 
-
-
+#ifndef _NETINET_SCTP_HEADER_H_
 #include <netinet/sctp_header.h>
+#endif
+
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
+
+struct mbuf;
+struct route;
+struct socket;
+struct sctp_tcb;
+struct sctp_inpcb;
+struct sctp_association;
+
 void sctp_send_initiate(struct sctp_inpcb *, struct sctp_tcb *);
 
 void sctp_send_initiate_ack(struct sctp_inpcb *, struct sctp_tcb *,

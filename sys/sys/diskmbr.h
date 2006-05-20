@@ -32,13 +32,18 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD$
- * $DragonFly: src/sys/sys/diskmbr.h,v 1.2 2004/04/21 02:32:41 cpressey Exp $
+ * $DragonFly: src/sys/sys/diskmbr.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_DISKMBR_H_
 #define	_SYS_DISKMBR_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define	DOSBBSECTOR	0	/* DOS boot block relative sector number */
 #define	DOSPARTOFF	446

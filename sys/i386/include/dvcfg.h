@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
-/* $DragonFly: src/sys/i386/include/Attic/dvcfg.h,v 1.5 2005/12/24 20:34:04 swildner Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/dvcfg.h,v 1.6 2006/05/20 02:42:06 dillon Exp $ */
 /*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
@@ -35,6 +35,10 @@
 
 #ifndef _MACHINE_DVCFG_H_
 #define _MACHINE_DVCFG_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 typedef void *dvcfg_hw_t;
 

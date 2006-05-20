@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah.h,v 1.3.2.3 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah.h,v 1.5 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah.h,v 1.6 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ah.h,v 1.16 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -38,6 +38,10 @@
 #ifndef _NETINET6_AH_H_
 #define _NETINET6_AH_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 #if defined(_KERNEL) && !defined(_LKM)
 #include "opt_inet.h"
 #endif
@@ -60,7 +64,10 @@ struct newah {
 };
 
 #ifdef _KERNEL
+
 struct secasvar;
+struct ipsecrequest;
+struct mbuf;
 
 struct ah_algorithm_state {
 	struct secasvar *sav;

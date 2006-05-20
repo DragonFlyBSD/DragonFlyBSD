@@ -32,11 +32,15 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.9 2004/02/14 20:34:28 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.10 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
 #define	_MACHINE_TYPES_H_
+
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 typedef struct _physadr {

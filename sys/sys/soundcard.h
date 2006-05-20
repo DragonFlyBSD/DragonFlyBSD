@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/soundcard.h,v 1.33.2.4 2003/06/07 21:31:56 mbr Exp $
- * $DragonFly: src/sys/sys/soundcard.h,v 1.5 2004/09/23 16:13:21 joerg Exp $
+ * $DragonFly: src/sys/sys/soundcard.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_SOUNDCARD_H_
@@ -95,11 +95,15 @@
 #define SNDCARD_UART16550      27
 #define SNDCARD_OPL            28
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
-#ifndef _IOWR
+#endif
+#if !defined(_IOWR) && !defined(_SYS_IOCCOM_H_)
 #include <sys/ioccom.h>
-#endif  /* !_IOWR */
+#endif
 
 /*
  * The first part of this file contains the new FreeBSD sound ioctl

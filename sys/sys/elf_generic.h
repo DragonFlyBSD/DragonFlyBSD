@@ -24,18 +24,24 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_generic.h,v 1.4 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf_generic.h,v 1.4 2004/09/23 16:11:47 joerg Exp $
+ * $DragonFly: src/sys/sys/elf_generic.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_ELF_GENERIC_H_
 #define _SYS_ELF_GENERIC_H_ 1
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
+#include <machine/endian.h>
+#endif
 
 /*
  * Definitions of generic ELF names which relieve applications from
  * needing to know the word size.
  */
+#ifdef __ELF_WORD_SIZE
 
 #if __ELF_WORD_SIZE != 32 && __ELF_WORD_SIZE != 64
 #error "__ELF_WORD_SIZE must be defined as 32 or 64"
@@ -77,5 +83,11 @@ __ElfType(Sym);
 #define ELF_ST_BIND	__ELFN(ST_BIND)
 #define ELF_ST_TYPE	__ELFN(ST_TYPE)
 #define ELF_ST_INFO	__ELFN(ST_INFO)
+
+#else
+
+#warning "must include sys/elf32.h or sy/elf64.h before sys/elf_generic.h"
+
+#endif /* __ELF_WORD_SIZE */
 
 #endif /* !_SYS_ELF_GENERIC_H_ */

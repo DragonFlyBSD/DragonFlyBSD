@@ -7,14 +7,19 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/xrpuio.h,v 1.2 1999/08/28 00:52:12 peter Exp $
- * $DragonFly: src/sys/sys/Attic/xrpuio.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/xrpuio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  *
  */
 
 #ifndef _SYS_XRPUIO_H_
 #define _SYS_XRPUIO_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define XRPU_MAX_PPS	16
 struct xrpu_timecounting {

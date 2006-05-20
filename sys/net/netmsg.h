@@ -27,11 +27,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.2 2004/04/20 01:52:26 dillon Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.3 2006/05/20 02:42:08 dillon Exp $
  */
 
-#ifndef _NETMSG_H_
-#define _NETMSG_H_
+#ifndef _NET_NETMSG_H_
+#define _NET_NETMSG_H_
+
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
+#ifndef _SYS_PROTOSW_H_
+#include <sys/protosw.h>
+#endif
 
 /*
  * User protocol requests messages.

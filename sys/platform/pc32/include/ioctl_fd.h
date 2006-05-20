@@ -25,16 +25,18 @@
  * DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ioctl_fd.h,v 1.13.2.1 2001/07/19 13:16:54 joerg Exp $
- * $DragonFly: src/sys/platform/pc32/include/ioctl_fd.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/ioctl_fd.h,v 1.3 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef	_MACHINE_IOCTL_FD_H_
 #define	_MACHINE_IOCTL_FD_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define FD_FORMAT_VERSION 110	/* used to validate before formatting */
 #define FD_MAX_NSEC 36		/* highest known number of spt - allow for */

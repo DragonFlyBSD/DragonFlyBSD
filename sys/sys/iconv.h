@@ -30,10 +30,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/iconv.h,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/sys/iconv.h,v 1.3 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/sys/iconv.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 #ifndef _SYS_ICONV_H_
 #define _SYS_ICONV_H_
+
+#ifndef _SYS_MODULE_H_
+#include <sys/module.h>
+#endif
 
 #define	ICONV_CSNMAXLEN		31	/* maximum length of charset name */
 #define	ICONV_CNVNMAXLEN	31	/* maximum length of converter name */

@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_var.h,v 1.6 2003/11/25 06:40:55 ono Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_var.h,v 1.3 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_var.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2004 Cisco Systems, Inc.
@@ -36,6 +36,19 @@
 #define _NETINET6_SCTP6_VAR_H_
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
+
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+#ifndef _SYS_PROTOSW_H_
+#include <sys/protosw.h>
+#endif
+
+struct mbuf;
+struct proc;
+struct socket;
+struct sockopt;
+struct sctp_inpcb;
 
 #if defined(__FreeBSD__) || (__APPLE__) || defined(__DragonFly__)
 SYSCTL_DECL(_net_inet6_sctp6);

@@ -82,11 +82,22 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.18 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.19 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_ROUTE_H_
 #define _NET_ROUTE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+
 
 /*
  * Kernel resident routing tables.

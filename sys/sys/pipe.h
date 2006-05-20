@@ -19,20 +19,26 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.7 2005/03/01 23:35:16 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
 #define _SYS_PIPE_H_
 
-#ifndef _KERNEL
-#include <sys/time.h>			/* for struct timespec */
-#include <sys/select.h>			/* for struct selinfo */
-#include <machine/param.h>		/* for PAGE_SIZE */
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
 #endif
-
-#if !defined(_SYS_XIO_H_)
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>			/* for struct timespec */
+#endif
+#ifndef _SYS_SELECT_H_
+#include <sys/select.h>			/* for struct selinfo */
+#endif
+#ifndef _SYS_XIO_H_
 #include <sys/xio.h>			/* for struct xio */
+#endif
+#ifndef _MACHINE_PARAM_H_
+#include <machine/param.h>		/* for PAGE_SIZE */
 #endif
 
 /*

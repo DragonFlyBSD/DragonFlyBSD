@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_watch.h,v 1.11 1999/08/28 00:41:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_watch.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_watch.h,v 1.3 2006/05/20 02:42:01 dillon Exp $
  */
 
 /*
@@ -34,6 +34,13 @@
 
 #ifndef _DDB_DB_WATCH_H_
 #define	_DDB_DB_WATCH_H_
+
+#ifndef _DDB_DDB_H_
+#include <ddb/ddb.h>
+#endif
+#ifndef _VM_VM_MAP_H_
+#include <vm/vm_map.h>
+#endif
 
 /*
  * Watchpoint.

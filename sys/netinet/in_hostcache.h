@@ -27,11 +27,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_hostcache.h,v 1.3 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/in_hostcache.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/Attic/in_hostcache.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IN_HOSTCACHE_H
-#define	_NETINET_IN_HOSTCACHE_H	1
+#define	_NETINET_IN_HOSTCACHE_H
+
+#ifndef _NET_HOSTCACHE_H_
+#include <net/hostcache.h>
+#endif
 
 /*
  * This file defines the particular structures contained in the host cache
@@ -59,6 +63,8 @@ struct in_hcentry {
 	u_long	inhc_ccsent;	/* as above */
 	u_short	inhc_mssopt;
 };
+
+struct sockaddr_in;
 
 #define	inhc_addr(inhc)	((struct sockaddr_in *)(inhc)->inhc_hc.hc_host)
 

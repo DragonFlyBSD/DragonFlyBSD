@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.9 2004/08/25 01:53:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.10 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -68,6 +68,16 @@
 
 #ifndef _NETINET6_IP6_VAR_H_
 #define _NETINET6_IP6_VAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 /*
  * IP6 reassembly queue structure.  Each fragment
@@ -289,16 +299,18 @@ extern int	ip6_use_tempaddr; /* whether to use temporary addresses. */
 extern struct pfil_head inet6_pfil_hook;
 
 extern struct	pr_usrreqs rip6_usrreqs;
-struct sockopt;
 
+struct proc;
 struct inpcb;
+struct sockopt;
+struct in6_ifaddr;
+struct ip6_hdr;
+struct netmsg;
 
 int	icmp6_ctloutput (struct socket *, struct sockopt *sopt);
 
-struct in6_ifaddr;
 void	ip6_init (void);
 void	ip6intr (void);
-struct netmsg;
 struct in6_ifaddr *ip6_getdstifaddr (struct mbuf *);
 void	ip6_freepcbopts (struct ip6_pktopts *);
 void	ip6_freemoptions (struct ip6_moptions *);

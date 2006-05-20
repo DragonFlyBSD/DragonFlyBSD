@@ -37,11 +37,15 @@
  *
  *	@(#)acct.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/acct.h,v 1.12 1999/12/29 04:24:36 peter Exp $
- * $DragonFly: src/sys/sys/acct.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/acct.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_ACCT_H_
 #define _SYS_ACCT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Accounting structures; these use a comp_t type which is a 3 bits base 8

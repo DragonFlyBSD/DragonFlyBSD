@@ -32,11 +32,18 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.6 2003/08/20 07:31:22 rob Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_
 #define	_SYS_UCRED_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
 
 struct prison;
 

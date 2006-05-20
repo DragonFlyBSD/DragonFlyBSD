@@ -26,10 +26,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eui64.h,v 1.1 2004/05/26 22:58:06 brooks Exp $
- * $DragonFly: src/sys/sys/eui64.h,v 1.1 2004/09/23 06:33:04 simokawa Exp $
+ * $DragonFly: src/sys/sys/eui64.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
-#ifndef _SYS_EUI64_H
-#define _SYS_EUI64_H
+#ifndef _SYS_EUI64_H_
+#define _SYS_EUI64_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Size of the ASCII representation of an EUI-64.
@@ -55,4 +59,4 @@ int	eui64_ntohost(char *, size_t, const struct eui64 *);
 int	eui64_hostton(const char *, struct eui64 *);
 #endif /* !_KERNEL */
 
-#endif /* !_SYS_EUI64_H */
+#endif /* !_SYS_EUI64_H_ */

@@ -32,11 +32,15 @@
  *
  *	@(#)clist.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/sys/sys/clist.h,v 1.10 1999/12/29 04:24:38 peter Exp $
- * $DragonFly: src/sys/sys/clist.h,v 1.4 2004/10/07 01:33:31 dillon Exp $
+ * $DragonFly: src/sys/sys/clist.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_CLIST_H_
 #define _SYS_CLIST_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #define CBLOCK	128		/* Clist block size, must be a power of 2. */
 #define CBQSIZE	(CBLOCK/NBBY)	/* Quote bytes/cblock - can do better. */

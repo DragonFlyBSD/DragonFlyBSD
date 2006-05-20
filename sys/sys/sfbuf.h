@@ -23,11 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.8 2005/03/02 18:42:09 hmp Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SFBUF_H_
 #define _SFBUF_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

@@ -32,11 +32,18 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.8 2004/07/27 19:18:50 drhodus Exp $
+ * $DragonFly: src/sys/sys/resource.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
 #define	_SYS_RESOURCE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
 
 /*
  * Process priority specifications to get/setpriority.

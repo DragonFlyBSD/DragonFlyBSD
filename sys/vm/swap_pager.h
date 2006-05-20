@@ -37,7 +37,7 @@
  *
  *	from: @(#)swap_pager.h	7.1 (Berkeley) 12/5/90
  * $FreeBSD: src/sys/vm/swap_pager.h,v 1.28.2.1 2000/10/13 07:13:23 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.h,v 1.3 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/swap_pager.h,v 1.4 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
@@ -45,8 +45,15 @@
  * 18 Dec 93.
  */
 
-#ifndef	_SWAP_PAGER_
-#define	_SWAP_PAGER_	1
+#ifndef	_VM_SWAP_PAGER_H_
+#define	_VM_SWAP_PAGER_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _VM_VM_OBJECT_H_
+#include <vm/vm_object.h>
+#endif
 
 /*
  * SWB_NPAGES must be a power of 2.  It may be set to 1, 2, 4, 8, or 16
@@ -108,4 +115,4 @@ void swstrategy (struct buf *bp);	/* probably needs to move elsewhere */
 
 #endif
 
-#endif				/* _SWAP_PAGER_ */
+#endif				/* _VM_SWAP_PAGER_H_ */

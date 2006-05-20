@@ -12,11 +12,11 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.h,v 1.13.2.2 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.h,v 1.7 2005/09/21 19:48:05 hsu Exp $
+ * $DragonFly: src/sys/vm/vm_zone.h,v 1.8 2006/05/20 02:42:15 dillon Exp $
  */
 
-#ifndef _SYS_ZONE_H
-#define _SYS_ZONE_H
+#ifndef _VM_VM_ZONE_H_
+#define _VM_VM_ZONE_H_
 
 #define ZONE_INTERRUPT 0x0001	/* If you need to allocate at int time */
 #define ZONE_PANICFAIL 0x0002	/* panic if the zalloc fails */
@@ -58,4 +58,4 @@ void		zfree (vm_zone_t z, void *item);
 void		zbootinit (vm_zone_t z, char *name, int size, void *item,
 			       int nitems);
 
-#endif
+#endif	/* _VM_VM_ZONE_H_ */

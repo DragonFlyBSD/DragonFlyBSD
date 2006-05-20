@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/perfmon.h,v 1.7 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/perfmon.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/include/Attic/perfmon.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  */
 
 /*
@@ -37,11 +37,13 @@
 
 #ifndef	_MACHINE_PERFMON_H_
 #define	_MACHINE_PERFMON_H_
- 
-#ifndef _KERNEL
+
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define	NPMC	2
 

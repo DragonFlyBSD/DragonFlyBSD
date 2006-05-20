@@ -82,11 +82,18 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.13 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.14 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
 #define _NETINET_UDP_VAR_H_
+
+#ifndef _NETINET_IP_VAR_H_
+#include <netinet/ip_var.h>
+#endif
+#ifndef _NETINET_UDP_H_
+#include <netinet/udp.h>
+#endif
 
 /*
  * UDP kernel structures and variables.

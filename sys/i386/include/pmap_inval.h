@@ -31,11 +31,15 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/include/Attic/pmap_inval.h,v 1.2 2004/07/16 05:48:46 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/pmap_inval.h,v 1.3 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_INVAL_H_
 #define	_MACHINE_PMAP_INVAL_H_
+
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
 
 typedef struct pmap_inval_info {
     int			pir_flags;
@@ -49,6 +53,10 @@ typedef pmap_inval_info *pmap_inval_info_t;
 #define PIRF_CPUSYNC	0x0004	/* cpusync is currently active */
 
 #ifdef _KERNEL
+
+#ifndef _MACHINE_PMAP_H_
+#include <machine/pmap.h>
+#endif
 
 void pmap_inval_init(pmap_inval_info_t);
 void pmap_inval_add(pmap_inval_info_t, pmap_t, vm_offset_t);

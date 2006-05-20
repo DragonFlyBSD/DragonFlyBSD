@@ -32,11 +32,21 @@
  *
  *	@(#)icmp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/icmp_var.h,v 1.15.2.2 2001/12/07 09:23:11 ru Exp $
- * $DragonFly: src/sys/netinet/icmp_var.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/icmp_var.h,v 1.6 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_ICMP_VAR_H_
 #define _NETINET_ICMP_VAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+#ifndef _NETINET_IP_ICMP_H_
+#include <netinet/ip_icmp.h>
+#endif
 
 #ifdef _KERNEL
 #include "opt_icmp_bandlim.h"		/* for ICMP_BANDLIM     */

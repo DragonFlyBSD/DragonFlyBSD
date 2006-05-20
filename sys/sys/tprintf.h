@@ -32,11 +32,15 @@
  *
  *	@(#)tprintf.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/tprintf.h,v 1.9 1999/08/28 00:52:06 peter Exp $
- * $DragonFly: src/sys/sys/tprintf.h,v 1.4 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/tprintf.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_TPRINTF_H_
 #define _SYS_TPRINTF_H_
+
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
 
 #if !defined(_KERNEL)
 #error "This file should not be included by userland programs."

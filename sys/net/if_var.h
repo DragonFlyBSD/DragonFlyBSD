@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.34 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.35 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -40,6 +40,9 @@
 
 #ifndef _SYS_SERIALIZE_H_
 #include <sys/serialize.h>
+#endif
+#ifndef _NET_IF_H_
+#include <net/if.h>
 #endif
 
 /*

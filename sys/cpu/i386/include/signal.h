@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.5 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.6 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGNAL_H_
@@ -52,7 +52,13 @@ typedef int sig_atomic_t;
  * be banned, or the option should be fixed to not screw up relative-path
  * includes.
  */
+
+#ifndef _SYS_SIGNAL_H_
+#include <sys/signal.h>
+#endif
+#ifndef _MACHINE_TRAP_H_
 #include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
+#endif
 
 /*
  * Information pushed on stack when a signal is delivered.

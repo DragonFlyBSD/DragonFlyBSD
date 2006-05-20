@@ -34,11 +34,11 @@
  * procfs ioctl definitions.
  *
  * $FreeBSD: src/sys/sys/pioctl.h,v 1.8 1999/08/28 00:51:55 peter Exp $
- * $DragonFly: src/sys/sys/pioctl.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/pioctl.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
-#ifndef _SYS_PIOCTL_H
-# define _SYS_PIOCTL_H
+#ifndef _SYS_PIOCTL_H_
+#define _SYS_PIOCTL_H_
 
 # include <sys/ioccom.h>
 
@@ -75,4 +75,5 @@ struct procfs_status {
 
 # define PF_LINGER	0x01	/* Keep stops around after last close */
 # define PF_ISUGID	0x02	/* Ignore UID/GID changes */
+
 #endif 

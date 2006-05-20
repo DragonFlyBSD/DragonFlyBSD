@@ -24,16 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.6 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
 #define	_SYS_DISKSLICE_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define	BASE_SLICE		2
 #define	COMPATIBILITY_SLICE	0

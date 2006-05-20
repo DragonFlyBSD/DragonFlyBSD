@@ -36,11 +36,18 @@
  *
  *	@(#)igmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/igmp.h,v 1.10 1999/08/28 00:49:15 peter Exp $
- * $DragonFly: src/sys/netinet/igmp.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/igmp.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IGMP_H_
 #define _NETINET_IGMP_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 /*
  * Internet Group Management Protocol (IGMP) definitions.

@@ -26,13 +26,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/ucontext.h,v 1.4 1999/10/11 20:33:17 luoqi Exp $
- * $DragonFly: src/sys/sys/ucontext.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/ucontext.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UCONTEXT_H_
 #define	_SYS_UCONTEXT_H_
 
+#ifndef _SYS_SIGNAL_H_
+#include <sys/signal.h>
+#endif
+#ifndef _MACHINE_UCONTEXT_H_
 #include <machine/ucontext.h>
+#endif
 
 typedef struct __ucontext {
 	/*

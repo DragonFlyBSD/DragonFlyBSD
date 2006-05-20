@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/iso88025.h,v 1.3.2.2 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/iso88025.h,v 1.5 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/iso88025.h,v 1.6 2006/05/20 02:42:08 dillon Exp $
  *
  * Information gathered from tokenring@freebsd, /sys/net/ethernet.h and
  * the Mach token ring driver.
@@ -43,6 +43,10 @@
 
 #ifndef _NET_ISO88025_H_
 #define _NET_ISO88025_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * General ISO 802.5 definitions
@@ -127,6 +131,7 @@ struct	iso88025_addr {
 #define senderr(e) { error = (e); goto bad;}
 
 struct lwkt_serialize;
+struct ifnet;
 
 void	iso88025_ifattach (struct ifnet *, struct lwkt_serialize *);
 int	iso88025_ioctl (struct ifnet *, int , caddr_t );

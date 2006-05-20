@@ -24,13 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/smb.h,v 1.3 1999/08/28 00:44:24 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/smb.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smb.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
  *
  */
 #ifndef _MACHINE_SMB_H_
 #define _MACHINE_SMB_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 struct smbcmd {
 	char cmd;

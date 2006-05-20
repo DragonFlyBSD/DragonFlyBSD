@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp.h,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.5 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.6 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ipcomp.h,v 1.11 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -38,6 +38,10 @@
 #ifndef _NETINET6_IPCOMP_H_
 #define _NETINET6_IPCOMP_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 #if defined(_KERNEL) && !defined(_LKM)
 #include "opt_inet.h"
 #endif
@@ -57,13 +61,16 @@ struct ipcomp {
 #define IPCOMP_CPI_NEGOTIATE_MIN	256
 
 #ifdef _KERNEL
+
+struct mbuf;
+struct ipsecrequest;
+
 struct ipcomp_algorithm {
 	int (*compress) (struct mbuf *, struct mbuf *, size_t *);
 	int (*decompress) (struct mbuf *, struct mbuf *, size_t *);
 	size_t minplen;		/* minimum required length for compression */
 };
 
-struct ipsecrequest;
 extern const struct ipcomp_algorithm *ipcomp_algorithm_lookup (int);
 extern void ipcomp4_input (struct mbuf *, ...);
 extern int ipcomp4_output (struct mbuf *, struct ipsecrequest *);

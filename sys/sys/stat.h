@@ -33,19 +33,21 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.8 2005/08/25 18:34:17 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
 #define	_SYS_STAT_H_
 
-#if !defined(_KERNEL) && !defined(_POSIX_SOURCE)
+#if !defined(_POSIX_SOURCE)
 /*
  * XXX we need this for struct timespec.  We get miscellaneous namespace
  * pollution with it.
  */
+#ifndef _SYS_TIME_H_
 #include <sys/time.h>
 #endif
+#endif	/* _POSIX_SOURCE */
 
 #ifdef _KERNEL
 #define __dev_t	udev_t

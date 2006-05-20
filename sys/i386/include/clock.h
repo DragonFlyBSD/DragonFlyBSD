@@ -4,13 +4,18 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/include/Attic/clock.h,v 1.7 2006/01/25 19:56:18 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/clock.h,v 1.8 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
 #define	_MACHINE_CLOCK_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 /*
  * i386 to clock driver interface.
  * XXX large parts of the driver and its interface are misplaced.

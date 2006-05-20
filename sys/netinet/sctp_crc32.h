@@ -1,8 +1,8 @@
 /*	$KAME: sctp_crc32.h,v 1.4 2003/11/25 06:40:52 ono Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_crc32.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_crc32.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __crc32c_h__
-#define __crc32c_h__
+#ifndef _NETINET_SCTP_CRC32_H_
+#define _NETINET_SCTP_CRC32_H_
 
 /*
  * Copyright (c) 2001, 2002, 2004 Cisco Systems, Inc.
@@ -36,7 +36,9 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
 
 #ifndef SCTP_USE_ADLER32
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
@@ -46,4 +48,4 @@ u_int32_t sctp_csum_finalize(u_int32_t);
 
 #endif /* _KERNEL */
 #endif /* !SCTP_USE_ADLER32 */
-#endif /* __crc32c_h__ */
+#endif /* _NETINET_SCTP_CRC32_H_ */

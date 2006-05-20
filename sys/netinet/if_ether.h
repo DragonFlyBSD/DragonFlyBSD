@@ -32,14 +32,21 @@
  *
  *	@(#)if_ether.h	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/sys/netinet/if_ether.h,v 1.24.2.1 2002/02/13 21:38:56 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.h,v 1.6 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IF_ETHER_H_
 #define _NETINET_IF_ETHER_H_
 
+#ifndef _NET_ETHERNET_H_
 #include <net/ethernet.h>
+#endif
+#ifndef _NET_IF_ARP_H_
 #include <net/if_arp.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 /*
  * Macro to map an IP multicast address to an Ethernet multicast address.

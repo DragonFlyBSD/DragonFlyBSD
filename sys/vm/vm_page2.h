@@ -32,11 +32,11 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page2.h,v 1.1 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page2.h,v 1.2 2006/05/20 02:42:15 dillon Exp $
  */
 
-#ifndef _VM_VMPAGE2_H_
-#define _VM_VMPAGE2_H_
+#ifndef _VM_VM_PAGE2_H_
+#define _VM_VM_PAGE2_H_
 
 #ifndef _SYS_VMMETER_H_
 #include <sys/vmmeter.h>
@@ -132,5 +132,5 @@ vm_paging_needed(void)
 }
 
 #endif	/* _KERNEL */
-#endif
+#endif	/* _VM_VM_PAGE2_H_ */
 

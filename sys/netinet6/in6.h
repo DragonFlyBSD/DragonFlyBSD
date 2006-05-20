@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -72,6 +72,10 @@
 
 #ifndef _NETINET6_IN6_H_
 #define _NETINET6_IN6_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Identification of the network protocol stack
@@ -581,7 +585,13 @@ struct in6_pktinfo {
 #define	M_AUTHIPDGM	M_PROTO5
 
 #ifdef _KERNEL
+
+struct mbuf;
+struct ifnet;
 struct cmsghdr;
+struct sockaddr;
+struct sockaddr_in;
+struct sockaddr_in6;
 
 int	in6_cksum (struct mbuf *, u_int8_t, u_int32_t, u_int32_t);
 int	in6_localaddr (struct in6_addr *);

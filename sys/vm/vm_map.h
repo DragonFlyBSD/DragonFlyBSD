@@ -62,17 +62,32 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.21 2006/05/17 17:47:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.22 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
  *	Virtual memory map module definitions.
  */
 
-#ifndef	_VM_MAP_
-#define	_VM_MAP_
+#ifndef	_VM_VM_MAP_H_
+#define	_VM_VM_MAP_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TREE_H_
 #include <sys/tree.h>
+#endif
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
+#ifndef _VM_VM_H_
+#include <vm/vm.h>
+#endif
+#ifndef _MACHINE_PMAP_H_
+#include <machine/pmap.h>
+#endif
+
 struct vm_map_rb_tree;
 RB_PROTOTYPE(vm_map_rb_tree, vm_map_entry, rb_entry, rb_vm_map_compare);
 
@@ -429,4 +444,4 @@ int vmspace_swap_count (struct vmspace *vmspace);
 void vm_map_set_wired_quick(vm_map_t map, vm_offset_t addr, vm_size_t size, int *);
 
 #endif
-#endif				/* _VM_MAP_ */
+#endif				/* _VM_VM_MAP_H_ */

@@ -1,6 +1,6 @@
 /*      $NetBSD: if_atm.h,v 1.7 1996/11/09 23:02:27 chuck Exp $       */
 /* $FreeBSD: src/sys/net/if_atm.h,v 1.4 1999/12/29 04:38:34 peter Exp $ */
-/* $DragonFly: src/sys/net/if_atm.h,v 1.7 2005/11/28 17:13:45 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_atm.h,v 1.8 2006/05/20 02:42:08 dillon Exp $ */
 
 /*
  *
@@ -37,6 +37,17 @@
 /*
  * net/if_atm.h
  */
+
+#ifndef _NET_IF_ATM_H_
+#define _NET_IF_ATM_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NET_IF_H_
+#include <net/if.h>
+#endif
+
 
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
 #define RTALLOC1(A,B)		rtalloc1((A), (B))
@@ -111,3 +122,4 @@ int	atm_output (struct ifnet *, struct mbuf *, struct sockaddr *,
 		struct rtentry *);
 #endif
 
+#endif	/* _NET_IF_ATM_H_ */

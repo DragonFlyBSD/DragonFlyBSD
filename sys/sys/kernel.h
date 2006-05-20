@@ -40,13 +40,18 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.19 2006/01/25 19:56:23 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.20 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
 #define _SYS_KERNEL_H_
 
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_LINKER_SET_H_
 #include <sys/linker_set.h>
+#endif
 
 #ifdef _KERNEL
 

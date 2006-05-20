@@ -1,6 +1,6 @@
 /* MD5.H - header file for MD5C.C
  * $FreeBSD: src/sys/sys/md5.h,v 1.13 1999/12/29 04:24:44 peter Exp $
- * $DragonFly: src/sys/sys/md5.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/md5.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -27,6 +27,11 @@ documentation and/or software.
 
 #ifndef _SYS_MD5_H_
 #define _SYS_MD5_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 /* MD5 context. */
 typedef struct MD5Context {
   u_int32_t state[4];	/* state (ABCD) */
@@ -48,4 +53,5 @@ char * MD5Data(const unsigned char *, unsigned int, char *);
 void MD5Transform (u_int32_t [4], const unsigned char [64]);
 #endif
 __END_DECLS
+
 #endif /* _SYS_MD5_H_ */

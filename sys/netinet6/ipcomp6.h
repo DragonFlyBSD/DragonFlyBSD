@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp6.h,v 1.1.2.2 2001/07/03 11:01:54 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp6.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ipcomp.h,v 1.8 2000/09/26 07:55:14 itojun Exp $	*/
 
 /*
@@ -39,9 +39,18 @@
 #define _NETINET6_IPCOMP6_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct mbuf;
+struct ipsecrequest;
+
 extern int ipcomp6_input (struct mbuf **, int *, int);
 extern int ipcomp6_output (struct mbuf *, u_char *, struct mbuf *,
 	struct ipsecrequest *);
+
 #endif /*KERNEL*/
 
 #endif /*_NETINET6_IPCOMP6_H_*/

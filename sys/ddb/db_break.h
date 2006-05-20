@@ -24,15 +24,23 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.h,v 1.12 1999/08/28 00:41:06 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.h,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_break.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 /*
  *	Author: David B. Golub, Carnegie Mellon University
  *	Date:	7/90
  */
+
 #ifndef _DDB_DB_BREAK_H_
 #define	_DDB_DB_BREAK_H_
+
+#ifndef _DDB_DDB_H_
+#include <ddb/ddb.h>
+#endif
+#ifndef _VM_VM_MAP_H_
+#include <vm/vm_map.h>
+#endif
 
 /*
  * Breakpoint.
@@ -51,6 +59,8 @@ struct db_breakpoint {
 };
 typedef struct db_breakpoint *db_breakpoint_t;
 
+#ifdef _KERNEL
+
 void		db_clear_breakpoints (void);
 #ifdef SOFTWARE_SSTEP
 void		db_delete_temp_breakpoint (db_breakpoint_t);
@@ -59,6 +69,8 @@ db_breakpoint_t	db_find_breakpoint_here (db_addr_t addr);
 void		db_set_breakpoints (void);
 #ifdef SOFTWARE_SSTEP
 db_breakpoint_t	db_set_temp_breakpoint (db_addr_t);
+#endif
+
 #endif
 
 #endif /* !_DDB_DB_BREAK_H_ */

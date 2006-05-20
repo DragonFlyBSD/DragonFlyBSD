@@ -31,11 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/upcall.h,v 1.9 2005/10/09 20:12:34 corecode Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
 #define _SYS_UPCALL_H_
+
+struct thread;
+struct lwp;
 
 typedef void (*upcall_func_t)(void *);
 

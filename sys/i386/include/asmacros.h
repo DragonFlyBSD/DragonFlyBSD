@@ -31,13 +31,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.9 2005/11/02 09:35:09 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.10 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
 #define _MACHINE_ASMACROS_H_
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 #ifdef _KERNEL
 

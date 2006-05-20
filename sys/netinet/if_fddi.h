@@ -34,11 +34,15 @@
  *
  *	@(#)if_fddi.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_fddi.h,v 1.8 1999/12/29 04:40:58 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.6 2005/11/28 17:13:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.7 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IF_FDDI_H_
 #define _NETINET_IF_FDDI_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Structure of an 100Mb/s FDDI header.
@@ -79,6 +83,7 @@ struct	fddi_header {
 #define	fddi_sprintf		ether_sprintf
 
 struct lwkt_serialize;
+struct ifnet;
 
 void    fddi_ifattach (struct ifnet *, struct lwkt_serialize *);
 

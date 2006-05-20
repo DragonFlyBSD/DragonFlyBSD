@@ -68,10 +68,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_dma.h,v 1.15.2.2 2002/11/21 23:36:01 sam Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.4 2004/02/16 19:35:53 joerg Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.5 2006/05/20 02:42:06 dillon Exp $ */
 
 #ifndef _I386_BUS_DMA_H_
 #define _I386_BUS_DMA_H_
+
+#ifndef _MACHINE_BUS_AT386_H_
+#include <machine/bus_at386.h>
+#endif
 
 /*
  * Flags used in various bus DMA methods.

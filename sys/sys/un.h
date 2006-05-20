@@ -32,11 +32,15 @@
  *
  *	@(#)un.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/un.h,v 1.17.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/un.h,v 1.4 2003/08/20 07:31:22 rob Exp $
+ * $DragonFly: src/sys/sys/un.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_UN_H_
 #define _SYS_UN_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Definitions for UNIX IPC domain.

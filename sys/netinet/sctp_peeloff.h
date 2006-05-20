@@ -1,8 +1,8 @@
 /*	$KAME: sctp_peeloff.h,v 1.5 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_peeloff.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_peeloff.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_peeloff_h__
-#define __sctp_peeloff_h__
+#ifndef _NETINET_SCTP_PEELOFF_H_
+#define _NETINET_SCTP_PEELOFF_H_
 
 /*
  * Copyright (C) 2002, 2004 Cisco Systems Inc,

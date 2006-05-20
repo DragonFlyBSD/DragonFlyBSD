@@ -62,11 +62,18 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
- * $DragonFly: src/sys/vm/vm_kern.h,v 1.9 2004/07/31 07:52:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.10 2006/05/20 02:42:15 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_
-#define _VM_VM_KERN_H_ 1
+#define _VM_VM_KERN_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _VM_VM_MAP_H_
+#include <vm/vm_map.h>
+#endif
 
 /*
  * kmem_alloc3() flags

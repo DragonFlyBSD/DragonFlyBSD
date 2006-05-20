@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pci_cfgreg.h,v 1.4.2.1 2001/07/28 05:55:07 imp Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.5 2006/05/20 02:42:06 dillon Exp $
  *
  */
 
@@ -47,9 +47,17 @@
 #define CONF2_ENABLE_CHK   0x0e
 #define CONF2_ENABLE_RES   0x0e
 
+#ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 extern int		pci_cfgregopen(void);
 extern u_int32_t	pci_cfgregread(int bus, int slot, int func, int reg, int bytes);
 extern void		pci_cfgregwrite(int bus, int slot, int func, int reg, u_int32_t data, int bytes);
 extern int		pci_cfgintr(int bus, int device, int pin);
+
+#endif
 
 #endif

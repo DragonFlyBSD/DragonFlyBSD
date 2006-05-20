@@ -1,8 +1,8 @@
 /*	$KAME: sctp_structs.h,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_structs.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_structs.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_structs_h__
-#define __sctp_structs_h__
+#ifndef _NETINET_SCTP_STRUCTS_H_
+#define _NETINET_SCTP_STRUCTS_H_
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -35,7 +35,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
 
 #if defined(__APPLE__)
 #include <netinet/sctp_callout.h>
@@ -54,6 +63,9 @@
 
 #include <netinet/sctp_header.h>
 #include <netinet/sctp_uio.h>
+
+struct sctp_tcb;
+struct sctp_inpcb;
 
 struct sctp_timer {
 #if defined(__OpenBSD__)
@@ -286,6 +298,8 @@ struct sctp_asconf_addr {
 	uint8_t	sent;		/* has this been sent yet? */
 };
 
+struct sctp_laddr;
+LIST_HEAD(sctpladdr, sctp_laddr);
 
 /*
  * Here we have information about each individual association that we

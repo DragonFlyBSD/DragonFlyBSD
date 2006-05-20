@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.8 2005/08/12 00:25:10 hmp Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.9 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -130,7 +130,18 @@
 
 #ifndef LOCORE
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>
+#endif
+#ifndef _MACHINE_PARAM_H_
+#include <machine/param.h>
+#endif
 
 /*
  * Address of current and alternate address space page table maps
@@ -187,16 +198,30 @@ pmap_kextract(vm_offset_t va)
 /*
  * Pmap stuff
  */
-struct	pv_entry;
+struct pv_entry;
+struct vm_page;
+struct vm_object;
 
 struct md_page {
 	int pv_list_count;
 	TAILQ_HEAD(,pv_entry)	pv_list;
 };
 
+/*
+ * Each machine dependent implementation is expected to
+ * keep certain statistics.  They may do this anyway they
+ * so choose, but are expected to return the statistics
+ * in the following structure.
+ */
+struct pmap_statistics {
+	long resident_count;    /* # of pages mapped (total) */
+	long wired_count;       /* # of pages wired */
+};
+typedef struct pmap_statistics *pmap_statistics_t;
+
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */
-	vm_object_t		pm_pteobj;	/* Container for pte's */
+	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
 	cpumask_t		pm_active;	/* active on cpus */

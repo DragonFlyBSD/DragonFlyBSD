@@ -24,11 +24,15 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.h,v 1.11 1999/08/28 00:41:06 peter Exp $
- * $DragonFly: src/sys/ddb/db_command.h,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_command.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 #ifndef _DDB_DB_COMMAND_H_
 #define	_DDB_DB_COMMAND_H_
+
+#ifndef _DDB_DDB_H_
+#include <ddb/ddb.h>
+#endif
 
 /*
  *	Author: David B. Golub, Carnegie Mellon University
@@ -38,13 +42,17 @@
  * Command loop declarations.
  */
 
-void	db_command_loop (void);
-
 extern db_addr_t	db_dot;		/* current location */
 extern db_addr_t	db_last_addr;	/* last explicit address typed */
 extern db_addr_t	db_prev;	/* last address examined
 					   or written */
 extern db_addr_t	db_next;	/* next address to be examined
 					   or written */
+
+#ifdef _KERNEL
+
+void	db_command_loop (void);
+
+#endif
 
 #endif /* !_DDB_DB_COMMAND_H_ */

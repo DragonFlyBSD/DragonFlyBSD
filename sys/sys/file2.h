@@ -32,13 +32,17 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file2.h,v 1.5 2006/05/06 06:38:39 dillon Exp $
+ * $DragonFly: src/sys/sys/file2.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_FILE2_H_
 #define	_SYS_FILE2_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/file.h>
+#endif
 
 static __inline void
 fhold(struct file *fp)

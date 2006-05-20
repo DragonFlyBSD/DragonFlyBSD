@@ -34,11 +34,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.h,v 1.2 1999/08/28 00:49:22 peter Exp $
- * $DragonFly: src/sys/netinet/ip_flow.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.h,v 1.3 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IP_FLOW_H
 #define _NETINET_IP_FLOW_H
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _NET_ROUTE_H_
+#include <net/route.h>
+#endif
 
 struct ipflow {
 	LIST_ENTRY(ipflow) ipf_next;	/* next ipflow in bucket */

@@ -1,8 +1,8 @@
 /*	$KAME: sctp_timer.h,v 1.5 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_timer_h__
-#define __sctp_timer_h__
+#ifndef _NETINET_SCTP_TIMER_H_
+#define _NETINET_SCTP_TIMER_H_
 
 /*
  * Copyright (C) 2002, 2004 Cisco Systems Inc,
@@ -34,6 +34,17 @@
  */
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct sctp_nets;
+struct sctp_tcb;
+struct sctp_inpcb;
+struct sctp_association;
+struct sctp_iterator;
+
 struct sctp_nets *sctp_find_alternate_net(struct sctp_tcb *,
 	struct sctp_nets *);
 

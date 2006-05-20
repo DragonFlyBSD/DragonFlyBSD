@@ -24,11 +24,21 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.3 2004/12/30 07:01:52 cpressey Exp $
+ *	$DragonFly: src/sys/sys/eventvar.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
 #define _SYS_EVENTVAR_H_
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_EVENT_H_
+#include <sys/event.h>
+#endif
+#ifndef _SYS_SELECT_H_
+#include <sys/select.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

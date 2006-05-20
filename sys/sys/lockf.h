@@ -35,7 +35,7 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.8 2006/05/08 00:38:59 dillon Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
@@ -45,7 +45,12 @@
 #error "This file should not be included by userland programs."
 #endif
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 struct vop_advlock_args;
 

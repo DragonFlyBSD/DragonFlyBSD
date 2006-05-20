@@ -32,11 +32,21 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.15 2006/03/15 07:58:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.16 2006/05/20 02:42:15 dillon Exp $
  */
 
-#ifndef _VM_EXTERN_H_
-#define	_VM_EXTERN_H_
+#ifndef _VM_VM_EXTERN_H_
+#define	_VM_VM_EXTERN_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _VM_VM_MAP_H_
+#include <vm/vm_map.h>
+#endif
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>
+#endif
 
 struct buf;
 struct proc;
@@ -108,4 +118,4 @@ kmem_alloc (vm_map_t map, vm_size_t size)
 
 #endif				/* _KERNEL */
 
-#endif				/* !_VM_EXTERN_H_ */
+#endif				/* !_VM_VM_EXTERN_H_ */

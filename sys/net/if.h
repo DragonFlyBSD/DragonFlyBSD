@@ -32,22 +32,28 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.15 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.16 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
 #define	_NET_IF_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+
 #ifdef _KERNEL
+
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
 
-/*
- * <net/if.h> does not depend on <sys/time.h> on most other systems.  This
- * helps userland compatibility.  (struct timeval ifi_lastchange)
- */
-#ifndef _KERNEL
-#include <sys/time.h>
 #endif
 
 struct ifnet;

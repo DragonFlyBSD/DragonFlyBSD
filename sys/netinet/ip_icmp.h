@@ -32,11 +32,24 @@
  *
  *	@(#)ip_icmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/ip_icmp.h,v 1.16 1999/12/29 04:41:01 peter Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.7 2005/10/28 15:56:47 liamfoy Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.8 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_IP_ICMP_H_
 #define _NETINET_IP_ICMP_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _NETINET_IN_SYSTM_H_
+#include <netinet/in_systm.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _NETINET_IP_H_
+#include <netinet/ip.h>
+#endif
 
 /*
  * Interface Control Message Protocol Definitions.

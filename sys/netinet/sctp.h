@@ -1,5 +1,5 @@
 /*	$KAME: sctp.h,v 1.17 2004/08/17 04:06:15 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
 #ifndef _NETINET_SCTP_H_
 #define _NETINET_SCTP_H_
@@ -35,7 +35,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
 
 /*
  * SCTP protocol - RFC2960.

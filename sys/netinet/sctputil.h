@@ -1,8 +1,8 @@
 /*	$KAME: sctputil.h,v 1.14 2004/08/17 04:06:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.3 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctputil_h__
-#define __sctputil_h__
+#ifndef _NETINET_SCTPUTIL_H_
+#define _NETINET_SCTPUTIL_H_
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -32,6 +32,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
 
@@ -143,6 +150,21 @@ struct mbuf *sctp_m_copym(struct mbuf *m, int off, int len, int wait);
 /*
  * Function prototypes
  */
+
+struct mbuf;
+struct ip;
+struct sockbuf;
+struct socket;
+struct sockaddr_in6;
+struct sctp_pcb;
+struct sctp_tcb;
+struct sctp_tmit_chunk;
+struct sctpchunk_listhead;
+struct sctphdr;
+struct sctp_inpcb;
+struct sctp_association;
+struct sctp_nets;
+
 struct ifaddr *sctp_find_ifa_by_addr(struct sockaddr *sa);
 
 u_int32_t sctp_select_initial_TSN(struct sctp_pcb *);

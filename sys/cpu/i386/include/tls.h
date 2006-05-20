@@ -28,14 +28,18 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.7 2005/06/03 17:14:50 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/tls.h,v 1.8 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef	_MACHINE_TLS_H_
 #define	_MACHINE_TLS_H_
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_TLS_H_
 #include <sys/tls.h>
+#endif
 
 /*
  * NOTE: the tcb_{self,dtv,pthread,errno) fields must be declared
@@ -64,6 +68,8 @@ struct tls_dtv {
 #define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
 #define	RTLD_STATIC_TLS_EXTRA		256
 #define RTLD_STATIC_TLS_VARIANT_II
+
+#ifndef _KERNEL
 
 /* Get the current TCB. */
 static __inline struct tls_tcb *
@@ -110,5 +116,7 @@ void		 _libc_free_tls(struct tls_tcb *);
 void		 _rtld_call_init(void);
 struct tls_tcb	*_libc_init_tls(void);
 struct tls_tcb	*_init_tls(void);
+
+#endif
 
 #endif	/* !_MACHINE_TLS_H_ */

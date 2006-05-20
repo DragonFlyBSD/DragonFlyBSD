@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.15 2004/03/30 19:14:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.16 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -44,9 +44,15 @@
 /*
  * Definitions unique to i386 cpu support.
  */
+#ifndef _MACHINE_PSL_H_
 #include "psl.h"
+#endif
+#ifndef _MACHINE_FRAME_H_
 #include "frame.h"
+#endif
+#ifndef _MACHINE_SEGMENTS_H_
 #include "segments.h"
+#endif
 
 /*
  * definitions of cpu-dependent requirements
@@ -115,11 +121,15 @@
 }
 
 #ifdef _KERNEL
+
+struct proc;
+
 extern char	btext[];
 extern char	etext[];
 
 void	fork_trampoline (void);
 void	fork_return (struct proc *, struct trapframe);
+
 #endif
 
 #endif /* !_MACHINE_CPU_H_ */

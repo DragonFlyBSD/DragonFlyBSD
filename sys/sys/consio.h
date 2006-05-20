@@ -26,16 +26,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
- * $DragonFly: src/sys/sys/consio.h,v 1.3 2005/03/05 18:08:50 swildner Exp $
+ * $DragonFly: src/sys/sys/consio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_
 #define	_SYS_CONSIO_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 /*
  * Console ioctl commands.  Some commands are named as KDXXXX, GIO_XXX, and

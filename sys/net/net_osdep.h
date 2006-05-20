@@ -1,7 +1,7 @@
 /*
  * $KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $
  * $FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/net_osdep.h,v 1.6 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/net_osdep.h,v 1.7 2006/05/20 02:42:08 dillon Exp $
  */
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -282,8 +282,8 @@
  *	others: M_COPY_PKTHDR is available as usual.
  */
 
-#ifndef __NET_NET_OSDEP_H_DEFINED_
-#define __NET_NET_OSDEP_H_DEFINED_
+#ifndef _NET_NET_OSDEP_H_
+#define _NET_NET_OSDEP_H_
 #ifdef _KERNEL
 
 struct ifnet;
@@ -302,4 +302,4 @@ extern const char *if_name (struct ifnet *);
 #endif
 
 #endif /*_KERNEL*/
-#endif /*__NET_NET_OSDEP_H_DEFINED_ */
+#endif /*_NET_NET_OSDEP_H_*/

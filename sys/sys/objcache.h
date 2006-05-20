@@ -29,25 +29,35 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.3 2005/07/05 20:26:50 hmp Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
 #define _OBJCACHE_H_
 
-#ifdef	_KERNEL
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
 #define OC_MFLAGS	0x0000ffff	/* same as malloc flags */
 
 typedef boolean_t (objcache_ctor_fn)(void *obj, void *private, int ocflags);
 typedef void (objcache_dtor_fn)(void *obj, void *private);
 
+#ifdef	_KERNEL
 extern objcache_dtor_fn null_dtor;
+#endif
 
 /*
  * Underlying allocator.
  */
 typedef void *(objcache_alloc_fn)(void *allocator_args, int ocflags);
 typedef void (objcache_free_fn)(void *obj, void *allocator_args);
+
+#ifdef	_KERNEL
 
 struct objcache;
 
@@ -65,6 +75,8 @@ void	 objcache_populate_linear(struct objcache *oc, void *elts, int nelts,
 boolean_t objcache_reclaimlist(struct objcache *oc[], int nlist, int ocflags);
 void	 objcache_destroy(struct objcache *oc);
 
+#endif
+
 /*
  * Common underlying allocators.
  */
@@ -72,6 +84,9 @@ struct objcache_malloc_args {
 	size_t		objsize;
 	malloc_type_t	mtype;
 };
+
+#ifdef	_KERNEL
+
 void	*objcache_malloc_alloc(void *allocator_args, int ocflags);
 void	 objcache_malloc_free(void *obj, void *allocator_args);
 

@@ -1,8 +1,9 @@
 /*	$KAME: sctp_sha1.h,v 1.4 2002/10/09 18:01:22 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_sha1.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_sha1.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __SCTP_SLA1_h__
-#define __SCTP_SLA1_h__
+#ifndef _NETINET_SCTP_SHA1_H_
+#define _NETINET_SCTP_SHA1_H_
+
 /*
  * Copyright (c) 2001, 2002, 2004 Cisco Systems, Inc.
  * All rights reserved.

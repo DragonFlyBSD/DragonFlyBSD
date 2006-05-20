@@ -7,13 +7,17 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/inflate.h,v 1.11 1999/12/29 04:24:42 peter Exp $
- * $DragonFly: src/sys/sys/inflate.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/inflate.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  *
  */
 #ifndef	_SYS_INFLATE_H_
 #define	_SYS_INFLATE_H_
 
 #if defined(_KERNEL) || defined(KZIP)
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #define GZ_EOF -1
 

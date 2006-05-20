@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/raw_ip6.h,v 1.1.2.1 2001/07/03 11:01:55 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/raw_ip6.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/raw_ip6.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: raw_ip6.h,v 1.2 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -33,6 +33,10 @@
 
 #ifndef _NETINET6_RAW_IP6_H_
 #define _NETINET6_RAW_IP6_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * ICMPv6 stat is counted separately.  see netinet/icmp6.h

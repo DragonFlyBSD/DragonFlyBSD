@@ -47,11 +47,15 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/include/uc_device.h,v 1.1.2.1 2000/07/14 10:21:34 jhb Exp $
- ** $DragonFly: src/sys/i386/include/Attic/uc_device.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ ** $DragonFly: src/sys/i386/include/Attic/uc_device.h,v 1.3 2006/05/20 02:42:06 dillon Exp $
  **/
 
 #ifndef _I386_MACHINE_UC_DEVICE_H
 #define _I386_MACHINE_UC_DEVICE_H
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Per device structure.  This just happens to resemble the old isa_device

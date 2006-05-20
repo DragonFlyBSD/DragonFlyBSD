@@ -32,16 +32,18 @@
  *
  *	@(#)mtio.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/mtio.h,v 1.20.2.2 2001/01/22 18:02:47 mjacob Exp $
- * $DragonFly: src/sys/sys/mtio.h,v 1.3 2004/02/06 03:20:47 rob Exp $
+ * $DragonFly: src/sys/sys/mtio.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_MTIO_H_
 #define	_SYS_MTIO_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 /*
  * Structures and definitions for mag tape io control commands

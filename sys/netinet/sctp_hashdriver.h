@@ -1,8 +1,8 @@
 /*	$KAME: sctp_hashdriver.h,v 1.3 2002/10/09 18:01:21 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_hashdriver.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_hashdriver.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_hashdriver_h__
-#define __sctp_hashdriver_h__
+#ifndef _NETINET_SCTP_HASHDRIVER_H_
+#define _NETINET_SCTP_HASHDRIVER_H_
 
 /*
  * Copyright (c) 2001, 2002 Cisco Systems, Inc.
@@ -36,8 +36,9 @@
  * SUCH DAMAGE.
  */
 
-void sctp_hash_digest(char *, int, char *, int, unsigned char *);
+struct mbuf;
 
+void sctp_hash_digest(char *, int, char *, int, unsigned char *);
 void sctp_hash_digest_m(char *, int, struct mbuf *, int, unsigned char *);
 
 #endif

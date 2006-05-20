@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.8 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
 #define _SYS_KTHREAD_H_
+
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 #error "This file should not be included by userland programs."

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.h,v 1.1.2.2 2002/11/20 23:20:54 luigi Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.h,v 1.3 2004/06/03 18:30:03 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip_encap.h,v 1.7 2000/03/25 07:23:37 sumikawa Exp $	*/
 
 /*
@@ -34,7 +34,16 @@
 #ifndef _NETINET_IP_ENCAP_H_
 #define _NETINET_IP_ENCAP_H_
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_SOCKET_H_
+#include <sys/socket.h>
+#endif
+
+struct mbuf;
 
 struct encaptab {
 	LIST_ENTRY(encaptab) chain;
@@ -49,6 +58,10 @@ struct encaptab {
 	void *arg;			/* passed via m->m_pkthdr.aux */
 };
 
+#endif
+
+#ifdef _KERNEL
+
 void	encap_init(void);
 void	encap4_input(struct mbuf *, ...);
 int	encap6_input(struct mbuf **, int *, int);
@@ -60,6 +73,7 @@ const struct encaptab *encap_attach_func(int, int,
 	const struct protosw *, void *);
 int	encap_detach(const struct encaptab *);
 void	*encap_getarg(struct mbuf *);
+
 #endif
 
 #endif /*_NETINET_IP_ENCAP_H_*/

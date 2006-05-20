@@ -31,11 +31,33 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.12 2006/05/08 18:45:53 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.13 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_MOUNTCTL_H_
 #define _SYS_MOUNTCTL_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
+#endif
+
 /*
  * General constants
  */
@@ -196,10 +218,12 @@ struct jrecord_list {
 
 #if defined(_KERNEL)
 
+struct namecache;
+struct ucred;
+struct uio;
 struct vnode;
 struct vattr;
 struct vm_page;
-struct uio;
 
 void journal_create_threads(struct journal *jo);
 void journal_destroy_threads(struct journal *jo, int flags);

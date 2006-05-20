@@ -32,11 +32,15 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.6 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef _MACHINE_PROFILE_H_
 #define	_MACHINE_PROFILE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 #ifdef _KERNEL
 

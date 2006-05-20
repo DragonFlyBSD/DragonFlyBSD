@@ -1,9 +1,25 @@
+
 /*
  * Memory range attribute operations, peformed on /dev/mem
  *
  * $FreeBSD: src/sys/sys/memrange.h,v 1.4.2.2 2002/09/16 21:58:37 dwmalone Exp $
- * $DragonFly: src/sys/sys/memrange.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/memrange.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
+
+#ifndef _SYS_MEMRANGE_H_
+#define _SYS_MEMRANGE_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
+#endif
 
 /* Memory range attributes */
 #define MDF_UNCACHEABLE		(1<<0)	/* region not cached */
@@ -70,3 +86,4 @@ extern int mem_range_attr_set(struct mem_range_desc *mrd, int *arg);
 extern void mem_range_AP_init(void);
 #endif
 
+#endif

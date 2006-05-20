@@ -1,15 +1,17 @@
 /*-
  * $FreeBSD: src/sys/sys/kbio.h,v 1.5.2.1 2000/10/29 16:59:32 dwmalone Exp $
- * $DragonFly: src/sys/sys/kbio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/kbio.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef	_SYS_KBIO_H_
 #define	_SYS_KBIO_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 /* get/set keyboard I/O mode */
 #define K_RAW		0		/* keyboard returns scancodes	*/

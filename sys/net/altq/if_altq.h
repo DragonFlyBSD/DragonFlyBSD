@@ -1,5 +1,5 @@
 /*	$KAME: if_altq.h,v 1.11 2003/07/10 12:07:50 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/if_altq.h,v 1.2 2005/11/22 00:24:35 dillon Exp $ */
+/*	$DragonFly: src/sys/net/altq/if_altq.h,v 1.3 2006/05/20 02:42:09 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef _ALTQ_IF_ALTQ_H_
-#define	_ALTQ_IF_ALTQ_H_
+#ifndef _NET_ALTQ_IF_ALTQ_H_
+#define	_NET_ALTQ_IF_ALTQ_H_
 
 struct altq_pktattr;
 
@@ -132,4 +132,4 @@ struct mbuf *tbr_dequeue(struct ifaltq *, struct mbuf *, int);
 extern int	(*altq_input)(struct mbuf *, int);
 #endif /* _KERNEL */
 
-#endif /* _ALTQ_IF_ALTQ_H_ */
+#endif /* _NET_ALTQ_IF_ALTQ_H_ */

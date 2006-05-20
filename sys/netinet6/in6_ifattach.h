@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.h,v 1.1.2.2 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: in6_ifattach.h,v 1.14 2001/02/08 12:48:39 jinmei Exp $	*/
 
 /*
@@ -35,6 +35,14 @@
 #define _NETINET6_IN6_IFATTACH_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct ifnet;
+struct in6_addr;
+
 void in6_nigroup_attach (const char *, int);
 void in6_nigroup_detach (const char *, int);
 void in6_ifattach (struct ifnet *, struct ifnet *);
@@ -42,6 +50,7 @@ void in6_ifdetach (struct ifnet *);
 void in6_get_tmpifid (struct ifnet *, u_int8_t *, const u_int8_t *, int);
 void in6_tmpaddrtimer (void *);
 int in6_nigroup (struct ifnet *, const char *, int, struct in6_addr *);
+
 #endif /* _KERNEL */
 
 #endif /* _NETINET6_IN6_IFATTACH_H_ */

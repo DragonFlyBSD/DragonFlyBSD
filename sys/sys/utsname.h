@@ -35,11 +35,11 @@
  *
  *	@(#)utsname.h	8.1 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/utsname.h,v 1.7 1999/12/29 04:24:49 peter Exp $
- * $DragonFly: src/sys/sys/utsname.h,v 1.3 2003/08/20 07:31:22 rob Exp $
+ * $DragonFly: src/sys/sys/utsname.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
-#ifndef	_SYS_UTSNAME_H
-#define	_SYS_UTSNAME_H
+#ifndef	_SYS_UTSNAME_H_
+#define	_SYS_UTSNAME_H_
 
 #define SYS_NMLN	32
 
@@ -67,4 +67,4 @@ extern int uname();
 extern struct utsname utsname;
 #endif	/* _KERNEL */
 
-#endif	/* !_SYS_UTSNAME_H */
+#endif	/* !_SYS_UTSNAME_H_ */

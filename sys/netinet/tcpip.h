@@ -32,11 +32,18 @@
  *
  *	@(#)tcpip.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcpip.h,v 1.8 1999/08/28 00:49:34 peter Exp $
- * $DragonFly: src/sys/netinet/tcpip.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcpip.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_TCPIP_H_
 #define _NETINET_TCPIP_H_
+
+#ifndef _NETINET_TCP_H_
+#include <netinet/tcp.h>
+#endif
+#ifndef _NETINET_IP_VAR_H_
+#include <netinet/ip_var.h>
+#endif
 
 /*
  * Tcp+ip header, after ip options removed.

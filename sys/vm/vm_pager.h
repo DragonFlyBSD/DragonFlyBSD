@@ -37,17 +37,25 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.7 2006/03/27 01:54:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.h,v 1.8 2006/05/20 02:42:15 dillon Exp $
  */
 
 /*
  * Pager routine interface definition.
  */
 
-#ifndef	_VM_PAGER_
-#define	_VM_PAGER_
+#ifndef	_VM_VM_PAGER_H_
+#define	_VM_VM_PAGER_H_
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _VM_VM_PAGE_H_
+#include <vm/vm_page.h>
+#endif
+#ifndef _VM_VM_OBJECT_H_
+#include <vm/vm_object.h>
+#endif
 
 TAILQ_HEAD(pagerlst, vm_object);
 
@@ -186,4 +194,4 @@ vm_pager_page_unswapped(vm_page_t m)
 
 #endif
 
-#endif				/* _VM_PAGER_ */
+#endif				/* _VM_VM_PAGER_H_ */

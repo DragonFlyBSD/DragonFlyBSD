@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_ecn.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_ecn.h,v 1.3 2003/08/23 11:18:00 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_ecn.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ip_ecn.h,v 1.6 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -36,6 +36,13 @@
  * http://www.aciri.org/floyd/papers/draft-ipsec-ecn-00.txt
  */
 
+#ifndef _NETINET_IP_ECN_H_
+#define _NETINET_IP_ECN_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 #if defined(_KERNEL) && !defined(_LKM)
 #include "opt_inet.h"
 #endif
@@ -47,4 +54,6 @@
 #ifdef _KERNEL
 extern void ip_ecn_ingress (int, u_int8_t *, const u_int8_t *);
 extern void ip_ecn_egress (int, const u_int8_t *, u_int8_t *);
+#endif
+
 #endif

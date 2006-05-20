@@ -1,8 +1,8 @@
 /*	$KAME: sctp_input.h,v 1.5 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_input.h,v 1.1 2005/07/15 14:46:17 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_input.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_input_h__
-#define __sctp_input_h__
+#ifndef _NETINET_SCTP_INPUT_H_
+#define _NETINET_SCTP_INPUT_H_
 
 /*
  * Copyright (C) 2002 Cisco Systems Inc,
@@ -34,12 +34,25 @@
  */
 
 #if defined(_KERNEL) || defined(KERNEL)
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct mbuf;
+struct sctp_inpcb;
+struct sctphdr;
+struct sctp_chunkhdr;
+struct sctp_tcb;
+struct sctp_nets;
+struct sctp_stream_reset_response;
+
 int sctp_common_input_processing(struct mbuf **, int, int, int,
     struct sctphdr *, struct sctp_chunkhdr *, struct sctp_inpcb *,
     struct sctp_tcb *, struct sctp_nets *, u_int8_t);
 
-void
-sctp_handle_stream_reset_response(struct sctp_tcb *, struct sctp_stream_reset_response *resp);
+void sctp_handle_stream_reset_response(struct sctp_tcb *,
+    struct sctp_stream_reset_response *resp);
 
 #endif
 #endif

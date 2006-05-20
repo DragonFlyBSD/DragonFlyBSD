@@ -32,11 +32,15 @@
  *
  *      @(#)if_llc.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_llc.h,v 1.7 1999/08/28 00:48:18 peter Exp $
- * $DragonFly: src/sys/net/if_llc.h,v 1.4 2005/12/21 16:37:15 corecode Exp $
+ * $DragonFly: src/sys/net/if_llc.h,v 1.5 2006/05/20 02:42:08 dillon Exp $
  */
 
 #ifndef _NET_IF_LLC_H_
 #define _NET_IF_LLC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * IEEE 802.2 Link Level Control headers, for use in conjunction with

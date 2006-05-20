@@ -3,11 +3,21 @@
  *
  *	Userland system calls for resident executable support.
  *
- * $DragonFly: src/sys/sys/resident.h,v 1.3 2004/06/03 16:28:15 hmp Exp $
+ * $DragonFly: src/sys/sys/resident.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_RESIDENT_H_
 #define _SYS_RESIDENT_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+#ifndef _SYS_STAT_H_
+#include <sys/stat.h>
+#endif
 
 #if !defined(_KERNEL)
 
@@ -24,5 +34,5 @@ struct xresident {
 	char		res_file[MAXPATHLEN];
 	struct stat	res_stat;
 };
-#endif
 
+#endif

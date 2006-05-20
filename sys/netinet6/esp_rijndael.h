@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_rijndael.h,v 1.1.2.1 2001/07/03 11:01:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_rijndael.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_rijndael.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: esp_rijndael.h,v 1.1 2000/09/20 18:15:22 itojun Exp $	*/
 
 /*
@@ -31,6 +31,18 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _NETINET6_ESP_RIJNDAEL_H_
+#define _NETINET6_ESP_RIJNDAEL_H_
+
+#ifdef _KERNEL
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct secasvar;
+struct esp_algorithm;
+
 int esp_rijndael_schedlen (const struct esp_algorithm *);
 int esp_rijndael_schedule (const struct esp_algorithm *,
 	struct secasvar *);
@@ -38,3 +50,8 @@ int esp_rijndael_blockdecrypt (const struct esp_algorithm *,
 	struct secasvar *, u_int8_t *, u_int8_t *);
 int esp_rijndael_blockencrypt (const struct esp_algorithm *,
 	struct secasvar *, u_int8_t *, u_int8_t *);
+
+#endif
+
+#endif
+

@@ -1,8 +1,8 @@
 /*	$KAME: sctp_indata.h,v 1.8 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_indata_h__
-#define __sctp_indata_h__
+#ifndef _NEINET_SCTP_INDATA_H_
+#define _NEINET_SCTP_INDATA_H_
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -35,6 +35,22 @@
 
 
 #if defined(_KERNEL) || (defined(__APPLE__) && defined(KERNEL))
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+struct mbuf;
+struct sctp_tcb;
+struct sctp_inpcb;
+struct sctp_association;
+struct sctp_tmit_chunk;
+struct sctp_sack_chunk;
+struct sctp_nets;
+struct sctp_forward_tsn_chunk;
+struct sctp_shutdown_chunk;
+struct sctphdr;
+
 int sctp_deliver_data(struct sctp_tcb *, struct sctp_association *,
     struct sctp_tmit_chunk *, int);
 
@@ -59,5 +75,6 @@ int sctp_process_data(struct mbuf **, int, int *, int, struct sctphdr *,
     struct sctp_inpcb *, struct sctp_tcb *, struct sctp_nets *, u_int32_t *);
 
 void sctp_sack_check(struct sctp_tcb *, int, int, int *);
+
 #endif
 #endif

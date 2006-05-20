@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_variables.h,v 1.11 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_variables.h,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_variables.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 /*
@@ -35,25 +35,36 @@
 #ifndef _DDB_DB_VARIABLES_H_
 #define	_DDB_DB_VARIABLES_H_
 
+#ifndef _DDB_DDB_H_
+#include <ddb/ddb.h>
+#endif
+
 /*
  * Debugger variables.
  */
 struct db_variable;
-typedef	int	db_varfcn_t (struct db_variable *vp, db_expr_t *valuep,
-				 int op);
+
+typedef	int	db_varfcn_t (struct db_variable *vp, db_expr_t *valuep, int op);
+
 struct db_variable {
 	char	*name;		/* Name of variable */
 	db_expr_t *valuep;	/* value of variable */
 				/* function to call when reading/writing */
 	db_varfcn_t *fcn;
+};
+
 #define DB_VAR_GET	0
 #define DB_VAR_SET	1
-};
+
 #define	FCN_NULL	((db_varfcn_t *)0)
+
+#ifdef _KERNEL
 
 extern struct db_variable	db_regs[];	/* machine registers */
 extern struct db_variable	*db_eregs;
 
 void	db_read_variable (struct db_variable *, db_expr_t *);
+
+#endif
 
 #endif /* _!DDB_DB_VARIABLES_H_ */

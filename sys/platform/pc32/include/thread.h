@@ -33,13 +33,15 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.14 2006/01/31 19:05:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.15 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
+#ifndef _MACHINE_SEGMENTS_H_
 #include "segments.h"
+#endif
 
 union savefpu;
 

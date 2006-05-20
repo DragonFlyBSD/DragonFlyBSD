@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.7 2005/10/09 21:38:04 corecode Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -9,6 +9,9 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_MSGPORT_H_
+#include <sys/msgport.h>
+#endif
 #ifndef _SYS_CALLOUT_H_
 #include <sys/callout.h>	/* for struct callout */
 #endif

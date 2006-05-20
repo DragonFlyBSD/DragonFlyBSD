@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.8 2004/04/25 18:54:32 cpressey Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -91,6 +91,7 @@ typedef struct caps_cred {
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+struct proc;
 struct caps_kmsg;
 
 TAILQ_HEAD(caps_kmsg_queue, caps_kmsg);

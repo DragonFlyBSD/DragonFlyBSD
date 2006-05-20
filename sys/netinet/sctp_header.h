@@ -1,8 +1,8 @@
 /*	$KAME: sctp_header.h,v 1.13 2004/08/17 04:06:16 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_header.h,v 1.1 2005/07/15 14:46:16 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_header.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_header_h__
-#define __sctp_header_h__
+#ifndef _NETINET_SCTP_HEADER_H_
+#define _NETINET_SCTP_HEADER_H_
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -36,9 +36,18 @@
  * SUCH DAMAGE.
  */
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
 #include <sys/time.h>
+#endif
+#ifndef _NETINET_SCTP_H_
 #include <netinet/sctp.h>
+#endif
+#ifndef _NETINET_SCTP_CONSTANTS_H_
 #include <netinet/sctp_constants.h>
+#endif
 
 /*
  * Parameter structures
@@ -486,4 +495,4 @@ struct sctp_stream_reset_resp {
 #define SCTP_MIN_V4_OVERHEAD (sizeof(struct ip) + \
 			      sizeof(struct sctphdr))
 
-#endif /* !__sctp_header_h__ */
+#endif /* _NETINET_SCTP_HEADER_H_ */

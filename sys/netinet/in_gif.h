@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/in_gif.h,v 1.3.2.4 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/in_gif.h,v 1.4 2004/06/03 18:30:03 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/in_gif.h,v 1.5 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: in_gif.h,v 1.5 2000/04/14 08:36:02 itojun Exp $	*/
 
 /*
@@ -39,6 +39,9 @@
 extern int ip_gif_ttl;
 
 struct gif_softc;
+struct mbuf;
+struct ifnet;
+
 void in_gif_input (struct mbuf *, ...);
 int in_gif_output (struct ifnet *, int, struct mbuf *);
 int gif_encapcheck4 (const struct mbuf *, int, int, void *);

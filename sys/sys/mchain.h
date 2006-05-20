@@ -30,12 +30,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/mchain.h,v 1.1.2.1 2001/05/18 11:01:23 bp Exp $
- * $DragonFly: src/sys/sys/mchain.h,v 1.3 2004/09/23 16:11:47 joerg Exp $
+ * $DragonFly: src/sys/sys/mchain.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
  */
 #ifndef _SYS_MCHAIN_H_
 #define _SYS_MCHAIN_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_ENDIAN_H_
 #include <machine/endian.h>
+#endif
 
 /*
  * This macros probably belongs to the endian.h
@@ -49,23 +54,23 @@
 #define	htoleq(x)	((int64_t)(x))
 #define	letohq(x)	((int64_t)(x))
 
-#define htobes(x)	(htons(x))
-#define betohs(x)	(ntohs(x))
-#define htobel(x)	(htonl(x))
-#define betohl(x)	(ntohl(x))
+#define htobes(x)	(__htons(x))
+#define betohs(x)	(__ntohs(x))
+#define htobel(x)	(__htonl(x))
+#define betohl(x)	(__ntohl(x))
 
 static __inline int64_t
 htobeq(int64_t x)
 {
-	return (int64_t)htonl((u_int32_t)(x >> 32)) |
-	    (int64_t)htonl((u_int32_t)(x & 0xffffffff)) << 32;
+	return (int64_t)__htonl((u_int32_t)(x >> 32)) |
+	    (int64_t)__htonl((u_int32_t)(x & 0xffffffff)) << 32;
 }
 
 static __inline int64_t
 betohq(int64_t x)
 {
-	return (int64_t)ntohl((u_int32_t)(x >> 32)) |
-	    (int64_t)ntohl((u_int32_t)(x & 0xffffffff)) << 32;
+	return (int64_t)__ntohl((u_int32_t)(x >> 32)) |
+	    (int64_t)__ntohl((u_int32_t)(x & 0xffffffff)) << 32;
 }
 
 #else	/* (BYTE_ORDER == LITTLE_ENDIAN) */
@@ -94,6 +99,7 @@ betohq(int64_t x)
 
 struct mbuf;
 struct mbchain;
+struct uio;
 
 typedef int mb_copy_t(struct mbchain *mbp, c_caddr_t src, caddr_t dst, int len);
 

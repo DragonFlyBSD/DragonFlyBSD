@@ -1,6 +1,6 @@
 /* MD4.H - header file for MD4C.C
  * $FreeBSD: src/sys/sys/md4.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/sys/md4.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/md4.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -24,16 +24,22 @@
    documentation and/or software.
  */
 
-#ifndef _MD4_H_
-#define _MD4_H_
+#ifndef _SYS_MD4_H_
+#define _SYS_MD4_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
+
 /* MD4 context. */
 typedef struct MD4Context {
   u_int32_t state[4];	/* state (ABCD) */
   u_int32_t count[2];	/* number of bits, modulo 2^64 (lsb first) */
   unsigned char buffer[64];	/* input buffer */
 } MD4_CTX;
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 void   MD4Init(MD4_CTX *);

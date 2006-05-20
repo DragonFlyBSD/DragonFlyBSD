@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.h,v 1.5 2002/06/09 16:33:40 itojun Exp $
- * $DragonFly: src/sys/netinet/ip_gre.h,v 1.4 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.h,v 1.5 2006/05/20 02:42:12 dillon Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -37,7 +37,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _NETINET_IP_GRE_H_
+#define _NETINET_IP_GRE_H_
+
 #ifdef _KERNEL
+
+struct mbuf;
+
 void gre_input(struct mbuf *, ...);
 void gre_mobile_input(struct mbuf *, ...);
+
 #endif /* _KERNEL */
+
+#endif

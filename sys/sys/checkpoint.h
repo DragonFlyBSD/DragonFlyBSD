@@ -22,11 +22,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/checkpoint.h,v 1.1 2004/11/23 06:32:34 dillon Exp $
+ * $DragonFly: src/sys/sys/checkpoint.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_CHECKPOINT_H_
 #define _SYS_CHECKPOINT_H_
+
+#ifndef _SYS_PROCFS_H_
+#include <sys/procfs.h>
+#endif
 
 #define CKPT_FREEZE    0x1
 #define CKPT_THAW      0x2

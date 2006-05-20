@@ -2,7 +2,7 @@
  * random.h -- A strong random number generator
  *
  * $FreeBSD: src/sys/sys/random.h,v 1.19.2.2 2002/09/17 17:11:54 sam Exp $
- * $DragonFly: src/sys/sys/random.h,v 1.6 2005/11/02 22:59:49 dillon Exp $
+ * $DragonFly: src/sys/sys/random.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -51,11 +51,15 @@
 #ifndef	_SYS_RANDOM_H_
 #define	_SYS_RANDOM_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 #ifndef _SYS_INTERRUPT_H_
 #include <sys/interrupt.h>
 #endif
-
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 #define	MEM_SETIRQ	_IOW('r', 1, u_int16_t)	/* set interrupt */
 #define	MEM_CLEARIRQ	_IOW('r', 2, u_int16_t)	/* clear interrupt */

@@ -32,11 +32,15 @@
  *
  *	@(#)dmap.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/dmap.h,v 1.7 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/dmap.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/dmap.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_DMAP_H_
 #define	_SYS_DMAP_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Definitions for the mapping of vitual swap space to the physical swap

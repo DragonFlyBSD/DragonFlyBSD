@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.6 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*
@@ -39,8 +39,24 @@
 #define RTF_ANNOUNCE	RTF_PROTO2
 #endif
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_CALLOUT_H_
 #include <sys/callout.h>
+#endif
+#ifndef _NET_IF_H_
+#include <net/if.h>
+#endif
+#ifndef _NETINET_IN_H_
+#include <netinet/in.h>
+#endif
+#ifndef _NETINET6_IN6_VAR_H_
+#include <netinet6/in6_var.h>
+#endif
 
 struct	llinfo_nd6 {
 	struct	llinfo_nd6 *ln_next;

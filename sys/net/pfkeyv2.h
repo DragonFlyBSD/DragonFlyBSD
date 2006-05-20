@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/pfkeyv2.h,v 1.4.2.5 2003/01/31 23:21:01 sam Exp $	*/
-/*	$DragonFly: src/sys/net/pfkeyv2.h,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/pfkeyv2.h,v 1.3 2006/05/20 02:42:08 dillon Exp $	*/
 /*	$KAME: pfkeyv2.h,v 1.26 2001/06/27 10:49:49 sakane Exp $	*/
 
 /*
@@ -39,6 +39,10 @@
 
 #ifndef _NET_PFKEYV2_H_
 #define _NET_PFKEYV2_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
 This file defines structures and symbols for the PF_KEY Version 2

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/tcp6_var.h,v 1.3.2.2 2001/12/14 20:21:11 jlemon Exp $
- * $DragonFly: src/sys/netinet6/tcp6_var.h,v 1.3 2003/08/23 11:02:46 rob Exp $
+ * $DragonFly: src/sys/netinet6/tcp6_var.h,v 1.4 2006/05/20 02:42:12 dillon Exp $
  */
 
 /*
@@ -76,7 +76,11 @@ SYSCTL_DECL(_net_inet6_tcp6);
 
 extern	int tcp_v6mssdflt;	/* XXX */
 
-struct	ip6_hdr;
+struct mbuf;
+struct ip6_hdr;
+struct sockaddr;
+struct in_conninfo;
+
 void	tcp6_ctlinput (int, struct sockaddr *, void *);
 void	tcp6_init (void);
 int	tcp6_input (struct mbuf **, int *, int);

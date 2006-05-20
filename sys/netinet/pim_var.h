@@ -28,11 +28,23 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/pim_var.h,v 1.1.2.1 2003/08/24 17:04:44 hsu Exp $
- * $DragonFly: src/sys/netinet/pim_var.h,v 1.2 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/pim_var.h,v 1.3 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_PIM_VAR_H_
 #define _NETINET_PIM_VAR_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _SYS_SYSCTL_H_
+#include <sys/sysctl.h>
+#endif
+
+#endif
 
 /*
  * Protocol Independent Multicast (PIM),
@@ -72,7 +84,10 @@ struct pimstat {
 }
 
 #ifdef _KERNEL
+
 extern struct pimstat pimstat;
+
+struct mbuf;
 
 void pim_input(struct mbuf *, ...);
 SYSCTL_DECL(_net_inet_pim);

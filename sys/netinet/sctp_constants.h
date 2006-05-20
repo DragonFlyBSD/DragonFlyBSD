@@ -1,8 +1,8 @@
 /*	$KAME: sctp_constants.h,v 1.16 2004/08/17 04:06:16 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_constants.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_constants.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 
-#ifndef __sctp_constants_h__
-#define __sctp_constants_h__
+#ifndef _NETINET_SCTP_CONSTANTS_H_
+#define _NETINET_SCTP_CONSTANTS_H_
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.

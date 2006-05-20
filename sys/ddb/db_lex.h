@@ -24,27 +24,22 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.h,v 1.12 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.h,v 1.3 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_lex.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 #ifndef _DDB_DB_LEX_H_
 #define	_DDB_DB_LEX_H_
 
+#ifndef _DDB_DDB_H_
+#include <ddb/ddb.h>
+#endif
+
 /*
  *	Author: David B. Golub, Carnegie Mellon University
  *	Date:	7/90
  */
-/*
- * Lexical analyzer.
- */
-void	db_flush_lex (void);
-int	db_read_line (void);
-int	db_read_token (void);
-void	db_unread_token (int t);
 
-extern db_expr_t	db_tok_number;
 #define	TOK_STRING_SIZE		120
-extern char	db_tok_string[TOK_STRING_SIZE];
 
 #define	tEOF		(-1)
 #define	tEOL		1
@@ -67,5 +62,20 @@ extern char	db_tok_string[TOK_STRING_SIZE];
 #define	tSHIFT_L	18
 #define	tSHIFT_R	19
 #define	tDOTDOT		20
+
+#ifdef _KERNEL
+
+/*
+ * Lexical analyzer.
+ */
+void	db_flush_lex (void);
+int	db_read_line (void);
+int	db_read_token (void);
+void	db_unread_token (int t);
+
+extern db_expr_t	db_tok_number;
+extern char	db_tok_string[TOK_STRING_SIZE];
+
+#endif
 
 #endif /* !_DDB_DB_LEX_H_ */

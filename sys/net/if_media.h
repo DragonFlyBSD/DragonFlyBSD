@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.9 2006/04/02 03:33:59 sephe Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.10 2006/05/20 02:42:08 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -39,6 +39,10 @@
 #ifndef _NET_IF_MEDIA_H_
 #define _NET_IF_MEDIA_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 /*
  * Prototypes and definitions for BSD/OS-compatible network interface
  * media selection.
@@ -53,7 +57,13 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+
+struct ifnet;
+struct ifreq;
+struct ifmediareq;
 
 /*
  * Driver callbacks for media status and change requests.

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/zlib.h,v 1.7.2.1 2002/07/31 14:13:05 rwatson Exp $	*/
-/* $DragonFly: src/sys/net/zlib.h,v 1.4 2004/12/21 02:54:14 hsu Exp $	*/
+/* $DragonFly: src/sys/net/zlib.h,v 1.5 2006/05/20 02:42:08 dillon Exp $	*/
 
 /*
  * This file is derived from zlib.h and zconf.h from the zlib-1.0.4
@@ -47,8 +47,8 @@
   (zlib format), rfc1951.txt (deflate format) and rfc1952.txt (gzip format).
 */
 
-#ifndef _ZLIB_H
-#define _ZLIB_H
+#ifndef _NET_ZLIB_H_
+#define _NET_ZLIB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -1014,5 +1014,5 @@ uLongf *get_crc_table OF((void)); /* can be used by asm versions of crc32() */
 }
 #endif
 
-#endif /* _ZLIB_H */
+#endif /* _NET_ZLIB_H_ */
 /* --- zlib.h */

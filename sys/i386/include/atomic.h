@@ -24,10 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.17 2006/05/16 14:24:06 sephe Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.18 2006/05/20 02:42:06 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 
 /*
  * Various simple arithmetic on memory which is atomic in the presence

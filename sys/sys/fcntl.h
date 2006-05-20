@@ -37,19 +37,13 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.7 2006/05/07 19:17:15 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
 #define	_SYS_FCNTL_H_
 
-/*
- * This file includes the definitions for open and fcntl
- * described by POSIX for <fcntl.h>; it also includes
- * related kernel definitions.
- */
-
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
 

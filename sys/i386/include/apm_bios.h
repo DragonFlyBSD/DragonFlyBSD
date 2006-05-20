@@ -13,16 +13,18 @@
  * Aug, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/include/apm_bios.h,v 1.27.2.2 2002/04/12 16:47:00 bmah Exp $
- * $DragonFly: src/sys/i386/include/Attic/apm_bios.h,v 1.4 2005/06/12 20:55:14 swildner Exp $
+ * $DragonFly: src/sys/i386/include/Attic/apm_bios.h,v 1.5 2006/05/20 02:42:06 dillon Exp $
  */
 
 #ifndef	_MACHINE_APM_BIOS_H_
 #define	_MACHINE_APM_BIOS_H_
 
-#ifndef _KERNEL
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
+#endif
 
 /* BIOS id */
 #define APM_BIOS		0x53

@@ -82,13 +82,18 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.36 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.37 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
 #define _NETINET_TCP_VAR_H_
 
+#ifndef _NETINET_IN_PCB_H_
 #include <netinet/in_pcb.h>		/* needed for in_conninfo, inp_gen_t */
+#endif
+#ifndef _NETINET_TCP_H_
+#include <netinet/tcp.h>
+#endif
 
 /*
  * Kernel variables for tcp.
@@ -288,6 +293,8 @@ struct tcpcb {
 #endif
 
 struct tcp_stats;
+struct sockopt;
+
 extern struct tcp_stats		tcpstats_percpu[MAXCPU];
 
 static const int tcprexmtthresh = 3;

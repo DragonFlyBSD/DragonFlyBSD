@@ -24,13 +24,18 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/power.h,v 1.3.6.1 2003/08/18 20:22:23 jhb Exp $
- *	$DragonFly: src/sys/sys/power.h,v 1.1 2003/09/24 03:32:17 drhodus Exp $
+ *	$DragonFly: src/sys/sys/power.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
  */
 
 #ifndef _SYS_POWER_H_
 #define _SYS_POWER_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_EVENTHANDLER_H_
 #include <sys/eventhandler.h>
+#endif
 
 /* Power management system type */
 #define POWER_PM_TYPE_APM		0x00

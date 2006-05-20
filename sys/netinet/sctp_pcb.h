@@ -1,8 +1,5 @@
 /*	$KAME: sctp_pcb.h,v 1.19 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.h,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
-
-#ifndef __sctp_pcb_h__
-#define __sctp_pcb_h__
+/*	$DragonFly: src/sys/netinet/sctp_pcb.h,v 1.3 2006/05/20 02:42:12 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -35,6 +32,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _NETINET_SCTP_PCB_H_
+#define _NETINET_SCTP_PCB_H_
+
+#ifndef _NETINET_IN_PCB_H_
+#include <netinet/in_pcb.h>
+#endif
 
 /*
  * We must have V6 so the size of the proto can be calculated. Otherwise
@@ -69,7 +73,6 @@
 LIST_HEAD(sctppcbhead, sctp_inpcb);
 LIST_HEAD(sctpasochead, sctp_tcb);
 TAILQ_HEAD(sctpsocketq, sctp_socket_q_list);
-LIST_HEAD(sctpladdr, sctp_laddr);
 LIST_HEAD(sctpvtaghead, sctp_tagblock);
 
 #include <netinet/sctp_structs.h>
@@ -704,4 +707,4 @@ extern void in6_sin6_2_sin (struct sockaddr_in *,
 #endif
 
 #endif /* _KERNEL */
-#endif /* !__sctp_pcb_h__ */
+#endif /* _NETINET_SCTP_PCB_H_ */

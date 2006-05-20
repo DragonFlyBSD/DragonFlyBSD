@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/pim6_var.h,v 1.2.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6_var.h,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/pim6_var.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: pim6_var.h,v 1.8 2000/06/06 08:07:43 jinmei Exp $	*/
 
 /*
@@ -34,6 +34,10 @@
 #ifndef _NETINET6_PIM6_VAR_H_
 #define _NETINET6_PIM6_VAR_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+
 /*
  * Protocol Independent Multicast (PIM),
  * implementation-specific definitions.
@@ -53,9 +57,13 @@ struct pim6stat {
 };
 
 #if (defined(KERNEL)) || (defined(_KERNEL))
+
 extern struct pim6stat pim6stat;
 
+struct mbuf;
+
 int pim6_input (struct mbuf **, int*, int);
+
 #endif /* KERNEL */
 
 /*

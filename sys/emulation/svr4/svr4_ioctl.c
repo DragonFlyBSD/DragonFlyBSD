@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.13 2006/05/19 07:33:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.14 2006/05/20 02:42:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,12 +90,12 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	u_long		 cmd;
 	int (*fun) (struct file *, struct thread *, register_t *,
 			int, u_long, caddr_t);
+	int		 error;
 #ifdef DEBUG_SVR4
 	char		 dir[4];
 	char		 c;
 	int		 num;
 	int		 argsiz;
-	int		 error;
 
 	KKASSERT(p);
 

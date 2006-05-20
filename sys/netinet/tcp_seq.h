@@ -82,11 +82,16 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.8 2005/08/29 10:24:10 demizu Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.9 2006/05/20 02:42:12 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_
 #define _NETINET_TCP_SEQ_H_
+
+#ifndef _NETINET_TCP_H_
+#include <netinet/tcp.h>
+#endif
+
 /*
  * TCP sequence numbers are 32 bit integers operated
  * on with modular arithmetic.  These macros can be
