@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.33 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.34 2006/05/20 06:32:41 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -48,6 +48,9 @@
 #endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _NET_NETISR_H_
+#include <net/netisr.h>
 #endif
 
 /*
@@ -80,6 +83,7 @@ struct m_hdr {
 	int	mh_len;			/* amount of data in this mbuf */
 	short	mh_type;		/* type of data in this mbuf */
 	short	mh_flags;		/* flags; see below */
+	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
 };
 
 /*

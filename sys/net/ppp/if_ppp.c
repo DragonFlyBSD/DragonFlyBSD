@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.29 2006/02/06 01:49:37 y0netan1 Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.30 2006/05/20 06:32:38 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -219,7 +219,7 @@ pppintr(struct netmsg *msg)
 	}
 	lwkt_serialize_exit(sc->sc_if.if_serializer);
     }
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    /* msg is embedded in the mbuf, do not reply! */
     return(EASYNC);
 }
 

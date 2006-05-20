@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.17 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.18 2006/05/20 06:32:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -232,7 +232,7 @@ nsintr(struct netmsg *msg)
 bad:
 	m_freem(m);
 out:
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	/* msg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

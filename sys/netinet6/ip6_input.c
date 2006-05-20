@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.27 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.28 2006/05/20 06:32:41 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -836,7 +836,7 @@ ip6_input(struct netmsg *msg)
 bad:
 	m_freem(m);
 bad2:
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	/* msg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

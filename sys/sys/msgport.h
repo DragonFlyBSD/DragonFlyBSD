@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.21 2004/12/21 19:41:36 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.22 2006/05/20 06:32:41 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -14,6 +14,14 @@
 #endif
 #ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
+#endif
+
+#ifdef _KERNEL
+
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
+#endif
+
 #endif
 
 struct lwkt_msg;
@@ -114,9 +122,7 @@ typedef struct lwkt_msg {
 #define MSG_SUBCMD_MASK	0x0000FFFF
 
 #ifdef _KERNEL
-#ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_LWKTMSG);
-#endif
 #endif
 
 /*

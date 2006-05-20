@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.18 2006/01/14 13:36:39 swildner Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.19 2006/05/20 06:32:41 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -282,7 +282,7 @@ aarpintr(struct netmsg *msg)
 out:
     m_freem(m);
 out2:
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    /* msg was embedded in the mbuf, do not reply! */
     return(EASYNC);
 }
 

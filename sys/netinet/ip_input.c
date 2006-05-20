@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.61 2006/01/31 19:05:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.62 2006/05/20 06:32:40 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -450,7 +450,7 @@ ip_input_handler(struct netmsg *msg0)
 	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
 
 	ip_input(m);
-	lwkt_replymsg(&msg0->nm_lmsg, 0);
+	/* msg0 was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.25 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.26 2006/05/20 06:32:37 dillon Exp $
  */
 
 /*
@@ -87,6 +87,7 @@ static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_adone_rport;
+lwkt_port netisr_apanic_rport;
 lwkt_port netisr_sync_port;
 
 /*
@@ -97,6 +98,12 @@ static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
     free(msg, M_LWKTMSG);
+}
+
+static void
+netisr_autopanic_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+    panic("unreplyable msg %p was replied!", msg);
 }
 
 /*
@@ -183,12 +190,15 @@ netisr_init(void)
 
     /*
      * The netisr_afree_rport is a special reply port which automatically
-     * frees the replied message.  The netisr_adone_rport() simply marks
-     * the message as being done.
+     * frees the replied message.  The netisr_adone_rport simply marks
+     * the message as being done.  The netisr_apanic_rport panics if
+     * the message is replied to.
      */
     lwkt_initport(&netisr_afree_rport, NULL);
     netisr_afree_rport.mp_replyport = netisr_autofree_reply;
     lwkt_initport_null_rport(&netisr_adone_rport, NULL);
+    lwkt_initport(&netisr_apanic_rport, NULL);
+    netisr_apanic_rport.mp_replyport = netisr_autopanic_reply;
 
     /*
      * The netisr_syncport is a special port which executes the message
@@ -310,10 +320,9 @@ netisr_queue(int num, struct mbuf *m)
     if ((port = ni->ni_mport(&m)) == NULL)
 	return (EIO);
 
-    /* use better message allocation system with limits later XXX JH */
-    pmsg = malloc(sizeof(struct netmsg_packet), M_LWKTMSG, M_WAITOK);
+    pmsg = &m->m_hdr.mh_netmsg;
 
-    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
+    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_apanic_rport, 0,
 		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
     pmsg->nm_packet = m;
     pmsg->nm_lmsg.u.ms_result = num;

@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.20 2006/01/14 13:36:40 swildner Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.21 2006/05/20 06:32:41 dillon Exp $ */
 
 /*
  *
@@ -810,7 +810,7 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
     m_freem(m);
   }
 out:
-  lwkt_replymsg(&msg->nm_lmsg, 0);
+  /* msg was embedded in the mbuf, do not reply! */
   return(EASYNC);
 }
 

@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.15 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.16 2006/05/20 06:32:36 dillon Exp $
  */
 
 /*
@@ -83,8 +83,7 @@ usbintr(struct netmsg *msg)
 	lwkt_serialize_enter(ifp->if_serializer);
 	(*ifp->if_input)(ifp, m);
 	lwkt_serialize_exit(ifp->if_serializer);
-
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	/* the msg is embedded in the mbuf, do not reply it */
 	return EASYNC;
 }
 

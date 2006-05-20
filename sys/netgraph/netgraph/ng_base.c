@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.18 2005/09/04 06:58:24 y0netan1 Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.19 2006/05/20 06:32:39 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -2087,7 +2087,7 @@ ngintr(struct netmsg *pmsg)
 		}
 	}
 out:
-	lwkt_replymsg(&pmsg->nm_lmsg, 0);
+	/* pmsg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

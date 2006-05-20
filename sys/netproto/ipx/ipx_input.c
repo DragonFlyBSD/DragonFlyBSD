@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.13 2006/01/14 13:36:40 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.14 2006/05/20 06:32:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -269,7 +269,7 @@ ours:
 bad:
 	m_freem(m);
 out:
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	/* msg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

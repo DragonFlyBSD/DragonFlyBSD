@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.31 2006/01/31 19:05:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.32 2006/05/20 06:32:40 dillon Exp $
  */
 
 /*
@@ -575,7 +575,7 @@ arpintr(struct netmsg *msg)
 out1:
 	m_freem(m);
 out2:
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	/* msg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 
