@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.22 2006/05/19 05:15:36 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.23 2006/05/20 17:41:42 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -47,7 +47,6 @@
  * handle on protocol and pointer to protocol
  * private data and error information.
  */
-typedef	u_quad_t so_gen_t;
 
 struct accept_filter;
 
@@ -116,7 +115,6 @@ struct socket {
 	void	*so_upcallarg;
 	struct	ucred *so_cred;		/* user credentials */
 	/* NB: generation count must not be first; easiest to make it last. */
-	so_gen_t so_gencnt;		/* generation count */
 	void	*so_emuldata;		/* private data for emulators */
 	struct	so_accf { 
 		struct	accept_filter *so_accept_filter;
@@ -302,7 +300,6 @@ extern int	maxsockets;
 extern u_long	sb_max;		/* nominal limit */
 extern u_long	sb_max_adj;	/* actual limit used by sbreserve() */
 extern struct	vm_zone *socket_zone;
-extern so_gen_t so_gencnt;
 
 struct file;
 struct filedesc;

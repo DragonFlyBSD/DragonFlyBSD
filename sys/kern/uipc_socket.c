@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.36 2005/07/23 07:28:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.37 2006/05/20 17:41:40 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -133,7 +133,6 @@ static struct filterops sowrite_filtops =
 	{ 1, NULL, filt_sowdetach, filt_sowrite };
 
 struct	vm_zone *socket_zone;
-so_gen_t	so_gencnt;	/* generation count for sockets */
 
 MALLOC_DEFINE(M_SONAME, "soname", "socket name");
 MALLOC_DEFINE(M_PCB, "pcb", "protocol control block");
@@ -168,7 +167,6 @@ soalloc(waitok)
 	if (so) {
 		/* XXX race condition for reentrant kernel */
 		bzero(so, sizeof *so);
-		so->so_gencnt = ++so_gencnt;
 		TAILQ_INIT(&so->so_aiojobq);
 		TAILQ_INIT(&so->so_rcv.sb_sel.si_mlist);
 		TAILQ_INIT(&so->so_snd.sb_sel.si_mlist);
@@ -239,8 +237,6 @@ sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 void
 sodealloc(struct socket *so)
 {
-
-	so->so_gencnt = ++so_gencnt;
 	if (so->so_rcv.sb_hiwat)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
 		    &so->so_rcv.sb_hiwat, 0, RLIM_INFINITY);
