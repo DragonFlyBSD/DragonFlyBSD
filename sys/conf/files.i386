@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.39 2006/01/06 15:50:07 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.40 2006/05/20 18:26:34 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -14,23 +14,11 @@ linux_genassym.o		optional	compat_linux		   \
 	no-obj no-implicit-rule						   \
 	clean		"linux_genassym.o"
 #
-svr4_genassym.o			optional	compat_svr4		   \
-	dependency 	"$S/emulation/svr4/i386/svr4_genassym.c"	   \
-	compile-with	"${CC} ${CFLAGS:N-fno-common} -c ${.IMPSRC}"	   \
-	no-obj no-implicit-rule						   \
-	clean		"svr4_genassym.o"
-#
 linux_assym.h			optional	compat_linux		   \
 	dependency 	"$S/kern/genassym.sh linux_genassym.o"		   \
 	compile-with	"sh $S/kern/genassym.sh linux_genassym.o > ${.TARGET}" \
 	no-obj no-implicit-rule before-depend				   \
 	clean		"linux_assym.h"
-#
-svr4_assym.h			optional	compat_svr4		   \
-	dependency 	"$S/kern/genassym.sh svr4_genassym.o"	   	   \
-	compile-with	"sh $S/kern/genassym.sh svr4_genassym.o > ${.TARGET}" \
-	no-obj no-implicit-rule before-depend				   \
-	clean		"svr4_assym.h"
 #
 font.h				optional	sc_dflt_font		\
 	compile-with	"uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x16.fnt && file2c 'static u_char dflt_font_16[16*256] = {' '};' < ${SC_DFLT_FONT}-8x16 > font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x14.fnt && file2c 'static u_char dflt_font_14[14*256] = {' '};' < ${SC_DFLT_FONT}-8x14 >> font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x8.fnt && file2c 'static u_char dflt_font_8[8*256] = {' '};' < ${SC_DFLT_FONT}-8x8 >> font.h" \
@@ -223,25 +211,6 @@ i386/i386/uio_machdep.c		standard
 i386/i386/userconfig.c		optional	userconfig
 i386/i386/vm86.c		standard
 i386/i386/vm_machdep.c		standard
-emulation/ibcs2/i386/ibcs2_errno.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_fcntl.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_ioctl.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_ipc.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_isc.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_isc_sysent.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_misc.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_msg.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_other.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_signal.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_socksys.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_stat.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_sysent.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_sysi86.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_sysvec.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_util.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_xenix.c	optional	ibcs2
-emulation/ibcs2/i386/ibcs2_xenix_sysent.c optional	ibcs2
-emulation/ibcs2/coff/imgact_coff.c	optional	ibcs2
 i386/isa/asc.c				optional	asc
 i386/isa/clock.c			standard
 dev/serial/cronyx/cronyx.c		optional	cx
@@ -291,26 +260,6 @@ emulation/linux/i386/linux_machdep.c	optional	compat_linux
 emulation/linux/i386/linux_ptrace.c	optional	compat_linux
 emulation/linux/i386/linux_sysent.c	optional	compat_linux
 emulation/linux/i386/linux_sysvec.c	optional	compat_linux
-emulation/svr4/imgact_svr4.c		optional	compat_svr4
-emulation/svr4/svr4_fcntl.c		optional	compat_svr4
-emulation/svr4/svr4_filio.c		optional	compat_svr4
-emulation/svr4/svr4_ioctl.c		optional	compat_svr4
-emulation/svr4/svr4_ipc.c		optional	compat_svr4
-emulation/svr4/svr4_misc.c		optional	compat_svr4
-emulation/svr4/svr4_resource.c		optional	compat_svr4
-emulation/svr4/svr4_signal.c		optional	compat_svr4
-emulation/svr4/svr4_socket.c		optional	compat_svr4
-emulation/svr4/svr4_sockio.c		optional	compat_svr4
-emulation/svr4/svr4_stat.c		optional	compat_svr4
-emulation/svr4/svr4_stream.c		optional	compat_svr4
-emulation/svr4/svr4_syscallnames.c	optional	compat_svr4
-emulation/svr4/svr4_sysent.c		optional	compat_svr4
-emulation/svr4/svr4_sysvec.c		optional	compat_svr4
-emulation/svr4/svr4_termios.c		optional	compat_svr4
-emulation/svr4/svr4_ttold.c		optional	compat_svr4
-emulation/svr4/i386/svr4_locore.s	optional	compat_svr4   \
-	dependency	"svr4_assym.h"
-emulation/svr4/i386/svr4_machdep.c	optional	compat_svr4
 #
 # isdn4bsd, needed for isic | iwic | ifpi | | ifpi2 | ihfc | ifpnp | itjc
 #

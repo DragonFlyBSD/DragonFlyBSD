@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.7 2006/05/11 08:23:19 swildner Exp $
+# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.8 2006/05/20 18:26:34 dillon Exp $
 
 DISABLE_PSE
 MATH_EMULATE		opt_math_emulate.h
@@ -24,8 +24,6 @@ BROKEN_KEYBOARD_RESET	opt_reset.h
 # (see src/sys/conf/options), except for broken debugging options.
 IBCS2			opt_dontuse.h
 COMPAT_LINUX		opt_dontuse.h
-COMPAT_SVR4		opt_dontuse.h
-DEBUG_SVR4		opt_svr4.h
 
 # i386 SMP options
 APIC_IO			opt_global.h

@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/archdep,v 1.5 2003/05/06 00:09:51 obrien Exp $
-# $DragonFly: src/etc/rc.d/Attic/archdep,v 1.4 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/Attic/archdep,v 1.5 2006/05/20 18:26:29 dillon Exp $
 #
 
 # PROVIDE: archdep
@@ -34,30 +34,10 @@ osf1_compat()
 	fi
 }
 
-# SCO binary emulation
-#
-ibcs2_compat()
-{
-	if checkyesno ibcs2_enable; then
-		echo -n ' ibcs2'
-		kldload ibcs2 > /dev/null 2>&1
-		case ${ibcs2_loaders} in
-		[Nn][Oo])
-			;;
-		*)
-			for i in ${ibcs2_loaders}; do
-				kldload ibcs2_$i > /dev/null 2>&1
-			done
-			;;
-		esac
-	fi
-}
-
 _arch=`${SYSCTL_N} hw.machine`
 echo -n "Initial $_arch initialization:"
 case $_arch in
 i386)
-	ibcs2_compat
 	;;
 alpha)
 	osf1_compat

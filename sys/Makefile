@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.10 2004/11/23 06:31:57 dillon Exp $
+# $DragonFly: src/sys/Makefile,v 1.11 2006/05/20 18:26:32 dillon Exp $
 
 # This is the old aout only boot loader.
 .if	exists(${.CURDIR}/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
@@ -13,7 +13,7 @@ SUBDIR= boot
 .endif
 
 # KLD modules build for both a.out and ELF
-# note: emulation must come before dev (for arch_svr4 softlink)
+#
 .if defined(MODULES_WITH_WORLD)
 .if defined(MODULES_OVERRIDE)
 SUBDIR+=${MODULES_OVERRIDE}
@@ -29,7 +29,6 @@ HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", rele
 
 all_sysent:
 	(cd ${.CURDIR}/kern; ${MAKE} sysent)
-	(cd ${.CURDIR}/emulation/svr4; ${MAKE} sysent) 
 	(cd ${.CURDIR}/emulation/linux/i386; ${MAKE} sysent) 
 	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} sysent) 
 

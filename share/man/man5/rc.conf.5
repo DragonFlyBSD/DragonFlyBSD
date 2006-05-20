@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.17 2006/04/17 17:34:21 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.18 2006/05/20 18:26:31 dillon Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -2197,21 +2197,6 @@ Set to
 to enable system accounting through the
 .Xr accton 8
 facility.
-.It Va ibcs2_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to enable iBCS2 (SCO) binary emulation at system initial boot
-time.
-.It Va ibcs2_loaders
-.Pq Vt str
-If not set to
-.Dq Li NO
-and if
-.Va ibcs2_enable
-is set to
-.Dq Li YES ,
-this specifies a list of additional iBCS2 loaders to enable.
 .It Va linux_enable
 .Pq Vt bool
 Set to
