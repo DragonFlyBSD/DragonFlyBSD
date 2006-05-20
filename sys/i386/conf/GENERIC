@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.35 2006/05/20 07:15:17 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.36 2006/05/20 09:13:09 sephe Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -228,6 +228,7 @@ device		wlan_wep	# 802.11 WEP support
 # those parameters here.
 device		an
 #device		awi		# PRISM I IEEE 802.11b wireless NIC
+device		ral		# Ralink Technology 802.11 wireless NIC
 # WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really
 # exists only as a PCMCIA device, so there is no ISA attachment needed
 # and resources will always be dynamically assigned by the pccard code.
