@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.12 2006/03/25 06:54:22 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.13 2006/05/20 03:28:07 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.11 2005/08/19 14:35:53 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.12 2006/03/25 06:52:44 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2716,6 +2716,7 @@
 #define	PCI_PRODUCT_VIATECH_VT8653	0x3101		/* VT8653 (Apollo Pro 266T) CPU-PCI Bridge */
 #define	PCI_PRODUCT_VIATECH_VT8237_EHCI	0x3104		/* VT8237 EHCI USB Controller */
 #define	PCI_PRODUCT_VIATECH_VT6105	0x3106		/* VT6105 (Rhine III) 10/100 Ethernet */
+#define	PCI_PRODUCT_VIATECH_VT612X	0x3119		/* VT612X 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_VIATECH_VT8623_VGA	0x3122		/* VT8623 (Apollo CLE266) VGA Controller */
 #define	PCI_PRODUCT_VIATECH_VT8623	0x3123		/* VT8623 (Apollo CLE266) CPU-PCI Bridge */
 #define	PCI_PRODUCT_VIATECH_VT8233A	0x3147		/* VT8233A PCI-ISA Bridge */
