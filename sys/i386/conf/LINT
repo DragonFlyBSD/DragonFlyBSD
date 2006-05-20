@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.76 2006/05/18 13:51:45 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.77 2006/05/20 07:15:17 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1933,6 +1933,7 @@ device		sis		# Silicon Integrated Systems SiS 900/SiS 7016
 device		ste		# Sundance ST201 (D-Link DFE-550TX)
 device		tl		# Texas Instruments ThunderLAN
 device		tx		# SMC EtherPower II (83c17x ``EPIC'')
+device		vge		# VIA 612x GigE
 device		vr		# VIA Rhine, Rhine II
 device		wb		# Winbond W89C840F
 device		xl		# 3Com 3c90x (``Boomerang'', ``Cyclone'')
