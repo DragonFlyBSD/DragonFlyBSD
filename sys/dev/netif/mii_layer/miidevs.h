@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.6 2005/12/26 13:38:38 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.7 2006/05/20 04:35:30 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -60,6 +60,7 @@
 #define	MII_OUI_ALTIMA	0x0010a9	/* Altima Communications */
 #define	MII_OUI_AMD	0x00001a	/* Advanced Micro Devices */
 #define	MII_OUI_BROADCOM	0x001018	/* Broadcom Corporation */
+#define	MII_OUI_CICADA	0x0003F1	/* Cicada Semiconductor */
 #define	MII_OUI_DAVICOM	0x00606e	/* Davicom Semiconductor */
 #define	MII_OUI_ICS	0x00a0be	/* Integrated Circuit Systems */
 #define	MII_OUI_INTEL	0x00aa00	/* Intel */
@@ -134,6 +135,14 @@
 #define	MII_STR_xxBROADCOM_BCM5704	"BCM5704 10/100/1000baseTX PHY"
 #define	MII_MODEL_xxBROADCOM_BCM5705	0x001a
 #define	MII_STR_xxBROADCOM_BCM5705	"BCM5705 10/100/1000baseTX PHY"
+
+/* Cicada Semiconductor PHYs (now owned by Vitesse?) */
+#define	MII_MODEL_CICADA_CS8201	0x0001
+#define	MII_STR_CICADA_CS8201	"Cicada CS8201 10/100/1000TX PHY"
+#define	MII_MODEL_CICADA_CS8201A	0x0020
+#define	MII_STR_CICADA_CS8201A	"Cicada CS8201 10/100/1000TX PHY"
+#define	MII_MODEL_CICADA_CS8201B	0x0021
+#define	MII_STR_CICADA_CS8201B	"Cicada CS8201 10/100/1000TX PHY"
 
 /* Davicom Semiconductor PHYs */
 #define	MII_MODEL_xxDAVICOM_DM9101	0x0000
