@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -40,6 +40,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>
 #endif
 #ifndef _SYS_UIO_H_
 #include <sys/uio.h>

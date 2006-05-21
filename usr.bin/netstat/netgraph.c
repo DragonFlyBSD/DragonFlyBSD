@@ -32,11 +32,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/netgraph.c,v 1.3.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.4 2006/05/21 03:43:47 dillon Exp $
  *
  * $Id: atalk.c,v 1.11 1998/07/06 21:01:22 bde Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>

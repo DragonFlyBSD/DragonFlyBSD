@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.25 2006/05/07 00:24:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.26 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -46,9 +46,13 @@
 #endif /* !_POSIX_C_SOURCE */
 #endif /* !_KERNEL */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
-#ifdef _KERNEL
+#endif
+#ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
+#endif
 #endif
 
 struct thread;

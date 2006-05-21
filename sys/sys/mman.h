@@ -32,13 +32,15 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.4 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_MMAN_H_
 #define _SYS_MMAN_H_
 
+#ifndef _SYS__POSIX_H_
 #include <sys/_posix.h>
+#endif
 
 /*
  * Inheritance for minherit()
@@ -133,7 +135,12 @@
 
 #ifndef _KERNEL
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 #ifdef _P1003_1B_VISIBLE

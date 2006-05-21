@@ -32,9 +32,10 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.5 2005/03/12 10:38:42 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.6 2006/05/21 03:43:47 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/mbuf.h>

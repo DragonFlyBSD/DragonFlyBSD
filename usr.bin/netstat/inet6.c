@@ -32,12 +32,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.6 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.7 2006/05/21 03:43:47 dillon Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
 
 #ifdef INET6
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>

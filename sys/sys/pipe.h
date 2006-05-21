@@ -19,11 +19,13 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.9 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
 #define _SYS_PIPE_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -114,4 +116,5 @@ struct pipe {
 	int	pipe_busy;		/* busy flag, mostly to handle rundown sanely */
 };
 
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #endif /* !_SYS_PIPE_H_ */

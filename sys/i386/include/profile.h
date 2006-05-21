@@ -32,12 +32,15 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.7 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.8 2006/05/21 03:43:44 dillon Exp $
  */
 
 #ifndef _MACHINE_PROFILE_H_
 #define	_MACHINE_PROFILE_H_
 
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#endif
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -136,13 +139,11 @@ void	stopguprof (struct gmonparam *p);
 
 #else /* !_KERNEL */
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 #ifdef __GNUC__
 void	mcount (void) __asm(".mcount");
 #endif
-static void	_mcount (uintfptr_t frompc, uintfptr_t selfpc);
+/*static void	_mcount (uintfptr_t frompc, uintfptr_t selfpc);*/
 __END_DECLS
 
 #endif /* _KERNEL */

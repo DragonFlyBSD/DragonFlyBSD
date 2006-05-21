@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.7 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.8 2006/05/21 03:43:45 dillon Exp $
  */
 /*
  * NOTE ON MPSAFE access.  Routines which manipulate the packet queue must
@@ -41,7 +41,13 @@
 #ifndef _NET_IFQ_VAR_H_
 #define _NET_IFQ_VAR_H_
 
-#if defined(_KERNEL) && !defined(_SYS_SYSTM_H_)
+#ifndef _KERNEL
+
+#error "This file should not be included by userland programs."
+
+#else
+
+#ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
 #endif
 #ifndef _SYS_THREAD2_H_
@@ -205,4 +211,5 @@ ifq_set_maxlen(struct ifaltq *_ifq, int _len)
 
 void	ifq_set_classic(struct ifaltq *);
 
-#endif
+#endif	/* _KERNEL */
+#endif	/* _NET_IFQ_VAR_H_ */

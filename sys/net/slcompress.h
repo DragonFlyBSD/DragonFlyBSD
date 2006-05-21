@@ -35,7 +35,7 @@
  *	Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
  * $FreeBSD: src/sys/net/slcompress.h,v 1.14.2.1 2000/05/05 13:37:06 jlemon Exp $
- * $DragonFly: src/sys/net/slcompress.h,v 1.4 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/slcompress.h,v 1.5 2006/05/21 03:43:45 dillon Exp $
  */
 
 #ifndef _NET_SLCOMPRESS_H_
@@ -159,6 +159,8 @@ struct slcompress {
 };
 /* flag values */
 #define SLF_TOSS 1		/* tossing rcvd frames because of input err */
+
+struct mbuf;
 
 void	 sl_compress_init (struct slcompress *, int);
 u_int	 sl_compress_tcp (struct mbuf *,

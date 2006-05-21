@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/netgraph.h,v 1.6.2.7 2002/04/14 23:31:08 julian Exp $
- * $DragonFly: src/sys/netgraph/netgraph.h,v 1.3 2006/05/20 02:42:11 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph.h,v 1.4 2006/05/21 03:43:47 dillon Exp $
  * $Whistle: netgraph.h,v 1.29 1999/11/01 07:56:13 julian Exp $
  */
 
@@ -61,8 +61,10 @@
 #endif
 
 #ifndef _KERNEL
+
 #error "This file should not be included in user level programs"
-#endif
+
+#else
 
 #define NG_ABI_VERSION NG_VERSION
 
@@ -352,5 +354,6 @@ void	ng_unname(node_p node);
 void	ng_unref(node_p node);
 int	ng_wait_node(node_p node, char *msg);
 
-#endif /* _NETGRAPH_NETGRAPH_H_ */
+#endif	/* _KERNEL */
+#endif	/* _NETGRAPH_NETGRAPH_H_ */
 

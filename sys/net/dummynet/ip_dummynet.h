@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.3 2004/09/15 20:30:09 joerg Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.4 2006/05/21 03:43:46 dillon Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -110,6 +110,8 @@ struct dn_heap {
     struct dn_heap_entry *p ;	/* really an array of "size" entries */
 } ;
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * struct dn_pkt identifies a packet in the dummynet queue, but
  * is also used to tag packets passed back to the various destinations
@@ -144,6 +146,8 @@ struct dn_pkt {
     struct route ro;		/* route, for ip_output. MUST COPY	*/
     int flags ;			/* flags, for ip_output (IPv6 ?)	*/
 };
+
+#endif
 
 /*
  * Overall structure of dummynet (with WF2Q+):

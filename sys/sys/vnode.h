@@ -32,27 +32,50 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.55 2006/05/18 16:25:20 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.56 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
 #define	_SYS_VNODE_H_
 
-#include <sys/queue.h>
-#include <sys/lock.h>
-#include <sys/select.h>
-#include <sys/biotrack.h>
-#include <sys/uio.h>
-#include <sys/acl.h>
-#include <sys/namecache.h>
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_LOCK_H_
+#include <sys/lock.h>
+#endif
+#ifndef _SYS_SELECT_H_
+#include <sys/select.h>
+#endif
+#ifndef _SYS_BIOTRACK_H_
+#include <sys/biotrack.h>
+#endif
+#ifndef _SYS_UIO_H_
+#include <sys/uio.h>
+#endif
+#ifndef _SYS_ACL_H_
+#include <sys/acl.h>
+#endif
+#ifndef _SYS_NAMECACHE_H_
+#include <sys/namecache.h>
+#endif
+#ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
+#ifndef _SYS_VFSOPS_H_
 #include <sys/vfsops.h>
+#endif
+#ifndef _SYS_VFSCACHE_H_
 #include <sys/vfscache.h>
+#endif
+#ifndef _SYS_TREE_H_
 #include <sys/tree.h>
-
+#endif
+#ifndef _MACHINE_LOCK_H_
 #include <machine/lock.h>
+#endif
 
 /*
  * The vnode is the focus of all file activity in UNIX.  There is a
@@ -637,6 +660,7 @@ extern	struct vop_ops *default_vnode_vops;
 extern	struct vop_ops *spec_vnode_vops;
 extern	struct vop_ops *dead_vnode_vops;
 
-#endif /* _KERNEL */
+#endif	/* _KERNEL */
 
-#endif /* !_SYS_VNODE_H_ */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_VNODE_H_ */

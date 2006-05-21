@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm.h,v 1.16.2.1 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/vm/vm.h,v 1.5 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm.h,v 1.6 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef VM_VM_H_
@@ -104,12 +104,11 @@ typedef struct vm_object *vm_object_t;
 struct vm_object_lock;
 typedef struct vm_object_lock *vm_object_lock_t;
 
-#ifndef _KERNEL
-
 /*
- * This is defined in <sys/types.h> for the kernel so that vnode_if.h
- * doesn't have to include <vm/vm.h>.
+ * This is also defined in vm/vm_page.h.
  */
+#ifndef __VM_PAGE_T_DEFINED__
+#define __VM_PAGE_T_DEFINED__
 struct vm_page;
 typedef struct vm_page *vm_page_t;
 #endif

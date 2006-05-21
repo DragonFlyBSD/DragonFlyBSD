@@ -32,9 +32,10 @@
  *
  * @(#)atalk.c	1.1 (Whistle) 6/6/96
  * $FreeBSD: src/usr.bin/netstat/atalk.c,v 1.13.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/atalk.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/atalk.c,v 1.3 2006/05/21 03:43:47 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>

@@ -29,15 +29,27 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.7 2006/05/19 18:26:29 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
 #define _SYS_SPINLOCK2_H_
 
+#ifndef _KERNEL
+
+#error "This file should not be included by userland programs."
+
+#else
+
+#ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
+#ifndef _MACHINE_ATOMIC_H_
 #include <machine/atomic.h>
+#endif
+#ifndef _MACHINE_CPUFUNC_H_
 #include <machine/cpufunc.h>
+#endif
 
 #ifdef SMP
 
@@ -179,5 +191,6 @@ spin_unlock(struct spinlock *mtx)
 	crit_exit_id("spin");
 }
 
-#endif
+#endif	/* _KERNEL */
+#endif	/* _SYS_SPINLOCK2_H_ */
 

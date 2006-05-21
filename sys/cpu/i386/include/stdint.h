@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.4 2006/01/02 06:02:01 y0netan1 Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.5 2006/05/21 03:43:44 dillon Exp $
  */
 
 #ifndef _MACHINE_STDINT_H_
@@ -51,6 +51,7 @@ typedef	short		__int16_t;
 typedef	unsigned short	__uint16_t;
 typedef	int		__int32_t;
 typedef	unsigned int	__uint32_t;
+typedef int		__boolean_t;
 
 /*
  * This mess is to override compiler options that might restrict long long

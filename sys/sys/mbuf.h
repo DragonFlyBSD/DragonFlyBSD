@@ -34,11 +34,13 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.34 2006/05/20 06:32:41 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.35 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
 #define	_SYS_MBUF_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -589,6 +591,8 @@ m_tag_find(struct mbuf *m, int type, struct m_tag *start)
 {
 	return m_tag_locate(m, MTAG_ABI_COMPAT, type, start);
 }
-#endif /* _KERNEL */
 
-#endif /* !_SYS_MBUF_H_ */
+#endif	/* _KERNEL */
+
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_MBUF_H_ */

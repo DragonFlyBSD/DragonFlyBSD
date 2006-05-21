@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.23 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.24 2006/05/21 03:43:47 dillon Exp $
  */
 
 /*
@@ -79,9 +79,6 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-#if defined(_KERNEL) && !defined(_SYS_SYSTM_H_)
-#include <sys/systm.h>
-#endif
 #ifndef _MACHINE_PMAP_H_
 #include <machine/pmap.h>
 #endif
@@ -94,6 +91,9 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
 #endif
@@ -132,12 +132,14 @@
 TAILQ_HEAD(pglist, vm_page);
 
 struct msf_buf;
+struct vm_object;
+
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
 	struct vm_page	*hnext;		/* hash table link (O,P)	*/
 	TAILQ_ENTRY(vm_page) listq;	/* pages in same object (O) 	*/
 
-	vm_object_t object;		/* which object am I in (O,P)*/
+	struct vm_object *object;	/* which object am I in (O,P)*/
 	vm_pindex_t pindex;		/* offset into object (O,P) */
 	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
@@ -164,6 +166,11 @@ struct vm_page {
 #endif
 	struct msf_buf *msf_hint; 	/* first page of an msfbuf map */
 };
+
+#ifndef __VM_PAGE_T_DEFINED__
+#define __VM_PAGE_T_DEFINED__
+typedef struct vm_page *vm_page_t;
+#endif
 
 /*
  * note: currently use SWAPBLK_NONE as an absolute value rather then 
@@ -308,7 +315,7 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  */
 
 extern int vm_page_zero_count;
-extern vm_page_t vm_page_array;		/* First resident page in table */
+extern struct vm_page *vm_page_array;	/* First resident page in table */
 extern int vm_page_array_size;		/* number of vm_page_t's */
 extern long first_page;			/* first physical page number */
 
@@ -415,17 +422,17 @@ vm_page_io_finish(vm_page_t m)
 
 void vm_page_unhold(vm_page_t mem);
 void vm_page_activate (vm_page_t);
-vm_page_t vm_page_alloc (vm_object_t, vm_pindex_t, int);
-vm_page_t vm_page_grab (vm_object_t, vm_pindex_t, int);
+vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
+vm_page_t vm_page_grab (struct vm_object *, vm_pindex_t, int);
 void vm_page_cache (vm_page_t);
 int vm_page_try_to_cache (vm_page_t);
 int vm_page_try_to_free (vm_page_t);
 void vm_page_dontneed (vm_page_t);
 void vm_page_deactivate (vm_page_t);
-void vm_page_insert (vm_page_t, vm_object_t, vm_pindex_t);
-vm_page_t vm_page_lookup (vm_object_t, vm_pindex_t);
+void vm_page_insert (vm_page_t, struct vm_object *, vm_pindex_t);
+vm_page_t vm_page_lookup (struct vm_object *, vm_pindex_t);
 void vm_page_remove (vm_page_t);
-void vm_page_rename (vm_page_t, vm_object_t, vm_pindex_t);
+void vm_page_rename (vm_page_t, struct vm_object *, vm_pindex_t);
 vm_offset_t vm_page_startup (vm_offset_t);
 vm_page_t vm_add_new_page (vm_paddr_t pa);
 void vm_page_unmanage (vm_page_t);

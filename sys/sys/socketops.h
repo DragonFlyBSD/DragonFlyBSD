@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.7 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 /*
@@ -54,12 +54,20 @@
 #define _SOCKETOPS_H_
 
 #ifndef _KERNEL
-#error "This file should not be included by userland programs."
-#endif
 
+#error "This file should not be included by userland programs."
+
+#else
+
+#ifndef _SYS_PROTOSW_H_
 #include <sys/protosw.h>
+#endif
+#ifndef _SYS_SOCKET_H_
 #include <sys/socket.h>
+#endif
+#ifndef _SYS_SOCKETVAR_H_
 #include <sys/socketvar.h>
+#endif
 
 /*
  * sosend() and soreceive() can block and also calls other pru_usrreq functions.
@@ -105,4 +113,5 @@ int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
 int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
 int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
 
-#endif
+#endif	/* _KERNEL */
+#endif	/* _SYS_SOCKETOPS_H_ */

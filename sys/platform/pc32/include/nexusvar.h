@@ -24,11 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/nexusvar.h,v 1.1 2000/09/28 00:37:31 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/nexusvar.h,v 1.2 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/nexusvar.h,v 1.3 2006/05/21 03:43:44 dillon Exp $
  */
 
 #ifndef _MACHINE_NEXUSVAR_H_
 #define	_MACHINE_NEXUSVAR_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -56,8 +58,11 @@ static __inline void nexus_set_ ## A(device_t dev, T t)			  \
 	BUS_WRITE_IVAR(device_get_parent(dev), dev, NEXUS_IVAR_ ## B, v); \
 }
 
+#ifdef _KERNEL
 NEXUS_ACCESSOR(pcibus,			PCIBUS,		u_int32_t)
+#endif
 
 #undef NEXUS_ACCESSOR
 
-#endif /* !_MACHINE_NEXUSVAR_H_ */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_MACHINE_NEXUSVAR_H_ */

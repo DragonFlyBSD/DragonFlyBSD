@@ -8,22 +8,29 @@
  * on a different cpu will not be immediately scheduled by a yield() on
  * this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.26 2006/05/18 16:25:20 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.27 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
 #define _SYS_THREAD2_H_
 
+#ifndef _KERNEL
+
+#error "This file should not be included by userland programs."
+
+#else
+
 /*
  * Userland will have its own globaldata which it includes prior to this.
  */
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif
 #ifndef _MACHINE_CPUFUNC_H_
 #include <machine/cpufunc.h>
-#endif
 #endif
 
 /*
@@ -65,8 +72,6 @@
  * Track crit_enter()/crit_exit() pairs and warn on mismatches.
  */
 #ifdef DEBUG_CRIT_SECTIONS
-
-#include <sys/systm.h>
 
 static __inline void
 _debug_crit_enter(thread_t td, const char *id)
@@ -295,7 +300,7 @@ lwkt_send_ipiq2_bycpu(int dcpu, ipifunc2_t func, void *arg1, int arg2)
     return(lwkt_send_ipiq3_bycpu(dcpu, (ipifunc3_t)func, arg1, arg2));
 }
 
-#endif
-
-#endif
+#endif	/* SMP */
+#endif	/* _KERNEL */
+#endif	/* _SYS_THREAD2_H_ */
 

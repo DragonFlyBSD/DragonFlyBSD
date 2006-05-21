@@ -15,7 +15,7 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.14.2.5 2003/08/24 03:26:37 ken Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.4 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.5 2006/05/21 03:43:38 dillon Exp $
  */
 
 /*
@@ -25,7 +25,12 @@
 #ifndef	_SCSI_SCSI_ALL_H
 #define _SCSI_SCSI_ALL_H 1
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
+#if !defined(_KERNEL) && !defined(_STDIO_H_)
+#include <stdio.h>	/* FILE for userland protos */
+#endif
 
 #ifdef _KERNEL
 #include "opt_scsi.h"
@@ -768,6 +773,7 @@ const char * 	scsi_sense_desc(int asc, int ascq,
 scsi_sense_action scsi_error_action(int asc, int ascq, 
 				    struct scsi_inquiry_data *inq_data);
 #ifdef _KERNEL
+
 void		scsi_sense_print(struct ccb_scsiio *csio);
 int		scsi_interpret_sense(union ccb *ccb, 
 				     u_int32_t sense_flags,
@@ -776,6 +782,7 @@ int		scsi_interpret_sense(union ccb *ccb,
 				     u_int32_t *timeout,
 				     scsi_sense_action error_action);
 #else
+
 char *		scsi_sense_string(struct cam_device *device, 
 				  struct ccb_scsiio *csio,
 				  char *str, int str_len);

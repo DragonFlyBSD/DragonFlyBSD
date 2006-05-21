@@ -40,11 +40,15 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.20 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.21 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
 #define _SYS_KERNEL_H_
+
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#else
 
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
@@ -55,8 +59,9 @@
 
 #ifdef _KERNEL
 
-/* for intrhook below */
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 /* Global variables for the kernel. */
 
@@ -255,6 +260,7 @@ void	sysinit_add (struct sysinit **, struct sysinit **);
  */
 
 extern void tunable_int_init(void *);
+
 struct tunable_int {
 	const char *path;
 	int *var;
@@ -329,7 +335,10 @@ struct tunable_str {
 /*
  * Compatibility.  To be deprecated after LKM is removed.
  */
+#ifndef _SYS_MODULE_H_
 #include <sys/module.h>
+#endif
+
 #define	PSEUDO_SET(sym, name) \
 	static int name ## _modevent(module_t mod, int type, void *data) \
 	{ \
@@ -354,9 +363,6 @@ struct tunable_str {
 
 extern struct linker_set execsw_set;
 
-
-
-
 struct intr_config_hook {
 	TAILQ_ENTRY(intr_config_hook) ich_links;
 	void	(*ich_func) (void *);
@@ -367,4 +373,5 @@ struct intr_config_hook {
 int	config_intrhook_establish (struct intr_config_hook *);
 void	config_intrhook_disestablish (struct intr_config_hook *);
 
+#endif	/* _KERNEL */
 #endif /* !_SYS_KERNEL_H_*/

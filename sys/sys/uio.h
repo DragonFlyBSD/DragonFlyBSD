@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.12 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.13 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -93,6 +93,7 @@ struct uio {
 #if defined(_KERNEL)
 
 struct vm_object;
+struct vm_page;
 
 void	uio_yield (void);
 int	uiomove (caddr_t, int, struct uio *);

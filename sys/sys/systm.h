@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.36 2006/04/14 01:00:16 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.37 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -45,7 +45,7 @@
 
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
-#endif
+#else
 
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
@@ -319,4 +319,6 @@ dev_t udev2dev(udev_t x, int b);
 int uminor(udev_t dev);
 int umajor(udev_t dev);
 udev_t makeudev(int x, int y);
+
+#endif	/* _KERNEL */
 #endif /* !_SYS_SYSTM_H_ */

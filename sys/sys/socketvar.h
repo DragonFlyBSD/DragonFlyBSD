@@ -32,15 +32,23 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.23 2006/05/20 17:41:42 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.24 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
 #define _SYS_SOCKETVAR_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>			/* for TAILQ macros */
+#endif
+#ifndef _SYS_SELECT_H_
 #include <sys/select.h>			/* for struct selinfo */
+#endif
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 /*
  * Kernel structure per socket.
  * Contains send and receive buffer queues,
@@ -122,6 +130,8 @@ struct socket {
 		char	*so_accept_filter_str;	/* saved user args */
 	} *so_accf;
 };
+
+#endif
 
 /*
  * Socket state bits.

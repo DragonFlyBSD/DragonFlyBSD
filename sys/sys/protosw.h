@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.16 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.17 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -53,7 +53,8 @@ struct pr_output_info {
 	pid_t	p_pid;
 };
 
-/*#ifdef _KERNEL*/
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /*
  * Protocol switch table.
  *
@@ -102,7 +103,8 @@ struct protosw {
 					/* flush any excess space possible */
 	const struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };
-/*#endif*/
+
+#endif
 
 #define	PR_SLOWHZ	2		/* 2 slow timeouts per second */
 #define	PR_FASTHZ	5		/* 5 fast timeouts per second */
@@ -178,7 +180,7 @@ char *prurequests[] = {
 };
 #endif
 
-#ifdef	_KERNEL			/* users shouldn't see this decl */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 struct ifnet;
 struct stat;
@@ -299,7 +301,7 @@ int	pru_sense_null (struct socket *so, struct stat *sb);
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *, int);
 struct lwkt_port *sync_soport(struct socket *, struct sockaddr *, int);
 
-#endif /* _KERNEL */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * The arguments to the ctlinput routine are
@@ -370,11 +372,16 @@ char	*prcorequests[] = {
 };
 #endif
 
+/*
+ * Kernel prototypes
+ */
 #ifdef _KERNEL
+
 void	pfctlinput (int, struct sockaddr *);
 void	pfctlinput2 (int, struct sockaddr *, void *);
 struct protosw *pffindproto (int family, int protocol, int type);
 struct protosw *pffindtype (int family, int type);
+
 #endif	/* _KERNEL */
 
 #endif	/* _SYS_PROTOSW_H_ */

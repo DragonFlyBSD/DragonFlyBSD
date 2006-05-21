@@ -32,12 +32,15 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.11 2005/07/15 17:54:48 eirikn Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.12 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
 #ifndef _MACHINE_STDINT_H_
 #include <machine/stdint.h>
 #endif
@@ -173,7 +176,10 @@ struct sockaddr {
 #define	SOCK_MAXADDRLEN	255		/* longest possible addresses */
 
 #ifdef _KERNEL
+
+#ifndef _SYS_LIBKERN_H_
 #include <sys/libkern.h>		/* for bcmp() */
+#endif
 
 static __inline boolean_t
 sa_equal(const struct sockaddr *a1, const struct sockaddr *a2)
@@ -427,7 +433,9 @@ struct sf_hdtr {
 
 #ifndef	_KERNEL
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 int	accept (int, struct sockaddr *, socklen_t *);

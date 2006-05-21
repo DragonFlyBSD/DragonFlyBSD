@@ -32,14 +32,20 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.5 2004/04/10 00:48:06 hsu Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.6 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_SELECT_H_
 #define	_SYS_SELECT_H_
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS_EVENT_H_
 #include <sys/event.h>			/* for struct klist */
+#endif
+#ifndef _SYS_NETISR_H_
 #include <net/netisr.h>			/* for struct notifymsglist */
+#endif
 
 /*
  * Used to maintain information about processes that wish to be
@@ -60,4 +66,5 @@ void	selrecord (struct thread *selector, struct selinfo *);
 void	selwakeup (struct selinfo *);
 #endif
 
-#endif /* !_SYS_SELECT_H_ */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_SELECT_H_ */

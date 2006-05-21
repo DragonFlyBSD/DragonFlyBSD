@@ -32,15 +32,23 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.7 2004/05/05 00:17:45 hsu Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
 #define	_SYS_LIBKERN_H_
 
+#if !defined(_KERNEL)
+#error "This file should not be included by userland programs."
+#else
+
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
-#ifdef _KERNEL
+#endif
+#ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
 #endif
 
@@ -129,4 +137,5 @@ memset(void *b, int c, size_t len)
 #define	FNM_IGNORECASE	FNM_CASEFOLD
 #define	FNM_FILE_NAME	FNM_PATHNAME
 
-#endif /* !_SYS_LIBKERN_H_ */
+#endif	/* _KERNEL */
+#endif	/* !_SYS_LIBKERN_H_ */

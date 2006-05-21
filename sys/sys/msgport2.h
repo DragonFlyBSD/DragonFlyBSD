@@ -3,11 +3,17 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.10 2004/06/04 20:35:39 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.11 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
 #define _SYS_MSGPORT2_H_
+
+#ifndef _KERNEL
+
+#error "This file should not be included by userland programs."
+
+#else
 
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
@@ -119,5 +125,5 @@ lwkt_checkmsg(lwkt_msg_t msg)
     return(msg->ms_flags & MSGF_DONE);
 }
 
-#endif
-
+#endif	/* _KERNEL */
+#endif	/* _SYS_MSGPORT2_H_ */

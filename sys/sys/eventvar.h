@@ -24,11 +24,17 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ *	$DragonFly: src/sys/sys/eventvar.h,v 1.5 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
 #define _SYS_EVENTVAR_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+
+#error "This file should not be included by userland programs."
+
+#else
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -40,9 +46,6 @@
 #include <sys/select.h>
 #endif
 
-#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
-#error "This file should not be included by userland programs."
-#endif
 
 #define KQ_NEVENTS	8		/* minimize copy{in,out} calls */
 #define KQEXTENT	256		/* linear growth by this amount */
@@ -58,4 +61,5 @@ struct kqueue {
 	struct		kevent kq_kev[KQ_NEVENTS];
 };
 
-#endif /* !_SYS_EVENTVAR_H_ */
+#endif	/* _KERNEL */
+#endif	/* !_SYS_EVENTVAR_H_ */

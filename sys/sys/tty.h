@@ -37,15 +37,18 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.7 2004/10/12 19:20:48 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
 #define	_SYS_TTY_H_
 
+#ifndef _SYS_TERMIOS_H_
 #include <sys/termios.h>
+#endif
+#ifndef _SYS_SELECT_H_
 #include <sys/select.h>		/* For struct selinfo. */
-#include <sys/queue.h>
+#endif
 
 /*
  * Clists are character lists, which is a variable length linked list
@@ -59,6 +62,12 @@ struct clist {
 	char	*c_cf;		/* Pointer to the first cblock. */
 	char	*c_cl;		/* Pointer to the last cblock. */
 };
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 
 /*
  * Per-tty structure.
@@ -115,6 +124,8 @@ struct tty {
 #define	t_oflag		t_termios.c_oflag
 #define	t_ospeed	t_termios.c_ospeed
 #define	t_time		t_termios.c_time
+
+#endif
 
 /*
  * User data unfortunately has to be copied through buffers on the way to
@@ -219,9 +230,13 @@ struct speedtab {
 #define	TSA_PTS_READ(tp)	((void *)&(tp)->t_canq)
 
 #ifdef _KERNEL
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_TTYS);
+
+#ifndef _SYS_MALLOC_H_
+#include <sys/malloc.h>
 #endif
+
+MALLOC_DECLARE(M_TTYS);
+
 extern	struct tty *constty;	/* Temporary virtual console. */
 
 int	 b_to_q (char *cp, int cc, struct clist *q);

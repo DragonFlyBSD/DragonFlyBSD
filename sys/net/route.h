@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.19 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.20 2006/05/21 03:43:45 dillon Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -356,7 +356,7 @@ void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
 
 struct rtentry *
-	 _rtlookup (struct sockaddr *, boolean_t, u_long);
+	 _rtlookup (struct sockaddr *, __boolean_t, u_long);
 #define		RTL_REPORTMSG	TRUE
 #define		RTL_DONTREPORT	FALSE
 

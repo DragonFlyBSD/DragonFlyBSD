@@ -32,9 +32,10 @@
  *
  * @(#)ns.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/ipx.c,v 1.13.2.1 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.3 2005/08/04 17:31:23 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/ipx.c,v 1.4 2006/05/21 03:43:47 dillon Exp $
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>

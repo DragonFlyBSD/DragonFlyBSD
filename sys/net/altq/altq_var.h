@@ -1,5 +1,5 @@
 /*	$KAME: altq_var.h,v 1.17 2004/04/20 05:09:08 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_var.h,v 1.2 2006/05/21 03:43:46 dillon Exp $ */
 
 /*
  * Copyright (C) 1998-2003
@@ -31,10 +31,18 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_PARAM_H_
 #include <sys/param.h>
+#endif
+#ifndef _SYS_KERNEL_H_
 #include <sys/kernel.h>
+#endif
+#ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 
 MALLOC_DECLARE(M_ALTQ);
 

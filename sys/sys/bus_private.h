@@ -24,17 +24,21 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
 #define _SYS_BUS_PRIVATE_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
-#error "This file should not be included by userland programs."
-#endif
 
+#error "This file should not be included by userland programs."
+
+#else
+
+#ifndef _SYS_BUS_H_
 #include <sys/bus.h>
+#endif
 
 /*
  * Used to attach drivers to devclasses.
@@ -138,4 +142,5 @@ struct device_op_desc {
 	const char*	name;		/* unique name (for registration) */
 };
 
-#endif /* !_SYS_BUS_PRIVATE_H_ */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_BUS_PRIVATE_H_ */

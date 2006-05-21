@@ -32,11 +32,18 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.21 2005/03/28 18:49:25 joerg Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.22 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
 #define	_SYS_MALLOC_H_
+
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>	/* vm_paddr_t and __* types */
+#endif
 
 #ifndef _MACHINE_PARAM_H_
 #include <machine/param.h>	/* for SMP_MAXCPU */
@@ -46,12 +53,6 @@
 
 #ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>	/* for VM_MIN_KERNEL_ADDRESS */
-#endif
-
-#define splmem splhigh
-
-#ifndef _MACHINE_TYPES_H_
-#include <machine/types.h>	/* vm_paddr_t */
 #endif
 
 #endif	/* _KERNEL */

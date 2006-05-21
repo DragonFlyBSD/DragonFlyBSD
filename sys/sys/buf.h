@@ -37,11 +37,13 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.35 2006/05/04 18:32:23 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.36 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
 #define	_SYS_BUF_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -395,6 +397,6 @@ int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 
-#endif /* _KERNEL */
-
-#endif /* !_SYS_BUF_H_ */
+#endif	/* _KERNEL */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_BUF_H_ */

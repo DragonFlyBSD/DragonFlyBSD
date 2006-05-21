@@ -82,13 +82,11 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.22 2006/01/31 19:05:35 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.23 2006/05/21 03:43:45 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
 #define _NET_NETISR_H_
-
-#include <sys/msgport.h>
 
 /*
  * The networking code runs off software interrupts.
@@ -123,16 +121,27 @@
 
 #define	NETISR_MAX	32
 
-TAILQ_HEAD(notifymsglist, netmsg_so_notify);
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#ifdef _KERNEL
-
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
+#ifndef _SYS_PROTOSW_H_
 #include <sys/protosw.h>
+#endif
+#ifndef _SYS_MSGPORT_H_
+#include <sys/msgport.h>
+#endif
+
+TAILQ_HEAD(notifymsglist, netmsg_so_notify);
 
 struct netmsg;
 
 typedef int (*netisr_fn_t)(struct netmsg *);
-typedef boolean_t (*msg_predicate_fn_t)(struct netmsg *);
+typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg *);
 
 /*
  * Base class.  All net messages must start with the same fields.
@@ -169,6 +178,10 @@ struct netmsg_so_notify {
 #define NM_REVENT	0x1		/* event on receive buffer */
 #define NM_SEVENT	0x2		/* event on send buffer */
 
+#endif
+
+#ifdef _KERNEL
+
 /*
  * for dispatching pr_ functions,
  * until they can be converted to message-passing
@@ -199,6 +212,10 @@ int netmsg_pr_timeout(lwkt_msg_t);
 int netmsg_so_notify(lwkt_msg_t);
 int netmsg_so_notify_abort(lwkt_msg_t);
 
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf **);
 
 struct netisr {
@@ -207,6 +224,10 @@ struct netisr {
 	netisr_fn_t	ni_handler;
 	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
 };
+
+#endif
+
+#ifdef _KERNEL
 
 extern lwkt_port netisr_afree_rport;
 
@@ -221,6 +242,6 @@ void		netmsg_service_loop(void *arg);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
 
-#endif	/* KERNEL */
+#endif	/* _KERNEL */
 
 #endif	/* _NET_NETISR_H_ */

@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/pmap.h,v 1.9 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/pmap.h,v 1.10 2006/05/21 03:43:44 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -246,7 +246,7 @@ typedef struct pv_entry {
 	vm_offset_t	pv_va;		/* virtual address for mapping */
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
-	vm_page_t	pv_ptem;	/* VM page for pte */
+	struct vm_page	*pv_ptem;	/* VM page for pte */
 } *pv_entry_t;
 
 #ifdef	_KERNEL
@@ -275,7 +275,7 @@ pmap_t	pmap_kernel (void);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;
-vm_page_t pmap_use_pt (pmap_t, vm_offset_t);
+struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
 void	pmap_set_opt (void);
 #endif

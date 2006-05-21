@@ -37,7 +37,7 @@
  *
  *	from: @(#)swap_pager.h	7.1 (Berkeley) 12/5/90
  * $FreeBSD: src/sys/vm/swap_pager.h,v 1.28.2.1 2000/10/13 07:13:23 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.h,v 1.4 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.h,v 1.5 2006/05/21 03:43:47 dillon Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ extern struct pagerlst swap_pager_un_object_list;
 extern int swap_pager_full;
 extern struct blist *swapblist;
 
-void swap_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int *);
+void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);
 boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex, int *before, int *after);
 
 int swap_pager_swp_alloc (vm_object_t, int);
@@ -107,7 +107,7 @@ int swap_pager_reserve (vm_object_t, vm_pindex_t, vm_size_t);
  * newswap functions
  */
 
-void swap_pager_page_removed (vm_page_t, vm_object_t);
+void swap_pager_page_removed (struct vm_page *, vm_object_t);
 
 /* choose underlying swap device and queue up I/O */
 struct buf;

@@ -39,14 +39,16 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.11 2005/03/05 05:04:32 dillon Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.12 2006/05/21 03:43:47 dillon Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+
 #error "This file should not be included by userland programs."
-#endif
+
+#else
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
@@ -143,6 +145,6 @@ int msf_uio_iterate(struct uio *uio,
 void	msf_buf_free(struct msf_buf *);
 void	msf_buf_ref(struct msf_buf *);
 
-#endif /* _KERNEL */
-
-#endif
+#endif	/* _KERNEL */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* _SYS_MSFBUF_H_ */

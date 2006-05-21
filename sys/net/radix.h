@@ -32,7 +32,7 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.10 2006/05/20 02:42:08 dillon Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.11 2006/05/21 03:43:45 dillon Exp $
  */
 
 #ifndef _NET_RADIX_H_
@@ -161,8 +161,6 @@ struct radix_node_head {
 };
 
 #ifndef _KERNEL
-#include <stdbool.h>
-#define boolean_t bool
 #define R_Malloc(p, t, n) (p = (t) malloc((n)))
 #define Free(p) free(p);
 #else
@@ -172,8 +170,8 @@ struct radix_node_head {
 
 void			 rn_init (void);
 int			 rn_inithead (void **, int);
-boolean_t		 rn_refines (char *, char *);
-struct radix_node	*rn_addmask (char *, boolean_t, int),
+__boolean_t		 rn_refines (char *, char *);
+struct radix_node	*rn_addmask (char *, __boolean_t, int),
 			*rn_addroute (char *, char *, struct radix_node_head *,
 				      struct radix_node [2]),
 			*rn_delete (char *, char *, struct radix_node_head *),

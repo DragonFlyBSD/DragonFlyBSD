@@ -1,8 +1,3 @@
-/*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/platform/pc32/include/Attic/physio_proc.h,v 1.12 2005/08/07 15:43:02 joerg Exp $	*/
-/*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
-/*	$NetBSD$	*/
-
 /*
  * [NetBSD for NEC PC-98 series]
  *  Copyright (c) 1998
@@ -30,13 +25,31 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/physio_proc.h,v 1.13 2006/05/21 03:43:44 dillon Exp $
+ * $NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $
+ * $NetBSD$
  */
+
 #ifndef _MACHINE_PHYSIO_PROC_H_
 #define _MACHINE_PHYSIO_PROC_H_
 
+#ifndef _KERNEL
+
+#error "This file should not be included by userland programs."
+
+#else
+
+#ifndef _SYS_BUF_H_
 #include <sys/buf.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
+#endif
 
 struct physio_proc { };
 
@@ -57,4 +70,6 @@ physio_proc_init(void)
 {
 	return;
 }
-#endif /* _MACHINE_PHYSIO_PROC_H_ */
+
+#endif	/* _KERNEL */
+#endif	/* _MACHINE_PHYSIO_PROC_H_ */

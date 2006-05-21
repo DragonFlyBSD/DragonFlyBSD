@@ -37,16 +37,24 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.12 2006/04/03 02:02:30 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.13 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
 #define	_SYS_TYPES_H_
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
+#ifndef _STDINT_H_
 #include <stdint.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
 #include <machine/stdarg.h>
+#endif
+#ifndef _MACHINE_ENDIANT_H_
 #include <machine/endian.h>
+#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
@@ -98,10 +106,23 @@ typedef	__int32_t	segsz_t;	/* segment size */
 typedef	__int32_t	swblk_t;	/* swap offset */
 typedef	__uint32_t	uid_t;		/* user id */
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef __BOOLEAN_T_DEFINED__
+#define __BOOLEAN_T_DEFINED__
 typedef	int		boolean_t;
+#endif
+
 typedef	u_int64_t	uoff_t;
-typedef	struct vm_page	*vm_page_t;
+
+#endif
+
+/*
+ * XXX dev_t has different meanings for userland vs kernel compiles.  What
+ * do we do for _KERNEL_STRUCTURES ?  For the moment stick with the userland
+ * meaning as being the more compatible solution.
+ */
+#ifdef _KERNEL
 
 struct specinfo;
 

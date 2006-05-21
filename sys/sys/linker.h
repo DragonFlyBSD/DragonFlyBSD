@@ -24,13 +24,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.9 2006/05/21 03:43:47 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_H_
 #define _SYS_LINKER_H_
-
-#ifdef _KERNEL
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -38,6 +36,9 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+
+#ifdef _KERNEL
+
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
@@ -316,11 +317,14 @@ struct kld_sym_lookup {
     u_long	symvalue;
     size_t	symsize;
 };
+
 #define KLDSYM_LOOKUP	1
 
 #ifndef _KERNEL
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
 
 __BEGIN_DECLS
 int	kldload(const char *);

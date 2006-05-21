@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
- * $DragonFly: src/sys/sys/camlib.h,v 1.2 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/camlib.h,v 1.3 2006/05/21 03:43:47 dillon Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI
@@ -65,11 +65,18 @@
 #ifndef _SYS_CAMLIB_H_
 #define _SYS_CAMLIB_H_
 
+#ifndef _SYS_CDEFS_H_
 #include <sys/cdefs.h>
+#endif
+#ifndef _SYS_PARAM_H_
 #include <sys/param.h>
-
+#endif
+#ifndef _BUS_CAM_CAM_H_
 #include <bus/cam/cam.h>
+#endif
+#ifndef _BUS_CAM_CAM_CCB_H_
 #include <bus/cam/cam_ccb.h>
+#endif
 
 #define CAM_ERRBUF_SIZE 2048	/* sizeof the CAM libarary error string  */
 

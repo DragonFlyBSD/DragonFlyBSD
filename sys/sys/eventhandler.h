@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.6 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.7 2006/05/21 03:43:47 dillon Exp $
  */
 
 #include <sys/queue.h>
@@ -33,8 +33,10 @@
 #define SYS_EVENTHANDLER_H
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+
 #error "This file should not be included by userland programs."
-#endif
+
+#else
 
 struct eventhandler_entry 
 {
@@ -167,4 +169,5 @@ EVENTHANDLER_DECLARE(shutdown_pre_sync, shutdown_fn);	/* before fs sync */
 EVENTHANDLER_DECLARE(shutdown_post_sync, shutdown_fn);	/* after fs sync */
 EVENTHANDLER_DECLARE(shutdown_final, shutdown_fn);
 
-#endif /* SYS_EVENTHANDLER_H */
+#endif	/* _KERNEL */
+#endif	/* SYS_EVENTHANDLER_H */

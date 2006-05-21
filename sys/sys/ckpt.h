@@ -22,10 +22,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+
+#error "This file should not be included by userland programs."
+
+#else
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -102,7 +108,8 @@ struct vn_hdr {
 #define TRACE_EXIT
 #define TRACE_ERR
 #define PRINTF(args)
-#endif
-#endif
+#endif	/* DEBUG */
+#endif	/* _KERNEL */
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* _SYS_CKPT_H_ */
