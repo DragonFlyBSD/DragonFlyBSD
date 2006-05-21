@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.13 2006/03/25 21:28:07 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.14 2006/05/21 20:23:25 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -280,12 +280,18 @@ ktr_resync_callback(void *dummy __unused)
 		struct spinlock spin;
 
 		spin_init(&spin);
-		spin_lock_quick(&spin);
-		spin_unlock_quick(&spin);
+		spin_lock_wr(&spin);
+		spin_unlock_wr(&spin);
 		logtest_noargs(spin_beg);
 		for (count = ktr_testspincnt; count; --count) {
-			spin_lock_quick(&spin);
-			spin_unlock_quick(&spin);
+			spin_lock_wr(&spin);
+			spin_unlock_wr(&spin);
+		}
+		logtest_noargs(spin_end);
+		logtest_noargs(spin_beg);
+		for (count = ktr_testspincnt; count; --count) {
+			spin_lock_rd(&spin);
+			spin_unlock_rd(&spin);
 		}
 		logtest_noargs(spin_end);
 		ktr_testspincnt = 0;

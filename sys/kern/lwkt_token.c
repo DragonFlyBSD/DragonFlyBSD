@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.25 2006/05/19 18:26:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.26 2006/05/21 20:23:25 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -152,7 +152,7 @@ lwkt_getalltokens(thread_t td)
 	KKASSERT(refs->tr_state == 0);
 	tok = refs->tr_tok;
 	if (tok->t_owner != td) {
-	    if (spin_trylock(td, &tok->t_spinlock) == 0) {
+	    if (spin_trylock_wr(&tok->t_spinlock) == 0) {
 		/*
 		 * Release the partial list of tokens obtained and return
 		 * failure.
@@ -162,7 +162,7 @@ lwkt_getalltokens(thread_t td)
 		    undo->tr_state = 0;
 		    if (--tok->t_count == 0) {
 			tok->t_owner = NULL;
-			spin_tryunlock(td, &tok->t_spinlock);
+			spin_unlock_wr(&tok->t_spinlock);
 		    }
 		}
 		return (FALSE);
@@ -192,7 +192,7 @@ lwkt_relalltokens(thread_t td)
 	    KKASSERT(tok->t_owner == td && tok->t_count > 0);
 	    if (--tok->t_count == 0) {
 		tok->t_owner = NULL;
-		spin_unlock_quick(&tok->t_spinlock);
+		spin_unlock_wr(&tok->t_spinlock);
 	    }
 	}
     }
@@ -235,7 +235,7 @@ _lwkt_gettokref(lwkt_tokref_t ref)
      * Gain ownership of the token's spinlock, SMP version.
      */
     if (tok->t_owner != td) {
-	if (spin_trylock(td, &tok->t_spinlock) == 0) {
+	if (spin_trylock_wr(&tok->t_spinlock) == 0) {
 	    lwkt_yield();
 	    return;
 	}
@@ -290,7 +290,7 @@ _lwkt_trytokref(lwkt_tokref_t ref)
      * Gain ownership of the token's spinlock, SMP version.
      */
     if (tok->t_owner != td) {
-	if (spin_trylock(td, &tok->t_spinlock) == 0) {
+	if (spin_trylock_wr(&tok->t_spinlock) == 0) {
 	    td->td_toks = ref->tr_next;
 	    return (FALSE);
 	}
@@ -377,7 +377,7 @@ lwkt_reltoken(lwkt_tokref *ref)
 #ifdef SMP
     if (--tok->t_count == 0) {
 	tok->t_owner = NULL;
-	spin_unlock_quick(&tok->t_spinlock);
+	spin_unlock_wr(&tok->t_spinlock);
     }
 #else
     --tok->t_globalcount;

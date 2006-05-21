@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.23 2006/04/23 03:08:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.24 2006/05/21 20:23:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -424,19 +424,19 @@ ntfs_ntput(struct ntnode *ip)
 	dprintf(("ntfs_ntput: rele ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	spin_lock(&ip->i_interlock);
+	spin_lock_wr(&ip->i_interlock);
 	ip->i_usecount--;
 
 #ifdef DIAGNOSTIC
 	if (ip->i_usecount < 0) {
-		spin_unlock(&ip->i_interlock);
+		spin_unlock_wr(&ip->i_interlock);
 		panic("ntfs_ntput: ino: %"PRId64" usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
 	}
 #endif
 
 	if (ip->i_usecount > 0) {
-		spin_unlock(&ip->i_interlock);
+		spin_unlock_wr(&ip->i_interlock);
 		LOCKMGR(&ip->i_lock, LK_RELEASE);
 		return;
 	}
@@ -444,7 +444,7 @@ ntfs_ntput(struct ntnode *ip)
 	dprintf(("ntfs_ntput: deallocating ntnode: %"PRId64"\n", ip->i_number));
 
 	if (ip->i_fnlist.lh_first) {
-		spin_unlock(&ip->i_interlock);
+		spin_unlock_wr(&ip->i_interlock);
 		panic("ntfs_ntput: ntnode has fnodes\n");
 	}
 
@@ -458,7 +458,7 @@ ntfs_ntput(struct ntnode *ip)
 		LIST_REMOVE(vap,va_list);
 		ntfs_freentvattr(vap);
 	}
-	spin_unlock(&ip->i_interlock);
+	spin_unlock_wr(&ip->i_interlock);
 	vrele(ip->i_devvp);
 	FREE(ip, M_NTFSNTNODE);
 }
@@ -485,15 +485,15 @@ ntfs_ntrele(struct ntnode *ip)
 	dprintf(("ntfs_ntrele: rele ntnode %"PRId64": %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	spin_lock(&ip->i_interlock);
+	spin_lock_wr(&ip->i_interlock);
 	ip->i_usecount--;
 
 	if (ip->i_usecount < 0) {
-		spin_unlock(&ip->i_interlock);
+		spin_unlock_wr(&ip->i_interlock);
 		panic("ntfs_ntrele: ino: %"PRId64" usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
 	}
-	spin_unlock(&ip->i_interlock);
+	spin_unlock_wr(&ip->i_interlock);
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.95 2006/05/19 18:26:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.96 2006/05/21 20:23:25 dillon Exp $
  */
 
 /*
@@ -520,8 +520,12 @@ lwkt_switch(void)
      * We had better not be holding any spin locks, but don't get into an
      * endless panic loop.
      */
-    KASSERT(td->td_spinlocks == 0 || panicstr != NULL, 
-	    ("lwkt_switch: still holding %d spinlocks!", td->td_spinlocks));
+    KASSERT(gd->gd_spinlocks_rd == 0 || panicstr != NULL, 
+	    ("lwkt_switch: still holding %d shared spinlocks!", 
+	     gd->gd_spinlocks_rd));
+    KASSERT(gd->gd_spinlocks_wr == 0 || panicstr != NULL, 
+	    ("lwkt_switch: still holding %d exclusive spinlocks!",
+	     gd->gd_spinlocks_wr));
 
 
 #ifdef SMP
@@ -780,14 +784,12 @@ lwkt_preempt(thread_t ntd, int critpri)
     /*
      * The caller has put us in a critical section.  We can only preempt
      * if the caller of the caller was not in a critical section (basically
-     * a local interrupt), as determined by the 'critpri' parameter. 
+     * a local interrupt), as determined by the 'critpri' parameter.  We
+     * also acn't preempt if the caller is holding any spinlocks (even if
+     * he isn't in a critical section).  This also handles the tokens test.
      *
      * YYY The target thread must be in a critical section (else it must
      * inherit our critical section?  I dunno yet).
-     *
-     * Any tokens held by the target may not be held by thread(s) being
-     * preempted.  We take the easy way out and do not preempt if
-     * the target is holding tokens.
      *
      * Set need_lwkt_resched() unconditionally for now YYY.
      */
@@ -812,12 +814,14 @@ lwkt_preempt(thread_t ntd, int critpri)
 #endif
     /*
      * Take the easy way out and do not preempt if the target is holding
-     * one or more tokens.  We could test whether the thread(s) being
+     * any spinlocks.  We could test whether the thread(s) being
      * preempted interlock against the target thread's tokens and whether
      * we can get all the target thread's tokens, but this situation 
      * should not occur very often so its easier to simply not preempt.
+     * Also, plain spinlocks are impossible to figure out at this point so 
+     * just don't preempt.
      */
-    if (ntd->td_toks != NULL) {
+    if (gd->gd_spinlocks_rd + gd->gd_spinlocks_wr != 0) {
 	++preempt_miss;
 	need_lwkt_resched();
 	return;
@@ -1016,11 +1020,11 @@ lwkt_schedule(thread_t td)
 	 * section if the token is owned by our cpu.
 	 */
 	if ((w = td->td_wait) != NULL) {
-	    spin_lock_quick(&w->wa_spinlock);
+	    spin_lock_wr(&w->wa_spinlock);
 	    TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	    --w->wa_count;
 	    td->td_wait = NULL;
-	    spin_unlock_quick(&w->wa_spinlock);
+	    spin_unlock_wr(&w->wa_spinlock);
 #ifdef SMP
 	    if (td->td_gd == mygd) {
 		_lwkt_enqueue(td);
@@ -1274,7 +1278,7 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 {
     thread_t td = curthread;
 
-    spin_lock(&w->wa_spinlock);
+    spin_lock_wr(&w->wa_spinlock);
     if (w->wa_gen == *gen) {
 	_lwkt_dequeue(td);
 	td->td_flags |= TDF_BLOCKQ;
@@ -1282,14 +1286,14 @@ lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 	++w->wa_count;
 	td->td_wait = w;
 	td->td_wmesg = wmesg;
-	spin_unlock(&w->wa_spinlock);
+	spin_unlock_wr(&w->wa_spinlock);
 	lwkt_switch();
 	KKASSERT((td->td_flags & TDF_BLOCKQ) == 0);
 	td->td_wmesg = NULL;
 	*gen = w->wa_gen;
     } else {
 	*gen = w->wa_gen;
-	spin_unlock(&w->wa_spinlock);
+	spin_unlock_wr(&w->wa_spinlock);
     }
 }
 
@@ -1306,7 +1310,7 @@ lwkt_signal(lwkt_wait_t w, int count)
 {
     thread_t td;
 
-    spin_lock(&w->wa_spinlock);
+    spin_lock_wr(&w->wa_spinlock);
     ++w->wa_gen;
     if (count < 0)
 	count = w->wa_count;
@@ -1317,7 +1321,7 @@ lwkt_signal(lwkt_wait_t w, int count)
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_flags &= ~TDF_BLOCKQ;
 	td->td_wait = NULL;
-	spin_unlock(&w->wa_spinlock);
+	spin_unlock_wr(&w->wa_spinlock);
 	KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
 #ifdef SMP
 	if (td->td_gd == mycpu) {
@@ -1328,9 +1332,9 @@ lwkt_signal(lwkt_wait_t w, int count)
 #else
 	_lwkt_enqueue(td);
 #endif
-	spin_lock(&w->wa_spinlock);
+	spin_lock_wr(&w->wa_spinlock);
     }
-    spin_unlock(&w->wa_spinlock);
+    spin_unlock_wr(&w->wa_spinlock);
 }
 
 /*

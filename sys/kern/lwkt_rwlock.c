@@ -35,7 +35,7 @@
  * 
  * Implements simple shared/exclusive locks using LWKT. 
  *
- * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.10 2006/05/19 05:15:34 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/lwkt_rwlock.c,v 1.11 2006/05/21 20:23:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 {
     int gen;
 
-    spin_lock(&lock->rw_spinlock);
+    spin_lock_wr(&lock->rw_spinlock);
     gen = lock->rw_wait.wa_gen;
     while (lock->rw_owner != curthread) {
 	if (lock->rw_owner == NULL && lock->rw_count == 0) {
@@ -94,13 +94,13 @@ lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg)
 	    break;
 	}
 	++lock->rw_requests;
-	spin_unlock(&lock->rw_spinlock);
+	spin_unlock_wr(&lock->rw_spinlock);
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
-	spin_lock(&lock->rw_spinlock);
+	spin_lock_wr(&lock->rw_spinlock);
 	--lock->rw_requests;
     }
     ++lock->rw_count;
-    spin_unlock(&lock->rw_spinlock);
+    spin_unlock_wr(&lock->rw_spinlock);
 }
 
 /*
@@ -111,17 +111,17 @@ lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg)
 {
     int gen;
 
-    spin_lock(&lock->rw_spinlock);
+    spin_lock_wr(&lock->rw_spinlock);
     gen = lock->rw_wait.wa_gen;
     while (lock->rw_owner != NULL) {
 	++lock->rw_requests;
-	spin_unlock(&lock->rw_spinlock);
+	spin_unlock_wr(&lock->rw_spinlock);
 	lwkt_block(&lock->rw_wait, wmesg, &gen);
-	spin_lock(&lock->rw_spinlock);
+	spin_lock_wr(&lock->rw_spinlock);
 	--lock->rw_requests;
     }
     ++lock->rw_count;
-    spin_unlock(&lock->rw_spinlock);
+    spin_unlock_wr(&lock->rw_spinlock);
 }
 
 /*
@@ -132,16 +132,16 @@ lwkt_exunlock(lwkt_rwlock_t lock)
 {
     KASSERT(lock->rw_owner != NULL, ("lwkt_exunlock: shared lock"));
     KASSERT(lock->rw_owner == curthread, ("lwkt_exunlock: not owner"));
-    spin_lock(&lock->rw_spinlock);
+    spin_lock_wr(&lock->rw_spinlock);
     if (--lock->rw_count == 0) {
 	lock->rw_owner = NULL;
 	if (lock->rw_requests) {
-	    spin_unlock(&lock->rw_spinlock);
+	    spin_unlock_wr(&lock->rw_spinlock);
 	    lwkt_signal(&lock->rw_wait, 1);
 	    return;
 	}
     }
-    spin_unlock(&lock->rw_spinlock);
+    spin_unlock_wr(&lock->rw_spinlock);
 }
 
 /*
@@ -151,14 +151,14 @@ void
 lwkt_shunlock(lwkt_rwlock_t lock)
 {
     KASSERT(lock->rw_owner == NULL, ("lwkt_shunlock: exclusive lock"));
-    spin_lock(&lock->rw_spinlock);
+    spin_lock_wr(&lock->rw_spinlock);
     if (--lock->rw_count == 0) {
 	if (lock->rw_requests) {
-	    spin_unlock(&lock->rw_spinlock);
+	    spin_unlock_wr(&lock->rw_spinlock);
 	    lwkt_signal(&lock->rw_wait, 1);
 	    return;
 	}
     }
-    spin_unlock(&lock->rw_spinlock);
+    spin_unlock_wr(&lock->rw_spinlock);
 }
 

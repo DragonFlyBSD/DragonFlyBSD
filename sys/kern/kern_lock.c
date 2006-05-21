@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.20 2006/05/07 00:51:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.21 2006/05/21 20:23:25 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -135,12 +135,12 @@ acquire(struct lock *lkp, int extflags, int wanted)
 		 * happening here.
 		 */
 		tsleep_interlock(lkp);
-		spin_unlock_quick(&lkp->lk_spinlock);
+		spin_unlock_wr(&lkp->lk_spinlock);
 		error = tsleep(lkp, 
 			       ((extflags & LK_PCATCH) ? PCATCH : 0),
 			       lkp->lk_wmesg, 
 			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		spin_lock_quick(&lkp->lk_spinlock);
+		spin_lock_wr(&lkp->lk_spinlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
 			lkp->lk_waitcount = 0;
@@ -210,7 +210,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 #endif
 	}
 
-	spin_lock(&lkp->lk_spinlock);
+	spin_lock_wr(&lkp->lk_spinlock);
 
 	extflags = (flags | lkp->lk_flags) & LK_EXTFLG_MASK;
 	td = curthread;
@@ -257,7 +257,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 
 	case LK_DOWNGRADE:
 		if (lkp->lk_lockholder != td || lkp->lk_exclusivecount == 0) {
-			spin_unlock(&lkp->lk_spinlock);
+			spin_unlock_wr(&lkp->lk_spinlock);
 			panic("lockmgr: not holding exclusive lock");
 		}
 		sharelock(lkp, lkp->lk_exclusivecount);
@@ -292,7 +292,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * will always be unlocked.
 		 */
 		if ((lkp->lk_lockholder == td) || (lkp->lk_sharecount <= 0)) {
-			spin_unlock(&lkp->lk_spinlock);
+			spin_unlock_wr(&lkp->lk_spinlock);
 			panic("lockmgr: upgrade exclusive lock");
 		}
 		shareunlock(lkp, 1);
@@ -321,7 +321,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			lkp->lk_flags |= LK_HAVE_EXCL;
 			lkp->lk_lockholder = td;
 			if (lkp->lk_exclusivecount != 0) {
-				spin_unlock(&lkp->lk_spinlock);
+				spin_unlock_wr(&lkp->lk_spinlock);
 				panic("lockmgr: non-zero exclusive count");
 			}
 			lkp->lk_exclusivecount = 1;
@@ -349,7 +349,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			 *	Recursive lock.
 			 */
 			if ((extflags & (LK_NOWAIT | LK_CANRECURSE)) == 0) {
-				spin_unlock(&lkp->lk_spinlock);
+				spin_unlock_wr(&lkp->lk_spinlock);
 				panic("lockmgr: locking against myself");
 			}
 			if ((extflags & LK_CANRECURSE) != 0) {
@@ -383,7 +383,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		lkp->lk_flags |= LK_HAVE_EXCL;
 		lkp->lk_lockholder = td;
 		if (lkp->lk_exclusivecount != 0) {
-			spin_unlock(&lkp->lk_spinlock);
+			spin_unlock_wr(&lkp->lk_spinlock);
 			panic("lockmgr: non-zero exclusive count");
 		}
 		lkp->lk_exclusivecount = 1;
@@ -399,7 +399,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		if (lkp->lk_exclusivecount != 0) {
 			if (lkp->lk_lockholder != td &&
 			    lkp->lk_lockholder != LK_KERNTHREAD) {
-				spin_unlock(&lkp->lk_spinlock);
+				spin_unlock_wr(&lkp->lk_spinlock);
 				panic("lockmgr: pid %d, not %s thr %p unlocking",
 				    (td->td_proc ? td->td_proc->p_pid : -99),
 				    "exclusive lock holder",
@@ -424,12 +424,12 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		break;
 
 	default:
-		spin_unlock(&lkp->lk_spinlock);
+		spin_unlock_wr(&lkp->lk_spinlock);
 		panic("lockmgr: unknown locktype request %d",
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
 	}
-	spin_unlock(&lkp->lk_spinlock);
+	spin_unlock_wr(&lkp->lk_spinlock);
 	return (error);
 }
 
@@ -484,7 +484,7 @@ lockstatus(struct lock *lkp, struct thread *td)
 {
 	int lock_type = 0;
 
-	spin_lock(&lkp->lk_spinlock);
+	spin_lock_wr(&lkp->lk_spinlock);
 	if (lkp->lk_exclusivecount != 0) {
 		if (td == NULL || lkp->lk_lockholder == td)
 			lock_type = LK_EXCLUSIVE;
@@ -493,7 +493,7 @@ lockstatus(struct lock *lkp, struct thread *td)
 	} else if (lkp->lk_sharecount != 0) {
 		lock_type = LK_SHARED;
 	}
-	spin_unlock(&lkp->lk_spinlock);
+	spin_unlock_wr(&lkp->lk_spinlock);
 	return (lock_type);
 }
 
@@ -507,9 +507,9 @@ lockcount(struct lock *lkp)
 {
 	int count;
 
-	spin_lock(&lkp->lk_spinlock);
+	spin_lock_wr(&lkp->lk_spinlock);
 	count = lkp->lk_exclusivecount + lkp->lk_sharecount;
-	spin_unlock(&lkp->lk_spinlock);
+	spin_unlock_wr(&lkp->lk_spinlock);
 	return (count);
 }
 

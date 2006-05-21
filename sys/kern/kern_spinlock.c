@@ -2,7 +2,7 @@
  * Copyright (c) 2005 Jeffrey M. Hsu.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
- * by Jeffrey M. Hsu.
+ * by Jeffrey M. Hsu. and Matthew Dillon
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.3 2006/05/18 17:53:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.4 2006/05/21 20:23:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,8 +52,6 @@
 
 #ifdef SMP
 
-static void spin_lock_contested_long(struct spinlock *mtx);
-
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
 #endif
@@ -63,75 +61,214 @@ SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD, &spinlocks_conte
 static int64_t spinlocks_contested2;
 SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD, &spinlocks_contested2, 0, "");
 
-void
-spin_lock_contested(struct spinlock *mtx)
-{
-	int i;
-	int backoff = BACKOFF_INITIAL;
+struct exponential_backoff {
+	int backoff;
+	int nsec;
+	struct spinlock *mtx;
+	sysclock_t base;
+};
+static int exponential_backoff(struct exponential_backoff *bo);
 
-	++spinlocks_contested1;
-	do {
-		/* exponential backoff to reduce contention */
-		for (i = 0; i < backoff; i++)
-			cpu_nop();
-		if (backoff < BACKOFF_LIMIT) {
-			backoff <<= 1;
-		} else {
-			spin_lock_contested_long(mtx);
-			return;
-		}
-		/* do non-bus-locked check first */
-	} while (mtx->lock != 0 || atomic_swap_int(&mtx->lock, 1) != 0);
+static __inline
+void
+exponential_init(struct exponential_backoff *bo, struct spinlock *mtx)
+{
+	bo->backoff = BACKOFF_INITIAL;
+	bo->nsec = 0;
+	bo->mtx = mtx;
 }
 
+/*
+ * We were either contested due to another exclusive lock holder,
+ * or due to the presence of shared locks.  We have to undo the mess
+ * we created by returning the shared locks.
+ *
+ * If there was another exclusive lock holder only the exclusive bit
+ * in value will be the only bit set.  We don't have to do anything since
+ * restoration does not involve any work.  
+ *
+ * Otherwise we successfully obtained the exclusive bit.  Attempt to
+ * clear the shared bits.  If we are able to clear the shared bits 
+ * we win.  Otherwise we lose and we have to restore the shared bits
+ * we couldn't clear (and also clear our exclusive bit).
+ */
+int
+spin_trylock_wr_contested(struct spinlock *mtx, int value)
+{
+	int bit;
+
+	++spinlocks_contested1;
+	if ((value & SPINLOCK_EXCLUSIVE) == 0) {
+		while (value) {
+			bit = bsfl(value);
+			if (globaldata_find(bit)->gd_spinlocks_rd != 0) {
+				atomic_swap_int(&mtx->lock, value);
+				return (FALSE);
+			}
+			value &= ~(1 << bit);
+		}
+		return (TRUE);
+	}
+	return (FALSE);
+}
 
 /*
- * This code deals with indefinite waits.  If the system is handling a
- * panic we hand the spinlock over to the caller after 1 second.  After
- * 10 seconds we attempt to print a debugger backtrace.  We also run
- * pending interrupts in order to allow a console break into DDB.
+ * We were either contested due to another exclusive lock holder,
+ * or due to the presence of shared locks
+ *
+ * NOTE: If value indicates an exclusively held mutex, no shared bits
+ * would have been set and we can throw away value. 
  */
-static void
-spin_lock_contested_long(struct spinlock *mtx)
+void
+spin_lock_wr_contested(struct spinlock *mtx, int value)
 {
-	sysclock_t base;
-	sysclock_t count;
-	int nsec;
+	struct exponential_backoff backoff;
+	globaldata_t gd = mycpu;
+	int bit;
+	int mask;
 
-	++spinlocks_contested2;
-	base = sys_cputimer->count();
-	nsec = 0;
+	/*
+	 * Wait until we can gain exclusive access vs another exclusive
+	 * holder.
+	 */
+	exponential_init(&backoff, mtx);
+	++spinlocks_contested1;
 
-	for (;;) {
-		if (mtx->lock == 0 && atomic_swap_int(&mtx->lock, 1) == 0)
-			return;
-		count = sys_cputimer->count();
-		if (count - base > sys_cputimer->freq) {
-			printf("spin_lock: %p, indefinite wait!\n", mtx);
-			if (panicstr)
-				return;
-#ifdef INVARIANTS
-			if (spin_lock_test_mode) {
-				db_print_backtrace();
-				return;
+	while (value & SPINLOCK_EXCLUSIVE) {
+		value = atomic_swap_int(&mtx->lock, 0x80000000);
+		if (exponential_backoff(&backoff)) {
+			value &= ~SPINLOCK_EXCLUSIVE;
+			break;
+		}
+	}
+
+	/*
+	 * Kill the cached shared bit for our own cpu.  This is the most
+	 * common case and there's no sense wasting cpu on it.  Since
+	 * spinlocks aren't recursive, we can't own a shared ref on the
+	 * spinlock while trying to get an exclusive one.
+	 *
+	 * If multiple bits are set do not stall on any single cpu.  Check
+	 * all cpus that have the cache bit set, then loop and check again,
+	 * until we've cleaned all the bits.
+	 */
+	value &= ~gd->gd_cpumask;
+
+	while ((mask = value) != 0) {
+		while (mask) {
+			bit = bsfl(value);
+			if (globaldata_find(bit)->gd_spinlocks_rd == 0) {
+				value &= ~(1 << bit);
+			} else if (exponential_backoff(&backoff)) {
+				value = 0;
+				break;
 			}
-#endif
-			if (++nsec == 10) {
-				nsec = 0;
-				db_print_backtrace();
-			}
-			splz();
-			base = count;
+			mask &= ~(1 << bit);
 		}
 	}
 }
 
 /*
- * If INVARIANTS is enabled an indefinite wait spinlock test can be
- * executed with 'sysctl debug.spin_lock_test=1'
+ * The cache bit wasn't set for our cpu.  Loop until we can set the bit.
+ * As with the spin_lock_rd() inline we need a memory fence after incrementing
+ * gd_spinlocks_rd to interlock against exclusive spinlocks waiting for
+ * that field to clear.
+ */
+void
+spin_lock_rd_contested(struct spinlock *mtx)
+{
+	struct exponential_backoff backoff;
+	globaldata_t gd = mycpu;
+	int value = mtx->lock;
+
+	exponential_init(&backoff, mtx);
+	++spinlocks_contested1;
+
+	while ((value & gd->gd_cpumask) == 0) {
+		if (value & SPINLOCK_EXCLUSIVE) {
+			--gd->gd_spinlocks_rd;
+			if (exponential_backoff(&backoff)) {
+				++gd->gd_spinlocks_rd;
+				break;
+			}
+			++gd->gd_spinlocks_rd;
+			cpu_mfence();
+		} else {
+			if (atomic_cmpset_int(&mtx->lock, value, value|gd->gd_cpumask))
+				break;
+		}
+		value = mtx->lock;
+	}
+}
+
+/*
+ * Handle exponential backoff and indefinite waits.
+ *
+ * If the system is handling a panic we hand the spinlock over to the caller
+ * after 1 second.  After 10 seconds we attempt to print a debugger
+ * backtrace.  We also run pending interrupts in order to allow a console
+ * break into DDB.
+ */
+static
+int
+exponential_backoff(struct exponential_backoff *bo)
+{
+	sysclock_t count;
+	int i;
+
+	/*
+	 * Quick backoff
+	 */
+	for (i = 0; i < bo->backoff; ++i)
+		cpu_nop();
+	if (bo->backoff < BACKOFF_LIMIT) {
+		bo->backoff <<= 1;
+		return (FALSE);
+	}
+
+	/*
+	 * Indefinite
+	 */
+	++spinlocks_contested2;
+	if (bo->nsec == 0) {
+		bo->base = sys_cputimer->count();
+		bo->nsec = 1;
+	}
+
+	count = sys_cputimer->count();
+	if (count - bo->base > sys_cputimer->freq) {
+		printf("spin_lock: %p, indefinite wait!\n", bo->mtx);
+		if (panicstr)
+			return (TRUE);
+#ifdef INVARIANTS
+		if (spin_lock_test_mode) {
+			db_print_backtrace();
+			return (TRUE);
+		}
+#endif
+		if (++bo->nsec == 11)
+			db_print_backtrace();
+		if (bo->nsec == 60)
+			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);
+		splz();
+		bo->base = count;
+	}
+	return (FALSE);
+}
+
+/*
+ * If INVARIANTS is enabled various spinlock timing tests can be run
+ * by setting debug.spin_lock_test:
+ *
+ *	1	Test the indefinite wait code
+ *	2	Time the best-case exclusive lock overhead (spin_test_count)
+ *	3	Time the best-case shared lock overhead (spin_test_count)
  */
 
 #ifdef INVARIANTS
+
+static int spin_test_count = 10000000;
+SYSCTL_INT(_debug, OID_AUTO, spin_test_count, CTLFLAG_RW, &spin_test_count, 0, "");
 
 static int
 sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
@@ -139,18 +276,50 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
         struct spinlock mtx;
 	int error;
 	int value = 0;
+	int i;
 
 	if ((error = suser(curthread)) != 0)
 		return (error);
 	if ((error = SYSCTL_IN(req, &value, sizeof(value))) != 0)
 		return (error);
 
+	/*
+	 * Indefinite wait test
+	 */
 	if (value == 1) {
-		mtx.lock = 1;
+		spin_init(&mtx);
+		spin_lock_wr(&mtx);	/* force an indefinite wait */
 		spin_lock_test_mode = 1;
-		spin_lock(&mtx);
-		spin_unlock(&mtx);
+		spin_lock_wr(&mtx);
+		spin_unlock_wr(&mtx);	/* Clean up the spinlock count */
+		spin_unlock_wr(&mtx);
 		spin_lock_test_mode = 0;
+	}
+
+	/*
+	 * Time best-case exclusive spinlocks
+	 */
+	if (value == 2) {
+		globaldata_t gd = mycpu;
+
+		spin_init(&mtx);
+		for (i = spin_test_count; i > 0; --i) {
+		    spin_lock_wr_quick(gd, &mtx);
+		    spin_unlock_wr_quick(gd, &mtx);
+		}
+	}
+
+	/*
+	 * Time best-case shared spinlocks
+	 */
+	if (value == 3) {
+		globaldata_t gd = mycpu;
+
+		spin_init(&mtx);
+		for (i = spin_test_count; i > 0; --i) {
+		    spin_lock_rd_quick(gd, &mtx);
+		    spin_unlock_rd_quick(gd, &mtx);
+		}
 	}
         return (0);
 }
@@ -158,7 +327,5 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_debug, KERN_PROC_ALL, spin_lock_test, CTLFLAG_RW|CTLTYPE_INT,
         0, 0, sysctl_spin_lock_test, "I", "Test spinlock wait code");
 
-
-#endif
-
-#endif
+#endif	/* INVARIANTS */
+#endif	/* SMP */

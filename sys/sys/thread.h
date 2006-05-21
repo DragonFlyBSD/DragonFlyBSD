@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.80 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.81 2006/05/21 20:23:27 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -246,7 +246,7 @@ struct thread {
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging */
-    int		td_spinlocks;	/* spinlock debugging */
+    int		td_unused01;
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
 #ifdef SMP
