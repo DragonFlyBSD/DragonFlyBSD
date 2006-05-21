@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.18 2006/05/20 02:42:06 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.19 2006/05/21 05:31:14 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -61,7 +61,7 @@
 /*
  * The above functions are expanded inline in the statically-linked
  * kernel.  Lock prefixes are generated if an SMP kernel is being
- * built.
+ * built, or if user code is using these functions.
  *
  * Kernel modules call real functions which are built into the kernel.
  * This allows kernel modules to be portable between UP and SMP systems.
@@ -71,7 +71,7 @@
 	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 #else /* !KLD_MODULE */
-#if defined(SMP)
+#if defined(SMP) || !defined(_KERNEL)
 #define MPLOCKED	"lock ; "
 #else
 #define MPLOCKED
