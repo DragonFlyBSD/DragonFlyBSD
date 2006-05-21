@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)environ.7	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/share/man/man7/environ.7,v 1.13.2.4 2001/08/17 13:08:49 ru Exp $
-.\" $DragonFly: src/share/man/man7/environ.7,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man7/environ.7,v 1.3 2006/05/21 14:15:05 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt ENVIRON 7
@@ -116,8 +116,6 @@ The full pathname of the user's login shell.
 The kind of terminal for which output is to be prepared.
 This information is used by commands, such as
 .Xr nroff  1
-or
-.Xr plot 1
 which may exploit special terminal capabilities.  See
 .Pa /usr/share/misc/termcap
 .Pq Xr termcap 5
@@ -166,13 +164,13 @@ The login name of the user.
 .El
 .Pp
 Further names may be placed in the environment by the
-.Xr export
+.Xr export 1
 command and
 .Ar name=value
 arguments in
 .Xr sh  1  ,
 or by the
-.Xr setenv
+.Xr setenv 1
 command if you use
 .Xr csh  1  .
 It is unwise to change certain
