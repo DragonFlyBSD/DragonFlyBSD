@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.7 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.8 2006/05/22 21:21:21 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -652,7 +652,8 @@ elf_getfiles(struct proc *p, struct file *fp)
 			goto done;
 		}
 		KKASSERT(fd == cfi->cfi_index);
-		p->p_fd->fd_files[cfi->cfi_index].fp = tempfp;		
+		fsetfd(p, tempfp, fd);
+		fdrop(tempfp);
 		cfi++;
 		PRINTF(("restoring %d\n", cfi->cfi_index));
 	}

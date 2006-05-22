@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.24 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.25 2006/05/22 21:21:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -936,7 +936,8 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp++;
-			p->p_fd->fd_files[f].fp = fp;
+			fsetfd(p, fp, f);
+			fdrop(fp);
 			fp->f_msgcount--;
 			unp_rights--;
 			*fdp++ = f;
@@ -948,7 +949,8 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp--;
-			p->p_fd->fd_files[f].fp = fp;
+			fsetfd(p, fp, f);
+			fdrop(fp);
 			fp->f_msgcount--;
 			unp_rights--;
 			*fdp-- = f;

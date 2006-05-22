@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.16 2006/05/22 00:52:31 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.17 2006/05/22 21:21:26 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -72,8 +72,8 @@ struct fdnode {
 	char	fileflags;
 	char	unused01;
 	char	unused02;
-	char	unused03;
-	int	allocated;
+	char	reserved;		/* descriptor has been reserved */
+	int	allocated;		/* subtree allocation count */
 };
 
 struct filedesc {
@@ -154,12 +154,11 @@ struct proc;
 /*
  * Kernel global variables and routines.
  */
-int	dupfdopen (struct filedesc *, int, int, int, int);
+int	dupfdopen (struct proc *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
-int	fdealloc (struct proc *p, struct file *fp, int fd);
-int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
+void	fsetfd (struct proc *p, struct file *fp, int fd);
 int	fgetfdflags(struct filedesc *fdp, int fd, int *flagsp);
 int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
 int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);

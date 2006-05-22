@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.91 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.92 2006/05/22 21:21:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1304,19 +1304,19 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 		 * responsible for dropping the old contents of ofiles[indx]
 		 * if it succeeds.
 		 *
-		 * Note that if fsetfd() succeeds it will add a ref to fp
-		 * which represents the fd_files[] assignment.  We must still
-		 * drop our reference.
+		 * Note that fsetfd() will add a ref to fp which represents
+		 * the fd_files[] assignment.  We must still drop our
+		 * reference.
 		 */
 		if ((error == ENODEV || error == ENXIO) && lp->lwp_dupfd >= 0) {
-			if (fsetfd(p, fp, &indx) == 0) {
-				error = dupfdopen(fdp, indx, lp->lwp_dupfd, flags, error);
+			if (fdalloc(p, 0, &indx) == 0) {
+				error = dupfdopen(p, indx, lp->lwp_dupfd, flags, error);
 				if (error == 0) {
 					*res = indx;
 					fdrop(fp);	/* our ref */
 					return (0);
 				}
-				fdealloc(p, fp, indx);
+				fsetfd(p, NULL, indx);
 			}
 		}
 		fdrop(fp);	/* our ref */
@@ -1329,10 +1329,13 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * ref the vnode for ourselves so it can't be ripped out from under
 	 * is.  XXX need an ND flag to request that the vnode be returned
 	 * anyway.
+	 *
+	 * Reserve a file descriptor but do not assign it until the open
+	 * succeeds.
 	 */
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
-	if ((error = fsetfd(p, fp, &indx)) != 0) {
+	if ((error = fdalloc(p, 0, &indx)) != 0) {
 		fdrop(fp);
 		vrele(vp);
 		return (error);
@@ -1343,24 +1346,6 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * pointer.
 	 */
 	lp->lwp_dupfd = 0;
-
-	/*
-	 * There should be 2 references on the file, one from the descriptor
-	 * table, and one for us.
-	 *
-	 * Handle the case where someone closed the file (via its file
-	 * descriptor) while we were blocked.  The end result should look
-	 * like opening the file succeeded but it was immediately closed.
-	 */
-	if (fp->f_count == 1) {
-		KASSERT(fdp->fd_files[indx].fp != fp,
-		    ("Open file descriptor lost all refs"));
-		vrele(vp);
-		fo_close(fp);
-		fdrop(fp);
-		*res = indx;
-		return 0;
-	}
 
 	if (flags & (O_EXLOCK | O_SHLOCK)) {
 		lf.l_whence = SEEK_SET;
@@ -1377,19 +1362,16 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
-			 * lock request failed.  Normally close the descriptor
-			 * but handle the case where someone might have dup()d
-			 * it when we weren't looking.  One reference is
-			 * owned by the descriptor array, the other by us.
+			 * lock request failed.  Clean up the reserved
+			 * descriptor.
 			 */
 			vrele(vp);
-			fdealloc(p, fp, indx);
+			fsetfd(p, NULL, indx);
 			fdrop(fp);
 			return (error);
 		}
 		fp->f_flag |= FHASLOCK;
 	}
-
 #if 0
 	/*
 	 * Assert that all regular file vnodes were created with a object.
@@ -1404,6 +1386,7 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * release our private reference, leaving the one associated with the
 	 * descriptor table intact.
 	 */
+	fsetfd(p, fp, indx);
 	fdrop(fp);
 	*res = indx;
 	return (0);
@@ -3163,7 +3146,7 @@ fhopen(struct fhopen_args *uap)
 	 * WARNING! no f_ncp will be associated when fhopen()ing a directory.
 	 * XXX
 	 */
-	if ((error = falloc(p, &nfp, NULL)) != 0)
+	if ((error = falloc(p, &nfp, &indx)) != 0)
 		goto bad;
 	fp = nfp;
 
@@ -3176,8 +3159,7 @@ fhopen(struct fhopen_args *uap)
 		 */
 		fp->f_ops = &badfileops;
 		fp->f_data = NULL;
-		fdrop(fp);
-		goto bad;
+		goto bad_drop;
 	}
 
 	/*
@@ -3187,18 +3169,12 @@ fhopen(struct fhopen_args *uap)
 	 */
 	if (vp->v_type == VREG && vp->v_object == NULL) {
 		printf("fhopen: regular file did not have VM object: %p\n", vp);
-		fdrop(fp);
-		goto bad;
+		goto bad_drop;
 	}
 
 	/*
-	 * The open was successful, associate it with a file descriptor.
+	 * The open was successful.  Handle any locking requirements.
 	 */
-	if ((error = fsetfd(p, fp, &indx)) != 0) {
-		fdrop(fp);
-		goto bad;
-	}
-
 	if (fmode & (O_EXLOCK | O_SHLOCK)) {
 		lf.l_whence = SEEK_SET;
 		lf.l_start = 0;
@@ -3214,15 +3190,9 @@ fhopen(struct fhopen_args *uap)
 		VOP_UNLOCK(vp, 0);
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
-			 * lock request failed.  Normally close the descriptor
-			 * but handle the case where someone might have dup()d
-			 * or close()d it when we weren't looking.
-			 */
-			fdealloc(p, fp, indx);
-
-			/*
 			 * release our private reference.
 			 */
+			fsetfd(p, NULL, indx);
 			fdrop(fp);
 			vrele(vp);
 			return (error);
@@ -3231,11 +3201,19 @@ fhopen(struct fhopen_args *uap)
 		fp->f_flag |= FHASLOCK;
 	}
 
+	/*
+	 * Clean up.  Associate the file pointer with the previously
+	 * reserved descriptor and return it.
+	 */
 	vput(vp);
+	fsetfd(p, fp, indx);
 	fdrop(fp);
 	uap->sysmsg_result = indx;
 	return (0);
 
+bad_drop:
+	fsetfd(p, NULL, indx);
+	fdrop(fp);
 bad:
 	vput(vp);
 	return (error);

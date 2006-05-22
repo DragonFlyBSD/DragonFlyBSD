@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.67 2006/05/19 05:15:35 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.68 2006/05/22 21:21:21 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -116,13 +116,14 @@ kern_socket(int domain, int type, int protocol, int *res)
 		return (error);
 	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
-		fdealloc(p, fp, fd);
+		fsetfd(p, NULL, fd);
 	} else {
 		fp->f_type = DTYPE_SOCKET;
 		fp->f_flag = FREAD | FWRITE;
 		fp->f_ops = &socketops;
 		fp->f_data = so;
 		*res = fd;
+		fsetfd(p, fp, fd);
 	}
 	fdrop(fp);
 	return (error);
@@ -258,6 +259,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 	u_int fflag;		/* type must match fp->f_flag */
 	int error, tmp;
 
+	*res = -1;
 	if (name && namelen && *namelen < 0)
 		return (EINVAL);
 
@@ -267,12 +269,9 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 
 	error = falloc(p, &nfp, &fd);
 	if (error) {		/* Probably ran out of file descriptors. */
-		*res = -1;
 		fdrop(lfp);
 		return (error);
 	}
-	*res = fd;
-
 	head = (struct socket *)lfp->f_data;
 	if ((head->so_options & SO_ACCEPTCONN) == 0) {
 		error = EINVAL;
@@ -338,21 +337,19 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 
 done:
 	/*
-	 * close the new descriptor, assuming someone hasn't ripped it
-	 * out from under us.  Note that *res is normally ignored if an
-	 * error is returned but a syscall message will still have access
-	 * to the result code.
+	 * If an error occured clear the reserved descriptor, else associate
+	 * nfp with it.
+	 *
+	 * Note that *res is normally ignored if an error is returned but
+	 * a syscall message will still have access to the result code.
 	 */
 	if (error) {
-		*res = -1;
-		fdealloc(p, nfp, fd);
+		fsetfd(p, NULL, fd);
+	} else {
+		*res = fd;
+		fsetfd(p, nfp, fd);
 	}
-
-	/*
-	 * Release explicitly held references before returning.
-	 */
-	if (nfp)
-		fdrop(nfp);
+	fdrop(nfp);
 	fdrop(lfp);
 	return (error);
 }
@@ -483,7 +480,7 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	struct proc *p = td->td_proc;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
-	int fd, error;
+	int fd1, fd2, error;
 
 	KKASSERT(p);
 	error = socreate(domain, &so1, type, protocol, td);
@@ -492,16 +489,16 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	error = socreate(domain, &so2, type, protocol, td);
 	if (error)
 		goto free1;
-	error = falloc(p, &fp1, &fd);
+	error = falloc(p, &fp1, &fd1);
 	if (error)
 		goto free2;
-	sv[0] = fd;
+	sv[0] = fd1;
 	fp1->f_data = so1;
-	error = falloc(p, &fp2, &fd);
+	error = falloc(p, &fp2, &fd2);
 	if (error)
 		goto free3;
 	fp2->f_data = so2;
-	sv[1] = fd;
+	sv[1] = fd2;
 	error = soconnect2(so1, so2);
 	if (error)
 		goto free4;
@@ -516,14 +513,16 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
 	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
 	fp1->f_ops = fp2->f_ops = &socketops;
+	fsetfd(p, fp1, fd1);
+	fsetfd(p, fp2, fd2);
 	fdrop(fp1);
 	fdrop(fp2);
 	return (error);
 free4:
-	fdealloc(p, fp2, sv[1]);
+	fsetfd(p, NULL, fd2);
 	fdrop(fp2);
 free3:
-	fdealloc(p, fp1, sv[0]);
+	fsetfd(p, NULL, fd1);
 	fdrop(fp1);
 free2:
 	(void)soclose(so2);
@@ -1719,7 +1718,6 @@ sctp_peeloff(struct sctp_peeloff_args *uap)
 		crit_exit();
 		goto done;
 	}
-	fhold(nfp);
 	uap->sysmsg_result = fd;
 
 	so = sctp_get_peeloff(head, assoc_id, &error);
@@ -1743,11 +1741,13 @@ sctp_peeloff(struct sctp_peeloff_args *uap)
 
 noconnection:
 	/*
-	 * close the new descriptor, assuming someone hasn't ripped it
-	 * out from under us.
+	 * Assign the file pointer to the reserved descriptor, or clear
+	 * the reserved descriptor if an error occured.
 	 */
 	if (error)
-		fdealloc(p, nfp, fd);
+		fsetfd(p, NULL, fd);
+	else
+		fsetfd(p, nfp, fd);
 	crit_exit();
 	/*
 	 * Release explicitly held references before returning.

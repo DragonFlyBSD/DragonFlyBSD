@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.59 2006/05/22 00:52:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.60 2006/05/22 21:21:21 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -104,7 +104,7 @@
 #include <sys/spinlock2.h>
 
 static void fdreserve (struct filedesc *fdp, int fd0, int incr);
-static void funsetfd (struct filedesc *fdp, int fd);
+static struct file *funsetfd (struct filedesc *fdp, int fd);
 static int checkfpclosed(struct filedesc *fdp, int fd, struct file *fp);
 
 static MALLOC_DEFINE(M_FILEDESC, "file desc", "Open file descriptor table");
@@ -427,14 +427,15 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct file *delfp;
+	int oldflags;
 	int holdleaders;
-	boolean_t fdalloced = FALSE;
 	int error, newfd;
 
 	/*
 	 * Verify that we have a valid descriptor to dup from and
 	 * possibly to dup to.
 	 */
+retry:
 	if (old < 0 || new < 0 || new > p->p_rlimit[RLIMIT_NOFILE].rlim_cur ||
 	    new >= maxfilesperproc)
 		return (EBADF);
@@ -445,11 +446,19 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 		return (0);
 	}
 	fp = fdp->fd_files[old].fp;
+	oldflags = fdp->fd_files[old].fileflags;
 	fhold(fp);
 
 	/*
-	 * Expand the table for the new descriptor if needed.  This may
-	 * block and drop and reacquire the fidedesc lock.
+	 * Allocate a new descriptor if DUP_VARIABLE, or expand the table
+	 * if the requested descriptor is beyond the current table size.
+	 *
+	 * This can block.  Retry if the source descriptor no longer matches
+	 * or if our expectation in the expansion case races.
+	 *
+	 * If we are not expanding or allocating a new decriptor, then reset
+	 * the target descriptor to a reserved state so we have a uniform
+	 * setup for the next code block.
 	 */
 	if (type == DUP_VARIABLE || new >= fdp->fd_nfiles) {
 		error = fdalloc(p, new, &newfd);
@@ -457,59 +466,71 @@ kern_dup(enum dup_type type, int old, int new, int *res)
 			fdrop(fp);
 			return (error);
 		}
-		fdalloced = TRUE;
-	}
-	if (type == DUP_VARIABLE)
-		new = newfd;
-
-	/*
-	 * If the old file changed out from under us then treat it as a
-	 * bad file descriptor.  Userland should do its own locking to
-	 * avoid this case.
-	 */
-	if (fdp->fd_files[old].fp != fp) {
-		if (fdp->fd_files[new].fp == NULL) {
-			if (fdalloced)
-				fdreserve(fdp, newfd, -1);
-			if (new < fdp->fd_freefile)
-				fdp->fd_freefile = new;
-			while (fdp->fd_lastfile > 0 &&
-			    fdp->fd_files[fdp->fd_lastfile].fp == NULL)
-				fdp->fd_lastfile--;
+		if (old >= fdp->fd_nfiles || fdp->fd_files[old].fp != fp) {
+			fsetfd(p, NULL, newfd);
+			fdrop(fp);
+			goto retry;
 		}
-		fdrop(fp);
-		return (EBADF);
+		if (type != DUP_VARIABLE && new != newfd) {
+			fsetfd(p, NULL, newfd);
+			fdrop(fp);
+			goto retry;
+		}
+		if (old == newfd) {
+			fsetfd(p, NULL, newfd);
+			fdrop(fp);
+			goto retry;
+		}
+		new = newfd;
+		delfp = NULL;
+	} else {
+		if (fdp->fd_files[new].reserved) {
+			fdrop(fp);
+			printf("Warning: dup(): target descriptor %d is reserved, waiting for it to be resolved\n", new);
+			tsleep(fdp, 0, "fdres", hz);
+			goto retry;
+		}
+
+		/*
+		 * If the target descriptor was never allocated we have
+		 * to allocate it.  If it was we have to clean out the
+		 * old descriptor.
+		 */
+		delfp = fdp->fd_files[new].fp;
+		fdp->fd_files[new].fp = NULL;
+		fdp->fd_files[new].reserved = 1;
+		if (delfp == NULL) {
+			fdreserve(fdp, new, 1);
+			if (new > fdp->fd_lastfile)
+				fdp->fd_lastfile = new;
+		}
+
 	}
-	KASSERT(old != new, ("new fd is same as old"));
 
 	/*
-	 * Save info on the descriptor being overwritten.  We have
-	 * to do the unmap now, but we cannot close it without
-	 * introducing an ownership race for the slot.
+	 * If a descriptor is being overwritten we may hve to tell 
+	 * fdfree() to sleep to ensure that all relevant process
+	 * leaders can be traversed in closef().
 	 */
-	delfp = fdp->fd_files[new].fp;
 	if (delfp != NULL && p->p_fdtol != NULL) {
-		/*
-		 * Ask fdfree() to sleep to ensure that all relevant
-		 * process leaders can be traversed in closef().
-		 */
 		fdp->fd_holdleaderscount++;
 		holdleaders = 1;
-	} else
+	} else {
 		holdleaders = 0;
+	}
 	KASSERT(delfp == NULL || type == DUP_FIXED,
-	    ("dup() picked an open file"));
+		("dup() picked an open file"));
 
 	/*
-	 * Duplicate the source descriptor, update lastfile
+	 * Duplicate the source descriptor, update lastfile.  If the new
+	 * descriptor was not allocated and we aren't replacing an existing
+	 * descriptor we have to mark the descriptor as being in use.
+	 *
+	 * The fd_files[] array inherits fp's hold reference.
 	 */
-	if (new > fdp->fd_lastfile)
-		fdp->fd_lastfile = new;
-	if (!fdalloced && fdp->fd_files[new].fp == NULL)
-		fdreserve(fdp, new, 1);
-	fdp->fd_files[new].fp = fp;
-	fdp->fd_files[new].fileflags = 
-			fdp->fd_files[old].fileflags & ~UF_EXCLOSE;
+	fsetfd(p, fp, new);
+	fdrop(fp);
+	fdp->fd_files[new].fileflags = oldflags & ~UF_EXCLOSE;
 	*res = new;
 
 	/*
@@ -667,14 +688,21 @@ kern_closefrom(int fd)
 	KKASSERT(p);
 	fdp = p->p_fd;
 
-	if (fd < 0 || fd > fdp->fd_lastfile)
+	if ((unsigned)fd > fdp->fd_lastfile)
 		return (0);
 
-	do {
-		if (kern_close(fdp->fd_lastfile) == EINTR)
-			return (EINTR);
-	} while (fdp->fd_lastfile > fd);
-
+	/*
+	 * NOTE: This function will skip unassociated descriptors and
+	 * reserved descriptors that have not yet been assigned.  
+	 * fd_lastfile can change as a side effect of kern_close().
+	 */
+	while (fd <= fdp->fd_lastfile) {
+		if (fdp->fd_files[fd].fp != NULL) {
+			if (kern_close(fd) == EINTR)
+				return (EINTR);
+		}
+		++fd;
+	}
 	return (0);
 }
 
@@ -702,10 +730,8 @@ kern_close(int fd)
 	KKASSERT(p);
 	fdp = p->p_fd;
 
-	if ((unsigned)fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_files[fd].fp) == NULL)
+	if ((fp = funsetfd(fdp, fd)) == NULL)
 		return (EBADF);
-	funsetfd(fdp, fd);
 	holdleaders = 0;
 	if (p->p_fdtol != NULL) {
 		/*
@@ -720,8 +746,6 @@ kern_close(int fd)
 	 * we now hold the fp reference that used to be owned by the descriptor
 	 * array.
 	 */
-	while (fdp->fd_lastfile > 0 && fdp->fd_files[fdp->fd_lastfile].fp == NULL)
-		fdp->fd_lastfile--;
 	if (fd < fdp->fd_knlistsize)
 		knote_fdclose(p, fd);
 	error = closef(fp, td);
@@ -936,7 +960,9 @@ fdreserve(struct filedesc *fdp, int fd, int incr)
 }
 
 /*
- * Allocate a file descriptor for the process.
+ * Reserve a file descriptor for the process.  If no error occurs, the
+ * caller MUST at some point call fsetfd() or assign a file pointer
+ * or dispose of the reservation.
  */
 int
 fdalloc(struct proc *p, int want, int *result)
@@ -954,6 +980,13 @@ fdalloc(struct proc *p, int want, int *result)
 	 * Search for a free descriptor starting at the higher
 	 * of want or fd_freefile.  If that fails, consider
 	 * expanding the ofile array.
+	 *
+	 * NOTE! the 'allocated' field is a cumulative recursive allocation
+	 * count.  If we happen to see a value of 0 then we can shortcut
+	 * our search.  Otherwise we run through through the tree going
+	 * down branches we know have free descriptor(s) until we hit a
+	 * leaf node.  The leaf node will be free but will not necessarily
+	 * have an allocated field of 0.
 	 */
 retry:
 	/* move up the tree looking for a subtree with a free node */
@@ -996,13 +1029,15 @@ retry:
 
 found:
 	KKASSERT(fd < fdp->fd_nfiles);
-	fdp->fd_files[fd].fileflags = 0;
 	if (fd > fdp->fd_lastfile)
 		fdp->fd_lastfile = fd;
 	if (want <= fdp->fd_freefile)
 		fdp->fd_freefile = fd;
 	*result = fd;
 	KKASSERT(fdp->fd_files[fd].fp == NULL);
+	KKASSERT(fdp->fd_files[fd].reserved == 0);
+	fdp->fd_files[fd].fileflags = 0;
+	fdp->fd_files[fd].reserved = 1;
 	fdreserve(fdp, fd, 1);
 	return (0);
 }
@@ -1033,15 +1068,17 @@ fdavail(struct proc *p, int n)
 
 /*
  * falloc:
- *	Create a new open file structure and allocate a file decriptor
- *	for the process that refers to it.  If p is NULL, no descriptor
- *	is allocated and the file pointer is returned unassociated with
- *	any process.  resultfd is only used if p is not NULL and may
- *	separately be NULL indicating that you don't need the returned fd.
+ *	Create a new open file structure and reserve a file decriptor
+ *	for the process that refers to it.
  *
- *	A held file pointer is returned.  If a descriptor has been allocated
- *	an additional hold on the fp will be made due to the fd_files[]
- *	reference.
+ *	Root creds are checked using p, or assumed if p is NULL.  If
+ *	resultfd is non-NULL then p must also be non-NULL.  No file
+ *	descriptor is reserved if resultfd is NULL.
+ *
+ *	A file pointer with a refcount of 1 is returned.  Note that the
+ *	file pointer is NOT associated with the descriptor.  If falloc
+ *	returns success, fsetfd() MUST be called to either associate the
+ *	file pointer or clear the reservation.
  */
 int
 falloc(struct proc *p, struct file **resultfp, int *resultfd)
@@ -1081,7 +1118,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 		fp->f_cred = crhold(proc0.p_ucred);
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
 	if (resultfd) {
-		if ((error = fsetfd(p, fp, resultfd)) != 0) {
+		if ((error = fdalloc(p, 0, resultfd)) != 0) {
 			fdrop(fp);
 			fp = NULL;
 		}
@@ -1091,26 +1128,6 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 done:
 	*resultfp = fp;
 	return (error);
-}
-
-/*
- * fdealloc - deallocate a descriptor allocated with falloc.  The deallocation
- * only occurs if the passed file pointer matches the descriptor.
- */
-int
-fdealloc(struct proc *p, struct file *fp, int fd)
-{
-	struct filedesc *fdp = p->p_fd;
-
-	if (((u_int)fd) >= fdp->fd_nfiles || fdp->fd_files[fd].fp != fp)
-		return(FALSE);
-	fdp->fd_files[fd].fp = NULL;
-	fdp->fd_files[fd].fileflags = 0;
-	fdreserve(fdp, fd, -1);
-	if (fd < fdp->fd_freefile)
-	       fdp->fd_freefile = fd;
-	fdrop(fp);
-	return (TRUE);
 }
 
 /*
@@ -1132,32 +1149,61 @@ checkfpclosed(struct filedesc *fdp, int fd, struct file *fp)
 }
 
 /*
- * Associate a file pointer with a file descriptor.  On success the fp
- * will have an additional ref representing the fd_files[] association.
+ * Associate a file pointer with a previously reserved file descriptor.
+ * This function always succeeds.
+ *
+ * If fp is NULL, the file descriptor is returned to the pool.
  */
-int
-fsetfd(struct proc *p, struct file *fp, int *resultfd)
+void
+fsetfd(struct proc *p, struct file *fp, int fd)
 {
-	int fd, error;
+	struct filedesc *fdp = p->p_fd;
 
-	fd = -1;
-	if ((error = fdalloc(p, 0, &fd)) == 0) {
+	KKASSERT((unsigned)fd < fdp->fd_nfiles);
+	KKASSERT(fdp->fd_files[fd].reserved != 0);
+	if (fp) {
 		fhold(fp);
-		p->p_fd->fd_files[fd].fp = fp;
+		fdp->fd_files[fd].fp = fp;
+		fdp->fd_files[fd].reserved = 0;
+	} else {
+		fdp->fd_files[fd].reserved = 0;
+		fdreserve(fdp, fd, -1);
+		if (fd < fdp->fd_freefile) {
+		       fdp->fd_freefile = fd;
+		}
+		while (fdp->fd_lastfile >= 0 &&
+		       fdp->fd_files[fdp->fd_lastfile].fp == NULL &&
+		       fdp->fd_files[fdp->fd_lastfile].reserved == 0
+	        ) {
+			fdp->fd_lastfile--;
+		}
 	}
-	*resultfd = fd;
-	return (error);
 }
 
 static 
-void
+struct file *
 funsetfd(struct filedesc *fdp, int fd)
 {
+	struct file *fp;
+
+	if ((unsigned)fd >= fdp->fd_nfiles)
+		return (NULL);
+	if ((fp = fdp->fd_files[fd].fp) == NULL)
+		return (NULL);
 	fdp->fd_files[fd].fp = NULL;
 	fdp->fd_files[fd].fileflags = 0;
+
 	fdreserve(fdp, fd, -1);
-	if (fd < fdp->fd_freefile)
+	if (fd < fdp->fd_freefile) {
 		fdp->fd_freefile = fd;
+	}
+	while (fdp->fd_lastfile >= 0 &&
+	       fdp->fd_files[fdp->fd_lastfile].fp == NULL &&
+	       fdp->fd_files[fdp->fd_lastfile].reserved == 0
+	) {
+		fdp->fd_lastfile--;
+	}
+	return(fp);
 }
 
 /*
@@ -1260,6 +1306,7 @@ fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask)
 	fdp0->fd_cmask = cmask;
 	fdp0->fd_files = fdp0->fd_builtin_files;
 	fdp0->fd_nfiles = NDFILE;
+	fdp0->fd_lastfile = -1;
 	spin_init(&fdp0->fd_spin);
 }
 
@@ -1300,6 +1347,7 @@ fdinit(struct proc *p)
 	newfdp->fd_files = newfdp->fd_builtin_files;
 	newfdp->fd_nfiles = NDFILE;
 	newfdp->fd_knlistsize = -1;
+	newfdp->fd_lastfile = -1;
 	spin_init(&newfdp->fd_spin);
 
 	return (newfdp);
@@ -1382,15 +1430,15 @@ fdcopy(struct proc *p)
 	}
 
 	/*
-	 * kq descriptors cannot be copied.
+	 * kq descriptors cannot be copied.  Since we haven't ref'd the
+	 * copied files yet we can ignore the return value from funsetfd().
 	 */
 	if (newfdp->fd_knlistsize != -1) {
-		fdnode = &newfdp->fd_files[newfdp->fd_lastfile];
-		for (i = newfdp->fd_lastfile; i >= 0; i--, fdnode--) {
-			if (fdnode->fp != NULL && fdnode->fp->f_type == DTYPE_KQUEUE)
-				funsetfd(newfdp, i);	/* nulls out *fpp */
-			if (fdnode->fp == NULL && i == newfdp->fd_lastfile && i > 0)
-				newfdp->fd_lastfile--;
+		for (i = 0; i <= newfdp->fd_lastfile; ++i) {
+			fdnode = &newfdp->fd_files[i];
+			if (fdnode->fp && fdnode->fp->f_type == DTYPE_KQUEUE) {
+				(void)funsetfd(newfdp, i);
+			}
 		}
 		newfdp->fd_knlist = NULL;
 		newfdp->fd_knlistsize = -1;
@@ -1398,9 +1446,17 @@ fdcopy(struct proc *p)
 		newfdp->fd_knhashmask = 0;
 	}
 
-	fdnode = newfdp->fd_files;
-	for (i = newfdp->fd_lastfile; i-- >= 0; fdnode++) {
-		if (fdnode->fp != NULL)
+	/*
+	 * Ref the copies file pointers.  Make sure any reserved but
+	 * unassigned descriptors are cleared in the copy.
+	 */
+	for (i = 0; i <= newfdp->fd_lastfile; ++i) {
+		fdnode = &newfdp->fd_files[i];
+		if (fdnode->reserved) {
+			fdreserve(fdp, i, -1);
+			fdnode->reserved = 0;
+		}
+		if (fdnode->fp)
 			fhold(fdnode->fp);
 	}
 	return (newfdp);
@@ -1433,12 +1489,12 @@ fdfree(struct proc *p)
 			 fdtol->fdl_refcount));
 		if (fdtol->fdl_refcount == 1 &&
 		    (p->p_leader->p_flag & P_ADVLOCK) != 0) {
-			i = 0;
-			fdnode = fdp->fd_files;
-			for (i = 0; i <= fdp->fd_lastfile; i++, fdnode++) {
+			for (i = 0; i <= fdp->fd_lastfile; ++i) {
+				fdnode = &fdp->fd_files[i];
 				if (fdnode->fp == NULL ||
-				    fdnode->fp->f_type != DTYPE_VNODE)
+				    fdnode->fp->f_type != DTYPE_VNODE) {
 					continue;
+				}
 				fp = fdnode->fp;
 				fhold(fp);
 				lf.l_whence = SEEK_SET;
@@ -1452,8 +1508,6 @@ fdfree(struct proc *p)
 						   &lf,
 						   F_POSIX);
 				fdrop(fp);
-				/* reload due to possible reallocation */
-				fdnode = &fdp->fd_files[i];
 			}
 		}
 	retry:
@@ -1639,13 +1693,10 @@ setugidsafety(struct proc *p)
 			 * NULL-out descriptor prior to close to avoid
 			 * a race while close blocks.
 			 */
-			fp = fdp->fd_files[i].fp;
-			funsetfd(fdp, i);
-			closef(fp, td);
+			if ((fp = funsetfd(fdp, i)) != NULL)
+				closef(fp, td);
 		}
 	}
-	while (fdp->fd_lastfile > 0 && fdp->fd_files[fdp->fd_lastfile].fp == NULL)
-		fdp->fd_lastfile--;
 }
 
 /*
@@ -1677,13 +1728,10 @@ fdcloseexec(struct proc *p)
 			 * NULL-out descriptor prior to close to avoid
 			 * a race while close blocks.
 			 */
-			fp = fdp->fd_files[i].fp;
-			funsetfd(fdp, i);
-			closef(fp, td);
+			if ((fp = funsetfd(fdp, i)) != NULL)
+				closef(fp, td);
 		}
 	}
-	while (fdp->fd_lastfile > 0 && fdp->fd_files[fdp->fd_lastfile].fp == NULL)
-		fdp->fd_lastfile--;
 }
 
 /*
@@ -1700,7 +1748,7 @@ fdcheckstd(struct proc *p)
 	struct filedesc *fdp;
 	struct file *fp;
 	register_t retval;
-	int fd, i, error, flags, devnull;
+	int i, error, flags, devnull;
 
        fdp = p->p_fd;
        if (fdp == NULL)
@@ -1711,7 +1759,7 @@ fdcheckstd(struct proc *p)
 		if (fdp->fd_files[i].fp != NULL)
 			continue;
 		if (devnull < 0) {
-			if ((error = falloc(p, &fp, NULL)) != 0)
+			if ((error = falloc(p, &fp, &devnull)) != 0)
 				break;
 
 			error = nlookup_init(&nd, "/dev/null", UIO_SYSSPACE,
@@ -1720,13 +1768,14 @@ fdcheckstd(struct proc *p)
 			if (error == 0)
 				error = vn_open(&nd, fp, flags, 0);
 			if (error == 0)
-				error = fsetfd(p, fp, &fd);
+				fsetfd(p, fp, devnull);
+			else
+				fsetfd(p, NULL, devnull);
 			fdrop(fp);
 			nlookup_done(&nd);
 			if (error)
 				break;
-			KKASSERT(i == fd);
-			devnull = fd;
+			KKASSERT(i == devnull);
 		} else {
 			error = kern_dup(DUP_FIXED, devnull, i, &retval);
 			if (error != 0)
@@ -1935,33 +1984,26 @@ fdopen(dev_t dev, int mode, int type, struct thread *td)
 }
 
 /*
- * Duplicate the specified descriptor to a free descriptor.
+ * The caller has reserved the file descriptor dfd for us.  On success we
+ * must fsetfd() it.  On failure the caller will clean it up.
  */
 int
-dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
+dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 {
+	struct filedesc *fdp = p->p_fd;
 	struct file *wfp;
-	struct file *fp;
+	struct file *xfp;
 
-	/*
-	 * If the to-be-dup'd fd number is greater than the allowed number
-	 * of file descriptors, or the fd to be dup'd has already been
-	 * closed, then reject.
-	 */
-	if ((u_int)dfd >= fdp->fd_nfiles ||
-	    (wfp = fdp->fd_files[dfd].fp) == NULL) {
+	if ((wfp = holdfp(fdp, sfd, -1)) == NULL)
 		return (EBADF);
-	}
 
 	/*
 	 * There are two cases of interest here.
 	 *
-	 * For ENODEV simply dup (dfd) to file descriptor
-	 * (indx) and return.
+	 * For ENODEV simply dup sfd to file descriptor dfd and return.
 	 *
-	 * For ENXIO steal away the file structure from (dfd) and
-	 * store it in (indx).  (dfd) is effectively closed by
-	 * this operation.
+	 * For ENXIO steal away the file structure from sfd and store it
+	 * dfd.  sfd is effectively closed by this operation.
 	 *
 	 * Any other error code is just returned.
 	 */
@@ -1973,53 +2015,26 @@ dupfdopen(struct filedesc *fdp, int indx, int dfd, int mode, int error)
 		 */
 		if (((mode & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag)
 			return (EACCES);
-		fp = fdp->fd_files[indx].fp;
-		fdp->fd_files[indx].fp = wfp;
-		fdp->fd_files[indx].fileflags = fdp->fd_files[dfd].fileflags;
-		fhold(wfp);
-		if (indx > fdp->fd_lastfile)
-			fdp->fd_lastfile = indx;
-		/*
-		 * we now own the reference to fp that the ofiles[] array
-		 * used to own.  Release it.
-		 */
-		if (fp)
-			fdrop(fp);
-		return (0);
-
+		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
+		fsetfd(p, wfp, dfd);
+		error = 0;
+		break;
 	case ENXIO:
 		/*
 		 * Steal away the file pointer from dfd, and stuff it into indx.
 		 */
-		fp = fdp->fd_files[indx].fp;
-		fdp->fd_files[indx].fp = fdp->fd_files[dfd].fp;
-		fdp->fd_files[indx].fileflags = fdp->fd_files[dfd].fileflags;
-		funsetfd(fdp, dfd);
-
-		/*
-		 * we now own the reference to fp that the files[] array
-		 * used to own.  Release it.
-		 */
-		if (fp)
-			fdrop(fp);
-		/*
-		 * Complete the clean up of the filedesc structure by
-		 * recomputing the various hints.
-		 */
-		if (indx > fdp->fd_lastfile) {
-			fdp->fd_lastfile = indx;
-		} else {
-			while (fdp->fd_lastfile > 0 &&
-			   fdp->fd_files[fdp->fd_lastfile].fp == NULL) {
-				fdp->fd_lastfile--;
-			}
-		}
-		return (0);
-
+		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
+		fsetfd(p, wfp, dfd);
+		if ((xfp = funsetfd(fdp, sfd)) != NULL)
+			fdrop(xfp);
+		KKASSERT(xfp == wfp);	/* XXX MP RACE */
+		error = 0;
+		break;
 	default:
-		return (error);
+		break;
 	}
-	/* NOTREACHED */
+	fdrop(wfp);
+	return (error);
 }
 
 
