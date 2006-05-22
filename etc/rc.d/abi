@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/abi,v 1.2 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/abi,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/abi,v 1.4 2006/05/22 06:26:29 swildner Exp $
 #
 
 # PROVIDE: abi
@@ -41,14 +41,6 @@ linux_start()
 		/compat/linux/sbin/ldconfig
 	fi
 }
-load_rc_config $name
-run_rc_command "$1"
-
-name="svr4"
-rcvar=`set_rcvar`
-start_precmd="echo -n ' svr4'"
-start_cmd="kldload svr4 > /dev/null 2>&1"
-
 load_rc_config $name
 run_rc_command "$1"
 

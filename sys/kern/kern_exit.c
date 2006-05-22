@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.53 2006/05/17 20:20:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.54 2006/05/22 06:26:30 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -78,10 +78,8 @@
 
 #include <sys/thread2.h>
 
-/* Required to be non-static for SysVR4 emulator */
-MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
-
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
+static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
 /*
  * callout list for things to do at exit time

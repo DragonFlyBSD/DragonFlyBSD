@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man4/man4.i386/Makefile,v 1.122.2.12 2003/04/15 17:23:32 fjoe Exp $
-# $DragonFly: src/share/man/man4/man4.i386/Makefile,v 1.7 2006/04/30 18:46:39 swildner Exp $
+# $DragonFly: src/share/man/man4/man4.i386/Makefile,v 1.8 2006/05/22 06:26:29 swildner Exp $
 
 MAN=	acpi_toshiba.4 aic.4 alpm.4 amdpm.4 apm.4 ar.4 asc.4 asr.4 \
 	cs.4 cx.4 cy.4 \
@@ -8,7 +8,7 @@ MAN=	acpi_toshiba.4 aic.4 alpm.4 amdpm.4 apm.4 ar.4 asc.4 asr.4 \
 	meteor.4 mse.4 ndis.4 npx.4 \
 	oltr.4 pcf.4 perfmon.4 pnp.4 \
 	ray.4 rdp.4 sb.4 sbni.4 scd.4 \
-	spkr.4 sr.4 streams.4 svr4.4 tw.4 \
+	spkr.4 sr.4 tw.4 \
 	tx.4 viapm.4 vx.4 \
 	wl.4 wt.4
 

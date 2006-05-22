@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.109 2006/05/17 14:06:36 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.110 2006/05/22 06:26:29 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -400,6 +400,11 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/mount_umap.8.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}3/isinff.3.gz"
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}8/isnanf.3.gz"
+	rm -f ${DESTDIR}/modules/ibcs2.ko
+	rm -f ${DESTDIR}/modules/streams.ko
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/streams.4.gz"
+	rm -f ${DESTDIR}/modules/svr4.ko
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/svr4.4.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)

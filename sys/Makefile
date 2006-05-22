@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.11 2006/05/20 18:26:32 dillon Exp $
+# $DragonFly: src/sys/Makefile,v 1.12 2006/05/22 06:26:29 swildner Exp $
 
 # This is the old aout only boot loader.
 .if	exists(${.CURDIR}/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
@@ -30,7 +30,6 @@ HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", rele
 all_sysent:
 	(cd ${.CURDIR}/kern; ${MAKE} sysent)
 	(cd ${.CURDIR}/emulation/linux/i386; ${MAKE} sysent) 
-	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} sysent) 
 
 # XXX this may be temporary, should the module build be incorporated
 # into the default build (make the SUBDIR additions above non-conditional)?

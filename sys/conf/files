@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.123 2006/05/20 09:13:09 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.124 2006/05/22 06:26:29 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1122,7 +1122,6 @@ vm/vm_swap.c			standard
 vm/vm_unix.c			standard
 vm/vnode_pager.c		standard
 vm/vm_zone.c			standard
-dev/misc/streams/streams.c	optional streams
 #
 # USB support
 bus/usb/usb_if.m		optional usb

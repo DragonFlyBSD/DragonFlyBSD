@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.74 2006/05/17 18:30:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.75 2006/05/22 06:26:30 swildner Exp $
  */
 
 /*
@@ -895,8 +895,7 @@ out2:	;
  * This version doesn't allow a page fault to user space while
  * in the kernel. The rest of the kernel needs to be made "safe"
  * before this can be used. I think the only things remaining
- * to be made safe are the iBCS2 code and the process tracing/
- * debugging code.
+ * to be made safe is the process tracing/debugging code.
  */
 static int
 trap_pfault(frame, usermode, eva)
