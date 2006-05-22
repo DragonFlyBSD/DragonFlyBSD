@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.60 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.61 2006/05/22 21:33:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -152,6 +152,24 @@ static int badfo_shutdown (struct file *fp, int how);
 struct filelist filehead;	/* head of list of open files */
 int nfiles;			/* actual number of open files */
 extern int cmask;	
+
+/*
+ * Fixup fd_freefile and fd_lastfile after a descriptor has been cleared.
+ */
+static __inline
+void
+fdfixup(struct filedesc *fdp, int fd)
+{
+	if (fd < fdp->fd_freefile) {
+	       fdp->fd_freefile = fd;
+	}
+	while (fdp->fd_lastfile >= 0 &&
+	       fdp->fd_files[fdp->fd_lastfile].fp == NULL &&
+	       fdp->fd_files[fdp->fd_lastfile].reserved == 0
+	) {
+		--fdp->fd_lastfile;
+	}
+}
 
 /*
  * System calls on descriptors.
@@ -1168,15 +1186,7 @@ fsetfd(struct proc *p, struct file *fp, int fd)
 	} else {
 		fdp->fd_files[fd].reserved = 0;
 		fdreserve(fdp, fd, -1);
-		if (fd < fdp->fd_freefile) {
-		       fdp->fd_freefile = fd;
-		}
-		while (fdp->fd_lastfile >= 0 &&
-		       fdp->fd_files[fdp->fd_lastfile].fp == NULL &&
-		       fdp->fd_files[fdp->fd_lastfile].reserved == 0
-	        ) {
-			fdp->fd_lastfile--;
-		}
+		fdfixup(fdp, fd);
 	}
 }
 
@@ -1194,15 +1204,7 @@ funsetfd(struct filedesc *fdp, int fd)
 	fdp->fd_files[fd].fileflags = 0;
 
 	fdreserve(fdp, fd, -1);
-	if (fd < fdp->fd_freefile) {
-		fdp->fd_freefile = fd;
-	}
-	while (fdp->fd_lastfile >= 0 &&
-	       fdp->fd_files[fdp->fd_lastfile].fp == NULL &&
-	       fdp->fd_files[fdp->fd_lastfile].reserved == 0
-	) {
-		fdp->fd_lastfile--;
-	}
+	fdfixup(fdp, fd);
 	return(fp);
 }
 
@@ -1447,14 +1449,15 @@ fdcopy(struct proc *p)
 	}
 
 	/*
-	 * Ref the copies file pointers.  Make sure any reserved but
+	 * Ref the copied file pointers.  Make sure any reserved but
 	 * unassigned descriptors are cleared in the copy.
 	 */
 	for (i = 0; i <= newfdp->fd_lastfile; ++i) {
 		fdnode = &newfdp->fd_files[i];
 		if (fdnode->reserved) {
-			fdreserve(fdp, i, -1);
+			fdreserve(newfdp, i, -1);
 			fdnode->reserved = 0;
+			fdfixup(newfdp, i);
 		}
 		if (fdnode->fp)
 			fhold(fdnode->fp);
