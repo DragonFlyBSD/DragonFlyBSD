@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.15 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.16 2006/05/22 00:52:31 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -41,9 +41,11 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
-
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 /*
@@ -94,6 +96,7 @@ struct filedesc {
 	struct	klist *fd_knhash;	/* hash table for attached knotes */
 	int	fd_holdleaderscount;	/* block fdfree() for shared close() */
 	int	fd_holdleaderswakeup;	/* fdfree() needs wakeup */
+	struct spinlock fd_spin;
 	struct	fdnode	fd_builtin_files[NDFILE];
 };
 
@@ -157,6 +160,7 @@ int	fdavail (struct proc *p, int n);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
 int	fdealloc (struct proc *p, struct file *fp, int fd);
 int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
+int	fgetfdflags(struct filedesc *fdp, int fd, int *flagsp);
 int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
 int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);
 void	fsetcred (struct file *fp, struct ucred *cr);

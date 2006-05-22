@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.18 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.19 2006/05/22 00:52:31 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -52,6 +52,9 @@
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 struct stat;
@@ -115,6 +118,7 @@ struct file {
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* reference count from message queue */
 	struct namecache *f_ncp; /* ncp (required for directories) */
+	struct spinlock f_spin;
 };
 
 LIST_HEAD(filelist, file);
@@ -127,6 +131,7 @@ LIST_HEAD(filelist, file);
 MALLOC_DECLARE(M_FILE);
 #endif
 
+extern void fhold(struct file *fp);
 extern int fdrop (struct file *fp);
 extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
 extern int fp_vpopen(struct vnode *vp, int flags, struct file **fpp);
