@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.8 2005/12/05 16:52:02 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.9 2006/05/23 01:00:05 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -224,8 +224,6 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
     if (vn.v_flag & VINACTIVE)
 	printf(" VINACTIVE");
 #endif
-    if (vn.v_flag & VBWAIT)
-	printf(" VBWAIT");
     if (vn.v_flag & VOBJBUF)
 	printf(" VOBJBUF");
     if (vn.v_flag & VAGE)
@@ -284,10 +282,10 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 	struct buf buf;
 
 	kkread(kd, (u_long)bufp, &buf, sizeof(buf));
-	printf("\t    %-8s %p lbn %5d fbn %6d\n",
+	printf("\t    %-8s %p loffset %08llx foffset %08llx\n",
 		id, bufp,
-		buf.b_lblkno,
-		buf.b_blkno);
+		buf.b_bio1.bio_offset,
+		buf.b_bio2.bio_offset);
 
 	if (buf.b_rbnode.rbe_left)
 	    dumpbufs(kd, buf.b_rbnode.rbe_left, "LEFT");
@@ -312,7 +310,7 @@ getobjvnpsize(kvm_t *kd, struct vm_object *obj)
 	struct vm_object vmobj;
 
 	kkread(kd, (u_long)obj, &vmobj, sizeof(vmobj));
-	return(vmobj.un_pager.vnp.vnp_size);
+	return ((int)vmobj.size);
 }
 
 static void

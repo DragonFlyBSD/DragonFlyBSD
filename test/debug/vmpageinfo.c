@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vmpageinfo.c,v 1.1 2004/11/09 21:50:12 dillon Exp $
+ * $DragonFly: src/test/debug/vmpageinfo.c,v 1.2 2006/05/23 01:00:05 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -76,6 +76,7 @@ struct nlist Nl[] = {
 };
 
 int debugopt;
+int verboseopt;
 struct vm_page **vm_page_buckets;
 int vm_page_hash_mask;
 struct vm_page *vm_page_array;
@@ -96,11 +97,16 @@ main(int ac, char **av)
     int ch;
     int hv;
     int i;
+    const char *qstr;
+    const char *ostr;
 
-    while ((ch = getopt(ac, av, "M:N:d")) != -1) {
+    while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
 	switch(ch) {
 	case 'd':
 	    ++debugopt;
+	    break;
+	case 'v':
+	    ++verboseopt;
 	    break;
 	case 'M':
 	    corefile = optarg;
@@ -143,8 +149,63 @@ main(int ac, char **av)
 	    kkread(kd, (u_long)m.object, &obj, sizeof(obj));
 	    checkpage(kd, &vm_page_array[i], &m, &obj);
 	}
+	if (verboseopt) {
+	    if (m.queue >= PQ_HOLD) {
+		qstr = "HOLD";
+	    } else if (m.queue >= PQ_CACHE) {
+		qstr = "CACHE";
+	    } else if (m.queue >= PQ_ACTIVE) {
+		qstr = "ACTIVE";
+	    } else if (m.queue >= PQ_INACTIVE) {
+		qstr = "INACTIVE";
+	    } else if (m.queue >= PQ_FREE) {
+		qstr = "FREE";
+	    } else {
+		qstr = "NONE";
+	    } 
+	    printf("page %p val=%02x dty=%02x hold=%d wired=%-2d active=%-3d busy=%d/%d %s",
+		&vm_page_array[i],
+		m.valid,
+		m.dirty,
+		m.hold_count,
+		m.wire_count,
+		m.act_count,
+		m.busy,
+		((m.flags & PG_BUSY) ? 1 : 0),
+		qstr
+	    );
+	    switch(obj.type) {
+	    case OBJT_DEFAULT:
+		ostr = "default";
+		break;
+	    case OBJT_SWAP:
+		ostr = "swap";
+		break;
+	    case OBJT_VNODE:
+		ostr = "vnode";
+		break;
+	    case OBJT_DEVICE:
+		ostr = "device";
+		break;
+	    case OBJT_PHYS:
+		ostr = "phys";
+		break;
+	    case OBJT_DEAD:
+		ostr = "dead";
+		break;
+	    default:
+		ostr = "unknown";
+		break;
+	    }
+
+	    if (m.object && verboseopt > 1) {
+		    printf("\tobj=%p type=%s\n", m.object, ostr);
+	    } else {
+		    printf("\n");
+	    }
+	}
     }
-    if (debugopt)
+    if (debugopt || verboseopt)
 	printf("\n");
 
     /*
