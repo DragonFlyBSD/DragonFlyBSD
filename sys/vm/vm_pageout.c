@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.21 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.22 2006/05/23 01:21:48 dillon Exp $
  */
 
 /*
@@ -1068,7 +1068,7 @@ rescan0:
 			m->act_count -= min(m->act_count, ACT_DECLINE);
 			if (vm_pageout_algorithm ||
 			    m->object->ref_count == 0 ||
-			    m->act_count == 0) {
+			    m->act_count < pass) {
 				page_shortage--;
 				if (m->object->ref_count == 0) {
 					vm_page_protect(m, VM_PROT_NONE);
