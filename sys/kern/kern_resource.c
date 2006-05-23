@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.25 2006/03/23 15:21:41 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.26 2006/05/23 20:35:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -293,132 +293,6 @@ setrlimit(struct __setrlimit_args *uap)
 }
 
 int
-kern_setrlimit(u_int which, struct rlimit *limp)
-{
-	struct proc *p = curproc;
-	struct rlimit *alimp;
-	int error;
-
-	if (which >= RLIM_NLIMITS)
-		return (EINVAL);
-	alimp = &p->p_rlimit[which];
-
-	/*
-	 * Preserve historical bugs by treating negative limits as unsigned.
-	 */
-	if (limp->rlim_cur < 0)
-		limp->rlim_cur = RLIM_INFINITY;
-	if (limp->rlim_max < 0)
-		limp->rlim_max = RLIM_INFINITY;
-
-	if (limp->rlim_cur > alimp->rlim_max ||
-	    limp->rlim_max > alimp->rlim_max)
-		if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
-			return (error);
-	if (limp->rlim_cur > limp->rlim_max)
-		limp->rlim_cur = limp->rlim_max;
-	if (p->p_limit->p_refcnt > 1 &&
-	    (p->p_limit->p_lflags & PL_SHAREMOD) == 0) {
-		p->p_limit->p_refcnt--;
-		p->p_limit = limcopy(p->p_limit);
-		alimp = &p->p_rlimit[which];
-	}
-
-	switch (which) {
-
-	case RLIMIT_CPU:
-		if (limp->rlim_cur > RLIM_INFINITY / (rlim_t)1000000)
-			p->p_limit->p_cpulimit = RLIM_INFINITY;
-		else
-			p->p_limit->p_cpulimit = 
-			    (rlim_t)1000000 * limp->rlim_cur;
-		break;
-	case RLIMIT_DATA:
-		if (limp->rlim_cur > maxdsiz)
-			limp->rlim_cur = maxdsiz;
-		if (limp->rlim_max > maxdsiz)
-			limp->rlim_max = maxdsiz;
-		break;
-
-	case RLIMIT_STACK:
-		if (limp->rlim_cur > maxssiz)
-			limp->rlim_cur = maxssiz;
-		if (limp->rlim_max > maxssiz)
-			limp->rlim_max = maxssiz;
-		/*
-		 * Stack is allocated to the max at exec time with only
-		 * "rlim_cur" bytes accessible.  If stack limit is going
-		 * up make more accessible, if going down make inaccessible.
-		 */
-		if (limp->rlim_cur != alimp->rlim_cur) {
-			vm_offset_t addr;
-			vm_size_t size;
-			vm_prot_t prot;
-
-			if (limp->rlim_cur > alimp->rlim_cur) {
-				prot = VM_PROT_ALL;
-				size = limp->rlim_cur - alimp->rlim_cur;
-				addr = USRSTACK - limp->rlim_cur;
-			} else {
-				prot = VM_PROT_NONE;
-				size = alimp->rlim_cur - limp->rlim_cur;
-				addr = USRSTACK - alimp->rlim_cur;
-			}
-			addr = trunc_page(addr);
-			size = round_page(size);
-			(void) vm_map_protect(&p->p_vmspace->vm_map,
-					      addr, addr+size, prot, FALSE);
-		}
-		break;
-
-	case RLIMIT_NOFILE:
-		if (limp->rlim_cur > maxfilesperproc)
-			limp->rlim_cur = maxfilesperproc;
-		if (limp->rlim_max > maxfilesperproc)
-			limp->rlim_max = maxfilesperproc;
-		break;
-
-	case RLIMIT_NPROC:
-		if (limp->rlim_cur > maxprocperuid)
-			limp->rlim_cur = maxprocperuid;
-		if (limp->rlim_max > maxprocperuid)
-			limp->rlim_max = maxprocperuid;
-		if (limp->rlim_cur < 1)
-			limp->rlim_cur = 1;
-		if (limp->rlim_max < 1)
-			limp->rlim_max = 1;
-		break;
-	case RLIMIT_POSIXLOCKS:
-		if (limp->rlim_cur > maxposixlocksperuid)
-			limp->rlim_cur = maxposixlocksperuid;
-		if (limp->rlim_max > maxposixlocksperuid)
-			limp->rlim_max = maxposixlocksperuid;
-		break;
-	}
-	*alimp = *limp;
-	return (0);
-}
-
-/*
- * The rlimit indexed by which is returned in the second argument.
- *
- * MP SAFE
- */
-int
-kern_getrlimit(u_int which, struct rlimit *limp)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-
-	if (which >= RLIM_NLIMITS)
-		return (EINVAL);
-
-	*limp = p->p_rlimit[which];
-
-	return (0);
-}
-
-int
 getrlimit(struct __getrlimit_args *uap)
 {
 	struct rlimit lim;
@@ -500,24 +374,6 @@ ruadd(struct rusage *ru, struct rusage *ru2)
 	ip = &ru->ru_first; ip2 = &ru2->ru_first;
 	for (i = &ru->ru_last - &ru->ru_first; i >= 0; i--)
 		*ip++ += *ip2++;
-}
-
-/*
- * Make a copy of the plimit structure.
- * We share these structures copy-on-write after fork,
- * and copy when a limit is changed.
- */
-struct plimit *
-limcopy(struct plimit *lim)
-{
-	struct plimit *copy;
-
-	MALLOC(copy, struct plimit *, sizeof(struct plimit),
-	    M_SUBPROC, M_WAITOK);
-	bcopy(lim->pl_rlimit, copy->pl_rlimit, sizeof(struct plimit));
-	copy->p_lflags = 0;
-	copy->p_refcnt = 1;
-	return (copy);
 }
 
 /*

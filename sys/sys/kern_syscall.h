@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.30 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.31 2006/05/23 20:35:12 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -40,6 +40,7 @@
 enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
 struct image_args;
+struct plimit;
 struct mbuf;
 struct msghdr;
 struct namecache;

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.32 2006/04/26 17:17:56 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.33 2006/05/23 20:35:10 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -229,8 +229,8 @@
 141	COMPAT	BSD	{ int getpeername(int fdes, caddr_t asa, int *alen); }
 142	COMPAT	BSD	{ long gethostid(void); }
 143	COMPAT	BSD	{ int sethostid(long hostid); }
-144	COMPAT	BSD	{ int getrlimit(u_int which, struct orlimit *rlp); }
-145	COMPAT	BSD	{ int setrlimit(u_int which, struct orlimit *rlp); }
+144	MSAFE	COMPAT	BSD	{ int getrlimit(u_int which, struct orlimit *rlp); }
+145	MSAFE	COMPAT	BSD	{ int setrlimit(u_int which, struct orlimit *rlp); }
 146	COMPAT	BSD	{ int killpg(int pgid, int signum); }
 147	STD	POSIX	{ int setsid(void); }
 148	STD	BSD	{ int quotactl(char *path, int cmd, int uid, \

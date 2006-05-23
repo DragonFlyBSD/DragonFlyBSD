@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.53 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.54 2006/05/23 20:35:10 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -274,7 +274,6 @@ proc0_init(void *dummy __unused)
 {
 	struct proc *p;
 	struct lwp *lp;
-	unsigned i;
 
 	p = &proc0;
 	lp = &proc0.p_lwp;	/* XXX lwp to be: lwp0 */
@@ -332,26 +331,14 @@ proc0_init(void *dummy __unused)
 	p->p_procsig->ps_refcnt = 1;
 
 	/* Initialize signal state for process 0. */
-	siginit(&proc0);
+	siginit(p);
 
 	/* Create the file descriptor table. */
 	fdinit_bootstrap(p, &filedesc0, cmask);
 
 	/* Create the limits structures. */
+	plimit_init0(&limit0);
 	p->p_limit = &limit0;
-	for (i = 0; i < sizeof(p->p_rlimit)/sizeof(p->p_rlimit[0]); i++)
-		limit0.pl_rlimit[i].rlim_cur =
-		    limit0.pl_rlimit[i].rlim_max = RLIM_INFINITY;
-	limit0.pl_rlimit[RLIMIT_NOFILE].rlim_cur =
-	    limit0.pl_rlimit[RLIMIT_NOFILE].rlim_max = maxfiles;
-	limit0.pl_rlimit[RLIMIT_NPROC].rlim_cur =
-	    limit0.pl_rlimit[RLIMIT_NPROC].rlim_max = maxproc;
-	i = ptoa(vmstats.v_free_count);
-	limit0.pl_rlimit[RLIMIT_RSS].rlim_max = i;
-	limit0.pl_rlimit[RLIMIT_MEMLOCK].rlim_max = i;
-	limit0.pl_rlimit[RLIMIT_MEMLOCK].rlim_cur = i / 3;
-	limit0.p_cpulimit = RLIM_INFINITY;
-	limit0.p_refcnt = 1;
 
 	/* Allocate a prototype map so we have something to fork. */
 	pmap_pinit0(vmspace_pmap(&vmspace0));

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.47 2006/05/17 20:20:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.48 2006/05/23 20:35:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -469,19 +469,7 @@ again:
 		}
 	}
 	p2->p_fdtol = fdtol;
-
-	/*
-	 * If p_limit is still copy-on-write, bump refcnt,
-	 * otherwise get a copy that won't be modified.
-	 * (If PL_SHAREMOD is clear, the structure is shared
-	 * copy-on-write.)
-	 */
-	if (p1->p_limit->p_lflags & PL_SHAREMOD) {
-		p2->p_limit = limcopy(p1->p_limit);
-	} else {
-		p2->p_limit = p1->p_limit;
-		p2->p_limit->p_refcnt++;
-	}
+	p2->p_limit = plimit_fork(p1->p_limit);
 
 	/*
 	 * Preserve some more flags in subprocess.  P_PROFIL has already

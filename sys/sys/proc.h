@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.75 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.76 2006/05/23 20:35:12 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -297,6 +297,7 @@ struct	proc {
 	int		p_numposixlocks; /* number of POSIX locks */
 
 	struct lwp	p_lwp;		/* Embedded lwp XXX */
+	struct spinlock p_spin;		/* Spinlock for LWP access to proc */
 };
 
 #if defined(_KERNEL)
@@ -355,6 +356,7 @@ struct	proc {
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
 #define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
 #define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
+#define P_XCPU		0x40000000 /* SIGXCPU */
 
 #ifdef _KERNEL
 

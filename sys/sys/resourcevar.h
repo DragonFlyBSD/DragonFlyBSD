@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.12 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.13 2006/05/23 20:35:12 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -52,6 +52,9 @@
 #endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
+#endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
 #endif
 
 /*
@@ -82,11 +85,15 @@ struct uprof {			/* profile arguments */
  */
 struct plimit {
 	struct	rlimit pl_rlimit[RLIM_NLIMITS];
-#define	PL_SHAREMOD	0x01		/* modifications are shared */
-	int	p_lflags;
 	int	p_refcnt;		/* number of references */
+	int	p_exclusive;		/* exclusive to proc due to lwp's */
 	rlim_t	p_cpulimit;		/* current cpu limit in usec */
+	struct spinlock p_spin;
 };
+
+#define PLIMIT_TESTCPU_OK	0
+#define PLIMIT_TESTCPU_XCPU	1
+#define PLIMIT_TESTCPU_KILL	2
 
 /*
  * Per uid resource consumption
@@ -112,7 +119,6 @@ void	calcru (struct proc *p, struct timeval *up, struct timeval *sp,
 int	chgproccnt (struct uidinfo *uip, int diff, int max);
 int	chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max);
 int	fuswintr (void *base);
-struct plimit *limcopy (struct plimit *lim);
 void	ruadd (struct rusage *ru, struct rusage *ru2);
 int	suswintr (void *base, int word);
 struct uidinfo *uifind (uid_t uid);
@@ -120,6 +126,13 @@ void	uihold (struct uidinfo *uip);
 void	uidrop (struct uidinfo *uip);
 void	uireplace (struct uidinfo **puip, struct uidinfo *nuip);
 void	uihashinit (void);
+
+void plimit_init0(struct plimit *);
+struct plimit *plimit_fork(struct plimit *);
+int plimit_testcpulimit(struct plimit *, u_int64_t);
+void plimit_modify(struct plimit **, int, struct rlimit *);
+void plimit_free(struct plimit **);
+
 #endif
 
 #endif	/* !_SYS_RESOURCEVAR_H_ */

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.59 2006/04/14 20:08:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.60 2006/05/23 20:35:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -171,7 +171,6 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 static void
 schedcpu(void *arg)
 {
-	struct rlimit *rlim;
 	struct proc *p;
 	u_int64_t ttime;
 
@@ -212,25 +211,23 @@ schedcpu(void *arg)
 			continue;
 		}
 		ttime = p->p_thread->td_sticks + p->p_thread->td_uticks;
-		if (p->p_limit->p_cpulimit != RLIM_INFINITY &&
-		    ttime > p->p_limit->p_cpulimit
-		) {
-			rlim = &p->p_rlimit[RLIMIT_CPU];
-			if (ttime / (rlim_t)1000000 >= rlim->rlim_max) {
-				killproc(p, "exceeded maximum CPU limit");
-			} else {
-				psignal(p, SIGXCPU);
-				if (rlim->rlim_cur < rlim->rlim_max) {
-					/* XXX: we should make a private copy */
-					rlim->rlim_cur += 5;
-				}
-			}
-			crit_exit();
+		switch(plimit_testcpulimit(p->p_limit, ttime)) {
+		case PLIMIT_TESTCPU_KILL:
+			killproc(p, "exceeded maximum CPU limit");
 			break;
+		case PLIMIT_TESTCPU_XCPU:
+			if ((p->p_flag & P_XCPU) == 0) {
+				p->p_flag |= P_XCPU;
+				psignal(p, SIGXCPU);
+			}
+			break;
+		default:
+			crit_exit();
+			continue;
 		}
 		crit_exit();
+		break;
 	}
-
 	wakeup((caddr_t)&lbolt);
 	wakeup((caddr_t)&lbolt_syncer);
 	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);

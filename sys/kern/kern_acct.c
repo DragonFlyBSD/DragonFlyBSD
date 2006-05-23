@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.23 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.24 2006/05/23 20:35:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -195,6 +195,7 @@ acct_process(struct proc *p)
 	struct acct acct;
 	struct rusage *r;
 	struct timeval ut, st, tmp;
+	struct rlimit rlim;
 	int t;
 	struct vnode *vp;
 
@@ -250,12 +251,9 @@ acct_process(struct proc *p)
 	/*
 	 * Eliminate any file size rlimit.
 	 */
-	if (p->p_limit->p_refcnt > 1 &&
-	    (p->p_limit->p_lflags & PL_SHAREMOD) == 0) {
-		p->p_limit->p_refcnt--;
-		p->p_limit = limcopy(p->p_limit);
-	} 
-	p->p_rlimit[RLIMIT_FSIZE].rlim_cur = RLIM_INFINITY;
+	rlim.rlim_cur = RLIM_INFINITY;
+	rlim.rlim_max = RLIM_INFINITY;
+	plimit_modify(&p->p_limit, RLIMIT_FSIZE, &rlim);
 
 	/*
 	 * Write the accounting information to the file.
