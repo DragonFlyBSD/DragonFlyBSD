@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.29 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.30 2006/05/24 21:50:11 dillon Exp $
  *
  */
 
@@ -2157,12 +2157,18 @@ retrier(struct fdc_data *fdc)
 	return (1);
 }
 
+static void
+fdformat_wakeup(struct bio *bio)
+{
+	bio->bio_buf->b_cmd = BUF_CMD_DONE;
+	wakeup(bio);
+}
+
 static int
 fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 {
  	fdu_t	fdu;
  	fd_p	fd;
-
 	struct buf *bp;
 	int rv = 0;
 	size_t fdblk;
@@ -2172,12 +2178,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	fdblk = 128 << fd->ft->secsize;
 
 	/* set up a buffer header for fdstrategy() */
-	bp = malloc(sizeof(struct buf), M_TEMP, M_WAITOK | M_ZERO);
-
-	BUF_LOCKINIT(bp);
-	BUF_LOCK(bp, LK_EXCLUSIVE);
-	initbufbio(bp);
-	bp->b_flags = B_PAGING;
+	bp = getpbuf(NULL);
 	bp->b_cmd = BUF_CMD_FORMAT;
 
 	/*
@@ -2188,6 +2189,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 		(fd->ft->sectrac * fd->ft->heads)
 		+ finfo->head * fd->ft->sectrac) * fdblk;
 	bp->b_bio1.bio_driver_info = dev;
+	bp->b_bio1.bio_done = fdformat_wakeup;
 
 	bp->b_bcount = sizeof(struct fd_idfield_data) * finfo->fd_formb_nsecs;
 	bp->b_data = (caddr_t)finfo;
@@ -2198,7 +2200,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/* ...and wait for it to complete */
 	crit_enter();
 	while (bp->b_cmd != BUF_CMD_DONE) {
-		rv = tsleep((caddr_t)bp, 0, "fdform", 20 * hz);
+		rv = tsleep(&bp->b_bio1, 0, "fdform", 20 * hz);
 		if (rv == EWOULDBLOCK)
 			break;
 	}
@@ -2215,9 +2217,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/*
 	 * allow the process to be swapped
 	 */
-	BUF_UNLOCK(bp);
-	BUF_LOCKFREE(bp);
-	free(bp, M_TEMP);
+	relpbuf(bp, NULL);
 	return rv;
 }
 
