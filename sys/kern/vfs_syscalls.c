@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.92 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.93 2006/05/24 03:23:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -870,22 +870,23 @@ kern_fstatfs(int fd, struct statfs *buf)
 	int error;
 
 	KKASSERT(p);
-	error = getvnode(p->p_fd, fd, &fp);
-	if (error)
+	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
 	mp = ((struct vnode *)fp->f_data)->v_mount;
-	if (mp == NULL)
-		return (EBADF);
-	if (fp->f_cred == NULL)
-		return (EINVAL);
+	if (mp == NULL) {
+		error = EBADF;
+		goto done;
+	}
+	if (fp->f_cred == NULL) {
+		error = EINVAL;
+		goto done;
+	}
 	sp = &mp->mnt_stat;
-	error = VFS_STATFS(mp, sp, fp->f_cred);
-	if (error)
-		return (error);
+	if ((error = VFS_STATFS(mp, sp, fp->f_cred)) != 0)
+		goto done;
 
-	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
-	if (error)
-		return(error);
+	if ((error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath)) != 0)
+		goto done;
 	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
 	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
 	free(freepath, M_TEMP);
@@ -896,7 +897,10 @@ kern_fstatfs(int fd, struct statfs *buf)
 	/* Only root should have access to the fsid's. */
 	if (suser(td))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
-	return (0);
+	error = 0;
+done:
+	fdrop(fp);
+	return (error);
 }
 
 /*
@@ -1029,7 +1033,7 @@ fchdir(struct fchdir_args *uap)
 	struct namecache *nct;
 	int error;
 
-	if ((error = getvnode(fdp, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(fdp, uap->fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
@@ -1040,6 +1044,7 @@ fchdir(struct fchdir_args *uap)
 		error = VOP_ACCESS(vp, VEXEC, p->p_ucred);
 	if (error) {
 		vput(vp);
+		fdrop(fp);
 		return (error);
 	}
 	ncp = cache_hold(fp->f_ncp);
@@ -1067,6 +1072,7 @@ fchdir(struct fchdir_args *uap)
 		cache_drop(ncp);
 		vput(vp);
 	}
+	fdrop(fp);
 	return (error);
 }
 
@@ -1136,12 +1142,14 @@ chroot_refuse_vdir_fds(fdp)
 	int fd;
 
 	for (fd = 0; fd < fdp->fd_nfiles ; fd++) {
-		error = getvnode(fdp, fd, &fp);
-		if (error)
+		if ((error = holdvnode(fdp, fd, &fp)) != 0)
 			continue;
 		vp = (struct vnode *)fp->f_data;
-		if (vp->v_type != VDIR)
+		if (vp->v_type != VDIR) {
+			fdrop(fp);
 			continue;
+		}
+		fdrop(fp);
 		return(EPERM);
 	}
 	return (0);
@@ -2133,9 +2141,11 @@ fchflags(struct fchflags_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	return setfflags((struct vnode *) fp->f_data, uap->flags);
+	error = setfflags((struct vnode *) fp->f_data, uap->flags);
+	fdrop(fp);
+	return (error);
 }
 
 static int
@@ -2227,9 +2237,11 @@ fchmod(struct fchmod_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	return setfmode((struct vnode *)fp->f_data, uap->mode);
+	error = setfmode((struct vnode *)fp->f_data, uap->mode);
+	fdrop(fp);
+	return (error);
 }
 
 static int
@@ -2320,10 +2332,11 @@ fchown(struct fchown_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	return setfown((struct vnode *)fp->f_data,
-		uap->uid, uap->gid);
+	error = setfown((struct vnode *)fp->f_data, uap->uid, uap->gid);
+	fdrop(fp);
+	return (error);
 }
 
 static int
@@ -2445,10 +2458,10 @@ kern_futimes(int fd, struct timeval *tptr)
 	error = getutimes(tptr, ts);
 	if (error)
 		return (error);
-	error = getvnode(p->p_fd, fd, &fp);
-	if (error)
+	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
 	error =  setutimes((struct vnode *)fp->f_data, ts, tptr == NULL);
+	fdrop(fp);
 	return (error);
 }
 
@@ -2534,20 +2547,24 @@ kern_ftruncate(int fd, off_t length)
 
 	if (length < 0)
 		return(EINVAL);
-	if ((error = getvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
-	if ((fp->f_flag & FWRITE) == 0)
-		return (EINVAL);
+	if ((fp->f_flag & FWRITE) == 0) {
+		error = EINVAL;
+		goto done;
+	}
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	if (vp->v_type == VDIR)
+	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	else if ((error = vn_writechk(vp)) == 0) {
+	} else if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
 	}
 	VOP_UNLOCK(vp, 0);
+done:
+	fdrop(fp);
 	return (error);
 }
 
@@ -2582,7 +2599,7 @@ fsync(struct fsync_args *uap)
 	vm_object_t obj;
 	int error;
 
-	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -2590,9 +2607,11 @@ fsync(struct fsync_args *uap)
 		vm_object_page_clean(obj, 0, 0, 0);
 	if ((error = VOP_FSYNC(vp, MNT_WAIT)) == 0 &&
 	    vp->v_mount && (vp->v_mount->mnt_flag & MNT_SOFTDEP) &&
-	    bioops.io_fsync)
+	    bioops.io_fsync) {
 		error = (*bioops.io_fsync)(vp);
+	}
 	VOP_UNLOCK(vp, 0);
+	fdrop(fp);
 	return (error);
 }
 
@@ -2861,14 +2880,18 @@ kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res,
 	long loff;
 	int error, eofflag;
 
-	if ((error = getvnode(p->p_fd, fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
-	if ((fp->f_flag & FREAD) == 0)
-		return (EBADF);
+	if ((fp->f_flag & FREAD) == 0) {
+		error = EBADF;
+		goto done;
+	}
 	vp = (struct vnode *)fp->f_data;
 unionread:
-	if (vp->v_type != VDIR)
-		return (EINVAL);
+	if (vp->v_type != VDIR) {
+		error = EINVAL;
+		goto done;
+	}
 	aiov.iov_base = buf;
 	aiov.iov_len = count;
 	auio.uio_iov = &aiov;
@@ -2884,14 +2907,14 @@ unionread:
 	fp->f_offset = auio.uio_offset;
 	VOP_UNLOCK(vp, 0);
 	if (error)
-		return (error);
+		goto done;
 	if (count == auio.uio_resid) {
 		if (union_dircheckp) {
 			error = union_dircheckp(td, &vp, fp);
 			if (error == -1)
 				goto unionread;
 			if (error)
-				return (error);
+				goto done;
 		}
 		if ((vp->v_flag & VROOT) &&
 		    (vp->v_mount->mnt_flag & MNT_UNION)) {
@@ -2908,6 +2931,8 @@ unionread:
 		*basep = loff;
 	}
 	*res = count - auio.uio_resid;
+done:
+	fdrop(fp);
 	return (error);
 }
 

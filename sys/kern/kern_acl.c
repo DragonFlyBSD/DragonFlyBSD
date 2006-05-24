@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.12 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.13 2006/05/24 03:23:31 dillon Exp $
  */
 
 /*
@@ -207,11 +207,11 @@ __acl_get_fd(struct __acl_get_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
-	if (error)
+	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
-	return vacl_get_acl((struct vnode *)fp->f_data, uap->type,
-	    uap->aclp);
+	error = vacl_get_acl((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	fdrop(fp);
+	return (error);
 }
 
 /*
@@ -225,11 +225,11 @@ __acl_set_fd(struct __acl_set_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
-	if (error)
+	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
-	return vacl_set_acl((struct vnode *)fp->f_data, uap->type,
-	    uap->aclp);
+	error = vacl_set_acl((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	fdrop(fp);
+	return (error);
 }
 
 /*
@@ -268,10 +268,10 @@ __acl_delete_fd(struct __acl_delete_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
-	if (error)
+	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
 	error = vacl_delete((struct vnode *)fp->f_data, uap->type);
+	fdrop(fp);
 	return (error);
 }
 
@@ -311,9 +311,10 @@ __acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
-	if (error)
+	if ((error = holdvnode(td->td_proc->p_fd, uap->filedes, &fp)) != 0)
 		return(error);
-	return vacl_aclcheck((struct vnode *)fp->f_data, uap->type,
-	    uap->aclp);
+	error = vacl_aclcheck((struct vnode *)fp->f_data, uap->type, uap->aclp);
+	fdrop(fp);
+	return (error);
 }
+

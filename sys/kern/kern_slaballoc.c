@@ -1,5 +1,5 @@
 /*
- * KERN_SLABALLOC.C	- Kernel SLAB memory allocator (MP SAFE)
+ * KERN_SLABALLOC.C	- Kernel SLAB memory allocator
  * 
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.37 2005/12/07 04:49:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.38 2006/05/24 03:23:31 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -372,7 +372,7 @@ zoneindex(unsigned long *bytes)
 }
 
 /*
- * malloc()	(SLAB ALLOCATOR) (MPSAFE)
+ * malloc()	(SLAB ALLOCATOR)
  *
  *	Allocate memory via the slab allocator.  If the request is too large,
  *	or if it page-aligned beyond a certain size, we fall back to the
@@ -384,6 +384,8 @@ zoneindex(unsigned long *bytes)
  *	M_ZERO		- zero the returned memory.
  *	M_USE_RESERVE	- allow greater drawdown of the free list
  *	M_USE_INTERRUPT_RESERVE - allow the freelist to be exhausted
+ *
+ * MPSAFE
  */
 void *
 malloc(unsigned long size, struct malloc_type *type, int flags)
@@ -777,11 +779,13 @@ free_remote(void *ptr)
 #endif
 
 /*
- * free (SLAB ALLOCATOR) (MP SAFE)
+ * free (SLAB ALLOCATOR)
  *
  * Free a memory block previously allocated by malloc.  Note that we do not
  * attempt to uplodate ks_loosememuse as MP races could prevent us from
  * checking memory limits in malloc.
+ *
+ * MPSAFE
  */
 void
 free(void *ptr, struct malloc_type *type)
@@ -1003,7 +1007,7 @@ chunk_mark_free(SLZone *z, void *chunk)
 #endif
 
 /*
- * kmem_slab_alloc()	(MP SAFE) (GETS BGL)
+ * kmem_slab_alloc()
  *
  *	Directly allocate and wire kernel memory in PAGE_SIZE chunks with the
  *	specified alignment.  M_* flags are expected in the flags field.
@@ -1021,6 +1025,8 @@ chunk_mark_free(SLZone *z, void *chunk)
  *	it is free to use PQ_CACHE pages.
  *
  *	This routine will currently obtain the BGL.
+ *
+ * MPALMOSTSAFE - acquires mplock
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -1174,7 +1180,9 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 }
 
 /*
- * kmem_slab_free()	(MP SAFE) (GETS BGL)
+ * kmem_slab_free()
+ *
+ * MPALMOSTSAFE - acquires mplock
  */
 static void
 kmem_slab_free(void *ptr, vm_size_t size)

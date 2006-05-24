@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.18 2006/05/06 18:48:50 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.19 2006/05/24 03:23:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -274,12 +274,12 @@ linux_fstatfs(struct linux_fstatfs_args *args)
 	if (ldebug(fstatfs))
 		printf(ARGS(fstatfs, "%d, *"), args->fd);
 #endif
-	error = kern_fstatfs(args->fd, &statfs);
-
-	if (error == 0)
-		error = getvnode(p->p_fd, args->fd, &fp);
-	if (error == 0)
-		error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
+	if ((error = kern_fstatfs(args->fd, &statfs)) != 0)
+		return (error);
+	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0)
+		return (error);
+	error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
+	fdrop(fp);
 	if (error == 0)
 		error = statfs_copyout(&statfs, args->buf, (l_int)namelen);
 	return (error);

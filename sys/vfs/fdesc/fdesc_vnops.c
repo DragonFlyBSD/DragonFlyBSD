@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.29 2006/05/19 07:33:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.30 2006/05/24 03:23:35 dillon Exp $
  */
 
 /*
@@ -386,10 +386,10 @@ fdesc_setattr(struct vop_setattr_args *ap)
 	/*
 	 * Allow setattr where there is an underlying vnode.
 	 */
-	error = getvnode(p->p_fd, fd, &fp);
+	error = holdvnode(p->p_fd, fd, &fp);
 	if (error) {
 		/*
-		 * getvnode() returns EINVAL if the file descriptor is not
+		 * holdvnode() returns EINVAL if the file descriptor is not
 		 * backed by a vnode.  Silently drop all changes except
 		 * chflags(2) in this case.
 		 */
@@ -399,7 +399,8 @@ fdesc_setattr(struct vop_setattr_args *ap)
 			else
 				error = 0;
 		}
-		return (error);
+	} else {
+		fdrop(fp);
 	}
 	return (error);
 }

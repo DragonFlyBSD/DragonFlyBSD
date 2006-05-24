@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.17 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.18 2006/05/24 03:23:31 dillon Exp $
  */
 
 /*
@@ -86,6 +86,9 @@ vfs_lock_init(void)
 /*
  * Inline helper functions.  vbusy() and vfree() must be called while in a
  * critical section.
+ *
+ * Warning: must be callable if the caller holds a read spinlock to something
+ * else, meaning we can't use read spinlocks here.
  */
 static __inline 
 void
@@ -134,6 +137,9 @@ vshouldfree(struct vnode *vp, int usecount)
  *
  * Special cases: refing a vnode does not clear VINACTIVE, you have to vget()
  * the vnode shared or exclusive to do that.
+ *
+ * Warning: must be callable if the caller holds a read spinlock to something
+ * else, meaning we can't use read spinlocks here.
  */
 static __inline
 void
@@ -144,6 +150,16 @@ __vref(struct vnode *vp)
 		__vbusy(vp);
 }
 
+/*
+ * This is a rare case where callers are allowed to hold spinlocks, so
+ * we can't ourselves.  In such cases the vnode must already have at least
+ * one reference because we cannot get the spinlock required to move
+ * the vnode off the free list.
+ *
+ * If the usecount & holdcnt are 0 the caller must be holding the
+ * free list spinlock since we will be removing the vnode from the
+ * freelist in that case.
+ */
 void
 vref(struct vnode *vp)
 {

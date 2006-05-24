@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.17 2006/05/22 21:21:26 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.18 2006/05/24 03:23:33 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -163,7 +163,6 @@ int	fgetfdflags(struct filedesc *fdp, int fd, int *flagsp);
 int	fsetfdflags(struct filedesc *fdp, int fd, int add_flags);
 int	fclrfdflags(struct filedesc *fdp, int fd, int rem_flags);
 void	fsetcred (struct file *fp, struct ucred *cr);
-void	ffree (struct file *);
 void	fdinit_bootstrap(struct proc *p0, struct filedesc *fdp0, int cmask);
 struct	filedesc *fdinit (struct proc *p);
 struct	filedesc *fdshare (struct proc *p);
@@ -174,7 +173,7 @@ void	fdcloseexec (struct proc *p);
 int	fdcheckstd (struct proc *p);
 struct	file *holdfp (struct filedesc *fdp, int fd, int flag);
 int	holdsock (struct filedesc *fdp, int fdes, struct file **fpp);
-int	getvnode (struct filedesc *fdp, int fd, struct file **fpp);
+int	holdvnode (struct filedesc *fdp, int fd, struct file **fpp);
 int	fdissequential (struct file *);
 void	fdsequential (struct file *, int);
 pid_t	fgetown (struct sigio *);

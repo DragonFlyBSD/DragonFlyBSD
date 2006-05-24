@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/subr_kcore.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kcore.c,v 1.2 2006/05/24 03:23:31 dillon Exp $
  */
 
 /*
@@ -54,6 +54,9 @@
 #  include <string.h>
 #endif
 
+/*
+ * MPSAFE - caller must hold requisit spinlocks
+ */
 void
 kcore_make_file(struct kinfo_file *ufile, struct file *kfile,
 		pid_t pid, uid_t owner, int n)

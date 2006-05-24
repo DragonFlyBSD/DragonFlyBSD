@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.67 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.68 2006/05/24 03:23:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -202,12 +202,17 @@ static void cache_zap(struct namecache *ncp);
  * cache_hold() and cache_drop() prevent the premature deletion of a
  * namecache entry but do not prevent operations (such as zapping) on
  * that namecache entry.
+ *
+ * This routine may only be called if nc_refs is already at least 1.
+ *
+ * This is a rare case where callers are allowed to hold spinlocks, so
+ * we can't ourselves.
  */
 static __inline
 struct namecache *
 _cache_hold(struct namecache *ncp)
 {
-	++ncp->nc_refs;
+	atomic_add_int(&ncp->nc_refs, 1);
 	return(ncp);
 }
 
@@ -317,6 +322,9 @@ cache_free(struct namecache *ncp)
 
 /*
  * Ref and deref a namecache structure.
+ *
+ * Warning: caller may hold an unrelated read spinlock, which means we can't
+ * use read spinlocks here.
  */
 struct namecache *
 cache_hold(struct namecache *ncp)

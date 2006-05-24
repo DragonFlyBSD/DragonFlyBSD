@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.29 2006/05/19 07:33:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.30 2006/05/24 03:23:30 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -261,28 +261,35 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 
 	KKASSERT(p);
 
-	if ((error = getvnode(p->p_fd, args->fd, &fp)) != 0)
+	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0)
 		return (error);
 
-	if ((fp->f_flag & FREAD) == 0)
-		return (EBADF);
+	if ((fp->f_flag & FREAD) == 0) {
+		error = EBADF;
+		goto done;
+	}
 
 	vp = (struct vnode *) fp->f_data;
-	if (vp->v_type != VDIR)
-		return (EINVAL);
+	if (vp->v_type != VDIR) {
+		error = EINVAL;
+		goto done;
+	}
 
-	if ((error = VOP_GETATTR(vp, &va)))
-		return (error);
+	if ((error = VOP_GETATTR(vp, &va)) != 0)
+		goto done;
 
 	nbytes = args->count;
 	if (nbytes == 1) {
 		/* readdir(2) case. Always struct dirent. */
-		if (is64bit)
-			return (EINVAL);
+		if (is64bit) {
+			error = EINVAL;
+			goto done;
+		}
 		nbytes = sizeof(linux_dirent);
 		justone = 1;
-	} else
+	} else {
 		justone = 0;
+	}
 
 	off = fp->f_offset;
 
@@ -430,6 +437,8 @@ out:
 
 	VOP_UNLOCK(vp, 0);
 	free(buf, M_TEMP);
+done:
+	fdrop(fp);
 	return (error);
 }
 
