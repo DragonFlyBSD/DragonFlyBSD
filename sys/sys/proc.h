@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.77 2006/05/24 17:44:04 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.78 2006/05/24 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -452,6 +452,7 @@ struct globaldata;
 extern struct vm_zone *proc_zone;
 
 int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
+void	proc_add_allproc(struct proc *p);
 void	proc_move_allproc_zombie(struct proc *);
 void	proc_remove_zombie(struct proc *);
 void	allproc_scan(int (*callback)(struct proc *, void *), void *data);

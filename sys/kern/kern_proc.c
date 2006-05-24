@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.24 2006/05/24 17:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.25 2006/05/24 18:59:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,9 +68,9 @@ SYSCTL_INT(_kern, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
 SYSCTL_INT(_kern, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     &ps_showallthreads, 0, "");
 
-static void pgdelete	(struct pgrp *);
-
-static void	orphanpg (struct pgrp *pg);
+static void pgdelete(struct pgrp *);
+static void orphanpg(struct pgrp *pg);
+static pid_t proc_getnewpid_locked(int random_offset);
 
 /*
  * Other process lists
@@ -84,6 +84,38 @@ struct proclist zombproc;
 struct spinlock allproc_spin;
 vm_zone_t proc_zone;
 vm_zone_t thread_zone;
+
+/*
+ * Random component to nextpid generation.  We mix in a random factor to make
+ * it a little harder to predict.  We sanity check the modulus value to avoid
+ * doing it in critical paths.  Don't let it be too small or we pointlessly
+ * waste randomness entropy, and don't let it be impossibly large.  Using a
+ * modulus that is too big causes a LOT more process table scans and slows
+ * down fork processing as the pidchecked caching is defeated.
+ */
+static int randompid = 0;
+
+static int
+sysctl_kern_randompid(SYSCTL_HANDLER_ARGS)
+{
+	int error, pid;
+
+	pid = randompid;
+	error = sysctl_handle_int(oidp, &pid, 0, req);
+	if (error || !req->newptr)
+		return (error);
+	if (pid < 0 || pid > PID_MAX - 100)     /* out of range */
+		pid = PID_MAX - 100;
+	else if (pid < 2)                       /* NOP */
+		pid = 0;
+	else if (pid < 100)                     /* Make it reasonable */
+		pid = 100;
+	randompid = pid;
+	return (error);
+}
+
+SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
+	    0, 0, sysctl_kern_randompid, "I", "Random PID modulus");
 
 /*
  * Initialize global process hashing structures.
@@ -344,6 +376,99 @@ orphanpg(struct pgrp *pg)
 			return;
 		}
 	}
+}
+
+/*
+ * Add a new process to the allproc list and the PID hash.  This
+ * also assigns a pid to the new process.
+ *
+ * MPALMOSTSAFE - acquires mplock for arc4random() call
+ */
+void
+proc_add_allproc(struct proc *p)
+{
+	int random_offset;
+
+	if ((random_offset = randompid) != 0) {
+		get_mplock();
+		random_offset = arc4random() % random_offset;
+		rel_mplock();
+	}
+
+	spin_lock_wr(&allproc_spin);
+	p->p_pid = proc_getnewpid_locked(random_offset);
+	LIST_INSERT_HEAD(&allproc, p, p_list);
+	LIST_INSERT_HEAD(PIDHASH(p->p_pid), p, p_hash);
+	spin_unlock_wr(&allproc_spin);
+}
+
+/*
+ * Calculate a new process pid.  This function is integrated into
+ * proc_add_allproc() to guarentee that the new pid is not reused before
+ * the new process can be added to the allproc list.
+ *
+ * MPSAFE - must be called with allproc_spin held.
+ */
+static
+pid_t
+proc_getnewpid_locked(int random_offset)
+{
+	static pid_t nextpid;
+	static pid_t pidchecked;
+	struct proc *p;
+
+	/*
+	 * Find an unused process ID.  We remember a range of unused IDs
+	 * ready to use (from nextpid+1 through pidchecked-1).
+	 */
+	nextpid = nextpid + 1 + random_offset;
+retry:
+	/*
+	 * If the process ID prototype has wrapped around,
+	 * restart somewhat above 0, as the low-numbered procs
+	 * tend to include daemons that don't exit.
+	 */
+	if (nextpid >= PID_MAX) {
+		nextpid = nextpid % PID_MAX;
+		if (nextpid < 100)
+			nextpid += 100;
+		pidchecked = 0;
+	}
+	if (nextpid >= pidchecked) {
+		int doingzomb = 0;
+
+		pidchecked = PID_MAX;
+		/*
+		 * Scan the active and zombie procs to check whether this pid
+		 * is in use.  Remember the lowest pid that's greater
+		 * than nextpid, so we can avoid checking for a while.
+		 */
+		p = LIST_FIRST(&allproc);
+again:
+		for (; p != 0; p = LIST_NEXT(p, p_list)) {
+			while (p->p_pid == nextpid ||
+			    p->p_pgrp->pg_id == nextpid ||
+			    p->p_session->s_sid == nextpid) {
+				nextpid++;
+				if (nextpid >= pidchecked)
+					goto retry;
+			}
+			if (p->p_pid > nextpid && pidchecked > p->p_pid)
+				pidchecked = p->p_pid;
+			if (p->p_pgrp->pg_id > nextpid &&
+			    pidchecked > p->p_pgrp->pg_id)
+				pidchecked = p->p_pgrp->pg_id;
+			if (p->p_session->s_sid > nextpid &&
+			    pidchecked > p->p_session->s_sid)
+				pidchecked = p->p_session->s_sid;
+		}
+		if (!doingzomb) {
+			doingzomb = 1;
+			p = LIST_FIRST(&zombproc);
+			goto again;
+		}
+	}
+	return(nextpid);
 }
 
 /*

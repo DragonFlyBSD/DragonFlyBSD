@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.48 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.49 2006/05/24 18:59:48 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -152,39 +152,6 @@ rfork(struct rfork_args *uap)
 
 
 int	nprocs = 1;		/* process 0 */
-static int nextpid = 0;
-
-/*
- * Random component to nextpid generation.  We mix in a random factor to make
- * it a little harder to predict.  We sanity check the modulus value to avoid
- * doing it in critical paths.  Don't let it be too small or we pointlessly
- * waste randomness entropy, and don't let it be impossibly large.  Using a
- * modulus that is too big causes a LOT more process table scans and slows
- * down fork processing as the pidchecked caching is defeated.
- */
-static int randompid = 0;
-
-static int
-sysctl_kern_randompid(SYSCTL_HANDLER_ARGS)
-{
-		int error, pid;
-
-		pid = randompid;
-		error = sysctl_handle_int(oidp, &pid, 0, req);
-		if (error || !req->newptr)
-			return (error);
-		if (pid < 0 || pid > PID_MAX - 100)	/* out of range */
-			pid = PID_MAX - 100;
-		else if (pid < 2)			/* NOP */
-			pid = 0;
-		else if (pid < 100)			/* Make it reasonable */
-			pid = 100;
-		randompid = pid;
-		return (error);
-}
-
-SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
-    0, 0, sysctl_kern_randompid, "I", "Random PID modulus");
 
 int
 fork1(struct lwp *lp1, int flags, struct proc **procp)
@@ -193,9 +160,8 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	struct proc *p2, *pptr;
 	struct lwp *lp2;
 	uid_t uid;
-	struct proc *newproc;
 	int ok;
-	static int curfail = 0, pidchecked = 0;
+	static int curfail = 0;
 	static struct timeval lastfail;
 	struct forklist *ep;
 	struct filedesc_to_leader *fdtol;
@@ -276,95 +242,42 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	}
 
 	/* Allocate new proc. */
-	newproc = zalloc(proc_zone);
+	p2 = zalloc(proc_zone);
 
 	/*
 	 * Setup linkage for kernel based threading XXX lwp
 	 */
 	if (flags & RFTHREAD) {
-		newproc->p_peers = p1->p_peers;
-		p1->p_peers = newproc;
-		newproc->p_leader = p1->p_leader;
+		p2->p_peers = p1->p_peers;
+		p1->p_peers = p2;
+		p2->p_leader = p1->p_leader;
 	} else {
-		newproc->p_peers = NULL;
-		newproc->p_leader = newproc;
+		p2->p_peers = NULL;
+		p2->p_leader = p2;
 	}
 
-	newproc->p_wakeup = 0;
-	newproc->p_vmspace = NULL;
-	newproc->p_numposixlocks = 0;
-	newproc->p_emuldata = NULL;
-	TAILQ_INIT(&newproc->p_lwp.lwp_sysmsgq);
-	LIST_INIT(&newproc->p_lwps);
+	p2->p_wakeup = 0;
+	p2->p_vmspace = NULL;
+	p2->p_numposixlocks = 0;
+	p2->p_emuldata = NULL;
+	TAILQ_INIT(&p2->p_lwp.lwp_sysmsgq);
+	LIST_INIT(&p2->p_lwps);
 
 	/* XXX lwp */
-	lp2 = &newproc->p_lwp;
-	lp2->lwp_proc = newproc;
+	lp2 = &p2->p_lwp;
+	lp2->lwp_proc = p2;
 	lp2->lwp_tid = 0;
-	LIST_INSERT_HEAD(&newproc->p_lwps, lp2, lwp_list);
-	newproc->p_nthreads = 1;
-	newproc->p_nstopped = 0;
-	newproc->p_lasttid = 0;
+	LIST_INSERT_HEAD(&p2->p_lwps, lp2, lwp_list);
+	p2->p_nthreads = 1;
+	p2->p_nstopped = 0;
+	p2->p_lasttid = 0;
 
 	/*
-	 * Find an unused process ID.  We remember a range of unused IDs
-	 * ready to use (from nextpid+1 through pidchecked-1).
+	 * Setting the state to SIDL protects the partially initialized
+	 * process once it starts getting hooked into the rest of the system.
 	 */
-	nextpid++;
-	if (randompid)
-		nextpid += arc4random() % randompid;
-retry:
-	/*
-	 * If the process ID prototype has wrapped around,
-	 * restart somewhat above 0, as the low-numbered procs
-	 * tend to include daemons that don't exit.
-	 */
-	if (nextpid >= PID_MAX) {
-		nextpid = nextpid % PID_MAX;
-		if (nextpid < 100)
-			nextpid += 100;
-		pidchecked = 0;
-	}
-	if (nextpid >= pidchecked) {
-		int doingzomb = 0;
-
-		pidchecked = PID_MAX;
-		/*
-		 * Scan the active and zombie procs to check whether this pid
-		 * is in use.  Remember the lowest pid that's greater
-		 * than nextpid, so we can avoid checking for a while.
-		 */
-		p2 = LIST_FIRST(&allproc);
-again:
-		for (; p2 != 0; p2 = LIST_NEXT(p2, p_list)) {
-			while (p2->p_pid == nextpid ||
-			    p2->p_pgrp->pg_id == nextpid ||
-			    p2->p_session->s_sid == nextpid) {
-				nextpid++;
-				if (nextpid >= pidchecked)
-					goto retry;
-			}
-			if (p2->p_pid > nextpid && pidchecked > p2->p_pid)
-				pidchecked = p2->p_pid;
-			if (p2->p_pgrp->pg_id > nextpid &&
-			    pidchecked > p2->p_pgrp->pg_id)
-				pidchecked = p2->p_pgrp->pg_id;
-			if (p2->p_session->s_sid > nextpid &&
-			    pidchecked > p2->p_session->s_sid)
-				pidchecked = p2->p_session->s_sid;
-		}
-		if (!doingzomb) {
-			doingzomb = 1;
-			p2 = LIST_FIRST(&zombproc);
-			goto again;
-		}
-	}
-
-	p2 = newproc;
-	p2->p_stat = SIDL;			/* protect against others */
-	p2->p_pid = nextpid;
-	LIST_INSERT_HEAD(&allproc, p2, p_list);
-	LIST_INSERT_HEAD(PIDHASH(p2->p_pid), p2, p_hash);
+	p2->p_stat = SIDL;
+	proc_add_allproc(p2);
 
 	/*
 	 * Make a proc table entry for the new process.

@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.31 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.32 2006/05/24 18:59:51 dillon Exp $
  */
 
 /*
@@ -866,88 +866,119 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 	return(0);
 }
 
+struct procfs_readdir_root_info {
+	int error;
+	int i;
+	int pcnt;
+	struct uio *uio;
+	struct ucred *cred;
+};
+
+static int procfs_readdir_root_callback(struct proc *p, void *data);
+
 static int
 procfs_readdir_root(struct vop_readdir_args *ap)
 {
-	int error, i, pcnt, retval;
+	struct procfs_readdir_root_info info;
 	struct uio *uio = ap->a_uio;
-	volatile struct proc *p = LIST_FIRST(&allproc);
+	int res;
+
+	info.error = 0;
+	info.i = uio->uio_offset;
+	info.pcnt = 0;
+	info.uio = uio;
+	info.cred = ap->a_cred;
+
+	while (info.pcnt < 3) {
+		res = procfs_readdir_root_callback(NULL, &info);
+		if (res < 0)
+			break;
+	}
+	if (res >= 0)
+		allproc_scan(procfs_readdir_root_callback, &info);
+	uio->uio_offset = info.i;
+
+	return (info.error);
+}
+
+static int
+procfs_readdir_root_callback(struct proc *p, void *data)
+{
+	struct procfs_readdir_root_info *info = data;
+	struct uio *uio;
+	int retval;
 	ino_t d_ino;
 	const char *d_name;
 	char d_name_pid[20];
 	size_t d_namlen;
 	uint8_t d_type;
 
-	error = 0;
-	pcnt = 0;
-	i = uio->uio_offset;
+	uio = info->uio;
 
-	for (; p && uio->uio_resid > 0 && !error; i++, pcnt++) {
-		switch (i) {
-		case 0:		/* `.' */
-			d_ino = PROCFS_FILENO(0, Proot);
-			d_name = ".";
-			d_namlen = 1;
-			d_type = DT_DIR;
-			break;
-		case 1:		/* `..' */
-			d_ino = PROCFS_FILENO(0, Proot);
-			d_name = "..";
-			d_namlen = 2;
-			d_type = DT_DIR;
-			break;
+	if (uio->uio_resid <= 0 || info->error)
+		return(-1);
 
-		case 2:
-			d_ino = PROCFS_FILENO(0, Pcurproc);
-			d_namlen = 7;
-			d_name = "curproc";
-			d_type = DT_LNK;
-			break;
+	switch (info->pcnt) {
+	case 0:		/* `.' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = ".";
+		d_namlen = 1;
+		d_type = DT_DIR;
+		break;
+	case 1:		/* `..' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = "..";
+		d_namlen = 2;
+		d_type = DT_DIR;
+		break;
+
+	case 2:
+		d_ino = PROCFS_FILENO(0, Pcurproc);
+		d_namlen = 7;
+		d_name = "curproc";
+		d_type = DT_LNK;
+		break;
 
 
-		default:
-			while (pcnt < i) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-				if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
-					continue;
-				pcnt++;
-			}
-			while (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-			}
-			if (ps_showallprocs == 0 && 
-			    ap->a_cred->cr_uid != 0 &&
-			    ap->a_cred->cr_uid != p->p_ucred->cr_uid) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-				continue;
-			}
-
-			d_ino = PROCFS_FILENO(p->p_pid, Pproc);
-			d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
-			    "%ld", (long)p->p_pid);
-			d_name = d_name_pid;
-			d_type = DT_DIR;
-			p = LIST_NEXT(p, p_list);
-			break;
+	default:
+		if (!PRISON_CHECK(info->cred, p->p_ucred))
+			return(0);
+		if (ps_showallprocs == 0 && 
+		    info->cred->cr_uid != 0 &&
+		    info->cred->cr_uid != p->p_ucred->cr_uid) {
+			return(0);
 		}
 
-		if (p)
-		    PHOLD(p);
-		retval = vop_write_dirent(&error, uio,
-		    d_ino, d_type, d_namlen, d_name);
-		if (p)
-		    PRELE(p);
-		if (retval)
-			break;
+		/*
+		 * Skip entries we have already returned (optimization)
+		 */
+		if (info->pcnt < info->i) {
+			++info->pcnt;
+			return(0);
+		}
+
+		d_ino = PROCFS_FILENO(p->p_pid, Pproc);
+		d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
+		    "%ld", (long)p->p_pid);
+		d_name = d_name_pid;
+		d_type = DT_DIR;
+		break;
 	}
-done:
-	uio->uio_offset = i;
+
+	/*
+	 * Skip entries we have already returned (optimization)
+	 */
+	if (info->pcnt < info->i) {
+		++info->pcnt;
+		return(0);
+	}
+
+	retval = vop_write_dirent(&info->error, uio,
+				  d_ino, d_type, d_namlen, d_name);
+	if (retval)
+		return(-1);
+	++info->pcnt;
+	++info->i;
 	return(0);
 }
 
