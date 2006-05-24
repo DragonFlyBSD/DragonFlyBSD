@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.30 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.31 2006/05/24 17:44:01 dillon Exp $
  */
 
 /*
@@ -821,130 +821,166 @@ linprocfs_readdir_proc(struct vop_readdir_args *ap)
 	return(error);
 }
 
+struct linprocfs_readdir_root_info {
+	int error;
+	int pcnt;
+	int i;
+	struct uio *uio;
+	struct ucred *cred;
+};
+
+/*
+ * Scan the root directory by scanning all process
+ */
+static int linprocfs_readdir_root_callback(struct proc *p, void *data);
+
 static int
 linprocfs_readdir_root(struct vop_readdir_args *ap)
 {
-	int error, i, pcnt, retval;
+	struct linprocfs_readdir_root_info info;
 	struct uio *uio = ap->a_uio;
-	struct proc *p = LIST_FIRST(&allproc);
+	int res;
+
+	info.error = 0;
+	info.i = uio->uio_offset;
+	info.pcnt = 0;
+	info.uio = uio;
+	info.cred = ap->a_cred;
+
+	while (info.pcnt < 9) {
+		res = linprocfs_readdir_root_callback(NULL, &info);
+		if (res < 0)
+			break;
+	}
+	if (res >= 0)
+		allproc_scan(linprocfs_readdir_root_callback, &info);
+
+	uio->uio_offset = info.i;
+	return(info.error);
+}
+
+static int
+linprocfs_readdir_root_callback(struct proc *p, void *data)
+{
+	struct linprocfs_readdir_root_info *info = data;
+	int retval;
+	struct uio *uio = info->uio;
 	ino_t d_ino;
 	const char *d_name;
 	char d_name_pid[20];
 	size_t d_namlen;
 	uint8_t d_type;
 
-	error = 0;
-	i = uio->uio_offset;
-	pcnt = 0;
+	switch (info->pcnt) {
+	case 0:		/* `.' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = ".";
+		d_namlen = 1;
+		d_type = DT_DIR;
+		break;
+	case 1:		/* `..' */
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_name = "..";
+		d_namlen = 2;
+		d_type = DT_DIR;
+		break;
 
-	for (; p && uio->uio_resid > 0 && !error; i++, pcnt++) {
-		switch (i) {
-		case 0:		/* `.' */
-			d_ino = PROCFS_FILENO(0, Proot);
-			d_name = ".";
-			d_namlen = 1;
-			d_type = DT_DIR;
-			break;
-		case 1:		/* `..' */
-			d_ino = PROCFS_FILENO(0, Proot);
-			d_name = "..";
-			d_namlen = 2;
-			d_type = DT_DIR;
-			break;
+	case 2:
+		d_ino = PROCFS_FILENO(0, Proot);
+		d_namlen = 4;
+		d_name = "self";
+		d_type = DT_LNK;
+		break;
 
-		case 2:
-			d_ino = PROCFS_FILENO(0, Proot);
-			d_namlen = 4;
-			d_name = "self";
-			d_type = DT_LNK;
-			break;
+	case 3:
+		d_ino = PROCFS_FILENO(0, Pmeminfo);
+		d_namlen = 7;
+		d_name = "meminfo";
+		d_type = DT_REG;
+		break;
 
-		case 3:
-			d_ino = PROCFS_FILENO(0, Pmeminfo);
-			d_namlen = 7;
-			d_name = "meminfo";
-			d_type = DT_REG;
-			break;
+	case 4:
+		d_ino = PROCFS_FILENO(0, Pcpuinfo);
+		d_namlen = 7;
+		d_name = "cpuinfo";
+		d_type = DT_REG;
+		break;
 
-		case 4:
-			d_ino = PROCFS_FILENO(0, Pcpuinfo);
-			d_namlen = 7;
-			d_name = "cpuinfo";
-			d_type = DT_REG;
-			break;
+	case 5:
+		d_ino = PROCFS_FILENO(0, Pstat);
+		d_namlen = 4;
+		d_name = "stat";
+		d_type = DT_REG;
+		break;
+		    
+	case 6:
+		d_ino = PROCFS_FILENO(0, Puptime);
+		d_namlen = 6;
+		d_name = "uptime";
+		d_type = DT_REG;
+		break;
 
-		case 5:
-			d_ino = PROCFS_FILENO(0, Pstat);
-			d_namlen = 4;
-			d_name = "stat";
-			d_type = DT_REG;
-			break;
-			    
-		case 6:
-			d_ino = PROCFS_FILENO(0, Puptime);
-			d_namlen = 6;
-			d_name = "uptime";
-			d_type = DT_REG;
-			break;
+	case 7:
+		d_ino = PROCFS_FILENO(0, Pversion);
+		d_namlen = 7;
+		d_name = "version";
+		d_type = DT_REG;
+		break;
 
-		case 7:
-			d_ino = PROCFS_FILENO(0, Pversion);
-			d_namlen = 7;
-			d_name = "version";
-			d_type = DT_REG;
-			break;
+	case 8:
+		d_ino = PROCFS_FILENO(0, Ploadavg);
+		d_namlen = 7;
+		d_name = "loadavg";
+		d_type = DT_REG;
+		break;
 
-		case 8:
-			d_ino = PROCFS_FILENO(0, Ploadavg);
-			d_namlen = 7;
-			d_name = "loadavg";
-			d_type = DT_REG;
-			break;
+	default:
+		/*
+		 * Ignore processes that aren't in our prison
+		 */
+		if (PRISON_CHECK(info->cred, p->p_ucred) == 0)
+			return(0);
 
-		default:
-			while (pcnt < i) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-				if (!PRISON_CHECK(ap->a_cred, p->p_ucred))
-					continue;
-				pcnt++;
-			}
-			while (!PRISON_CHECK(ap->a_cred, p->p_ucred)) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-			}
-			if (ps_showallprocs == 0 && 
-			    ap->a_cred->cr_uid != 0 &&
-			    ap->a_cred->cr_uid != p->p_ucred->cr_uid) {
-				p = LIST_NEXT(p, p_list);
-				if (!p)
-					goto done;
-				continue;
-			}
-			d_ino = PROCFS_FILENO(p->p_pid, Pproc);
-			d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
-			    "%ld", (long)p->p_pid);
-			d_name = d_name_pid;
-			d_type = DT_DIR;
-			p = LIST_NEXT(p, p_list);
-			break;
+		/*
+		 * Ignore processes that we do not want to be visible.
+		 */
+		if (ps_showallprocs == 0 && 
+		    info->cred->cr_uid != 0 &&
+		    info->cred->cr_uid != p->p_ucred->cr_uid) {
+			return(0);
 		}
 
-		if (p != NULL)
-			PHOLD(p);
-		retval = vop_write_dirent(&error, uio,
-		    d_ino, d_type, d_namlen, d_name);
-		if (p != NULL)
-			PRELE(p);
-		if (retval)
-			break;
- 	}
- 
-done:
-	uio->uio_offset = i;
-	return(error);
+		/*
+		 * Skip processes we have already read (optimization)
+		 */
+		if (info->pcnt < info->i) {
+			++info->pcnt;
+			return(0);
+		}
+		d_ino = PROCFS_FILENO(p->p_pid, Pproc);
+		d_namlen = snprintf(d_name_pid, sizeof(d_name_pid),
+		    "%ld", (long)p->p_pid);
+		d_name = d_name_pid;
+		d_type = DT_DIR;
+		break;
+	}
+
+	/*
+	 * Skip processes we have already read
+	 */
+	if (info->pcnt < info->i) {
+		++info->pcnt;
+		return(0);
+	}
+	retval = vop_write_dirent(&info->error, info->uio, 
+				  d_ino, d_type, d_namlen, d_name);
+	if (retval == 0) {
+		++info->pcnt;	/* iterate proc candidates scanned */
+		++info->i;	/* iterate entries written */
+	}
+	if (retval || info->error || uio->uio_resid <= 0)
+		return(-1);
+	return(0);
 }
 
 /*

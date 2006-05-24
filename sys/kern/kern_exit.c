@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.55 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.56 2006/05/24 17:44:02 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -306,28 +306,12 @@ exit1(int rv)
 	}
 
 	/*
-	 * Once we set SZOMB the process can get reaped.  The wait1 code
-	 * will also wait for TDF_EXITING to be set and for both TDF_RUNNING
-	 * and TDF_PREEMPT_LOCK to be cleared in the thread's flags,
-	 * indicating that it has been completely switched out for the last
-	 * time.
+	 * Move the process to the zombie list.  This will block
+	 * until the process p_lock count reaches 0.  The process will
+	 * not be reaped until TDF_EXITING is set by cpu_thread_exit(),
+	 * which is called from cpu_proc_exit().
 	 */
-
-	/*
-	 * Remove proc from allproc queue and pidhash chain.
-	 * Place onto zombproc.  Unlink from parent's child list.
-	 *
-	 * Interlock the SZOMB state with a tsleep against p_lock
-	 * (PHOLD/PRELE) so allproc loops don't get confused.  Get
-	 * our own ref on p_lock to prevent us from getting reaped
-	 * too early.
-	 */
-	LIST_REMOVE(p, p_list);
-	LIST_INSERT_HEAD(&zombproc, p, p_list);
-	p->p_flag |= P_ZOMBIE;
-	while (p->p_lock)
-		tsleep(p, 0, "reap1", hz / 10);
-	LIST_REMOVE(p, p_hash);
+	proc_move_allproc_zombie(p);
 
 	q = LIST_FIRST(&p->p_children);
 	if (q)		/* only need this if any child is S_ZOMB */
@@ -561,8 +545,7 @@ loop:
 			 * Unlink it from its process group and free it.
 			 */
 			leavepgrp(p);
-			LIST_REMOVE(p, p_list);	/* off zombproc */
-			LIST_REMOVE(p, p_sibling);
+			proc_remove_zombie(p);
 
 			if (--p->p_procsig->ps_refcnt == 0) {
 				if (p->p_sigacts != &p->p_addr->u_sigacts)

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.23 2006/03/27 09:02:07 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.24 2006/05/24 17:44:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/filedesc.h>
 #include <sys/tty.h>
 #include <sys/signalvar.h>
+#include <sys/spinlock.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
 #include <vm/pmap.h>
@@ -52,6 +53,8 @@
 #include <sys/user.h>
 #include <vm/vm_zone.h>
 #include <machine/smp.h>
+
+#include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
 MALLOC_DEFINE(M_SESSION, "session", "session header");
@@ -78,6 +81,7 @@ struct pgrphashhead *pgrphashtbl;
 u_long pgrphash;
 struct proclist allproc;
 struct proclist zombproc;
+struct spinlock allproc_spin;
 vm_zone_t proc_zone;
 vm_zone_t thread_zone;
 
@@ -87,9 +91,9 @@ vm_zone_t thread_zone;
 void
 procinit(void)
 {
-
 	LIST_INIT(&allproc);
 	LIST_INIT(&zombproc);
+	spin_init(&allproc_spin);
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	proc_zone = zinit("PROC", sizeof (struct proc), 0, 0, 5);
@@ -103,7 +107,6 @@ procinit(void)
 int
 inferior(struct proc *p)
 {
-
 	for (; p != curproc; p = p->p_pptr)
 		if (p->p_pid == 0)
 			return (0);
@@ -118,9 +121,10 @@ pfind(pid_t pid)
 {
 	struct proc *p;
 
-	LIST_FOREACH(p, PIDHASH(pid), p_hash)
+	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid)
 			return (p);
+	}
 	return (NULL);
 }
 
@@ -132,9 +136,10 @@ pgfind(pid_t pgid)
 {
 	struct pgrp *pgrp;
 
-	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash)
+	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash) {
 		if (pgrp->pg_id == pgid)
 			return (pgrp);
+	}
 	return (NULL);
 }
 
@@ -341,6 +346,99 @@ orphanpg(struct pgrp *pg)
 	}
 }
 
+/*
+ * Called from exit1 to remove a process from the allproc
+ * list and move it to the zombie list.
+ *
+ * MPSAFE
+ */
+void
+proc_move_allproc_zombie(struct proc *p)
+{
+	spin_lock_wr(&allproc_spin);
+	while (p->p_lock) {
+		spin_unlock_wr(&allproc_spin);
+		tsleep(p, 0, "reap1", hz / 10);
+		spin_lock_wr(&allproc_spin);
+	}
+	LIST_REMOVE(p, p_list);
+	LIST_INSERT_HEAD(&zombproc, p, p_list);
+	LIST_REMOVE(p, p_hash);
+	p->p_flag |= P_ZOMBIE;
+	spin_unlock_wr(&allproc_spin);
+}
+
+/*
+ * This routine is called from kern_wait() and will remove the process
+ * from the zombie list and the sibling list.  This routine will block
+ * if someone has a lock on the proces (p_lock).
+ *
+ * MPSAFE
+ */
+void
+proc_remove_zombie(struct proc *p)
+{
+	spin_lock_wr(&allproc_spin);
+	while (p->p_lock) {
+		spin_unlock_wr(&allproc_spin);
+		tsleep(p, 0, "reap1", hz / 10);
+		spin_lock_wr(&allproc_spin);
+	}
+	LIST_REMOVE(p, p_list); /* off zombproc */
+	LIST_REMOVE(p, p_sibling);
+	spin_unlock_wr(&allproc_spin);
+}
+
+/*
+ * Scan all processes on the allproc list.  The process is automatically
+ * held for the callback.  A return value of -1 terminates the loop.
+ *
+ * MPSAFE
+ */
+void
+allproc_scan(int (*callback)(struct proc *, void *), void *data)
+{
+	struct proc *p;
+	int r;
+
+	spin_lock_rd(&allproc_spin);
+	LIST_FOREACH(p, &allproc, p_list) {
+		PHOLD(p);
+		spin_unlock_rd(&allproc_spin);
+		r = callback(p, data);
+		spin_lock_rd(&allproc_spin);
+		PRELE(p);
+		if (r < 0)
+			break;
+	}
+	spin_unlock_rd(&allproc_spin);
+}
+
+/*
+ * Scan all processes on the zombproc list.  The process is automatically
+ * held for the callback.  A return value of -1 terminates the loop.
+ *
+ * MPSAFE
+ */
+void
+zombproc_scan(int (*callback)(struct proc *, void *), void *data)
+{
+	struct proc *p;
+	int r;
+
+	spin_lock_rd(&allproc_spin);
+	LIST_FOREACH(p, &zombproc, p_list) {
+		PHOLD(p);
+		spin_unlock_rd(&allproc_spin);
+		r = callback(p, data);
+		spin_lock_rd(&allproc_spin);
+		PRELE(p);
+		if (r < 0)
+			break;
+	}
+	spin_unlock_rd(&allproc_spin);
+}
+
 #include "opt_ddb.h"
 #ifdef DDB
 #include <ddb/ddb.h>
@@ -457,6 +555,9 @@ fill_eproc(struct proc *p, struct eproc *ep)
 		ep->e_jailid = p->p_ucred->cr_prison->pr_id;
 }
 
+/*
+ * Locate a process on the zombie list.  Return a held process or NULL.
+ */
 struct proc *
 zpfind(pid_t pid)
 {
