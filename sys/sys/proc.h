@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.78 2006/05/24 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.79 2006/05/25 07:36:36 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -375,11 +375,6 @@ MALLOC_DECLARE(M_PARGS);
 
 #define PRISON_CHECK(cr1, cr2) \
 	((!(cr1)->cr_prison) || (cr1)->cr_prison == (cr2)->cr_prison)
-
-/*
- * Handy macro for LISTs.
- */
-#define FOREACH_PROC_IN_SYSTEM(p)	LIST_FOREACH((p), &allproc, p_list)
 
 /*
  * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,

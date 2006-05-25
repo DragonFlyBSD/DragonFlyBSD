@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.62 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.63 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -2313,17 +2313,19 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
  *
  * NOT MPSAFE - process list scan, SYSCTL_OUT (probably not mpsafe)
  */
+
+struct sysctl_kern_file_info {
+	int count;
+	int error;
+	struct sysctl_req *req;
+};
+
+static int sysctl_kern_file_callback(struct proc *p, void *data);
+
 static int
 sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 {
-	struct kinfo_file kf;
-	struct filedesc *fdp;
-	struct file *fp;
-	struct proc *p;
-	uid_t uid;
-	int count;
-	int error;
-	int n;
+	struct sysctl_kern_file_info info;
 
 	/*
 	 * Note: because the number of file descriptors is calculated
@@ -2345,37 +2347,10 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	 * from the allproc list, we must skip it in that case to maintain
 	 * an unbroken chain through the allproc list.
 	 */
-	count = 0;
-	error = 0;
-	LIST_FOREACH(p, &allproc, p_list) {
-		if (p->p_stat == SIDL || (p->p_flag & P_ZOMBIE))
-			continue;
-		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0)
-			continue;
-		if ((fdp = p->p_fd) == NULL)
-			continue;
-		PHOLD(p);
-		spin_lock_rd(&fdp->fd_spin);
-		for (n = 0; n < fdp->fd_nfiles; ++n) {
-			if ((fp = fdp->fd_files[n].fp) == NULL)
-				continue;
-			if (req->oldptr == NULL) {
-				++count;
-			} else {
-				uid = p->p_ucred ? p->p_ucred->cr_uid : -1;
-				kcore_make_file(&kf, fp, p->p_pid, uid, n);
-				spin_unlock_rd(&fdp->fd_spin);
-				error = SYSCTL_OUT(req, &kf, sizeof(kf));
-				spin_lock_rd(&fdp->fd_spin);
-				if (error)
-					break;
-			}
-		}
-		spin_unlock_rd(&fdp->fd_spin);
-		PRELE(p);
-		if (error)
-			break;
-	}
+	info.count = 0;
+	info.error = 0;
+	info.req = req;
+	allproc_scan(sysctl_kern_file_callback, &info);
 
 	/*
 	 * When just calculating the size, overestimate a bit to try to
@@ -2383,10 +2358,49 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	 * to fail later on.
 	 */
 	if (req->oldptr == NULL) {
-		count = (count + 16) + (count / 10);
-		error = SYSCTL_OUT(req, NULL, count * sizeof(kf));
+		info.count = (info.count + 16) + (info.count / 10);
+		info.error = SYSCTL_OUT(req, NULL,
+					info.count * sizeof(struct kinfo_file));
 	}
-	return (error);
+	return (info.error);
+}
+
+static int
+sysctl_kern_file_callback(struct proc *p, void *data)
+{
+	struct sysctl_kern_file_info *info = data;
+	struct kinfo_file kf;
+	struct filedesc *fdp;
+	struct file *fp;
+	uid_t uid;
+	int n;
+
+	if (p->p_stat == SIDL || (p->p_flag & P_ZOMBIE))
+		return(0);
+	if (!PRISON_CHECK(info->req->td->td_proc->p_ucred, p->p_ucred) != 0)
+		return(0);
+	if ((fdp = p->p_fd) == NULL)
+		return(0);
+	spin_lock_rd(&fdp->fd_spin);
+	for (n = 0; n < fdp->fd_nfiles; ++n) {
+		if ((fp = fdp->fd_files[n].fp) == NULL)
+			continue;
+		if (info->req->oldptr == NULL) {
+			++info->count;
+		} else {
+			uid = p->p_ucred ? p->p_ucred->cr_uid : -1;
+			kcore_make_file(&kf, fp, p->p_pid, uid, n);
+			spin_unlock_rd(&fdp->fd_spin);
+			info->error = SYSCTL_OUT(info->req, &kf, sizeof(kf));
+			spin_lock_rd(&fdp->fd_spin);
+			if (info->error)
+				break;
+		}
+	}
+	spin_unlock_rd(&fdp->fd_spin);
+	if (info->error)
+		return(-1);
+	return(0);
 }
 
 SYSCTL_PROC(_kern, KERN_FILE, file, CTLTYPE_OPAQUE|CTLFLAG_RD,

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.93 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.94 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,6 +62,7 @@
 #include <sys/nlookup.h>
 #include <sys/dirent.h>
 #include <sys/extattr.h>
+#include <sys/spinlock.h>
 #include <sys/kern_syscall.h>
 
 #include <machine/limits.h>
@@ -73,6 +74,7 @@
 #include <vm/vm_page.h>
 
 #include <sys/file2.h>
+#include <sys/spinlock2.h>
 
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct vnode *olddp, struct namecache *ncp);
@@ -398,13 +400,20 @@ update:
  * must be associated with the vnode representing the root of the
  * mount point.
  */
+struct checkdirs_info {
+	struct vnode *olddp;
+	struct vnode *newdp;
+	struct namecache *ncp;
+};
+
+static int checkdirs_callback(struct proc *p, void *data);
+
 static void
 checkdirs(struct vnode *olddp, struct namecache *ncp)
 {
-	struct filedesc *fdp;
+	struct checkdirs_info info;
 	struct vnode *newdp;
 	struct mount *mp;
-	struct proc *p;
 
 	if (olddp->v_usecount == 1)
 		return;
@@ -418,24 +427,66 @@ checkdirs(struct vnode *olddp, struct namecache *ncp)
 		vfs_cache_setroot(newdp, cache_hold(ncp));
 	}
 
-	FOREACH_PROC_IN_SYSTEM(p) {
-		fdp = p->p_fd;
-		if (fdp->fd_cdir == olddp) {
-			vrele(fdp->fd_cdir);
-			vref(newdp);
-			fdp->fd_cdir = newdp;
-			cache_drop(fdp->fd_ncdir);
-			fdp->fd_ncdir = cache_hold(ncp);
-		}
-		if (fdp->fd_rdir == olddp) {
-			vrele(fdp->fd_rdir);
-			vref(newdp);
-			fdp->fd_rdir = newdp;
-			cache_drop(fdp->fd_nrdir);
-			fdp->fd_nrdir = cache_hold(ncp);
-		}
-	}
+	info.olddp = olddp;
+	info.newdp = newdp;
+	info.ncp = ncp;
+	allproc_scan(checkdirs_callback, &info);
 	vput(newdp);
+}
+
+/*
+ * NOTE: callback is not MP safe because the scanned process's filedesc
+ * structure can be ripped out from under us, amoung other things.
+ */
+static int
+checkdirs_callback(struct proc *p, void *data)
+{
+	struct checkdirs_info *info = data;
+	struct filedesc *fdp;
+	struct namecache *ncdrop1;
+	struct namecache *ncdrop2;
+	struct vnode *vprele1;
+	struct vnode *vprele2;
+
+	if ((fdp = p->p_fd) != NULL) {
+		ncdrop1 = NULL;
+		ncdrop2 = NULL;
+		vprele1 = NULL;
+		vprele2 = NULL;
+
+		/*
+		 * MPUNSAFE - XXX fdp can be pulled out from under a
+		 * foreign process.
+		 *
+		 * A shared filedesc is ok, we don't have to copy it
+		 * because we are making this change globally.
+		 */
+		spin_lock_wr(&fdp->fd_spin);
+		if (fdp->fd_cdir == info->olddp) {
+			vprele1 = fdp->fd_cdir;
+			vref(info->newdp);
+			fdp->fd_cdir = info->newdp;
+			ncdrop1 = fdp->fd_ncdir;
+			fdp->fd_ncdir = cache_hold(info->ncp);
+		}
+		if (fdp->fd_rdir == info->olddp) {
+			vprele2 = fdp->fd_rdir;
+			vref(info->newdp);
+			fdp->fd_rdir = info->newdp;
+			ncdrop2 = fdp->fd_nrdir;
+			fdp->fd_nrdir = cache_hold(info->ncp);
+		}
+		spin_unlock_wr(&fdp->fd_spin);
+		if (ncdrop1)
+			cache_drop(ncdrop1);
+		if (ncdrop2)
+			cache_drop(ncdrop2);
+		if (vprele1)
+			vrele(vprele1);
+		if (vprele2)
+			vrele(vprele2);
+	}
+	return(0);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.8 2005/11/14 18:50:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.9 2006/05/25 07:36:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,73 +76,32 @@ SYSCTL_UINT(_vm, OID_AUTO, v_free_severe,
 SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg, CTLFLAG_RD, 
     &averunnable, loadavg, "Machine loadaverage history");
 
+static int do_vmtotal_callback(struct proc *p, void *data);
+
 static int
 do_vmtotal(SYSCTL_HANDLER_ARGS)
 {
-	struct proc *p;
-	struct vmtotal total, *totalp;
-	vm_map_entry_t entry;
+	struct vmtotal total;
+	struct vmtotal *totalp;
 	vm_object_t object;
-	vm_map_t map;
-	int paging;
 
 	totalp = &total;
 	bzero(totalp, sizeof *totalp);
+
 	/*
 	 * Mark all objects as inactive.
 	 */
 	for (object = TAILQ_FIRST(&vm_object_list);
 	    object != NULL;
-	    object = TAILQ_NEXT(object,object_list))
+	    object = TAILQ_NEXT(object,object_list)) {
 		vm_object_clear_flag(object, OBJ_ACTIVE);
+	}
+
 	/*
 	 * Calculate process statistics.
 	 */
-	for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-		if (p->p_flag & P_SYSTEM)
-			continue;
-		switch (p->p_stat) {
-		case 0:
-			continue;
+	allproc_scan(do_vmtotal_callback, totalp);
 
-		case SSLEEP:
-			if ((p->p_flag & P_SWAPPEDOUT) == 0) {
-				if ((p->p_flag & P_SINTR) == 0)
-					totalp->t_dw++;
-				else if (p->p_slptime < maxslp)
-					totalp->t_sl++;
-			} else if (p->p_slptime < maxslp) {
-				totalp->t_sw++;
-			}
-			if (p->p_slptime >= maxslp)
-				continue;
-			break;
-
-		case SRUN:
-		case SIDL:
-			if (p->p_flag & P_SWAPPEDOUT)
-				totalp->t_sw++;
-			else
-				totalp->t_rq++;
-			if (p->p_stat == SIDL)
-				continue;
-			break;
-		}
-		/*
-		 * Note active objects.
-		 */
-		paging = 0;
-		for (map = &p->p_vmspace->vm_map, entry = map->header.next;
-		    entry != &map->header; entry = entry->next) {
-			if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) ||
-			    entry->object.vm_object == NULL)
-				continue;
-			vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
-			paging |= entry->object.vm_object->paging_in_progress;
-		}
-		if (paging)
-			totalp->t_pw++;
-	}
 	/*
 	 * Calculate object memory usage statistics.
 	 */
@@ -173,6 +132,61 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	totalp->t_free = vmstats.v_free_count + vmstats.v_cache_count;
 	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));
 }
+
+static int
+do_vmtotal_callback(struct proc *p, void *data)
+{
+	struct vmtotal *totalp = data;
+	vm_map_entry_t entry;
+	vm_map_t map;
+	int paging;
+
+	if (p->p_flag & P_SYSTEM)
+		return(0);
+
+	switch (p->p_stat) {
+	case 0:
+		return(0);
+	case SSLEEP:
+		if ((p->p_flag & P_SWAPPEDOUT) == 0) {
+			if ((p->p_flag & P_SINTR) == 0)
+				totalp->t_dw++;
+			else if (p->p_slptime < maxslp)
+				totalp->t_sl++;
+		} else if (p->p_slptime < maxslp) {
+			totalp->t_sw++;
+		}
+		if (p->p_slptime >= maxslp)
+			return(0);
+		break;
+
+	case SRUN:
+	case SIDL:
+		if (p->p_flag & P_SWAPPEDOUT)
+			totalp->t_sw++;
+		else
+			totalp->t_rq++;
+		if (p->p_stat == SIDL)
+			return(0);
+		break;
+	}
+	/*
+	 * Note active objects.
+	 */
+	paging = 0;
+	for (map = &p->p_vmspace->vm_map, entry = map->header.next;
+	    entry != &map->header; entry = entry->next) {
+		if ((entry->eflags & MAP_ENTRY_IS_SUB_MAP) ||
+		    entry->object.vm_object == NULL)
+			continue;
+		vm_object_set_flag(entry->object.vm_object, OBJ_ACTIVE);
+		paging |= entry->object.vm_object->paging_in_progress;
+	}
+	if (paging)
+		totalp->t_pw++;
+	return(0);
+}
+
 
 static int
 do_vmstats(SYSCTL_HANDLER_ARGS)

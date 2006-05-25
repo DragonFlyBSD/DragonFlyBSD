@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.26 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.27 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -76,9 +76,17 @@ static struct uidinfo	*uilookup (uid_t uid);
  * Resource controls and accounting.
  */
 
+struct getpriority_info {
+	int low;
+	int who;
+};
+
+static int getpriority_callback(struct proc *p, void *data);
+
 int
 getpriority(struct getpriority_args *uap)
 {
+	struct getpriority_info info;
 	struct proc *curp = curproc;
 	struct proc *p;
 	int low = PRIO_MAX + 1;
@@ -113,11 +121,10 @@ getpriority(struct getpriority_args *uap)
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
-		FOREACH_PROC_IN_SYSTEM(p)
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
-			    p->p_ucred->cr_uid == uap->who &&
-			    p->p_nice < low)
-				low = p->p_nice;
+		info.low = low;
+		info.who = uap->who;
+		allproc_scan(getpriority_callback, &info);
+		low = info.low;
 		break;
 
 	default:
@@ -129,16 +136,42 @@ getpriority(struct getpriority_args *uap)
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * Figure out the current lowest nice priority for processes owned
+ * by the specified user.
+ */
+static
+int
+getpriority_callback(struct proc *p, void *data)
+{
+	struct getpriority_info *info = data;
+
+	if (PRISON_CHECK(curproc->p_ucred, p->p_ucred) &&
+	    p->p_ucred->cr_uid == info->who &&
+	    p->p_nice < info->low) {
+		info->low = p->p_nice;
+	}
+	return(0);
+}
+
+struct setpriority_info {
+	int prio;
+	int who;
+	int error;
+	int found;
+};
+
+static int setpriority_callback(struct proc *p, void *data);
+
 int
 setpriority(struct setpriority_args *uap)
 {
+	struct setpriority_info info;
 	struct proc *curp = curproc;
 	struct proc *p;
 	int found = 0, error = 0;
 
 	switch (uap->which) {
-
 	case PRIO_PROCESS:
 		if (uap->who == 0)
 			p = curp;
@@ -171,12 +204,13 @@ setpriority(struct setpriority_args *uap)
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
-		FOREACH_PROC_IN_SYSTEM(p)
-			if (p->p_ucred->cr_uid == uap->who &&
-			    PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
-				error = donice(p, uap->prio);
-				found++;
-			}
+		info.prio = uap->prio;
+		info.who = uap->who;
+		info.error = 0;
+		info.found = 0;
+		allproc_scan(setpriority_callback, &info);
+		error = info.error;
+		found = info.found;
 		break;
 
 	default:
@@ -185,6 +219,23 @@ setpriority(struct setpriority_args *uap)
 	if (found == 0)
 		return (ESRCH);
 	return (error);
+}
+
+static
+int
+setpriority_callback(struct proc *p, void *data)
+{
+	struct setpriority_info *info = data;
+	int error;
+
+	if (p->p_ucred->cr_uid == info->who &&
+	    PRISON_CHECK(curproc->p_ucred, p->p_ucred)) {
+		error = donice(p, info->prio);
+		if (error)
+			info->error = error;
+		++info->found;
+	}
+	return(0);
 }
 
 static int

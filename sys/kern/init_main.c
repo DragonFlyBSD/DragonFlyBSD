@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.54 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.55 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -363,20 +363,19 @@ proc0_init(void *dummy __unused)
 }
 SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)
 
+static int proc0_post_callback(struct proc *p, void *data __unused);
+
 /* ARGSUSED*/
 static void
 proc0_post(void *dummy __unused)
 {
 	struct timespec ts;
-	struct proc *p;
 
 	/*
 	 * Now we can look at the time, having had a chance to verify the
 	 * time from the file system.  Pretend that proc0 started now.
 	 */
-	FOREACH_PROC_IN_SYSTEM(p) {
-		microtime(&p->p_start);
-	}
+	allproc_scan(proc0_post_callback, NULL);
 
 	/*
 	 * Give the ``random'' number generator a thump.
@@ -385,6 +384,14 @@ proc0_post(void *dummy __unused)
 	nanotime(&ts);
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 }
+
+static int
+proc0_post_callback(struct proc *p, void *data __unused)
+{
+	microtime(&p->p_start);
+	return(0);
+}
+
 SYSINIT(p0post, SI_SUB_INTRINSIC_POST, SI_ORDER_FIRST, proc0_post, NULL)
 
 /*

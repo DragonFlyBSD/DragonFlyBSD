@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.22 2006/05/23 01:21:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.23 2006/05/25 07:36:37 dillon Exp $
  */
 
 /*
@@ -648,15 +648,22 @@ vm_pageout_page_free(vm_page_t m) {
 /*
  *	vm_pageout_scan does the dirty work for the pageout daemon.
  */
+
+struct vm_pageout_scan_info {
+	struct proc *bigproc;
+	vm_offset_t bigsize;
+};
+
+static int vm_pageout_scan_callback(struct proc *p, void *data);
+
 static void
 vm_pageout_scan(int pass)
 {
+	struct vm_pageout_scan_info info;
 	vm_page_t m, next;
 	struct vm_page marker;
 	int page_shortage, maxscan, pcount;
 	int addl_page_shortage, addl_page_shortage_init;
-	struct proc *p, *bigproc;
-	vm_offset_t size, bigsize;
 	vm_object_t object;
 	int actcount;
 	int vnodes_skipped = 0;
@@ -1157,44 +1164,59 @@ rescan0:
 #if 0
 	if ((vm_swap_size < 64 || swap_pager_full) && vm_page_count_min()) {
 #endif
-		bigproc = NULL;
-		bigsize = 0;
-		for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-			/*
-			 * if this is a system process, skip it
-			 */
-			if ((p->p_flag & P_SYSTEM) || (p->p_pid == 1) ||
-			    ((p->p_pid < 48) && (vm_swap_size != 0))) {
-				continue;
-			}
-			/*
-			 * if the process is in a non-running type state,
-			 * don't touch it.
-			 */
-			if (p->p_stat != SRUN && p->p_stat != SSLEEP) {
-				continue;
-			}
-			/*
-			 * get the process size
-			 */
-			size = vmspace_resident_count(p->p_vmspace) +
-				vmspace_swap_count(p->p_vmspace);
-			/*
-			 * if the this process is bigger than the biggest one
-			 * remember it.
-			 */
-			if (size > bigsize) {
-				bigproc = p;
-				bigsize = size;
-			}
-		}
-		if (bigproc != NULL) {
-			killproc(bigproc, "out of swap space");
-			bigproc->p_nice = PRIO_MIN;
-			bigproc->p_usched->resetpriority(&bigproc->p_lwp);
+		info.bigproc = NULL;
+		info.bigsize = 0;
+		allproc_scan(vm_pageout_scan_callback, &info);
+		if (info.bigproc != NULL) {
+			killproc(info.bigproc, "out of swap space");
+			info.bigproc->p_nice = PRIO_MIN;
+			info.bigproc->p_usched->resetpriority(&info.bigproc->p_lwp);
 			wakeup(&vmstats.v_free_count);
+			PRELE(info.bigproc);
 		}
 	}
+}
+
+static int
+vm_pageout_scan_callback(struct proc *p, void *data)
+{
+	struct vm_pageout_scan_info *info = data;
+	vm_offset_t size;
+
+	/*
+	 * if this is a system process, skip it
+	 */
+	if ((p->p_flag & P_SYSTEM) || (p->p_pid == 1) ||
+	    ((p->p_pid < 48) && (vm_swap_size != 0))) {
+		return (0);
+	}
+
+	/*
+	 * if the process is in a non-running type state,
+	 * don't touch it.
+	 */
+	if (p->p_stat != SRUN && p->p_stat != SSLEEP) {
+		return (0);
+	}
+
+	/*
+	 * get the process size
+	 */
+	size = vmspace_resident_count(p->p_vmspace) +
+		vmspace_swap_count(p->p_vmspace);
+
+	/*
+	 * If the this process is bigger than the biggest one
+	 * remember it.
+	 */
+	if (size > info->bigsize) {
+		if (info->bigproc)
+			PRELE(info->bigproc);
+		PHOLD(p);
+		info->bigproc = p;
+		info->bigsize = size;
+	}
+	return(0);
 }
 
 /*
@@ -1457,11 +1479,11 @@ vm_req_vmdaemon(void)
 	}
 }
 
+static int vm_daemon_callback(struct proc *p, void *data __unused);
+
 static void
 vm_daemon(void)
 {
-	struct proc *p;
-
 	while (TRUE) {
 		tsleep(&vm_daemon_needed, 0, "psleep", 0);
 		if (vm_pageout_req_swapout) {
@@ -1472,45 +1494,49 @@ vm_daemon(void)
 		 * scan the processes for exceeding their rlimits or if
 		 * process is swapped out -- deactivate pages
 		 */
-
-		for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-			vm_pindex_t limit, size;
-
-			/*
-			 * if this is a system process or if we have already
-			 * looked at this process, skip it.
-			 */
-			if (p->p_flag & (P_SYSTEM | P_WEXIT)) {
-				continue;
-			}
-			/*
-			 * if the process is in a non-running type state,
-			 * don't touch it.
-			 */
-			if (p->p_stat != SRUN && p->p_stat != SSLEEP) {
-				continue;
-			}
-			/*
-			 * get a limit
-			 */
-			limit = OFF_TO_IDX(
-			    qmin(p->p_rlimit[RLIMIT_RSS].rlim_cur,
-				p->p_rlimit[RLIMIT_RSS].rlim_max));
-
-			/*
-			 * let processes that are swapped out really be
-			 * swapped out.  Set the limit to nothing to get as
-			 * many pages out to swap as possible.
-			 */
-			if (p->p_flag & P_SWAPPEDOUT)
-				limit = 0;
-
-			size = vmspace_resident_count(p->p_vmspace);
-			if (limit >= 0 && size >= limit) {
-				vm_pageout_map_deactivate_pages(
-				    &p->p_vmspace->vm_map, limit);
-			}
-		}
+		allproc_scan(vm_daemon_callback, NULL);
 	}
 }
+
+static int
+vm_daemon_callback(struct proc *p, void *data __unused)
+{
+	vm_pindex_t limit, size;
+
+	/*
+	 * if this is a system process or if we have already
+	 * looked at this process, skip it.
+	 */
+	if (p->p_flag & (P_SYSTEM | P_WEXIT))
+		return (0);
+
+	/*
+	 * if the process is in a non-running type state,
+	 * don't touch it.
+	 */
+	if (p->p_stat != SRUN && p->p_stat != SSLEEP)
+		return (0);
+
+	/*
+	 * get a limit
+	 */
+	limit = OFF_TO_IDX(qmin(p->p_rlimit[RLIMIT_RSS].rlim_cur,
+			        p->p_rlimit[RLIMIT_RSS].rlim_max));
+
+	/*
+	 * let processes that are swapped out really be
+	 * swapped out.  Set the limit to nothing to get as
+	 * many pages out to swap as possible.
+	 */
+	if (p->p_flag & P_SWAPPEDOUT)
+		limit = 0;
+
+	size = vmspace_resident_count(p->p_vmspace);
+	if (limit >= 0 && size >= limit) {
+		vm_pageout_map_deactivate_pages(
+		    &p->p_vmspace->vm_map, limit);
+	}
+	return (0);
+}
+
 #endif

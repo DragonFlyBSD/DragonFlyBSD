@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.48 2006/05/17 18:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.49 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -596,26 +596,29 @@ sigaltstack(struct sigaltstack_args *uap)
  * Common code for kill process group/broadcast kill.
  * cp is calling process.
  */
+struct killpg_info {
+	int nfound;
+	int sig;
+};
+
+static int killpg_all_callback(struct proc *p, void *data);
+
 static int
 killpg(int sig, int pgid, int all)
 {
+	struct killpg_info info;
 	struct proc *cp = curproc;
 	struct proc *p;
 	struct pgrp *pgrp;
-	int nfound = 0;
+
+	info.nfound = 0;
+	info.sig = sig;
 
 	if (all) {
 		/*
 		 * broadcast
 		 */
-		FOREACH_PROC_IN_SYSTEM(p) {
-			if (p->p_pid <= 1 || p->p_flag & P_SYSTEM ||
-			    p == cp || !CANSIGNAL(p, sig))
-				continue;
-			nfound++;
-			if (sig)
-				psignal(p, sig);
-		}
+		allproc_scan(killpg_all_callback, &info);
 	} else {
 		if (pgid == 0) {
 			/*
@@ -633,12 +636,27 @@ killpg(int sig, int pgid, int all)
 			    !CANSIGNAL(p, sig)) {
 				continue;
 			}
-			nfound++;
+			++info.nfound;
 			if (sig)
 				psignal(p, sig);
 		}
 	}
-	return (nfound ? 0 : ESRCH);
+	return (info.nfound ? 0 : ESRCH);
+}
+
+static int
+killpg_all_callback(struct proc *p, void *data)
+{
+	struct killpg_info *info = data;
+
+	if (p->p_pid <= 1 || (p->p_flag & P_SYSTEM) ||
+	    p == curproc || !CANSIGNAL(p, info->sig)) {
+		return (0);
+	}
+	++info->nfound;
+	if (info->sig)
+		psignal(p, info->sig);
+	return(0);
 }
 
 int

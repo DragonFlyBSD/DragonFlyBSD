@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.40 2006/04/25 16:22:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.41 2006/05/25 07:36:37 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -356,15 +356,18 @@ faultin(struct proc *p)
  * time, it will be swapped in anyway.
  */
 
-/* ARGSUSED*/
+struct scheduler_info {
+	struct proc *pp;
+	int ppri;
+};
+
+static int scheduler_callback(struct proc *p, void *data);
+
 static void
 scheduler(void *dummy)
 {
+	struct scheduler_info info;
 	struct proc *p;
-	struct proc *pp;
-	int pri;
-	int ppri;
-	segsz_t pgs;
 
 	KKASSERT(!IN_CRITICAL_SECT(curthread));
 loop:
@@ -380,36 +383,9 @@ loop:
 	/*
 	 * Look for a good candidate to wake up
 	 */
-	pp = NULL;
-	ppri = INT_MIN;
-	for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-		if (p->p_flag & P_SWAPWAIT) {
-			pri = p->p_swtime + p->p_slptime - p->p_nice * 8;
-
-			/*
-			 * The more pages paged out while we were swapped,
-			 * the more work we have to do to get up and running
-			 * again and the lower our wakeup priority.
-			 *
-			 * Each second of sleep time is worth ~1MB
-			 */
-			pgs = vmspace_resident_count(p->p_vmspace);
-			if (pgs < p->p_vmspace->vm_swrss) {
-				pri -= (p->p_vmspace->vm_swrss - pgs) /
-					(1024 * 1024 / PAGE_SIZE);
-			}
-
-			/*
-			 * if this process is higher priority and there is
-			 * enough space, then select this process instead of
-			 * the previous selection.
-			 */
-			if (pri > ppri) {
-				pp = p;
-				ppri = pri;
-			}
-		}
-	}
+	info.pp = NULL;
+	info.ppri = INT_MIN;
+	allproc_scan(scheduler_callback, &info);
 
 	/*
 	 * Nothing to do, back to sleep for at least 1/10 of a second.  If
@@ -417,7 +393,7 @@ loop:
 	 * multiple requests have built up the first is processed 
 	 * immediately and the rest are staggered.
 	 */
-	if ((p = pp) == NULL) {
+	if ((p = info.pp) == NULL) {
 		tsleep(&proc0, 0, "nowork", hz / 10);
 		if (scheduler_notify == 0)
 			tsleep(&scheduler_notify, 0, "nowork", 0);
@@ -433,8 +409,48 @@ loop:
 	 */
 	faultin(p);
 	p->p_swtime = 0;
+	PRELE(p);
 	tsleep(&proc0, 0, "swapin", hz / 10);
 	goto loop;
+}
+
+static int
+scheduler_callback(struct proc *p, void *data)
+{
+	struct scheduler_info *info = data;
+	segsz_t pgs;
+	int pri;
+
+	if (p->p_flag & P_SWAPWAIT) {
+		pri = p->p_swtime + p->p_slptime - p->p_nice * 8;
+
+		/*
+		 * The more pages paged out while we were swapped,
+		 * the more work we have to do to get up and running
+		 * again and the lower our wakeup priority.
+		 *
+		 * Each second of sleep time is worth ~1MB
+		 */
+		pgs = vmspace_resident_count(p->p_vmspace);
+		if (pgs < p->p_vmspace->vm_swrss) {
+			pri -= (p->p_vmspace->vm_swrss - pgs) /
+				(1024 * 1024 / PAGE_SIZE);
+		}
+
+		/*
+		 * If this process is higher priority and there is
+		 * enough space, then select this process instead of
+		 * the previous selection.
+		 */
+		if (pri > info->ppri) {
+			if (info->pp)
+				PRELE(info->pp);
+			PHOLD(p);
+			info->pp = p;
+			info->ppri = pri;
+		}
+	}
+	return(0);
 }
 
 void
@@ -479,67 +495,68 @@ SYSCTL_INT(_vm, OID_AUTO, swap_idle_threshold2,
  * they are swapped.  Else, we swap the longest-sleeping or stopped process,
  * if any, otherwise the longest-resident process.
  */
+
+static int swapout_procs_callback(struct proc *p, void *data);
+
 void
 swapout_procs(int action)
 {
-	struct proc *p;
-	struct proc *outp, *outp2;
-	int outpri, outpri2;
+	allproc_scan(swapout_procs_callback, &action);
+}
 
-	outp = outp2 = NULL;
-	outpri = outpri2 = INT_MIN;
-retry:
-	for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-		struct vmspace *vm;
-		if (!swappable(p))
-			continue;
+static int
+swapout_procs_callback(struct proc *p, void *data)
+{
+	struct vmspace *vm;
+	int action = *(int *)data;
 
-		vm = p->p_vmspace;
+	if (!swappable(p))
+		return(0);
 
-		if (p->p_stat == SSLEEP || p->p_stat == SRUN) {
-			/*
-			 * do not swap out a realtime process
-			 */
-			if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
-				continue;
+	vm = p->p_vmspace;
 
-			/*
-			 * Guarentee swap_idle_threshold time in memory
-			 */
-			if (p->p_slptime < swap_idle_threshold1)
-				continue;
+	if (p->p_stat == SSLEEP || p->p_stat == SRUN) {
+		/*
+		 * do not swap out a realtime process
+		 */
+		if (RTP_PRIO_IS_REALTIME(p->p_lwp.lwp_rtprio.type))
+			return(0);
 
-			/*
-			 * If the system is under memory stress, or if we
-			 * are swapping idle processes >= swap_idle_threshold2,
-			 * then swap the process out.
-			 */
-			if (((action & VM_SWAP_NORMAL) == 0) &&
-			    (((action & VM_SWAP_IDLE) == 0) ||
-			     (p->p_slptime < swap_idle_threshold2))) {
-				continue;
-			}
+		/*
+		 * Guarentee swap_idle_threshold time in memory
+		 */
+		if (p->p_slptime < swap_idle_threshold1)
+			return(0);
 
-			++vm->vm_refcnt;
-
-			/*
-			 * If the process has been asleep for awhile, swap
-			 * it out.
-			 */
-			if ((action & VM_SWAP_NORMAL) ||
-			    ((action & VM_SWAP_IDLE) &&
-			     (p->p_slptime > swap_idle_threshold2))) {
-				swapout(p);
-				vmspace_free(vm);
-				goto retry;
-			}
-
-			/*
-			 * cleanup our reference
-			 */
-			vmspace_free(vm);
+		/*
+		 * If the system is under memory stress, or if we
+		 * are swapping idle processes >= swap_idle_threshold2,
+		 * then swap the process out.
+		 */
+		if (((action & VM_SWAP_NORMAL) == 0) &&
+		    (((action & VM_SWAP_IDLE) == 0) ||
+		     (p->p_slptime < swap_idle_threshold2))) {
+			return(0);
 		}
+
+		++vm->vm_refcnt;
+
+		/*
+		 * If the process has been asleep for awhile, swap
+		 * it out.
+		 */
+		if ((action & VM_SWAP_NORMAL) ||
+		    ((action & VM_SWAP_IDLE) &&
+		     (p->p_slptime > swap_idle_threshold2))) {
+			swapout(p);
+		}
+
+		/*
+		 * cleanup our reference
+		 */
+		vmspace_free(vm);
 	}
+	return(0);
 }
 
 static void

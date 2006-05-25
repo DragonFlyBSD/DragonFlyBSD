@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.12 2006/05/25 04:17:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_trace.c,v 1.13 2006/05/25 07:36:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -293,11 +293,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				    (SP_REGS(&ddb_regs) - 4);
 			callpc = PC_REGS(&ddb_regs);
 		} else {
-
-			FOREACH_PROC_IN_SYSTEM(p) {
-				if (p->p_pid == pid)
-					break;
-			}
+			p = pfind(pid);
 			if (p == NULL) {
 				db_printf("pid %d not found\n", pid);
 				return;

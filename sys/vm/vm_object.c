@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.24 2006/05/17 17:47:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.25 2006/05/25 07:36:37 dillon Exp $
  */
 
 /*
@@ -1787,16 +1787,24 @@ _vm_object_in_map(vm_map_t map, vm_object_t object, vm_map_entry_t entry)
 	return 0;
 }
 
+static int vm_object_in_map_callback(struct proc *p, void *data);
+
+struct vm_object_in_map_info {
+	vm_object_t object;
+	int rv;
+};
+
 static int
 vm_object_in_map(vm_object_t object)
 {
-	struct proc *p;
-	for (p = allproc.lh_first; p != 0; p = p->p_list.le_next) {
-		if( !p->p_vmspace /* || (p->p_flag & (P_SYSTEM|P_WEXIT)) */)
-			continue;
-		if( _vm_object_in_map(&p->p_vmspace->vm_map, object, 0))
-			return 1;
-	}
+	struct vm_object_in_map_info info;
+
+	info.rv = 0;
+	info.object = object;
+
+	allproc_scan(vm_object_in_map_callback, &info);
+	if (info.rv)
+		return 1;
 	if( _vm_object_in_map( kernel_map, object, 0))
 		return 1;
 	if( _vm_object_in_map( pager_map, object, 0))
@@ -1804,6 +1812,20 @@ vm_object_in_map(vm_object_t object)
 	if( _vm_object_in_map( buffer_map, object, 0))
 		return 1;
 	return 0;
+}
+
+static int
+vm_object_in_map_callback(struct proc *p, void *data)
+{
+	struct vm_object_in_map_info *info = data;
+
+	if (p->p_vmspace) {
+		if (_vm_object_in_map(&p->p_vmspace->vm_map, info->object, 0)) {
+			info->rv = 1;
+			return -1;
+		}
+	}
+	return (0);
 }
 
 DB_SHOW_COMMAND(vmochk, vm_object_check)

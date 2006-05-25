@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.60 2006/05/23 20:35:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.61 2006/05/25 07:36:34 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -166,71 +166,84 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
  * This code also allows us to store sysclock_t data in the process structure
  * without fear of an overrun, since sysclock_t are guarenteed to hold 
  * several seconds worth of count.
+ *
+ * WARNING!  callouts can preempt normal threads.  However, they will not
+ * preempt a thread holding a spinlock so we *can* safely use spinlocks.
  */
-/* ARGSUSED */
+static int schedcpu_stats(struct proc *p, void *data __unused);
+static int schedcpu_resource(struct proc *p, void *data __unused);
+
 static void
 schedcpu(void *arg)
 {
-	struct proc *p;
-	u_int64_t ttime;
-
-	/*
-	 * General process statistics once a second
-	 */
-	FOREACH_PROC_IN_SYSTEM(p) {
-		crit_enter();
-		p->p_swtime++;
-		if (p->p_stat == SSLEEP)
-			p->p_slptime++;
-
-		/*
-		 * Only recalculate processes that are active or have slept
-		 * less then 2 seconds.  The schedulers understand this.
-		 */
-		if (p->p_slptime <= 1) {
-			p->p_usched->recalculate(&p->p_lwp);
-		} else {
-			p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
-		}
-		crit_exit();
-	}
-
-	/*
-	 * Resource checks.  XXX break out since psignal/killproc can block,
-	 * limiting us to one process killed per second.  There is probably
-	 * a better way.
-	 */
-	FOREACH_PROC_IN_SYSTEM(p) {
-		crit_enter();
-		if (p->p_stat == SIDL || 
-		    (p->p_flag & P_ZOMBIE) ||
-		    p->p_limit == NULL || 
-		    p->p_thread == NULL
-		) {
-			crit_exit();
-			continue;
-		}
-		ttime = p->p_thread->td_sticks + p->p_thread->td_uticks;
-		switch(plimit_testcpulimit(p->p_limit, ttime)) {
-		case PLIMIT_TESTCPU_KILL:
-			killproc(p, "exceeded maximum CPU limit");
-			break;
-		case PLIMIT_TESTCPU_XCPU:
-			if ((p->p_flag & P_XCPU) == 0) {
-				p->p_flag |= P_XCPU;
-				psignal(p, SIGXCPU);
-			}
-			break;
-		default:
-			crit_exit();
-			continue;
-		}
-		crit_exit();
-		break;
-	}
+	allproc_scan(schedcpu_stats, NULL);
+	allproc_scan(schedcpu_resource, NULL);
 	wakeup((caddr_t)&lbolt);
 	wakeup((caddr_t)&lbolt_syncer);
 	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
+}
+
+/*
+ * General process statistics once a second
+ */
+static int
+schedcpu_stats(struct proc *p, void *data __unused)
+{
+	crit_enter();
+	p->p_swtime++;
+	if (p->p_stat == SSLEEP)
+		p->p_slptime++;
+
+	/*
+	 * Only recalculate processes that are active or have slept
+	 * less then 2 seconds.  The schedulers understand this.
+	 */
+	if (p->p_slptime <= 1) {
+		p->p_usched->recalculate(&p->p_lwp);
+	} else {
+		p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
+	}
+	crit_exit();
+	return(0);
+}
+
+/*
+ * Resource checks.  XXX break out since psignal/killproc can block,
+ * limiting us to one process killed per second.  There is probably
+ * a better way.
+ */
+static int
+schedcpu_resource(struct proc *p, void *data __unused)
+{
+	u_int64_t ttime;
+
+	crit_enter();
+	if (p->p_stat == SIDL || 
+	    (p->p_flag & P_ZOMBIE) ||
+	    p->p_limit == NULL || 
+	    p->p_thread == NULL
+	) {
+		crit_exit();
+		return(0);
+	}
+
+	ttime = p->p_thread->td_sticks + p->p_thread->td_uticks;
+
+	switch(plimit_testcpulimit(p->p_limit, ttime)) {
+	case PLIMIT_TESTCPU_KILL:
+		killproc(p, "exceeded maximum CPU limit");
+		break;
+	case PLIMIT_TESTCPU_XCPU:
+		if ((p->p_flag & P_XCPU) == 0) {
+			p->p_flag |= P_XCPU;
+			psignal(p, SIGXCPU);
+		}
+		break;
+	default:
+		break;
+	}
+	crit_exit();
+	return(0);
 }
 
 /*
@@ -892,34 +905,21 @@ uio_yield(void)
  * Compute a tenex style load average of a quantity on
  * 1, 5 and 15 minute intervals.
  */
+static int loadav_count_runnable(struct proc *p, void *data);
+
 static void
 loadav(void *arg)
 {
-	int i, nrun;
 	struct loadavg *avg;
-	struct proc *p;
-	thread_t td;
+	int i, nrun;
 
-	avg = &averunnable;
 	nrun = 0;
-	FOREACH_PROC_IN_SYSTEM(p) {
-		switch (p->p_stat) {
-		case SRUN:
-			if ((td = p->p_thread) == NULL)
-				break;
-			if (td->td_flags & TDF_BLOCKED)
-				break;
-			/* fall through */
-		case SIDL:
-			nrun++;
-			break;
-		default:
-			break;
-		}
-	}
-	for (i = 0; i < 3; i++)
+	allproc_scan(loadav_count_runnable, &nrun);
+	avg = &averunnable;
+	for (i = 0; i < 3; i++) {
 		avg->ldavg[i] = (cexp[i] * avg->ldavg[i] +
 		    nrun * FSCALE * (FSCALE - cexp[i])) >> FSHIFT;
+	}
 
 	/*
 	 * Schedule the next update to occur after 5 seconds, but add a
@@ -927,7 +927,29 @@ loadav(void *arg)
 	 * run at regular intervals.
 	 */
 	callout_reset(&loadav_callout, hz * 4 + (int)(random() % (hz * 2 + 1)),
-	    loadav, NULL);
+		      loadav, NULL);
+}
+
+static int
+loadav_count_runnable(struct proc *p, void *data)
+{
+	int *nrunp = data;
+	thread_t td;
+
+	switch (p->p_stat) {
+	case SRUN:
+		if ((td = p->p_thread) == NULL)
+			break;
+		if (td->td_flags & TDF_BLOCKED)
+			break;
+		/* fall through */
+	case SIDL:
+		++*nrunp;
+		break;
+	default:
+		break;
+	}
+	return(0);
 }
 
 /* ARGSUSED */
