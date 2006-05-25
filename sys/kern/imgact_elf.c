@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.38 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.39 2006/05/25 04:17:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -193,20 +193,41 @@ elf_remove_brand_entry(Elf_Brandinfo *entry)
 	return 0;
 }
 
+/*
+ * Check if an elf brand is being used anywhere in the system.
+ *
+ * Used by the linux emulatino module unloader.  This isn't safe from
+ * races.
+ */
+struct elf_brand_inuse_info {
+	int rval;
+	Elf_Brandinfo *entry;
+};
+
+static int elf_brand_inuse_callback(struct proc *p, void *data);
+
 int
 elf_brand_inuse(Elf_Brandinfo *entry)
 {
-	struct proc *p;
-	int rval = FALSE;
+	struct elf_brand_inuse_info info;
 
-	FOREACH_PROC_IN_SYSTEM(p) {
-		if (p->p_sysent == entry->sysvec) {
-			rval = TRUE;
-			break;
-		}
+	info.rval = FALSE;
+	info.entry = entry;
+	allproc_scan(elf_brand_inuse_callback, entry);
+	return (info.rval);
+}
+
+static
+int
+elf_brand_inuse_callback(struct proc *p, void *data)
+{
+	struct elf_brand_inuse_info *info = data;
+
+	if (p->p_sysent == info->entry->sysvec) {
+		info->rval = TRUE;
+		return(-1);
 	}
-
-	return (rval);
+	return(0);
 }
 
 static int

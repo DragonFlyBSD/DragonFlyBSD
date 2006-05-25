@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.25 2006/05/17 20:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.26 2006/05/25 04:17:09 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -206,14 +206,25 @@ ktrcsw(struct proc *p, int out, int user)
 
 /* Interface and common routines */
 
+#ifdef KTRACE
 /*
  * ktrace system call
  */
-/* ARGSUSED */
+struct ktrace_clear_info {
+	ktrace_node_t tracenode;
+	int rootclear;
+	int error;
+};
+
+static int ktrace_clear_callback(struct proc *p, void *data);
+
+#endif
+
 int
 ktrace(struct ktrace_args *uap)
 {
 #ifdef KTRACE
+	struct ktrace_clear_info info;
 	struct thread *td = curthread;
 	struct proc *curp = td->td_proc;
 	struct proc *p;
@@ -255,18 +266,11 @@ ktrace(struct ktrace_args *uap)
 	 * in the world.
 	 */
 	if (ops == KTROP_CLEARFILE) {
-again:
-		FOREACH_PROC_IN_SYSTEM(p) {
-			if (p->p_tracenode->kn_vp == tracenode->kn_vp) {
-				if (ktrcanset(curp, p)) {
-					ktrdestroy(&p->p_tracenode);
-					p->p_traceflag = 0;
-					goto again;
-				} else {
-					error = EPERM;
-				}
-			}
-		}
+		info.tracenode = tracenode;
+		info.error = 0;
+		info.rootclear = 0;
+		allproc_scan(ktrace_clear_callback, &info);
+		error = info.error;
 		goto done;
 	}
 	/*
@@ -319,6 +323,36 @@ done:
 	return ENOSYS;
 #endif
 }
+
+#ifdef KTRACE
+
+/*
+ * NOTE: NOT MPSAFE (yet)
+ */
+static int
+ktrace_clear_callback(struct proc *p, void *data)
+{
+	struct ktrace_clear_info *info = data;
+
+	if (info->rootclear) {
+		if (p->p_tracenode == info->tracenode) {
+			ktrdestroy(&p->p_tracenode);
+			p->p_traceflag = 0;
+		}
+	} else {
+		if (p->p_tracenode->kn_vp == info->tracenode->kn_vp) {
+			if (ktrcanset(curproc, p)) {
+				ktrdestroy(&p->p_tracenode);
+				p->p_traceflag = 0;
+			} else {
+				info->error = EPERM;
+			}
+		}
+	}
+	return(0);
+}
+
+#endif
 
 /*
  * utrace system call
@@ -373,6 +407,11 @@ ktrdestroy(struct ktrace_node **tracenodep)
 	}
 }
 
+/*
+ * This allows a process to inherit a ref on a tracenode and is also used
+ * as a temporary ref to prevent a tracenode from being destroyed out from
+ * under an active operation.
+ */
 ktrace_node_t
 ktrinherit(ktrace_node_t tracenode)
 {
@@ -445,6 +484,7 @@ ktrsetchildren(struct proc *curp, struct proc *top, int ops, int facs,
 static void
 ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 {
+	struct ktrace_clear_info info;
 	struct uio auio;
 	struct iovec aiov[2];
 	int error;
@@ -493,14 +533,10 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 		 */
 		log(LOG_NOTICE,
 		    "ktrace write failed, errno %d, tracing stopped\n", error);
-retry:
-		FOREACH_PROC_IN_SYSTEM(p) {
-			if (p->p_tracenode == tracenode) {
-				ktrdestroy(&p->p_tracenode);
-				p->p_traceflag = 0;
-				goto retry;
-			}
-		}
+		info.tracenode = tracenode;
+		info.error = 0;
+		info.rootclear = 1;
+		allproc_scan(ktrace_clear_callback, &info);
 	}
 	ktrdestroy(&tracenode);
 }

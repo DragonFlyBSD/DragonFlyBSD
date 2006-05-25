@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.54 2005/11/22 08:41:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.55 2006/05/25 04:17:07 dillon Exp $
  */
 
 /*
@@ -1338,13 +1338,18 @@ SYSCTL_PROC(_vm, OID_AUTO, kvm_free, CTLTYPE_LONG|CTLFLAG_RD,
     0, 0, kvm_free, "IU", "Amount of KVM free");
 
 /*
- * grow the number of kernel page table entries, if needed
+ * Grow the number of kernel page table entries, if needed.
  */
+struct pmap_growkernel_info {
+	pd_entry_t newpdir;
+};
+
+static int pmap_growkernel_callback(struct proc *p, void *data);
+
 void
 pmap_growkernel(vm_offset_t addr)
 {
-	struct proc *p;
-	struct pmap *pmap;
+	struct pmap_growkernel_info info;
 	vm_offset_t ptppaddr;
 	vm_page_t nkpg;
 	pd_entry_t newpdir;
@@ -1373,24 +1378,39 @@ pmap_growkernel(vm_offset_t addr)
 		if (nkpg == NULL)
 			panic("pmap_growkernel: no memory to grow kernel");
 
-		nkpt++;
-
 		vm_page_wire(nkpg);
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
 		newpdir = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
 		pdir_pde(PTD, kernel_vm_end) = newpdir;
-
-		FOREACH_PROC_IN_SYSTEM(p) {
-			if (p->p_vmspace) {
-				pmap = vmspace_pmap(p->p_vmspace);
-				*pmap_pde(pmap, kernel_vm_end) = newpdir;
-			}
-		}
 		*pmap_pde(kernel_pmap, kernel_vm_end) = newpdir;
+		nkpt++;
+
+		/*
+		 * vm_fork and friends copy nkpt page table pages to the high
+		 * side of a new process's pmap.  This occurs after the 
+		 * process has been added to allproc, so scanning the proc
+		 * list afterwords should be sufficient to fixup existing
+		 * processes.
+		 */
+		info.newpdir = newpdir;
+		allproc_scan(pmap_growkernel_callback, &info);
 		kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) & ~(PAGE_SIZE * NPTEPG - 1);
 	}
 	crit_exit();
+}
+
+static int
+pmap_growkernel_callback(struct proc *p, void *data)
+{
+	struct pmap_growkernel_info *info = data;
+	struct pmap *pmap;
+
+	if (p->p_vmspace) {
+		pmap = vmspace_pmap(p->p_vmspace);
+		*pmap_pde(pmap, kernel_vm_end) = info->newpdir;
+	}
+	return(0);
 }
 
 /*
@@ -3270,64 +3290,6 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 	return addr;
 }
 
-
-#if defined(PMAP_DEBUG)
-int
-pmap_pid_dump(int pid)
-{
-	pmap_t pmap;
-	struct proc *p;
-	int npte = 0;
-	int index;
-	FOREACH_PROC_IN_SYSTEM(p) {
-		if (p->p_pid != pid)
-			continue;
-
-		if (p->p_vmspace) {
-			int i,j;
-			index = 0;
-			pmap = vmspace_pmap(p->p_vmspace);
-			for(i=0;i<1024;i++) {
-				pd_entry_t *pde;
-				unsigned *pte;
-				unsigned base = i << PDRSHIFT;
-				
-				pde = &pmap->pm_pdir[i];
-				if (pde && pmap_pde_v(pde)) {
-					for(j=0;j<1024;j++) {
-						unsigned va = base + (j << PAGE_SHIFT);
-						if (va >= (vm_offset_t) VM_MIN_KERNEL_ADDRESS) {
-							if (index) {
-								index = 0;
-								printf("\n");
-							}
-							return npte;
-						}
-						pte = pmap_pte_quick( pmap, va);
-						if (pte && pmap_pte_v(pte)) {
-							vm_offset_t pa;
-							vm_page_t m;
-							pa = *(int *)pte;
-							m = PHYS_TO_VM_PAGE(pa);
-							printf("va: 0x%x, pt: 0x%x, h: %d, w: %d, f: 0x%x",
-								va, pa, m->hold_count, m->wire_count, m->flags);
-							npte++;
-							index++;
-							if (index >= 2) {
-								index = 0;
-								printf("\n");
-							} else {
-								printf(" ");
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return npte;
-}
-#endif
 
 #if defined(DEBUG)
 
