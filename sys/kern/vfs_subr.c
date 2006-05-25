@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.86 2006/05/16 18:20:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.87 2006/05/25 19:31:13 dillon Exp $
  */
 
 /*
@@ -409,6 +409,16 @@ vinvalbuf_bp(struct buf *bp, void *data)
 			bremfree(bp);
 			bwrite(bp);
 		}
+	} else if (info->flags & V_SAVE) {
+		/*
+		 * Cannot set B_NOCACHE on a clean buffer as this will
+		 * destroy the VM backing store which might actually
+		 * be dirty (and unsynchronized).
+		 */
+		bremfree(bp);
+		bp->b_flags |= (B_INVAL | B_RELBUF);
+		bp->b_flags &= ~B_ASYNC;
+		brelse(bp);
 	} else {
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_NOCACHE | B_RELBUF);
@@ -479,10 +489,9 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	crit_enter();
 
 	/*
-	 * Wait for any in-progress I/O to complete before returning (why?)
-	 * XXX shouldn't have to do this, the buffer scan should have caught
-	 * any buffers undergoing I/O and looped.  Perhaps a buffer wound up
-	 * getting initiated during the VM page scan?
+	 * It is possible to have in-progress I/O from buffers that were
+	 * not part of the truncation.  This should not happen if we
+	 * are truncating to 0-length.
 	 */
 	filename = TAILQ_FIRST(&vp->v_namecache) ?
 		   TAILQ_FIRST(&vp->v_namecache)->nc_name : "?";
@@ -490,8 +499,11 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	while ((count = vp->v_track_write.bk_active) > 0) {
 		vp->v_track_write.bk_waitflag = 1;
 		tsleep(&vp->v_track_write, 0, "vbtrunc", 0);
-		printf("Warning: vtruncbuf(): Had to wait for %d buffer I/Os "
-		       "to finish in %s\n", count, filename);
+		if (length == 0) {
+			printf("Warning: vtruncbuf(): Had to wait for "
+			       "%d buffer I/Os to finish in %s\n",
+			       count, filename);
+		}
 	}
 
 	/*
@@ -542,7 +554,7 @@ vtruncbuf_bp_trunc(struct buf *bp, void *data)
 			BUF_UNLOCK(bp);
 	} else {
 		bremfree(bp);
-		bp->b_flags |= (B_INVAL | B_RELBUF);
+		bp->b_flags |= (B_INVAL | B_RELBUF | B_NOCACHE);
 		bp->b_flags &= ~B_ASYNC;
 		brelse(bp);
 	}

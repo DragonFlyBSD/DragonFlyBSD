@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.36 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.37 2006/05/25 19:31:14 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -261,7 +261,7 @@ struct buf {
 #define	B_UNUSED1000	0x00001000	/* Unused */
 #define	B_INVAL		0x00002000	/* Does not contain valid info. */
 #define	B_LOCKED	0x00004000	/* Locked in core (not reusable). */
-#define	B_NOCACHE	0x00008000	/* Do not cache block after use. */
+#define	B_NOCACHE	0x00008000	/* Destroy buffer AND backing store */
 #define	B_MALLOC	0x00010000	/* malloced b_data */
 #define	B_CLUSTEROK	0x00020000	/* Pagein op, so swap() can count it. */
 #define	B_UNUSED40000	0x00040000

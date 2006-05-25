@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.75 2006/05/07 00:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.76 2006/05/25 19:31:13 dillon Exp $
  */
 
 /*
@@ -57,6 +57,11 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <vm/vm_page2.h>
+
+#include "opt_ddb.h"
+#ifdef DDB
+#include <ddb/ddb.h>
+#endif
 
 /*
  * Buffer queues.
@@ -952,14 +957,27 @@ brelse(struct buf *bp)
 
 	crit_enter();
 
-	if ((bp->b_flags & (B_NOCACHE|B_DIRTY)) == (B_NOCACHE|B_DIRTY)) {
-		printf("warning: buf %p marked dirty & B_NOCACHE, clearing B_NOCACHE\n", bp);
-		bp->b_flags &= ~B_NOCACHE;
+	/*
+	 * If B_NOCACHE is set we are being asked to destroy the buffer and
+	 * its backing store.  Clear B_DELWRI.
+	 *
+	 * B_NOCACHE is set in two cases: (1) when the caller really wants
+	 * to destroy the buffer and backing store and (2) when the caller
+	 * wants to destroy the buffer and backing store after a write 
+	 * completes.
+	 */
+	if ((bp->b_flags & (B_NOCACHE|B_DELWRI)) == (B_NOCACHE|B_DELWRI)) {
+		bundirty(bp);
 	}
 
 	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_ERROR;
 
+	/*
+	 * If a write error occurs and the caller does not want to throw
+	 * away the buffer, redirty the buffer.  This will also clear
+	 * B_NOCACHE.
+	 */
 	if (bp->b_cmd == BUF_CMD_WRITE &&
 	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
 		/*
@@ -1011,24 +1029,23 @@ brelse(struct buf *bp)
 	bp->b_cmd = BUF_CMD_DONE;
 
 	/*
-	 * VMIO buffer rundown.  It is not very necessary to keep a VMIO buffer
-	 * constituted, not even NFS buffers now.  Two flags effect this.  If
-	 * B_INVAL, the struct buf is invalidated but the VM object is kept
-	 * around ( i.e. so it is trivial to reconstitute the buffer later ).
+	 * VMIO buffer rundown.  Make sure the VM page array is restored
+	 * after an I/O may have replaces some of the pages with bogus pages
+	 * in order to not destroy dirty pages in a fill-in read.
 	 *
-	 * If B_ERROR or B_NOCACHE is set, pages in the VM object will be
-	 * invalidated.  B_ERROR cannot be set for a failed write unless the
-	 * buffer is also B_INVAL because it hits the re-dirtying code above.
+	 * Note that due to the code above, if a buffer is marked B_DELWRI
+	 * then the B_RELBUF and B_NOCACHE bits will always be clear.
+	 * B_INVAL may still be set, however.
 	 *
-	 * Normally we can do this whether a buffer is B_DELWRI or not.  If
-	 * the buffer is an NFS buffer, it is tracking piecemeal writes or
-	 * the commit state and we cannot afford to lose the buffer.
+	 * For clean buffers, B_INVAL or B_RELBUF will destroy the buffer
+	 * but not the backing store.   B_NOCACHE will destroy the backing
+	 * store.
+	 *
+	 * Note that dirty NFS buffers contain byte-granular write ranges
+	 * and should not be destroyed w/ B_INVAL even if the backing store
+	 * is left intact.
 	 */
-	if ((bp->b_flags & B_VMIO)
-	    && !(bp->b_vp->v_tag == VT_NFS &&
-		 !vn_isdisk(bp->b_vp, NULL) &&
-		 (bp->b_flags & B_DELWRI))
-	    ) {
+	if (bp->b_flags & B_VMIO) {
 		/*
 		 * Rundown for VMIO buffers which are not dirty NFS buffers.
 		 */
@@ -1132,16 +1149,6 @@ brelse(struct buf *bp)
 			resid -= PAGE_SIZE - (foff & PAGE_MASK);
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 		}
-		if (bp->b_flags & (B_INVAL | B_RELBUF))
-			vfs_vmio_release(bp);
-	} else if (bp->b_flags & B_VMIO) {
-		/*
-		 * Rundown for VMIO buffers which are dirty NFS buffers.  Such
-		 * buffers contain tracking ranges for NFS and cannot normally
-		 * be released.  Due to the dirty check above this series of
-		 * conditionals, B_RELBUF probably will never be set in this
-		 * codepath.
-		 */
 		if (bp->b_flags & (B_INVAL | B_RELBUF))
 			vfs_vmio_release(bp);
 	} else {
@@ -3531,9 +3538,7 @@ vfs_bufstats(void)
 }
 #endif
 
-#include "opt_ddb.h"
 #ifdef DDB
-#include <ddb/ddb.h>
 
 DB_SHOW_COMMAND(buffer, db_show_buffer)
 {
