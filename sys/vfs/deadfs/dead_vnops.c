@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.16 2006/04/01 20:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.17 2006/05/25 01:20:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,6 @@
 static int	dead_badop (void);
 static int	dead_bmap (struct vop_bmap_args *);
 static int	dead_ioctl (struct vop_ioctl_args *);
-static int	dead_lock (struct vop_lock_args *);
 static int	dead_lookup (struct vop_old_lookup_args *);
 static int	dead_open (struct vop_open_args *);
 static int	dead_close (struct vop_close_args *);
@@ -70,7 +69,6 @@ static struct vnodeopv_entry_desc dead_vnodeop_entries[] = {
 	{ &vop_inactive_desc,		vop_null },
 	{ &vop_ioctl_desc,		(vnodeopv_entry_t) dead_ioctl },
 	{ &vop_old_link_desc,		(vnodeopv_entry_t) dead_badop },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) dead_lock },
 	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) dead_lookup },
 	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) dead_badop },
 	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) dead_badop },
@@ -184,17 +182,6 @@ static int
 dead_ioctl(struct vop_ioctl_args *ap)
 {
 	return (ENOTTY);
-}
-
-/*
- * Wait until the vnode has finished changing state.
- *
- * dead_lock(struct vnode *a_vp, int a_flags, struct proc *a_p)
- */
-static int
-dead_lock(struct vop_lock_args *ap)
-{
-	return (0);
 }
 
 /*
