@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.21 2006/05/21 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.22 2006/05/25 02:46:38 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -470,10 +470,12 @@ lockinit(struct lock *lkp, char *wmesg, int timo, int flags)
 void
 lockreinit(struct lock *lkp, char *wmesg, int timo, int flags)
 {
+	spin_lock_wr(&lkp->lk_spinlock);
 	lkp->lk_flags = (lkp->lk_flags & ~LK_EXTFLG_MASK) |
 			(flags & LK_EXTFLG_MASK);
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
+	spin_unlock_wr(&lkp->lk_spinlock);
 }
 
 /*
