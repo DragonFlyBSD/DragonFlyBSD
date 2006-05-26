@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.25 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.26 2006/05/26 02:26:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@
 #include <sys/unpcb.h>
 #include <sys/vnode.h>
 #include <sys/file2.h>
+#include <sys/spinlock2.h>
 
 #include <vm/vm_zone.h>
 
@@ -87,9 +88,13 @@ static void    unp_disconnect (struct unpcb *);
 static void    unp_shutdown (struct unpcb *);
 static void    unp_drop (struct unpcb *, int);
 static void    unp_gc (void);
-static void    unp_scan (struct mbuf *, void (*)(struct file *));
-static void    unp_mark (struct file *);
-static void    unp_discard (struct file *);
+static int     unp_gc_clearmarks(struct file *, void *);
+static int     unp_gc_checkmarks(struct file *, void *);
+static int     unp_gc_checkrefs(struct file *, void *);
+static void    unp_scan (struct mbuf *, void (*)(struct file *, void *),
+				void *data);
+static void    unp_mark (struct file *, void *data);
+static void    unp_discard (struct file *, void *);
 static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
 
@@ -490,6 +495,7 @@ static u_long	unpdg_sendspace = 2*1024;	/* really max datagram size */
 static u_long	unpdg_recvspace = 4*1024;
 
 static int	unp_rights;			/* file descriptors in flight */
+static struct spinlock unp_spin = SPINLOCK_INITIALIZER(&unp_spin);
 
 SYSCTL_DECL(_net_local_stream);
 SYSCTL_INT(_net_local_stream, OID_AUTO, sendspace, CTLFLAG_RW, 
@@ -914,7 +920,7 @@ unp_externalize(struct mbuf *rights)
 			 * since it may end up in unp_gc()..
 			 */
 			*rp++ = 0;
-			unp_discard(fp);
+			unp_discard(fp, NULL);
 		}
 		return (EMSGSIZE);
 	}
@@ -938,8 +944,10 @@ unp_externalize(struct mbuf *rights)
 			fp = *rp++;
 			fsetfd(p, fp, f);
 			fdrop(fp);
+			spin_lock_wr(&unp_spin);
 			fp->f_msgcount--;
 			unp_rights--;
+			spin_unlock_wr(&unp_spin);
 			*fdp++ = f;
 		}
 	} else {
@@ -951,8 +959,10 @@ unp_externalize(struct mbuf *rights)
 			fp = *rp--;
 			fsetfd(p, fp, f);
 			fdrop(fp);
+			spin_lock_wr(&unp_spin);
 			fp->f_msgcount--;
 			unp_rights--;
+			spin_unlock_wr(&unp_spin);
 			*fdp-- = f;
 		}
 	}
@@ -974,6 +984,7 @@ unp_init(void)
 		panic("unp_init");
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
+	spin_init(&unp_spin);
 }
 
 static int
@@ -1066,9 +1077,11 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		for (i = 0; i < oldfds; i++) {
 			fp = fdescp->fd_files[*fdp--].fp;
 			*rp-- = fp;
-			fp->f_count++;
+			fhold(fp);
+			spin_lock_wr(&unp_spin);
 			fp->f_msgcount++;
 			unp_rights++;
+			spin_unlock_wr(&unp_spin);
 		}
 	} else {
 		fdp = (int *)(cm + 1);
@@ -1076,108 +1089,58 @@ unp_internalize(struct mbuf *control, struct thread *td)
 		for (i = 0; i < oldfds; i++) {
 			fp = fdescp->fd_files[*fdp++].fp;
 			*rp++ = fp;
-			fp->f_count++;
+			fhold(fp);
+			spin_lock_wr(&unp_spin);
 			fp->f_msgcount++;
 			unp_rights++;
+			spin_unlock_wr(&unp_spin);
 		}
 	}
 	return (0);
 }
 
-static int unp_defer;
+/*
+ * Garbage collect in-transit file descriptors that get lost due to
+ * loops (i.e. when a socket is sent to another process over itself,
+ * and more complex situations).
+ *
+ * NOT MPSAFE - TODO socket flush code and maybe closef.  Rest is MPSAFE.
+ */
+
+struct unp_gc_info {
+	struct file **extra_ref;
+	struct file *locked_fp;
+	int defer;
+	int index;
+	int maxindex;
+};
 
 static void
 unp_gc()
 {
+	struct unp_gc_info info;
 	static boolean_t unp_gcing;
+	struct file **fpp;
+	int i;
 
-	struct file *fp, *nextfp;
-	struct socket *so;
-	struct file **extra_ref, **fpp;
-	int nunref, i;
-
-	if (unp_gcing)
+	spin_lock_wr(&unp_spin);
+	if (unp_gcing) {
+		spin_unlock_wr(&unp_spin);
 		return;
+	}
 	unp_gcing = TRUE;
-	unp_defer = 0;
+	spin_unlock_wr(&unp_spin);
+
 	/* 
 	 * before going through all this, set all FDs to 
 	 * be NOT defered and NOT externally accessible
 	 */
-	LIST_FOREACH(fp, &filehead, f_list)
-		fp->f_flag &= ~(FMARK|FDEFER);
+	info.defer = 0;
+	allfiles_scan_exclusive(unp_gc_clearmarks, NULL);
 	do {
-		LIST_FOREACH(fp, &filehead, f_list) {
-			/*
-			 * If the file is not open, skip it
-			 */
-			if (fp->f_count == 0)
-				continue;
-			/*
-			 * If we already marked it as 'defer'  in a
-			 * previous pass, then try process it this time
-			 * and un-mark it
-			 */
-			if (fp->f_flag & FDEFER) {
-				fp->f_flag &= ~FDEFER;
-				unp_defer--;
-			} else {
-				/*
-				 * if it's not defered, then check if it's
-				 * already marked.. if so skip it
-				 */
-				if (fp->f_flag & FMARK)
-					continue;
-				/* 
-				 * If all references are from messages
-				 * in transit, then skip it. it's not 
-				 * externally accessible.
-				 */ 
-				if (fp->f_count == fp->f_msgcount)
-					continue;
-				/* 
-				 * If it got this far then it must be
-				 * externally accessible.
-				 */
-				fp->f_flag |= FMARK;
-			}
-			/*
-			 * either it was defered, or it is externally 
-			 * accessible and not already marked so.
-			 * Now check if it is possibly one of OUR sockets.
-			 */ 
-			if (fp->f_type != DTYPE_SOCKET ||
-			    (so = (struct socket *)fp->f_data) == NULL)
-				continue;
-			if (so->so_proto->pr_domain != &localdomain ||
-			    !(so->so_proto->pr_flags & PR_RIGHTS))
-				continue;
-#ifdef notdef
-			if (so->so_rcv.sb_flags & SB_LOCK) {
-				/*
-				 * This is problematical; it's not clear
-				 * we need to wait for the sockbuf to be
-				 * unlocked (on a uniprocessor, at least),
-				 * and it's also not clear what to do
-				 * if sbwait returns an error due to receipt
-				 * of a signal.  If sbwait does return
-				 * an error, we'll go into an infinite
-				 * loop.  Delete all of this for now.
-				 */
-				sbwait(&so->so_rcv);
-				goto restart;
-			}
-#endif
-			/*
-			 * So, Ok, it's one of our sockets and it IS externally
-			 * accessible (or was defered). Now we look
-			 * to see if we hold any file descriptors in its
-			 * message buffers. Follow those links and mark them 
-			 * as accessible too.
-			 */
-			unp_scan(so->so_rcv.sb_mb, unp_mark);
-		}
-	} while (unp_defer);
+		allfiles_scan_exclusive(unp_gc_checkmarks, &info);
+	} while (info.defer);
+
 	/*
 	 * We grab an extra reference to each of the file table entries
 	 * that are not otherwise accessible and then free the rights
@@ -1217,46 +1180,156 @@ unp_gc()
 	 *
 	 * 91/09/19, bsy@cs.cmu.edu
 	 */
-	extra_ref = malloc(nfiles * sizeof(struct file *), M_FILE, M_WAITOK);
-	for (nunref = 0, fp = LIST_FIRST(&filehead), fpp = extra_ref;
-	     fp != NULL; fp = nextfp) {
-		nextfp = LIST_NEXT(fp, f_list);
-		/* 
-		 * If it's not open, skip it
+	info.extra_ref = malloc(256 * sizeof(struct file *), M_FILE, M_WAITOK);
+	info.maxindex = 256;
+
+	do {
+		/*
+		 * Look for matches
 		 */
-		if (fp->f_count == 0)
-			continue;
+		info.index = 0;
+		allfiles_scan_exclusive(unp_gc_checkrefs, &info);
+
 		/* 
-		 * If all refs are from msgs, and it's not marked accessible
-		 * then it must be referenced from some unreachable cycle
-		 * of (shut-down) FDs, so include it in our
-		 * list of FDs to remove
+		 * For each FD on our hit list, do the following two things
 		 */
-		if (fp->f_count == fp->f_msgcount && !(fp->f_flag & FMARK)) {
-			*fpp++ = fp;
-			nunref++;
-			fp->f_count++;
+		for (i = info.index, fpp = info.extra_ref; --i >= 0; ++fpp) {
+			struct file *tfp = *fpp;
+			if (tfp->f_type == DTYPE_SOCKET && tfp->f_data != NULL)
+				sorflush((struct socket *)(tfp->f_data));
 		}
-	}
-	/* 
-	 * for each FD on our hit list, do the following two things
-	 */
-	for (i = nunref, fpp = extra_ref; --i >= 0; ++fpp) {
-		struct file *tfp = *fpp;
-		if (tfp->f_type == DTYPE_SOCKET && tfp->f_data != NULL)
-			sorflush((struct socket *)(tfp->f_data));
-	}
-	for (i = nunref, fpp = extra_ref; --i >= 0; ++fpp)
-		closef(*fpp, NULL);
-	free((caddr_t)extra_ref, M_FILE);
+		for (i = info.index, fpp = info.extra_ref; --i >= 0; ++fpp)
+			closef(*fpp, NULL);
+	} while (info.index == info.maxindex);
+	free((caddr_t)info.extra_ref, M_FILE);
 	unp_gcing = FALSE;
+}
+
+/*
+ * MPSAFE - NOTE: filehead list and file pointer spinlocked on entry
+ */
+static int
+unp_gc_checkrefs(struct file *fp, void *data)
+{
+	struct unp_gc_info *info = data;
+
+	if (fp->f_count == 0)
+		return(0);
+	if (info->index == info->maxindex)
+		return(-1);
+
+	/* 
+	 * If all refs are from msgs, and it's not marked accessible
+	 * then it must be referenced from some unreachable cycle
+	 * of (shut-down) FDs, so include it in our
+	 * list of FDs to remove
+	 */
+	if (fp->f_count == fp->f_msgcount && !(fp->f_flag & FMARK)) {
+		info->extra_ref[info->index++] = fp;
+		fhold(fp);
+	}
+	return(0);
+}
+
+/*
+ * MPSAFE - NOTE: filehead list and file pointer spinlocked on entry
+ */
+static int
+unp_gc_clearmarks(struct file *fp, void *data __unused)
+{
+	fp->f_flag &= ~(FMARK|FDEFER);
+	return(0);
+}
+
+/*
+ * MPSAFE - NOTE: filehead list and file pointer spinlocked on entry
+ */
+static int
+unp_gc_checkmarks(struct file *fp, void *data)
+{
+	struct unp_gc_info *info = data;
+	struct socket *so;
+
+	/*
+	 * If the file is not open, skip it
+	 */
+	if (fp->f_count == 0)
+		return(0);
+	/*
+	 * If we already marked it as 'defer'  in a
+	 * previous pass, then try process it this time
+	 * and un-mark it
+	 */
+	if (fp->f_flag & FDEFER) {
+		fp->f_flag &= ~FDEFER;
+		--info->defer;
+	} else {
+		/*
+		 * if it's not defered, then check if it's
+		 * already marked.. if so skip it
+		 */
+		if (fp->f_flag & FMARK)
+			return(0);
+		/* 
+		 * If all references are from messages
+		 * in transit, then skip it. it's not 
+		 * externally accessible.
+		 */ 
+		if (fp->f_count == fp->f_msgcount)
+			return(0);
+		/* 
+		 * If it got this far then it must be
+		 * externally accessible.
+		 */
+		fp->f_flag |= FMARK;
+	}
+	/*
+	 * either it was defered, or it is externally 
+	 * accessible and not already marked so.
+	 * Now check if it is possibly one of OUR sockets.
+	 */ 
+	if (fp->f_type != DTYPE_SOCKET ||
+	    (so = (struct socket *)fp->f_data) == NULL)
+		return(0);
+	if (so->so_proto->pr_domain != &localdomain ||
+	    !(so->so_proto->pr_flags & PR_RIGHTS))
+		return(0);
+#ifdef notdef
+	XXX note: exclusive fp->f_spin lock held
+	if (so->so_rcv.sb_flags & SB_LOCK) {
+		/*
+		 * This is problematical; it's not clear
+		 * we need to wait for the sockbuf to be
+		 * unlocked (on a uniprocessor, at least),
+		 * and it's also not clear what to do
+		 * if sbwait returns an error due to receipt
+		 * of a signal.  If sbwait does return
+		 * an error, we'll go into an infinite
+		 * loop.  Delete all of this for now.
+		 */
+		sbwait(&so->so_rcv);
+		goto restart;
+	}
+#endif
+	/*
+	 * So, Ok, it's one of our sockets and it IS externally
+	 * accessible (or was defered). Now we look
+	 * to see if we hold any file descriptors in its
+	 * message buffers. Follow those links and mark them 
+	 * as accessible too.
+	 */
+	info->locked_fp = fp;
+/*	spin_lock_wr(&so->so_rcv.sb_spin); */
+	unp_scan(so->so_rcv.sb_mb, unp_mark, info);
+/*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
+	return (0);
 }
 
 void
 unp_dispose(struct mbuf *m)
 {
 	if (m)
-		unp_scan(m, unp_discard);
+		unp_scan(m, unp_discard, NULL);
 }
 
 static int
@@ -1271,7 +1344,7 @@ unp_listen(struct unpcb *unp, struct thread *td)
 }
 
 static void
-unp_scan(struct mbuf *m0, void (*op)(struct file *))
+unp_scan(struct mbuf *m0, void (*op)(struct file *, void *), void *data)
 {
 	struct mbuf *m;
 	struct file **rp;
@@ -1280,7 +1353,7 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *))
 	int qfds;
 
 	while (m0) {
-		for (m = m0; m; m = m->m_next)
+		for (m = m0; m; m = m->m_next) {
 			if (m->m_type == MT_CONTROL &&
 			    m->m_len >= sizeof(*cm)) {
 				cm = mtod(m, struct cmsghdr *);
@@ -1292,28 +1365,36 @@ unp_scan(struct mbuf *m0, void (*op)(struct file *))
 						/ sizeof (struct file *);
 				rp = (struct file **)CMSG_DATA(cm);
 				for (i = 0; i < qfds; i++)
-					(*op)(*rp++);
+					(*op)(*rp++, data);
 				break;		/* XXX, but saves time */
 			}
+		}
 		m0 = m0->m_nextpkt;
 	}
 }
 
 static void
-unp_mark(struct file *fp)
+unp_mark(struct file *fp, void *data)
 {
+	struct unp_gc_info *info = data;
 
+	if (info->locked_fp != fp)
+		spin_lock_wr(&fp->f_spin);
 	if (fp->f_flag & FMARK)
 		return;
-	unp_defer++;
+	++info->defer;
 	fp->f_flag |= (FMARK|FDEFER);
+	if (info->locked_fp != fp)
+		spin_unlock_wr(&fp->f_spin);
 }
 
 static void
-unp_discard(struct file *fp)
+unp_discard(struct file *fp, void *data __unused)
 {
-
+	spin_lock_wr(&unp_spin);
 	fp->f_msgcount--;
 	unp_rights--;
+	spin_unlock_wr(&unp_spin);
 	closef(fp, NULL);
 }
+

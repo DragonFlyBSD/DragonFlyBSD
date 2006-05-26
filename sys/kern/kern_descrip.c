@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.64 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.65 2006/05/26 02:26:01 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -151,8 +151,9 @@ static int badfo_shutdown (struct file *fp, int how);
 /*
  * Descriptor management.
  */
-struct filelist filehead;	/* head of list of open files */
-int nfiles;			/* actual number of open files */
+static struct filelist filehead = LIST_HEAD_INITIALIZER(&filehead);
+static struct spinlock filehead_spin = SPINLOCK_INITIALIZER(&filehead_spin);
+static int nfiles;		/* actual number of open files */
 extern int cmask;	
 
 /*
@@ -1206,7 +1207,7 @@ fdavail(struct proc *p, int n)
  *	returns success, fsetfd() MUST be called to either associate the
  *	file pointer or clear the reservation.
  *
- * NOT MPSAFE (MPUNSAFE) - crhold()
+ * MPSAFE
  */
 int
 falloc(struct proc *p, struct file **resultfp, int *resultfd)
@@ -1234,7 +1235,6 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	/*
 	 * Allocate a new file descriptor.
 	 */
-	nfiles++;
 	fp = malloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
 	spin_init(&fp->f_spin);
 	fp->f_count = 1;
@@ -1244,7 +1244,10 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 		fp->f_cred = crhold(p->p_ucred);
 	else
 		fp->f_cred = crhold(proc0.p_ucred);
+	spin_lock_wr(&filehead_spin);
+	nfiles++;
 	LIST_INSERT_HEAD(&filehead, fp, f_list);
+	spin_unlock_wr(&filehead_spin);
 	if (resultfd) {
 		if ((error = fdalloc(p, 0, resultfd)) != 0) {
 			fdrop(fp);
@@ -1419,13 +1422,15 @@ void
 ffree(struct file *fp)
 {
 	KASSERT((fp->f_count == 0), ("ffree: fp_fcount not 0!"));
+	spin_lock_wr(&filehead_spin);
 	LIST_REMOVE(fp, f_list);
+	nfiles--;
+	spin_unlock_wr(&filehead_spin);
 	crfree(fp->f_cred);
 	if (fp->f_ncp) {
 	    cache_drop(fp->f_ncp);
 	    fp->f_ncp = NULL;
 	}
-	nfiles--;
 	free(fp, M_FILE);
 }
 
@@ -2310,6 +2315,34 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 		fdtol->fdl_prev = fdtol;
 	}
 	return fdtol;
+}
+
+/*
+ * Scan all file pointers in the system.  The callback is made with
+ * both the master list spinlock held and the fp spinlock held,
+ * both exclusively.
+ *
+ * MPSAFE
+ *
+ * WARNING: both the filehead spinlock and the file pointer spinlock are
+ * held exclusively when the callback is made.  The file pointer is not
+ * referenced.
+ */
+void
+allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
+{
+	struct file *fp;
+	int res;
+
+	spin_lock_wr(&filehead_spin);
+	LIST_FOREACH(fp, &filehead, f_list) {
+		spin_lock_wr(&fp->f_spin);
+		res = callback(fp, data);
+		spin_unlock_wr(&fp->f_spin);
+		if (res < 0)
+			break;
+	}
+	spin_unlock_wr(&filehead_spin);
 }
 
 /*

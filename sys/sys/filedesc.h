@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.18 2006/05/24 03:23:33 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.19 2006/05/26 02:26:26 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -181,6 +181,7 @@ int	fsetown (pid_t, struct sigio **);
 void	funsetown (struct sigio *);
 void	funsetownlst (struct sigiolst *);
 void	setugidsafety (struct proc *p);
+void	allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data);
 
 struct filedesc_to_leader *
 filedesc_to_leader_alloc(struct filedesc_to_leader *old,

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.19 2006/05/22 00:52:31 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.20 2006/05/26 02:26:26 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -90,22 +90,21 @@ struct	fileops {
 #define	FOF_OFFSET	1	/* fo_read(), fo_write() flags */
 
 /*
- * Kernel descriptor table.
- * One entry for each open kernel vnode and socket.
+ * Kernel descriptor table - One entry for each open kernel vnode and socket.
+ *
+ * (A) - (filehead_spin) - descriptor subsystems only (kern/kern_descrip.c)
+ * (U) - (unp_spin) 	 - uipc subsystems only (kern/uipc_usrreq.c)
+ * (ro)- these fields may be read without holding a spinlock as long as you
+ *       have (or know) that the reference to the fp is going to stay put.
+ * ?   - remaining fields have to be spinlocked
  */
 struct file {
-	LIST_ENTRY(file) f_list;/* list of active files */
-	short	f_FILLER3;	/* (old f_flag) */
-#define	DTYPE_VNODE	1	/* file */
-#define	DTYPE_SOCKET	2	/* communications endpoint */
-#define	DTYPE_PIPE	3	/* pipe */
-#define	DTYPE_FIFO	4	/* fifo (named pipe) */
-#define	DTYPE_KQUEUE	5	/* event queue */
-#define DTYPE_CRYPTO	6	/* crypto */
-	short	f_type;		/* descriptor type */
+	LIST_ENTRY(file) f_list;/* (A) list of active files */
+	short	f_FILLER3;
+	short	f_type;		/* (ro) descriptor type */
 	u_int	f_flag;		/* see fcntl.h */
-	struct	ucred *f_cred;	/* credentials associated with descriptor */
-	struct  fileops *f_ops;
+	struct	ucred *f_cred;	/* (ro) creds associated with descriptor */
+	struct  fileops *f_ops;	/* (ro) operations vector */
 	int	f_seqcount;	/*
 				 * count of sequential accesses -- cleared
 				 * by most seek operations.
@@ -116,10 +115,17 @@ struct file {
 	off_t	f_offset;
 	void   *f_data;		/* vnode, pipe, socket, or kqueue */
 	int	f_count;	/* reference count */
-	int	f_msgcount;	/* reference count from message queue */
+	int	f_msgcount;	/* (U) reference count from message queue */
 	struct namecache *f_ncp; /* ncp (required for directories) */
 	struct spinlock f_spin;
 };
+
+#define	DTYPE_VNODE	1	/* file */
+#define	DTYPE_SOCKET	2	/* communications endpoint */
+#define	DTYPE_PIPE	3	/* pipe */
+#define	DTYPE_FIFO	4	/* fifo (named pipe) */
+#define	DTYPE_KQUEUE	5	/* event queue */
+#define DTYPE_CRYPTO	6	/* crypto */
 
 LIST_HEAD(filelist, file);
 
@@ -147,14 +153,12 @@ extern int nofo_shutdown(struct file *fp, int how);
 extern int fp_close(struct file *fp);
 extern int fp_shutdown(struct file *fp, int how);
 
-extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnode_fileops;
 extern struct fileops specvnode_fileops;
 extern struct fileops badfileops;
 extern int maxfiles;		/* kernel limit on number of open files */
 extern int maxfilesrootres;	/* descriptors reserved for root use */
 extern int maxfilesperproc;	/* per process limit on number of open files */
-extern int nfiles;		/* actual number of open files */
 
 #endif /* _KERNEL */
 

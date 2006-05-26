@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock.h,v 1.4 2006/05/21 20:23:27 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock.h,v 1.5 2006/05/26 02:26:26 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK_H_
@@ -45,6 +45,8 @@ struct spinlock {
 };
 
 #define SPINLOCK_EXCLUSIVE	0x80000000
+
+#define SPINLOCK_INITIALIZER(head)	{ 0 }
 
 #endif
 
