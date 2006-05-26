@@ -28,7 +28,7 @@
 .\"
 .\"	$ANA: addr2ascii.3,v 1.1 1996/06/13 18:41:46 wollman Exp $
 .\" $FreeBSD: src/lib/libc/net/addr2ascii.3,v 1.7.2.5 2001/12/14 18:33:55 ru Exp $
-.\" $DragonFly: src/lib/libc/net/addr2ascii.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/net/addr2ascii.3,v 1.3 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd June 13, 1996
 .Dt ADDR2ASCII 3
@@ -107,15 +107,15 @@ addresses in the specified family:
 .It Dv AF_INET
 .Li struct in_addr
 (in
-.Aq Pa netinet/in.h )
+.In netinet/in.h )
 .It Dv AF_LINK
 .Li struct sockaddr_dl
 (in
-.Aq Pa net/if_dl.h )
+.In net/if_dl.h )
 .\" .It Dv AF_INET6
 .\" .Li struct in6_addr
 .\" (in
-.\" .Aq Pa netinet6/in6.h )
+.\" .In netinet6/in6.h )
 .El
 .Sh RETURN VALUES
 The

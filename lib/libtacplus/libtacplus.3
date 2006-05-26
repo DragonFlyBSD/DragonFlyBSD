@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libtacplus/libtacplus.3,v 1.3.2.7 2002/10/09 08:50:42 pst Exp $
-.\" $DragonFly: src/lib/libtacplus/libtacplus.3,v 1.3 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libtacplus/libtacplus.3,v 1.4 2006/05/26 19:39:38 swildner Exp $
 .\"
 .Dd September 2, 1998
 .Dt LIBTACPLUS 3
@@ -169,7 +169,7 @@ and
 .Va service
 arguments must be set to appropriate values as defined in the
 TACACS+ protocol specification.  The
-.Aq taclib.h
+.In taclib.h
 header file contains symbolic constants for these values.
 .Sh CREATING A TACACS+ AUTHORIZATION REQUEST
 To begin constructing a new authorization request, call
@@ -181,7 +181,7 @@ and
 .Va service
 arguments must be set to appropriate values as defined in the
 TACACS+ protocol specification.  The
-.Aq taclib.h
+.In taclib.h
 header file contains symbolic constants for these values.
 .Sh SETTING OPTIONAL PARAMETERS ON A REQUEST
 After creating a request,
@@ -223,7 +223,7 @@ packed into an integer value.  The status can be extracted using the
 macro
 .Fn TAC_AUTHEN_STATUS .
 Possible status codes, defined in
-.Aq taclib.h ,
+.In taclib.h ,
 include:
 .Pp
 .Bl -item -compact -offset indent
@@ -313,7 +313,7 @@ number of attribute value (AV) pairs received packed into an
 integer value.  The status can be extracted using the macro
 .Fn TAC_AUTHOR_STATUS .
 Possible status codes, defined in
-.Aq taclib.h ,
+.In taclib.h ,
 include:
 .Pp
 .Bl -item -compact -offset indent

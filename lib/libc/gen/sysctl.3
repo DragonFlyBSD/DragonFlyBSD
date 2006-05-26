@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.5 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd January 23, 2001
 .Dt SYSCTL 3
@@ -181,7 +181,7 @@ for (i = 0; i < 100; i++) {
 .Ed
 .Pp
 The top level names are defined with a CTL_ prefix in
-.Aq Pa sys/sysctl.h ,
+.In sys/sysctl.h ,
 and are as follows.
 The next and subsequent levels down are found in the include files
 listed here, and described in separate sections below.
@@ -745,24 +745,24 @@ pageout daemon will enter "memory conserving mode" to avoid deadlock.
 .Sh RETURN VALUES
 .Rv -std
 .Sh FILES
-.Bl -tag -width <netinet/icmpXvar.h> -compact
-.It Aq Pa sys/sysctl.h
+.Bl -tag -width ".In netinet/icmp_var.h" -compact
+.It In sys/sysctl.h
 definitions for top level identifiers, second level kernel and hardware
 identifiers, and user level identifiers
-.It Aq Pa sys/socket.h
+.It In sys/socket.h
 definitions for second level network identifiers
-.It Aq Pa sys/gmon.h
+.It In sys/gmon.h
 definitions for third level profiling identifiers
-.It Aq Pa vm/vm_param.h
+.It In vm/vm_param.h
 definitions for second level virtual memory identifiers
-.It Aq Pa netinet/in.h
+.It In netinet/in.h
 definitions for third level IPv4/IPv6 identifiers and
 fourth level IPv4/v6 identifiers
-.It Aq Pa netinet/icmp_var.h
+.It In netinet/icmp_var.h
 definitions for fourth level ICMP identifiers
-.It Aq Pa netinet/icmp6.h
+.It In netinet/icmp6.h
 definitions for fourth level ICMPv6 identifiers
-.It Aq Pa netinet/udp_var.h
+.It In netinet/udp_var.h
 definitions for fourth level UDP identifiers
 .El
 .Sh ERRORS

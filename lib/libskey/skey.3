@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libskey/skey.3,v 1.10.2.1 2000/04/22 16:36:00 phantom Exp $
-.\" $DragonFly: src/lib/libskey/skey.3,v 1.4 2006/02/17 19:35:07 swildner Exp $
+.\" $DragonFly: src/lib/libskey/skey.3,v 1.5 2006/05/26 19:39:38 swildner Exp $
 .\"
 .Dd December 22, 1996
 .Dt SKEY 3
@@ -40,8 +40,8 @@
 .Sh LIBRARY
 .Lb libskey
 .Sh SYNOPSIS
-.Fd #include <stdio.h>
-.Fd #include <skey.h>
+.In stdio.h
+.In skey.h
 .Ft int
 .Fn skeylookup "struct skey *mp" "const char *name"
 .Ft int

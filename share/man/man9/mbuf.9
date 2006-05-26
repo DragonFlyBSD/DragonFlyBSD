@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.3 2004/12/18 21:55:21 liamfoy Exp $
+.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd October 17, 2000
 .Dt MBUF 9
@@ -119,7 +119,7 @@ buffer for data.
 The mbuf's total size,
 .Dv MSIZE ,
 is a machine-dependent constant defined in
-.Pa machine/param.h .
+.In machine/param.h .
 The mbuf header includes:
 .Pp
 .Bl -tag -width "m_nextpkt" -compact -offset indent

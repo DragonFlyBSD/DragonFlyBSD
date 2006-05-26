@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)quotactl.2	8.2 (Berkeley) 3/10/95
 .\" $FreeBSD: src/lib/libc/sys/quotactl.2,v 1.12.2.7 2002/05/20 09:06:37 roam Exp $
-.\" $DragonFly: src/lib/libc/sys/quotactl.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/quotactl.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd March 5, 1999
 .Dt QUOTACTL 2
@@ -62,7 +62,7 @@ operates on the given filename
 for the given user
 .Fa id .
 (NOTE: One should use the QCMD macro defined in
-.Ao Pa ufs/ufs/quota.h Ac
+.In ufs/ufs/quota.h
 to formulate the value for
 .Fa cmd . )
 The address of an optional command specific data structure,
@@ -117,7 +117,7 @@ Get disk quota limits and current usage for the user or group
 is a pointer to a
 .Fa struct dqblk
 structure (defined in
-.Ao Pa ufs/ufs/quota.h Ac ) .
+.In ufs/ufs/quota.h ) .
 .It Dv Q_SETQUOTA
 Set disk quota limits for the user or group
 (as determined by the command type) with identifier
@@ -126,7 +126,7 @@ Set disk quota limits for the user or group
 is a pointer to a
 .Fa struct dqblk
 structure (defined in
-.Ao Pa ufs/ufs/quota.h Ac ) .
+.In ufs/ufs/quota.h ) .
 The usage fields of the
 .Fa dqblk
 structure are ignored.
@@ -139,7 +139,7 @@ Set disk usage limits for the user or group
 is a pointer to a
 .Fa struct dqblk
 structure (defined in
-.Ao Pa ufs/ufs/quota.h Ac ) .
+.In ufs/ufs/quota.h ) .
 Only the usage fields are used.
 This call is restricted to the super-user.
 .It Dv Q_SYNC

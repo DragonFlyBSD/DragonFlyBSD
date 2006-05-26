@@ -34,7 +34,7 @@
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
 .\" $FreeBSD: src/bin/sh/sh.1,v 1.39.2.25 2003/02/13 19:28:08 fanf Exp $
-.\" $DragonFly: src/bin/sh/sh.1,v 1.3 2006/04/11 11:57:00 reed Exp $
+.\" $DragonFly: src/bin/sh/sh.1,v 1.4 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd May 5, 1995
 .Dt SH 1
@@ -585,7 +585,7 @@ an executed shell function.
 .Pp
 If a command is terminated by a signal, its exit status is 128 plus
 the signal number.  Signal numbers are defined in the header file
-.Aq Pa sys/signal.h .
+.In sys/signal.h .
 .Ss Complex Commands
 Complex commands are combinations of simple commands
 with control operators or reserved words, together creating a larger complex

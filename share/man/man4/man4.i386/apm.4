@@ -10,7 +10,7 @@
 .\" use.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/apm.4,v 1.13.2.5 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.3 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/apm.4,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd November 1, 1994
 .Dt APM 4 i386
@@ -49,7 +49,7 @@ exports an application interface as a character device.  Applications
 can control APM, or retrieve APM status information via this interface.
 .Nm
 exports the following interfaces.  These symbols are defined in
-.Dq Pa /usr/include/machine/apm_bios.h .
+.In machine/apm_bios.h .
 .Bl -tag -width 4n -offset indent
 .It Sy APMIO_SUSPEND
 Suspend system.

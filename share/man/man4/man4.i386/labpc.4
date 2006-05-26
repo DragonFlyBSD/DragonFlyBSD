@@ -28,7 +28,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/labpc.4,v 1.8.2.2 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/labpc.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/labpc.4,v 1.3 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd April 26, 1995
 .Dt LABPC 4 i386
@@ -82,7 +82,9 @@ User's Manual\fP and the source code if this doesn't make sense to
 you.
 .Pp
 The driver supports several general analog I/O ioctl calls.  These
-are defined in sys/dataacq.h and are intended to be implemented in
+are defined in
+.In sys/dataacq.h
+and are intended to be implemented in
 other data acquisition board device drivers.
 .Pp
 AD_MICRO_PERIOD_SET takes a pointer to a long argument specifying

@@ -1,6 +1,6 @@
 .\" $NetBSD: tun.4,v 1.1 1996/06/25 22:17:37 pk Exp $
 .\" $FreeBSD: src/share/man/man4/tun.4,v 1.9.2.4 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/tun.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/tun.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
 .\" Based on PR#2411
 .\"
 .Dd March 10, 1996
@@ -130,7 +130,7 @@ The following
 .Xr ioctl 2
 calls are supported
 (defined in
-.Aq Pa net/if_tun.h ) :
+.In net/tun/if_tun.h ) :
 .Bl -tag -width ".Dv TUNSIFMODE"
 .It Dv TUNSDEBUG
 The argument should be a pointer to an
@@ -150,7 +150,7 @@ device.
 The
 .Vt struct tuninfo
 is declared in
-.Aq Pa net/if_tun.h .
+.In net/tun/if_tun.h .
 .It Dv TUNGIFINFO
 The argument should be a pointer to an
 .Vt struct tuninfo ,

@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_vjc.4,v 1.17.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_vjc.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_vjc.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
 .\" $Whistle: ng_vjc.8,v 1.4 1999/01/25 23:46:28 archie Exp $
 .\"
 .Dd January 19, 1999
@@ -44,7 +44,7 @@
 .Nd Van Jacobson compression netgraph node type
 .Sh SYNOPSIS
 .In net/slcompress.h
-.In netgraph/ng_vjc.h
+.In netgraph/vjc/ng_vjc.h
 .Sh DESCRIPTION
 The
 .Nm vjc
@@ -164,7 +164,7 @@ below).
 This command returns the node's current state described by the
 .Dv "struct slcompress"
 structure, which is defined in
-.Pa net/slcompress.h .
+.In net/slcompress.h .
 .It Dv NGM_VJC_CLR_STATS
 Clears the node statistics counters.  Statistics are also cleared whenever the
 .Dv enableComp

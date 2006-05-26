@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)getdirentries.2	8.2 (Berkeley) 5/3/95
 .\" $FreeBSD: src/lib/libc/sys/getdirentries.2,v 1.12.2.6 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getdirentries.2,v 1.3 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd May 3, 1995
 .Dt GETDIRENTRIES 2
@@ -98,7 +98,7 @@ The
 .Fa d_type
 entry is the type of the file pointed to by the directory record.
 The file type values are defined in
-.Fa <sys/dirent.h> .
+.In sys/dirent.h .
 The
 .Fa d_name
 entry contains a null terminated file name.

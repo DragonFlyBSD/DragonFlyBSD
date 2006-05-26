@@ -31,7 +31,7 @@
 .\"
 .\"	From: @(#)sigaction.2	8.2 (Berkeley) 4/3/94
 .\" $FreeBSD: src/lib/libc/sys/sigaction.2,v 1.22.2.10 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.6 2006/04/08 08:17:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/sigaction.2,v 1.7 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd April 3, 1994
 .Dt SIGACTION 2
@@ -269,7 +269,7 @@ signals that restart pending system calls continue to do so.
 .Pp
 The following is a list of all signals
 with names as in the include file
-.Aq Pa signal.h :
+.In signal.h :
 .Bl -column SIGVTALARMXX "create core imagexxx"
 .It Sy "NAME	Default Action	Description"
 .It Dv SIGHUP No "	terminate process" "	terminal line hangup"
@@ -480,7 +480,7 @@ The
 .Fa sig
 argument is the signal number, one of the
 .Dv SIG...
-values from <signal.h>.
+.In signal.h .
 .Pp
 The
 .Fa code
@@ -494,7 +494,8 @@ argument to a SA_SIGINFO handler contain a numeric code explaining the
 cause of the signal, usually one of the
 .Dv SI_...
 values from
-<sys/signal.h> or codes specific to a signal, i.e. one of the
+.In sys/signal.h
+or codes specific to a signal, i.e. one of the
 .Dv FPE_...
 values for SIGFPE.
 .Pp

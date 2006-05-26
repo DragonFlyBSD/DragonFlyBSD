@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.6 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man9/nlookup.9,v 1.7 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd August 6, 2005
 .Os
@@ -178,7 +178,7 @@ in the nlc.
 .Pp
 .Fn naccess
 generally checks the V* access bits from
-.Pa sys/vnode.h .
+.In sys/vnode.h .
 All specified bits must pass for this function to return 0.
 If
 .Dv VCREATE

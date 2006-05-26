@@ -24,7 +24,7 @@
 .\" DEALINGS IN THE SOFTWARE.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/pim.4,v 1.1 2003/10/17 15:12:01 bmah Exp $
-.\" $DragonFly: src/share/man/man4/pim.4,v 1.1 2003/10/18 21:40:41 hmp Exp $
+.\" $DragonFly: src/share/man/man4/pim.4,v 1.2 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd September 4, 2003
 .Dt PIM 4
@@ -41,7 +41,7 @@
 .In sys/types.h
 .In sys/socket.h
 .In netinet/in.h
-.In netinet/ip_mroute.h
+.In net/ip_mroute/ip_mroute.h
 .In netinet/pim.h
 .Ft int
 .Fn getsockopt "int s" IPPROTO_IP MRT_PIM "void *optval" "socklen_t *optlen"

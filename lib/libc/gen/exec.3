@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)exec.3	8.3 (Berkeley) 1/24/94
 .\" $FreeBSD: src/lib/libc/gen/exec.3,v 1.7.2.8 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/exec.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/exec.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd January 24, 1994
 .Dt EXEC 3
@@ -149,7 +149,7 @@ If this variable isn't specified,
 the default path is set according to the
 .Dv _PATH_DEFPATH
 definition in
-.Aq paths.h ,
+.In paths.h ,
 which is set to
 .Dq Ev /usr/bin:/bin .
 In addition, certain errors are treated specially.

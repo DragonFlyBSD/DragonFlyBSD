@@ -34,7 +34,7 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.5 2006/04/02 16:50:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.6 2006/05/26 19:39:39 swildner Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
 .Dd January 19, 1999
@@ -310,7 +310,7 @@ structure describing meta-data about the message
 .Dv NULL
 if there is no additional information. The format for this information is
 described in
-.Pa sys/netgraph/netgraph.h .
+.In netgraph/netgraph.h .
 The memory for meta-data must allocated via
 .Fn malloc
 with type
@@ -686,7 +686,7 @@ that node type.
 There are a number of standard predefined messages that will work
 for any node, as they are supported directly by the framework itself.
 These are defined in
-.Pa ng_message.h
+.In netgraph/ng_message.h
 along with the basic layout of messages and other similar information.
 .Bl -tag -width xxx
 .It Dv NGM_CONNECT
@@ -961,7 +961,7 @@ Two macros
 and
 .Fn NG_FREE_DATA "m" "meta"
 should be used if possible to free data and meta data (see
-.Pa netgraph.h ) .
+.In netgraph/netgraph.h ) .
 .It 3
 Messages sent using
 .Fn ng_send_message
@@ -971,19 +971,19 @@ recipient should copy them if it wants to keep that information.
 .El
 .Sh FILES
 .Bl -tag -width xxxxx -compact
-.It Pa /sys/netgraph/netgraph.h
+.It In netgraph/netgraph.h
 Definitions for use solely within the kernel by
 .Nm
 nodes.
-.It Pa /sys/netgraph/ng_message.h
+.It In netgraph/ng_message.h
 Definitions needed by any file that needs to deal with
 .Nm
 messages.
-.It Pa /sys/netgraph/ng_socket.h
+.It In netgraph/socket/ng_socket.h
 Definitions needed to use
 .Nm
 socket type nodes.
-.It Pa /sys/netgraph/ng_{type}.h
+.It In netgraph/{type}/ng_{type}.h
 Definitions needed to use
 .Nm
 {type}

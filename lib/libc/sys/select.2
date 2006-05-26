@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)select.2	8.2 (Berkeley) 3/25/94
 .\" $FreeBSD: src/lib/libc/sys/select.2,v 1.14.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/select.2,v 1.6 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/select.2,v 1.7 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd March 25, 1994
 .Dt SELECT 2
@@ -183,7 +183,7 @@ it is possible
 to increase this size by having the program define
 .Dv FD_SETSIZE
 before the inclusion of any header which includes
-.Aq Pa sys/types.h .
+.In sys/types.h .
 .Pp
 If
 .Fa nfds

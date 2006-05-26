@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/spkr.4,v 1.13.2.6 2001/12/17 11:30:13 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/spkr.4,v 1.4 2006/02/28 02:25:10 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/spkr.4,v 1.5 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd November 7, 1993
 .Dt SPKR 4 i386
@@ -48,7 +48,7 @@ on a speaker file descriptor to control the
 speaker driver directly; definitions for the
 .Xr ioctl 2
 interface are in
-.Pa /usr/include/machine/speaker.h .
+.In machine/speaker.h .
 The
 .Li tone_t
 structure used in these calls has two fields,

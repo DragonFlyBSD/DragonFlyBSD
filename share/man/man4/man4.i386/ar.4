@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/ar.4,v 1.17.2.4 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/ar.4,v 1.4 2006/04/02 16:50:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/ar.4,v 1.5 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd November 19, 1995
 .Dt AR 4 i386
@@ -84,11 +84,11 @@ prepended, e.g.,
 .Dv sync_ar0 .
 .Sh FILES
 .Bl -tag -width /sys/i386/isa/ic/hd64570.h -compact
+.It Pa /sys/dev/netif/ar/if_ar.c
+.It Pa /sys/dev/netif/ar/if_ar.h
+.It Pa /sys/dev/netif/ar/if_ar_pci.c
+.It Pa /sys/dev/netif/ar/if_arregs.h
 .It Pa /sys/i386/isa/ic/hd64570.h
-.It Pa /sys/i386/isa/if_arregs.h
-.It Pa /sys/i386/isa/if_ar.c
-.It Pa /sys/i386/isa/if_ar.h
-.It Pa /sys/pci/if_ar_p.c
 .El
 .Sh DIAGNOSTICS
 .Bl -diag

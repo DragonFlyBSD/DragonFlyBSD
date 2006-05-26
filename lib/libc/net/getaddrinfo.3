@@ -1,7 +1,7 @@
 .\"	$KAME: getaddrinfo.3,v 1.36 2005/01/05 03:23:05 itojun Exp $
 .\"	$OpenBSD: getaddrinfo.3,v 1.35 2004/12/21 03:40:31 jaredy Exp $
 .\"	$FreeBSD: src/lib/libc/net/getaddrinfo.3,v 1.29 2005/01/23 16:02:48 gnn Exp $
-.\"	$DragonFly: src/lib/libc/net/getaddrinfo.3,v 1.3 2005/01/23 17:03:13 hrs Exp $
+.\"	$DragonFly: src/lib/libc/net/getaddrinfo.3,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
 .\" Copyright (C) 2004  Internet Systems Consortium, Inc. ("ISC")
 .\" Copyright (C) 2000, 2001  Internet Software Consortium.
@@ -26,9 +26,9 @@
 .Nm freeaddrinfo
 .Nd socket address structure to host and service name
 .Sh SYNOPSIS
-.Fd #include <sys/types.h>
-.Fd #include <sys/socket.h>
-.Fd #include <netdb.h>
+.In sys/types.h
+.In sys/socket.h
+.In netdb.h
 .Ft int
 .Fn getaddrinfo "const char *hostname" "const char *servname" \
     "const struct addrinfo *hints" "struct addrinfo **res"
@@ -72,7 +72,7 @@ must be non-null.
 is an optional pointer to a
 .Li struct addrinfo ,
 as defined by
-.Aq Pa netdb.h :
+.In netdb.h :
 .Bd -literal
 struct addrinfo {
 	int ai_flags;		/* input flags */

@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pfsync.4,v 1.14 2004/03/21 19:47:59 miod Exp $
-.\"	$DragonFly: src/share/man/man4/pfsync.4,v 1.3 2006/04/17 18:01:37 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/pfsync.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
 .\"
 .\" Copyright (c) 2002 Michael Shalayeff
 .\" All rights reserved.
@@ -81,7 +81,7 @@ The header indicates the version of the protocol, address family,
 action taken on the following states and the number of state
 table entries attached in this packet.
 This structure, defined in
-.Aq Pa net/if_pfsync.h
+.In net/pf/if_pfsync.h
 looks like:
 .Bd -literal -offset indent
 struct pfsync_header {

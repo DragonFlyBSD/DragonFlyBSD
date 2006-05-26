@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pflogd.8,v 1.24 2004/01/16 10:45:49 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pflogd/pflogd.8,v 1.2 2005/08/05 15:35:53 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pflogd/pflogd.8,v 1.3 2006/05/26 19:39:41 swildner Exp $
 .\"
 .\" Copyright (c) 2001 Can Erkin Acar.  All rights reserved.
 .\"
@@ -144,7 +144,7 @@ operation of
 .Pp
 Tcpdump has been extended to be able to filter on the pfloghdr
 structure defined in
-.Aq Ar net/if_pflog.h .
+.In net/pf/if_pflog.h .
 Tcpdump can restrict the output
 to packets logged on a specified interface, a rule number, a reason,
 a direction, an IP family or an action.

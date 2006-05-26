@@ -30,7 +30,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/msgctl.3,v 1.8.2.7 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/msgctl.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/msgctl.3,v 1.3 2006/05/26 19:39:36 swildner Exp $
 .\"/
 .Dd November 24, 1997
 .Dt MSGCTL 3
@@ -59,7 +59,7 @@ may be altered by
 and parts of which determine the actions of
 .Fn msgctl .
 The data structure is defined in
-.Aq Pa sys/msg.h
+.In sys/msg.h
 and contains (amongst others) the following members:
 .Bd -literal
 struct msqid_ds {
@@ -86,7 +86,7 @@ The
 structure used inside the
 .Vt shmid_ds
 structure is defined in
-.Aq Pa sys/ipc.h
+.In sys/ipc.h
 and looks like this:
 .Bd -literal
 struct ipc_perm {
@@ -134,7 +134,7 @@ can only be increased by the super-user.
 Values for
 .Va msg_qbytes
 that exceed the system limit (MSGMNB from
-.Aq Pa sys/msg.h )
+.In sys/msg.h )
 are silently truncated to that limit.
 .It Dv IPC_RMID
 Remove the message queue specified by

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)resolver.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/net/resolver.3,v 1.11.2.7 2001/12/14 18:33:55 ru Exp $
-.\" $DragonFly: src/lib/libc/net/resolver.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
+.\" $DragonFly: src/lib/libc/net/resolver.3,v 1.3 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt RESOLVER 3
@@ -116,7 +116,7 @@ Options
 stored in
 .Em _res.options
 are defined in
-.Pa resolv.h
+.In resolv.h
 and are as follows.
 Options are stored as a simple bit mask containing the bitwise ``or''
 of the options enabled.
@@ -274,7 +274,7 @@ The query type
 is usually
 .Dv QUERY ,
 but can be any of the query types defined in
-.Aq Pa arpa/nameser.h .
+.In arpa/nameser.h .
 The domain name for the query is given by
 .Fa dname .
 .Fa Newrr

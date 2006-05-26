@@ -1,5 +1,5 @@
 .\"	$OpenBSD: ftp-proxy.8,v 1.41 2004/07/06 19:49:11 dhartmei Exp $
-.\"	$DragonFly: src/libexec/ftp-proxy/ftp-proxy.8,v 1.3 2006/04/08 21:57:05 swildner Exp $
+.\"	$DragonFly: src/libexec/ftp-proxy/ftp-proxy.8,v 1.4 2006/05/26 19:39:38 swildner Exp $
 .\"
 .\" Copyright (c) 1996-2001
 .\"	Obtuse Systems Corporation, All rights reserved.
@@ -112,7 +112,7 @@ data connections it establishes.
 The default is
 .Dv IPPORT_HILASTAUTO
 defined in
-.Aq Pa netinet/in.h
+.In netinet/in.h
 as 65535.
 .It Fl m Ar minport
 Specify the lower end of the port range the proxy will use for all
@@ -120,7 +120,7 @@ data connections it establishes.
 The default is
 .Dv IPPORT_HIFIRSTAUTO
 defined in
-.Aq Pa netinet/in.h
+.In netinet/in.h
 as 49152.
 .It Fl n
 Activate network address translation

@@ -27,7 +27,7 @@
 .\"
 .\"	@(#)dbopen.3	8.5 (Berkeley) 1/2/94
 .\" $FreeBSD: src/lib/libc/db/man/dbopen.3,v 1.3.2.3 2003/02/23 19:45:52 trhodes Exp $
-.\" $DragonFly: src/lib/libc/db/man/dbopen.3,v 1.3 2005/09/19 09:04:17 asmodai Exp $
+.\" $DragonFly: src/lib/libc/db/man/dbopen.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd September 19, 2005
 .Dt DBOPEN 3
@@ -116,7 +116,7 @@ The
 argument is of type
 .Ft DBTYPE
 (as defined in the
-.Aq Pa db.h
+.In db.h
 include file) and
 may be set to
 .Dv DB_BTREE , DB_HASH
@@ -145,7 +145,7 @@ on error.
 The
 .Ft DB
 structure is defined in the
-.Aq Pa db.h
+.In db.h
 include file, and contains at
 least the following fields:
 .Bd -literal

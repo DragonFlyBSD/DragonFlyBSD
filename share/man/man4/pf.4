@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.4,v 1.46 2004/02/19 21:29:51 cedric Exp $
-.\"	$DragonFly: src/share/man/man4/pf.4,v 1.2 2005/12/28 13:35:02 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/pf.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
 .\"
 .\" Copyright (C) 2001, Kjell Wooding.  All rights reserved.
 .\"
@@ -613,7 +613,9 @@ are set to the TCP MSS, the TCP window size, the IP length and the IP TTL of
 the TCP SYN packet respectively.
 The
 .Va fp_flags
-member is filled according to the net/pfvar.h include file PF_OSFP_* defines.
+member is filled according to the
+.In net/pfvar.h
+include file PF_OSFP_* defines.
 The
 .Va fp_getnum
 is not used with this ioctl.

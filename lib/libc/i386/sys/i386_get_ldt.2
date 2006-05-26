@@ -31,7 +31,7 @@
 .\"
 .\"     from: @(#)fork.2	6.5 (Berkeley) 3/10/91
 .\" $FreeBSD: src/lib/libc/i386/sys/i386_get_ldt.2,v 1.6.2.7 2001/12/14 18:33:54 ru Exp $
-.\" $DragonFly: src/lib/libc/i386/sys/i386_get_ldt.2,v 1.4 2006/03/26 22:56:56 swildner Exp $
+.\" $DragonFly: src/lib/libc/i386/sys/i386_get_ldt.2,v 1.5 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd September 20, 1993
 .Dt I386_GET_LDT 2
@@ -67,7 +67,7 @@ and the number of entries to set or return
 The argument
 .Fa descs
 can be either segment_descriptor or gate_descriptor and are defined in
-.Aq Pa i386/segments.h .
+.In machine/segments.h .
 These structures are defined by the architecture
 as disjoint bit-fields, so care must be taken in constructing them.
 .Sh RETURN VALUES

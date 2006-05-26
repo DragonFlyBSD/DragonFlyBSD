@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getfsent.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/getfsent.3,v 1.5.2.4 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/getfsent.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/getfsent.3,v 1.3 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETFSENT 3
@@ -67,7 +67,7 @@ functions
 each return a pointer to an object with the following structure
 containing the broken-out fields of a line in the file system
 description file,
-.Aq Pa fstab.h .
+.In fstab.h .
 .Bd -literal -offset indent
 struct fstab {
 	char	*fs_spec;	/* block special device name */

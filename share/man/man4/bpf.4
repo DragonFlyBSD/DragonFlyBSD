@@ -21,7 +21,7 @@
 .\" distributed with 4.3BSD Unix.
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/bpf.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bpf.4,v 1.5 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd January 16, 1996
 .Dt BPF 4
@@ -98,7 +98,7 @@ links are supported.
 The
 .Xr ioctl 2
 command codes below are defined in
-.Aq Pa net/bpf.h .
+.In net/bpf.h .
 All commands require
 these includes:
 .Bd -literal
@@ -113,9 +113,9 @@ Additionally,
 and
 .Dv BIOCSETIF
 require
-.Aq Pa sys/socket.h
+.In sys/socket.h
 and
-.Aq Pa net/if.h .
+.In net/if.h .
 .Pp
 In addition to
 .Dv FIONREAD
@@ -153,7 +153,7 @@ is returned if no interface has been specified.
 The device types, prefixed with
 .Dq Li DLT_ ,
 are defined in
-.Aq Pa net/bpf.h .
+.In net/bpf.h .
 .It Dv BIOCPROMISC
 Forces the interface into promiscuous mode.
 All packets, not just those destined for the local host, are processed.
@@ -271,7 +271,7 @@ The current version numbers are given by
 and
 .Dv BPF_MINOR_VERSION
 from
-.Aq Pa net/bpf.h .
+.In net/bpf.h .
 An incompatible filter
 may result in undefined behavior (most likely, an error returned by
 .Fn ioctl
@@ -349,7 +349,7 @@ has some knowledge of how to get from packet to packet.
 The macro
 .Dv BPF_WORDALIGN
 is defined in
-.Aq Pa net/bpf.h
+.In net/bpf.h
 to facilitate
 this process.  It rounds up its argument
 to the nearest word aligned value (where a word is
@@ -412,7 +412,7 @@ and
 Various other mode and
 operator bits are or'd into the class to give the actual instructions.
 The classes and modes are defined in
-.Aq Pa net/bpf.h .
+.In net/bpf.h .
 .Pp
 Below are the semantics for each defined
 .Nm

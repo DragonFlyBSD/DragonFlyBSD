@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)gethostname.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/gen/gethostname.3,v 1.5.2.6 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/gethostname.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
+.\" $DragonFly: src/lib/libc/gen/gethostname.3,v 1.4 2006/05/26 19:39:36 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETHOSTNAME 3
@@ -99,7 +99,7 @@ function appeared in
 Host names are limited to
 .Dv MAXHOSTNAMELEN
 (from
-.Ao Pa sys/param.h Ac )
+.In sys/param.h )
 characters, currently 256.
 This includes the trailing
 .Dv NUL .

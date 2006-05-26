@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)termios.4	8.4 (Berkeley) 4/19/94
 .\" $FreeBSD: src/share/man/man4/termios.4,v 1.12.2.9 2001/12/17 11:30:12 ru Exp $
-.\" $DragonFly: src/share/man/man4/termios.4,v 1.3 2005/12/28 13:35:02 swildner Exp $
+.\" $DragonFly: src/share/man/man4/termios.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt TERMIOS 4
@@ -762,7 +762,7 @@ Routines that need to control certain terminal
 .Tn I/O
 characteristics
 do so by using the termios structure as defined in the header
-.Aq Pa termios.h .
+.In termios.h .
 This structure contains minimally four scalar elements of bit flags
 and one array of special characters.  The scalar flag elements are
 named:
@@ -1406,7 +1406,7 @@ The special control characters values are defined by the array
 This table lists the array index, the corresponding special character,
 and the system default value.  For an accurate list of
 the system defaults, consult the header file
-.Aq Pa ttydefaults.h .
+.In sys/ttydefaults.h .
 .Pp
 .Bl -column "Index Name" "Special Character" -offset indent -compact
 .It Em "Index Name	Special Character	Default Value"
@@ -1455,4 +1455,4 @@ after
 .Fn open
 is set according to
 the values in the header
-.Aq Pa sys/ttydefaults.h .
+.In sys/ttydefaults.h .

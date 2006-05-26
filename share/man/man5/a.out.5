@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)a.out.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/a.out.5,v 1.10.2.4 2002/04/16 14:50:18 trhodes Exp $
-.\" $DragonFly: src/share/man/man5/a.out.5,v 1.2 2003/06/17 04:37:00 dillon Exp $
+.\" $DragonFly: src/share/man/man5/a.out.5,v 1.3 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt A.OUT 5
@@ -46,7 +46,7 @@
 .In a.out.h
 .Sh DESCRIPTION
 The include file
-.Aq Pa a.out.h
+.In a.out.h
 declares three structures and several macros.
 The structures describe the format of
 executable machine code files
@@ -191,7 +191,7 @@ Contains the size in bytes of the data relocation table.
 .El
 .Pp
 The
-.Pa a.out.h
+.In a.out.h
 include file defines several macros which use an
 .Fa exec
 structure to test consistency or to locate section offsets in the binary file.
@@ -408,7 +408,7 @@ field hold one of two values:
 and
 .Dv AUX_OBJECT
 (see
-.Aq Pa link.h
+.In link.h
 for their definitions).
 .Dv AUX_FUNC
 associates the symbol with a callable function, while
@@ -447,7 +447,7 @@ is always 4 on 32-bit machines.
 .Xr stab 5
 .Sh HISTORY
 The
-.Pa a.out.h
+.In a.out.h
 include file appeared in
 .At v7 .
 .Sh BUGS

@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/usr.bin/file/file.1,v 1.16.2.10 2003/03/16 04:47:04 obrien Exp $
-.\" $DragonFly: src/usr.bin/file/Attic/file.1,v 1.3 2006/02/17 19:39:04 swildner Exp $
+.\" $DragonFly: src/usr.bin/file/Attic/file.1,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .\" $Id: file.man,v 1.44 2003/02/27 20:47:46 christos Exp $
 .Dd February 27, 2003
 .Dt FILE 1 "Copyright but distributable"
@@ -75,17 +75,16 @@ Any known file types appropriate to the system you are running on
 implement them)
 are intuited if they are defined in
 the system header file
-.Aq Pa sys/stat.h .
+.In sys/stat.h .
 .Pp
 The magic number tests are used to check for files with data in
 particular fixed formats.
 The canonical example of this is a binary executable (compiled program)
 .Pa a.out
 file, whose format is defined in
-.Aq Pa a.out.h
+.In a.out.h
 and possibly
-.Aq Pa exec.h
-in the standard include directory.
+.In machine/exec.h .
 These files have a
 .Sq "magic number"
 stored in a particular place

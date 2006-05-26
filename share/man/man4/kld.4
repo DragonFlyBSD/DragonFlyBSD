@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/kld.4,v 1.5.2.6 2001/08/17 13:08:38 ru Exp $
-.\" $DragonFly: src/share/man/man4/kld.4,v 1.5 2006/05/22 06:26:29 swildner Exp $
+.\" $DragonFly: src/share/man/man4/kld.4,v 1.6 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd May 21, 2006
 .Dt KLD 4
@@ -108,10 +108,10 @@ which should run the appropriate program to create the devices when the
 driver has been successfully loaded.
 .El
 .Sh FILES
-.Bl -tag -width /usr/include/sys/module.h -compact
+.Bl -tag -width ".In sys/module.h" -compact
 .It Pa /modules
 directory containing module binaries shipped with the system
-.It Pa /usr/include/sys/module.h
+.It In sys/module.h
 file containing definitions required to compile a
 .Nm
 module

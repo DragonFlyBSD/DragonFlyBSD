@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/targ.4,v 1.3.2.1 2003/02/18 22:07:11 njl Exp $
-.\" $DragonFly: src/share/man/man4/targ.4,v 1.3 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/targ.4,v 1.4 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd November 15, 2002
 .Dt TARG 4
@@ -71,7 +71,7 @@ Any data transfers requested by the user CCBs are done via zero-copy IO.
 The following
 .Xr ioctl 2
 calls are defined in the header file
-.Aq Pa cam/scsi/scsi_targetio.h .
+.In bus/cam/scsi/scsi_targetio.h .
 .Bl -tag -width ".Dv TARGIOCDISABLE"
 .It Dv TARGIOCENABLE
 .Pq Vt "struct ioc_enable_lun"
@@ -113,7 +113,7 @@ it.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /sys/cam/scsi/scsi_target.c" -compact
-.It Aq Pa cam/scsi/scsi_targetio.h
+.It In bus/cam/scsi/scsi_targetio.h
 describes the usermode interface.
 .It Pa /sys/cam/scsi/scsi_target.c
 is the driver source file.

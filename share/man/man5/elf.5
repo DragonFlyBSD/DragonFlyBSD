@@ -23,7 +23,7 @@
 .\"SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/share/man/man5/elf.5,v 1.6.2.8 2001/12/17 11:30:13 ru Exp $
-.\"	$DragonFly: src/share/man/man5/elf.5,v 1.3 2005/07/13 18:33:50 asmodai Exp $
+.\"	$DragonFly: src/share/man/man5/elf.5,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd July 31, 1999
 .Dt ELF 5
@@ -35,7 +35,7 @@
 .In elf.h
 .Sh DESCRIPTION
 The header file
-.Aq Pa elf.h
+.In elf.h
 defines the format of ELF executable binary files.
 Amongst these files are
 normal executable files, relocatable object files, core files and shared
@@ -52,7 +52,7 @@ the file.
 .Pp
 Applications which wish to process ELF binary files for their native
 architecture only should include
-.Pa elf.h
+.In elf.h
 in their source code.
 These applications should need to refer to
 all the types and structures by their generic names
@@ -64,11 +64,11 @@ regardless whether the host is 32-bit or 64-bit.
 .Pp
 Should an application need to process ELF files of an unknown
 architecture then the application needs to include both
-.Pa sys/elf32.h
+.In sys/elf32.h
 and
-.Pa sys/elf64.h
+.In sys/elf64.h
 instead of
-.Pa elf.h .
+.In elf.h .
 Furthermore, all types and structures need to be identified by either
 .Dq Elf32_xxx
 or
@@ -79,9 +79,9 @@ or
 .Dq ELF64_xxx .
 .Pp
 Whatever the system's architecture is, it will always include
-.Pa sys/elf_common.h
+.In sys/elf_common.h
 as well as
-.Pa sys/elf_generic.h .
+.In sys/elf_generic.h .
 .Pp
 These header files describe the above mentioned headers as C structures
 and also include structures for dynamic sections, relocation sections and

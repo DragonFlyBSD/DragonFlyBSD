@@ -1,5 +1,5 @@
 .\"	$FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.1.2.5 2001/12/14 18:33:55 ru Exp $
-.\"	$DragonFly: src/lib/libc/net/getifaddrs.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
+.\"	$DragonFly: src/lib/libc/net/getifaddrs.3,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"	$KAME: getifaddrs.3,v 1.4 2000/05/17 14:13:14 itojun Exp $
 .\"	BSDI	getifaddrs.3,v 2.5 2000/02/23 14:51:59 dab Exp
 .\"
@@ -46,7 +46,7 @@ on the local machine in the memory referenced by
 The list consists of
 .Nm ifaddrs
 structures, as defined in the include file
-.Aq Pa ifaddrs.h .
+.In ifaddrs.h .
 The
 .Nm ifaddrs
 structure contains at least the following entries:
@@ -116,12 +116,12 @@ field references address family specific data.  For
 addresses it contains a pointer to the
 .Fa struct if_data
 (as defined in include file
-.Aq Pa net/if.h )
+.In net/if.h )
 which contains various interface attributes and statistics.
 For all other address families, it contains a pointer to the
 .Fa struct ifa_data
 (as defined in include file
-.Aq Pa net/if.h )
+.In net/if.h )
 which contains per-address interface statistics.
 .Pp
 The data returned by
@@ -155,11 +155,11 @@ implementation first appeared in BSDi
 .Bsx .
 .Sh BUGS
 If both
-.Aq Pa net/if.h
+.In net/if.h
 and
-.Aq Pa ifaddrs.h
+.In ifaddrs.h
 are being included,
-.Aq Pa net/if.h
+.In net/if.h
 .Em must
 be included before
-.Aq Pa ifaddrs.h .
+.In ifaddrs.h .

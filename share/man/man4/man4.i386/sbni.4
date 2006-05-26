@@ -22,7 +22,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sbni.4,v 1.1.2.1 2003/04/15 17:23:32 fjoe Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sbni.4,v 1.5 2005/12/10 00:22:29 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sbni.4,v 1.6 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd January 8, 2002
 .Dt SBNI 4 i386
@@ -87,9 +87,9 @@ device sbni1 at isa? port 0x214 irq 7 flags 0xd6abcdef
 The sources for the driver reside in:
 .Pp
 .Bl -tag -compact
-.It Pa /sys/dev/sbni/if_sbni.c
-.It Pa /sys/dev/sbni/if_sbnireg.h
-.It Pa /sys/dev/sbni/if_sbnivar.h
+.It Pa /sys/dev/netif/sbni/if_sbni.c
+.It Pa /sys/dev/netif/sbni/if_sbnireg.h
+.It Pa /sys/dev/netif/sbni/if_sbnivar.h
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,

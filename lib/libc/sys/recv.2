@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)recv.2	8.3 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/recv.2,v 1.8.2.8 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.4 2006/03/27 07:35:45 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/recv.2,v 1.5 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd February 21, 1994
 .Dt RECV 2
@@ -147,7 +147,7 @@ call uses a
 .Fa msghdr
 structure to minimize the number of directly supplied parameters.
 This structure has the following form, as defined in
-.Ao Pa sys/socket.h Ac :
+.In sys/socket.h :
 .Pp
 .Bd -literal
 struct msghdr {
@@ -217,7 +217,7 @@ In this case,
 should be a structure of type
 .Fa cmsgcred ,
 which is defined in
-.Ao Pa sys/socket.h Ac
+.In sys/socket.h
 as follows:
 .Pp
 .Bd -literal

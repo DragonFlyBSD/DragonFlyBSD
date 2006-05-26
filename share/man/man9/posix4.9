@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/posix4.9,v 1.5.2.5 2001/08/17 13:08:54 ru Exp $
-.\" $DragonFly: src/share/man/man9/posix4.9,v 1.3 2004/03/11 12:28:57 hmp Exp $
+.\" $DragonFly: src/share/man/man9/posix4.9,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .Dd March 1, 1998
 .Dt POSIX.1B 9
 .Os
@@ -67,9 +67,12 @@ in the name space, i.e., if _POSIX_VERSION is 199309L (POSIX.1B) but
 _POSIX_C_SOURCE is 199009L (POSIX.1) then only POSIX.1 features should
 appear.
 .Sh PROPERLY HIDING EXTENSIONS
-The following test macros are set up in <sys/_posix.h>.  They should
+The following test macros are set up in
+.In sys/_posix.h .
+They should
 used by system header files to avoid the kind of tests you see in
-<sys/_posix.h>.  Source programs should not use these
+.In sys/_posix.h .
+Source programs should not use these
 .Dx
 specific
 implementation details and should test _POSIX_VERSION, _POSIX_SOURCE
@@ -83,7 +86,8 @@ the P1003_1B option.
 _P1003_1B_VISIBLE
 .Ed
 is a test macro that sorts out when extensions should be
-visible.  It is defined in <sys/_posix.h>.
+visible.  It is defined in
+.In sys/_posix.h .
 .Pp
 In normal C program development
 only _POSIX_VERSION is set, permitting
@@ -93,7 +97,9 @@ appear to the programs.  However, when adding new functionality mandated
 by POSIX.1B, it
 is important to satisfy the requirements added by the
 new _POSIX_C_SOURCE macro.  _P1003_1B_VISIBLE (not a standard feature test macro)
-is defined in sys/unistd.h when the combination of _POSIX_VERSION,
+is defined in
+.In sys/unistd.h
+when the combination of _POSIX_VERSION,
 _POSIX_SOURCE, and _POSIX_C_SOURCE indicate that the extensions are in scope.
 .Bd -literal -offset 0i
 _P1003_1B_VISIBLE_HISTORICALLY
@@ -114,7 +120,9 @@ be dependent on _P1003_1B_VISIBLE instead of _HISTORICALLY.
 Traditional
 .Bx
 headers (e.g., mmap.h) now specified
-in POSIX.1B can include <sys/_posix.h> and conditionalize
+in POSIX.1B can include
+.In sys/_posix.h
+and conditionalize
 .Bx
 extensions on _P1003_1B_VISIBLE_HISTORICALLY.
 .Sh NON STANDARD TEST MACROS

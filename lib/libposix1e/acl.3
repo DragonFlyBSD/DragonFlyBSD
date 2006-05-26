@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libposix1e/acl.3,v 1.2.2.5 2001/12/20 16:27:06 ru Exp $
-.\" $DragonFly: src/lib/libposix1e/acl.3,v 1.4 2005/08/01 01:49:16 swildner Exp $
+.\" $DragonFly: src/lib/libposix1e/acl.3,v 1.5 2006/05/26 19:39:38 swildner Exp $
 .\"
 .Dd January 28, 2000
 .Dt ACL 3
@@ -61,7 +61,9 @@ a third party library was under development at the time this document
 was written.  There is a general consensus that the POSIX.1e manipulation
 routines are ambiguously defined in the specification, and don't meet the
 needs of most applications.  For the time being, applications may
-directly manipulate the ACL structures, defined in acl.h, although the
+directly manipulate the ACL structures, defined in
+.In sys/acl.h ,
+although the
 recommended usage is to only ever handle text-form ACLs in applications,
 generated and maintained using
 .Fn acl_from_text

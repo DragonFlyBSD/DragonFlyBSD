@@ -35,7 +35,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mi_switch.9,v 1.7.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/Attic/mi_switch.9,v 1.5 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man9/Attic/mi_switch.9,v 1.6 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd November 24, 1996
 .Dt MI_SWITCH 9
@@ -112,8 +112,8 @@ priority queue data-structure.
 The priority queue consists of an array
 .Va qs[NQS]
 of queue header structures each of which identifies a list of runnable
-processes of equal priority
-.Pq see Fa <sys/proc.h> .
+processes of equal priority (see
+.In sys/proc.h ) .
 A single word
 .Va whichqs
 containing a bit mask identifying non-empty queues assists in selecting

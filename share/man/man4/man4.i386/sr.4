@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sr.4,v 1.15.2.4 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.4 2006/04/02 16:50:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.5 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd July 4, 1996
 .Dt SR 4 i386
@@ -112,11 +112,11 @@ prepended, e.g.,
 .Dv sync_sr0 .
 .Sh FILES
 .Bl -tag -width /sys/i386/isa/ic/hd64570.h -compact
+.It Pa /sys/dev/netif/sr/if_sr.c
+.It Pa /sys/dev/netif/sr/if_sr.h
+.It Pa /sys/dev/netif/sr/if_sr_pci.c
+.It Pa /sys/dev/netif/sr/if_srregs.h
 .It Pa /sys/i386/isa/ic/hd64570.h
-.It Pa /sys/i386/isa/if_srregs.h
-.It Pa /sys/i386/isa/if_sr.c
-.It Pa /sys/i386/isa/if_sr.h
-.It Pa /sys/pci/if_sr_p.c
 .El
 .Sh DIAGNOSTICS
 .Bl -diag

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)unix.4	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/share/man/man4/unix.4,v 1.3.2.4 2002/04/22 08:59:53 dd Exp $
-.\" $DragonFly: src/share/man/man4/unix.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/unix.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd July 15, 2001
 .Dt UNIX 4
@@ -63,7 +63,7 @@ filesystem pathnames for addressing.
 addresses are variable-length filesystem pathnames of
 at most 104 characters.
 The include file
-.Aq Pa sys/un.h
+.In sys/un.h
 defines this address:
 .Bd -literal -offset indent
 struct sockaddr_un {
@@ -126,7 +126,7 @@ Any valid descriptor may be sent in a message.
 The file descriptor(s) to be passed are described using a
 .Vt "struct cmsghdr"
 that is defined in the include file
-.Aq Pa sys/socket.h .
+.In sys/socket.h .
 The type of the message is
 .Dv SCM_RIGHTS ,
 and the data portion of the messages is an array of integers
@@ -161,7 +161,7 @@ of the server.
 These will arrive in the form of a filled in
 .Vt "struct xucred"
 (defined in
-.Aq Pa sys/ucred.h ) .
+.In sys/ucred.h ) .
 The credentials presented to the server (the
 .Xr listen 2
 caller) are those of the client when it called

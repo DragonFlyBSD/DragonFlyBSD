@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)socket.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/socket.2,v 1.12.2.11 2002/12/29 16:35:34 schweikh Exp $
-.\" $DragonFly: src/lib/libc/sys/socket.2,v 1.3 2005/01/26 21:52:36 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/socket.2,v 1.4 2006/05/26 19:39:37 swildner Exp $
 .\"
 .Dd November 24, 1997
 .Dt SOCKET 2
@@ -56,7 +56,7 @@ parameter specifies a communications domain within which
 communication will take place; this selects the protocol family
 which should be used.
 These families are defined in the include file
-.Ao Pa sys/socket.h Ac .
+.In sys/socket.h .
 The currently understood formats are:
 .Pp
 .Bd -literal -offset indent -compact
@@ -242,7 +242,7 @@ via
 The operation of sockets is controlled by socket level
 .Em options .
 These options are defined in the file
-.Ao Pa sys/socket.h Ac .
+.In sys/socket.h .
 .Xr Setsockopt 2
 and
 .Xr getsockopt 2

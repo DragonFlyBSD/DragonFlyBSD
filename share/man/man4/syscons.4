@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/syscons.4,v 1.5 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man4/syscons.4,v 1.6 2006/05/26 19:39:39 swildner Exp $
 .\"
 .Dd January 28, 2005
 .Dt SYSCONS 4
@@ -313,7 +313,7 @@ above.
 .It Dv SC_KERNEL_CONS_REV_ATTR=_attribute_
 These options will set the default colors.
 Available colors are defined in
-.Pa /usr/include/machine/pc/display.h .
+.In machine/pc/display.h .
 See
 .Sx EXAMPLES
 below.
@@ -416,7 +416,7 @@ The following
 commands are defined for the
 .Nm
 driver in
-.Aq Pa sys/consio.h .
+.In sys/consio.h .
 .Pp
 .Bl -tag -width CONS -compact
 .It Dv KDGETMODE Ar int *mode
@@ -689,7 +689,7 @@ Prevent or permit terminal switching.
 The following
 .Xr ioctl 2
 commands are defined for switching video modes. See
-.Aq Pa sys/fbio.h
+.In sys/fbio.h
 for defined mode numbers (commands for higher mode numbers have to be
 supplied by the programmer):
 .Dv SW_B40x25 ,

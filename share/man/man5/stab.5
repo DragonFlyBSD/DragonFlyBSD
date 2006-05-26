@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)stab.5	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man5/stab.5,v 1.4.2.5 2001/12/17 11:30:15 ru Exp $
-.\" $DragonFly: src/share/man/man5/stab.5,v 1.3 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man5/stab.5,v 1.4 2006/05/26 19:39:40 swildner Exp $
 .\"
 .Dd June 5, 1993
 .Dt STAB 5
@@ -43,7 +43,7 @@
 .In stab.h
 .Sh DESCRIPTION
 The file
-.Aq Pa stab.h
+.In stab.h
 defines some of the symbol table
 .Fa n_type
 field values for a.out files.
@@ -95,7 +95,7 @@ The low bits of the
 field are used to place a symbol into
 at most one segment, according to
 the following masks, defined in
-.Aq Pa a.out.h .
+.In a.out.h .
 A symbol can be in none of these segments by having none of these segment
 bits set.
 .Bd -literal
