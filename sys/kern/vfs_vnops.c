@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.39 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.40 2006/05/26 00:33:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -480,7 +480,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 }
 
 /*
- * File table vnode read routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -488,6 +488,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int error, ioflag;
 
+	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not td %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
@@ -507,6 +508,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	VOP_UNLOCK(vp, 0);
+	rel_mplock();
 	return (error);
 }
 
@@ -515,6 +517,8 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
  *
  * This bypasses the VOP table and talks directly to the device.  Most
  * filesystems just route to specfs and can make this optimization.
+ *
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -524,19 +528,26 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	int error;
 	dev_t dev;
 
+	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not td %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD)
-		return (EBADF);
+	if (vp == NULL || vp->v_type == VBAD) {
+		error = EBADF;
+		goto done;
+	}
 
-	if ((dev = vp->v_rdev) == NULL)
-		return (EBADF);
+	if ((dev = vp->v_rdev) == NULL) {
+		error = EBADF;
+		goto done;
+	}
 	reference_dev(dev);
 
-	if (uio->uio_resid == 0)
-		return (0);
+	if (uio->uio_resid == 0) {
+		error = 0;
+		goto done;
+	}
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -553,11 +564,13 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
+done:
+	rel_mplock();
 	return (error);
 }
 
 /*
- * File table vnode write routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -565,6 +578,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	struct vnode *vp;
 	int error, ioflag;
 
+	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_procp %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
@@ -590,6 +604,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	VOP_UNLOCK(vp, 0);
+	rel_mplock();
 	return (error);
 }
 
@@ -598,6 +613,8 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
  *
  * This bypasses the VOP table and talks directly to the device.  Most
  * filesystems just route to specfs and can make this optimization.
+ *
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
@@ -607,18 +624,23 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	int error;
 	dev_t dev;
 
+	get_mplock();
 	KASSERT(uio->uio_td == curthread,
 		("uio_procp %p is not p %p", uio->uio_td, curthread));
 
 	vp = (struct vnode *)fp->f_data;
-	if (vp == NULL || vp->v_type == VBAD)
-		return (EBADF);
+	if (vp == NULL || vp->v_type == VBAD) {
+		error = EBADF;
+		goto done;
+	}
 	if (vp->v_type == VREG)
 		bwillwrite();
 	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
 
-	if ((dev = vp->v_rdev) == NULL)
-		return (EBADF);
+	if ((dev = vp->v_rdev) == NULL) {
+		error = EBADF;
+		goto done;
+	}
 	reference_dev(dev);
 
 	if ((flags & FOF_OFFSET) == 0)
@@ -642,19 +664,25 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-
+done:
+	rel_mplock();
 	return (error);
 }
 
 /*
- * File table vnode stat routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_statfile(struct file *fp, struct stat *sb, struct ucred *cred)
 {
-	struct vnode *vp = (struct vnode *)fp->f_data;
+	struct vnode *vp;
+	int error;
 
-	return vn_stat(vp, sb, cred);
+	get_mplock();
+	vp = (struct vnode *)fp->f_data;
+	error = vn_stat(vp, sb, cred);
+	rel_mplock();
+	return (error);
 }
 
 int
@@ -790,7 +818,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 }
 
 /*
- * File table vnode ioctl routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
@@ -800,18 +828,22 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 	struct vattr vattr;
 	int error;
 
+	get_mplock();
+
 	switch (vp->v_type) {
 	case VREG:
 	case VDIR:
 		if (com == FIONREAD) {
-			error = VOP_GETATTR(vp, &vattr);
-			if (error)
-				return (error);
+			if ((error = VOP_GETATTR(vp, &vattr)) != 0)
+				break;
 			*(int *)data = vattr.va_size - fp->f_offset;
-			return (0);
+			error = 0;
+			break;
 		}
-		if (com == FIONBIO || com == FIOASYNC)	/* XXX */
-			return (0);			/* XXX */
+		if (com == FIONBIO || com == FIOASYNC) {	/* XXX */
+			error = 0;				/* XXX */
+			break;
+		}
 		/* fall into ... */
 	default:
 #if 0
@@ -821,23 +853,30 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 	case VCHR:
 	case VBLK:
 		if (com == FIODTYPE) {
-			if (vp->v_type != VCHR && vp->v_type != VBLK)
-				return (ENOTTY);
+			if (vp->v_type != VCHR && vp->v_type != VBLK) {
+				error = ENOTTY;
+				break;
+			}
 			*(int *)data = dev_dflags(vp->v_rdev) & D_TYPEMASK;
-			return (0);
+			error = 0;
+			break;
 		}
 		error = VOP_IOCTL(vp, com, data, fp->f_flag, ucred);
 		if (error == 0 && com == TIOCSCTTY) {
 			struct proc *p = curthread->td_proc;
 			struct session *sess;
 
-			if (p == NULL)
-				return (ENOTTY);
+			if (p == NULL) {
+				error = ENOTTY;
+				break;
+			}
 
 			sess = p->p_session;
 			/* Do nothing if reassigning same control tty */
-			if (sess->s_ttyvp == vp)
-				return (0);
+			if (sess->s_ttyvp == vp) {
+				error = 0;
+				break;
+			}
 
 			/* Get rid of reference to old control tty */
 			ovp = sess->s_ttyvp;
@@ -846,17 +885,24 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 			if (ovp)
 				vrele(ovp);
 		}
-		return (error);
+		break;
 	}
+	rel_mplock();
+	return (error);
 }
 
 /*
- * File table vnode poll routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_poll(struct file *fp, int events, struct ucred *cred)
 {
-	return (VOP_POLL(((struct vnode *)fp->f_data), events, cred));
+	int error;
+
+	get_mplock();
+	error = VOP_POLL(((struct vnode *)fp->f_data), events, cred);
+	rel_mplock();
+	return (error);
 }
 
 /*
@@ -895,21 +941,30 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 }
 
 /*
- * File table vnode close routine.
+ * MPALMOSTSAFE - acquires mplock
  */
 static int
 vn_closefile(struct file *fp)
 {
-	int err;
+	int error;
 
+	get_mplock();
 	fp->f_ops = &badfileops;
-	err = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
-	return(err);
+	error = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
+	rel_mplock();
+	return(error);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 vn_kqfilter(struct file *fp, struct knote *kn)
 {
+	int error;
 
-	return (VOP_KQFILTER(((struct vnode *)fp->f_data), kn));
+	get_mplock();
+	error = VOP_KQFILTER(((struct vnode *)fp->f_data), kn);
+	rel_mplock();
+	return (error);
 }

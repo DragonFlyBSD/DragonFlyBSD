@@ -32,7 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.7 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.8 2006/05/26 00:33:13 dillon Exp $
  */
 
 #ifndef _SYS_UCRED_H_
@@ -44,6 +44,9 @@
 #ifndef _SYS_PARAM_H_
 #include <sys/param.h>
 #endif
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
 
 struct prison;
 
@@ -54,7 +57,7 @@ struct prison;
  * Only the suser()/suser_cred() function should be used for this.
  */
 struct ucred {
-	u_int	cr_ref;			/* reference count */
+	int	cr_ref;			/* reference count */
 	uid_t	cr_uid;			/* effective user id */
 	short	cr_ngroups;		/* number of groups */
 	gid_t	cr_groups[NGROUPS];	/* groups */
@@ -65,7 +68,7 @@ struct ucred {
 	uid_t   cr_svuid;		/* Saved effective user id. */
 	gid_t   cr_rgid;		/* Real group id. */
 	gid_t   cr_svgid;		/* Saved effective group id. */
-	int     cr_refcnt;		/* Number of references. */
+	struct spinlock	cr_spin;
 };
 #define cr_gid cr_groups[0]
 #define NOCRED ((struct ucred *)0)	/* no credential available */
@@ -95,6 +98,7 @@ struct ucred	*cratom (struct ucred **pcr);
 struct ucred	*crcopy (struct ucred *cr);
 struct ucred	*crdup (struct ucred *cr);
 void		crfree (struct ucred *cr);
+void		crinit (struct ucred *cr);
 struct ucred	*crget (void);
 struct ucred    *crhold (struct ucred *cr);
 void		cru2x (struct ucred *cr, struct xucred *xcr);

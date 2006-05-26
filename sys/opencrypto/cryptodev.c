@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.15 2006/05/22 21:21:23 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.16 2006/05/26 00:33:11 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -114,6 +114,9 @@ static int csefree(struct csession *);
 static	int cryptodev_op(struct csession *, struct crypt_op *);
 static	int cryptodev_key(struct crypt_kop *);
 
+/*
+ * MPSAFE
+ */
 static int
 cryptof_rw(
 	struct file *fp,
@@ -121,11 +124,12 @@ cryptof_rw(
 	struct ucred *active_cred,
 	int flags)
 {
-
 	return (EIO);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 cryptof_ioctl(
 	struct file *fp,
@@ -134,7 +138,7 @@ cryptof_ioctl(
 	struct ucred *cred)
 {
 	struct cryptoini cria, crie;
-	struct fcrypt *fcr = (struct fcrypt *)fp->f_data;
+	struct fcrypt *fcr;
 	struct csession *cse;
 	struct session_op *sop;
 	struct crypt_op *cop;
@@ -143,6 +147,9 @@ cryptof_ioctl(
 	u_int64_t sid;
 	u_int32_t ses;
 	int error = 0;
+
+	get_mplock();
+	fcr = (struct fcrypt *)fp->f_data;
 
 	switch (cmd) {
 	case CIOCGSESSION:
@@ -175,8 +182,11 @@ cryptof_ioctl(
 			txform = &enc_xform_arc4;
 			break;
 		default:
-			return (EINVAL);
+			error = EINVAL;
+			break;
 		}
+		if (error)
+			break;
 
 		switch (sop->mac) {
 		case 0:
@@ -194,8 +204,10 @@ cryptof_ioctl(
 				thash = &auth_hash_hmac_sha2_384;
 			else if (sop->mackeylen == auth_hash_hmac_sha2_512.keysize)
 				thash = &auth_hash_hmac_sha2_512;
-			else
-				return (EINVAL);
+			else {
+				error = EINVAL;
+				break;
+			}
 			break;
 		case CRYPTO_RIPEMD160_HMAC:
 			thash = &auth_hash_hmac_ripemd_160_96;
@@ -212,8 +224,11 @@ cryptof_ioctl(
 			thash = &auth_hash_null;
 			break;
 		default:
-			return (EINVAL);
+			error = EINVAL;
+			break;
 		}
+		if (error)
+			break;
 
 		bzero(&crie, sizeof(crie));
 		bzero(&cria, sizeof(cria));
@@ -279,16 +294,20 @@ bail:
 	case CIOCFSESSION:
 		ses = *(u_int32_t *)data;
 		cse = csefind(fcr, ses);
-		if (cse == NULL)
-			return (EINVAL);
+		if (cse == NULL) {
+			error = EINVAL;
+			break;
+		}
 		csedelete(fcr, cse);
 		error = csefree(cse);
 		break;
 	case CIOCCRYPT:
 		cop = (struct crypt_op *)data;
 		cse = csefind(fcr, cop->ses);
-		if (cse == NULL)
-			return (EINVAL);
+		if (cse == NULL) {
+			error = EINVAL;
+			break;
+		}
 		error = cryptodev_op(cse, cop);
 		break;
 	case CIOCKEY:
@@ -299,7 +318,9 @@ bail:
 		break;
 	default:
 		error = EINVAL;
+		break;
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -567,14 +588,18 @@ fail:
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 static int
 cryptof_poll(struct file *fp, int events, struct ucred *active_cred)
 {
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 static int
 cryptof_kqfilter(struct file *fp, struct knote *kn)
 {
@@ -582,27 +607,35 @@ cryptof_kqfilter(struct file *fp, struct knote *kn)
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPSAFE
+ */
 static int
 cryptof_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 {
 	return (EOPNOTSUPP);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 cryptof_close(struct file *fp)
 {
-	struct fcrypt *fcr = (struct fcrypt *)fp->f_data;
+	struct fcrypt *fcr;
 	struct csession *cse;
 
+	get_mplock();
+	fcr = (struct fcrypt *)fp->f_data;
 	while ((cse = TAILQ_FIRST(&fcr->csessions))) {
 		TAILQ_REMOVE(&fcr->csessions, cse, next);
 		(void)csefree(cse);
 	}
-	FREE(fcr, M_XDATA);
 	fp->f_data = NULL;
-	return 0;
+	rel_mplock();
+
+	FREE(fcr, M_XDATA);
+	return (0);
 }
 
 static struct csession *

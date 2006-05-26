@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.36 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.37 2006/05/26 00:33:09 dillon Exp $
  */
 
 /*
@@ -414,15 +414,19 @@ pipeselwakeup(cpipe)
 	KNOTE(&cpipe->pipe_sel.si_note, 0);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE (acquires mplock)
+ */
 static int
 pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-	struct pipe *rpipe = (struct pipe *) fp->f_data;
+	struct pipe *rpipe;
 	int error;
 	int nread = 0;
 	u_int size;
 
+	get_mplock();
+	rpipe = (struct pipe *) fp->f_data;
 	++rpipe->pipe_busy;
 	error = pipelock(rpipe, 1);
 	if (error)
@@ -622,6 +626,7 @@ unlocked_error:
 
 	if ((rpipe->pipe_buffer.size - rpipe->pipe_buffer.cnt) >= PIPE_BUF)
 		pipeselwakeup(rpipe);
+	rel_mplock();
 	return (error);
 }
 
@@ -848,7 +853,10 @@ error2:
 	return (error);
 }
 #endif
-	
+
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
@@ -856,6 +864,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	int orig_resid;
 	struct pipe *wpipe, *rpipe;
 
+	get_mplock();
 	rpipe = (struct pipe *) fp->f_data;
 	wpipe = rpipe->pipe_peer;
 
@@ -863,6 +872,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	 * detect loss of pipe read side, issue SIGPIPE if lost.
 	 */
 	if ((wpipe == NULL) || (wpipe->pipe_state & PIPE_EOF)) {
+		rel_mplock();
 		return (EPIPE);
 	}
 	++wpipe->pipe_busy;
@@ -895,6 +905,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			wpipe->pipe_state &= ~(PIPE_WANT | PIPE_WANTR);
 			wakeup(wpipe);
 		}
+		rel_mplock();
 		return(error);
 	}
 		
@@ -1118,31 +1129,36 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	 */
 	if (wpipe->pipe_buffer.cnt)
 		pipeselwakeup(wpipe);
-
+	rel_mplock();
 	return (error);
 }
 
 /*
+ * MPALMOSTSAFE - acquires mplock
+ *
  * we implement a very minimal set of ioctls for compatibility with sockets.
  */
 int
 pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
-	struct pipe *mpipe = (struct pipe *)fp->f_data;
+	struct pipe *mpipe;
+	int error;
+
+	get_mplock();
+	mpipe = (struct pipe *)fp->f_data;
 
 	switch (cmd) {
-
 	case FIONBIO:
-		return (0);
-
+		error = 0;
+		break;
 	case FIOASYNC:
 		if (*(int *)data) {
 			mpipe->pipe_state |= PIPE_ASYNC;
 		} else {
 			mpipe->pipe_state &= ~PIPE_ASYNC;
 		}
-		return (0);
-
+		error = 0;
+		break;
 	case FIONREAD:
 		if (mpipe->pipe_state & PIPE_DIRECTW) {
 			*(int *)data = mpipe->pipe_map.xio_bytes -
@@ -1150,35 +1166,45 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 		} else {
 			*(int *)data = mpipe->pipe_buffer.cnt;
 		}
-		return (0);
-
+		error = 0;
+		break;
 	case FIOSETOWN:
-		return (fsetown(*(int *)data, &mpipe->pipe_sigio));
-
+		error = fsetown(*(int *)data, &mpipe->pipe_sigio);
+		break;
 	case FIOGETOWN:
 		*(int *)data = fgetown(mpipe->pipe_sigio);
-		return (0);
-
-	/* This is deprecated, FIOSETOWN should be used instead. */
+		error = 0;
+		break;
 	case TIOCSPGRP:
-		return (fsetown(-(*(int *)data), &mpipe->pipe_sigio));
+		/* This is deprecated, FIOSETOWN should be used instead. */
+		error = fsetown(-(*(int *)data), &mpipe->pipe_sigio);
+		break;
 
-	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
+		/* This is deprecated, FIOGETOWN should be used instead. */
 		*(int *)data = -fgetown(mpipe->pipe_sigio);
-		return (0);
-
+		error = 0;
+		break;
+	default:
+		error = ENOTTY;
+		break;
 	}
-	return (ENOTTY);
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 pipe_poll(struct file *fp, int events, struct ucred *cred)
 {
-	struct pipe *rpipe = (struct pipe *)fp->f_data;
+	struct pipe *rpipe;
 	struct pipe *wpipe;
 	int revents = 0;
 
+	get_mplock();
+	rpipe = (struct pipe *)fp->f_data;
 	wpipe = rpipe->pipe_peer;
 	if (events & (POLLIN | POLLRDNORM))
 		if ((rpipe->pipe_state & PIPE_DIRECTW) ||
@@ -1208,14 +1234,20 @@ pipe_poll(struct file *fp, int events, struct ucred *cred)
 			wpipe->pipe_state |= PIPE_SEL;
 		}
 	}
-
+	rel_mplock();
 	return (revents);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 {
-	struct pipe *pipe = (struct pipe *)fp->f_data;
+	struct pipe *pipe;
+
+	get_mplock();
+	pipe = (struct pipe *)fp->f_data;
 
 	bzero((caddr_t)ub, sizeof(*ub));
 	ub->st_mode = S_IFIFO;
@@ -1234,32 +1266,41 @@ pipe_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	 * st_flags, st_gen.
 	 * XXX (st_dev, st_ino) should be unique.
 	 */
+	rel_mplock();
 	return (0);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 pipe_close(struct file *fp)
 {
 	struct pipe *cpipe = (struct pipe *)fp->f_data;
 
+	get_mplock();
 	fp->f_ops = &badfileops;
 	fp->f_data = NULL;
 	funsetown(cpipe->pipe_sigio);
 	pipeclose(cpipe);
+	rel_mplock();
 	return (0);
 }
 
 /*
  * Shutdown one or both directions of a full-duplex pipe.
+ *
+ * MPALMOSTSAFE - acquires mplock
  */
-/* ARGSUSED */
 static int
 pipe_shutdown(struct file *fp, int how)
 {
-	struct pipe *rpipe = (struct pipe *)fp->f_data;
+	struct pipe *rpipe;
 	struct pipe *wpipe;
 	int error = EPIPE;
+
+	get_mplock();
+	rpipe = (struct pipe *)fp->f_data;
 
 	switch(how) {
 	case SHUT_RDWR:
@@ -1283,6 +1324,7 @@ pipe_shutdown(struct file *fp, int how)
 			error = 0;
 		}
 	}
+	rel_mplock();
 	return (error);
 }
 
@@ -1368,11 +1410,16 @@ pipeclose(struct pipe *cpipe)
 	}
 }
 
-/*ARGSUSED*/
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 pipe_kqfilter(struct file *fp, struct knote *kn)
 {
-	struct pipe *cpipe = (struct pipe *)kn->kn_fp->f_data;
+	struct pipe *cpipe;
+
+	get_mplock();
+	cpipe = (struct pipe *)kn->kn_fp->f_data;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -1381,9 +1428,11 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 	case EVFILT_WRITE:
 		kn->kn_fop = &pipe_wfiltops;
 		cpipe = cpipe->pipe_peer;
-		if (cpipe == NULL)
+		if (cpipe == NULL) {
 			/* other end of pipe has been closed */
+			rel_mplock();
 			return (EPIPE);
+		}
 		break;
 	default:
 		return (1);
@@ -1391,6 +1440,7 @@ pipe_kqfilter(struct file *fp, struct knote *kn)
 	kn->kn_hook = (caddr_t)cpipe;
 
 	SLIST_INSERT_HEAD(&cpipe->pipe_sel.si_note, kn, kn_selnext);
+	rel_mplock();
 	return (0);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.24 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.25 2006/05/26 00:33:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,6 +70,9 @@ static int 	kqueue_stat(struct file *fp, struct stat *st,
 static int 	kqueue_close(struct file *fp);
 static void 	kqueue_wakeup(struct kqueue *kq);
 
+/*
+ * MPSAFE
+ */
 static struct fileops kqueueops = {
 	NULL,	/* port */
 	NULL,	/* clone */
@@ -148,17 +151,23 @@ filt_fileattach(struct knote *kn)
 	return (fo_kqfilter(kn->kn_fp, kn));
 }
 
-/*ARGSUSED*/
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 kqueue_kqfilter(struct file *fp, struct knote *kn)
 {
 	struct kqueue *kq = (struct kqueue *)kn->kn_fp->f_data;
 
-	if (kn->kn_filter != EVFILT_READ)
+	get_mplock();
+	if (kn->kn_filter != EVFILT_READ) {
+		rel_mplock();
 		return (1);
+	}
 
 	kn->kn_fop = &kqread_filtops;
 	SLIST_INSERT_HEAD(&kq->kq_sel.si_note, kn, kn_selnext);
+	rel_mplock();
 	return (0);
 }
 
@@ -375,15 +384,15 @@ kqueue(struct kqueue_args *uap)
 	fp->f_flag = FREAD | FWRITE;
 	fp->f_type = DTYPE_KQUEUE;
 	fp->f_ops = &kqueueops;
+
 	kq = malloc(sizeof(struct kqueue), M_KQUEUE, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&kq->kq_head);
+	kq->kq_fdp = fdp;
 	fp->f_data = kq;
+
 	fsetfd(p, fp, fd);
 	uap->sysmsg_result = fd;
 	fdrop(fp);
-	if (fdp->fd_knlistsize < 0)
-		fdp->fd_knlistsize = 0;		/* this process has a kq */
-	kq->kq_fdp = fdp;
 	return (error);
 }
 
@@ -719,35 +728,43 @@ done:
 /*
  * XXX
  * This could be expanded to call kqueue_scan, if desired.
+ *
+ * MPSAFE
  */
-/*ARGSUSED*/
 static int
 kqueue_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	return (ENXIO);
 }
 
-/*ARGSUSED*/
+/*
+ * MPSAFE
+ */
 static int
 kqueue_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
 	return (ENXIO);
 }
 
-/*ARGSUSED*/
+/*
+ * MPSAFE
+ */
 static int
 kqueue_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
 {
 	return (ENOTTY);
 }
 
-/*ARGSUSED*/
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 kqueue_poll(struct file *fp, int events, struct ucred *cred)
 {
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
 	int revents = 0;
 
+	get_mplock();
 	crit_enter();
         if (events & (POLLIN | POLLRDNORM)) {
                 if (kq->kq_count) {
@@ -758,10 +775,13 @@ kqueue_poll(struct file *fp, int events, struct ucred *cred)
 		}
 	}
 	crit_exit();
+	rel_mplock();
 	return (revents);
 }
 
-/*ARGSUSED*/
+/*
+ * MPSAFE
+ */
 static int
 kqueue_stat(struct file *fp, struct stat *st, struct ucred *cred)
 {
@@ -774,7 +794,9 @@ kqueue_stat(struct file *fp, struct stat *st, struct ucred *cred)
 	return (0);
 }
 
-/*ARGSUSED*/
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 static int
 kqueue_close(struct file *fp)
 {
@@ -786,6 +808,7 @@ kqueue_close(struct file *fp)
 	int i;
 
 	KKASSERT(p);
+	get_mplock();
 	fdp = p->p_fd;
 	for (i = 0; i < fdp->fd_knlistsize; i++) {
 		knp = &SLIST_FIRST(&fdp->fd_knlist[i]);
@@ -821,16 +844,16 @@ kqueue_close(struct file *fp)
 			}
 		}
 	}
-	free(kq, M_KQUEUE);
 	fp->f_data = NULL;
+	rel_mplock();
 
+	free(kq, M_KQUEUE);
 	return (0);
 }
 
 static void
 kqueue_wakeup(struct kqueue *kq)
 {
-
 	if (kq->kq_state & KQ_SLEEP) {
 		kq->kq_state &= ~KQ_SLEEP;
 		wakeup(kq);

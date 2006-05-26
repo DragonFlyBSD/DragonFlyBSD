@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.63 2006/05/25 07:36:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.64 2006/05/26 00:33:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1295,6 +1295,10 @@ fsetfd_locked(struct filedesc *fdp, struct file *fp, int fd)
 		fhold(fp);
 		fdp->fd_files[fd].fp = fp;
 		fdp->fd_files[fd].reserved = 0;
+		if (fp->f_type == DTYPE_KQUEUE) {
+			if (fdp->fd_knlistsize < 0)
+				fdp->fd_knlistsize = 0;
+		}
 	} else {
 		fdp->fd_files[fd].reserved = 0;
 		fdreserve_locked(fdp, fd, -1);
@@ -2433,6 +2437,9 @@ fildesc_drvinit(void *unused)
 	make_dev(&fildesc_cdevsw, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");
 }
 
+/*
+ * MPSAFE
+ */
 struct fileops badfileops = {
 	NULL,	/* port */
 	NULL,	/* clone */
@@ -2446,6 +2453,9 @@ struct fileops badfileops = {
 	badfo_shutdown
 };
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_readwrite(
 	struct file *fp,
@@ -2456,18 +2466,27 @@ badfo_readwrite(
 	return (EBADF);
 }
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *cred)
 {
 	return (EBADF);
 }
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_poll(struct file *fp, int events, struct ucred *cred)
 {
 	return (0);
 }
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_kqfilter(struct file *fp, struct knote *kn)
 {
@@ -2480,18 +2499,27 @@ badfo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 	return (EBADF);
 }
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_close(struct file *fp)
 {
 	return (EBADF);
 }
 
+/*
+ * MPSAFE
+ */
 static int
 badfo_shutdown(struct file *fp, int how)
 {
 	return (EBADF);
 }
 
+/*
+ * MPSAFE
+ */
 int
 nofo_shutdown(struct file *fp, int how)
 {

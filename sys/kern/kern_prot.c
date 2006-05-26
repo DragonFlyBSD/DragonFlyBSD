@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.23 2006/03/23 20:55:07 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.24 2006/05/26 00:33:09 dillon Exp $
  */
 
 /*
@@ -55,9 +55,12 @@
 #include <sys/malloc.h>
 #include <sys/pioctl.h>
 #include <sys/resourcevar.h>
-#include <sys/thread2.h>
 #include <sys/jail.h>
 #include <sys/lockf.h>
+#include <sys/spinlock.h>
+
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
@@ -870,7 +873,29 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 }
 
 /*
+ * MPSAFE
+ */
+static __inline void
+_crinit(struct ucred *cr)
+{
+	bzero(cr, sizeof(*cr));
+	cr->cr_ref = 1;
+	spin_init(&cr->cr_spin);
+}
+
+/*
+ * MPSAFE
+ */
+void
+crinit(struct ucred *cr)
+{
+	_crinit(cr);
+}
+
+/*
  * Allocate a zeroed cred structure.
+ *
+ * MPSAFE
  */
 struct ucred *
 crget(void)
@@ -878,45 +903,52 @@ crget(void)
 	struct ucred *cr;
 
 	MALLOC(cr, struct ucred *, sizeof(*cr), M_CRED, M_WAITOK);
-	bzero((caddr_t)cr, sizeof(*cr));
-	cr->cr_ref = 1;
+	_crinit(cr);
 	return (cr);
 }
 
 /*
  * Claim another reference to a ucred structure.  Can be used with special
  * creds.
+ *
+ * It must be possible to call this routine with spinlocks held, meaning
+ * that this routine itself cannot obtain a spinlock.
+ *
+ * MPSAFE
  */
 struct ucred *
 crhold(struct ucred *cr)
 {
 	if (cr != NOCRED && cr != FSCRED)
-		cr->cr_ref++;
+		atomic_add_int(&cr->cr_ref, 1);
 	return(cr);
 }
 
 /*
- * Free a cred structure.
- * Throws away space when ref count gets to 0.
- * MPSAFE
+ * Drop a reference from the cred structure, free it if the reference count
+ * reaches 0. 
+ *
+ * NOTE: because we used atomic_add_int() above, without a spinlock, we
+ * must also use atomic_subtract_int() below.  A spinlock is required
+ * in crfree() to handle multiple callers racing the refcount to 0.
+ *
+ * MPALMOSTSAFE - acquires mplock on 1->0 transition of ref count
  */
 void
 crfree(struct ucred *cr)
 {
-	/* Protect crfree() as a critical section as there
-	 * appears to be a crfree race  which can occur on
-	 * SMP systems.
-	 */
-	crit_enter();
-	if (cr->cr_ref == 0)
+	if (cr->cr_ref <= 0)
 		panic("Freeing already free credential! %p", cr);
-	
-	if (--cr->cr_ref == 0) {
+	spin_lock_wr(&cr->cr_spin);
+	atomic_subtract_int(&cr->cr_ref, 1);
+	if (cr->cr_ref == 0) {
+		spin_unlock_wr(&cr->cr_spin);
 		/*
 		 * Some callers of crget(), such as nfs_statfs(),
 		 * allocate a temporary credential, but don't
 		 * allocate a uidinfo structure.
 		 */
+		get_mplock();
 		if (cr->cr_uidinfo != NULL) {
 			uidrop(cr->cr_uidinfo);
 			cr->cr_uidinfo = NULL;
@@ -934,8 +966,10 @@ crfree(struct ucred *cr)
 		cr->cr_prison = NULL;	/* safety */
 
 		FREE((caddr_t)cr, M_CRED);
+		rel_mplock();
+	} else {
+		spin_unlock_wr(&cr->cr_spin);
 	}
-	crit_exit();
 }
 
 /*

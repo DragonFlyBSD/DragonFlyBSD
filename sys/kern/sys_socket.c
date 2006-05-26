@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.9 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.10 2006/05/26 00:33:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,38 +59,58 @@ struct	fileops socketops = {
 	soo_stat, soo_close, soo_shutdown
 };
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-	struct socket *so = (struct socket *)fp->f_data;
+	struct socket *so;
+	int error;
 
-	return (so_pru_soreceive(so, NULL, uio, NULL, NULL, NULL));
+	get_mplock();
+	so = (struct socket *)fp->f_data;
+	error = so_pru_soreceive(so, NULL, uio, NULL, NULL, NULL);
+	rel_mplock();
+	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
-	struct socket *so = (struct socket *)fp->f_data;
+	struct socket *so;
+	int error;
 
-	return (so_pru_sosend(so, NULL, uio, NULL, NULL, 0, uio->uio_td));
+	get_mplock();
+	so = (struct socket *)fp->f_data;
+	error = so_pru_sosend(so, NULL, uio, NULL, NULL, 0, uio->uio_td);
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
-	struct socket *so = (struct socket *)fp->f_data;
+	struct socket *so;
+	int error;
+
+	get_mplock();
+	so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
-
 	case FIONBIO:
 		if (*(int *)data)
 			so->so_state |= SS_NBIO;
 		else
 			so->so_state &= ~SS_NBIO;
-		return (0);
-
+		error = 0;
+		break;
 	case FIOASYNC:
 		if (*(int *)data) {
 			so->so_state |= SS_ASYNC;
@@ -101,56 +121,77 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 			so->so_rcv.sb_flags &= ~SB_ASYNC;
 			so->so_snd.sb_flags &= ~SB_ASYNC;
 		}
-		return (0);
-
+		error = 0;
+		break;
 	case FIONREAD:
 		*(int *)data = so->so_rcv.sb_cc;
-		return (0);
-
+		error = 0;
+		break;
 	case FIOSETOWN:
-		return (fsetown(*(int *)data, &so->so_sigio));
-
+		error = fsetown(*(int *)data, &so->so_sigio);
+		break;
 	case FIOGETOWN:
 		*(int *)data = fgetown(so->so_sigio);
-		return (0);
-
+		error = 0;
+		break;
 	case SIOCSPGRP:
-		return (fsetown(-(*(int *)data), &so->so_sigio));
-
+		error = fsetown(-(*(int *)data), &so->so_sigio);
+		break;
 	case SIOCGPGRP:
 		*(int *)data = -fgetown(so->so_sigio);
-		return (0);
-
+		error = 0;
+		break;
 	case SIOCATMARK:
 		*(int *)data = (so->so_state&SS_RCVATMARK) != 0;
-		return (0);
+		error = 0;
+		break;
+	default:
+		/*
+		 * Interface/routing/protocol specific ioctls:
+		 * interface and routing ioctls should have a
+		 * different entry since a socket's unnecessary
+		 */
+		if (IOCGROUP(cmd) == 'i')
+			error = ifioctl(so, cmd, data, cred);
+		else if (IOCGROUP(cmd) == 'r')
+			error = rtioctl(cmd, data, cred);
+		else
+			error = so_pru_control(so, cmd, data, NULL);
+		break;
 	}
-	/*
-	 * Interface/routing/protocol specific ioctls:
-	 * interface and routing ioctls should have a
-	 * different entry since a socket's unnecessary
-	 */
-	if (IOCGROUP(cmd) == 'i')
-		return (ifioctl(so, cmd, data, cred));
-	if (IOCGROUP(cmd) == 'r')
-		return (rtioctl(cmd, data, cred));
-	return (so_pru_control(so, cmd, data, NULL));
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_poll(struct file *fp, int events, struct ucred *cred)
 {
-	struct socket *so = (struct socket *)fp->f_data;
-	return (so_pru_sopoll(so, events, cred));
+	struct socket *so;
+	int error;
+
+	get_mplock();
+	so = (struct socket *)fp->f_data;
+	error = so_pru_sopoll(so, events, cred);
+	rel_mplock();
+	return (error);
 }
 
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 {
-	struct socket *so = (struct socket *)fp->f_data;
+	struct socket *so;
+	int error;
 
 	bzero((caddr_t)ub, sizeof (*ub));
 	ub->st_mode = S_IFSOCK;
+	get_mplock();
+	so = (struct socket *)fp->f_data;
 	/*
 	 * If SS_CANTRCVMORE is set, but there's still data left in the
 	 * receive buffer, the socket is still readable.
@@ -163,30 +204,44 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 	ub->st_size = so->so_rcv.sb_cc;
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
-	return (so_pru_sense(so, ub));
-}
-
-/* ARGSUSED */
-int
-soo_close(struct file *fp)
-{
-	int error = 0;
-
-	fp->f_ops = &badfileops;
-	if (fp->f_data)
-		error = soclose((struct socket *)fp->f_data);
-	fp->f_data = 0;
+	error = so_pru_sense(so, ub);
+	rel_mplock();
 	return (error);
 }
 
-/* ARGSUSED */
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
+int
+soo_close(struct file *fp)
+{
+	int error;
+
+	get_mplock();
+	fp->f_ops = &badfileops;
+	if (fp->f_data)
+		error = soclose((struct socket *)fp->f_data);
+	else
+		error = 0;
+	fp->f_data = NULL;
+	rel_mplock();
+	return (error);
+}
+
+/*
+ * MPALMOSTSAFE - acquires mplock
+ */
 int
 soo_shutdown(struct file *fp, int how)
 {
-	int error = 0;
+	int error;
 
+	get_mplock();
 	if (fp->f_data)
 		error = soshutdown((struct socket *)fp->f_data, how);
+	else
+		error = 0;
+	rel_mplock();
 	return (error);
 }
 
