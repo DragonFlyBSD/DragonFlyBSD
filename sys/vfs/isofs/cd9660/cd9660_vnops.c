@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.25 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.26 2006/05/26 16:56:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -495,11 +495,15 @@ cd9660_readdir(struct vop_readdir_args *ap)
 		idp->cookies = NULL;
 	} else {
 		/*
-		 * Guess the number of cookies needed.
+		 * Guess the number of cookies needed.  Guess at least
+		 * 1 to avoid a degenerate case in malloc, and cap at
+		 * a reasonable limit.
 		 */
-		ncookies = uio->uio_resid / 16;
-		MALLOC(cookies, u_long *, ncookies * sizeof(u_int), M_TEMP,
-		    M_WAITOK);
+		ncookies = uio->uio_resid / 16 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
+		MALLOC(cookies, u_long *, ncookies * sizeof(u_int),
+		       M_TEMP, M_WAITOK);
 		idp->cookies = cookies;
 		idp->ncookies = ncookies;
 	}

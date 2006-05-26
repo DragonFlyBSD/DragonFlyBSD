@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.37 2006/05/06 02:43:14 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.38 2006/05/26 16:56:22 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1596,7 +1596,9 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		return (EINVAL);
 
 	if (ap->a_ncookies) {
-		ncookies = uio->uio_resid / 16;
+		ncookies = uio->uio_resid / 16 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
 		MALLOC(cookies, u_long *, ncookies * sizeof(u_long), M_TEMP,
 		       M_WAITOK);
 		*ap->a_cookies = cookies;

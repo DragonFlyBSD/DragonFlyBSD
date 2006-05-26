@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.32 2006/05/24 18:59:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.33 2006/05/26 16:56:31 dillon Exp $
  */
 
 /*
@@ -847,7 +847,9 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 		return(0);
 
 	error = 0;
-	i = uio->uio_offset;
+	i = (int)uio->uio_offset;
+	if (i < 0)
+		return (EINVAL);
 
 	for (pt = &proc_targets[i];
 	     !error && uio->uio_resid > 0 && i < nproc_targets; pt++, i++) {
@@ -861,7 +863,7 @@ procfs_readdir_proc(struct vop_readdir_args *ap)
 			break;
 	}
 
-	uio->uio_offset = i;
+	uio->uio_offset = (off_t)i;
 
 	return(0);
 }
@@ -884,11 +886,14 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 	int res;
 
 	info.error = 0;
-	info.i = uio->uio_offset;
+	info.i = (int)uio->uio_offset;
+
+	if (info.i < 0)
+		return (EINVAL);
+
 	info.pcnt = 0;
 	info.uio = uio;
 	info.cred = ap->a_cred;
-
 	while (info.pcnt < 3) {
 		res = procfs_readdir_root_callback(NULL, &info);
 		if (res < 0)
@@ -896,7 +901,7 @@ procfs_readdir_root(struct vop_readdir_args *ap)
 	}
 	if (res >= 0)
 		allproc_scan(procfs_readdir_root_callback, &info);
-	uio->uio_offset = info.i;
+	uio->uio_offset = (off_t)info.i;
 
 	return (info.error);
 }

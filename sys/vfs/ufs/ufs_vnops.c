@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.48 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.49 2006/05/26 16:56:34 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1636,12 +1636,6 @@ ufs_symlink(struct vop_old_symlink_args *ap)
 /*
  * Vnode op for reading directories.
  *
- * The routine below assumes that the on-disk format of a directory
- * is the same as that defined by <sys/dirent.h>. If the on-disk
- * format changes, then it will be necessary to do a conversion
- * from the on-disk format that read returns to the format defined
- * by <sys/dirent.h>.
- *
  * ufs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
  *		int *a_eofflag, int *ncookies, u_long **a_cookies)
  */
@@ -1651,46 +1645,77 @@ ufs_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct vnode *vp = ap->a_vp;
-	struct direct *edp, *dp;
-	struct uio auio;
-	struct iovec aiov;
-	caddr_t dirbuf;
-	int readcnt, retval;
-	int count, error;
+	struct direct *dp;
+	struct buf *bp;
+	int retval;
+	int error;
+	int offset;	/* offset into buffer cache buffer */
+	int eoffset;	/* end of buffer clipped to file EOF */
+	int pickup;	/* pickup point */
 	int ncookies;
-	off_t startoffset = uio->uio_offset;
+	int cookie_index;
+	u_long *cookies;
 
-	count = uio->uio_resid;
+	if (uio->uio_offset < 0)
+		return (EINVAL);
 	/*
-	 * Avoid complications for partial directory entries by adjusting
-	 * the i/o to end at a block boundary.  Don't give up (like the old ufs
-	 * does) if the initial adjustment gives a negative count, since
-	 * many callers don't supply a large enough buffer.  The correct
-	 * size is a little larger than DIRBLKSIZ to allow for expansion
-	 * of directory entries, but some callers just use 512.
+	 * Guess the number of cookies needed.  Make sure we compute at
+	 * least 1, and no more then a reasonable limit.
 	 */
-	count -= (uio->uio_offset + count) & (DIRBLKSIZ -1);
-	if (count <= 0)
-		count += DIRBLKSIZ;
+	if (ap->a_ncookies) {
+		ncookies = uio->uio_resid / 16 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
+		cookies = malloc(ncookies * sizeof(u_long), M_TEMP, M_WAITOK);
+	} else {
+		ncookies = -1;	/* force conditionals below */
+		cookies = NULL;
+	}
+	cookie_index = 0;
 
-	auio = *uio;
-	auio.uio_iov = &aiov;
-	auio.uio_iovcnt = 1;
-	auio.uio_resid = count;
-	auio.uio_segflg = UIO_SYSSPACE;
-	aiov.iov_len = count;
-	MALLOC(dirbuf, caddr_t, count, M_TEMP, M_WAITOK);
-	aiov.iov_base = dirbuf;
-	error = VOP_READ(vp, &auio, 0, ap->a_cred);
-	if (error == 0) {
-		readcnt = count - auio.uio_resid;
-		edp = (struct direct *)&dirbuf[readcnt];
-		ncookies = 0;
-		for (dp = (struct direct *)dirbuf; 
-		    !error && uio->uio_resid > 0 && dp < edp; ) {
-			if (dp->d_reclen <= 0) {
+	/*
+	 * Past or at EOF
+	 */
+	if (uio->uio_offset >= VTOI(vp)->i_size) {
+		if (ap->a_eofflag)
+			*ap->a_eofflag = 1;
+		if (ap->a_ncookies) {
+			*ap->a_ncookies = cookie_index;
+			*ap->a_cookies = cookies;
+		}
+		return(0);
+	}
+
+	/*
+	 * Loop until we run out of cookies, we run out of user buffer,
+	 * or we hit the directory EOF.
+	 *
+	 * Always start scans at the beginning of the buffer, don't trust
+	 * the offset supplied by userland.
+	 */
+	while ((error = UFS_BLKATOFF(vp, uio->uio_offset, NULL, &bp)) == 0) {
+		pickup = (int)(uio->uio_offset - bp->b_loffset);
+		offset = 0;
+		retval = 0;
+		if (bp->b_loffset + bp->b_bcount > VTOI(vp)->i_size)
+			eoffset = (int)(VTOI(vp)->i_size - bp->b_loffset);
+		else
+			eoffset = bp->b_bcount;
+
+		while (offset < eoffset) {
+			dp = (struct direct *)(bp->b_data + offset);
+			if (dp->d_reclen <= 0 || (dp->d_reclen & 3) ||
+			    offset + dp->d_reclen > bp->b_bcount) {
 				error = EIO;
 				break;
+			}
+			if (offsetof(struct direct, d_name[dp->d_namlen]) >				     dp->d_reclen) {
+				error = EIO;
+				break;
+			}
+			if (offset < pickup) {
+				offset += dp->d_reclen;
+				continue;
 			}
 #if BYTE_ORDER == LITTLE_ENDIAN
 			if (OFSFMT(vp)) {
@@ -1704,40 +1729,49 @@ ufs_readdir(struct vop_readdir_args *ap)
 				    dp->d_ino, dp->d_type, dp->d_namlen,
 				    dp->d_name);
 			}
-
 			if (retval)
 				break;
-			/* advance dp */
-			dp = (struct direct *)((char *)dp + dp->d_reclen); 
-			if (!error)
-				ncookies++;
-		}
-		/* we need to correct uio_offset */
-		uio->uio_offset = startoffset + (caddr_t)dp - dirbuf;
-
-		if (!error && ap->a_ncookies != NULL) {
-			u_long *cookiep, *cookies, *ecookies;
-			off_t off;
-
-			if (uio->uio_segflg != UIO_SYSSPACE || uio->uio_iovcnt != 1)
-				panic("ufs_readdir: unexpected uio from NFS server");
-			MALLOC(cookies, u_long *, ncookies * sizeof(u_long), M_TEMP,
-			       M_WAITOK);
-			off = startoffset;
-			for (dp = (struct direct *)dirbuf,
-			     cookiep = cookies, ecookies = cookies + ncookies;
-			     cookiep < ecookies;
-			     dp = (struct direct *)((caddr_t) dp + dp->d_reclen)) {
-				off += dp->d_reclen;
-				*cookiep++ = (u_long) off;
+			if (cookies) {
+				cookies[cookie_index] =
+					(u_long)bp->b_loffset + offset;
 			}
-			*ap->a_ncookies = ncookies;
+			++cookie_index;
+			offset += dp->d_reclen;
+			if (cookie_index == ncookies)
+				break;
+		}
+
+		/*
+		 * This will align the next loop to the beginning of the
+		 * next block, and pickup will calculate to 0.
+		 */
+		uio->uio_offset = bp->b_loffset + offset;
+		brelse(bp);
+
+		if (retval || error || cookie_index == ncookies ||
+		    uio->uio_offset >= VTOI(vp)->i_size) {
+			break;
+		}
+	}
+	if (ap->a_eofflag)
+		*ap->a_eofflag = VTOI(vp)->i_size <= uio->uio_offset;
+
+	/*
+	 * Report errors only if we didn't manage to read anything
+	 */
+	if (error && cookie_index == 0) {
+		if (cookies) {
+			free(cookies, M_TEMP);
+			*ap->a_ncookies = 0;
+			*ap->a_cookies = NULL;
+		}
+	} else {
+		error = 0;
+		if (cookies) {
+			*ap->a_ncookies = cookie_index;
 			*ap->a_cookies = cookies;
 		}
 	}
-	FREE(dirbuf, M_TEMP);
-	if (ap->a_eofflag)
-		*ap->a_eofflag = VTOI(vp)->i_size <= uio->uio_offset;
         return (error);
 }
 

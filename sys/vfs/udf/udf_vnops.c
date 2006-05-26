@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.21 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.22 2006/05/26 16:56:32 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -708,7 +708,9 @@ udf_readdir(struct vop_readdir_args *a)
 		 * function will be called again and thing will pick up were
 		 * it left off.
 		 */
-		ncookies = uio->uio_resid / 8;
+		ncookies = uio->uio_resid / 8 + 1;
+		if (ncookies > 1024)
+			ncookies = 1024;
 		cookies = malloc(sizeof(u_long) * ncookies, M_TEMP, M_WAITOK);
 		uiodir.ncookies = ncookies;
 		uiodir.cookies = cookies;
