@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.24 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.25 2006/05/26 15:55:12 dillon Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/pioctl.h>

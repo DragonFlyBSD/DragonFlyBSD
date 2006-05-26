@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.25 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.26 2006/05/26 15:55:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,6 +34,7 @@
 #include <sys/malloc.h> 
 #include <sys/unistd.h>
 #include <sys/file.h>
+#include <sys/lock.h>
 #include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/queue.h>

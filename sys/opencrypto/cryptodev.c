@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.16 2006/05/26 00:33:11 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.17 2006/05/26 15:55:13 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -40,6 +40,7 @@
 #include <sys/mbuf.h>
 #include <sys/sysctl.h>
 #include <sys/file.h>
+#include <sys/lock.h>
 #include <sys/filedesc.h>
 #include <sys/errno.h>
 #include <sys/uio.h>

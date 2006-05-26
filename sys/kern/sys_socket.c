@@ -32,12 +32,13 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.10 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.11 2006/05/26 15:55:12 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/file.h>
+#include <sys/lock.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
