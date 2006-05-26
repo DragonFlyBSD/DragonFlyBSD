@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.50 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.51 2006/05/26 19:57:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1694,7 +1694,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	 * Always start scans at the beginning of the buffer, don't trust
 	 * the offset supplied by userland.
 	 */
-	while ((error = ffs_blkatoff(vp, uio->uio_offset, NULL, &bp)) == 0) {
+	while ((error = ffs_blkatoff_ra(vp, uio->uio_offset, NULL, &bp, 2)) == 0) {
 		pickup = (int)(uio->uio_offset - bp->b_loffset);
 		offset = 0;
 		retval = 0;

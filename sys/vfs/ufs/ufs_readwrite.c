@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.18 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.19 2006/05/26 19:57:33 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -72,11 +72,8 @@ ffs_read(struct vop_read_args *ap)
 	struct uio *uio;
 	FS *fs;
 	struct buf *bp;
-	ufs_daddr_t lbn, nextlbn;
-	off_t nextloffset;
-	off_t loffset;
 	off_t bytesinfile;
-	int size, xfersize, blkoffset;
+	int xfersize, blkoffset;
 	int error, orig_resid;
 	u_short mode;
 	int seqcount;
@@ -131,78 +128,10 @@ ffs_read(struct vop_read_args *ap)
 		if ((bytesinfile = ip->i_size - uio->uio_offset) <= 0)
 			break;
 
-		lbn = lblkno(fs, uio->uio_offset);
-		loffset = lblktodoff(fs, lbn);
-		nextlbn = lbn + 1;
-		nextloffset = lblktodoff(fs, nextlbn);
-
-		/*
-		 * size of buffer.  The buffer representing the
-		 * end of the file is rounded up to the size of
-		 * the block type ( fragment or full block, 
-		 * depending ).
-		 */
-		size = BLKSIZE(fs, ip, lbn);
-		blkoffset = blkoff(fs, uio->uio_offset);
-		
-		/*
-		 * The amount we want to transfer in this iteration is
-		 * one FS block less the amount of the data before
-		 * our startpoint (duh!)
-		 */
-		xfersize = fs->fs_bsize - blkoffset;
-
-		/*
-		 * But if we actually want less than the block,
-		 * or the file doesn't have a whole block more of data,
-		 * then use the lesser number.
-		 */
-		if (uio->uio_resid < xfersize)
-			xfersize = uio->uio_resid;
-		if (bytesinfile < xfersize)
-			xfersize = bytesinfile;
-
-		if (nextloffset >= ip->i_size) {
-			/*
-			 * Don't do readahead if this is the end of the file.
-			 */
-			error = bread(vp, loffset, size, &bp);
-		} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
-			/* 
-			 * Otherwise if we are allowed to cluster,
-			 * grab as much as we can.
-			 *
-			 * XXX  This may not be a win if we are not
-			 * doing sequential access.
-			 */
-			error = cluster_read(vp, (off_t)ip->i_size, 
-					     loffset, size, 
-					     uio->uio_resid, seqcount, &bp);
-		} else if (seqcount > 1) {
-			/*
-			 * If we are NOT allowed to cluster, then
-			 * if we appear to be acting sequentially,
-			 * fire off a request for a readahead
-			 * as well as a read. Note that the 4th and 5th
-			 * arguments point to arrays of the size specified in
-			 * the 6th argument.
-			 */
-			int nextsize = BLKSIZE(fs, ip, nextlbn);
-			error = breadn(vp, loffset,
-			    size, &nextloffset, &nextsize, 1, &bp);
-		} else {
-			/*
-			 * Failing all of the above, just read what the 
-			 * user asked for. Interestingly, the same as
-			 * the first option above.
-			 */
-			error = bread(vp, loffset, size, &bp);
-		}
-		if (error) {
-			brelse(bp);
-			bp = NULL;
+		error = ffs_blkatoff_ra(vp, uio->uio_offset, NULL,
+					&bp, seqcount);
+		if (error)
 			break;
-		}
 
 		/*
 		 * If IO_DIRECT then set B_DIRECT for the buffer.  This
@@ -226,11 +155,19 @@ ffs_read(struct vop_read_args *ap)
 		 * is a precursor to removing it from the UFS code.
 		 */
 		KASSERT(bp->b_resid == 0, ("bp->b_resid != 0"));
-		size -= bp->b_resid;
-		if (size < xfersize) {
-			if (size == 0)
-				break;
-			xfersize = size;
+
+		/*
+		 * Calculate how much data we can copy
+		 */
+		blkoffset = blkoff(fs, uio->uio_offset);
+		xfersize = bp->b_bufsize - blkoffset;
+		if (xfersize > uio->uio_resid)
+			xfersize = uio->uio_resid;
+		if (xfersize > bytesinfile)
+			xfersize = bytesinfile;
+		if (xfersize <= 0) {
+			panic("ufs_readwrite: impossible xfersize: %d",
+			      xfersize);
 		}
 
 		/*

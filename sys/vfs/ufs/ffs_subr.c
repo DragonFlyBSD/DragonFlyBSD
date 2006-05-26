@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.12 2006/04/27 23:28:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.13 2006/05/26 19:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,7 @@
 #include <sys/vnode.h>
 #include <sys/buf.h>
 #include <sys/ucred.h>
+#include <sys/mount.h>
 
 #include "quota.h"
 #include "inode.h"
@@ -56,11 +57,11 @@
 
 /*
  * Return buffer with the contents of block "offset" from the beginning of
- * directory "ip".  If "res" is non-zero, fill it in with a pointer to the
- * remaining space in the directory.
+ * vnode "vp".  If "res" is non-zero, fill it in with a pointer to the
+ * remaining space in the vnode.
  */
 int
-ffs_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
+ffs_blkatoff(struct vnode *vp, off_t uoffset, char **res, struct buf **bpp)
 {
 	struct inode *ip;
 	struct fs *fs;
@@ -70,7 +71,7 @@ ffs_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 
 	ip = VTOI(vp);
 	fs = ip->i_fs;
-	lbn = lblkno(fs, offset);
+	lbn = lblkno(fs, uoffset);
 	bsize = blksize(fs, ip, lbn);
 
 	*bpp = NULL;
@@ -80,10 +81,81 @@ ffs_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 		return (error);
 	}
 	if (res)
-		*res = (char *)bp->b_data + blkoff(fs, offset);
+		*res = (char *)bp->b_data + blkoff(fs, uoffset);
 	*bpp = bp;
 	return (0);
 }
+
+/*
+ * Return buffer with the contents of block "offset" from the beginning of
+ * vnode "vp".  If "res" is non-zero, fill it in with a pointer to the
+ * remaining space in the vnode.
+ *
+ * This version includes a read-ahead optimization.
+ */
+int
+ffs_blkatoff_ra(struct vnode *vp, off_t uoffset, char **res, struct buf **bpp,
+		int seqcount)
+{
+	struct inode *ip;
+	struct fs *fs;
+	struct buf *bp;
+	ufs_daddr_t lbn;
+	ufs_daddr_t nextlbn;
+	off_t base_loffset;
+	off_t next_loffset;
+	int bsize, error;
+	int nextbsize;
+
+	ip = VTOI(vp);
+	fs = ip->i_fs;
+	lbn = lblkno(fs, uoffset);
+	base_loffset = lblktodoff(fs, lbn);
+	bsize = blksize(fs, ip, lbn);
+
+	nextlbn = lbn + 1;
+	next_loffset = lblktodoff(fs, nextlbn);
+
+
+	*bpp = NULL;
+
+	if (next_loffset >= ip->i_size) {
+		/*
+		 * Do not do readahead if this is the last block
+		 */
+		error = bread(vp, base_loffset, bsize, &bp);
+	} else if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERR) == 0) {
+		/*
+		 * Try to cluster if we allowed to.
+		 */
+		error = cluster_read(vp, (off_t)ip->i_size,
+				     base_loffset, bsize,
+				     MAXBSIZE, seqcount, &bp);
+	} else if (seqcount > 1) {
+		/*
+		 * Faked read ahead
+		 */
+		nextbsize = blksize(fs, ip, nextlbn);
+		error = breadn(vp, base_loffset, bsize,
+			       &next_loffset, &nextbsize, 1, &bp);
+	} else {
+		/*
+		 * Failing all of the above, just read what the
+		 * user asked for. Interestingly, the same as
+		 * the first option above.
+		 */
+		error = bread(vp, base_loffset, bsize, &bp);
+	}
+	if (error) {
+		brelse(bp);
+		return (error);
+	}
+	if (res)
+		*res = (char *)bp->b_data + (int)(uoffset - base_loffset);
+	*bpp = bp;
+	return (0);
+}
+
 #endif
 
 /*
