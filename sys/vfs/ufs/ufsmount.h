@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.8 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.9 2006/05/26 17:07:48 dillon Exp $
  */
 
 #ifndef _VFS_UFS_UFSMOUNT_H_
@@ -95,18 +95,7 @@ struct ufsmount {
 	int64_t	um_savedmaxfilesize;		/* XXX - limit maxfilesize */
 	struct malloc_type *um_malloctype;	/* The inodes malloctype */
 	int	um_i_effnlink_valid;		/* i_effnlink valid? */
-	int	(*um_blkatoff) (struct vnode *, off_t, char **, struct buf **);
-	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *);
-	int	(*um_update) (struct vnode *, int);
-	int	(*um_valloc) (struct vnode *, int, struct ucred *, struct vnode **);
-	int	(*um_vfree) (struct vnode *, ino_t, int);
 };
-
-#define UFS_BLKATOFF(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_blkatoff(aa, bb, cc, dd)
-#define UFS_TRUNCATE(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_truncate(aa, bb, cc, dd)
-#define UFS_UPDATE(aa, bb) VFSTOUFS((aa)->v_mount)->um_update(aa, bb)
-#define UFS_VALLOC(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_valloc(aa, bb, cc, dd)
-#define UFS_VFREE(aa, bb, cc) VFSTOUFS((aa)->v_mount)->um_vfree(aa, bb, cc)
 
 /*
  * Flags describing the state of quotas.

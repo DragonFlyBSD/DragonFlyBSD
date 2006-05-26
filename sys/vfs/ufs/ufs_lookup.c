@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.25 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.26 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -64,6 +64,7 @@
 #endif
 #include "ufsmount.h"
 #include "ufs_extern.h"
+#include "ffs_extern.h"
 
 #ifdef DIAGNOSTIC
 int	dirchk = 1;
@@ -226,7 +227,7 @@ ufs_lookup(struct vop_old_lookup_args *ap)
 	} else {
 		dp->i_offset = dp->i_diroff;
 		if ((entryoffsetinblock = dp->i_offset & bmask) &&
-		    (error = UFS_BLKATOFF(vdp, (off_t)dp->i_offset, NULL, &bp)))
+		    (error = ffs_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp)))
 			return (error);
 		numdirpasses = 2;
 		gd->gd_nchstats->ncs_2passes++;
@@ -244,7 +245,7 @@ searchloop:
 			if (bp != NULL)
 				brelse(bp);
 			error =
-			    UFS_BLKATOFF(vdp, (off_t)dp->i_offset, NULL, &bp);
+			    ffs_blkatoff(vdp, (off_t)dp->i_offset, NULL, &bp);
 			if (error)
 				return (error);
 			entryoffsetinblock = 0;
@@ -755,14 +756,14 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 			softdep_setup_directory_add(bp, dp, dp->i_offset,
 			    dirp->d_ino, newdirbp);
 			bdwrite(bp);
-			return (UFS_UPDATE(dvp, 0));
+			return (ffs_update(dvp, 0));
 		}
 		if (DOINGASYNC(dvp)) {
 			bdwrite(bp);
-			return (UFS_UPDATE(dvp, 0));
+			return (ffs_update(dvp, 0));
 		}
 		error = bwrite(bp);
-		ret = UFS_UPDATE(dvp, 1);
+		ret = ffs_update(dvp, 1);
 		if (error == 0)
 			return (ret);
 		return (error);
@@ -789,7 +790,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	/*
 	 * Get the block containing the space for the new directory entry.
 	 */
-	error = UFS_BLKATOFF(dvp, (off_t)dp->i_offset, &dirbuf, &bp);
+	error = ffs_blkatoff(dvp, (off_t)dp->i_offset, &dirbuf, &bp);
 	if (error) {
 		if (DOINGSOFTDEP(dvp) && newdirbp != NULL)
 			bdwrite(newdirbp);
@@ -903,7 +904,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		if (dp->i_dirhash != NULL)
 			ufsdirhash_dirtrunc(dp, dp->i_endoff);
 #endif
-		(void)UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred);
+		(void)ffs_truncate(dvp, (off_t)dp->i_endoff, IO_SYNC, cred);
 		if (tvp != NULL)
 			vn_lock(tvp, LK_EXCLUSIVE | LK_RETRY);
 	}
@@ -937,14 +938,14 @@ ufs_dirremove(struct vnode *dvp, struct inode *ip, int flags, int isrmdir)
 		 * Whiteout entry: set d_ino to WINO.
 		 */
 		if ((error =
-		    UFS_BLKATOFF(dvp, (off_t)dp->i_offset, (char **)&ep, &bp)) != 0)
+		    ffs_blkatoff(dvp, (off_t)dp->i_offset, (char **)&ep, &bp)) != 0)
 			return (error);
 		ep->d_ino = WINO;
 		ep->d_type = DT_WHT;
 		goto out;
 	}
 
-	if ((error = UFS_BLKATOFF(dvp,
+	if ((error = ffs_blkatoff(dvp,
 	    (off_t)(dp->i_offset - dp->i_count), (char **)&ep, &bp)) != 0)
 		return (error);
 #ifdef UFS_DIRHASH
@@ -1018,7 +1019,7 @@ ufs_dirrewrite(struct inode *dp, struct inode *oip, ino_t newinum, int newtype,
 	struct vnode *vdp = ITOV(dp);
 	int error;
 
-	error = UFS_BLKATOFF(vdp, (off_t)dp->i_offset, (char **)&ep, &bp);
+	error = ffs_blkatoff(vdp, (off_t)dp->i_offset, (char **)&ep, &bp);
 	if (error)
 		return (error);
 	ep->d_ino = newinum;

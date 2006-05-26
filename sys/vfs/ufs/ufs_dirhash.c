@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.5 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.6 2006/05/26 17:07:48 dillon Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.
@@ -51,6 +51,7 @@
 #include "dirhash.h"
 #include "ufsmount.h"
 #include "ufs_extern.h"
+#include "ffs_extern.h"
 
 #define WRAPINCR(val, limit)	(((val) + 1 == (limit)) ? 0 : ((val) + 1))
 #define WRAPDECR(val, limit)	(((val) == 0) ? ((limit) - 1) : ((val) - 1))
@@ -192,7 +193,7 @@ ufsdirhash_build(struct inode *ip)
 		if ((pos & bmask) == 0) {
 			if (bp != NULL)
 				brelse(bp);
-			if (UFS_BLKATOFF(vp, (off_t)pos, NULL, &bp) != 0)
+			if (ffs_blkatoff(vp, (off_t)pos, NULL, &bp) != 0)
 				goto fail;
 		}
 
@@ -364,7 +365,7 @@ restart:
 			if (bp != NULL)
 				brelse(bp);
 			blkoff = offset & ~bmask;
-			if (UFS_BLKATOFF(vp, (off_t)blkoff, NULL, &bp) != 0)
+			if (ffs_blkatoff(vp, (off_t)blkoff, NULL, &bp) != 0)
 				return (EJUSTRETURN);
 		}
 		dp = (struct direct *)(bp->b_data + (offset & bmask));
@@ -465,7 +466,7 @@ ufsdirhash_findfree(struct inode *ip, int slotneeded, int *slotsize)
 	    dh->dh_blkfree[dirblock] >= howmany(slotneeded, DIRALIGN),
 	    ("ufsdirhash_findfree: bad stats"));
 	pos = dirblock * DIRBLKSIZ;
-	error = UFS_BLKATOFF(ip->i_vnode, (off_t)pos, (char **)&dp, &bp);
+	error = ffs_blkatoff(ip->i_vnode, (off_t)pos, (char **)&dp, &bp);
 	if (error)
 		return (-1);
 

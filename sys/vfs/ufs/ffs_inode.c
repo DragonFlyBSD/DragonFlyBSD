@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.22 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.23 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -160,11 +160,11 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		bzero((char *)&oip->i_shortlink, (uint)oip->i_size);
 		oip->i_size = 0;
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 1));
+		return (ffs_update(ovp, 1));
 	}
 	if (oip->i_size == length) {
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 0));
+		return (ffs_update(ovp, 0));
 	}
 	if (fs->fs_ronly)
 		panic("ffs_truncate: read-only filesystem");
@@ -221,7 +221,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 		else
 			bawrite(bp);
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
-		return (UFS_UPDATE(ovp, 1));
+		return (ffs_update(ovp, 1));
 	}
 	/*
 	 * Shorten the size of the file. If the file is not being
@@ -297,7 +297,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	for (i = NDADDR - 1; i > lastblock; i--)
 		oip->i_db[i] = 0;
 	oip->i_flag |= IN_CHANGE | IN_UPDATE;
-	allerror = UFS_UPDATE(ovp, 1);
+	allerror = ffs_update(ovp, 1);
 	
 	/*
 	 * Having written the new inode to disk, save its new configuration

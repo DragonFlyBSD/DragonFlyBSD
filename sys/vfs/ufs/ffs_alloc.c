@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.21 2006/04/30 17:22:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.22 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -515,7 +515,7 @@ ffs_reallocblks(struct vop_reallocblks_args *ap)
 	} else {
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		if (!doasyncfree)
-			UFS_UPDATE(vp, 1);
+			ffs_update(vp, 1);
 	}
 	if (ssize < len) {
 		if (doasyncfree)
@@ -616,7 +616,7 @@ ffs_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 		goto noinodes;
 	error = VFS_VGET(pvp->v_mount, ino, vpp);
 	if (error) {
-		UFS_VFREE(pvp, ino, mode);
+		ffs_vfree(pvp, ino, mode);
 		return (error);
 	}
 	ip = VTOI(*vpp);

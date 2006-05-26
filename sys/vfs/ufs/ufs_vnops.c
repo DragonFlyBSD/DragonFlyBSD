@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.49 2006/05/26 16:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.50 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -74,6 +74,7 @@
 #include "dir.h"
 #include "ufsmount.h"
 #include "ufs_extern.h"
+#include "ffs_extern.h"
 #ifdef UFS_DIRHASH
 #include "dirhash.h"
 #endif
@@ -515,7 +516,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		default:
 			break;
 		}
-		if ((error = UFS_TRUNCATE(vp, vap->va_size, 0, cred)) != 0)
+		if ((error = ffs_truncate(vp, vap->va_size, 0, cred)) != 0)
 			return (error);
 	}
 	ip = VTOI(vp);
@@ -540,7 +541,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 			ip->i_mtime = vap->va_mtime.tv_sec;
 			ip->i_mtimensec = vap->va_mtime.tv_nsec;
 		}
-		error = UFS_UPDATE(vp, 0);
+		error = ffs_update(vp, 0);
 		if (error)
 			return (error);
 	}
@@ -761,7 +762,7 @@ ufs_link(struct vop_old_link_args *ap)
 	ip->i_flag |= IN_CHANGE;
 	if (DOINGSOFTDEP(vp))
 		softdep_change_linkcnt(ip);
-	error = UFS_UPDATE(vp, !(DOINGSOFTDEP(vp) | DOINGASYNC(vp)));
+	error = ffs_update(vp, !(DOINGSOFTDEP(vp) | DOINGASYNC(vp)));
 	if (!error) {
 		ufs_makedirentry(ip, cnp, &newdir);
 		error = ufs_direnter(tdvp, vp, &newdir, cnp, NULL);
@@ -974,7 +975,7 @@ abortit:
 	ip->i_flag |= IN_CHANGE;
 	if (DOINGSOFTDEP(fvp))
 		softdep_change_linkcnt(ip);
-	if ((error = UFS_UPDATE(fvp, !(DOINGSOFTDEP(fvp) |
+	if ((error = ffs_update(fvp, !(DOINGSOFTDEP(fvp) |
 				       DOINGASYNC(fvp)))) != 0) {
 		VOP_UNLOCK(fvp, 0);
 		goto bad;
@@ -1082,7 +1083,7 @@ abortit:
 			dp->i_flag |= IN_CHANGE;
 			if (DOINGSOFTDEP(tdvp))
 				softdep_change_linkcnt(dp);
-			error = UFS_UPDATE(tdvp, !(DOINGSOFTDEP(tdvp) |
+			error = ffs_update(tdvp, !(DOINGSOFTDEP(tdvp) |
 						   DOINGASYNC(tdvp)));
 			if (error)
 				goto bad;
@@ -1096,7 +1097,7 @@ abortit:
 				dp->i_flag |= IN_CHANGE;
 				if (DOINGSOFTDEP(tdvp))
 					softdep_change_linkcnt(dp);
-				(void)UFS_UPDATE(tdvp, 1);
+				(void)ffs_update(tdvp, 1);
 			}
 			goto bad;
 		}
@@ -1188,7 +1189,7 @@ abortit:
 			xp->i_nlink--;
 			xp->i_flag |= IN_CHANGE;
 			ioflag = DOINGASYNC(tvp) ? 0 : IO_SYNC;
-			error = UFS_TRUNCATE(tvp, (off_t)0, ioflag,
+			error = ffs_truncate(tvp, (off_t)0, ioflag,
 					     tcnp->cn_cred);
 			if (error)
 				goto bad;
@@ -1326,7 +1327,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	 * but not have it entered in the parent directory. The entry is
 	 * made later after writing "." and ".." entries.
 	 */
-	error = UFS_VALLOC(dvp, dmode, cnp->cn_cred, &tvp);
+	error = ffs_valloc(dvp, dmode, cnp->cn_cred, &tvp);
 	if (error)
 		goto out;
 	ip = VTOI(tvp);
@@ -1370,7 +1371,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 #ifdef QUOTA
 		if ((error = ufs_getinoquota(ip)) ||
 	    	    (error = ufs_chkiq(ip, 1, ucp, 0))) {
-			UFS_VFREE(tvp, ip->i_number, dmode);
+			ffs_vfree(tvp, ip->i_number, dmode);
 			vput(tvp);
 			return (error);
 		}
@@ -1381,7 +1382,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 #ifdef QUOTA
 	if ((error = ufs_getinoquota(ip)) ||
 	    (error = ufs_chkiq(ip, 1, cnp->cn_cred, 0))) {
-		UFS_VFREE(tvp, ip->i_number, dmode);
+		ffs_vfree(tvp, ip->i_number, dmode);
 		vput(tvp);
 		return (error);
 	}
@@ -1407,7 +1408,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 	dp->i_flag |= IN_CHANGE;
 	if (DOINGSOFTDEP(dvp))
 		softdep_change_linkcnt(dp);
-	error = UFS_UPDATE(tvp, !(DOINGSOFTDEP(dvp) | DOINGASYNC(dvp)));
+	error = ffs_update(tvp, !(DOINGSOFTDEP(dvp) | DOINGASYNC(dvp)));
 	if (error)
 		goto bad;
 
@@ -1448,7 +1449,7 @@ ufs_mkdir(struct vop_old_mkdir_args *ap)
 			blkoff += DIRBLKSIZ;
 		}
 	}
-	if ((error = UFS_UPDATE(tvp, !(DOINGSOFTDEP(tvp) |
+	if ((error = ffs_update(tvp, !(DOINGSOFTDEP(tvp) |
 				       DOINGASYNC(tvp)))) != 0) {
 		bwrite(bp);
 		goto bad;
@@ -1577,7 +1578,7 @@ ufs_rmdir(struct vop_old_rmdir_args *ap)
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ioflag = DOINGASYNC(vp) ? 0 : IO_SYNC;
-		error = UFS_TRUNCATE(vp, (off_t)0, ioflag, cnp->cn_cred);
+		error = ffs_truncate(vp, (off_t)0, ioflag, cnp->cn_cred);
 	}
 	/* cache_purge removed - handled by VFS compat layer */
 #ifdef UFS_DIRHASH
@@ -1693,7 +1694,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 	 * Always start scans at the beginning of the buffer, don't trust
 	 * the offset supplied by userland.
 	 */
-	while ((error = UFS_BLKATOFF(vp, uio->uio_offset, NULL, &bp)) == 0) {
+	while ((error = ffs_blkatoff(vp, uio->uio_offset, NULL, &bp)) == 0) {
 		pickup = (int)(uio->uio_offset - bp->b_loffset);
 		offset = 0;
 		retval = 0;
@@ -2146,7 +2147,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	if ((mode & IFMT) == 0)
 		mode |= IFREG;
 
-	error = UFS_VALLOC(dvp, mode, cnp->cn_cred, &tvp);
+	error = ffs_valloc(dvp, mode, cnp->cn_cred, &tvp);
 	if (error)
 		return (error);
 	ip = VTOI(tvp);
@@ -2189,7 +2190,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 #ifdef QUOTA
 		if ((error = ufs_getinoquota(ip)) ||
 	    	    (error = ufs_chkiq(ip, 1, ucp, 0))) {
-			UFS_VFREE(tvp, ip->i_number, mode);
+			ffs_vfree(tvp, ip->i_number, mode);
 			vput(tvp);
 			return (error);
 		}
@@ -2200,7 +2201,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 #ifdef QUOTA
 	if ((error = ufs_getinoquota(ip)) ||
 	    (error = ufs_chkiq(ip, 1, cnp->cn_cred, 0))) {
-		UFS_VFREE(tvp, ip->i_number, mode);
+		ffs_vfree(tvp, ip->i_number, mode);
 		vput(tvp);
 		return (error);
 	}
@@ -2232,7 +2233,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	/*
 	 * Make sure inode goes to disk before directory entry.
 	 */
-	error = UFS_UPDATE(tvp, !(DOINGSOFTDEP(tvp) | DOINGASYNC(tvp)));
+	error = ffs_update(tvp, !(DOINGSOFTDEP(tvp) | DOINGASYNC(tvp)));
 	if (error)
 		goto bad;
 	ufs_makedirentry(ip, cnp, &newdir);

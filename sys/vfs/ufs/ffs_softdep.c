@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.43 2006/05/06 16:20:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.44 2006/05/26 17:07:48 dillon Exp $
  */
 
 /*
@@ -2912,7 +2912,7 @@ handle_workitem_remove(dirrem)
 	}
 	inodedep->id_nlinkdelta = ip->i_nlink - ip->i_effnlink;
 	FREE_LOCK(&lk);
-	if ((error = UFS_TRUNCATE(vp, (off_t)0, 0, proc0.p_ucred)) != 0)
+	if ((error = ffs_truncate(vp, (off_t)0, 0, proc0.p_ucred)) != 0)
 		softdep_error("handle_workitem_remove: truncate", error);
 	/*
 	 * Rename a directory to a new parent. Since, we are both deleting
@@ -4082,7 +4082,7 @@ softdep_fsync(vp)
 		if (error != 0)
 			return (error);
 		if (flushparent) {
-			if ((error = UFS_UPDATE(pvp, 1)) != 0) {
+			if ((error = ffs_update(pvp, 1)) != 0) {
 				vput(pvp);
 				return (error);
 			}
@@ -4569,7 +4569,7 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 		 */
 		if (dap->da_state & MKDIR_PARENT) {
 			FREE_LOCK(&lk);
-			if ((error = UFS_UPDATE(pvp, 1)) != 0)
+			if ((error = ffs_update(pvp, 1)) != 0)
 				break;
 			ACQUIRE_LOCK(&lk);
 			/*

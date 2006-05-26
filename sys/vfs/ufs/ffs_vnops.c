@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.15 2006/04/24 22:01:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.16 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,7 +131,7 @@ ffs_fsync(struct vop_fsync_args *ap)
 	error = vfsync(vp, ap->a_waitfor, NIADDR + 1, ffs_checkdeferred,
 		       softdep_sync_metadata);
 	if (error == 0)
-		error = UFS_UPDATE(vp, (ap->a_waitfor == MNT_WAIT));
+		error = ffs_update(vp, (ap->a_waitfor == MNT_WAIT));
 	return (error);
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.17 2006/05/17 17:47:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.18 2006/05/26 17:07:48 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -465,13 +465,13 @@ ffs_write(struct vop_write_args *ap)
 		VN_KNOTE(vp, NOTE_WRITE | (extended ? NOTE_EXTEND : 0));
 	if (error) {
 		if (ioflag & IO_UNIT) {
-			(void)UFS_TRUNCATE(vp, osize, ioflag & IO_SYNC,
+			(void)ffs_truncate(vp, osize, ioflag & IO_SYNC,
 					   ap->a_cred);
 			uio->uio_offset -= resid - uio->uio_resid;
 			uio->uio_resid = resid;
 		}
 	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC)) {
-		error = UFS_UPDATE(vp, 1);
+		error = ffs_update(vp, 1);
 	}
 
 	return (error);

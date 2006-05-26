@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.43 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.44 2006/05/26 17:07:48 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -675,11 +675,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 	ump->um_i_effnlink_valid = 1;
 	ump->um_fs = malloc((u_long)fs->fs_sbsize, M_UFSMNT,
 	    M_WAITOK);
-	ump->um_blkatoff = ffs_blkatoff;
-	ump->um_truncate = ffs_truncate;
-	ump->um_update = ffs_update;
-	ump->um_valloc = ffs_valloc;
-	ump->um_vfree = ffs_vfree;
 	bcopy(bp->b_data, ump->um_fs, (uint)fs->fs_sbsize);
 	if (fs->fs_sbsize < SBSIZE)
 		bp->b_flags |= B_INVAL;
@@ -1037,11 +1032,11 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	} else {
 		/*
 		 * We must reference the vp to prevent it from
-		 * getting ripped out from under UFS_UPDATE, since
+		 * getting ripped out from under ffs_update, since
 		 * we are not holding a vnode lock.
 		 */
-		/* UFS_UPDATE(vp, waitfor == MNT_WAIT); */
-		UFS_UPDATE(vp, 0);
+		/* ffs_update(vp, waitfor == MNT_WAIT); */
+		ffs_update(vp, 0);
 	}
 	return(0);
 }
