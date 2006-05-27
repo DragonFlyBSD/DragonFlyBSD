@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.30 2006/05/27 01:57:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.31 2006/05/27 02:03:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -245,6 +245,10 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 
 	case F_UNLCK:
 		error = lf_setlock(lock, owner, type, flags, start, end);
+		if (TAILQ_EMPTY(&lock->lf_range) &&
+		    TAILQ_EMPTY(&lock->lf_blocked)) {
+			ap->a_vp->v_flag &= ~VMAYHAVELOCKS;
+		}
 		break;
 
 	case F_GETLK:
