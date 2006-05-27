@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.18 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.19 2006/05/27 20:17:16 dillon Exp $
  */
 
 /*

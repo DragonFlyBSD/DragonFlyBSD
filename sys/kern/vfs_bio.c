@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.76 2006/05/25 19:31:13 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.77 2006/05/27 20:17:16 dillon Exp $
  */
 
 /*
@@ -56,6 +56,7 @@
 
 #include <sys/buf2.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 #include <vm/vm_page2.h>
 
 #include "opt_ddb.h"
@@ -94,8 +95,6 @@ static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(void);
 
-static int bd_request;
-
 static void buf_daemon (void);
 /*
  * bogus page -- for I/O to/from partially complete buffers
@@ -110,12 +109,15 @@ int runningbufspace;
 static int bufspace, maxbufspace,
 	bufmallocspace, maxbufmallocspace, lobufspace, hibufspace;
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
-static int needsbuffer;
 static int lorunningspace, hirunningspace, runningbufreq;
 static int numdirtybuffers, lodirtybuffers, hidirtybuffers;
 static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
+
+static int needsbuffer;		/* locked by needsbuffer_spin */
+static int bd_request;		/* locked by needsbuffer_spin */
+static struct spinlock needsbuffer_spin;
 
 /*
  * Sysctls for operational control of the buffer cache.
@@ -187,7 +189,9 @@ numdirtywakeup(int level)
 {
 	if (numdirtybuffers <= level) {
 		if (needsbuffer & VFS_BIO_NEED_DIRTYFLUSH) {
+			spin_lock_wr(&needsbuffer_spin);
 			needsbuffer &= ~VFS_BIO_NEED_DIRTYFLUSH;
+			spin_unlock_wr(&needsbuffer_spin);
 			wakeup(&needsbuffer);
 		}
 	}
@@ -211,7 +215,9 @@ bufspacewakeup(void)
 	 * process will be able to now.
 	 */
 	if (needsbuffer & VFS_BIO_NEED_BUFSPACE) {
+		spin_lock_wr(&needsbuffer_spin);
 		needsbuffer &= ~VFS_BIO_NEED_BUFSPACE;
+		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&needsbuffer);
 	}
 }
@@ -249,9 +255,11 @@ bufcountwakeup(void)
 {
 	++numfreebuffers;
 	if (needsbuffer) {
+		spin_lock_wr(&needsbuffer_spin);
 		needsbuffer &= ~VFS_BIO_NEED_ANY;
 		if (numfreebuffers >= hifreebuffers)
 			needsbuffer &= ~VFS_BIO_NEED_FREE;
+		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&needsbuffer);
 	}
 }
@@ -319,7 +327,9 @@ void
 bd_wakeup(int dirtybuflevel)
 {
 	if (bd_request == 0 && numdirtybuffers >= dirtybuflevel) {
+		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
+		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
 }
@@ -349,6 +359,8 @@ bufinit(void)
 	struct buf *bp;
 	vm_offset_t bogus_offset;
 	int i;
+
+	spin_init(&needsbuffer_spin);
 
 	/* next, make a null set of free lists */
 	for (i = 0; i < BUFFER_QUEUES; i++)
@@ -918,13 +930,16 @@ void
 bwillwrite(void)
 {
 	if (numdirtybuffers >= hidirtybuffers) {
-		crit_enter();
 		while (numdirtybuffers >= hidirtybuffers) {
 			bd_wakeup(1);
-			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-			tsleep(&needsbuffer, 0, "flswai", 0);
+			spin_lock_wr(&needsbuffer_spin);
+			if (numdirtybuffers >= hidirtybuffers) {
+				needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
+				msleep(&needsbuffer, &needsbuffer_spin, 0,
+				       "flswai", 0);
+			}
+			spin_unlock_wr(&needsbuffer_spin);
 		}
-		crit_exit();
 	}
 }
 
@@ -1875,8 +1890,10 @@ buf_daemon()
 			 * request and sleep until we are needed again.
 			 * The sleep is just so the suspend code works.
 			 */
+			spin_lock_wr(&needsbuffer_spin);
 			bd_request = 0;
-			tsleep(&bd_request, 0, "psleep", hz);
+			msleep(&bd_request, &needsbuffer_spin, 0, "psleep", hz);
+			spin_unlock_wr(&needsbuffer_spin);
 		} else {
 			/*
 			 * We couldn't find any flushable dirty buffers but

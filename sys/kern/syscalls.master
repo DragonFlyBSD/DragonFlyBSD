@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.35 2006/05/24 12:40:19 corecode Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.36 2006/05/27 20:17:16 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -48,13 +48,13 @@
 0	STD	NOHIDE	{ int nosys(void); } syscall nosys_args int
 1	STD	NOHIDE	{ void sys_exit(int rval); } exit sys_exit_args void
 2	STD	POSIX	{ int fork(void); }
-3	STD	POSIX	{ ssize_t read(int fd, void *buf, size_t nbyte); }
-4	STD	POSIX	{ ssize_t write(int fd, const void *buf, size_t nbyte); }
+3	MPSAFE	STD	POSIX	{ ssize_t read(int fd, void *buf, size_t nbyte); }
+4	MPSAFE	STD	POSIX	{ ssize_t write(int fd, const void *buf, size_t nbyte); }
 5	STD	POSIX	{ int open(char *path, int flags, int mode); }
 ; XXX should be		{ int open(const char *path, int flags, ...); }
 ; but we're not ready for `const' or varargs.
 ; XXX man page says `mode_t mode'.
-6	STD	POSIX	{ int close(int fd); }
+6	MPSAFE	STD	POSIX	{ int close(int fd); }
 7	STD	BSD	{ int wait4(int pid, int *status, int options, \
 			    struct rusage *rusage); } wait4 wait_args int
 8	COMPAT	BSD	{ int creat(char *path, int mode); }
@@ -95,7 +95,7 @@
 38	COMPAT	POSIX	{ int stat(char *path, struct ostat *ub); }
 39	STD	POSIX	{ pid_t getppid(void); }
 40	COMPAT	POSIX	{ int lstat(char *path, struct ostat *ub); }
-41	STD	POSIX	{ int dup(u_int fd); }
+41	MPSAFE	STD	POSIX	{ int dup(u_int fd); }
 42	STD	POSIX	{ int pipe(void); }
 43	STD	POSIX	{ gid_t getegid(void); }
 44	STD	BSD	{ int profil(caddr_t samples, size_t size, \
@@ -156,9 +156,9 @@
 88	COMPAT	BSD	{ int sethostname(char *hostname, u_int len); } \
 			    sethostname sethostname_args int
 89	MPSAFE	STD	BSD	{ int getdtablesize(void); }
-90	STD	POSIX	{ int dup2(u_int from, u_int to); }
+90	MPSAFE	STD	POSIX	{ int dup2(u_int from, u_int to); }
 91	UNIMPL	BSD	getdopt
-92	STD	POSIX	{ int fcntl(int fd, int cmd, long arg); }
+92	MPSAFE	STD	POSIX	{ int fcntl(int fd, int cmd, long arg); }
 ; XXX should be		{ int fcntl(int fd, int cmd, ...); }
 ; but we're not ready for varargs.
 ; XXX man page says `int arg' too.
@@ -198,8 +198,8 @@
 118	STD	BSD	{ int getsockopt(int s, int level, int name, \
 			    caddr_t val, int *avalsize); }
 119	UNIMPL	NOHIDE	resuba (BSD/OS 2.x)
-120	STD	BSD	{ int readv(int fd, struct iovec *iovp, u_int iovcnt); }
-121	STD	BSD	{ int writev(int fd, struct iovec *iovp, \
+120	MPSAFE	STD	BSD	{ int readv(int fd, struct iovec *iovp, u_int iovcnt); }
+121	MPSAFE	STD	BSD	{ int writev(int fd, struct iovec *iovp, \
 			    u_int iovcnt); }
 122	STD	BSD	{ int settimeofday(struct timeval *tv, \
 			    struct timezone *tzp); }
@@ -274,9 +274,9 @@
 171	STD	BSD	{ int shmsys(int which, int a2, int a3, int a4); }
 ; XXX should be		{ int shmsys(int which, ...); }
 172	UNIMPL	NOHIDE	nosys
-173	STD	POSIX	{ ssize_t pread(int fd, void *buf, size_t nbyte, \
+173	MPSAFE	STD	POSIX	{ ssize_t pread(int fd, void *buf, size_t nbyte, \
 			    int pad, off_t offset); }
-174	STD	POSIX	{ ssize_t pwrite(int fd, const void *buf, \
+174	MPSAFE	STD	POSIX	{ ssize_t pwrite(int fd, const void *buf, \
 			    size_t nbyte, int pad, off_t offset); }
 175	UNIMPL	NOHIDE	nosys
 176	STD	BSD	{ int ntp_adjtime(struct timex *tp); }
@@ -429,8 +429,8 @@
 287	UNIMPL	NOHIDE	nosys
 288	UNIMPL	NOHIDE	nosys
 ; 289 and 290 from NetBSD (OpenBSD: 267 and 268)
-289	STD	BSD	{ ssize_t preadv(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
-290	STD	BSD	{ ssize_t pwritev(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
+289	MPSAFE	STD	BSD	{ ssize_t preadv(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
+290	MPSAFE	STD	BSD	{ ssize_t pwritev(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
 291	UNIMPL	NOHIDE	nosys
 292	UNIMPL	NOHIDE	nosys
 293	UNIMPL	NOHIDE	nosys
@@ -644,7 +644,7 @@
 471	STD	BSD	{ int jail_attach(int jid); }
 472	STD	BSD	{ int sys_set_tls_area(int which, struct tls_info *info, size_t infosize); }
 473	STD	BSD	{ int sys_get_tls_area(int which, struct tls_info *info, size_t infosize); }
-474	STD	BSD	{ int closefrom(int fd); }
+474	MPSAFE	STD	BSD	{ int closefrom(int fd); }
 475	STD	POSIX	{ int stat(const char *path, struct stat *ub); }
 476	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
 477	STD	POSIX	{ int lstat(const char *path, struct stat *ub); }

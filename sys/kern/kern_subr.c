@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.22 2006/04/26 17:42:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.23 2006/05/27 20:17:16 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -322,6 +322,8 @@ phashinit(elements, type, nentries)
  * Copyin an iovec.  If the iovec array fits, use the preallocated small
  * iovec structure.  If it is too big, dynamically allocate an iovec array
  * of sufficient size.
+ *
+ * MPSAFE
  */
 int
 iovec_copyin(struct iovec *uiov, struct iovec **kiov, struct iovec *siov,

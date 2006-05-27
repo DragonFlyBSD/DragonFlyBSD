@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.30 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.31 2006/05/27 20:17:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -85,6 +85,8 @@ static int	dofilewrite(int, struct file *, struct uio *, int, int *);
 
 /*
  * Read system call.
+ *
+ * MPSAFE
  */
 int
 read(struct read_args *uap)
@@ -113,6 +115,8 @@ read(struct read_args *uap)
 
 /*
  * Positioned (Pread) read system call
+ *
+ * MPSAFE
  */
 int
 pread(struct pread_args *uap)
@@ -141,6 +145,8 @@ pread(struct pread_args *uap)
 
 /*
  * Scatter read system call.
+ *
+ * MPSAFE
  */
 int
 readv(struct readv_args *uap)
@@ -170,6 +176,8 @@ readv(struct readv_args *uap)
 
 /*
  * Scatter positioned read system call.
+ *
+ * MPSAFE
  */
 int
 preadv(struct preadv_args *uap)
@@ -196,6 +204,9 @@ preadv(struct preadv_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_preadv(int fd, struct uio *auio, int flags, int *res)
 {
@@ -223,6 +234,8 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
 /*
  * Common code for readv and preadv that reads data in
  * from a file using the passed in uio, offset, and flags.
+ *
+ * MPALMOSTSAFE - ktrace needs help
  */
 static int
 dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
@@ -260,7 +273,9 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
+			get_mplock();
 			ktrgenio(p, fd, UIO_READ, &ktruio, error);
+			rel_mplock();
 		}
 		FREE(ktriov, M_TEMP);
 	}
@@ -273,6 +288,8 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 
 /*
  * Write system call
+ *
+ * MPSAFE
  */
 int
 write(struct write_args *uap)
@@ -302,6 +319,8 @@ write(struct write_args *uap)
 
 /*
  * Pwrite system call
+ *
+ * MPSAFE
  */
 int
 pwrite(struct pwrite_args *uap)
@@ -329,6 +348,9 @@ pwrite(struct pwrite_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 writev(struct writev_args *uap)
 {
@@ -357,6 +379,8 @@ writev(struct writev_args *uap)
 
 /*
  * Gather positioned write system call
+ *
+ * MPSAFE
  */
 int
 pwritev(struct pwritev_args *uap)
@@ -383,6 +407,9 @@ pwritev(struct pwritev_args *uap)
 	return(error);
 }
 
+/*
+ * MPSAFE
+ */
 int
 kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 {
@@ -409,6 +436,8 @@ kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 /*
  * Common code for writev and pwritev that writes data to
  * a file using the passed in uio, offset, and flags.
+ *
+ * MPALMOSTSAFE - ktrace needs help
  */
 static int
 dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
@@ -443,15 +472,20 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
 		/* Socket layer is responsible for issuing SIGPIPE. */
-		if (error == EPIPE)
+		if (error == EPIPE) {
+			get_mplock();
 			psignal(p, SIGPIPE);
+			rel_mplock();
+		}
 	}
 #ifdef KTRACE
 	if (ktriov != NULL) {
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
 			ktruio.uio_resid = len - auio->uio_resid;
+			get_mplock();
 			ktrgenio(p, fd, UIO_WRITE, &ktruio, error);
+			rel_mplock();
 		}
 		FREE(ktriov, M_TEMP);
 	}
