@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.61 2006/05/25 07:36:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.62 2006/05/27 01:51:26 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -50,7 +50,6 @@
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #include <sys/lock.h>
 #ifdef KTRACE
 #include <sys/uio.h>
@@ -58,6 +57,9 @@
 #endif
 #include <sys/xwait.h>
 #include <sys/ktr.h>
+
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/cpu.h>
 #include <machine/ipl.h>
@@ -515,12 +517,44 @@ resume:
  * There isn't much of a point to this function unless you call it while
  * holding a critical section.
  */
-void
-tsleep_interlock(void *ident)
+static __inline void
+_tsleep_interlock(globaldata_t gd, void *ident)
 {
 	int id = LOOKUP(ident);
 
-	atomic_set_int(&slpque_cpumasks[id], mycpu->gd_cpumask);
+	atomic_set_int(&slpque_cpumasks[id], gd->gd_cpumask);
+}
+
+void
+tsleep_interlock(void *ident)
+{
+	_tsleep_interlock(mycpu, ident);
+}
+
+/*
+ * Interlocked spinlock sleep.  An exclusively held spinlock must
+ * be passed to msleep().  The function will atomically release the
+ * spinlock and tsleep on the ident, then reacquire the spinlock and
+ * return.
+ *
+ * This routine is fairly important along the critical path, so optimize it
+ * heavily.
+ */
+int
+msleep(void *ident, struct spinlock *spin, int flags,
+       const char *wmesg, int timo)
+{
+	globaldata_t gd = mycpu;
+	int error;
+
+	crit_enter_gd(gd);
+	_tsleep_interlock(gd, ident);
+	spin_unlock_wr_quick(gd, spin);
+	error = tsleep(ident, flags, wmesg, timo);
+	spin_lock_wr_quick(gd, spin);
+	crit_exit_gd(gd);
+
+	return (error);
 }
 
 /*

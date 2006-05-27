@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.37 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.38 2006/05/27 01:51:27 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -109,6 +109,7 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
  */
 
 struct intrframe;
+struct spinlock;
 struct malloc_type;
 struct proc;
 struct xwait;
@@ -296,7 +297,8 @@ extern watchdog_tickle_fn	wdog_tickler;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep (void *chan, int slpflags, const char *wmesg, int timo);
+int	tsleep (void *, int, const char *, int);
+int	msleep (void *, struct spinlock *, int, const char *, int);
 void	tsleep_interlock (void *chan);
 void	tstop (struct proc *);
 void	wakeup (void *chan);
