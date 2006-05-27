@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.65 2006/05/26 02:26:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.66 2006/05/27 01:57:41 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -841,7 +841,8 @@ kern_close(int fd)
 	spin_unlock_wr(&fdp->fd_spin);
 	if (fd < fdp->fd_knlistsize) {
 		get_mplock();
-		knote_fdclose(p, fd);
+		if (fd < fdp->fd_knlistsize)
+			knote_fdclose(p, fd);
 		rel_mplock();
 	}
 	error = closef(fp, td);
@@ -1705,10 +1706,8 @@ fdfree(struct proc *p)
 				 * in a shared file descriptor table.
 				 */
 				fdp->fd_holdleaderswakeup = 1;
-				spin_unlock_wr(&fdp->fd_spin);
-				tsleep(&fdp->fd_holdleaderscount,
-				       0, "fdlhold", 0);
-				spin_lock_wr(&fdp->fd_spin);
+				msleep(&fdp->fd_holdleaderscount, 
+				       &fdp->fd_spin, 0, "fdlhold", 0);
 				goto retry;
 			}
 			if (fdtol->fdl_holdcount > 0) {
@@ -1717,9 +1716,7 @@ fdfree(struct proc *p)
 				 * remains valid in closef().
 				 */
 				fdtol->fdl_wakeup = 1;
-				spin_unlock_wr(&fdp->fd_spin);
-				tsleep(fdtol, 0, "fdlhold", 0);
-				spin_lock_wr(&fdp->fd_spin);
+				msleep(fdtol, &fdp->fd_spin, 0, "fdlhold", 0);
 				goto retry;
 			}
 		}
@@ -2041,7 +2038,6 @@ closef(struct file *fp, struct thread *td)
 	} else {
 		p = td->td_proc;	/* can also be NULL */
 	}
-	get_mplock();
 	/*
 	 * POSIX record locking dictates that any close releases ALL
 	 * locks owned by this process.  This is handled by setting
@@ -2050,8 +2046,10 @@ closef(struct file *fp, struct thread *td)
 	 * If the descriptor was in a message, POSIX-style locks
 	 * aren't passed with the descriptor.
 	 */
-	if (p != NULL && 
-	    fp->f_type == DTYPE_VNODE) {
+	if (p != NULL && fp->f_type == DTYPE_VNODE &&
+	    (((struct vnode *)fp->f_data)->v_flag & VMAYHAVELOCKS)
+	) {
+		get_mplock();
 		if ((p->p_leader->p_flag & P_ADVLOCK) != 0) {
 			lf.l_whence = SEEK_SET;
 			lf.l_start = 0;
@@ -2090,8 +2088,8 @@ closef(struct file *fp, struct thread *td)
 				}
 			}
 		}
+		rel_mplock();
 	}
-	rel_mplock();
 	return (fdrop(fp));
 }
 
@@ -2141,7 +2139,9 @@ fdrop(struct file *fp)
 	 */
 	if (fp->f_count < 0)
 		panic("fdrop: count < 0");
-	if ((fp->f_flag & FHASLOCK) && fp->f_type == DTYPE_VNODE) {
+	if ((fp->f_flag & FHASLOCK) && fp->f_type == DTYPE_VNODE &&
+	    (((struct vnode *)fp->f_data)->v_flag & VMAYHAVELOCKS)
+	) {
 		lf.l_whence = SEEK_SET;
 		lf.l_start = 0;
 		lf.l_len = 0;

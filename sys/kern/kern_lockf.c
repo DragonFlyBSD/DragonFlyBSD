@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.29 2006/05/11 19:50:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.30 2006/05/27 01:57:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -239,6 +239,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 
 	switch(ap->a_op) {
 	case F_SETLK:
+		ap->a_vp->v_flag |= VMAYHAVELOCKS;
 		error = lf_setlock(lock, owner, type, flags, start, end);
 		break;
 

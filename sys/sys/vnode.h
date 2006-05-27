@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.56 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.57 2006/05/27 01:57:42 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -257,7 +257,7 @@ struct vnode {
 #define VCTTYISOPEN	0x00010	/* controlling terminal tty is open */
 #define VCKPT		0x00020	/* checkpoint-restored vnode */
 #define VFSMID		0x00040	/* request FSMID update */
-/* open for business    0x00080 */
+#define VMAYHAVELOCKS	0x00080 /* there may be posix or flock locks on vp */
 /* open for business    0x00100 */
 /* open for business    0x00200 */
 /* open for business	0x00400 */
