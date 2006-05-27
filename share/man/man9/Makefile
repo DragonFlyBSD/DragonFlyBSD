@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.27 2006/02/25 19:14:53 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.28 2006/05/27 17:22:46 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -29,7 +29,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	panic.9 pci.9 pfil.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \
 	rman.9 \
-	rtalloc.9 rtentry.9 sleep.9 \
+	rtalloc.9 rtentry.9 sleep.9 spinlock.9 \
 	store.9 style.9 suser.9 time.9 timeout.9 uio.9 \
 	vget.9 vnode.9 vput.9 vref.9 vrele.9 vslock.9 \
 	microtime.9 microuptime.9 tvtohz.9
@@ -194,6 +194,17 @@ MLINKS+=rtalloc.9 rtalloc1.9 rtalloc.9 rtalloc_ign.9
 MLINKS+=sleep.9 tsleep.9 sleep.9 wakeup.9 sleep.9 wakeup_one.9
 MLINKS+=sleep.9 asleep.9 sleep.9 await.9
 MLINKS+=buf.9 bp.9
+MLINKS+=spinlock.9 spin_init.9
+MLINKS+=spinlock.9 spin_lock_rd.9
+MLINKS+=spinlock.9 spin_lock_rd_quick.9
+MLINKS+=spinlock.9 spin_lock_wr.9
+MLINKS+=spinlock.9 spin_lock_wr_quick.9
+MLINKS+=spinlock.9 spin_trylock_wr.9
+MLINKS+=spinlock.9 spin_uninit.9
+MLINKS+=spinlock.9 spin_unlock_rd.9
+MLINKS+=spinlock.9 spin_unlock_rd_quick.9
+MLINKS+=spinlock.9 spin_unlock_wr.9
+MLINKS+=spinlock.9 spin_unlock_wr_quick.9
 MLINKS+=store.9 subyte.9 store.9 suswintr.9 store.9 susword.9 store.9 suword.9
 MLINKS+=suser.9 suser_cred.9
 MLINKS+=suser.9 suser_proc.9
