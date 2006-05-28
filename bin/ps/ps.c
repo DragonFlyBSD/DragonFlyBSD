@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.18 2005/11/14 18:49:48 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.19 2006/05/28 23:12:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,13 +79,13 @@ int	numcpus;		/* hw.ncpu */
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
 static int forceuread=0;
-#define PS_ARGS	"aCcefghjLlM:mN:O:o:p:rSTt:U:uvwxyY"
+#define PS_ARGS	"aCcefghjLlM:mN:O:o:p:rSTt:U:uvwx"
 #else
 static int forceuread=1;
-#define PS_ARGS	"aCceghjLlM:mN:O:o:p:rSTt:U:uvwxyY"
+#define PS_ARGS	"aCceghjLlM:mN:O:o:p:rSTt:U:uvwx"
 #endif
 
-enum sort { DEFAULT, SORTMEM, SORTCPU, SORTIAC } sortby = DEFAULT;
+enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
 
 static const char *getfmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
 		    KINFO *, char *, int);
@@ -283,14 +283,6 @@ main(int argc, char **argv)
 			break;
 		case 'x':
 			xflg = 1;
-			break;
-		case 'y':
-			parsefmt(yfmt);
-			fmt = 1;
-			yfmt[0] = '\0';
-			/* fall through */
-		case 'Y':
-			sortby = SORTIAC;
 			break;
 		case '?':
 		default:
@@ -589,8 +581,10 @@ pscomp(const void *a, const void *b)
 #define VSIZE(k) (KI_EPROC(k)->e_vm.vm_dsize + KI_EPROC(k)->e_vm.vm_ssize + \
 		  KI_EPROC(k)->e_vm.vm_tsize)
 
+#if 0
 	if (sortby == SORTIAC)
 		return (KI_PROC((const KINFO *)a)->p_usdata.bsd4.interactive - KI_PROC((const KINFO *)b)->p_usdata.bsd4.interactive);
+#endif
 	if (sortby == SORTCPU)
 		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
 	if (sortby == SORTMEM)
