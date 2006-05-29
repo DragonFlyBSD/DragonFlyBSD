@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.5 2006/05/29 07:29:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.6 2006/05/29 16:50:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -200,8 +200,19 @@ spin_lock_rd_contested(struct spinlock *mtx)
 	globaldata_t gd = mycpu;
 	int value = mtx->lock;
 
+	/*
+	 * Shortcut the op if we can just set the cache bit.  This case
+	 * occurs when the last lock was an exclusive lock.
+	 */
+	while ((value & SPINLOCK_EXCLUSIVE) == 0) {
+		if (atomic_cmpset_int(&mtx->lock, value, value|gd->gd_cpumask))
+			return;
+		value = mtx->lock;
+	}
+
 	exponential_init(&backoff, mtx);
 	++spinlocks_contested1;
+
 	logspin(beg, mtx, 'r');
 
 	while ((value & gd->gd_cpumask) == 0) {

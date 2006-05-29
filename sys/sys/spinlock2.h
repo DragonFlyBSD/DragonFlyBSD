@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.9 2006/05/21 20:23:27 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.10 2006/05/29 16:50:06 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -92,7 +92,8 @@ spin_trylock_wr(struct spinlock *mtx)
 #endif
 
 /*
- * Obtain an exclusive spinlock and return.
+ * Obtain an exclusive spinlock and return.  Shortcut the case where the only
+ * cached read lock was from our own cpu (it can just be cleared).
  */
 static __inline void
 spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
@@ -103,8 +104,11 @@ spin_lock_wr_quick(globaldata_t gd, struct spinlock *mtx)
 
 	++gd->gd_spinlocks_wr;
 #ifdef SMP
-	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
-		spin_lock_wr_contested(mtx, value);
+	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0) {
+		value &= ~gd->gd_cpumask;
+		if (value)
+			spin_lock_wr_contested(mtx, value);
+	}
 #endif
 }
 
