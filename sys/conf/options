@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.47 2006/05/22 06:26:29 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.48 2006/05/29 07:29:12 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -510,6 +510,8 @@ KTR_IPIQ			opt_ktr.h
 KTR_MSGPORT			opt_ktr.h
 KTR_ENTRIES			opt_global.h
 KTR_VERBOSE			opt_ktr.h
+KTR_GIANT_CONTENTION		opt_ktr.h
+KTR_SPIN_CONTENTION		opt_ktr.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h

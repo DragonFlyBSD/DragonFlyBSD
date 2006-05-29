@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.82 2006/05/29 03:57:21 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.83 2006/05/29 07:29:15 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -446,6 +446,7 @@ extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
 			    struct thread *template, int tdflags, int cpu,
 			    const char *ctl, ...);
 extern void lwkt_exit (void) __dead2;
+extern void lwkt_mp_lock_contested(void);
 
 #endif
 

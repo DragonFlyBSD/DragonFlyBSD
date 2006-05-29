@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.97 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.98 2006/05/29 07:29:14 dillon Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <sys/lock.h>
 #include <sys/caps.h>
 #include <sys/spinlock.h>
+#include <sys/ktr.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -120,6 +121,23 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, token_contention_count, CTLFLAG_RW,
 SYSCTL_QUAD(_lwkt, OID_AUTO, mplock_contention_count, CTLFLAG_RW,
 	&mplock_contention_count, 0, "spinning due to MPLOCK contention");
 #endif
+#endif
+
+/*
+ * Kernel Trace
+ */
+#ifdef _KERNEL
+
+#if !defined(KTR_GIANT_CONTENTION)
+#define KTR_GIANT_CONTENTION	KTR_ALL
+#endif
+
+KTR_INFO_MASTER(giant);
+KTR_INFO(KTR_GIANT_CONTENTION, giant, beg, 0, "thread=%p", sizeof(void *));
+KTR_INFO(KTR_GIANT_CONTENTION, giant, end, 1, "thread=%p", sizeof(void *));
+
+#define loggiant(name)	KTR_LOG(giant_ ## name, curthread)
+
 #endif
 
 /*
@@ -1471,6 +1489,26 @@ lwkt_smp_stopped(void)
 	lwkt_process_ipiq();
     }
     crit_exit_gd(gd);
+}
+
+/*
+ * get_mplock() calls this routine if it is unable to obtain the MP lock.
+ * get_mplock() has already incremented td_mpcount.  We must block and
+ * not return until giant is held.
+ *
+ * All we have to do is lwkt_switch() away.  The LWKT scheduler will not
+ * reschedule the thread until it can obtain the giant lock for it.
+ */
+void
+lwkt_mp_lock_contested(void)
+{
+#ifdef _KERNEL
+    loggiant(beg);
+#endif
+    lwkt_switch();
+#ifdef _KERNEL
+    loggiant(end);
+#endif
 }
 
 #endif

@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.4 2006/05/21 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.5 2006/05/29 07:29:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,11 +46,28 @@
 #include <machine/clock.h>
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
+#include <sys/ktr.h>
 
 #define	BACKOFF_INITIAL	1
 #define	BACKOFF_LIMIT	256
 
 #ifdef SMP
+
+/*
+ * Kernal Trace
+ */
+#if !defined(KTR_SPIN_CONTENTION)
+#define KTR_SPIN_CONTENTION	KTR_ALL
+#endif
+#define SPIN_STRING	"spin=%p type=%c"
+#define SPIN_ARG_SIZE	(sizeof(void *) + sizeof(int))
+
+KTR_INFO_MASTER(spin);
+KTR_INFO(KTR_SPIN_CONTENTION, spin, beg, 0, SPIN_STRING, SPIN_ARG_SIZE);
+KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
+
+#define logspin(name, mtx, type)			\
+	KTR_LOG(spin_ ## name, mtx, type)
 
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
@@ -133,6 +150,7 @@ spin_lock_wr_contested(struct spinlock *mtx, int value)
 	 */
 	exponential_init(&backoff, mtx);
 	++spinlocks_contested1;
+	logspin(beg, mtx, 'w');
 
 	while (value & SPINLOCK_EXCLUSIVE) {
 		value = atomic_swap_int(&mtx->lock, 0x80000000);
@@ -166,6 +184,7 @@ spin_lock_wr_contested(struct spinlock *mtx, int value)
 			mask &= ~(1 << bit);
 		}
 	}
+	logspin(end, mtx, 'w');
 }
 
 /*
@@ -183,6 +202,7 @@ spin_lock_rd_contested(struct spinlock *mtx)
 
 	exponential_init(&backoff, mtx);
 	++spinlocks_contested1;
+	logspin(beg, mtx, 'r');
 
 	while ((value & gd->gd_cpumask) == 0) {
 		if (value & SPINLOCK_EXCLUSIVE) {
@@ -199,6 +219,7 @@ spin_lock_rd_contested(struct spinlock *mtx)
 		}
 		value = mtx->lock;
 	}
+	logspin(end, mtx, 'r');
 }
 
 /*

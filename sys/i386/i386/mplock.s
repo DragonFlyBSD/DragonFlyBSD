@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.19 2005/12/20 19:09:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.20 2006/05/29 07:29:13 dillon Exp $
  *
  * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
  * 
@@ -158,10 +158,15 @@ NON_GPROF_ENTRY(get_mplock)
 	 * Failure, but we could end up owning mp_lock anyway due to
 	 * an interrupt race.  lwkt_switch() will clean up the mess
 	 * and 'block' until the mp_lock is obtained.
+	 *
+	 * Create a stack frame for the call so KTR logs the stack
+	 * backtrace properly.
 	 */
 2:
-	pause
-	call	lwkt_switch
+	pushl	%ebp
+	movl	%esp,%ebp
+	call	lwkt_mp_lock_contested
+	popl	%ebp
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
