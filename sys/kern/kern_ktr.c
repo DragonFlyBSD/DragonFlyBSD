@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.14 2006/05/21 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.15 2006/05/29 06:47:29 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -107,6 +107,7 @@
 #define KTR_TESTLOG	KTR_ALL
 #endif
 KTR_INFO_MASTER(testlog);
+#if KTR_TESTLOG
 KTR_INFO(KTR_TESTLOG, testlog, test1, 0, "test1", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test2, 1, "test2", sizeof(void *) * 4);
 KTR_INFO(KTR_TESTLOG, testlog, test3, 2, "test3", sizeof(void *) * 4);
@@ -123,6 +124,7 @@ KTR_INFO(KTR_TESTLOG, testlog, spin_beg, 10, "spin_beg", 0);
 KTR_INFO(KTR_TESTLOG, testlog, spin_end, 11, "spin_end", 0);
 #define logtest(name)	KTR_LOG(testlog_ ## name, 0, 0, 0, 0)
 #define logtest_noargs(name)	KTR_LOG(testlog_ ## name)
+#endif
 
 MALLOC_DEFINE(M_KTR, "ktr", "ktr buffers");
 
@@ -204,8 +206,10 @@ SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
  * This callback occurs on cpu0.
  */
 static void ktr_resync_callback(void *dummy);
+#if KTR_TESTLOG
 static void ktr_pingpong_remote(void *dummy);
 static void ktr_pipeline_remote(void *dummy);
+#endif
 
 static void
 ktr_resyncinit(void *dummy)
@@ -374,6 +378,8 @@ ktr_resync_remote(void *dummy __unused)
 	cpu_enable_intr();
 }
 
+#if KTR_TESTLOG
+
 static
 void
 ktr_pingpong_remote(void *dummy __unused)
@@ -400,6 +406,8 @@ ktr_pipeline_remote(void *dummy __unused)
 {
 	logtest_noargs(pipeline);
 }
+
+#endif
 
 #else	/* !SMP */
 
