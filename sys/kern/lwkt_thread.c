@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.96 2006/05/21 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.97 2006/05/29 03:57:20 dillon Exp $
  */
 
 /*
@@ -309,6 +309,9 @@ lwkt_init_thread_remote(void *arg)
 {
     thread_t td = arg;
 
+    /*
+     * Protected by critical section held by IPI dispatch
+     */
     TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
 }
 
@@ -1059,34 +1062,58 @@ lwkt_schedule(thread_t td)
     crit_exit_gd(mygd);
 }
 
+#ifdef SMP
+
 /*
- * Managed acquisition.  This code assumes that the MP lock is held for
- * the tdallq operation and that the thread has been descheduled from its
- * original cpu.  We also have to wait for the thread to be entirely switched
- * out on its original cpu (this is usually fast enough that we never loop)
- * since the LWKT system does not have to hold the MP lock while switching
- * and the target may have released it before switching.
+ * Thread migration using a 'Pull' method.  The thread may or may not be
+ * the current thread.  It MUST be descheduled and in a stable state.
+ * lwkt_giveaway() must be called on the cpu owning the thread.
+ *
+ * At any point after lwkt_giveaway() is called, the target cpu may
+ * 'pull' the thread by calling lwkt_acquire().
+ *
+ * MPSAFE - must be called under very specific conditions.
  */
+void
+lwkt_giveaway(thread_t td)
+{
+	globaldata_t gd = mycpu;
+
+	crit_enter_gd(gd);
+	KKASSERT(td->td_gd == gd);
+	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+	td->td_flags |= TDF_MIGRATING;
+	crit_exit_gd(gd);
+}
+
 void
 lwkt_acquire(thread_t td)
 {
     globaldata_t gd;
     globaldata_t mygd;
 
+    KKASSERT(td->td_flags & TDF_MIGRATING);
     gd = td->td_gd;
     mygd = mycpu;
-    cpu_lfence();
-    KKASSERT((td->td_flags & TDF_RUNQ) == 0);
-    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))	/* XXX spin */
+    if (gd != mycpu) {
 	cpu_lfence();
-    if (gd != mygd) {
+	KKASSERT((td->td_flags & TDF_RUNQ) == 0);
 	crit_enter_gd(mygd);
-	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
+	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))
+	    cpu_lfence();
 	td->td_gd = mygd;
-	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq); /* protected by BGL */
+	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq);
+	td->td_flags &= ~TDF_MIGRATING;
+	crit_exit_gd(mygd);
+    } else {
+	crit_enter_gd(mygd);
+	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq);
+	td->td_flags &= ~TDF_MIGRATING;
 	crit_exit_gd(mygd);
     }
 }
+
+#endif
 
 /*
  * Generic deschedule.  Descheduling threads other then your own should be
@@ -1188,11 +1215,12 @@ lwkt_checkpri_self(void)
 }
 
 /*
- * Migrate the current thread to the specified cpu.  The BGL must be held
- * (for the gd_tdallq manipulation XXX).  This is accomplished by 
- * descheduling ourselves from the current cpu, moving our thread to the
- * tdallq of the target cpu, IPI messaging the target cpu, and switching out.
- * TDF_MIGRATING prevents scheduling races while the thread is being migrated.
+ * Migrate the current thread to the specified cpu. 
+ *
+ * This is accomplished by descheduling ourselves from the current cpu,
+ * moving our thread to the tdallq of the target cpu, IPI messaging the
+ * target cpu, and switching out.  TDF_MIGRATING prevents scheduling
+ * races while the thread is being migrated.
  */
 #ifdef SMP
 static void lwkt_setcpu_remote(void *arg);
@@ -1208,11 +1236,11 @@ lwkt_setcpu_self(globaldata_t rgd)
 	crit_enter_quick(td);
 	td->td_flags |= TDF_MIGRATING;
 	lwkt_deschedule_self(td);
-	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq); /* protected by BGL */
-	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq); /* protected by BGL */
+	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
 	lwkt_send_ipiq(rgd, (ipifunc1_t)lwkt_setcpu_remote, td);
 	lwkt_switch();
 	/* we are now on the target cpu */
+	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq);
 	crit_exit_quick(td);
     }
 #endif

@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.42 2006/05/21 20:23:27 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.43 2006/05/29 03:57:21 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -110,9 +110,6 @@
  * in various vm_map related operations.  gd_vme_avail is *NOT* a count of
  * the number of structures in the cache but is instead a count of the number
  * of unreserved structures in the cache.  See vm_map_entry_reserve().
- *
- * gd_uschedcp is internal to the userland scheduler.  It does not represent
- * the currently running process.
  */
 
 struct sysmsg;
@@ -139,9 +136,9 @@ struct globaldata {
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */
-	short		gd_upri;		/* userland scheduler helper */
-	short		gd_rrcount;		/* userland scheduler helper */
-	struct thread	gd_schedthread;		/* userland scheduler helper */
+	short		gd_unused01;
+	short		gd_unused02;
+	struct thread	gd_unused02B;
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
 	int		gd_trap_nesting_level;	/* track traps */
@@ -160,7 +157,7 @@ struct globaldata {
 	struct nchstats	*gd_nchstats;		/* namecache effectiveness */
 	int		gd_pipeqcount;		/* number of structures */
 	void 		*gd_unused04;
-	struct lwp	*gd_uschedcp;		/* userland scheduler */
+	void		*gd_unused05;
 
 	struct tslpque	*gd_tsleep_hash;	/* tsleep/wakeup support */
 	int		gd_spinlocks_rd;	/* Shared spinlocks held */

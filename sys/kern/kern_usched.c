@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.2 2006/03/23 14:04:24 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.3 2006/05/29 03:57:20 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -51,11 +51,21 @@ static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
 struct usched *
 usched_init(void)
 {
+	const char *defsched;
+
+	defsched = getenv("kern.user_scheduler");
+
 	/*
-	 * Add the bsd4 userland scheduler to the system.
+	 * Add various userland schedulers to the system.
 	 */
 	usched_ctl(&usched_bsd4, USCH_ADD);
-	return(&usched_bsd4);
+	usched_ctl(&usched_dummy, USCH_ADD);
+	if (defsched == NULL )
+		return(&usched_bsd4);
+	if (strcmp(defsched, "bsd4") == 0)
+		return(&usched_bsd4);
+	printf("WARNING: Running dummy userland scheduler\n");
+	return(&usched_dummy);
 }
 
 /*

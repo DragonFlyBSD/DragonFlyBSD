@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.62 2006/05/27 01:51:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.63 2006/05/29 03:57:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -251,6 +251,8 @@ schedcpu_resource(struct proc *p, void *data __unused)
 /*
  * This is only used by ps.  Generate a cpu percentage use over
  * a period of one second.
+ *
+ * MPSAFE
  */
 void
 updatepcpu(struct lwp *lp, int cpticks, int ttlticks)
@@ -433,11 +435,9 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 */
 	if (p) {
 		/*
-		 * Ok, we are sleeping.  Remove us from the userland runq
-		 * and place us in the SSLEEP state.
+		 * Ok, we are sleeping.  Place us in the SSLEEP state.
 		 */
-		if (p->p_flag & P_ONRUNQ)
-			p->p_usched->remrunqueue(&p->p_lwp);
+		KKASSERT((p->p_flag & P_ONRUNQ) == 0);
 		p->p_stat = SSLEEP;
 		p->p_stats->p_ru.ru_nvcsw++;
 		lwkt_switch();

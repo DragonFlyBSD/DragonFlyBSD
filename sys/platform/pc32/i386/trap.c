@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.75 2006/05/22 06:26:30 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.76 2006/05/29 03:57:19 dillon Exp $
  */
 
 /*
@@ -317,7 +317,6 @@ userexit(struct lwp *lp)
 		lp->lwp_proc->p_usched->release_curproc(lp);
 #endif
 
-again:
 	/*
 	 * Handle a LWKT reschedule request first.  Since our passive release
 	 * is still in place we do not have to do anything special.
@@ -326,24 +325,12 @@ again:
 		lwkt_switch();
 
 	/*
-	 * Acquire the current process designation if we do not own it.
-	 * Note that acquire_curproc() does not reset the user reschedule
-	 * bit on purpose, because we may need to accumulate over several
-	 * threads waking up at the same time.
-	 *
-	 * NOTE: userland scheduler cruft: because processes are removed
-	 * from the userland scheduler's queue we run through loops to try
-	 * to figure out which is the best of [ existing, waking-up ]
-	 * threads.
+	 * Acquire the current process designation for this user scheduler
+	 * on this cpu.  This will also handle any user-reschedule requests.
 	 */
-	if (lp != gd->gd_uschedcp) {
-		++slow_release;
-		lp->lwp_proc->p_usched->acquire_curproc(lp);
-		/* We may have switched cpus on acquisition */
-		gd = td->td_gd;
-	} else {
-		++fast_release;
-	}
+	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	/* We may have switched cpus on acquisition */
+	gd = td->td_gd;
 
 	/*
 	 * Reduce our priority in preparation for a return to userland.  If
@@ -363,19 +350,6 @@ again:
 	 */
 	if (lwkt_checkpri_self())
 		lwkt_switch();
-
-	/*
-	 * If a userland reschedule is [still] pending we may not be the best
-	 * selected process.  Select a better one.  If another LWKT resched
-	 * is pending the trap will be re-entered.
-	 */
-	if (user_resched_wanted()) {
-		lp->lwp_proc->p_usched->select_curproc(gd);
-		if (lp != gd->gd_uschedcp) {
-			lwkt_setpri_self(TDPRI_KERN_USER);
-			goto again;
-		}
-	}
 }
 
 /*

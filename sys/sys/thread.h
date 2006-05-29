@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.81 2006/05/21 20:23:27 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.82 2006/05/29 03:57:21 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -373,7 +373,6 @@ extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(thread_t td);
 extern void lwkt_deschedule(thread_t td);
 extern void lwkt_deschedule_self(thread_t td);
-extern void lwkt_acquire(thread_t td);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
 extern void lwkt_token_wait(void);
@@ -412,6 +411,8 @@ extern void lwkt_migratecpu(int cpuid);
 
 #ifdef SMP
 
+extern void lwkt_giveaway(struct thread *);
+extern void lwkt_acquire(struct thread *);
 extern int  lwkt_send_ipiq3(struct globaldata *targ, ipifunc3_t func, 
 				void *arg1, int arg2);
 extern int  lwkt_send_ipiq3_passive(struct globaldata *targ, ipifunc3_t func,
