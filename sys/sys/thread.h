@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.83 2006/05/29 07:29:15 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.84 2006/05/29 22:57:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -323,6 +323,7 @@ struct thread {
  * rollup flag will be set in mycpu->gd_reqflags.
  */
 #define TDPRI_IDLE_THREAD	0	/* the idle thread */
+#define TDPRI_USER_SCHEDULER	2	/* user scheduler helper */
 #define TDPRI_USER_IDLE		4	/* user scheduler idle */
 #define TDPRI_USER_NORM		6	/* user scheduler normal */
 #define TDPRI_USER_REAL		8	/* user scheduler real time */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.1 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.2 2006/05/29 22:57:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -324,7 +324,10 @@ dummy_setrunqueue(struct lwp *lp)
  * in those other procedures to avoid a deadlock.
  *
  * The MP lock may or may not be held on entry and cannot be obtained
- * by this routine (because it is called from a systimer IPI).
+ * by this routine (because it is called from a systimer IPI).  Additionally,
+ * because this is equivalent to a FAST interrupt, spinlocks cannot be used
+ * (or at least, you have to check that gd_spin* counts are 0 before you
+ * can).
  *
  * This routine is called at ESTCPUFREQ on each cpu independantly.
  *

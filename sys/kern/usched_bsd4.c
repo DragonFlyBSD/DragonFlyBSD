@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.9 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.10 2006/05/29 22:57:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -502,20 +502,32 @@ bsd4_setrunqueue(struct lwp *lp)
 	if ((lp->lwp_thread->td_flags & TDF_MIGRATING) == 0)
 		lwkt_giveaway(lp->lwp_thread);
 #endif
-	spin_lock_wr(&bsd4_spin);
-	bsd4_setrunqueue_locked(lp);
-	spin_unlock_wr(&bsd4_spin);
 
 	/*
-	 * gd and cpuid may still be our 'hint', not our current cpu info.
+	 * We lose control of lp the moment we release the spinlock after
+	 * having placed lp on the queue.  i.e. another cpu could pick it
+	 * up and it could exit, or its priority could be further adjusted,
+	 * or something like that.
+	 */
+	spin_lock_wr(&bsd4_spin);
+	bsd4_setrunqueue_locked(lp);
+
+	/*
+	 * gd, dd, and cpuid are still our target cpu 'hint', not our current
+	 * cpu info.
 	 *
-	 * Cpu locality of reference.  If the LWP has higher priority
-	 * (lower lwp_priority value) on its target cpu, reschedule on
-	 * that cpu.
+	 * We always try to schedule a LWP to its original cpu first.  It
+	 * is possible for the scheduler helper or setrunqueue to assign
+	 * the LWP to a different cpu before the one we asked for wakes
+	 * up.
+	 *
+	 * If the LWP has higher priority (lower lwp_priority value) on
+	 * its target cpu, reschedule on that cpu.
 	 */
 	if ((lp->lwp_thread->td_flags & TDF_NORESCHED) == 0) {
-		if (dd->upri > lp->lwp_priority) {	/* heuristic */
-			dd->upri = lp->lwp_priority;	/* heuristic */
+		if ((dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
+			dd->upri = lp->lwp_priority;
+			spin_unlock_wr(&bsd4_spin);
 #ifdef SMP
 			if (gd == mycpu) {
 				need_user_resched();
@@ -530,6 +542,7 @@ bsd4_setrunqueue(struct lwp *lp)
 			return;
 		}
 	}
+	spin_unlock_wr(&bsd4_spin);
 
 #ifdef SMP
 	/*
@@ -567,6 +580,7 @@ bsd4_setrunqueue(struct lwp *lp)
  * each cpu.
  *
  * Because this is effectively a 'fast' interrupt, we cannot safely
+ * use spinlocks unless gd_spinlocks_rd and gd_spinlocks_wr are both 0.
  *
  * MPSAFE
  */
@@ -600,7 +614,15 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 */
 	if (lp->lwp_origcpu)
 		--lp->lwp_origcpu;
-	bsd4_resetpriority(lp);
+
+	/*
+	 * We can only safely call bsd4_resetpriority(), which uses spinlocks,
+	 * if we aren't interrupting a thread that is using spinlocks.
+	 * Otherwise we can deadlock with another cpu waiting for our read
+	 * spinlocks to clear.
+	 */
+	if (gd->gd_spinlocks_rd == 0 && gd->gd_spinlocks_wr == 0)
+		bsd4_resetpriority(lp);
 }
 
 /*
@@ -769,28 +791,22 @@ bsd4_resetpriority(struct lwp *lp)
 			reschedcpu = -1;
 		}
 	} else {
-		lp->lwp_rqtype = newrqtype;
-		lp->lwp_rqindex = (newpriority & PRIMASK) / PPQ;
 		lp->lwp_priority = newpriority;
 		reschedcpu = -1;
 	}
 	spin_unlock_wr(&bsd4_spin);
 
 	/*
-	 * Determine if we need to reschedule the target cpu.  Since at
-	 * most we are moving an already-scheduled lwp around, we don't
-	 * have to be fancy here.
+	 * Determine if we need to reschedule the target cpu.  This only
+	 * occurs if the LWP is already on a scheduler queue, which means
+	 * that idle cpu notification has already occured.  At most we
+	 * need only issue a need_user_resched() on the appropriate cpu.
 	 */
 	if (reschedcpu >= 0) {
 		dd = &bsd4_pcpu[reschedcpu];
-		if (dd->uschedcp == lp) {
-			/*
-			 * We don't need to reschedule ourselves.  In fact,
-			 * this could lead to a livelock.
-			 */
+		KKASSERT(dd->uschedcp != lp);
+		if ((dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
 			dd->upri = lp->lwp_priority;
-		} else if (dd->upri > lp->lwp_priority) {	/* heuristic */
-			dd->upri = lp->lwp_priority;		/* heuristic */
 #ifdef SMP
 			if (reschedcpu == mycpu->gd_cpuid) {
 				need_user_resched();
@@ -1073,13 +1089,21 @@ sched_thread(void *dummy)
     dd = &bsd4_pcpu[cpuid];
 
     /*
-     * Scheduler thread does not need to hold the MP lock
+     * The scheduler thread does not need to hold the MP lock.  Since we
+     * are woken up only when no user processes are scheduled on a cpu, we
+     * can run at an ultra low priority.
      */
     rel_mplock();
+    lwkt_setpri_self(TDPRI_USER_SCHEDULER);
 
     for (;;) {
+	/*
+	 * We use the LWKT deschedule-interlock trick to avoid racing
+	 * bsd4_rdyprocmask.  This means we cannot block through to the
+	 * manual lwkt_switch() call we make below.
+	 */
 	crit_enter_gd(gd);
-	lwkt_deschedule_self(gd->gd_curthread);	/* interlock */
+	lwkt_deschedule_self(gd->gd_curthread);
 	spin_lock_wr(&bsd4_spin);
 	atomic_set_int(&bsd4_rdyprocmask, cpumask);
 	if ((bsd4_curprocmask & cpumask) == 0) {
