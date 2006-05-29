@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.15 2006/05/29 06:47:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.16 2006/05/29 07:18:04 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -180,8 +180,6 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, verbose, CTLFLAG_RW, &ktr_verbose, 0, "");
 
 extern int64_t tsc_offsets[];
 
-#if KTR_TESTLOG || KTR_ALL
-
 static void
 ktr_sysinit(void *dummy)
 {
@@ -193,8 +191,6 @@ ktr_sysinit(void *dummy)
 	}
 }
 SYSINIT(ktr_sysinit, SI_SUB_INTRINSIC, SI_ORDER_FIRST, ktr_sysinit, NULL);
-
-#endif
 
 /*
  * Try to resynchronize the TSC's for all cpus.  This is really, really nasty.
