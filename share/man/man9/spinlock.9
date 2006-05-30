@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.1 2006/05/27 17:22:46 swildner Exp $
+.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.2 2006/05/30 08:13:07 swildner Exp $
 .\"
 .Dd May 27, 2006
 .Os
@@ -134,7 +134,7 @@ if the spinlock was successfully obtained and
 if it wasn't.
 If you have the current CPU's
 .Fa globaldata
-pointer in hand you can call 
+pointer in hand you can call
 .Fn spin_lock_wr_quick ,
 but most code will just call the normal version.
 A spinlock used only for exclusive access has about the same overhead
@@ -145,7 +145,7 @@ Because shared spinlocks are left intact even after released (to
 optimize shared spinlock performance), the exclusive spinlock code
 must run through any shared bits it finds in the spinlock, clear them,
 and check the related CPU's
-.Fa globaldata 
+.Fa globaldata
 structure to determine whether it needs to spin or not.
 .Pp
 A previously obtained exclusive spinlock is released by calling either
@@ -162,7 +162,7 @@ relocked when the thread is switched back in.
 If you want a lock that survives a blocking condition or thread switch
 without being released, use
 .Xr lockmgr 9
-locks or LWKT reader/writer locks. 
+locks or LWKT reader/writer locks.
 .Pp
 .Dx Ap s
 core spinlocks should only be used around small contained sections of
@@ -211,8 +211,8 @@ which contains a token or
 lock, it is legal to directly access the internal spinlock embedded
 in those structures.
 .Sh SEE ALSO
-.Xr lockmgr(9) ,
-.Xr lwkt(9)
+.Xr lockmgr 9 ,
+.Xr lwkt 9
 .Sh HISTORY
 A
 .Nm spinlock
