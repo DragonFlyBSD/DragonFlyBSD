@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.9 2005/12/06 13:48:49 sephe Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.10 2006/05/31 19:06:13 swildner Exp $
 #
 
 #include <sys/bus.h>
@@ -48,9 +48,7 @@ CODE {
 #
 # This is called from system code which prints out a description of a
 # device.  It should describe the attachment that the child has with
-# the parent.  For instance the TurboLaser bus prints which node the
-# device is attached to.  See bus_generic_print_child.9 for more 
-# information.
+# the parent.  See bus_generic_print_child.9 for more information.
 # This method returns the number of characters output.
 #
 METHOD int print_child {
