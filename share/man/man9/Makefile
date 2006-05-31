@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.28 2006/05/27 17:22:46 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.29 2006/05/31 09:42:10 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -23,7 +23,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ieee80211.9 ieee80211_crypto.9 ieee80211_input.9 ieee80211_ioctl.9 \
 	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
 	ieee80211_radiotap.9 \
-	ifnet.9 inittodr.9 intro.9 kernacc.9 ktr.9 lock.9 \
+	ifnet.9 inittodr.9 intro.9 kernacc.9 kobj.9 ktr.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 \
 	nlookup.9 \
 	panic.9 pci.9 pfil.9 physio.9 posix4.9 psignal.9 \
@@ -155,6 +155,13 @@ MLINKS+=ieee80211_proto.9 ieee80211_dump_pkt.9 \
 MLINKS+=ieee80211_radiotap.9 radiotap.9
 MLINKS+=ifnet.9 if_data.9 ifnet.9 ifaddr.9 ifnet.9 ifqueue.9
 MLINKS+=kernacc.9 useracc.9
+MLINKS+=kobj.9 DEFINE_CLASS.9
+MLINKS+=kobj.9 kobj_class_compile.9
+MLINKS+=kobj.9 kobj_class_compile_static.9
+MLINKS+=kobj.9 kobj_class_free.9
+MLINKS+=kobj.9 kobj_create.9
+MLINKS+=kobj.9 kobj_delete.9
+MLINKS+=kobj.9 kobj_init.9
 MLINKS+=make_dev.9 destroy_dev.9
 MLINKS+=malloc.9 FREE.9 malloc.9 MALLOC.9 malloc.9 free.9
 MLINKS+=malloc.9 realloc.9 malloc.9 reallocf.9
