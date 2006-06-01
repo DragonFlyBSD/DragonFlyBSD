@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)kdump.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/kdump/kdump.1,v 1.5.2.2 2001/08/16 13:16:51 ru Exp $
-.\" $DragonFly: src/usr.bin/kdump/kdump.1,v 1.2 2003/06/17 04:29:27 dillon Exp $
+.\" $DragonFly: src/usr.bin/kdump/kdump.1,v 1.3 2006/06/01 18:18:00 joerg Exp $
 .\"
 .Dd June 6, 1993
 .Dt KDUMP 1
@@ -45,6 +45,7 @@
 .Op Fl f Ar file
 .Op Fl m Ar maxdata
 .Op Fl t Op cnisuw
+.Op Fl p Ar pid
 .Sh DESCRIPTION
 The
 .Nm
@@ -70,6 +71,9 @@ Display at most
 .Ar maxdata
 bytes when decoding
 .Tn I/O .
+.It Fl p Ar pid
+Display only records for process
+.Ar pid .
 .It Fl n
 Suppress ad hoc translations.
 Normally

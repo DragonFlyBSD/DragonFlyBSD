@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.5 2005/06/01 03:05:40 swildner Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.6 2006/06/01 18:18:00 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -63,13 +63,15 @@ struct ktr_header ktr_header;
 
 main(int argc, char **argv)
 {
-	int ch, ktrlen, size;
+	int ch, col, ktrlen, size;
+	pid_t do_pid = -1;
 	register void *m;
 	int trpoints = ALL_POINTS;
+	char *cp;
 
 	(void) setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc,argv,"f:dlm:nRTt:")) != -1)
+	while ((ch = getopt(argc,argv,"f:dlm:np:RTt:")) != -1)
 		switch((char)ch) {
 		case 'f':
 			tracefile = optarg;
@@ -85,6 +87,11 @@ main(int argc, char **argv)
 			break;
 		case 'n':
 			fancy = 0;
+			break;
+		case 'p':
+			do_pid = strtoul(optarg, &cp, 0);
+			if (*cp != 0)
+				errx(1,"invalid number %s", optarg);
 			break;
 		case 'R':
 			timestamp = 2;	/* relative timestamp */
@@ -110,8 +117,11 @@ main(int argc, char **argv)
 	if (!freopen(tracefile, "r", stdin))
 		err(1, "%s", tracefile);
 	while (fread_tail(&ktr_header, sizeof(struct ktr_header), 1)) {
-		if (trpoints & (1<<ktr_header.ktr_type))
-			dumpheader(&ktr_header);
+		if (trpoints & (1 << ktr_header.ktr_type) &&
+		    (do_pid == -1 || ktr_header.ktr_pid == do_pid))
+			col = dumpheader(&ktr_header);
+		else
+			col = -1;
 		if ((ktrlen = ktr_header.ktr_len) < 0)
 			errx(1, "bogus length 0x%x", ktrlen);
 		if (ktrlen > size) {
@@ -123,6 +133,8 @@ main(int argc, char **argv)
 		if (ktrlen && fread_tail(m, ktrlen, 1) == 0)
 			errx(1, "data too short");
 		if ((trpoints & (1<<ktr_header.ktr_type)) == 0)
+			continue;
+		if (col == -1)
 			continue;
 		switch (ktr_header.ktr_type) {
 		case KTR_SYSCALL:
@@ -168,6 +180,7 @@ dumpheader(struct ktr_header *kth)
 	static char unknown[64];
 	static struct timeval prevtime, temp;
 	char *type;
+	int col;
 
 	switch (kth->ktr_type) {
 	case KTR_SYSCALL:
@@ -196,17 +209,18 @@ dumpheader(struct ktr_header *kth)
 		type = unknown;
 	}
 
-	(void)printf("%6d %-8.*s ", kth->ktr_pid, MAXCOMLEN, kth->ktr_comm);
+	col = printf("%6d %-8.*s ", kth->ktr_pid, MAXCOMLEN, kth->ktr_comm);
 	if (timestamp) {
 		if (timestamp == 2) {
 			temp = kth->ktr_time;
 			timevalsub(&kth->ktr_time, &prevtime);
 			prevtime = temp;
 		}
-		(void)printf("%ld.%06ld ",
+		col += printf("%ld.%06ld ",
 		    kth->ktr_time.tv_sec, kth->ktr_time.tv_usec);
 	}
-	(void)printf("%s  ", type);
+	col += printf("%s  ", type);
+	return col;
 }
 
 #include <sys/syscall.h>
@@ -441,7 +455,7 @@ ktruser(int len, unsigned char *p)
 usage(void)
 {
 	(void)fprintf(stderr,
-	    "usage: kdump [-dnlRT] [-f trfile] [-m maxdata] [-t [cnisuw]]\n");
+	    "usage: kdump [-dnlRT] [-f trfile] [-m maxdata] [-t [cnisuw]] [-p pid]\n");
 	exit(1);
 }
 
