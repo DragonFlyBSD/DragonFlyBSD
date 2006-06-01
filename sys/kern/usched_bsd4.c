@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.11 2006/06/01 16:49:59 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.12 2006/06/01 19:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -580,7 +580,7 @@ bsd4_setrunqueue(struct lwp *lp)
  * each cpu.
  *
  * Because this is effectively a 'fast' interrupt, we cannot safely
- * use spinlocks unless gd_spinlocks_rd and gd_spinlocks_wr are both 0,
+ * use spinlocks unless gd_spinlock_rd is NULL and gd_spinlocks_wr is 0,
  * even if the spinlocks are 'non conflicting'.  This is due to the way
  * spinlock conflicts against cached read locks are handled.
  *
@@ -623,7 +623,7 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 * Otherwise we can deadlock with another cpu waiting for our read
 	 * spinlocks to clear.
 	 */
-	if (gd->gd_spinlocks_rd == 0 && gd->gd_spinlocks_wr == 0)
+	if (gd->gd_spinlock_rd == NULL && gd->gd_spinlocks_wr == 0)
 		bsd4_resetpriority(lp);
 	else
 		need_user_resched();

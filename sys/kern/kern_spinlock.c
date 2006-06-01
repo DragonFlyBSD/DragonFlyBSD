@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.6 2006/05/29 16:50:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.7 2006/06/01 19:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ spin_trylock_wr_contested(struct spinlock *mtx, int value)
 	if ((value & SPINLOCK_EXCLUSIVE) == 0) {
 		while (value) {
 			bit = bsfl(value);
-			if (globaldata_find(bit)->gd_spinlocks_rd != 0) {
+			if (globaldata_find(bit)->gd_spinlock_rd != mtx) {
 				atomic_swap_int(&mtx->lock, value);
 				return (FALSE);
 			}
@@ -175,7 +175,7 @@ spin_lock_wr_contested(struct spinlock *mtx, int value)
 	while ((mask = value) != 0) {
 		while (mask) {
 			bit = bsfl(value);
-			if (globaldata_find(bit)->gd_spinlocks_rd == 0) {
+			if (globaldata_find(bit)->gd_spinlock_rd != mtx) {
 				value &= ~(1 << bit);
 			} else if (exponential_backoff(&backoff)) {
 				value = 0;
@@ -189,8 +189,8 @@ spin_lock_wr_contested(struct spinlock *mtx, int value)
 
 /*
  * The cache bit wasn't set for our cpu.  Loop until we can set the bit.
- * As with the spin_lock_rd() inline we need a memory fence after incrementing
- * gd_spinlocks_rd to interlock against exclusive spinlocks waiting for
+ * As with the spin_lock_rd() inline we need a memory fence after setting
+ * gd_spinlock_rd to interlock against exclusive spinlocks waiting for
  * that field to clear.
  */
 void
@@ -217,12 +217,12 @@ spin_lock_rd_contested(struct spinlock *mtx)
 
 	while ((value & gd->gd_cpumask) == 0) {
 		if (value & SPINLOCK_EXCLUSIVE) {
-			--gd->gd_spinlocks_rd;
+			gd->gd_spinlock_rd = NULL;
 			if (exponential_backoff(&backoff)) {
-				++gd->gd_spinlocks_rd;
+				gd->gd_spinlock_rd = mtx;
 				break;
 			}
-			++gd->gd_spinlocks_rd;
+			gd->gd_spinlock_rd = mtx;
 			cpu_mfence();
 		} else {
 			if (atomic_cmpset_int(&mtx->lock, value, value|gd->gd_cpumask))

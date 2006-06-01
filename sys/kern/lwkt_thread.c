@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.99 2006/06/01 05:38:45 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.100 2006/06/01 19:02:38 dillon Exp $
  */
 
 /*
@@ -540,9 +540,9 @@ lwkt_switch(void)
      * We had better not be holding any spin locks, but don't get into an
      * endless panic loop.
      */
-    KASSERT(gd->gd_spinlocks_rd == 0 || panicstr != NULL, 
-	    ("lwkt_switch: still holding %d shared spinlocks!", 
-	     gd->gd_spinlocks_rd));
+    KASSERT(gd->gd_spinlock_rd == NULL || panicstr != NULL, 
+	    ("lwkt_switch: still holding a shared spinlock %p!", 
+	     gd->gd_spinlock_rd));
     KASSERT(gd->gd_spinlocks_wr == 0 || panicstr != NULL, 
 	    ("lwkt_switch: still holding %d exclusive spinlocks!",
 	     gd->gd_spinlocks_wr));
@@ -841,7 +841,7 @@ lwkt_preempt(thread_t ntd, int critpri)
      * Also, plain spinlocks are impossible to figure out at this point so 
      * just don't preempt.
      */
-    if (gd->gd_spinlocks_rd + gd->gd_spinlocks_wr != 0) {
+    if (gd->gd_spinlock_rd || gd->gd_spinlocks_wr) {
 	++preempt_miss;
 	need_lwkt_resched();
 	return;

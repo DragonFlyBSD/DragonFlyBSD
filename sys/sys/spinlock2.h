@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.10 2006/05/29 16:50:06 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.11 2006/06/01 19:02:39 dillon Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -41,6 +41,9 @@
 
 #else
 
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
 #endif
@@ -138,7 +141,7 @@ spin_lock_upgrade(struct spinlock *mtx)
 	value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE);
 	cpu_sfence();
 #endif
-	--gd->gd_spinlocks_rd;
+	gd->gd_spinlock_rd = NULL;
 #ifdef SMP
 	value &= ~gd->gd_cpumask;
 	if (value) {
@@ -158,9 +161,9 @@ spin_lock_upgrade(struct spinlock *mtx)
  *
  * The vast majority of the overhead is in the cpu_mfence() (5ns vs 1ns for
  * the entire rest of the procedure).  Unfortunately we have to ensure that
- * spinlock count is written out before we check the cpumask to interlock
+ * spinlock pointer is written out before we check the cpumask to interlock
  * against an exclusive spinlock that clears the cpumask and then checks
- * the spinlock count.
+ * the spinlock pointer.
  *
  * But what is EXTREMELY important here is that we do not have to perform
  * a locked bus cycle on the spinlock itself if the shared bit for our cpu
@@ -169,12 +172,12 @@ spin_lock_upgrade(struct spinlock *mtx)
  *
  * This means that multiple parallel shared acessors (e.g. filedescriptor
  * table lookups, namecache lookups) run at full speed and incur NO cache
- * contention at all.  Its the difference between 10ns and 40-100ns.
+ * contention at all.  It is the difference between 10ns and 40-100ns.
  */
 static __inline void
 spin_lock_rd_quick(globaldata_t gd, struct spinlock *mtx)
 {
-	++gd->gd_spinlocks_rd;
+	gd->gd_spinlock_rd = mtx;
 #ifdef SMP
 	cpu_mfence();
 	if ((mtx->lock & gd->gd_cpumask) == 0)
@@ -210,15 +213,16 @@ spin_unlock_wr(struct spinlock *mtx)
 
 /*
  * Release a shared spinlock.  We leave the shared bit set in the spinlock
- * as a cache and simply decrement the spinlock count for the cpu.  This
+ * as a cache and simply clear the spinlock pointer for the cpu.  This
  * fast-paths another shared lock later at the cost of an exclusive lock
- * having to check per-cpu spinlock counts to determine when there are no
+ * having to check per-cpu spinlock pointers to determine when there are no
  * shared holders remaining.
  */
 static __inline void
 spin_unlock_rd_quick(globaldata_t gd, struct spinlock *mtx)
 {
-	--gd->gd_spinlocks_rd;
+	KKASSERT(gd->gd_spinlock_rd == mtx);
+	gd->gd_spinlock_rd = NULL;
 }
 
 static __inline void
