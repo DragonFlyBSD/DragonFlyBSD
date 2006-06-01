@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.26 2006/05/26 16:56:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.27 2006/06/01 06:10:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,9 +55,9 @@
 #include <sys/unistd.h>
 #include <sys/filio.h>
 #include <sys/lockf.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
-#include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 
 #include "iso.h"
@@ -706,14 +706,14 @@ cd9660_readlink(struct vop_readlink_args *ap)
 	if (uio->uio_segflg == UIO_SYSSPACE)
 		symname = uio->uio_iov->iov_base;
 	else
-		symname = zalloc(namei_zone);
+		symname = objcache_get(namei_oc, M_WAITOK);
 	
 	/*
 	 * Ok, we just gathering a symbolic name in SL record.
 	 */
 	if (cd9660_rrip_getsymname(dirp, symname, &symlen, imp) == 0) {
 		if (uio->uio_segflg != UIO_SYSSPACE)
-			zfree(namei_zone, symname);
+			objcache_put(namei_oc, symname);
 		brelse(bp);
 		return (EINVAL);
 	}
@@ -727,7 +727,7 @@ cd9660_readlink(struct vop_readlink_args *ap)
 	 */
 	if (uio->uio_segflg != UIO_SYSSPACE) {
 		error = uiomove(symname, symlen, uio);
-		zfree(namei_zone, symname);
+		objcache_put(namei_oc, symname);
 		return (error);
 	}
 	uio->uio_resid -= symlen;

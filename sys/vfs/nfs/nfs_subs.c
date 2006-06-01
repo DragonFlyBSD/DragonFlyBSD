@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.38 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.39 2006/06/01 06:10:57 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <sys/sysent.h>
 #include <sys/syscall.h>
 #include <sys/conf.h>
+#include <sys/objcache.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -1455,7 +1456,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	struct vnode *dp;
 	int error, rdonly;
 
-	namebuf = zalloc(namei_zone);
+	namebuf = objcache_get(namei_oc, M_WAITOK);
 	flags = 0;
 	*dirpp = NULL;
 
@@ -1520,7 +1521,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 		 * Oh joy. For WebNFS, handle those pesky '%' escapes,
 		 * and the 'native path' indicator.
 		 */
-		cp = zalloc(namei_zone);
+		cp = objcache_get(namei_oc, M_WAITOK);
 		fromcp = namebuf;
 		tocp = cp;
 		if ((unsigned char)*fromcp >= WEBNFS_SPECCHAR_START) {
@@ -1538,7 +1539,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 			 */
 			default:
 				error = EIO;
-				zfree(namei_zone, cp);
+				objcache_put(namei_oc, cp);
 				goto out;
 			}
 		}
@@ -1554,14 +1555,14 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 					continue;
 				} else {
 					error = ENOENT;
-					zfree(namei_zone, cp);
+					objcache_put(namei_oc, cp);
 					goto out;
 				}
 			} else
 				*tocp++ = *fromcp++;
 		}
 		*tocp = '\0';
-		zfree(namei_zone, namebuf);
+		objcache_put(namei_oc, namebuf);
 		namebuf = cp;
 	}
 
@@ -1633,7 +1634,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 * Finish up.
 	 */
 out:
-	zfree(namei_zone, namebuf);
+	objcache_put(namei_oc, namebuf);
 	return (error);
 }
 

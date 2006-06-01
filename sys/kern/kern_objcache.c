@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.6 2006/04/14 02:58:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.7 2006/06/01 06:10:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ mag_alloc(int capacity)
  * Create an object cache.
  */
 struct objcache *
-objcache_create(char *name, int cluster_limit, int mag_capacity,
+objcache_create(const char *name, int cluster_limit, int mag_capacity,
 		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *private,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
@@ -208,6 +208,22 @@ objcache_create(char *name, int cluster_limit, int mag_capacity,
 	SLIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	lwkt_reltoken(&olock);
 
+	return (oc);
+}
+
+struct objcache *
+objcache_create_simple(malloc_type_t mtype, size_t objsize)
+{
+	struct objcache_malloc_args *margs;
+	struct objcache *oc;
+
+	margs = malloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
+	margs->objsize = objsize;
+	margs->mtype = mtype;
+	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
+			     null_ctor, null_dtor, NULL,
+			     objcache_malloc_alloc, objcache_malloc_free,
+			     margs);
 	return (oc);
 }
 
@@ -521,6 +537,12 @@ void
 null_dtor(void *obj, void *private)
 {
 	/* do nothing */
+}
+
+boolean_t
+null_ctor(void *obj, void *private, int ocflags)
+{
+	return TRUE;
 }
 
 /*

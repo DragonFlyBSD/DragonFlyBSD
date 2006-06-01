@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.94 2006/05/25 07:36:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.95 2006/06/01 06:10:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,13 +64,13 @@
 #include <sys/extattr.h>
 #include <sys/spinlock.h>
 #include <sys/kern_syscall.h>
+#include <sys/objcache.h>
 
 #include <machine/limits.h>
 #include <vfs/union/union.h>
 #include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/vm_object.h>
-#include <vm/vm_zone.h>
 #include <vm/vm_page.h>
 
 #include <sys/file2.h>
@@ -775,7 +775,7 @@ mountctl(struct mountctl_args *uap)
 	/*
 	 * Allocate the necessary buffers and copyin data
 	 */
-	path = zalloc(namei_zone);
+	path = objcache_get(namei_oc, M_WAITOK);
 	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
 	if (error)
 		goto done;
@@ -808,7 +808,7 @@ mountctl(struct mountctl_args *uap)
 		error = copyout(buf, uap->buf, uap->sysmsg_result);
 done:
 	if (path)
-		zfree(namei_zone, path);
+		objcache_put(namei_oc, path);
 	if (ctl)
 		free(ctl, M_TEMP);
 	if (buf)
@@ -1767,7 +1767,7 @@ symlink(struct symlink_args *uap)
 	int error;
 	int mode;
 
-	path = zalloc(namei_zone);
+	path = objcache_get(namei_oc, M_WAITOK);
 	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
 	if (error == 0) {
 		error = nlookup_init(&nd, uap->link, UIO_USERSPACE, 0);
@@ -1777,7 +1777,7 @@ symlink(struct symlink_args *uap)
 		}
 		nlookup_done(&nd);
 	}
-	zfree(namei_zone, path);
+	objcache_put(namei_oc, path);
 	return (error);
 }
 

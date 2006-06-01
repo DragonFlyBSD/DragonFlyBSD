@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.11 2006/03/24 18:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.12 2006/06/01 06:10:50 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -82,14 +82,15 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 static MALLOC_DEFINE(M_VNODEOP, "vnodeops", "vnode operations vectors");
+static MALLOC_DEFINE(M_NAMEI, "nameibufs", "namei path buffers");
 
 /*
  * Zone for namei
  */
-struct vm_zone *namei_zone;
+struct objcache *namei_oc;
 
 /*
  * vfs_init() will set maxvfsconf
@@ -275,7 +276,7 @@ static void
 vfsinit(void *dummy)
 {
 	TAILQ_INIT(&vnodeopv_list);
-	namei_zone = zinit("NAMEI", MAXPATHLEN, 0, 0, 2);
+	namei_oc = objcache_create_simple(M_NAMEI, MAXPATHLEN);
 
 	/*
 	 * Initialize the vnode table

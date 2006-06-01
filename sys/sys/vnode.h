@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.57 2006/05/27 01:57:42 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.58 2006/06/01 06:10:52 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -366,6 +366,8 @@ extern	int		vttoif_tab[];
 /*
  * Global vnode data.
  */
+struct objcache;
+
 extern	struct vnode *rootvnode;	/* root (i.e. "/") vnode */
 extern  struct namecache *rootncp;	/* root (i.e. "/") namecache */
 extern	int desiredvnodes;		/* number of vnodes desired */
@@ -373,7 +375,7 @@ extern	time_t syncdelay;		/* max time to delay syncing data */
 extern	time_t filedelay;		/* time to delay syncing files */
 extern	time_t dirdelay;		/* time to delay syncing directories */
 extern	time_t metadelay;		/* time to delay syncing metadata */
-extern	struct vm_zone *namei_zone;
+extern	struct objcache *namei_oc;
 extern	int prtactive;			/* nonzero to call vprint() */
 extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int vfs_ioopt;

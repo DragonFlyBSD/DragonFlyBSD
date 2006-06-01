@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.24 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.25 2006/06/01 06:10:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -808,7 +808,7 @@ union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
 	 * Conclusion: Horrible.
 	 */
 	cn->cn_namelen = pathlen;
-	cn->cn_nameptr = zalloc(namei_zone);
+	cn->cn_nameptr = objcache_get(namei_oc, M_WAITOK);
 	bcopy(path, cn->cn_nameptr, cn->cn_namelen);
 	cn->cn_nameptr[cn->cn_namelen] = '\0';
 
@@ -831,11 +831,11 @@ union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
 	 */
 
 	if ((error = relookup(dvp, vpp, cn)) != 0) {
-		zfree(namei_zone, cn->cn_nameptr);
+		objcache_put(namei_oc, cn->cn_nameptr);
 		vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 		return(error);
 	}
-	zfree(namei_zone, cn->cn_nameptr);
+	objcache_put(namei_oc, cn->cn_nameptr);
 
 	/*
 	 * If no error occurs, dvp will be returned locked with the reference
@@ -980,7 +980,7 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	 * copied in the first place).
 	 */
 	cn.cn_namelen = strlen(un->un_path);
-	cn.cn_nameptr = zalloc(namei_zone);
+	cn.cn_nameptr = objcache_get(namei_oc, M_WAITOK);
 	bcopy(un->un_path, cn.cn_nameptr, cn.cn_namelen+1);
 	cn.cn_nameiop = NAMEI_CREATE;
 	cn.cn_flags = CNP_LOCKPARENT;
@@ -995,7 +995,7 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	 */
 	vref(un->un_dirvp);
 	error = relookup(un->un_dirvp, &vp, &cn);
-	zfree(namei_zone, cn.cn_nameptr);
+	objcache_put(namei_oc, cn.cn_nameptr);
 	if (error)
 		return (error);
 

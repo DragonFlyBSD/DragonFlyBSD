@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.16 2006/05/17 18:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.17 2006/06/01 06:10:50 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -64,7 +64,7 @@
 #include <sys/nlookup.h>
 #include <sys/malloc.h>
 #include <sys/stat.h>
-#include <vm/vm_zone.h>
+#include <sys/objcache.h>
 
 #ifdef KTRACE
 #include <sys/ktrace.h>
@@ -93,7 +93,7 @@ nlookup_init(struct nlookupdata *nd,
      * note: the pathlen set by copy*str() includes the terminating \0.
      */
     bzero(nd, sizeof(struct nlookupdata));
-    nd->nl_path = zalloc(namei_zone);
+    nd->nl_path = objcache_get(namei_oc, M_WAITOK);
     nd->nl_flags |= NLC_HASBUF;
     if (seg == UIO_SYSSPACE) 
 	error = copystr(path, nd->nl_path, MAXPATHLEN, &pathlen);
@@ -145,7 +145,7 @@ nlookup_init_raw(struct nlookupdata *nd,
     td = curthread;
 
     bzero(nd, sizeof(struct nlookupdata));
-    nd->nl_path = zalloc(namei_zone);
+    nd->nl_path = objcache_get(namei_oc, M_WAITOK);
     nd->nl_flags |= NLC_HASBUF;
     if (seg == UIO_SYSSPACE) 
 	error = copystr(path, nd->nl_path, MAXPATHLEN, &pathlen);
@@ -215,7 +215,7 @@ nlookup_done(struct nlookupdata *nd)
 	nd->nl_jailncp = NULL;
     }
     if ((nd->nl_flags & NLC_HASBUF) && nd->nl_path) {
-	zfree(namei_zone, nd->nl_path);
+	objcache_put(namei_oc, nd->nl_path);
 	nd->nl_path = NULL;
     }
     if (nd->nl_cred) {
@@ -482,12 +482,12 @@ nlookup(struct nlookupdata *nd)
 	    len = strlen(ptr);
 	    if (nlc.nlc_namelen == 0 || nlc.nlc_namelen + len >= MAXPATHLEN) {
 		error = nlc.nlc_namelen ? ENAMETOOLONG : ENOENT;
-		zfree(namei_zone, nlc.nlc_nameptr);
+		objcache_put(namei_oc, nlc.nlc_nameptr);
 		break;
 	    }
 	    bcopy(ptr, nlc.nlc_nameptr + nlc.nlc_namelen, len + 1);
 	    if (nd->nl_flags & NLC_HASBUF)
-		zfree(namei_zone, nd->nl_path);
+		objcache_put(namei_oc, nd->nl_path);
 	    nd->nl_path = nlc.nlc_nameptr;
 	    nd->nl_flags |= NLC_HASBUF;
 	    ptr = nd->nl_path;
@@ -634,7 +634,7 @@ nlookup_mp(struct mount *mp, struct namecache **ncpp)
 
 /*
  * Read the contents of a symlink, allocate a path buffer out of the
- * namei_zone and initialize the supplied nlcomponent with the result.
+ * namei_oc and initialize the supplied nlcomponent with the result.
  *
  * If an error occurs no buffer will be allocated or returned in the nlc.
  */
@@ -655,7 +655,7 @@ nreadsymlink(struct nlookupdata *nd, struct namecache *ncp,
 	return(ENOENT);
     if ((error = cache_vget(ncp, nd->nl_cred, LK_SHARED, &vp)) != 0)
 	return(error);
-    cp = zalloc(namei_zone);
+    cp = objcache_get(namei_oc, M_WAITOK);
     aiov.iov_base = cp;
     aiov.iov_len = MAXPATHLEN;
     auio.uio_iov = &aiov;
@@ -682,7 +682,7 @@ nreadsymlink(struct nlookupdata *nd, struct namecache *ncp,
     vput(vp);
     return(0);
 fail:
-    zfree(namei_zone, cp);
+    objcache_put(namei_oc, cp);
     vput(vp);
     return(error);
 }

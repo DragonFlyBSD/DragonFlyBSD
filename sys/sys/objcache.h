@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/objcache.h,v 1.5 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/objcache.h,v 1.6 2006/06/01 06:10:52 dillon Exp $
  */
 
 #ifndef _OBJCACHE_H_
@@ -51,6 +51,7 @@ typedef void (objcache_dtor_fn)(void *obj, void *private);
 
 #ifdef	_KERNEL
 extern objcache_dtor_fn null_dtor;
+extern objcache_ctor_fn null_ctor;
 #endif
 
 /*
@@ -64,11 +65,13 @@ typedef void (objcache_free_fn)(void *obj, void *allocator_args);
 struct objcache;
 
 struct objcache
-	*objcache_create(char *name, int cluster_limit, int mag_capacity,
+	*objcache_create(const char *name, int cluster_limit, int mag_capacity,
 			 objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			 void *private,
 			 objcache_alloc_fn *alloc, objcache_free_fn *free,
 			 void *allocator_args);
+struct objcache
+	*objcache_create_simple(malloc_type_t mtype, size_t objsize);
 void	*objcache_get(struct objcache *oc, int ocflags);
 void	 objcache_put(struct objcache *oc, void *obj);
 void	 objcache_dtor(struct objcache *oc, void *obj);
