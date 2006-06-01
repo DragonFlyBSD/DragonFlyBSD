@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.42 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.43 2006/06/01 05:38:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -277,6 +277,7 @@ cpu_proc_exit(void)
 
 	crit_enter_quick(td);
 	lwkt_deschedule_self(td);
+	lwkt_remove_tdallq(td);
 	cpu_thread_exit();
 }
 

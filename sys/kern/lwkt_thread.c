@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.98 2006/05/29 07:29:14 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.99 2006/06/01 05:38:45 dillon Exp $
  */
 
 /*
@@ -419,7 +419,6 @@ lwkt_free_thread(thread_t td)
 	("lwkt_free_thread: did not exit! %p", td));
 
     crit_enter_gd(gd);
-    TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq); /* Protected by BGL */
     if (gd->gd_tdfreecount < CACHE_NTHREADS &&
 	(td->td_flags & TDF_ALLOCATED_THREAD)
     ) {
@@ -1444,13 +1443,19 @@ lwkt_exit(void)
     crit_enter_quick(td);
     lwkt_deschedule_self(td);
     gd = mycpu;
-    KKASSERT(gd == td->td_gd);
-    TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+    lwkt_remove_tdallq(td);
     if (td->td_flags & TDF_ALLOCATED_THREAD) {
 	++gd->gd_tdfreecount;
 	TAILQ_INSERT_TAIL(&gd->gd_tdfreeq, td, td_threadq);
     }
     cpu_thread_exit();
+}
+
+void
+lwkt_remove_tdallq(thread_t td)
+{
+    KKASSERT(td->td_gd == mycpu);
+    TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq);
 }
 
 #endif /* _KERNEL */
