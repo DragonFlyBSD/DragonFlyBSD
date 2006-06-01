@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.2 2006/05/30 08:13:07 swildner Exp $
+.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.3 2006/06/01 17:05:01 dillon Exp $
 .\"
 .Dd May 27, 2006
 .Os
@@ -94,7 +94,8 @@ The
 function obtains a shared
 .Em read-only
 spinlock.
-A thread may hold only one shared lock at a time.
+A thread may hold only one shared lock at a time, and may not hold any
+exclusive locks while holding a shared lock.
 A shared spinlock can be held by multiple CPUs concurrently.
 If a thread attempts to obtain an exclusive spinlock while shared
 references exist it will spin until the shared references go away.
@@ -110,6 +111,8 @@ and do not clear the bit once set.
 This means that once set, a shared spinlock does not need to issue a
 locked read-modify-write bus cycle to the spinlock's memory, which in
 turn greatly reduces conflicts between CPU caches.
+The bit is cleared via a different mechanism only when an exclusive
+spinlock is acquired.
 The result is extremely low overheads even when a shared spinlock is
 being operated upon concurrently by multiple CPUs.
 .Pp
@@ -178,19 +181,25 @@ Holding one or more spinlocks will disable thread preemption by
 another thread (e.g. preemption by an interrupt thread), but will not
 disable FAST interrupts or IPIs.
 If you wish to disable FAST interrupts and IPIs you need to enter a
-critical section prior to obtaining the spinlock, or there is a chance
-that a FAST interrupt or IPI might try to obtain the same spinlock
-that your thread-level code is accessing and a deadlock may occur.
-This usually isn't a problem since FAST interrupts (the clock
-interrupt) and IPI messages typically only operate on data structures
-owned by the local CPU, interlocked with a critcal section instead of
-a spinlock.
+critical section prior to obtaining the spinlock.
+.Pp
+Currently, FAST interrupts, including IPI messages, are not allowed to
+acquire any spinlocks.  It is possible to work around this if
+mycpu->gd_spinlocks_wr and mycpu->gd_spinlocks_rd are both 0.  If one
+or the other is not zero, the FAST interrupt or IPI cannot acquire
+any spinlocks without risking a deadlock, even if the spinlocks in
+question are not related.
 .Pp
 A thread may hold any number of exclusive
 .Em read-write
-spinlocks but only one shared
+spinlocks.
+However, a thread may only hold one shared
 .Em read-only
-spinlock.
+spinlock, and may not hold any exclusive locks while it is holding
+that one shared lock.  This requirement is due to the method exclusive
+spinlocks use to determine when they can clear cached shared bits in
+the lock.  If an exclusive lock is acquired while holding shared locks,
+a deadlock can occur even if the locks are unrelated.
 Always be mindful of potential deadlocks.
 .Pp
 Spinlocks spin.
