@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.51 2006/03/24 18:30:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.52 2006/06/01 16:49:59 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -649,12 +649,8 @@ schedclock(systimer_t info, struct intrframe *frame)
 		 * HERE.
 		 */
 		++lp->lwp_cpticks;
-		/*
-		 * XXX I think accessing lwp_proc's p_usched is
-		 * reasonably MP safe.  This needs to be revisited
-		 * when we have pluggable schedulers.
-		 */
-		lp->lwp_proc->p_usched->schedulerclock(lp, info->periodic, info->time);
+		lp->lwp_proc->p_usched->schedulerclock(lp, info->periodic,
+						       info->time);
 	}
 	if ((lp = curthread->td_lwp) != NULL) {
 		/*

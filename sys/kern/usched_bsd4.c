@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.10 2006/05/29 22:57:22 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.11 2006/06/01 16:49:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -232,7 +232,7 @@ bsd4_acquire_curproc(struct lwp *lp)
 	bsd4_pcpu_t dd = &bsd4_pcpu[gd->gd_cpuid];
 
 	/*
-	 * Possibly select another thread, or keep the  current thread.
+	 * Possibly select another thread, or keep the current thread.
 	 */
 	if (user_resched_wanted())
 		bsd4_select_curproc(gd);
@@ -580,7 +580,9 @@ bsd4_setrunqueue(struct lwp *lp)
  * each cpu.
  *
  * Because this is effectively a 'fast' interrupt, we cannot safely
- * use spinlocks unless gd_spinlocks_rd and gd_spinlocks_wr are both 0.
+ * use spinlocks unless gd_spinlocks_rd and gd_spinlocks_wr are both 0,
+ * even if the spinlocks are 'non conflicting'.  This is due to the way
+ * spinlock conflicts against cached read locks are handled.
  *
  * MPSAFE
  */
@@ -623,6 +625,8 @@ bsd4_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 	 */
 	if (gd->gd_spinlocks_rd == 0 && gd->gd_spinlocks_wr == 0)
 		bsd4_resetpriority(lp);
+	else
+		need_user_resched();
 }
 
 /*
