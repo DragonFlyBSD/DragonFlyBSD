@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.3 2006/06/01 17:05:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/spinlock.9,v 1.4 2006/06/01 17:17:35 dillon Exp $
 .\"
 .Dd May 27, 2006
 .Os
@@ -94,11 +94,12 @@ The
 function obtains a shared
 .Em read-only
 spinlock.
-A thread may hold only one shared lock at a time, and may not hold any
-exclusive locks while holding a shared lock.
-A shared spinlock can be held by multiple CPUs concurrently.
+A thread may hold only one shared lock at a time, and may not acquire any
+new exclusive locks while holding a shared lock (but may already be holding
+some).  A shared spinlock can be held by multiple CPUs concurrently.
 If a thread attempts to obtain an exclusive spinlock while shared
-references exist it will spin until the shared references go away.
+references from other cpus exist it will spin until the shared references
+go away.
 No new shared references will be allowed (that is, new shared requests
 will also spin) while the exclusive spinlock is being acquired.
 If you have the current CPU's
@@ -127,7 +128,8 @@ function obtains an exclusive
 .Em read-write
 spinlock.
 A thread may hold any number of exclusive spinlocks but should always
-be mindful of ordering deadlocks.
+be mindful of ordering deadlocks.  Exclusive spinlocks can only be safely
+acquired if no shared spinlocks are held.
 The
 .Fn spin_trylock_wr
 function will return
@@ -195,7 +197,7 @@ A thread may hold any number of exclusive
 spinlocks.
 However, a thread may only hold one shared
 .Em read-only
-spinlock, and may not hold any exclusive locks while it is holding
+spinlock, and may not acquire any new exclusive locks while it is holding
 that one shared lock.  This requirement is due to the method exclusive
 spinlocks use to determine when they can clear cached shared bits in
 the lock.  If an exclusive lock is acquired while holding shared locks,
@@ -210,7 +212,7 @@ They are considered to be a very low level mechanism.
 .Pp
 If a spinlock can not be obtained after one second a warning will be
 printed on the console.
-If a system panic occurs, spinlocks will fail after one second in
+If a system panic occurs, spinlocks will succeed after one second in
 order to allow the panic operation to proceed.
 .Pp
 If you have a complex structure such as a
@@ -218,7 +220,8 @@ If you have a complex structure such as a
 which contains a token or
 .Xr lockmgr 9
 lock, it is legal to directly access the internal spinlock embedded
-in those structures.
+in those structures for other purposes as long as the spinlock is not
+held when you issue the token or lockmgr operation.
 .Sh SEE ALSO
 .Xr lockmgr 9 ,
 .Xr lwkt 9
