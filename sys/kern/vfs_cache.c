@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.68 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.69 2006/06/01 22:45:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -203,10 +203,11 @@ static void cache_zap(struct namecache *ncp);
  * namecache entry but do not prevent operations (such as zapping) on
  * that namecache entry.
  *
- * This routine may only be called if nc_refs is already at least 1.
+ * This routine may only be called from outside this source module if
+ * nc_refs is already at least 1.
  *
- * This is a rare case where callers are allowed to hold spinlocks, so
- * we can't ourselves.
+ * This is a rare case where callers are allowed to hold a spinlock,
+ * so we can't ourselves.
  */
 static __inline
 struct namecache *
@@ -234,7 +235,7 @@ _cache_drop(struct namecache *ncp)
 		cache_lock(ncp);
 		cache_zap(ncp);
 	} else {
-		--ncp->nc_refs;
+		atomic_subtract_int(&ncp->nc_refs, 1);
 	}
 }
 
@@ -1393,7 +1394,7 @@ cache_zap(struct namecache *ncp)
 	}
 done:
 	cache_unlock(ncp);
-	--ncp->nc_refs;
+	atomic_subtract_int(&ncp->nc_refs, 1);
 }
 
 static enum { CHI_LOW, CHI_HIGH } cache_hysteresis_state = CHI_LOW;
