@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.34 2006/05/06 18:48:53 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.35 2006/06/02 04:59:54 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -698,8 +698,7 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		printf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
 		printf("flag %08lx, usecount %d, writecount %d, holdcnt %ld\n",
 		    vp->v_flag, vp->v_usecount, vp->v_writecount, vp->v_holdcnt);
-		printf("id %lu, mount %p, op %p\n",
-		    vp->v_id, vp->v_mount, vp->v_op);
+		printf("mount %p, op %p\n", vp->v_mount, vp->v_op);
 		printf("freef %p, freeb %p, mount %p\n",
 		    TAILQ_NEXT(vp, v_freelist), TAILQ_PREV(vp, v_freelist),
 		    vp->v_mount);

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.69 2006/06/01 22:45:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.70 2006/06/02 04:59:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1897,37 +1897,17 @@ vfs_cache_setroot(struct vnode *nvp, struct namecache *ncp)
  * any direct children of that vnode in the namecache.  This is a 
  * 'catch all' purge used by filesystems that do not know any better.
  *
- * A new vnode v_id is generated.  Note that no vnode will ever have a
- * v_id of 0.
- *
  * Note that the linkage between the vnode and its namecache entries will
  * be removed, but the namecache entries themselves might stay put due to
  * active references from elsewhere in the system or due to the existance of
  * the children.   The namecache topology is left intact even if we do not
  * know what the vnode association is.  Such entries will be marked
  * NCF_UNRESOLVED.
- *
- * XXX: Only time and the size of v_id prevents this from failing:
- * XXX: In theory we should hunt down all (struct vnode*, v_id)
- * XXX: soft references and nuke them, at least on the global
- * XXX: v_id wraparound.  The period of resistance can be extended
- * XXX: by incrementing each vnodes v_id individually instead of
- * XXX: using the global v_id.
  */
 void
 cache_purge(struct vnode *vp)
 {
-	static u_long nextid;
-
 	cache_inval_vp(vp, CINV_DESTROY | CINV_CHILDREN);
-
-	/*
-	 * Calculate a new unique id for ".." handling
-	 */
-	do {
-		nextid++;
-	} while (nextid == vp->v_id || nextid == 0);
-	vp->v_id = nextid;
 }
 
 /*

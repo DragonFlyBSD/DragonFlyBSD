@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.58 2006/06/01 06:10:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.59 2006/06/02 04:59:53 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -188,7 +188,6 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
-	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
 	struct  vop_ops **v_ops;		/* vnode operations vector */
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
