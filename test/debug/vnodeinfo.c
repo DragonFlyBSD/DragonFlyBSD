@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.9 2006/05/23 01:00:05 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.10 2006/06/02 19:39:48 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -48,6 +48,7 @@
 #include <sys/user.h>
 #include <sys/malloc.h>
 #include <sys/signalvar.h>
+#include <sys/namecache.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/buf.h>
@@ -81,6 +82,7 @@ static int getobjpages(kvm_t *kd, struct vm_object *obj);
 static int getobjvnpsize(kvm_t *kd, struct vm_object *obj);
 
 int tracebufs = 0;
+int withnames = 0;
 
 int
 main(int ac, char **av)
@@ -93,10 +95,17 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
 
-    while ((ch = getopt(ac, av, "bM:N:")) != -1) {
+    while ((ch = getopt(ac, av, "anbM:N:")) != -1) {
 	switch(ch) {   
 	case 'b':
 	    tracebufs = 1;
+	    break;
+	case 'n':
+	    withnames = 1;
+	    break;
+	case 'a':
+	    tracebufs = 1;
+	    withnames = 1;
 	    break;
 	case 'M':
 	    corefile = optarg;
@@ -257,6 +266,23 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	    vn.v_lock.lk_flags, vn.v_lock.lk_sharecount,
 	    vn.v_lock.lk_waitcount, vn.v_lock.lk_exclusivecount,
 	    vn.v_lock.lk_lockholder);
+    }
+
+    if (withnames && TAILQ_FIRST(&vn.v_namecache)) {
+	struct namecache ncp;
+	int nlen;
+	char buf[1024];
+
+	kkread(kd, (u_long)TAILQ_FIRST(&vn.v_namecache), &ncp, sizeof(ncp));
+	if ((nlen = ncp.nc_nlen) >= sizeof(buf))
+		nlen = sizeof(buf) - 1;
+	if (nlen < 0)
+		nlen = 0;
+	if (nlen) {
+		kkread(kd, (u_long)ncp.nc_name, buf, nlen);
+		buf[nlen] = 0;
+		printf("\tfilename %s\n", buf);
+	}
     }
 
     if (tracebufs) {
