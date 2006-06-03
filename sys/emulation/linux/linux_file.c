@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.30 2006/05/24 03:23:30 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.31 2006/06/03 08:06:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -421,7 +421,7 @@ again:
 			break;
 	}
 
-	if (outp == (caddr_t)args->dirent)
+	if (outp == (caddr_t)args->dirent && eofflag == 0)
 		goto again;
 
 	fp->f_offset = off;
