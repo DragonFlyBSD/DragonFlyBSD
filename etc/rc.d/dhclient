@@ -2,7 +2,7 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.7 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.8 2006/06/03 10:41:26 y0netan1 Exp $
 #
 
 # PROVIDE: dhclient
@@ -89,6 +89,7 @@ dhclient_prestop()
 		ipx_down ${ifn}
 		ifalias_down ${ifn}
 	done
+	return 0
 }
 
 dhclient_poststop()
