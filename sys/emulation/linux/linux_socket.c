@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.22 2006/05/06 06:38:36 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.23 2006/06/04 11:29:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -341,7 +341,7 @@ struct linux_connect_args {
 	int namelen;
 };
 
-int
+static int
 linux_connect(struct linux_connect_args *args, int *res)
 {
 	struct thread *td = curthread;	/* XXX */
