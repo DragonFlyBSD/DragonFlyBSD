@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.44 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.45 2006/06/04 18:25:44 dillon Exp $
  */
 
 /*
@@ -3962,8 +3962,6 @@ softdep_update_inodeblock(ip, bp, waitfor)
 	if (gotit &&
 	    (error = bwrite(inodedep->id_buf)) != 0)
 		softdep_error("softdep_update_inodeblock: bwrite", error);
-	if ((inodedep->id_state & DEPCOMPLETE) == 0)
-		panic("softdep_update_inodeblock: update failed");
 }
 
 /*
