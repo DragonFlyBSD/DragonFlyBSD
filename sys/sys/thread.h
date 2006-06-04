@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.85 2006/06/01 05:38:46 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.86 2006/06/04 21:09:50 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -42,11 +42,9 @@ struct thread;
 struct lwkt_queue;
 struct lwkt_token;
 struct lwkt_tokref;
-struct lwkt_wait;
 struct lwkt_ipiq;
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
-struct lwkt_rwlock;
 struct lwkt_msg;
 struct lwkt_port;
 struct lwkt_cpusync;
@@ -55,10 +53,8 @@ union sysunion;
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;
 typedef struct lwkt_tokref	*lwkt_tokref_t;
-typedef struct lwkt_wait	*lwkt_wait_t;
 typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
-typedef struct lwkt_rwlock	*lwkt_rwlock_t;
 typedef struct lwkt_ipiq	*lwkt_ipiq_t;
 typedef struct lwkt_cpusync	*lwkt_cpusync_t;
 typedef struct thread 		*thread_t;
@@ -133,17 +129,6 @@ typedef struct lwkt_tokref {
 #define LWKT_TOKREF_DECLARE(name, tok)	\
 			lwkt_tokref name = LWKT_TOKREF_INIT(tok)
 
-/*
- * Wait structures deal with blocked threads.  Due to the way remote cpus
- * interact with these structures stable storage must be used.
- */
-typedef struct lwkt_wait {
-    lwkt_queue	wa_waitq;	/* list of waiting threads */
-    struct spinlock wa_spinlock;
-    int		wa_gen;
-    int		wa_count;
-} lwkt_wait;
-
 #define MAXCPUFIFO      16	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
 #define LWKT_MAXTOKENS	16	/* max tokens beneficially held by thread */
@@ -198,18 +183,6 @@ typedef struct lwkt_cpu_msg {
 } lwkt_cpu_msg;
 
 /*
- * reader/writer lock
- */
-typedef struct lwkt_rwlock {
-    lwkt_wait	rw_wait;
-    thread_t	rw_owner;
-    int		rw_count;
-    int		rw_requests;
-} lwkt_rwlock;
-
-#define rw_spinlock	rw_wait.wa_spinlock
-
-/*
  * Thread structure.  Note that ownership of a thread structure is special
  * cased and there is no 'token'.  A thread is always owned by the cpu
  * represented by td_gd, any manipulation of the thread by some other cpu
@@ -241,7 +214,6 @@ struct thread {
     int		td_kstack_size;	/* size of kernel stack */
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
-    lwkt_wait_t td_wait;	/* thread sitting on wait structure */
     __uint64_t	td_uticks;	/* Statclock hits in user mode (uS) */
     __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
@@ -366,7 +338,6 @@ extern void lwkt_init_thread(struct thread *td, void *stack, int stksize,
 extern void lwkt_set_comm(thread_t td, const char *ctl, ...);
 extern void lwkt_wait_free(struct thread *td);
 extern void lwkt_free_thread(struct thread *td);
-extern void lwkt_wait_init(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
 extern void lwkt_preempt(thread_t ntd, int critpri);
@@ -379,9 +350,6 @@ extern void lwkt_yield_quick(void);
 extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t td);
 extern void lwkt_rele(thread_t td);
-
-extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
-extern void lwkt_signal(lwkt_wait_t w, int count);
 
 extern void lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok);
 extern int lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok);
@@ -396,13 +364,6 @@ extern void lwkt_token_uninit(lwkt_token_t tok);
 
 extern void lwkt_token_pool_init(void);
 extern lwkt_token_t lwkt_token_pool_get(void *ptraddr);
-
-extern void lwkt_rwlock_init(lwkt_rwlock_t lock);
-extern void lwkt_rwlock_uninit(lwkt_rwlock_t lock);
-extern void lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg);
-extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
-extern void lwkt_exunlock(lwkt_rwlock_t lock);
-extern void lwkt_shunlock(lwkt_rwlock_t lock);
 
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);

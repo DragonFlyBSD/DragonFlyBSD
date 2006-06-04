@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.6 2005/10/30 04:41:15 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.7 2006/06/04 21:09:47 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.51 2004/05/30 20:08:23 phk Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.6 2005/10/30 04:41:15 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.7 2006/06/04 21:09:47 dillon Exp $
   *
   */
 
@@ -149,6 +149,7 @@
 #include <sys/thread.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
+#include <sys/lock.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -273,7 +274,7 @@ struct acpi_ec_softc {
 
     int			ec_glk;
     int			ec_glkhandle;
-    struct lwkt_rwlock	ec_rwlock;
+    struct lock		ec_lock;
 };
 
 /*
@@ -304,13 +305,13 @@ EcLock(struct acpi_ec_softc *sc)
     ACPI_STATUS	status = AE_OK;
 
     /* Always acquire this EC's mutex. */
-    lwkt_exlock(&sc->ec_rwlock, "acpi2");
+    lockmgr(&sc->ec_lock, LK_EXCLUSIVE|LK_RETRY);
 
     /* If _GLK is non-zero, also acquire the global lock. */
     if (sc->ec_glk) {
 	status = AcpiAcquireGlobalLock(EC_LOCK_TIMEOUT, &sc->ec_glkhandle);
 	if (ACPI_FAILURE(status))
-	    lwkt_exunlock(&sc->ec_rwlock);
+	    lockmgr(&sc->ec_lock, LK_RELEASE);
     }
 
     return (status);
@@ -321,7 +322,7 @@ EcUnlock(struct acpi_ec_softc *sc)
 {
     if (sc->ec_glk)
 	AcpiReleaseGlobalLock(sc->ec_glkhandle);
-    lwkt_exunlock(&sc->ec_rwlock);
+    lockmgr(&sc->ec_lock, LK_RELEASE);
 }
 
 static uint32_t		EcGpeHandler(void *Context);
@@ -549,7 +550,7 @@ acpi_ec_attach(device_t dev)
     params = acpi_get_private(dev);
     sc->ec_dev = dev;
     sc->ec_handle = acpi_get_handle(dev);
-    lwkt_rwlock_init(&sc->ec_rwlock);
+    lockinit(&sc->ec_lock, "eclock", 0, 0);
 
     /* Retrieve previously probed values via device ivars. */
     sc->ec_glk = params->glk;

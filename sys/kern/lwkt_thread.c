@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.100 2006/06/01 19:02:38 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.101 2006/06/04 21:09:50 dillon Exp $
  */
 
 /*
@@ -188,7 +188,6 @@ void
 lwkt_schedule_self(thread_t td)
 {
     crit_enter_quick(td);
-    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
     KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
     _lwkt_enqueue(td);
@@ -204,7 +203,6 @@ void
 lwkt_deschedule_self(thread_t td)
 {
     crit_enter_quick(td);
-    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
     _lwkt_dequeue(td);
     crit_exit_quick(td);
 }
@@ -228,20 +226,6 @@ lwkt_gdinit(struct globaldata *gd)
 }
 
 #endif /* _KERNEL */
-
-/*
- * Initialize a thread wait structure prior to first use.
- *
- * NOTE!  called from low level boot code, we cannot do anything fancy!
- */
-void
-lwkt_wait_init(lwkt_wait_t w)
-{
-    spin_init(&w->wa_spinlock);
-    TAILQ_INIT(&w->wa_waitq);
-    w->wa_gen = 0;
-    w->wa_count = 0;
-}
 
 /*
  * Create a new thread.  The thread must be associated with a process context
@@ -1013,68 +997,22 @@ lwkt_schedule(thread_t td)
     if (td == mygd->gd_curthread) {
 	_lwkt_enqueue(td);
     } else {
-	lwkt_wait_t w;
-
 	/*
-	 * If the thread is on a wait list we have to send our scheduling
-	 * request to the owner of the wait structure.  Otherwise we send
-	 * the scheduling request to the cpu owning the thread.  Races
-	 * are ok, the target will forward the message as necessary (the
-	 * message may chase the thread around before it finally gets
-	 * acted upon).
-	 *
-	 * (remember, wait structures use stable storage)
-	 *
-	 * NOTE: we have to account for the number of critical sections
-	 * under our control when calling _lwkt_schedule_post() so it
-	 * can figure out whether preemption is allowed.
-	 *
-	 * NOTE: The wait structure algorithms are a mess and need to be
-	 * rewritten.
-	 *
-	 * NOTE: We cannot safely acquire or release a token, even 
-	 * non-blocking, because this routine may be called in the context
-	 * of a thread already holding the token and thus not provide any
-	 * interlock protection.  We cannot safely manipulate the td_toks
-	 * list for the same reason.  Instead we depend on our critical
-	 * section if the token is owned by our cpu.
+	 * If we own the thread, there is no race (since we are in a
+	 * critical section).  If we do not own the thread there might
+	 * be a race but the target cpu will deal with it.
 	 */
-	if ((w = td->td_wait) != NULL) {
-	    spin_lock_wr(&w->wa_spinlock);
-	    TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
-	    --w->wa_count;
-	    td->td_wait = NULL;
-	    spin_unlock_wr(&w->wa_spinlock);
 #ifdef SMP
-	    if (td->td_gd == mygd) {
-		_lwkt_enqueue(td);
-		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-	    } else {
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
-	    }
-#else
+	if (td->td_gd == mygd) {
 	    _lwkt_enqueue(td);
 	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-#endif
 	} else {
-	    /*
-	     * If the wait structure is NULL and we own the thread, there
-	     * is no race (since we are in a critical section).  If we
-	     * do not own the thread there might be a race but the
-	     * target cpu will deal with it.
-	     */
-#ifdef SMP
-	    if (td->td_gd == mygd) {
-		_lwkt_enqueue(td);
-		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-	    } else {
-		lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
-	    }
-#else
-	    _lwkt_enqueue(td);
-	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
-#endif
+	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 	}
+#else
+	_lwkt_enqueue(td);
+	_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
+#endif
     }
     crit_exit_gd(mygd);
 }
@@ -1310,76 +1248,6 @@ lwkt_preempted_proc(void)
     while (td->td_preempted)
 	td = td->td_preempted;
     return(td->td_lwp);
-}
-
-/*
- * Block on the specified wait queue until signaled.  A generation number
- * must be supplied to interlock the wait queue.  The function will
- * return immediately if the generation number does not match the wait
- * structure's generation number.
- */
-void
-lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
-{
-    thread_t td = curthread;
-
-    spin_lock_wr(&w->wa_spinlock);
-    if (w->wa_gen == *gen) {
-	_lwkt_dequeue(td);
-	td->td_flags |= TDF_BLOCKQ;
-	TAILQ_INSERT_TAIL(&w->wa_waitq, td, td_threadq);
-	++w->wa_count;
-	td->td_wait = w;
-	td->td_wmesg = wmesg;
-	spin_unlock_wr(&w->wa_spinlock);
-	lwkt_switch();
-	KKASSERT((td->td_flags & TDF_BLOCKQ) == 0);
-	td->td_wmesg = NULL;
-	*gen = w->wa_gen;
-    } else {
-	*gen = w->wa_gen;
-	spin_unlock_wr(&w->wa_spinlock);
-    }
-}
-
-/*
- * Signal a wait queue.  We gain ownership of the wait queue in order to
- * signal it.  Once a thread is removed from the wait queue we have to
- * deal with the cpu owning the thread.
- *
- * Note: alternatively we could message the target cpu owning the wait
- * queue.  YYY implement as sysctl.
- */
-void
-lwkt_signal(lwkt_wait_t w, int count)
-{
-    thread_t td;
-
-    spin_lock_wr(&w->wa_spinlock);
-    ++w->wa_gen;
-    if (count < 0)
-	count = w->wa_count;
-    while ((td = TAILQ_FIRST(&w->wa_waitq)) != NULL && count) {
-	--count;
-	--w->wa_count;
-	KKASSERT(td->td_flags & TDF_BLOCKQ);
-	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
-	td->td_flags &= ~TDF_BLOCKQ;
-	td->td_wait = NULL;
-	spin_unlock_wr(&w->wa_spinlock);
-	KKASSERT(td->td_proc == NULL || (td->td_proc->p_flag & P_ONRUNQ) == 0);
-#ifdef SMP
-	if (td->td_gd == mycpu) {
-	    _lwkt_enqueue(td);
-	} else {
-	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
-	}
-#else
-	_lwkt_enqueue(td);
-#endif
-	spin_lock_wr(&w->wa_spinlock);
-    }
-    spin_unlock_wr(&w->wa_spinlock);
 }
 
 /*

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.7 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.8 2006/06/04 21:09:50 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -138,10 +138,10 @@ ipsd_strategy(dev_t dev, struct bio *bio)
 	DEVICE_PRINTF(8, dsc->dev, "in strategy\n");
 	bio->bio_driver_info = dsc;
 	devstat_start_transaction(&dsc->stats);
-	lwkt_exlock(&dsc->sc->queue_lock, __func__);
+	lockmgr(&dsc->sc->queue_lock, LK_EXCLUSIVE|LK_RETRY);
 	bioq_insert_tail(&dsc->sc->bio_queue, bio);
 	ips_start_io_request(dsc->sc);
-	lwkt_exunlock(&dsc->sc->queue_lock);
+	lockmgr(&dsc->sc->queue_lock, LK_RELEASE);
 }
 
 static int

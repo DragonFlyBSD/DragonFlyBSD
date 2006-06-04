@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.12 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.13 2006/06/04 21:09:50 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -334,7 +334,7 @@ ips_timeout(void *arg)
 	ips_softc_t *sc = arg;
 	int i, state = 0;
 
-	lwkt_exlock(&sc->queue_lock, __func__);
+	lockmgr(&sc->queue_lock, LK_EXCLUSIVE|LK_RETRY);
 	command = &sc->commandarray[0];
 	for (i = 0; i < sc->max_cmds; i++) {
 		if (!command[i].timeout)
@@ -367,7 +367,7 @@ ips_timeout(void *arg)
 	}
 	if (sc->state != IPS_OFFLINE)
 		callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
-	lwkt_exunlock(&sc->queue_lock);
+	lockmgr(&sc->queue_lock, LK_RELEASE);
 }
 
 /* check card and initialize it */
@@ -585,9 +585,9 @@ ips_morpheus_intr(void *void_sc)
 {
 	ips_softc_t *sc = void_sc;
 
-	lwkt_exlock(&sc->queue_lock, __func__);
+	lockmgr(&sc->queue_lock, LK_EXCLUSIVE|LK_RETRY);
 	ips_morpheus_check_intr(sc);
-	lwkt_exunlock(&sc->queue_lock);
+	lockmgr(&sc->queue_lock, LK_RELEASE);
 }
 
 void
@@ -771,7 +771,7 @@ ips_copperhead_intr(void *void_sc)
 	ips_cmd_status_t status;
 	int cmdnumber;
 
-	lwkt_exlock(&sc->queue_lock, __func__);
+	lockmgr(&sc->queue_lock, LK_EXCLUSIVE|LK_RETRY);
 	while (ips_read_1(sc, COPPER_REG_HISR) & COPPER_SCE_BIT) {
 		status.value = ips_copperhead_cmd_status(sc);
 		cmdnumber = status.fields.command_id;
@@ -780,7 +780,7 @@ ips_copperhead_intr(void *void_sc)
 		sc->commandarray[cmdnumber].callback(&(sc->commandarray[cmdnumber]));
 		PRINTF(9, "ips: got command %d\n", cmdnumber);
 	}
-	lwkt_exunlock(&sc->queue_lock);
+	lockmgr(&sc->queue_lock, LK_RELEASE);
 	return;
 }
 

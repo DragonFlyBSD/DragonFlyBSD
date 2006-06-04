@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.13 2006/05/21 20:23:28 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.14 2006/06/04 21:09:50 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -142,7 +142,6 @@ struct mbchain;
 struct proc;
 struct thread;
 struct lwkt_tokref;
-struct lwkt_rwlock;
 struct smb_vc;
 struct smb_rq;
 

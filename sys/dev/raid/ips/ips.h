@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.9 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.10 2006/06/04 21:09:50 dillon Exp $
  */
 
 
@@ -44,6 +44,7 @@
 #include <sys/buf2.h>
 #include <sys/malloc.h>
 #include <sys/time.h>
+#include <sys/lock.h>
 
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
@@ -454,7 +455,7 @@ typedef struct ips_softc {
 	void			(*ips_poll_cmd)(ips_command_t *command);
 	ips_copper_queue_t	*copper_queue;
 
-	struct lwkt_rwlock	queue_lock;
+	struct lock		queue_lock;
 	struct bio_queue_head   bio_queue;
 } ips_softc_t;
 

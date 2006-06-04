@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.26 2006/05/21 20:23:25 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.27 2006/06/04 21:09:50 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -110,7 +110,7 @@ KTR_INFO_MASTER(tokens);
 KTR_INFO(KTR_TOKENS, tokens, try, 0, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, get, 1, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, release, 2, TOKEN_STRING, sizeof(void *) * 3);
-#ifdef SMP
+#if 0
 KTR_INFO(KTR_TOKENS, tokens, remote, 3, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqremote, 4, TOKEN_STRING, sizeof(void *) * 3);
 KTR_INFO(KTR_TOKENS, tokens, reqfail, 5, TOKEN_STRING, sizeof(void *) * 3);

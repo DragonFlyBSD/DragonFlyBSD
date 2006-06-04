@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_ioctl.c,v 1.5 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.5 2005/08/09 16:23:13 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.6 2006/06/04 21:09:50 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -126,10 +126,10 @@ ips_ioctl_cmd(ips_softc_t *sc, ips_ioctl_t *ioctl_cmd,
 	    ioctl_cmd->datasize))
 		goto exit;
 	ioctl_cmd->status.value = 0xffffffff;
-	lwkt_exlock(&sc->queue_lock, __func__);
+	lockmgr(&sc->queue_lock, LK_EXCLUSIVE|LK_RETRY);
 	if ((error = ips_get_free_cmd(sc, &command, 0)) > 0) {
 		error = ENOMEM;
-		lwkt_exunlock(&sc->queue_lock);
+		lockmgr(&sc->queue_lock, LK_RELEASE);
 		goto exit;
 	}
 	command->arg = ioctl_cmd;
@@ -140,7 +140,7 @@ ips_ioctl_cmd(ips_softc_t *sc, ips_ioctl_t *ioctl_cmd,
 		error = EIO;
 	else
 		error = 0;
-	lwkt_exunlock(&sc->queue_lock);
+	lockmgr(&sc->queue_lock, LK_RELEASE);
 
 	if (copyout(ioctl_cmd->data_buffer, user_request->data_buffer,
 	    ioctl_cmd->datasize))

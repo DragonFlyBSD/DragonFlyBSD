@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.16 2006/05/16 12:34:15 sephe Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.17 2006/06/04 21:09:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -95,11 +95,11 @@
 #else
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_SPINTYPE		struct lwkt_rwlock
-#define DRM_SPININIT(l,name)	lwkt_rwlock_init(&l)
+#define DRM_SPINTYPE		struct lock
+#define DRM_SPININIT(l,name)	lockinit(&l, name, 0, 0)
 #define DRM_SPINUNINIT(l)
-#define DRM_SPINLOCK(l)		lwkt_exlock(l, "drm")
-#define DRM_SPINUNLOCK(u)	lwkt_exunlock(u);
+#define DRM_SPINLOCK(l)		lockmgr(l, LK_EXCLUSIVE|LK_RETRY)
+#define DRM_SPINUNLOCK(u)	lockmgr(u, LK_RELEASE);
 #define DRM_CURRENTPID		curthread->td_proc->p_pid
 #endif
 
@@ -108,7 +108,7 @@
  * code for that is not yet written */
 #define DRMFILE			void *
 #define DRM_IOCTL_ARGS		dev_t kdev, u_long cmd, caddr_t data, int flags, DRM_STRUCTPROC *p, DRMFILE filp
-#define DRM_LOCK		lockmgr(&dev->dev_lock, LK_EXCLUSIVE)
+#define DRM_LOCK		lockmgr(&dev->dev_lock, LK_EXCLUSIVE | LK_RETRY)
 #define DRM_UNLOCK 		lockmgr(&dev->dev_lock, LK_RELEASE)
 #define DRM_SUSER(td)		suser(td)
 #define DRM_TASKQUEUE_ARGS	void *arg, int pending

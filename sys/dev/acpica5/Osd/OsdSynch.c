@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.6 2005/10/30 04:20:49 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.7 2006/06/04 21:09:48 dillon Exp $
  */
 
 /*
@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
+#include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
 
@@ -345,15 +346,12 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
 ACPI_STATUS
 AcpiOsCreateLock(ACPI_HANDLE *OutHandle)
 {
-    lwkt_rwlock_t lock;
+    struct lock *lock;
 
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
-    MALLOC(lock, lwkt_rwlock_t, sizeof(*lock), M_ACPISEM, M_INTWAIT | M_ZERO);
-    if (lock == NULL)
-	return (AE_NO_MEMORY);
-
-    lwkt_rwlock_init(lock);
+    lock = malloc(sizeof(*lock), M_ACPISEM, M_INTWAIT|M_ZERO);
+    lockinit(lock, "oslck", 0, 0);
     *OutHandle = (ACPI_HANDLE)lock;
     return (AE_OK);
 }
@@ -361,11 +359,10 @@ AcpiOsCreateLock(ACPI_HANDLE *OutHandle)
 void
 AcpiOsDeleteLock (ACPI_HANDLE Handle)
 {
-    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
+    struct lock *lock;
 
-    if (Handle == NULL)
-        return;
-    lwkt_rwlock_uninit(lock);
+    if ((lock = (struct lock *)Handle) != NULL)
+	    free(lock, M_ACPISEM);
 }
 
 /*
@@ -376,21 +373,19 @@ AcpiOsDeleteLock (ACPI_HANDLE Handle)
 void
 AcpiOsAcquireLock (ACPI_HANDLE Handle, UINT32 Flags)
 {
-    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
+    struct lock *lock;
 
-    if (Handle == NULL)
-        return;
-    lwkt_exlock(lock, "acpi1");
+    if ((lock = (struct lock *)Handle) != NULL)
+	lockmgr(lock, LK_EXCLUSIVE|LK_RETRY);
 }
 
 void
 AcpiOsReleaseLock (ACPI_HANDLE Handle, UINT32 Flags)
 {
-    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
+    struct lock *lock;
 
-    if (Handle == NULL)
-        return;
-    lwkt_exunlock(lock);
+    if ((lock = (struct lock *)Handle) != NULL)
+	lockmgr(lock, LK_RELEASE);
 }
 
 #ifdef notyet
