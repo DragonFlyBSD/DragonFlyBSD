@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.70 2006/06/02 04:59:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.71 2006/06/04 17:33:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -977,6 +977,25 @@ cache_check_fsmid_vp(struct vnode *vp, int64_t *fsmid)
 	if (changed)
 		++*fsmid;
 	return(changed);
+}
+
+/*
+ * Obtain the FSMID for a vnode for filesystems which do not support
+ * a built-in FSMID.
+ */
+int64_t
+cache_sync_fsmid_vp(struct vnode *vp)
+{
+	struct namecache *ncp;
+
+	if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
+		if (ncp->nc_flag & NCF_FSMID) {
+			ncp->nc_flag &= ~NCF_FSMID;
+			++ncp->nc_fsmid;
+		}
+		return(ncp->nc_fsmid);
+	}
+	return(VNOVAL);
 }
 
 /*

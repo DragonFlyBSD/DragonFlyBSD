@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.26 2006/05/12 22:26:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.27 2006/06/04 17:33:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -300,7 +300,6 @@ int
 vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 {
 	struct vop_getattr_args ap;
-	struct namecache *ncp;
 	int error;
 
 	ap.a_head.a_desc = &vop_getattr_desc;
@@ -309,15 +308,8 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_getattr);
-	if ((ops->vv_flags & VVF_SUPPORTS_FSMID) == 0) {
-		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
-			if (ncp->nc_flag & NCF_FSMID) {
-				ncp->nc_flag &= ~NCF_FSMID;
-				++ncp->nc_fsmid;
-			}
-			vap->va_fsmid = ncp->nc_fsmid;
-		}
-	}
+	if ((ops->vv_flags & VVF_SUPPORTS_FSMID) == 0)
+		vap->va_fsmid = cache_sync_fsmid_vp(vp);
 	return(error);
 }
 
