@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.45 2006/06/04 18:25:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.46 2006/06/04 19:37:23 dillon Exp $
  */
 
 /*
@@ -880,6 +880,26 @@ u_long	pagedep_hash;		/* size of hash table - 1 */
 static struct sema pagedep_in_progress;
 
 /*
+ * Helper routine for pagedep_lookup()
+ */
+static __inline
+struct pagedep *
+pagedep_find(struct pagedep_hashhead *pagedephd, ino_t ino, ufs_lbn_t lbn,
+	     struct mount *mp)
+{
+	struct pagedep *pagedep;
+
+	LIST_FOREACH(pagedep, pagedephd, pd_hash) {
+		if (ino == pagedep->pd_ino &&
+		    lbn == pagedep->pd_lbn &&
+		    mp == pagedep->pd_mnt) {
+			return (pagedep);
+		}
+	}
+	return(NULL);
+}
+
+/*
  * Look up a pagedep. Return 1 if found, 0 if not found.
  * If not found, allocate if DEPALLOC flag is passed.
  * Found or allocated entry is returned in pagedeppp.
@@ -904,26 +924,26 @@ pagedep_lookup(ip, lbn, flags, pagedeppp)
 	mp = ITOV(ip)->v_mount;
 	pagedephd = PAGEDEP_HASH(mp, ip->i_number, lbn);
 top:
-	LIST_FOREACH(pagedep, pagedephd, pd_hash)
-		if (ip->i_number == pagedep->pd_ino &&
-		    lbn == pagedep->pd_lbn &&
-		    mp == pagedep->pd_mnt)
-			break;
-	if (pagedep) {
-		*pagedeppp = pagedep;
-		return (1);
-	}
-	if ((flags & DEPALLOC) == 0) {
-		*pagedeppp = NULL;
+	*pagedeppp = pagedep_find(pagedephd, ip->i_number, lbn, mp);
+	if (*pagedeppp)
+		return(1);
+	if ((flags & DEPALLOC) == 0)
 		return (0);
-	}
 	if (sema_get(&pagedep_in_progress, &lk) == 0) {
 		ACQUIRE_LOCK(&lk);
 		goto top;
 	}
 	MALLOC(pagedep, struct pagedep *, sizeof(struct pagedep), M_PAGEDEP,
-		M_SOFTDEP_FLAGS);
-	bzero(pagedep, sizeof(struct pagedep));
+		M_SOFTDEP_FLAGS | M_ZERO);
+
+	if (pagedep_find(pagedephd, ip->i_number, lbn, mp)) {
+		printf("pagedep_lookup: blocking race avoided\n");
+		ACQUIRE_LOCK(&lk);
+		sema_release(&pagedep_in_progress);
+		free(pagedep, M_PAGEDEP);
+		goto top;
+	}
+
 	pagedep->pd_list.wk_type = D_PAGEDEP;
 	pagedep->pd_mnt = mp;
 	pagedep->pd_ino = ip->i_number;
@@ -950,6 +970,22 @@ static long	num_inodedep;	/* number of inodedep allocated */
 static struct sema inodedep_in_progress;
 
 /*
+ * Helper routine for inodedep_lookup()
+ */
+static __inline
+struct inodedep *
+inodedep_find(struct inodedep_hashhead *inodedephd, struct fs *fs, ino_t inum)
+{
+	struct inodedep *inodedep;
+
+	LIST_FOREACH(inodedep, inodedephd, id_hash) {
+		if (inum == inodedep->id_ino && fs == inodedep->id_fs)
+			return(inodedep);
+	}
+	return (NULL);
+}
+
+/*
  * Look up a inodedep. Return 1 if found, 0 if not found.
  * If not found, allocate if DEPALLOC flag is passed.
  * Found or allocated entry is returned in inodedeppp.
@@ -973,17 +1009,11 @@ inodedep_lookup(fs, inum, flags, inodedeppp)
 	firsttry = 1;
 	inodedephd = INODEDEP_HASH(fs, inum);
 top:
-	LIST_FOREACH(inodedep, inodedephd, id_hash)
-		if (inum == inodedep->id_ino && fs == inodedep->id_fs)
-			break;
-	if (inodedep) {
-		*inodedeppp = inodedep;
+	*inodedeppp = inodedep_find(inodedephd, fs, inum);
+	if (*inodedeppp)
 		return (1);
-	}
-	if ((flags & DEPALLOC) == 0) {
-		*inodedeppp = NULL;
+	if ((flags & DEPALLOC) == 0)
 		return (0);
-	}
 	/*
 	 * If we are over our limit, try to improve the situation.
 	 */
@@ -997,9 +1027,15 @@ top:
 		ACQUIRE_LOCK(&lk);
 		goto top;
 	}
-	num_inodedep += 1;
 	MALLOC(inodedep, struct inodedep *, sizeof(struct inodedep),
-		M_INODEDEP, M_SOFTDEP_FLAGS);
+		M_INODEDEP, M_SOFTDEP_FLAGS | M_ZERO);
+	if (inodedep_find(inodedephd, fs, inum)) {
+		printf("inodedep_lookup: blocking race avoided\n");
+		ACQUIRE_LOCK(&lk);
+		sema_release(&inodedep_in_progress);
+		free(inodedep, M_INODEDEP);
+		goto top;
+	}
 	inodedep->id_list.wk_type = D_INODEDEP;
 	inodedep->id_fs = fs;
 	inodedep->id_ino = inum;
@@ -1014,6 +1050,7 @@ top:
 	TAILQ_INIT(&inodedep->id_inoupdt);
 	TAILQ_INIT(&inodedep->id_newinoupdt);
 	ACQUIRE_LOCK(&lk);
+	num_inodedep += 1;
 	LIST_INSERT_HEAD(inodedephd, inodedep, id_hash);
 	sema_release(&inodedep_in_progress);
 	*inodedeppp = inodedep;
@@ -1028,6 +1065,23 @@ u_long	newblk_hash;		/* size of hash table - 1 */
 #define	NEWBLK_HASH(fs, inum) \
 	(&newblk_hashtbl[((((register_t)(fs)) >> 13) + (inum)) & newblk_hash])
 static struct sema newblk_in_progress;
+
+/*
+ * Helper routine for newblk_lookup()
+ */
+static __inline
+struct newblk *
+newblk_find(struct newblk_hashhead *newblkhd, struct fs *fs, 
+	    ufs_daddr_t newblkno)
+{
+	struct newblk *newblk;
+
+	LIST_FOREACH(newblk, newblkhd, nb_hash) {
+		if (newblkno == newblk->nb_newblkno && fs == newblk->nb_fs)
+			return (newblk);
+	}
+	return(NULL);
+}
 
 /*
  * Look up a newblk. Return 1 if found, 0 if not found.
@@ -1046,21 +1100,22 @@ newblk_lookup(fs, newblkno, flags, newblkpp)
 
 	newblkhd = NEWBLK_HASH(fs, newblkno);
 top:
-	LIST_FOREACH(newblk, newblkhd, nb_hash)
-		if (newblkno == newblk->nb_newblkno && fs == newblk->nb_fs)
-			break;
-	if (newblk) {
-		*newblkpp = newblk;
-		return (1);
-	}
-	if ((flags & DEPALLOC) == 0) {
-		*newblkpp = NULL;
+	*newblkpp = newblk_find(newblkhd, fs, newblkno);
+	if (*newblkpp)
+		return(1);
+	if ((flags & DEPALLOC) == 0)
 		return (0);
-	}
 	if (sema_get(&newblk_in_progress, 0) == 0)
 		goto top;
 	MALLOC(newblk, struct newblk *, sizeof(struct newblk),
-		M_NEWBLK, M_SOFTDEP_FLAGS);
+		M_NEWBLK, M_SOFTDEP_FLAGS | M_ZERO);
+
+	if (newblk_find(newblkhd, fs, newblkno)) {
+		printf("newblk_lookup: blocking race avoided\n");
+		sema_release(&pagedep_in_progress);
+		free(newblk, M_NEWBLK);
+		goto top;
+	}
 	newblk->nb_state = 0;
 	newblk->nb_fs = fs;
 	newblk->nb_newblkno = newblkno;
