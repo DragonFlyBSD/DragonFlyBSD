@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.10 2006/05/29 03:57:21 dillon Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.11 2006/06/05 00:32:37 davidxu Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -70,6 +70,11 @@ union usched_data {
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
+#define USCHED_SET_SCHEDULER	0
+#define USCHED_SET_CPU		1
+#define USCHED_ADD_CPU		2
+#define USCHED_DEL_CPU		3
+
 /*
  * Kernel variables and procedures, or user system calls.
  */
@@ -83,7 +88,7 @@ struct usched *usched_init(void);
 
 #else
 
-int usched_set(const char *, int);
+int usched_set(pid_t, int, void *, int);
 
 #endif
 

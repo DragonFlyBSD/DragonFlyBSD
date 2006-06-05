@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.3 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.4 2006/06/05 00:32:37 davidxu Exp $
  */
 
 #include <sys/errno.h>
@@ -40,6 +40,7 @@
 #include <sys/sysproto.h>		/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>	
+#include <machine/smp.h>
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
 
@@ -140,8 +141,10 @@ usched_ctl(struct usched *usched, int action)
  * 	Setting up a proc's usched.
  *
  * ARGUMENTS:
- * 	name - usched's name
- *
+ *	pid	-
+ *	cmd	-
+ * 	data	- 
+ *	bytes	-
  * RETURN VALUES:
  * 	0 - success
  * 	EINVAL - error
@@ -153,30 +156,88 @@ usched_set(struct usched_set_args *uap)
 	struct usched *item;	/* temporaly for TAILQ processing */
 	int error;
 	char buffer[NAME_LENGTH];
+	cpumask_t mask;
+	struct lwp *lp;
+	int cpuid;
 
 	if ((error = suser(curthread)) != 0)
 		return (error);
 
-	if ((error = copyinstr(uap->name, buffer, sizeof(buffer), NULL)) != 0)
-		return (error);
-	
-	TAILQ_FOREACH(item, &usched_list, entry) {
-		if ((strcmp(item->name, buffer) == 0))
-			break;
-	}
+	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)
+		return (EINVAL);
 
-	/*
-	 * If the scheduler for a process is being changed, disassociate
-	 * the old scheduler before switching to the new one.  
-	 *
-	 * XXX we might have to add an additional ABI call to do a 'full
-	 * disassociation' and another ABI call to do a 'full reassociation'
-	 */
-	if (item && item != p->p_usched) {
-		p->p_usched->release_curproc(&p->p_lwp);
-		p->p_usched = item;
-	} else if (item == NULL) {
+	lp = curthread->td_lwp;
+	switch (uap->cmd) {
+	case USCHED_SET_SCHEDULER:
+		if ((error = copyinstr(uap->data, buffer, sizeof(buffer),
+			NULL)) != 0)
+			return (error);
+		TAILQ_FOREACH(item, &usched_list, entry) {
+			if ((strcmp(item->name, buffer) == 0))
+				break;
+		}
+
+		/*
+		 * If the scheduler for a process is being changed, disassociate
+		 * the old scheduler before switching to the new one.  
+		 *
+		 * XXX we might have to add an additional ABI call to do a 'full
+		 * disassociation' and another ABI call to do a 'full
+		 * reassociation'
+		 */
+		if (item && item != p->p_usched) {
+			p->p_usched->release_curproc(&p->p_lwp);
+			p->p_usched = item;
+		} else if (item == NULL) {
+			error = EINVAL;
+		}
+		break;
+	case USCHED_SET_CPU:
+		if (uap->bytes != sizeof(int))
+			return (EINVAL);
+		error = copyin(uap->data, &cpuid, sizeof(int));
+		if (error)
+			break;
+		if ((smp_active_mask & (1 << cpuid)) == 0) {
+			error = EINVAL;
+			break;
+		}
+		lp->lwp_cpumask = 1 << cpuid;
+		if (cpuid != mycpu->gd_cpuid)
+			lwkt_migratecpu(cpuid);
+		break;
+	case USCHED_ADD_CPU:
+		if (uap->bytes != sizeof(int))
+			return (EINVAL);
+		error = copyin(uap->data, &cpuid, sizeof(int));
+		if (error)
+			break;
+		if (!(smp_active_mask & (1 << cpuid))) {
+			error = EINVAL;
+			break;
+		}
+		lp->lwp_cpumask |= 1 << cpuid;
+		break;
+	case USCHED_DEL_CPU:
+		if (uap->bytes != sizeof(int))
+			return (EINVAL);
+		error = copyin(uap->data, &cpuid, sizeof(int));
+		if (error)
+			break;
+		lp = curthread->td_lwp;
+		mask = lp->lwp_cpumask & smp_active_mask & ~(1 << cpuid);
+		if (mask == 0)
+			error = EPERM;
+		else {
+			lp->lwp_cpumask &= ~(1 << cpuid);
+			if ((lp->lwp_cpumask & mycpu->gd_cpumask) == 0) {
+				cpuid = bsfl(lp->lwp_cpumask & smp_active_mask);
+				lwkt_migratecpu(cpuid);
+			}
+		}
+	default:
 		error = EINVAL;
+		break;
 	}
 	return (error);
 }

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.12 2006/06/01 19:02:38 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.13 2006/06/05 00:32:37 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -556,7 +556,8 @@ bsd4_setrunqueue(struct lwp *lp)
 	 *
 	 * XXX P_PASSIVE_ACQ
 	 */
-	mask = ~bsd4_curprocmask & bsd4_rdyprocmask & mycpu->gd_other_cpus;
+	mask = ~bsd4_curprocmask & bsd4_rdyprocmask & mycpu->gd_other_cpus &
+	    lp->lwp_cpumask;
 	if (mask) {
 		cpuid = bsd4_scancpu;
 		if (++cpuid == ncpus)
@@ -885,26 +886,51 @@ chooseproc_locked(struct lwp *chklp)
 {
 	struct lwp *lp;
 	struct rq *q;
-	u_int32_t *which;
+	u_int32_t *which, *which2;
 	u_int32_t pri;
+	u_int32_t rtqbits;
+	u_int32_t tsqbits;
+	u_int32_t idqbits;
+	cpumask_t cpumask;
 
-	if (bsd4_rtqueuebits) {
-		pri = bsfl(bsd4_rtqueuebits);
+	rtqbits = bsd4_rtqueuebits;
+	tsqbits = bsd4_queuebits;
+	idqbits = bsd4_idqueuebits;
+	cpumask = mycpu->gd_cpumask;
+
+#ifdef SMP
+again:
+#endif
+	if (rtqbits) {
+		pri = bsfl(rtqbits);
 		q = &bsd4_rtqueues[pri];
 		which = &bsd4_rtqueuebits;
-	} else if (bsd4_queuebits) {
-		pri = bsfl(bsd4_queuebits);
+		which2 = &rtqbits;
+	} else if (tsqbits) {
+		pri = bsfl(tsqbits);
 		q = &bsd4_queues[pri];
 		which = &bsd4_queuebits;
-	} else if (bsd4_idqueuebits) {
-		pri = bsfl(bsd4_idqueuebits);
+		which2 = &tsqbits;
+	} else if (idqbits) {
+		pri = bsfl(idqbits);
 		q = &bsd4_idqueues[pri];
 		which = &bsd4_idqueuebits;
+		which2 = &idqbits;
 	} else {
 		return NULL;
 	}
 	lp = TAILQ_FIRST(q);
 	KASSERT(lp, ("chooseproc: no lwp on busy queue"));
+
+#ifdef SMP
+	while ((lp->lwp_cpumask & cpumask) == 0) {
+		lp = TAILQ_NEXT(lp, lwp_procq);
+		if (lp == NULL) {
+			*which2 &= ~(1 << pri);
+			goto again;
+		}
+	}
+#endif
 
 	/*
 	 * If the passed lwp <chklp> is reasonably close to the selected

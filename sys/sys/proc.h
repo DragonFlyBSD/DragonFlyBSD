@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.79 2006/05/25 07:36:36 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.80 2006/06/05 00:32:37 davidxu Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -163,6 +163,7 @@ struct lwp {
 	int		lwp_traceflag;	/* Kernel trace points. */
 
 	union usched_data lwp_usdata;	/* User scheduler specific */
+	cpumask_t	lwp_cpumask;
 #define lwp_endzero	lwp_startcopy
 
 #define lwp_startcopy	lwp_siglist
