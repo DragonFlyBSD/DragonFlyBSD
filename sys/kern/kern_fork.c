@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.52 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.53 2006/06/05 18:02:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -267,7 +267,6 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	lp2 = &p2->p_lwp;
 	lp2->lwp_proc = p2;
 	lp2->lwp_tid = 0;
-	lp2->lwp_cpumask = 0xFFFFFFFF; /* XXX inherit ? */
 	LIST_INSERT_HEAD(&p2->p_lwps, lp2, lwp_list);
 	p2->p_nthreads = 1;
 	p2->p_nstopped = 0;
