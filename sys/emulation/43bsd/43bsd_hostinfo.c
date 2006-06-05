@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_hostinfo.c,v 1.2 2003/11/14 02:54:52 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_hostinfo.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
  *	from: DragonFly kern/kern_xxx.c,v 1.7
  *	from: DragonFly kern/kern_sysctl.c,v 1.12
  *
@@ -51,7 +51,7 @@
 #include <vm/vm_param.h>
 
 int
-ogethostname(struct gethostname_args *uap)
+sys_ogethostname(struct gethostname_args *uap)
 {
 	size_t len;
 	char *hostname;
@@ -72,7 +72,7 @@ ogethostname(struct gethostname_args *uap)
 }
 
 int
-osethostname(struct sethostname_args *uap)
+sys_osethostname(struct sethostname_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -103,14 +103,14 @@ osethostname(struct sethostname_args *uap)
 }
 
 int
-ogethostid(struct ogethostid_args *uap)
+sys_ogethostid(struct ogethostid_args *uap)
 {
 	uap->sysmsg_lresult = hostid;
 	return (0);
 }
 
 int
-osethostid(struct osethostid_args *uap)
+sys_osethostid(struct osethostid_args *uap)
 {
 	struct thread *td = curthread;
 	int error;
@@ -123,7 +123,7 @@ osethostid(struct osethostid_args *uap)
 }
 
 int
-oquota(struct oquota_args *uap)
+sys_oquota(struct oquota_args *uap)
 {
 	return (ENOSYS);
 }
@@ -184,7 +184,7 @@ static struct {
 static char bsdi_strings[80];	/* It had better be less than this! */
 
 int
-ogetkerninfo(struct getkerninfo_args *uap)
+sys_ogetkerninfo(struct getkerninfo_args *uap)
 {
 	int error, name[6];
 	size_t size;

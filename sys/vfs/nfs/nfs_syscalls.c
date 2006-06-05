@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.24 2006/05/06 06:38:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.25 2006/06/05 07:26:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,7 +131,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0, "");
  * - remains in the kernel as an nfsiod
  */
 int
-nfssvc(struct nfssvc_args *uap)
+sys_nfssvc(struct nfssvc_args *uap)
 {
 #ifndef NFS_NOSERVER
 	struct nlookupdata nd;

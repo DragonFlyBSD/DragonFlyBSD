@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.8 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.9 2006/06/05 07:26:11 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -452,7 +452,7 @@ ncp_load(void) {
 	while(1) {
 		/* Search the table looking for an enough number of slots... */
 		for (scnt=0, ff = -1, i = 0; i < nsysent; i++) {
-			if (sysent[i].sy_call == (sy_call_t *)lkmnosys) {
+			if (sysent[i].sy_call == (sy_call_t *)sys_lkmnosys) {
 				if (ff == -1) {
 				    ff = i;
 				    scnt = 1;

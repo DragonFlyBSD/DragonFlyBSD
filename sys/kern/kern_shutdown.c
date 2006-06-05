@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.29 2006/04/28 16:06:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.30 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -163,7 +163,7 @@ SYSINIT(shutdown_conf, SI_SUB_INTRINSIC, SI_ORDER_ANY, shutdown_conf, NULL)
  * The system call that results in a reboot
  */
 int
-reboot(struct reboot_args *uap)
+sys_reboot(struct reboot_args *uap)
 {
 	struct thread *td = curthread;
 	int error;
@@ -271,7 +271,7 @@ boot(int howto)
 		waittime = 0;
 		printf("\nsyncing disks... ");
 
-		sync(NULL);	/* YYY was sync(&proc0, NULL). why proc0 ? */
+		sys_sync(NULL);	/* YYY was sync(&proc0, NULL). why proc0 ? */
 
 		/*
 		 * With soft updates, some buffers that are
@@ -293,7 +293,7 @@ boot(int howto)
 			 */
 			if (iter > 5 && bioops.io_sync)
 				(*bioops.io_sync)(NULL);
-			sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
+			sys_sync(NULL); /* YYY was sync(&proc0, NULL). why proc0 ? */
 			tsleep(boot, 0, "shutdn", hz * iter / 20 + 1);
 		}
 		printf("\n");

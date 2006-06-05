@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.21 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.22 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1196,7 +1196,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 }
 
 int
-__sysctl(struct sysctl_args *uap)
+sys___sysctl(struct sysctl_args *uap)
 {
 	int error, i, name[CTL_MAXNAME];
 	size_t j;

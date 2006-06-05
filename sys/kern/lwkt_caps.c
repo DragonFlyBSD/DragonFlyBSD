@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.6 2005/03/01 23:35:13 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.7 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -573,7 +573,7 @@ caps_exit(struct thread *td)
  * upcid can either be an upcall or a kqueue identifier (XXX)
  */
 int
-caps_sys_service(struct caps_sys_service_args *uap)
+sys_caps_sys_service(struct caps_sys_service_args *uap)
 {
     struct ucred *cred = curproc->p_ucred;
     char name[CAPS_MAXNAMELEN];
@@ -607,7 +607,7 @@ caps_sys_service(struct caps_sys_service_args *uap)
  * upcid can either be an upcall or a kqueue identifier (XXX)
  */
 int
-caps_sys_client(struct caps_sys_client_args *uap)
+sys_caps_sys_client(struct caps_sys_client_args *uap)
 {
     struct ucred *cred = curproc->p_ucred;
     char name[CAPS_MAXNAMELEN];
@@ -632,7 +632,7 @@ caps_sys_client(struct caps_sys_client_args *uap)
 }
 
 int
-caps_sys_close(struct caps_sys_close_args *uap)
+sys_caps_sys_close(struct caps_sys_close_args *uap)
 {
     caps_kinfo_t caps;
 
@@ -644,7 +644,7 @@ caps_sys_close(struct caps_sys_close_args *uap)
 }
 
 int
-caps_sys_setgen(struct caps_sys_setgen_args *uap)
+sys_caps_sys_setgen(struct caps_sys_setgen_args *uap)
 {
     caps_kinfo_t caps;
     int error;
@@ -662,7 +662,7 @@ caps_sys_setgen(struct caps_sys_setgen_args *uap)
 }
 
 int
-caps_sys_getgen(struct caps_sys_getgen_args *uap)
+sys_caps_sys_getgen(struct caps_sys_getgen_args *uap)
 {
     caps_kinfo_t caps;
     int error;
@@ -688,7 +688,7 @@ caps_sys_getgen(struct caps_sys_getgen_args *uap)
  * function may only be used with a client port.  The message id is returned.
  */
 int
-caps_sys_put(struct caps_sys_put_args *uap)
+sys_caps_sys_put(struct caps_sys_put_args *uap)
 {
     caps_kinfo_t caps;
     caps_kmsg_t msg;
@@ -748,7 +748,7 @@ caps_sys_put(struct caps_sys_put_args *uap)
  * data back to the originator.
  */
 int
-caps_sys_reply(struct caps_sys_reply_args *uap)
+sys_caps_sys_reply(struct caps_sys_reply_args *uap)
 {
     caps_kinfo_t caps;
     caps_kinfo_t rcaps;
@@ -813,7 +813,7 @@ caps_sys_reply(struct caps_sys_reply_args *uap)
  * messages are perfectly acceptable so 0 can be legitimately returned.
  */
 int
-caps_sys_get(struct caps_sys_get_args *uap)
+sys_caps_sys_get(struct caps_sys_get_args *uap)
 {
     caps_kinfo_t caps;
     caps_kmsg_t msg;
@@ -849,7 +849,7 @@ caps_sys_get(struct caps_sys_get_args *uap)
  * legitimately returned.
  */
 int
-caps_sys_wait(struct caps_sys_wait_args *uap)
+sys_caps_sys_wait(struct caps_sys_wait_args *uap)
 {
     caps_kinfo_t caps;
     caps_kmsg_t msg;
@@ -949,7 +949,7 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
  *	to do.
  */
 int
-caps_sys_abort(struct caps_sys_abort_args *uap)
+sys_caps_sys_abort(struct caps_sys_abort_args *uap)
 {
     uap->sysmsg_result = CAPS_ABORT_NOTIMPL;
     return(0);

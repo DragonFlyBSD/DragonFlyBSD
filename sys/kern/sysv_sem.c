@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.14 2004/05/26 14:12:34 hmp Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.15 2006/06/05 07:26:10 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -26,15 +26,6 @@ static MALLOC_DEFINE(M_SEM, "sem", "SVID compatible semaphores");
 
 static void seminit (void *);
 
-#ifndef _SYS_SYSPROTO_H_
-struct __semctl_args;
-int __semctl (struct proc *p, struct __semctl_args *uap);
-struct semget_args;
-int semget (struct proc *p, struct semget_args *uap);
-struct semop_args;
-int semop (struct proc *p, struct semop_args *uap);
-#endif
-
 static struct sem_undo *semu_alloc (struct proc *p);
 static int semundo_adjust (struct proc *p, struct sem_undo **supptr, 
 		int semid, int semnum, int adjval);
@@ -42,8 +33,8 @@ static void semundo_clear (int semid, int semnum);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *semcalls[] = {
-	(sy_call_t *)__semctl, (sy_call_t *)semget,
-	(sy_call_t *)semop
+	(sy_call_t *)sys___semctl, (sy_call_t *)sys_semget,
+	(sy_call_t *)sys_semop
 };
 
 static int	semtot = 0;
@@ -203,7 +194,7 @@ SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
  * semsys_args(int which, a2, a3, ...) (VARARGS)
  */
 int
-semsys(struct semsys_args *uap)
+sys_semsys(struct semsys_args *uap)
 {
 	struct proc *p = curproc;
 	unsigned int which = (unsigned int)uap->which;
@@ -393,7 +384,7 @@ semundo_clear(semid, semnum)
  */
 
 int
-__semctl(struct __semctl_args *uap)
+sys___semctl(struct __semctl_args *uap)
 {
 	struct proc *p = curproc;
 	int semid = uap->semid;
@@ -551,7 +542,7 @@ __semctl(struct __semctl_args *uap)
 }
 
 int
-semget(struct semget_args *uap)
+sys_semget(struct semget_args *uap)
 {
 	struct proc *p = curproc;
 	int semid, eval;
@@ -659,7 +650,7 @@ found:
 }
 
 int
-semop(struct semop_args *uap)
+sys_semop(struct semop_args *uap)
 {
 	struct proc *p = curproc;
 	int semid = uap->semid;

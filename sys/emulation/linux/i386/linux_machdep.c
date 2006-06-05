@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.15 2004/11/12 00:09:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.16 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ bsd_to_linux_sigaltstack(int bsa)
 }
 
 int
-linux_execve(struct linux_execve_args *args)
+sys_linux_execve(struct linux_execve_args *args)
 {
 	struct nlookupdata nd;
 	struct image_args exec_args;
@@ -144,7 +144,7 @@ struct l_ipc_kludge {
 };
 
 int
-linux_ipc(struct linux_ipc_args *args)
+sys_linux_ipc(struct linux_ipc_args *args)
 {
 	int error = 0;
 
@@ -296,7 +296,7 @@ linux_ipc(struct linux_ipc_args *args)
 }
 
 int
-linux_old_select(struct linux_old_select_args *args)
+sys_linux_old_select(struct linux_old_select_args *args)
 {
 	struct l_old_select_argv linux_args;
 	struct linux_select_args newsel;
@@ -317,13 +317,13 @@ linux_old_select(struct linux_old_select_args *args)
 	newsel.writefds = linux_args.writefds;
 	newsel.exceptfds = linux_args.exceptfds;
 	newsel.timeout = linux_args.timeout;
-	error = linux_select(&newsel);
+	error = sys_linux_select(&newsel);
 	args->sysmsg_result = newsel.sysmsg_result;
 	return(error);
 }
 
 int
-linux_fork(struct linux_fork_args *args)
+sys_linux_fork(struct linux_fork_args *args)
 {
 	int error;
 
@@ -332,7 +332,7 @@ linux_fork(struct linux_fork_args *args)
 		printf(ARGS(fork, ""));
 #endif
 
-	if ((error = fork((struct fork_args *)args)) != 0)
+	if ((error = sys_fork((struct fork_args *)args)) != 0)
 		return (error);
 
 	if (args->sysmsg_result == 1)
@@ -341,7 +341,19 @@ linux_fork(struct linux_fork_args *args)
 }
 
 int
-linux_vfork(struct linux_vfork_args *args)
+sys_linux_exit_group(struct linux_exit_group_args *args)
+{
+	struct exit_args newargs;
+	int error;
+
+	newargs.sysmsg_result = 0;
+	error = sys_exit(&newargs);
+	args->sysmsg_result = newargs.sysmsg_result;
+	return (error);
+}
+
+int
+sys_linux_vfork(struct linux_vfork_args *args)
 {
 	int error;
 
@@ -350,7 +362,7 @@ linux_vfork(struct linux_vfork_args *args)
 		printf(ARGS(vfork, ""));
 #endif
 
-	if ((error = vfork((struct vfork_args *)args)) != 0)
+	if ((error = sys_vfork((struct vfork_args *)args)) != 0)
 		return (error);
 	/* Are we the child? */
 	if (args->sysmsg_result == 1)
@@ -365,7 +377,7 @@ linux_vfork(struct linux_vfork_args *args)
 #define CLONE_PID	0x1000
 
 int
-linux_clone(struct linux_clone_args *args)
+sys_linux_clone(struct linux_clone_args *args)
 {
 	int error, ff = RFPROC;
 	struct proc *p2;
@@ -407,7 +419,7 @@ linux_clone(struct linux_clone_args *args)
 
 	rf_args.flags = ff;
 	rf_args.sysmsg_result = 0;
-	if ((error = rfork(&rf_args)) != 0)
+	if ((error = sys_rfork(&rf_args)) != 0)
 		return (error);
 	args->sysmsg_result = rf_args.sysmsg_result;
 
@@ -546,7 +558,7 @@ linux_mmap_common(caddr_t linux_addr, size_t linux_len, int linux_prot,
 }
 
 int
-linux_mmap(struct linux_mmap_args *args)
+sys_linux_mmap(struct linux_mmap_args *args)
 {
 	struct l_mmap_argv linux_args;
 	int error;
@@ -572,7 +584,7 @@ linux_mmap(struct linux_mmap_args *args)
 }
 
 int
-linux_mmap2(struct linux_mmap2_args *args)
+sys_linux_mmap2(struct linux_mmap2_args *args)
 {
 	int error;
 
@@ -593,7 +605,7 @@ linux_mmap2(struct linux_mmap2_args *args)
 }
 
 int
-linux_pipe(struct linux_pipe_args *args)
+sys_linux_pipe(struct linux_pipe_args *args)
 {
 	int error;
 	int reg_edx;
@@ -605,7 +617,7 @@ linux_pipe(struct linux_pipe_args *args)
 #endif
 
 	reg_edx = args->sysmsg_fds[1];
-	error = pipe(&bsd_args);
+	error = sys_pipe(&bsd_args);
 	if (error) {
 		args->sysmsg_fds[1] = reg_edx;
 		return (error);
@@ -623,7 +635,7 @@ linux_pipe(struct linux_pipe_args *args)
 }
 
 int
-linux_ioperm(struct linux_ioperm_args *args)
+sys_linux_ioperm(struct linux_ioperm_args *args)
 {
 	struct sysarch_args sa;
 	struct i386_ioperm_args *iia;
@@ -638,13 +650,13 @@ linux_ioperm(struct linux_ioperm_args *args)
 	sa.sysmsg_resultp = NULL;
 	sa.op = I386_SET_IOPERM;
 	sa.parms = (char *)iia;
-	error = sysarch(&sa);
+	error = sys_sysarch(&sa);
 	args->sysmsg_resultp = sa.sysmsg_resultp;
 	return(error);
 }
 
 int
-linux_iopl(struct linux_iopl_args *args)
+sys_linux_iopl(struct linux_iopl_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -664,7 +676,7 @@ linux_iopl(struct linux_iopl_args *args)
 }
 
 int
-linux_modify_ldt(struct linux_modify_ldt_args *uap)
+sys_linux_modify_ldt(struct linux_modify_ldt_args *uap)
 {
 	int error;
 	caddr_t sg;
@@ -687,7 +699,7 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		args.op = I386_GET_LDT;
 		args.parms = (char*)ldt;
 		args.sysmsg_result = 0;
-		error = sysarch(&args);
+		error = sys_sysarch(&args);
 		uap->sysmsg_result = args.sysmsg_result *
 					    sizeof(union descriptor);
 		break;
@@ -719,7 +731,7 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		args.op = I386_SET_LDT;
 		args.parms = (char*)ldt;
 		args.sysmsg_result = 0;
-		error = sysarch(&args);
+		error = sys_sysarch(&args);
 		uap->sysmsg_result = args.sysmsg_result;
 		break;
 	default:
@@ -731,7 +743,7 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 }
 
 int
-linux_sigaction(struct linux_sigaction_args *args)
+sys_linux_sigaction(struct linux_sigaction_args *args)
 {
 	l_osigaction_t osa;
 	l_sigaction_t linux_act, linux_oact;
@@ -776,7 +788,7 @@ linux_sigaction(struct linux_sigaction_args *args)
  * enables the signal to happen with a different register set.
  */
 int
-linux_sigsuspend(struct linux_sigsuspend_args *args)
+sys_linux_sigsuspend(struct linux_sigsuspend_args *args)
 {
 	l_sigset_t linux_mask;
 	sigset_t mask;
@@ -797,7 +809,7 @@ linux_sigsuspend(struct linux_sigsuspend_args *args)
 }
 
 int
-linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
+sys_linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 {
 	l_sigset_t linux_mask;
 	sigset_t mask;
@@ -824,7 +836,7 @@ linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 }
 
 int
-linux_pause(struct linux_pause_args *args)
+sys_linux_pause(struct linux_pause_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -844,7 +856,7 @@ linux_pause(struct linux_pause_args *args)
 }
 
 int
-linux_sigaltstack(struct linux_sigaltstack_args *uap)
+sys_linux_sigaltstack(struct linux_sigaltstack_args *uap)
 {
 	stack_t ss, oss;
 	l_stack_t linux_ss;

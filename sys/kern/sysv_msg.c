@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.13 2004/05/26 14:12:34 hmp Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.14 2006/06/05 07:26:10 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -44,8 +44,8 @@ static void msg_freehdr (struct msg *msghdr);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *msgcalls[] = {
-	(sy_call_t *)msgctl, (sy_call_t *)msgget,
-	(sy_call_t *)msgsnd, (sy_call_t *)msgrcv
+	(sy_call_t *)sys_msgctl, (sy_call_t *)sys_msgget,
+	(sy_call_t *)sys_msgsnd, (sy_call_t *)sys_msgrcv
 };
 
 struct msg {
@@ -202,7 +202,7 @@ SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
  * msgsys_args(int which, int a2, ...) (VARARGS)
  */
 int
-msgsys(struct msgsys_args *uap)
+sys_msgsys(struct msgsys_args *uap)
 {
 	struct proc *p = curproc;
 	unsigned int which = (unsigned int)uap->which;
@@ -241,7 +241,7 @@ msg_freehdr(struct msg *msghdr)
 }
 
 int
-msgctl(struct msgctl_args *uap)
+sys_msgctl(struct msgctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -374,7 +374,7 @@ msgctl(struct msgctl_args *uap)
 }
 
 int
-msgget(struct msgget_args *uap)
+sys_msgget(struct msgget_args *uap)
 {
 	struct proc *p = curproc;
 	int msqid, eval;
@@ -475,7 +475,7 @@ found:
 }
 
 int
-msgsnd(struct msgsnd_args *uap)
+sys_msgsnd(struct msgsnd_args *uap)
 {
 	struct proc *p = curproc;
 	int msqid = uap->msqid;
@@ -788,7 +788,7 @@ msgsnd(struct msgsnd_args *uap)
 }
 
 int
-msgrcv(struct msgrcv_args *uap)
+sys_msgrcv(struct msgrcv_args *uap)
 {
 	struct proc *p = curproc;
 	int msqid = uap->msqid;

@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.9 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.10 2006/06/05 07:26:07 dillon Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -66,7 +66,7 @@
 #include <vfs/union/union.h>
 
 int
-ocreat(struct ocreat_args *uap)
+sys_ocreat(struct ocreat_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -80,7 +80,7 @@ ocreat(struct ocreat_args *uap)
 }
 
 int
-oftruncate(struct oftruncate_args *uap)
+sys_oftruncate(struct oftruncate_args *uap)
 {
 	int error;
 
@@ -90,7 +90,7 @@ oftruncate(struct oftruncate_args *uap)
 }
 
 int
-olseek(struct olseek_args *uap)
+sys_olseek(struct olseek_args *uap)
 {
 	int error;
 
@@ -101,7 +101,7 @@ olseek(struct olseek_args *uap)
 }
 
 int
-otruncate(struct otruncate_args *uap)
+sys_otruncate(struct otruncate_args *uap)
 {
 	struct nlookupdata nd;
 	int error;
@@ -126,7 +126,7 @@ struct odirent {
 };
 
 int
-ogetdirentries(struct ogetdirentries_args *uap)
+sys_ogetdirentries(struct ogetdirentries_args *uap)
 {
 	int error, bytes_transfered;
 	char *buf, *outbuf;

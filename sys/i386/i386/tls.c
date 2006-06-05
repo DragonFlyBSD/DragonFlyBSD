@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.3 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.4 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@
  * (struct tls_info *info, int infosize, int which)
  */
 int
-sys_set_tls_area(struct sys_set_tls_area_args *uap)
+sys_sys_set_tls_area(struct sys_set_tls_area_args *uap)
 {
 	struct tls_info info;
 	struct segment_descriptor *desc;
@@ -158,7 +158,7 @@ sys_set_tls_area(struct sys_set_tls_area_args *uap)
  * (struct tls_info *info, int infosize, int which)
  */
 int
-sys_get_tls_area(struct sys_get_tls_area_args *uap)
+sys_sys_get_tls_area(struct sys_get_tls_area_args *uap)
 {
 	struct tls_info info;
 	struct segment_descriptor *desc;

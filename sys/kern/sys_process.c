@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.19 2005/11/21 21:59:50 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.20 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -192,7 +192,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
  * Process debugging system call.
  */
 int
-ptrace(struct ptrace_args *uap)
+sys_ptrace(struct ptrace_args *uap)
 {
 	struct proc *p = curproc;
 

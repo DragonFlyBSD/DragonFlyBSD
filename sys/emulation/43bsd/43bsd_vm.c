@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.2 2005/11/14 18:07:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
  *	from: DragonFly vm/vm_unix.c,v 1.3
  *	from: DragonFly vm/vm_mmap.c,v 1.15
  */
@@ -50,20 +50,20 @@
 #include <sys/mman.h>
 
 int
-ovadvise(struct ovadvise_args *uap)
+sys_ovadvise(struct ovadvise_args *uap)
 {
 	return (EINVAL);
 }
 
 int
-ogetpagesize(struct getpagesize_args *uap)
+sys_ogetpagesize(struct getpagesize_args *uap)
 {
 	uap->sysmsg_result = PAGE_SIZE;
 	return (0);
 }
 
 int
-ommap(struct ommap_args *uap)
+sys_ommap(struct ommap_args *uap)
 {
 	static const char cvtbsdprot[8] = {
 		0,

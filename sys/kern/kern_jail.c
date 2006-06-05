@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.11 2006/06/05 07:26:10 dillon Exp $
  *
  */
 
@@ -91,7 +91,7 @@ kern_jail_attach(int jid)
  * jail_args(syscallarg(struct jail *) jail)
  */
 int
-jail(struct jail_args *uap)
+sys_jail(struct jail_args *uap)
 {
 	struct prison *pr, *tpr;
 	struct jail j;
@@ -163,7 +163,7 @@ bail:
  * int jail_attach(int jid);
  */
 int
-jail_attach(struct jail_attach_args *uap)
+sys_jail_attach(struct jail_attach_args *uap)
 {
 	struct thread *td = curthread;
 	int error;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.49 2006/05/25 07:36:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.50 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -337,7 +337,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 }
 
 int
-sigaction(struct sigaction_args *uap)
+sys_sigaction(struct sigaction_args *uap)
 {
 	struct sigaction act, oact;
 	struct sigaction *actp, *oactp;
@@ -451,7 +451,7 @@ kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
  * sigprocmask() - MP SAFE
  */
 int
-sigprocmask(struct sigprocmask_args *uap)
+sys_sigprocmask(struct sigprocmask_args *uap)
 {
 	sigset_t set, oset;
 	sigset_t *setp, *osetp;
@@ -483,7 +483,7 @@ kern_sigpending(struct __sigset *set)
 }
 
 int
-sigpending(struct sigpending_args *uap)
+sys_sigpending(struct sigpending_args *uap)
 {
 	sigset_t set;
 	int error;
@@ -529,7 +529,7 @@ kern_sigsuspend(struct __sigset *set)
  * pointer, to save a copyin.
  */
 int
-sigsuspend(struct sigsuspend_args *uap)
+sys_sigsuspend(struct sigsuspend_args *uap)
 {
 	sigset_t mask;
 	int error;
@@ -573,7 +573,7 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 }
 
 int
-sigaltstack(struct sigaltstack_args *uap)
+sys_sigaltstack(struct sigaltstack_args *uap)
 {
 	stack_t ss, oss;
 	int error;
@@ -689,7 +689,7 @@ kern_kill(int sig, int pid)
 }
 
 int
-kill(struct kill_args *uap)
+sys_kill(struct kill_args *uap)
 {
 	int error;
 
@@ -1169,7 +1169,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 }
 
 int
-sigtimedwait(struct sigtimedwait_args *uap)
+sys_sigtimedwait(struct sigtimedwait_args *uap)
 {
 	struct timespec ts;
 	struct timespec *timeout;
@@ -1202,7 +1202,7 @@ sigtimedwait(struct sigtimedwait_args *uap)
 }
 
 int
-sigwaitinfo(struct sigwaitinfo_args *uap)
+sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 {
 	siginfo_t info;
 	sigset_t set;
@@ -1727,7 +1727,7 @@ out2:
  */
 /* ARGSUSED */
 int
-nosys(struct nosys_args *args)
+sys_nosys(struct nosys_args *args)
 {
 	psignal(curproc, SIGSYS);
 	return (EINVAL);

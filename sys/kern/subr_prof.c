@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.11 2005/10/08 12:24:26 corecode Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -345,7 +345,7 @@ SYSCTL_NODE(_kern, KERN_PROF, prof, CTLFLAG_RW, sysctl_kern_prof, "");
  */
 /* ARGSUSED */
 int
-profil(struct profil_args *uap)
+sys_profil(struct profil_args *uap)
 {
 	struct proc *p = curproc;
 	struct uprof *upp;

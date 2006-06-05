@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.33 2006/03/27 16:18:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.34 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ settime(tv)
 
 /* ARGSUSED */
 int
-clock_gettime(struct clock_gettime_args *uap)
+sys_clock_gettime(struct clock_gettime_args *uap)
 {
 	struct timespec ats;
 
@@ -160,7 +160,7 @@ clock_gettime(struct clock_gettime_args *uap)
 
 /* ARGSUSED */
 int
-clock_settime(struct clock_settime_args *uap)
+sys_clock_settime(struct clock_settime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
@@ -185,7 +185,7 @@ clock_settime(struct clock_settime_args *uap)
 }
 
 int
-clock_getres(struct clock_getres_args *uap)
+sys_clock_getres(struct clock_getres_args *uap)
 {
 	struct timespec ts;
 
@@ -301,7 +301,7 @@ static void nanosleep_copyout(union sysunion *sysun);
 
 /* ARGSUSED */
 int
-nanosleep(struct nanosleep_args *uap)
+sys_nanosleep(struct nanosleep_args *uap)
 {
 	int error;
 	struct sysmsg_sleep *smsleep = &uap->sysmsg.sm.sleep;
@@ -381,7 +381,7 @@ nanosleep_copyout(union sysunion *sysun)
 
 /* ARGSUSED */
 int
-gettimeofday(struct gettimeofday_args *uap)
+sys_gettimeofday(struct gettimeofday_args *uap)
 {
 	struct timeval atv;
 	int error = 0;
@@ -400,7 +400,7 @@ gettimeofday(struct gettimeofday_args *uap)
 
 /* ARGSUSED */
 int
-settimeofday(struct settimeofday_args *uap)
+sys_settimeofday(struct settimeofday_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
@@ -512,7 +512,7 @@ kern_adjfreq(int64_t rate)
 
 /* ARGSUSED */
 int
-adjtime(struct adjtime_args *uap)
+sys_adjtime(struct adjtime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timeval atv;
@@ -667,7 +667,7 @@ SYSCTL_PROC(_kern_ntp, OID_AUTO, adjust,
  */
 /* ARGSUSED */
 int
-getitimer(struct getitimer_args *uap)
+sys_getitimer(struct getitimer_args *uap)
 {
 	struct proc *p = curproc;
 	struct timeval ctv;
@@ -701,7 +701,7 @@ getitimer(struct getitimer_args *uap)
 
 /* ARGSUSED */
 int
-setitimer(struct setitimer_args *uap)
+sys_setitimer(struct setitimer_args *uap)
 {
 	struct itimerval aitv;
 	struct timeval ctv;
@@ -716,7 +716,7 @@ setitimer(struct setitimer_args *uap)
 	    sizeof(struct itimerval))))
 		return (error);
 	if ((uap->itv = uap->oitv) &&
-	    (error = getitimer((struct getitimer_args *)uap)))
+	    (error = sys_getitimer((struct getitimer_args *)uap)))
 		return (error);
 	if (itvp == 0)
 		return (0);

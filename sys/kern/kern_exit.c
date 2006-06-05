@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.56 2006/05/24 17:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.57 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -98,8 +98,8 @@ static struct exit_list_head exit_list = TAILQ_HEAD_INITIALIZER(exit_list);
  *
  * SYS_EXIT_ARGS(int rval)
  */
-void
-sys_exit(struct sys_exit_args *uap)
+int
+sys_exit(struct exit_args *uap)
 {
 	exit1(W_EXITCODE(uap->rval, 0));
 	/* NOTREACHED */
@@ -143,7 +143,7 @@ exit1(int rv)
 		         * The interface for kill is better
 			 * than the internal signal
 			 */
-			kill(&killArgs);
+			sys_kill(&killArgs);
 			nq = q;
 			q = q->p_peers;
 		}
@@ -397,7 +397,7 @@ exit1(int rv)
 }
 
 int
-wait4(struct wait_args *uap)
+sys_wait4(struct wait_args *uap)
 {
 	struct rusage rusage;
 	int error, status;

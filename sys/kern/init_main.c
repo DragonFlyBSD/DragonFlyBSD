@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.56 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.57 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -555,7 +555,7 @@ start_init(void *dummy)
 		 * MP lock will migrate with us though so we still have to
 		 * release it.
 		 */
-		if ((error = execve(&args)) == 0) {
+		if ((error = sys_execve(&args)) == 0) {
 			rel_mplock();
 			lp->lwp_proc->p_usched->acquire_curproc(lp);
 			return;

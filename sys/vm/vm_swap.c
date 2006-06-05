@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.25 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.26 2006/06/05 07:26:11 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -173,7 +173,7 @@ VNODEOP_SET(swapdev_vnodeop_opv_desc);
  */
 /* ARGSUSED */
 int
-swapon(struct swapon_args *uap)
+sys_swapon(struct swapon_args *uap)
 {
 	struct thread *td = curthread;
 	struct vattr attr;

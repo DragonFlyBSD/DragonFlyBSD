@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.4 2005/06/03 23:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.5 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -87,7 +87,7 @@
  * umtx_sleep { const int *ptr, int value, int timeout }
  */
 int
-umtx_sleep(struct umtx_sleep_args *uap)
+sys_umtx_sleep(struct umtx_sleep_args *uap)
 {
     int error = EBUSY;
     vm_paddr_t pa;
@@ -130,7 +130,7 @@ umtx_sleep(struct umtx_sleep_args *uap)
  * address space.
  */
 int
-umtx_wakeup(struct umtx_wakeup_args *uap)
+sys_umtx_wakeup(struct umtx_wakeup_args *uap)
 {
     vm_paddr_t pa;
     void *waddr;

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.8 2005/10/08 11:41:11 corecode Exp $
+ $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.9 2006/06/05 07:26:10 dillon Exp $
 
 ;	@(#)syscalls.master	8.1 (Berkeley) 7/19/93
 ; $FreeBSD: src/sys/i386/linux/syscalls.master,v 1.30.2.8 2003/01/02 20:41:33 kan Exp $
@@ -39,7 +39,7 @@
 ; #ifdef's, etc. may be included, and are copied to the output files.
 
 0	UNIMPL	LINUX	setup
-1	NOPROTO LINUX	{ void sys_exit(int rval); } exit sys_exit_args void
+1	NOPROTO LINUX	{ void exit(int rval); }
 2	STD	LINUX	{ int linux_fork(void); }
 3	NOPROTO	LINUX	{ int read(int fd, char *buf, u_int nbyte); }
 4	NOPROTO	LINUX	{ int write(int fd, char *buf, u_int nbyte); }
@@ -373,9 +373,9 @@
 247    UNIMPL  LINUX   linux_io_getevents
 248    UNIMPL  LINUX   linux_io_submit
 249    UNIMPL  LINUX   linux_io_cancel
-250	STD	LINUX	{ int linux_fadvise64(void); }
+250    STD     LINUX   { int linux_fadvise64(void); }
 251    UNIMPL  LINUX   
-252    NOPROTO LINUX   { void sys_exit(int rval); } exit_group sys_exit_args void
+252    STD     LINUX   { void linux_exit_group(int rval); }
 253    UNIMPL  LINUX   linux_lookup_dcookie
 254    UNIMPL  LINUX   linux_epoll_create
 255    UNIMPL  LINUX   linux_epoll_ctl

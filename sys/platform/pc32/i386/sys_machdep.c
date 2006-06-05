@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.22 2006/02/28 18:30:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.23 2006/06/05 07:26:10 dillon Exp $
  *
  */
 
@@ -81,7 +81,7 @@ int i386_extend_pcb(struct lwp *);
  */
 
 int
-sysarch(struct sysarch_args *uap)
+sys_sysarch(struct sysarch_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	int error = 0;

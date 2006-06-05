@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.19 2006/05/24 03:23:30 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.20 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,7 +93,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 }
 
 int
-linux_newstat(struct linux_newstat_args *args)
+sys_linux_newstat(struct linux_newstat_args *args)
 {
 	struct stat buf;
 	struct nlookupdata nd;
@@ -119,7 +119,7 @@ linux_newstat(struct linux_newstat_args *args)
 }
 
 int
-linux_newlstat(struct linux_newlstat_args *args)
+sys_linux_newlstat(struct linux_newlstat_args *args)
 {
 	struct stat sb;
 	struct nlookupdata nd;
@@ -145,7 +145,7 @@ linux_newlstat(struct linux_newlstat_args *args)
 }
 
 int
-linux_newfstat(struct linux_newfstat_args *args)
+sys_linux_newfstat(struct linux_newfstat_args *args)
 {
 	struct stat buf;
 	int error;
@@ -232,7 +232,7 @@ statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf, l_int namelen)
 }
 
 int
-linux_statfs(struct linux_statfs_args *args)
+sys_linux_statfs(struct linux_statfs_args *args)
 {
 	struct statfs statfs;
 	struct nlookupdata nd;
@@ -263,7 +263,7 @@ linux_statfs(struct linux_statfs_args *args)
 }
 
 int
-linux_fstatfs(struct linux_fstatfs_args *args)
+sys_linux_fstatfs(struct linux_fstatfs_args *args)
 {
 	struct proc *p = curthread->td_proc;
 	struct file *fp;
@@ -294,7 +294,7 @@ struct l_ustat
 };
 
 int
-linux_ustat(struct linux_ustat_args *args)
+sys_linux_ustat(struct linux_ustat_args *args)
 {
 	struct l_ustat lu;
 	dev_t dev;
@@ -372,7 +372,7 @@ stat64_copyout(struct stat *buf, void *ubuf)
 }
 
 int
-linux_stat64(struct linux_stat64_args *args)
+sys_linux_stat64(struct linux_stat64_args *args)
 {
 	struct nlookupdata nd;
 	struct stat buf;
@@ -398,7 +398,7 @@ linux_stat64(struct linux_stat64_args *args)
 }
 
 int
-linux_lstat64(struct linux_lstat64_args *args)
+sys_linux_lstat64(struct linux_lstat64_args *args)
 {
 	struct nlookupdata nd;
 	struct stat sb;
@@ -424,7 +424,7 @@ linux_lstat64(struct linux_lstat64_args *args)
 }
 
 int
-linux_fstat64(struct linux_fstat64_args *args)
+sys_linux_fstat64(struct linux_fstat64_args *args)
 {
 	struct stat buf;
 	int error;

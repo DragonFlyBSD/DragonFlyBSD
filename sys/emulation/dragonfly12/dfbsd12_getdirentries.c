@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_getdirentries.c,v 1.1 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_getdirentries.c,v 1.2 2006/06/05 07:26:08 dillon Exp $
  */
 
 #include "opt_compatdf12.h"
@@ -114,7 +114,7 @@ common_getdirentries(long *base, int *result, int fd, char *usr_buf, size_t coun
 }
 
 int
-dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
+sys_dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 {
 	long base;
 	int error;
@@ -128,7 +128,7 @@ dfbsd12_getdirentries(struct dfbsd12_getdirentries_args *uap)
 }
 
 int
-dfbsd12_getdents(struct dfbsd12_getdents_args *uap)
+sys_dfbsd12_getdents(struct dfbsd12_getdents_args *uap)
 {
 	return(common_getdirentries(NULL, &uap->sysmsg_result, uap->fd,
 	    uap->buf, uap->count));

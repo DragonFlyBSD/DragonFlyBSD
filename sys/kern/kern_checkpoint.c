@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.8 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -682,7 +682,7 @@ ckpt_freeze_proc (struct proc *p, struct file *fp)
 }
 
 int 
-sys_checkpoint(struct sys_checkpoint_args *uap)
+sys_sys_checkpoint(struct sys_checkpoint_args *uap)
 {
         int error = 0;
 	struct proc *p = curthread->td_proc;

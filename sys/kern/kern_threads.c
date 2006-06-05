@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.8 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@
  *	returns time waiting in ticks.
  */
 int
-thr_sleep(struct thr_sleep_args *uap) 
+sys_thr_sleep(struct thr_sleep_args *uap) 
 {
 	struct proc *p = curproc;
 	int sleepstart;
@@ -118,7 +118,7 @@ thr_sleep(struct thr_sleep_args *uap)
 }
 
 int
-thr_wakeup(struct thr_wakeup_args *uap) 
+sys_thr_wakeup(struct thr_wakeup_args *uap) 
 {
 	struct proc *p = curproc;
 	struct proc *pSlave = p->p_leader;
@@ -145,7 +145,7 @@ thr_wakeup(struct thr_wakeup_args *uap)
  * General purpose yield system call
  */
 int
-yield(struct yield_args *uap) 
+sys_yield(struct yield_args *uap) 
 {
 	uap->sysmsg_result = 0;
 	uio_yield();

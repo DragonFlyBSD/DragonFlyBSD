@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.10 2004/11/12 00:09:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.11 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -49,7 +49,7 @@ DUMMY(getresgid16);
 #define	CAST_NOCHG(x)	((x == 0xFFFF) ? -1 : x)
 
 int
-linux_chown16(struct linux_chown16_args *args)
+sys_linux_chown16(struct linux_chown16_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -74,7 +74,7 @@ linux_chown16(struct linux_chown16_args *args)
 }
 
 int
-linux_lchown16(struct linux_lchown16_args *args)
+sys_linux_lchown16(struct linux_lchown16_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -99,7 +99,7 @@ linux_lchown16(struct linux_lchown16_args *args)
 }
 
 int
-linux_setgroups16(struct linux_setgroups16_args *args)
+sys_linux_setgroups16(struct linux_setgroups16_args *args)
 {
 	struct proc *p = curproc;
 	struct ucred *newcred, *oldcred;
@@ -153,7 +153,7 @@ linux_setgroups16(struct linux_setgroups16_args *args)
 }
 
 int
-linux_getgroups16(struct linux_getgroups16_args *args)
+sys_linux_getgroups16(struct linux_getgroups16_args *args)
 {
 	struct proc *p = curproc;
 	struct ucred *cred;
@@ -211,7 +211,7 @@ linux_getgroups16(struct linux_getgroups16_args *args)
  */
 
 int
-linux_getgid16(struct linux_getgid16_args *args)
+sys_linux_getgid16(struct linux_getgid16_args *args)
 {
 	struct proc *p = curproc;
 
@@ -220,7 +220,7 @@ linux_getgid16(struct linux_getgid16_args *args)
 }
 
 int
-linux_getuid16(struct linux_getuid16_args *args)
+sys_linux_getuid16(struct linux_getuid16_args *args)
 {
 	struct proc *p = curproc;
 
@@ -229,33 +229,33 @@ linux_getuid16(struct linux_getuid16_args *args)
 }
 
 int
-linux_getegid16(struct linux_getegid16_args *args)
+sys_linux_getegid16(struct linux_getegid16_args *args)
 {
 	struct getegid_args bsd;
 	int error;
 
 	bsd.sysmsg_result = 0;
 
-	error = getegid(&bsd);
+	error = sys_getegid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_geteuid16(struct linux_geteuid16_args *args)
+sys_linux_geteuid16(struct linux_geteuid16_args *args)
 {
 	struct geteuid_args bsd;
 	int error;
 
 	bsd.sysmsg_result = 0;
 
-	error = geteuid(&bsd);
+	error = sys_geteuid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setgid16(struct linux_setgid16_args *args)
+sys_linux_setgid16(struct linux_setgid16_args *args)
 {
 	struct setgid_args bsd;
 	int error;
@@ -263,13 +263,13 @@ linux_setgid16(struct linux_setgid16_args *args)
 	bsd.gid = args->gid;
 	bsd.sysmsg_result = 0;
 
-	error = setgid(&bsd);
+	error = sys_setgid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setuid16(struct linux_setuid16_args *args)
+sys_linux_setuid16(struct linux_setuid16_args *args)
 {
 	struct setuid_args bsd;
 	int error;
@@ -277,13 +277,13 @@ linux_setuid16(struct linux_setuid16_args *args)
 	bsd.uid = args->uid;
 	bsd.sysmsg_result = 0;
 
-	error = setuid(&bsd);
+	error = sys_setuid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setregid16(struct linux_setregid16_args *args)
+sys_linux_setregid16(struct linux_setregid16_args *args)
 {
 	struct setregid_args bsd;
 	int error;
@@ -292,13 +292,13 @@ linux_setregid16(struct linux_setregid16_args *args)
 	bsd.egid = CAST_NOCHG(args->egid);
 	bsd.sysmsg_result = 0;
 
-	error = setregid(&bsd);
+	error = sys_setregid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setreuid16(struct linux_setreuid16_args *args)
+sys_linux_setreuid16(struct linux_setreuid16_args *args)
 {
 	struct setreuid_args bsd;
 	int error;
@@ -307,13 +307,13 @@ linux_setreuid16(struct linux_setreuid16_args *args)
 	bsd.euid = CAST_NOCHG(args->euid);
 	bsd.sysmsg_result = 0;
 
-	error = setreuid(&bsd);
+	error = sys_setreuid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setresgid16(struct linux_setresgid16_args *args)
+sys_linux_setresgid16(struct linux_setresgid16_args *args)
 {
 	struct setresgid_args bsd;
 	int error;
@@ -323,13 +323,13 @@ linux_setresgid16(struct linux_setresgid16_args *args)
 	bsd.sgid = CAST_NOCHG(args->sgid);
 	bsd.sysmsg_result = 0;
 
-	error = setresgid(&bsd);
+	error = sys_setresgid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setresuid16(struct linux_setresuid16_args *args)
+sys_linux_setresuid16(struct linux_setresuid16_args *args)
 {
 	struct setresuid_args bsd;
 	int error;
@@ -339,7 +339,7 @@ linux_setresuid16(struct linux_setresuid16_args *args)
 	bsd.suid = CAST_NOCHG(args->suid);
 	bsd.sysmsg_result = 0;
 
-	error = setresuid(&bsd);
+	error = sys_setresuid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }

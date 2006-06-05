@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.19 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.20 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1282,7 +1282,7 @@ static struct ioctl_map_handler linux_ioctl_base_handler = {
  */
 
 int
-linux_ioctl(struct linux_ioctl_args *args)
+sys_linux_ioctl(struct linux_ioctl_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(ioctl))

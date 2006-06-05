@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.9 2005/03/29 00:35:55 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.10 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -240,7 +240,7 @@ module_setspecific(module_t mod, modspecific_t *datap)
  * Syscalls.
  */
 int
-modnext(struct modnext_args *uap)
+sys_modnext(struct modnext_args *uap)
 {
     module_t mod;
 
@@ -266,7 +266,7 @@ modnext(struct modnext_args *uap)
 }
 
 int
-modfnext(struct modfnext_args *uap)
+sys_modfnext(struct modfnext_args *uap)
 {
     module_t mod;
 
@@ -291,7 +291,7 @@ struct module_stat_v1 {
 };
 
 int
-modstat(struct modstat_args *uap)
+sys_modstat(struct modstat_args *uap)
 {
     module_t mod;
     int error = 0;
@@ -342,7 +342,7 @@ out:
 }
 
 int
-modfind(struct modfind_args *uap)
+sys_modfind(struct modfind_args *uap)
 {
     int error = 0;
     char name[MAXMODNAME];

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.27 2006/05/25 07:36:34 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -84,7 +84,7 @@ struct getpriority_info {
 static int getpriority_callback(struct proc *p, void *data);
 
 int
-getpriority(struct getpriority_args *uap)
+sys_getpriority(struct getpriority_args *uap)
 {
 	struct getpriority_info info;
 	struct proc *curp = curproc;
@@ -164,7 +164,7 @@ struct setpriority_info {
 static int setpriority_callback(struct proc *p, void *data);
 
 int
-setpriority(struct setpriority_args *uap)
+sys_setpriority(struct setpriority_args *uap)
 {
 	struct setpriority_info info;
 	struct proc *curp = curproc;
@@ -264,7 +264,7 @@ donice(struct proc *chgp, int n)
  */
 /* ARGSUSED */
 int
-rtprio(struct rtprio_args *uap)
+sys_rtprio(struct rtprio_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *p;
@@ -329,7 +329,7 @@ rtprio(struct rtprio_args *uap)
 }
 
 int
-setrlimit(struct __setrlimit_args *uap)
+sys_setrlimit(struct __setrlimit_args *uap)
 {
 	struct rlimit alim;
 	int error;
@@ -344,7 +344,7 @@ setrlimit(struct __setrlimit_args *uap)
 }
 
 int
-getrlimit(struct __getrlimit_args *uap)
+sys_getrlimit(struct __getrlimit_args *uap)
 {
 	struct rlimit lim;
 	int error;
@@ -389,7 +389,7 @@ calcru(struct proc *p, struct timeval *up, struct timeval *sp,
 
 /* ARGSUSED */
 int
-getrusage(struct getrusage_args *uap)
+sys_getrusage(struct getrusage_args *uap)
 {
 	struct proc *p = curproc;
 	struct rusage *rup;

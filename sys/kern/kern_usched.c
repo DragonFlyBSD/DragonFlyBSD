@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.4 2006/06/05 00:32:37 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.5 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -150,7 +150,7 @@ usched_ctl(struct usched *usched, int action)
  * 	EINVAL - error
  */
 int
-usched_set(struct usched_set_args *uap)
+sys_usched_set(struct usched_set_args *uap)
 {
 	struct proc *p = curthread->td_proc;
 	struct usched *item;	/* temporaly for TAILQ processing */

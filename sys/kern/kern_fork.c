@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.51 2006/06/05 00:32:37 davidxu Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.52 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -87,7 +87,7 @@ int forksleep; /* Place for fork1() to sleep on. */
 
 /* ARGSUSED */
 int
-fork(struct fork_args *uap)
+sys_fork(struct fork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
@@ -104,7 +104,7 @@ fork(struct fork_args *uap)
 
 /* ARGSUSED */
 int
-vfork(struct vfork_args *uap)
+sys_vfork(struct vfork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;
@@ -131,7 +131,7 @@ vfork(struct vfork_args *uap)
  * rfork { int flags }
  */
 int
-rfork(struct rfork_args *uap)
+sys_rfork(struct rfork_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p2;

@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.11 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.12 2006/06/05 07:26:06 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -248,7 +248,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	if (!vinum_inactive(1))				    /* is anything open? */
 	    return EBUSY;				    /* yes, we can't do it */
 	vinum_conf.flags |= VF_STOPPING;		    /* note that we want to stop */
-	sync(NULL);			    /* write out buffers */
+	sys_sync(NULL);			    /* write out buffers */
 	free_vinum(0);					    /* clean up */
 #ifdef VINUMDEBUG
 	if (total_malloced) {

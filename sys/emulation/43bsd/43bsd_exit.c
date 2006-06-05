@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_exit.c,v 1.1 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_exit.c,v 1.2 2006/06/05 07:26:07 dillon Exp $
  *	from: DragonFly kern/kern_exit.c,v 1.26
  *
  * These syscalls used to live in kern/kern_exit.c.  They are modified
@@ -61,7 +61,7 @@
  * owait_args(int dummy)
  */
 int
-owait(struct owait_args *uap)
+sys_owait(struct owait_args *uap)
 {
 	int error, status;
 

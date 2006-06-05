@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.66 2006/05/27 01:57:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.67 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -182,7 +182,7 @@ fdfixup_locked(struct filedesc *fdp, int fd)
  * MPSAFE
  */
 int
-getdtablesize(struct getdtablesize_args *uap) 
+sys_getdtablesize(struct getdtablesize_args *uap) 
 {
 	struct proc *p = curproc;
 	struct plimit *limit = p->p_limit;
@@ -203,7 +203,7 @@ getdtablesize(struct getdtablesize_args *uap)
  * MPSAFE
  */
 int
-dup2(struct dup2_args *uap)
+sys_dup2(struct dup2_args *uap)
 {
 	int error;
 
@@ -218,7 +218,7 @@ dup2(struct dup2_args *uap)
  * MPSAFE
  */
 int
-dup(struct dup_args *uap)
+sys_dup(struct dup_args *uap)
 {
 	int error;
 
@@ -399,7 +399,7 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
  * MPSAFE
  */
 int
-fcntl(struct fcntl_args *uap)
+sys_fcntl(struct fcntl_args *uap)
 {
 	union fcntl_dat dat;
 	int error;
@@ -749,7 +749,7 @@ fgetown(struct sigio *sigio)
  * MPSAFE
  */
 int
-closefrom(struct closefrom_args *uap)
+sys_closefrom(struct closefrom_args *uap)
 {
 	return(kern_closefrom(uap->fd));
 }
@@ -798,7 +798,7 @@ kern_closefrom(int fd)
  * MPSAFE
  */
 int
-close(struct close_args *uap)
+sys_close(struct close_args *uap)
 {
 	return(kern_close(uap->fd));
 }
@@ -883,7 +883,7 @@ kern_shutdown(int fd, int how)
 }
 
 int
-shutdown(struct shutdown_args *uap)
+sys_shutdown(struct shutdown_args *uap)
 {
 	int error;
 
@@ -914,7 +914,7 @@ kern_fstat(int fd, struct stat *ub)
  * Return status information about a file descriptor.
  */
 int
-fstat(struct fstat_args *uap)
+sys_fstat(struct fstat_args *uap)
 {
 	struct stat st;
 	int error;
@@ -931,7 +931,7 @@ fstat(struct fstat_args *uap)
  */
 /* ARGSUSED */
 int
-fpathconf(struct fpathconf_args *uap)
+sys_fpathconf(struct fpathconf_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -2165,7 +2165,7 @@ fdrop(struct file *fp)
  * the entire file (l_whence = SEEK_SET, l_start = 0, l_len = 0).
  */
 int
-flock(struct flock_args *uap)
+sys_flock(struct flock_args *uap)
 {
 	struct proc *p = curproc;
 	struct file *fp;

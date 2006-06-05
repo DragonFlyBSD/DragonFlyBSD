@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.39 2006/06/01 06:10:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.40 2006/06/05 07:26:11 dillon Exp $
  */
 
 /*
@@ -549,7 +549,7 @@ extern struct nfsnodehashhead *nfsnodehashtbl;
 extern u_long nfsnodehash;
 
 struct nfssvc_args;
-extern int nfssvc(struct proc *, struct nfssvc_args *, int *);
+extern int sys_nfssvc(struct proc *, struct nfssvc_args *, int *);
 
 LIST_HEAD(nfsnodehashhead, nfsnode);
 
@@ -1076,7 +1076,7 @@ nfs_init(struct vfsconf *vfsp)
 	nfs_prev_nfssvc_sy_narg = sysent[SYS_nfssvc].sy_narg;
 	sysent[SYS_nfssvc].sy_narg = 2;
 	nfs_prev_nfssvc_sy_call = sysent[SYS_nfssvc].sy_call;
-	sysent[SYS_nfssvc].sy_call = (sy_call_t *)nfssvc;
+	sysent[SYS_nfssvc].sy_call = (sy_call_t *)sys_nfssvc;
 
 	nfs_pbuf_freecnt = nswbuf / 2 + 1;
 

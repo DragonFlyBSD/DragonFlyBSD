@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.7 2003/11/27 19:11:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.8 2006/06/05 07:26:10 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -169,7 +169,7 @@ static int sched_attach(void)
 }
 
 int
-sched_setparam(struct sched_setparam_args *uap)
+sys_sched_setparam(struct sched_setparam_args *uap)
 {
 	struct proc *p = curproc;
 	int e;
@@ -185,7 +185,7 @@ sched_setparam(struct sched_setparam_args *uap)
 }
 
 int
-sched_getparam(struct sched_getparam_args *uap)
+sys_sched_getparam(struct sched_getparam_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *targetp;
@@ -209,7 +209,7 @@ sched_getparam(struct sched_getparam_args *uap)
 }
 
 int
-sched_setscheduler(struct sched_setscheduler_args *uap)
+sys_sched_setscheduler(struct sched_setscheduler_args *uap)
 {
 	struct proc *p = curproc;
 	int e;
@@ -225,7 +225,7 @@ sched_setscheduler(struct sched_setscheduler_args *uap)
 }
 
 int
-sched_getscheduler(struct sched_getscheduler_args *uap)
+sys_sched_getscheduler(struct sched_getscheduler_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *targetp;
@@ -245,25 +245,25 @@ sched_getscheduler(struct sched_getscheduler_args *uap)
 }
 
 int
-sched_yield(struct sched_yield_args *uap)
+sys_sched_yield(struct sched_yield_args *uap)
 {
 	return ksched_yield(&uap->sysmsg_result, ksched);
 }
 
 int
-sched_get_priority_max(struct sched_get_priority_max_args *uap)
+sys_sched_get_priority_max(struct sched_get_priority_max_args *uap)
 {
 	return ksched_get_priority_max(&uap->sysmsg_result, ksched, uap->policy);
 }
 
 int
-sched_get_priority_min(struct sched_get_priority_min_args *uap)
+sys_sched_get_priority_min(struct sched_get_priority_min_args *uap)
 {
 	return ksched_get_priority_min(&uap->sysmsg_result, ksched, uap->policy);
 }
 
 int
-sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
+sys_sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 {
 	int e;
 	struct proc *p = curproc;

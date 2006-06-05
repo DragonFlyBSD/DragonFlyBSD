@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.31 2006/06/03 08:06:31 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.32 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -59,7 +59,7 @@
 #include "linux_util.h"
 
 int
-linux_creat(struct linux_creat_args *args)
+sys_linux_creat(struct linux_creat_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -82,7 +82,7 @@ linux_creat(struct linux_creat_args *args)
 }
 
 int
-linux_open(struct linux_open_args *args)
+sys_linux_open(struct linux_open_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -158,7 +158,7 @@ linux_open(struct linux_open_args *args)
 }
 
 int
-linux_lseek(struct linux_lseek_args *args)
+sys_linux_lseek(struct linux_lseek_args *args)
 {
 	int error;
 
@@ -174,7 +174,7 @@ linux_lseek(struct linux_lseek_args *args)
 }
 
 int
-linux_llseek(struct linux_llseek_args *args)
+sys_linux_llseek(struct linux_llseek_args *args)
 {
 	int error;
 	off_t off, res;
@@ -194,7 +194,7 @@ linux_llseek(struct linux_llseek_args *args)
 }
 
 int
-linux_readdir(struct linux_readdir_args *args)
+sys_linux_readdir(struct linux_readdir_args *args)
 {
 	struct linux_getdents_args lda;
 	int error;
@@ -203,7 +203,7 @@ linux_readdir(struct linux_readdir_args *args)
 	lda.dent = args->dent;
 	lda.count = 1;
 	lda.sysmsg_result = 0;
-	error = linux_getdents(&lda);
+	error = sys_linux_getdents(&lda);
 	args->sysmsg_result = lda.sysmsg_result;
 	return(error);
 }
@@ -443,7 +443,7 @@ done:
 }
 
 int
-linux_getdents(struct linux_getdents_args *args)
+sys_linux_getdents(struct linux_getdents_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(getdents))
@@ -453,7 +453,7 @@ linux_getdents(struct linux_getdents_args *args)
 }
 
 int
-linux_getdents64(struct linux_getdents64_args *args)
+sys_linux_getdents64(struct linux_getdents64_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(getdents64))
@@ -467,7 +467,7 @@ linux_getdents64(struct linux_getdents64_args *args)
  */
 
 int
-linux_access(struct linux_access_args *args)
+sys_linux_access(struct linux_access_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -489,7 +489,7 @@ linux_access(struct linux_access_args *args)
 }
 
 int
-linux_unlink(struct linux_unlink_args *args)
+sys_linux_unlink(struct linux_unlink_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -511,7 +511,7 @@ linux_unlink(struct linux_unlink_args *args)
 }
 
 int
-linux_chdir(struct linux_chdir_args *args)
+sys_linux_chdir(struct linux_chdir_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -534,7 +534,7 @@ linux_chdir(struct linux_chdir_args *args)
 }
 
 int
-linux_chmod(struct linux_chmod_args *args)
+sys_linux_chmod(struct linux_chmod_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -556,7 +556,7 @@ linux_chmod(struct linux_chmod_args *args)
 }
 
 int
-linux_mkdir(struct linux_mkdir_args *args)
+sys_linux_mkdir(struct linux_mkdir_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -579,7 +579,7 @@ linux_mkdir(struct linux_mkdir_args *args)
 }
 
 int
-linux_rmdir(struct linux_rmdir_args *args)
+sys_linux_rmdir(struct linux_rmdir_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -601,7 +601,7 @@ linux_rmdir(struct linux_rmdir_args *args)
 }
 
 int
-linux_rename(struct linux_rename_args *args)
+sys_linux_rename(struct linux_rename_args *args)
 {
 	struct nlookupdata fromnd, tond;
 	char *from, *to;
@@ -633,7 +633,7 @@ linux_rename(struct linux_rename_args *args)
 }
 
 int
-linux_symlink(struct linux_symlink_args *args)
+sys_linux_symlink(struct linux_symlink_args *args)
 {
 	struct thread *td = curthread;
 	struct nlookupdata nd;
@@ -665,7 +665,7 @@ linux_symlink(struct linux_symlink_args *args)
 }
 
 int
-linux_readlink(struct linux_readlink_args *args)
+sys_linux_readlink(struct linux_readlink_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -690,7 +690,7 @@ linux_readlink(struct linux_readlink_args *args)
 }
 
 int
-linux_truncate(struct linux_truncate_args *args)
+sys_linux_truncate(struct linux_truncate_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -713,7 +713,7 @@ linux_truncate(struct linux_truncate_args *args)
 }
 
 int
-linux_truncate64(struct linux_truncate64_args *args)
+sys_linux_truncate64(struct linux_truncate64_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -736,7 +736,7 @@ linux_truncate64(struct linux_truncate64_args *args)
 }
 
 int
-linux_ftruncate(struct linux_ftruncate_args *args)
+sys_linux_ftruncate(struct linux_ftruncate_args *args)
 {
 	int error;
 
@@ -751,7 +751,7 @@ linux_ftruncate(struct linux_ftruncate_args *args)
 }
 
 int
-linux_ftruncate64(struct linux_ftruncate64_args *args)
+sys_linux_ftruncate64(struct linux_ftruncate64_args *args)
 {
 	int error;
 
@@ -766,7 +766,7 @@ linux_ftruncate64(struct linux_ftruncate64_args *args)
 }
 
 int
-linux_link(struct linux_link_args *args)
+sys_linux_link(struct linux_link_args *args)
 {
 	struct nlookupdata nd, linknd;
 	char *path, *link;
@@ -798,7 +798,7 @@ linux_link(struct linux_link_args *args)
 }
 
 int
-linux_fdatasync(struct linux_fdatasync_args *uap)
+sys_linux_fdatasync(struct linux_fdatasync_args *uap)
 {
 	struct fsync_args bsd;
 	int error;
@@ -806,13 +806,13 @@ linux_fdatasync(struct linux_fdatasync_args *uap)
 	bsd.fd = uap->fd;
 	bsd.sysmsg_result = 0;
 
-	error = fsync(&bsd);
+	error = sys_fsync(&bsd);
 	uap->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_pread(struct linux_pread_args *uap)
+sys_linux_pread(struct linux_pread_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -837,7 +837,7 @@ linux_pread(struct linux_pread_args *uap)
 }
 
 int
-linux_pwrite(struct linux_pwrite_args *uap)
+sys_linux_pwrite(struct linux_pwrite_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -863,7 +863,7 @@ linux_pwrite(struct linux_pwrite_args *uap)
 }
 
 int
-linux_oldumount(struct linux_oldumount_args *args)
+sys_linux_oldumount(struct linux_oldumount_args *args)
 {
 	struct linux_umount_args args2;
 	int error;
@@ -871,13 +871,13 @@ linux_oldumount(struct linux_oldumount_args *args)
 	args2.path = args->path;
 	args2.flags = 0;
 	args2.sysmsg_result = 0;
-	error = linux_umount(&args2);
+	error = sys_linux_umount(&args2);
 	args->sysmsg_result = args2.sysmsg_result;
 	return(error);
 }
 
 int
-linux_umount(struct linux_umount_args *args)
+sys_linux_umount(struct linux_umount_args *args)
 {
 	struct unmount_args bsd;
 	int error;
@@ -886,7 +886,7 @@ linux_umount(struct linux_umount_args *args)
 	bsd.flags = args->flags;	/* XXX correct? */
 	bsd.sysmsg_result = 0;
 
-	error = unmount(&bsd);
+	error = sys_unmount(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
@@ -1118,7 +1118,7 @@ linux_fcntl_common(struct linux_fcntl64_args *args)
 }
 
 int
-linux_fcntl(struct linux_fcntl_args *args)
+sys_linux_fcntl(struct linux_fcntl_args *args)
 {
 	struct linux_fcntl64_args args64;
 	int error;
@@ -1139,7 +1139,7 @@ linux_fcntl(struct linux_fcntl_args *args)
 
 #if defined(__i386__)
 int
-linux_fcntl64(struct linux_fcntl64_args *args)
+sys_linux_fcntl64(struct linux_fcntl64_args *args)
 {
 	struct l_flock64 linux_flock;
 	union fcntl_dat dat;
@@ -1185,7 +1185,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 #endif /* __i386__ */
 
 int
-linux_chown(struct linux_chown_args *args)
+sys_linux_chown(struct linux_chown_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -1207,7 +1207,7 @@ linux_chown(struct linux_chown_args *args)
 }
 
 int
-linux_lchown(struct linux_lchown_args *args)
+sys_linux_lchown(struct linux_lchown_args *args)
 {
 	struct nlookupdata nd;
 	char *path;

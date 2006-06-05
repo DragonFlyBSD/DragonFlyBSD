@@ -39,7 +39,7 @@
  *
  *	@(#)vm_unix.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vm_unix.c,v 1.24.2.2 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_unix.c,v 1.4 2003/11/14 20:54:07 daver Exp $
+ * $DragonFly: src/sys/vm/vm_unix.c,v 1.5 2006/06/05 07:26:11 dillon Exp $
  */
 
 /*
@@ -61,7 +61,7 @@
  */
 /* ARGSUSED */
 int
-obreak(struct obreak_args *uap)
+sys_obreak(struct obreak_args *uap)
 {
 	struct proc *p = curproc;
 	struct vmspace *vm = p->p_vmspace;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.c,v 1.17.2.3 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.7 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.8 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,7 @@ linux_semop(struct linux_semop_args *args)
 	bsd_args.semid = args->semid;
 	bsd_args.sops = (struct sembuf *)args->tsops;
 	bsd_args.nsops = args->nsops;
-	error = semop(&bsd_args);
+	error = sys_semop(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
@@ -204,7 +204,7 @@ linux_semget(struct linux_semget_args *args)
 	bsd_args.key = args->key;
 	bsd_args.nsems = args->nsems;
 	bsd_args.semflg = args->semflg;
-	error = semget(&bsd_args);
+	error = sys_semget(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
@@ -261,7 +261,7 @@ linux_semctl(struct linux_semctl_args *args)
 	case LINUX_IPC_STAT:
 		bsd_args.cmd = IPC_STAT;
 		unptr->buf = stackgap_alloc(&sg, sizeof(struct semid_ds));
-		error = __semctl(&bsd_args);
+		error = sys___semctl(&bsd_args);
 		if (error)
 			return error;
 		args->sysmsg_result = IXSEQ_TO_IPCID(bsd_args.semid, 
@@ -296,7 +296,7 @@ linux_semctl(struct linux_semctl_args *args)
 		uprintf("linux: 'ipc' typ=%d not implemented\n", args->cmd);
 		return EINVAL;
 	}
-	error = __semctl(&bsd_args);
+	error = sys___semctl(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
@@ -312,7 +312,7 @@ linux_msgsnd(struct linux_msgsnd_args *args)
     bsd_args.msgp = args->msgp;
     bsd_args.msgsz = args->msgsz;
     bsd_args.msgflg = args->msgflg;
-    error = msgsnd(&bsd_args);
+    error = sys_msgsnd(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
@@ -329,7 +329,7 @@ linux_msgrcv(struct linux_msgrcv_args *args)
     bsd_args.msgsz = args->msgsz;
     bsd_args.msgtyp = 0; /* XXX - args->msgtyp; */
     bsd_args.msgflg = args->msgflg;
-    error = msgrcv(&bsd_args);
+    error = sys_msgrcv(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
@@ -343,7 +343,7 @@ linux_msgget(struct linux_msgget_args *args)
     bsd_args.sysmsg_result = 0;
     bsd_args.key = args->key;
     bsd_args.msgflg = args->msgflg;
-    error = msgget(&bsd_args);
+    error = sys_msgget(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
@@ -358,7 +358,7 @@ linux_msgctl(struct linux_msgctl_args *args)
     bsd_args.msqid = args->msqid;
     bsd_args.cmd = args->cmd;
     bsd_args.buf = (struct msqid_ds *)args->buf;
-    error = msgctl(&bsd_args);
+    error = sys_msgctl(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return ((args->cmd == LINUX_IPC_RMID && error == EINVAL) ? 0 : error);
 }
@@ -373,7 +373,7 @@ linux_shmat(struct linux_shmat_args *args)
     bsd_args.shmid = args->shmid;
     bsd_args.shmaddr = args->shmaddr;
     bsd_args.shmflg = args->shmflg;
-    if ((error = shmat(&bsd_args)))
+    if ((error = sys_shmat(&bsd_args)))
 	return error;
 #ifdef __i386__
     if ((error = copyout(&bsd_args.sysmsg_lresult, (caddr_t)args->raddr, sizeof(l_ulong))))
@@ -393,7 +393,7 @@ linux_shmdt(struct linux_shmdt_args *args)
 
     bsd_args.sysmsg_result = 0;
     bsd_args.shmaddr = args->shmaddr;
-    error = shmdt(&bsd_args);
+    error = sys_shmdt(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
@@ -408,7 +408,7 @@ linux_shmget(struct linux_shmget_args *args)
     bsd_args.key = args->key;
     bsd_args.size = args->size;
     bsd_args.shmflg = args->shmflg;
-    error = shmget(&bsd_args);
+    error = sys_shmget(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
@@ -427,7 +427,7 @@ linux_shmctl(struct linux_shmctl_args *args)
 	bsd_args.shmid = args->shmid;
 	bsd_args.cmd = IPC_STAT;
 	bsd_args.buf = (struct shmid_ds*)stackgap_alloc(&sg, sizeof(struct shmid_ds));
-	if ((error = shmctl(&bsd_args)))
+	if ((error = sys_shmctl(&bsd_args)))
 	    return error;
 	bsd_to_linux_shmid_ds(bsd_args.buf, &linux_shmid);
 	args->sysmsg_result = bsd_args.sysmsg_result;
@@ -464,7 +464,7 @@ linux_shmctl(struct linux_shmctl_args *args)
 	uprintf("linux: 'ipc' typ=%d not implemented\n", args->cmd);
 	return EINVAL;
     }
-    error = shmctl(&bsd_args);
+    error = sys_shmctl(&bsd_args);
     args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }

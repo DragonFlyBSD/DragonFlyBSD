@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.27 2006/05/05 20:15:01 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -699,7 +699,7 @@ linker_ddb_symbol_values(c_linker_sym_t sym, linker_symval_t *symval)
  */
 
 int
-kldload(struct kldload_args *uap)
+sys_kldload(struct kldload_args *uap)
 {
     struct thread *td = curthread;
     char* filename = NULL, *modulename;
@@ -742,7 +742,7 @@ out:
 }
 
 int
-kldunload(struct kldunload_args *uap)
+sys_kldunload(struct kldunload_args *uap)
 {
     struct thread *td = curthread;
     linker_file_t lf;
@@ -774,7 +774,7 @@ out:
 }
 
 int
-kldfind(struct kldfind_args *uap)
+sys_kldfind(struct kldfind_args *uap)
 {
     char *filename = NULL, *modulename;
     linker_file_t lf;
@@ -803,7 +803,7 @@ out:
 }
 
 int
-kldnext(struct kldnext_args *uap)
+sys_kldnext(struct kldnext_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -829,7 +829,7 @@ kldnext(struct kldnext_args *uap)
 }
 
 int
-kldstat(struct kldstat_args *uap)
+sys_kldstat(struct kldstat_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -876,7 +876,7 @@ out:
 }
 
 int
-kldfirstmod(struct kldfirstmod_args *uap)
+sys_kldfirstmod(struct kldfirstmod_args *uap)
 {
     linker_file_t lf;
     int error = 0;
@@ -894,7 +894,7 @@ kldfirstmod(struct kldfirstmod_args *uap)
 }
 
 int
-kldsym(struct kldsym_args *uap)
+sys_kldsym(struct kldsym_args *uap)
 {
     char *symstr = NULL;
     c_linker_sym_t sym;

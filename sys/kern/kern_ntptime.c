@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.11 2005/04/23 20:34:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -266,7 +266,7 @@ SYSCTL_OPAQUE(_kern_ntp_pll, OID_AUTO, time_freq, CTLFLAG_RD, &time_freq, sizeof
  * the time constant and to set the TAI offset.
  */
 int
-ntp_adjtime(struct ntp_adjtime_args *uap)
+sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 {
 	struct thread *td = curthread;
 	struct timex ntv;	/* temporary structure */

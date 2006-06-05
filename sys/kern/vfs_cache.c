@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.71 2006/06/04 17:33:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.72 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1990,7 +1990,7 @@ static u_long numcwdfail4; STATNODE(CTLFLAG_RD, numcwdfail4, &numcwdfail4);
 static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
 
 int
-__getcwd(struct __getcwd_args *uap)
+sys___getcwd(struct __getcwd_args *uap)
 {
 	int buflen;
 	int error;

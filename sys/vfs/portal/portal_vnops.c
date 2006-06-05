@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.27 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.28 2006/06/05 07:26:11 dillon Exp $
  */
 
 /*
@@ -88,7 +88,7 @@ portal_closefd(struct thread *td, int fd)
 	struct close_args ua;
 
 	ua.fd = fd;
-	error = close(&ua);
+	error = sys_close(&ua);
 	/*
 	 * We should never get an error, and there isn't anything
 	 * we could do if we got one, so just print a message.

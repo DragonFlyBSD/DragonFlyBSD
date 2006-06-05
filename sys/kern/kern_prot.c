@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.25 2006/05/26 15:55:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.26 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ static MALLOC_DEFINE(M_CRED, "cred", "credentials");
  */
 /* ARGSUSED */
 int
-getpid(struct getpid_args *uap)
+sys_getpid(struct getpid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -83,7 +83,7 @@ getpid(struct getpid_args *uap)
 
 /* ARGSUSED */
 int
-getppid(struct getppid_args *uap)
+sys_getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -97,7 +97,7 @@ getppid(struct getppid_args *uap)
  * MP SAFE
  */
 int
-getpgrp(struct getpgrp_args *uap)
+sys_getpgrp(struct getpgrp_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -109,7 +109,7 @@ getpgrp(struct getpgrp_args *uap)
  * Get an arbitary pid's process group id 
  */
 int
-getpgid(struct getpgid_args *uap)
+sys_getpgid(struct getpgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
@@ -129,7 +129,7 @@ found:
  * Get an arbitary pid's session id.
  */
 int
-getsid(struct getsid_args *uap)
+sys_getsid(struct getsid_args *uap)
 {
 	struct proc *p = curproc;
 	struct proc *pt;
@@ -151,7 +151,7 @@ found:
  */
 /* ARGSUSED */
 int
-getuid(struct getuid_args *uap)
+sys_getuid(struct getuid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -167,7 +167,7 @@ getuid(struct getuid_args *uap)
  */
 /* ARGSUSED */
 int
-geteuid(struct geteuid_args *uap)
+sys_geteuid(struct geteuid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -180,7 +180,7 @@ geteuid(struct geteuid_args *uap)
  */
 /* ARGSUSED */
 int
-getgid(struct getgid_args *uap)
+sys_getgid(struct getgid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -200,7 +200,7 @@ getgid(struct getgid_args *uap)
  */
 /* ARGSUSED */
 int
-getegid(struct getegid_args *uap)
+sys_getegid(struct getegid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -209,7 +209,7 @@ getegid(struct getegid_args *uap)
 }
 
 int
-getgroups(struct getgroups_args *uap)
+sys_getgroups(struct getgroups_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -236,7 +236,7 @@ getgroups(struct getgroups_args *uap)
 
 /* ARGSUSED */
 int
-setsid(struct setsid_args *uap)
+sys_setsid(struct setsid_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -264,7 +264,7 @@ setsid(struct setsid_args *uap)
  */
 /* ARGSUSED */
 int
-setpgid(struct setpgid_args *uap)
+sys_setpgid(struct setpgid_args *uap)
 {
 	struct proc *curp = curproc;
 	struct proc *targp;		/* target process */
@@ -306,7 +306,7 @@ setpgid(struct setpgid_args *uap)
 
 /* ARGSUSED */
 int
-setuid(struct setuid_args *uap)
+sys_setuid(struct setuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -391,7 +391,7 @@ setuid(struct setuid_args *uap)
 
 /* ARGSUSED */
 int
-seteuid(struct seteuid_args *uap)
+sys_seteuid(struct seteuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -420,7 +420,7 @@ seteuid(struct seteuid_args *uap)
 
 /* ARGSUSED */
 int
-setgid(struct setgid_args *uap)
+sys_setgid(struct setgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -500,7 +500,7 @@ setgid(struct setgid_args *uap)
 
 /* ARGSUSED */
 int
-setegid(struct setegid_args *uap)
+sys_setegid(struct setegid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -526,7 +526,7 @@ setegid(struct setegid_args *uap)
 
 /* ARGSUSED */
 int
-setgroups(struct setgroups_args *uap)
+sys_setgroups(struct setgroups_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -567,7 +567,7 @@ setgroups(struct setgroups_args *uap)
 
 /* ARGSUSED */
 int
-setreuid(struct setreuid_args *uap)
+sys_setreuid(struct setreuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -605,7 +605,7 @@ setreuid(struct setreuid_args *uap)
 
 /* ARGSUSED */
 int
-setregid(struct setregid_args *uap)
+sys_setregid(struct setregid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -650,7 +650,7 @@ setregid(struct setregid_args *uap)
 
 /* ARGSUSED */
 int
-setresuid(struct setresuid_args *uap)
+sys_setresuid(struct setresuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -692,7 +692,7 @@ setresuid(struct setresuid_args *uap)
 
 /* ARGSUSED */
 int
-setresgid(struct setresgid_args *uap)
+sys_setresgid(struct setresgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr;
@@ -732,7 +732,7 @@ setresgid(struct setresgid_args *uap)
 
 /* ARGSUSED */
 int
-getresuid(struct getresuid_args *uap)
+sys_getresuid(struct getresuid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr = p->p_ucred;
@@ -752,7 +752,7 @@ getresuid(struct getresuid_args *uap)
 
 /* ARGSUSED */
 int
-getresgid(struct getresgid_args *uap)
+sys_getresgid(struct getresgid_args *uap)
 {
 	struct proc *p = curproc;
 	struct ucred *cr = p->p_ucred;
@@ -773,7 +773,7 @@ getresgid(struct getresgid_args *uap)
 
 /* ARGSUSED */
 int
-issetugid(struct issetugid_args *uap)
+sys_issetugid(struct issetugid_args *uap)
 {
 	struct proc *p = curproc;
 	/*
@@ -1064,7 +1064,7 @@ cru2x(struct ucred *cr, struct xucred *xcr)
  */
 /* ARGSUSED */
 int
-getlogin(struct getlogin_args *uap)
+sys_getlogin(struct getlogin_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -1079,7 +1079,7 @@ getlogin(struct getlogin_args *uap)
  */
 /* ARGSUSED */
 int
-setlogin(struct setlogin_args *uap)
+sys_setlogin(struct setlogin_args *uap)
 {
 	struct proc *p = curproc;
 	int error;

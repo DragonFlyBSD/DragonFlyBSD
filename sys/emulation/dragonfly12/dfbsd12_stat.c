@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_stat.c,v 1.2 2006/05/06 02:43:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_stat.c,v 1.3 2006/06/05 07:26:08 dillon Exp $
  */
 
 #include "opt_compatdf12.h"
@@ -76,7 +76,7 @@ cvtstat(struct dfbsd12_stat *oldstat, struct stat *newstat)
  * Get file status; this version follows links.
  */
 int
-dfbsd12_stat(struct dfbsd12_stat_args *uap)
+sys_dfbsd12_stat(struct dfbsd12_stat_args *uap)
 {
 	struct nlookupdata nd;
 	struct dfbsd12_stat ost;
@@ -101,7 +101,7 @@ dfbsd12_stat(struct dfbsd12_stat_args *uap)
  * Get file status; this version does not follow links.
  */
 int
-dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
+sys_dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
 {
 	struct nlookupdata nd;
 	struct dfbsd12_stat ost;
@@ -124,7 +124,7 @@ dfbsd12_lstat(struct dfbsd12_lstat_args *uap)
  * fhstat_args(struct fhandle *u_fhp, struct dfbsd12_stat *sb)
  */
 int
-dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
+sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
 {
 	struct thread *td = curthread;
 	struct dfbsd12_stat osb;
@@ -162,7 +162,7 @@ dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
  * dfbsd12_fstat_args(int fd, struct dfbsd12_stat *sb)
  */
 int
-dfbsd12_fstat(struct dfbsd12_fstat_args *uap)
+sys_dfbsd12_fstat(struct dfbsd12_fstat_args *uap)
 {
 	struct dfbsd12_stat ost;
 	struct stat st;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.16 2006/03/27 01:54:15 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.17 2006/06/05 07:26:10 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -60,16 +60,16 @@
 static MALLOC_DEFINE(M_SHM, "shm", "SVID compatible shared memory segments");
 
 struct oshmctl_args;
-static int oshmctl (struct proc *p, struct oshmctl_args *uap);
+static int sys_oshmctl (struct proc *p, struct oshmctl_args *uap);
 
 static int shmget_allocate_segment (struct proc *p, struct shmget_args *uap, int mode);
 static int shmget_existing (struct proc *p, struct shmget_args *uap, int mode, int segnum);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *shmcalls[] = {
-	(sy_call_t *)shmat, (sy_call_t *)oshmctl,
-	(sy_call_t *)shmdt, (sy_call_t *)shmget,
-	(sy_call_t *)shmctl
+	(sy_call_t *)sys_shmat, (sy_call_t *)sys_oshmctl,
+	(sy_call_t *)sys_shmdt, (sy_call_t *)sys_shmget,
+	(sy_call_t *)sys_shmctl
 };
 
 #define	SHMSEG_FREE     	0x0200
@@ -214,7 +214,7 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 }
 
 int
-shmdt(struct shmdt_args *uap)
+sys_shmdt(struct shmdt_args *uap)
 {
 	struct proc *p = curproc;
 	struct shmmap_state *shmmap_s;
@@ -236,7 +236,7 @@ shmdt(struct shmdt_args *uap)
 }
 
 int
-shmat(struct shmat_args *uap)
+sys_shmat(struct shmat_args *uap)
 {
 	struct proc *p = curproc;
 	int error, i, flags;
@@ -335,7 +335,7 @@ struct oshmctl_args {
 };
 
 static int
-oshmctl(p, uap)
+sys_oshmctl(p, uap)
 	struct proc *p;
 	struct oshmctl_args *uap;
 {
@@ -370,7 +370,7 @@ oshmctl(p, uap)
 		break;
 	default:
 		/* XXX casting to (sy_call_t *) is bogus, as usual. */
-		return (shmctl((struct shmctl_args *)uap));
+		return (sys_shmctl((struct shmctl_args *)uap));
 	}
 	return 0;
 #else
@@ -379,7 +379,7 @@ oshmctl(p, uap)
 }
 
 int
-shmctl(struct shmctl_args *uap)
+sys_shmctl(struct shmctl_args *uap)
 {
 	struct proc *p = curproc;
 	int error;
@@ -550,7 +550,7 @@ shmget_allocate_segment(p, uap, mode)
 }
 
 int
-shmget(struct shmget_args *uap)
+sys_shmget(struct shmget_args *uap)
 {
 	struct proc *p = curproc;
 	int segnum, mode, error;
@@ -578,7 +578,7 @@ shmget(struct shmget_args *uap)
  *  shmsys_args(int which, int a2, ...) (VARARGS)
  */
 int
-shmsys(struct shmsys_args *uap)
+sys_shmsys(struct shmsys_args *uap)
 {
 	struct proc *p = curproc;
 	unsigned int which = (unsigned int)uap->which;

@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.6 2006/04/26 17:42:50 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.7 2006/06/05 07:26:07 dillon Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -98,7 +98,7 @@ compat_43_copyout_sockaddr(struct sockaddr *sa, caddr_t uaddr, int sa_len)
 }
 
 int
-oaccept(struct accept_args *uap)
+sys_oaccept(struct accept_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int sa_len;
@@ -134,7 +134,7 @@ oaccept(struct accept_args *uap)
 }
 
 int
-ogetsockname(struct getsockname_args *uap)
+sys_ogetsockname(struct getsockname_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int error, sa_len;
@@ -156,7 +156,7 @@ ogetsockname(struct getsockname_args *uap)
 }
 
 int
-ogetpeername(struct ogetpeername_args *uap)
+sys_ogetpeername(struct ogetpeername_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int error, sa_len;
@@ -178,7 +178,7 @@ ogetpeername(struct ogetpeername_args *uap)
 }
 
 int
-osend(struct osend_args *uap)
+sys_osend(struct osend_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -202,7 +202,7 @@ osend(struct osend_args *uap)
 }
 
 int
-osendmsg(struct osendmsg_args *uap)
+sys_osendmsg(struct osendmsg_args *uap)
 {
 	struct thread *td = curthread;
 	struct msghdr msg;
@@ -291,7 +291,7 @@ cleanup:
 }
 
 int
-orecv(struct orecv_args *uap)
+sys_orecv(struct orecv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -315,7 +315,7 @@ orecv(struct orecv_args *uap)
 }
 
 int
-orecvfrom(struct recvfrom_args *uap)
+sys_orecvfrom(struct recvfrom_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -362,7 +362,7 @@ orecvfrom(struct recvfrom_args *uap)
 }
 
 int
-orecvmsg(struct orecvmsg_args *uap)
+sys_orecvmsg(struct orecvmsg_args *uap)
 {
 	struct thread *td = curthread;
 	struct msghdr msg;

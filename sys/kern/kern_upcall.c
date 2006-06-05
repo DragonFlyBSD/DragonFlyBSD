@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.8 2005/10/11 09:59:56 corecode Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.9 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -81,7 +81,7 @@ sigupcall_remote(void *arg)
  * ARGS(struct upcall *upc, upcall_func_t ctx, upcall_func_t func, void *data)
  */
 int
-upc_register(struct upc_register_args *uap)
+sys_upc_register(struct upc_register_args *uap)
 {
     struct lwp *lp = curthread->td_lwp;
     struct vmspace *vm = curproc->p_vmspace;
@@ -114,7 +114,7 @@ upc_register(struct upc_register_args *uap)
  * ARGS(int cmd, int upcid, void *data)
  */
 int
-upc_control(struct upc_control_args *uap)
+sys_upc_control(struct upc_control_args *uap)
 {
     struct lwp *lp = curthread->td_lwp;
     struct lwp *targlp;

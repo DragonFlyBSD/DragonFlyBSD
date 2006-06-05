@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.12 2005/08/02 13:03:55 joerg Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.13 2006/06/05 07:26:10 dillon Exp $
 
 set -e
 
@@ -266,11 +266,11 @@ s/\$//g
 			argalias = funcname "_args"
 			if ($2 == "COMPAT") {
 				argalias = "o" argalias
-				usefuncname = "o" funcname
+				usefuncname = "sys_o" funcname
 			}
 			if ($2 == "COMPAT_DF12") {
 				argalias = "dfbsd12_" argalias
-				usefuncname = "dfbsd12_" funcname
+				usefuncname = "sys_dfbsd12_" funcname
 			}
 		}
 		f++
@@ -351,7 +351,7 @@ s/\$//g
 		    (funcname != "nosys" || !nosys)) || \
 		    (funcname == "lkmnosys" && !lkmnosys) || \
 		    funcname == "lkmressys") {
-			printf("%s\t%s (struct %s *)",
+			printf("%s\tsys_%s (struct %s *)",
 			    rettype, funcname, argalias) > sysdcl
 			printf(";\n") > sysdcl
 		}
@@ -362,11 +362,11 @@ s/\$//g
 		printf("\t{ %s%s, (sy_call_t *)", mpsafe, argssize) > sysent
 		column = 8 + 2 + length(mpsafe) + length(argssize) + 15
 	 	if ($2 != "NOIMPL") {
-			printf("%s },", funcname) > sysent
-			column = column + length(funcname) + 3
+			printf("sys_%s },", funcname) > sysent
+			column = column + length(funcname) + 7
 		} else {
-			printf("%s },", "nosys") > sysent
-			column = column + length("nosys") + 3
+			printf("sys_%s },", "nosys") > sysent
+			column = column + length("nosys") + 7
 		}
 		align_sysent_comment(column)
 		printf("/* %d = %s */\n", syscall, funcalias) > sysent
@@ -414,7 +414,7 @@ s/\$//g
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
-		printf("%s\to%s (struct %s *);\n",
+		printf("%s\tsys_o%s (struct %s *);\n",
 		    rettype, funcname, argalias) > syscompatdcl
 		printf("\t{ compat(%s%s,%s) },",
 		    mpsafe, argssize, funcname) > sysent
@@ -458,7 +458,7 @@ s/\$//g
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
-		printf("%s\tdfbsd12_%s (struct %s *);\n",
+		printf("%s\tsys_dfbsd12_%s (struct %s *);\n",
 		    rettype, funcname, argalias) > syscompatdcldf12
 		printf("\t{ compatdf12(%s%s,%s) },",
 		    mpsafe, argssize, funcname) > sysent
@@ -477,7 +477,7 @@ s/\$//g
 	$2 == "LIBCOMPAT" {
 		ncompat++
 		parseline()
-		printf("%s\to%s();\n", rettype, funcname) > syscompatdcl
+		printf("%s\tsys_o%s();\n", rettype, funcname) > syscompatdcl
 		printf("\t{ compat(%s%s,%s) },",
 		    mpsafe, argssize, funcname) > sysent
 		align_sysent_comment(8 + 9 + length(mpsafe) + \
@@ -498,8 +498,8 @@ s/\$//g
 		next
 	}
 	$2 == "OBSOL" {
-		printf("\t{ 0, (sy_call_t *)nosys },") > sysent
-		align_sysent_comment(34)
+		printf("\t{ 0, (sy_call_t *)sys_nosys },") > sysent
+		align_sysent_comment(37)
 		printf("/* %d = obsolete %s */\n", syscall, comment) > sysent
 		printf("\t\"obs_%s\",\t\t\t/* %d = obsolete %s */\n",
 		    $4, syscall, comment) > sysnames
@@ -511,7 +511,7 @@ s/\$//g
 		next
 	}
 	$2 == "UNIMPL" {
-		printf("\t{ 0, (sy_call_t *)nosys },\t\t\t/* %d = %s */\n",
+		printf("\t{ 0, (sy_call_t *)sys_nosys },\t\t\t/* %d = %s */\n",
 		    syscall, comment) > sysent
 		printf("\t\"#%d\",\t\t\t/* %d = %s */\n",
 		    syscall, syscall, comment) > sysnames
@@ -529,18 +529,18 @@ s/\$//g
 		if (ncompat != 0) {
 			printf "#include \"opt_compat.h\"\n\n" > syssw
 			printf "\n#ifdef %s\n", compat > sysinc
-			printf "#define compat(n, name) n, (sy_call_t *)__CONCAT(o,name)\n" > sysinc
+			printf "#define compat(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(o,name))\n" > sysinc
 			printf "#else\n" > sysinc
-			printf "#define compat(n, name) 0, (sy_call_t *)nosys\n" > sysinc
+			printf "#define compat(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
 			printf "#endif\n" > sysinc
 		}
 
 		if (ncompatdf12 != 0) {
 			printf "#include \"opt_compatdf12.h\"\n\n" > syssw
 			printf "\n#ifdef %s\n", compatdf12 > sysinc
-			printf "#define compatdf12(n, name) n, (sy_call_t *)__CONCAT(dfbsd12_,name)\n" > sysinc
+			printf "#define compatdf12(n, name) n, (sy_call_t *)__CONCAT(sys_,__CONCAT(dfbsd12_,name))\n" > sysinc
 			printf "#else\n" > sysinc
-			printf "#define compatdf12(n, name) 0, (sy_call_t *)nosys\n" > sysinc
+			printf "#define compatdf12(n, name) 0, (sy_call_t *)sys_nosys\n" > sysinc
 			printf "#endif\n" > sysinc
 		}
 

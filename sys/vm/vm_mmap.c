@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.29 2006/05/19 07:33:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.30 2006/06/05 07:26:11 dillon Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ vmmapentry_rsrc_init(void *dummy)
 
 /* ARGSUSED */
 int
-sbrk(struct sbrk_args *uap)
+sys_sbrk(struct sbrk_args *uap)
 {
 	/* Not yet implemented */
 	return (EOPNOTSUPP);
@@ -116,7 +116,7 @@ sbrk(struct sbrk_args *uap)
  */
 /* ARGSUSED */
 int
-sstk(struct sstk_args *uap)
+sys_sstk(struct sstk_args *uap)
 {
 	/* Not yet implemented */
 	return (EOPNOTSUPP);
@@ -378,7 +378,7 @@ done:
 }
 
 int
-mmap(struct mmap_args *uap)
+sys_mmap(struct mmap_args *uap)
 {
 	int error;
 
@@ -392,7 +392,7 @@ mmap(struct mmap_args *uap)
  * msync_args(void *addr, int len, int flags)
  */
 int
-msync(struct msync_args *uap)
+sys_msync(struct msync_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -460,7 +460,7 @@ msync(struct msync_args *uap)
  * munmap_args(void *addr, size_t len)
  */
 int
-munmap(struct munmap_args *uap)
+sys_munmap(struct munmap_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -505,7 +505,7 @@ munmap(struct munmap_args *uap)
  * mprotect_args(const void *addr, size_t len, int prot)
  */
 int
-mprotect(struct mprotect_args *uap)
+sys_mprotect(struct mprotect_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -541,7 +541,7 @@ mprotect(struct mprotect_args *uap)
  * minherit_args(void *addr, size_t len, int inherit)
  */
 int
-minherit(struct minherit_args *uap)
+sys_minherit(struct minherit_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr;
@@ -574,7 +574,7 @@ minherit(struct minherit_args *uap)
  */
 /* ARGSUSED */
 int
-madvise(struct madvise_args *uap)
+sys_madvise(struct madvise_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t start, end;
@@ -615,7 +615,7 @@ madvise(struct madvise_args *uap)
  */
 /* ARGSUSED */
 int
-mincore(struct mincore_args *uap)
+sys_mincore(struct mincore_args *uap)
 {
 	struct proc *p = curproc;
 	vm_offset_t addr, first_addr;
@@ -806,7 +806,7 @@ RestartScan:
  * mlock_args(const void *addr, size_t len)
  */
 int
-mlock(struct mlock_args *uap)
+sys_mlock(struct mlock_args *uap)
 {
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
@@ -846,7 +846,7 @@ mlock(struct mlock_args *uap)
  * mlockall_args(int how)
  */
 int
-mlockall(struct mlockall_args *uap)
+sys_mlockall(struct mlockall_args *uap)
 {
 	return 0;
 }
@@ -855,7 +855,7 @@ mlockall(struct mlockall_args *uap)
  * munlockall_args(void)
  */
 int
-munlockall(struct munlockall_args *uap)
+sys_munlockall(struct munlockall_args *uap)
 {
 	return 0;
 }
@@ -864,7 +864,7 @@ munlockall(struct munlockall_args *uap)
  * munlock_args(const void *addr, size_t len)
  */
 int
-munlock(struct munlock_args *uap)
+sys_munlock(struct munlock_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;

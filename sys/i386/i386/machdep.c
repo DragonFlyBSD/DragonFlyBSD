@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.92 2006/06/05 00:32:37 davidxu Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.93 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -543,7 +543,7 @@ sendsig(catcher, sig, mask, code)
 #define	CS_SECURE(cs)		(ISPL(cs) == SEL_UPL)
 
 int
-sigreturn(struct sigreturn_args *uap)
+sys_sigreturn(struct sigreturn_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
 	struct trapframe *regs;

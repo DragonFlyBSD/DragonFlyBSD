@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.13 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.14 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
  * Given a file path, get an ACL for it
  */
 int
-__acl_get_file(struct __acl_get_file_args *uap)
+sys___acl_get_file(struct __acl_get_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -176,7 +176,7 @@ __acl_get_file(struct __acl_get_file_args *uap)
  * Given a file path, set an ACL for it
  */
 int
-__acl_set_file(struct __acl_set_file_args *uap)
+sys___acl_set_file(struct __acl_set_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -200,7 +200,7 @@ __acl_set_file(struct __acl_set_file_args *uap)
  * Given a file descriptor, get an ACL for it
  */
 int
-__acl_get_fd(struct __acl_get_fd_args *uap)
+sys___acl_get_fd(struct __acl_get_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -218,7 +218,7 @@ __acl_get_fd(struct __acl_get_fd_args *uap)
  * Given a file descriptor, set an ACL for it
  */
 int
-__acl_set_fd(struct __acl_set_fd_args *uap)
+sys___acl_set_fd(struct __acl_set_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -236,7 +236,7 @@ __acl_set_fd(struct __acl_set_fd_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-__acl_delete_file(struct __acl_delete_file_args *uap)
+sys___acl_delete_file(struct __acl_delete_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -261,7 +261,7 @@ __acl_delete_file(struct __acl_delete_file_args *uap)
  * Given a file path, delete an ACL from it.
  */
 int
-__acl_delete_fd(struct __acl_delete_fd_args *uap)
+sys___acl_delete_fd(struct __acl_delete_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;
@@ -279,7 +279,7 @@ __acl_delete_fd(struct __acl_delete_fd_args *uap)
  * Given a file path, check an ACL for it
  */
 int
-__acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
+sys___acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 {
 	struct nlookupdata nd;
 	struct vnode *vp;
@@ -304,7 +304,7 @@ __acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
  * Given a file descriptor, check an ACL for it
  */
 int
-__acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
+sys___acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 {
 	struct thread *td = curthread;
 	struct file *fp;

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.31 2006/05/27 20:17:16 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.32 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -89,7 +89,7 @@ static int	dofilewrite(int, struct file *, struct uio *, int, int *);
  * MPSAFE
  */
 int
-read(struct read_args *uap)
+sys_read(struct read_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -119,7 +119,7 @@ read(struct read_args *uap)
  * MPSAFE
  */
 int
-pread(struct pread_args *uap)
+sys_pread(struct pread_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -149,7 +149,7 @@ pread(struct pread_args *uap)
  * MPSAFE
  */
 int
-readv(struct readv_args *uap)
+sys_readv(struct readv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -180,7 +180,7 @@ readv(struct readv_args *uap)
  * MPSAFE
  */
 int
-preadv(struct preadv_args *uap)
+sys_preadv(struct preadv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -292,7 +292,7 @@ dofileread(int fd, struct file *fp, struct uio *auio, int flags, int *res)
  * MPSAFE
  */
 int
-write(struct write_args *uap)
+sys_write(struct write_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -323,7 +323,7 @@ write(struct write_args *uap)
  * MPSAFE
  */
 int
-pwrite(struct pwrite_args *uap)
+sys_pwrite(struct pwrite_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -352,7 +352,7 @@ pwrite(struct pwrite_args *uap)
  * MPSAFE
  */
 int
-writev(struct writev_args *uap)
+sys_writev(struct writev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -383,7 +383,7 @@ writev(struct writev_args *uap)
  * MPSAFE
  */
 int
-pwritev(struct pwritev_args *uap)
+sys_pwritev(struct pwritev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -501,7 +501,7 @@ dofilewrite(int fd, struct file *fp, struct uio *auio, int flags, int *res)
  */
 /* ARGSUSED */
 int
-ioctl(struct ioctl_args *uap)
+sys_ioctl(struct ioctl_args *uap)
 {
 	return(mapped_ioctl(uap->fd, uap->com, uap->data, NULL));
 }
@@ -738,7 +738,7 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
  * Select system call.
  */
 int
-select(struct select_args *uap)
+sys_select(struct select_args *uap)
 {
 	struct proc *p = curproc;
 
@@ -908,7 +908,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
  * Poll system call.
  */
 int
-poll(struct poll_args *uap)
+sys_poll(struct poll_args *uap)
 {
 	struct pollfd *bits;
 	struct pollfd smallbits[32];
@@ -1033,9 +1033,9 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
  * XXX this isn't quite a true representation..  OpenBSD uses select ops.
  */
 int
-openbsd_poll(struct openbsd_poll_args *uap)
+sys_openbsd_poll(struct openbsd_poll_args *uap)
 {
-	return (poll((struct poll_args *)uap));
+	return (sys_poll((struct poll_args *)uap));
 }
 
 /*ARGSUSED*/

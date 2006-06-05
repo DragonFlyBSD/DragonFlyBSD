@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.27 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -1391,7 +1391,7 @@ aio_aqueue(struct aiocb *job, int type)
  * released.
  */
 int
-aio_return(struct aio_return_args *uap)
+sys_aio_return(struct aio_return_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1457,7 +1457,7 @@ aio_return(struct aio_return_args *uap)
  * Allow a process to wakeup when any of the I/O requests are completed.
  */
 int
-aio_suspend(struct aio_suspend_args *uap)
+sys_aio_suspend(struct aio_suspend_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1574,7 +1574,7 @@ aio_suspend(struct aio_suspend_args *uap)
  * progress.
  */
 int
-aio_cancel(struct aio_cancel_args *uap)
+sys_aio_cancel(struct aio_cancel_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1692,7 +1692,7 @@ done:
  * subroutine.
  */
 int
-aio_error(struct aio_error_args *uap)
+sys_aio_error(struct aio_error_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1777,7 +1777,7 @@ aio_error(struct aio_error_args *uap)
 
 /* syscall - asynchronous read from a file (REALTIME) */
 int
-aio_read(struct aio_read_args *uap)
+sys_aio_read(struct aio_read_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1788,7 +1788,7 @@ aio_read(struct aio_read_args *uap)
 
 /* syscall - asynchronous write to a file (REALTIME) */
 int
-aio_write(struct aio_write_args *uap)
+sys_aio_write(struct aio_write_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -1799,7 +1799,7 @@ aio_write(struct aio_write_args *uap)
 
 /* syscall - XXX undocumented */
 int
-lio_listio(struct lio_listio_args *uap)
+sys_lio_listio(struct lio_listio_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;
@@ -2068,7 +2068,7 @@ aio_physwakeup(struct bio *bio)
 
 /* syscall - wait for the next completion of an aio request */
 int
-aio_waitcomplete(struct aio_waitcomplete_args *uap)
+sys_aio_waitcomplete(struct aio_waitcomplete_args *uap)
 {
 #ifndef VFS_AIO
 	return ENOSYS;

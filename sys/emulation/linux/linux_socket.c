@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.23 2006/06/04 11:29:38 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.24 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1150,7 +1150,7 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 }
 
 int
-linux_socketcall(struct linux_socketcall_args *args)
+sys_linux_socketcall(struct linux_socketcall_args *args)
 {
 	void *arg = (void *)args->args;
 

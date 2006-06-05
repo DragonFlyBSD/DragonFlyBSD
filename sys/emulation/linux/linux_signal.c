@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.10 2005/04/22 02:09:15 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.11 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,7 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 }
 
 int
-linux_signal(struct linux_signal_args *args)
+sys_linux_signal(struct linux_signal_args *args)
 {
 	l_sigaction_t linux_nsa, linux_osa;
 	struct sigaction nsa, osa;
@@ -153,7 +153,7 @@ linux_signal(struct linux_signal_args *args)
 }
 
 int
-linux_rt_sigaction(struct linux_rt_sigaction_args *args)
+sys_linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 {
 	l_sigaction_t linux_nsa, linux_osa;
 	struct sigaction nsa, osa;
@@ -207,7 +207,7 @@ linux_to_bsd_sigprocmask(int how)
 }
 
 int
-linux_sigprocmask(struct linux_sigprocmask_args *args)
+sys_linux_sigprocmask(struct linux_sigprocmask_args *args)
 {
 	l_osigset_t mask;
 	l_sigset_t linux_set, linux_oset;
@@ -241,7 +241,7 @@ linux_sigprocmask(struct linux_sigprocmask_args *args)
 }
 
 int
-linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
+sys_linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 {
 	l_sigset_t linux_set, linux_oset;
 	sigset_t set, oset;
@@ -277,7 +277,7 @@ linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 }
 
 int
-linux_sgetmask(struct linux_sgetmask_args *args)
+sys_linux_sgetmask(struct linux_sgetmask_args *args)
 {
 	struct proc *p = curproc;
 	l_sigset_t mask;
@@ -293,7 +293,7 @@ linux_sgetmask(struct linux_sgetmask_args *args)
 }
 
 int
-linux_ssetmask(struct linux_ssetmask_args *args)
+sys_linux_ssetmask(struct linux_ssetmask_args *args)
 {
 	struct proc *p = curproc;
 	l_sigset_t lset;
@@ -315,7 +315,7 @@ linux_ssetmask(struct linux_ssetmask_args *args)
 }
 
 int
-linux_sigpending(struct linux_sigpending_args *args)
+sys_linux_sigpending(struct linux_sigpending_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -341,7 +341,7 @@ linux_sigpending(struct linux_sigpending_args *args)
 }
 
 int
-linux_kill(struct linux_kill_args *args)
+sys_linux_kill(struct linux_kill_args *args)
 {
 	int error, sig;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.11 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.12 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,7 +187,7 @@ exec_resident_imgact(struct image_params *imgp)
  * to use the snapshot directly rather then load & relocate a new copy.
  */
 int
-exec_sys_register(struct exec_sys_register_args *uap)
+sys_exec_sys_register(struct exec_sys_register_args *uap)
 {
     struct vmresident *vmres;
     struct vnode *vp;
@@ -225,7 +225,7 @@ exec_sys_register(struct exec_sys_register_args *uap)
  *	unregisters everything.
  */
 int
-exec_sys_unregister(struct exec_sys_unregister_args *uap)
+sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
 {
     struct vmresident *vmres;
     struct proc *p;

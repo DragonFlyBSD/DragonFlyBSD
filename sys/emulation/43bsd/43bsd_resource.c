@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_resource.c,v 1.1 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_resource.c,v 1.2 2006/06/05 07:26:07 dillon Exp $
  *	from: DragonFly kern/kern_resource.c,v 1.14
  *
  * These syscalls used to live in kern/kern_resource.c.  They are modified
@@ -55,7 +55,7 @@
 #include <sys/resourcevar.h>
 
 int
-ogetrlimit(struct ogetrlimit_args *uap)
+sys_ogetrlimit(struct ogetrlimit_args *uap)
 {
 	struct orlimit olim;
 	struct rlimit lim;
@@ -77,7 +77,7 @@ ogetrlimit(struct ogetrlimit_args *uap)
 }
 
 int
-osetrlimit(struct osetrlimit_args *uap)
+sys_osetrlimit(struct osetrlimit_args *uap)
 {
 	struct orlimit olim;
 	struct rlimit lim;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.9 2005/11/14 18:49:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.10 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -246,7 +246,7 @@ linux_proc_write_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 #endif
 
 int
-linux_ptrace(struct linux_ptrace_args *uap)
+sys_linux_ptrace(struct linux_ptrace_args *uap)
 {
 	struct proc *curp = curproc;
 	union {

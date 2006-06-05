@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.68 2006/05/22 21:21:21 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.69 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -130,7 +130,7 @@ kern_socket(int domain, int type, int protocol, int *res)
 }
 
 int
-socket(struct socket_args *uap)
+sys_socket(struct socket_args *uap)
 {
 	int error;
 
@@ -161,7 +161,7 @@ kern_bind(int s, struct sockaddr *sa)
  * bind_args(int s, caddr_t name, int namelen)
  */
 int
-bind(struct bind_args *uap)
+sys_bind(struct bind_args *uap)
 {
 	struct sockaddr *sa;
 	int error;
@@ -196,7 +196,7 @@ kern_listen(int s, int backlog)
  * listen_args(int s, int backlog)
  */
 int
-listen(struct listen_args *uap)
+sys_listen(struct listen_args *uap)
 {
 	int error;
 
@@ -358,7 +358,7 @@ done:
  * accept_args(int s, caddr_t name, int *anamelen)
  */
 int
-accept(struct accept_args *uap)
+sys_accept(struct accept_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int sa_len;
@@ -459,7 +459,7 @@ done:
  * connect_args(int s, caddr_t name, int namelen)
  */
 int
-connect(struct connect_args *uap)
+sys_connect(struct connect_args *uap)
 {
 	struct sockaddr *sa;
 	int error;
@@ -535,7 +535,7 @@ free1:
  * socketpair(int domain, int type, int protocol, int *rsv)
  */
 int
-socketpair(struct socketpair_args *uap)
+sys_socketpair(struct socketpair_args *uap)
 {
 	int error, sockv[2];
 
@@ -607,7 +607,7 @@ done:
  * sendto_args(int s, caddr_t buf, size_t len, int flags, caddr_t to, int tolen)
  */
 int
-sendto(struct sendto_args *uap)
+sys_sendto(struct sendto_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -642,7 +642,7 @@ sendto(struct sendto_args *uap)
  * sendmsg_args(int s, caddr_t msg, int flags)
  */
 int
-sendmsg(struct sendmsg_args *uap)
+sys_sendmsg(struct sendmsg_args *uap)
 {
 	struct thread *td = curthread;
 	struct msghdr msg;
@@ -777,7 +777,7 @@ done:
  *			caddr_t from, int *fromlenaddr)
  */
 int
-recvfrom(struct recvfrom_args *uap)
+sys_recvfrom(struct recvfrom_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
@@ -830,7 +830,7 @@ recvfrom(struct recvfrom_args *uap)
  * recvmsg_args(int s, struct msghdr *msg, int flags)
  */
 int
-recvmsg(struct recvmsg_args *uap)
+sys_recvmsg(struct recvmsg_args *uap)
 {
 	struct thread *td = curthread;
 	struct msghdr msg;
@@ -965,7 +965,7 @@ kern_setsockopt(int s, struct sockopt *sopt)
  * setsockopt_args(int s, int level, int name, caddr_t val, int valsize)
  */
 int
-setsockopt(struct setsockopt_args *uap)
+sys_setsockopt(struct setsockopt_args *uap)
 {
 	struct thread *td = curthread;
 	struct sockopt sopt;
@@ -1012,7 +1012,7 @@ kern_getsockopt(int s, struct sockopt *sopt)
  * getsockopt_Args(int s, int level, int name, caddr_t val, int *avalsize)
  */
 int
-getsockopt(struct getsockopt_args *uap)
+sys_getsockopt(struct getsockopt_args *uap)
 {
 	struct thread *td = curthread;
 	struct	sockopt sopt;
@@ -1086,7 +1086,7 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
  * Get socket name.
  */
 int
-getsockname(struct getsockname_args *uap)
+sys_getsockname(struct getsockname_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int error, sa_len;
@@ -1154,7 +1154,7 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
  * Get name of peer for connected socket.
  */
 int
-getpeername(struct getpeername_args *uap)
+sys_getpeername(struct getpeername_args *uap)
 {
 	struct sockaddr *sa = NULL;
 	int error, sa_len;
@@ -1286,7 +1286,7 @@ freeit:
  * in the future.
  */
 int
-sendfile(struct sendfile_args *uap)
+sys_sendfile(struct sendfile_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1675,7 +1675,7 @@ done0:
 }
 
 int
-sctp_peeloff(struct sctp_peeloff_args *uap)
+sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 {
 #ifdef SCTP
 	struct thread *td = curthread;

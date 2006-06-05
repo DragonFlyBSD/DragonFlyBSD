@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.6 2005/01/14 02:25:08 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.7 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ varsymreplace(char *cp, int linklen, int maxlen)
  * (int level, const char *name, const char *data)
  */
 int
-varsym_set(struct varsym_set_args *uap)
+sys_varsym_set(struct varsym_set_args *uap)
 {
     char name[MAXVARSYM_NAME];
     char *buf;
@@ -176,7 +176,7 @@ done2:
  * (int mask, const char *wild, char *buf, int bufsize)
  */
 int
-varsym_get(struct varsym_get_args *uap)
+sys_varsym_get(struct varsym_get_args *uap)
 {
     char wild[MAXVARSYM_NAME];
     varsym_t sym;
@@ -208,7 +208,7 @@ done:
  * (int level, char *buf, int maxsize, int *marker)
  */
 int
-varsym_list(struct varsym_list_args *uap)
+sys_varsym_list(struct varsym_list_args *uap)
 {
 	struct varsymset *vss;
 	struct varsyment *ve;

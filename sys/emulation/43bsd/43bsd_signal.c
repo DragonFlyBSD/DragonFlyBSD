@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.2 2005/06/16 17:55:58 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_signal.c,v 1.3 2006/06/05 07:26:07 dillon Exp $
  * 	from: DragonFly kern/kern_sig.c,v 1.22
  *
  * These syscalls used to live in kern/kern_sig.c.  They are modified
@@ -76,7 +76,7 @@
  */
 
 int
-osigvec(struct osigvec_args *uap)
+sys_osigvec(struct osigvec_args *uap)
 {
 	struct sigvec vec;
 	struct sigaction nsa, osa;
@@ -111,7 +111,7 @@ osigvec(struct osigvec_args *uap)
 }
 
 int
-osigblock(struct osigblock_args *uap)
+sys_osigblock(struct osigblock_args *uap)
 {
 	struct proc *p = curproc;
 	sigset_t set;
@@ -126,7 +126,7 @@ osigblock(struct osigblock_args *uap)
 }
 
 int
-osigsetmask(struct osigsetmask_args *uap)
+sys_osigsetmask(struct osigsetmask_args *uap)
 {
 	struct proc *p = curproc;
 	sigset_t set;
@@ -141,7 +141,7 @@ osigsetmask(struct osigsetmask_args *uap)
 }
 
 int
-osigstack(struct osigstack_args *uap)
+sys_osigstack(struct osigstack_args *uap)
 {
 	struct proc *p = curproc;
 	struct sigstack ss;
@@ -162,7 +162,7 @@ osigstack(struct osigstack_args *uap)
 }
 
 int
-okillpg(struct okillpg_args *uap)
+sys_okillpg(struct okillpg_args *uap)
 {
 	int error;
 

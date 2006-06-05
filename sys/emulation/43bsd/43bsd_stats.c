@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.4 2005/07/30 20:29:40 joerg Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.5 2006/06/05 07:26:07 dillon Exp $
  * 	from: DragonFly kern/kern_descrip.c,v 1.16
  *	from: DragonFly kern/vfs_syscalls.c,v 1.21
  *
@@ -89,7 +89,7 @@ compat_43_copyout_stat(struct stat *st, struct ostat *uaddr)
 }
 
 int
-ofstat(struct ofstat_args *uap)
+sys_ofstat(struct ofstat_args *uap)
 {
 	struct stat st;
 	int error;
@@ -102,7 +102,7 @@ ofstat(struct ofstat_args *uap)
 }
 
 int
-ostat(struct ostat_args *uap)
+sys_ostat(struct ostat_args *uap)
 {
 	struct nlookupdata nd;
 	struct stat st;
@@ -119,7 +119,7 @@ ostat(struct ostat_args *uap)
 }
 
 int
-olstat(struct olstat_args *uap)
+sys_olstat(struct olstat_args *uap)
 {
 	struct nlookupdata nd;
 	struct stat st;

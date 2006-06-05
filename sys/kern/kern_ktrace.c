@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.26 2006/05/25 04:17:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.27 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -221,7 +221,7 @@ static int ktrace_clear_callback(struct proc *p, void *data);
 #endif
 
 int
-ktrace(struct ktrace_args *uap)
+sys_ktrace(struct ktrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktrace_clear_info info;
@@ -359,7 +359,7 @@ ktrace_clear_callback(struct proc *p, void *data)
  */
 /* ARGSUSED */
 int
-utrace(struct utrace_args *uap)
+sys_utrace(struct utrace_args *uap)
 {
 #ifdef KTRACE
 	struct ktr_header *kth;

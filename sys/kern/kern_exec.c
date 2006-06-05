@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.39 2006/05/17 20:20:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.40 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -487,7 +487,7 @@ exec_fail:
  * execve() system call.
  */
 int
-execve(struct execve_args *uap)
+sys_execve(struct execve_args *uap)
 {
 	struct nlookupdata nd;
 	struct image_args args;

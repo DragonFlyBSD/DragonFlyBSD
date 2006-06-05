@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_dummy.c,v 1.21.2.7 2003/01/02 20:41:33 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.6 2004/11/14 01:41:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.7 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,7 @@ DUMMY(fadvise64);
 
 #define DUMMY_XATTR(s)						\
 int								\
-linux_ ## s ## xattr( struct linux_ ## s ## xattr_args *arg)	\
+sys_linux_ ## s ## xattr( struct linux_ ## s ## xattr_args *arg)	\
 {								\
 	return (ENOATTR);					\
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.26 2006/05/26 15:55:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.27 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -371,7 +371,7 @@ filt_timer(struct knote *kn, long hint)
 }
 
 int
-kqueue(struct kqueue_args *uap)
+sys_kqueue(struct kqueue_args *uap)
 {
 	struct proc *p = curproc;
 	struct filedesc *fdp = p->p_fd;
@@ -398,7 +398,7 @@ kqueue(struct kqueue_args *uap)
 }
 
 int
-kevent(struct kevent_args *uap)
+sys_kevent(struct kevent_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;

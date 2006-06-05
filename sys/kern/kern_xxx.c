@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.9 2006/03/23 15:21:41 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.10 2006/06/05 07:26:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 /* ARGSUSED */
 /* MP SAFE */
 int
-uname(struct uname_args *uap)
+sys_uname(struct uname_args *uap)
 {
 	int name[2], rtval;
 	size_t len;
@@ -110,7 +110,7 @@ uname(struct uname_args *uap)
 
 /* ARGSUSED */
 int
-getdomainname(struct getdomainname_args *uap)
+sys_getdomainname(struct getdomainname_args *uap)
 {
 	int domainnamelen = strlen(domainname) + 1;
 	if ((u_int)uap->len > domainnamelen + 1)
@@ -120,7 +120,7 @@ getdomainname(struct getdomainname_args *uap)
 
 /* ARGSUSED */
 int
-setdomainname(struct setdomainname_args *uap)
+sys_setdomainname(struct setdomainname_args *uap)
 {
 	struct thread *td = curthread;
         int error, domainnamelen;

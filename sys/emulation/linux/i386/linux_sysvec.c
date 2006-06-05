@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.20 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.21 2006/06/05 07:26:10 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -516,7 +516,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
  * a machine fault.
  */
 int
-linux_sigreturn(struct linux_sigreturn_args *args)
+sys_linux_sigreturn(struct linux_sigreturn_args *args)
 {
 	struct proc *p = curproc;
 	struct l_sigframe frame;
@@ -609,7 +609,7 @@ linux_sigreturn(struct linux_sigreturn_args *args)
  * a machine fault.
  */
 int
-linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
+sys_linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 {
 	struct proc *p = curproc;
 	struct l_ucontext uc;

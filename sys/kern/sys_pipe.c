@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.37 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.38 2006/06/05 07:26:10 dillon Exp $
  */
 
 /*
@@ -197,7 +197,7 @@ static int pipespace (struct pipe *cpipe, int size);
 
 /* ARGSUSED */
 int
-pipe(struct pipe_args *uap)
+sys_pipe(struct pipe_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;

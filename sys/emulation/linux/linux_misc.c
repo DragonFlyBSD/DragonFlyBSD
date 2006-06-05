@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.27 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.28 2006/06/05 07:26:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -105,7 +105,7 @@ struct l_sysinfo {
 };
 
 int
-linux_sysinfo(struct linux_sysinfo_args *args)
+sys_linux_sysinfo(struct linux_sysinfo_args *args)
 {
 	struct l_sysinfo sysinfo;
 	vm_object_t object;
@@ -159,7 +159,7 @@ linux_sysinfo(struct linux_sysinfo_args *args)
 }
 
 int
-linux_alarm(struct linux_alarm_args *args)
+sys_linux_alarm(struct linux_alarm_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -202,7 +202,7 @@ linux_alarm(struct linux_alarm_args *args)
 }
 
 int
-linux_brk(struct linux_brk_args *args)
+sys_linux_brk(struct linux_brk_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -221,7 +221,7 @@ linux_brk(struct linux_brk_args *args)
 	bsd_args.sysmsg_result = 0;
 	bsd_args.nsize = (char *) new;
 	bsd_args.sysmsg_result = 0;
-	if (((caddr_t)new > vm->vm_daddr) && !obreak(&bsd_args))
+	if (((caddr_t)new > vm->vm_daddr) && !sys_obreak(&bsd_args))
 		args->sysmsg_result = (long)new;
 	else
 		args->sysmsg_result = (long)old;
@@ -230,7 +230,7 @@ linux_brk(struct linux_brk_args *args)
 }
 
 int
-linux_uselib(struct linux_uselib_args *args)
+sys_linux_uselib(struct linux_uselib_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p;
@@ -461,7 +461,7 @@ cleanup:
 }
 
 int
-linux_select(struct linux_select_args *args)
+sys_linux_select(struct linux_select_args *args)
 {
 	struct select_args bsa;
 	struct timeval tv0, tv1, utv, *tvp;
@@ -519,7 +519,7 @@ linux_select(struct linux_select_args *args)
 		microtime(&tv0);
 	}
 
-	error = select(&bsa);
+	error = sys_select(&bsa);
 	args->sysmsg_result = bsa.sysmsg_result;
 #ifdef DEBUG
 	if (ldebug(select))
@@ -569,7 +569,7 @@ select_out:
 }
 
 int     
-linux_mremap(struct linux_mremap_args *args)
+sys_linux_mremap(struct linux_mremap_args *args)
 {
 	struct munmap_args bsd_args; 
 	int error = 0;
@@ -594,7 +594,7 @@ linux_mremap(struct linux_mremap_args *args)
 		bsd_args.sysmsg_result = 0;
 		bsd_args.addr = (caddr_t)(args->addr + args->new_len);
 		bsd_args.len = args->old_len - args->new_len;
-		error = munmap(&bsd_args);
+		error = sys_munmap(&bsd_args);
 	}
 
 	args->sysmsg_resultp = error ? NULL : (void *)args->addr;
@@ -606,7 +606,7 @@ linux_mremap(struct linux_mremap_args *args)
 #define	LINUX_MS_SYNC		0x0004
 
 int
-linux_msync(struct linux_msync_args *args)
+sys_linux_msync(struct linux_msync_args *args)
 {
 	struct msync_args bsd_args;
 	int error;
@@ -616,13 +616,13 @@ linux_msync(struct linux_msync_args *args)
 	bsd_args.flags = args->fl & ~LINUX_MS_SYNC;
 	bsd_args.sysmsg_result = 0;
 
-	error = msync(&bsd_args);
+	error = sys_msync(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
 int
-linux_time(struct linux_time_args *args)
+sys_linux_time(struct linux_time_args *args)
 {
 	struct timeval tv;
 	l_time_t tm;
@@ -653,7 +653,7 @@ struct l_times_argv {
 #define CONVTCK(r)	(r.tv_sec * CLK_TCK + r.tv_usec / (1000000 / CLK_TCK))
 
 int
-linux_times(struct linux_times_args *args)
+sys_linux_times(struct linux_times_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -685,7 +685,7 @@ linux_times(struct linux_times_args *args)
 }
 
 int
-linux_newuname(struct linux_newuname_args *args)
+sys_linux_newuname(struct linux_newuname_args *args)
 {
 	struct thread *td = curthread;
 	struct l_new_utsname utsname;
@@ -717,7 +717,7 @@ struct l_utimbuf {
 };
 
 int
-linux_utime(struct linux_utime_args *args)
+sys_linux_utime(struct linux_utime_args *args)
 {
 	struct timeval tv[2];
 	struct l_utimbuf lut;
@@ -755,7 +755,7 @@ cleanup:
 #define __WCLONE 0x80000000
 
 int
-linux_waitpid(struct linux_waitpid_args *args)
+sys_linux_waitpid(struct linux_waitpid_args *args)
 {
 	int error, options, status;
 
@@ -787,7 +787,7 @@ linux_waitpid(struct linux_waitpid_args *args)
 }
 
 int
-linux_wait4(struct linux_wait4_args *args)
+sys_linux_wait4(struct linux_wait4_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -830,7 +830,7 @@ linux_wait4(struct linux_wait4_args *args)
 }
 
 int
-linux_mknod(struct linux_mknod_args *args)
+sys_linux_mknod(struct linux_mknod_args *args)
 {
 	struct nlookupdata nd;
 	char *path;
@@ -862,7 +862,7 @@ linux_mknod(struct linux_mknod_args *args)
  * UGH! This is just about the dumbest idea I've ever heard!!
  */
 int
-linux_personality(struct linux_personality_args *args)
+sys_linux_personality(struct linux_personality_args *args)
 {
 #ifdef DEBUG
 	if (ldebug(personality))
@@ -880,7 +880,7 @@ linux_personality(struct linux_personality_args *args)
  * Wrappers for get/setitimer for debugging..
  */
 int
-linux_setitimer(struct linux_setitimer_args *args)
+sys_linux_setitimer(struct linux_setitimer_args *args)
 {
 	struct setitimer_args bsa;
 	struct itimerval foo;
@@ -907,13 +907,13 @@ linux_setitimer(struct linux_setitimer_args *args)
 	    }
 #endif
 	}
-	error = setitimer(&bsa);
+	error = sys_setitimer(&bsa);
 	args->sysmsg_result = bsa.sysmsg_result;
 	return(error);
 }
 
 int
-linux_getitimer(struct linux_getitimer_args *args)
+sys_linux_getitimer(struct linux_getitimer_args *args)
 {
 	struct getitimer_args bsa;
 	int error;
@@ -924,13 +924,13 @@ linux_getitimer(struct linux_getitimer_args *args)
 	bsa.which = args->which;
 	bsa.itv = (struct itimerval *)args->itv;
 	bsa.sysmsg_result = 0;
-	error = getitimer(&bsa);
+	error = sys_getitimer(&bsa);
 	args->sysmsg_result = bsa.sysmsg_result;
 	return(error);
 }
 
 int
-linux_nice(struct linux_nice_args *args)
+sys_linux_nice(struct linux_nice_args *args)
 {
 	struct setpriority_args	bsd_args;
 	int error;
@@ -939,13 +939,13 @@ linux_nice(struct linux_nice_args *args)
 	bsd_args.who = 0;	/* current process */
 	bsd_args.prio = args->inc;
 	bsd_args.sysmsg_result = 0;
-	error = setpriority(&bsd_args);
+	error = sys_setpriority(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
 int
-linux_setgroups(struct linux_setgroups_args *args)
+sys_linux_setgroups(struct linux_setgroups_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -997,7 +997,7 @@ linux_setgroups(struct linux_setgroups_args *args)
 }
 
 int
-linux_getgroups(struct linux_getgroups_args *args)
+sys_linux_getgroups(struct linux_getgroups_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1041,7 +1041,7 @@ linux_getgroups(struct linux_getgroups_args *args)
 }
 
 int
-linux_setrlimit(struct linux_setrlimit_args *args)
+sys_linux_setrlimit(struct linux_setrlimit_args *args)
 {
 	struct l_rlimit linux_rlim;
 	struct rlimit rlim;
@@ -1071,7 +1071,7 @@ linux_setrlimit(struct linux_setrlimit_args *args)
 }
 
 int
-linux_old_getrlimit(struct linux_old_getrlimit_args *args)
+sys_linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 {
 	struct l_rlimit linux_rlim;
 	struct rlimit rlim;
@@ -1104,7 +1104,7 @@ linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 }
 
 int
-linux_getrlimit(struct linux_getrlimit_args *args)
+sys_linux_getrlimit(struct linux_getrlimit_args *args)
 {
 	struct l_rlimit linux_rlim;
 	struct rlimit rlim;
@@ -1133,7 +1133,7 @@ linux_getrlimit(struct linux_getrlimit_args *args)
 }
 
 int
-linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
+sys_linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 {
 	struct sched_setscheduler_args bsd;
 	int error;
@@ -1162,13 +1162,13 @@ linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 	bsd.param = (struct sched_param *)args->param;
 	bsd.sysmsg_result = 0;
 
-	error = sched_setscheduler(&bsd);
+	error = sys_sched_setscheduler(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
+sys_linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
 	struct sched_getscheduler_args bsd;
 	int error;
@@ -1180,7 +1180,7 @@ linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 
 	bsd.sysmsg_result = 0;
 	bsd.pid = args->pid;
-	error = sched_getscheduler(&bsd);
+	error = sys_sched_getscheduler(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 
 	switch (args->sysmsg_result) {
@@ -1198,7 +1198,7 @@ linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 }
 
 int
-linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
+sys_linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 {
 	struct sched_get_priority_max_args bsd;
 	int error;
@@ -1223,13 +1223,13 @@ linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 	}
 	bsd.sysmsg_result = 0;
 
-	error = sched_get_priority_max(&bsd);
+	error = sys_sched_get_priority_max(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
 int
-linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
+sys_linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 {
 	struct sched_get_priority_min_args bsd;
 	int error;
@@ -1254,7 +1254,7 @@ linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 	}
 	bsd.sysmsg_result = 0;
 
-	error = sched_get_priority_min(&bsd);
+	error = sys_sched_get_priority_min(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
@@ -1264,7 +1264,7 @@ linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 #define REBOOT_HALT	0xcdef0123
 
 int
-linux_reboot(struct linux_reboot_args *args)
+sys_linux_reboot(struct linux_reboot_args *args)
 {
 	struct reboot_args bsd_args;
 	int error;
@@ -1278,7 +1278,7 @@ linux_reboot(struct linux_reboot_args *args)
 	bsd_args.opt = (args->cmd == REBOOT_HALT) ? RB_HALT : 0;
 	bsd_args.sysmsg_result = 0;
 
-	error = reboot(&bsd_args);
+	error = sys_reboot(&bsd_args);
 	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
@@ -1296,7 +1296,7 @@ linux_reboot(struct linux_reboot_args *args)
  */
 
 int
-linux_getpid(struct linux_getpid_args *args)
+sys_linux_getpid(struct linux_getpid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1308,7 +1308,7 @@ linux_getpid(struct linux_getpid_args *args)
 }
 
 int
-linux_getgid(struct linux_getgid_args *args)
+sys_linux_getgid(struct linux_getgid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1320,7 +1320,7 @@ linux_getgid(struct linux_getgid_args *args)
 }
 
 int
-linux_getuid(struct linux_getuid_args *args)
+sys_linux_getuid(struct linux_getuid_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1332,14 +1332,14 @@ linux_getuid(struct linux_getuid_args *args)
 }
 
 int
-linux_getsid(struct linux_getsid_args *args)
+sys_linux_getsid(struct linux_getsid_args *args)
 {
 	struct getsid_args bsd;
 	int error;
 
 	bsd.sysmsg_result = 0;
 	bsd.pid = args->pid;
-	error = getsid(&bsd);
+	error = sys_getsid(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
