@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.c,v 1.8.2.2 2002/05/23 04:19:22 ken Exp $
- * $DragonFly: src/lib/libcam/camlib.c,v 1.3 2005/07/14 09:13:27 corecode Exp $
+ * $DragonFly: src/lib/libcam/camlib.c,v 1.3.2.1 2006/06/05 15:03:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -514,6 +514,7 @@ cam_lookup_pass(const char *dev_name, int unit, int flags,
 			 "%s: %s%s", func_name, func_name, strerror(errno),
 			 (errno == ENOENT) ? tmpstr : "");
 
+		close(fd);
 		return(NULL);
 	}
 
