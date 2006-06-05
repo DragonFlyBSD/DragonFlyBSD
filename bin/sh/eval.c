@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.5 2006/05/12 01:56:11 y0netan1 Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.6 2006/06/05 15:55:13 dillon Exp $
  */
 
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
@@ -977,6 +977,13 @@ commandcmd(int argc, char **argv)
 	struct strlist *sp;
 	const char *path;
 	int ch;
+
+#ifdef __GNUC__
+	/* Avoid longjmp clobbering */
+	(void) &path;
+	(void) &argc;
+	(void) &argv;
+#endif
 
 	for (sp = cmdenviron; sp ; sp = sp->next)
 		setvareq(sp->text, VEXPORT|VSTACK);
