@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.46 2006/06/04 19:37:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.47 2006/06/05 21:03:03 dillon Exp $
  */
 
 /*
@@ -1894,12 +1894,10 @@ softdep_setup_freeblocks(ip, length)
 
 	info.fs = fs;
 	info.ip = ip;
-	crit_enter();
 	do {
 		count = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 				softdep_setup_freeblocks_bp, &info);
 	} while (count != 0);
-	crit_exit();
 	if (inodedep_lookup(fs, ip->i_number, 0, &inodedep) != 0)
 		(void)free_inodedep(inodedep);
 
@@ -4171,10 +4169,8 @@ softdep_fsync_mountdev(vp)
 	if (!vn_isdisk(vp, NULL))
 		panic("softdep_fsync_mountdev: vnode not a disk");
 	ACQUIRE_LOCK(&lk);
-	crit_enter();
 	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 		softdep_fsync_mountdev_bp, vp);
-	crit_exit();
 	drain_output(vp, 1);
 	FREE_LOCK(&lk);
 }
@@ -4275,10 +4271,8 @@ top:
 	drain_output(vp, 1);
 	info.vp = vp;
 	info.waitfor = waitfor;
-	crit_enter();
 	error = RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL, 
 			softdep_sync_metadata_bp, &info);
-	crit_exit();
 	if (error < 0) {
 		FREE_LOCK(&lk);
 		return(-error);	/* error code */
@@ -4813,7 +4807,6 @@ request_cleanup(resource, islocked)
 	 */
 	if (islocked == 0)
 		ACQUIRE_LOCK(&lk);
-	crit_enter();
 	proc_waiting += 1;
 	if (!callout_active(&handle))
 		callout_reset(&handle, tickdelay > 2 ? tickdelay : 2,
@@ -4821,7 +4814,6 @@ request_cleanup(resource, islocked)
 	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, 0,
 	    "softupdate", 0);
 	proc_waiting -= 1;
-	crit_exit();
 	if (islocked == 0)
 		FREE_LOCK(&lk);
 	return (1);

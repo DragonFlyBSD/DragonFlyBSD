@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.88 2006/06/05 20:56:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.89 2006/06/05 21:03:02 dillon Exp $
  */
 
 /*
@@ -649,7 +649,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 	if ((info.checkdef = checkdef) == NULL)
 		info.syncdeps = 1;
 
-	crit_enter();
+	crit_enter_id("vfsync");
 
 	switch(waitfor) {
 	case MNT_LAZY:
@@ -714,7 +714,7 @@ vfsync(struct vnode *vp, int waitfor, int passes,
 		}
 		break;
 	}
-	crit_exit();
+	crit_exit_id("vfsync");
 	return(error);
 }
 
