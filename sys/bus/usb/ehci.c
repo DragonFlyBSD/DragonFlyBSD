@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.21 2006/05/05 20:14:58 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.22 2006/06/05 20:56:52 dillon Exp $
  */
 
 /*
@@ -2466,8 +2466,6 @@ ehci_intrlist_timeout(void *arg)
 
 	DPRINTFN(3, ("ehci_intrlist_timeout\n"));
 	usb_schedsoftintr(&sc->sc_bus);
-
-	crit_exit();
 }
 
 /************************/

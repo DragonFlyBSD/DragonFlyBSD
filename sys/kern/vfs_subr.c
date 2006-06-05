@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.87 2006/05/25 19:31:13 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.88 2006/06/05 20:56:54 dillon Exp $
  */
 
 /*
@@ -485,7 +485,9 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 	 * Clean out any left over VM backing store.
 	 */
 	crit_exit();
+
 	vnode_pager_setsize(vp, length);
+
 	crit_enter();
 
 	/*
@@ -523,6 +525,8 @@ vtruncbuf(struct vnode *vp, off_t length, int blksize)
 			       "left over buffers in %s\n", count, filename);
 		}
 	} while(count);
+
+	crit_exit();
 
 	return (0);
 }
@@ -796,9 +800,9 @@ vfsync_bp(struct buf *bp, void *data)
 		 * Synchronous flushing.  An error may be returned.
 		 */
 		bremfree(bp);
-		crit_exit();
+		crit_exit_id("vfsync");
 		error = bwrite(bp);
-		crit_enter();
+		crit_enter_id("vfsync");
 	} else { 
 		/*
 		 * Asynchronous flushing.  A negative return value simply
@@ -811,9 +815,9 @@ vfsync_bp(struct buf *bp, void *data)
 		} else {
 			info->lazycount += bp->b_bufsize;
 			bremfree(bp);
-			crit_exit();
+			crit_exit_id("vfsync");
 			bawrite(bp);
-			crit_enter();
+			crit_enter_id("vfsync");
 		}
 		if (info->lazylimit && info->lazycount >= info->lazylimit)
 			error = 1;
