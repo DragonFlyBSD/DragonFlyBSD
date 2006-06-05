@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.31 2005/09/17 07:43:06 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.31.2.1 2006/06/05 14:51:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1132,6 +1132,7 @@ ext2_sbupdate(struct ufsmount *mp, int waitfor)
 printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
 */
 	bp = getblk(mp->um_devvp, SBLOCK, SBSIZE, 0, 0);
+	bp->b_flags &= ~(B_ERROR|B_INVAL);
 	bcopy((caddr_t)es, bp->b_data, (u_int)sizeof(struct ext2_super_block));
 	if (waitfor == MNT_WAIT)
 		error = bwrite(bp);

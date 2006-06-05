@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65.2.1 2006/04/18 17:12:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.65.2.2 2006/06/05 14:51:29 dillon Exp $
  */
 
 /*
@@ -416,6 +416,16 @@ vinvalbuf_bp(struct buf *bp, void *data)
 			bremfree(bp);
 			VOP_BWRITE(bp->b_vp, bp);
 		}
+	} else if (info->flags & V_SAVE) {
+		/*
+		 * Cannot set B_NOCACHE on a clean buffer as this will
+		 * destroy the VM backing store which might actually
+		 * be dirty (and unsynchronized).
+		 */
+		bremfree(bp);
+		bp->b_flags |= (B_INVAL | B_RELBUF);
+		bp->b_flags &= ~B_ASYNC;
+		brelse(bp);
 	} else {
 		bremfree(bp);
 		bp->b_flags |= (B_INVAL | B_NOCACHE | B_RELBUF);

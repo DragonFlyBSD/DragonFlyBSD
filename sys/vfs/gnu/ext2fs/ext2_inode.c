@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.9 2005/07/26 15:43:35 hmp Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.9.2.1 2006/06/05 14:51:29 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -402,6 +402,7 @@ ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
 	bp = getblk(vp, lbn, (int)fs->s_blocksize, 0, 0);
 	if (bp->b_flags & (B_DONE | B_DELWRI)) {
 	} else {
+		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		bp->b_flags |= B_READ;
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2_indirtrunc: bad buffer size");

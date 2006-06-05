@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.6 2004/04/17 00:30:17 cpressey Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.6.4.1 2006/06/05 14:51:30 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -384,6 +384,7 @@ updatefats(struct msdosfsmount *pmp, struct buf *bp, u_long fatbn)
 			fatbn += pmp->pm_FATsecs;
 			/* getblk() never fails */
 			bpn = getblk(pmp->pm_devvp, fatbn, bp->b_bcount, 0, 0);
+			bpn->b_flags &= ~(B_ERROR|B_INVAL);
 			bcopy(bp->b_data, bpn->b_data, bp->b_bcount);
 			if (pmp->pm_flags & MSDOSFSMNT_WAITONFAT)
 				bwrite(bpn);

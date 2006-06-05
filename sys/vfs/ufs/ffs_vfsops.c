@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.34 2005/09/17 07:43:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.34.2.1 2006/06/05 14:51:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1253,6 +1253,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 			size = (blks - i) * fs->fs_fsize;
 		bp = getblk(mp->um_devvp, fsbtodb(fs, fs->fs_csaddr + i),
 		    size, 0, 0);
+		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		bcopy(space, bp->b_data, (uint)size);
 		space = (char *)space + size;
 		if (waitfor != MNT_WAIT)
@@ -1268,6 +1269,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 	if (allerror)
 		return (allerror);
 	bp = getblk(mp->um_devvp, SBLOCK, (int)fs->fs_sbsize, 0, 0);
+	bp->b_flags &= ~(B_ERROR|B_INVAL);
 	fs->fs_fmod = 0;
 	fs->fs_time = time_second;
 	bcopy((caddr_t)fs, bp->b_data, (uint)fs->fs_sbsize);

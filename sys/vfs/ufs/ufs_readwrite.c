@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.13 2004/10/25 19:14:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.13.4.1 2006/06/05 14:51:30 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -441,6 +441,12 @@ ffs_write(struct vop_write_args *ap)
 		    (LIST_FIRST(&bp->b_dep) == NULL)) {
 			bp->b_flags |= B_RELBUF;
 		}
+
+		/*
+		 * We may have allocated the block, we have to write it
+		 * out even if the uiomove failed.
+		 */
+		bp->b_flags &= ~B_INVAL;
 
 		/*
 		 * If IO_SYNC each buffer is written synchronously.  Otherwise

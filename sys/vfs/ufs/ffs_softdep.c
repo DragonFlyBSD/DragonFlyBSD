@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.32.2.1 2006/02/28 21:14:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.32.2.2 2006/06/05 14:51:30 dillon Exp $
  */
 
 /*
@@ -1703,6 +1703,7 @@ setup_allocindir_phase2(bp, ip, aip)
 		newindirdep->ir_savebp =
 		    getblk(ip->i_devvp, bp->b_blkno, bp->b_bcount, 0, 0);
 		BUF_KERNPROC(newindirdep->ir_savebp);
+		newindirdep->ir_savebp->b_flags &= ~(B_ERROR|B_INVAL);
 		bcopy(bp->b_data, newindirdep->ir_savebp->b_data, bp->b_bcount);
 	}
 }

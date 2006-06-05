@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.53.2.1 2006/04/18 17:12:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.53.2.2 2006/06/05 14:51:29 dillon Exp $
  */
 
 /*
@@ -972,6 +972,13 @@ void
 bdirty(struct buf *bp)
 {
 	KASSERT(bp->b_qindex == BQUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
+	if (bp->b_flags & B_NOCACHE) {
+		printf("bdirty: clearing B_NOCACHE on buf %p\n", bp);
+		bp->b_flags &= ~B_NOCACHE;
+	}
+	if (bp->b_flags & B_INVAL) {
+		printf("bdirty: warning, dirtying invalid buffer %p\n", bp);
+	}
 	bp->b_flags &= ~(B_READ|B_RELBUF);
 
 	if ((bp->b_flags & B_DELWRI) == 0) {
@@ -1095,6 +1102,11 @@ brelse(struct buf * bp)
 	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	crit_enter();
+
+	if ((bp->b_flags & (B_NOCACHE|B_DIRTY)) == (B_NOCACHE|B_DIRTY)) {
+		printf("warning: buf %p marked dirty & B_NOCACHE, clearing B_NOCACHE\n", bp);
+		bp->b_flags &= ~B_NOCACHE;
+	}
 
 	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_ERROR;
@@ -1407,9 +1419,9 @@ brelse(struct buf * bp)
 		bufspacewakeup();
 
 	/* unlock */
-	BUF_UNLOCK(bp);
 	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF |
 			B_DIRECT | B_NOWDRAIN);
+	BUF_UNLOCK(bp);
 	crit_exit();
 }
 
@@ -2532,6 +2544,13 @@ loop:
 		 * buffer size starts out as 0, B_CACHE will be set by
 		 * allocbuf() for the VMIO case prior to it testing the
 		 * backing store for validity.
+		 *
+		 * In the non-VMIO case, a new buffer is always marked
+		 * B_INVAL.  The caller must clear B_INVAL when setting up
+		 * a read or when overwriting the buffer's data buffer.
+		 * This way if a non-VMIO buffer is brelse()'d, then later
+		 * getblk()'d again, B_CACHE won't get set due to B_INVAL
+		 * being clear.
 		 */
 
 		if (vmio) {
@@ -2542,6 +2561,7 @@ loop:
 #endif
 		} else {
 			bp->b_flags &= ~B_VMIO;
+			bp->b_flags |= B_INVAL;
 		}
 
 		allocbuf(bp, size);
@@ -2965,6 +2985,10 @@ biodone(struct buf *bp)
 		crit_exit();
 		return;
 	}
+
+	/*
+	 * Warning: softupdates may re-dirty the buffer.
+	 */
 	if (LIST_FIRST(&bp->b_dep) != NULL && bioops.io_complete)
 		(*bioops.io_complete)(bp);
 

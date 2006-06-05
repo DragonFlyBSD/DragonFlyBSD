@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.21 2005/11/19 17:19:48 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.21.2.1 2006/06/05 14:51:29 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -310,6 +310,7 @@ struct cluster_save {
  */
 #define	clrbuf(bp) {							\
 	bzero((bp)->b_data, (u_int)(bp)->b_bcount);			\
+	(bp)->b_flags &= ~(B_INVAL|B_ERROR);				\
 	(bp)->b_resid = 0;						\
 }
 
