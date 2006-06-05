@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.76 2006/05/29 03:57:19 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.77 2006/06/05 20:59:19 dillon Exp $
  */
 
 /*
@@ -383,6 +383,9 @@ trap(frame)
 	int i = 0, ucode = 0, type, code;
 #ifdef SMP
 	int have_mplock = 0;
+#endif
+#ifdef INVARIANTS
+	int crit_count = td->td_pri & ~TDPRI_MASK;
 #endif
 	vm_offset_t eva;
 
@@ -862,6 +865,11 @@ out2:	;
 	if (have_mplock)
 		rel_mplock();
 #endif
+#ifdef INVARIANTS
+	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
+		("syscall: critical section count mismatch! %d/%d",
+		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
+#endif
 }
 
 #ifdef notyet
@@ -1280,6 +1288,9 @@ syscall2(struct trapframe frame)
 	int sticks;
 	int error;
 	int narg;
+#ifdef INVARIANTS
+	int crit_count = td->td_pri & ~TDPRI_MASK;
+#endif
 #ifdef SMP
 	int have_mplock = 0;
 #endif
@@ -1468,6 +1479,11 @@ bad:
 		("badmpcount syscall2/end from %p", (void *)frame.tf_eip));
 	if (have_mplock)
 		rel_mplock();
+#endif
+#ifdef INVARIANTS
+	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK), 
+		("syscall: critical section count mismatch! %d/%d",
+		crit_count / TDPRI_CRIT, td->td_pri / TDPRI_CRIT));
 #endif
 }
 
