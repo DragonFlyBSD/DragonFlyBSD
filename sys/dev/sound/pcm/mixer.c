@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.9 2006/06/06 19:30:12 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.9 2006/06/06 19:30:12 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -484,6 +484,7 @@ mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		}
 		*arg_i = v;
 		snd_mtxunlock(m->lock);
+		crit_exit();
 		return (v != -1)? 0 : ENXIO;
 	}
 	snd_mtxunlock(m->lock);
