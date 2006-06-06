@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.20 2006/06/01 06:10:54 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.21 2006/06/06 18:04:16 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -2035,19 +2035,25 @@ ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 
 /*
  * Pick an item off the queue, process it, and dispose of the queue entry.
- * Should be running at splnet.
  */
 static int
 ngintr(struct netmsg *pmsg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)pmsg)->nm_packet;
 	hook_p  hook;
+	struct mbuf *m;
 	struct ng_queue_entry *ngq;
 	meta_p  meta;
 	void   *retaddr;
 	struct ng_mesg *msg;
 	node_p  node;
 	int     error = 0;
+
+	/*
+	 * Packets are never sent to this netisr so the message must always
+	 * be replied.  Interlock processing and notification by replying
+	 * the message first.
+	 */
+	lwkt_replymsg(&pmsg->nm_lmsg, 0);
 
 	while (1) {
 		crit_enter();
@@ -2087,7 +2093,6 @@ ngintr(struct netmsg *pmsg)
 		}
 	}
 out:
-	/* pmsg was embedded in the mbuf, do not reply! */
 	return(EASYNC);
 }
 

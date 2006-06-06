@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.30 2006/05/20 06:32:38 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.31 2006/06/06 18:04:15 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -199,9 +199,16 @@ static struct compressor *ppp_compressors[8] = {
 static int
 pppintr(struct netmsg *msg)
 {
-    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+    struct mbuf *m;
     struct ppp_softc *sc;
     int i;
+
+    /*
+     * Packets are never sent to this netisr so the message must always
+     * be replied.  Interlock processing and notification by replying
+     * the message first.
+     */
+    lwkt_replymsg(&msg->nm_lmsg, 0);
 
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
@@ -219,7 +226,6 @@ pppintr(struct netmsg *msg)
 	}
 	lwkt_serialize_exit(sc->sc_if.if_serializer);
     }
-    /* msg is embedded in the mbuf, do not reply! */
     return(EASYNC);
 }
 
