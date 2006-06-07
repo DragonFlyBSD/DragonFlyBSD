@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.57 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.58 2006/06/07 03:02:10 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -302,7 +302,6 @@ proc0_init(void *dummy __unused)
 	session0.s_leader = p;
 
 	p->p_sysent = &aout_sysvec;
-	TAILQ_INIT(&lp->lwp_sysmsgq);
 
 	p->p_flag = P_SYSTEM;
 	p->p_stat = SRUN;

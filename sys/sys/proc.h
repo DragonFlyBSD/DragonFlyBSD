@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.81 2006/06/05 07:23:19 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.82 2006/06/07 03:02:11 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -182,8 +182,6 @@ struct lwp {
 
 	struct thread	*lwp_thread;	/* backpointer to proc's thread */
 	struct upcall	*lwp_upcall;	/* REGISTERED USERLAND POINTER! */
-	TAILQ_HEAD(, sysmsg) lwp_sysmsgq; /* Recorded asynch system calls */
-	int		 lwp_nsysmsg;	/* Number of asynch messages running */
 };
 
 struct	proc {

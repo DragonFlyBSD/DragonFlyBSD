@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.44 2006/06/01 19:02:39 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.45 2006/06/07 03:02:11 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -124,7 +124,7 @@ struct globaldata {
 	struct thread	*gd_curthread;
 	int		gd_tdfreecount;		/* new thread cache */
 	__uint32_t	gd_reqflags;		/* (see note above) */
-	union sysunion	*gd_freesysun;		/* free syscall messages */
+	void		*gd_unused00;
 	lwkt_queue	gd_tdallq;		/* all threads */
 	lwkt_queue	gd_tdfreeq;		/* new thread cache */
 	lwkt_queue	gd_tdrunq[32];		/* runnable threads */

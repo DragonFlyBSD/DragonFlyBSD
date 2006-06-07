@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.10 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.11 2006/06/07 03:02:11 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -121,8 +121,8 @@ DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 #define SYSCALL_MODULE_HELPER(syscallname)              \
 static int syscallname##_syscall = SYS_##syscallname;   \
 static struct sysent syscallname##_sysent = {           \
-    ((sizeof(struct syscallname ## _args ) - sizeof(struct sysmsg) - \
-	sizeof(union usrmsg)) / sizeof(register_t)),    \
+    ((sizeof(struct syscallname ## _args ) - sizeof(struct sysmsg)) \
+	/ sizeof(register_t)),    \
     (sy_call_t *)& syscallname                          \
 };                                                      \
 SYSCALL_MODULE(syscallname,                             \

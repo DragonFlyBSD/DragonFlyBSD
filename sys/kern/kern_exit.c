@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.57 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.58 2006/06/07 03:02:10 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -128,7 +128,6 @@ exit1(int rv)
 
 	lp = &p->p_lwp;		/* XXX lwp kill other threads */
 
-	sysmsg_rundown(lp, 1);
 	caps_exit(lp->lwp_thread);
 	aio_proc_rundown(p);
 

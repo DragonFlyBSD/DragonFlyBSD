@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.13 2006/06/05 07:26:10 dillon Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.14 2006/06/07 03:02:10 dillon Exp $
 
 set -e
 
@@ -328,7 +328,6 @@ s/\$//g
 				printf("#ifdef _KERNEL\n") > sysarg
 				printf("\tstruct sysmsg sysmsg;\n") > sysarg
 				printf("#endif\n") > sysarg
-				printf("\tunion usrmsg usrmsg;\n") > sysarg
 				for (i = 1; i <= argc; i++)
 					printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
 					    argtype[i], argname[i],
@@ -342,7 +341,6 @@ s/\$//g
 				printf("#ifdef _KERNEL\n") > sysarg
 				printf("\tstruct sysmsg sysmsg;\n") > sysarg
 				printf("#endif\n") > sysarg
-				printf("\tunion usrmsg usrmsg;\n") > sysarg
 				printf("\tregister_t dummy;\n") > sysarg
 				printf("};\n") > sysarg
 			}
@@ -397,7 +395,6 @@ s/\$//g
 			printf("#ifdef _KERNEL\n") > syscompat
 			printf("\tstruct sysmsg sysmsg;\n") > syscompat
 			printf("#endif\n") > syscompat
-			printf("\tunion usrmsg usrmsg;\n") > syscompat
 			for (i = 1; i <= argc; i++)
 				printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
 				    argtype[i], argname[i],
@@ -410,7 +407,6 @@ s/\$//g
 			printf("#ifdef _KERNEL\n") > sysarg
 			printf("\tstruct sysmsg sysmsg;\n") > sysarg
 			printf("#endif\n") > sysarg
-			printf("\tunion usrmsg usrmsg;\n") > sysarg
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
@@ -441,7 +437,6 @@ s/\$//g
 			printf("#ifdef _KERNEL\n") > syscompatdf12
 			printf("\tstruct sysmsg sysmsg;\n") > syscompatdf12
 			printf("#endif\n") > syscompatdf12
-			printf("\tunion usrmsg usrmsg;\n") > syscompatdf12
 			for (i = 1; i <= argc; i++)
 				printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
 				    argtype[i], argname[i],
@@ -454,7 +449,6 @@ s/\$//g
 			printf("#ifdef _KERNEL\n") > sysarg
 			printf("\tstruct sysmsg sysmsg;\n") > sysarg
 			printf("#endif\n") > sysarg
-			printf("\tunion usrmsg usrmsg;\n") > sysarg
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
@@ -525,7 +519,7 @@ s/\$//g
 		exit 1
 	}
 	END {
-		printf "\n#define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg) - sizeof(union usrmsg)) / sizeof(register_t))\n" > sysinc
+		printf "\n#define AS(name) ((sizeof(struct name) - sizeof(struct sysmsg)) / sizeof(register_t))\n" > sysinc
 		if (ncompat != 0) {
 			printf "#include \"opt_compat.h\"\n\n" > syssw
 			printf "\n#ifdef %s\n", compat > sysinc
