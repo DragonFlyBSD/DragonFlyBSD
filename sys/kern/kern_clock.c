@@ -70,11 +70,12 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.52 2006/06/01 16:49:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.53 2006/06/08 18:25:46 dillon Exp $
  */
 
 #include "opt_ntp.h"
 #include "opt_polling.h"
+#include "opt_pctrack.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -107,6 +108,10 @@
 extern void init_device_poll(void);
 #endif
 
+#ifdef DEBUG_PCTRACK
+static void do_pctrack(struct intrframe *frame, int which);
+#endif
+
 static void initclocks (void *dummy);
 SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
 
@@ -116,6 +121,11 @@ SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
  * just compare relative times against the total by delta.
  */
 struct kinfo_cputime cputime_percpu[MAXCPU];
+#ifdef DEBUG_PCTRACK
+struct kinfo_pcheader cputime_pcheader = { PCTRACK_SIZE, PCTRACK_ARYSIZE };
+struct kinfo_pctrack cputime_pctrack[MAXCPU][PCTRACK_SIZE];
+#endif
+
 #ifdef SMP
 static int
 sysctl_cputime(SYSCTL_HANDLER_ARGS)
@@ -616,15 +626,71 @@ statclock(systimer_t info, struct intrframe *frame)
 			td->td_sticks += bump;
 
 		if (frame && CLKF_INTR(frame)) {
+#ifdef DEBUG_PCTRACK
+			do_pctrack(frame, PCTRACK_INT);
+#endif
 			cpu_time.cp_intr += bump;
 		} else {
-			if (td == &mycpu->gd_idlethread)
+			if (td == &mycpu->gd_idlethread) {
 				cpu_time.cp_idle += bump;
-			else
+			} else {
+#ifdef DEBUG_PCTRACK
+				if (frame)
+					do_pctrack(frame, PCTRACK_SYS);
+#endif
 				cpu_time.cp_sys += bump;
+			}
 		}
 	}
 }
+
+#ifdef DEBUG_PCTRACK
+/*
+ * Sample the PC when in the kernel or in an interrupt.  User code can
+ * retrieve the information and generate a histogram or other output.
+ */
+
+static void
+do_pctrack(struct intrframe *frame, int which)
+{
+	struct kinfo_pctrack *pctrack;
+
+	pctrack = &cputime_pctrack[mycpu->gd_cpuid][which];
+	pctrack->pc_array[pctrack->pc_index & PCTRACK_ARYMASK] = 
+		(void *)CLKF_PC(frame);
+	++pctrack->pc_index;
+}
+
+static int
+sysctl_pctrack(SYSCTL_HANDLER_ARGS)
+{
+	struct kinfo_pcheader head;
+	int error;
+	int cpu;
+	int ntrack;
+
+	head.pc_ntrack = PCTRACK_SIZE;
+	head.pc_arysize = PCTRACK_ARYSIZE;
+
+	if ((error = SYSCTL_OUT(req, &head, sizeof(head))) != 0)
+		return (error);
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		for (ntrack = 0; ntrack < PCTRACK_SIZE; ++ntrack) {
+			error = SYSCTL_OUT(req, &cputime_pctrack[cpu][ntrack],
+					   sizeof(struct kinfo_pctrack));
+			if (error)
+				break;
+		}
+		if (error)
+			break;
+	}
+	return (error);
+}
+SYSCTL_PROC(_kern, OID_AUTO, pctrack, (CTLTYPE_OPAQUE|CTLFLAG_RD), 0, 0,
+	sysctl_pctrack, "S,kinfo_pcheader", "CPU PC tracking");
+
+#endif
 
 /*
  * The scheduler clock typically runs at a 50Hz rate.  NOTE! systimer,

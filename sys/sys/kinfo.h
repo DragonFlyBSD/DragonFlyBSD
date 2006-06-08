@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.6 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.7 2006/06/08 18:25:48 dillon Exp $
  */
 
 #ifndef _SYS_KINFO_H_
@@ -68,6 +68,26 @@ struct kinfo_cputime {
 	uint64_t	cp_intr;
 	uint64_t	cp_idle;
 };
+
+/*
+ * CPU system/interrupt program counter sampler
+ */
+#define PCTRACK_ARYSIZE	32	/* must be a power of 2 */
+#define PCTRACK_ARYMASK	(PCTRACK_ARYSIZE - 1)
+
+struct kinfo_pcheader {
+	int		pc_ntrack;	/* number of tracks per cpu (2) */
+	int		pc_arysize;	/* size of storage array (32) */
+};
+
+struct kinfo_pctrack {
+	int		pc_index;
+	void		*pc_array[PCTRACK_ARYSIZE];
+};
+
+#define PCTRACK_SYS	0
+#define PCTRACK_INT	1
+#define PCTRACK_SIZE	2
 
 struct kinfo_clockinfo {
 	int	ci_hz;		/* clock frequency */
