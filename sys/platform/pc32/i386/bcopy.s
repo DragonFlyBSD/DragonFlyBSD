@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.7 2005/06/20 17:43:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.8 2006/06/10 18:07:05 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -253,11 +253,15 @@ ENTRY(asm_generic_bcopy)
 	 *	and saves it again.
 	 *
 	 *	race(2): No interrupt can safely occur after we NULL-out
-	 *	npxthread until we fninit, because the kernel assumes that
+	 *	npxthread until we fnclex, because the kernel assumes that
 	 *	the FP unit is in a safe state when npxthread is NULL.  It's
 	 *	more convenient to use a cli sequence here (it is not
 	 *	considered to be in the critical path), but a critical
 	 *	section would also work.
+	 *
+	 *	NOTE ON FNINIT vs FNCLEX - Making the FP unit safe here is
+	 *	the goal.  It should be sufficient to just call FNCLEX rather
+	 *	then having to FNINIT the entire unit.
 	 *
 	 *	race(3): The FP unit is in a known state (because npxthread
 	 *	was either previously NULL or we saved and init'd and made
@@ -273,7 +277,7 @@ ENTRY(asm_generic_bcopy)
 	 *	save area and then set GD_NPXTHREAD to non-NULL.  If an
 	 *	interrupt occurs after we set GD_NPXTHREAD, all that happens
 	 *	is that the safe FP state gets saved and restored.  We do not
-	 *	need to fninit again.
+	 *	need to clex again.
 	 *
 	 *	We can safely clts after setting up the new save-area, before
 	 *	installing gd_npxthread, even if we get preempted just after
@@ -304,7 +308,7 @@ ENTRY(asm_generic_bcopy)
 	fxsave	0(%ebx) ;			/* race(1) */		\
 	movl	$0,GD_NPXTHREAD(%eax) ;		/* interlock intr */	\
 	clts ;								\
-	fninit ;				/* race(2) */		\
+	fnclex ;				/* race(2) */		\
 100: ;									\
 	leal	GD_SAVEFPU(%eax),%ecx ;					\
 	movl	%ecx,TD_SAVEFPU(%edx) ;					\
@@ -326,7 +330,7 @@ ENTRY(asm_generic_bcopy)
 	 * npxthread to prevent further saves, then restore the pointer
 	 * to the app's save area.  We do not have to (and should not)
 	 * restore the app's FP state now.  Note that we do not have to
-	 * call fninit because our use of the FP guarentees that it is in
+	 * call fnclex because our use of the FP guarentees that it is in
 	 * a 'safe' state (at least for kernel use).
 	 *
 	 * NOTE: it is not usually safe to mess with CR0 outside of a
