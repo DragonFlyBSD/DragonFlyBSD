@@ -1,7 +1,7 @@
 /*
  *	monster.c		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/monster.c,v 1.6 1999/11/16 11:47:40 marcel Exp $
- * $DragonFly: src/games/larn/monster.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/monster.c,v 1.3 2006/06/10 17:37:08 dillon Exp $
  *
  *	This file contains the following functions:
  *	----------------------------------------------------------------------------
@@ -447,7 +447,7 @@ speldamage(x)
 					free((char*)save);	 positionplayer();  return;
 					}
 
-		case 37:	/* permanence */ adjtime(-99999L);  spelknow[37]=0; /* forget */
+		case 37:	/* permanence */ larn_adjtime(-99999L);  spelknow[37]=0; /* forget */
 					loseint();
 					return;
 

@@ -32,7 +32,7 @@
  *
  * @(#)store.c	5.4 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/store.c,v 1.5 1999/11/30 03:49:00 billf Exp $
- * $DragonFly: src/games/larn/store.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/store.c,v 1.3 2006/06/10 17:37:08 dillon Exp $
  */
 
 /*	store.c		Larn is copyrighted 1986 by Noah Morgan. */
@@ -392,7 +392,7 @@ oschool()
 
 			  if (c[BLINDCOUNT])	c[BLINDCOUNT]=1;  /* cure blindness too!  */
 			  if (c[CONFUSE])		c[CONFUSE]=1;	/*	end confusion	*/
-			  adjtime((long)time_used);	/* adjust parameters for time change */
+			  larn_adjtime((long)time_used);	/* adjust parameters for time change */
 			  }
 			nap(1000);
 			}

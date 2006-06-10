@@ -1,6 +1,6 @@
 /*	object.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/object.c,v 1.4 1999/11/16 02:57:23 billf Exp $ */
-/* $DragonFly: src/games/larn/object.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/larn/object.c,v 1.4 2006/06/10 17:37:08 dillon Exp $ */
 #include "header.h"
 
 /*
@@ -534,7 +534,7 @@ char time_change[] = { HASTESELF,HERO,ALTPRO,PROTECTIONTIME,DEXCOUNT,
 /*
  *	function to adjust time when time warping and taking courses in school
  */
-adjtime(tim)
+larn_adjtime(tim)
 	long tim;
 	{
 	int j;
@@ -576,7 +576,7 @@ read_scroll(typ)
 	  case 7:	gtime += (i = rnd(1000) - 850); /* time warp */
 				if (i>=0) lprintf("\nYou went forward in time by %d mobuls",(long)((i+99)/100));
 				else lprintf("\nYou went backward in time by %d mobuls",(long)(-(i+99)/100));
-				adjtime((long)i);	/* adjust time for time warping */
+				larn_adjtime((long)i);	/* adjust time for time warping */
 				return;
 
 	  case 8:	oteleport(0);	  return;	/*	teleportation */
