@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.14 2006/04/12 18:28:30 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.15 2006/06/10 20:00:17 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -45,7 +45,7 @@
 #include <sys/md5.h>
 #include <sys/poll.h>
 #include <sys/random.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 #include <sys/systm.h>
 #include <sys/systimer.h>
 #include <sys/thread2.h>

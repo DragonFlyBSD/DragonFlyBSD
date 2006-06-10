@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.5 2006/05/21 03:43:47 dillon Exp $
+ *	$DragonFly: src/sys/sys/eventvar.h,v 1.6 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
@@ -42,8 +42,8 @@
 #ifndef _SYS_EVENT_H_
 #include <sys/event.h>
 #endif
-#ifndef _SYS_SELECT_H_
-#include <sys/select.h>
+#ifndef _SYS_SELINFO_H_
+#include <sys/selinfo.h>
 #endif
 
 

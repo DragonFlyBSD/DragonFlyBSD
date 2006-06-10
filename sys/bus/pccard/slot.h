@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/slot.h,v 1.25.2.5 2002/09/22 20:26:58 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.4 2004/09/18 19:42:12 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/slot.h,v 1.5 2006/06/10 20:00:14 dillon Exp $
  */
 
 #ifndef _PCCARD_SLOT_H
@@ -48,7 +48,7 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 
 /*
  *	Controller data - Specific to each slot controller.

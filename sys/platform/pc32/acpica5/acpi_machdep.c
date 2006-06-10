@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.7 2005/04/11 06:05:54 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.8 2006/06/10 20:00:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@ static device_t	acpi_dev;
  * APM driver emulation 
  */
 
-#include <sys/select.h>
+#include <sys/selinfo.h>
 
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.15 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.16 2006/06/10 20:00:16 dillon Exp $
  *
  */
 
@@ -147,7 +147,7 @@
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 #include <sys/poll.h>
 #include <sys/thread2.h>
 

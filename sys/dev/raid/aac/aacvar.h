@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.12 2006/06/04 21:09:49 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.13 2006/06/10 20:00:16 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -267,11 +267,7 @@ typedef struct lock aac_lock_t;
 #define AAC_LOCK_RELEASE(l)	lockmgr(l, LK_RELEASE)
 #endif
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 #include <sys/selinfo.h>
-#else
-#include <sys/select.h>
-#endif
 
 /*
  * Per-controller structure.

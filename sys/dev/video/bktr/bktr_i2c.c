@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.25 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.5 2004/05/15 17:54:12 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.6 2006/06/10 20:00:16 dillon Exp $
  */
 
 /*
@@ -43,7 +43,7 @@
 #include <sys/bus.h>
 #include <sys/uio.h>
 
-#include <sys/select.h>
+#include <sys/selinfo.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>

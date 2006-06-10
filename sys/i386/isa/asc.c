@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.12 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.13 2006/06/10 20:00:17 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -47,7 +47,7 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/poll.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
 

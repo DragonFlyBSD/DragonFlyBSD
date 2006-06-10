@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.13 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.14 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -181,37 +181,13 @@ typedef __time_t	time_t;
 typedef __timer_t	timer_t;
 #endif
 
+#ifndef _SYS_SELECT_H_
+#include <sys/select.h>
+#endif
+
 #ifndef _POSIX_SOURCE
-#define	NBBY	8		/* number of bits in a byte */
 
-/*
- * Select uses bit masks of file descriptors in longs.  These macros
- * manipulate such bit fields (the filesystem macros use chars).
- * FD_SETSIZE may be defined by the user, but the default here should
- * be enough for most uses.
- */
-#ifndef	FD_SETSIZE
-#define	FD_SETSIZE	1024
-#endif
-
-typedef	unsigned long	fd_mask;
-#define	NFDBITS	(sizeof(fd_mask) * NBBY)	/* bits per mask */
-
-#ifndef howmany
-#define	howmany(x, y)	(((x) + ((y) - 1)) / (y))
-#endif
-
-typedef	struct fd_set {
-	fd_mask	fds_bits[howmany(FD_SETSIZE, NFDBITS)];
-} fd_set;
-
-#define	_fdset_mask(n)	((fd_mask)1 << ((n) % NFDBITS))
-#define	FD_SET(n, p)	((p)->fds_bits[(n)/NFDBITS] |= _fdset_mask(n))
-#define	FD_CLR(n, p)	((p)->fds_bits[(n)/NFDBITS] &= ~_fdset_mask(n))
-#define	FD_ISSET(n, p)	((p)->fds_bits[(n)/NFDBITS] & _fdset_mask(n))
-#define	FD_COPY(f, t)	bcopy(f, t, sizeof(*(f)))
-#define	FD_ZERO(p)	bzero(p, sizeof(*(p)))
-
+#define NBBY 8		/* number of bits in a byte */
 /*
  * These declarations belong elsewhere, but are repeated here and in
  * <stdio.h> to give broken programs a better chance of working with

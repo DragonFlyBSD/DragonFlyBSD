@@ -30,56 +30,37 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)select.h	8.2 (Berkeley) 1/4/94
- * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.7 2006/06/10 20:00:17 dillon Exp $
+ * @(#)selinfo.h	8.2 (Berkeley) 1/4/94
+ * $DragonFly: src/sys/sys/selinfo.h,v 1.1 2006/06/10 20:00:17 dillon Exp $
  */
 
-#ifndef _SYS_SELECT_H_
-#define	_SYS_SELECT_H_
+#ifndef _SYS_SELINFO_H_
+#define	_SYS_SELINFO_H_
 
-#ifndef _SYS_SIGNAL_H_
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 #include <sys/signal.h>
-#endif
-#ifndef _SYS_TIME_H_
-#include <sys/time.h>
-#endif
+
+#include <sys/event.h>			/* for struct klist */
+#include <net/netisr.h>			/* for struct notifymsglist */
 
 /*
- * Select uses bit masks of file descriptors in longs.  These macros
- * manipulate such bit fields (the filesystem macros use chars).
- * FD_SETSIZE may be defined by the user, but the default here should
- * be enough for most uses.
+ * Used to maintain information about processes that wish to be
+ * notified when I/O becomes possible.
  */
-#ifndef FD_SETSIZE
-#define FD_SETSIZE	1024
+struct selinfo {
+	pid_t	si_pid;			/* process to be notified */
+	struct	klist si_note;		/* kernel note list */
+	struct	notifymsglist si_mlist;	/* list of pending predicate messages */
+	short	si_flags;		/* see below */
+};
+#define	SI_COLL	0x0001		/* collision occurred */
+
+struct thread;
+
+void	selrecord (struct thread *selector, struct selinfo *);
+void	selwakeup (struct selinfo *);
+
 #endif
 
-#ifndef NBBY
-#define NBBY		8
-#endif
-
-typedef unsigned long   fd_mask;
-#define NFDBITS (sizeof(fd_mask) * NBBY)	/* bits per mask */
-
-#ifndef howmany
-#define howmany(x, y)	(((x) + ((y) - 1)) / (y))
-#endif
-
-typedef struct fd_set {
-	fd_mask fds_bits[howmany(FD_SETSIZE, NFDBITS)];
-} fd_set;
-
-#define _fdset_mask(n)	((fd_mask)1 << ((n) % NFDBITS))
-#define FD_SET(n, p)	((p)->fds_bits[(n)/NFDBITS] |= _fdset_mask(n))
-#define FD_CLR(n, p)	((p)->fds_bits[(n)/NFDBITS] &= ~_fdset_mask(n))
-#define FD_ISSET(n, p)	((p)->fds_bits[(n)/NFDBITS] & _fdset_mask(n))
-#define FD_COPY(f, t)	bcopy(f, t, sizeof(*(f)))
-#define FD_ZERO(p)	bzero(p, sizeof(*(p)))
-
-#ifndef _UNISTD_H_
-int	select(int, fd_set * __restrict, fd_set * __restrict,
-	       fd_set * __restrict, struct timeval * __restrict);
-#endif
-
-#endif	/* !_SYS_SELECT_H_ */
+#endif /* !_SYS_SELINFO_H_ */

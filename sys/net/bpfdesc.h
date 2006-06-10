@@ -38,14 +38,14 @@
  *      @(#)bpfdesc.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpfdesc.h,v 1.14.2.2 2001/12/17 19:32:33 jdp Exp $
- * $DragonFly: src/sys/net/bpfdesc.h,v 1.4 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/bpfdesc.h,v 1.5 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _NET_BPFDESC_H_
 #define _NET_BPFDESC_H_
 
 #include <sys/callout.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 
 /*
  * Descriptor associated with each open bpf file.

@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.14 2005/11/19 22:26:54 swildner Exp $
+ * $DragonFly: src/include/unistd.h,v 1.15 2006/06/10 20:00:09 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -184,7 +184,10 @@ int	 rresvport(int *);
 int	 rresvport_af(int *, int);
 int	 ruserok(const char *, int, const char *, const char *);
 void	*sbrk(intptr_t);
-int	 select(int, fd_set *, fd_set *, fd_set *, struct timeval *);
+#ifndef _SYS_SELECT_H_	/* bleh BSD compatibility */
+int	 select(int, fd_set * __restrict, fd_set * __restrict,
+		fd_set * __restrict, struct timeval * __restrict);
+#endif
 int	 setdomainname(const char *, int);
 int	 setegid(gid_t);
 int	 seteuid(uid_t);

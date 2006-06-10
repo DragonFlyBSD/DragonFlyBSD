@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.13 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.14 2006/06/10 20:00:17 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -55,7 +55,7 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/thread2.h>
-#include <sys/select.h>
+#include <sys/selinfo.h>
 
 #include <net/if.h>
 

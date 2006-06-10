@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.8 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.9 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -46,8 +46,8 @@
 #ifndef _SYS_TERMIOS_H_
 #include <sys/termios.h>
 #endif
-#ifndef _SYS_SELECT_H_
-#include <sys/select.h>		/* For struct selinfo. */
+#ifndef _SYS_SELINFO_H_
+#include <sys/selinfo.h>
 #endif
 
 /*

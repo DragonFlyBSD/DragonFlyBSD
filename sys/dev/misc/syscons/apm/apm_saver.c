@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/apm/apm_saver.c,v 1.1.4.2 2001/03/07 21:47:24 nsayer Exp $
- * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.5 2005/02/13 03:02:25 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.6 2006/06/10 20:00:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,7 +40,7 @@
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
 
-#include <sys/select.h>
+#include <sys/selinfo.h>
 #include <machine/apm_bios.h>
 #include <machine/pc/bios.h>
 #include <i386/apm/apm.h>

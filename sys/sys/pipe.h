@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.9 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.10 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -33,8 +33,8 @@
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>			/* for struct timespec */
 #endif
-#ifndef _SYS_SELECT_H_
-#include <sys/select.h>			/* for struct selinfo */
+#ifndef _SYS_SELINFO_H_
+#include <sys/selinfo.h>		/* for struct selinfo */
 #endif
 #ifndef _SYS_XIO_H_
 #include <sys/xio.h>			/* for struct xio */

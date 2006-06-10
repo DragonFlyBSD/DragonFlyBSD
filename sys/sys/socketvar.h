@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.24 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.25 2006/06/10 20:00:17 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -44,8 +44,8 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>			/* for TAILQ macros */
 #endif
-#ifndef _SYS_SELECT_H_
-#include <sys/select.h>			/* for struct selinfo */
+#ifndef _SYS_SELINFO_H_
+#include <sys/selinfo.h>		/* for struct selinfo */
 #endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
