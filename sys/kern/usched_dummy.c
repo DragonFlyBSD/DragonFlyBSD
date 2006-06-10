@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/usched_dummy.c,v 1.2 2006/05/29 22:57:22 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_dummy.c,v 1.3 2006/06/10 20:19:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,6 @@ struct usched usched_dummy = {
 	NULL,			/* default deregistration */
 	dummy_acquire_curproc,
 	dummy_release_curproc,
-	dummy_select_curproc,
 	dummy_setrunqueue,
 	dummy_schedulerclock,
 	dummy_recalculate_estcpu,

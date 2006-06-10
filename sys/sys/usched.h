@@ -3,7 +3,7 @@
  *
  *	Userland scheduler API
  * 
- * $DragonFly: src/sys/sys/usched.h,v 1.11 2006/06/05 00:32:37 davidxu Exp $
+ * $DragonFly: src/sys/sys/usched.h,v 1.12 2006/06/10 20:19:39 dillon Exp $
  */
 
 #ifndef _SYS_USCHED_H_
@@ -35,7 +35,6 @@ struct usched {
     void (*usched_unregister)(void);
     void (*acquire_curproc)(struct lwp *);
     void (*release_curproc)(struct lwp *);
-    void (*select_curproc)(struct globaldata *);
     void (*setrunqueue)(struct lwp *);
     void (*schedulerclock)(struct lwp *, sysclock_t, sysclock_t);
     void (*recalculate)(struct lwp *);

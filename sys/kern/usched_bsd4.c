@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.13 2006/06/05 00:32:37 davidxu Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.14 2006/06/10 20:19:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,6 @@ struct usched usched_bsd4 = {
 	NULL,			/* default deregistration */
 	bsd4_acquire_curproc,
 	bsd4_release_curproc,
-	bsd4_select_curproc,
 	bsd4_setrunqueue,
 	bsd4_schedulerclock,
 	bsd4_recalculate_estcpu,
