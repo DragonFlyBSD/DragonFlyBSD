@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.9 2005/11/28 17:13:43 dillon Exp $
+ * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.10 2006/06/11 08:43:34 y0netan1 Exp $
  */
 
  
@@ -33,7 +33,6 @@
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/bus.h>
-#include <sys/bus_private.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <machine/bus.h>
