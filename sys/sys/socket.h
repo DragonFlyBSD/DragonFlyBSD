@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.12 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.13 2006/06/11 22:54:18 joerg Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -202,8 +202,8 @@ struct sockproto {
  */
 #define	_SS_MAXSIZE	128
 #define	_SS_ALIGNSIZE	(sizeof(int64_t))
-#define	_SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(u_char) - sizeof(sa_family_t))
-#define	_SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(u_char) - sizeof(sa_family_t) - \
+#define	_SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) - sizeof(sa_family_t))
+#define	_SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) - sizeof(sa_family_t) - \
 				_SS_PAD1SIZE - _SS_ALIGNSIZE)
 
 struct sockaddr_storage {
@@ -387,7 +387,7 @@ struct cmsgcred {
 };
 
 /* given pointer to struct cmsghdr, return pointer to data */
-#define	CMSG_DATA(cmsg)		((u_char *)(cmsg) + \
+#define	CMSG_DATA(cmsg)		((unsigned char *)(cmsg) + \
 				 _ALIGN(sizeof(struct cmsghdr)))
 
 /* given pointer to struct cmsghdr, return pointer to next cmsghdr */
