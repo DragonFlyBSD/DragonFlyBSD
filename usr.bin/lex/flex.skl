@@ -3,7 +3,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/flex.skl,v 1.4 1999/10/27 07:56:44 obrien Exp $
- * $DragonFly: src/usr.bin/lex/flex.skl,v 1.5 2005/08/18 17:11:09 joerg Exp $
+ * $DragonFly: src/usr.bin/lex/flex.skl,v 1.5.2.1 2006/06/11 12:58:09 joerg Exp $
  */
 
 #define FLEX_SCANNER
@@ -39,6 +39,8 @@ using namespace std;
 #define YY_USE_CONST
 
 #else	/* ! __cplusplus */
+
+#include <unistd.h>
 
 #if __STDC__
 
