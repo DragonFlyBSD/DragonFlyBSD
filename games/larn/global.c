@@ -1,6 +1,6 @@
 /*	global.c 		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/global.c,v 1.5 1999/11/16 02:57:21 billf Exp $
- * $DragonFly: src/games/larn/global.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/larn/global.c,v 1.4 2006/06/13 22:12:16 dillon Exp $
  *
  *	raiselevel()		subroutine to raise the player one level
  *	loselevel()		subroutine to lower the player by one level
@@ -28,7 +28,7 @@ extern char cheat,level,monstnamelist[];
 extern char lastmonst[],*what[],*who[];
 extern char winner[];
 extern char logname[],monstlevel[];
-extern char sciv[SCORESIZE+1][26][2],*potionname[],*scrollname[];
+extern char sciv[SCORESIZE+1][26][2],potionname[][32],scrollname[][32];
 /*
 	***********
 	RAISE LEVEL

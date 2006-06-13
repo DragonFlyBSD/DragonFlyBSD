@@ -32,7 +32,7 @@
  *
  * @(#)data.c	5.3 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/data.c,v 1.5 1999/11/30 03:48:59 billf Exp $
- * $DragonFly: src/games/larn/data.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/data.c,v 1.3 2006/06/13 22:12:16 dillon Exp $
  */
 
 /*	data.c		Larn is copyrighted 1986 by Noah Morgan. */
@@ -295,7 +295,7 @@ struct monst monster[] = {
 
 /*	name array for scrolls		*/
 
-char *scrollname[] = {
+char scrollname[][32] = {
 "\0enchant armor",
 "\0enchant weapon",
 "\0enlightenment",
@@ -327,7 +327,7 @@ char *scrollname[] = {
  };
 
 /*	name array for magic potions	*/
-char *potionname[] = {
+char potionname[][32] = {
 "\0sleep",
 "\0healing",
 "\0raise level",

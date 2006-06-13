@@ -1,5 +1,5 @@
 /*	header.h		Larn is copyrighted 1986 by Noah Morgan. */
-/* $DragonFly: src/games/larn/header.h,v 1.3 2004/11/24 12:49:27 joerg Exp $ */
+/* $DragonFly: src/games/larn/header.h,v 1.4 2006/06/13 22:12:16 dillon Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -342,9 +342,9 @@ extern char level,*levelname[],logfile[],loginname[],logname[],*lpbuf,*lpend;
 extern char *lpnt,moved[MAXX][MAXY],mitem[MAXX][MAXY],monstlevel[];
 extern char monstnamelist[],nch[],ndgg[],nlpts[],nomove,nosignal,nowelcome;
 extern char nplt[],nsw[],*objectname[];
-extern char objnamelist[],optsfile[],*potionname[],playerids[],potprob[];
+extern char objnamelist[],optsfile[],potionname[][32],playerids[],potprob[];
 extern char predostuff,psname[],restorflag,savefilename[],scorefile[],scprob[];
-extern char screen[MAXX][MAXY],*scrollname[],sex,*spelcode[],*speldescript[];
+extern char screen[MAXX][MAXY],scrollname[][32],sex,*spelcode[],*speldescript[];
 extern char spelknow[],*spelname[],*spelmes[],spelweird[MAXMONST+8][SPNUM];
 extern char splev[],stealth[MAXX][MAXY],to_lower[],to_upper[],wizard;
 extern short diroffx[],diroffy[],hitflag,hit2flag,hit3flag,hitp[MAXX][MAXY];
