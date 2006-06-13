@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.27 2005/12/11 13:00:17 swildner Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.28 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -454,8 +454,6 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 	case TUNSIFPID:
 		tp->tun_pid = curproc->p_pid;
-		break;
-	case FIONBIO:
 		break;
 	case FIOASYNC:
 		if (*(int *)data)

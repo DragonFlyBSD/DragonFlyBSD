@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.28 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.29 2006/06/13 08:12:03 dillon Exp $
  */
 
 /*
@@ -580,10 +580,10 @@ aio_process(struct aiocblist *aiocbe)
 	 */
 	if (cb->aio_lio_opcode == LIO_READ) {
 		auio.uio_rw = UIO_READ;
-		error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET);
+		error = fo_read(fp, &auio, fp->f_cred, O_FOFFSET);
 	} else {
 		auio.uio_rw = UIO_WRITE;
-		error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET);
+		error = fo_write(fp, &auio, fp->f_cred, O_FOFFSET);
 	}
 	inblock_end = mytd->td_proc->p_stats->p_ru.ru_inblock;
 	oublock_end = mytd->td_proc->p_stats->p_ru.ru_oublock;

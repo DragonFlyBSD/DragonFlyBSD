@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.38 2006/06/05 07:26:10 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.39 2006/06/13 08:12:03 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -274,10 +274,10 @@
 171	STD	BSD	{ int shmsys(int which, int a2, int a3, int a4); }
 ; XXX should be		{ int shmsys(int which, ...); }
 172	UNIMPL	NOHIDE	nosys
-173	MPSAFE	STD	POSIX	{ ssize_t pread(int fd, void *buf, size_t nbyte, \
-			    int pad, off_t offset); }
-174	MPSAFE	STD	POSIX	{ ssize_t pwrite(int fd, const void *buf, \
-			    size_t nbyte, int pad, off_t offset); }
+173	MPSAFE	STD	POSIX	{ ssize_t __pread(int fd, void *buf, \
+			    size_t nbyte, int flags, off_t offset); }
+174	MPSAFE	STD	POSIX	{ ssize_t __pwrite(int fd, const void *buf, \
+			    size_t nbyte, int flags, off_t offset); }
 175	UNIMPL	NOHIDE	nosys
 176	STD	BSD	{ int ntp_adjtime(struct timex *tp); }
 177	UNIMPL	NOHIDE	sfork (BSD/OS 2.x)
@@ -429,8 +429,10 @@
 287	UNIMPL	NOHIDE	nosys
 288	UNIMPL	NOHIDE	nosys
 ; 289 and 290 from NetBSD (OpenBSD: 267 and 268)
-289	MPSAFE	STD	BSD	{ ssize_t preadv(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
-290	MPSAFE	STD	BSD	{ ssize_t pwritev(int fd, struct iovec *iovp, u_int iovcnt, off_t offset); }
+289	MPSAFE	STD	BSD	{ ssize_t __preadv(int fd, struct iovec *iovp, \
+				  u_int iovcnt, int flags, off_t offset); }
+290	MPSAFE	STD	BSD	{ ssize_t __pwritev(int fd, struct iovec *iovp,\
+				  u_int iovcnt, int flags, off_t offset); }
 291	UNIMPL	NOHIDE	nosys
 292	UNIMPL	NOHIDE	nosys
 293	UNIMPL	NOHIDE	nosys

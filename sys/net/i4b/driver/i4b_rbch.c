@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.17 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.18 2006/06/13 08:12:03 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -262,7 +262,7 @@ i4brbchread(dev_t dev, struct uio *uio, int ioflag)
 		return(EIO);
 	}
 
-	if((sc->sc_devstate & ST_NOBLOCK))
+	if((sc->sc_devstate & ST_NOBLOCK) || (ioflag & IO_NDELAY))
 	{
 		if(!(sc->sc_devstate & ST_CONNECTED)) {
 			CRIT_END;
@@ -361,7 +361,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 		return(EIO);
 	}
 
-	if((sc->sc_devstate & ST_NOBLOCK))
+	if((sc->sc_devstate & ST_NOBLOCK) || (ioflag & IO_NDELAY))
 	{
 		if(!(sc->sc_devstate & ST_CONNECTED)) {
 			CRIT_END;
@@ -476,19 +476,6 @@ i4brbchioctl(dev_t dev, IOCTL_CMD_T cmd, caddr_t data, int flag, struct thread *
 			else
 			{
 				NDBGL4(L4_RBCHDBG, "unit %d, clearing async mode", unit);
-			}
-			break;
-
-		case FIONBIO:
-			if (*(int *)data)
-			{
-				NDBGL4(L4_RBCHDBG, "unit %d, setting non-blocking mode", unit);
-				sc->sc_devstate |= ST_NOBLOCK;
-			}
-			else
-			{
-				NDBGL4(L4_RBCHDBG, "unit %d, clearing non-blocking mode", unit);
-				sc->sc_devstate &= ~ST_NOBLOCK;
 			}
 			break;
 

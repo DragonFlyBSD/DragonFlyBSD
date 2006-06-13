@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.8 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.9 2006/06/13 08:12:04 dillon Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -93,12 +93,24 @@
 /* Defined by POSIX 1003.1; BSD default, but must be distinct from O_RDONLY. */
 #define	O_NOCTTY	0x8000		/* don't assign controlling terminal */
 
-/* Attempt to bypass buffer cache */
+/* Attempt to bypass the buffer cache */
 #define O_DIRECT	0x00010000
 
 #ifdef _KERNEL
 #define O_ROOTCRED	0x00020000	/* fp_open */
 #endif
+
+#define O_FBLOCKING	0x00040000	/* force blocking I/O */
+#define O_FNONBLOCKING	0x00080000	/* force non-blocking I/O */
+#define O_FAPPEND	0x00100000	/* force append mode for write */
+#define O_FOFFSET	0x00200000	/* force specific offset */
+#define O_FSYNCWRITE	0x00400000	/* force synchronous write */
+#define O_FASYNCWRITE	0x00800000	/* force asynchronous write */
+#define O_FUNBUFFERED	0x01000000	/* force unbuffered (direct) I/O */
+#define O_FBUFFERED	0x02000000	/* force buffered I/O */
+
+#define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
+			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED)
 
 #ifdef _KERNEL
 /* convert from open() flags to/from fflags; convert O_RD/WR to FREAD/FWRITE */

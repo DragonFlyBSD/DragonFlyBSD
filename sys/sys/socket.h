@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.13 2006/06/11 22:54:18 joerg Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.14 2006/06/13 08:12:04 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -339,16 +339,25 @@ struct msghdr {
 	int		 msg_flags;		/* flags on received message */
 };
 
-#define	MSG_OOB		0x1		/* process out-of-band data */
-#define	MSG_PEEK	0x2		/* peek at incoming message */
-#define	MSG_DONTROUTE	0x4		/* send without using routing tables */
-#define	MSG_EOR		0x8		/* data completes record */
-#define	MSG_TRUNC	0x10		/* data discarded before delivery */
-#define	MSG_CTRUNC	0x20		/* control data lost before delivery */
-#define	MSG_WAITALL	0x40		/* wait for full request or error */
-#define	MSG_DONTWAIT	0x80		/* this message should be nonblocking */
-#define	MSG_EOF		0x100		/* data completes connection */
-#define	MSG_NOTIFICATION 0x200		/* notification message */
+#define	MSG_OOB		0x00000001	/* process out-of-band data */
+#define	MSG_PEEK	0x00000002	/* peek at incoming message */
+#define	MSG_DONTROUTE	0x00000004	/* send without using routing tables */
+#define	MSG_EOR		0x00000008	/* data completes record */
+#define	MSG_TRUNC	0x00000010	/* data discarded before delivery */
+#define	MSG_CTRUNC	0x00000020	/* control data lost before delivery */
+#define	MSG_WAITALL	0x00000040	/* wait for full request or error */
+#define	MSG_DONTWAIT	0x00000080	/* this message should be nonblocking */
+#define	MSG_EOF		0x00000100	/* data completes connection */
+#define	MSG_NOTIFICATION 0x00000200	/* notification message */
+
+/*
+ * These override FIONBIO.  MSG_FNONBLOCKING is functionally equivalent to
+ * MSG_DONTWAIT.
+ */
+#define MSG_FBLOCKING	0x00010000	/* force blocking operation */
+#define MSG_FNONBLOCKING 0x00020000	/* force non-blocking operation */
+
+#define MSG_FMASK	0xFFFF0000	/* force mask */
 
 /*
  * Header for ancillary data objects in msg_control buffer.

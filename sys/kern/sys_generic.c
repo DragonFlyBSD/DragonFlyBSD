@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.32 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.33 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -119,12 +119,13 @@ sys_read(struct read_args *uap)
  * MPSAFE
  */
 int
-sys_pread(struct pread_args *uap)
+sys___pread(struct __pread_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
 	struct iovec aiov;
 	int error;
+	int flags;
 
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->nbyte;
@@ -136,10 +137,14 @@ sys_pread(struct pread_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
+	flags = uap->flags & O_FMASK;
+	if (uap->offset != (off_t)-1)
+		flags |= O_FOFFSET;
+
 	if (auio.uio_resid < 0)
 		error = EINVAL;
 	else
-		error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+		error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_result);
 	return(error);
 }
 
@@ -180,12 +185,13 @@ sys_readv(struct readv_args *uap)
  * MPSAFE
  */
 int
-sys_preadv(struct preadv_args *uap)
+sys___preadv(struct __preadv_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
+	int flags;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -198,7 +204,11 @@ sys_preadv(struct preadv_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_preadv(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+	flags = uap->flags & O_FMASK;
+	if (uap->offset != (off_t)-1)
+		flags |= O_FOFFSET;
+
+	error = kern_preadv(uap->fd, &auio, flags, &uap->sysmsg_result);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -220,7 +230,7 @@ kern_preadv(int fd, struct uio *auio, int flags, int *res)
 	fp = holdfp(p->p_fd, fd, FREAD);
 	if (fp == NULL)
 		return (EBADF);
-	if (flags & FOF_OFFSET && fp->f_type != DTYPE_VNODE) {
+	if (flags & O_FOFFSET && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
 	} else if (auio->uio_resid < 0) {
 		error = EINVAL;
@@ -323,12 +333,13 @@ sys_write(struct write_args *uap)
  * MPSAFE
  */
 int
-sys_pwrite(struct pwrite_args *uap)
+sys___pwrite(struct __pwrite_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
 	struct iovec aiov;
 	int error;
+	int flags;
 
 	aiov.iov_base = (void *)(uintptr_t)uap->buf;
 	aiov.iov_len = uap->nbyte;
@@ -340,10 +351,14 @@ sys_pwrite(struct pwrite_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
+	flags = uap->flags & O_FMASK;
+	if (uap->offset != (off_t)-1)
+		flags |= O_FOFFSET;
+
 	if (auio.uio_resid < 0)
 		error = EINVAL;
 	else
-		error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+		error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_result);
 
 	return(error);
 }
@@ -383,12 +398,13 @@ sys_writev(struct writev_args *uap)
  * MPSAFE
  */
 int
-sys_pwritev(struct pwritev_args *uap)
+sys___pwritev(struct __pwritev_args *uap)
 {
 	struct thread *td = curthread;
 	struct uio auio;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	int error;
+	int flags;
 
 	error = iovec_copyin(uap->iovp, &iov, aiov, uap->iovcnt,
 			     &auio.uio_resid);
@@ -401,7 +417,11 @@ sys_pwritev(struct pwritev_args *uap)
 	auio.uio_segflg = UIO_USERSPACE;
 	auio.uio_td = td;
 
-	error = kern_pwritev(uap->fd, &auio, FOF_OFFSET, &uap->sysmsg_result);
+	flags = uap->flags & O_FMASK;
+	if (uap->offset != (off_t)-1)
+		flags |= O_FOFFSET;
+
+	error = kern_pwritev(uap->fd, &auio, flags, &uap->sysmsg_result);
 
 	iovec_free(&iov, aiov);
 	return(error);
@@ -423,7 +443,7 @@ kern_pwritev(int fd, struct uio *auio, int flags, int *res)
 	fp = holdfp(p->p_fd, fd, FWRITE);
 	if (fp == NULL)
 		return (EBADF);
-	else if ((flags & FOF_OFFSET) && fp->f_type != DTYPE_VNODE) {
+	else if ((flags & O_FOFFSET) && fp->f_type != DTYPE_VNODE) {
 		error = ESPIPE;
 	} else {
 		error = dofilewrite(fd, fp, auio, flags, res);
@@ -654,13 +674,12 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 	}
 
 	switch (com) {
-
 	case FIONBIO:
 		if ((tmp = *(int *)data))
 			fp->f_flag |= FNONBLOCK;
 		else
 			fp->f_flag &= ~FNONBLOCK;
-		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, cred);
+		error = 0;
 		break;
 
 	case FIOASYNC:

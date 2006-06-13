@@ -1,5 +1,5 @@
 /*	$KAME: sctp.h,v 1.17 2004/08/17 04:06:15 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp.h,v 1.3 2006/06/13 08:12:03 dillon Exp $	*/
 
 #ifndef _NETINET_SCTP_H_
 #define _NETINET_SCTP_H_
@@ -111,6 +111,11 @@ struct sctp_paramhdr {
  */
 /* Blocking I/O is controled by the SS_NBIO flag on the
  * socket state so_state field.
+ *
+ * XXX SS_NBIO no longer exists on DragonFly.  Why is SCTP trying to set
+ * the blocking/non-blocking default state?  We really need to present a
+ * uniform interface to the user program, so we do not actually try to
+ * do this any more.
  */
 #define SCTP_GET_SNDBUF_USE		0x0000000f
 /* latter added read/write */

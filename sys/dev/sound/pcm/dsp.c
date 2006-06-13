@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.9 2006/06/13 08:12:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.9 2006/06/13 08:12:02 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -288,8 +288,11 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 			crit_exit();
 			return ENODEV;
 		}
+#if 0
+		/* removed, will be passed as an IO_ flag */
 		if (flags & O_NONBLOCK)
 			rdch->flags |= CHN_F_NBIO;
+#endif
 		pcm_chnref(rdch, 1);
 	 	CHN_UNLOCK(rdch);
 	}
@@ -307,8 +310,11 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 			crit_exit();
 			return ENODEV;
 		}
+#if 0
+		/* removed, will be passed as an IO_ flag */
 		if (flags & O_NONBLOCK)
 			wrch->flags |= CHN_F_NBIO;
+#endif
 		pcm_chnref(wrch, 1);
 	 	CHN_UNLOCK(wrch);
 	}
@@ -399,7 +405,7 @@ dsp_read(dev_t i_dev, struct uio *buf, int flag)
 	}
 	if (!(rdch->flags & CHN_F_RUNNING))
 		rdch->flags |= CHN_F_RUNNING;
-	ret = chn_read(rdch, buf);
+	ret = chn_read(rdch, buf, flag);
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD);
 
 	crit_exit();
@@ -425,7 +431,7 @@ dsp_write(dev_t i_dev, struct uio *buf, int flag)
 	}
 	if (!(wrch->flags & CHN_F_RUNNING))
 		wrch->flags |= CHN_F_RUNNING;
-	ret = chn_write(wrch, buf);
+	ret = chn_write(wrch, buf, flag);
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_WR);
 
 	crit_exit();
@@ -612,7 +618,10 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		break;
 
     	case SNDCTL_DSP_NONBLOCK:
-    	case FIONBIO: /* set/clear non-blocking i/o */
+		/*
+		 * set/clear non-blocking I/O.  WARNING: non-blocking I/O
+		 * can also be set with FIONBIO
+		 */
 		if (rdch)
 			rdch->flags &= ~CHN_F_NBIO;
 		if (wrch)

@@ -25,14 +25,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.7 2005/06/10 23:07:01 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.8 2006/06/13 08:12:02 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
+#include <sys/vnode.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.7 2005/06/10 23:07:01 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.8 2006/06/13 08:12:02 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4
@@ -249,19 +250,21 @@ chn_wrintr(struct pcm_channel *c)
  */
 
 int
-chn_write(struct pcm_channel *c, struct uio *buf)
+chn_write(struct pcm_channel *c, struct uio *buf, int ioflags)
 {
 	int ret, timeout, newsize, count, sz;
+	int nbio;
 	struct snd_dbuf *bs = c->bufsoft;
 
 	CHN_LOCKASSERT(c);
+	nbio = (c->flags & CHN_F_NBIO) || (ioflags & IO_NDELAY);
 	/*
 	 * XXX Certain applications attempt to write larger size
 	 * of pcm data than c->blocksize2nd without blocking,
 	 * resulting partial write. Expand the block size so that
 	 * the write operation avoids blocking.
 	 */
-	if ((c->flags & CHN_F_NBIO) && buf->uio_resid > sndbuf_getblksz(bs)) {
+	if (nbio && buf->uio_resid > sndbuf_getblksz(bs)) {
 		DEB(device_printf(c->dev, "broken app, nbio and tried to write %d bytes with fragsz %d\n",
 			buf->uio_resid, sndbuf_getblksz(bs)));
 		newsize = 16;
@@ -276,9 +279,9 @@ chn_write(struct pcm_channel *c, struct uio *buf)
 	while (!ret && (buf->uio_resid > 0) && (count > 0)) {
 		sz = sndbuf_getfree(bs);
 		if (sz == 0) {
-			if (c->flags & CHN_F_NBIO)
+			if (nbio) {
 				ret = EWOULDBLOCK;
-			else {
+			} else {
 				timeout = (hz * sndbuf_getblksz(bs)) / (sndbuf_getspd(bs) * sndbuf_getbps(bs));
 				if (timeout < 1)
 					timeout = 1;
@@ -394,15 +397,17 @@ chn_rdintr(struct pcm_channel *c)
  */
 
 int
-chn_read(struct pcm_channel *c, struct uio *buf)
+chn_read(struct pcm_channel *c, struct uio *buf, int ioflags)
 {
-	int		ret, timeout, sz, count;
+	int ret, timeout, sz, count;
+	int nbio;
 	struct snd_dbuf       *bs = c->bufsoft;
 
 	CHN_LOCKASSERT(c);
 	if (!(c->flags & CHN_F_TRIGGERED))
 		chn_start(c, 0);
 
+	nbio = (c->flags & CHN_F_NBIO) || (ioflags & IO_NDELAY);
 	ret = 0;
 	count = hz;
 	while (!ret && (buf->uio_resid > 0) && (count > 0)) {
@@ -411,7 +416,7 @@ chn_read(struct pcm_channel *c, struct uio *buf)
 		if (sz > 0) {
 			ret = sndbuf_uiomove(bs, buf, sz);
 		} else {
-			if (c->flags & CHN_F_NBIO) {
+			if (nbio) {
 				ret = EWOULDBLOCK;
 			} else {
 				timeout = (hz * sndbuf_getblksz(bs)) / (sndbuf_getspd(bs) * sndbuf_getbps(bs));

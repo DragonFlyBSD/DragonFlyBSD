@@ -1,5 +1,5 @@
 /*	$KAME: sctp_peeloff.c,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.2 2005/07/15 15:02:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.3 2006/06/13 08:12:03 dillon Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003 Cisco Systems Inc,
@@ -187,8 +187,6 @@ sctp_get_peeloff(struct socket *head, caddr_t assoc_id, int *error)
 	    SCTP_PCB_FLAGS_IN_TCPPOOL | /* Turn on Blocking IO */
 	    (SCTP_PCB_COPY_FLAGS & inp->sctp_flags));
 	n_inp->sctp_socket = newso;
-	/* Turn off any non-blocking symantic. */
-	newso->so_state &= ~SS_NBIO;
 	newso->so_state |= SS_ISCONNECTED;
 	/* We remove it right away */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)

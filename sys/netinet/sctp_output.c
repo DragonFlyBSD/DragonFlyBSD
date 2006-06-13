@@ -1,5 +1,5 @@
 /*	$KAME: sctp_output.c,v 1.46 2005/03/06 16:04:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.5 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_output.c,v 1.6 2006/06/13 08:12:03 dillon Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -4341,11 +4341,7 @@ sctp_msg_append(struct sctp_tcb *stcb,
 		    so->so_snd.sb_mbmax)) {
 			struct sctp_inpcb *inp;
 			/* Now did we free up enough room? */
-			if ((so->so_state & SS_NBIO)
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-			    || (flags & MSG_NBIO)
-#endif
-				) {
+			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 				/* Non-blocking io in place */
 				error = EWOULDBLOCK;
 				goto release;
@@ -4750,7 +4746,7 @@ sctp_sendall_iterator(struct sctp_inpcb *inp, struct sctp_tcb *stcb, void *ptr, 
 {
 	struct sctp_copy_all *ca;
 	struct mbuf *m;
-	int turned_on_nonblock=0, ret;
+	int ret;
 
 	ca = (struct sctp_copy_all *)ptr;
 	if (ca->m == NULL) {
@@ -4766,16 +4762,8 @@ sctp_sendall_iterator(struct sctp_inpcb *inp, struct sctp_tcb *stcb, void *ptr, 
 		ca->cnt_failed++;
 		return;
 	}
-	if ((stcb->sctp_socket->so_state & SS_NBIO) == 0) {
-		/* we have to do this non-blocking */
-		turned_on_nonblock = 1;
-		stcb->sctp_socket->so_state |= SS_NBIO;
-	}
-	ret = sctp_msg_append(stcb, stcb->asoc.primary_destination, m, &ca->sndrcv, 0);
-	if (turned_on_nonblock) {
-		/* we turned on non-blocking so turn it off */
-		stcb->sctp_socket->so_state &= ~SS_NBIO;
-	}
+	ret = sctp_msg_append(stcb, stcb->asoc.primary_destination, m,
+			      &ca->sndrcv, MSG_FNONBLOCKING);
 	if (ret) {
 		ca->cnt_failed++;
 	} else {
@@ -9564,11 +9552,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 		    (asoc->total_output_mbuf_queue_size >
 		    so->so_snd.sb_mbmax)
 		) {
-			if ((so->so_state & SS_NBIO)
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
-			    || (flags & MSG_NBIO)
-#endif
-				) {
+			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 				/* Non-blocking io in place */
 				error = EWOULDBLOCK;
 				goto release;

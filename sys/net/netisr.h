@@ -82,7 +82,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.23 2006/05/21 03:43:45 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.24 2006/06/13 08:12:03 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -171,6 +171,7 @@ struct netmsg_so_notify {
     struct lwkt_msg			nm_lmsg;
     msg_predicate_fn_t			nm_predicate;
     struct socket			*nm_so;
+    int					nm_fflags; /* flags e.g. FNONBLOCK */
     int					nm_etype;  /* receive or send event */
     TAILQ_ENTRY(netmsg_so_notify)	nm_list;
 };

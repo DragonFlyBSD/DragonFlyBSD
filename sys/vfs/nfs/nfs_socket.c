@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.34 2006/04/25 22:11:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.35 2006/06/13 08:12:04 dillon Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/vnode.h>
+#include <sys/fcntl.h>
 #include <sys/protosw.h>
 #include <sys/resourcevar.h>
 #include <sys/socket.h>
@@ -420,7 +421,7 @@ nfs_disconnect(struct nfsmount *nmp)
 		so = nmp->nm_so;
 		nmp->nm_so = (struct socket *)0;
 		soshutdown(so, 2);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 	}
 }
 

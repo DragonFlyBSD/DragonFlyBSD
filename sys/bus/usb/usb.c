@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.16 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.17 2006/06/13 08:11:56 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -549,10 +549,6 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 
 	if (unit == USB_DEV_MINOR) {
 		switch (cmd) {
-		case FIONBIO:
-			/* All handled in the upper FS layer. */
-			return (0);
-
 		case FIOASYNC:
 			if (*(int *)data)
 #if defined(__DragonFly__)

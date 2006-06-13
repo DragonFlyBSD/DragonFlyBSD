@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.8 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.9 2006/06/13 08:12:03 dillon Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -1534,15 +1534,11 @@ sctp_inpcb_alloc(struct socket *so)
 		inp->sctp_flags = (SCTP_PCB_FLAGS_UDPTYPE |
 		    SCTP_PCB_FLAGS_UNBOUND);
 		inp->sctp_flags |= (SCTP_PCB_FLAGS_RECVDATAIOEVNT);
-		/* Be sure it is NON-BLOCKING IO for UDP */
-		/*so->so_state |= SS_NBIO;*/
 	} else if (so->so_type == SOCK_STREAM) {
 		/* TCP style socket */
 		inp->sctp_flags = (SCTP_PCB_FLAGS_TCPTYPE |
 		    SCTP_PCB_FLAGS_UNBOUND);
 		inp->sctp_flags |= (SCTP_PCB_FLAGS_RECVDATAIOEVNT);
-		/* Be sure we have blocking IO bu default */
-		so->so_state &= ~SS_NBIO;
 	} else {
 		/*
 		 * unsupported socket type (RAW, etc)- in case we missed

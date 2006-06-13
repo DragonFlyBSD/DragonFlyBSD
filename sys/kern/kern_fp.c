@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.16 2006/05/06 06:38:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.17 2006/06/13 08:12:03 dillon Exp $
  */
 
 /*
@@ -230,7 +230,7 @@ fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_td = curthread;
 
     count = nbytes;
-    error = fo_read(fp, &auio, fp->f_cred, FOF_OFFSET);
+    error = fo_read(fp, &auio, fp->f_cred, O_FOFFSET);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)
@@ -331,7 +331,7 @@ fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_td = curthread;
 
     count = nbytes;
-    error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET);
+    error = fo_write(fp, &auio, fp->f_cred, O_FOFFSET);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)

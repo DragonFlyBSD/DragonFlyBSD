@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.11 2006/05/26 15:55:12 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.12 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/socketops.h>
 #include <sys/filio.h>			/* XXX */
 #include <sys/sockio.h>
+#include <sys/vnode.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 #include <sys/filedesc.h>
@@ -64,14 +65,25 @@ struct	fileops socketops = {
  * MPALMOSTSAFE - acquires mplock
  */
 int
-soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct socket *so;
 	int error;
+	int msgflags;
 
 	get_mplock();
 	so = (struct socket *)fp->f_data;
-	error = so_pru_soreceive(so, NULL, uio, NULL, NULL, NULL);
+
+	if (fflags & O_FBLOCKING)
+		msgflags = 0;
+	else if (fflags & O_FNONBLOCKING)
+		msgflags = MSG_FNONBLOCKING;
+	else if (fp->f_flag & FNONBLOCK)
+		msgflags = MSG_FNONBLOCKING;
+	else
+		msgflags = 0;
+
+	error = so_pru_soreceive(so, NULL, uio, NULL, NULL, &msgflags);
 	rel_mplock();
 	return (error);
 }
@@ -80,14 +92,25 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
  * MPALMOSTSAFE - acquires mplock
  */
 int
-soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct socket *so;
 	int error;
+	int msgflags;
 
 	get_mplock();
 	so = (struct socket *)fp->f_data;
-	error = so_pru_sosend(so, NULL, uio, NULL, NULL, 0, uio->uio_td);
+
+	if (fflags & O_FBLOCKING)
+		msgflags = 0;
+	else if (fflags & O_FNONBLOCKING)
+		msgflags = MSG_FNONBLOCKING;
+	else if (fp->f_flag & FNONBLOCK)
+		msgflags = MSG_FNONBLOCKING;
+	else
+		msgflags = 0;
+
+	error = so_pru_sosend(so, NULL, uio, NULL, NULL, msgflags, uio->uio_td);
 	rel_mplock();
 	return (error);
 }
@@ -105,13 +128,6 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 	so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
-	case FIONBIO:
-		if (*(int *)data)
-			so->so_state |= SS_NBIO;
-		else
-			so->so_state &= ~SS_NBIO;
-		error = 0;
-		break;
 	case FIOASYNC:
 		if (*(int *)data) {
 			so->so_state |= SS_ASYNC;
@@ -221,7 +237,7 @@ soo_close(struct file *fp)
 	get_mplock();
 	fp->f_ops = &badfileops;
 	if (fp->f_data)
-		error = soclose((struct socket *)fp->f_data);
+		error = soclose((struct socket *)fp->f_data, fp->f_flag);
 	else
 		error = 0;
 	fp->f_data = NULL;

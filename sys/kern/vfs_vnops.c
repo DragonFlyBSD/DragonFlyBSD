@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.40 2006/05/26 00:33:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.41 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -492,19 +492,30 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not td %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
+
 	ioflag = 0;
-	if (fp->f_flag & FNONBLOCK)
+	if (flags & O_FBLOCKING) {
+		/* ioflag &= ~IO_NDELAY; */
+	} else if (flags & O_FNONBLOCKING) {
 		ioflag |= IO_NDELAY;
-	if (fp->f_flag & O_DIRECT)
+	} else if (fp->f_flag & FNONBLOCK) {
+		ioflag |= IO_NDELAY;
+	}
+	if (flags & O_FBUFFERED) {
+		/* ioflag &= ~IO_DIRECT; */
+	} else if (flags & O_FUNBUFFERED) {
 		ioflag |= IO_DIRECT;
+	} else if (fp->f_flag & O_DIRECT) {
+		ioflag |= IO_DIRECT;
+	}
 	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
 	ioflag |= sequential_heuristic(uio, fp);
 
 	error = VOP_READ(vp, uio, ioflag, cred);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	VOP_UNLOCK(vp, 0);
@@ -548,20 +559,30 @@ svn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		error = 0;
 		goto done;
 	}
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
 	ioflag = 0;
-	if (fp->f_flag & FNONBLOCK)
+	if (flags & O_FBLOCKING) {
+		/* ioflag &= ~IO_NDELAY; */
+	} else if (flags & O_FNONBLOCKING) {
 		ioflag |= IO_NDELAY;
-	if (fp->f_flag & O_DIRECT)
+	} else if (fp->f_flag & FNONBLOCK) {
+		ioflag |= IO_NDELAY;
+	}
+	if (flags & O_FBUFFERED) {
+		/* ioflag &= ~IO_DIRECT; */
+	} else if (flags & O_FUNBUFFERED) {
 		ioflag |= IO_DIRECT;
+	} else if (fp->f_flag & O_DIRECT) {
+		ioflag |= IO_DIRECT;
+	}
 	ioflag |= sequential_heuristic(uio, fp);
 
 	error = dev_dread(dev, uio, ioflag);
 
 	release_dev(dev);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 done:
@@ -585,22 +606,43 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if (vp->v_type == VREG)
 		bwillwrite();
 	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
+
 	ioflag = IO_UNIT;
-	if (vp->v_type == VREG && (fp->f_flag & O_APPEND))
+	if (vp->v_type == VREG &&
+	   ((fp->f_flag & O_APPEND) || (flags & O_FAPPEND))) {
 		ioflag |= IO_APPEND;
-	if (fp->f_flag & FNONBLOCK)
+	}
+
+	if (flags & O_FBLOCKING) {
+		/* ioflag &= ~IO_NDELAY; */
+	} else if (flags & O_FNONBLOCKING) {
 		ioflag |= IO_NDELAY;
-	if (fp->f_flag & O_DIRECT)
+	} else if (fp->f_flag & FNONBLOCK) {
+		ioflag |= IO_NDELAY;
+	}
+	if (flags & O_FBUFFERED) {
+		/* ioflag &= ~IO_DIRECT; */
+	} else if (flags & O_FUNBUFFERED) {
 		ioflag |= IO_DIRECT;
-	if ((fp->f_flag & O_FSYNC) ||
-	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
+	} else if (fp->f_flag & O_DIRECT) {
+		ioflag |= IO_DIRECT;
+	}
+	if (flags & O_FASYNCWRITE) {
+		/* ioflag &= ~IO_SYNC; */
+	} else if (flags & O_FSYNCWRITE) {
+		ioflag |= IO_SYNC;
+	} else if (fp->f_flag & O_FSYNC) {
+		ioflag |= IO_SYNC;
+	}
+
+	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS))
 		ioflag |= IO_SYNC;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
 	error = VOP_WRITE(vp, uio, ioflag, cred);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	VOP_UNLOCK(vp, 0);
@@ -643,25 +685,45 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	}
 	reference_dev(dev);
 
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
 	ioflag = IO_UNIT;
-	if (vp->v_type == VREG && (fp->f_flag & O_APPEND))
+	if (vp->v_type == VREG && 
+	   ((fp->f_flag & O_APPEND) || (flags & O_FAPPEND))) {
 		ioflag |= IO_APPEND;
-	if (fp->f_flag & FNONBLOCK)
+	}
+
+	if (flags & O_FBLOCKING) {
+		/* ioflag &= ~IO_NDELAY; */
+	} else if (flags & O_FNONBLOCKING) {
 		ioflag |= IO_NDELAY;
-	if (fp->f_flag & O_DIRECT)
+	} else if (fp->f_flag & FNONBLOCK) {
+		ioflag |= IO_NDELAY;
+	}
+	if (flags & O_FBUFFERED) {
+		/* ioflag &= ~IO_DIRECT; */
+	} else if (flags & O_FUNBUFFERED) {
 		ioflag |= IO_DIRECT;
-	if ((fp->f_flag & O_FSYNC) ||
-	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
+	} else if (fp->f_flag & O_DIRECT) {
+		ioflag |= IO_DIRECT;
+	}
+	if (flags & O_FASYNCWRITE) {
+		/* ioflag &= ~IO_SYNC; */
+	} else if (flags & O_FSYNCWRITE) {
+		ioflag |= IO_SYNC;
+	} else if (fp->f_flag & O_FSYNC) {
+		ioflag |= IO_SYNC;
+	}
+
+	if (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS))
 		ioflag |= IO_SYNC;
 	ioflag |= sequential_heuristic(uio, fp);
 
 	error = dev_dwrite(dev, uio, ioflag);
 
 	release_dev(dev);
-	if ((flags & FOF_OFFSET) == 0)
+	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 done:
@@ -840,7 +902,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 			error = 0;
 			break;
 		}
-		if (com == FIONBIO || com == FIOASYNC) {	/* XXX */
+		if (com == FIOASYNC) {				/* XXX */
 			error = 0;				/* XXX */
 			break;
 		}

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.69 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.70 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -230,7 +230,7 @@ soaccept_predicate(struct netmsg *msg0)
 		msg->nm_lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
 	}
-	if (head->so_state & SS_NBIO) {
+	if (msg->nm_fflags & FNONBLOCK) {
 		msg->nm_lmsg.ms_error = EWOULDBLOCK;
 		return (TRUE);
 	}
@@ -285,6 +285,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 		     lwkt_cmd_func(netmsg_so_notify),
 		     lwkt_cmd_func(netmsg_so_notify_abort));
 	msg.nm_predicate = soaccept_predicate;
+	msg.nm_fflags = lfp->f_flag;
 	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
 	error = lwkt_domsg(port, &msg.nm_lmsg);
@@ -416,14 +417,14 @@ kern_connect(int s, struct sockaddr *sa)
 	if (error)
 		return (error);
 	so = (struct socket *)fp->f_data;
-	if ((so->so_state & SS_NBIO) && (so->so_state & SS_ISCONNECTING)) {
+	if ((fp->f_flag & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
 		error = EALREADY;
 		goto done;
 	}
 	error = soconnect(so, sa, td);
 	if (error)
 		goto bad;
-	if ((so->so_state & SS_NBIO) && (so->so_state & SS_ISCONNECTING)) {
+	if ((fp->f_flag & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
 		error = EINPROGRESS;
 		goto done;
 	}
@@ -525,9 +526,9 @@ free3:
 	fsetfd(p, NULL, fd1);
 	fdrop(fp1);
 free2:
-	(void)soclose(so2);
+	(void)soclose(so2, 0);
 free1:
-	(void)soclose(so1);
+	(void)soclose(so1, 0);
 	return (error);
 }
 
@@ -578,6 +579,10 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 #endif
 	len = auio->uio_resid;
 	so = (struct socket *)fp->f_data;
+	if ((flags & (MSG_FNONBLOCKING|MSG_FBLOCKING)) == 0) {
+		if (fp->f_flag & FNONBLOCK)
+			flags |= MSG_FNONBLOCKING;
+	}
 	error = so_pru_sosend(so, sa, auio, NULL, control, flags, td);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
@@ -725,6 +730,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	int len, error;
+	int lflags;
 	struct socket *so;
 #ifdef KTRACE
 	struct iovec *ktriov = NULL;
@@ -749,6 +755,18 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 #endif
 	len = auio->uio_resid;
 	so = (struct socket *)fp->f_data;
+
+	if (flags == NULL || (*flags & (MSG_FNONBLOCKING|MSG_FBLOCKING)) == 0) {
+		if (fp->f_flag & FNONBLOCK) {
+			if (flags) {
+				*flags |= MSG_FNONBLOCKING;
+			} else {
+				lflags = MSG_FNONBLOCKING;
+				flags = &lflags;
+			}
+		}
+	}
+
 	error = so_pru_soreceive(so, sa, auio, NULL, control, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
@@ -1465,7 +1483,7 @@ retry_lookup:
 		 * Optimize the non-blocking case by looking at the socket space
 		 * before going to the extra work of constituting the sf_buf.
 		 */
-		if ((so->so_state & SS_NBIO) && sbspace(&so->so_snd) <= 0) {
+		if ((fp->f_flag & FNONBLOCK) && sbspace(&so->so_snd) <= 0) {
 			if (so->so_state & SS_CANTSENDMORE)
 				error = EPIPE;
 			else
@@ -1631,7 +1649,7 @@ retry_space:
 		 * a race condition with sbwait().
 		 */
 		if (sbspace(&so->so_snd) < so->so_snd.sb_lowat) {
-			if (so->so_state & SS_NBIO) {
+			if (fp->f_flag & FNONBLOCK) {
 				m_freem(m);
 				sbunlock(&so->so_snd);
 				crit_exit();

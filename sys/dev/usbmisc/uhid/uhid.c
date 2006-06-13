@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.14 2005/06/02 20:40:50 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.15 2006/06/13 08:12:02 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -603,10 +603,6 @@ uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag,
 		return (EIO);
 
 	switch (cmd) {
-	case FIONBIO:
-		/* All handled in the upper FS layer. */
-		break;
-
 	case FIOASYNC:
 		if (*(int *)addr) {
 			if (sc->sc_async != NULL)

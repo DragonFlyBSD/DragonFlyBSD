@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.37 2006/05/20 17:41:40 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.38 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -330,7 +330,7 @@ sofree(struct socket *so)
  * Free socket when disconnect complete.
  */
 int
-soclose(struct socket *so)
+soclose(struct socket *so, int fflag)
 {
 	int error = 0;
 
@@ -346,7 +346,7 @@ soclose(struct socket *so)
 		}
 		if (so->so_options & SO_LINGER) {
 			if ((so->so_state & SS_ISDISCONNECTING) &&
-			    (so->so_state & SS_NBIO))
+			    (fflag & FNONBLOCK))
 				goto drop;
 			while (so->so_state & SS_ISCONNECTED) {
 				error = tsleep((caddr_t)&so->so_timeo,
@@ -579,7 +579,7 @@ restart:
 			gotoerr(EMSGSIZE);
 		if (space < resid + clen && uio &&
 		    (atomic || space < so->so_snd.sb_lowat || space < clen)) {
-			if (so->so_state & SS_NBIO)
+			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 				gotoerr(EWOULDBLOCK);
 			sbunlock(&so->so_snd);
 			error = sbwait(&so->so_snd);
@@ -728,7 +728,7 @@ restart:
 	if (resid > so->so_snd.sb_hiwat)
 		gotoerr(EMSGSIZE);
 	if (uio && sbspace(&so->so_snd) < resid) {
-		if (so->so_state & SS_NBIO)
+		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
 			gotoerr(EWOULDBLOCK);
 		sbunlock(&so->so_snd);
 		error = sbwait(&so->so_snd);
@@ -877,7 +877,7 @@ restart:
 		}
 		if (uio->uio_resid == 0)
 			goto release;
-		if ((so->so_state & SS_NBIO) || (flags & MSG_DONTWAIT)) {
+		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 			error = EWOULDBLOCK;
 			goto release;
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.20 2006/05/26 02:26:26 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.21 2006/06/13 08:12:04 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -86,8 +86,6 @@ struct	fileops {
 	int (*fold_close)	(struct file *fp);
 	int (*fold_shutdown)	(struct file *fp, int how);
 };
-
-#define	FOF_OFFSET	1	/* fo_read(), fo_write() flags */
 
 /*
  * Kernel descriptor table - One entry for each open kernel vnode and socket.

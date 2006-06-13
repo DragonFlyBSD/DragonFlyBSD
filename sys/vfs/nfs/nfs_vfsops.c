@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.42 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.43 2006/06/13 08:12:04 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -45,6 +45,7 @@
 #include <sys/sockio.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
+#include <sys/fcntl.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
@@ -499,7 +500,7 @@ nfs_mountroot(struct mount *mp)
 	if (error)
 		panic("nfs_mountroot: SIOCAIFADDR: %d", error);
 
-	soclose(so);
+	soclose(so, FNONBLOCK);
 
 	/*
 	 * If the gateway field is filled in, set it as the default route.

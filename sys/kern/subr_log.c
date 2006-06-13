@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.8 2005/06/06 15:02:28 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.9 2006/06/13 08:12:03 dillon Exp $
  */
 
 /*
@@ -225,9 +225,6 @@ logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
 		if (l < 0)
 			l += msgbufp->msg_size;
 		*(int *)data = l;
-		break;
-
-	case FIONBIO:
 		break;
 
 	case FIOASYNC:

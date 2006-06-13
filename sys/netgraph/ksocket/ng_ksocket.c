@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.10 2005/06/02 22:11:45 swildner Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.11 2006/06/13 08:12:03 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -55,6 +55,7 @@
 #include <sys/ctype.h>
 #include <sys/protosw.h>
 #include <sys/errno.h>
+#include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
@@ -614,7 +615,6 @@ ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 		priv->so->so_upcall = ng_ksocket_incoming;
 		priv->so->so_rcv.sb_flags |= SB_UPCALL;
 		priv->so->so_snd.sb_flags |= SB_UPCALL;
-		priv->so->so_state |= SS_NBIO;
 	}
 
 	/* OK */
@@ -939,7 +939,7 @@ ng_ksocket_rmnode(node_p node)
 		priv->so->so_upcall = NULL;
 		priv->so->so_rcv.sb_flags &= ~SB_UPCALL;
 		priv->so->so_snd.sb_flags &= ~SB_UPCALL;
-		soclose(priv->so);
+		soclose(priv->so, FNONBLOCK);
 		priv->so = NULL;
 	}
 
@@ -1166,7 +1166,6 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	/* XXX KNOTE(&head->so_rcv.sb_sel.si_note, 0); */
 
 	so->so_state &= ~SS_COMP;
-	so->so_state |= SS_NBIO;
 	so->so_head = NULL;
 
 	soaccept(so, &sa);
@@ -1178,7 +1177,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	NG_MKMESSAGE(resp, NGM_KSOCKET_COOKIE, NGM_KSOCKET_ACCEPT, len,
 	    M_NOWAIT);
 	if (resp == NULL) {
-		soclose(so);
+		soclose(so, FNONBLOCK);
 		goto out;
 	}
 	resp->header.flags |= NGF_RESP;
@@ -1187,7 +1186,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	/* Clone a ksocket node to wrap the new socket */
 	if (ng_ksocket_constructor(&node2) != 0) {
 		FREE(resp, M_NETGRAPH);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 		goto out;
 	}
 	priv2 = (priv_p)node2->private;

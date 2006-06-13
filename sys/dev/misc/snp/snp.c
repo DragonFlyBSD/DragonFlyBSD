@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.13 2006/06/13 08:12:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -514,9 +514,6 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 		 * major/minor for tty.
 		 */
 		*((dev_t *)data) = snp->snp_target;
-		break;
-
-	case FIONBIO:
 		break;
 
 	case FIOASYNC:

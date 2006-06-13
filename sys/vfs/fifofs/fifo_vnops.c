@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.29 2006/05/07 19:17:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.30 2006/06/13 08:12:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -184,7 +184,7 @@ fifo_open(struct vop_open_args *ap)
 		fip->fi_readsock = rso;
 		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, td);
 		if (error) {
-			soclose(rso);
+			soclose(rso, FNONBLOCK);
 			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
@@ -192,8 +192,8 @@ fifo_open(struct vop_open_args *ap)
 		fip->fi_writesock = wso;
 		error = unp_connect2(wso, rso);
 		if (error) {
-			soclose(wso);
-			soclose(rso);
+			soclose(wso, FNONBLOCK);
+			soclose(rso, FNONBLOCK);
 			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
@@ -279,6 +279,7 @@ fifo_read(struct vop_read_args *ap)
 	struct uio *uio = ap->a_uio;
 	struct socket *rso = ap->a_vp->v_fifoinfo->fi_readsock;
 	int error, startresid;
+	int flags;
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_READ)
@@ -287,14 +288,14 @@ fifo_read(struct vop_read_args *ap)
 	if (uio->uio_resid == 0)
 		return (0);
 	if (ap->a_ioflag & IO_NDELAY)
-		rso->so_state |= SS_NBIO;
+		flags = MSG_FNONBLOCKING;
+	else
+		flags = 0;
 	startresid = uio->uio_resid;
 	VOP_UNLOCK(ap->a_vp, 0);
 	error = soreceive(rso, (struct sockaddr **)0, uio, (struct mbuf **)0,
-	    (struct mbuf **)0, (int *)0);
+	    (struct mbuf **)0, &flags);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
-	if (ap->a_ioflag & IO_NDELAY)
-		rso->so_state &= ~SS_NBIO;
 	return (error);
 }
 
@@ -311,19 +312,20 @@ fifo_write(struct vop_write_args *ap)
 	struct socket *wso = ap->a_vp->v_fifoinfo->fi_writesock;
 	struct thread *td = ap->a_uio->uio_td;
 	int error;
+	int flags;
 
 #ifdef DIAGNOSTIC
 	if (ap->a_uio->uio_rw != UIO_WRITE)
 		panic("fifo_write mode");
 #endif
 	if (ap->a_ioflag & IO_NDELAY)
-		wso->so_state |= SS_NBIO;
+		flags = MSG_FNONBLOCKING;
+	else
+		flags = 0;
 	VOP_UNLOCK(ap->a_vp, 0);
 	error = sosend(wso, (struct sockaddr *)0, ap->a_uio, 0,
-		       (struct mbuf *)0, 0, td);
+		       (struct mbuf *)0, flags, td);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
-	if (ap->a_ioflag & IO_NDELAY)
-		wso->so_state &= ~SS_NBIO;
 	return (error);
 }
 
@@ -340,8 +342,6 @@ fifo_ioctl(struct vop_ioctl_args *ap)
 	struct file filetmp;	/* Local */
 	int error;
 
-	if (ap->a_command == FIONBIO)
-		return (0);
 	if (ap->a_fflag & FREAD) {
 		filetmp.f_data = ap->a_vp->v_fifoinfo->fi_readsock;
 		error = soo_ioctl(&filetmp, ap->a_command, ap->a_data, ap->a_cred);
@@ -543,8 +543,8 @@ fifo_close(struct vop_close_args *ap)
 		vop_stdclose(ap);
 		return (0);
 	}
-	error1 = soclose(fip->fi_readsock);
-	error2 = soclose(fip->fi_writesock);
+	error1 = soclose(fip->fi_readsock, FNONBLOCK);
+	error2 = soclose(fip->fi_writesock, FNONBLOCK);
 	FREE(fip, M_FIFOINFO);
 	vp->v_fifoinfo = NULL;
 	if (error1)

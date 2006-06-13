@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.38 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.39 2006/06/13 08:12:03 dillon Exp $
  */
 
 /*
@@ -418,11 +418,12 @@ pipeselwakeup(cpipe)
  * MPALMOSTSAFE (acquires mplock)
  */
 static int
-pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct pipe *rpipe;
 	int error;
 	int nread = 0;
+	int nbio;
 	u_int size;
 
 	get_mplock();
@@ -431,6 +432,15 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	error = pipelock(rpipe, 1);
 	if (error)
 		goto unlocked_error;
+
+	if (fflags & O_FBLOCKING)
+		nbio = 0;
+	else if (fflags & O_FNONBLOCKING)
+		nbio = 1;
+	else if (fp->f_flag & O_NONBLOCK)
+		nbio = 1;
+	else
+		nbio = 0;
 
 	while (uio->uio_resid) {
 		caddr_t va;
@@ -588,7 +598,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			 * Handle non-blocking mode operation or
 			 * wait for more data.
 			 */
-			if (fp->f_flag & FNONBLOCK) {
+			if (nbio) {
 				error = EAGAIN;
 			} else {
 				rpipe->pipe_state |= PIPE_WANTR;
@@ -858,10 +868,11 @@ error2:
  * MPALMOSTSAFE - acquires mplock
  */
 static int
-pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
+pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	int error = 0;
 	int orig_resid;
+	int nbio;
 	struct pipe *wpipe, *rpipe;
 
 	get_mplock();
@@ -876,6 +887,15 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		return (EPIPE);
 	}
 	++wpipe->pipe_busy;
+
+	if (fflags & O_FBLOCKING)
+		nbio = 0;
+	else if (fflags & O_FNONBLOCKING)
+		nbio = 1;
+	else if (fp->f_flag & O_NONBLOCK)
+		nbio = 1;
+	else
+		nbio = 0;
 
 	/*
 	 * If it is advantageous to resize the pipe buffer, do
@@ -928,7 +948,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		 */
 		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT ||
 		    pipe_dwrite_enable > 1) &&
-		    (fp->f_flag & FNONBLOCK) == 0 &&
+		    nbio == 0 &&
 		    pipe_dwrite_enable) {
 			error = pipe_direct_write( wpipe, uio);
 			if (error)
@@ -1069,7 +1089,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 			/*
 			 * don't block on non-blocking I/O
 			 */
-			if (fp->f_flag & FNONBLOCK) {
+			if (nbio) {
 				error = EAGAIN;
 				break;
 			}
@@ -1148,9 +1168,6 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 	mpipe = (struct pipe *)fp->f_data;
 
 	switch (cmd) {
-	case FIONBIO:
-		error = 0;
-		break;
 	case FIOASYNC:
 		if (*(int *)data) {
 			mpipe->pipe_state |= PIPE_ASYNC;

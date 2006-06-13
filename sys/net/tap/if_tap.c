@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.24 2005/12/30 18:37:09 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.25 2006/06/13 08:12:03 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -521,9 +521,6 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 
 	case TAPGDEBUG:
 		*(int *)data = tapdebug;
-		break;
-
-	case FIONBIO:
 		break;
 
 	case FIOASYNC:

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.14 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.15 2006/06/13 08:12:04 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,6 +45,7 @@
 #include <sys/socketops.h>
 #include <sys/poll.h>
 #include <sys/uio.h>
+#include <sys/fcntl.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 
@@ -557,7 +558,7 @@ smb_nbst_disconnect(struct smb_vc *vcp, struct thread *td)
 		nbp->nbp_flags &= ~NBF_CONNECTED;
 		nbp->nbp_tso = (struct socket *)NULL;
 		soshutdown(so, 2);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 	}
 	if (nbp->nbp_state != NBST_RETARGET) {
 		nbp->nbp_state = NBST_CLOSED;

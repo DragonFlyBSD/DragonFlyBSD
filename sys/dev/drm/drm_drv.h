@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.12 2006/03/02 19:07:57 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.13 2006/06/13 08:12:01 dillon Exp $
  */
 
 /*
@@ -987,9 +987,6 @@ int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags,
 #endif
 
 	switch (cmd) {
-	case FIONBIO:
-		return 0;
-
 	case FIOASYNC:
 		dev->flags |= FASYNC;
 		return 0;

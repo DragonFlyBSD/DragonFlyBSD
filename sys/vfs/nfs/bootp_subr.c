@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.14 2006/05/06 03:16:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.15 2006/06/13 08:12:04 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -960,7 +960,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 	
 gotreply:
 out:
-	soclose(so);
+	soclose(so, FNONBLOCK);
 	return error;
 }
 
@@ -1630,7 +1630,7 @@ bootpc_init(void)
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next) {
 		bootpc_adjust_interface(ifctx, gctx, td);
 		
-		soclose(ifctx->so);
+		soclose(ifctx->so, FNONBLOCK);
 	}
 
 	for (ifctx = gctx->interfaces; ifctx != NULL; ifctx = ifctx->next)

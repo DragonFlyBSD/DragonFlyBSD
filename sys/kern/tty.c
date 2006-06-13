@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.23 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.24 2006/06/13 08:12:03 dillon Exp $
  */
 
 /*-
@@ -829,8 +829,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			CLR(tp->t_state, TS_ASYNC);
 		crit_exit();
 		break;
-	case FIONBIO:			/* set/clear non-blocking i/o */
-		break;			/* XXX: delete. */
 	case FIONREAD:			/* get # bytes to read */
 		crit_enter();
 		*(int *)data = ttnread(tp);

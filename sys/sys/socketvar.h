@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.25 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.26 2006/06/13 08:12:04 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -144,7 +144,7 @@ struct socket {
 #define	SS_CANTRCVMORE		0x0020	/* can't receive more data from peer */
 #define	SS_RCVATMARK		0x0040	/* at mark on input */
 
-#define	SS_NBIO			0x0100	/* non-blocking ops */
+#define	SS_UNUSED0100		0x0100
 #define	SS_ASYNC		0x0200	/* async i/o notify */
 #define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
 
@@ -370,7 +370,7 @@ struct	socket *soalloc (int waitok);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);
 void	socantrcvmore (struct socket *so);
 void	socantsendmore (struct socket *so);
-int	soclose (struct socket *so);
+int	soclose (struct socket *so, int fflags);
 int	soconnect (struct socket *so, struct sockaddr *nam, struct thread *td);
 int	soconnect2 (struct socket *so1, struct socket *so2);
 int	socreate (int dom, struct socket **aso, int type, int proto,

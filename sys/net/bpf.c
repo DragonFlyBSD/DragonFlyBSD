@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.29 2005/11/28 17:13:45 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.30 2006/06/13 08:12:03 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -826,9 +826,6 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 */
 	case BIOCSSEESENT:
 		d->bd_seesent = *(u_int *)addr;
-		break;
-
-	case FIONBIO:		/* Non-blocking I/O */
 		break;
 
 	case FIOASYNC:		/* Send signal on receive packets */

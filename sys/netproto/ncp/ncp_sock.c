@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.13 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.14 2006/06/13 08:12:04 dillon Exp $
  *
  * Low level socket routines
  */
@@ -53,6 +53,7 @@
 #include <sys/socketops.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
+#include <sys/fcntl.h>
 #include <sys/syslog.h>
 #include <sys/mbuf.h>
 #include <net/route.h>
@@ -288,9 +289,9 @@ ncp_sock_connect_ipx(struct ncp_conn *conn) {
 		if (!error) break;
 		if (error != EADDRINUSE) goto bad;
 		sipx.sipx_port = htons((ntohs(sipx.sipx_port)+4) & 0xfff8);
-		soclose(conn->ncp_so);
+		soclose(conn->ncp_so, FNONBLOCK);
 		if (conn->wdg_so)
-			soclose(conn->wdg_so);
+			soclose(conn->wdg_so, FNONBLOCK);
 	}
 	npcb = sotoipxpcb(conn->ncp_so);
 	npcb->ipxp_dpt = IPXPROTO_NCP;
@@ -376,20 +377,20 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 		so = conn->ncp_so;
 		conn->ncp_so = (struct socket *)0;
 		soshutdown(so, 2);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 	}
 	if (conn->wdg_so) {
 		so = conn->wdg_so;
 		conn->wdg_so = (struct socket *)0;
 		soshutdown(so, 2);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 	}
 #ifdef NCPBURST
 	if (conn->bc_so) {
 		so = conn->bc_so;
 		conn->bc_so = (struct socket *)NULL;
 		soshutdown(so, 2);
-		soclose(so);
+		soclose(so, FNONBLOCK);
 	}
 #endif
 	return 0;
