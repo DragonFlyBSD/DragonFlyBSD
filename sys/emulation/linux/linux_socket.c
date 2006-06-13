@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.24 2006/06/05 07:26:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.25 2006/06/13 21:04:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -361,7 +361,7 @@ linux_connect(struct linux_connect_args *args, int *res)
 	if (error)
 		return (error);
 
-	error = kern_connect(linux_args.s, sa);
+	error = kern_connect(linux_args.s, 0, sa);
 	FREE(sa, M_SONAME);
 
 	if (error != EISCONN)
@@ -429,7 +429,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 		if (error)
 			return (error);
 
-		error = kern_accept(linux_args.s, &sa, &sa_len, res);
+		error = kern_accept(linux_args.s, 0, &sa, &sa_len, res);
 
 		if (error) {
 			/*
@@ -450,7 +450,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(linux_args.s, NULL, 0, res);
+		error = kern_accept(linux_args.s, 0, NULL, 0, res);
 	}
 
 	if (error)

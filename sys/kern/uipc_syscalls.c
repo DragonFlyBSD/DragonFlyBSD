@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.70 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.71 2006/06/13 21:04:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -245,7 +245,7 @@ soaccept_predicate(struct netmsg *msg0)
  * initialize *name to NULL.
  */
 int
-kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
+kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -278,6 +278,13 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 		goto done;
 	}
 
+	if (fflags & O_FBLOCKING)
+		fflags |= lfp->f_flag & ~FNONBLOCK;
+	else if (fflags & O_FNONBLOCKING)
+		fflags |= lfp->f_flag | FNONBLOCK;
+	else
+		fflags = lfp->f_flag;
+
 	/* optimize for uniprocessor case later XXX JH */
 	port = head->so_proto->pr_mport(head, NULL, PRU_PRED);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport,
@@ -285,7 +292,7 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 		     lwkt_cmd_func(netmsg_so_notify),
 		     lwkt_cmd_func(netmsg_so_notify_abort));
 	msg.nm_predicate = soaccept_predicate;
-	msg.nm_fflags = lfp->f_flag;
+	msg.nm_fflags = fflags;
 	msg.nm_so = head;
 	msg.nm_etype = NM_REVENT;
 	error = lwkt_domsg(port, &msg.nm_lmsg);
@@ -356,7 +363,7 @@ done:
 }
 
 /*
- * accept_args(int s, caddr_t name, int *anamelen)
+ * accept(int s, caddr_t name, int *anamelen)
  */
 int
 sys_accept(struct accept_args *uap)
@@ -370,7 +377,7 @@ sys_accept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, &sa, &sa_len, &uap->sysmsg_result);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -381,10 +388,43 @@ sys_accept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_result);
 	}
 	return (error);
 }
+
+/*
+ * __accept(int s, int fflags, caddr_t name, int *anamelen)
+ */
+int
+sys___accept(struct __accept_args *uap)
+{
+	struct sockaddr *sa = NULL;
+	int sa_len;
+	int error;
+	int fflags = uap->flags & O_FMASK;
+
+	if (uap->name) {
+		error = copyin(uap->anamelen, &sa_len, sizeof(sa_len));
+		if (error)
+			return (error);
+
+		error = kern_accept(uap->s, fflags, &sa, &sa_len, &uap->sysmsg_result);
+
+		if (error == 0)
+			error = copyout(sa, uap->name, sa_len);
+		if (error == 0) {
+			error = copyout(&sa_len, uap->anamelen,
+			    sizeof(*uap->anamelen));
+		}
+		if (sa)
+			FREE(sa, M_SONAME);
+	} else {
+		error = kern_accept(uap->s, fflags, NULL, 0, &uap->sysmsg_result);
+	}
+	return (error);
+}
+
 
 /*
  * Returns TRUE if predicate satisfied.
@@ -405,7 +445,7 @@ soconnected_predicate(struct netmsg *msg0)
 }
 
 int
-kern_connect(int s, struct sockaddr *sa)
+kern_connect(int s, int fflags, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -417,14 +457,22 @@ kern_connect(int s, struct sockaddr *sa)
 	if (error)
 		return (error);
 	so = (struct socket *)fp->f_data;
-	if ((fp->f_flag & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
+
+	if (fflags & O_FBLOCKING)
+		/* fflags &= ~FNONBLOCK; */;
+	else if (fflags & O_FNONBLOCKING)
+		fflags |= FNONBLOCK;
+	else
+		fflags = fp->f_flag;
+
+	if ((fflags & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
 		error = EALREADY;
 		goto done;
 	}
 	error = soconnect(so, sa, td);
 	if (error)
 		goto bad;
-	if ((fp->f_flag & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
+	if ((fflags & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
 		error = EINPROGRESS;
 		goto done;
 	}
@@ -468,7 +516,26 @@ sys_connect(struct connect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	error = kern_connect(uap->s, sa);
+	error = kern_connect(uap->s, 0, sa);
+	FREE(sa, M_SONAME);
+
+	return (error);
+}
+
+/*
+ * connect_args(int s, int fflags, caddr_t name, int namelen)
+ */
+int
+sys___connect(struct __connect_args *uap)
+{
+	struct sockaddr *sa;
+	int error;
+	int fflags = uap->flags & O_FMASK;
+
+	error = getsockaddr(&sa, uap->name, uap->namelen);
+	if (error)
+		return (error);
+	error = kern_connect(uap->s, fflags, sa);
 	FREE(sa, M_SONAME);
 
 	return (error);

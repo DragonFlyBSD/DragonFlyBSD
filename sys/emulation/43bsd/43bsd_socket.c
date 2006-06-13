@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.7 2006/06/05 07:26:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.8 2006/06/13 21:04:14 dillon Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -109,7 +109,7 @@ sys_oaccept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = kern_accept(uap->s, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, &sa, &sa_len, &uap->sysmsg_result);
 
 		if (error) {
 			/*
@@ -128,7 +128,7 @@ sys_oaccept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = kern_accept(uap->s, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, 0, NULL, 0, &uap->sysmsg_result);
 	}
 	return (error);
 }

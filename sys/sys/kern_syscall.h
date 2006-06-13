@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.31 2006/05/23 20:35:12 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.32 2006/06/13 21:04:17 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -105,9 +105,9 @@ int kern_getrlimit(u_int which, struct rlimit *limp);
 /*
  * Prototypes for syscalls in kern/uipc_syscalls.c
  */
-int kern_accept(int s, struct sockaddr **name, int *namelen, int *res);
+int kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res);
 int kern_bind(int s, struct sockaddr *sa);
-int kern_connect(int s, struct sockaddr *sa);
+int kern_connect(int s, int fflags, struct sockaddr *sa);
 int kern_listen(int s, int backlog);
 int kern_getpeername(int s, struct sockaddr **name, int *namelen);
 int kern_getsockopt(int s, struct sockopt *sopt);
