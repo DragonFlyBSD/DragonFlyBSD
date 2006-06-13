@@ -31,19 +31,21 @@
  * SUCH DAMAGE.
  *
  * @(#)mmap.c	8.1 (Berkeley) 6/17/93
- * $DragonFly: src/lib/libc/sys/pwrite.c,v 1.3 2005/11/20 13:24:36 swildner Exp $
+ * $DragonFly: src/lib/libc/sys/pwrite.c,v 1.4 2006/06/13 08:17:42 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
+ssize_t __pwrite(int, const void *, size_t, int, off_t);
+
 /*
- * This function provides 64-bit offset padding that
- * is not supplied by GCC 1.X but is supplied by GCC 2.X.
+ * The kernel __pwrite includes a flags argument that allows the blocking
+ * and append mode(s) to be overridden.
  */
 ssize_t
 pwrite(int fd, const void *buf, size_t nbyte, off_t offset)
 {
-	return ((ssize_t)__syscall((quad_t)SYS_pwrite, fd, buf, nbyte, 0, offset));
+	return (__pwrite(fd, buf, nbyte, 0, offset));
 }

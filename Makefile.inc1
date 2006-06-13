@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.84 2005/10/11 13:31:05 corecode Exp $
+# $DragonFly: src/Makefile.inc1,v 1.85 2006/06/13 08:17:35 dillon Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -394,7 +394,7 @@ installcheck:
 	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
 	@pw groupshow _ntp || (echo "You may need to run 'make preupgrade' first"; exit 1)
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
-	@case `uname -r` in 1.2*|1.3-*|1.3.0-*|1.3.1-*|1.3.2-*|1.3.3-*|1.3.4-*) echo "You must upgrade your kernel to at least 1.3.5 and reboot before you can safely installworld, due to stat(2) and dirent ABI changes" ; exit 1;; esac
+	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; exit 1;; esac
 .endif
 
 # distributeworld
