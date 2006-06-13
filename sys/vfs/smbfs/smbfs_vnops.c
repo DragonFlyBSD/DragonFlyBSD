@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.24 2005/09/14 01:13:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.24.2.1 2006/06/13 13:22:57 corecode Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -975,10 +975,17 @@ smbfs_advlock(struct vop_advlock_args *ap)
 static int
 smbfs_pathcheck(struct smbmount *smp, const char *name, int nmlen, int nameiop)
 {
-	static const char *badchars = "*/\[]:<>=;?";
+	static const char *badchars = "*/:<>;?";
 	static const char *badchars83 = " +|,";
 	const char *cp;
 	int i, error;
+
+	/*
+	 * Backslash characters, being a path delimiter, are prohibited
+	 * within a path component even for LOOKUP operations.
+	 */
+	if (index(name, '\\') != NULL)
+		return ENOENT;
 
 	if (nameiop == NAMEI_LOOKUP)
 		return 0;
