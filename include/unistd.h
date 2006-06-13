@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.15 2006/06/10 20:00:09 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.16 2006/06/13 20:01:51 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -114,9 +114,6 @@ extern int optind, opterr, optopt;
 int	 getopt(int, char * const [], const char *);
 
 #ifndef	_POSIX_SOURCE
-#ifdef	__STDC__
-struct timeval;				/* select(2) */
-#endif
 int	 acct(const char *);
 int	 async_daemon (void);
 int	 brk(const void *);
@@ -184,7 +181,9 @@ int	 rresvport(int *);
 int	 rresvport_af(int *, int);
 int	 ruserok(const char *, int, const char *, const char *);
 void	*sbrk(intptr_t);
-#ifndef _SYS_SELECT_H_	/* bleh BSD compatibility */
+#ifndef _SELECT_DECLARED	/* bleh BSD compatibility */
+#define	_SELECT_DECLARED
+struct timeval;				/* select(2) */
 int	 select(int, fd_set * __restrict, fd_set * __restrict,
 		fd_set * __restrict, struct timeval * __restrict);
 #endif
