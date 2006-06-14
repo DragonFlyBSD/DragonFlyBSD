@@ -1,8 +1,8 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.14 2006/03/22 18:25:43 gshapiro Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.15 2006/06/14 16:45:56 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
 SMDIR=	${SENDMAIL_DIR}/sendmail
 .PATH: ${SMDIR}
 

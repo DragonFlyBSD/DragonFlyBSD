@@ -1,9 +1,9 @@
 # $FreeBSD: src/share/sendmail/Makefile,v 1.1.2.7 2003/05/10 17:24:25 gshapiro Exp $
-# $DragonFly: src/share/sendmail/Makefile,v 1.6 2006/03/22 18:25:43 gshapiro Exp $
+# $DragonFly: src/share/sendmail/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
 #
 # Doing a make install builds /usr/share/sendmail/
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
 CFDIR=	cf
 CFDIRS!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} \( -name CVS -prune \) -o -type d -print)
 CFFILES!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} \( -name CVS -prune \) -o -type f -print)

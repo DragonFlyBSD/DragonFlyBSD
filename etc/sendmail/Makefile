@@ -1,13 +1,13 @@
 #	@(#)Makefile	8.19 (Berkeley) 1/14/97
 # $FreeBSD: src/etc/sendmail/Makefile,v 1.31 2004/01/22 17:51:02 ru Exp $
-# $DragonFly: src/etc/sendmail/Makefile,v 1.6 2006/03/22 18:25:43 gshapiro Exp $
+# $DragonFly: src/etc/sendmail/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
 
 M4=		m4
 CHMOD=		chmod
 ROMODE=		444
 RM=		rm -f
 
-SENDMAIL_DIR=	${.CURDIR}/../../contrib/sendmail-8.13.6
+SENDMAIL_DIR=	${.CURDIR}/../../contrib/sendmail-8.13.7
 SMDIR=		${SENDMAIL_DIR}/sendmail
 SENDMAIL_CF_DIR?=${SENDMAIL_DIR}/cf
 

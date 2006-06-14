@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libmilter/Makefile,v 1.1.2.2 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libmilter/Makefile,v 1.6 2006/03/22 18:25:43 gshapiro Exp $
+# $DragonFly: src/lib/libmilter/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.6
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
 .PATH:	${SENDMAIL_DIR}/libmilter ${SENDMAIL_DIR}/libsm
 
 CFLAGS+=-I${SENDMAIL_DIR}/sendmail -I${SENDMAIL_DIR}/include -I.
