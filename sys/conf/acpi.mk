@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/acpi.mk,v 1.1 2005/08/16 10:31:35 y0netan1 Exp $
+# $DragonFly: src/sys/conf/acpi.mk,v 1.2 2006/06/14 15:50:09 y0netan1 Exp $
 #
 
 ACPICA_VERSION=		20050309
@@ -10,7 +10,8 @@ OSACPI_MD_DIR?=		${MACHINE_ARCH}/acpica5
 SYSDIR=	$S
 .endif
 
-.PATH:	${SYSDIR}/${ACPICA_DIR}/interpreter/dispatcher 	\
+ACPICA_KERN_PATHS = \
+	${SYSDIR}/${ACPICA_DIR}/interpreter/dispatcher 	\
 	${SYSDIR}/${ACPICA_DIR}/interpreter/executer	\
 	${SYSDIR}/${ACPICA_DIR}/interpreter/parser	\
 	${SYSDIR}/${ACPICA_DIR}/events			\
@@ -20,16 +21,13 @@ SYSDIR=	$S
 	${SYSDIR}/${ACPICA_DIR}/tables			\
 	${SYSDIR}/${ACPICA_DIR}/utilities		\
 	${SYSDIR}/${ACPICA_DIR}/debugger		\
-	${SYSDIR}/${ACPICA_DIR}/disassembler		\
-	${SYSDIR}/${ACPICA_DIR}/INTERPRETER/DISPATCHER 	\
-	${SYSDIR}/${ACPICA_DIR}/INTERPRETER/EXECUTER	\
-	${SYSDIR}/${ACPICA_DIR}/INTERPRETER/PARSER	\
-	${SYSDIR}/${ACPICA_DIR}/EVENTS			\
-	${SYSDIR}/${ACPICA_DIR}/HARDWARE		\
-	${SYSDIR}/${ACPICA_DIR}/NAMESPACE		\
-	${SYSDIR}/${ACPICA_DIR}/RESOURCES		\
-	${SYSDIR}/${ACPICA_DIR}/TABLES			\
-	${SYSDIR}/${ACPICA_DIR}/UTILITIES
+	${SYSDIR}/${ACPICA_DIR}/disassembler
+
+ACPICA_UTIL_PATHS = \
+	${ACPICA_KERN_PATHS}				\
+	${SYSDIR}/${ACPICA_DIR}				\
+	${SYSDIR}/${ACPICA_DIR}/compiler		\
+	${SYSDIR}/${ACPICA_DIR}/common
 
 ${.OBJDIR}/acpi.h: ${SYSDIR}/${ACPICA_DIR}/include/acpi.h
 	cp ${.ALLSRC} ${.TARGET}
