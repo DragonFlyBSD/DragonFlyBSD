@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.68 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.69 2006/06/14 16:58:04 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -284,11 +284,13 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		oflags = fp->f_flag & FCNTLFLAGS;
 		fp->f_flag &= ~FCNTLFLAGS;
 		fp->f_flag |= FFLAGS(dat->fc_flags & ~O_ACCMODE) & FCNTLFLAGS;
-		tmp = fp->f_flag & FASYNC;
-		error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
-		if (error == 0)
-			break;
-		fp->f_flag = (fp->f_flag & ~FCNTLFLAGS) | oflags;
+		error = 0;
+		if ((fp->f_flag ^ oflags) & FASYNC) {
+			tmp = fp->f_flag & FASYNC;
+			error = fo_ioctl(fp, FIOASYNC, (caddr_t)&tmp, cred);
+		}
+		if (error)
+			fp->f_flag = (fp->f_flag & ~FCNTLFLAGS) | oflags;
 		break;
 
 	case F_GETOWN:
