@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.18 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.19 2006/06/14 21:07:09 swildner Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -49,6 +49,7 @@
 #include <net/if.h>
 #include <sys/tty.h>
 #include <sys/thread2.h>
+#include <sys/vnode.h>
 
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_rbch_ioctl.h>
