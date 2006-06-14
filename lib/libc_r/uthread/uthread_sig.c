@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_sig.c,v 1.25.2.13 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.3 2005/05/09 13:28:40 davidxu Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_sig.c,v 1.4 2006/06/14 01:45:28 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -126,7 +126,7 @@ _thread_sig_handler(int sig, siginfo_t *info, ucontext_t *ucp)
 		 * be ready to read when this signal handler returns.
 		 */
 		if (_queue_signals != 0) {
-			__sys_write(_thread_kern_pipe[1], &c, 1);
+			__sys___pwrite(_thread_kern_pipe[1], &c, 1, O_FBLOCKING, -1);
 			DBG_MSG("Got signal %d, queueing to kernel pipe\n", sig);
 		}
 		if (_thread_sigq[sig - 1].blocked == 0) {

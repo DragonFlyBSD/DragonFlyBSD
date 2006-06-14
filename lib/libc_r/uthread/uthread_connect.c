@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_connect.c,v 1.10.2.5 2003/01/17 07:56:43 ru Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_connect.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_connect.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
  */
 #include <errno.h>
 #include <sys/types.h>
@@ -47,7 +47,7 @@ _connect(int fd, const struct sockaddr * name, socklen_t namelen)
 	int             errnolen, ret, tmpnamelen;
 
 	if ((ret = _FD_LOCK(fd, FD_RDWR, NULL)) == 0) {
-		if ((ret = __sys_connect(fd, name, namelen)) < 0) {
+		if ((ret = __sys___connect(fd, O_FNONBLOCKING, name, namelen)) < 0) {
 			if ((_thread_fd_getflags(fd) & O_NONBLOCK) == 0
 			    && ((errno == EWOULDBLOCK) || (errno == EINPROGRESS)
 			    || (errno == EALREADY) || (errno == EAGAIN))) {

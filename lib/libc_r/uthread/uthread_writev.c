@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_writev.c,v 1.16.2.6 2002/11/15 18:39:21 archie Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_writev.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_writev.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
  *
  */
 #include <sys/types.h>
@@ -93,7 +93,7 @@ _writev(int fd, const struct iovec * iov, int iovcnt)
 		 */
 		while (ret == 0) {
 			/* Perform a non-blocking write syscall: */
-			n = __sys_writev(fd, &p_iov[idx], iovcnt - idx);
+			n = __sys___pwritev(fd, &p_iov[idx], iovcnt - idx, O_FNONBLOCKING, -1);
 
 			/* Check if one or more bytes were written: */
 			if (n > 0) {

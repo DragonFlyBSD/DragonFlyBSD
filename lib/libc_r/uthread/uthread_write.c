@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_write.c,v 1.16.2.6 2002/11/12 20:46:53 archie Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.4 2003/12/29 16:00:01 drhodus Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.5 2006/06/14 01:45:28 dillon Exp $
  *
  */
 #include <sys/types.h>
@@ -77,7 +77,7 @@ _write(int fd, const void *buf, size_t nbytes)
 		 */
 		while (ret == 0) {
 			/* Perform a non-blocking write syscall: */
-			n = __sys_write(fd, buf + num, nbytes - num);
+			n = __sys___pwrite(fd, buf + num, nbytes - num, O_FNONBLOCKING, -1);
 
 			/* Check if one or more bytes were written: */
 			if (n > 0)

@@ -30,10 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.8.2.2 2002/10/17 19:37:39 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.3 2005/01/31 22:29:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.4 2006/06/14 01:45:28 dillon Exp $
  *
  */
 
+#include <sys/fcntl.h>
 #include <stdio.h>
 #include <sched.h>
 #include <unistd.h>
@@ -99,7 +100,7 @@ _spinlock_debug(spinlock_t *lck, char *fname, int lineno)
 		if (cnt > 100) {
 			char str[256];
 			snprintf(str, sizeof(str), "%s - Warning: Thread %p attempted to lock %p from %s (%d) was left locked from %s (%d)\n", __progname, curthread, lck, fname, lineno, lck->fname, lck->lineno);
-			__sys_write(2,str,strlen(str));
+			__sys___pwrite(2, str, strlen(str), O_FBLOCKING, -1);
 			__sleep(1);
 			cnt = 0;
 		}

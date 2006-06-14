@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fd.c,v 1.16.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fd.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_fd.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
  *
  */
 #include <errno.h>
@@ -122,10 +122,9 @@ _thread_fd_table_init(int fd)
 		if (((fd >= 3) || (_pthread_stdio_flags[fd] == -1)) &&
 		    (entry->flags = __sys_fcntl(fd, F_GETFL, 0)) == -1) {
 			ret = -1;
-		}
-		else {
+		} else {
 			/* Check if a stdio descriptor: */
-			if ((fd < 3) && (_pthread_stdio_flags[fd] != -1))
+			if ((fd < 3) && (_pthread_stdio_flags[fd] != -1)) {
 				/*
 				 * Use the stdio flags read by
 				 * _pthread_init() to avoid
@@ -135,17 +134,16 @@ _thread_fd_table_init(int fd)
 				 * fds.
 				 */
 				entry->flags = _pthread_stdio_flags[fd];
+			}
 
 			/*
-			 * Make the file descriptor non-blocking.
-			 * This might fail if the device driver does
-			 * not support non-blocking calls, or if the
-			 * driver is naturally non-blocking.
+			 * NOTE: We now use new system calls which allow
+			 * the non-blocking mode to be set on a per-I/O
+			 * basis, we no longer have to mess with the
+			 * file pointer (which can have unexpected side
+			 * effects since it might be shared with parent
+			 * processes such as, oh, gmake).
 			 */
-			saved_errno = errno;
-			__sys_fcntl(fd, F_SETFL,
-			    entry->flags | O_NONBLOCK);
-			errno = saved_errno;
 
 			/* Lock the file descriptor table: */
 			_SPINLOCK(&fd_table_lock);

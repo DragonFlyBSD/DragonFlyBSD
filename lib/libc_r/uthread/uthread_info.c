@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_info.c,v 1.14.2.9 2003/02/15 05:35:31 kris Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.4 2005/05/30 20:50:53 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_info.c,v 1.5 2006/06/14 01:45:28 dillon Exp $
  */
 #include <errno.h>
 #include <fcntl.h>
@@ -116,7 +116,7 @@ _thread_dump_info(void)
 	} else {
 		/* Output a header for active threads: */
 		strcpy(s, "\n\n=============\nACTIVE THREADS\n\n");
-		__sys_write(fd, s, strlen(s));
+		__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 		/* Enter a loop to report each thread in the global list: */
 		TAILQ_FOREACH(pthread, &_thread_list, tle) {
@@ -125,7 +125,7 @@ _thread_dump_info(void)
 
 		/* Output a header for ready threads: */
 		strcpy(s, "\n\n=============\nREADY THREADS\n\n");
-		__sys_write(fd, s, strlen(s));
+		__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 		/* Enter a loop to report each thread in the ready queue: */
 		TAILQ_FOREACH (pq_list, &_readyq.pq_queue, pl_link) {
@@ -136,7 +136,7 @@ _thread_dump_info(void)
 
 		/* Output a header for waiting threads: */
 		strcpy(s, "\n\n=============\nWAITING THREADS\n\n");
-		__sys_write(fd, s, strlen(s));
+		__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 		/* Enter a loop to report each thread in the waiting queue: */
 		TAILQ_FOREACH (pthread, &_waitingq, pqe) {
@@ -145,7 +145,7 @@ _thread_dump_info(void)
 
 		/* Output a header for threads in the work queue: */
 		strcpy(s, "\n\n=============\nTHREADS IN WORKQ\n\n");
-		__sys_write(fd, s, strlen(s));
+		__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 		/* Enter a loop to report each thread in the waiting queue: */
 		TAILQ_FOREACH (pthread, &_workq, qe) {
@@ -156,11 +156,11 @@ _thread_dump_info(void)
 		if (TAILQ_FIRST(&_dead_list) == NULL) {
 			/* Output a record: */
 			strcpy(s, "\n\nTHERE ARE NO DEAD THREADS\n");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 		} else {
 			/* Output a header for dead threads: */
 			strcpy(s, "\n\nDEAD THREADS\n\n");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 			/*
 			 * Enter a loop to report each thread in the global
@@ -174,7 +174,7 @@ _thread_dump_info(void)
 		/* Output a header for file descriptors: */
 		snprintf(s, sizeof(s), "\n\n=============\nFILE DESCRIPTOR "
 		    "TABLE (table size %d)\n\n", _thread_dtablesize);
-		__sys_write(fd, s, strlen(s));
+		__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 		/* Enter a loop to report file descriptor lock usage: */
 		for (i = 0; i < _thread_dtablesize; i++) {
@@ -195,7 +195,7 @@ _thread_dump_info(void)
 				    _thread_fd_table[i]->w_lockcount,
 				    _thread_fd_table[i]->w_fname,
 				    _thread_fd_table[i]->w_lineno);
-				    __sys_write(fd, s, strlen(s));
+				    __sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 			}
 		}
 
@@ -222,20 +222,20 @@ dump_thread(int fd, pthread_t pthread, int long_version)
 	    pthread, (pthread->name == NULL) ? "" : pthread->name,
 	    pthread->active_priority, thread_info[i].name, pthread->fname,
 	    pthread->lineno);
-	__sys_write(fd, s, strlen(s));
+	__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 
 	if (long_version != 0) {
 		/* Check if this is the running thread: */
 		if (pthread == curthread) {
 			/* Output a record for the running thread: */
 			strcpy(s, "This is the running thread\n");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 		}
 		/* Check if this is the initial thread: */
 		if (pthread == _thread_initial) {
 			/* Output a record for the initial thread: */
 			strcpy(s, "This is the initial thread\n");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 		}
 		/* Process according to thread state: */
 		switch (pthread->state) {
@@ -249,18 +249,18 @@ dump_thread(int fd, pthread_t pthread, int long_version)
 			    pthread->data.fd.fd,
 			    pthread->data.fd.fname,
 			    pthread->data.fd.branch);
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 			break;
 		case PS_SIGWAIT:
 			snprintf(s, sizeof(s), "sigmask (hi)");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 			for (i = _SIG_WORDS - 1; i >= 0; i--) {
 				snprintf(s, sizeof(s), "%08x\n",
 				    pthread->sigmask.__bits[i]);
-				__sys_write(fd, s, strlen(s));
+				__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 			}
 			snprintf(s, sizeof(s), "(lo)\n");
-			__sys_write(fd, s, strlen(s));
+			__sys___pwrite(fd, s, strlen(s), O_FBLOCKING, -1);
 			break;
 		/*
 		 * Trap other states that are not explicitly

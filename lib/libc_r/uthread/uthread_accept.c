@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_accept.c,v 1.13.2.5 2003/01/17 07:56:43 ru Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_accept.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_accept.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
  */
 #include <errno.h>
 #include <unistd.h>
@@ -49,7 +49,7 @@ _accept(int fd, struct sockaddr * name, socklen_t *namelen)
 	/* Lock the file descriptor: */
 	if ((ret = _FD_LOCK(fd, FD_RDWR, NULL)) == 0) {
 		/* Enter a loop to wait for a connection request: */
-		while ((ret = __sys_accept(fd, name, namelen)) < 0) {
+		while ((ret = __sys___accept(fd, O_FNONBLOCKING, name, namelen)) < 0) {
 			/* Check if the socket is to block: */
 			if ((_thread_fd_getflags(fd) & O_NONBLOCK) == 0
 			    && (errno == EWOULDBLOCK || errno == EAGAIN)) {
