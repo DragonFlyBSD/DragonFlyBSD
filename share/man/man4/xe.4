@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/xe.4,v 1.11 2005/07/21 05:02:38 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/xe.4,v 1.1 2005/09/20 11:38:33 asmodai Exp $
+.\" $DragonFly: src/share/man/man4/xe.4,v 1.2 2006/06/17 00:44:08 swildner Exp $
 .\"
 .Dd July 16, 2005
 .Dt XE 4
@@ -33,18 +33,15 @@
 .Nm xe
 .Nd "Xircom PCMCIA Ethernet device driver"
 .Sh SYNOPSIS
-To compile support for the
-.Nm
-driver into your kernel, place the following line in your
-kernel configuration file:
+To compile this driver into your kernel, place the following line in
+your kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device xe"
 .Ed
 .Pp
-Alternatively, to load the
-.Nm
-driver at boot time, place the following line in
-.Xr loader.conf 5 :
+Alternatively, to load the driver as a module at boot time, place the
+following line in
+.Pa /boot/loader.conf :
 .Bd -literal -offset indent
 if_xe_load="YES"
 .Ed
