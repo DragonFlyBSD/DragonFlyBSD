@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.2 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.3 2006/06/17 10:31:59 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -366,6 +366,7 @@ struct acx_softc {
 	uint16_t		chip_intr_enable;
 	uint16_t		chip_intr_disable;
 
+	int			chip_hw_crypt;
 	uint16_t		chip_gpio_pled;	/* power led */
 	uint16_t		chip_chan_flags; /* see IEEE80211_CHAN_ */
 	uint16_t		chip_txdesc1_len;
@@ -377,7 +378,6 @@ struct acx_softc {
 	uint8_t			sc_eeprom_ver;	/* unused */
 	uint8_t			sc_form_factor;	/* unused */
 	uint8_t			sc_radio_type;	/* see ACX_RADIO_TYPE_ */
-	int			sc_softwep;
 
 	struct acx_ring_data	sc_ring_data;
 	struct acx_buf_data	sc_buf_data;
@@ -404,7 +404,7 @@ struct acx_softc {
 	int			(*chip_init)		/* non-NULL */
 				(struct acx_softc *);
 
-	int			(*chip_set_wepkey)	/* non-NULL */
+	int			(*chip_set_wepkey)
 				(struct acx_softc *,
 				 struct ieee80211_key *, int);
 

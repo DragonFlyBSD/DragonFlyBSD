@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.3 2006/06/17 10:31:59 sephe Exp $
  */
 
 /*
@@ -141,7 +141,7 @@ static void	acx_init_info_reg(struct acx_softc *);
 static int	acx_config(struct acx_softc *);
 static int	acx_read_config(struct acx_softc *, struct acx_config *);
 static int	acx_write_config(struct acx_softc *, struct acx_config *);
-static int	acx_set_wepkeys(struct acx_softc *);
+static int	acx_set_crypt_keys(struct acx_softc *);
 #ifdef foo
 static void	acx_begin_scan(struct acx_softc *);
 #endif
@@ -413,9 +413,12 @@ acx_attach(device_t dev)
 	ic->ic_opmode = IEEE80211_M_STA;
 	ic->ic_state = IEEE80211_S_INIT;
 
-	ic->ic_caps = IEEE80211_C_WEP |		/* WEP */
-		      IEEE80211_C_IBSS |	/* IBSS modes */
-		      IEEE80211_C_SHPREAMBLE;	/* Short preamble */
+	/*
+	 * NOTE: Don't overwrite ic_caps set by chip specific code
+	 */
+	ic->ic_caps |= IEEE80211_C_WEP |	/* WEP */
+		       IEEE80211_C_IBSS |	/* IBSS modes */
+		       IEEE80211_C_SHPREAMBLE;	/* Short preamble */
 
 	/* Get station id */
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i) {
@@ -629,9 +632,9 @@ acx_init(void *arg)
 	if (error)
 		goto back;
 
-	/* Setup WEP */
+	/* Setup crypto stuffs */
 	if (sc->sc_ic.ic_flags & IEEE80211_F_PRIVACY) {
-		error = acx_set_wepkeys(sc);
+		error = acx_set_crypt_keys(sc);
 		if (error)
 			goto back;
 		sc->sc_ic.ic_flags &= ~IEEE80211_F_DROPUNENC;
@@ -665,7 +668,7 @@ acx_init_info_reg(struct acx_softc *sc)
 }
 
 static int
-acx_set_wepkeys(struct acx_softc *sc)
+acx_set_crypt_keys(struct acx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_conf_wep_txkey wep_txkey;
@@ -677,16 +680,18 @@ acx_set_wepkeys(struct acx_softc *sc)
 		if (wk->wk_keylen == 0)
 			continue;
 
-		error = sc->chip_set_wepkey(sc, wk, i);
-		if (error)
-			return error;
-
-		if (sc->sc_softwep && (wk->wk_flags & IEEE80211_KEY_XMIT))
+		if (sc->chip_hw_crypt) {
+			error = sc->chip_set_wepkey(sc, wk, i);
+			if (error)
+				return error;
+			got_wk = 1;
+		} else if (wk->wk_flags & IEEE80211_KEY_XMIT) {
 			wk->wk_flags |= IEEE80211_KEY_SWCRYPT;
-		got_wk = 1;
+		}
 	}
 
-	if (!got_wk || ic->ic_def_txkey == IEEE80211_KEYIX_NONE)
+	if (!got_wk || sc->chip_hw_crypt ||
+	    ic->ic_def_txkey == IEEE80211_KEYIX_NONE)
 		return 0;
 
 	/* Set current WEP key index */
@@ -1207,7 +1212,7 @@ acx_start(struct ifnet *ifp)
 		}
 
 		f = mtod(m, struct ieee80211_frame *);
-		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && sc->sc_softwep) {
+		if ((f->i_fc[1] & IEEE80211_FC1_WEP) && !sc->chip_hw_crypt) {
 			KASSERT(ni != NULL, ("TX node is NULL (WEP)\n"));
 			if (ieee80211_crypto_encap(ic, ni, m) == NULL) {
 				ieee80211_free_node(ni);
@@ -1515,7 +1520,8 @@ acx_rxeof(struct acx_softc *sc)
 				 sc->chip_rxbuf_exhdr);
 			f = mtod(m, struct ieee80211_frame *);
 
-			if (f->i_fc[1] & IEEE80211_FC1_WEP) {
+			if ((f->i_fc[1] & IEEE80211_FC1_WEP) &&
+			    sc->chip_hw_crypt) {
 				/* Short circuit software WEP */
 				f->i_fc[1] &= ~IEEE80211_FC1_WEP;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.3 2006/06/17 10:31:59 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -273,6 +273,7 @@ acx100_set_param(device_t dev)
 	sc->chip_mem1_rid = PCIR_BAR(1);
 	sc->chip_mem2_rid = PCIR_BAR(2);
 	sc->chip_ioreg = acx100_reg;
+	sc->chip_hw_crypt = 1;
 	sc->chip_intr_enable = ACX100_INTR_ENABLE;
 	sc->chip_intr_disable = ACX100_INTR_DISABLE;
 	sc->chip_gpio_pled = ACX100_GPIO_POWER_LED;

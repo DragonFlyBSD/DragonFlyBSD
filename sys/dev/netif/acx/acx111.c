@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.2 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.3 2006/06/17 10:31:59 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -165,11 +165,11 @@ struct acx111_conf_txpower {
 struct acx111_conf_option {
 	struct acx_conf	confcom;
 	uint32_t	feature;
-	uint32_t	dataflow;	/* see ACX111_DATAFLOW_ */
+	uint32_t	dataflow;	/* see ACX111_DF_ */
 } __packed;
 
-#define ACX111_DATAFLOW_SNIFFER		0x00000080
-#define ACX111_DATAFLOW_NO_TXCRYPT	0x00000001
+#define ACX111_DF_NO_RXDECRYPT	0x00000080
+#define ACX111_DF_NO_TXENCRYPT	0x00000001
 
 struct acx111_wepkey {
 	uint8_t		mac_addr[IEEE80211_ADDR_LEN];
@@ -254,16 +254,6 @@ static uint16_t	acx111_rate_map[109] = {
 	ACX111_RATE(108)
 };
 
-/*
- * For firmware whose version is listed in the following array,
- * software WEP should be used, since hardware WEP's performance
- * is too poor
- */
-static const uint32_t	acx111_softwep_fwver[] = {
-	0x01020030,
-	0	/* KEEP THIS */
-};
-
 static int	acx111_init(struct acx_softc *);
 static int	acx111_init_memory(struct acx_softc *);
 static void	acx111_init_fw_txring(struct acx_softc *, uint32_t);
@@ -273,9 +263,6 @@ static int	acx111_write_config(struct acx_softc *, struct acx_config *);
 static void	acx111_set_fw_txdesc_rate(struct acx_softc *,
 					  struct acx_txbuf *, int);
 static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
-
-static int	acx111_set_wepkey(struct acx_softc *, struct ieee80211_key *,
-				  int);
 
 void
 acx111_set_param(device_t dev)
@@ -295,12 +282,12 @@ acx111_set_param(device_t dev)
 			      IEEE80211_CHAN_OFDM |
 			      IEEE80211_CHAN_DYN |
 			      IEEE80211_CHAN_2GHZ;
+	sc->sc_ic.ic_caps = IEEE80211_C_WPA;
 	sc->sc_ic.ic_phytype = IEEE80211_T_OFDM;
 	sc->sc_ic.ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
 	sc->sc_ic.ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
 
 	sc->chip_init = acx111_init;
-	sc->chip_set_wepkey = acx111_set_wepkey;
 	sc->chip_write_config = acx111_write_config;
 	sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate;
 	sc->chip_set_bss_join_param = acx111_set_bss_join_param;
@@ -411,7 +398,6 @@ acx111_write_config(struct acx_softc *sc, struct acx_config *conf)
 	struct acx111_conf_txpower tx_power;
 	struct acx111_conf_option opt;
 	uint32_t dataflow;
-	const uint32_t *fwver;
 
 	/* Set TX power */
 	tx_power.txpower = ACX111_TXPOWER_VAL;
@@ -422,31 +408,16 @@ acx111_write_config(struct acx_softc *sc, struct acx_config *conf)
 	}
 
 	/*
-	 * Turn off sniffering
-	 * Turn on hardware/software WEP
+	 * Turn off hardware WEP
 	 */
 	if (acx111_get_option_conf(sc, &opt) != 0) {
 		if_printf(&sc->sc_ic.ic_if, "%s can't get option\n", __func__);
 		return ENXIO;
 	}
 
-	dataflow = le32toh(opt.dataflow) & ~ACX111_DATAFLOW_SNIFFER;
-
-	for (fwver = acx111_softwep_fwver; *fwver != 0; ++fwver) {
-		if (sc->sc_firmware_ver == *fwver)
-			break;
-	}
-
-	if (*fwver != 0) {
-		DPRINTF((&sc->sc_ic.ic_if, "disable hardware WEP\n"));
-		dataflow |= ACX111_DATAFLOW_NO_TXCRYPT;
-		sc->sc_softwep = 1;
-	} else {
-		DPRINTF((&sc->sc_ic.ic_if, "enable hardware WEP\n"));
-		dataflow &= ~ACX111_DATAFLOW_NO_TXCRYPT;
-		sc->sc_softwep = 0;
-	}
-
+	dataflow = le32toh(opt.dataflow) |
+		   ACX111_DF_NO_TXENCRYPT |
+		   ACX111_DF_NO_RXDECRYPT;
 	opt.dataflow = htole32(dataflow);
 
 	if (acx111_set_option_conf(sc, &opt) != 0) {
@@ -475,31 +446,4 @@ acx111_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 
 	bj->basic_rates = htole16(ACX111_RATE_ALL);
 	bj->dtim_intvl = dtim_intvl;
-}
-
-static int
-acx111_set_wepkey(struct acx_softc *sc, struct ieee80211_key *wk, int wk_idx)
-{
-	struct acx111_wepkey wepkey;
-
-	if (wk->wk_keylen > ACX111_WEPKEY_LEN) {
-		if_printf(&sc->sc_ic.ic_if, "%dth WEP key size beyond %d\n",
-			  wk_idx, ACX111_WEPKEY_LEN);
-		return EINVAL;
-	}
-
-	bzero(&wepkey, sizeof(wepkey));
-	wepkey.action = htole16(ACX111_WEPKEY_ACT_ADD);
-	wepkey.key_type = ACX111_WEPKEY_TYPE_DEFAULT;
-	wepkey.index = 0; /* XXX ignored? */
-	wepkey.key_len = wk->wk_keylen;
-	wepkey.key_idx = wk_idx;
-	bcopy(wk->wk_key, wepkey.key, wk->wk_keylen);
-	if (acx_exec_command(sc, ACXCMD_WEP_MGMT, &wepkey, sizeof(wepkey),
-			     NULL, 0) != 0) {
-		if_printf(&sc->sc_ic.ic_if, "%s set %dth WEP key failed\n",
-			  __func__, wk_idx);
-		return ENXIO;
-	}
-	return 0;
 }
