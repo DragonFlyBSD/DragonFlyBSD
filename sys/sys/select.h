@@ -32,11 +32,13 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.8 2006/06/13 20:01:53 dillon Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.9 2006/06/18 01:00:35 corecode Exp $
  */
 
 #ifndef _SYS_SELECT_H_
 #define	_SYS_SELECT_H_
+
+#include <sys/cdefs.h>
 
 #ifndef _SYS_SIGNAL_H_
 #include <sys/signal.h>
@@ -77,11 +79,13 @@ typedef struct fd_set {
 #define FD_COPY(f, t)	bcopy(f, t, sizeof(*(f)))
 #define FD_ZERO(p)	bzero(p, sizeof(*(p)))
 
+__BEGIN_DECLS
 #ifndef _SELECT_DECLARED
 #define _SELECT_DECLARED
 struct timeval;
 int	select(int, fd_set * __restrict, fd_set * __restrict,
 	       fd_set * __restrict, struct timeval * __restrict);
 #endif
+__END_DECLS
 
 #endif	/* !_SYS_SELECT_H_ */
