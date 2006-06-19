@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/download.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
+# $DragonFly: site/data/community/Attic/download.cgi,v 1.2 2006/06/19 12:24:38 corecode Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -296,6 +296,16 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>Demokritos University of Thrace (Greece)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://ftp.duth.gr/pub/DragonflyBSD/">HTTP</a>,
+<a href="ftp://ftp.duth.gr/pub/DragonflyBSD/">FTP</a>
+<a href="rsync://ftp.duth.gr/DragonflyBSD/">rsync</a>
+</TD>
+</TR>
+
 <!-- binary packages after this -->
 <TR>
 <TD COLSPAN="3">&nbsp;</TD>
@@ -349,6 +359,15 @@ rsync
 <TD>
 <a href="ftp://ftp.jaist.ac.jp/pub/DragonFly/packages/DEVELOPMENT/i386/">i386 packages</a>,
 <a href="ftp://ftp.jaist.ac.jp/pub/DragonFly/packages/DEVELOPMENT/bootstrap/">bootstrap kits</a>
+</TD>
+</TR>
+
+<TR>
+<TD>Demokritos University of Thrace (Greece)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD>
+<a href="ftp://ftp.duth.gr/pub/DragonflyBSD/packages/RELEASE/i386/All/">i386 packages</a>
+<a href="ftp://ftp.duth.gr/pub/DragonflyBSD/packages/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
