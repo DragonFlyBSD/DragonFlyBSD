@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.51 2005/01/10 08:39:21 imp Exp $ $
- * $DragonFly: src/bin/cp/cp.c,v 1.11 2005/02/28 23:15:35 corecode Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.12 2006/06/19 12:07:50 corecode Exp $
  */
 
 /*
@@ -462,6 +462,7 @@ copy(char **argv, enum op type, int fts_options)
 	}
 	if (errno)
 		err(1, "fts_read");
+	fts_close(ftsp);
 	return (rval);
 }
 
