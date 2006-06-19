@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.6 2006/02/04 14:12:20 eirikn Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.7 2006/06/19 12:06:07 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -422,9 +422,12 @@ loop:
 	return;
 
 success:
-	cmdp->rehash = 0;
-	entry->cmdtype = cmdp->cmdtype;
-	entry->u = cmdp->param;
+	if (cmdp) {
+		cmdp->rehash = 0;
+		entry->cmdtype = cmdp->cmdtype;
+		entry->u = cmdp->param;
+	} else
+		entry->cmdtype = CMDUNKNOWN;
 }
 
 
