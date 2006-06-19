@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.6 2006/06/05 15:55:13 dillon Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.7 2006/06/19 12:05:43 corecode Exp $
  */
 
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
@@ -470,7 +470,8 @@ evalpipe(union node *n)
 		pip[1] = -1;
 		if (lp->next) {
 			if (pipe(pip) < 0) {
-				close(prevfd);
+				if (prevfd >= 0)
+					close(prevfd);
 				error("Pipe call failed: %s", strerror(errno));
 			}
 		}
@@ -582,7 +583,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 	struct cmdentry cmdentry;
 	struct job *jp;
 	struct jmploc jmploc;
-	struct jmploc *volatile savehandler;
+	struct jmploc *volatile savehandler = NULL;
 	const char *volatile savecmdname;
 	volatile struct shparam saveparam;
 	struct localvar *volatile savelocalvars;
