@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.15 2005/09/22 01:49:44 corecode Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.16 2006/06/19 12:08:25 corecode Exp $
  */
 
 #include <sys/stat.h>
@@ -308,6 +308,7 @@ err:
 	}
 	if (errno)
 		err(1, "fts_read");
+	fts_close(fts);
 }
 
 static void
