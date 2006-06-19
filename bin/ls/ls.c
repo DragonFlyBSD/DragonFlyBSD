@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.78 2004/06/08 09:30:10 das Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.15 2006/01/12 13:43:10 corecode Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.16 2006/06/19 12:06:47 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -439,7 +439,7 @@ traverse(int argc, char *argv[], int options)
 {
 	FTS *ftsp;
 	FTSENT *p, *chp;
-	int ch_options;
+	int ch_options, error;
 
 	if ((ftsp =
 	    fts_open(argv, options, f_nosort ? NULL : mastercmp)) == NULL)
@@ -452,8 +452,10 @@ traverse(int argc, char *argv[], int options)
 	chp = fts_children(ftsp, 0);
 	if (chp != NULL)
 		display(NULL, chp);
-	if (f_listdir)
+	if (f_listdir) {
+		fts_close(ftsp);
 		return;
+	}
 
 	/*
 	 * If not recursing down this tree and don't need stat info, just get
@@ -499,6 +501,9 @@ traverse(int argc, char *argv[], int options)
 		default:
 			break;
 		}
+	error = errno;
+	fts_close(ftsp);
+	errno = error;
 	if (errno)
 		err(1, "fts_read");
 }
