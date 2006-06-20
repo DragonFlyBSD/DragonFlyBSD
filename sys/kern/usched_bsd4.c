@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.14 2006/06/10 20:19:38 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.15 2006/06/20 18:44:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -755,6 +755,7 @@ bsd4_resetpriority(struct lwp *lp)
 
 	switch(newrqtype) {
 	case RTP_PRIO_REALTIME:
+	case RTP_PRIO_FIFO:
 		newpriority = PRIBASE_REALTIME +
 			     (lp->lwp_rtprio.prio & PRIMASK);
 		break;
