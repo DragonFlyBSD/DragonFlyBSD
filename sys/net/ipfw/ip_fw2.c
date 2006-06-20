@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.17 2005/06/17 19:12:19 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.17.2.1 2006/06/20 13:28:47 y0netan1 Exp $
  */
 
 #define        DEB(x)
@@ -76,14 +76,6 @@
 #include <netinet/udp_var.h>
 
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
-
-/*
- * XXX This one should go in sys/mbuf.h. It is used to avoid that
- * a firewall-generated packet loops forever through the firewall.
- */
-#ifndef	M_SKIP_FIREWALL
-#define M_SKIP_FIREWALL         0x4000
-#endif
 
 /*
  * set_disable contains one bit per set value (0..31).
@@ -1120,7 +1112,7 @@ send_pkt(struct ipfw_flow_id *id, u_int32_t seq, u_int32_t ack, int flags)
 	ip->ip_len = m->m_pkthdr.len;
 	bzero (&sro, sizeof (sro));
 	ip_rtaddr(ip->ip_dst, &sro);
-	m->m_flags |= M_SKIP_FIREWALL;
+	m->m_pkthdr.fw_flags |= IPFW_MBUF_SKIP_FIREWALL;
 	ip_output(m, NULL, &sro, 0, NULL, NULL);
 	if (sro.ro_rt)
 		RTFREE(sro.ro_rt);
@@ -1296,7 +1288,7 @@ ipfw_chk(struct ip_fw_args *args)
 	int dyn_dir = MATCH_UNKNOWN;
 	ipfw_dyn_rule *q = NULL;
 
-	if (m->m_flags & M_SKIP_FIREWALL)
+	if (m->m_pkthdr.fw_flags & IPFW_MBUF_SKIP_FIREWALL)
 		return 0;	/* accept */
 	/*
 	 * dyn_dir = MATCH_UNKNOWN when rules unchecked,
