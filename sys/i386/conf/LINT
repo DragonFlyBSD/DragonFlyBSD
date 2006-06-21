@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.81 2006/06/01 19:35:59 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.82 2006/06/21 22:25:43 y0netan1 Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -195,6 +195,9 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # sysctls.  This operates independently of SpeedStep and is useful on
 # systems where other mechanisms such as apm(4) or acpi(4) don't work.
 #
+# CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
+# found in Pentium(tm) M processors.
+#
 # CPU_FASTER_5X86_FPU enables faster FPU exception handler.
 #
 # CPU_I486_ON_386 enables CPU cache on i486 based CPU upgrade products
@@ -263,6 +266,7 @@ options 	CPU_DIRECT_MAPPED_CACHE
 options 	CPU_DISABLE_5X86_LSSER
 options 	CPU_DISABLE_SSE
 options 	CPU_ELAN
+options		CPU_ENABLE_EST
 options		CPU_ENABLE_TCC
 options 	CPU_FASTER_5X86_FPU
 options 	CPU_I486_ON_386

@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.40 2006/05/20 18:26:34 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.41 2006/06/21 22:25:43 y0netan1 Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -185,6 +185,7 @@ i386/apic/apic_abi.c		optional	smp
 i386/apic/mpapic.c		optional	smp
 i386/apic/apic_ipl.s		optional	smp
 i386/apic/apic_vector.s		optional	smp
+i386/i386/est.c			optional	cpu_enable_est
 # temporarily not in build until we get the 'apic' option working on UP
 #i386/i386/io_apic.c		optional	smp
 #i386/i386/local_apic.c		optional	smp

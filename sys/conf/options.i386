@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.18 2006/05/22 06:26:29 swildner Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.19 2006/06/21 22:25:43 y0netan1 Exp $
 
 DISABLE_PSE
 MATH_EMULATE		opt_math_emulate.h
@@ -46,6 +46,7 @@ CPU_CYRIX_NO_LOCK		opt_cpu.h
 CPU_DIRECT_MAPPED_CACHE		opt_cpu.h
 CPU_DISABLE_5X86_LSSER		opt_cpu.h
 CPU_ELAN			opt_cpu.h
+CPU_ENABLE_EST			opt_cpu.h
 CPU_ENABLE_TCC			opt_cpu.h
 CPU_FASTER_5X86_FPU		opt_cpu.h
 CPU_I486_ON_386			opt_cpu.h
