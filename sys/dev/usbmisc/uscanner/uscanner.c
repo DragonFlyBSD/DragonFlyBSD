@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.10 2005/06/02 20:41:05 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.11 2006/06/22 08:22:27 corecode Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -123,6 +123,8 @@ static const struct uscan_info uscanner_devs[] = {
 
   /* Canon */
  {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_N656U }, 0 },
+ {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_N676U }, 0 },
+ {{ USB_VENDOR_CANON, USB_PRODUCT_CANON_D660U }, 0 },
 
   /* Kye */
  {{ USB_VENDOR_KYE, USB_PRODUCT_KYE_VIVIDPRO }, 0 },
