@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.29 2006/05/31 09:42:10 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.30 2006/06/22 20:10:54 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -53,7 +53,7 @@ MAN+=	device.9 device_add_child.9 device_delete_child.9 device_enable.9 \
 	bus_alloc_resource.9 bus_release_resource.9 \
 	VOP_ACLCHECK.9 VOP_GETACL.9 VOP_GETEXTATTR.9 VOP_SETACL.9 \
 	VOP_SETEXTATTR.9 acl.9 extattr.9 \
-	sbuf.9 sysctl_add_oid.9 sysctl_ctx_init.9 vfs_unmountall.9 \
+	sbuf.9 sysctl.9 sysctl_add_oid.9 sysctl_ctx_init.9 vfs_unmountall.9 \
 	vn_fullpath.9 \
 	zone.9
 
@@ -279,11 +279,27 @@ MLINKS+=pfil.9 pfil_head_unregister.9
 MLINKS+=pfil.9 pfil_head_get.9
 MLINKS+=pfil.9 pfil_run_hooks.9
 
+MLINKS+=sysctl.9 SYSCTL_DECL.9
+MLINKS+=sysctl.9 SYSCTL_INT.9
+MLINKS+=sysctl.9 SYSCTL_LONG.9
+MLINKS+=sysctl.9 SYSCTL_QUAD.9
+MLINKS+=sysctl.9 SYSCTL_NODE.9
+MLINKS+=sysctl.9 SYSCTL_OPAQUE.9
+MLINKS+=sysctl.9 SYSCTL_PROC.9
+MLINKS+=sysctl.9 SYSCTL_STRING.9
+MLINKS+=sysctl.9 SYSCTL_STRUCT.9
+MLINKS+=sysctl.9 SYSCTL_UINT.9
+MLINKS+=sysctl.9 SYSCTL_ULONG.9
+MLINKS+=sysctl.9 SYSCTL_UQUAD.9
 MLINKS+=sysctl_add_oid.9 sysctl_remove_oid.9
+MLINKS+=sysctl_add_oid.9 SYSCTL_CHILDREN.9
+MLINKS+=sysctl_add_oid.9 SYSCTL_STATIC_CHILDREN.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_OID.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_NODE.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_STRING.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_INT.9
+MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_QUAD.9
+MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_UQUAD.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_UINT.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_LONG.9
 MLINKS+=sysctl_add_oid.9 SYSCTL_ADD_ULONG.9

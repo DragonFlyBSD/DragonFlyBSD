@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.3.2.10 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/sysctl_add_oid.9,v 1.4 2006/06/22 20:10:54 swildner Exp $
 .\"
-.Dd July 15, 2000
+.Dd June 22, 2006
 .Dt SYSCTL_ADD_OID 9
 .Os
 .Sh NAME
@@ -106,6 +106,28 @@
 .Fa "NAME"
 .Fa "int access"
 .Fa "int *arg"
+.Fa "0"
+.Fa "char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_QUAD
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "NAME"
+.Fa "int access"
+.Fa "quad_t *arg"
+.Fa "0"
+.Fa "char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_UQUAD
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "NAME"
+.Fa "int access"
+.Fa "u_quad_t *arg"
 .Fa "0"
 .Fa "char *descr"
 .Fc
@@ -404,6 +426,14 @@ creates an oid that handles a zero-terminated character string.
 .It Fn SYSCTL_ADD_INT
 creates an oid that handles an
 .Li int
+variable.
+.It Fn SYSCTL_ADD_QUAD
+creates an oid that handles a 64-bit
+.Li int
+variable.
+.It Fn SYSCTL_ADD_UQUAD
+creates an oid that handles a 64-bit
+.Li unsigned int
 variable.
 .It Fn SYSCTL_ADD_UINT
 creates an oid that handles an
