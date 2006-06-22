@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.16 2005/08/07 22:37:54 joerg Exp $
+$DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.17 2006/06/22 08:21:07 corecode Exp $
 /* $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $ */
 /* $NetBSD: usbdevs,v 1.387 2004/10/27 07:02:47 augustss Exp $ */
 
@@ -746,6 +746,7 @@ product BTC BTC7932		0x6782	Keyboard with mouse port
 product CANON N656U		0x2206	CanoScan N656U
 product CANON N1220U		0x2207	CanoScan N1220U
 product CANON N676U		0x220d	CanoScan N676U
+product CANON D660U 		0x2208  CanoScan D660U
 product CANON N1240U		0x220e	CanoScan N1240U
 product CANON S10		0x3041	PowerShot S10
 product CANON S20		0x3043	PowerShot S20
