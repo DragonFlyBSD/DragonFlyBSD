@@ -1,5 +1,5 @@
 /*	$KAME: sctp_timer.c,v 1.28 2004/08/17 04:06:20 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.4 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_timer.c,v 1.5 2006/06/23 17:20:14 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -90,7 +90,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif

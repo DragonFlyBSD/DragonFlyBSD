@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.4 2005/07/15 15:43:55 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.5 2006/06/23 17:20:13 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -93,7 +93,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif

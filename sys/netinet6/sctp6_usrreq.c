@@ -1,5 +1,5 @@
 /*	$KAME: sctp6_usrreq.c,v 1.35 2004/08/17 06:28:03 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.5 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/sctp6_usrreq.c,v 1.6 2006/06/23 17:20:14 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -94,6 +94,7 @@
 
 #ifdef IPSEC
 #ifndef __OpenBSD__
+#include <netinet6/ipsec6.h>
 #include <netinet6/ipsec.h>
 #else
 #undef IPSEC

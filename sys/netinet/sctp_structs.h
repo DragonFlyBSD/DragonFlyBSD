@@ -1,5 +1,5 @@
 /*	$KAME: sctp_structs.h,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_structs.h,v 1.2 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_structs.h,v 1.3 2006/06/23 17:20:14 eirikn Exp $	*/
 
 #ifndef _NETINET_SCTP_STRUCTS_H_
 #define _NETINET_SCTP_STRUCTS_H_
@@ -57,7 +57,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #endif
 #endif
 

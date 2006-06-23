@@ -1,5 +1,5 @@
 /*	$KAME: sctputil.c,v 1.36 2005/03/06 16:04:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.5 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctputil.c,v 1.6 2006/06/23 17:20:14 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -115,7 +115,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif

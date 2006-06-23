@@ -1,5 +1,5 @@
 /*	$KAME: sctp_pcb.c,v 1.37 2004/08/17 06:28:02 t-momose Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.9 2006/06/13 08:12:03 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_pcb.c,v 1.10 2006/06/23 17:20:13 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -110,7 +110,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif
@@ -1502,7 +1502,7 @@ sctp_inpcb_alloc(struct socket *so)
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
 	{
 		struct inpcbpolicy *pcb_sp = NULL;
-		error = ipsec_init_pcbpolicy(so, &pcb_sp);
+		error = ipsec_init_policy(so, &pcb_sp);
 		/* Arrange to share the policy */
 		inp->ip_inp.inp.inp_sp = pcb_sp;
 		((struct in6pcb *)(&inp->ip_inp.inp))->in6p_sp = pcb_sp;

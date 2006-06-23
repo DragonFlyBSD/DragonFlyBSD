@@ -1,5 +1,5 @@
 /*	$KAME: sctp_peeloff.c,v 1.12 2004/08/17 04:06:19 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.3 2006/06/13 08:12:03 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_peeloff.c,v 1.4 2006/06/23 17:20:14 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003 Cisco Systems Inc,
@@ -84,7 +84,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_usrreq.c,v 1.47 2005/03/06 16:04:18 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.7 2006/01/14 11:33:50 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_usrreq.c,v 1.8 2006/06/23 17:20:14 eirikn Exp $	*/
 
 /*
  * Copyright (c) 2001, 2002, 2003, 2004 Cisco Systems, Inc.
@@ -92,7 +92,7 @@
 #ifdef IPSEC
 #ifndef __OpenBSD__
 #include <netinet6/ipsec.h>
-#include <netkey/key.h>
+#include <netproto/key/key.h>
 #else
 #undef IPSEC
 #endif
@@ -755,7 +755,7 @@ sctp_attach(struct socket *so, int proto, struct proc *p)
 
 #ifdef IPSEC
 #if !(defined(__OpenBSD__) || defined(__APPLE__))
-	error = ipsec_init_pcbpolicy(so, &ip_inp->inp_sp);
+	error = ipsec_init_policy(so, &ip_inp->inp_sp);
 	if (error != 0) {
 		sctp_inpcb_free(inp, 1);
 		return error;
