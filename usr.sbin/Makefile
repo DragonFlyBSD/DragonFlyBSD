@@ -1,9 +1,10 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.28 2006/04/01 02:55:36 sephe Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.29 2006/06/24 07:29:44 sephe Exp $
 
 # XXX MISSING:		mkproto
-SUBDIR=	IPXrouted \
+SUBDIR= 802_11 \
+	IPXrouted \
 	ac \
 	accton \
 	acpi \
