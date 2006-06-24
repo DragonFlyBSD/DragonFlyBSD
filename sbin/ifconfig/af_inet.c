@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_inet.c,v 1.2 2005/06/16 19:37:09 ume Exp $
- * $DragonFly: src/sbin/ifconfig/af_inet.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/af_inet.c,v 1.2 2006/06/24 07:51:37 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -97,7 +97,6 @@ static struct sockaddr_in *sintab[] = {
 static void
 in_getaddr(const char *s, int which)
 {
-#define	MIN(a,b)	((a)<(b)?(a):(b))
 	struct sockaddr_in *sin = sintab[which];
 	struct hostent *hp;
 	struct netent *np;
@@ -135,7 +134,6 @@ in_getaddr(const char *s, int which)
 		sin->sin_addr = inet_makeaddr(np->n_net, INADDR_ANY);
 	else
 		errx(1, "%s: bad value", s);
-#undef MIN
 }
 
 static void
