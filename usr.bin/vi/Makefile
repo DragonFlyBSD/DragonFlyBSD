@@ -1,14 +1,13 @@
 #
 # $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/vi/Makefile,v 1.4 2006/02/26 17:18:04 dillon Exp $
+# $DragonFly: src/usr.bin/vi/Makefile,v 1.5 2006/06/24 00:04:18 sephe Exp $
 #
 # This has most of the glue needed to compile tknvi and the perl hooks,
 # but not all.
 #
 
 SRCDIR=		${.CURDIR}/../../contrib/nvi
-PATCHES!=       echo ${.CURDIR}/patches/*.patch
-CONTRIBDIR=	${SRCDIR}/vi
+CONTRIBDIR=	${SRCDIR}
 
 .if defined(RELEASE_CRUNCH)
 # When building `vi' for the fixit floppy, don't include any of the
@@ -143,7 +142,6 @@ SRCS+=	getc.c v_at.c v_ch.c v_cmd.c v_delete.c v_ex.c v_increment.c v_init.c \
 	v_replace.c v_right.c v_screen.c v_scroll.c v_search.c v_section.c \
 	v_sentence.c v_status.c v_txt.c v_ulcase.c v_undo.c \
 	v_util.c v_word.c v_xchar.c v_yank.c v_z.c v_zexit.c vi.c
-SRCS+=	${PATCHES}
 
 # Vi screen source.
 SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
@@ -166,6 +164,12 @@ ex_notcl.c: ex_tcl.c
 
 ex_noperl.c: ex_perl.c
 	-unifdef -UHAVE_PERL_INTERP ${SRCDIR}/ex/ex_perl.c > ${.TARGET}
+
+v_ex.c: ${CONTRIBDIR}/vi/v_ex.c ${.CURDIR}/patches/v_ex.c.patch
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/vi/${.TARGET}
+
+ex_write.c: ${CONTRIBDIR}/ex/ex_write.c ${.CURDIR}/patches/ex_write.c.patch
+	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/ex/${.TARGET}
 
 CLEANFILES+=	ex_notcl.c ex_noperl.c
 
