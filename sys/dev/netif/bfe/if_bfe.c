@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.28 2005/12/31 14:07:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.29 2006/06/24 06:31:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1368,6 +1368,8 @@ bfe_ifmedia_upd(struct ifnet *ifp)
 			mii_phy_reset(miisc);
 	}
 	mii_mediachg(mii);
+
+	bfe_setupphy(sc);
 
 	return(0);
 }
