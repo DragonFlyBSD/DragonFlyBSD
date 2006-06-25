@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.112 2006/06/25 11:16:18 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.113 2006/06/25 11:30:57 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -408,6 +408,7 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/svr4.4.gz"
 	rm -rf ${DESTDIR}/usr/include/net/oldbridge
 	rm -f ${DESTDIR}/usr/include/net/bridge/bridge.h
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/oldbridge.4.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
