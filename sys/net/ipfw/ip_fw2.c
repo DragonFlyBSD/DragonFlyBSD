@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.18 2006/06/14 04:39:05 y0netan1 Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.19 2006/06/25 11:02:39 corecode Exp $
  */
 
 #define        DEB(x)
@@ -1243,7 +1243,7 @@ ipfw_chk(struct ip_fw_args *args)
 
 	/*
 	 * oif | args->oif	If NULL, ipfw_chk has been called on the
-	 *	inbound path (ether_input, bdg_forward, ip_input).
+	 *	inbound path (ether_input, ip_input).
 	 *	If non-NULL, ipfw_chk has been called on the outbound path
 	 *	(ether_output, ip_output).
 	 */

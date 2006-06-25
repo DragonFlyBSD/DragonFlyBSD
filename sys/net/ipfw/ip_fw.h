@@ -12,7 +12,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.h,v 1.47.2.11 2002/07/09 09:11:42 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.6 2005/04/18 14:26:57 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.7 2006/06/25 11:02:39 corecode Exp $
  */
 
 #ifndef _IP_FW_H
@@ -250,7 +250,7 @@ struct ipfw_dyn_rule {
 #define	IP_FW_F_RND_MATCH 0x00800000	/* probabilistic rule match */
 #define	IP_FW_F_SMSK	0x01000000	/* src-port + mask */
 #define	IP_FW_F_DMSK	0x02000000	/* dst-port + mask */
-#define	IP_FW_BRIDGED	0x04000000	/* only match bridged packets */
+#define	IP_FW_UNUSED0	0x04000000
 #define	IP_FW_F_KEEP_S	0x08000000	/* keep state */
 #define	IP_FW_F_CHECK_S	0x10000000	/* check state */
 #define	IP_FW_F_SME	0x20000000	/* source = me */

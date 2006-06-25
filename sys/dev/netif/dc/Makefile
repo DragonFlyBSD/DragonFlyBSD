@@ -1,10 +1,10 @@
 # $FreeBSD: src/sys/modules/dc/Makefile,v 1.2 2000/01/28 11:26:28 bde Exp $
-# $DragonFly: src/sys/dev/netif/dc/Makefile,v 1.4 2005/10/24 08:06:15 sephe Exp $
+# $DragonFly: src/sys/dev/netif/dc/Makefile,v 1.5 2006/06/25 11:02:38 corecode Exp $
 
 KMOD	= if_dc
 SRCS	= if_dc.c device_if.h bus_if.h pci_if.h
 SRCS	+= miibus_if.h
-SRCS	+= opt_bdg.h opt_polling.h
+SRCS	+= opt_polling.h
 KMODDEPS = miibus
 
 .ifndef BUILDING_WITH_KERNEL

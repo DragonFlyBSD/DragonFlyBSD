@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.129 2006/06/18 01:33:29 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.130 2006/06/25 11:02:37 corecode Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -660,7 +660,6 @@ net/altq/altq_rmclass.c		optional altq
 net/altq/altq_subr.c		optional altq
 net/bpf.c			standard
 net/bpf_filter.c		optional bpf
-net/oldbridge/bridge.c		optional bridge
 net/bridge/if_bridge.c		optional bridge
 net/bridge/bridgestp.c		optional bridge
 net/bsd_comp.c			optional ppp_bsdcomp

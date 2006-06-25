@@ -1,9 +1,9 @@
 # $FreeBSD: src/sys/modules/vr/Makefile,v 1.8 2000/01/28 11:26:42 bde Exp $
-# $DragonFly: src/sys/dev/netif/vr/Makefile,v 1.4 2005/10/24 08:06:15 sephe Exp $
+# $DragonFly: src/sys/dev/netif/vr/Makefile,v 1.5 2006/06/25 11:02:39 corecode Exp $
 
 KMOD	= if_vr
 SRCS	= if_vr.c device_if.h bus_if.h pci_if.h
-SRCS	+= opt_bdg.h opt_polling.h
+SRCS	+= opt_polling.h
 SRCS	+= miibus_if.h
 KMODDEPS = miibus
 

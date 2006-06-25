@@ -17,7 +17,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $
- * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.8 2006/06/25 11:02:37 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -401,8 +401,6 @@ show_ipfw(struct ip_fw *chain, int pcwidth, int bcwidth)
 		}
 	}
 	/* Direction */
-	if (chain->fw_flg & IP_FW_BRIDGED)
-		printf(" bridged");
 	if ((chain->fw_flg & IP_FW_F_IN) && !(chain->fw_flg & IP_FW_F_OUT))
 		printf(" in");
 	if (!(chain->fw_flg & IP_FW_F_IN) && (chain->fw_flg & IP_FW_F_OUT))
@@ -1995,9 +1993,6 @@ add(int ac, char *av[])
 				rule.dyn_type = type;
 				av++; ac--;
 			}
-		} else if (!strncmp(*av, "bridged", strlen(*av))) {
-			rule.fw_flg |= IP_FW_BRIDGED;
-			av++; ac--;
 		} else if (!strncmp(*av, "out", strlen(*av))) {
 			rule.fw_flg |= IP_FW_F_OUT;
 			av++; ac--;

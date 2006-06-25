@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.11 2006/01/19 22:19:25 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.12 2006/06/25 11:02:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -179,8 +179,6 @@ struct protox {
 	{ -1,		N_IPSECSTAT,	1,	0,
 	  ipsec_stats,	NULL,		"ipsec",	0},
 #endif
-	{ -1,		-1,		1,	0,
-	  bdg_stats,	NULL,		"bdg",	1 /* bridging... */ },
 	{ -1,		-1,		0,	0,
 	  0,		NULL,		0 }
 };
@@ -205,8 +203,6 @@ struct protox ip6protox[] = {
 #endif
 	{ -1,		-1,		1,	0,
 	  rip6_stats,	NULL,		"rip6",	0 },
-	{ -1,		-1,		1,	0,
-	  bdg_stats,	NULL,		"bdg",	1 /* bridging... */ },
 	{ -1,		-1,		1,	protopr,
 	  pim_stats,	NULL,		"pim",	IPPROTO_PIM },
 	{ -1,		-1,		0,	0,

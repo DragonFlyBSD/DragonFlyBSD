@@ -1,9 +1,9 @@
 # $FreeBSD: src/sys/modules/dummynet/Makefile,v 1.1.2.2 2003/04/08 10:18:00 maxim Exp $
-# $DragonFly: src/sys/net/dummynet/Makefile,v 1.2 2003/06/17 04:28:43 dillon Exp $
+# $DragonFly: src/sys/net/dummynet/Makefile,v 1.3 2006/06/25 11:02:39 corecode Exp $
 
 .PATH:  ${.CURDIR}/../../netinet
 KMOD=   dummynet
-SRCS=   ip_dummynet.c opt_bdg.h
+SRCS=   ip_dummynet.c
 NOMAN=
 .if defined(IPFW2)
 CFLAGS+= -DIPFW2

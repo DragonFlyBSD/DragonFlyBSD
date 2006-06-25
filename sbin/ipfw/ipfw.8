@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.7 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.8 2006/06/25 11:02:37 corecode Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -337,8 +337,6 @@ have this picture in mind in order to design a correct ruleset.
       |                       |
       ^                       V
 [ether_demux]    [ether_output_frame]  net.link.ether.ipfw=1
-      |                       |
-      +-->--[bdg_forward]-->--+        net.link.ether.bridge_ipfw=1
       ^                       V
       |      to devices       |
 .Ed
@@ -378,7 +376,7 @@ differentiate among the possible places.
 .Cm skipto
 rules can be useful here, as an example:
 .Bd -literal -offset indent
-# packets from ether_demux or bdg_forward
+# packets from ether_demux
 ipfw add 10 skipto 1000 all from any to any layer2 in
 # packets from ip_input
 ipfw add 10 skipto 2000 all from any to any not layer2 in
@@ -387,9 +385,6 @@ ipfw add 10 skipto 3000 all from any to any not layer2 out
 # packets from ether_output_frame
 ipfw add 10 skipto 4000 all from any to any layer2 out
 .Ed
-.Pp
-(yes, at the moment there is no way to differentiate between
-ether_demux and bdg_forward).
 .Sh RULE FORMAT
 The format of
 .Nm
@@ -566,7 +561,7 @@ the local routing table for that IP.
 A
 .Ar fwd
 rule will not match layer-2 packets (those received
-on ether_input, ether_output, or bridged).
+on ether_input or ether_output).
 .br
 The
 .Cm fwd
@@ -823,8 +818,6 @@ operand, and possibly grouped into
 .Pp
 The following match patterns can be used (listed in alphabetical order):
 .Bl -tag -width indent
-.It Cm bridged
-Matches only bridged packets.
 .It Cm dst-ip Ar ip address
 Matches IP packets whose destination IP is one of the address(es)
 specified as argument.
@@ -1535,8 +1528,7 @@ A set of
 .Xr sysctl 8
 variables controls the behaviour of the firewall and
 associated modules (
-.Nm dummynet ,
-.Nm bridge
+.Nm dummynet
 ).
 These are shown below together with their default value
 (but always check with the
@@ -1621,7 +1613,7 @@ pipe is not passed though the firewall again.
 Otherwise, after a pipe action, the packet is
 reinjected into the firewall at the next rule.
 .Pp
-Note: bridged and layer 2 packets coming out of a pipe
+Note: layer 2 packets coming out of a pipe
 are never reinjected in the firewall irrespective of the
 value of this variable.
 .It Em net.inet.ip.fw.verbose : No 1
@@ -1630,10 +1622,6 @@ Enables verbose messages.
 Limits the number of messages produced by a verbose firewall.
 .It Em net.link.ether.ipfw : No 0
 Controls whether layer-2 packets are passed to
-.Nm .
-Default is no.
-.It Em net.link.ether.bridge_ipfw : No 0
-Controls whether bridged packets are passed to
 .Nm .
 Default is no.
 .El
@@ -1670,11 +1658,7 @@ write your rulesets in a more efficient way.
 .Bl -tag -width indent
 .It Handling of non-IPv4 packets
 .Nm ipfw1
-will silently accept all non-IPv4 packets (which
-.Nm ipfw1
-will only see when
-.Em net.link.ether.bridge_ipfw=1 Ns
-).
+will silently accept all non-IPv4 packets.
 .Nm ipfw2
 will filter all packets (including non-IPv4 ones) according to the ruleset.
 To achieve the same behaviour as
@@ -1993,7 +1977,6 @@ the sleep terminates thus restoring the previous situation.
 .Sh SEE ALSO
 .Xr cpp 1 ,
 .Xr m4 1 ,
-.Xr bridge 4 ,
 .Xr divert 4 ,
 .Xr dummynet 4 ,
 .Xr ip 4 ,

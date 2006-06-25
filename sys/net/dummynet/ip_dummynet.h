@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.4 2006/05/21 03:43:46 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.5 2006/06/25 11:02:39 corecode Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -115,7 +115,7 @@ struct dn_heap {
 /*
  * struct dn_pkt identifies a packet in the dummynet queue, but
  * is also used to tag packets passed back to the various destinations
- * (ip_input(), ip_output(), bdg_forward()  and so on).
+ * (ip_input(), ip_output()  and so on).
  * As such the first part of the structure must be a struct m_hdr,
  * followed by dummynet-specific parameters. The m_hdr must be
  * initialized with
@@ -136,7 +136,6 @@ struct dn_pkt {
     int dn_dir;			/* action when packet comes out. */
 #define DN_TO_IP_OUT	1
 #define DN_TO_IP_IN	2
-#define DN_TO_BDG_FWD	3
 #define DN_TO_ETH_DEMUX	4
 #define DN_TO_ETH_OUT	5
 

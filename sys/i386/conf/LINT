@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.83 2006/06/23 17:26:12 eirikn Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.84 2006/06/25 11:02:39 corecode Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -661,11 +661,7 @@ options 	ICMP_BANDLIM
 # When you run DUMMYNET it is advisable to also have "options HZ=1000"
 # to achieve a smoother scheduling of the traffic.
 #
-# BRIDGE enables bridging between ethernet cards -- see bridge(4).
-# You can use IPFIREWALL and DUMMYNET together with bridging.
-#
 options 	DUMMYNET
-options 	BRIDGE
 
 #
 # ATM (HARP version) options

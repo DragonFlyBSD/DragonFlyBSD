@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.29 2005/12/19 00:07:02 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.30 2006/06/25 11:02:38 corecode Exp $
  */
 
 /*
@@ -70,8 +70,6 @@
 #endif
 
 #include <net/bpf.h>
-#include "opt_bdg.h"
-#include <net/oldbridge/bridge.h>
 
 #include <machine/md_var.h>
 
@@ -2764,26 +2762,9 @@ ed_get_packet(struct ed_softc *sc, char *buf, u_short len)
 	eh = mtod(m, struct ether_header *);
 
 	/*
-	 * Don't read in the entire packet if we know we're going to drop it
-	 * and no bpf is active.
+	 * Get packet, including link layer address, from interface.
 	 */
-	if (!ifp->if_bpf && BDG_ACTIVE( (ifp) ) ) {
-		struct ifnet *bif;
-
-		ed_ring_copy(sc, buf, (char *)eh, ETHER_HDR_LEN);
-		bif = bridge_in_ptr(ifp, eh) ;
-		if (bif == BDG_DROP) {
-			m_freem(m);
-			return;
-		}
-		if (len > ETHER_HDR_LEN)
-			ed_ring_copy(sc, buf + ETHER_HDR_LEN,
-				(char *)(eh + 1), len - ETHER_HDR_LEN);
-	} else
-		/*
-		 * Get packet, including link layer address, from interface.
-		 */
-		ed_ring_copy(sc, buf, (char *)eh, len);
+	ed_ring_copy(sc, buf, (char *)eh, len);
 
 	m->m_pkthdr.len = m->m_len = len;
 

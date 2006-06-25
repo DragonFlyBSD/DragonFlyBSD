@@ -32,14 +32,13 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.35 2005/12/21 16:37:15 corecode Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.36 2006/06/25 11:02:39 corecode Exp $
  */
 
 #include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
-#include "opt_bdg.h"
 #include "opt_netgraph.h"
 
 #include <sys/param.h>
@@ -60,7 +59,6 @@
 #include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
-#include <net/oldbridge/bridge.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
@@ -117,14 +115,8 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
 
 /*
- * bridge support
+ * if_bridge support
  */
-int do_bridge;
-bridge_in_t *bridge_in_ptr;
-bdg_forward_t *bdg_forward_ptr;
-bdgtakeifaces_t *bdgtakeifaces_ptr;
-struct bdg_softc *ifp2sc;
-
 struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
 int (*bridge_output_p)(struct ifnet *, struct mbuf *,
 		       struct sockaddr *, struct rtentry *);
@@ -372,7 +364,7 @@ bad:
  * Ethernet link layer output routine to send a raw frame to the device.
  *
  * This assumes that the 14 byte Ethernet header is present and contiguous
- * in the first mbuf (if BRIDGE'ing).
+ * in the first mbuf.
  */
 int
 ether_output_frame(struct ifnet *ifp, struct mbuf *m)
@@ -391,23 +383,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 		}
 		m = m->m_next;
 	}
-	if (rule != NULL)		/* packet was already bridged */
-		goto no_bridge;
 
-	if (BDG_ACTIVE(ifp)) {
-		struct ether_header *eh;	/* a pointer suffices */
-
-		m->m_pkthdr.rcvif = NULL;
-		eh = mtod(m, struct ether_header *);
-		m_adj(m, ETHER_HDR_LEN);
-		lwkt_serialize_exit(ifp->if_serializer);
-		m = bdg_forward_ptr(m, eh, ifp);
-		lwkt_serialize_enter(ifp->if_serializer);
-		m_freem(m);
-		return (0);
-	}
-
-no_bridge:
 	if (ifq_is_enabled(&ifp->if_snd))
 		altq_etherclassify(&ifp->if_snd, m, &pktattr);
 	crit_enter();
@@ -454,9 +430,7 @@ no_bridge:
 /*
  * ipfw processing for ethernet packets (in and out).
  * The second parameter is NULL from ether_demux(), and ifp from
- * ether_output_frame(). This section of code could be used from
- * bridge.c as well as long as we use some extra info
- * to distinguish that case from ether_output_frame().
+ * ether_output_frame().
  */
 static boolean_t
 ether_ipfw_chk(
@@ -643,41 +617,6 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 			return;
 	}
 
-	/* Check for bridging mode */
-	if (BDG_ACTIVE(ifp)) {
-		struct ifnet *bif;
-
-		/* Check with bridging code */
-		if ((bif = bridge_in_ptr(ifp, eh)) == BDG_DROP) {
-			m_freem(m);
-			return;
-		}
-		if (bif != BDG_LOCAL) {
-			save_eh = *eh ; /* because it might change */
-			lwkt_serialize_exit(ifp->if_serializer);
-			m = bdg_forward_ptr(m, eh, bif); /* needs forwarding */
-			lwkt_serialize_enter(ifp->if_serializer);
-			/*
-			 * Do not continue if bdg_forward_ptr() processed our
-			 * packet (and cleared the mbuf pointer m) or if
-			 * it dropped (m_free'd) the packet itself.
-			 */
-			if (m == NULL) {
-			    if (bif == BDG_BCAST || bif == BDG_MCAST)
-				printf("bdg_forward drop MULTICAST PKT\n");
-			    return;
-			}
-			eh = &save_eh ;
-		}
-		if (bif == BDG_LOCAL || bif == BDG_BCAST || bif == BDG_MCAST)
-			goto recvLocal;		/* receive locally */
-
-		/* If not local and not multicast, just drop it */
-		m_freem(m);
-		return;
-	}
-
-recvLocal:
 	/* Continue with upper layer processing */
 	ether_demux(ifp, eh, m);
 }
@@ -704,7 +643,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 		}
 		m = m->m_next;
 	}
-	if (rule)	/* packet was already bridged */
+	if (rule)	/* packet is passing the second time */
 		goto post_stats;
 
 	/*
@@ -713,8 +652,7 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	 * driver is working properly, then this situation can only
 	 * happen when the interface is in promiscuous mode.
 	 */
-	if (!BDG_ACTIVE(ifp) &&
-	    ((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
+	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
 	    (eh->ether_dhost[0] & 1) == 0 &&
 	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
 		m_freem(m);
@@ -895,8 +833,6 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 	bpfattach(ifp, dlt, hdrlen);
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
-	if (BDG_LOADED)
-		bdgtakeifaces_ptr();
 
 	if_printf(ifp, "MAC address: %6D\n", lla, ":");
 }
@@ -913,8 +849,6 @@ ether_ifdetach(struct ifnet *ifp)
 		(*ng_ether_detach_p)(ifp);
 	bpfdetach(ifp);
 	if_detach(ifp);
-	if (BDG_LOADED)
-		bdgtakeifaces_ptr();
 }
 
 int

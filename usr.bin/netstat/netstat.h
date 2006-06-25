@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.8 2006/01/19 22:19:25 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.9 2006/06/25 11:02:40 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -96,8 +96,6 @@ char *netname6 (struct sockaddr_in6 *, struct in6_addr *);
 #ifdef IPSEC
 void	pfkey_stats (u_long, char *, int);
 #endif
-
-void	bdg_stats (u_long, char *, int);
 
 void	mbpr (u_long, u_long, u_long, u_long);
 

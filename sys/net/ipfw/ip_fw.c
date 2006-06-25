@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.15 2005/12/11 13:00:16 swildner Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.16 2006/06/25 11:02:39 corecode Exp $
  */
 
 #define        DEB(x)
@@ -1100,16 +1100,7 @@ ip_fw_chk(struct ip_fw_args *args)
 	int direction = MATCH_FORWARD ; /* dirty trick... */
 	struct ipfw_dyn_rule *q = NULL ;
 
-	/* Special hack for bridging (as usual) */
-#define BRIDGED		(args->eh != NULL)
-	if (BRIDGED) {	/* this is a bridged packet */
-		if ( (*m)->m_pkthdr.len >= sizeof(struct ip) &&
-			    ntohs(args->eh->ether_type) == ETHERTYPE_IP)
-			hlen = ip->ip_hl << 2;
-		else
-			return 0; /* XXX ipfw1 always accepts non-ip pkts */
-	} else
-		hlen = ip->ip_hl << 2;
+	hlen = ip->ip_hl << 2;
 
 	/* Grab and reset cookie */
 	if ((mtag = m_tag_find(*m, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL) {
@@ -1135,13 +1126,8 @@ ip_fw_chk(struct ip_fw_args *args)
 	proto = ip->ip_p;
 	src_ip = ip->ip_src;
 	dst_ip = ip->ip_dst;
-	if (BRIDGED) { /* bridged packets are as on the wire */
-	    ip_off = ntohs(ip->ip_off);
-	    ip_len = ntohs(ip->ip_len);
-	} else {
-	    ip_off = ip->ip_off;
-	    ip_len = ip->ip_len;
-	}
+	ip_off = ip->ip_off;
+	ip_len = ip->ip_len;
 	offset = ip_off & IP_OFFMASK;
 	if (offset == 0) {
 	    switch (proto) {
@@ -1241,10 +1227,6 @@ again:
 		    if (f->fw_flg & IP_FW_F_CHECK_S)
 			continue ;
 		}
-
-		/* Check if rule only valid for bridged packets */
-		if ((f->fw_flg & IP_FW_BRIDGED) != 0 && !(BRIDGED))
-			continue;
 
 		if (oif) {
 			/* Check direction outbound */
@@ -1561,11 +1543,6 @@ got_match:
 	    && (proto != IPPROTO_ICMP || is_icmp_query(ip))
 	    && !((*m)->m_flags & (M_BCAST|M_MCAST))
 	    && !IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
-		/* Must convert to host order for icmp_error() etc. */
-		if (BRIDGED) {
-			ip->ip_len = ntohs(ip->ip_len);
-			ip->ip_off = ntohs(ip->ip_off);
-		}
 		switch (f->fw_reject_code) {
 		case IP_FW_REJECT_RST:
 		  {
@@ -1608,7 +1585,6 @@ dropit:
 	 * Finally, drop the packet.
 	 */
 	return(IP_FW_PORT_DENY_FLAG);
-#undef BRIDGED
 }
 
 /*

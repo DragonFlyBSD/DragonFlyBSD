@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.7 2005/11/06 12:29:11 swildner Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.8 2006/06/25 11:02:37 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -296,7 +296,6 @@ struct _s_x rule_options[] = {
 	{ "in",			TOK_IN },
 	{ "limit",		TOK_LIMIT },
 	{ "keep-state",		TOK_KEEPSTATE },
-	{ "bridged",		TOK_LAYER2 },
 	{ "layer2",		TOK_LAYER2 },
 	{ "out",		TOK_OUT },
 	{ "xmit",		TOK_XMIT },

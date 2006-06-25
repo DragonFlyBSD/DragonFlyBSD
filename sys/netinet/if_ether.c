@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.32 2006/05/20 06:32:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.33 2006/06/25 11:02:40 corecode Exp $
  */
 
 /*
@@ -92,7 +92,6 @@
  */
 
 #include "opt_inet.h"
-#include "opt_bdg.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -113,10 +112,6 @@
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/if_llc.h>
-#ifdef BRIDGE
-#include <net/ethernet.h>
-#include <net/oldbridge/bridge.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -599,12 +594,6 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	&log_arp_wrong_iface, 0,
 	"log arp packets arriving on the wrong interface");
 
-#ifdef BRIDGE
-#define BRIDGE_TEST (do_bridge)
-#else
-#define BRIDGE_TEST (0) /* cc will optimise the test away */
-#endif
-
 static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 boolean_t dologging)
@@ -621,7 +610,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		struct in_addr isaddr = { saddr };
 
 		/* the following is not an error when doing bridging */
-		if (!BRIDGE_TEST && rt->rt_ifp != ifp) {
+		if (rt->rt_ifp != ifp) {
 			if (dologging && log_arp_wrong_iface && cpu == 0) {
 				log(LOG_ERR,
 				    "arp: %s is on %s "
@@ -784,17 +773,6 @@ in_arpinput(struct mbuf *m)
 	 * when we have clusters of interfaces).
 	 */
 	LIST_FOREACH(ia, INADDR_HASH(itaddr.s_addr), ia_hash) {
-		/*
-		 * Old style bridging OBSOLETE
-		 */
-		if ((BRIDGE_TEST || (ia->ia_ifp == ifp)) &&
-		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
-			goto match;
-		}
-
-		/*
-		 * New style bridging
-		 */
 		if (ifp->if_bridge && ia->ia_ifp && 
 		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
 		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
@@ -802,17 +780,6 @@ in_arpinput(struct mbuf *m)
 		}
 	}
 	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash) {
-		/*
-		 * Old style bridging OBSOLETE
-		 */
-		if ((BRIDGE_TEST || (ia->ia_ifp == ifp)) &&
-		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
-			goto match;
-		}
-
-		/*
-		 * New style bridging
-		 */
 		if (ifp->if_bridge && ia->ia_ifp &&
 		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
 		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
@@ -828,14 +795,7 @@ in_arpinput(struct mbuf *m)
 			ia = ifatoia(ifa);
 			goto match;
 		}
-	/*
-	 * If bridging, fall back to using any inet address.
-	 * This is probably incorrect, the right way being try to match
-	 * addresses for interfaces in the same cluster, so if we
-	 * get here we should always drop the packet.
-	 */
-	if (!BRIDGE_TEST ||
-	    (ia = TAILQ_FIRST(&in_ifaddrhead)) == NULL) {
+	if ((ia = TAILQ_FIRST(&in_ifaddrhead)) == NULL) {
 		m_freem(m);
 		return;
 	}

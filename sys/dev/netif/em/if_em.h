@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.14 2005/12/10 18:28:18 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.15 2006/06/25 11:02:38 corecode Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -78,7 +78,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/serialize.h>
-#include "opt_bdg.h"
 
 #include <dev/netif/em/if_em_hw.h>
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.17 2006/01/14 11:05:17 swildner Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.18 2006/06/25 11:02:39 corecode Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -85,7 +85,6 @@
 #include <netinet/ip_var.h>
 
 #include <netinet/if_ether.h> /* for struct arpcom */
-#include <net/oldbridge/bridge.h>
 
 /*
  * We keep a private variable for the simulation time, but we could
@@ -432,13 +431,6 @@ transmit_event(struct dn_pipe *pipe)
 	    ip_input((struct mbuf *)pkt) ;
 	    break ;
 
-	case DN_TO_BDG_FWD :
-	    if (!BDG_LOADED) {
-		/* somebody unloaded the bridge module. Drop pkt */
-		printf("-- dropping bridged packet trapped in pipe--\n");
-		m_freem(pkt->dn_m);
-		break;
-	    } /* fallthrough */
 	case DN_TO_ETH_DEMUX:
 	    {
 		struct mbuf *m = (struct mbuf *)pkt ;
@@ -446,7 +438,7 @@ transmit_event(struct dn_pipe *pipe)
 
 		if (pkt->dn_m->m_len < ETHER_HDR_LEN &&
 		    (pkt->dn_m = m_pullup(pkt->dn_m, ETHER_HDR_LEN)) == NULL) {
-		    printf("dummynet/bridge: pullup fail, dropping pkt\n");
+		    printf("dummynet: pullup fail, dropping pkt\n");
 		    break;
 		}
 		/*
@@ -454,20 +446,8 @@ transmit_event(struct dn_pipe *pipe)
 		 */
 		eh = mtod(pkt->dn_m, struct ether_header *);
 		m_adj(pkt->dn_m, ETHER_HDR_LEN);
-		/*
-		 * bdg_forward() wants a pointer to the pseudo-mbuf-header, but
-		 * on return it will supply the pointer to the actual packet
-		 * (originally pkt->dn_m, but could be something else now) if
-		 * it has not consumed it.
-		 */
-		if (pkt->dn_dir == DN_TO_BDG_FWD) {
-		    m = bdg_forward_ptr(m, eh, pkt->ifp);
-		    if (m)
-			m_freem(m);
-		} else {
-		    /* which consumes the mbuf */
-		    ether_demux(NULL, eh, m);
-		}
+		/* which consumes the mbuf */
+		ether_demux(NULL, eh, m);
 	    }
 	    break ;
 	case DN_TO_ETH_OUT:
@@ -1064,8 +1044,7 @@ locate_flowset(int pipe_nr, struct ip_fw *rule)
  * dir		where shall we send the packet after dummynet.
  * m		the mbuf with the packet
  * ifp		the 'ifp' parameter from the caller.
- *		NULL in ip_input, destination interface in ip_output,
- *		real_dst in bdg_forward
+ *		NULL in ip_input, destination interface in ip_output
  * ro		route parameter (only used in ip_output, NULL otherwise)
  * dst		destination address, only used by ip_output
  * rule		matching rule, in case of multiple passes

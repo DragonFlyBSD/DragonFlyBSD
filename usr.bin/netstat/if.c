@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.9 2005/12/19 00:07:02 corecode Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.10 2006/06/25 11:02:40 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,6 @@
 #include <net/if_var.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/oldbridge/bridge.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -78,51 +77,7 @@ static void catchalarm (int);
 #ifdef INET6
 char *netname6 (struct sockaddr_in6 *, struct in6_addr *);
 static char ntop_buf[INET6_ADDRSTRLEN];		/* for inet_ntop() */
-static int bdg_done;
 #endif
-
-/* print bridge statistics */
-void
-bdg_stats(u_long dummy __unused, char *name, int af __unused)
-{
-    int i;
-    size_t slen ;
-    struct bdg_stats s ;
-    int mib[4] ;
-
-    slen = sizeof(s);
-
-    mib[0] = CTL_NET ;
-    mib[1] = PF_LINK ;
-    mib[2] = IFT_ETHER ;
-    mib[3] = PF_BDG ;
-    if (sysctl(mib,4, &s,&slen,NULL,0)==-1)
-	return ; /* no bridging */
-#ifdef INET6
-    if (bdg_done != 0)
-	return;
-    else
-	bdg_done = 1;
-#endif
-    printf("-- Bridging statistics (%s) --\n", name) ;
-    printf(
-"Name          In      Out  Forward     Drop    Bcast    Mcast    Local  Unknown\n");
-    for (i = 0 ; i < 16 ; i++) {
-	if (s.s[i].name[0])
-	printf("%-6s %9ld%9ld%9ld%9ld%9ld%9ld%9ld%9ld\n",
-	  s.s[i].name,
-	  s.s[i].p_in[(int)BDG_IN],
-	  s.s[i].p_in[(int)BDG_OUT],
-	  s.s[i].p_in[(int)BDG_FORWARD],
-	  s.s[i].p_in[(int)BDG_DROP],
-	  s.s[i].p_in[(int)BDG_BCAST],
-	  s.s[i].p_in[(int)BDG_MCAST],
-	  s.s[i].p_in[(int)BDG_LOCAL],
-	  s.s[i].p_in[(int)BDG_UNKNOWN] );
-    }
-}
-
-
 
 
 /*

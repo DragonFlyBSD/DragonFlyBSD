@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.34 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.35 2006/06/25 11:02:39 corecode Exp $
  */
 
 /*
@@ -83,8 +83,6 @@
  * I have no idea what he's on about: transmit performance with all
  * three of my test boards seems fine.
  */
-
-#include "opt_bdg.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
