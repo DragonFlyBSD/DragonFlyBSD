@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)accept.2	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/sys/accept.2,v 1.10.2.11 2002/05/09 02:24:40 silby Exp $
-.\" $DragonFly: src/lib/libc/sys/accept.2,v 1.3 2006/03/21 04:24:28 swildner Exp $
+.\" $DragonFly: src/lib/libc/sys/accept.2,v 1.4 2006/06/25 10:55:51 corecode Exp $
 .\"
 .Dd December 11, 1993
 .Dt ACCEPT 2
@@ -87,6 +87,10 @@ The exact format of the
 .Fa addr
 parameter is determined by the domain in which the communication
 is occurring.
+To ensure that the returned address fits,
+.Fa *addr
+should have a size of at least
+.Ft sizeof(struct sockaddr_storage) .
 The
 .Fa addrlen
 is a value-result parameter; it should initially contain the
