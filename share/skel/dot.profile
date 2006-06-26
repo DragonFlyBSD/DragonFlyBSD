@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/skel/dot.profile,v 1.19.2.2 2002/07/13 16:29:10 mp Exp $
-# $DragonFly: src/share/skel/dot.profile,v 1.3 2006/01/10 01:56:04 corecode Exp $
+# $DragonFly: src/share/skel/dot.profile,v 1.4 2006/06/26 00:13:37 geekgod Exp $
 #
 # .profile - Bourne Shell startup script for login shells
 #
@@ -22,4 +22,4 @@ PAGER=more;  	export PAGER
 # set ENV to a file invoked each time sh is started for interactive use.
 ENV=$HOME/.shrc; export ENV
 
-[ -x /usr/games/fortune ] && /usr/games/fortune freebsd-tips
+[ -x /usr/games/fortune ] && /usr/games/fortune dragonfly-tips
