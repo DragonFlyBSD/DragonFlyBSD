@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_recvfrom.c,v 1.9.2.5 2003/01/17 07:56:43 ru Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_recvfrom.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_recvfrom.c,v 1.3 2006/06/27 13:30:24 corecode Exp $
  */
 #include <errno.h>
 #include <sys/types.h>
@@ -45,6 +45,8 @@ _recvfrom(int fd, void *buf, size_t len, int flags, struct sockaddr * from,
 {
 	struct pthread	*curthread = _get_curthread();
 	int             ret;
+
+	flags |= MSG_FNONBLOCKING;
 
 	if ((ret = _FD_LOCK(fd, FD_READ, NULL)) == 0) {
 		while ((ret = __sys_recvfrom(fd, buf, len, flags, from, from_len)) < 0) {
