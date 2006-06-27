@@ -46,7 +46,7 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.7 2005/11/30 08:25:07 swildner Exp $
+ * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.8 2006/06/27 20:32:39 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -454,7 +454,7 @@ tables:
 		/*
 		 * These values indicate bootable types we know the names of.
 		 */
-		.byte 0x1, 0x4, 0x6, 0xb, 0xc, 0xe, 0x83
+		.byte 0x1, 0x6, 0x7, 0xb, 0xc, 0xe, 0x83
 		.byte 0x9f, 0xa5, 0xa6, 0xa9
 
 		/*
@@ -464,7 +464,7 @@ tables:
 		.byte os_misc-. 		# Unknown
 		.byte os_dos-.			# DOS
 		.byte os_dos-.			# DOS
-		.byte os_dos-.			# DOS
+		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
 		.byte os_dos-.			# Windows
