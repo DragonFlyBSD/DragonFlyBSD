@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.41 2006/05/25 07:36:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.42 2006/06/27 16:38:42 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -132,19 +132,26 @@ kernacc(c_caddr_t addr, int len, int rw)
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
 	    ("illegal ``rw'' argument to kernacc (%x)\n", rw));
 
+	/*
+	 * The globaldata space is not part of the kernel_map proper,
+	 * check access separately.
+	 */
+	if (is_globaldata_space((vm_offset_t)addr, (vm_offset_t)(addr + len)))
+		return (TRUE);
+
+	/*
+	 * Nominal kernel memory access - check access via kernel_map.
+	 */
 	if ((vm_offset_t)addr + len > kernel_map->max_offset ||
 	    (vm_offset_t)addr + len < (vm_offset_t)addr) {
 		return (FALSE);
 	}
-
 	prot = rw;
 	saddr = trunc_page((vm_offset_t)addr);
 	eaddr = round_page((vm_offset_t)addr + len);
 	vm_map_lock_read(kernel_map);
 	rv = vm_map_check_protection(kernel_map, saddr, eaddr, prot);
 	vm_map_unlock_read(kernel_map);
-	if (rv == FALSE && is_globaldata_space(saddr, eaddr))
-		rv = TRUE;
 	return (rv == TRUE);
 }
 

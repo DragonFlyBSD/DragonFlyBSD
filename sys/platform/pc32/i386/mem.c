@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.13 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.14 2006/06/27 16:38:41 dillon Exp $
  */
 
 /*
@@ -174,7 +174,7 @@ mmrw(dev, uio, flags)
 		}
 		switch (minor(dev)) {
 
-/* minor device 0 is physical memory */
+/* minor device 0 is physical memory, /dev/mem */
 		case 0:
 			v = uio->uio_offset;
 			v &= ~PAGE_MASK;
@@ -187,14 +187,15 @@ mmrw(dev, uio, flags)
 			pmap_kremove((vm_offset_t)ptvmmap);
 			continue;
 
-/* minor device 1 is kernel memory */
+/* minor device 1 is kernel memory, /dev/kmem */
 		case 1: {
 			vm_offset_t addr, eaddr;
 			c = iov->iov_len;
 
 			/*
-			 * Make sure that all of the pages are currently resident so
-			 * that we don't create any zero-fill pages.
+			 * Make sure that all of the pages are currently 
+			 * resident so that we don't create any zero-fill
+			 * pages.
 			 */
 			addr = trunc_page(uio->uio_offset);
 			eaddr = round_page(uio->uio_offset + c);
