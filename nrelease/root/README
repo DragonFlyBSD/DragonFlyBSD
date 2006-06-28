@@ -258,28 +258,22 @@
     the network.
 
 
-	    USING CVSUP TO OBTAIN A CVS TREE, PORTS, AND DOING BUILDWORLDS
+	    USING CVSUP TO OBTAIN A CVS TREE AND DOING BUILDWORLDS
 
-    cvsup can be used to obtain the DragonFly cvs repository, the FreeBSD 
-    ports tree, and so on and so forth.  'man cvsup' for more information on
-    its capabilities.  cvsup is a port (not part of the base system), but
-    it IS included on the CD.  The cvsup example files are in
-    /usr/share/examples/cvsup.  You will primarily be interested in the
-    DragonFly CVS repository, DragonFly-supfile, and the FreeBSD ports,
-    FreeBSD-ports-supfile.  Once you have done the initial cvsup of the
-    blocks of data that you want you may wish to create a cron job to
-    keep it all up to date.  However, please do not run an unattended cvsup
-    more than once a day.
+    cvsup can be used to obtain the DragonFly cvs repository.  'man cvsup'
+    for more information on its capabilities.  cvsup is a package (not part
+    of the base system), but it IS included on the CD.  The cvsup example
+    files are in /usr/share/examples/cvsup.  You will primarily be interested
+    in the DragonFly CVS repository, DragonFly-cvs-supfile.  Once you have
+    done the initial cvsup of the blocks of data that you want you may wish
+    to create a cron job to keep it all up to date.  However, please do not
+    run an unattended cvsup more than once a day.
 
     # get the CVS repository (it is placed in /home/dcvs)
-    cvsup /usr/share/examples/cvsup/DragonFly-supfile
+    cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
     # install the source from the CVS hierarchy
     cd /usr
     cvs -R -d /home/dcvs checkout src
-    cvs -R -d /home/dcvs checkout dfports
-
-    # get the FreeBSD ports tree (it is directly broken out into /usr/ports)
-    cvsup -h cvsup.freebsd.org /usr/share/examples/cvsup/FreeBSD-ports-supfile
 
     # buildworld and installworld examples
     #
@@ -300,6 +294,19 @@
     cd /usr/src
     make buildkernel KERNCONF=GENERIC
     make installkernel KERNCONF=GENERIC
+
+
+		OBTAINING A PKGSRC TREE TO BUILD/INSTALL PACKAGES
+
+    In order to obtain a reasonably current snapshot of the pkgsrc tree, use
+    the tarball from NetBSD:
+
+    fetch -o /tmp/pkgsrc.tar.gz ftp://ftp.NetBSD.org/pub/NetBSD/packages/pkgsrc.tar.gz
+    cd /usr; tar -xzf /tmp/pkgsrc.tar.gz; chown -R root:wheel pkgsrc
+
+    This tree can then be kept up to date with cvs update:
+
+    cd /usr/pkgsrc; cvs up
 
 
 			EMERGENCY RECOVERY FROM THE CD
@@ -328,5 +335,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.20 2005/07/21 20:31:19 joerg Exp $
+$DragonFly: src/nrelease/root/README,v 1.21 2006/06/28 21:14:52 swildner Exp $
 
