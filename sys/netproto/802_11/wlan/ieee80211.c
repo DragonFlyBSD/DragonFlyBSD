@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.6 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.7 2006/06/28 21:03:51 swildner Exp $
  */
 
 /*
@@ -322,7 +322,7 @@ ieee80211_ieee2mhz(u_int chan, u_int flags)
 /*
  * Setup the media data structures according to the channel and
  * rate tables.  This must be called by the driver after
- * ieee80211_attach and before most anything else.
+ * ieee80211_ifattach and before most anything else.
  */
 void
 ieee80211_media_init(struct ieee80211com *ic,
