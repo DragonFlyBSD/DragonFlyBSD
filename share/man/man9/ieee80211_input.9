@@ -25,76 +25,77 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211_input.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211_input.9,v 1.4 2006/06/28 19:41:59 swildner Exp $
 .\" $Id: ieee80211_input.9,v 1.2 2004/07/07 12:59:39 ru Exp $
 .\"
-.Dd March 2, 2004
+.Dd June 28, 2006
 .Dt IEEE80211_INPUT 9
 .Os
 .Sh NAME
 .Nm ieee80211_input ,
-.Nm ieee80211_decap ,
 .Nm ieee80211_recv_mgmt
 .Nd software 802.11 stack input functions
 .Sh SYNOPSIS
 .In netproto/802_11/ieee80211_var.h
-.In netproto/802_11/ieee80211_proto.h
 .Ft void
 .Fo ieee80211_input
-.Fa "struct ifnet *ifp" "struct mbuf *m" "struct ieee80211_node *ni"
-.Fa "int rssi" "u_int32_t rstamp"
+.Fa "struct ieee80211com *ic" "struct mbuf *m" "struct ieee80211_node *ni"
+.Fa "int rssi" "uint32_t rstamp"
 .Fc
-.Ft struct mbuf *
-.Fn ieee80211_decap "struct ifnet *ifp" "struct mbuf *m"
 .Ft void
 .Fo ieee80211_recv_mgmt
-.Fa "struct ieee80211com *ic" "struct mbuf *m0" "struct ieee80211_node *ni"
-.Fa "int subtype" "int rssi" "u_int32_t rstamp"
+.Fa "struct ieee80211com *ic" "struct mbuf *m" "struct ieee80211_node *ni"
+.Fa "int subtype" "int rssi" "uint32_t rstamp"
 .Fc
 .Sh DESCRIPTION
-These
-functions process received 802.11 frames.
+These functions process received 802.11 frames.
 .Pp
 .\"
 The
 .Fn ieee80211_input
 function takes an mbuf chain
 .Fa m
-containing a complete 802.11 frame from the driver
-.Fa ifp
+containing a complete 802.11 frame from the interface
+.Fa ic
 and passes it to the software 802.11 stack for input processing.
 The
 .Fa ni
 argument specifies an instance of
 .Vt struct ieee80211_node
 (which may be driver-specific) representing the node from which the
-frame was received.
+frame was received, and must not be
+.Dv NULL .
+Typically,
+.Fa ni
+is the return value of
+.Xr ieee80211_find_rxnode 9 .
 The arguments
 .Fa rssi
 and
-.Fa stamp
+.Fa rstamp
 are typically derived from on-card data structures; they are used for
 recording the signal strength and time received of the frame respectively.
-.Pp
-.\"
-The
-.Fn ieee80211_decap
-function performs decapsulation of the 802.11 frame in the mbuf chain
-.Fa m
-received by the device
-.Fa ifp ,
-taking the form of the 802.11 address fields into account;
-the structure of 802.11 addresses vary according to the intended
-source and destination of the frame.
-It is typically called from within
-.Fn ieee80211_input .
 .Pp
 .\"
 The
 .Fn ieee80211_recv_mgmt
 performs input processing for 802.11 management frames.
 It is typically called from within
-.Fn ieee80211_input .
+.Fn ieee80211_input
+through
+.Va ic_recv_mgmt .
+If the driver wants to intercept the 802.11 management frames' processing,
+it will save
+.Va ic_recv_mgmt
+for later use and assign its own
+.Fn recv_mgmt
+to
+.Va ic_recv_mgmt .
+The saved function,
+i.e.
+.Fn ieee80211_recv_mgmt ,
+must be called within the driver's own
+.Fn recv_mgmt .
 .\"
 .Sh SEE ALSO
 .Xr ieee80211 9 ,
@@ -112,5 +113,3 @@ This man page was written by
 .An Bruce M. Simpson Aq bms@FreeBSD.org
 and
 .An Darron Broad Aq darron@kewl.org .
-.Sh BUGS
-There is no netisr queue specifically for the software 802.11 stack yet.

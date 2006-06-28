@@ -25,10 +25,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211.9,v 1.4 2006/06/28 19:41:59 swildner Exp $
 .\" $Id: ieee80211.9,v 1.3 2004/07/07 12:59:39 ru Exp $
 .\"
-.Dd March 2, 2004
+.Dd June 28, 2006
 .Dt IEEE80211 9
 .Os
 .Sh NAME
@@ -48,11 +48,10 @@
 .Nd core 802.11 network stack functions
 .Sh SYNOPSIS
 .In netproto/802_11/ieee80211_var.h
-.In netproto/802_11/ieee80211_proto.h
 .Ft void
-.Fn ieee80211_ifattach "struct ifnet *ifp"
+.Fn ieee80211_ifattach "struct ieee80211com *ic"
 .Ft void
-.Fn ieee80211_ifdetach "struct ifnet *ifp"
+.Fn ieee80211_ifdetach "struct ieee80211com *ic"
 .Ft u_int
 .Fn ieee80211_mhz2ieee "u_int freq" "u_int flags"
 .Ft u_int
@@ -61,15 +60,15 @@
 .Fn ieee80211_ieee2mhz "u_int chan" "u_int flags"
 .Ft void
 .Fo ieee80211_media_init
-.Fa "struct ifnet *ifp" "ifm_change_cb_t media_change"
+.Fa "struct ieee80211com *ic" "ifm_change_cb_t media_change"
 .Fa "ifm_stat_cb_t media_stat"
 .Fc
-.Fa int
+.Ft int
 .Fn ieee80211_media_change "struct ifnet *ifp"
-.Fa void
+.Ft void
 .Fn ieee80211_media_status "struct ifnet *ifp" "struct ifmediareq *imr"
 .Ft void
-.Fn ieee80211_watchdog "struct ifnet *ifp"
+.Fn ieee80211_watchdog "struct ieee80211com *ic"
 .Ft int
 .Fn ieee80211_setmode "struct ieee80211com *ic" "enum ieee80211_phymode mode"
 .Ft enum ieee80211_phymode
@@ -101,19 +100,17 @@ to the 802.11 network stack layer.
 This function must be called before using any of the
 .Nm ieee80211
 functions which need to store driver state across invocations;
-The
-.Vt struct ifnet
+Various fields of the
+.Vt struct ieee80211com
 instance pointed to by
-.Fa ifp
-MUST be an instance of
-.Vt struct ieee80211com ,
-with various fields initialized to tell
+.Fa ic
+must be initialized to tell
 .Nm ieee80211
 about its capabilities.
 This function performs Ethernet and BPF attachment (by calling
 .Fn ether_ifattach
 and
-.Fn bpfattach2 )
+.Fn bpfattach_dlt )
 on behalf of the caller.
 It also implements the
 .Vt ifmedia
@@ -176,9 +173,9 @@ The
 function initializes media data structures used by the
 .Vt ifmedia
 interface, for the driver
-.Fa ifp .
+.Fa ic .
 It must be called by the driver after calling
-.Fn ieee80211_attach
+.Fn ieee80211_ifattach
 and before calling most
 .Nm ieee80211
 functions.
@@ -208,7 +205,11 @@ function is intended to be called from a driver's
 .Va if_watchdog
 routine.
 It is used to perform periodic cleanup of state within the software 802.11
-stack, as well as timing out scans.
+stack,
+getting rid of inactive
+.Vt struct ieee80211_node
+instances,
+as well as timing out scans.
 .Pp
 .\"
 The

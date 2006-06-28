@@ -25,33 +25,36 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211_output.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211_output.9,v 1.4 2006/06/28 19:41:59 swildner Exp $
 .\" $Id: ieee80211_output.9,v 1.2 2004/07/07 12:59:39 ru Exp $
 .\"
-.Dd March 2, 2004
+.Dd June 28, 2006
 .Dt IEEE80211_OUTPUT 9
 .Os
 .Sh NAME
 .Nm ieee80211_encap ,
+.Nm ieee80211_send_mgmt,
+.Nm ieee80211_add_ssid ,
 .Nm ieee80211_add_rates ,
-.Nm ieee80211_add_xrates ,
-.Nm ieee80211_send_mgmt
+.Nm ieee80211_add_xrates
 .Nd software 802.11 stack output functions
 .Sh SYNOPSIS
 .In netproto/802_11/ieee80211_var.h
 .In netproto/802_11/ieee80211_proto.h
 .Ft struct mbuf *
 .Fo ieee80211_encap
-.Fa "struct ifnet *ifp" "struct mbuf *m" "struct ieee80211_node **pni"
+.Fa "struct ieee80211com *ic" "struct mbuf *m" "struct ieee80211_node *ni"
 .Fc
-.Ft u_int8_t *
-.Fn ieee80211_add_rates "u_int8_t *frm" "const struct ieee80211_rateset *rs"
-.Ft u_int8_t *
-.Fn ieee80211_add_xrates "u_int8_t *frm" "const struct ieee80211_rateset *rs"
 .Ft int
 .Fo ieee80211_send_mgmt
 .Fa "struct ieee80211com *ic" "struct ieee80211_node *ni" "int type" "int arg"
 .Fc
+.Ft uint8_t *
+.Fn ieee80211_add_ssid "uint8_t *frm" "const uint8_t *ssid" "int ssid_len"
+.Ft uint8_t *
+.Fn ieee80211_add_rates "uint8_t *frm" "const struct ieee80211_rateset *rs"
+.Ft uint8_t *
+.Fn ieee80211_add_xrates "uint8_t *frm" "const struct ieee80211_rateset *rs"
 .Sh DESCRIPTION
 These functions handle the encapsulation and transmission of 802.11 frames
 within the software 802.11 stack.
@@ -62,53 +65,10 @@ function encapsulates an outbound data frame contained within the
 mbuf chain
 .Fa m
 from the interface
-.Fa ifp .
+.Fa ic .
 The argument
-.Fa *pni
+.Fa ni
 is a reference to the destination node.
-.Pp
-If the function is successful, the mbuf chain is updated with the
-802.11 frame header prepended, and a pointer to the head of the chain
-is returned.
-If an error occurs,
-.Dv NULL
-will be returned, and
-.Fa *pni
-is also set to
-.Dv NULL .
-The caller is responsible for freeing the node reference if
-.Fa *pni
-is
-.Pf non- Dv NULL
-on return.
-The convention is that
-.Va ic_bss
-is not reference counted; the caller is responsible for maintaining this
-reference count.
-.Pp
-.\"
-The
-.Fn ieee80211_add_rates
-utility function is used to add the rate set element
-.Fa *rs
-to the frame
-.Fa frm .
-A pointer to the location in the buffer after the addition of the rate set
-is returned.
-It is typically used when constructing management frames from within the
-software 802.11 stack.
-.Pp
-.\"
-The
-.Fn ieee80211_add_xrates
-utility function is used to add the extended rate set element
-.Fa *rs
-to the frame
-.Fa frm .
-A pointer to the location in the buffer after the addition of the rate set
-is returned.
-It is typically used when constructing management frames from within the
-software 802.11 stack in 802.11g mode.
 .Pp
 .\"
 The
@@ -119,22 +79,104 @@ to the destination node
 .Fa ni
 of type
 .Fa type .
+The node entry
+.Fa ni
+must not be
+.Dv NULL
+and is typically the non-NULL return value of
+.Xr ieee80211_find_txnode 9 .
+This function is typically called through
+.Fn IEEE80211_SEND_MGMT ,
+which is a wrapper for the invocation of
+.Va ic_send_mgmt .
 .Pp
 The argument
 .Fa arg
 specifies either a sequence number for authentication operations,
-a status code for [re]association operations,
+a status code for (re)association operations,
 or a reason for deauthentication and deassociation operations.
 .Pp
-Nodes other than
-.Va ic_bss
-have their reference count incremented to reflect their use for an
+The destination node
+.Fa ni
+will have its reference count incremented to reflect its use for an
 indeterminate amount of time.
-This reference is freed when the function returns.
+This reference is freed either in
+.Va if_start
+or,
+during the interrupt service routine for transmission completing
+if certain transmission rate control algorithms are used.
 .Pp
-The function returns 0 if successful; if temporary buffer space is not
-available, the function returns
+.\"
+The
+.Fn ieee80211_add_ssid
+utility function is used to add the service set ID element
+.Fa ssid
+to the frame
+.Fa frm .
+The
+.Fa ssid_len
+argument indicates the length of the
+.Fa ssid
+to be added.
+.Pp
+.\"
+The
+.Fn ieee80211_add_rates
+utility function is used to add the rate set element
+.Fa rs
+to the frame
+.Fa frm .
+.Pp
+.\"
+The
+.Fn ieee80211_add_xrates
+utility function is used to add the extended rate set element
+.Fa rs
+to the frame
+.Fa frm .
+.Pp
+.\"
+The functions
+.Fn ieee80211_add_ssid ,
+.Fn ieee80211_add_rate
+and
+.Fn ieee80211_add_xrate
+are typically used when constructing management frames from within the
+software 802.11 stack in 802.11g mode.
+.Pp
+.\"
+.Sh RETURN VALUES
+If the function
+.Fn ieee80211_encap
+is successful,
+the mbuf chain
+.Fa m
+is updated with the 802.11 frame header prepended,
+and a pointer to the head of the updated mbuf chain is returned.
+If an error occurs,
+.Dv NULL
+will be returned,
+and
+.Fa m
+will be freed.
+.Pp
+.\"
+The function
+.Fn ieee80211_send_mgmt
+returns 0 if successful;
+if temporary buffer space is not available,
+it returns
 .Er ENOMEM .
+.Pp
+.\"
+The functions
+.Fn ieee80211_add_ssid ,
+.Fn ieee80211_add_rate
+and
+.Fn ieee80211_add_xrate
+return a pointer to the location in the
+.Fa frm
+after the addition of the second argument.
 .\"
 .Sh SEE ALSO
 .Xr ieee80211 9 ,

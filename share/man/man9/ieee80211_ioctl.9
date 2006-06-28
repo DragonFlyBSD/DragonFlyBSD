@@ -25,10 +25,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211_ioctl.9,v 1.4 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211_ioctl.9,v 1.5 2006/06/28 19:41:59 swildner Exp $
 .\" $Id: ieee80211_ioctl.9,v 1.2 2004/07/07 12:59:39 ru Exp $
 .\"
-.Dd March 2, 2004
+.Dd June 28, 2006
 .Dt IEEE80211_IOCTL 9
 .Os
 .Sh NAME
@@ -41,11 +41,20 @@
 .In netproto/802_11/ieee80211_proto.h
 .In netproto/802_11/ieee80211_ioctl.h
 .Ft int
-.Fn ieee80211_cfgget "struct ifnet *ifp" "u_long cmd" "caddr_t data"
+.Fo ieee80211_cfgget
+.Fa "struct ieee80211com *ic" "u_long cmd" "caddr_t data"
+.Fa "struct ucred *cr"
+.Fc
 .Ft int
-.Fn ieee80211_cfgset "struct ifnet *ifp" "u_long cmd" "caddr_t data"
+.Fo ieee80211_cfgset
+.Fa "struct ieee80211com *ic" "u_long cmd" "caddr_t data"
+.Fa "struct ucred *cr"
+.Fc
 .Ft int
-.Fn ieee80211_ioctl "struct ifnet *ifp" "u_long cmd" "caddr_t data"
+.Fo ieee80211_ioctl
+.Fa "struct ifnet *ifp" "u_long cmd" "caddr_t data"
+.Fa "struct ucred *cr"
+.Fc
 .Sh DESCRIPTION
 These
 functions are typically invoked by drivers in response to requests
@@ -58,9 +67,9 @@ and
 .Fn ieee80211_cfgset
 functions implement a legacy interface for getting and setting 802.11
 interface attributes respectively.
-The interface is used by the
+It is used by the
 .Xr wicontrol 8
-utility.
+utility but should not be used by any new drivers.
 .Pp
 .\"
 The
@@ -78,6 +87,21 @@ however, many drivers store attributes such as
 .Dv IEEE80211_IOC_STATIONNAME
 in the driver's private soft state structure, so driver writers may prefer
 to use this as the catch-all in a switch statement to avoid code duplication.
+.\"
+.Sh RETURN VALUES
+The function
+.Fn ieee80211_ioctl
+returns 0 or
+.Er ENETRESET,
+if successful.
+Otherwise, a non-zero value other than
+.Er ENETRESET
+is returned.
+If
+.Er ENETRESET
+is returned and the interface is up and running,
+a driver will typically reinitialize the hardware by calling
+.Va if_init .
 .\"
 .Sh SEE ALSO
 .Xr ifconfig 8 ,

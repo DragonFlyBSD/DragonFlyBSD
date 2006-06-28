@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.114 2006/06/26 17:08:27 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.115 2006/06/28 19:41:59 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -410,6 +410,13 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/include/net/bridge/bridge.h
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/oldbridge.4.gz"
 	rm -f ${DESTDIR}/modules/bridge.ko
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_attach.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_attach.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_detach.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_crypto_wep_crypt.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_decap.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_lookup_node.9.gz"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}9/ieee80211_timeout_nodes.9.gz"
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)

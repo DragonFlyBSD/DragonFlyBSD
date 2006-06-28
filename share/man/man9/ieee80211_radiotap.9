@@ -26,20 +26,20 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man9/ieee80211_radiotap.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
+.\" $DragonFly: src/share/man/man9/ieee80211_radiotap.9,v 1.4 2006/06/28 19:41:59 swildner Exp $
 .\" $Id: ieee80211_radiotap.9,v 1.3 2004/07/07 12:59:39 ru Exp $
 .\"
-.Dd March 2, 2004
+.Dd June 25, 2006
 .Dt IEEE80211_RADIOTAP 9
 .Os
 .Sh NAME
 .Nm ieee80211_radiotap
 .Nd software 802.11 stack packet capture definitions
 .Sh SYNOPSIS
+.In net/bpf.h
 .In netproto/802_11/ieee80211_var.h
 .In netproto/802_11/ieee80211_ioctl.h
 .In netproto/802_11/ieee80211_radiotap.h
-.In net/bpf.h
 .\"
 .Sh DESCRIPTION
 The
@@ -79,11 +79,11 @@ data-link type
 Each frame using this attachment has the following header prepended to it:
 .Bd -literal -offset indent
 struct ieee80211_radiotap_header {
-	u_int8_t	it_version;	/* set to 0 */
-	u_int8_t	it_pad;
-	u_int16_t	it_len;		/* entire length */
-	u_int32_t	it_present;	/* fields present */
-} __attribute__((__packed__));
+	uint8_t		it_version;	/* set to 0 */
+	uint8_t		it_pad;
+	uint16_t	it_len;		/* entire length */
+	uint32_t	it_present;	/* fields present */
+} __packed;
 .Ed
 .Pp
 .\"
@@ -102,7 +102,7 @@ Radiotap headers are copied to the userland via a separate bpf attachment.
 It is necessary for the driver to create this attachment after calling
 .Xr ieee80211_ifattach 9
 by calling
-.Fn bpfattach2
+.Fn bpfattach_dlt
 with the data-link type set to
 .Dv DLT_IEEE_80211_RADIO .
 .Pp
@@ -110,7 +110,7 @@ with the data-link type set to
 When the the information is available,
 usually immediately before a link-layer transmission or after a receive,
 the driver copies it to the bpf layer using the
-.Fn bpf_mtap2
+.Fn bpf_ptap
 function.
 .Pp
 .\"
@@ -190,27 +190,27 @@ structure.
 It should not be used at this time.
 .El
 .Sh EXAMPLES
-Radiotap header for the Cisco Aironet driver:
+Radiotap header for the Intel(R) PRO/Wireless 2200BG/2225BG/2915ABG driver
 .Bd -literal -offset indent
-struct an_rx_radiotap_header {
-	struct ieee80211_radiotap_header	ar_ihdr;
-	u_int8_t	ar_flags;
-	u_int8_t	ar_rate;
-	u_int16_t	ar_chan_freq;
-	u_int16_t	ar_chan_flags;
-	u_int8_t	ar_antsignal;
-	u_int8_t	ar_antnoise;
-} __attribute__((__packed__));
+struct iwi_rx_radiotap_header {
+	struct ieee80211_radiotap_header wr_ihdr;
+	uint8_t		wr_flags;
+	uint8_t		wr_rate;
+	uint16_t	wr_chan_freq;
+	uint16_t	wr_chan_flags;
+	uint8_t		wr_antsignal;
+	uint8_t		wr_antenna;
+};
 .Ed
 .Pp
 Bitmap indicating which fields are present in the above structure:
 .Bd -literal -offset indent
-#define AN_RX_RADIOTAP_PRESENT \\
+#define IWI_RX_RADIOTAP_PRESENT \\
 	((1 << IEEE80211_RADIOTAP_FLAGS) | \\
 	 (1 << IEEE80211_RADIOTAP_RATE) | \\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL) | \\
-	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL) | \\
-	 (1 << IEEE80211_RADIOTAP_DBM_ANTNOISE))
+	 (1 << IEEE80211_RADIOTAP_DB_ANTSIGNAL) | \\
+	 (1 << IEEE80211_RADIOTAP_ANTENNA))
 .Ed
 .Sh SEE ALSO
 .Xr bpf 4 ,
