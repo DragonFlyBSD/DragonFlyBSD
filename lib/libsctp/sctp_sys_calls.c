@@ -1,5 +1,5 @@
 /*	$KAME: sctp_sys_calls.c,v 1.9 2004/08/17 06:08:53 itojun Exp $ */
-/*	$DragonFly: src/lib/libsctp/sctp_sys_calls.c,v 1.1 2005/07/15 16:06:33 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libsctp/sctp_sys_calls.c,v 1.2 2006/06/28 23:14:43 corecode Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -362,7 +362,7 @@ void sctp_freeladdrs(struct sockaddr *addrs)
 }
 
 
-int
+ssize_t
 sctp_sendmsg(int s, 
 	     const void *data, 
 	     size_t len,
@@ -374,7 +374,7 @@ sctp_sendmsg(int s,
 	     u_int32_t timetolive,
 	     u_int32_t context)
 {
-	int sz;
+	ssize_t sz;
 	struct msghdr msg;
 	struct iovec iov[2];
 	char controlVector[256];
@@ -470,7 +470,7 @@ sctp_send(int sd, const void *data, size_t len,
 	  const struct sctp_sndrcvinfo *sinfo,
 	  int flags)
 {
-	int sz;
+	ssize_t sz;
 	struct msghdr msg;
 	struct iovec iov[2];
 	struct sctp_sndrcvinfo *s_info;
@@ -509,7 +509,8 @@ sctp_sendx(int sd, const void *msg, size_t len,
 	   struct sctp_sndrcvinfo *sinfo,
 	   int flags)
 {
-	int i, ret, cnt, *aa, saved_errno;
+	int i, cnt, *aa, saved_errno;
+	ssize_t ret;
 	char *buf;
 	int add_len;
 	struct sockaddr *at;
@@ -537,11 +538,13 @@ sctp_sendx(int sd, const void *msg, size_t len,
 	}
 	if (len > 2048) {
 		/* Never enough memory */
-		return(E2BIG);
+		errno = E2BIG;
+		return(-1);
 	}
 	buf = malloc(len);
 	if (buf == NULL) {
-		return(ENOMEM);
+		errno = ENOMEM;
+		return(-1);
 	}
 	aa = (int *)buf;
 	*aa = cnt;
