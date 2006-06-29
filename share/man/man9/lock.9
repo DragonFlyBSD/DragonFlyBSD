@@ -25,9 +25,9 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.4 2006/04/23 16:23:12 swildner Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.5 2006/06/29 19:56:19 swildner Exp $
 .\"
-.Dd April 23, 2006
+.Dd June 29, 2006
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -41,13 +41,13 @@
 .In sys/types.h
 .In sys/lock.h
 .Ft void
-.Fn lockinit "struct lock *lkp" "int prio" "char *wmesg" "int timo" "int flags"
+.Fn lockinit "struct lock *lkp" "char *wmesg" "int timo" "int flags"
 .Ft int
 .Fn lockcount "struct lock *lkp"
 .Ft int
 .Fn lockcountnb "struct lock *lkp"
 .Ft int
-.Fn lockmgr "struct lock *lkp" "u_int flags" "struct thread *td"
+.Fn lockmgr "struct lock *lkp" "u_int flags"
 .Ft int
 .Fn lockstatus "struct lock *lkp" "struct thread *td"
 .Ft void
@@ -61,9 +61,6 @@ Its arguments are:
 .Bl -tag -width ".Fa wmesg"
 .It Fa lkp
 A pointer to the lock to initialize.
-.It Fa prio
-The priority passed to
-.Xr tsleep 9 .
 .It Fa wmesg
 The lock message.
 This is used for both debugging output and
@@ -155,11 +152,6 @@ This can be used to test the lock.
 Allow recursion on an exclusive lock.
 For every lock there must be a release.
 .El
-.It Fa td
-A thread responsible for this call.
-.Dv NULL
-becomes
-.Dv LK_KERNPROC .
 .El
 .Pp
 The
