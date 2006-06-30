@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.3 2005/12/23 17:41:36 corecode Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.3.2.1 2006/06/30 22:16:32 corecode Exp $
  */
 
 /*
@@ -1440,16 +1440,18 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	    || inet6_pfil_hook.ph_hashooks > 0
 #endif
 	    ) {
-		if (bridge_pfil(&m, ifp, src_if, PFIL_IN) != 0)
-			return;
-		if (m == NULL)
+	    	int ret;
+
+		lwkt_serialize_exit(ifp->if_serializer);
+		ret = bridge_pfil(&m, ifp, src_if, PFIL_IN);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		if (ret != 0 || m == NULL)
 			return;
 	}
 
 	if (dst_if == NULL) {
-		lwkt_serialize_exit(ifp->if_serializer);
 		bridge_broadcast(sc, src_if, m, 1);
-		lwkt_serialize_enter(ifp->if_serializer);
 		return;
 	}
 
@@ -1482,9 +1484,13 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	    || inet6_pfil_hook.ph_hashooks > 0
 #endif
 	    ) {
-		if (bridge_pfil(&m, sc->sc_ifp, dst_if, PFIL_OUT) != 0)
-			return;
-		if (m == NULL)
+	    	int ret;
+
+		lwkt_serialize_exit(ifp->if_serializer);
+		ret = bridge_pfil(&m, sc->sc_ifp, dst_if, PFIL_OUT);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		if (ret != 0 || m == NULL)
 			return;
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -1665,8 +1671,11 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 {
 	struct bridge_iflist *bif;
 	struct mbuf *mc;
-	struct ifnet *dst_if;
+	struct ifnet *dst_if, *ifp;
 	int used = 0;
+
+	ifp = sc->sc_ifp;
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* Filter on the bridge interface before broadcasting */
 	if (runfilt && (inet_pfil_hook.ph_hashooks > 0
@@ -1674,9 +1683,13 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
             || inet6_pfil_hook.ph_hashooks > 0
 #endif
 	    )) {
-		if (bridge_pfil(&m, sc->sc_ifp, NULL, PFIL_OUT) != 0)
-			return;
-		if (m == NULL)
+	    	int ret;
+
+		lwkt_serialize_exit(ifp->if_serializer);
+		ret = bridge_pfil(&m, sc->sc_ifp, NULL, PFIL_OUT);
+		lwkt_serialize_enter(ifp->if_serializer);
+
+		if (ret != 0 || m == NULL)
 			return;
 	}
 
@@ -1721,13 +1734,19 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 		    || inet6_pfil_hook.ph_hashooks > 0
 #endif
 		    )) {
-			if (bridge_pfil(&m, NULL, dst_if, PFIL_OUT) != 0)
-				return;
-			if (m == NULL)
+		    	int ret;
+
+			lwkt_serialize_exit(ifp->if_serializer);
+			ret = bridge_pfil(&m, NULL, dst_if, PFIL_OUT);
+			lwkt_serialize_enter(ifp->if_serializer);
+
+			if (ret != 0 || m == NULL)
 				return;
 		}
 
+		lwkt_serialize_exit(ifp->if_serializer);
 		bridge_enqueue(sc, dst_if, mc);
+		lwkt_serialize_enter(ifp->if_serializer);
 	}
 	if (used == 0)
 		m_freem(m);
