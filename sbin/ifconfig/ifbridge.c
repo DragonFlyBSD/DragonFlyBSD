@@ -33,7 +33,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifbridge.c,v 1.1.2.2 2005/12/28 04:12:58 thompsa Exp $
- * $DragonFly: src/sbin/ifconfig/ifbridge.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifbridge.c,v 1.2 2006/06/30 16:50:01 geekgod Exp $
  */
 
 #include <sys/param.h>
@@ -287,7 +287,6 @@ unsetbridge_learn(const char *val, int d, int s, const struct afswtch *afp)
 	do_bridgeflag(s, val, IFBIF_LEARNING,  0);
 }
 
-#ifdef notyet
 static void
 setbridge_span(const char *val, int d, int s, const struct afswtch *afp)
 {
@@ -309,7 +308,6 @@ unsetbridge_span(const char *val, int d, int s, const struct afswtch *afp)
 	if (do_cmd(s, BRDGDELS, &req, sizeof(req), 1) < 0)
 		err(1, "BRDGDELS %s",  val);
 }
-#endif
 
 static void
 setbridge_stp(const char *val, int d, int s, const struct afswtch *afp)
@@ -527,10 +525,8 @@ static struct cmd bridge_cmds[] = {
 	DEF_CMD_ARG("-discover",	unsetbridge_discover),
 	DEF_CMD_ARG("learn",		setbridge_learn),
 	DEF_CMD_ARG("-learn",		unsetbridge_learn),
-#ifdef notyet
 	DEF_CMD_ARG("span",		setbridge_span),
 	DEF_CMD_ARG("-span",		unsetbridge_span),
-#endif
 	DEF_CMD_ARG("stp",		setbridge_stp),
 	DEF_CMD_ARG("-stp",		unsetbridge_stp),
 	DEF_CMD("flush", 0,		setbridge_flush),
