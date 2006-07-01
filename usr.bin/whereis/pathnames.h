@@ -23,7 +23,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/whereis/pathnames.h,v 1.4 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/pathnames.h,v 1.3 2004/07/19 20:27:36 justin Exp $
+ * $DragonFly: src/usr.bin/whereis/pathnames.h,v 1.4 2006/07/01 19:34:43 swildner Exp $
  */
 
 /* Where to look for libexec and games */
@@ -42,8 +42,8 @@
 "/usr/src/secure/libexec:/usr/src/crypto:"		\
 "/usr/src/games"
 
-/* Each subdirectory of PATH_PORTS will be appended to PATH_SOURCES. */
-#define PATH_PORTS "/usr/ports"
+/* Each subdirectory of PATH_PKGSRC will be appended to PATH_SOURCES. */
+#define PATH_PKGSRC "/usr/pkgsrc"
 
 /* How to query the current manpath. */
 #define MANPATHCMD "manpath -q"

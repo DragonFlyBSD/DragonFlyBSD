@@ -22,7 +22,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.4 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.5 2006/07/01 19:34:43 swildner Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ defaults(void)
 		decolonify(b, &mandirs, &nele);
 	}
 
-	/* -s defaults to precompiled list, plus subdirs of /usr/ports */
+	/* -s defaults to precompiled list, plus subdirs of /usr/pkgsrc */
 	if (!sourcedirs) {
 		if ((b = malloc(strlen(sourcepath) + 1)) == NULL)
 			abort();
@@ -315,28 +315,28 @@ defaults(void)
 		nele = 0;
 		decolonify(b, &sourcedirs, &nele);
 
-		if (stat(PATH_PORTS, &sb) == -1) {
+		if (stat(PATH_PKGSRC, &sb) == -1) {
 			if (errno == ENOENT)
-				/* no /usr/ports, we are done */
+				/* no /usr/pkgsrc, we are done */
 				return;
-			err(EX_OSERR, "stat(" PATH_PORTS ")");
+			err(EX_OSERR, "stat(" PATH_PKGSRC ")");
 		}
 		if ((sb.st_mode & S_IFMT) != S_IFDIR)
-			/* /usr/ports is not a directory, ignore */
+			/* /usr/pkgsrc is not a directory, ignore */
 			return;
-		if (access(PATH_PORTS, R_OK | X_OK) != 0)
+		if (access(PATH_PKGSRC, R_OK | X_OK) != 0)
 			return;
-		if ((dir = opendir(PATH_PORTS)) == NULL)
-			err(EX_OSERR, "opendir" PATH_PORTS ")");
+		if ((dir = opendir(PATH_PKGSRC)) == NULL)
+			err(EX_OSERR, "opendir" PATH_PKGSRC ")");
 		while ((dirp = readdir(dir)) != NULL) {
 			if (dirp->d_name[0] == '.' ||
 			    strcmp(dirp->d_name, "CVS") == 0)
 				/* ignore dot entries and CVS subdir */
 				continue;
-			if ((b = malloc(sizeof PATH_PORTS + 1 + dirp->d_namlen))
+			if ((b = malloc(sizeof PATH_PKGSRC + 1 + dirp->d_namlen))
 			    == NULL)
 				abort();
-			strcpy(b, PATH_PORTS);
+			strcpy(b, PATH_PKGSRC);
 			strcat(b, "/");
 			strcat(b, dirp->d_name);
 			if (stat(b, &sb) == -1 ||
