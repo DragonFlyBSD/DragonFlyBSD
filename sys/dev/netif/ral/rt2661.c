@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/rt2661.c,v 1.4 2006/03/21 21:15:43 damien Exp $
- * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.1 2006/05/20 09:13:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/rt2661.c,v 1.2 2006/07/02 10:03:17 sephe Exp $
  */
 
 /*
@@ -543,8 +543,8 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 	    M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
-	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES, RT2661_MAX_SCATTER,
-	    MCLBYTES, 0, &ring->data_dmat);
+	    BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES * RT2661_MAX_SCATTER,
+	    RT2661_MAX_SCATTER, MCLBYTES, 0, &ring->data_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
