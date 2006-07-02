@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.84 2006/06/25 11:02:39 corecode Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.85 2006/07/02 12:55:44 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2706,7 +2706,6 @@ options 	ALTQ_DEBUG	#for debugging
 # SCTP
 options		SCTP
 options		SCTP_DEBUG 
-options		SCTP_TCP_MODEL_SUPPORT
 options		SCTP_USE_ADLER32
 options		SCTP_HIGH_SPEED
 options		SCTP_STAT_LOGGING

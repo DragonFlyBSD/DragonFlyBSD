@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.50 2006/06/25 11:02:37 corecode Exp $
+# $DragonFly: src/sys/conf/options,v 1.51 2006/07/02 12:55:44 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -533,7 +533,6 @@ I_WANT_DEPRECATED_STUFF	opt_deprecated.h
 # SCTP
 SCTP			opt_sctp.h
 SCTP_DEBUG		opt_sctp.h
-SCTP_TCP_MODEL_SUPPORT	opt_sctp.h
 SCTP_USE_ADLER32	opt_sctp.h
 SCTP_HIGH_SPEED		opt_sctp.h
 SCTP_STAT_LOGGING	opt_sctp.h
