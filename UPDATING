@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.19 2006/01/31 09:45:30 swildner Exp $
+$DragonFly: src/UPDATING,v 1.20 2006/07/02 08:13:07 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -106,12 +106,12 @@ the 'upgrade' target.
 ---------------------
 
 The best way to upgrade DragonFly is to maintain a copy of the DragonFly
-CVS repository via cvsup and to checkout the source base and DragonFly
-ports via this repository.   The repository is stored in /home/dcvs by
-default and requires about 500MB of disk space.  The checked out source
-tree (/usr/src) requires about 500MB of disk space, and the build will
-eat around 500MB of space out of /usr/obj.  To maintain the build you 
-should reserve at least 2GB of disk space, and 3GB if you have the space.
+CVS repository via cvsup and to checkout the source base via this repository.
+The repository is stored in /home/dcvs by default and requires about 800MB
+of disk space.  The checked out source tree (/usr/src) requires about 400MB
+of disk space, and the build will eat around 800MB of space out of /usr/obj.
+To maintain the build you should reserve at least 2.5GB of disk space, and
+3.5GB if you have the space.
 
 Note: most people run cvsup via a root cron job to keep the repository up to
 date.  Please limit such automatic updates to once a day and try to randomize
