@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-src-supfile,v 1.4 2005/10/04 11:12:20 corecode Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-src-supfile,v 1.5 2006/07/02 00:23:38 swildner Exp $
 #
 # DRAGONFLY-SRC-SUPFILE
 #
@@ -32,9 +32,8 @@
 # prefix=/usr
 #		This specifies where to place the requested files.  A
 #		setting of "/usr" will place all of the files
-#		requested in /usr (e.g., "/usr/src/bin",
-#		"/usr/ports/archivers").  The prefix directory
-#		must exist in order to run CVSup.
+#		requested in /usr (e.g., "/usr/src/bin").
+#		The prefix directory must exist in order to run CVSup.
 #
 #
 *default host=cvsup.dragonflybsd.org

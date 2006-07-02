@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.5 2006/03/12 02:18:59 swildner Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-cvs-supfile,v 1.6 2006/07/02 00:23:38 swildner Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -30,10 +30,9 @@
 #
 # prefix=/home/dcvs
 #		This specifies where to place the requested files.  A
-#		setting of "/home/ncvs" will place all of the files
-#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
-#		"/home/ncvs/ports/archivers").  The prefix directory
-#		must exist in order to run CVSup.
+#		setting of "/home/dcvs" will place all of the files
+#		requested in /home/dcvs (e.g., "/home/dcvs/src/bin").
+#		The prefix directory must exist in order to run CVSup.
 #
 # If you want to use a 'checked out' copy of the DragonFly source tree, use
 # one of the other DragonFly supfiles.
