@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.36 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.37 2006/07/02 00:49:22 corecode Exp $
  */
 
 #include "opt_atalk.h"
@@ -550,8 +550,6 @@ ether_input_internal(struct ifnet *ifp, struct mbuf *m)
 void
 ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 {
-	struct ether_header save_eh;
-
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/* XXX old crufty stuff, needs to be removed */
