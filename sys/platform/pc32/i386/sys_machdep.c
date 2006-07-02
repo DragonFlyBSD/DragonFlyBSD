@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.23 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.24 2006/07/02 00:49:31 corecode Exp $
  *
  */
 
@@ -256,12 +256,14 @@ set_user_TLS(void)
 		gdt[off + i].sd = td->td_tls[i];
 }
 
+#ifdef SMP
 static
 void
 set_user_ldt_cpusync(struct lwkt_cpusync *cmd)
 {
 	set_user_ldt(cmd->cs_data);
 }
+#endif
 
 /*
  * Update the GDT entry pointing to the LDT to point to the LDT of the
