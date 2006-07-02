@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.11 2006/06/14 15:50:09 y0netan1 Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.12 2006/07/02 00:49:38 corecode Exp $
 
 SYSDIR?= ${.CURDIR}/../..
 .include "Makefile.inc"
@@ -74,7 +74,7 @@ opt_ddb.h: Makefile
 
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h acpi_wakeup.c
-.if ${MACHINE} == "i386"
+.if ${MACHINE_ARCH} == "i386"
 # APIC enumerators
 #SRCS+=	madt.c
 SRCS+=	pmtimer.c
