@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.116 2006/06/28 21:37:37 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.117 2006/07/02 00:49:46 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -425,6 +425,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.post.mk
 	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.pre.mk
 	rm -f ${DESTDIR}/var/db/port.mkversion
+	rm -f ${DESTDIR}/share/mk/bsd.kern.mk
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
