@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.24 2006/02/15 17:13:33 corecode Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.25 2006/07/02 00:55:08 corecode Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -160,6 +160,7 @@ SYSDIR=	${_dir}
 .if !defined(SYSDIR) || !exists(${SYSDIR}/kern)
 .error "can't find kernel source tree"
 .endif
+S=	${SYSDIR}
 
 #	path=`(cd $$path && /bin/pwd)` ; 
 
