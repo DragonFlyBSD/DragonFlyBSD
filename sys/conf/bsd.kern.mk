@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.8 2006/07/02 00:55:08 corecode Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.9 2006/07/02 00:57:14 corecode Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -18,6 +18,10 @@ CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 # When working on removing warnings from code, the `-Werror' flag should be
 # of material assistance.
 #
+
+CFLAGS+= -finline-limit=${INLINE_LIMIT}
+CFLAGS+= --param inline-unit-growth=100
+CFLAGS+= --param large-function-growth=1000
 
 # Require the proper use of 'extern' for variables.  -fno-common will
 # cause duplicate declarations to generate a link error.

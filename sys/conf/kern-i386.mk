@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/Attic/kern-i386.mk,v 1.1 2006/07/02 00:55:08 corecode Exp $
+# $DragonFly: src/sys/conf/Attic/kern-i386.mk,v 1.2 2006/07/02 00:57:14 corecode Exp $
 #
 # On the i386, do not align the stack to 16-byte boundaries.  Otherwise GCC
 # adds code to the entry and exit point of every function to align the
@@ -15,3 +15,5 @@
 CFLAGS+=	-mpreferred-stack-boundary=2
 CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3
+
+INLINE_LIMIT=	8000
