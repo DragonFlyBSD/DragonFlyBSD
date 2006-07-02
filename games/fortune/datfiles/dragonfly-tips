@@ -1,6 +1,6 @@
 This fortune brought to you by:
 $FreeBSD: src/games/fortune/datfiles/freebsd-tips,v 1.14.2.11 2003/03/15 08:48:29 dougb Exp $
-$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.1 2006/03/17 03:15:16 justin Exp $
+$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.2 2006/07/02 13:04:35 swildner Exp $
 %
 Having trouble using fetch through a firewall? Try setting the environment
 variable FTP_PASSIVE_MODE to yes, and see fetch(3) for more details.
@@ -11,8 +11,8 @@ through the console output.  Press "Scroll Lock" again to turn it off.
 Want colour in your directory listings?  Use "ls -G".  "ls -F" is also useful,
 and they can be combined as "ls -FG".
 %
-If you'd like to keep track of applications in the DragonFly BSD ports tree,
-take a look at pkgsrc.se;
+If you'd like to keep track of applications in the pkgsrc tree, take a look
+at pkgsrc.se;
 
 	http://www.pkgsrc.se/
 %
