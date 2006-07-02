@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.1.2.6 2003/05/01 06:35:00 simokawa Exp $
-.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.7 2006/03/26 22:56:58 swildner Exp $
+.\" $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.8,v 1.8 2006/07/02 00:30:08 swildner Exp $
 .\"
 .\"
 .Dd December 30, 2002
@@ -83,7 +83,7 @@ sysctl hw.firewire.try_bmr=0; fwcontrol -r
 The resulting file contains raw DV data excluding isochronus header
 and CIP header. It can be handled by
 .Ic libdv
-in the ports collection.
+in the pkgsrc collection.
 .It Fl S Ar filename
 Send a DV file as isochronus stream.
 .El
