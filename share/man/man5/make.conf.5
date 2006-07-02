@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.13 2006/06/28 21:21:35 swildner Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.14 2006/07/02 16:03:42 swildner Exp $
 .\"
-.Dd November 3, 2000
+.Dd July 2, 2006
 .Dt MAKE.CONF 5
 .Os
 .Sh NAME
@@ -598,6 +598,14 @@ to determine if you can legally use IDEA.
 Set this to build Kerberos5 (KTH Heimdal).
 .Em WARNING !
 This is still experimental code.
+.It Va WITH_BSDTAR
+.Pq Vt bool
+Set this to use
+.Xr bsdtar 1
+as the stardard
+.Xr tar 1 .
+The default is to use GNU
+.Xr tar 1 .
 .El
 .Pp
 The following list provides a name and short description for variables
