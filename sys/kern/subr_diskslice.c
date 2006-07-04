@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.19 2006/05/04 18:32:22 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.20 2006/07/04 19:54:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -668,6 +668,14 @@ dsopen(dev_t dev, int mode, u_int flags,
 		printf("%s: invalid sector size %lu\n", devtoname(dev),
 		    (u_long)lp->d_secsize);
 		return (EINVAL);
+	}
+
+	/*
+	 * Do not attempt to read the slice table or disk label when
+	 * accessing the raw disk.
+	 */
+	if (dkslice(dev) == WHOLE_DISK_SLICE && dkpart(dev) == RAW_PART) {
+		flags |= DSO_ONESLICE | DSO_NOLABELS;
 	}
 
 	/*
