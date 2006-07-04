@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.85 2006/07/02 12:55:44 swildner Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.86 2006/07/04 17:35:30 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2626,6 +2626,10 @@ options 	INIT_PATH="/sbin/init:/stand/sysinstall"
 options 	BUS_DEBUG       # enable newbus debugging
 options 	DEBUG_VFS_LOCKS # enable vfs lock debugging
 options 	NPX_DEBUG       # enable npx debugging (FPU/math emu)
+
+# Record the program counter of the code interrupted by the statistics
+# clock interrupt.  Use pctrack(8) to dump this information.
+options		DEBUG_PCTRACK
 
 # More undocumented options for linting.
 # Note that documenting these are not considered an affront.
