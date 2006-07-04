@@ -42,7 +42,10 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.10 2006/04/25 21:30:45 dillon Exp $
+ *	- Is able to do incremental mirroring/backups via hardlinks from
+ *	  the 'previous' version (supplied with -H path).
+ *
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.11 2006/07/04 00:32:03 dillon Exp $
  */
 
 /*-
@@ -56,7 +59,8 @@
 
 #define HSIZE	16384
 #define HMASK	(HSIZE-1)
-#define HASHF 16
+#define HLSIZE	8192
+#define HLMASK	(HLSIZE - 1)
 
 typedef struct Node {
     struct Node *no_Next;
@@ -79,7 +83,7 @@ struct hlink {
     nlink_t nlinked;
 };
 
-struct hlink *hltable[HASHF];
+struct hlink *hltable[HLSIZE];
 
 void RemoveRecur(const char *dpath, dev_t devNo);
 void InitList(List *list);
@@ -87,6 +91,7 @@ void ResetList(List *list);
 int AddList(List *list, const char *name, int n);
 static struct hlink *hltlookup(struct stat *);
 static struct hlink *hltadd(struct stat *, const char *);
+static char *checkHLPath(struct stat *st, const char *spath, const char *dpath);
 static int shash(const char *s);
 static void hltdelete(struct hlink *);
 int YesNo(const char *path);
@@ -105,7 +110,11 @@ int UseMD5Opt;
 int UseFSMIDOpt;
 int SummaryOpt;
 int EnableDirectoryRetries;
+int DstBaseLen;
+char IOBuf1[65536];
+char IOBuf2[65536];
 const char *UseCpFile;
+const char *UseHLPath;
 const char *MD5CacheFile;
 const char *FSMIDCacheFile;
 
@@ -167,6 +176,9 @@ main(int ac, char **av)
 	case 'X':
 	    UseCpFile = (*ptr) ? ptr : av[++i];
 	    break;
+	case 'H':
+	    UseHLPath = (*ptr) ? ptr : av[++i];
+	    break;
 	case 'f':
 	    ForceOpt = v;
 	    break;
@@ -215,6 +227,7 @@ main(int ac, char **av)
 	/* not reached */
     }
     if (dst) {
+	DstBaseLen = strlen(dst);
 	i = DoCopy(src, dst, (dev_t)-1, (dev_t)-1);
     } else {
 	i = DoCopy(src, NULL, (dev_t)-1, (dev_t)-1);
@@ -260,7 +273,7 @@ hltlookup(struct stat *stp)
     struct hlink *hl;
     int n;
 
-    n = stp->st_ino % HASHF;
+    n = stp->st_ino & HLMASK;
 
     for (hl = hltable[n]; hl; hl = hl->next)
         if (hl->ino == stp->st_ino)
@@ -286,7 +299,7 @@ hltadd(struct stat *stp, const char *path)
     strncpy(new->name, path, 2048);
     new->nlinked = 1;
     new->prev = NULL;
-    n = stp->st_ino % HASHF;
+    n = stp->st_ino & HLMASK;
     new->next = hltable[n];
     if (hltable[n])
         hltable[n]->prev = new;
@@ -306,10 +319,71 @@ hltdelete(struct hlink *hl)
         if (hl->next)
             hl->next->prev = NULL;
 
-        hltable[hl->ino % HASHF] = hl->next;
+        hltable[hl->ino & HLMASK] = hl->next;
     }
 
     free(hl);
+}
+
+/*
+ * If UseHLPath is defined check to see if the file in question is
+ * the same as the source file, and if it is return a pointer to the
+ * -H path based file for hardlinking.  Else return NULL.
+ */
+static char *
+checkHLPath(struct stat *st1, const char *spath, const char *dpath)
+{
+    struct stat sthl;
+    char *hpath;
+    int fd1;
+    int fd2;
+    int good;
+
+    asprintf(&hpath, "%s%s", UseHLPath, dpath + DstBaseLen);
+
+    /*
+     * stat info matches ?
+     */
+    if (stat(hpath, &sthl) < 0 ||
+	st1->st_size != sthl.st_size ||
+	st1->st_uid != sthl.st_uid ||
+	st1->st_gid != sthl.st_gid ||
+	st1->st_mtime != sthl.st_mtime
+    ) {
+	free(hpath);
+	return(NULL);
+    }
+
+    /*
+     * If ForceOpt is set we have to compare the files
+     */
+    if (ForceOpt) {
+	fd1 = open(spath, O_RDONLY);
+	fd2 = open(hpath, O_RDONLY);
+	good = 0;
+
+	if (fd1 >= 0 && fd2 >= 0) {
+	    int n;
+
+	    while ((n = read(fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+		if (read(fd2, IOBuf2, sizeof(IOBuf2)) != n)
+		    break;
+		if (bcmp(IOBuf1, IOBuf2, n) != 0)
+		    break;
+	    }
+	    if (n == 0)
+		good = 1;
+	}
+	if (fd1 >= 0)
+	    close(fd1);
+	if (fd2 >= 0)
+	    close(fd2);
+	if (good == 0) {
+	    free(hpath);
+	    hpath = NULL;
+	}
+    }
+    return(hpath);
 }
 
 int
@@ -674,6 +748,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	}
     } else if (S_ISREG(st1.st_mode)) {
 	char *path;
+	char *hpath;
 	int fd1;
 	int fd2;
 
@@ -687,6 +762,27 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	else if (fres < 0)
 	    logerr("%-32s fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 
+	/*
+	 * Not quite ready to do the copy yet.  If UseHLPath is defined,
+	 * see if we can hardlink instead.
+	 */
+
+	if (UseHLPath && (hpath = checkHLPath(&st1, spath, dpath)) != NULL) {
+		if (link(hpath, dpath) == 0) {
+			if (VerboseOpt) {
+			    logstd("%-32s hardlinked(-H)\n",
+				   (dpath ? dpath : spath));
+			}
+			free(hpath);
+			goto skip_copy;
+		}
+		/*
+		 * Shucks, we may have hit a filesystem hard linking limit,
+		 * we have to copy instead.
+		 */
+		free(hpath);
+	}
+
 	if ((fd1 = open(spath, O_RDONLY)) >= 0) {
 	    if ((fd2 = open(path, O_WRONLY|O_CREAT|O_EXCL, 0600)) < 0) {
 		/*
@@ -698,10 +794,6 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 		fd2 = open(path, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, 0600);
 	    }
 	    if (fd2 >= 0) {
-		/*
-		 * Matt: I think 64k would be faster here
-		 */
-		char buf[32768];
 		const char *op;
 		int n;
 
@@ -709,9 +801,9 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 		 * Matt: What about holes?
 		 */
 		op = "read";
-		while ((n = read(fd1, buf, sizeof(buf))) > 0) {
+		while ((n = read(fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
 		    op = "write";
-		    if (write(fd2, buf, n) != n)
+		    if (write(fd2, IOBuf1, n) != n)
 			break;
 		    op = "read";
 		}
@@ -764,6 +856,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	    );
 	    ++r;
 	}
+skip_copy:
 	free(path);
 
         if (hln) {

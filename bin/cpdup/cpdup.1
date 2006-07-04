@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.10 2006/04/27 10:23:20 swildner Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.11 2006/07/04 00:32:03 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -21,6 +21,10 @@
 .Op Fl q
 .Op Fl o
 .Op Fl m
+.Oo
+.Fl H
+.Ar path
+.Oc
 .Oo
 .Fl M
 .Ar file
@@ -76,7 +80,12 @@ This can be useful for obtaining prompt progress updates through a pipe.
 .It Fl I
 will cause cpdup to print a summary at the end with performance counter.
 .It Fl f
-Forces file updates to occur even if the files appear to be the same.
+Forces file updates to occur even if the files appear to be the same.  If
+the
+.Fl H
+option is used, this option will also force a byte for byte comparison
+between the original file and the file in the hardlink path, even if
+all the stat info matches, but will still use a hardlink if they match.
 .It Fl s0
 Disable the disallow-file-replaces-directory safety feature.  This
 safety feature is enabled by default to prevent user mistakes from blowing
@@ -98,6 +107,30 @@ even if modifications are made to a source file.  If you do not specify a
 destination directory the
 .Nm
 command forcefully regenerates the MD5 checkfile for every file in the source.
+.It Fl H Ar path
+cpdup will create a hardlink from a file found under
+.Ar path
+to the target instead of copying the source to the target if the file found
+via
+.Ar path
+is identical to the source.  This allows one to use
+.Nm
+to create incremental backups of a filesystem.  Create a direct 'level 0'
+backup, and then specify the level 0 backup path with this option when
+creating an incremental backup to a different target directory.  This
+method works so long as the filesystem does not hit a hardlink limit.  Note
+that
+.Nm
+must record file paths for any hardlinked file while operating and therefore
+uses a great deal more memory when dealing with hardlinks or hardlink-based
+backups.  Example use:
+.Pp
+.Dl cpdup -i0 -s0 -I -H /backup/home.l0 /home /backup/home.l1
+.Pp
+WARNING: If this option is used
+.Nm
+must record the paths for all files it encounters while it operates
+and it is possible that you may run the process out of memory.
 .It Fl M Ar file
 Works the same as
 .Fl m
