@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.34 2001/12/13 19:45:41 phantom Exp $
- * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.15 2006/03/02 18:05:30 joerg Exp $
+ * $DragonFly: src/lib/libc/stdio/vfprintf.c,v 1.16 2006/07/05 15:04:54 joerg Exp $
  */
 
 /*
@@ -55,6 +55,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include <stdarg.h>
 #include "un-namespace.h"
@@ -96,6 +97,8 @@ union arg {
 	double			 doublearg;
 	long double		 longdoublearg;
 #endif
+	wint_t			 wintarg;
+	wchar_t			*pwchararg;
 };
 
 /*
@@ -106,7 +109,7 @@ enum typeid {
 	T_LONG, T_U_LONG, TP_LONG, T_LLONG, T_U_LLONG, TP_LLONG,
 	T_PTRDIFFT, TP_PTRDIFFT, T_SIZET, TP_SIZET,
 	T_INTMAXT, T_UINTMAXT, TP_INTMAXT, TP_VOID, TP_CHAR, TP_SCHAR,
-	T_DOUBLE, T_LONG_DOUBLE
+	T_DOUBLE, T_LONG_DOUBLE, T_WINT, TP_WCHAR
 };
 
 static int	__sprint(FILE *, struct __suio *);
@@ -266,7 +269,7 @@ __ultoa(u_long val, char *endp, int base, int octzero, const char *xdigs,
 
 /* Identical to __ultoa, but for intmax_t. */
 static char *
-__ujtoa(u_quad_t val, char *endp, int base, int octzero, const char *xdigs,
+__ujtoa(uintmax_t val, char *endp, int base, int octzero, const char *xdigs,
 	int needgrp, char thousep, const char *grp)
 {
 	char *cp = endp;
@@ -334,6 +337,65 @@ __ujtoa(u_quad_t val, char *endp, int base, int octzero, const char *xdigs,
 		abort();
 	}
 	return (cp);
+}
+
+/*
+ * Convert a wide character string argument for the %ls format to a multibyte
+ * string representation. If not -1, prec specifies the maximum number of
+ * bytes to output, and also means that we can't assume that the wide char.
+ * string ends is null-terminated.
+ */
+static char *
+__wcsconv(wchar_t *wcsarg, int prec)
+{
+	static const mbstate_t initial;
+	mbstate_t mbs;
+	char buf[MB_LEN_MAX];
+	wchar_t *p;
+	char *convbuf;
+	size_t clen, nbytes;
+
+	/* Allocate space for the maximum number of bytes we could output. */
+	if (prec < 0) {
+		p = wcsarg;
+		mbs = initial;
+		nbytes = wcsrtombs(NULL, (const wchar_t **)&p, 0, &mbs);
+		if (nbytes == (size_t)-1)
+			return (NULL);
+	} else {
+		/*
+		 * Optimisation: if the output precision is small enough,
+		 * just allocate enough memory for the maximum instead of
+		 * scanning the string.
+		 */
+		if (prec < 128) {
+			nbytes = prec;
+		} else {
+			nbytes = 0;
+			p = wcsarg;
+			mbs = initial;
+			for (;;) {
+				clen = wcrtomb(buf, *p++, &mbs);
+				if (clen == 0 || clen == (size_t)-1 ||
+				    nbytes + clen > prec)
+					break;
+				nbytes += clen;
+			}
+		}
+	}
+	if ((convbuf = malloc(nbytes + 1)) == NULL)
+		return (NULL);
+
+	/* Fill the output buffer. */
+	p = wcsarg;
+	mbs = initial;
+	if ((nbytes = wcsrtombs(convbuf, (const wchar_t **)&p,
+	    nbytes, &mbs)) == (size_t)-1) {
+		free(convbuf);
+		return (NULL);
+	}
+	convbuf[nbytes] = '\0';
+	return (convbuf);
 }
 
 /*
@@ -431,6 +493,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
         union arg statargtable[STATIC_ARG_TBL_SIZE];
         int nextarg;            /* 1-based argument index */
         va_list orgap;          /* original argument pointer */
+	char *convbuf;		/* wide to multibyte conversion result */
 
 	_double = 0;
 	expsize = 0;
@@ -542,6 +605,7 @@ __vfprintf(FILE *fp, const char *fmt0, va_list ap)
 
 	thousands_sep = '\0';
 	grouping = NULL;
+	convbuf = NULL;
 #ifndef NO_FLOATING_POINT
 	dtoaresult = NULL;
 	decimal_point = localeconv()->decimal_point;
@@ -697,9 +761,27 @@ reswitch:	switch (ch) {
 		case 'z':
 			flags |= SIZET;
 			goto rflag;
+		case 'C':
+			flags |= LONGINT;
+			/*FALLTHROUGH*/
 		case 'c':
-			*(cp = buf) = GETARG(int);
-			size = 1;
+			if (flags & LONGINT) {
+				static const mbstate_t initial;
+				mbstate_t mbs;
+				size_t mbseqlen;
+
+				mbs = initial;
+				mbseqlen = wcrtomb(cp = buf,
+				    (wchar_t)GETARG(wint_t), &mbs);
+				if (mbseqlen == (size_t)-1) {
+					fp->pub._flags |= __SERR;
+					goto error;
+				}
+				size = (int)mbseqlen;
+			} else {
+				*(cp = buf) = GETARG(int);
+				size = 1;
+			}
 			sign = '\0';
 			break;
 		case 'D':
@@ -855,8 +937,26 @@ fp_begin:		if (prec == -1)
 			flags = flags | INTMAXT | HEXPREFIX;
 			ch = 'x';
 			goto nosign;
+		case 'S':
+			flags |= LONGINT;
+			/*FALLTHROUGH*/
 		case 's':
-			if ((cp = GETARG(char *)) == NULL)
+			if (flags & LONGINT) {
+				wchar_t *wcp;
+
+				if (convbuf != NULL)
+					free(convbuf);
+				if ((wcp = GETARG(wchar_t *)) == NULL)
+					cp = "(null)";
+				else {
+					convbuf = __wcsconv(wcp, prec);
+					if (convbuf == NULL) {
+						fp->pub._flags |= __SERR;
+						goto error;
+					}
+					cp = convbuf;
+				}
+			} else if ((cp = GETARG(char *)) == NULL)
 				cp = "(null)";
 			if (prec >= 0) {
 				/*
@@ -1054,6 +1154,8 @@ error:
 	if (dtoaresult != NULL)
 		free(dtoaresult);
 #endif
+	if (convbuf != NULL)
+		free(convbuf);
 	if (__sferror(fp))
 		ret = EOF;
         if ((argtable != NULL) && (argtable != statargtable))
@@ -1212,8 +1314,14 @@ reswitch:	switch (ch) {
 		case 'z':
 			flags |= SIZET;
  			goto rflag;
+		case 'C':
+			flags |= LONGINT;
+			/*FALLTHROUGH*/
 		case 'c':
-			ADDTYPE(T_INT);
+			if (flags & LONGINT)
+				ADDTYPE(T_WINT);
+			else
+				ADDTYPE(T_INT);
 			break;
 		case 'D':
 			flags |= LONGINT;
@@ -1265,8 +1373,14 @@ reswitch:	switch (ch) {
 		case 'p':
 			ADDTYPE(TP_VOID);
 			break;
+		case 'S':
+			flags |= LONGINT;
+			/*FALLTHROUGH*/
 		case 's':
-			ADDTYPE(TP_CHAR);
+			if (flags & LONGINT)
+				ADDTYPE(TP_WCHAR);
+			else
+				ADDTYPE(TP_CHAR);
 			break;
 		case 'U':
 			flags |= LONGINT;
@@ -1299,6 +1413,7 @@ done:
 			break;
 		    case TP_SCHAR:
 			(*argtable) [n].pschararg = va_arg (ap, signed char *);
+			break;
 		    case TP_SHORT:
 			(*argtable)[n].pshortarg = va_arg(ap, short *);
 			break;
@@ -1359,6 +1474,12 @@ done:
 		    case TP_VOID:
 			(*argtable)[n].pvoidarg = va_arg(ap, void *);
 			break;
+		    case T_WINT:
+			(*argtable)[n].wintarg = va_arg(ap, wint_t);
+			break;
+		    case TP_WCHAR:
+			(*argtable)[n].pwchararg = va_arg(ap, wchar_t *);
+			break;
 		}
 	}
 
@@ -1375,19 +1496,20 @@ __grow_type_table(int nextarg, enum typeid **typetable, int *tablesize)
 	enum typeid * const oldtable = *typetable;
 	const int oldsize = *tablesize;
 	enum typeid *newtable;
-	int newsize = oldsize * 2;
+	int n, newsize = oldsize * 2;
 
 	if (newsize < nextarg + 1)
 		newsize = nextarg + 1;
 	if (oldsize == STATIC_ARG_TBL_SIZE) {
-		if ((newtable = malloc(newsize)) == NULL)
+		if ((newtable = malloc(newsize * sizeof(enum typeid))) == NULL)
 			abort();			/* XXX handle better */
-		bcopy(oldtable, newtable, oldsize);
+		bcopy(oldtable, newtable, oldsize * sizeof(enum typeid));
 	} else {
-		if ((newtable = reallocf(oldtable, newsize)) == NULL)
+		if ((newtable = reallocf(oldtable, newsize * sizeof(enum typeid))) == NULL)
 			abort();			/* XXX handle better */
 	}
-	memset(&newtable[oldsize], T_UNUSED, newsize - oldsize);
+	for (n = oldsize; n < newsize; n++)
+		newtable[n] = T_UNUSED;
 
 	*typetable = newtable;
 	*tablesize = newsize;
