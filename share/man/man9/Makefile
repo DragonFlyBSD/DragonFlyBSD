@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.31 2006/06/28 19:41:59 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.32 2006/07/05 18:32:20 swildner Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SYSCALL_MODULE.9 \
@@ -16,9 +16,8 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	accf_data.9 accf_http.9 \
 	accept_filter.9 at_exit.9 at_fork.9 bios.9 boot.9 buf.9 bufcache.9 \
 	bus_dma.9 \
-	cd.9 copy.9 \
-	crypto.9 devstat.9 \
-	devtoname.9 fetch.9 \
+	cd.9 copy.9 crit_enter.9 crypto.9 \
+	devstat.9 devtoname.9 fetch.9 \
 	hash.9 \
 	ieee80211.9 ieee80211_crypto.9 ieee80211_input.9 ieee80211_ioctl.9 \
 	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
@@ -101,6 +100,11 @@ MLINKS+=bus_dma.9 bus_dmamap_unload.9
 MLINKS+=bus_dma.9 bus_dmamem_alloc.9
 MLINKS+=bus_dma.9 bus_dmamem_free.9
 MLINKS+=copy.9 copyin.9 copy.9 copyinstr.9 copy.9 copyout.9 copy.9 copystr.9
+MLINKS+=crit_enter.9 crit_enter_gd.9
+MLINKS+=crit_enter.9 crit_enter_id.9
+MLINKS+=crit_enter.9 crit_exit.9
+MLINKS+=crit_enter.9 crit_exit_gd.9
+MLINKS+=crit_enter.9 crit_exit_id.9
 MLINKS+=devstat.9 devicestat.9 devstat.9 devstat_add_entry.9
 MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction.9
