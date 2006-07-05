@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.7 2004/04/14 16:24:28 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.9 2004/09/02 04:28:05 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdDebug.c,v 1.3 2006/07/05 15:43:50 y0netan1 Exp $
  */
 
 /*
@@ -73,7 +73,6 @@ ACPI_STATUS
 AcpiOsSignal(UINT32 Function, void *Info)
 {
     ACPI_SIGNAL_FATAL_INFO	*fatal;
-    char			*message;
     
     switch (Function) {
     case ACPI_SIGNAL_FATAL:
@@ -84,8 +83,9 @@ AcpiOsSignal(UINT32 Function, void *Info)
 	break;
 	
     case ACPI_SIGNAL_BREAKPOINT:
-	message = (char *)Info;
-	Debugger(message);
+#ifdef ACPI_DEBUG
+	Debugger((char *)Info);
+#endif
 	break;
 
     default:
