@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.12 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.13 2006/07/05 22:46:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -820,6 +820,7 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     BUF_LOCKINIT(bp);					    /* get a lock for the buffer */
     BUF_LOCK(bp, LK_EXCLUSIVE);				    /* and lock it */
     BUF_KERNPROC(bp);
+    initbufbio(bp);
     rqe->flags |= XFR_BUFLOCKED;
     bp->b_bio1.bio_done = complete_rqe;
     /*
