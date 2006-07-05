@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.11 2006/07/04 00:32:03 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.12 2006/07/05 17:20:37 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -117,9 +117,12 @@ is identical to the source.  This allows one to use
 .Nm
 to create incremental backups of a filesystem.  Create a direct 'level 0'
 backup, and then specify the level 0 backup path with this option when
-creating an incremental backup to a different target directory.  This
-method works so long as the filesystem does not hit a hardlink limit.  Note
-that
+creating an incremental backup to a different target directory.  
+This method works so long as the filesystem does not hit a hardlink limit. 
+If the system does hit a hardlink limit
+.Nm
+will generate a warning and copy the file instead.
+Note that
 .Nm
 must record file paths for any hardlinked file while operating and therefore
 uses a great deal more memory when dealing with hardlinks or hardlink-based
@@ -177,12 +180,22 @@ specified.
 .Sh DIAGNOSTICS
 The
 .Nm
-utility exits 0 if no modifications were made, and >0 if modifications
-were made to the destination.
+utility exits 0 if no error occured and >0 if an error occured.
 .Sh SEE ALSO
 .Xr cp 1 ,
 .Xr cpio 1 ,
 .Xr tar 1
+.Sh BUGS
+UFS has a hardlink limit of 32767.  Many programs, in particular CVS
+with regards to its CVS/Root file, will generate a lot of hard links.
+When using the
+.Fl H
+option it may not be possible for
+.Nm
+to maintain these hard links.  If this occurs
+.Nm
+will be forced to copy the file instead of link it, and thus not be able 
+to make a perfect copy of the filesystem.
 .Sh HISTORY
 The
 .Nm

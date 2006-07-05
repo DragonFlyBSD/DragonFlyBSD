@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.11 2006/07/04 00:32:03 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.12 2006/07/05 17:20:37 dillon Exp $
  */
 
 /*-
@@ -447,11 +447,16 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
             }
 
             if (xlink(hln->name, dpath, st1.st_flags) < 0) {
+		int tryrelink = (errno == EMLINK);
 		logerr("%-32s hardlink: unable to link to %s: %s\n",
 		    (dpath ? dpath : spath), hln->name, strerror(errno)
 		);
                 hltdelete(hln);
                 hln = NULL;
+		if (tryrelink) {
+		    logerr("%-20s hardlink: will attempt to copy normally\n");
+		    goto relink;
+		}
 		++r;
             } else {
                 if (hln->nlinked == st1.st_nlink) {
@@ -474,6 +479,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 	    /*
 	     * first instance of hardlink must be copied normally
 	     */
+relink:
             hln = hltadd(&st1, dpath);
 	}
     }
