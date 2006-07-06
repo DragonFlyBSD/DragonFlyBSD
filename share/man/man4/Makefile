@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.39 2006/06/25 11:02:37 corecode Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.40 2006/07/06 16:17:20 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -257,7 +257,6 @@ MAN=	aac.4 \
 	wlan_tkip.4 \
 	wlan_wep.4 \
 	wlan_xauth.4 \
-	worm.4 \
 	xe.4 \
 	xl.4 \
 	xpt.4 \
