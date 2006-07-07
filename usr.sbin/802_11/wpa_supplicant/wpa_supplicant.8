@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.8,v 1.2 2005/06/27 06:40:43 ru Exp $
-.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.8,v 1.1 2006/06/24 07:29:44 sephe Exp $
+.\" $DragonFly: src/usr.sbin/802_11/wpa_supplicant/wpa_supplicant.8,v 1.2 2006/07/07 15:11:46 sephe Exp $
 .\"
 .Dd June 24, 2006
 .Dt WPA_SUPPLICANT 8
@@ -107,11 +107,7 @@ Display version information on the terminal and exit.
 .It Fl w
 If the specified interface is not present, wait for it to be
 added; e.g.\& a cardbus device to be inserted.
-This option is not normally used; instead,
-.Xr devd 8
-should be configured to launch
-.Nm
-when a device is created.
+This option is not normally used.
 .It Fl B
 Detach from the controlling terminal and run as a daemon process
 in the background.
@@ -131,6 +127,7 @@ will manage them all with a single process.
 .Xr ral 4 ,
 .Xr wi 4 ,
 .Xr wlan 4 ,
+.Xr wpa_cli 8
 .Xr wpa_supplicant.conf 5 ,
 .Xr ifconfig 8
 .Sh HISTORY
