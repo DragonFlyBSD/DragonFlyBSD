@@ -1,24 +1,67 @@
-/*
- * Copyright (c) 1994-2000
- *	Paul Richards. All rights reserved.
+/*	$NetBSD: if_le_isa.c,v 1.41 2005/12/24 20:27:41 perry Exp $	*/
+/*	$FreeBSD: src/sys/dev/le/if_le_isa.c,v 1.1 2006/05/17 21:25:22 marius Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.9 2006/07/07 14:16:29 sephe Exp $	*/
+
+/*-
+ * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to The NetBSD Foundation
+ * by Charles M. Hannum and by Jason R. Thorpe of the Numerical Aerospace
+ * Simulation Facility, NASA Ames Research Center.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer,
- *    verbatim and that no modifications are made prior to this
- *    point in the file.
+ *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name Paul Richards may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the NetBSD
+ *	Foundation, Inc. and its contributors.
+ * 4. Neither the name of The NetBSD Foundation nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY PAUL RICHARDS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*-
+ * Copyright (c) 1992, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Ralph Campbell and Rick Macklem.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL PAUL RICHARDS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -27,287 +70,447 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/lnc/if_lnc_isa.c,v 1.12 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.8 2005/12/31 14:07:59 sephe Exp $
+ *	@(#)if_le.c	8.2 (Berkeley) 11/16/93
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+#include <sys/endian.h>
 #include <sys/kernel.h>
-#include <sys/malloc.h>
-#include <sys/socket.h>
-#include <sys/serialize.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <sys/lock.h>
+#include <sys/module.h>
+#include <sys/resource.h>
 #include <sys/rman.h>
-#include <sys/thread2.h>
+#include <sys/socket.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/if_media.h>
 #include <net/if_arp.h>
+
+#include <machine/bus.h>
+#include <machine/resource.h>
 
 #include <bus/isa/isavar.h>
 
-#include <dev/netif/lnc/if_lncvar.h>
-#include <dev/netif/lnc/if_lncreg.h>
+#include <dev/netif/lnc/lancereg.h>
+#include <dev/netif/lnc/lancevar.h>
+#include <dev/netif/lnc/am7990var.h>
 
-static int	lnc_isa_detach(device_t);
+#define	LE_ISA_MEMSIZE	(16*1024)
+#define	PCNET_RDP	0x10
+#define	PCNET_RAP	0x12
 
-static struct isa_pnp_id lnc_pnp_ids[] = {
-	{0,	NULL}
+struct le_isa_softc {
+	struct am7990_softc	sc_am7990;	/* glue to MI code */
+
+	bus_size_t		sc_rap;		/* offsets to LANCE... */
+	bus_size_t		sc_rdp;		/* ...registers */
+
+	int			sc_rrid;
+	struct resource		*sc_rres;
+	bus_space_tag_t		sc_regt;
+	bus_space_handle_t	sc_regh;
+
+	int			sc_drid;
+	struct resource		*sc_dres;
+
+	int			sc_irid;
+	struct resource		*sc_ires;
+	void			*sc_ih;
+
+	bus_dma_tag_t		sc_pdmat;
+	bus_dma_tag_t		sc_dmat;
+	bus_dmamap_t		sc_dmam;
 };
 
-static int
-lnc_legacy_probe(device_t dev)
-{
-	struct lnc_softc *sc = device_get_softc(dev);
+static device_probe_t le_isa_probe;
+static device_attach_t le_isa_attach;
+static device_detach_t le_isa_detach;
+static device_resume_t le_isa_resume;
+static device_suspend_t le_isa_suspend;
 
-	sc->portrid = 0;
-	sc->portres = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &sc->portrid,
-	    RF_ACTIVE);
+static device_method_t le_isa_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		le_isa_probe),
+	DEVMETHOD(device_attach,	le_isa_attach),
+	DEVMETHOD(device_detach,	le_isa_detach),
+	/* We can just use the suspend method here. */
+	DEVMETHOD(device_shutdown,	le_isa_suspend),
+	DEVMETHOD(device_suspend,	le_isa_suspend),
+	DEVMETHOD(device_resume,	le_isa_resume),
 
-	if (! sc->portres) {
-		device_printf(dev, "Failed to allocate I/O ports\n");
-		return (ENXIO);
-	}
-
-	sc->lnc_btag = rman_get_bustag(sc->portres);
-	sc->lnc_bhandle = rman_get_bushandle(sc->portres);
-
-	/*
-	 * There isn't any way to determine if a NIC is a BICC. Basically, if
-	 * the lance probe succeeds using the i/o addresses of the BICC then
-	 * we assume it's a BICC.
-	 *
-	 */
-	sc->rap = BICC_RAP;
-	sc->rdp = BICC_RDP;
-	sc->nic.mem_mode = DMA_FIXED;
-	/* XXX Should set BICC_IOSIZE et al somewhere to alloc
-	   resources correctly */
-
-	if ((sc->nic.ic = lance_probe(sc))) {
-		device_set_desc(dev, "BICC Isolan");
-		sc->nic.ident = BICC;
-		lnc_isa_detach(dev);
-		return (0);
-	} else {
-	    /* It's not a BICC so try the standard NE2100 ports */
-	    sc->rap = PCNET_RAP;
-	    sc->rdp = PCNET_RDP;
-	    if ((sc->nic.ic = lance_probe(sc))) {
-		sc->nic.ident = NE2100;
-		device_set_desc(dev, "NE2100");
-		lnc_isa_detach(dev);
-		return (0);
-	    } else {
-		lnc_isa_detach(dev);
-		return (ENXIO);
-	    }
-	}
-}
-
-static int
-lnc_isa_probe(device_t dev)
-{
-	int pnp;
-
-	pnp = ISA_PNP_PROBE(device_get_parent(dev), dev, lnc_pnp_ids);
-	if (pnp == ENOENT) {
-		/* It's not a PNP card, see if we support it by probing it */
-		return (lnc_legacy_probe(dev));
-	} else if (pnp == ENXIO) {
-		return (ENXIO);
-	} else {
-		/* Found PNP card we support */
-		return (0);
-	}
-}
-
-static void
-lnc_alloc_callback(void *arg, bus_dma_segment_t *seg, int nseg, int error)
-{
-	/* Do nothing */
-	return;
-}
-
-static int
-lnc_isa_attach(device_t dev)
-{
-	lnc_softc_t *sc = device_get_softc(dev);
-	int error = 0;
-	bus_size_t lnc_mem_size;
-
-	/*
-	 * The probe routines can allocate resources and to make our
-	 * live easier, bzero the softc now.
-	 */
-	bzero(sc, sizeof(*sc));
-
-	sc->portrid = 0;
-	sc->portres = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &sc->portrid,
-	    RF_ACTIVE);
-
-	if (!sc->portres) {
-		device_printf(dev, "Failed to allocate I/O ports\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	sc->drqrid = 0;
-	sc->drqres = bus_alloc_resource_any(dev, SYS_RES_DRQ, &sc->drqrid,
-	    RF_ACTIVE);
-
-	if (!sc->drqres) {
-		device_printf(dev, "Failed to allocate DMA channel\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	if (isa_get_irq(dev) == -1)
-		bus_set_resource(dev, SYS_RES_IRQ, 0, 10, 1);
-
-	sc->irqrid = 0;
-	sc->irqres = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->irqrid,
-	    RF_ACTIVE);
-
-	if (! sc->irqres) {
-		device_printf(dev, "Failed to allocate irq\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	/* XXX temp setting for nic */
-	sc->nic.mem_mode = DMA_FIXED;
-	sc->nrdre  = NRDRE;
-	sc->ntdre  = NTDRE;
-
-	if (sc->nic.ident == NE2100) {
-	    sc->rap = PCNET_RAP;
-	    sc->rdp = PCNET_RDP;
-	    sc->bdp = PCNET_BDP;
-	} else {
-	    sc->rap = BICC_RAP;
-	    sc->rdp = BICC_RDP;
-	}
-
-	/* Create a DMA tag describing the ring memory we need */
-
-	lnc_mem_size = ((NDESC(sc->nrdre) + NDESC(sc->ntdre)) *
-			 sizeof(struct host_ring_entry));
-
-	lnc_mem_size += (NDESC(sc->nrdre) * RECVBUFSIZE) +
-			(NDESC(sc->ntdre) * TRANSBUFSIZE);
-
-	error = bus_dma_tag_create(NULL,		/* parent */
-				   4,			/* alignement */
-				   0,			/* boundary */
-				   BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
-				   BUS_SPACE_MAXADDR,	/* highaddr */
-				   NULL, NULL,		/* filter, filterarg */
-				   lnc_mem_size,	/* segsize */
-				   1,			/* nsegments */
-				   BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
-				   BUS_DMA_ALLOCNOW,	/* flags */
-				   &sc->dmat);
-
-	if (error) {
-		device_printf(dev, "Can't create DMA tag\n");
-		goto fail;
-	}
-
-	error = bus_dmamem_alloc(sc->dmat, (void **)&sc->recv_ring,
-	                       BUS_DMA_WAITOK, &sc->dmamap);
-
-	if (error) {
-		device_printf(dev, "Couldn't allocate memory\n");
-		goto fail;
-	}
-
-	error = bus_dmamap_load(sc->dmat, sc->dmamap, sc->recv_ring,
-				lnc_mem_size, lnc_alloc_callback,
-				sc->recv_ring, 0);
-
-	if (error) {
-		device_printf(dev, "Couldn't load DMA map\n");
-		goto fail;
-	}
-
-	isa_dmacascade(rman_get_start(sc->drqres));
-
-	/* Call generic attach code */
-	if (! lnc_attach_common(dev)) {
-		device_printf(dev, "Generic attach code failed\n");
-		error = ENXIO;
-		goto fail;
-	}
-
-	error = bus_setup_intr(dev, sc->irqres, INTR_NETSAFE, lncintr,
-	            	       sc, &sc->intrhand, 
-			       sc->arpcom.ac_if.if_serializer);
-	if (error) {
-		device_printf(dev, "Failed to setup irq handler\n");
-		ether_ifdetach(&sc->arpcom.ac_if);
-		goto fail;
-	}
-
-	return (0);
-
-fail:
-	lnc_isa_detach(dev);
-	return(error);
-}
-
-static int
-lnc_isa_detach(device_t dev)
-{
-	lnc_softc_t *sc = device_get_softc(dev);
-
-	if (device_is_attached(dev)) {
-		lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
-		lnc_stop(sc);
-		bus_teardown_intr(dev, sc->irqres, sc->intrhand);
-		lwkt_serialize_exit(sc->arpcom.ac_if.if_serializer);
-
-		ether_ifdetach(&sc->arpcom.ac_if);
-	}
-
-	if (sc->irqres)
-		bus_release_resource(dev, SYS_RES_IRQ, sc->irqrid, sc->irqres);
-	if (sc->portres)
-		bus_release_resource(dev, SYS_RES_IOPORT,
-		                     sc->portrid, sc->portres);
-	if (sc->drqres)
-		bus_release_resource(dev, SYS_RES_DRQ, sc->drqrid, sc->drqres);
-	if (sc->dmamap) {
-		bus_dmamap_unload(sc->dmat, sc->dmamap);
-		bus_dmamem_free(sc->dmat, sc->recv_ring, sc->dmamap);
-	}
-	if (sc->dmat)
-		bus_dma_tag_destroy(sc->dmat);
-
-	return (0);
-}
-
-static device_method_t lnc_isa_methods[] = {
-/*	DEVMETHOD(device_identify,	lnc_isa_identify), */
-	DEVMETHOD(device_probe,		lnc_isa_probe),
-	DEVMETHOD(device_attach,	lnc_isa_attach),
-	DEVMETHOD(device_detach,	lnc_isa_detach),
-#ifdef notyet
-	DEVMETHOD(device_suspend,	lnc_isa_suspend),
-	DEVMETHOD(device_resume,	lnc_isa_resume),
-	DEVMETHOD(device_shutdown,	lnc_isa_shutdown),
-#endif
 	{ 0, 0 }
 };
 
-static driver_t lnc_isa_driver = {
-	"lnc",
-	lnc_isa_methods,
-	sizeof(struct lnc_softc),
+DEFINE_CLASS_0(lnc, le_isa_driver, le_isa_methods, sizeof(struct le_isa_softc));
+DRIVER_MODULE(lnc, isa, le_isa_driver, le_devclass, 0, 0);
+MODULE_DEPEND(lnc, ether, 1, 1, 1);
+
+struct le_isa_param {
+	const char	*name;
+	u_long		iosize;
+	bus_size_t	rap;
+	bus_size_t	rdp;
+	bus_size_t	macstart;
+	int		macstride;
+} static const le_isa_params[] = {
+	{ "BICC Isolan", 24, 0xe, 0xc, 0, 2 },
+	{ "Novell NE2100", 16, 0x12, 0x10, 0, 1 }
 };
 
-DRIVER_MODULE(if_lnc, isa, lnc_isa_driver, lnc_devclass, 0, 0);
+static struct isa_pnp_id le_isa_ids[] = {
+	{ 0x0322690e, "Cabletron E2200 Single Chip" },	/* CSI2203 */
+	{ 0x0110490a, "Boca LANCard Combo" },		/* BRI1001 */
+	{ 0x0100a60a, "Melco Inc. LGY-IV" },		/* BUF0001 */
+	{ 0xd880d041, "Novell NE2100" },		/* PNP80D8 */
+	{ 0x0082d041, "Cabletron E2100 Series DNI" },	/* PNP8200 */
+	{ 0x3182d041, "AMD AM1500T/AM2100" },		/* PNP8231 */
+	{ 0x8c82d041, "AMD PCnet-ISA" },		/* PNP828C */
+	{ 0x8d82d041, "AMD PCnet-32" },			/* PNP828D */
+	{ 0xcefaedfe, "Racal InterLan EtherBlaster" },	/* _WMFACE */
+	{ 0, NULL }
+};
+
+static void le_isa_wrcsr(struct lance_softc *, uint16_t, uint16_t);
+static uint16_t le_isa_rdcsr(struct lance_softc *, uint16_t);
+static bus_dmamap_callback_t le_isa_dma_callback;
+static int le_isa_probe_legacy(device_t, const struct le_isa_param *);
+
+static void
+le_isa_wrcsr(struct lance_softc *sc, uint16_t port, uint16_t val)
+{
+	struct le_isa_softc *lesc = (struct le_isa_softc *)sc;
+
+	bus_space_write_2(lesc->sc_regt, lesc->sc_regh, lesc->sc_rap, port);
+	bus_space_barrier(lesc->sc_regt, lesc->sc_regh, lesc->sc_rap, 2,
+	    BUS_SPACE_BARRIER_WRITE);
+	bus_space_write_2(lesc->sc_regt, lesc->sc_regh, lesc->sc_rdp, val);
+}
+
+static uint16_t
+le_isa_rdcsr(struct lance_softc *sc, uint16_t port)
+{
+	struct le_isa_softc *lesc = (struct le_isa_softc *)sc;
+
+	bus_space_write_2(lesc->sc_regt, lesc->sc_regh, lesc->sc_rap, port);
+	bus_space_barrier(lesc->sc_regt, lesc->sc_regh, lesc->sc_rap, 2,
+	    BUS_SPACE_BARRIER_WRITE);
+	return (bus_space_read_2(lesc->sc_regt, lesc->sc_regh, lesc->sc_rdp));
+}
+
+static void
+le_isa_dma_callback(void *xsc, bus_dma_segment_t *segs, int nsegs, int error)
+{
+	struct lance_softc *sc = (struct lance_softc *)xsc;
+
+	if (error != 0)
+		return;
+	KASSERT(nsegs == 1, ("%s: bad DMA segment count", __func__));
+	sc->sc_addr = segs[0].ds_addr;
+}
+
+static int
+le_isa_probe_legacy(device_t dev, const struct le_isa_param *leip)
+{
+	struct le_isa_softc *lesc;
+	struct lance_softc *sc;
+	int error;
+
+	lesc = device_get_softc(dev);
+	sc = &lesc->sc_am7990.lsc;
+
+	lesc->sc_rrid = 0;
+	lesc->sc_rres = bus_alloc_resource(dev, SYS_RES_IOPORT, &lesc->sc_rrid,
+	    0, ~0, leip->iosize, RF_ACTIVE);
+	if (lesc->sc_rres == NULL)
+		return (ENXIO);
+	lesc->sc_regt = rman_get_bustag(lesc->sc_rres);
+	lesc->sc_regh = rman_get_bushandle(lesc->sc_rres);
+	lesc->sc_rap = leip->rap;
+	lesc->sc_rdp = leip->rdp;
+
+	/* Stop the chip and put it in a known state. */
+	le_isa_wrcsr(sc, LE_CSR0, LE_C0_STOP);
+	DELAY(100);
+	if (le_isa_rdcsr(sc, LE_CSR0) != LE_C0_STOP) {
+		error = ENXIO;
+		goto fail;
+	}
+	le_isa_wrcsr(sc, LE_CSR3, 0);
+	error = 0;
+
+ fail:
+	bus_release_resource(dev, SYS_RES_IOPORT, lesc->sc_rrid, lesc->sc_rres);
+	return (error);
+}
+
+static int
+le_isa_probe(device_t dev)
+{
+	int i;
+
+	switch (ISA_PNP_PROBE(device_get_parent(dev), dev, le_isa_ids)) {
+	case 0:
+		return (-20);
+	case ENOENT:
+		for (i = 0; i < sizeof(le_isa_params) /
+		    sizeof(le_isa_params[0]); i++) {
+			if (le_isa_probe_legacy(dev, &le_isa_params[i]) == 0) {
+				device_set_desc(dev, le_isa_params[i].name);
+				return (-20);
+			}
+		}
+		/* FALLTHROUGH */
+	case ENXIO:
+	default:
+		return (ENXIO);
+	}
+}
+
+static int
+le_isa_attach(device_t dev)
+{
+	struct le_isa_softc *lesc;
+	struct lance_softc *sc;
+	bus_size_t macstart, rap, rdp;
+	int error, i, macstride;
+
+	lesc = device_get_softc(dev);
+	sc = &lesc->sc_am7990.lsc;
+
+	lesc->sc_rrid = 0;
+	switch (ISA_PNP_PROBE(device_get_parent(dev), dev, le_isa_ids)) {
+	case 0:
+		lesc->sc_rres = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+		    &lesc->sc_rrid, RF_ACTIVE);
+		rap = PCNET_RAP;
+		rdp = PCNET_RDP;
+		macstart = 0;
+		macstride = 1;
+		break;
+	case ENOENT:
+		for (i = 0; i < sizeof(le_isa_params) /
+		    sizeof(le_isa_params[0]); i++) {
+			if (le_isa_probe_legacy(dev, &le_isa_params[i]) == 0) {
+				lesc->sc_rres = bus_alloc_resource(dev,
+				    SYS_RES_IOPORT, &lesc->sc_rrid, 0, ~0,
+				    le_isa_params[i].iosize, RF_ACTIVE);
+				rap = le_isa_params[i].rap;
+				rdp = le_isa_params[i].rdp;
+				macstart = le_isa_params[i].macstart;
+				macstride = le_isa_params[i].macstride;
+				goto found;
+			}
+		}
+		/* FALLTHROUGH */
+	case ENXIO:
+	default:
+		device_printf(dev, "cannot determine chip\n");
+		error = ENXIO;
+		goto fail_mtx;
+	}
+
+ found:
+	if (lesc->sc_rres == NULL) {
+		device_printf(dev, "cannot allocate registers\n");
+		error = ENXIO;
+		goto fail_mtx;
+	}
+	lesc->sc_regt = rman_get_bustag(lesc->sc_rres);
+	lesc->sc_regh = rman_get_bushandle(lesc->sc_rres);
+	lesc->sc_rap = rap;
+	lesc->sc_rdp = rdp;
+
+	lesc->sc_drid = 0;
+	if ((lesc->sc_dres = bus_alloc_resource_any(dev, SYS_RES_DRQ,
+	    &lesc->sc_drid, RF_ACTIVE)) == NULL) {
+		device_printf(dev, "cannot allocate DMA channel\n");
+		error = ENXIO;
+		goto fail_rres;
+	}
+
+	lesc->sc_irid = 0;
+	if ((lesc->sc_ires = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &lesc->sc_irid, RF_SHAREABLE | RF_ACTIVE)) == NULL) {
+		device_printf(dev, "cannot allocate interrupt\n");
+		error = ENXIO;
+		goto fail_dres;
+	}
+
+	error = bus_dma_tag_create(
+	    NULL,			/* parent */
+	    1, 0,			/* alignment, boundary */
+	    BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
+	    BUS_SPACE_MAXADDR,		/* highaddr */
+	    NULL, NULL,			/* filter, filterarg */
+	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
+	    0,				/* nsegments */
+	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
+	    BUS_DMA_WAITOK,		/* flags */
+	    &lesc->sc_pdmat);
+	if (error != 0) {
+		device_printf(dev, "cannot allocate parent DMA tag\n");
+		goto fail_ires;
+	}
+
+	sc->sc_memsize = LE_ISA_MEMSIZE;
+	/*
+	 * For Am79C90, Am79C961 and Am79C961A the init block must be 2-byte
+	 * aligned and the ring descriptors must be 8-byte aligned.
+	 */
+	error = bus_dma_tag_create(
+	    lesc->sc_pdmat,		/* parent */
+	    8, 0,			/* alignment, boundary */
+	    BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
+	    BUS_SPACE_MAXADDR,		/* highaddr */
+	    NULL, NULL,			/* filter, filterarg */
+	    sc->sc_memsize,		/* maxsize */
+	    1,				/* nsegments */
+	    sc->sc_memsize,		/* maxsegsize */
+	    BUS_DMA_WAITOK,		/* flags */
+	    &lesc->sc_dmat);
+	if (error != 0) {
+		device_printf(dev, "cannot allocate buffer DMA tag\n");
+		goto fail_pdtag;
+	}
+
+	error = bus_dmamem_alloc(lesc->sc_dmat, (void **)&sc->sc_mem,
+	    BUS_DMA_WAITOK | BUS_DMA_COHERENT, &lesc->sc_dmam);
+	if (error != 0) {
+		device_printf(dev, "cannot allocate DMA buffer memory\n");
+		goto fail_dtag;
+	}
+
+	sc->sc_addr = 0;
+	error = bus_dmamap_load(lesc->sc_dmat, lesc->sc_dmam, sc->sc_mem,
+	    sc->sc_memsize, le_isa_dma_callback, sc, 0);
+	if (error != 0 || sc->sc_addr == 0) {
+                device_printf(dev, "cannot load DMA buffer map\n");
+		goto fail_dmem;
+	}
+
+	isa_dmacascade(rman_get_start(lesc->sc_dres));
+
+	sc->sc_flags = 0;
+	sc->sc_conf3 = 0;
+
+	/*
+	 * Extract the physical MAC address from the ROM.
+	 */
+	for (i = 0; i < sizeof(sc->sc_enaddr); i++)
+		sc->sc_enaddr[i] =  bus_space_read_1(lesc->sc_regt,
+		    lesc->sc_regh, macstart + i * macstride);
+
+	sc->sc_copytodesc = lance_copytobuf_contig;
+	sc->sc_copyfromdesc = lance_copyfrombuf_contig;
+	sc->sc_copytobuf = lance_copytobuf_contig;
+	sc->sc_copyfrombuf = lance_copyfrombuf_contig;
+	sc->sc_zerobuf = lance_zerobuf_contig;
+
+	sc->sc_rdcsr = le_isa_rdcsr;
+	sc->sc_wrcsr = le_isa_wrcsr;
+	sc->sc_hwreset = NULL;
+	sc->sc_hwinit = NULL;
+	sc->sc_hwintr = NULL;
+	sc->sc_nocarrier = NULL;
+	sc->sc_mediachange = NULL;
+	sc->sc_mediastatus = NULL;
+	sc->sc_supmedia = NULL;
+
+	error = am7990_config(&lesc->sc_am7990, device_get_name(dev),
+	    device_get_unit(dev));
+	if (error != 0) {
+		device_printf(dev, "cannot attach Am7990\n");
+		goto fail_dmap;
+	}
+
+	error = bus_setup_intr(dev, lesc->sc_ires, INTR_NETSAFE | INTR_MPSAFE,
+	    am7990_intr, sc, &lesc->sc_ih, sc->ifp->if_serializer);
+	if (error != 0) {
+		device_printf(dev, "cannot set up interrupt\n");
+		goto fail_am7990;
+	}
+
+	return (0);
+
+ fail_am7990:
+	am7990_detach(&lesc->sc_am7990);
+ fail_dmap:
+	bus_dmamap_unload(lesc->sc_dmat, lesc->sc_dmam);
+ fail_dmem:
+	bus_dmamem_free(lesc->sc_dmat, sc->sc_mem, lesc->sc_dmam);
+ fail_dtag:
+	bus_dma_tag_destroy(lesc->sc_dmat);
+ fail_pdtag:
+	bus_dma_tag_destroy(lesc->sc_pdmat);
+ fail_ires:
+	bus_release_resource(dev, SYS_RES_IRQ, lesc->sc_irid, lesc->sc_ires);
+ fail_dres:
+	bus_release_resource(dev, SYS_RES_DRQ, lesc->sc_drid, lesc->sc_dres);
+ fail_rres:
+	bus_release_resource(dev, SYS_RES_IOPORT, lesc->sc_rrid, lesc->sc_rres);
+ fail_mtx:
+	return (error);
+}
+
+static int
+le_isa_detach(device_t dev)
+{
+	struct le_isa_softc *lesc;
+	struct lance_softc *sc;
+
+	lesc = device_get_softc(dev);
+	sc = &lesc->sc_am7990.lsc;
+
+	if (device_is_attached(dev)) {
+		lwkt_serialize_enter(sc->ifp->if_serializer);
+		lance_stop(sc);
+		bus_teardown_intr(dev, lesc->sc_ires, lesc->sc_ih);
+		lwkt_serialize_exit(sc->ifp->if_serializer);
+
+		am7990_detach(&lesc->sc_am7990);
+	}
+
+	if (lesc->sc_ires)
+		bus_release_resource(dev, SYS_RES_IRQ, lesc->sc_irid, lesc->sc_ires);
+	if (lesc->sc_dres)
+		bus_release_resource(dev, SYS_RES_DRQ, lesc->sc_drid, lesc->sc_dres);
+	if (lesc->sc_rres)
+		bus_release_resource(dev, SYS_RES_IOPORT, lesc->sc_rrid, lesc->sc_rres);
+	if (lesc->sc_dmam) {
+		bus_dmamap_unload(lesc->sc_dmat, lesc->sc_dmam);
+		bus_dmamem_free(lesc->sc_dmat, sc->sc_mem, lesc->sc_dmam);
+	}
+	if (lesc->sc_dmat)
+		bus_dma_tag_destroy(lesc->sc_dmat);
+	if (lesc->sc_pdmat)
+		bus_dma_tag_destroy(lesc->sc_pdmat);
+
+	return (0);
+}
+
+static int
+le_isa_suspend(device_t dev)
+{
+	struct le_isa_softc *lesc;
+
+	lesc = device_get_softc(dev);
+
+	lance_suspend(&lesc->sc_am7990.lsc);
+
+	return (0);
+}
+
+static int
+le_isa_resume(device_t dev)
+{
+	struct le_isa_softc *lesc;
+
+	lesc = device_get_softc(dev);
+
+	lance_resume(&lesc->sc_am7990.lsc);
+
+	return (0);
+}
