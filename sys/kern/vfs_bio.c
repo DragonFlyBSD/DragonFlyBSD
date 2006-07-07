@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.77 2006/05/27 20:17:16 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.78 2006/07/07 13:00:37 corecode Exp $
  */
 
 /*
@@ -2341,7 +2341,7 @@ loop:
 		 * created while the getnewbuf routine is blocked.
 		 * This can be a problem whether the vnode is locked or not.
 		 * If the buffer is created out from under us, we have to
-		 * throw away the one we just created.  There is now window
+		 * throw away the one we just created.  There is no window
 		 * race because we are safely running in a critical section
 		 * from the point of the duplicate buffer creation through
 		 * to here, and we've locked the buffer.
