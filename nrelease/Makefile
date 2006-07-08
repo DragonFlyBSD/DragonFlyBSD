@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.54 2006/04/14 20:56:53 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.55 2006/07/08 03:19:30 dillon Exp $
 #
 
 # compat target
@@ -61,12 +61,12 @@ KERNEL_CCVER ?= ${CCVER}
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso
 
-realquickrel:	check clean buildiso customizeiso mklocatedb mkiso
+realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso
 
 check:
 .if !exists(${PKGBIN_PKG_ADD})
@@ -135,6 +135,11 @@ buildiso:
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
+
+# Include kernel sources on the release CD (~14MB)
+#
+syssrcs:
+	( cd ${.CURDIR}/../..; tar czf ${ISOROOT}/usr/src.tgz src/Makefile src/Makefile.inc1 src/sys )
 
 customizeiso:
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
