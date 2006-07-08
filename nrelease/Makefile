@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.55 2006/07/08 03:19:30 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.56 2006/07/08 18:12:05 dillon Exp $
 #
 
 # compat target
@@ -139,7 +139,9 @@ buildiso:
 # Include kernel sources on the release CD (~14MB)
 #
 syssrcs:
-	( cd ${.CURDIR}/../..; tar czf ${ISOROOT}/usr/src.tgz src/Makefile src/Makefile.inc1 src/sys )
+.if !defined(WITHOUT_SRCS)
+	( cd ${.CURDIR}/../..; tar --exclude CVS -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
+.endif
 
 customizeiso:
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
