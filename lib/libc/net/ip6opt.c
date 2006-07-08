@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.1 1999/12/16 18:32:01 shin Exp $
- * $DragonFly: src/lib/libc/net/ip6opt.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
+ * $DragonFly: src/lib/libc/net/ip6opt.c,v 1.5 2006/07/08 01:04:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -103,8 +103,6 @@ inet6_option_append(struct cmsghdr *cmsg, const u_int8_t *typep, int multx,
 	if (multx != 1 && multx != 2 && multx != 4 && multx != 8)
 		return(-1);
 	if (plusy < 0 || plusy > 7)
-		return(-1);
-	if (typep[0] > 255)
 		return(-1);
 
 	/*
