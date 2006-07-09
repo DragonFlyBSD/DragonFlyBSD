@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.14 2006/07/06 23:36:29 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.15 2006/07/09 22:55:45 corecode Exp $
  */
 
 #include "vinumhdr.h"
@@ -812,7 +812,6 @@ build_rq_buffer(struct rqelement *rqe, struct plex *plex)
     /* copy these flags from user bp */
     bp->b_flags = ubp->b_flags & (B_ORDERED | B_NOCACHE | B_ASYNC);
     bp->b_cmd = ubp->b_cmd;
-    bp->b_flags |= B_PAGING;
 #ifdef VINUMDEBUG
     if (rqe->flags & XFR_BUFLOCKED)			    /* paranoia */
 	panic("build_rq_buffer: rqe already locked");	    /* XXX remove this when we're sure */
@@ -946,7 +945,6 @@ sdio(struct bio *bio)
     }
     sddev = DRIVE[sd->driveno].dev;		    /* device */
     bzero(sbp, sizeof(struct sdbuf));			    /* start with nothing */
-    sbp->b.b_flags = bp->b_flags | B_PAGING;
     sbp->b.b_cmd = bp->b_cmd;
     sbp->b.b_bcount = bp->b_bcount;			    /* number of bytes to transfer */
     sbp->b.b_resid = bp->b_resid;			    /* and amount waiting */
