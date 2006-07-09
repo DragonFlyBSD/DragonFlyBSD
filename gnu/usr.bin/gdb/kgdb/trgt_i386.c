@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2005/09/11 05:36:30 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.2 2006/05/01 16:56:01 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.3 2006/07/09 01:38:57 corecode Exp $
  */
 
 #include <sys/cdefs.h>
@@ -59,10 +59,9 @@ kgdb_trgt_fetch_registers(int regno __unused)
 		return;
 
 	/*
-	 * XXX Detect pure thread
-	 * XXX handle pure thread dumping
+	 * kt->pcb == NULL is a marker for "non-dumping kernel thread".
 	 */
-	if (kt->paddr == 0) {
+	if (kt->pcb == NULL) {
 		uintptr_t regs[5];
 		uintptr_t addr;
 		uintptr_t sp;
