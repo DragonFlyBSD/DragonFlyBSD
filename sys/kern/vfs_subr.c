@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.89 2006/06/05 21:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.90 2006/07/10 04:42:56 dillon Exp $
  */
 
 /*
@@ -1085,17 +1085,6 @@ vclean(struct vnode *vp, int flags)
 	 */
 	vinvalbuf(vp, V_SAVE, 0, 0);
 
-	if ((object = vp->v_object) != NULL) {
-		if (object->ref_count == 0) {
-			if ((object->flags & OBJ_DEAD) == 0)
-				vm_object_terminate(object);
-		} else {
-			vm_pager_deallocate(object);
-		}
-		vp->v_flag &= ~VOBJBUF;
-	}
-	KKASSERT((vp->v_flag & VOBJBUF) == 0);
-
 	/*
 	 * If purging an active vnode (typically during a forced unmount
 	 * or reboot), it must be closed and deactivated before being
@@ -1119,12 +1108,33 @@ vclean(struct vnode *vp, int flags)
 	}
 
 	/*
-	 * If the vnode has not be deactivated, deactivated it.
+	 * If the vnode has not be deactivated, deactivated it.  Deactivation
+	 * can create new buffers and VM pages so we have to call vinvalbuf()
+	 * again to make sure they all get flushed.
+	 *
+	 * This can occur if a file with a link count of 0 needs to be
+	 * truncated.
 	 */
 	if ((vp->v_flag & VINACTIVE) == 0) {
 		vp->v_flag |= VINACTIVE;
 		VOP_INACTIVE(vp);
+		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
+
+	/*
+	 * If the vnode has an object, destroy it.
+	 */
+	if ((object = vp->v_object) != NULL) {
+		if (object->ref_count == 0) {
+			if ((object->flags & OBJ_DEAD) == 0)
+				vm_object_terminate(object);
+		} else {
+			vm_pager_deallocate(object);
+		}
+		vp->v_flag &= ~VOBJBUF;
+	}
+	KKASSERT((vp->v_flag & VOBJBUF) == 0);
+
 
 	/*
 	 * Reclaim the vnode.
