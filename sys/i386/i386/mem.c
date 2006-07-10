@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.15 2006/07/10 20:33:36 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.16 2006/07/10 21:06:08 dillon Exp $
  */
 
 /*
@@ -229,33 +229,36 @@ mmrw(dev, uio, flags)
 		case 3:
 			/*
 			 * minor device 3 (/dev/random) is source of filth
-			 * on read, rathole on write
+			 * on read, seeder on write
 			 */
-			if (uio->uio_rw == UIO_WRITE) {
-				c = iov->iov_len;
-				break;
-			}
 			if (buf == NULL)
 				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 			c = min(iov->iov_len, PAGE_SIZE);
-			poolsize = read_random(buf, c);
-			if (poolsize == 0) {
-				if (buf)
-					free(buf, M_TEMP);
-				if ((flags & IO_NDELAY) != 0)
-					return (EWOULDBLOCK);
-				return (0);
+			if (uio->uio_rw == UIO_WRITE) {
+				error = uiomove(buf, (int)c, uio);
+				if (error == 0)
+					error = add_buffer_randomness(buf, c);
+			} else {
+				poolsize = read_random(buf, c);
+				if (poolsize == 0) {
+					if (buf)
+						free(buf, M_TEMP);
+					if ((flags & IO_NDELAY) != 0)
+						return (EWOULDBLOCK);
+					return (0);
+				}
+				c = min(c, poolsize);
+				error = uiomove(buf, (int)c, uio);
 			}
-			c = min(c, poolsize);
-			error = uiomove(buf, (int)c, uio);
 			continue;
 		case 4:
 			/*
 			 * minor device 4 (/dev/urandom) is source of muck
-			 * on read, rathole on write 
+			 * on read, writes are disallowed.
 			 */
+			c = min(iov->iov_len, PAGE_SIZE);
 			if (uio->uio_rw == UIO_WRITE) {
-				c = iov->iov_len;
+				error = EPERM;
 				break;
 			}
 			if (CURSIG(curproc) != 0) {
@@ -269,7 +272,6 @@ mmrw(dev, uio, flags)
 			}
 			if (buf == NULL)
 				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
-			c = min(iov->iov_len, PAGE_SIZE);
 			poolsize = read_random_unlimited(buf, c);
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
@@ -277,7 +279,7 @@ mmrw(dev, uio, flags)
 		case 12:
 			/*
 			 * minor device 12 (/dev/zero) is source of nulls 
-			 * on read, rathole on write 
+			 * on read, write are disallowed.
 			 */
 			if (uio->uio_rw == UIO_WRITE) {
 				c = iov->iov_len;

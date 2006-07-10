@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.1 2006/06/18 01:34:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.2 2006/07/10 21:06:09 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -169,6 +169,7 @@ typedef	u_int32_t	u4;   /* unsigned four bytes, 32 bits */
 
 #define	ALPHA		(8)
 #define	SIZE		(1 << ALPHA)
+#define MASK		(SIZE - 1)
 #define	ind(x)		((x) & (SIZE - 1))
 #define	barrel(a)	(((a) << 19) ^ ((a) >> 13))  /* beta=32,shift=19 */
  
@@ -234,14 +235,18 @@ IBAA_Call (void)
 }
 
 /*
- * Add a 32-bit u4 seed value into IBAAs memory. 
+ * Add a 32-bit u4 seed value into IBAAs memory.  Mix the low 4 bits 
+ * with 4 bits of PNG data to reduce the possibility of a seeding-based
+ * attack.
  */
 static void
 IBAA_Seed (const u_int32_t val)
 {
-	static int memIndex = 0;
+	static int memIndex;
+	u4 *iptr;
 
-	IBAA_memory[memIndex % SIZE] = val;
+	iptr = &IBAA_memory[memIndex & MASK];
+	*iptr = ((*iptr << 3) | (*iptr >> 29)) + (val ^ (IBAA_Byte() & 15));
 	++memIndex;
 }
 
@@ -394,7 +399,8 @@ static struct spinlock rand_spin;
 
 static int nrandevents;
 SYSCTL_INT(_kern, OID_AUTO, nrandevents, CTLFLAG_RD, &nrandevents, 0, "");
-
+static int seedenable;
+SYSCTL_INT(_kern, OID_AUTO, seedenable, CTLFLAG_RW, &seedenable, 0, "");
 
 /*
  * Called from early boot
@@ -460,6 +466,24 @@ add_true_randomness(int val)
 	L15_Vector((const LByteType *) &val, sizeof (val));
 	++nrandevents;
 	spin_unlock_wr(&rand_spin);
+}
+
+int
+add_buffer_randomness(const char *buf, int bytes)
+{
+	int error;
+
+	if (seedenable && securelevel <= 0) {
+		while (bytes >= sizeof(int)) {
+			add_true_randomness(*(const int *)buf);
+			buf += sizeof(int);
+			bytes -= sizeof(int);
+		}
+		error = 0;
+	} else {
+		error = EPERM;
+	}
+	return (error);
 }
 
 /*
