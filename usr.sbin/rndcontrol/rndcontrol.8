@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.13.2.2 2001/12/21 09:05:32 ru Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.4 2006/03/26 22:56:58 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/rndcontrol.8,v 1.5 2006/07/10 22:52:31 dillon Exp $
 .\"
 .Dd October 20, 1995
 .Dt RNDCONTROL 8
@@ -42,10 +42,8 @@ device
 .Sh DESCRIPTION
 The
 .Nm
-command is used to set which interrupts are used to help randomise
-the
-.Dq "pool of entropy"
-maintained by the kernel.
+command is used to set which interrupts are used to help add entropy
+to the CSPRNG maintained by the kernel.
 The
 .Pa /dev/random
 and
@@ -71,7 +69,9 @@ This option may be repeated for
 more than one IRQ.
 .El
 .Pp
-The default is to have no IRQ's being used.
+By default, all IRQs will help develop entropy.  The kernel uses a
+rate-limited helper thread to add the actual entropy and even fast
+interrupts should not detrimentally effect a running system.
 .Sh FILES
 .Bl -tag -width ".Pa /dev/urandom" -compact
 .It Pa /dev/random
@@ -80,7 +80,8 @@ secure random device
 random device
 .El
 .Sh SEE ALSO
-.Xr random 4
+.Xr random 4 ,
+.Xr srandomdev 3
 .Sh HISTORY
 The
 .Nm
