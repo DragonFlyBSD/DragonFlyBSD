@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.14 2006/06/27 16:38:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.15 2006/07/10 20:33:36 dillon Exp $
  */
 
 /*
@@ -173,9 +173,10 @@ mmrw(dev, uio, flags)
 			continue;
 		}
 		switch (minor(dev)) {
-
-/* minor device 0 is physical memory, /dev/mem */
 		case 0:
+			/*
+			 * minor device 0 is physical memory, /dev/mem 
+			 */
 			v = uio->uio_offset;
 			v &= ~PAGE_MASK;
 			pmap_kenter((vm_offset_t)ptvmmap, v);
@@ -187,8 +188,10 @@ mmrw(dev, uio, flags)
 			pmap_kremove((vm_offset_t)ptvmmap);
 			continue;
 
-/* minor device 1 is kernel memory, /dev/kmem */
 		case 1: {
+			/*
+			 * minor device 1 is kernel memory, /dev/kmem 
+			 */
 			vm_offset_t addr, eaddr;
 			c = iov->iov_len;
 
@@ -215,23 +218,25 @@ mmrw(dev, uio, flags)
 			error = uiomove((caddr_t)(int)uio->uio_offset, (int)c, uio);
 			continue;
 		}
-
-/* minor device 2 is EOF/RATHOLE */
 		case 2:
+			/*
+			 * minor device 2 is EOF/RATHOLE 
+			 */
 			if (uio->uio_rw == UIO_READ)
 				return (0);
 			c = iov->iov_len;
 			break;
-
-/* minor device 3 (/dev/random) is source of filth on read, rathole on write */
 		case 3:
+			/*
+			 * minor device 3 (/dev/random) is source of filth
+			 * on read, rathole on write
+			 */
 			if (uio->uio_rw == UIO_WRITE) {
 				c = iov->iov_len;
 				break;
 			}
 			if (buf == NULL)
-				buf = (caddr_t)
-				    malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 			c = min(iov->iov_len, PAGE_SIZE);
 			poolsize = read_random(buf, c);
 			if (poolsize == 0) {
@@ -244,9 +249,11 @@ mmrw(dev, uio, flags)
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
 			continue;
-
-/* minor device 4 (/dev/urandom) is source of muck on read, rathole on write */
 		case 4:
+			/*
+			 * minor device 4 (/dev/urandom) is source of muck
+			 * on read, rathole on write 
+			 */
 			if (uio->uio_rw == UIO_WRITE) {
 				c = iov->iov_len;
 				break;
@@ -261,16 +268,17 @@ mmrw(dev, uio, flags)
 					continue;
 			}
 			if (buf == NULL)
-				buf = (caddr_t)
-				    malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
+				buf = malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
 			c = min(iov->iov_len, PAGE_SIZE);
 			poolsize = read_random_unlimited(buf, c);
 			c = min(c, poolsize);
 			error = uiomove(buf, (int)c, uio);
 			continue;
-
-/* minor device 12 (/dev/zero) is source of nulls on read, rathole on write */
 		case 12:
+			/*
+			 * minor device 12 (/dev/zero) is source of nulls 
+			 * on read, rathole on write 
+			 */
 			if (uio->uio_rw == UIO_WRITE) {
 				c = iov->iov_len;
 				break;
@@ -283,7 +291,6 @@ mmrw(dev, uio, flags)
 			c = min(iov->iov_len, PAGE_SIZE);
 			error = uiomove(zbuf, (int)c, uio);
 			continue;
-
 		default:
 			return (ENODEV);
 		}
