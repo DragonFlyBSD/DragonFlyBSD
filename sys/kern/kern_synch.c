@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.63 2006/05/29 03:57:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.64 2006/07/11 01:01:50 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -441,7 +441,15 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		p->p_stat = SSLEEP;
 		p->p_stats->p_ru.ru_nvcsw++;
 		lwkt_switch();
+
+		/*
+		 * And when we are woken up, put us back in SRUN.  If we
+		 * slept for over a second, recalculate our estcpu.
+		 */
 		p->p_stat = SRUN;
+		if (p->p_slptime)
+			p->p_usched->recalculate(&p->p_lwp);
+		p->p_slptime = 0;
 	} else {
 		lwkt_switch();
 	}

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.15 2006/06/20 18:44:32 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.16 2006/07/11 01:01:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -441,27 +441,6 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	gd = lp->lwp_thread->td_gd;
 	dd = &bsd4_pcpu[gd->gd_cpuid];
-
-	/*
-	 * If setrunqueue is being called due to being woken up, verses
-	 * being called when aquiring the current process, recalculate
-	 * estcpu.
-	 *
-	 * Because recalculate is only called once or twice for long sleeps,
-	 * not every second forever while the process is sleeping, we have 
-	 * to manually call it to resynchronize p_cpbase on wakeup or it
-	 * will wrap if the process was sleeping long enough (e.g. ~10 min
-	 * with the ACPI timer) and really mess up the nticks calculation.
-	 *
-	 * NOTE: because P_ONRUNQ is not set, bsd4_recalculate_estcpu()'s
-	 * calls to resetpriority will just play with the processes priority
-	 * fields and not mess with any queues, so it is MPSAFE in this
-	 * context.
-	 */
-	if (lp->lwp_slptime && (lp->lwp_thread->td_flags & TDF_RUNNING) == 0) {
-	    bsd4_recalculate_estcpu(lp);
-	    lp->lwp_slptime = 0;
-	}
 
 	/*
 	 * This process is not supposed to be scheduled anywhere or assigned
