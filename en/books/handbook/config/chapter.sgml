@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.169 2004/08/27 12:04:24 blackend Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.10 2006/03/11 04:39:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.11 2006/07/12 04:00:59 justin Exp $
 -->
 
 <chapter id="config-tuning">
@@ -135,9 +135,8 @@
 	  </para>
 
 	<para>The <filename>/usr</filename> partition holds much
-	  of the files required to support the system, the &man.ports.7;
-	  collection (recommended) and the source code (optional).  Both
-	  of which are optional at install time.
+	  of the files required to support the system, the &pkgsrc;
+	  collection (recommended) and the source code (optional).
 	  At least 2 gigabytes would be recommended for this partition.</para>
 
 	<para>When selecting partition sizes, keep the space

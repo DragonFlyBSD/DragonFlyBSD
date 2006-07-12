@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/book.sgml,v 1.147 2004/05/05 12:52:47 den Exp $
-     $DragonFly: doc/en/books/handbook/book.sgml,v 1.4 2006/04/15 07:53:02 reed Exp $
+     $DragonFly: doc/en/books/handbook/book.sgml,v 1.5 2006/07/12 04:00:59 justin Exp $
 -->
 
 <!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
@@ -31,7 +31,7 @@
 <!ENTITY % chap.introduction "IGNORE">
 <!ENTITY % chap.install "IGNORE">
 <!ENTITY % chap.basics "IGNORE">
-<!ENTITY % chap.ports "IGNORE">
+<!ENTITY % chap.pkgsrc "IGNORE">
 <!ENTITY % chap.config "IGNORE">
 <!ENTITY % chap.boot "IGNORE">
 <!ENTITY % chap.users "IGNORE">
@@ -202,7 +202,7 @@
     <![ %chap.introduction;             [ &chap.introduction;         ]]>
     <![ %chap.install;                  [ &chap.install;              ]]>
     <![ %chap.basics;                   [ &chap.basics;               ]]>
-    <![ %chap.ports;                    [ &chap.ports;                ]]>
+    <![ %chap.pkgsrc;                   [ &chap.pkgsrc;               ]]>
     <![ %chap.x11;                      [ &chap.x11;                  ]]>
   </part>
   

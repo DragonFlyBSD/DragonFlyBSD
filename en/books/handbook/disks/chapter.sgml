@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/disks/chapter.sgml,v 1.201 2004/06/07 13:36:45 hmp Exp $
-     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.4 2005/06/30 16:15:31 reed Exp $
+     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.5 2006/07/12 04:00:59 justin Exp $
 -->
 
 <chapter id="disks">
@@ -1581,8 +1581,7 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
       <title>Using the Floppy</title>
 
       <para>To use the floppy, mount it with &man.mount.msdos.8;.  One can also use
-	<filename role="package">emulators/mtools</filename> from the ports
-	collection.</para>
+	<filename role="package">sysutils/mtools</filename> from &pkgsrc;.</para>
     </sect2>
   </sect1>
   

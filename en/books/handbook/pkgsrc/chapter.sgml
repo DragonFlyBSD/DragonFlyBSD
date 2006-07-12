@@ -1,0 +1,1078 @@
+<!--
+     The DragonFly BSD Documentation Project
+
+     $DragonFly: doc/en/books/handbook/pkgsrc/chapter.sgml,v 1.1 2006/07/12 04:01:00 justin Exp $
+-->
+
+<chapter id="pkgsrc">
+  <title>Installing Applications using NetBSD's pkgsrc framework</title>
+
+  <sect1 id="pkgsrc-synopsis">
+    <title>Synopsis</title>
+
+    <indexterm><primary>pkgsrc</primary></indexterm>
+    <indexterm><primary>packages</primary></indexterm>
+    <para>&os; is bundled with a rich collection of system tools as
+      part of the base system.  However, there is only so much one can
+      do before needing to install an additional third-party
+      application to get real work done.  &os; utilizes NetBSD's 
+      pkgsrc framework (<ulink 
+      url="http://www.pkgsrc.org/">pkgsrc.org</ulink>) for installing third 
+      party software on your system.  This system may be used to install 
+      the newest version of your favorite applications from local media
+      or straight off the network.</para>
+      
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>How to install third-party binary software 
+	packages from the pkgsrc collection.</para>
+      </listitem>
+      <listitem>
+	<para>How to build third-party software from the pkgsrc
+	collection.</para>
+      </listitem>
+      <listitem>
+	<para>Where to find &os;-specific changes to packages.</para>
+      </listitem>
+      <listitem>
+	<para>How to remove previously installed packages.</para>
+      </listitem>
+      <listitem>
+	<para>How to override the default values that the pkgsrc
+	  collection uses.</para>
+      </listitem>
+      <listitem>
+	<para>How to upgrade your packages.</para>
+      </listitem>
+      
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="pkgsrc-overview">
+    <title>Overview of Software Installation</title>
+
+    <para>If you have used a &unix; system before you will know that the typical
+      procedure for installing third party software goes something like
+      this:</para>
+
+    <procedure>
+      <step>
+	<para>Download the software, which might be distributed in source code
+	  format, or as a binary.</para>
+      </step>
+
+      <step>
+	<para>Unpack the software from its distribution format (typically a
+	  tarball compressed with &man.compress.1;, &man.gzip.1;, or &man.bzip2.1;).</para>
+      </step>
+
+      <step>
+	<para>Locate the documentation (perhaps an <filename>INSTALL</filename> or <filename>README</filename>
+	  file, or some files in a <filename>doc/</filename> subdirectory) and
+	  read up on how to install the software.</para>
+      </step>
+
+      <step>
+	<para>If the software was distributed in source format, compile it.
+	  This may involve editing a <filename>Makefile</filename>, or
+	  running a <command>configure</command> script, and other work.</para>
+      </step>
+
+      <step>
+	<para>Test and install the software.</para>
+      </step>
+    </procedure>
+
+    <para>And that is only if everything goes well.  If you are installing a
+      software package that was not deliberately ported to &os; you may
+      even have to go in and edit the code to make it work properly.</para>
+
+    <para>Should you want to, you can continue to install software the
+      <quote>traditional</quote> way with &os;.  However, &os;
+      provides technology from NetBSD, which can save 
+      you a lot of effort: pkgsrc.  At the time of 
+      writing, over &os.numpackages; third party applications have 
+      been made available in this way.</para>
+
+    <para>For any given application, the &os; Binary package for that
+      application is a single file which you must download.  The
+      package contains pre-compiled copies of all the commands for the
+      application, as well as any configuration files or
+      documentation.  A downloaded package file can be manipulated
+      with &os; package management commands, such as
+      &man.pkg.add.1;, &man.pkg.delete.1;, &man.pkg.info.1;, and so
+      on.  Installing a new application can be carried out with a single
+      command.</para>
+
+    <para>In addition the pkgsrc collection supplies a collection of files
+      designed to automate the process of compiling an application
+      from source code.</para>
+
+    <para>Remember that there are a number of steps you would normally
+      carry out if you compiled a program yourself (downloading,
+      unpacking, patching, compiling, installing).  The files that
+      make up a pkgsrc source collection contain all the necessary 
+      information to allow the system to do this for you.  You run 
+      a handful of simple commands and the source code for the 
+      application is automatically downloaded, extracted, patched, 
+      compiled, and installed for you.</para>
+
+    <para>In fact, the pkgsrc source subsystem can also be used to 
+      generate packages which can later be manipulated with 
+      <command>pkg_add</command> and the other package management 
+      commands that will be introduced shortly.</para>
+
+    <para>Pkgsrc understands <emphasis>dependencies</emphasis>.  
+      Suppose you want to install an application that depends on a 
+      specific library being installed.  Both the application and 
+      the library have been made available through the pkgsrc 
+      collection.  If you use the <command>pkg_add</command> command 
+      or the pkgsrc subsystem to add the application, both will 
+      notice that the library has not been installed, and 
+      automatically install the library first.</para>
+
+    <para>You might be wondering why &pkgsrc; bothers with both.  
+      Binary packages and the source tree both have their own 
+      strengths, and which one you use will depend on your own 
+      preference.</para>
+
+    <itemizedlist>
+      <title>Binary Package Benefits</title>
+      
+      <listitem>
+	<para>A compressed package tarball is typically smaller than
+	  the compressed tarball containing the source code for the
+	  application.</para>
+      </listitem>
+
+      <listitem>
+	<para>Packages do not require any additional compilation.  For
+	  large applications, such as
+	  <application>Mozilla</application>,
+	  <application>KDE</application>, or
+	  <application>GNOME</application> this can be important,
+	  particularly if you are on a slow system.</para>
+      </listitem>
+
+      <listitem>
+	<para>Packages do not require any understanding of the process
+	  involved in compiling software on &os;.</para>
+      </listitem>
+    </itemizedlist>
+
+    <itemizedlist>
+      <title>Pkgsrc source Benefits</title>
+      
+      <listitem>
+	<para>Binary packages are normally compiled with conservative options,
+	  because they have to run on the maximum number of systems.  By
+	  installing from the source, you can tweak the compilation options to
+	  (for example) generate code that is specific to a Pentium
+	  IV or Athlon processor.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some applications have compile time options relating to
+	  what they can and cannot do.  For example,
+	  <application>Apache</application> can be configured with a
+	  wide variety of different built-in options.  By building
+	  from the source you do not have to accept the default options,
+	  and can set them yourself.</para>
+
+	<para>In some cases, multiple packages will exist for the same
+	  application to specify certain settings.  For example,
+	  <application>vim</application> is available as a
+	  <filename>vim</filename> package and a
+	  <filename>vim-gtk</filename> package, depending on
+	  whether you have installed an X11 server.  This sort
+	  of rough tweaking is possible with packages, but rapidly
+	  becomes impossible if an application has more than one or
+	  two different compile time options.</para>
+      </listitem>
+
+      <listitem>
+	<para>The licensing conditions of some software distributions forbid
+	  binary distribution.  They must be distributed as source
+	  code.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some people do not trust binary distributions.  With source 
+	code, it is possible to check for any vulnerabilities built into the 
+	program before installing it to an otherwise secure system.  Few 
+	people perform this much review, however.</para>
+      </listitem>
+
+      <listitem>
+	<para>If you have local patches, you will need the source in order to
+	  apply them.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some people like having code around, so they can read it
+	  if they get bored, hack it, borrow from it (license
+	  permitting, of course), and so on.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>To keep track of updated &pkgsrc; releases subscribe to the
+      &a.netbsd.pkgsrc-users; and the &a.netbsd.tech-pkgsrc;.  It's also 
+      useful to watch the &a.users; as errors with pkgsrc on 
+      DragonFly should be reported there.</para>
+
+    <warning>
+      <para>Before installing any application, you should check <ulink
+	url="http://www.pkgsrc.org/"></ulink> for security issues
+	related to your application.</para>
+
+      <para>You can also install <filename
+	role="package">security/audit-packages</filename> which will
+	automatically check all installed applications for known
+	vulnerabilities, a check will be also performed before any application
+	build.  Meanwhile, you can use the command <command>audit-packages
+	-d</command> after you have installed some packages.</para>
+    </warning>
+
+    <para>The remainder of this chapter will explain how to use
+      the &pkgsrc; system to install and manage third party software on
+      &os;.</para>
+  </sect1>
+
+  <sect1 id="pkgsrc-finding-applications">
+    <title>Finding Your Application</title>
+
+    <para>Before you can install any applications you need to know what you
+      want, and what the application is called.</para>
+
+    <para>&os;'s list of available applications is growing all the
+      time.  Fortunately, there are a number of ways to find what you
+      want:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>There is a &pkgsrc; related web site that maintains an 
+	  up-to-date searchable list of all the available applications, at <ulink
+	  url="&pkgsrc.se;">&pkgsrc.se;</ulink>.
+	  The packages and the corresponding source tree are divided into 
+	  categories, and you may either search for an application by name 
+	  (if you know it), or see all the applications available in a category.</para>
+      </listitem>
+
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="pkgsrc-using">
+    <sect1info>    
+      <authorgroup>
+        <author>
+          <firstname>Chern</firstname>
+	  <surname>Lee</surname>
+	  <contrib>Original FreeBSD documentation contributed by </contrib>
+        </author>
+        <author>
+          <firstname>Adrian</firstname>
+	  <surname>Nida</surname>
+	  <contrib>DragonFly BSD customizations contributed by </contrib>
+        </author>
+      </authorgroup>
+    <!-- 2006-04-03 -->
+    </sect1info>
+
+    <title>Using the Binary Packages System</title>
+
+    <sect2>
+      <title>Installing a Binary Package</title>
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>installing</secondary>
+      </indexterm>
+    
+      <indexterm>
+        <primary><command>pkg_add</command></primary>
+      </indexterm>
+      <para>You can use the &man.pkg.add.1; utility to install a
+	&pkgsrc; software package from a local file or from a server on
+	the network.</para>
+
+      <example>
+        <title>Downloading a Package Manually and Installing It Locally</title>
+
+        <screen>&prompt.root; <userinput>ftp -a <replaceable>packages.stura.uni-rostock.de</replaceable></userinput>
+Connected to fsr.uni-rostock.de.
+220 packages.stura.uni-rostock.de FTP server (Version 6.00LS) ready.
+331 Guest login ok, send your email address as password.
+230 Guest login ok, access restrictions apply.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+<prompt>ftp&gt;</prompt> <userinput>cd /pkgsrc-current/DragonFly/RELEASE/i386/All/</userinput>
+250 CWD command successful.
+<prompt>ftp></prompt> <userinput>get 0verkill-0.15.tgz</userinput>
+local: 0verkill-0.15.tgz remote: 0verkill-0.15.tgz
+229 Entering Extended Passive Mode (|||61652|)
+150 Opening BINARY mode data connection for '0verkill-0.15.tgz' (174638 bytes).
+100% |*************************************|   170 KB  159.37 KB/s    00:00 ETA
+226 Transfer complete.
+174638 bytes received in 00:01 (159.30 KB/s)
+<prompt>ftp&gt;</prompt> <userinput>exit</userinput>
+221 Goodbye.
+&prompt.root; <userinput>pkg_add <replaceable>0verkill-0.15.tgz</replaceable></userinput></screen>
+      </example>
+
+      <note><para>It should be noted that simply issuing:
+	<screen>&prompt.root; <userinput>pkg_add <replaceable>ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/0verkill-0.15.tgz</replaceable></userinput></screen>
+	will yield the same result as the above example.</para></note>
+
+      <para>Unlike the FreeBSD version, the Pkgsrc &man.pkg.add.1;
+        does not need to be passed the <option>-r</option> option.
+	As can be seen from the second example, you just need to 
+	pass in the URL of the package.
+	The utility will also always automatically fetch and install
+	all dependencies.</para>
+
+      <para>The example above would download the correct package and
+	add it without any further user intervention.
+	If you want to specify an alternative &os; Packages Mirror,
+	instead of the main distribution site, you have to set
+	<envar>PACKAGESITE</envar> accordingly, to
+	override the default settings.  &man.pkg.add.1;
+	uses &man.fetch.3; to download the files, which honors various
+	environment variables, including
+	<envar>FTP_PASSIVE_MODE</envar>, <envar>FTP_PROXY</envar>, and
+	<envar>FTP_PASSWORD</envar>.  You may need to set one or more
+	of these if you are behind a firewall, or need to use an
+	FTP/HTTP proxy.  See &man.fetch.3; for the complete list.
+      </para>
+
+      <para>Binary package files are distributed in <filename>.tgz</filename>
+           formats.  You can find them at the default location <ulink
+          url="ftp://goBSD.com//packages/"></ulink>,
+          among other sites.  The layout of the packages is similar 
+	  to that of the <filename>/usr/pkgsrc</filename> tree.  
+	  Each category has its own directory, and every package can 
+	  be found within the <filename>All</filename> directory.
+      </para>
+
+      <para>The directory structure of the binary package system matches the
+        source tree layout; they work with each other to form the entire
+        package system.
+      </para>
+
+    </sect2>
+
+    <sect2>
+      <title>Managing Packages</title>
+
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>managing</secondary>
+      </indexterm>
+      <para>&man.pkg.info.1; is a utility that lists and describes 
+        the various packages installed.
+      </para>
+
+      <indexterm>
+        <primary><command>pkg_info</command></primary>
+      </indexterm>
+      <screen>&prompt.root; <userinput>pkg_info</userinput>
+digest-20050731     Message digest wrapper utility
+screen-4.0.2nb4     Multi-screen window manager
+...</screen>
+      <para>&man.pkg.version.1; is a utility that summarizes the
+        versions of all installed packages.  It compares the package 
+        version to the current version found in the ports tree.
+      </para> 
+    </sect2>
+
+    <sect2>
+      <title>Deleting a Package</title>
+      <indexterm>
+        <primary><command>pkg_delete</command></primary>
+      </indexterm>
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>deleting</secondary>
+      </indexterm>
+      <para>To remove a previously installed software package, use the
+	&man.pkg.delete.1; utility.
+      </para>
+
+      <screen>&prompt.root; <userinput>pkg_delete <replaceable>xchat-1.7.1</replaceable></userinput></screen>
+    </sect2>
+
+    <sect2>
+      <title>Miscellaneous</title>
+      <para>All package information is stored within the 
+        <filename>/var/db/pkg</filename> directory.  The installed
+	file list and descriptions of each package can be found within 
+        subdirectories of this directory.
+      </para>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="pkgsrc-sourcetree-using">
+    <title>Using the &pkgsrc; Source Tree</title>
+
+    <para>The following sections provide basic instructions on using the
+      pkgsrc source tree to install or remove programs from your
+      system.</para>
+
+    <sect2 id="pkgsrc-tree">
+      <title>Obtaining the &pkgsrc; Source Tree</title>
+
+      <para>Before you can install &pkgsrc; packages from source, you must 
+        first obtain the &pkgsrc; source tree&mdash;which is essentially 
+	a set of <filename>Makefiles</filename>, patches, and description 
+	files placed in <filename>/usr/pkgsrc</filename>.
+      </para>
+
+      <para>The primary method to obtain and keep your &pkgsrc;
+	collection up to date is by using
+	<application>CVS</application></para>
+
+      <procedure>
+	<title>CVS</title>
+
+	<para>This is a quick method for getting the &pkgsrc; collection
+	  using <application>CVS</application>.</para>
+
+	<step>
+	  <para>Run <command>cvs</command>:</para>
+
+	  <screen>
+	  &prompt.root; <userinput>cd <replaceable>/usr/</replaceable></userinput>
+	  &prompt.root; <userinput>cvs -d <replaceable>anoncvs@anoncvs.us.netbsd.org:/cvsroot</replaceable> co pkgsrc</userinput></screen>
+	</step>
+
+	<step>
+	  <para>Running the following command later will download and apply all
+	    the recent changes to your source tree.  
+	  <screen>&prompt.root; <userinput>cd <replaceable>/usr/pkgsrc</replaceable></userinput>
+	  &prompt.root; <userinput>cvs up</userinput></screen>
+	  </para>
+	</step>
+	
+      </procedure>
+    </sect2>
+
+    <sect2 id="pkgsrc-source-skeleton">
+      <title>Installing Packages from Source</title>
+
+      <indexterm>
+        <primary>pkgsrc source</primary>
+        <secondary>installing</secondary>
+      </indexterm>
+      <para>The first thing that should be explained when it comes to
+        the source tree is what is actually meant by a
+        <quote>skeleton</quote>.  In a nutshell, a source skeleton is a
+        minimal set of files that tell your &os; system how to
+        cleanly compile and install a program.  Each source skeleton
+        should include:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>A <filename>Makefile</filename>.  The
+	    <filename>Makefile</filename> contains various statements
+	    that specify how the application should be compiled and
+	    where it should be installed on your system.</para>
+	</listitem>
+
+	<listitem>
+	  <para>A <filename>distinfo</filename> file.  This file
+	    contains information about the files that must be
+	    downloaded to build the port and their checksums, to
+	    verify that files have not been corrupted during the
+	    download using &man.md5.1;.</para>
+	</listitem>
+
+	<listitem>
+	  <para> A <filename>files</filename> directory.  This
+	    directory contains the application specific files that are 
+	    needed for the programs appropriate run-time configuration.
+	  </para>
+	  <para>This directory may also contain other files used to build
+	    the port.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>A <filename>patches</filename> directory.  This
+	    directory contains patches to make the program compile and
+	    install on your  &os; system.  Patches are basically
+	    small files that specify changes to particular files.
+	    They are in plain text format, and basically say
+	    <quote>Remove line 10</quote> or <quote>Change line 26 to
+	    this ...</quote>.  Patches are also known as
+	    <quote>diffs</quote> because they are generated by the
+	    &man.diff.1; program.</para>
+	</listitem>
+
+	<listitem>
+	  <para>A <filename>DESCR</filename> file.  This is a more
+	    detailed, often multiple-line, description of the program.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>A <filename>PLIST</filename> file.  This is a list of all
+	    the files that will be installed by the port.  It also tells the
+	    pkgsrc system what files to remove upon deinstallation.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>Some &pkgsrc; source skeletons have other files, such as
+        <filename>MESSAGE</filename>.  The &pkgsrc; system uses these
+        files to handle special situations.  If you want more details
+        on these files, and on &pkgsrc; in general, check out <ulink 
+	url="http://www.netbsd.org/Documentation/pkgsrc/">The 
+        pkgsrc guide</ulink>, available at the <ulink
+        url="http://www.netbsd.org/">NetBSD website</ulink>.</para>
+
+      <para>Now that you have enough background information to know
+        what the &pkgsrc; source tree is used for, you are ready to
+        install your first compiled package.  There are two ways 
+	this can be done, and each is explained below.</para>
+
+      <para>Before we get into that, however, you will need to choose an
+        application to install.  There are a few ways to do this, with the
+	easiest method being the <ulink
+	url="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/">
+	pkgsrc listing on the joreg's web site</ulink>.  You can browse 
+	through the packages listed there.</para>
+
+      <para>Another way to find a particular source tree is by using the
+        &pkgsrc; collection's built-in search mechanism.  To use the
+        search feature, you will need to be in the
+        <filename>/usr/pkgsrc</filename> directory.  Once in that
+        directory, run <command>bmake search
+        key="<replaceable>program-name</replaceable>"</command> where
+        <replaceable>program-name</replaceable> is the name of the
+        program you want to find.  This searches packages names, comments,
+	descriptions and dependencies and can be used to find packages
+	which relate to a particular subject if you don't know the 
+	name of the program you are looking for. For example, if you 
+	were looking for <command>apache2</command>:</para>
+
+      <screen>&prompt.root; <userinput>cd /usr/pkgsrc</userinput>
+&prompt.root; <userinput>bmake search key="apache2"</userinput>
+Extracting complete dependency database.  This may take a while...
+....................................................................................................
+100
+....................................................................................................
+200
+&lt;Snip /&gt;
+5800
+....................................................................................................
+5900
+.................................................................................................Reading database file
+Flattening dependencies
+Flattening build dependencies
+Generating INDEX file
+Indexed 5999 packages
+&lt;Snip /&gt;
+Pkg:    apache-2.0.55nb7
+Path:   www/apache2
+Info:   Apache HTTP (Web) server, version 2
+Maint:  tron@NetBSD.org
+Index:  www
+B-deps: perl&gt;=5.0 apr&gt;=0.9.7.2.0.55nb2 expat&gt;=2.0.0nb1 libtool-base&gt;=1.5.22nb1 gmake&gt;=3.78 gettext-lib&gt;=0.14.5 pkg-config&gt;=0.19
+R-deps: perl&gt;=5.0 apr&gt;=0.9.7.2.0.55nb2 expat&gt;=2.0.0nb1
+Arch:   any
+</screen>
+
+      <para>The part of the output you want to pay particular
+        attention to is the <quote>Path:</quote> line, since that
+        tells you where to find the source tree for the requested 
+	application.  The other information provided is not needed
+	in order to install the package, so it will not be covered 
+	here.</para>
+	
+
+      <para>The search string is case-insensitive.
+       Searching for <quote>APACHE</quote> will yield the same results as 
+       searching for <quote>apache</quote>.</para>
+
+       <note>
+      <para>It should be noted that <quote>Extracting [the] complete 
+        dependency database</quote> does indeed take a while.</para>
+       </note>
+
+      <note>
+        <para>You must be logged in as <username>root</username> to install
+          packages.</para>
+      </note>
+
+      <para>Now that you have found an application you would like to install,
+        you are ready to do the actual installation.  The source package 
+        includes instructions on how to build source code, but does not include the
+        actual source code.  You can get the source code from a CD-ROM
+        or from the Internet.  Source code is distributed in whatever
+        manner the software author desires.  Frequently this is a
+        tarred and gzipped file, but it might be compressed with some
+        other tool or even uncompressed.  The program source code,
+        whatever form it comes in, is called a
+        <quote>distfile</quote>.  You can get the distfile from a
+        CD-ROM or from the Internet.</para>
+
+      <warning>
+	<para>Before installing any application, you should be sure to have
+	  an up-to-date source tree and you should check <ulink
+	  url="http://www.pkgsrc.org/"></ulink> for security issues
+	  related to your port.</para>
+
+	<para>A security vulnerabilities check can be automatically
+	  done by <application>audit-packages</application> before any new
+	  application installation.  This tool can be found in the
+	  &pkgsrc; collection (<filename
+	  role="package">security/audit-packages</filename>).  Consider
+	  running <command>auditpackages -d</command> before installing a
+	  new package, to fetch the current vulnerabilities database.  A
+	  security audit and an update of the database will be
+	  performed during the daily security system check.  For more
+	  informations read the audit-packages and &man.periodic.8;
+	  manual pages.</para>
+      </warning>
+        
+       <note>
+          <para>It should be noted that the current setup of &os; requires
+	    the use of <command>bmake</command> instead of <command>make</command>.
+	      This is because the current version of make on &os; does not
+	      support all the parameters that NetBSD's does.</para>
+	</note>
+
+        <note>
+          <para>You can save an extra step by just running <command>bmake
+            install</command> instead of <command>bmake</command> and
+	    <command>bmake install</command> as two separate steps.</para>
+	</note>
+
+	<note>
+	  <para>Some shells keep a cache of the commands that are
+	    available in the directories listed in the
+	    <envar>PATH</envar> environment variable, to speed up
+	    lookup operations for the executable file of these
+	    commands.  If you are using one of these shells, you might
+	    have to use the <command>rehash</command> command after
+	    installing a package, before the newly installed commands can
+	    be used.  This is true for both shells that are part of
+	    the base-system (such as <command>tcsh</command>) and
+	    shells that are available as packages (for instance,
+	    <filename role="package">shells/zsh</filename>).</para>
+	</note>
+
+      <sect3 id="pkgsrc-inet">
+      <title>Installing Packages from the Internet</title>
+
+        <para>As with the last section, this section makes an
+          assumption that you have a working Internet connection.  If
+          you do not, you will need to put a copy
+          of the distfile into
+          <filename>/usr/pkgsrc/distfiles</filename> manually.</para>
+
+        <para>Installing a package from the Internet is done exactly the
+	  same way as it would be if you already had the distfile.  The 
+	  only difference between the two is that the
+	  distfile is downloaded from the Internet on demand.</para>
+
+        <para>Here are the steps involved:</para>
+
+        <screen>&prompt.root; <userinput>cd /usr/pkgsrc/chat/ircII</userinput>
+        &prompt.root; <userinput>bmake install clean</userinput>
+=&gt; ircii-20040820.tar.bz2 doesn't seem to exist on this system.
+=&gt; Attempting to fetch ircii-20040820.tar.bz2 from ftp://ircii.warped.com/pub/ircII/.
+=&gt; [559843 bytes]
+Connected to ircii.warped.com.
+220 bungi.sjc.warped.net FTP server (tnftpd 20040810) ready.
+331 Guest login ok, type your name as password.
+230-
+    A SERVICE OF WARPED.COM  -  FOR MORE INFORMATION: http://www.warped.com
+        
+	230-
+	    Please read the file README
+	          it was last modified on Mon Feb  9 18:43:17 2004 - 794 days ago
+230 Guest login ok, access restrictions apply.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+200 Type set to I.
+250 CWD command successful.
+250 CWD command successful.
+local: ircii-20040820.tar.bz2 remote: ircii-20040820.tar.bz2
+229 Entering Extended Passive Mode (|||60090|)
+150 Opening BINARY mode data connection for 'ircii-20040820.tar.bz2' (559843 bytes).
+100% |***************************************|   550 KB  110.34 KB/s   00:00 ETA
+226 Transfer complete.
+559843 bytes received in 00:04 (110.34 KB/s)
+221-
+    Data traffic for this session was 559843 bytes in 1 file.
+    Total traffic for this session was 560993 bytes in 1 transfer.
+221 Thank you for using the FTP service on bungi.sjc.warped.net.
+=&gt; Checksum SHA1 OK for ircii-20040820.tar.bz2.
+=&gt; Checksum RMD160 OK for ircii-20040820.tar.bz2.
+work -&gt; /usr/obj/pkgsrc/chat/ircII/work
+===&gt; Extracting for ircII-20040820
+==========================================================================
+The supported build options for this package are:
+
+socks4 socks5
+
+You can select which build options to use by setting PKG_DEFAULT_OPTIONS
+or the following variable.  Its current value is shown:
+
+PKG_OPTIONS.ircII (not defined)
+
+==========================================================================
+==========================================================================
+The following variables will affect the build process of this package,
+ircII-20040820.  Their current value is shown below:
+
+* USE_INET6 = YES
+
+You may want to abort the process now with CTRL-C and change their value
+before continuing.  Be sure to run `/usr/pkg/bin/bmake clean' after
+the changes.
+==========================================================================
+===&gt; Patching for ircII-20040820
+===&gt; Applying pkgsrc patches for ircII-20040820
+===&gt; Overriding tools for ircII-20040820
+===&gt; Creating toolchain wrappers for ircII-20040820
+===&gt; Configuring for ircII-20040820
+...
+[configure output snipped]
+...
+===&gt;  Building for ircII-20040820 
+...
+[compilation output snipped]
+...
+===&gt;  Installing for ircII-20040820
+...
+[installation output snipped]
+...
+===&gt; [Automatic manual page handling]
+===&gt; Registering installation for ircII-20040820
+===&gt; Cleaning for ircII-20040820
+&prompt.root;</screen>
+
+        <para>As you can see, the only difference are the lines that tell
+	  you where the system is fetching the package's distfile from.</para>
+
+	<para>The &pkgsrc; system uses &man.ftp.1; to download the
+	  files, which honors various environment variables, including
+	  <envar>FTP_PASSIVE_MODE</envar>, <envar>FTP_PROXY</envar>,
+	  and <envar>FTP_PASSWORD</envar>.  You may need to set one or
+	  more of these if you are behind a firewall, or need to use
+	  an FTP/HTTP proxy.  See &man.ftp.1; for the complete
+	  list.</para>
+
+	<para>For users which cannot be connected all the time, the
+	  <command>bmake <maketarget>fetch</maketarget></command> option is
+	  provided.  Just run this command at the top level directory
+	  (<filename>/usr/pkgsrc</filename>) and the required files
+	  will be downloaded for you.  This command will also work in
+	  the lower level categories, for example:
+	  <filename>/usr/pkgsrc/net</filename>.
+	  Note that if a package depends on libraries or other packages 
+	  this will <emphasis>not</emphasis> fetch the distfiles of 
+	  those packages as well.</para>
+
+	<note><para>You can build all the packages in a category or as a
+	  whole by running <command>bmake</command> in the top level
+	  directory, just like the aforementioned <command>bmake
+	  <makevar>fetch</makevar></command> method.  This is
+	  dangerous, however, as some applications cannot co-exist.  
+	  In other cases, some packages can install two different 
+	  files with the same filename.</para></note>
+
+	<para>In some rare cases, users may need to acquire the
+	  tarballs from a site other than the
+	  <makevar>MASTER_SITES</makevar> (the location where files
+	  are downloaded from).  You can override the
+	  <makevar>MASTER_SORT</makevar>, <makevar>MASTER_SORT_REGEX</makevar> 
+	  and <makevar>INET_COUNTRY</makevar> options either within 
+	  the <filename>/etc/mk.conf</filename>.</para>
+
+	<note><para>Some packages allow (or even require) you to provide build options
+	  which can enable/disable parts of the application which are
+	  unneeded, certain security options, and other
+	  customizations.  A few which come to mind are 
+	  <filename role="package">www/mozilla</filename>, 
+	  <filename role="package">security/gpgme</filename>, and 
+	  <filename role="package">mail/sylpheed-claws</filename>.  
+	  To find out what build options the application you are installing
+	  requires type: 
+		<screen>&prompt.root; <userinput>bmake show-options</userinput></screen>
+	  To change the build process, either change the values of 
+	  PKG_DEFAULT_OPTIONS or PKG_OPTIONS.<replaceable>PackageName</replaceable> 
+	  in <filename>/etc/mk.conf</filename> or on the commandline as so:
+		<screen>&prompt.root; <userinput>bmake PKG_OPTIONS.ircII="-ssl"</userinput></screen>
+	  An option is enabled if listed.  It is disabled if it is prefixed by a minus sign.
+	</para></note>
+      </sect3>
+
+<!-- AMN 2006-04-15 I don't think this is supported in pkgsrc
+      <sect3>
+        <title>Overriding the Default Ports Directories</title>
+
+	<para>Sometimes it is useful (or mandatory) to use a different
+	  distfiles and ports directory.  The
+	  <makevar>PORTSDIR</makevar> and <makevar>PREFIX</makevar>
+	  variables can override the default directories.  For
+	  example:</para>
+
+	<screen>&prompt.root; <userinput>make PORTSDIR=/usr/home/example/ports install</userinput></screen>
+
+	<para>will compile the port in
+	    <filename>/usr/home/example/ports</filename> and install
+	    everything under <filename>/usr/local</filename>.</para>
+
+	<screen>&prompt.root; <userinput>make PREFIX=/usr/home/example/local install</userinput></screen>
+
+	<para>will compile it in <filename>/usr/ports</filename> and
+	  install it in
+	  <filename>/usr/home/example/local</filename>.</para>
+
+	<para>And of course,</para>
+
+	<screen>&prompt.root; <userinput>make PORTSDIR=../ports PREFIX=../local install</userinput></screen>
+
+	<para>will combine the two (it is too long to completely write
+	  on this page, but it should give you the general
+	  idea).</para>
+
+	<para>Alternatively, these variables can also be set as part
+	  of your environment.  Read the manual page for your shell
+	  for instructions on doing so.</para>
+      </sect3>
+-->
+
+      <sect3>
+	<title>Dealing with <command>imake</command></title>
+
+	<para>Some applications that use <command>imake</command> (a part of
+	  the X Window System) do not work well with
+	  <makevar>PREFIX</makevar>, and will insist on installing
+	  under <filename>/usr/X11R6</filename>.  Similarly, some Perl
+	  ports ignore <makevar>PREFIX</makevar> and install in the
+	  Perl tree.  Making these applications respect
+	  <makevar>PREFIX</makevar> is a difficult or impossible
+	  job.</para>
+
+      </sect3>
+    </sect2>
+
+    <sect2 id="pkgsrc-removing">
+      <title>Removing Installed Packages</title>
+
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>removing</secondary>
+      </indexterm>
+      <para>Now that you know how to install packages, you are probably
+        wondering how to remove them, just in case you install one and
+	later on decide that you installed the wrong program.  
+        We will remove our previous example (which was 
+	<command>ircII</command> for
+        those of you not paying attention).  As with installing packages,
+	the first thing you must do is change to the package directory,
+	<filename>/usr/pkgsrc/chat/ircII</filename>.  After you change
+	directories, you are ready to uninstall <command>ircII</command>.
+	This is done with
+	the <command>bmake deinstall</command> command:</para>
+
+      <screen>&prompt.root; <userinput>cd /usr/pkgsrc/chat/ircII</userinput>
+&prompt.root; <userinput>make deinstall</userinput>
+===&gt;  Deinstalling for ircII-20040820</screen>
+
+      <para>That was easy enough.  You have removed
+	<command>ircII</command>
+        from your system.  If you would like to reinstall it, you can do
+	so by running <command>bmake reinstall</command> from the
+        <filename>/usr/ports/chat/ircII</filename> directory.</para>
+
+      <para>The <command>bmake deinstall</command> and <command>bmake
+        reinstall</command> sequence does not work once you have run
+        <command>bmake clean</command>.  If you want to deinstall a
+        package after cleaning, use &man.pkg.delete.1; as
+        discussed in the <link linkend="pkgsrc-using">Pkgsrc
+        section of the Handbook</link>.</para>
+    </sect2>
+
+    <sect2 id="pkgsrc-disk-space">
+      <title>Packages and Disk Space</title>
+
+      <indexterm>
+        <primary>pkgsrc</primary>
+        <secondary>disk-space</secondary>
+      </indexterm>
+      <para>Using the &pkgsrc; collection can definitely eat up your disk
+	space.  For this reason you should always remember to clean up
+	the work directories using the <command>bmake
+	<makevar>clean</makevar></command> option.  This will remove
+	the <filename>work</filename> directory after a package has been
+	built, and installed.  You can also remove the tar files from
+	the <filename>distfiles</filename> directory, and remove the
+	installed package when their use has delimited.</para>
+    </sect2>
+
+    <sect2 id="pkgsrc-upgrading">
+      <title>Upgrading Packages</title>
+
+      <indexterm>
+	<primary>pkg_chk</primary>
+      </indexterm>
+      <indexterm>
+	<primary>pkgsrc</primary>
+	<secondary>upgrading</secondary>
+      </indexterm>
+      <note>
+	<para>Once you have updated your pkgsrc collection, before
+	  attempting a package upgrade, you should check the
+	  <filename>/usr/pkgsrc/UPDATING</filename> file.  This file
+	  describes various issues and additional steps users may
+	  encounter and need to perform when updating a port.</para>
+      </note>
+
+      <para>Keeping your packages up to date can be a tedious job.  For
+	instance, to upgrade a package you would go to the package
+	directory, build the package, deinstall the old package , install 
+	the new package, and then clean up after the build.  Imagine doing
+	that for five packages, tedious right?  This was a large problem
+	for system administrators to deal with, and now we have
+	utilities which do this for us.  For instance the 
+	<filename>pkg_chk</filename> utility will do everything for you!
+      </para>
+
+      <para>pkg_chk requires a few steps in order to work correctly.  They
+        are listed here.
+        <screen>&prompt.root; <userinput>pkg_chk -g</userinput> # make initial list of installed packages
+        &prompt.root; <userinput>pkg_chk -r</userinput>  # remove all packages that are not up to date and packages that depend on them 
+	&prompt.root; <userinput>pkg_chk -a</userinput>  # install all missing packages (use binary packages, this is the default)
+	&prompt.root; <userinput>pkg_chk -as</userinput> # install all missing packages (build from source)
+	</screen>
+      </para>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="pkgsrc-nextsteps">
+    <title>Post-installation Activities</title>
+
+    <para>After installing a new application you will normally want to
+      read any documentation it may have included, edit any
+      configuration files that are required, ensure that the
+      application starts at boot time (if it is a daemon), and so
+      on.</para>
+
+    <para>The exact steps you need to take to configure each
+      application will obviously be different.  However, if you have
+      just installed a new application and are wondering <quote>What
+      now?</quote> these tips might help:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Use &man.pkg.info.1; to find out which files were installed,
+	  and where.  For example, if you have just
+	  installed FooPackage version 1.0.0, then this command</para>
+
+	<screen>&prompt.root; <userinput>pkg_info -L foopackage-1.0.0 | less</userinput></screen>
+
+	<para>will show all the files installed by the package.  Pay
+	  special attention to files in <filename>man/</filename>
+	  directories, which will be manual pages,
+	  <filename>etc/</filename> directories, which will be
+	  configuration files, and <filename>doc/</filename>, which
+	  will be more comprehensive documentation.</para>
+
+	<para>If you are not sure which version of the application was
+	  just installed, a command like this</para>
+
+	<screen>&prompt.root; <userinput>pkg_info | grep -i <replaceable>foopackage</replaceable></userinput></screen>
+
+	<para>will find all the installed packages that have
+	  <replaceable>foopackage</replaceable> in the package name.
+	  Replace <replaceable>foopackage</replaceable> in your
+	  command line as necessary.</para>
+      </listitem>
+
+      <listitem>
+	<para>Once you have identified where the application's manual
+	  pages have been installed, review them using &man.man.1;.
+	  Similarly, look over the sample configuration files, and any
+	  additional documentation that may have been provided.</para>
+      </listitem>
+
+      <listitem>
+	<para>If the application has a web site, check it for
+	  additional documentation, frequently asked questions, and so
+	  forth.  If you are not sure of the web site address it may
+	  be listed in the output from</para>
+
+	<screen>&prompt.root; <userinput>pkg_info <replaceable>foopackage-1.0.0</replaceable></userinput></screen>
+	
+	<para>A <literal>WWW:</literal> line, if present, should provide a URL
+	  for the application's web site.</para>
+      </listitem>
+
+      <listitem>
+	<para>Packages that should start at boot (such as Internet
+	  servers) will usually install a sample script in
+	  <filename>/usr/pkg/etc/rc.d</filename>.  You should
+	  review this script for correctness and edit or rename it if
+	  needed.  See <link
+	  linkend="configtuning-starting-services">Starting
+	  Services</link> for more information.</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="pkgsrc-broken">
+    <title>Dealing with Broken Packages</title>
+
+      <para>If you come across a package that does not work for you,
+        there are a few things you can do, including:</para>
+
+      <orderedlist>
+        <listitem>
+	  <para>Fix it!  The <ulink
+	    url="http://www.netbsd.org/Documentation/pkgsrc/">pkgsrc
+	    Guide</ulink> includes detailed information on the
+	    <quote>&pkgsrc;</quote> infrastructure so that you can fix the occasional
+	    broken package or even submit your own!</para>
+	</listitem>
+
+	<listitem>
+	  <para>Gripe&mdash;<emphasis>by email only</emphasis>!  Send
+	    email to the maintainer of the package first.  Type
+	    <command>bmake maintainer</command> or read the
+	    <filename>Makefile</filename> to find the maintainer's
+	    email address.  Remember to include the name and version
+	    of the port (send the <literal>&dollar;NetBSD:</literal>
+	    line from the <filename>Makefile</filename>) and the
+	    output leading up to the error when you email the
+	    maintainer.  If you do not get a response from the
+	    maintainer, you can try &a.users.name; .</para>
+	</listitem>
+
+	<listitem>
+	  <para>Grab the package from an FTP site near you.  The
+	    <quote>master</quote> package collection is on <hostid
+	    role="fqdn">packages.stura.uni-rostock.de</hostid> in the <ulink
+	    url="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/">All
+	    directory</ulink>.  These are more likely to work
+	    than trying to compile from source and are a lot faster as
+	    well.  Use the &man.pkg.add.1; program to install the
+	    package on your system.</para>
+	</listitem>
+      </orderedlist>
+  </sect1>
+
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

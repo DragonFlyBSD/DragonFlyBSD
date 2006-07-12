@@ -1,6 +1,6 @@
 <!--
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
-     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.5 2005/09/06 17:27:39 reed Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.6 2006/07/12 04:01:00 justin Exp $
 -->
 
 <preface id="book-preface">
@@ -68,11 +68,10 @@
       </listitem>
     </varlistentry>
     <varlistentry>
-      <term><emphasis><xref linkend="ports">, Installing Applications</emphasis></term>
+      <term><emphasis><xref linkend="pkgsrc">, Installing Applications</emphasis></term>
       <listitem>
-	<para>Covers the installation of third-party software with
-	both &os;'s innovative <quote>Ports Collection</quote> and standard
-	binary packages.</para>
+	<para>Covers the installation of third-party software using
+	&netbsd;'s Packages Collection &pkgsrc;.
       </listitem>
     </varlistentry>
     <varlistentry>

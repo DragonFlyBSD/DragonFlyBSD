@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
-     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.6 2005/09/06 00:28:13 reed Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.7 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="mail">
@@ -120,7 +120,7 @@
 
       <listitem>
 	<para>Know how to install additional third-party software
-	  (<xref linkend="ports">).</para></listitem>
+	  (<xref linkend="pkgsrc">).</para></listitem>
     </itemizedlist>
   </sect1>
 
@@ -205,8 +205,8 @@
 	  attacker gaining local and/or remote access to your machine.
 	  Make sure that you are running a current version to avoid
 	  these problems.  Optionally, install an alternative
-	  <acronym>MTA</acronym> from the <link linkend="ports">&os;
-	  Ports Collection</link>.</para>
+	  <acronym>MTA</acronym> from the <link linkend="pkgsrc">&os;
+	  Pkgsrc Collection</link>.</para>
       </warning>
     </sect2>
 
@@ -680,11 +680,10 @@ postmaster@example.com          postmaster@noc.example.net
 
       <para>You have a wide choice of MTAs available.  A good
 	starting point is the
-	&pkgsrc; collection or
-	<link linkend="ports">FreeBSD Ports Collection</link> where
-	you will be able to find many.  Of course you are free to use
-	any MTA you want from any location, as long as you can make
-	it run under &os;.</para>
+	<link linkend="pkgsrc">&pkgsrc; collection</link>or
+	where you will be able to find many.  Of course you are 
+	free to use any MTA you want from any location, as long 
+	as you can make it run under &os;.</para>
 
       <para>Start by installing your new MTA.  Once it is installed
 	it gives you a chance to decide if it really fulfills your
@@ -1703,7 +1702,7 @@ sasl_pwcheck_program="/usr/local/sbin/pwcheck"</programlisting>
       way they interact with email; this gives users increased
       functionality and flexibility.  &os; contains support for
       numerous mail user agents, all of which can be easily installed
-      using the &pkgsrc; or <link linkend="ports">FreeBSD Ports</link> collections.
+      using the <link linkend="pkgsrc">&pkgsrc;</link> collection.
       Users may choose between graphical email clients such as
       <application>evolution</application> or
       <application>balsa</application>, console based clients such as

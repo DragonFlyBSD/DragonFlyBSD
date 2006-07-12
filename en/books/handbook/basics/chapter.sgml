@@ -4,7 +4,7 @@
 $FreeBSD:
 /repoman/r/dcvs/doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.143
 2006/01/05 20:03:36 delphij Exp $
-$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.9 2006/03/06 05:36:04 justin Exp $
+$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.10 2006/07/12 04:00:59 justin Exp $
 -->
 
 <chapter id="basics">
@@ -788,11 +788,6 @@ file1</programlisting>
 	    </row>
 	    
 	    <row>
-	      <entry><filename class="directory">/usr/dfports</filename></entry>
-	      <entry>The &os; ports collection (optional).</entry>
-	    </row>
-	    
-	    <row>
 	      <entry><filename class="directory">/usr/include/</filename></entry>
 	      <entry>Standard C include files.</entry>
 	    </row>
@@ -818,16 +813,12 @@ file1</programlisting>
 	      <entry><filename
 	      class="directory">/usr/local/</filename></entry>
 
-	      <entry>Local executables, libraries, etc.  Also used as
-	        the default destination for the FreeBSD ports
-	        framework.  Within <filename>/usr/local</filename>,
-	        the general layout sketched out by &man.hier.7; for
-	        <filename>/usr</filename> should be used.  Exceptions
-	        are the man directory, which is directly under
-	        <filename>/usr/local</filename> rather than under
-	        <filename>/usr/local/share</filename>, and the ports
-	        documentation is in
-	        <filename>share/doc/<replaceable>port</replaceable></filename>.
+	      <entry>Local executables, libraries, etc.  Within
+          <filename>/usr/local</filename>, the general layout sketched
+          out by &man.hier.7; for <filename>/usr</filename> should be
+          used.  An exceptions is the man directory, which is directly
+          under <filename>/usr/local</filename> rather than under
+          <filename>/usr/local/share</filename>.
 	      </entry>
 	    </row>
 	    
@@ -850,11 +841,6 @@ file1</programlisting>
 	    <row>
 	      <entry><filename class="directory">/usr/pkgsrc</filename></entry>
 	      <entry>The &pkgsrc; collection for installing packages (optional).</entry>
-	    </row>
-
-	    <row>
-	      <entry><filename class="directory">/usr/ports</filename></entry>
-	      <entry>The FreeBSD ports collection (optional).</entry>
 	    </row>
 	    
 	    <row>
@@ -2011,8 +1997,8 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       variables.  &os; comes with a set of shells, such as 
       <command>sh</command>, the Bourne Shell, and <command>tcsh</command>, 
       the improved C-shell.  Many other shells are available
-      from &pkgsrc; and the FreeBSD Ports collections, such as
-      <command>zsh</command> and <command>bash</command>.</para>
+      from &pkgsrc;, such as <command>zsh</command> and
+      <command>bash</command>.</para>
 
     <para>Which shell do you use?  It is really a matter of taste.  If you
       are a C programmer you might feel more comfortable with a C-like shell
@@ -2190,7 +2176,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <note>
 	<para>The shell that you wish to use <emphasis>must</emphasis> be
 	  present in the <filename>/etc/shells</filename> file.  If you
-	  have installed a shell from the &pkgsrc; or <link linkend="ports">ports
+	  have installed a shell from the <link linkend="pkgsrc">&pkgsrc;
 	  collection</link>, then this should have been done for you
 	  already.  If you installed the shell by hand, you must do
 	  this.</para>
@@ -2255,7 +2241,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>&os; also comes with more powerful text editors such as
       <application>vi</application> as part of the base system, while other editors, like
       <application>emacs</application> and <application>vim</application>,
-      are part of the &pkgsrc; and FreeBSD Ports collections.  These editors offer much
+      are part of the &pkgsrc; collection.  These editors offer much
       more functionality and power at the expense of being a little more
       complicated to learn.  However if you plan on doing a lot of text
       editing, learning a more powerful editor such as

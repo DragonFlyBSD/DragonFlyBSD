@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.8 2005/09/06 17:29:38 reed Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.9 2006/07/12 04:00:59 justin Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -1019,6 +1019,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
       debugging and setting up your wireless network, and here we will
       attempt to describe some of them and what they do.</para>
 
+<!-- AMN 2006-04-03 bsd-tools don't exist in pkgsrc
     <sect4>
     <title>The <application>bsd-airtools</application> Package</title>
 
@@ -1045,6 +1046,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
       wireless security needs.</para>
 
     </sect4>
+-->
 
     <sect4>
     <title>The <command>wicontrol</command>, <command>ancontrol</command> and <command>raycontrol</command> Utilities</title>
@@ -2694,6 +2696,7 @@ margaux:ha=0123456789ab:tc=.def100
           </programlisting>
       </sect3>
 
+<!-- AMN 2006-04-03 Etherboot doesn't exist in pkgsrc
       <sect3>
 	<title>Preparing a Boot Program with
 	  <application>Etherboot</application></title>
@@ -2746,6 +2749,7 @@ margaux:ha=0123456789ab:tc=.def100
 	  right <replaceable>devicetype</replaceable>.</para>
 
       </sect3>
+-->
 
       <sect3>
 	<title>Booting with <acronym>PXE</acronym></title>

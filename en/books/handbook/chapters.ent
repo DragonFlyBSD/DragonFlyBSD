@@ -7,7 +7,7 @@
      Chapters should be listed in the order in which they are referenced.
  
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/chapters.ent,v 1.25 2003/11/24 18:26:34 hrs Exp $
-     $DragonFly: doc/en/books/handbook/chapters.ent,v 1.2 2005/06/27 23:42:11 reed Exp $
+     $DragonFly: doc/en/books/handbook/chapters.ent,v 1.3 2006/07/12 04:00:59 justin Exp $
 -->
 
 <!ENTITY chap.preface			SYSTEM "preface/preface.sgml">
@@ -16,7 +16,7 @@
 <!ENTITY chap.introduction		SYSTEM "introduction/chapter.sgml">
 <!ENTITY chap.install			SYSTEM "install/chapter.sgml">
 <!ENTITY chap.basics			SYSTEM "basics/chapter.sgml">
-<!ENTITY chap.ports			SYSTEM "ports/chapter.sgml">
+<!ENTITY chap.pkgsrc			SYSTEM "pkgsrc/chapter.sgml">
 
 <!-- Part two -->
 <!ENTITY chap.config			SYSTEM "config/chapter.sgml">

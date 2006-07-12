@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.6 2005/09/06 00:28:14 reed Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.7 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="multimedia">
@@ -24,9 +24,9 @@
       to enjoy high fidelity output from your computer.  This includes
       the ability to record and playback audio in the MPEG Audio Layer
       3 (MP3), WAV, and Ogg Vorbis formats as well as many other
-      formats.  The &pkgsrc; and FreeBSD Ports collections also contain
-      applications allowing you to edit your recorded audio, add sound
-      effects, and control attached MIDI devices.</para>
+      formats.  The &pkgsrc; collection also contain applications
+      allowing you to edit your recorded audio, add sound effects, and
+      control attached MIDI devices.</para>
 
     <para>With some willingness to experiment, &os; can support
       playback of video files and DVD's.  The number of applications
@@ -1001,7 +1001,7 @@ no adaptors present</screen>
     <indexterm><primary>video packages</primary></indexterm>
 
     <para>This section discusses the software available from the
-      &pkgsrc; and FreeBSD Ports collections which can be used for video playback.
+      &pkgsrc; collection which can be used for video playback.
       Video playback is a very active area of software development,
       and the capabilities of various applications are bound to
       diverge somewhat from the descriptions given here.</para>
@@ -1070,7 +1070,7 @@ no adaptors present</screen>
       </listitem>
 
       <listitem>
-        <para>Software not yet in the &pkgsrc; or FreeBSD Ports collections
+        <para>Software not yet in the &pkgsrc; collection
 	  which is commonly used in conjunction with the application.</para>
       </listitem>
 

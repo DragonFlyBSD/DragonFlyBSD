@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ppp-and-slip/chapter.sgml,v 1.137 2004/06/04 15:25:52 roam Exp $
-     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
+     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.3 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="ppp-and-slip">
@@ -2095,7 +2095,7 @@ ppp_profile="name_of_service_provider"</programlisting>
       <para>As a last resort, you could try the method suggested by the
 	<ulink url="http://www.roaringpenguin.com/pppoe/">Roaring Penguin
 	PPPoE</ulink> program which can be found in the <link
-	linkend="ports">ports collection</link>.  Bear in mind however,
+	linkend="pkgsrc">pkgsrc collection</link>.  Bear in mind however,
 	this may de-program your modem and render it useless, so
 	think twice before doing it.  Simply install the program shipped
 	with the modem by your provider.  Then, access the
@@ -2163,6 +2163,7 @@ ppp_profile="name_of_service_provider"</programlisting>
     </sect2>
   </sect1>
 
+<!-- AMN 2006-04-03 pppoa doesn't exist in pkgsrc
   <sect1 id="pppoa">
     <title>Using <application>PPP</application> over ATM (PPPoA)</title>
     <indexterm><primary>PPP</primary><secondary>over ATM</secondary></indexterm>
@@ -2184,7 +2185,7 @@ ppp_profile="name_of_service_provider"</programlisting>
 	with the base system of &os;.</para>
 
       <para>To install the software, simply use the <link
-	  linkend="ports">ports collection</link>. Install the
+	  linkend="pkgsrc">pkgsrc collection</link>. Install the
 	<filename role="package">net/pppoa</filename> port and follow the
 	instructions provided with it.</para>
 
@@ -2324,7 +2325,8 @@ adsl:
 
     <screen>&prompt.user; <userinput>ifconfig <replaceable>ng0</replaceable></userinput>
 ng0: flags=88d1&lt;UP,POINTOPOINT,RUNNING,NOARP,SIMPLEX,MULTICAST&gt; mtu 1500
-     inet 216.136.204.117 --> 204.152.186.171 netmask 0xffffffff</screen>
+     inet 216.136.204.117 --> 
+     <!-- AMN 2006-04-03 keeping comment going 204.152.186.171 netmask 0xffffffff</screen>
     
     <para>Using <application>mpd</application> is the recommended way to
       connect to an ADSL service with &os;.</para>
@@ -2402,7 +2404,8 @@ ng0: flags=88d1&lt;UP,POINTOPOINT,RUNNING,NOARP,SIMPLEX,MULTICAST&gt; mtu 1500
 
       <screen>&prompt.user; <userinput>ifconfig <replaceable>tun0</replaceable></userinput>
 tun0: flags=8051&lt;UP,POINTOPOINT,RUNNING,MULTICAST&gt; mtu 1500
-        inet 216.136.204.21 --> 204.152.186.171 netmask 0xffffff00 
+        inet 216.136.204.21 --> 
+	<!-- AMN 2006-04-03 keeping comment going 204.152.186.171 netmask 0xffffff00 
         Opened by PID 918</screen>
 
       <para>If you are unable to connect, check the configuration of
@@ -2414,6 +2417,7 @@ tun0: flags=8051&lt;UP,POINTOPOINT,RUNNING,MULTICAST&gt; mtu 1500
 	<filename>/var/log/ppp.log</filename> for clues.</para>
     </sect2>
   </sect1>
+True end on AMN 2006-04-03 comment  -->
 
   <sect1 id="slip">
     <sect1info>

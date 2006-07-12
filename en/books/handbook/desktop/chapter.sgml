@@ -1,7 +1,7 @@
 <!--
      The FreeBSD Documentation Project
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/desktop/chapter.sgml,v 1.31 2004/01/07 17:10:05 rushani Exp $
-     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
+     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.3 2006/07/12 04:00:59 justin Exp $
 -->
 
 <chapter id="desktop">
@@ -83,7 +83,7 @@
     <itemizedlist>
       <listitem>
         <para>Know how to install additional third-party software
-          (<xref linkend="ports">).</para>
+          (<xref linkend="pkgsrc">).</para>
       </listitem>
 
       <listitem>

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.6 2005/09/06 17:36:31 reed Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.7 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="x11">
@@ -52,7 +52,7 @@
 
     <itemizedlist>
       <listitem><para>Know how to install additional third-party
-        software (<xref linkend="ports">).</para></listitem>
+        software (<xref linkend="pkgsrc">).</para></listitem>
     </itemizedlist>
   </sect1>
 
@@ -161,7 +161,7 @@
         button or similar device; some are <quote>themeable</quote>, allowing
         a complete change of look-and-feel by applying a new theme.  These
         window managers, and many more, are available in the
-        <filename>x11-wm</filename> category of the Ports Collection.</para>
+        <filename>wm</filename> category of &pkgsrc;.</para>
 
       <para>In addition, the <application>KDE</application> and
 	<application>GNOME</application> desktop environments both have their

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: doc/en_US.ISO8859-1/books/handbook/Makefile,v 1.81 2004/05/11 05:52:39 den Exp $
-# $DragonFly: doc/en/books/handbook/Makefile,v 1.4 2005/06/28 23:11:43 reed Exp $
+# $DragonFly: doc/en/books/handbook/Makefile,v 1.5 2006/07/12 04:00:59 justin Exp $
 #
 # Build the DragonFlyBSD Handbook.
 #
@@ -112,7 +112,7 @@ SRCS+= serialcomms/chapter.sgml
 SRCS+= users/chapter.sgml
 SRCS+= vinum/chapter.sgml
 SRCS+= x11/chapter.sgml
-SRCS+= ports/chapter.sgml
+SRCS+= pkgsrc/chapter.sgml
 SRCS+= preface/preface.sgml
 SRCS+= colophon.sgml
 

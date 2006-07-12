@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/users/chapter.sgml,v 1.43 2004/02/16 14:02:08 ceri Exp $
-     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.2 2004/08/02 18:47:46 justin Exp $
+     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.3 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="users">
@@ -456,7 +456,7 @@ Goodbye!
 
       <para>In summary, we changed the default shell to
 	<application>zsh</application> (an additional shell found in
-	the Ports Collection), and turned off the sending of a welcome mail to
+	&pkgsrc;), and turned off the sending of a welcome mail to
 	added users.  We then saved the configuration,
 	created an account for <username>jru</username>, and made
 	sure <username>jru</username> is in <username>wheel</username>

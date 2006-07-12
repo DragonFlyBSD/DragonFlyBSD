@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.5 2005/09/06 17:33:34 reed Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.6 2006/07/12 04:01:00 justin Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -570,7 +570,7 @@ options          NFS_ROOT     #NFS usable as root device, NFS required</programl
       hard drive partition at boot time, you can safely comment this out.
       It will be automatically loaded the first time you mount a DOS
       partition, as described above.  Also, the excellent
-      <application>mtools</application> software (in the ports collection)
+      <application>mtools</application> software (in &pkgsrc;)
       allows you to access DOS floppies without having to mount and
       unmount them (and does not require <literal>MSDOSFS</literal> at
       all).</para>
