@@ -1,7 +1,7 @@
 <!--
      The DragonFly BSD Documentation Project
 
-     $DragonFly: doc/en/books/handbook/pkgsrc/chapter.sgml,v 1.1 2006/07/12 04:01:00 justin Exp $
+     $DragonFly: doc/en/books/handbook/pkgsrc/chapter.sgml,v 1.2 2006/07/12 12:33:38 justin Exp $
 -->
 
 <chapter id="pkgsrc">
@@ -536,8 +536,8 @@ screen-4.0.2nb4     Multi-screen window manager
         application to install.  There are a few ways to do this, with the
 	easiest method being the <ulink
 	url="ftp://packages.stura.uni-rostock.de/pkgsrc-current/DragonFly/RELEASE/i386/All/">
-	pkgsrc listing on the joreg's web site</ulink>.  You can browse 
-	through the packages listed there.</para>
+	pkgsrc listing on Joerg Sonnenberger's web site</ulink>.  You can 
+	browse through the packages listed there.</para>
 
       <para>Another way to find a particular source tree is by using the
         &pkgsrc; collection's built-in search mechanism.  To use the
