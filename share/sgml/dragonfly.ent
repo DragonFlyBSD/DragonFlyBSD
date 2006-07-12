@@ -2,7 +2,7 @@
      DragonFlyBSD specific DocBook Entities
 
 $FreeBSD: doc/share/sgml/freebsd.ent,v 1.50 2004/02/26 05:36:30 bmah Exp $
-$DragonFly: doc/share/sgml/dragonfly.ent,v 1.5 2005/06/27 23:14:30 reed Exp $
+$DragonFly: doc/share/sgml/dragonfly.ent,v 1.6 2006/07/12 12:36:10 justin Exp $
 -->
 
 <!-- These will almost certainly remain the same, but are here for
@@ -46,6 +46,12 @@ $DragonFly: doc/share/sgml/dragonfly.ent,v 1.5 2005/06/27 23:14:30 reed Exp $
 <!ENTITY gui.ok "<guibutton>[&nbsp;OK&nbsp;]</guibutton>">
 <!ENTITY gui.cancel "<guibutton>[&nbsp;Cancel&nbsp;]</guibutton>">
 
-<!-- Number of ports in the FreeBSD ports tree -->
-<!ENTITY os.numports "10,500">
-<!ENTITY ports.size "300&nbsp;MB">
+<!-- Pkgsrc Section -->
+
+<!-- Number of packages in the NetBSD ports tree -->
+<!ENTITY os.numpackages "6,000">
+<!-- Size of the NetBSD ports tree -->
+<!ENTITY pkgsrc.size "288&nbsp;MB">
+
+<!-- url -->
+<!ENTITY pkgsrc.se "http://pkgsrc.se">
