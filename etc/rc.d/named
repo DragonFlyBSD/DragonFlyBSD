@@ -2,7 +2,7 @@
 #
 # $NetBSD: named,v 1.10 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/named,v 1.6 2003/01/12 04:53:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/named,v 1.6 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/named,v 1.7 2006/07/12 23:53:36 corecode Exp $
 #
 
 # PROVIDE: named
@@ -31,6 +31,7 @@ named_precmd()
 	#       Change run_rc_commands()'s internal copy of $named_flags
 	#
 	rc_flags="-u $nuser -t ${named_chrootdir} $rc_flags"
+	cp /etc/localtime ${named_chrootdir}/etc
 }
 
 load_rc_config $name
