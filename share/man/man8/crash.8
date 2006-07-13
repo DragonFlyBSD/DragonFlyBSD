@@ -35,7 +35,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man8/crash.8,v 1.9.2.5 2002/03/19 01:57:27 dd Exp $
-.\" $DragonFly: src/share/man/man8/crash.8,v 1.4 2005/12/10 00:22:29 swildner Exp $
+.\" $DragonFly: src/share/man/man8/crash.8,v 1.5 2006/07/13 12:38:29 swildner Exp $
 .\"
 .Dd February 2, 1996
 .Dt CRASH 8
@@ -196,10 +196,8 @@ system in a specified directory for later perusal.  See
 for details.
 .Pp
 To analyze a dump you should begin by running
-.Xr gdb 1
-with the
-.Fl k
-flag on the system load image and core dump.
+.Xr kgdb 1
+on the system load image and core dump.
 If the core image is the result of a panic,
 the panic message is printed.
 For more details consult the chapter on kernel debugging in
@@ -208,7 +206,7 @@ the
 Developers' Handbook
 .Pq Pa http://www.FreeBSD.org/ .
 .Sh SEE ALSO
-.Xr gdb 1 ,
+.Xr kgdb 1 ,
 .Xr dumpon 8 ,
 .Xr reboot 8 ,
 .Xr savecore 8
