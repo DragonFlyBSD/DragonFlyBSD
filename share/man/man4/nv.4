@@ -25,7 +25,7 @@
 .\" $Id: nvnet.4,v 1.1 2003/10/09 16:48:01 q Exp $
 .\"
 .\" $FreeBSD: src/share/man/man4/nve.4,v 1.7 2005/11/24 09:25:09 joel Exp $
-.\" $DragonFly: src/share/man/man4/Attic/nv.4,v 1.5 2006/04/17 20:13:57 swildner Exp $
+.\" $DragonFly: src/share/man/man4/Attic/nv.4,v 1.6 2006/07/13 12:37:06 swildner Exp $
 .\"
 .Dd August 9, 2005
 .Dt NV 4
@@ -34,15 +34,7 @@
 .Nm nv
 .Nd "NVIDIA nForce MCP Networking Adapter device driver"
 .Sh SYNOPSIS
-To compile this driver into the kernel,
-place the following lines in your
-kernel configuration file:
-.Bd -ragged -offset indent
-.Cd "device miibus"
-.Cd "device nv"
-.Ed
-.Pp
-Alternatively, to load the driver as a
+To load the driver as a
 module at boot time, place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
