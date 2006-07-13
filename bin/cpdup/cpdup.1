@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.12 2006/07/05 17:20:37 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.13 2006/07/13 13:34:12 swildner Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -117,8 +117,8 @@ is identical to the source.  This allows one to use
 .Nm
 to create incremental backups of a filesystem.  Create a direct 'level 0'
 backup, and then specify the level 0 backup path with this option when
-creating an incremental backup to a different target directory.  
-This method works so long as the filesystem does not hit a hardlink limit. 
+creating an incremental backup to a different target directory.
+This method works so long as the filesystem does not hit a hardlink limit.
 If the system does hit a hardlink limit
 .Nm
 will generate a warning and copy the file instead.
@@ -194,7 +194,7 @@ option it may not be possible for
 .Nm
 to maintain these hard links.  If this occurs
 .Nm
-will be forced to copy the file instead of link it, and thus not be able 
+will be forced to copy the file instead of link it, and thus not be able
 to make a perfect copy of the filesystem.
 .Sh HISTORY
 The

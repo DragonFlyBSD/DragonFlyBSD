@@ -37,7 +37,7 @@
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/random.4,v 1.9.2.2 2001/11/24 16:14:18 dd Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.6 2006/07/11 11:41:35 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.7 2006/07/13 13:34:12 swildner Exp $
 .\"
 .Dd October 21, 1995
 .Dt RANDOM 4 i386
@@ -83,11 +83,11 @@ and
 The
 .Pa /dev/random
 device is suitable for use when very high quality randomness is desired
-(e.g. for key generation).  Previous implementations of this device 
+(e.g. for key generation).  Previous implementations of this device
 attempted to limit the number of returned bytes based on a guess as to
 the secureness of the pool.  However, this resulted in the interface being
 so undependable that most programs just started using /dev/urandom
-instead of /dev/random.  
+instead of /dev/random.
 The current
 .Dx
 implementation will return all requested bytes but the system reserves the
@@ -107,7 +107,7 @@ or equal to zero and the kern.seedenable sysctl is non-zero.  A certain
 degree of entropy is added by RC scripts during the boot sequence.
 .Sh ACKNOWLEDGEMENTS
 The current algorithms are implemented by
-.An Robin Carey 
+.An Robin Carey
 and were ported to
 .Dx
 by
