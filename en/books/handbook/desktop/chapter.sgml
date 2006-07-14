@@ -1,7 +1,7 @@
 <!--
      The FreeBSD Documentation Project
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/desktop/chapter.sgml,v 1.31 2004/01/07 17:10:05 rushani Exp $
-     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.3 2006/07/12 04:00:59 justin Exp $
+     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.4 2006/07/14 20:30:27 justin Exp $
 -->
 
 <chapter id="desktop">
@@ -27,6 +27,13 @@
       applications on their desktop.  This chapter will show you how
       to install some popular desktop applications effortlessly,
       either from their packages or from the ports collection.</para>
+
+    <warning>
+      <para>This chapter contains a number of outdated
+      references to the FreeBSD ports collection.  Most instructions
+      still apply to pkgsrc, but proceed with caution until this
+      chapter is updated.</para>
+    </warning>
 
     <para>Note that when installing programs from the ports, they are
       compiled from source.  This can take a very long time, depending
@@ -182,7 +189,7 @@
 
       <para>The Mozilla package from the network by:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r mozilla</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add mozilla</userinput></screen>
 
       <para>If the package is not available, and you have enough time
         and disk space, you can get the source for
@@ -330,17 +337,16 @@ export LD_PRELOAD</programlisting>
 
       <para><application>Opera</application> is a very fast,
         full-featured, and standards-compliant browser.  It comes in
-        two favors: a FreeBSD version and a
-        version that runs under Linux emulation.
-	For each operating system, there is a no-cost version of the
+        a version that runs under Linux emulation.
+	    There is a no-cost version of the
         browser that displays advertising and an ad-free 
         version that can be purchased on the <ulink
         url="http://www.opera.com/">Opera web site</ulink>.</para>
 
-      <para>To browse the Web with the FreeBSD version of <application>Opera</application>,
+      <para>To browse the Web with <application>Opera</application>,
         install the package:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r opera</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add opera</userinput></screen>
 
       <para>Some FTP sites do not have all the packages, but the same
         result can be obtained with the ports collection by
@@ -348,16 +354,6 @@ export LD_PRELOAD</programlisting>
 
       <screen>&prompt.root; <userinput>cd /usr/ports/www/opera</userinput>
 &prompt.root; <userinput>make install clean</userinput></screen>
-
-      <para>To install the Linux version of
-	<application>Opera</application>, substitute
-	<literal>linux-opera</literal> in place of
-	<literal>opera</literal> in the examples above.  The Linux
-	version is useful in situations requiring the use of plug-ins
-	that are only available for Linux, such as <application>Adobe
-	&acrobat.reader;</application>.  In all other respects, the
-	&os; and Linux versions appear to be functionally
-	identical.</para>
 
     </sect2>
   </sect1>
@@ -444,7 +440,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>KOffice</application> as a
         package, issue the following command:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r koffice</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add koffice</userinput></screen>
 
       <para>If the package is not available, you can use the ports
         collection.  For instance, to install
@@ -474,7 +470,7 @@ export LD_PRELOAD</programlisting>
       <para><application>AbiWord</application> is available as a
         package.  You can install it by:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r AbiWord-gnome</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add AbiWord</userinput></screen>
 
       <para>If the package is not available, it can be compiled from
         the ports collection.  The ports collection should be more
@@ -568,7 +564,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>OpenOffice.org</application>,
         do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r openoffice</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add openoffice</userinput></screen>
 
       <para>Once the package is installed, you must run the setup
         program and choose a <option>standard workstation installation</option>.
@@ -760,7 +756,7 @@ export LD_PRELOAD</programlisting>
       <para>To install the <application>&acrobat.reader; 5</application>
         package, do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r acroread5</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add acroread5</userinput></screen>
 
       <para>As usual, if the package is not available or you want the
         latest version, you can use the ports collection as
@@ -807,7 +803,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>gv</application> as a package,
         do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r gv</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add gv</userinput></screen>
 
       <para>If you cannot get the package, you can use the ports
         collection:</para>
@@ -835,7 +831,7 @@ export LD_PRELOAD</programlisting>
       <para>To install the <application>Xpdf</application> package,
         issue this command:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r xpdf</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add xpdf</userinput></screen>
 
       <para>If the package is not available or you prefer to use the
         ports collection, do:</para>
@@ -865,7 +861,7 @@ export LD_PRELOAD</programlisting>
       <para>If you want to install the
         <application>GQview</application> package, do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r gqview</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add gqview</userinput></screen>
 
       <para>If the package is not available or you prefer to use the
         ports collection, do:</para>
@@ -948,7 +944,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>GnuCash</application> on your
         system, do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r gnucash</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add gnucash</userinput></screen>
 
       <para>If the package is not available, you can use the ports
         collection:</para>
@@ -982,7 +978,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>Gnumeric</application> as a
         package, type in:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r gnumeric</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add gnumeric</userinput></screen>
 
       <para>If the package is not available, you can use the ports
         collection by doing:</para>
@@ -1011,7 +1007,7 @@ export LD_PRELOAD</programlisting>
       <para>To install <application>Abacus</application> from its
         package, do:</para>
 
-      <screen>&prompt.root; <userinput>pkg_add -r abacus</userinput></screen>
+      <screen>&prompt.root; <userinput>pkg_add abacus</userinput></screen>
 
       <para>If the package is not available, you can use the ports
         collection by doing:</para>
@@ -1082,7 +1078,7 @@ export LD_PRELOAD</programlisting>
 
 	  <row>
             <entry><application>AbiWord</application></entry>
-	    <entry><literal>AbiWord-gnome</literal></entry>
+	    <entry><literal>AbiWord</literal></entry>
 	    <entry><filename role="package">editors/AbiWord</filename></entry>
 	  </row>
 

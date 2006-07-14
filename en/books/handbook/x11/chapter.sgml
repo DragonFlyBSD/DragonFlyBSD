@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.7 2006/07/12 04:01:00 justin Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.8 2006/07/14 20:30:27 justin Exp $
 -->
 
 <chapter id="x11">
@@ -19,6 +19,13 @@
       information on <application>&xfree86;</application> and video hardware that
       it supports, check the <ulink
         url="http://www.XFree86.org/">&xfree86;</ulink> web site.</para>
+
+    <warning>
+      <para>This chapter contains a number of outdated 
+      references to the FreeBSD ports collection.  Most instructions 
+      still apply to pkgsrc, but proceed with caution until this 
+      chapter is updated.</para>
+    </warning>
 
     <para>After reading this chapter, you will know:</para>
 
@@ -276,23 +283,13 @@
   <sect1 id="x-install">
     <title>Installing &xfree86;</title>
 
-    <para>Before installing <application>&xfree86;</application>, decide on which
-      version to run.  <application>&xfree86; 3.X</application> is a maintenance
-      branch of <application>&xfree86;</application> development.  It is very
-      stable, and it supports a huge number of graphics cards.  However, no new
-      development is being done on the software.  <application>&xfree86;
-      4.X</application> is a complete redesign of the system with many new
-      features such as better support for fonts and anti-aliasing.
-      Unfortunately this new architecture requires that the video drivers be
-      rewritten, and some of the older cards that were supported in 3.X are not
-      yet supported in 4.X.  As all new developments and support for new
-      graphics cards are done on that branch, <application>&xfree86;
-      4.X</application> is now the default version of the X Window System on
-      &os;.</para>
+    <warning>
+      <para>This section is out of date; please consult the 
+      DragonFly BSD wiki or mailing lists for recent discussion.</para>
+    </warning>
 
-    <para>Alternatively, either version of <application>&xfree86;</application>
-      can be installed directly from the FreeBSD binaries provided on the
-      <ulink url="http://www.XFree86.org/">&xfree86; web site</ulink>.  A binary
+    <para>
+      A binary
       package to use with &man.pkg.add.1; tool is also available for
       <application>&xfree86; 4.X</application>.  When the remote fetching
       feature of &man.pkg.add.1; is used, the version number of the
@@ -300,7 +297,7 @@
       the latest version of the application.  So to fetch and install the
       package of <application>&xfree86; 4.X</application>, simply type:</para>
 
-    <screen>&prompt.root; <userinput>pkg_add -r XFree86</userinput></screen>
+    <screen>&prompt.root; <userinput>pkg_add XFree86</userinput></screen>
 
     <para>You can also use the ports collection to install
       <application>&xfree86; 4.X</application>, for that you simply need
@@ -311,7 +308,7 @@
 
     <note><para>The examples above will install the complete
       <application>&xfree86;</application> distribution including the
-      servers, clients, fonts etc.  Separate packages and ports for
+      servers, clients, fonts etc.  Separate packages for
       different parts of <application>&xfree86; 4.X</application> are also
       available.</para></note>
 
@@ -1203,7 +1200,7 @@ DisplayManager.requestPort:     0</screen>
         <para>To install the <application>GNOME</application> package
           from the network, simply type:</para>
 
-        <screen>&prompt.root; <userinput>pkg_add -r gnome2</userinput></screen>
+        <screen>&prompt.root; <userinput>pkg_add gnome</userinput></screen>
 
         <para>To build <application>GNOME</application> from source, use
           the ports tree:</para>
@@ -1350,7 +1347,7 @@ DisplayManager.requestPort:     0</screen>
         <para>To install the <application>KDE</application> package
           from the network, simply type:</para>
 
-        <screen>&prompt.root; <userinput>pkg_add -r kde</userinput></screen>
+        <screen>&prompt.root; <userinput>pkg_add kde3</userinput></screen>
 
 	<para>&man.pkg.add.1; will automatically fetch the latest version
 	  of the application.</para>
@@ -1588,7 +1585,7 @@ esac</screen>
         <para>A binary package for <application>XFce</application>
           exists (at the time of writing).  To install, simply type:</para>
 
-        <screen>&prompt.root; <userinput>pkg_add -r xfce4</userinput></screen>
+        <screen>&prompt.root; <userinput>pkg_add xfce4</userinput></screen>
 
         <para>Alternatively, to build from source, use the ports
           collection:</para>
