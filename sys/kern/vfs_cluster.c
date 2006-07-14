@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.25 2006/05/04 18:32:22 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.26 2006/07/14 19:23:39 corecode Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -200,46 +200,6 @@ single_block_read:
 	}
 
 	/*
-	 * If we have been doing sequential I/O, then do some read-ahead.
-	 */
-	rbp = NULL;
-	if (seqcount &&
-	    loffset < origoffset + seqcount * size &&
-	    loffset + size <= filesize
-	) {
-		rbp = getblk(vp, loffset, size, 0, 0);
-		if ((rbp->b_flags & B_CACHE) == 0) {
-			int nblksread;
-			int ntoread;
-			int burstbytes;
-
-			error = VOP_BMAP(vp, loffset, NULL,
-					 &doffset, &burstbytes, NULL);
-			if (error || doffset == NOOFFSET) {
-				brelse(rbp);
-				rbp = NULL;
-				goto no_read_ahead;
-			}
-			ntoread = burstbytes / size;
-			nblksread = (totread + size - 1) / size;
-			if (seqcount < nblksread)
-				seqcount = nblksread;
-			if (seqcount < ntoread)
-				ntoread = seqcount;
-
-			rbp->b_flags |= B_RAM;
-			if (burstbytes) {
-				rbp = cluster_rbuild(vp, filesize, loffset,
-						     doffset, size, 
-						     ntoread, rbp, 1);
-			} else {
-				rbp->b_bio2.bio_offset = doffset;
-			}
-		}
-	}
-no_read_ahead:
-
-	/*
 	 * Handle the synchronous read.  This only occurs if B_CACHE was
 	 * not set.  bp (and rbp) could be either a cluster bp or a normal
 	 * bp depending on the what cluster_rbuild() decided to do.  If
@@ -262,39 +222,72 @@ no_read_ahead:
 	}
 
 	/*
-	 * And if we have read-aheads, do them too. 
+	 * If we have been doing sequential I/O, then do some read-ahead.
 	 */
-	if (rbp) {
-		if (error) {
-			brelse(rbp);
-		} else if (rbp->b_flags & B_CACHE) {
-			bqrelse(rbp);
-		} else {
-#if defined(CLUSTERDEBUG)
-			if (rcluster) {
-				if (bp)
-					printf("A+(%lld,%d,%lld,%d) ",
-					    rbp->b_loffset, rbp->b_bcount,
-					    rbp->b_loffset - origoffset,
-					    seqcount);
-				else
-					printf("A(%lld,%d,%lld,%d) ",
-					    rbp->b_loffset, rbp->b_bcount,
-					    rbp->b_loffset - origoffset,
-					    seqcount);
-			}
-#endif
-			rbp->b_flags &= ~(B_ERROR|B_INVAL);
-			rbp->b_flags |= B_ASYNC;
-			rbp->b_cmd = BUF_CMD_READ;
+	rbp = NULL;
+	if (!error &&
+	    seqcount &&
+	    loffset < origoffset + seqcount * size &&
+	    loffset + size <= filesize
+	) {
+		int nblksread;
+		int ntoread;
+		int burstbytes;
 
-			if ((rbp->b_flags & B_CLUSTER) == 0)
-				vfs_busy_pages(vp, rbp);
-			if ((rbp->b_flags & B_ASYNC) || rbp->b_bio1.bio_done != NULL)
-				BUF_KERNPROC(rbp);
-			vn_strategy(vp, &rbp->b_bio1);
+		rbp = getblk(vp, loffset, size, 0, 0);
+		if ((rbp->b_flags & B_CACHE)) {
+			bqrelse(rbp);
+			goto no_read_ahead;
 		}
+
+		error = VOP_BMAP(vp, loffset, NULL,
+				 &doffset, &burstbytes, NULL);
+		if (error || doffset == NOOFFSET) {
+			rbp->b_flags |= B_INVAL;
+			brelse(rbp);
+			rbp = NULL;
+			goto no_read_ahead;
+		}
+		ntoread = burstbytes / size;
+		nblksread = (totread + size - 1) / size;
+		if (seqcount < nblksread)
+			seqcount = nblksread;
+		if (seqcount < ntoread)
+			ntoread = seqcount;
+
+		rbp->b_flags |= B_RAM;
+		if (burstbytes) {
+			rbp = cluster_rbuild(vp, filesize, loffset,
+					     doffset, size, 
+					     ntoread, rbp, 1);
+		} else {
+			rbp->b_bio2.bio_offset = doffset;
+		}
+#if defined(CLUSTERDEBUG)
+		if (rcluster) {
+			if (bp)
+				printf("A+(%lld,%d,%lld,%d) ",
+				    rbp->b_loffset, rbp->b_bcount,
+				    rbp->b_loffset - origoffset,
+				    seqcount);
+			else
+				printf("A(%lld,%d,%lld,%d) ",
+				    rbp->b_loffset, rbp->b_bcount,
+				    rbp->b_loffset - origoffset,
+				    seqcount);
+		}
+#endif
+		rbp->b_flags &= ~(B_ERROR|B_INVAL);
+		rbp->b_flags |= B_ASYNC;
+		rbp->b_cmd = BUF_CMD_READ;
+
+		if ((rbp->b_flags & B_CLUSTER) == 0)
+			vfs_busy_pages(vp, rbp);
+		BUF_KERNPROC(rbp);			/* B_ASYNC */
+		vn_strategy(vp, &rbp->b_bio1);
 	}
+no_read_ahead:
+
 	if (reqbp)
 		return (biowait(reqbp));
 	else
