@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.34.2.1 2006/01/01 00:59:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.34.2.2 2006/07/14 19:03:46 corecode Exp $
  */
 
 /*
@@ -1432,6 +1432,7 @@ tl_intvec_rxeof(void *xsc, u_int32_t type)
 
 		eh = mtod(m, struct ether_header *);
 		m->m_pkthdr.rcvif = ifp;
+		m->m_pkthdr.len = m->m_len = total_len;
 
 		/*
 		 * Note: when the ThunderLAN chip is in 'capture all
