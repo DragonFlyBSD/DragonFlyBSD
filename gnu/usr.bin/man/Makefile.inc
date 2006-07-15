@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/man/Makefile.inc,v 1.17.2.2 2001/02/23 09:39:21 ru Exp $
-# $DragonFly: src/gnu/usr.bin/man/Makefile.inc,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/man/Makefile.inc,v 1.3 2006/07/15 07:33:05 dillon Exp $
 #
 # Set a bunch of things to hardcoded paths so that we don't accidently
 # pick up a user's own version of some utility and hose ourselves.
@@ -22,7 +22,7 @@ vgrind=			/usr/bin/vgrind
 refer=			/usr/bin/refer
 grap=			# no grap
 pic=			/usr/bin/pic
-zcat=			/usr/bin/zcat
+zcat=			/usr/bin/zcat -q
 compress=		/usr/bin/gzip -c
 compext=		.gz
 
