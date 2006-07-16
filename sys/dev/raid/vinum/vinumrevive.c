@@ -39,7 +39,7 @@
  *
  * $Id: vinumrevive.c,v 1.14 2000/12/21 01:55:11 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrevive.c,v 1.22.2.5 2001/03/13 02:59:43 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.11 2006/07/09 22:55:45 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrevive.c,v 1.12 2006/07/16 22:39:42 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -140,11 +140,8 @@ revive_block(int sdno)
 	if (bp == NULL)					    /* no buffer space */
 	    return ENOMEM;				    /* chicken out */
     } else {						    /* data block */
-	crit_enter();
-	bp = geteblk(size);				    /* Get a buffer */
-	crit_exit();
-	if (bp == NULL)
-	    return ENOMEM;
+	bp = getpbuf(&vinum_conf.physbufs);		    /* Get a buffer */
+	bp->b_data = Malloc(size);
 
 	/*
 	 * Amount to transfer: block size, unless it
@@ -175,7 +172,7 @@ revive_block(int sdno)
 	/* Now write to the subdisk */
     {
 	dev = VINUM_SD(sdno);			    /* create the device number */
-	bp->b_flags = B_ORDERED;		    /* and make this an ordered write */
+	bp->b_flags |= B_ORDERED;		    /* and make this an ordered write */
 	bp->b_cmd = BUF_CMD_WRITE;
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->revived << DEV_BSHIFT;		    /* write it to here */
@@ -218,11 +215,8 @@ revive_block(int sdno)
 	    sd->waitlist = sd->waitlist->next;		    /* and move on to the next */
 	}
     }
-    if (bp->b_qindex == 0) {				    /* not on a queue, */
-	bp->b_flags |= B_INVAL;
-	bp->b_flags &= ~B_ERROR;
-	brelse(bp);					    /* is this kosher? */
-    }
+    Free(bp->b_data);
+    relpbuf(bp, &vinum_conf.physbufs);
     return error;
 }
 
@@ -320,9 +314,8 @@ parityops(struct vinum_ioctl_msg *data)
     }
     if (pbp->b_flags & B_ERROR)
 	reply->error = pbp->b_error;
-    pbp->b_flags |= B_INVAL;
-    pbp->b_flags &= ~B_ERROR;
-    brelse(pbp);
+    Free(pbp->b_data);
+    relpbuf(pbp, &vinum_conf.physbufs);
     unlockrange(plexno, lock);
 }
 
@@ -396,18 +389,8 @@ parityrebuild(struct plex *plex,
     for (sdno = 0; sdno < bufcount; sdno++) {		    /* for each subdisk */
 	if ((sdno != psd) || (op != rebuildparity)) {
 	    /* Get a buffer header and initialize it. */
-	    crit_enter();
-	    bpp[sdno] = geteblk(mysize);		    /* Get a buffer */
-	    if (bpp[sdno] == NULL) {
-		while (sdno-- > 0) {			    /* release the ones we got */
-		    bpp[sdno]->b_flags |= B_INVAL;
-		    brelse(bpp[sdno]);			    /* give back our resources */
-		}
-		crit_exit();
-		printf("vinum: can't allocate buffer space for parity op.\n");
-		return NULL;				    /* no bpps */
-	    }
-	    crit_exit();
+	    bpp[sdno] = getpbuf(&vinum_conf.physbufs);	    /* Get a buffer */
+	    bpp[sdno]->b_data = Malloc(mysize);
 	    if (sdno == psd)
 		parity_buf = (int *) bpp[sdno]->b_data;
 	    if (sdno == newpsd)				    /* the new one? */
@@ -466,8 +449,8 @@ parityrebuild(struct plex *plex,
 	    }
 	}
 	if (sdno != psd) {				    /* release all bps except parity */
-	    bpp[sdno]->b_flags |= B_INVAL;
-	    brelse(bpp[sdno]);				    /* give back our resources */
+	    Free(bpp[sdno]->b_data);
+	    relpbuf(bpp[sdno], &vinum_conf.physbufs);	    /* give back our resources */
 	}
     }
 
@@ -487,8 +470,8 @@ parityrebuild(struct plex *plex,
 		break;
 	    }
 	}
-	bpp[psd]->b_flags |= B_INVAL;
-	brelse(bpp[psd]);				    /* give back our resources */
+	Free(bpp[psd]->b_data);
+	relpbuf(bpp[psd], &vinum_conf.physbufs);	    /* give back our resources */
     }
     /* release our resources */
     Free(bpp);
@@ -541,14 +524,11 @@ initsd(int sdno, int verify)
 
     size = min(sd->init_blocksize >> DEV_BSHIFT, sd->sectors - sd->initialized) << DEV_BSHIFT;
 
+    bp = getpbuf(&vinum_conf.physbufs);		    /* Get a buffer */
+    bp->b_data = Malloc(size);
+
     verified = 0;
     while (!verified) {					    /* until we're happy with it, */
-	crit_enter();
-	bp = geteblk(size);				    /* Get a buffer */
-	crit_exit();
-	if (bp == NULL)
-	    return ENOMEM;
-
 	bp->b_bcount = size;
 	bp->b_resid = bp->b_bcount;
 	bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;		    /* write it to here */
@@ -559,49 +539,33 @@ initsd(int sdno, int verify)
 	biowait(bp);
 	if (bp->b_flags & B_ERROR)
 	    error = bp->b_error;
-	if (bp->b_qindex == 0) {			    /* not on a queue, */
-	    bp->b_flags |= B_INVAL;
-	    bp->b_flags &= ~B_ERROR;
-	    brelse(bp);					    /* is this kosher? */
-	}
 	if ((error == 0) && verify) {			    /* check that it got there */
-	    crit_enter();
-	    bp = geteblk(size);				    /* get a buffer */
-	    if (bp == NULL) {
-		crit_exit();
-		error = ENOMEM;
-	    } else {
-		bp->b_bcount = size;
-		bp->b_resid = bp->b_bcount;
-		bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;	    /* read from here */
-		bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
-		bp->b_cmd = BUF_CMD_READ;		    /* read it back */
-		crit_exit();
-		sdio(&bp->b_bio1);
-		biowait(bp);
-		/*
-		 * XXX Bug fix code.  This is hopefully no
-		 * longer needed (21 February 2000).
-		 */
-		if (bp->b_flags & B_ERROR)
-		    error = bp->b_error;
-		else if ((*bp->b_data != 0)		    /* first word spammed */
-		||(bcmp(bp->b_data, &bp->b_data[1], bp->b_bcount - 1))) { /* or one of the others */
-		    printf("vinum: init error on %s, offset 0x%llx sectors\n",
-			sd->name,
-			(long long) sd->initialized);
-		    verified = 0;
-		} else
-		    verified = 1;
-		if (bp->b_qindex == 0) {		    /* not on a queue, */
-		    bp->b_flags |= B_INVAL;
-		    bp->b_flags &= ~B_ERROR;
-		    brelse(bp);				    /* is this kosher? */
-		}
-	    }
+	    bp->b_bcount = size;
+	    bp->b_resid = bp->b_bcount;
+	    bp->b_bio1.bio_offset = (off_t)sd->initialized << DEV_BSHIFT;	    /* read from here */
+	    bp->b_bio1.bio_driver_info = VINUM_SD(sdno);
+	    bp->b_cmd = BUF_CMD_READ;		    /* read it back */
+	    sdio(&bp->b_bio1);
+	    biowait(bp);
+	    /*
+	     * XXX Bug fix code.  This is hopefully no
+	     * longer needed (21 February 2000).
+	     */
+	    if (bp->b_flags & B_ERROR)
+		error = bp->b_error;
+	    else if ((*bp->b_data != 0)		    /* first word spammed */
+	    ||(bcmp(bp->b_data, &bp->b_data[1], bp->b_bcount - 1))) { /* or one of the others */
+		printf("vinum: init error on %s, offset 0x%llx sectors\n",
+		    sd->name,
+		    (long long) sd->initialized);
+		verified = 0;
+	    } else
+		verified = 1;
 	} else
 	    verified = 1;
     }
+    Free(bp->b_data);
+    relpbuf(bp, &vinum_conf.physbufs);
     if (error == 0) {					    /* did it, */
 	sd->initialized += size >> DEV_BSHIFT;		    /* moved this much further down */
 	if (sd->initialized >= sd->sectors) {		    /* finished */

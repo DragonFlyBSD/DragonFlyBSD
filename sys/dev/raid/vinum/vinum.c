@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.12 2006/06/05 07:26:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.13 2006/07/16 22:39:42 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -97,6 +97,8 @@ vinumattach(void *dummy)
     dqend = NULL;
 
     cdevsw_add(&vinum_cdevsw, 0, 0);			    /* add the cdevsw entry */
+
+    vinum_conf.physbufs = nswbuf / 2 + 1;		    /* maximum amount of physical bufs */
 
     /* allocate space: drives... */
     DRIVE = (struct drive *) Malloc(sizeof(struct drive) * INITIAL_DRIVES);

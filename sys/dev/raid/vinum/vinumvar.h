@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.6 2006/02/17 19:18:06 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.7 2006/07/16 22:39:42 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -313,6 +313,7 @@ struct _vinum_conf {
     struct request *lastrq;
     struct bio *lastbio;
 #endif
+    int physbufs;
 };
 
 /* Use these defines to simplify code */
