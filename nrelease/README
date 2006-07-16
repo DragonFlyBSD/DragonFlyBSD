@@ -1,4 +1,4 @@
-$DragonFly: src/nrelease/Attic/README,v 1.1 2005/12/10 14:47:05 joerg Exp $
+$DragonFly: src/nrelease/Attic/README,v 1.2 2006/07/16 23:06:56 dillon Exp $
 
 The DragonFly framework for building ISO image (nrelease)
 =========================================================
@@ -47,3 +47,12 @@ If you want to have any packages install in the ISO (the default), run
 ``make fetch'' first, to get them and the bootstrap kit used in the ISO.
 By default, the current directory is used, the location can and should
 be overriden by PKGSRC_PKG_PATH in make.conf.
+
+RELEASE ENGINEERING
+--------------------------------
+
+The steps required for engineering a release are documented in (CVS)
+doc/notes/release.txt.  How to branch the CVS tree, etc.  They were put
+in an out of the way place so normal developers would not accidently try
+to run the commands in question.
+
