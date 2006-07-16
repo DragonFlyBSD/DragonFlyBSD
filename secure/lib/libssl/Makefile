@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssl/Makefile,v 1.4.2.8 2003/02/14 22:38:20 nectar Exp $
-# $DragonFly: src/secure/lib/libssl/Makefile,v 1.4 2005/07/07 12:18:27 corecode Exp $
+# $DragonFly: src/secure/lib/libssl/Makefile,v 1.5 2006/07/16 12:28:11 corecode Exp $
 
 LIB=		ssl
 SHLIB_MAJOR=	4
@@ -21,6 +21,9 @@ SRCS=	bio_ssl.c d1_both.c d1_clnt.c d1_enc.c d1_lib.c d1_meth.c d1_pkt.c \
 
 INCS=	dtls1.h kssl.h ssl.h ssl2.h ssl23.h ssl3.h tls1.h
 INCSDIR=${INCLUDEDIR}/openssl
+
+LDADD=	-lcrypto
+DPADD=	${LIBCRYPTO}
 
 .include <bsd.lib.mk>
 
