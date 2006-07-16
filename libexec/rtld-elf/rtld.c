@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.23 2005/05/11 19:47:06 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.24 2006/07/16 22:15:38 corecode Exp $
  */
 
 /*
@@ -125,7 +125,7 @@ static void set_program_var(const char *, const void *);
 static const Elf_Sym *symlook_default(const char *, unsigned long hash,
   const Obj_Entry *refobj, const Obj_Entry **defobj_out, bool in_plt);
 static const Elf_Sym *symlook_list(const char *, unsigned long,
-  Objlist *, const Obj_Entry **, bool in_plt, DoneList *);
+  const Objlist *, const Obj_Entry **, bool in_plt, DoneList *);
 static void trace_loaded_objects(Obj_Entry *obj);
 static void unlink_object(Obj_Entry *);
 static void unload_object(Obj_Entry *);
@@ -1853,25 +1853,21 @@ dlsym(void *handle, const char *name)
 	    def = symlook_default(name, hash, obj, &defobj, true);
 	}
     } else {
+	DoneList donelist;
+
 	if ((obj = dlcheck(handle)) == NULL) {
 	    rlock_release();
 	    return NULL;
 	}
 
+	donelist_init(&donelist);
 	if (obj->mainprog) {
-	    DoneList donelist;
-
 	    /* Search main program and all libraries loaded by it. */
-	    donelist_init(&donelist);
 	    def = symlook_list(name, hash, &list_main, &defobj, true,
 	      &donelist);
 	} else {
-	    /*
-	     * XXX - This isn't correct.  The search should include the whole
-	     * DAG rooted at the given object.
-	     */
-	    def = symlook_obj(name, hash, obj, true);
-	    defobj = obj;
+	    def = symlook_list(name, hash, &(obj->dagmembers), &defobj, true,
+	      &donelist);
 	}
     }
 
@@ -2339,7 +2335,7 @@ symlook_default(const char *name, unsigned long hash,
 }
 
 static const Elf_Sym *
-symlook_list(const char *name, unsigned long hash, Objlist *objlist,
+symlook_list(const char *name, unsigned long hash, const Objlist *objlist,
   const Obj_Entry **defobj_out, bool in_plt, DoneList *dlp)
 {
     const Elf_Sym *symp;
