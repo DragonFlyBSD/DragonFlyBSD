@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/release.txt,v 1.1 2006/01/02 16:41:53 dillon Exp $
+$DragonFly: doc/notes/release.txt,v 1.2 2006/07/17 00:49:16 dillon Exp $
 
 			Rolling a DragonFly release
 
@@ -20,7 +20,7 @@ $DragonFly: doc/notes/release.txt,v 1.1 2006/01/02 16:41:53 dillon Exp $
 	make update_preview_tag
 
     * Add a target to /usr/src/Makefile that will update the SLIP tag for
-      the new release.  'update_release{a}_{b}_slip_tag'.  Use prior 
+      the new release.  'update_release{a}_{b}_slip_tag'.  Use other 
       similar targets as your template.
 
     * Create a cvsup example file for the new release version in
@@ -73,7 +73,7 @@ $DragonFly: doc/notes/release.txt,v 1.1 2006/01/02 16:41:53 dillon Exp $
 (V) Set the initial slip tag on the release branch.
 
 	cd /usr/src
-	make update_release_1_4_slip_tag
+	make update_release<x>_<y>_slip_tag
 
 (VI) Build the ISO on the release branch.  Follow any directions the make
      gives to obtain required pieces to generate the ISO:
