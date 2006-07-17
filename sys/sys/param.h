@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.34 2006/07/17 00:00:03 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.34.2.1 2006/07/17 00:46:32 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -54,11 +54,10 @@
  * Version changes should be documented in:
  *	doc/en_US.ISO8859-1/books/porters-handbook/book.sgml
  *
- * 150002 - MSG_F* and O_F* flags (force blocking/non-blocking operation)
- * 150003 - bump subvers in preparation for branching 1.6
+ * 160000 - 1.6 release
  */
 #undef __DragonFly_version
-#define __DragonFly_version 150005	/* Master, propagated to newvers */
+#define __DragonFly_version 160000	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
