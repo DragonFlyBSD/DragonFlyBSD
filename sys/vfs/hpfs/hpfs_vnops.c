@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.35 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.36 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1218,32 +1218,30 @@ hpfs_pathconf(struct vop_pathconf_args *ap)
  * Global vfs data structures
  */
 #if defined(__DragonFly__)
-struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vnodeopv_entry_t)vop_defaultop },
-
-	{ &vop_getattr_desc, (vnodeopv_entry_t)hpfs_getattr },
-	{ &vop_setattr_desc, (vnodeopv_entry_t)hpfs_setattr },
-	{ &vop_inactive_desc, (vnodeopv_entry_t)hpfs_inactive },
-	{ &vop_reclaim_desc, (vnodeopv_entry_t)hpfs_reclaim },
-	{ &vop_print_desc, (vnodeopv_entry_t)hpfs_print },
-	{ &vop_old_create_desc, (vnodeopv_entry_t)hpfs_create },
-	{ &vop_old_remove_desc, (vnodeopv_entry_t)hpfs_remove },
-	{ &vop_islocked_desc, (vnodeopv_entry_t)vop_stdislocked },
-	{ &vop_unlock_desc, (vnodeopv_entry_t)vop_stdunlock },
-	{ &vop_lock_desc, (vnodeopv_entry_t)vop_stdlock },
-	{ &vop_old_lookup_desc, (vnodeopv_entry_t)hpfs_lookup },
-	{ &vop_access_desc, (vnodeopv_entry_t)hpfs_access },
-	{ &vop_readdir_desc, (vnodeopv_entry_t)hpfs_readdir },
-	{ &vop_fsync_desc, (vnodeopv_entry_t)hpfs_fsync },
-	{ &vop_bmap_desc, (vnodeopv_entry_t)hpfs_bmap },
-	{ &vop_getpages_desc, (vnodeopv_entry_t) hpfs_getpages },
-	{ &vop_putpages_desc, (vnodeopv_entry_t) hpfs_putpages },
-	{ &vop_strategy_desc, (vnodeopv_entry_t)hpfs_strategy },
-	{ &vop_read_desc, (vnodeopv_entry_t)hpfs_read },
-	{ &vop_write_desc, (vnodeopv_entry_t)hpfs_write },
-	{ &vop_ioctl_desc, (vnodeopv_entry_t)hpfs_ioctl },
-	{ &vop_pathconf_desc, (vnodeopv_entry_t)hpfs_pathconf },
-	{ NULL, NULL }
+struct vop_ops hpfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_getattr =		hpfs_getattr,
+	.vop_setattr =		hpfs_setattr,
+	.vop_inactive =		hpfs_inactive,
+	.vop_reclaim =		hpfs_reclaim,
+	.vop_print =		hpfs_print,
+	.vop_old_create =	hpfs_create,
+	.vop_old_remove =	hpfs_remove,
+	.vop_islocked =		vop_stdislocked,
+	.vop_unlock =		vop_stdunlock,
+	.vop_lock =		vop_stdlock,
+	.vop_old_lookup =	hpfs_lookup,
+	.vop_access =		hpfs_access,
+	.vop_readdir =		hpfs_readdir,
+	.vop_fsync =		hpfs_fsync,
+	.vop_bmap =		hpfs_bmap,
+	.vop_getpages =		hpfs_getpages,
+	.vop_putpages =		hpfs_putpages,
+	.vop_strategy =		hpfs_strategy,
+	.vop_read =		hpfs_read,
+	.vop_write =		hpfs_write,
+	.vop_ioctl =		hpfs_ioctl,
+	.vop_pathconf =		hpfs_pathconf
 };
 
 #else /* defined(__NetBSD__) */

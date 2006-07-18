@@ -31,13 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.22 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.23 2006/07/18 22:22:15 dillon Exp $
  */
 
 /*
  * The vop_ops structure vectors all access to a filesystem.  It contains a
- * fixed set of vectors which are 'compiled' by the vnodeopv_entry_desc
- * array that is typically declared in "vfs/blah/blah_vnops.c".
+ * fixed set of vectors.
  *
  * In DragonFly the ultimate goal is to thread the VFS, which means that
  * the dispatch functions will eventually be called from the context of 
@@ -525,15 +524,9 @@ struct vop_nrename_args {
  * calls used for chaining vop_ops structures from a VFS context.
  */
 struct vop_ops {
-	struct vop_ops	*vv_new;	/* vfs_recalc_vnodeops() only */
-	struct mount	*vv_mount;
-	int		vv_refs;
-	int		vv_flags;	/* see VVF_* flags below */
-
-	void		*vv_unused1;
-	void		*vv_unused2;
-
-	int		vv_reserved[62]; /* (temporary) reduce recompile pain */
+	struct {
+		struct mount	*vv_mount;
+	} head;
 
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
@@ -603,15 +596,6 @@ struct vop_ops {
 	int	(*vop_nrename)(struct vop_nrename_args *);
 #define vop_ops_last_field	vop_nrename
 };
-
-#define VVF_JOURNAL_LAYER	0x0001
-#define VVF_COHERENCY_LAYER	0x0002
-#define VVF_SUPPORTS_FSMID	0x0004
-#define VVF_UNUSED_08		0x0008
-#define VVF_NOATIME		0x0010		/* FUTURE */
-#define VVF_RDONLY		0x0020		/* FUTURE */
-#define VVF_NOCLUSTER		0x0040		/* FUTURE */
-#define VVF_SUIDDIR		0x0080		/* FUTURE */
 
 /*
  * vop_mountctl() operations

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.43 2006/05/06 18:48:52 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.44 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -71,9 +71,9 @@
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
 
-extern struct vnodeopv_entry_desc ext2_vnodeop_entries[];
-extern struct vnodeopv_entry_desc ext2_specop_entries[];
-extern struct vnodeopv_entry_desc ext2_fifoop_entries[];
+extern struct vop_ops ext2_vnode_vops;
+extern struct vop_ops ext2_spec_vops;
+extern struct vop_ops ext2_fifo_vops;
 
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags);
@@ -812,12 +812,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 		ump->um_quotas[i] = NULLVP; 
 	dev->si_mountpoint = mp;
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 ext2_vnodeop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops,
-			 ext2_specop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops,
-			 ext2_fifoop_entries, 0);
+	vfs_add_vnodeops(mp, &ext2_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &ext2_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &ext2_fifo_vops, &mp->mnt_vn_fifo_ops);
 
 	if (ronly == 0) 
 		ext2_sbupdate(ump, MNT_WAIT);

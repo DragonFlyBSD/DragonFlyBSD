@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.12 2006/06/01 06:10:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.13 2006/07/18 22:22:12 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -100,62 +100,47 @@ int maxvfsconf;
 struct vfsconf *vfsconf;
 
 static TAILQ_HEAD(, vnodeopv_node) vnodeopv_list;
-static void vfs_recalc_vnodeops(void);
+static void vfs_calc_vnodeops(struct vop_ops *ops);
 
 /*
  * Add a vnode operations (vnops) vector to the global list.
  */
 void
-vfs_add_vnodeops_sysinit(const void *data)
+vfs_nadd_vnodeops_sysinit(void *data)
 {
-	const struct vnodeopv_desc *vdesc = data;
+	struct vop_ops *ops = data;
 
-	vfs_add_vnodeops(NULL, vdesc->opv_desc_vector, 
-			 vdesc->opv_desc_ops, vdesc->opv_flags);
+	vfs_add_vnodeops(NULL, ops, NULL);	/* mount, template, newcopy */
 }
 
 /*
  * Unlink previously added vnode operations vector.
  */
 void
-vfs_rm_vnodeops_sysinit(const void *data)
+vfs_nrm_vnodeops_sysinit(void *data)
 {
-	const struct vnodeopv_desc *vdesc = data;
+	struct vop_ops *ops = data;
 
-	vfs_rm_vnodeops(vdesc->opv_desc_vector);
+	vfs_rm_vnodeops(NULL, ops, NULL);
 }
 
 void
-vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
-		struct vnodeopv_entry_desc *descs, int flags)
+vfs_add_vnodeops(struct mount *mp, struct vop_ops *template,
+		 struct vop_ops **ops_pp)
 {
-	struct vnodeopv_node *node;
 	struct vop_ops *ops;
 
-	node = malloc(sizeof(*node), M_VNODEOP, M_ZERO|M_WAITOK);
-	KKASSERT(*vops_pp == NULL);
-	if ((ops = *vops_pp) == NULL) {
-		ops = malloc(sizeof(struct vop_ops),
-				M_VNODEOP, M_ZERO|M_WAITOK);
-		*vops_pp = ops;
+	if (ops_pp) {
+		KKASSERT(*ops_pp == NULL);
+		*ops_pp = malloc(sizeof(*ops), M_VNODEOP, M_WAITOK);
+		ops = *ops_pp;
+		bcopy(template, ops, sizeof(*ops));
+	} else {
+		ops = template;
 	}
-	node->ops = ops;
-	node->descs = descs;
-	ops->vv_mount = mp;
-	ops->vv_flags |= flags;
 
-	/*
-	 * Journal and coherency ops inherit normal ops flags
-	 */
-	if (vops_pp == &mp->mnt_vn_coherency_ops && mp->mnt_vn_norm_ops)
-	    ops->vv_flags |= mp->mnt_vn_norm_ops->vv_flags;
-	if (vops_pp == &mp->mnt_vn_journal_ops && mp->mnt_vn_norm_ops)
-	    ops->vv_flags |= mp->mnt_vn_norm_ops->vv_flags;
-
-	++ops->vv_refs;
-	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
-
-	vfs_recalc_vnodeops();
+	vfs_calc_vnodeops(ops);
+	ops->head.vv_mount = mp;
 
 	if (mp) {
 		if (mp->mnt_vn_coherency_ops)
@@ -167,99 +152,53 @@ vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
 	}
 }
 
+/*
+ * Remove a previously installed operations vector.
+ *
+ * NOTE: Either template or ops_pp may be NULL, but not both.
+ */
 void
-vfs_rm_vnodeops(struct vop_ops **vops_pp)
+vfs_rm_vnodeops(struct mount *mp, struct vop_ops *template,
+		struct vop_ops **ops_pp)
 {
-	struct vop_ops *ops = *vops_pp;
-	struct vnodeopv_node *node;
-	struct mount *mp;
+	struct vop_ops *ops;
 
+	if (ops_pp) {
+		ops = *ops_pp;
+		*ops_pp = NULL;
+	} else {
+		ops = template;
+	}
 	if (ops == NULL)
 		return;
-
-	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		if (node->ops == ops)
-			break;
+	KKASSERT(mp == ops->head.vv_mount);
+	if (mp) {
+		if (mp->mnt_vn_coherency_ops)
+			mp->mnt_vn_use_ops = mp->mnt_vn_coherency_ops;
+		else if (mp->mnt_vn_journal_ops)
+			mp->mnt_vn_use_ops = mp->mnt_vn_journal_ops;
+		else
+			mp->mnt_vn_use_ops = mp->mnt_vn_norm_ops;
 	}
-	if (node == NULL) {
-		printf("vfs_rm_vnodeops: unable to find ops: %p\n", ops);
-		return;
-	}
-	TAILQ_REMOVE(&vnodeopv_list, node, entry);
-	free(node, M_VNODEOP);
-	KKASSERT(ops != NULL && ops->vv_refs > 0);
-	if (--ops->vv_refs == 0) {
-		*vops_pp = NULL;
-		if ((mp = ops->vv_mount) != NULL) {
-			if (mp->mnt_vn_coherency_ops)
-				mp->mnt_vn_use_ops = mp->mnt_vn_coherency_ops;
-			else if (mp->mnt_vn_journal_ops)
-				mp->mnt_vn_use_ops = mp->mnt_vn_journal_ops;
-			else
-				mp->mnt_vn_use_ops = mp->mnt_vn_norm_ops;
-		}
+	if (ops_pp)
 		free(ops, M_VNODEOP);
-	}
-	vfs_recalc_vnodeops();
 }
 
 /*
- * Recalculate VFS operations vectors
+ * Calculate the VFS operations vector array.  This function basically
+ * replaces any NULL entry with the default entry.
  */
 static void
-vfs_recalc_vnodeops(void)
+vfs_calc_vnodeops(struct vop_ops *ops)
 {
-	struct vnodeopv_node *node;
-	struct vnodeopv_entry_desc *desc;
-	struct vop_ops *ops;
-	struct vop_ops *vnew;
 	int off;
 
-	/*
-	 * Because vop_ops may be active we can't just blow them away, we
-	 * have to generate new vop_ops and then copy them into the running
-	 * vop_ops.  Any missing entries will be assigned to the default
-	 * entry.  If the default entry itself is missing it will be assigned
-	 * to vop_eopnotsupp.
-	 */
-	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		ops = node->ops;
-		if ((vnew = ops->vv_new) == NULL) {
-			vnew = malloc(sizeof(struct vop_ops),
-					M_VNODEOP, M_ZERO|M_WAITOK);
-			ops->vv_new = vnew;
-			vnew->vop_default = vop_eopnotsupp;
-		}
-		for (desc = node->descs; desc->opve_op; ++desc) {
-			off = desc->opve_op->vdesc_offset;
-			*(void **)((char *)vnew + off) = desc->opve_func;
-		}
-		for (off = __offsetof(struct vop_ops, vop_ops_first_field);
-		     off <= __offsetof(struct vop_ops, vop_ops_last_field);
-		     off += sizeof(void **)
-		) {
-			if (*(void **)((char *)vnew + off) == NULL)
-			    *(void **)((char *)vnew + off) = vnew->vop_default;
-		}
-	}
-
-	/*
-	 * Copy the temporary ops into the running configuration and then
-	 * delete them.
-	 */
-	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		ops = node->ops;
-		if ((vnew = ops->vv_new) == NULL)
-			continue;
-		for (off = __offsetof(struct vop_ops, vop_ops_first_field);
-		     off <= __offsetof(struct vop_ops, vop_ops_last_field);
-		     off += sizeof(void **)
-		) {
-			*(void **)((char *)ops + off) = 
-				*(void **)((char *)vnew + off);
-		}
-		ops->vv_new = NULL;
-		free(vnew, M_VNODEOP);
+	for (off = __offsetof(struct vop_ops, vop_ops_first_field);
+	     off <= __offsetof(struct vop_ops, vop_ops_last_field);
+	     off += sizeof(void *)
+	) {
+		if (*(void **)((char *)ops + off) == NULL)
+		    *(void **)((char *)ops + off) = ops->vop_default;
 	}
 }
 

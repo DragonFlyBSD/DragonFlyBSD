@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.26 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.27 2006/07/18 22:22:15 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -118,13 +118,6 @@ struct statfs {
  * will become the dirty list and mnt_reservedvnlist will become the 'clean'
  * list.  Filesystem kld's syncing code should remain compatible since
  * they only need to scan the dirty vnode list (nvnodelist -> dirtyvnodelist).
- *
- * NOTE: mnt_fsmanage structures.  These structures are required by the new
- * vnode operations vector abstraction.  Each one contains its own operations
- * vector which is registered just like VNODEOP_SET/vnodeopv_desc except it
- * is done in the mount code rather then on vfs initialization.  This
- * structure is responsible for per-mount management, including vfs threading,
- * journaling, and so forth.
  *
  * NOTE: All VFSs must at least populate mnt_vn_ops or those VOP ops that
  * only take namecache pointers will not be able to find their operations
@@ -250,6 +243,7 @@ struct mount {
 #define MNTK_UNMOUNT	0x01000000	/* unmount in progress */
 #define	MNTK_MWAIT	0x02000000	/* waiting for unmount to finish */
 #define MNTK_WANTRDWR	0x04000000	/* upgrade to read/write requested */
+#define MNTK_FSMID	0x08000000	/* getattr supports FSMIDs */
 
 /*
  * mountlist_*() defines

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.16 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.17 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,28 +71,25 @@ static int	ffs_read (struct vop_read_args *);
 static int	ffs_write (struct vop_write_args *);
 
 /* Global vfs data structures for ufs. */
-struct vnodeopv_entry_desc ffs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) ufs_vnoperate },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ffs_fsync },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) ffs_getpages },
-	{ &vop_putpages_desc,		(vnodeopv_entry_t) ffs_putpages },
-	{ &vop_read_desc,		(vnodeopv_entry_t) ffs_read },
-	{ &vop_balloc_desc,		(vnodeopv_entry_t) ffs_balloc },
-	{ &vop_reallocblks_desc,	(vnodeopv_entry_t) ffs_reallocblks },
-	{ &vop_write_desc,		(vnodeopv_entry_t) ffs_write },
-	{ NULL, NULL }
+struct vop_ops ffs_vnode_vops = {
+	.vop_default =		ufs_vnoperate,
+	.vop_fsync =		ffs_fsync,
+	.vop_getpages =		ffs_getpages,
+	.vop_putpages =		ffs_putpages,
+	.vop_read =		ffs_read,
+	.vop_balloc =		ffs_balloc,
+	.vop_reallocblks =	ffs_reallocblks,
+	.vop_write =		ffs_write
 };
 
-struct vnodeopv_entry_desc ffs_specop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) ufs_vnoperatespec },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ffs_fsync },
-	{ NULL, NULL }
+struct vop_ops ffs_spec_vops = {
+	.vop_default =		ufs_vnoperatespec,
+	.vop_fsync =		ffs_fsync
 };
 
-struct vnodeopv_entry_desc ffs_fifoop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) ufs_vnoperatefifo },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ffs_fsync },
-	{ NULL, NULL }
+struct vop_ops ffs_fifo_vops = {
+	.vop_default =		ufs_vnoperatefifo,
+	.vop_fsync =		ffs_fsync
 };
 
 #include "ufs_readwrite.c"

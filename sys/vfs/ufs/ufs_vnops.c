@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.51 2006/05/26 19:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.52 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1890,7 +1890,7 @@ ufsspec_read(struct vop_read_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(spec_vnode_vops, &ap->a_head);
+	error = VOCALL(&spec_vnode_vops, &ap->a_head);
 	/*
 	 * The inode may have been revoked during the call, so it must not
 	 * be accessed blindly here or in the other wrapper functions.
@@ -1917,7 +1917,7 @@ ufsspec_write(struct vop_write_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(spec_vnode_vops, &ap->a_head);
+	error = VOCALL(&spec_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
 		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -1940,7 +1940,7 @@ ufsspec_close(struct vop_close_args *ap)
 
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -1959,7 +1959,7 @@ ufsfifo_read(struct vop_read_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(fifo_vnode_vops, &ap->a_head);
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if ((ap->a_vp->v_mount->mnt_flag & MNT_NOATIME) == 0 && ip != NULL &&
 	    (uio->uio_resid != resid || (error == 0 && resid != 0)))
@@ -1983,7 +1983,7 @@ ufsfifo_write(struct vop_write_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(fifo_vnode_vops, &ap->a_head);
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
 		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -2006,7 +2006,7 @@ ufsfifo_close(struct vop_close_args *ap)
 
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	return (VOCALL(fifo_vnode_vops, &ap->a_head));
+	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -2020,7 +2020,7 @@ ufsfifo_kqfilter(struct vop_kqfilter_args *ap)
 {
 	int error;
 
-	error = VOCALL(fifo_vnode_vops, &ap->a_head);
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
 	if (error)
 		error = ufs_kqfilter(ap);
 	return (error);
@@ -2364,94 +2364,82 @@ filt_ufsvnode(struct knote *kn, long hint)
 }
 
 /* Global vfs data structures for ufs. */
-static struct vop_ops *ufs_vnode_vops;
-static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_read_desc,		(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_reallocblks_desc,	(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_write_desc,		(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) ufs_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) ufs_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) ufs_bmap },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) ufs_lookup },
-	{ &vop_close_desc,		(vnodeopv_entry_t) ufs_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) ufs_create },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) ufs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) ufs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) ufs_link },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) ufs_mkdir },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) ufs_mknod },
-	{ &vop_mmap_desc,		(vnodeopv_entry_t) ufs_mmap },
-	{ &vop_open_desc,		(vnodeopv_entry_t) ufs_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) ufs_pathconf },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) vop_stdpoll },
-	{ &vop_kqfilter_desc,		(vnodeopv_entry_t) ufs_kqfilter },
-	{ &vop_print_desc,		(vnodeopv_entry_t) ufs_print },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) ufs_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) ufs_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) ufs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) ufs_remove },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) ufs_rename },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) ufs_rmdir },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) ufs_setattr },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) ufs_strategy },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) ufs_symlink },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_old_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
-	{ NULL, NULL }
+static struct vop_ops ufs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_fsync =		(void *)ufs_missingop,
+	.vop_read =		(void *)ufs_missingop,
+	.vop_reallocblks =	(void *)ufs_missingop,
+	.vop_write =		(void *)ufs_missingop,
+	.vop_access =		ufs_access,
+	.vop_advlock =		ufs_advlock,
+	.vop_bmap =		ufs_bmap,
+	.vop_old_lookup =	ufs_lookup,
+	.vop_close =		ufs_close,
+	.vop_old_create =	ufs_create,
+	.vop_getattr =		ufs_getattr,
+	.vop_inactive =		ufs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_old_link =		ufs_link,
+	.vop_lock =		vop_stdlock,
+	.vop_old_mkdir =		ufs_mkdir,
+	.vop_old_mknod =		ufs_mknod,
+	.vop_mmap =		ufs_mmap,
+	.vop_open =		ufs_open,
+	.vop_pathconf =		ufs_pathconf,
+	.vop_poll =		vop_stdpoll,
+	.vop_kqfilter =		ufs_kqfilter,
+	.vop_print =		ufs_print,
+	.vop_readdir =		ufs_readdir,
+	.vop_readlink =		ufs_readlink,
+	.vop_reclaim =		ufs_reclaim,
+	.vop_old_remove =	ufs_remove,
+	.vop_old_rename =	ufs_rename,
+	.vop_old_rmdir =	ufs_rmdir,
+	.vop_setattr =		ufs_setattr,
+	.vop_strategy =		ufs_strategy,
+	.vop_old_symlink =	ufs_symlink,
+	.vop_unlock =		vop_stdunlock,
+	.vop_old_whiteout =	ufs_whiteout
 };
-static struct vnodeopv_desc ufs_vnodeop_opv_desc =
-	{ &ufs_vnode_vops, ufs_vnodeop_entries, VVF_SUPPORTS_FSMID };
 
-static struct vop_ops *ufs_spec_vops;
-static struct vnodeopv_entry_desc ufs_specop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) spec_vnoperate },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) ufs_access },
-	{ &vop_close_desc,		(vnodeopv_entry_t) ufsspec_close },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) ufs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) ufs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_print_desc,		(vnodeopv_entry_t) ufs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) ufsspec_read },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) ufs_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) ufs_setattr },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) ufsspec_write },
-	{ NULL, NULL }
+static struct vop_ops ufs_spec_vops = {
+	.vop_default =		spec_vnoperate,
+	.vop_fsync =		(void *)ufs_missingop,
+	.vop_access =		ufs_access,
+	.vop_close =		ufsspec_close,
+	.vop_getattr =		ufs_getattr,
+	.vop_inactive =		ufs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_lock =		vop_stdlock,
+	.vop_print =		ufs_print,
+	.vop_read =		ufsspec_read,
+	.vop_reclaim =		ufs_reclaim,
+	.vop_setattr =		ufs_setattr,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		ufsspec_write
 };
-static struct vnodeopv_desc ufs_specop_opv_desc =
-	{ &ufs_spec_vops, ufs_specop_entries, VVF_SUPPORTS_FSMID };
 
-static struct vop_ops *ufs_fifo_vops;
-static struct vnodeopv_entry_desc ufs_fifoop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) fifo_vnoperate },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) ufs_missingop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) ufs_access },
-	{ &vop_close_desc,		(vnodeopv_entry_t) ufsfifo_close },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) ufs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) ufs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_kqfilter_desc,		(vnodeopv_entry_t) ufsfifo_kqfilter },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_print_desc,		(vnodeopv_entry_t) ufs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) ufsfifo_read },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) ufs_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) ufs_setattr },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) ufsfifo_write },
-	{ NULL, NULL }
+static struct vop_ops ufs_fifo_vops = {
+	.vop_default =		fifo_vnoperate,
+	.vop_fsync =		(void *)ufs_missingop,
+	.vop_access =		ufs_access,
+	.vop_close =		ufsfifo_close,
+	.vop_getattr =		ufs_getattr,
+	.vop_inactive =		ufs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_kqfilter =		ufsfifo_kqfilter,
+	.vop_lock =		vop_stdlock,
+	.vop_print =		ufs_print,
+	.vop_read =		ufsfifo_read,
+	.vop_reclaim =		ufs_reclaim,
+	.vop_setattr =		ufs_setattr,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		ufsfifo_write
 };
-static struct vnodeopv_desc ufs_fifoop_opv_desc =
-	{ &ufs_fifo_vops, ufs_fifoop_entries, VVF_SUPPORTS_FSMID };
 
-VNODEOP_SET(ufs_vnodeop_opv_desc);
-VNODEOP_SET(ufs_specop_opv_desc);
-VNODEOP_SET(ufs_fifoop_opv_desc);
+VNODEOP_SET(ufs_vnode_vops);
+VNODEOP_SET(ufs_spec_vops);
+VNODEOP_SET(ufs_fifo_vops);
 
 /*
  * ufs_vnoperate(struct vnodeop_desc *a_desc)
@@ -2459,7 +2447,7 @@ VNODEOP_SET(ufs_fifoop_opv_desc);
 int
 ufs_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_vnode_vops, ap));
+	return (VOCALL(&ufs_vnode_vops, ap));
 }
 
 /*
@@ -2468,7 +2456,7 @@ ufs_vnoperate(struct vop_generic_args *ap)
 int
 ufs_vnoperatefifo(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_fifo_vops, ap));
+	return (VOCALL(&ufs_fifo_vops, ap));
 }
 
 /*
@@ -2477,5 +2465,5 @@ ufs_vnoperatefifo(struct vop_generic_args *ap)
 int
 ufs_vnoperatespec(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_spec_vops, ap));
+	return (VOCALL(&ufs_spec_vops, ap));
 }

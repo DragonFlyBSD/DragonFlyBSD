@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.35 2006/06/02 04:59:54 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.36 2006/07/18 22:22:15 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -70,7 +70,7 @@
 #include "msdosfsmount.h"
 #include "fat.h"
 
-extern struct vnodeopv_entry_desc msdosfs_vnodeop_entries[];
+extern struct vop_ops msdosfs_vnode_vops;
 
 #define MSDOSFS_DFLTBSIZE       4096
 
@@ -655,8 +655,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_flag |= MNT_LOCAL;
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 msdosfs_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &msdosfs_vnode_vops, &mp->mnt_vn_norm_ops);
 	dev->si_mountpoint = mp;
 
 	return 0;

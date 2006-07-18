@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.20 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.21 2006/07/18 22:22:16 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include <sys/domain.h>
 #include "portal.h"
 
-extern struct vnodeopv_entry_desc portal_vnodeop_entries[];
+extern struct vop_ops portal_vnode_vops;
 
 static MALLOC_DEFINE(M_PORTALFSMNT, "PORTAL mount", "PORTAL mount structure");
 
@@ -111,8 +111,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		M_PORTALFSMNT, M_WAITOK);	/* XXX */
 
 	 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops,
-			 portal_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &portal_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	error = getnewvnode(VT_PORTAL, mp, &rvp, 0, 0);
 	if (error) {

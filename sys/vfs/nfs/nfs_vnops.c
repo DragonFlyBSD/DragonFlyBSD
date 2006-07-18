@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.61 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.62 2006/07/18 22:22:15 dillon Exp $
  */
 
 
@@ -134,82 +134,78 @@ static	int	nfs_nresolve (struct vop_nresolve_args *);
 /*
  * Global vfs data structures for nfs
  */
-struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) nfs_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) nfs_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) nfs_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) nfs_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) nfs_create },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) nfs_fsync },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) nfs_getattr },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) nfs_getpages },
-	{ &vop_putpages_desc,		(vnodeopv_entry_t) nfs_putpages },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) nfs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) nfs_link },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) nfs_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) nfs_mkdir },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) nfs_mknod },
-	{ &vop_mmap_desc,		(vnodeopv_entry_t) nfs_mmap },
-	{ &vop_open_desc,		(vnodeopv_entry_t) nfs_open },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) nfs_poll },
-	{ &vop_print_desc,		(vnodeopv_entry_t) nfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) nfs_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) nfs_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) nfs_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) nfs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) nfs_remove },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) nfs_rename },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) nfs_rmdir },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) nfs_setattr },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) nfs_strategy },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) nfs_symlink },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) nfs_write },
-
-	{ &vop_nresolve_desc,		(vnodeopv_entry_t) nfs_nresolve },
-	{ NULL, NULL }
+struct vop_ops nfsv2_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		nfs_access,
+	.vop_advlock =		nfs_advlock,
+	.vop_bmap =		nfs_bmap,
+	.vop_close =		nfs_close,
+	.vop_old_create =	nfs_create,
+	.vop_fsync =		nfs_fsync,
+	.vop_getattr =		nfs_getattr,
+	.vop_getpages =		nfs_getpages,
+	.vop_putpages =		nfs_putpages,
+	.vop_inactive =		nfs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_old_link =		nfs_link,
+	.vop_lock =		vop_stdlock,
+	.vop_old_lookup =	nfs_lookup,
+	.vop_old_mkdir =	nfs_mkdir,
+	.vop_old_mknod =	nfs_mknod,
+	.vop_mmap =		nfs_mmap,
+	.vop_open =		nfs_open,
+	.vop_poll =		nfs_poll,
+	.vop_print =		nfs_print,
+	.vop_read =		nfs_read,
+	.vop_readdir =		nfs_readdir,
+	.vop_readlink =		nfs_readlink,
+	.vop_reclaim =		nfs_reclaim,
+	.vop_old_remove =	nfs_remove,
+	.vop_old_rename =	nfs_rename,
+	.vop_old_rmdir =	nfs_rmdir,
+	.vop_setattr =		nfs_setattr,
+	.vop_strategy =		nfs_strategy,
+	.vop_old_symlink =	nfs_symlink,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		nfs_write,
+	.vop_nresolve =		nfs_nresolve
 };
 
 /*
  * Special device vnode ops
  */
-struct vnodeopv_entry_desc nfsv2_specop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) spec_vnoperate },
-	{ &vop_access_desc,		(vnodeopv_entry_t) nfsspec_access },
-	{ &vop_close_desc,		(vnodeopv_entry_t) nfsspec_close },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) nfs_fsync },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) nfs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) nfs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_print_desc,		(vnodeopv_entry_t) nfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) nfsspec_read },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) nfs_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) nfs_setattr },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) nfsspec_write },
-	{ NULL, NULL }
+struct vop_ops nfsv2_spec_vops = {
+	.vop_default =		spec_vnoperate,
+	.vop_access =		nfsspec_access,
+	.vop_close =		nfsspec_close,
+	.vop_fsync =		nfs_fsync,
+	.vop_getattr =		nfs_getattr,
+	.vop_inactive =		nfs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_lock =		vop_stdlock,
+	.vop_print =		nfs_print,
+	.vop_read =		nfsspec_read,
+	.vop_reclaim =		nfs_reclaim,
+	.vop_setattr =		nfs_setattr,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		nfsspec_write
 };
 
-struct vnodeopv_entry_desc nfsv2_fifoop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) fifo_vnoperate },
-	{ &vop_access_desc,		(vnodeopv_entry_t) nfsspec_access },
-	{ &vop_close_desc,		(vnodeopv_entry_t) nfsfifo_close },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) nfs_fsync },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) nfs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) nfs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_print_desc,		(vnodeopv_entry_t) nfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) nfsfifo_read },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) nfs_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) nfs_setattr },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) nfsfifo_write },
-	{ NULL, NULL }
+struct vop_ops nfsv2_fifo_vops = {
+	.vop_default =		fifo_vnoperate,
+	.vop_access =		nfsspec_access,
+	.vop_close =		nfsfifo_close,
+	.vop_fsync =		nfs_fsync,
+	.vop_getattr =		nfs_getattr,
+	.vop_inactive =		nfs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_lock =		vop_stdlock,
+	.vop_print =		nfs_print,
+	.vop_read =		nfsfifo_read,
+	.vop_reclaim =		nfs_reclaim,
+	.vop_setattr =		nfs_setattr,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		nfsfifo_write
 };
 
 static int	nfs_mknodrpc (struct vnode *dvp, struct vnode **vpp,
@@ -3306,7 +3302,7 @@ nfsspec_read(struct vop_read_args *ap)
 	 */
 	np->n_flag |= NACC;
 	getnanotime(&np->n_atim);
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3325,7 +3321,7 @@ nfsspec_write(struct vop_write_args *ap)
 	 */
 	np->n_flag |= NUPD;
 	getnanotime(&np->n_mtim);
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3355,7 +3351,7 @@ nfsspec_close(struct vop_close_args *ap)
 			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE));
 		}
 	}
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3374,7 +3370,7 @@ nfsfifo_read(struct vop_read_args *ap)
 	 */
 	np->n_flag |= NACC;
 	getnanotime(&np->n_atim);
-	return (VOCALL(fifo_vnode_vops, &ap->a_head));
+	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3393,7 +3389,7 @@ nfsfifo_write(struct vop_write_args *ap)
 	 */
 	np->n_flag |= NUPD;
 	getnanotime(&np->n_mtim);
-	return (VOCALL(fifo_vnode_vops, &ap->a_head));
+	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3428,6 +3424,6 @@ nfsfifo_close(struct vop_close_args *ap)
 			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE));
 		}
 	}
-	return (VOCALL(fifo_vnode_vops, &ap->a_head));
+	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.26 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.27 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -153,16 +153,13 @@ swapdev_strategy(struct vop_strategy_args *ap)
  * Create a special vnode op vector for swapdev_vp - we only use
  * vn_strategy(), everything else returns an error.
  */
-struct vop_ops *swapdev_vnode_vops;
-static struct vnodeopv_entry_desc swapdev_vnodeop_entries[] = {  
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_strategy_desc,		(void *) swapdev_strategy },
-	{ NULL, NULL }
+static struct vop_ops swapdev_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_strategy =		swapdev_strategy
 };
-static struct vnodeopv_desc swapdev_vnodeop_opv_desc =
-	{ &swapdev_vnode_vops, swapdev_vnodeop_entries, 0 };
+static struct vop_ops *swapdev_vnode_vops_p = &swapdev_vnode_vops;
 
-VNODEOP_SET(swapdev_vnodeop_opv_desc);
+VNODEOP_SET(swapdev_vnode_vops);
 
 /*
  * swapon_args(char *name)
@@ -244,7 +241,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	cred = td->td_proc->p_ucred;
 
 	if (!swapdev_vp) {
-		error = getspecialvnode(VT_NON, NULL, &swapdev_vnode_vops,
+		error = getspecialvnode(VT_NON, NULL, &swapdev_vnode_vops_p,
 				    &swapdev_vp, 0, 0);
 		if (error)
 			panic("Cannot get vnode for swapdev");

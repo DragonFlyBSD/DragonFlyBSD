@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.90 2006/07/10 04:42:56 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.91 2006/07/18 22:22:12 dillon Exp $
  */
 
 /*
@@ -130,7 +130,6 @@ static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 				       struct export_args *argp);
 
 extern int dev_ref_debug;
-extern struct vnodeopv_entry_desc spec_vnodeop_entries[];
 
 /*
  * Red black tree functions
@@ -981,7 +980,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getspecialvnode(VT_NON, NULL, &spec_vnode_vops, &nvp, 0, 0);
+	error = getspecialvnode(VT_NON, NULL, &spec_vnode_vops_p, &nvp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -1145,7 +1144,7 @@ vclean(struct vnode *vp, int flags)
 	/*
 	 * Done with purge, notify sleepers of the grim news.
 	 */
-	vp->v_ops = &dead_vnode_vops;
+	vp->v_ops = &dead_vnode_vops_p;
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
 }

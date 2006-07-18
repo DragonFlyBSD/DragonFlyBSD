@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.38 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.39 2006/07/18 22:22:15 dillon Exp $
  * 
  */
 
@@ -110,58 +110,42 @@ static int coda_lockdebug = 0;
 
 /* Definition of the vnode operation vector */
 
-struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
-    { &vop_default_desc, (vnodeopv_entry_t)coda_vop_error },
-    { &vop_old_lookup_desc, (vnodeopv_entry_t)coda_lookup },	/* lookup */
-    { &vop_old_create_desc, (vnodeopv_entry_t)coda_create },	/* create */
-    { &vop_old_mknod_desc, (vnodeopv_entry_t)coda_vop_error },	/* mknod */
-    { &vop_open_desc, (vnodeopv_entry_t)coda_open },		/* open */
-    { &vop_close_desc, (vnodeopv_entry_t)coda_close },		/* close */
-    { &vop_access_desc, (vnodeopv_entry_t)coda_access },	/* access */
-    { &vop_getattr_desc, (vnodeopv_entry_t)coda_getattr },	/* getattr */
-    { &vop_setattr_desc, (vnodeopv_entry_t)coda_setattr },	/* setattr */
-    { &vop_read_desc, (vnodeopv_entry_t)coda_read },		/* read */
-    { &vop_write_desc, (vnodeopv_entry_t)coda_write },		/* write */
-    { &vop_ioctl_desc, (vnodeopv_entry_t)coda_ioctl },		/* ioctl */
-    { &vop_mmap_desc, (vnodeopv_entry_t)coda_vop_error },	/* mmap */
-    { &vop_fsync_desc, (vnodeopv_entry_t)coda_fsync },		/* fsync */
-    { &vop_old_remove_desc, (vnodeopv_entry_t)coda_remove },	/* remove */
-    { &vop_old_link_desc, (vnodeopv_entry_t)coda_link },	/* link */
-    { &vop_old_rename_desc, (vnodeopv_entry_t)coda_rename },	/* rename */
-    { &vop_old_mkdir_desc, (vnodeopv_entry_t)coda_mkdir },	/* mkdir */
-    { &vop_old_rmdir_desc, (vnodeopv_entry_t)coda_rmdir },	/* rmdir */
-    { &vop_old_symlink_desc, (vnodeopv_entry_t)coda_symlink },	/* symlink */
-    { &vop_readdir_desc, (vnodeopv_entry_t)coda_readdir },	/* readdir */
-    { &vop_readlink_desc, (vnodeopv_entry_t)coda_readlink },	/* readlink */
-    { &vop_inactive_desc, (vnodeopv_entry_t)coda_inactive },	/* inactive */
-    { &vop_reclaim_desc, (vnodeopv_entry_t)coda_reclaim },	/* reclaim */
-    { &vop_lock_desc, (vnodeopv_entry_t)coda_lock },		/* lock */
-    { &vop_unlock_desc, (vnodeopv_entry_t)coda_unlock },	/* unlock */
-    { &vop_bmap_desc, (vnodeopv_entry_t)coda_bmap },		/* bmap */
-    { &vop_strategy_desc, (vnodeopv_entry_t)coda_strategy },	/* strategy */
-    { &vop_print_desc, (vnodeopv_entry_t)coda_vop_error },	/* print */
-    { &vop_islocked_desc, (vnodeopv_entry_t)coda_islocked },	/* islocked */
-    { &vop_pathconf_desc, (vnodeopv_entry_t)coda_vop_error },	/* pathconf */
-    { &vop_advlock_desc, (vnodeopv_entry_t)coda_vop_nop },	/* advlock */
-    { &vop_poll_desc, (vnodeopv_entry_t)vop_stdpoll },		/* poll */
-    { &vop_getpages_desc, (vnodeopv_entry_t)coda_fbsd_getpages }, /* pager intf.*/
-    { &vop_putpages_desc, (vnodeopv_entry_t)coda_fbsd_putpages }, /* pager intf.*/
-
-#if	0
-
-    we need to define these someday
-#define UFS_BLKATOFF(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_blkatoff(aa, bb, cc, dd)
-#define UFS_VALLOC(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_valloc(aa, bb, cc, dd)
-#define UFS_VFREE(aa, bb, cc) VFSTOUFS((aa)->v_mount)->um_vfree(aa, bb, cc)
-#define UFS_TRUNCATE(aa, bb, cc, dd) VFSTOUFS((aa)->v_mount)->um_truncate(aa, bb, cc, dd)
-#define UFS_UPDATE(aa, bb) VFSTOUFS((aa)->v_mount)->um_update(aa, bb)
-
-    missing
-    { &vop_reallocblks_desc,	(vnodeopv_entry_t) ufs_missingop },
-    { &vop_old_lookup_desc,	(vnodeopv_entry_t) ufs_lookup },
-    { &vop_old_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
-#endif
-    { NULL, NULL }
+struct vop_ops coda_vnode_ops = {
+    .vop_default =	(void *)coda_vop_error,
+    .vop_old_lookup =	(void *)coda_lookup,
+    .vop_old_create =	(void *)coda_create,
+    .vop_old_mknod =	(void *)coda_vop_error,
+    .vop_open =		(void *)coda_open,
+    .vop_close =	(void *)coda_close,
+    .vop_access =	(void *)coda_access,
+    .vop_getattr =	(void *)coda_getattr,
+    .vop_setattr =	(void *)coda_setattr,
+    .vop_read =		(void *)coda_read,
+    .vop_write =	(void *)coda_write,
+    .vop_ioctl =	(void *)coda_ioctl,
+    .vop_mmap =		(void *)coda_vop_error,
+    .vop_fsync =	(void *)coda_fsync,
+    .vop_old_remove =	(void *)coda_remove,
+    .vop_old_link =	(void *)coda_link,
+    .vop_old_rename =	(void *)coda_rename,
+    .vop_old_mkdir =	(void *)coda_mkdir,
+    .vop_old_rmdir =	(void *)coda_rmdir,
+    .vop_old_symlink =	(void *)coda_symlink,
+    .vop_readdir =	(void *)coda_readdir,
+    .vop_readlink =	(void *)coda_readlink,
+    .vop_inactive =	(void *)coda_inactive,
+    .vop_reclaim =	(void *)coda_reclaim,
+    .vop_lock =		(void *)coda_lock,
+    .vop_unlock =	(void *)coda_unlock,
+    .vop_bmap =		(void *)coda_bmap,
+    .vop_strategy =	(void *)coda_strategy,
+    .vop_print =	(void *)coda_vop_error,
+    .vop_islocked =	(void *)coda_islocked,
+    .vop_pathconf =	(void *)coda_vop_error,
+    .vop_advlock =	(void *)coda_vop_nop,
+    .vop_poll =		vop_stdpoll,
+    .vop_getpages =	(void *)coda_fbsd_getpages,
+    .vop_putpages =	(void *)coda_fbsd_putpages
 };
 
 /* A generic panic: we were called with something we didn't define yet */

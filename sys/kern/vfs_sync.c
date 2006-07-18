@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.10 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.11 2006/07/18 22:22:12 dillon Exp $
  */
 
 /*
@@ -305,24 +305,21 @@ static int	sync_reclaim  (struct  vop_reclaim_args *);
 static int	sync_print (struct vop_print_args *);
 #define sync_islocked ((int(*) (struct vop_islocked_args *))vop_stdislocked)
 
-static struct vop_ops *sync_vnode_vops;
-static struct vnodeopv_entry_desc sync_vnodeop_entries[] = {
-	{ &vop_default_desc,	vop_eopnotsupp },
-	{ &vop_close_desc,	(void *) sync_close },		/* close */
-	{ &vop_fsync_desc,	(void *) sync_fsync },		/* fsync */
-	{ &vop_inactive_desc,	(void *) sync_inactive },	/* inactive */
-	{ &vop_reclaim_desc,	(void *) sync_reclaim },	/* reclaim */
-	{ &vop_lock_desc,	(void *) sync_lock },		/* lock */
-	{ &vop_unlock_desc,	(void *) sync_unlock },		/* unlock */
-	{ &vop_print_desc,	(void *) sync_print },		/* print */
-	{ &vop_islocked_desc,	(void *) sync_islocked },	/* islocked */
-	{ NULL, NULL }
+static struct vop_ops sync_vnode_vops = {
+	.vop_default =	vop_eopnotsupp,
+	.vop_close =	sync_close,
+	.vop_fsync =	sync_fsync,
+	.vop_inactive =	sync_inactive,
+	.vop_reclaim =	sync_reclaim,
+	.vop_lock =	sync_lock,
+	.vop_unlock =	sync_unlock,
+	.vop_print =	sync_print,
+	.vop_islocked =	sync_islocked
 };
 
-static struct vnodeopv_desc sync_vnodeop_opv_desc =
-	{ &sync_vnode_vops, sync_vnodeop_entries, 0 };
+static struct vop_ops *sync_vnode_vops_p = &sync_vnode_vops;
 
-VNODEOP_SET(sync_vnodeop_opv_desc);
+VNODEOP_SET(sync_vnode_vops);
 
 /*
  * Create a new filesystem syncer vnode for the specified mount point.
@@ -340,7 +337,7 @@ vfs_allocate_syncvnode(struct mount *mp)
 	int error;
 
 	/* Allocate a new vnode */
-	error = getspecialvnode(VT_VFS, mp, &sync_vnode_vops, &vp, 0, 0);
+	error = getspecialvnode(VT_VFS, mp, &sync_vnode_vops_p, &vp, 0, 0);
 	if (error) {
 		mp->mnt_syncer = NULL;
 		return (error);

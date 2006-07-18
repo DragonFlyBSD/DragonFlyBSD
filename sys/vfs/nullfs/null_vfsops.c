@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.21 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.22 2006/07/18 22:22:15 dillon Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 #include <sys/nlookup.h>
 #include "null.h"
 
-extern struct vnodeopv_entry_desc null_vnodeop_entries[];
+extern struct vop_ops null_vnode_vops;
 
 static MALLOC_DEFINE(M_NULLFSMNT, "NULLFS mount", "NULLFS mount structure");
 
@@ -117,8 +117,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	xmp->nullm_vfs = nd.nl_ncp->nc_mount;
 	nlookup_done(&nd);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 null_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &null_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	VOP_UNLOCK(rootvp, 0);
 

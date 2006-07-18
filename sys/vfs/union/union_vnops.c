@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.29 2006/05/06 02:43:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.30 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1837,44 +1837,43 @@ union_strategy(struct vop_strategy_args *ap)
 /*
  * Global vfs data structures
  */
-struct vnodeopv_entry_desc union_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) union_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) union_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) union_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) union_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) union_create },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) union_fsync },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) union_getpages },
-	{ &vop_putpages_desc,		(vnodeopv_entry_t) union_putpages },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) union_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) union_inactive },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) union_ioctl },
-	{ &vop_islocked_desc,		vop_stdislocked },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) union_link },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) union_lock },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) union_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) union_mkdir },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) union_mknod },
-	{ &vop_mmap_desc,		(vnodeopv_entry_t) union_mmap },
-	{ &vop_open_desc,		(vnodeopv_entry_t) union_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) union_pathconf },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) union_poll },
-	{ &vop_print_desc,		(vnodeopv_entry_t) union_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) union_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) union_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) union_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) union_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) union_remove },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) union_rename },
-	{ &vop_revoke_desc,		(vnodeopv_entry_t) union_revoke },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) union_rmdir },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) union_setattr },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) union_strategy },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) union_symlink },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) union_unlock },
-	{ &vop_old_whiteout_desc,	(vnodeopv_entry_t) union_whiteout },
-	{ &vop_write_desc,		(vnodeopv_entry_t) union_write },
-	{ NULL, NULL }
+struct vop_ops union_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		union_access,
+	.vop_advlock =		union_advlock,
+	.vop_bmap =		union_bmap,
+	.vop_close =		union_close,
+	.vop_old_create =	union_create,
+	.vop_fsync =		union_fsync,
+	.vop_getpages =		union_getpages,
+	.vop_putpages =		union_putpages,
+	.vop_getattr =		union_getattr,
+	.vop_inactive =		union_inactive,
+	.vop_ioctl =		union_ioctl,
+	.vop_islocked =		vop_stdislocked,
+	.vop_old_link =		union_link,
+	.vop_lock =		union_lock,
+	.vop_old_lookup =	union_lookup,
+	.vop_old_mkdir =	union_mkdir,
+	.vop_old_mknod =	union_mknod,
+	.vop_mmap =		union_mmap,
+	.vop_open =		union_open,
+	.vop_pathconf =		union_pathconf,
+	.vop_poll =		union_poll,
+	.vop_print =		union_print,
+	.vop_read =		union_read,
+	.vop_readdir =		union_readdir,
+	.vop_readlink =		union_readlink,
+	.vop_reclaim =		union_reclaim,
+	.vop_old_remove =	union_remove,
+	.vop_old_rename =	union_rename,
+	.vop_revoke =		union_revoke,
+	.vop_old_rmdir =	union_rmdir,
+	.vop_setattr =		union_setattr,
+	.vop_strategy =		union_strategy,
+	.vop_old_symlink =	union_symlink,
+	.vop_unlock =		union_unlock,
+	.vop_old_whiteout =	union_whiteout,
+	.vop_write =		union_write
 };
 

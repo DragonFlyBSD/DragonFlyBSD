@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.43 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.44 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -79,9 +79,9 @@ extern int	nfs_mountroot(struct mount *mp);
 extern void	bootpc_init(void);
 
 extern int	nfs_ticks;
-extern struct vnodeopv_entry_desc nfsv2_vnodeop_entries[];
-extern struct vnodeopv_entry_desc nfsv2_fifoop_entries[];
-extern struct vnodeopv_entry_desc nfsv2_specop_entries[];
+extern struct vop_ops nfsv2_vnode_vops;
+extern struct vop_ops nfsv2_fifo_vops;
+extern struct vop_ops nfsv2_spec_vops;
 
 MALLOC_DEFINE(M_NFSREQ, "NFS req", "NFS request header");
 MALLOC_DEFINE(M_NFSBIGFH, "NFSV3 bigfh", "NFS version 3 file handle");
@@ -961,12 +961,9 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Install vop_ops for our vnops
 	 */
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 nfsv2_vnodeop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops,
-			 nfsv2_specop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, 
-			 nfsv2_fifoop_entries, 0);
+	vfs_add_vnodeops(mp, &nfsv2_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &nfsv2_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &nfsv2_fifo_vops, &mp->mnt_vn_fifo_ops);
 
 	/*
 	 * A reference count is needed on the nfsnode representing the

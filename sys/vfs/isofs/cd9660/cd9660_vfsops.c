@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.36 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.37 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,9 +62,9 @@
 #include "cd9660_node.h"
 #include "cd9660_mount.h"
 
-extern struct vnodeopv_entry_desc cd9660_vnodeop_entries[];
-extern struct vnodeopv_entry_desc cd9660_specop_entries[];
-extern struct vnodeopv_entry_desc cd9660_fifoop_entries[];
+extern struct vop_ops cd9660_vnode_vops;
+extern struct vop_ops cd9660_spec_vops;
+extern struct vop_ops cd9660_fifo_vops;
 
 MALLOC_DEFINE(M_ISOFSMNT, "ISOFS mount", "ISOFS mount structure");
 MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
@@ -503,12 +503,9 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 		supbp = NULL;
 	}
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 cd9660_vnodeop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, 
-			 cd9660_specop_entries, 0);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops,
-			 cd9660_fifoop_entries, 0);
+	vfs_add_vnodeops(mp, &cd9660_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &cd9660_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &cd9660_fifo_vops, &mp->mnt_vn_fifo_ops);
 
 	return 0;
 out:

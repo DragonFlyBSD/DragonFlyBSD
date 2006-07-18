@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.27 2006/05/08 18:45:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.28 2006/07/18 22:22:12 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -134,25 +134,24 @@ static int journal_nrename(struct vop_nrename_args *ap);
 			 JRUNDO_NLINK)
 #define JRUNDO_ALL	(JRUNDO_VATTR|JRUNDO_FILEDATA)
 
-static struct vnodeopv_entry_desc journal_vnodeop_entries[] = {
-    { &vop_default_desc,		vop_journal_operate_ap },
-    { &vop_mountctl_desc,		(void *)journal_mountctl },
-    { &vop_setattr_desc,		(void *)journal_setattr },
-    { &vop_write_desc,			(void *)journal_write },
-    { &vop_fsync_desc,			(void *)journal_fsync },
-    { &vop_putpages_desc,		(void *)journal_putpages },
-    { &vop_setacl_desc,			(void *)journal_setacl },
-    { &vop_setextattr_desc,		(void *)journal_setextattr },
-    { &vop_ncreate_desc,		(void *)journal_ncreate },
-    { &vop_nmknod_desc,			(void *)journal_nmknod },
-    { &vop_nlink_desc,			(void *)journal_nlink },
-    { &vop_nsymlink_desc,		(void *)journal_nsymlink },
-    { &vop_nwhiteout_desc,		(void *)journal_nwhiteout },
-    { &vop_nremove_desc,		(void *)journal_nremove },
-    { &vop_nmkdir_desc,			(void *)journal_nmkdir },
-    { &vop_nrmdir_desc,			(void *)journal_nrmdir },
-    { &vop_nrename_desc,		(void *)journal_nrename },
-    { NULL, NULL }
+static struct vop_ops journal_vnode_vops = {
+    .vop_default =	vop_journal_operate_ap,
+    .vop_mountctl =	journal_mountctl,
+    .vop_setattr =	journal_setattr,
+    .vop_write =	journal_write,
+    .vop_fsync =	journal_fsync,
+    .vop_putpages =	journal_putpages,
+    .vop_setacl =	journal_setacl,
+    .vop_setextattr =	journal_setextattr,
+    .vop_ncreate =	journal_ncreate,
+    .vop_nmknod =	journal_nmknod,
+    .vop_nlink =	journal_nlink,
+    .vop_nsymlink =	journal_nsymlink,
+    .vop_nwhiteout =	journal_nwhiteout,
+    .vop_nremove =	journal_nremove,
+    .vop_nmkdir =	journal_nmkdir,
+    .vop_nrmdir =	journal_nrmdir,
+    .vop_nrename =	journal_nrename
 };
 
 static MALLOC_DEFINE(M_JOURNAL, "journal", "Journaling structures");
@@ -164,7 +163,7 @@ journal_mountctl(struct vop_mountctl_args *ap)
     struct mount *mp;
     int error = 0;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     KKASSERT(mp);
 
     if (mp->mnt_vn_journal_ops == NULL) {
@@ -244,8 +243,7 @@ static int
 journal_attach(struct mount *mp)
 {
     KKASSERT(mp->mnt_jbitmap == NULL);
-    vfs_add_vnodeops(mp, &mp->mnt_vn_journal_ops, 
-		     journal_vnodeop_entries, 0);
+    vfs_add_vnodeops(mp, &journal_vnode_vops, &mp->mnt_vn_journal_ops);
     mp->mnt_jbitmap = malloc(JREC_STREAMID_JMAX/8, M_JOURNAL, M_WAITOK|M_ZERO);
     mp->mnt_streamid = JREC_STREAMID_JMIN;
     return(0);
@@ -256,7 +254,7 @@ journal_detach(struct mount *mp)
 {
     KKASSERT(mp->mnt_jbitmap != NULL);
     if (mp->mnt_vn_journal_ops)
-	vfs_rm_vnodeops(&mp->mnt_vn_journal_ops);
+	vfs_rm_vnodeops(mp, &journal_vnode_vops, &mp->mnt_vn_journal_ops);
     free(mp->mnt_jbitmap, M_JOURNAL);
     mp->mnt_jbitmap = NULL;
 }
@@ -808,7 +806,7 @@ journal_setattr(struct vop_setattr_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_SETATTR)) {
 	jreclist_undo_file(&jreclist, ap->a_vp, JRUNDO_VATTR, 0, 0);
     }
@@ -868,7 +866,7 @@ journal_write(struct vop_write_args *ap)
      * IO_APPEND is set, but fortunately we have no undo file data to
      * write out in that case.
      */
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_WRITE)) {
 	if (ap->a_ioflag & IO_APPEND) {
 	    jreclist_undo_file(&jreclist, ap->a_vp, JRUNDO_SIZE|JRUNDO_MTIME, 0, 0);
@@ -921,7 +919,7 @@ journal_fsync(struct vop_fsync_args *ap)
 
     error = vop_journal_operate_ap(&ap->a_head);
 #if 0
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (error == 0) {
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    /* XXX synchronize pending journal records */
@@ -947,7 +945,7 @@ journal_putpages(struct vop_putpages_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_PUTPAGES) && 
 	ap->a_count > 0
     ) {
@@ -982,7 +980,7 @@ journal_setacl(struct vop_setacl_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SETACL);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1018,7 +1016,7 @@ journal_setextattr(struct vop_setextattr_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SETEXTATTR);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1053,7 +1051,7 @@ journal_ncreate(struct vop_ncreate_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_CREATE);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1085,7 +1083,7 @@ journal_nmknod(struct vop_nmknod_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_MKNOD);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1117,7 +1115,7 @@ journal_nlink(struct vop_nlink_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_LINK);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1150,7 +1148,7 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
     void *save;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_SYMLINK);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1182,7 +1180,7 @@ journal_nwhiteout(struct vop_nwhiteout_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_WHITEOUT);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1208,7 +1206,7 @@ journal_nremove(struct vop_nremove_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_REMOVE) &&
 	ap->a_ncp->nc_vp
     ) {
@@ -1239,7 +1237,7 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     jreclist_init(mp, &jreclist, &jreccache, JTYPE_MKDIR);
     error = vop_journal_operate_ap(&ap->a_head);
     if (error == 0) {
@@ -1274,7 +1272,7 @@ journal_nrmdir(struct vop_nrmdir_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_RMDIR)) {
 	jreclist_undo_file(&jreclist, ap->a_ncp->nc_vp,
 			   JRUNDO_VATTR|JRUNDO_GETVP, 0, 0);
@@ -1303,7 +1301,7 @@ journal_nrename(struct vop_nrename_args *ap)
     struct mount *mp;
     int error;
 
-    mp = ap->a_head.a_ops->vv_mount;
+    mp = ap->a_head.a_ops->head.vv_mount;
     if (jreclist_init(mp, &jreclist, &jreccache, JTYPE_RENAME) &&
 	ap->a_tncp->nc_vp
     ) {

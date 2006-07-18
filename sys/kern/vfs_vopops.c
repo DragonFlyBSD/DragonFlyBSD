@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.27 2006/06/04 17:33:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.28 2006/07/18 22:22:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -308,7 +308,7 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_getattr);
-	if ((ops->vv_flags & VVF_SUPPORTS_FSMID) == 0)
+	if ((ops->head.vv_mount->mnt_kern_flag & MNTK_FSMID) == 0)
 		vap->va_fsmid = cache_sync_fsmid_vp(vp);
 	return(error);
 }
@@ -1294,10 +1294,10 @@ vop_cache_operate_ap(struct vop_generic_args *ap)
 	int error;
 
 	ops = ap->a_ops;
-	if (ops->vv_mount->mnt_vn_journal_ops)
-		error = VOCALL(ops->vv_mount->mnt_vn_journal_ops, ap);
+	if (ops->head.vv_mount->mnt_vn_journal_ops)
+		error = VOCALL(ops->head.vv_mount->mnt_vn_journal_ops, ap);
 	else
-		error = VOCALL(ops->vv_mount->mnt_vn_norm_ops, ap);
+		error = VOCALL(ops->head.vv_mount->mnt_vn_norm_ops, ap);
 	return (error);
 }
 
@@ -1313,7 +1313,7 @@ vop_journal_operate_ap(struct vop_generic_args *ap)
 	int error;
 
 	ops = ap->a_ops;
-	error = VOCALL(ops->vv_mount->mnt_vn_norm_ops, ap);
+	error = VOCALL(ops->head.vv_mount->mnt_vn_norm_ops, ap);
 
 	return (error);
 }

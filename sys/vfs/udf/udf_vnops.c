@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.22 2006/05/26 16:56:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.23 2006/07/18 22:22:16 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -66,20 +66,19 @@ static int udf_reclaim(struct vop_reclaim_args *);
 static int udf_readatoffset(struct udf_node *, int *, int, struct buf **, uint8_t **);
 static int udf_bmap_internal(struct udf_node *, uint32_t, daddr_t *, uint32_t *);
 
-struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) udf_access },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) udf_bmap },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) udf_lookup },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) udf_getattr },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) udf_ioctl },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) udf_pathconf },
-	{ &vop_read_desc,		(vnodeopv_entry_t) udf_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) udf_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) udf_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) udf_reclaim },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) udf_strategy },
-	{ NULL, NULL }
+struct vop_ops udf_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		udf_access,
+	.vop_bmap =		udf_bmap,
+	.vop_old_lookup =	udf_lookup,
+	.vop_getattr =		udf_getattr,
+	.vop_ioctl =		udf_ioctl,
+	.vop_pathconf =		udf_pathconf,
+	.vop_read =		udf_read,
+	.vop_readdir =		udf_readdir,
+	.vop_readlink =		udf_readlink,
+	.vop_reclaim =		udf_reclaim,
+	.vop_strategy =		udf_strategy
 };
 
 MALLOC_DEFINE(M_UDFFID, "UDF FID", "UDF FileId structure");

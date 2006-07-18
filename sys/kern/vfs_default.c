@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.40 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.41 2006/07/18 22:22:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,49 +74,44 @@ static int	vop_nostrategy (struct vop_strategy_args *);
  *
  * If there is no specific entry here, we will return EOPNOTSUPP.
  */
-struct vop_ops *default_vnode_vops;
-static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_eopnotsupp },
-	{ &vop_advlock_desc,		vop_einval },
-	{ &vop_fsync_desc,		vop_null },
-	{ &vop_ioctl_desc,		vop_enotty },
-	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_mmap_desc,		vop_einval },
-	{ &vop_old_lookup_desc,		(void *) vop_nolookup },
-	{ &vop_open_desc,		(void *) vop_stdopen },
-	{ &vop_close_desc,		(void *) vop_stdclose },
-	{ &vop_pathconf_desc,		vop_einval },
-	{ &vop_poll_desc,		(void *) vop_nopoll },
-	{ &vop_readlink_desc,		vop_einval },
-	{ &vop_reallocblks_desc,	vop_eopnotsupp },
-	{ &vop_revoke_desc,		(void *) vop_stdrevoke },
-	{ &vop_strategy_desc,		(void *) vop_nostrategy },
-	{ &vop_unlock_desc,		(void *) vop_stdunlock },
-	{ &vop_getacl_desc,		vop_eopnotsupp },
-	{ &vop_setacl_desc,		vop_eopnotsupp },
-	{ &vop_aclcheck_desc,		vop_eopnotsupp },
-	{ &vop_getextattr_desc,		vop_eopnotsupp },
-	{ &vop_setextattr_desc,		vop_eopnotsupp },
-	{ &vop_nresolve_desc,		(void *) vop_compat_nresolve },
-	{ &vop_nlookupdotdot_desc,	(void *) vop_compat_nlookupdotdot },
-	{ &vop_ncreate_desc,		(void *) vop_compat_ncreate },
-	{ &vop_nmkdir_desc,		(void *) vop_compat_nmkdir },
-	{ &vop_nmknod_desc,		(void *) vop_compat_nmknod },
-	{ &vop_nlink_desc,		(void *) vop_compat_nlink },
-	{ &vop_nsymlink_desc,		(void *) vop_compat_nsymlink },
-	{ &vop_nwhiteout_desc,		(void *) vop_compat_nwhiteout },
-	{ &vop_nremove_desc,		(void *) vop_compat_nremove },
-	{ &vop_nrmdir_desc,		(void *) vop_compat_nrmdir },
-	{ &vop_nrename_desc,		(void *) vop_compat_nrename },
-	{ &vop_mountctl_desc,		(void *) journal_mountctl },
-	{ NULL, NULL }
+struct vop_ops default_vnode_vops = {
+	.vop_default		= vop_eopnotsupp,
+	.vop_advlock		= (void *)vop_einval,
+	.vop_fsync		= (void *)vop_null,
+	.vop_ioctl		= (void *)vop_enotty,
+	.vop_islocked		= vop_stdislocked,
+	.vop_lock		= vop_stdlock,
+	.vop_mmap		= (void *)vop_einval,
+	.vop_old_lookup		= vop_nolookup,
+	.vop_open		= vop_stdopen,
+	.vop_close		= vop_stdclose,
+	.vop_pathconf		= (void *)vop_einval,
+	.vop_poll		= vop_nopoll,
+	.vop_readlink		= (void *)vop_einval,
+	.vop_reallocblks	= (void *)vop_eopnotsupp,
+	.vop_revoke		= vop_stdrevoke,
+	.vop_strategy		= vop_nostrategy,
+	.vop_unlock		= vop_stdunlock,
+	.vop_getacl		= (void *)vop_eopnotsupp,
+	.vop_setacl		= (void *)vop_eopnotsupp,
+	.vop_aclcheck		= (void *)vop_eopnotsupp,
+	.vop_getextattr		= (void *)vop_eopnotsupp,
+	.vop_setextattr		= (void *)vop_eopnotsupp,
+	.vop_nresolve		= vop_compat_nresolve,
+	.vop_nlookupdotdot	= vop_compat_nlookupdotdot,
+	.vop_ncreate		= vop_compat_ncreate,
+	.vop_nmkdir		= vop_compat_nmkdir,
+	.vop_nmknod		= vop_compat_nmknod,
+	.vop_nlink		= vop_compat_nlink,
+	.vop_nsymlink		= vop_compat_nsymlink,
+	.vop_nwhiteout		= vop_compat_nwhiteout,
+	.vop_nremove		= vop_compat_nremove,
+	.vop_nrmdir		= vop_compat_nrmdir,
+	.vop_nrename		= vop_compat_nrename,
+	.vop_mountctl		= journal_mountctl
 };
 
-static struct vnodeopv_desc default_vnodeop_opv_desc =
-        { &default_vnode_vops, default_vnodeop_entries, 0 };
-
-VNODEOP_SET(default_vnodeop_opv_desc);
+VNODEOP_SET(default_vnode_vops);
 
 int
 vop_eopnotsupp(struct vop_generic_args *ap)
@@ -151,7 +146,7 @@ vop_null(struct vop_generic_args *ap)
 int
 vop_defaultop(struct vop_generic_args *ap)
 {
-	return (VOCALL(default_vnode_vops, ap));
+	return (VOCALL(&default_vnode_vops, ap));
 }
 
 int

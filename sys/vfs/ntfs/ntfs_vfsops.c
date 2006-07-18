@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.37 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.38 2006/07/18 22:22:15 dillon Exp $
  */
 
 
@@ -70,7 +70,7 @@
 #include "ntfs_ihash.h"
 #include "ntfsmount.h"
 
-extern struct vnodeopv_entry_desc ntfs_vnodeop_entries[];
+extern struct vop_ops ntfs_vnode_vops;
 
 #if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSMNT, "NTFS mount", "NTFS mount structure");
@@ -486,8 +486,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		(ntmp->ntm_flag & NTFS_MFLAG_ALLNAMES)?" allnames,":"",
 		ntmp->ntm_uid, ntmp->ntm_gid, ntmp->ntm_mode));
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 ntfs_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &ntfs_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	/*
 	 * We read in some system nodes to do not allow 

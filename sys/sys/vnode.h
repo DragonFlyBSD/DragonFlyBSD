@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.60 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.61 2006/07/18 22:22:15 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -188,8 +188,8 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
-	struct	mount *v_mount;			/* ptr to vfs we are in */
-	struct  vop_ops **v_ops;		/* vnode operations vector */
+	struct mount *v_mount;			/* ptr to vfs we are in */
+	struct vop_ops **v_ops;			/* vnode operations vector */
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
@@ -359,8 +359,8 @@ extern	int		vttoif_tab[];
 #define	NULLVP	((struct vnode *)NULL)
 
 #define	VNODEOP_SET(f) \
-	C_SYSINIT(f##init, SI_SUB_VFS, SI_ORDER_SECOND, vfs_add_vnodeops_sysinit, &f); \
-	C_SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_rm_vnodeops_sysinit, &f);
+	SYSINIT(f##init, SI_SUB_VFS, SI_ORDER_SECOND, vfs_nadd_vnodeops_sysinit, &f); \
+	SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_nrm_vnodeops_sysinit, &f);
 
 /*
  * Global vnode data.
@@ -459,28 +459,6 @@ extern struct lwkt_token mntvnode_token;
 
 typedef int (*vnodeopv_entry_t)(struct vop_generic_args *);
 
-/*
- * This structure is used to configure the new vnodeops vector.  The entry
- * descriptor describes a patricular VOP function while the operations
- * vector descriptor recursively describes arrays of entry descriptors.
- */
-struct vnodeopv_entry_desc {
-	struct vnodeop_desc *opve_op;
-	vnodeopv_entry_t opve_func;
-};
-
-struct vnodeopv_desc {
-	struct vop_ops **opv_desc_vector;	    /* vect to allocate/fill*/
-	struct vnodeopv_entry_desc *opv_desc_ops;   /* null terminated list */
-	int opv_flags;
-};
-
-struct vnodeopv_node {
-	TAILQ_ENTRY(vnodeopv_node)	entry;
-	struct vop_ops			*ops;	    /* allocated vector */
-	struct vnodeopv_entry_desc	*descs;	    /* null terminated list */
-};
-
 #ifdef DEBUG_VFS_LOCKS
 /*
  * Macros to aid in tracing VFS locking problems.  Not totally
@@ -553,11 +531,10 @@ int	speedup_syncer (void);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
 int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
-void	vfs_add_vnodeops_sysinit (const void *);
-void	vfs_rm_vnodeops_sysinit (const void *);
-void	vfs_add_vnodeops(struct mount *, struct vop_ops **,
-			struct vnodeopv_entry_desc *, int);
-void	vfs_rm_vnodeops(struct vop_ops **);
+void	vfs_nadd_vnodeops_sysinit (void *);
+void	vfs_nrm_vnodeops_sysinit (void *);
+void	vfs_add_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);
+void	vfs_rm_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
 int	vmntvnodescan(struct mount *mp, int flags,
 	    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
@@ -657,9 +634,13 @@ void	vfs_sync_init(void);
 void	vn_syncer_add_to_worklist(struct vnode *, int);
 void	vnlru_proc_wait(void);
 
-extern	struct vop_ops *default_vnode_vops;
-extern	struct vop_ops *spec_vnode_vops;
-extern	struct vop_ops *dead_vnode_vops;
+extern	struct vop_ops default_vnode_vops;
+extern	struct vop_ops spec_vnode_vops;
+extern	struct vop_ops dead_vnode_vops;
+
+extern	struct vop_ops *default_vnode_vops_p;
+extern	struct vop_ops *spec_vnode_vops_p;
+extern	struct vop_ops *dead_vnode_vops_p;
 
 #endif	/* _KERNEL */
 

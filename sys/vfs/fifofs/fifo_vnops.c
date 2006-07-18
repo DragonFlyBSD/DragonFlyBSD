@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.30 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.31 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,43 +92,39 @@ static struct filterops fiforead_filtops =
 static struct filterops fifowrite_filtops =
 	{ 1, NULL, filt_fifowdetach, filt_fifowrite };
   
-struct vop_ops *fifo_vnode_vops;
-static struct vnodeopv_entry_desc fifo_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) vop_ebadf },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) fifo_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) fifo_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) fifo_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) vop_ebadf },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) fifo_inactive },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) fifo_ioctl },
-	{ &vop_kqfilter_desc,		(vnodeopv_entry_t) fifo_kqfilter },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) fifo_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_open_desc,		(vnodeopv_entry_t) fifo_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) fifo_pathconf },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) fifo_poll },
-	{ &vop_print_desc,		(vnodeopv_entry_t) fifo_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) fifo_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_reallocblks_desc,	(vnodeopv_entry_t) fifo_badop },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) vop_null },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) fifo_badop },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) vop_ebadf },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) fifo_badop },
-	{ &vop_write_desc,		(vnodeopv_entry_t) fifo_write },
-	{ NULL, NULL }
+struct vop_ops fifo_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		(void *)vop_ebadf,
+	.vop_advlock =		fifo_advlock,
+	.vop_bmap =		fifo_bmap,
+	.vop_close =		fifo_close,
+	.vop_old_create =	(void *)fifo_badop,
+	.vop_getattr =		(void *)vop_ebadf,
+	.vop_inactive =		fifo_inactive,
+	.vop_ioctl =		fifo_ioctl,
+	.vop_kqfilter =		fifo_kqfilter,
+	.vop_old_link =		(void *)fifo_badop,
+	.vop_old_lookup =	fifo_lookup,
+	.vop_old_mkdir =	(void *)fifo_badop,
+	.vop_old_mknod =	(void *)fifo_badop,
+	.vop_open =		fifo_open,
+	.vop_pathconf =		fifo_pathconf,
+	.vop_poll =		fifo_poll,
+	.vop_print =		fifo_print,
+	.vop_read =		fifo_read,
+	.vop_readdir =		(void *)fifo_badop,
+	.vop_readlink =		(void *)fifo_badop,
+	.vop_reallocblks =	(void *)fifo_badop,
+	.vop_reclaim =		(void *)vop_null,
+	.vop_old_remove =	(void *)fifo_badop,
+	.vop_old_rename =	(void *)fifo_badop,
+	.vop_old_rmdir =	(void *)fifo_badop,
+	.vop_setattr =		(void *)vop_ebadf,
+	.vop_old_symlink =	(void *)fifo_badop,
+	.vop_write =		fifo_write
 };
-static struct vnodeopv_desc fifo_vnodeop_opv_desc =
-	{ &fifo_vnode_vops, fifo_vnodeop_entries, 0 };
 
-VNODEOP_SET(fifo_vnodeop_opv_desc);
+VNODEOP_SET(fifo_vnode_vops);
 
 static MALLOC_DEFINE(M_FIFOINFO, "Fifo info", "Fifo info entries");
 
@@ -138,7 +134,7 @@ static MALLOC_DEFINE(M_FIFOINFO, "Fifo info", "Fifo info entries");
 int
 fifo_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(fifo_vnode_vops, ap));
+	return (VOCALL(&fifo_vnode_vops, ap));
 }
 
 /*

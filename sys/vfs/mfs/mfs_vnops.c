@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.28 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.29 2006/07/18 22:22:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,29 +73,27 @@ static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
  * mfs vnode operations.  Note: the vops here are used for the MFS block
  * device, not for operations on files (MFS calls the ffs mount code for that)
  */
-struct vop_ops *mfs_vnode_vops;
-static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t) mfs_badop },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) mfs_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) mfs_close },
-	{ &vop_freeblks_desc,		(vnodeopv_entry_t) mfs_freeblks },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) mfs_fsync },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) mfs_getpages },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) mfs_inactive },
-	{ &vop_ioctl_desc,		vop_enotty },
-	{ &vop_islocked_desc,		vop_defaultop },
-	{ &vop_lock_desc,		vop_defaultop },
-	{ &vop_open_desc,		(vnodeopv_entry_t) mfs_open },
-	{ &vop_print_desc,		(vnodeopv_entry_t) mfs_print },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) mfs_reclaim },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) mfs_strategy },
-	{ &vop_unlock_desc,		vop_defaultop },
-	{ NULL, NULL }
+static struct vop_ops mfs_vnode_vops = {
+	.vop_default =		mfs_badop,
+	.vop_bmap =		mfs_bmap,
+	.vop_close =		mfs_close,
+	.vop_freeblks =		mfs_freeblks,
+	.vop_fsync =		mfs_fsync,
+	.vop_getpages =		mfs_getpages,
+	.vop_inactive =		mfs_inactive,
+	.vop_ioctl =		(void *)vop_enotty,
+	.vop_islocked =		(void *)vop_defaultop,
+	.vop_lock =		(void *)vop_defaultop,
+	.vop_open =		mfs_open,
+	.vop_print =		mfs_print,
+	.vop_reclaim =		mfs_reclaim,
+	.vop_strategy =		mfs_strategy,
+	.vop_unlock =		(void *)vop_defaultop
 };
-static struct vnodeopv_desc mfs_vnodeop_opv_desc =
-	{ &mfs_vnode_vops, mfs_vnodeop_entries, 0 };
 
-VNODEOP_SET(mfs_vnodeop_opv_desc);
+struct vop_ops *mfs_vnode_vops_p = &mfs_vnode_vops;
+
+VNODEOP_SET(mfs_vnode_vops);
 
 /*
  * Vnode Operations.
@@ -126,7 +124,7 @@ mfs_open(struct vop_open_args *ap)
 static int
 mfs_fsync(struct vop_fsync_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -446,5 +444,5 @@ mfs_badop(struct vop_generic_args *ap)
 static int
 mfs_getpages(struct vop_getpages_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, &ap->a_head));
+	return (VOCALL(&spec_vnode_vops, &ap->a_head));
 }

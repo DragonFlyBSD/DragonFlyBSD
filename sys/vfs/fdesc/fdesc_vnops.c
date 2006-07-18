@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.30 2006/05/24 03:23:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.31 2006/07/18 22:22:15 dillon Exp $
  */
 
 /*
@@ -537,19 +537,18 @@ fdesc_print(struct vop_print_args *ap)
 	return (0);
 }
 
-struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		vop_null },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) fdesc_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) fdesc_inactive },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) fdesc_lookup },
-	{ &vop_open_desc,		(vnodeopv_entry_t) fdesc_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) fdesc_poll },
-	{ &vop_print_desc,		(vnodeopv_entry_t) fdesc_print },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) fdesc_readdir },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) fdesc_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) fdesc_setattr },
-	{ NULL, NULL }
+struct vop_ops fdesc_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		(void *)vop_null,
+	.vop_getattr =		fdesc_getattr,
+	.vop_inactive =		fdesc_inactive,
+	.vop_old_lookup =	fdesc_lookup,
+	.vop_open =		fdesc_open,
+	.vop_pathconf =		vop_stdpathconf,
+	.vop_poll =		fdesc_poll,
+	.vop_print =		fdesc_print,
+	.vop_readdir =		fdesc_readdir,
+	.vop_reclaim =		fdesc_reclaim,
+	.vop_setattr =		fdesc_setattr
 };
 

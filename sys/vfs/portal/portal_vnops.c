@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.29 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.30 2006/07/18 22:22:16 dillon Exp $
  */
 
 /*
@@ -569,19 +569,18 @@ portal_badop(void)
 	/* NOTREACHED */
 }
 
-struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		vop_null },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) portal_badop },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) portal_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) portal_inactive },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) portal_lookup },
-	{ &vop_open_desc,		(vnodeopv_entry_t) portal_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
-	{ &vop_print_desc,		(vnodeopv_entry_t) portal_print },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) portal_readdir },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) portal_reclaim },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) portal_setattr },
-	{ NULL, NULL }
+struct vop_ops portal_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		(void *)vop_null,
+	.vop_bmap =		(void *)portal_badop,
+	.vop_getattr =		portal_getattr,
+	.vop_inactive =		portal_inactive,
+	.vop_old_lookup =	portal_lookup,
+	.vop_open =		portal_open,
+	.vop_pathconf =		vop_stdpathconf,
+	.vop_print =		portal_print,
+	.vop_readdir =		portal_readdir,
+	.vop_reclaim =		portal_reclaim,
+	.vop_setattr =		portal_setattr
 };
 

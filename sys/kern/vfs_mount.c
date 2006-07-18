@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.17 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.18 2006/07/18 22:22:12 dillon Exp $
  */
 
 /*
@@ -208,7 +208,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
  */
 int
 getspecialvnode(enum vtagtype tag, struct mount *mp,
-		struct vop_ops **ops_pp,
+		struct vop_ops **ops,
 		struct vnode **vpp, int lktimeout, int lkflags)
 {
 	struct vnode *vp;
@@ -216,7 +216,7 @@ getspecialvnode(enum vtagtype tag, struct mount *mp,
 	vp = allocvnode(lktimeout, lkflags);
 	vp->v_tag = tag;
 	vp->v_data = NULL;
-	vp->v_ops = ops_pp;
+	vp->v_ops = ops;
 
 	/*
 	 * Placing the vnode on the mount point's queue makes it visible.
@@ -1097,7 +1097,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 			vgone(vp);
 		} else {
 			vclean(vp, 0);
-			vp->v_ops = &spec_vnode_vops;
+			vp->v_ops = &spec_vnode_vops_p;
 			insmntque(vp, NULL);
 		}
 		return(0);

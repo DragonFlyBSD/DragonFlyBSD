@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.23 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.24 2006/07/18 22:22:16 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -58,7 +58,7 @@
 #include "nwfs_node.h"
 #include "nwfs_subr.h"
 
-extern struct vnodeopv_entry_desc nwfs_vnodeop_entries[];
+extern struct vop_ops nwfs_vnode_vops;
 
 int nwfs_debuglevel = 0;
 
@@ -203,8 +203,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	/* protect against invalid mount points */
 	nmp->m.mount_point[sizeof(nmp->m.mount_point)-1] = '\0';
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 nwfs_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &nwfs_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	vfs_getnewfsid(mp);
 	error = nwfs_root(mp, &vp);

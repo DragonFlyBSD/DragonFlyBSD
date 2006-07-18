@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.96 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.97 2006/07/18 22:22:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -376,11 +376,11 @@ update:
 		if ((error = VFS_START(mp, 0)) != 0)
 			vrele(vp);
 	} else {
-		vfs_rm_vnodeops(&mp->mnt_vn_coherency_ops);
-		vfs_rm_vnodeops(&mp->mnt_vn_journal_ops);
-		vfs_rm_vnodeops(&mp->mnt_vn_norm_ops);
-		vfs_rm_vnodeops(&mp->mnt_vn_spec_ops);
-		vfs_rm_vnodeops(&mp->mnt_vn_fifo_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
+		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
 		vp->v_flag &= ~VMOUNT;
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp);
@@ -629,11 +629,11 @@ dounmount(struct mount *mp, int flags)
 	 * Remove any installed vnode ops here so the individual VFSs don't
 	 * have to.
 	 */
-	vfs_rm_vnodeops(&mp->mnt_vn_coherency_ops);
-	vfs_rm_vnodeops(&mp->mnt_vn_journal_ops);
-	vfs_rm_vnodeops(&mp->mnt_vn_norm_ops);
-	vfs_rm_vnodeops(&mp->mnt_vn_spec_ops);
-	vfs_rm_vnodeops(&mp->mnt_vn_fifo_ops);
+	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
+	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
+	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
+	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_spec_ops);
+	vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_fifo_ops);
 
 	if ((coveredvp = mp->mnt_vnodecovered) != NULLVP) {
 		coveredvp->v_mountedhere = NULL;

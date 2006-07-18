@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.44 2006/05/07 19:17:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.45 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,44 +76,43 @@ static int	spec_read (struct vop_read_args *);
 static int	spec_strategy (struct vop_strategy_args *);
 static int	spec_write (struct vop_write_args *);
 
-struct vop_ops *spec_vnode_vops;
-struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		vop_ebadf },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) spec_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) spec_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) spec_close },
-	{ &vop_old_create_desc,		vop_panic },
-	{ &vop_freeblks_desc,		(vnodeopv_entry_t) spec_freeblks },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) spec_fsync },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) spec_getpages },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) spec_inactive },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) spec_ioctl },
-	{ &vop_old_link_desc,		vop_panic },
-	{ &vop_old_mkdir_desc,		vop_panic },
-	{ &vop_old_mknod_desc,		vop_panic },
-	{ &vop_open_desc,		(vnodeopv_entry_t) spec_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
-	{ &vop_poll_desc,		(vnodeopv_entry_t) spec_poll },
-	{ &vop_kqfilter_desc,		(vnodeopv_entry_t) spec_kqfilter },
-	{ &vop_print_desc,		(vnodeopv_entry_t) spec_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) spec_read },
-	{ &vop_readdir_desc,		vop_panic },
-	{ &vop_readlink_desc,		vop_panic },
-	{ &vop_reallocblks_desc,	vop_panic },
-	{ &vop_reclaim_desc,		vop_null },
-	{ &vop_old_remove_desc,		vop_panic },
-	{ &vop_old_rename_desc,		vop_panic },
-	{ &vop_old_rmdir_desc,		vop_panic },
-	{ &vop_setattr_desc,		vop_ebadf },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) spec_strategy },
-	{ &vop_old_symlink_desc,	vop_panic },
-	{ &vop_write_desc,		(vnodeopv_entry_t) spec_write },
-	{ NULL, NULL }
+struct vop_ops spec_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		(void *)vop_ebadf,
+	.vop_advlock =		spec_advlock,
+	.vop_bmap =		spec_bmap,
+	.vop_close =		spec_close,
+	.vop_old_create =	(void *)vop_panic,
+	.vop_freeblks =		spec_freeblks,
+	.vop_fsync =		spec_fsync,
+	.vop_getpages =		spec_getpages,
+	.vop_inactive =		spec_inactive,
+	.vop_ioctl =		spec_ioctl,
+	.vop_old_link =		(void *)vop_panic,
+	.vop_old_mkdir =	(void *)vop_panic,
+	.vop_old_mknod =	(void *)vop_panic,
+	.vop_open =		spec_open,
+	.vop_pathconf =		vop_stdpathconf,
+	.vop_poll =		spec_poll,
+	.vop_kqfilter =		spec_kqfilter,
+	.vop_print =		spec_print,
+	.vop_read =		spec_read,
+	.vop_readdir =		(void *)vop_panic,
+	.vop_readlink =		(void *)vop_panic,
+	.vop_reallocblks =	(void *)vop_panic,
+	.vop_reclaim =		(void *)vop_null,
+	.vop_old_remove =	(void *)vop_panic,
+	.vop_old_rename =	(void *)vop_panic,
+	.vop_old_rmdir =	(void *)vop_panic,
+	.vop_setattr =		(void *)vop_ebadf,
+	.vop_strategy =		spec_strategy,
+	.vop_old_symlink =	(void *)vop_panic,
+	.vop_write =		spec_write
 };
-static struct vnodeopv_desc spec_vnodeop_opv_desc =
-	{ &spec_vnode_vops, spec_vnodeop_entries, 0 };
-VNODEOP_SET(spec_vnodeop_opv_desc);
+
+struct vop_ops *spec_vnode_vops_p = &spec_vnode_vops;
+
+VNODEOP_SET(spec_vnode_vops);
 
 extern int dev_ref_debug;
 
@@ -123,7 +122,7 @@ extern int dev_ref_debug;
 int
 spec_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, ap));
+	return (VOCALL(&spec_vnode_vops, ap));
 }
 
 static void spec_getpages_iodone (struct bio *bio);

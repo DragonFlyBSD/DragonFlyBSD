@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.26 2006/05/14 18:07:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.27 2006/07/18 22:22:15 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -211,17 +211,16 @@ null_nrename(struct vop_nrename_args *ap)
 /*
  * Global vfs data structures
  */
-struct vnodeopv_entry_desc null_vnodeop_entries[] = {
-	{ &vop_nresolve_desc,		(vnodeopv_entry_t) null_nresolve },
-	{ &vop_ncreate_desc,		(vnodeopv_entry_t) null_ncreate },
-	{ &vop_nmkdir_desc,		(vnodeopv_entry_t) null_nmkdir },
-	{ &vop_nmknod_desc,		(vnodeopv_entry_t) null_nmknod },
-	{ &vop_nlink_desc,		(vnodeopv_entry_t) null_nlink },
-	{ &vop_nsymlink_desc,		(vnodeopv_entry_t) null_nsymlink },
-	{ &vop_nwhiteout_desc,		(vnodeopv_entry_t) null_nwhiteout },
-	{ &vop_nremove_desc,		(vnodeopv_entry_t) null_nremove },
-	{ &vop_nrmdir_desc,		(vnodeopv_entry_t) null_nrmdir },
-	{ &vop_nrename_desc,		(vnodeopv_entry_t) null_nrename },
-	{ NULL, NULL }
+struct vop_ops null_vnode_vops = {
+	.vop_nresolve =		null_nresolve,
+	.vop_ncreate =		null_ncreate,
+	.vop_nmkdir =		null_nmkdir,
+	.vop_nmknod =		null_nmknod,
+	.vop_nlink =		null_nlink,
+	.vop_nsymlink =		null_nsymlink,
+	.vop_nwhiteout =	null_nwhiteout,
+	.vop_nremove =		null_nremove,
+	.vop_nrmdir =		null_nrmdir,
+	.vop_nrename =		null_nrename
 };
 

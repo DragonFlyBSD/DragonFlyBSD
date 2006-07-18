@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.31 2006/06/13 12:31:57 corecode Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.32 2006/07/18 22:22:16 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -86,42 +86,41 @@ static int smbfs_pathconf(struct vop_pathconf_args *ap);
 static int smbfs_advlock(struct vop_advlock_args *);
 static int smbfs_getextattr(struct vop_getextattr_args *ap);
 
-struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) smbfs_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) smbfs_advlock },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) smbfs_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) smbfs_closel },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) smbfs_create },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) smbfs_fsync },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) smbfs_getattr },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) smbfs_getpages },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) smbfs_inactive },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) smbfs_ioctl },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) smbfs_link },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) smbfs_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) smbfs_mkdir },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) smbfs_mknod },
-	{ &vop_open_desc,		(vnodeopv_entry_t) smbfs_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) smbfs_pathconf },
-	{ &vop_print_desc,		(vnodeopv_entry_t) smbfs_print },
-	{ &vop_putpages_desc,		(vnodeopv_entry_t) smbfs_putpages },
-	{ &vop_read_desc,		(vnodeopv_entry_t) smbfs_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) smbfs_readdir },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) smbfs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) smbfs_remove },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) smbfs_rename },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) smbfs_rmdir },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) smbfs_setattr },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) smbfs_strategy },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) smbfs_symlink },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) smbfs_write },
-	{ &vop_getextattr_desc, 	(vnodeopv_entry_t) smbfs_getextattr },
-/*	{ &vop_setextattr_desc,		(vnodeopv_entry_t) smbfs_setextattr },*/
-	{ NULL, NULL }
+struct vop_ops smbfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		smbfs_access,
+	.vop_advlock =		smbfs_advlock,
+	.vop_bmap =		smbfs_bmap,
+	.vop_close =		smbfs_closel,
+	.vop_old_create =	smbfs_create,
+	.vop_fsync =		smbfs_fsync,
+	.vop_getattr =		smbfs_getattr,
+	.vop_getpages =		smbfs_getpages,
+	.vop_inactive =		smbfs_inactive,
+	.vop_ioctl =		smbfs_ioctl,
+	.vop_islocked =		vop_stdislocked,
+	.vop_old_link =		smbfs_link,
+	.vop_lock =		vop_stdlock,
+	.vop_old_lookup =	smbfs_lookup,
+	.vop_old_mkdir =	smbfs_mkdir,
+	.vop_old_mknod =	smbfs_mknod,
+	.vop_open =		smbfs_open,
+	.vop_pathconf =		smbfs_pathconf,
+	.vop_print =		smbfs_print,
+	.vop_putpages =		smbfs_putpages,
+	.vop_read =		smbfs_read,
+	.vop_readdir =		smbfs_readdir,
+	.vop_reclaim =		smbfs_reclaim,
+	.vop_old_remove =	smbfs_remove,
+	.vop_old_rename =	smbfs_rename,
+	.vop_old_rmdir =	smbfs_rmdir,
+	.vop_setattr =		smbfs_setattr,
+	.vop_strategy =		smbfs_strategy,
+	.vop_old_symlink =	smbfs_symlink,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		smbfs_write,
+	.vop_getextattr = 	smbfs_getextattr
+/*	.vop_setextattr =	smbfs_setextattr */
 };
 
 /*

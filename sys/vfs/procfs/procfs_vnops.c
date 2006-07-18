@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.33 2006/05/26 16:56:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.34 2006/07/18 22:22:16 dillon Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 #include <machine/limits.h>
 
 static int	procfs_access (struct vop_access_args *);
-static int	procfs_badop (void);
+static int	procfs_badop (struct vop_generic_args *);
 static int	procfs_bmap (struct vop_bmap_args *);
 static int	procfs_close (struct vop_close_args *);
 static int	procfs_getattr (struct vop_getattr_args *);
@@ -82,6 +82,39 @@ static int	procfs_setattr (struct vop_setattr_args *);
 
 static int	procfs_readdir_proc(struct vop_readdir_args *);
 static int	procfs_readdir_root(struct vop_readdir_args *);
+
+/*
+ * procfs vnode operations.
+ */
+struct vop_ops procfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		procfs_access,
+	.vop_advlock =		(void *)procfs_badop,
+	.vop_bmap =		procfs_bmap,
+	.vop_close =		procfs_close,
+	.vop_old_create =	(void *)procfs_badop,
+	.vop_getattr =		procfs_getattr,
+	.vop_inactive =		procfs_inactive,
+	.vop_old_link =		(void *)procfs_badop,
+	.vop_old_lookup =	procfs_lookup,
+	.vop_old_mkdir =	(void *)procfs_badop,
+	.vop_old_mknod =	(void *)procfs_badop,
+	.vop_open =		procfs_open,
+	.vop_pathconf =		vop_stdpathconf,
+	.vop_print =		procfs_print,
+	.vop_read =		procfs_rw,
+	.vop_readdir =		procfs_readdir,
+	.vop_readlink =		procfs_readlink,
+	.vop_reclaim =		procfs_reclaim,
+	.vop_old_remove =	(void *)procfs_badop,
+	.vop_old_rename =	(void *)procfs_badop,
+	.vop_old_rmdir =	(void *)procfs_badop,
+	.vop_setattr =		procfs_setattr,
+	.vop_old_symlink =	(void *)procfs_badop,
+	.vop_write =		(void *)procfs_rw,
+	.vop_ioctl =		procfs_ioctl
+};
+
 
 /*
  * This is a list of the valid names in the
@@ -393,7 +426,7 @@ procfs_print(struct vop_print_args *ap)
  * generic entry point for unsupported operations
  */
 static int
-procfs_badop(void)
+procfs_badop(struct vop_generic_args *ap)
 {
 	return (EIO);
 }
@@ -1051,37 +1084,4 @@ atopid(const char *b, u_int len)
 
 	return (p);
 }
-
-/*
- * procfs vnode operations.
- */
-struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) procfs_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) procfs_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t) procfs_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) procfs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) procfs_inactive },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) procfs_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_open_desc,		(vnodeopv_entry_t) procfs_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) vop_stdpathconf },
-	{ &vop_print_desc,		(vnodeopv_entry_t) procfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) procfs_rw },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) procfs_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t) procfs_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) procfs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) procfs_badop },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) procfs_setattr },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) procfs_badop },
-	{ &vop_write_desc,		(vnodeopv_entry_t) procfs_rw },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t) procfs_ioctl },
-	{ NULL, NULL }
-};
 

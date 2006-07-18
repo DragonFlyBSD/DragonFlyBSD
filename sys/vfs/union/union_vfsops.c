@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.23 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.24 2006/07/18 22:22:16 dillon Exp $
  */
 
 /*
@@ -56,7 +56,7 @@
 #include "union.h"
 #include <vm/vm_zone.h>
 
-extern struct vnodeopv_entry_desc union_vnodeop_entries[];
+extern struct vop_ops union_vnode_vops;
 
 static MALLOC_DEFINE(M_UNIONFSMNT, "UNION mount", "UNION mount structure");
 
@@ -272,8 +272,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	(void) copyinstr(args.target, cp, len - 1, &size);
 	bzero(cp + size, len - size);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops,
-			 union_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &union_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	(void)union_statfs(mp, &mp->mnt_stat, cred);
 

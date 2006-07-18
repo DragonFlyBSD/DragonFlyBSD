@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.44 2006/05/26 17:07:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.45 2006/07/18 22:22:16 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -87,10 +87,9 @@ static struct vfsops ufs_vfsops = {
 
 VFS_SET(ufs_vfsops, ufs, 0);
 
-extern struct vnodeopv_entry_desc ffs_vnodeop_entries[];
-extern struct vnodeopv_entry_desc ffs_specop_entries[];
-extern struct vnodeopv_entry_desc ffs_fifoop_entries[];
-
+extern struct vop_ops ffs_vnode_vops;
+extern struct vop_ops ffs_spec_vops;
+extern struct vop_ops ffs_fifo_vops;
 
 /*
  * ffs_mount
@@ -625,6 +624,11 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		mp->mnt_iosize_max = MAXPHYS;
 
 	/*
+	 * Filesystem supports native FSMIDs
+	 */
+	mp->mnt_kern_flag |= MNTK_FSMID;
+
+	/*
 	 * The backing device must be VMIO-capable because we use getblk().
 	 * NOTE: the MFS driver now returns a VMIO-enabled descriptor.
 	 * The VOP_OPEN() call above should have associated a VM object
@@ -762,9 +766,9 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		fs->fs_clean = 0;
 		(void) ffs_sbupdate(ump, MNT_WAIT);
 	}
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ffs_vnodeop_entries, VVF_SUPPORTS_FSMID);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, ffs_specop_entries, VVF_SUPPORTS_FSMID);
-	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, ffs_fifoop_entries, VVF_SUPPORTS_FSMID); 
+	vfs_add_vnodeops(mp, &ffs_vnode_vops, &mp->mnt_vn_norm_ops);
+	vfs_add_vnodeops(mp, &ffs_spec_vops, &mp->mnt_vn_spec_ops);
+	vfs_add_vnodeops(mp, &ffs_fifo_vops, &mp->mnt_vn_fifo_ops);
 
 	return (0);
 out:

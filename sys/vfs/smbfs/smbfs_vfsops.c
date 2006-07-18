@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.27 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.28 2006/07/18 22:22:16 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -60,7 +60,7 @@
 
 #include <sys/buf.h>
 
-extern struct vnodeopv_entry_desc smbfs_vnodeop_entries[];
+extern struct vop_ops smbfs_vnode_vops;
 
 int smbfs_debuglevel = 0;
 
@@ -199,8 +199,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	smp->sm_args.mount_point[sizeof(smp->sm_args.mount_point) - 1] = '\0';
 	vfs_getnewfsid(mp);
 
-	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, 
-			 smbfs_vnodeop_entries, 0);
+	vfs_add_vnodeops(mp, &smbfs_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	error = smbfs_root(mp, &vp);
 	if (error)

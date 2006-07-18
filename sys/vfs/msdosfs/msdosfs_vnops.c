@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.38 2006/05/26 16:56:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.39 2006/07/18 22:22:15 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1970,36 +1970,35 @@ msdosfs_putpages(struct vop_putpages_args *ap)
 }
 
 /* Global vfs data structures for msdosfs */
-struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t) msdosfs_access },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t) msdosfs_bmap },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t) msdosfs_lookup },
-	{ &vop_open_desc,		(vnodeopv_entry_t) msdosfs_open },
-	{ &vop_close_desc,		(vnodeopv_entry_t) msdosfs_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t) msdosfs_create },
-	{ &vop_fsync_desc,		(vnodeopv_entry_t) msdosfs_fsync },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t) msdosfs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t) msdosfs_inactive },
-	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t) msdosfs_link },
-	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t) msdosfs_mkdir },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t) msdosfs_mknod },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t) msdosfs_pathconf },
-	{ &vop_print_desc,		(vnodeopv_entry_t) msdosfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t) msdosfs_read },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t) msdosfs_readdir },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t) msdosfs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t) msdosfs_remove },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t) msdosfs_rename },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t) msdosfs_rmdir },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t) msdosfs_setattr },
-	{ &vop_strategy_desc,		(vnodeopv_entry_t) msdosfs_strategy },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t) msdosfs_symlink },
-	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
-	{ &vop_write_desc,		(vnodeopv_entry_t) msdosfs_write },
-	{ &vop_getpages_desc,		(vnodeopv_entry_t) msdosfs_getpages },
-	{ &vop_putpages_desc,		(vnodeopv_entry_t) msdosfs_putpages },
-	{ NULL, NULL }
+struct vop_ops msdosfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		msdosfs_access,
+	.vop_bmap =		msdosfs_bmap,
+	.vop_old_lookup =	msdosfs_lookup,
+	.vop_open =		msdosfs_open,
+	.vop_close =		msdosfs_close,
+	.vop_old_create =	msdosfs_create,
+	.vop_fsync =		msdosfs_fsync,
+	.vop_getattr =		msdosfs_getattr,
+	.vop_inactive =		msdosfs_inactive,
+	.vop_islocked =		vop_stdislocked,
+	.vop_old_link =		msdosfs_link,
+	.vop_lock =		vop_stdlock,
+	.vop_old_mkdir =	msdosfs_mkdir,
+	.vop_old_mknod =	msdosfs_mknod,
+	.vop_pathconf =		msdosfs_pathconf,
+	.vop_print =		msdosfs_print,
+	.vop_read =		msdosfs_read,
+	.vop_readdir =		msdosfs_readdir,
+	.vop_reclaim =		msdosfs_reclaim,
+	.vop_old_remove =	msdosfs_remove,
+	.vop_old_rename =	msdosfs_rename,
+	.vop_old_rmdir =	msdosfs_rmdir,
+	.vop_setattr =		msdosfs_setattr,
+	.vop_strategy =		msdosfs_strategy,
+	.vop_old_symlink =	msdosfs_symlink,
+	.vop_unlock =		vop_stdunlock,
+	.vop_write =		msdosfs_write,
+	.vop_getpages =		msdosfs_getpages,
+	.vop_putpages =		msdosfs_putpages
 };

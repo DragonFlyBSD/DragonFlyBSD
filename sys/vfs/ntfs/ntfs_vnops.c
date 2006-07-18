@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.33 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.34 2006/07/18 22:22:15 dillon Exp $
  *
  */
 
@@ -101,7 +101,7 @@ static int	ntfs_fsync (struct vop_fsync_args *ap);
 #else
 static int	ntfs_bypass (struct vop_generic_args *);
 #endif
-static int	ntfs_pathconf (void *);
+static int	ntfs_pathconf (struct vop_pathconf_args *);
 
 int	ntfs_prtactive = 1;	/* 1 => print out reclaim of active vnodes */
 
@@ -797,14 +797,8 @@ ntfs_fsync(struct vop_fsync_args *ap)
  * Return POSIX pathconf information applicable to NTFS filesystem
  */
 int
-ntfs_pathconf(void *v)
+ntfs_pathconf(struct vop_pathconf_args *ap)
 {
-	struct vop_pathconf_args /* {
-		struct vnode *a_vp;
-		int a_name;
-		register_t *a_retval;
-	} */ *ap = v;
-
 	switch (ap->a_name) {
 	case _PC_LINK_MAX:
 		*ap->a_retval = 1;
@@ -838,33 +832,27 @@ ntfs_pathconf(void *v)
 /*
  * Global vfs data structures
  */
-struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
-	{ &vop_default_desc,	vop_defaultop },
-
-	{ &vop_getattr_desc,	(vnodeopv_entry_t)ntfs_getattr },
-	{ &vop_inactive_desc,	(vnodeopv_entry_t)ntfs_inactive },
-	{ &vop_reclaim_desc,	(vnodeopv_entry_t)ntfs_reclaim },
-	{ &vop_print_desc,	(vnodeopv_entry_t)ntfs_print },
-	{ &vop_pathconf_desc,	(vnodeopv_entry_t)ntfs_pathconf },
-
-	{ &vop_islocked_desc,	(vnodeopv_entry_t)vop_stdislocked },
-	{ &vop_unlock_desc,	(vnodeopv_entry_t)vop_stdunlock },
-	{ &vop_lock_desc,	(vnodeopv_entry_t)vop_stdlock },
-	{ &vop_old_lookup_desc,	(vnodeopv_entry_t)ntfs_lookup },
-
-	{ &vop_access_desc,	(vnodeopv_entry_t)ntfs_access },
-	{ &vop_close_desc,	(vnodeopv_entry_t)ntfs_close },
-	{ &vop_open_desc,	(vnodeopv_entry_t)ntfs_open },
-	{ &vop_readdir_desc,	(vnodeopv_entry_t)ntfs_readdir },
-	{ &vop_fsync_desc,	(vnodeopv_entry_t)ntfs_fsync },
-
-	{ &vop_bmap_desc,	(vnodeopv_entry_t)ntfs_bmap },
-	{ &vop_getpages_desc,	(vnodeopv_entry_t)ntfs_getpages },
-	{ &vop_putpages_desc,	(vnodeopv_entry_t)ntfs_putpages },
-	{ &vop_strategy_desc,	(vnodeopv_entry_t)ntfs_strategy },
-	{ &vop_read_desc,	(vnodeopv_entry_t)ntfs_read },
-	{ &vop_write_desc,	(vnodeopv_entry_t)ntfs_write },
-
-	{ NULL, NULL }
+struct vop_ops ntfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_getattr =		ntfs_getattr,
+	.vop_inactive =		ntfs_inactive,
+	.vop_reclaim =		ntfs_reclaim,
+	.vop_print =		ntfs_print,
+	.vop_pathconf =		ntfs_pathconf,
+	.vop_islocked =		vop_stdislocked,
+	.vop_unlock =		vop_stdunlock,
+	.vop_lock =		vop_stdlock,
+	.vop_old_lookup =	ntfs_lookup,
+	.vop_access =		ntfs_access,
+	.vop_close =		ntfs_close,
+	.vop_open =		ntfs_open,
+	.vop_readdir =		ntfs_readdir,
+	.vop_fsync =		ntfs_fsync,
+	.vop_bmap =		ntfs_bmap,
+	.vop_getpages =		ntfs_getpages,
+	.vop_putpages =		ntfs_putpages,
+	.vop_strategy =		ntfs_strategy,
+	.vop_read =		ntfs_read,
+	.vop_write =		ntfs_write
 };
 

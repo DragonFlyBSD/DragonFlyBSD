@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.31 2006/05/24 17:44:01 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.32 2006/07/18 22:22:11 dillon Exp $
  */
 
 /*
@@ -69,7 +69,7 @@
 extern struct vnode *procfs_findtextvp (struct proc *);
 
 static int	linprocfs_access (struct vop_access_args *);
-static int	linprocfs_badop (void);
+static int	linprocfs_badop (struct vop_generic_args *);
 static int	linprocfs_bmap (struct vop_bmap_args *);
 static int	linprocfs_close (struct vop_close_args *);
 static int	linprocfs_getattr (struct vop_getattr_args *);
@@ -85,6 +85,38 @@ static int	linprocfs_setattr (struct vop_setattr_args *);
 
 static int	linprocfs_readdir_proc(struct vop_readdir_args *);
 static int	linprocfs_readdir_root(struct vop_readdir_args *);
+
+/*
+ * procfs vnode operations.
+ */
+struct vop_ops linprocfs_vnode_vops = {
+	.vop_default =		vop_defaultop,
+	.vop_access =		linprocfs_access,
+	.vop_advlock =		(void *)linprocfs_badop,
+	.vop_bmap =		linprocfs_bmap,
+	.vop_close =		linprocfs_close,
+	.vop_old_create =	(void *)linprocfs_badop,
+	.vop_getattr =		linprocfs_getattr,
+	.vop_inactive =		linprocfs_inactive,
+	.vop_old_link =		(void *)linprocfs_badop,
+	.vop_old_lookup =	linprocfs_lookup,
+	.vop_old_mkdir =	(void *)linprocfs_badop,
+	.vop_old_mknod =	(void *)linprocfs_badop,
+	.vop_open =		linprocfs_open,
+	.vop_pathconf =		vop_stdpathconf,
+	.vop_print =		linprocfs_print,
+	.vop_read =		(void *)linprocfs_rw,
+	.vop_readdir =		linprocfs_readdir,
+	.vop_readlink =		linprocfs_readlink,
+	.vop_reclaim =		linprocfs_reclaim,
+	.vop_old_remove =	(void *)linprocfs_badop,
+	.vop_old_rename =	(void *)linprocfs_badop,
+	.vop_old_rmdir =	(void *)linprocfs_badop,
+	.vop_setattr =		linprocfs_setattr,
+	.vop_old_symlink =	(void *)linprocfs_badop,
+	.vop_write =		(void *)linprocfs_rw,
+	.vop_ioctl =		linprocfs_ioctl
+};
 
 /*
  * This is a list of the valid names in the
@@ -353,7 +385,7 @@ linprocfs_print(struct vop_print_args *ap)
  * generic entry point for unsupported operations
  */
 static int
-linprocfs_badop(void)
+linprocfs_badop(struct vop_generic_args *ap __unused)
 {
 
 	return (EIO);
@@ -1048,35 +1080,3 @@ atopid(const char *b, u_int len)
 	return (p);
 }
 
-/*
- * procfs vnode operations.
- */
-struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vnodeopv_entry_t)vop_defaultop },
-	{ &vop_access_desc,		(vnodeopv_entry_t)linprocfs_access },
-	{ &vop_advlock_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_bmap_desc,		(vnodeopv_entry_t)linprocfs_bmap },
-	{ &vop_close_desc,		(vnodeopv_entry_t)linprocfs_close },
-	{ &vop_old_create_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_getattr_desc,		(vnodeopv_entry_t)linprocfs_getattr },
-	{ &vop_inactive_desc,		(vnodeopv_entry_t)linprocfs_inactive },
-	{ &vop_old_link_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_old_lookup_desc,		(vnodeopv_entry_t)linprocfs_lookup },
-	{ &vop_old_mkdir_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_old_mknod_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_open_desc,		(vnodeopv_entry_t)linprocfs_open },
-	{ &vop_pathconf_desc,		(vnodeopv_entry_t)vop_stdpathconf },
-	{ &vop_print_desc,		(vnodeopv_entry_t)linprocfs_print },
-	{ &vop_read_desc,		(vnodeopv_entry_t)linprocfs_rw },
-	{ &vop_readdir_desc,		(vnodeopv_entry_t)linprocfs_readdir },
-	{ &vop_readlink_desc,		(vnodeopv_entry_t)linprocfs_readlink },
-	{ &vop_reclaim_desc,		(vnodeopv_entry_t)linprocfs_reclaim },
-	{ &vop_old_remove_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_old_rename_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_old_rmdir_desc,		(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_setattr_desc,		(vnodeopv_entry_t)linprocfs_setattr },
-	{ &vop_old_symlink_desc,	(vnodeopv_entry_t)linprocfs_badop },
-	{ &vop_write_desc,		(vnodeopv_entry_t)linprocfs_rw },
-	{ &vop_ioctl_desc,		(vnodeopv_entry_t)linprocfs_ioctl },
-	{ NULL, NULL }
-};
