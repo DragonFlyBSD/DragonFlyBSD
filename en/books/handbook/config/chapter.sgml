@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: /usr/local/www/cvsroot/FreeBSD/doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.169 2004/08/27 12:04:24 blackend Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.11 2006/07/12 04:00:59 justin Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.12 2006/07/18 02:02:17 justin Exp $
 -->
 
 <chapter id="config-tuning">
@@ -470,7 +470,6 @@ exit 0
     <!-- todo: add up-to-date crontab -->
     <programlisting># /etc/crontab - root's crontab for &os;
 #
-# &dollar;&os;: src/etc/crontab,v 1.32 2002/11/22 16:13:39 tom Exp &dollar;
 # <co id="co-comments">
 #
 SHELL=/bin/sh
@@ -1323,7 +1322,7 @@ nameserver 147.11.100.30</programlisting>
 	  local record of Internet names, reducing the need to query
 	  externally for commonly accessed names.</para>
 
-	<programlisting># &dollar;&os;&dollar;
+	<programlisting># 
 #
 # Host Database
 # This file should contain the addresses and aliases
@@ -1382,7 +1381,7 @@ nameserver 147.11.100.30</programlisting>
 	  of <command>syslog</command> messages are logged to particular
 	  log files.</para>
 
-	<programlisting># &dollar;&os;&dollar;
+	<programlisting># 
 #
 #       Spaces ARE valid field separators in this file. However,
 #       other *nix-like systems still insist on using tabs as field
@@ -1442,7 +1441,7 @@ cron.*                                          /var/log/cron
 	  certain periodic time/date.</para>
 
 	<programlisting># configuration file for newsyslog
-# &dollar;&os;&dollar;
+# 
 #
 # filename          [owner:group]    mode count size when [ZB] [/pid_file] [sig_num]
 /var/log/cron                           600  3     100  *     Z
