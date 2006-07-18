@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.13 2006/04/29 22:05:21 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.14 2006/07/18 02:03:11 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -386,6 +386,7 @@ struct usbd_pipe_methods uhci_device_isoc_methods = {
 	LIST_INSERT_HEAD(&(sc)->sc_intrhead, (ii), list)
 #define uhci_del_intr_info(ii) \
 	do { \
+		++ii->sc->sc_intrhead_deletion_counter; \
 		LIST_REMOVE((ii), list); \
 		(ii)->list.le_prev = NULL; \
 	} while (0)
@@ -1254,6 +1255,7 @@ uhci_softintr(void *v)
 {
 	uhci_softc_t *sc = v;
 	uhci_intr_info_t *ii;
+	int last_deletion_counter;
 
 	DPRINTFN(10,("%s: uhci_softintr (%d)\n", USBDEVNAME(sc->sc_bus.bdev),
 		     sc->sc_bus.intr_context));
@@ -1270,9 +1272,17 @@ uhci_softintr(void *v)
 	 * output on a slow console).
 	 * We scan all interrupt descriptors to see if any have
 	 * completed.
+	 *
+	 * XXX horrible hack - use a counter to detect if  the list is
+	 * modified out from under us and rescan if it is.
 	 */
-	LIST_FOREACH(ii, &sc->sc_intrhead, list)
+again:
+	last_deletion_counter = sc->sc_intrhead_deletion_counter;
+	LIST_FOREACH(ii, &sc->sc_intrhead, list) {
 		uhci_check_intr(sc, ii);
+		if (sc->sc_intrhead_deletion_counter != last_deletion_counter)
+			goto again;
+	}
 
 #ifdef USB_USE_SOFTINTR
 	if (sc->sc_softwake) {

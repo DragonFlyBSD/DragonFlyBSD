@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhcivar.h,v 1.33 2002/02/11 11:41:30 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhcivar.h,v 1.36 2003/07/15 23:19:49 jmg Exp $
- * $DragonFly: src/sys/bus/usb/uhcivar.h,v 1.4 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/uhcivar.h,v 1.5 2006/07/18 02:03:11 dillon Exp $
  */
 
 /*
@@ -179,6 +179,7 @@ typedef struct uhci_softc {
 	char sc_dying;
 
 	LIST_HEAD(, uhci_intr_info) sc_intrhead;
+	int  sc_intrhead_deletion_counter;
 
 	/* Info for the root hub interrupt channel. */
 	int sc_ival;			/* time between root hub intrs */
