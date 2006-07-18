@@ -1,7 +1,7 @@
 <!--
      Names of DragonFly mailing lists and related software.
 
-     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.8 2005/09/06 00:28:14 reed Exp $
+     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.9 2006/07/18 03:44:23 justin Exp $
 -->
 
 <!ENTITY a.bugs.url "http://leaf.dragonflybsd.org/mailarchive/">
@@ -64,3 +64,16 @@
 <!ENTITY a.freebsd.ports-bugs.url "&a.freebsd.lists.url;/freebsd-ports-bugs">
 <!ENTITY a.freebsd.ports-bugs "<ulink url='&a.freebsd.ports-bugs.url;'>FreeBSD ports bugs mailing list</ulink>">
 <!ENTITY a.freebsd.ports-bugs.name "<ulink url='&a.freebsd.ports-bugs.url;'>freebsd-ports-bugs</ulink>">
+
+<!ENTITY a.netbsd.lists.url "http://www.netbsd.org/MailingLists">
+<!ENTITY a.netbsd.lists "<ulink url='&a.netbsd.lists.url;'>&os.netbsd; mailing lists</ulink>">         
+<!ENTITY a.netbsd.lists.name "<ulink url='&a.netbsd.lists.url;'>&os.netbsd; mailing lists</ulink>">
+
+<!ENTITY a.netbsd.pkgsrc-users.url "&a.netbsd.lists.url;/pkgsrc-users">
+<!ENTITY a.netbsd.pkgsrc-users"<ulink url='&a.netbsd.pkgsrc-users.url;'>NetBSD pkgsrc users mailing list</ulink>">
+<!ENTITY a.netbsd.pkgsrc-bugs.name "<ulink url='&a.netbsd.pkgsrc-users.url;'>pkgsrc-users</ulink>">
+
+<!ENTITY a.netbsd.tech-pkgsrc.url "&a.netbsd.lists.url;/tech-pkgsrc">
+<!ENTITY a.netbsd.tech-pkgsrc"<ulink url='&a.netbsd.tech-pkgsrc.url;'>NetBSD pkgsrc users mailing list</ulink>">
+<!ENTITY a.netbsd.pkgsrc-bugs.name "<ulink url='&a.netbsd.tech-pkgsrc.url;'>tech-pkgsrc</ulink>">
+
