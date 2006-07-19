@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.13 2006/05/20 03:28:07 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.14 2006/07/19 13:38:56 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.12 2006/03/25 06:52:44 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.13 2006/05/20 03:24:53 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -6869,6 +6869,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "RIVA TNT2 Model 64",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP04_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP04 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP04_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP04 Lan",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GEFORCE6800U,
 	    0,
 	    "Nvidia Corporation",
@@ -6899,6 +6911,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Quadro FX 4000",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_CK804_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "CK804 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_CK804_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "CK804 Lan",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MCP2ISA,
 	    0,
 	    "Nvidia Corporation",
@@ -6917,6 +6941,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "nForce2 ATA133 IDE",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_LAN,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Lan",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MCPT_AC,
 	    0,
 	    "Nvidia Corporation",
@@ -6933,6 +6963,24 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "nForce PCI-to-PCI Bridge",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce3 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce3 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_ALADDINTNT2,
+	    0,
+	    "Nvidia Corporation",
+	    "Aladdin TNT2",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_PCHB,
@@ -6959,6 +7007,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "nForce3 ATA133 IDE",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce3 Lan",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_OHCI,
 	    0,
 	    "Nvidia Corporation",
@@ -6980,13 +7034,19 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_PPB,
 	    0,
 	    "Nvidia Corporation",
-	    "nforce3 PCI-PCI bridge",
+	    "nForce3 PCI-PCI bridge",
 	},
 	{
-	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_ALADDINTNT2,
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN4,
 	    0,
 	    "Nvidia Corporation",
-	    "Aladdin TNT2",
+	    "nForce3 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE3_LAN5,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce3 Lan",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_QUADROFX3400,
@@ -7205,6 +7265,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "nForce ATA100 IDE",
 	},
 	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE_LAN,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce Lan",
+	},
+	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_AGP,
 	    0,
 	    "Nvidia Corporation",
@@ -7323,6 +7389,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro4 700 XGL",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP51_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP51 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP51_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP51 Lan",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF4_TI_4800,
@@ -7539,6 +7617,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "Quadro FX 1100",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP55_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP55 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP55_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP55 Lan",
 	},
 	{
 	    PCI_VENDOR_NVIDIA_SGS, PCI_PRODUCT_NVIDIA_SGS_RIVA128,
