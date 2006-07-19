@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.34 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.35 2006/07/19 06:08:11 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -2252,7 +2252,7 @@ VNODEOP_SET(ext2_spec_vops);
 VNODEOP_SET(ext2_fifo_vops);
 
 /*
- * ext2_vnoperate(struct vnodeop_desc *a_desc)
+ * ext2_vnoperate()
  */
 int
 ext2_vnoperate(struct vop_generic_args *ap)
@@ -2261,7 +2261,7 @@ ext2_vnoperate(struct vop_generic_args *ap)
 }
 
 /*
- * ext2_vnoperatefifo(struct vnodeop_desc *a_desc)
+ * ext2_vnoperatefifo()
  */
 int
 ext2_vnoperatefifo(struct vop_generic_args *ap)
@@ -2270,7 +2270,7 @@ ext2_vnoperatefifo(struct vop_generic_args *ap)
 }
 
 /*
- * ext2_vnoperatespec(struct vnodeop_desc *a_desc)
+ * ext2_vnoperatespec()
  */
 int
 ext2_vnoperatespec(struct vop_generic_args *ap)

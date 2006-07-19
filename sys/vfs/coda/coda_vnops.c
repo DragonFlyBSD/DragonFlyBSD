@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.40 2006/07/19 05:59:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.41 2006/07/19 06:08:09 dillon Exp $
  * 
  */
 
@@ -185,10 +185,10 @@ struct vop_ops coda_vnode_ops = {
 int
 coda_vop_error(struct vop_generic_args *ap)
 {
-    struct vnodeop_desc *desc = ap->a_desc;
+    struct syslink_desc *desc = ap->a_desc;
 
     myprintf(("coda_vop_error: Vnode operation %s called, but not defined.\n",
-	      desc->vdesc_name));
+	      desc->sd_name));
     /*
     panic("coda_vop_error");
     */
@@ -199,11 +199,11 @@ coda_vop_error(struct vop_generic_args *ap)
 int
 coda_vop_nop(struct vop_generic_args *ap)
 {
-    struct vnodeop_desc *desc = ap->a_desc;
+    struct syslink_desc *desc = ap->a_desc;
 
     if (codadebug) {
 	myprintf(("Vnode operation %s called, but unsupported\n",
-		  desc->vdesc_name));
+		  desc->sd_name));
     } 
    return (0);
 }

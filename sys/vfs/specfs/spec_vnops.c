@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.45 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.46 2006/07/19 06:08:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ VNODEOP_SET(spec_vnode_vops);
 extern int dev_ref_debug;
 
 /*
- * spec_vnoperate(struct vnodeop_desc *a_desc, ...)
+ * spec_vnoperate()
  */
 int
 spec_vnoperate(struct vop_generic_args *ap)

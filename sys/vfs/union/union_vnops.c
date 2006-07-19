@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.30 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.31 2006/07/19 06:08:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -275,8 +275,8 @@ union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
 }
 
 /*
- * union_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *		struct vnode **a_vpp, struct componentname *a_cnp)
+ * union_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp)
  */
 static int
 union_lookup(struct vop_old_lookup_args *ap)
@@ -700,7 +700,7 @@ union_mknod(struct vop_old_mknod_args *ap)
  *	open semantics change is to call vn_open().  For example, ufs blows
  *	up if you open a file but do not vmio it prior to writing.
  *
- * union_open(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_mode,
+ * union_open(struct vnode *a_vp, int a_mode,
  *	      struct ucred *a_cred, struct thread *a_td)
  */
 static int
@@ -798,7 +798,7 @@ union_close(struct vop_close_args *ap)
  * file permissions are given away simply because
  * the user caused an implicit file copy.
  *
- * union_access(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_mode,
+ * union_access(struct vnode *a_vp, int a_mode,
  *		struct ucred *a_cred, struct thread *a_td)
  */
 static int

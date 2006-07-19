@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.32 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.33 2006/07/19 06:08:14 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -506,8 +506,8 @@ smbfs_create(struct vop_old_create_args *ap)
 }
 
 /*
- * smbfs_remove(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *		struct vnode *a_vp, struct componentname *a_cnp)
+ * smbfs_remove(struct vnode *a_dvp, struct vnode *a_vp,
+ *		struct componentname *a_cnp)
  */
 static int
 smbfs_remove(struct vop_old_remove_args *ap)
@@ -734,8 +734,8 @@ smbfs_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * smbfs_fsync(struct vnodeop_desc *a_desc, struct vnode *a_vp,
- *		struct ucred *a_cred, int a_waitfor, struct thread *a_td)
+ * smbfs_fsync(struct vnode *a_vp, struct ucred *a_cred,
+ *	       int a_waitfor, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
@@ -1017,8 +1017,8 @@ smbfs_pathcheck(struct smbmount *smp, const char *name, int nmlen, int nameiop)
 /*
  * Things go even weird without fixed inode numbers...
  *
- * smbfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *		struct vnode **a_vpp, struct componentname *a_cnp)
+ * smbfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp)
  */
 int
 smbfs_lookup(struct vop_old_lookup_args *ap)

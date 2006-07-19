@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.28 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.29 2006/07/19 06:08:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,8 +86,8 @@ static int cd9660_putpages (struct vop_putpages_args *);
 /*
  * Setattr call. Only allowed for block and character special devices.
  *
- * cd9660_setattr(struct vnodeop_desc *a_desc, struct vnode *a_vp,
- *		  struct vattr *a_vap, struct ucred *a_cred, struct proc *a_p)
+ * cd9660_setattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		  struct ucred *a_cred, struct proc *a_p)
  */
 int
 cd9660_setattr(struct vop_setattr_args *ap)

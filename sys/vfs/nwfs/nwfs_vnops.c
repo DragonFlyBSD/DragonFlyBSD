@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.30 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.31 2006/07/19 06:08:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -222,7 +222,7 @@ nwfs_open(struct vop_open_args *ap)
 }
 
 /*
- * nwfs_close(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_fflag,
+ * nwfs_close(struct vnode *a_vp, int a_fflag,
  *	      struct ucred *a_cred, struct thread *a_td)
  */
 static int
@@ -444,8 +444,8 @@ nwfs_create(struct vop_old_create_args *ap)
  * nwfs_remove call. It isn't possible to emulate UFS behaivour because
  * NetWare doesn't allow delete/rename operations on an opened file.
  *
- * nwfs_remove(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *		struct vnode *a_vp, struct componentname *a_cnp)
+ * nwfs_remove(struct vnode *a_dvp,
+ *	       struct vnode *a_vp, struct componentname *a_cnp)
  */
 static int
 nwfs_remove(struct vop_old_remove_args *ap)
@@ -686,8 +686,8 @@ nwfs_readdir(struct vop_readdir_args *ap)
 }
 
 /*
- * nwfs_fsync(struct vnodeop_desc *a_desc, struct vnode *a_vp,
- *	      struct ucred *a_cred, int a_waitfor, struct thread *a_td)
+ * nwfs_fsync(struct vnode *a_vp, struct ucred *a_cred,
+ *	      int a_waitfor, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
@@ -821,8 +821,8 @@ nwfs_nget(struct mount *mp, ncpfid fid, const struct nw_entry_info *fap,
  * Currently lookup routine can make two lookup for vnode. This can be
  * avoided by reorg the code.
  *
- * nwfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *		struct vnode **a_vpp, struct componentname *a_cnp)
+ * nwfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	       struct componentname *a_cnp)
  */
 int
 nwfs_lookup(struct vop_old_lookup_args *ap)

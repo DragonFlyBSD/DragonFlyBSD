@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.34 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.35 2006/07/19 06:08:13 dillon Exp $
  *
  */
 
@@ -202,13 +202,13 @@ ntfs_read(struct vop_read_args *ap)
 #if !defined(__DragonFly__)
 
 /*
- * ntfs_bypass(struct vnodeop_desc *a_desc, ...)
+ * ntfs_bypass()
  */
 static int
 ntfs_bypass(struct vop_generic_args *ap)
 {
 	int error = ENOTTY;
-	dprintf(("ntfs_bypass: %s\n", ap->a_desc->vdesc_name));
+	dprintf(("ntfs_bypass: %s\n", ap->a_desc->sd_name));
 	return (error);
 }
 

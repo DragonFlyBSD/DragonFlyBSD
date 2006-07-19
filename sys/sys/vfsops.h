@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.23 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.24 2006/07/19 06:08:07 dillon Exp $
  */
 
 /*
@@ -82,7 +82,7 @@ struct vm_page;
 struct vfscache;
 
 struct vop_generic_args {
-	struct vnodeop_desc *a_desc;	/* command descriptor for the call */
+	struct syslink_desc *a_desc;	/* command descriptor for the call */
 	struct vop_ops *a_ops;		/* operations vector for the call */
 	int a_reserved[4];
 };
@@ -869,65 +869,65 @@ int vop_nrename_ap(struct vop_nrename_args *ap);
  * to convert VFS vector arrays (typically in vfs/blah/blah_vnops.c)
  * into a vop_ops operations vector.
  */
-extern struct vnodeop_desc vop_default_desc;
-extern struct vnodeop_desc vop_islocked_desc;
-extern struct vnodeop_desc vop_old_lookup_desc;
-extern struct vnodeop_desc vop_old_create_desc;
-extern struct vnodeop_desc vop_old_whiteout_desc;
-extern struct vnodeop_desc vop_old_mknod_desc;
-extern struct vnodeop_desc vop_open_desc;
-extern struct vnodeop_desc vop_close_desc;
-extern struct vnodeop_desc vop_access_desc;
-extern struct vnodeop_desc vop_getattr_desc;
-extern struct vnodeop_desc vop_setattr_desc;
-extern struct vnodeop_desc vop_read_desc;
-extern struct vnodeop_desc vop_write_desc;
-extern struct vnodeop_desc vop_ioctl_desc;
-extern struct vnodeop_desc vop_poll_desc;
-extern struct vnodeop_desc vop_kqfilter_desc;
-extern struct vnodeop_desc vop_revoke_desc;
-extern struct vnodeop_desc vop_mmap_desc;
-extern struct vnodeop_desc vop_fsync_desc;
-extern struct vnodeop_desc vop_old_remove_desc;
-extern struct vnodeop_desc vop_old_link_desc;
-extern struct vnodeop_desc vop_old_rename_desc;
-extern struct vnodeop_desc vop_old_mkdir_desc;
-extern struct vnodeop_desc vop_old_rmdir_desc;
-extern struct vnodeop_desc vop_old_symlink_desc;
-extern struct vnodeop_desc vop_readdir_desc;
-extern struct vnodeop_desc vop_readlink_desc;
-extern struct vnodeop_desc vop_inactive_desc;
-extern struct vnodeop_desc vop_reclaim_desc;
-extern struct vnodeop_desc vop_lock_desc;
-extern struct vnodeop_desc vop_unlock_desc;
-extern struct vnodeop_desc vop_bmap_desc;
-extern struct vnodeop_desc vop_strategy_desc;
-extern struct vnodeop_desc vop_print_desc;
-extern struct vnodeop_desc vop_pathconf_desc;
-extern struct vnodeop_desc vop_advlock_desc;
-extern struct vnodeop_desc vop_balloc_desc;
-extern struct vnodeop_desc vop_reallocblks_desc;
-extern struct vnodeop_desc vop_getpages_desc;
-extern struct vnodeop_desc vop_putpages_desc;
-extern struct vnodeop_desc vop_freeblks_desc;
-extern struct vnodeop_desc vop_getacl_desc;
-extern struct vnodeop_desc vop_setacl_desc;
-extern struct vnodeop_desc vop_aclcheck_desc;
-extern struct vnodeop_desc vop_getextattr_desc;
-extern struct vnodeop_desc vop_setextattr_desc;
-extern struct vnodeop_desc vop_mountctl_desc;
+extern struct syslink_desc vop_default_desc;
+extern struct syslink_desc vop_islocked_desc;
+extern struct syslink_desc vop_old_lookup_desc;
+extern struct syslink_desc vop_old_create_desc;
+extern struct syslink_desc vop_old_whiteout_desc;
+extern struct syslink_desc vop_old_mknod_desc;
+extern struct syslink_desc vop_open_desc;
+extern struct syslink_desc vop_close_desc;
+extern struct syslink_desc vop_access_desc;
+extern struct syslink_desc vop_getattr_desc;
+extern struct syslink_desc vop_setattr_desc;
+extern struct syslink_desc vop_read_desc;
+extern struct syslink_desc vop_write_desc;
+extern struct syslink_desc vop_ioctl_desc;
+extern struct syslink_desc vop_poll_desc;
+extern struct syslink_desc vop_kqfilter_desc;
+extern struct syslink_desc vop_revoke_desc;
+extern struct syslink_desc vop_mmap_desc;
+extern struct syslink_desc vop_fsync_desc;
+extern struct syslink_desc vop_old_remove_desc;
+extern struct syslink_desc vop_old_link_desc;
+extern struct syslink_desc vop_old_rename_desc;
+extern struct syslink_desc vop_old_mkdir_desc;
+extern struct syslink_desc vop_old_rmdir_desc;
+extern struct syslink_desc vop_old_symlink_desc;
+extern struct syslink_desc vop_readdir_desc;
+extern struct syslink_desc vop_readlink_desc;
+extern struct syslink_desc vop_inactive_desc;
+extern struct syslink_desc vop_reclaim_desc;
+extern struct syslink_desc vop_lock_desc;
+extern struct syslink_desc vop_unlock_desc;
+extern struct syslink_desc vop_bmap_desc;
+extern struct syslink_desc vop_strategy_desc;
+extern struct syslink_desc vop_print_desc;
+extern struct syslink_desc vop_pathconf_desc;
+extern struct syslink_desc vop_advlock_desc;
+extern struct syslink_desc vop_balloc_desc;
+extern struct syslink_desc vop_reallocblks_desc;
+extern struct syslink_desc vop_getpages_desc;
+extern struct syslink_desc vop_putpages_desc;
+extern struct syslink_desc vop_freeblks_desc;
+extern struct syslink_desc vop_getacl_desc;
+extern struct syslink_desc vop_setacl_desc;
+extern struct syslink_desc vop_aclcheck_desc;
+extern struct syslink_desc vop_getextattr_desc;
+extern struct syslink_desc vop_setextattr_desc;
+extern struct syslink_desc vop_mountctl_desc;
 
-extern struct vnodeop_desc vop_nresolve_desc;
-extern struct vnodeop_desc vop_nlookupdotdot_desc;
-extern struct vnodeop_desc vop_ncreate_desc;
-extern struct vnodeop_desc vop_nmkdir_desc;
-extern struct vnodeop_desc vop_nmknod_desc;
-extern struct vnodeop_desc vop_nlink_desc;
-extern struct vnodeop_desc vop_nsymlink_desc;
-extern struct vnodeop_desc vop_nwhiteout_desc;
-extern struct vnodeop_desc vop_nremove_desc;
-extern struct vnodeop_desc vop_nrmdir_desc;
-extern struct vnodeop_desc vop_nrename_desc;
+extern struct syslink_desc vop_nresolve_desc;
+extern struct syslink_desc vop_nlookupdotdot_desc;
+extern struct syslink_desc vop_ncreate_desc;
+extern struct syslink_desc vop_nmkdir_desc;
+extern struct syslink_desc vop_nmknod_desc;
+extern struct syslink_desc vop_nlink_desc;
+extern struct syslink_desc vop_nsymlink_desc;
+extern struct syslink_desc vop_nwhiteout_desc;
+extern struct syslink_desc vop_nremove_desc;
+extern struct syslink_desc vop_nrmdir_desc;
+extern struct syslink_desc vop_nrename_desc;
 
 #endif
 

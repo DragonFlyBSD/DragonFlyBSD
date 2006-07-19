@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.52 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.53 2006/07/19 06:08:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -2260,7 +2260,7 @@ bad:
 static int
 ufs_missingop(struct vop_generic_args *ap)
 {
-	panic("no vop function for %s in ufs child", ap->a_desc->vdesc_name);
+	panic("no vop function for %s in ufs child", ap->a_desc->sd_name);
 	return (EOPNOTSUPP);
 }
 
@@ -2442,7 +2442,7 @@ VNODEOP_SET(ufs_spec_vops);
 VNODEOP_SET(ufs_fifo_vops);
 
 /*
- * ufs_vnoperate(struct vnodeop_desc *a_desc)
+ * ufs_vnoperate()
  */
 int
 ufs_vnoperate(struct vop_generic_args *ap)
@@ -2451,7 +2451,7 @@ ufs_vnoperate(struct vop_generic_args *ap)
 }
 
 /*
- * ufs_vnoperatefifo(struct vnodeop_desc *a_desc)
+ * ufs_vnoperatefifo()
  */
 int
 ufs_vnoperatefifo(struct vop_generic_args *ap)
@@ -2460,7 +2460,7 @@ ufs_vnoperatefifo(struct vop_generic_args *ap)
 }
 
 /*
- * ufs_vnoperatespec(struct vnodeop_desc *a_desc)
+ * ufs_vnoperatespec()
  */
 int
 ufs_vnoperatespec(struct vop_generic_args *ap)

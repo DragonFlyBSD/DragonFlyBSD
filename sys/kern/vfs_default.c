@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.41 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.42 2006/07/19 06:08:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -152,8 +152,7 @@ vop_defaultop(struct vop_generic_args *ap)
 int
 vop_panic(struct vop_generic_args *ap)
 {
-
-	panic("filesystem goof: vop_panic[%s]", ap->a_desc->vdesc_name);
+	panic("filesystem goof: vop_panic[%s]", ap->a_desc->sd_name);
 }
 
 /*

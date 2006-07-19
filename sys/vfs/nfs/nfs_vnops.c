@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.62 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.63 2006/07/19 06:08:13 dillon Exp $
  */
 
 
@@ -549,7 +549,7 @@ nfs_open(struct vop_open_args *ap)
  *                     1 should be dealt with via an fsync() system call for
  *                     cases where write errors are important.
  *
- * nfs_close(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_fflag,
+ * nfs_close(struct vnode *a_vp, int a_fflag,
  *	     struct ucred *a_cred, struct thread *a_td)
  */
 /* ARGSUSED */
@@ -647,8 +647,7 @@ nfsmout:
 /*
  * nfs setattr call.
  *
- * nfs_setattr(struct vnodeop_desc *a_desc, struct vnode *a_vp,
- *		struct vattr *a_vap, struct ucred *a_cred)
+ * nfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred)
  */
 static int
 nfs_setattr(struct vop_setattr_args *ap)
@@ -938,8 +937,8 @@ nfsmout:
  *
  * NOTE: cannot be removed until NFS implements all the new n*() API calls.
  *
- * nfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *	      struct vnode **a_vpp, struct componentname *a_cnp)
+ * nfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	      struct componentname *a_cnp)
  */
 static int
 nfs_lookup(struct vop_old_lookup_args *ap)
@@ -1590,8 +1589,8 @@ nfsmout:
  *     else
  *	  do the remove rpc
  *
- * nfs_remove(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
- *	      struct vnode *a_vp, struct componentname *a_cnp)
+ * nfs_remove(struct vnode *a_dvp, struct vnode *a_vp,
+ *	      struct componentname *a_cnp)
  */
 static int
 nfs_remove(struct vop_old_remove_args *ap)
@@ -2875,8 +2874,8 @@ nfs_mmap(struct vop_mmap_args *ap)
 /*
  * fsync vnode op. Just call nfs_flush() with commit == 1.
  *
- * nfs_fsync(struct vnodeop_desc *a_desc, struct vnode *a_vp,
- *	     struct ucred * a_cred, int a_waitfor, struct thread *a_td)
+ * nfs_fsync(struct vnode *a_vp, struct ucred * a_cred, int a_waitfor,
+ *	     struct thread *a_td)
  */
 /* ARGSUSED */
 static int

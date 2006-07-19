@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.61 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.62 2006/07/19 06:08:07 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -72,6 +72,9 @@
 #endif
 #ifndef _SYS_TREE_H_
 #include <sys/tree.h>
+#endif
+#ifndef _SYS_SYSLINK_H_
+#include <sys/syslink.h>
 #endif
 #ifndef _MACHINE_LOCK_H_
 #include <machine/lock.h>
@@ -382,62 +385,6 @@ extern	int numvnodes;
 extern	int freevnodes;
 extern  int vfs_fastdev;		/* fast specfs device access */
 
-#endif /* _KERNEL */
-
-/*
- * Mods for extensibility.
- */
-
-/*
- * Flags for vdesc_flags:
- */
-#define	VDESC_MAX_VPS		8
-/* Low order 8 flag bits are reserved for willrele flags for vp arguments. */
-#define	VDESC_VP0_WILLRELE	0x00000001
-#define	VDESC_VP1_WILLRELE	0x00000002
-#define	VDESC_VP2_WILLRELE	0x00000004
-#define	VDESC_VP3_WILLRELE	0x00000008
-#define	VDESC_VP4_WILLRELE	0x00000010
-#define	VDESC_VP5_WILLRELE	0x00000020
-#define	VDESC_VP6_WILLRELE	0x00000040
-#define	VDESC_VP7_WILLRELE	0x00000080
-#define	VDESC_NOMAP_VPP		0x00000100
-#define	VDESC_VPP_WILLRELE	0x00000200
-#define VDESC_VP0_WILLUNLOCK	0x00010000
-#define VDESC_VP1_WILLUNLOCK	0x00020000
-#define VDESC_VP2_WILLUNLOCK	0x00040000
-#define VDESC_VP3_WILLUNLOCK	0x00080000
-#define VDESC_VP4_WILLUNLOCK	0x00100000
-#define VDESC_VP5_WILLUNLOCK	0x00200000
-#define VDESC_VP6_WILLUNLOCK	0x00400000
-#define VDESC_VP7_WILLUNLOCK	0x00800000
-
-/*
- * VDESC_NO_OFFSET is used to identify the end of the offset list
- * and in places where no such field exists.
- */
-#define VDESC_NO_OFFSET -1
-
-/*
- * This structure describes the vnode operation taking place.
- */
-struct vnodeop_desc {
-	int	vdesc_offset;		/* offset in vector--first for speed */
-	char    *vdesc_name;		/* a readable name for debugging */
-	int	vdesc_unused01;
-	int	*vdesc_unused02;
-	int	vdesc_unused03;
-	int	vdesc_unused04;
-	int	vdesc_unused05;
-	int	vdesc_unused06;
-};
-
-#ifdef _KERNEL
-/*
- * A list of all the operation descs.
- */
-extern struct vnodeop_desc *vnodeop_descs[];
-
 /*
  * Interlock for scanning list of vnodes attached to a mountpoint
  */
@@ -498,7 +445,7 @@ typedef int (*vocall_func_t)(struct vop_generic_args *);
  * vector function).
  */
 #define VOCALL(vops, ap)		\
-	(*(vocall_func_t *)((char *)(vops)+((ap)->a_desc->vdesc_offset)))(ap)
+	(*(vocall_func_t *)((char *)(vops)+((ap)->a_desc->sd_offset)))(ap)
 
 #define	VDESC(OP) (& __CONCAT(OP,_desc))
 
