@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_vnops.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.h,v 1.6 1999/08/28 00:40:58 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.8 2006/02/17 19:18:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.9 2006/07/19 05:59:54 dillon Exp $
  * 
   */
 
@@ -46,43 +46,11 @@
  * M. Satyanarayanan.  
  */
 
+int coda_fbsd_getpages(struct vop_getpages_args *ap);
+int coda_fbsd_putpages(struct vop_putpages_args *ap);
 
-/* NetBSD interfaces to the vnodeops */
-int coda_open      (void *);
-int coda_close     (void *);
-int coda_read      (void *);
-int coda_write     (void *);
-int coda_ioctl     (void *);
-/* 1.3 int cfs_select    (void *);*/
-int coda_getattr   (void *);
-int coda_setattr   (void *);
-int coda_access    (void *);
-int coda_abortop   (void *);
-int coda_readlink  (void *);
-int coda_fsync     (void *);
-int coda_inactive  (void *);
-int coda_lookup    (void *);
-int coda_create    (void *);
-int coda_remove    (void *);
-int coda_link      (void *);
-int coda_rename    (void *);
-int coda_mkdir     (void *);
-int coda_rmdir     (void *);
-int coda_symlink   (void *);
-int coda_readdir   (void *);
-int coda_bmap      (void *);
-int coda_strategy  (struct vop_strategy_args *);
-int coda_reclaim   (void *);
-int coda_lock      (void *);
-int coda_unlock    (void *);
-int coda_islocked  (void *);
-int coda_vop_error (void *);
-int coda_vop_nop   (void *);
-int coda_fbsd_getpages	(void *);
-int coda_fbsd_putpages	(void *);
-
-int coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw,
-    int ioflag, struct ucred *cred, struct thread *p);
 int coda_grab_vnode(dev_t dev, ino_t ino, struct vnode **vpp);
 void print_vattr(struct vattr *attr);
 void print_cred(struct ucred *cred);
+
+

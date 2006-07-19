@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.11 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.12 2006/07/19 05:59:54 dillon Exp $
  * 
  */
 
@@ -111,9 +111,8 @@ static moduledata_t codadev_mod = {
 DECLARE_MODULE(codadev, codadev_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE+VC_DEV_NO);
 
 int
-coda_fbsd_getpages(void *v)
+coda_fbsd_getpages(struct vop_getpages_args *ap)
 {
-    struct vop_getpages_args *ap = v;
     int ret = 0;
 
     /* ??? a_offset */
@@ -123,11 +122,10 @@ coda_fbsd_getpages(void *v)
 }
 
 int
-coda_fbsd_putpages(void *v)
+coda_fbsd_putpages(struct vop_putpages_args *ap)
 {
-	struct vop_putpages_args *ap = v;
-
 	/*??? a_offset */
 	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
 }
+

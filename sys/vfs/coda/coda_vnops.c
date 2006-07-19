@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.39 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.40 2006/07/19 05:59:54 dillon Exp $
  * 
  */
 
@@ -110,52 +110,85 @@ static int coda_lockdebug = 0;
 
 /* Definition of the vnode operation vector */
 
+static int coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw,
+		     int ioflag, struct ucred *cred, struct thread *p);
+
+static int coda_vop_error(struct vop_generic_args *ap);
+static int coda_vop_nop(struct vop_generic_args *ap);
+
+static int coda_lookup(struct vop_old_lookup_args *ap);
+static int coda_create(struct vop_old_create_args *ap);
+static int coda_open(struct vop_open_args *ap);
+static int coda_close(struct vop_close_args *ap);
+static int coda_access(struct vop_access_args *ap);
+static int coda_getattr(struct vop_getattr_args *ap);
+static int coda_setattr(struct vop_setattr_args *ap);
+static int coda_read(struct vop_read_args *ap);
+static int coda_write(struct vop_write_args *ap);
+static int coda_ioctl(struct vop_ioctl_args *ap);
+static int coda_fsync(struct vop_fsync_args *ap);
+static int coda_remove(struct vop_old_remove_args *ap);
+static int coda_link(struct vop_old_link_args *ap);
+static int coda_rename(struct vop_old_rename_args *ap);
+static int coda_mkdir(struct vop_old_mkdir_args *ap);
+static int coda_rmdir(struct vop_old_rmdir_args *ap);
+static int coda_symlink(struct vop_old_symlink_args *ap);
+static int coda_readdir(struct vop_readdir_args *ap);
+static int coda_readlink(struct vop_readlink_args *ap);
+static int coda_inactive(struct vop_inactive_args *ap);
+static int coda_reclaim(struct vop_reclaim_args *ap);
+static int coda_lock(struct vop_lock_args *ap);
+static int coda_unlock(struct vop_unlock_args *ap);
+static int coda_bmap(struct vop_bmap_args *ap);
+static int coda_strategy(struct vop_strategy_args *ap);
+static int coda_islocked(struct vop_islocked_args *ap);
+
 struct vop_ops coda_vnode_ops = {
     .vop_default =	(void *)coda_vop_error,
-    .vop_old_lookup =	(void *)coda_lookup,
-    .vop_old_create =	(void *)coda_create,
+    .vop_old_lookup =	coda_lookup,
+    .vop_old_create =	coda_create,
     .vop_old_mknod =	(void *)coda_vop_error,
-    .vop_open =		(void *)coda_open,
-    .vop_close =	(void *)coda_close,
-    .vop_access =	(void *)coda_access,
-    .vop_getattr =	(void *)coda_getattr,
-    .vop_setattr =	(void *)coda_setattr,
-    .vop_read =		(void *)coda_read,
-    .vop_write =	(void *)coda_write,
-    .vop_ioctl =	(void *)coda_ioctl,
+    .vop_open =		coda_open,
+    .vop_close =	coda_close,
+    .vop_access =	coda_access,
+    .vop_getattr =	coda_getattr,
+    .vop_setattr =	coda_setattr,
+    .vop_read =		coda_read,
+    .vop_write =	coda_write,
+    .vop_ioctl =	coda_ioctl,
     .vop_mmap =		(void *)coda_vop_error,
-    .vop_fsync =	(void *)coda_fsync,
-    .vop_old_remove =	(void *)coda_remove,
-    .vop_old_link =	(void *)coda_link,
-    .vop_old_rename =	(void *)coda_rename,
-    .vop_old_mkdir =	(void *)coda_mkdir,
-    .vop_old_rmdir =	(void *)coda_rmdir,
-    .vop_old_symlink =	(void *)coda_symlink,
-    .vop_readdir =	(void *)coda_readdir,
-    .vop_readlink =	(void *)coda_readlink,
-    .vop_inactive =	(void *)coda_inactive,
-    .vop_reclaim =	(void *)coda_reclaim,
-    .vop_lock =		(void *)coda_lock,
-    .vop_unlock =	(void *)coda_unlock,
-    .vop_bmap =		(void *)coda_bmap,
-    .vop_strategy =	(void *)coda_strategy,
+    .vop_fsync =	coda_fsync,
+    .vop_old_remove =	coda_remove,
+    .vop_old_link =	coda_link,
+    .vop_old_rename =	coda_rename,
+    .vop_old_mkdir =	coda_mkdir,
+    .vop_old_rmdir =	coda_rmdir,
+    .vop_old_symlink =	coda_symlink,
+    .vop_readdir =	coda_readdir,
+    .vop_readlink =	coda_readlink,
+    .vop_inactive =	coda_inactive,
+    .vop_reclaim =	coda_reclaim,
+    .vop_lock =		coda_lock,
+    .vop_unlock =	coda_unlock,
+    .vop_bmap =		coda_bmap,
+    .vop_strategy =	coda_strategy,
     .vop_print =	(void *)coda_vop_error,
-    .vop_islocked =	(void *)coda_islocked,
+    .vop_islocked =	coda_islocked,
     .vop_pathconf =	(void *)coda_vop_error,
     .vop_advlock =	(void *)coda_vop_nop,
     .vop_poll =		vop_stdpoll,
-    .vop_getpages =	(void *)coda_fbsd_getpages,
-    .vop_putpages =	(void *)coda_fbsd_putpages
+    .vop_getpages =	coda_fbsd_getpages,
+    .vop_putpages =	coda_fbsd_putpages
 };
 
 /* A generic panic: we were called with something we didn't define yet */
 int
-coda_vop_error(void *anon)
+coda_vop_error(struct vop_generic_args *ap)
 {
-    struct vnodeop_desc **desc = (struct vnodeop_desc **)anon;
+    struct vnodeop_desc *desc = ap->a_desc;
 
     myprintf(("coda_vop_error: Vnode operation %s called, but not defined.\n",
-	      (*desc)->vdesc_name));
+	      desc->vdesc_name));
     /*
     panic("coda_vop_error");
     */
@@ -164,13 +197,13 @@ coda_vop_error(void *anon)
 
 /* A generic do-nothing.  For lease_check, advlock */
 int
-coda_vop_nop(void *anon)
+coda_vop_nop(struct vop_generic_args *ap)
 {
-    struct vnodeop_desc **desc = (struct vnodeop_desc **)anon;
+    struct vnodeop_desc *desc = ap->a_desc;
 
     if (codadebug) {
 	myprintf(("Vnode operation %s called, but unsupported\n",
-		  (*desc)->vdesc_name));
+		  desc->vdesc_name));
     } 
    return (0);
 }
@@ -196,7 +229,7 @@ coda_vnodeopstats_init(void)
  * cache file, and then opens it.
  */
 int
-coda_open(void *v)
+coda_open(struct vop_open_args *ap)
 {
     /* 
      * NetBSD can pass the O_EXCL flag in mode, even though the check
@@ -204,7 +237,6 @@ coda_open(void *v)
      * is passed the EXCL, it must be a bug.  We strip the flag here.
      */
 /* true args */
-    struct vop_open_args *ap = v;
     struct vnode **vpp = &(ap->a_vp);
     struct cnode *cp = VTOC(*vpp);
     int flag = ap->a_mode & (~O_EXCL);
@@ -296,10 +328,9 @@ done:
  * Close the cache file used for I/O and notify Venus.
  */
 int
-coda_close(void *v)
+coda_close(struct vop_close_args *ap)
 {
 /* true args */
-    struct vop_close_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     int flag = ap->a_fflag;
@@ -356,20 +387,16 @@ done:
 }
 
 int
-coda_read(void *v)
+coda_read(struct vop_read_args *ap)
 {
-    struct vop_read_args *ap = v;
-
     ENTRY;
     return(coda_rdwr(ap->a_vp, ap->a_uio, UIO_READ,
 		    ap->a_ioflag, ap->a_cred, ap->a_uio->uio_td));
 }
 
 int
-coda_write(void *v)
+coda_write(struct vop_write_args *ap)
 {
-    struct vop_write_args *ap = v;
-
     ENTRY;
     return(coda_rdwr(ap->a_vp, ap->a_uio, UIO_WRITE,
 		    ap->a_ioflag, ap->a_cred, ap->a_uio->uio_td));
@@ -488,10 +515,9 @@ printf("coda_rdwr: Internally Opening %p\n", vp);
 }
 
 int
-coda_ioctl(void *v)
+coda_ioctl(struct vop_ioctl_args *ap)
 {
 /* true args */
-    struct vop_ioctl_args *ap = v;
     struct vnode *vp = ap->a_vp;
     int com = ap->a_command;
     caddr_t data = ap->a_data;
@@ -576,10 +602,9 @@ coda_ioctl(void *v)
  * opened the file, and therefore should already have access.  
  */
 int
-coda_getattr(void *v)
+coda_getattr(struct vop_getattr_args *ap)
 {
 /* true args */
-    struct vop_getattr_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vattr *vap = ap->a_vap;
@@ -641,10 +666,9 @@ coda_getattr(void *v)
 }
 
 int
-coda_setattr(void *v)
+coda_setattr(struct vop_setattr_args *ap)
 {
 /* true args */
-    struct vop_setattr_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vattr *vap = ap->a_vap;
@@ -680,10 +704,9 @@ coda_setattr(void *v)
 }
 
 int
-coda_access(void *v)
+coda_access(struct vop_access_args *ap)
 {
 /* true args */
-    struct vop_access_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     int mode = ap->a_mode;
@@ -723,10 +746,9 @@ coda_access(void *v)
 }
 
 int
-coda_readlink(void *v)
+coda_readlink(struct vop_readlink_args *ap)
 {
 /* true args */
-    struct vop_readlink_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct uio *uiop = ap->a_uio;
@@ -774,10 +796,9 @@ coda_readlink(void *v)
 }
 
 int
-coda_fsync(void *v)
+coda_fsync(struct vop_fsync_args *ap)
 {
 /* true args */
-    struct vop_fsync_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct thread *td = curthread;
@@ -836,12 +857,11 @@ coda_fsync(void *v)
 }
 
 int
-coda_inactive(void *v)
+coda_inactive(struct vop_inactive_args *ap)
 {
     /* XXX - at the moment, inactive doesn't look at cred, and doesn't
        have a proc pointer.  Oops. */
 /* true args */
-    struct vop_inactive_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct ucred *cred __attribute__((unused)) = NULL;
@@ -909,10 +929,9 @@ coda_inactive(void *v)
  * It appears that in NetBSD, lookup is supposed to return the vnode locked
  */
 int
-coda_lookup(void *v)
+coda_lookup(struct vop_old_lookup_args *ap)
 {
 /* true args */
-    struct vop_old_lookup_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct vnode **vpp = ap->a_vpp;
@@ -1052,10 +1071,9 @@ coda_lookup(void *v)
 
 /*ARGSUSED*/
 int
-coda_create(void *v)
+coda_create(struct vop_old_create_args *ap)
 {
 /* true args */
-    struct vop_old_create_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct vattr *va = ap->a_vap;
@@ -1132,10 +1150,9 @@ coda_create(void *v)
 }
 
 int
-coda_remove(void *v)
+coda_remove(struct vop_old_remove_args *ap)
 {
 /* true args */
-    struct vop_old_remove_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *cp = VTOC(dvp);
     struct componentname  *cnp = ap->a_cnp;
@@ -1191,10 +1208,9 @@ coda_remove(void *v)
 }
 
 int
-coda_link(void *v)
+coda_link(struct vop_old_link_args *ap)
 {
 /* true args */
-    struct vop_old_link_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct vnode *tdvp = ap->a_tdvp;
@@ -1243,10 +1259,9 @@ coda_link(void *v)
 }
 
 int
-coda_rename(void *v)
+coda_rename(struct vop_old_rename_args *ap)
 {
 /* true args */
-    struct vop_old_rename_args *ap = v;
     struct vnode *odvp = ap->a_fdvp;
     struct cnode *odcp = VTOC(odvp);
     struct componentname  *fcnp = ap->a_fcnp;
@@ -1334,10 +1349,9 @@ coda_rename(void *v)
 }
 
 int
-coda_mkdir(void *v)
+coda_mkdir(struct vop_old_mkdir_args *ap)
 {
 /* true args */
-    struct vop_old_mkdir_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);	
     struct componentname  *cnp = ap->a_cnp;
@@ -1404,10 +1418,9 @@ coda_mkdir(void *v)
 }
 
 int
-coda_rmdir(void *v)
+coda_rmdir(struct vop_old_rmdir_args *ap)
 {
 /* true args */
-    struct vop_old_rmdir_args *ap = v;
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);
     struct componentname  *cnp = ap->a_cnp;
@@ -1452,10 +1465,9 @@ coda_rmdir(void *v)
 }
 
 int
-coda_symlink(void *v)
+coda_symlink(struct vop_old_symlink_args *ap)
 {
 /* true args */
-    struct vop_old_symlink_args *ap = v;
     struct vnode *tdvp = ap->a_dvp;
     struct cnode *tdcp = VTOC(tdvp);	
     struct componentname *cnp = ap->a_cnp;
@@ -1522,10 +1534,9 @@ coda_symlink(void *v)
  * Read directory entries.
  */
 int
-coda_readdir(void *v)
+coda_readdir(struct vop_readdir_args *ap)
 {
 /* true args */
-    struct vop_readdir_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct uio *uiop = ap->a_uio;
@@ -1597,10 +1608,9 @@ printf("coda_readdir: Internally Opening %p\n", vp);
  * Convert from file system blocks to device blocks
  */
 int
-coda_bmap(void *v)
+coda_bmap(struct vop_bmap_args *ap)
 {
     /* XXX on the global proc */
-    struct vop_bmap_args *ap = v;
     int ret = 0;
     struct cnode *cp;
 
@@ -1636,10 +1646,9 @@ coda_strategy(struct vop_strategy_args *ap __unused)
 }
 
 int
-coda_reclaim(void *v) 
+coda_reclaim(struct vop_reclaim_args *ap)
 {
 /* true args */
-    struct vop_reclaim_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
 /* upcall decl */
@@ -1672,10 +1681,9 @@ coda_reclaim(void *v)
 }
 
 int
-coda_lock(void *v)
+coda_lock(struct vop_lock_args *ap)
 {
 /* true args */
-    struct vop_lock_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
 /* upcall decl */
@@ -1697,10 +1705,9 @@ coda_lock(void *v)
 }
 
 int
-coda_unlock(void *v)
+coda_unlock(struct vop_unlock_args *ap)
 {
 /* true args */
-    struct vop_unlock_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
 /* upcall decl */
@@ -1716,10 +1723,9 @@ coda_unlock(void *v)
 }
 
 int
-coda_islocked(void *v)
+coda_islocked(struct vop_islocked_args *ap)
 {
 /* true args */
-    struct vop_islocked_args *ap = v;
     ENTRY;
 
     return (lockstatus(&ap->a_vp->v_lock, ap->a_td));
