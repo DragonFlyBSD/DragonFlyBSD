@@ -82,7 +82,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.33 2006/06/25 11:02:40 corecode Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.33.2.1 2006/07/20 16:22:48 corecode Exp $
  */
 
 /*
@@ -768,37 +768,56 @@ in_arpinput(struct mbuf *m)
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
 	/*
-	 * For a bridge, we want to check the address irrespective
-	 * of the receive interface. (This will change slightly
-	 * when we have clusters of interfaces).
+	 * Check both target and sender IP addresses:
+	 *
+	 * If we receive the packet on the interface owning the address,
+	 * then accept the address.
+	 *
+	 * For a bridge, we accept the address if the receive interface and
+	 * the interface owning the address are on the same bridge.
+	 * (This will change slightly when we have clusters of interfaces).
 	 */
 	LIST_FOREACH(ia, INADDR_HASH(itaddr.s_addr), ia_hash) {
-		if (ifp->if_bridge && ia->ia_ifp && 
-		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
-		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
+		/* Skip all ia's which don't match */
+		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
+			continue;
+
+		if (ia->ia_ifp == ifp)
 			goto match;
-		}
+
+		if (ifp->if_bridge && ia->ia_ifp && 
+		    ifp->if_bridge == ia->ia_ifp->if_bridge)
+			goto match;
 	}
 	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash) {
-		if (ifp->if_bridge && ia->ia_ifp &&
-		    ifp->if_bridge == ia->ia_ifp->if_bridge &&
-		    isaddr.s_addr == ia->ia_addr.sin_addr.s_addr) {
+		/* Skip all ia's which don't match */
+		if (isaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
+			continue;
+
+		if (ia->ia_ifp == ifp)
 			goto match;
-		}
+
+		if (ifp->if_bridge && ia->ia_ifp &&
+		    ifp->if_bridge == ia->ia_ifp->if_bridge)
+			goto match;
 	}
 	/*
 	 * No match, use the first inet address on the receive interface
 	 * as a dummy address for the rest of the function.
 	 */
-	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
+	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
 		if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
 			ia = ifatoia(ifa);
 			goto match;
 		}
-	if ((ia = TAILQ_FIRST(&in_ifaddrhead)) == NULL) {
-		m_freem(m);
-		return;
 	}
+	/*
+	 * If we got here, we didn't find any suitable interface,
+	 * so drop the packet.
+	 */
+	m_freem(m);
+	return;
+
 match:
 	myaddr = ia->ia_addr.sin_addr;
 	if (!bcmp(ar_sha(ah), IF_LLADDR(ifp), ifp->if_addrlen)) {
