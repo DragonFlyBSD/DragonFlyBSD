@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.7 2006/06/19 12:05:43 corecode Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.7.2.1 2006/07/20 17:01:22 corecode Exp $
  */
 
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
@@ -91,8 +91,8 @@ int exitstatus;			/* exit status of last command */
 int oexitstatus;		/* saved exit status */
 
 
-STATIC void evalloop(union node *);
-STATIC void evalfor(union node *);
+STATIC void evalloop(union node *, int);
+STATIC void evalfor(union node *, int);
 STATIC void evalcase(union node *, int);
 STATIC void evalsubshell(union node *, int);
 STATIC void expredir(union node *);
@@ -183,6 +183,9 @@ evalstring(char *s)
 void
 evaltree(union node *n, int flags)
 {
+	int do_etest;
+
+	do_etest = 0;
 	if (n == NULL) {
 		TRACE(("evaltree(NULL) called\n"));
 		exitstatus = 0;
@@ -194,7 +197,7 @@ evaltree(union node *n, int flags)
 	TRACE(("evaltree(0x%lx: %d) called\n", (long)n, n->type));
 	switch (n->type) {
 	case NSEMI:
-		evaltree(n->nbinary.ch1, 0);
+		evaltree(n->nbinary.ch1, flags & ~EV_EXIT);
 		if (evalskip)
 			goto out;
 		evaltree(n->nbinary.ch2, flags);
@@ -220,6 +223,7 @@ evaltree(union node *n, int flags)
 		break;
 	case NSUBSHELL:
 		evalsubshell(n, flags);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	case NBACKGND:
 		evalsubshell(n, flags);
@@ -238,10 +242,10 @@ evaltree(union node *n, int flags)
 	}
 	case NWHILE:
 	case NUNTIL:
-		evalloop(n);
+		evalloop(n, flags & ~EV_EXIT);
 		break;
 	case NFOR:
-		evalfor(n);
+		evalfor(n, flags & ~EV_EXIT);
 		break;
 	case NCASE:
 		evalcase(n, flags);
@@ -257,9 +261,11 @@ evaltree(union node *n, int flags)
 
 	case NPIPE:
 		evalpipe(n);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	case NCMD:
 		evalcommand(n, flags, (struct backcmd *)NULL);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	default:
 		out1fmt("Node type = %d\n", n->type);
@@ -269,15 +275,13 @@ evaltree(union node *n, int flags)
 out:
 	if (pendingsigs)
 		dotrap();
-	if ((flags & EV_EXIT) || (eflag && exitstatus 
-	    && !(flags & EV_TESTED) && (n->type == NCMD ||
-	    n->type == NSUBSHELL)))
+	if ((flags & EV_EXIT) || (eflag && exitstatus != 0 && do_etest))
 		exitshell(exitstatus);
 }
 
 
 STATIC void
-evalloop(union node *n)
+evalloop(union node *n, int flags)
 {
 	int status;
 
@@ -301,7 +305,7 @@ skipping:	  if (evalskip == SKIPCONT && --skipcount <= 0) {
 			if (exitstatus == 0)
 				break;
 		}
-		evaltree(n->nbinary.ch2, 0);
+		evaltree(n->nbinary.ch2, flags);
 		status = exitstatus;
 		if (evalskip)
 			goto skipping;
@@ -313,7 +317,7 @@ skipping:	  if (evalskip == SKIPCONT && --skipcount <= 0) {
 
 
 STATIC void
-evalfor(union node *n)
+evalfor(union node *n, int flags)
 {
 	struct arglist arglist;
 	union node *argp;
@@ -334,7 +338,7 @@ evalfor(union node *n)
 	loopnest++;
 	for (sp = arglist.list ; sp ; sp = sp->next) {
 		setvar(n->nfor.var, sp->text, 0);
-		evaltree(n->nfor.body, 0);
+		evaltree(n->nfor.body, flags);
 		if (evalskip) {
 			if (evalskip == SKIPCONT && --skipcount <= 0) {
 				evalskip = 0;
