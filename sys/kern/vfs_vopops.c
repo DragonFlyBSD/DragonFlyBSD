@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.29 2006/07/19 06:08:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.30 2006/07/20 20:16:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -305,8 +305,14 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap)
 	ap.a_vap = vap;
 
 	DO_OPS(ops, error, &ap, vop_getattr);
-	if ((ops->head.vv_mount->mnt_kern_flag & MNTK_FSMID) == 0)
+
+	/*
+	 * mount pointer may be NULL if vnode is dead.
+	 */
+	if (ops->head.vv_mount &&
+	    (ops->head.vv_mount->mnt_kern_flag & MNTK_FSMID) == 0) {
 		vap->va_fsmid = cache_sync_fsmid_vp(vp);
+	}
 	return(error);
 }
 
