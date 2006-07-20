@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.6 2006/06/01 18:18:00 joerg Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.7 2006/07/20 22:57:47 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -55,7 +55,7 @@
 #include <vis.h>
 #include "ktrace.h"
 
-int timestamp, decimal, fancy = 1, tail, maxdata;
+int timestamp, decimal, fancy = 1, tail, maxdata = 64;
 char *tracefile = DEF_TRACEFILE;
 struct ktr_header ktr_header;
 
