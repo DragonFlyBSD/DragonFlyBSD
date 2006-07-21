@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.25 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.26 2006/07/21 00:51:13 corecode Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -618,12 +618,16 @@ tapread(dev_t dev, struct uio *uio, int flag)
 		lwkt_serialize_enter(ifp->if_serializer);
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL) {
+			if (flag & IO_NDELAY) {
+				lwkt_serialize_exit(ifp->if_serializer);
+				return (EWOULDBLOCK);
+			}
 			tp->tap_flags |= TAP_RWAIT;
+			crit_enter();
 			tsleep_interlock(tp);
 			lwkt_serialize_exit(ifp->if_serializer);
-			if (flag & IO_NDELAY)
-				return (EWOULDBLOCK);
 			error = tsleep(tp, PCATCH, "taprd", 0);
+			crit_exit();
 			if (error)
 				return (error);
 		} else {
