@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/atkbd.4,v 1.12.2.5 2001/08/17 13:08:36 ru Exp $
-.\" $DragonFly: src/share/man/man4/atkbd.4,v 1.4 2006/03/26 22:56:57 swildner Exp $
+.\" $DragonFly: src/share/man/man4/atkbd.4,v 1.5 2006/07/22 23:52:23 swildner Exp $
 .\"
 .Dd May 21, 1999
 .Dt ATKBD 4
@@ -170,16 +170,16 @@ driver requires the keyboard controller
 .Nm atkbdc .
 Thus, the kernel configuration file should contain the following lines.
 .Pp
-.Dl "device atkbdc0 at isa"
-.Dl "device atkbd0 at atkbdc? irq 1"
+.D1 Cd "device atkbdc0 at isa"
+.D1 Cd "device atkbd0 at atkbdc? irq 1"
 .Pp
 The following example shows how to set the default, built-in keymap
 to
 .Pa jp.106.kbd .
 .Pp
-.Dl "options ATKBD_DFLT_KEYMAP"
-.Dl "makeoptions ATKBD_DFLT_KEYMAP=jp.106"
-.Dl "device atkbd0 at atkbdc? irq 1"
+.D1 Cd "options ATKBD_DFLT_KEYMAP"
+.D1 Cd "makeoptions ATKBD_DFLT_KEYMAP=jp.106"
+.D1 Cd "device atkbd0 at atkbdc? irq 1"
 .\".Sh DIAGNOSTICS
 .\".Sh CAVEATS
 .\".Sh BUGS

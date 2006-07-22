@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.8 2006/06/25 11:02:37 corecode Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.9 2006/07/22 23:52:23 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -1316,7 +1316,7 @@ Propagation delay, measured in milliseconds.
 The value is rounded to the next multiple of the clock tick
 (typically 10ms, but it is a good practice to run kernels
 with
-.Dq "options HZ=1000"
+.Cd "options HZ=1000"
 to reduce
 the granularity to 1ms or less).
 Default value is 0, meaning no delay.
@@ -1634,7 +1634,7 @@ CURRENT, whereas
 STABLE still uses
 .Nm ipfw1
 unless the kernel is compiled with
-.Cm options IPFW2 ,
+.Cd options IPFW2 ,
 and
 .Nm /sbin/ipfw
 and

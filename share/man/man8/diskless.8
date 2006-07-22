@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man8/diskless.8,v 1.6.2.9 2003/01/25 18:56:44 dillon Exp $
-.\" $DragonFly: src/share/man/man8/diskless.8,v 1.5 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man8/diskless.8,v 1.6 2006/07/22 23:52:23 swildner Exp $
 .\"
 .Dd April 18, 2001
 .Dt DISKLESS 8
@@ -270,12 +270,11 @@ files.
 .It
 The kernel for the diskless clients, which will be loaded using
 NFS or TFTP, should be built with at least the following options:
-.Bd -literal -offset indent
-options MFS
-options BOOTP
-options BOOTP_NFSROOT
-options BOOTP_COMPAT
-.Ed
+.Pp
+.D1 Cd options MFS
+.D1 Cd options BOOTP
+.D1 Cd options BOOTP_NFSROOT
+.D1 Cd options BOOTP_COMPAT
 .Pp
 If you use the firewall, remember to default to open or your kernel
 will not be able to send/receive the bootp packets.

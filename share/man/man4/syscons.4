@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/syscons.4,v 1.10.2.14 2003/04/25 21:21:36 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/syscons.4,v 1.6 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/syscons.4,v 1.7 2006/07/22 23:52:23 swildner Exp $
 .\"
 .Dd January 28, 2005
 .Dt SYSCONS 4
@@ -797,14 +797,12 @@ As the
 .Nm
 driver requires the keyboard driver and the video card driver,
 the kernel configuration file should contain the following lines.
-.Bd -literal -offset indent
-device atkbdc0 at isa? port IO_KBD
-device atkbd0 at atkbdc? irq 1
-device vga0 at isa?
-device sc0 at isa?
-
-pseudo-device splash
-.Ed
+.Pp
+.D1 Cd device atkbdc0 at isa? port IO_KBD
+.D1 Cd device atkbd0 at atkbdc? irq 1
+.D1 Cd device vga0 at isa?
+.D1 Cd device sc0 at isa?
+.D1 Cd pseudo-device splash
 .Pp
 If you do not intend to load the splash image or use the screen saver,
 the last line is not necessary, and can be omitted.
@@ -821,15 +819,15 @@ Note that you cannot put any white space inside the quoted string,
 because of the current implementation of
 .Xr config 8 .
 .Pp
-.Dl "options SC_NORM_ATTR=(FG_GREEN|BG_BLACK)
-.Dl "options SC_NORM_REV_ATTR=(FG_YELLOW|BG_GREEN)
+.D1 Cd "options SC_NORM_ATTR=(FG_GREEN|BG_BLACK)"
+.D1 Cd "options SC_NORM_REV_ATTR=(FG_YELLOW|BG_GREEN)"
 .Pp
 The following lines will set the default colors of the kernel message.
 The kernel message will be printed bright red on black background.
 The reversed message will be black on red background.
 .Pp
-.Dl "options SC_KERNEL_CONS_ATTR=(FG_LIGHTRED|BG_BLACK)
-.Dl "options SC_KERNEL_CONS_REV_ATTR=(FG_BLACK|BG_RED)
+.D1 Cd "options SC_KERNEL_CONS_ATTR=(FG_LIGHTRED|BG_BLACK)"
+.D1 Cd "options SC_KERNEL_CONS_REV_ATTR=(FG_BLACK|BG_RED)"
 .Pp
 The following example adds the font files
 .Pa cp850-8x16.fnt ,
@@ -838,9 +836,9 @@ and
 .Pa cp850-8x8.font
 to the kernel.
 .Pp
-.Dl "options SC_DFLT_FONT"
-.Dl "makeoptions SC_DFLT_FONT=cp850
-.Dl "device sc0 at isa?
+.D1 Cd "options SC_DFLT_FONT"
+.D1 Cd "makeoptions SC_DFLT_FONT=cp850"
+.D1 Cd "device sc0 at isa?"
 .\".Sh DIAGNOSTICS
 .Sh CAVEATS
 The amount of data that is possible to insert from the cut buffer is limited
