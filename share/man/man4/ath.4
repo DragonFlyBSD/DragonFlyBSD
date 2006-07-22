@@ -30,7 +30,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGES.
 .\"
 .\" $FreeBSD: /repoman/r/ncvs/src/share/man/man4/ath.4,v 1.40 2006/05/12 17:58:11 keramida Exp $
-.\" $DragonFly: src/share/man/man4/ath.4,v 1.1 2006/07/13 09:15:21 sephe Exp $
+.\" $DragonFly: src/share/man/man4/ath.4,v 1.2 2006/07/22 23:55:30 swildner Exp $
 .\"
 .Dd July 13, 2006
 .Dt ATH 4
@@ -146,7 +146,7 @@ Join/create an 802.11b IBSS network with network name
 ifconfig ath0 inet 192.168.0.22 netmask 0xffffff00 ssid my_net \e
 	mode 11b mediaopt adhoc
 .Ed
-.Pp
+.\".Pp
 .\"Create an 802.11g host-based access point:
 .\".Bd -literal -offset indent
 .\"ifconfig ath0 inet 192.168.0.10 netmask 0xffffff00 ssid my_ap \e
