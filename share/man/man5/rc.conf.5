@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.22 2006/07/02 00:42:25 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.23 2006/07/23 07:47:12 swildner Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -132,11 +132,6 @@ is set to
 these are the flags to pass to the
 .Xr battd 8
 daemon.
-.It Va devd_enable
-.Pq Vt bool
-Run
-.Xr devd 8
-to handle device added, removed or unknown events from the kernel.
 .It Va pccard_ifconfig
 .Pq Vt str
 List of arguments to be passed to

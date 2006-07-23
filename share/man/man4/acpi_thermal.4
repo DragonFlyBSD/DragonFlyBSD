@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi_thermal.4,v 1.6 2004/02/03 04:18:55 njl Exp $
-.\" $DragonFly: src/share/man/man4/acpi_thermal.4,v 1.1 2005/04/06 03:25:46 y0netan1 Exp $
+.\" $DragonFly: src/share/man/man4/acpi_thermal.4,v 1.2 2006/07/23 07:47:12 swildner Exp $
 .\"
 .Dd December 27, 2003
 .Dt ACPI_THERMAL 4
@@ -39,9 +39,7 @@ The
 driver provides the thermal management features of the ACPI module.
 This driver has a
 .Xr sysctl 8
-interface and a
-.Xr devd 8
-notification interface.
+interface.
 The sysctls export properties of each ACPI thermal zone object.
 .Pp
 There can be multiple thermal zones in a system.
@@ -87,40 +85,6 @@ For example, 300.0K is represented by the integer 3000.
 To convert to units of Centigrade,
 the formula is
 .Li "(x - 2731.5) / 10" .
-.Sh NOTIFIES
-Notifies are passed to userland via
-.Xr devd 8 .
-See
-.Pa /etc/devd.conf
-and
-.Xr devd.conf 5
-for examples.
-The
-.Nm
-driver sends events with the following attributes:
-.Pp
-.Bl -tag -width "subsystem" -compact
-.It system
-.Li ACPI
-.It subsystem
-.Li Thermal
-.It type
-The fully qualified thermal zone object path as in the ASL.
-.It notify
-An integer designating the event:
-.Pp
-.Bl -tag -width indent -compact
-.It Li 0x80
-Current temperature has changed.
-.It Li 0x81
-One or more trip points (_ACx, _PSV) have changed.
-.It Li 0x82
-One or more device lists (_ALx, _PSL, _TZD) have changed.
-.It Li 0xcc
-Non-standard notify that the system will shutdown if the temperature
-stays above _CRT or _HOT for one more poll cycle.
-.El
-.El
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr acpidump 8
