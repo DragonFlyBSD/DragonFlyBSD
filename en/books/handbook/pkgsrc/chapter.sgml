@@ -1,7 +1,7 @@
 <!--
      The DragonFly BSD Documentation Project
 
-     $DragonFly: doc/en/books/handbook/pkgsrc/chapter.sgml,v 1.2 2006/07/12 12:33:38 justin Exp $
+     $DragonFly: doc/en/books/handbook/pkgsrc/chapter.sgml,v 1.3 2006/07/24 12:36:50 justin Exp $
 -->
 
 <chapter id="pkgsrc">
@@ -885,7 +885,7 @@ the changes.
 	<command>ircII</command>
         from your system.  If you would like to reinstall it, you can do
 	so by running <command>bmake reinstall</command> from the
-        <filename>/usr/ports/chat/ircII</filename> directory.</para>
+        <filename>/usr/pkgsrc/chat/ircII</filename> directory.</para>
 
       <para>The <command>bmake deinstall</command> and <command>bmake
         reinstall</command> sequence does not work once you have run
