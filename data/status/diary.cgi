@@ -1,8 +1,156 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.28 2006/01/25 04:10:16 justin Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.29 2006/07/25 14:59:43 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Wed 12 July 2006</h2>
+<ul>
+	<li>Continued work on LWP/PROC separation.
+	<li>Continued pkgsrc integration.
+	<li>Fix refcount bugs in the kernel module loader and unloader.
+	<li>Lots of netif and serializer cleanups and fixes.
+	<li>Lots of softupdates, filesystem, and buffer cache related fixes.
+	<li>Remove more of the old ports-related infrastructure.
+	<li>Major documentation cleanups.
+	<li>Major code cleanups, ansification.
+	<li>Change the system #include topology so that each include file
+	    is responsible for #include'ing any dependant include files.
+	<li>Fix a bug in the PF fragment cache.
+	<li>Random number generator: Instead of generating entropy from
+	    selected interrupts (and none by default), we now generate
+	    entropy from all interrupts by default and rate limit it to
+	    not interfere with high performance interrupts.  Completely
+	<li>Random number generator: Completely replace the algorithms,
+	    remove limitations on returned bytes from /dev/random (which
+	    only served to cause programs to not use /dev/random due to its
+	    lack of dependability).  Add the ability to seed the RNG.
+	    Do some automatic initial seeding at boot.
+	<li>Adjust ssh to find the pkgsrc X11BASE instead of the old ports
+	    X11BASE.
+	<li>Fix some compatibility issues in /bin/sh.
+	<li>Fix a small number of critical section enter/exit mismatches.
+	<li>Bring in a bunch of new malloc() features from OpenBSD.
+	    (guard pages, free page protection, pointer guard, etc).
+	<li>Clean up the DragonFly build system's automatic .patch handling.
+	<li>Bring in openssh 4.3p2.
+	<li>Retire libmsun.  It was replaced by NetBSD's libm.
+	<li>Fix a bug in the NFS timer/retry code.
+	<li>Fix issues related to wide-char support.
+	<li><B>Fix a number of private TSS bugs related to threaded programs.</B>
+	<li><B>Completely rewrite the user process scheduler and usched APIs.</B>
+	<li><B>Add system calls that allow a blocking/non-blocking flag to be
+	    passed independant of the O_NONBLOCK state of the descriptor.</B>
+	<li><B>Remove all fcntl(... O_NONBLOCK) calls from libc_r, use the
+	    new system calls instead.  This solves numerous problems with
+	    file descriptors shared between threaded and non-threaded
+	    programs getting their non-blocking flag set, and then blowing
+	    up the non-threaded program.</B>
+	<li>Add additional red-black (RB) tree function support for ranged
+	    searches.
+	<li>Get rid of gdb -k, replace with a separately built kgdb, and
+	    build a separate libgdb as well.
+	<li>Implement a VM load heuristic.  Remove the full-process SWAP
+	    code which never worked well and replace with page-fault
+	    rate-limiting code based on the VM load.
+	<li>Fix a serious bug in adjtime()'s microseconds calculation.
+	<li>Fix a serious bug in libc's strnstr() function.  The function
+	    was testing one byte beyond the specified length limit.  This
+	    can cause a seg-fault when, e.g. using strnstr() on a memory
+	    mapped file whos last byte abuts the end of the VM page.
+	<li>Bring in sendmail 8.13.7.
+	<li>Bring in SHA256 support from FreeBSD.
+	<li>Implement a hardlink-mirroring option (-H) in cpdup.
+	<li>Add missing code needed to detect IPSEC packet replays.
+	<li>Enable TCP wrappers in sshd.
+	<li>Restrict recursive DNS queries to localhost by default.
+	<li><B>Massive reorganization and rewrite of the 802_11 subsystem,
+	    with many pieces taken from FreeBSD.</B>
+	<li>Fix a number of issues with user-supplied directory offsets
+	    blowing up readdir/getdirentries for NFS and UFS.
+	<li>Normalize internal kernel I/O byte lengths to 'int' and remove
+	    a ton of crazy casts to and from unsigned int or size_t.
+	<li>Remove NQNFS support.  The mechanisms are too crude to co-exist
+	    with upcoming cache coherency management work and the original
+	    implementation hacked up the NFS code pretty severely.
+	<li>Remove VOP_GETVOBJECT, VOP_DESTROYVOBJECT, and VOP_CREATEVOBJECT.
+	    They never lived up to their billing and DragonFly doesn't
+	    need them since DragonFly is capable of aliasing vnodes via
+	    the namecache.  Rearrange the VFS code such that VOP_OPEN is
+	    now responsible for assocating a VM object with a vnode.
+	<li>Formalize open/close counting for the vnode and assert that
+	    they are correct.
+	<li>Remove the thread_t argument from most VOP and VFS calls.
+	    Remove the thread_t argument from many other kernel procedures.
+	<li>Integrate FreeBSD's new ifconfig(8) utility.
+	<li>Fix a race condition in the floating point fault code that
+	    could sometimes result in a kernel assertion.
+	<li>Fix a crash in the TCP code when the MTU is too small to
+	    support required TCP/IP/IPSEC options and headers.
+	<li>Separate EXT2 conditionals from the UFS code, copying the files
+	    in question to the EXT2 directory instead of trying to 
+	    conditionalize them.  Also remove function hooks and other code
+	    mess that had been implemented to allow the UFS code to be
+	    used by EXT2.
+	<li>Greatly simplify the lockmgr() API.  Remove LK_DRAIN, 
+	    LK_INTERLOCK, and many other flags.  Remove the interlock 
+	    argument.
+	<li>Fix a bug in the POSIX locking code (lockf).  Actually, completely
+	    rewrite the POSIX locking code.  The previous code was too
+	    complex and mostly unreadable.
+	<li>Do a major clean up of all *read*() and *write*() system calls,
+	    and iovec handling.
+	<li>Replace many instances where LWKT tokens are used with spinlocks.
+	<li>Make spinlocks panic-friendly.  Properly handle the detection
+	    of indefinite waits and other deadlock issues.
+	<li>Improve network performance by embedding the netmsg directly in
+	    the mbuf instead of allocating a separate netmsg structure for
+	    each packet.
+	<li><B>Implement both shared and exclusive spinlocks.
+	    Implement a much faster shared spinlock.  Cache the shared
+	    state such that no locked bus cycle operation is required in
+	    the common case.</B>
+	<li>Implement msleep().  Use a novel approach to handling the
+	    interlock that greatly improves performance over other 
+	    implementations.
+	<li>Add cpu-binding support to the scheduler and add a system call
+	    to access it.  A user process can be bound to a subset of cpus.
+	<li><B>Prefix all syscall functions in the kernel with 'sys_'
+	    to reduce function prototype pollution and incompatibilities,
+	    and to eventually support virtualized kernels running in
+	    userland.</B>
+	<li>Port the enhanced SpeedStep driver (EST) for cpu frequency control.
+	<li>Remove the asynchronous syscall interface.  It was an idea before
+	    its time.  However, keep the formalization of the syscall
+	    arguments structures.
+	<li>Add a facility which statistically records and dumps program
+	    counter tracking data for the kernel.
+	<li>Improve kernel SSE2-based bcopies by calling fnclex instead of
+	    fninit.
+	<li>Major BUF/BIO work - <B>make the entire BUF/BIO subsystem BIO
+	    centric.</B>
+	<li>Major BUF/BIO work - <B>get rid of block numbers, use 64 bit 
+	    byte offsets only.</B>
+	<li>Major BUF/BIO work - Clean up structures and compartmentalize
+	    driver-specific private fields.  Rewrite and simplify device
+	    and vnode strategy APIs.
+	<li>Major BUF/BIO work - Remove B_PHYS.  There is no longer any
+	    differentiation between physical and non-physical I/O at
+	    the strategy layer.
+	<li>Major BUF/BIO work - Replace the global buffer cache hash table
+	    with a per-vnode RB tree.  Add sanity checks.  Require that all
+	    vnode-based buffers be VMIO backed.
+	<li>MPSAFE work - <B>Implement the parallel route table algorith.</B>
+	<li>MPSAFE work - <B>Make the user process scheduler MPSAFE.</B>
+	<li>MPSAFE work - <B>File descriptor access is now MPASFE.  Many
+	    fd related functions, like dup(), close(), etc, are either MPSAFE
+	    or mostly MPSAFE.</B>
+	<li>MPSAFE work - <B>Push the BGL deeper into the kernel call stack
+	    for many system calls.</B>
+	<li>MPSAFE work - <B>Make the process list MPSAFE.</B>
+	<li>MPSAFE work - <B>Make all cred functions MPASFE.</B>
+	<li>NRELEASE - compilable kernel sources are now included on the ISO.
+</ul>
 
 <h2>Sat 7 January 2006</h2>
 <ul>
