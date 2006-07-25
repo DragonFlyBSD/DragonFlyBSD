@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.31 2006/05/27 02:03:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.31.2.1 2006/07/25 20:03:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -239,8 +239,15 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 
 	switch(ap->a_op) {
 	case F_SETLK:
-		ap->a_vp->v_flag |= VMAYHAVELOCKS;
+		/*
+		 * NOTE: It is possible for both lf_range and lf_blocked to
+		 * be empty if we block and get woken up, but another process
+		 * then gets in and issues an unlock.  So VMAYHAVELOCKS must
+		 * be set after the lf_setlock() operation completes rather
+		 * then before.
+		 */
 		error = lf_setlock(lock, owner, type, flags, start, end);
+		ap->a_vp->v_flag |= VMAYHAVELOCKS;
 		break;
 
 	case F_UNLCK:
@@ -683,7 +690,7 @@ restart:
 			 * Extend brange to cover range and scrap range.
 			 */
 			brange->lf_end = range->lf_end;
-			brange->lf_flags |= brange->lf_flags & F_NOEND;
+			brange->lf_flags |= range->lf_flags & F_NOEND;
 			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
 			if (range->lf_flags & F_POSIX)
 				--count;
