@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.1 2006/07/25 14:56:03 justin Exp $
+# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.2 2006/07/25 15:12:22 justin Exp $
 
 $TITLE(DragonFly - January 2006 Release 1.6.x Download)
 <h1>Obtaining DragonFly 1.6.x for your system</h1>
@@ -119,39 +119,6 @@ See the 'Download Site' list below for a list of download locations.
 <h1>Release Notes for DragonFly 1.6.0</h1>
 
 <p>
-1.6.0 is the fourth bug-fix sub-release in the 1.6 release branch.
-</p>
-<p>
-<ul>
-    <li>Fixed a bug in pcb_ext, used when mapping I/O.
-    <li>Fixed a number of bugs in UFS's softupdates.
-    <li>Fixed a bug related vesa mode screen restore.
-    <li>Fixed a module ref counting bug.
-    <li>Reengineered the Random Number Entropy gathering algorithm.
-    <li>Sysmouse termio defaults are now correct by default.
-    <li>Various NFS races have been fixed.
-    <li>A bug in the NFS access cache was fixed, related to coarse
-	offset adjustments to the time of day.
-    <li>MSDOS filesystems can now be exported via NFS.
-    <li>A number of wchar related fixes have been made.
-    <li>A serious sendmail security fix was brought in.
-    <li>Numerous kernel memory disclosure holes have been closed.
-    <li>Various VFS races which could lead to filesystem corruption
-	have been fixed.
-    <li>Various bugs in NDIS have been fixed.
-    <li>A microseconds vs nanoseconds mixup in adjtime() has been fixed.
-    <li>A number of IPSEC related bugs have been fixed
-    <li>A bug in the fork/exit code that could result in a hung process
-	has been fixed.
-    <li>Numerous networking issues have been fixed.
-    <li>A linker bug related to TLS vs non-TLS storage has been fixed.
-    <li>Numerous installer errata has been fixed.
-</ul>
-</p>
-
-<h1>Release Notes for DragonFly 1.6.0</h1>
-
-<p>
 1.6 is our fourth major DragonFly release.  DragonFly's policy is to
 only commit bug fixes to release branches.
 </p>
@@ -179,7 +146,7 @@ and userland VFS goals.  We consider 1.6 to be more stable then 1.4.
 	<li>Random number generator: Instead of generating entropy from
 	    selected interrupts (and none by default), we now generate
 	    entropy from all interrupts by default and rate limit it to
-	    not interfere with high performance interrupts.  Completely
+	    not interfere with high performance interrupts. 
 	<li>Random number generator: Completely replace the algorithms,
 	    remove limitations on returned bytes from /dev/random (which
 	    only served to cause programs to not use /dev/random due to its
@@ -299,7 +266,7 @@ and userland VFS goals.  We consider 1.6 to be more stable then 1.4.
 	<li>Major BUF/BIO work - Replace the global buffer cache hash table
 	    with a per-vnode RB tree.  Add sanity checks.  Require that all
 	    vnode-based buffers be VMIO backed.
-	<li>MPSAFE work - <B>Implement the parallel route table algorith.</B>
+	<li>MPSAFE work - <B>Implement the parallel route table algorithm.</B>
 	<li>MPSAFE work - <B>Make the user process scheduler MPSAFE.</B>
 	<li>MPSAFE work - <B>File descriptor access is now MPASFE.  Many
 	    fd related functions, like dup(), close(), etc, are either MPSAFE
