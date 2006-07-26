@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.8 2005/03/15 02:43:17 dillon Exp $
+# $DragonFly: src/bin/Makefile,v 1.9 2006/07/26 18:26:13 swildner Exp $
 
 SUBDIR= cat \
 	chio \
@@ -35,7 +35,7 @@ SUBDIR= cat \
 	test \
 	varsym
 
-.if !defined(NO_SENDMAIL) && !defined(NOUUCP)
+.if !defined(NO_SENDMAIL)
 SUBDIR+=rmail
 .endif
 
