@@ -1,8 +1,8 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.2 2006/07/25 15:12:22 justin Exp $
+# $DragonFly: site/data/community/Attic/release1_6.cgi,v 1.3 2006/07/26 03:46:27 justin Exp $
 
-$TITLE(DragonFly - January 2006 Release 1.6.x Download)
+$TITLE(DragonFly - July 2006 Release 1.6.x Download)
 <h1>Obtaining DragonFly 1.6.x for your system</h1>
 
 <h2>1.6.0 ISO Images for CDs</h2>
@@ -156,7 +156,7 @@ and userland VFS goals.  We consider 1.6 to be more stable then 1.4.
 	    X11BASE.
 	<li>Fix some compatibility issues in /bin/sh.
 	<li>Fix a small number of critical section enter/exit mismatches.
-	<li>Bring in a bunch of new malloc() features from OpenBSD.
+	<li>Bring in a bunch of new malloc() features from OpenBSD
 	    (guard pages, free page protection, pointer guard, etc).
 	<li>Clean up the DragonFly build system's automatic .patch handling.
 	<li>Bring in openssh 4.3p2.
