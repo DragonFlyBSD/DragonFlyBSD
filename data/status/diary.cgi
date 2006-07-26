@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.29 2006/07/25 14:59:43 justin Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.30 2006/07/26 03:48:06 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -30,7 +30,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    X11BASE.
 	<li>Fix some compatibility issues in /bin/sh.
 	<li>Fix a small number of critical section enter/exit mismatches.
-	<li>Bring in a bunch of new malloc() features from OpenBSD.
+	<li>Bring in a bunch of new malloc() features from OpenBSD
 	    (guard pages, free page protection, pointer guard, etc).
 	<li>Clean up the DragonFly build system's automatic .patch handling.
 	<li>Bring in openssh 4.3p2.
