@@ -29,9 +29,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
-.\" $DragonFly: src/share/man/man7/release.7,v 1.7 2006/04/28 20:16:26 swildner Exp $
+.\" $DragonFly: src/share/man/man7/release.7,v 1.8 2006/07/26 20:18:54 swildner Exp $
 .\"
-.Dd March 10, 2006
+.Dd July 26, 2006
 .Dt RELEASE 7
 .Os
 .Sh NAME
@@ -112,6 +112,14 @@ out if a number of external packages to be put on the CD exist on
 your system.
 If they cannot be found, the release process will stop and give
 proper commands for downloading and setting up these packages.
+.Sh ENVIRONMENT
+.Bl -tag -width ".Va WITHOUT_SRCS"
+.It Va WITHOUT_SRCS
+If set, this variable will prevent kernel source code from being copied
+to
+.Pa /usr/src-sys.tar.bz2
+on the ISO image.
+.El
 .Sh FILES
 .Bl -tag -compact
 .It Pa /etc/make.conf
