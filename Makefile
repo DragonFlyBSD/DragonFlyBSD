@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.18 2006/07/17 00:04:14 dillon Exp $
+# $DragonFly: src/Makefile,v 1.19 2006/07/26 18:23:16 swildner Exp $
 #
 # The user-driven targets are:
 #
@@ -42,7 +42,7 @@
 # The user-driven targets (as listed above) are implemented in Makefile.inc1.
 #
 # If you want to build your system from source be sure that /usr/obj has
-# at least 400MB of diskspace available.
+# at least 800MB of diskspace available.
 #
 # For individuals wanting to build from the sources currently on their
 # system, the simple instructions are:
@@ -57,11 +57,9 @@
 # 2.  `make buildworld'
 # 3.  `make buildkernel KERNCONF=YOUR_KERNEL_HERE'     (default is GENERIC).
 # 4.  `make installkernel KERNCONF=YOUR_KERNEL_HERE'   (default is GENERIC).
-# 5.  `reboot'        (in single user mode: boot -s from the loader prompt).
-# 6.  `mergemaster -p'
-# 7.  `make installworld'
-# 8.  `mergemaster'
-# 9.  `reboot'
+# 5.  `make installworld'
+# 6.  `make upgrade'
+# 7.  `reboot'
 #
 # See src/UPDATING `COMMON ITEMS' for more complete information.
 #
