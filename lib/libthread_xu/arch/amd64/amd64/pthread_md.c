@@ -24,12 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/amd64/pthread_md.c,v 1.4 2004/11/06 03:33:19 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.7 2005/05/11 19:47:02 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.8 2006/07/27 00:42:54 corecode Exp $
  */
 
-#include <stdlib.h>
-#include <strings.h>
-#include "rtld_tls.h"
+#include <sys/types.h>
+#include <sys/tls.h>
+
+#include <machine/tls.h>
+
 #include "pthread_md.h"
 
 /*
