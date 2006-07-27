@@ -29,7 +29,7 @@
  * @(#)xdr_float.c 1.12 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_float.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_float.c,v 1.7 1999/08/28 00:02:55 peter Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_float.c,v 1.5 2005/12/05 00:47:57 swildner Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_float.c,v 1.6 2006/07/27 00:43:17 corecode Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 
 #if defined(__m68k__) || defined(__sparc__) || defined(__i386__) || \
     defined(__mips__) || defined(__ns32k__) || defined(__arm32__) || \
-    defined(__ppc__)
+    defined(__ppc__) || defined(__amd64__)
 #include <machine/endian.h>
 #define IEEEFP
 #endif
