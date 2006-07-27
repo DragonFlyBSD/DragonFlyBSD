@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.10 2006/06/14 01:45:28 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.11 2006/07/27 00:43:02 corecode Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -88,6 +88,24 @@
 	__asm__("frstor %0": :"m"(*fdata));		\
 } while (0)
 #define SET_RETURN_ADDR_JB(jb, ra)	(jb)[0]._jb[0] = (int)(ra)
+#elif defined(__amd64__)
+#define	GET_STACK_JB(jb)	((unsigned long)((jb)[0]._jb[2]))
+#define	GET_STACK_SJB(sjb)	((unsigned long)((sjb)[0]._sjb[2]))
+#define	GET_STACK_UC(ucp)	((unsigned long)((ucp)->uc_mcontext.mc_rsp))
+#define	SET_STACK_JB(jb, stk)	(jb)[0]._jb[2] = (long)(stk)
+#define	SET_STACK_SJB(sjb, stk)	(sjb)[0]._sjb[2] = (long)(stk)
+#define	SET_STACK_UC(ucp, stk)	(ucp)->uc_mcontext.mc_rsp = (long)(stk)
+#define	FP_SAVE_UC(ucp)		do {			\
+	char	*fdata;					\
+	fdata = (char *) (ucp)->uc_mcontext.mc_fpstate;	\
+	__asm__("fxsave %0": :"m"(*fdata));		\
+} while (0)
+#define	FP_RESTORE_UC(ucp)	do {			\
+	char	*fdata;					\
+	fdata = (char *) (ucp)->uc_mcontext.mc_fpstate;	\
+	__asm__("fxrstor %0": :"m"(*fdata));		\
+} while (0)
+#define SET_RETURN_ADDR_JB(jb, ra)	(jb)[0]._jb[0] = (long)(ra)
 #else
 #error "Don't recognize this architecture!"
 #endif
