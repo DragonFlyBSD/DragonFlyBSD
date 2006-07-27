@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.24 2005/07/13 20:40:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.25 2006/07/27 00:41:10 corecode Exp $
  */
 
 /*-
@@ -229,7 +229,7 @@ emalloc(size_t size)
 	void *p;
 
 	if ((p = malloc(size)) == NULL)
-		err(2, "malloc(%d)", size);
+		err(2, "malloc(%zd)", size);
 	return (p);
 }
 
@@ -257,7 +257,7 @@ erealloc(void *ptr, size_t size)
 	char *p;
 
 	if ((p = realloc(ptr, size)) == NULL)
-		err(2, "realloc(%d)", size);
+		err(2, "realloc(%zd)", size);
 	return (p);
 }
 
