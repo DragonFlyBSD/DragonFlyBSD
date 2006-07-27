@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/main.c,v 1.19.2.1 2002/07/30 03:50:40 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/main.c,v 1.5 2005/11/24 23:42:54 swildner Exp $
+ * $DragonFly: src/usr.sbin/pppd/main.c,v 1.6 2006/07/27 00:40:55 corecode Exp $
  */
 
 #include <stdio.h>
@@ -1492,7 +1492,7 @@ vfmtmsg(char *buf, int buflen, char *fmt, va_list args)
 	    break;
 	case 'r':
 	    f = va_arg(args, char *);
-#ifndef __powerpc__
+#if !defined(__powerpc__) && !defined(__amd64__)
 	    n = vfmtmsg(buf, buflen + 1, f, va_arg(args, va_list));
 #else
 	    /* On the powerpc, a va_list is an array of 1 structure */
