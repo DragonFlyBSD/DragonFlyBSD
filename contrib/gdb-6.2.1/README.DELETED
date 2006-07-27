@@ -767,7 +767,6 @@ include/elf/sh.h
 include/elf/sparc.h
 include/elf/v850.h
 include/elf/vax.h
-include/elf/x86-64.h
 include/elf/xstormy16.h
 include/elf/xtensa.h
 include/fibheap.h
