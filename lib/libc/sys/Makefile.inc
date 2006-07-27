@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.19 2006/06/13 08:17:42 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.20 2006/07/27 00:43:42 corecode Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -29,45 +29,32 @@ SRCS+=		stack_protector.c
 
 # Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are
-# not declared for no generation of default code (NOASM). If the
-# syscall is not hidden, add it to the ASM list, otherwise add it
-# to the ASMR list.
+# not declared for no generation of default code (NOASM).
 .for _asm in ${MIASM}
 .if (${MDASM:R:M${_asm:R}} == "")
 .if (${NOASM:R:M${_asm:R}} == "")
-ASMR+=$(_asm)
+ASM+=$(_asm)
 .endif
 .endif
 .endfor
 
-OBJS+=	${ASM} ${ASMR} ${PSEUDO} ${PSEUDOR}
+OBJS+=	${ASM} ${PSEUDO}
 
 SASM=	${ASM:S/.o/.S/}
 
-SASMR=	${ASMR:S/.o/.S/}
-
 SPSEUDO= ${PSEUDO:S/.o/.S/}
 
-SPSEUDOR= ${PSEUDOR:S/.o/.S/}
-
-SRCS+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
+SRCS+=	${SASM} ${SPSEUDO}
 
 # Generated files
-CLEANFILES+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
+CLEANFILES+=	${SASM} ${SPSEUDO}
 
 # Generate the syscalls source-files
 ${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
 
-${SASMR}:
-	printf '#include "SYS.h"\nPRSYSCALL(${.PREFIX})\n' > ${.TARGET}
-
 ${SPSEUDO}:
 	printf '#include "SYS.h"\nPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' \
-	    > ${.TARGET}
-
-${SPSEUDOR}:
-	printf '#include "SYS.h"\nPPSEUDO(${.PREFIX},${.PREFIX:S/_//})\n' \
 	    > ${.TARGET}
 
 .if ${LIB} == "c"

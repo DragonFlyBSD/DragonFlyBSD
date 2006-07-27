@@ -35,7 +35,7 @@
  *
  *	@(#)SYS.h	5.5 (Berkeley) 5/7/91
  * $FreeBSD: src/lib/libc/amd64/SYS.h,v 1.26 2003/05/24 17:35:23 peter Exp $
- * $DragonFly: src/lib/libc/amd64/SYS.h,v 1.1 2004/02/02 05:43:14 dillon Exp $
+ * $DragonFly: src/lib/libc/amd64/SYS.h,v 1.2 2006/07/27 00:43:42 corecode Exp $
  */
 
 #include <sys/syscall.h>
@@ -63,8 +63,10 @@
 #define	RSYSCALL(x)	SYSCALL(x); ret
 
 #define	PSEUDO(x,y)	ENTRY(__CONCAT(__sys_,x));			\
+			.weak CNAME(x);					\
+			.set CNAME(x),CNAME(__CONCAT(__sys_,x)); 	\
 			.weak CNAME(__CONCAT(_,x));			\
 			.set CNAME(__CONCAT(_,x)),CNAME(__CONCAT(__sys_,x)); \
-			mov __CONCAT($SYS_,x),%rax; KERNCALL; ret
+			mov __CONCAT($SYS_,y),%rax; KERNCALL; ret
 
 #define KERNCALL	movq %rcx, %r10; syscall

@@ -1,6 +1,6 @@
 #	from: Makefile.inc,v 1.1 1993/09/03 19:04:23 jtc Exp
 # $FreeBSD: src/lib/libc/i386/sys/Makefile.inc,v 1.17.2.3 2002/10/15 19:46:46 fjoe Exp $
-# $DragonFly: src/lib/libc/i386/sys/Makefile.inc,v 1.5 2006/06/13 08:17:39 dillon Exp $
+# $DragonFly: src/lib/libc/i386/sys/Makefile.inc,v 1.6 2006/07/27 00:43:42 corecode Exp $
 
 SRCS+=	i386_clr_watch.c i386_get_ioperm.c i386_get_ldt.c i386_set_ioperm.c \
 	i386_set_ldt.c i386_set_watch.c i386_vm86.c
@@ -15,11 +15,7 @@ NOASM=	__semctl.o break.o exit.o ftruncate.o getdomainname.o getlogin.o \
 	semop.o setdomainname.o shmat.o shmctl.o shmdt.o shmget.o sstk.o \
 	thr_sleep.o thr_wakeup.o truncate.o uname.o vfork.o yield.o
 
-PSEUDO=	_getlogin.o
-
-# Pseudo syscalls that are renamed as __sys_{pseudo} when
-# building libc_r.
-PSEUDOR=	_exit.o
+PSEUDO=	_getlogin.o _exit.o
 
 .if ${LIB} == "c"
 MAN+=	i386_get_ioperm.2 i386_get_ldt.2 i386_vm86.2

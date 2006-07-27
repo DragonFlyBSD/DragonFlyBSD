@@ -36,39 +36,13 @@
  *	from: @(#)SYS.h	5.5 (Berkeley) 5/7/91
  *
  * $FreeBSD: src/lib/libc/i386/SYS.h,v 1.17.2.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/i386/SYS.h,v 1.6 2005/05/02 16:23:37 joerg Exp $
+ * $DragonFly: src/lib/libc/i386/SYS.h,v 1.7 2006/07/27 00:43:42 corecode Exp $
  */
 
 #include <sys/syscall.h>
 #include "DEFS.h"
 
 #define	SYSCALL(x)	2: PIC_PROLOGUE; jmp PIC_PLT(HIDENAME(cerror));	\
-			ENTRY(__CONCAT(_,x));				\
-			.weak CNAME(x);					\
-			.set CNAME(x),CNAME(__CONCAT(_,x));		\
-			lea __CONCAT(SYS_,x),%eax; KERNCALL; jb 2b
-
-#define	RSYSCALL(x)	SYSCALL(x); ret
-
-#define	PSEUDO(x,y)	ENTRY(__CONCAT(_,x));				\
-			.weak CNAME(x);					\
-			.set CNAME(x),CNAME(__CONCAT(_,x));		\
-			lea __CONCAT(SYS_,y), %eax; KERNCALL; ret
-
-/* gas messes up offset -- although we don't currently need it, do for BCS */
-#define	LCALL(x,y)	.byte 0x9a ; .long y; .word x
-
-/*
- * Design note:
- *
- * The macros PSYSCALL() and PRSYSCALL() are intended for use where a
- * syscall needs to be renamed in the threaded library.
- */
-/*
- * For the thread_safe versions, we prepend __sys_ to the function
- * name so that the 'C' wrapper can go around the real name.
- */
-#define	PSYSCALL(x)	2: PIC_PROLOGUE; jmp PIC_PLT(HIDENAME(cerror));	\
 			ENTRY(__CONCAT(__sys_,x));			\
 			.weak CNAME(x);					\
 			.set CNAME(x),CNAME(__CONCAT(__sys_,x));	\
@@ -76,13 +50,16 @@
 			.set CNAME(__CONCAT(_,x)),CNAME(__CONCAT(__sys_,x)); \
 			lea __CONCAT(SYS_,x),%eax; KERNCALL; jb 2b
 
-#define	PRSYSCALL(x)	PSYSCALL(x); ret
+#define	RSYSCALL(x)	SYSCALL(x); ret
 
-#define	PPSEUDO(x,y)	ENTRY(__CONCAT(__sys_,x));			\
+#define	PSEUDO(x,y)	ENTRY(__CONCAT(__sys_,x));			\
 			.weak CNAME(x);					\
 			.set CNAME(x),CNAME(__CONCAT(__sys_,x));	\
 			.weak CNAME(__CONCAT(_,x));			\
 			.set CNAME(__CONCAT(_,x)),CNAME(__CONCAT(__sys_,x)); \
 			lea __CONCAT(SYS_,y), %eax; KERNCALL; ret
+
+/* gas messes up offset -- although we don't currently need it, do for BCS */
+#define	LCALL(x,y)	.byte 0x9a ; .long y; .word x
 
 #define KERNCALL int $0x80

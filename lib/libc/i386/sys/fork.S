@@ -34,12 +34,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/sys/fork.S,v 1.8 1999/08/27 23:59:39 peter Exp $
- * $DragonFly: src/lib/libc/i386/sys/fork.S,v 1.3 2003/12/06 03:11:36 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/sys/fork.S,v 1.4 2006/07/27 00:43:42 corecode Exp $
  */
 
 #include "SYS.h"
 
-PSYSCALL(fork)
+SYSCALL(fork)
 	cmpl	$0,%edx	/* parent, since %edx == 0 in parent, 1 in child */
 	je	1f
 	movl	$0,%eax
