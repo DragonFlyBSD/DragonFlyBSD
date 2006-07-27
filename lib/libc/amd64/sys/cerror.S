@@ -35,7 +35,7 @@
  *
  * @(#)cerror.s	5.1 (Berkeley) 4/23/90
  * $FreeBSD: src/lib/libc/amd64/sys/cerror.S,v 1.13 2003/04/30 18:16:33 peter Exp $
- * $DragonFly: src/lib/libc/amd64/sys/cerror.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
+ * $DragonFly: src/lib/libc/amd64/sys/cerror.S,v 1.2 2006/07/27 00:44:27 corecode Exp $
  */
 
 #include <machine/asm.h>
@@ -44,16 +44,23 @@
 
 	.globl HIDENAME(cerror)
 
-	/*
-	 * The __error() function is thread aware. For non-threaded
-	 * programs and the initial threaded in threaded programs,
-	 * it returns a pointer to the global errno variable.
-	 */
-	.globl	CNAME(__error)
-	.type	CNAME(__error),@function
 HIDENAME(cerror):
+#ifdef PIC
 	pushq	%rax
-	call	PIC_PLT(CNAME(__error))
+#  ifdef __thread
+	movq	PIC_GOT(CNAME(errno)),%rax
+#  else
+	leaq	errno@TLSGD(%rip),%rdi
+	call	__tls_get_addr@PLT
+#  endif
+#else
+#  ifdef __thread
+	leaq	CNAME(errno)(%rip),%rax
+#  else
+	movq	errno@GOTTPOFF(%rip),%rax
+	addq	%fs:0,%rax
+#  endif
+#endif
 	popq	%rcx
 	movq	%rcx,(%rax)
 	movq	$-1,%rax

@@ -35,20 +35,31 @@
  *
  * @(#)ptrace.s	5.1 (Berkeley) 4/23/90
  * $FreeBSD: src/lib/libc/amd64/sys/ptrace.S,v 1.11 2003/05/24 17:35:23 peter Exp $
- * $DragonFly: src/lib/libc/amd64/sys/ptrace.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
+ * $DragonFly: src/lib/libc/amd64/sys/ptrace.S,v 1.2 2006/07/27 00:44:27 corecode Exp $
  */
 
 #include <machine/asm.h>
 #include "SYS.h"
 
 ENTRY(ptrace)
-	xorl	%eax,%eax
 #ifdef PIC
-	movq	PIC_GOT(CNAME(errno)),%r8
-	movl	%eax,(%r8)
+#  ifdef __thread
+	movq	PIC_GOT(CNAME(errno)),%rax
+#  else
+	pushq	%rdi
+	leaq	errno@TLSGD(%rip),%rdi
+	call	__tls_get_addr@PLT
+	popq	%rdi
+#  endif
 #else
-	movl	%eax,CNAME(errno)(%rip)
+#  ifdef __thread
+	leaq	CNAME(errno)(%rip),%rax
+#  else
+	movq	errno@GOTTPOFF(%rip),%rax
+	addq	%fs:0,%rax
+#  endif
 #endif
+	movl	$0,(%rax)
 	mov	$SYS_ptrace,%eax
 	KERNCALL
 	jb	err
