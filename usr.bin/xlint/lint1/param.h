@@ -30,7 +30,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/xlint/lint1/param.h,v 1.2 2004/07/07 08:20:18 asmodai Exp $
+ * $FreeBSD: src/usr.bin/xlint/lint1/param.h,v 1.9 2004/05/14 13:44:36 cognet Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/param.h,v 1.3 2006/07/27 00:41:24 corecode Exp $
  */
 
 /*
@@ -62,7 +63,10 @@
  * Should be set to 1 if the difference of two pointers is of type long
  * or the value of sizeof is of type unsigned long.
  */
-#ifdef __alpha__
+#ifdef __amd64__
+#define PTRDIFF_IS_LONG		1
+#define SIZEOF_IS_ULONG		1
+#elif __alpha__
 #define PTRDIFF_IS_LONG		1
 #define SIZEOF_IS_ULONG		1
 #elif __i386__
