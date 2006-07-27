@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.25 2005/09/06 18:55:16 dillon Exp $
+# $DragonFly: src/lib/Makefile,v 1.26 2006/07/27 00:41:38 corecode Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -35,10 +35,8 @@ SUBDIR+= compat/${MACHINE_ARCH}
 
 _csu=csu/${MACHINE_ARCH}
 
-.if ${MACHINE_ARCH} == "i386"
 .if !defined(NO_LIBC_R)
 _libc_r=	libc_r
-.endif
 .endif
 
 .if !defined(NO_BIND)
