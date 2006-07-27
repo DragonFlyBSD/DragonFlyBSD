@@ -1,5 +1,5 @@
-/*-
- * Copyright (c) 1990, 1993
+/*
+ * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,55 +30,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/types.h,v 1.3 2006/07/27 00:42:46 corecode Exp $
+ *	@(#)ptrace.h	8.1 (Berkeley) 6/11/93
+ * $FreeBSD: src/sys/i386/include/ptrace.h,v 1.9 1999/12/29 04:33:06 peter Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/ptrace.h,v 1.1 2006/07/27 00:42:46 corecode Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
-
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-typedef struct _physadr {
-	int r[1];
-} *physadr;
-
-typedef struct label_t {
-	int val[6];
-} label_t;
-#endif
-
-typedef	__uint64_t	vm_offset_t;	/* address space bounded offset */
-typedef	__uint64_t	vm_size_t;	/* address space bounded size */
-typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
-typedef	__uint64_t 	vm_pindex_t;	/* physical page index */
-typedef __uint64_t	vm_poff_t;	/* physical offset */
-typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
-
-typedef	__int64_t	register_t;
-typedef	__uint64_t	u_register_t;
-
-#ifdef _KERNEL
-typedef	__int64_t	intfptr_t;
-typedef	__uint64_t	uintfptr_t;
-#endif
+#ifndef _MACHINE_PTRACE_H_
+#define _MACHINE_PTRACE_H_
 
 /*
- * MMU page tables
+ * Machine dependent trace commands.
  */
-typedef __uint64_t	pml4_entry_t;
-typedef __uint64_t	pdp_entry_t;
-typedef __uint64_t	pd_entry_t;
-typedef __uint64_t	pt_entry_t;
-typedef __uint32_t      cpumask_t;      /* mask representing a set of cpus */
+#define PT_GETREGS      (PT_FIRSTMACH + 1)
+#define PT_SETREGS      (PT_FIRSTMACH + 2)
+#define PT_GETFPREGS    (PT_FIRSTMACH + 3)
+#define PT_SETFPREGS    (PT_FIRSTMACH + 4)
+#define PT_GETDBREGS    (PT_FIRSTMACH + 5)
+#define PT_SETDBREGS    (PT_FIRSTMACH + 6)
 
-#define PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */
-#define PDPSIZE		sizeof(pdp_entry_t) /* for assembly files */
-#define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
-#define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
-
-/* Interrupt mask (spl, xxx_imask, etc) */
-typedef __uint32_t	intrmask_t;
-
-#endif /* !_MACHINE_TYPES_H_ */
-
+#endif

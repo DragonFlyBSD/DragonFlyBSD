@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.3 2005/08/12 00:25:10 hmp Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.4 2006/07/27 00:42:46 corecode Exp $
  */
 #ifndef _MACHINE_PMAP_H_
 #define	_MACHINE_PMAP_H_
@@ -60,7 +60,7 @@
 #define PG_PCD		0x0010LL		/* PCD  Page Cache Disable */
 #define PG_A		0x0020LL		/* A    Accessed	*/
 #define PG_D		0x0040LL		/* D 	Dirty	(pte only) */
-#define PG_PAE		0x0080LL		/* PAT 		(pte only) */
+#define PG_PS		0x0080LL		/* PAT 		(pte only) */
 #define PG_G		0x0100LL		/* G 	Global	(pte only) */
 #define PG_USR0		0x0200LL		/* available to os */
 #define PG_USR1		0x0400LL		/* available to os */
@@ -96,21 +96,32 @@
 #define UVA_MAXMEM	(512LL*1024*1024*1024)
 #define KVA_MAXMEM	(512LL*1024*1024*1024)
 
-#if 0
 /*
- * Pte related macros
+ * Pte related macros.  This is complicated by having to deal with
+ * the sign extension of the 48th bit.
  */
-#define VADDR(pdi, pti) ((vm_offset_t)(((pdi)<<PDRSHIFT)|((pti)<<PAGE_SHIFT)))
+#define KVADDR(l4, l3, l2, l1) ( \
+	((unsigned long)-1 << 47) | \
+	((unsigned long)(l4) << PML4SHIFT) | \
+	((unsigned long)(l3) << PDPSHIFT) | \
+	((unsigned long)(l2) << PDRSHIFT) | \
+	((unsigned long)(l1) << PAGE_SHIFT))
 
-#ifndef NKPT
-#define	NKPT		30	/* actual number of kernel page tables */
-#endif
-#ifndef NKPDE
-#define NKPDE	(KVA_PAGES - 2)	/* addressable number of page tables/pde's */
-#endif
-#if NKPDE > KVA_PAGES - 2
-#error "Maximum NKPDE is KVA_PAGES - 2"
-#endif
+#define UVADDR(l4, l3, l2, l1) ( \
+	((unsigned long)(l4) << PML4SHIFT) | \
+	((unsigned long)(l3) << PDPSHIFT) | \
+	((unsigned long)(l2) << PDRSHIFT) | \
+	((unsigned long)(l1) << PAGE_SHIFT))
+
+
+#define NKPML4E		1
+#define NKPDPE		1
+#define NKPDE		(NKPDPE*NPDEPG)
+
+#define NUPML4E		(NPML4EPG/2)
+#define NUPDPE		(NUPML4E*NPDPEPG)
+#define NUPDE		(NUPDPE*NPDEPG)
+
 
 /*
  * The *PTDI values control the layout of virtual memory
@@ -127,7 +138,9 @@
 #define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
 #define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
 
-#endif /* 0 */
+#define KPML4I		(NPML4EPG-1)
+
+#define KPDPI		(NPDPEPG-2)
 
 /*
  * XXX doesn't really belong here I guess...
@@ -138,8 +151,6 @@
 #ifndef LOCORE
 
 #include <sys/queue.h>
-
-#if 0
 
 /*
  * Address of current and alternate address space page table maps
@@ -193,8 +204,6 @@ pmap_kextract(vm_offset_t va)
 
 #endif
 
-#endif /* 0 */
-
 /*
  * Pmap stuff
  */
@@ -204,6 +213,18 @@ struct md_page {
 	int pv_list_count;
 	TAILQ_HEAD(,pv_entry)	pv_list;
 };
+
+/*
+ * Each machine dependent implementation is expected to
+ * keep certain statistics.  They may do this anyway they
+ * so choose, but are expected to return the statistics
+ * in the following structure.
+ */
+struct pmap_statistics {
+	long resident_count;    /* # of pages mapped (total) */
+	long wired_count;       /* # of pages wired */
+};
+typedef struct pmap_statistics *pmap_statistics_t;
 
 struct pmap {
 	pd_entry_t		*pm_pdir;	/* KVA of page directory */

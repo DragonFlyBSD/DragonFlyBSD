@@ -39,7 +39,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/amd64/include/vmparam.h,v 1.44 2003/12/07 04:51:04 alc Exp $
- * $DragonFly: src/sys/amd64/include/Attic/vmparam.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/vmparam.h,v 1.2 2006/07/27 00:42:46 corecode Exp $
  */
 
 
@@ -88,7 +88,6 @@
  */
 #define	UMA_MD_SMALL_ALLOC
 
-#if 0
 /*
  * Virtual addresses of things.  Derived from the page directory and
  * page table indexes from pmap.h for precision.
@@ -117,7 +116,6 @@
 #define	PHYS_TO_DMAP(x)		((x) | DMAP_MIN_ADDRESS)
 #define	DMAP_TO_PHYS(x)		((x) & ~DMAP_MIN_ADDRESS)
 
-#endif
 
 /* initial pagein size of beginning of executable file */
 #ifndef VM_INITIAL_PAGEIN

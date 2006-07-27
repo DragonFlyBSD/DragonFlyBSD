@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/amd64/include/Attic/param.h,v 1.2 2006/03/08 04:54:05 reed Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/param.h,v 1.3 2006/07/27 00:42:46 corecode Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -105,17 +105,30 @@
 #define ALIGNBYTES	_ALIGNBYTES
 #define ALIGN(p)	_ALIGN(p)
 
+/* level 1 == page table */
 #define PAGE_SHIFT	12		/* LOG2(PAGE_SIZE) */
 #define PAGE_SIZE	(1<<PAGE_SHIFT)	/* bytes/page */
 #define PAGE_MASK	(PAGE_SIZE-1)
 #define NPTEPG		(PAGE_SIZE/(sizeof (pt_entry_t)))
 
-#if 0
-#define NPDEPG		(PAGE_SIZE/(sizeof (pd_entry_t)))
-#define PDRSHIFT	22		/* LOG2(NBPDR) */
+/* level 2 == page directory */
+#define PDRSHIFT	21		/* LOG2(NBPDR) */
 #define NBPDR		(1<<PDRSHIFT)	/* bytes/page dir */
 #define PDRMASK		(NBPDR-1)
-#endif
+#define NPDEPG		(PAGE_SIZE/(sizeof (pd_entry_t)))
+
+/* level 3 == page directory pointer table */
+#define PDPSHIFT	30		/* LOG2(NBPDP) */
+#define NBPDP		(1<<PDPSHIFT)	/* bytes/page dir ptr table */
+#define PDPMASK		(NBPDP-1)
+#define NPDPEPG		(PAGE_SIZE/(sizeof (pdp_entry_t)))
+
+/* level 4 */
+#define PML4SHIFT	39		/* LOG2(NPML4) */
+#define NPML4		(1UL<<PML4SHIFT)/* bytes/page map level4 table */
+#define PML4MASK	(NPML4-1)
+#define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
+
 
 #define DEV_BSHIFT	9		/* log2(DEV_BSIZE) */
 #define DEV_BSIZE	(1<<DEV_BSHIFT)

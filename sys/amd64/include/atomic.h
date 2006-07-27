@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/atomic.h,v 1.32 2003/11/21 03:02:00 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/atomic.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/atomic.h,v 1.2 2006/07/27 00:42:46 corecode Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -84,7 +84,7 @@ void		atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
  * the binaries will run on both types of systems.
  */
 #if defined(SMP) || !defined(_KERNEL)
-#define MPLOCKED	lock ;
+#define MPLOCKED	"lock ; "
 #else
 #define MPLOCKED
 #endif
@@ -97,7 +97,7 @@ void		atomic_store_rel_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
 static __inline void					\
 atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
-	__asm __volatile(__XSTRING(MPLOCKED) OP		\
+	__asm __volatile(MPLOCKED OP			\
 			 : "+m" (*p)			\
 			 : CONS (V));			\
 }							\
@@ -109,6 +109,174 @@ struct __hack
 extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)
 
 #endif /* __GNUC__ */
+
+/*
+ * These functions operate on a 32 bit interrupt interlock which is defined
+ * as follows:
+ *
+ *	bit 0-30	interrupt handler disabled bits (counter)
+ *	bit 31		interrupt handler currently running bit (1 = run)
+ *
+ * atomic_intr_cond_test(P)	Determine if the interlock is in an
+ *				acquired state.  Returns 0 if it not
+ *				acquired, non-zero if it is.
+ *
+ * atomic_intr_cond_try(P)
+ *				Increment the request counter and attempt to
+ *				set bit 31 to acquire the interlock.  If
+ *				we are unable to set bit 31 the request
+ *				counter is decremented and we return -1,
+ *				otherwise we return 0.
+ *
+ * atomic_intr_cond_enter(P, func, arg)
+ *				Increment the request counter and attempt to
+ *				set bit 31 to acquire the interlock.  If
+ *				we are unable to set bit 31 func(arg) is
+ *				called in a loop until we are able to set
+ *				bit 31.
+ *
+ * atomic_intr_cond_exit(P, func, arg)
+ *				Decrement the request counter and clear bit
+ *				31.  If the request counter is still non-zero
+ *				call func(arg) once.
+ *
+ * atomic_intr_handler_disable(P)
+ *				Set bit 30, indicating that the interrupt
+ *				handler has been disabled.  Must be called
+ *				after the hardware is disabled.
+ *
+ *				Returns bit 31 indicating whether a serialized
+ *				accessor is active (typically the interrupt
+ *				handler is running).  0 == not active,
+ *				non-zero == active.
+ *
+ * atomic_intr_handler_enable(P)
+ *				Clear bit 30, indicating that the interrupt
+ *				handler has been enabled.  Must be called
+ *				before the hardware is actually enabled.
+ *
+ * atomic_intr_handler_is_enabled(P)
+ *				Returns bit 30, 0 indicates that the handler
+ *				is enabled, non-zero indicates that it is
+ *				disabled.  The request counter portion of
+ *				the field is ignored.
+ */
+
+#ifndef __ATOMIC_INTR_T
+#define __ATOMIC_INTR_T
+typedef volatile int atomic_intr_t;
+#endif
+
+#if defined(KLD_MODULE)
+
+void atomic_intr_init(atomic_intr_t *p);
+int atomic_intr_handler_disable(atomic_intr_t *p);
+void atomic_intr_handler_enable(atomic_intr_t *p);
+int atomic_intr_handler_is_enabled(atomic_intr_t *p);
+int atomic_intr_cond_test(atomic_intr_t *p);
+int atomic_intr_cond_try(atomic_intr_t *p);
+void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
+void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
+
+#else
+
+static __inline
+void
+atomic_intr_init(atomic_intr_t *p)
+{
+	*p = 0;
+}
+
+static __inline
+int
+atomic_intr_handler_disable(atomic_intr_t *p)
+{
+	int data;
+
+	__asm __volatile(MPLOCKED "orl $0x40000000,%1; movl %1,%%eax; " \
+				  "andl $0x80000000,%%eax" \
+				  : "=a"(data) , "+m"(*p));
+	return(data);
+}
+
+static __inline
+void
+atomic_intr_handler_enable(atomic_intr_t *p)
+{
+	__asm __volatile(MPLOCKED "andl $0xBFFFFFFF,%0" : "+m" (*p));
+}
+
+static __inline
+int
+atomic_intr_handler_is_enabled(atomic_intr_t *p)
+{
+	int data;
+
+	__asm __volatile("movl %1,%%eax; andl $0x40000000,%%eax" \
+			 : "=a"(data) : "m"(*p));
+	return(data);
+}
+
+static __inline
+void
+atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+	__asm __volatile(MPLOCKED "incl %0; " \
+			 "1: ;" \
+			 MPLOCKED "btsl $31,%0; jnc 2f; " \
+			 "movq %2,%rdi; call *%1; " \
+			 "jmp 1b; " \
+			 "2: ;" \
+			 : "+m" (*p) \
+			 : "r"(func), "m"(arg) \
+			 : "ax", "cx", "dx", "di");	/* XXX clobbers more regs */
+}
+
+/*
+ * Attempt to enter the interrupt condition variable.  Returns zero on
+ * success, 1 on failure.
+ */
+static __inline
+int
+atomic_intr_cond_try(atomic_intr_t *p)
+{
+	int ret;
+
+	__asm __volatile(MPLOCKED "incl %0; " \
+			 "1: ;" \
+			 "subl %%eax,%%eax; " \
+			 MPLOCKED "btsl $31,%0; jnc 2f; " \
+			 MPLOCKED "decl %0; " \
+			 "movl $1,%%eax;" \
+			 "2: ;" \
+			 : "+m" (*p), "=a"(ret) \
+			 : : "cx", "dx");
+	return (ret);
+}
+
+
+static __inline
+int
+atomic_intr_cond_test(atomic_intr_t *p)
+{
+	return((int)(*p & 0x80000000));
+}
+
+static __inline
+void
+atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
+{
+	__asm __volatile(MPLOCKED "decl %0; " \
+			MPLOCKED "btrl $31,%0; " \
+			"testl $0x3FFFFFFF,%0; jz 1f; " \
+			 "movq %2,%rdi; call *%1; " \
+			 "1: ;" \
+			 : "+m" (*p) \
+			 : "r"(func), "m"(arg) \
+			 : "ax", "cx", "dx", "di");	/* XXX clobbers more regs */
+}
+
+#endif
 
 /*
  * Atomic compare and set, used by the mutex functions
@@ -126,7 +294,7 @@ atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
 	int res = exp;
 
 	__asm __volatile (
-	"	" __XSTRING(MPLOCKED) "	"
+		MPLOCKED
 	"	cmpxchgl %1,%2 ;	"
 	"       setz	%%al ;		"
 	"	movzbl	%%al,%0 ;	"
@@ -146,7 +314,7 @@ atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src)
 	long res = exp;
 
 	__asm __volatile (
-	"	" __XSTRING(MPLOCKED) "	"
+		MPLOCKED
 	"	cmpxchgq %1,%2 ;	"
 	"       setz	%%al ;		"
 	"	movzbq	%%al,%0 ;	"
@@ -169,7 +337,7 @@ atomic_load_acq_##TYPE(volatile u_##TYPE *p)		\
 {							\
 	u_##TYPE res;					\
 							\
-	__asm __volatile(__XSTRING(MPLOCKED) LOP	\
+	__asm __volatile(MPLOCKED LOP			\
 	: "=a" (res),			/* 0 (result) */\
 	  "+m" (*p)			/* 1 */		\
 	: : "memory");				 	\

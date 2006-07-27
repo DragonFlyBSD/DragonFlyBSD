@@ -1,6 +1,12 @@
 /*-
+ * Copyright (c) 2002 David E. O'Brien.  All rights reserved.
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * (c) UNIX System Laboratories, Inc.
+ * All or some portions of this file are derived from material licensed
+ * to the University of California by American Telephone and Telegraph
+ * Co. or Unix System Laboratories, Inc. and are reproduced herein with
+ * the permission of UNIX System Laboratories, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,55 +36,43 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.3 (Berkeley) 1/5/94
- * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/types.h,v 1.3 2006/07/27 00:42:46 corecode Exp $
+ *	@(#)varargs.h	8.2 (Berkeley) 3/22/94
+ * $FreeBSD: src/sys/amd64/include/varargs.h,v 1.14 2005/03/11 22:16:09 peter Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/varargs.h,v 1.1 2006/07/27 00:42:46 corecode Exp $
  */
 
-#ifndef _MACHINE_TYPES_H_
-#define	_MACHINE_TYPES_H_
+#ifndef _MACHINE_VARARGS_H_
+#define	_MACHINE_VARARGS_H_
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-typedef struct _physadr {
-	int r[1];
-} *physadr;
+#ifdef __GNUC__
 
-typedef struct label_t {
-	int val[6];
-} label_t;
-#endif
+typedef	__va_list	va_list;
 
-typedef	__uint64_t	vm_offset_t;	/* address space bounded offset */
-typedef	__uint64_t	vm_size_t;	/* address space bounded size */
-typedef	__int64_t	vm_ooffset_t;	/* VM object bounded offset */
-typedef	__uint64_t 	vm_pindex_t;	/* physical page index */
-typedef __uint64_t	vm_poff_t;	/* physical offset */
-typedef __uint64_t	vm_paddr_t;	/* physical addr (same as vm_poff_t) */
+typedef int __builtin_va_alist_t __attribute__((__mode__(__word__)));
 
-typedef	__int64_t	register_t;
-typedef	__uint64_t	u_register_t;
+#define	va_alist		__builtin_va_alist
+#define	va_dcl			__builtin_va_alist_t __builtin_va_alist; ...
+#define	va_start(ap)		__builtin_varargs_start(ap)
+#define	va_arg(ap, type)	__builtin_va_arg((ap), type)
+#define	va_end(ap)		__builtin_va_end(ap)
 
-#ifdef _KERNEL
-typedef	__int64_t	intfptr_t;
-typedef	__uint64_t	uintfptr_t;
-#endif
+#else	/* !__GNUC__ */
 
-/*
- * MMU page tables
- */
-typedef __uint64_t	pml4_entry_t;
-typedef __uint64_t	pdp_entry_t;
-typedef __uint64_t	pd_entry_t;
-typedef __uint64_t	pt_entry_t;
-typedef __uint32_t      cpumask_t;      /* mask representing a set of cpus */
+typedef char *va_list;
 
-#define PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */
-#define PDPSIZE		sizeof(pdp_entry_t) /* for assembly files */
-#define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
-#define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
+#define	__va_size(type) \
+	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 
-/* Interrupt mask (spl, xxx_imask, etc) */
-typedef __uint32_t	intrmask_t;
+#define	va_dcl	int va_alist; ...
 
-#endif /* !_MACHINE_TYPES_H_ */
+#define	va_start(ap) \
+	((ap) = (va_list)&va_alist)
 
+#define	va_arg(ap, type) \
+	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
+
+#define	va_end(ap)
+
+#endif /* __GNUC__ */
+
+#endif /* !_MACHINE_VARARGS_H_ */
