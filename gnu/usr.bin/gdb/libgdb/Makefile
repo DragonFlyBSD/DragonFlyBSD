@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.1 2006/03/07 15:48:11 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.2 2006/07/27 00:30:10 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -94,8 +94,5 @@ observer.h: observer.sh observer.inc doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh h ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
 observer.inc: observer.sh doc/observer.texi
 	sh ${CONTRIBDIR}/observer.sh inc ${CONTRIBDIR}/doc/observer.texi ${.TARGET}
-
-nm.h: nm-fbsd.h
-	cp ${.ALLSRC} ${.TARGET}
 
 .include <bsd.lib.mk>

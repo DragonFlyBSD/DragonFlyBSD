@@ -1,8 +1,8 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile.amd64,v 1.1 2005/10/01 12:40:33 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile.amd64,v 1.2 2006/07/27 00:30:10 corecode Exp $
 
 SRCS+=	elf32-gen.c elf32.c elf32-target.h
 SRCS+=	coff-i386.c cpu-i386.c elf32-i386.c
-SRCS+=	elf64-gen.c elf64.c elf64-x86-i386.c elf64-target.h
+SRCS+=	elf64-gen.c elf64.c elf64-x86-64.c elf64-target.h
 
 CFLAGS+= -DDEFAULT_VECTOR=bfd_elf64_x86_64_vec \
   -DSELECT_VECS='&bfd_elf64_x86_64_vec,&bfd_elf32_i386_freebsd_vec,&bfd_elf64_little_generic_vec,&bfd_elf64_big_generic_vec,&i386coff_vec,&bfd_elf32_little_generic_vec,&bfd_elf32_big_generic_vec' \

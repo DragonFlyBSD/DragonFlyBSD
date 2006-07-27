@@ -1,16 +1,17 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.1 2006/03/07 15:48:11 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.2 2006/07/27 00:30:10 corecode Exp $
 
-SRCS+=	amd64-nat.c amd64-tdep.c amd64bsd-nat.c amd64fbsd-nat.c
+SRCS+=	amd64-nat.c amd64-tdep.c amd64bsd-nat.c amd64fbsd-nat.c bsd-kvm.c
 SRCS+=	amd64fbsd-tdep.c i386-tdep.c i386bsd-tdep.c i386fbsd-tdep.c
 SRCS+=	i387-tdep.c
 
-tm.h: ${CONTRIBDIR}/config/i386/tm-fbsd.h
-	cp ${.ALLSRC} ${.TARGET}
+# Hack to avoid compilation of the wrong file
+SRCS:=	${SRCS:N*i386bsd-nat.c*:N*i386fbsd-nat.c*}
 
-xm.h: ${CONTRIBDIR}/config/i386/xm-i386.h
-	cp ${.ALLSRC} ${.TARGET}
+nm.h:
+	echo '#include "i386/nm-fbsd64.h"' > ${.TARGET}
 
-kvm-fbsd.h:
-	echo '#include "kvm-fbsd-i386.h"' > ${.TARGET}
+tm.h:
+	echo '#include "i386/tm-fbsd.h"' > ${.TARGET}
 
-CLEANFILES+=	kvm-fbsd.h
+xm.h:
+	echo '#include "i386/xm-i386.h"' > ${.TARGET}
