@@ -1,9 +1,11 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/amd64/gen/Makefile.inc,v 1.24 2003/10/13 20:32:33 alc Exp $
-# $DragonFly: src/lib/libc/amd64/gen/Makefile.inc,v 1.2 2006/07/27 00:44:20 corecode Exp $
+# $DragonFly: src/lib/libc/amd64/gen/Makefile.inc,v 1.3 2006/07/27 00:46:57 corecode Exp $
 
 SRCS+=	_setjmp.S rfork_thread.S setjmp.S sigsetjmp.S \
 	fabs.S modf.S \
-	frexp.c infinity.c isinf.c ldexp.c \
-	fpgetmask.c fpsetmask.c fpgetprec.c fpsetprec.c \
-	fpgetround.c fpsetround.c fpgetsticky.c fpsetsticky.c
+	fpclassifyl.c nanf.c signbitl.c flt_rounds.c \
+	frexp.c infinityl.c isinfl.c isfinitel.c isnanl.c \
+	ldexp.c fpclassifyl.c \
+	fpgetmask.S fpsetmask.S fpgetround.S fpsetround.S \
+	fpgetsticky.S fpsetsticky.S

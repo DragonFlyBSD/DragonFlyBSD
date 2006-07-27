@@ -1,6 +1,10 @@
-/*-
- * Copyright (c) 1991, 1993
+/*
+ * Copyright (c) 1992, 1993
  *	The Regents of the University of California.  All rights reserved.
+ *
+ * This software was developed by the Computer Systems Engineering group
+ * at Lawrence Berkeley Laboratory under DARPA contract BG 91-66 and
+ * contributed to Berkeley.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,11 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -30,37 +30,28 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)isinf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/amd64/gen/isinf.c,v 1.10 2003/02/12 20:03:41 mike Exp $
- * $DragonFly: src/lib/libc/amd64/gen/Attic/isinf.c,v 1.3 2005/11/12 21:56:11 swildner Exp $
+ * from: Header: isinf.c,v 1.1 91/07/08 19:03:34 torek Exp
+ * $NetBSD: isinfl.c,v 1.5 2004/03/04 23:42:39 kleink Exp $
+ * $DragonFly: src/lib/libc/amd64/gen/isinfl.c,v 1.1 2006/07/27 00:46:57 corecode Exp $
  */
 
-/* For binary compat; to be removed in FreeBSD 6.0. */
+#include <sys/cdefs.h>
 
-#include <sys/types.h>
+#include <machine/ieee.h>
+#include <math.h>
 
+/*
+ * 7.12.3.3 isinf - test for infinity
+ *          IEEE 754 compatible 80-bit extended-precision Intel 386 version
+ */
 int
-isnan(double d)
+__isinfl(long double x)
 {
-	struct IEEEdp {
-		u_int manl : 32;
-		u_int manh : 20;
-		u_int  exp : 11;
-		u_int sign :  1;
-	} *p = (struct IEEEdp *)&d;
+	union ieee_ext_u u;
 
-	return(p->exp == 2047 && (p->manh || p->manl));
-}
+	u.extu_ld = x;
 
-int
-isinf(double d)
-{
-	struct IEEEdp {
-		u_int manl : 32;
-		u_int manh : 20;
-		u_int  exp : 11;
-		u_int sign :  1;
-	} *p = (struct IEEEdp *)&d;
-
-	return(p->exp == 2047 && !p->manh && !p->manl);
+	return (u.extu_ext.ext_exp == EXT_EXP_INFNAN &&
+	    (u.extu_ext.ext_int == 1 &&
+	     u.extu_ext.ext_frach == 0 && u.extu_ext.ext_fracl == 0));
 }
