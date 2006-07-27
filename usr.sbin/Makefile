@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.29 2006/06/24 07:29:44 sephe Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.30 2006/07/27 00:41:31 corecode Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR= 802_11 \
@@ -16,7 +16,6 @@ SUBDIR= 802_11 \
 	asf \
 	atm \
 	authpf \
-	battd \
 	bootparamd \
 	burncd \
 	cdcontrol \
@@ -178,6 +177,7 @@ SUBDIR+=editmap \
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=apm \
 	apmd \
+	battd \
 	btxld \
 	kgmon \
 	kgzip \
