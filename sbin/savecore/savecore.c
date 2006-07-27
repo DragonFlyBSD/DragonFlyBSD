@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.14 2005/01/05 09:14:34 maxim Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.12 2006/03/25 07:46:58 dillon Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.13 2006/07/27 00:41:03 corecode Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -63,9 +63,7 @@
 
 extern FILE *zopen(const char *fname, const char *mode);
 
-#ifdef __i386__
 #define ok(number) ((number) - kernbase)
-#endif
 
 struct nlist current_nl[] = {	/* Namelist for currently running system. */
 #define X_DUMPLO	0
@@ -120,9 +118,7 @@ char	vers[1024];			/* version of kernel that crashed */
 char    *physmem;			/* physmem value used with dumped session */
 long    dkdumplo;			/* directly specified kernel dumplo value */
 
-#ifdef __i386__
 u_long	kernbase;			/* offset of kvm to core file */
-#endif
 
 static int	clear, compress, force, verbose, directdumplo;	/* flags */
 static int	keep;			/* keep dump on device */
@@ -266,12 +262,10 @@ kmem_setup(void)
 			exit(1);
 		}
 
-#ifdef __i386__
 	if (dump_nl[X_KERNBASE].n_value != 0)
 		kernbase = dump_nl[X_KERNBASE].n_value;
 	else
 		kernbase = KERNBASE;
-#endif
 
 	len = sizeof dumpdev;
 	if (sysctlbyname("kern.dumpdev", &dumpdev, &len, NULL, 0) == -1) {
