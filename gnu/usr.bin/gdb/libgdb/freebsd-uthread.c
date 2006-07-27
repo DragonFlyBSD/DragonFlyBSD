@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: ports/devel/gdb6/files/freebsd-uthread.c,v 1.2 2004/06/20 18:45:36 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.1 2006/03/07 15:48:11 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.2 2006/07/27 00:39:40 corecode Exp $ */
 
 /* This module implements a sort of half target that sits between the
    machine-independent parts of GDB and the ptrace interface (infptrace.c) to
@@ -473,52 +473,63 @@ static char jmpmap[I386_SSE_NUM_REGS] = /* map reg to jmp_buf */
 
 // XXX:DEO	not fully ported from i386 yet!!
 
+
+#define AMD64_NUM_REGS_TOTAL	57
+
 static char sigmap[AMD64_NUM_REGS_TOTAL] = /* map reg to sigcontext  */
 {
-  12,				/* rax */
-  11,				/* rcx */
-  10,				/* rdx */
-  9,				/* rbx */
-  8,				/* rsp */
-  7,				/* rbp */
-  6,				/* rsi */
-  5,				/* rdi */
-  15,				/* rip */
-  17,				/* rflags */
-  16,				/* cs */
-  19,				/* ss */
-  4,				/* ds */
-  3,				/* es */
-  2,				/* fs */
-  1,				/* gs */
-  -1, -1, -1, -1, -1, -1, -1,	/* st0-st7 */
-  -1, -1, -1, -1, -1, -1, -1,	/* fctrl-fop */
-  -1, -1, -1, -1, -1, -1, -1,	/* xmm0-xmm7 */
-  -1,				/* mxcsr */
+  7,				/* %rax */
+  8,				/* %rbx */
+  4,				/* %rcx */
+  3,				/* %rdx */
+  2,				/* %rsi */
+  1,				/* %rdi */
+  9,				/* %rbp */
+  23,				/* %rsp */
+  5,				/* %r8 */
+  6,				/* %r9 */
+  10,				/* %r10 */
+  11,				/* %r11 */
+  12,				/* %r12 */
+  13,				/* %r13 */
+  14,				/* %r14 */
+  15,				/* %r15 */
+  20,				/* %rip */
+  18,				/* %eflags */
+  21, 24, -1, -1, -1, -1,	/* %cs - %gs */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %st0 - %st7 */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %fctrl - %fop */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %xmm0 - %xmm7 */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %xmm8 - %xmm15 */
+  -1,				/* %mxcsr */
 };
 
 static char jmpmap[AMD64_NUM_REGS_TOTAL] = /* map reg to jmp_buf */
 {
-  6,				/* rax */
-  -1,				/* rcx */
-  -1,				/* rdx */
-  1,				/* rbx */
-  2,				/* rsp */
-  3,				/* rbp */
-  4,				/* rsi */
-  5,				/* rdi */
-  0,				/* rip */
-  -1,				/* rflags */
-  -1,				/* cs */
-  -1,				/* ss */
-  -1,				/* ds */
-  -1,				/* es */
-  -1,				/* fs */
-  -1,				/* gs */
-  -1, -1, -1, -1, -1, -1, -1,	/* st0-st7 */
-  -1, -1, -1, -1, -1, -1, -1,	/* fctrl-fop */
-  -1, -1, -1, -1, -1, -1, -1,	/* xmm0-xmm7 */
-  -1,				/* mxcsr */
+  -1,				/* %rax */
+  1,				/* %rbx */
+  -1,				/* %rcx */
+  -1,				/* %rdx */
+  -1,				/* %rsi */
+  -1,				/* %rdi */
+  3,				/* %rbp */
+  2,				/* %rsp */
+  -1,				/* %r8 */
+  -1,				/* %r9 */
+  -1,				/* %r10 */
+  -1,				/* %r11 */
+  4,				/* %r12 */
+  5,				/* %r13 */
+  6,				/* %r14 */
+  7,				/* %r15 */
+  0,				/* %rip */
+  -1,				/* %eflags */
+  -1, -1, -1, -1, -1, -1,	/* %cs - %gs */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %st0 - %st7 */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %fctrl - %fop */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %xmm0 - %xmm7 */
+  -1, -1, -1, -1, -1 -1, -1, -1,/* %xmm8 - %xmm15 */
+  -1,				/* %mxcsr */
 };
 
 #endif
