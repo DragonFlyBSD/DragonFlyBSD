@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.12 2006/04/07 16:44:51 swildner Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.13 2006/07/27 00:43:09 corecode Exp $
  *
  */
 
@@ -54,7 +54,7 @@
 
 #include "namespace.h"
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-#   if defined(__i386__)
+#   if defined(__i386__) || defined(__amd64__)
 #       define malloc_pageshift		12U
 #       define malloc_minsize		16U
 #   endif
