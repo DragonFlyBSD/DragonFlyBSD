@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.10 2005/08/03 03:12:00 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc34/cc_prep/config/dragonfly-spec.h,v 1.11 2006/07/27 00:29:57 corecode Exp $ */
 
 /* Base configuration file for all DragonFly targets.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
@@ -132,6 +132,7 @@ is built with the --enable-threads configure-time option.}		\
 #endif
 
 #define LINK_LIBGCC_SPEC ""
+#define LIBGCC_SPEC "%{shared: -lgcc_pic} %{!shared: -lgcc}"
 
 #define PRE_LIB_SPEC "							\
   %{pg: -L"PREFIX2"/lib/gcc34/profiling 				\
