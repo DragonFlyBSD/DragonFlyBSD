@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.9 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.10 2006/07/28 02:11:31 dillon Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -84,7 +84,7 @@
 #define	O_CREAT		0x0200		/* create if nonexistent */
 #define	O_TRUNC		0x0400		/* truncate to zero length */
 #define	O_EXCL		0x0800		/* error if already exists */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	FMARK		0x1000		/* mark during gc() */
 #define	FDEFER		0x2000		/* defer for next gc pass */
 #define	FHASLOCK	0x4000		/* descriptor holds advisory lock */
@@ -178,7 +178,7 @@
 #define	F_RDLCK		1		/* shared or read lock */
 #define	F_UNLCK		2		/* unlock */
 #define	F_WRLCK		3		/* exclusive or write lock */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	F_WAIT		0x010		/* Wait until lock is granted */
 #define	F_UNUSED020	0x020
 #define	F_POSIX		0x040	 	/* Use POSIX semantics for lock */
