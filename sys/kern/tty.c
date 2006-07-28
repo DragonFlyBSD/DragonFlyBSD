@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.24 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.25 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*-
@@ -1117,25 +1117,27 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 }
 
 int
-ttypoll(dev, events, td)
-	dev_t dev;
-	int events;
-	struct thread *td;
+ttypoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	int events = ap->a_events;
 	int revents = 0;
 	struct tty *tp;
 
 	tp = dev->si_tty;
-	if (tp == NULL)	/* XXX used to return ENXIO, but that means true! */
-		return ((events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM))
-			| POLLHUP);
+	/* XXX used to return ENXIO, but that means true! */
+	if (tp == NULL) {
+		ap->a_events = (events & (POLLIN | POLLOUT | POLLRDNORM |
+				POLLWRNORM)) | POLLHUP;
+		return(0);
+	}
 
 	crit_enter();
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (ttnread(tp) > 0 || ISSET(tp->t_state, TS_ZOMBIE))
 			revents |= events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(td, &tp->t_rsel);
+			selrecord(curthread, &tp->t_rsel);
 	}
 	if (events & (POLLOUT | POLLWRNORM)) {
 		if ((tp->t_outq.c_cc <= tp->t_olowat &&
@@ -1143,10 +1145,11 @@ ttypoll(dev, events, td)
 		    || ISSET(tp->t_state, TS_ZOMBIE))
 			revents |= events & (POLLOUT | POLLWRNORM);
 		else
-			selrecord(td, &tp->t_wsel);
+			selrecord(curthread, &tp->t_wsel);
 	}
 	crit_exit();
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 static struct filterops ttyread_filtops =
@@ -1155,13 +1158,14 @@ static struct filterops ttywrite_filtops =
 	{ 1, NULL, filt_ttywdetach, filt_ttywrite };
 
 int
-ttykqfilter(dev, kn)
-	dev_t dev;
-	struct knote *kn;
+ttykqfilter(struct dev_kqfilter_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct knote *kn = ap->a_kn;
 	struct tty *tp = dev->si_tty;
 	struct klist *klist;
 
+	ap->a_result = 0;
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
 		klist = &tp->t_rsel.si_note;
@@ -1172,7 +1176,8 @@ ttykqfilter(dev, kn)
 		kn->kn_fop = &ttywrite_filtops;
 		break;
 	default:
-		return (1);
+		ap->a_result = 1;
+		return (0);
 	}
 
 	kn->kn_hook = (caddr_t)dev;
@@ -2629,29 +2634,23 @@ nottystop(tp, rw)
 }
 
 int
-ttyread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+ttyread(struct dev_read_args *ap)
 {
 	struct tty *tp;
 
-	tp = dev->si_tty;
+	tp = ap->a_head.a_dev->si_tty;
 	if (tp == NULL)
 		return (ENODEV);
-	return ((*linesw[tp->t_line].l_read)(tp, uio, flag));
+	return ((*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag));
 }
 
 int
-ttywrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+ttywrite(struct dev_write_args *ap)
 {
 	struct tty *tp;
 
-	tp = dev->si_tty;
+	tp = ap->a_head.a_dev->si_tty;
 	if (tp == NULL)
 		return (ENODEV);
-	return ((*linesw[tp->t_line].l_write)(tp, uio, flag));
+	return ((*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag));
 }

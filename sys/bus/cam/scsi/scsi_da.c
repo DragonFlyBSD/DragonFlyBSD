@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.29 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.30 2006/07/28 02:17:32 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -498,31 +498,24 @@ DATA_SET(periphdriver_set, dadriver);
 #define D_DISK 0
 #endif
 
-static struct cdevsw da_cdevsw = {
-	/* name */	"da",
-	/* maj */	DA_CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */      NULL,
-	/* clone */     NULL,
-
-	/* open */	daopen,
-	/* close */	daclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	daioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	dastrategy,
-	/* dump */	dadump,
-	/* psize */	nopsize
+static struct dev_ops da_ops = {
+	{ "da", DA_CDEV_MAJOR, D_DISK },
+	.d_open =	daopen,
+	.d_close =	daclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	daioctl,
+	.d_strategy =	dastrategy,
+	.d_dump =	dadump
 };
 
 static SLIST_HEAD(,da_softc) softc_list;
 static struct extend_array *daperiphs;
 
 static int
-daopen(dev_t dev, int flags, int fmt, struct thread *td)
+daopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	struct disklabel *label;	
@@ -645,8 +638,9 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-daclose(dev_t dev, int flag, int fmt, struct thread *td)
+daclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	da_softc *softc;
 	int	unit;
@@ -735,9 +729,11 @@ daclose(dev_t dev, int flag, int fmt, struct thread *td)
  * can understand.  The transfer is described by a buf and will include
  * only one physical transfer.
  */
-static void
-dastrategy(dev_t dev, struct bio *bio)
+static int
+dastrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct da_softc *softc;
@@ -787,7 +783,7 @@ dastrategy(dev_t dev, struct bio *bio)
 	 */
 	xpt_schedule(periph, /* XXX priority */1);
 
-	return;
+	return(0);
 bad:
 	bp->b_flags |= B_ERROR;
 
@@ -796,6 +792,7 @@ bad:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 /* For 2.2-stable support */
@@ -804,8 +801,9 @@ bad:
 #endif
 
 static int
-daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+daioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct da_softc *softc;
 	int unit;
@@ -824,7 +822,7 @@ daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		return (error); /* error code from tsleep */
 	}	
 
-	error = cam_periph_ioctl(periph, cmd, addr, daerror);
+	error = cam_periph_ioctl(periph, ap->a_cmd, ap->a_data, daerror);
 
 	cam_periph_unlock(periph);
 	
@@ -832,8 +830,9 @@ daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 }
 
 static int
-dadump(dev_t dev, u_int num, u_int blknum, u_int secsize) 
+dadump(struct dev_dump_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	    cam_periph *periph;
 	struct	    da_softc *softc;
 	u_int	    unit;
@@ -858,13 +857,13 @@ dadump(dev_t dev, u_int num, u_int blknum, u_int secsize)
 		return (ENXIO);
 
 	addr = 0;	/* starting address */
-	blkcnt = howmany(PAGE_SIZE, secsize);
+	blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
-	while (num > 0) {
+	while (ap->a_count > 0) {
 		caddr_t va = NULL;
 
-		if ((num / blkcnt) < dumppages)
-			dumppages = num / blkcnt;
+		if ((ap->a_count / blkcnt) < dumppages)
+			dumppages = ap->a_count / blkcnt;
 
 		for (i = 0; i < dumppages; ++i) {
 			vm_paddr_t a = addr + (i * PAGE_SIZE);
@@ -883,10 +882,10 @@ dadump(dev_t dev, u_int num, u_int blknum, u_int secsize)
 				/*read*/FALSE,
 				/*byte2*/0,
 				/*minimum_cmd_size*/ softc->minimum_cmd_size,
-				blknum,
+				ap->a_blkno,
 				blkcnt * dumppages,
 				/*data_ptr*/(u_int8_t *) va,
-				/*dxfer_len*/blkcnt * secsize * dumppages,
+				/*dxfer_len*/blkcnt * ap->a_secsize * dumppages,
 				/*sense_len*/SSD_FULL_SIZE,
 				DA_DEFAULT_TIMEOUT * 1000);		
 		xpt_polled_action((union ccb *)&csio);
@@ -902,12 +901,12 @@ dadump(dev_t dev, u_int num, u_int blknum, u_int secsize)
 			return(EIO);
 		}
 		
-		if (dumpstatus(addr, (off_t)num * softc->params.secsize) < 0)
+		if (dumpstatus(addr, (off_t)ap->a_count * softc->params.secsize) < 0)
 			return (EINTR);
 
 		/* update block count */
-		num -= blkcnt * dumppages;
-		blknum += blkcnt * dumppages;
+		ap->a_count -= blkcnt * dumppages;
+		ap->a_blkno += blkcnt * dumppages;
 		addr += PAGE_SIZE * dumppages;
 	}
 
@@ -1318,7 +1317,7 @@ daregister(struct cam_periph *periph, void *arg)
 	/*
 	 * Register this media as a disk
 	 */
-	disk_create(periph->unit_number, &softc->disk, 0, &da_cdevsw);
+	disk_create(periph->unit_number, &softc->disk, 0, &da_ops);
 
 	/*
 	 * Add async callbacks for bus reset and

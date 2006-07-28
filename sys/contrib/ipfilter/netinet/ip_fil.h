@@ -6,11 +6,15 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.8 2004/07/05 06:02:35 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.8 2005/02/26 14:15:36 joerg Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.9 2006/07/28 02:17:35 dillon Exp $
  */
 
 #ifndef	__IP_FIL_H__
 #define	__IP_FIL_H__
+
+#if defined(__DragonFly__)
+#include <sys/device.h>
+#endif
 
 /*
  * Pathnames for various IP Filter control devices.  Used by LKM
@@ -564,9 +568,9 @@ extern	void	ipfilter_sgi_intfsync (void);
 extern	int	iplidentify (char *);
 #   endif
 #if	defined(__DragonFly__) || defined(__FreeBSD__)
-extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct thread *);
-extern	int	iplopen (dev_t, int, int, struct thread *);
-extern	int	iplclose (dev_t, int, int, struct thread *);
+extern d_ioctl_t	iplioctl;
+extern d_open_t		iplopen;
+extern d_close_t	iplclose;
 #else
 #   if defined(__DragonFly__) || (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
       (NetBSD >= 199511) || defined(__OpenBSD__)
@@ -591,7 +595,7 @@ extern	void	iplclose (struct inode *, struct file *);
 #   endif /* (_BSDI_VERSION >= 199510) */
 #endif
 #   if	BSD >= 199306
-extern	int	iplread (dev_t, struct uio *, int);
+extern d_read_t	iplread;
 #   else
 #    ifndef linux
 extern	int	iplread (dev_t, struct uio *);

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.16 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.17 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -154,23 +154,13 @@ Static d_poll_t  ums_poll;
 
 #define UMS_CDEV_MAJOR	111
 
-Static struct cdevsw ums_cdevsw = {
-	/* name */	"ums",
-	/* maj */	UMS_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ums_open,
-	/* close */	ums_close,
-	/* read */	ums_read,
-	/* write */	nowrite,
-	/* ioctl */	ums_ioctl,
-	/* poll */	ums_poll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+Static struct dev_ops ums_ops = {
+	{ "ums", UMS_CDEV_MAJOR, 0 },
+	.d_open =	ums_open,
+	.d_close =	ums_close,
+	.d_read =	ums_read,
+	.d_ioctl =	ums_ioctl,
+	.d_poll =	ums_poll,
 };
 
 USB_DECLARE_DRIVER(ums);
@@ -348,8 +338,8 @@ USB_ATTACH(ums)
 	sc->rsel.si_flags = 0;
 	sc->rsel.si_pid = 0;
 #endif
-	cdevsw_add(&ums_cdevsw, -1, device_get_unit(self));
-	make_dev(&ums_cdevsw, device_get_unit(self),
+	dev_ops_add(&ums_ops, -1, device_get_unit(self));
+	make_dev(&ums_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR,
 		0644, "ums%d", device_get_unit(self));
 
@@ -392,7 +382,7 @@ ums_detach(device_t self)
 		sc->state &= ~UMS_SELECT;
 		selwakeuppri(&sc->rsel, 0);
 	}
-	cdevsw_remove(&ums_cdevsw, -1, device_get_unit(self));
+	dev_ops_remove(&ums_ops, -1, device_get_unit(self));
 
 	return 0;
 }
@@ -579,8 +569,9 @@ ums_disable(void *priv)
 }
 
 Static int
-ums_open(dev_t dev, int flag, int fmt, usb_proc_ptr p)
+ums_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
 	USB_GET_SC_OPEN(ums, UMSUNIT(dev), sc);
@@ -589,8 +580,9 @@ ums_open(dev_t dev, int flag, int fmt, usb_proc_ptr p)
 }
 
 Static int
-ums_close(dev_t dev, int flag, int fmt, usb_proc_ptr p)
+ums_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
@@ -605,8 +597,10 @@ ums_close(dev_t dev, int flag, int fmt, usb_proc_ptr p)
 }
 
 Static int
-ums_read(dev_t dev, struct uio *uio, int flag)
+ums_read(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct ums_softc *sc;
 	char buf[sizeof(sc->qbuf)];
 	int l = 0;
@@ -621,7 +615,7 @@ ums_read(dev_t dev, struct uio *uio, int flag)
 	}
 
 	while (sc->qcount == 0 )  {
-		if (flag & IO_NDELAY) {		/* non-blocking I/O */
+		if (ap->a_ioflag & IO_NDELAY) {		/* non-blocking I/O */
 			crit_exit();
 			return EWOULDBLOCK;
 		}
@@ -673,33 +667,37 @@ ums_read(dev_t dev, struct uio *uio, int flag)
 }
 
 Static int
-ums_poll(dev_t dev, int events, usb_proc_ptr p)
+ums_poll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 	int revents = 0;
 
 	USB_GET_SC(ums, UMSUNIT(dev), sc);
 
-	if (!sc)
+	if (!sc) {
+		ap->a_events = 0;
 		return 0;
+	}
 
 	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (sc->qcount) {
-			revents = events & (POLLIN | POLLRDNORM);
+			revents = ap->a_events & (POLLIN | POLLRDNORM);
 		} else {
 			sc->state |= UMS_SELECT;
-			selrecord(p, &sc->rsel);
+			selrecord(curthread, &sc->rsel);
 		}
 	}
 	crit_exit();
-
-	return revents;
+	ap->a_events = revents;
+	return (0);
 }
 
 int
-ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
+ums_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ums_softc *sc;
 	int error = 0;
 	mousemode_t mode;
@@ -709,15 +707,15 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 	if (!sc)
 		return EIO;
 
-	switch(cmd) {
+	switch(ap->a_cmd) {
 	case MOUSE_GETHWINFO:
-		*(mousehw_t *)addr = sc->hw;
+		*(mousehw_t *)ap->a_data = sc->hw;
 		break;
 	case MOUSE_GETMODE:
-		*(mousemode_t *)addr = sc->mode;
+		*(mousemode_t *)ap->a_data = sc->mode;
 		break;
 	case MOUSE_SETMODE:
-		mode = *(mousemode_t *)addr;
+		mode = *(mousemode_t *)ap->a_data;
 
 		if (mode.level == -1)
 			/* don't change the current setting */
@@ -754,14 +752,14 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 
 		break;
 	case MOUSE_GETLEVEL:
-		*(int *)addr = sc->mode.level;
+		*(int *)ap->a_data = sc->mode.level;
 		break;
 	case MOUSE_SETLEVEL:
-		if (*(int *)addr < 0 || *(int *)addr > 1)
+		if (*(int *)ap->a_data < 0 || *(int *)ap->a_data > 1)
 			return (EINVAL);
 
 		crit_enter();
-		sc->mode.level = *(int *)addr;
+		sc->mode.level = *(int *)ap->a_data;
 
 		if (sc->mode.level == 0) {
 			if (sc->nbuttons > MOUSE_MSC_MAXBUTTON)
@@ -789,7 +787,7 @@ ums_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 
 		break;
 	case MOUSE_GETSTATUS: {
-		mousestatus_t *status = (mousestatus_t *) addr;
+		mousestatus_t *status = (mousestatus_t *) ap->a_data;
 
 		crit_enter();
 		*status = sc->status;

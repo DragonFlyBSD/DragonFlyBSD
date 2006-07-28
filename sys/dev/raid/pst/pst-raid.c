@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.16 2006/07/28 02:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,23 +56,13 @@
 
 /* device structures */ 
 static d_strategy_t pststrategy;
-static struct cdevsw pst_cdevsw = {
-    /* name */	"pst",
-    /* maj */	168,
-    /* flags */ D_DISK,
-    /* port */	NULL,
-    /* clone */ NULL,
-
-    /* open */	nullopen,
-    /* close */ nullclose,
-    /* read */	physread,
-    /* write */ physwrite,
-    /* ioctl */ noioctl,
-    /* poll */	nopoll,
-    /* mmap */	nommap,
-    /* strat */ pststrategy,
-    /* dump */	nodump,
-    /* psize */ nopsize
+static struct dev_ops pst_ops = {
+	{ "pst", 168, D_DISK },
+	.d_open =	nullopen,
+	.d_close =	nullclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	pststrategy,
 };
 
 struct pst_softc {
@@ -168,7 +158,7 @@ pst_attach(device_t dev)
 
     bioq_init(&psc->bio_queue);
 
-    psc->device = disk_create(lun, &psc->disk, 0, &pst_cdevsw);
+    psc->device = disk_create(lun, &psc->disk, 0, &pst_ops);
     psc->device->si_drv1 = psc;
     psc->device->si_iosize_max = 64 * 1024; /*I2O_SGL_MAX_SEGS * PAGE_SIZE;*/
 
@@ -222,15 +212,16 @@ pst_shutdown(device_t dev)
 }
 #endif
 
-static void
-pststrategy(dev_t dev, struct bio *bio)
+static int
+pststrategy(struct dev_strategy_args *ap)
 {
-    struct pst_softc *psc = dev->si_drv1;
+    struct pst_softc *psc = ap->a_head.a_dev->si_drv1;
 
     crit_enter();
-    bioqdisksort(&psc->bio_queue, bio);
+    bioqdisksort(&psc->bio_queue, ap->a_bio);
     pst_start(psc);
     crit_exit();
+    return(0);
 }
 
 static void

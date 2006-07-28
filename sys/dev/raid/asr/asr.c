@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.22 2005/10/12 17:35:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.23 2006/07/28 02:17:37 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -397,39 +397,18 @@ STATIC ATTACH_RET     domino_attach (ATTACH_ARGS);
 STATIC PROBE_RET      mode0_probe (PROBE_ARGS);
 STATIC ATTACH_RET     mode0_attach (ATTACH_ARGS);
 
-STATIC Asr_softc_t  * ASR_get_sc (
-                        IN dev_t dev);
-STATIC int            asr_ioctl (
-                        IN dev_t      dev,
-                        IN u_long     cmd,
-                        INOUT caddr_t data,
-                        int           flag,
-                        d_thread_t *td);
-STATIC int            asr_open (
-                        IN dev_t         dev,
-                        int32_t          flags,
-                        int32_t          ifmt,
-                        IN d_thread_t *td);
-STATIC int            asr_close (
-                        dev_t         dev,
-                        int           flags,
-                        int           ifmt,
-                        d_thread_t *td);
-STATIC int            asr_intr (
-                        IN Asr_softc_t * sc);
-STATIC void           asr_timeout (
-                        INOUT void * arg);
-STATIC int            ASR_init (
-                        IN Asr_softc_t * sc);
-STATIC INLINE int     ASR_acquireLct (
-                        INOUT Asr_softc_t * sc);
-STATIC INLINE int     ASR_acquireHrt (
-                        INOUT Asr_softc_t * sc);
-STATIC void           asr_action (
-                        IN struct cam_sim * sim,
-                        IN union ccb      * ccb);
-STATIC void           asr_poll (
-                        IN struct cam_sim * sim);
+STATIC Asr_softc_t  * ASR_get_sc (dev_t dev);
+STATIC d_ioctl_t asr_ioctl;
+STATIC d_open_t asr_open;
+STATIC d_close_t asr_close;
+STATIC int            asr_intr (IN Asr_softc_t *sc);
+STATIC void           asr_timeout (INOUT void *arg);
+STATIC int            ASR_init (IN Asr_softc_t *sc);
+STATIC INLINE int     ASR_acquireLct (INOUT Asr_softc_t *sc);
+STATIC INLINE int     ASR_acquireHrt (INOUT Asr_softc_t *sc);
+STATIC void           asr_action (IN struct cam_sim *sim,
+				  IN union ccb *ccb);
+STATIC void           asr_poll (IN struct cam_sim * sim);
 
 /*
  *      Here is the auto-probe structure used to nest our tests appropriately
@@ -490,27 +469,15 @@ DRIVER_MODULE(mode0, pci, mode0_driver, mode0_devclass, 0, 0);
  * only ioctl is used. the sd driver provides all other access.
  */
 #define CDEV_MAJOR 154   /* prefered default character major */
-STATIC struct cdevsw asr_cdevsw = {
-        "asr",  	/* name     */
-        CDEV_MAJOR,     /* maj      */
-        0,              /* flags    */
-	NULL,		/* port     */
-	0,		/* auto	    */
-
-        asr_open,       /* open     */
-        asr_close,      /* close    */
-        noread,         /* read     */
-        nowrite,        /* write    */
-        asr_ioctl,      /* ioctl    */
-        nopoll,         /* poll     */
-        nommap,         /* mmap     */
-        nostrategy,     /* strategy */
-        nodump,         /* dump     */
-        nopsize		/* psize    */
+STATIC struct dev_ops asr_ops = {
+	{ "asr", CDEV_MAJOR, 0 },
+        .d_open =	asr_open,
+        .d_close =	asr_close, 
+        .d_ioctl =	asr_ioctl,
 };
 
 /*
- * Initialize the dynamic cdevsw hooks.
+ * Initialize the dynamic dev_ops hooks.
  */
 STATIC void
 asr_drvinit (void * unused)
@@ -525,27 +492,27 @@ asr_drvinit (void * unused)
          * Find a free spot (the report during driver load used by
          * osd layer in engine to generate the controlling nodes).
 	 *
-	 * XXX this is garbage code, store a unit number in asr_cdevsw
+	 * XXX this is garbage code, store a unit number in asr_ops
 	 * and iterate through that instead?
          */
-        while (asr_cdevsw.d_maj < NUMCDEVSW &&
-		cdevsw_get(asr_cdevsw.d_maj, -1) != NULL
+        while (asr_ops.head.maj < NUMCDEVSW &&
+		dev_ops_get(asr_ops.head.maj, -1) != NULL
 	) {
-                ++asr_cdevsw.d_maj;
+                ++asr_ops.head.maj;
         }
-        if (asr_cdevsw.d_maj >= NUMCDEVSW) {
-		asr_cdevsw.d_maj = 0;
-		while (asr_cdevsw.d_maj < CDEV_MAJOR &&
-			cdevsw_get(asr_cdevsw.d_maj, -1) != NULL
+        if (asr_ops.head.maj >= NUMCDEVSW) {
+		asr_ops.head.maj = 0;
+		while (asr_ops.head.maj < CDEV_MAJOR &&
+			dev_ops_get(asr_ops.head.maj, -1) != NULL
 		) {
-			++asr_cdevsw.d_maj;
+			++asr_ops.head.maj;
 		}
 	}
 
         /*
          *      Come to papa
          */
-        cdevsw_add(&asr_cdevsw, 0, 0);
+        dev_ops_add(&asr_ops, 0, 0);
 } /* asr_drvinit */
 
 /* Must initialize before CAM layer picks up our HBA driver */
@@ -2558,7 +2525,7 @@ asr_attach (ATTACH_ARGS)
                  *      engine (dptioctl.h) to pick up.
                  */
                 bcopy (osrelease, &ASR_sig.dsDescription[16], 5);
-                printf ("asr%d: major=%d\n", unit, asr_cdevsw.d_maj);
+                printf ("asr%d: major=%d\n", unit, asr_ops.head.maj);
         }
         /*
          *      Initialize the software structure
@@ -2851,7 +2818,7 @@ asr_attach (ATTACH_ARGS)
         /*
          *      Generate the device node information
          */
-        make_dev(&asr_cdevsw, unit, 0, 0, S_IRWXU, "rasr%d", unit);
+        make_dev(&asr_ops, unit, 0, 0, S_IRWXU, "rasr%d", unit);
         ATTACH_RETURN(0);
 } /* asr_attach */
 
@@ -3304,24 +3271,18 @@ STATIC u_int8_t ASR_ctlr_held;
 #endif
 
 STATIC int
-asr_open(
-        IN dev_t         dev,
-        int32_t          flags,
-        int32_t          ifmt,
-        IN d_thread_t *td)
+asr_open(struct dev_open_args *ap)
 {
-        OUT int          error;
-        UNREFERENCED_PARAMETER(flags);
-        UNREFERENCED_PARAMETER(ifmt);
+	dev_t dev = ap->a_head.a_dev;
+        OUT int error;
 
         if (ASR_get_sc (dev) == (Asr_softc_t *)NULL) {
                 return (ENODEV);
         }
-	KKASSERT(td->td_proc);
 	crit_enter();
         if (ASR_ctlr_held) {
                 error = EBUSY;
-        } else if ((error = suser_cred(td->td_proc->p_ucred, 0)) == 0) {
+        } else if ((error = suser_cred(ap->a_cred, 0)) == 0) {
                 ++ASR_ctlr_held;
         }
 	crit_exit();
@@ -3329,17 +3290,8 @@ asr_open(
 } /* asr_open */
 
 STATIC int
-asr_close(
-        dev_t         dev,
-        int           flags,
-        int           ifmt,
-	d_thread_t *td)
+asr_close(struct dev_close_args *ap)
 {
-        UNREFERENCED_PARAMETER(dev);
-        UNREFERENCED_PARAMETER(flags);
-        UNREFERENCED_PARAMETER(ifmt);
-        UNREFERENCED_PARAMETER(td);
-
         ASR_ctlr_held = 0;
         return (0);
 } /* asr_close */
@@ -3826,27 +3778,22 @@ ASR_queue_i(
 /*----------------------------------------------------------------------*/
 
 STATIC int
-asr_ioctl(
-        IN dev_t      dev,
-        IN u_long     cmd,
-        INOUT caddr_t data,
-        int           flag,
-        struct thread *td)
+asr_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
         int           i, j;
         OUT int       error = 0;
         Asr_softc_t * sc = ASR_get_sc (dev);
-        UNREFERENCED_PARAMETER(flag);
-        UNREFERENCED_PARAMETER(td);
 
         if (sc != (Asr_softc_t *)NULL)
-        switch(cmd) {
+        switch(ap->a_cmd) {
 
         case DPT_SIGNATURE:
 #       if (dsDescription_size != 50)
             case DPT_SIGNATURE + ((50 - dsDescription_size) << 16):
 #       endif
-                if (cmd & 0xFFFF0000) {
+                if (ap->a_cmd & 0xFFFF0000) {
                         (void)bcopy ((caddr_t)(&ASR_sig), data,
                             sizeof(dpt_sig_S));
                         return (0);
@@ -3889,7 +3836,7 @@ asr_ioctl(
 #define FLG_OSD_I2O       0x0004
                 CtlrInfo.hbaFlags = FLG_OSD_PCI_VALID | FLG_OSD_DMA | FLG_OSD_I2O;
                 CtlrInfo.Interrupt = sc->ha_irq;
-                if (cmd & 0xFFFF0000) {
+                if (ap->a_cmd & 0xFFFF0000) {
                         bcopy (&CtlrInfo, data, sizeof(CtlrInfo));
                 } else {
                         error = copyout (&CtlrInfo, *(caddr_t *)data, sizeof(CtlrInfo));
@@ -4052,7 +3999,7 @@ asr_ioctl(
                 }
 #               endif
                 /* Copy Out The Info Structure To The User */
-                if (cmd & 0xFFFF0000) {
+                if (ap->a_cmd & 0xFFFF0000) {
                         bcopy (&Info, data, sizeof(Info));
                 } else {
                         error = copyout (&Info, *(caddr_t *)data, sizeof(Info));
@@ -4065,7 +4012,7 @@ asr_ioctl(
                 if (i == -1) {
                         i = 0;
                 }
-                if (cmd & 0xFFFF0000) {
+                if (ap->a_cmd & 0xFFFF0000) {
                         bcopy ((caddr_t)(&i), data, sizeof(i));
                 } else {
                         error = copyout (&i, *(caddr_t *)data, sizeof(i));

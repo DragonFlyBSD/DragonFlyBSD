@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.12 2006/03/24 18:35:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.13 2006/07/28 02:17:37 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -71,23 +71,14 @@ static	d_dump_t	aac_disk_dump;
 
 #define AAC_DISK_CDEV_MAJOR	151
 
-static struct cdevsw aac_disk_cdevsw = {
-	/* name */ 		"aacd",
-	/* maj */		AAC_DISK_CDEV_MAJOR,
-	/* flags */		D_DISK,
-	/* port */		NULL,
-	/* clone */		NULL,
-
-	/* open */		aac_disk_open,
-	/* close */		aac_disk_close,
-	/* read */		physread,
-	/* write */		physwrite,
-	/* ioctl */		noioctl,
-	/* poll */		nopoll,
-	/* mmap */		nommap,
-	/* strategy */		aac_disk_strategy,
-	/* dump */		aac_disk_dump,
-	/* psize */ 		nopsize
+static struct dev_ops aac_disk_ops = {
+	{ "aacd", AAC_DISK_CDEV_MAJOR, D_DISK },
+	.d_open =		aac_disk_open,
+	.d_close =		aac_disk_close,
+	.d_read =		physread,
+	.d_write =		physwrite,
+	.d_strategy =		aac_disk_strategy,
+	.d_dump =		aac_disk_dump,
 };
 
 devclass_t		aac_disk_devclass;
@@ -124,8 +115,9 @@ SYSCTL_UINT(_hw_aac, OID_AUTO, iosize_max, CTLFLAG_RD, &aac_iosize_max, 0,
  * basic device geometry paramters.
  */
 static int
-aac_disk_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+aac_disk_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
 	struct disklabel *label;
 
@@ -164,8 +156,9 @@ aac_disk_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle last close of the disk device.
  */
 static int
-aac_disk_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+aac_disk_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_disk	*sc;
 
 	debug_called(0);
@@ -182,9 +175,11 @@ aac_disk_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 /*
  * Handle an I/O request.
  */
-static void
-aac_disk_strategy(dev_t dev, struct bio *bio)
+static int
+aac_disk_strategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct aac_disk	*sc;
 
@@ -197,14 +192,14 @@ aac_disk_strategy(dev_t dev, struct bio *bio)
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EINVAL;
 		biodone(bio);
-		return;
+		return(0);
 	}
 
 	/* do-nothing operation? */
 	if (bp->b_bcount == 0) {
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
-		return;
+		return(0);
 	}
 
 	/* perform accounting */
@@ -212,6 +207,7 @@ aac_disk_strategy(dev_t dev, struct bio *bio)
 
 	/* pass the bio to the controller - it can work out who we are */
 	aac_submit_bio(sc, bio);
+	return(0);
 }
 
 /*
@@ -221,8 +217,9 @@ aac_disk_strategy(dev_t dev, struct bio *bio)
  * for the controller to complete the requests.
  */
 static int
-aac_disk_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+aac_disk_dump(struct dev_dump_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_disk *ad;
 	struct aac_softc *sc;
 	vm_offset_t addr;
@@ -239,13 +236,13 @@ aac_disk_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 
 	sc= ad->ad_controller;
 
-	blkcnt = howmany(PAGE_SIZE, secsize);
+	blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
-	while (count > 0) {
+	while (ap->a_count > 0) {
 		caddr_t va = NULL;
 
-		if ((count / blkcnt) < dumppages)
-			dumppages = count / blkcnt;
+		if ((ap->a_count / blkcnt) < dumppages)
+			dumppages = ap->a_count / blkcnt;
 
 		for (i = 0; i < dumppages; ++i) {
 			vm_offset_t a = addr + (i * PAGE_SIZE);
@@ -261,18 +258,18 @@ retry:
 		 * Queue the block to the controller.  If the queue is full,
 		 * EBUSY will be returned.
 		 */
-		error = aac_dump_enqueue(ad, blkno, va, dumppages);
+		error = aac_dump_enqueue(ad, ap->a_blkno, va, dumppages);
 		if (error && (error != EBUSY))
 			return (error);
 
 		if (!error) {
-			if (dumpstatus(addr, (off_t)(count * DEV_BSIZE)) < 0)
+			if (dumpstatus(addr, (off_t)(ap->a_count * DEV_BSIZE)) < 0)
 			return (EINTR);
 
-			blkno += blkcnt * dumppages;
-			count -= blkcnt * dumppages;
+			ap->a_blkno += blkcnt * dumppages;
+			ap->a_count -= blkcnt * dumppages;
 			addr += PAGE_SIZE * dumppages;
-			if (count > 0)
+			if (ap->a_count > 0)
 			continue;
 		}
 
@@ -369,7 +366,7 @@ aac_disk_attach(device_t dev)
 
 	/* attach a generic disk device to ourselves */
 	sc->ad_dev_t = disk_create(device_get_unit(dev), &sc->ad_disk, 0,
-				   &aac_disk_cdevsw);
+				   &aac_disk_ops);
 	sc->ad_dev_t->si_drv1 = sc;
 
 	sc->ad_dev_t->si_iosize_max = aac_iosize_max;

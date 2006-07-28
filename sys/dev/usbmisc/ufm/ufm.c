@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.9 2005/06/02 20:40:47 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.10 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,15 +93,11 @@ d_ioctl_t ufmioctl;
 
 #define UFM_CDEV_MAJOR	200
 
-Static struct cdevsw ufm_cdevsw = {
- 	/* name */	"ufm",	
-	/* cmaj */	UFM_CDEV_MAJOR,	
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-	ufmopen,	ufmclose,	noread,		nowrite,
- 	ufmioctl,	nopoll,		nommap,		nostrategy,
-	nodump,		nopsize
+Static struct dev_ops ufm_ops = {
+	{ "ufm", UFM_CDEV_MAJOR, 0 },
+	.d_open = ufmopen,
+	.d_close = ufmclose,
+	.d_ioctl = ufmioctl,
 };
 #endif  /*defined(__FreeBSD__)*/
 
@@ -209,8 +205,8 @@ USB_ATTACH(ufm)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* XXX no error trapping, no storing of dev_t */
-	cdevsw_add(&ufm_cdevsw, -1, device_get_unit(self));
-	make_dev(&ufm_cdevsw, device_get_unit(self),
+	dev_ops_add(&ufm_ops, -1, device_get_unit(self));
+	make_dev(&ufm_ops, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "ufm%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
@@ -229,20 +225,21 @@ USB_ATTACH(ufm)
 
 
 int
-ufmopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
+ufmopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
 	USB_GET_SC_OPEN(ufm, unit, sc);
 
 	DPRINTFN(5, ("ufmopen: flag=%d, mode=%d, unit=%d\n",
-		     flag, mode, unit));
+		     ap->a_oflags, ap->a_devtype, unit));
 
 	if (sc->sc_opened)
 		return (EBUSY);
 
-	if ((flag & (FWRITE|FREAD)) != (FWRITE|FREAD))
+	if ((ap->a_oflags & (FWRITE|FREAD)) != (FWRITE|FREAD))
 		return (EACCES);
 
 	sc->sc_opened = 1;
@@ -250,14 +247,16 @@ ufmopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 }
 
 int
-ufmclose(dev_t dev, int flag, int mode, usb_proc_ptr td)
+ufmclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
 	USB_GET_SC(ufm, unit, sc);
 
-	DPRINTFN(5, ("ufmclose: flag=%d, mode=%d, unit=%d\n", flag, mode, unit));
+	DPRINTFN(5, ("ufmclose: flag=%d, mode=%d, unit=%d\n", 
+		    ap->a_fflag, ap->a_devtype, unit));
 	sc->sc_opened = 0;
 	sc->sc_refcnt = 0;
 	return 0;
@@ -372,8 +371,10 @@ ufm_get_stat(struct ufm_softc *sc, caddr_t addr)
 }
 
 int
-ufmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr td)
+ufmioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct ufm_softc *sc;
 
 	int unit = UFMUNIT(dev);
@@ -381,7 +382,7 @@ ufmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr td)
 
 	USB_GET_SC(ufm, unit, sc);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case FM_SET_FREQ:
 		error = ufm_set_freq(sc, addr);
 		break;

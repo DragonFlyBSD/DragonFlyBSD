@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.23 2006/04/30 17:22:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.24 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -191,23 +191,12 @@ static int		aac_query_disk(struct aac_softc *sc, caddr_t uptr);
 
 #define AAC_CDEV_MAJOR	150
 
-static struct cdevsw aac_cdevsw = {
-	"aac",			/* name */
-	AAC_CDEV_MAJOR,		/* major */
-	0,			/* flags */
-	NULL,			/* port */
-	NULL,			/* clone */
-
-	aac_open,		/* open */
-	aac_close,		/* close */
-	noread,			/* read */
-	nowrite,		/* write */
-	aac_ioctl,		/* ioctl */
-	aac_poll,		/* poll */
-	nommap,			/* mmap */
-	nostrategy,		/* strategy */
-	nodump,			/* dump */
-	nopsize			/* psize */
+static struct dev_ops aac_ops = {
+	{ "aac", AAC_CDEV_MAJOR, 0 },
+	.d_open =	aac_open,
+	.d_close =	aac_close,
+	.d_ioctl =	aac_ioctl,
+	.d_poll =	aac_poll,
 };
 
 DECLARE_DUMMY_MODULE(aac);
@@ -298,8 +287,8 @@ aac_attach(struct aac_softc *sc)
 	 * Make the control device.
 	 */
 	unit = device_get_unit(sc->aac_dev);
-	cdevsw_add(&aac_cdevsw, -1, unit);
-	sc->aac_dev_t = make_dev(&aac_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
+	dev_ops_add(&aac_ops, -1, unit);
+	sc->aac_dev_t = make_dev(&aac_ops, unit, UID_ROOT, GID_WHEEL, 0644,
 				 "aac%d", unit);
 #if defined(__FreeBSD__) && __FreeBSD_version > 500005
 	(void)make_dev_alias(sc->aac_dev_t, "afa%d", unit);
@@ -477,7 +466,7 @@ aac_free(struct aac_softc *sc)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
 				     sc->aac_regs_rid, sc->aac_regs_resource);
 	}
-	cdevsw_remove(&aac_cdevsw, -1, device_get_unit(sc->aac_dev));
+	dev_ops_remove(&aac_ops, -1, device_get_unit(sc->aac_dev));
 }
 
 /*
@@ -2350,8 +2339,9 @@ aac_describe_code(struct aac_code_lookup *table, u_int32_t code)
  */
 
 static int
-aac_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+aac_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 
 	debug_called(2);
@@ -2368,8 +2358,9 @@ aac_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-aac_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+aac_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 
 	debug_called(2);
@@ -2383,15 +2374,17 @@ aac_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
+aac_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t arg = ap->a_data;
 	struct aac_softc *sc = dev->si_drv1;
 	int error = 0;
 	int i;
 
 	debug_called(2);
 
-	if (cmd == AACIO_STATS) {
+	if (ap->a_cmd == AACIO_STATS) {
 		union aac_statrequest *as = (union aac_statrequest *)arg;
 
 		switch (as->as_item) {
@@ -2412,7 +2405,7 @@ aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 
 	arg = *(caddr_t *)arg;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	/* AACIO_STATS already handled above */
 	case FSACTL_SENDFIB:
 		debug(1, "FSACTL_SENDFIB");
@@ -2464,7 +2457,7 @@ aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 		error = 0;
 		break;
 	default:
-		debug(1, "unsupported cmd 0x%lx\n", cmd);
+		debug(1, "unsupported cmd 0x%lx\n", ap->a_cmd);
 		error = EINVAL;
 		break;
 	}
@@ -2472,8 +2465,9 @@ aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 }
 
 static int
-aac_poll(dev_t dev, int poll_events, d_thread_t *td)
+aac_poll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct aac_softc *sc;
 	int revents;
 
@@ -2481,18 +2475,18 @@ aac_poll(dev_t dev, int poll_events, d_thread_t *td)
 	revents = 0;
 
 	AAC_LOCK_ACQUIRE(&sc->aac_aifq_lock);
-	if ((poll_events & (POLLRDNORM | POLLIN)) != 0) {
+	if ((ap->a_events & (POLLRDNORM | POLLIN)) != 0) {
 		if (sc->aac_aifq_tail != sc->aac_aifq_head)
-			revents |= poll_events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 	}
 	AAC_LOCK_RELEASE(&sc->aac_aifq_lock);
 
 	if (revents == 0) {
-		if (poll_events & (POLLIN | POLLRDNORM))
-			selrecord(td, &sc->rcv_select);
+		if (ap->a_events & (POLLIN | POLLRDNORM))
+			selrecord(curthread, &sc->rcv_select);
 	}
-
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 /*

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.9 2005/06/10 15:46:31 swildner Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.10 2006/07/28 02:17:37 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -47,6 +47,7 @@
 #include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/stat.h>
+#include <sys/device.h>
 #include <sys/disklabel.h>
 #include <sys/thread2.h>
 #include <machine/bus.h>
@@ -69,23 +70,13 @@ static d_ioctl_t	iir_ioctl;
 #define CDEV_MAJOR          IIR_CDEV_MAJOR
 
 /* Normally, this is a static structure.  But we need it in pci/iir_pci.c */
-static struct cdevsw iir_cdevsw = {
-        /* name */      "iir",
-        /* maj */       CDEV_MAJOR,
-        /* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-        /* open */      iir_open,
-        /* close */     iir_close,
-        /* read */      iir_read,
-        /* write */     iir_write,
-        /* ioctl */     iir_ioctl,
-        /* poll */      nopoll,
-        /* mmap */      nommap,
-        /* strategy */  nostrategy,
-        /* dump */      nodump,
-        /* psize */     nopsize
+static struct dev_ops iir_ops = {
+	{ "iir", CDEV_MAJOR, 0 },
+        .d_open =	iir_open,
+        .d_close =	iir_close,
+        .d_read =	iir_read,
+        .d_write =	iir_write,
+        .d_ioctl =	iir_ioctl,
 };
 
 static int iir_devsw_installed = 0;
@@ -107,12 +98,12 @@ gdt_make_dev(int unit)
     dev_t dev;
 
 #ifdef SDEV_PER_HBA
-    dev = make_dev(&iir_cdevsw, hba2minor(unit), UID_ROOT, GID_OPERATOR,
+    dev = make_dev(&iir_ops, hba2minor(unit), UID_ROOT, GID_OPERATOR,
                    S_IRUSR | S_IWUSR, "iir%d", unit);
 #else
     if (sdev_made)
         return (0);
-    dev = make_dev(&iir_cdevsw, 0, UID_ROOT, GID_OPERATOR,
+    dev = make_dev(&iir_ops, 0, UID_ROOT, GID_OPERATOR,
                    S_IRUSR | S_IWUSR, "iir");
     sdev_made = 1;
 #endif
@@ -151,7 +142,7 @@ gdt_minor2softc(int minor_no)
 }
 
 static int
-iir_open(dev_t dev, int flags, int fmt, d_thread_t * p)
+iir_open(struct dev_open_args *ap)
 {
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_open()\n"));
 
@@ -169,7 +160,7 @@ iir_open(dev_t dev, int flags, int fmt, d_thread_t * p)
 }
 
 static int
-iir_close(dev_t dev, int flags, int fmt, d_thread_t * p)
+iir_close(struct dev_close_args *ap)
 {
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_close()\n"));
                 
@@ -187,7 +178,7 @@ iir_close(dev_t dev, int flags, int fmt, d_thread_t * p)
 }
 
 static int
-iir_write(dev_t dev, struct uio * uio, int ioflag)
+iir_write(struct dev_write_args *ap)
 {
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_write()\n"));
                 
@@ -205,7 +196,7 @@ iir_write(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-iir_read(dev_t dev, struct uio * uio, int ioflag)
+iir_read(struct dev_read_args *ap)
 {
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_read()\n"));
                 
@@ -229,7 +220,7 @@ iir_read(dev_t dev, struct uio * uio, int ioflag)
  */
 
 static int
-iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
+iir_ioctl(struct dev_ioctl_args *ap)
 {
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_ioctl() cmd 0x%lx\n",cmd));
 
@@ -246,13 +237,13 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
     if (gdt_stat.io_count_act > gdt_stat.io_count_max)
         gdt_stat.io_count_max = gdt_stat.io_count_act;
 
-    switch (cmd) {
+    switch (ap->a_cmd) {
       case GDT_IOCTL_GENERAL:
         {
             gdt_ucmd_t *ucmd;
             struct gdt_softc *gdt;
 
-            ucmd = (gdt_ucmd_t *)cmdarg;
+            ucmd = (gdt_ucmd_t *)ap->a_data;
             gdt = gdt_minor2softc(ucmd->io_node);
             if (gdt == NULL)
                 return (ENXIO);
@@ -267,7 +258,7 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
         }
 
       case GDT_IOCTL_DRVERS:
-        *(int *)cmdarg = 
+        *(int *)ap->a_data = 
             (IIR_DRIVER_VERSION << 8) | IIR_DRIVER_SUBVERSION;
         break;
 
@@ -276,7 +267,7 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
             gdt_ctrt_t *p;
             struct gdt_softc *gdt; 
             
-            p = (gdt_ctrt_t *)cmdarg;
+            p = (gdt_ctrt_t *)ap->a_data;
             gdt = gdt_minor2softc(p->io_node);
             if (gdt == NULL)
                 return (ENXIO);
@@ -293,7 +284,7 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
         {
             gdt_osv_t *p;
 
-            p = (gdt_osv_t *)cmdarg;
+            p = (gdt_osv_t *)ap->a_data;
             p->oscode = 10;
             p->version = osrelease[0] - '0';
             if (osrelease[1] == '.')
@@ -309,14 +300,14 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
         }
 
       case GDT_IOCTL_CTRCNT:
-        *(int *)cmdarg = gdt_cnt;
+        *(int *)ap->a_data = gdt_cnt;
         break;
 
       case GDT_IOCTL_EVENT:
         {
             gdt_event_t *p;
 
-            p = (gdt_event_t *)cmdarg;
+            p = (gdt_event_t *)ap->a_data;
             if (p->erase == 0xff) {
                 if (p->dvr.event_source == GDT_ES_TEST)
                     p->dvr.event_data.size = sizeof(p->dvr.event_data.eu.test);
@@ -346,7 +337,7 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
         {
             gdt_statist_t *p;
             
-            p = (gdt_statist_t *)cmdarg;
+            p = (gdt_statist_t *)ap->a_data;
             bcopy(&gdt_stat, p, sizeof(gdt_statist_t));
             break;
         }
@@ -366,7 +357,7 @@ iir_drvinit(void *unused)
                 
     if (!iir_devsw_installed) {
         /* Add the I/O (data) channel */
-        cdevsw_add(&iir_cdevsw, 0, 0);
+        dev_ops_add(&iir_ops, 0, 0);
         iir_devsw_installed = 1;
     }
 }

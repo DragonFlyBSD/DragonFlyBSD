@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.13 2005/10/30 10:07:10 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -380,7 +380,7 @@ sc_set_pixel_mode(scr_stat *scp, struct tty *tp, int xsize, int ysize,
 			 (*vidsw[(a)->va_index]->ioctl)((a), (c), (caddr_t)(d)))
 
 int
-sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
+sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
     scr_stat *scp;
     video_adapter_t *adp;

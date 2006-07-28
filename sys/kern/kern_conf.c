@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.11 2005/03/23 02:50:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ lminor(dev_t x)
  */
 static
 dev_t
-hashdev(struct cdevsw *devsw, int x, int y)
+hashdev(struct dev_ops *ops, int x, int y)
 {
 	struct specinfo *si;
 	udev_t	udev;
@@ -124,7 +124,7 @@ hashdev(struct cdevsw *devsw, int x, int y)
 	udev = makeudev(x, y);
 	hash = udev % DEVT_HASH;
 	LIST_FOREACH(si, &dev_hash[hash], si_hash) {
-		if (si->si_devsw == devsw && si->si_udev == udev)
+		if (si->si_ops == ops && si->si_udev == udev)
 			return (si);
 	}
 	if (stashed >= DEVT_STASH) {
@@ -137,15 +137,15 @@ hashdev(struct cdevsw *devsw, int x, int y)
 		si = devt_stash + stashed++;
 		si->si_flags |= SI_STASHED;
 	}
-	si->si_devsw = devsw;
+	si->si_ops = ops;
 	si->si_flags |= SI_HASHED | SI_ADHOC;
 	si->si_udev = udev;
 	si->si_refs = 1;
 	LIST_INSERT_HEAD(&dev_hash[hash], si, si_hash);
-	si->si_port = devsw->d_port;
-	devsw->d_clone(si);
-	if (devsw != &dead_cdevsw)
-		++devsw->d_refs;
+
+	dev_dclone(si);
+	if (ops != &dead_dev_ops)
+		++ops->head.refs;
 	if (dev_ref_debug) {
 		printf("create    dev %p %s(minor=%08x) refs=%d\n", 
 			si, devtoname(si), uminor(si->si_udev),
@@ -178,21 +178,21 @@ dev_t
 udev2dev(udev_t x, int b)
 {
 	dev_t dev;
-	struct cdevsw *devsw;
+	struct dev_ops *ops;
 
 	if (x == NOUDEV || b != 0)
 		return(NODEV);
-	devsw = cdevsw_get(umajor(x), uminor(x));
-	if (devsw == NULL)
+	ops = dev_ops_get(umajor(x), uminor(x));
+	if (ops == NULL)
 		return(NODEV);
-	dev = hashdev(devsw, umajor(x), uminor(x));
+	dev = hashdev(ops, umajor(x), uminor(x));
 	return(dev);
 }
 
 int
 dev_is_good(dev_t dev)
 {
-	if (dev != NODEV && dev->si_devsw != &dead_cdevsw)
+	if (dev != NODEV && dev->si_ops != &dead_dev_ops)
 		return(1);
 	return(0);
 }
@@ -223,7 +223,7 @@ makeudev(int x, int y)
  *
  * Device majors can be overloaded and used directly by the kernel without
  * conflict, but userland will only see the particular device major that
- * has been installed with cdevsw_add().
+ * has been installed with dev_ops_add().
  *
  * This routine creates and returns an unreferenced ad-hoc entry for the
  * device which will remain intact until the device is destroyed.  If the
@@ -234,7 +234,7 @@ makeudev(int x, int y)
  * its cred requirements and name (XXX DEVFS interface).
  */
 dev_t
-make_dev(struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, 
+make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid, 
 	int perms, const char *fmt, ...)
 {
 	dev_t	dev;
@@ -244,8 +244,8 @@ make_dev(struct cdevsw *devsw, int minor, uid_t uid, gid_t gid,
 	/*
 	 * compile the cdevsw and install the device
 	 */
-	compile_devsw(devsw);
-	dev = hashdev(devsw, devsw->d_maj, minor);
+	compile_dev_ops(ops);
+	dev = hashdev(ops, ops->head.maj, minor);
 
 	/*
 	 * Set additional fields (XXX DEVFS interface goes here)
@@ -263,11 +263,11 @@ make_dev(struct cdevsw *devsw, int minor, uid_t uid, gid_t gid,
  * need be specified.
  */
 dev_t
-make_adhoc_dev(struct cdevsw *devsw, int minor)
+make_adhoc_dev(struct dev_ops *ops, int minor)
 {
 	dev_t dev;
 
-	dev = hashdev(devsw, devsw->d_maj, minor);
+	dev = hashdev(ops, ops->head.maj, minor);
 	return(dev);
 }
 
@@ -280,7 +280,7 @@ make_sub_dev(dev_t odev, int minor)
 {
 	dev_t	dev;
 
-	dev = hashdev(odev->si_devsw, umajor(odev->si_udev), minor);
+	dev = hashdev(odev->si_ops, umajor(odev->si_udev), minor);
 
 	/*
 	 * Copy cred requirements and name info XXX DEVFS.
@@ -292,7 +292,7 @@ make_sub_dev(dev_t odev, int minor)
 
 /*
  * destroy_dev() removes the adhoc association for a device and revectors
- * its devsw to &dead_cdevsw.
+ * its ops to &dead_dev_ops.
  *
  * This routine releases the reference count associated with the ADHOC
  * entry, plus releases the reference count held by the caller.  What this
@@ -331,17 +331,16 @@ destroy_dev(dev_t dev)
 	}
 
 	/*
-	 * We have to release the cdevsw reference before we replace the
-	 * device switch with dead_cdevsw.
+	 * We have to release the ops reference before we replace the
+	 * device switch with dead_dev_ops.
 	 */
-	if (dead_cdevsw.d_port == NULL)
-		compile_devsw(&dead_cdevsw);
-	if (dev->si_devsw && dev->si_devsw != &dead_cdevsw)
-		cdevsw_release(dev->si_devsw);
+	if (dead_dev_ops.d_strategy == NULL)
+		compile_dev_ops(&dead_dev_ops);
+	if (dev->si_ops && dev->si_ops != &dead_dev_ops)
+		dev_ops_release(dev->si_ops);
 	dev->si_drv1 = NULL;
 	dev->si_drv2 = NULL;
-	dev->si_devsw = &dead_cdevsw;
-	dev->si_port = dev->si_devsw->d_port;
+	dev->si_ops = &dead_dev_ops;
 	--dev->si_refs;		/* release adhoc association reference */
 	release_dev(dev);	/* release callers reference */
 }
@@ -351,7 +350,7 @@ destroy_dev(dev_t dev)
  * device switch.  Only the minor numbers are included in the mask/match
  * values. 
  *
- * Unlike the cdevsw functions whos link structures do not contain
+ * Unlike the ops functions whos link structures do not contain
  * any major bits, this function scans through the dev list via si_udev
  * which is a 32 bit field that contains both major and minor bits.
  * Because of this, we must mask the minor bits in the passed mask variable
@@ -360,7 +359,7 @@ destroy_dev(dev_t dev)
  * The caller must not include any major bits in the match value.
  */
 void
-destroy_all_dev(struct cdevsw *devsw, u_int mask, u_int match)
+destroy_all_devs(struct dev_ops *ops, u_int mask, u_int match)
 {
 	int i;
 	dev_t dev;
@@ -372,7 +371,7 @@ destroy_all_dev(struct cdevsw *devsw, u_int mask, u_int match)
 		while ((dev = ndev) != NULL) {
 		    ndev = LIST_NEXT(dev, si_hash);
 		    KKASSERT(dev->si_flags & SI_ADHOC);
-		    if (dev->si_devsw == devsw && 
+		    if (dev->si_ops == ops && 
 			(dev->si_udev & mask) == match
 		    ) {
 			++dev->si_refs;
@@ -410,7 +409,7 @@ reference_dev(dev_t dev)
  * reference has been released.
  *
  * NOTE: we must use si_udev to figure out the original (major, minor),
- * because si_devsw could already be pointing at dead_cdevsw.
+ * because si_ops could already be pointing at dead_dev_ops.
  */
 void
 release_dev(dev_t dev)
@@ -453,9 +452,9 @@ release_dev(dev_t dev)
 				dev, devtoname(dev));
 			free_devt = 0;	/* prevent bad things from occuring */
 		}
-		if (dev->si_devsw && dev->si_devsw != &dead_cdevsw) {
-			cdevsw_release(dev->si_devsw);
-			dev->si_devsw = NULL;
+		if (dev->si_ops && dev->si_ops != &dead_dev_ops) {
+			dev_ops_release(dev->si_ops);
+			dev->si_ops = NULL;
 		}
 		if (free_devt) {
 			if (dev->si_flags & SI_STASHED) {

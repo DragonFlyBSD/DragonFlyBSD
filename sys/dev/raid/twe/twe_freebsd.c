@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.9 2004/06/11 18:57:31 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.20 2006/05/03 16:34:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.21 2006/07/28 02:17:38 dillon Exp $
  */
 
 /*
@@ -62,30 +62,20 @@ static	d_open_t		twe_open;
 static	d_close_t		twe_close;
 static	d_ioctl_t		twe_ioctl_wrapper;
 
-static struct cdevsw twe_cdevsw = {
-	"twe", 	/* name */
-	TWE_CDEV_MAJOR, /* major number */
-	0,  	/* flags */
-	NULL, 	/* device port */
-	NULL, 	/* cloning */
-    twe_open,
-    twe_close,
-    noread,
-    nowrite,
-    twe_ioctl_wrapper,
-    nopoll,
-    nommap,
-    nostrategy,
-    nodump,
-    nopsize
+static struct dev_ops twe_ops = {
+	{ "twe", TWE_CDEV_MAJOR, 0 },
+	.d_open =	twe_open,
+	.d_close =	twe_close,
+	.d_ioctl =	twe_ioctl_wrapper,
 };
 
 /********************************************************************************
  * Accept an open operation on the control device.
  */
 static int
-twe_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+twe_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct twe_softc	*sc = devclass_get_softc(twe_devclass, unit);
 
@@ -97,8 +87,9 @@ twe_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Accept the last close on the control device.
  */
 static int
-twe_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+twe_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct twe_softc	*sc = devclass_get_softc(twe_devclass, unit);
 
@@ -110,11 +101,12 @@ twe_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle controller-specific control operations.
  */
 static int
-twe_ioctl_wrapper(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+twe_ioctl_wrapper(struct dev_ioctl_args *ap)
 {
-    struct twe_softc		*sc = (struct twe_softc *)dev->si_drv1;
+    dev_t dev = ap->a_head.a_dev;
+    struct twe_softc *sc = (struct twe_softc *)dev->si_drv1;
     
-    return(twe_ioctl(sc, cmd, addr));
+    return(twe_ioctl(sc, ap->a_cmd, ap->a_data));
 }
 
 /********************************************************************************
@@ -308,8 +300,8 @@ twe_attach(device_t dev)
     /*
      * Create the control device.
      */
-	cdevsw_add(&twe_cdevsw, -1, device_get_unit(sc->twe_dev));
-    sc->twe_dev_t = make_dev(&twe_cdevsw, device_get_unit(sc->twe_dev),
+	dev_ops_add(&twe_ops, -1, device_get_unit(sc->twe_dev));
+    sc->twe_dev_t = make_dev(&twe_ops, device_get_unit(sc->twe_dev),
 			UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, "twe%d",
 			device_get_unit(sc->twe_dev));
     sc->twe_dev_t->si_drv1 = sc;
@@ -364,7 +356,7 @@ twe_free(struct twe_softc *sc)
     if (sc->twe_io != NULL)
 	bus_release_resource(sc->twe_dev, SYS_RES_IOPORT, TWE_IO_CONFIG_REG, sc->twe_io);
 
-	cdevsw_remove(&twe_cdevsw, -1, device_get_unit(sc->twe_dev));
+	dev_ops_remove(&twe_ops, -1, device_get_unit(sc->twe_dev));
     /* destroy control device */
     if (sc->twe_dev_t != (dev_t)NULL)
 	destroy_dev(sc->twe_dev_t);
@@ -611,27 +603,16 @@ static	d_close_t	twed_close;
 static	d_strategy_t	twed_strategy;
 static	d_dump_t	twed_dump;
 
-static struct cdevsw twed_cdevsw = {
-	"twed",
-	TWED_CDEV_MAJOR,
-	D_DISK,
-	/* port */ NULL,
-	/* clone */ NULL,
-    twed_open,
-    twed_close,
-    physread,
-    physwrite,
-    noioctl,
-    nopoll,
-    nommap,
-    twed_strategy,
-    twed_dump,
-    nopsize
+static struct dev_ops twed_ops = {
+	{ "twed", TWED_CDEV_MAJOR, D_DISK },
+	.d_open =	twed_open,
+	.d_close =	twed_close,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	twed_strategy,
+	.d_dump =	twed_dump,
 };
 
-#if 0
-static struct cdevsw	tweddisk_cdevsw;
-#endif
 #ifdef FREEBSD_4
 static int		disks_registered = 0;
 #endif
@@ -643,8 +624,9 @@ static int		disks_registered = 0;
  * for opens on subdevices (eg. slices, partitions).
  */
 static int
-twed_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+twed_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
     struct disklabel	*label;
 
@@ -676,8 +658,9 @@ twed_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle last close of the disk device.
  */
 static int
-twed_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+twed_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct twed_softc	*sc = (struct twed_softc *)dev->si_drv1;
 
     debug_called(4);
@@ -692,9 +675,11 @@ twed_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 /********************************************************************************
  * Handle an I/O request.
  */
-static void
-twed_strategy(dev_t dev, struct bio *bio)
+static int
+twed_strategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct twed_softc *sc = dev->si_drv1;
     struct buf *bp = bio->bio_buf;
 
@@ -711,7 +696,7 @@ twed_strategy(dev_t dev, struct bio *bio)
 	printf("twe: bio for invalid disk!\n");
 	biodone(bio);
 	TWED_BIO_OUT;
-	return;
+	return(0);
     }
 
     /* perform accounting */
@@ -722,41 +707,34 @@ twed_strategy(dev_t dev, struct bio *bio)
 
     /* poke the controller to start I/O */
     twe_startio(sc->twed_controller);
-    return;
+    return(0);
 }
 
 /********************************************************************************
  * System crashdump support
  */
 static int
-twed_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+twed_dump(struct dev_dump_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct twed_softc	*twed_sc = (struct twed_softc *)dev->si_drv1;
     struct twe_softc	*twe_sc  = (struct twe_softc *)twed_sc->twed_controller;
-#if 0
-    u_int		count, blkno, secsize;
-#endif
     vm_paddr_t		addr = 0;
     long		blkcnt;
     int			dumppages = MAXDUMPPGS;
     int			error;
     int			i;
 
-#if 0
-    if ((error = disk_dumpcheck(dev, &count, &blkno, &secsize)))
-        return(error);
-#endif
-
     if (!twed_sc || !twe_sc)
 	return(ENXIO);
 
-    blkcnt = howmany(PAGE_SIZE, secsize);
+    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
-    while (count > 0) {
+    while (ap->a_count > 0) {
 	caddr_t va = NULL;
 
-	if ((count / blkcnt) < dumppages)
-	    dumppages = count / blkcnt;
+	if ((ap->a_count / blkcnt) < dumppages)
+	    dumppages = ap->a_count / blkcnt;
 
 	for (i = 0; i < dumppages; ++i) {
 	    vm_paddr_t a = addr + (i * PAGE_SIZE);
@@ -766,16 +744,16 @@ twed_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 		va = pmap_kenter_temporary(trunc_page(0), i);
 	}
 
-	if ((error = twe_dump_blocks(twe_sc, twed_sc->twed_drive->td_twe_unit, blkno, va, 
+	if ((error = twe_dump_blocks(twe_sc, twed_sc->twed_drive->td_twe_unit, ap->a_blkno, va, 
 				     (PAGE_SIZE * dumppages) / TWE_BLOCK_SIZE)) != 0)
 	    return(error);
 
 
-	if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
 	    return(EINTR);
 
-	blkno += blkcnt * dumppages;
-	count -= blkcnt * dumppages;
+	ap->a_blkno += blkcnt * dumppages;
+	ap->a_count -= blkcnt * dumppages;
 	addr += PAGE_SIZE * dumppages;
     }
     return(0);
@@ -841,7 +819,7 @@ twed_attach(device_t dev)
 
     /* attach a generic disk device to ourselves */
     dsk = disk_create(sc->twed_drive->td_sys_unit, &sc->twed_disk,
-			0, &twed_cdevsw);
+			0, &twed_ops);
     dsk->si_drv1 = sc;
 /*    dsk->si_drv2 = sc->twed_drive;*/
     sc->twed_dev_t = dsk;
@@ -874,7 +852,7 @@ twed_detach(device_t dev)
 	printf("Disks registered: %d\n", disks_registered);
 #if 0
     if (--disks_registered == 0)
-	cdevsw_remove(&tweddisk_cdevsw);
+	dev_ops_remove(&tweddisk_ops);
 #endif
 #endif
 

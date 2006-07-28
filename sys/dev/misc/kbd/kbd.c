@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.16 2005/10/30 23:00:56 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -446,23 +446,14 @@ static d_poll_t		genkbdpoll;
 
 #define CDEV_MAJOR	112
 
-static struct cdevsw kbd_cdevsw = {
-	/* name */	"kbd",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	genkbdopen,
-	/* close */	genkbdclose,
-	/* read */	genkbdread,
-	/* write */	genkbdwrite,
-	/* ioctl */	genkbdioctl,
-	/* poll */	genkbdpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops kbd_ops = {
+	{ "kbd", CDEV_MAJOR, 0 },
+	.d_open =	genkbdopen,
+	.d_close =	genkbdclose,
+	.d_read =	genkbdread,
+	.d_write =	genkbdwrite,
+	.d_ioctl =	genkbdioctl,
+	.d_poll =	genkbdpoll,
 };
 
 int
@@ -475,8 +466,8 @@ kbd_attach(keyboard_t *kbd)
 	if (keyboard[kbd->kb_index] != kbd)
 		return EINVAL;
 
-	cdevsw_add(&kbd_cdevsw, -1, kbd->kb_index);
-	dev = make_dev(&kbd_cdevsw, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
+	dev_ops_add(&kbd_ops, -1, kbd->kb_index);
+	dev = make_dev(&kbd_ops, kbd->kb_index, UID_ROOT, GID_WHEEL, 0600,
 		       "kbd%r", kbd->kb_index);
 	if (dev->si_drv1 == NULL)
 		dev->si_drv1 = malloc(sizeof(genkbd_softc_t), M_DEVBUF,
@@ -501,13 +492,13 @@ kbd_detach(keyboard_t *kbd)
 	 * Deal with refs properly.  The KBD driver really ought to have
 	 * recorded the dev_t separately.
 	 */
-	if ((dev = make_adhoc_dev(&kbd_cdevsw, kbd->kb_index)) != NODEV) {
+	if ((dev = make_adhoc_dev(&kbd_ops, kbd->kb_index)) != NODEV) {
 		if (dev->si_drv1) {
 			free(dev->si_drv1, M_DEVBUF);
 			dev->si_drv1 = NULL;
 		}
 	}
-	cdevsw_remove(&kbd_cdevsw, -1, kbd->kb_index);
+	dev_ops_remove(&kbd_ops, -1, kbd->kb_index);
 	return 0;
 }
 
@@ -523,8 +514,9 @@ kbd_detach(keyboard_t *kbd)
 static kbd_callback_func_t genkbd_event;
 
 static int
-genkbdopen(dev_t dev, int mode, int flag, d_thread_t *td)
+genkbdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	int i;
@@ -562,8 +554,9 @@ genkbdopen(dev_t dev, int mode, int flag, d_thread_t *td)
 }
 
 static int
-genkbdclose(dev_t dev, int mode, int flag, d_thread_t *td)
+genkbdclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 
@@ -587,8 +580,10 @@ genkbdclose(dev_t dev, int mode, int flag, d_thread_t *td)
 }
 
 static int
-genkbdread(dev_t dev, struct uio *uio, int flag)
+genkbdread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	u_char buffer[KB_BUFSIZE];
@@ -604,7 +599,7 @@ genkbdread(dev_t dev, struct uio *uio, int flag)
 		return ENXIO;
 	}
 	while (sc->gkb_q.c_cc == 0) {
-		if (flag & IO_NDELAY) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
 			return EWOULDBLOCK;
 		}
@@ -639,8 +634,9 @@ genkbdread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-genkbdwrite(dev_t dev, struct uio *uio, int flag)
+genkbdwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
@@ -650,23 +646,25 @@ genkbdwrite(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-genkbdioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
+genkbdioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	int error;
 
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((kbd == NULL) || !KBD_IS_VALID(kbd))
 		return ENXIO;
-	error = (*kbdsw[kbd->kb_index]->ioctl)(kbd, cmd, arg);
+	error = (*kbdsw[kbd->kb_index]->ioctl)(kbd, ap->a_cmd, ap->a_data);
 	if (error == ENOIOCTL)
 		error = ENODEV;
 	return error;
 }
 
 static int
-genkbdpoll(dev_t dev, int events, d_thread_t *td)
+genkbdpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	int revents;
@@ -677,14 +675,15 @@ genkbdpoll(dev_t dev, int events, d_thread_t *td)
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
 		revents =  POLLHUP;	/* the keyboard has gone */
-	} else if (events & (POLLIN | POLLRDNORM)) {
+	} else if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (sc->gkb_q.c_cc > 0)
-			revents = events & (POLLIN | POLLRDNORM);
+			revents = ap->a_events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(td, &sc->gkb_rsel);
+			selrecord(curthread, &sc->gkb_rsel);
 	}
 	crit_exit();
-	return revents;
+	ap->a_events = revents;
+	return (0);
 }
 
 static int

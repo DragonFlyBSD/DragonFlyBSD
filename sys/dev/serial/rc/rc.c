@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.16 2005/10/13 00:02:41 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.17 2006/07/28 02:17:38 dillon Exp $
  *
  */
 
@@ -91,24 +91,15 @@ static	d_close_t	rcclose;
 static	d_ioctl_t	rcioctl;
 
 #define	CDEV_MAJOR	63
-static struct cdevsw rc_cdevsw = {
-	/* name */	"rc",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	rcopen,
-	/* close */	rcclose,
-	/* read */	ttyread,
-	/* write */	ttywrite,
-	/* ioctl */	rcioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops rc_ops = {
+	{ "rc", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	rcopen,
+	.d_close =	rcclose,
+	.d_read =	ttyread,
+	.d_write =	ttywrite,
+	.d_ioctl =	rcioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 /* Per-board structure */
@@ -270,7 +261,7 @@ rcattach(dvp)
 	}
 	rcb->rcb_probed = RC_ATTACHED;
 	if (!rc_started) {
-		cdevsw_add(&rc_cdevsw, -1, rcb->rcb_unit);
+		dev_ops_add(&rc_ops, -1, rcb->rcb_unit);
 		register_swi(SWI_TTY, rcpoll, NULL, "rcpoll", NULL);
 		callout_init(&rc_wakeup_ch);
 		rc_wakeup(NULL);
@@ -720,11 +711,9 @@ rc_stop(tp, rw)
 }
 
 static	int
-rcopen(dev, flag, mode, td)
-	dev_t           dev;
-	int             flag, mode;
-	struct thread *td;
+rcopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct rc_chans *rc;
 	struct tty      *tp;
 	int             unit, nec, error = 0;
@@ -757,7 +746,7 @@ again:
 			}
 		} else {
 			if (rc->rc_flags & RC_ACTOUT) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto out;
 				}
@@ -768,7 +757,7 @@ again:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser(td)) {
+		    suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -792,7 +781,7 @@ again:
 			(*linesw[tp->t_line].l_modem)(tp, 1);
 	}
 	if (!(tp->t_state & TS_CARR_ON) && !CALLOUT(dev)
-	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
+	    && !(tp->t_cflag & CLOCAL) && !(ap->a_oflags & O_NONBLOCK)) {
 		rc->rc_dcdwaits++;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "rcdcd", 0);
 		rc->rc_dcdwaits--;
@@ -814,11 +803,9 @@ out:
 }
 
 static	int
-rcclose(dev, flag, mode, td)
-	dev_t           dev;
-	int             flag, mode;
-	struct thread *td;
+rcclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct rc_chans *rc;
 	struct tty      *tp;
 	int unit = GET_UNIT(dev);
@@ -831,7 +818,7 @@ rcclose(dev, flag, mode, td)
 	printf("rc%d/%d: rcclose dev %x\n", rc->rc_rcb->rcb_unit, unit, dev);
 #endif
 	crit_enter();
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, rc);
 	rc_stop(tp, FREAD | FWRITE);
 	rc_hardclose(rc);
@@ -1069,27 +1056,24 @@ struct rc_softc         *rcb;
 }
 
 static	int
-rcioctl(dev, cmd, data, flag, td)
-dev_t           dev;
-u_long          cmd;
-int		flag;
-caddr_t         data;
-struct thread *td;
+rcioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct rc_chans       *rc = &rc_chans[GET_UNIT(dev)];
 	int                   error;
 	struct tty                     *tp = rc->rc_tp;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
+					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return (error);
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, rc);
 	if (error != ENOIOCTL)
 		return (error);
 	crit_enter();
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	    case TIOCSBRK:
 		rc->rc_pendcmd = CD180_C_SBRK;
 		break;
@@ -1107,32 +1091,32 @@ struct thread *td;
 		break;
 
 	    case TIOCMGET:
-		*(int *) data = rc_modctl(rc, 0, DMGET);
+		*(int *) ap->a_data = rc_modctl(rc, 0, DMGET);
 		break;
 
 	    case TIOCMSET:
-		(void) rc_modctl(rc, *(int *) data, DMSET);
+		(void) rc_modctl(rc, *(int *) ap->a_data, DMSET);
 		break;
 
 	    case TIOCMBIC:
-		(void) rc_modctl(rc, *(int *) data, DMBIC);
+		(void) rc_modctl(rc, *(int *) ap->a_data, DMBIC);
 		break;
 
 	    case TIOCMBIS:
-		(void) rc_modctl(rc, *(int *) data, DMBIS);
+		(void) rc_modctl(rc, *(int *) ap->a_data, DMBIS);
 		break;
 
 	    case TIOCMSDTRWAIT:
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);
 		}
-		rc->rc_dtrwait = *(int *)data * hz / 100;
+		rc->rc_dtrwait = *(int *)ap->a_data * hz / 100;
 		break;
 
 	    case TIOCMGDTRWAIT:
-		*(int *)data = rc->rc_dtrwait * 100 / hz;
+		*(int *)ap->a_data = rc->rc_dtrwait * 100 / hz;
 		break;
 
 	    default:

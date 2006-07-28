@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.13 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.14 2006/07/28 02:17:37 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -40,15 +40,11 @@ static d_ioctl_t ips_ioctl;
 
 MALLOC_DEFINE(M_IPSBUF, "ipsbuf", "IPS driver buffer");
 
-static struct cdevsw ips_cdevsw = {
-	.d_name		= "ips",
-	.d_maj		= IPS_CDEV_MAJOR,
-	.d_flags	= D_DISK,
-	.d_port		= NULL,
-	.d_clone	= NULL,
-	.old_open	= ips_open,
-	.old_close	= ips_close,
-	.old_ioctl	= ips_ioctl,
+static struct dev_ops ips_ops = {
+	{ "ips", IPS_CDEV_MAJOR, D_DISK },
+	.d_open	= 	ips_open,
+	.d_close =	ips_close,
+	.d_ioctl =	ips_ioctl,
 };
 
 static const char *ips_adapter_name[] = {
@@ -72,8 +68,9 @@ static const char *ips_adapter_name[] = {
 
 
 static int
-ips_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+ips_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	ips_softc_t *sc = dev->si_drv1;
 
 	sc->state |= IPS_DEV_OPEN;
@@ -81,8 +78,9 @@ ips_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-ips_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+ips_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	ips_softc_t *sc = dev->si_drv1;
 
 	sc->state &= ~IPS_DEV_OPEN;
@@ -90,13 +88,12 @@ ips_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-ips_ioctl(dev_t dev, u_long command, caddr_t addr, int32_t flags,
-    d_thread_t *td)
+ips_ioctl(struct dev_ioctl_args *ap)
 {
 	ips_softc_t *sc;
 
-	sc = dev->si_drv1;
-	return ips_ioctl_request(sc, command, addr, flags);
+	sc = ap->a_head.a_dev->si_drv1;
+	return ips_ioctl_request(sc, ap->a_cmd, ap->a_data, ap->a_fflag);
 }
 
 static void
@@ -453,8 +450,8 @@ ips_adapter_init(ips_softc_t *sc)
 		    "failed to initialize command buffers\n");
 		goto error;
 	}
-	cdevsw_add(&ips_cdevsw, -1, device_get_unit(sc->dev));
-	dev = make_dev(&ips_cdevsw, device_get_unit(sc->dev),
+	dev_ops_add(&ips_ops, -1, device_get_unit(sc->dev));
+	dev = make_dev(&ips_ops, device_get_unit(sc->dev),
 				   UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 				   "ips%d", device_get_unit(sc->dev));
 	dev->si_drv1 = sc;
@@ -546,7 +543,7 @@ ips_adapter_free(ips_softc_t *sc)
 		bus_dma_tag_destroy(sc->sg_dmatag);
 	if (sc->command_dmatag)
 		bus_dma_tag_destroy(sc->command_dmatag);
-	cdevsw_remove(&ips_cdevsw, -1, device_get_unit(sc->dev));
+	dev_ops_remove(&ips_ops, -1, device_get_unit(sc->dev));
 	return 0;
 }
 

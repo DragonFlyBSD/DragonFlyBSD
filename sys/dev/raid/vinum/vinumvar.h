@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.7 2006/07/16 22:39:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.8 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -113,16 +113,16 @@ enum constants {
 #ifdef _KERNEL
 
 #define VINUMDEV(v,p,s,t)  	\
-		make_adhoc_dev (&vinum_cdevsw, VINUMMINOR (v, p, s, t))
+		make_adhoc_dev (&vinum_ops, VINUMMINOR (v, p, s, t))
 
 #define VINUM_PLEX(p)		\
-		make_adhoc_dev (&vinum_cdevsw,			\
+		make_adhoc_dev (&vinum_ops,			\
 		 (VINUM_RAWPLEX_TYPE << VINUM_TYPE_SHIFT) 	\
 		 | (p & 0xff)					\
 		 | ((p & ~0xff) << 8) )
 
 #define VINUM_SD(s)		\
-		make_adhoc_dev (&vinum_cdevsw,			\
+		make_adhoc_dev (&vinum_ops,			\
 		 (VINUM_RAWSD_TYPE << VINUM_TYPE_SHIFT) 	\
 		 | (s & 0xff)					\
 		 | ((s & ~0xff) << 8) )

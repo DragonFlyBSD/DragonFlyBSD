@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.13 2006/07/16 22:39:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.14 2006/07/28 02:17:38 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -54,17 +54,17 @@ extern struct mc malloced[];
 #endif
 #include "request.h"
 
-struct cdevsw vinum_cdevsw =
+struct dev_ops vinum_ops =
 {
-    /* name */ "vinum",
-    /* cmaj */	VINUM_CDEV_MAJOR, 
-    /* flags */ D_DISK,
-    /* port */	NULL,
-    /* clone */	NULL,
-
-    vinumopen, vinumclose, physread, physwrite,
-    vinumioctl, seltrue, nommap, vinumstrategy,
-    vinumdump, vinumsize,
+	{ "vinum", VINUM_CDEV_MAJOR, D_DISK },
+	.d_open =	vinumopen,
+	.d_close =	vinumclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	vinumioctl,
+	.d_poll =	vinumpoll,
+	.d_strategy =	vinumstrategy,
+	.d_dump =	vinumdump,
 };
 
 /* Called by main() during pseudo-device attachment. */
@@ -96,7 +96,7 @@ vinumattach(void *dummy)
     daemonq = NULL;					    /* initialize daemon's work queue */
     dqend = NULL;
 
-    cdevsw_add(&vinum_cdevsw, 0, 0);			    /* add the cdevsw entry */
+    dev_ops_add(&vinum_ops, 0, 0);			    /* add the ops entry */
 
     vinum_conf.physbufs = nswbuf / 2 + 1;		    /* maximum amount of physical bufs */
 
@@ -157,7 +157,7 @@ vinumattach(void *dummy)
 	    if ((vol->state == volume_up)
 		&& (strcmp (vol->name, cp) == 0) 
 	    ) {
-		rootdev = make_dev(&vinum_cdevsw, i, UID_ROOT, GID_OPERATOR,
+		rootdev = make_dev(&vinum_ops, i, UID_ROOT, GID_OPERATOR,
 				0640, "vinum");
 		log(LOG_INFO, "vinum: using volume %s for root device\n", cp);
 		break;
@@ -280,7 +280,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	    }
 	}
 #endif
-	cdevsw_remove(&vinum_cdevsw, 0, 0);
+	dev_ops_remove(&vinum_ops, 0, 0);
 	log(LOG_INFO, "vinum: unloaded\n");		    /* tell the world */
 	return 0;
     default:
@@ -300,8 +300,9 @@ DECLARE_MODULE(vinum, vinum_mod, SI_SUB_RAID, SI_ORDER_MIDDLE);
 /* ARGSUSED */
 /* Open a vinum object */
 int
-vinumopen(dev_t dev, int flags, int fmt, d_thread_t *td)
+vinumopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int error;
     unsigned int index;
     struct volume *vol;
@@ -385,7 +386,7 @@ vinumopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 	}
 
     case VINUM_SUPERDEV_TYPE:
-	error = suser(td);		    /* are we root? */
+	error = suser_cred(ap->a_cred, 0);		    /* are we root? */
 	if (error == 0) {				    /* yes, can do */
 	    if (devminor == VINUM_DAEMON_DEV)		    /* daemon device */
 		vinum_conf.flags |= VF_DAEMONOPEN;	    /* we're open */
@@ -406,8 +407,9 @@ vinumopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 
 /* ARGSUSED */
 int
-vinumclose(dev_t dev, int flags, int fmt, d_thread_t *td)
+vinumclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     unsigned int index;
     struct volume *vol;
     int devminor;
@@ -484,26 +486,33 @@ vinumclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 
 /* size routine */
 int
-vinumsize(dev_t dev)
+vinumsize(struct dev_psize_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct volume *vol;
-    int size;
 
     vol = &VOL[Volno(dev)];
 
-    if (vol->state == volume_up)
-	size = vol->size;
-    else
-	return 0;					    /* err on the size of conservatism */
-
-    return size;
+    if (vol->state == volume_up) {
+	ap->a_result = vol->size;
+	return(0);
+    } else {
+	return(ENXIO);
+    }
 }
 
 int
-vinumdump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+vinumdump(struct dev_dump_args *ap)
 {
     /* Not implemented. */
     return ENXIO;
+}
+
+int
+vinumpoll(struct dev_poll_args *ap)
+{
+    ap->a_events = seltrue(ap->a_head.a_dev, ap->a_events);
+    return(0);
 }
 
 /* Local Variables: */

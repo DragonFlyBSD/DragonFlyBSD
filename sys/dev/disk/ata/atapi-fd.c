@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.16 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,23 +54,14 @@ static	d_close_t	afdclose;
 static	d_ioctl_t	afdioctl;
 static	d_strategy_t	afdstrategy;
 
-static struct cdevsw afd_cdevsw = {
-	/* name */	"afd",
-	/* maj */	118,
-	/* flags */	D_DISK | D_TRACKCLOSE,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	afdopen,
-	/* close */	afdclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	afdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	afdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops afd_ops = {
+	{ "afd", 118, D_DISK | D_TRACKCLOSE },
+	.d_open =	afdopen,
+	.d_close =	afdclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	afdioctl,
+	.d_strategy =	afdstrategy,
 };
 
 /* prototypes */
@@ -111,7 +102,7 @@ afdattach(struct ata_device *atadev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_WFD);
-    dev = disk_create(fdp->lun, &fdp->disk, 0, &afd_cdevsw);
+    dev = disk_create(fdp->lun, &fdp->disk, 0, &afd_ops);
     dev->si_drv1 = fdp;
     fdp->dev = dev;
 
@@ -237,8 +228,9 @@ afd_describe(struct afd_softc *fdp)
 }
 
 static int
-afdopen(dev_t dev, int flags, int fmt, struct thread *td)
+afdopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
     struct disklabel *label = &fdp->disk.d_label;
 
@@ -263,8 +255,9 @@ afdopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-afdclose(dev_t dev, int flags, int fmt, struct thread *td)
+afdclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
 
     if (count_dev(dev) == 1)
@@ -273,11 +266,12 @@ afdclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-afdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+afdioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct afd_softc *fdp = dev->si_drv1;
 
-    switch (cmd) {
+    switch (ap->a_cmd) {
     case CDIOCEJECT:
 	if (count_dev(dev) > 1)
 	    return EBUSY;
@@ -293,9 +287,11 @@ afdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     }
 }
 
-static void 
-afdstrategy(dev_t dev, struct bio *bio)
+static int 
+afdstrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct afd_softc *fdp = dev->si_drv1;
 
@@ -303,20 +299,21 @@ afdstrategy(dev_t dev, struct bio *bio)
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     crit_enter();
     bioqdisksort(&fdp->bio_queue, bio);
     crit_exit();
     ata_start(fdp->device->channel);
+    return(0);
 }
 
 void 

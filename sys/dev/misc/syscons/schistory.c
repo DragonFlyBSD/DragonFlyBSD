@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/schistory.c,v 1.8.2.1 2001/07/19 06:38:53 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.6 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "use_sc.h"
@@ -276,8 +276,7 @@ sc_hist_down_line(scr_stat *scp)
 }
 
 int
-sc_hist_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
-	      struct thread *td)
+sc_hist_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
 	scr_stat *scp;
 	int error;

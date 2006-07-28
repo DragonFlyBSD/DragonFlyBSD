@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.17 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.18 2006/07/28 02:17:39 dillon Exp $
  */
 
 /* 
@@ -158,23 +158,14 @@ d_poll_t  ugenpoll;
 
 #define UGEN_CDEV_MAJOR	114
 
-Static struct cdevsw ugen_cdevsw = {
-	/* name */	"ugen",
-	/* maj */	UGEN_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ugenopen,
-	/* close */	ugenclose,
-	/* read */	ugenread,
-	/* write */	ugenwrite,
-	/* ioctl */	ugenioctl,
-	/* poll */	ugenpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+Static struct dev_ops ugen_ops = {
+	{ "ugen", UGEN_CDEV_MAJOR, 0 },
+	.d_open =	ugenopen,
+	.d_close =	ugenclose,
+	.d_read =	ugenread,
+	.d_write =	ugenwrite,
+	.d_ioctl =	ugenioctl,
+	.d_poll =	ugenpoll,
 };
 #endif
 
@@ -185,7 +176,7 @@ Static void ugen_isoc_rintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 Static int ugen_do_read(struct ugen_softc *, int, struct uio *, int);
 Static int ugen_do_write(struct ugen_softc *, int, struct uio *, int);
 Static int ugen_do_ioctl(struct ugen_softc *, int, u_long,
-			    caddr_t, int, usb_proc_ptr);
+			    caddr_t, int);
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 Static void ugen_make_devnodes(struct ugen_softc *sc);
 Static void ugen_destroy_devnodes(struct ugen_softc *sc);
@@ -254,9 +245,9 @@ USB_ATTACH(ugen)
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* the main device, ctrl endpoint */
-	cdevsw_add(&ugen_cdevsw, 
+	dev_ops_add(&ugen_ops, 
 		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
-	make_dev(&ugen_cdevsw, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0),
+	make_dev(&ugen_ops, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
 #endif
 
@@ -281,7 +272,7 @@ ugen_make_devnodes(struct ugen_softc *sc)
 			 * In the if clause above we check whether one
 			 * of the structs is populated.
 			 */
-			dev = make_dev(&ugen_cdevsw,
+			dev = make_dev(&ugen_ops,
 				UGENMINOR(USBDEVUNIT(sc->sc_dev), endptno),
 				UID_ROOT, GID_OPERATOR, 0644,
 				"%s.%d",
@@ -408,8 +399,9 @@ ugen_set_config(struct ugen_softc *sc, int configno)
 }
 
 int
-ugenopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+ugenopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ugen_softc *sc;
 	int unit = UGENUNIT(dev);
 	int endpt = UGENENDPOINT(dev);
@@ -424,7 +416,7 @@ ugenopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	USB_GET_SC_OPEN(ugen, unit, sc);
 
  	DPRINTFN(5, ("ugenopen: flag=%d, mode=%d, unit=%d endpt=%d\n",
-		     flag, mode, unit, endpt));
+		     ap->a_oflags, ap->a_devtype, unit, endpt));
 
 	if (sc == NULL || sc->sc_dying)
 		return (ENXIO);
@@ -439,7 +431,7 @@ ugenopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 
 	/* Make sure there are pipes for all directions. */
 	for (dir = OUT; dir <= IN; dir++) {
-		if (flag & (dir == OUT ? FWRITE : FREAD)) {
+		if (ap->a_oflags & (dir == OUT ? FWRITE : FREAD)) {
 			sce = &sc->sc_endpoints[endpt][dir];
 			if (sce == 0 || sce->edesc == 0)
 				return (ENXIO);
@@ -449,7 +441,7 @@ ugenopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	/* Actually open the pipes. */
 	/* XXX Should back out properly if it fails. */
 	for (dir = OUT; dir <= IN; dir++) {
-		if (!(flag & (dir == OUT ? FWRITE : FREAD)))
+		if (!(ap->a_oflags & (dir == OUT ? FWRITE : FREAD)))
 			continue;
 		sce = &sc->sc_endpoints[endpt][dir];
 		sce->state = 0;
@@ -548,8 +540,9 @@ ugenopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-ugenclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
+ugenclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	struct ugen_endpoint *sce;
@@ -559,7 +552,7 @@ ugenclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	USB_GET_SC(ugen, UGENUNIT(dev), sc);
 
 	DPRINTFN(5, ("ugenclose: flag=%d, mode=%d, unit=%d, endpt=%d\n",
-		     flag, mode, UGENUNIT(dev), endpt));
+		     ap->a_fflag, ap->a_devtype, UGENUNIT(dev), endpt));
 
 #ifdef DIAGNOSTIC
 	if (!sc->sc_is_open[endpt]) {
@@ -575,7 +568,7 @@ ugenclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	}
 
 	for (dir = OUT; dir <= IN; dir++) {
-		if (!(flag & (dir == OUT ? FWRITE : FREAD)))
+		if (!(ap->a_fflag & (dir == OUT ? FWRITE : FREAD)))
 			continue;
 		sce = &sc->sc_endpoints[endpt][dir];
 		if (sce == NULL || sce->pipeh == NULL)
@@ -763,8 +756,9 @@ done:
 }
 
 int
-ugenread(dev_t dev, struct uio *uio, int flag)
+ugenread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -772,7 +766,7 @@ ugenread(dev_t dev, struct uio *uio, int flag)
 	USB_GET_SC(ugen, UGENUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = ugen_do_read(sc, endpt, uio, flag);
+	error = ugen_do_read(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
@@ -873,8 +867,9 @@ done:
 }
 
 int
-ugenwrite(dev_t dev, struct uio *uio, int flag)
+ugenwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -882,7 +877,7 @@ ugenwrite(dev_t dev, struct uio *uio, int flag)
 	USB_GET_SC(ugen, UGENUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = ugen_do_write(sc, endpt, uio, flag);
+	error = ugen_do_write(sc, endpt, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
@@ -952,7 +947,7 @@ USB_DETACH(ugen)
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 	/* destroy the device for the control endpoint */
 	ugen_destroy_devnodes(sc);
-	cdevsw_remove(&ugen_cdevsw, 
+	dev_ops_remove(&ugen_ops, 
 		    UGENUNITMASK, UGENMINOR(USBDEVUNIT(sc->sc_dev), 0));
 #endif
 	return (0);
@@ -1169,7 +1164,7 @@ ugen_get_alt_index(struct ugen_softc *sc, int ifaceidx)
 
 Static int
 ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
-	      caddr_t addr, int flag, usb_proc_ptr p)
+	      caddr_t addr, int flag)
 {
 	struct ugen_endpoint *sce;
 	usbd_status err;
@@ -1349,7 +1344,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 		uio.uio_offset = 0;
 		uio.uio_segflg = UIO_USERSPACE;
 		uio.uio_rw = UIO_READ;
-		uio.uio_procp = p;
+		uio.uio_procp = curthread;
 		error = uiomove((void *)cdesc, len, &uio);
 		free(cdesc, M_TEMP);
 		return (error);
@@ -1395,7 +1390,7 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 			uio.uio_rw =
 				ur->ucr_request.bmRequestType & UT_READ ?
 				UIO_READ : UIO_WRITE;
-			uio.uio_td = p;
+			uio.uio_td = curthread;
 			ptr = malloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);
@@ -1433,8 +1428,9 @@ ugen_do_ioctl(struct ugen_softc *sc, int endpt, u_long cmd,
 }
 
 int
-ugenioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
+ugenioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int endpt = UGENENDPOINT(dev);
 	struct ugen_softc *sc;
 	int error;
@@ -1442,15 +1438,16 @@ ugenioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 	USB_GET_SC(ugen, UGENUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = ugen_do_ioctl(sc, endpt, cmd, addr, flag, p);
+	error = ugen_do_ioctl(sc, endpt, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
 }
 
 int
-ugenpoll(dev_t dev, int events, usb_proc_ptr p)
+ugenpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ugen_softc *sc;
 	struct ugen_endpoint *sce;
 	int revents = 0;
@@ -1477,19 +1474,19 @@ ugenpoll(dev_t dev, int events, usb_proc_ptr p)
 	crit_enter();
 	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_INTERRUPT:
-		if (events & (POLLIN | POLLRDNORM)) {
+		if (ap->a_events & (POLLIN | POLLRDNORM)) {
 			if (sce->q.c_cc > 0)
-				revents |= events & (POLLIN | POLLRDNORM);
+				revents |= ap->a_events & (POLLIN | POLLRDNORM);
 			else
-				selrecord(p, &sce->rsel);
+				selrecord(curthread, &sce->rsel);
 		}
 		break;
 	case UE_ISOCHRONOUS:
-		if (events & (POLLIN | POLLRDNORM)) {
+		if (ap->a_events & (POLLIN | POLLRDNORM)) {
 			if (sce->cur != sce->fill)
-				revents |= events & (POLLIN | POLLRDNORM);
+				revents |= ap->a_events & (POLLIN | POLLRDNORM);
 			else
-				selrecord(p, &sce->rsel);
+				selrecord(curthread, &sce->rsel);
 		}
 		break;
 	case UE_BULK:
@@ -1498,14 +1495,15 @@ ugenpoll(dev_t dev, int events, usb_proc_ptr p)
 		 * yield any data or a write will happen.
 		 * Pretend they will.
 		 */
-		revents |= events &
+		revents |= ap->a_events &
 			   (POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM);
 		break;
 	default:
 		break;
 	}
 	crit_exit();
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)

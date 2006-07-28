@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-dumb.c,v 1.2 2000/01/29 15:08:45 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm-dumb.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm-dumb.c,v 1.5 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -105,7 +105,7 @@ dumb_puts(scr_stat *scp, u_char *buf, int len)
 
 static int
 dumb_ioctl(scr_stat *scp, struct tty *tp, u_long cmd, caddr_t data,
-	   int flag, struct thread *td)
+	   int flag)
 {
 	vid_info_t *vi;
 

@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.38 2006/05/27 01:51:27 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.39 2006/07/28 02:17:41 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -124,9 +124,7 @@ void	backtrace(void);
 void	mi_gdinit (struct globaldata *gd, int cpu);
 int	dumpstatus (vm_offset_t addr, off_t count);
 int	nullop (void);
-int	eopnotsupp (void);
-int	einval (void);
-int	seltrue (dev_t dev, int which, struct thread *td);
+int	seltrue (dev_t dev, int which);
 int	ureadc (int, struct uio *);
 void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
 void	*phashinit (int count, struct malloc_type *type, u_long *nentries);

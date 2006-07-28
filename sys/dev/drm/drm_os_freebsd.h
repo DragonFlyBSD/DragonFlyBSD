@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.17 2006/06/04 21:09:49 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.18 2006/07/28 02:17:36 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -9,6 +9,7 @@
 #include <sys/module.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/stat.h>
 #include <sys/proc.h>
 #include <sys/lock.h>
@@ -133,7 +134,7 @@
 #define DRM_ERR(v)		v
 
 #define DRM_PRIV					\
-	drm_file_t	*priv	= (drm_file_t *) DRM(find_file_by_proc)(dev, p); \
+	drm_file_t	*priv	= (drm_file_t *) DRM(find_file_by_proc)(dev, curthread); \
 	if (!priv) {						\
 		DRM_DEBUG("can't find authenticator\n");	\
 		return EINVAL;					\

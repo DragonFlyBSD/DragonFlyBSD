@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.12 2005/06/02 20:40:58 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.13 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #endif
 #include <sys/uio.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -143,23 +144,12 @@ Static d_ioctl_t ulptioctl;
 
 #define ULPT_CDEV_MAJOR 113
 
-Static struct cdevsw ulpt_cdevsw = {
-	/* name */	"ulpt",
-	/* maj */	ULPT_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ulptopen,
-	/* close */	ulptclose,
-	/* read */	noread,
-	/* write */	ulptwrite,
-	/* ioctl */	ulptioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+Static struct dev_ops ulpt_ops = {
+	{ "ulpt", ULPT_CDEV_MAJOR, 0 },
+	.d_open =	ulptopen,
+	.d_close =	ulptclose,
+	.d_write =	ulptwrite,
+	.d_ioctl =	ulptioctl,
 };
 #endif
 
@@ -341,10 +331,10 @@ USB_ATTACH(ulpt)
 #endif
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	cdevsw_add(&ulpt_cdevsw, -1, device_get_unit(self));
-	make_dev(&ulpt_cdevsw, device_get_unit(self),
+	dev_ops_add(&ulpt_ops, -1, device_get_unit(self));
+	make_dev(&ulpt_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR, 0644, "ulpt%d", device_get_unit(self));
-	make_dev(&ulpt_cdevsw,
+	make_dev(&ulpt_ops,
 		device_get_unit(self)|ULPT_NOPRIME,
 		UID_ROOT, GID_OPERATOR, 0644, "unlpt%d", device_get_unit(self));
 #endif
@@ -421,7 +411,7 @@ USB_DETACH(ulpt)
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
-	cdevsw_remove(&ulpt_cdevsw, -1, device_get_unit(self));
+	dev_ops_remove(&ulpt_ops, -1, device_get_unit(self));
 #endif
 
 	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
@@ -499,8 +489,9 @@ int ulptusein = 1;
  * Reset the printer, then wait until it's selected and not busy.
  */
 int
-ulptopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+ulptopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_char flags = ULPTFLAGS(dev);
 	struct ulpt_softc *sc;
 	usbd_status err;
@@ -634,8 +625,9 @@ ulpt_statusmsg(u_char status, struct ulpt_softc *sc)
 }
 
 int
-ulptclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
+ulptclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ulpt_softc *sc;
 
 	USB_GET_SC(ulpt, ULPTUNIT(dev), sc);
@@ -706,8 +698,9 @@ ulpt_do_write(struct ulpt_softc *sc, struct uio *uio, int flags)
 }
 
 int
-ulptwrite(dev_t dev, struct uio *uio, int flags)
+ulptwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ulpt_softc *sc;
 	int error;
 
@@ -717,18 +710,18 @@ ulptwrite(dev_t dev, struct uio *uio, int flags)
 		return (EIO);
 
 	sc->sc_refcnt++;
-	error = ulpt_do_write(sc, uio, flags);
+	error = ulpt_do_write(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
 }
 
 int
-ulptioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
+ulptioctl(struct dev_ioctl_args *ap)
 {
 	int error = 0;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	default:
 		error = ENODEV;
 	}

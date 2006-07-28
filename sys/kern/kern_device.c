@@ -3,6 +3,8 @@
  * cdevsw from kern/kern_conf.c Copyright (c) 1995 Terrence R. Lambert
  * cdevsw from kern/kern_conf.c Copyright (c) 1995 Julian R. Elishcer,
  *							All rights reserved.
+ * Copyright (c) 1982, 1986, 1991, 1993
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,9 +27,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.17 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.18 2006/07/28 02:17:40 dillon Exp $
  */
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
@@ -38,162 +41,177 @@
 #include <sys/buf.h>
 #include <sys/vnode.h>
 #include <sys/queue.h>
-#include <sys/msgport.h>
 #include <sys/device.h>
-#include <machine/stdarg.h>
+#include <sys/syslink.h>
 #include <sys/proc.h>
+#include <machine/stdarg.h>
 #include <sys/thread2.h>
-#include <sys/msgport2.h>
-
-static struct cdevlink 	*cdevbase[NUMCDEVSW];
-
-static int cdevsw_putport(lwkt_port_t port, lwkt_msg_t msg);
-
-struct cdevsw dead_cdevsw;
 
 /*
- * Initialize a message port to serve as the default message-handling port
- * for device operations.  This message port provides compatibility with
- * traditional cdevsw dispatch functions by running them synchronously.
- *
- * YYY NOTE: ms_cmd can now hold a function pointer, should this code be
- * converted from an integer op to a function pointer with a flag to
- * indicate legacy operation?
+ * system link descriptors identify the command in the
+ * arguments structure.
  */
-static void
-init_default_cdevsw_port(lwkt_port_t port)
-{
-    lwkt_initport(port, NULL);
-    port->mp_putport = cdevsw_putport;
-}
+#define DDESCNAME(name) __CONCAT(__CONCAT(dev_,name),_desc)
 
-static
+#define DEVOP_DESC_INIT(name)						\
+	    struct syslink_desc DDESCNAME(name) = {			\
+		__offsetof(struct dev_ops, __CONCAT(d_, name)),	\
+	    #name }
+
+DEVOP_DESC_INIT(default);
+DEVOP_DESC_INIT(open);
+DEVOP_DESC_INIT(close);
+DEVOP_DESC_INIT(read);
+DEVOP_DESC_INIT(write);
+DEVOP_DESC_INIT(ioctl);
+DEVOP_DESC_INIT(dump);
+DEVOP_DESC_INIT(psize);
+DEVOP_DESC_INIT(poll);
+DEVOP_DESC_INIT(mmap);
+DEVOP_DESC_INIT(strategy);
+DEVOP_DESC_INIT(kqfilter);
+DEVOP_DESC_INIT(clone);
+
+/*
+ * Misc default ops
+ */
+struct dev_ops dead_dev_ops;
+
+struct dev_ops default_dev_ops = {
+	{ "null" },
+	.d_default = NULL,	/* must be NULL */
+	.d_open = noopen,
+	.d_close = noclose,
+	.d_read = noread,
+	.d_write = nowrite,
+	.d_ioctl = noioctl,
+	.d_poll = nopoll,
+	.d_mmap = nommap,
+	.d_strategy = nostrategy,
+	.d_dump = nodump,
+	.d_psize = nopsize,
+	.d_kqfilter = nokqfilter,
+	.d_clone = noclone
+};
+    
+/*
+ * This is used to look-up devices
+ */
+static struct dev_ops_link *dev_ops_array[NUMCDEVSW];
+
+/************************************************************************
+ *			GENERAL DEVICE API FUNCTIONS			*
+ ************************************************************************/
+
 int
-cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
+dev_dopen(dev_t dev, int oflags, int devtype, struct ucred *cred)
 {
-    cdevallmsg_t msg = (cdevallmsg_t)lmsg;
-    struct cdevsw *devsw = msg->am_msg.dev->si_devsw;
-    int error;
+	struct dev_open_args ap;
 
-    /*
-     * Run the device switch function synchronously in the context of the
-     * caller and return a synchronous error code (anything not EASYNC).
-     */
-    switch(msg->am_lmsg.ms_cmd.cm_op) {
-    case CDEV_CMD_OPEN:
-	error = devsw->old_open(
-		    msg->am_open.msg.dev,
-		    msg->am_open.oflags,
-		    msg->am_open.devtype,
-		    msg->am_open.td);
-	break;
-    case CDEV_CMD_CLOSE:
-	error = devsw->old_close(
-		    msg->am_close.msg.dev,
-		    msg->am_close.fflag,
-		    msg->am_close.devtype,
-		    msg->am_close.td);
-	break;
-    case CDEV_CMD_STRATEGY:
-	devsw->old_strategy(msg->am_strategy.msg.dev, msg->am_strategy.bio);
-	error = 0;
-	break;
-    case CDEV_CMD_IOCTL:
-	error = devsw->old_ioctl(
-		    msg->am_ioctl.msg.dev,
-		    msg->am_ioctl.cmd,
-		    msg->am_ioctl.data,
-		    msg->am_ioctl.fflag,
-		    msg->am_ioctl.td);
-	break;
-    case CDEV_CMD_DUMP:
-	error = devsw->old_dump(
-		    msg->am_dump.msg.dev,
-		    msg->am_dump.count,
-		    msg->am_dump.blkno,
-		    msg->am_dump.secsize);
-	break;
-    case CDEV_CMD_PSIZE:
-	msg->am_psize.result = devsw->old_psize(msg->am_psize.msg.dev);
-	error = 0;	/* XXX */
-	break;
-    case CDEV_CMD_READ:
-	error = devsw->old_read(
-		    msg->am_read.msg.dev,
-		    msg->am_read.uio,
-		    msg->am_read.ioflag);
-	break;
-    case CDEV_CMD_WRITE:
-	error = devsw->old_write(
-		    msg->am_read.msg.dev,
-		    msg->am_read.uio,
-		    msg->am_read.ioflag);
-	break;
-    case CDEV_CMD_POLL:
-	msg->am_poll.events = devsw->old_poll(
-				msg->am_poll.msg.dev,
-				msg->am_poll.events,
-				msg->am_poll.td);
-	error = 0;
-	break;
-    case CDEV_CMD_KQFILTER:
-	msg->am_kqfilter.result = devsw->old_kqfilter(
-				msg->am_kqfilter.msg.dev,
-				msg->am_kqfilter.kn);
-	error = 0;
-	break;
-    case CDEV_CMD_MMAP:
-	msg->am_mmap.result = devsw->old_mmap(
-		    msg->am_mmap.msg.dev,
-		    msg->am_mmap.offset,
-		    msg->am_mmap.nprot);
-	error = 0;	/* XXX */
-	break;
-    default:
-	error = ENOSYS;
-	break;
-    }
-    KKASSERT(error != EASYNC);
-    return(error);
-}
-
-static __inline
-lwkt_port_t
-_init_cdevmsg(dev_t dev, cdevmsg_t msg, int cmd)
-{
-    lwkt_initmsg_simple(&msg->msg, cmd);
-    msg->dev = dev;
-    return(dev->si_port);
+	ap.a_head.a_desc = &dev_open_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_oflags = oflags;
+	ap.a_devtype = devtype;
+	ap.a_cred = cred;
+	return(dev->si_ops->d_open(&ap));
 }
 
 int
-dev_dopen(dev_t dev, int oflags, int devtype, thread_t td)
+dev_dclose(dev_t dev, int fflag, int devtype)
 {
-    struct cdevmsg_open	msg;
-    lwkt_port_t port;
+	struct dev_close_args ap;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_OPEN);
-    if (port == NULL)
-	return(ENXIO);
-    msg.oflags = oflags;
-    msg.devtype = devtype;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
+	ap.a_head.a_desc = &dev_close_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_fflag = fflag;
+	ap.a_devtype = devtype;
+	return(dev->si_ops->d_close(&ap));
 }
 
 int
-dev_dclose(dev_t dev, int fflag, int devtype, thread_t td)
+dev_dread(dev_t dev, struct uio *uio, int ioflag)
 {
-    struct cdevmsg_close msg;
-    lwkt_port_t port;
+	struct dev_read_args ap;
+	int error;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_CLOSE);
-    if (port == NULL)
-	return(ENXIO);
-    msg.fflag = fflag;
-    msg.devtype = devtype;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
+	ap.a_head.a_desc = &dev_read_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_uio = uio;
+	ap.a_ioflag = ioflag;
+	error = dev->si_ops->d_read(&ap);
+	if (error == 0)
+		dev->si_lastread = time_second;
+	return (error);
+}
+
+int
+dev_dwrite(dev_t dev, struct uio *uio, int ioflag)
+{
+	struct dev_write_args ap;
+	int error;
+
+	dev->si_lastwrite = time_second;
+	ap.a_head.a_desc = &dev_write_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_uio = uio;
+	ap.a_ioflag = ioflag;
+	error = dev->si_ops->d_write(&ap);
+	return (error);
+}
+
+int
+dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred)
+{
+	struct dev_ioctl_args ap;
+
+	ap.a_head.a_desc = &dev_ioctl_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_cmd = cmd;
+	ap.a_data = data;
+	ap.a_fflag = fflag;
+	ap.a_cred = cred;
+	return(dev->si_ops->d_ioctl(&ap));
+}
+
+int
+dev_dpoll(dev_t dev, int events)
+{
+	struct dev_poll_args ap;
+	int error;
+
+	ap.a_head.a_desc = &dev_poll_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_events = events;
+	error = dev->si_ops->d_poll(&ap);
+	if (error == 0)
+		return(ap.a_events);
+	return (seltrue(dev, events));
+}
+
+int
+dev_dmmap(dev_t dev, vm_offset_t offset, int nprot)
+{
+	struct dev_mmap_args ap;
+	int error;
+
+	ap.a_head.a_desc = &dev_mmap_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_offset = offset;
+	ap.a_nprot = nprot;
+	error = dev->si_ops->d_mmap(&ap);
+	if (error == 0)
+		return(ap.a_result);
+	return(-1);
+}
+
+int
+dev_dclone(dev_t dev)
+{
+	struct dev_clone_args ap;
+
+	ap.a_head.a_desc = &dev_clone_desc;
+	ap.a_head.a_dev = dev;
+	return (dev->si_ops->d_clone(&ap));
 }
 
 /*
@@ -206,52 +224,34 @@ dev_dclose(dev_t dev, int fflag, int devtype, thread_t td)
 void
 dev_dstrategy(dev_t dev, struct bio *bio)
 {
-    struct cdevmsg_strategy msg;
-    struct bio_track *track;
-    lwkt_port_t port;
+	struct dev_strategy_args ap;
+	struct bio_track *track;
 
-    KKASSERT(bio->bio_track == NULL);
-    KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
-    if (bio->bio_buf->b_cmd == BUF_CMD_READ)
-	track = &dev->si_track_read;
-    else
-	track = &dev->si_track_write;
-    atomic_add_int(&track->bk_active, 1);
-    bio->bio_track = track;
+	ap.a_head.a_desc = &dev_strategy_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_bio = bio;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_STRATEGY);
-    KKASSERT(port);	/* 'nostrategy' function is NULL YYY */
-    msg.bio = bio;
-    lwkt_domsg(port, &msg.msg.msg);
+	KKASSERT(bio->bio_track == NULL);
+	KKASSERT(bio->bio_buf->b_cmd != BUF_CMD_DONE);
+	if (bio->bio_buf->b_cmd == BUF_CMD_READ)
+	    track = &dev->si_track_read;
+	else
+	    track = &dev->si_track_write;
+	atomic_add_int(&track->bk_active, 1);
+	bio->bio_track = track;
+	(void)dev->si_ops->d_strategy(&ap);
 }
 
 void
 dev_dstrategy_chain(dev_t dev, struct bio *bio)
 {
-    struct cdevmsg_strategy msg;
-    lwkt_port_t port;
+	struct dev_strategy_args ap;
 
-    KKASSERT(bio->bio_track != NULL);
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_STRATEGY);
-    KKASSERT(port);	/* 'nostrategy' function is NULL YYY */
-    msg.bio = bio;
-    lwkt_domsg(port, &msg.msg.msg);
-}
-
-int
-dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, thread_t td)
-{
-    struct cdevmsg_ioctl msg;
-    lwkt_port_t port;
-
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_IOCTL);
-    if (port == NULL)
-	return(ENXIO);
-    msg.cmd = cmd;
-    msg.data = data;
-    msg.fflag = fflag;
-    msg.td = td;
-    return(lwkt_domsg(port, &msg.msg.msg));
+	KKASSERT(bio->bio_track != NULL);
+	ap.a_head.a_desc = &dev_strategy_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_bio = bio;
+	(void)dev->si_ops->d_strategy(&ap);
 }
 
 /*
@@ -261,192 +261,129 @@ dev_dioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, thread_t td)
 int
 dev_ddump(dev_t dev)
 {
-    struct cdevmsg_dump	msg;
-    lwkt_port_t port;
+	struct dev_dump_args ap;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_DUMP);
-    if (port == NULL)
-	return(ENXIO);
-    msg.count = 0;
-    msg.blkno = 0;
-    msg.secsize = 0;
-    return(lwkt_domsg(port, &msg.msg.msg));
+	ap.a_head.a_desc = &dev_dump_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_count = 0;
+	ap.a_blkno = 0;
+	ap.a_secsize = 0;
+	return(dev->si_ops->d_dump(&ap));
 }
 
 int
 dev_dpsize(dev_t dev)
 {
-    struct cdevmsg_psize msg;
-    lwkt_port_t port;
-    int error;
+	struct dev_psize_args ap;
+	int error;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_PSIZE);
-    if (port == NULL)
+	ap.a_head.a_desc = &dev_psize_desc;
+	ap.a_head.a_dev = dev;
+	error = dev->si_ops->d_psize(&ap);
+	if (error == 0)
+		return (ap.a_result);
 	return(-1);
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(-1);
-}
-
-int
-dev_dread(dev_t dev, struct uio *uio, int ioflag)
-{
-    struct cdevmsg_read msg;
-    lwkt_port_t port;
-    int error;
-
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_READ);
-    if (port == NULL)
-	return(ENXIO);
-    msg.uio = uio;
-    msg.ioflag = ioflag;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	dev->si_lastread = time_second;
-    return (error);
-}
-
-int
-dev_dwrite(dev_t dev, struct uio *uio, int ioflag)
-{
-    struct cdevmsg_write msg;
-    lwkt_port_t port;
-
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_WRITE);
-    if (port == NULL)
-	return(ENXIO);
-    dev->si_lastwrite = time_second;
-    msg.uio = uio;
-    msg.ioflag = ioflag;
-    return(lwkt_domsg(port, &msg.msg.msg));
-}
-
-int
-dev_dpoll(dev_t dev, int events, thread_t td)
-{
-    struct cdevmsg_poll msg;
-    lwkt_port_t port;
-    int error;
-
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_POLL);
-    if (port == NULL)
-	return(ENXIO);
-    msg.events = events;
-    msg.td = td;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.events);
-    return(seltrue(dev, msg.events, td));
 }
 
 int
 dev_dkqfilter(dev_t dev, struct knote *kn)
 {
-    struct cdevmsg_kqfilter msg;
-    lwkt_port_t port;
-    int error;
+	struct dev_kqfilter_args ap;
+	int error;
 
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_KQFILTER);
-    if (port == NULL)
-	return(ENXIO);
-    msg.kn = kn;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(ENODEV);
+	ap.a_head.a_desc = &dev_kqfilter_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_kn = kn;
+	error = dev->si_ops->d_kqfilter(&ap);
+	if (error == 0)
+		return(ap.a_result);
+	return(ENODEV);
 }
 
-int
-dev_dmmap(dev_t dev, vm_offset_t offset, int nprot)
-{
-    struct cdevmsg_mmap msg;
-    lwkt_port_t port;
-    int error;
-
-    port = _init_cdevmsg(dev, &msg.msg, CDEV_CMD_MMAP);
-    if (port == NULL)
-	return(-1);
-    msg.offset = offset;
-    msg.nprot = nprot;
-    error = lwkt_domsg(port, &msg.msg.msg);
-    if (error == 0)
-	return(msg.result);
-    return(-1);
-}
+/************************************************************************
+ *			DEVICE HELPER FUNCTIONS				*
+ ************************************************************************/
 
 const char *
 dev_dname(dev_t dev)
 {
-    return(dev->si_devsw->d_name);
+    return(dev->si_ops->head.name);
 }
 
 int
 dev_dflags(dev_t dev)
 {
-    return(dev->si_devsw->d_flags);
+    return(dev->si_ops->head.flags);
 }
 
 int
 dev_dmaj(dev_t dev)
 {
-    return(dev->si_devsw->d_maj);
-}
-
-lwkt_port_t
-dev_dport(dev_t dev)
-{
-    return(dev->si_port);
+    return(dev->si_ops->head.maj);
 }
 
 /*
- * Convert a cdevsw template into the real thing, filling in fields the
- * device left empty with appropriate defaults.
+ * Used when forwarding a request through layers.  The caller adjusts
+ * ap->a_head.a_dev and then calls this function.
+ */
+int
+dev_doperate(struct dev_generic_args *ap)
+{
+    int (*func)(struct dev_generic_args *);
+
+    func = *(void **)((char *)ap->a_dev->si_ops + ap->a_desc->sd_offset);
+    return (func(ap));
+}
+
+/*
+ * Used by the console intercept code only.  Issue an operation through
+ * a foreign ops structure allowing the ops structure associated
+ * with the device to remain intact.
+ */
+int
+dev_doperate_ops(struct dev_ops *ops, struct dev_generic_args *ap)
+{
+    int (*func)(struct dev_generic_args *);
+
+    func = *(void **)((char *)ops + ap->a_desc->sd_offset);
+    return (func(ap));
+}
+
+/*
+ * Convert a template dev_ops into the real thing by filling in 
+ * uninitialized fields.
  */
 void
-compile_devsw(struct cdevsw *devsw)
+compile_dev_ops(struct dev_ops *ops)
 {
-    static lwkt_port devsw_compat_port;
+	int offset;
 
-    if (devsw_compat_port.mp_putport == NULL)
-	init_default_cdevsw_port(&devsw_compat_port);
-    
-    if (devsw->old_open == NULL)
-	devsw->old_open = noopen;
-    if (devsw->old_close == NULL)
-	devsw->old_close = noclose;
-    if (devsw->old_read == NULL)
-	devsw->old_read = noread;
-    if (devsw->old_write == NULL)
-	devsw->old_write = nowrite;
-    if (devsw->old_ioctl == NULL)
-	devsw->old_ioctl = noioctl;
-    if (devsw->old_poll == NULL)
-	devsw->old_poll = nopoll;
-    if (devsw->old_mmap == NULL)
-	devsw->old_mmap = nommap;
-    if (devsw->old_strategy == NULL)
-	devsw->old_strategy = nostrategy;
-    if (devsw->old_dump == NULL)
-	devsw->old_dump = nodump;
-    if (devsw->old_psize == NULL)
-	devsw->old_psize = nopsize;
-    if (devsw->old_kqfilter == NULL)
-	devsw->old_kqfilter = nokqfilter;
-
-    if (devsw->d_port == NULL)
-	devsw->d_port = &devsw_compat_port;
-    if (devsw->d_clone == NULL)
-	devsw->d_clone = noclone;
+	for (offset = offsetof(struct dev_ops, dev_ops_first_field);
+	     offset <= offsetof(struct dev_ops, dev_ops_last_field);
+	     offset += sizeof(void *)
+	) {
+		void **func_p = (void **)((char *)ops + offset);
+		void **def_p = (void **)((char *)&default_dev_ops + offset);
+		if (*func_p == NULL) {
+			if (ops->d_default)
+				*func_p = ops->d_default;
+			else
+				*func_p = *def_p;
+		}
+	}
 }
 
+/************************************************************************
+ *			MAJOR/MINOR SPACE FUNCTION 			*
+ ************************************************************************/
+
 /*
- * This makes a cdevsw entry visible to userland (e.g /dev/<blah>).
+ * This makes a dev_ops entry visible to userland (e.g /dev/<blah>).
  *
- * The kernel can overload a major number by making multiple cdevsw_add()
- * calls, but only the most recent one (the first one in the cdevbase[] list
- * matching the mask/match) will be visible to userland.  make_dev() does
- * not automatically call cdevsw_add() (nor do we want it to, since 
+ * The kernel can overload a major number by making multiple dev_ops_add()
+ * calls, but only the most recent one (the first one in the dev_ops_array[]
+ * list matching the mask/match) will be visible to userland.  make_dev() does
+ * not automatically call dev_ops_add() (nor do we want it to, since 
  * partition-managed disk devices are overloaded on top of the raw device).
  *
  * Disk devices typically register their major, e.g. 'ad0', and then call
@@ -454,174 +391,300 @@ compile_devsw(struct cdevsw *devsw)
  * to support all the various slice and partition combinations.
  *
  * The mask/match supplied in this call are a full 32 bits and the same
- * mask and match must be specified in a later cdevsw_remove() call to
+ * mask and match must be specified in a later dev_ops_remove() call to
  * match this add.  However, the match value for the minor number should never
  * have any bits set in the major number's bit range (8-15).  The mask value
  * may be conveniently specified as -1 without creating any major number
  * interference.
  */
 int
-cdevsw_add(struct cdevsw *devsw, u_int mask, u_int match)
+dev_ops_add(struct dev_ops *ops, u_int mask, u_int match)
 {
     int maj;
-    struct cdevlink *link;
+    struct dev_ops_link *link;
 
-    compile_devsw(devsw);
-    maj = devsw->d_maj;
+    compile_dev_ops(ops);
+    maj = ops->head.maj;
     if (maj < 0 || maj >= NUMCDEVSW) {
-	printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-	    devsw->d_name, maj);
-	return (EINVAL);
+	    printf("%s: ERROR: driver has bogus dev_ops->head.maj = %d\n",
+		   ops->head.name, maj);
+	    return (EINVAL);
     }
-    for (link = cdevbase[maj]; link; link = link->next) {
-	/*
-	 * If we get an exact match we usurp the target, but we only print
-	 * a warning message if a different device switch is installed.
-	 */
-	if (link->mask == mask && link->match == match) {
-	    if (link->devsw != devsw) {
-		    printf("WARNING: \"%s\" (%p) is usurping \"%s\"'s (%p)"
-			" cdevsw[]\n",
-			devsw->d_name, devsw, 
-			link->devsw->d_name, link->devsw);
-		    link->devsw = devsw;
-		    ++devsw->d_refs;
+    for (link = dev_ops_array[maj]; link; link = link->next) {
+	    /*
+	     * If we get an exact match we usurp the target, but we only print
+	     * a warning message if a different device switch is installed.
+	     */
+	    if (link->mask == mask && link->match == match) {
+		    if (link->ops != ops) {
+			    printf("WARNING: \"%s\" (%p) is usurping \"%s\"'s"
+				" (%p) dev_ops_array[]\n",
+				ops->head.name, ops, 
+				link->ops->head.name, link->ops);
+			    link->ops = ops;
+			    ++ops->head.refs;
+		    }
+		    return(0);
 	    }
-	    return(0);
-	}
-	/*
-	 * XXX add additional warnings for overlaps
-	 */
+	    /*
+	     * XXX add additional warnings for overlaps
+	     */
     }
 
-    link = malloc(sizeof(struct cdevlink), M_DEVBUF, M_INTWAIT|M_ZERO);
+    link = malloc(sizeof(struct dev_ops_link), M_DEVBUF, M_INTWAIT|M_ZERO);
     link->mask = mask;
     link->match = match;
-    link->devsw = devsw;
-    link->next = cdevbase[maj];
-    cdevbase[maj] = link;
-    ++devsw->d_refs;
+    link->ops = ops;
+    link->next = dev_ops_array[maj];
+    dev_ops_array[maj] = link;
+    ++ops->head.refs;
     return(0);
 }
 
 /*
  * Should only be used by udev2dev().
  *
- * If the minor number is -1, we match the first cdevsw we find for this
+ * If the minor number is -1, we match the first ops we find for this
  * major.   If the mask is not -1 then multiple minor numbers can match
- * the same devsw.
+ * the same ops.
  *
  * Note that this function will return NULL if the minor number is not within
  * the bounds of the installed mask(s).
  *
  * The specified minor number should NOT include any major bits.
  */
-struct cdevsw *
-cdevsw_get(int x, int y)
+struct dev_ops *
+dev_ops_get(int x, int y)
 {
-    struct cdevlink *link;
+	struct dev_ops_link *link;
 
-    if (x < 0 || x >= NUMCDEVSW)
+	if (x < 0 || x >= NUMCDEVSW)
+		return(NULL);
+	for (link = dev_ops_array[x]; link; link = link->next) {
+		if (y == -1 || (link->mask & y) == link->match)
+			return(link->ops);
+	}
 	return(NULL);
-    for (link = cdevbase[x]; link; link = link->next) {
-	if (y == -1 || (link->mask & y) == link->match)
-	    return(link->devsw);
-    }
-    return(NULL);
 }
 
 /*
- * Use the passed cdevsw as a template to create our intercept cdevsw,
- * and install and return ours.
+ * Take a cookie cutter to the major/minor device space for the passed
+ * device and generate a new dev_ops visible to userland which the caller
+ * can then modify.  The original device is not modified but portions of
+ * its major/minor space will no longer be visible to userland.
  */
-struct cdevsw *
-cdevsw_add_override(dev_t backing_dev, u_int mask, u_int match)
+struct dev_ops *
+dev_ops_add_override(dev_t backing_dev, struct dev_ops *template,
+		     u_int mask, u_int match)
 {
-    struct cdevsw *devsw;
-    struct cdevsw *bsw = backing_dev->si_devsw;
+	struct dev_ops *ops;
+	struct dev_ops *backing_ops = backing_dev->si_ops;
 
-    devsw = malloc(sizeof(struct cdevsw), M_DEVBUF, M_INTWAIT|M_ZERO);
-    devsw->d_name = bsw->d_name;
-    devsw->d_maj = bsw->d_maj;
-    devsw->d_flags = bsw->d_flags;
-    compile_devsw(devsw);
-    cdevsw_add(devsw, mask, match);
+	ops = malloc(sizeof(struct dev_ops), M_DEVBUF, M_INTWAIT);
+	*ops = *template;
+	ops->head.name = backing_ops->head.name;
+	ops->head.maj = backing_ops->head.maj;
+	ops->head.flags = backing_ops->head.flags;
+	compile_dev_ops(ops);
+	dev_ops_add(ops, mask, match);
 
-    return(devsw);
+	return(ops);
 }
 
 /*
- * Override a device's port, returning the previously installed port.  This
- * is XXX very dangerous.
- */
-lwkt_port_t
-cdevsw_dev_override(dev_t dev, lwkt_port_t port)
-{
-    lwkt_port_t oport;
-
-    oport = dev->si_port;
-    dev->si_port = port;
-    return(oport);
-}
-
-/*
- * Remove a cdevsw entry from the cdevbase[] major array so no new user opens
- * can be performed, and destroy all devices installed in the hash table
- * which are associated with this cdevsw.  (see destroy_all_dev()).
+ * Remove all matching dev_ops entries from the dev_ops_array[] major
+ * array so no new user opens can be performed, and destroy all devices
+ * installed in the hash table that are associated with this dev_ops.  (see
+ * destroy_all_devs()).
+ *
+ * The mask and match should match a previous call to dev_ops_add*().
  */
 int
-cdevsw_remove(struct cdevsw *devsw, u_int mask, u_int match)
+dev_ops_remove(struct dev_ops *ops, u_int mask, u_int match)
 {
-    int maj = devsw->d_maj;
-    struct cdevlink *link;
-    struct cdevlink **plink;
- 
-    if (maj < 0 || maj >= NUMCDEVSW) {
-	printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
-	    devsw->d_name, maj);
-	return EINVAL;
-    }
-    if (devsw != &dead_cdevsw)
-	destroy_all_dev(devsw, mask, match);
-    for (plink = &cdevbase[maj]; (link = *plink) != NULL; plink = &link->next) {
-	if (link->mask == mask && link->match == match) {
-	    if (link->devsw == devsw)
-		break;
-	    printf("%s: ERROR: cannot remove from cdevsw[], its major"
-		    " number %d was stolen by %s\n",
-		    devsw->d_name, maj,
-		    link->devsw->d_name
-	    );
+	int maj = ops->head.maj;
+	struct dev_ops_link *link;
+	struct dev_ops_link **plink;
+     
+	if (maj < 0 || maj >= NUMCDEVSW) {
+		printf("%s: ERROR: driver has bogus ops->d_maj = %d\n",
+			ops->head.name, maj);
+		return EINVAL;
 	}
-    }
-    if (link == NULL) {
-	printf("%s(%d)[%08x/%08x]: WARNING: cdevsw removed multiple times!\n",
-		devsw->d_name, maj, mask, match);
-    } else {
-	*plink = link->next;
-	--devsw->d_refs; /* XXX cdevsw_release() / record refs */
-	free(link, M_DEVBUF);
-    }
-    if (cdevbase[maj] == NULL && devsw->d_refs != 0) {
-	printf("%s(%d)[%08x/%08x]: Warning: cdevsw_remove() called while "
-		"%d device refs still exist!\n", 
-		devsw->d_name, maj, mask, match, devsw->d_refs);
-    } else {
-	printf("%s: cdevsw removed\n", devsw->d_name);
-    }
-    return 0;
+	if (ops != &dead_dev_ops)
+		destroy_all_devs(ops, mask, match);
+	for (plink = &dev_ops_array[maj]; (link = *plink) != NULL;
+	     plink = &link->next) {
+		if (link->mask == mask && link->match == match) {
+			if (link->ops == ops)
+				break;
+			printf("%s: ERROR: cannot remove from dev_ops_array[], "
+			       "its major number %d was stolen by %s\n",
+				ops->head.name, maj,
+				link->ops->head.name
+			);
+		}
+	}
+	if (link == NULL) {
+		printf("%s(%d)[%08x/%08x]: WARNING: ops removed "
+		       "multiple times!\n",
+		       ops->head.name, maj, mask, match);
+	} else {
+		*plink = link->next;
+		--ops->head.refs; /* XXX ops_release() / record refs */
+		free(link, M_DEVBUF);
+	}
+	if (dev_ops_array[maj] == NULL && ops->head.refs != 0) {
+		printf("%s(%d)[%08x/%08x]: Warning: dev_ops_remove() called "
+			"while %d device refs still exist!\n", 
+			ops->head.name, maj, mask, match, ops->head.refs);
+	} else {
+		printf("%s: ops removed\n", ops->head.name);
+	}
+	return 0;
 }
 
 /*
- * Release a cdevsw entry.  When the ref count reaches zero, recurse
+ * Release a ops entry.  When the ref count reaches zero, recurse
  * through the stack.
  */
 void
-cdevsw_release(struct cdevsw *devsw)
+dev_ops_release(struct dev_ops *ops)
 {
-    --devsw->d_refs;
-    if (devsw->d_refs == 0) {
+    --ops->head.refs;
+    if (ops->head.refs == 0) {
 	/* XXX */
     }
+}
+
+struct dev_ops *
+dev_ops_intercept(dev_t dev, struct dev_ops *iops)
+{
+	struct dev_ops *oops = dev->si_ops;
+
+	compile_dev_ops(iops);
+	iops->head.maj = oops->head.maj;
+	iops->head.data = oops->head.data;
+	iops->head.flags = oops->head.flags;
+	dev->si_ops = iops;
+
+	return (oops);
+}
+
+void
+dev_ops_restore(dev_t dev, struct dev_ops *oops)
+{
+	struct dev_ops *iops = dev->si_ops;
+
+	dev->si_ops = oops;
+	iops->head.maj = 0;
+	iops->head.data = NULL;
+	iops->head.flags = 0;
+}
+
+/************************************************************************
+ *			DEFAULT DEV OPS FUNCTIONS			*
+ ************************************************************************/
+
+
+/*
+ * Unsupported devswitch functions (e.g. for writing to read-only device).
+ * XXX may belong elsewhere.
+ */
+
+int
+noclone(struct dev_clone_args *ap)
+{
+	/* take no action */
+	return (0);	/* allow the clone */
+}
+
+int
+noopen(struct dev_open_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+noclose(struct dev_close_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+noread(struct dev_read_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+nowrite(struct dev_write_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+noioctl(struct dev_ioctl_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+nokqfilter(struct dev_kqfilter_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+nommap(struct dev_mmap_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+nopoll(struct dev_poll_args *ap)
+{
+	ap->a_events = 0;
+	return(0);
+}
+
+int
+nostrategy(struct dev_strategy_args *ap)
+{
+	struct bio *bio = ap->a_bio;
+
+	bio->bio_buf->b_flags |= B_ERROR;
+	bio->bio_buf->b_error = EOPNOTSUPP;
+	biodone(bio);
+	return(0);
+}
+
+int
+nopsize(struct dev_psize_args *ap)
+{
+	ap->a_result = 0;
+	return(0);
+}
+
+int
+nodump(struct dev_dump_args *ap)
+{
+	return (ENODEV);
+}
+
+/*
+ * XXX this is probably bogus.  Any device that uses it isn't checking the
+ * minor number.
+ */
+int
+nullopen(struct dev_open_args *ap)
+{
+	return (0);
+}
+
+int
+nullclose(struct dev_close_args *ap)
+{
+	return (0);
 }
 

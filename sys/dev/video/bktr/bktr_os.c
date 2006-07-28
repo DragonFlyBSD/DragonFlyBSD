@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.45 2004/03/17 17:50:28 njl Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.13 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>
@@ -171,23 +172,15 @@ static	d_mmap_t	bktr_mmap;
 static	d_poll_t	bktr_poll;
 
 #define CDEV_MAJOR 92 
-static struct cdevsw bktr_cdevsw = {
-	/* name */	"bktr",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	bktr_open,
-	/* close */	bktr_close,
-	/* read */	bktr_read,
-	/* write */	bktr_write,
-	/* ioctl */	bktr_ioctl,
-	/* poll */	bktr_poll,
-	/* mmap */	bktr_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops bktr_ops = {
+	{ "bktr", CDEV_MAJOR, 0 },
+	.d_open =	bktr_open,
+	.d_close =	bktr_close,
+	.d_read =	bktr_read,
+	.d_write =	bktr_write,
+	.d_ioctl =	bktr_ioctl,
+	.d_poll =	bktr_poll,
+	.d_mmap =	bktr_mmap,
 };
 
 DRIVER_MODULE(bktr, pci, bktr_driver, bktr_devclass, 0, 0);
@@ -364,10 +357,10 @@ bktr_attach( device_t dev )
 	common_bktr_attach( bktr, unit, fun, rev );
 
 	/* make the device entries */
-	cdevsw_add(&bktr_cdevsw, 0x0f, unit);
-	make_dev(&bktr_cdevsw, unit,    0, 0, 0444, "bktr%d",  unit);
-	make_dev(&bktr_cdevsw, unit+16, 0, 0, 0444, "tuner%d", unit);
-	make_dev(&bktr_cdevsw, unit+32, 0, 0, 0444, "vbi%d"  , unit);
+	dev_ops_add(&bktr_ops, 0x0f, unit);
+	make_dev(&bktr_ops, unit,    0, 0, 0444, "bktr%d",  unit);
+	make_dev(&bktr_ops, unit+16, 0, 0, 0444, "tuner%d", unit);
+	make_dev(&bktr_ops, unit+32, 0, 0, 0444, "vbi%d"  , unit);
 
 
 	return 0;
@@ -412,8 +405,8 @@ bktr_detach( device_t dev )
 	/* The memory is retained by the bktr_mem module so we can unload and */
 	/* then reload the main bktr driver module */
 
-	/* removing the cdevsw automatically destroys all related devices */
-	cdevsw_remove(&bktr_cdevsw, 0x0f, device_get_unit(dev));
+	/* removing the ops automatically destroys all related devices */
+	dev_ops_remove(&bktr_ops, 0x0f, device_get_unit(dev));
 
 	/*
 	 * Deallocate resources.
@@ -481,8 +474,9 @@ get_bktr_mem( int unit, unsigned size )
  * 
  */
 static int
-bktr_open( dev_t dev, int flags, int fmt, struct thread *td )
+bktr_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	int		result;
@@ -581,8 +575,9 @@ bktr_open( dev_t dev, int flags, int fmt, struct thread *td )
  * 
  */
 static int
-bktr_close( dev_t dev, int flags, int fmt, struct thread *td )
+bktr_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	int		result;
@@ -620,8 +615,9 @@ bktr_close( dev_t dev, int flags, int fmt, struct thread *td )
  * 
  */
 static int
-bktr_read( dev_t dev, struct uio *uio, int ioflag )
+bktr_read(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 	
@@ -636,9 +632,9 @@ bktr_read( dev_t dev, struct uio *uio, int ioflag )
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:
-		return( video_read( bktr, unit, dev, uio ) );
+		return( video_read( bktr, unit, dev, ap->a_uio ) );
 	case VBI_DEV:
-		return( vbi_read( bktr, uio, ioflag ) );
+		return( vbi_read( bktr, ap->a_uio, ap->a_ioflag ) );
 	}
         return( ENXIO );
 }
@@ -648,7 +644,7 @@ bktr_read( dev_t dev, struct uio *uio, int ioflag )
  * 
  */
 static int
-bktr_write( dev_t dev, struct uio *uio, int ioflag )
+bktr_write(struct dev_write_args *ap)
 {
 	return( EINVAL ); /* XXX or ENXIO ? */
 }
@@ -658,8 +654,9 @@ bktr_write( dev_t dev, struct uio *uio, int ioflag )
  * 
  */
 static int
-bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct thread *td )
+bktr_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	bktr_ptr_t	bktr;
 	int		unit;
 
@@ -677,9 +674,9 @@ bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct thread *td
 
 	switch ( FUNCTION( minor(dev) ) ) {
 	case VIDEO_DEV:
-		return( video_ioctl( bktr, unit, cmd, arg, td ) );
+		return( video_ioctl( bktr, unit, ap->a_cmd, ap->a_data, curthread ) );
 	case TUNER_DEV:
-		return( tuner_ioctl( bktr, unit, cmd, arg, td ) );
+		return( tuner_ioctl( bktr, unit, ap->a_cmd, ap->a_data, curthread ) );
 	}
 
 	return( ENXIO );
@@ -690,15 +687,16 @@ bktr_ioctl( dev_t dev, ioctl_cmd_t cmd, caddr_t arg, int flag, struct thread *td
  * 
  */
 static int
-bktr_mmap( dev_t dev, vm_offset_t offset, int nprot )
+bktr_mmap(struct dev_mmap_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int		unit;
 	bktr_ptr_t	bktr;
 
 	unit = UNIT(minor(dev));
 
 	if (FUNCTION(minor(dev)) > 0)	/* only allow mmap on /dev/bktr[n] */
-		return( -1 );
+		return(EINVAL);
 
 	/* Get the device data */
 	bktr = (struct bktr_softc*)devclass_get_softc(bktr_devclass, unit);
@@ -707,21 +705,23 @@ bktr_mmap( dev_t dev, vm_offset_t offset, int nprot )
 		return (ENXIO);
 	}
 
-	if (nprot & PROT_EXEC)
-		return( -1 );
+	if (ap->a_nprot & PROT_EXEC)
+		return(EINVAL);
 
-	if (offset < 0)
-		return( -1 );
+	if (ap->a_offset < 0)
+		return(EINVAL);
 
-	if (offset >= bktr->alloc_pages * PAGE_SIZE)
-		return( -1 );
+	if (ap->a_offset >= bktr->alloc_pages * PAGE_SIZE)
+		return(EINVAL);
 
-	return(atop(vtophys(bktr->bigbuf) + offset));
+	ap->a_result = atop(vtophys(bktr->bigbuf) + ap->a_offset);
+	return(0);
 }
 
 static int
-bktr_poll( dev_t dev, int events, struct thread *td)
+bktr_poll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int		unit;
 	bktr_ptr_t	bktr;
 	int revents = 0; 
@@ -738,14 +738,14 @@ bktr_poll( dev_t dev, int events, struct thread *td)
 	LOCK_VBI(bktr);
 	crit_enter();
 
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 
 		switch ( FUNCTION( minor(dev) ) ) {
 		case VBI_DEV:
 			if(bktr->vbisize == 0)
-				selrecord(td, &bktr->vbi_select);
+				selrecord(curthread, &bktr->vbi_select);
 			else
-				revents |= events & (POLLIN | POLLRDNORM);
+				revents |= ap->a_events & (POLLIN | POLLRDNORM);
 			break;
 		}
 	}
@@ -753,5 +753,6 @@ bktr_poll( dev_t dev, int events, struct thread *td)
 	crit_exit();
 	UNLOCK_VBI(bktr);
 
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }

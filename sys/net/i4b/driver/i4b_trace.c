@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.14 2006/01/14 11:05:18 swildner Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.15 2006/07/28 02:17:40 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -79,23 +79,13 @@ static d_poll_t i4btrcpoll;
 
 #define CDEV_MAJOR 59
 
-static struct cdevsw i4btrc_cdevsw = {
-        /* name */      "i4btrc",
-        /* maj */       CDEV_MAJOR,
-        /* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      i4btrcopen,
-        /* close */     i4btrcclose,
-        /* read */      i4btrcread,
-        /* write */     nowrite,
-        /* ioctl */     i4btrcioctl,
-        /* poll */      POLLFIELD,
-        /* mmap */      nommap,
-        /* strategy */  nostrategy,
-        /* dump */      nodump,
-        /* psize */     nopsize
+static struct dev_ops i4btrc_ops = {
+	{ "i4btrc", CDEV_MAJOR, 0 },
+	.d_open =	i4btrcopen,
+        .d_close =	i4btrcclose,
+        .d_read =	i4btrcread,
+        .d_ioctl =	i4btrcioctl,
+        .d_poll =	POLLFIELD,
 };
 
 /*---------------------------------------------------------------------------*
@@ -104,7 +94,7 @@ static struct cdevsw i4btrc_cdevsw = {
 static void
 i4btrcinit(void *unused)
 {
-	cdevsw_add(&i4btrc_cdevsw, 0, 0);
+	dev_ops_add(&i4btrc_ops, 0, 0);
 }
 
 SYSINIT(i4btrcdev, SI_SUB_DRIVERS,
@@ -128,7 +118,7 @@ i4btrcattach(void *dummy)
 	for(i=0; i < NI4BTRC; i++)
 	{
 
-		make_dev(&i4btrc_cdevsw, i,
+		make_dev(&i4btrc_ops, i,
 				     UID_ROOT, GID_WHEEL, 0600, "i4btrc%d", i);
 		trace_queue[i].ifq_maxlen = IFQ_MAXLEN;
 
@@ -242,8 +232,9 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
  *	open trace device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcopen(dev_t dev, int flag, int fmt, struct thread *td)
+i4btrcopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 
 	if(unit >= NI4BTRC)
@@ -268,8 +259,9 @@ i4btrcopen(dev_t dev, int flag, int fmt, struct thread *td)
  *	close trace device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcclose(dev_t dev, int flag, int fmt, struct thread *td)
+i4btrcclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = minor(dev);
 	int i;
 	int cno = -1;
@@ -314,8 +306,10 @@ i4btrcclose(dev_t dev, int flag, int fmt, struct thread *td)
  *	read from trace device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcread(dev_t dev, struct uio * uio, int ioflag)
+i4btrcread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct mbuf *m;
 	int error = 0;
 	int unit = minor(dev);
@@ -357,7 +351,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
  *	poll device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcpoll(dev_t dev, int events, struct thread *td)
+i4btrcpoll(struct dev_poll_args *ap)
 {
 	return(ENODEV);
 }
@@ -366,8 +360,9 @@ i4btrcpoll(dev_t dev, int events, struct thread *td)
  *	device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+i4btrcioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int error = 0;
 	int unit = minor(dev);
 	i4b_trace_setupa_t *tsa;
@@ -386,16 +381,16 @@ i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		}
 	}
 	
-	switch(cmd)
+	switch(ap->a_cmd)
 	{
 		case I4B_TRC_SET:
 			if(cno < 0)
 				return ENOTTY;
-			(*ctrl_desc[cno].N_MGMT_COMMAND)(ctrl_desc[cno].unit, CMR_SETTRACE, (void *)*(unsigned int *)data);
+			(*ctrl_desc[cno].N_MGMT_COMMAND)(ctrl_desc[cno].unit, CMR_SETTRACE, (void *)*(unsigned int *)ap->a_data);
 			break;
 
 		case I4B_TRC_SETA:
-			tsa = (i4b_trace_setupa_t *)data;
+			tsa = (i4b_trace_setupa_t *)ap->a_data;
 
 			if(tsa->rxunit >= 0 && tsa->rxunit < NI4BTRC)
 				rxunit = tsa->rxunit;

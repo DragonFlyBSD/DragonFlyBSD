@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.69 2006/06/14 16:58:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.70 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -79,6 +79,7 @@
 #include <sys/malloc.h>
 #include <sys/sysproto.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -119,23 +120,9 @@ static	 d_open_t  fdopen;
 #define NUMFDESC 64
 
 #define CDEV_MAJOR 22
-static struct cdevsw fildesc_cdevsw = {
-	/* name */	"FD",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	fdopen,
-	/* close */	noclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	noioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops fildesc_ops = {
+	{ "FD", CDEV_MAJOR, 0 },
+	.d_open =	fdopen,
 };
 
 static int badfo_readwrite (struct file *fp, struct uio *uio,
@@ -2215,8 +2202,10 @@ done:
  */
 /* ARGSUSED */
 static int
-fdopen(dev_t dev, int mode, int type, struct thread *td)
+fdopen(struct dev_open_args *ap)
 {
+	thread_t td = curthread;
+
 	KKASSERT(td->td_lwp != NULL);
 
 	/*
@@ -2227,7 +2216,7 @@ fdopen(dev_t dev, int mode, int type, struct thread *td)
 	 * actions in dupfdopen below. Other callers of vn_open or VOP_OPEN
 	 * will simply report the error.
 	 */
-	td->td_lwp->lwp_dupfd = minor(dev);
+	td->td_lwp->lwp_dupfd = minor(ap->a_head.a_dev);
 	return (ENODEV);
 }
 
@@ -2458,14 +2447,14 @@ fildesc_drvinit(void *unused)
 {
 	int fd;
 
-	cdevsw_add(&fildesc_cdevsw, 0, 0);
+	dev_ops_add(&fildesc_ops, 0, 0);
 	for (fd = 0; fd < NUMFDESC; fd++) {
-		make_dev(&fildesc_cdevsw, fd,
+		make_dev(&fildesc_ops, fd,
 		    UID_BIN, GID_BIN, 0666, "fd/%d", fd);
 	}
-	make_dev(&fildesc_cdevsw, 0, UID_ROOT, GID_WHEEL, 0666, "stdin");
-	make_dev(&fildesc_cdevsw, 1, UID_ROOT, GID_WHEEL, 0666, "stdout");
-	make_dev(&fildesc_cdevsw, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");
+	make_dev(&fildesc_ops, 0, UID_ROOT, GID_WHEEL, 0666, "stdin");
+	make_dev(&fildesc_ops, 1, UID_ROOT, GID_WHEEL, 0666, "stdout");
+	make_dev(&fildesc_ops, 2, UID_ROOT, GID_WHEEL, 0666, "stderr");
 }
 
 /*

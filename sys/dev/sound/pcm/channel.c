@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.8 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.9 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.8 2006/06/13 08:12:02 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.9 2006/07/28 02:17:38 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4
@@ -532,7 +532,7 @@ chn_sync(struct pcm_channel *c, int threshold)
 
 /* called externally, handle locking */
 int
-chn_poll(struct pcm_channel *c, int ev, struct proc *p)
+chn_poll(struct pcm_channel *c, int ev)
 {
 	struct snd_dbuf *bs = c->bufsoft;
 	int ret;
@@ -544,7 +544,7 @@ chn_poll(struct pcm_channel *c, int ev, struct proc *p)
 	if (chn_polltrigger(c) && chn_pollreset(c))
 		ret = ev;
 	else
-		selrecord(p->p_thread, sndbuf_getsel(bs));
+		selrecord(curthread, sndbuf_getsel(bs));
 	return ret;
 }
 

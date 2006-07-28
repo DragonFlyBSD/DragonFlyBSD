@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.11 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.12 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -72,23 +72,14 @@ static	d_dump_t	idad_dump;
 #define IDAD_BDEV_MAJOR	29
 #define IDAD_CDEV_MAJOR	109
 
-static struct cdevsw id_cdevsw = {
-	/* name */ 	"idad",
-	/* maj */	IDAD_CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	idad_open,
-	/* close */	idad_close,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	noioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	idad_strategy,
-	/* dump */	idad_dump,
-	/* psize */ 	nopsize
+static struct dev_ops id_ops = {
+	{ "idad", IDAD_CDEV_MAJOR, D_DISK },
+	.d_open =	idad_open,
+	.d_close =	idad_close,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	idad_strategy,
+	.d_dump =	idad_dump,
 };
 
 static devclass_t	idad_devclass;
@@ -116,8 +107,9 @@ idad_getsoftc(dev_t dev)
 }
 
 static int
-idad_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+idad_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 	struct disklabel *label;
 
@@ -139,8 +131,9 @@ idad_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-idad_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+idad_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 
 	drv = idad_getsoftc(dev);
@@ -155,9 +148,11 @@ idad_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * to complete.  Multi-page transfers are supported.  All I/O requests must
  * be a multiple of a sector in length.
  */
-static void
-idad_strategy(dev_t dev, struct bio *bio)
+static int
+idad_strategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct idad_softc *drv;
 
@@ -186,7 +181,7 @@ idad_strategy(dev_t dev, struct bio *bio)
 	devstat_start_transaction(&drv->stats);
 	ida_submit_buf(drv->controller, bio);
 	crit_exit();
-	return;
+	return(0);
 
 bad:
 	bp->b_flags |= B_ERROR;
@@ -197,11 +192,13 @@ done:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static int
-idad_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+idad_dump(struct dev_dump_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct idad_softc *drv;
 	long blkcnt;
 	int i, error, dumppages;
@@ -213,12 +210,12 @@ idad_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 		return (ENXIO);
 
 	addr = 0;
-	blkcnt = howmany(PAGE_SIZE, secsize);
+	blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
-	while (count > 0) {
+	while (ap->a_count > 0) {
 		va = NULL;
 
-		dumppages = imin(count / blkcnt, MAXDUMPPGS); 
+		dumppages = imin(ap->a_count / blkcnt, MAXDUMPPGS); 
 
 		for (i = 0; i < dumppages; i++) {
 			a = addr + (i * PAGE_SIZE);
@@ -229,15 +226,15 @@ idad_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 		}
 
 		error = ida_command(drv->controller, CMD_WRITE, va,
-		    PAGE_SIZE * dumppages, drv->drive, blkno, DMA_DATA_OUT);
+		    PAGE_SIZE * dumppages, drv->drive, ap->a_blkno, DMA_DATA_OUT);
 		if (error)
 			return (error);
 
-		if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+		if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
 			return (EINTR);
 
-		blkno += blkcnt * dumppages;
-		count -= blkcnt * dumppages;
+		ap->a_blkno += blkcnt * dumppages;
+		ap->a_count -= blkcnt * dumppages;
 		addr += PAGE_SIZE * dumppages;
 	}
 	return (0);
@@ -307,7 +304,7 @@ idad_attach(device_t dev)
 	    DEVSTAT_TYPE_STORARRAY| DEVSTAT_TYPE_IF_OTHER,
 	    DEVSTAT_PRIORITY_ARRAY);
 
-	dsk = disk_create(drv->unit, &drv->disk, 0, &id_cdevsw);
+	dsk = disk_create(drv->unit, &drv->disk, 0, &id_ops);
 
 	dsk->si_drv1 = drv;
 	dsk->si_iosize_max = DFLTPHYS;		/* XXX guess? */

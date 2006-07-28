@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.19 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.20 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -380,24 +380,15 @@ static	d_write_t	siowrite;
 static	d_ioctl_t	sioioctl;
 
 #define	CDEV_MAJOR	48
-static struct cdevsw sio_cdevsw = {
-	/* name */	driver_name,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	sioopen,
-	/* close */	sioclose,
-	/* read */	ttyread,
-	/* write */	siowrite,
-	/* ioctl */	sioioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops sio_ops = {
+	{ driver_name, CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	sioopen,
+	.d_close =	sioclose,
+	.d_read =	ttyread,
+	.d_write =	siowrite,
+	.d_ioctl =	sioioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static	int	comconsole = -1;
@@ -624,23 +615,23 @@ cyattach_common(cy_iobase, cy_align)
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
-	cdevsw_add(&sio_cdevsw, UNIT_TO_MINOR(-1), minorbase);
-	make_dev(&sio_cdevsw, minorbase,
+	dev_ops_add(&sio_ops, UNIT_TO_MINOR(-1), minorbase);
+	make_dev(&sio_ops, minorbase,
 		UID_ROOT, GID_WHEEL, 0600, "ttyc%r%r", adapter,
 		unit % CY_MAX_PORTS);
-	make_dev(&sio_cdevsw, minorbase | CONTROL_INIT_STATE,
+	make_dev(&sio_ops, minorbase | CONTROL_INIT_STATE,
 		UID_ROOT, GID_WHEEL, 0600, "ttyic%r%r", adapter,
 		unit % CY_MAX_PORTS);
-	make_dev(&sio_cdevsw, minorbase | CONTROL_LOCK_STATE,
+	make_dev(&sio_ops, minorbase | CONTROL_LOCK_STATE,
 		UID_ROOT, GID_WHEEL, 0600, "ttylc%r%r", adapter,
 		unit % CY_MAX_PORTS);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK,
 		UID_UUCP, GID_DIALER, 0660, "cuac%r%r", adapter,
 		unit % CY_MAX_PORTS);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK | CONTROL_INIT_STATE,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_INIT_STATE,
 		UID_UUCP, GID_DIALER, 0660, "cuaic%r%r", adapter,
 		unit % CY_MAX_PORTS);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
 		UID_UUCP, GID_DIALER, 0660, "cualc%r%r", adapter,
 		unit % CY_MAX_PORTS);
 
@@ -655,8 +646,9 @@ cyattach_common(cy_iobase, cy_align)
 }
 
 static int
-sioopen(dev_t dev, int flag, int mode, struct thread *td)
+sioopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -698,7 +690,7 @@ open_top:
 			}
 		} else {
 			if (com->active_out) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto out;
 				}
@@ -710,7 +702,7 @@ open_top:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser(td)) {
+		    suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -814,7 +806,7 @@ open_top:
 	 * Wait for DCD if necessary.
 	 */
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
-	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
+	    && !(tp->t_cflag & CLOCAL) && !(ap->a_oflags & O_NONBLOCK)) {
 		++com->wopeners;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "cydcd", 0);
 		--com->wopeners;
@@ -835,8 +827,9 @@ out:
 }
 
 static int
-sioclose(dev_t dev, int flag, int mode, struct thread *td)
+sioclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		mynor;
 	struct tty	*tp;
@@ -848,7 +841,7 @@ sioclose(dev_t dev, int flag, int mode, struct thread *td)
 	tp = com->tp;
 	crit_enter();
 	cd_etc(com, CD1400_ETC_STOPBREAK);
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, com);
 	comstop(tp, FREAD | FWRITE);
 	comhardclose(com);
@@ -942,11 +935,10 @@ comhardclose(com)
 }
 
 static int
-siowrite(dev, uio, flag)
-	dev_t		dev;
-	struct uio	*uio;
-	int		flag;
+siowrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int		mynor;
 	struct tty	*tp;
 	int		unit;
@@ -971,7 +963,7 @@ siowrite(dev, uio, flag)
 	 * sessions are raw anyhow.
 	 */
 #else
-	return ((*linesw[tp->t_line].l_write)(tp, uio, flag));
+	return ((*linesw[tp->t_line].l_write)(tp, uio, ap->a_ioflag));
 #endif
 }
 
@@ -1561,8 +1553,11 @@ siointr1(com)
 #endif
 
 static int
-sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
+sioioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
+	u_long cmd = ap->a_cmd;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -1589,7 +1584,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1639,11 +1634,12 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		if (lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
+					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return (error);
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, com);
 	if (error != ENOIOCTL) {
 		crit_exit();
@@ -1688,7 +1684,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.28 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.29 2006/07/28 02:17:41 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -151,7 +151,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		return error;
 	}
 	vcp = SSTOVC(ssp);
-	smb_share_unlock(ssp, 0, curthread);
+	smb_share_unlock(ssp, 0);
 	mp->mnt_stat.f_iosize = SSTOVC(ssp)->vc_txmax;
 
 #ifdef SMBFS_USEZONE

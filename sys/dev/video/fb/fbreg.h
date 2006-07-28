@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.6 2005/02/01 16:30:02 joerg Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.7 2006/07/28 02:17:39 dillon Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -181,15 +181,16 @@ typedef struct genfb_softc {
 } genfb_softc_t;
 
 int		genfbopen(genfb_softc_t *sc, video_adapter_t *adp,
-			  int flag, int mode, struct thread *td);
+			  int flag, int mode, struct ucred *cred);
 int		genfbclose(genfb_softc_t *sc, video_adapter_t *adp,
-			   int flag, int mode, struct thread *td);
+			   int flag, int mode);
 int		genfbread(genfb_softc_t *sc, video_adapter_t *adp,
 			  struct uio *uio, int flag);
 int		genfbwrite(genfb_softc_t *sc, video_adapter_t *adp,
 			   struct uio *uio, int flag);
 int		genfbioctl(genfb_softc_t *sc, video_adapter_t *adp,
-			   u_long cmd, caddr_t arg, int flag, struct thread *td);
+			   u_long cmd, caddr_t arg, int flag,
+			   struct ucred *cred);
 int		genfbmmap(genfb_softc_t *sc, video_adapter_t *adp,
 			  vm_offset_t offset, int prot);
 

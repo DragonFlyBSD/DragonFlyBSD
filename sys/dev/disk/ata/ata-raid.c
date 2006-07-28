@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.20 2006/05/03 06:28:01 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -54,23 +54,13 @@
 static d_open_t		aropen;
 static d_strategy_t	arstrategy;
 
-static struct cdevsw ar_cdevsw = {
-	/* name */	"ar",
-	/* maj */	157,
-	/* flags */	D_DISK,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	aropen,
-	/* close */	nullclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	noioctl, 
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	arstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ar_ops = {
+	{ "ar", 157, D_DISK },
+	.d_open =	aropen,
+	.d_close =	nullclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	arstrategy,
 };  
 
 /* prototypes */
@@ -186,7 +176,7 @@ ar_attach_raid(struct ar_softc *rdp, int update)
     int disk;
 
     ar_config_changed(rdp, update);
-    dev = disk_create(rdp->lun, &rdp->disk, 0, &ar_cdevsw);
+    dev = disk_create(rdp->lun, &rdp->disk, 0, &ar_ops);
     dev->si_drv1 = rdp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     rdp->dev = dev;
@@ -464,9 +454,9 @@ ata_raid_rebuild(int array)
 }
 
 static int
-aropen(dev_t dev, int flags, int fmt, struct thread *td)
+aropen(struct dev_open_args *ap)
 {
-    struct ar_softc *rdp = dev->si_drv1;
+    struct ar_softc *rdp = ap->a_head.a_dev->si_drv1;
     struct disklabel *dl;
 	
     dl = &rdp->disk.d_label;
@@ -480,9 +470,11 @@ aropen(dev_t dev, int flags, int fmt, struct thread *td)
     return 0;
 }
 
-static void
-arstrategy(dev_t dev, struct bio *bio)
+static int
+arstrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ar_softc *rdp = dev->si_drv1;
     int blkno, count, chunk, lba, lbs, tmplba;
@@ -495,7 +487,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EIO;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     KKASSERT((bio->bio_offset & DEV_BMASK) == 0);
@@ -546,7 +538,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	    bp->b_flags |= B_ERROR;
 	    bp->b_error = EIO;
 	    biodone(bio);
-	    return;
+	    return(0);
 	}
 
 	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_INTWAIT | M_ZERO);
@@ -577,7 +569,7 @@ arstrategy(dev_t dev, struct bio *bio)
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
-		return;
+		return(0);
 	    }
 	    dev_dstrategy(AD_SOFTC(rdp->disks[buf1->drive])->dev,
 			  &buf1->bp.b_bio1);
@@ -613,7 +605,7 @@ arstrategy(dev_t dev, struct bio *bio)
 		bp->b_flags |= B_ERROR;
 		bp->b_error = EIO;
 		biodone(bio);
-		return;
+		return(0);
 	    }
 	    if (bp->b_cmd == BUF_CMD_READ) {
 		if ((buf1_blkno <
@@ -658,6 +650,7 @@ arstrategy(dev_t dev, struct bio *bio)
 	    printf("ar%d: unknown array type in arstrategy\n", rdp->lun);
 	}
     }
+    return(0);
 }
 
 static void

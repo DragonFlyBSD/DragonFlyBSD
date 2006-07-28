@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.9 2005/06/02 20:40:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.10 2006/07/28 02:17:33 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -51,6 +51,7 @@
 #include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/endian.h>
 #include <sys/thread2.h>
 
@@ -347,14 +348,15 @@ again:
 }
 /* Device specific ioctl. */
 int
-fwohci_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
+fwohci_ioctl (struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct fwohci_softc *fc;
 	int unit = DEV2UNIT(dev);
 	int err = 0;
-	struct fw_reg_req_t *reg  = (struct fw_reg_req_t *) data;
-	u_int32_t *dmach = (u_int32_t *) data;
+	struct fw_reg_req_t *reg  = (struct fw_reg_req_t *) ap->a_data;
+	u_int32_t *dmach = (u_int32_t *) ap->a_data;
 
 	sc = devclass_get_softc(firewire_devclass, unit);
 	if(sc == NULL){
@@ -362,10 +364,10 @@ fwohci_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
 	}
 	fc = (struct fwohci_softc *)sc->fc;
 
-	if (!data)
+	if (!ap->a_data)
 		return(EINVAL);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case FWOHCI_WRREG:
 #define OHCI_MAX_REG 0x800
 		if(reg->addr <= OHCI_MAX_REG){

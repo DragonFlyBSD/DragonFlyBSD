@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.31 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.32 2006/07/28 02:17:41 dillon Exp $
  */
 
 /*
@@ -489,7 +489,7 @@ done:
 static int
 fdesc_poll(struct vop_poll_args *ap)
 {
-	return seltrue(0, ap->a_events, curthread);
+	return seltrue(0, ap->a_events);
 }
 
 /*

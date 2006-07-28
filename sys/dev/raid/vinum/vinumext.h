@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.7 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.8 2006/07/28 02:17:38 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -138,6 +138,7 @@ d_strategy_t vinumstrategy;
 d_ioctl_t vinumioctl;
 d_dump_t vinumdump;
 d_psize_t vinumsize;
+d_poll_t vinumpoll;
 
 int vinumstart(dev_t dev, struct bio *bio, int reviveok);
 int launch_requests(struct request *rq, int reviveok);
@@ -147,7 +148,7 @@ void sdio(struct bio *bio);
 int vinumpart(dev_t);
 
 extern jmp_buf command_fail;				    /* return here if config fails */
-extern struct cdevsw vinum_cdevsw;
+extern struct dev_ops vinum_ops;
 
 #ifdef VINUMDEBUG
 /* Memory allocation and request tracing */

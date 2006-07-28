@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.24 2006/02/12 19:53:56 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.25 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ static timeout_t sl_outfill;
 static int	slclose (struct tty *,int);
 static int	slinput (int, struct tty *);
 static int	slioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
-static int	sltioctl (struct tty *, u_long, caddr_t, int, struct thread *);
+static int	sltioctl (struct tty *, u_long, caddr_t, int, struct ucred *);
 static int	slopen (dev_t, struct tty *);
 static int	sloutput (struct ifnet *,
 	    struct mbuf *, struct sockaddr *, struct rtentry *);
@@ -343,7 +343,7 @@ slclose(struct tty *tp, int flag)
  */
 /* ARGSUSED */
 static int
-sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
+sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 {
 	struct sl_softc *sc = (struct sl_softc *)tp->t_sc, *nc, *tmpnc;
 	int nsl;

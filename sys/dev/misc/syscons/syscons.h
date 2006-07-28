@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.15 2005/05/26 16:24:33 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.16 2006/07/28 02:17:36 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -169,6 +169,7 @@ struct keyboard;
 struct video_adapter;
 struct scr_stat;
 struct tty;
+struct dev_ioctl_args;
 
 typedef struct sc_softc {
 	int		unit;			/* unit # */
@@ -341,7 +342,7 @@ typedef int	sc_term_init_t(scr_stat *scp, void **tcp, int code);
 typedef int	sc_term_term_t(scr_stat *scp, void **tcp);
 typedef void	sc_term_puts_t(scr_stat *scp, u_char *buf, int len);
 typedef int	sc_term_ioctl_t(scr_stat *scp, struct tty *tp, u_long cmd,
-				caddr_t data, int flag, struct thread *td);
+				caddr_t data, int flag);
 typedef int	sc_term_reset_t(scr_stat *scp, int code);
 #define SC_TE_HARD_RESET 0
 #define SC_TE_SOFT_RESET 1
@@ -514,8 +515,7 @@ typedef struct {
 		(*kbdsw[(kbd)->kb_index]->poll)((kbd), (on))
 
 /* syscons.c */
-extern int 	(*sc_user_ioctl)(dev_t dev, u_long cmd, caddr_t data,
-				 int flag, struct thread *td);
+extern int 	(*sc_user_ioctl)(struct dev_ioctl_args *);
 
 int		sc_probe_unit(int unit, int flags);
 int		sc_attach_unit(int unit, int flags);
@@ -556,7 +556,7 @@ void		sc_hist_end(scr_stat *scp);
 int		sc_hist_up_line(scr_stat *scp);
 int		sc_hist_down_line(scr_stat *scp);
 int		sc_hist_ioctl(struct tty *tp, u_long cmd, caddr_t data,
-			      int flag, struct thread *td);
+			      int flag);
 #endif /* SC_NO_HISTORY */
 
 /* scmouse.c */
@@ -579,7 +579,7 @@ void		sc_remove_all_mouse(sc_softc_t *scp);
 #ifndef SC_NO_SYSMOUSE
 void		sc_mouse_move(scr_stat *scp, int x, int y);
 int		sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data,
-			       int flag, struct thread *td);
+			       int flag);
 #endif /* SC_NO_SYSMOUSE */
 
 /* scvidctl.c */
@@ -588,8 +588,8 @@ int		sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode,
 int		sc_set_graphics_mode(scr_stat *scp, struct tty *tp, int mode);
 int		sc_set_pixel_mode(scr_stat *scp, struct tty *tp,
 				  int xsize, int ysize, int fontsize);
-int		sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
-			     struct thread *td);
+int		sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data,
+				  int flag);
 
 int		sc_render_add(sc_renderer_t *rndr);
 int		sc_render_remove(sc_renderer_t *rndr);

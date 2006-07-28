@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.8 2005/06/10 23:07:01 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.9 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.8 2005/06/10 23:07:01 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.9 2006/07/28 02:17:38 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -43,23 +43,11 @@ static d_open_t sndstat_open;
 static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
-static struct cdevsw sndstat_cdevsw = {
-	/* name */	"sndstat",
-	/* maj */	SND_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	sndstat_open,
-	/* close */	sndstat_close,
-	/* read */	sndstat_read,
-	/* write */	nowrite,
-	/* ioctl */	noioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops sndstat_ops = {
+	{ "sndstat", SND_CDEV_MAJOR, 0 },
+	.d_open =	sndstat_open,
+	.d_close =	sndstat_close,
+	.d_read =	sndstat_read,
 };
 
 struct sndstat_entry {
@@ -108,7 +96,7 @@ SYSCTL_PROC(_hw_snd, OID_AUTO, verbose, CTLTYPE_INT | CTLFLAG_RW,
             0, sizeof(int), sysctl_hw_sndverbose, "I", "");
 
 static int
-sndstat_open(dev_t i_dev, int flags, int mode, struct thread *td)
+sndstat_open(struct dev_open_args *ap)
 {
 	int err;
 
@@ -131,7 +119,7 @@ sndstat_open(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-sndstat_close(dev_t i_dev, int flags, int mode, struct thread *td)
+sndstat_close(struct dev_close_args *ap)
 {
 	crit_enter();
 	if (!sndstat_isopen) {
@@ -146,8 +134,9 @@ sndstat_close(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-sndstat_read(dev_t i_dev, struct uio *buf, int flag)
+sndstat_read(struct dev_read_args *ap)
 {
+	struct uio *uio = ap->a_uio;
 	int l, err;
 
 	crit_enter();
@@ -155,8 +144,11 @@ sndstat_read(dev_t i_dev, struct uio *buf, int flag)
 		crit_exit();
 		return EBADF;
 	}
-    	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
-	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
+    	l = min(uio->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
+	if (l > 0)
+	    err = uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, uio);
+	else
+	    err = 0;
 	sndstat_bufptr += l;
 
 	crit_exit();
@@ -317,8 +309,8 @@ sndstat_prepare(struct sbuf *s)
 static int
 sndstat_init(void)
 {
-	cdevsw_add(&sndstat_cdevsw, -1, SND_DEV_STATUS);
-	make_dev(&sndstat_cdevsw, SND_DEV_STATUS, 
+	dev_ops_add(&sndstat_ops, -1, SND_DEV_STATUS);
+	make_dev(&sndstat_ops, SND_DEV_STATUS, 
 		UID_ROOT, GID_WHEEL, 0444, "sndstat");
 	return (0);
 }
@@ -331,7 +323,7 @@ sndstat_uninit(void)
 		crit_exit();
 		return EBUSY;
 	}
-	cdevsw_remove(&sndstat_cdevsw, -1, SND_DEV_STATUS);
+	dev_ops_remove(&sndstat_ops, -1, SND_DEV_STATUS);
 	crit_exit();
 	return 0;
 }

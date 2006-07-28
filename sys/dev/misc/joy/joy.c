@@ -26,12 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.8 2005/06/16 15:51:34 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.9 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
@@ -81,23 +82,12 @@ static	d_close_t	joyclose;
 static	d_read_t	joyread;
 static	d_ioctl_t	joyioctl;
 
-static struct cdevsw joy_cdevsw = {
-	/* name */	"joy",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	joyopen,
-	/* close */	joyclose,
-	/* read */	joyread,
-	/* write */	nowrite,
-	/* ioctl */	joyioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops joy_ops = {
+	{ "joy", CDEV_MAJOR, 0 },
+	.d_open =	joyopen,
+	.d_close =	joyclose,
+	.d_read =	joyread,
+	.d_ioctl =	joyioctl,
 };
 
 devclass_t joy_devclass;
@@ -144,8 +134,8 @@ joy_attach (device_t dev)
     joy->bt = rman_get_bustag(res);
     joy->port = rman_get_bushandle(res);
     joy->timeout[0] = joy->timeout[1] = 0;
-    cdevsw_add(&joy_cdevsw, -1, unit);
-    make_dev(&joy_cdevsw, unit, 0, 0, 0600, "joy%d", unit);
+    dev_ops_add(&joy_ops, -1, unit);
+    make_dev(&joy_ops, unit, 0, 0, 0600, "joy%d", unit);
     return 0;
 }
 
@@ -164,8 +154,9 @@ static driver_t joy_isa_driver = {
 DRIVER_MODULE(joy, isa, joy_isa_driver, joy_devclass, 0, 0);
 
 static int
-joyopen(dev_t dev, int flags, int fmt, d_thread_t *td)
+joyopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
 
@@ -177,8 +168,9 @@ joyopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-joyclose(dev_t dev, int flags, int fmt, d_thread_t *td)
+joyclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int i = joypart (dev);
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
 
@@ -187,8 +179,10 @@ joyclose(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-joyread(dev_t dev, struct uio *uio, int flag)
+joyread(struct dev_read_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct uio *uio = ap->a_uio;
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
     bus_space_handle_t port = joy->port;
     bus_space_tag_t bt = joy->bt;
@@ -239,13 +233,15 @@ joyread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-joyioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+joyioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    caddr_t data = ap->a_data;
     struct joy_softc *joy = JOY_SOFTC(UNIT(dev));
     int i = joypart (dev);
     int x;
 
-    switch (cmd) {
+    switch (ap->a_cmd) {
     case JOY_SETTIMEOUT:
 	x = *(int *) data;
 	if (x < 1 || x > 10000) /* 10ms maximum! */

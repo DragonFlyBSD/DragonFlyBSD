@@ -24,12 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.8 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.9 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/fcntl.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -65,17 +66,13 @@ static d_ioctl_t apmioctl;
 static d_poll_t apmpoll;
 
 #define CDEV_MAJOR 39
-static struct cdevsw apm_cdevsw = {
-        .d_name = "apm",
-        .d_maj  = CDEV_MAJOR,
-        .d_flags = 0,
-        .d_port = NULL,
-        .d_clone = NULL,
-        .old_open = apmopen,
-        .old_close = apmclose,
-	.old_write = apmwrite,
-        .old_ioctl = apmioctl,
-	.old_poll = apmpoll
+static struct dev_ops apm_ops = {
+	{ "apm", CDEV_MAJOR, 0 },
+        .d_open = apmopen,
+        .d_close = apmclose,
+	.d_write = apmwrite,
+        .d_ioctl = apmioctl,
+	.d_poll = apmpoll
 };
 
 static int
@@ -195,19 +192,19 @@ acpi_capm_get_pwstatus(apm_pwstatus_t app)
 }
 
 static int
-apmopen(dev_t dev, int flag, int fmt, d_thread_t *td)
+apmopen(struct dev_open_args *ap)
 {
 	return (0);
 }
 
 static int
-apmclose(dev_t dev, int flag, int fmt, d_thread_t *td)
+apmclose(struct dev_close_args *ap)
 {
 	return (0);
 }
 
 static int
-apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
+apmioctl(struct dev_ioctl_args *ap)
 {
 	int	error = 0;
 	struct	acpi_softc *acpi_sc;
@@ -216,9 +213,9 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 
 	acpi_sc = device_get_softc(acpi_dev);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case APMIO_SUSPEND:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
 		if (apm_softc.active)
 			acpi_SetSleepState(acpi_sc, acpi_sc->acpi_suspend_sx);
@@ -226,7 +223,7 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 			error = EINVAL;
 		break;
 	case APMIO_STANDBY:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
 		if (apm_softc.active)
 			acpi_SetSleepState(acpi_sc, acpi_sc->acpi_standby_sx);
@@ -236,7 +233,7 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 	case APMIO_GETINFO_OLD:
 		if (acpi_capm_get_info(&info))
 			error = ENXIO;
-		aiop = (apm_info_old_t)addr;
+		aiop = (apm_info_old_t)ap->a_data;
 		aiop->ai_major = info.ai_major;
 		aiop->ai_minor = info.ai_minor;
 		aiop->ai_acline = info.ai_acline;
@@ -245,20 +242,20 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 		aiop->ai_status = info.ai_status;
 		break;
 	case APMIO_GETINFO:
-		if (acpi_capm_get_info((apm_info_t)addr))
+		if (acpi_capm_get_info((apm_info_t)ap->a_data))
 			error = ENXIO;
 		break;
 	case APMIO_GETPWSTATUS:
-		if (acpi_capm_get_pwstatus((apm_pwstatus_t)addr))
+		if (acpi_capm_get_pwstatus((apm_pwstatus_t)ap->a_data))
 			error = ENXIO;
 		break;
 	case APMIO_ENABLE:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
 		apm_softc.active = 1;
 		break;
 	case APMIO_DISABLE:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
 		apm_softc.active = 0;
 		break;
@@ -267,13 +264,13 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 	case APMIO_NOTHALTCPU:
 		break;
 	case APMIO_DISPLAY:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
 		break;
 	case APMIO_BIOS:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return (EPERM);
-		bzero(addr, sizeof(struct apm_bios_arg));
+		bzero(ap->a_data, sizeof(struct apm_bios_arg));
 		break;
 	default:
 		error = EINVAL;
@@ -284,23 +281,24 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 }
 
 static int
-apmwrite(dev_t dev, struct uio *uio, int ioflag)
+apmwrite(struct dev_write_args *ap)
 {
-	return (uio->uio_resid);
+	return (ap->a_uio->uio_resid);
 }
 
 static int
-apmpoll(dev_t dev, int events, d_thread_t *td)
+apmpoll(struct dev_poll_args *ap)
 {
+	ap->a_events = 0;
 	return (0);
 }
 
 static void
 acpi_capm_init(struct acpi_softc *sc)
 {
-	cdevsw_add(&apm_cdevsw, 0, 0);
-        make_dev(&apm_cdevsw, 0, 0, 5, 0664, "apm");
-        make_dev(&apm_cdevsw, 8, 0, 5, 0664, "apm");
+	dev_ops_add(&apm_ops, 0, 0);
+        make_dev(&apm_ops, 0, 0, 5, 0664, "apm");
+        make_dev(&apm_ops, 8, 0, 5, 0664, "apm");
 	printf("Warning: ACPI is disabling APM's device.  You can't run both\n");
 }
 

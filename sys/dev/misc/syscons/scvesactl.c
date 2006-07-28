@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvesactl.c,v 1.15 2000/01/29 15:08:47 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.6 2004/09/04 06:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/Attic/scvesactl.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -49,18 +49,18 @@
 static d_ioctl_t *prev_user_ioctl;
 
 static int
-vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+vesa_ioctl(struct dev_ioctl_args *ap)
 {
 	scr_stat *scp;
 	struct tty *tp;
 	int mode;
 
-	tp = dev->si_tty;
+	tp = ap->a_head.a_dev->si_tty;
 	if (!tp)
 		return ENXIO;
 	scp = SC_STAT(tp->t_dev);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 
 	/* generic text modes */
 	case SW_TEXT_132x25: case SW_TEXT_132x30:
@@ -68,7 +68,7 @@ vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case SW_TEXT_132x60:
 		if (!(scp->sc->adp->va_flags & V_ADP_MODECHANGE))
 			return ENODEV;
-		return sc_set_text_mode(scp, tp, cmd & 0xff, 0, 0, 0);
+		return sc_set_text_mode(scp, tp, ap->a_cmd & 0xff, 0, 0, 0);
 
 	/* text modes */
 	case SW_VESA_C80x60:
@@ -78,7 +78,7 @@ vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case SW_VESA_C132x60:
 		if (!(scp->sc->adp->va_flags & V_ADP_MODECHANGE))
 			return ENODEV;
-		mode = (cmd & 0xff) + M_VESA_BASE;
+		mode = (ap->a_cmd & 0xff) + M_VESA_BASE;
 		return sc_set_text_mode(scp, tp, mode, 0, 0, 0);
 
 	/* graphics modes */
@@ -104,14 +104,14 @@ vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	case SW_VESA_FULL_1280:
 		if (!(scp->sc->adp->va_flags & V_ADP_MODECHANGE))
 			return ENODEV;
-		mode = (cmd & 0xff) + M_VESA_BASE;
+		mode = (ap->a_cmd & 0xff) + M_VESA_BASE;
 		return sc_set_graphics_mode(scp, tp, mode);
 	default:
-		if (IOCGROUP(cmd) == 'V') {
+		if (IOCGROUP(ap->a_cmd) == 'V') {
 			if (!(scp->sc->adp->va_flags & V_ADP_MODECHANGE))
 				return ENODEV;
 
-			mode = (cmd & 0xff) + M_VESA_BASE;
+			mode = (ap->a_cmd & 0xff) + M_VESA_BASE;
 
 			if ((mode > M_VESA_FULL_1280) &&
 			    (mode < M_VESA_MODE_MAX))
@@ -120,7 +120,7 @@ vesa_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	}
 
 	if (prev_user_ioctl)
-		return (*prev_user_ioctl)(dev, cmd, data, flag, td);
+		return (*prev_user_ioctl)(ap);
 	else
 		return ENOIOCTL;
 }

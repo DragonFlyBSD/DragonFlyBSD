@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.12 2005/06/15 11:56:03 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.13 2006/07/28 02:17:40 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -140,7 +140,7 @@ static u_char sinetab[];
 PDEVSTATIC d_open_t	i4btelopen;
 PDEVSTATIC d_close_t	i4btelclose;
 PDEVSTATIC d_read_t	i4btelread;
-PDEVSTATIC d_read_t	i4btelwrite;
+PDEVSTATIC d_write_t	i4btelwrite;
 PDEVSTATIC d_ioctl_t	i4btelioctl;
 
 PDEVSTATIC d_poll_t i4btelpoll;
@@ -148,23 +148,14 @@ PDEVSTATIC d_poll_t i4btelpoll;
 
 #define CDEV_MAJOR 56
 
-static struct cdevsw i4btel_cdevsw = {
-	/* name */      "i4btel",
-	/* maj */       CDEV_MAJOR,
-	/* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      i4btelopen,
-	/* close */     i4btelclose,
-	/* read */      i4btelread,
-	/* write */     i4btelwrite,
-	/* ioctl */     i4btelioctl,
-	/* poll */      POLLFIELD,
-	/* mmap */      nommap,
-	/* strategy */  nostrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+static struct dev_ops i4btel_ops = {
+	{ "i4btel", CDEV_MAJOR, 0 },
+	.d_open =	i4btelopen,
+	.d_close =	i4btelclose,
+	.d_read =	i4btelread,
+	.d_write =	i4btelwrite,
+	.d_ioctl =	i4btelioctl,
+	.d_poll =	POLLFIELD,
 };
 
 PDEVSTATIC void i4btelinit(void *unused);
@@ -182,7 +173,7 @@ PSEUDO_SET(i4btelattach, i4b_tel);
 PDEVSTATIC void
 i4btelinit(void *unused)
 {
-	cdevsw_add(&i4btel_cdevsw, 0, 0);
+	dev_ops_add(&i4btel_ops, 0, 0);
 }
 
 SYSINIT(i4bteldev, SI_SUB_DRIVERS,
@@ -211,13 +202,13 @@ i4btelattach(void *dummy)
 			switch(j)
 			{
 				case FUNCTEL:	/* normal i4btel device */
-				  	make_dev(&i4btel_cdevsw, i,
+				  	make_dev(&i4btel_ops, i,
 						UID_ROOT, GID_WHEEL,
 						0600, "i4btel%d", i);
 					break;
 				
 				case FUNCDIAL:	/* i4bteld dialout device */
-				  	make_dev(&i4btel_cdevsw, i+(1<<UNITBITS),
+				  	make_dev(&i4btel_ops, i+(1<<UNITBITS),
 						UID_ROOT, GID_WHEEL,
 						0600, "i4bteld%d", i);
 					break;
@@ -231,8 +222,9 @@ i4btelattach(void *dummy)
  *	open tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelopen(dev_t dev, int flag, int fmt, struct thread *td)
+i4btelopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	
@@ -260,8 +252,9 @@ i4btelopen(dev_t dev, int flag, int fmt, struct thread *td)
  *	close tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelclose(dev_t dev, int flag, int fmt, struct thread *td)
+i4btelclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	tel_sc_t *sc;
@@ -302,8 +295,9 @@ i4btelclose(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4btelioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+i4btelioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	int error = 0;
@@ -313,14 +307,14 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 	if(func == FUNCTEL)
 	{
-		switch(cmd)
+		switch(ap->a_cmd)
 		{
 			case I4B_TEL_GETAUDIOFMT:
-				*(int *)data = sc->audiofmt;
+				*(int *)ap->a_data = sc->audiofmt;
 				break;
 			
 			case I4B_TEL_SETAUDIOFMT:
-				switch (*(int *)data)
+				switch (*(int *)ap->a_data)
 				{
 					case CVT_NONE:
 						sc->rcvttab = 0;
@@ -343,7 +337,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 						break;
 				}
 				if(error == 0)
-					sc->audiofmt = *(int *)data;
+					sc->audiofmt = *(int *)ap->a_data;
 				break;
 	
 			case I4B_TEL_EMPTYINPUTQUEUE:
@@ -363,7 +357,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
                 	{
 				msg_vr_req_t *mvr;
 
-				mvr = (msg_vr_req_t *)data;
+				mvr = (msg_vr_req_t *)ap->a_data;
 
 				mvr->version = VERSION;
 				mvr->release = REL;
@@ -374,7 +368,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			{
 				struct i4b_tel_tones *tt;
 
-				tt = (struct i4b_tel_tones *)data;
+				tt = (struct i4b_tel_tones *)ap->a_data;
 				crit_enter();
 				while ((sc->devstate & ST_TONE) && 
 				    sc->tones.duration[sc->toneidx] != 0) {
@@ -409,7 +403,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	}
 	else if(func == FUNCDIAL)
 	{
-		switch(cmd)
+		switch(ap->a_cmd)
 		{
 			default:
 				error = ENOTTY;
@@ -423,8 +417,10 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
  *	read from tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelread(dev_t dev, struct uio *uio, int ioflag)
+i4btelread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 
@@ -541,8 +537,10 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
  *	write to tel device
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
+i4btelwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int unit = UNIT(dev);
 	int func = FUNC(dev);
 	struct mbuf *m;
@@ -700,8 +698,9 @@ tel_tone(tel_sc_t *sc)
  *	device driver poll
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4btelpoll(dev_t dev, int events, struct thread *td)
+i4btelpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int revents = 0;	/* Events we found */
 	int unit = UNIT(dev);
 	int func = FUNC(dev);	
@@ -714,6 +713,7 @@ i4btelpoll(dev_t dev, int events, struct thread *td)
 	{
 		NDBGL4(L4_TELDBG, "i4btel%d, !ST_ISOPEN", unit);
 		crit_exit();
+		ap->a_events = 0;
 		return(0);
 	}
 
@@ -724,55 +724,56 @@ i4btelpoll(dev_t dev, int events, struct thread *td)
 	         * transmit queue can take them
 		 */
 		 
-		if((events & (POLLOUT|POLLWRNORM))	&&
+		if((ap->a_events & (POLLOUT|POLLWRNORM))	&&
 			(sc->devstate & ST_CONNECTED)	&&
 			(sc->isdn_linktab != NULL)	&&
 			(!IF_QFULL(sc->isdn_linktab->tx_queue)))
 		{
 			NDBGL4(L4_TELDBG, "i4btel%d, POLLOUT", unit);
-			revents |= (events & (POLLOUT|POLLWRNORM));
+			revents |= (ap->a_events & (POLLOUT|POLLWRNORM));
 		}
 		
 		/* ... while reads are OK if we have any data */
 	
-		if((events & (POLLIN|POLLRDNORM))	&&
+		if((ap->a_events & (POLLIN|POLLRDNORM))	&&
 			(sc->devstate & ST_CONNECTED)	&&
 			(sc->isdn_linktab != NULL)	&&
 			(!IF_QEMPTY(sc->isdn_linktab->rx_queue)))
 		{
 			NDBGL4(L4_TELDBG, "i4btel%d, POLLIN", unit);
-			revents |= (events & (POLLIN|POLLRDNORM));
+			revents |= (ap->a_events & (POLLIN|POLLRDNORM));
 		}
 			
 		if(revents == 0)
 		{
 			NDBGL4(L4_TELDBG, "i4btel%d, selrecord", unit);
-			selrecord(td, &sc->selp);
+			selrecord(curthread, &sc->selp);
 		}
 	}
 	else if(func == FUNCDIAL)
 	{
-		if(events & (POLLOUT|POLLWRNORM))
+		if(ap->a_events & (POLLOUT|POLLWRNORM))
 		{
 			NDBGL4(L4_TELDBG, "i4bteld%d,  POLLOUT", unit);
-			revents |= (events & (POLLOUT|POLLWRNORM));
+			revents |= (ap->a_events & (POLLOUT|POLLWRNORM));
 		}
 
-		if(events & (POLLIN|POLLRDNORM))
+		if(ap->a_events & (POLLIN|POLLRDNORM))
 		{
 			NDBGL4(L4_TELDBG, "i4bteld%d,  POLLIN, result = %d", unit, sc->result);
 			if(sc->result != 0)
-				revents |= (events & (POLLIN|POLLRDNORM));
+				revents |= (ap->a_events & (POLLIN|POLLRDNORM));
 		}
 			
 		if(revents == 0)
 		{
 			NDBGL4(L4_TELDBG, "i4bteld%d,  selrecord", unit);
-			selrecord(td, &sc->selp);
+			selrecord(curthread, &sc->selp);
 		}
 	}
 	crit_exit();
-	return(revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 /*===========================================================================*

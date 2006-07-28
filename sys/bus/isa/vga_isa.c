@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.9 2005/07/10 13:06:18 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.10 2006/07/28 02:17:34 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/bus.h>
 #include <sys/fbio.h>
 
@@ -93,23 +94,14 @@ static d_write_t	isavga_write;
 static d_ioctl_t	isavga_ioctl;
 static d_mmap_t		isavga_mmap;
 
-static struct cdevsw isavga_cdevsw = {
-	/* name */	VGA_DRIVER_NAME,
-	/* maj */	-1,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */     NULL,
-
-	/* open */	isavga_open,
-	/* close */	isavga_close,
-	/* read */	isavga_read,
-	/* write */	isavga_write,
-	/* ioctl */	isavga_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	isavga_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops isavga_ops = {
+	{ VGA_DRIVER_NAME, -1, 0 },
+	.d_open =	isavga_open,
+	.d_close =	isavga_close,
+	.d_read =	isavga_read,
+	.d_write =	isavga_write,
+	.d_ioctl =	isavga_ioctl,
+	.d_mmap =	isavga_mmap,
 };
 
 #endif /* FB_INSTALL_CDEV */
@@ -169,8 +161,8 @@ isavga_attach(device_t dev)
 
 #ifdef FB_INSTALL_CDEV
 	/* attach a virtual frame buffer device */
-	cdevsw_add(&isavga_cdevsw, VGA_MKMINOR(-1), VGA_MKMINOR(unit));
-	sc->devt = make_dev(&isavga_cdevsw, VGA_MKMINOR(unit), 0, 0, 02660, "vga%x", VGA_MKMINOR(unit));
+	dev_ops_add(&isavga_ops, VGA_MKMINOR(-1), VGA_MKMINOR(unit));
+	sc->devt = make_dev(&isavga_ops, VGA_MKMINOR(unit), 0, 0, 02660, "vga%x", VGA_MKMINOR(unit));
 	reference_dev(sc->devt);
 	error = fb_attach(sc->devt, sc->adp);
 	if (error)
@@ -243,39 +235,54 @@ isavga_resume(device_t dev)
 #ifdef FB_INSTALL_CDEV
 
 static int
-isavga_open(dev_t dev, int flag, int mode, struct thread *td)
+isavga_open(struct dev_open_args *ap)
 {
-	return vga_open(dev, VGA_SOFTC(VGA_UNIT(dev)), flag, mode, td);
+	dev_t dev = ap->a_head.a_dev;
+
+	return vga_open(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_oflags,
+			ap->a_devtype, ap->a_cred);
 }
 
 static int
-isavga_close(dev_t dev, int flag, int mode, struct thread *td)
+isavga_close(struct dev_close_args *ap)
 {
-	return vga_close(dev, VGA_SOFTC(VGA_UNIT(dev)), flag, mode, td);
+	dev_t dev = ap->a_head.a_dev;
+
+	return vga_close(dev, VGA_SOFTC(VGA_UNIT(dev)),
+			 ap->a_fflag, ap->a_devtype);
 }
 
 static int
-isavga_read(dev_t dev, struct uio *uio, int flag)
+isavga_read(struct dev_read_args *ap)
 {
-	return vga_read(dev, VGA_SOFTC(VGA_UNIT(dev)), uio, flag);
+	dev_t dev = ap->a_head.a_dev;
+
+	return vga_read(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_uio, ap->a_ioflag);
 }
 
 static int
-isavga_write(dev_t dev, struct uio *uio, int flag)
+isavga_write(struct dev_write_args *ap)
 {
-	return vga_write(dev, VGA_SOFTC(VGA_UNIT(dev)), uio, flag);
+	dev_t dev = ap->a_head.a_dev;
+
+	return vga_write(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_uio, ap->a_ioflag);
 }
 
 static int
-isavga_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
+isavga_ioctl(struct dev_ioctl_args *ap)
 {
-	return vga_ioctl(dev, VGA_SOFTC(VGA_UNIT(dev)), cmd, arg, flag, td);
+	dev_t dev = ap->a_head.a_dev;
+
+	return vga_ioctl(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
 }
 
 static int
-isavga_mmap(dev_t dev, vm_offset_t offset, int prot)
+isavga_mmap(struct dev_mmap_args *ap)
 {
-	return vga_mmap(dev, VGA_SOFTC(VGA_UNIT(dev)), offset, prot);
+	dev_t dev = ap->a_head.a_dev;
+
+	ap->a_result = vga_mmap(dev, VGA_SOFTC(VGA_UNIT(dev)), ap->a_offset, ap->a_nprot);
+	return(0);
 }
 
 #endif /* FB_INSTALL_CDEV */

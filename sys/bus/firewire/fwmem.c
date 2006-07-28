@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.9 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.10 2006/07/28 02:17:33 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -276,12 +276,13 @@ fwmem_write_block(
 
 
 int
-fwmem_open (dev_t dev, int flags, int fmt, fw_proc *td)
+fwmem_open (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 
 	if (dev->si_drv1 != NULL) {
-		if ((flags & FWRITE) != 0)
+		if ((ap->a_oflags & FWRITE) != 0)
 			return (EBUSY);
 		fms = (struct fwmem_softc *)dev->si_drv1;
 		fms->refcount ++;
@@ -302,8 +303,9 @@ fwmem_open (dev_t dev, int flags, int fmt, fw_proc *td)
 }
 
 int
-fwmem_close (dev_t dev, int flags, int fmt, fw_proc *td)
+fwmem_close (struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 
 	fms = (struct fwmem_softc *)dev->si_drv1;
@@ -339,9 +341,11 @@ fwmem_biodone(struct fw_xfer *xfer)
 	biodone(bio);
 }
 
-void
-fwmem_strategy(dev_t dev, struct bio *bio)
+int
+fwmem_strategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct firewire_softc *sc;
 	struct fwmem_softc *fms;
@@ -410,21 +414,23 @@ error:
 		bp->b_resid = bp->b_bcount;
 		biodone(bio);
 	}
+	return(0);
 }
 
 int
-fwmem_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
+fwmem_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct fwmem_softc *fms;
 	int err = 0;
 
 	fms = (struct fwmem_softc *)dev->si_drv1;
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case FW_SDEUI64:
-		bcopy(data, &fms->eui, sizeof(struct fw_eui64));
+		bcopy(ap->a_data, &fms->eui, sizeof(struct fw_eui64));
 		break;
 	case FW_GDEUI64:
-		bcopy(&fms->eui, data, sizeof(struct fw_eui64));
+		bcopy(&fms->eui, ap->a_data, sizeof(struct fw_eui64));
 		break;
 	default:
 		err = EINVAL;
@@ -432,16 +438,12 @@ fwmem_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
 	return(err);
 }
 int
-fwmem_poll (dev_t dev, int events, fw_proc *td)
+fwmem_poll(struct dev_poll_args *ap)
 {  
 	return EINVAL;
 }
 int
-#if defined(__DragonFly__) || __FreeBSD_version < 500102
-fwmem_mmap (dev_t dev, vm_offset_t offset, int nproto)
-#else
-fwmem_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)
-#endif
+fwmem_mmap(struct dev_mmap_args *ap)
 {  
 	return EINVAL;
 }

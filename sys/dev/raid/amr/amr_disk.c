@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.10 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.11 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -96,23 +96,15 @@ static	d_dump_t	amrd_dump;
 
 #define AMRD_CDEV_MAJOR	133
 
-static struct cdevsw amrd_cdevsw = {
-		/* name */ 	"amrd",
-		/* maj */	AMRD_CDEV_MAJOR,
-		/* flags */	D_DISK,
-		/* port */      NULL,
-		/* clone */	NULL,
-
-		/* open */	amrd_open,
-		/* close */	amrd_close,
-		/* read */	physread,
-		/* write */	physwrite,
-		/* ioctl */	amrd_ioctl,
-		/* poll */	nopoll,
-		/* mmap */	nommap,
-		/* strategy */	amrd_strategy,
-		/* dump */	amrd_dump,
-		/* psize */ 	nopsize
+static struct dev_ops amrd_ops = {
+	{ "amrd", AMRD_CDEV_MAJOR, D_DISK },
+	.d_open = amrd_open,
+	.d_close = amrd_close,
+	.d_read = physread,
+	.d_write = physwrite,
+	.d_ioctl = amrd_ioctl,
+	.d_strategy = amrd_strategy,
+	.d_dump = amrd_dump
 };
 
 static devclass_t	amrd_devclass;
@@ -133,8 +125,9 @@ static driver_t amrd_driver = {
 DRIVER_MODULE(amrd, amr, amrd_driver, amrd_devclass, 0, 0);
 
 static int
-amrd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+amrd_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
 #if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
     struct disklabel    *label;
@@ -171,8 +164,9 @@ amrd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-amrd_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+amrd_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
 
     debug_called(1);
@@ -184,9 +178,8 @@ amrd_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-amrd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+amrd_ioctl(struct dev_ioctl_args *ap)
 {
-
     return (ENOTTY);
 }
 
@@ -195,9 +188,9 @@ amrd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
  * System crashdump support
  */
 int
-amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+amrd_dump(struct dev_dump_args *ap)
 {
-    
+    dev_t dev = ap->a_head.a_dev;
     struct amrd_softc	*amrd_sc = (struct amrd_softc *)dev->si_drv1;
     struct amr_softc	*amr_sc;
     vm_paddr_t		addr = 0;
@@ -214,15 +207,15 @@ amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
     if (!amrd_sc || !amr_sc)
 	return(ENXIO);
 
-    blkcnt = howmany(PAGE_SIZE, secsize);
+    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
     driveno = amrd_sc->amrd_drive - amr_sc->amr_drive;
 
-    while (count > 0) {
+    while (ap->a_count > 0) {
     	caddr_t	va = NULL;
 
-	if ((count / blkcnt) < dumppages)
-	    dumppages = count / blkcnt;
+	if ((ap->a_count / blkcnt) < dumppages)
+	    dumppages = ap->a_count / blkcnt;
 
 	for (i = 0; i < dumppages; ++i) {
 	    vm_paddr_t a = addr + (i * PAGE_SIZE);
@@ -232,15 +225,15 @@ amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 		va = pmap_kenter_temporary(trunc_page(0), i);
 	}
 
-	if ((error = amr_dump_blocks(amr_sc, driveno, blkno, (void *)va,
+	if ((error = amr_dump_blocks(amr_sc, driveno, ap->a_blkno, (void *)va,
 				      (PAGE_SIZE * dumppages) / AMR_BLKSIZE)) != 0)
 	    	return(error);
 
-	if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
 	    return(EINTR);
 
-	blkno += blkcnt * dumppages;
-	count -= blkcnt * dumppages;
+	ap->a_blkno += blkcnt * dumppages;
+	ap->a_count -= blkcnt * dumppages;
 	addr += PAGE_SIZE * dumppages;
     }
     return (0);
@@ -251,9 +244,11 @@ amrd_dump(dev_t dev, u_int count, u_int blkno, u_int secsize)
  * to complete.  Multi-page transfers are supported.  All I/O requests must
  * be a multiple of a sector in length.
  */
-static void
-amrd_strategy(dev_t dev, struct bio *bio)
+static int
+amrd_strategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct amrd_softc *sc = (struct amrd_softc *)dev->si_drv1;
 
@@ -266,7 +261,7 @@ amrd_strategy(dev_t dev, struct bio *bio)
 
     devstat_start_transaction(&sc->amrd_stats);
     amr_submit_bio(sc->amrd_controller, bio);
-    return;
+    return(0);
 
  bad:
     bp->b_flags |= B_ERROR;
@@ -276,6 +271,7 @@ amrd_strategy(dev_t dev, struct bio *bio)
      */
     bp->b_resid = bp->b_bcount;
     biodone(bio);
+    return(0);
 }
 
 void
@@ -328,7 +324,7 @@ amrd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, 0, &amrd_cdevsw);
+    sc->amrd_dev_t = disk_create(sc->amrd_unit, &sc->amrd_disk, 0, &amrd_ops);
     sc->amrd_dev_t->si_drv1 = sc;
 
     /* set maximum I/O size to match the maximum s/g size */

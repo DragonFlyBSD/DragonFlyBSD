@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.10 2006/02/01 20:43:42 corecode Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.11 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -51,23 +51,13 @@ static d_open_t		smopen;
 static d_close_t	smclose;
 static d_ioctl_t	smioctl;
 
-static struct cdevsw sm_cdevsw = {
-	/* name */	"sysmouse",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	smopen,
-	/* close */	smclose,
-	/* read */	ttyread,
-	/* write */	nowrite,
-	/* ioctl */	smioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops sm_ops = {
+	{ "sysmouse", CDEV_MAJOR, D_TTY },
+	.d_open =	smopen,
+	.d_close =	smclose,
+	.d_read =	ttyread,
+	.d_ioctl =	smioctl,
+	.d_poll =	ttypoll,
 };
 
 /* local variables */
@@ -79,8 +69,9 @@ static void		smstart(struct tty *tp);
 static int		smparam(struct tty *tp, struct termios *t);
 
 static int
-smopen(dev_t dev, int flag, int mode, struct thread *td)
+smopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	DPRINTF(5, ("smopen: dev:%d,%d, vty:%d\n",
@@ -106,7 +97,7 @@ smopen(dev_t dev, int flag, int mode, struct thread *td)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		smparam(tp, &tp->t_termios);
 		(*linesw[tp->t_line].l_modem)(tp, 1);
-	} else if (tp->t_state & TS_XCLUDE && suser(td)) {
+	} else if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0)) {
 		return EBUSY;
 	}
 
@@ -114,14 +105,15 @@ smopen(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 static int
-smclose(dev_t dev, int flag, int mode, struct thread *td)
+smclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 
 	tp = dev->si_tty;
 	crit_enter();
 	mouse_level = 0;
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ttyclose(tp);
 	crit_exit();
 
@@ -156,18 +148,19 @@ smparam(struct tty *tp, struct termios *t)
 }
 
 static int
-smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+smioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	mousehw_t *hw;
 	mousemode_t *mode;
 	int error;
 
 	tp = dev->si_tty;
-	switch (cmd) {
 
+	switch (ap->a_cmd) {
 	case MOUSE_GETHWINFO:	/* get device information */
-		hw = (mousehw_t *)data;
+		hw = (mousehw_t *)ap->a_data;
 		hw->buttons = 10;		/* XXX unknown */
 		hw->iftype = MOUSE_IF_SYSMOUSE;
 		hw->type = MOUSE_MOUSE;
@@ -176,7 +169,7 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return 0;
 
 	case MOUSE_GETMODE:	/* get protocol/mode */
-		mode = (mousemode_t *)data;
+		mode = (mousemode_t *)ap->a_data;
 		mode->level = mouse_level;
 		switch (mode->level) {
 		case 0: /* emulate MouseSystems protocol */
@@ -202,7 +195,7 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return 0;
 
 	case MOUSE_SETMODE:	/* set protocol/mode */
-		mode = (mousemode_t *)data;
+		mode = (mousemode_t *)ap->a_data;
 		if (mode->level == -1)
 			; 	/* don't change the current setting */
 		else if ((mode->level < 0) || (mode->level > 1))
@@ -212,18 +205,18 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return 0;
 
 	case MOUSE_GETLEVEL:	/* get operation level */
-		*(int *)data = mouse_level;
+		*(int *)ap->a_data = mouse_level;
 		return 0;
 
 	case MOUSE_SETLEVEL:	/* set operation level */
-		if ((*(int *)data  < 0) || (*(int *)data > 1))
+		if ((*(int *)ap->a_data  < 0) || (*(int *)ap->a_data > 1))
 			return EINVAL;
-		mouse_level = *(int *)data;
+		mouse_level = *(int *)ap->a_data;
 		return 0;
 
 	case MOUSE_GETSTATUS:	/* get accumulated mouse events */
 		crit_enter();
-		*(mousestatus_t *)data = mouse_status;
+		*(mousestatus_t *)ap->a_data = mouse_status;
 		mouse_status.flags = 0;
 		mouse_status.obutton = mouse_status.button;
 		mouse_status.dx = 0;
@@ -243,10 +236,10 @@ smioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		return ENODEV;
 	}
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return error;
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (error != ENOIOCTL)
 		return error;
 	return ENOTTY;
@@ -257,8 +250,8 @@ sm_attach_mouse(void *unused)
 {
 	dev_t dev;
 
-	cdevsw_add(&sm_cdevsw, -1, SC_MOUSE);
-	dev = make_dev(&sm_cdevsw, SC_MOUSE, UID_ROOT, GID_WHEEL, 0600,
+	dev_ops_add(&sm_ops, -1, SC_MOUSE);
+	dev = make_dev(&sm_ops, SC_MOUSE, UID_ROOT, GID_WHEEL, 0600,
 		       "sysmouse");
 	/* sysmouse doesn't have scr_stat */
 }

@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.14 2005/10/28 03:25:46 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.15 2006/07/28 02:17:36 dillon Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
@@ -192,23 +193,13 @@ static	d_read_t	lptread;
 static	d_ioctl_t	lptioctl;
 
 #define CDEV_MAJOR 16
-static struct cdevsw lpt_cdevsw = {
-	/* name */	LPT_NAME,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	lptopen,
-	/* close */	lptclose,
-	/* read */	lptread,
-	/* write */	lptwrite,
-	/* ioctl */	lptioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops lpt_ops = {
+	{ LPT_NAME, CDEV_MAJOR, 0 },
+	.d_open =	lptopen,
+	.d_close =	lptclose,
+	.d_read =	lptread,
+	.d_write =	lptwrite,
+	.d_ioctl =	lptioctl,
 };
 
 static int
@@ -410,10 +401,10 @@ lpt_attach(device_t dev)
 
 	lpt_release_ppbus(dev);
 
-	cdevsw_add(&lpt_cdevsw, LP_UNITMASK, unit);
-	make_dev(&lpt_cdevsw, unit,
+	dev_ops_add(&lpt_ops, LP_UNITMASK, unit);
+	make_dev(&lpt_ops, unit,
 	    UID_ROOT, GID_WHEEL, 0600, LPT_NAME "%d", unit);
-	make_dev(&lpt_cdevsw, unit | LP_BYPASS,
+	make_dev(&lpt_ops, unit | LP_BYPASS,
 	    UID_ROOT, GID_WHEEL, 0600, LPT_NAME "%d.ctl", unit);
 	return (0);
 }
@@ -458,8 +449,9 @@ lptout(void *arg)
  */
 
 static	int
-lptopen(dev_t dev, int flags, int fmt, struct thread *p)
+lptopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int trys, err;
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
@@ -578,8 +570,9 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
  */
 
 static	int
-lptclose(dev_t dev, int flags, int fmt, struct thread *p)
+lptclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
 	device_t lptdev = UNITODEVICE(unit);
@@ -690,8 +683,10 @@ lpt_pushbytes(device_t dev)
  */
 
 static int
-lptread(dev_t dev, struct uio *uio, int ioflag)
+lptread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
         u_int	unit = LPTUNIT(minor(dev));
 	struct lpt_data *sc = UNITOSOFTC(unit);
 	device_t lptdev = UNITODEVICE(unit);
@@ -735,8 +730,10 @@ error:
  */
 
 static	int
-lptwrite(dev_t dev, struct uio *uio, int ioflag)
+lptwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	unsigned n;
 	int err;
         u_int	unit = LPTUNIT(minor(dev));
@@ -902,14 +899,15 @@ lptintr(device_t dev)
 }
 
 static	int
-lptioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *p)
+lptioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int	error = 0;
         u_int	unit = LPTUNIT(minor(dev));
         struct	lpt_data *sc = UNITOSOFTC(unit);
 	u_char	old_sc_irq;	/* old printer IRQ status */
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case LPT_IRQ :
 		if(sc->sc_irq & LP_HAS_IRQ) {
 			/*
@@ -922,7 +920,7 @@ lptioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *p)
 			 * this gets syslog'd.
 			 */
 			old_sc_irq = sc->sc_irq;
-			switch(*(int*)data) {
+			switch(*(int*)ap->a_data) {
 			case 0:
 				sc->sc_irq &= (~LP_ENABLE_IRQ);
 				break;

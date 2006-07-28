@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.8 2005/10/28 03:25:48 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.9 2006/07/28 02:17:36 dillon Exp $
  *
  */
 
@@ -31,10 +31,11 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
-#include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
 
@@ -69,23 +70,11 @@ static	d_close_t		pcfclock_close;
 static	d_read_t		pcfclock_read;
 
 #define CDEV_MAJOR 140
-static struct cdevsw pcfclock_cdevsw = {
-	/* name */	PCFCLOCK_NAME,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	pcfclock_open,
-	/* close */	pcfclock_close,
-	/* read */	pcfclock_read,
-	/* write */	nowrite,
-	/* ioctl */	noioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops pcfclock_ops = {
+	{ PCFCLOCK_NAME, CDEV_MAJOR, 0 },
+	.d_open =	pcfclock_open,
+	.d_close =	pcfclock_close,
+	.d_read =	pcfclock_read,
 };
 
 #ifndef PCFCLOCK_MAX_RETRIES
@@ -145,16 +134,17 @@ pcfclock_attach(device_t dev)
 	
 	unit = device_get_unit(dev);
 
-	cdevsw_add(&pcfclock_cdevsw, -1, unit);
-	make_dev(&pcfclock_cdevsw, unit,
+	dev_ops_add(&pcfclock_ops, -1, unit);
+	make_dev(&pcfclock_ops, unit,
 			UID_ROOT, GID_WHEEL, 0444, PCFCLOCK_NAME "%d", unit);
 
 	return (0);
 }
 
 static int 
-pcfclock_open(dev_t dev, int flag, int fms, struct thread *td)
+pcfclock_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);
 	device_t pcfclockdev = UNITODEVICE(unit);
@@ -165,7 +155,7 @@ pcfclock_open(dev_t dev, int flag, int fms, struct thread *td)
 		return (ENXIO);
 
 	if ((res = ppb_request_bus(ppbus, pcfclockdev,
-		(flag & O_NONBLOCK) ? PPB_DONTWAIT : PPB_WAIT)))
+		(ap->a_oflags & O_NONBLOCK) ? PPB_DONTWAIT : PPB_WAIT)))
 		return (res);
 
 	sc->count++;
@@ -174,8 +164,9 @@ pcfclock_open(dev_t dev, int flag, int fms, struct thread *td)
 }
 
 static int
-pcfclock_close(dev_t dev, int flags, int fmt, struct thread *td)
+pcfclock_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pcfclock_data *sc = UNITOSOFTC(unit);
 	device_t pcfclockdev = UNITODEVICE(unit);
@@ -301,14 +292,15 @@ pcfclock_read_dev(dev_t dev, char *buf, int maxretries)
 	return (error);
 }
 
-static ssize_t
-pcfclock_read(dev_t dev, struct uio *uio, int ioflag)
+static int
+pcfclock_read(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	char buf[18];
 	int error = 0;
 
-	if (uio->uio_resid < 18)
+	if (ap->a_uio->uio_resid < 18)
 		return (ERANGE);
 
 	error = pcfclock_read_dev(dev, buf, PCFCLOCK_MAX_RETRIES);
@@ -318,7 +310,7 @@ pcfclock_read(dev_t dev, struct uio *uio, int ioflag)
 	} else {
 		pcfclock_display_data(dev, buf);
 		
-		uiomove(buf, 18, uio);
+		uiomove(buf, 18, ap->a_uio);
 	}
 	
 	return (error);

@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.11 2005/10/13 08:50:33 sephe Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.12 2006/07/28 02:17:36 dillon Exp $
  *
  */
 
@@ -58,6 +58,7 @@ error "Can only have 1 spigot configured."
 #include	<sys/param.h>
 #include	<sys/systm.h>
 #include	<sys/conf.h>
+#include	<sys/device.h>
 #include	<sys/proc.h>
 #include	<sys/signalvar.h>
 #include	<sys/mman.h>
@@ -96,23 +97,14 @@ static	d_ioctl_t	spigot_ioctl;
 static	d_mmap_t	spigot_mmap;
 
 #define CDEV_MAJOR 11
-static struct cdevsw spigot_cdevsw = {
-	/* name */	"spigot",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	spigot_open,
-	/* close */	spigot_close,
-	/* read */	spigot_read,
-	/* write */	spigot_write,
-	/* ioctl */	spigot_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	spigot_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops spigot_ops = {
+	{ "spigot", CDEV_MAJOR, 0 },
+	.d_open =	spigot_open,
+	.d_close =	spigot_close,
+	.d_read =	spigot_read,
+	.d_write =	spigot_write,
+	.d_ioctl =	spigot_ioctl,
+	.d_mmap =	spigot_mmap,
 };
 
 static void	spigintr(void *);
@@ -147,16 +139,19 @@ spigot_attach(struct isa_device *devp)
 	devp->id_intr = (inthand2_t *)spigintr;
 	ss->maddr = kvtop(devp->id_maddr);
 	ss->irq = devp->id_irq;
-	cdevsw_add(&spigot_cdevsw, -1, unit);
-	make_dev(&spigot_cdevsw, unit, 0, 0, 0644, "spigot%d", unit);
+	dev_ops_add(&spigot_ops, -1, unit);
+	make_dev(&spigot_ops, unit, 0, 0, 0644, "spigot%d", unit);
 	return 1;
 }
 
 static	int
-spigot_open(dev_t dev, int flags, int fmt, struct thread *td)
+spigot_open(struct dev_open_args *ap)
 {
-int			error;
-struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
+	dev_t dev = ap->a_head.a_dev;
+	int error;
+	struct spigot_softc *ss;
+
+	ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 
 	if((ss->flags & ALIVE) == 0)
 		return ENXIO;
@@ -171,7 +166,7 @@ struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 	 * require sufficient privilege soon and nothing much can be done
 	 * without them.
 	 */
-	error = suser(td);
+	error = suser_cred(ap->a_cred, 0);
 	if (error != 0)
 		return error;
 	if (securelevel > 0)
@@ -186,10 +181,12 @@ struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 }
 
 static	int
-spigot_close(dev_t dev, int flags, int fmt, struct thread *td)
+spigot_close(struct dev_close_args *ap)
 {
-struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
+	dev_t dev = ap->a_head.a_dev;
+	struct spigot_softc *ss;
 
+	ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 	ss->flags &= ~OPEN;
 	ss->p = 0;
 	ss->signal_num = 0;
@@ -200,45 +197,50 @@ struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
 }
 
 static	int
-spigot_write(dev_t dev, struct uio *uio, int ioflag)
+spigot_write(struct dev_write_args *ap)
 {
 	return ENXIO;
 }
 
 static	int
-spigot_read(dev_t dev, struct uio *uio, int ioflag)
+spigot_read(struct dev_read_args *ap)
 {
 	return ENXIO;
 }
 
 
 static	int
-spigot_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+spigot_ioctl(struct dev_ioctl_args *ap)
 {
-int			error;
-struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
-struct	spigot_info	*info;
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
+	int error;
+	struct spigot_softc *ss;
+	struct spigot_info *info;
 
-	if(!data) return(EINVAL);
-	switch(cmd){
+	ss = (struct spigot_softc *)&spigot_softc[UNIT(dev)];
+	if (data == NULL)
+		return(EINVAL);
+
+	switch(ap->a_cmd){
 	case	SPIGOT_SETINT:
 		if (*(int *)data < 0 || *(int *)data > _SIG_MAXSIG)
 			return (EINVAL);
-		ss->p = td->td_proc;
+		ss->p = curproc;
 		ss->signal_num = *((int *)data);
 		break;
 	case	SPIGOT_IOPL_ON:	/* allow access to the IO PAGE */
 #if !defined(SPIGOT_UNSECURE)
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0)
 			return error;
 		if (securelevel > 0)
 			return EPERM;
 #endif
-		td->td_proc->p_md.md_regs->tf_eflags |= PSL_IOPL;
+		curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
 		break;
 	case	SPIGOT_IOPL_OFF: /* deny access to the IO PAGE */
-		td->td_proc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+		curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
 		break;
 	case	SPIGOT_GET_INFO:
 		info = (struct spigot_info *)data;
@@ -260,24 +262,23 @@ static void
 spigintr(void *arg)
 {
 	int unit = (int)arg;
-struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[unit];
+	struct spigot_softc *ss;
 
+	ss = (struct spigot_softc *)&spigot_softc[unit];
 	if(ss->p && ss->signal_num)
 		psignal(ss->p, ss->signal_num);
 }
 
 static	int
-spigot_mmap(dev_t dev, vm_offset_t offset, int nprot)
+spigot_mmap(struct dev_mmap_args *ap)
 {
-struct	spigot_softc	*ss = (struct spigot_softc *)&spigot_softc[0];
+	struct spigot_softc *ss;
 
-	if(offset != 0) {
-		printf("spigot mmap failed, offset = 0x%x != 0x0\n", offset);
-		return -1;
-	}
-
-	if(nprot & PROT_EXEC)
-		return -1;
-
-	return i386_btop(ss->maddr);
+	ss = (struct spigot_softc *)&spigot_softc[0];
+	if (ap->a_offset != 0) 
+		return EINVAL;
+	if (ap->a_nprot & PROT_EXEC)
+		return EINVAL;
+	ap->a_result = i386_btop(ss->maddr);
+	return(0);
 }

@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.30 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.31 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -46,6 +46,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/time.h>
@@ -117,23 +118,14 @@ static d_ioctl_t	bpfioctl;
 static d_poll_t		bpfpoll;
 
 #define CDEV_MAJOR 23
-static struct cdevsw bpf_cdevsw = {
-	/* name */	"bpf",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	bpfopen,
-	/* close */	bpfclose,
-	/* read */	bpfread,
-	/* write */	bpfwrite,
-	/* ioctl */	bpfioctl,
-	/* poll */	bpfpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops bpf_ops = {
+	{ "bpf", CDEV_MAJOR, 0 },
+	.d_open =	bpfopen,
+	.d_close =	bpfclose,
+	.d_read =	bpfread,
+	.d_write =	bpfwrite,
+	.d_ioctl =	bpfioctl,
+	.d_poll =	bpfpoll,
 };
 
 
@@ -301,14 +293,12 @@ bpf_detachd(struct bpf_d *d)
  */
 /* ARGSUSED */
 static int
-bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
+bpfopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d;
-	struct proc *p = td->td_proc;
 
-	KKASSERT(p != NULL);
-
-	if (p->p_ucred->cr_prison)
+	if (ap->a_cred->cr_prison)
 		return(EPERM);
 
 	d = dev->si_drv1;
@@ -318,7 +308,7 @@ bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
 	 */
 	if (d != NULL)
 		return(EBUSY);
-	make_dev(&bpf_cdevsw, minor(dev), 0, 0, 0600, "bpf%d", lminor(dev));
+	make_dev(&bpf_ops, minor(dev), 0, 0, 0600, "bpf%d", lminor(dev));
 	MALLOC(d, struct bpf_d *, sizeof *d, M_BPF, M_WAITOK | M_ZERO);
 	dev->si_drv1 = d;
 	d->bd_bufsize = bpf_bufsize;
@@ -334,8 +324,9 @@ bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
  */
 /* ARGSUSED */
 static int
-bpfclose(dev_t dev, int flags, int fmt, struct thread *td)
+bpfclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 
 	funsetown(d->bd_sigio);
@@ -368,8 +359,9 @@ bpfclose(dev_t dev, int flags, int fmt, struct thread *td)
  *  bpfread - read next chunk of packets from buffers
  */
 static int
-bpfread(dev_t dev, struct uio *uio, int ioflag)
+bpfread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	int timed_out;
 	int error;
@@ -378,7 +370,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	 * Restrict application to use a buffer the same size as
 	 * as kernel buffers.
 	 */
-	if (uio->uio_resid != d->bd_bufsize)
+	if (ap->a_uio->uio_resid != d->bd_bufsize)
 		return(EINVAL);
 
 	crit_enter();
@@ -413,7 +405,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 			return(ENXIO);
 		}
 
-		if (ioflag & IO_NDELAY) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
 			return(EWOULDBLOCK);
 		}
@@ -454,7 +446,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	 * We know the entire buffer is transferred since
 	 * we checked above that the read buffer is bpf_bufsize bytes.
 	 */
-	error = uiomove(d->bd_hbuf, d->bd_hlen, uio);
+	error = uiomove(d->bd_hbuf, d->bd_hlen, ap->a_uio);
 
 	crit_enter();
 	d->bd_fbuf = d->bd_hbuf;
@@ -502,8 +494,9 @@ bpf_timed_out(void *arg)
 }
 
 static	int
-bpfwrite(dev_t dev, struct uio *uio, int ioflag)
+bpfwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	struct ifnet *ifp;
 	struct mbuf *m;
@@ -516,10 +509,11 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 
 	ifp = d->bd_bif->bif_ifp;
 
-	if (uio->uio_resid == 0)
+	if (ap->a_uio->uio_resid == 0)
 		return(0);
 
-	error = bpf_movein(uio, (int)d->bd_bif->bif_dlt, &m, &dst, &datlen);
+	error = bpf_movein(ap->a_uio, (int)d->bd_bif->bif_dlt, &m,
+			   &dst, &datlen);
 	if (error)
 		return(error);
 
@@ -582,8 +576,9 @@ reset_d(struct bpf_d *d)
  */
 /* ARGSUSED */
 static int
-bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+bpfioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d = dev->si_drv1;
 	int error = 0;
 
@@ -593,8 +588,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	d->bd_state = BPF_IDLE;
 	crit_exit();
 
-	switch (cmd) {
-
+	switch (ap->a_cmd) {
 	default:
 		error = EINVAL;
 		break;
@@ -612,7 +606,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				n += d->bd_hlen;
 			crit_exit();
 
-			*(int *)addr = n;
+			*(int *)ap->a_data = n;
 			break;
 		}
 
@@ -625,8 +619,8 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			else {
 				ifp = d->bd_bif->bif_ifp;
 				lwkt_serialize_enter(ifp->if_serializer);
-				error = ifp->if_ioctl(ifp, cmd, addr,
-						      td->td_proc->p_ucred);
+				error = ifp->if_ioctl(ifp, ap->a_cmd,
+						      ap->a_data, ap->a_cred);
 				lwkt_serialize_exit(ifp->if_serializer);
 			}
 			break;
@@ -636,7 +630,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Get buffer len [for read()].
 	 */
 	case BIOCGBLEN:
-		*(u_int *)addr = d->bd_bufsize;
+		*(u_int *)ap->a_data = d->bd_bufsize;
 		break;
 
 	/*
@@ -646,12 +640,12 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		if (d->bd_bif != 0)
 			error = EINVAL;
 		else {
-			u_int size = *(u_int *)addr;
+			u_int size = *(u_int *)ap->a_data;
 
 			if (size > bpf_maxbufsize)
-				*(u_int *)addr = size = bpf_maxbufsize;
+				*(u_int *)ap->a_data = size = bpf_maxbufsize;
 			else if (size < BPF_MINBUFSIZE)
-				*(u_int *)addr = size = BPF_MINBUFSIZE;
+				*(u_int *)ap->a_data = size = BPF_MINBUFSIZE;
 			d->bd_bufsize = size;
 		}
 		break;
@@ -660,7 +654,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Set link layer read filter.
 	 */
 	case BIOCSETF:
-		error = bpf_setf(d, (struct bpf_program *)addr);
+		error = bpf_setf(d, (struct bpf_program *)ap->a_data);
 		break;
 
 	/*
@@ -699,7 +693,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		if (d->bd_bif == NULL)
 			error = EINVAL;
 		else
-			*(u_int *)addr = d->bd_bif->bif_dlt;
+			*(u_int *)ap->a_data = d->bd_bif->bif_dlt;
 		break;
 
 	/*
@@ -709,7 +703,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		if (d->bd_bif == NULL)
 			error = EINVAL;
 		else
-			error = bpf_getdltlist(d, (struct bpf_dltlist *)addr);
+			error = bpf_getdltlist(d, (struct bpf_dltlist *)ap->a_data);
 		break;
 
 	/*
@@ -719,7 +713,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		if (d->bd_bif == NULL)
 			error = EINVAL;
 		else
-			error = bpf_setdlt(d, *(u_int *)addr);
+			error = bpf_setdlt(d, *(u_int *)ap->a_data);
 		break;
 
 	/*
@@ -730,7 +724,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			error = EINVAL;
 		} else {
 			struct ifnet *const ifp = d->bd_bif->bif_ifp;
-			struct ifreq *const ifr = (struct ifreq *)addr;
+			struct ifreq *const ifr = (struct ifreq *)ap->a_data;
 
 			strlcpy(ifr->ifr_name, ifp->if_xname,
 				sizeof ifr->ifr_name);
@@ -741,7 +735,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Set interface.
 	 */
 	case BIOCSETIF:
-		error = bpf_setif(d, (struct ifreq *)addr);
+		error = bpf_setif(d, (struct ifreq *)ap->a_data);
 		break;
 
 	/*
@@ -749,7 +743,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 */
 	case BIOCSRTIMEOUT:
 		{
-			struct timeval *tv = (struct timeval *)addr;
+			struct timeval *tv = (struct timeval *)ap->a_data;
 
 			/*
 			 * Subtract 1 tick from tvtohz() since this isn't
@@ -765,7 +759,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 */
 	case BIOCGRTIMEOUT:
 		{
-			struct timeval *tv = (struct timeval *)addr;
+			struct timeval *tv = (struct timeval *)ap->a_data;
 
 			tv->tv_sec = d->bd_rtout / hz;
 			tv->tv_usec = (d->bd_rtout % hz) * tick;
@@ -777,7 +771,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 */
 	case BIOCGSTATS:
 		{
-			struct bpf_stat *bs = (struct bpf_stat *)addr;
+			struct bpf_stat *bs = (struct bpf_stat *)ap->a_data;
 
 			bs->bs_recv = d->bd_rcount;
 			bs->bs_drop = d->bd_dcount;
@@ -788,12 +782,12 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Set immediate mode.
 	 */
 	case BIOCIMMEDIATE:
-		d->bd_immediate = *(u_int *)addr;
+		d->bd_immediate = *(u_int *)ap->a_data;
 		break;
 
 	case BIOCVERSION:
 		{
-			struct bpf_version *bv = (struct bpf_version *)addr;
+			struct bpf_version *bv = (struct bpf_version *)ap->a_data;
 
 			bv->bv_major = BPF_MAJOR_VERSION;
 			bv->bv_minor = BPF_MINOR_VERSION;
@@ -804,57 +798,57 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Get "header already complete" flag
 	 */
 	case BIOCGHDRCMPLT:
-		*(u_int *)addr = d->bd_hdrcmplt;
+		*(u_int *)ap->a_data = d->bd_hdrcmplt;
 		break;
 
 	/*
 	 * Set "header already complete" flag
 	 */
 	case BIOCSHDRCMPLT:
-		d->bd_hdrcmplt = *(u_int *)addr ? 1 : 0;
+		d->bd_hdrcmplt = *(u_int *)ap->a_data ? 1 : 0;
 		break;
 
 	/*
 	 * Get "see sent packets" flag
 	 */
 	case BIOCGSEESENT:
-		*(u_int *)addr = d->bd_seesent;
+		*(u_int *)ap->a_data = d->bd_seesent;
 		break;
 
 	/*
 	 * Set "see sent packets" flag
 	 */
 	case BIOCSSEESENT:
-		d->bd_seesent = *(u_int *)addr;
+		d->bd_seesent = *(u_int *)ap->a_data;
 		break;
 
 	case FIOASYNC:		/* Send signal on receive packets */
-		d->bd_async = *(int *)addr;
+		d->bd_async = *(int *)ap->a_data;
 		break;
 
 	case FIOSETOWN:
-		error = fsetown(*(int *)addr, &d->bd_sigio);
+		error = fsetown(*(int *)ap->a_data, &d->bd_sigio);
 		break;
 
 	case FIOGETOWN:
-		*(int *)addr = fgetown(d->bd_sigio);
+		*(int *)ap->a_data = fgetown(d->bd_sigio);
 		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
 	case TIOCSPGRP:
-		error = fsetown(-(*(int *)addr), &d->bd_sigio);
+		error = fsetown(-(*(int *)ap->a_data), &d->bd_sigio);
 		break;
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)addr = -fgetown(d->bd_sigio);
+		*(int *)ap->a_data = -fgetown(d->bd_sigio);
 		break;
 
 	case BIOCSRSIG:		/* Set receive signal */
 		{
 			u_int sig;
 
-			sig = *(u_int *)addr;
+			sig = *(u_int *)ap->a_data;
 
 			if (sig >= NSIG)
 				error = EINVAL;
@@ -863,7 +857,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			break;
 		}
 	case BIOCGRSIG:
-		*(u_int *)addr = d->bd_sig;
+		*(u_int *)ap->a_data = d->bd_sig;
 		break;
 	}
 	return(error);
@@ -981,8 +975,9 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
  * Otherwise, return false but make a note that a selwakeup() must be done.
  */
 int
-bpfpoll(dev_t dev, int events, struct thread *td)
+bpfpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct bpf_d *d;
 	int revents;
 
@@ -990,9 +985,9 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 	if (d->bd_bif == NULL)
 		return(ENXIO);
 
-	revents = events & (POLLOUT | POLLWRNORM);
+	revents = ap->a_events & (POLLOUT | POLLWRNORM);
 	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		/*
 		 * An imitation of the FIONREAD ioctl code.
 		 * XXX not quite.  An exact imitation:
@@ -1002,9 +997,9 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 		if (d->bd_hlen != 0 ||
 		    ((d->bd_immediate || d->bd_state == BPF_TIMED_OUT) &&
 		    d->bd_slen != 0))
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		else {
-			selrecord(td, &d->bd_sel);
+			selrecord(curthread, &d->bd_sel);
 			/* Start the read timeout if necessary. */
 			if (d->bd_rtout > 0 && d->bd_state == BPF_IDLE) {
 				callout_reset(&d->bd_callout, d->bd_rtout,
@@ -1014,7 +1009,8 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 		}
 	}
 	crit_exit();
-	return(revents);
+	ap->a_events = revents;
+	return(0);
 }
 
 /*
@@ -1393,7 +1389,7 @@ bpf_setdlt(struct bpf_d *d, u_int dlt)
 static void
 bpf_drvinit(void *unused)
 {
-	cdevsw_add(&bpf_cdevsw, 0, 0);
+	dev_ops_add(&bpf_ops, 0, 0);
 }
 
 SYSINIT(bpfdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,bpf_drvinit,NULL)

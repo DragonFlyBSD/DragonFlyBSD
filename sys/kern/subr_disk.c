@@ -77,7 +77,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.24 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.25 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,70 +102,72 @@
 
 static MALLOC_DEFINE(M_DISK, "disk", "disk data");
 
-static d_strategy_t diskstrategy;
 static d_open_t diskopen;
 static d_close_t diskclose; 
 static d_ioctl_t diskioctl;
+static d_strategy_t diskstrategy;
 static d_psize_t diskpsize;
 static d_clone_t diskclone;
-static int disk_putport(lwkt_port_t port, lwkt_msg_t msg);
+static d_dump_t diskdump;
 
 static LIST_HEAD(, disk) disklist = LIST_HEAD_INITIALIZER(&disklist);
 
+static struct dev_ops disk_ops = {
+	{ "disk" },
+	.d_open = diskopen,
+	.d_close = diskclose,
+	.d_read = physread,
+	.d_write = physwrite,
+	.d_ioctl = diskioctl,
+	.d_strategy = diskstrategy,
+	.d_dump = diskdump,
+	.d_psize = diskpsize,
+	.d_clone = diskclone
+};
+
 /*
- * Create a slice and unit managed disk.
+ * Create a raw device for the dev_ops template (which is returned).  Also
+ * create a slice and unit managed disk and overload the user visible
+ * device space with it.
  *
- * Our port layer will be responsible for assigning blkno and handling
- * high level partition operations, then forwarding the requests to the
- * raw device.
- *
- * The disk_create() function clones the provided rawsw for creating a
- * managed disk device.  In addition, the cdevsw intercept port is
- * changed to disk_putport, which is used to transform requests for the
- * managed disk device.
- *
- * The raw device (based on rawsw) is returned to the caller, NOT the
- * slice and unit managed cdev.  The caller typically sets various
- * driver parameters and IO limits on the returned rawdev which we must
- * inherit when our managed device is opened.
+ * NOTE: The returned raw device is NOT a slice and unit managed device.
+ * It is an actual raw device representing the raw disk as specified by
+ * the passed dev_ops.  The disk layer not only returns such a raw device,
+ * it also uses it internally when passing (modified) commands through.
  */
 dev_t
-disk_create(int unit, struct disk *dp, int flags, struct cdevsw *rawsw)
+disk_create(int unit, struct disk *dp, int flags, struct dev_ops *raw_ops)
 {
 	dev_t rawdev;
-	struct cdevsw *devsw;
+	struct dev_ops *dev_ops;
 
 	/*
 	 * Create the raw backing device
 	 */
-	compile_devsw(rawsw);
-	rawdev = make_dev(rawsw, dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
+	compile_dev_ops(raw_ops);
+	rawdev = make_dev(raw_ops,
+			    dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
 			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", rawsw->d_name, unit);
+			    "%s%d", raw_ops->head.name, unit);
 
-	/*
-	 * Initialize our intercept port
-	 */
 	bzero(dp, sizeof(*dp));
-	lwkt_initport(&dp->d_port, NULL);
-	dp->d_port.mp_putport = disk_putport;
-	dp->d_rawsw = rawsw;
 
 	/*
 	 * We install a custom cdevsw rather then the passed cdevsw,
 	 * and save our disk structure in d_data so we can get at it easily
 	 * without any complex cloning code.
 	 */
-	devsw = cdevsw_add_override(rawdev, dkunitmask(), dkmakeunit(unit));
-	devsw->d_port = &dp->d_port;
-	devsw->d_data = dp;
-	devsw->d_clone = diskclone;
-	dp->d_devsw = devsw;
+	dev_ops = dev_ops_add_override(rawdev, &disk_ops,
+				       dkunitmask(), dkmakeunit(unit));
+	dev_ops->head.data = dp;
+
 	dp->d_rawdev = rawdev;
-	dp->d_cdev = make_dev(devsw, 
+	dp->d_raw_ops = raw_ops;
+	dp->d_dev_ops = dev_ops;
+	dp->d_cdev = make_dev(dev_ops, 
 			    dkmakeminor(unit, WHOLE_DISK_SLICE, RAW_PART),
 			    UID_ROOT, GID_OPERATOR, 0640,
-			    "%s%d", devsw->d_name, unit);
+			    "%s%d", dev_ops->head.name, unit);
 
 	dp->d_dsflags = flags;
 	LIST_INSERT_HEAD(&disklist, dp, d_list);
@@ -180,13 +182,13 @@ disk_create(int unit, struct disk *dp, int flags, struct cdevsw *rawsw)
 void
 disk_destroy(struct disk *disk)
 {
-	if (disk->d_devsw) {
-	    cdevsw_remove(disk->d_devsw, dkunitmask(), 
+	if (disk->d_dev_ops) {
+	    dev_ops_remove(disk->d_dev_ops, dkunitmask(), 
 			    dkmakeunit(dkunit(disk->d_cdev)));
 	    LIST_REMOVE(disk, d_list);
 	}
-	if (disk->d_rawsw) {
-	    destroy_all_dev(disk->d_rawsw, dkunitmask(), 
+	if (disk->d_raw_ops) {
+	    destroy_all_devs(disk->d_raw_ops, dkunitmask(), 
 			    dkmakeunit(dkunit(disk->d_rawdev)));
 	}
 	bzero(disk, sizeof(*disk));
@@ -266,122 +268,23 @@ SYSCTL_PROC(_kern, OID_AUTO, disks, CTLTYPE_STRING | CTLFLAG_RD, 0, NULL,
     sysctl_disks, "A", "names of available disks");
 
 /*
- * The port intercept functions
- */
-static
-int
-disk_putport(lwkt_port_t port, lwkt_msg_t lmsg)
-{
-	struct disk *disk = (struct disk *)port;
-	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
-	int error;
-
-	switch(msg->am_lmsg.ms_cmd.cm_op) {
-	case CDEV_CMD_OPEN:
-		error = diskopen(
-			    msg->am_open.msg.dev,
-			    msg->am_open.oflags,
-			    msg->am_open.devtype,
-			    msg->am_open.td);
-		break;
-	case CDEV_CMD_CLOSE:
-		error = diskclose(
-			    msg->am_close.msg.dev,
-			    msg->am_close.fflag,
-			    msg->am_close.devtype,
-			    msg->am_close.td);
-		break;
-	case CDEV_CMD_IOCTL:
-		error = diskioctl(
-			    msg->am_ioctl.msg.dev,
-			    msg->am_ioctl.cmd,
-			    msg->am_ioctl.data,
-			    msg->am_ioctl.fflag,
-			    msg->am_ioctl.td);
-		break;
-	case CDEV_CMD_STRATEGY:
-		diskstrategy(msg->am_strategy.msg.dev, msg->am_strategy.bio);
-		error = 0;
-		break;
-	case CDEV_CMD_PSIZE:
-		msg->am_psize.result = diskpsize(msg->am_psize.msg.dev);
-		error = 0;      /* XXX */
-		break;
-	case CDEV_CMD_READ:
-		error = physio(msg->am_read.msg.dev, 
-				msg->am_read.uio, msg->am_read.ioflag);
-		break;
-	case CDEV_CMD_WRITE:
-		error = physio(msg->am_write.msg.dev, 
-				msg->am_write.uio, msg->am_write.ioflag);
-		break;
-	case CDEV_CMD_POLL:
-	case CDEV_CMD_KQFILTER:
-		error = ENODEV;
-	case CDEV_CMD_MMAP:
-		error = -1;
-		break;
-	case CDEV_CMD_DUMP:
-		error = disk_dumpcheck(msg->am_dump.msg.dev,
-				&msg->am_dump.count,
-				&msg->am_dump.blkno,
-				&msg->am_dump.secsize);
-		if (error == 0) {
-			msg->am_dump.msg.dev = disk->d_rawdev;
-			error = lwkt_forwardmsg(disk->d_rawdev->si_port,
-						&msg->am_dump.msg.msg);
-			printf("error2 %d\n", error);
-		}
-		break;
-	default:
-		error = ENOTSUP;
-		break;
-	}
-	return(error);
-}
-
-/*
- * When new device entries are instantiated, make sure they inherit our
- * si_disk structure and block and iosize limits from the raw device.
- *
- * This routine is always called synchronously in the context of the 
- * client.
- *
- * XXX The various io and block size constraints are not always initialized
- * properly by devices.
- */
-static
-int
-diskclone(dev_t dev)
-{
-	struct disk *dp;
-
-	dp = dev->si_devsw->d_data;
-	KKASSERT(dp != NULL);
-	dev->si_disk = dp;
-	dev->si_iosize_max = dp->d_rawdev->si_iosize_max;
-	dev->si_bsize_phys = dp->d_rawdev->si_bsize_phys;
-	dev->si_bsize_best = dp->d_rawdev->si_bsize_best;
-	return(0);
-}
-
-/*
  * Open a disk device or partition.
  */
 static
 int
-diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
+diskopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
 
 	/*
 	 * dp can't be NULL here XXX.
 	 */
-	error = 0;
 	dp = dev->si_disk;
 	if (dp == NULL)
 		return (ENXIO);
+	error = 0;
 
 	/*
 	 * Deal with open races
@@ -402,22 +305,24 @@ diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 		if (!pdev->si_iosize_max)
 			pdev->si_iosize_max = dev->si_iosize_max;
 #endif
-		error = dev_dopen(dp->d_rawdev, oflags, devtype, td);
+		error = dev_dopen(dp->d_rawdev, ap->a_oflags,
+				  ap->a_devtype, ap->a_cred);
 	}
 
 	/*
 	 * Inherit properties from the underlying device now that it is
 	 * open.
 	 */
-	diskclone(dev);
+	dev_dclone(dev);
 
 	if (error)
 		goto out;
 	
-	error = dsopen(dev, devtype, dp->d_dsflags, &dp->d_slice, &dp->d_label);
+	error = dsopen(dev, ap->a_devtype, dp->d_dsflags,
+		       &dp->d_slice, &dp->d_label);
 
 	if (!dsisopen(dp->d_slice)) 
-		dev_dclose(dp->d_rawdev, oflags, devtype, td);
+		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype);
 out:	
 	dp->d_flags &= ~DISKFLAG_LOCK;
 	if (dp->d_flags & DISKFLAG_WANTED) {
@@ -433,17 +338,41 @@ out:
  */
 static
 int
-diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
+diskclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
 	int error;
 
 	error = 0;
 	dp = dev->si_disk;
 
-	dsclose(dev, devtype, dp->d_slice);
+	dsclose(dev, ap->a_devtype, dp->d_slice);
 	if (!dsisopen(dp->d_slice))
-		error = dev_dclose(dp->d_rawdev, fflag, devtype, td);
+		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
+	return (error);
+}
+
+/*
+ * First execute the ioctl on the disk device, and if it isn't supported 
+ * try running it on the backing device.
+ */
+static
+int
+diskioctl(struct dev_ioctl_args *ap)
+{
+	dev_t dev = ap->a_head.a_dev;
+	struct disk *dp;
+	int error;
+
+	dp = dev->si_disk;
+	if (dp == NULL)
+		return (ENXIO);
+	error = dsioctl(dev, ap->a_cmd, ap->a_data, ap->a_fflag, &dp->d_slice);
+	if (error == ENOIOCTL) {
+		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
+				   ap->a_fflag, ap->a_cred);
+	}
 	return (error);
 }
 
@@ -451,9 +380,11 @@ diskclose(dev_t dev, int fflag, int devtype, struct thread *td)
  * Execute strategy routine
  */
 static
-void
-diskstrategy(dev_t dev, struct bio *bio)
+int
+diskstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct disk *dp;
 
@@ -463,7 +394,7 @@ diskstrategy(dev_t dev, struct bio *bio)
 		bio->bio_buf->b_error = ENXIO;
 		bio->bio_buf->b_flags |= B_ERROR;
 		biodone(bio);
-		return;
+		return(0);
 	}
 	KKASSERT(dev->si_disk == dp);
 
@@ -478,50 +409,68 @@ diskstrategy(dev_t dev, struct bio *bio)
 		dev_dstrategy(dp->d_rawdev, nbio);
 	else
 		biodone(bio);
+	return(0);
 }
 
 /*
- * First execute the ioctl on the disk device, and if it isn't supported 
- * try running it on the backing device.
+ * Return the partition size in ?blocks?
  */
 static
 int
-diskioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct thread *td)
+diskpsize(struct dev_psize_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct disk *dp;
+
+	dp = dev->si_disk;
+	if (dp == NULL)
+		return(ENODEV);
+	ap->a_result = dssize(dev, &dp->d_slice);
+	return(0);
+}
+
+/*
+ * When new device entries are instantiated, make sure they inherit our
+ * si_disk structure and block and iosize limits from the raw device.
+ *
+ * This routine is always called synchronously in the context of the 
+ * client.
+ *
+ * XXX The various io and block size constraints are not always initialized
+ * properly by devices.
+ */
+static
+int
+diskclone(struct dev_clone_args *ap)
+{
+	dev_t dev = ap->a_head.a_dev;
+	struct disk *dp;
+
+	dp = dev->si_ops->head.data;
+	KKASSERT(dp != NULL);
+	dev->si_disk = dp;
+	dev->si_iosize_max = dp->d_rawdev->si_iosize_max;
+	dev->si_bsize_phys = dp->d_rawdev->si_bsize_phys;
+	dev->si_bsize_best = dp->d_rawdev->si_bsize_best;
+	return(0);
+}
+
+int
+diskdump(struct dev_dump_args *ap)
+{
+	dev_t dev = ap->a_head.a_dev;
+	struct disk *dp = dev->si_ops->head.data;
 	int error;
 
-	dp = dev->si_disk;
-	if (dp == NULL)
-		return (ENXIO);
-
-	error = dsioctl(dev, cmd, data, fflag, &dp->d_slice);
-	if (error == ENOIOCTL)
-		error = dev_dioctl(dp->d_rawdev, cmd, data, fflag, td);
-	return (error);
-}
-
-/*
- *
- */
-static
-int
-diskpsize(dev_t dev)
-{
-	struct disk *dp;
-
-	dp = dev->si_disk;
-	if (dp == NULL)
-		return (-1);
-	return(dssize(dev, &dp->d_slice));
-#if 0
-	if (dp != dev->si_disk) {
-		dev->si_drv1 = pdev->si_drv1;
-		dev->si_drv2 = pdev->si_drv2;
-		/* XXX: don't set bp->b_dev->si_disk (?) */
+	error = disk_dumpcheck(dev, &ap->a_count, &ap->a_blkno, &ap->a_secsize);
+	if (error == 0) {
+		ap->a_head.a_dev = dp->d_rawdev;
+		error = dev_doperate(&ap->a_head);
 	}
-#endif
+
+	return(error);
 }
+
 
 SYSCTL_INT(_debug_sizeof, OID_AUTO, disklabel, CTLFLAG_RD, 
     0, sizeof(struct disklabel), "sizeof(struct disklabel)");

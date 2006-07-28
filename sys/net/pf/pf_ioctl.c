@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.5 2005/06/15 16:32:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.6 2006/07/28 02:17:40 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -45,6 +45,8 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/mbuf.h>
 #include <sys/filio.h>
 #include <sys/fcntl.h>
@@ -55,7 +57,6 @@
 #include <sys/time.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <sys/conf.h>
 #include <vm/vm_zone.h>
 
 #include <net/if.h>
@@ -86,18 +87,16 @@
 
 #include <machine/limits.h>
 #include <net/pfil.h>
+
 void			 init_zone_var(void);
 void			 cleanup_pf_zone(void);
 int			 pfattach(void);
-int			 pfopen(dev_t, int, int, struct thread *);
-int			 pfclose(dev_t, int, int, struct thread *);
 struct pf_pool		*pf_get_pool(char *, char *, u_int32_t,
 			    u_int8_t, u_int32_t, u_int8_t, u_int8_t, u_int8_t);
 int			 pf_get_ruleset_number(u_int8_t);
 void			 pf_init_ruleset(struct pf_ruleset *);
 void			 pf_mv_pool(struct pf_palist *, struct pf_palist *);
 void			 pf_empty_pool(struct pf_palist *);
-int			 pfioctl(dev_t, u_long, caddr_t, int, struct thread *);
 #ifdef ALTQ
 int			 pf_begin_altq(u_int32_t *);
 int			 pf_rollback_altq(u_int32_t);
@@ -156,12 +155,15 @@ static int 		 shutdown_pf(void);
 static int 		 pf_load(void);
 static int 		 pf_unload(void);
 
-static struct cdevsw pf_cdevsw = {	    /* XXX convert to port model */
-	.d_name =	PF_NAME,
-	.d_maj =	73,		    /* XXX */
-	.old_open =	pfopen,
-	.old_close =	pfclose,
-	.old_ioctl =	pfioctl
+d_open_t	pfopen;
+d_close_t	pfclose;
+d_ioctl_t	pfioctl;
+
+static struct dev_ops pf_ops = {	    /* XXX convert to port model */
+	{ PF_NAME, 73, 0 },
+	.d_open =	pfopen,
+	.d_close =	pfclose,
+	.d_ioctl =	pfioctl
 };
 
 static volatile int pf_pfil_hooked = 0;
@@ -287,16 +289,18 @@ pfattach(void)
 }
 
 int
-pfopen(dev_t dev, int flags, int devtype, struct thread *td)
+pfopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	if (minor(dev) >= 1)
 		return (ENXIO);
 	return (0);
 }
 
 int
-pfclose(dev_t dev, int flags, int fmt, struct thread *td)
+pfclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	if (minor(dev) >= 1)
 		return (ENXIO);
 	return (0);
@@ -849,8 +853,10 @@ pf_commit_rules(u_int32_t ticket, int rs_num, char *anchor, char *ruleset)
 }
 
 int
-pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+pfioctl(struct dev_ioctl_args *ap)
 {
+	u_long cmd = ap->a_cmd;
+	caddr_t addr = ap->a_data;
 	struct pf_pooladdr	*pa = NULL;
 	struct pf_pool		*pool = NULL;
 	int			 error = 0;
@@ -909,7 +915,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			return (EPERM);
 		}
 
-	if (!(flags & FWRITE))
+	if (!(ap->a_fflag & FWRITE))
 		switch (cmd) {
 		case DIOCGETRULES:
 		case DIOCGETRULE:
@@ -3063,13 +3069,13 @@ pf_load(void)
 	int error;
 
 	init_zone_var();
-	error = cdevsw_add(&pf_cdevsw, 0, 0);
+	error = dev_ops_add(&pf_ops, 0, 0);
 	if (error)
 		return (error);
-	pf_dev = make_dev(&pf_cdevsw, 0, 0, 0, 0600, PF_NAME);
+	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	error = pfattach();
 	if (error) {
-		cdevsw_remove(&pf_cdevsw, 0, 0);
+		dev_ops_remove(&pf_ops, 0, 0);
 		return (error);
 	}
 	return (0);
@@ -3096,7 +3102,7 @@ pf_unload(void)
 	pf_osfp_flush();
 	pf_osfp_cleanup();
 	cleanup_pf_zone();
-	cdevsw_remove(&pf_cdevsw, 0, 0);
+	dev_ops_remove(&pf_ops, 0, 0);
 	return 0;
 }
 

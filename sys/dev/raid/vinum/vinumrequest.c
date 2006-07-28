@@ -39,7 +39,7 @@
  *
  * $Id: vinumrequest.c,v 1.30 2001/01/09 04:20:55 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumrequest.c,v 1.44.2.5 2002/08/28 04:30:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.15 2006/07/09 22:55:45 corecode Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumrequest.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -122,9 +122,11 @@ logrq(enum rqinfo_type type, union rqinfou info, struct bio *ubio)
 
 #endif
 
-void
-vinumstrategy(dev_t dev, struct bio *bio)
+int
+vinumstrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct bio *nbio = bio;
     struct volume *vol = NULL;
@@ -135,18 +137,17 @@ vinumstrategy(dev_t dev, struct bio *bio)
     case VINUM_RAWSD_TYPE:
 	bio->bio_driver_info = dev;
 	sdio(bio);
-	return;
-
+	break;
+    case VINUM_DRIVE_TYPE:
+    default:
 	/*
 	 * In fact, vinum doesn't handle drives: they're
 	 * handled directly by the disk drivers
 	 */
-    case VINUM_DRIVE_TYPE:
-    default:
 	bp->b_error = EIO;				    /* I/O error */
 	bp->b_flags |= B_ERROR;
 	biodone(bio);
-	return;
+	break;
 
     case VINUM_VOLUME_TYPE:				    /* volume I/O */
 	volno = Volno(dev);
@@ -155,25 +156,26 @@ vinumstrategy(dev_t dev, struct bio *bio)
 	    bp->b_error = EIO;				    /* I/O error */
 	    bp->b_flags |= B_ERROR;
 	    biodone(bio);
-	    return;
+	    break;
 	}
 	nbio = vinum_bounds_check(bio, vol);
 	if (nbio == NULL) {
 	    biodone(bio);
-	    return;
+	    break;
 	}
 	/* FALLTHROUGH */
+    case VINUM_PLEX_TYPE:
+    case VINUM_RAWPLEX_TYPE:
 	/*
 	 * Plex I/O is pretty much the same as volume I/O
 	 * for a single plex.  Indicate this by passing a NULL
 	 * pointer (set above) for the volume
 	 */
-    case VINUM_PLEX_TYPE:
-    case VINUM_RAWPLEX_TYPE:
 	bp->b_resid = bp->b_bcount;			    /* transfer everything */
 	vinumstart(dev, nbio, 0);
-	return;
+	break;
     }
+    return(0);
 }
 
 /*

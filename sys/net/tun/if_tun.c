@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.28 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.29 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -27,6 +27,8 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/filio.h>
 #include <sys/sockio.h>
 #include <sys/thread2.h>
@@ -36,7 +38,6 @@
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
-#include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/malloc.h>
@@ -81,29 +82,20 @@ static	d_ioctl_t	tunioctl;
 static	d_poll_t	tunpoll;
 
 #define CDEV_MAJOR 52
-static struct cdevsw tun_cdevsw = {
-	/* name */	"tun",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	tunopen,
-	/* close */	tunclose,
-	/* read */	tunread,
-	/* write */	tunwrite,
-	/* ioctl */	tunioctl,
-	/* poll */	tunpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops tun_ops = {
+	{ "tun", CDEV_MAJOR, 0 },
+	.d_open =	tunopen,
+	.d_close =	tunclose,
+	.d_read =	tunread,
+	.d_write =	tunwrite,
+	.d_ioctl =	tunioctl,
+	.d_poll =	tunpoll,
 };
 
 static void
 tunattach(void *dummy)
 {
-	cdevsw_add(&tun_cdevsw, 0, 0);
+	dev_ops_add(&tun_ops, 0, 0);
 }
 
 static void
@@ -112,7 +104,7 @@ tuncreate(dev_t dev)
 	struct tun_softc *sc;
 	struct ifnet *ifp;
 
-	dev = make_dev(&tun_cdevsw, minor(dev),
+	dev = make_dev(&tun_ops, minor(dev),
 	    UID_UUCP, GID_DIALER, 0600, "tun%d", lminor(dev));
 
 	MALLOC(sc, struct tun_softc *, sizeof(*sc), M_TUN, M_WAITOK);
@@ -140,14 +132,14 @@ tuncreate(dev_t dev)
  * configured in
  */
 static	int
-tunopen(dev_t dev, int flag, int mode, struct thread *td)
+tunopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ifnet	*ifp;
 	struct tun_softc *tp;
 	int	error;
 
-	KKASSERT(td->td_proc);
-	if ((error = suser(td)) != NULL)
+	if ((error = suser_cred(ap->a_cred, 0)) != NULL)
 		return (error);
 
 	tp = dev->si_drv1;
@@ -157,7 +149,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 	}
 	if (tp->tun_flags & TUN_OPEN)
 		return EBUSY;
-	tp->tun_pid = td->td_proc->p_pid;
+	tp->tun_pid = curproc->p_pid;
 	ifp = &tp->tun_if;
 	tp->tun_flags |= TUN_OPEN;
 	TUNDEBUG(ifp, "open\n");
@@ -169,8 +161,9 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
  * routing info
  */
 static	int
-tunclose(dev_t dev, int foo, int bar, struct thread *td)
+tunclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp;
 	struct ifnet	*ifp;
 
@@ -391,17 +384,18 @@ tunoutput(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 }
 
 /*
- * the cdevsw interface is now pretty minimal.
+ * the ops interface is now pretty minimal.
  */
 static	int
-tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+tunioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp = dev->si_drv1;
  	struct tuninfo *tunp;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
  	case TUNSIFINFO:
- 		tunp = (struct tuninfo *)data;
+ 		tunp = (struct tuninfo *)ap->a_data;
 		if (tunp->mtu < IF_MINMTU)
 			return (EINVAL);
  		tp->tun_if.if_mtu = tunp->mtu;
@@ -409,44 +403,44 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
  		tp->tun_if.if_baudrate = tunp->baudrate;
  		break;
  	case TUNGIFINFO:
- 		tunp = (struct tuninfo *)data;
+ 		tunp = (struct tuninfo *)ap->a_data;
  		tunp->mtu = tp->tun_if.if_mtu;
  		tunp->type = tp->tun_if.if_type;
  		tunp->baudrate = tp->tun_if.if_baudrate;
  		break;
 	case TUNSDEBUG:
-		tundebug = *(int *)data;
+		tundebug = *(int *)ap->a_data;
 		break;
 	case TUNGDEBUG:
-		*(int *)data = tundebug;
+		*(int *)ap->a_data = tundebug;
 		break;
 	case TUNSLMODE:
-		if (*(int *)data) {
+		if (*(int *)ap->a_data) {
 			tp->tun_flags |= TUN_LMODE;
 			tp->tun_flags &= ~TUN_IFHEAD;
 		} else
 			tp->tun_flags &= ~TUN_LMODE;
 		break;
 	case TUNSIFHEAD:
-		if (*(int *)data) {
+		if (*(int *)ap->a_data) {
 			tp->tun_flags |= TUN_IFHEAD;
 			tp->tun_flags &= ~TUN_LMODE;
 		} else 
 			tp->tun_flags &= ~TUN_IFHEAD;
 		break;
 	case TUNGIFHEAD:
-		*(int *)data = (tp->tun_flags & TUN_IFHEAD) ? 1 : 0;
+		*(int *)ap->a_data = (tp->tun_flags & TUN_IFHEAD) ? 1 : 0;
 		break;
 	case TUNSIFMODE:
 		/* deny this if UP */
 		if (tp->tun_if.if_flags & IFF_UP)
 			return(EBUSY);
 
-		switch (*(int *)data & ~IFF_MULTICAST) {
+		switch (*(int *)ap->a_data & ~IFF_MULTICAST) {
 		case IFF_POINTOPOINT:
 		case IFF_BROADCAST:
 			tp->tun_if.if_flags &= ~(IFF_BROADCAST|IFF_POINTOPOINT);
-			tp->tun_if.if_flags |= *(int *)data;
+			tp->tun_if.if_flags |= *(int *)ap->a_data;
 			break;
 		default:
 			return(EINVAL);
@@ -456,7 +450,7 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		tp->tun_pid = curproc->p_pid;
 		break;
 	case FIOASYNC:
-		if (*(int *)data)
+		if (*(int *)ap->a_data)
 			tp->tun_flags |= TUN_ASYNC;
 		else
 			tp->tun_flags &= ~TUN_ASYNC;
@@ -467,27 +461,27 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			struct mbuf *mb;
 
 			mb = ifq_poll(&tp->tun_if.if_snd);
-			for( *(int *)data = 0; mb != 0; mb = mb->m_next) 
-				*(int *)data += mb->m_len;
+			for( *(int *)ap->a_data = 0; mb != 0; mb = mb->m_next) 
+				*(int *)ap->a_data += mb->m_len;
 		} else {
-			*(int *)data = 0;
+			*(int *)ap->a_data = 0;
 		}
 		lwkt_serialize_exit(tp->tun_if.if_serializer);
 		break;
 	case FIOSETOWN:
-		return (fsetown(*(int *)data, &tp->tun_sigio));
+		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));
 
 	case FIOGETOWN:
-		*(int *)data = fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = fgetown(tp->tun_sigio);
 		return (0);
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
 	case TIOCSPGRP:
-		return (fsetown(-(*(int *)data), &tp->tun_sigio));
+		return (fsetown(-(*(int *)ap->a_data), &tp->tun_sigio));
 
 	/* This is deprecated, FIOGETOWN should be used instead. */
 	case TIOCGPGRP:
-		*(int *)data = -fgetown(tp->tun_sigio);
+		*(int *)ap->a_data = -fgetown(tp->tun_sigio);
 		return (0);
 
 	default:
@@ -497,12 +491,14 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 }
 
 /*
- * The cdevsw read interface - reads a packet at a time, or at
+ * The ops read interface - reads a packet at a time, or at
  * least as much of a packet as can be read.
  */
 static	int
-tunread(dev_t dev, struct uio *uio, int flag)
+tunread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	struct mbuf	*m0;
@@ -519,7 +515,7 @@ tunread(dev_t dev, struct uio *uio, int flag)
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	while ((m0 = ifq_dequeue(&ifp->if_snd, NULL)) == NULL) {
-		if (flag & IO_NDELAY) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			lwkt_serialize_exit(ifp->if_serializer);
 			return EWOULDBLOCK;
 		}
@@ -547,11 +543,13 @@ tunread(dev_t dev, struct uio *uio, int flag)
 }
 
 /*
- * the cdevsw write interface - an atomic write is a packet - or else!
+ * the ops write interface - an atomic write is a packet - or else!
  */
 static	int
-tunwrite(dev_t dev, struct uio *uio, int flag)
+tunwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	struct mbuf	*top, **mp, *m;
@@ -675,8 +673,9 @@ tunwrite(dev_t dev, struct uio *uio, int flag)
  * anyway, it either accepts the packet or drops it.
  */
 static	int
-tunpoll(dev_t dev, int events, struct thread *td)
+tunpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tun_softc *tp = dev->si_drv1;
 	struct ifnet	*ifp = &tp->tun_if;
 	int		revents = 0;
@@ -685,21 +684,21 @@ tunpoll(dev_t dev, int events, struct thread *td)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
 			TUNDEBUG(ifp, "tunpoll q=%d\n", ifp->if_snd.ifq_len);
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		} else {
 			TUNDEBUG(ifp, "tunpoll waiting\n");
-			selrecord(td, &tp->tun_rsel);
+			selrecord(curthread, &tp->tun_rsel);
 		}
 	}
-	if (events & (POLLOUT | POLLWRNORM))
-		revents |= events & (POLLOUT | POLLWRNORM);
+	if (ap->a_events & (POLLOUT | POLLWRNORM))
+		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
 
 	lwkt_serialize_exit(ifp->if_serializer);
-
-	return (revents);
+	ap->a_events = revents;
+	return(0);
 }
 
 /*

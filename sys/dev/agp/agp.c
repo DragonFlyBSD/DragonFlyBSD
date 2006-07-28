@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.20 2006/05/05 20:15:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -32,10 +32,11 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/device.h>
+#include <sys/conf.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/ioccom.h>
 #include <sys/agpio.h>
 #include <sys/lock.h>
@@ -69,23 +70,12 @@ static d_close_t agp_close;
 static d_ioctl_t agp_ioctl;
 static d_mmap_t agp_mmap;
 
-static struct cdevsw agp_cdevsw = {
-	/* name */	"agp",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	agp_open,
-	/* close */	agp_close,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	agp_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	agp_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops agp_ops = {
+	{ "agp", CDEV_MAJOR, D_TTY },
+	.d_open =	agp_open,
+	.d_close =	agp_close,
+	.d_ioctl =	agp_ioctl,
+	.d_mmap =	agp_mmap,
 };
 
 static devclass_t agp_devclass;
@@ -260,8 +250,8 @@ agp_generic_attach(device_t dev)
 	TAILQ_INIT(&sc->as_memory);
 	sc->as_nextid = 1;
 
-	cdevsw_add(&agp_cdevsw, -1, device_get_unit(dev));
-	make_dev(&agp_cdevsw, device_get_unit(dev), UID_ROOT, GID_WHEEL,
+	dev_ops_add(&agp_ops, -1, device_get_unit(dev));
+	make_dev(&agp_ops, device_get_unit(dev), UID_ROOT, GID_WHEEL,
 		  0600, "agpgart");
 
 	return 0;
@@ -274,7 +264,7 @@ agp_generic_detach(device_t dev)
 
 	bus_release_resource(dev, SYS_RES_MEMORY, AGP_APBASE, sc->as_aperture);
 	agp_flush_cache();
-	cdevsw_remove(&agp_cdevsw, -1, device_get_unit(dev));
+	dev_ops_remove(&agp_ops, -1, device_get_unit(dev));
 	return 0;
 }
 
@@ -734,8 +724,9 @@ agp_unbind_user(device_t dev, agp_unbind *unbind)
 }
 
 static int
-agp_open(dev_t kdev, int oflags, int devtype, struct thread *td)
+agp_open(struct dev_open_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 
@@ -748,8 +739,9 @@ agp_open(dev_t kdev, int oflags, int devtype, struct thread *td)
 }
 
 static int
-agp_close(dev_t kdev, int fflag, int devtype, struct thread *td)
+agp_close(struct dev_close_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 	struct agp_memory *mem;
@@ -771,13 +763,14 @@ agp_close(dev_t kdev, int fflag, int devtype, struct thread *td)
 }
 
 static int
-agp_ioctl(dev_t kdev, u_long cmd, caddr_t data, int fflag, struct thread *td)
+agp_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case AGPIOC_INFO:
-		return agp_info_user(dev, (agp_info *) data);
+		return agp_info_user(dev, (agp_info *)ap->a_data);
 
 	case AGPIOC_ACQUIRE:
 		return agp_acquire_helper(dev, AGP_ACQUIRE_USER);
@@ -786,19 +779,19 @@ agp_ioctl(dev_t kdev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 		return agp_release_helper(dev, AGP_ACQUIRE_USER);
 
 	case AGPIOC_SETUP:
-		return agp_setup_user(dev, (agp_setup *)data);
+		return agp_setup_user(dev, (agp_setup *)ap->a_data);
 
 	case AGPIOC_ALLOCATE:
-		return agp_allocate_user(dev, (agp_allocate *)data);
+		return agp_allocate_user(dev, (agp_allocate *)ap->a_data);
 
 	case AGPIOC_DEALLOCATE:
-		return agp_deallocate_user(dev, *(int *) data);
+		return agp_deallocate_user(dev, *(int *)ap->a_data);
 
 	case AGPIOC_BIND:
-		return agp_bind_user(dev, (agp_bind *)data);
+		return agp_bind_user(dev, (agp_bind *)ap->a_data);
 
 	case AGPIOC_UNBIND:
-		return agp_unbind_user(dev, (agp_unbind *)data);
+		return agp_unbind_user(dev, (agp_unbind *)ap->a_data);
 
 	}
 
@@ -806,14 +799,16 @@ agp_ioctl(dev_t kdev, u_long cmd, caddr_t data, int fflag, struct thread *td)
 }
 
 static int
-agp_mmap(dev_t kdev, vm_offset_t offset, int prot)
+agp_mmap(struct dev_mmap_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	device_t dev = KDEV2DEV(kdev);
 	struct agp_softc *sc = device_get_softc(dev);
 
-	if (offset > AGP_GET_APERTURE(dev))
-		return -1;
-	return atop(rman_get_start(sc->as_aperture) + offset);
+	if (ap->a_offset > AGP_GET_APERTURE(dev))
+		return EINVAL;
+	ap->a_result = atop(rman_get_start(sc->as_aperture) + ap->a_offset);
+	return(0);
 }
 
 /* Implementation of the kernel api */

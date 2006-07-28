@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.19 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.20 2006/07/28 02:17:37 dillon Exp $
  *
  */
 #undef DEBUG
@@ -99,9 +99,6 @@ static void cxup (cx_chan_t *c);
 
 cx_board_t cxboard [NCX];           /* adapter state structures */
 cx_chan_t *cxchan [NCX*NCHAN];      /* unit to channel struct pointer */
-#if 0
-extern struct cdevsw cx_cdevsw;
-#endif
 static unsigned short irq_valid_values [] = { 3, 5, 7, 10, 11, 12, 15, 0 };
 static unsigned short drq_valid_values [] = { 5, 6, 7, 0 };
 static unsigned short port_valid_values [] = {
@@ -297,8 +294,8 @@ cxattach (struct isa_device *id)
 		callout_reset(&cxtimeout_ch, hz * 5, cxtimeout, NULL);
 	}
 	printf ("cx%d: <Cronyx-%s>\n", unit, b->name);
-	cdevsw_add(&cx_cdevsw, -1, unit);
-	make_dev(&cx_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600, "cx%d", unit);
+	dev_ops_add(&cx_ops, -1, unit);
+	make_dev(&cx_ops, unit, UID_ROOT, GID_WHEEL, 0600, "cx%d", unit);
 	return (1);
 }
 

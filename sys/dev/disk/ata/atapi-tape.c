@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.15 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.16 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -55,23 +55,14 @@ static	d_close_t	astclose;
 static	d_ioctl_t	astioctl;
 static	d_strategy_t	aststrategy;
 
-static struct cdevsw ast_cdevsw = {
-	/* name */	"ast",
-	/* maj */	119,
-	/* flags */	D_TAPE | D_TRACKCLOSE,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	astopen,
-	/* close */	astclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	astioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	aststrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ast_ops = {
+	{ "ast", 119, D_TAPE | D_TRACKCLOSE },
+	.d_open =	astopen,
+	.d_close =	astclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	astioctl,
+	.d_strategy =	aststrategy
 };
 
 /* prototypes */
@@ -137,12 +128,12 @@ astattach(struct ata_device *atadev)
 		      DEVSTAT_NO_ORDERED_TAGS,
 		      DEVSTAT_TYPE_SEQUENTIAL | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_TAPE);
-    cdevsw_add(&ast_cdevsw, dkunitmask(), dkmakeunit(stp->lun));
-    dev = make_dev(&ast_cdevsw, dkmakeminor(stp->lun, 0, 0),
+    dev_ops_add(&ast_ops, dkunitmask(), dkmakeunit(stp->lun));
+    dev = make_dev(&ast_ops, dkmakeminor(stp->lun, 0, 0),
 		   UID_ROOT, GID_OPERATOR, 0640, "ast%d", stp->lun);
     dev->si_drv1 = stp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
-    dev = make_dev(&ast_cdevsw, dkmakeminor(stp->lun, 0, 1),
+    dev = make_dev(&ast_ops, dkmakeminor(stp->lun, 0, 1),
 		   UID_ROOT, GID_OPERATOR, 0640, "nast%d", stp->lun);
     dev->si_drv1 = stp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
@@ -167,7 +158,7 @@ astdetach(struct ata_device *atadev)
 	biodone(bio);
     }
     devstat_remove_entry(&stp->stats);
-    cdevsw_remove(&ast_cdevsw, dkunitmask(), dkmakeunit(stp->lun));
+    dev_ops_remove(&ast_ops, dkunitmask(), dkmakeunit(stp->lun));
     ata_free_name(atadev);
     ata_free_lun(&ast_lun_map, stp->lun);
     free(stp, M_AST);
@@ -254,8 +245,9 @@ ast_describe(struct ast_softc *stp)
 }
 
 static int
-astopen(dev_t dev, int flags, int fmt, struct thread *td)
+astopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
 
     if (!stp)
@@ -279,8 +271,9 @@ astopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-astclose(dev_t dev, int flags, int fmt, struct thread *td)
+astclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
 
     /* flush buffers, some drives fail here, they should report ctl = 0 */
@@ -307,15 +300,16 @@ astclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+astioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ast_softc *stp = dev->si_drv1;
     int error = 0;
 
-    switch (cmd) {
+    switch (ap->a_cmd) {
     case MTIOCGET:
 	{
-	    struct mtget *g = (struct mtget *) addr;
+	    struct mtget *g = (struct mtget *) ap->a_data;
 
 	    bzero(g, sizeof(struct mtget));
 	    g->mt_type = 7;
@@ -333,7 +327,7 @@ astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     case MTIOCTOP:
 	{	
 	    int i;
-	    struct mtop *mt = (struct mtop *)addr;
+	    struct mtop *mt = (struct mtop *)ap->a_data;
 
 	    switch ((int16_t) (mt->mt_op)) {
 
@@ -394,7 +388,7 @@ astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	    if ((error = ast_read_position(stp, 0, &position)))
 		break;
-	    *(u_int32_t *)addr = position.tape;
+	    *(u_int32_t *)ap->a_data = position.tape;
 	    break;
 	}
     case MTIOCRDHPOS:
@@ -403,14 +397,14 @@ astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	    if ((error = ast_read_position(stp, 1, &position)))
 		break;
-	    *(u_int32_t *)addr = position.tape;
+	    *(u_int32_t *)ap->a_data = position.tape;
 	    break;
 	}
     case MTIOCSLOCATE:
-	error = ast_locate(stp, 0, *(u_int32_t *)addr);
+	error = ast_locate(stp, 0, *(u_int32_t *)ap->a_data);
 	break;
     case MTIOCHLOCATE:
-	error = ast_locate(stp, 1, *(u_int32_t *)addr);
+	error = ast_locate(stp, 1, *(u_int32_t *)ap->a_data);
 	break;
     default:
 	error = ENOTTY;
@@ -418,9 +412,11 @@ astioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     return error;
 }
 
-static void 
-aststrategy(dev_t dev, struct bio *bio)
+static int 
+aststrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ast_softc *stp = dev->si_drv1;
 
@@ -428,20 +424,20 @@ aststrategy(dev_t dev, struct bio *bio)
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
 	biodone(bio);
-	return;
+	return(0);
     }
     if (bp->b_cmd != BUF_CMD_READ && (stp->flags & F_WRITEPROTECT)) {
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EPERM;
 	biodone(bio);
-	return;
+	return(0);
     }
 	
     /* check for != blocksize requests */
@@ -451,7 +447,7 @@ aststrategy(dev_t dev, struct bio *bio)
 	bp->b_flags |= B_ERROR;
 	bp->b_error = EIO;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     /* warn about transfers bigger than the device suggests */
@@ -467,6 +463,7 @@ aststrategy(dev_t dev, struct bio *bio)
     bioq_insert_tail(&stp->bio_queue, bio);
     crit_exit();
     ata_start(stp->device->channel);
+    return(0);
 }
 
 void 

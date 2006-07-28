@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.24 2006/07/19 06:08:07 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.25 2006/07/28 02:17:41 dillon Exp $
  */
 
 /*
@@ -68,6 +68,7 @@
 #include <sys/acl.h>
 #endif
 
+struct syslink_desc;
 struct vnode;
 struct thread;
 struct namecache;

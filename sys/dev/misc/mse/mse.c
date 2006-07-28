@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.16 2006/06/10 20:00:15 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -48,6 +48,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/poll.h>
@@ -139,23 +140,13 @@ static  d_ioctl_t	mseioctl;
 static	d_poll_t	msepoll;
 
 #define CDEV_MAJOR 27
-static struct cdevsw mse_cdevsw = {
-	/* name */	"mse",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	mseopen,
-	/* close */	mseclose,
-	/* read */	mseread,
-	/* write */	nowrite,
-	/* ioctl */	mseioctl,
-	/* poll */	msepoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops mse_ops = {
+	{ "mse", CDEV_MAJOR, 0 },
+	.d_open =	mseopen,
+	.d_close =	mseclose,
+	.d_read =	mseread,
+	.d_ioctl =	mseioctl,
+	.d_poll =	msepoll,
 };
 
 static	void		mseintr (void *);
@@ -359,9 +350,9 @@ mse_attach(device_t dev)
 	sc->mode.accelfactor = (flags & MSE_CONFIG_ACCEL) >> 4;
 	callout_init(&sc->sc_callout);
 
-	cdevsw_add(&mse_cdevsw, ~1, unit << 1);
-	make_dev(&mse_cdevsw, unit << 1, 0, 0, 0600, "mse%d", unit);
-	make_dev(&mse_cdevsw, (unit<<1)+1, 0, 0, 0600, "nmse%d", unit);
+	dev_ops_add(&mse_ops, ~1, unit << 1);
+	make_dev(&mse_ops, unit << 1, 0, 0, 0600, "mse%d", unit);
+	make_dev(&mse_ops, (unit<<1)+1, 0, 0, 0600, "nmse%d", unit);
 
 	return 0;
 }
@@ -380,7 +371,7 @@ mse_detach(device_t dev)
 	BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->sc_intr, sc->sc_ih);
 	bus_release_resource(dev, SYS_RES_IRQ, rid, sc->sc_intr);
 	bus_release_resource(dev, SYS_RES_IOPORT, rid, sc->sc_port);
-	cdevsw_remove(&mse_cdevsw, ~1, device_get_unit(dev) << 1);
+	dev_ops_remove(&mse_ops, ~1, device_get_unit(dev) << 1);
 
 	return 0;
 }
@@ -389,8 +380,9 @@ mse_detach(device_t dev)
  * Exclusive open the mouse, initialize it and enable interrupts.
  */
 static	int
-mseopen(dev_t dev, int flags, int fmt, struct thread *td)
+mseopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc;
 
 	sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
@@ -424,8 +416,9 @@ mseopen(dev_t dev, int flags, int fmt, struct thread *td)
  * mseclose: just turn off mouse innterrupts.
  */
 static	int
-mseclose(dev_t dev, int flags, int fmt, struct thread *td)
+mseclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 
 	crit_enter();
@@ -442,8 +435,10 @@ mseclose(dev_t dev, int flags, int fmt, struct thread *td)
  * (Yes this is cheesy, but it makes the X386 server happy, so...)
  */
 static	int
-mseread(dev_t dev, struct uio *uio, int ioflag)
+mseread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int xfer, error;
 
@@ -505,14 +500,15 @@ mseread(dev_t dev, struct uio *uio, int ioflag)
  * mseioctl: process ioctl commands.
  */
 static int
-mseioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+mseioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	mousestatus_t status;
 	int err = 0;
 
-	switch (cmd) {
-
+	switch (ap->a_cmd) {
 	case MOUSE_GETHWINFO:
 		crit_enter();
 		*(mousehw_t *)addr = sc->hw;
@@ -616,27 +612,29 @@ mseioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
  * msepoll: check for mouse input to be processed.
  */
 static	int
-msepoll(dev_t dev, int events, struct thread *td)
+msepoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	mse_softc_t *sc = devclass_get_softc(mse_devclass, MSE_UNIT(dev));
 	int revents = 0;
 
 	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (sc->sc_bytesread != sc->mode.packetsize ||
 		    sc->sc_deltax != 0 || sc->sc_deltay != 0 ||
 		    (sc->sc_obuttons ^ sc->sc_buttons) != 0)
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		else {
 			/*
 			 * Since this is an exclusive open device, any previous
 			 * proc pointer is trash now, so we can just assign it.
 			 */
-			selrecord(td, &sc->sc_selp);
+			selrecord(curthread, &sc->sc_selp);
 		}
 	}
 	crit_exit();
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 /*

@@ -32,13 +32,14 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.33 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.34 2006/07/28 02:17:41 dillon Exp $
  */
 
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/buf.h>
@@ -85,23 +86,13 @@ d_strategy_t	mfsstrategy;
 
 #define MFS_CDEV_MAJOR	253
 
-static struct cdevsw mfs_cdevsw = {
-	/* name */      "MFS",
-	/* maj */       MFS_CDEV_MAJOR,
-	/* flags */     D_DISK,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      mfsopen,
-	/* close */     mfsclose,
-	/* read */      physread,
-	/* write */     physwrite,
-	/* ioctl */     noioctl,
-	/* poll */      nopoll,
-	/* mmap */      nommap,
-	/* strategy */  mfsstrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+static struct dev_ops mfs_ops = {
+	{ "MFS", MFS_CDEV_MAJOR, D_DISK },
+	.d_open =	mfsopen,
+	.d_close =	mfsclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	mfsstrategy,
 };
 
 /*
@@ -128,9 +119,11 @@ VFS_SET(mfs_vfsops, mfs, 0);
  * We allow the underlying MFS block device to be opened and read.
  */
 int
-mfsopen(dev_t dev, int flags, int mode, struct thread *td)
+mfsopen(struct dev_open_args *ap)
 {
-	if (flags & FWRITE)
+	dev_t dev = ap->a_head.a_dev;
+
+	if (ap->a_oflags & FWRITE)
 		return(EROFS);
 	if (dev->si_drv1)
 		return(0);
@@ -138,14 +131,16 @@ mfsopen(dev_t dev, int flags, int mode, struct thread *td)
 }
 
 int
-mfsclose(dev_t dev, int flags, int mode, struct thread *td)
+mfsclose(struct dev_close_args *ap)
 {
 	return(0);
 }
 
-void
-mfsstrategy(dev_t dev, struct bio *bio)
+int
+mfsstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	off_t boff = bio->bio_offset;
 	off_t eoff = boff + bp->b_bcount;
@@ -178,7 +173,7 @@ mfsstrategy(dev_t dev, struct bio *bio)
 	 */
 	bioq_insert_tail(&mfsp->bio_queue, bio);
 	wakeup((caddr_t)mfsp);
-	return;
+	return(0);
 
 	/*
 	 * Failure conditions on bio
@@ -189,6 +184,7 @@ error:
 	bp->b_flags |= B_ERROR | B_INVAL;
 done:
 	biodone(bio);
+	return(0);
 }
 
 /*
@@ -320,7 +316,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		((curproc->p_pid & ~0xFF) << 8);
 
 	devvp->v_type = VCHR;
-	dev = make_dev(&mfs_cdevsw, minnum, UID_ROOT, GID_WHEEL, 0600,
+	dev = make_dev(&mfs_ops, minnum, UID_ROOT, GID_WHEEL, 0600,
 			"MFS%d", minnum >> 16);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
@@ -478,6 +474,6 @@ mfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 static int
 mfs_init(struct vfsconf *vfsp)
 {
-	cdevsw_add(&mfs_cdevsw, 0, 0);
+	dev_ops_add(&mfs_ops, 0, 0);
 	return (0);
 }

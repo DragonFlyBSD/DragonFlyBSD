@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.12 2006/05/11 08:23:20 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.13 2006/07/28 02:17:35 dillon Exp $
  *
  */
 
@@ -55,23 +55,14 @@ static d_strategy_t mdstrategy_malloc;
 static d_open_t mdopen;
 static d_ioctl_t mdioctl;
 
-static struct cdevsw md_cdevsw = {
-        /* name */      "md",
-        /* maj */       CDEV_MAJOR,
-        /* flags */     D_DISK | D_CANFREE | D_MEMDISK,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-        /* open */      mdopen,
-        /* close */     nullclose,
-        /* read */      physread,
-        /* write */     physwrite,
-        /* ioctl */     mdioctl,
-        /* poll */      nopoll,
-        /* mmap */      nommap,
-        /* strategy */  mdstrategy,
-        /* dump */      nodump,
-        /* psize */     nopsize,
+static struct dev_ops md_ops = {
+	{ "md", CDEV_MAJOR, D_DISK | D_CANFREE | D_MEMDISK },
+        .d_open =	mdopen,
+        .d_close =	nullclose,
+        .d_read =	physread,
+        .d_write =	physwrite,
+        .d_ioctl =	mdioctl,
+        .d_strategy =	mdstrategy,
 };
 
 struct md_s {
@@ -96,14 +87,15 @@ struct md_s {
 static int mdunits;
 
 static int
-mdopen(dev_t dev, int flag, int fmt, struct thread *td)
+mdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct md_s *sc;
 	struct disklabel *dl;
 
 	if (md_debug)
-		printf("mdopen(%s %x %x %p)\n",
-			devtoname(dev), flag, fmt, td);
+		printf("mdopen(%s %x %x)\n",
+			devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	sc = dev->si_drv1;
 	if (sc->unit + 1 == mdunits)
@@ -121,19 +113,22 @@ mdopen(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-mdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+mdioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 
 	if (md_debug)
-		printf("mdioctl(%s %lx %p %x %p)\n",
-			devtoname(dev), cmd, addr, flags, td);
+		printf("mdioctl(%s %lx %p %x)\n",
+			devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag);
 
 	return (ENOIOCTL);
 }
 
-static void
-mdstrategy(dev_t dev, struct bio *bio)
+static int
+mdstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct md_s *sc;
 
@@ -145,16 +140,19 @@ mdstrategy(dev_t dev, struct bio *bio)
 	bio->bio_driver_info = dev;
 	sc = dev->si_drv1;
 	if (sc->type == MD_MALLOC) {
-		mdstrategy_malloc(dev, bio);
+		mdstrategy_malloc(ap);
 	} else {
-		mdstrategy_preload(dev, bio);
+		mdstrategy_preload(ap);
 	}
+	return(0);
 }
 
 
-static void
-mdstrategy_malloc(dev_t dev, struct bio *bio)
+static int
+mdstrategy_malloc(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	unsigned secno, nsec, secval, uc;
 	u_char *secp, **secpp, *dst;
@@ -175,7 +173,7 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 
 	if (sc->busy) {
 		crit_exit();
-		return;
+		return(0);
 	}
 
 	sc->busy++;
@@ -289,12 +287,15 @@ mdstrategy_malloc(dev_t dev, struct bio *bio)
 		crit_enter();
 	}
 	sc->busy = 0;
+	return(0);
 }
 
 
-static void
-mdstrategy_preload(dev_t dev, struct bio *bio)
+static int
+mdstrategy_preload(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	devstat_trans_flags dop;
 	struct md_s *sc;
@@ -312,7 +313,7 @@ mdstrategy_preload(dev_t dev, struct bio *bio)
 
 	if (sc->busy) {
 		crit_exit();
-		return;
+		return(0);
 	}
 
 	sc->busy++;
@@ -350,6 +351,7 @@ mdstrategy_preload(dev_t dev, struct bio *bio)
 		crit_enter();
 	}
 	sc->busy = 0;
+	return(0);
 }
 
 static struct md_s *
@@ -365,7 +367,7 @@ mdcreate(void)
 		DEVSTAT_NO_ORDERED_TAGS, 
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_OTHER);
-	sc->dev = disk_create(sc->unit, &sc->disk, 0, &md_cdevsw);
+	sc->dev = disk_create(sc->unit, &sc->disk, 0, &md_ops);
 	sc->dev->si_drv1 = sc;
 	return (sc);
 }

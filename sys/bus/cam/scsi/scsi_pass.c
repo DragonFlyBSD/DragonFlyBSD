@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.15 2006/03/24 18:35:27 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.16 2006/07/28 02:17:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,23 +113,14 @@ static struct periph_driver passdriver =
 
 DATA_SET(periphdriver_set, passdriver);
 
-static struct cdevsw pass_cdevsw = {
-	/* name */	"pass",
-	/* maj */	PASS_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */     NULL,
-
-	/* open */	passopen,
-	/* close */	passclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	passioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	passstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops pass_ops = {
+	{ "pass", PASS_CDEV_MAJOR, 0 },
+	.d_open =	passopen,
+	.d_close =	passclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	passioctl,
+	.d_strategy =	passstrategy,
 };
 
 static struct extend_array *passperiphs;
@@ -242,7 +233,7 @@ passcleanup(struct cam_periph *periph)
 		xpt_print_path(periph->path);
 		printf("removing device entry\n");
 	}
-	cdevsw_remove(&pass_cdevsw, -1, periph->unit_number);
+	dev_ops_remove(&pass_ops, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -324,8 +315,8 @@ passregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_PRIORITY_PASS);
 
 	/* Register the device */
-	cdevsw_add(&pass_cdevsw, -1, periph->unit_number);
-	make_dev(&pass_cdevsw, periph->unit_number, UID_ROOT,
+	dev_ops_add(&pass_ops, -1, periph->unit_number);
+	make_dev(&pass_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);
 
@@ -347,8 +338,9 @@ passregister(struct cam_periph *periph, void *arg)
 }
 
 static int
-passopen(dev_t dev, int flags, int fmt, struct thread *td)
+passopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct pass_softc *softc;
 	int unit, error;
@@ -383,7 +375,7 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	/*
 	 * Only allow read-write access.
 	 */
-	if (((flags & FWRITE) == 0) || ((flags & FREAD) == 0)) {
+	if (((ap->a_oflags & FWRITE) == 0) || ((ap->a_oflags & FREAD) == 0)) {
 		crit_exit();
 		return(EPERM);
 	}
@@ -391,7 +383,7 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 	/*
 	 * We don't allow nonblocking access.
 	 */
-	if ((flags & O_NONBLOCK) != 0) {
+	if ((ap->a_oflags & O_NONBLOCK) != 0) {
 		xpt_print_path(periph->path);
 		printf("can't do nonblocking accesss\n");
 		crit_exit();
@@ -417,8 +409,9 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-passclose(dev_t dev, int flag, int fmt, struct thread *td)
+passclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct 	cam_periph *periph;
 	struct	pass_softc *softc;
 	int	unit, error;
@@ -449,9 +442,11 @@ passclose(dev_t dev, int flag, int fmt, struct thread *td)
  * can understand.  The transfer is described by a buf and will include
  * only one physical transfer.
  */
-static void
-passstrategy(dev_t dev, struct bio *bio)
+static int
+passstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct pass_softc *softc;
@@ -499,7 +494,7 @@ passstrategy(dev_t dev, struct bio *bio)
 	 */
 	xpt_schedule(periph, /* XXX priority */1);
 
-	return;
+	return(0);
 bad:
 	bp->b_flags |= B_ERROR;
 
@@ -508,6 +503,7 @@ bad:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static void
@@ -633,8 +629,10 @@ passdone(struct cam_periph *periph, union ccb *done_ccb)
 }
 
 static int
-passioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+passioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct 	cam_periph *periph;
 	struct	pass_softc *softc;
 	u_int8_t unit;
@@ -654,7 +652,7 @@ passioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	error = 0;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 
 	case CAMIOCOMMAND:
 	{
@@ -713,7 +711,7 @@ passioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		break;
 	}
 	default:
-		error = cam_periph_ioctl(periph, cmd, addr, passerror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, addr, passerror);
 		break;
 	}
 

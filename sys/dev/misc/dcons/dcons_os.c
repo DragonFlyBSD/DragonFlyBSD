@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.2 2005/06/16 15:50:17 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.3 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,40 +99,20 @@ static struct consdev gdbconsdev;
 #endif
 #endif
 
+#define CDEV_MAJOR      184
+
 static d_open_t		dcons_open;
 static d_close_t	dcons_close;
-#if defined(__DragonFly__) || __FreeBSD_version < 500104
 static d_ioctl_t	dcons_ioctl;
-#endif
 
-static struct cdevsw dcons_cdevsw = {
-#ifdef __DragonFly__
-#define CDEV_MAJOR      184
-	"dcons", CDEV_MAJOR, D_TTY, NULL, 0,
-	dcons_open, dcons_close, ttyread, ttywrite, dcons_ioctl,
-	ttypoll, nommap, nostrategy, nodump, nopsize,
-#elif __FreeBSD_version >= 500104
-	.d_version =	D_VERSION,
+static struct dev_ops dcons_ops = {
+	{ "dcons", CDEV_MAJOR, D_TTY },
 	.d_open =	dcons_open,
 	.d_close =	dcons_close,
-	.d_name =	"dcons",
-	.d_flags =	D_TTY | D_NEEDGIANT,
-#else
-#define CDEV_MAJOR      184
-	/* open */	dcons_open,
-	/* close */	dcons_close,
-	/* read */	ttyread,
-	/* write */	ttywrite,
-	/* ioctl */	dcons_ioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* name */	"dcons",
-	/* major */	CDEV_MAJOR,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
-#endif
+	.d_read =	ttyread,
+	.d_write =	ttywrite,
+	.d_ioctl =	dcons_ioctl,
+	.d_poll =	ttypoll,
 };
 
 #ifndef KLD_MODULE
@@ -276,8 +256,9 @@ dcons_os_putc(struct dcons_softc *dc, int c)
 		bus_dmamap_sync(dg.dma_tag, dg.dma_map, BUS_DMASYNC_PREWRITE);
 }
 static int
-dcons_open(DEV dev, int flag, int mode, THREAD *td)
+dcons_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int unit, error;
 
@@ -303,7 +284,7 @@ dcons_open(DEV dev, int flag, int mode, THREAD *td)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		ttsetwater(tp);
-	} else if ((tp->t_state & TS_XCLUDE) && suser(td)) {
+	} else if ((tp->t_state & TS_XCLUDE) && suser_cred(ap->a_cred, 0)) {
 		crit_exit();
 		return (EBUSY);
 	}
@@ -319,8 +300,9 @@ dcons_open(DEV dev, int flag, int mode, THREAD *td)
 }
 
 static int
-dcons_close(DEV dev, int flag, int mode, THREAD *td)
+dcons_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int	unit;
 	struct	tty *tp;
 
@@ -330,22 +312,17 @@ dcons_close(DEV dev, int flag, int mode, THREAD *td)
 
 	tp = dev->si_tty;
 	if (tp->t_state & TS_ISOPEN) {
-#if __FreeBSD_version < 502113
-		(*linesw[tp->t_line].l_close)(tp, flag);
+		(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 		ttyclose(tp);
-#else
-		ttyld_close(tp, flag);
-		tty_close(tp);
-#endif
 	}
 
 	return (0);
 }
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500104
 static int
-dcons_ioctl(DEV dev, u_long cmd, caddr_t data, int flag, THREAD *td)
+dcons_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int	unit;
 	struct	tty *tp;
 	int	error;
@@ -355,17 +332,16 @@ dcons_ioctl(DEV dev, u_long cmd, caddr_t data, int flag, THREAD *td)
 		return (ENXIO);
 
 	tp = dev->si_tty;
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return (error);
 
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (error != ENOIOCTL)
 		return (error);
 
 	return (ENOTTY);
 }
-#endif
 
 static int
 dcons_tty_param(struct tty *tp, struct termios *t)
@@ -425,7 +401,7 @@ static void
 dcons_cnprobe(struct consdev *cp)
 {
 #ifdef __DragonFly__
-	cp->cn_dev = make_dev(&dcons_cdevsw, DCONS_CON,
+	cp->cn_dev = make_dev(&dcons_ops, DCONS_CON,
 	    UID_ROOT, GID_WHEEL, 0600, "dcons");
 #elif __FreeBSD_version >= 501109
 	sprintf(cp->cn_name, "dcons");
@@ -562,7 +538,7 @@ ok:
 #endif
 	gdb_arg = &gdbconsdev;
 #elif defined(__DragonFly__)
-	gdbdev = make_dev(&dcons_cdevsw, DCONS_GDB,
+	gdbdev = make_dev(&dcons_ops, DCONS_GDB,
 	    UID_ROOT, GID_WHEEL, 0600, "dgdb");
 #else
 	gdbdev = makedev(CDEV_MAJOR, DCONS_GDB);
@@ -586,7 +562,7 @@ dcons_attach_port(int port, char *name, int flags)
 
 	dc = &sc[port];
 	dc->flags = flags;
-	dev = make_dev(&dcons_cdevsw, port,
+	dev = make_dev(&dcons_ops, port,
 			UID_ROOT, GID_WHEEL, 0600, name);
 	dc->dev = (void *)dev;
 	tp = ttymalloc(NULL);
@@ -608,7 +584,7 @@ dcons_attach(void)
 	int polltime;
 
 #ifdef __DragonFly__
-	cdevsw_add(&dcons_cdevsw, -1, 0);
+	dev_ops_add(&dcons_ops, -1, 0);
 #endif
 	dcons_attach_port(DCONS_CON, "dcons", 0);
 	dcons_attach_port(DCONS_GDB, "dgdb", DC_GDB);

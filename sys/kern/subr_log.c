@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.9 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.10 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/filio.h>
@@ -66,23 +67,13 @@ static	d_poll_t	logpoll;
 static	void logtimeout(void *arg);
 
 #define CDEV_MAJOR 7
-static struct cdevsw log_cdevsw = {
-	/* name */	"log",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	logopen,
-	/* close */	logclose,
-	/* read */	logread,
-	/* write */	nowrite,
-	/* ioctl */	logioctl,
-	/* poll */	logpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops log_ops = {
+	{ "log", CDEV_MAJOR, 0 },
+	.d_open =	logopen,
+	.d_close =	logclose,
+	.d_read =	logread,
+	.d_ioctl =	logioctl,
+	.d_poll =	logpoll,
 };
 
 static struct logsoftc {
@@ -101,9 +92,9 @@ SYSCTL_INT(_kern, OID_AUTO, log_wakeups_per_second, CTLFLAG_RW,
 
 /*ARGSUSED*/
 static	int
-logopen(dev_t dev, int flags, int mode, struct thread *td)
+logopen(struct dev_open_args *ap)
 {
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 
 	KKASSERT(p != NULL);
 	if (log_open)
@@ -118,9 +109,8 @@ logopen(dev_t dev, int flags, int mode, struct thread *td)
 
 /*ARGSUSED*/
 static	int
-logclose(dev_t dev, int flag, int mode, struct thread *td)
+logclose(struct dev_close_args *ap)
 {
-
 	log_open = 0;
 	callout_stop(&logsoftc.sc_callout);
 	logsoftc.sc_state = 0;
@@ -130,15 +120,16 @@ logclose(dev_t dev, int flag, int mode, struct thread *td)
 
 /*ARGSUSED*/
 static	int
-logread(dev_t dev, struct uio *uio, int flag)
+logread(struct dev_read_args *ap)
 {
+	struct uio *uio = ap->a_uio;
 	struct msgbuf *mbp = msgbufp;
 	long l;
 	int error = 0;
 
 	crit_enter();
 	while (mbp->msg_bufr == mbp->msg_bufx) {
-		if (flag & IO_NDELAY) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			crit_exit();
 			return (EWOULDBLOCK);
 		}
@@ -171,19 +162,20 @@ logread(dev_t dev, struct uio *uio, int flag)
 
 /*ARGSUSED*/
 static	int
-logpoll(dev_t dev, int events, struct thread *td)
+logpoll(struct dev_poll_args *ap)
 {
 	int revents = 0;
 
 	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (msgbufp->msg_bufr != msgbufp->msg_bufx)
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(td, &logsoftc.sc_selp);
+			selrecord(curthread, &logsoftc.sc_selp);
 	}
 	crit_exit();
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 static void
@@ -211,43 +203,42 @@ logtimeout(void *arg)
 
 /*ARGSUSED*/
 static	int
-logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
+logioctl(struct dev_ioctl_args *ap)
 {
 	long l;
 
-	switch (com) {
-
-	/* return number of characters immediately available */
+	switch (ap->a_cmd) {
 	case FIONREAD:
+		/* return number of characters immediately available */
 		crit_enter();
 		l = msgbufp->msg_bufx - msgbufp->msg_bufr;
 		crit_exit();
 		if (l < 0)
 			l += msgbufp->msg_size;
-		*(int *)data = l;
+		*(int *)ap->a_data = l;
 		break;
 
 	case FIOASYNC:
-		if (*(int *)data)
+		if (*(int *)ap->a_data)
 			logsoftc.sc_state |= LOG_ASYNC;
 		else
 			logsoftc.sc_state &= ~LOG_ASYNC;
 		break;
 
 	case FIOSETOWN:
-		return (fsetown(*(int *)data, &logsoftc.sc_sigio));
+		return (fsetown(*(int *)ap->a_data, &logsoftc.sc_sigio));
 
 	case FIOGETOWN:
-		*(int *)data = fgetown(logsoftc.sc_sigio);
+		*(int *)ap->a_data = fgetown(logsoftc.sc_sigio);
 		break;
 
 	/* This is deprecated, FIOSETOWN should be used instead. */
 	case TIOCSPGRP:
-		return (fsetown(-(*(int *)data), &logsoftc.sc_sigio));
+		return (fsetown(-(*(int *)ap->a_data), &logsoftc.sc_sigio));
 
 	/* This is deprecated, FIOGETOWN should be used instead */
 	case TIOCGPGRP:
-		*(int *)data = -fgetown(logsoftc.sc_sigio);
+		*(int *)ap->a_data = -fgetown(logsoftc.sc_sigio);
 		break;
 
 	default:
@@ -259,8 +250,8 @@ logioctl(dev_t dev, u_long com, caddr_t data, int flag, struct thread *td)
 static void
 log_drvinit(void *unused)
 {
-	cdevsw_add(&log_cdevsw, 0, 0);
-	make_dev(&log_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "klog");
+	dev_ops_add(&log_ops, 0, 0);
+	make_dev(&log_ops, 0, UID_ROOT, GID_WHEEL, 0600, "klog");
 }
 
 SYSINIT(logdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,log_drvinit,NULL)

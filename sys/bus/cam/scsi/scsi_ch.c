@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.13 2006/02/17 19:17:42 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.14 2006/07/28 02:17:32 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -215,23 +215,11 @@ static struct periph_driver chdriver =
 
 DATA_SET(periphdriver_set, chdriver);
 
-static struct cdevsw ch_cdevsw = {
-	/* name */	"ch",
-	/* maj */	CH_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */     NULL,
-
-	/* open */	chopen,
-	/* close */	chclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	chioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ch_ops = {
+	{ "ch", CH_CDEV_MAJOR, 0 },
+	.d_open = chopen,
+	.d_close = chclose,
+	.d_ioctl = chioctl
 };
 
 static struct extend_array *chperiphs;
@@ -314,7 +302,7 @@ chcleanup(struct cam_periph *periph)
 	cam_extend_release(chperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
-	cdevsw_remove(&ch_cdevsw, -1, periph->unit_number);
+	dev_ops_remove(&ch_ops, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -395,8 +383,8 @@ chregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_PRIORITY_OTHER);
 
 	/* Register the device */
-	cdevsw_add(&ch_cdevsw, -1, periph->unit_number);
-	make_dev(&ch_cdevsw, periph->unit_number, UID_ROOT,
+	dev_ops_add(&ch_ops, -1, periph->unit_number);
+	make_dev(&ch_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);
 
@@ -422,8 +410,9 @@ chregister(struct cam_periph *periph, void *arg)
 }
 
 static int
-chopen(dev_t dev, int flags, int fmt, struct thread *td)
+chopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ch_softc *softc;
 	int unit, error;
@@ -471,8 +460,9 @@ chopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-chclose(dev_t dev, int flag, int fmt, struct thread *td)
+chclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	ch_softc *softc;
 	int	unit, error;
@@ -712,8 +702,11 @@ cherror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 }
 
 static int
-chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+chioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
+	int flag = ap->a_fflag;
 	struct cam_periph *periph;
 	struct ch_softc *softc;
 	u_int8_t unit;
@@ -732,13 +725,13 @@ chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	error = 0;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, 
-		  ("trying to do ioctl %#lx\n", cmd));
+		  ("trying to do ioctl %#lx\n", ap->a_cmd));
 
 	/*
 	 * If this command can change the device's state, we must
 	 * have the device open for writing.
 	 */
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case CHIOGPICKER:
 	case CHIOGPARAMS:
 	case CHIOGSTATUS:
@@ -749,7 +742,7 @@ chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 			return (EBADF);
 	}
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case CHIOMOVE:
 		error = chmove(periph, (struct changer_move *)addr);
 		break;
@@ -806,7 +799,7 @@ chioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	/* Implement prevent/allow? */
 
 	default:
-		error = cam_periph_ioctl(periph, cmd, addr, cherror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, addr, cherror);
 		break;
 	}
 

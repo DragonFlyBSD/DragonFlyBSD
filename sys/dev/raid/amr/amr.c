@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.19 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -93,23 +93,11 @@ static d_open_t         amr_open;
 static d_close_t        amr_close;
 static d_ioctl_t        amr_ioctl;
 
-static struct cdevsw amr_cdevsw = {
-		/* name */ 	"amr",
-		/* maj */	AMR_CDEV_MAJOR,
-		/* flags */	0,
-		/* port */      NULL,
-		/* clone */	NULL,
-
-		/* open */	amr_open,
-		/* close */	amr_close,
-		/* read */	noread,
-		/* write */	nowrite,
-		/* ioctl */	amr_ioctl,
-		/* poll */	nopoll,
-		/* mmap */	nommap,
-		/* strategy */	nostrategy,
-		/* dump */	nodump,
-		/* psize */ 	nopsize
+static struct dev_ops amr_ops = {
+	{ "amr", AMR_CDEV_MAJOR, 0 },
+	.d_open =	amr_open,
+	.d_close =	amr_close,
+	.d_ioctl =	amr_ioctl
 };
 
 /*
@@ -253,8 +241,8 @@ amr_attach(struct amr_softc *sc)
     /*
      * Create the control device.
      */
-    cdevsw_add(&amr_cdevsw, -1, device_get_unit(sc->amr_dev));
-    sc->amr_dev_t = make_dev(&amr_cdevsw, device_get_unit(sc->amr_dev), 
+    dev_ops_add(&amr_ops, -1, device_get_unit(sc->amr_dev));
+    sc->amr_dev_t = make_dev(&amr_ops, device_get_unit(sc->amr_dev), 
 			    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			    "amr%d", device_get_unit(sc->amr_dev));
     sc->amr_dev_t->si_drv1 = sc;
@@ -365,7 +353,7 @@ amr_free(struct amr_softc *sc)
     /* destroy control device */
     if( sc->amr_dev_t != (dev_t)NULL)
 	    destroy_dev(sc->amr_dev_t);
-    cdevsw_remove(&amr_cdevsw, -1, device_get_unit(sc->amr_dev));
+    dev_ops_remove(&amr_ops, -1, device_get_unit(sc->amr_dev));
 }
 
 /*******************************************************************************
@@ -386,8 +374,9 @@ amr_submit_bio(struct amr_softc *sc, struct bio *bio)
  * Accept an open operation on the control device.
  */
 static int
-amr_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+amr_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct amr_softc	*sc = devclass_get_softc(devclass_find("amr"), unit);
 
@@ -401,8 +390,9 @@ amr_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Accept the last close on the control device.
  */
 static int
-amr_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+amr_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct amr_softc	*sc = devclass_get_softc(devclass_find("amr"), unit);
 
@@ -416,14 +406,15 @@ amr_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle controller-specific control operations.
  */
 static int
-amr_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+amr_ioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct amr_softc		*sc = (struct amr_softc *)dev->si_drv1;
-    int				*arg = (int *)addr;
-    struct amr_user_ioctl	*au = (struct amr_user_ioctl *)addr;
+    int				*arg = (int *)ap->a_data;
+    struct amr_user_ioctl	*au = (struct amr_user_ioctl *)ap->a_data;
     struct amr_command		*ac;
     struct amr_mailbox_ioctl	*mbi;
-    struct amr_passthrough	*ap;
+    struct amr_passthrough	*apt;
     void			*dp;
     int				error;
 
@@ -431,9 +422,9 @@ amr_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 
     error = 0;
     dp = NULL;
-    ap = NULL;
+    apt = NULL;
     ac = NULL;
-    switch(cmd) {
+    switch(ap->a_cmd) {
 
     case AMR_IO_VERSION:
 	debug(1, "AMR_IO_VERSION");
@@ -460,29 +451,29 @@ amr_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 
 	/* handle SCSI passthrough command */
 	if (au->au_cmd[0] == AMR_CMD_PASS) {
-	    if ((ap = malloc(sizeof(*ap), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
+	    if ((apt = malloc(sizeof(*apt), M_DEVBUF, M_WAITOK | M_ZERO)) == NULL) {
 		error = ENOMEM;
 		break;
 	    }
 
 	    /* copy cdb */
-	    ap->ap_cdb_length = au->au_cmd[2];
-	    bcopy(&au->au_cmd[3], &ap->ap_cdb[0], ap->ap_cdb_length);
+	    apt->ap_cdb_length = au->au_cmd[2];
+	    bcopy(&au->au_cmd[3], &apt->ap_cdb[0], apt->ap_cdb_length);
 
 	    /* build passthrough */
-	    ap->ap_timeout		= au->au_cmd[ap->ap_cdb_length + 3] & 0x07;
-	    ap->ap_ars			= (au->au_cmd[ap->ap_cdb_length + 3] & 0x08) ? 1 : 0;
-	    ap->ap_islogical		= (au->au_cmd[ap->ap_cdb_length + 3] & 0x80) ? 1 : 0;
-	    ap->ap_logical_drive_no	= au->au_cmd[ap->ap_cdb_length + 4];
-	    ap->ap_channel		= au->au_cmd[ap->ap_cdb_length + 5];
-	    ap->ap_scsi_id 		= au->au_cmd[ap->ap_cdb_length + 6];
-	    ap->ap_request_sense_length	= 14;
-	    ap->ap_data_transfer_length = au->au_length;
+	    apt->ap_timeout		= au->au_cmd[apt->ap_cdb_length + 3] & 0x07;
+	    apt->ap_ars			= (au->au_cmd[apt->ap_cdb_length + 3] & 0x08) ? 1 : 0;
+	    apt->ap_islogical		= (au->au_cmd[apt->ap_cdb_length + 3] & 0x80) ? 1 : 0;
+	    apt->ap_logical_drive_no	= au->au_cmd[apt->ap_cdb_length + 4];
+	    apt->ap_channel		= au->au_cmd[apt->ap_cdb_length + 5];
+	    apt->ap_scsi_id 		= au->au_cmd[apt->ap_cdb_length + 6];
+	    apt->ap_request_sense_length	= 14;
+	    apt->ap_data_transfer_length = au->au_length;
 	    /* XXX what about the request-sense area? does the caller want it? */
 
 	    /* build command */
-	    ac->ac_data = ap;
-	    ac->ac_length = sizeof(*ap);
+	    ac->ac_data = apt;
+	    ac->ac_length = sizeof(*apt);
 	    ac->ac_flags |= AMR_CMD_DATAOUT;
 	    ac->ac_ccb_data = dp;
 	    ac->ac_ccb_length = au->au_length;
@@ -534,8 +525,8 @@ amr_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 
     if (dp != NULL)
 	free(dp, M_DEVBUF);
-    if (ap != NULL)
-	free(ap, M_DEVBUF);
+    if (apt != NULL)
+	free(apt, M_DEVBUF);
     if (ac != NULL)
 	amr_releasecmd(ac);
     return(error);

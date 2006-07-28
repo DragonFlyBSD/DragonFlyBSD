@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.11 2005/06/02 20:40:31 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.12 2006/07/28 02:17:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,7 +286,7 @@ targioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 
 /* Writes are always ready, reads wait for user_ccb_queue or abort_queue */
 static int
-targpoll(dev_t dev, int poll_events, struct proc *p)
+targpoll(struct dev_poll_args *ap)
 {
 	struct targ_softc *softc;
 	int	revents;
@@ -294,21 +294,21 @@ targpoll(dev_t dev, int poll_events, struct proc *p)
 	softc = (struct targ_softc *)dev->si_drv1;
 
 	/* Poll for write() is always ok. */
-	revents = poll_events & (POLLOUT | POLLWRNORM);
-	if ((poll_events & (POLLIN | POLLRDNORM)) != 0) {
+	revents = ap->a_events & (POLLOUT | POLLWRNORM);
+	if ((ap->a_events & (POLLIN | POLLRDNORM)) != 0) {
 		crit_enter();
 		/* Poll for read() depends on user and abort queues. */
 		if (!TAILQ_EMPTY(&softc->user_ccb_queue) ||
 		    !TAILQ_EMPTY(&softc->abort_queue)) {
-			revents |= poll_events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		}
 		/* Only sleep if the user didn't poll for write. */
 		if (revents == 0)
 			selrecord(p, &softc->read_select);
 		crit_exit();
 	}
-
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 static int

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.13 2006/07/28 02:17:36 dillon Exp $
  */
 
 /*
@@ -68,23 +68,14 @@ static	d_write_t	nmdmwrite;
 static	d_ioctl_t	nmdmioctl;
 
 #define	CDEV_MAJOR	18
-static struct cdevsw nmdm_cdevsw = {
-	/* name */	"pts",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	nmdmopen,
-	/* close */	nmdmclose,
-	/* read */	nmdmread,
-	/* write */	nmdmwrite,
-	/* ioctl */	nmdmioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops nmdm_ops = {
+	{ "pts", CDEV_MAJOR, D_TTY },
+	.d_open =	nmdmopen,
+	.d_close =	nmdmclose,
+	.d_read =	nmdmread,
+	.d_write =	nmdmwrite,
+	.d_ioctl =	nmdmioctl,
+	.d_poll =	ttypoll,
 };
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */
@@ -139,10 +130,10 @@ nmdminit(int n)
 
 	pt = malloc(sizeof(*pt), M_NLMDM, M_WAITOK);
 	bzero(pt, sizeof(*pt));
-	cdevsw_add(&nmdm_cdevsw, ~1, n << 1);
-	pt->part1.dev = dev1 = make_dev(&nmdm_cdevsw, n << 1,
+	dev_ops_add(&nmdm_ops, ~1, n << 1);
+	pt->part1.dev = dev1 = make_dev(&nmdm_ops, n << 1,
 	    0, 0, 0666, "nmdm%dA", n);
-	pt->part2.dev = dev2 = make_dev(&nmdm_cdevsw, (n << 1) + 1,
+	pt->part2.dev = dev2 = make_dev(&nmdm_ops, (n << 1) + 1,
 	    0, 0, 0666, "nmdm%dB", n);
 
 	dev1->si_drv1 = dev2->si_drv1 = pt;
@@ -160,9 +151,9 @@ nmdminit(int n)
 
 /*ARGSUSED*/
 static	int
-nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
+nmdmopen(struct dev_open_args *ap)
 {
-	struct proc *p = td->td_proc;
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp, *tp2;
 	int error;
 	int minr;
@@ -173,8 +164,6 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 	int is_b;
 	int	pair;
 	struct	softpart *ourpart, *otherpart;
-
-	KKASSERT(p != NULL);
 
 	minr = lminor(dev);
 	pair = minr >> 1;
@@ -215,9 +204,9 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if (tp->t_state & TS_XCLUDE && suser(td)) {
+	} else if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0)) {
 		return (EBUSY);
-	} else if (pti->pt_prison != p->p_ucred->cr_prison) {
+	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
 		return (EBUSY);
 	}
 
@@ -265,9 +254,10 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 	return (error);
 }
 
-static	int
-nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
+static int
+nmdmclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp, *tp2;
 	int err;
 	struct softpart *ourpart, *otherpart;
@@ -294,7 +284,7 @@ nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
 		ttyflush(tp2, FREAD | FWRITE);
 	}
 
-	err = (*linesw[tp->t_line].l_close)(tp, flag);
+	err = (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	ourpart->modemsignals &= ~TIOCM_DTR;
 	nmdm_crossover(dev->si_drv1, ourpart, otherpart);
 	nmdmstop(tp, FREAD|FWRITE);
@@ -302,9 +292,10 @@ nmdmclose(dev_t dev, int flag, int mode, struct thread *td)
 	return (err);
 }
 
-static	int
-nmdmread(dev_t dev, struct uio *uio, int flag)
+static int
+nmdmread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int error = 0;
 	struct tty *tp, *tp2;
 	struct softpart *ourpart, *otherpart;
@@ -315,7 +306,7 @@ nmdmread(dev_t dev, struct uio *uio, int flag)
 
 #if 0
 	if (tp2->t_state & TS_ISOPEN) {
-		error = (*linesw[tp->t_line].l_read)(tp, uio, flag);
+		error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, flag);
 		wakeup_other(tp, FWRITE);
 	} else {
 		if (flag & IO_NDELAY) {
@@ -325,7 +316,7 @@ nmdmread(dev_t dev, struct uio *uio, int flag)
 		}
 	}
 #else
-	if ((error = (*linesw[tp->t_line].l_read)(tp, uio, flag)) == 0)
+	if ((error = (*linesw[tp->t_line].l_read)(tp, ap->a_uio, ap->a_ioflag)) == 0)
 		wakeup_other(tp, FWRITE);
 #endif
 	return (error);
@@ -337,8 +328,10 @@ nmdmread(dev_t dev, struct uio *uio, int flag)
  * indirectly, when tty driver calls nmdmstart.
  */
 static	int
-nmdmwrite(dev_t dev, struct uio *uio, int flag)
+nmdmwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	u_char *cp = 0;
 	int cc = 0;
 	u_char locbuf[BUFSIZ];
@@ -392,7 +385,7 @@ again:
 					uio->uio_resid += cc;
 					return (EIO);
 				}
-				if (flag & IO_NDELAY) {
+				if (ap->a_ioflag & IO_NDELAY) {
 					/*
 				         * Don't wait if asked not to.
 					 * Adjust for data copied in but
@@ -481,8 +474,9 @@ nmdmstop(struct tty *tp, int flush)
 
 /*ARGSUSED*/
 static	int
-nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+nmdmioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty *tp = dev->si_tty;
 	struct nm_softc *pti = dev->si_drv1;
 	int error;
@@ -493,11 +487,12 @@ nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	GETPARTS(tp, ourpart, otherpart);
 	tp2 = &otherpart->nm_tty;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, ap->a_data,
+					      ap->a_fflag, ap->a_cred);
 	if (error == ENOIOCTL)
-		 error = ttioctl(tp, cmd, data, flag);
+		 error = ttioctl(tp, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (error == ENOIOCTL) {
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		case TIOCSBRK:
 			otherpart->gotbreak = 1;
 			break;
@@ -510,23 +505,23 @@ nmdmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			ourpart->modemsignals &= TIOCM_DTR;
 			break;
 		case TIOCMSET:
-			ourpart->modemsignals = *(int *)data;
-			otherpart->modemsignals = *(int *)data;
+			ourpart->modemsignals = *(int *)ap->a_data;
+			otherpart->modemsignals = *(int *)ap->a_data;
 			break;
 		case TIOCMBIS:
-			ourpart->modemsignals |= *(int *)data;
+			ourpart->modemsignals |= *(int *)ap->a_data;
 			break;
 		case TIOCMBIC:
-			ourpart->modemsignals &= ~(*(int *)data);
-			otherpart->modemsignals &= ~(*(int *)data);
+			ourpart->modemsignals &= ~(*(int *)ap->a_data);
+			otherpart->modemsignals &= ~(*(int *)ap->a_data);
 			break;
 		case TIOCMGET:
-			*(int *)data = ourpart->modemsignals;
+			*(int *)ap->a_data = ourpart->modemsignals;
 			break;
 		case TIOCMSDTRWAIT:
 			break;
 		case TIOCMGDTRWAIT:
-			*(int *)data = 0;
+			*(int *)ap->a_data = 0;
 			break;
 		case TIOCTIMESTAMP:
 		case TIOCDCDTIMESTAMP:

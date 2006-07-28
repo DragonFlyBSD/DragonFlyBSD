@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.11 2005/06/14 21:19:18 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -46,11 +46,11 @@
 
 #include <sys/param.h>
 
-#include <sys/ioccom.h>
-
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
+#include <sys/ioccom.h>
 #include <sys/socket.h>
 #include <net/if.h>
 
@@ -72,23 +72,12 @@ static d_poll_t		i4bctlpoll;
 
 #define CDEV_MAJOR 55
 
-static struct cdevsw i4bctl_cdevsw = {
-	/* name */      "i4bctl",
-	/* maj */       CDEV_MAJOR,
-	/* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      i4bctlopen,
-	/* close */     i4bctlclose,
-	/* read */      noread,
-	/* write */     nowrite,
-	/* ioctl */     i4bctlioctl,
-	/* poll */      POLLFIELD,
-	/* mmap */      nommap,
-	/* strategy */  nostrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+static struct dev_ops i4bctl_ops = {
+	{ "i4bctl", CDEV_MAJOR, 0 },
+	.d_open =      i4bctlopen,
+	.d_close =     i4bctlclose,
+	.d_ioctl =     i4bctlioctl,
+	.d_poll =      POLLFIELD,
 };
 
 static void i4bctlattach(void *);
@@ -102,7 +91,7 @@ PSEUDO_SET(i4bctlattach, i4b_i4bctldrv);
 static void
 i4bctlinit(void *unused)
 {
-	cdevsw_add(&i4bctl_cdevsw, 0, 0);
+	dev_ops_add(&i4bctl_ops, 0, 0);
 }
 
 SYSINIT(i4bctldev, SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR, &i4bctlinit, NULL);
@@ -122,16 +111,14 @@ i4bctlattach(void *dummy)
  *	i4bctlopen - device driver open routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bctlopen(dev_t dev, int flag, int fmt, struct thread *td)
+i4bctlopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	if(minor(dev))
 		return (ENXIO);
-
 	if(openflag)
 		return (EBUSY);
-	
 	openflag = 1;
-	
 	return (0);
 }
 
@@ -139,7 +126,7 @@ i4bctlopen(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4bctlclose - device driver close routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bctlclose(dev_t dev, int flag, int fmt, struct thread *td)
+i4bctlclose(struct dev_close_args *ap)
 {
 	openflag = 0;
 	return (0);
@@ -149,8 +136,9 @@ i4bctlclose(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4bctlioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+i4bctlioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 #if DO_I4B_DEBUG
 	ctl_debug_t *cdbg;	
 	int error = 0;
@@ -162,10 +150,10 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if(minor(dev))
 		return(ENODEV);
 
-	switch(cmd)
+	switch(ap->a_cmd)
 	{
 		case I4B_CTL_GET_DEBUG:
-			cdbg = (ctl_debug_t *)data;
+			cdbg = (ctl_debug_t *)ap->a_data;
 			cdbg->l1 = i4b_l1_debug;
 			cdbg->l2 = i4b_l2_debug;
 			cdbg->l3 = i4b_l3_debug;
@@ -173,7 +161,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			break;
 		
 		case I4B_CTL_SET_DEBUG:
-			cdbg = (ctl_debug_t *)data;
+			cdbg = (ctl_debug_t *)ap->a_data;
 			i4b_l1_debug = cdbg->l1;
 			i4b_l2_debug = cdbg->l2;
 			i4b_l3_debug = cdbg->l3;
@@ -183,7 +171,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
                 case I4B_CTL_GET_CHIPSTAT:
                 {
                         struct chipstat *cst;
-			cst = (struct chipstat *)data;
+			cst = (struct chipstat *)ap->a_data;
 			(*ctrl_desc[cst->driver_unit].N_MGMT_COMMAND)(cst->driver_unit, CMR_GCST, cst);
                         break;
                 }
@@ -191,7 +179,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
                 case I4B_CTL_CLR_CHIPSTAT:
                 {
                         struct chipstat *cst;
-			cst = (struct chipstat *)data;
+			cst = (struct chipstat *)ap->a_data;
 			(*ctrl_desc[cst->driver_unit].N_MGMT_COMMAND)(cst->driver_unit, CMR_CCST, cst);
                         break;
                 }
@@ -200,7 +188,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
                 {
                         l2stat_t *l2s;
                         l2_softc_t *sc;
-                        l2s = (l2stat_t *)data;
+                        l2s = (l2stat_t *)ap->a_data;
 
                         if( l2s->unit < 0 || l2s->unit > MAXL1UNITS)
                         {
@@ -218,7 +206,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
                 {
                         int *up;
                         l2_softc_t *sc;
-                        up = (int *)data;
+                        up = (int *)ap->a_data;
 
                         if( *up < 0 || *up > MAXL1UNITS)
                         {
@@ -244,7 +232,7 @@ i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
  *	i4bctlpoll - device driver poll routine
  *---------------------------------------------------------------------------*/
 static int
-i4bctlpoll (dev_t dev, int events, struct thread *td)
+i4bctlpoll (struct dev_poll_args *ap)
 {
 	return (ENODEV);
 }

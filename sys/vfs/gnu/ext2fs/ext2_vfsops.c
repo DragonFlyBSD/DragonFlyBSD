@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.44 2006/07/18 22:22:15 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.45 2006/07/28 02:17:41 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -78,7 +78,7 @@ extern struct vop_ops ext2_fifo_vops;
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags);
 static int ext2_mount (struct mount *, char *, caddr_t, struct ucred *);
-static int ext2_mountfs (struct vnode *, struct mount *);
+static int ext2_mountfs (struct vnode *, struct mount *, struct ucred *);
 static int ext2_root(struct mount *, struct vnode **);
 static int ext2_reload (struct mount *mountp, struct ucred *cred);
 static int ext2_sbupdate (struct ext2mount *, int);
@@ -367,7 +367,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
-		error = ext2_mountfs(devvp, mp);
+		error = ext2_mountfs(devvp, mp, cred);
 	} else {
 		if (devvp != ump->um_devvp)
 			error = EINVAL;	/* needs translation */
@@ -691,7 +691,7 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
  * Common code for mount and mountroot
  */
 static int
-ext2_mountfs(struct vnode *devvp, struct mount *mp)
+ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 {
 	struct ext2mount *ump;
 	struct buf *bp;
@@ -731,7 +731,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp)
 		mp->mnt_iosize_max = dev->si_iosize_max;
 	if (mp->mnt_iosize_max > MAXPHYS)
 		mp->mnt_iosize_max = MAXPHYS;
-	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, NOCRED) != 0)
+	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, cred) != 0)
 		size = DEV_BSIZE;
 	else {
 		havepart = 1;

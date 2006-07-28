@@ -30,12 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.12 2006/05/19 07:33:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.13 2006/07/28 02:17:41 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/fcntl.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
@@ -87,35 +88,22 @@ static MALLOC_DEFINE(M_NSMBDEV, "NETSMBDEV", "NET/SMB device");
 int smb_dev_queue(struct smb_dev *ndp, struct smb_rq *rqp, int prio);
 */
 
-static struct cdevsw nsmb_cdevsw = {
-	/* name */	NSMB_NAME,
-	/* maj */	NSMB_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	nsmb_dev_open,
-	/* close */	nsmb_dev_close,
-	/* read */	nsmb_dev_read,
-	/* write */	nsmb_dev_write,
-	/* ioctl */ 	nsmb_dev_ioctl,
-	/* poll */	nsmb_dev_poll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops nsmb_ops = {
+	{ NSMB_NAME, NSMB_MAJOR, 0 },
+	.d_open =	nsmb_dev_open,
+	.d_close =	nsmb_dev_close,
+	.d_read =	nsmb_dev_read,
+	.d_write =	nsmb_dev_write,
+	.d_ioctl = 	nsmb_dev_ioctl,
+	.d_poll =	nsmb_dev_poll,
 };
 
 
 static int
-nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
+nsmb_dev_open(struct dev_open_args *ap)
 {
-	struct proc *p = td->td_proc;
+	dev_t dev = ap->a_head.a_dev;
 	struct smb_dev *sdp;
-	struct ucred *cred;
-
-	KKASSERT(p != NULL);
-	cred = p->p_ucred;
 
 	sdp = SMB_GETDEV(dev);
 	if (sdp && (sdp->sd_flags & NSMBFL_OPEN))
@@ -129,7 +117,8 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	 * device...  someone should take care of it.
 	 */
 	if ((dev->si_flags & SI_NAMED) == 0) {
-		make_dev(&nsmb_cdevsw, minor(dev), cred->cr_uid, cred->cr_gid,
+		make_dev(&nsmb_ops, minor(dev),
+			ap->a_cred->cr_uid, ap->a_cred->cr_gid,
 			0700, NSMB_NAME"%d", lminor(dev));
 	}
 	bzero(sdp, sizeof(*sdp));
@@ -146,8 +135,9 @@ nsmb_dev_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 }
 
 static int
-nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
+nsmb_dev_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -159,7 +149,7 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 		crit_exit();
 		return EBADF;
 	}
-	smb_makescred(&scred, td, NULL);
+	smb_makescred(&scred, curthread, NULL);
 	ssp = sdp->sd_share;
 	if (ssp != NULL)
 		smb_share_rele(ssp, &scred);
@@ -178,8 +168,10 @@ nsmb_dev_close(dev_t dev, int flag, int fmt, d_thread_t *td)
 
 
 static int
-nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+nsmb_dev_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	struct smb_dev *sdp;
 	struct smb_vc *vcp;
 	struct smb_share *ssp;
@@ -190,8 +182,8 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	if ((sdp->sd_flags & NSMBFL_OPEN) == 0)
 		return EBADF;
 
-	smb_makescred(&scred, td, NULL);
-	switch (cmd) {
+	smb_makescred(&scred, NULL, ap->a_cred);
+	switch (ap->a_cmd) {
 	    case SMBIOC_OPENSESSION:
 		if (sdp->sd_vc)
 			return EISCONN;
@@ -200,7 +192,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		if (error)
 			break;
 		sdp->sd_vc = vcp;
-		smb_vc_unlock(vcp, 0, td);
+		smb_vc_unlock(vcp, 0);
 		sdp->sd_level = SMBL_VC;
 		break;
 	    case SMBIOC_OPENSHARE:
@@ -213,7 +205,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		if (error)
 			break;
 		sdp->sd_share = ssp;
-		smb_share_unlock(ssp, 0, td);
+		smb_share_unlock(ssp, 0);
 		sdp->sd_level = SMBL_SHARE;
 		break;
 	    case SMBIOC_REQUEST:
@@ -242,7 +234,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 					break;
 				if (on && (vcp->obj.co_flags & SMBV_PERMANENT) == 0) {
 					vcp->obj.co_flags |= SMBV_PERMANENT;
-					smb_vc_ref(vcp, td);
+					smb_vc_ref(vcp);
 				} else if (!on && (vcp->obj.co_flags & SMBV_PERMANENT)) {
 					vcp->obj.co_flags &= ~SMBV_PERMANENT;
 					smb_vc_rele(vcp, &scred);
@@ -260,7 +252,7 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 					break;
 				if (on && (ssp->obj.co_flags & SMBS_PERMANENT) == 0) {
 					ssp->obj.co_flags |= SMBS_PERMANENT;
-					smb_share_ref(ssp, td);
+					smb_share_ref(ssp);
 				} else if (!on && (ssp->obj.co_flags & SMBS_PERMANENT)) {
 					ssp->obj.co_flags &= ~SMBS_PERMANENT;
 					smb_share_rele(ssp, &scred);
@@ -283,12 +275,12 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 			break;
 		if (vcp) {
 			sdp->sd_vc = vcp;
-			smb_vc_unlock(vcp, 0, td);
+			smb_vc_unlock(vcp, 0);
 			sdp->sd_level = SMBL_VC;
 		}
 		if (ssp) {
 			sdp->sd_share = ssp;
-			smb_share_unlock(ssp, 0, td);
+			smb_share_unlock(ssp, 0);
 			sdp->sd_level = SMBL_SHARE;
 		}
 		break;
@@ -306,9 +298,9 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		auio.uio_offset = rwrq->ioc_offset;
 		auio.uio_resid = rwrq->ioc_cnt;
 		auio.uio_segflg = UIO_USERSPACE;
-		auio.uio_rw = (cmd == SMBIOC_READ) ? UIO_READ : UIO_WRITE;
-		auio.uio_td = td;
-		if (cmd == SMBIOC_READ)
+		auio.uio_rw = (ap->a_cmd == SMBIOC_READ) ? UIO_READ : UIO_WRITE;
+		auio.uio_td = curthread;
+		if (ap->a_cmd == SMBIOC_READ)
 			error = smb_read(ssp, rwrq->ioc_fh, &auio, &scred);
 		else
 			error = smb_write(ssp, rwrq->ioc_fh, &auio, &scred);
@@ -322,19 +314,19 @@ nsmb_dev_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 }
 
 static int
-nsmb_dev_read(dev_t dev, struct uio *uio, int flag)
+nsmb_dev_read(struct dev_read_args *ap)
 {
 	return EACCES;
 }
 
 static int
-nsmb_dev_write(dev_t dev, struct uio *uio, int flag)
+nsmb_dev_write(struct dev_write_args *ap)
 {
 	return EACCES;
 }
 
 static int
-nsmb_dev_poll(dev_t dev, int events, d_thread_t *td)
+nsmb_dev_poll(struct dev_poll_args *ap)
 {
 	return ENODEV;
 }
@@ -354,14 +346,14 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 			smb_sm_done();
 			break;
 		}
-		cdevsw_add(&nsmb_cdevsw, 0, 0);
+		dev_ops_add(&nsmb_ops, 0, 0);
 		printf("netsmb_dev: loaded\n");
 		break;
 	    case MOD_UNLOAD:
 		smb_iod_done();
 		error = smb_sm_done();
 		error = 0;
-		cdevsw_remove(&nsmb_cdevsw, 0, 0);
+		dev_ops_remove(&nsmb_ops, 0, 0);
 		printf("netsmb_dev: unloaded\n");
 		break;
 	    default:

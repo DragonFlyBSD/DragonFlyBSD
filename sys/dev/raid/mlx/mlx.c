@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.19 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -57,23 +57,11 @@
 
 #define MLX_CDEV_MAJOR	130
 
-static struct cdevsw mlx_cdevsw = {
-		/* name */ 	"mlx",
-		/* maj */	MLX_CDEV_MAJOR,
-		/* flags */	0,
-		/* port */	NULL,
-		/* clone */	NULL,
-
-		/* open */	mlx_open,
-		/* close */	mlx_close,
-		/* read */	noread,
-		/* write */	nowrite,
-		/* ioctl */	mlx_ioctl,
-		/* poll */	nopoll,
-		/* mmap */	nommap,
-		/* strategy */	nostrategy,
-		/* dump */	nodump,
-		/* psize */ 	nopsize
+static struct dev_ops mlx_ops = {
+	{ "mlx", MLX_CDEV_MAJOR, 0 },
+	.d_open =	mlx_open,
+	.d_close =	mlx_close,
+	.d_ioctl =	mlx_ioctl,
 };
 
 devclass_t	mlx_devclass;
@@ -209,7 +197,7 @@ mlx_free(struct mlx_softc *sc)
     if (sc->mlx_enq2 != NULL)
 	free(sc->mlx_enq2, M_DEVBUF);
 
-    cdevsw_remove(&mlx_cdevsw, -1, device_get_unit(sc->mlx_dev));
+    dev_ops_remove(&mlx_ops, -1, device_get_unit(sc->mlx_dev));
 }
 
 /********************************************************************************
@@ -485,8 +473,8 @@ mlx_attach(struct mlx_softc *sc)
     /*
      * Create the control device.
      */
-    cdevsw_add(&mlx_cdevsw, -1, device_get_unit(sc->mlx_dev));
-    make_dev(&mlx_cdevsw, device_get_unit(sc->mlx_dev), 
+    dev_ops_add(&mlx_ops, -1, device_get_unit(sc->mlx_dev));
+    make_dev(&mlx_ops, device_get_unit(sc->mlx_dev), 
 	    UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 	    "mlx%d", device_get_unit(sc->mlx_dev));
 
@@ -719,8 +707,9 @@ mlx_submit_bio(struct mlx_softc *sc, struct bio *bio)
  * Accept an open operation on the control device.
  */
 int
-mlx_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+mlx_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mlx_softc	*sc = devclass_get_softc(mlx_devclass, unit);
 
@@ -732,8 +721,9 @@ mlx_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Accept the last close on the control device.
  */
 int
-mlx_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+mlx_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mlx_softc	*sc = devclass_get_softc(mlx_devclass, unit);
 
@@ -745,19 +735,20 @@ mlx_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle controller-specific control operations.
  */
 int
-mlx_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+mlx_ioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int				unit = minor(dev);
     struct mlx_softc		*sc = devclass_get_softc(mlx_devclass, unit);
-    struct mlx_rebuild_request	*rb = (struct mlx_rebuild_request *)addr;
-    struct mlx_rebuild_status	*rs = (struct mlx_rebuild_status *)addr;
-    int				*arg = (int *)addr;
+    struct mlx_rebuild_request	*rb = (struct mlx_rebuild_request *)ap->a_data;
+    struct mlx_rebuild_status	*rs = (struct mlx_rebuild_status *)ap->a_data;
+    int				*arg = (int *)ap->a_data;
     struct mlx_pause		*mp;
     struct mlx_sysdrive		*dr;
     struct mlxd_softc		*mlxd;
     int				i, error;
     
-    switch(cmd) {
+    switch(ap->a_cmd) {
 	/*
 	 * Enumerate connected system drives; returns the first system drive's
 	 * unit number if *arg is -1, or the next unit after *arg if it's
@@ -835,7 +826,7 @@ mlx_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 	if (!(sc->mlx_feature & MLX_FEAT_PAUSEWORKS))
 	    return(EOPNOTSUPP);
 
-	mp = (struct mlx_pause *)addr;
+	mp = (struct mlx_pause *)ap->a_data;
 	if ((mp->mp_which == MLX_PAUSE_CANCEL) && (sc->mlx_pause.mp_when != 0)) {
 	    /* cancel a pending pause operation */
 	    sc->mlx_pause.mp_which = 0;
@@ -863,7 +854,7 @@ mlx_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
 	 * Accept a command passthrough-style.
 	 */
     case MLX_COMMAND:
-	return(mlx_user_command(sc, (struct mlx_usercommand *)addr));
+	return(mlx_user_command(sc, (struct mlx_usercommand *)ap->a_data));
 
 	/*
 	 * Start a rebuild on a given SCSI disk
@@ -932,7 +923,7 @@ mlx_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
  */
 int
 mlx_submit_ioctl(struct mlx_softc *sc, struct mlx_sysdrive *drive, u_long cmd, 
-		caddr_t addr, int32_t flag, d_thread_t *td)
+		caddr_t addr, int32_t flag)
 {
     int				*arg = (int *)addr;
     int				error, result;

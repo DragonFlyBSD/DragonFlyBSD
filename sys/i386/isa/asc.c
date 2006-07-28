@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.13 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -187,23 +187,13 @@ static d_poll_t		ascpoll;
 
 #define CDEV_MAJOR 71
 
-static struct cdevsw asc_cdevsw = {
-	/* name */	"asc",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ascopen,
-	/* close */	ascclose,
-	/* read */	ascread,
-	/* write */	nowrite,
-	/* ioctl */	ascioctl,
-	/* poll */	ascpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops asc_ops = {
+	{ "asc", CDEV_MAJOR, 0 },
+	.d_open =	ascopen,
+	.d_close =	ascclose,
+	.d_read =	ascread,
+	.d_ioctl =	ascioctl,
+	.d_poll =	ascpoll,
 };
 
 #define STATIC static
@@ -480,13 +470,13 @@ ascattach(struct isa_device *isdp)
     scu->selp.si_pid=(pid_t)0;
 #define ASC_UID 0
 #define ASC_GID 13
-  cdevsw_add(&asc_cdevsw, 0xc0, unit << 6);
-  make_dev(&asc_cdevsw, unit<<6, ASC_UID, ASC_GID, 0666, "asc%d", unit);
-  make_dev(&asc_cdevsw, ((unit<<6) + FRMT_PBM),
+  dev_ops_add(&asc_ops, 0xc0, unit << 6);
+  make_dev(&asc_ops, unit<<6, ASC_UID, ASC_GID, 0666, "asc%d", unit);
+  make_dev(&asc_ops, ((unit<<6) + FRMT_PBM),
     ASC_UID,  ASC_GID, 0666, "asc%dp", unit);
-  make_dev(&asc_cdevsw, ((unit<<6) + DBUG_MASK),
+  make_dev(&asc_ops, ((unit<<6) + DBUG_MASK),
     ASC_UID,  ASC_GID, 0666, "asc%dd", unit);
-  make_dev(&asc_cdevsw, ((unit<<6) + DBUG_MASK+FRMT_PBM), 
+  make_dev(&asc_ops, ((unit<<6) + DBUG_MASK+FRMT_PBM), 
     ASC_UID, ASC_GID, 0666, "asc%dpd", unit);
   return ATTACH_SUCCESS;
 }
@@ -543,8 +533,9 @@ ascintr(void *arg)
  ***/
 
 STATIC int
-ascopen(dev_t dev, int flags, int fmt, struct thread *td)
+ascopen(struct dev_open_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   struct asc_unit *scu;
   int unit;
 
@@ -638,8 +629,9 @@ asc_startread(struct asc_unit *scu)
  ***/
 
 STATIC int
-ascclose(dev_t dev, int flags, int fmt, struct thread *td)
+ascclose(struct dev_close_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
 
@@ -696,8 +688,10 @@ pbm_init(struct asc_unit *scu)
  ***/
 
 STATIC int
-ascread(dev_t dev, struct uio *uio, int ioflag)
+ascread(struct dev_read_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  struct uio *uio = ap->a_uio;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
   size_t nbytes;
@@ -785,8 +779,10 @@ ascread(dev_t dev, struct uio *uio, int ioflag)
  ***/
 
 STATIC int
-ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+ascioctl(struct dev_ioctl_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  caddr_t data = ap->a_data;
   int unit = UNIT(minor(dev));
   struct asc_unit *scu = unittab + unit;
 
@@ -798,7 +794,7 @@ ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	     unit, scu->flags);
       return ENXIO;
   }
-  switch(cmd) {
+  switch(ap->a_cmd) {
   case ASC_GRES:
     asc_reset(scu);
     get_resolution(scu);
@@ -850,22 +846,19 @@ ascioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 }
 
 STATIC int
-ascpoll(dev_t dev, int events, struct thread *td)
+ascpoll(struct dev_poll_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int unit = UNIT(minor(dev));
     struct asc_unit *scu = unittab + unit;
-    struct proc *p;
     struct proc *p1;
     int revents = 0;
 
-    p = td->td_proc;
-    KKASSERT(p);
-
     crit_enter();
 
-    if (events & (POLLIN | POLLRDNORM)) {
+    if (ap->a_events & (POLLIN | POLLRDNORM)) {
 	if (scu->sbuf.count >0)
-	    revents |= events & (POLLIN | POLLRDNORM);
+	    revents |= ap->a_events & (POLLIN | POLLRDNORM);
 	else {
 	    if (!(scu->flags & DMA_ACTIVE))
 		dma_restart(scu);
@@ -874,9 +867,10 @@ ascpoll(dev_t dev, int events, struct thread *td)
 		    && p1->p_wchan == (caddr_t)&selwait)
 		scu->selp.si_flags = SI_COLL;
 	    else
-		scu->selp.si_pid = p->p_pid;
+		scu->selp.si_pid = curproc->p_pid;
 	}
     }
     crit_exit();
-    return (revents);
+    ap->a_events = revents;
+    return (0);
 }

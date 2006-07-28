@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.19 2005/12/11 01:54:07 swildner Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.20 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -38,6 +38,7 @@
 #include <sys/malloc.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/ioccom.h>
 #include <sys/reboot.h>
 #include <sys/sysctl.h>
@@ -70,15 +71,11 @@ static d_close_t	acpiclose;
 static d_ioctl_t	acpiioctl;
 
 #define CDEV_MAJOR 152
-static struct cdevsw acpi_cdevsw = {
-	.d_name	= "acpi",
-	.d_maj  = CDEV_MAJOR,
-	.d_flags = 0,
-	.d_port = NULL,
-	.d_clone = NULL,
-	.old_open = acpiopen,
-	.old_close = acpiclose,
-	.old_ioctl = acpiioctl
+static struct dev_ops acpi_ops = {
+	{ "acpi", CDEV_MAJOR, 0 },
+	.d_open = acpiopen,
+	.d_close = acpiclose,
+	.d_ioctl = acpiioctl
 };
 
 #if __FreeBSD_version >= 500000
@@ -595,8 +592,8 @@ acpi_attach(device_t dev)
     sc->acpi_sleep_disabled = 0;
 
     /* Create the control device */
-    cdevsw_add(&acpi_cdevsw, 0, 0);
-    sc->acpi_dev_t = make_dev(&acpi_cdevsw, 0, UID_ROOT, GID_WHEEL, 0644,
+    dev_ops_add(&acpi_ops, 0, 0);
+    sc->acpi_dev_t = make_dev(&acpi_ops, 0, UID_ROOT, GID_WHEEL, 0644,
 			      "acpi");
     sc->acpi_dev_t->si_drv1 = sc;
 
@@ -2441,19 +2438,19 @@ acpi_deregister_ioctl(u_long cmd, acpi_ioctl_fn fn)
 }
 
 static int
-acpiopen(dev_t dev, int flag, int fmt, d_thread_t *td)
+acpiopen(struct dev_open_args *ap)
 {
     return (0);
 }
 
 static int
-acpiclose(dev_t dev, int flag, int fmt, d_thread_t *td)
+acpiclose(struct dev_close_args *ap)
 {
     return (0);
 }
 
 static int
-acpiioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
+acpiioctl(struct dev_ioctl_args *ap)
 {
     struct acpi_softc		*sc;
     struct acpi_ioctl_hook	*hp;
@@ -2463,15 +2460,15 @@ acpiioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
     ACPI_LOCK;
 
     error = state = 0;
-    sc = dev->si_drv1;
+    sc = ap->a_head.a_dev->si_drv1;
 
     /*
      * Scan the list of registered ioctls, looking for handlers.
      */
     if (acpi_ioctl_hooks_initted) {
 	TAILQ_FOREACH(hp, &acpi_ioctl_hooks, link) {
-	    if (hp->cmd == cmd) {
-		xerror = hp->fn(cmd, addr, hp->arg);
+	    if (hp->cmd == ap->a_cmd) {
+		xerror = hp->fn(ap->a_cmd, ap->a_data, hp->arg);
 		if (xerror != 0)
 		    error = xerror;
 		goto out;
@@ -2484,11 +2481,11 @@ acpiioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
      * Currently, other ioctls just fetch information.
      * Not changing system behavior.
      */
-    if((flag & FWRITE) == 0)
+    if((ap->a_fflag & FWRITE) == 0)
 	return (EPERM);
 
     /* Core system ioctls. */
-    switch (cmd) {
+    switch (ap->a_cmd) {
     case ACPIIO_ENABLE:
 	if (ACPI_FAILURE(acpi_Enable(sc)))
 	    error = ENXIO;
@@ -2502,7 +2499,7 @@ acpiioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 	    error = ENXIO;
 	    break;
 	}
-	state = *(int *)addr;
+	state = *(int *)ap->a_data;
 	if (state >= ACPI_STATE_S0  && state <= ACPI_S_STATES_MAX) {
 	    if (ACPI_FAILURE(acpi_SetSleepState(sc, state)))
 		error = EINVAL;

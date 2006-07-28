@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.7 2004/05/19 22:52:39 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.8 2006/07/28 02:17:35 dillon Exp $
  */
 
 
@@ -103,23 +103,12 @@ SYSCTL_INT(_net_inet_ipf, OID_AUTO, fr_minttllog, CTLFLAG_RW,
 	   &fr_minttllog, 0, "");
 
 #define CDEV_MAJOR 79
-static struct cdevsw ipl_cdevsw = {
-	/* name */	"ipl",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	iplopen,
-	/* close */	iplclose,
-	/* read */	iplread,
-	/* write */	nowrite,
-	/* ioctl */	iplioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ipl_ops = {
+	{ "ipl", CDEV_MAJOR, 0 },
+	.d_open =	iplopen,
+	.d_close =	iplclose,
+	.d_read =	iplread,
+	.d_ioctl =	iplioctl,
 };
 
 static int
@@ -134,7 +123,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 		error = iplattach();
 		if (error)
 			break;
-		cdevsw_add(&ipl_cdevsw, 0, 0);
+		dev_ops_add(&ipl_ops, 0, 0);
 
 		c = NULL;
 		for(i=strlen(IPL_NAME); i>0; i--)
@@ -144,7 +133,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_NAME;
-		make_dev(&ipl_cdevsw, IPL_LOGIPF, 0, 0, 0600, c);
+		make_dev(&ipl_ops, IPL_LOGIPF, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_NAT); i>0; i--)
@@ -154,7 +143,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_NAT;
-		make_dev(&ipl_cdevsw, IPL_LOGNAT, 0, 0, 0600, c);
+		make_dev(&ipl_ops, IPL_LOGNAT, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_STATE); i>0; i--)
@@ -164,7 +153,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_STATE;
-		make_dev(&ipl_cdevsw, IPL_LOGSTATE, 0, 0, 0600, c);
+		make_dev(&ipl_ops, IPL_LOGSTATE, 0, 0, 0600, c);
 
 		c = NULL;
 		for(i=strlen(IPL_AUTH); i>0; i--)
@@ -174,11 +163,11 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 			}
 		if (!c)
 			c = IPL_AUTH;
-		make_dev(&ipl_cdevsw, IPL_LOGAUTH, 0, 0, 0600, c);
+		make_dev(&ipl_ops, IPL_LOGAUTH, 0, 0, 0600, c);
 
 		break;
 	case MOD_UNLOAD :
-		cdevsw_remove(&ipl_cdevsw, 0, 0);
+		dev_ops_remove(&ipl_ops, 0, 0);
 		error = ipldetach();
 		break;
 	default:

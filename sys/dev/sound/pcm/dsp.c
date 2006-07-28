@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.9 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.9 2006/06/13 08:12:02 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.10 2006/07/28 02:17:38 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -44,23 +44,15 @@ static d_ioctl_t dsp_ioctl;
 static d_poll_t dsp_poll;
 static d_mmap_t dsp_mmap;
 
-static struct cdevsw dsp_cdevsw = {
-	/* name */	"dsp",
-	/* maj */	SND_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	dsp_open,
-	/* close */	dsp_close,
-	/* read */	dsp_read,
-	/* write */	dsp_write,
-	/* ioctl */	dsp_ioctl,
-	/* poll */	dsp_poll,
-	/* mmap */	dsp_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops dsp_ops = {
+	{ "dsp", SND_CDEV_MAJOR, 0 },
+	.d_open =	dsp_open,
+	.d_close =	dsp_close,
+	.d_read =	dsp_read,
+	.d_write =	dsp_write,
+	.d_ioctl =	dsp_ioctl,
+	.d_poll =	dsp_poll,
+	.d_mmap =	dsp_mmap,
 };
 
 #ifdef USING_DEVFS
@@ -175,19 +167,17 @@ relchns(dev_t dev, struct pcm_channel *rdch, struct pcm_channel *wrch, u_int32_t
 }
 
 static int
-dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
+dsp_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	u_int32_t fmt;
 	int devtype;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p != NULL);
 
 	crit_enter();
-	d = dsp_get_info(i_dev);
-	devtype = PCMDEV(i_dev);
+	d = dsp_get_info(dev);
+	devtype = PCMDEV(dev);
 
 	/* decide default format */
 	switch (devtype) {
@@ -209,7 +199,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 
 	case SND_DEV_DSPREC:
 		fmt = AFMT_U8;
-		if (mode & FWRITE) {
+		if (ap->a_oflags & FWRITE) {
 			crit_exit();
 			return EINVAL;
 		}
@@ -222,17 +212,18 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 	/* lock snddev so nobody else can monkey with it */
 	pcm_lock(d);
 
-	rdch = i_dev->si_drv1;
-	wrch = i_dev->si_drv2;
+	rdch = dev->si_drv1;
+	wrch = dev->si_drv2;
 
-	if ((dsp_get_flags(i_dev) & SD_F_SIMPLEX) && (rdch || wrch)) {
+	if ((dsp_get_flags(dev) & SD_F_SIMPLEX) && (rdch || wrch)) {
 		/* simplex device, already open, exit */
 		pcm_unlock(d);
 		crit_exit();
 		return EBUSY;
 	}
 
-	if (((flags & FREAD) && rdch) || ((flags & FWRITE) && wrch)) {
+	if (((ap->a_oflags & FREAD) && rdch) ||
+	    ((ap->a_oflags & FWRITE) && wrch)) {
 		/* device already open in one or both directions */
 		pcm_unlock(d);
 		crit_exit();
@@ -240,12 +231,12 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 	}
 
 	/*  if we get here, the open request is valid */
-	if (flags & FREAD) {
+	if (ap->a_oflags & FREAD) {
 		/* open for read */
 		if (devtype == SND_DEV_DSPREC)
-			rdch = pcm_chnalloc(d, PCMDIR_REC, p->p_pid, PCMCHAN(i_dev));
+			rdch = pcm_chnalloc(d, PCMDIR_REC, curproc->p_pid, PCMCHAN(dev));
 		else
-			rdch = pcm_chnalloc(d, PCMDIR_REC, p->p_pid, -1);
+			rdch = pcm_chnalloc(d, PCMDIR_REC, curproc->p_pid, -1);
 		if (!rdch) {
 			/* no channel available, exit */
 			pcm_unlock(d);
@@ -255,12 +246,12 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		/* got a channel, already locked for us */
 	}
 
-	if (flags & FWRITE) {
+	if (ap->a_oflags & FWRITE) {
 		/* open for write */
-		wrch = pcm_chnalloc(d, PCMDIR_PLAY, p->p_pid, -1);
+		wrch = pcm_chnalloc(d, PCMDIR_PLAY, curproc->p_pid, -1);
 		if (!wrch) {
 			/* no channel available */
-			if (rdch && (flags & FREAD)) {
+			if (rdch && (ap->a_oflags & FREAD)) {
 				/* just opened a read channel, release it */
 				pcm_chnrelease(rdch);
 			}
@@ -272,17 +263,17 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		/* got a channel, already locked for us */
 	}
 
-	i_dev->si_drv1 = rdch;
-	i_dev->si_drv2 = wrch;
+	dev->si_drv1 = rdch;
+	dev->si_drv2 = wrch;
 	pcm_unlock(d);
 	/* finished with snddev, new channels still locked */
 
 	/* bump refcounts, reset and unlock any channels that we just opened */
-	if (flags & FREAD) {
+	if (ap->a_oflags & FREAD) {
 		if (chn_reset(rdch, fmt)) {
 			pcm_lock(d);
 			pcm_chnrelease(rdch);
-			if (wrch && (flags & FWRITE))
+			if (wrch && (ap->a_oflags & FWRITE))
 				pcm_chnrelease(wrch);
 			pcm_unlock(d);
 			crit_exit();
@@ -290,17 +281,17 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		}
 #if 0
 		/* removed, will be passed as an IO_ flag */
-		if (flags & O_NONBLOCK)
+		if (ap->a_oflags & O_NONBLOCK)
 			rdch->flags |= CHN_F_NBIO;
 #endif
 		pcm_chnref(rdch, 1);
 	 	CHN_UNLOCK(rdch);
 	}
-	if (flags & FWRITE) {
+	if (ap->a_oflags & FWRITE) {
 		if (chn_reset(wrch, fmt)) {
 			pcm_lock(d);
 			pcm_chnrelease(wrch);
-			if (flags & FREAD) {
+			if (ap->a_oflags & FREAD) {
 				CHN_LOCK(rdch);
 				pcm_chnref(rdch, -1);
 				pcm_chnrelease(rdch);
@@ -312,7 +303,7 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 		}
 #if 0
 		/* removed, will be passed as an IO_ flag */
-		if (flags & O_NONBLOCK)
+		if (ap->a_oflags & O_NONBLOCK)
 			wrch->flags |= CHN_F_NBIO;
 #endif
 		pcm_chnref(wrch, 1);
@@ -323,17 +314,18 @@ dsp_open(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
+dsp_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	struct snddev_info *d;
 	int exit;
 
 	crit_enter();
-	d = dsp_get_info(i_dev);
+	d = dsp_get_info(dev);
 	pcm_lock(d);
-	rdch = i_dev->si_drv1;
-	wrch = i_dev->si_drv2;
+	rdch = dev->si_drv1;
+	wrch = dev->si_drv2;
 
 	exit = 0;
 
@@ -363,10 +355,10 @@ dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 	if (pcm_getfakechan(d))
 		pcm_getfakechan(d)->flags = 0;
 
-	i_dev->si_drv1 = NULL;
-	i_dev->si_drv2 = NULL;
+	dev->si_drv1 = NULL;
+	dev->si_drv2 = NULL;
 
-	dsp_set_flags(i_dev, dsp_get_flags(i_dev) & ~SD_F_TRANSIENT);
+	dsp_set_flags(dev, dsp_get_flags(dev) & ~SD_F_TRANSIENT);
 	pcm_unlock(d);
 
 	if (rdch) {
@@ -387,60 +379,65 @@ dsp_close(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-dsp_read(dev_t i_dev, struct uio *buf, int flag)
+dsp_read(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	int ret;
 
 	crit_enter();
-	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD);
+	getchns(dev, &rdch, &wrch, SD_F_PRIO_RD);
 
 	KASSERT(rdch, ("dsp_read: nonexistant channel"));
 	KASSERT(rdch->flags & CHN_F_BUSY, ("dsp_read: nonbusy channel"));
 
 	if (rdch->flags & (CHN_F_MAPPED | CHN_F_DEAD)) {
-		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD);
+		relchns(dev, rdch, wrch, SD_F_PRIO_RD);
 		crit_exit();
 		return EINVAL;
 	}
 	if (!(rdch->flags & CHN_F_RUNNING))
 		rdch->flags |= CHN_F_RUNNING;
-	ret = chn_read(rdch, buf, flag);
-	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD);
+	ret = chn_read(rdch, ap->a_uio, ap->a_ioflag);
+	relchns(dev, rdch, wrch, SD_F_PRIO_RD);
 
 	crit_exit();
 	return ret;
 }
 
 static int
-dsp_write(dev_t i_dev, struct uio *buf, int flag)
+dsp_write(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *rdch, *wrch;
 	int ret;
 
 	crit_enter();
-	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_WR);
+	getchns(dev, &rdch, &wrch, SD_F_PRIO_WR);
 
 	KASSERT(wrch, ("dsp_write: nonexistant channel"));
 	KASSERT(wrch->flags & CHN_F_BUSY, ("dsp_write: nonbusy channel"));
 
 	if (wrch->flags & (CHN_F_MAPPED | CHN_F_DEAD)) {
-		relchns(i_dev, rdch, wrch, SD_F_PRIO_WR);
+		relchns(dev, rdch, wrch, SD_F_PRIO_WR);
 		crit_exit();
 		return EINVAL;
 	}
 	if (!(wrch->flags & CHN_F_RUNNING))
 		wrch->flags |= CHN_F_RUNNING;
-	ret = chn_write(wrch, buf, flag);
-	relchns(i_dev, rdch, wrch, SD_F_PRIO_WR);
+	ret = chn_write(wrch, ap->a_uio, ap->a_ioflag);
+	relchns(dev, rdch, wrch, SD_F_PRIO_WR);
 
 	crit_exit();
 	return ret;
 }
 
 static int
-dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
+dsp_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t arg = ap->a_data;
     	struct pcm_channel *wrch, *rdch;
 	struct snddev_info *d;
 	int kill;
@@ -454,14 +451,15 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 	if (IOCGROUP(cmd) == 'M') {
 		dev_t pdev;
 
-		pdev = make_adhoc_dev(&dsp_cdevsw, 
-				PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
-		return mixer_ioctl(pdev, cmd, arg, mode, td);
+		pdev = make_adhoc_dev(&dsp_ops, 
+				PCMMKMINOR(PCMUNIT(dev), SND_DEV_CTL, 0));
+		ap->a_head.a_dev = pdev;
+		return mixer_ioctl(ap);
 	}
 
 	crit_enter();
-	d = dsp_get_info(i_dev);
-	getchns(i_dev, &rdch, &wrch, 0);
+	d = dsp_get_info(dev);
+	getchns(dev, &rdch, &wrch, 0);
 
 	kill = 0;
 	if (wrch && (wrch->flags & CHN_F_DEAD))
@@ -469,7 +467,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 	if (rdch && (rdch->flags & CHN_F_DEAD))
 		kill |= 2;
 	if (kill == 3) {
-		relchns(i_dev, rdch, wrch, 0);
+		relchns(dev, rdch, wrch, 0);
 		crit_exit();
 		return EINVAL;
 	}
@@ -576,8 +574,8 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 	    		p->formats = (rdch? chn_getformats(rdch) : 0xffffffff) &
 			 	     (wrch? chn_getformats(wrch) : 0xffffffff);
 			if (rdch && wrch)
-				p->formats |= (dsp_get_flags(i_dev) & SD_F_SIMPLEX)? 0 : AFMT_FULLDUPLEX;
-			pdev = make_adhoc_dev(&dsp_cdevsw, PCMMKMINOR(PCMUNIT(i_dev), SND_DEV_CTL, 0));
+				p->formats |= (dsp_get_flags(dev) & SD_F_SIMPLEX)? 0 : AFMT_FULLDUPLEX;
+			pdev = make_adhoc_dev(&dsp_ops, PCMMKMINOR(PCMUNIT(dev), SND_DEV_CTL, 0));
 	    		p->mixers = 1; /* default: one mixer */
 	    		p->inputs = pdev->si_drv1? mix_getdevs(pdev->si_drv1) : 0;
 	    		p->left = p->right = 100;
@@ -894,7 +892,7 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 
     	case SNDCTL_DSP_GETCAPS:
 		*arg_i = DSP_CAP_REALTIME | DSP_CAP_MMAP | DSP_CAP_TRIGGER;
-		if (rdch && wrch && !(dsp_get_flags(i_dev) & SD_F_SIMPLEX))
+		if (rdch && wrch && !(dsp_get_flags(dev) & SD_F_SIMPLEX))
 			*arg_i |= DSP_CAP_DUPLEX;
 		break;
 
@@ -967,104 +965,107 @@ dsp_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		ret = EINVAL;
 		break;
     	}
-	relchns(i_dev, rdch, wrch, 0);
+	relchns(dev, rdch, wrch, 0);
 	crit_exit();
     	return ret;
 }
 
 static int
-dsp_poll(dev_t i_dev, int events, struct thread *td)
+dsp_poll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *wrch = NULL, *rdch = NULL;
 	int ret, e;
 
 	crit_enter();
 	ret = 0;
-	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
+	getchns(dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
 	if (wrch) {
-		e = (events & (POLLOUT | POLLWRNORM));
+		e = (ap->a_events & (POLLOUT | POLLWRNORM));
 		if (e)
-			ret |= chn_poll(wrch, e, td->td_proc);
+			ret |= chn_poll(wrch, e);
 	}
 	if (rdch) {
-		e = (events & (POLLIN | POLLRDNORM));
+		e = (ap->a_events & (POLLIN | POLLRDNORM));
 		if (e)
-			ret |= chn_poll(rdch, e, td->td_proc);
+			ret |= chn_poll(rdch, e);
 	}
-	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
+	relchns(dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 
 	crit_exit();
-	return ret;
+	ap->a_events = ret;
+	return (0);
 }
 
 static int
-dsp_mmap(dev_t i_dev, vm_offset_t offset, int nprot)
+dsp_mmap(struct dev_mmap_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct pcm_channel *wrch = NULL, *rdch = NULL, *c;
 	int ret;
 
-	if (nprot & PROT_EXEC)
-		return -1;
+	if (ap->a_nprot & PROT_EXEC)
+		return EINVAL;
 
 	crit_enter();
-	getchns(i_dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
+	getchns(dev, &rdch, &wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 #if 0
 	/*
 	 * XXX the linux api uses the nprot to select read/write buffer
 	 * our vm system doesn't allow this, so force write buffer
 	 */
 
-	if (wrch && (nprot & PROT_WRITE)) {
+	if (wrch && (ap->a_nprot & PROT_WRITE)) {
 		c = wrch;
-	} else if (rdch && (nprot & PROT_READ)) {
+	} else if (rdch && (ap->a_nprot & PROT_READ)) {
 		c = rdch;
 	} else {
 		crit_exit();
-		return -1;
+		return EINVAL;
 	}
 #else
 	c = wrch;
 #endif
 
 	if (c == NULL) {
-		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
+		relchns(dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 		crit_exit();
-		return -1;
+		return EINVAL;
 	}
 
-	if (offset >= sndbuf_getsize(c->bufsoft)) {
-		relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
+	if (ap->a_offset >= sndbuf_getsize(c->bufsoft)) {
+		relchns(dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 		crit_exit();
-		return -1;
+		return EINVAL;
 	}
 
 	if (!(c->flags & CHN_F_MAPPED))
 		c->flags |= CHN_F_MAPPED;
 
-	ret = atop(vtophys(sndbuf_getbufofs(c->bufsoft, offset)));
-	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-
+	ret = atop(vtophys(sndbuf_getbufofs(c->bufsoft, ap->a_offset)));
+	relchns(dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
 	crit_exit();
-	return ret;
+	ap->a_result = ret;
+	return (0);
 }
 
 int
 dsp_register(int unit, int channel)
 {
-	cdevsw_add(&dsp_cdevsw, 
+	dev_ops_add(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP, 0));
-	cdevsw_add(&dsp_cdevsw, 
+	dev_ops_add(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP16, 0));
-	cdevsw_add(&dsp_cdevsw, 
+	dev_ops_add(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_AUDIO, 0));
-	cdevsw_add(&dsp_cdevsw, 
+	dev_ops_add(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_NORESET, 0));
-	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP, channel),
+	make_dev(&dsp_ops, PCMMKMINOR(unit, SND_DEV_DSP, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dsp%d.%d", unit, channel);
-	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSP16, channel),
+	make_dev(&dsp_ops, PCMMKMINOR(unit, SND_DEV_DSP16, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dspW%d.%d", unit, channel);
-	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_AUDIO, channel),
+	make_dev(&dsp_ops, PCMMKMINOR(unit, SND_DEV_AUDIO, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "audio%d.%d", unit, channel);
 
 	return 0;
@@ -1073,9 +1074,9 @@ dsp_register(int unit, int channel)
 int
 dsp_registerrec(int unit, int channel)
 {
-	cdevsw_add(&dsp_cdevsw, 
+	dev_ops_add(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSPREC, 0));
-	make_dev(&dsp_cdevsw, PCMMKMINOR(unit, SND_DEV_DSPREC, channel),
+	make_dev(&dsp_ops, PCMMKMINOR(unit, SND_DEV_DSPREC, channel),
 		 UID_ROOT, GID_WHEEL, 0666, "dspr%d.%d", unit, channel);
 
 	return 0;
@@ -1084,13 +1085,13 @@ dsp_registerrec(int unit, int channel)
 int
 dsp_unregister(int unit, int channel)
 {
-	cdevsw_remove(&dsp_cdevsw, 
+	dev_ops_remove(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP, 0));
-	cdevsw_remove(&dsp_cdevsw, 
+	dev_ops_remove(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSP16, 0));
-	cdevsw_remove(&dsp_cdevsw, 
+	dev_ops_remove(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_AUDIO, 0));
-	cdevsw_remove(&dsp_cdevsw, 
+	dev_ops_remove(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_NORESET, 0));
 	return 0;
 }
@@ -1098,7 +1099,7 @@ dsp_unregister(int unit, int channel)
 int
 dsp_unregisterrec(int unit, int channel)
 {
-	cdevsw_remove(&dsp_cdevsw, 
+	dev_ops_remove(&dsp_ops, 
 		PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_DSPREC, 0));
 	return 0;
 }
@@ -1133,7 +1134,7 @@ dsp_clone(void *arg, char *name, int namelen, dev_t *dev)
 
 	cont = 1;
 	for (i = 0; cont; i++) {
-		pdev = make_adhoc_dev(&dsp_cdevsw, PCMMKMINOR(unit, devtype, i));
+		pdev = make_adhoc_dev(&dsp_ops, PCMMKMINOR(unit, devtype, i));
 		if (pdev->si_flags & SI_NAMED) {
 			if ((pdev->si_drv1 == NULL) && (pdev->si_drv2 == NULL)) {
 				*dev = pdev;

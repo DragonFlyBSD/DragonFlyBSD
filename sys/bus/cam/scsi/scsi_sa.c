@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.17 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.18 2006/07/28 02:17:32 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -425,30 +425,22 @@ DATA_SET(periphdriver_set, sadriver);
 
 #define SA_CDEV_MAJOR 14
 
-static struct cdevsw sa_cdevsw = {
-	/* name */	"sa",
-	/* maj */	SA_CDEV_MAJOR,
-	/* flags */	D_TAPE,
-	/* port */      NULL,
-	/* clone */     NULL,
-
-	/* open */	saopen,
-	/* close */	saclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	saioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	sastrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops sa_ops = {
+	{ "sa", SA_CDEV_MAJOR, D_TAPE },
+	.d_open =	saopen,
+	.d_close =	saclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	saioctl,
+	.d_strategy =	sastrategy,
 };
 
 static struct extend_array *saperiphs;
 
 static int
-saopen(dev_t dev, int flags, int fmt, struct thread *td)
+saopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	int unit;
@@ -496,7 +488,7 @@ saopen(dev_t dev, int flags, int fmt, struct thread *td)
 		 * The function samount ensures media is loaded and ready.
 		 * It also does a device RESERVE if the tape isn't yet mounted.
 		 */
-		error = samount(periph, flags, dev);
+		error = samount(periph, ap->a_oflags, dev);
 	}
 
 	if (error) {
@@ -510,8 +502,9 @@ saopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-saclose(dev_t dev, int flag, int fmt, struct thread *td)
+saclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	sa_softc *softc;
 	int	unit, mode, error, writing, tmp;
@@ -660,9 +653,11 @@ saclose(dev_t dev, int flag, int fmt, struct thread *td)
  * can understand.  The transfer is described by a buf and will include
  * only one physical transfer.
  */
-static void
-sastrategy(dev_t dev, struct bio *bio)
+static int
+sastrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
@@ -760,7 +755,7 @@ sastrategy(dev_t dev, struct bio *bio)
 	 */
 	xpt_schedule(periph, 1);
 
-	return;
+	return(0);
 bad:
 	bp->b_flags |= B_ERROR;
 done:
@@ -770,11 +765,14 @@ done:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static int
-saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
+saioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	scsi_space_code spaceop;
@@ -805,7 +803,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	 */
 
 	if (SA_IS_CTRL(dev)) {
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		case MTIOCGETEOTMODEL:
 		case MTIOCGET:
 			break;
@@ -858,10 +856,10 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	/*
 	 * Find the device that the user is talking about
 	 */
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case MTIOCGET:
 	{
-		struct mtget *g = (struct mtget *)arg;
+		struct mtget *g = (struct mtget *)addr;
 
 		/*
 		 * If this isn't the control mode device, actually go out
@@ -947,7 +945,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	case MTIOCERRSTAT:
 	{
 		struct scsi_tape_errors *sep =
-		    &((union mterrstat *)arg)->scsi_errstat;
+		    &((union mterrstat *)addr)->scsi_errstat;
 
 		CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
 		    ("saioctl: MTIOCERRSTAT\n"));
@@ -975,7 +973,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		struct mtop *mt;
 		int    count;
 
-		mt = (struct mtop *)arg;
+		mt = (struct mtop *)addr;
 
 		CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
 			 ("saioctl: op=0x%x count=0x%x\n",
@@ -1195,16 +1193,16 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		error = 0;
 		break;
 	case MTIOCRDSPOS:
-		error = sardpos(periph, 0, (u_int32_t *) arg);
+		error = sardpos(periph, 0, (u_int32_t *) addr);
 		break;
 	case MTIOCRDHPOS:
-		error = sardpos(periph, 1, (u_int32_t *) arg);
+		error = sardpos(periph, 1, (u_int32_t *) addr);
 		break;
 	case MTIOCSLOCATE:
-		error = sasetpos(periph, 0, (u_int32_t *) arg);
+		error = sasetpos(periph, 0, (u_int32_t *) addr);
 		break;
 	case MTIOCHLOCATE:
-		error = sasetpos(periph, 1, (u_int32_t *) arg);
+		error = sasetpos(periph, 1, (u_int32_t *) addr);
 		break;
 	case MTIOCGETEOTMODEL:
 		error = 0;
@@ -1212,11 +1210,11 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			mode = 1;
 		else
 			mode = 2;
-		*((u_int32_t *) arg) = mode;
+		*((u_int32_t *) addr) = mode;
 		break;
 	case MTIOCSETEOTMODEL:
 		error = 0;
-		switch (*((u_int32_t *) arg)) {
+		switch (*((u_int32_t *) addr)) {
 		case 1:
 			softc->quirks &= ~SA_QUIRK_2FM;
 			softc->quirks |= SA_QUIRK_1FM;
@@ -1231,7 +1229,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		}
 		break;
 	default:
-		error = cam_periph_ioctl(periph, cmd, arg, saerror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, addr, saerror);
 		break;
 	}
 
@@ -1239,7 +1237,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	 * Check to see if we cleared a frozen state
 	 */
 	if (error == 0 && (softc->flags & SA_FLAG_TAPE_FROZEN)) {
-		switch(cmd) {
+		switch(ap->a_cmd) {
 		case MTIOCRDSPOS:
 		case MTIOCRDHPOS:
 		case MTIOCSLOCATE:
@@ -1365,7 +1363,7 @@ sacleanup(struct cam_periph *periph)
 	cam_extend_release(saperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
-	cdevsw_remove(&sa_cdevsw, SA_UNITMASK, SA_UNIT(periph->unit_number));
+	dev_ops_remove(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
 	free(softc, M_DEVBUF);
 }
 
@@ -1470,37 +1468,37 @@ saregister(struct cam_periph *periph, void *arg)
 	    DEVSTAT_BS_UNAVAILABLE, SID_TYPE(&cgd->inq_data) |
 	    DEVSTAT_TYPE_IF_SCSI, DEVSTAT_PRIORITY_TAPE);
 
-	cdevsw_add(&sa_cdevsw, SA_UNITMASK, SA_UNIT(periph->unit_number));
-	make_dev(&sa_cdevsw, SAMINOR(SA_CTLDEV,
+	dev_ops_add(&sa_ops, SA_UNITMASK, SA_UNIT(periph->unit_number));
+	make_dev(&sa_ops, SAMINOR(SA_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
 	    0660, "r%s%d.ctl", periph->periph_name, periph->unit_number);
 
-	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_R), UID_ROOT, GID_OPERATOR,
 	    0660, "r%s%d", periph->periph_name, periph->unit_number);
 
-	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_NR), UID_ROOT, GID_OPERATOR,
 	    0660, "nr%s%d", periph->periph_name, periph->unit_number);
 
-	make_dev(&sa_cdevsw, SAMINOR(SA_NOT_CTLDEV,
+	make_dev(&sa_ops, SAMINOR(SA_NOT_CTLDEV,
 	    periph->unit_number, 0, SA_ATYPE_ER), UID_ROOT, GID_OPERATOR,
 	    0660, "er%s%d", periph->periph_name, periph->unit_number);
 
 	for (i = 0; i < SA_NUM_MODES; i++) {
 
-		make_dev(&sa_cdevsw,
+		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_R),
 		    UID_ROOT, GID_OPERATOR, 0660, "r%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
-		make_dev(&sa_cdevsw,
+		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_NR),
 		    UID_ROOT, GID_OPERATOR, 0660, "nr%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);
 
 
-		make_dev(&sa_cdevsw,
+		make_dev(&sa_ops,
 		    SAMINOR(SA_NOT_CTLDEV, periph->unit_number, i, SA_ATYPE_ER),
 		    UID_ROOT, GID_OPERATOR, 0660, "er%s%d.%d",
 		    periph->periph_name, periph->unit_number, i);

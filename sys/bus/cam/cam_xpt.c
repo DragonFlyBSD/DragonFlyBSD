@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.28 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.29 2006/07/28 02:17:31 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/time.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/fcntl.h>
 #include <sys/md5.h>
 #include <sys/devicestat.h>
@@ -601,23 +602,11 @@ static d_open_t xptopen;
 static d_close_t xptclose;
 static d_ioctl_t xptioctl;
 
-static struct cdevsw xpt_cdevsw = {
-	/* name */	"xpt",
-	/* maj */	XPT_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	xptopen,
-	/* close */	xptclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	xptioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops xpt_ops = {
+	{ "xpt", XPT_CDEV_MAJOR, 0 },
+	.d_open = xptopen,
+	.d_close = xptclose,
+	.d_ioctl = xptioctl
 };
 
 static struct intr_config_hook *xpt_config_hook;
@@ -877,8 +866,8 @@ dev_allocq_is_runnable(struct cam_devq *devq)
 static void
 xpt_periph_init(void)
 {
-	cdevsw_add(&xpt_cdevsw, 0, 0);
-	make_dev(&xpt_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "xpt0");
+	dev_ops_add(&xpt_ops, 0, 0);
+	make_dev(&xpt_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "xpt0");
 }
 
 static void
@@ -895,8 +884,9 @@ xptdone(struct cam_periph *periph, union ccb *done_ccb)
 }
 
 static int
-xptopen(dev_t dev, int flags, int fmt, struct thread *td)
+xptopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit;
 
 	unit = minor(dev) & 0xff;
@@ -904,13 +894,13 @@ xptopen(dev_t dev, int flags, int fmt, struct thread *td)
 	/*
 	 * Only allow read-write access.
 	 */
-	if (((flags & FWRITE) == 0) || ((flags & FREAD) == 0))
+	if (((ap->a_oflags & FWRITE) == 0) || ((ap->a_oflags & FREAD) == 0))
 		return(EPERM);
 
 	/*
 	 * We don't allow nonblocking access.
 	 */
-	if ((flags & O_NONBLOCK) != 0) {
+	if ((ap->a_oflags & O_NONBLOCK) != 0) {
 		printf("xpt%d: can't do nonblocking access\n", unit);
 		return(ENODEV);
 	}
@@ -932,8 +922,9 @@ xptopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-xptclose(dev_t dev, int flag, int fmt, struct thread *td)
+xptclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit;
 
 	unit = minor(dev) & 0xff;
@@ -955,8 +946,9 @@ xptclose(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-xptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+xptioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit, error;
 
 	error = 0;
@@ -972,7 +964,7 @@ xptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		return(ENXIO);
 	}
 
-	switch(cmd) {
+	switch(ap->a_cmd) {
 	/*
 	 * For the transport layer CAMIOCOMMAND ioctl, we really only want
 	 * to accept CCB types that don't quite make sense to send through a
@@ -982,7 +974,7 @@ xptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		union ccb *ccb;
 		union ccb *inccb;
 
-		inccb = (union ccb *)addr;
+		inccb = (union ccb *)ap->a_data;
 
 		switch(inccb->ccb_h.func_code) {
 		case XPT_SCAN_BUS:
@@ -1139,7 +1131,7 @@ xptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		int base_periph_found;
 		int splbreaknum;
 
-		ccb = (union ccb *)addr;
+		ccb = (union ccb *)ap->a_data;
 		unit = ccb->cgdl.unit_number;
 		name = ccb->cgdl.periph_name;
 		/*
@@ -1152,7 +1144,7 @@ xptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		 */
 		splbreaknum = 100;
 
-		ccb = (union ccb *)addr;
+		ccb = (union ccb *)ap->a_data;
 
 		base_periph_found = 0;
 

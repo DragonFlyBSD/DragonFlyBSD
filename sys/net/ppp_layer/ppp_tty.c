@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.17 2006/02/06 01:49:37 y0netan1 Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.18 2006/07/28 02:17:40 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -108,7 +108,7 @@ static int	pppclose (struct tty *tp, int flag);
 static int	pppread (struct tty *tp, struct uio *uio, int flag);
 static int	pppwrite (struct tty *tp, struct uio *uio, int flag);
 static int	ppptioctl (struct tty *tp, u_long cmd, caddr_t data,
-			int flag, struct thread *);
+			int flag, struct ucred *);
 static int	pppinput (int c, struct tty *tp);
 static int	pppstart (struct tty *tp);
 
@@ -423,7 +423,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
  */
 /* ARGSUSED */
 static int
-ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
+ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
 {
     struct ppp_softc *sc = (struct ppp_softc *) tp->t_sc;
     int error;
@@ -434,7 +434,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
     error = 0;
     switch (cmd) {
     case PPPIOCSASYNCMAP:
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(cr, 0)) != 0)
 	    break;
 	sc->sc_asyncmap[0] = *(u_int *)data;
 	break;
@@ -444,7 +444,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     case PPPIOCSRASYNCMAP:
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(cr, 0)) != 0)
 	    break;
 	sc->sc_rasyncmap = *(u_int *)data;
 	break;
@@ -454,7 +454,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     case PPPIOCSXASYNCMAP:
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(cr, 0)) != 0)
 	    break;
 	crit_enter();
 	bcopy(data, sc->sc_asyncmap, sizeof(sc->sc_asyncmap));
@@ -469,7 +469,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
 
     default:
-	error = pppioctl(sc, cmd, data, flag, td);
+	error = pppioctl(sc, cmd, data, flag, cr);
 	if (error == 0 && cmd == PPPIOCSMRU)
 	    pppgetm(sc);
     }

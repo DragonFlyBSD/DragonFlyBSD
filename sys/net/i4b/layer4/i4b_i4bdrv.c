@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.14 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.15 2006/07/28 02:17:40 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -52,6 +52,7 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/thread2.h>
@@ -93,23 +94,13 @@ PDEVSTATIC	d_poll_t	i4bpoll;
 
 #define CDEV_MAJOR 60
 
-static struct cdevsw i4b_cdevsw = {
-	/* name */      "i4b",
-	/* maj */       CDEV_MAJOR,
-	/* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      i4bopen,
-	/* close */     i4bclose,
-	/* read */      i4bread,
-	/* write */     nowrite,
-	/* ioctl */     i4bioctl,
-	/* poll */      POLLFIELD,
-	/* mmap */      nommap,
-	/* strategy */  nostrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+static struct dev_ops i4b_ops = {
+	{ "i4b", CDEV_MAJOR, 0 },
+	.d_open =	i4bopen,
+	.d_close =	i4bclose,
+	.d_read =	i4bread,
+	.d_ioctl =	i4bioctl,
+	.d_poll =	POLLFIELD,
 };
 
 PDEVSTATIC void i4battach(void *);
@@ -118,7 +109,7 @@ PSEUDO_SET(i4battach, i4b_i4bdrv);
 static void
 i4b_drvinit(void *unused)
 {
-	cdevsw_add(&i4b_cdevsw, 0, 0);
+	dev_ops_add(&i4b_ops, 0, 0);
 }
 
 SYSINIT(i4bdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,i4b_drvinit,NULL)
@@ -133,21 +124,21 @@ i4battach(void *dummy)
 
 	i4b_rdqueue.ifq_maxlen = IFQ_MAXLEN;
 
-	make_dev(&i4b_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "i4b");
+	make_dev(&i4b_ops, 0, UID_ROOT, GID_WHEEL, 0600, "i4b");
 }
 
 /*---------------------------------------------------------------------------*
  *	i4bopen - device driver open routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bopen(dev_t dev, int flag, int fmt, struct thread *td)
+i4bopen(struct dev_open_args *ap)
 {
-	if(minor(dev))
-		return(ENXIO);
+	dev_t dev = ap->a_head.a_dev;
 
-	if(openflag)
+	if (minor(dev))
+		return(ENXIO);
+	if (openflag)
 		return(EBUSY);
-	
 	crit_enter();
 	openflag = 1;
 	i4b_l4_daemon_attached();
@@ -160,7 +151,7 @@ i4bopen(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4bclose - device driver close routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bclose(dev_t dev, int flag, int fmt, struct thread *td)
+i4bclose(struct dev_close_args *ap)
 {
 	crit_enter();
 	openflag = 0;
@@ -174,12 +165,13 @@ i4bclose(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4bread - device driver read routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bread(dev_t dev, struct uio *uio, int ioflag)
+i4bread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct mbuf *m;
 	int error = 0;
 
-	if(minor(dev))
+	if (minor(dev))
 		return(ENODEV);
 
 	crit_enter();
@@ -198,7 +190,7 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
 	crit_exit();
 		
 	if(m && m->m_len)
-		error = uiomove(m->m_data, m->m_len, uio);
+		error = uiomove(m->m_data, m->m_len, ap->a_uio);
 	else
 		error = EIO;
 		
@@ -212,15 +204,17 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
  *	i4bioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+i4bioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	call_desc_t *cd;
 	int error = 0;
 	
 	if(minor(dev))
 		return(ENODEV);
 
-	switch(cmd)
+	switch(ap->a_cmd)
 	{
 		/* cdid request, reserve cd and return cdid */
 
@@ -770,27 +764,31 @@ diag_done:
  *	i4bpoll - device driver poll routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-i4bpoll(dev_t dev, int events, struct thread *td)
+i4bpoll(struct dev_poll_args *ap)
 {
-	if(minor(dev))
+	dev_t dev = ap->a_head.a_dev;
+	int revents;
+
+	if (minor(dev))
 		return(ENODEV);
 
-	if((events & POLLIN) || (events & POLLRDNORM))
-	{
-		if(!IF_QEMPTY(&i4b_rdqueue))
-			return(1);
+	revents = 0;
 
+	if (ap->a_events & (POLLIN|POLLRDNORM)) {
 		crit_enter();
-		selrecord(td, &select_rd_info);
-		selflag = 1;
+		if (!IF_QEMPTY(&i4b_rdqueue)) {
+			revents |= POLLIN | POLLRDNORM;
+		} else {
+			selrecord(curthread, &select_rd_info);
+			selflag = 1;
+		}
 		crit_exit();
 		return(0);
 	}
-	else if((events & POLLOUT) || (events & POLLWRNORM))
-	{
-		return(1);
+	if (ap->a_events & (POLLOUT|POLLWRNORM)) {
+		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
 	}
-
+	ap->a_events = revents;
 	return(0);
 }
 

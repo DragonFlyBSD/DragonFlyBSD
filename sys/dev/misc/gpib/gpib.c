@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.10 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.11 2006/07/28 02:17:36 dillon Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -25,6 +25,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/uio.h>
 #include <sys/malloc.h>
 #include "gpibreg.h"
@@ -64,23 +65,12 @@ static	d_write_t	gpwrite;
 static	d_ioctl_t	gpioctl;
 
 #define CDEV_MAJOR 44
-static struct cdevsw gp_cdevsw = {
-	/* name */	"gp",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	gpopen,
-	/* close */	gpclose,
-	/* read */	noread,
-	/* write */	gpwrite,
-	/* ioctl */	gpioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops gp_ops = {
+	{ "gp", CDEV_MAJOR, 0 },
+	.d_open =	gpopen,
+	.d_close =	gpclose,
+	.d_write =	gpwrite,
+	.d_ioctl =	gpioctl,
 };
 
 #define   BUFSIZE      1024
@@ -136,8 +126,8 @@ gpattach(struct isa_device *isdp)
            printf ("gp%d: type AT-GPIB chip NAT4882A\n",sc->sc_unit);
         sc->sc_flags |=ATTACHED;
 
-	cdevsw_add(&gp_cdevsw, -1, sc->sc_unit);
-	make_dev(&gp_cdevsw, sc->sc_unit, 0, 0, 0600, "gp");
+	dev_ops_add(&gp_ops, -1, sc->sc_unit);
+	make_dev(&gp_ops, sc->sc_unit, 0, 0, 0600, "gp");
         return (1);
 }
 
@@ -149,8 +139,9 @@ gpattach(struct isa_device *isdp)
  * i.e. even if gpib5 is open, we can't open another minor device
  */
 static	int
-gpopen(dev_t dev, int flags, int fmt, struct thread *td)
+gpopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct gpib_softc *sc = &gpib_sc;
 	u_char unit;
 	int status;
@@ -223,8 +214,9 @@ enableremote(unit);
  *	Close gpib device.
  */
 static	int
-gpclose(dev_t dev, int flags, int fmt, struct thread *td)
+gpclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct gpib_softc *sc = &gpib_sc;
         unsigned char unit;
         unsigned char status;
@@ -322,8 +314,10 @@ while (!(inb(ISR1)&2)&&(status==EWOULDBLOCK));
  *    by minor(dev).
  */
 static	int
-gpwrite(dev_t dev, struct uio *uio, int ioflag)
+gpwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int err,count;
 
 	/* main loop */
@@ -372,13 +366,13 @@ gpwrite(dev_t dev, struct uio *uio, int ioflag)
    write to using a minor device = its GPIB address */
 
 static	int
-gpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+gpioctl(struct dev_ioctl_args *ap)
 {
-	struct gpibdata *gd = (struct gpibdata *)data;
+	struct gpibdata *gd = (struct gpibdata *)ap->a_data;
 	int	error,result;
 	error = 0;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case GPIBWRITE:
 		sendgpibfifo(gd->address,gd->data,*(gd->count));
 		error=0;

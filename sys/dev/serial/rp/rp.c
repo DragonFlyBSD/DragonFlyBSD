@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.15 2005/12/11 01:54:09 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
  */
 
 /* 
@@ -572,23 +572,14 @@ static	d_write_t	rpwrite;
 static	d_ioctl_t	rpioctl;
 
 #define	CDEV_MAJOR	81
-struct cdevsw rp_cdevsw = {
-	/* name */	"rp",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	rpopen,
-	/* close */	rpclose,
-	/* read */	ttyread,
-	/* write */	rpwrite,
-	/* ioctl */	rpioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+struct dev_ops rp_ops = {
+	{ "rp", CDEV_MAJOR, D_TTY },
+	.d_open =	rpopen,
+	.d_close =	rpclose,
+	.d_read =	ttyread,
+	.d_write =	rpwrite,
+	.d_ioctl =	rpioctl,
+	.d_poll =	ttypoll,
 };
 
 static int	rp_num_ports_open = 0;
@@ -837,24 +828,24 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 	rp_addr(unit) = rp;
 	crit_exit();
 
-	cdevsw_add(&rp_cdevsw, 0xffff0000, (unit + 1) << 16);
+	dev_ops_add(&rp_ops, 0xffff0000, (unit + 1) << 16);
 	for (i = 0 ; i < rp_num_ports[unit] ; i++) {
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i,
 			  UID_ROOT, GID_WHEEL, 0666, "ttyR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x20,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i | 0x20,
 			  UID_ROOT, GID_WHEEL, 0666, "ttyiR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x40,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i | 0x40,
 			  UID_ROOT, GID_WHEEL, 0666, "ttylR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0x80,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i | 0x80,
 			  UID_ROOT, GID_WHEEL, 0666, "cuaR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xa0,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i | 0xa0,
 			  UID_ROOT, GID_WHEEL, 0666, "cuaiR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
-		make_dev(&rp_cdevsw, ((unit + 1) << 16) | i | 0xc0,
+		make_dev(&rp_ops, ((unit + 1) << 16) | i | 0xc0,
 			  UID_ROOT, GID_WHEEL, 0666, "cualR%c",
 			  i <= 9 ? '0' + i : 'a' + i - 10);
 	}
@@ -936,12 +927,13 @@ rp_releaseresource(CONTROLLER_t *ctlp)
 	}
 	if (ctlp->dev != NULL)
 		ctlp->dev = NULL;
-	cdevsw_remove(&rp_cdevsw, 0xffff0000, (unit + 1) << 16);
+	dev_ops_remove(&rp_ops, 0xffff0000, (unit + 1) << 16);
 }
 
 int
-rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
+rpopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	rp_port *rp;
 	int	unit, port, mynor, umynor, flags;  /* SG */
 	struct	tty	*tp;
@@ -985,7 +977,7 @@ open_top:
 			}
 		} else {
 			if(rp->active_out) {
-				if(flag & O_NONBLOCK) {
+				if(ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto out;
 				}
@@ -996,7 +988,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if(tp->t_state & TS_XCLUDE && suser(td) != 0) {
+		if(tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0) != 0) {
 			crit_exit();
 			error = EBUSY;
 			goto out2;
@@ -1070,7 +1062,7 @@ open_top:
 
 	}
 
-	if(!(flag&O_NONBLOCK) && !(tp->t_cflag&CLOCAL) &&
+	if(!(ap->a_oflags&O_NONBLOCK) && !(tp->t_cflag&CLOCAL) &&
 		!(tp->t_state & TS_CARR_ON) && !(IS_CALLOUT(dev))) {
 		++rp->wopeners;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "rpdcd", 0);
@@ -1100,8 +1092,9 @@ out2:
 }
 
 int
-rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
+rpclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int	unit, mynor, umynor, port; /* SG */
 	struct	rp_port *rp;
 	struct	tty	*tp;
@@ -1119,7 +1112,7 @@ rpclose(dev_t dev, int flag, int mode, d_thread_t *td)
 	tp = rp->rp_tty;
 
 	crit_enter();
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	rp_disc_optim(tp, &tp->t_termios);
 	rpstop(tp, FREAD | FWRITE);
 	rphardclose(rp);
@@ -1173,8 +1166,9 @@ rphardclose(struct rp_port *rp)
 
 static
 int
-rpwrite(dev_t dev, struct uio *uio, int flag)
+rpwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	rp_port *rp;
 	struct	tty	*tp;
 	int	unit, mynor, port, umynor, error = 0; /* SG */
@@ -1195,7 +1189,7 @@ rpwrite(dev_t dev, struct uio *uio, int flag)
 			return(error);
 	}
 
-	error = (*linesw[tp->t_line].l_write)(tp, uio, flag);
+	error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
 	return error;
 }
 
@@ -1210,8 +1204,11 @@ rpdtrwakeup(void *chan)
 }
 
 int
-rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+rpioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
 	struct rp_port	*rp;
 	CHANNEL_t	*cp;
 	struct tty	*tp;
@@ -1241,7 +1238,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if(error != 0)
 				return(error);
 			*ct = *(struct termios *)data;
@@ -1298,7 +1295,8 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 
 	t = &tp->t_termios;
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
+					      ap->a_fflag, ap->a_cred);
 	if(error != ENOIOCTL) {
 		return(error);
 	}
@@ -1306,7 +1304,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 
 	flags = rp->rp_channel.TxControl[3];
 
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	flags = rp->rp_channel.TxControl[3];
 	rp_disc_optim(tp, &tp->t_termios);
 	if(error != ENOIOCTL) {
@@ -1386,7 +1384,7 @@ rpioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 		*(int *)data = result;
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if(error != 0) {
 			crit_exit();
 			return(error);

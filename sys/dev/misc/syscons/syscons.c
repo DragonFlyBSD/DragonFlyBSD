@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.23 2005/10/30 10:07:10 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.24 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -196,24 +196,16 @@ static	d_read_t	scread;
 static	d_ioctl_t	scioctl;
 static	d_mmap_t	scmmap;
 
-static struct cdevsw sc_cdevsw = {
-	/* name */	"sc",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	scopen,
-	/* close */	scclose,
-	/* read */	scread,
-	/* write */	ttywrite,
-	/* ioctl */	scioctl,
-	/* poll */	ttypoll,
-	/* mmap */	scmmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops sc_ops = {
+	{ "sc", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	scopen,
+	.d_close =	scclose,
+	.d_read =	scread,
+	.d_write =	ttywrite,
+	.d_ioctl =	scioctl,
+	.d_poll =	ttypoll,
+	.d_mmap =	scmmap,
+	.d_kqfilter =	ttykqfilter
 };
 
 int
@@ -374,13 +366,13 @@ sc_attach_unit(int unit, int flags)
 			      (void *)(uintptr_t)unit, SHUTDOWN_PRI_DEFAULT);
 
     /* 
-     * create devices.  cdevsw_add() must be called to make devices under
+     * create devices.  dev_ops_add() must be called to make devices under
      * this major number available to userland.
      */
-    cdevsw_add(&sc_cdevsw, ~(MAXCONS - 1), unit * MAXCONS);
+    dev_ops_add(&sc_ops, ~(MAXCONS - 1), unit * MAXCONS);
 
     for (vc = 0; vc < sc->vtys; vc++) {
-	dev = make_dev(&sc_cdevsw, vc + unit * MAXCONS,
+	dev = make_dev(&sc_ops, vc + unit * MAXCONS,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyv%r", vc + unit * MAXCONS);
 	sc->dev[vc] = dev;
 	/*
@@ -390,8 +382,8 @@ sc_attach_unit(int unit, int flags)
 	 */
     }
 
-    cdevsw_add(&sc_cdevsw, -1, SC_CONSOLECTL);	/* XXX */
-    dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
+    dev_ops_add(&sc_ops, -1, SC_CONSOLECTL);	/* XXX */
+    dev = make_dev(&sc_ops, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
     dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
     dev->si_drv1 = sc_console;
@@ -444,8 +436,9 @@ scdevtounit(dev_t dev)
 }
 
 int
-scopen(dev_t dev, int flag, int mode, struct thread *td)
+scopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int unit = scdevtounit(dev);
     sc_softc_t *sc;
     struct tty *tp;
@@ -483,7 +476,7 @@ scopen(dev_t dev, int flag, int mode, struct thread *td)
 	(*linesw[tp->t_line].l_modem)(tp, 1);
     }
     else
-	if (tp->t_state & TS_XCLUDE && suser(td))
+	if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0))
 	    return(EBUSY);
 
     error = (*linesw[tp->t_line].l_open)(dev, tp);
@@ -503,8 +496,9 @@ scopen(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 int
-scclose(dev_t dev, int flag, int mode, struct thread *td)
+scclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct tty *tp = dev->si_tty;
     scr_stat *scp;
 
@@ -546,17 +540,17 @@ scclose(dev_t dev, int flag, int mode, struct thread *td)
 	    kbd_ioctl(scp->sc->kbd, KDSKBMODE, (caddr_t)&scp->kbd_mode);
 	DPRINTF(5, ("done.\n"));
     }
-    (*linesw[tp->t_line].l_close)(tp, flag);
+    (*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
     ttyclose(tp);
     crit_exit();
     return(0);
 }
 
 int
-scread(dev_t dev, struct uio *uio, int flag)
+scread(struct dev_read_args *ap)
 {
     sc_touch_scrn_saver();
-    return ttyread(dev, uio, flag);
+    return (ttyread(ap));
 }
 
 static int
@@ -638,38 +632,39 @@ scparam(struct tty *tp, struct termios *t)
 }
 
 int
-scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+scioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    u_long cmd = ap->a_cmd;
+    caddr_t data = ap->a_data;
+    int flag = ap->a_fflag;
     int error;
     int i;
     struct tty *tp;
     sc_softc_t *sc;
     scr_stat *scp;
-    struct proc *p = td->td_proc;
-
-    KKASSERT(p);
 
     tp = dev->si_tty;
 
     /* If there is a user_ioctl function call that first */
     if (sc_user_ioctl) {
-	error = (*sc_user_ioctl)(dev, cmd, data, flag, td);
+	error = (*sc_user_ioctl)(ap);
 	if (error != ENOIOCTL)
 	    return error;
     }
 
-    error = sc_vid_ioctl(tp, cmd, data, flag, td);
+    error = sc_vid_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL)
 	return error;
 
 #ifndef SC_NO_HISTORY
-    error = sc_hist_ioctl(tp, cmd, data, flag, td);
+    error = sc_hist_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL)
 	return error;
 #endif
 
 #ifndef SC_NO_SYSMOUSE
-    error = sc_mouse_ioctl(tp, cmd, data, flag, td);
+    error = sc_mouse_ioctl(tp, cmd, data, flag);
     if (error != ENOIOCTL)
 	return error;
 #endif
@@ -680,7 +675,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
     sc = scp->sc;
 
     if (scp->tsw) {
-	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag, td);
+	error = (*scp->tsw->te_ioctl)(scp, tp, cmd, data, flag);
 	if (error != ENOIOCTL)
 	    return error;
     }
@@ -857,7 +852,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	mode = (struct vt_mode *)data;
 	DPRINTF(5, ("sc%d: VT_SETMODE ", sc->unit));
 	if (scp->smode.mode == VT_PROCESS) {
-    	    if (scp->proc == pfind(scp->pid) && scp->proc != p) {
+    	    if (scp->proc == pfind(scp->pid) && scp->proc != curproc) {
 		DPRINTF(5, ("error EPERM\n"));
 		return EPERM;
 	    }
@@ -886,9 +881,9 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		DPRINTF(5, ("error EINVAL\n"));
 		return EINVAL;
 	    }
-	    DPRINTF(5, ("VT_PROCESS %d, ", p->p_pid));
+	    DPRINTF(5, ("VT_PROCESS %d, ", curproc->p_pid));
 	    bcopy(data, &scp->smode, sizeof(struct vt_mode));
-	    scp->proc = p;
+	    scp->proc = curproc;
 	    scp->pid = scp->proc->p_pid;
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = TRUE;
@@ -913,7 +908,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    return EINVAL;
 	}
 	/* ...and this process is controlling it. */
-	if (scp->proc != p) {
+	if (scp->proc != curproc) {
 	    crit_exit();
 	    return EPERM;
 	}
@@ -996,16 +991,16 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
-	error = suser(td);
+	error = suser_cred(ap->a_cred, 0);
 	if (error != 0)
 	    return error;
 	if (securelevel > 0)
 	    return EPERM;
-	p->p_md.md_regs->tf_eflags |= PSL_IOPL;
+	curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
-	p->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+	curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */
@@ -1285,7 +1280,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	break;
     }
 
-    error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+    error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, ap->a_cred);
     if (error != ENOIOCTL)
 	return(error);
     error = ttioctl(tp, cmd, data, flag);
@@ -1340,7 +1335,7 @@ sccnprobe(struct consdev *cp)
 	return;
 
     /* initialize required fields */
-    cp->cn_dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
+    cp->cn_dev = make_dev(&sc_ops, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
 }
 
@@ -2527,7 +2522,7 @@ scinit(int unit, int flags)
 	sc->vtys = MAXCONS;		/* XXX: should be configurable */
 	if (flags & SC_KERNEL_CONSOLE) {
 	    sc->dev = main_devs;
-	    sc->dev[0] = make_dev(&sc_cdevsw, unit*MAXCONS, UID_ROOT, 
+	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = &main_tty;
 	    ttyregister(&main_tty);
@@ -2543,7 +2538,7 @@ scinit(int unit, int flags)
 	} else {
 	    /* assert(sc_malloc) */
 	    sc->dev = malloc(sizeof(dev_t)*sc->vtys, M_SYSCONS, M_WAITOK | M_ZERO);
-	    sc->dev[0] = make_dev(&sc_cdevsw, unit*MAXCONS, UID_ROOT, 
+	    sc->dev[0] = make_dev(&sc_ops, unit*MAXCONS, UID_ROOT, 
 				GID_WHEEL, 0600, "ttyv%r", unit*MAXCONS);
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
@@ -3198,14 +3193,16 @@ next_code:
 }
 
 int
-scmmap(dev_t dev, vm_offset_t offset, int nprot)
+scmmap(struct dev_mmap_args *ap)
 {
     scr_stat *scp;
 
-    scp = SC_STAT(dev);
+    scp = SC_STAT(ap->a_head.a_dev);
     if (scp != scp->sc->cur_scp)
-	return -1;
-    return (*vidsw[scp->sc->adapter]->mmap)(scp->sc->adp, offset, nprot);
+	return EINVAL;
+    ap->a_result = (*vidsw[scp->sc->adapter]->mmap)(scp->sc->adp, ap->a_offset,
+						    ap->a_nprot);
+    return(0);
 }
 
 static int

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.17 2006/06/13 08:11:56 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.18 2006/07/28 02:17:34 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -73,6 +73,7 @@
 #include <sys/kthread.h>
 #include <sys/proc.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/poll.h>
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
@@ -145,25 +146,15 @@ d_open_t  usbopen;
 d_close_t usbclose;
 d_read_t usbread;
 d_ioctl_t usbioctl;
-int usbpoll(dev_t, int, usb_proc_ptr);
+d_poll_t usbpoll;
 
-struct cdevsw usb_cdevsw = {
-	/* name */      "usb",
-	/* maj */       USB_CDEV_MAJOR,
-	/* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      usbopen,
-	/* close */     usbclose,
-	/* read */      usbread,
-	/* write */     nowrite,
-	/* ioctl */     usbioctl,
-	/* poll */      usbpoll,
-	/* mmap */      nommap,
-	/* strategy */  nostrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+struct dev_ops usb_ops = {
+	{ "usb", USB_CDEV_MAJOR, 0 },
+	.d_open =	usbopen,
+	.d_close =	usbclose,
+	.d_read =	usbread,
+	.d_ioctl =	usbioctl,
+	.d_poll =	usbpoll,
 };
 #endif
 
@@ -320,13 +311,13 @@ USB_ATTACH(usb)
 	/* XXX This is redundant now, but old usbd's will want it */
 	if (!global_init_done) {
 		/* The device spitting out events */
-		cdevsw_add(&usb_cdevsw, -1, USB_DEV_MINOR);
-		make_dev(&usb_cdevsw, USB_DEV_MINOR, UID_ROOT, GID_OPERATOR,
+		dev_ops_add(&usb_ops, -1, USB_DEV_MINOR);
+		make_dev(&usb_ops, USB_DEV_MINOR, UID_ROOT, GID_OPERATOR,
 			0660, "usb");
 		global_init_done = 1;
 	}
-	cdevsw_add(&usb_cdevsw, -1, device_get_unit(self));
-	make_dev(&usb_cdevsw, device_get_unit(self), UID_ROOT, GID_OPERATOR,
+	dev_ops_add(&usb_ops, -1, device_get_unit(self));
+	make_dev(&usb_ops, device_get_unit(self), UID_ROOT, GID_OPERATOR,
 		0660, "usb%d", device_get_unit(self));
 #endif
 
@@ -473,8 +464,9 @@ usbctlprint(void *aux, const char *pnp)
 #endif /* defined(__NetBSD__) || defined(__OpenBSD__) */
 
 int
-usbopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+usbopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = USBUNIT(dev);
 	struct usb_softc *sc;
 
@@ -495,8 +487,10 @@ usbopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-usbread(dev_t dev, struct uio *uio, int flag)
+usbread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct usb_event ue;
 	int unit = USBUNIT(dev);
 	int error, n;
@@ -513,7 +507,7 @@ usbread(dev_t dev, struct uio *uio, int flag)
 		n = usb_get_next_event(&ue);
 		if (n != 0)
 			break;
-		if (flag & IO_NDELAY) {
+		if (ap->a_ioflag & IO_NDELAY) {
 			error = EWOULDBLOCK;
 			break;
 		}
@@ -529,8 +523,9 @@ usbread(dev_t dev, struct uio *uio, int flag)
 }
 
 int
-usbclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
+usbclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = USBUNIT(dev);
 
 	if (unit == USB_DEV_MINOR) {
@@ -542,17 +537,18 @@ usbclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
+usbioctl(struct dev_ioctl_args *ap)
 {
+	dev_t devt = ap->a_head.a_dev;
 	struct usb_softc *sc;
 	int unit = USBUNIT(devt);
 
 	if (unit == USB_DEV_MINOR) {
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		case FIOASYNC:
-			if (*(int *)data)
+			if (*(int *)ap->a_data)
 #if defined(__DragonFly__)
-				usb_async_proc = p->td_proc;
+				usb_async_proc = curproc;
 #elif __FreeBSD_version >= 500000
 				usb_async_proc = p->td_proc;
 #else
@@ -572,7 +568,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 	if (sc->sc_dying)
 		return (EIO);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/* This part should be deleted */
   	case USB_DISCOVER:
@@ -580,7 +576,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 #endif
 	case USB_REQUEST:
 	{
-		struct usb_ctl_request *ur = (void *)data;
+		struct usb_ctl_request *ur = (void *)ap->a_data;
 		int len = UGETW(ur->ucr_request.wLength);
 		struct iovec iov;
 		struct uio uio;
@@ -606,7 +602,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 			uio.uio_rw =
 				ur->ucr_request.bmRequestType & UT_READ ?
 				UIO_READ : UIO_WRITE;
-			uio.uio_td = p;
+			uio.uio_td = curthread;
 			ptr = malloc(len, M_TEMP, M_WAITOK);
 			if (uio.uio_rw == UIO_WRITE) {
 				error = uiomove(ptr, len, &uio);
@@ -636,7 +632,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 
 	case USB_DEVICEINFO:
 	{
-		struct usb_device_info *di = (void *)data;
+		struct usb_device_info *di = (void *)ap->a_data;
 		int addr = di->udi_addr;
 		usbd_device_handle dev;
 
@@ -650,7 +646,7 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 	}
 
 	case USB_DEVICESTATS:
-		*(struct usb_device_stats *)data = sc->sc_bus->stats;
+		*(struct usb_device_stats *)ap->a_data = sc->sc_bus->stats;
 		break;
 
 	default:
@@ -660,8 +656,9 @@ usbioctl(dev_t devt, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 }
 
 int
-usbpoll(dev_t dev, int events, usb_proc_ptr p)
+usbpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int revents, mask;
 	int unit = USBUNIT(dev);
 
@@ -670,19 +667,16 @@ usbpoll(dev_t dev, int events, usb_proc_ptr p)
 		mask = POLLIN | POLLRDNORM;
 
 		crit_enter();
-		if (events & mask && usb_nevents > 0)
-			revents |= events & mask;
-		if (revents == 0 && events & mask)
-			selrecord(p, &usb_selevent);
+		if (ap->a_events & mask && usb_nevents > 0)
+			revents |= ap->a_events & mask;
+		if (revents == 0 && ap->a_events & mask)
+			selrecord(curthread, &usb_selevent);
 		crit_exit();
-
-		return (revents);
+		ap->a_events = revents;
+		return (0);
 	} else {
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+		ap->a_events = 0;
 		return (0);	/* select/poll never wakes up - back compat */
-#else
-		return (ENXIO);
-#endif
 	}
 }
 

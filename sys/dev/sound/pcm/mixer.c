@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.9 2006/06/06 19:30:12 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.9 2006/06/06 19:30:12 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.10 2006/07/28 02:17:38 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -75,23 +75,11 @@ static char* snd_mixernames[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_NAMES;
 static d_open_t mixer_open;
 static d_close_t mixer_close;
 
-static struct cdevsw mixer_cdevsw = {
-	/* name */	"mixer",
-	/* maj */	SND_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	mixer_open,
-	/* close */	mixer_close,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	mixer_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops mixer_ops = {
+	{ "mixer", SND_CDEV_MAJOR, 0 },
+	.d_open =	mixer_open,
+	.d_close =	mixer_close,
+	.d_ioctl =	mixer_ioctl,
 };
 
 #ifdef USING_DEVFS
@@ -105,7 +93,7 @@ mixer_get_devt(device_t dev)
 	int unit;
 
 	unit = device_get_unit(dev);
-	pdev = make_adhoc_dev(&mixer_cdevsw, PCMMKMINOR(unit, SND_DEV_CTL, 0));
+	pdev = make_adhoc_dev(&mixer_ops, PCMMKMINOR(unit, SND_DEV_CTL, 0));
 
 	return pdev;
 }
@@ -224,9 +212,9 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 	mixer_setrecsrc(m, SOUND_MASK_MIC);
 
 	unit = device_get_unit(dev);
-	cdevsw_add(&mixer_cdevsw, 
+	dev_ops_add(&mixer_ops, 
 		    PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_CTL, 0));
-	pdev = make_dev(&mixer_cdevsw, PCMMKMINOR(unit, SND_DEV_CTL, 0),
+	pdev = make_dev(&mixer_ops, PCMMKMINOR(unit, SND_DEV_CTL, 0),
 		 UID_ROOT, GID_WHEEL, 0666, "mixer%d", unit);
 	pdev->si_drv1 = m;
 
@@ -259,7 +247,7 @@ mixer_uninit(device_t dev)
 	pdev->si_drv1 = NULL;
 
 	unit = device_get_unit(dev);
-	cdevsw_remove(&mixer_cdevsw, 
+	dev_ops_remove(&mixer_ops, 
 		    PCMMKMINOR(-1, -1, 0), PCMMKMINOR(unit, SND_DEV_CTL, 0));
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
@@ -404,11 +392,12 @@ mixer_hwvol_step(device_t dev, int left_step, int right_step)
 /* ----------------------------------------------------------------------- */
 
 static int
-mixer_open(dev_t i_dev, int flags, int mode, struct thread *td)
+mixer_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snd_mixer *m;
 
-	m = i_dev->si_drv1;
+	m = dev->si_drv1;
 	crit_enter();
 	snd_mtxlock(m->lock);
 
@@ -420,11 +409,12 @@ mixer_open(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 static int
-mixer_close(dev_t i_dev, int flags, int mode, struct thread *td)
+mixer_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snd_mixer *m;
 
-	m = i_dev->si_drv1;
+	m = dev->si_drv1;
 	crit_enter();
 	snd_mtxlock(m->lock);
 
@@ -441,19 +431,21 @@ mixer_close(dev_t i_dev, int flags, int mode, struct thread *td)
 }
 
 int
-mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
+mixer_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t arg = ap->a_data;
 	struct snd_mixer *m;
 	int ret, *arg_i = (int *)arg;
-	int v = -1, j = cmd & 0xff;
+	int v = -1, j = ap->a_cmd & 0xff;
 
-	m = i_dev->si_drv1;
+	m = dev->si_drv1;
 	if (!m->busy)
 		return EBADF;
 
 	crit_enter();
 	snd_mtxlock(m->lock);
-	if ((cmd & MIXER_WRITE(0)) == MIXER_WRITE(0)) {
+	if ((ap->a_cmd & MIXER_WRITE(0)) == MIXER_WRITE(0)) {
 		if (j == SOUND_MIXER_RECSRC)
 			ret = mixer_setrecsrc(m, *arg_i);
 		else
@@ -463,7 +455,7 @@ mixer_ioctl(dev_t i_dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
 		return (ret == 0)? 0 : ENXIO;
 	}
 
-    	if ((cmd & MIXER_READ(0)) == MIXER_READ(0)) {
+    	if ((ap->a_cmd & MIXER_READ(0)) == MIXER_READ(0)) {
 		switch (j) {
     		case SOUND_MIXER_DEVMASK:
     		case SOUND_MIXER_CAPS:
@@ -501,7 +493,7 @@ mixer_clone(void *arg, char *name, int namelen, dev_t *dev)
 	if (*dev != NODEV)
 		return;
 	if (strcmp(name, "mixer") == 0) {
-		pdev = make_adhoc_dev(&mixer_cdevsw,
+		pdev = make_adhoc_dev(&mixer_ops,
 					PCMMKMINOR(snd_unit, SND_DEV_CTL, 0));
 		if (pdev->si_flags & SI_NAMED)
 			*dev = pdev;

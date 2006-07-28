@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.21 2006/05/03 20:44:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.22 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,7 @@ physwakeup(struct bio *bio)
 	wakeup(bio);
 }
 
-int
+static int
 physio(dev_t dev, struct uio *uio, int ioflag)
 {
 	int i;
@@ -131,3 +131,16 @@ doerror:
 	relpbuf(bp, NULL);
 	return (error);
 }
+
+int
+physread(struct dev_read_args *ap)
+{
+	return(physio(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
+}
+
+int
+physwrite(struct dev_write_args *ap)
+{
+	return(physio(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
+}
+

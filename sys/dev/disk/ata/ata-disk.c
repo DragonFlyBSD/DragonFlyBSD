@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.28 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.29 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -62,23 +62,14 @@ static d_close_t	adclose;
 static d_strategy_t	adstrategy;
 static d_dump_t		addump;
 
-static struct cdevsw ad_cdevsw = {
-	/* name */	"ad",
-	/* maj */	116,
-	/* flags */	D_DISK,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	adopen,
-	/* close */	adclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	noioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	adstrategy,
-	/* dump */	addump,
-	/* psize */	nopsize
+static struct dev_ops ad_ops = {
+	{ "ad", 116, D_DISK },
+	.d_open =	adopen,
+	.d_close =	adclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_strategy =	adstrategy,
+	.d_dump =	addump,
 };
 
 /* prototypes */
@@ -204,7 +195,7 @@ ad_attach(struct ata_device *atadev, int alreadylocked)
 		      DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_IDE,
 		      DEVSTAT_PRIORITY_DISK);
 
-    dev = disk_create(adp->lun, &adp->disk, 0, &ad_cdevsw);
+    dev = disk_create(adp->lun, &adp->disk, 0, &ad_ops);
     dev->si_drv1 = adp;
     dev->si_iosize_max = 256 * DEV_BSIZE;
     adp->dev = dev;
@@ -277,9 +268,9 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 }
 
 static int
-adopen(dev_t dev, int flags, int fmt, struct thread *td)
+adopen(struct dev_open_args *ap)
 {
-    struct ad_softc *adp = dev->si_drv1;
+    struct ad_softc *adp = ap->a_head.a_dev->si_drv1;
 
     if (adp->flags & AD_F_RAID_SUBDISK)
 	return EBUSY;
@@ -287,9 +278,9 @@ adopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-adclose(dev_t dev, int flags, int fmt, struct thread *td)
+adclose(struct dev_close_args *ap)
 {
-    struct ad_softc *adp = dev->si_drv1;
+    struct ad_softc *adp = ap->a_head.a_dev->si_drv1;
 
     crit_enter();	/* interlock non-atomic channel lock */
     ATA_SLEEPLOCK_CH(adp->device->channel, ATA_CONTROL);
@@ -304,9 +295,11 @@ adclose(dev_t dev, int flags, int fmt, struct thread *td)
  * note: always use the passed device rather then bp->b_dev, as the bp
  * may have been translated through several layers.
  */
-static void 
-adstrategy(dev_t dev, struct bio *bio)
+static int 
+adstrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct ad_softc *adp = dev->si_drv1;
 
@@ -314,18 +307,20 @@ adstrategy(dev_t dev, struct bio *bio)
 	bp->b_error = ENXIO;
 	bp->b_flags |= B_ERROR;
 	biodone(bio);
-	return;
+	return(0);
     }
     bio->bio_driver_info = dev;
     crit_enter();
     bioqdisksort(&adp->bio_queue, bio);
     crit_exit();
     ata_start(adp->device->channel);
+    return(0);
 }
 
 int
-addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
+addump(struct dev_dump_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ad_softc *adp = dev->si_drv1;
     struct ad_request request;
     vm_paddr_t addr = 0;
@@ -340,14 +335,14 @@ addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
     adp->device->mode = ATA_PIO;
     ata_reinit(adp->device->channel);
 
-    blkcnt = howmany(PAGE_SIZE, secsize);
+    blkcnt = howmany(PAGE_SIZE, ap->a_secsize);
 
-    while (count > 0) {
+    while (ap->a_count > 0) {
 	caddr_t va = NULL;
 	DELAY(1000);
 
-	if ((count / blkcnt) < dumppages)
-	    dumppages = count / blkcnt;
+	if ((ap->a_count / blkcnt) < dumppages)
+	    dumppages = ap->a_count / blkcnt;
 
 	for (i = 0; i < dumppages; ++i) {
 	    vm_paddr_t a = addr + (i * PAGE_SIZE);
@@ -359,7 +354,7 @@ addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 
 	bzero(&request, sizeof(struct ad_request));
 	request.softc = adp;
-	request.blockaddr = blkno;
+	request.blockaddr = ap->a_blkno;
 	request.bytecount = PAGE_SIZE * dumppages;
 	request.data = va;
 	callout_init(&request.callout);
@@ -373,11 +368,11 @@ addump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 	    DELAY(20);
 	}
 
-	if (dumpstatus(addr, (off_t)count * DEV_BSIZE) < 0)
+	if (dumpstatus(addr, (off_t)ap->a_count * DEV_BSIZE) < 0)
 	    return EINTR;
 
-	blkno += blkcnt * dumppages;
-	count -= blkcnt * dumppages;
+	ap->a_blkno += blkcnt * dumppages;
+	ap->a_count -= blkcnt * dumppages;
 	addr += PAGE_SIZE * dumppages;
     }
 

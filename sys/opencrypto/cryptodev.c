@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.17 2006/05/26 15:55:13 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.18 2006/07/28 02:17:41 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/uio.h>
 #include <sys/random.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
@@ -711,7 +712,7 @@ csefree(struct csession *cse)
 }
 
 static int
-cryptoopen(dev_t dev, int oflags, int devtype, struct thread *td)
+cryptoopen(struct dev_open_args *ap)
 {
 	if (crypto_usercrypto == 0)
 		return (ENXIO);
@@ -719,32 +720,33 @@ cryptoopen(dev_t dev, int oflags, int devtype, struct thread *td)
 }
 
 static int
-cryptoread(dev_t dev, struct uio *uio, int ioflag)
+cryptoread(struct dev_read_args *ap)
 {
 	return (EIO);
 }
 
 static int
-cryptowrite(dev_t dev, struct uio *uio, int ioflag)
+cryptowrite(struct dev_write_args *ap)
 {
 	return (EIO);
 }
 
 static int
-cryptoioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+cryptoioctl(struct dev_ioctl_args *ap)
 {
 	struct file *f;
 	struct fcrypt *fcr;
 	int fd, error;
-	switch (cmd) {
+
+	switch (ap->a_cmd) {
 	case CRIOGET:
 		MALLOC(fcr, struct fcrypt *,
 		    sizeof(struct fcrypt), M_XDATA, M_WAITOK);
 		TAILQ_INIT(&fcr->csessions);
 		fcr->sesn = 0;
 
-		KKASSERT(td->td_proc);
-		error = falloc(td->td_proc, &f, &fd);
+		KKASSERT(curproc);
+		error = falloc(curproc, &f, &fd);
 
 		if (error) {
 			FREE(fcr, M_XDATA);
@@ -754,8 +756,8 @@ cryptoioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		f->f_flag = FREAD | FWRITE;
 		f->f_ops = &cryptofops;
 		f->f_data = fcr;
-		fsetfd(td->td_proc, f, fd);
-		*(u_int32_t *)data = fd;
+		fsetfd(curproc, f, fd);
+		*(u_int32_t *)ap->a_data = fd;
 		fdrop(f);
 		break;
 	default:
@@ -766,24 +768,13 @@ cryptoioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 }
 
 #define	CRYPTO_MAJOR	70		/* from openbsd */
-static struct cdevsw crypto_cdevsw = {
-	/* dev name */	"crypto",
-	/* dev major */	CRYPTO_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	cryptoopen,
-	/* close */	nullclose,
-	/* read */	cryptoread,
-	/* write */	cryptowrite,
-	/* ioctl */	cryptoioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	NULL
+static struct dev_ops crypto_ops = {
+	{ "crypto", CRYPTO_MAJOR, 0 },
+	.d_open =	cryptoopen,
+	.d_close =	nullclose,
+	.d_read =	cryptoread,
+	.d_write =	cryptowrite,
+	.d_ioctl =	cryptoioctl,
 };
 
 /*
@@ -796,13 +787,13 @@ cryptodev_modevent(module_t mod, int type, void *unused)
 	case MOD_LOAD:
 		if (bootverbose)
 			printf("crypto: <crypto device>\n");
-		cdevsw_add(&crypto_cdevsw, 0, 0);
-		make_dev(&crypto_cdevsw, 0, UID_ROOT, GID_WHEEL,
+		dev_ops_add(&crypto_ops, 0, 0);
+		make_dev(&crypto_ops, 0, UID_ROOT, GID_WHEEL,
 			0666, "crypto");
 		return 0;
 	case MOD_UNLOAD:
 		/*XXX disallow if active sessions */
-		cdevsw_remove(&crypto_cdevsw, 0, 0);
+		dev_ops_remove(&crypto_ops, 0, 0);
 		return 0;
 	}
 	return EINVAL;

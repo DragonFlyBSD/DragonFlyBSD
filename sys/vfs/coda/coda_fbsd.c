@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.12 2006/07/19 05:59:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.13 2006/07/28 02:17:41 dillon Exp $
  * 
  */
 
@@ -37,12 +37,13 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
 #include <sys/ucred.h>
 #include <sys/vnode.h>
-#include <sys/conf.h>
 
 #include <vm/vm.h>
 #include <vm/vnode_pager.h>
@@ -66,23 +67,14 @@
 
 #define VC_DEV_NO      93
 
-static struct cdevsw codadevsw = {
-	/* name */	"Coda",
-	/* maj */	VC_DEV_NO,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	vc_nb_open,
-	/* close */	vc_nb_close,
-	/* read */	vc_nb_read,
-	/* write */	vc_nb_write,
-	/* ioctl */	vc_nb_ioctl,
-	/* poll */	vc_nb_poll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops coda_dev_ops = {
+	{ "Coda", VC_DEV_NO, 0 },
+	.d_open =	vc_nb_open,
+	.d_close =	vc_nb_close,
+	.d_read =	vc_nb_read,
+	.d_write =	vc_nb_write,
+	.d_ioctl =	vc_nb_ioctl,
+	.d_poll =	vc_nb_poll,
 };
 
 int     vcdebug = 1;
@@ -93,10 +85,10 @@ codadev_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 	case MOD_LOAD:
-		cdevsw_add(&codadevsw, 0, 0);
+		dev_ops_add(&coda_dev_ops, 0, 0);
 		break;
 	case MOD_UNLOAD:
-		cdevsw_remove(&codadevsw, 0, 0);
+		dev_ops_remove(&coda_dev_ops, 0, 0);
 		break;
 	default:
 		break;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.22 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.23 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -59,23 +59,14 @@ static d_close_t	acdclose;
 static d_ioctl_t	acdioctl;
 static d_strategy_t	acdstrategy;
 
-static struct cdevsw acd_cdevsw = {
-	/* name */	"acd",
-	/* maj */	117,
-	/* flags */	D_DISK | D_TRACKCLOSE,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	acdopen,
-	/* close */	acdclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	acdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	acdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops acd_ops = {
+	{ "acd", 117, D_DISK | D_TRACKCLOSE },
+	.d_open =	acdopen,
+	.d_close =	acdclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	acdioctl,
+	.d_strategy =	acdstrategy,
 };
 
 /* prototypes */
@@ -229,7 +220,7 @@ acddetach(struct ata_device *atadev)
     }
     release_dev(cdp->dev);
     devstat_remove_entry(cdp->stats);
-    cdevsw_remove(&acd_cdevsw, dkunitmask(), dkmakeunit(cdp->lun));
+    dev_ops_remove(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
     free(cdp->stats, M_ACD);
     ata_free_name(atadev);
     ata_free_lun(&acd_lun_map, cdp->lun);
@@ -259,8 +250,8 @@ acd_make_dev(struct acd_softc *cdp)
 {
     dev_t dev;
 
-    cdevsw_add(&acd_cdevsw, dkunitmask(), dkmakeunit(cdp->lun));
-    dev = make_dev(&acd_cdevsw, dkmakeminor(cdp->lun, 0, 0),
+    dev_ops_add(&acd_ops, dkunitmask(), dkmakeunit(cdp->lun));
+    dev = make_dev(&acd_ops, dkmakeminor(cdp->lun, 0, 0),
 		   UID_ROOT, GID_OPERATOR, 0644, "acd%d", cdp->lun);
     reference_dev(dev);
     dev->si_drv1 = cdp;
@@ -484,15 +475,16 @@ msf2lba(u_int8_t m, u_int8_t s, u_int8_t f)
 }
 
 static int
-acdopen(dev_t dev, int flags, int fmt, struct thread *td)
+acdopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     int timeout = 60;
     
     if (!cdp)
 	return ENXIO;
 
-    if (flags & FWRITE) {
+    if (ap->a_oflags & FWRITE) {
 	if (count_dev(dev) > 1)
 	    return EBUSY;
     }
@@ -522,8 +514,9 @@ acdopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-acdclose(dev_t dev, int flags, int fmt, struct thread *td)
+acdclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     
     if (!cdp)
@@ -541,8 +534,9 @@ acdclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int 
-acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+acdioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct acd_softc *cdp = dev->si_drv1;
     int error = 0;
 
@@ -554,7 +548,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	tsleep(&cdp->changer_info, 0, "acdctl", 0);
     }
     if (cdp->device->flags & ATA_D_MEDIA_CHANGED)
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case CDIOCRESET:
 	    atapi_test_ready(cdp->device);
 	    break;
@@ -565,7 +559,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	    cdp->flags |= F_LOCKED;
 	    break;
 	}
-    switch (cmd) {
+    switch (ap->a_cmd) {
 
     case CDIOCRESUME:
 	error = acd_pause_resume(cdp, 1);
@@ -594,7 +588,8 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case CDIOCRESET:
-	error = suser(td);	/* note: if no proc EPERM will be returned */
+;	/* note: if no proc EPERM will be returned */
+	error = suser_cred(ap->a_cred, 0);
 	if (error)
 	    break;
 	error = atapi_test_ready(cdp->device);
@@ -619,12 +614,12 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	    error = EIO;
 	    break;
 	}
-	bcopy(&cdp->toc.hdr, addr, sizeof(cdp->toc.hdr));
+	bcopy(&cdp->toc.hdr, ap->a_data, sizeof(cdp->toc.hdr));
 	break;
 
     case CDIOREADTOCENTRYS:
 	{
-	    struct ioc_read_toc_entry *te = (struct ioc_read_toc_entry *)addr;
+	    struct ioc_read_toc_entry *te = (struct ioc_read_toc_entry *)ap->a_data;
 	    struct toc *toc = &cdp->toc;
 	    int starting_track = te->starting_track;
 	    int len;
@@ -681,7 +676,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
     case CDIOREADTOCENTRY:
 	{
 	    struct ioc_read_toc_single_entry *te =
-		(struct ioc_read_toc_single_entry *)addr;
+		(struct ioc_read_toc_single_entry *)ap->a_data;
 	    struct toc *toc = &cdp->toc;
 	    u_char track = te->track;
 
@@ -726,7 +721,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
     case CDIOCREADSUBCHANNEL:
 	{
 	    struct ioc_read_subchannel *args =
-		(struct ioc_read_subchannel *)addr;
+		(struct ioc_read_subchannel *)ap->a_data;
 	    u_int8_t format;
 	    int8_t ccb[16] = { ATAPI_READ_SUBCHANNEL, 0, 0x40, 1, 0, 0, 0,
 			       sizeof(cdp->subchan)>>8, sizeof(cdp->subchan),
@@ -775,7 +770,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCPLAYMSF:
 	{
-	    struct ioc_play_msf *args = (struct ioc_play_msf *)addr;
+	    struct ioc_play_msf *args = (struct ioc_play_msf *)ap->a_data;
 
 	    error = 
 		acd_play(cdp, 
@@ -786,7 +781,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCPLAYBLOCKS:
 	{
-	    struct ioc_play_blocks *args = (struct ioc_play_blocks *)addr;
+	    struct ioc_play_blocks *args = (struct ioc_play_blocks *)ap->a_data;
 
 	    error = acd_play(cdp, args->blk, args->blk + args->len);
 	    break;
@@ -794,7 +789,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCPLAYTRACKS:
 	{
-	    struct ioc_play_track *args = (struct ioc_play_track *)addr;
+	    struct ioc_play_track *args = (struct ioc_play_track *)ap->a_data;
 	    int t1, t2;
 
 	    if (!cdp->toc.hdr.ending_track) {
@@ -819,7 +814,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCREADAUDIO:
 	{
-	    struct ioc_read_audio *args = (struct ioc_read_audio *)addr;
+	    struct ioc_read_audio *args = (struct ioc_read_audio *)ap->a_data;
 	    int32_t lba;
 	    caddr_t buffer, ubuf = args->buffer;
 	    int8_t ccb[16];
@@ -892,7 +887,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCGETVOL:
 	{
-	    struct ioc_vol *arg = (struct ioc_vol *)addr;
+	    struct ioc_vol *arg = (struct ioc_vol *)ap->a_data;
 
 	    if ((error = acd_mode_sense(cdp, ATAPI_CDROM_AUDIO_PAGE,
 					(caddr_t)&cdp->au, sizeof(cdp->au))))
@@ -911,7 +906,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDIOCSETVOL:
 	{
-	    struct ioc_vol *arg = (struct ioc_vol *)addr;
+	    struct ioc_vol *arg = (struct ioc_vol *)ap->a_data;
 
 	    if ((error = acd_mode_sense(cdp, ATAPI_CDROM_AUDIO_PAGE,
 					(caddr_t)&cdp->au, sizeof(cdp->au))))
@@ -936,7 +931,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	}
     case CDIOCSETPATCH:
 	{
-	    struct ioc_patch *arg = (struct ioc_patch *)addr;
+	    struct ioc_patch *arg = (struct ioc_patch *)ap->a_data;
 
 	    error = acd_setchan(cdp, arg->patch[0], arg->patch[1],
 				arg->patch[2], arg->patch[3]);
@@ -964,7 +959,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case CDRIOCBLANK:
-	error = acd_blank(cdp, (*(int *)addr));
+	error = acd_blank(cdp, (*(int *)ap->a_data));
 	break;
 
     case CDRIOCNEXTWRITEABLEADDR:
@@ -978,16 +973,16 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		error = EINVAL;
 		break;
 	    }
-	    *(int*)addr = track_info.next_writeable_addr;
+	    *(int*)ap->a_data = track_info.next_writeable_addr;
 	}
 	break;
  
     case CDRIOCINITWRITER:
-	error = acd_init_writer(cdp, (*(int *)addr));
+	error = acd_init_writer(cdp, (*(int *)ap->a_data));
 	break;
 
     case CDRIOCINITTRACK:
-	error = acd_init_track(cdp, (struct cdr_track *)addr);
+	error = acd_init_track(cdp, (struct cdr_track *)ap->a_data);
 	break;
 
     case CDRIOCFLUSH:
@@ -995,12 +990,12 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case CDRIOCFIXATE:
-	error = acd_fixate(cdp, (*(int *)addr));
+	error = acd_fixate(cdp, (*(int *)ap->a_data));
 	break;
 
     case CDRIOCREADSPEED:
 	{
-	    int speed = *(int *)addr;
+	    int speed = *(int *)ap->a_data;
 
 	    /* Preserve old behavior: units in multiples of CDROM speed */
 	    if (speed < 177)
@@ -1011,7 +1006,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     case CDRIOCWRITESPEED:
     	{
-	    int speed = *(int *)addr;
+	    int speed = *(int *)ap->a_data;
 
 	    if (speed < 177)
 		speed *= 177;
@@ -1020,53 +1015,53 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case CDRIOCGETBLOCKSIZE:
-	*(int *)addr = cdp->block_size;
+	*(int *)ap->a_data = cdp->block_size;
 	break;
 
     case CDRIOCSETBLOCKSIZE:
-	cdp->block_size = *(int *)addr;
+	cdp->block_size = *(int *)ap->a_data;
 	acd_set_ioparm(cdp);
 	break;
 
     case CDRIOCGETPROGRESS:
-	error = acd_get_progress(cdp, (int *)addr);
+	error = acd_get_progress(cdp, (int *)ap->a_data);
 	break;
 
     case CDRIOCSENDCUE:
-	error = acd_send_cue(cdp, (struct cdr_cuesheet *)addr);
+	error = acd_send_cue(cdp, (struct cdr_cuesheet *)ap->a_data);
 	break;
 
     case DVDIOCREPORTKEY:
 	if (!cdp->cap.read_dvdrom)
 	    error = EINVAL;
 	else
-	    error = acd_report_key(cdp, (struct dvd_authinfo *)addr);
+	    error = acd_report_key(cdp, (struct dvd_authinfo *)ap->a_data);
 	break;
 
     case DVDIOCSENDKEY:
 	if (!cdp->cap.read_dvdrom)
 	    error = EINVAL;
 	else
-	    error = acd_send_key(cdp, (struct dvd_authinfo *)addr);
+	    error = acd_send_key(cdp, (struct dvd_authinfo *)ap->a_data);
 	break;
 
     case DVDIOCREADSTRUCTURE:
 	if (!cdp->cap.read_dvdrom)
 	    error = EINVAL;
 	else
-	    error = acd_read_structure(cdp, (struct dvd_struct *)addr);
+	    error = acd_read_structure(cdp, (struct dvd_struct *)ap->a_data);
 	break;
 
     case DIOCGDINFO:
-	*(struct disklabel *)addr = cdp->disklabel;
+	*(struct disklabel *)ap->a_data = cdp->disklabel;
 	break;
 
     case DIOCWDINFO:
     case DIOCSDINFO:
-	if ((flags & FWRITE) == 0)
+	if ((ap->a_fflag & FWRITE) == 0)
 	    error = EBADF;
 	else
-	    error = setdisklabel(&cdp->disklabel, (struct disklabel *)addr, 0);
+	    error = setdisklabel(&cdp->disklabel, (struct disklabel *)ap->a_data, 0);
 	break;
 
     case DIOCWLABEL:
@@ -1074,8 +1069,8 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	break;
 
     case DIOCGPART:
-	((struct partinfo *)addr)->disklab = &cdp->disklabel;
-	((struct partinfo *)addr)->part = &cdp->disklabel.d_partitions[0];
+	((struct partinfo *)ap->a_data)->disklab = &cdp->disklabel;
+	((struct partinfo *)ap->a_data)->part = &cdp->disklabel.d_partitions[0];
 	break;
 
     default:
@@ -1084,9 +1079,11 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
     return error;
 }
 
-static void 
-acdstrategy(dev_t dev, struct bio *bio)
+static int 
+acdstrategy(struct dev_strategy_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct acd_softc *cdp = dev->si_drv1;
 
@@ -1094,14 +1091,14 @@ acdstrategy(dev_t dev, struct bio *bio)
 	bp->b_flags |= B_ERROR;
 	bp->b_error = ENXIO;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     /* if it's a null transfer, return immediatly. */
     if (bp->b_bcount == 0) {
 	bp->b_resid = 0;
 	biodone(bio);
-	return;
+	return(0);
     }
 
     KKASSERT(bio->bio_offset != NOOFFSET);
@@ -1112,6 +1109,7 @@ acdstrategy(dev_t dev, struct bio *bio)
     bioqdisksort(&cdp->bio_queue, bio);
     crit_exit();
     ata_start(cdp->device->channel);
+    return(0);
 }
 
 void 
@@ -1332,7 +1330,7 @@ acd_read_toc(struct acd_softc *cdp)
 
 	sprintf(name, "acd%dt%d", cdp->lun, track);
 	entry = malloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
-	entry->dev = make_dev(&acd_cdevsw, (cdp->lun << 3) | (track << 16),
+	entry->dev = make_dev(&acd_ops, (cdp->lun << 3) | (track << 16),
 			      0, 0, 0644, name, NULL);
 	entry->dev->si_drv1 = cdp->dev->si_drv1;
 	reference_dev(entry->dev);

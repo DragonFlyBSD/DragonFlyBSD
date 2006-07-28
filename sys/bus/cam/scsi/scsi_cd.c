@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.22 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.23 2006/07/28 02:17:32 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -298,23 +298,14 @@ DATA_SET(periphdriver_set, cddriver);
 #ifndef D_DISK
 #define D_DISK 0
 #endif
-static struct cdevsw cd_cdevsw = {
-	/* name */	"cd",
-	/* maj */	SCSICD_CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */	NULL,
-	/* clone */     NULL,
-
-	/* open */	cdopen,
-	/* close */	cdclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	cdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	cdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
+static struct dev_ops cd_ops = {
+	{ "cd", SCSICD_CDEV_MAJOR, D_DISK },
+	.d_open = cdopen,
+	.d_close = cdclose,
+	.d_read = physread,
+	.d_write = physwrite,
+	.d_ioctl = cdioctl,
+	.d_strategy = cdstrategy
 };
 
 static struct extend_array *cdperiphs;
@@ -777,7 +768,7 @@ cdregister(struct cam_periph *periph, void *arg)
 			  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_CD);
 	disk_create(periph->unit_number, &softc->disk,
-		    DSO_ONESLICE | DSO_COMPATLABEL, &cd_cdevsw);
+		    DSO_ONESLICE | DSO_COMPATLABEL, &cd_ops);
 
 	/*
 	 * Add an async callback so that we get
@@ -1005,8 +996,9 @@ cdregisterexit:
 }
 
 static int
-cdopen(dev_t dev, int flags, int fmt, struct thread *td)
+cdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct cd_softc *softc;
 	int unit, error;
@@ -1060,8 +1052,9 @@ cdopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-cdclose(dev_t dev, int flag, int fmt, struct thread *td)
+cdclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;
 	int	unit, error;
@@ -1432,9 +1425,11 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
  * can understand.  The transfer is described by a buf and will include
  * only one physical transfer.
  */
-static void
-cdstrategy(dev_t dev, struct bio *bio)
+static int
+cdstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct cd_softc *softc;
@@ -1499,7 +1494,7 @@ cdstrategy(dev_t dev, struct bio *bio)
 	else
 		cdschedule(periph, /* priority */ 1);
 
-	return;
+	return(0);
 bad:
 	bp->b_flags |= B_ERROR;
 	/*
@@ -1507,6 +1502,7 @@ bad:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static void
@@ -1927,9 +1923,10 @@ cdgetpagesize(int page_num)
 }
 
 static int
-cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+cdioctl(struct dev_ioctl_args *ap)
 {
-
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct 	cam_periph *periph;
 	struct	cd_softc *softc;
 	int	error, unit;
@@ -1945,7 +1942,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	softc = (struct cd_softc *)periph->softc;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, 
-		  ("trying to do ioctl %#lx\n", cmd));
+		  ("trying to do ioctl %#lx\n", ap->a_cmd));
 
 	error = cam_periph_lock(periph, PCATCH);
 
@@ -1957,8 +1954,8 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	 * have media loaded, we can only do a load or eject.
 	 */
 	if (((softc->flags & CD_FLAG_VALID_MEDIA) == 0)
-	    && ((cmd != CDIOCCLOSE)
-	    && (cmd != CDIOCEJECT))) {
+	    && ((ap->a_cmd != CDIOCCLOSE)
+	    && (ap->a_cmd != CDIOCEJECT))) {
 		error = cdcheckmedia(periph);
 		if (error != 0) {
 			cam_periph_unlock(periph);
@@ -1966,12 +1963,12 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		}
 	}
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 
 	case CDIOCPLAYTRACKS:
 		{
 			struct ioc_play_track *args
-			    = (struct ioc_play_track *) addr;
+			    = (struct ioc_play_track *)addr;
 			struct cd_mode_params params;
 			union cd_pages *page;
 
@@ -2685,7 +2682,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 		authinfo = (struct dvd_authinfo *)addr;
 
-		if (cmd == DVDIOCREPORTKEY)
+		if (ap->a_cmd == DVDIOCREPORTKEY)
 			error = cdreportkey(periph, authinfo);
 		else
 			error = cdsendkey(periph, authinfo);
@@ -2701,7 +2698,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		break;
 	}
 	default:
-		error = cam_periph_ioctl(periph, cmd, addr, cderror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, addr, cderror);
 		break;
 	}
 

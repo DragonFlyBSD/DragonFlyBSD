@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.17 2006/04/30 17:22:16 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.18 2006/07/28 02:17:35 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -182,23 +182,13 @@ static	d_ioctl_t	scdioctl;
 static	d_strategy_t	scdstrategy;
 
 #define CDEV_MAJOR 45
-static struct cdevsw scd_cdevsw = {
-	/* name */	"scd",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	scdopen,
-	/* close */	scdclose,
-	/* read */	physread,
-	/* write */	nowrite,
-	/* ioctl */	scdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	scdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops scd_ops = {
+	{ "scd", CDEV_MAJOR, D_DISK },
+	.d_open =	scdopen,
+	.d_close =	scdclose,
+	.d_read =	physread,
+	.d_ioctl =	scdioctl,
+	.d_strategy =	scdstrategy,
 };
 
 
@@ -219,21 +209,22 @@ scd_attach(struct isa_device *dev)
 	cd->audio_status = CD_AS_AUDIO_INVALID;
 	bioq_init(&cd->bio_queue);
 
-	cdevsw_add(&scd_cdevsw, dkunitmask(), dkmakeunit(unit));
-	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, 0),
+	dev_ops_add(&scd_ops, dkunitmask(), dkmakeunit(unit));
+	make_dev(&scd_ops, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "rscd%da", unit);
-	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
+	make_dev(&scd_ops, dkmakeminor(unit, 0, RAW_PART),
 	    UID_ROOT, GID_OPERATOR, 0640, "rscd%dc", unit);
-	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, 0),
+	make_dev(&scd_ops, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "scd%da", unit);
-	make_dev(&scd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
+	make_dev(&scd_ops, dkmakeminor(unit, 0, RAW_PART),
 	    UID_ROOT, GID_OPERATOR, 0640, "scd%dc", unit);
 	return 1;
 }
 
 static	int
-scdopen(dev_t dev, int flags, int fmt, struct thread *td)
+scdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit,part,phys;
 	int rc;
 	struct scd_data *cd;
@@ -286,8 +277,9 @@ scdopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static	int
-scdclose(dev_t dev, int flags, int fmt, struct thread *td)
+scdclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit,part,phys;
 	struct scd_data *cd;
 
@@ -314,9 +306,11 @@ scdclose(dev_t dev, int flags, int fmt, struct thread *td)
 	return 0;
 }
 
-static	void
-scdstrategy(dev_t dev, struct bio *bio)
+static	int
+scdstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct bio *nbio;
 	struct scd_data *cd;
@@ -371,13 +365,14 @@ scdstrategy(dev_t dev, struct bio *bio)
 
 	/* now check whether we can perform processing */
 	scd_start(unit);
-	return;
+	return(0);
 
 bad:
 	bp->b_flags |= B_ERROR;
 done:
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static void
@@ -419,8 +414,10 @@ scd_start(int unit)
 }
 
 static	int
-scdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+scdioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct scd_data *cd;
 	int unit,part;
 
@@ -428,12 +425,12 @@ scdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	part = scd_part(dev);
 	cd = scd_data + unit;
 
-	XDEBUG(1, ("scd%d: ioctl: cmd=0x%lx\n", unit, cmd));
+	XDEBUG(1, ("scd%d: ioctl: cmd=0x%lx\n", unit, ap->a_cmd));
 
 	if (!(cd->flags & SCDVALID))
 		return EIO;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case DIOCGDINFO:
 		*(struct disklabel *)addr = cd->dlabel;
 		return 0;
@@ -489,7 +486,8 @@ scdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 #endif
 		return 0;
 	default:
-		printf("scd%d: unsupported ioctl (cmd=0x%lx)\n", unit, cmd);
+		printf("scd%d: unsupported ioctl (cmd=0x%lx)\n",
+			unit, ap->a_cmd);
 		return ENOTTY;
 	}
 }

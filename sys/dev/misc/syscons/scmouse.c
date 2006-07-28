@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.10 2005/06/11 00:29:10 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.11 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -569,8 +569,7 @@ mouse_paste(scr_stat *scp)
 #endif /* SC_NO_CUTPASTE */
 
 int
-sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
-	       struct thread *td)
+sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag)
 {
     mouse_info_t *mouse;
     scr_stat *cur_scp;
@@ -589,8 +588,8 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	case MOUSE_MODE:
 	    if (ISSIGVALID(mouse->u.mode.signal)) {
 		scp->mouse_signal = mouse->u.mode.signal;
-		scp->mouse_proc = td->td_proc;
-		scp->mouse_pid = td->td_proc->p_pid;
+		scp->mouse_proc = curproc;
+		scp->mouse_pid = curproc->p_pid;
 	    }
 	    else {
 		scp->mouse_signal = 0;

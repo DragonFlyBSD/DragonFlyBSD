@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.17 2006/06/10 20:00:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.18 2006/07/28 02:17:36 dillon Exp $
  */
 
 /*
@@ -70,6 +70,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/poll.h>
 #include <sys/syslog.h>
 #include <sys/malloc.h>
@@ -342,23 +343,13 @@ static struct isa_pnp_id psm_ids[] = {
 
 #define CDEV_MAJOR        21
 
-static struct cdevsw psm_cdevsw = {
-	/* name */	PSM_DRIVER_NAME,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	psmopen,
-	/* close */	psmclose,
-	/* read */	psmread,
-	/* write */	nowrite,
-	/* ioctl */	psmioctl,
-	/* poll */	psmpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops psm_ops = {
+	{ PSM_DRIVER_NAME, CDEV_MAJOR, 0 },
+	.d_open =	psmopen,
+	.d_close =	psmclose,
+	.d_read =	psmread,
+	.d_ioctl =	psmioctl,
+	.d_poll =	psmpoll,
 };
 
 /* debug message level */
@@ -1251,9 +1242,9 @@ psmattach(device_t dev)
     }
 
     /* Done */
-    cdevsw_add(&psm_cdevsw, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
-    make_dev(&psm_cdevsw, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "psm%d", unit);
-    make_dev(&psm_cdevsw, PSM_MKMINOR(unit, TRUE), 0, 0, 0666, "bpsm%d", unit);
+    dev_ops_add(&psm_ops, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
+    make_dev(&psm_ops, PSM_MKMINOR(unit, FALSE), 0, 0, 0666, "psm%d", unit);
+    make_dev(&psm_ops, PSM_MKMINOR(unit, TRUE), 0, 0, 0666, "bpsm%d", unit);
 
     if (!verbose) {
         printf("psm%d: model %s, device ID %d\n", 
@@ -1290,14 +1281,15 @@ psmdetach(device_t dev)
     rid = 0;
     BUS_TEARDOWN_INTR(device_get_parent(dev), dev, sc->intr, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, rid, sc->intr);
-    cdevsw_remove(&psm_cdevsw, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
+    dev_ops_remove(&psm_ops, PSM_MKMINOR(-1, 0), PSM_MKMINOR(unit, 0));
 
     return 0;
 }
 
 static int
-psmopen(dev_t dev, int flag, int fmt, struct thread *td)
+psmopen(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc;
     int command_byte;
@@ -1380,8 +1372,9 @@ psmopen(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-psmclose(dev_t dev, int flag, int fmt, struct thread *td)
+psmclose(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int unit = PSM_UNIT(dev);
     struct psm_softc *sc = PSM_SOFTC(unit);
     int stat[3];
@@ -1520,8 +1513,10 @@ tame_mouse(struct psm_softc *sc, mousestatus_t *status, unsigned char *buf)
 }
 
 static int
-psmread(dev_t dev, struct uio *uio, int flag)
+psmread(struct dev_read_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    struct uio *uio = ap->a_uio;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     unsigned char buf[PSM_SMALLBUFSIZE];
     int error = 0;
@@ -1643,8 +1638,10 @@ unblock_mouse_data(struct psm_softc *sc, int c)
 }
 
 static int
-psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+psmioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    caddr_t addr=  ap->a_data;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     mousemode_t mode;
     mousestatus_t status;
@@ -1657,8 +1654,8 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
     int error = 0;
 
     /* Perform IOCTL command */
-    switch (cmd) {
 
+    switch (ap->a_cmd) {
     case OLD_MOUSE_GETHWINFO:
 	crit_enter();
         ((old_mousehw_t *)addr)->buttons = sc->hw.buttons;
@@ -1721,7 +1718,7 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
     case OLD_MOUSE_SETMODE:
     case MOUSE_SETMODE:
-	if (cmd == OLD_MOUSE_SETMODE) {
+	if (ap->a_cmd == OLD_MOUSE_SETMODE) {
 	    mode.rate = ((old_mousemode_t *)addr)->rate;
 	    /*
 	     * resolution  old I/F   new I/F
@@ -1848,7 +1845,7 @@ psmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	if (error)
             return error;
         if ((data->len = get_mouse_status(sc->kbdc, data->buf, 
-		(cmd == MOUSE_READDATA) ? 1 : 0, data->len)) <= 0)
+		(ap->a_cmd == MOUSE_READDATA) ? 1 : 0, data->len)) <= 0)
             error = EIO;
 	unblock_mouse_data(sc, command_byte);
 	break;
@@ -2379,22 +2376,23 @@ psmintr(void *arg)
 }
 
 static int
-psmpoll(dev_t dev, int events, struct thread *td)
+psmpoll(struct dev_poll_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     int revents = 0;
 
     /* Return true if a mouse event available */
     crit_enter();
-    if (events & (POLLIN | POLLRDNORM)) {
+    if (ap->a_events & (POLLIN | POLLRDNORM)) {
 	if (sc->queue.count > 0)
-	    revents |= events & (POLLIN | POLLRDNORM);
+	    revents |= ap->a_events & (POLLIN | POLLRDNORM);
 	else
-	    selrecord(td, &sc->rsel);
+	    selrecord(curthread, &sc->rsel);
     }
     crit_exit();
-
-    return (revents);
+    ap->a_events = revents;
+    return (0);
 }
 
 /* vendor/model specific routines */

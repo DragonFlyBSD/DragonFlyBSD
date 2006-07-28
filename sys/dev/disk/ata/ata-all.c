@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.28 2005/10/13 00:02:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.29 2006/07/28 02:17:35 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -66,23 +66,11 @@ union ata_request {
 
 /* device structures */
 static	d_ioctl_t	ataioctl;
-static struct cdevsw ata_cdevsw = {  
-	/* name */	"ata",
-	/* maj */	159,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	nullopen,
-	/* close */	nullclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	ataioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ata_ops = {  
+	{ "ata", 159, 0 },
+	.d_open =	nullopen,
+	.d_close =	nullclose,
+	.d_ioctl =	ataioctl,
 };
 
 /* prototypes */
@@ -320,14 +308,14 @@ ata_resume(device_t dev)
 }
 
 static int
-ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
+ataioctl(struct dev_ioctl_args *ap)
 {
-    struct ata_cmd *iocmd = (struct ata_cmd *)addr;
+    struct ata_cmd *iocmd = (struct ata_cmd *)ap->a_data;
     struct ata_channel *ch;
     device_t device = devclass_get_device(ata_devclass, iocmd->channel);
     int error;
 
-    if (cmd != IOCATA)
+    if (ap->a_cmd != IOCATA)
 	return ENOTTY;
     
     if (iocmd->channel < -1 || iocmd->device < -1 || iocmd->device > SLAVE)
@@ -1588,8 +1576,8 @@ static void
 ata_init(void)
 {
     /* register controlling device */
-    cdevsw_add(&ata_cdevsw, 0, 0);
-    make_dev(&ata_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
+    dev_ops_add(&ata_ops, 0, 0);
+    make_dev(&ata_ops, 0, UID_ROOT, GID_OPERATOR, 0600, "ata");
 
     /* register boot attach to be run when interrupts are enabled */
     ata_delayed_attach = malloc(sizeof(struct intr_config_hook),

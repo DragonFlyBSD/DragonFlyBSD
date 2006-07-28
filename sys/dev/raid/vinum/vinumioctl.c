@@ -43,7 +43,7 @@
  *
  * $Id: vinumioctl.c,v 1.14 2000/10/27 03:07:53 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumioctl.c,v 1.25.2.4 2002/02/03 00:44:19 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.5 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumioctl.c,v 1.6 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -63,8 +63,11 @@ jmp_buf command_fail;					    /* return on a failed command */
 
 /* ioctl routine */
 int
-vinumioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+vinumioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+    u_long cmd = ap->a_cmd;
+    caddr_t data = ap->a_data;
     unsigned int objno;
     int error = 0;
     struct sd *sd;
@@ -405,7 +408,7 @@ vinumioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	    return 0;					    /* not a titty */
 
 	case DIOCWLABEL:				    /* set or reset label writeable */
-	    if ((flag & FWRITE) == 0)			    /* not writeable? */
+	    if ((ap->a_fflag & FWRITE) == 0)		    /* not writeable? */
 		return EACCES;				    /* no, die */
 	    if (*(int *) data != 0)			    /* set it? */
 		vol->flags |= VF_WLABEL;		    /* yes */

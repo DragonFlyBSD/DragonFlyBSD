@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.2 2006/07/10 21:06:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.3 2006/07/28 02:17:40 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -490,7 +490,7 @@ add_buffer_randomness(const char *buf, int bytes)
  * Poll (always succeeds)
  */
 int
-random_poll(dev_t dev, int events, struct thread *td)
+random_poll(dev_t dev, int events)
 {
 	int revents = 0;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.8 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.9 2006/07/28 02:17:34 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -93,23 +93,13 @@ static	d_read_t	iicread;
 static	d_ioctl_t	iicioctl;
 
 #define CDEV_MAJOR 105
-static struct cdevsw iic_cdevsw = {
-	/* name */	"iic",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */     NULL,
-
-	/* open */	iicopen,
-	/* close */	iicclose,
-	/* read */	iicread,
-	/* write */	iicwrite,
-	/* ioctl */	iicioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops iic_ops = {
+	{ "iic", CDEV_MAJOR, 0 },
+	.d_open =	iicopen,
+	.d_close =	iicclose,
+	.d_read =	iicread,
+	.d_write =	iicwrite,
+	.d_ioctl =	iicioctl,
 };
 
 /*
@@ -133,16 +123,17 @@ iic_probe(device_t dev)
 static int
 iic_attach(device_t dev)
 {
-	cdevsw_add(&iic_cdevsw, -1, device_get_unit(dev));
-	make_dev(&iic_cdevsw, device_get_unit(dev),	/* XXX cleanup */
+	dev_ops_add(&iic_ops, -1, device_get_unit(dev));
+	make_dev(&iic_ops, device_get_unit(dev),	/* XXX cleanup */
 			UID_ROOT, GID_WHEEL,
 			0600, "iic%d", device_get_unit(dev));
 	return (0);
 }
 
 static int
-iicopen (dev_t dev, int flags, int fmt, struct thread *td)
+iicopen (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -157,8 +148,9 @@ iicopen (dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-iicclose(dev_t dev, int flags, int fmt, struct thread *td)
+iicclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -176,8 +168,10 @@ iicclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-iicwrite(dev_t dev, struct uio * uio, int ioflag)
+iicwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 	int sent, error, count;
@@ -203,8 +197,10 @@ iicwrite(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-iicread(dev_t dev, struct uio * uio, int ioflag)
+iicread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 	int len, error = 0;
@@ -235,23 +231,24 @@ iicread(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-iicioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+iicioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	device_t iicdev = IIC_DEVICE(minor(dev));
 	struct iic_softc *sc = IIC_SOFTC(minor(dev));
 	device_t parent = device_get_parent(iicdev);
-	struct iiccmd *s = (struct iiccmd *)data;
+	struct iiccmd *s = (struct iiccmd *)ap->a_data;
 	int error, count;
 
 	if (!sc)
 		return (EINVAL);
 
 	if ((error = iicbus_request_bus(device_get_parent(iicdev), iicdev,
-			(flags & O_NONBLOCK) ? IIC_DONTWAIT :
+			(ap->a_fflag & O_NONBLOCK) ? IIC_DONTWAIT :
 						(IIC_WAIT | IIC_INTR))))
 		return (error);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case I2CSTART:
 		error = iicbus_start(parent, s->slave, 0);
 		break;

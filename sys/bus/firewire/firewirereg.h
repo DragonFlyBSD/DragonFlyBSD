@@ -32,12 +32,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.10 2006/06/10 20:00:12 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.11 2006/07/28 02:17:33 dillon Exp $
  *
  */
 
 #ifdef __DragonFly__
-typedef d_thread_t fw_proc;
+typedef	struct thread fw_proc;
 #elif __FreeBSD_version >= 500000
 typedef	struct thread fw_proc;
 #else
@@ -46,6 +46,8 @@ typedef	struct proc fw_proc;
 
 #include <sys/selinfo.h>
 #include <sys/uio.h>
+
+struct dev_ioctl_args;
 
 struct fw_device{
 	u_int16_t dst;
@@ -153,7 +155,7 @@ struct firewire_comm{
 	u_int32_t (*cyctimer) (struct  firewire_comm *);
 	void (*ibr) (struct firewire_comm *);
 	u_int32_t (*set_bmr) (struct firewire_comm *, u_int32_t);
-	int (*ioctl) (dev_t, u_long, caddr_t, int, fw_proc *);
+	int (*ioctl) (struct dev_ioctl_args *);
 	int (*irx_enable) (struct firewire_comm *, int);
 	int (*irx_disable) (struct firewire_comm *, int);
 	int (*itx_enable) (struct firewire_comm *, int);

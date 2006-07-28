@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.16 2005/10/12 17:35:54 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.17 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -71,6 +71,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/device.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -218,15 +219,11 @@ static d_ioctl_t	ciss_ioctl;
 
 #define CISS_CDEV_MAJOR  166
 
-static struct cdevsw ciss_cdevsw = {
-    /* name */		"ciss",
-    /* cmaj */		CISS_CDEV_MAJOR,
-    /* flags */		0, 
-    /* port */		NULL,
-    /* clone */		NULL,
-    ciss_open, ciss_close, noread, nowrite, ciss_ioctl,
-    nopoll, nommap, nostrategy,
-    nodump, nopsize, nokqfilter
+static struct dev_ops ciss_ops = {
+    { "ciss", CISS_CDEV_MAJOR, 0 },
+    .d_open =		ciss_open,
+    .d_close =		ciss_close,
+    .d_ioctl =		ciss_ioctl
 };
 
 /************************************************************************
@@ -408,8 +405,8 @@ ciss_attach(device_t dev)
    /*
      * Create the control device.
      */
-    cdevsw_add(&ciss_cdevsw, -1, device_get_unit(sc->ciss_dev));
-    sc->ciss_dev_t = make_dev(&ciss_cdevsw, device_get_unit(sc->ciss_dev),
+    dev_ops_add(&ciss_ops, -1, device_get_unit(sc->ciss_dev));
+    sc->ciss_dev_t = make_dev(&ciss_ops, device_get_unit(sc->ciss_dev),
 			      UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			      "ciss%d", device_get_unit(sc->ciss_dev));
     sc->ciss_dev_t->si_drv1 = sc;
@@ -3369,8 +3366,9 @@ ciss_name_command_status(int status)
  * Handle an open on the control device.
  */
 static int
-ciss_open(dev_t dev, int flags, int fmt, d_thread_t *p)
+ciss_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ciss_softc	*sc;
 
     debug_called(1);
@@ -3387,8 +3385,9 @@ ciss_open(dev_t dev, int flags, int fmt, d_thread_t *p)
  * Handle the last close on the control device.
  */
 static int
-ciss_close(dev_t dev, int flags, int fmt, d_thread_t *p)
+ciss_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ciss_softc	*sc;
 
     debug_called(1);
@@ -3406,8 +3405,9 @@ ciss_close(dev_t dev, int flags, int fmt, d_thread_t *p)
  * simplify the porting of Compaq's userland tools.
  */
 static int
-ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
+ciss_ioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct ciss_softc		*sc;
     int				error;
 
@@ -3416,10 +3416,10 @@ ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
     sc = (struct ciss_softc *)dev->si_drv1;
     error = 0;
 
-    switch(cmd) {
+    switch(ap->a_cmd) {
     case CCISS_GETPCIINFO:
     {
-	cciss_pci_info_struct	*pis = (cciss_pci_info_struct *)addr;
+	cciss_pci_info_struct	*pis = (cciss_pci_info_struct *)ap->a_data;
 
 	pis->bus = pci_get_bus(sc->ciss_dev);
 	pis->dev_fn = pci_get_slot(sc->ciss_dev);
@@ -3430,7 +3430,7 @@ ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
     
     case CCISS_GETINTINFO:
     {
-	cciss_coalint_struct	*cis = (cciss_coalint_struct *)addr;
+	cciss_coalint_struct	*cis = (cciss_coalint_struct *)ap->a_data;
 
 	cis->delay = sc->ciss_cfg->interrupt_coalesce_delay;
 	cis->count = sc->ciss_cfg->interrupt_coalesce_count;
@@ -3440,7 +3440,7 @@ ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
 
     case CCISS_SETINTINFO:
     {
-	cciss_coalint_struct	*cis = (cciss_coalint_struct *)addr;
+	cciss_coalint_struct	*cis = (cciss_coalint_struct *)ap->a_data;
 
 	if ((cis->delay == 0) && (cis->count == 0)) {
 	    error = EINVAL;
@@ -3462,32 +3462,32 @@ ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
     }
 
     case CCISS_GETNODENAME:
-	bcopy(sc->ciss_cfg->server_name, (NodeName_type *)addr,
+	bcopy(sc->ciss_cfg->server_name, (NodeName_type *)ap->a_data,
 	      sizeof(NodeName_type));
 	break;
 
     case CCISS_SETNODENAME:
-	bcopy((NodeName_type *)addr, sc->ciss_cfg->server_name,
+	bcopy((NodeName_type *)ap->a_data, sc->ciss_cfg->server_name,
 	      sizeof(NodeName_type));
 	if (ciss_update_config(sc))
 	    error = EIO;
 	break;
 	
     case CCISS_GETHEARTBEAT:
-	*(Heartbeat_type *)addr = sc->ciss_cfg->heartbeat;
+	*(Heartbeat_type *)ap->a_data = sc->ciss_cfg->heartbeat;
 	break;
 
     case CCISS_GETBUSTYPES:
-	*(BusTypes_type *)addr = sc->ciss_cfg->bus_types;
+	*(BusTypes_type *)ap->a_data = sc->ciss_cfg->bus_types;
 	break;
 
     case CCISS_GETFIRMVER:
-	bcopy(sc->ciss_id->running_firmware_revision, (FirmwareVer_type *)addr,
+	bcopy(sc->ciss_id->running_firmware_revision, (FirmwareVer_type *)ap->a_data,
 	      sizeof(FirmwareVer_type));
 	break;
 
     case CCISS_GETDRIVERVER:
-	*(DriverVer_type *)addr = CISS_DRIVER_VERSION;
+	*(DriverVer_type *)ap->a_data = CISS_DRIVER_VERSION;
 	break;
 
     case CCISS_REVALIDVOLS:
@@ -3501,11 +3501,11 @@ ciss_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *p)
 	break;
 
     case CCISS_PASSTHRU:
-	error = ciss_user_command(sc, (IOCTL_Command_struct *)addr);
+	error = ciss_user_command(sc, (IOCTL_Command_struct *)ap->a_data);
 	break;
 
     default:
-	debug(0, "unknown ioctl 0x%lx", cmd);
+	debug(0, "unknown ioctl 0x%lx", ap->a_cmd);
 
 	debug(1, "CCISS_GETPCIINFO:   0x%lx", CCISS_GETPCIINFO);
 	debug(1, "CCISS_GETINTINFO:   0x%lx", CCISS_GETINTINFO);

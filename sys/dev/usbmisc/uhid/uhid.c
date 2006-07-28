@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.15 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -154,23 +154,14 @@ d_poll_t	uhidpoll;
 
 #define		UHID_CDEV_MAJOR 122
 
-Static struct cdevsw uhid_cdevsw = {
-	/* name */	"uhid",
-	/* maj */	UHID_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	uhidopen,
-	/* close */	uhidclose,
-	/* read */	uhidread,
-	/* write */	uhidwrite,
-	/* ioctl */	uhidioctl,
-	/* poll */	uhidpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+Static struct dev_ops uhid_ops = {
+	{ "uhid", UHID_CDEV_MAJOR, 0 },
+	.d_open =	uhidopen,
+	.d_close =	uhidclose,
+	.d_read =	uhidread,
+	.d_write =	uhidwrite,
+	.d_ioctl =	uhidioctl,
+	.d_poll =	uhidpoll,
 };
 #endif
 
@@ -179,8 +170,7 @@ Static void uhid_intr(usbd_xfer_handle, usbd_private_handle,
 
 Static int uhid_do_read(struct uhid_softc *, struct uio *uio, int);
 Static int uhid_do_write(struct uhid_softc *, struct uio *uio, int);
-Static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int,
-			      usb_proc_ptr);
+Static int uhid_do_ioctl(struct uhid_softc *, u_long, caddr_t, int);
 
 USB_DECLARE_DRIVER(uhid);
 
@@ -273,8 +263,8 @@ USB_ATTACH(uhid)
 	sc->sc_repdesc_size = size;
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	cdevsw_add(&uhid_cdevsw, -1, device_get_unit(self));
-	make_dev(&uhid_cdevsw, device_get_unit(self),
+	dev_ops_add(&uhid_ops, -1, device_get_unit(self));
+	make_dev(&uhid_ops, device_get_unit(self),
 		UID_ROOT, GID_OPERATOR,
 		0644, "uhid%d", device_get_unit(self));
 #endif
@@ -338,7 +328,7 @@ USB_DETACH(uhid)
 	mn = self->dv_unit;
 	vdevgone(maj, mn, mn, VCHR);
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
-	cdevsw_remove(&uhid_cdevsw, -1, device_get_unit(self));
+	dev_ops_remove(&uhid_ops, -1, device_get_unit(self));
 #endif
 
 	if (sc->sc_repdesc)
@@ -392,8 +382,9 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 }
 
 int
-uhidopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+uhidopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	usbd_status err;
 
@@ -439,8 +430,9 @@ uhidopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-uhidclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
+uhidclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
@@ -528,15 +520,16 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 }
 
 int
-uhidread(dev_t dev, struct uio *uio, int flag)
+uhidread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = uhid_do_read(sc, uio, flag);
+	error = uhid_do_read(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
@@ -574,23 +567,23 @@ uhid_do_write(struct uhid_softc *sc, struct uio *uio, int flag)
 }
 
 int
-uhidwrite(dev_t dev, struct uio *uio, int flag)
+uhidwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = uhid_do_write(sc, uio, flag);
+	error = uhid_do_write(sc, ap->a_uio, ap->a_ioflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
 }
 
 int
-uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag,
-	      usb_proc_ptr p)
+uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag)
 {
 	struct usb_ctl_report_desc *rd;
 	struct usb_ctl_report *re;
@@ -608,7 +601,7 @@ uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag,
 			if (sc->sc_async != NULL)
 				return (EBUSY);
 #if defined(__DragonFly__)
-			sc->sc_async = p->td_proc;
+			sc->sc_async = curproc;
 #elif __FreeBSD_version >= 500000
 			sc->sc_async = p->td_proc;
 #else
@@ -706,23 +699,25 @@ uhid_do_ioctl(struct uhid_softc *sc, u_long cmd, caddr_t addr, int flag,
 }
 
 int
-uhidioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
+uhidioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int error;
 
 	USB_GET_SC(uhid, UHIDUNIT(dev), sc);
 
 	sc->sc_refcnt++;
-	error = uhid_do_ioctl(sc, cmd, addr, flag, p);
+	error = uhid_do_ioctl(sc, ap->a_cmd, ap->a_data, ap->a_fflag);
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 	return (error);
 }
 
 int
-uhidpoll(dev_t dev, int events, usb_proc_ptr p)
+uhidpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct uhid_softc *sc;
 	int revents = 0;
 
@@ -732,16 +727,17 @@ uhidpoll(dev_t dev, int events, usb_proc_ptr p)
 		return (EIO);
 
 	crit_enter();
-	if (events & (POLLOUT | POLLWRNORM))
-		revents |= events & (POLLOUT | POLLWRNORM);
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLOUT | POLLWRNORM))
+		revents |= ap->a_events & (POLLOUT | POLLWRNORM);
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (sc->sc_q.c_cc > 0)
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(p, &sc->sc_rsel);
+			selrecord(curthread, &sc->sc_rsel);
 	}
 	crit_exit();
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)

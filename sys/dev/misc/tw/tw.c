@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.16 2006/06/10 20:00:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.17 2006/07/28 02:17:37 dillon Exp $
  *
  */
 
@@ -144,6 +144,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
@@ -216,23 +217,13 @@ static	d_write_t	twwrite;
 static	d_poll_t	twpoll;
 
 #define CDEV_MAJOR 19
-static struct cdevsw tw_cdevsw = {
-	/* name */	"tw",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	twopen,
-	/* close */	twclose,
-	/* read */	twread,
-	/* write */	twwrite,
-	/* ioctl */	noioctl,
-	/* poll */	twpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops tw_ops = {
+	{ "tw", CDEV_MAJOR, 0 },
+	.d_open	=	twopen,
+	.d_close =	twclose,
+	.d_read =	twread,
+	.d_write =	twwrite,
+	.d_poll =	twpoll,
 };
 
 /*
@@ -406,14 +397,15 @@ twattach(struct isa_device *idp)
   sc->sc_state = 0;
   sc->sc_rcount = 0;
   callout_init(&sc->abortrcv_ch);
-  cdevsw_add(&tw_cdevsw, -1, unit);
-  make_dev(&tw_cdevsw, unit, 0, 0, 0600, "tw%d", unit);
+  dev_ops_add(&tw_ops, -1, unit);
+  make_dev(&tw_ops, unit, 0, 0, 0600, "tw%d", unit);
   return (1);
 }
 
 int
-twopen(dev_t dev, int flag, int mode, struct thread *td)
+twopen(struct dev_open_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
   crit_enter();
@@ -428,8 +420,9 @@ twopen(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 int
-twclose(dev_t dev, int flag, int mode, struct thread *td)
+twclose(struct dev_close_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
 
   crit_enter();
@@ -440,8 +433,10 @@ twclose(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 int
-twread(dev_t dev, struct uio *uio, int ioflag)
+twread(struct dev_read_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  struct uio *uio = ap->a_uio;
   u_char buf[3];
   struct tw_sc *sc = &tw_sc[TWUNIT(dev)];
   int error, cnt;
@@ -456,8 +451,10 @@ twread(dev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-twwrite(dev_t dev, struct uio *uio, int ioflag)
+twwrite(struct dev_write_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  struct uio *uio = ap->a_uio;
   struct tw_sc *sc;
   int house, key, reps;
   int error;
@@ -526,22 +523,24 @@ twwrite(dev_t dev, struct uio *uio, int ioflag)
  */
 
 int
-twpoll(dev_t dev, int events, struct thread *td)
+twpoll(struct dev_poll_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   struct tw_sc *sc;
   int revents = 0;
 
   sc = &tw_sc[TWUNIT(dev)];
   crit_enter();
   /* XXX is this correct?  the original code didn't test select rw mode!! */
-  if (events & (POLLIN | POLLRDNORM)) {
+  if (ap->a_events & (POLLIN | POLLRDNORM)) {
     if(sc->sc_nextin != sc->sc_nextout)
-      revents |= events & (POLLIN | POLLRDNORM);
+      revents |= ap->a_events & (POLLIN | POLLRDNORM);
     else
-      selrecord(td, &sc->sc_selp);
+      selrecord(curthread, &sc->sc_selp);
   }
   crit_exit();
-  return(revents);
+  ap->a_events = revents;
+  return(0);
 }
 
 /*

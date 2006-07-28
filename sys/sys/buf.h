@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.37 2006/05/25 19:31:14 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.38 2006/07/28 02:17:41 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -380,9 +380,8 @@ int	cluster_read (struct vnode *, off_t, off_t, int,
 	    int, int, struct buf **);
 int	cluster_wbuild (struct vnode *, int, off_t, int);
 void	cluster_write (struct buf *, off_t, int);
-int	physio (dev_t dev, struct uio *uio, int ioflag);
-#define physread physio
-#define physwrite physio
+int	physread (struct dev_read_args *);
+int	physwrite (struct dev_write_args *);
 void	vfs_bio_set_validclean (struct buf *, int base, int size);
 void	vfs_bio_clrbuf (struct buf *);
 void	vfs_busy_pages (struct vnode *, struct buf *);

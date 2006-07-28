@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.17 2005/10/27 13:33:19 sephe Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.18 2006/07/28 02:17:38 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -507,7 +507,7 @@ static void	stl_echmcaintr(stlbrd_t *brdp);
 static void	stl_echpciintr(stlbrd_t *brdp);
 static void	stl_echpci64intr(stlbrd_t *brdp);
 static int	stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data,
-			int flag, struct thread *td);
+			int flag);
 static int	stl_getbrdstats(caddr_t data);
 static int	stl_getportstats(stlport_t *portp, caddr_t data);
 static int	stl_clrportstats(stlport_t *portp, caddr_t data);
@@ -748,24 +748,15 @@ COMPAT_PCI_DRIVER (stlpci, stlpcidriver);
  */
 
 #define	CDEV_MAJOR	72
-static struct cdevsw stl_cdevsw = {
-	/* name */	"stl",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	stlopen,
-	/* close */	stlclose,
-	/* read */	ttyread,
-	/* write */	ttywrite,
-	/* ioctl */	stlioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops stl_ops = {
+	{ "stl", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	stlopen,
+	.d_close =	stlclose,
+	.d_read =	ttyread,
+	.d_write =	ttywrite,
+	.d_ioctl =	stlioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static void stl_drvinit(void *unused)
@@ -875,95 +866,95 @@ static int stlattach(struct isa_device *idp)
 
 	/* register devices for DEVFS */
 	boardnr = brdp->brdnr;
-	cdevsw_add(&stl_cdevsw, 31, boardnr);
-	make_dev(&stl_cdevsw, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
+	dev_ops_add(&stl_ops, 31, boardnr);
+	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
 		 0600, "staliomem%d", boardnr);
 
 	for (portnr = 0, minor_dev = boardnr * 0x100000;
 	      portnr < 32; portnr++, minor_dev++) {
 		/* hw ports */
-		make_dev(&stl_cdevsw, minor_dev,
+		make_dev(&stl_ops, minor_dev,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 32,
+		make_dev(&stl_ops, minor_dev + 32,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 64,
+		make_dev(&stl_ops, minor_dev + 64,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 128,
+		make_dev(&stl_ops, minor_dev + 128,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 160,
+		make_dev(&stl_ops, minor_dev + 160,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 192,
+		make_dev(&stl_ops, minor_dev + 192,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64));
 
 		/* sw ports */
-		make_dev(&stl_cdevsw, minor_dev + 0x10000,
+		make_dev(&stl_ops, minor_dev + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 32 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 32 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 64 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 64 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 128 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 128 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 160 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 160 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 192 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 192 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64) + 32);
 	}
 	boardnr = brdp->brdnr;
-	make_dev(&stl_cdevsw, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
+	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
 		 0600, "staliomem%d", boardnr);
 
 	for (portnr = 0, minor_dev = boardnr * 0x100000;
 	      portnr < 32; portnr++, minor_dev++) {
 		/* hw ports */
-		make_dev(&stl_cdevsw, minor_dev,
+		make_dev(&stl_ops, minor_dev,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 32,
+		make_dev(&stl_ops, minor_dev + 32,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 64,
+		make_dev(&stl_ops, minor_dev + 64,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 128,
+		make_dev(&stl_ops, minor_dev + 128,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 160,
+		make_dev(&stl_ops, minor_dev + 160,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 192,
+		make_dev(&stl_ops, minor_dev + 192,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64));
 
 		/* sw ports */
-		make_dev(&stl_cdevsw, minor_dev + 0x10000,
+		make_dev(&stl_ops, minor_dev + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 32 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 32 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 64 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 64 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 128 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 128 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 160 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 160 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 192 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 192 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64) + 32);
 	}
@@ -1097,48 +1088,48 @@ void stlpciattach(pcici_t tag, int unit)
 
 	/* register devices for DEVFS */
 	boardnr = brdp->brdnr;
-	make_dev(&stl_cdevsw, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
+	make_dev(&stl_ops, boardnr + 0x1000000, UID_ROOT, GID_WHEEL,
 		 0600, "staliomem%d", boardnr);
 
 	for (portnr = 0, minor_dev = boardnr * 0x100000;
 	      portnr < 32; portnr++, minor_dev++) {
 		/* hw ports */
-		make_dev(&stl_cdevsw, minor_dev,
+		make_dev(&stl_ops, minor_dev,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 32,
+		make_dev(&stl_ops, minor_dev + 32,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 64,
+		make_dev(&stl_ops, minor_dev + 64,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 128,
+		make_dev(&stl_ops, minor_dev + 128,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 160,
+		make_dev(&stl_ops, minor_dev + 160,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64));
-		make_dev(&stl_cdevsw, minor_dev + 192,
+		make_dev(&stl_ops, minor_dev + 192,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64));
 
 		/* sw ports */
-		make_dev(&stl_cdevsw, minor_dev + 0x10000,
+		make_dev(&stl_ops, minor_dev + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 32 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 32 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttyiE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 64 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 64 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "ttylE%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 128 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 128 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cue%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 160 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 160 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cuie%d", portnr + (boardnr * 64) + 32);
-		make_dev(&stl_cdevsw, minor_dev + 192 + 0x10000,
+		make_dev(&stl_ops, minor_dev + 192 + 0x10000,
 			 UID_ROOT, GID_WHEEL, 0600,
 			 "cule%d", portnr + (boardnr * 64) + 32);
 	}
@@ -1148,8 +1139,9 @@ void stlpciattach(pcici_t tag, int unit)
 
 /*****************************************************************************/
 
-STATIC int stlopen(dev_t dev, int flag, int mode, struct thread *td)
+STATIC int stlopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stlport_t	*portp;
 	int		error, callout;
@@ -1211,7 +1203,7 @@ stlopen_restart:
 			}
 		} else {
 			if (portp->callout != 0) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto stlopen_end;
 				}
@@ -1222,7 +1214,7 @@ stlopen_restart:
 				goto stlopen_restart;
 			}
 		}
-		if ((tp->t_state & TS_XCLUDE) && suser(td)) {
+		if ((tp->t_state & TS_XCLUDE) && suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto stlopen_end;
 		}
@@ -1234,7 +1226,7 @@ stlopen_restart:
  */
 	if (((tp->t_state & TS_CARR_ON) == 0) && !callout &&
 			((tp->t_cflag & CLOCAL) == 0) &&
-			((flag & O_NONBLOCK) == 0)) {
+			((ap->a_oflags & O_NONBLOCK) == 0)) {
 		portp->waitopens++;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "stldcd", 0);
 		portp->waitopens--;
@@ -1266,8 +1258,9 @@ stlopen_end:
 
 /*****************************************************************************/
 
-STATIC int stlclose(dev_t dev, int flag, int mode, struct thread *td)
+STATIC int stlclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stlport_t	*portp;
 
@@ -1287,7 +1280,7 @@ STATIC int stlclose(dev_t dev, int flag, int mode, struct thread *td)
 	tp = &portp->tty;
 
 	crit_enter();
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	stl_ttyoptim(portp, &tp->t_termios);
 	stl_rawclose(portp);
 	ttyclose(tp);
@@ -1324,21 +1317,23 @@ STATIC int stlstop(struct tty *tp, int rw)
 
 /*****************************************************************************/
 
-STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-		    struct thread *td)
+STATIC int stlioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
 	struct termios	*newtios, *localtios;
 	struct tty	*tp;
 	stlport_t	*portp;
 	int		error, i;
 
 #if STLDEBUG
-	printf("stlioctl(dev=%s,cmd=%lx,data=%p,flag=%x,p=%p)\n",
-		devtoname(dev), cmd, (void *) data, flag, (void *) p);
+	printf("stlioctl(dev=%s,cmd=%lx,data=%p,flag=%x)\n",
+		devtoname(dev), cmd, (void *) data, ap->a_fflag);
 #endif
 
 	if (minor(dev) & STL_MEMDEV)
-		return(stl_memioctl(dev, cmd, data, flag, td));
+		return(stl_memioctl(dev, cmd, data, ap->a_fflag));
 
 	portp = stl_dev2port(dev);
 	if (portp == (stlport_t *) NULL)
@@ -1361,7 +1356,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 
 		switch (cmd) {
 		case TIOCSETA:
-			if ((error = suser(td)) == 0)
+			if ((error = suser_cred(ap->a_cred, 0)) == 0)
 				*localtios = *((struct termios *) data);
 			break;
 		case TIOCGETA:
@@ -1428,12 +1423,13 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
  *	Call the line discipline and the common command processing to
  *	process this command (if they can).
  */
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
+					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return(error);
 
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	stl_ttyoptim(portp, &tp->t_termios);
 	if (error != ENOIOCTL) {
 		crit_exit();
@@ -1479,7 +1475,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 		*((int *) data) = (stl_getsignals(portp) | TIOCM_LE);
 		break;
 	case TIOCMSDTRWAIT:
-		if ((error = suser(td)) == 0)
+		if ((error = suser_cred(ap->a_cred, 0)) == 0)
 			portp->dtrwait = *((int *) data) * hz / 100;
 		break;
 	case TIOCMGDTRWAIT:
@@ -2705,8 +2701,7 @@ static int stl_clrportstats(stlport_t *portp, caddr_t data)
  *	The "staliomem" device is used for stats collection in this driver.
  */
 
-static int stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-			struct thread *td)
+static int stl_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag)
 {
 	int		rc;
 

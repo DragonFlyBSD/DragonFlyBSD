@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.11 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.12 2006/07/28 02:17:41 dillon Exp $
  * 
  */
 
@@ -59,6 +59,8 @@ extern int coda_nc_initialized;    /* Set if cache has been initialized */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/device.h>
+#include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/malloc.h>
@@ -66,7 +68,6 @@ extern int coda_nc_initialized;    /* Set if cache has been initialized */
 #include <sys/file.h>
 #include <sys/ioccom.h>
 #include <sys/poll.h>
-#include <sys/conf.h>
 
 #include "coda.h"
 #include "cnode.h"
@@ -114,8 +115,10 @@ vcodaattach(int n)
 }
 
 int 
-vc_nb_open(dev_t dev, int flag, int mode, d_thread_t *td)
+vc_nb_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
+
     struct vcomm *vcp;
     
     ENTRY;
@@ -142,8 +145,9 @@ vc_nb_open(dev_t dev, int flag, int mode, d_thread_t *td)
 }
 
 int 
-vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
+vc_nb_close (struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct vcomm *vcp;
     struct vmsg *vmp, *nvmp = NULL;
     struct coda_mntinfo *mi;
@@ -214,7 +218,7 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 #endif
     }
 
-    err = dounmount(mi->mi_vfsp, flag);
+    err = dounmount(mi->mi_vfsp, ap->a_fflag);
     if (err)
 	myprintf(("Error %d unmounting vfs in vcclose(%d)\n", 
 	           err, minor(dev)));
@@ -222,9 +226,10 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 }
 
 int 
-vc_nb_read(dev_t dev, struct uio *uiop, int flag)   
+vc_nb_read(struct dev_read_args *ap)
 {
-    struct vcomm *	vcp;
+    dev_t dev = ap->a_head.a_dev;
+    struct vcomm *vcp;
     struct vmsg *vmp;
     int error = 0;
     
@@ -241,8 +246,7 @@ vc_nb_read(dev_t dev, struct uio *uiop, int flag)
     vmp = (struct vmsg *)GETNEXT(vcp->vc_requests);
     
     /* Move the input args into userspace */
-    uiop->uio_rw = UIO_READ;
-    error = uiomove(vmp->vm_data, vmp->vm_inSize, uiop);
+    error = uiomove(vmp->vm_data, vmp->vm_inSize, ap->a_uio);
     if (error) {
 	myprintf(("vcread: error (%d) on uiomove\n", error));
 	error = EINVAL;
@@ -273,9 +277,12 @@ vc_nb_read(dev_t dev, struct uio *uiop, int flag)
 }
 
 int
-vc_nb_write(dev_t dev, struct uio *uiop, int flag)   
+vc_nb_write(struct dev_write_args *ap)
 {
-    struct vcomm *	vcp;
+    dev_t dev = ap->a_head.a_dev;
+    struct uio *uiop = ap->a_uio;
+
+    struct vcomm *vcp;
     struct vmsg *vmp;
     struct coda_out_hdr *out;
     u_long seq;
@@ -291,7 +298,6 @@ vc_nb_write(dev_t dev, struct uio *uiop, int flag)
     vcp = &coda_mnttbl[minor(dev)].mi_vcomm;
     
     /* Peek at the opcode, unique without transfering the data. */
-    uiop->uio_rw = UIO_WRITE;
     error = uiomove((caddr_t)buf, sizeof(int) * 2, uiop);
     if (error) {
 	myprintf(("vcwrite: error (%d) on uiomove\n", error));
@@ -308,7 +314,6 @@ vc_nb_write(dev_t dev, struct uio *uiop, int flag)
 	union outputArgs pbuf;
 	
 	/* get the rest of the data. */
-	uiop->uio_rw = UIO_WRITE;
 	error = uiomove((caddr_t)&pbuf.coda_purgeuser.oh.result, sizeof(pbuf) - (sizeof(int)*2), uiop);
 	if (error) {
 	    myprintf(("vcwrite: error (%d) on uiomove (Op %ld seq %ld)\n", 
@@ -350,7 +355,6 @@ vc_nb_write(dev_t dev, struct uio *uiop, int flag)
     } 
     
     buf[0] = uiop->uio_resid; 	/* Save this value. */
-    uiop->uio_rw = UIO_WRITE;
     error = uiomove((caddr_t) &out->result, vmp->vm_outSize - (sizeof(int) * 2), uiop);
     if (error) {
 	myprintf(("vcwrite: error (%d) on uiomove (op %ld seq %ld)\n", 
@@ -370,13 +374,13 @@ vc_nb_write(dev_t dev, struct uio *uiop, int flag)
 }
 
 int
-vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
+vc_nb_ioctl(struct dev_ioctl_args *ap)
 {
     ENTRY;
 
-    switch(cmd) {
+    switch(ap->a_cmd) {
     case CODARESIZE: {
-	struct coda_resize *data = (struct coda_resize *)addr;
+	struct coda_resize *data = (struct coda_resize *)ap->a_data;
 	return(coda_nc_resize(data->hashsize, data->heapsize, IS_DOWNCALL));
 	break;
     }
@@ -397,14 +401,14 @@ vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 	}
 	break;
     case CIOC_KERNEL_VERSION:
-	switch (*(u_int *)addr) {
+	switch (*(u_int *)ap->a_data) {
 	case 0:
-		*(u_int *)addr = coda_kernel_version;
+		*(u_int *)ap->a_data = coda_kernel_version;
 		return 0;
 		break;
 	case 1:
 	case 2:
-		if (coda_kernel_version != *(u_int *)addr)
+		if (coda_kernel_version != *(u_int *)ap->a_data)
 		    return ENOENT;
 		else
 		    return 0;
@@ -419,8 +423,9 @@ vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 }
 
 int
-vc_nb_poll(dev_t dev, int events, d_thread_t *td)
+vc_nb_poll(struct dev_poll_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct vcomm *vcp;
     int event_msk = 0;
 
@@ -431,15 +436,15 @@ vc_nb_poll(dev_t dev, int events, d_thread_t *td)
     
     vcp = &coda_mnttbl[minor(dev)].mi_vcomm;
     
-    event_msk = events & (POLLIN|POLLRDNORM);
-    if (!event_msk)
-	return(0);
-    
-    if (!EMPTY(vcp->vc_requests))
-	return(events & (POLLIN|POLLRDNORM));
-
-    selrecord(td, &(vcp->vc_selproc));
-    
+    event_msk = ap->a_events & (POLLIN|POLLRDNORM);
+    if (event_msk) {
+	if (!EMPTY(vcp->vc_requests)) {
+	    ap->a_events &= (POLLIN|POLLRDNORM);
+	    return(0);
+	}
+	selrecord(curthread, &(vcp->vc_selproc));
+    }
+    ap->a_events = 0;
     return(0);
 }
 

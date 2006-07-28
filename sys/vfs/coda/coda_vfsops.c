@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.24 2006/05/06 18:48:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.25 2006/07/28 02:17:41 dillon Exp $
  * 
  */
 
@@ -85,7 +85,6 @@ struct coda_op_stats coda_vfsopstats[CODA_VFSOPS_SIZE];
 #define MRAK_INT_GEN(op) (coda_vfsopstats[op].gen_intrn++)
 
 extern int coda_nc_initialized;     /* Set if cache has been initialized */
-extern int vc_nb_open (dev_t, int, int, d_thread_t *);
 
 int
 coda_vfsopstats_init(void)
@@ -156,17 +155,6 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     udev = dvp->v_udev;
     vrele(dvp);
 
-#if 0	/* YYY huh? what paranoia is this? */
-    /*
-     * See if the device table matches our expectations.
-     */
-    if (devsw(dev)->d_open != vc_nb_open)
-    {
-	MARK_INT_FAIL(CODA_MOUNT_STATS);
-	return(ENXIO);
-    }
-#endif
-    
     if (uminor(udev) >= NVCODA || uminor(udev) < 0) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);
 	return(ENXIO);

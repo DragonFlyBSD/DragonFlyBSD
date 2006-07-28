@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.13 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,23 +40,14 @@ static	d_ioctl_t	snpioctl;
 static	d_poll_t	snppoll;
 
 #define CDEV_MAJOR 53
-static struct cdevsw snp_cdevsw = {
-	/* name */	"snp",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	snpopen,
-	/* close */	snpclose,
-	/* read */	snpread,
-	/* write */	snpwrite,
-	/* ioctl */	snpioctl,
-	/* poll */	snppoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops snp_ops = {
+	{ "snp", CDEV_MAJOR, 0 },
+	.d_open =	snpopen,
+	.d_close =	snpclose,
+	.d_read =	snpread,
+	.d_write =	snpwrite,
+	.d_ioctl =	snpioctl,
+	.d_poll =	snppoll,
 };
 
 static struct linesw snpdisc = {
@@ -187,8 +178,10 @@ snpdevtotty(dev_t dev)
 				 */
 
 static int
-snpwrite(dev_t dev, struct uio *uio, int flag)
+snpwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct snoop *snp;
 	struct tty *tp;
 	int error, i, len;
@@ -223,8 +216,10 @@ tty_input:
 
 
 static int
-snpread(dev_t dev, struct uio *uio, int flag)
+snpread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct snoop *snp;
 	int error, len, n, nblen;
 	caddr_t from;
@@ -241,7 +236,7 @@ snpread(dev_t dev, struct uio *uio, int flag)
 
 	do {
 		if (snp->snp_len == 0) {
-			if (flag & IO_NDELAY)
+			if (ap->a_ioflag & IO_NDELAY)
 				return (EWOULDBLOCK);
 			snp->snp_flags |= SNOOP_RWAIT;
 			error = tsleep((caddr_t)snp, PCATCH, "snprd", 0);
@@ -363,12 +358,13 @@ snp_in(struct snoop *snp, char *buf, int n)
 }
 
 static int
-snpopen(dev_t dev, int flag, int mode, d_thread_t *td)
+snpopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 
 	if (dev->si_drv1 == NULL) {
-		make_dev(&snp_cdevsw, minor(dev), UID_ROOT, GID_WHEEL,
+		make_dev(&snp_ops, minor(dev), UID_ROOT, GID_WHEEL,
 		    0600, "snp%d", minor(dev));
 		dev->si_drv1 = snp = malloc(sizeof(*snp), M_SNP,
 		    M_WAITOK | M_ZERO);
@@ -435,8 +431,9 @@ detach_notty:
 }
 
 static int
-snpclose(dev_t dev, int flags, int fmt, d_thread_t *td)
+snpclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 
 	snp = dev->si_drv1;
@@ -464,16 +461,17 @@ snp_down(struct snoop *snp)
 }
 
 static int
-snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
+snpioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 	struct tty *tp, *tpo;
 	dev_t tdev;
 
 	snp = dev->si_drv1;
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case SNPSTTY:
-		tdev = udev2dev(*((udev_t *)data), 0);
+		tdev = udev2dev(*((udev_t *)ap->a_data), 0);
 		if (tdev == NODEV)
 			return (snp_down(snp));
 
@@ -513,11 +511,11 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 		 * SNPGTTY happy, else we can't know what is device
 		 * major/minor for tty.
 		 */
-		*((dev_t *)data) = snp->snp_target;
+		*((dev_t *)ap->a_data) = snp->snp_target;
 		break;
 
 	case FIOASYNC:
-		if (*(int *)data)
+		if (*(int *)ap->a_data)
 			snp->snp_flags |= SNOOP_ASYNC;
 		else
 			snp->snp_flags &= ~SNOOP_ASYNC;
@@ -526,15 +524,15 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 	case FIONREAD:
 		crit_enter();
 		if (snp->snp_tty != NULL)
-			*(int *)data = snp->snp_len;
+			*(int *)ap->a_data = snp->snp_len;
 		else
 			if (snp->snp_flags & SNOOP_DOWN) {
 				if (snp->snp_flags & SNOOP_OFLOW)
-					*(int *)data = SNP_OFLOW;
+					*(int *)ap->a_data = SNP_OFLOW;
 				else
-					*(int *)data = SNP_TTYCLOSE;
+					*(int *)ap->a_data = SNP_TTYCLOSE;
 			} else {
-				*(int *)data = SNP_DETACH;
+				*(int *)ap->a_data = SNP_DETACH;
 			}
 		crit_exit();
 		break;
@@ -546,8 +544,9 @@ snpioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
 }
 
 static int
-snppoll(dev_t dev, int events, d_thread_t *td)
+snppoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct snoop *snp;
 	int revents;
 
@@ -558,13 +557,14 @@ snppoll(dev_t dev, int events, d_thread_t *td)
 	 * Caller should see if we down via FIONREAD ioctl().  The last should
 	 * return -1 to indicate down state.
 	 */
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (snp->snp_flags & SNOOP_DOWN || snp->snp_len > 0)
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		else
-			selrecord(td, &snp->snp_sel);
+			selrecord(curthread, &snp->snp_sel);
 	}
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 static int
@@ -574,13 +574,13 @@ snp_modevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		snooplinedisc = ldisc_register(LDISC_LOAD, &snpdisc);
-		cdevsw_add(&snp_cdevsw, 0, 0);
+		dev_ops_add(&snp_ops, 0, 0);
 		break;
 	case MOD_UNLOAD:
 		if (!LIST_EMPTY(&snp_sclist))
 			return (EBUSY);
 		ldisc_deregister(snooplinedisc);
-		cdevsw_remove(&snp_cdevsw, 0, 0);
+		dev_ops_remove(&snp_ops, 0, 0);
 		break;
 	default:
 		break;

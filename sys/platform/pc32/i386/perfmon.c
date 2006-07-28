@@ -27,12 +27,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.8 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/perfmon.c,v 1.9 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/fcntl.h>
 #include <sys/lock.h>
 
@@ -56,28 +57,16 @@ static int writectl5(int);
 static int writectl6(int);
 #endif
 
-static d_close_t perfmon_close;
-static d_open_t	perfmon_open;
-static d_ioctl_t perfmon_ioctl;
+static d_close_t	perfmon_close;
+static d_open_t		perfmon_open;
+static d_ioctl_t	perfmon_ioctl;
 
 #define CDEV_MAJOR 2	/* We're really a minor of mem.c */
-static struct cdevsw perfmon_cdevsw = {
-	/* name */      "perfmon",
-	/* maj */       CDEV_MAJOR,
-	/* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */      perfmon_open,
-	/* close */     perfmon_close,
-	/* read */      noread,
-	/* write */     nowrite,
-	/* ioctl */     perfmon_ioctl,
-	/* poll */      nopoll,
-	/* mmap */      nommap,
-	/* strategy */  nostrategy,
-	/* dump */      nodump,
-	/* psize */     nopsize
+static struct dev_ops perfmon_ops = {
+	{ "perfmon", CDEV_MAJOR, 0 },
+	.d_open =	perfmon_open,
+	.d_close =	perfmon_close,
+	.d_ioctl =	perfmon_ioctl,
 };
 
 /*
@@ -112,8 +101,8 @@ perfmon_init(void)
 #endif /* SMP */
 
 	/* NOTE: really a minor of mem.  perfmon gets 32-47 */
-	cdevsw_add(&perfmon_cdevsw, 0xf0, 32);
-	make_dev(&perfmon_cdevsw, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
+	dev_ops_add(&perfmon_ops, 0xf0, 32);
+	make_dev(&perfmon_ops, 32, UID_ROOT, GID_KMEM, 0640, "perfmon");
 }
 
 int
@@ -290,12 +279,12 @@ static int writer;
 static int writerpmc;
 
 static int
-perfmon_open(dev_t dev, int flags, int fmt, struct thread *td)
+perfmon_open(struct dev_open_args *ap)
 {
 	if (!perfmon_cpuok)
 		return ENXIO;
 
-	if (flags & FWRITE) {
+	if (ap->a_oflags & FWRITE) {
 		if (writer) {
 			return EBUSY;
 		} else {
@@ -307,9 +296,9 @@ perfmon_open(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-perfmon_close(dev_t dev, int flags, int fmt, struct thread *td)
+perfmon_close(struct dev_close_args *ap)
 {
-	if (flags & FWRITE) {
+	if (ap->a_fflag & FWRITE) {
 		int i;
 
 		for (i = 0; i < NPMC; i++) {
@@ -322,17 +311,18 @@ perfmon_close(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct thread *td)
+perfmon_ioctl(struct dev_ioctl_args *ap)
 {
+	caddr_t param = ap->a_data;
 	struct pmc *pmc;
 	struct pmc_data *pmcd;
 	struct pmc_tstamp *pmct;
 	int *ip;
 	int rv;
 
-	switch(cmd) {
+	switch(ap->a_cmd) {
 	case PMIOSETUP:
-		if (!(flags & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
 		pmc = (struct pmc *)param;
 
@@ -348,7 +338,7 @@ perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct thread *td
 		break;
 
 	case PMIOSTART:
-		if (!(flags & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
 
 		ip = (int *)param;
@@ -356,7 +346,7 @@ perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct thread *td
 		break;
 
 	case PMIOSTOP:
-		if (!(flags & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
 
 		ip = (int *)param;
@@ -364,7 +354,7 @@ perfmon_ioctl(dev_t dev, u_long cmd, caddr_t param, int flags, struct thread *td
 		break;
 
 	case PMIORESET:
-		if (!(flags & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
 
 		ip = (int *)param;

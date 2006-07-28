@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-sc.c,v 1.4.2.10 2001/06/11 09:05:39 phk Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.6 2005/06/11 00:26:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -667,7 +667,7 @@ outloop:
 
 static int
 scterm_ioctl(scr_stat *scp, struct tty *tp, u_long cmd, caddr_t data,
-	     int flag, struct thread *td)
+	     int flag)
 {
 	term_stat *tcp = scp->ts;
 	vid_info_t *vi;

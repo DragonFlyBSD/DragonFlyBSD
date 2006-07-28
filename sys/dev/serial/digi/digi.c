@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.4 2005/06/25 19:54:55 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.5 2006/07/28 02:17:38 dillon Exp $
  */
 
 /*-
@@ -143,23 +143,15 @@ const struct digi_control_signals digi_normal_signals = {
 	0x02, 0x80, 0x20, 0x10, 0x40, 0x01
 };
 
-static struct cdevsw digi_sw = {
-	/* name */	"dgm",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-	/* open */	digiopen,
-	/* close */	digiclose,
-	/* read */	digiread,
-	/* write */	digiwrite,
-	/* ioctl */	digiioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* stragety */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops digi_ops = {
+	{ "dgm", CDEV_MAJOR, D_TTY },
+	.d_open =	digiopen,
+	.d_close =	digiclose,
+	.d_read =	digiread,
+	.d_write =	digiwrite,
+	.d_ioctl =	digiioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static void
@@ -628,21 +620,21 @@ digi_init(struct digi_softc *sc)
 		port->it_out = port->it_in;
 		port->send_ring = 1;	/* Default action on signal RI */
 
-		port->dev[0] = make_dev(&digi_sw, (sc->res.unit << 16) + i,
+		port->dev[0] = make_dev(&digi_ops, (sc->res.unit << 16) + i,
 		    UID_ROOT, GID_WHEEL, 0600, "ttyD%d.%d", sc->res.unit, i);
-		port->dev[1] = make_dev(&digi_sw, ((sc->res.unit << 16) + i) |
+		port->dev[1] = make_dev(&digi_ops, ((sc->res.unit << 16) + i) |
 		    CONTROL_INIT_STATE, UID_ROOT, GID_WHEEL,
 		    0600, "ttyiD%d.%d", sc->res.unit, i);
-		port->dev[2] = make_dev(&digi_sw, ((sc->res.unit << 16) + i) |
+		port->dev[2] = make_dev(&digi_ops, ((sc->res.unit << 16) + i) |
 		    CONTROL_LOCK_STATE, UID_ROOT, GID_WHEEL,
 		    0600, "ttylD%d.%d", sc->res.unit, i);
-		port->dev[3] = make_dev(&digi_sw, ((sc->res.unit << 16) + i) |
+		port->dev[3] = make_dev(&digi_ops, ((sc->res.unit << 16) + i) |
 		    CALLOUT_MASK, UID_UUCP, GID_DIALER,
 		    0660, "cuaD%d.%d", sc->res.unit, i);
-		port->dev[4] = make_dev(&digi_sw, ((sc->res.unit << 16) + i) |
+		port->dev[4] = make_dev(&digi_ops, ((sc->res.unit << 16) + i) |
 		    CALLOUT_MASK | CONTROL_INIT_STATE, UID_UUCP, GID_DIALER,
 		    0660, "cuaiD%d.%d", sc->res.unit, i);
-		port->dev[5] = make_dev(&digi_sw, ((sc->res.unit << 16) + i) |
+		port->dev[5] = make_dev(&digi_ops, ((sc->res.unit << 16) + i) |
 		    CALLOUT_MASK | CONTROL_LOCK_STATE, UID_UUCP, GID_DIALER,
 		    0660, "cualD%d.%d", sc->res.unit, i);
 	}
@@ -717,8 +709,9 @@ digi_disc_optim(struct tty *tp, struct termios *t, struct digi_p *port)
 }
 
 static int
-digiopen(dev_t dev, int flag, int mode, struct thread *td)
+digiopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct digi_softc *sc;
 	struct tty *tp;
 	int unit;
@@ -776,7 +769,7 @@ open_top:
 				goto out;
 			}
 		} else if (port->active_out) {
-			if (flag & O_NONBLOCK) {
+			if (ap->a_oflags & O_NONBLOCK) {
 				error = EBUSY;
 				DLOG(DIGIDB_OPEN, (sc->dev,
 				    "port %d: BUSY error = %d\n", pnum, error));
@@ -793,7 +786,7 @@ open_top:
 			}
 			goto open_top;
 		}
-		if (tp->t_state & TS_XCLUDE && suser(td) != 0) {
+		if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0) != 0) {
 			error = EBUSY;
 			goto out;
 		}
@@ -845,7 +838,7 @@ open_top:
 
 	/* Wait for DCD if necessary */
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK) &&
-	    !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
+	    !(tp->t_cflag & CLOCAL) && !(ap->a_oflags & O_NONBLOCK)) {
 		port->wopeners++;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "digidcd", 0);
 		port->wopeners--;
@@ -881,8 +874,9 @@ out:
 }
 
 static int
-digiclose(dev_t dev, int flag, int mode, struct thread *td)
+digiclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int unit, pnum;
@@ -907,7 +901,7 @@ digiclose(dev_t dev, int flag, int mode, struct thread *td)
 	DLOG(DIGIDB_CLOSE, (sc->dev, "port %d: closing\n", pnum));
 
 	crit_enter();
-	linesw[tp->t_line].l_close(tp, flag);
+	linesw[tp->t_line].l_close(tp, ap->a_fflag);
 	digi_disc_optim(tp, &tp->t_termios, port);
 	digistop(tp, FREAD | FWRITE);
 	digihardclose(port);
@@ -960,8 +954,9 @@ digihardclose(struct digi_p *port)
 }
 
 static int
-digiread(dev_t dev, struct uio *uio, int flag)
+digiread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int error, unit, pnum;
@@ -978,7 +973,7 @@ digiread(dev_t dev, struct uio *uio, int flag)
 	KASSERT(sc, ("digi%d: softc not allocated in digiclose\n", unit));
 	tp = &sc->ttys[pnum];
 
-	error = linesw[tp->t_line].l_read(tp, uio, flag);
+	error = linesw[tp->t_line].l_read(tp, ap->a_uio, ap->a_ioflag);
 	DLOG(DIGIDB_READ, (sc->dev, "port %d: read() returns %d\n",
 	    pnum, error));
 
@@ -986,8 +981,9 @@ digiread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-digiwrite(dev_t dev, struct uio *uio, int flag)
+digiwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int mynor;
 	struct tty *tp;
 	int error, unit, pnum;
@@ -1004,7 +1000,7 @@ digiwrite(dev_t dev, struct uio *uio, int flag)
 	KASSERT(sc, ("digi%d: softc not allocated in digiclose\n", unit));
 	tp = &sc->ttys[pnum];
 
-	error = linesw[tp->t_line].l_write(tp, uio, flag);
+	error = linesw[tp->t_line].l_write(tp, ap->a_uio, ap->a_ioflag);
 	DLOG(DIGIDB_WRITE, (sc->dev, "port %d: write() returns %d\n",
 	    pnum, error));
 
@@ -1056,8 +1052,11 @@ digi_loaddata(struct digi_softc *sc)
 }
 
 static int
-digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+digiioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
 	int unit, pnum, mynor, error;
 	struct digi_softc *sc;
 	struct digi_p *port;
@@ -1130,7 +1129,7 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1251,14 +1250,15 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		if (lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
+	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, 
+					   ap->a_fflag, ap->a_cred);
 	if (error == 0 && cmd == TIOCGETA)
 		((struct termios *)data)->c_iflag |= port->c_iflag;
 
 	if (error >= 0 && error != ENOIOCTL)
 		return (error);
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	if (error == 0 && cmd == TIOCGETA)
 		((struct termios *)data)->c_iflag |= port->c_iflag;
 
@@ -1301,7 +1301,7 @@ digiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		*(int *)data = digimctl(port, 0, DMGET);
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);
@@ -1822,7 +1822,7 @@ digi_errortxt(int id)
 int
 digi_attach(struct digi_softc *sc)
 {
-	sc->res.ctldev = make_dev(&digi_sw,
+	sc->res.ctldev = make_dev(&digi_ops,
 	    (sc->res.unit << 16) | CTRL_DEV, UID_ROOT, GID_WHEEL,
 	    0600, "digi%r.ctl", sc->res.unit);
 

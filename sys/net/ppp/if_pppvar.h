@@ -40,7 +40,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/sys/net/if_pppvar.h,v 1.15 2000/01/29 16:56:23 peter Exp $
- * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.5 2004/09/16 04:39:30 dillon Exp $
+ * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.6 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -104,7 +104,7 @@ extern struct ppp_softc ppp_softc[];
 struct	ppp_softc *pppalloc (struct thread *td);
 void	pppdealloc (struct ppp_softc *sc);
 int	pppioctl (struct ppp_softc *sc, u_long cmd, caddr_t data,
-		      int flag, struct thread *td);
+		      int flag, struct ucred *cred);
 int	pppoutput (struct ifnet *ifp, struct mbuf *m0,
 		       struct sockaddr *dst, struct rtentry *rtp);
 void	ppp_restart (struct ppp_softc *sc);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.29 2005/11/04 08:57:22 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.30 2006/07/28 02:17:34 dillon Exp $
  *
  */
 
@@ -687,16 +687,16 @@ pci_disable_io_method(device_t dev, device_t child, int space)
  */
   
 static int
-pci_open(dev_t dev, int oflags, int devtype, struct thread *td)
+pci_open(struct dev_open_args *ap)
 {
-	if ((oflags & FWRITE) && securelevel > 0) {
+	if ((ap->a_oflags & FWRITE) && securelevel > 0) {
 		return EPERM;
 	}
 	return 0;
 }
 
 static int
-pci_close(dev_t dev, int flag, int devtype, struct thread *td)
+pci_close(struct dev_close_args *ap)
 {
 	return 0;
 }
@@ -815,18 +815,17 @@ pci_devlist_get_parent(pcicfgregs *cfg)
 }
 
 static int
-pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+pci_ioctl(struct dev_ioctl_args *ap)
 {
 	device_t pci, pcib;
 	struct pci_io *io;
 	const char *name;
 	int error;
 
-	if (!(flag & FWRITE))
+	if (!(ap->a_fflag & FWRITE))
 		return EPERM;
 
-
-	switch(cmd) {
+	switch(ap->a_cmd) {
 	case PCIOCGETCONF:
 		{
 		struct pci_devinfo *dinfo;
@@ -837,7 +836,7 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		size_t iolen;
 		int ionum, i;
 
-		cio = (struct pci_conf_io *)data;
+		cio = (struct pci_conf_io *)ap->a_data;
 
 		num_patterns = 0;
 		dinfo = NULL;
@@ -1057,7 +1056,7 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 		}
 	case PCIOCREAD:
-		io = (struct pci_io *)data;
+		io = (struct pci_io *)ap->a_data;
 		switch(io->pi_width) {
 		case 4:
 		case 2:
@@ -1099,7 +1098,7 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 
 	case PCIOCWRITE:
-		io = (struct pci_io *)data;
+		io = (struct pci_io *)ap->a_data;
 		switch(io->pi_width) {
 		case 4:
 		case 2:
@@ -1150,23 +1149,11 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 #define	PCI_CDEV	78
 
-static struct cdevsw pcicdev = {
-	/* name */	"pci",
-	/* maj */	PCI_CDEV,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	pci_open,
-	/* close */	pci_close,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	pci_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops pcic_ops = {
+	{ "pci", PCI_CDEV, 0 },
+	.d_open =	pci_open,
+	.d_close =	pci_close,
+	.d_ioctl =	pci_ioctl,
 };
 
 #include "pci_if.h"
@@ -1462,8 +1449,8 @@ pci_attach(device_t dev)
 	int busno;
 	int lunit = device_get_unit(dev);
 
-	cdevsw_add(&pcicdev, -1, lunit);
-	make_dev(&pcicdev, lunit, UID_ROOT, GID_WHEEL, 0644, "pci%d", lunit);
+	dev_ops_add(&pcic_ops, -1, lunit);
+	make_dev(&pcic_ops, lunit, UID_ROOT, GID_WHEEL, 0644, "pci%d", lunit);
 
         /*
          * Since there can be multiple independantly numbered PCI

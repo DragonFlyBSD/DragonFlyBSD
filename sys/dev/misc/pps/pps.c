@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.14 2005/10/28 03:25:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.15 2006/07/28 02:17:36 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -21,9 +21,10 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
 #include <sys/timepps.h>
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -60,23 +61,11 @@ static	d_close_t	ppsclose;
 static	d_ioctl_t	ppsioctl;
 
 #define CDEV_MAJOR 89
-static struct cdevsw pps_cdevsw = {
-	/* name */	PPS_NAME,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ppsopen,
-	/* close */	ppsclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	ppsioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops pps_ops = {
+	{ PPS_NAME, CDEV_MAJOR, 0 },
+	.d_open =	ppsopen,
+	.d_close =	ppsclose,
+	.d_ioctl =	ppsioctl,
 };
 
 static int
@@ -116,15 +105,16 @@ ppsattach(device_t ppsdev)
 		return (ENXIO);
 
 	unit = device_get_unit(ppsdev);
-	cdevsw_add(&pps_cdevsw, -1, unit);
-	make_dev(&pps_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
+	dev_ops_add(&pps_ops, -1, unit);
+	make_dev(&pps_ops, unit, UID_ROOT, GID_WHEEL, 0644,
 		    PPS_NAME "%d", unit);
 	return (0);
 }
 
 static	int
-ppsopen(dev_t dev, int flags, int fmt, struct thread *td)
+ppsopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 	device_t ppsdev = UNITODEVICE(unit);
@@ -152,8 +142,9 @@ ppsopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static	int
-ppsclose(dev_t dev, int flags, int fmt, struct thread *td)
+ppsclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 	device_t ppsdev = UNITODEVICE(unit);
@@ -189,12 +180,13 @@ ppsintr(void *arg)
 }
 
 static int
-ppsioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+ppsioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct pps_data *sc = UNITOSOFTC(unit);
 
-	return (pps_ioctl(cmd, data, &sc->pps));
+	return (pps_ioctl(ap->a_cmd, ap->a_data, &sc->pps));
 }
 
 /*

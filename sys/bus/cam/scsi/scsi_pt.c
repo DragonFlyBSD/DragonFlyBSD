@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.14 2006/04/30 17:22:15 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.15 2006/07/28 02:17:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -121,23 +121,14 @@ DATA_SET(periphdriver_set, ptdriver);
 
 #define PT_CDEV_MAJOR 61
 
-static struct cdevsw pt_cdevsw = {
-	/* name */	"pt",
-	/* maj */	PT_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */     NULL,
-
-	/* open */	ptopen,
-	/* close */	ptclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	ptioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	ptstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops pt_ops = {
+	{ "pt", PT_CDEV_MAJOR, 0 },
+	.d_open =	ptopen,
+	.d_close =	ptclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	ptioctl,
+	.d_strategy =	ptstrategy,
 };
 
 static struct extend_array *ptperiphs;
@@ -147,8 +138,9 @@ static struct extend_array *ptperiphs;
 #endif
 
 static int
-ptopen(dev_t dev, int flags, int fmt, struct thread *td)
+ptopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	int unit;
@@ -190,8 +182,9 @@ ptopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-ptclose(dev_t dev, int flag, int fmt, struct thread *td)
+ptclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct	cam_periph *periph;
 	struct	pt_softc *softc;
 	int	unit;
@@ -218,9 +211,11 @@ ptclose(dev_t dev, int flag, int fmt, struct thread *td)
  * can understand.  The transfer is described by a buf and will include
  * only one physical transfer.
  */
-static void
-ptstrategy(dev_t dev, struct bio *bio)
+static int
+ptstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct cam_periph *periph;
 	struct pt_softc *softc;
@@ -262,7 +257,7 @@ ptstrategy(dev_t dev, struct bio *bio)
 	 */
 	xpt_schedule(periph, /* XXX priority */1);
 
-	return;
+	return(0);
 bad:
 	bp->b_flags |= B_ERROR;
 
@@ -271,6 +266,7 @@ bad:
 	 */
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 static void
@@ -349,8 +345,8 @@ ptctor(struct cam_periph *periph, void *arg)
 			  SID_TYPE(&cgd->inq_data) | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_OTHER);
 
-	cdevsw_add(&pt_cdevsw, -1, periph->unit_number);
-	make_dev(&pt_cdevsw, periph->unit_number, UID_ROOT,
+	dev_ops_add(&pt_ops, -1, periph->unit_number);
+	make_dev(&pt_ops, periph->unit_number, UID_ROOT,
 		  GID_OPERATOR, 0600, "%s%d", periph->periph_name,
 		  periph->unit_number);
 	/*
@@ -435,7 +431,7 @@ ptdtor(struct cam_periph *periph)
 	cam_extend_release(ptperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
-	cdevsw_remove(&pt_cdevsw, -1, periph->unit_number);
+	dev_ops_remove(&pt_ops, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -686,8 +682,10 @@ pterror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 }
 
 static int
-ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+ptioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct cam_periph *periph;
 	struct pt_softc *softc;
 	int unit;
@@ -705,7 +703,7 @@ ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		return (error); /* error code from tsleep */
 	}	
 
-	switch(cmd) {
+	switch(ap->a_cmd) {
 	case PTIOCGETTIMEOUT:
 		if (softc->io_timeout >= 1000)
 			*(int *)addr = softc->io_timeout / 1000;
@@ -726,7 +724,7 @@ ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		break;
 	}
 	default:
-		error = cam_periph_ioctl(periph, cmd, addr, pterror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, addr, pterror);
 		break;
 	}
 

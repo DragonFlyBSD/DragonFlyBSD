@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.16 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
  *
  */
 
@@ -290,23 +290,14 @@ static	d_ioctl_t	labpcioctl;
 static	d_strategy_t	labpcstrategy;
 
 #define CDEV_MAJOR 66
-static struct cdevsw labpc_cdevsw = {
-	/* name */	"labpc",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	labpcopen,
-	/* close */	labpcclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	labpcioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	labpcstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops labpc_ops = {
+	{ "labpc", CDEV_MAJOR, 0 },
+	.d_open =	labpcopen,
+	.d_close =	labpcclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	labpcioctl,
+	.d_strategy =	labpcstrategy,
 };
 
 static void labpcintr(void *);
@@ -491,8 +482,8 @@ labpcattach(struct isa_device *dev)
 	ctlr->dcr_is = 0x80;
 	loutb(DCR(ctlr), ctlr->dcr_val);
 
-	cdevsw_add(&labpc_cdevsw, -1, dev->id_unit);
-	make_dev(&labpc_cdevsw, dev->id_unit, 0, 0, 0600, 
+	dev_ops_add(&labpc_ops, -1, dev->id_unit);
+	make_dev(&labpc_ops, dev->id_unit, 0, 0, 0600, 
 		"labpc%d", dev->id_unit);
 	return 1;
 }
@@ -710,8 +701,9 @@ lockout_multiple_open(dev_t current, dev_t next)
 }
 
 static	int
-labpcopen(dev_t dev, int flags, int fmt, struct thread *td)
+labpcopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_short unit = UNIT(dev);
 
 	struct ctlr *ctlr;
@@ -747,8 +739,9 @@ labpcopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static	int
-labpcclose(dev_t dev, int flags, int fmt, struct thread *td)
+labpcclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
 	(*ctlr->stop)(ctlr);
@@ -983,9 +976,11 @@ digital_in_strategy(struct bio *bio, struct ctlr *ctlr)
 }
 
 
-static	void
-labpcstrategy(dev_t dev, struct bio *bio)
+static	int
+labpcstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
@@ -1022,14 +1017,17 @@ labpcstrategy(dev_t dev, struct bio *bio)
 			da_strategy(bio, ctlr);
 		}
 	}
+	return(0);
 }
 
 static	int
-labpcioctl(dev_t dev, u_long cmd, caddr_t arg, int mode, struct thread *td)
+labpcioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t arg = ap->a_data;
 	struct ctlr *ctlr = labpcs[UNIT(dev)];
 
-	switch(cmd)
+	switch(ap->a_cmd)
 	{
 		case AD_MICRO_PERIOD_SET:
 		{

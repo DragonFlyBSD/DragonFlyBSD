@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.13 2005/06/06 22:51:54 corecode Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.14 2006/07/28 02:17:35 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -26,14 +26,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "isp_freebsd.h"
 #include <sys/unistd.h>
 #include <sys/kthread.h>
-#include <machine/stdarg.h>	/* for use by isp_prt below */
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/ioccom.h>
-#include "isp_ioctl.h"
+#include <machine/stdarg.h>	/* for use by isp_prt below */
 
+#include "isp_ioctl.h"
+#include "isp_freebsd.h"
 
 static d_ioctl_t ispioctl;
 static void isp_intr_enable(void *);
@@ -45,23 +46,11 @@ static void isp_action(struct cam_sim *, union ccb *);
 
 
 #define ISP_CDEV_MAJOR	248
-static struct cdevsw isp_cdevsw = {
-	/* name */	"isp",
-	/* maj */	ISP_CDEV_MAJOR,
-	/* flags */	D_TAPE,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	nullopen,
-	/* close */	nullclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	ispioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops isp_ops = {
+	{ "isp", ISP_CDEV_MAJOR, D_TAPE },
+	.d_open =	nullopen,
+	.d_close =	nullclose,
+	.d_ioctl =	ispioctl,
 };
 
 static struct ispsoftc *isplist = NULL;
@@ -204,8 +193,8 @@ isp_attach(struct ispsoftc *isp)
 	/*
 	 * Create device nodes
 	 */
-	cdevsw_add(&isp_cdevsw, -1, device_get_unit(isp->isp_dev));
-	make_dev(&isp_cdevsw, device_get_unit(isp->isp_dev), UID_ROOT,
+	dev_ops_add(&isp_ops, -1, device_get_unit(isp->isp_dev));
+	make_dev(&isp_ops, device_get_unit(isp->isp_dev), UID_ROOT,
 	    GID_OPERATOR, 0600, "%s", device_get_nameunit(isp->isp_dev));
 
 	if (isp->isp_role != ISP_ROLE_NONE) {
@@ -239,8 +228,9 @@ isp_freeze_loopdown(struct ispsoftc *isp, char *msg)
 }
 
 static int
-ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
+ispioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ispsoftc *isp;
 	int retval = ENOTTY;
 
@@ -254,7 +244,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 	if (isp == NULL)
 		return (ENXIO);
 	
-	switch (cmd) {
+	switch (ap->a_cmd) {
 #ifdef	ISP_FW_CRASH_DUMP
 	case ISP_GET_FW_CRASH_DUMP:
 	{
@@ -293,8 +283,8 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 	case ISP_SDBLEV:
 	{
 		int olddblev = isp->isp_dblev;
-		isp->isp_dblev = *(int *)addr;
-		*(int *)addr = olddblev;
+		isp->isp_dblev = *(int *)ap->a_data;
+		*(int *)ap->a_data = olddblev;
 		retval = 0;
 		break;
 	}
@@ -328,7 +318,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 		break;
 	case ISP_FC_GETDINFO:
 	{
-		struct isp_fc_device *ifc = (struct isp_fc_device *) addr;
+		struct isp_fc_device *ifc = (struct isp_fc_device *) ap->a_data;
 		struct lportdb *lp;
 
 		if (ifc->loopid < 0 || ifc->loopid >= MAX_FC_TARG) {
@@ -351,7 +341,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 	}
 	case ISP_GET_STATS:
 	{
-		isp_stats_t *sp = (isp_stats_t *) addr;
+		isp_stats_t *sp = (isp_stats_t *) ap->a_data;
 
 		MEMZERO(sp, sizeof (*sp));
 		sp->isp_stat_version = ISP_STATS_VERSION;
@@ -385,7 +375,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 		break;
 	case ISP_FC_GETHINFO:
 	{
-		struct isp_hba_device *hba = (struct isp_hba_device *) addr;
+		struct isp_hba_device *hba = (struct isp_hba_device *) ap->a_data;
 		MEMZERO(hba, sizeof (*hba));
 		ISP_LOCK(isp);
 		hba->fc_speed = FCPARAM(isp)->isp_gbspeed;
@@ -400,7 +390,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 	}
 	case ISP_GET_FC_PARAM:
 	{
-		struct isp_fc_param *f = (struct isp_fc_param *) addr;
+		struct isp_fc_param *f = (struct isp_fc_param *) ap->a_data;
 
 		if (!IS_FC(isp)) {
 			retval = EINVAL;
@@ -433,7 +423,7 @@ ispioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, d_thread_t *td)
 	}
 	case ISP_SET_FC_PARAM:
 	{
-		struct isp_fc_param *f = (struct isp_fc_param *) addr;
+		struct isp_fc_param *f = (struct isp_fc_param *) ap->a_data;
 		u_int32_t param = f->parameter;
 
 		if (!IS_FC(isp)) {

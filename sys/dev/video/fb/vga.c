@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.15 2005/10/30 23:00:56 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -96,21 +96,23 @@ vga_attach_unit(int unit, vga_softc_t *sc, int flags)
 
 #ifdef FB_INSTALL_CDEV
 
+struct ucred;
+
 int
-vga_open(dev_t dev, vga_softc_t *sc, int flag, int mode, struct thread *td)
+vga_open(dev_t dev, vga_softc_t *sc, int flag, int mode, struct ucred *cred)
 {
 	if (sc == NULL)
 		return ENXIO;
 	if (mode & (O_CREAT | O_APPEND | O_TRUNC))
 		return ENODEV;
 
-	return genfbopen(&sc->gensc, sc->adp, flag, mode, td);
+	return genfbopen(&sc->gensc, sc->adp, flag, mode, cred);
 }
 
 int
-vga_close(dev_t dev, vga_softc_t *sc, int flag, int mode, struct thread *td)
+vga_close(dev_t dev, vga_softc_t *sc, int flag, int mode)
 {
-	return genfbclose(&sc->gensc, sc->adp, flag, mode, td);
+	return genfbclose(&sc->gensc, sc->adp, flag, mode);
 }
 
 int
@@ -127,9 +129,9 @@ vga_write(dev_t dev, vga_softc_t *sc, struct uio *uio, int flag)
 
 int
 vga_ioctl(dev_t dev, vga_softc_t *sc, u_long cmd, caddr_t arg, int flag,
-	  struct thread *td)
+	  struct ucred *cred)
 {
-	return genfbioctl(&sc->gensc, sc->adp, cmd, arg, flag, td);
+	return genfbioctl(&sc->gensc, sc->adp, cmd, arg, flag, cred);
 }
 
 int

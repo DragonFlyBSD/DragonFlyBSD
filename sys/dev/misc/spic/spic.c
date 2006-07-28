@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.13 2005/10/27 13:33:19 sephe Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.14 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,23 +87,13 @@ static d_read_t		spicread;
 static d_ioctl_t	spicioctl;
 static d_poll_t		spicpoll;
 
-static struct cdevsw spic_cdevsw = {
-        /* name */      "spic",
-        /* maj */       CDEV_MAJOR,
-        /* flags */     0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-        /* open */      spicopen,
-        /* close */     spicclose,
-        /* read */      spicread,
-        /* write */     nowrite,
-        /* ioctl */     spicioctl,
-        /* poll */      spicpoll,
-        /* mmap */      nommap,
-        /* strategy */  nostrategy,
-        /* dump */      nodump,
-        /* psize */     nopsize
+static struct dev_ops spic_ops = {
+	{ "spic", CDEV_MAJOR, 0 },
+        .d_open =	spicopen,
+        .d_close =	spicclose,
+        .d_read =	spicread,
+        .d_ioctl =	spicioctl,
+        .d_poll =	spicpoll,
 };
 
 #define SCBUFLEN 128
@@ -357,8 +347,8 @@ spic_attach(device_t dev)
 	spic_call1(sc, 0x92);
 
 	/* There can be only one */
-	cdevsw_add(&spic_cdevsw, -1, device_get_unit(dev));
-	make_dev(&spic_cdevsw, device_get_unit(dev), 0, 0, 0600, "jogdial");
+	dev_ops_add(&spic_ops, -1, device_get_unit(dev));
+	make_dev(&spic_ops, device_get_unit(dev), 0, 0, 0600, "jogdial");
 
 	return 0;
 }
@@ -454,7 +444,7 @@ spictimeout(void *arg)
 }
 
 static int
-spicopen(dev_t dev, int flag, int fmt, struct thread *td)
+spicopen(struct dev_open_args *ap)
 {
 	struct spic_softc *sc;
 
@@ -472,7 +462,7 @@ spicopen(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-spicclose(dev_t dev, int flag, int fmt, struct thread *td)
+spicclose(struct dev_close_args *ap)
 {
 	struct spic_softc *sc;
 
@@ -485,8 +475,9 @@ spicclose(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-spicread(dev_t dev, struct uio *uio, int flag)
+spicread(struct dev_read_args *ap)
 {
+	struct uio *uio = ap->a_uio;
 	struct spic_softc *sc;
 	int l, error;
 	u_char buf[SCBUFLEN];
@@ -519,7 +510,7 @@ spicread(dev_t dev, struct uio *uio, int flag)
 }
 
 static int
-spicioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+spicioctl(struct dev_ioctl_args *ap)
 {
 	struct spic_softc *sc;
 
@@ -529,32 +520,23 @@ spicioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 }
 
 static int
-spicpoll(dev_t dev, int events, struct thread *td)
+spicpoll(struct dev_poll_args *ap)
 {
 	struct spic_softc *sc;
-	struct proc *p;
-	struct proc *p1;
 	int revents = 0;
-
-	p = td->td_proc;
-	KKASSERT(p);
 
 	sc = devclass_get_softc(spic_devclass, 0);
 	crit_enter();
-	if (events & (POLLIN | POLLRDNORM)) {
-		if (sc->sc_count)
-			revents |= events & (POLLIN | POLLRDNORM);
-		else {
-			if (sc->sc_rsel.si_pid && (p1=pfind(sc->sc_rsel.si_pid))
-					&& p1->p_wchan == (caddr_t)&selwait)
-				sc->sc_rsel.si_flags = SI_COLL;
-			else
-				sc->sc_rsel.si_pid = p->p_pid;
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
+		if (sc->sc_count) {
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
+		} else {
+			selrecord(curthread, &sc->sc_rsel);
 		}
 	}
 	crit_exit();
-
-	return revents;
+	ap->a_events = revents;
+	return(0);
 }
 
 

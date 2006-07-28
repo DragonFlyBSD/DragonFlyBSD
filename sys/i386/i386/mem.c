@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.16 2006/07/10 21:06:08 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.17 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -74,75 +74,53 @@
 
 static	d_open_t	mmopen;
 static	d_close_t	mmclose;
-static	d_read_t	mmrw;
+static	d_read_t	mmread;
+static	d_write_t	mmwrite;
 static	d_ioctl_t	mmioctl;
 static	d_mmap_t	memmmap;
 static	d_poll_t	mmpoll;
 
 #define CDEV_MAJOR 2
-static struct cdevsw mem_cdevsw = {
-	/* name */	"mem",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_MEM,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	mmopen,
-	/* close */	mmclose,
-	/* read */	mmrw,
-	/* write */	mmrw,
-	/* ioctl */	mmioctl,
-	/* poll */	mmpoll,
-	/* mmap */	memmmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops mem_ops = {
+	{ "mem", CDEV_MAJOR, D_MEM },
+	.d_open =	mmopen,
+	.d_close =	mmclose,
+	.d_read =	mmread,
+	.d_write =	mmwrite,
+	.d_ioctl =	mmioctl,
+	.d_poll =	mmpoll,
+	.d_mmap =	memmmap,
 };
 
 static int rand_bolt;
 static caddr_t	zbuf;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
-static int mem_ioctl (dev_t, u_long, caddr_t, int, struct thread *);
-static int random_ioctl (dev_t, u_long, caddr_t, int, struct thread *);
+static int mem_ioctl (dev_t, u_long, caddr_t, int, struct ucred *);
+static int random_ioctl (dev_t, u_long, caddr_t, int, struct ucred *);
 
 struct mem_range_softc mem_range_softc;
 
 
 static int
-mmclose(dev_t dev, int flags, int fmt, struct thread *td)
+mmopen(struct dev_open_args *ap)
 {
-	struct proc *p = td->td_proc;
-
-	switch (minor(dev)) {
-	case 14:
-		p->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
-		break;
-	default:
-		break;
-	}
-	return (0);
-}
-
-static int
-mmopen(dev_t dev, int flags, int fmt, struct thread *td)
-{
+	dev_t dev = ap->a_head.a_dev;
 	int error;
-	struct proc *p = td->td_proc;
 
 	switch (minor(dev)) {
 	case 0:
 	case 1:
-		if ((flags & FWRITE) && securelevel > 0)
+		if ((ap->a_oflags & FWRITE) && securelevel > 0)
 			return (EPERM);
 		break;
 	case 14:
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0)
 			return (error);
 		if (securelevel > 0)
 			return (EPERM);
-		p->p_md.md_regs->tf_eflags |= PSL_IOPL;
+		curproc->p_md.md_regs->tf_eflags |= PSL_IOPL;
 		break;
 	default:
 		break;
@@ -151,10 +129,23 @@ mmopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-mmrw(dev, uio, flags)
-	dev_t dev;
-	struct uio *uio;
-	int flags;
+mmclose(struct dev_close_args *ap)
+{
+	dev_t dev = ap->a_head.a_dev;
+
+	switch (minor(dev)) {
+	case 14:
+		curproc->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
+		break;
+	default:
+		break;
+	}
+	return (0);
+}
+
+
+static int
+mmrw(dev_t dev, struct uio *uio, int flags)
 {
 	int o;
 	u_int c, v;
@@ -308,6 +299,19 @@ mmrw(dev, uio, flags)
 	return (error);
 }
 
+static int
+mmread(struct dev_read_args *ap)
+{
+	return(mmrw(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
+}
+
+static int
+mmwrite(struct dev_write_args *ap)
+{
+	return(mmrw(ap->a_head.a_dev, ap->a_uio, ap->a_ioflag));
+}
+
+
 
 
 
@@ -315,35 +319,44 @@ mmrw(dev, uio, flags)
 * allow user processes to MMAP some memory sections	*
 * instead of going through read/write			*
 \*******************************************************/
+
 static int
-memmmap(dev_t dev, vm_offset_t offset, int nprot)
+memmmap(struct dev_mmap_args *ap)
 {
-	switch (minor(dev))
-	{
+	dev_t dev = ap->a_head.a_dev;
 
-/* minor device 0 is physical memory */
+	switch (minor(dev)) {
 	case 0:
-        	return i386_btop(offset);
-
-/* minor device 1 is kernel memory */
+		/* 
+		 * minor device 0 is physical memory 
+		 */
+        	ap->a_result = i386_btop(ap->a_offset);
+		return 0;
 	case 1:
-        	return i386_btop(vtophys(offset));
+		/*
+		 * minor device 1 is kernel memory 
+		 */
+        	ap->a_result = i386_btop(vtophys(ap->a_offset));
+		return 0;
 
 	default:
-		return -1;
+		return EINVAL;
 	}
 }
 
 static int
-mmioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+mmioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 
 	switch (minor(dev)) {
 	case 0:
-		return mem_ioctl(dev, cmd, data, flags, td);
+		return mem_ioctl(dev, ap->a_cmd, ap->a_data,
+				 ap->a_fflag, ap->a_cred);
 	case 3:
 	case 4:
-		return random_ioctl(dev, cmd, data, flags, td);
+		return random_ioctl(dev, ap->a_cmd, ap->a_data,
+				    ap->a_fflag, ap->a_cred);
 	}
 	return (ENODEV);
 }
@@ -355,7 +368,7 @@ mmioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
  * and mem_range_attr_set.
  */
 static int 
-mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 {
 	int nd, error = 0;
 	struct mem_range_op *mo = (struct mem_range_op *)data;
@@ -449,7 +462,7 @@ mem_range_AP_init(void)
 #endif
 
 static int 
-random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 {
 	int error;
 	int intr;
@@ -466,7 +479,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		break;
 	case MEM_SETIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cred, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -474,7 +487,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		break;
 	case MEM_CLEARIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cred, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -485,7 +498,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		break;
 	case MEM_FINDIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser(td)) != 0)
+		if ((error = suser_cred(cred, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -502,22 +515,29 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 }
 
 int
-mmpoll(dev_t dev, int events, struct thread *td)
+mmpoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	int revents;
+
 	switch (minor(dev)) {
 	case 3:		/* /dev/random */
-		return random_poll(dev, events, td);
+		revents = random_poll(dev, ap->a_events);
+		break;
 	case 4:		/* /dev/urandom */
 	default:
-		return seltrue(dev, events, td);
+		revents = seltrue(dev, ap->a_events);
+		break;
 	}
+	ap->a_events = revents;
+	return (0);
 }
 
 int
 iszerodev(dev)
 	dev_t dev;
 {
-	return ((major(dev) == mem_cdevsw.d_maj)
+	return ((major(dev) == mem_ops.head.maj)
 	  && minor(dev) == 12);
 }
 
@@ -529,14 +549,14 @@ mem_drvinit(void *unused)
 	if (mem_range_softc.mr_op != NULL)
 		mem_range_softc.mr_op->init(&mem_range_softc);
 
-	cdevsw_add(&mem_cdevsw, 0xf0, 0);
-	make_dev(&mem_cdevsw, 0, UID_ROOT, GID_KMEM, 0640, "mem");
-	make_dev(&mem_cdevsw, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
-	make_dev(&mem_cdevsw, 2, UID_ROOT, GID_WHEEL, 0666, "null");
-	make_dev(&mem_cdevsw, 3, UID_ROOT, GID_WHEEL, 0644, "random");
-	make_dev(&mem_cdevsw, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
-	make_dev(&mem_cdevsw, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
-	make_dev(&mem_cdevsw, 14, UID_ROOT, GID_WHEEL, 0600, "io");
+	dev_ops_add(&mem_ops, 0xf0, 0);
+	make_dev(&mem_ops, 0, UID_ROOT, GID_KMEM, 0640, "mem");
+	make_dev(&mem_ops, 1, UID_ROOT, GID_KMEM, 0640, "kmem");
+	make_dev(&mem_ops, 2, UID_ROOT, GID_WHEEL, 0666, "null");
+	make_dev(&mem_ops, 3, UID_ROOT, GID_WHEEL, 0644, "random");
+	make_dev(&mem_ops, 4, UID_ROOT, GID_WHEEL, 0644, "urandom");
+	make_dev(&mem_ops, 12, UID_ROOT, GID_WHEEL, 0666, "zero");
+	make_dev(&mem_ops, 14, UID_ROOT, GID_WHEEL, 0600, "io");
 }
 
 SYSINIT(memdev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,mem_drvinit,NULL)

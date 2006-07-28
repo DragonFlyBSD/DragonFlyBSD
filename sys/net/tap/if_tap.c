@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.26 2006/07/21 00:51:13 corecode Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.27 2006/07/28 02:17:40 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -40,6 +40,7 @@
 
 #include <sys/param.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
 #include <sys/kernel.h>
@@ -99,23 +100,14 @@ static d_write_t	tapwrite;
 static d_ioctl_t	tapioctl;
 static d_poll_t		tappoll;
 
-static struct cdevsw	tap_cdevsw = {
-	/* dev name */	CDEV_NAME,
-	/* dev major */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	tapopen,
-	/* close */	tapclose,
-	/* read */	tapread,
-	/* write */	tapwrite,
-	/* ioctl */	tapioctl,
-	/* poll */	tappoll,
-	/* mmap */	nommap,
-	/* startegy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops	tap_ops = {
+	{ CDEV_NAME, CDEV_MAJOR, 0 },
+	.d_open =	tapopen,
+	.d_close =	tapclose,
+	.d_read =	tapread,
+	.d_write =	tapwrite,
+	.d_ioctl =	tapioctl,
+	.d_poll =	tappoll,
 };
 
 static int		taprefcnt = 0;		/* module ref. counter   */
@@ -144,7 +136,7 @@ tapmodevent(module_t mod, int type, void *data)
 		if (attached)
 			return (EEXIST);
 
-		cdevsw_add(&tap_cdevsw, 0, 0);
+		dev_ops_add(&tap_ops, 0, 0);
 		attached = 1;
 	break;
 
@@ -152,7 +144,7 @@ tapmodevent(module_t mod, int type, void *data)
 		if (taprefcnt > 0)
 			return (EBUSY);
 
-		cdevsw_remove(&tap_cdevsw, 0, 0);
+		dev_ops_remove(&tap_ops, 0, 0);
 
 		/* XXX: maintain tap ifs in a local list */
 		unit = 0;
@@ -220,7 +212,7 @@ tapcreate(dev_t dev)
 		unit = lminor(dev);
 	}
 
-	tp->tap_dev = make_dev(&tap_cdevsw, minor(dev), UID_ROOT, GID_WHEEL, 
+	tp->tap_dev = make_dev(&tap_ops, minor(dev), UID_ROOT, GID_WHEEL, 
 						0600, "%s%d", name, unit);
 	tp->tap_dev->si_drv1 = dev->si_drv1 = tp;
 	reference_dev(tp->tap_dev);	/* so we can destroy it later */
@@ -261,12 +253,13 @@ tapcreate(dev_t dev)
  * to open tunnel. must be superuser
  */
 static int
-tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
+tapopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = NULL;
 	int			 error;
 
-	if ((error = suser(td)) != 0)
+	if ((error = suser_cred(ap->a_cred, 0)) != 0)
 		return (error);
 
 	tp = dev->si_drv1;
@@ -280,7 +273,7 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
 
-	tp->tap_td = td;
+	tp->tap_td = curthread;
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
 
@@ -298,8 +291,9 @@ tapopen(dev_t dev, int flag, int mode, d_thread_t *td)
  * close the device - mark i/f down & delete routing info
  */
 static int
-tapclose(dev_t dev, int foo, int bar, d_thread_t *td)
+tapclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 
@@ -485,11 +479,13 @@ tapifstart(struct ifnet *ifp)
 /*
  * tapioctl
  *
- * the cdevsw interface is now pretty minimal
+ * the ops interface is now pretty minimal
  */
 static int
-tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+tapioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
  	struct tapinfo		*tapp = NULL;
@@ -500,7 +496,7 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 	lwkt_serialize_enter(ifp->if_serializer);
 	error = 0;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case TAPSIFINFO:
 		tapp = (struct tapinfo *)data;
 		ifp->if_mtu = tapp->mtu;
@@ -591,12 +587,14 @@ tapioctl(dev_t dev, u_long cmd, caddr_t data, int flag, d_thread_t *td)
 /*
  * tapread
  *
- * the cdevsw read interface - reads a packet at a time, or at
+ * the ops read interface - reads a packet at a time, or at
  * least as much of a packet as can be read
  */
 static int
-tapread(dev_t dev, struct uio *uio, int flag)
+tapread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*m0 = NULL;
@@ -618,7 +616,7 @@ tapread(dev_t dev, struct uio *uio, int flag)
 		lwkt_serialize_enter(ifp->if_serializer);
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL) {
-			if (flag & IO_NDELAY) {
+			if (ap->a_ioflag & IO_NDELAY) {
 				lwkt_serialize_exit(ifp->if_serializer);
 				return (EWOULDBLOCK);
 			}
@@ -660,11 +658,13 @@ tapread(dev_t dev, struct uio *uio, int flag)
 /*
  * tapwrite
  *
- * the cdevsw write interface - an atomic write is a packet - or else!
+ * the ops write interface - an atomic write is a packet - or else!
  */
 static int
-tapwrite(dev_t dev, struct uio *uio, int flag)
+tapwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	struct mbuf		*top = NULL, **mp = NULL, *m = NULL;
@@ -737,8 +737,9 @@ tapwrite(dev_t dev, struct uio *uio, int flag)
  * anyway, it either accepts the packet or drops it
  */
 static int
-tappoll(dev_t dev, int events, d_thread_t *td)
+tappoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tap_softc	*tp = dev->si_drv1;
 	struct ifnet		*ifp = &tp->tap_if;
 	int		 	 revents = 0;
@@ -746,24 +747,25 @@ tappoll(dev_t dev, int events, d_thread_t *td)
 	TAPDEBUG(ifp, "polling, minor = %#x\n", minor(tp->tap_dev));
 
 	lwkt_serialize_enter(ifp->if_serializer);
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (!ifq_is_empty(&ifp->if_snd)) {
 			TAPDEBUG(ifp,
 				 "has data in queue. minor = %#x\n",
 				 minor(tp->tap_dev));
 
-			revents |= (events & (POLLIN | POLLRDNORM));
+			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
 		} 
 		else {
 			TAPDEBUG(ifp, "waiting for data, minor = %#x\n",
 				 minor(tp->tap_dev));
 
-			selrecord(td, &tp->tap_rsel);
+			selrecord(curthread, &tp->tap_rsel);
 		}
 	}
 	lwkt_serialize_exit(ifp->if_serializer);
 
-	if (events & (POLLOUT | POLLWRNORM))
-		revents |= (events & (POLLOUT | POLLWRNORM));
-	return (revents);
+	if (ap->a_events & (POLLOUT | POLLWRNORM))
+		revents |= (ap->a_events & (POLLOUT | POLLWRNORM));
+	ap->a_events = revents;
+	return(0);
 } /* tappoll */

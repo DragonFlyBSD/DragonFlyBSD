@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.15 2005/06/08 08:25:50 okumoto Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
  */
 
 #ifndef lint
@@ -97,7 +97,7 @@ enum si_mctl { GET, SET, BIS, BIC };
 static void si_command(struct si_port *, int, int);
 static int si_modem(struct si_port *, enum si_mctl, int);
 static void si_write_enable(struct si_port *, int);
-static int si_Sioctl(dev_t, u_long, caddr_t, int, struct thread *);
+static int si_Sioctl(dev_t, u_long, caddr_t, int, struct ucred *);
 static void si_start(struct tty *);
 static void si_stop(struct tty *, int);
 static timeout_t si_lstart;
@@ -120,24 +120,15 @@ static	d_write_t	siwrite;
 static	d_ioctl_t	siioctl;
 
 #define	CDEV_MAJOR	68
-static struct cdevsw si_cdevsw = {
-	/* name */	"si",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	siopen,
-	/* close */	siclose,
-	/* read */	ttyread,
-	/* write */	siwrite,
-	/* ioctl */	siioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops si_ops = {
+	{ "si", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	siopen,
+	.d_close =	siclose,
+	.d_read =	ttyread,
+	.d_write =	siwrite,
+	.d_ioctl =	siioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static int si_Nports;
@@ -609,25 +600,26 @@ try_next2:
 		done_chartimes = 1;
 	}
 
-	cdevsw_add(&si_cdevsw, 0x7f, unit);
+	dev_ops_add(&si_ops, 0x7f, unit);
 /*	path	name	devsw		minor	type   uid gid perm*/
 	for (x = 0; x < sc->sc_nport; x++) {
 		/* sync with the manuals that start at 1 */
 		y = x + 1 + unit * (1 << SI_CARDSHIFT);
-		make_dev(&si_cdevsw, x, 0, 0, 0600, "ttyA%02d", y);
-		make_dev(&si_cdevsw, x + 0x00080, 0, 0, 0600, "cuaA%02d", y);
-		make_dev(&si_cdevsw, x + 0x10000, 0, 0, 0600, "ttyiA%02d", y);
-		make_dev(&si_cdevsw, x + 0x10080, 0, 0, 0600, "cuaiA%02d", y);
-		make_dev(&si_cdevsw, x + 0x20000, 0, 0, 0600, "ttylA%02d", y);
-		make_dev(&si_cdevsw, x + 0x20080, 0, 0, 0600, "cualA%02d", y);
+		make_dev(&si_ops, x, 0, 0, 0600, "ttyA%02d", y);
+		make_dev(&si_ops, x + 0x00080, 0, 0, 0600, "cuaA%02d", y);
+		make_dev(&si_ops, x + 0x10000, 0, 0, 0600, "ttyiA%02d", y);
+		make_dev(&si_ops, x + 0x10080, 0, 0, 0600, "cuaiA%02d", y);
+		make_dev(&si_ops, x + 0x20000, 0, 0, 0600, "ttylA%02d", y);
+		make_dev(&si_ops, x + 0x20080, 0, 0, 0600, "cualA%02d", y);
 	}
-	make_dev(&si_cdevsw, 0x40000, 0, 0, 0600, "si_control");
+	make_dev(&si_ops, 0x40000, 0, 0, 0600, "si_control");
 	return (0);
 }
 
 static	int
-siopen(dev_t dev, int flag, int mode, struct thread *td)
+siopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int error;
 	int card, port;
 	struct si_softc *sc;
@@ -638,7 +630,7 @@ siopen(dev_t dev, int flag, int mode, struct thread *td)
 
 	/* quickly let in /dev/si_control */
 	if (IS_CONTROLDEV(mynor)) {
-		if ((error = suser(td)))
+		if ((error = suser_cred(ap->a_cred, 0)))
 			return(error);
 		return(0);
 	}
@@ -680,8 +672,8 @@ siopen(dev_t dev, int flag, int mode, struct thread *td)
 	tp = pp->sp_tty;			/* the "real" tty */
 	dev->si_tty = tp;
 	ccbp = pp->sp_ccb;			/* Find control block */
-	DPRINT((pp, DBG_ENTRY|DBG_OPEN, "siopen(%s,%x,%x,%x)\n",
-		devtoname(dev), flag, mode, td));
+	DPRINT((pp, DBG_ENTRY|DBG_OPEN, "siopen(%s,%x,%x)\n",
+		devtoname(dev), ap->a_oflags, ap->a_devtype));
 
 	crit_enter();			/* Keep others out */
 	error = 0;
@@ -705,7 +697,7 @@ open_top:
 			}
 		} else {
 			if (pp->sp_active_out) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto out;
 				}
@@ -717,7 +709,7 @@ open_top:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser(td)) {
+		    suser_cred(ap->a_cred, 0)) {
 			DPRINT((pp, DBG_OPEN|DBG_FAIL,
 				"already open and EXCLUSIVE set\n"));
 			error = EBUSY;
@@ -766,7 +758,7 @@ open_top:
 	if (!(tp->t_state & TS_CARR_ON) &&
 	    !IS_CALLOUT(mynor) &&
 	    !(tp->t_cflag & CLOCAL) &&
-	    !(flag & O_NONBLOCK)) {
+	    !(ap->a_oflags & O_NONBLOCK)) {
 		++pp->sp_wopeners;
 		DPRINT((pp, DBG_OPEN, "sleeping for carrier\n"));
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "sidcd", 0);
@@ -795,8 +787,9 @@ out:
 }
 
 static	int
-siclose(dev_t dev, int flag, int mode, struct thread *td)
+siclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct si_port *pp;
 	struct tty *tp;
 	int error = 0;
@@ -810,8 +803,8 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
 
-	DPRINT((pp, DBG_ENTRY|DBG_CLOSE, "siclose(%s,%x,%x,%x) sp_state:%x\n",
-		devtoname(dev), flag, mode, td, pp->sp_state));
+	DPRINT((pp, DBG_ENTRY|DBG_CLOSE, "siclose(%s,%x,%x) sp_state:%x\n",
+		devtoname(dev), ap->a_fflag, ap->a_devtype, pp->sp_state));
 
 	/* did we sleep and loose a race? */
 	if (pp->sp_state & SS_CLOSING) {
@@ -825,7 +818,7 @@ siclose(dev_t dev, int flag, int mode, struct thread *td)
 	si_write_enable(pp, 0);		/* block writes for ttywait() */
 
 	/* THIS MAY SLEEP IN TTYWAIT!!! */
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 
 	si_write_enable(pp, 1);
 
@@ -905,8 +898,9 @@ sidtrwakeup(void *chan)
 }
 
 static	int
-siwrite(dev_t dev, struct uio *uio, int flag)
+siwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct si_port *pp;
 	struct tty *tp;
 	int error = 0;
@@ -918,7 +912,7 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 	}
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
-	DPRINT((pp, DBG_WRITE, "siwrite(%s,%x,%x)\n", devtoname(dev), uio, flag));
+	DPRINT((pp, DBG_WRITE, "siwrite(%s,%x,%x)\n", devtoname(dev), ap->a_uio, ap->a_ioflag));
 
 	crit_enter();
 	/*
@@ -935,7 +929,7 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 		}
 	}
 
-	error = (*linesw[tp->t_line].l_write)(tp, uio, flag);
+	error = (*linesw[tp->t_line].l_write)(tp, ap->a_uio, ap->a_ioflag);
 out:
 	crit_exit();
 	return (error);
@@ -943,8 +937,11 @@ out:
 
 
 static	int
-siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+siioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
+	u_long cmd = ap->a_cmd;
 	struct si_port *pp;
 	struct tty *tp;
 	int error;
@@ -956,13 +953,13 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #endif
 
 	if (IS_SI_IOCTL(cmd))
-		return(si_Sioctl(dev, cmd, data, flag, td));
+		return(si_Sioctl(dev, cmd, data, ap->a_fflag, ap->a_cred));
 
 	pp = MINOR2PP(mynor);
 	tp = pp->sp_tty;
 
 	DPRINT((pp, DBG_ENTRY|DBG_IOCTL, "siioctl(%s,%lx,%x,%x)\n",
-		devtoname(dev), cmd, data, flag));
+		devtoname(dev), cmd, data, ap->a_fflag));
 	if (IS_STATE(mynor)) {
 		struct termios *ct;
 
@@ -978,7 +975,7 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1050,13 +1047,14 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		si_write_enable(pp, 0);
 	}
 
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
+					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		goto out;
 
 	crit_enter();
 
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	si_disc_optim(tp, &tp->t_termios, pp);
 	if (error != ENOIOCTL) {
 		crit_exit();
@@ -1091,7 +1089,7 @@ siioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error == 0)
 			pp->sp_dtr_wait = *(int *)data * hz / 100;
 		break;
@@ -1114,7 +1112,7 @@ out:
  * Handle the Specialix ioctls. All MUST be called via the CONTROL device
  */
 static int
-si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 {
 	struct si_softc *xsc;
 	struct si_port *xpp;
@@ -1143,7 +1141,7 @@ si_Sioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 	ip = (int *)data;
 
-#define SUCHECK if ((error = suser(td))) goto out
+#define SUCHECK if ((error = suser_cred(cred, 0))) goto out
 
 	switch (cmd) {
 	case TCSIPORTS:

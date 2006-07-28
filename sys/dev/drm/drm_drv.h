@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.13 2006/06/13 08:12:01 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.14 2006/07/28 02:17:36 dillon Exp $
  */
 
 /*
@@ -206,19 +206,14 @@ static drm_ioctl_desc_t		  DRM(ioctls)[] = {
 const char *DRM(find_description)(int vendor, int device);
 
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-static struct cdevsw DRM(cdevsw) = {
-	.d_name =	DRIVER_NAME,
-	.d_maj =	CDEV_MAJOR,
-	.d_flags =	D_TTY | D_TRACKCLOSE,
-	.d_port = 	NULL,
-	.d_clone =	NULL,
-
-	.old_open =	DRM( open ),
-	.old_close =	DRM( close ),
-	.old_read =	DRM( read ),
-	.old_ioctl =	DRM( ioctl ),
-	.old_poll =	DRM( poll ),
-	.old_mmap =	DRM( mmap )
+static struct dev_ops DRM(ops) = {
+	{ DRIVER_NAME, CDEV_MAJOR, D_TTY | D_TRACKCLOSE },
+	.d_open =	DRM(open),
+	.d_close =	DRM(close),
+	.d_read =	DRM(read),
+	.d_ioctl =	DRM(ioctl),
+	.d_poll =	DRM(poll),
+	.d_mmap =	DRM(mmap)
 };
 
 static int DRM(probe)(device_t dev)
@@ -654,8 +649,8 @@ static int DRM(init)( device_t nbdev )
 	dev = device_get_softc(nbdev);
 	memset( (void *)dev, 0, sizeof(*dev) );
 	dev->device = nbdev;
-	cdevsw_add(&DRM(cdevsw), -1, unit);
-	dev->devnode = make_dev( &DRM(cdevsw),
+	dev_ops_add(&DRM(ops), -1, unit);
+	dev->devnode = make_dev( &DRM(ops),
 			unit,
 			DRM_DEV_UID,
 			DRM_DEV_GID,
@@ -774,7 +769,7 @@ static void DRM(cleanup)(device_t nbdev)
 #endif
 	}
 #endif
-	cdevsw_remove(&DRM(cdevsw), -1, device_get_unit(nbdev));
+	dev_ops_remove(&DRM(ops), -1, device_get_unit(nbdev));
 
 	DRM(takedown)( dev );
 
@@ -820,8 +815,9 @@ int DRM(version)( DRM_IOCTL_ARGS )
 	return 0;
 }
 
-int DRM(open)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
+int DRM(open)(struct dev_open_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	drm_device_t *dev = NULL;
 	int retcode = 0;
 
@@ -829,7 +825,8 @@ int DRM(open)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 
 	DRM_DEBUG( "open_count = %d\n", dev->open_count );
 
-	retcode = DRM(open_helper)(kdev, flags, fmt, p, dev);
+	retcode = DRM(open_helper)(kdev, ap->a_oflags, ap->a_devtype,
+				   curthread, dev);
 
 	if ( !retcode ) {
 		atomic_inc( &dev->counts[_DRM_STAT_OPENS] );
@@ -845,15 +842,16 @@ int DRM(open)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 	return retcode;
 }
 
-int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
+int DRM(close)(struct dev_close_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	drm_file_t *priv;
 	DRM_DEVICE;
 	int retcode = 0;
 	DRMFILE __unused filp = (void *)(DRM_CURRENTPID);
 	
 	DRM_DEBUG( "open_count = %d\n", dev->open_count );
-	priv = DRM(find_file_by_proc)(dev, p);
+	priv = DRM(find_file_by_proc)(dev, curthread);
 	if (!priv) {
 		DRM_DEBUG("can't find authenticator\n");
 		return EINVAL;
@@ -934,7 +932,7 @@ int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 #endif /* __NetBSD__ */
 
 	DRM_LOCK;
-	priv = DRM(find_file_by_proc)(dev, p);
+	priv = DRM(find_file_by_proc)(dev, curthread);
 	if (priv) {
 		priv->refs--;
 		if (!priv->refs) {
@@ -965,14 +963,14 @@ int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 
 /* DRM(ioctl) is called whenever a process performs an ioctl on /dev/drm.
  */
-int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags, 
-    DRM_STRUCTPROC *p)
+int DRM(ioctl)(struct dev_ioctl_args *ap)
 {
+	dev_t kdev = ap->a_head.a_dev;
 	DRM_DEVICE;
 	int retcode = 0;
 	drm_ioctl_desc_t *ioctl;
 	int (*func)(DRM_IOCTL_ARGS);
-	int nr = DRM_IOCTL_NR(cmd);
+	int nr = DRM_IOCTL_NR(ap->a_cmd);
 	DRM_PRIV;
 
 	atomic_inc( &dev->counts[_DRM_STAT_IOCTLS] );
@@ -980,36 +978,36 @@ int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags,
 
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 	DRM_DEBUG( "pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
-		 DRM_CURRENTPID, cmd, nr, (long)dev->device, priv->authenticated );
+		 DRM_CURRENTPID, ap->a_cmd, nr, (long)dev->device, priv->authenticated );
 #elif defined(__NetBSD__)
 	DRM_DEBUG( "pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
-		 DRM_CURRENTPID, cmd, nr, (long)&dev->device, priv->authenticated );
+		 DRM_CURRENTPID, ap->a_cmd, nr, (long)&dev->device, priv->authenticated );
 #endif
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case FIOASYNC:
 		dev->flags |= FASYNC;
 		return 0;
 
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 	case FIOSETOWN:
-		return fsetown(*(int *)data, &dev->buf_sigio);
+		return fsetown(*(int *)ap->a_data, &dev->buf_sigio);
 
 	case FIOGETOWN:
 #if defined(__FreeBSD__) && (__FreeBSD_version >= 500000)
-		*(int *) data = fgetown(&dev->buf_sigio);
+		*(int *) ap->a_data = fgetown(&dev->buf_sigio);
 #else
-		*(int *) data = fgetown(dev->buf_sigio);
+		*(int *) ap->a_data = fgetown(dev->buf_sigio);
 #endif
 		return 0;
 #endif /* __FreeBSD__ */
 #ifdef __NetBSD__
 	case TIOCSPGRP:
-		dev->buf_pgid = *(int *)data;
+		dev->buf_pgid = *(int *)ap->a_data;
 		return 0;
 
 	case TIOCGPGRP:
-		*(int *)data = dev->buf_pgid;
+		*(int *)ap->a_data = dev->buf_pgid;
 		return 0;
 #endif /* __NetBSD__ */
 	}
@@ -1023,11 +1021,11 @@ int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags,
 		if ( !func ) {
 			DRM_DEBUG( "no function\n" );
 			retcode = EINVAL;
-		} else if ( ( ioctl->root_only && DRM_SUSER(p) ) 
+		} else if ( ( ioctl->root_only && suser_cred(ap->a_cred, 0) ) 
 			 || ( ioctl->auth_needed && !priv->authenticated ) ) {
 			retcode = EACCES;
 		} else {
-			retcode = func(kdev, cmd, data, flags, p, (void *)DRM_CURRENTPID);
+			retcode = func(kdev, ap->a_cmd, ap->a_data, ap->a_fflag, curthread, (void *)DRM_CURRENTPID);
 		}
 	}
 

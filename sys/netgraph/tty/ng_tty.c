@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.11 2005/06/16 21:12:48 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -128,7 +128,7 @@ static int	ngt_close(struct tty *tp, int flag);
 static int	ngt_read(struct tty *tp, struct uio *uio, int flag);
 static int	ngt_write(struct tty *tp, struct uio *uio, int flag);
 static int	ngt_tioctl(struct tty *tp,
-		    u_long cmd, caddr_t data, int flag, d_thread_t *td);
+		    u_long cmd, caddr_t data, int flag, struct ucred *cred);
 static int	ngt_input(int c, struct tty *tp);
 static int	ngt_start(struct tty *tp);
 
@@ -311,7 +311,7 @@ ngt_write(struct tty *tp, struct uio *uio, int flag)
  * We implement the NGIOCGINFO ioctl() defined in ng_message.h.
  */
 static int
-ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, d_thread_t *td)
+ngt_tioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 {
 	const sc_p sc = (sc_p) tp->t_sc;
 	int error = 0;

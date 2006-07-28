@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.8 2004/05/19 22:52:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -21,6 +21,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/timepps.h>
@@ -43,23 +44,12 @@ static d_ioctl_t xrpu_ioctl;
 static d_mmap_t xrpu_mmap;
 
 #define CDEV_MAJOR 100
-static struct cdevsw xrpu_cdevsw = {
-	/* name */	"xrpu",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	xrpu_open,
-	/* close */	xrpu_close,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	xrpu_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	xrpu_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops xrpu_ops = {
+	{ "xrpu", CDEV_MAJOR, 0 },
+	.d_open =	xrpu_open,
+	.d_close =	xrpu_close,
+	.d_ioctl =	xrpu_ioctl,
+	.d_mmap =	xrpu_mmap,
 };
 
 static MALLOC_DEFINE(M_XRPU, "xrpu", "XRPU related");
@@ -124,8 +114,9 @@ xrpu_poll_pps(struct timecounter *tc)
 #endif
 
 static int
-xrpu_open(dev_t dev, int flag, int mode, struct thread *td)
+xrpu_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct softc *sc = devclass_get_softc(xrpu_devclass, dev2unit(dev));
 
 	if (!sc)
@@ -135,23 +126,26 @@ xrpu_open(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 static int
-xrpu_close(dev_t dev, int flag, int mode, struct thread *td)
-{ 
+xrpu_close(struct dev_close_args *ap)
+{
 	return (0);
 }
 
 static int
-xrpu_mmap(dev_t dev, vm_offset_t offset, int nprot)
+xrpu_mmap(struct dev_mmap_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct softc *sc = dev->si_drv1;
-	if (offset >= 0x1000000) 
+
+	if (ap->a_offset >= 0x1000000) 
 		return (-1);
-	return (i386_btop(sc->physbase + offset));
+	return (i386_btop(sc->physbase + ap->a_offset));
 }
 
 static int
-xrpu_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
+xrpu_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct softc *sc = dev->si_drv1;
 	int i, error;
 
@@ -159,13 +153,13 @@ xrpu_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		i = dev2pps(dev);
 		if (i < 0 || i >= XRPU_MAX_PPS)
 			return ENODEV;
-		error =  pps_ioctl(cmd, arg, &sc->pps[i]);
+		error =  pps_ioctl(ap->a_cmd, ap->a_data, &sc->pps[i]);
 		return (error);
 	}
 		
 #if 0
-	if (cmd == XRPU_IOC_TIMECOUNTING) {
-		struct xrpu_timecounting *xt = (struct xrpu_timecounting *)arg;
+	if (ap->a_cmd == XRPU_IOC_TIMECOUNTING) {
+		struct xrpu_timecounting *xt = (struct xrpu_timecounting *)ap->a_data;
 
 		/* Name SHALL be zero terminated */
 		xt->xt_name[sizeof xt->xt_name - 1] = '\0';
@@ -184,7 +178,7 @@ xrpu_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			if (xt->xt_pps[i].xt_addr_assert == 0
 			    && xt->xt_pps[i].xt_addr_clear == 0)
 				continue;
-			make_dev(&xrpu_cdevsw, (i+1)<<16, 
+			make_dev(&xrpu_ops, (i+1)<<16, 
 			    UID_ROOT, GID_WHEEL, 0600, "xpps%d", i);
 			sc->pps[i].ppscap = 0;
 			if (xt->xt_pps[i].xt_addr_assert) {
@@ -253,8 +247,8 @@ xrpu_attach(device_t self)
 		printf("Mapped physbase %#lx to virbase %#lx\n",
 		    (u_long)sc->physbase, (u_long)sc->virbase);
 
-	cdevsw_add(&xrpu_cdevsw, -1, unit);
-	make_dev(&xrpu_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600, "xrpu%d", unit);
+	dev_ops_add(&xrpu_ops, -1, unit);
+	make_dev(&xrpu_ops, unit, UID_ROOT, GID_WHEEL, 0600, "xrpu%d", unit);
 	return 0;
 }
 

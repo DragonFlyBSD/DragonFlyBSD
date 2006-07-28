@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.7 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.8 2006/07/28 02:17:39 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -23,6 +23,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
@@ -95,47 +96,37 @@ static d_ioctl_t elan_ioctl;
 static d_mmap_t elan_mmap;
 
 #define CDEV_MAJOR 100			/* Share with xrpu */
-static struct cdevsw elan_cdevsw = {
-	/* name */	"elan",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	elan_open,
-	/* close */	elan_close,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	elan_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	elan_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops elan_ops = {
+	{ "elan", CDEV_MAJOR, 0 },
+	.d_open =	elan_open,
+	.d_close =	elan_close,
+	.d_ioctl =	elan_ioctl,
+	.d_mmap =	elan_mmap,
 };
 
 static int
-elan_open(dev_t dev, int flag, int mode, struct thread *td)
+elan_open(struct dev_open_args *ap)
 {
 	return (0);
 }
 
 static int
-elan_close(dev_t dev, int flag, int mode, struct thread *td)
+elan_close(struct dev_close_args *ap)
 { 
 	return (0);
 }
 
 static int
-elan_mmap(dev_t dev, vm_offset_t offset, int nprot)
+elan_mmap(struct dev_mmap_args *ap)
 {
-	if (offset >= 0x1000) 
-		return (-1);
-	return (i386_btop(0xfffef000));
+	if (ap->a_offset >= 0x1000) 
+		return (EINVAL);
+	ap->a_result = i386_btop(0xfffef000);
+	return(0);
 }
 
 static int
-elan_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
+elan_ioctl(struct dev_ioctl_args *ap)
 {
 	return(ENOENT);
 }
@@ -147,8 +138,8 @@ elan_drvinit(void)
 	if (elan_mmcr == NULL)
 		return;
 	printf("Elan-mmcr driver: MMCR at %p\n", elan_mmcr);
-	cdevsw_add(&elan_cdevsw, 0, 0);
-	make_dev(&elan_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "elan-mmcr");
+	dev_ops_add(&elan_ops, 0, 0);
+	make_dev(&elan_ops, 0, UID_ROOT, GID_WHEEL, 0600, "elan-mmcr");
 	return;
 }
 

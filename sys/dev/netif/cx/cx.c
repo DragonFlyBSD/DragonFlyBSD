@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.15 2005/06/13 21:53:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.16 2006/07/28 02:17:37 dillon Exp $
  *
  */
 #undef DEBUG
@@ -91,24 +91,15 @@ static	d_ioctl_t	cxioctl;
 
 #define	CDEV_MAJOR	42
 /* Don't make this static, since if_cx.c uses it. */
-struct cdevsw cx_cdevsw = {
-	/* name */	"cx",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	cxopen,
-	/* close */	cxclose,
-	/* read */	ttyread,
-	/* write */	ttywrite,
-	/* ioctl */	cxioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+struct dev_ops cx_ops = {
+	{ "cx", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	cxopen,
+	.d_close =	cxclose,
+	.d_read =	ttyread,
+	.d_write =	ttywrite,
+	.d_ioctl =	cxioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 #else
 struct tty *cx_tty [NCX*NCHAN];         /* tty data */
@@ -118,8 +109,9 @@ static void cxoproc (struct tty *tp);
 static void cxstop (struct tty *tp, int flag);
 static int cxparam (struct tty *tp, struct termios *t);
 
-int cxopen (dev_t dev, int flag, int mode, struct thread *td)
+int cxopen (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
 	unsigned short port;
@@ -169,7 +161,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	tp = c->ttyp;
 	tp->t_dev = dev;
 	if ((tp->t_state & TS_ISOPEN) && (tp->t_state & TS_XCLUDE) &&
-	    suser(td))
+	    suser_cred(ap->a_cred, 0))
 		return (EBUSY);
 	if (! (tp->t_state & TS_ISOPEN)) {
 		ttychars (tp);
@@ -231,7 +223,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	}
 	if (cx_chan_cd (c))
 		(*linesw[tp->t_line].l_modem)(tp, 1);
-	if (! (flag & O_NONBLOCK)) {
+	if (! (ap->a_oflags & O_NONBLOCK)) {
 		/* Lock the channel against cxconfig while we are
 		 * waiting for carrier. */
 		c->sopt.lock = 1;
@@ -254,8 +246,9 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 	return (error);
 }
 
-int cxclose (dev_t dev, int flag, int mode, struct thread *td)
+int cxclose (struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
 	cx_chan_t *c = cxchan[unit];
 	struct tty *tp;
@@ -263,7 +256,7 @@ int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 	if (unit == UNIT_CTL)
 		return (0);
 	tp = c->ttyp;
-	(*linesw[tp->t_line].l_close) (tp, flag);
+	(*linesw[tp->t_line].l_close) (tp, ap->a_fflag);
 
 	/* Disable receiver.
 	 * Transmitter continues sending the queued data. */
@@ -290,8 +283,10 @@ int cxclose (dev_t dev, int flag, int mode, struct thread *td)
 	return (0);
 }
 
-int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+int cxioctl (struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	int unit = UNIT (dev);
 	cx_chan_t *c, *m;
 	cx_stat_t *st;
@@ -309,7 +304,7 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		c = &cxboard[o->board].chan[o->channel];
 		if (c->type == T_NONE)
 			return (ENXIO);
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		default:
 			return (EINVAL);
 
@@ -423,20 +418,17 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	tp = c->ttyp;
 	if (! tp)
 		return (EINVAL);
-#if defined(__DragonFly__) || __FreeBSD__ >= 2
-	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag, td);
-#else
-	error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, data, flag);
-#endif
+	error = (*linesw[tp->t_line].l_ioctl) (tp, ap->a_cmd, data,
+						 ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return (error);
-	error = ttioctl (tp, cmd, data, flag);
+	error = ttioctl (tp, ap->a_cmd, data, ap->a_fflag);
 	if (error != ENOIOCTL)
 		return (error);
 
 	crit_enter();
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	default:
 		crit_exit();
 		return (ENOTTY);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.16 2005/06/11 09:03:49 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.17 2006/07/28 02:17:38 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -573,7 +573,7 @@ static void	stli_mkasyport(stliport_t *portp, asyport_t *pp,
 			struct termios *tiosp);
 static int	stli_memrw(dev_t dev, struct uio *uiop, int flag);
 static int	stli_memioctl(dev_t dev, unsigned long cmd, caddr_t data,
-			int flag, struct thread *td);
+			int flag);
 static int	stli_getbrdstats(caddr_t data);
 static int	stli_getportstats(stliport_t *portp, caddr_t data);
 static int	stli_clrportstats(stliport_t *portp, caddr_t data);
@@ -631,24 +631,15 @@ struct isa_driver	stlidriver = {
  */
 
 #define	CDEV_MAJOR	75
-static struct cdevsw stli_cdevsw = {
-	/* name */	stli_drvname,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	stliopen,
-	/* close */	stliclose,
-	/* read */	stliread,
-	/* write */	stliwrite,
-	/* ioctl */	stliioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops stli_ops = {
+	{ stli_drvname, CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	stliopen,
+	.d_close =	stliclose,
+	.d_read =	stliread,
+	.d_write =	stliwrite,
+	.d_ioctl =	stliioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 #endif
@@ -864,8 +855,9 @@ static int stliattach(struct isa_device *idp)
 
 /*****************************************************************************/
 
-STATIC int stliopen(dev_t dev, int flag, int mode, struct thread *td)
+STATIC int stliopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stliport_t	*portp;
 	int		error, callout;
@@ -938,7 +930,7 @@ stliopen_restart:
 			}
 		} else {
 			if (portp->callout != 0) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto stliopen_end;
 				}
@@ -950,7 +942,7 @@ stliopen_restart:
 			}
 		}
 		if ((tp->t_state & TS_XCLUDE) &&
-		    suser(td)) {
+		    suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto stliopen_end;
 		}
@@ -962,7 +954,7 @@ stliopen_restart:
  */
 	if (((tp->t_state & TS_CARR_ON) == 0) && !callout &&
 			((tp->t_cflag & CLOCAL) == 0) &&
-			((flag & O_NONBLOCK) == 0)) {
+			((ap->a_oflags & O_NONBLOCK) == 0)) {
 		portp->waitopens++;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "stlidcd",0);
 		portp->waitopens--;
@@ -994,8 +986,9 @@ stliopen_end:
 
 /*****************************************************************************/
 
-STATIC int stliclose(dev_t dev, int flag, int mode, struct thread *td)
+STATIC int stliclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct tty	*tp;
 	stliport_t	*portp;
 
@@ -1015,7 +1008,7 @@ STATIC int stliclose(dev_t dev, int flag, int mode, struct thread *td)
 	tp = &portp->tty;
 
 	crit_enter();
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	stli_ttyoptim(portp, &tp->t_termios);
 	stli_shutdownclose(portp);
 	ttyclose(tp);
@@ -1024,24 +1017,25 @@ STATIC int stliclose(dev_t dev, int flag, int mode, struct thread *td)
 }
 
 
-STATIC int stliread(dev_t dev, struct uio *uiop, int flag)
+STATIC int stliread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	stliport_t	*portp;
 
 #if STLDEBUG
 	printf("stliread(dev=%s,uiop=%p,flag=%x)\n", devtoname(dev),
-		(void *) uiop, flag);
+		ap->a_uio, flag);
 #endif
 
 	if (minor(dev) & STL_MEMDEV)
-		return(stli_memrw(dev, uiop, flag));
+		return(stli_memrw(dev, ap->a_uio, ap->a_ioflag));
 	if (minor(dev) & STL_CTRLDEV)
 		return(ENODEV);
 
 	portp = stli_dev2port(dev);
 	if (portp == (stliport_t *) NULL)
 		return(ENODEV);
-	return ttyread(dev, uiop, flag);
+	return ttyread(ap);
 }
 
 /*****************************************************************************/
@@ -1073,30 +1067,33 @@ STATIC int stlistop(struct tty *tp, int rw)
 
 /*****************************************************************************/
 
-STATIC int stliwrite(dev_t dev, struct uio *uiop, int flag)
+STATIC int stliwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	stliport_t	*portp;
 
 #if STLDEBUG
 	printf("stliwrite(dev=%s,uiop=%p,flag=%x)\n", devtoname(dev),
-		(void *) uiop, flag);
+		ap->a_uio, flag);
 #endif
 
 	if (minor(dev) & STL_MEMDEV)
-		return(stli_memrw(dev, uiop, flag));
+		return(stli_memrw(dev, ap->a_uio, ap->a_ioflag));
 	if (minor(dev) & STL_CTRLDEV)
 		return(ENODEV);
 	portp = stli_dev2port(dev);
 	if (portp == (stliport_t *) NULL)
 		return(ENODEV);
-	return ttywrite(dev, uiop, flag);
+	return ttywrite(ap);
 }
 
 /*****************************************************************************/
 
-STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-		     struct thread *td)
+STATIC int stliioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
 	struct termios	*newtios, *localtios;
 	struct tty	*tp;
 	stlibrd_t	*brdp;
@@ -1106,11 +1103,11 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 
 #if STLDEBUG
 	printf("stliioctl(dev=%s,cmd=%lx,data=%p,flag=%x,p=%p)\n",
-		devtoname(dev), cmd, (void *) data, flag, (void *) p);
+		devtoname(dev), cmd, (void *) data, ap->a_fflag, (void *) p);
 #endif
 
 	if (minor(dev) & STL_MEMDEV)
-		return(stli_memioctl(dev, cmd, data, flag, td));
+		return(stli_memioctl(dev, cmd, data, ap->a_fflag));
 
 	portp = stli_dev2port(dev);
 	if (portp == (stliport_t *) NULL)
@@ -1135,7 +1132,7 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 
 		switch (cmd) {
 		case TIOCSETA:
-			if ((error = suser(td)) == 0)
+			if ((error = suser_cred(ap->a_cred, 0)) == 0)
 				*localtios = *((struct termios *) data);
 			break;
 		case TIOCGETA:
@@ -1202,12 +1199,13 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
  *	Call the line discipline and the common command processing to
  *	process this command (if they can).
  */
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data,
+					      ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return(error);
 
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	stli_ttyoptim(portp, &tp->t_termios);
 	if (error != ENOIOCTL) {
 		crit_exit();
@@ -1271,7 +1269,7 @@ STATIC int stliioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 		*((int *) data) = (portp->sigs | TIOCM_LE);
 		break;
 	case TIOCMSDTRWAIT:
-		if ((error = suser(td)) == 0)
+		if ((error = suser_cred(ap->a_cred, 0)) == 0)
 			portp->dtrwait = *((int *) data) * hz / 100;
 		break;
 	case TIOCMGDTRWAIT:
@@ -3415,7 +3413,7 @@ static int stli_brdattach(stlibrd_t *brdp)
 	printf("stli%d: %s (driver version %s), unit=%d nrpanels=%d "
 		"nrports=%d\n", brdp->unitid, stli_brdnames[brdp->brdtype],
 		stli_drvversion, brdp->brdnr, brdp->nrpanels, brdp->nrports);
-	cdevsw_add(&stli_cdevsw, -1, brdp->unitid);
+	dev_ops_add(&stli_ops, -1, brdp->unitid);
 	return(0);
 }
 
@@ -3645,8 +3643,7 @@ STATIC int stli_memrw(dev_t dev, struct uio *uiop, int flag)
  *	reset it, and start/stop it.
  */
 
-static int stli_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
-			 struct thread *td)
+static int stli_memioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag)
 {
 	stlibrd_t	*brdp;
 	int		brdnr, rc;

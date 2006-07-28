@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.h,v 1.5.2.6 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.3 2006/06/13 08:12:02 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.h,v 1.4 2006/07/28 02:17:38 dillon Exp $
  */
 
 struct pcmchan_children {
@@ -75,7 +75,7 @@ int chn_read(struct pcm_channel *c, struct uio *buf, int ioflags);
 u_int32_t chn_start(struct pcm_channel *c, int force);
 int chn_sync(struct pcm_channel *c, int threshold);
 int chn_flush(struct pcm_channel *c);
-int chn_poll(struct pcm_channel *c, int ev, struct proc *p);
+int chn_poll(struct pcm_channel *c, int ev);
 
 int chn_init(struct pcm_channel *c, void *devinfo, int dir);
 int chn_kill(struct pcm_channel *c);

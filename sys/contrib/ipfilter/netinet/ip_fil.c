@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.20 2005/11/28 17:13:35 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -666,12 +666,15 @@ int IPL_EXTERN(ioctl)(dev_t dev, int cmd, caddr_t data, int mode
 # endif
 )
 #else
+#if defined(__DragonFly__)
+int IPL_EXTERN(ioctl)(struct dev_ioctl_args *ap)
+#else
 int IPL_EXTERN(ioctl)(dev, cmd, data, mode
-#if (defined(_KERNEL) && (defined(__DragonFly__) || defined(__FreeBSD__)))
+#if (defined(_KERNEL) && defined(__FreeBSD__))
 , td)
 struct thread *td;
 # elif (defined(_KERNEL) && ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || \
-       (NetBSD >= 199511) || defined(__DragonFly__) || (__FreeBSD_version >= 220000) || \
+       (NetBSD >= 199511) || (__FreeBSD_version >= 220000) || \
        defined(__OpenBSD__)))
 , p)
 struct proc *p;
@@ -680,15 +683,22 @@ struct proc *p;
 # endif
 dev_t dev;
 # if defined(__NetBSD__) || defined(__OpenBSD__) || \
-	(_BSDI_VERSION >= 199701) || (defined(__DragonFly__) || __FreeBSD_version >= 300000)
+	(_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
 u_long cmd;
 # else
 int cmd;
 # endif
 caddr_t data;
 int mode;
+#endif /* DragonFly */
 #endif /* __sgi */
 {
+#if defined(__DragonFly__)
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
+	int mode = ap->a_fflag;
+#endif
 #if defined(_KERNEL) && !SOLARIS && !defined(__DragonFly__)
 	int s;
 #endif
@@ -1132,20 +1142,19 @@ caddr_t data;
 /*
  * routines below for saving IP headers to buffer
  */
+#ifdef __DragonFly__
+int IPL_EXTERN(open)(struct dev_open_args *ap)
+#else
 # ifdef __sgi
-#  ifdef _KERNEL
 int IPL_EXTERN(open)(dev_t *pdev, int flags, int devtype, cred_t *cp)
-#  else
-int IPL_EXTERN(open)(dev_t dev, int flags)
-#  endif
 # else
 int IPL_EXTERN(open)(dev, flags
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 , devtype, td)
 int devtype;
 struct thread *td;
 #elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
-     (defined(__DragonFly__) || __FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
+     (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;
 struct proc *p;
@@ -1155,7 +1164,11 @@ struct proc *p;
 dev_t dev;
 int flags;
 # endif /* __sgi */
+#endif /* DragonFly */
 {
+#ifdef __DragonFly__
+	dev_t dev = ap->a_head.a_dev;
+#endif
 # if defined(__sgi) && defined(_KERNEL)
 	u_int min = geteminor(*pdev);
 # else
@@ -1170,16 +1183,19 @@ int flags;
 }
 
 
+#ifdef __DragonFly__
+int IPL_EXTERN(close)(struct dev_close_args *ap)
+#else
 # ifdef __sgi
 int IPL_EXTERN(close)(dev_t dev, int flags, int devtype, cred_t *cp)
 #else
 int IPL_EXTERN(close)(dev, flags
-#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 , devtype, td)
 int devtype;
 struct thread *td;
 #elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
-     (defined(__DragonFly__) || __FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
+     (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;
 struct proc *p;
@@ -1189,7 +1205,11 @@ struct proc *p;
 dev_t dev;
 int flags;
 # endif /* __sgi */
+#endif /* DragonFly */
 {
+#ifdef __DragonFly__
+	dev_t dev = ap->a_head.a_dev;
+#endif
 	u_int	min = GET_MINOR(dev);
 
 	if (IPL_LOGMAX < min)
@@ -1205,6 +1225,9 @@ int flags;
  * called during packet processing and cause an inconsistancy to appear in
  * the filter lists.
  */
+#ifdef __DragonFly__
+int IPL_EXTERN(read)(struct dev_read_args *ap)
+#else
 # ifdef __sgi
 int IPL_EXTERN(read)(dev_t dev, uio_t *uio, cred_t *crp)
 # else
@@ -1217,7 +1240,12 @@ int IPL_EXTERN(read)(dev, uio)
 dev_t dev;
 struct uio *uio;
 # endif /* __sgi */
+#endif /* DragonFly */
 {
+#ifdef __DragonFly__
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+#endif
 # ifdef IPFILTER_LOG
 	return ipflog_read(GET_MINOR(dev), uio);
 # else

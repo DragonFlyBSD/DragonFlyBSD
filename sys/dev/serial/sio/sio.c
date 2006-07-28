@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.31 2005/10/13 00:02:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.32 2006/07/28 02:17:38 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -252,24 +252,15 @@ static	d_write_t	siowrite;
 static	d_ioctl_t	sioioctl;
 
 #define	CDEV_MAJOR	28
-static struct cdevsw sio_cdevsw = {
-	/* name */	driver_name,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	sioopen,
-	/* close */	sioclose,
-	/* read */	sioread,
-	/* write */	siowrite,
-	/* ioctl */	sioioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops sio_ops = {
+	{ driver_name, CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	sioopen,
+	.d_close =	sioclose,
+	.d_read =	sioread,
+	.d_write =	siowrite,
+	.d_ioctl =	sioioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 int	comconsole = -1;
@@ -1203,18 +1194,18 @@ determined_type: ;
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
-	cdevsw_add(&sio_cdevsw, UNIT_TO_MINOR(-1), minorbase);
-	make_dev(&sio_cdevsw, minorbase,
+	dev_ops_add(&sio_ops, UNIT_TO_MINOR(-1), minorbase);
+	make_dev(&sio_ops, minorbase,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyd%r", unit);
-	make_dev(&sio_cdevsw, minorbase | CONTROL_INIT_STATE,
+	make_dev(&sio_ops, minorbase | CONTROL_INIT_STATE,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyid%r", unit);
-	make_dev(&sio_cdevsw, minorbase | CONTROL_LOCK_STATE,
+	make_dev(&sio_ops, minorbase | CONTROL_LOCK_STATE,
 	    UID_ROOT, GID_WHEEL, 0600, "ttyld%r", unit);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK,
 	    UID_UUCP, GID_DIALER, 0660, "cuaa%r", unit);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK | CONTROL_INIT_STATE,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_INIT_STATE,
 	    UID_UUCP, GID_DIALER, 0660, "cuaia%r", unit);
-	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
+	make_dev(&sio_ops, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
 	    UID_UUCP, GID_DIALER, 0660, "cuala%r", unit);
 	com->flags = flags;
 	com->pps.ppscap = PPS_CAPTUREASSERT | PPS_CAPTURECLEAR;
@@ -1252,8 +1243,9 @@ determined_type: ;
 }
 
 static int
-sioopen(dev_t dev, int flag, int mode, struct thread *td)
+sioopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -1297,7 +1289,7 @@ open_top:
 			}
 		} else {
 			if (com->active_out) {
-				if (flag & O_NONBLOCK) {
+				if (ap->a_oflags & O_NONBLOCK) {
 					error = EBUSY;
 					goto out;
 				}
@@ -1312,7 +1304,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if (tp->t_state & TS_XCLUDE && suser(td)) {
+		if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1409,7 +1401,7 @@ open_top:
 	 * Wait for DCD if necessary.
 	 */
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
-	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
+	    && !(tp->t_cflag & CLOCAL) && !(ap->a_oflags & O_NONBLOCK)) {
 		++com->wopeners;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "siodcd", 0);
 		if (com_addr(unit) == NULL) {
@@ -1434,8 +1426,9 @@ out:
 }
 
 static int
-sioclose(dev_t dev, int	flag, int mode, struct thread *td)
+sioclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct com_s	*com;
 	int		mynor;
 	struct tty	*tp;
@@ -1448,7 +1441,7 @@ sioclose(dev_t dev, int	flag, int mode, struct thread *td)
 		return (ENODEV);
 	tp = com->tp;
 	crit_enter();
-	(*linesw[tp->t_line].l_close)(tp, flag);
+	(*linesw[tp->t_line].l_close)(tp, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, com);
 	comstop(tp, FREAD | FWRITE);
 	comhardclose(com);
@@ -1529,11 +1522,9 @@ comhardclose(com)
 }
 
 static int
-sioread(dev, uio, flag)
-	dev_t		dev;
-	struct uio	*uio;
-	int		flag;
+sioread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct com_s	*com;
 
@@ -1543,15 +1534,13 @@ sioread(dev, uio, flag)
 	com = com_addr(MINOR_TO_UNIT(mynor));
 	if (com == NULL || com->gone)
 		return (ENODEV);
-	return ((*linesw[com->tp->t_line].l_read)(com->tp, uio, flag));
+	return ((*linesw[com->tp->t_line].l_read)(com->tp, ap->a_uio, ap->a_ioflag));
 }
 
 static int
-siowrite(dev, uio, flag)
-	dev_t		dev;
-	struct uio	*uio;
-	int		flag;
+siowrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct com_s	*com;
 	int		unit;
@@ -1572,7 +1561,7 @@ siowrite(dev, uio, flag)
 	 */
 	if (constty != NULL && unit == comconsole)
 		constty = NULL;
-	return ((*linesw[com->tp->t_line].l_write)(com->tp, uio, flag));
+	return ((*linesw[com->tp->t_line].l_write)(com->tp, ap->a_uio, ap->a_ioflag));
 }
 
 static void
@@ -1985,8 +1974,10 @@ cont:
 }
 
 static int
-sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
+sioioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	struct com_s	*com;
 	int		error;
 	int		mynor;
@@ -2013,9 +2004,9 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		default:
 			return (ENODEV);	/* /dev/nodev */
 		}
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -2036,14 +2027,15 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 	tp = com->tp;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	term = tp->t_termios;
-	oldcmd = cmd;
-	error = ttsetcompat(tp, &cmd, data, &term);
+	oldcmd = ap->a_cmd;
+	error = ttsetcompat(tp, &ap->a_cmd, data, &term);
 	if (error != 0)
 		return (error);
-	if (cmd != oldcmd)
+	if (ap->a_cmd != oldcmd)
 		data = (caddr_t)&term;
 #endif
-	if (cmd == TIOCSETA || cmd == TIOCSETAW || cmd == TIOCSETAF) {
+	if (ap->a_cmd == TIOCSETA || ap->a_cmd == TIOCSETAW ||
+	    ap->a_cmd == TIOCSETAF) {
 		int	cc;
 		struct termios *dt = (struct termios *)data;
 		struct termios *lt = mynor & CALLOUT_MASK
@@ -2065,17 +2057,17 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		if (lt->c_ospeed != 0)
 			dt->c_ospeed = tp->t_ospeed;
 	}
-	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
+	error = (*linesw[tp->t_line].l_ioctl)(tp, ap->a_cmd, data, ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return (error);
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, ap->a_cmd, data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios, com);
 	if (error != ENOIOCTL) {
 		crit_exit();
 		return (error);
 	}
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case TIOCSBRK:
 		sio_setreg(com, com_cfcr, com->cfcr_image |= CFCR_SBREAK);
 		break;
@@ -2106,7 +2098,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);
@@ -2126,7 +2118,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		break;
 	default:
 		crit_exit();
-		error = pps_ioctl(cmd, data, &com->pps);
+		error = pps_ioctl(ap->a_cmd, data, &com->pps);
 		if (error == ENODEV)
 			error = ENOTTY;
 		return (error);
@@ -2983,7 +2975,7 @@ siocnprobe(cp)
 
 			crit_exit();
 			if (COM_CONSOLE(flags) && !COM_LLCONSOLE(flags)) {
-				cp->cn_dev = make_dev(&sio_cdevsw, unit,
+				cp->cn_dev = make_dev(&sio_ops, unit,
 						UID_ROOT, GID_WHEEL, 0600,
 						"ttyd%r", unit);
 				cp->cn_pri = COM_FORCECONSOLE(flags)
@@ -2997,7 +2989,7 @@ siocnprobe(cp)
 				siogdbiobase = iobase;
 				siogdbunit = unit;
 #if DDB > 0
-				gdbdev = make_dev(&sio_cdevsw, unit,
+				gdbdev = make_dev(&sio_ops, unit,
 						UID_ROOT, GID_WHEEL, 0600,
 						"ttyd%r", unit);
 				gdb_getc = siocngetc;
@@ -3020,7 +3012,7 @@ siocnprobe(cp)
 		printf("configuration file (currently sio only).\n");
 		siogdbiobase = siocniobase;
 		siogdbunit = siocnunit;
-		gdbdev = make_dev(&sio_cdevsw, siocnunit,
+		gdbdev = make_dev(&sio_ops, siocnunit,
 				UID_ROOT, GID_WHEEL, 0600,
 				"ttyd%r", siocnunit);
 		gdb_getc = siocngetc;

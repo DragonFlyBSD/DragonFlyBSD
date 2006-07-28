@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.30 2006/05/24 21:50:11 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.31 2006/07/28 02:17:35 dillon Exp $
  *
  */
 
@@ -234,7 +234,7 @@ static timeout_t fd_iotimeout;
 static timeout_t fd_pseudointr;
 static int fdstate(struct fdc_data *);
 static int retrier(struct fdc_data *);
-static int fdformat(dev_t, struct fd_formb *, struct thread *);
+static int fdformat(dev_t, struct fd_formb *, struct ucred *);
 
 static int enable_fifo(fdc_p fdc);
 
@@ -329,23 +329,14 @@ static	d_close_t	fdclose;
 static	d_ioctl_t	fdioctl;
 static	d_strategy_t	fdstrategy;
 
-static struct cdevsw fd_cdevsw = {
-	/* name */	"fd",
-	/* maj */	FD_CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	Fdopen,
-	/* close */	fdclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	fdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	fdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops fd_ops = {
+	{ "fd", FD_CDEV_MAJOR, D_DISK },
+	.d_open =	Fdopen,
+	.d_close =	fdclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	fdioctl,
+	.d_strategy =	fdstrategy,
 };
 
 static int
@@ -1026,8 +1017,8 @@ fd_attach(device_t dev)
 
 	fd = device_get_softc(dev);
 
-	cdevsw_add(&fd_cdevsw, -1 << 6, fd->fdu << 6);
-	make_dev(&fd_cdevsw, (fd->fdu << 6),
+	dev_ops_add(&fd_ops, -1 << 6, fd->fdu << 6);
+	make_dev(&fd_ops, (fd->fdu << 6),
 		UID_ROOT, GID_OPERATOR, 0640, "rfd%d", fd->fdu);
 
 #if 0
@@ -1267,8 +1258,9 @@ out_fdc(struct fdc_data *fdc, int x)
 /*                           fdopen/fdclose                                 */
 /****************************************************************************/
 int
-Fdopen(dev_t dev, int flags, int mode, struct thread *td)
+Fdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
  	fdu_t fdu = FDUNIT(minor(dev));
 	int type = FDTYPE(minor(dev));
 	fd_p	fd;
@@ -1362,8 +1354,9 @@ Fdopen(dev_t dev, int flags, int mode, struct thread *td)
 }
 
 int
-fdclose(dev_t dev, int flags, int mode, struct thread *td)
+fdclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
  	fdu_t fdu = FDUNIT(minor(dev));
 	struct fd_data *fd;
 
@@ -1377,9 +1370,11 @@ fdclose(dev_t dev, int flags, int mode, struct thread *td)
 /****************************************************************************/
 /*                               fdstrategy                                 */
 /****************************************************************************/
-void
-fdstrategy(dev_t dev, struct bio *bio)
+int
+fdstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	unsigned nblocks, blknum, cando;
  	fdu_t	fdu;
@@ -1454,10 +1449,11 @@ fdstrategy(dev_t dev, struct bio *bio)
 
 	fdstart(fdc);
 	crit_exit();
-	return;
+	return(0);
 
 bad:
 	biodone(bio);
+	return(0);
 }
 
 /***************************************************************\
@@ -2165,7 +2161,7 @@ fdformat_wakeup(struct bio *bio)
 }
 
 static int
-fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
+fdformat(dev_t dev, struct fd_formb *finfo, struct ucred *cred)
 {
  	fdu_t	fdu;
  	fd_p	fd;
@@ -2226,8 +2222,9 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
  */
 
 static int
-fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
+fdioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
  	fdu_t	fdu = FDUNIT(minor(dev));
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
 	size_t fdblk;
@@ -2240,7 +2237,7 @@ fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	fdblk = 128 << fd->ft->secsize;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case DIOCGDINFO:
 		bzero(buffer, sizeof (buffer));
 		dl = (struct disklabel *)buffer;
@@ -2255,26 +2252,26 @@ fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		else
 			error = EINVAL;
 
-		*(struct disklabel *)addr = *dl;
+		*(struct disklabel *)ap->a_data = *dl;
 		break;
 
 	case DIOCSDINFO:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			error = EBADF;
 		break;
 
 	case DIOCWLABEL:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			error = EBADF;
 		break;
 
 	case DIOCWDINFO:
-		if ((flag & FWRITE) == 0) {
+		if ((ap->a_fflag & FWRITE) == 0) {
 			error = EBADF;
 			break;
 		}
 
-		dl = (struct disklabel *)addr;
+		dl = (struct disklabel *)ap->a_data;
 
 		if ((error = setdisklabel((struct disklabel *)buffer, dl,
 					  (u_long)0)) != 0)
@@ -2283,36 +2280,36 @@ fdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 		error = writedisklabel(dev, (struct disklabel *)buffer);
 		break;
 	case FD_FORM:
-		if ((flag & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			error = EBADF;	/* must be opened for writing */
-		else if (((struct fd_formb *)addr)->format_version !=
+		else if (((struct fd_formb *)ap->a_data)->format_version !=
 			FD_FORMAT_VERSION)
 			error = EINVAL;	/* wrong version of formatting prog */
 		else
-			error = fdformat(dev, (struct fd_formb *)addr, td);
+			error = fdformat(dev, (struct fd_formb *)ap->a_data, ap->a_cred);
 		break;
 
 	case FD_GTYPE:                  /* get drive type */
-		*(struct fd_type *)addr = *fd->ft;
+		*(struct fd_type *)ap->a_data = *fd->ft;
 		break;
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
-		if (suser(td) != 0)
+		if (suser_cred(ap->a_cred, 0) != 0)
 			return EPERM;
-		*fd->ft = *(struct fd_type *)addr;
+		*fd->ft = *(struct fd_type *)ap->a_data;
 		break;
 
 	case FD_GOPTS:			/* get drive options */
-		*(int *)addr = fd->options;
+		*(int *)ap->a_data = fd->options;
 		break;
 
 	case FD_SOPTS:			/* set drive options */
-		fd->options = *(int *)addr;
+		fd->options = *(int *)ap->a_data;
 		break;
 
 	case FD_GSTAT:
-		fsp = (struct fdc_status *)addr;
+		fsp = (struct fdc_status *)ap->a_data;
 		if ((fd->fdc->flags & FDC_STAT_VALID) == 0)
 			return EINVAL;
 		memcpy(fsp->status, fd->fdc->status, 7 * sizeof(u_int));

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.13 2005/10/30 23:00:56 swildner Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.14 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -351,32 +351,15 @@ fbattach(device_t dev)
 #define FB_UNIT(dev)	minor(dev)
 #define FB_MKMINOR(unit) (u)
 
+static d_default_t	fboperate;
 static d_open_t		fbopen;
-static d_close_t	fbclose;
-static d_read_t		fbread;
-static d_write_t	fbwrite;
-static d_ioctl_t	fbioctl;
-static d_mmap_t		fbmmap;
 
 #define CDEV_MAJOR	123	/* XXX */
 
-static struct cdevsw fb_cdevsw = {
-	/* name */	FB_DRIVER_NAME,
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	fbopen,
-	/* close */	fbclose,
-	/* read */	fbread,
-	/* write */	fbwrite,
-	/* ioctl */	fbioctl,
-	/* poll */	nopoll,
-	/* mmap */	fbmmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops fb_ops = {
+	{ FB_DRIVER_NAME, CDEV_MAJOR, 0 },
+	.d_default =	fboperate,
+	.d_open =	fbopen
 };
 
 static void
@@ -385,7 +368,7 @@ vfbattach(void *arg)
 	static int fb_devsw_installed = FALSE;
 
 	if (!fb_devsw_installed) {
-		cdevsw_add(&fb_cdevsw, 0, 0);
+		dev_ops_add(&fb_ops, 0, 0);
 		fb_devsw_installed = TRUE;
 	}
 }
@@ -434,82 +417,33 @@ fb_detach(dev_t dev, video_adapter_t *adp)
 }
 
 static int
-fbopen(dev_t dev, int flag, int mode, struct thread *td)
+fbopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit;
 	dev_t fdev;
 
 	unit = FB_UNIT(dev);
-	if (unit >= adapters)
+	if (unit < 0 || unit >= adapters)
 		return ENXIO;
 	if ((fdev = vidcdevsw[unit]) == NULL)
 		return ENXIO;
-	return dev_dopen(fdev, flag, mode, td);
+	return dev_dopen(fdev, ap->a_oflags, ap->a_devtype, ap->a_cred);
 }
 
 static int
-fbclose(dev_t dev, int flag, int mode, struct thread *td)
+fboperate(struct dev_generic_args *ap)
 {
+	dev_t dev = ap->a_dev;
 	int unit;
 	dev_t fdev;
 
 	unit = FB_UNIT(dev);
 	if ((fdev = vidcdevsw[unit]) == NULL)
 		return ENXIO;
-	return dev_dclose(fdev, flag, mode, td);
+	ap->a_dev = fdev;
+	return dev_doperate(ap);
 }
-
-static int
-fbread(dev_t dev, struct uio *uio, int flag)
-{
-	int unit;
-	dev_t fdev;
-
-	unit = FB_UNIT(dev);
-	if ((fdev = vidcdevsw[unit]) == NULL)
-		return ENXIO;
-	return dev_dread(fdev, uio, flag);
-}
-
-static int
-fbwrite(dev_t dev, struct uio *uio, int flag)
-{
-	int unit;
-	dev_t fdev;
-
-	unit = FB_UNIT(dev);
-	if ((fdev = vidcdevsw[unit]) == NULL)
-		return ENXIO;
-	return dev_dwrite(fdev, uio, flag);
-}
-
-static int
-fbioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
-{
-	int unit;
-	dev_t fdev;
-
-	unit = FB_UNIT(dev);
-	if ((fdev = vidcdevsw[unit]) == NULL)
-		return ENXIO;
-	return dev_dioctl(fdev, cmd, arg, flag, td);
-}
-
-static int
-fbmmap(dev_t dev, vm_offset_t offset, int nprot)
-{
-	int unit;
-	dev_t fdev;
-
-	unit = FB_UNIT(dev);
-	if ((fdev = vidcdevsw[unit]) == NULL)
-		return ENXIO;
-	return (dev_dmmap(fdev, offset, nprot));
-}
-
-#if experimental
-DEV_DRIVER_MODULE(fb, ???, fb_driver, fb_devclass, fb_cdevsw, 0, 0);
-#endif
 
 /*
  * Generic frame buffer cdev driver functions
@@ -518,7 +452,7 @@ DEV_DRIVER_MODULE(fb, ???, fb_driver, fb_devclass, fb_cdevsw, 0, 0);
  */
 
 int genfbopen(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode,
-	      struct thread *td)
+	      struct ucred *cred)
 {
 	crit_enter();
 	if (!(sc->gfb_flags & FB_OPEN))
@@ -527,8 +461,7 @@ int genfbopen(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode,
 	return 0;
 }
 
-int genfbclose(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode,
-	       struct thread *td)
+int genfbclose(genfb_softc_t *sc, video_adapter_t *adp, int flag, int mode)
 {
 	crit_enter();
 	sc->gfb_flags &= ~FB_OPEN;
@@ -569,7 +502,7 @@ int genfbwrite(genfb_softc_t *sc, video_adapter_t *adp, struct uio *uio,
 }
 
 int genfbioctl(genfb_softc_t *sc, video_adapter_t *adp, u_long cmd,
-	       caddr_t arg, int flag, struct thread *td)
+	       caddr_t arg, int flag, struct ucred *cred)
 {
 	int error;
 

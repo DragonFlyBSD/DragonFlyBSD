@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_disk.c,v 1.8.2.4 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.8 2006/02/17 19:18:05 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_disk.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
  */
 
 /*
@@ -61,23 +61,14 @@ static	d_ioctl_t	mlxd_ioctl;
 
 #define MLXD_CDEV_MAJOR	131
 
-static struct cdevsw mlxd_cdevsw = {
-		/* name */ 	"mlxd",
-		/* maj */	MLXD_CDEV_MAJOR,
-		/* flags */	D_DISK,
-		/* port */	NULL,
-		/* clone */	NULL,
-
-		/* open */	mlxd_open,
-		/* close */	mlxd_close,
-		/* read */	physread,
-		/* write */	physwrite,
-		/* ioctl */	mlxd_ioctl,
-		/* poll */	nopoll,
-		/* mmap */	nommap,
-		/* strategy */	mlxd_strategy,
-		/* dump */	nodump,
-		/* psize */ 	nopsize
+static struct dev_ops mlxd_ops = {
+		{ "mlxd", MLXD_CDEV_MAJOR, D_DISK },
+		.d_open =	mlxd_open,
+		.d_close =	mlxd_close,
+		.d_read =	physread,
+		.d_write =	physwrite,
+		.d_ioctl =	mlxd_ioctl,
+		.d_strategy =	mlxd_strategy,
 };
 
 devclass_t		mlxd_devclass;
@@ -98,8 +89,9 @@ static driver_t mlxd_driver = {
 DRIVER_MODULE(mlxd, mlx, mlxd_driver, mlxd_devclass, 0, 0);
 
 static int
-mlxd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+mlxd_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     struct disklabel	*label;
 
@@ -127,8 +119,9 @@ mlxd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-mlxd_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+mlxd_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
 
     debug_called(1);
@@ -140,8 +133,9 @@ mlxd_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+mlxd_ioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct mlxd_softc	*sc = (struct mlxd_softc *)dev->si_drv1;
     int error;
 
@@ -150,7 +144,7 @@ mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
     if (sc == NULL)
 	return (ENXIO);
 
-    if ((error = mlx_submit_ioctl(sc->mlxd_controller, sc->mlxd_drive, cmd, addr, flag, td)) != ENOIOCTL) {
+    if ((error = mlx_submit_ioctl(sc->mlxd_controller, sc->mlxd_drive, ap->a_cmd, ap->a_data, ap->a_fflag)) != ENOIOCTL) {
 	debug(0, "mlx_submit_ioctl returned %d\n", error);
 	return(error);
     }
@@ -163,9 +157,10 @@ mlxd_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
  * to complete.  Multi-page transfers are supported.  All I/O requests must
  * be a multiple of a sector in length.
  */
-static void
-mlxd_strategy(dev_t dev, mlx_bio *bio)
+static int
+mlxd_strategy(struct dev_strategy_args *ap)
 {
+    struct bio *bio = ap->a_bio;
     struct buf *bp = bio->bio_buf;
     struct mlxd_softc	*sc = (struct mlxd_softc *)bio->bio_driver_info;
 
@@ -187,7 +182,7 @@ mlxd_strategy(dev_t dev, mlx_bio *bio)
 
     devstat_start_transaction(&sc->mlxd_stats);
     mlx_submit_bio(sc->mlxd_controller, bio);
-    return;
+    return(0);
 
  bad:
     /*
@@ -195,7 +190,7 @@ mlxd_strategy(dev_t dev, mlx_bio *bio)
      */
     bp->b_resid = bp->b_bcount;
     biodone(bio);
-    return;
+    return(0);
 }
 
 void
@@ -264,7 +259,7 @@ mlxd_attach(device_t dev)
 		      DEVSTAT_TYPE_STORARRAY | DEVSTAT_TYPE_IF_OTHER, 
 		      DEVSTAT_PRIORITY_ARRAY);
 
-    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, 0, &mlxd_cdevsw);
+    dsk = disk_create(sc->mlxd_unit, &sc->mlxd_disk, 0, &mlxd_ops);
     dsk->si_drv1 = sc;
     sc->mlxd_dev_t = dsk;
 

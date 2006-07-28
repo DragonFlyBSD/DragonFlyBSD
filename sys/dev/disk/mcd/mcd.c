@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.18 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.19 2006/07/28 02:17:35 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -204,26 +204,17 @@ struct	isa_driver	mcddriver = { mcd_probe, mcd_attach, "mcd" };
 static	d_open_t	mcdopen;
 static	d_close_t	mcdclose;
 static	d_ioctl_t	mcdioctl;
-static	d_psize_t	mcdsize;
 static	d_strategy_t	mcdstrategy;
 
-static struct cdevsw mcd_cdevsw = {
-	/* name */	"mcd",
-	/* maj */	MCD_CDEV_MAJOR,
-	/* flags */	D_DISK,
-	/* port */	NULL,
-	/* clone */	NULL,
+static	int mcdsize(dev_t dev);
 
-	/* open */	mcdopen,
-	/* close */	mcdclose,
-	/* read */	physread,
-	/* write */	nowrite,
-	/* ioctl */	mcdioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	mcdstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops mcd_ops = {
+	{ "mcd", MCD_CDEV_MAJOR, D_DISK },
+	.d_open =	mcdopen,
+	.d_close =	mcdclose,
+	.d_read =	physread,
+	.d_ioctl =	mcdioctl,
+	.d_strategy =	mcdstrategy,
 };
 
 #define mcd_put(port,byte)	outb(port,byte)
@@ -260,20 +251,22 @@ int mcd_attach(struct isa_device *dev)
 	mcd_configure(cd);
 #endif
 	/* name filled in probe */
-	cdevsw_add(&mcd_cdevsw, dkunitmask(), dkmakeunit(unit));
-	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, 0),
+	dev_ops_add(&mcd_ops, dkunitmask(), dkmakeunit(unit));
+	make_dev(&mcd_ops, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "rmcd%da", unit);
-	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
+	make_dev(&mcd_ops, dkmakeminor(unit, 0, RAW_PART),
 	    UID_ROOT, GID_OPERATOR, 0640, "rmcd%dc", unit);
-	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, 0),
+	make_dev(&mcd_ops, dkmakeminor(unit, 0, 0),
 	    UID_ROOT, GID_OPERATOR, 0640, "mcd%da", unit);
-	make_dev(&mcd_cdevsw, dkmakeminor(unit, 0, RAW_PART),
+	make_dev(&mcd_ops, dkmakeminor(unit, 0, RAW_PART),
 	    UID_ROOT, GID_OPERATOR, 0640, "mcd%dc", unit);
 	return 1;
 }
 
-int mcdopen(dev_t dev, int flags, int fmt, struct thread *td)
+int
+mcdopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit,part,phys,r,retry;
 	struct mcd_data *cd;
 
@@ -364,8 +357,9 @@ MCD_TRACE("open: partition=%d, disksize = %ld, blksize=%d\n",
 	return ENXIO;
 }
 
-int mcdclose(dev_t dev, int flags, int fmt, struct thread *td)
+int mcdclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int unit,part;
 	struct mcd_data *cd;
 
@@ -388,9 +382,11 @@ int mcdclose(dev_t dev, int flags, int fmt, struct thread *td)
 	return 0;
 }
 
-void
-mcdstrategy(dev_t dev, struct bio *bio)
+int
+mcdstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct bio *nbio;
 	struct buf *bp = bio->bio_buf;
 	struct mcd_data *cd;
@@ -450,7 +446,7 @@ MCD_TRACE("strategy: drive not valid\n");
 
 	/* now check whether we can perform processing */
 	mcd_start(unit);
-	return;
+	return(0);
 
 	/*
 	 * These cases occur before nbio is set, use bio.
@@ -460,7 +456,7 @@ bad:
 done:
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
-	return;
+	return(0);
 }
 
 static void mcd_start(int unit)
@@ -514,8 +510,11 @@ static void mcd_start(int unit)
 	return;
 }
 
-int mcdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+int
+mcdioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t addr = ap->a_data;
 	struct mcd_data *cd;
 	int unit,part,retry,r;
 
@@ -525,9 +524,9 @@ int mcdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
 	if (mcd_getstat(unit, 1) == -1) /* detect disk change too */
 		return EIO;
-MCD_TRACE("ioctl called 0x%lx\n", cmd);
+MCD_TRACE("ioctl called 0x%lx\n", ap->a_cmd);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case CDIOCSETPATCH:
 	case CDIOCGETVOL:
 	case CDIOCSETVOL:
@@ -584,7 +583,7 @@ MCD_TRACE("ioctl called 0x%lx\n", cmd);
 			return ENXIO;
 	}
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case DIOCGDINFO:
 		*(struct disklabel *) addr = cd->dlabel;
 		return 0;
@@ -600,7 +599,7 @@ MCD_TRACE("ioctl called 0x%lx\n", cmd);
 		 */
 	case DIOCWDINFO:
 	case DIOCSDINFO:
-		if ((flags & FWRITE) == 0)
+		if ((ap->a_fflag & FWRITE) == 0)
 			return EBADF;
 		else {
 			return setdisklabel(&cd->dlabel,

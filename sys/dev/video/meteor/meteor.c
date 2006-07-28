@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.15 2005/06/16 21:12:43 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*		Change History:
@@ -152,6 +152,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/signalvar.h>
 #include <sys/mman.h>
@@ -220,23 +221,14 @@ static	d_ioctl_t	meteor_ioctl;
 static	d_mmap_t	meteor_mmap;
 
 #define CDEV_MAJOR 67
-static struct cdevsw meteor_cdevsw = {
-	/* name */	"meteor",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	meteor_open,
-	/* close */	meteor_close,
-	/* read */	meteor_read,
-	/* write */	meteor_write,
-	/* ioctl */	meteor_ioctl,
-	/* poll */	nopoll,
-	/* mmap */	meteor_mmap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops meteor_ops = {
+	{ "meteor", CDEV_MAJOR, 0 },
+	.d_open =	meteor_open,
+	.d_close =	meteor_close,
+	.d_read =	meteor_read,
+	.d_write =	meteor_write,
+	.d_ioctl =	meteor_ioctl,
+	.d_mmap =	meteor_mmap,
 };
 #endif
 
@@ -1113,8 +1105,8 @@ met_attach(pcici_t tag, int unit)
 
     	mtr->flags |= METEOR_INITALIZED | METEOR_AUTOMODE | METEOR_DEV0 |
 		   METEOR_RGB16;
-	cdevsw_add(&meteor_cdevsw, -1, unit);
-	make_dev(&meteor_cdevsw, unit, 0, 0, 0644, "meteor");
+	dev_ops_add(&meteor_ops, -1, unit);
+	make_dev(&meteor_ops, unit, 0, 0, 0644, "meteor");
 }
 
 #define UNIT(x)	((x) & 0x07)
@@ -1152,10 +1144,10 @@ struct	saa7116_regs	*m;
 **---------------------------------------------------------
 */
 
-
 int
-meteor_open(dev_t dev, int flags, int fmt, struct thread *td)
+meteor_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	meteor_reg_t *mtr;
 	int	unit; 
 	int	i;
@@ -1198,8 +1190,9 @@ meteor_open(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 int
-meteor_close(dev_t dev, int flags, int fmt, struct thread *td)
+meteor_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	meteor_reg_t *mtr;
 	int	unit; 
 #ifdef METEOR_DEALLOC_ABOVE
@@ -1278,8 +1271,10 @@ mreg_t *cap = &mtr->base->cap_cntl;
 }
 
 int
-meteor_read(dev_t dev, struct uio *uio, int ioflag)
+meteor_read(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	meteor_reg_t *mtr;
 	int	unit; 
 	int	status;
@@ -1315,14 +1310,16 @@ meteor_read(dev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-meteor_write(dev_t dev, struct uio *uio, int ioflag)
+meteor_write(struct dev_write_args *ap)
 {
 	return(0);
 }
 
 int
-meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
+meteor_ioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t data = ap->a_data;
 	int	error;  
 	int	unit;   
 	unsigned int	temp;
@@ -1339,7 +1336,8 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 
 	error = 0;
 
-	if (!arg) return(EINVAL);
+	if (data == NULL)
+		return(EINVAL);
 	unit = UNIT(minor(dev));
 	if (unit >= NMETEOR)	/* unit out of range */
 		return(ENXIO);
@@ -1347,29 +1345,29 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	mtr = &(meteor[unit]);
 	base = mtr->base;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case METEORSTS:
-		if(*arg)
+		if(*data)
 			mtr->flags |= METEOR_WANT_TS;
 		else
 			mtr->flags &= ~METEOR_WANT_TS;
 		break;
 	case METEORGTS:
 		if(mtr->flags & METEOR_WANT_TS)
-			*arg = 1;
+			*data = 1;
 		else
-			*arg = 0;
+			*data = 0;
 		break;
 #ifdef METEOR_TEST_VIDEO
 	case METEORGVIDEO:
-		video = (struct meteor_video *)arg;
+		video = (struct meteor_video *)data;
 		video->addr = mtr->video.addr;
 		video->width = mtr->video.width;
 		video->banksize = mtr->video.banksize;
 		video->ramsize = mtr->video.ramsize;
 		break;
 	case METEORSVIDEO:
-		video = (struct meteor_video *)arg;
+		video = (struct meteor_video *)data;
 		mtr->video.addr = video->addr;
 		mtr->video.width = video->width;
 		mtr->video.banksize = video->banksize;
@@ -1377,23 +1375,23 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		break;
 #endif
 	case METEORSFPS:
-		set_fps(mtr, *(u_short *)arg);
+		set_fps(mtr, *(u_short *)data);
 		break;
 	case METEORGFPS:
-		*(u_short *)arg = mtr->fps;
+		*(u_short *)data = mtr->fps;
 		break;
 	case METEORSSIGNAL:
-		if (*(int *)arg < 0 || *(int *)arg > _SIG_MAXSIG)
+		if (*(int *)data < 0 || *(int *)data > _SIG_MAXSIG)
 			return EINVAL;
-		mtr->signal = *(int *) arg;
+		mtr->signal = *(int *) data;
 		if (mtr->signal) {
-		  mtr->proc = td->td_proc;	/* might be NULL */
+		  mtr->proc = curproc;	/* might be NULL */
 		} else {
 		  mtr->proc = (struct proc *)0;
 		}
 		break;
 	case METEORGSIGNAL:
-		*(int *)arg = mtr->signal;
+		*(int *)data = mtr->signal;
 		break;
 	case METEORSTATUS:	/* get 7196 status */
 		temp = 0;
@@ -1405,64 +1403,64 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			SAA7196_REG(mtr, SAA7196_STDC) & ~0x02);
 		SAA7196_READ(mtr);
 		temp |= (base->i2c_read & 0xff000000L) >> 16;
-		*(u_short *)arg = temp;
+		*(u_short *)data = temp;
 		break;
 	case METEORSHUE:	/* set hue */
-		SAA7196_WRITE(mtr, SAA7196_HUEC, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_HUEC, *(char *)data);
 		break;
 	case METEORGHUE:	/* get hue */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_HUEC);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_HUEC);
 		break;
 	case METEORSCHCV:	/* set chrominance gain */
-		SAA7196_WRITE(mtr, SAA7196_CGAINR, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_CGAINR, *(char *)data);
 		break;
 	case METEORGCHCV:	/* get chrominance gain */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_CGAINR);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_CGAINR);
 		break;
 	case METEORSBRIG:	/* set brightness */
-		SAA7196_WRITE(mtr, SAA7196_BRIG, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_BRIG, *(char *)data);
 		break;
 	case METEORGBRIG:	/* get brightness */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_BRIG);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_BRIG);
 		break;
 	case METEORSCSAT:	/* set chroma saturation */
-		SAA7196_WRITE(mtr, SAA7196_CSAT, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_CSAT, *(char *)data);
 		break;
 	case METEORGCSAT:	/* get chroma saturation */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_CSAT);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_CSAT);
 		break;
 	case METEORSCONT:	/* set contrast */
-		SAA7196_WRITE(mtr, SAA7196_CONT, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_CONT, *(char *)data);
 		break;
 	case METEORGCONT:	/* get contrast */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_CONT);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_CONT);
 		break;
 	case METEORSBT254:
 		if((mtr->flags & METEOR_RGB) == 0)
 			return EINVAL;
-		temp = *(unsigned short *)arg;
+		temp = *(unsigned short *)data;
 		bt254_write(mtr, temp & 0xf, (temp & 0x0ff0) >> 4);
 		break;
 	case METEORGBT254:
 		if((mtr->flags & METEOR_RGB) == 0)
 			return EINVAL;
-		temp = *(unsigned short *)arg & 0x7;
-		*(unsigned short *)arg = mtr->bt254_reg[temp] << 4 | temp;
+		temp = *(unsigned short *)data & 0x7;
+		*(unsigned short *)data = mtr->bt254_reg[temp] << 4 | temp;
 		break;
 	case METEORSHWS:	/* set horizontal window start */
-		SAA7196_WRITE(mtr, SAA7196_HWS, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_HWS, *(char *)data);
 		break;
 	case METEORGHWS:	/* get horizontal window start */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_HWS);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_HWS);
 		break;
 	case METEORSVWS:	/* set vertical window start */
-		SAA7196_WRITE(mtr, SAA7196_VWS, *(char *)arg);
+		SAA7196_WRITE(mtr, SAA7196_VWS, *(char *)data);
 		break;
 	case METEORGVWS:	/* get vertical window start */
-		*(char *)arg = SAA7196_REG(mtr, SAA7196_VWS);
+		*(char *)data = SAA7196_REG(mtr, SAA7196_VWS);
 		break;
 	case METEORSINPUT:	/* set input device */
-		switch(*(unsigned long *)arg & METEOR_DEV_MASK) {
+		switch(*(unsigned long *)data & METEOR_DEV_MASK) {
 		case 0:			/* default */
 		case METEOR_INPUT_DEV0:
 			if(mtr->flags & METEOR_RGB)
@@ -1532,10 +1530,10 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		}
 		break;
 	case METEORGINPUT:	/* get input device */
-		*(u_long *)arg = mtr->flags & METEOR_DEV_MASK;
+		*(u_long *)data = mtr->flags & METEOR_DEV_MASK;
 		break;
 	case METEORSFMT:	/* set input format */
-		switch(*(unsigned long *)arg & METEOR_FORM_MASK ) {
+		switch(*(unsigned long *)data & METEOR_FORM_MASK ) {
 		case 0:			/* default */
 		case METEOR_FMT_NTSC:
 			mtr->flags = (mtr->flags & ~METEOR_FORM_MASK) |
@@ -1601,11 +1599,11 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		}
 		break;
 	case METEORGFMT:	/* get input format */
-		*(u_long *)arg = mtr->flags & METEOR_FORM_MASK;
+		*(u_long *)data = mtr->flags & METEOR_FORM_MASK;
 		break;
 	case METEORCAPTUR:
 		temp = mtr->flags;
-		switch (*(int *) arg) {
+		switch (*(int *) data) {
 		case METEOR_CAP_SINGLE:
 			if (mtr->bigbuf==0)	/* no frame buffer allocated */
 				return(ENOMEM);
@@ -1646,7 +1644,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		}
 		break;
 	case METEORCAPFRM:
-	    frame = (struct meteor_capframe *) arg;
+	    frame = (struct meteor_capframe *) data;
 	    if (!frame) 
 		return(EINVAL);
 	    switch (frame->command) {
@@ -1704,7 +1702,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 	    break;
  
 	case METEORSETGEO:
-		geo = (struct meteor_geomet *) arg;
+		geo = (struct meteor_geomet *) data;
 
 		/* Either even or odd, if even & odd, then these a zero */
 		if((geo->oformat & METEOR_GEO_ODD_ONLY) &&
@@ -2052,7 +2050,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 				((geo->oformat&METEOR_GEO_UNSIGNED)?0:0x10));
 		break;
 	case METEORGETGEO:
-		geo = (struct meteor_geomet *) arg;
+		geo = (struct meteor_geomet *) data;
 		geo->rows = mtr->rows;
 		geo->columns = mtr->cols;
 		geo->frames = mtr->frames;
@@ -2072,7 +2070,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		}
 		break;
 	case METEORSCOUNT:	/* (re)set error counts */
-		cnt = (struct meteor_counts *) arg;
+		cnt = (struct meteor_counts *) data;
 		mtr->fifo_errors = cnt->fifo_errors;
 		mtr->dma_errors = cnt->dma_errors;
 		mtr->frames_captured = cnt->frames_captured;
@@ -2080,7 +2078,7 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		mtr->odd_fields_captured = cnt->odd_fields_captured;
 		break;
 	case METEORGCOUNT:	/* get error counts */
-		cnt = (struct meteor_counts *) arg;
+		cnt = (struct meteor_counts *) data;
 		cnt->fifo_errors = mtr->fifo_errors;
 		cnt->dma_errors = mtr->dma_errors;
 		cnt->frames_captured = mtr->frames_captured;
@@ -2096,9 +2094,9 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 }
 
 int
-meteor_mmap(dev_t dev, vm_offset_t offset, int nprot)
+meteor_mmap(struct dev_mmap_args *ap)
 {
-
+	dev_t dev = ap->a_head.a_dev;
 	int	unit;
 	meteor_reg_t *mtr;
 
@@ -2109,11 +2107,11 @@ meteor_mmap(dev_t dev, vm_offset_t offset, int nprot)
 	mtr = &(meteor[unit]);
 
 
-	if(nprot & PROT_EXEC)
+	if (ap->a_nprot & PROT_EXEC)
 		return -1;
 
-	if(offset >= mtr->alloc_pages * PAGE_SIZE)
+	if (ap->a_offset >= mtr->alloc_pages * PAGE_SIZE)
 		return -1;
 
-	return i386_btop(vtophys(mtr->bigbuf) + offset);
+	return i386_btop(vtophys(mtr->bigbuf) + ap->a_offset);
 }

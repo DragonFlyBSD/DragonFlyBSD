@@ -16,13 +16,14 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.14 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.15 2006/07/28 02:17:39 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/eventhandler.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/time.h>
 #include <sys/reboot.h>
@@ -84,23 +85,13 @@ static d_ioctl_t apmioctl;
 static d_poll_t apmpoll;
 
 #define CDEV_MAJOR 39
-static struct cdevsw apm_cdevsw = {
-	/* name */	"apm",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	apmopen,
-	/* close */	apmclose,
-	/* read */	noread,
-	/* write */	apmwrite,
-	/* ioctl */	apmioctl,
-	/* poll */	apmpoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops apm_ops = {
+	{ "apm", CDEV_MAJOR, 0 },
+	.d_open =	apmopen,
+	.d_close =	apmclose,
+	.d_write =	apmwrite,
+	.d_ioctl =	apmioctl,
+	.d_poll =	apmpoll,
 };
 
 static int apm_suspend_delay = 1;
@@ -1099,15 +1090,16 @@ apm_attach(device_t dev)
 
 	sc->initialized = 1;
 
-	cdevsw_add(&apm_cdevsw, 0, 0);
-	make_dev(&apm_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0660, "apm");
-	make_dev(&apm_cdevsw, 8, UID_ROOT, GID_OPERATOR, 0660, "apmctl");
+	dev_ops_add(&apm_ops, 0, 0);
+	make_dev(&apm_ops, 0, UID_ROOT, GID_OPERATOR, 0660, "apm");
+	make_dev(&apm_ops, 8, UID_ROOT, GID_OPERATOR, 0660, "apmctl");
 	return 0;
 }
 
 static int
-apmopen(dev_t dev, int flag, int fmt, d_thread_t *td)
+apmopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
 
@@ -1116,7 +1108,7 @@ apmopen(dev_t dev, int flag, int fmt, d_thread_t *td)
 
 	switch (ctl) {
 	case APMDEV_CTL:
-		if (!(flag & FWRITE))
+		if (!(ap->a_oflags & FWRITE))
 			return EINVAL;
 		if (sc->sc_flags & SCFLAG_OCTL)
 			return EBUSY;
@@ -1134,8 +1126,9 @@ apmopen(dev_t dev, int flag, int fmt, d_thread_t *td)
 }
 
 static int
-apmclose(dev_t dev, int flag, int fmt, d_thread_t *td)
+apmclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	int ctl = APMDEV(dev);
 
@@ -1157,8 +1150,9 @@ apmclose(dev_t dev, int flag, int fmt, d_thread_t *td)
 }
 
 static int
-apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
+apmioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct apm_softc *sc = &apm_softc;
 	struct apm_bios_arg *args;
 	int error = 0;
@@ -1167,10 +1161,11 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 
 	if (!sc->initialized)
 		return (ENXIO);
-	APM_DPRINT("APM ioctl: cmd = 0x%lx\n", cmd);
-	switch (cmd) {
+	APM_DPRINT("APM ioctl: cmd = 0x%lx\n", ap->a_cmd);
+
+	switch (ap->a_cmd) {
 	case APMIO_SUSPEND:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		if (sc->active)
 			apm_suspend(PMST_SUSPEND);
@@ -1179,7 +1174,7 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 		break;
 
 	case APMIO_STANDBY:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		if (sc->active)
 			apm_suspend(PMST_STANDBY);
@@ -1194,7 +1189,7 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 
 			if (apm_get_info(&info))
 				error = ENXIO;
-			aiop = (apm_info_old_t)addr;
+			aiop = (apm_info_old_t)ap->a_data;
 			aiop->ai_major = info.ai_major;
 			aiop->ai_minor = info.ai_minor;
 			aiop->ai_acline = info.ai_acline;
@@ -1204,45 +1199,45 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 		}
 		break;
 	case APMIO_GETINFO:
-		if (apm_get_info((apm_info_t)addr))
+		if (apm_get_info((apm_info_t)ap->a_data))
 			error = ENXIO;
 		break;
 	case APMIO_GETPWSTATUS:
-		if (apm_get_pwstatus((apm_pwstatus_t)addr))
+		if (apm_get_pwstatus((apm_pwstatus_t)ap->a_data))
 			error = ENXIO;
 		break;
 	case APMIO_ENABLE:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		apm_event_enable();
 		break;
 	case APMIO_DISABLE:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		apm_event_disable();
 		break;
 	case APMIO_HALTCPU:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		apm_halt_cpu();
 		break;
 	case APMIO_NOTHALTCPU:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		apm_not_halt_cpu();
 		break;
 	case APMIO_DISPLAY:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
-		newstate = *(int *)addr;
+		newstate = *(int *)ap->a_data;
 		if (apm_display(newstate))
 			error = ENXIO;
 		break;
 	case APMIO_BIOS:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return (EPERM);
 		/* XXX compatibility with the old interface */
-		args = (struct apm_bios_arg *)addr;
+		args = (struct apm_bios_arg *)ap->a_data;
 		sc->bios.r.eax = args->eax;
 		sc->bios.r.ebx = args->ebx;
 		sc->bios.r.ecx = args->ecx;
@@ -1284,12 +1279,12 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 		int i;
 
 		error = 0;
-		switch (cmd) {
+		switch (ap->a_cmd) {
 		case APMIO_NEXTEVENT:
 			if (!sc->event_count) {
 				error = EAGAIN;
 			} else {
-				evp = (struct apm_event_info *)addr;
+				evp = (struct apm_event_info *)ap->a_data;
 				i = sc->event_ptr + APM_NEVENTS - sc->event_count;
 				i %= APM_NEVENTS;
 				*evp = sc->event_list[i];
@@ -1311,8 +1306,10 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 }
 
 static int
-apmwrite(dev_t dev, struct uio *uio, int ioflag)
+apmwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct apm_softc *sc = &apm_softc;
 	u_int event_type;
 	int error;
@@ -1341,20 +1338,20 @@ apmwrite(dev_t dev, struct uio *uio, int ioflag)
 }
 
 static int
-apmpoll(dev_t dev, int events, d_thread_t *td)
+apmpoll(struct dev_poll_args *ap)
 {
 	struct apm_softc *sc = &apm_softc;
 	int revents = 0;
 
-	if (events & (POLLIN | POLLRDNORM)) {
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
 		if (sc->event_count) {
-			revents |= events & (POLLIN | POLLRDNORM);
+			revents |= ap->a_events & (POLLIN | POLLRDNORM);
 		} else {
-			selrecord(td, &sc->sc_rsel);
+			selrecord(curthread, &sc->sc_rsel);
 		}
 	}
-
-	return (revents);
+	ap->a_events = revents;
+	return (0);
 }
 
 /*

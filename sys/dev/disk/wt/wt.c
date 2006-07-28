@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.15 2006/05/01 01:32:11 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.16 2006/07/28 02:17:35 dillon Exp $
  *
  */
 
@@ -185,23 +185,14 @@ static	d_strategy_t	wtstrategy;
 
 #define CDEV_MAJOR 10
 
-static struct cdevsw wt_cdevsw = {
-	/* name */	"wt",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	wtopen,
-	/* close */	wtclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	wtioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	wtstrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops wt_ops = {
+	{ "wt", CDEV_MAJOR, 0 },
+	.d_open =	wtopen,
+	.d_close =	wtclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	wtioctl,
+	.d_strategy =	wtstrategy,
 };
 
 
@@ -269,8 +260,8 @@ wtattach (struct isa_device *id)
 	t->dens = -1;                           /* unknown density */
 	isa_dmainit(t->chan, 1024);
 
-	cdevsw_add(&wt_cdevsw, -1, id->id_unit);
-	make_dev(&wt_cdevsw, id->id_unit, 0, 0, 0600, "rwt%d", id->id_unit);
+	dev_ops_add(&wt_ops, -1, id->id_unit);
+	make_dev(&wt_ops, id->id_unit, 0, 0, 0600, "rwt%d", id->id_unit);
 	return (1);
 }
 
@@ -280,8 +271,9 @@ struct isa_driver wtdriver = { wtprobe, wtattach, "wt", };
  * Open routine, called on every device open.
  */
 static int
-wtopen (dev_t dev, int flag, int fmt, struct thread *td)
+wtopen (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 	int error;
@@ -301,11 +293,11 @@ wtopen (dev_t dev, int flag, int fmt, struct thread *td)
 			return (error);
 
 		/* Check the controller status */
-		if (! wtsense (t, 0, (flag & FWRITE) ? 0 : TP_WRP)) {
+		if (! wtsense (t, 0, (ap->a_oflags & FWRITE) ? 0 : TP_WRP)) {
 			/* Bad status, reset the controller */
 			if (! wtreset (t))
 				return (EIO);
-			if (! wtsense (t, 1, (flag & FWRITE) ? 0 : TP_WRP))
+			if (! wtsense (t, 1, (ap->a_oflags & FWRITE) ? 0 : TP_WRP))
 				return (EIO);
 		}
 
@@ -351,9 +343,9 @@ wtopen (dev_t dev, int flag, int fmt, struct thread *td)
 
 	t->flags = TPINUSE;
 
-	if (flag & FREAD)
+	if (ap->a_oflags & FREAD)
 		t->flags |= TPREAD;
-	if (flag & FWRITE)
+	if (ap->a_oflags & FWRITE)
 		t->flags |= TPWRITE;
 	return (0);
 }
@@ -362,8 +354,9 @@ wtopen (dev_t dev, int flag, int fmt, struct thread *td)
  * Close routine, called on last device close.
  */
 static int
-wtclose (dev_t dev, int flags, int fmt, struct thread *td)
+wtclose (struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 
@@ -411,8 +404,10 @@ done:
  * ioctl (int fd, MTIOCTOP, struct mtop *buf)   -- do BSD-like op
  */
 static int
-wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct thread *td)
+wtioctl (struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	caddr_t arg = ap->a_data;
 	int u = minor (dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
 	int error, count, op;
@@ -420,7 +415,7 @@ wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct thread *td)
 	if (u >= NWT || t->type == UNKNOWN)
 		return (ENXIO);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	default:
 		return (EINVAL);
 	case MTIOCIEOT:         /* ignore EOT errors */
@@ -508,9 +503,11 @@ wtioctl (dev_t dev, u_long cmd, caddr_t arg, int flags, struct thread *td)
 /*
  * Strategy routine.
  */
-static void
-wtstrategy (dev_t dev, struct bio *bio)
+static int
+wtstrategy (struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	int u = minor(dev) & T_UNIT;
 	wtinfo_t *t = wttab + u;
@@ -583,7 +580,7 @@ errxit:		bp->b_error = EIO;
 err2xit:	bp->b_flags |= B_ERROR;
 	}
 xit:    biodone (bio);
-	return;
+	return(0);
 }
 
 /*

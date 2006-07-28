@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.12 2006/04/30 17:22:15 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.13 2006/07/28 02:17:35 dillon Exp $ 
  *
  */
 
@@ -60,23 +60,14 @@ static d_open_t flaopen;
 static d_close_t flaclose;
 static d_ioctl_t flaioctl;
 
-static struct cdevsw fla_cdevsw = {
-        /* name */      "fla",
-        /* maj */       CDEV_MAJOR,
-        /* flags */     D_DISK | D_CANFREE,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-        /* open */      flaopen,
-        /* close */     flaclose,
-        /* read */      physread,
-        /* write */     physwrite,
-        /* ioctl */     flaioctl,
-        /* poll */      nopoll,
-        /* mmap */      nommap,
-        /* strategy */  flastrategy,
-        /* dump */      nodump,
-        /* psize */     nopsize
+static struct dev_ops fla_ops = {
+	{ "fla", CDEV_MAJOR, D_DISK | D_CANFREE },
+        .d_open =	flaopen,
+        .d_close =	flaclose,
+        .d_read =	physread,
+        .d_write =	physwrite,
+        .d_ioctl =	flaioctl,
+        .d_strategy =	flastrategy,
 };
 
 void *
@@ -129,15 +120,16 @@ static struct fla_s {
 } softc[NFLA];
 
 static int
-flaopen(dev_t dev, int flag, int fmt, struct thread *td)
+flaopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct fla_s *sc;
 	int error;
 	struct disklabel *dl;
 
 	if (fla_debug)
-		printf("flaopen(%s %x %x %p)\n",
-			devtoname(dev), flag, fmt, td);
+		printf("flaopen(%s %x %x)\n",
+			devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	sc = dev->si_drv1;
 
@@ -159,14 +151,15 @@ flaopen(dev_t dev, int flag, int fmt, struct thread *td)
 }
 
 static int
-flaclose(dev_t dev, int flags, int fmt, struct thread *td)
+flaclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int error;
 	struct fla_s *sc;
 
 	if (fla_debug)
-		printf("flaclose(%s %x %x %p)\n",
-			devtoname(dev), flags, fmt, td);
+		printf("flaclose(%s %x %x)\n",
+			devtoname(dev), ap->a_fflag, ap->a_devtype);
 
 	sc = dev->si_drv1;
 
@@ -179,28 +172,31 @@ flaclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-flaioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
+flaioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 
 	if (fla_debug)
-		printf("flaioctl(%s %lx %p %x %p)\n",
-			devtoname(dev), cmd, addr, flags, td);
+		printf("flaioctl(%s %lx %p %x)\n",
+			devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag);
 
 	return (ENOIOCTL);
 }
 
-static void
-flastrategy(dev_t dev, struct bio *bio)
+static int
+flastrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 	int unit, error;
 	struct fla_s *sc;
 	enum doc2k_work what;
 
 	if (fla_debug > 1) {
-		printf("flastrategy(%p) %s %lx, %lld, %ld, %p)\n",
-		    bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
-		    bp->b_bcount, bp->b_data);
+		printf("flastrategy(%p) %s %x, %lld, %d, %p)\n",
+			bp, devtoname(dev), bp->b_flags, bio->bio_offset, 
+			bp->b_bcount, bp->b_data);
 	}
 
 	sc = dev->si_drv1;
@@ -209,7 +205,7 @@ flastrategy(dev_t dev, struct bio *bio)
 	bioqdisksort(&sc->bio_queue, bio);
 	if (sc->busy) {
 		crit_exit();
-		return;
+		return(0);
 	}
 	sc->busy++;
 	
@@ -250,7 +246,7 @@ flastrategy(dev_t dev, struct bio *bio)
 		ENTER();
 
 		if (fla_debug > 1 || error) {
-			printf("fla%d: %d = rwe(%p, %d, %d, %lld, %ld, %p)\n",
+			printf("fla%d: %d = rwe(%p, %d, %d, %lld, %d, %p)\n",
 			    unit, error, bp, unit, what, bio->bio_offset, 
 			    bp->b_bcount, bp->b_data);
 		}
@@ -266,7 +262,7 @@ flastrategy(dev_t dev, struct bio *bio)
 		crit_enter();
 	}
 	sc->busy = 0;
-	return;
+	return(0);
 }
 
 static int
@@ -343,7 +339,7 @@ flaattach (device_t dev)
 		DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_OTHER,
 		DEVSTAT_PRIORITY_DISK);
 
-	sc->dev = disk_create(unit, &sc->disk, 0, &fla_cdevsw);
+	sc->dev = disk_create(unit, &sc->disk, 0, &fla_ops);
 	sc->dev->si_drv1 = sc;
 	sc->unit = unit;
 

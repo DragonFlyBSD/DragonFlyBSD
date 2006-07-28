@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.30 2006/07/20 20:16:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.31 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,6 @@
 #include <sys/thread2.h>
 
 #define VDESCNAME(name)	__CONCAT(__CONCAT(vop_,name),_desc)
-#define VARGSSTRUCT(name) struct __CONCAT(__CONCAT(vop_,name),_args)
 
 #define VNODEOP_DESC_INIT(name)						\
 	struct syslink_desc VDESCNAME(name) = {				\

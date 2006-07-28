@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.11 2006/04/30 17:22:17 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.12 2006/07/28 02:17:39 dillon Exp $
  *
  */
 
@@ -183,23 +183,12 @@ static	d_read_t	gscread;
 static	d_ioctl_t	gscioctl;
 
 #define CDEV_MAJOR 47
-static struct cdevsw gsc_cdevsw = {
-	/* name */	"gsc",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	gscopen,
-	/* close */	gscclose,
-	/* read */	gscread,
-	/* write */	nowrite,
-	/* ioctl */	gscioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops gsc_ops = {
+	{ "gsc", CDEV_MAJOR, 0 },
+	.d_open =	gscopen,
+	.d_close =	gscclose,
+	.d_read =	gscread,
+	.d_ioctl =	gscioctl,
 };
 
 
@@ -529,13 +518,13 @@ gscattach(struct isa_device *isdp)
   scu->flags &= ~FLAG_DEBUG;
 #define GSC_UID 0
 #define GSC_GID 13
-  cdevsw_add(&gsc_cdevsw, 0xc0, unit << 6);
-  make_dev(&gsc_cdevsw, unit<<6, GSC_UID, GSC_GID, 0666, "gsc%d", unit);
-  make_dev(&gsc_cdevsw, ((unit<<6) + FRMT_PBM),
+  dev_ops_add(&gsc_ops, 0xc0, unit << 6);
+  make_dev(&gsc_ops, unit<<6, GSC_UID, GSC_GID, 0666, "gsc%d", unit);
+  make_dev(&gsc_ops, ((unit<<6) + FRMT_PBM),
      GSC_UID,  GSC_GID, 0666, "gsc%dp", unit);
-  make_dev(&gsc_cdevsw, ((unit<<6) + DBUG_MASK),
+  make_dev(&gsc_ops, ((unit<<6) + DBUG_MASK),
      GSC_UID,  GSC_GID, 0666, "gsc%dd", unit);
-  make_dev(&gsc_cdevsw, ((unit<<6) + DBUG_MASK+FRMT_PBM),
+  make_dev(&gsc_ops, ((unit<<6) + DBUG_MASK+FRMT_PBM),
      GSC_UID,  GSC_GID, 0666, "gsc%dpd", unit);
 
   return ATTACH_SUCCESS;
@@ -551,8 +540,9 @@ gscattach(struct isa_device *isdp)
  */
 
 static	int
-gscopen  (dev_t dev, int flags, int fmt, struct thread *td)
+gscopen  (struct dev_open_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   struct gsc_unit *scu;
   int unit;
 
@@ -618,8 +608,9 @@ gscopen  (dev_t dev, int flags, int fmt, struct thread *td)
  */
 
 static	int
-gscclose (dev_t dev, int flags, int fmt, struct thread *td)
+gscclose (struct dev_close_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
 
@@ -651,8 +642,10 @@ gscclose (dev_t dev, int flags, int fmt, struct thread *td)
  */
 
 static	int
-gscread  (dev_t dev, struct uio *uio, int ioflag)
+gscread  (struct dev_read_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  struct uio *uio = ap->a_uio;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
   size_t nbytes;
@@ -741,8 +734,10 @@ gscread  (dev_t dev, struct uio *uio, int ioflag)
  */
 
 static	int
-gscioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+gscioctl (struct dev_ioctl_args *ap)
 {
+  dev_t dev = ap->a_head.a_dev;
+  caddr_t data = ap->a_data;
   int unit = UNIT(minor(dev));
   struct gsc_unit *scu = unittab + unit;
 
@@ -756,7 +751,7 @@ gscioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
       return ENXIO;
     }
 
-  switch(cmd) {
+  switch(ap->a_cmd) {
   case GSC_SRESSW:
     lprintf(("gsc%d.ioctl:GSC_SRESSW\n", unit));
     if ( scu->flags & READING )
@@ -780,7 +775,7 @@ gscioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	   unit, *(int *)data));
     { int g;
       struct gsc_geom geom = NEW_GEOM;
-      if ( cmd == GSC_SRES )
+      if ( ap->a_cmd == GSC_SRES )
 	geom.dpi = *(int *)data;
       else
 	geom.dpl = *(int *)data;

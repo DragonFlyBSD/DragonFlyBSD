@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.33 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.34 2006/07/28 02:17:40 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1059,7 +1059,7 @@ sys_openbsd_poll(struct openbsd_poll_args *uap)
 
 /*ARGSUSED*/
 int
-seltrue(dev_t dev, int events, struct thread *td)
+seltrue(dev_t dev, int events)
 {
 	return (events & (POLLIN | POLLOUT | POLLRDNORM | POLLWRNORM));
 }

@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.8 2004/05/19 22:52:53 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.9 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -114,6 +114,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
@@ -140,23 +141,13 @@ static	d_write_t	ctxwrite;
 static	d_ioctl_t	ctxioctl;
 #define CDEV_MAJOR 40
 
-static struct cdevsw ctx_cdevsw = {
-	/* name */	"ctx",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ctxopen,
-	/* close */	ctxclose,
-	/* read */	ctxread,
-	/* write */	ctxwrite,
-	/* ioctl */	ctxioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ctx_ops = {
+	{ "ctx", CDEV_MAJOR, 0 },
+	.d_open =	ctxopen,
+	.d_close =	ctxclose,
+	.d_read =	ctxread,
+	.d_write =	ctxwrite,
+	.d_ioctl =	ctxioctl,
 };
 
 
@@ -202,15 +193,16 @@ ctxattach(struct isa_device * devp)
 	sr->iobase = devp->id_iobase;
 	sr->maddr = devp->id_maddr;
 	sr->msize = devp->id_msize;
-	cdevsw_add(&ctx_cdevsw, -1, devp->id_unit);
-	make_dev(&ctx_cdevsw, devp->id_unit, 0, 0, 0600, 
+	dev_ops_add(&ctx_ops, -1, devp->id_unit);
+	make_dev(&ctx_ops, devp->id_unit, 0, 0, 0600, 
 		"ctx%d", devp->id_unit);
 	return (1);
 }
 
 static int
-ctxopen(dev_t dev, int flags, int fmt, struct thread *td)
+ctxopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct ctx_soft_registers *sr;
 	u_char  unit;
 	int     i;
@@ -264,8 +256,9 @@ ctxopen(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-ctxclose(dev_t dev, int flags, int fmt, struct thread *td)
+ctxclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int     unit;
 
 	unit = UNIT(minor(dev));
@@ -276,8 +269,10 @@ ctxclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-ctxwrite(dev_t dev, struct uio * uio, int ioflag)
+ctxwrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int     unit, status = 0;
 	int     page, count, offset;
 	struct ctx_soft_registers *sr;
@@ -328,8 +323,10 @@ ctxwrite(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-ctxread(dev_t dev, struct uio * uio, int ioflag)
+ctxread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int     unit, status = 0;
 	int     page, count, offset;
 	struct ctx_soft_registers *sr;
@@ -378,8 +375,9 @@ ctxread(dev_t dev, struct uio * uio, int ioflag)
 }
 
 static int
-ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+ctxioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int     error;
 	int     unit, i;
 	struct ctx_soft_registers *sr;
@@ -388,7 +386,7 @@ ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	unit = UNIT(minor(dev));
 	sr = &(ctx_sr[unit]);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case CTX_LIVE:
 		sr->cp0 &= ~SEE_STORED_VIDEO;
 		outb(sr->iobase + ctx_cp0, sr->cp0);
@@ -419,7 +417,7 @@ ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		outb(sr->iobase + ctx_cp0, sr->cp0);
 		break;
 	case CTX_SET_LUT:
-		bcopy((u_char *) data, sr->lutp, LUTSIZE);
+		bcopy((u_char *) ap->a_data, sr->lutp, LUTSIZE);
 		outb(sr->iobase + ctx_cp0, (u_char) 0);
 		outb(sr->iobase + ctx_cp1, (u_char) (LUT_LOAD_ENABLE | BLANK_DISPLAY));
 		for (i = 0; i < LUTSIZE; i++) {
@@ -431,7 +429,7 @@ ctxioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		outb(sr->iobase + ctx_cp1, sr->cp1);
 		break;
 	case CTX_GET_LUT:
-		bcopy(sr->lutp, (u_char *) data, LUTSIZE);
+		bcopy(sr->lutp, (u_char *) ap->a_data, LUTSIZE);
 		break;
 	default:
 		error = ENODEV;

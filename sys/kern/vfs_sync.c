@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.11 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -296,14 +296,11 @@ speedup_syncer(void)
 /*
  * Routine to create and manage a filesystem syncer vnode.
  */
-#define sync_close ((int (*) (struct  vop_close_args *))nullop)
-static int	sync_fsync (struct  vop_fsync_args *);
-static int	sync_inactive (struct  vop_inactive_args *);
-static int	sync_reclaim  (struct  vop_reclaim_args *);
-#define sync_lock ((int (*) (struct  vop_lock_args *))vop_stdlock)
-#define sync_unlock ((int (*) (struct  vop_unlock_args *))vop_stdunlock)
-static int	sync_print (struct vop_print_args *);
-#define sync_islocked ((int(*) (struct vop_islocked_args *))vop_stdislocked)
+static int sync_close(struct vop_close_args *);
+static int sync_fsync(struct vop_fsync_args *);
+static int sync_inactive(struct vop_inactive_args *);
+static int sync_reclaim (struct vop_reclaim_args *);
+static int sync_print(struct vop_print_args *);
 
 static struct vop_ops sync_vnode_vops = {
 	.vop_default =	vop_eopnotsupp,
@@ -311,10 +308,10 @@ static struct vop_ops sync_vnode_vops = {
 	.vop_fsync =	sync_fsync,
 	.vop_inactive =	sync_inactive,
 	.vop_reclaim =	sync_reclaim,
-	.vop_lock =	sync_lock,
-	.vop_unlock =	sync_unlock,
+	.vop_lock =	vop_stdlock,
+	.vop_unlock =	vop_stdunlock,
 	.vop_print =	sync_print,
-	.vop_islocked =	sync_islocked
+	.vop_islocked =	vop_stdislocked
 };
 
 static struct vop_ops *sync_vnode_vops_p = &sync_vnode_vops;
@@ -362,6 +359,12 @@ vfs_allocate_syncvnode(struct mount *mp)
 	vn_syncer_add_to_worklist(vp, syncdelay > 0 ? next % syncdelay : 0);
 	mp->mnt_syncer = vp;
 	vx_unlock(vp);
+	return (0);
+}
+
+static int
+sync_close(struct vop_close_args *ap)
+{
 	return (0);
 }
 

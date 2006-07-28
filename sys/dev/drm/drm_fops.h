@@ -30,7 +30,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_fops.h,v 1.7.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.4 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.5 2006/07/28 02:17:36 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -100,12 +100,13 @@ int DRM(open_helper)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 /* The DRM(read) and DRM(poll) are stubs to prevent spurious errors
  * on older X Servers (4.3.0 and earlier) */
 
-int DRM(read)(dev_t kdev, struct uio *uio, int ioflag)
+int DRM(read)(struct dev_read_args *ap)
 {
 	return 0;
 }
 
-int DRM(poll)(dev_t kdev, int events, DRM_STRUCTPROC *p)
+int DRM(poll)(struct dev_poll_args *ap)
 {
+	ap->a_events = 0;
 	return 0;
 }

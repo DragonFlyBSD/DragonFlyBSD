@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.9 2006/06/10 20:00:17 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.10 2006/07/28 02:17:41 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -48,6 +48,9 @@
 #endif
 #ifndef _SYS_SELINFO_H_
 #include <sys/selinfo.h>
+#endif
+#ifdef _KERNEL
+#include <sys/device.h>
 #endif
 
 /*
@@ -277,14 +280,14 @@ int	 ttylclose (struct tty *tp, int flag);
 struct tty *ttymalloc (struct tty *tp);
 int	 ttymodem (struct tty *tp, int flag);
 int	 ttyopen (dev_t device, struct tty *tp);
-int	 ttypoll (dev_t dev, int events, struct thread *td);
-int	 ttykqfilter (dev_t dev, struct knote *kn);
-int	 ttyread (dev_t dev, struct uio *uio, int flag);
+int	 ttypoll (struct dev_poll_args *);
+int	 ttykqfilter (struct dev_kqfilter_args *);
+int	 ttyread (struct dev_read_args *);
 void	 ttyregister (struct tty *tp);
 int	 ttysleep (struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout);
 int	 ttywait (struct tty *tp);
-int	 ttywrite (dev_t dev, struct uio *uio, int flag);
+int	 ttywrite (struct dev_write_args *);
 int	 unputc (struct clist *q);
 
 #endif /* _KERNEL */

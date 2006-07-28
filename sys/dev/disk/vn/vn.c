@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.24 2006/05/06 02:43:03 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.25 2006/07/28 02:17:35 dillon Exp $
  */
 
 /*
@@ -94,28 +94,20 @@ static	d_strategy_t	vnstrategy;
 #define VN_BSIZE_BEST	8192
 
 /*
- * cdevsw
+ * dev_ops
  *	D_DISK		we want to look like a disk
  *	D_CANFREE	We support BUF_CMD_FREEBLKS
  */
 
-static struct cdevsw vn_cdevsw = {
-	/* name */	"vn",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_DISK|D_CANFREE,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	vnopen,
-	/* close */	vnclose,
-	/* read */	physread,
-	/* write */	physwrite,
-	/* ioctl */	vnioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	vnstrategy,
-	/* dump */	nodump,
-	/* psize */	vnsize
+static struct dev_ops vn_ops = {
+	{ "vn", CDEV_MAJOR, D_DISK | D_CANFREE },
+	.d_open =	vnopen,
+	.d_close =	vnclose,
+	.d_read =	physread,
+	.d_write =	physwrite,
+	.d_ioctl =	vnioctl,
+	.d_strategy =	vnstrategy,
+	.d_psize =	vnsize
 };
 
 struct vn_softc {
@@ -148,17 +140,18 @@ static u_long	vn_options;
 static int	vnsetcred (struct vn_softc *vn, struct ucred *cred);
 static void	vnclear (struct vn_softc *vn);
 static int	vn_modevent (module_t, int, void *);
-static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct thread *p);
-static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct thread *p);
+static int 	vniocattach_file (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct ucred *cred);
+static int 	vniocattach_swap (struct vn_softc *, struct vn_ioctl *, dev_t dev, int flag, struct ucred *cred);
 
 static	int
-vnclose(dev_t dev, int flags, int mode, struct thread *td)
+vnclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn = dev->si_drv1;
 
 	IFOPT(vn, VN_LABELS)
 		if (vn->sc_slices != NULL)
-			dsclose(dev, mode, vn->sc_slices);
+			dsclose(dev, ap->a_devtype, vn->sc_slices);
 	return (0);
 }
 
@@ -186,7 +179,7 @@ vnfindvn(dev_t dev)
 		vn = malloc(sizeof *vn, M_DEVBUF, M_WAITOK | M_ZERO);
 		vn->sc_unit = unit;
 		dev->si_drv1 = vn;
-		vn->sc_devlist = make_dev(&vn_cdevsw, 0, UID_ROOT,
+		vn->sc_devlist = make_dev(&vn_ops, 0, UID_ROOT,
 					GID_OPERATOR, 0640, "vn%d", unit);
 		if (vn->sc_devlist->si_drv1 == NULL) {
 			reference_dev(vn->sc_devlist);
@@ -205,8 +198,9 @@ vnfindvn(dev_t dev)
 }
 
 static	int
-vnopen(dev_t dev, int flags, int mode, struct thread *td)
+vnopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 
 	/*
@@ -229,12 +223,12 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
 	if (dev->si_bsize_best < VN_BSIZE_BEST)
 		dev->si_bsize_best = VN_BSIZE_BEST;
 
-	if ((flags & FWRITE) && (vn->sc_flags & VNF_READONLY))
+	if ((ap->a_oflags & FWRITE) && (vn->sc_flags & VNF_READONLY))
 		return (EACCES);
 
 	IFOPT(vn, VN_FOLLOW)
-		printf("vnopen(%s, 0x%x, 0x%x, %p)\n",
-		    devtoname(dev), flags, mode, (void *)td);
+		printf("vnopen(%s, 0x%x, 0x%x)\n",
+		    devtoname(dev), ap->a_oflags, ap->a_devtype);
 
 	/*
 	 * Initialize label
@@ -254,11 +248,11 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
 			label.d_secperunit = vn->sc_size;
 			label.d_partitions[RAW_PART].p_size = vn->sc_size;
 
-			return (dsopen(dev, mode, 0, &vn->sc_slices, &label));
+			return (dsopen(dev, ap->a_devtype, 0, &vn->sc_slices, &label));
 		}
 		if (dkslice(dev) != WHOLE_DISK_SLICE ||
 		    dkpart(dev) != RAW_PART ||
-		    mode != S_IFCHR) {
+		    ap->a_devtype != S_IFCHR) {
 			return (ENXIO);
 		}
 	}
@@ -274,9 +268,11 @@ vnopen(dev_t dev, int flags, int mode, struct thread *td)
  *
  *	Currently B_ASYNC is only partially handled - for OBJT_SWAP I/O only.
  */
-static	void
-vnstrategy(dev_t dev, struct bio *bio)
+static int
+vnstrategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp;
 	struct bio *nbio;
 	int unit;
@@ -296,7 +292,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		bp->b_error = ENXIO;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
-		return;
+		return(0);
 	}
 
 	bp->b_resid = bp->b_bcount;
@@ -409,7 +405,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 			/* operation complete */
 		} else {
 			vm_pager_strategy(vn->sc_object, nbio);
-			return;
+			return(0);
 			/* NOT REACHED */
 		}
 	} else {
@@ -419,7 +415,7 @@ vnstrategy(dev_t dev, struct bio *bio)
 		/* operation complete */
 	}
 	biodone(nbio);
-	return;
+	return(0);
 
 	/*
 	 * Shortcuts / check failures on the original bio (not nbio).
@@ -429,24 +425,27 @@ bad:
 	bp->b_flags |= B_ERROR | B_INVAL;
 done:
 	biodone(bio);
+	return(0);
 }
 
 /* ARGSUSED */
 static	int
-vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+vnioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 	struct vn_ioctl *vio;
 	int error;
 	u_long *f;
 
 	vn = dev->si_drv1;
-	IFOPT(vn,VN_FOLLOW)
-		printf("vnioctl(%s, 0x%lx, %p, 0x%x, %p): unit %d\n",
-		    devtoname(dev), cmd, (void *)data, flag, (void *)td,
+	IFOPT(vn,VN_FOLLOW) {
+		printf("vnioctl(%s, 0x%lx, %p, 0x%x): unit %d\n",
+		    devtoname(dev), ap->a_cmd, ap->a_data, ap->a_fflag,
 		    dkunit(dev));
+	}
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case VNIOCATTACH:
 	case VNIOCDETACH:
 	case VNIOCGSET:
@@ -458,7 +457,8 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 	IFOPT(vn,VN_LABELS) {
 		if (vn->sc_slices != NULL) {
-			error = dsioctl(dev, cmd, data, flag, &vn->sc_slices);
+			error = dsioctl(dev, ap->a_cmd, ap->a_data,
+					ap->a_fflag, &vn->sc_slices);
 			if (error != ENOIOCTL)
 				return (error);
 		}
@@ -469,22 +469,22 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
     vn_specific:
 
-	error = suser(td);
+	error = suser_cred(ap->a_cred, 0);
 	if (error)
 		return (error);
 
-	vio = (struct vn_ioctl *)data;
-	f = (u_long*)data;
-	switch (cmd) {
+	vio = (struct vn_ioctl *)ap->a_data;
+	f = (u_long*)ap->a_data;
 
+	switch (ap->a_cmd) {
 	case VNIOCATTACH:
 		if (vn->sc_flags & VNF_INITED)
 			return(EBUSY);
 
 		if (vio->vn_file == NULL)
-			error = vniocattach_swap(vn, vio, dev, flag, td);
+			error = vniocattach_swap(vn, vio, dev, ap->a_fflag, ap->a_cred);
 		else
-			error = vniocattach_file(vn, vio, dev, flag, td);
+			error = vniocattach_file(vn, vio, dev, ap->a_fflag, ap->a_cred);
 		break;
 
 	case VNIOCDETACH:
@@ -539,15 +539,12 @@ vnioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 static int
 vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
-		 int flag, struct thread *td)
+		 int flag, struct ucred *cred)
 {
 	struct vattr vattr;
 	struct nlookupdata nd;
 	int error, flags;
 	struct vnode *vp;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p != NULL);
 
 	flags = FREAD|FWRITE;
 	error = nlookup_init(&nd, vio->vn_file, 
@@ -585,7 +582,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 		vn->sc_size = (quad_t)vio->vn_size * PAGE_SIZE / vn->sc_secsize;
 	else
 		vn->sc_size = vattr.va_size / vn->sc_secsize;
-	error = vnsetcred(vn, p->p_ucred);
+	error = vnsetcred(vn, cred);
 	if (error) {
 		vn->sc_vp = NULL;
 		vn_close(vp, flags);
@@ -602,7 +599,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 		 * no other slices or labels are open.  Otherwise,
 		 * we rely on VNIOCCLR not being abused.
 		 */
-		error = vnopen(dev, flag, S_IFCHR, td);
+		error = dev_dopen(dev, flag, S_IFCHR, cred);
 		if (error)
 			vnclear(vn);
 	}
@@ -623,12 +620,10 @@ done:
 
 static int
 vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
-		 int flag, struct thread *td)
+		 int flag, struct ucred *cred)
 {
 	int error;
-	struct proc *p = td->td_proc;
 
-	KKASSERT(p != NULL);
 	/*
 	 * Range check.  Disallow negative sizes or any size less then the
 	 * size of a page.  Then round to a page.
@@ -661,7 +656,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 	}
 	vn->sc_flags |= VNF_INITED;
 
-	error = vnsetcred(vn, p->p_ucred);
+	error = vnsetcred(vn, cred);
 	if (error == 0) {
 		IFOPT(vn, VN_LABELS) {
 			/*
@@ -671,7 +666,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 			 * no other slices or labels are open.  Otherwise,
 			 * we rely on VNIOCCLR not being abused.
 			 */
-			error = vnopen(dev, flag, S_IFCHR, td);
+			error = dev_dopen(dev, flag, S_IFCHR, cred);
 		}
 	}
 	if (error == 0) {
@@ -757,18 +752,19 @@ vnclear(struct vn_softc *vn)
 	vn->sc_size = 0;
 }
 
-static	int
-vnsize(dev_t dev)
+static int
+vnsize(struct dev_psize_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct vn_softc *vn;
 
 	vn = dev->si_drv1;
 	if (!vn)
-		return(-1);
+		return(ENXIO);
 	if ((vn->sc_flags & VNF_INITED) == 0)
-		return(-1);
-
-	return(vn->sc_size);
+		return(ENXIO);
+	ap->a_result = vn->sc_size;
+	return(0);
 }
 
 static int 
@@ -779,7 +775,7 @@ vn_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		cdevsw_add(&vn_cdevsw, 0, 0);
+		dev_ops_add(&vn_ops, 0, 0);
 		break;
 	case MOD_UNLOAD:
 		/* fall through */
@@ -796,7 +792,7 @@ vn_modevent(module_t mod, int type, void *data)
 			}
 			free(vn, M_DEVBUF);
 		}
-		cdevsw_remove(&vn_cdevsw, 0, 0);
+		dev_ops_remove(&vn_ops, 0, 0);
 		break;
 	default:
 		break;

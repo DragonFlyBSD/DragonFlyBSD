@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.8 2006/06/04 21:09:50 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.9 2006/07/28 02:17:37 dillon Exp $
  */
 
 #include <sys/devicestat.h>
@@ -41,7 +41,6 @@ static int ipsd_probe(device_t dev);
 static int ipsd_attach(device_t dev);
 static int ipsd_detach(device_t dev);
 
-static int ipsd_dump_helper(dev_t dev, u_int count, u_int blkno, u_int secsize);
 #if 0
 static int ipsd_dump(void *arg, void *virtual, vm_offset_t physical, off_t offset, size_t length);
 static void ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs,
@@ -49,22 +48,19 @@ static void ipsd_dump_map_sg(void *arg, bus_dma_segment_t *segs, int nsegs,
 static void ipsd_dump_block_complete(ips_command_t *command);
 #endif
 
-static disk_open_t ipsd_open;
-static disk_close_t ipsd_close;
-static disk_strategy_t ipsd_strategy;
+static d_open_t ipsd_open;
+static d_close_t ipsd_close;
+static d_strategy_t ipsd_strategy;
+static d_dump_t ipsd_dump_helper;
 
-static struct cdevsw ipsd_cdevsw = {
-	.d_name		= "ipsd",
-	.d_maj		= IPSD_CDEV_MAJOR,
-	.d_flags	= D_DISK,
-	.d_port		= NULL,
-	.d_clone	= NULL,
-	.old_open	= ipsd_open,
-	.old_close	= ipsd_close,
-	.old_strategy	= ipsd_strategy,
-	.old_read	= physread,
-	.old_write	= physwrite,
-	.old_dump	= ipsd_dump_helper,
+static struct dev_ops ipsd_ops = {
+	{ "ipsd", IPSD_CDEV_MAJOR, D_DISK },
+	.d_open	=	ipsd_open,
+	.d_close =	ipsd_close,
+	.d_strategy =	ipsd_strategy,
+	.d_read	=	physread,
+	.d_write =	physwrite,
+	.d_dump	=	ipsd_dump_helper,
 };
 
 static device_method_t ipsd_methods[] = {
@@ -89,8 +85,9 @@ DRIVER_MODULE(ipsd, ips, ipsd_driver, ipsd_devclass, 0, 0);
  * the geometry and size of the disk
  */
 static int
-ipsd_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
+ipsd_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	ipsdisk_softc_t *dsc = dev->si_drv1;
 
 	if (dsc == NULL)
@@ -101,8 +98,9 @@ ipsd_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
 }
 
 static int
-ipsd_close(dev_t dev, int oflags, int devtype, d_thread_t *td)
+ipsd_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	ipsdisk_softc_t *dsc = dev->si_drv1;
 
 	dsc->state &= ~IPS_DEV_OPEN;
@@ -129,9 +127,11 @@ ipsd_finish(struct bio *bio)
 }
 
 
-static void
-ipsd_strategy(dev_t dev, struct bio *bio)
+static int
+ipsd_strategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	ipsdisk_softc_t *dsc;
 
 	dsc = dev->si_drv1;
@@ -142,6 +142,7 @@ ipsd_strategy(dev_t dev, struct bio *bio)
 	bioq_insert_tail(&dsc->sc->bio_queue, bio);
 	ips_start_io_request(dsc->sc);
 	lockmgr(&dsc->sc->queue_lock, LK_RELEASE);
+	return(0);
 }
 
 static int
@@ -182,8 +183,7 @@ ipsd_attach(device_t dev)
 			  DEVSTAT_NO_ORDERED_TAGS,
 			  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_SCSI,
 			  DEVSTAT_PRIORITY_DISK);
-	dsc->ipsd_dev_t = disk_create(dsc->unit, &dsc->ipsd_disk, 0,
-	    &ipsd_cdevsw);
+	dsc->ipsd_dev_t = disk_create(dsc->unit, &dsc->ipsd_disk, 0, &ipsd_ops);
 	dsc->ipsd_dev_t->si_drv1 = dsc;
 	dsc->ipsd_dev_t->si_iosize_max = IPS_MAX_IO_SIZE;
 	label = &dsc->ipsd_disk.d_label;
@@ -215,7 +215,7 @@ ipsd_detach(device_t dev)
 }
 
 static int
-ipsd_dump_helper(dev_t dev, u_int count, u_int blkno, u_int secsize)
+ipsd_dump_helper(struct dev_dump_args *ap)
 {
 	printf("dump support for IPS not yet working, will not dump\n");
 	return (ENODEV);

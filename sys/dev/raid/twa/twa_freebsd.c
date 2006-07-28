@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.9 2005/10/12 17:35:54 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.10 2006/07/28 02:17:38 dillon Exp $
  */
 
 /*
@@ -50,22 +50,11 @@ static	d_open_t		twa_open;
 static	d_close_t		twa_close;
 static	d_ioctl_t		twa_ioctl_wrapper;
 
-static struct cdevsw twa_cdevsw = {
-	"twa",
-	TWA_CDEV_MAJOR,
-	0,
-	NULL,
-	0,
-	twa_open,
-	twa_close,
-	noread,
-	nowrite,
-	twa_ioctl_wrapper,
-	nopoll,
-	nommap,
-	nostrategy,
-	nodump,
-	nopsize,
+static struct dev_ops twa_ops = {
+	{ "twa", TWA_CDEV_MAJOR, 0 },
+	.d_open =	twa_open,
+	.d_close =	twa_close,
+	.d_ioctl =	twa_ioctl_wrapper,
 };
 
 static devclass_t	twa_devclass;
@@ -85,8 +74,9 @@ static devclass_t	twa_devclass;
  *			non-zero-- failure
  */
 static int
-twa_open(dev_t dev, int flags, int fmt, d_thread_t *proc)
+twa_open(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int			unit = minor(dev);
 	struct twa_softc	*sc = devclass_get_softc(twa_devclass, unit);
 
@@ -110,8 +100,9 @@ twa_open(dev_t dev, int flags, int fmt, d_thread_t *proc)
  *			non-zero-- failure
  */
 static int
-twa_close(dev_t dev, int flags, int fmt, d_thread_t *proc)
+twa_close(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int			unit = minor(dev);
 	struct twa_softc	*sc = devclass_get_softc(twa_devclass, unit);
 
@@ -138,12 +129,12 @@ twa_close(dev_t dev, int flags, int fmt, d_thread_t *proc)
  *			non-zero-- failure
  */
 static int
-twa_ioctl_wrapper(dev_t dev, u_long cmd, caddr_t buf,
-					int flags, d_thread_t *proc)
+twa_ioctl_wrapper(struct dev_ioctl_args *ap)
 {
-	struct twa_softc	*sc = (struct twa_softc *)(dev->si_drv1);
+	dev_t dev = ap->a_head.a_dev;
+	struct twa_softc *sc = (struct twa_softc *)(dev->si_drv1);
 
-	return(twa_ioctl(sc, cmd, buf));
+	return(twa_ioctl(sc, ap->a_cmd, ap->a_data));
 }
 
 
@@ -299,8 +290,8 @@ twa_attach(device_t dev)
 	twa_describe_controller(sc);
 
 	/* Create the control device. */
-	cdevsw_add(&twa_cdevsw, -1, device_get_unit(sc->twa_bus_dev));
-	xdev = make_dev(&twa_cdevsw, device_get_unit(sc->twa_bus_dev),
+	dev_ops_add(&twa_ops, -1, device_get_unit(sc->twa_bus_dev));
+	xdev = make_dev(&twa_ops, device_get_unit(sc->twa_bus_dev),
 			UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR,
 			"twa%d", device_get_unit(sc->twa_bus_dev));
 	xdev->si_drv1 = sc;
@@ -379,7 +370,7 @@ twa_free(struct twa_softc *sc)
 		bus_release_resource(sc->twa_bus_dev, SYS_RES_IOPORT,
 					TWA_IO_CONFIG_REG, sc->twa_io_res);
 
-	cdevsw_remove(&twa_cdevsw, -1, device_get_unit(sc->twa_bus_dev));
+	dev_ops_remove(&twa_ops, -1, device_get_unit(sc->twa_bus_dev));
 
 	sysctl_ctx_free(&sc->twa_sysctl_ctx);
 }

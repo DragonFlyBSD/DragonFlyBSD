@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.14 2006/04/30 20:23:21 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.15 2006/07/28 02:17:38 dillon Exp $
  */
 
 #include "vinumhdr.h"
@@ -138,7 +138,7 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
 
     drive->dev->si_iosize_max = DFLTPHYS;
     if (dev_is_good(drive->dev))
-	drive->lasterror = dev_dopen(drive->dev, FWRITE, 0, NULL);
+	drive->lasterror = dev_dopen(drive->dev, FWRITE, 0, proc0.p_ucred);
     else
 	drive->lasterror = ENOENT;
 
@@ -223,7 +223,7 @@ init_drive(struct drive *drive, int verbose)
 	DIOCGPART,
 	(caddr_t) & drive->partinfo,
 	FREAD,
-	curthread);
+	proc0.p_ucred);
     if (drive->lasterror) {
 	if (verbose)
 	    log(LOG_WARNING,
@@ -269,7 +269,7 @@ close_locked_drive(struct drive *drive)
      * the queues, which spec_close() will try to
      * do.  Get rid of them here first.
      */
-    drive->lasterror = dev_dclose(drive->dev, 0, 0, NULL);
+    drive->lasterror = dev_dclose(drive->dev, 0, 0);
     drive->flags &= ~VF_OPEN;				    /* no longer open */
 }
 
@@ -667,7 +667,7 @@ daemon_save_config(void)
 			DIOCWLABEL,
 			(caddr_t) & wlabel_on,
 			FWRITE,
-			curthread);
+			proc0.p_ucred);
 		    if (error == 0)
 			error = write_drive(drive, (char *) vhdr, VINUMHEADERLEN, VINUM_LABEL_OFFSET);
 		    if (error == 0)
@@ -680,7 +680,7 @@ daemon_save_config(void)
 			    DIOCWLABEL,
 			    (caddr_t) & wlabel_on,
 			    FWRITE,
-			    curthread);
+			    proc0.p_ucred);
 		    unlockdrive(drive);
 		    if (error) {
 			log(LOG_ERR,
@@ -793,7 +793,7 @@ write_volume_label(int volno)
      * unless it's already there.
      */
     bp = geteblk((int) lp->d_secsize);			    /* get a buffer */
-    dev = make_adhoc_dev(&vinum_cdevsw, vol->volno);
+    dev = make_adhoc_dev(&vinum_ops, vol->volno);
     bp->b_bio1.bio_offset = (off_t)LABELSECTOR * lp->d_secsize;
     bp->b_bcount = lp->d_secsize;
     bzero(bp->b_data, lp->d_secsize);

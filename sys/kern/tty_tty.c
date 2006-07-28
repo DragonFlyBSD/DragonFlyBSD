@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.15 2006/05/06 02:43:12 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.16 2006/07/28 02:17:40 dillon Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/lock.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
@@ -58,23 +59,14 @@ static	d_poll_t	cttypoll;
 
 #define	CDEV_MAJOR	1
 /* Don't make this static, since fdesc_vnops uses it. */
-struct cdevsw ctty_cdevsw = {
-	/* name */	"ctty",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	cttyopen,
-	/* close */	cttyclose,
-	/* read */	cttyread,
-	/* write */	cttywrite,
-	/* ioctl */	cttyioctl,
-	/* poll */	cttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+struct dev_ops ctty_ops = {
+	{ "ctty", CDEV_MAJOR, D_TTY },
+	.d_open =	cttyopen,
+	.d_close =	cttyclose,
+	.d_read =	cttyread,
+	.d_write =	cttywrite,
+	.d_ioctl =	cttyioctl,
+	.d_poll =	cttypoll,
 };
 
 #define cttyvp(p) ((p)->p_flag & P_CONTROLT ? (p)->p_session->s_ttyvp : NULL)
@@ -85,9 +77,9 @@ struct cdevsw ctty_cdevsw = {
  * locked to FREAD|FWRITE.
  */
 static	int
-cttyopen(dev_t dev, int flag, int mode, struct thread *td)
+cttyopen(struct dev_open_args *ap)
 {
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *ttyvp;
 	int error;
 
@@ -99,7 +91,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 		} else {
 			vsetflags(ttyvp, VCTTYISOPEN);
 			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
-			error = VOP_OPEN(ttyvp, FREAD|FWRITE, NOCRED, NULL);
+			error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
 			if (error)
 				vclrflags(ttyvp, VCTTYISOPEN);
 			VOP_UNLOCK(ttyvp, 0);
@@ -116,9 +108,9 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
  * locked to FREAD|FWRITE.
  */
 static int
-cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
+cttyclose(struct dev_close_args *ap)
 {
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *ttyvp;
 	int error;
 
@@ -151,13 +143,9 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
  * so use vget() instead of VOP_LOCK.
  */
 static	int
-cttyread(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+cttyread(struct dev_read_args *ap)
 {
-	struct thread *td = uio->uio_td;
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *ttyvp;
 	int error;
 
@@ -166,7 +154,7 @@ cttyread(dev, uio, flag)
 	if (ttyvp == NULL)
 		return (EIO);
 	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
-		error = VOP_READ(ttyvp, uio, flag, NOCRED);
+		error = VOP_READ(ttyvp, ap->a_uio, ap->a_ioflag, NOCRED);
 		vput(ttyvp);
 	}
 	return (error);
@@ -179,13 +167,9 @@ cttyread(dev, uio, flag)
  * so use vget() instead of VOP_LOCK.
  */
 static	int
-cttywrite(dev, uio, flag)
-	dev_t dev;
-	struct uio *uio;
-	int flag;
+cttywrite(struct dev_write_args *ap)
 {
-	struct thread *td = uio->uio_td;
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 	struct vnode *ttyvp;
 	int error;
 
@@ -194,7 +178,7 @@ cttywrite(dev, uio, flag)
 	if (ttyvp == NULL)
 		return (EIO);
 	if ((error = vget(ttyvp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
-		error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
+		error = VOP_WRITE(ttyvp, ap->a_uio, ap->a_ioflag, NOCRED);
 		vput(ttyvp);
 	}
 	return (error);
@@ -202,54 +186,57 @@ cttywrite(dev, uio, flag)
 
 /*ARGSUSED*/
 static	int
-cttyioctl(dev, cmd, addr, flag, td)
-	dev_t dev;
-	u_long cmd;
-	caddr_t addr;
-	int flag;
-	struct thread *td;
+cttyioctl(struct dev_ioctl_args *ap)
 {
 	struct vnode *ttyvp;
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	if (cmd == TIOCSCTTY)  /* don't allow controlling tty to be set    */
-		return EINVAL; /* to controlling tty -- infinite recursion */
-	if (cmd == TIOCNOTTY) {
+	/*
+	 * Don't allow controlling tty to be set to the controlling tty
+	 * (infinite recursion).
+	 */
+	if (ap->a_cmd == TIOCSCTTY)
+		return EINVAL;
+	if (ap->a_cmd == TIOCNOTTY) {
 		if (!SESS_LEADER(p)) {
 			p->p_flag &= ~P_CONTROLT;
 			return (0);
-		} else
+		} else {
 			return (EINVAL);
+		}
 	}
-	return (VOP_IOCTL(ttyvp, cmd, addr, flag, NOCRED));
+	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag, ap->a_cred));
 }
 
 /*ARGSUSED*/
 static	int
-cttypoll(dev_t dev, int events, struct thread *td)
+cttypoll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct vnode *ttyvp;
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
+	/*
+	 * try operation to get EOF/failure 
+	 */
 	if (ttyvp == NULL)
-		/* try operation to get EOF/failure */
-		return (seltrue(dev, events, td));
-	return (VOP_POLL(ttyvp, events, p->p_ucred));
+		ap->a_events = seltrue(dev, ap->a_events);
+	else
+		ap->a_events = VOP_POLL(ttyvp, ap->a_events, p->p_ucred);
+	return(0);
 }
 
-static void ctty_drvinit (void *unused);
 static void
-ctty_drvinit(unused)
-	void *unused;
+ctty_drvinit(void *unused __unused)
 {
-	cdevsw_add(&ctty_cdevsw, 0, 0);
-	make_dev(&ctty_cdevsw, 0, 0, 0, 0666, "tty");
+	dev_ops_add(&ctty_ops, 0, 0);
+	make_dev(&ctty_ops, 0, 0, 0, 0666, "tty");
 }
 
 SYSINIT(cttydev,SI_SUB_DRIVERS,SI_ORDER_MIDDLE+CDEV_MAJOR,ctty_drvinit,NULL)

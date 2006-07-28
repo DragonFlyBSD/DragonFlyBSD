@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.11 2005/06/02 20:41:04 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.12 2006/07/28 02:17:39 dillon Exp $
  */
 
 /*
@@ -120,15 +120,13 @@ d_ioctl_t urioioctl;
 
 #define URIO_CDEV_MAJOR	143
 
-Static struct cdevsw urio_cdevsw = {
- 	/* name */	"urio",		
-	/* cmaj */	URIO_CDEV_MAJOR,
- 	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-	urioopen,	urioclose,	urioread,	uriowrite,
- 	urioioctl,	nopoll,		nommap,		nostrategy,
-	nodump,		nopsize
+Static struct dev_ops urio_ops = {
+	{ "urio", URIO_CDEV_MAJOR, 0 },
+	.d_open =	urioopen,
+	.d_close =	urioclose,
+	.d_read =	urioread,
+	.d_write =	uriowrite,
+ 	.d_ioctl =	urioioctl,
 };
 #define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
 		 	  ((UE_GET_DIR(p) == UE_DIR_OUT) ? RIO_OUT :\
@@ -260,8 +258,8 @@ USB_ATTACH(urio)
 	}
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
-	cdevsw_add(&urio_cdevsw, -1, device_get_unit(self));
-	make_dev(&urio_cdevsw, device_get_unit(self),
+	dev_ops_add(&urio_ops, -1, device_get_unit(self));
+	make_dev(&urio_ops, device_get_unit(self),
 			UID_ROOT, GID_OPERATOR,
 			0644, "urio%d", device_get_unit(self));
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
@@ -280,8 +278,9 @@ USB_ATTACH(urio)
 
 
 int
-urioopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
+urioopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif
@@ -289,12 +288,12 @@ urioopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	USB_GET_SC_OPEN(urio, unit, sc);
 
 	DPRINTFN(5, ("urioopen: flag=%d, mode=%d, unit=%d\n",
-		     flag, mode, unit));
+		     ap->a_oflags, ap->a_devtype, unit));
 
 	if (sc->sc_opened)
 		return EBUSY;
 
-	if ((flag & (FWRITE|FREAD)) != (FWRITE|FREAD))
+	if ((ap->a_oflags & (FWRITE|FREAD)) != (FWRITE|FREAD))
 		return EACCES;
 
 	sc->sc_opened = 1;
@@ -320,15 +319,17 @@ urioopen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-urioclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
+urioclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif
 	int unit = URIOUNIT(dev);
 	USB_GET_SC(urio, unit, sc);
 
-	DPRINTFN(5, ("urioclose: flag=%d, mode=%d, unit=%d\n", flag, mode, unit));
+	DPRINTFN(5, ("urioclose: flag=%d, mode=%d, unit=%d\n",
+		ap->a_fflag, ap->a_devtype, unit));
 	if (sc->sc_pipeh_in)
 		usbd_close_pipe(sc->sc_pipeh_in);
 
@@ -343,8 +344,10 @@ urioclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 }
 
 int
-urioread(dev_t dev, struct uio *uio, int flag)
+urioread(struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 	usbd_xfer_handle reqh;
@@ -417,8 +420,10 @@ urioread(dev_t dev, struct uio *uio, int flag)
 }
 
 int
-uriowrite(dev_t dev, struct uio *uio, int flag)
+uriowrite(struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 	usbd_xfer_handle reqh;
@@ -484,8 +489,9 @@ uriowrite(dev_t dev, struct uio *uio, int flag)
 
 
 int
-urioioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
+urioioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 #if (USBDI >= 1)
 	struct urio_softc * sc;
 #endif
@@ -502,11 +508,11 @@ urioioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 
 	USB_GET_SC(urio, unit, sc);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case RIO_RECV_COMMAND:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
-		rio_cmd = (struct RioCommand *)addr;
+		rio_cmd = (struct RioCommand *)ap->a_data;
 		if (rio_cmd == NULL)
 			return EINVAL;
 		len = rio_cmd->length;
@@ -517,9 +523,9 @@ urioioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 		break;
 
 	case RIO_SEND_COMMAND:
-		if (!(flag & FWRITE))
+		if (!(ap->a_fflag & FWRITE))
 			return EPERM;
-		rio_cmd = (struct RioCommand *)addr;
+		rio_cmd = (struct RioCommand *)ap->a_data;
 		if (rio_cmd == NULL)
 			return EINVAL;
 		len = rio_cmd->length;
@@ -554,7 +560,7 @@ urioioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
 		uio.uio_rw =
 			req.bmRequestType & UT_READ ?
 			UIO_READ : UIO_WRITE;
-		uio.uio_td = p;
+		uio.uio_td = curthread;
 		ptr = malloc(len, M_TEMP, M_WAITOK);
 		if (uio.uio_rw == UIO_WRITE) {
 			error = uiomove(ptr, len, &uio);
@@ -674,7 +680,7 @@ Static int
 urio_detach(device_t self)
 {
 	DPRINTF(("%s: disconnected\n", USBDEVNAME(self)));
-	cdevsw_remove(&urio_cdevsw, -1, device_get_unit(self));
+	dev_ops_remove(&urio_ops, -1, device_get_unit(self));
 	/* XXX not implemented yet */
 	device_set_desc(self, NULL);
 	return 0;

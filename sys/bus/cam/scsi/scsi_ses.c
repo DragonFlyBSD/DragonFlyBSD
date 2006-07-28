@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.14 2006/02/17 19:17:42 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.15 2006/07/28 02:17:32 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -179,23 +179,11 @@ static struct periph_driver sesdriver = {
 
 DATA_SET(periphdriver_set, sesdriver);
 
-static struct cdevsw ses_cdevsw = {
-	/* name */	"ses",
-	/* maj */	SES_CDEV_MAJOR,
-	/* flags */	0,
-	/* port */      NULL,
-	/* clone */     NULL,
-
-	/* open */	sesopen,
-	/* close */	sesclose,
-	/* read */	noread,
-	/* write */	nowrite,
-	/* ioctl */	sesioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ses_ops = {
+	{ "ses", SES_CDEV_MAJOR, 0 }, 
+	.d_open =	sesopen,
+	.d_close =	sesclose,
+	.d_ioctl =	sesioctl,
 };
 static struct extend_array *sesperiphs;
 
@@ -274,7 +262,7 @@ sescleanup(struct cam_periph *periph)
 	cam_extend_release(sesperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
-	cdevsw_remove(&ses_cdevsw, -1, periph->unit_number);
+	dev_ops_remove(&ses_ops, -1, periph->unit_number);
 	free(softc, M_DEVBUF);
 }
 
@@ -378,8 +366,8 @@ sesregister(struct cam_periph *periph, void *arg)
 
 	cam_extend_set(sesperiphs, periph->unit_number, periph);
 
-	cdevsw_add(&ses_cdevsw, -1, periph->unit_number);
-	make_dev(&ses_cdevsw, periph->unit_number,
+	dev_ops_add(&ses_ops, -1, periph->unit_number);
+	make_dev(&ses_ops, periph->unit_number,
 		    UID_ROOT, GID_OPERATOR, 0600, "%s%d",
 		    periph->periph_name, periph->unit_number);
 
@@ -420,8 +408,9 @@ sesregister(struct cam_periph *periph, void *arg)
 }
 
 static int
-sesopen(dev_t dev, int flags, int fmt, struct thread *td)
+sesopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
 	int error;
@@ -476,8 +465,9 @@ out:
 }
 
 static int
-sesclose(dev_t dev, int flag, int fmt, struct thread *td)
+sesclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	struct ses_softc *softc;
 	int unit, error;
@@ -533,8 +523,9 @@ seserror(union ccb *ccb, u_int32_t cflags, u_int32_t sflags)
 }
 
 static int
-sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct thread *td)
+sesioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct cam_periph *periph;
 	ses_encstat tmp;
 	ses_objstat objs;
@@ -544,8 +535,8 @@ sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct thread *td)
 	int error, i;
 
 
-	if (arg_addr)
-		addr = *((caddr_t *) arg_addr);
+	if (ap->a_data)
+		addr = *((caddr_t *)ap->a_data);
 	else
 		addr = NULL;
 
@@ -567,25 +558,25 @@ sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct thread *td)
 	error = 0;
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
-	    ("trying to do ioctl %#lx\n", cmd));
+	    ("trying to do ioctl %#lx\n", ap->a_cmd));
 
 	/*
 	 * If this command can change the device's state,
 	 * we must have the device open for writing.
 	 */
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case SESIOC_GETNOBJ:
 	case SESIOC_GETOBJMAP:
 	case SESIOC_GETENCSTAT:
 	case SESIOC_GETOBJSTAT:
 		break;
 	default:
-		if ((flag & FWRITE) == 0) {
+		if ((ap->a_fflag & FWRITE) == 0) {
 			return (EBADF);
 		}
 	}
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case SESIOC_GETNOBJ:
 		error = copyout(&ssc->ses_nobjects, addr,
 		    sizeof (ssc->ses_nobjects));
@@ -660,7 +651,7 @@ sesioctl(dev_t dev, u_long cmd, caddr_t arg_addr, int flag, struct thread *td)
 		break;
 
 	default:
-		error = cam_periph_ioctl(periph, cmd, arg_addr, seserror);
+		error = cam_periph_ioctl(periph, ap->a_cmd, ap->a_data, seserror);
 		break;
 	}
 	return (error);

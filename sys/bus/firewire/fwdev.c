@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.11 2006/02/17 19:17:44 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.12 2006/07/28 02:17:33 dillon Exp $
  *
  */
 
@@ -84,13 +84,9 @@ static	d_write_t	fw_write;
 static	d_mmap_t	fw_mmap;
 static	d_strategy_t	fw_strategy;
 
-struct cdevsw firewire_cdevsw = 
+struct dev_ops firewire_ops = 
 {
-#ifdef __DragonFly__
-	"fw", CDEV_MAJOR, D_MEM, NULL, 0,
-	fw_open, fw_close, fw_read, fw_write, fw_ioctl,
-	fw_poll, fw_mmap, fw_strategy, nodump, nopsize,
-#elif __FreeBSD_version >= 500104
+	{ "fw", CDEV_MAJOR, D_MEM },
 	.d_open =	fw_open,
 	.d_close =	fw_close,
 	.d_read =	fw_read,
@@ -99,14 +95,6 @@ struct cdevsw firewire_cdevsw =
 	.d_poll =	fw_poll,
 	.d_mmap =	fw_mmap,
 	.d_strategy =	fw_strategy,
-	.d_name =	"fw",
-	.d_maj =	CDEV_MAJOR,
-	.d_flags =	D_MEM
-#else
-	fw_open, fw_close, fw_read, fw_write, fw_ioctl,
-	fw_poll, fw_mmap, fw_strategy, "fw", CDEV_MAJOR,
-	nodump, nopsize, D_MEM, -1
-#endif
 };
 
 struct fw_drv1 {
@@ -180,12 +168,13 @@ fwdev_freebuf(struct fw_xferq *q)
 
 
 static int
-fw_open (dev_t dev, int flags, int fmt, fw_proc *td)
+fw_open (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int err = 0;
 
 	if (DEV_FWMEM(dev))
-		return fwmem_open(dev, flags, fmt, td);
+		return fwmem_open(ap);
 
 	if (dev->si_drv1 != NULL)
 		return (EBUSY);
@@ -195,7 +184,7 @@ fw_open (dev_t dev, int flags, int fmt, fw_proc *td)
 		int unit = DEV2UNIT(dev);
 		int sub = DEV2SUB(dev);
 
-		make_dev(&firewire_cdevsw, minor(dev),
+		make_dev(&firewire_ops, minor(dev),
 			UID_ROOT, GID_OPERATOR, 0660,
 			"fw%d.%d", unit, sub);
 	}
@@ -207,8 +196,9 @@ fw_open (dev_t dev, int flags, int fmt, fw_proc *td)
 }
 
 static int
-fw_close (dev_t dev, int flags, int fmt, fw_proc *td)
+fw_close (struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct firewire_comm *fc;
 	struct fw_drv1 *d;
@@ -218,7 +208,7 @@ fw_close (dev_t dev, int flags, int fmt, fw_proc *td)
 	int err = 0;
 
 	if (DEV_FWMEM(dev))
-		return fwmem_close(dev, flags, fmt, td);
+		return fwmem_close(ap);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
 	fc = sc->fc;
@@ -281,8 +271,10 @@ fw_close (dev_t dev, int flags, int fmt, fw_proc *td)
  * read request.
  */
 static int
-fw_read (dev_t dev, struct uio *uio, int ioflag)
+fw_read (struct dev_read_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	struct firewire_softc *sc;
 	struct fw_xferq *ir;
 	struct fw_xfer *xfer;
@@ -291,7 +283,7 @@ fw_read (dev_t dev, struct uio *uio, int ioflag)
 	struct fw_pkt *fp;
 
 	if (DEV_FWMEM(dev))
-		return physio(dev, uio, ioflag);
+		return physread(ap);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
 
@@ -367,8 +359,10 @@ readloop:
 }
 
 static int
-fw_write (dev_t dev, struct uio *uio, int ioflag)
+fw_write (struct dev_write_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	int err = 0;
 	struct firewire_softc *sc;
 	int unit = DEV2UNIT(dev);
@@ -378,7 +372,7 @@ fw_write (dev_t dev, struct uio *uio, int ioflag)
 	struct fw_xferq *it;
 
 	if (DEV_FWMEM(dev))
-		return physio(dev, uio, ioflag);
+		return physwrite(ap);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
 	fc = sc->fc;
@@ -430,8 +424,9 @@ isoloop:
  * ioctl support.
  */
 int
-fw_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
+fw_ioctl (struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct firewire_comm *fc;
 	struct fw_drv1 *d;
@@ -445,17 +440,17 @@ fw_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
 	struct fw_devinfo *devinfo;
 	void *ptr;
 
-	struct fw_devlstreq *fwdevlst = (struct fw_devlstreq *)data;
-	struct fw_asyreq *asyreq = (struct fw_asyreq *)data;
-	struct fw_isochreq *ichreq = (struct fw_isochreq *)data;
-	struct fw_isobufreq *ibufreq = (struct fw_isobufreq *)data;
-	struct fw_asybindreq *bindreq = (struct fw_asybindreq *)data;
-	struct fw_crom_buf *crom_buf = (struct fw_crom_buf *)data;
+	struct fw_devlstreq *fwdevlst = (struct fw_devlstreq *)ap->a_data;
+	struct fw_asyreq *asyreq = (struct fw_asyreq *)ap->a_data;
+	struct fw_isochreq *ichreq = (struct fw_isochreq *)ap->a_data;
+	struct fw_isobufreq *ibufreq = (struct fw_isobufreq *)ap->a_data;
+	struct fw_asybindreq *bindreq = (struct fw_asybindreq *)ap->a_data;
+	struct fw_crom_buf *crom_buf = (struct fw_crom_buf *)ap->a_data;
 
 	if (DEV_FWMEM(dev))
-		return fwmem_ioctl(dev, cmd, data, flag, td);
+		return fwmem_ioctl(ap);
 
-	if (!data)
+	if (!ap->a_data)
 		return(EINVAL);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
@@ -464,7 +459,7 @@ fw_ioctl (dev_t dev, u_long cmd, caddr_t data, int flag, fw_proc *td)
 	ir = d->ir;
 	it = d->it;
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case FW_STSTREAM:
 		if (it == NULL) {
 			for (i = 0; i < fc->nisodma; i ++) {
@@ -676,7 +671,7 @@ out:
 		fwdevlst->info_len = len;
 		break;
 	case FW_GTPMAP:
-		bcopy(sc->fc->topology_map, data,
+		bcopy(sc->fc->topology_map, ap->a_data,
 				(sc->fc->topology_map->crc_len + 1) * 4);
 		break;
 	case FW_GCROM:
@@ -712,14 +707,15 @@ out:
 			free(ptr, M_FW);
 		break;
 	default:
-		sc->fc->ioctl (dev, cmd, data, flag, td);
+		sc->fc->ioctl(ap);
 		break;
 	}
 	return err;
 }
 int
-fw_poll(dev_t dev, int events, fw_proc *td)
+fw_poll(struct dev_poll_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	struct fw_xferq *ir;
 	int revents;
@@ -727,62 +723,57 @@ fw_poll(dev_t dev, int events, fw_proc *td)
 	int unit = DEV2UNIT(dev);
 
 	if (DEV_FWMEM(dev))
-		return fwmem_poll(dev, events, td);
+		return fwmem_poll(ap);
 
 	sc = devclass_get_softc(firewire_devclass, unit);
 	ir = ((struct fw_drv1 *)dev->si_drv1)->ir;
 	revents = 0;
 	tmp = POLLIN | POLLRDNORM;
-	if (events & tmp) {
+	if (ap->a_events & tmp) {
 		if (STAILQ_FIRST(&ir->q) != NULL)
 			revents |= tmp;
 		else
-			selrecord(td, &ir->rsel);
+			selrecord(curthread, &ir->rsel);
 	}
 	tmp = POLLOUT | POLLWRNORM;
-	if (events & tmp) {
+	if (ap->a_events & tmp) {
 		/* XXX should be fixed */	
 		revents |= tmp;
 	}
-
-	return revents;
+	ap->a_events = revents;
+	return(0);
 }
 
 static int
-#if defined(__DragonFly__) || __FreeBSD_version < 500102
-fw_mmap (dev_t dev, vm_offset_t offset, int nproto)
-#else
-fw_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)
-#endif
+fw_mmap (struct dev_mmap_args *ap)
 {  
+	dev_t dev = ap->a_head.a_dev;
 	struct firewire_softc *sc;
 	int unit = DEV2UNIT(dev);
 
 	if (DEV_FWMEM(dev))
-#if defined(__DragonFly__) || __FreeBSD_version < 500102
-		return fwmem_mmap(dev, offset, nproto);
-#else
-		return fwmem_mmap(dev, offset, paddr, nproto);
-#endif
-
+		return fwmem_mmap(ap);
 	sc = devclass_get_softc(firewire_devclass, unit);
 
 	return EINVAL;
 }
 
-static void
-fw_strategy(dev_t dev, struct bio *bio)
+static int
+fw_strategy(struct dev_strategy_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
 
 	if (DEV_FWMEM(dev)) {
-		fwmem_strategy(dev, bio);
-		return;
+		fwmem_strategy(ap);
+		return(0);
 	}
 	bp->b_error = EOPNOTSUPP;
 	bp->b_flags |= B_ERROR;
 	bp->b_resid = bp->b_bcount;
 	biodone(bio);
+	return(0);
 }
 
 int
@@ -791,7 +782,7 @@ fwdev_makedev(struct firewire_softc *sc)
 	int unit;
 
 	unit = device_get_unit(sc->fc->bdev);
-	cdevsw_add(&firewire_cdevsw, FW_UNITMASK, FW_UNIT(unit));
+	dev_ops_add(&firewire_ops, FW_UNITMASK, FW_UNIT(unit));
 	return(0);
 }
 
@@ -801,7 +792,7 @@ fwdev_destroydev(struct firewire_softc *sc)
 	int unit;
 
 	unit = device_get_unit(sc->fc->bdev);
-	cdevsw_remove(&firewire_cdevsw, FW_UNITMASK, FW_UNIT(unit));
+	dev_ops_remove(&firewire_ops, FW_UNITMASK, FW_UNIT(unit));
 	return(0);
 }
 
@@ -840,7 +831,7 @@ found:
 	sc = devclass_get_softc(firewire_devclass, unit);
 	if (sc == NULL)
 		return;
-	*dev = make_dev(&firewire_cdevsw, MAKEMINOR(devflag[i], unit, sub),
+	*dev = make_dev(&firewire_ops, MAKEMINOR(devflag[i], unit, sub),
 		       UID_ROOT, GID_OPERATOR, 0660,
 		       "%s%d.%d", devnames[i], unit, sub);
 	(*dev)->si_flags |= SI_CHEAPCLONE;

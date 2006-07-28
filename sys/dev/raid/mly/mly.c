@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.12 2005/06/10 17:10:26 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.13 2006/07/28 02:17:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,6 +34,7 @@
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/ctype.h>
 #include <sys/ioccom.h>
 #include <sys/stat.h>
@@ -94,23 +95,11 @@ static int	mly_user_health(struct mly_softc *sc, struct mly_user_health *uh);
 
 #define MLY_CDEV_MAJOR  158
 
-static struct cdevsw mly_cdevsw = {
-    /* name */	"mly",
-    /* cmaj */	MLY_CDEV_MAJOR,
-    /* flags */	0,
-    /* port */	NULL,
-    /* clone */	NULL,
-
-    mly_user_open,
-    mly_user_close,
-    noread,
-    nowrite,
-    mly_user_ioctl,
-    nopoll,
-    nommap,
-    nostrategy,
-    nodump,
-    nopsize
+static struct dev_ops mly_ops = {
+    { "mly", MLY_CDEV_MAJOR, 0 },
+    .d_open =	mly_user_open,
+    .d_close =	mly_user_close,
+    .d_ioctl =	mly_user_ioctl,
 };
 
 /********************************************************************************
@@ -209,8 +198,8 @@ mly_attach(struct mly_softc *sc)
     /*
      * Create the control device.
      */
-    cdevsw_add(&mly_cdevsw, -1, device_get_unit(sc->mly_dev));
-    sc->mly_dev_t = make_dev(&mly_cdevsw, device_get_unit(sc->mly_dev),
+    dev_ops_add(&mly_ops, -1, device_get_unit(sc->mly_dev));
+    sc->mly_dev_t = make_dev(&mly_ops, device_get_unit(sc->mly_dev),
     				UID_ROOT, GID_OPERATOR, S_IRUSR | S_IWUSR, 
 				"mly%d", device_get_unit(sc->mly_dev));
     sc->mly_dev_t->si_drv1 = sc;
@@ -1706,8 +1695,9 @@ mly_print_controller(int controller)
  * Accept an open operation on the control device.
  */
 static int
-mly_user_open(dev_t dev, int flags, int fmt, d_thread_t *td)
+mly_user_open(struct dev_open_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mly_softc	*sc = devclass_get_softc(devclass_find("mly"), unit);
 
@@ -1719,8 +1709,9 @@ mly_user_open(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Accept the last close on the control device.
  */
 static int
-mly_user_close(dev_t dev, int flags, int fmt, d_thread_t *td)
+mly_user_close(struct dev_close_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     int			unit = minor(dev);
     struct mly_softc	*sc = devclass_get_softc(devclass_find("mly"), unit);
 
@@ -1732,13 +1723,14 @@ mly_user_close(dev_t dev, int flags, int fmt, d_thread_t *td)
  * Handle controller-specific control operations.
  */
 static int
-mly_user_ioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, d_thread_t *td)
+mly_user_ioctl(struct dev_ioctl_args *ap)
 {
+    dev_t dev = ap->a_head.a_dev;
     struct mly_softc		*sc = (struct mly_softc *)dev->si_drv1;
-    struct mly_user_command	*uc = (struct mly_user_command *)addr;
-    struct mly_user_health	*uh = (struct mly_user_health *)addr;
+    struct mly_user_command	*uc = (struct mly_user_command *)ap->a_data;
+    struct mly_user_health	*uh = (struct mly_user_health *)ap->a_data;
     
-    switch(cmd) {
+    switch(ap->a_cmd) {
     case MLYIO_COMMAND:
 	return(mly_user_command(sc, uc));
     case MLYIO_HEALTH:

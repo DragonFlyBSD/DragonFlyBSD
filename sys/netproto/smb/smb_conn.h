@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.h,v 1.1.2.3 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.7 2006/04/23 02:29:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.8 2006/07/28 02:17:41 dillon Exp $
  */
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
@@ -365,10 +365,10 @@ int  smb_vc_connect(struct smb_vc *vcp, struct smb_cred *scred);
 int  smb_vc_access(struct smb_vc *vcp, struct smb_cred *scred, mode_t mode);
 int  smb_vc_get(struct smb_vc *vcp, int flags, struct smb_cred *scred);
 void smb_vc_put(struct smb_vc *vcp, struct smb_cred *scred);
-void smb_vc_ref(struct smb_vc *vcp, struct thread *td);
+void smb_vc_ref(struct smb_vc *vcp);
 void smb_vc_rele(struct smb_vc *vcp, struct smb_cred *scred);
-int  smb_vc_lock(struct smb_vc *vcp, int flags, struct thread *td);
-void smb_vc_unlock(struct smb_vc *vcp, int flags, struct thread *td);
+int  smb_vc_lock(struct smb_vc *vcp, int flags);
+void smb_vc_unlock(struct smb_vc *vcp, int flags);
 int  smb_vc_lookupshare(struct smb_vc *vcp, struct smb_sharespec *shspec,
 	struct smb_cred *scred, struct smb_share **sspp);
 const char * smb_vc_getpass(struct smb_vc *vcp);
@@ -380,12 +380,12 @@ u_short smb_vc_nextmid(struct smb_vc *vcp);
 int  smb_share_create(struct smb_vc *vcp, struct smb_sharespec *shspec,
 	struct smb_cred *scred, struct smb_share **sspp);
 int  smb_share_access(struct smb_share *ssp, struct smb_cred *scred, mode_t mode);
-void smb_share_ref(struct smb_share *ssp, struct thread *td);
+void smb_share_ref(struct smb_share *ssp);
 void smb_share_rele(struct smb_share *ssp, struct smb_cred *scred);
 int  smb_share_get(struct smb_share *ssp, int flags, struct smb_cred *scred);
 void smb_share_put(struct smb_share *ssp, struct smb_cred *scred);
-int  smb_share_lock(struct smb_share *ssp, int flags, struct thread *td);
-void smb_share_unlock(struct smb_share *ssp, int flags, struct thread *td);
+int  smb_share_lock(struct smb_share *ssp, int flags);
+void smb_share_unlock(struct smb_share *ssp, int flags);
 void smb_share_invalidate(struct smb_share *ssp);
 int  smb_share_valid(struct smb_share *ssp);
 const char * smb_share_getpass(struct smb_share *ssp);

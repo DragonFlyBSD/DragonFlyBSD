@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.11 2005/10/28 03:25:49 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.12 2006/07/28 02:17:36 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -34,6 +34,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/fcntl.h>
@@ -91,23 +92,13 @@ static	d_write_t	ppiwrite;
 static	d_read_t	ppiread;
 
 #define CDEV_MAJOR 82
-static struct cdevsw ppi_cdevsw = {
-	/* name */	"ppi",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	ppiopen,
-	/* close */	ppiclose,
-	/* read */	ppiread,
-	/* write */	ppiwrite,
-	/* ioctl */	ppiioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops ppi_ops = {
+	{ "ppi", CDEV_MAJOR, 0 },
+	.d_open =	ppiopen,
+	.d_close =	ppiclose,
+	.d_read =	ppiread,
+	.d_write =	ppiwrite,
+	.d_ioctl =	ppiioctl,
 };
 
 #ifdef PERIPH_1284
@@ -174,8 +165,8 @@ ppi_attach(device_t dev)
 						&zero, irq, irq, 1, RF_ACTIVE);
 #endif /* PERIPH_1284 */
 
-	cdevsw_add(&ppi_cdevsw, -1, device_get_unit(dev));
-	make_dev(&ppi_cdevsw, device_get_unit(dev),	/* XXX cleanup */
+	dev_ops_add(&ppi_ops, -1, device_get_unit(dev));
+	make_dev(&ppi_ops, device_get_unit(dev),	/* XXX cleanup */
 		 UID_ROOT, GID_WHEEL,
 		 0600, "ppi%d", device_get_unit(dev));
 
@@ -254,8 +245,9 @@ ppiintr(void *arg)
 #endif /* PERIPH_1284 */
 
 static int
-ppiopen(dev_t dev, int flags, int fmt, d_thread_t *td)
+ppiopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -267,7 +259,7 @@ ppiopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 
 	if (!(ppi->ppi_flags & HAVE_PPBUS)) {
 		if ((res = ppb_request_bus(ppbus, ppidev,
-			(flags & O_NONBLOCK) ? PPB_DONTWAIT :
+			(ap->a_oflags & O_NONBLOCK) ? PPB_DONTWAIT :
 						(PPB_WAIT | PPB_INTR))))
 			return (res);
 
@@ -289,8 +281,9 @@ ppiopen(dev_t dev, int flags, int fmt, d_thread_t *td)
 }
 
 static int
-ppiclose(dev_t dev, int flags, int fmt, d_thread_t *td)
+ppiclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -331,9 +324,11 @@ ppiclose(dev_t dev, int flags, int fmt, d_thread_t *td)
  * If no data is available, wait for it otherwise transfer as much as possible
  */
 static int
-ppiread(dev_t dev, struct uio *uio, int ioflag)
+ppiread(struct dev_read_args *ap)
 {
 #ifdef PERIPH_1284
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -415,9 +410,11 @@ error:
  * Once negociation done, transfer data
  */
 static int
-ppiwrite(dev_t dev, struct uio *uio, int ioflag)
+ppiwrite(struct dev_write_args *ap)
 {
 #ifdef PERIPH_1284
+	dev_t dev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
 	u_int unit = minor(dev);
 	struct ppi_data *ppi = UNITOSOFTC(unit);
 	device_t ppidev = UNITODEVICE(unit);
@@ -502,16 +499,16 @@ error:
 }
 
 static int
-ppiioctl(dev_t dev, u_long cmd, caddr_t data, int flags, d_thread_t *td)
+ppiioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	u_int unit = minor(dev);
 	device_t ppidev = UNITODEVICE(unit);
         device_t ppbus = device_get_parent(ppidev);
 	int error = 0;
-	u_int8_t *val = (u_int8_t *)data;
+	u_int8_t *val = (u_int8_t *)ap->a_data;
 
-	switch (cmd) {
-
+	switch (ap->a_cmd) {
 	case PPIGDATA:			/* get data register */
 		*val = ppb_rdtr(ppbus);
 		break;

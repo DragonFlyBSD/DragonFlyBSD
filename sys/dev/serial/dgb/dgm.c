@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.12 2005/06/16 16:03:10 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.13 2006/07/28 02:17:38 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -241,24 +241,15 @@ static driver_t dgmdriver = {
 static devclass_t dgmdevclass;
 
 #define	CDEV_MAJOR	101
-static struct cdevsw dgm_cdevsw = {
-	/* name */	"dgm",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* port */      NULL,
-	/* clone */	NULL,
-
-	/* open */	dgmopen,
-	/* close */	dgmclose,
-	/* read */	ttyread,
-	/* write */	ttywrite,
-	/* ioctl */	dgmioctl,
-	/* poll */	ttypoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* kqfilter */	ttykqfilter
+static struct dev_ops dgm_ops = {
+	{ "dgm", CDEV_MAJOR, D_TTY | D_KQFILTER },
+	.d_open =	dgmopen,
+	.d_close =	dgmclose,
+	.d_read =	ttyread,
+	.d_write =	ttywrite,
+	.d_ioctl =	dgmioctl,
+	.d_poll =	ttypoll,
+	.d_kqfilter =	ttykqfilter
 };
 
 static int
@@ -791,7 +782,7 @@ dgmattach(device_t dev)
 	else
 		shrinkmem = 0;
 
-	cdevsw_add(&dgm_cdevsw, DGM_UNITMASK, DGM_UNIT(sc->unit));
+	dev_ops_add(&dgm_ops, DGM_UNITMASK, DGM_UNIT(sc->unit));
 	for (i = 0; i < sc->numports; i++, bc++) {
 		DPRINT3(DB_INFO, "dgm%d: Set up port %d\n", sc->unit, i);
 		port = &sc->ports[i];
@@ -866,17 +857,17 @@ dgmattach(device_t dev)
 		port->it_out = port->it_in;
 
 		DPRINT3(DB_INFO, "dgm%d port %d: make devices\n", sc->unit, i);
-		make_dev(&dgm_cdevsw, (sc->unit*65536) + i, UID_ROOT,
+		make_dev(&dgm_ops, (sc->unit*65536) + i, UID_ROOT,
 		    GID_WHEEL, 0600, "ttyM%d%x", sc->unit, i + 0xa0);
-		make_dev(&dgm_cdevsw, sc->unit * 65536 + i + 64, UID_ROOT,
+		make_dev(&dgm_ops, sc->unit * 65536 + i + 64, UID_ROOT,
 		    GID_WHEEL, 0600, "ttyiM%d%x", sc->unit, i + 0xa0);
-		make_dev(&dgm_cdevsw, sc->unit * 65536 + i + 128, UID_ROOT,
+		make_dev(&dgm_ops, sc->unit * 65536 + i + 128, UID_ROOT,
 		    GID_WHEEL, 0600, "ttylM%d%x", sc->unit, i + 0xa0);
-		make_dev(&dgm_cdevsw, sc->unit * 65536 + i + 262144, UID_UUCP,
+		make_dev(&dgm_ops, sc->unit * 65536 + i + 262144, UID_UUCP,
 		    GID_DIALER, 0660, "cuaM%d%x", sc->unit, i + 0xa0);
-		make_dev(&dgm_cdevsw, sc->unit * 65536 + i + 262208, UID_UUCP,
+		make_dev(&dgm_ops, sc->unit * 65536 + i + 262208, UID_UUCP,
 		    GID_DIALER, 0660, "cuaiM%d%x", sc->unit, i + 0xa0);
-		make_dev(&dgm_cdevsw, sc->unit * 65536 + i + 262272, UID_UUCP,
+		make_dev(&dgm_ops, sc->unit * 65536 + i + 262272, UID_UUCP,
 		    GID_DIALER, 0660, "cualM%d%x", sc->unit, i + 0xa0);
 	}
 
@@ -906,11 +897,11 @@ dgmdetach(device_t dev)
 	DPRINT2(DB_INFO, "dgm%d: detach\n", sc->unit);
 
 	/*
-	 * The cdevsw_remove() call will destroy all associated devices
+	 * The dev_ops_remove() call will destroy all associated devices
 	 * and dereference any ad-hoc-created devices, but does not
 	 * dereference devices created via make_dev().
 	 */
-	cdevsw_remove(&dgm_cdevsw, DGM_UNITMASK, DGM_UNIT(sc->unit));
+	dev_ops_remove(&dgm_ops, DGM_UNITMASK, DGM_UNIT(sc->unit));
 
 	callout_stop(&sc->toh);
 
@@ -937,8 +928,9 @@ dgmshutdown(device_t dev)
 
 /* ARGSUSED */
 static int
-dgmopen(dev_t dev, int flag, int mode, struct thread *td)
+dgmopen(struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct dgm_softc *sc;
 	struct tty *tp;
 	int unit;
@@ -1008,7 +1000,7 @@ open_top:
 				goto out;
 			}
 		} else if (port->active_out) {
-			if (flag & O_NONBLOCK) {
+			if (ap->a_oflags & O_NONBLOCK) {
 				error = EBUSY;
 				DPRINT4(DB_OPEN, "dgm%d: port%d:"
 				    " BUSY error = %d\n", unit, pnum, error);
@@ -1023,7 +1015,7 @@ open_top:
 			crit_exit();
 			goto open_top;
 		}
-		if (tp->t_state & TS_XCLUDE && suser(td)) {
+		if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1076,7 +1068,7 @@ open_top:
 	 * Wait for DCD if necessary.
 	 */
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
-	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
+	    && !(tp->t_cflag & CLOCAL) && !(ap->a_oflags & O_NONBLOCK)) {
 		++port->wopeners;
 		error = tsleep(TSA_CARR_ON(tp), PCATCH, "dgdcd", 0);
 		--port->wopeners;
@@ -1117,8 +1109,9 @@ out:
 
 /*ARGSUSED*/
 static int
-dgmclose(dev_t dev, int flag, int mode, struct thread *td)
+dgmclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	int		mynor;
 	struct tty	*tp;
 	int unit, pnum;
@@ -1145,7 +1138,7 @@ dgmclose(dev_t dev, int flag, int mode, struct thread *td)
 
 	port->closing = 1;
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: closing line disc\n", unit, pnum);
-	linesw[tp->t_line].l_close(tp, flag);
+	linesw[tp->t_line].l_close(tp, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios);
 
 	DPRINT3(DB_CLOSE, "dgm%d: port%d: hard closing\n", unit, pnum);
@@ -1487,8 +1480,11 @@ dgmpoll(void *unit_c)
 }
 
 static int
-dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
+dgmioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
 	struct dgm_softc *sc;
 	int unit, pnum;
 	struct dgm_p *port;
@@ -1529,7 +1525,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = suser_cred(ap->a_cred, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1604,11 +1600,12 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	if (cmd == TIOCSETAW || cmd == TIOCSETAF)
 		port->mustdrain = 1;
 
-	error = linesw[tp->t_line].l_ioctl(tp, cmd, data, flag, td);
+	error = linesw[tp->t_line].l_ioctl(tp, cmd, data,
+					   ap->a_fflag, ap->a_cred);
 	if (error != ENOIOCTL)
 		return error;
 	crit_enter();
-	error = ttioctl(tp, cmd, data, flag);
+	error = ttioctl(tp, cmd, data, ap->a_fflag);
 	disc_optim(tp, &tp->t_termios);
 	port->mustdrain = 0;
 	if (error != ENOIOCTL) {
@@ -1751,7 +1748,7 @@ dgmioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(td);
+		error = suser_cred(ap->a_cred, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);

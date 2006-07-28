@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.7 2004/05/19 22:52:39 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smb.c,v 1.8 2006/07/28 02:17:34 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -94,23 +94,13 @@ static	d_read_t	smbread;
 static	d_ioctl_t	smbioctl;
 
 #define CDEV_MAJOR 106
-static struct cdevsw smb_cdevsw = {
-	/* name */	"smb",
-	/* maj */	CDEV_MAJOR,
-	/* flags */	0,
-	/* port */	NULL,
-	/* clone */	NULL,
-
-	/* open */	smbopen,
-	/* close */	smbclose,
-	/* read */	smbread,
-	/* write */	smbwrite,
-	/* ioctl */	smbioctl,
-	/* poll */	nopoll,
-	/* mmap */	nommap,
-	/* strategy */	nostrategy,
-	/* dump */	nodump,
-	/* psize */	nopsize
+static struct dev_ops smb_ops = {
+	{ "smb", CDEV_MAJOR, 0 },
+	.d_open =	smbopen,
+	.d_close =	smbclose,
+	.d_read =	smbread,
+	.d_write =	smbwrite,
+	.d_ioctl =	smbioctl,
 };
 
 /*
@@ -134,16 +124,17 @@ smb_probe(device_t dev)
 static int
 smb_attach(device_t dev)
 {
-	cdevsw_add(&smb_cdevsw, -1, device_get_unit(dev));
-	make_dev(&smb_cdevsw, device_get_unit(dev),	/* XXX cleanup */
+	dev_ops_add(&smb_ops, -1, device_get_unit(dev));
+	make_dev(&smb_ops, device_get_unit(dev),	/* XXX cleanup */
 			UID_ROOT, GID_WHEEL,
 			0600, "smb%d", device_get_unit(dev));
 	return (0);
 }
 
 static int
-smbopen (dev_t dev, int flags, int fmt, struct thread *td)
+smbopen (struct dev_open_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -158,8 +149,9 @@ smbopen (dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-smbclose(dev_t dev, int flags, int fmt, struct thread *td)
+smbclose(struct dev_close_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 
 	if (!sc)
@@ -174,40 +166,37 @@ smbclose(dev_t dev, int flags, int fmt, struct thread *td)
 }
 
 static int
-smbwrite(dev_t dev, struct uio * uio, int ioflag)
+smbwrite(struct dev_write_args *ap)
 {
-	/* not supported */
-
 	return (EINVAL);
 }
 
 static int
-smbread(dev_t dev, struct uio * uio, int ioflag)
+smbread(struct dev_read_args *ap)
 {
-	/* not supported */
-
 	return (EINVAL);
 }
 
 static int
-smbioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
+smbioctl(struct dev_ioctl_args *ap)
 {
+	dev_t dev = ap->a_head.a_dev;
 	device_t smbdev = IIC_DEVICE(minor(dev));
 	struct smb_softc *sc = IIC_SOFTC(minor(dev));
 	device_t parent = device_get_parent(smbdev);
 
 	int error = 0;
-	struct smbcmd *s = (struct smbcmd *)data;
+	struct smbcmd *s = (struct smbcmd *)ap->a_data;
 
 	if (!sc || !s)
 		return (EINVAL);
 
 	/* allocate the bus */
 	if ((error = smbus_request_bus(parent, smbdev,
-			(flags & O_NONBLOCK) ? SMB_DONTWAIT : (SMB_WAIT | SMB_INTR))))
+			(ap->a_fflag & O_NONBLOCK) ? SMB_DONTWAIT : (SMB_WAIT | SMB_INTR))))
 		return (error);
 
-	switch (cmd) {
+	switch (ap->a_cmd) {
 	case SMB_QUICK_WRITE:
 		error = smbus_error(smbus_quick(parent, s->slave, SMB_QWRITE));
 		break;
