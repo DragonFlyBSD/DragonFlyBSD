@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.8 2004/07/05 06:02:35 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.9 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.10 2006/07/28 07:31:08 dillon Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -512,6 +512,7 @@ extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
 extern	int	ipf_log (void);
 extern	struct	ifnet *get_unit (char *, int);
 extern	int	mbuflen (mb_t *);
+#if 0
 # if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || \
 	  (_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
 extern	int	iplioctl (dev_t, u_long, caddr_t, int);
@@ -520,6 +521,7 @@ extern	int	iplioctl (dev_t, int, caddr_t, int);
 # endif
 extern	int	iplopen (dev_t, int);
 extern	int	iplclose (dev_t, int);
+#endif
 #else /* #ifndef _KERNEL */
 # if defined(__NetBSD__) && defined(PFIL_HOOKS)
 extern	void	ipfilterattach (int);
