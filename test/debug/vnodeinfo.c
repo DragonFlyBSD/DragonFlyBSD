@@ -40,10 +40,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.11 2006/07/25 20:00:56 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.12 2006/07/28 02:11:53 dillon Exp $
  */
 
-#define _KERNEL_STRUCTURES_
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/user.h>
 #include <sys/malloc.h>
