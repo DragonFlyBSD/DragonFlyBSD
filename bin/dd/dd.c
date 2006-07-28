@@ -37,12 +37,13 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/dd/dd.c,v 1.6 2006/07/28 06:24:03 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/disklabel.h>
 #include <sys/filio.h>
 #include <sys/time.h>
