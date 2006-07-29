@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.121 2006/07/14 21:42:06 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.122 2006/07/29 12:11:11 corecode Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -430,6 +430,8 @@ upgrade_etc:	preupgrade
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/worm.4.gz"
 	rm -f ${DESTDIR}/usr/include/sys/wormio.h
 	rm -rf ${DESTDIR}/usr/share/doc/ncurses
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/brconfig.8.gz"
+	rm -f ${DESTDIR}/sbin/brconfig
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)
