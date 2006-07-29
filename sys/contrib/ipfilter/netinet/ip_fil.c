@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.22 2006/07/29 03:49:01 y0netan1 Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -667,7 +667,11 @@ int IPL_EXTERN(ioctl)(dev_t dev, int cmd, caddr_t data, int mode
 )
 #else
 #if defined(__DragonFly__)
+# if defined(_KERNEL)
 int IPL_EXTERN(ioctl)(struct dev_ioctl_args *ap)
+# else
+int IPL_EXTERN(ioctl)(dev_t dev, u_long cmd, caddr_t data, int mode)
+#endif
 #else
 int IPL_EXTERN(ioctl)(dev, cmd, data, mode
 #if (defined(_KERNEL) && defined(__FreeBSD__))
@@ -693,7 +697,7 @@ int mode;
 #endif /* DragonFly */
 #endif /* __sgi */
 {
-#if defined(__DragonFly__)
+#if (defined(_KERNEL) && defined(__DragonFly__))
 	dev_t dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
