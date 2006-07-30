@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.31 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.32 2006/07/30 09:39:27 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -103,7 +103,8 @@ static int	bpf_setif(struct bpf_d *, struct ifreq *);
 static void	bpf_timed_out(void *);
 static void	bpf_wakeup(struct bpf_d *);
 static void	catchpacket(struct bpf_d *, u_char *, u_int, u_int,
-			    void (*)(const void *, void *, size_t));
+			    void (*)(const void *, void *, size_t),
+			    const struct timeval *);
 static void	reset_d(struct bpf_d *);
 static int	bpf_setf(struct bpf_d *, struct bpf_program *);
 static int	bpf_getdltlist(struct bpf_d *, struct bpf_dltlist *);
@@ -1022,6 +1023,8 @@ void
 bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 {
 	struct bpf_d *d;
+	struct timeval tv;
+	int gottime = 0;
 	u_int slen;
 
 	/*
@@ -1032,8 +1035,13 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 	SLIST_FOREACH(d, &bp->bif_dlist, bd_next) {
 		++d->bd_rcount;
 		slen = bpf_filter(d->bd_filter, pkt, pktlen, pktlen);
-		if (slen != 0)
-			catchpacket(d, pkt, pktlen, slen, ovbcopy);
+		if (slen != 0) {
+			if (!gottime) {
+				microtime(&tv);
+				gottime = 1;
+			}
+			catchpacket(d, pkt, pktlen, slen, ovbcopy, &tv);
+		}
 	}
 }
 
@@ -1072,6 +1080,8 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 	struct bpf_d *d;
 	u_int pktlen, slen;
 	struct mbuf *m0;
+	struct timeval tv;
+	int gottime = 0;
 
 	/* Don't compute pktlen, if no descriptor is attached. */
 	if (SLIST_EMPTY(&bp->bif_dlist))
@@ -1086,8 +1096,14 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 			continue;
 		++d->bd_rcount;
 		slen = bpf_filter(d->bd_filter, (u_char *)m, pktlen, 0);
-		if (slen != 0)
-			catchpacket(d, (u_char *)m, pktlen, slen, bpf_mcopy);
+		if (slen != 0) {
+			if (!gottime) {
+				microtime(&tv);
+				gottime = 1;
+			}
+			catchpacket(d, (u_char *)m, pktlen, slen, bpf_mcopy,
+				    &tv);
+		}
 	}
 }
 
@@ -1134,7 +1150,8 @@ bpf_ptap(struct bpf_if *bp, struct mbuf *m, const void *data, u_int dlen)
  */
 static void
 catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
-	    void (*cpfn)(const void *, void *, size_t))
+	    void (*cpfn)(const void *, void *, size_t),
+	    const struct timeval *tv)
 {
 	struct bpf_hdr *hp;
 	int totlen, curlen;
@@ -1183,7 +1200,7 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 	 * Append the bpf header.
 	 */
 	hp = (struct bpf_hdr *)(d->bd_sbuf + curlen);
-	microtime(&hp->bh_tstamp);
+	hp->bh_tstamp = *tv;
 	hp->bh_datalen = pktlen;
 	hp->bh_hdrlen = hdrlen;
 	/*
