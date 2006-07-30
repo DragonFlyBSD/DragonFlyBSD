@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
- * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.2.6.1 2006/07/30 17:20:01 swildner Exp $
  *
  * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
@@ -306,6 +306,7 @@ rexec(ahost, rport, name, pass, cmd, fd2p)
 	u_short port;
 	int s, timo = 1, s3;
 	char c;
+	char *acct = NULL;
 
 	hp = gethostbyname(*ahost);
 	if (hp == 0) {
@@ -313,7 +314,9 @@ rexec(ahost, rport, name, pass, cmd, fd2p)
 		return (-1);
 	}
 	*ahost = hp->h_name;
-	ruserpass(hp->h_name, &name, &pass);
+	ruserpass(hp->h_name, &name, &pass, &acct);
+	if (acct != NULL)
+		free(acct);
 retry:
 	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s < 0) {
