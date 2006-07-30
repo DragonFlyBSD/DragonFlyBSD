@@ -32,7 +32,7 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
- * $DragonFly: src/usr.bin/rev/rev.c,v 1.6 2004/12/14 18:22:09 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rev/rev.c,v 1.7 2006/07/30 06:49:39 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -95,7 +95,6 @@ dorev(FILE *fp, const char *filepath)
 	while ((p = fgetln(fp, &len)) != NULL) {
 			if (p[len - 1] == '\n')
 				--len;
-			t = p + len - 1;
 			for (t = p + len - 1; t >= p; --t)
 				putchar(*t);
 			putchar('\n');
