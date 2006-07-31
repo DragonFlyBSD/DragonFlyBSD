@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/download.cgi,v 1.2 2006/06/19 12:24:38 corecode Exp $
+# $DragonFly: site/data/community/Attic/download.cgi,v 1.3 2006/07/31 20:26:45 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -111,7 +111,7 @@ features often discussed on the mailing lists are typically not
 in release branches.
 </p>
 <p>
-The current release is <a href="release1_4.cgi">DragonFly 1.4.X-RELEASE</a>.
+The current release is <a href="release1_6.cgi">DragonFly 1.6.X-RELEASE</a>.
 </p>
 
 <p>
@@ -486,17 +486,6 @@ available for purchase on CD, and will ship to UK or international
 addresses.
 </TD>
 <TD><A HREF="http://bsd-systems.co.uk/">http://bsd-systems.co.uk/</A></TD>
-</TR>
-
-
-<TR>
-<TD><B>Crescent Anchor</B><br>
-Crescent Anchor provides DragonFly on CD-ROM for a nominal fee.
-Part of your purchase from Crescent Anchor will be contributed
-back to support continuing DragonFly development via the forthcoming 
-nonprofit company.  Please visit the Crescent Anchor site for details, 
-pricing, and other offers.  </TD>
-<TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A></TD>
 </TR>
 
 <TR>
