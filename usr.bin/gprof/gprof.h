@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)gprof.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/gprof/gprof.h,v 1.2 2006/07/31 12:12:08 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -64,6 +65,9 @@
 #if mips
 #   include "mips.h"
 #endif
+#if __amd64__
+#   include "amd64.h"
+#endif
 
 
     /*
@@ -83,6 +87,8 @@ typedef	int64_t UNIT;
 #else
 typedef	u_short UNIT;		/* unit of profiling */
 #endif
+#define	UNITS_TO_CODE	(OFFSET_OF_CODE / sizeof(UNIT))
+
 char	*a_outname;
 #define	A_OUTNAME		"a.out"
 

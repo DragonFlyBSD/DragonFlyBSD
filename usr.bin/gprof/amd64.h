@@ -31,7 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)i386.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/gprof/i386.h,v 1.2 2006/07/31 12:12:08 corecode Exp $
+ * $FreeBSD: src/usr.bin/gprof/amd64.h,v 1.2 2002/02/21 07:12:57 bde Exp $
+ * $DragonFly: src/usr.bin/gprof/amd64.h,v 1.1 2006/07/31 12:12:08 corecode Exp $
  */
 
     /*
