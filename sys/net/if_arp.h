@@ -32,7 +32,7 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/if_arp.h,v 1.7 2006/05/21 03:43:45 dillon Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.7.2.1 2006/07/31 12:17:39 corecode Exp $
  */
 
 #ifndef _NET_IF_ARP_H_
@@ -43,12 +43,6 @@
 #endif
 #ifndef _SYS_SOCKET_H_
 #include <sys/socket.h>
-#endif
-#ifndef _NET_IF_H_
-#include <net/if.h>
-#endif
-#ifndef _NET_IF_VAR_H_
-#include <net/if_var.h>
 #endif
 
 /*
@@ -114,6 +108,9 @@ struct arpreq {
 #define	ATF_USETRAILERS	0x10	/* has requested trailers */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _NET_IF_VAR_H_
+#include <net/if_var.h>
+#endif
 
 /*
  * Structure shared between the ethernet driver modules and
