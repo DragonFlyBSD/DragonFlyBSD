@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.41 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.42 2006/08/01 18:11:20 swildner Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -109,19 +110,19 @@
  * Various supported device vendors/types and their names.
  */
 static struct vr_type vr_devs[] = {
-	{ VIA_VENDORID, VIA_DEVICEID_RHINE,
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT3043,
 		"VIA VT3043 Rhine I 10/100BaseTX" },
-	{ VIA_VENDORID, VIA_DEVICEID_RHINE_II,
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT86C100A,
 		"VIA VT86C100A Rhine II 10/100BaseTX" },
-	{ VIA_VENDORID, VIA_DEVICEID_RHINE_II_2,
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT6102,
 		"VIA VT6102 Rhine II 10/100BaseTX" },
-	{ VIA_VENDORID, VIA_DEVICEID_RHINE_III,
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT6105,
 		"VIA VT6105 Rhine III 10/100BaseTX" },
-	{ VIA_VENDORID, VIA_DEVICEID_RHINE_III_M,
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT6105M,
 		"VIA VT6105M Rhine III 10/100BaseTX" },
-	{ DELTA_VENDORID, DELTA_DEVICEID_RHINE_II,
+	{ PCI_VENDOR_DELTA, PCI_PRODUCT_DELTA_RHINEII,
 		"Delta Electronics Rhine II 10/100BaseTX" },
-	{ ADDTRON_VENDORID, ADDTRON_DEVICEID_RHINE_II,
+	{ PCI_VENDOR_ADDTRON, PCI_PRODUCT_ADDTRON_RHINEII,
 		"Addtron Technology Rhine II 10/100BaseTX" },
 	{ 0, 0, NULL }
 };

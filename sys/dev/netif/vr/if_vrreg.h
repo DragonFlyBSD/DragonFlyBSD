@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.8 2005/11/21 13:20:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.9 2006/08/01 18:11:20 swildner Exp $
  */
 
 /*
@@ -500,40 +500,6 @@ struct vr_softc {
 /*
  * General constants that are fun to know.
  *
- * VIA vendor ID
- */
-#define	VIA_VENDORID			0x1106
-
-/*
- * VIA Rhine device IDs.
- */
-#define	VIA_DEVICEID_RHINE		0x3043
-#define VIA_DEVICEID_RHINE_II		0x6100
-#define VIA_DEVICEID_RHINE_II_2		0x3065
-#define VIA_DEVICEID_RHINE_III		0x3106
-#define VIA_DEVICEID_RHINE_III_M	0x3053
-
-/*
- * Delta Electronics device ID.
- */
-#define DELTA_VENDORID			0x1500
-
-/*
- * Delta device IDs.
- */
-#define DELTA_DEVICEID_RHINE_II		0x1320
-
-/*
- * Addtron vendor ID.
- */
-#define ADDTRON_VENDORID		0x4033
-
-/*
- * Addtron device IDs.
- */
-#define ADDTRON_DEVICEID_RHINE_II	0x1320
-
-/*
  * VIA Rhine revision IDs
  */
 
