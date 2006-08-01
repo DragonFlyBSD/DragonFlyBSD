@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.11 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.12 2006/08/01 18:04:22 swildner Exp $
  */
 
 /*-
@@ -57,6 +57,7 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -91,18 +92,19 @@ SYSCTL_INT(_debug, OID_AUTO, iwi, CTLFLAG_RW, &iwi_debug, 0, "iwi debug level");
 #define DPRINTFN(n, x)
 #endif
 
-struct iwi_ident {
+static struct iwi_ident {
 	uint16_t	vendor;
 	uint16_t	device;
 	const char	*name;
-};
-
-static const struct iwi_ident iwi_ident_table[] = {
-	{ 0x8086, 0x4220, "Intel(R) PRO/Wireless 2200BG" },
-	{ 0x8086, 0x4221, "Intel(R) PRO/Wireless 2225BG" },
-	{ 0x8086, 0x4223, "Intel(R) PRO/Wireless 2915ABG" },
-	{ 0x8086, 0x4224, "Intel(R) PRO/Wireless 2915ABG" },
-
+} iwi_ident_table[] = {
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2200BG,
+		"Intel(R) PRO/Wireless 2200BG" },
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2225BG,
+		"Intel(R) PRO/Wireless 2225BG" },
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2915ABG_1,
+		"Intel(R) PRO/Wireless 2915ABG" },
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2915ABG_2,
+		"Intel(R) PRO/Wireless 2915ABG" },
 	{ 0, 0, NULL }
 };
 
