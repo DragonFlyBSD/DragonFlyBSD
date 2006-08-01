@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.1 2006/07/19 06:08:07 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.2 2006/08/01 16:21:19 dillon Exp $
  */
 
 /*
@@ -57,7 +57,21 @@
 #endif
 
 /*
- * SYSIDs are 64 bit entities.
+ * SYSIDs are 64 bit entities.  A SYSID is potentially routed across a
+ * topology, lsb to msb.   End points typically reserve lsb bits
+ * while each routing layer reserves additional bits.  Locality of reference
+ * is defined as storing a value of 0 in any 'unknown' high bits,
+ * allowing local meshes to be tied together into larger entities
+ * without disrupting a running system.
+ *
+ * Because sysid's are the primary means of identification in a potentially
+ * huge mesh of machines, a way is needed to detect stale values.  For
+ * this reason, each local node reserves a number of bits starting at bit 0
+ * (the lsb) as a boot counter.  Sysids whos ref counts are not entirely
+ * known due to a disconnect must not be recycled after a disconnect for
+ * at least a number of weeks.  10-16 bits are usually reserved for this
+ * purpose.  Theoretically this also means that the SYSID routing space
+ * for a disconnected node should not be reassigned to another node.
  */
 typedef u_int64_t       sysid_t;
 
@@ -77,6 +91,28 @@ struct syslink_desc;
 struct syslink_generic_args;
 
 typedef int (*syslink_func_t)(struct syslink_generic_args *);
+
+/*
+ * Commands for the syslink() system call.
+ *
+ * establish -	Establish a new system link with the supplied mask and match
+ *		values.  A descriptor, if supplied, must be a reliable stream
+ *		or packet descriptor.  If -1 is specified the kernel will
+ *		supply a reliable packet descriptor.  Returns the descriptor.
+ *
+ *		The kernel will automatically adjust the mask to fit 
+ *		available routing space.  The caller typically specifies
+ *		the low one bits of the mask, e.g. 0xFFFF, to indicate to
+ *		the kernel how big a chunk of the sysid space the caller
+ *		needs.  If the caller supplies too large a chunk the kernel
+ *		will adjust the mask on return.  The kernel sets the match
+ *		bits for the unmasked bits on return.
+ *
+ * getsysmask - Retrieve the mask/match values associated with the kernel's
+ *		syslink route node that we have connected to.
+ */
+#define SYSLINK_ESTABLISH	0x0001	/* establish a system link */
+#define SYSLINK_GETSYSMASK	0x0004	/* retrieve kernel node mask/match */
 
 /*
  * A syslink structure represents an end-point for communications.  System
@@ -167,5 +203,9 @@ typedef struct syslink_ops *syslink_ops_t;
 typedef struct syslink_desc *syslink_desc_t;
 typedef struct syslink_proto *syslink_proto_t;
 typedef struct syslink_generic_args *syslink_generic_args_t;
+
+#if !defined(_KERNEL)
+int syslink(int, int, sysid_t, sysid_t);
+#endif
 
 #endif
