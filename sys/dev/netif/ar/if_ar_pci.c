@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar_pci.c,v 1.11 2004/05/30 20:08:26 phk Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.4 2005/02/08 14:31:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar_pci.c,v 1.5 2006/08/01 18:00:54 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <machine/bus_memio.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -55,6 +56,27 @@
 #endif
 
 #define TRCL(x)              x
+
+static struct ar_type {
+	uint16_t	 ar_vid;
+	uint16_t	 ar_did;
+	const char	*ar_name;
+	const char	*ar_errmsg;
+} ar_devs[] = {
+	{ PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_2P,
+		"Digi SYNC/570i-PCI 2 port",
+		NULL },
+	{ PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_2PB1,
+		"Digi SYNC/570i-PCI 2 port (mapped below 1M)",
+		"Please change the jumper to select linear mode." },
+	{ PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_4P,
+		"Digi SYNC/570i-PCI 4 port",
+		NULL },
+	{ PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_4PB1,
+		"Digi SYNC/570i-PCI 4 port (mapped below 1M)",
+		"Please change the jumper to select linear mode." },
+	{ 0, 0, NULL }
+};
 
 static int	ar_pci_probe(device_t);
 static int	ar_pci_attach(device_t);
@@ -78,27 +100,20 @@ DRIVER_MODULE(if_ar, pci, ar_pci_driver, ar_devclass, 0, 0);
 static int
 ar_pci_probe(device_t device)
 {
-	u_int32_t	type = pci_get_devid(device);
+	struct ar_type *t;
+	uint16_t product = pci_get_device(device);
+	uint16_t vendor = pci_get_vendor(device);
 
-	switch(type) {
-	case 0x5012114f:
-		device_set_desc(device, "Digi SYNC/570i-PCI 2 port");
-		return (0);
-		break;
-	case 0x5010114f:
-		printf("Digi SYNC/570i-PCI 2 port (mapped below 1M)\n");
-		printf("Please change the jumper to select linear mode.\n");
-		break;
-	case 0x5013114f:
-		device_set_desc(device, "Digi SYNC/570i-PCI 4 port");
-		return (0);
-		break;
-	case 0x5011114f:
-		printf("Digi SYNC/570i-PCI 4 port (mapped below 1M)\n");
-		printf("Please change the jumper to select linear mode.\n");
-		break;
-	default:
-		break;
+	for (t = ar_devs; t->ar_name != NULL; t++) {
+		if (vendor == t->ar_vid && product == t->ar_did) {
+			if (t->ar_errmsg != NULL) {
+				printf("%s\n%s\n", t->ar_name, t->ar_errmsg);
+				return(ENXIO);
+			} else {
+				device_set_desc(device, t->ar_name);
+				return(0);
+			}
+		}
 	}
 	return (ENXIO);
 }
