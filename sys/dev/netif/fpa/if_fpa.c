@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.13 2005/11/30 13:35:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.14 2006/08/01 18:03:19 swildner Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/eventhandler.h>
 #include <net/ethernet.h>
 #include <net/if_arp.h>
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcivar.h>
 #include <dev/netif/pdq_layer/pdqvar.h>
 #include <dev/netif/pdq_layer/pdqreg.h>
@@ -64,9 +65,6 @@
 #include <dev/ic/pdqreg.h>
 #endif /* __NetBSD__ */
 
-
-#define	DEC_VENDORID		0x1011
-#define	DEFPA_CHIPID		0x000F
 #define	PCI_VENDORID(x)		((x) & 0xFFFF)
 #define	PCI_CHIPID(x)		(((x) >> 16) & 0xFFFF)
 
@@ -146,8 +144,8 @@ pdq_pci_probe(
     pcici_t config_id,
     pcidi_t device_id)
 {
-    if (PCI_VENDORID(device_id) == DEC_VENDORID &&
-	    PCI_CHIPID(device_id) == DEFPA_CHIPID)
+    if (PCI_VENDORID(device_id) == PCI_VENDOR_DEC &&
+	    PCI_CHIPID(device_id) == PCI_PRODUCT_DEC_DEFPA)
 	return "Digital DEFPA PCI FDDI Controller";
     return NULL;
 }
@@ -230,7 +228,7 @@ pdq_pci_match(
     int id;
 
     id = pci_inl(pa, PCI_VENDOR_ID);
-    if (PCI_VENDORID(id) != DEC_VENDORID || PCI_CHIPID(id) != DEFPA_CHIPID)
+    if (PCI_VENDORID(id) != PCI_VENDOR_DEC || PCI_CHIPID(id) != PCI_PRODUCT_DEC_DEFPA)
 	return 0;
 
     irq = pci_inl(pa, PCI_I_LINE) & 0xFF;
@@ -349,9 +347,9 @@ pdq_pci_match(
 {
     struct pci_attach_args *pa = (struct pci_attach_args *) aux;
 
-    if (PCI_VENDORID(pa->pa_id) != DEC_VENDORID)
+    if (PCI_VENDORID(pa->pa_id) != PCI_VENDOR_DEC)
 	return 0;
-    if (PCI_CHIPID(pa->pa_id) == DEFPA_CHIPID)
+    if (PCI_CHIPID(pa->pa_id) == PCI_PRODUCT_DEC_DEFPA)
 	return 1;
 
     return 0;
