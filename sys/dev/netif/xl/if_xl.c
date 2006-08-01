@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.44 2006/04/21 13:01:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.45 2006/08/01 18:13:21 swildner Exp $
  */
 
 /*
@@ -1241,49 +1241,52 @@ xl_attach(device_t dev)
 	struct ifnet		*ifp;
 	int			media = IFM_ETHER|IFM_100_TX|IFM_FDX;
 	int			error = 0, rid, res;
+	uint16_t		did;
 
 	sc = device_get_softc(dev);
 
 	ifmedia_init(&sc->ifmedia, 0, xl_ifmedia_upd, xl_ifmedia_sts);
 
+	did = pci_get_device(dev);
+
 	sc->xl_flags = 0;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_555)
+	if (did == TC_DEVICEID_HURRICANE_555)
 		sc->xl_flags |= XL_FLAG_EEPROM_OFFSET_30 | XL_FLAG_PHYOK;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_556 ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_556B)
+	if (did == TC_DEVICEID_HURRICANE_556 ||
+	    did == TC_DEVICEID_HURRICANE_556B)
 		sc->xl_flags |= XL_FLAG_FUNCREG | XL_FLAG_PHYOK |
 		    XL_FLAG_EEPROM_OFFSET_30 | XL_FLAG_WEIRDRESET |
 		    XL_FLAG_INVERT_LED_PWR | XL_FLAG_INVERT_MII_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_555 ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_556)
+	if (did == TC_DEVICEID_HURRICANE_555 ||
+	    did == TC_DEVICEID_HURRICANE_556)
 		sc->xl_flags |= XL_FLAG_8BITROM;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_556B)
+	if (did == TC_DEVICEID_HURRICANE_556B)
 		sc->xl_flags |= XL_FLAG_NO_XCVR_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575C ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_656B ||
-	    pci_get_device(dev) == TC_DEVICEID_TORNADO_656C)
+	if (did == TC_DEVICEID_HURRICANE_575B ||
+	    did == TC_DEVICEID_HURRICANE_575C ||
+	    did == TC_DEVICEID_HURRICANE_656B ||
+	    did == TC_DEVICEID_TORNADO_656C)
 		sc->xl_flags |= XL_FLAG_FUNCREG;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575A ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_575C ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_656B ||
-	    pci_get_device(dev) == TC_DEVICEID_TORNADO_656C)
+	if (did == TC_DEVICEID_HURRICANE_575A ||
+	    did == TC_DEVICEID_HURRICANE_575B ||
+	    did == TC_DEVICEID_HURRICANE_575C ||
+	    did == TC_DEVICEID_HURRICANE_656B ||
+	    did == TC_DEVICEID_TORNADO_656C)
 		sc->xl_flags |= XL_FLAG_PHYOK | XL_FLAG_EEPROM_OFFSET_30 |
 		    XL_FLAG_8BITROM;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_656)
+	if (did == TC_DEVICEID_HURRICANE_656)
 		sc->xl_flags |= XL_FLAG_FUNCREG | XL_FLAG_PHYOK;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575B)
+	if (did == TC_DEVICEID_HURRICANE_575B)
 		sc->xl_flags |= XL_FLAG_INVERT_LED_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_575C)
+	if (did == TC_DEVICEID_HURRICANE_575C)
 		sc->xl_flags |= XL_FLAG_INVERT_MII_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_TORNADO_656C)
+	if (did == TC_DEVICEID_TORNADO_656C)
 		sc->xl_flags |= XL_FLAG_INVERT_MII_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_HURRICANE_656 ||
-	    pci_get_device(dev) == TC_DEVICEID_HURRICANE_656B)
+	if (did == TC_DEVICEID_HURRICANE_656 ||
+	    did == TC_DEVICEID_HURRICANE_656B)
 		sc->xl_flags |= XL_FLAG_INVERT_MII_PWR |
 		    XL_FLAG_INVERT_LED_PWR;
-	if (pci_get_device(dev) == TC_DEVICEID_TORNADO_10_100BT_920B)
+	if (did == TC_DEVICEID_TORNADO_10_100BT_920B)
 		sc->xl_flags |= XL_FLAG_PHYOK;
 #ifndef BURN_BRIDGES
 	/*
