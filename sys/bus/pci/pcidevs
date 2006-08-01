@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.14 2006/07/19 13:34:53 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.15 2006/08/01 17:49:11 swildner Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -371,7 +371,7 @@ vendor CANOPUS		0x114b	Canopus
 vendor ANNABOOKS	0x114c	Annabooks
 vendor IC		0x114d	IC Corporation
 vendor NIKON		0x114e	Nikon Systems
-vendor DIGIINTERNAT	0x114f	Digi International
+vendor DIGI		0x114f	Digi International
 vendor TMC		0x1150	Thinking Machines
 vendor JAE		0x1151	JAE Electronics
 vendor MEGATEK		0x1152	Megatek
@@ -503,7 +503,9 @@ vendor LINEARSYS	0x1254	Linear Systems
 vendor ASIX		0x125b	ASIX Electronics
 vendor AURORA		0x125c	Aurora Technologies
 vendor ESSTECH		0x125d	ESS Technology, Inc.
+vendor COREGA		0x1259	Corega
 vendor INTERSIL		0x1260	Intersil
+vendor NORTEL		0x126c	Nortel Networks (Northern Telecom)
 vendor SILMOTION	0x126f	Silicon Motion, Inc.
 vendor ENSONIQ		0x1274	Ensoniq
 vendor NETAPP		0x1275	Network Appliance
@@ -548,30 +550,33 @@ vendor TITAN		0x14d2	Titan Electronics, Inc.
 vendor AVLAB		0x14db	Avlab Technology, Inc.
 vendor INVERTEX		0x14e1	Invertex
 vendor BROADCOM		0x14e4	Broadcom Corporation
+vendor PLANEX		0x14ea	Planex Communications
 vendor CONEXANT		0x14f1	Conexant Systems
 vendor DELTA		0x1500	Delta Electronics
+vendor MYSON		0x1516	Myson-Century Technology
 vendor ENE		0x1524	ENE Technology, Inc.
 vendor TERRATEC		0x153b	TerraTec Electronic
 vendor SOLIDUM		0x1588	Solidum Systems Corp.
 vendor GEOCAST		0x15a1	Geocast Network Systems
 vendor BLUESTEEL	0x15ab	Bluesteel Networks
 vendor AGILENT		0x15bc	Agilent Technologies
+vendor NDC		0x15e8	National Datacomm Corp.
 vendor EUMITCOM		0x1638	Eumitcom
 vendor NETSEC		0x1660	NetSec
-vendor SIBYTE		0x166d	Broadcom Corp. (SiByte)
-vendor CAVIUM		0x177d	Cavium
-vendor ANTARES		0x1754	Antares Microsystems, Inc.
-vendor SYMPHONY2	0x1c1c	Symphony Labs (2nd PCI Vendor ID)
-vendor TEKRAM2		0x1de1	Tekram Technology (2nd PCI Vendor ID)
-vendor MYSON		0x1516	Myson-Century Technology
-vendor NDC		0x15e8	National Datacomm Corp.
 vendor ACTIONTEC	0x1668	Action Tec Electronics, Inc.
+vendor SIBYTE		0x166d	Broadcom Corp. (SiByte)
 vendor ATHEROS		0x168c	Atheros Communications, Inc.
 vendor GLOBALSUN	0x16ab	Global Sun Tech
 vendor LINKSYS		0x1737	Linksys
 vendor ALTIMA		0x173b	Altima
+vendor PEPPERCON	0x1743  Peppercon AG
+vendor ANTARES		0x1754	Antares Microsystems, Inc.
+vendor CAVIUM		0x177d	Cavium
 vendor FZJZEL		0x1796	FZ Juelich / ZEL
 vendor SANDBURST	0x17ba	Sandburst, Inc.
+vendor RALINK		0x1814	Ralink Technologies
+vendor SYMPHONY2	0x1c1c	Symphony Labs (2nd PCI Vendor ID)
+vendor TEKRAM2		0x1de1	Tekram Technology (2nd PCI Vendor ID)
 vendor HINT		0x3388	HiNT
 vendor 3DLABS		0x3d3d	3D Labs
 vendor AVANCE2		0x4005	Avance Logic (2nd PCI Vendor ID)
@@ -760,6 +765,7 @@ product ADP2 PERC_2QC		0x1364	Dell PERC 2/QC
 product ADP2 PERC_3QC		0x1365	Dell PERC 3/QC
 
 /* Addtron Products */
+product ADDTRON RHINEII	0x1320	Rhine II 10/100 Ethernet
 product ADDTRON 8139	0x1360	8139 Ethernet
 
 /* ADMtek products */
@@ -1228,6 +1234,10 @@ product CONEXANT 56KFAXMODEM	0x1085	HW 56K Fax Modem
 product CONTAQ 82C599		0x0600	82C599 PCI-VLB Bridge
 product CONTAQ 82C693		0xc693	82C693 PCI-ISA Bridge
 
+/* Corega products */
+product COREGA CB_TXD		0xa117	FEther CB-TXD 10/100 Ethernet
+product COREGA 2CB_TXD		0xa11e	FEther II CB-TXD 10/100 Ethernet
+
 /* Corollary Products */
 product COROLLARY CBUSII_PCIB	0x0014	\"C-Bus II\"-PCI Bridge
 
@@ -1300,15 +1310,24 @@ product DELL PERC_3DI_3_SUB2	0x011b	PERC 3/Di
 product DELL PERC_3DI_3_SUB3	0x0121	PERC 3/Di
 
 /* Delta products */
+product DELTA RHINEII	0x1320	Rhine II 10/100 Ethernet
 product DELTA 8139	0x1360	8139 Ethernet
 
 /* Diamond products */
 product DIAMOND VIPER	0x9001	Viper/PCI
 
+/* Digi International products */
+product DIGI SYNC570I_2PB1	0x5010	SYNC/570i-PCI 2 port (mapped below 1M)
+product DIGI SYNC570I_4PB1	0x5011	SYNC/570i-PCI 4 port (mapped below 1M)
+product DIGI SYNC570I_2P	0x5012	SYNC/570i-PCI 2 port
+product DIGI SYNC570I_4P	0x5013	SYNC/570i-PCI 4 port
+
 /* D-Link Systems products */
 product DLINK DL1002		0x1002	DL-1002 10/100 Ethernet
 product DLINK DFE530TXPLUS	0x1300	DFE-530TXPLUS 10/100 Ethernet
+product DLINK DFE690TXD		0x1340	DFE-690TXD 10/100 Ethernet
 product DLINK DL4000		0x4000	DL-4000 Gigabit Ethernet
+product DLINK DGE528T		0x4300	DGE-528T Gigabit Ethernet
 product DLINK DGE530T		0x4c00	DGE-530T Gigabit Ethernet
 
 /* Distributed Processing Technology products */
@@ -1737,6 +1756,10 @@ product INTEL E7520_PCIEC	0x3599	E7520 PCI Express Port C/C0
 product INTEL E7520_PCIEC1	0x359a	E7520 PCI Express Port C1
 product INTEL E7520_EC		0x359b	E7520/E7525 Extended Configuration
 product INTEL E7525_MC		0x359e	E7525 Memory Controller Hub
+product INTEL PRO_WL_2200BG	0x4220	PRO/Wireless LAN 2200BG Mini-PCI Adapter
+product INTEL PRO_WL_2225BG	0x4221	PRO/Wireless LAN 2225BG Mini-PCI Adapter
+product INTEL PRO_WL_2915ABG_1	0x4223	PRO/Wireless LAN 2915ABG Mini-PCI Adapter
+product INTEL PRO_WL_2915ABG_2	0x4224	PRO/Wireless LAN 2915ABG Mini-PCI Adapter
 product INTEL 80312_ATU		0x530d	80310 ATU
 product INTEL 82371SB_ISA	0x7000	82371SB PCI-to-ISA Bridge (PIIX3)
 product INTEL 82371SB_IDE	0x7010	82371SB IDE Interface (PIIX3)
@@ -2024,6 +2047,9 @@ product NEXGEN NX82C501	0x4e78	NX82C501 Host-PCI Bridge
 /* NKK products */
 product NKK NDR4600	0xa001	NDR4600 Host-PCI Bridge
 
+/* Nortel products */
+product NORTEL BAYSTACK_21	0x1211	Baystack 21 (Accton MPX EN5038)
+
 /* Number Nine products */
 product NUMBER9 I128	0x2309	Imagine-128
 product NUMBER9 I128_2	0x2339	Imagine-128 II
@@ -2198,6 +2224,12 @@ product PCTECH RZ1000	0x1000	RZ1000
 /* Peak System Technik products */
 product PEAK PCAN	0x0001	PCAN	CAN controller
 
+/* Peppercon products */
+product PEPPERCON ROLF	0x8139	ROL/F-100 Fast Ethernet Adapter with ROL
+
+/* Planex products */
+product PLANEX FNW_3800_TX	0xab07	FNW-3800-TX 10/100 Ethernet
+
 /* PLX Technology products */
 product PLX 9060ES	0x906e	9060ES PCI bus controller
 product PLX 9656	0x9656	9656 I/O Accelerator
@@ -2249,6 +2281,12 @@ product QUANTUMDESIGNS 8580	0x0002	8580
 
 /* Rainbow Technologies products */
 product RAINBOW	CS200		0x0200	CryptoSwift 200 PKI Accelerator
+
+/* Ralink Technologies products */
+product	RALINK	RT2560		0x0201	RT2560 802.11b/g
+product	RALINK	RT2561S		0x0301	RT2561S 802.11b/g
+product	RALINK	RT2561		0x0302	RT2561 802.11b/g
+product	RALINK	RT2661		0x0401	RT2661 802.11b/g/n
 
 /* RATOC Systems products */
 product RATOC	REXPCI31	0x0853	REX PCI-31/33 SCSI
@@ -2714,6 +2752,7 @@ product VIATECH VT83C572	0x3038	VT83C572 USB Controller
 product VIATECH VT82C586_PWR	0x3040	VT82C586 (Apollo VP) Power Management Controller
 product VIATECH VT3043		0x3043	VT3043 (Rhine) 10/100 Ethernet
 product VIATECH VT6306		0x3044	VT3606 OHCI IEEE 1394 Controller
+product VIATECH VT6105M 	0x3053	VT6105M (Rhine III) 10/100 Ethernet
 product VIATECH VT82C686A_SMB	0x3057	VT82C686A SMBus Controller
 product VIATECH VT82C686A_AC97	0x3058	VT82C686A AC-97 Audio Controller
 product VIATECH VT8233_AC97	0x3059	VT8233/VT8235 AC-97 Audio Controller
