@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.30 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.31 2006/08/01 18:07:57 swildner Exp $
  */
 
 /*
@@ -117,6 +117,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -143,31 +144,31 @@ static struct rl_type {
 	uint16_t	 rl_did;
 	const char	*rl_name;
 } rl_devs[] = {
-	{ RT_VENDORID, RT_DEVICEID_8129,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8129,
 		"RealTek 8129 10/100BaseTX" },
-	{ RT_VENDORID, RT_DEVICEID_8139,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139,
 		"RealTek 8139 10/100BaseTX" },
-	{ RT_VENDORID, RT_DEVICEID_8138,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139B,
 		"RealTek 8139 10/100BaseTX CardBus" },
-	{ ACCTON_VENDORID, ACCTON_DEVICEID_5030,
+	{ PCI_VENDOR_ACCTON, PCI_PRODUCT_ACCTON_MPX5030,
 		"Accton MPX 5030/5038 10/100BaseTX" },
-	{ DELTA_VENDORID, DELTA_DEVICEID_8139,
+	{ PCI_VENDOR_DELTA, PCI_PRODUCT_DELTA_8139,
 		"Delta Electronics 8139 10/100BaseTX" },
-	{ ADDTRON_VENDORID, ADDTRON_DEVICEID_8139,
+	{ PCI_VENDOR_ADDTRON, PCI_PRODUCT_ADDTRON_8139,
 		"Addtron Technolgy 8139 10/100BaseTX" },
-	{ DLINK_VENDORID, DLINK_DEVICEID_530TXPLUS,
+	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DFE530TXPLUS,
 		"D-Link DFE-530TX+ 10/100BaseTX" },
-	{ DLINK_VENDORID, DLINK_DEVICEID_690TXD,
+	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DFE690TXD,
 		"D-Link DFE-690TX 10/100BaseTX" },
-	{ NORTEL_VENDORID, ACCTON_DEVICEID_5030,
+	{ PCI_VENDOR_NORTEL, PCI_PRODUCT_NORTEL_BAYSTACK_21,
 		"Nortel Networks 10/100BaseTX" },
-	{ PEPPERCON_VENDORID, PEPPERCON_DEVICEID_ROLF,
+	{ PCI_VENDOR_PEPPERCON, PCI_PRODUCT_PEPPERCON_ROLF,
 		"Peppercon AG ROL/F" },
-	{ COREGA_VENDORID, COREGA_DEVICEID_FETHERCBTXD,
+	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CB_TXD,
 		"Corega FEther CB-TXD" },
-	{ COREGA_VENDORID, COREGA_DEVICEID_FETHERIICBTXD,
+	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_2CB_TXD,
 		"Corega FEtherII CB-TXD" },
-	{ PLANEX_VENDORID, PLANEX_DEVICEID_FNW3800TX,
+	{ PCI_VENDOR_PLANEX, PCI_PRODUCT_PLANEX_FNW_3800_TX,
 		"Planex FNW-3800-TX" },
 	{ 0, 0, NULL }
 };
@@ -830,15 +831,18 @@ rl_attach(device_t dev)
 	 */
 	rl_read_eeprom(sc, (caddr_t)&rl_did, RL_EE_PCI_DID, 1, 0);
 
-	if (rl_did == RT_DEVICEID_8139 || rl_did == ACCTON_DEVICEID_5030 ||
-	    rl_did == DELTA_DEVICEID_8139 || rl_did == ADDTRON_DEVICEID_8139 ||
-	    rl_did == DLINK_DEVICEID_530TXPLUS || rl_did == RT_DEVICEID_8138 ||
-	    rl_did == DLINK_DEVICEID_690TXD || 
-	    rl_did == COREGA_DEVICEID_FETHERCBTXD ||
-	    rl_did == COREGA_DEVICEID_FETHERIICBTXD ||
-	    rl_did == PLANEX_DEVICEID_FNW3800TX)
+	if (rl_did == PCI_PRODUCT_REALTEK_RT8139 ||
+	    rl_did == PCI_PRODUCT_ACCTON_MPX5030 ||
+	    rl_did == PCI_PRODUCT_DELTA_8139 ||
+	    rl_did == PCI_PRODUCT_ADDTRON_8139 ||
+	    rl_did == PCI_PRODUCT_DLINK_DFE530TXPLUS ||
+	    rl_did == PCI_PRODUCT_REALTEK_RT8139B ||
+	    rl_did == PCI_PRODUCT_DLINK_DFE690TXD || 
+	    rl_did == PCI_PRODUCT_COREGA_CB_TXD ||
+	    rl_did == PCI_PRODUCT_COREGA_2CB_TXD ||
+	    rl_did == PCI_PRODUCT_PLANEX_FNW_3800_TX)
 		sc->rl_type = RL_8139;
-	else if (rl_did == RT_DEVICEID_8129)
+	else if (rl_did == PCI_PRODUCT_REALTEK_RT8129)
 		sc->rl_type = RL_8129;
 	else {
 		device_printf(dev, "unknown device ID: %x\n", rl_did);
