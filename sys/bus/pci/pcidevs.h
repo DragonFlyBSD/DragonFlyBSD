@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.14 2006/07/19 13:38:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.15 2006/08/01 17:55:57 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.13 2006/05/20 03:24:53 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.15 2006/08/01 17:49:11 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -378,7 +378,7 @@
 #define	PCI_VENDOR_ANNABOOKS	0x114c		/* Annabooks */
 #define	PCI_VENDOR_IC	0x114d		/* IC Corporation */
 #define	PCI_VENDOR_NIKON	0x114e		/* Nikon Systems */
-#define	PCI_VENDOR_DIGIINTERNAT	0x114f		/* Digi International */
+#define	PCI_VENDOR_DIGI	0x114f		/* Digi International */
 #define	PCI_VENDOR_TMC	0x1150		/* Thinking Machines */
 #define	PCI_VENDOR_JAE	0x1151		/* JAE Electronics */
 #define	PCI_VENDOR_MEGATEK	0x1152		/* Megatek */
@@ -510,7 +510,9 @@
 #define	PCI_VENDOR_ASIX	0x125b		/* ASIX Electronics */
 #define	PCI_VENDOR_AURORA	0x125c		/* Aurora Technologies */
 #define	PCI_VENDOR_ESSTECH	0x125d		/* ESS Technology, Inc. */
+#define	PCI_VENDOR_COREGA	0x1259		/* Corega */
 #define	PCI_VENDOR_INTERSIL	0x1260		/* Intersil */
+#define	PCI_VENDOR_NORTEL	0x126c		/* Nortel Networks (Northern Telecom) */
 #define	PCI_VENDOR_SILMOTION	0x126f		/* Silicon Motion, Inc. */
 #define	PCI_VENDOR_ENSONIQ	0x1274		/* Ensoniq */
 #define	PCI_VENDOR_NETAPP	0x1275		/* Network Appliance */
@@ -555,30 +557,33 @@
 #define	PCI_VENDOR_AVLAB	0x14db		/* Avlab Technology, Inc. */
 #define	PCI_VENDOR_INVERTEX	0x14e1		/* Invertex */
 #define	PCI_VENDOR_BROADCOM	0x14e4		/* Broadcom Corporation */
+#define	PCI_VENDOR_PLANEX	0x14ea		/* Planex Communications */
 #define	PCI_VENDOR_CONEXANT	0x14f1		/* Conexant Systems */
 #define	PCI_VENDOR_DELTA	0x1500		/* Delta Electronics */
+#define	PCI_VENDOR_MYSON	0x1516		/* Myson-Century Technology */
 #define	PCI_VENDOR_ENE	0x1524		/* ENE Technology, Inc. */
 #define	PCI_VENDOR_TERRATEC	0x153b		/* TerraTec Electronic */
 #define	PCI_VENDOR_SOLIDUM	0x1588		/* Solidum Systems Corp. */
 #define	PCI_VENDOR_GEOCAST	0x15a1		/* Geocast Network Systems */
 #define	PCI_VENDOR_BLUESTEEL	0x15ab		/* Bluesteel Networks */
 #define	PCI_VENDOR_AGILENT	0x15bc		/* Agilent Technologies */
+#define	PCI_VENDOR_NDC	0x15e8		/* National Datacomm Corp. */
 #define	PCI_VENDOR_EUMITCOM	0x1638		/* Eumitcom */
 #define	PCI_VENDOR_NETSEC	0x1660		/* NetSec */
-#define	PCI_VENDOR_SIBYTE	0x166d		/* Broadcom Corp. (SiByte) */
-#define	PCI_VENDOR_CAVIUM	0x177d		/* Cavium */
-#define	PCI_VENDOR_ANTARES	0x1754		/* Antares Microsystems, Inc. */
-#define	PCI_VENDOR_SYMPHONY2	0x1c1c		/* Symphony Labs (2nd PCI Vendor ID) */
-#define	PCI_VENDOR_TEKRAM2	0x1de1		/* Tekram Technology (2nd PCI Vendor ID) */
-#define	PCI_VENDOR_MYSON	0x1516		/* Myson-Century Technology */
-#define	PCI_VENDOR_NDC	0x15e8		/* National Datacomm Corp. */
 #define	PCI_VENDOR_ACTIONTEC	0x1668		/* Action Tec Electronics, Inc. */
+#define	PCI_VENDOR_SIBYTE	0x166d		/* Broadcom Corp. (SiByte) */
 #define	PCI_VENDOR_ATHEROS	0x168c		/* Atheros Communications, Inc. */
 #define	PCI_VENDOR_GLOBALSUN	0x16ab		/* Global Sun Tech */
 #define	PCI_VENDOR_LINKSYS	0x1737		/* Linksys */
 #define	PCI_VENDOR_ALTIMA	0x173b		/* Altima */
+#define	PCI_VENDOR_PEPPERCON	0x1743		/* Peppercon AG */
+#define	PCI_VENDOR_ANTARES	0x1754		/* Antares Microsystems, Inc. */
+#define	PCI_VENDOR_CAVIUM	0x177d		/* Cavium */
 #define	PCI_VENDOR_FZJZEL	0x1796		/* FZ Juelich / ZEL */
 #define	PCI_VENDOR_SANDBURST	0x17ba		/* Sandburst, Inc. */
+#define	PCI_VENDOR_RALINK	0x1814		/* Ralink Technologies */
+#define	PCI_VENDOR_SYMPHONY2	0x1c1c		/* Symphony Labs (2nd PCI Vendor ID) */
+#define	PCI_VENDOR_TEKRAM2	0x1de1		/* Tekram Technology (2nd PCI Vendor ID) */
 #define	PCI_VENDOR_HINT	0x3388		/* HiNT */
 #define	PCI_VENDOR_3DLABS	0x3d3d		/* 3D Labs */
 #define	PCI_VENDOR_AVANCE2	0x4005		/* Avance Logic (2nd PCI Vendor ID) */
@@ -767,6 +772,7 @@
 #define	PCI_PRODUCT_ADP2_PERC_3QC	0x1365		/* Dell PERC 3/QC */
 
 /* Addtron Products */
+#define	PCI_PRODUCT_ADDTRON_RHINEII	0x1320		/* Rhine II 10/100 Ethernet */
 #define	PCI_PRODUCT_ADDTRON_8139	0x1360		/* 8139 Ethernet */
 
 /* ADMtek products */
@@ -1235,6 +1241,10 @@
 #define	PCI_PRODUCT_CONTAQ_82C599	0x0600		/* 82C599 PCI-VLB Bridge */
 #define	PCI_PRODUCT_CONTAQ_82C693	0xc693		/* 82C693 PCI-ISA Bridge */
 
+/* Corega products */
+#define	PCI_PRODUCT_COREGA_CB_TXD	0xa117		/* FEther CB-TXD 10/100 Ethernet */
+#define	PCI_PRODUCT_COREGA_2CB_TXD	0xa11e		/* FEther II CB-TXD 10/100 Ethernet */
+
 /* Corollary Products */
 #define	PCI_PRODUCT_COROLLARY_CBUSII_PCIB	0x0014		/* \"C-Bus II\"-PCI Bridge */
 
@@ -1307,15 +1317,24 @@
 #define	PCI_PRODUCT_DELL_PERC_3DI_3_SUB3	0x0121		/* PERC 3/Di */
 
 /* Delta products */
+#define	PCI_PRODUCT_DELTA_RHINEII	0x1320		/* Rhine II 10/100 Ethernet */
 #define	PCI_PRODUCT_DELTA_8139	0x1360		/* 8139 Ethernet */
 
 /* Diamond products */
 #define	PCI_PRODUCT_DIAMOND_VIPER	0x9001		/* Viper/PCI */
 
+/* Digi International products */
+#define	PCI_PRODUCT_DIGI_SYNC570I_2PB1	0x5010		/* SYNC/570i-PCI 2 port (mapped below 1M) */
+#define	PCI_PRODUCT_DIGI_SYNC570I_4PB1	0x5011		/* SYNC/570i-PCI 4 port (mapped below 1M) */
+#define	PCI_PRODUCT_DIGI_SYNC570I_2P	0x5012		/* SYNC/570i-PCI 2 port */
+#define	PCI_PRODUCT_DIGI_SYNC570I_4P	0x5013		/* SYNC/570i-PCI 4 port */
+
 /* D-Link Systems products */
 #define	PCI_PRODUCT_DLINK_DL1002	0x1002		/* DL-1002 10/100 Ethernet */
 #define	PCI_PRODUCT_DLINK_DFE530TXPLUS	0x1300		/* DFE-530TXPLUS 10/100 Ethernet */
+#define	PCI_PRODUCT_DLINK_DFE690TXD	0x1340		/* DFE-690TXD 10/100 Ethernet */
 #define	PCI_PRODUCT_DLINK_DL4000	0x4000		/* DL-4000 Gigabit Ethernet */
+#define	PCI_PRODUCT_DLINK_DGE528T	0x4300		/* DGE-528T Gigabit Ethernet */
 #define	PCI_PRODUCT_DLINK_DGE530T	0x4c00		/* DGE-530T Gigabit Ethernet */
 
 /* Distributed Processing Technology products */
@@ -1744,6 +1763,10 @@
 #define	PCI_PRODUCT_INTEL_E7520_PCIEC1	0x359a		/* E7520 PCI Express Port C1 */
 #define	PCI_PRODUCT_INTEL_E7520_EC	0x359b		/* E7520/E7525 Extended Configuration */
 #define	PCI_PRODUCT_INTEL_E7525_MC	0x359e		/* E7525 Memory Controller Hub */
+#define	PCI_PRODUCT_INTEL_PRO_WL_2200BG	0x4220		/* PRO/Wireless LAN 2200BG Mini-PCI Adapter */
+#define	PCI_PRODUCT_INTEL_PRO_WL_2225BG	0x4221		/* PRO/Wireless LAN 2225BG Mini-PCI Adapter */
+#define	PCI_PRODUCT_INTEL_PRO_WL_2915ABG_1	0x4223		/* PRO/Wireless LAN 2915ABG Mini-PCI Adapter */
+#define	PCI_PRODUCT_INTEL_PRO_WL_2915ABG_2	0x4224		/* PRO/Wireless LAN 2915ABG Mini-PCI Adapter */
 #define	PCI_PRODUCT_INTEL_80312_ATU	0x530d		/* 80310 ATU */
 #define	PCI_PRODUCT_INTEL_82371SB_ISA	0x7000		/* 82371SB PCI-to-ISA Bridge (PIIX3) */
 #define	PCI_PRODUCT_INTEL_82371SB_IDE	0x7010		/* 82371SB IDE Interface (PIIX3) */
@@ -2031,6 +2054,9 @@
 /* NKK products */
 #define	PCI_PRODUCT_NKK_NDR4600	0xa001		/* NDR4600 Host-PCI Bridge */
 
+/* Nortel products */
+#define	PCI_PRODUCT_NORTEL_BAYSTACK_21	0x1211		/* Baystack 21 (Accton MPX EN5038) */
+
 /* Number Nine products */
 #define	PCI_PRODUCT_NUMBER9_I128	0x2309		/* Imagine-128 */
 #define	PCI_PRODUCT_NUMBER9_I128_2	0x2339		/* Imagine-128 II */
@@ -2205,6 +2231,12 @@
 /* Peak System Technik products */
 #define	PCI_PRODUCT_PEAK_PCAN	0x0001		/* PCAN CAN controller */
 
+/* Peppercon products */
+#define	PCI_PRODUCT_PEPPERCON_ROLF	0x8139		/* ROL/F-100 Fast Ethernet Adapter with ROL */
+
+/* Planex products */
+#define	PCI_PRODUCT_PLANEX_FNW_3800_TX	0xab07		/* FNW-3800-TX 10/100 Ethernet */
+
 /* PLX Technology products */
 #define	PCI_PRODUCT_PLX_9060ES	0x906e		/* 9060ES PCI bus controller */
 #define	PCI_PRODUCT_PLX_9656	0x9656		/* 9656 I/O Accelerator */
@@ -2256,6 +2288,12 @@
 
 /* Rainbow Technologies products */
 #define	PCI_PRODUCT_RAINBOW_CS200	0x0200		/* CryptoSwift 200 PKI Accelerator */
+
+/* Ralink Technologies products */
+#define	PCI_PRODUCT_RALINK_RT2560	0x0201		/* RT2560 802.11b/g */
+#define	PCI_PRODUCT_RALINK_RT2561S	0x0301		/* RT2561S 802.11b/g */
+#define	PCI_PRODUCT_RALINK_RT2561	0x0302		/* RT2561 802.11b/g */
+#define	PCI_PRODUCT_RALINK_RT2661	0x0401		/* RT2661 802.11b/g/n */
 
 /* RATOC Systems products */
 #define	PCI_PRODUCT_RATOC_REXPCI31	0x0853		/* REX PCI-31/33 SCSI */
@@ -2721,6 +2759,7 @@
 #define	PCI_PRODUCT_VIATECH_VT82C586_PWR	0x3040		/* VT82C586 (Apollo VP) Power Management Controller */
 #define	PCI_PRODUCT_VIATECH_VT3043	0x3043		/* VT3043 (Rhine) 10/100 Ethernet */
 #define	PCI_PRODUCT_VIATECH_VT6306	0x3044		/* VT3606 OHCI IEEE 1394 Controller */
+#define	PCI_PRODUCT_VIATECH_VT6105M	0x3053		/* VT6105M (Rhine III) 10/100 Ethernet */
 #define	PCI_PRODUCT_VIATECH_VT82C686A_SMB	0x3057		/* VT82C686A SMBus Controller */
 #define	PCI_PRODUCT_VIATECH_VT82C686A_AC97	0x3058		/* VT82C686A AC-97 Audio Controller */
 #define	PCI_PRODUCT_VIATECH_VT8233_AC97	0x3059		/* VT8233/VT8235 AC-97 Audio Controller */

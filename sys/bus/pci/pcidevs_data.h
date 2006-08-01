@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.14 2006/07/19 13:38:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.15 2006/08/01 17:55:57 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.13 2006/05/20 03:24:53 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.15 2006/08/01 17:49:11 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -819,6 +819,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Adaptec (2nd PCI Vendor ID)",
 	    "Dell PERC 3/QC",
+	},
+	{
+	    PCI_VENDOR_ADDTRON, PCI_PRODUCT_ADDTRON_RHINEII,
+	    0,
+	    "Addtron Technology",
+	    "Rhine II 10/100 Ethernet",
 	},
 	{
 	    PCI_VENDOR_ADDTRON, PCI_PRODUCT_ADDTRON_8139,
@@ -3041,6 +3047,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "82C693 PCI-ISA Bridge",
 	},
 	{
+	    PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CB_TXD,
+	    0,
+	    "Corega",
+	    "FEther CB-TXD 10/100 Ethernet",
+	},
+	{
+	    PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_2CB_TXD,
+	    0,
+	    "Corega",
+	    "FEther II CB-TXD 10/100 Ethernet",
+	},
+	{
 	    PCI_VENDOR_COROLLARY, PCI_PRODUCT_COROLLARY_CBUSII_PCIB,
 	    0,
 	    "Corrollary",
@@ -3365,6 +3383,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "PERC 3/Di",
 	},
 	{
+	    PCI_VENDOR_DELTA, PCI_PRODUCT_DELTA_RHINEII,
+	    0,
+	    "Delta Electronics",
+	    "Rhine II 10/100 Ethernet",
+	},
+	{
 	    PCI_VENDOR_DELTA, PCI_PRODUCT_DELTA_8139,
 	    0,
 	    "Delta Electronics",
@@ -3375,6 +3399,30 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Diamond Computer Systems",
 	    "Viper/PCI",
+	},
+	{
+	    PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_2PB1,
+	    0,
+	    "Digi International",
+	    "SYNC/570i-PCI 2 port (mapped below 1M)",
+	},
+	{
+	    PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_4PB1,
+	    0,
+	    "Digi International",
+	    "SYNC/570i-PCI 4 port (mapped below 1M)",
+	},
+	{
+	    PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_2P,
+	    0,
+	    "Digi International",
+	    "SYNC/570i-PCI 2 port",
+	},
+	{
+	    PCI_VENDOR_DIGI, PCI_PRODUCT_DIGI_SYNC570I_4P,
+	    0,
+	    "Digi International",
+	    "SYNC/570i-PCI 4 port",
 	},
 	{
 	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DL1002,
@@ -3389,10 +3437,22 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "DFE-530TXPLUS 10/100 Ethernet",
 	},
 	{
+	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DFE690TXD,
+	    0,
+	    "D-Link Systems",
+	    "DFE-690TXD 10/100 Ethernet",
+	},
+	{
 	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DL4000,
 	    0,
 	    "D-Link Systems",
 	    "DL-4000 Gigabit Ethernet",
+	},
+	{
+	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T,
+	    0,
+	    "D-Link Systems",
+	    "DGE-528T Gigabit Ethernet",
 	},
 	{
 	    PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE530T,
@@ -5543,6 +5603,30 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "E7525 Memory Controller Hub",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2200BG,
+	    0,
+	    "Intel",
+	    "PRO/Wireless LAN 2200BG Mini-PCI Adapter",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2225BG,
+	    0,
+	    "Intel",
+	    "PRO/Wireless LAN 2225BG Mini-PCI Adapter",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2915ABG_1,
+	    0,
+	    "Intel",
+	    "PRO/Wireless LAN 2915ABG Mini-PCI Adapter",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_PRO_WL_2915ABG_2,
+	    0,
+	    "Intel",
+	    "PRO/Wireless LAN 2915ABG Mini-PCI Adapter",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_80312_ATU,
 	    0,
 	    "Intel",
@@ -6797,6 +6881,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "NDR4600 Host-PCI Bridge",
 	},
 	{
+	    PCI_VENDOR_NORTEL, PCI_PRODUCT_NORTEL_BAYSTACK_21,
+	    0,
+	    "Nortel Networks (Northern Telecom)",
+	    "Baystack 21 (Accton MPX EN5038)",
+	},
+	{
 	    PCI_VENDOR_NUMBER9, PCI_PRODUCT_NUMBER9_I128,
 	    0,
 	    "Number 9 Computer Company",
@@ -7733,6 +7823,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "PCAN CAN controller",
 	},
 	{
+	    PCI_VENDOR_PEPPERCON, PCI_PRODUCT_PEPPERCON_ROLF,
+	    0,
+	    "Peppercon AG",
+	    "ROL/F-100 Fast Ethernet Adapter with ROL",
+	},
+	{
+	    PCI_VENDOR_PLANEX, PCI_PRODUCT_PLANEX_FNW_3800_TX,
+	    0,
+	    "Planex Communications",
+	    "FNW-3800-TX 10/100 Ethernet",
+	},
+	{
 	    PCI_VENDOR_PLX, PCI_PRODUCT_PLX_9060ES,
 	    0,
 	    "PLX Technology",
@@ -7959,6 +8061,30 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Rainbow Technologies",
 	    "CryptoSwift 200 PKI Accelerator",
+	},
+	{
+	    PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
+	    0,
+	    "Ralink Technologies",
+	    "RT2560 802.11b/g",
+	},
+	{
+	    PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
+	    0,
+	    "Ralink Technologies",
+	    "RT2561S 802.11b/g",
+	},
+	{
+	    PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561,
+	    0,
+	    "Ralink Technologies",
+	    "RT2561 802.11b/g",
+	},
+	{
+	    PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
+	    0,
+	    "Ralink Technologies",
+	    "RT2661 802.11b/g/n",
 	},
 	{
 	    PCI_VENDOR_RATOC, PCI_PRODUCT_RATOC_REXPCI31,
@@ -10215,6 +10341,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "VIA Technologies",
 	    "VT3606 OHCI IEEE 1394 Controller",
+	},
+	{
+	    PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT6105M,
+	    0,
+	    "VIA Technologies",
+	    "VT6105M (Rhine III) 10/100 Ethernet",
 	},
 	{
 	    PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT82C686A_SMB,
@@ -13007,7 +13139,7 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
-	    PCI_VENDOR_DIGIINTERNAT, 0,
+	    PCI_VENDOR_DIGI, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Digi International",
 	    NULL,
@@ -13799,9 +13931,21 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    PCI_VENDOR_COREGA, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Corega",
+	    NULL,
+	},
+	{
 	    PCI_VENDOR_INTERSIL, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Intersil",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_NORTEL, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Nortel Networks (Northern Telecom)",
 	    NULL,
 	},
 	{
@@ -14069,6 +14213,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    PCI_VENDOR_PLANEX, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Planex Communications",
+	    NULL,
+	},
+	{
 	    PCI_VENDOR_CONEXANT, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Conexant Systems",
@@ -14078,6 +14228,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_DELTA, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Delta Electronics",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_MYSON, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Myson-Century Technology",
 	    NULL,
 	},
 	{
@@ -14117,6 +14273,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    PCI_VENDOR_NDC, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "National Datacomm Corp.",
+	    NULL,
+	},
+	{
 	    PCI_VENDOR_EUMITCOM, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Eumitcom",
@@ -14129,51 +14291,15 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
-	    PCI_VENDOR_SIBYTE, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Broadcom Corp. (SiByte)",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_CAVIUM, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Cavium",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_ANTARES, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Antares Microsystems, Inc.",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_SYMPHONY2, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Symphony Labs (2nd PCI Vendor ID)",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_TEKRAM2, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Tekram Technology (2nd PCI Vendor ID)",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_MYSON, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "Myson-Century Technology",
-	    NULL,
-	},
-	{
-	    PCI_VENDOR_NDC, 0,
-	    PCI_KNOWNDEV_NOPROD,
-	    "National Datacomm Corp.",
-	    NULL,
-	},
-	{
 	    PCI_VENDOR_ACTIONTEC, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Action Tec Electronics, Inc.",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_SIBYTE, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Broadcom Corp. (SiByte)",
 	    NULL,
 	},
 	{
@@ -14201,6 +14327,24 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    PCI_VENDOR_PEPPERCON, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Peppercon AG",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_ANTARES, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Antares Microsystems, Inc.",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_CAVIUM, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Cavium",
+	    NULL,
+	},
+	{
 	    PCI_VENDOR_FZJZEL, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "FZ Juelich / ZEL",
@@ -14210,6 +14354,24 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_SANDBURST, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Sandburst, Inc.",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_RALINK, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Ralink Technologies",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_SYMPHONY2, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Symphony Labs (2nd PCI Vendor ID)",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_TEKRAM2, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Tekram Technology (2nd PCI Vendor ID)",
 	    NULL,
 	},
 	{
