@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.4 2006/03/05 23:27:51 silby Exp $
- * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.1 2006/05/20 09:13:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ral/if_ral_pci.c,v 1.2 2006/08/01 18:06:44 swildner Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -86,10 +87,14 @@ static const struct ral_pci_ident {
 	const char		*name;
 	const struct ral_opns	*opns;
 } ral_pci_ids[] = {
-	{ 0x1814, 0x0201, "Ralink Technology RT2560", &ral_rt2560_opns },
-	{ 0x1814, 0x0301, "Ralink Technology RT2561S", &ral_rt2661_opns },
-	{ 0x1814, 0x0302, "Ralink Technology RT2561", &ral_rt2661_opns },
-	{ 0x1814, 0x0401, "Ralink Technology RT2661", &ral_rt2661_opns },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
+		"Ralink Technology RT2560", &ral_rt2560_opns },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
+		"Ralink Technology RT2561S", &ral_rt2661_opns },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561,
+		"Ralink Technology RT2561", &ral_rt2661_opns },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
+		"Ralink Technology RT2661", &ral_rt2661_opns },
 	{ 0, 0, NULL, NULL }
 };
 
