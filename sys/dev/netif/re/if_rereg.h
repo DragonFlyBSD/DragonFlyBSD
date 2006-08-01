@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.4 2005/12/04 18:07:49 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.5 2006/08/01 18:07:12 swildner Exp $
  */
 
 /*
@@ -684,137 +684,6 @@ struct re_softc {
 /*
  * General constants that are fun to know.
  *
- * RealTek PCI vendor ID
- */
-#define	RT_VENDORID				0x10EC
-
-/*
- * RealTek chip device IDs.
- */
-#define	RT_DEVICEID_8129			0x8129
-#define	RT_DEVICEID_8138			0x8138
-#define	RT_DEVICEID_8139			0x8139
-#define RT_DEVICEID_8169			0x8169
-#define RT_DEVICEID_8100			0x8100
-
-#define RT_REVID_8139CPLUS			0x20
-
-/*
- * Accton PCI vendor ID
- */
-#define ACCTON_VENDORID				0x1113
-
-/*
- * Accton MPX 5030/5038 device ID.
- */
-#define ACCTON_DEVICEID_5030			0x1211
-
-/*
- * Nortel PCI vendor ID
- */
-#define NORTEL_VENDORID				0x126C
-
-/*
- * Delta Electronics Vendor ID.
- */
-#define DELTA_VENDORID				0x1500
-
-/*
- * Delta device IDs.
- */
-#define DELTA_DEVICEID_8139			0x1360
-
-/*
- * Addtron vendor ID.
- */
-#define ADDTRON_VENDORID			0x4033
-
-/*
- * Addtron device IDs.
- */
-#define ADDTRON_DEVICEID_8139			0x1360
-
-/*
- * D-Link vendor ID.
- */
-#define DLINK_VENDORID				0x1186
-
-/*
- * D-Link DFE-530TX+ device ID
- */
-#define DLINK_DEVICEID_530TXPLUS		0x1300
-
-/*
- * D-Link DFE-5280T device ID
- */
-#define DLINK_DEVICEID_528T			0x4300
-
-/*
- * D-Link DFE-690TXD device ID
- */
-#define DLINK_DEVICEID_690TXD			0x1340
-
-/*
- * Corega K.K vendor ID
- */
-#define COREGA_VENDORID				0x1259
-
-/*
- * Corega FEther CB-TXD device ID
- */
-#define COREGA_DEVICEID_FETHERCBTXD			0xa117
-
-/*
- * Corega FEtherII CB-TXD device ID
- */
-#define COREGA_DEVICEID_FETHERIICBTXD			0xa11e
-
-/*
- * Peppercon vendor ID
- */
-#define PEPPERCON_VENDORID			0x1743
-
-/*
- * Peppercon ROL-F device ID
- */
-#define PEPPERCON_DEVICEID_ROLF			0x8139
-
-/*
- * Planex Communications, Inc. vendor ID
- */
-#define PLANEX_VENDORID				0x14ea
-
-/*
- * Planex FNW-3800-TX device ID
- */
-#define PLANEX_DEVICEID_FNW3800TX		0xab07
-
-/*
- * LevelOne vendor ID
- */
-#define LEVEL1_VENDORID				0x018A
-
-/*
- * LevelOne FPC-0106TX devide ID
- */
-#define LEVEL1_DEVICEID_FPC0106TX		0x0106
-
-/*
- * Compaq vendor ID
- */
-#define CP_VENDORID				0x021B
-
-/*
- * Edimax vendor ID
- */
-#define EDIMAX_VENDORID				0x13D1
-
-/*
- * Edimax EP-4103DL cardbus device ID
- */
-#define EDIMAX_DEVICEID_EP4103DL		0xAB06
-
-/*
  * PCI low memory base and low I/O base register, and
  * other PCI registers.
  */

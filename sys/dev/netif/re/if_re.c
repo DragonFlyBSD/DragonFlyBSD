@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.21 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.22 2006/08/01 18:07:12 swildner Exp $
  */
 
 /*
@@ -146,6 +146,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -165,15 +166,15 @@
  * Various supported device vendors/types and their names.
  */
 static struct re_type re_devs[] = {
-	{ DLINK_VENDORID, DLINK_DEVICEID_528T, RE_HWREV_8169S,
+	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T, RE_HWREV_8169S,
 		"D-Link DGE-528(T) Gigabit Ethernet Adapter" },
-	{ RT_VENDORID, RT_DEVICEID_8139, RE_HWREV_8139CPLUS,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139, RE_HWREV_8139CPLUS,
 		"RealTek 8139C+ 10/100BaseTX" },
-	{ RT_VENDORID, RT_DEVICEID_8169, RE_HWREV_8169,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169,
 		"RealTek 8169 Gigabit Ethernet" },
-	{ RT_VENDORID, RT_DEVICEID_8169, RE_HWREV_8169S,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169S,
 		"RealTek 8169S Single-chip Gigabit Ethernet" },
-	{ RT_VENDORID, RT_DEVICEID_8169, RE_HWREV_8110S,
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8110S,
 		"RealTek 8110S Single-chip Gigabit Ethernet" },
 	{ 0, 0, 0, NULL }
 };
