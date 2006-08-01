@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.35 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.36 2006/08/01 18:11:47 swildner Exp $
  */
 
 /*
@@ -111,6 +111,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -128,9 +129,9 @@
  * Various supported device vendors/types and their names.
  */
 static struct wb_type wb_devs[] = {
-	{ WB_VENDORID, WB_DEVICEID_840F,
+	{ PCI_VENDOR_WINBOND, PCI_PRODUCT_WINBOND_W89C840F,
 		"Winbond W89C840F 10/100BaseTX" },
-	{ CP_VENDORID, CP_DEVICEID_RL100,
+	{ PCI_VENDOR_COMPEX, PCI_PRODUCT_COMPEX_RL100ATX,
 		"Compex RL100-ATX 10/100baseTX" },
 	{ 0, 0, NULL }
 };

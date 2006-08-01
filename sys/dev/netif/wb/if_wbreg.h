@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wbreg.h,v 1.7 1999/08/30 23:08:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.7 2005/06/10 16:05:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wbreg.h,v 1.8 2006/08/01 18:11:47 swildner Exp $
  */
 
 /*
@@ -402,26 +402,6 @@ struct wb_softc {
 /*
  * General constants that are fun to know.
  *
- * Winbond PCI vendor ID
- */
-#define	WB_VENDORID		0x1050
-
-/*
- * Winbond device IDs.
- */
-#define	WB_DEVICEID_840F	0x0840
-
-/*
- * Compex vendor ID.
- */
-#define CP_VENDORID		0x11F6
-
-/*
- * Compex device IDs.
- */
-#define CP_DEVICEID_RL100	0x2011
-
-/*
  * PCI low memory base and low I/O base register, and
  * other PCI registers.
  */
