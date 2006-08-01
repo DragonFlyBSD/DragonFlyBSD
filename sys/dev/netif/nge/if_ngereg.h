@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.8 2005/11/29 19:56:53 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.9 2006/08/01 18:05:43 swildner Exp $
  */
 
 #define NGE_CSR			0x00
@@ -573,17 +573,6 @@ struct nge_list_data {
 	struct nge_desc		nge_rx_list[NGE_RX_LIST_CNT];
 	struct nge_desc		nge_tx_list[NGE_TX_LIST_CNT];
 };
-
-
-/*
- * NatSemi PCI vendor ID.
- */
-#define NGE_VENDORID		0x100B
-
-/*
- * 83820/83821 PCI device IDs
- */
-#define NGE_DEVICEID		0x0022
 
 struct nge_type {
 	uint16_t		nge_vid;

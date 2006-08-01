@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.37 2006/01/10 14:14:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.38 2006/08/01 18:05:43 swildner Exp $
  */
 
 /*
@@ -122,6 +122,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -139,7 +140,7 @@
  * Various supported device vendors/types and their names.
  */
 static struct nge_type nge_devs[] = {
-	{ NGE_VENDORID, NGE_DEVICEID,
+	{ PCI_VENDOR_NS, PCI_PRODUCT_NS_DP83820,
 	    "National Semiconductor Gigabit Ethernet" },
 	{ 0, 0, NULL }
 };
