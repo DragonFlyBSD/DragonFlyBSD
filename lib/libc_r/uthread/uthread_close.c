@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_close.c,v 1.10.2.5 2003/06/13 16:04:59 ru Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_close.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_close.c,v 1.3 2006/08/01 08:25:58 corecode Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -49,11 +49,11 @@ _close(int fd)
 	struct fd_table_entry	*entry;
 
 	if ((fd < 0) || (fd >= _thread_dtablesize) ||
-	    (fd == _thread_kern_pipe[0]) || (fd == _thread_kern_pipe[1]) ||
-	    (_thread_fd_table[fd] == NULL)) {
+	    (fd == _thread_kern_pipe[0]) || (fd == _thread_kern_pipe[1])) {
 		/*
-		 * Don't allow silly programs to close the kernel pipe
-		 * and non-active descriptors.
+		 * Don't allow silly programs to close the kernel pipe.
+		 *
+		 * Non-active descriptors are detected by _FD_LOCK below.
 		 */
 		errno = EBADF;
 		ret = -1;
