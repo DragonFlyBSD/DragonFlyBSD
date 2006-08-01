@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.29 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.30 2006/08/01 18:06:14 swildner Exp $
  */
 
 /*
@@ -88,6 +88,7 @@
 #include "../mii_layer/mii.h"
 #include "../mii_layer/miivar.h"
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -102,8 +103,10 @@
  * Various supported device vendors/types and their names.
  */
 static struct pcn_type pcn_devs[] = {
-	{ PCN_VENDORID, PCN_DEVICEID_PCNET, "AMD PCnet/PCI 10/100BaseTX" },
-	{ PCN_VENDORID, PCN_DEVICEID_HOME, "AMD PCnet/Home HomePNA" },
+	{ PCI_VENDOR_AMD, PCI_PRODUCT_AMD_PCNET_PCI,
+		"AMD PCnet/PCI 10/100BaseTX" },
+	{ PCI_VENDOR_AMD, PCI_PRODUCT_AMD_PCNET_HOME,
+		"AMD PCnet/Home HomePNA" },
 	{ 0, 0, NULL }
 };
 

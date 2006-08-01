@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcnreg.h,v 1.3.2.3 2001/02/21 22:13:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.5 2006/08/01 18:06:14 swildner Exp $
  */
 
 /*
@@ -415,17 +415,6 @@ struct pcn_ring_data {
 	int			pcn_tx_cons;
 	int			pcn_tx_cnt;
 };
-
-/*
- * AMD PCI vendor ID.
- */
-#define PCN_VENDORID		0x1022
-
-/*
- * AMD PCnet/PCI device IDs
- */
-#define PCN_DEVICEID_PCNET	0x2000
-#define PCN_DEVICEID_HOME	0x2001
 
 struct pcn_type {
 	u_int16_t		pcn_vid;
