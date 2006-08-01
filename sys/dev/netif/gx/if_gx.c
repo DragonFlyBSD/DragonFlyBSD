@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.23 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.24 2006/08/01 18:03:53 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -68,6 +68,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -96,29 +97,29 @@ struct gx_device {
 };
 
 static struct gx_device gx_devs[] = {
-	{ INTEL_VENDORID, DEVICEID_WISEMAN,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82542,
 	    GXF_FORCE_TBI | GXF_OLD_REGS,
 	    10 | 2 << 10 | 10 << 20,
 	    "Intel Gigabit Ethernet (82542)" },
-	{ INTEL_VENDORID, DEVICEID_LIVINGOOD_FIBER,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82543GC_FIBER,
 	    GXF_DMA | GXF_ENABLE_MWI | GXF_CSUM,
 	    6 | 8 << 10 | 6 << 20,
 	    "Intel Gigabit Ethernet (82543GC-F)" },
-	{ INTEL_VENDORID, DEVICEID_LIVINGOOD_COPPER,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82543GC_COPPER,
 	    GXF_DMA | GXF_ENABLE_MWI | GXF_CSUM,
 	    8 | 8 << 10 | 6 << 20,
 	    "Intel Gigabit Ethernet (82543GC-T)" },
 #if 0
 /* notyet.. */
-	{ INTEL_VENDORID, DEVICEID_CORDOVA_FIBER,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82544EI_FIBER,
 	    GXF_DMA | GXF_ENABLE_MWI | GXF_CSUM,
 	    6 | 8 << 10 | 6 << 20,
 	    "Intel Gigabit Ethernet (82544EI-F)" },
-	{ INTEL_VENDORID, DEVICEID_CORDOVA_COPPER,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82544EI_COPPER,
 	    GXF_DMA | GXF_ENABLE_MWI | GXF_CSUM,
 	    8 | 8 << 10 | 6 << 20,
 	    "Intel Gigabit Ethernet (82544EI-T)" },
-	{ INTEL_VENDORID, DEVICEID_CORDOVA2_COPPER,
+	{ PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82544GC_LOM,
 	    GXF_DMA | GXF_ENABLE_MWI | GXF_CSUM,
 	    8 | 8 << 10 | 6 << 20,
 	    "Intel Gigabit Ethernet (82544GC-T)" },

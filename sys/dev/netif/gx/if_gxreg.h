@@ -27,23 +27,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gxreg.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxreg.h,v 1.3 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxreg.h,v 1.4 2006/08/01 18:03:53 swildner Exp $
  */
-
-/*
- * Intel vendor ID
- */
-#define INTEL_VENDORID		0x8086
-
-/*
- * Intel gigabit ethernet device ID
- */
-#define DEVICEID_WISEMAN		0x1000
-#define DEVICEID_LIVINGOOD_FIBER	0x1001
-#define DEVICEID_LIVINGOOD_COPPER	0x1004
-#define DEVICEID_CORDOVA_COPPER		0x1008
-#define DEVICEID_CORDOVA_FIBER		0x1009
-#define DEVICEID_CORDOVA2_COPPER	0x100D
 
 /*
  * chip register offsets. These are memory mapped registers
