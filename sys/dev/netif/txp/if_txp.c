@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.35 2005/12/31 14:08:00 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.36 2006/08/01 18:10:40 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -80,6 +80,8 @@
 
 #include "../mii_layer/mii.h"
 #include "../mii_layer/miivar.h"
+
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -93,17 +95,17 @@
  * Various supported device vendors/types and their names.
  */
 static struct txp_type txp_devs[] = {
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990_TX_95,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3CR990TX95,
 	    "3Com 3cR990-TX-95 Etherlink with 3XP Processor" },
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990_TX_97,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3CR990TX97,
 	    "3Com 3cR990-TX-97 Etherlink with 3XP Processor" },
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990B_TXM,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C990B,
 	    "3Com 3cR990B-TXM Etherlink with 3XP Processor" },
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990_SRV_95,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3CR990SVR95,
 	    "3Com 3cR990-SRV-95 Etherlink Server with 3XP Processor" },
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990_SRV_97,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3CR990SVR97,
 	    "3Com 3cR990-SRV-97 Etherlink Server with 3XP Processor" },
-	{ TXP_VENDORID_3COM, TXP_DEVICEID_3CR990B_SRV,
+	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C990BSVR,
 	    "3Com 3cR990B-SRV Etherlink Server with 3XP Processor" },
 	{ 0, 0, NULL }
 };

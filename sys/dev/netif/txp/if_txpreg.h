@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txpreg.h,v 1.30 2001/06/23 04:18:02 jason Exp $ */
 /*	$FreeBSD: src/sys/dev/txp/if_txpreg.h,v 1.2.2.1 2001/07/30 17:31:39 wpaul Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.5 2005/06/20 13:39:17 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.6 2006/08/01 18:10:40 swildner Exp $ */
 
 /*
  * Copyright (c) 2001 Aaron Campbell <aaron@monkey.org>.
@@ -634,21 +634,6 @@ struct txp_fw_section_header {
     bus_space_write_4((sc)->sc_bt, (sc)->sc_bh, reg, val)
 #define	READ_REG(sc,reg) \
     bus_space_read_4((sc)->sc_bt, (sc)->sc_bh, reg)
-
-/*
- * 3Com PCI vendor ID.
- */
-#define	TXP_VENDORID_3COM		0x10B7
-
-/*
- * 3cR990 device IDs
- */
-#define TXP_DEVICEID_3CR990_TX_95	0x9902
-#define TXP_DEVICEID_3CR990_TX_97	0x9903
-#define TXP_DEVICEID_3CR990B_TXM	0x9904
-#define TXP_DEVICEID_3CR990_SRV_95	0x9908
-#define TXP_DEVICEID_3CR990_SRV_97	0x9909
-#define TXP_DEVICEID_3CR990B_SRV	0x990A
 
 struct txp_type {
 	u_int16_t		txp_vid;
