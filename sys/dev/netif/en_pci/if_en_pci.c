@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.10 2005/06/16 21:12:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.11 2006/08/01 18:02:40 swildner Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 
 #include <net/if.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
@@ -152,12 +153,6 @@ COMPAT_PCI_DRIVER (if_en, endevice);
 #define ADP_PCIREG_SWAP_WORD	0x4	/* swap byte on slave access */
 #define ADP_PCIREG_SWAP_DMA	0x8	/* swap byte on DMA */
 
-#define PCI_VENDOR_EFFICIENTNETS 0x111a			/* Efficent Networks */
-#define PCI_PRODUCT_EFFICIENTNETS_ENI155PF 0x0000	/* ENI-155P ATM */
-#define PCI_PRODUCT_EFFICIENTNETS_ENI155PA 0x0002	/* ENI-155P ATM */
-#define PCI_VENDOR_ADP 0x9004				/* adaptec */
-#define PCI_PRODUCT_ADP_AIC5900 0x5900
-#define PCI_PRODUCT_ADP_AIC5905 0x5905
 #define PCI_VENDOR(x)		((x) & 0xFFFF)
 #define PCI_CHIPID(x)		(((x) >> 16) & 0xFFFF)
 
