@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lgereg.h,v 1.2.2.1 2001/06/19 19:42:38 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.9 2005/11/29 19:56:51 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lgereg.h,v 1.10 2006/08/01 18:05:02 swildner Exp $
  */
 
 
@@ -461,17 +461,6 @@ struct lge_list_data {
 	struct lge_rx_desc	lge_rx_list[LGE_RX_LIST_CNT];
 	struct lge_tx_desc	lge_tx_list[LGE_TX_LIST_CNT];
 };
-
-
-/*
- * Level 1 PCI vendor ID.
- */
-#define LGE_VENDORID		0x1394
-
-/*
- * LXT 1001 PCI device IDs
- */
-#define LGE_DEVICEID		0x0001
 
 struct lge_type {
 	uint16_t		lge_vid;

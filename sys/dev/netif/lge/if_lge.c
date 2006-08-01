@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.35 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.36 2006/08/01 18:05:02 swildner Exp $
  */
 
 /*
@@ -103,6 +103,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -117,7 +118,8 @@
  * Various supported device vendors/types and their names.
  */
 static struct lge_type lge_devs[] = {
-	{ LGE_VENDORID, LGE_DEVICEID, "Level 1 Gigabit Ethernet" },
+	{ PCI_VENDOR_LEVELONE, PCI_PRODUCT_LEVELONE_LXT1001,
+	    "Level 1 Gigabit Ethernet" },
 	{ 0, 0, NULL }
 };
 
