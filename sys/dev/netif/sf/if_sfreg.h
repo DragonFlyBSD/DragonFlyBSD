@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sfreg.h,v 1.6.2.1 2001/08/16 20:35:04 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.4 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.5 2006/08/01 18:08:24 swildner Exp $
  */
 
 /*
@@ -44,16 +44,6 @@
  * the registers, but memory mapped is usually the easiest. All registers
  * are 32 bits wide and must be accessed using 32-bit operations.
  */
-
-/*
- * Adaptec PCI vendor ID.
- */
-#define AD_VENDORID		0x9004
-
-/*
- * AIC-6915 PCI device ID.
- */
-#define AD_DEVICEID_STARFIRE	0x6915
 
 /*
  * AIC-6915 subsystem IDs. Adaptec uses the subsystem ID to identify

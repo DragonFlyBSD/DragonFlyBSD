@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.27 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.28 2006/08/01 18:08:24 swildner Exp $
  */
 
 /*
@@ -116,6 +116,7 @@
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -124,7 +125,7 @@
 #include "if_sfreg.h"
 
 static struct sf_type sf_devs[] = {
-	{ AD_VENDORID, AD_DEVICEID_STARFIRE,
+	{ PCI_VENDOR_ADP, PCI_PRODUCT_ADP_AIC6915,
 		"Adaptec AIC-6915 10/100BaseTX" },
 	{ 0, 0, NULL }
 };
