@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sisreg.h,v 1.1.4.11 2003/02/05 21:49:01 mbr Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.6 2004/05/06 10:15:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.7 2006/08/01 18:09:37 swildner Exp $
  */
 
 /*
@@ -381,17 +381,6 @@ struct sis_ring_data {
 
 
 /*
- * SiS PCI vendor ID.
- */
-#define SIS_VENDORID		0x1039
-
-/*
- * SiS PCI device IDs
- */
-#define SIS_DEVICEID_900	0x0900
-#define SIS_DEVICEID_7016	0x7016
-
-/*
  * SiS 900 PCI revision codes.
  */
 #define SIS_REV_900B		0x0003
@@ -402,16 +391,6 @@ struct sis_ring_data {
 #define SIS_REV_630ET		0x0084
 #define SIS_REV_635		0x0090
 #define SIS_REV_96x		0x0091
-
-/*
- * NatSemi vendor ID
- */
-#define NS_VENDORID		0x100B
-
-/*
- * DP83815 device ID
- */
-#define NS_DEVICEID_DP83815	0x0020
 
 struct sis_type {
 	uint16_t		sis_vid;

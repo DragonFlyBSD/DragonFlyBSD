@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.31 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.32 2006/08/01 18:09:37 swildner Exp $
  */
 
 /*
@@ -92,6 +92,7 @@
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -106,9 +107,9 @@
  * Various supported device vendors/types and their names.
  */
 static struct sis_type sis_devs[] = {
-	{ SIS_VENDORID, SIS_DEVICEID_900, "SiS 900 10/100BaseTX" },
-	{ SIS_VENDORID, SIS_DEVICEID_7016, "SiS 7016 10/100BaseTX" },
-	{ NS_VENDORID, NS_DEVICEID_DP83815, "NatSemi DP8381[56] 10/100BaseTX" },
+	{ PCI_VENDOR_SIS, PCI_PRODUCT_SIS_900, "SiS 900 10/100BaseTX" },
+	{ PCI_VENDOR_SIS, PCI_PRODUCT_SIS_7016, "SiS 7016 10/100BaseTX" },
+	{ PCI_VENDOR_NS, PCI_PRODUCT_NS_DP83815, "NatSemi DP8381[56] 10/100BaseTX" },
 	{ 0, 0, NULL }
 };
 
@@ -403,7 +404,7 @@ sis_find_bridge(device_t dev)
 		device_get_children(*busp, &pci_children, &pci_childcount);
 		for (j = 0, childp = pci_children; j < pci_childcount;
 		     j++, childp++) {
-			if (pci_get_vendor(*childp) == SIS_VENDORID &&
+			if (pci_get_vendor(*childp) == PCI_VENDOR_SIS &&
 			    pci_get_device(*childp) == 0x0008) {
 				child = *childp;
 				goto done;
@@ -959,11 +960,11 @@ sis_attach(device_t dev)
 	error = waittime = 0;
 	sc = device_get_softc(dev);
 
-	if (pci_get_device(dev) == SIS_DEVICEID_900)
+	if (pci_get_device(dev) == PCI_PRODUCT_SIS_900)
 		sc->sis_type = SIS_TYPE_900;
-	if (pci_get_device(dev) == SIS_DEVICEID_7016)
+	if (pci_get_device(dev) == PCI_PRODUCT_SIS_7016)
 		sc->sis_type = SIS_TYPE_7016;
-	if (pci_get_vendor(dev) == NS_VENDORID)
+	if (pci_get_vendor(dev) == PCI_VENDOR_NS)
 		sc->sis_type = SIS_TYPE_83815;
 
 	sc->sis_rev = pci_read_config(dev, PCIR_REVID, 1);
@@ -1056,7 +1057,7 @@ sis_attach(device_t dev)
 	 * Get station address from the EEPROM.
 	 */
 	switch (pci_get_vendor(dev)) {
-	case NS_VENDORID:
+	case PCI_VENDOR_NS:
 		/*
 		 * Reading the MAC address out of the EEPROM on
 		 * the NatSemi chip takes a bit more work than
@@ -1091,7 +1092,7 @@ sis_attach(device_t dev)
 			bcopy((char *)&tmp[1], eaddr, ETHER_ADDR_LEN);
 		}
 		break;
-	case SIS_VENDORID:
+	case PCI_VENDOR_SIS:
 	default:
 #ifdef __i386__
 		/*
