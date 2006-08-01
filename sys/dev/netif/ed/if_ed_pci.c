@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.34 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.11 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.12 2006/08/01 18:01:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <net/if_arp.h>
 #include <net/if_mib.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -44,40 +45,47 @@
 
 static int ed_pci_detach(device_t dev);
 
-static struct _pcsid
-{
-	u_int32_t	type;
-	const char	*desc;
-} pci_ids[] =
-{
-	{ 0x802910ec,	"NE2000 PCI Ethernet (RealTek 8029)"	},
-	{ 0x50004a14,	"NE2000 PCI Ethernet (NetVin 5000)"	},
-	{ 0x09401050,	"NE2000 PCI Ethernet (ProLAN)"		},
-	{ 0x140111f6,	"NE2000 PCI Ethernet (Compex)"		},
-	{ 0x30008e2e,	"NE2000 PCI Ethernet (KTI)"		},
-	{ 0x19808c4a,	"NE2000 PCI Ethernet (Winbond W89C940)" },
-	{ 0x0e3410bd,	"NE2000 PCI Ethernet (Surecom NE-34)"	},
-	{ 0x09261106,	"NE2000 PCI Ethernet (VIA VT86C926)"	},
-	{ 0x00000000,	NULL					}
+static struct ed_type {
+	uint16_t	 ed_vid;
+	uint16_t	 ed_did;
+	const char	*ed_name;
+} ed_devs[] = {
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8029,
+		"NE2000 PCI Ethernet (RealTek 8029)" },
+	{ PCI_VENDOR_NETVIN, PCI_PRODUCT_NETVIN_5000,
+		"NE2000 PCI Ethernet (NetVin 5000)" },
+	{ PCI_VENDOR_PROLAN, PCI_PRODUCT_PROLAN_NE2KETHER,
+		"NE2000 PCI Ethernet (ProLAN)" },
+	{ PCI_VENDOR_COMPEX, PCI_PRODUCT_COMPEX_NE2KETHER,
+		"NE2000 PCI Ethernet (Compex)" },
+	{ PCI_VENDOR_KTI, PCI_PRODUCT_KTI_NE2KETHER,
+		"NE2000 PCI Ethernet (KTI)" },
+	{ PCI_VENDOR_WINBOND, PCI_PRODUCT_WINBOND_W89C940F,
+		"NE2000 PCI Ethernet (Winbond W89C940)" },
+	{ PCI_VENDOR_SURECOM, PCI_PRODUCT_SURECOM_NE34,
+		"NE2000 PCI Ethernet (Surecom NE-34)" },
+	{ PCI_VENDOR_VIATECH, PCI_PRODUCT_VIATECH_VT86C926,
+		"NE2000 PCI Ethernet (VIA VT86C926)" },
+	{ 0, 0, NULL }
 };
 
 static int	ed_pci_probe	(device_t);
 static int	ed_pci_attach	(device_t);
 
 static int
-ed_pci_probe (device_t dev)
+ed_pci_probe(device_t dev)
 {
-	u_int32_t	type = pci_get_devid(dev);
-	struct _pcsid	*ep =pci_ids;
+	struct ed_type *t;
+	uint16_t product = pci_get_device(dev);
+	uint16_t vendor = pci_get_vendor(dev);
 
-	while (ep->type && ep->type != type)
-		++ep;
-	if (ep->desc) {
-		device_set_desc(dev, ep->desc);
-		return 0;
-	} else {
-		return ENXIO;
+	for (t = ed_devs; t->ed_name != NULL; t++) {
+		if (vendor == t->ed_vid && product == t->ed_did) {
+			device_set_desc(dev, t->ed_name);
+			return 0;
+		}
 	}
+	return ENXIO;
 }
 
 static int
