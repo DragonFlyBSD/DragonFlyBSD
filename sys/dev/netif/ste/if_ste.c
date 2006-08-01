@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.33 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.34 2006/08/01 18:10:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -65,6 +65,7 @@
 #include "../mii_layer/mii.h"
 #include "../mii_layer/miivar.h"
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -79,8 +80,10 @@
  * Various supported device vendors/types and their names.
  */
 static struct ste_type ste_devs[] = {
-	{ ST_VENDORID, ST_DEVICEID_ST201, "Sundance ST201 10/100BaseTX" },
-	{ DL_VENDORID, DL_DEVICEID_550TX, "D-Link DFE-550TX 10/100BaseTX" },
+	{ PCI_VENDOR_SUNDANCETI, PCI_PRODUCT_SUNDANCETI_ST201,
+		"Sundance ST201 10/100BaseTX" },
+	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DL1002,
+		"D-Link DFE-550TX 10/100BaseTX" },
 	{ 0, 0, NULL }
 };
 
@@ -858,8 +861,8 @@ ste_attach(device_t dev)
 	 * Note on the DFE-550 the PHY is at 1 on the DFE-580
 	 * it is at 0 & 1.  It is rev 0x12.
 	 */
-	if (pci_get_vendor(dev) == DL_VENDORID &&
-	    pci_get_device(dev) == DL_DEVICEID_550TX &&
+	if (pci_get_vendor(dev) == PCI_VENDOR_DLINK &&
+	    pci_get_device(dev) == PCI_PRODUCT_DLINK_DL1002 &&
 	    pci_get_revid(dev) == 0x12 )
 		sc->ste_one_phy = 1;
 

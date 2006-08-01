@@ -30,21 +30,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_stereg.h,v 1.5.2.3 2002/08/21 15:26:01 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.6 2005/06/09 19:10:04 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.7 2006/08/01 18:10:05 swildner Exp $
  */
-
-/*
- * Sundance PCI device/vendor ID for the
- * ST201 chip.
- */
-#define ST_VENDORID		0x13F0
-#define ST_DEVICEID_ST201	0x0201
-
-/*
- * D-Link PCI device/vendor ID for the DFE-550TX.
- */
-#define DL_VENDORID		0x1186
-#define DL_DEVICEID_550TX	0x1002
 
 /*
  * Register definitions for the Sundance Technologies ST201 PCI
