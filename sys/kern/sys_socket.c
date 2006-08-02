@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.12 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.13 2006/08/02 01:25:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,10 +55,14 @@
 #include <net/route.h>
 
 struct	fileops socketops = {
-	NULL,	/* port */
-	NULL,	/* clone */
-	soo_read, soo_write, soo_ioctl, soo_poll, sokqfilter,
-	soo_stat, soo_close, soo_shutdown
+	.fo_read = soo_read,
+	.fo_write = soo_write,
+	.fo_ioctl = soo_ioctl,
+	.fo_poll = soo_poll,
+	.fo_kqfilter = sokqfilter,
+	.fo_stat = soo_stat,
+	.fo_close = soo_close,
+	.fo_shutdown = soo_shutdown
 };
 
 /*

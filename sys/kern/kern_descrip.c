@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.70 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.71 2006/08/02 01:25:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -2461,16 +2461,14 @@ fildesc_drvinit(void *unused)
  * MPSAFE
  */
 struct fileops badfileops = {
-	NULL,	/* port */
-	NULL,	/* clone */
-	badfo_readwrite,
-	badfo_readwrite,
-	badfo_ioctl,
-	badfo_poll,
-	badfo_kqfilter,
-	badfo_stat,
-	badfo_close,
-	badfo_shutdown
+	.fo_read = badfo_readwrite,
+	.fo_write = badfo_readwrite,
+	.fo_ioctl = badfo_ioctl,
+	.fo_poll = badfo_poll,
+	.fo_kqfilter = badfo_kqfilter,
+	.fo_stat = badfo_stat,
+	.fo_close = badfo_close,
+	.fo_shutdown = badfo_shutdown
 };
 
 /*

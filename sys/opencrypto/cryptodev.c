@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.18 2006/07/28 02:17:41 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.19 2006/08/02 01:25:26 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -93,16 +93,14 @@ static	int cryptof_stat(struct file *, struct stat *, struct ucred *);
 static	int cryptof_close(struct file *);
 
 static struct fileops cryptofops = {
-    NULL,	/* port */
-    NULL,	/* clone */
-    cryptof_rw,
-    cryptof_rw,
-    cryptof_ioctl,
-    cryptof_poll,
-    cryptof_kqfilter,
-    cryptof_stat,
-    cryptof_close,
-    nofo_shutdown
+    .fo_read = cryptof_rw,
+    .fo_write = cryptof_rw,
+    .fo_ioctl = cryptof_ioctl,
+    .fo_poll = cryptof_poll,
+    .fo_kqfilter = cryptof_kqfilter,
+    .fo_stat = cryptof_stat,
+    .fo_close = cryptof_close,
+    .fo_shutdown = nofo_shutdown
 };
 
 static struct csession *csefind(struct fcrypt *, u_int);

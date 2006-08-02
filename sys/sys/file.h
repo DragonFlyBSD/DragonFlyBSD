@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.21 2006/06/13 08:12:04 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.22 2006/08/02 01:25:27 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -69,22 +69,19 @@ struct lwkt_port;
 struct namecache;
 
 struct	fileops {
-	struct lwkt_port *fo_port;
-	int (*fo_clone)		(struct file *);/* additional work after dup */
-
-	int (*fold_read)	(struct file *fp, struct uio *uio,
-				 struct ucred *cred, int flags);
-	int (*fold_write)	(struct file *fp, struct uio *uio,
-				 struct ucred *cred, int flags);
-	int (*fold_ioctl)	(struct file *fp, u_long com, caddr_t data,
-				 struct ucred *cred);
-	int (*fold_poll)	(struct file *fp, int events,
-				 struct ucred *cred);
-	int (*fold_kqfilter)	(struct file *fp, struct knote *kn);
-	int (*fold_stat)	(struct file *fp, struct stat *sb,
-				 struct ucred *cred);
-	int (*fold_close)	(struct file *fp);
-	int (*fold_shutdown)	(struct file *fp, int how);
+	int (*fo_read)	(struct file *fp, struct uio *uio,
+			 struct ucred *cred, int flags);
+	int (*fo_write)	(struct file *fp, struct uio *uio,
+			 struct ucred *cred, int flags);
+	int (*fo_ioctl)	(struct file *fp, u_long com, caddr_t data,
+			 struct ucred *cred);
+	int (*fo_poll)	(struct file *fp, int events,
+			 struct ucred *cred);
+	int (*fo_kqfilter)(struct file *fp, struct knote *kn);
+	int (*fo_stat)	(struct file *fp, struct stat *sb,
+			 struct ucred *cred);
+	int (*fo_close)	(struct file *fp);
+	int (*fo_shutdown)(struct file *fp, int how);
 };
 
 /*

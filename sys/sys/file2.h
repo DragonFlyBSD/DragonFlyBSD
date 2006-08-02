@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file2.h,v 1.7 2006/05/22 00:52:31 dillon Exp $
+ * $DragonFly: src/sys/sys/file2.h,v 1.8 2006/08/02 01:25:28 dillon Exp $
  */
 
 #ifndef _SYS_FILE2_H_
@@ -54,7 +54,7 @@ fo_read(
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_read)(fp, uio, cred, flags);
+	error = (*fp->f_ops->fo_read)(fp, uio, cred, flags);
 	fdrop(fp);
 	return (error);
 }
@@ -69,7 +69,7 @@ fo_write(
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_write)(fp, uio, cred, flags);
+	error = (*fp->f_ops->fo_write)(fp, uio, cred, flags);
 	fdrop(fp);
 	return (error);
 }
@@ -84,7 +84,7 @@ fo_ioctl(
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_ioctl)(fp, com, data, cred);
+	error = (*fp->f_ops->fo_ioctl)(fp, com, data, cred);
 	fdrop(fp);
 	return (error);
 }
@@ -98,7 +98,7 @@ fo_poll(
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_poll)(fp, events, cred);
+	error = (*fp->f_ops->fo_poll)(fp, events, cred);
 	fdrop(fp);
 	return (error);
 }
@@ -109,7 +109,7 @@ fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 	int error;
 
 	fhold(fp);
-	error = (*fp->f_ops->fold_stat)(fp, sb, cred);
+	error = (*fp->f_ops->fo_stat)(fp, sb, cred);
 	fdrop(fp);
 	return (error);
 }
@@ -117,19 +117,19 @@ fo_stat(struct file *fp, struct stat *sb, struct ucred *cred)
 static __inline int
 fo_close(struct file *fp)
 {
-	return ((*fp->f_ops->fold_close)(fp));
+	return ((*fp->f_ops->fo_close)(fp));
 }
 
 static __inline int
 fo_shutdown(struct file *fp, int how)
 {
-	return ((*fp->f_ops->fold_shutdown)(fp, how));
+	return ((*fp->f_ops->fo_shutdown)(fp, how));
 }
 
 static __inline int
 fo_kqfilter(struct file *fp, struct knote *kn)
 {
-	return ((*fp->f_ops->fold_kqfilter)(fp, kn));
+	return ((*fp->f_ops->fo_kqfilter)(fp, kn));
 }
 
 #endif /* _KERNEL */

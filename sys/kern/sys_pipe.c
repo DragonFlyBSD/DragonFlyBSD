@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.39 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.40 2006/08/02 01:25:25 dillon Exp $
  */
 
 /*
@@ -104,10 +104,14 @@ static int pipe_stat (struct file *fp, struct stat *sb, struct ucred *cred);
 static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct ucred *cred);
 
 static struct fileops pipeops = {
-	NULL,	/* port */
-	NULL,	/* clone */
-	pipe_read, pipe_write, pipe_ioctl, pipe_poll, pipe_kqfilter,
-	pipe_stat, pipe_close, pipe_shutdown
+	.fo_read = pipe_read, 
+	.fo_write = pipe_write,
+	.fo_ioctl = pipe_ioctl,
+	.fo_poll = pipe_poll,
+	.fo_kqfilter = pipe_kqfilter,
+	.fo_stat = pipe_stat,
+	.fo_close = pipe_close,
+	.fo_shutdown = pipe_shutdown
 };
 
 static void	filt_pipedetach(struct knote *kn);
