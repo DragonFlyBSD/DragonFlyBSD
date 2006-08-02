@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.10 2006/06/02 19:39:48 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.10.2.1 2006/08/02 16:57:01 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -60,6 +60,9 @@
 #include <vm/swap_pager.h>
 #include <vm/vnode_pager.h>
 
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,10 +81,13 @@ static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
 static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist);
 static void dumpbufs(kvm_t *kd, void *bufp, const char *id);
+static void dumplocks(kvm_t *kd, struct lockf *lockf);
+static void dumplockinfo(kvm_t *kd, struct lockf_range *item);
 static int getobjpages(kvm_t *kd, struct vm_object *obj);
 static int getobjvnpsize(kvm_t *kd, struct vm_object *obj);
 
 int tracebufs = 0;
+int tracelocks = 0;
 int withnames = 0;
 
 int
@@ -95,7 +101,7 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
 
-    while ((ch = getopt(ac, av, "anbM:N:")) != -1) {
+    while ((ch = getopt(ac, av, "alnbM:N:")) != -1) {
 	switch(ch) {   
 	case 'b':
 	    tracebufs = 1;
@@ -103,8 +109,12 @@ main(int ac, char **av)
 	case 'n':
 	    withnames = 1;
 	    break;
+	case 'l':
+	    tracelocks = 1;
+	    break;
 	case 'a':
 	    tracebufs = 1;
+	    tracelocks = 1;
 	    withnames = 1;
 	    break;
 	case 'M':
@@ -257,6 +267,8 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	printf(" VMOUNT");
     if (vn.v_flag & VOBJDIRTY)
 	printf(" VOBJDIRTY");
+    if (vn.v_flag & VMAYHAVELOCKS)
+	printf(" VMAYHAVELOCKS");
 
     printf("\n");
 
@@ -296,6 +308,17 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	}
     }
 
+    if (tracelocks) {
+	if (vn.v_tag == VT_UFS && vn.v_data) {
+	    struct inode *ip = vn.v_data;
+	    struct lockf lockf;
+
+	    kkread(kd, (u_long)&ip->i_lockf, &lockf, sizeof(lockf));
+	    dumplocks(kd, &lockf);
+	}
+    }
+
+
     if (whichlist)
 	return(vn.v_nmntvnodes.tqe_next);
     else
@@ -317,6 +340,50 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 	    dumpbufs(kd, buf.b_rbnode.rbe_left, "LEFT");
 	if (buf.b_rbnode.rbe_right)
 	    dumpbufs(kd, buf.b_rbnode.rbe_right, "RIGHT");
+}
+
+static void
+dumplocks(kvm_t *kd, struct lockf *lockf)
+{
+	struct lockf_range item;
+	struct lockf_range *scan;
+
+	if ((scan = TAILQ_FIRST(&lockf->lf_range)) != NULL) {
+		printf("\tLOCKS\n");
+		do {
+			kkread(kd, (u_long)scan, &item, sizeof(item));
+			dumplockinfo(kd, &item);
+		} while ((scan = TAILQ_NEXT(&item, lf_link)) != NULL);
+		printf("\n");
+	}
+	if ((scan = TAILQ_FIRST(&lockf->lf_blocked)) != NULL) {
+		printf("\tBLKED\n");
+		do {
+			kkread(kd, (u_long)scan, &item, sizeof(item));
+			dumplockinfo(kd, &item);
+		} while ((scan = TAILQ_NEXT(&item, lf_link)) != NULL);
+		printf("\n");
+	}
+
+}
+
+static void
+dumplockinfo(kvm_t *kd, struct lockf_range *item)
+{
+	int ownerpid;
+
+	if (item->lf_owner) {
+		kkread(kd, (u_long)&item->lf_owner->p_pid,
+			&ownerpid, sizeof(ownerpid));
+	} else {
+		ownerpid = -1;
+	}
+
+	printf("\t    ty=%d flgs=%04x %lld-%lld owner=%d\n",
+		item->lf_type, item->lf_flags,
+		item->lf_start, item->lf_end,
+		ownerpid
+	);
 }
 
 static
