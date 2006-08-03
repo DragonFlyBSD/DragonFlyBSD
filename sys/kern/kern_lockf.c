@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.32 2006/07/25 20:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.33 2006/08/03 16:06:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -760,20 +760,23 @@ lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
 }
 
 /*
- * Wakeup pending lock attempts.
+ * Wakeup pending lock attempts.  Theoretically we can stop as soon as
+ * we encounter an exclusive request that covers the whole range (at least
+ * insofar as the sleep code above calls lf_wakeup() if it would otherwise
+ * exit instead of loop), but for now just wakeup all overlapping
+ * requests.  XXX
  */
 static void
 lf_wakeup(struct lockf *lock, off_t start, off_t end)
 {
 	struct lockf_range *range, *nrange;
+
 	TAILQ_FOREACH_MUTABLE(range, &lock->lf_blocked, lf_link, nrange) {
 		if (lf_overlap(range, start, end) == 0)
 			continue;
 		TAILQ_REMOVE(&lock->lf_blocked, range, lf_link);
 		range->lf_flags = 1;
 		wakeup(range);
-		if (range->lf_start >= start && range->lf_end <= end)
-			break;
 	}
 }
 
