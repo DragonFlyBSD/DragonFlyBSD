@@ -1,3 +1,4 @@
 # Subversion control for DragonFly 1.5.X-DEVELOPMENT
-# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_6,v 1.1.2.1 2006/07/17 00:46:32 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/subvers-RELEASE_1_6,v 1.1.2.2 2006/08/03 16:14:42 dillon Exp $
 0	-
+1	- fix indefinite blocking in flock()
