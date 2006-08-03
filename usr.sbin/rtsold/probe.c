@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/probe.c,v 1.2.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.6 2005/12/05 00:56:37 swildner Exp $
+ * $DragonFly: src/usr.sbin/rtsold/probe.c,v 1.7 2006/08/03 16:40:49 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -149,7 +149,7 @@ sendprobe(struct in6_addr *addr, int ifindex)
 	struct sockaddr_in6 sa6_probe;
 	struct in6_pktinfo *pi;
 	struct cmsghdr *cm;
-	u_char ntopbuf[INET6_ADDRSTRLEN], ifnamebuf[IFNAMSIZ];;
+	u_char ntopbuf[INET6_ADDRSTRLEN], ifnamebuf[IFNAMSIZ];
 
 	bzero(&sa6_probe, sizeof(sa6_probe));
 	sa6_probe.sin6_family = AF_INET6;

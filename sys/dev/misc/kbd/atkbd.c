@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.9 2005/06/16 16:00:11 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.10 2006/08/03 16:40:47 swildner Exp $
  */
 
 #include "opt_kbd.h"
@@ -819,7 +819,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 			}
 			break;
 		default:
-			crit_exit();;
+			crit_exit();
 			return EINVAL;
 		}
 		break;
@@ -880,7 +880,7 @@ atkbd_ioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		return error;
 
 	case KDSETRAD:		/* set keyboard repeat rate (old interface) */
-		crit_exit();;
+		crit_exit();
 		if (!KBD_HAS_DEVICE(kbd))
 			return 0;
 		error = write_kbd(state->kbdc, KBDC_SET_TYPEMATIC, *(int *)arg);

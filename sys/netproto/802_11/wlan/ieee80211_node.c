@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.3 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1641,7 +1641,7 @@ ieee80211_node_delucastkey(struct ieee80211_node *ni)
 	status = ieee80211_crypto_delkey(ic, &ni->ni_ucastkey);
 	if (nt->nt_keyixmap != NULL && keyix < nt->nt_keyixmax) {
 		nikey = nt->nt_keyixmap[keyix];
-		nt->nt_keyixmap[keyix] = NULL;;
+		nt->nt_keyixmap[keyix] = NULL;
 	} else
 		nikey = NULL;
 

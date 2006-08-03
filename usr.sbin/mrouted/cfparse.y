@@ -5,7 +5,7 @@
  * Written by Bill Fenner, NRL, 1994
  *
  * $FreeBSD: src/usr.sbin/mrouted/cfparse.y,v 1.10.2.2 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/cfparse.y,v 1.4 2004/03/15 18:10:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/cfparse.y,v 1.5 2006/08/03 16:40:48 swildner Exp $
  * cfparse.y,v 3.8.4.30 1998/03/01 01:48:58 fenner Exp
  */
 #include <stdio.h>
@@ -17,7 +17,7 @@
  * Local function declarations
  */
 static void		fatal(char *fmt, ...) __printflike(1, 2);
-static void		warn(char *fmt, ...) __printflike(1, 2);;
+static void		warn(char *fmt, ...) __printflike(1, 2);
 static void		yyerror(char *s);
 static char *		next_word(void);
 static int		yylex(void);

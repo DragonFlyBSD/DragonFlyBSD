@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.17 2006/08/03 16:40:48 swildner Exp $
  */
 
 /*		Change History:
@@ -831,7 +831,7 @@ set_fps(meteor_reg_t *mtr, u_short fps)
 	 * Set the fps.
 	 */
 	s7116->fme = s7116->fmo = mask;
-	s7116->fml = (length << 16) | length;;
+	s7116->fml = (length << 16) | length;
 
 	mtr->fps = fps;
 

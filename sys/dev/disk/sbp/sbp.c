@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.15 2005/10/28 03:25:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.16 2006/08/03 16:40:47 swildner Exp $
  *
  */
 
@@ -1475,7 +1475,7 @@ END_DEBUG
 		bcopy(&sbp_cmd_status->s_keydep[0],
 		    &sense->sense_key_spec[0], 3);
 
-		ocb->ccb->csio.scsi_status = sbp_cmd_status->status;;
+		ocb->ccb->csio.scsi_status = sbp_cmd_status->status;
 		ocb->ccb->ccb_h.status = CAM_SCSI_STATUS_ERROR
 							| CAM_AUTOSNS_VALID;
 /*
@@ -2018,7 +2018,7 @@ sbp_free_target(struct sbp_target *target)
 	}
 	STAILQ_INIT(&target->xferlist);
 	free(target->luns, M_SBP);
-	target->num_lun = 0;;
+	target->num_lun = 0;
 	target->luns = NULL;
 	target->fwdev = NULL;
 }
@@ -2184,7 +2184,7 @@ sbp_timeout(void *arg)
 		sbp_cam_detach_target(target);
 		if (target->luns != NULL)
 			free(target->luns, M_SBP);
-		target->num_lun = 0;;
+		target->num_lun = 0;
 		target->luns = NULL;
 		target->fwdev = NULL;
 #endif

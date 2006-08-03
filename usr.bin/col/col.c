@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)col.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/col/col.c,v 1.6.6.4 2001/08/02 01:27:12 obrien Exp $
- * $DragonFly: src/usr.bin/col/col.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/col/col.c,v 1.5 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <ctype.h>
@@ -437,7 +437,7 @@ flush_line(LINE *l)
 
 			if (compress_spaces && nspace > 1) {
 				while (1) {
-					int tab_col, tab_size;;
+					int tab_col, tab_size;
 
 					tab_col = (last_col + 8) & ~7;
 					if (tab_col > this_col)

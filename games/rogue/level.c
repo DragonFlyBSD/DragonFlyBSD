@@ -35,7 +35,7 @@
  *
  * @(#)level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/level.c,v 1.3 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/level.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/level.c,v 1.3 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -254,7 +254,7 @@ short rn, r1, r2, r3;
 	case BIG_ROOM:
 		top_row = get_rand(MIN_ROW, MIN_ROW+5);
 		bottom_row = get_rand(DROWS-7, DROWS-2);
-		left_col = get_rand(0, 10);;
+		left_col = get_rand(0, 10);
 		right_col = get_rand(DCOLS-11, DCOLS-1);
 		rn = 0;
 		goto B;

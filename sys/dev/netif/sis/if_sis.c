@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.32 2006/08/01 18:09:37 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.33 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -1009,13 +1009,13 @@ sis_attach(device_t dev)
 #ifdef SIS_USEIOSPACE
 	if (!(command & PCIM_CMD_PORTEN)) {
 		device_printf(dev, "failed to enable I/O ports!\n");
-		error = ENXIO;;
+		error = ENXIO;
 		goto fail;
 	}
 #else
 	if (!(command & PCIM_CMD_MEMEN)) {
 		device_printf(dev, "failed to enable memory mapping!\n");
-		error = ENXIO;;
+		error = ENXIO;
 		goto fail;
 	}
 #endif

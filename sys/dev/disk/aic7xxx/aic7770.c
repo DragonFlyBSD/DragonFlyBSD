@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7770.c#32 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7770.c,v 1.1.2.9 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7770.c,v 1.4 2006/08/03 16:40:46 swildner Exp $
  */
 
 #ifdef __linux__
@@ -65,7 +65,7 @@ static int aic7770_suspend(struct ahc_softc *ahc);
 static int aic7770_resume(struct ahc_softc *ahc);
 static int aha2840_load_seeprom(struct ahc_softc *ahc);
 static ahc_device_setup_t ahc_aic7770_VL_setup;
-static ahc_device_setup_t ahc_aic7770_EISA_setup;;
+static ahc_device_setup_t ahc_aic7770_EISA_setup;
 static ahc_device_setup_t ahc_aic7770_setup;
 
 struct aic7770_identity aic7770_ident_table[] =

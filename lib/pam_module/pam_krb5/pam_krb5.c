@@ -46,7 +46,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_krb5/pam_krb5.c,v 1.23 2005/07/07 14:16:38 kensmith Exp $
- * $DragonFly: src/lib/pam_module/pam_krb5/pam_krb5.c,v 1.1 2005/07/12 23:04:02 joerg Exp $
+ * $DragonFly: src/lib/pam_module/pam_krb5/pam_krb5.c,v 1.2 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -625,7 +625,7 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 	if (krbret != 0) {
 		PAM_LOG("Error krb5_cc_get_principal(): %s",
 		    krb5_get_err_text(pam_context, krbret));
-		retval = PAM_PERM_DENIED;;
+		retval = PAM_PERM_DENIED;
 		goto cleanup;
 	}
 

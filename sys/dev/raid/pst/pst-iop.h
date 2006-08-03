@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.h,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.h,v 1.3 2006/08/03 16:40:47 swildner Exp $
  */
 
 /* misc defines */
@@ -499,7 +499,7 @@ struct i2o_get_param_operation {
 } __attribute__((packed));
     
 struct i2o_get_param_reply {
-    u_int16_t		result_count;;
+    u_int16_t		result_count;
     u_int16_t		reserved;
     u_int16_t		block_size;
     u_int8_t		block_status;

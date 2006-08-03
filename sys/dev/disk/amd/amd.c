@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.9 2005/10/12 17:35:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -1615,7 +1615,7 @@ amdhandlemsgreject(struct amd_softc *amd)
 				    tinfo_sync_period[pDCB->SyncPeriod - 4];
 				pDCB->tinfo.goal.offset = pDCB->SyncOffset;
 				pDCB->tinfo.current.period =
-				    tinfo_sync_period[pDCB->SyncPeriod - 4];;
+				    tinfo_sync_period[pDCB->SyncPeriod - 4];
 				pDCB->tinfo.current.offset = pDCB->SyncOffset;
 
 				/*

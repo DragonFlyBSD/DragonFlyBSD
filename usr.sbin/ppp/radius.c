@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/radius.c,v 1.11.2.5 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/radius.c,v 1.3 2005/05/07 23:39:51 corecode Exp $
+ * $DragonFly: src/usr.sbin/ppp/radius.c,v 1.4 2006/08/03 16:40:48 swildner Exp $
  *
  */
 
@@ -637,7 +637,7 @@ radius_Init(struct radius *r)
   r->mppe.recvkeylen = 0;
   r->mppe.sendkey = NULL;
   r->mppe.sendkeylen = 0;
-  *r->cfg.file = '\0';;
+  *r->cfg.file = '\0';
   log_Printf(LogDEBUG, "Radius: radius_Init\n");
 }
 

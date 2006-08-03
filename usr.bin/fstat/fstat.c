@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.16 2006/05/18 08:25:23 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.17 2006/08/03 16:40:48 swildner Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -494,7 +494,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 			static char unknown[10];
 			sprintf(unknown, "?(%x)", vn.v_tag);
 			badtype=unknown;
-			break;;
+			break;
 		}
 	}
 	if (checkfile) {

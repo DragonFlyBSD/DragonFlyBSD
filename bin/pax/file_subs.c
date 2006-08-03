@@ -36,7 +36,7 @@
  *
  * @(#)file_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/file_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/file_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/pax/file_subs.c,v 1.7 2006/08/03 16:40:45 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -284,7 +284,7 @@ mk_link(char *to, struct stat *to_sb, char *from,
 		 */
 		if ((to_sb->st_dev==sb.st_dev)&&(to_sb->st_ino == sb.st_ino)) {
 			paxwarn(1, "Unable to link file %s to itself", to);
-			return(-1);;
+			return(-1);
 		}
 
 		/*

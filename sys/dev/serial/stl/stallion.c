@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.18 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.19 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -2596,7 +2596,7 @@ static int stl_getbrdstats(caddr_t data)
 		stl_brdstats.panels[i].nrports = panelp->nrports;
 	}
 
-	*((combrd_t *) data) = stl_brdstats;;
+	*((combrd_t *) data) = stl_brdstats;
 	return(0);
 }
 

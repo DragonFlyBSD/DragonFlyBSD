@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.3.6.1 2002/03/10 20:28:40 tegge Exp $
- * $DragonFly: src/lib/libc/stdlib/atexit.c,v 1.6 2004/06/15 13:43:20 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/atexit.c,v 1.7 2006/08/03 16:40:46 swildner Exp $
  *
  * @(#)atexit.c	8.2 (Berkeley) 7/3/94
  */
@@ -120,7 +120,7 @@ atexit(void (*func)(void))
 	int error;
 
 	fn.fn_type = ATEXIT_FN_STD;
-	fn.fn_ptr.std_func = func;;
+	fn.fn_ptr.std_func = func;
 	fn.fn_arg = NULL;
 	fn.fn_dso = NULL;
 
@@ -139,7 +139,7 @@ __cxa_atexit(void (*func)(void *), void *arg, void *dso)
 	int error;
 
 	fn.fn_type = ATEXIT_FN_CXA;
-	fn.fn_ptr.cxa_func = func;;
+	fn.fn_ptr.cxa_func = func;
 	fn.fn_arg = arg;
 	fn.fn_dso = dso;
 

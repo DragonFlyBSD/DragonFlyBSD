@@ -1,10 +1,10 @@
 /*
- * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.5 2005/05/07 23:35:13 corecode Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.6 2006/08/03 16:40:48 swildner Exp $
  */
 
 extern void setmodulus(char *modx);
 
-extern keystatus pk_setkey( uid_t, keybuf );;
+extern keystatus pk_setkey( uid_t, keybuf );
 extern keystatus pk_encrypt( uid_t, char *, netobj *, des_block * );
 extern keystatus pk_decrypt( uid_t, char *, netobj *, des_block * );
 extern keystatus pk_netput( uid_t, key_netstarg * );

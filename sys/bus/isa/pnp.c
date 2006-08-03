@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.9 2006/01/22 14:03:51 swildner Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -498,7 +498,7 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 		}
 		resinfo = resp;
 		resp += PNP_SRES_LEN(tag);
-		scanning -= PNP_SRES_LEN(tag);;
+		scanning -= PNP_SRES_LEN(tag);
 			
 		switch (PNP_SRES_NUM(tag)) {
 		case PNP_TAG_LOGICAL_DEVICE:

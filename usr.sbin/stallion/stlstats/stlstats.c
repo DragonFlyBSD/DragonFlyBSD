@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.9.2.1 2001/08/30 12:29:58 murray Exp $
- * $DragonFly: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.3 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/stallion/stlstats/stlstats.c,v 1.4 2006/08/03 16:40:49 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -362,7 +362,7 @@ menuport(void)
 void
 displayallports(void)
 {
-	int	i, nrports, portnr;;
+	int	i, nrports, portnr;
 
 	nrports = brdstats.panels[displaypanelnr].nrports;
 

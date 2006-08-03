@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/ar.c,v 1.8.2.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.5 2005/01/13 18:57:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.6 2006/08/03 16:40:48 swildner Exp $
  *
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ar.c	8.3 (Berkeley) 4/2/94
@@ -76,7 +76,7 @@ main(int argc, char **argv)
 	char *p;
 	int (*fcall)(char **) = NULL;
 
-	setlocale(LC_TIME, "");;
+	setlocale(LC_TIME, "");
 
 	if (argc < 3)
 		usage();

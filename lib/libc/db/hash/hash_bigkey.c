@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.9 2005/11/19 20:46:32 swildner Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -559,7 +559,7 @@ __big_split(HTAB *hashp, BUFHEAD *op, BUFHEAD *np, BUFHEAD *big_keyp,
 	if ( (ret->next_addr = __find_last_page(hashp, &big_keyp)) ) {
 		if (!(ret->nextp =
 		    __get_buf(hashp, ret->next_addr, big_keyp, 0)))
-			return (-1);;
+			return (-1);
 	} else
 		ret->nextp = NULL;
 

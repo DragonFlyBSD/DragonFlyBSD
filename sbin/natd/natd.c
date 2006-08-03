@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.10 2005/11/06 12:44:12 swildner Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.11 2006/08/03 16:40:46 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -1233,7 +1233,7 @@ ParseOption(const char *option, const char *parms)
 		break;
 
 	case LogIpfwDenied:
-		logIpfwDenied = yesNoValue;;
+		logIpfwDenied = yesNoValue;
 		break;
 	}
 }

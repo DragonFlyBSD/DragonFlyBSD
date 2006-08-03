@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.10 2006/06/25 11:02:40 corecode Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.11 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -496,7 +496,7 @@ sidewaysintpr(unsigned interval, u_long off)
 			interesting = ip;
 			interesting_off = off;
 		}
-		snprintf(ip->ift_name, 16, "(%s)", name);;
+		snprintf(ip->ift_name, 16, "(%s)", name);
 		if ((ipn = malloc(sizeof(struct iftot))) == NULL) {
 			printf("malloc failed\n");
 			exit(1);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.17 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.18 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -3547,7 +3547,7 @@ static int stli_getportstats(stliport_t *portp, caddr_t data)
 	stli_comstats.hwid = stli_cdkstats.hwid;
 	stli_comstats.signals = stli_mktiocm(stli_cdkstats.signals);
 
-	*((comstats_t *) data) = stli_comstats;;
+	*((comstats_t *) data) = stli_comstats;
 	return(0);
 }
 
@@ -3583,7 +3583,7 @@ static int stli_clrportstats(stliport_t *portp, caddr_t data)
 	stli_comstats.panel = portp->panelnr;
 	stli_comstats.port = portp->portnr;
 
-	*((comstats_t *) data) = stli_comstats;;
+	*((comstats_t *) data) = stli_comstats;
 	return(0);
 }
 

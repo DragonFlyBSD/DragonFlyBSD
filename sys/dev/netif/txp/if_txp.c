@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.36 2006/08/01 18:10:40 swildner Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.37 2006/08/03 16:40:47 swildner Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -893,7 +893,7 @@ txp_alloc_rings(struct txp_softc *sc)
 	sc->sc_hostvar = (struct txp_hostvar *)&ld->txp_hostvar;
 
 	/* hi priority tx ring */
-	boot->br_txhipri_lo = vtophys(&ld->txp_txhiring);;
+	boot->br_txhipri_lo = vtophys(&ld->txp_txhiring);
 	boot->br_txhipri_hi = 0;
 	boot->br_txhipri_siz = TX_ENTRIES * sizeof(struct txp_tx_desc);
 	sc->sc_txhir.r_reg = TXP_H2A_1;

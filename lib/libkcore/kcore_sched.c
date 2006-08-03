@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.4 2005/05/01 02:36:49 hmp Exp $
+ * $DragonFly: src/lib/libkcore/kcore_sched.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ kcore_get_sched_stathz(struct kcore_data *kc, int *stathz)
 	};
 	int retval;
 
-	retval = kcore_get_generic(kc, nl, stathz, sizeof(*stathz));;
+	retval = kcore_get_generic(kc, nl, stathz, sizeof(*stathz));
 	if (retval == 0 && *stathz == 0)
 		return(kcore_get_sched_hz(kc, stathz));
 	return(retval);

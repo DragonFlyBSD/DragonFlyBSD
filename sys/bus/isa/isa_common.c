@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.9 2005/10/30 04:41:09 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.10 2006/08/03 16:40:46 swildner Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -547,7 +547,7 @@ isa_print_resources(struct resource_list *rl, const char *name, int type,
 {
 	struct resource_list_entry *rle;
 	int printed;
-	int i, retval = 0;;
+	int i, retval = 0;
 
 	printed = 0;
 	for (i = 0; i < count; i++) {

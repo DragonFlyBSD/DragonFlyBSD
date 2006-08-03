@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.18 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.19 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -1509,7 +1509,7 @@ tame_mouse(struct psm_softc *sc, mousestatus_t *status, unsigned char *buf)
         buf[7] = (~status->button >> 3) & 0x7f;
 	return MOUSE_SYS_PACKETSIZE;
     }
-    return sc->inputbytes;;
+    return sc->inputbytes;
 }
 
 static int

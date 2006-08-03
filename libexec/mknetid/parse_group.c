@@ -32,7 +32,7 @@
  *
  * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
  * $FreeBSD: src/libexec/mknetid/parse_group.c,v 1.6 1999/08/28 00:09:42 peter Exp $
- * $DragonFly: src/libexec/mknetid/parse_group.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/mknetid/parse_group.c,v 1.3 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -130,7 +130,7 @@ grscan(search, gid, name)
 			}
 		}
 		if ((_gr_group.gr_passwd = strsep(&bp, ":\n")) == NULL)
-			break;;
+			break;
 		if (!(cp = strsep(&bp, ":\n")))
 			continue;
 		_gr_group.gr_gid = atoi(cp);

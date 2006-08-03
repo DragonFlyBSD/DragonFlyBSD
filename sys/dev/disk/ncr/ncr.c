@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.12 2005/10/12 17:35:50 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.13 2006/08/03 16:40:47 swildner Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3998,7 +3998,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 			msgptr[msglen++] = MSG_EXT_SDTR_LEN;
 			msgptr[msglen++] = MSG_EXT_SDTR;
 			msgptr[msglen++] = tp->tinfo.goal.period;
-			msgptr[msglen++] = tp->tinfo.goal.offset;;
+			msgptr[msglen++] = tp->tinfo.goal.offset;
 			if (DEBUG_FLAGS & DEBUG_NEGO) {
 				PRINT_ADDR(ccb);
 				printf ("sync msgout: ");

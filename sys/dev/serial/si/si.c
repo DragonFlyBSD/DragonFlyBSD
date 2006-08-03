@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.16 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.17 2006/08/03 16:40:47 swildner Exp $
  */
 
 #ifndef lint
@@ -575,7 +575,7 @@ try_next:
 			pp->sp_iin.c_lflag = TTYDEF_LFLAG;
 			termioschars(&pp->sp_iin);
 			pp->sp_iin.c_ispeed = pp->sp_iin.c_ospeed =
-				TTYDEF_SPEED;;
+				TTYDEF_SPEED;
 			pp->sp_iout = pp->sp_iin;
 		}
 try_next2:

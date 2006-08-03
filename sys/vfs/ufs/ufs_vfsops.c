@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.15 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.16 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -213,7 +213,7 @@ ufs_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
 		 struct ucred **credanonp)
 {
 	struct netcred *np;
-	struct ufsmount *ump;;
+	struct ufsmount *ump;
 
 	ump = VFSTOUFS(mp);
 	/*

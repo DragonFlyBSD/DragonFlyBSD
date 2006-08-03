@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_set.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.4 2004/12/18 21:43:38 swildner Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -85,7 +85,7 @@ set_arpserver(int argc, char **argv, struct cmd *cmdp)
 	struct {
 		struct in_addr	ip_addr;
 		struct in_addr	ip_mask;
-	} prefix_buf[64];;
+	} prefix_buf[64];
 
 	/*
 	 * Validate interface name

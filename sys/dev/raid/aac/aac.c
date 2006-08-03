@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.24 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.25 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -1477,7 +1477,7 @@ aac_init(struct aac_softc *sc)
  			       sizeof(struct aac_fib),	/* maxsegsize */
  			       BUS_DMA_ALLOCNOW,	/* flags */
  			       &sc->aac_fib_dmat)) {
- 		device_printf(sc->aac_dev, "can't allocate FIB DMA tag\n");;
+ 		device_printf(sc->aac_dev, "can't allocate FIB DMA tag\n");
  		goto out;
  	}
  

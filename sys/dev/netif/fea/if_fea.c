@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.10 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.11 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ pdq_eisa_probe (dev)
 	u_int32_t	maddr;
 	u_int32_t	msize;
 
-	u_int32_t	eisa_id = eisa_get_id(dev);;
+	u_int32_t	eisa_id = eisa_get_id(dev);
 
 	desc = pdq_eisa_match(eisa_id);
 	if (!desc) {

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.15 2006/07/28 02:17:32 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.16 2006/08/03 16:40:46 swildner Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -1566,7 +1566,7 @@ ses_encode(char *b, int amt, uint8_t *ep, int elt, int elm, SesComStat *sp)
  */
 
 static int safte_getconfig(ses_softc_t *);
-static int safte_rdstat(ses_softc_t *, int);;
+static int safte_rdstat(ses_softc_t *, int);
 static int set_objstat_sel(ses_softc_t *, ses_objstat *, int);
 static int wrbuf16(ses_softc_t *, uint8_t, uint8_t, uint8_t, uint8_t, int);
 static void wrslot_stat(ses_softc_t *, int);
@@ -2266,7 +2266,7 @@ safte_rdstat(ses_softc_t *ssc, int slpflg)
 		ssc->ses_objmap[oid].encstat[0] = SES_OBJSTAT_NOTAVAIL;
 		ssc->ses_objmap[oid].encstat[1] = 0;
 		ssc->ses_objmap[oid].encstat[2] = sdata[r];
-		ssc->ses_objmap[oid].encstat[3] = 0;;
+		ssc->ses_objmap[oid].encstat[3] = 0;
 		ssc->ses_objmap[oid++].svalid = 1;
 		r++;
 	}

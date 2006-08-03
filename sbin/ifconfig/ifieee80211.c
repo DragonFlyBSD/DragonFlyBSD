@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.9 2006/03/07 17:50:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.11 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.12 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*-
@@ -891,7 +891,7 @@ list_scan(int s)
 			, sr->isr_intval
 			, getcaps(sr->isr_capinfo)
 		);
-		printies(vp + sr->isr_ssid_len, sr->isr_ie_len, 24);;
+		printies(vp + sr->isr_ssid_len, sr->isr_ie_len, 24);
 		printf("\n");
 		cp += sr->isr_len, len -= sr->isr_len;
 	} while (len >= sizeof(struct ieee80211req_scan_result));

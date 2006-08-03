@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.4 2006/01/25 02:47:09 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.5 2006/08/03 16:40:48 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -387,7 +387,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	}
 
 	KASSERT((frep != NULL || frea != NULL),
-	    ("!(frep != NULL || frea != NULL): %s", __func__));;
+	    ("!(frep != NULL || frea != NULL): %s", __func__));
 
 	if (frep != NULL &&
 	    FR_IP_OFF(frep) + frep->fr_ip->ip_len - frep->fr_ip->ip_hl *

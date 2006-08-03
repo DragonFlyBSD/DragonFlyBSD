@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.10 2006/01/22 14:03:51 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.11 2006/08/03 16:40:46 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -419,7 +419,7 @@ targbhdtor(struct cam_periph *periph)
 
 	switch (softc->init_level) {
 	case 0:
-		panic("targdtor - impossible init level");;
+		panic("targdtor - impossible init level");
 	case 1:
 		/* FALLTHROUGH */
 	default:

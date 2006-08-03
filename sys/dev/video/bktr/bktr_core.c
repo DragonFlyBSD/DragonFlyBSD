@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.15 2005/06/10 23:25:05 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.16 2006/08/03 16:40:48 swildner Exp $
  */
 
 /*
@@ -2926,7 +2926,7 @@ rgb_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 		/* sync vro */
 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO;
 		*dma_prog++ = 0;  /* NULL WORD */
-		*dma_prog++ = OP_JUMP; ;
+		*dma_prog++ = OP_JUMP;
 		*dma_prog = (uint32_t ) vtophys(bktr->odd_dma_prog);
 		break;
 	}

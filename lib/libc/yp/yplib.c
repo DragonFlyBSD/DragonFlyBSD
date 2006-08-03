@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libc/yp/yplib.c,v 1.8 2005/04/27 12:26:59 joerg Exp $
+ * $DragonFly: src/lib/libc/yp/yplib.c,v 1.9 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include "namespace.h"
@@ -1004,7 +1004,7 @@ yperr_string(int incode)
 
 	switch (incode) {
 	case 0:
-		errstr = "Success";;
+		errstr = "Success";
 		break;
 	case YPERR_BADARGS:
 		errstr = "Request arguments bad";

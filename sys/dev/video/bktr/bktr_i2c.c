@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_i2c.c,v 1.25 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.6 2006/06/10 20:00:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_i2c.c,v 1.7 2006/08/03 16:40:48 swildner Exp $
  */
 
 /*
@@ -306,7 +306,7 @@ bti2c_smb_readb(device_t dev, u_char slave, char cmd, char *byte)
 	/* clear status bits */
 	OUTL(sc,BKTR_INT_STAT, (BT848_INT_RACK | BT848_INT_I2CDONE));
 
-	OUTL(sc,BKTR_I2C_DATA_CTL, ((slave & 0xff) << 24) | (u_char)cmd);;
+	OUTL(sc,BKTR_I2C_DATA_CTL, ((slave & 0xff) << 24) | (u_char)cmd);
 
 	BTI2C_DEBUG(printf("r%lx/", (u_long)(((slave & 0xff) << 24) | (u_char)cmd)));
 

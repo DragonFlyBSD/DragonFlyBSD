@@ -38,7 +38,7 @@
  * nfs/krpc_subr.c
  * $NetBSD: krpc_subr.c,v 1.10 1995/08/08 20:43:43 gwr Exp $
  * $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $
- * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.16 2006/06/14 21:07:09 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.17 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -1208,7 +1208,7 @@ bootpc_compose_query(struct bootpc_ifcontext *ifctx,
 	*vendp++ = TAG_VENDOR_INDENTIFIER;
 	*vendp++ = vendor_client_len;
 	memcpy(vendp, vendor_client, vendor_client_len);
-	vendp += vendor_client_len;;
+	vendp += vendor_client_len;
 	ifctx->dhcpquerytype = DHCP_NOMSG;
 	switch (ifctx->state) {
 	case IF_DHCP_UNRESOLVED:

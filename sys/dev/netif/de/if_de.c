@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.42 2006/02/17 19:18:05 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.43 2006/08/03 16:40:47 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -2030,7 +2030,7 @@ tulip_identify_asante_nic(tulip_softc_t * const sc)
 	mi->mi_gpr_length = 0;
 	mi->mi_gpr_offset = 0;
 	mi->mi_reset_length = 0;
-	mi->mi_reset_offset = 0;;
+	mi->mi_reset_offset = 0;
 
 	mi->mi_phyaddr = TULIP_MII_NOPHY;
 	for (idx = 20; idx > 0 && mi->mi_phyaddr == TULIP_MII_NOPHY; idx--) {

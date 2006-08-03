@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.18 2006/06/02 19:44:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.19 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -173,7 +173,7 @@ loop:
 
 	case Pmem:
 		pfs->pfs_mode = (VREAD|VWRITE) |
-				(VREAD) >> 3;;
+				(VREAD) >> 3;
 		vp->v_type = VREG;
 		break;
 

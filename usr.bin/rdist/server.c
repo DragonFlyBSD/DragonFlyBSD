@@ -32,7 +32,7 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.5 2004/07/24 19:50:42 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/server.c,v 1.6 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/wait.h>
@@ -1228,7 +1228,7 @@ clean(register char *cp)
 		}
 		tp = otp;
 		*tp++ = '/';
-		cp = dp->d_name;;
+		cp = dp->d_name;
 		while ((*tp++ = *cp++))
 			;
 		tp--;
@@ -1306,7 +1306,7 @@ removeit(struct stat *stp)
 		}
 		tp = otp;
 		*tp++ = '/';
-		cp = dp->d_name;;
+		cp = dp->d_name;
 		while ((*tp++ = *cp++))
 			;
 		tp--;

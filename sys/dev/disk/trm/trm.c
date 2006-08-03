@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.10 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.11 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -2588,7 +2588,7 @@ trm_DoingSRB_Done(PACB pACB)
 			xpt_done(pccb);
 			psrb  = psrb2;
 		}
-		pdcb->GoingSRBCnt = 0;;
+		pdcb->GoingSRBCnt = 0;
 		pdcb->pGoingSRB = NULL;
 		pdcb->TagMask = 0;
 		pdcb = pdcb->pNextDCB;

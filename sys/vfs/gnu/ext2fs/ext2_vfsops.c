@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.45 2006/07/28 02:17:41 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.46 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include "opt_quota.h"
@@ -1267,7 +1267,7 @@ ext2_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
                  struct ucred **credanonp)
 {
 	struct netcred *np;
-	struct ext2mount *ump;;
+	struct ext2mount *ump;
 	 
 	ump = VFSTOEXT2(mp);
 	/*

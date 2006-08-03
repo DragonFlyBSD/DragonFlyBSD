@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.19 2006/07/28 02:17:37 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.20 2006/08/03 16:40:47 swildner Exp $
  */
 
 /*
@@ -215,7 +215,7 @@ amr_attach(struct amr_softc *sc)
 	sc->amr_submit_command = amr_std_submit_command;
 	sc->amr_get_work       = amr_std_get_work;
 	sc->amr_poll_command   = amr_std_poll_command;
-	amr_std_attach_mailbox(sc);;
+	amr_std_attach_mailbox(sc);
     }
 
 #ifdef AMR_BOARD_INIT

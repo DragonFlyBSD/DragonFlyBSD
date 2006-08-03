@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.45 2005/02/09 17:37:37 ru Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.8 2005/02/28 23:15:35 corecode Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.9 2006/08/03 16:40:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ copy_file(const FTSENT *entp, int dne)
 	if (to_fd == -1) {
 		warn("%s", to.p_path);
 		close(from_fd);
-		return (1);;
+		return (1);
 	}
 
 	rval = 0;

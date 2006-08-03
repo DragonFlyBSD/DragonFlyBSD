@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.21 2006/07/28 02:17:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.22 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include "opt_bus.h"
@@ -691,7 +691,7 @@ agp_allocate_user(device_t dev, agp_allocate *alloc)
 static int
 agp_deallocate_user(device_t dev, int id)
 {
-	struct agp_memory *mem = agp_find_memory(dev, id);;
+	struct agp_memory *mem = agp_find_memory(dev, id);
 
 	if (mem) {
 		AGP_FREE_MEMORY(dev, mem);

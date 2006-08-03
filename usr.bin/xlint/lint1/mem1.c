@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: mem1.c,v 1.2 1995/07/03 21:24:25 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.6 2004/07/07 12:24:00 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.7 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -206,7 +206,7 @@ xgetblk(mbl_t **mbp, size_t s)
 			frmblks = mb->nxt;
 		}
 		mb->ffree = mb->blk;
-		mb->nfree = mb->size;;
+		mb->nfree = mb->size;
 		mb->nxt = *mbp;
 		*mbp = mb;
 	}

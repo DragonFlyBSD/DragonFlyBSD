@@ -2,7 +2,7 @@
  * misc.c  Phantasia miscellaneous support routines
  *
  * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.5 2005/05/31 00:06:26 swildner Exp $
+ * $DragonFly: src/games/phantasia/misc.c,v 1.6 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include <string.h>
@@ -1257,7 +1257,7 @@ double	dtemp;				/* for temporary calculations */
 
     /* calculate effective quickness */
     dtemp = ((Player.p_gold + Player.p_gems / 2.0) - 1000.0) / Statptr->c_goldtote
-	- Player.p_level;;
+	- Player.p_level;
     dtemp = MAX(0.0, dtemp);		/* gold slows player down */
     Player.p_speed = Player.p_quickness + Player.p_quksilver - dtemp;
 

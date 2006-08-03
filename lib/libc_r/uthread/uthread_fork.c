@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fork.c,v 1.19.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.4 2005/05/02 20:40:50 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.5 2006/08/03 16:40:46 swildner Exp $
  */
 #include <errno.h>
 #include <string.h>
@@ -171,10 +171,10 @@ _fork(void)
 					_thread_fd_table[i]->w_owner = NULL;
 					_thread_fd_table[i]->r_fname = NULL;
 					_thread_fd_table[i]->w_fname = NULL;
-					_thread_fd_table[i]->r_lineno = 0;;
-					_thread_fd_table[i]->w_lineno = 0;;
-					_thread_fd_table[i]->r_lockcount = 0;;
-					_thread_fd_table[i]->w_lockcount = 0;;
+					_thread_fd_table[i]->r_lineno = 0;
+					_thread_fd_table[i]->w_lineno = 0;
+					_thread_fd_table[i]->r_lockcount = 0;
+					_thread_fd_table[i]->w_lockcount = 0;
 
 					/* Initialise the read/write queues: */
 					TAILQ_INIT(&_thread_fd_table[i]->r_queue);

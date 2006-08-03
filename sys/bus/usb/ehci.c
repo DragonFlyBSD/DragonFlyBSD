@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.67 2004/07/06 04:18:05 mycroft Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.22 2006/06/05 20:56:52 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.23 2006/08/03 16:40:46 swildner Exp $
  */
 
 /*
@@ -2445,7 +2445,7 @@ ehci_timeout_task(void *addr)
 	DPRINTF(("ehci_timeout_task: xfer=%p\n", xfer));
 	crit_enter();
 	ehci_abort_xfer(xfer, USBD_TIMEOUT);
-	crit_exit();;
+	crit_exit();
 }
 
 /*

@@ -30,7 +30,7 @@
  *	BSDI cwd.c,v 2.2 1996/04/08 19:32:25 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/cwd.c,v 1.6.2.3 2002/04/25 11:04:50 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/cwd.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/cwd.c,v 1.3 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -118,7 +118,7 @@ init_path(int drive, const u_char *base, const u_char *dir)
     	while (*dir) {
 	    u_char dosname[15];
 	    u_char realname[256];
-	    u_char *r = realname;;
+	    u_char *r = realname;
 
 	    while ((*r = *dir) && *dir++ != '/') {
 		++r;

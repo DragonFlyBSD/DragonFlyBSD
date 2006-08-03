@@ -1,5 +1,5 @@
 /*	$NetBSD: src/lib/libc/citrus/citrus_db_factory.h,v 1.1 2003/06/25 09:51:30 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/citrus/citrus_db_factory.h,v 1.1 2005/03/11 23:33:53 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/citrus/citrus_db_factory.h,v 1.2 2006/08/03 16:40:46 swildner Exp $ */
 
 
 /*-
@@ -32,7 +32,7 @@
 #define _CITRUS_DB_FACTORY_H_
 
 struct _citrus_db_factory;
-typedef uint32_t (*_citrus_db_hash_func_t)(void *, struct _citrus_region *);;
+typedef uint32_t (*_citrus_db_hash_func_t)(void *, struct _citrus_region *);
 
 __BEGIN_DECLS
 int	_citrus_db_factory_create(struct _citrus_db_factory **,

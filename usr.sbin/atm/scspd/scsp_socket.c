@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.5 2006/08/03 16:40:48 swildner Exp $
  */
 
 
@@ -1279,7 +1279,7 @@ scsp_pending_read(Scsp_pending *psp)
 	msg->si_len = sizeof(Scsp_if_msg_hdr);
 	rc = scsp_if_sock_write(ssp->ss_sock, msg);
 	if (rc) {
-		goto config_error;;
+		goto config_error;
 	}
 
 	/*
