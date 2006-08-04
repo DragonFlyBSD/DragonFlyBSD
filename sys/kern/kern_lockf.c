@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.24 2005/04/14 08:14:31 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.24.2.1 2006/08/04 16:15:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -681,8 +681,6 @@ lf_wakeup(struct lockf *lock, off_t start, off_t end)
 		TAILQ_REMOVE(&lock->lf_blocked, range, lf_link);
 		range->lf_flags = 1;
 		wakeup(range);
-		if (lf_overlap_embedded(range, start, end))
-			break;
 	}
 }
 
