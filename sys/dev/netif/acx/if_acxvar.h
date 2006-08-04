@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.3 2006/06/17 10:31:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.4 2006/08/04 14:04:16 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -125,11 +125,11 @@ struct acx_fw_txdesc {
 
 	uint32_t	f_tx_dev_spec[4];
 
-	uint8_t		f_tx_ctrl;	/* see DESC_CTRL_ */
+	uint8_t		f_tx_ctrl;		/* see DESC_CTRL_ */
 	uint8_t		f_tx_ctrl2;
-	uint8_t		f_tx_error;	/* see DESC_ERR_ */
-	uint8_t		f_tx_ack_fail;
-	uint8_t		f_tx_rts_fail;
+	uint8_t		f_tx_error;		/* see DESC_ERR_ */
+	uint8_t		f_tx_data_nretry;	/* non-RTS retries */
+	uint8_t		f_tx_rts_nretry;	/* RTS retries */
 	uint8_t		f_tx_rts_ok;
 
 	/* XXX should be moved to chip specific file */
