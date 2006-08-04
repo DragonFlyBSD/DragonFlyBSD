@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.3 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.4 2006/08/04 15:42:27 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -100,6 +100,7 @@ struct ieee80211com {
 	struct ifnet		*ic_ifp;	/* associated device */
 	struct ieee80211_stats	ic_stats;	/* statistics */
 	struct sysctl_ctx_list	*ic_sysctl;	/* dynamic sysctl context */
+	struct sysctl_oid	*ic_sysctl_oid;	/* dynamic sysctl oid */
 	uint32_t		ic_debug;	/* debug msg flags */
 	int			ic_vap;		/* virtual AP index */
 

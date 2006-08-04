@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.2 2006/08/04 15:42:27 sephe Exp $
  */
 
 /*
@@ -96,8 +96,11 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 	snprintf(num, sizeof(num), "%u", ic->ic_vap);
 	oid = SYSCTL_ADD_NODE(ctx, &SYSCTL_NODE_CHILDREN(_net, wlan),
 		OID_AUTO, num, CTLFLAG_RD, NULL, "");
-	if (oid == NULL)
+	if (oid == NULL) {
+		printf("add sysctl node net.wlan.%s failed\n", num);
+		free(ctx, M_DEVBUF);
 		return;
+	}
 
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(oid), OID_AUTO,
 		"%parent", CTLFLAG_RD, ic, 0, ieee80211_sysctl_parent, "A",
@@ -133,6 +136,7 @@ ieee80211_sysctl_attach(struct ieee80211com *ic)
 		"consecutive beacon misses before scanning");
 
 	ic->ic_sysctl = ctx;
+	ic->ic_sysctl_oid = oid;
 }
 
 void
