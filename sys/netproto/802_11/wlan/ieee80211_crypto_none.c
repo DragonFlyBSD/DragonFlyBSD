@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto_none.c,v 1.5 2005/06/10 16:11:24 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto_none.c,v 1.1 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto_none.c,v 1.2 2006/08/05 03:18:27 sephe Exp $
  */
 
 /*
@@ -49,13 +49,13 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
-static	void *none_attach(struct ieee80211com *, struct ieee80211_key *);
-static	void none_detach(struct ieee80211_key *);
-static	int none_setkey(struct ieee80211_key *);
-static	int none_encap(struct ieee80211_key *, struct mbuf *, uint8_t);
-static	int none_decap(struct ieee80211_key *, struct mbuf *, int);
-static	int none_enmic(struct ieee80211_key *, struct mbuf *, int);
-static	int none_demic(struct ieee80211_key *, struct mbuf *, int);
+static	void *none_crypto_attach(struct ieee80211com *, struct ieee80211_key *);
+static	void none_crypto_detach(struct ieee80211_key *);
+static	int none_crypto_setkey(struct ieee80211_key *);
+static	int none_crypto_encap(struct ieee80211_key *, struct mbuf *, uint8_t);
+static	int none_crypto_decap(struct ieee80211_key *, struct mbuf *, int);
+static	int none_crypto_enmic(struct ieee80211_key *, struct mbuf *, int);
+static	int none_crypto_demic(struct ieee80211_key *, struct mbuf *, int);
 
 const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_name	= "NONE",
@@ -63,36 +63,36 @@ const struct ieee80211_cipher ieee80211_cipher_none = {
 	.ic_header	= 0,
 	.ic_trailer	= 0,
 	.ic_miclen	= 0,
-	.ic_attach	= none_attach,
-	.ic_detach	= none_detach,
-	.ic_setkey	= none_setkey,
-	.ic_encap	= none_encap,
-	.ic_decap	= none_decap,
-	.ic_enmic	= none_enmic,
-	.ic_demic	= none_demic,
+	.ic_attach	= none_crypto_attach,
+	.ic_detach	= none_crypto_detach,
+	.ic_setkey	= none_crypto_setkey,
+	.ic_encap	= none_crypto_encap,
+	.ic_decap	= none_crypto_decap,
+	.ic_enmic	= none_crypto_enmic,
+	.ic_demic	= none_crypto_demic,
 };
 
 static void *
-none_attach(struct ieee80211com *ic, struct ieee80211_key *k)
+none_crypto_attach(struct ieee80211com *ic, struct ieee80211_key *k)
 {
 	return ic;		/* for diagnostics+stats */
 }
 
 static void
-none_detach(struct ieee80211_key *k)
+none_crypto_detach(struct ieee80211_key *k)
 {
 	(void) k;
 }
 
 static int
-none_setkey(struct ieee80211_key *k)
+none_crypto_setkey(struct ieee80211_key *k)
 {
 	(void) k;
 	return 1;
 }
 
 static int
-none_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
+none_crypto_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 {
 	struct ieee80211com *ic = k->wk_private;
 #ifdef IEEE80211_DEBUG
@@ -111,7 +111,7 @@ none_encap(struct ieee80211_key *k, struct mbuf *m, uint8_t keyid)
 }
 
 static int
-none_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
+none_crypto_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 {
 	struct ieee80211com *ic = k->wk_private;
 #ifdef IEEE80211_DEBUG
@@ -132,7 +132,7 @@ none_decap(struct ieee80211_key *k, struct mbuf *m, int hdrlen)
 }
 
 static int
-none_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
+none_crypto_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
 	struct ieee80211com *ic = k->wk_private;
 
@@ -141,7 +141,7 @@ none_enmic(struct ieee80211_key *k, struct mbuf *m, int force)
 }
 
 static int
-none_demic(struct ieee80211_key *k, struct mbuf *m, int force)
+none_crypto_demic(struct ieee80211_key *k, struct mbuf *m, int force)
 {
 	struct ieee80211com *ic = k->wk_private;
 
