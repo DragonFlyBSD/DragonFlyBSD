@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.33 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.34 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -748,7 +748,8 @@ sis_miibus_writereg(device_t dev, int phy, int reg, int data)
 	return(0);
 }
 
-static void sis_miibus_statchg(device_t dev)
+static void
+sis_miibus_statchg(device_t dev)
 {
 	struct sis_softc *sc;
 

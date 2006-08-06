@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.24 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.25 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -499,7 +499,8 @@ cs_cs89x0_probe(device_t dev)
 /*
  * Allocate a port resource with the given resource id.
  */
-int cs_alloc_port(device_t dev, int rid, int size)
+int
+cs_alloc_port(device_t dev, int rid, int size)
 {
         struct cs_softc *sc = device_get_softc(dev);
         struct resource *res;
@@ -519,7 +520,8 @@ int cs_alloc_port(device_t dev, int rid, int size)
 /*
  * Allocate a memory resource with the given resource id.
  */
-int cs_alloc_memory(device_t dev, int rid, int size)
+int
+cs_alloc_memory(device_t dev, int rid, int size)
 {
         struct cs_softc *sc = device_get_softc(dev);
         struct resource *res;
@@ -539,7 +541,8 @@ int cs_alloc_memory(device_t dev, int rid, int size)
 /*
  * Allocate an irq resource with the given resource id.
  */
-int cs_alloc_irq(device_t dev, int rid, int flags)
+int
+cs_alloc_irq(device_t dev, int rid, int flags)
 {
         struct cs_softc *sc = device_get_softc(dev);
         struct resource *res;
@@ -558,7 +561,8 @@ int cs_alloc_irq(device_t dev, int rid, int flags)
 /*
  * Release all resources
  */
-void cs_release_resources(device_t dev)
+void
+cs_release_resources(device_t dev)
 {
         struct cs_softc *sc = device_get_softc(dev);
 
@@ -1103,8 +1107,7 @@ cs_setmode(struct cs_softc *sc)
 }
 
 static int
-cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
-    struct ucred *cr)
+cs_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct cs_softc *sc=ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.18 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.19 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -646,8 +646,8 @@ kue_rxstart(struct ifnet *ifp)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-Static void kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv,
-		      usbd_status status)
+Static void
+kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct kue_softc	*sc;
 	struct kue_chain	*c;

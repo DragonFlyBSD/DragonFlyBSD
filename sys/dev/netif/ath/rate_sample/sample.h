@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.h,v 1.3.2.1 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.h,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.h,v 1.2 2006/08/06 12:49:04 swildner Exp $
  */
 
 /*
@@ -183,9 +183,10 @@ struct ar5212_desc {
 /*
  * Calculate the transmit duration of a frame.
  */
-static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
-				int length, 
-				int rix, int short_retries, int long_retries) {
+static unsigned
+calc_usecs_unicast_packet(struct ath_softc *sc, int length,  int rix,
+			  int short_retries, int long_retries)
+{
 	const HAL_RATE_TABLE *rt = sc->sc_currates;
 	int rts, cts;
 	

@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.26 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.27 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -706,7 +706,7 @@ ee16_probe(struct isa_device *dvp)
 	/* ZZZ I think this is location 6, high byte */
 	outb(PORT + IEE16_MECTRL, edecode);	/* XXX disable Exxx */
 
-	(void) kvtop(dvp->id_maddr);
+	kvtop(dvp->id_maddr);
 
 	/*
 	 * first prime the stupid bart DRAM controller so that it works,
@@ -1956,8 +1956,7 @@ mc_setup(int unit, v_caddr_t ptr,
  * starting the receiver unit, and clearing interrupts.
  */
 static void
-ieinit(xsc)
-	void *xsc;
+ieinit(void *xsc)
 {
 	struct ie_softc *ie = xsc;
 	volatile struct ie_sys_ctl_block *scb = ie->scb;

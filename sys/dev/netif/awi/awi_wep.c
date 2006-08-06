@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.13 2005/06/13 20:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.14 2006/08/06 12:49:04 swildner Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -121,9 +121,7 @@ static struct awi_wep_algo awi_wep_algo[] = {
 };
 
 int
-awi_wep_setnwkey(sc, nwkey)
-	struct awi_softc *sc;
-	struct ieee80211_nwkey *nwkey;
+awi_wep_setnwkey(struct awi_softc *sc, struct ieee80211_nwkey *nwkey)
 {
 	int i, len, error;
 	u_int8_t keybuf[AWI_MAX_KEYLEN];
@@ -159,9 +157,7 @@ awi_wep_setnwkey(sc, nwkey)
 }
 
 int
-awi_wep_getnwkey(sc, nwkey)
-	struct awi_softc *sc;
-	struct ieee80211_nwkey *nwkey;
+awi_wep_getnwkey(struct awi_softc *sc, struct ieee80211_nwkey *nwkey)
 {
 	int i, len, error, suerr;
 	u_int8_t keybuf[AWI_MAX_KEYLEN];
@@ -195,8 +191,7 @@ awi_wep_getnwkey(sc, nwkey)
 }
 
 int
-awi_wep_getalgo(sc)
-	struct awi_softc *sc;
+awi_wep_getalgo(struct awi_softc *sc)
 {
 
 	if (sc->sc_wep_algo == NULL)
@@ -205,9 +200,7 @@ awi_wep_getalgo(sc)
 }
 
 int
-awi_wep_setalgo(sc, algo)
-	struct awi_softc *sc;
-	int algo;
+awi_wep_setalgo(struct awi_softc *sc, int algo)
 {
 	struct awi_wep_algo *awa;
 	int ctxlen;
@@ -237,11 +230,7 @@ awi_wep_setalgo(sc, algo)
 }
 
 int
-awi_wep_setkey(sc, kid, key, keylen)
-	struct awi_softc *sc;
-	int kid;
-	unsigned char *key;
-	int keylen;
+awi_wep_setkey(struct awi_softc *sc, int kid, unsigned char *key, int keylen)
 {
 
 	if (kid < 0 || kid >= IEEE80211_WEP_NKID)
@@ -255,11 +244,7 @@ awi_wep_setkey(sc, kid, key, keylen)
 }
 
 int
-awi_wep_getkey(sc, kid, key, keylen)
-	struct awi_softc *sc;
-	int kid;
-	unsigned char *key;
-	int *keylen;
+awi_wep_getkey(struct awi_softc *sc, int kid, unsigned char *key, int *keylen)
 {
 
 	if (kid < 0 || kid >= IEEE80211_WEP_NKID)
@@ -273,10 +258,7 @@ awi_wep_getkey(sc, kid, key, keylen)
 }
 
 struct mbuf *
-awi_wep_encrypt(sc, m0, txflag)
-	struct awi_softc *sc;
-	struct mbuf *m0;
-	int txflag;
+awi_wep_encrypt(struct awi_softc *sc, struct mbuf *m0, int txflag)
 {
 	struct mbuf *m, *n, *n0;
 	struct ieee80211_frame *wh;
@@ -429,7 +411,7 @@ static int awi_crc_table_computed = 0;
 
 /* Make the table for a fast CRC. */
 static void
-awi_crc_init()
+awi_crc_init(void)
 {
 	u_int32_t c;
 	int n, k;
@@ -456,10 +438,7 @@ awi_crc_init()
  */
 
 static u_int32_t
-awi_crc_update(crc, buf, len)
-	u_int32_t crc;
-	u_int8_t *buf;
-	int len;
+awi_crc_update(u_int32_t crc, u_int8_t *buf, int len)
 {
 	u_int8_t *endbuf;
 
@@ -473,26 +452,19 @@ awi_crc_update(crc, buf, len)
  */
 
 static int
-awi_null_ctxlen()
+awi_null_ctxlen(void)
 {
 
 	return 0;
 }
 
 static void
-awi_null_setkey(ctx, key, keylen)
-	void *ctx;
-	u_char *key;
-	int keylen;
+awi_null_setkey(void *ctx, u_char *key, int keylen)
 {
 }
 
 static void
-awi_null_copy(ctx, dst, src, len)
-	void *ctx;
-	u_char *dst;
-	u_char *src;
-	int len;
+awi_null_copy(void *ctx, u_char *dst, u_char *src, int len)
 {
 
 	memcpy(dst, src, len);

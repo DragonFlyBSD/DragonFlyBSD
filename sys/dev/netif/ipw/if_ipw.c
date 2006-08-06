@@ -27,7 +27,7 @@
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
  * $FreeBSD: src/sys/dev/ipw/if_ipw.c,v 1.7.2.4 2006/01/29 15:13:01 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.14 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.15 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*-
@@ -164,13 +164,15 @@ static void		ipw_read_mem_1(struct ipw_softc *, bus_size_t,
 static void		ipw_write_mem_1(struct ipw_softc *, bus_size_t,
 			    u_int8_t *, bus_size_t);
 
-static __inline u_int8_t MEM_READ_1(struct ipw_softc *sc, u_int32_t addr)
+static __inline u_int8_t
+MEM_READ_1(struct ipw_softc *sc, u_int32_t addr)
 {
 	CSR_WRITE_4(sc, IPW_CSR_INDIRECT_ADDR, addr);
 	return CSR_READ_1(sc, IPW_CSR_INDIRECT_DATA);
 }
 
-static __inline u_int32_t MEM_READ_4(struct ipw_softc *sc, u_int32_t addr)
+static __inline u_int32_t
+MEM_READ_4(struct ipw_softc *sc, u_int32_t addr)
 {
 	CSR_WRITE_4(sc, IPW_CSR_INDIRECT_ADDR, addr);
 	return CSR_READ_4(sc, IPW_CSR_INDIRECT_DATA);

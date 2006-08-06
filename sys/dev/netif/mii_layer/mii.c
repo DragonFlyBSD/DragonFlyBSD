@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.10 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -303,7 +303,7 @@ mii_tick(struct mii_data *mii)
 
 	for (child = LIST_FIRST(&mii->mii_phys); child != NULL;
 	     child = LIST_NEXT(child, mii_list))
-		(void) (*child->mii_service)(child, mii, MII_TICK);
+		(*child->mii_service)(child, mii, MII_TICK);
 }
 
 /*
@@ -319,7 +319,7 @@ mii_pollstat(struct mii_data *mii)
 
 	for (child = LIST_FIRST(&mii->mii_phys); child != NULL;
 	     child = LIST_NEXT(child, mii_list))
-		(void) (*child->mii_service)(child, mii, MII_POLLSTAT);
+		(*child->mii_service)(child, mii, MII_POLLSTAT);
 }
 
 static moduledata_t miibus_mod = { "miibus" };

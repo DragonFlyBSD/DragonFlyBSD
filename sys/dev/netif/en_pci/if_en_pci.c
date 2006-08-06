@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.11 2006/08/01 18:02:40 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.12 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -164,10 +164,8 @@ static void adp_busreset (void *);
  * bus specific reset function [ADP only!]
  */
 
-static void adp_busreset(v)
-
-void *v;
-
+static void
+adp_busreset(void *v)
 {
   struct en_softc *sc = (struct en_softc *) v;
   u_int32_t dummy;
@@ -190,11 +188,8 @@ void *v;
  * autoconfig stuff
  */
 
-static const char *en_pci_probe(config_id, device_id)
-
-pcici_t config_id;
-pcidi_t device_id;
-
+static const char *
+en_pci_probe(pcici_t config_id, pcidi_t device_id)
 {
 #if !defined(MIDWAY_ADPONLY)
   if (PCI_VENDOR(device_id) == PCI_VENDOR_EFFICIENTNETS && 
@@ -213,11 +208,8 @@ pcidi_t device_id;
   return 0;
 }
 
-static void en_pci_attach(config_id, unit)
-
-pcici_t config_id;
-int unit;
-
+static void
+en_pci_attach(pcici_t config_id, int unit)
 {
   struct en_softc *sc;
   struct en_pci_softc *scp;
@@ -299,9 +291,7 @@ int unit;
 }
 
 static void
-en_pci_shutdown(
-	void *sc,
-	int howto)
+en_pci_shutdown(void *sc, int howto)
 {
     struct en_pci_softc *psc = (struct en_pci_softc *)sc;
     
@@ -317,8 +307,7 @@ en_pci_shutdown(
 #endif
 
 static void 
-adp_get_macaddr(scp)
-     struct en_pci_softc *scp;
+adp_get_macaddr(struct en_pci_softc *scp)
 {
   struct en_softc * sc = (struct en_softc *)scp;
   int lcv;
@@ -342,8 +331,7 @@ adp_get_macaddr(scp)
 #define EN_ESI         64
 
 static void 
-eni_get_macaddr(scp)
-     struct en_pci_softc *scp;
+eni_get_macaddr(struct en_pci_softc *scp)
 {
   struct en_softc * sc = (struct en_softc *)scp;
   pcici_t id = scp->en_confid;

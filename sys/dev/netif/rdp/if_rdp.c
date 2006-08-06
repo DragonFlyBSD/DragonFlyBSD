@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.21 2005/11/28 17:13:43 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.22 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -243,7 +243,7 @@ RdNib(struct rdp_softc *sc, u_char rreg)
 
 	outb(sc->baseaddr + lpt_data, EOC + rreg);
 	outb(sc->baseaddr + lpt_data, RdAddr + rreg); /* write addr */
-	(void)inb(sc->baseaddr + lpt_status);
+	inb(sc->baseaddr + lpt_status);
 	return (inb(sc->baseaddr + lpt_status) >> 3) & 0x0f;
 }
 
@@ -277,10 +277,10 @@ RdByte1(struct rdp_softc *sc)
 	u_char hinib, lonib;
 
 	outb(sc->baseaddr + lpt_data, RdAddr + MAR); /* cmd for low nibble */
-	(void)inb(sc->baseaddr + lpt_status);
+	inb(sc->baseaddr + lpt_status);
 	lonib = (inb(sc->baseaddr + lpt_status) >> 3) & 0x0f;
 	outb(sc->baseaddr + lpt_data, RdAddr + MAR + HNib);
-	(void)inb(sc->baseaddr + lpt_status);
+	inb(sc->baseaddr + lpt_status);
 	hinib = (inb(sc->baseaddr + lpt_status) << 1) & 0xf0;
 	return hinib + lonib;
 }
@@ -316,10 +316,10 @@ RdByteA2(struct rdp_softc *sc)
 	u_char hinib, lonib;
 
 	outb(sc->baseaddr + lpt_control, Ctrl_LNibRead);
-	(void)inb(sc->baseaddr + lpt_status);
+	inb(sc->baseaddr + lpt_status);
 	lonib = (inb(sc->baseaddr + lpt_status) >> 3) & 0x0f;
 	outb(sc->baseaddr + lpt_control, Ctrl_HNibRead);
-	(void)inb(sc->baseaddr + lpt_status);
+	inb(sc->baseaddr + lpt_status);
 	hinib = (inb(sc->baseaddr + lpt_status) << 1) & 0xf0;
 	return hinib + lonib;
 }
@@ -533,8 +533,7 @@ rdp_probe(struct isa_device *isa_dev)
 
 	/* de-assert and disable IRQ */
 	WrNib(sc, IMR + HNib, MkHi(0));
-	(void)inb(sc->baseaddr + lpt_status); /* might be necessary to
-						 clear IRQ */
+	inb(sc->baseaddr + lpt_status); /* might be necessary to clear IRQ */
 	DELAY(1000);
 	irqmap[2] = isa_irq_pending();
 	sval[2] = inb(sc->baseaddr + lpt_status);

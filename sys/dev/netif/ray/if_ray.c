@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.28 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.29 2006/08/06 12:49:06 swildner Exp $
  *
  */
 
@@ -635,8 +635,7 @@ ray_detach(device_t dev)
  * Network ioctl request.
  */
 static int
-ray_ioctl(register struct ifnet *ifp, u_long command, caddr_t data,
-    struct ucred *cr)
+ray_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct ray_softc *sc = ifp->if_softc;
 	struct ray_param_req pr;
@@ -3445,7 +3444,7 @@ ray_ccs_alloc(struct ray_softc *sc, size_t *ccsp, char *wmesg)
 	for (;;) {
 		for (i = RAY_CCS_CMD_FIRST; i <= RAY_CCS_CMD_LAST; i++) {
 			/* we probe here to make the card go */
-			(void)SRAM_READ_FIELD_1(sc, RAY_CCS_ADDRESS(i), ray_cmd,
+			SRAM_READ_FIELD_1(sc, RAY_CCS_ADDRESS(i), ray_cmd,
 			    c_status);
 			if (!sc->sc_ccsinuse[i])
 				break;

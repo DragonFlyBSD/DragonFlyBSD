@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.20 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.21 2006/08/06 12:49:05 swildner Exp $
  *
  */
 #undef DEBUG
@@ -111,7 +111,8 @@ DECLARE_DUMMY_MODULE(if_cx);
 /*
  * Check that the value is contained in the list of correct values.
  */
-static int valid (unsigned short value, unsigned short *list)
+static int
+valid (unsigned short value, unsigned short *list)
 {
 	while (*list)
 		if (value == *list++)
@@ -122,7 +123,8 @@ static int valid (unsigned short value, unsigned short *list)
 /*
  * Print the mbuf chain, for debug purposes only.
  */
-static void printmbuf (struct mbuf *m)
+static void
+printmbuf (struct mbuf *m)
 {
 	printf ("mbuf:");
 	for (; m; m=m->m_next) {
@@ -138,7 +140,8 @@ static void printmbuf (struct mbuf *m)
 /*
  * Make an mbuf from data.
  */
-static struct mbuf *makembuf (void *buf, unsigned len)
+static struct mbuf *
+makembuf (void *buf, unsigned len)
 {
 	struct mbuf *m, *o, *p;
 
@@ -805,7 +808,8 @@ cxinput (cx_chan_t *c, void *buf, unsigned len)
 	sppp_input (c->master, m);
 }
 
-void cxswitch (cx_chan_t *c, cx_soft_opt_t new)
+void
+cxswitch (cx_chan_t *c, cx_soft_opt_t new)
 {
 	new.ext = 0;
 	if (! new.ext) {

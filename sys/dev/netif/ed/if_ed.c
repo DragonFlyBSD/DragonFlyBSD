@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.30 2006/06/25 11:02:38 corecode Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.31 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -2407,7 +2407,7 @@ edintr(void *arg)
 			 * flow. Of course, with UDP we're screwed, but this
 			 * is expected when a network is heavily loaded.
 			 */
-			(void) ed_nic_inb(sc, ED_P0_TSR);
+			ed_nic_inb(sc, ED_P0_TSR);
 			if (isr & ED_ISR_TXE) {
 				u_char tsr;
 
@@ -2600,9 +2600,9 @@ edintr(void *arg)
 		 * otherwise - resulting in an infinite loop.
 		 */
 		if (isr & ED_ISR_CNT) {
-			(void) ed_nic_inb(sc, ED_P0_CNTR0);
-			(void) ed_nic_inb(sc, ED_P0_CNTR1);
-			(void) ed_nic_inb(sc, ED_P0_CNTR2);
+			ed_nic_inb(sc, ED_P0_CNTR0);
+			ed_nic_inb(sc, ED_P0_CNTR1);
+			ed_nic_inb(sc, ED_P0_CNTR2);
 		}
 	}
 }

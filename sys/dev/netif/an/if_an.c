@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.36 2005/12/31 14:07:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.37 2006/08/06 12:49:04 swildner Exp $
  */
 
 /*
@@ -403,7 +403,8 @@ an_alloc_memory(device_t dev, int rid, int size)
 /*
  * Allocate a auxilary memory resource with the given resource id.
  */
-int an_alloc_aux_memory(device_t dev, int rid, int size)
+int
+an_alloc_aux_memory(device_t dev, int rid, int size)
 {
 	struct an_softc *sc = device_get_softc(dev);
 	struct resource *res;

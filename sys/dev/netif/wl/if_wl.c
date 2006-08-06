@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.27 2005/12/31 14:08:00 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.28 2006/08/06 12:49:06 swildner Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1536,7 +1536,7 @@ wlintr(void *arg)
     if((int_type = inw(HASR(base))) & HASR_MMC_INTR) {
 	/* handle interrupt from the modem management controler */
 	/* This will clear the interrupt condition */ 
-	(void) wlmmcread(base,MMC_DCE_STATUS); /* ignored for now */
+	wlmmcread(base,MMC_DCE_STATUS); /* ignored for now */
     }
 
     if(!(int_type & HASR_INTR)){	/* return if no interrupt from 82586 */
@@ -2574,9 +2574,9 @@ wl_cache_zero(struct wl_softc *sc)
  *	throw out unicast (on by default, but can be turned off)
  *	throw out non-ip (on by default, but can be turned off)
  */
-static
-void wl_cache_store (struct wl_softc *sc, int base, struct ether_header *eh,
-      		     struct mbuf *m)
+static void
+wl_cache_store(struct wl_softc *sc, int base, struct ether_header *eh,
+	       struct mbuf *m)
 {
 	struct ip *ip = NULL;	/* Avoid GCC warning */
 	int i;

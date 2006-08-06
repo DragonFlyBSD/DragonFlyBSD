@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.39 2003/10/14 22:51:35 rsm Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.31 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.32 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -1069,7 +1069,7 @@ xe_setmedia_serialized(void *xscp)
       break;
 
      case XE_AUTONEG_100TX:
-      (void)xe_phy_readreg(scp, PHY_BMSR);
+      xe_phy_readreg(scp, PHY_BMSR);
       bmsr = xe_phy_readreg(scp, PHY_BMSR);
       if (bmsr & PHY_BMSR_LINKSTAT) {
 	IFPRINTF(2, (scp->ifp, "Got 100baseTX link!\n"));

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.6 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.4 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pccard.c,v 1.5 2006/08/06 12:49:05 swildner Exp $
  */
 
 #include <sys/ctype.h>
@@ -140,8 +140,7 @@ DRIVER_MODULE(ndis, pccard, ndis_driver, ndis_devclass, 0, 0);
  * IDs against our list and return a device name if we find a match.
  */
 static int
-ndis_probe_pccard(dev)
-	device_t		dev;
+ndis_probe_pccard(device_t dev)
 {
 	struct ndis_pccard_type	*t;
 	const char		*prodstr, *vendstr;
@@ -169,8 +168,7 @@ ndis_probe_pccard(dev)
  * setup and ethernet/BPF attach.
  */
 static int
-ndis_attach_pccard(dev)
-	device_t		dev;
+ndis_attach_pccard(device_t dev)
 {
 	struct ndis_softc	*sc;
 	int			unit, error = 0, rid;
@@ -240,9 +238,7 @@ fail:
 }
 
 static struct resource_list *
-ndis_get_resource_list(dev, child)
-	device_t		dev;
-	device_t		child;
+ndis_get_resource_list(device_t dev, device_t child)
 {
 	struct ndis_softc	*sc;
 
@@ -255,8 +251,7 @@ ndis_get_resource_list(dev, child)
 #define NDIS_AM_RID 3
 
 int
-ndis_alloc_amem(arg)
-	void			*arg;
+ndis_alloc_amem(void *arg)
 {
 	struct ndis_softc	*sc;
 	int			error, rid;
@@ -303,8 +298,7 @@ ndis_alloc_amem(arg)
 }
 
 void
-ndis_free_amem(arg)
-	void			*arg;
+ndis_free_amem(void *arg)
 {
 	struct ndis_softc	*sc;
 

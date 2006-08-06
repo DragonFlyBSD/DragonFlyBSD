@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.20 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.21 2006/08/06 12:49:05 swildner Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -146,8 +146,7 @@ el_probe(struct isa_device *idev)
 
 /* Do a hardware reset of the 3c501.  Do not call until after el_probe()! */
 static __inline void
-el_hardreset(xsc)
-	void *xsc;
+el_hardreset(void *xsc)
 {
 	struct el_softc *sc = xsc;
 	int base;
@@ -212,8 +211,7 @@ el_attach(struct isa_device *idev)
 
 /* This routine resets the interface. */
 static void 
-el_reset(xsc)
-	void *xsc;
+el_reset(void *xsc)
 {
 	struct el_softc *sc = xsc;
 
@@ -222,8 +220,8 @@ el_reset(xsc)
 	el_init(sc);
 }
 
-static void el_stop(xsc)
-	void *xsc;
+static void
+el_stop(void *xsc)
 {
 	struct el_softc *sc = xsc;
 
@@ -232,8 +230,7 @@ static void el_stop(xsc)
 
 /* Initialize interface.  */
 static void 
-el_init(xsc)
-	void *xsc;
+el_init(void *xsc)
 {
 	struct el_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -363,7 +360,7 @@ el_start(struct ifnet *ifp)
 		/* Now give the card a chance to receive.
 		 * Gotta love 3c501s...
 		 */
-		(void)inb(base+EL_AS);
+		inb(base+EL_AS);
 		outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 	}
 }
@@ -429,7 +426,7 @@ elintr(void *arg)
 	/* Check board status */
 	stat = inb(base+EL_AS);
 	if(stat & EL_AS_RXBUSY) {
-		(void)inb(base+EL_RXC);
+		inb(base+EL_RXC);
 		outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 		lwkt_serialize_exit(&el_serializer);
 		return;
@@ -439,7 +436,7 @@ elintr(void *arg)
 	while(!done) {
 		rxstat = inb(base+EL_RXS);
 		if(rxstat & EL_RXS_STALE) {
-			(void)inb(base+EL_RXC);
+			inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 			lwkt_serialize_exit(&el_serializer);
 			return;
@@ -454,9 +451,9 @@ elintr(void *arg)
 				outb(base+EL_RXC,(EL_RXC_PROMISC|EL_RXC_AGF|EL_RXC_DSHORT|EL_RXC_DDRIB|EL_RXC_DOFLOW));
 			else
 				outb(base+EL_RXC,(EL_RXC_ABROAD|EL_RXC_AGF|EL_RXC_DSHORT|EL_RXC_DDRIB|EL_RXC_DOFLOW));
-			(void)inb(base+EL_AS);
+			inb(base+EL_AS);
 			outb(base+EL_RBC,0);
-			(void)inb(base+EL_RXC);
+			inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 			lwkt_serialize_exit(&el_serializer);
 			return;
@@ -475,9 +472,9 @@ elintr(void *arg)
 				outb(base+EL_RXC,(EL_RXC_PROMISC|EL_RXC_AGF|EL_RXC_DSHORT|EL_RXC_DDRIB|EL_RXC_DOFLOW));
 			else
 				outb(base+EL_RXC,(EL_RXC_ABROAD|EL_RXC_AGF|EL_RXC_DSHORT|EL_RXC_DDRIB|EL_RXC_DOFLOW));
-			(void)inb(base+EL_AS);
+			inb(base+EL_AS);
 			outb(base+EL_RBC,0);
-			(void)inb(base+EL_RXC);
+			inb(base+EL_RXC);
 			outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 			lwkt_serialize_exit(&el_serializer);
 			return;
@@ -507,7 +504,7 @@ elintr(void *arg)
 			done = 1;
 	}
 
-	(void)inb(base+EL_RXC);
+	inb(base+EL_RXC);
 	outb(base+EL_AC,(EL_AC_IRQE|EL_AC_RX));
 	lwkt_serialize_exit(&el_serializer);
 }
@@ -517,10 +514,7 @@ elintr(void *arg)
  * Len is length of data, with local net header stripped.
  */
 static struct mbuf *
-elget(buf, totlen, ifp)
-        caddr_t buf;
-        int totlen;
-        struct ifnet *ifp;
+elget(caddr_t buf, int totlen, struct ifnet *ifp)
 {
         struct mbuf *top, **mp, *m;
         int len;

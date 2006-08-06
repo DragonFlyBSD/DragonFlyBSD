@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.42 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.43 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -524,9 +524,9 @@ fxp_attach(device_t dev)
 	 */
 	sc->tunable_int_delay = TUNABLE_INT_DELAY;
 	sc->tunable_bundle_max = TUNABLE_BUNDLE_MAX;
-	(void) resource_int_value(device_get_name(dev), device_get_unit(dev),
+	resource_int_value(device_get_name(dev), device_get_unit(dev),
 	    "int_delay", &sc->tunable_int_delay);
-	(void) resource_int_value(device_get_name(dev), device_get_unit(dev),
+	resource_int_value(device_get_name(dev), device_get_unit(dev),
 	    "bundle_max", &sc->tunable_bundle_max);
 
 	/*
@@ -1009,7 +1009,7 @@ fxp_autosize_eeprom(struct fxp_softc *sc)
 	sc->eeprom_size = 8;
 
 	/* autosize */
-	(void) fxp_eeprom_getword(sc, 0, 1);
+	fxp_eeprom_getword(sc, 0, 1);
 }
 
 static void
@@ -2142,7 +2142,7 @@ fxp_mc_setup(struct fxp_softc *sc)
 	mcsp->cb_command = FXP_CB_COMMAND_MCAS |
 	    FXP_CB_COMMAND_S | FXP_CB_COMMAND_I;
 	mcsp->link_addr = vtophys(&sc->cbl_base->cb_status);
-	(void) fxp_mc_addrs(sc);
+	fxp_mc_addrs(sc);
 	sc->cbl_first = sc->cbl_last = (struct fxp_cb_tx *) mcsp;
 	sc->tx_queued = 1;
 

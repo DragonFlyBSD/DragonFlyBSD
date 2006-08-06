@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.15 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.16 2006/08/06 12:49:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -129,8 +129,7 @@ static void ndis_map_sclist	(void *, bus_dma_segment_t *,
  * Program the 64-bit multicast hash filter.
  */
 static void
-ndis_setmulti(sc)
-	struct ndis_softc	*sc;
+ndis_setmulti(struct ndis_softc *sc)
 {
 	struct ifnet		*ifp;
 	struct ifmultiaddr	*ifma;
@@ -201,8 +200,7 @@ out:
 }
 
 static int
-ndis_set_offload(sc)
-	struct ndis_softc	*sc;
+ndis_set_offload(struct ndis_softc *sc)
 {
 	ndis_task_offload	*nto;
 	ndis_task_offload_hdr	*ntoh;
@@ -263,8 +261,7 @@ ndis_set_offload(sc)
 }
 
 static int
-ndis_probe_offload(sc)
-	struct ndis_softc	*sc;
+ndis_probe_offload(struct ndis_softc *sc)
 {
 	ndis_task_offload	*nto;
 	ndis_task_offload_hdr	*ntoh;
@@ -357,8 +354,7 @@ ndis_probe_offload(sc)
  * setup and ethernet/BPF attach.
  */
 int
-ndis_attach(dev)
-	device_t		dev;
+ndis_attach(device_t dev)
 {
 	u_char			eaddr[ETHER_ADDR_LEN];
 	struct ndis_softc	*sc;
@@ -691,8 +687,7 @@ fail:
  * allocated.
  */
 int
-ndis_detach(dev)
-	device_t		dev;
+ndis_detach(device_t dev)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -742,8 +737,7 @@ ndis_detach(dev)
 }
 
 int
-ndis_suspend(dev)
-	device_t		dev;
+ndis_suspend(device_t dev)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -761,8 +755,7 @@ ndis_suspend(dev)
 }
 
 int
-ndis_resume(dev)
-	device_t		dev;
+ndis_resume(device_t dev)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -798,10 +791,7 @@ ndis_resume(dev)
  * packet.
  */
 __stdcall static void
-ndis_rxeof(adapter, packets, pktcnt)
-	ndis_handle		adapter;
-	ndis_packet		**packets;
-	uint32_t		pktcnt;
+ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -876,11 +866,7 @@ ndis_rxeof(adapter, packets, pktcnt)
  * the list buffers.
  */
 __stdcall static void
-ndis_txeof(adapter, packet, status)
-	ndis_handle		adapter;
-	ndis_packet		*packet;
-	ndis_status		status;
-
+ndis_txeof(ndis_handle adapter, ndis_packet *packet, ndis_status status)
 {
 	struct ndis_softc	*sc;
 	ndis_miniport_block	*block;
@@ -914,11 +900,7 @@ ndis_txeof(adapter, packet, status)
 }
 
 __stdcall static void
-ndis_linksts(adapter, status, sbuf, slen)
-	ndis_handle		adapter;
-	ndis_status		status;
-	void			*sbuf;
-	uint32_t		slen;
+ndis_linksts(ndis_handle adapter, ndis_status status, void *sbuf, uint32_t slen)
 {
 	ndis_miniport_block	*block;
 
@@ -927,8 +909,7 @@ ndis_linksts(adapter, status, sbuf, slen)
 }
 
 __stdcall static void
-ndis_linksts_done(adapter)
-	ndis_handle		adapter;
+ndis_linksts_done(ndis_handle adapter)
 {
 	ndis_miniport_block	*block;
 	struct ndis_softc	*sc;
@@ -956,8 +937,7 @@ ndis_linksts_done(adapter)
 }
 
 static void
-ndis_intrtask(arg)
-	void			*arg;
+ndis_intrtask(void *arg)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -975,8 +955,7 @@ ndis_intrtask(arg)
 }
 
 static void
-ndis_intr(arg)
-	void			*arg;
+ndis_intr(void *arg)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -1001,8 +980,7 @@ ndis_intr(arg)
 }
 
 static void
-ndis_tick(xsc)
-	void			*xsc;
+ndis_tick(void *xsc)
 {
 	struct ndis_softc	*sc;
 
@@ -1014,8 +992,7 @@ ndis_tick(xsc)
 }
 
 static void
-ndis_ticktask(xsc)
-	void			*xsc;
+ndis_ticktask(void *xsc)
 {
 	struct ndis_softc	*sc;
 	struct ifnet		*ifp;
@@ -1067,13 +1044,8 @@ ndis_ticktask(xsc)
 }
 
 static void
-ndis_map_sclist(arg, segs, nseg, mapsize, error)
-	void			*arg;
-	bus_dma_segment_t	*segs;
-	int			nseg;
-	bus_size_t		mapsize;
-	int			error;
-
+ndis_map_sclist(void *arg, bus_dma_segment_t *segs, int nseg,
+		bus_size_t mapsize, int error)
 {
 	struct ndis_sc_list	*sclist;
 	int			i;
@@ -1092,8 +1064,7 @@ ndis_map_sclist(arg, segs, nseg, mapsize, error)
 }
 
 static void
-ndis_starttask(arg)
-	void			*arg;
+ndis_starttask(void *arg)
 {
 	struct ifnet		*ifp;
 
@@ -1116,8 +1087,7 @@ ndis_starttask(arg)
  */
 
 static void
-ndis_start(ifp)
-	struct ifnet		*ifp;
+ndis_start(struct ifnet *ifp)
 {
 	struct ndis_softc	*sc;
 	struct mbuf		*m = NULL;
@@ -1227,8 +1197,7 @@ ndis_start(ifp)
 }
 
 static void
-ndis_init(xsc)
-	void			*xsc;
+ndis_init(void *xsc)
 {
 	struct ndis_softc	*sc = xsc;
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
@@ -1309,8 +1278,7 @@ ndis_init(xsc)
  * Set media options.
  */
 static int
-ndis_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+ndis_ifmedia_upd(struct ifnet *ifp)
 {
 	struct ndis_softc		*sc;
 
@@ -1326,9 +1294,7 @@ ndis_ifmedia_upd(ifp)
  * Report current media status.
  */
 static void
-ndis_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+ndis_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ndis_softc	*sc;
 	uint32_t		media_info;
@@ -1370,8 +1336,7 @@ ndis_ifmedia_sts(ifp, ifmr)
 }
 
 static void
-ndis_setstate_80211(sc)
-	struct ndis_softc	*sc;
+ndis_setstate_80211(struct ndis_softc *sc)
 {
 	struct ieee80211com	*ic;
 	ndis_80211_ssid		ssid;
@@ -1614,9 +1579,7 @@ ndis_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 }
 
 static int
-ndis_get_assoc(sc, assoc)
-	struct ndis_softc	*sc;
-	ndis_wlan_bssid_ex	**assoc;
+ndis_get_assoc(struct ndis_softc *sc, ndis_wlan_bssid_ex **assoc)
 {
 	ndis_80211_bssid_list_ex	*bl;
 	ndis_wlan_bssid_ex	*bs;
@@ -1669,8 +1632,7 @@ ndis_get_assoc(sc, assoc)
 }
 
 static void
-ndis_getstate_80211(sc)
-	struct ndis_softc	*sc;
+ndis_getstate_80211(struct ndis_softc *sc)
 {
 	struct ieee80211com	*ic;
 	ndis_80211_ssid		ssid;
@@ -1807,11 +1769,7 @@ ndis_getstate_80211(sc)
 }
 
 static int
-ndis_ioctl(ifp, command, data, cr)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
-	struct			ucred *cr;
+ndis_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 {
 	struct ndis_softc	*sc = ifp->if_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
@@ -1900,10 +1858,7 @@ ndis_ioctl(ifp, command, data, cr)
 }
 
 static int
-ndis_wi_ioctl_get(ifp, command, data)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
+ndis_wi_ioctl_get(struct ifnet *ifp, u_long command, caddr_t data)
 {
 	struct wi_req		wreq;
 	struct ifreq		*ifr;
@@ -1981,10 +1936,7 @@ ndis_wi_ioctl_get(ifp, command, data)
 }
 
 static int
-ndis_wi_ioctl_set(ifp, command, data)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
+ndis_wi_ioctl_set(struct ifnet *ifp, u_long command, caddr_t data)
 {
 	struct wi_req		wreq;
 	struct ifreq		*ifr;
@@ -2018,8 +1970,7 @@ ndis_wi_ioctl_set(ifp, command, data)
 }
 
 static void
-ndis_watchdog(ifp)
-	struct ifnet		*ifp;
+ndis_watchdog(struct ifnet *ifp)
 {
 	struct ndis_softc		*sc;
 
@@ -2037,8 +1988,7 @@ ndis_watchdog(ifp)
  * RX and TX lists.
  */
 static void
-ndis_stop(sc)
-	struct ndis_softc		*sc;
+ndis_stop(struct ndis_softc *sc)
 {
 	struct ifnet		*ifp;
 
@@ -2057,7 +2007,7 @@ ndis_stop(sc)
  * get confused by errant DMAs when rebooting.
  */
 void
-ndis_shutdown(dev)
+ndis_shutdown(device_t dev)
 	device_t		dev;
 {
 	struct ndis_softc	*sc;

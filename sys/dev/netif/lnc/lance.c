@@ -1,6 +1,6 @@
 /*	$NetBSD: lance.c,v 1.34 2005/12/24 20:27:30 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/lance.c,v 1.2 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.1 2006/07/07 14:16:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/lance.c,v 1.2 2006/08/06 12:49:05 swildner Exp $	*/
 
 
 /*-
@@ -293,7 +293,7 @@ lance_init_locked(struct lance_softc *sc)
 
 	/* Set the current media. */
 	if (sc->sc_mediachange)
-		(void)(*sc->sc_mediachange)(sc);
+		(*sc->sc_mediachange)(sc);
 
 	if ((*sc->sc_rdcsr)(sc, LE_CSR0) & LE_C0_IDON) {
 		/* Start the LANCE. */

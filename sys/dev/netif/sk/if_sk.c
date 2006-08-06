@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.33 2003/08/12 05:23:06 nate Exp $
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.43 2006/03/19 18:03:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.44 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -614,7 +614,8 @@ sk_marv_miibus_statchg(struct sk_if_softc *sc_if)
 
 #define	HASH_BITS		6
 
-static void sk_setfilt(struct sk_if_softc *sc_if, caddr_t addr, int slot)
+static void
+sk_setfilt(struct sk_if_softc *sc_if, caddr_t addr, int slot)
 {
 	int base;
 

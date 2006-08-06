@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.11 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.12 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -68,12 +68,8 @@ static int		pdq_eisa_shutdown	(device_t);
 #define EISA_DEVICE_ID_DEC_DEC3004	0x10a33004
 
 static void
-pdq_eisa_subprobe(bc, iobase, maddr, msize, irq)
-	pdq_bus_t	bc;
-	u_int32_t	iobase;
-	u_int32_t	*maddr;
-	u_int32_t	*msize;
-	u_int32_t	*irq;
+pdq_eisa_subprobe(pdq_bus_t bc, u_int32_t iobase, u_int32_t *maddr,
+		  u_int32_t *msize, u_int32_t *irq)
 {
 	if (irq != NULL)
 		*irq = DEFEA_DECODE_IRQ(PDQ_OS_IORD_8(bc, iobase, PDQ_EISA_IO_CONFIG_STAT_0) & 3);
@@ -85,8 +81,7 @@ pdq_eisa_subprobe(bc, iobase, maddr, msize, irq)
 }
 
 static void
-pdq_eisa_devinit (sc)
-	pdq_softc_t	*sc;
+pdq_eisa_devinit(pdq_softc_t *sc)
 {
 	pdq_uint8_t	data;
 
@@ -110,8 +105,7 @@ pdq_eisa_devinit (sc)
 }
 
 static const char *
-pdq_eisa_match (type)
-	eisa_id_t	type;
+pdq_eisa_match(eisa_id_t type)
 {
 	switch (type) {
 		case EISA_DEVICE_ID_DEC_DEC3001:
@@ -127,8 +121,7 @@ pdq_eisa_match (type)
 }
 
 static int
-pdq_eisa_probe (dev)
-	device_t	dev;
+pdq_eisa_probe(device_t dev)
 {
 	const char	*desc;
 	u_int32_t	iobase;
@@ -156,19 +149,17 @@ pdq_eisa_probe (dev)
 }
 
 void
-pdq_eisa_intr(xdev)
-	void		*xdev;
+pdq_eisa_intr(void *xdev)
 {
 	device_t	dev = (device_t) xdev;
 	pdq_softc_t	*sc = device_get_softc(dev);
-	(void) pdq_interrupt(sc->sc_pdq);
+	pdq_interrupt(sc->sc_pdq);
 
 	return;
 }
 
 static int
-pdq_eisa_attach (dev)
-	device_t		dev;
+pdq_eisa_attach(device_t dev)
 {
 	pdq_softc_t		*sc = device_get_softc(dev);
 	struct resource		*io = 0;
@@ -243,8 +234,7 @@ bad:
 }
 
 static int
-pdq_eisa_shutdown(dev)
-	device_t	dev;
+pdq_eisa_shutdown(device_t dev)
 {
 	pdq_softc_t	*sc = device_get_softc(dev);
  

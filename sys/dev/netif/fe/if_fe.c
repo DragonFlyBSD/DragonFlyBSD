@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.23 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.24 2006/08/06 12:49:05 swildner Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1313,16 +1313,16 @@ fe_droppacket (struct fe_softc * sc, int len)
 #ifdef FE_8BIT_SUPPORT
 		if ((sc->proto_dlcr6 & FE_D6_SBW) == FE_D6_SBW_BYTE)
 		{
-			(void) fe_inb(sc, FE_BMPR8);
-			(void) fe_inb(sc, FE_BMPR8);
-			(void) fe_inb(sc, FE_BMPR8);
-			(void) fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
 		}
 		else
 #endif
 		{
-			(void) fe_inw(sc, FE_BMPR8);
-			(void) fe_inw(sc, FE_BMPR8);
+			fe_inw(sc, FE_BMPR8);
+			fe_inw(sc, FE_BMPR8);
 		}
 		fe_outb(sc, FE_BMPR14, FE_B14_SKIP);
 	} else {
@@ -1331,13 +1331,13 @@ fe_droppacket (struct fe_softc * sc, int len)
 		if ((sc->proto_dlcr6 & FE_D6_SBW) == FE_D6_SBW_BYTE)
 		{
 			for (i = 0; i < len; i++)
-				(void) fe_inb(sc, FE_BMPR8);
+				fe_inb(sc, FE_BMPR8);
 		}
 		else
 #endif
 		{
 			for (i = 0; i < len; i += 2)
-				(void) fe_inw(sc, FE_BMPR8);
+				fe_inw(sc, FE_BMPR8);
 		}
 	}
 }
@@ -1374,7 +1374,7 @@ fe_emptybuffer (struct fe_softc * sc)
 		for (i = 0; i < 65536; i++) {
 			if (fe_inb(sc, FE_DLCR5) & FE_D5_BUFEMP)
 				break;
-			(void) fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
 		}
 	}
 	else
@@ -1383,7 +1383,7 @@ fe_emptybuffer (struct fe_softc * sc)
 		for (i = 0; i < 65536; i += 2) {
 			if (fe_inb(sc, FE_DLCR5) & FE_D5_BUFEMP)
 				break;
-			(void) fe_inw(sc, FE_BMPR8);
+			fe_inw(sc, FE_BMPR8);
 		}
 	}
 
@@ -1594,7 +1594,7 @@ fe_rint (struct fe_softc * sc, u_char rstat)
 		if ((sc->proto_dlcr6 & FE_D6_SBW) == FE_D6_SBW_BYTE)
 		{
 			status = fe_inb(sc, FE_BMPR8);
-			(void) fe_inb(sc, FE_BMPR8);
+			fe_inb(sc, FE_BMPR8);
 		}
 		else
 #endif
@@ -2246,8 +2246,6 @@ fe_medchange (struct ifnet *ifp)
 
 /* I don't know how I can support media status callback... FIXME.  */
 static void
-fe_medstat (struct ifnet *ifp, struct ifmediareq *ifmr)
+fe_medstat (struct ifnet *ifp __unused, struct ifmediareq *ifmr __unused)
 {
-	(void)ifp;
-	(void)ifmr;
 }

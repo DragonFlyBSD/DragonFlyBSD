@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.180.2.7 2005/10/05 13:16:29 avatar Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.36 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.37 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -2725,7 +2725,7 @@ wi_scan_ap(struct wi_softc *sc, u_int16_t chanmask, u_int16_t txrate)
 		return ENXIO;
 	switch (sc->sc_firmware_type) {
 	case WI_LUCENT:
-		(void)wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_SCAN_RESULTS, 0, 0);
+		wi_cmd(sc, WI_CMD_INQUIRE, WI_INFO_SCAN_RESULTS, 0, 0);
 		break;
 	case WI_INTERSIL:
 		val[0] = htole16(chanmask);	/* channel */

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.31 2006/08/01 18:07:57 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.32 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -1698,7 +1698,8 @@ rl_suspend(device_t dev)
  * doesn't, re-enable busmastering, and restart the interface if
  * appropriate.
  */
-static int rl_resume(device_t dev)
+static int
+rl_resume(device_t dev)
 {
 	struct rl_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;

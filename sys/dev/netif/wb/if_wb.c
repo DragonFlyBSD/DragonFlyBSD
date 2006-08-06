@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.36 2006/08/01 18:11:47 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.37 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -682,7 +682,8 @@ wb_fixmedia(struct wb_softc *sc)
  * Probe for a Winbond chip. Check the PCI vendor and device
  * IDs against our list and return a device name if we find a match.
  */
-static int wb_probe(device_t dev)
+static int
+wb_probe(device_t dev)
 {
 	struct wb_type *t;
 	uint16_t vendor, product;

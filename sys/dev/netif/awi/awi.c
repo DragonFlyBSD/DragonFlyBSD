@@ -35,7 +35,7 @@
  *
  * $NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $
  * $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.25 2005/11/28 17:13:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.26 2006/08/06 12:49:04 swildner Exp $
  */
 /*
  * Driver for AMD 802.11 firmware.
@@ -196,8 +196,7 @@ int awi_dump_len = 28;
 devclass_t awi_devclass;
 
 int
-awi_attach(sc)
-	struct awi_softc *sc;
+awi_attach(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
@@ -274,11 +273,7 @@ awi_attach(sc)
 }
 
 static int
-awi_ioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+awi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct awi_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
@@ -389,9 +384,7 @@ awi_ioctl(ifp, cmd, data, cr)
 
 #ifdef IFM_IEEE80211
 static int
-awi_media_rate2opt(sc, rate)
-	struct awi_softc *sc;
-	int rate;
+awi_media_rate2opt(struct awi_softc *sc, int rate)
 {
 	int mword;
 
@@ -422,9 +415,7 @@ awi_media_rate2opt(sc, rate)
 }
 
 static int
-awi_media_opt2rate(sc, opt)
-	struct awi_softc *sc;
-	int opt;
+awi_media_opt2rate(struct awi_softc *sc, int opt)
 {
 	int rate;
 
@@ -467,8 +458,7 @@ awi_media_opt2rate(sc, opt)
  * Called from ifmedia_ioctl via awi_ioctl with lock obtained.
  */
 static int
-awi_media_change(ifp)
-	struct ifnet *ifp;
+awi_media_change(struct ifnet *ifp)
 {
 	struct awi_softc *sc = ifp->if_softc;
 	struct ifmedia_entry *ime;
@@ -506,9 +496,7 @@ awi_media_change(ifp)
 }
 
 static void
-awi_media_status(ifp, imr)
-	struct ifnet *ifp;
-	struct ifmediareq *imr;
+awi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 {
 	struct awi_softc *sc = ifp->if_softc;
 
@@ -526,8 +514,7 @@ awi_media_status(ifp, imr)
 #endif /* IFM_IEEE80211 */
 
 int
-awi_intr(arg)
-	void *arg;
+awi_intr(void *arg)
 {
 	struct awi_softc *sc = arg;
 	u_int16_t status;
@@ -565,7 +552,7 @@ awi_intr(arg)
 		if (status & AWI_INT_SCAN_CMPLT) {
 			if (sc->sc_status == AWI_ST_SCAN &&
 			    sc->sc_mgt_timer > 0)
-				(void)awi_next_scan(sc);
+				awi_next_scan(sc);
 		}
 	}
 	am79c930_gcr_clearbits(&sc->sc_chip, AM79C930_GCR_DISPWDN);
@@ -574,8 +561,7 @@ awi_intr(arg)
 }
 
 int
-awi_init(sc)
-	struct awi_softc *sc;
+awi_init(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	int error, ostatus;
@@ -645,15 +631,14 @@ awi_init(sc)
 }
 
 void
-awi_stop(sc)
-	struct awi_softc *sc;
+awi_stop(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct awi_bss *bp;
 
 	sc->sc_status = AWI_ST_INIT;
 	if (!sc->sc_invalid) {
-		(void)awi_cmd_wait(sc);
+		awi_cmd_wait(sc);
 		if (sc->sc_mib_local.Network_Mode &&
 		    sc->sc_status > AWI_ST_AUTH)
 			awi_send_deauth(sc);
@@ -671,8 +656,7 @@ awi_stop(sc)
 }
 
 static void
-awi_watchdog(ifp)
-	struct ifnet *ifp;
+awi_watchdog(struct ifnet *ifp)
 {
 	struct awi_softc *sc = ifp->if_softc;
 
@@ -716,8 +700,7 @@ awi_watchdog(ifp)
 }
 
 static void
-awi_start(ifp)
-	struct ifnet *ifp;
+awi_start(struct ifnet *ifp)
 {
 	struct awi_softc *sc = ifp->if_softc;
 	struct mbuf *m0, *m;
@@ -798,8 +781,7 @@ awi_start(ifp)
 }
 
 static void
-awi_txint(sc)
-	struct awi_softc *sc;
+awi_txint(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	u_int8_t flags;
@@ -824,9 +806,7 @@ awi_txint(sc)
 }
 
 static struct mbuf *
-awi_fix_txhdr(sc, m0)
-	struct awi_softc *sc;
-	struct mbuf *m0;
+awi_fix_txhdr(struct awi_softc *sc, struct mbuf *m0)
 {
 	struct ether_header eh;
 	struct ieee80211_frame *wh;
@@ -870,9 +850,7 @@ awi_fix_txhdr(sc, m0)
 }
 
 static struct mbuf *
-awi_fix_rxhdr(sc, m0)
-	struct awi_softc *sc;
-	struct mbuf *m0;
+awi_fix_rxhdr(struct awi_softc *sc, struct mbuf *m0)
 {
 	struct ieee80211_frame wh;
 	struct ether_header *eh;
@@ -956,11 +934,7 @@ awi_fix_rxhdr(sc, m0)
 }
 
 static void
-awi_input(sc, m, rxts, rssi)
-	struct awi_softc *sc;
-	struct mbuf *m;
-	u_int32_t rxts;
-	u_int8_t rssi;
+awi_input(struct awi_softc *sc, struct mbuf *m, u_int32_t rxts, u_int8_t rssi)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211_frame *wh;
@@ -1058,8 +1032,7 @@ awi_input(sc, m, rxts, rssi)
 }
 
 static void
-awi_rxint(sc)
-	struct awi_softc *sc;
+awi_rxint(struct awi_softc *sc)
 {
 	u_int8_t state, rate, rssi;
 	u_int16_t len;
@@ -1103,10 +1076,7 @@ awi_rxint(sc)
 }
 
 static struct mbuf *
-awi_devget(sc, off, len)
-	struct awi_softc *sc;
-	u_int32_t off;
-	u_int16_t len;
+awi_devget(struct awi_softc *sc, u_int32_t off, u_int16_t len)
 {
 	struct mbuf *m;
 	struct mbuf *top, **mp;
@@ -1174,8 +1144,7 @@ awi_devget(sc, off, len)
  */
 
 static int
-awi_init_hw(sc)
-	struct awi_softc *sc;
+awi_init_hw(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	u_int8_t status;
@@ -1205,7 +1174,7 @@ awi_init_hw(sc)
 		if ((status & 0xf0) == 0xf0)
 			break;
 		sc->sc_sleep_cnt++;
-		(void)tsleep(sc, 0, "awitst", 1);
+		tsleep(sc, 0, "awitst", 1);
 		sc->sc_sleep_cnt--;
 	}
 	if (status != AWI_SELFTEST_PASSED) {
@@ -1259,8 +1228,7 @@ awi_init_hw(sc)
  */
 
 static int
-awi_init_mibs(sc)
-	struct awi_softc *sc;
+awi_init_mibs(struct awi_softc *sc)
 {
 	int i, error;
 	u_int8_t *rate;
@@ -1311,8 +1279,7 @@ awi_init_mibs(sc)
  */
 
 static int
-awi_init_txrx(sc)
-	struct awi_softc *sc;
+awi_init_txrx(struct awi_softc *sc)
 {
 	int error;
 
@@ -1348,27 +1315,25 @@ awi_init_txrx(sc)
 }
 
 static void
-awi_stop_txrx(sc)
-	struct awi_softc *sc;
+awi_stop_txrx(struct awi_softc *sc)
 {
 
 	if (sc->sc_cmd_inprog)
-		(void)awi_cmd_wait(sc);
-	(void)awi_cmd(sc, AWI_CMD_KILL_RX);
-	(void)awi_cmd_wait(sc);
+		awi_cmd_wait(sc);
+	awi_cmd(sc, AWI_CMD_KILL_RX);
+	awi_cmd_wait(sc);
 	sc->sc_cmd_inprog = AWI_CMD_FLUSH_TX;
 	awi_write_1(sc, AWI_CMD_PARAMS+AWI_CA_FTX_DATA, 1);
 	awi_write_1(sc, AWI_CMD_PARAMS+AWI_CA_FTX_MGT, 0);
 	awi_write_1(sc, AWI_CMD_PARAMS+AWI_CA_FTX_BCAST, 0);
 	awi_write_1(sc, AWI_CMD_PARAMS+AWI_CA_FTX_PS, 0);
 	awi_write_1(sc, AWI_CMD_PARAMS+AWI_CA_FTX_CF, 0);
-	(void)awi_cmd(sc, AWI_CMD_FLUSH_TX);
-	(void)awi_cmd_wait(sc);
+	awi_cmd(sc, AWI_CMD_FLUSH_TX);
+	awi_cmd_wait(sc);
 }
 
 int
-awi_init_region(sc)
-	struct awi_softc *sc;
+awi_init_region(struct awi_softc *sc)
 {
 
 	if (sc->sc_mib_phy.IEEE_PHY_Type == AWI_PHY_TYPE_FH) {
@@ -1432,8 +1397,7 @@ awi_init_region(sc)
 }
 
 static int
-awi_start_scan(sc)
-	struct awi_softc *sc;
+awi_start_scan(struct awi_softc *sc)
 {
 	int error = 0;
 	struct awi_bss *bp;
@@ -1470,8 +1434,7 @@ awi_start_scan(sc)
 }
 
 static int
-awi_next_scan(sc)
-	struct awi_softc *sc;
+awi_next_scan(struct awi_softc *sc)
 {
 	int error;
 
@@ -1498,8 +1461,7 @@ awi_next_scan(sc)
 }
 
 static void
-awi_stop_scan(sc)
-	struct awi_softc *sc;
+awi_stop_scan(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct awi_bss *bp, *sbp;
@@ -1515,7 +1477,7 @@ awi_stop_scan(sc)
 		}
 		sc->sc_mgt_timer = AWI_PSCAN_WAIT / 1000;
 		ifp->if_timer = 1;
-		(void)awi_next_scan(sc);
+		awi_next_scan(sc);
 		return;
 	}
 	sbp = NULL;
@@ -1596,15 +1558,12 @@ awi_stop_scan(sc)
 	if (sbp == NULL)
 		goto notfound;
 	sc->sc_bss = *sbp;
-	(void)awi_set_ss(sc);
+	awi_set_ss(sc);
 }
 
 static void
-awi_recv_beacon(sc, m0, rxts, rssi)
-	struct awi_softc *sc;
-	struct mbuf *m0;
-	u_int32_t rxts;
-	u_int8_t rssi;
+awi_recv_beacon(struct awi_softc *sc, struct mbuf *m0, u_int32_t rxts,
+		u_int8_t rssi)
 {
 	struct ieee80211_frame *wh;
 	struct awi_bss *bp;
@@ -1711,8 +1670,7 @@ awi_recv_beacon(sc, m0, rxts, rssi)
 }
 
 static int
-awi_set_ss(sc)
-	struct awi_softc *sc;
+awi_set_ss(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct awi_bss *bp;
@@ -1736,8 +1694,7 @@ awi_set_ss(sc)
 }
 
 static void
-awi_try_sync(sc)
-	struct awi_softc *sc;
+awi_try_sync(struct awi_softc *sc)
 {
 	struct awi_bss *bp;
 
@@ -1759,12 +1716,11 @@ awi_try_sync(sc)
 	awi_write_bytes(sc, AWI_CMD_PARAMS+AWI_CA_SYNC_TIMESTAMP,
 	    bp->timestamp, 8);
 	awi_write_4(sc, AWI_CMD_PARAMS+AWI_CA_SYNC_REFTIME, bp->rxtime);
-	(void)awi_cmd(sc, AWI_CMD_SYNC);
+	awi_cmd(sc, AWI_CMD_SYNC);
 }
 
 static void
-awi_sync_done(sc)
-	struct awi_softc *sc;
+awi_sync_done(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 
@@ -1794,8 +1750,7 @@ awi_sync_done(sc)
 }
 
 static void
-awi_send_deauth(sc)
-	struct awi_softc *sc;
+awi_send_deauth(struct awi_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct mbuf *m;
@@ -1830,9 +1785,7 @@ awi_send_deauth(sc)
 }
 
 static void
-awi_send_auth(sc, seq)
-	struct awi_softc *sc;
-	int seq;
+awi_send_auth(struct awi_softc *sc, int seq)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct mbuf *m;
@@ -1877,9 +1830,7 @@ awi_send_auth(sc, seq)
 }
 
 static void
-awi_recv_auth(sc, m0)
-	struct awi_softc *sc;
-	struct mbuf *m0;
+awi_recv_auth(struct awi_softc *sc, struct mbuf *m0)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211_frame *wh;
@@ -1930,9 +1881,7 @@ awi_recv_auth(sc, m0)
 }
 
 static void
-awi_send_asreq(sc, reassoc)
-	struct awi_softc *sc;
-	int reassoc;
+awi_send_asreq(struct awi_softc *sc, int reassoc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct mbuf *m;
@@ -1995,9 +1944,7 @@ awi_send_asreq(sc, reassoc)
 }
 
 static void
-awi_recv_asresp(sc, m0)
-	struct awi_softc *sc;
-	struct mbuf *m0;
+awi_recv_asresp(struct awi_softc *sc, struct mbuf *m0)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ieee80211_frame *wh;
@@ -2071,10 +2018,7 @@ awi_recv_asresp(sc, m0)
 }
 
 static int
-awi_mib(sc, cmd, mib)
-	struct awi_softc *sc;
-	u_int8_t cmd;
-	u_int8_t mib;
+awi_mib(struct awi_softc *sc, u_int8_t cmd, u_int8_t mib)
 {
 	int error;
 	u_int8_t size, *ptr;
@@ -2142,8 +2086,7 @@ awi_mib(sc, cmd, mib)
 }
 
 static int
-awi_cmd_scan(sc)
-	struct awi_softc *sc;
+awi_cmd_scan(struct awi_softc *sc)
 {
 	int error;
 	u_int8_t scan_mode;
@@ -2183,9 +2126,7 @@ awi_cmd_scan(sc)
 }
 
 static int
-awi_cmd(sc, cmd)
-	struct awi_softc *sc;
-	u_int8_t cmd;
+awi_cmd(struct awi_softc *sc, u_int8_t cmd)
 {
 	u_int8_t status;
 	int error = 0;
@@ -2213,8 +2154,7 @@ awi_cmd(sc, cmd)
 }
 
 static void
-awi_cmd_done(sc)
-	struct awi_softc *sc;
+awi_cmd_done(struct awi_softc *sc)
 {
 	u_int8_t cmd, status;
 
@@ -2251,10 +2191,7 @@ awi_cmd_done(sc)
 }
 
 static int
-awi_next_txd(sc, len, framep, ntxdp)
-	struct awi_softc *sc;
-	int len;
-	u_int32_t *framep, *ntxdp;
+awi_next_txd(struct awi_softc *sc, int len, u_int32_t *framep, u_int32_t *ntxdp)
 {
 	u_int32_t txd, ntxd, frame;
 
@@ -2289,8 +2226,7 @@ awi_next_txd(sc, len, framep, ntxdp)
 }
 
 static int
-awi_intr_lock(sc)
-	struct awi_softc *sc;
+awi_intr_lock(struct awi_softc *sc)
 {
 	u_int8_t status;
 	int i, retry;
@@ -2319,16 +2255,14 @@ awi_intr_lock(sc)
 }
 
 static void
-awi_intr_unlock(sc)
-	struct awi_softc *sc;
+awi_intr_unlock(struct awi_softc *sc)
 {
 
 	awi_write_1(sc, AWI_LOCKOUT_MAC, 0);
 }
 
 static int
-awi_cmd_wait(sc)
-	struct awi_softc *sc;
+awi_cmd_wait(struct awi_softc *sc)
 {
 	int i, error = 0;
 
@@ -2351,8 +2285,7 @@ awi_cmd_wait(sc)
 }
 
 static void
-awi_print_essid(essid)
-	u_int8_t *essid;
+awi_print_essid(u_int8_t *essid)
 {
 	int i, len;
 	u_int8_t *p;
@@ -2379,10 +2312,7 @@ awi_print_essid(essid)
 
 #ifdef AWI_DEBUG
 static void
-awi_dump_pkt(sc, m, rssi)
-	struct awi_softc *sc;
-	struct mbuf *m;
-	int rssi;
+awi_dump_pkt(struct awi_softc *sc, struct mbuf *m, int rssi)
 {
 	struct ieee80211_frame *wh;
 	int i, l;

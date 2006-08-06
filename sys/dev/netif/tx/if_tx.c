@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.34 2005/12/31 14:08:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.35 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -1262,7 +1262,7 @@ epic_stop_activity(epic_softc_t *sc)
 	 * but existing case.
 	 */
 	if ((status & INTSTAT_TQE) && !(status & INTSTAT_TXIDLE))
-		(void) epic_queue_last_packet(sc);
+		epic_queue_last_packet(sc);
 
 }
 

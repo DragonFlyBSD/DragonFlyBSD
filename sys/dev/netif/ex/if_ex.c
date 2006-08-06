@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.21 2005/11/28 17:13:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.22 2006/08/06 12:49:05 swildner Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -855,17 +855,14 @@ ex_get_media (u_int32_t iobase)
 }
 
 static int
-ex_ifmedia_upd (ifp)
-	struct ifnet *		ifp;
+ex_ifmedia_upd (struct ifnet *ifp)
 {
 
 	return (0);
 }
 
 static void
-ex_ifmedia_sts(ifp, ifmr)
-	struct ifnet *          ifp;
-	struct ifmediareq *     ifmr;
+ex_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct ex_softc *       sc = ifp->if_softc;
 

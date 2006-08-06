@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.16 2006/07/28 02:17:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.17 2006/08/06 12:49:05 swildner Exp $
  *
  */
 #undef DEBUG
@@ -109,7 +109,8 @@ static void cxoproc (struct tty *tp);
 static void cxstop (struct tty *tp, int flag);
 static int cxparam (struct tty *tp, struct termios *t);
 
-int cxopen (struct dev_open_args *ap)
+int
+cxopen (struct dev_open_args *ap)
 {
 	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
@@ -246,7 +247,8 @@ int cxopen (struct dev_open_args *ap)
 	return (error);
 }
 
-int cxclose (struct dev_close_args *ap)
+int
+cxclose (struct dev_close_args *ap)
 {
 	dev_t dev = ap->a_head.a_dev;
 	int unit = UNIT (dev);
@@ -283,7 +285,8 @@ int cxclose (struct dev_close_args *ap)
 	return (0);
 }
 
-int cxioctl (struct dev_ioctl_args *ap)
+int
+cxioctl (struct dev_ioctl_args *ap)
 {
 	dev_t dev = ap->a_head.a_dev;
 	caddr_t data = ap->a_data;
@@ -566,7 +569,8 @@ cxout (cx_chan_t *c, char b)
 	}
 }
 
-void cxoproc (struct tty *tp)
+void
+cxoproc (struct tty *tp)
 {
 	int unit = UNIT (tp->t_dev);
 	cx_chan_t *c = cxchan[unit];
@@ -720,7 +724,8 @@ cxparam (struct tty *tp, struct termios *t)
 /*
  * Stop output on a line
  */
-void cxstop (struct tty *tp, int flag)
+void
+cxstop (struct tty *tp, int flag)
 {
 	cx_chan_t *c = cxchan[UNIT(tp->t_dev)];
 	unsigned short port = c->chip->port;
@@ -744,7 +749,8 @@ void cxstop (struct tty *tp, int flag)
  * Handle receive interrupts, including receive errors and
  * receive timeout interrupt.
  */
-int cxrinta (cx_chan_t *c)
+int
+cxrinta (cx_chan_t *c)
 {
 	unsigned short port = c->chip->port;
 	unsigned short len = 0, risr = inw (RISR(port)), reoir = 0;
@@ -893,7 +899,8 @@ void cxtinta (cx_chan_t *c)
 /*
  * Handle modem interrupt.
  */
-void cxmint (cx_chan_t *c)
+void
+cxmint (cx_chan_t *c)
 {
 	unsigned short port = c->chip->port;
 	unsigned char misr = inb (MISR(port));

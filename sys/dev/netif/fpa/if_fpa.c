@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.14 2006/08/01 18:03:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.15 2006/08/06 12:49:05 swildner Exp $
  */
 
 /*
@@ -125,7 +125,7 @@ pdq_pci_ifintr(
 #if defined(__DragonFly__) || defined(__FreeBSD__)
     return pdq_interrupt(sc->sc_pdq);
 #elif defined(__bsdi__) || defined(__NetBSD__)
-    (void) pdq_interrupt(sc->sc_pdq);
+    pdq_interrupt(sc->sc_pdq);
     return 1;
 #endif
 }
@@ -261,7 +261,7 @@ pdq_pci_probe(
 	return 0;
     }
     if (ia->ia_irq == IRQUNK) {
-	(void) isa_irqalloc(irq);
+	isa_irqalloc(irq);
 	ia->ia_irq = irq;
     }
 

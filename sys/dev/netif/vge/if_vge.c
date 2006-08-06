@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vge/if_vge.c,v 1.24 2006/02/14 12:44:56 glebius Exp $
- * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.1 2006/05/20 07:15:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vge/if_vge.c,v 1.2 2006/08/06 12:49:06 swildner Exp $
  */
 
 /*
@@ -1173,8 +1173,7 @@ vge_newbuf(struct vge_softc *sc, int idx, struct mbuf *m)
 }
 
 static int
-vge_tx_list_init(sc)
-	struct vge_softc		*sc;
+vge_tx_list_init(struct vge_softc *sc)
 {
 	bzero ((char *)sc->vge_ldata.vge_tx_list, VGE_TX_LIST_SZ);
 	bzero ((char *)&sc->vge_ldata.vge_tx_mbuf,

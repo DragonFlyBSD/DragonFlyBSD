@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.11 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.12 2006/08/06 12:49:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -198,7 +198,7 @@ ep_isa_identify(driver_t *driver, device_t parent)
 
 		/* resolve contention using the Ethernet address */
 		for (j = 0; j < 3; j++) {
-			(void)get_eeprom_data(ELINK_ID_PORT, j);
+			get_eeprom_data(ELINK_ID_PORT, j);
 		}
 
 		/*

@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/sample/sample.c,v 1.8.2.3 2006/03/14 23:22:27 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/rate_sample/sample.c,v 1.2 2006/08/06 12:49:04 swildner Exp $
  */
 
 /*
@@ -154,8 +154,8 @@ ath_rate_node_cleanup(struct ath_softc *sc, struct ath_node *an)
  * returns the ndx with the lowest average_tx_time,
  * or -1 if all the average_tx_times are 0.
  */
-static __inline int best_rate_ndx(struct sample_node *sn, int size_bin, 
-				  int require_acked_before)
+static __inline int
+best_rate_ndx(struct sample_node *sn, int size_bin, int require_acked_before)
 {
 	int x = 0;
         int best_rate_ndx = 0;

@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.9 2005/06/13 20:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.10 2006/08/06 12:49:04 swildner Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -75,10 +75,7 @@ static int awi_cfgget (struct ifnet *ifp, u_long cmd, caddr_t data);
 static int awi_cfgset (struct ifnet *ifp, u_long cmd, caddr_t data);
 
 int
-awi_wicfg(ifp, cmd, data)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
+awi_wicfg(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
 	int error;
 	struct thread *td = curthread;
@@ -101,10 +98,7 @@ awi_wicfg(ifp, cmd, data)
 }
 
 static int
-awi_cfgget(ifp, cmd, data)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
+awi_cfgget(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
 	int i, error, keylen;
 	char *p;
@@ -302,10 +296,7 @@ awi_cfgget(ifp, cmd, data)
 }
 
 static int
-awi_cfgset(ifp, cmd, data)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
+awi_cfgset(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
 	int i, error, rate, oregion;
 	u_int8_t *phy_rates;

@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/if_ath.c,v 1.94.2.17 2006/04/19 16:14:47 sam Exp $
- * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.1 2006/07/13 09:15:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ath/ath/if_ath.c,v 1.2 2006/08/06 12:49:04 swildner Exp $
  */
 
 /*
@@ -2752,7 +2752,7 @@ ath_recv_mgmt(struct ieee80211com *ic, struct mbuf *m,
 				    "ibss merge, rstamp %u tsf %ju "
 				    "tstamp %ju\n", rstamp, (uintmax_t)tsf,
 				    (uintmax_t)ni->ni_tstamp.tsf);
-				(void) ieee80211_ibss_merge(ni);
+				ieee80211_ibss_merge(ni);
 			}
 		}
 		break;
@@ -2947,7 +2947,7 @@ ath_rx_proc(struct ath_softc *sc)
 				/* NB: bpf needs the mbuf length setup */
 				len = ds->ds_rxstat.rs_datalen;
 				m->m_pkthdr.len = m->m_len = len;
-				(void) ath_rx_tap(sc, m, ds, tsf, nf);
+				ath_rx_tap(sc, m, ds, tsf, nf);
 			}
 			/* XXX pass MIC errors up for s/w reclaculation */
 			goto rx_next;

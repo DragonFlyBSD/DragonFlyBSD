@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.20 2005/11/28 17:13:41 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.21 2006/08/06 12:49:04 swildner Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -147,8 +147,7 @@ static	void cm_tint (struct cm_softc *, int);
 void	cm_reconwatch(void *);
 
 int
-cm_probe(dev)
-	device_t dev;
+cm_probe(device_t dev)
 {
 	int error;
 	struct cm_softc *sc = device_get_softc(dev);
@@ -171,10 +170,7 @@ cm_probe(dev)
  * Allocate a port resource with the given resource id.
  */
 int
-cm_alloc_port(dev, rid, size)
-	device_t dev;
-	int rid;
-	int size;
+cm_alloc_port(device_t dev, int rid, int size)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -195,10 +191,7 @@ cm_alloc_port(dev, rid, size)
  * Allocate a memory resource with the given resource id.
  */
 int
-cm_alloc_memory(dev, rid, size)
-	device_t dev;
-	int rid;
-	int size;
+cm_alloc_memory(device_t dev, int rid, int size)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -219,9 +212,7 @@ cm_alloc_memory(dev, rid, size)
  * Allocate an irq resource with the given resource id.
  */
 int
-cm_alloc_irq(dev, rid)
-	device_t dev;
-	int rid;
+cm_alloc_irq(device_t dev, int rid)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct resource *res;
@@ -240,8 +231,7 @@ cm_alloc_irq(dev, rid)
  * Release all resources
  */
 void
-cm_release_resources(dev)
-	device_t dev;
+cm_release_resources(device_t dev)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 
@@ -269,8 +259,7 @@ cm_release_resources(dev)
 }
 
 int
-cm_attach(dev)
-	device_t dev;
+cm_attach(device_t dev)
 {
 	struct cm_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
@@ -322,8 +311,7 @@ cm_attach(dev)
  *
  */
 void
-cm_init(xsc)
-	void *xsc;
+cm_init(void *xsc)
 {
 	struct cm_softc *sc = (struct cm_softc *)xsc;
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
@@ -342,8 +330,7 @@ cm_init(xsc)
  *
  */
 void
-cm_reset(sc)
-	struct cm_softc *sc;
+cm_reset(struct cm_softc *sc)
 {
 	struct ifnet *ifp;
 	int linkaddress;
@@ -416,8 +403,7 @@ cm_reset(sc)
  * Take interface offline
  */
 void
-cm_stop(sc)
-	struct cm_softc *sc;
+cm_stop(struct cm_softc *sc)
 {
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
 
@@ -444,8 +430,7 @@ cm_stop(sc)
  *
  */
 void
-cm_start(ifp)
-	struct ifnet *ifp;
+cm_start(struct ifnet *ifp)
 {
 	struct cm_softc *sc = ifp->if_softc;
 	struct mbuf *m,*mp;
@@ -575,8 +560,7 @@ cm_start(ifp)
  * get the stuff out of any filled buffer we find.
  */
 void
-cm_srint(vsc)
-	void *vsc;
+cm_srint(void *vsc)
 {
 	struct cm_softc *sc = (struct cm_softc *)vsc;
 	int buffer, len, offset, type;
@@ -665,9 +649,7 @@ cleanup:
 }
 
 __inline static void
-cm_tint(sc, isr)
-	struct cm_softc *sc;
-	int isr;
+cm_tint(struct cm_softc *sc, int isr)
 {
 	struct ifnet *ifp;
 
@@ -746,8 +728,7 @@ cm_tint(sc, isr)
  * Our interrupt routine
  */
 void
-cmintr(arg)
-	void *arg;
+cmintr(void *arg)
 {
 	struct cm_softc *sc = arg;
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
@@ -876,8 +857,7 @@ cmintr(arg)
 }
 
 void
-cm_reconwatch(arg)
-	void *arg;
+cm_reconwatch(void *arg)
 {
 	struct cm_softc *sc = arg;
 	struct ifnet *ifp = &sc->sc_arccom.ac_if;
@@ -953,8 +933,7 @@ cm_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
  */
 
 void
-cm_watchdog(ifp)
-	struct ifnet *ifp;
+cm_watchdog(struct ifnet *ifp)
 {
 	struct cm_softc *sc = ifp->if_softc;
 

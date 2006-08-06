@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.7 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pci.c,v 1.3 2005/05/24 09:52:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis_pci.c,v 1.4 2006/08/06 12:49:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -137,8 +137,7 @@ DRIVER_MODULE(ndis, cardbus, ndis_driver, ndis_devclass, 0, 0);
  * IDs against our list and return a device name if we find a match.
  */
 static int
-ndis_probe_pci(dev)
-	device_t		dev;
+ndis_probe_pci(device_t dev)
 {
 	struct ndis_pci_type	*t;
 
@@ -163,8 +162,7 @@ ndis_probe_pci(dev)
  * setup and ethernet/BPF attach.
  */
 static int
-ndis_attach_pci(dev)
-	device_t		dev;
+ndis_attach_pci(device_t dev)
 {
 	struct ndis_softc	*sc;
 	int			unit, error = 0, rid;
@@ -325,9 +323,7 @@ fail:
 }
 
 static struct resource_list *
-ndis_get_resource_list(dev, child)
-	device_t		dev;
-	device_t		child;
+ndis_get_resource_list(device_t dev, device_t child)
 {
 	struct ndis_softc	*sc;
 
