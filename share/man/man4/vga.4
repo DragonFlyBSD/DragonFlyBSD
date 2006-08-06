@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vga.4,v 1.7.2.10 2002/12/20 18:03:05 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/vga.4,v 1.4 2006/07/22 23:52:23 swildner Exp $
+.\" $DragonFly: src/share/man/man4/vga.4,v 1.5 2006/08/06 02:27:01 swildner Exp $
 .\"
 .Dd June 30, 1999
 .Dt VGA 4
@@ -127,7 +127,7 @@ This option prevents the driver from changing video modes.
 .Sh EXAMPLES
 Your kernel configuration should normally have:
 .Pp
-.Dl "device vga0 at isa? port ?
+.D1 Cd "device vga0 at isa? port ?"
 .Pp
 The following lines should be included in the kernel configuration file
 in order to enable the VESA BIOS Extension support.
