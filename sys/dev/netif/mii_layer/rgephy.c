@@ -1,4 +1,6 @@
-/*-
+/*	$OpenBSD: rgephy.c,v 1.12 2006/06/27 05:36:58 brad Exp $	*/
+
+/*
  * Copyright (c) 2003
  *	Bill Paul <wpaul@windriver.com>.  All rights reserved.
  *
@@ -30,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.1 2005/12/26 13:36:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.2 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -74,6 +76,12 @@ static device_method_t rgephy_methods[] = {
 	{ 0, 0 }
 };
 
+static const struct mii_phydesc rgephys[] = {
+	MII_PHYDESC(REALTEK2,	RTL8169S),
+	MII_PHYDESC(xxREALTEK,	RTL8169S),
+	MII_PHYDESC_NULL
+};
+
 static devclass_t rgephy_devclass;
 
 static driver_t rgephy_driver = {
@@ -90,21 +98,18 @@ static int	rgephy_mii_phy_auto(struct mii_softc *);
 static void	rgephy_reset(struct mii_softc *);
 static void	rgephy_loop(struct mii_softc *);
 static void	rgephy_load_dspcode(struct mii_softc *);
-static int	rgephy_mii_model;
 
 static int
 rgephy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxREALTEK &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxREALTEK_RTL8169S) {
-		device_set_desc(dev, MII_STR_xxREALTEK_RTL8169S);
-		return(0);
+	mpd = mii_phy_match(ma, rgephys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
 	}
-
 	return(ENXIO);
 }
 
@@ -114,7 +119,6 @@ rgephy_attach(device_t dev)
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
-	const char *sep = "";
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -126,43 +130,25 @@ rgephy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = rgephy_service;
+	sc->mii_reset = rgephy_reset;
 	sc->mii_pdata = mii;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 	mii->mii_instance++;
 
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
-
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
-#if 0
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
-#endif
-
-	rgephy_mii_model = MII_MODEL(ma->mii_id2);
 	rgephy_reset(sc);
 
 	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
-	sc->mii_capabilities &= ~BMSR_ANEG;
+	if (sc->mii_capabilities & BMSR_EXTSTAT)
+		sc->mii_extcapabilities = PHY_READ(sc, MII_EXTSR);
 
 	device_printf(dev, " ");
-	mii_add_media(sc, sc->mii_capabilities);
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
-	    RGEPHY_BMCR_FDX);
-	PRINT(", 1000baseTX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst), 0);
-	PRINT("1000baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
-	PRINT("auto");
-
+	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0 &&
+	    (sc->mii_extcapabilities & EXTSR_MEDIAMASK) == 0)
+		printf("no media present");
+	else
+		mii_phy_add_media(sc);
 	printf("\n");
-#undef ADD
-#undef PRINT
-
-	/* Make mii_bmsr_media_to_anar() work correctly */
-	sc->mii_flags |= MIIF_IS_1000X;
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);
@@ -285,7 +271,7 @@ setit:
 		 * Only used for autonegotiation.
 		 */
 		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
+			break;
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
@@ -298,14 +284,20 @@ setit:
 			break;
 
 		/*
-		 * Only retry autonegotiation every 5 seconds.
+		 * Only retry autonegotiation every mii_anegticks seconds.
 		 */
-		if (++sc->mii_ticks <= 5/*10*/)
+		if (++sc->mii_ticks <= sc->mii_anegticks)
 			break;
 		
 		sc->mii_ticks = 0;
-		rgephy_mii_phy_auto(sc);
-		return (0);
+
+		/*
+		 * Although rgephy_mii_phy_auto() always returns EJUSTRETURN,
+		 * we should not rely on that.
+		 */
+		if (rgephy_mii_phy_auto(sc) == EJUSTRETURN)
+			return (0);
+		break;
 	}
 
 	/* Update the media status. */
@@ -315,11 +307,11 @@ setit:
 	 * Callback if something changed. Note that we need to poke
 	 * the DSP on the RealTek PHYs if the media changes.
 	 */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
+	if (sc->mii_media_active != mii->mii_media_active ||
+	    sc->mii_media_status != mii->mii_media_status ||
+	    cmd == MII_MEDIACHG)
 		rgephy_load_dspcode(sc);
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
@@ -369,16 +361,17 @@ rgephy_status(struct mii_softc *sc)
 }
 
 static int
-rgephy_mii_phy_auto(struct mii_softc *mii)
+rgephy_mii_phy_auto(struct mii_softc *sc)
 {
-	rgephy_loop(mii);
-	rgephy_reset(mii);
+	rgephy_loop(sc);
+	rgephy_reset(sc);
 
-	PHY_WRITE(mii, RGEPHY_MII_ANAR, mii_bmsr_media_to_anar(mii));
+	PHY_WRITE(sc, RGEPHY_MII_ANAR,
+		  BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
 	DELAY(1000);
-	PHY_WRITE(mii, RGEPHY_MII_1000CTL, RGEPHY_1000CTL_AFD);
+	PHY_WRITE(sc, RGEPHY_MII_1000CTL, RGEPHY_1000CTL_AFD);
 	DELAY(1000);
-	PHY_WRITE(mii, RGEPHY_MII_BMCR,
+	PHY_WRITE(sc, RGEPHY_MII_BMCR,
 	    RGEPHY_BMCR_AUTOEN | RGEPHY_BMCR_STARTNEG);
 	DELAY(100);
 
@@ -388,7 +381,7 @@ rgephy_mii_phy_auto(struct mii_softc *mii)
 static void
 rgephy_loop(struct mii_softc *sc)
 {
-	u_int32_t bmsr;
+	uint32_t bmsr;
 	int i;
 
 	PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_PDOWN);

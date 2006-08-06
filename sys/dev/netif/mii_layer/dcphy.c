@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/dcphy.c,v 1.2.2.2 2000/10/14 00:44:40 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/dcphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
- *
- * $FreeBSD: src/sys/dev/mii/dcphy.c,v 1.2.2.2 2000/10/14 00:44:40 wpaul Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/dcphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -60,7 +58,6 @@
 #include "miivar.h"
 #include "miidevs.h"
 
-#include <machine/clock.h>
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
 #include <machine/bus.h>
@@ -91,13 +88,12 @@
 
 static int dcphy_probe		(device_t);
 static int dcphy_attach		(device_t);
-static int dcphy_detach		(device_t);
 
 static device_method_t dcphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		dcphy_probe),
 	DEVMETHOD(device_attach,	dcphy_attach),
-	DEVMETHOD(device_detach,	dcphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
 };
@@ -112,10 +108,10 @@ static driver_t dcphy_driver = {
 
 DRIVER_MODULE(dcphy, miibus, dcphy_driver, dcphy_devclass, 0, 0);
 
-int	dcphy_service (struct mii_softc *, struct mii_data *, int);
-void	dcphy_status (struct mii_softc *);
-static int dcphy_auto		(struct mii_softc *, int);
-static void dcphy_reset		(struct mii_softc *);
+static int	dcphy_service(struct mii_softc *, struct mii_data *, int);
+static void	dcphy_status(struct mii_softc *);
+static void	dcphy_auto(struct mii_softc *);
+static void	dcphy_reset(struct mii_softc *);
 
 static int
 dcphy_probe(device_t dev)
@@ -154,15 +150,12 @@ dcphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = dcphy_service;
+	sc->mii_reset = dcphy_reset;
+	sc->mii_anegticks = 50;
 	sc->mii_pdata = mii;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 	mii->mii_instance++;
-
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
 
 	/*dcphy_reset(sc);*/
 	dc_sc = mii->mii_ifp->if_softc;
@@ -180,8 +173,12 @@ dcphy_attach(device_t dev)
 			sc->mii_capabilities =
 			    BMSR_ANEG|BMSR_10TFDX|BMSR_10THDX;
 		} else {
+#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
+
 			ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP,
-			    sc->mii_inst), BMCR_LOOP|BMCR_S100);
+			    sc->mii_inst), MII_MEDIA_100_TX);
+
+#undef ADD
 
 			sc->mii_capabilities =
 			    BMSR_ANEG|BMSR_100TXFDX|BMSR_100TXHDX|
@@ -190,34 +187,24 @@ dcphy_attach(device_t dev)
 		break;
 	}
 
+#ifdef notyet
+	if (dc_sc->dc_type == DC_TYPE_21145)
+		sc->mii_capabilities = BMSR_10THDX;
+#endif
+
 	sc->mii_capabilities &= ma->mii_capmask;
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
-#undef ADD
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return(0);
 }
 
 static int
-dcphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return(0);
-}
-
-int
 dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct dc_softc		*dc_sc;
@@ -240,7 +227,7 @@ dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	case MII_MEDIACHG:
 		/*
 		 * If the media indicates a different PHY instance,
-		 * isolate ourselves.
+		 * isolate ourselves. XXX how?
 		 */
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst) {
 			return (0);
@@ -261,8 +248,7 @@ dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		switch (IFM_SUBTYPE(ife->ifm_media)) {
 		case IFM_AUTO:
 			/*dcphy_reset(sc);*/
-			sc->mii_flags &= ~MIIF_DOINGAUTO;
-			(void) dcphy_auto(sc, 0);
+			dcphy_auto(sc);
 			break;
 		case IFM_100_T4:
 			/*
@@ -299,7 +285,6 @@ dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			break;
 		default:
 			return(EINVAL);
-			break;
 		}
 		break;
 
@@ -311,33 +296,36 @@ dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
 
-		reg = CSR_READ_4(dc_sc, DC_10BTSTAT) &
-		    (DC_TSTAT_LS10|DC_TSTAT_LS100);
+		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
+		reg = CSR_READ_4(dc_sc, DC_10BTSTAT);
 		if (!(reg & DC_TSTAT_LS10) || !(reg & DC_TSTAT_LS100))
 			return(0);
 
                 /*
-                 * Only retry autonegotiation every 5 seconds.
+                 * Only retry autonegotiation every mii_anegticks seconds.
+		 *
+		 * Otherwise, fall through to calling dcphy_status()
+		 * since real Intel 21143 chips don't show valid link
+		 * status until autonegotiation is switched off, and
+		 * that only happens in dcphy_status().  Without this,
+		 * successful autonegotation is never recognised on
+		 * these chips.
                  */
-                if (++sc->mii_ticks != 50)
-                        return (0);
+                if (++sc->mii_ticks <= sc->mii_anegticks)
+			break;
 
 		sc->mii_ticks = 0;
-		/*if (DC_IS_INTEL(dc_sc))*/
-			sc->mii_flags &= ~MIIF_DOINGAUTO;
-		dcphy_auto(sc, 0);
+		dcphy_auto(sc);
 
 		break;
 	}
@@ -346,14 +334,11 @@ dcphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	dcphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 dcphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -368,9 +353,7 @@ dcphy_status(struct mii_softc *sc)
 	if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 		return;
 
-	reg = CSR_READ_4(dc_sc, DC_10BTSTAT) &
-	    (DC_TSTAT_LS10|DC_TSTAT_LS100);
-
+	reg = CSR_READ_4(dc_sc, DC_10BTSTAT);
 	if (!(reg & DC_TSTAT_LS10) || !(reg & DC_TSTAT_LS100))
 		mii->mii_media_status |= IFM_ACTIVE;
 
@@ -438,64 +421,31 @@ skip:
 	return;
 }
 
-static int
-dcphy_auto(struct mii_softc *mii, int waitfor)
+static void
+dcphy_auto(struct mii_softc *sc)
 {
-	int			i;
-	struct dc_softc		*sc;
+	struct dc_softc *dc_sc = sc->mii_pdata->mii_ifp->if_softc;
 
-	sc = mii->mii_pdata->mii_ifp->if_softc;
+	DC_CLRBIT(dc_sc, DC_NETCFG, DC_NETCFG_PORTSEL);
+	DC_SETBIT(dc_sc, DC_NETCFG, DC_NETCFG_FULLDUPLEX);
+	DC_CLRBIT(dc_sc, DC_SIARESET, DC_SIA_RESET);
+	if (sc->mii_capabilities & BMSR_100TXHDX)
+		CSR_WRITE_4(dc_sc, DC_10BTCTRL, 0x3FFFF);
+	else
+		CSR_WRITE_4(dc_sc, DC_10BTCTRL, 0xFFFF);
+	DC_SETBIT(dc_sc, DC_SIARESET, DC_SIA_RESET);
+	DC_SETBIT(dc_sc, DC_10BTCTRL, DC_TCTL_AUTONEGENBL);
+	DC_SETBIT(dc_sc, DC_10BTSTAT, DC_ASTAT_TXDISABLE);
 
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		DC_CLRBIT(sc, DC_NETCFG, DC_NETCFG_PORTSEL);
-		DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_FULLDUPLEX);
-		DC_CLRBIT(sc, DC_SIARESET, DC_SIA_RESET);
-		if (mii->mii_capabilities & BMSR_100TXHDX)
-			CSR_WRITE_4(sc, DC_10BTCTRL, 0x3FFFF);
-		else
-			CSR_WRITE_4(sc, DC_10BTCTRL, 0xFFFF);
-		DC_SETBIT(sc, DC_SIARESET, DC_SIA_RESET);
-		DC_SETBIT(sc, DC_10BTCTRL, DC_TCTL_AUTONEGENBL);
-		DC_SETBIT(sc, DC_10BTSTAT, DC_ASTAT_TXDISABLE);
-	}
-
-	if (waitfor) {
-		/* Wait 500ms for it to complete. */
-		for (i = 0; i < 500; i++) {
-			if ((CSR_READ_4(sc, DC_10BTSTAT) & DC_TSTAT_ANEGSTAT)
-			    == DC_ASTAT_AUTONEGCMP)
-				return(0);
-			DELAY(1000);
-		}
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag.
-		 */
-		return(EIO);
-	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0)
-		mii->mii_flags |= MIIF_DOINGAUTO;
-
-	return(EJUSTRETURN);
+	sc->mii_flags |= MIIF_DOINGAUTO;
 }
 
 static void
-dcphy_reset(struct mii_softc *mii)
+dcphy_reset(struct mii_softc *sc)
 {
-	struct dc_softc		*sc;
+	struct dc_softc *dc_sc = sc->mii_pdata->mii_ifp->if_softc;
 
-	sc = mii->mii_pdata->mii_ifp->if_softc;
-
-	DC_CLRBIT(sc, DC_SIARESET, DC_SIA_RESET);
+	DC_CLRBIT(dc_sc, DC_SIARESET, DC_SIA_RESET);
 	DELAY(1000);
-	DC_SETBIT(sc, DC_SIARESET, DC_SIA_RESET);
-
-	return;
+	DC_SETBIT(dc_sc, DC_SIARESET, DC_SIA_RESET);
 }

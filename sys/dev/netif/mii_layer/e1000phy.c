@@ -1,5 +1,6 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.7 2005/10/24 16:55:40 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.8 2006/08/06 10:32:23 sephe Exp $ */
+/*	$OpenBSD: eephy.c,v 1.26 2006/06/08 00:27:12 brad Exp $	*/
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001
@@ -48,8 +49,6 @@
 #include <sys/socket.h>
 #include <sys/bus.h>
 
-#include <machine/clock.h>
-
 #include <net/if.h>
 #include <net/if_media.h>
 
@@ -61,50 +60,59 @@
 
 #include "miibus_if.h"
 
-static int e1000phy_probe(device_t);
-static int e1000phy_attach(device_t);
-static int e1000phy_detach(device_t);
+static int	e1000phy_probe(device_t);
+static int	e1000phy_attach(device_t);
+static int	e1000phy_service(struct mii_softc *, struct mii_data *, int);
+static void	e1000phy_status(struct mii_softc *);
+static int	e1000phy_mii_phy_auto(struct mii_softc *, int);
+static void	e1000phy_reset(struct mii_softc *);
 
 static device_method_t e1000phy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		e1000phy_probe),
 	DEVMETHOD(device_attach,	e1000phy_attach),
-	DEVMETHOD(device_detach,	e1000phy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
 };
 
+static const struct mii_phydesc e1000phys[] = {
+	MII_PHYDESC(xxMARVELL,	E1000_2),
+	MII_PHYDESC(xxMARVELL,	E1000_3),
+	MII_PHYDESC(xxMARVELL,	E1000_5),
+	MII_PHYDESC(xxMARVELL,	E1111),
+	MII_PHYDESC(MARVELL,	E1000),
+	MII_PHYDESC(MARVELL,	E1011),
+	MII_PHYDESC(MARVELL,	E1000_3),
+	MII_PHYDESC(MARVELL,	E1000_4),
+	MII_PHYDESC(MARVELL,	E1000_5),
+	MII_PHYDESC(MARVELL,	E1000_6),
+	MII_PHYDESC(MARVELL,	E1111),
+	MII_PHYDESC(MARVELL,	E1116),
+	MII_PHYDESC_NULL
+};
+
 static devclass_t e1000phy_devclass;
+
 static driver_t e1000phy_driver = {
-	"e1000phy", e1000phy_methods, sizeof (struct mii_softc)
+	"e1000phy",
+	e1000phy_methods,
+	sizeof(struct mii_softc)
 };
 DRIVER_MODULE(e1000phy, miibus, e1000phy_driver, e1000phy_devclass, 0, 0);
-
-int	e1000phy_service(struct mii_softc *, struct mii_data *, int);
-void	e1000phy_status(struct mii_softc *);
-
-static int	e1000phy_mii_phy_auto(struct mii_softc *, int);
-extern void	mii_phy_auto_timeout(void *);
-static void	e1000phy_reset(struct mii_softc *);
-
-static int e1000phy_debug = 0;
 
 static int
 e1000phy_probe(device_t	dev)
 {
-	struct mii_attach_args *ma;
-	u_int32_t id;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-	id = ((ma->mii_id1 << 16) | ma->mii_id2) & E1000_ID_MASK;
-	if (id != E1000_ID_88E1000
-	    && id != E1000_ID_88E1000S
-	    && id != E1000_ID_88E1011) {
-		return ENXIO;
+	mpd = mii_phy_match(ma, e1000phys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return 0;
 	}
-
-	device_set_desc(dev, MII_STR_MARVELL_E1000);
-	return 0;
+	return (ENXIO);
 }
 
 static int
@@ -114,9 +122,6 @@ e1000phy_attach(device_t dev)
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
 	const char *sep = "";
-	u_int32_t id;
-
-	getenv_int("e1000phy_debug", &e1000phy_debug);
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -127,14 +132,19 @@ e1000phy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = e1000phy_service;
+	sc->mii_reset = e1000phy_reset;
+	sc->mii_anegticks = MII_ANEGTICKS_GIGE;
 	sc->mii_pdata = mii;
+
 	sc->mii_flags |= MIIF_NOISOLATE;
 
-	id = ((ma->mii_id1 << 16) | ma->mii_id2) & E1000_ID_MASK;
-	if (id == E1000_ID_88E1011
-	    && (PHY_READ(sc, E1000_ESSR) & E1000_ESSR_FIBER_LINK))
+	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_MARVELL &&
+	    MII_MODEL(ma->mii_id2) == MII_MODEL_MARVELL_E1011 && 
+	    (PHY_READ(sc, E1000_ESSR) & E1000_ESSR_FIBER_LINK))
 		sc->mii_flags |= MIIF_HAVEFIBER;
+
 	mii->mii_instance++;
+
 	e1000phy_reset(sc);
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
@@ -173,6 +183,7 @@ e1000phy_attach(device_t dev)
 				E1000_CR_SPEED_1000);
 		PRINT("1000baseSX-FDX");
 	}
+
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	PRINT("auto");
 
@@ -184,28 +195,10 @@ e1000phy_attach(device_t dev)
 	return(0);
 }
 
-static int
-e1000phy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-
-	if (sc->mii_flags & MIIF_DOINGAUTO)
-		callout_stop(&sc->mii_auto_ch);
-
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return 0;
-}
-
 static void
 e1000phy_reset(struct mii_softc *sc)
 {
-	u_int32_t reg;
+	uint32_t reg;
 	int i;
 
 	/* initialize custom E1000 registers to magic values */
@@ -241,7 +234,7 @@ e1000phy_reset(struct mii_softc *sc)
 	PHY_WRITE(sc, 30, 0x00);
 }
 
-int
+static int
 e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -283,7 +276,7 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 				return (0);
 			}
 			e1000phy_reset(sc);
-			(void)e1000phy_mii_phy_auto(sc, 1);
+			e1000phy_mii_phy_auto(sc, 1);
 			break;
 
 		case IFM_1000_SX:
@@ -301,7 +294,7 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			e1000phy_reset(sc);
 
 			/* TODO - any other way to force 1000BT? */
-			(void)e1000phy_mii_phy_auto(sc, 1);
+			e1000phy_mii_phy_auto(sc, 1);
 			break;
 
 		case IFM_100_TX:
@@ -346,13 +339,6 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		}
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO) {
-			return (0);
-		}
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0) {
@@ -360,12 +346,11 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		}
 
 		/*
-		 * Only retry autonegotiation every 5 seconds.
+		 * Only used for autonegotiation.
 		 */
-		if (++(sc->mii_ticks) != 5) {
-			return (0);
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO) {
+			break;
 		}
-		sc->mii_ticks = 0;
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
@@ -373,14 +358,21 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		 * the BMSR twice in case it's latched.
 		 */
 		reg = PHY_READ(sc, E1000_SR) | PHY_READ(sc, E1000_SR);
-
 		if (reg & E1000_SR_LINK_STATUS)
 			break;
+
+		/*
+		 * Only retry autonegotiation every mii_anegticks seconds.
+		 */
+		if (++(sc->mii_ticks) != sc->mii_anegticks) {
+			return (0);
+		}
+		sc->mii_ticks = 0;
 
 		e1000phy_reset(sc);
 
 		if (e1000phy_mii_phy_auto(sc, 0) == EJUSTRETURN) {
-			return(0);
+			return (0);
 		}
 
 		break;
@@ -390,15 +382,11 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	e1000phy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
-
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 e1000phy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -461,26 +449,28 @@ e1000phy_status(struct mii_softc *sc)
 }
 
 static int
-e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
+e1000phy_mii_phy_auto(struct mii_softc *sc, int waitfor)
 {
 	int bmsr, i;
 
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		if ((mii->mii_flags & MIIF_HAVEFIBER) == 0) {
-			PHY_WRITE(mii, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
+	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
+			PHY_WRITE(sc, E1000_AR, E1000_AR_10T | E1000_AR_10T_FD |
 			    E1000_AR_100TX | E1000_AR_100TX_FD | 
 			    E1000_AR_PAUSE | E1000_AR_ASM_DIR);
-			PHY_WRITE(mii, E1000_1GCR, E1000_1GCR_1000T_FD);
-			PHY_WRITE(mii, E1000_CR,
-			    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
+			PHY_WRITE(sc, E1000_1GCR, E1000_1GCR_1000T_FD);
+		} else {
+			PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD |
+				  E1000_FA_SYM_PAUSE | E1000_FA_ASYM_PAUSE);
 		}
+		PHY_WRITE(sc, E1000_CR,
+		    E1000_CR_AUTO_NEG_ENABLE | E1000_CR_RESTART_AUTO_NEG);
 	}
 
 	if (waitfor) {
 		/* Wait 5 seconds for it to complete. */
 		for (i = 0; i < 5000; i++) {
-			bmsr =
-			    PHY_READ(mii, E1000_SR) | PHY_READ(mii, E1000_SR);
+			bmsr = PHY_READ(sc, E1000_SR) | PHY_READ(sc, E1000_SR);
 
 			if (bmsr & E1000_SR_AUTO_NEG_COMPLETE) {
 				return (0);
@@ -493,6 +483,7 @@ e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 		 * If that's set, a timeout is pending, and it will
 		 * clear the flag. [do it anyway]
 		 */
+		return (EIO);
 	}
 
 	/*
@@ -500,11 +491,14 @@ e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 	 * the tick handler driving autonegotiation.  Don't want 500ms
 	 * delays all the time while the system is running!
 	 */
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		mii->mii_flags |= MIIF_DOINGAUTO;
-		mii->mii_ticks = 0;
-		callout_reset(&mii->mii_auto_ch, 5 * hz,
-				mii_phy_auto_timeout, mii);
+	if (sc->mii_flags & MIIF_AUTOTSLEEP) {
+		sc->mii_flags |= MIIF_DOINGAUTO;
+		tsleep(&sc->mii_flags, 0, "miiaut", hz >> 1);
+		mii_phy_auto_timeout(sc);
+	} else if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		sc->mii_flags |= MIIF_DOINGAUTO;
+		callout_reset(&sc->mii_auto_ch, 5 * hz,
+				mii_phy_auto_timeout, sc);
 	}
 	return (EJUSTRETURN);
 }

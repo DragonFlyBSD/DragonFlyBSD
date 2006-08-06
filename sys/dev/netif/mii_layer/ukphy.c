@@ -1,7 +1,7 @@
-/*	$NetBSD: ukphy.c,v 1.2 1999/04/23 04:24:32 thorpej Exp $	*/
+/*	$NetBSD: ukphy.c,v 1.27 2006/03/29 07:05:24 thorpej Exp $	*/
 
 /*-
- * Copyright (c) 1998, 1999 The NetBSD Foundation, Inc.
+ * Copyright (c) 1998, 1999, 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.9 2005/10/31 13:08:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.10 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -133,15 +133,17 @@ ukphy_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+
 	mii_softc_init(sc, ma);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);
 
-	if (bootverbose)
+	if (bootverbose) {
 		device_printf(dev, "OUI 0x%06x, model 0x%04x, rev. %d\n",
 		    MII_OUI(ma->mii_id1, ma->mii_id2),
 		    MII_MODEL(ma->mii_id2), MII_REV(ma->mii_id2));
+	}
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = ukphy_service;
@@ -149,31 +151,26 @@ ukphy_attach(device_t dev)
 
 	mii->mii_instance++;
 
-	sc->mii_flags |= MIIF_NOISOLATE;
-
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
-#if 0
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
-#endif
+	/*
+	 * Don't do loopback on unknown PHYs.  It might confuse some of them.
+	 */
+	sc->mii_flags |= MIIF_NOLOOP;
 
 	mii_phy_reset(sc);
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	if (sc->mii_capabilities & BMSR_EXTSTAT)
+		sc->mii_extcapabilities = PHY_READ(sc, MII_EXTSR);
+
 	device_printf(dev, " ");
-	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
+	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0 &&
+	    (sc->mii_extcapabilities & EXTSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
-#undef ADD
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-
 	return(0);
 }
 
@@ -181,10 +178,8 @@ int
 ukphy_detach(device_t dev)
 {
 	struct mii_softc *sc;
-	struct mii_data *mii;
 
 	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
 	mii_phy_auto_stop(sc);
 	sc->mii_dev = NULL;
 	LIST_REMOVE(sc, mii_list);
@@ -224,28 +219,7 @@ ukphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			break;
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, MII_BMCR) & BMCR_AUTOEN)
-				return (0);
-			(void) mii_phy_auto(sc, 1);
-			break;
-		case IFM_100_T4:
-			/*
-			 * XXX Not supported as a manual setting right now.
-			 */
-			return (EINVAL);
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
-		}
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
@@ -255,37 +229,7 @@ ukphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
 
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
-		 * Is the interface even up?
-		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
-			return (0);
-
-		/*
-		 * Check to see if we have link.  If we do, we don't
-		 * need to restart the autonegotiation process.  Read
-		 * the BMSR twice in case it's latched.
-		 */
-		reg = PHY_READ(sc, MII_BMSR) |
-		    PHY_READ(sc, MII_BMSR);
-		if (reg & BMSR_LINK)
-			return (0);
-
-		/*
-		 * Only retry autonegotiation every 5 seconds.
-		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
-
-		sc->mii_ticks = 0;
-		mii_phy_reset(sc);
-		if (mii_phy_auto(sc, 0) == EJUSTRETURN)
+		if (mii_phy_tick(sc) == EJUSTRETURN)
 			return (0);
 		break;
 	}
@@ -294,9 +238,6 @@ ukphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	ukphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }

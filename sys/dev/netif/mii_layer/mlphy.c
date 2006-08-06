@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -149,6 +149,7 @@ mlphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = mlphy_service;
+	sc->mii_reset = mlphy_reset;
 	sc->mii_pdata = mii;
 
 	mii->mii_instance++;
@@ -157,23 +158,22 @@ mlphy_attach(device_t dev)
 
 #if 0 /* See above. */
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
+	    MII_MEDIA_NONE);
 #endif
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
+	    MII_MEDIA_100_TX);
 
 	sc->mii_flags &= ~MIIF_NOISOLATE;
 	mii_phy_reset(sc);
 	sc->mii_flags |= MIIF_NOISOLATE;
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
-	ma->mii_capmask = ~sc->mii_capabilities;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
 #undef ADD
 	MIIBUS_MEDIAINIT(sc->mii_dev);
@@ -183,11 +183,9 @@ mlphy_attach(device_t dev)
 static int
 mlphy_detach(device_t dev)
 {
-	struct mlphy_softc	*sc;
-	struct mii_data		*mii;
+	struct mlphy_softc *sc;
 
 	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
 	mii_phy_auto_stop(&sc->ml_mii);
 	sc->ml_mii.mii_dev = NULL;
 	LIST_REMOVE(&sc->ml_mii, mii_list);
@@ -205,6 +203,7 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 	struct mii_softc	*sc = (struct mii_softc *)&msc->ml_mii;
 	device_t		*devlist;
 	int			devs, i;
+	const struct mii_media	*mm;
 
 	/*
 	 * See if there's another PHY on this bus with us.
@@ -218,6 +217,9 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 		}
 	}
 	free(devlist, M_TEMP);
+
+	KKASSERT(ife->ifm_data >= 0 && ife->ifm_data < MII_NMEDIA);
+	mm = &mii_media_table[ife->ifm_data];
 
 	switch (cmd) {
 	case MII_POLLSTAT:
@@ -257,10 +259,10 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 				mii_phy_reset(other);
 				PHY_WRITE(other, MII_BMCR, BMCR_ISO);
 			}
-			(void) mii_phy_auto(sc, 1);
+			mii_phy_auto(sc, 1);
 			msc->ml_linked = 0;
 			return(0);
-			break;
+
 		case IFM_10_T:
 			/*
 			 * For 10baseT modes, reset and program the
@@ -268,33 +270,31 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			 * to match. This will put us in pass-through
 			 * mode and let the companion PHY do all the
 			 * work.
-			 *
-			 * BMCR data is stored in the ifmedia entry.
 			 */
 			if (other != NULL) {
 				mii_phy_reset(other);
-				PHY_WRITE(other, MII_BMCR, ife->ifm_data);
+				PHY_WRITE(other, MII_BMCR, mm->mm_bmcr);
 			}
-			PHY_WRITE(sc, MII_ANAR, mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
+			PHY_WRITE(sc, MII_ANAR, mm->mm_anar);
+			PHY_WRITE(sc, MII_BMCR, mm->mm_bmcr);
 			msc->ml_state = 0;
 			break;
+
 		case IFM_100_TX:
 			/*
 			 * For 100baseTX modes, reset and isolate the
 			 * companion PHY (if any), then program ourselves
 			 * accordingly.
-			 *
-			 * BMCR data is stored in the ifmedia entry.
 			 */
 			if (other != NULL) {
 				mii_phy_reset(other);
 				PHY_WRITE(other, MII_BMCR, BMCR_ISO);
 			}
-			PHY_WRITE(sc, MII_ANAR, mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
+			PHY_WRITE(sc, MII_ANAR, mm->mm_anar);
+			PHY_WRITE(sc, MII_BMCR, mm->mm_bmcr);
 			msc->ml_state = 0;
 			break;
+
 		case IFM_100_T4:
 			/*
 			 * XXX Not supported as a manual setting right now.
@@ -302,7 +302,6 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			return (EINVAL);
 		default:
 			break;
-
 		}
 		break;
 
@@ -314,21 +313,21 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
 
 		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
+
+		/*
 		 * Only retry autonegotiation every 5 seconds.
 		 */
-		if (++sc->mii_ticks != 5)
+		if (++sc->mii_ticks <= sc->mii_anegticks)
 			return (0);
 		
 		sc->mii_ticks = 0;
@@ -373,23 +372,21 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 	}
 
 	/* Update the media status. */
-
 	if (msc->ml_state == ML_STATE_AUTO_OTHER) {
-		int			other_inst;
+		int other_inst;
+
 		other_inst = other->mii_inst;
 		other->mii_inst = sc->mii_inst;
-		(void) (*other->mii_service)(other, mii, MII_POLLSTAT);
+		other->mii_service(other, mii, MII_POLLSTAT);
 		other->mii_inst = other_inst;
-		sc->mii_active = other->mii_active;
-	} else
+		sc->mii_media_active = other->mii_media_active;
+		sc->mii_media_status = other->mii_media_status;
+	} else {
 		ukphy_status(sc);
-
-	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
 	}
 
+	/* Callback if something changed. */
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
@@ -406,8 +403,6 @@ mlphy_reset(struct mii_softc *sc)
 	reg = PHY_READ(sc, MII_BMCR);
 	reg &= ~BMCR_AUTOEN;
 	PHY_WRITE(sc, MII_BMCR, reg);
-
-	return;
 }
 
 /*
@@ -451,6 +446,4 @@ mlphy_status(struct mii_softc *sc)
 		mii_phy_reset(other);
 		mii_phy_auto(other, 1);
 	}
-
-	return;
 }

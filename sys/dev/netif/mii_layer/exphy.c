@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -91,13 +91,12 @@
 
 static int exphy_probe		(device_t);
 static int exphy_attach		(device_t);
-static int exphy_detach		(device_t);
 
 static device_method_t exphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		exphy_probe),
 	DEVMETHOD(device_attach,	exphy_attach),
-	DEVMETHOD(device_detach,	exphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
 };
@@ -130,11 +129,11 @@ exphy_probe(device_t dev)
 	if ((MII_OUI(ma->mii_id1, ma->mii_id2) != 0 ||
 	    MII_MODEL(ma->mii_id2) != 0) &&
 	    (MII_OUI(ma->mii_id1, ma->mii_id2) != MII_OUI_BROADCOM ||
-	    MII_MODEL(ma->mii_id2) != MII_MODEL_BROADCOM_3c905Cphy))
+	    MII_MODEL(ma->mii_id2) != MII_MODEL_BROADCOM_3C905C))
 		return (ENXIO);
 
 	/*
-	 * Make sure the parent is an `ex'.
+	 * Make sure the parent is an `xl'.
 	 */
 	if (strcmp(device_get_name(parent), "xl") != 0)
 		return (ENXIO);
@@ -142,7 +141,7 @@ exphy_probe(device_t dev)
 	if (MII_OUI(ma->mii_id1, ma->mii_id2) == 0)
 		device_set_desc(dev, "3Com internal media interface");
 	else
-		device_set_desc(dev, MII_STR_BROADCOM_3c905Cphy);
+		device_set_desc(dev, MII_STR_BROADCOM_3C905C);
 
 	return (0);
 }
@@ -173,48 +172,23 @@ exphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = exphy_service;
+	sc->mii_reset = exphy_reset;
 	sc->mii_pdata = mii;
 	mii->mii_instance++;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-
-#if 0 /* See above. */
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
-#endif
-
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
-
 	exphy_reset(sc);
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
-#undef ADD
+
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-	return(0);
-}
-
-static int
-exphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	mii_phy_auto_stop(sc);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
 	return(0);
 }
 
@@ -226,8 +200,8 @@ exphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	/*
 	 * We can't isolate the 3Com PHY, so it has to be the only one!
 	 */
-	if (IFM_INST(ife->ifm_media) != sc->mii_inst)
-		panic("exphy_service: can't isolate 3Com PHY");
+	KASSERT(IFM_INST(ife->ifm_media) == sc->mii_inst,
+		("exphy_service: can't isolate 3Com PHY"));
 
 	switch (cmd) {
 	case MII_POLLSTAT:
@@ -240,42 +214,28 @@ exphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			break;
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, MII_BMCR) & BMCR_AUTOEN)
-				return (0);
-			(void) mii_phy_auto(sc, 1);
-			break;
-		case IFM_100_T4:
+		if (IFM_SUBTYPE(ife->ifm_media) == IFM_100_T4) {
 			/*
 			 * XXX Not supported as a manual setting right now.
 			 */
 			return (EINVAL);
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
 		}
+
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
 		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
+
+		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
 		/*
 		 * The 3Com PHY's autonegotiation doesn't need to be
@@ -288,10 +248,7 @@ exphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	ukphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 

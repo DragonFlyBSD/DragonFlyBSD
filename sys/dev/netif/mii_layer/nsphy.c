@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsphy.c,v 1.2.2.5 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -95,15 +95,19 @@
 
 static int nsphy_probe		(device_t);
 static int nsphy_attach		(device_t);
-static int nsphy_detach		(device_t);
 
 static device_method_t nsphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		nsphy_probe),
 	DEVMETHOD(device_attach,	nsphy_attach),
-	DEVMETHOD(device_detach,	nsphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc nsphys[] = {
+	MII_PHYDESC(NATSEMI,	DP83840),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t nsphy_devclass;
@@ -116,23 +120,22 @@ static driver_t nsphy_driver = {
 
 DRIVER_MODULE(nsphy, miibus, nsphy_driver, nsphy_devclass, 0, 0);
 
-int	nsphy_service (struct mii_softc *, struct mii_data *, int);
-void	nsphy_status (struct mii_softc *);
+static int	nsphy_service(struct mii_softc *, struct mii_data *, int);
+static void	nsphy_status(struct mii_softc *);
+static void	nsphy_reset(struct mii_softc *);
 
 static int
 nsphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_NATSEMI &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_NATSEMI_DP83840) {
-		device_set_desc(dev, MII_STR_NATSEMI_DP83840);
-	} else 
-		return (ENXIO);
-
-	return (0);
+	mpd = mii_phy_match(ma, nsphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
+	}
+	return (ENXIO);
 }
 
 static int
@@ -151,6 +154,7 @@ nsphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = nsphy_service;
+	sc->mii_reset = nsphy_reset;
 	sc->mii_pdata = mii;
 
 #ifdef foo
@@ -172,17 +176,16 @@ nsphy_attach(device_t dev)
 	    BMCR_ISO);
 #endif
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
+	    MII_MEDIA_100_TX);
 
-	mii_phy_reset(sc);
+	nsphy_reset(sc);
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
 #undef ADD
 
@@ -191,21 +194,6 @@ nsphy_attach(device_t dev)
 }
 
 static int
-nsphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	mii_phy_auto_stop(sc);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return(0);
-}
-
-int
 nsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -268,34 +256,13 @@ nsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		 *        (nsphy with a DP83840 chip)
 		 * 0x0100 may be needed for some other card
 		 */
-		reg |= 0x0100 | 0x0400;
+		reg |= PCR_CONGCTRL | PCR_TXREADYSEL;
 
 		if (strcmp(device_get_name(device_get_parent(sc->mii_dev)),
 		    "fxp") == 0)
 			PHY_WRITE(sc, MII_NSPHY_PCR, reg);
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, MII_BMCR) & BMCR_AUTOEN)
-				return (0);
-			(void) mii_phy_auto(sc, 1);
-			break;
-		case IFM_100_T4:
-			/*
-			 * XXX Not supported as a manual setting right now.
-			 */
-			return (EINVAL);
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
-		}
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
@@ -305,37 +272,7 @@ nsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
 
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
-		 * Is the interface even up?
-		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
-			return (0);
-
-		/*
-		 * Check to see if we have link.  If we do, we don't
-		 * need to restart the autonegotiation process.  Read
-		 * the BMSR twice in case it's latched.
-		 */
-		reg = PHY_READ(sc, MII_BMSR) |
-		    PHY_READ(sc, MII_BMSR);
-		if (reg & BMSR_LINK)
-			return (0);
-
-		/*
-		 * Only retry autonegotiation every 5 seconds.
-		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
-
-		sc->mii_ticks = 0;
-		mii_phy_reset(sc);
-		if (mii_phy_auto(sc, 0) == EJUSTRETURN)
+		if (mii_phy_tick(sc) == EJUSTRETURN)
 			return (0);
 		break;
 	}
@@ -344,14 +281,11 @@ nsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	nsphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 nsphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -424,5 +358,16 @@ nsphy_status(struct mii_softc *sc)
 			mii->mii_media_active |= IFM_FDX;
 #endif
 	} else
-		mii->mii_media_active |= mii_media_from_bmcr(bmcr);
+		mii->mii_media_active |= mii->mii_media.ifm_cur->ifm_media;
+}
+
+static void
+nsphy_reset(struct mii_softc *sc)
+{
+	int anar;
+
+	mii_phy_reset(sc);
+	anar = PHY_READ(sc, MII_ANAR);
+	anar |= BMSR_MEDIA_TO_ANAR(PHY_READ(sc, MII_BMSR));
+	PHY_WRITE(sc, MII_ANAR, anar);
 }

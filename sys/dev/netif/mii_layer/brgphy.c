@@ -1,3 +1,5 @@
+/*	$OpenBSD: brgphy.c,v 1.48 2006/05/20 23:03:53 brad Exp $	*/
+
 /*
  * Copyright (c) 2000
  *	Bill Paul <wpaul@ee.columbia.edu>.  All rights reserved.
@@ -30,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.13 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -62,13 +64,36 @@
 
 static int brgphy_probe(device_t);
 static int brgphy_attach(device_t);
-static int brgphy_detach(device_t);
+
+static const struct mii_phydesc brgphys[] = {
+	MII_PHYDESC(xxBROADCOM,	BCM5400),
+	MII_PHYDESC(xxBROADCOM,	BCM5401),
+	MII_PHYDESC(xxBROADCOM,	BCM5411),
+	MII_PHYDESC(xxBROADCOM,	BCM5421),
+	MII_PHYDESC(xxBROADCOM,	BCM54K2),
+	MII_PHYDESC(xxBROADCOM,	BCM5462),
+
+	MII_PHYDESC(xxBROADCOM,	BCM5701),
+	MII_PHYDESC(xxBROADCOM,	BCM5703),
+	MII_PHYDESC(xxBROADCOM,	BCM5704),
+	MII_PHYDESC(xxBROADCOM,	BCM5705),
+
+	MII_PHYDESC(xxBROADCOM,	BCM5714),
+	MII_PHYDESC(xxBROADCOM,	BCM5750),
+	MII_PHYDESC(xxBROADCOM,	BCM5752),
+	MII_PHYDESC(xxBROADCOM,	BCM5780),
+
+	MII_PHYDESC(xxBROADCOM,	BCM5706C),
+	MII_PHYDESC(xxBROADCOM,	BCM5708C),
+
+	MII_PHYDESC_NULL
+};
 
 static device_method_t brgphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		brgphy_probe),
 	DEVMETHOD(device_attach,	brgphy_attach),
-	DEVMETHOD(device_detach,	brgphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
 };
@@ -85,63 +110,30 @@ DRIVER_MODULE(brgphy, miibus, brgphy_driver, brgphy_devclass, 0, 0);
 
 static int	brgphy_service(struct mii_softc *, struct mii_data *, int);
 static void 	brgphy_status(struct mii_softc *);
-static int	brgphy_mii_phy_auto(struct mii_softc *);
+static int	brgphy_mii_phy_auto(struct mii_softc *, int);
 static void	brgphy_reset(struct mii_softc *);
 static void	brgphy_loop(struct mii_softc *);
-static void	bcm5401_load_dspcode(struct mii_softc *);
-static void	bcm5411_load_dspcode(struct mii_softc *);
-static void	bcm5703_load_dspcode(struct mii_softc *);
-static int	brgphy_mii_model;
+
+static void	brgphy_load_dspcode(struct mii_softc *);
+static void	brgphy_bcm5401_dspcode(struct mii_softc *);
+static void	brgphy_bcm5411_dspcode(struct mii_softc *);
+static void	brgphy_bcm5421_dspcode(struct mii_softc *);
+static void	brgphy_bcm54k2_dspcode(struct mii_softc *);
+static void	brgphy_bcm5703_dspcode(struct mii_softc *);
+static void	brgphy_bcm5704_dspcode(struct mii_softc *);
+static void	brgphy_bcm5750_dspcode(struct mii_softc *);
 
 static int
 brgphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5400) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5400);
-		return(0);
+	mpd = mii_phy_match(ma, brgphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
 	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5401) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5401);
-		return(0);
-	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5411) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5411);
-		return(0);
-	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5701) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5701);
-		return(0);
-	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5703) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5703);
-		return(0);
-	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5704) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5704);
-		return(0);
-	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxBROADCOM &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxBROADCOM_BCM5705) {
-		device_set_desc(dev, MII_STR_xxBROADCOM_BCM5705);
-		return(0);
-	}
-
 	return(ENXIO);
 }
 
@@ -151,7 +143,6 @@ brgphy_attach(device_t dev)
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
-	const char *sep = "";
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -162,56 +153,38 @@ brgphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = brgphy_service;
+	sc->mii_reset = brgphy_reset;
 	sc->mii_pdata = mii;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 	mii->mii_instance++;
 
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
-
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
-#if 0
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
-#endif
-
-	brgphy_mii_model = MII_MODEL(ma->mii_id2);
 	brgphy_reset(sc);
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
-	device_printf(dev, " ");
-	if (sc->mii_capabilities & BMSR_MEDIAMASK)
-		mii_add_media(sc, (sc->mii_capabilities & ~BMSR_ANEG));
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
-	    BRGPHY_BMCR_FDX);
-	PRINT(", 1000baseTX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst), 0);
-	PRINT("1000baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
-	PRINT("auto");
+#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
 
-	printf("\n");
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
+	    MII_MEDIA_NONE);
+#if 0
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
+	    MII_MEDIA_100_TX);
+#endif
+
 #undef ADD
-#undef PRINT
+
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	if (sc->mii_capabilities & BMSR_EXTSTAT)
+		sc->mii_extcapabilities = PHY_READ(sc, MII_EXTSR);
+
+	device_printf(dev, " ");
+	if ((sc->mii_capabilities & BMSR_MEDIAMASK) ||
+	    (sc->mii_extcapabilities & EXTSR_MEDIAMASK))
+		mii_phy_add_media(sc);
+	else
+		printf("no media present");
+	printf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-	return(0);
-}
-
-static int
-brgphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
 	return(0);
 }
 
@@ -258,7 +231,7 @@ brgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			if (PHY_READ(sc, BRGPHY_MII_BMCR) & BRGPHY_BMCR_AUTOEN)
 				return (0);
 #endif
-			(void) brgphy_mii_phy_auto(sc);
+			brgphy_mii_phy_auto(sc, 1);
 			break;
 		case IFM_1000_T:
 			speed = BRGPHY_S1000;
@@ -288,7 +261,7 @@ setit:
 			PHY_WRITE(sc, BRGPHY_MII_BMCR,
 			    speed|BRGPHY_BMCR_AUTOEN|BRGPHY_BMCR_STARTNEG);
 
-			if (brgphy_mii_model != MII_MODEL_xxBROADCOM_BCM5701)
+			if (sc->mii_model != MII_MODEL_xxBROADCOM_BCM5701)
 				break;
 
 			/*
@@ -326,16 +299,16 @@ setit:
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
+
+		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
@@ -349,12 +322,13 @@ setit:
 		/*
 		 * Only retry autonegotiation every 5 seconds.
 		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
+		if (++sc->mii_ticks <= sc->mii_anegticks)
+			break;
 		
 		sc->mii_ticks = 0;
-		brgphy_mii_phy_auto(sc);
-		return (0);
+		if (brgphy_mii_phy_auto(sc, 0) == EJUSTRETURN)
+			return (0);
+		break;
 	}
 
 	/* Update the media status. */
@@ -364,22 +338,22 @@ setit:
 	 * Callback if something changed. Note that we need to poke
 	 * the DSP on the Broadcom PHYs if the media changes.
 	 */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-		switch (brgphy_mii_model) {
+	if (sc->mii_media_active != mii->mii_media_active ||
+	    sc->mii_media_status != mii->mii_media_status ||
+	    cmd == MII_MEDIACHG) {
+		switch (sc->mii_model) {
+		case MII_MODEL_BROADCOM_BCM5400:
 		case MII_MODEL_xxBROADCOM_BCM5401:
-			bcm5401_load_dspcode(sc);
-			break;
 		case MII_MODEL_xxBROADCOM_BCM5411:
-			bcm5411_load_dspcode(sc);
+			brgphy_load_dspcode(sc);
 			break;
 		}
 	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 brgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -436,54 +410,120 @@ brgphy_status(struct mii_softc *sc)
 	}
 
 	mii->mii_media_active = ife->ifm_media;
-
-	return;
 }
 
 
 static int
-brgphy_mii_phy_auto(struct mii_softc *mii)
+brgphy_mii_phy_auto(struct mii_softc *sc, int waitfor)
 {
-	int ktcr = 0;
+	int bmsr, ktcr = 0, i;
 
-	brgphy_loop(mii);
-	brgphy_reset(mii);
-	ktcr = BRGPHY_1000CTL_AFD|BRGPHY_1000CTL_AHD;
-	if (brgphy_mii_model == MII_MODEL_xxBROADCOM_BCM5701)
-		ktcr |= BRGPHY_1000CTL_MSE|BRGPHY_1000CTL_MSC;
-	PHY_WRITE(mii, BRGPHY_MII_1000CTL, ktcr);
-	ktcr = PHY_READ(mii, BRGPHY_MII_1000CTL);
-	DELAY(1000);
-	PHY_WRITE(mii, BRGPHY_MII_ANAR, mii_bmsr_media_to_anar(mii));
-	DELAY(1000);
-	PHY_WRITE(mii, BRGPHY_MII_BMCR,
-	    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);
-	PHY_WRITE(mii, BRGPHY_MII_IMR, 0xFF00);
+	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		brgphy_loop(sc);
+		brgphy_reset(sc);
+		ktcr = BRGPHY_1000CTL_AFD|BRGPHY_1000CTL_AHD;
+		if (sc->mii_model == MII_MODEL_xxBROADCOM_BCM5701)
+			ktcr |= BRGPHY_1000CTL_MSE|BRGPHY_1000CTL_MSC;
+		PHY_WRITE(sc, BRGPHY_MII_1000CTL, ktcr);
+		ktcr = PHY_READ(sc, BRGPHY_MII_1000CTL);
+		DELAY(1000);
+		PHY_WRITE(sc, BRGPHY_MII_ANAR,
+		    BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
+		DELAY(1000);
+		PHY_WRITE(sc, BRGPHY_MII_BMCR,
+		    BRGPHY_BMCR_AUTOEN | BRGPHY_BMCR_STARTNEG);
+		PHY_WRITE(sc, BRGPHY_MII_IMR, 0xFF00);
+	}
+
+	if (waitfor) {
+		/* Wait 500ms for it to complete. */
+		for (i = 0; i < 500; i++) {
+			if ((bmsr = PHY_READ(sc, BRGPHY_MII_BMSR)) &
+			    BRGPHY_BMSR_ACOMP)
+				return (0);
+			DELAY(1000);
+		}
+
+		/*
+		 * Don't need to worry about clearing MIIF_DOINGAUTO.
+		 * If that's set, a timeout is pending, and it will
+		 * clear the flag.
+		 */
+		return (EIO);
+	}
+
+	/*
+	 * Just let it finish asynchronously.  This is for the benefit of
+	 * the tick handler driving autonegotiation.  Don't want 500ms
+	 * delays all the time while the system is running!
+	 */
+	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		sc->mii_flags |= MIIF_DOINGAUTO;
+		callout_reset(&sc->mii_auto_ch, hz >> 1,
+			      mii_phy_auto_timeout, sc);
+	}
+
 	return (EJUSTRETURN);
 }
 
 static void
 brgphy_loop(struct mii_softc *sc)
 {
-	u_int32_t bmsr;
+	uint32_t bmsr;
 	int i;
 
 	PHY_WRITE(sc, BRGPHY_MII_BMCR, BRGPHY_BMCR_LOOP);
 	for (i = 0; i < 15000; i++) {
 		bmsr = PHY_READ(sc, BRGPHY_MII_BMSR);
-		if (!(bmsr & BRGPHY_BMSR_LINK)) {
-#if 0
-			device_printf(sc->mii_dev, "looped %d\n", i);
-#endif
+		if (!(bmsr & BRGPHY_BMSR_LINK))
 			break;
-		}
 		DELAY(10);
+	}
+}
+
+static void
+brgphy_reset(struct mii_softc *sc)
+{
+	u_int32_t	val;
+	struct ifnet	*ifp;
+	struct bge_softc	*bge_sc;
+
+	mii_phy_reset(sc);
+
+	ifp = sc->mii_pdata->mii_ifp;
+	bge_sc = ifp->if_softc;
+
+	brgphy_load_dspcode(sc);
+
+	/*
+	 * Don't enable Ethernet@WireSpeed for the 5700 or 5705
+	 * other than A0 and A1 chips. Make sure we only do this
+	 * test on "bge" NICs, since other drivers may use this
+	 * same PHY subdriver.
+	 */
+	if (strncmp(ifp->if_xname, "bge", 3) == 0 &&
+	    (bge_sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
+	     (bge_sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
+	      (bge_sc->bge_chipid != BGE_CHIPID_BCM5705_A0 &&
+	       bge_sc->bge_chipid != BGE_CHIPID_BCM5705_A1))))
+		return;
+
+	/* Enable Ethernet@WireSpeed. */
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
+	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, val | (1 << 15) | (1 << 4));
+
+	/* Enable Link LED on Dell boxes */
+	if (bge_sc->bge_no_3_led) {
+		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
+		    PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
+		    & ~BRGPHY_PHY_EXTCTL_3_LED);
 	}
 }
 
 /* Turn off tap power management on 5401. */
 static void
-bcm5401_load_dspcode(struct mii_softc *sc)
+brgphy_bcm5401_dspcode(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
@@ -509,8 +549,9 @@ bcm5401_load_dspcode(struct mii_softc *sc)
 	DELAY(40);
 }
 
+/* Setting some undocumented voltage */
 static void
-bcm5411_load_dspcode(struct mii_softc *sc)
+brgphy_bcm5411_dspcode(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
@@ -528,7 +569,43 @@ bcm5411_load_dspcode(struct mii_softc *sc)
 }
 
 static void
-bcm5703_load_dspcode(struct mii_softc *sc)
+brgphy_bcm5421_dspcode(struct mii_softc *sc)
+{
+	uint16_t data;
+
+	/* Set Class A mode */
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x1007);
+	data = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, data | 0x0400);
+
+	/* Set FFE gamma override to -0.125 */
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x0007);
+	data = PHY_READ(sc, BRGPHY_MII_AUXCTL);
+	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, data | 0x0800);
+	PHY_WRITE(sc, BRGPHY_MII_DSP_ADDR_REG, 0x000a);
+	data = PHY_READ(sc, BRGPHY_MII_DSP_RW_PORT);
+	PHY_WRITE(sc, BRGPHY_MII_DSP_RW_PORT, data | 0x0200);
+}
+
+static void
+brgphy_bcm54k2_dspcode(struct mii_softc *sc)
+{
+	static const struct {
+		int		reg;
+		uint16_t	val;
+	} dspcode[] = {
+		{ 4,				0x01e1 },
+		{ 9,				0x0300 },
+		{ 0,				0 },
+	};
+	int i;
+
+	for (i = 0; dspcode[i].reg != 0; i++)
+		PHY_WRITE(sc, dspcode[i].reg, dspcode[i].val);
+}
+
+static void
+brgphy_bcm5703_dspcode(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
@@ -546,12 +623,18 @@ bcm5703_load_dspcode(struct mii_softc *sc)
 }
 
 static void
-bcm5704_load_dspcode(struct mii_softc *sc)
+brgphy_bcm5704_dspcode(struct mii_softc *sc)
 {
 	static const struct {
 		int		reg;
 		u_int16_t	val;
 	} dspcode[] = {
+		{ BRGPHY_MII_AUXCTL,		0x0c00 },
+		{ BRGPHY_MII_DSP_ADDR_REG, 	0x201f },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x2aaa },
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x000a },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x0323 },
+		{ BRGPHY_MII_AUXCTL,		0x0400 },
 		{ 0x1c,				0x8d68 },
 		{ 0x1c,				0x8d68 },
 		{ 0,				0 },
@@ -563,53 +646,62 @@ bcm5704_load_dspcode(struct mii_softc *sc)
 }
 
 static void
-brgphy_reset(struct mii_softc *sc)
+brgphy_bcm5750_dspcode(struct mii_softc *sc)
 {
-	u_int32_t	val;
-	struct ifnet	*ifp;
-	struct bge_softc	*bge_sc;
+	static const struct {
+		int		reg;
+		uint16_t	val;
+	} dspcode[] = {
+		{ BRGPHY_MII_AUXCTL,		0x0c00 },
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x000a },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x310b },
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x201f },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x9506 },
+		{ BRGPHY_MII_DSP_ADDR_REG,	0x401f },
+		{ BRGPHY_MII_DSP_RW_PORT,	0x14e2 },
+		{ BRGPHY_MII_AUXCTL,		0x0400 },
+		{ 0,				0 },
+	};
+	int i;
 
-	mii_phy_reset(sc);
+	for (i = 0; dspcode[i].reg != 0; i++)
+		PHY_WRITE(sc, dspcode[i].reg, dspcode[i].val);
+}
 
-	switch (brgphy_mii_model) {
-	case MII_MODEL_xxBROADCOM_BCM5401:
-		bcm5401_load_dspcode(sc);
+static void
+brgphy_load_dspcode(struct mii_softc *sc)
+{
+	switch (sc->mii_model) {
+	case MII_MODEL_BROADCOM_BCM5400:
+		brgphy_bcm5401_dspcode(sc);
 		break;
-	case MII_MODEL_xxBROADCOM_BCM5411:
-		bcm5411_load_dspcode(sc);
+	case MII_MODEL_BROADCOM_BCM5401:
+		if (sc->mii_rev == 1 || sc->mii_rev == 3)
+			brgphy_bcm5401_dspcode(sc);
+		break;
+	case MII_MODEL_BROADCOM_BCM5411:
+		brgphy_bcm5411_dspcode(sc);
+		break;
+	case MII_MODEL_xxBROADCOM_BCM5421:
+		brgphy_bcm5421_dspcode(sc);
+		break;
+	case MII_MODEL_xxBROADCOM_BCM54K2:
+		brgphy_bcm54k2_dspcode(sc);
 		break;
 	case MII_MODEL_xxBROADCOM_BCM5703:
-		bcm5703_load_dspcode(sc);
+		brgphy_bcm5703_dspcode(sc);
 		break;
 	case MII_MODEL_xxBROADCOM_BCM5704:
-		bcm5704_load_dspcode(sc);
+		brgphy_bcm5704_dspcode(sc);
 		break;
-	}
-
-	ifp = sc->mii_pdata->mii_ifp;
-	bge_sc = ifp->if_softc;
-
-	/*
-	 * Don't enable Ethernet@WireSpeed for the 5700 or the
-	 * 5705 A1 and A2 chips. Make sure we only do this test
-	 * on "bge" NICs, since other drivers may use this same
-	 * PHY subdriver.
-	 */
-	if (strcmp(ifp->if_dname, "bge") == 0 &&
-	    (bge_sc->bge_asicrev == BGE_ASICREV_BCM5700 ||
-	    bge_sc->bge_chipid == BGE_CHIPID_BCM5705_A1 ||
-	    bge_sc->bge_chipid == BGE_CHIPID_BCM5705_A2))
-		return;
-
-	/* Enable Ethernet@WireSpeed. */
-	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, 0x7007);
-	val = PHY_READ(sc, BRGPHY_MII_AUXCTL);
-	PHY_WRITE(sc, BRGPHY_MII_AUXCTL, val | (1 << 15) | (1 << 4));
-
-	/* Enable Link LED on Dell boxes */
-	if (bge_sc->bge_no_3_led) {
-		PHY_WRITE(sc, BRGPHY_MII_PHY_EXTCTL, 
-		    PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
-		    & ~BRGPHY_PHY_EXTCTL_3_LED);
+	case MII_MODEL_xxBROADCOM_BCM5705:
+	case MII_MODEL_xxBROADCOM_BCM5750:
+	case MII_MODEL_xxBROADCOM_BCM5714:
+	case MII_MODEL_xxBROADCOM_BCM5780:
+	case MII_MODEL_xxBROADCOM_BCM5752:
+	case MII_MODEL_xxBROADCOM_BCM5706C:
+	case MII_MODEL_xxBROADCOM_BCM5708C:
+		brgphy_bcm5750_dspcode(sc);
+		break;
 	}
 }

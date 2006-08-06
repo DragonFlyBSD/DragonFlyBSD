@@ -1,6 +1,6 @@
-/*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
+/*	$NetBSD: if_media.h,v 1.45 2006/05/18 09:05:51 liamjfoy Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.10 2006/05/20 02:42:08 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.11 2006/08/06 10:32:23 sephe Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -121,10 +121,11 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
  * if_media Options word:
  *	Bits	Use
  *	----	-------
- *	0-4	Media variant
+ *	0-4	Media variant		MAX SUBTYPE == 31!!
  *	5-7	Media type
  *	8-15	Type specific options
- *	16-19	RFU
+ *	16-18	Mode (for multi-mode devices)
+ *	19	RFU
  *	20-27	Shared (global) options
  *	28-31	Instance
  */
@@ -149,7 +150,10 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define IFM_1000_CX	16		/* 1000BaseCX 150ohm STP */
 #define IFM_1000_T	17		/* 1000BaseTX 4 pair cat 5 */
 #define IFM_HPNA_1	18		/* HomePNA media for ethernet frames */
-/* note 31 is the max! */
+
+#define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
+#define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
+#define	IFM_ETH_TXPAUSE	0x00000400	/* transmit PAUSE frames */
 
 /*
  * Token ring
@@ -244,6 +248,7 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
  */
 #define	IFM_FDX		0x00100000	/* Force full duplex */
 #define	IFM_HDX		0x00200000	/* Force half duplex */
+#define	IFM_FLOW	0x00400000	/* enable hardware flow control */
 #define	IFM_FLAG0	0x01000000	/* Driver defined flag */
 #define	IFM_FLAG1	0x02000000	/* Driver defined flag */
 #define	IFM_FLAG2	0x04000000	/* Driver defined flag */
@@ -260,6 +265,11 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define	IFM_MMASK	0x00070000	/* Mode */
 #define	IFM_MSHIFT	16		/* Mode shift */
 #define	IFM_GMASK	0x0ff00000	/* Global options */
+	/* Ethernet flow control mask */
+#define	IFM_ETH_FMASK	(IFM_FLOW | IFM_ETH_RXPAUSE | IFM_ETH_TXPAUSE)
+
+#define	IFM_NMIN	IFM_ETHER	/* lowest Network type */
+#define	IFM_NMAX	IFM_NMASK	/* highest Network type */
 
 /*
  * Status bits

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.9 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.10 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -64,15 +64,19 @@
 
 static int pnaphy_probe		(device_t);
 static int pnaphy_attach	(device_t);
-static int pnaphy_detach	(device_t);
 
 static device_method_t pnaphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		pnaphy_probe),
 	DEVMETHOD(device_attach,	pnaphy_attach),
-	DEVMETHOD(device_detach,	pnaphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc pnaphys[] = {
+	MII_PHYDESC(AMD,	79c978),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t pnaphy_devclass;
@@ -85,22 +89,19 @@ static driver_t pnaphy_driver = {
 
 DRIVER_MODULE(pnaphy, miibus, pnaphy_driver, pnaphy_devclass, 0, 0);
 
-int	pnaphy_service (struct mii_softc *, struct mii_data *, int);
+static int	pnaphy_service(struct mii_softc *, struct mii_data *, int);
 
 static int
 pnaphy_probe(device_t dev)
 {
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	struct mii_attach_args	*ma;
-
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_AMD &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_AMD_79c978) {
-		device_set_desc(dev, MII_STR_AMD_79c978);
-		return(0);
+	mpd = mii_phy_match(ma, pnaphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
 	}
-
 	return(ENXIO);
 }
 
@@ -110,7 +111,6 @@ pnaphy_attach(device_t dev)
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
-	const char *sep = "";
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -125,51 +125,30 @@ pnaphy_attach(device_t dev)
 
 	mii->mii_instance++;
 
-	sc->mii_flags |= MIIF_NOISOLATE;
-
-#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
+	sc->mii_flags |= MIIF_NOISOLATE |
+			 MIIF_IS_HPNA;		/* force HomePNA */
 
 	mii_phy_reset(sc);
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
-	else {
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_HPNA_1, 0, sc->mii_inst), 0);
-		PRINT("HomePNA");
-	}
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
-
+	else
+		mii_phy_add_media(sc);
 	printf("\n");
 
+#define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
+	    MII_MEDIA_NONE);
 #undef ADD
-#undef PRINT
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-
 	return(0);
 }
 
 static int
-pnaphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	mii_phy_auto_stop(sc);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return(0);
-}
-
-int
 pnaphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -208,12 +187,7 @@ pnaphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		case IFM_100_T4:
 			return (EINVAL);
 		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
+			mii_phy_set_media(sc);
 		}
 		break;
 
@@ -224,37 +198,7 @@ pnaphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
 
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
-		 * Is the interface even up?
-		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
-			return (0);
-
-		/*
-		 * Check to see if we have link.  If we do, we don't
-		 * need to restart the autonegotiation process.  Read
-		 * the BMSR twice in case it's latched.
-		 */
-		reg = PHY_READ(sc, MII_BMSR) |
-		    PHY_READ(sc, MII_BMSR);
-		if (reg & BMSR_LINK)
-			return (0);
-
-		/*
-		 * Only retry autonegotiation every 5 seconds.
-		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
-
-		sc->mii_ticks = 0;
-		mii_phy_reset(sc);
-		if (mii_phy_auto(sc, 0) == EJUSTRETURN)
+		if (mii_phy_tick(sc) == EJUSTRETURN)
 			return (0);
 		break;
 	}
@@ -265,9 +209,6 @@ pnaphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		mii->mii_media_active = IFM_ETHER | IFM_HPNA_1;
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }

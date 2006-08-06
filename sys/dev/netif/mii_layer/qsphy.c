@@ -1,4 +1,4 @@
-/*	OpenBSD: qsphy.c,v 1.6 2000/08/26 20:04:18 nate Exp */
+/*	$OpenBSD: qsphy.c,v 1.13 2005/02/19 06:00:04 brad Exp $	*/
 /*	NetBSD: qsphy.c,v 1.19 2000/02/02 23:34:57 thorpej Exp 	*/
 
 /*-
@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/qsphy.c,v 1.1.2.2 2002/10/21 21:21:42 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/qsphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
  
 /*
@@ -96,15 +96,19 @@
 
 static int qsphy_probe		(device_t);
 static int qsphy_attach		(device_t);
-static int qsphy_detach		(device_t);
 
 static device_method_t qsphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		qsphy_probe),
 	DEVMETHOD(device_attach,	qsphy_attach),
-	DEVMETHOD(device_detach,	qsphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc qsphys[] = {
+	MII_PHYDESC(QUALSEMI,	QS6612),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t qsphy_devclass;
@@ -117,24 +121,22 @@ static driver_t qsphy_driver = {
 
 DRIVER_MODULE(qsphy, miibus, qsphy_driver, qsphy_devclass, 0, 0);
 
-int	qsphy_service (struct mii_softc *, struct mii_data *, int);
-void	qsphy_reset (struct mii_softc *);
-void	qsphy_status (struct mii_softc *);
+static int	qsphy_service(struct mii_softc *, struct mii_data *, int);
+static void	qsphy_reset(struct mii_softc *);
+static void	qsphy_status(struct mii_softc *);
 
 static int
 qsphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_QUALSEMI &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_QUALSEMI_QS6612) {
-		device_set_desc(dev, MII_STR_QUALSEMI_QS6612);
-	} else 
-		return (ENXIO);
-
-	return (0);
+	mpd = mii_phy_match(ma, qsphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
+	}
+	return (ENXIO);
 }
 
 static int
@@ -153,6 +155,7 @@ qsphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = qsphy_service;
+	sc->mii_reset = qsphy_reset;
 	sc->mii_pdata = mii;
 	sc->mii_flags |= MIIF_NOISOLATE;
 
@@ -160,11 +163,12 @@ qsphy_attach(device_t dev)
 
 	mii->mii_instance++;
 
-	sc->mii_capabilities =
-	    PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	device_printf(dev, " ");
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
+	else
+		printf("no media present");
 	printf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
@@ -172,20 +176,6 @@ qsphy_attach(device_t dev)
 }
 
 static int
-qsphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return(0);
-}
-
-int
 qsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -215,25 +205,7 @@ qsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			break;
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, MII_BMCR) & BMCR_AUTOEN)
-				return (0);
-
-			(void) mii_phy_auto(sc, 1);
-			break;
-
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
-		}
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
@@ -259,14 +231,11 @@ qsphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	qsphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 qsphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -290,37 +259,46 @@ qsphy_status(struct mii_softc *sc)
 	if (bmcr & BMCR_LOOP)
 		mii->mii_media_active |= IFM_LOOP;
 
-	pctl = PHY_READ(sc, MII_QSPHY_PCTL);
-	switch (pctl & PCTL_OPMASK) {
-	case PCTL_10_T:
-		mii->mii_media_active |= IFM_10_T;
-		break;
-	case PCTL_10_T_FDX:
-		mii->mii_media_active |= IFM_10_T|IFM_FDX;
-		break;
-	case PCTL_100_TX:
-		mii->mii_media_active |= IFM_100_TX;
-		break;
-	case PCTL_100_TX_FDX:
-		mii->mii_media_active |= IFM_100_TX|IFM_FDX;
-		break;
-	case PCTL_100_T4:
-		mii->mii_media_active |= IFM_100_T4;
-		break;
-	case PCTL_AN:
-		mii->mii_media_active |= IFM_NONE;
-		break;
-	default:
-		/* Erg... this shouldn't happen. */
-		mii->mii_media_active |= IFM_NONE;
-		break;
+	if (bmcr & BMCR_AUTOEN) {
+		if ((bmsr & BMSR_ACOMP) == 0) {
+			/* Erg, still trying, I guess... */
+			mii->mii_media_active |= IFM_NONE;
+			return;
+		}
+
+		pctl = PHY_READ(sc, MII_QSPHY_PCTL);
+		switch (pctl & PCTL_OPMASK) {
+		case PCTL_10_T:
+			mii->mii_media_active |= IFM_10_T;
+			break;
+		case PCTL_10_T_FDX:
+			mii->mii_media_active |= IFM_10_T|IFM_FDX;
+			break;
+		case PCTL_100_TX:
+			mii->mii_media_active |= IFM_100_TX;
+			break;
+		case PCTL_100_TX_FDX:
+			mii->mii_media_active |= IFM_100_TX|IFM_FDX;
+			break;
+		case PCTL_100_T4:
+			mii->mii_media_active |= IFM_100_T4;
+			break;
+		case PCTL_AN:
+			mii->mii_media_active |= IFM_NONE;
+			break;
+		default:
+			/* Erg... this shouldn't happen. */
+			mii->mii_media_active |= IFM_NONE;
+			break;
+		}
+	} else {
+		mii->mii_media_active = mii->mii_media.ifm_cur->ifm_media;
 	}
 }
 
-void
+static void
 qsphy_reset(struct mii_softc *sc)
 {
-
 	mii_phy_reset(sc);
 	PHY_WRITE(sc, MII_QSPHY_IMASK, 0);
 }

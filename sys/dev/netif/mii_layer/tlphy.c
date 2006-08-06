@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -103,15 +103,19 @@ struct tlphy_softc {
 
 static int tlphy_probe		(device_t);
 static int tlphy_attach		(device_t);
-static int tlphy_detach		(device_t);
 
 static device_method_t tlphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		tlphy_probe),
 	DEVMETHOD(device_attach,	tlphy_attach),
-	DEVMETHOD(device_detach,	tlphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc tlphys[] = {
+	MII_PHYDESC(xxTI,	TLAN10T),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t tlphy_devclass;
@@ -124,25 +128,23 @@ static driver_t tlphy_driver = {
 
 DRIVER_MODULE(tlphy, miibus, tlphy_driver, tlphy_devclass, 0, 0);
 
-int	tlphy_service (struct mii_softc *, struct mii_data *, int);
-int	tlphy_auto (struct tlphy_softc *, int);
-void	tlphy_acomp (struct tlphy_softc *);
-void	tlphy_status (struct tlphy_softc *);
+static int	tlphy_service(struct mii_softc *, struct mii_data *, int);
+static int	tlphy_auto(struct tlphy_softc *, int);
+static void	tlphy_acomp(struct tlphy_softc *);
+static void	tlphy_status(struct tlphy_softc *);
 
 static int
 tlphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;       
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) != MII_OUI_xxTI ||
-	    MII_MODEL(ma->mii_id2) != MII_MODEL_xxTI_TLAN10T)
-		return (ENXIO);
-
-	device_set_desc(dev, MII_STR_xxTI_TLAN10T);
-
-	return (0);
+	mpd = mii_phy_match(ma, tlphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
+	}
+	return (ENXIO);
 }
 
 static int
@@ -163,6 +165,7 @@ tlphy_attach(device_t dev)
 
 	sc->sc_mii.mii_inst = mii->mii_instance;
 	sc->sc_mii.mii_service = tlphy_service;
+	sc->sc_mii.mii_reset = mii_phy_reset;
 	sc->sc_mii.mii_pdata = mii;
 
 	if (mii->mii_instance) {
@@ -199,11 +202,8 @@ tlphy_attach(device_t dev)
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
 
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->sc_mii.mii_inst),
-	    BMCR_ISO);
-
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_LOOP,
-	    sc->sc_mii.mii_inst), BMCR_LOOP);
+	    sc->sc_mii.mii_inst), MII_MEDIA_10_T);
 
 #define	PRINT(s)	printf("%s%s", sep, s); sep = ", "
 
@@ -215,7 +215,10 @@ tlphy_attach(device_t dev)
 
 	if (sc->sc_mii.mii_capabilities & BMSR_MEDIAMASK) {
 		printf("%s", sep);
-		mii_add_media(&sc->sc_mii, sc->sc_mii.mii_capabilities);
+		mii_phy_add_media(&sc->sc_mii);
+	} else {
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->sc_mii.mii_inst),
+		    MII_MEDIA_NONE);
 	}
 
 	printf("\n");
@@ -226,20 +229,6 @@ tlphy_attach(device_t dev)
 }
 
 static int
-tlphy_detach(device_t dev)
-{
-	struct tlphy_softc	*sc;
-	struct mii_data		*mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	sc->sc_mii.mii_dev = NULL;
-	LIST_REMOVE(&sc->sc_mii, mii_list);
-
-	return(0);
-}
-
-int
 tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 {
 	struct tlphy_softc *sc = (struct tlphy_softc *)self;
@@ -282,7 +271,7 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 			 * an autonegotiation cycle, so there's no such
 			 * thing as "already in auto mode".
 			 */
-			(void) tlphy_auto(sc, 1);
+			tlphy_auto(sc, 1);
 			break;
 		case IFM_10_2:
 		case IFM_10_5:
@@ -293,9 +282,8 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 		default:
 			PHY_WRITE(&sc->sc_mii, MII_TLPHY_CTRL, 0);
 			DELAY(100000);
-			PHY_WRITE(&sc->sc_mii, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(&sc->sc_mii, MII_BMCR, ife->ifm_data);
+			mii_phy_set_media(&sc->sc_mii);
+			break;
 		}
 		break;
 
@@ -307,16 +295,16 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
+
+		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
@@ -331,9 +319,9 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only retry autonegotiation every 5 seconds.
+		 * Only retry autonegotiation every mii_anegticks seconds.
 		 */
-		if (++sc->sc_mii.mii_ticks != 5)
+		if (++sc->sc_mii.mii_ticks <= sc->sc_mii.mii_anegticks)
 			return (0);
 
 		sc->sc_mii.mii_ticks = 0;
@@ -347,15 +335,11 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 	tlphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->sc_mii.mii_active != mii->mii_media_active ||
-	    cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->sc_mii.mii_dev);
-		sc->sc_mii.mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(&sc->sc_mii, cmd);
 	return (0);
 }
 
-void
+static void
 tlphy_status(struct tlphy_softc *sc)
 {
 	struct mii_data *mii = sc->sc_mii.mii_pdata;
@@ -397,7 +381,7 @@ tlphy_status(struct tlphy_softc *sc)
 	mii->mii_media_active |= IFM_10_T;
 }
 
-int
+static int
 tlphy_auto(struct tlphy_softc *sc, int waitfor)
 {
 	int error;

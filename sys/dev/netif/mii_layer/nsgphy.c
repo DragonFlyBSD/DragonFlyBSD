@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.12 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.13 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -69,15 +69,19 @@
 
 static int nsgphy_probe		(device_t);
 static int nsgphy_attach	(device_t);
-static int nsgphy_detach	(device_t);
 
 static device_method_t nsgphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		nsgphy_probe),
 	DEVMETHOD(device_attach,	nsgphy_attach),
-	DEVMETHOD(device_detach,	nsgphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc nsgphys[] = {
+	MII_PHYDESC(NATSEMI,	DP83891),
+	MII_PHYDESC(NATSEMI,	DP83861),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t nsgphy_devclass;
@@ -90,30 +94,20 @@ static driver_t nsgphy_driver = {
 
 DRIVER_MODULE(nsgphy, miibus, nsgphy_driver, nsgphy_devclass, 0, 0);
 
-int	nsgphy_service (struct mii_softc *, struct mii_data *, int);
-void	nsgphy_status (struct mii_softc *);
-
-static int	nsgphy_mii_phy_auto (struct mii_softc *, int);
-extern void	mii_phy_auto_timeout (void *);
+static int	nsgphy_service(struct mii_softc *, struct mii_data *, int);
+static void	nsgphy_status(struct mii_softc *);
 
 static int
 nsgphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_NATSEMI) {
-		if (MII_MODEL(ma->mii_id2) == MII_MODEL_NATSEMI_DP83891) {
-			device_set_desc(dev, MII_STR_NATSEMI_DP83891);
-			return(0);
-		}
-		if (MII_MODEL(ma->mii_id2) == MII_MODEL_NATSEMI_DP83861) {
-			device_set_desc(dev, MII_STR_NATSEMI_DP83861);
-			return(0);
-		}
+	mpd = mii_phy_match(ma, nsgphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
 	}
-
 	return(ENXIO);
 }
 
@@ -123,7 +117,6 @@ nsgphy_attach(device_t dev)
 	struct mii_softc *sc;
 	struct mii_attach_args *ma;
 	struct mii_data *mii;
-	const char *sep = "";
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
@@ -134,66 +127,44 @@ nsgphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = nsgphy_service;
+	/*
+	 * Only retry autonegotiation every 17 seconds.
+	 * Actually, for gigE PHYs, we should wait longer, since
+	 * 5 seconds is the mimimum time the documentation
+	 * says to wait for a 1000mbps link to be established.
+	 */
+	sc->mii_anegticks = 17;
 	sc->mii_pdata = mii;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
 	mii->mii_instance++;
 
 #define	ADD(m, c)	ifmedia_add(&mii->mii_media, (m), (c), NULL)
-#define PRINT(s)	printf("%s%s", sep, s); sep = ", "
 
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
+	    MII_MEDIA_NONE);
 #if 0
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
+	    MII_MEDIA_100_TX);
 #endif
 
 	mii_phy_reset(sc);
 
+	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+        if (sc->mii_capabilities & BMSR_EXTSTAT)
+		sc->mii_extcapabilities = PHY_READ(sc, MII_EXTSR);
+
 	device_printf(dev, " ");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
-	    NSGPHY_S1000|NSGPHY_BMCR_FDX);
-	PRINT("1000baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
-	    NSGPHY_S1000);
-	PRINT("1000baseTX");
-	sc->mii_capabilities =
-	    (PHY_READ(sc, MII_BMSR) |
-	    (BMSR_10TFDX|BMSR_10THDX)) & ma->mii_capmask;
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_FDX, sc->mii_inst),
-	    NSGPHY_S100|NSGPHY_BMCR_FDX);
-	PRINT("100baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, 0, sc->mii_inst), NSGPHY_S100);
-	PRINT("100baseTX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, IFM_FDX, sc->mii_inst),
-	    NSGPHY_S10|NSGPHY_BMCR_FDX);
-	PRINT("10baseT-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_10_T, 0, sc->mii_inst), NSGPHY_S10);
-	PRINT("10baseT");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
-	PRINT("auto");
+	if ((sc->mii_capabilities & BMSR_MEDIAMASK) ||
+	    (sc->mii_extcapabilities & EXTSR_MEDIAMASK))
+		mii_phy_add_media(sc);
+	else
+		printf("no media present");
+
 	printf("\n");
 #undef ADD
-#undef PRINT
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-	return(0);
-}
-
-static int
-nsgphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	if (sc->mii_flags & MIIF_DOINGAUTO)
-		callout_stop(&sc->mii_auto_ch);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
 	return(0);
 }
 
@@ -230,60 +201,7 @@ nsgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			break;
 
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-#ifdef foo
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, NSGPHY_MII_BMCR) & NSGPHY_BMCR_AUTOEN)
-				return (0);
-#endif
-			(void) nsgphy_mii_phy_auto(sc, 0);
-			break;
-		case IFM_1000_T:
-			if ((ife->ifm_media & IFM_GMASK) == IFM_FDX) {
-				PHY_WRITE(sc, NSGPHY_MII_BMCR,
-				    NSGPHY_BMCR_FDX|NSGPHY_BMCR_SPD1);
-			} else {
-				PHY_WRITE(sc, NSGPHY_MII_BMCR,
-				    NSGPHY_BMCR_SPD1);
-			}
-			PHY_WRITE(sc, NSGPHY_MII_ANAR, NSGPHY_SEL_TYPE);
-
-			/*
-			 * When setting the link manually, one side must
-			 * be the master and the other the slave. However
-			 * ifmedia doesn't give us a good way to specify
-			 * this, so we fake it by using one of the LINK
-			 * flags. If LINK0 is set, we program the PHY to
-			 * be a master, otherwise it's a slave.
-			 */
-			if ((mii->mii_ifp->if_flags & IFF_LINK0)) {
-				PHY_WRITE(sc, NSGPHY_MII_1000CTL,
-				    NSGPHY_1000CTL_MSE|NSGPHY_1000CTL_MSC);
-			} else {
-				PHY_WRITE(sc, NSGPHY_MII_1000CTL,
-				    NSGPHY_1000CTL_MSE);
-			}
-			break;
-		case IFM_100_T4:
-			/*
-			 * XXX Not supported as a manual setting right now.
-			 */
-			return (EINVAL);
-		case IFM_NONE:
-			PHY_WRITE(sc, MII_BMCR, BMCR_ISO|BMCR_PDOWN);
-			break;
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR,
-			    mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
-			break;
-		}
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
@@ -293,39 +211,8 @@ nsgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
 
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+		if (mii_phy_tick(sc) == EJUSTRETURN)
 			return (0);
-
-		/*
-		 * Is the interface even up?
-		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
-			return (0);
-
-		/*
-		 * Only retry autonegotiation every 17 seconds.
-		 * Actually, for gigE PHYs, we should wait longer, since
-		 * 5 seconds is the mimimum time the documentation
-		 * says to wait for a 1000mbps link to be established.
-		 */
-		if (++sc->mii_ticks != 17)
-			return (0);
-		
-		sc->mii_ticks = 0;
-
-		/*
-		 * Check to see if we have link.
-		 */
-		reg = PHY_READ(sc, NSGPHY_MII_PHYSUP);
-		if (reg & NSGPHY_PHYSUP_LNKSTS)
-			break;
-
-		mii_phy_reset(sc);
-		if (nsgphy_mii_phy_auto(sc, 0) == EJUSTRETURN)
-			return(0);
 		break;
 	}
 
@@ -333,14 +220,11 @@ nsgphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	nsgphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 nsgphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -404,62 +288,4 @@ nsgphy_status(struct mii_softc *sc)
 		mii->mii_media_active |= IFM_FDX;
 	else
 		mii->mii_media_active |= IFM_HDX;
-
-	return;
-}
-
-
-static int
-nsgphy_mii_phy_auto(struct mii_softc *mii, int waitfor)
-{
-	int bmsr, ktcr = 0, i;
-
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		mii_phy_reset(mii);
-		PHY_WRITE(mii, NSGPHY_MII_BMCR, 0);
-		DELAY(1000);
-		ktcr = PHY_READ(mii, NSGPHY_MII_1000CTL);
-		PHY_WRITE(mii, NSGPHY_MII_1000CTL, ktcr |
-		    (NSGPHY_1000CTL_AFD|NSGPHY_1000CTL_AHD));
-		ktcr = PHY_READ(mii, NSGPHY_MII_1000CTL);
-		DELAY(1000);
-		PHY_WRITE(mii, NSGPHY_MII_ANAR, mii_bmsr_media_to_anar(mii));
-		DELAY(1000);
-		PHY_WRITE(mii, NSGPHY_MII_BMCR,
-		    NSGPHY_BMCR_AUTOEN | NSGPHY_BMCR_STARTNEG);
-	}
-
-	if (waitfor) {
-		/* Wait 500ms for it to complete. */
-		for (i = 0; i < 500; i++) {
-			if ((bmsr = PHY_READ(mii, NSGPHY_MII_BMSR)) &
-			    NSGPHY_BMSR_ACOMP)
-				return (0);
-			DELAY(1000);
-#if 0
-		if ((bmsr & BMSR_ACOMP) == 0)
-			printf("%s: autonegotiation failed to complete\n",
-			    mii->mii_dev.dv_xname);
-#endif
-		}
-
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag.
-		 */
-		return (EIO);
-	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		mii->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&mii->mii_auto_ch, hz >> 1,
-				mii_phy_auto_timeout, mii);
-	}
-	return (EJUSTRETURN);
 }

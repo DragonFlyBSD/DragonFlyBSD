@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsphyreg.h,v 1.2 1999/08/28 00:42:16 peter Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsphyreg.h,v 1.3 2006/08/06 10:32:23 sephe Exp $
  */
 
 #ifndef _DEV_MII_NSPHYREG_H_
@@ -61,6 +61,8 @@
 #define	PCR_DESCRTODIS		0x2000	/* descrambler t/o disable */
 #define	PCR_REPEATER		0x1000	/* repeater mode */
 #define	PCR_ENCSEL		0x0800	/* encoder mode select */
+#define PCR_TXREADYSEL		0x0400	/* use internal txrdy signal */
+#define PCR_CONGCTRL		0x0100	/* congestion control */
 #define	PCR_CLK25MDIS		0x0080	/* CLK25M disable */
 #define	PCR_FLINK100		0x0040	/* force good link in 100mbps */
 #define	PCR_CIMDIS		0x0020	/* carrier integrity monitor disable */

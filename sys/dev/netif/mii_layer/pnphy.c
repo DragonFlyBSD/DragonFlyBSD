@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.9 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.10 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -77,13 +77,12 @@
 
 static int pnphy_probe		(device_t);
 static int pnphy_attach		(device_t);
-static int pnphy_detach		(device_t);
 
 static device_method_t pnphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		pnphy_probe),
 	DEVMETHOD(device_attach,	pnphy_attach),
-	DEVMETHOD(device_detach,	pnphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
 };
@@ -98,8 +97,8 @@ static driver_t pnphy_driver = {
 
 DRIVER_MODULE(pnphy, miibus, pnphy_driver, pnphy_devclass, 0, 0);
 
-int	pnphy_service (struct mii_softc *, struct mii_data *, int);
-void	pnphy_status (struct mii_softc *);
+static int	pnphy_service(struct mii_softc *, struct mii_data *, int);
+static void	pnphy_status(struct mii_softc *);
 
 static int
 pnphy_probe(device_t dev)
@@ -151,13 +150,14 @@ pnphy_attach(device_t dev)
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
+
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
-	    BMCR_ISO);
+	    MII_MEDIA_NONE);
 
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100);
+	    MII_MEDIA_100_TX);
 
 #undef ADD
 
@@ -166,26 +166,9 @@ pnphy_attach(device_t dev)
 }
 
 static int
-pnphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return(0);
-}
-
-int
 pnphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
-	struct dc_softc		*dc_sc;
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
-
-	dc_sc = mii->mii_ifp->if_softc;
 
 	switch (cmd) {
 	case MII_POLLSTAT:
@@ -249,16 +232,16 @@ pnphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
+
+		/*
+		 * Only used for autonegotiation.
+		 */
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
 		return(0);
 	}
@@ -267,21 +250,16 @@ pnphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	pnphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 pnphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
+	struct dc_softc *dc_sc = mii->mii_ifp->if_softc;
 	int reg;
-	struct dc_softc		*dc_sc;
-
-	dc_sc = mii->mii_ifp->if_softc;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
@@ -297,6 +275,4 @@ pnphy_status(struct mii_softc *sc)
 		mii->mii_media_active |= IFM_100_TX;
 	if (CSR_READ_4(dc_sc, DC_NETCFG) & DC_NETCFG_FULLDUPLEX)
 		mii->mii_media_active |= IFM_FDX;
-
-	return;
 }

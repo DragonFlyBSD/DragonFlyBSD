@@ -1,7 +1,7 @@
-/*	$NetBSD: mii.c,v 1.12 1999/08/03 19:41:49 drochner Exp $	*/
+/*	$NetBSD: mii.c,v 1.40 2005/12/11 12:22:42 christos Exp $	*/
 
 /*-
- * Copyright (c) 1998 The NetBSD Foundation, Inc.
+ * Copyright (c) 1998, 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -96,6 +96,21 @@ driver_t miibus_driver = {
 };
 
 /*
+ * Check to see if there is a PHY at this address.  Note,
+ * many braindead PHYs report 0/0 in their ID registers,
+ * so we test for media in the BMSR.
+ */
+static __inline int
+miibus_no_phy(device_t dev, int phyno)
+{
+	int bmsr;
+
+	bmsr = MIIBUS_READREG(dev, phyno, MII_BMSR);
+	return (bmsr == 0 || bmsr == 0xffff ||
+		(bmsr & (BMSR_MEDIAMASK | BMSR_EXTSTAT)) == 0);
+}
+
+/*
  * Helper function used by network interface drivers, attaches PHYs
  * to the network interface driver parent.
  */
@@ -106,7 +121,7 @@ miibus_probe(device_t dev)
 	struct mii_attach_args	ma, *args;
 	struct mii_data		*mii;
 	device_t		child = NULL, parent;
-	int			bmsr, capmask = 0xFFFFFFFF;
+	int			capmask = 0xFFFFFFFF;
 
 	mii = device_get_softc(dev);
 	parent = device_get_parent(dev);
@@ -114,17 +129,8 @@ miibus_probe(device_t dev)
 	bzero(&ma, sizeof(ma));
 
 	for (ma.mii_phyno = 0; ma.mii_phyno < MII_NPHY; ma.mii_phyno++) {
-		/*
-		 * Check to see if there is a PHY at this address.  Note,
-		 * many braindead PHYs report 0/0 in their ID registers,
-		 * so we test for media in the BMSR.
-	 	 */
-		bmsr = MIIBUS_READREG(parent, ma.mii_phyno, MII_BMSR);
-		if (bmsr == 0 || bmsr == 0xffff ||
-		    (bmsr & BMSR_MEDIAMASK) == 0) {
-			/* Assume no PHY at this address. */
+		if (miibus_no_phy(parent, ma.mii_phyno))
 			continue;
-		}
 
 		/*
 		 * Extract the IDs. Braindead PHYs will be handled by
@@ -242,7 +248,7 @@ mii_phy_probe(device_t dev, device_t *child, ifm_change_cb_t ifmedia_upd,
 	      ifm_stat_cb_t ifmedia_sts)
 {
 	void			**v;
-	int			bmsr, i;
+	int			i;
 
 	v = malloc(sizeof(vm_offset_t) * 2, M_DEVBUF, M_INTWAIT);
 	v[0] = ifmedia_upd;
@@ -251,12 +257,7 @@ mii_phy_probe(device_t dev, device_t *child, ifm_change_cb_t ifmedia_upd,
 	device_set_ivars(*child, v);
 
 	for (i = 0; i < MII_NPHY; i++) {
-		bmsr = MIIBUS_READREG(dev, i, MII_BMSR);
-                if (bmsr == 0 || bmsr == 0xffff ||
-                    (bmsr & BMSR_MEDIAMASK) == 0) {
-                        /* Assume no PHY at this address. */
-                        continue;
-                } else
+		if (!miibus_no_phy(dev, i))
 			break;
 	}
 
@@ -324,4 +325,3 @@ mii_pollstat(struct mii_data *mii)
 static moduledata_t miibus_mod = { "miibus" };
 
 DECLARE_MODULE(miibus, miibus_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
-

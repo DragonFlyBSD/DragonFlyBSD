@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.8 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.9 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -60,15 +60,20 @@
 
 static int xmphy_probe		(device_t);
 static int xmphy_attach		(device_t);
-static int xmphy_detach		(device_t);
 
 static device_method_t xmphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		xmphy_probe),
 	DEVMETHOD(device_attach,	xmphy_attach),
-	DEVMETHOD(device_detach,	xmphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc xmphys[] = {
+	MII_PHYDESC(xxXAQTI,	XMACII),
+	MII_PHYDESC(JATO,	BASEX),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t xmphy_devclass;
@@ -81,32 +86,23 @@ static driver_t xmphy_driver = {
 
 DRIVER_MODULE(xmphy, miibus, xmphy_driver, xmphy_devclass, 0, 0);
 
-int	xmphy_service (struct mii_softc *, struct mii_data *, int);
-void	xmphy_status (struct mii_softc *);
+static int	xmphy_service(struct mii_softc *, struct mii_data *, int);
+static void	xmphy_status(struct mii_softc *);
 
-static int	xmphy_mii_phy_auto (struct mii_softc *, int);
-extern void	mii_phy_auto_timeout (void *);
+static int	xmphy_mii_phy_auto(struct mii_softc *, int);
 
 static int
 xmphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxXAQTI &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_XAQTI_XMACII) {
-		device_set_desc(dev, MII_STR_XAQTI_XMACII);
-		return(0);
+	mpd = mii_phy_match(ma, xmphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
+		return (0);
 	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_JATO &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_JATO_BASEX) {
-		device_set_desc(dev, MII_STR_JATO_BASEX);
-		return(0);
-	}
-
-	return(ENXIO);
+	return (ENXIO);
 }
 
 static int
@@ -126,6 +122,7 @@ xmphy_attach(device_t dev)
 
 	sc->mii_inst = mii->mii_instance;
 	sc->mii_service = xmphy_service;
+	sc->mii_reset = mii_phy_reset;
 	sc->mii_pdata = mii;
 
 	sc->mii_flags |= MIIF_NOISOLATE;
@@ -157,22 +154,6 @@ xmphy_attach(device_t dev)
 #undef PRINT
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-	return(0);
-}
-
-static int
-xmphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_parent(dev));
-	if (sc->mii_flags & MIIF_DOINGAUTO)
-		callout_stop(&sc->mii_auto_ch);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
 	return(0);
 }
 
@@ -217,7 +198,7 @@ xmphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			if (PHY_READ(sc, XMPHY_MII_BMCR) & XMPHY_BMCR_AUTOEN)
 				return (0);
 #endif
-			(void) xmphy_mii_phy_auto(sc, 1);
+			xmphy_mii_phy_auto(sc, 1);
 			break;
 		case IFM_1000_SX:
 			mii_phy_reset(sc);
@@ -245,24 +226,16 @@ xmphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			return (0);
 
 		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
 		 * Is the interface even up?
 		 */
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			return (0);
 
 		/*
-		 * Only retry autonegotiation every 5 seconds.
+		 * Only used for autonegotiation.
 		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
-		
-		sc->mii_ticks = 0;
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
+			break;
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
@@ -274,6 +247,14 @@ xmphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (reg & XMPHY_BMSR_LINK)
 			break;
 
+		/*
+		 * Only retry autonegotiation every mii_anegticks seconds.
+		 */
+		if (++sc->mii_ticks <= sc->mii_anegticks)
+			return (0);
+		
+		sc->mii_ticks = 0;
+
 		mii_phy_reset(sc);
 		if (xmphy_mii_phy_auto(sc, 0) == EJUSTRETURN)
 			return(0);
@@ -284,10 +265,7 @@ xmphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	xmphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
@@ -312,7 +290,6 @@ xmphy_status(struct mii_softc *sc)
 
 	if (bmcr & XMPHY_BMCR_LOOP)
 		mii->mii_media_active |= IFM_LOOP;
-
 
 	if (bmcr & XMPHY_BMCR_AUTOEN) {
 		if ((bmsr & XMPHY_BMSR_ACOMP) == 0) {
@@ -340,36 +317,29 @@ xmphy_status(struct mii_softc *sc)
 		mii->mii_media_active |= IFM_FDX;
 	else
 		mii->mii_media_active |= IFM_HDX;
-
-	return;
 }
 
 static int
-xmphy_mii_phy_auto(struct mii_softc *mii, int waitfor)
+xmphy_mii_phy_auto(struct mii_softc *sc, int waitfor)
 {
 	int bmsr, anar = 0, i;
 
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		anar = PHY_READ(mii, XMPHY_MII_ANAR);
-		anar |= XMPHY_ANAR_FDX|XMPHY_ANAR_HDX;
-		PHY_WRITE(mii, XMPHY_MII_ANAR, anar);
+	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		anar = PHY_READ(sc, XMPHY_MII_ANAR);
+		anar |= XMPHY_ANAR_FDX | XMPHY_ANAR_HDX;
+		PHY_WRITE(sc, XMPHY_MII_ANAR, anar);
 		DELAY(1000);
-		PHY_WRITE(mii, XMPHY_MII_BMCR,
+		PHY_WRITE(sc, XMPHY_MII_BMCR,
 		    XMPHY_BMCR_AUTOEN | XMPHY_BMCR_STARTNEG);
 	}
 
 	if (waitfor) {
 		/* Wait 500ms for it to complete. */
 		for (i = 0; i < 500; i++) {
-			if ((bmsr = PHY_READ(mii, XMPHY_MII_BMSR)) &
-			    XMPHY_BMSR_ACOMP)
+			bmsr = PHY_READ(sc, XMPHY_MII_BMSR);
+			if (bmsr & XMPHY_BMSR_ACOMP)
 				return (0);
 			DELAY(1000);
-#if 0
-		if ((bmsr & BMSR_ACOMP) == 0)
-			printf("%s: autonegotiation failed to complete\n",
-			    mii->mii_dev.dv_xname);
-#endif
 		}
 
 		/*
@@ -385,10 +355,10 @@ xmphy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 	 * the tick handler driving autonegotiation.  Don't want 500ms
 	 * delays all the time while the system is running!
 	 */
-	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
-		mii->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&mii->mii_auto_ch, hz >> 1, 
-				mii_phy_auto_timeout, mii);
+	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
+		sc->mii_flags |= MIIF_DOINGAUTO;
+		callout_reset(&sc->mii_auto_ch, hz >> 1, 
+			      mii_phy_auto_timeout, sc);
 	}
 	return (EJUSTRETURN);
 }

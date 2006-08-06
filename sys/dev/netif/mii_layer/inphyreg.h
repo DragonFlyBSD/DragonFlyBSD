@@ -26,11 +26,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mii/inphyreg.h,v 1.1.2.1 2001/05/13 00:16:08 jlemon Exp $
- *	$DragonFly: src/sys/dev/netif/mii_layer/inphyreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $FreeBSD: src/sys/dev/mii/inphyreg.h,v 1.1.2.1 2001/05/13 00:16:08 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/inphyreg.h,v 1.3 2006/08/06 10:32:23 sephe Exp $
  */
 
 #define MII_INPHY_SCR           0x10    /* status and control register */
 #define SCR_FLOWCTL		0x8000
+#define SCR_T4			0x0004
 #define SCR_S100		0x0002	/* autonegotiated speed */
 #define SCR_FDX			0x0001	/* autonegotiated duplex */

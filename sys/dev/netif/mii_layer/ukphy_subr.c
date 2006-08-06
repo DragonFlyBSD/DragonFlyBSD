@@ -1,4 +1,4 @@
-/*	$NetBSD: ukphy_subr.c,v 1.2 1998/11/05 04:08:02 thorpej Exp $	*/
+/*	$NetBSD: ukphy_subr.c,v 1.9 2005/12/11 12:22:42 christos Exp $	*/
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -36,8 +36,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mii/ukphy_subr.c,v 1.2.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.6 2005/12/11 01:54:08 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy_subr.c,v 1.7 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -67,7 +66,7 @@ void
 ukphy_status(struct mii_softc *phy)
 {
 	struct mii_data *mii = phy->mii_pdata;
-	int bmsr, bmcr, anlpar;
+	int bmsr, bmcr, anlpar, gtcr, gtsr;
 
 	mii->mii_media_status = IFM_AVALID;
 	mii->mii_media_active = IFM_ETHER;
@@ -99,26 +98,40 @@ ukphy_status(struct mii_softc *phy)
 		}
 
 		anlpar = PHY_READ(phy, MII_ANAR) & PHY_READ(phy, MII_ANLPAR);
-		if ((phy->mii_flags & MIIF_IS_1000X) && 
-		    (anlpar & ANLPAR_1000_FD))  {
-			mii->mii_media_active |= IFM_1000_T|IFM_FDX;
-		} else if ((phy->mii_flags & MIIF_IS_1000X) &&
-		    (anlpar & ANLPAR_1000)) {
-			mii->mii_media_active |= IFM_1000_T;
-		} else if (anlpar & ANLPAR_T4) {
-			mii->mii_media_active |= IFM_100_T4;
-		} else if (anlpar & ANLPAR_TX_FD) {
-			mii->mii_media_active |= IFM_100_TX|IFM_FDX;
-		} else if (anlpar & ANLPAR_TX) {
-			mii->mii_media_active |= IFM_100_TX;
-		} else if (anlpar & ANLPAR_10_FD) {
-			mii->mii_media_active |= IFM_10_T|IFM_FDX;
-		} else if (anlpar & ANLPAR_10) {
-			mii->mii_media_active |= IFM_10_T;
+		if ((phy->mii_flags & MIIF_HAVE_GTCR) != 0 &&
+		    (phy->mii_extcapabilities &
+		     (EXTSR_1000THDX | EXTSR_1000TFDX)) != 0) {
+			gtcr = PHY_READ(phy, MII_100T2CR);
+			gtsr = PHY_READ(phy, MII_100T2SR);
 		} else {
-			mii->mii_media_active |= IFM_NONE;
+			gtcr = gtsr = 0;
 		}
+
+		if ((gtcr & GTCR_ADV_1000TFDX) && (gtsr & GTSR_LP_1000TFDX))
+			mii->mii_media_active |= IFM_1000_T|IFM_FDX;
+		else if ((gtcr & GTCR_ADV_1000THDX) &&
+			 (gtsr & GTSR_LP_1000THDX))
+			mii->mii_media_active |= IFM_1000_T;
+		else if (anlpar & ANLPAR_T4)
+			mii->mii_media_active |= IFM_100_T4;
+		else if (anlpar & ANLPAR_TX_FD)
+			mii->mii_media_active |= IFM_100_TX|IFM_FDX;
+		else if (anlpar & ANLPAR_TX)
+			mii->mii_media_active |= IFM_100_TX;
+		else if (anlpar & ANLPAR_10_FD)
+			mii->mii_media_active |= IFM_10_T|IFM_FDX;
+		else if (anlpar & ANLPAR_10)
+			mii->mii_media_active |= IFM_10_T;
+		else
+			mii->mii_media_active |= IFM_NONE;
+
+		if ((mii->mii_media_active & IFM_1000_T) &&
+		    (gtsr & GTSR_MS_RES))
+			mii->mii_media_active |= IFM_ETH_MASTER;
+
+		if (mii->mii_media_active & IFM_FDX)
+			mii->mii_media_active |= mii_phy_flowstatus(phy);
 	} else {
-		mii->mii_media_active = mii_media_from_bmcr(bmcr);
+		mii->mii_media_active = mii->mii_media.ifm_cur->ifm_media;
 	}
 }

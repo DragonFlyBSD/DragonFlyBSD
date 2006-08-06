@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/mii/inphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- *	$DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.6 2005/10/24 16:55:40 dillon Exp $
+ * $FreeBSD: src/sys/dev/mii/inphy.c,v 1.14 2004/05/30 17:57:40 phk Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.7 2006/08/06 10:32:23 sephe Exp $
  */
 
 /*
@@ -53,15 +53,25 @@
 
 static int 	inphy_probe(device_t dev);
 static int 	inphy_attach(device_t dev);
-static int 	inphy_detach(device_t dev);
+static int	inphy_service(struct mii_softc *, struct mii_data *, int);
+static void	inphy_status(struct mii_softc *);
 
 static device_method_t inphy_methods[] = {
 	/* device interface */
 	DEVMETHOD(device_probe,		inphy_probe),
 	DEVMETHOD(device_attach,	inphy_attach),
-	DEVMETHOD(device_detach,	inphy_detach),
+	DEVMETHOD(device_detach,	ukphy_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	{ 0, 0 }
+};
+
+static const struct mii_phydesc inphys[] = {
+	MII_PHYDESC(xxINTEL,	I82553AB),	/* Intel 82553 A/B steppings */
+	MII_PHYDESC(INTEL,	I82555),
+	MII_PHYDESC(INTEL,	I82553C),
+	MII_PHYDESC(INTEL,	I82562EM),
+	MII_PHYDESC(INTEL,	I82562ET),
+	MII_PHYDESC_NULL
 };
 
 static devclass_t inphy_devclass;
@@ -74,43 +84,17 @@ static driver_t inphy_driver = {
 
 DRIVER_MODULE(inphy, miibus, inphy_driver, inphy_devclass, 0, 0);
 
-int	inphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd);
-void	inphy_status(struct mii_softc *sc);
-
-
 static int
 inphy_probe(device_t dev)
 {
-	struct mii_attach_args *ma;
-	device_t parent;
+	struct mii_attach_args *ma = device_get_ivars(dev);
+	const struct mii_phydesc *mpd;
 
-	ma = device_get_ivars(dev);
-	parent = device_get_parent(device_get_parent(dev));
-
-	/* Intel 82553 A/B steppings */
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_xxINTEL &&
-	    MII_MODEL(ma->mii_id2) == MII_MODEL_xxINTEL_I82553AB) {
-		device_set_desc(dev, MII_STR_xxINTEL_I82553AB);
+	mpd = mii_phy_match(ma, inphys);
+	if (mpd != NULL) {
+		device_set_desc(dev, mpd->mpd_name);
 		return (0);
 	}
-
-	if (MII_OUI(ma->mii_id1, ma->mii_id2) == MII_OUI_INTEL) {
-		switch (MII_MODEL(ma->mii_id2)) {
-		case MII_MODEL_INTEL_I82555:
-			device_set_desc(dev, MII_STR_INTEL_I82555);
-			return (0);
-		case MII_MODEL_INTEL_I82553C:
-			device_set_desc(dev, MII_STR_INTEL_I82553C);
-			return (0);
-		case MII_MODEL_INTEL_I82562EM:
-			device_set_desc(dev, MII_STR_INTEL_I82562EM);
-			return (0);
-		case MII_MODEL_INTEL_I82562ET:
-			device_set_desc(dev, MII_STR_INTEL_I82562ET);
-			return (0);
-		}
-	}
-
 	return (ENXIO);
 }
 
@@ -139,39 +123,24 @@ inphy_attach(device_t dev)
 
 	ifmedia_add(&mii->mii_media,
 	    IFM_MAKEWORD(IFM_ETHER, IFM_100_TX, IFM_LOOP, sc->mii_inst),
-	    BMCR_LOOP|BMCR_S100, NULL);
+	    MII_MEDIA_100_TX, NULL);
 
 	mii_phy_reset(sc);
 
 	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
+
 	device_printf(dev, " ");
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else
-		mii_add_media(sc, sc->mii_capabilities);
+		mii_phy_add_media(sc);
 	printf("\n");
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
-
 	return (0);
 }
 
 static int
-inphy_detach(device_t dev)
-{
-	struct mii_softc *sc;
-	struct mii_data *mii;
-
-	sc = device_get_softc(dev);
-	mii = device_get_softc(device_get_softc(dev));
-	mii_phy_auto_stop(sc);
-	sc->mii_dev = NULL;
-	LIST_REMOVE(sc, mii_list);
-
-	return (0);
-}
-
-int
 inphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 {
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
@@ -196,62 +165,14 @@ inphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
 			break;
 
-		switch (IFM_SUBTYPE(ife->ifm_media)) {
-		case IFM_AUTO:
-			/*
-			 * If we're already in auto mode, just return.
-			 */
-			if (PHY_READ(sc, MII_BMCR) & BMCR_AUTOEN)
-				return (0);
-			(void) mii_phy_auto(sc, 0);
-			break;
-		case IFM_100_T4:
-			/*
-			 * XXX Not supported as a manual setting right now.
-			 */
-			return (EINVAL);
-		default:
-			/*
-			 * BMCR data is stored in the ifmedia entry.
-			 */
-			PHY_WRITE(sc, MII_ANAR, mii_anar(ife->ifm_media));
-			PHY_WRITE(sc, MII_BMCR, ife->ifm_data);
-		}
+		mii_phy_set_media(sc);
 		break;
 
 	case MII_TICK:
 		if (IFM_INST(ife->ifm_media) != sc->mii_inst)
 			return (0);
 
-		/*
-		 * Is the interface even up?
-		 */
-		if ((mii->mii_ifp->if_flags & IFF_UP) == 0)
-			return (0);
-
-		/*
-		 * Only used for autonegotiation.
-		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
-			return (0);
-
-		/*
-		 * check for link.
-        	 * Read the status register twice; BMSR_LINK is latch-low.
-		 */
-        	reg = PHY_READ(sc, MII_BMSR) | PHY_READ(sc, MII_BMSR);
-		if (reg & BMSR_LINK)
-	                return (0);
-
-		/*
-		 * Only retry autonegotiation every 5 seconds.
-		 */
-		if (++sc->mii_ticks != 5)
-			return (0);
-
-		sc->mii_ticks = 0;
-		mii_phy_reset(sc);
-		if (mii_phy_auto(sc, 0) == EJUSTRETURN)
+		if (mii_phy_tick(sc) == EJUSTRETURN)
 			return (0);
 		break;
 	}
@@ -260,14 +181,11 @@ inphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 	inphy_status(sc);
 
 	/* Callback if something changed. */
-	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {
-		MIIBUS_STATCHG(sc->mii_dev);
-		sc->mii_active = mii->mii_media_active;
-	}
+	mii_phy_update(sc, cmd);
 	return (0);
 }
 
-void
+static void
 inphy_status(struct mii_softc *sc)
 {
 	struct mii_data *mii = sc->mii_pdata;
@@ -297,12 +215,15 @@ inphy_status(struct mii_softc *sc)
 		}
 
 		scr = PHY_READ(sc, MII_INPHY_SCR);
-		if (scr & SCR_S100)
+		if ((bmsr & BMSR_100T4) && (scr & SCR_T4))
+			mii->mii_media_active |= IFM_100_T4;
+		else if (scr & SCR_S100)
 			mii->mii_media_active |= IFM_100_TX;
 		else
 			mii->mii_media_active |= IFM_10_T;
 		if (scr & SCR_FDX)
 			mii->mii_media_active |= IFM_FDX;
-	} else
-		mii->mii_media_active |= mii_media_from_bmcr(bmcr);
+	} else {
+		mii->mii_media_active = mii->mii_media.ifm_cur->ifm_media;
+	}
 }
