@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.1 2006/08/01 16:21:19 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.2 2006/08/06 18:56:46 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -137,6 +137,7 @@ struct syslink_msg {
 	/* one or more embedded syslink_item structures */
 };
 
+#define SLMSG_ALIGN(bytes)	(((bytes) + 7) & ~7)
 #define SLMSGF_RESPONSE	((sl_msgid_t)0x80000000)
 
 /*

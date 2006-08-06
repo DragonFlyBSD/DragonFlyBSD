@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.40 2006/06/13 21:04:16 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.41 2006/08/06 18:56:44 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -658,3 +658,4 @@
 				int bytes); }
 482	STD	BSD	{ int __accept(int s, int flags, caddr_t name, int *anamelen); }
 483	STD	BSD	{ int __connect(int s, int flags, caddr_t name, int namelen); }
+484	STD	BSD	{ int syslink(int fd, int cmd, sysid_t *mask, sysid_t *match); }

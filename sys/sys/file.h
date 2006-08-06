@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.22 2006/08/02 01:25:27 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.23 2006/08/06 18:56:46 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -121,6 +121,7 @@ struct file {
 #define	DTYPE_FIFO	4	/* fifo (named pipe) */
 #define	DTYPE_KQUEUE	5	/* event queue */
 #define DTYPE_CRYPTO	6	/* crypto */
+#define DTYPE_SYSLINK	7	/* syslink */
 
 LIST_HEAD(filelist, file);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink.h,v 1.2 2006/08/01 16:21:19 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink.h,v 1.3 2006/08/06 18:56:46 dillon Exp $
  */
 
 /*
@@ -205,7 +205,7 @@ typedef struct syslink_proto *syslink_proto_t;
 typedef struct syslink_generic_args *syslink_generic_args_t;
 
 #if !defined(_KERNEL)
-int syslink(int, int, sysid_t, sysid_t);
+int syslink(int, int, sysid_t *, sysid_t *);
 #endif
 
 #endif

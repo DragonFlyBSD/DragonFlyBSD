@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.15 2006/06/30 20:41:08 eirikn Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.16 2006/08/06 18:56:44 dillon Exp $
 
 set -e
 
@@ -134,6 +134,7 @@ s/\$//g
 		printf "#include <sys/acl.h>\n\n" > sysarg
 		printf "#include <sys/msgport.h>\n\n" > sysarg
 		printf "#include <sys/sysmsg.h>\n\n" > sysarg
+		printf "#include <sys/syslink.h>\n\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
 
