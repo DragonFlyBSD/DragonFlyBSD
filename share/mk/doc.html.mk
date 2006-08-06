@@ -1,5 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.html.mk,v 1.1.1.1 2004/04/02 09:36:34 hmp Exp $
+# $DragonFly: doc/share/mk/doc.html.mk,v 1.2 2006/08/06 20:58:06 justin Exp $
 #
 # This include file <doc.html.mk> handles building and installing of
 # HTML documentation in the DragonFlyBSD Documentation Project.
@@ -67,6 +67,8 @@ PKG_CREATE?=	/usr/sbin/pkg_create
 TAR?=		/usr/bin/tar
 XARGS?=		/usr/bin/xargs
 
+# for now disable TIDY for compatibility reasons
+NO_TIDY=	YES
 TIDY?=		${PREFIX}/bin/tidy
 TIDYOPTS?=	-i -m -raw -preserve -f /dev/null -asxml ${TIDYFLAGS}
 HTML2PDB?=	${PREFIX}/bin/iSiloBSD

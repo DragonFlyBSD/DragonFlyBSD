@@ -1,7 +1,7 @@
 <!--
      Names of DragonFly mailing lists and related software.
 
-     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.9 2006/07/18 03:44:23 justin Exp $
+     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.10 2006/08/06 20:58:06 justin Exp $
 -->
 
 <!ENTITY a.bugs.url "http://leaf.dragonflybsd.org/mailarchive/">
@@ -77,3 +77,6 @@
 <!ENTITY a.netbsd.tech-pkgsrc"<ulink url='&a.netbsd.tech-pkgsrc.url;'>NetBSD pkgsrc users mailing list</ulink>">
 <!ENTITY a.netbsd.pkgsrc-bugs.name "<ulink url='&a.netbsd.tech-pkgsrc.url;'>tech-pkgsrc</ulink>">
 
+<!-- needed for compiling arch handbook -->
+<!ENTITY a.smp "<ulink url='http://lists.freebsd.org/mailman/listinfo/freebsd-smp'>FreeBSD symmetric multiprocessing mailing list</ulink>">
+<!ENTITY a.doc "&a.docs">

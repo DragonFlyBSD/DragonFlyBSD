@@ -1,5 +1,5 @@
 #
-# $DragonFly: doc/share/mk/doc.images.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
+# $DragonFly: doc/share/mk/doc.images.mk,v 1.3 2006/08/06 20:58:06 justin Exp $
 #
 # This include file <doc.images.mk> handles image processing.
 #
@@ -122,20 +122,31 @@ LOCAL_IMAGES_TXT+= ${IMAGES_SCR_TXT}
 # low for the typical monitor in use today. The resolution of 100 looks
 # much better on these monitors without making the image too large for
 # a 640x480 monitor.
-EPS2PNG_RES?= 100
+EPS2PNM_RES?= 100
 
-# We only need to list ${IMAGES_GEN_PDF} here.  If all the source files are
-# EPS then they'll be in this variable; if any of the source files are PNG
-# then we can use them directly, and don't need to list them.
-IMAGES_PDF=${IMAGES_GEN_PDF}
+# We need to list ${_IMAGES_PNG} here since the images might be in a
+# shared image directory.
+IMAGES_PDF= ${IMAGES_GEN_PDF} ${_IMAGES_PNG}
 
 SCR2PNG?=	${PREFIX}/bin/scr2png
 SCR2PNGOPTS?=	${SCR2PNGFLAGS}
 SCR2TXT?=	${PREFIX}/bin/scr2txt
 SCR2TXTOPTS?=	-l ${SCR2TXTFLAGS}
 SED?=		/usr/bin/sed
-EPS2PNG?=	${PREFIX}/bin/peps
-EPS2PNGOPTS?=	-p -r ${EPS2PNG_RES} ${EPS2PNGFLAGS}
+EPS2PNM?=	${PREFIX}/bin/gs
+EPS2PNMOPTS?=	-q -dBATCH -dGraphicsAlphaBits=4 -dTextAlphaBits=4 \
+		-dEPSCrop -r${EPS2PNM_RES}x${EPS2PNM_RES} \
+		-dNOPAUSE -dSAFER -sDEVICE=pnm -sOutputFile=-
+
+# epsgeom is a perl script for 1) extracting geometry information
+# from a .eps file and 2) arrange it for ghostscript's pnm driver.
+#
+EPSGEOM?=	${PERL} ${DOC_PREFIX}/share/misc/epsgeom
+EPSGEOMOPTS?=	${EPS2PNM_RES} ${EPS2PNM_RES}
+PNMTOPNG?=	${PREFIX}/bin/pnmtopng
+PNMTOPNGOPTS?=	${PNGTOPNGFLAGS}
+
+
 PNGTOPNM?=	${PREFIX}/bin/pngtopnm
 PNGTOPNMOPTS?=	${PNGTOPNMFLAGS}
 PPMTOPGM?=	${PREFIX}/bin/ppmtopgm
@@ -152,9 +163,6 @@ PS2EPSOPTS?=	-q -dNOPAUSE -dSAFER -dDELAYSAFER \
 		-sPAPERSIZE=letter -r72 -sDEVICE=bit \
 		-sOutputFile=/dev/null ${PS2EPSFLAGS} ps2epsi.ps
 #
-SETENV?=	/usr/bin/env
-REALPATH?=	/bin/realpath
-
 # Use suffix rules to convert .scr files to other formats
 .SUFFIXES:	.scr .pic .png .ps .eps .txt
 
@@ -181,12 +189,12 @@ REALPATH?=	/bin/realpath
 .scr.txt:
 	${SCR2TXT} ${SCR2TXTOPTS} < ${.IMPSRC} | ${SED} -E -e 's/ +$$//' > ${.TARGET}
 
-# Some versions of ghostscript (7.04) have problems with the use of
-# relative path when the arguments are passed by peps; realpath will
-# correct the problem.
 .pic.png: ${.TARGET:S/.png$/.eps/}
-	${EPS2PNG} ${EPS2PNGOPTS} -o ${.TARGET} \
-	`${REALPATH} ${.TARGET:S/.png$/.eps/}`
+	${EPSGEOM} -offset ${EPSGEOMOPTS} ${.TARGET:S/.png$/.eps/} \
+	| ${EPS2PNM} ${EPS2PNMOPTS} \
+	-g`${EPSGEOM} -geom ${EPSGEOMOPTS} ${.TARGET:S/.png$/.eps/}` - \
+	| ${PNMTOPNG} > ${.TARGET}
+	
 
 .pic.ps:
 	${PIC2PS} ${.ALLSRC} > ${.TARGET}
@@ -199,18 +207,21 @@ REALPATH?=	/bin/realpath
 # bounding box.
 .ps.eps:
 	${SETENV} outfile=${.TARGET} ${PS2EPS} ${PS2EPSOPTS} < ${.ALLSRC} 1>&2
-	echo "save countdictstack mark newpath /showpage {} def /setpagedevice {pop} def" >> ${.TARGET}
-	echo "%%EndProlog" >> ${.TARGET}
-	echo "%%Page: 1 1" >> ${.TARGET}
-	echo "%%BeginDocument: ${.ALLSRC}" >> ${.TARGET}
+	(echo "save countdictstack mark newpath /showpage {} def /setpagedevice {pop} def";\
+		echo "%%EndProlog";\
+		echo "%%Page: 1 1";\
+		echo "%%BeginDocument: ${.ALLSRC}";\
+	) >> ${.TARGET}
 	${SED}	-e '/^%%BeginPreview:/,/^%%EndPreview[^!-~]*$$/d' \
 		-e '/^%!PS-Adobe/d' \
 		-e '/^%%[A-Za-z][A-Za-z]*[^!-~]*$$/d'\
 		-e '/^%%[A-Za-z][A-Za-z]*: /d' < ${.ALLSRC} >> ${.TARGET}
-	echo "%%EndDocument" >> ${.TARGET}
-	echo "%%Trailer" >> ${.TARGET}
-	echo "cleartomark countdictstack exch sub { end } repeat restore" >> ${.TARGET}
-	echo "%%EOF" >> ${.TARGET}
+	(echo "%%EndDocument";\
+		echo "%%Trailer";\
+		echo "cleartomark countdictstack exch sub { end } repeat restore";\
+		echo "%%EOF";\
+	) >> ${.TARGET}
+
 
 # We can't use suffix rules to generate the rules to convert EPS to PNG and
 # PNG to EPS.  This is because a .png file can depend on a .eps file, and
@@ -219,7 +230,10 @@ REALPATH?=	/bin/realpath
 
 .for _curimage in ${IMAGES_GEN_PNG}
 ${_curimage}: ${_curimage:S/.png$/.eps/}
-	${EPS2PNG} ${EPS2PNGOPTS} -o ${.TARGET} `${REALPATH} ${.ALLSRC}`
+	${EPSGEOM} -offset ${EPSGEOMOPTS} ${.ALLSRC} \
+		| ${EPS2PNM} ${EPS2PNMOPTS} \
+		-g`${EPSGEOM} -geom ${EPSGEOMOPTS} ${.ALLSRC}` - \
+		| ${PNMTOPNG} > ${.TARGET}
 .endfor
 
 .for _curimage in ${IMAGES_GEN_EPS}

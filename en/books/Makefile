@@ -1,6 +1,6 @@
-# $DragonFly: doc/en/books/Makefile,v 1.1.1.1 2004/04/02 09:35:47 hmp Exp $
+# $DragonFly: doc/en/books/Makefile,v 1.2 2006/08/06 20:58:05 justin Exp $
 
-SUBDIR = arch-handbook
+SUBDIR = handbook arch-handbook
 
 #
 # ROOT_SYMLINKS allow one to add symlinks at the root of the

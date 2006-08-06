@@ -1,5 +1,7 @@
 #
-# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
+# $DragonFly: doc/share/mk/doc.docbook.mk,v 1.3 2006/08/06 20:58:06 justin Exp $
+# matches with:
+# $FreeBSD: doc/share/mk/doc.docbook.mk,v 1.117 2004/09/02 17:12:14 murray Exp $
 #
 # This include file <doc.docbook.mk> handles building and installing of
 # DocBook documentation in the DragonFlyBSD Documentation Project.
@@ -13,7 +15,7 @@
 # Document-specific variables
 #
 #	DOC		This should be set to the name of the DocBook
-#			marked-up file, without the .sgml or .docb suffix.
+#			marked-up file, without the .sgml suffix.
 #			
 #			It also determins the name of the output files -
 #			${DOC}.html.
@@ -58,6 +60,12 @@
 #	CSS_SHEET	Full path to a CSS stylesheet suitable for DocBook.
 #			Default is ${DOC_PREFIX}/share/misc/docbook.css
 #
+#
+#	SPELLCHECK	Use the special spellcheck.dsl stylesheet to render
+#			HTML that is suitable for processing through a 
+#			spellchecker.  For example, PGP keys and filenames
+#			will be ommitted from this output.
+#
 # Print-output options :
 #
 #       NICE_HEADERS    If defined, customized chapter headers will be created
@@ -97,6 +105,13 @@
 #       GREYSCALE_IMAGES Convert the screenshots to greyscale before
 #                        embedding them into the PostScript output.
 #
+# Package building options:
+# 
+#       BZIP2_PACKAGE  Use bzip2(1) utility to compress package tarball
+#                      instead of gzip(1).  It results packages to have
+#                      suffix .tbz instead of .tgz.  Using bzip2(1)
+#                      provides better compression, but requires longer
+#                      time and utilizes more CPU resources than gzip(1).
 
 #
 # Documents should use the += format to access these.
@@ -106,11 +121,18 @@ DOCBOOKSUFFIX?= sgml
 
 MASTERDOC?=	${.CURDIR}/${DOC}.${DOCBOOKSUFFIX}
 
+# List of supported SP_ENCODINGs
+SP_ENCODING_LIST?=	ISO-8859-2 KOI8-R
+
 # Which stylesheet type to use.  'dsssl' or 'xsl'
 STYLESHEET_TYPE?=	dsssl
 
 .if ${MACHINE_ARCH} != "i386"
 OPENJADE=	yes
+.endif
+
+.if defined(SPELLCHECK)
+DSLHTML?= ${DOC_PREFIX}/share/sgml/spellcheck.dsl
 .endif
 
 .if defined(OPENJADE)
@@ -127,6 +149,11 @@ NSGMLSWARNINGS=	-wempty -wunclosed
 SX?=		${PREFIX}/bin/sx
 .endif
 
+.if defined(SP_ENCODING)
+JADE_ENV+=	SP_ENCODING=${SP_ENCODING}
+.endif
+JADE_CMD=	${SETENV} ${JADE_ENV} ${JADE}
+
 DSLHTML?=	${DOC_PREFIX}/share/sgml/default.dsl
 DSLPRINT?=	${DOC_PREFIX}/share/sgml/default.dsl
 DSLPGP?=	${DOC_PREFIX}/share/sgml/pgp.dsl
@@ -136,17 +163,17 @@ LANGUAGECATALOG=${DOC_PREFIX}/${LANGCODE}/share/sgml/catalog
 ISO8879CATALOG=	${PREFIX}/share/sgml/iso8879/catalog
 
 .if ${STYLESHEET_TYPE} == "dsssl"
-DOCBOOKCATALOG=	${PREFIX}/share/sgml/docbook/catalog
+DOCBOOKCATALOG=	${PREFIX}/share/sgml/docbook/4.1/catalog
 .elif ${STYLESHEET_TYPE} == "xsl"
 DOCBOOKCATALOG= ${PREFIX}/share/xml/docbook/catalog
 .endif
 
-CATALOG_PORTS_SGML=	${PREFIX}/share/sgml/catalog.ports
+CATALOG_PORTS_SGML=	${PREFIX}/share/sgml/catalog
 
 DSSSLCATALOG=	${PREFIX}/share/sgml/docbook/dsssl/modular/catalog
 COLLATEINDEX=	${PREFIX}/share/sgml/docbook/dsssl/modular/bin/collateindex.pl
 
-XSLTPROC?=	${PREFIX}/bin/xsltproc
+XSLTPROCFLAGS?=        --nonet
 XSLHTML?=	${DOC_PREFIX}/share/xsl/dragonfly-html.xsl
 XSLHTMLCHUNK?=	${DOC_PREFIX}/share/xsl/dragonfly-html-chunk.xsl
 XSLFO?=		${DOC_PREFIX}/share/xsl/dragonfly-fo.xsl
@@ -164,13 +191,15 @@ JADEOPTS=	${JADEFLAGS} ${SGMLFLAGS} ${CATALOGS}
 XSLTPROCOPTS=	${XSLTPROCFLAGS}
 
 KNOWN_FORMATS=	html html.tar html-split html-split.tar \
-		txt rtf ps pdf tex dvi tar pdb
+		txt rtf rtf.tar ps pdf tex dvi tar pdb
 
 CSS_SHEET?=	${DOC_PREFIX}/share/misc/docbook.css
 PDFTEX_DEF?=	${DOC_PREFIX}/share/web2c/pdftex.def
 PDF_GENINFO?=	${DOC_PREFIX}/share/web2c/pdf_geninfo.sh
 
 HTMLOPTS?=	-ioutput.html -d ${DSLHTML} ${HTMLFLAGS}
+
+HTMLTXTOPTS?=  -ioutput.html -d ${DSLHTML} ${HTMLTXTFLAGS}
 
 PRINTOPTS?=	-ioutput.print -d ${DSLPRINT} ${PRINTFLAGS}
 
@@ -183,12 +212,12 @@ JUSTIFY=1
 #GEN_INDEX=1
 .endif
 .if defined(JUSTIFY)
-TEXCMDS+=	\RequirePackage{url}
+TEX_CMDSEQ+=	\RequirePackage{url}
 PRINTOPTS+=	-ioutput.print.justify
 .endif
 .if defined(TWO_SIDE)
 PRINTOPTS+=	-V %two-side% -ioutput.print.twoside
-TEXCMDS+=	\def\PageTwoSide{1}
+TEX_CMDSEQ+=	\def\PageTwoSide{1}
 .endif
 .if defined(NICE_HEADERS)
 PRINTOPTS+=    -ioutput.print.niceheaders
@@ -197,7 +226,7 @@ PRINTOPTS+=    -ioutput.print.niceheaders
 PRINTOPTS+=    -V minimal-section-labels
 .endif
 .if defined(TRACE)
-TEXCMDS+=	\tracingstats=${TRACE}
+TEX_CMDSEQ+=	\tracingstats=${TRACE}
 .endif
 .if defined(RLE)
 PNMTOPSFLAGS+=	-rle
@@ -224,20 +253,14 @@ HTMLFLAGS+=	-V %show-all-trademark-symbols%
 PRINTFLAGS+=	-V %show-all-trademark-symbols%
 .endif
 
-PERL?=		/usr/bin/perl
+PERL?=		${PREFIX}/bin/perl
 PKG_CREATE?=	/usr/sbin/pkg_create
 SORT?=		/usr/bin/sort
 TAR?=		/usr/bin/tar
 TOUCH?=		/usr/bin/touch
 XARGS?=		/usr/bin/xargs
 
-TEX?=		${PREFIX}/bin/tex
-LATEX?=		${PREFIX}/bin/latex
-PDFTEX?=	${PREFIX}/bin/pdflatex
-JADETEX?=	${TEX} "&jadetex"
-PDFJADETEX?=	${PDFTEX} "&pdfjadetex"
 GROFF?=		groff
-TIDY?=		${PREFIX}/bin/tidy
 TIDYOPTS?=	-wrap 90 -m -raw -preserve -f /dev/null -asxml ${TIDYFLAGS}
 HTML2TXT?=	${PREFIX}/bin/links
 HTML2TXTOPTS?=	-dump ${HTML2TXTFLAGS}
@@ -245,8 +268,9 @@ HTML2PDB?=	${PREFIX}/bin/iSiloBSD
 HTML2PDBOPTS?=	-y -d0 -Idef ${HTML2PDBFLAGS}
 DVIPS?=		${PREFIX}/bin/dvips
 .if defined(PAPERSIZE)
-DVIPSOPTS?=	-t ${PAPERSIZE:L} ${DVIPSFLAGS}
+DVIPSOPTS?=	-t ${PAPERSIZE:L}
 .endif
+DVIPSOPTS+=	${DVIPSFLAGS}
 
 GZIP?=	-9
 GZIP_CMD?=	gzip -qf ${GZIP}
@@ -254,6 +278,13 @@ BZIP2?=	-9
 BZIP2_CMD?=	bzip2 -qf ${BZIP2}
 ZIP?=	-9
 ZIP_CMD?=	${PREFIX}/bin/zip -j ${ZIP}
+
+#
+# Instruction for bsd.subdir.mk to not to process SUBDIR directive.
+# It is not neccessary since doc.docbook.mk do it too.
+#
+NO_SUBDIR=      YES
+
 
 # ------------------------------------------------------------------------
 #
@@ -431,7 +462,7 @@ all: ${_docs}
 
 .if !defined(CUSTOMIZED_XML)
 ${DOC}.xml: ${SRCS}
-	echo '<!DOCTYPE book SYSTEM "/usr/local/share/xml/docbook/4.2/docbookx.dtd">' > ${DOC}.xml
+	echo '<!DOCTYPE book SYSTEM "/usr/pkg/share/xml/docbook/4.2/docbookx.dtd">' > ${DOC}.xml
 	${SX} -xlower -xndata ${MASTERDOC} 2> .sxerr | tail -n +2 >> ${DOC}.xml 
 	@-grep -v 'reference to internal SDATA entity' .sxerr
 .endif
@@ -447,7 +478,7 @@ XSLTPROCFLAGS?=
 .if ${STYLESHEET_TYPE} == "dsssl"
 index.html HTML.manifest: ${SRCS} ${LOCAL_IMAGES_LIB} ${LOCAL_IMAGES_PNG} \
 			  ${LOCAL_IMAGES_TXT} ${INDEX_SGML} ${HTML_SPLIT_INDEX} ${LOCAL_CSS_SHEET}
-	${JADE} -V html-manifest ${HTMLOPTS} -ioutput.html.images \
+	${JADE_CMD} -V html-manifest ${HTMLOPTS} -ioutput.html.images \
 		${JADEOPTS} -t sgml ${MASTERDOC}
 .elif ${STYLESHEET_TYPE} == "xsl"
 index.html: ${DOC}.xml ${LOCAL_IMAGES_LIB} ${LOCAL_IMAGES_PNG} \
@@ -464,7 +495,7 @@ index.html: ${DOC}.xml ${LOCAL_IMAGES_LIB} ${LOCAL_IMAGES_PNG} \
 .if ${STYLESHEET_TYPE} == "dsssl"
 ${DOC}.html: ${SRCS} ${LOCAL_IMAGES_LIB} ${LOCAL_IMAGES_PNG} \
 	     ${LOCAL_IMAGES_TXT} ${INDEX_SGML} ${HTML_INDEX} ${LOCAL_CSS_SHEET}
-	${JADE} -V nochunks ${HTMLOPTS} -ioutput.html.images \
+	${JADE_CMD} -V nochunks ${HTMLOPTS} -ioutput.html.images \
 		${JADEOPTS} -t sgml ${MASTERDOC} > ${.TARGET} || \
 		(${RM} -f ${.TARGET} && false)
 .elif ${STYLESHEET_TYPE} == "xsl"
@@ -482,7 +513,7 @@ ${DOC}.html: ${DOC}.xml ${LOCAL_IMAGES_LIB} ${LOCAL_IMAGES_PNG} \
 # Special target to produce HTML with no images in it.
 .if ${STYLESHEET_TYPE} == "dsssl"
 ${DOC}.html-text: ${SRCS} ${INDEX_SGML} ${HTML_INDEX} ${LOCAL_IMAGES_TXT}
-	${JADE} -V nochunks ${HTMLOPTS} \
+	${JADE_CMD} -V nochunks ${HTMLTXTOPTS} \
 		${JADEOPTS} -t sgml ${MASTERDOC} > ${.TARGET} || \
 		(${RM} -f ${.TARGET} && false)
 .elif ${STYLESHEET_TYPE} == "xsl"
@@ -530,8 +561,15 @@ ${.CURDIR:T}.pdb.${_curcomp}: ${DOC}.pdb.${_curcomp}
 # RTF --------------------------------------------------------------------
 
 ${DOC}.rtf: ${SRCS} ${LOCAL_IMAGES_EPS} ${LOCAL_IMAGES_TXT}
-	${JADE} -V rtf-backend ${PRINTOPTS} \
+	${JADE_CMD} -V rtf-backend ${PRINTOPTS} -ioutput.rtf.images \
 		${JADEOPTS} -t rtf -o ${.TARGET} ${MASTERDOC}
+
+${DOC}.rtf.tar: ${DOC}.rtf ${LOCAL_IMAGES_PNG}
+	${TAR} cf ${.TARGET} ${DOC}.rtf ${IMAGES_PNG:N*share*}
+.for _curimage in ${IMAGES_PNG:M*share*}
+	${TAR} rf ${.TARGET} -C ${IMAGES_EN_DIR}/${DOC}s/${.CURDIR:T} \
+		${_curimage:S|${IMAGES_EN_DIR}/${DOC}s/${.CURDIR:T}/||}
+.endfor
 
 #
 # This sucks, but there's no way round it.  The PS and PDF formats need
@@ -542,7 +580,7 @@ ${DOC}.rtf: ${SRCS} ${LOCAL_IMAGES_EPS} ${LOCAL_IMAGES_TXT}
 
 ${DOC}.tex: ${SRCS} ${LOCAL_IMAGES_EPS} ${INDEX_SGML} ${PRINT_INDEX} \
 		${LOCAL_IMAGES_TXT} ${LOCAL_IMAGES_EN}
-	${JADE} -V tex-backend ${PRINTOPTS} \
+	${JADE_CMD} -V tex-backend ${PRINTOPTS} \
 		${JADEOPTS} -t tex -o ${.TARGET} ${MASTERDOC}
 
 ${DOC}.tex-ps: ${DOC}.tex
@@ -554,7 +592,7 @@ ${DOC}.tex-pdf: ${SRCS} ${IMAGES_PDF} ${INDEX_SGML} ${PRINT_INDEX} \
 	${RM} -f ${.TARGET}
 	${CAT} ${PDFTEX_DEF} > ${.TARGET}
 	/bin/sh ${PDF_GENINFO} >> ${.TARGET}
-	${JADE} -V tex-backend ${PRINTOPTS} -ioutput.print.pdf \
+	${JADE_CMD} -V tex-backend ${PRINTOPTS} -ioutput.print.pdf \
 		${JADEOPTS} -t tex -o /dev/stdout ${MASTERDOC} >> ${.TARGET}
 .endif
 
@@ -563,11 +601,11 @@ ${DOC}.dvi: ${DOC}.tex ${LOCAL_IMAGES_EPS}
 	${CP} -p ${_curimage} ${.CURDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
 .endfor
 	@${ECHO} "==> TeX pass 1/3"
-	-${JADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex}'
+	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 	@${ECHO} "==> TeX pass 2/3"
-	-${JADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex}'
+	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 	@${ECHO} "==> TeX pass 3/3"
-	-${JADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex}'
+	-${JADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex}'
 
 .if !target(${DOC}.pdf)
 ${DOC}.pdf: ${DOC}.tex-pdf ${IMAGES_PDF}
@@ -575,11 +613,11 @@ ${DOC}.pdf: ${DOC}.tex-pdf ${IMAGES_PDF}
 	${CP} -p ${_curimage} ${.CURDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
 .endfor
 	@${ECHO} "==> PDFTeX pass 1/3"
-	-${PDFJADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex-pdf}'
+	-${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 	@${ECHO} "==> PDFTeX pass 2/3"
-	-${PDFJADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex-pdf}'
+	-${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 	@${ECHO} "==> PDFTeX pass 3/3"
-	${PDFJADETEX} '${TEXCMDS} \nonstopmode\input{${DOC}.tex-pdf}'
+	${PDFJADETEX_CMD} '${TEX_CMDSEQ} \nonstopmode\input{${DOC}.tex-pdf}'
 .endif
 
 ${DOC}.ps: ${DOC}.dvi
@@ -611,7 +649,7 @@ ${DOC}.${_curformat}:
 #
 
 lint validate:
-	${NSGMLS} ${NSGMLSWARNINGS} -s ${SGMLFLAGS} ${CATALOGS} ${MASTERDOC}
+	${NSGMLS} ${NSGMLSWARNINGS} -s ${NSGMLSFLAGS} ${SGMLFLAGS} ${CATALOGS} ${MASTERDOC}
 
 
 # ------------------------------------------------------------------------
@@ -630,12 +668,12 @@ ${INDEX_SGML}:
 	${PERL} ${COLLATEINDEX} -N -o ${.TARGET}
 
 ${HTML_INDEX}:
-	${JADE} -V html-index -V nochunks ${HTMLOPTS} -ioutput.html.images \
+	${JADE_CMD} -V html-index -V nochunks ${HTMLOPTS} -ioutput.html.images \
 		${JADEOPTS} -t sgml ${MASTERDOC} > /dev/null
 	${PERL} ${COLLATEINDEX} -g -o ${INDEX_SGML} ${.TARGET}
 
 ${HTML_SPLIT_INDEX}:
-	${JADE} -V html-index ${HTMLOPTS} -ioutput.html.images \
+	${JADE_CMD} -V html-index ${HTMLOPTS} -ioutput.html.images \
 		${JADEOPTS} -t sgml ${MASTERDOC} > /dev/null
 	${PERL} ${COLLATEINDEX} -g -o ${INDEX_SGML} ${.TARGET}
 
@@ -831,6 +869,19 @@ install-${_curformat}: ${DOC}.${_curformat}
 .endfor
 .elif ${_cf} == "pdb"
 	${LN} -f ${DESTDIR}/${.ALLSRC} ${DESTDIR}/${.CURDIR:T}.${_curformat}
+
+.elif ${_cf} == "rtf"
+.for _curimage in ${IMAGES_PNG:M*/*:M*share*}
+	${MKDIR} -p ${DESTDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
+	${INSTALL_DOCS} ${_curimage} ${DESTDIR:H:H}/${_curimage:H:S|${IMAGES_EN_DIR}/||:S|${.CURDIR}||}
+.endfor
+.for _curimage in ${IMAGES_PNG:M*/*:N*share*}
+	${MKDIR} -p ${DESTDIR}/${_curimage:H}
+	${INSTALL_DOCS} ${_curimage} ${DESTDIR}/${_curimage:H}
+.endfor
+.for _curimage in ${IMAGES_PNG:N*/*}
+	${INSTALL_DOCS} ${_curimage} ${DESTDIR}/${_curimage}
+.endfor
 .endif
 
 .if ${_cf} == "html-split"
@@ -895,31 +946,33 @@ packagelist:
 # target depends on the corresponding install target running.
 #
 
-.for _curformat in ${KNOWN_FORMATS}
-_cf=${_curformat}
-.if ${_cf} == "html-split"
-PLIST.${_curformat}: index.html
-	@${SORT} HTML.manifest > PLIST.${_curformat}
+.if defined(BZIP2_PACKAGE)
+PKG_SUFFIX=	tbz
 .else
-PLIST.${_curformat}: ${DOC}.${_curformat}
-	@${ECHO_CMD} ${DOC}.${_curformat} > PLIST.${_curformat}
-.endif
-.if (${_cf} == "html-split" || ${_cf} == "html") && \
-    (!empty(LOCAL_IMAGES_LIB) || !empty(IMAGES_PNG) || !empty(CSS_SHEET))
-	@${ECHO_CMD} ${LOCAL_IMAGES_LIB} ${IMAGES_PNG} ${LOCAL_CSS_SHEET} | \
-		${XARGS} -n1 >> PLIST.${_curformat}
-.elif (${_cf} == "tex" || ${_cf} == "dvi") && !empty(IMAGES_EPS)
-	@${ECHO_CMD} ${IMAGES_EPS} | ${XARGS} -n1 >> PLIST.${_curformat}
-.elif ${_cf} == "pdb"
-	@${ECHO_CMD} ${.CURDIR:T}.${_curformat} >> PLIST.${_curformat}
+PKG_SUFFIX=	tgz
 .endif
 
-${PACKAGES}/${.CURDIR:T}.${LANGCODE}.${_curformat}.tgz: PLIST.${_cf}
-	@${PKG_CREATE} -v -f ${.ALLSRC} -p ${DESTDIR} -s ${.OBJDIR} \
+PKGDOCPFX!= realpath ${DOC_PREFIX}
+
+.for _curformat in ${KNOWN_FORMATS}
+
+${PACKAGES}/${.CURDIR:T}.${LANGCODE}.${_curformat}.${PKG_SUFFIX}:
+	${MKDIR} -p ${.OBJDIR}/pkg; \
+	(cd ${.CURDIR} && \
+		${MAKE} FORMATS=${_curformat} \
+			DOCDIR=${.OBJDIR}/pkg \
+			${PKGMAKEFLAGS} \
+			install); \
+	PKGSRCDIR=${.OBJDIR}/pkg/${.CURDIR:S/${PKGDOCPFX}\///}; \
+	/bin/ls -1 $$PKGSRCDIR > ${.OBJDIR}/PLIST.${_curformat}; \
+	${PKG_CREATE} -v -f ${.OBJDIR}/PLIST.${_curformat} \
+		-p ${DESTDIR} -s $$PKGSRCDIR \
 		-c -"FDP ${.CURDIR:T} ${_curformat} package" \
-		-d -"FDP ${.CURDIR:T} ${_curformat} package" ${.TARGET}
+		-d -"FDP ${.CURDIR:T} ${_curformat} package" ${.TARGET} || \
+			(${RM} -fr ${.TARGET} PLIST.${_curformat} && false); \
+	${RM} -rf ${.OBJDIR}/pkg
 
-package-${_curformat}: ${PACKAGES}/${.CURDIR:T}.${LANGCODE}.${_curformat}.tgz
+package-${_curformat}: ${PACKAGES}/${.CURDIR:T}.${LANGCODE}.${_curformat}.${PKG_SUFFIX}
 .endfor
 
 .if ${LOCAL_CSS_SHEET} != ${CSS_SHEET}

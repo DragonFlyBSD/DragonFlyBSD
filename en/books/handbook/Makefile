@@ -1,6 +1,6 @@
 #
 # $FreeBSD: doc/en_US.ISO8859-1/books/handbook/Makefile,v 1.81 2004/05/11 05:52:39 den Exp $
-# $DragonFly: doc/en/books/handbook/Makefile,v 1.5 2006/07/12 04:00:59 justin Exp $
+# $DragonFly: doc/en/books/handbook/Makefile,v 1.6 2006/08/06 20:58:05 justin Exp $
 #
 # Build the DragonFlyBSD Handbook.
 #
@@ -42,14 +42,14 @@ IMAGES_EN+= advanced-networking/isdn-twisted-pair.eps
 IMAGES_EN+= advanced-networking/natd.eps
 IMAGES_EN+= advanced-networking/net-routing.pic
 <!-- todo: do some screenshots for the installer -->
-IMAGES_EN+= mail/mutt1.scr
-IMAGES_EN+= mail/mutt2.scr
-IMAGES_EN+= mail/mutt3.scr
-IMAGES_EN+= mail/pine1.scr
-IMAGES_EN+= mail/pine2.scr
-IMAGES_EN+= mail/pine3.scr
-IMAGES_EN+= mail/pine4.scr
-IMAGES_EN+= mail/pine5.scr
+IMAGES_EN+= mail/mutt1.png
+IMAGES_EN+= mail/mutt2.png
+IMAGES_EN+= mail/mutt3.png
+IMAGES_EN+= mail/pine1.png
+IMAGES_EN+= mail/pine2.png
+IMAGES_EN+= mail/pine3.png
+IMAGES_EN+= mail/pine4.png
+IMAGES_EN+= mail/pine5.png
 
 IMAGES_EN+= install/example-dir1.eps
 IMAGES_EN+= install/example-dir2.eps

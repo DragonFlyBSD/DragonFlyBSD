@@ -1,6 +1,7 @@
 #
-# $DragonFly: doc/share/mk/doc.project.mk,v 1.2 2005/08/14 08:04:56 asmodai Exp $
-#
+# $DragonFly: doc/share/mk/doc.project.mk,v 1.3 2006/08/06 20:58:06 justin Exp $
+# Matches with: 
+# $FreeBSD: doc/share/mk/doc.project.mk,v 1.26 2005/02/20 17:14:25 hrs Exp $
 # This file includes the other makefiles, which contain enough
 # knowledge to perform their duties without the system make files.
 #
@@ -64,7 +65,7 @@ MAINTAINER?=	doc-team@DragonFlyBSD.org
 ALL_FORMATS=	html html.tar html-split html-split.tar txt rtf ps pdf tex dvi tar pdb
 
 # User-modifiable
-LOCALBASE?=	/usr/local
+LOCALBASE?=	/usr/pkg
 PREFIX?=	${LOCALBASE}
 PRI_LANG?=	en
 
@@ -76,9 +77,42 @@ MKDIR?=		/bin/mkdir
 RM?=		/bin/rm
 MV?=		/bin/mv
 HTML2TXT?=	${PREFIX}/bin/links
-HTML2TXTOPTS?=	-dump ${HTML2TXTFLAGS}
+HTML2TXTOPTS?=	-dump -width 72 ${HTML2TXTFLAGS}
 ISPELL?=	ispell
 ISPELLOPTS?=	-l -p /usr/share/dict/freebsd ${ISPELLFLAGS}
+
+.if exists(/usr/bin/perl)
+PERL?=          /usr/bin/perl
+.elif exists({$PREFIX}/bin/perl)
+PERL?=          {$PREFIX}/bin/perl
+.else
+PERL?=          perl
+.endif
+REALPATH?=      /bin/realpath
+SETENV?=        /usr/bin/env
+XSLTPROC?=      ${PREFIX}/bin/xsltproc
+TIDY?=          ${PREFIX}/bin/tidy
+#
+# In teTeX 3.0 and later, pdfetex(1) is used as the default TeX
+# engine for JadeTeX and tex(1) cannot be used as ${TEX_CMD} anymore
+# due to incompatibility of the format file.  Since the teTeX 3.0
+# distribution has "${PREFIX}/share/texmf-dist/LICENSE.texmf,"
+# it is checked here to determine which TeX engine should be used.
+.if exists(${PREFIX}/share/texmf-dist/LICENSE.texmf)
+TEX_CMD?=       ${PREFIX}/bin/etex
+PDFTEX_CMD?=    ${PREFIX}/bin/pdfetex
+.else
+TEX_CMD?=       ${PREFIX}/bin/tex
+PDFTEX_CMD?=    ${PREFIX}/bin/pdftex
+.endif
+LATEX_CMD?=     ${PREFIX}/bin/latex
+JADETEX_CMD?=   ${TEX_CMD} "&jadetex"
+PDFJADETEX_CMD?=${PDFTEX_CMD} "&pdfjadetex"
+FOP_CMD?=       ${PREFIX}/share/fop/fop.sh
+XEP_CMD?=       sh ${HOME}/XEP/xep.sh
+JAVA_CMD?=      ${PREFIX}/bin/javavm
+SAXON_CMD?=     ${JAVA_CMD} -jar ${PREFIX}/share/java/classes/saxon.jar
+
 
 # Image processing (contains code used by the doc.<format>.mk files, so must
 # be listed first).
@@ -86,6 +120,12 @@ ISPELLOPTS?=	-l -p /usr/share/dict/freebsd ${ISPELLFLAGS}
 
 # targets and variables commonly used in doc/ and www/ tree.
 .include "doc.common.mk"
+
+DOC_LOCAL_MK=   ${DOC_PREFIX}/${LANGCODE}/share/mk/doc.local.mk
+
+.if exists(${DOC_LOCAL_MK})
+.include "${DOC_LOCAL_MK}"
+.endif
 
 # Ownership information.
 .include "doc.install.mk"

@@ -9,7 +9,7 @@
 
      NOTE:  Make use of `foo at bar.com' e-mail format!!
 
-     $DragonFly: doc/en/share/sgml/authors.ent,v 1.2 2005/09/05 21:15:08 reed Exp $
+     $DragonFly: doc/en/share/sgml/authors.ent,v 1.3 2006/08/06 20:58:06 justin Exp $
 -->
 
 <!ENTITY a.asmodai "Jeroen Ruigrok van der Werven <email>asmodai at dragonflybsd.org</email>">
@@ -22,3 +22,11 @@
 <!ENTITY a.joerg  "J&ouml;rg Sonnenberger <email>joerg at dragonflybsd.org</email>">
 <!ENTITY a.justin "Justin Sherrill <email>justin at dragonflybsd.org</email>">
 <!ENTITY a.rob "Rob Garrett <email>rob at dragonflybsd.org</email>">
+
+<!-- Needed to compile the arch handbook, imported from FreeBSD -->
+<!ENTITY a.murray "Murray Stokely <email>murray@FreeBSD.org</email>">
+<!ENTITY a.babkin "Sergey Babkin <email>babkin@FreeBSD.org</email>">
+<!ENTITY a.wylie "Wylie Stilwell <email>wylie@magnesium.net</email>">
+<!ENTITY a.nhibma "Nick Hibma <email>n_hibma@FreeBSD.org</email>">
+<!ENTITY a.cg "Cameron Grant <email>cg@FreeBSD.org</email>">
+<!ENTITY a.logo "Valentino Vaschetto <email>logo@FreeBSD.org</email>">
