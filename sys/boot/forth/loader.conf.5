@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.7 2005/12/10 00:22:28 swildner Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.8 2006/08/07 19:45:56 swildner Exp $
 .Dd May 29, 2005
 .Dt LOADER.CONF 5
 .Os
@@ -102,7 +102,8 @@ present file.
 Name of the kernel to be loaded. If no kernel name is set, no additional
 modules will be loaded.
 .It Ar kernel_options
-Flags to be passed to the kernel.
+Flags to be passed to the kernel (see
+.Xr boot 8 ) .
 .It Ar password
 Provides a password to be required by check-password before execution is
 allowed to continue.
