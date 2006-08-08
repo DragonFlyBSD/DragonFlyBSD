@@ -35,7 +35,7 @@
  *
  * @(#)graphics.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/graphics.c,v 1.7 1999/11/30 03:48:19 billf Exp $
- * $DragonFly: src/games/atc/graphics.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/graphics.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -47,7 +47,6 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <string.h>
 #include "include.h"
 #ifdef SYSV
 #include <errno.h>
@@ -63,7 +62,11 @@
 
 WINDOW	*radar, *cleanradar, *credit, *input, *planes;
 
-getAChar()
+static void	draw_line(WINDOW *, int, int, int, int, const char *);
+
+
+int
+getAChar(void)
 {
 #ifdef BSD
 	return (getchar());
@@ -76,7 +79,8 @@ getAChar()
 #endif
 }
 
-erase_all()
+void
+erase_all(void)
 {
 	PLANE	*pp;
 
@@ -90,7 +94,8 @@ erase_all()
 	}
 }
 
-draw_all()
+void
+draw_all(void)
 {
 	PLANE	*pp;
 
@@ -109,7 +114,8 @@ draw_all()
 	fflush(stdout);
 }
 
-init_gr()
+void
+init_gr(void)
 {
 	static char	buffer[BUFSIZ];
 
@@ -121,8 +127,8 @@ init_gr()
 	planes = newwin(LINES - INPUT_LINES, PLANE_COLS, 0, COLS - PLANE_COLS);
 }
 
-setup_screen(scp)
-	const C_SCREEN	*scp;
+void
+setup_screen(const C_SCREEN *scp)
 {
 	int		i, j;
 	char		str[3];
@@ -213,10 +219,8 @@ setup_screen(scp)
 	fflush(stdout);
 }
 
-draw_line(w, x, y, lx, ly, s)
-	WINDOW		*w;
-	int		x, y, lx, ly;
-	const char	*s;
+static void
+draw_line(WINDOW *w, int x, int y, int lx, int ly, const char *s)
 {
 	int	dx, dy;
 
@@ -232,7 +236,8 @@ draw_line(w, x, y, lx, ly, s)
 	}
 }
 
-ioclrtoeol(pos)
+void
+ioclrtoeol(int pos)
 {
 	wmove(input, 0, pos);
 	wclrtoeol(input);
@@ -240,15 +245,16 @@ ioclrtoeol(pos)
 	fflush(stdout);
 }
 
-iomove(pos)
+void
+iomove(int pos)
 {
 	wmove(input, 0, pos);
 	wrefresh(input);
 	fflush(stdout);
 }
 
-ioaddstr(pos, str)
-	const char	*str;
+void
+ioaddstr(int pos, const char *str)
 {
 	wmove(input, 0, pos);
 	waddstr(input, str);
@@ -256,15 +262,16 @@ ioaddstr(pos, str)
 	fflush(stdout);
 }
 
-ioclrtobot()
+void
+ioclrtobot(void)
 {
 	wclrtobot(input);
 	wrefresh(input);
 	fflush(stdout);
 }
 
-ioerror(pos, len, str)
-	const char	*str;
+void
+ioerror(int pos, int len, const char *str)
 {
 	int	i;
 
@@ -277,7 +284,8 @@ ioerror(pos, len, str)
 	fflush(stdout);
 }
 
-quit()
+void
+quit(void)
 {
 	int			c, y, x;
 #ifdef BSD
@@ -317,10 +325,10 @@ quit()
 	return;
 }
 
-planewin()
+void
+planewin(void)
 {
 	PLANE	*pp;
-	char	*command();
 	int	warning = 0;
 
 #ifdef BSD
@@ -360,9 +368,8 @@ planewin()
 	fflush(stdout);
 }
 
-loser(p, s)
-	const PLANE	*p;
-	const char	*s;
+void
+loser(const PLANE *p, const char *s)
 {
 	int			c;
 #ifdef BSD
@@ -394,7 +401,8 @@ loser(p, s)
 	exit(0);
 }
 
-redraw()
+void
+redraw(void)
 {
 	clear();
 	refresh();
@@ -412,8 +420,8 @@ redraw()
 	fflush(stdout);
 }
 
-
-done_screen()
+void
+done_screen(void)
 {
 	clear();
 	refresh();

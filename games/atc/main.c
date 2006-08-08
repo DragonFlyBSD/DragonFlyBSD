@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/main.c,v 1.9 1999/11/30 03:48:21 billf Exp $
- * $DragonFly: src/games/atc/main.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/main.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -48,24 +48,27 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <string.h>
 #include "include.h"
 #include "pathnames.h"
 
-main(ac, av)
-	int	ac;
-	char	*av[];
+extern FILE	*yyin;
+static int	read_file(const char *);
+static const char	*default_game(void);
+static const char	*okay_game(const char *);
+static int	list_games(void);
+
+
+int
+main(__unused int ac, char **av)
 {
 	int                     seed = 0;
 	int			f_usage = 0, f_list = 0, f_showscore = 0;
 	int			f_printpath = 0;
 	const char		*file = NULL;
-	char			*name, *ptr;
+	char			*p_name, *ptr;
 #ifdef BSD
 	struct itimerval	itv;
 #endif
-	extern const char	*default_game(), *okay_game();
-	extern void		log_score(), quit(), update();
 
 	/* Open the score file then revoke setgid privileges */
 	open_score_file();
@@ -73,7 +76,7 @@ main(ac, av)
 
 	start_time = time(0);
 
-	name = *av++;
+	p_name = *av++;
 	while (*av) {
 #ifndef SAVEDASH
 		if (**av == '-')
@@ -122,7 +125,7 @@ main(ac, av)
 	if (f_usage)
 		fprintf(stderr,
 		    "Usage: %s -[u?lstp] [-[gf] game_name] [-r random seed]\n",
-			name);
+			p_name);
 	if (f_showscore)
 		log_score(1);
 	if (f_list)
@@ -151,14 +154,14 @@ main(ac, av)
 
 	addplane();
 
-	signal(SIGINT, quit);
-	signal(SIGQUIT, quit);
+	signal(SIGINT, (sig_t)quit);
+	signal(SIGQUIT, (sig_t)quit);
 #ifdef BSD
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGSTOP, SIG_IGN);
 #endif
-	signal(SIGHUP, log_score);
-	signal(SIGTERM, log_score);
+	signal(SIGHUP, (sig_t)log_score);
+	signal(SIGTERM, (sig_t)log_score);
 
 #ifdef BSD
 	ioctl(fileno(stdin), TIOCGETP, &tty_start);
@@ -178,7 +181,7 @@ main(ac, av)
 	ioctl(fileno(stdin), TCSETAW, &tty_new);
 #endif
 
-	signal(SIGALRM, update);
+	signal(SIGALRM, (sig_t)update);
 
 #ifdef BSD
 	itv.it_value.tv_sec = 0;
@@ -220,13 +223,12 @@ main(ac, av)
 	}
 }
 
-read_file(s)
-	const char	*s;
+static int
+read_file(const char *s)
 {
-	extern FILE	*yyin;
 	int		retval;
 
-	file = s;
+	filename = s;
 	yyin = fopen(s, "r");
 	if (yyin == NULL) {
 		perror(s);
@@ -241,8 +243,8 @@ read_file(s)
 		return (0);
 }
 
-const char	*
-default_game()
+static const char *
+default_game(void)
 {
 	FILE		*fp;
 	static char	file[256];
@@ -266,9 +268,8 @@ default_game()
 	return (file);
 }
 
-const char	*
-okay_game(s)
-	char	*s;
+static const char *
+okay_game(const char *s)
 {
 	FILE		*fp;
 	static char	file[256];
@@ -302,7 +303,8 @@ okay_game(s)
 	return (ret);
 }
 
-list_games()
+static int
+list_games(void)
 {
 	FILE		*fp;
 	char		line[256], games[256];

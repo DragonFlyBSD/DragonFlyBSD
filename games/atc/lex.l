@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)lex.l	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/atc/lex.l,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -46,8 +47,12 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include "y.tab.h"
+#include	<unistd.h>
+#include	"y.tab.h"
+
+#define		YY_NO_UNPUT
 extern int	line;
+extern int	yylex(void);
 
 %}
 %%

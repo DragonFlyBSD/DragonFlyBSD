@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)include.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/atc/include.h,v 1.2 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -56,10 +57,11 @@
 #include <sys/file.h>
 #endif
 
-#ifdef SYSV
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
+#ifdef SYSV
 #include <sys/utsname.h>
 #endif
 

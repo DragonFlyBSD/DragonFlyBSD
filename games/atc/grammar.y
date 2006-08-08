@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)grammar.y	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/atc/grammar.y,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -62,6 +63,16 @@
 
 %{
 #include "include.h"
+
+extern int	yylex(void);
+
+static void	check_edge(int, int);
+static void	check_point(int, int);
+static void	check_linepoint(int, int);
+static void	check_line(int, int, int, int);
+static int	yyerror(const char *);
+static void	check_edir(int, int, int);
+static int	checkdefs(void);
 
 int	errors = 0;
 int	line = 1;
@@ -244,7 +255,6 @@ Apoint:
 		sp->airport[sp->num_airports].y = $3;
 		sp->airport[sp->num_airports].dir = dir;
 		check_point($2, $3);
-		check_adir($2, $3, dir);
 		sp->num_airports++;
 		}
 	;
@@ -280,14 +290,16 @@ Lline:
 	;
 %%
 
-check_edge(x, y)
+static void
+check_edge(int x, int y)
 {
 	if (!(x == 0) && !(x == sp->width - 1) && 
 	    !(y == 0) && !(y == sp->height - 1))
 		yyerror("edge value not on edge.");
 }
 
-check_point(x, y)
+static void
+check_point(int x, int y)
 {
 	if (x < 1 || x >= sp->width - 1)
 		yyerror("X value out of range.");
@@ -295,7 +307,8 @@ check_point(x, y)
 		yyerror("Y value out of range.");
 }
 
-check_linepoint(x, y)
+static void
+check_linepoint(int x, int y)
 {
 	if (x < 0 || x >= sp->width)
 		yyerror("X value out of range.");
@@ -303,30 +316,32 @@ check_linepoint(x, y)
 		yyerror("Y value out of range.");
 }
 
-check_line(x1, y1, x2, y2)
+static void
+check_line(int x_1, int y_1, int x_2, int y_2)
 {
 	int	d1, d2;
 
-	check_linepoint(x1, y1);
-	check_linepoint(x2, y2);
+	check_linepoint(x_1, y_1);
+	check_linepoint(x_2, y_2);
 
-	d1 = ABS(x2 - x1);
-	d2 = ABS(y2 - y1);
+	d1 = ABS(x_2 - x_1);
+	d2 = ABS(y_2 - y_1);
 
 	if (!(d1 == d2) && !(d1 == 0) && !(d2 == 0))
 		yyerror("Bad line endpoints.");
 }
 
-yyerror(s)
-	char *s;
+static int
+yyerror(const char *s)
 {
-	fprintf(stderr, "\"%s\": line %d: %s\n", file, line, s);
+	fprintf(stderr, "\"%s\": line %d: %s\n", filename, line, s);
 	errors++;
 
 	return (errors);
 }
 
-check_edir(x, y, dir)
+static void
+check_edir(int x, int y, int dir)
 {
 	int	bad = 0;
 
@@ -357,11 +372,8 @@ check_edir(x, y, dir)
 		yyerror("Bad direction for entrance at exit.");
 }
 
-check_adir(x, y, dir)
-{
-}
-
-checkdefs()
+static int
+checkdefs(void)
 {
 	int	err = 0;
 

@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/input.c,v 1.7 2000/02/27 23:02:47 mph Exp $
- * $DragonFly: src/games/atc/input.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/input.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -47,8 +47,8 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <sys/wait.h>
+
 #include "include.h"
 #include "pathnames.h"
 
@@ -69,7 +69,7 @@ typedef struct {
 	int		token;
 	int		to_state;
 	const char	*str;
-	const char	*(*func)();
+	const char	*(*func)(int);
 } RULE;
 
 typedef struct {
@@ -95,10 +95,32 @@ typedef struct {
 
 #define NUMSTATES	NUMELS(st)
 
-const char	*setplane(), *circle(), *left(), *right(), *Left(), *Right(),
-	*beacon(), *ex_it(), *climb(), *descend(), *setalt(), *setrelalt(),
-	*benum(), *to_dir(), *rel_dir(), *delayb(), *mark(), *unmark(),
-	*airport(), *turn(), *ignore();
+static int	pop(void);
+static void	rezero(void);
+static void	push(int, int);
+static void	noise(void);
+static int	gettoken(void);
+static const char	*setplane(int);
+static const char	*turn(int);
+static const char	*circle(int);
+static const char	*left(int);
+static const char	*right(int);
+static const char	*Left(int);
+static const char	*Right(int);
+static const char	*delayb(int);
+static const char	*beacon(int);
+static const char	*ex_it(int);
+static const char	*airport(int);
+static const char	*climb(int);
+static const char	*descend(int);
+static const char	*setalt(int);
+static const char	*setrelalt(int);
+static const char	*benum(int);
+static const char	*to_dir(int);
+static const char	*rel_dir(int);
+static const char	*mark(int);
+static const char	*unmark(int);
+static const char	*ignore(int);
 
 RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ RETTOKEN,	-1,	"",		NULL	},
@@ -192,7 +214,9 @@ int	level;
 int	tval;
 int	dest_type, dest_no, dir;
 
-pop()
+
+static int
+pop(void)
 {
 	if (level == 0)
 		return (-1);
@@ -206,7 +230,8 @@ pop()
 	return (0);
 }
 
-rezero()
+static void
+rezero(void)
 {
 	iomove(0);
 
@@ -218,7 +243,8 @@ rezero()
 	strcpy(T_STR, "");
 }
 
-push(ruleno, ch)
+static void
+push(int ruleno, int ch)
 {
 	int	newstate, newpos;
 
@@ -239,10 +265,11 @@ push(ruleno, ch)
 	strcpy(T_STR, "");
 }
 
-getcommand()
+int
+getcommand(void)
 {
 	int		c, i, done;
-	const char	*s, *(*func)();
+	const char	*s, *(*func)(int);
 	PLANE		*pp;
 
 	rezero();
@@ -297,13 +324,15 @@ getcommand()
 	return (0);
 }
 
-noise()
+static void
+noise(void)
 {
 	putchar('\07');
 	fflush(stdout);
 }
 
-gettoken()
+static int
+gettoken(void)
 {
 	while ((tval = getAChar()) == REDRAWTOKEN || tval == SHELLTOKEN)
 	{
@@ -368,8 +397,8 @@ gettoken()
 		return (tval);
 }
 
-const char	*
-setplane(c)
+static const char *
+setplane(int c)
 {
 	PLANE	*pp;
 
@@ -381,16 +410,16 @@ setplane(c)
 	return (NULL);
 }
 
-const char	*
-turn(c)
+static const char *
+turn(__unused int c)
 {
 	if (p.altitude == 0)
 		return ("Planes at airports may not change direction");
 	return (NULL);
 }
 
-const char	*
-circle(c)
+static const char *
+circle(__unused int c)
 {
 	if (p.altitude == 0)
 		return ("Planes cannot circle on the ground");
@@ -398,8 +427,8 @@ circle(c)
 	return (NULL);
 }
 
-const char	*
-left(c)
+static const char *
+left(__unused int c)
 {
 	dir = D_LEFT;
 	p.new_dir = p.dir - 1;
@@ -408,8 +437,8 @@ left(c)
 	return (NULL);
 }
 
-const char	*
-right(c)
+static const char *
+right(__unused int c)
 {
 	dir = D_RIGHT;
 	p.new_dir = p.dir + 1;
@@ -418,8 +447,8 @@ right(c)
 	return (NULL);
 }
 
-const char	*
-Left(c)
+static const char *
+Left(__unused int c)
 {
 	p.new_dir = p.dir - 2;
 	if (p.new_dir < 0)
@@ -427,8 +456,8 @@ Left(c)
 	return (NULL);
 }
 
-const char	*
-Right(c)
+static const char *
+Right(__unused int c)
 {
 	p.new_dir = p.dir + 2;
 	if (p.new_dir >= MAXDIR)
@@ -436,8 +465,8 @@ Right(c)
 	return (NULL);
 }
 
-const char	*
-delayb(c)
+static const char *
+delayb(int c)
 {
 	int	xdiff, ydiff;
 
@@ -481,43 +510,43 @@ delayb(c)
 	return (NULL);
 }
 
-const char	*
-beacon(c)
+static const char *
+beacon(__unused int c)
 {
 	dest_type = T_BEACON;
 	return (NULL);
 }
 
-const char	*
-ex_it(c)
+static const char *
+ex_it(__unused int c)
 {
 	dest_type = T_EXIT;
 	return (NULL);
 }
 
-const char	*
-airport(c)
+static const char *
+airport(__unused int c)
 {
 	dest_type = T_AIRPORT;
 	return (NULL);
 }
 
-const char	*
-climb(c)
+static const char *
+climb(__unused int c)
 {
 	dir = D_UP;
 	return (NULL);
 }
 
-const char	*
-descend(c)
+static const char *
+descend(__unused int c)
 {
 	dir = D_DOWN;
 	return (NULL);
 }
 
-const char	*
-setalt(c)
+static const char *
+setalt(int c)
 {
 	if ((p.altitude == c - '0') && (p.new_altitude == p.altitude))
 		return ("Already at that altitude");
@@ -525,8 +554,8 @@ setalt(c)
 	return (NULL);
 }
 
-const char	*
-setrelalt(c)
+static const char *
+setrelalt(int c)
 {
 	if (c == 0)
 		return ("altitude not changed");
@@ -549,8 +578,8 @@ setrelalt(c)
 	return (NULL);
 }
 
-const char	*
-benum(c)
+static const char *
+benum(int c)
 {
 	dest_no = c -= '0';
 
@@ -580,15 +609,15 @@ benum(c)
 	return (NULL);
 }
 
-const char	*
-to_dir(c)
+static const char *
+to_dir(int c)
 {
 	p.new_dir = dir_no(c);
 	return (NULL);
 }
 
-const char	*
-rel_dir(c)
+static const char *
+rel_dir(int c)
 {
 	int	angle;
 
@@ -611,8 +640,8 @@ rel_dir(c)
 	return (NULL);
 }
 
-const char	*
-mark(c)
+static const char *
+mark(__unused int c)
 {
 	if (p.altitude == 0)
 		return ("Cannot mark planes on the ground");
@@ -622,8 +651,8 @@ mark(c)
 	return (NULL);
 }
 
-const char	*
-unmark(c)
+static const char *
+unmark(__unused int c)
 {
 	if (p.altitude == 0)
 		return ("Cannot unmark planes on the ground");
@@ -633,8 +662,8 @@ unmark(c)
 	return (NULL);
 }
 
-const char	*
-ignore(c)
+static const char *
+ignore(__unused int c)
 {
 	if (p.altitude == 0)
 		return ("Cannot ignore planes on the ground");
@@ -644,23 +673,23 @@ ignore(c)
 	return (NULL);
 }
 
-dir_no(ch)
-	char	ch;
+int
+dir_no(char ch)
 {
-	int	dir;
+	int	dirno = dir;
 
 	switch (ch) {
-	case 'w':	dir = 0;	break;
-	case 'e':	dir = 1;	break;
-	case 'd':	dir = 2;	break;
-	case 'c':	dir = 3;	break;
-	case 'x':	dir = 4;	break;
-	case 'z':	dir = 5;	break;
-	case 'a':	dir = 6;	break;
-	case 'q':	dir = 7;	break;
+	case 'w':	dirno = 0;	break;
+	case 'e':	dirno = 1;	break;
+	case 'd':	dirno = 2;	break;
+	case 'c':	dirno = 3;	break;
+	case 'x':	dirno = 4;	break;
+	case 'z':	dirno = 5;	break;
+	case 'a':	dirno = 6;	break;
+	case 'q':	dirno = 7;	break;
 	default:
 		fprintf(stderr, "bad character in dir_no\n");
 		break;
 	}
-	return (dir);
+	return (dirno);
 }

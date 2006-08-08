@@ -35,7 +35,7 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/extern.c,v 1.3 1999/11/30 03:48:19 billf Exp $
- * $DragonFly: src/games/atc/extern.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/extern.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -53,7 +53,7 @@ char		GAMES[] =	"Game_List";
 
 int		clck, safe_planes, start_time, test_mode;
 
-const char	*file;
+const char	*filename;
 
 FILE		*filein, *fileout;
 

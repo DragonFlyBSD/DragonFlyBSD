@@ -35,7 +35,7 @@
  *
  * @(#)update.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/update.c,v 1.6 1999/11/30 03:48:21 billf Exp $
- * $DragonFly: src/games/atc/update.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/update.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -47,15 +47,18 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <string.h>
 #include "include.h"
 
-char name();
+static int	next_plane(void);
+static int	too_close(const PLANE *, const PLANE *, int);
+static int	dir_deg(int);
 
-update()
+
+void
+update(void)
 {
 	int	i, dir_diff, mask, unclean;
-	PLANE	*pp, *p1, *p2, *p;
+	PLANE	*pp, *p1, *p2;
 
 #ifdef BSD
 	mask = sigblock(sigmask(SIGINT));
@@ -223,11 +226,9 @@ update()
 }
 
 const char *
-command(pp)
-	const PLANE	*pp;
+command(const PLANE *pp)
 {
 	static char	buf[50], *bp, *comm_start;
-	char	*index();
 
 	buf[0] = '\0';
 	bp = buf;
@@ -256,8 +257,7 @@ command(pp)
 
 /* char */
 char
-name(p)
-	const PLANE	*p;
+name(const PLANE *p)
 {
 	if (p->plane_type == 0)
 		return ('A' + p->plane_no);
@@ -265,7 +265,8 @@ name(p)
 		return ('a' + p->plane_no);
 }
 
-number(l)
+char
+number(char l)
 {
 	if (l < 'a' && l > 'z' && l < 'A' && l > 'Z')
 		return (-1);
@@ -275,7 +276,8 @@ number(l)
 		return (l - 'A');
 }
 
-next_plane()
+static int
+next_plane(void)
 {
 	static int	last_plane = -1;
 	PLANE		*pp;
@@ -303,10 +305,11 @@ next_plane()
 	return (last_plane);
 }
 
-addplane()
+int
+addplane(void)
 {
 	PLANE	p, *pp, *p1;
-	int	i, num_starts, close, rnd, rnd2, pnum;
+	int	i, num_starts, is_close, rnd, rnd2, pnum;
 
 	bzero(&p, sizeof (p));
 
@@ -336,13 +339,13 @@ addplane()
 			p.ypos = sp->exit[rnd2].y;
 			p.new_dir = p.dir = sp->exit[rnd2].dir;
 			p.altitude = p.new_altitude = 7;
-			close = 0;
+			is_close = 0;
 			for (p1 = air.head; p1 != NULL; p1 = p1->next)
 				if (too_close(p1, &p, 4)) {
-					close++;
+					is_close++;
 					break;
 				}
-			if (close)
+			if (is_close)
 				continue;
 		} else {
 			p.orig_type = T_AIRPORT;
@@ -373,9 +376,8 @@ addplane()
 	return (pp->dest_type);
 }
 
-PLANE	*
-findplane(n)
-	int	n;
+PLANE *
+findplane(int n)
 {
 	PLANE	*pp;
 
@@ -388,10 +390,8 @@ findplane(n)
 	return (NULL);
 }
 
-int
-too_close(p1, p2, dist)
-	const PLANE	*p1, *p2;
-	int		dist;
+static int
+too_close(const PLANE *p1, const PLANE *p2, int dist)
 {
 	if (ABS(p1->altitude - p2->altitude) <= dist &&
 	    ABS(p1->xpos - p2->xpos) <= dist && ABS(p1->ypos - p2->ypos) <= dist)
@@ -400,7 +400,8 @@ too_close(p1, p2, dist)
 		return (0);
 }
 
-dir_deg(d)
+static int
+dir_deg(int d)
 {
 	switch (d) {
 	case 0: return (0);

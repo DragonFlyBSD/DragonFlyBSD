@@ -35,7 +35,7 @@
  *
  * @(#)list.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/list.c,v 1.4 1999/11/30 03:48:20 billf Exp $
- * $DragonFly: src/games/atc/list.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/list.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -47,18 +47,17 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <stdlib.h>
 #include "include.h"
 
+
 PLANE	*
-newplane()
+newplane(void)
 {
 	return ((PLANE *) calloc(1, sizeof (PLANE)));
 }
 
-append(l, p)
-	LIST	*l;
-	PLANE	*p;
+void
+append(LIST *l, PLANE *p)
 {
 	PLANE 	*q = NULL, *r = NULL;
 
@@ -94,9 +93,8 @@ append(l, p)
 	}
 }
 
-delete(l, p)
-	LIST	*l;
-	PLANE	*p;
+void
+delete(LIST *l, PLANE *p)
 {
 	if (l->head == NULL)
 		loser(p, "deleted a non-existant plane! Get help!");

@@ -35,7 +35,7 @@
  *
  * @(#)log.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/atc/log.c,v 1.7 1999/11/30 03:48:20 billf Exp $
- * $DragonFly: src/games/atc/log.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/atc/log.c,v 1.3 2006/08/08 15:03:02 pavalos Exp $
  */
 
 /*
@@ -47,7 +47,9 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#include <string.h>
+#include <sys/stat.h>
+#include <err.h>
+
 #include "include.h"
 #include "pathnames.h"
 
@@ -57,9 +59,12 @@
 
 static FILE *score_fp;
 
-int
-compar(va, vb)
-	const void *va, *vb;
+static int	compar(const void *, const void *);
+static const char	*timestr(int);
+
+
+static int
+compar(const void *va, const void *vb)
 {
 	const SCORE	*a, *b;
 
@@ -82,8 +87,8 @@ compar(va, vb)
 #define MIN(t)		(((t) % SECAHOUR) / SECAMIN)
 #define SEC(t)		((t) % SECAMIN)
 
-const char	*
-timestr(t)
+static const char *
+timestr(int t)
 {
 	static char	s[80];
 
@@ -102,7 +107,7 @@ timestr(t)
 }
 
 void
-open_score_file()
+open_score_file(void)
 {
 	mode_t old_mask;
 	int score_fd;
@@ -135,8 +140,7 @@ open_score_file()
 }
 
 int
-log_score(list_em)
-	int list_em;
+log_score(int list_em)
 {
 	int		i, num_scores = 0, good, changed = 0, found = 0;
 	struct passwd	*pw;
@@ -191,9 +195,9 @@ log_score(list_em)
 		strcpy(thisscore.host, name.nodename);
 #endif
 
-		cp = rindex(file, '/');
+		cp = rindex(filename, '/');
 		if (cp == NULL) {
-			fprintf(stderr, "log: where's the '/' in %s?\n", file);
+			fprintf(stderr, "log: where's the '/' in %s?\n", filename);
 			return (-1);
 		}
 		cp++;
