@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.5 2006/08/08 02:34:04 justin Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.6 2006/08/08 02:35:44 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -65,8 +65,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top">
 <a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
-<td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building<
-/td>
+<td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
 </tr>
 
 <tr><td valign="top">
