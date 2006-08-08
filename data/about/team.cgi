@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/about/Attic/team.cgi,v 1.4 2006/08/08 02:15:09 justin Exp $
+# $DragonFly: site/data/about/Attic/team.cgi,v 1.5 2006/08/08 02:34:04 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -41,132 +41,153 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <th>Name</th><th>Area of Interest/Contribution</th>
 </tr>
 
-<tr><td valign="top"><a href="mailto:hsu 'at' dragonflybsd 'dot' org">Jeffrey Hsu</a></td>
-<td valign="top">TCP/IP, parallelizing the network stack
-(commit access)</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:joe 'at' digisquid 'dot' com">Joe Angrisano</a></td>
+<tr><td valign="top">
+<a href="mailto:joe 'at' digisquid 'dot' com">Joe Angrisano</a></td>
 <td valign="top">The DragonFly Mascot Artwork</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
-<td valign="top">1:1 Threading library (commit access)</td>
+<tr>
+<td valign="top">
+<a href="mailto:pavalos 'at' theshell 'dot' com">Peter Avalos</a></td>
+<td valign="top">code cleanup (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
+<tr><td valign="top">
+<a href="mailto:demizu 'at' dragonflybsd 'dot' org">Noritoshi Demizu</a></td>
 <td valign="top">Networking (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:sepherosa 'at' gmail 'dot' com">Sepherosa Ziehau</a></td>
-<td valign="top">Networking (commit access)</td>
-</tr>
 
-<tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
+<tr><td valign="top">
+<a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
 <td valign="top">Sun Grid Engine</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:reed 'at' reedmedia 'dot' net">Jeremy C. Reed</a></td>
-<td valign="top">Pkgsrc, documentation (commit access)</td>
+<tr><td valign="top">
+<a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
+<td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building<
+/td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
-<td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:liamfoy 'at' dragonflybsd 'dot' org">Liam J. Foy</a></td>
+<tr><td valign="top">
+<a href="mailto:liamfoy 'at' dragonflybsd 'dot' org">Liam J. Foy</a></td>
 <td valign="top">Code cleanness and userland utilities (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
+<tr><td valign="top">
+<a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
 <td valign="top">RCNG, system installation tool
 (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:virtus 'at' wanadoo 'dot' nl">Douwe Kiela</a></td>
+<tr><td valign="top">
+<a href="mailto:hsu 'at' dragonflybsd 'dot' org">Jeffrey Hsu</a></td>
+<td valign="top">TCP/IP, parallelizing the network stack
+(commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:virtus 'at' wanadoo 'dot' nl">Douwe Kiela</a></td>
 <td valign="top">Code cleanness and standards conformation
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:saw 'at' online 'dot' de">Sascha Wildner</a></td>
-<td valign="top">Syscons driver, code cleanness and userland utilities.
-(commit access)</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
-<td valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
+<tr><td valign="top">
+<a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
+<td valign="top">NVIDIA binary driver port override, misc kernel stuff, software
+ porting.
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:kmacy 'at' fsmware 'dot' com">Kip Macy</a></td>
+<tr><td valign="top">
+<a href="mailto:kmacy 'at' fsmware 'dot' com">Kip Macy</a></td>
 <td valign="top">Checkpointing
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:andre 'at' digirati 'dot' com 'dot' br">Andre Nathan</a> </td>
+<tr><td valign="top">
+<a href="mailto:andre 'at' digirati 'dot' com 'dot' br">Andre Nathan</a> </td>
 <td valign="top">Code cleanup, 'route show'
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
+<tr><td valign="top">
+<a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
 <td valign="top">Code cleanness and userland utilities
 (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
+<tr>
+<td valign="top">
+<a href="mailto:okumoto 'at' ucsd 'dot' edu">Max Okumoto</a></td>
+<td valign="top">usr.bin/make (commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
 <td valign="top">Anything and Everything
 (commit access)</td></tr>
 
-<tr><td valign="top"><a href="mailto:gshapiro 'at' dragonflybsd 'dot' org">Gregory Neil Shapiro</a> </td>
-<td valign="top">Sendmail (commit access)</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
+<tr><td valign="top">
+<a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
 <td valign="top">Janitorial work, Installer
 (commit access)</td></tr>
 
+<tr><td valign="top">
+<a href="mailto:reed 'at' reedmedia 'dot' net">Jeremy C. Reed</a></td>
+<td valign="top">Pkgsrc, documentation (commit access)</td>
+</tr>
+
 <!--
-<tr><td valign="top"><a href="mailto:daver 'at' gomerbud 'dot' com">David Reese</a> </td>
+<tr><td valign="top">
+<a href="mailto:daver 'at' gomerbud 'dot' com">David Reese</a> </td>
 <td valign="top">Syscall separation, stackgap allocation removal
 (commit access)</td>
 </tr>
 -->
 
-<tr><td valign="top"><a href="mailto:drhodus 'at' machdep 'dot' com">David Rhodus</a> </td>
+<tr><td valign="top">
+<a href="mailto:drhodus 'at' machdep 'dot' com">David Rhodus</a> </td>
 <td valign="top">ACPI, ATAng, security upgrades, NFS, tinderbox builds
 (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:xtoddx 'at' gmail 'dot' com">Todd Willey</a></td>
-<td valign="top">Pkgsrc</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:asmodai 'at' wxs 'dot' nl">Jeroen Ruigrok van der Werven</a> </td>
+<tr><td valign="top">
+<a href="mailto:asmodai 'at' wxs 'dot' nl">Jeroen Ruigrok van der Werven</a> </td>
 <td valign="top">Regression testing, algorithm testing, subsystems
 (PCI, USB, AGP, UDF, ISO9660, etc), compiler and utilities.
 (commit access)</td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:galen_sampson 'at' yahoo 'dot' com">Galen Sampson</a></td>
+<tr><td valign="top">
+<a href="mailto:galen_sampson 'at' yahoo 'dot' com">Galen Sampson</a></td>
 <td valign="top">LWKT port to userland
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build problems, testing patches (commit access)
+<tr><td valign="top">
+<a href="mailto:hrs 'at' allbsd 'dot' org">Hiroki Sato</a></td>
+<td valign="top">IPv6, KAME integration, i18n framework and documentation, mirro
+r in Japan (AllBSD) (commit access)
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:hrs 'at' allbsd 'dot' org">Hiroki Sato</a></td>
-<td valign="top">IPv6, KAME integration, i18n framework and documentation, mirror in Japan (AllBSD) (commit access)
-</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:corecode 'at' fs 'dot' ei 'dot' tum 'dot' de">Simon 'corecode' Schubert</a></td>
+<tr><td valign="top">
+<a href="mailto:corecode 'at' fs 'dot' ei 'dot' tum 'dot' de">Simon 'corecode' Schubert</a></td>
 <td valign="top">Mirror in Germany, daily snapshots
 (commit access)
 </td>
+</tr>
 
+<tr><td valign="top">
+<a href="mailto:gshapiro 'at' dragonflybsd 'dot' org">Gregory Neil Shapiro</a> </td>
+<td valign="top">Sendmail (commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
+<td valign="top">Secretarial work, documentation, website cleanup
+(commit access)</td>
 </tr>
 
 <tr><td valign="top">
@@ -177,24 +198,37 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top">
-<a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
-<td valign="top">Secretarial work, documentation, website cleanup
-(commit access)</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
+<a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
 (commit access)</td>
 </tr>
 
-<tr>
-<td valign="top"><a href="mailto:okumoto 'at' ucsd 'dot' edu">Max Okumoto</a></td>
-<td valign="top">usr.bin/make (commit access)</td>
+<tr><td valign="top">
+<a href="mailto:saw 'at' online 'dot' de">Sascha Wildner</a></td>
+<td valign="top">Syscons driver, code cleanness and userland utilities.
+(commit access)</td>
 </tr>
 
-<tr>
-<td valign="top"><a href="mailto:pavalos 'at' theshell 'dot' com">Peter Avalos</a></td>
-<td valign="top">code cleanup (commit access)</td>
+<tr><td valign="top">
+<a href="mailto:xtoddx 'at' gmail 'dot' com">Todd Willey</a></td>
+<td valign="top">Pkgsrc</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
+<td valign="top">1:1 Threading library (commit access)</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
+<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build proble
+ms, testing patches (commit access)
+</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:sepherosa 'at' gmail 'dot' com">Sepherosa Ziehau</a></td>
+<td valign="top">Networking (commit access)</td>
 </tr>
 
 
