@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.30 2006/05/25 19:31:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.31 2006/08/08 03:52:45 dillon Exp $
  */
 
 /*
@@ -1036,8 +1036,7 @@ vnode_pager_lock(vm_object_t object)
 
 		for (;;) {
 			struct vnode *vp = object->handle;
-			error = vget(vp, LK_NOPAUSE | LK_SHARED |
-					 LK_RETRY | LK_CANRECURSE);
+			error = vget(vp, LK_SHARED | LK_RETRY | LK_CANRECURSE);
 			if (error == 0) {
 				if (object->handle != vp) {
 					vput(vp);

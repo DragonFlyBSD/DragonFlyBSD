@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.42 2006/08/02 01:25:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.43 2006/08/08 03:52:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -516,7 +516,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	} else if (fp->f_flag & O_DIRECT) {
 		ioflag |= IO_DIRECT;
 	}
-	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY);
+	vn_lock(vp, LK_SHARED | LK_RETRY);
 	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -993,7 +993,7 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 		vp->filename = filename;
 		vp->line = line;
 #endif
-		error = VOP_LOCK(vp, flags | LK_NOPAUSE);
+		error = VOP_LOCK(vp, flags);
 		if (error == 0)
 			break;
 	} while (flags & LK_RETRY);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.24 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.25 2006/08/08 03:52:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
 			upgraded = 1;
 			/* Upgrade to exclusive lock, this might block */
-			VOP_LOCK(vp, LK_UPGRADE | LK_NOPAUSE);
+			VOP_LOCK(vp, LK_UPGRADE);
 		} else
 			upgraded = 0;
 		

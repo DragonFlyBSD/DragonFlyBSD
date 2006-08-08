@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.22 2006/05/25 02:46:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.23 2006/08/08 03:52:40 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -119,28 +119,17 @@ acquire(struct lock *lkp, int extflags, int wanted)
 		return EBUSY;
 	}
 
-	if (((lkp->lk_flags | extflags) & LK_NOPAUSE) == 0) {
-		if ((lkp->lk_flags & wanted) == 0)
-			return 0;
-	}
-
 	while ((lkp->lk_flags & wanted) != 0) {
 		lkp->lk_flags |= LK_WAIT_NONZERO;
 		lkp->lk_waitcount++;
 
 		/*
-		 * Use the _quick version so the critical section is left
-		 * intact, protecting the tsleep interlock.  See 
-		 * tsleep_interlock() for a description of what is
-		 * happening here.
+		 * Atomic spinlock release/sleep/reacquire.
 		 */
-		tsleep_interlock(lkp);
-		spin_unlock_wr(&lkp->lk_spinlock);
-		error = tsleep(lkp, 
+		error = msleep(lkp, &lkp->lk_spinlock,
 			       ((extflags & LK_PCATCH) ? PCATCH : 0),
 			       lkp->lk_wmesg, 
 			       ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		spin_lock_wr(&lkp->lk_spinlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
 			lkp->lk_waitcount = 0;

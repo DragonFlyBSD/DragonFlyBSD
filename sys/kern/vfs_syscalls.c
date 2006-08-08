@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.97 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.98 2006/08/08 03:52:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -295,7 +295,7 @@ sys_mount(struct mount_args *uap)
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
-	lockinit(&mp->mnt_lock, "vfslock", 0, LK_NOPAUSE);
+	lockinit(&mp->mnt_lock, "vfslock", 0, 0);
 	vfs_busy(mp, LK_NOWAIT);
 	mp->mnt_op = vfsp->vfc_vfsops;
 	mp->mnt_vfc = vfsp;

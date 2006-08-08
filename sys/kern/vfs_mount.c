@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.18 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.19 2006/08/08 03:52:40 dillon Exp $
  */
 
 /*
@@ -260,7 +260,7 @@ vfs_busy(struct mount *mp, int flags)
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
 		return (ENOENT);
 	}
-	lkflags = LK_SHARED | LK_NOPAUSE;
+	lkflags = LK_SHARED;
 	if (lockmgr(&mp->mnt_lock, lkflags))
 		panic("vfs_busy: unexpected lock failure");
 	return (0);
@@ -297,7 +297,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 		return (ENODEV);
 	mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
-	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
+	lockinit(&mp->mnt_lock, "vfslock", VLKTIMEOUT, 0);
 	vfs_busy(mp, LK_NOWAIT);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);

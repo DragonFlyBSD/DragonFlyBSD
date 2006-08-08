@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.71 2006/06/13 21:04:16 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.72 2006/08/08 03:52:40 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1612,7 +1612,7 @@ retry_lookup:
 			auio.uio_segflg = UIO_NOCOPY;
 			auio.uio_rw = UIO_READ;
 			auio.uio_td = td;
-			vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY);
+			vn_lock(vp, LK_SHARED | LK_RETRY);
 			error = VOP_READ(vp, &auio, 
 				    IO_VMIO | ((MAXBSIZE / bsize) << 16),
 				    p->p_ucred);
