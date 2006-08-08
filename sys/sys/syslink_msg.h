@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/syslink_msg.h,v 1.2 2006/08/06 18:56:46 dillon Exp $
+ * $DragonFly: src/sys/sys/syslink_msg.h,v 1.3 2006/08/08 01:27:14 dillon Exp $
  */
 /*
  * The syslink infrastructure implements an optimized RPC mechanism across a 
@@ -59,7 +59,9 @@
 
 typedef u_int32_t	sl_cookie_t;
 typedef u_int32_t	sl_msgid_t;
-typedef u_int16_t	sl_cid_t;	/* command or item id, or error */
+typedef u_int16_t	sl_cid_t;	/* command or error */
+typedef u_int16_t	sl_itemid_t;	/* item id */
+typedef u_int16_t	sl_reclen_t;	/* item length */
 
 #define SL_ALIGN	8		/* 8-byte alignment */
 #define SL_ALIGNMASK	(SL_ALIGN - 1)
@@ -130,7 +132,7 @@ typedef u_int16_t	sl_cid_t;	/* command or item id, or error */
 struct syslink_msg {
 	sl_msgid_t	msgid;		/* (32) transaction id for (src,dst) */
 	sl_cid_t	cid;		/* (16) command or error code */
-	sl_cid_t	reclen;		/* (16) */
+	sl_reclen_t	reclen;		/* (16) */
 	sysid_t		src_sysid;	/* (64) end-point identifier */
 	sysid_t		dst_sysid;	/* (64) end-point identifier */
 	/* 8-byte aligned */
@@ -172,15 +174,15 @@ struct syslink_msg {
  * if the message exits the local domain.
  */
 struct syslink_item {
-	sl_cid_t	itemid;
-	sl_cid_t	reclen;
+	sl_itemid_t	itemid;
+	sl_reclen_t	reclen;
 	int32_t		auxdata;
 	/* 8-byte aligned */
 	/* may be extended to include more data */
 };
 
-#define SLIF_RECURSION	((sl_itemid_t)0x8000)
-#define SLIF_REFID	((sl_itemid_t)0x4000)
+#define SLIF_RECURSION	((sl_cid_t)0x8000)
+#define SLIF_REFID	((sl_cid_t)0x4000)
 
 typedef struct syslink_msg	*syslink_msg_t;
 typedef struct syslink_item	*syslink_item_t;

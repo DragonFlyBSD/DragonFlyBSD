@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.1 2006/08/06 18:56:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.2 2006/08/08 01:27:13 dillon Exp $
  */
 /*
  * This module implements the syslink() system call and protocol which
@@ -182,6 +182,9 @@ sys_syslink(struct syslink_args *uap)
 		lwkt_create(syslink_rthread, sldata,
 			    &sldata->rthread, NULL,
 			    0, -1, "syslink_r");
+		fsetfd(curproc, fp, uap->fd);
+		fdrop(fp);
+		uap->sysmsg_result = uap->fd;
 	    }
 	} else {
 	    sldata->xfp = holdfp(curproc->p_fd, uap->fd, -1);
@@ -326,6 +329,8 @@ syslink_rthread(void *arg)
 	    sldata->flags |= SLF_WQUIT;
 	    wakeup(&sldata->wbuf);
     }
+    wakeup(&sldata->rbuf);
+    wakeup(&sldata->wbuf);
     sldata_rels(sldata);
 }
 
@@ -471,6 +476,10 @@ syslink_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	bytes = slbuf->windex - slbuf->rindex;
 	if (bytes)
 	    break;
+	if (sldata->flags & SLF_RDONE) {
+	    error = EIO;
+	    break;
+	}
 	if (nbio) {
 	    error = EAGAIN;
 	    goto done;
@@ -552,6 +561,10 @@ syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	    bytes = contig;
 	if (uio->uio_resid <= bytes)
 	    break;
+	if (sldata->flags & SLF_RDONE) {
+	    error = EIO;
+	    goto done;
+	}
 	if (nbio) {
 	    error = EAGAIN;
 	    goto done;
@@ -563,8 +576,10 @@ syslink_write (struct file *fp, struct uio *uio, struct ucred *cred, int flags)
     error = uiomove((caddr_t)head, bytes, uio);
     if (error == 0)
 	error = syslink_validate(head, bytes);
-    if (error == 0)
+    if (error == 0) {
 	slbuf->windex += bytes;
+	wakeup(slbuf);
+    }
 done:
     lockmgr(&sldata->rlock, LK_RELEASE);
     return(error);
@@ -577,6 +592,14 @@ syslink_close (struct file *fp)
     struct sldata *sldata;
 
     sldata = fp->f_data;
+    if ((sldata->flags & SLF_RQUIT) == 0) {
+	sldata->flags |= SLF_RQUIT;
+	wakeup(&sldata->rbuf);
+    }
+    if ((sldata->flags & SLF_WQUIT) == 0) {
+	sldata->flags |= SLF_WQUIT;
+	wakeup(&sldata->wbuf);
+    }
     fp->f_data = NULL;
     sldata_rels(sldata);
     return(0);
