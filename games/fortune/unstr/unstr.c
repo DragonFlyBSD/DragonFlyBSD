@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/unstr/unstr.c,v 1.5 1999/11/16 02:57:01 billf Exp $
- * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.3 2005/09/01 22:45:35 liamfoy Exp $
+ * $DragonFly: src/games/fortune/unstr/unstr.c,v 1.4 2006/08/08 16:58:59 pavalos Exp $
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unstr.c     8.1 (Berkeley) 5/31/93
@@ -67,11 +67,12 @@ char	*Infile,			/* name of input file */
 
 FILE	*Inf, *Dataf;
 
-void getargs(), order_unstr();
+void	getargs(char *[]);
+void	order_unstr(STRFILE *);
 
 /* ARGSUSED */
 int
-main(int ac, char **av)
+main(__unused int ac, char **av)
 {
 	static STRFILE	tbl;		/* description table */
 
@@ -116,7 +117,7 @@ getargs(char *av[])
 void
 order_unstr(STRFILE *tbl)
 {
-	int	i;
+	unsigned int	i;
 	char	*sp;
 	long            pos;
 	char		buf[BUFSIZ];

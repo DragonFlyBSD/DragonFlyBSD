@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
- * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.4 2005/09/01 22:45:35 liamfoy Exp $
+ * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.5 2006/08/08 16:58:59 pavalos Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strfile.c   8.1 (Berkeley) 5/31/93
@@ -42,6 +42,7 @@
  */
 
 # include	<sys/param.h>
+# include	<stdbool.h>
 # include	<stdio.h>
 # include       <stdlib.h>
 # include	<ctype.h>
@@ -75,9 +76,6 @@
  *	Added ordering options.
  */
 
-# define	TRUE	1
-# define	FALSE	0
-
 # define	STORING_PTRS	(Oflag || Rflag)
 # define	CHUNKSIZE	512
 
@@ -92,10 +90,6 @@
 			} \
 		}
 
-#ifdef NO_VOID
-# define	void	char
-#endif
-
 typedef struct {
 	char	first;
 	long    pos;
@@ -105,12 +99,12 @@ char	*Infile		= NULL,		/* input file name */
 	Outfile[MAXPATHLEN] = "",	/* output file name */
 	Delimch		= '%';		/* delimiting character */
 
-int	Cflag		= FALSE;	/* embedded comments */
-int	Sflag		= FALSE;	/* silent run flag */
-int	Oflag		= FALSE;	/* ordering flag */
-int	Iflag		= FALSE;	/* ignore case flag */
-int	Rflag		= FALSE;	/* randomize order flag */
-int	Xflag		= FALSE;	/* set rotated bit */
+int	Cflag		= false;	/* embedded comments */
+int	Sflag		= false;	/* silent run flag */
+int	Oflag		= false;	/* ordering flag */
+int	Iflag		= false;	/* ignore case flag */
+int	Rflag		= false;	/* randomize order flag */
+int	Xflag		= false;	/* set rotated bit */
 long	Num_pts		= 0;		/* number of pointers/strings */
 
 long    *Seekpts;
@@ -185,9 +179,9 @@ main(int ac, char **av)
 			if (!length)
 				continue;
 			add_offset(outf, pos);
-			if (Tbl.str_longlen < length)
+			if (Tbl.str_longlen < (unsigned long)length)
 				Tbl.str_longlen = length;
-			if (Tbl.str_shortlen > length)
+			if (Tbl.str_shortlen > (unsigned long)length)
 				Tbl.str_shortlen = length;
 			first = Oflag;
 		}
@@ -201,7 +195,7 @@ main(int ac, char **av)
 			else
 				fp->first = *nsp;
 			fp->pos = Seekpts[Num_pts - 1];
-			first = FALSE;
+			first = false;
 		}
 	} while (sp != NULL);
 
@@ -401,8 +395,8 @@ cmp_str(const void *s1, const void  *s2)
 	(void) fseek(Sort_1, p1->pos, 0);
 	(void) fseek(Sort_2, p2->pos, 0);
 
-	n1 = FALSE;
-	n2 = FALSE;
+	n1 = false;
+	n2 = false;
 	while (!isalnum(c1 = getc(Sort_1)) && c1 != '\0' && c1 != EOF)
 		SET_N(n1, c1);
 	while (!isalnum(c2 = getc(Sort_2)) && c2 != '\0' && c2 != EOF)
