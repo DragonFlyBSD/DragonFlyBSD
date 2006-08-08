@@ -35,7 +35,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pom.c       8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/pom/pom.c,v 1.9 1999/11/30 03:49:09 billf Exp $
- * $DragonFly: src/games/pom/pom.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
+ * $DragonFly: src/games/pom/pom.c,v 1.4 2006/08/08 17:08:49 pavalos Exp $
  */
 
 /*
@@ -52,9 +52,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#ifndef	PI
-#define	PI	  3.14159265358979323846
-#endif
 #define	EPOCH	  85
 #define	EPSILONg  279.611371	/* solar ecliptic long at EPOCH */
 #define	RHOg	  282.680403	/* solar ecliptic long of perigee at EPOCH */
@@ -69,7 +66,7 @@ static double	dtor (double);
 static double	potm (double);
 
 int
-main()
+main(void)
 {
 	time_t tt;
 	struct tm *GMT;
@@ -113,8 +110,7 @@ main()
  *	return phase of the moon
  */
 static double
-potm(days)
-	double days;
+potm(double days)
 {
 	double N, Msol, Ec, LambdaSol, l, Mm, Ev, Ac, A3, Mmprime;
 	double A4, lprime, V, ldprime, D, Nm;
@@ -123,7 +119,7 @@ potm(days)
 	adj360(&N);
 	Msol = N + EPSILONg - RHOg;				/* sec 42 #4 */
 	adj360(&Msol);
-	Ec = 360 / PI * ECCEN * sin(dtor(Msol));		/* sec 42 #5 */
+	Ec = 360 / M_PI * ECCEN * sin(dtor(Msol));		/* sec 42 #5 */
 	LambdaSol = N + Ec + EPSILONg;				/* sec 42 #6 */
 	adj360(&LambdaSol);
 	l = 13.1763966 * days + lzero;				/* sec 61 #4 */
@@ -150,10 +146,9 @@ potm(days)
  *	convert degrees to radians
  */
 static double
-dtor(deg)
-	double deg;
+dtor(double deg)
 {
-	return(deg * PI / 180);
+	return(deg * M_PI / 180);
 }
 
 /*
@@ -161,8 +156,7 @@ dtor(deg)
  *	adjust value so 0 <= deg <= 360
  */
 static void
-adj360(deg)
-	double *deg;
+adj360(double *deg)
 {
 	for (;;)
 		if (*deg < 0)
