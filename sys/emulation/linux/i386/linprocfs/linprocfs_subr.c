@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.19 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.20 2006/08/08 21:36:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,7 @@
 #define PFSHMASK	(PFSHSIZE - 1)
 
 static struct pfsnode *pfshead[PFSHSIZE];
+static struct lwkt_token pfs_token;
 static int pfsvplock;
 
 extern int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
@@ -91,8 +92,10 @@ linprocfs_allocvp(struct mount *mp, struct vnode **vpp, long pid,
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	struct pfsnode **pp;
+	lwkt_tokref ilock;
 	int error;
 
+	lwkt_gettoken(&ilock, &pfs_token);
 loop:
 	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		vp = PFSTOV(pfs);
@@ -102,6 +105,7 @@ loop:
 			if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL))
 				goto loop;
 			*vpp = vp;
+			lwkt_reltoken(&ilock);
 			return (0);
 		}
 	}
@@ -211,6 +215,7 @@ out:
 		pfsvplock &= ~PROCFS_WANT;
 		wakeup((caddr_t) &pfsvplock);
 	}
+	lwkt_reltoken(&ilock);
 
 	return (error);
 }
@@ -220,13 +225,16 @@ linprocfs_freevp(struct vnode *vp)
 {
 	struct pfsnode **pfspp;
 	struct pfsnode *pfs = VTOPFS(vp);
+	lwkt_tokref ilock;
 
+	lwkt_gettoken(&ilock, &pfs_token);
 	pfspp = &pfshead[pfs->pfs_pid & PFSHMASK]; 
 	while (*pfspp != pfs) {
 		KKASSERT(*pfspp != NULL);
 		pfspp = &(*pfspp)->pfs_next;
 	}
 	*pfspp = pfs->pfs_next;
+	lwkt_reltoken(&ilock);
 	FREE(vp->v_data, M_TEMP);
 	vp->v_data = NULL;
 	return (0);
@@ -352,8 +360,15 @@ vfs_findname(vfs_namemap_t *nm, char *buf, int buflen)
 #endif
 
 void
+linprocfs_init(void)
+{
+	lwkt_token_init(&pfs_token);
+}
+
+void
 linprocfs_exit(struct thread *td)
 {
+	lwkt_tokref ilock;
 	struct pfsnode *pfs;
 	struct vnode *vp;
 	pid_t pid;
@@ -364,6 +379,7 @@ linprocfs_exit(struct thread *td)
 	/*
 	 * Remove all the procfs vnodes associated with an exiting process.
 	 */
+	lwkt_gettoken(&ilock, &pfs_token);
 restart:
 	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		if (pfs->pfs_pid == pid) {
@@ -375,5 +391,7 @@ restart:
 			goto restart;
 		}
 	}
+	lwkt_reltoken(&ilock);
+	lwkt_token_uninit(&pfs_token);
 }
 
