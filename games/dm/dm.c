@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/dm/dm.c,v 1.8 1999/12/10 02:54:18 billf Exp $
- * $DragonFly: src/games/dm/dm.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/dm/dm.c,v 1.4 2006/08/08 17:05:14 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -59,20 +59,21 @@ static int	priority = 0;		/* priority game runs at */
 static char	*game,			/* requested game */
 		*gametty;		/* from tty? */
 
-void c_day (char *, char *, char *);
-void c_tty (char *);
-void c_game (char *, char *, char *, char *);
-void hour (int);
-double load (void);
-void nogamefile (void);
-void play (char **);
-void read_config (void);
-int users (void);
+static void	c_day(char *, char *, char *);
+static void	c_tty(char *);
+static void	c_game(char *, char *, char *, char *);
+static void	hour(int);
+static double	load(void);
+static void	nogamefile(void);
+static void	play(char **);
+static void	read_config(void);
+static int	users(void);
+#ifdef LOG
+static void	logfile(void);
+#endif
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(__unused int argc, char *argv[])
 {
 	char *cp;
 
@@ -84,7 +85,7 @@ main(argc, argv)
 
 	gametty = ttyname(0);
 	unsetenv("TZ");
-	(void)time(&now);
+	time(&now);
 	read_config();
 #ifdef LOG
 	logfile();
@@ -98,23 +99,22 @@ main(argc, argv)
  * play --
  *	play the game
  */
-void
-play(args)
-	char **args;
+static void
+play(char **args)
 {
 	char pbuf[MAXPATHLEN];
 
 	if (sizeof(_PATH_HIDE) + strlen(game) > sizeof(pbuf)) {
-		(void)fprintf(stderr, "dm: %s/%s: %s\n", _PATH_HIDE, game,
+		fprintf(stderr, "dm: %s/%s: %s\n", _PATH_HIDE, game,
 			strerror(ENAMETOOLONG));
 		exit(1);
 	}
-	(void)strcpy(pbuf, _PATH_HIDE);
-	(void)strcpy(pbuf + sizeof(_PATH_HIDE) - 1, game);
+	strcpy(pbuf, _PATH_HIDE);
+	strcpy(pbuf + sizeof(_PATH_HIDE) - 1, game);
 	if (priority > 0)	/* < 0 requires root */
-		(void)setpriority(PRIO_PROCESS, 0, priority);
+		setpriority(PRIO_PROCESS, 0, priority);
 	execv(pbuf, args);
-	(void)fprintf(stderr, "dm: %s: %s\n", pbuf, strerror(errno));
+	fprintf(stderr, "dm: %s: %s\n", pbuf, strerror(errno));
 	exit(1);
 }
 
@@ -122,8 +122,8 @@ play(args)
  * read_config --
  *	read through config file, looking for key words.
  */
-void
-read_config()
+static void
+read_config(void)
 {
 	FILE *cfp;
 	char lbuf[BUFSIZ], f1[40], f2[40], f3[40], f4[40], f5[40];
@@ -150,16 +150,15 @@ read_config()
 				break;
 			c_day(f2, f3, f4);
 		}
-	(void)fclose(cfp);
+	fclose(cfp);
 }
 
 /*
  * c_day --
  *	if day is today, see if okay to play
  */
-void
-c_day(s_day, s_start, s_stop)
-	char *s_day, *s_start, *s_stop;
+static void
+c_day(char *s_day, char *s_start, char *s_stop)
 {
 	static const char *days[] = {
 		"sunday", "monday", "tuesday", "wednesday",
@@ -177,11 +176,11 @@ c_day(s_day, s_start, s_stop)
 	start = atoi(s_start);
 	stop = atoi(s_stop);
 	if (ct->tm_hour >= start && ct->tm_hour < stop) {
-		(void)fputs("dm: Sorry, games are not available from ", stderr);
+		fputs("dm: Sorry, games are not available from ", stderr);
 		hour(start);
-		(void)fputs(" to ", stderr);
+		fputs(" to ", stderr);
 		hour(stop);
-		(void)fputs(" today.\n", stderr);
+		fputs(" today.\n", stderr);
 		exit(0);
 	}
 }
@@ -190,9 +189,8 @@ c_day(s_day, s_start, s_stop)
  * c_tty --
  *	decide if this tty can be used for games.
  */
-void
-c_tty(tty)
-	char *tty;
+static void
+c_tty(char *tty)
 {
 	static int first = 1;
 	static char *p_tty;
@@ -203,7 +201,7 @@ c_tty(tty)
 	}
 
 	if (!strcmp(gametty, tty) || (p_tty && !strcmp(p_tty, tty))) {
-		(void)fprintf(stderr, "dm: Sorry, you may not play games on %s.\n", gametty);
+		fprintf(stderr, "dm: Sorry, you may not play games on %s.\n", gametty);
 		exit(0);
 	}
 }
@@ -212,9 +210,8 @@ c_tty(tty)
  * c_game --
  *	see if game can be played now.
  */
-void
-c_game(s_game, s_load, s_users, s_priority)
-	char *s_game, *s_load, *s_users, *s_priority;
+static void
+c_game(char *s_game, char *s_load, char *s_users, char *s_priority)
 {
 	static int found;
 
@@ -224,11 +221,11 @@ c_game(s_game, s_load, s_users, s_priority)
 		return;
 	++found;
 	if (isdigit(*s_load) && atoi(s_load) < load()) {
-		(void)fputs("dm: Sorry, the load average is too high right now.\n", stderr);
+		fputs("dm: Sorry, the load average is too high right now.\n", stderr);
 		exit(0);
 	}
 	if (isdigit(*s_users) && atoi(s_users) <= users()) {
-		(void)fputs("dm: Sorry, there are too many users logged on right now.\n", stderr);
+		fputs("dm: Sorry, there are too many users logged on right now.\n", stderr);
 		exit(0);
 	}
 	if (isdigit(*s_priority))
@@ -239,13 +236,13 @@ c_game(s_game, s_load, s_users, s_priority)
  * load --
  *	return 15 minute load average
  */
-double
-load()
+static double
+load(void)
 {
 	double avenrun[3];
 
 	if (getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0])) < 0) {
-		(void)fputs("dm: getloadavg() failed.\n", stderr);
+		fputs("dm: getloadavg() failed.\n", stderr);
 		exit(1);
 	}
 	return(avenrun[2]);
@@ -257,15 +254,15 @@ load()
  *	todo: check idle time; if idle more than X minutes, don't
  *	count them.
  */
-int
-users()
+static int
+users(void)
 {
 
 	int nusers, utmp;
 	struct utmp buf;
 
 	if ((utmp = open(_PATH_UTMP, O_RDONLY, 0)) < 0) {
-		(void)fprintf(stderr, "dm: %s: %s\n",
+		fprintf(stderr, "dm: %s: %s\n",
 		    _PATH_UTMP, strerror(errno));
 		exit(1);
 	}
@@ -275,17 +272,17 @@ users()
 	return(nusers);
 }
 
-void
-nogamefile()
+static void
+nogamefile(void)
 {
 	int fd, n;
 	char buf[BUFSIZ];
 
 	if ((fd = open(_PATH_NOGAMES, O_RDONLY, 0)) >= 0) {
 #define	MESG	"Sorry, no games right now.\n\n"
-		(void)write(2, MESG, sizeof(MESG) - 1);
+		write(2, MESG, sizeof(MESG) - 1);
 		while ((n = read(fd, buf, sizeof(buf))) > 0)
-			(void)write(2, buf, n);
+			write(2, buf, n);
 		exit(1);
 	}
 }
@@ -294,22 +291,21 @@ nogamefile()
  * hour --
  *	print out the hour in human form
  */
-void
-hour(h)
-	int h;
+static void
+hour(int h)
 {
 	switch(h) {
 	case 0:
-		(void)fputs("midnight", stderr);
+		fputs("midnight", stderr);
 		break;
 	case 12:
-		(void)fputs("noon", stderr);
+		fputs("noon", stderr);
 		break;
 	default:
 		if (h > 12)
-			(void)fprintf(stderr, "%dpm", h - 12);
+			fprintf(stderr, "%dpm", h - 12);
 		else
-			(void)fprintf(stderr, "%dam", h);
+			fprintf(stderr, "%dam", h);
 	}
 }
 
@@ -318,7 +314,8 @@ hour(h)
  * logfile --
  *	log play of game
  */
-logfile()
+static void
+logfile(void)
 {
 	struct passwd *pw;
 	FILE *lp;
@@ -331,7 +328,7 @@ logfile()
 				break;
 			if (lock_cnt == 4) {
 				perror("dm: log lock");
-				(void)fclose(lp);
+				fclose(lp);
 				return;
 			}
 			sleep((u_int)1);
@@ -341,8 +338,8 @@ logfile()
 		else
 			fprintf(lp, "%u", uid);
 		fprintf(lp, "\t%s\t%s\t%s", game, gametty, ctime(&now));
-		(void)fclose(lp);
-		(void)flock(fileno(lp), LOCK_UN);
+		fclose(lp);
+		flock(fileno(lp), LOCK_UN);
 	}
 }
 #endif /* LOG */
