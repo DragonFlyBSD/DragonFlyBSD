@@ -31,9 +31,12 @@
  * SUCH DAMAGE.
  *
  *	@(#)back.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/backgammon/common_source/back.h,v 1.2 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <sgtty.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #define rnum(r)	(random()%r)
 #define D0	dice[0]
@@ -124,4 +127,66 @@ extern int	curc;		/* column position of cursor */
 extern int	begscr;		/* 'beginning' of screen
 				   (not including board) */
 
-void	getout();		/* function to exit backgammon cleanly */
+int	movallow(void);
+
+void	wrboard(void);
+
+void	getmove(void);
+int	movokay(int);
+
+void	fboard(void);
+void	refresh(void);
+void	curmove(int, int);
+void	newpos(void);
+void	clear(void);
+void	fancyc(char);
+void	clend(void);
+void	cline(void);
+int	getcaps(const char *);
+
+void	odds(int, int, int);
+int	count(void);
+int	canhit(int, int);
+
+int	makmove(int);
+void	moverr(int);
+void	movback(int);
+void	backone(int);
+
+void	save(int);
+void	recover(const char *);
+
+void	errexit(const char *);
+int	addbuf(int);
+void	buflush(void);
+char	readc(void);
+void	writec(char);
+void	writel(const char *);
+void	proll(void);
+void	wrint(int);
+void	gwrite(void);
+int	quit(void);
+int	yorn(char);
+void	wrhit(int);
+void	nexturn(void);
+void	getarg(int, char **);
+void	init(void);
+void	wrscore(void);
+void	fixtty(int);
+void	getout(void);		/* function to exit backgammon cleanly */
+void	roll(void);
+
+int	checkmove(int);
+
+void	dble(void);
+int	dblgood(void);
+int	freemen(int);
+int	trapped(int, int);
+
+void	move(int);
+
+#ifdef	TEACHGAMMON_TEXT
+int	text(const char *const *);
+#else
+void	text(const char *const *);
+#endif

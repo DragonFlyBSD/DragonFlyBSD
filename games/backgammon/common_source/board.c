@@ -32,16 +32,20 @@
  *
  * @(#)board.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/board.c,v 1.6 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/board.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/board.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <string.h>
 #include "back.h"
 
+static void	wrbsub(void);
+
 static int	i, j, k;
 static char	ln[60];
 
-wrboard ()  {
+void
+wrboard(void)
+{
 	int	l;
 	static const char	bl[] =
 		"|                       |   |                       |\n";
@@ -156,8 +160,10 @@ lastline:
 	}
 	fixtty(raw);
 }
-
-wrbsub () {
+
+static void
+wrbsub(void)
+{
 	int		m;
 	char		d;
 

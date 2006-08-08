@@ -32,7 +32,7 @@
  *
  * @(#)ttext1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/teachgammon/ttext1.c,v 1.3 1999/11/30 03:48:30 billf Exp $
- * $DragonFly: src/games/backgammon/teachgammon/ttext1.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/teachgammon/ttext1.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -98,7 +98,7 @@ const char	*const intro2[] = {
     "have any pieces of either color.",
     "",
     0};
-
+
 const char	*const moves[] = {
     "\nMoves and Points:",
     "\n   Moves are made along the positions on the board according to",
@@ -153,7 +153,7 @@ const char	*const remove[] = {
     "many moves as possible.",
     "",
     0};
-
+
 const char	*const hits[] = {
     "\nHitting Blots:",
     "\n   Although two men on a position form an impenetrable point, a",
@@ -170,7 +170,7 @@ const char	*const hits[] = {
     "bar, as well as being set back the full distance of the board.",
     "",
     0};
-
+
 const char	*const endgame[] = {
     "\nEnding the Game and Scoring:",
     "\n   Winning a game usually wins one point, the normal value of a",

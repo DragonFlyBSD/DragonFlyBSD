@@ -33,13 +33,11 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/backgammon/main.c,v 1.13 1999/11/30 03:48:22 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/main.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/backgammon/main.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
-#include <stdlib.h>
 #include <signal.h>
 #include "back.h"
 
@@ -48,7 +46,6 @@
 
 extern const char	*const instr[];		/* text of instructions */
 extern const char	*const message[];	/* update message */
-char	ospeed;					/* tty output speed */
 
 const char	*helpm[] = {			/* help message */
 	"Enter a space or newline to roll, or",
@@ -84,10 +81,8 @@ static const char	svpromt[] = "Would you like to save this game?";
 static const char	password[] = "losfurng";
 static char	pbuf[10];
 
-main (argc,argv)
-int	argc;
-char	**argv;
-
+int
+main(int argc, char **argv)
 {
 	int	i;		/* non-descript index */
 	int	l;		/* non-descript index */
@@ -99,8 +94,8 @@ char	**argv;
 	/* initialization */
 	bflag = 2;					/* default no board */
 	acnt = 1;                                       /* Nuber of args */
-	signal (SIGINT,getout);				/* trap interrupts */
-	if (gtty (0,&tty) == -1)			/* get old tty mode */
+	signal (SIGINT,(sig_t)getout);			/* trap interrupts */
+	if (ioctl(0, TIOCGETP, &tty) == -1)		/* get old tty mode */
 		errexit ("backgammon(gtty)");
 	old = tty.sg_flags;
 #ifdef V7
@@ -108,7 +103,6 @@ char	**argv;
 #else
 	raw = ((noech = old & ~ECHO) | RAW);		/* set up modes */
 #endif
-	ospeed = tty.sg_ospeed;				/* for termlib */
 
 							/* get terminal
 							 * capabilities, and
@@ -133,7 +127,7 @@ char	**argv;
 							/* check if restored
 							 * game and save flag
 							 * for later */
-	if (rfl = rflag)  {
+	if ((rfl = rflag) != 0)  {
 		text (message);				/* print message */
 		text (contin);
 		wrboard();				/* print board */
@@ -200,7 +194,7 @@ char	**argv;
 					else
 						writec ('\n');
 					writel ("Password:");
-					signal (SIGALRM,getout);
+					signal (SIGALRM,(sig_t)getout);
 					cflag = 1;
 					alarm (10);
 					for (i = 0; i < 10; i++)  {
@@ -559,4 +553,6 @@ char	**argv;
 
 							/* leave peacefully */
 	getout ();
+	/* NOTREACHED */
+	return(0);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)ttext2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/teachgammon/ttext2.c,v 1.3.2.1 2001/10/15 13:46:32 dd Exp $
- * $DragonFly: src/games/backgammon/teachgammon/ttext2.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/teachgammon/ttext2.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -70,7 +70,7 @@ const char	*const stragy[] = {
     "tional hints on strategy are presented in the practice game.",
     "",
     0};
-
+
 const char	*const prog[] = {
    "\nThe Program and How It Works:",
    "\n   A general rule of thumb is when you don't know what to do,",
@@ -123,11 +123,9 @@ const char	*const lastch[] = {
    "torial starts.",
    "",
    0};
-
-int
-text (txt)
-const char	*const *txt;
 
+int
+text(const char *const *txt)
 {
 	const char	*const *begin;
 	const char	*a;

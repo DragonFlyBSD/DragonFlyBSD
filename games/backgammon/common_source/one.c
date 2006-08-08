@@ -32,14 +32,16 @@
  *
  * @(#)one.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/one.c,v 1.5 1999/11/30 03:48:27 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/one.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/one.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 
-makmove (i)
-int	i;
+static int	checkd(int);
+static int	last(void);
 
+int
+makmove(int i)
 {
 	int	n, d;
 	int		max;
@@ -90,10 +92,9 @@ int	i;
 	}
 	return (0);
 }
-
-moverr (i)
-int	i;
 
+void
+moverr(int i)
 {
 	int	j;
 
@@ -113,27 +114,27 @@ int	i;
 	movback (i);
 }
 
-
-checkd (d)
-int	d;
-
+static int
+checkd(int d)
 {
 	if (d0 != d)
 		swap;
 	return (0);
 }
 
-last ()  {
+static int
+last(void)
+{
 	int	i;
 
 	for (i = home-6*cturn; i != home; i += cturn)
 		if (board[i]*cturn > 0)
 			return (abs(home-i));
+	return(-1);
 }
-
-movback (i)
-int	i;
 
+void
+movback(int i)
 {
 	int	j;
 
@@ -141,9 +142,8 @@ int	i;
 		backone(j);
 }
 
-backone (i)
-int	i;
-
+void
+backone(int i)
 {
 	board[p[i]] += cturn;
 	if (g[i] != home)  {

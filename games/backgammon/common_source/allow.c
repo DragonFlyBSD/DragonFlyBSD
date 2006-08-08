@@ -32,12 +32,14 @@
  *
  * @(#)allow.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/allow.c,v 1.4 1999/11/30 03:48:24 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/allow.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/allow.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 
-movallow ()  {
+int
+movallow(void)
+{
 
 	int		i, m, iold;
 	int		r;
@@ -57,7 +59,7 @@ movallow ()  {
 				g[i] = bar+cturn*D1;
 			else
 				g[i] = bar+cturn*D0;
-			if (r = makmove(i))  {
+			if ((r = makmove(i)) != 0)  {
 				if (d0 || m == 4)
 					break;
 				swap;

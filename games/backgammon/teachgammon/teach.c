@@ -33,29 +33,14 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)teach.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/teachgammon/teach.c,v 1.12 1999/11/30 03:48:30 billf Exp $
- * $DragonFly: src/games/backgammon/teachgammon/teach.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/teachgammon/teach.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <string.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <signal.h>
 #include "back.h"
-
-extern char	*hello[];
-extern char	*list[];
-extern char	*intro1[];
-extern char	*intro2[];
-extern char	*moves[];
-extern char	*remove[];
-extern char	*hits[];
-extern char	*endgame[];
-extern char	*doubl[];
-extern char	*stragy[];
-extern char	*prog[];
-extern char	*lastch[];
-
-extern char	ospeed;			/* tty output speed for termlib */
+#include "tutor.h"
 
 const char *const helpm[] = {
 	"\nEnter a space or newline to roll, or",
@@ -70,10 +55,8 @@ const char *const contin[] = {
 	0
 };
 
-main (argc,argv)
-int	argc;
-char	**argv;
-
+int
+main(int argc, char **argv)
 {
 	int	i;
 
@@ -81,8 +64,8 @@ char	**argv;
 	setgid(getgid());
 
 	acnt = 1;
-	signal (SIGINT,getout);
-	if (gtty (0,&tty) == -1)			/* get old tty mode */
+	signal (SIGINT,(sig_t)getout);
+	if (ioctl(0,TIOCGETP,&tty) == -1)			/* get old tty mode */
 		errexit ("teachgammon(gtty)");
 	old = tty.sg_flags;
 #ifdef V7
@@ -90,7 +73,6 @@ char	**argv;
 #else
 	raw = ((noech = old & ~ECHO) | RAW);		/* set up modes */
 #endif
-	ospeed = tty.sg_ospeed;				/* for termlib */
 	tflag = getcaps (getenv ("TERM"));
 	getarg (argc, argv);
 	if (tflag)  {
@@ -111,48 +93,52 @@ char	**argv;
 			leave();
 
 		case 2:
-			if (i = text(intro1))
+			if ((i = text(intro1)) != 0)
 				break;
 			wrboard();
-			if (i = text(intro2))
+			if ((i = text(intro2)) != 0)
 				break;
 
 		case 3:
-			if (i = text(moves))
+			if ((i = text(moves)) != 0)
 				break;
 
 		case 4:
-			if (i = text(remove))
+			if ((i = text(remove)) != 0)
 				break;
 
 		case 5:
-			if (i = text(hits))
+			if ((i = text(hits)) != 0)
 				break;
 
 		case 6:
-			if (i = text(endgame))
+			if ((i = text(endgame)) != 0)
 				break;
 
 		case 7:
-			if (i = text(doubl))
+			if ((i = text(doubl)) != 0)
 				break;
 
 		case 8:
-			if (i = text(stragy))
+			if ((i = text(stragy)) != 0)
 				break;
 
 		case 9:
-			if (i = text(prog))
+			if ((i = text(prog)) != 0)
 				break;
 
 		case 10:
-			if (i = text(lastch))
+			if ((i = text(lastch)) != 0)
 				break;
 		}
 	tutor();
+	/* NOTREACHED */
+	return(0);
 }
 
-leave()  {
+void
+leave(void)
+{
 	int i;
 	if (tflag)
 		clear();

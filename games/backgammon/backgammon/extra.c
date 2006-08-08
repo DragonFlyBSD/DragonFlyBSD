@@ -32,7 +32,7 @@
  *
  * @(#)extra.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/backgammon/extra.c,v 1.4 1999/11/30 03:48:22 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/extra.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/backgammon/extra.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
@@ -42,12 +42,16 @@
 FILE	*trace;
 #endif
 
+static int	eval(void);
+
 /*
  * dble()
  *	Have the current player double and ask opponent to accept.
  */
 
-dble ()  {
+void
+dble(void)
+{
 	int	resp;			/* response to y/n */
 
 	for (;;)  {
@@ -100,7 +104,7 @@ dble ()  {
 		return;
 	}
 }
-
+
 /*
  * dblgood ()
  *	Returns 1 if the computer would double in this position.  This
@@ -112,7 +116,9 @@ dble ()  {
  * behind.
  */
 
-dblgood ()  {
+int
+dblgood(void)
+{
 	int	n;			/* accumulated judgment */
 	int	OFFC = *offptr;		/* no. of computer's men off */
 	int	OFFO = *offopp;		/* no. of player's men off */
@@ -186,10 +192,9 @@ dblgood ()  {
 		return(1);
 	return (0);
 }
-
-freemen (b)
-int	b;
 
+int
+freemen(int b)
 {
 	int		i, inc, lim;
 
@@ -205,10 +210,9 @@ int	b;
 		return ((36-count())/5);
 	return (count()/5);
 }
-
-trapped (n,inc)
-int	n, inc;
 
+int
+trapped(int n, int inc)
 {
 	int		i, j, k;
 	int		c, l, ct;
@@ -232,9 +236,10 @@ int	n, inc;
 	}
 	return (ct/5);
 }
-
-eval ()  {
 
+static int
+eval(void)
+{
 	int		i, j;
 
 	for (j = i = 0; i < 26; i++)

@@ -32,21 +32,20 @@
  *
  * @(#)tutor.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/teachgammon/tutor.c,v 1.5 1999/11/30 03:48:31 billf Exp $
- * $DragonFly: src/games/backgammon/teachgammon/tutor.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/teachgammon/tutor.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 #include "tutor.h"
 
-extern int	maxmoves;
-extern const char	*const finis[];
-
-extern const struct situatn	test[];
+static void	clrest(void);
+static int	brdeq(const int *, const int *);
 
 static const char	better[] = "That is a legal move, but there is a better one.\n";
 
 void
-tutor ()  {
+tutor(void)
+{
 	int	i, j;
 
 	i = 0;
@@ -130,7 +129,9 @@ tutor ()  {
 	leave();
 }
 
-clrest ()  {
+static void
+clrest(void)
+{
 	int	r, c, j;
 
 	r = curr;
@@ -142,10 +143,8 @@ clrest ()  {
 	curmove (r,c);
 }
 
-int
-brdeq (b1,b2)
-const int  *b1, *b2;
-
+static int
+brdeq(const int *b1, const int *b2)
 {
 	const int  *e;
 

@@ -32,14 +32,13 @@
  *
  * @(#)odds.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/odds.c,v 1.5 1999/11/30 03:48:26 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/odds.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/odds.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include "back.h"
 
-odds (r1,r2,val)
-int	r1;
-int		r2, val;
+void
+odds(int r1, int r2, int val)
 {
 	int	i, j;
 
@@ -62,7 +61,9 @@ int		r2, val;
 	}
 }
 
-count ()  {
+int
+count(void)
+{
 	int	i;
 	int	j;
 	int	total;
@@ -73,13 +74,12 @@ count ()  {
 			total += table[i][j];
 	return (total);
 }
-
-canhit (i,c)
-int	i, c;
 
+int
+canhit(int i, int c)
 {
 	int	j, k, b;
-	int		a, d, diff, place, addon, menstuck;
+	int	a, diff, place, addon, menstuck;
 
 	if (c == 0)
 		odds (0,0,0);

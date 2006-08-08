@@ -32,11 +32,10 @@
  *
  * @(#)subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/subs.c,v 1.12 1999/11/30 03:48:27 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/subs.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/subs.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "back.h"
 
@@ -60,17 +59,16 @@ const char  *const descr[] = {
 	0
 };
 
-errexit (s)
-char	*s;
+void
+errexit(const char *s)
 {
 	write (2,"\n",1);
 	perror (s);
 	getout();
 }
 
-int addbuf (c)
-int	c;
-
+int
+addbuf(int c)
 {
 	buffnum++;
 	if (buffnum == BUFSIZ)  {
@@ -82,7 +80,9 @@ int	c;
 	return (0);
 }
 
-buflush ()  {
+void
+buflush(void)
+{
 	if (buffnum < 0)
 		return;
 	buffnum++;
@@ -91,7 +91,9 @@ buflush ()  {
 	buffnum = -1;
 }
 
-readc () {
+char
+readc(void)
+{
 	char	c;
 
 	if (tflag)  {
@@ -116,8 +118,8 @@ readc () {
 	return (c);
 }
 
-writec (c)
-char	c;
+void
+writec(char c)
 {
 	if (tflag)
 		fancyc (c);
@@ -126,8 +128,7 @@ char	c;
 }
 
 void
-writel (l)
-const char	*l;
+writel(const char *l)
 {
 #ifdef DEBUG
 	const char	*s;
@@ -150,7 +151,9 @@ const char	*l;
 		writec (*l++);
 }
 
-proll ()   {
+void
+proll(void)
+{
 	if (d0)
 		swap;
 	if (cturn == 1)
@@ -164,8 +167,8 @@ proll ()   {
 		cline();
 }
 
-wrint (n)
-int	n;
+void
+wrint(int n)
 {
 	int	i, j, t;
 
@@ -179,12 +182,15 @@ int	n;
 	writec (n%10+'0');
 }
 
-gwrite()  {
+void
+gwrite(void)
+{
 	int	r, c;
 
+	r = curr;
+	c = curc;
+
 	if (tflag)  {
-		r = curr;
-		c = curc;
 		curmove (16,0);
 	}
 
@@ -221,9 +227,9 @@ gwrite()  {
 	}
 }
 
-quit ()  {
-	int	i;
-
+int
+quit(void)
+{
 	if (tflag)  {
 		curmove (20,0);
 		clend();
@@ -242,8 +248,8 @@ quit ()  {
 	return (0);
 }
 
-yorn (special)
-char	special;			/* special response */
+int
+yorn(char special)
 {
 	char	c;
 	int	i;
@@ -272,8 +278,8 @@ char	special;			/* special response */
 	return (c == 'Y');
 }
 
-wrhit (i)
-int	i;
+void
+wrhit(int i)
 {
 	writel ("Blot hit on ");
 	wrint (i);
@@ -281,7 +287,9 @@ int	i;
 	writec ('\n');
 }
 
-nexturn ()  {
+void
+nexturn(void)
+{
 	int	c;
 
 	cturn = -cturn;
@@ -296,14 +304,10 @@ nexturn ()  {
 	colorptr += c;
 }
 
-getarg (argc, argv)
-int    argc;
-char	**argv;
-
+void
+getarg(int argc, char **argv)
 {
 	char	ch;
-	extern int optind;
-	extern char *optarg;
 	int i;
 
 	/* process arguments here.  dashes are ignored, nbrw are ignored
@@ -381,7 +385,9 @@ char	**argv;
 		recover(argv[0]);
 }
 
-init ()  {
+void
+init(void)
+{
 	int	i;
 	for (i = 0; i < 26;)
 		board[i++] = 0;
@@ -397,7 +403,9 @@ init ()  {
 	dlast = 0;
 }
 
-wrscore ()  {
+void
+wrscore(void)
+{
 	writel ("Score:  ");
 	writel (color[1]);
 	writec (' ');
@@ -408,19 +416,20 @@ wrscore ()  {
 	wrint (wscore);
 }
 
-fixtty (mode)
-int	mode;
+void
+fixtty(int mode)
 {
 	if (tflag)
 		newpos();
 	buflush();
 	tty.sg_flags = mode;
-	if (stty (0,&tty) < 0)
+	if (ioctl(0, TIOCSETP, &tty) < 0)
 		errexit("fixtty");
 }
 
 void
-getout ()  {
+getout(void)
+{
 	/* go to bottom of screen */
 	if (tflag)  {
 		curmove (23,0);
@@ -432,15 +441,18 @@ getout ()  {
 	fixtty (old);
 	exit(0);
 }
-roll ()  {
+
+void
+roll(void)
+{
 	char	c;
 	int	row;
 	int	col;
 
 	if (iroll)  {
+		row = curr;
+		col = curc;
 		if (tflag)  {
-			row = curr;
-			col = curc;
 			curmove (17,0);
 		} else
 			writec ('\n');

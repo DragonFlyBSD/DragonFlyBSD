@@ -32,10 +32,9 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/backgammon/move.c,v 1.5 1999/11/30 03:48:23 billf Exp $
- * $DragonFly: src/games/backgammon/backgammon/move.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/backgammon/move.c,v 1.3 2006/08/08 16:36:11 pavalos Exp $
  */
 
-#include <stdlib.h>
 #include "back.h"
 
 #ifdef DEBUG
@@ -43,6 +42,18 @@
 FILE	*trace;
 static char	tests[20];
 #endif
+
+static void		 trymove(int, int);
+static struct BOARD	*bsave(void);
+static void		 binsert(struct BOARD *);
+static int		 bcomp(struct BOARD *, struct BOARD *);
+static void		 mvcheck(struct BOARD *, struct BOARD *);
+static void		 makefree(struct BOARD *);
+static struct BOARD	*nextfree(void);
+static void		 pickmove(void);
+static void		 boardcopy(struct BOARD *);
+static void		 movcmp(void);
+static int		 movegood(void);
 
 struct BOARD  {				/* structure of game position */
 	int	b_board[26];			/* board position */
@@ -55,8 +66,6 @@ struct BOARD  {				/* structure of game position */
 
 struct BOARD *freeq = 0;
 struct BOARD *checkq = 0;
-struct BOARD *bsave();
-struct BOARD *nextfree();
 
 					/* these variables are values for the
 					 * candidate move */
@@ -83,13 +92,14 @@ static int	cp[5];				/* candidate start position */
 static int	cg[5];				/* candidate finish position */
 
 static int	race;				/* game reduced to a race */
-
-move (okay)
-int	okay;					/* zero if first move */
+
+void
+move(int okay)
 {
 	int	i;		/* index */
-	int	l;		/* last man */
+	int	l = 0;		/* last man */
 
+	/* first move? */
 	if (okay)  {
 						/* see if comp should double */
 		if (gvalue < 64 && dlast != cturn && dblgood())  {
@@ -173,11 +183,13 @@ int	okay;					/* zero if first move */
 	}
 	fixtty (raw);				/* no more tty interrupt */
 }
-
-trymove (mvnum,swapped)
-int		mvnum;				/* number of move (rel zero) */
-int		swapped;			/* see if swapped also tested */
 
+/*
+ * mvnum is number of move (rel zero)
+ * see if swapped also tested
+ */
+static void
+trymove(int mvnum, int swapped)
 {
 	int	pos;			/* position on board */
 	int	rval;			/* value of roll */
@@ -228,9 +240,10 @@ int		swapped;			/* see if swapped also tested */
 	if ((!swapped) && D0 != D1)
 		trymove (0,1);
 }
-
-struct BOARD *
-bsave ()  {
+
+static struct BOARD *
+bsave(void)
+{
 	int		i;		/* index */
 	struct BOARD	*now;		/* current position */
 
@@ -249,53 +262,52 @@ bsave ()  {
 	}
 	return (now);
 }
-
-binsert (new)
-struct BOARD	*new;					/* item to insert */
+
+static void
+binsert(struct BOARD *new)
 {
-	struct BOARD	*p = checkq;		/* queue pointer */
+	struct BOARD	*qp = checkq;		/* queue pointer */
 	int		result;			/* comparison result */
 
-	if (p == 0)  {				/* check if queue empty */
-		checkq = p = new;
-		p->b_next = 0;
+	if (qp == 0)  {				/* check if queue empty */
+		checkq = qp = new;
+		qp->b_next = 0;
 		return;
 	}
 
-	result = bcomp (new,p);			/* compare to first element */
+	result = bcomp (new,qp);		/* compare to first element */
 	if (result < 0)  {				/* insert in front */
-		new->b_next = p;
+		new->b_next = qp;
 		checkq = new;
 		return;
 	}
 	if (result == 0)  {				/* duplicate entry */
-		mvcheck (p,new);
+		mvcheck (qp,new);
 		makefree (new);
 		return;
 	}
 
-	while (p->b_next != 0)  {		/* traverse queue */
-		result = bcomp (new,p->b_next);
+	while (qp->b_next != 0)  {		/* traverse queue */
+		result = bcomp (new,qp->b_next);
 		if (result < 0)  {			/* found place */
-			new->b_next = p->b_next;
-			p->b_next = new;
+			new->b_next = qp->b_next;
+			qp->b_next = new;
 			return;
 		}
 		if (result == 0)  {			/* duplicate entry */
-			mvcheck (p->b_next,new);
+			mvcheck (qp->b_next,new);
 			makefree (new);
 			return;
 		}
-		p = p->b_next;
+		qp = qp->b_next;
 	}
 						/* place at end of queue */
-	p->b_next = new;
+	qp->b_next = new;
 	new->b_next = 0;
 }
-
-bcomp (a,b)
-struct BOARD	*a;
-struct BOARD	*b;
+
+static int
+bcomp(struct BOARD *a, struct BOARD *b)
 {
 	int	*aloc = a->b_board;	/* pointer to board a */
 	int	*bloc = b->b_board;	/* pointer to board b */
@@ -309,10 +321,9 @@ struct BOARD	*b;
 	}
 	return (0);				/* same position */
 }
-
-mvcheck (incumbent,candidate)
-struct BOARD 	*incumbent;
-struct BOARD 	*candidate;
+
+static void
+mvcheck(struct BOARD *incumbent, struct BOARD *candidate)
 {
 	int		i;
 	int		result;
@@ -331,16 +342,17 @@ struct BOARD 	*candidate;
 		incumbent->b_fn[i] = candidate->b_fn[i];
 	}
 }
-
-makefree (dead)
-struct BOARD	*dead;			/* dead position */
+
+static void
+makefree(struct BOARD *dead)
 {
 	dead->b_next = freeq;			/* add to freeq */
 	freeq = dead;
 }
 
-struct BOARD *
-nextfree ()  {
+static struct BOARD *
+nextfree(void)
+{
 	struct BOARD	*new;
 
 	if (freeq == 0)  {
@@ -356,8 +368,10 @@ nextfree ()  {
 	}
 	return (new);
 }
-
-pickmove ()  {
+
+static void
+pickmove(void)
+{
 						/* current game position */
 	struct BOARD	*now = bsave();
 	struct BOARD	*next;		/* next move */
@@ -378,9 +392,9 @@ pickmove ()  {
 
 	boardcopy (now);
 }
-
-boardcopy (s)
-struct BOARD	*s;			/* game situation */
+
+static void
+boardcopy(struct BOARD *s)
 {
 	int	i;			/* index */
 
@@ -395,10 +409,11 @@ struct BOARD	*s;			/* game situation */
 		g[i] = s->b_fn[i];
 	}
 }
-
-movcmp ()  {
+
+static void
+movcmp(void)
+{
 	int	i;
-	int	c;
 
 #ifdef DEBUG
 	if (trace == NULL)
@@ -468,8 +483,10 @@ movcmp ()  {
 	}
 #endif
 }
-
-movegood ()  {
+
+static int
+movegood(void)
+{
 	int	n;
 
 	if (*offptr == 15)

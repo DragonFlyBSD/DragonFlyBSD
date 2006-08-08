@@ -32,12 +32,14 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/save.c,v 1.8 1999/11/30 03:48:27 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/save.c,v 1.3 2006/03/22 20:06:13 drhodus Exp $
+ * $DragonFly: src/games/backgammon/common_source/save.c,v 1.4 2006/08/08 16:36:11 pavalos Exp $
  */
 
 #include <fcntl.h>
 #include <errno.h>
 #include "back.h"
+
+static void	norec(const char *);
 
 static const char	confirm[] = "Are you sure you want to leave now?";
 static const char	prompt[] = "Enter a file name:  ";
@@ -50,9 +52,8 @@ static const char	type[] = "'.\nType \"backgammon ";
 static const char	rec[] = "\" to recover your game.\n\n";
 static const char	cantrec[] = "Can't recover file:  ";
 
-save (n)
-int	n;
-
+void
+save(int n)
 {
 	int	fdesc;
 	char	*fs;
@@ -139,13 +140,10 @@ int	n;
 		clend();
 	getout ();
 }
-
-int
-recover (s)
-const char	*s;
 
+void
+recover(const char *s)
 {
-	int	i;
 	int		fdesc;
 
 	if ((fdesc = open (s,O_RDONLY)) == -1)
@@ -165,10 +163,8 @@ const char	*s;
 	rflag = 1;
 }
 
-int
-norec (s)
-const char	*s;
-
+static void
+norec(const char *s)
 {
 	const char	*c;
 

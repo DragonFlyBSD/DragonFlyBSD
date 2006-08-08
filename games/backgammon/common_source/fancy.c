@@ -32,13 +32,17 @@
  *
  * @(#)fancy.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/fancy.c,v 1.7 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/fancy.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/backgammon/common_source/fancy.c,v 1.4 2006/08/08 16:36:11 pavalos Exp $
  */
 
-#include <stdlib.h>
 #include <string.h>
 #include <termcap.h>
 #include "back.h"
+
+static void	bsect(int, int, int, int);
+static void	fixpos(int, int, int, int, int);
+static void	fixcol(int, int, int, int, int);
+static void	newline(void);
 
 char	PC;			/* padding character */
 char	*BC;			/* backspace sequence */
@@ -81,9 +85,9 @@ int	oldw;
 int	realr;
 int	realc;
 
-int	addbuf (int);
-
-fboard ()  {
+void
+fboard(void)
+{
 	int	i, j, l;
 
 	curmove (0,0);				/* do top line */
@@ -180,7 +184,7 @@ fboard ()  {
 	oldr = (off[1] < 0? off[1]+15: off[1]);
 	oldw = -(off[0] < 0? off[0]+15: off[0]);
 }
-
+
 /*
  * bsect (b,rpos,cpos,cnext)
  *	Print the contents of a board position.  "b" has the value of the
@@ -191,12 +195,8 @@ fboard ()  {
  * differently.
  */
 
-bsect (b,rpos,cpos,cnext)
-int	b;					/* contents of position */
-int	rpos;					/* row of position */
-int	cpos;					/* column of position */
-int	cnext;					/* direction of position */
-
+static void
+bsect(int b, int rpos, int cpos, int cnext)
 {
 	int		j;			/* index */
 	int		n;			/* number of men on position */
@@ -204,6 +204,7 @@ int	cnext;					/* direction of position */
 	int		k;			/* index */
 	char		pc;			/* color of men on position */
 
+	bct = 0;
 	n = abs(b);				/* initialize n and pc */
 	pc = (b > 0? 'r': 'w');
 
@@ -250,8 +251,10 @@ int	cnext;					/* direction of position */
 		}
 	}
 }
-
-refresh()  {
+
+void
+refresh(void)
+{
 	int	i, r, c;
 
 	r = curr;				/* save current position */
@@ -307,19 +310,19 @@ refresh()  {
 	newpos();
 	buflush();
 }
-
-fixpos (old,new,r,c,inc)
-int	old, new, r, c, inc;
 
+static void
+fixpos(int cur, int new, int r, int c, int inc)
 {
 	int		o, n, nv;
 	int		ov, nc;
 	char		col;
 
-	if (old*new >= 0)  {
-		ov = abs(old);
+	nc = 0;
+	if (cur*new >= 0)  {
+		ov = abs(cur);
 		nv = abs(new);
-		col = (old+new > 0? 'r': 'w');
+		col = (cur+new > 0? 'r': 'w');
 		o = (ov-1)/5;
 		n = (nv-1)/5;
 		if (o == n)  {
@@ -373,14 +376,13 @@ int	old, new, r, c, inc;
 	}
 	nv = abs(new);
 	fixcol (r,c+1,nv,new > 0? 'r': 'w',inc);
-	if (abs(old) <= abs(new))
+	if (abs(cur) <= abs(new))
 		return;
-	fixcol (r+inc*new,c+1,abs(old+new),' ',inc);
+	fixcol (r+inc*new,c+1,abs(cur+new),' ',inc);
 }
 
-fixcol (r,c,l,ch,inc)
-int		l, ch, r, c, inc;
-
+static void
+fixcol(int r, int c, int l, int ch, int inc)
 {
 	int	i;
 
@@ -391,10 +393,9 @@ int		l, ch, r, c, inc;
 		fancyc (ch);
 	}
 }
-
-curmove (r,c)
-int	r, c;
 
+void
+curmove(int r, int c)
 {
 	if (curr == r && curc == c)
 		return;
@@ -406,18 +407,19 @@ int	r, c;
 	curc = c;
 }
 
-newpos ()  {
+void
+newpos(void)
+{
 	int	r;		/* destination row */
 	int	c;		/* destination column */
 	int	mode = -1;	/* mode of movement */
 
-	int	count = 1000;		/* character count */
+	int	ccount = 1000;		/* character count */
 	int	i;			/* index */
-	int	j;			/* index */
 	int	n;			/* temporary variable */
 	char	*m;			/* string containing CM movement */
 
-
+	m = NULL;
 	if (realr == -1)		/* see if already there */
 		return;
 
@@ -435,55 +437,55 @@ newpos ()  {
 	if (CM)  {			/* try CM to get there */
 		mode = 0;
 		m = (char *)tgoto (CM,c,r);
-		count = strlen (m);
+		ccount = strlen (m);
 	}
 
 					/* try HO and local movement */
-	if (HO && (n = r+c*lND+lHO) < count)  {
+	if (HO && (n = r+c*lND+lHO) < ccount)  {
 		mode = 1;
-		count = n;
+		ccount = n;
 	}
 
 					/* try various LF combinations */
 	if (r >= curr)  {
 						/* CR, LF, and ND */
-		if ((n = (r-curr)+c*lND+1) < count)  {
+		if ((n = (r-curr)+c*lND+1) < ccount)  {
 			mode = 2;
-			count = n;
+			ccount = n;
 		}
 						/* LF, ND */
-		if (c >= curc && (n = (r-curr)+(c-curc)*lND) < count)  {
+		if (c >= curc && (n = (r-curr)+(c-curc)*lND) < ccount)  {
 			mode = 3;
-			count = n;
+			ccount = n;
 		}
 						/* LF, BS */
-		if (c < curc && (n = (r-curr)+(curc-c)*lBC) < count)  {
+		if (c < curc && (n = (r-curr)+(curc-c)*lBC) < ccount)  {
 			mode = 4;
-			count = n;
+			ccount = n;
 		}
 	}
 
 					/* try corresponding UP combinations */
 	if (r < curr)  {
 						/* CR, UP, and ND */
-		if ((n = (curr-r)*lUP+c*lND+1) < count)  {
+		if ((n = (curr-r)*lUP+c*lND+1) < ccount)  {
 			mode = 5;
-			count = n;
+			ccount = n;
 		}
 						/* UP and ND */
-		if (c >= curc && (n = (curr-r)*lUP+(c-curc)*lND) < count)  {
+		if (c >= curc && (n = (curr-r)*lUP+(c-curc)*lND) < ccount)  {
 			mode = 6;
-			count = n;
+			ccount = n;
 		}
 						/* UP and BS */
-		if (c < curc && (n = (curr-r)*lUP+(curc-c)*lBC) < count)  {
+		if (c < curc && (n = (curr-r)*lUP+(curc-c)*lBC) < ccount)  {
 			mode = 7;
-			count = n;
+			ccount = n;
 		}
 	}
 
 						/* space over */
-	if (curr == r && c > curc && linect[r] < curc && c-curc < count)
+	if (curr == r && c > curc && linect[r] < curc && c-curc < ccount)
 		mode = 8;
 
 	switch (mode)  {
@@ -572,8 +574,10 @@ newpos ()  {
 	realr = -1;
 	realc = -1;
 }
-
-clear ()  {
+
+void
+clear(void)
+{
 	int	i;
 
 					/* double space if can't clear */
@@ -590,9 +594,10 @@ clear ()  {
 	tputs (CL,CO,addbuf);		/* put CL in buffer */
 }
 
-
-fancyc (c)
-char	c;			/* character to output */
+
+/* input is character to output */
+void
+fancyc(char c)
 {
 	int	sp;		/* counts spaces in a tab */
 
@@ -646,11 +651,11 @@ char	c;			/* character to output */
 					/* use cursor movement routine */
 		curmove (curr,curc+1);
 }
-
-clend()  {
-	int	i;
-	char	*s;
 
+void
+clend(void)
+{
+	int	i;
 
 	if (CD)  {
 		tputs (CD,CO-curr,addbuf);
@@ -669,10 +674,10 @@ clend()  {
 	curmove (i,0);
 }
 
-cline ()  {
-	int	i;
+void
+cline(void)
+{
 	int	c;
-	char	*s;
 
 	if (curc > linect[curr])
 		return;
@@ -691,25 +696,25 @@ cline ()  {
 	}
 }
 
-newline ()  {
+static void
+newline(void)
+{
 	cline();
 	if (curr == LI-1)
 		curmove (begscr,0);
 	else
 		curmove (curr+1,0);
 }
-
-int
-getcaps (s)
-const char	*s;
 
+int
+getcaps(const char *s)
 {
 	char	*code;		/* two letter code */
 	char	***cap;		/* pointer to cap string */
 	char		*bufp;		/* pointer to cap buffer */
 	char		tentry[1024];	/* temporary uncoded caps buffer */
 
-	tgetent (tentry, (char *)s);		/* get uncoded termcap entry */
+	tgetent (tentry, s);		/* get uncoded termcap entry */
 
 	LI = tgetnum ("li");		/* get number of lines */
 	if (LI == -1)

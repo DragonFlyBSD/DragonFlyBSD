@@ -31,7 +31,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)tutor.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/backgammon/teachgammon/tutor.h,v 1.2 2006/08/08 16:36:11 pavalos Exp $
  */
+
+void	leave(void);
+void	tutor(void);
 
 struct situatn  {
 	int	brd[26];
@@ -58,6 +62,7 @@ extern	const char	*const moves[];
 extern	const char	*const opts;
 extern	const char	*const prog[];
 extern	const char	*const prompt;
+extern	const char	*const remove[];
 extern	const char	*const removepiece[];
 extern	const char	*const stragy[];
 extern	const struct situatn	test[];
