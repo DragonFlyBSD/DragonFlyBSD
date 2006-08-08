@@ -32,13 +32,13 @@
  *
  * @(#)com2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com2.c,v 1.8.2.2 2002/05/01 09:17:16 roam Exp $
- * $DragonFly: src/games/battlestar/com2.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com2.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 int
-wearit()		/* synonyms = {sheathe, sheath} */
+wearit(void)		/* synonyms = {sheathe, sheath} */
 {
 	int n;
 	int firstnumber, value;
@@ -99,7 +99,7 @@ wearit()		/* synonyms = {sheathe, sheath} */
 }
 
 int
-put()		/* synonyms = {buckle, strap, tie} */
+put(void)	/* synonyms = {buckle, strap, tie} */
 {
 	if (wordvalue[wordnumber + 1] == ON){
 		wordvalue[++wordnumber] = PUTON;
@@ -115,13 +115,13 @@ put()		/* synonyms = {buckle, strap, tie} */
 }
 
 int
-draw() 			/* synonyms = {pull, carry} */
+draw(void)		/* synonyms = {pull, carry} */
 {
 	return(take(wear));
 }
 
 int
-use()
+use(void)
 {
 	while (wordtype[++wordnumber] == ADJS && wordnumber < wordcount);
 	if (wordvalue[wordnumber] == AMULET && testbit(inven,AMULET) && position != FINAL){
@@ -160,7 +160,7 @@ use()
 }
 
 void
-murder()
+murder(void)
 {
 	int n;
 
@@ -227,7 +227,7 @@ murder()
 }
 
 void
-ravage()
+ravage(void)
 {
 	while (wordtype[++wordnumber] != NOUNS && wordnumber <= wordcount);
 	if (wordtype[wordnumber] == NOUNS && testbit(location[position].objects,wordvalue[wordnumber])){
@@ -277,7 +277,7 @@ ravage()
 }
 
 int
-follow()
+follow(void)
 {
 	if (followfight == gtime){
 		puts("The Dark Lord leaps away and runs down secret tunnels and corridors.");

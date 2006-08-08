@@ -32,12 +32,10 @@
  *
  * @(#)init.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/init.c,v 1.7.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/init.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/battlestar/init.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include <sys/types.h>
 #include <pwd.h>
-#include <string.h>
 #include "externs.h"
 
 static int	 checkout (const char *);
@@ -45,8 +43,7 @@ static void	 getutmp (char *);
 static int	 wizard (const char *);
 
 void
-initialize(startup)
-	int  startup;
+initialize(int startup)
 {
 	const struct objs *p;
 
@@ -74,9 +71,8 @@ initialize(startup)
 	signal(SIGINT, die);
 }
 
-void
-getutmp(battlestar_uname)
-	char *battlestar_uname;
+static void
+getutmp(char *battlestar_uname)
 {
 	struct passwd *ptr;
 
@@ -102,9 +98,8 @@ const char *const badguys[] = {
 	0
 };
 
-int
-wizard(battlestar_uname)
-	const char *battlestar_uname;
+static int
+wizard(const char *battlestar_uname)
 {
 	char flag;
 
@@ -113,9 +108,8 @@ wizard(battlestar_uname)
 	return flag;
 }
 
-int
-checkout(battlestar_uname)
-	const char *battlestar_uname;
+static int
+checkout(const char *battlestar_uname)
 {
 	const char *const *ptr;
 

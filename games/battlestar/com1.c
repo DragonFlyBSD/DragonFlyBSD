@@ -32,16 +32,15 @@
  *
  * @(#)com1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com1.c,v 1.7.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com1.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/battlestar/com1.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
-void	 convert (int);
+static void	 convert(int);
 
 int
-battlestar_move(thataway, token)
-int thataway, token;
+battlestar_move(int thataway, int token)
 {
 	wordnumber++;
 	if ((!notes[CANTMOVE] && !notes[LAUNCHED]) ||
@@ -65,10 +64,13 @@ int thataway, token;
 	return(1);
 }
 
-void
-convert(tothis)		/* Converts day to night and vice versa. 	    */
-int tothis;		/* Day objects are permanent.  Night objects are added*/
-{			/* at dusk, and subtracted at dawn.		*/
+/*
+ * Converts day to night and vice versa.  Day objects are permanent.  Night
+ * objects are added at dusk, and subtracted at dawn.
+ */
+static void
+convert(int tothis)
+{
 	const struct objs *p;
 	int i, j;
 
@@ -90,7 +92,7 @@ int tothis;		/* Day objects are permanent.  Night objects are added*/
 }
 
 void
-news()
+news(void)
 {
 	int n;
 	int hurt;
@@ -225,7 +227,7 @@ news()
 }
 
 void
-crash()
+crash(void)
 {
 	int hurt1,hurt2;
 

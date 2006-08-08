@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)battlestar.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/battlestar.c,v 1.6.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/battlestar.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/battlestar.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 /*
@@ -46,9 +46,7 @@
 #include "externs.h"
 
 int
-main(argc,argv)
-int  argc;
-char **argv;
+main(int argc, char **argv)
 {
 	char mainbuf[LINELENGTH];
 	char *next;
@@ -89,5 +87,5 @@ run:
 		default:
 			exit(1); /* Shouldn't happen */
 	}
-	exit(1);
+	return(1);
 }

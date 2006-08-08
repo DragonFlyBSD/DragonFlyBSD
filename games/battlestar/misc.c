@@ -32,15 +32,13 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/misc.c,v 1.5 1999/11/30 03:48:38 billf Exp $
- * $DragonFly: src/games/battlestar/misc.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/misc.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 int
-card(array, size)		/* for beenthere, injuries */
-	const char *array;
-	int size;
+card(const char *array, int size)	/* for beenthere, injuries */
 {
 	const char *end = array + size;
 	int i = 0;
@@ -52,8 +50,7 @@ card(array, size)		/* for beenthere, injuries */
 }
 
 int
-ucard(array)
-	const unsigned int *array;
+ucard(const unsigned int *array)
 {
 	int j = 0, n;
 

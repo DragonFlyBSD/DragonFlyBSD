@@ -32,19 +32,16 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/save.c,v 1.8.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/save.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/battlestar/save.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/param.h>			/* MAXPATHLEN */
 #include <fcntl.h>
-#include <stdlib.h>
 #include <err.h>
 #include "externs.h"
 
 void
-restore()
+restore(void)
 {
 	char *home;
 	char home1[MAXPATHLEN];
@@ -101,7 +98,7 @@ restore()
 }
 
 void
-save()
+save(void)
 {
 	struct stat sbuf;
 	char *home;

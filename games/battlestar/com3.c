@@ -32,13 +32,13 @@
  *
  * @(#)com3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com3.c,v 1.8.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com3.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com3.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 void
-dig()
+dig(void)
 {
 	if (testbit(inven,SHOVEL)){
 		puts("OK");
@@ -63,7 +63,7 @@ dig()
 }
 
 int
-jump()
+jump(void)
 {
 	int n;
 
@@ -103,7 +103,7 @@ jump()
 }
 
 void
-bury()
+bury(void)
 {
 	int value;
 
@@ -167,7 +167,7 @@ bury()
 }
 
 void
-drink()
+drink(void)
 {
 	int n;
 
@@ -188,7 +188,7 @@ drink()
 }
 
 int
-shoot()
+shoot(void)
 {
 	int firstnumber, value;
 	int n;

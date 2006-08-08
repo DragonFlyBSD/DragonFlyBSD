@@ -32,13 +32,12 @@
  *
  * @(#)fly.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/fly.c,v 1.6.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/fly.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/battlestar/fly.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 #undef UP
 #include <curses.h>
-#include <string.h>
 
 #define abs(a)	((a) < 0 ? -(a) : (a))
 #define MIDR  (LINES/2 - 1)
@@ -59,11 +58,9 @@ static void	succumb (int);
 static void	screen (void);
 static void	target (void);
 
-void
-succumb(sig)
-	int sig;
+static void
+succumb(int sig)
 {
-
 	sig = 0;
 	if (oldsig == SIG_DFL) {
 		endfly();
@@ -76,9 +73,8 @@ succumb(sig)
 }
 
 int
-visual()
+visual(void)
 {
-
 	destroyed = 0;
 	if(initscr() == NULL){
 		puts("Whoops!  No more memory...");
@@ -187,8 +183,8 @@ visual()
 	return(1);
 }
 
-void
-screen()
+static void
+screen(void)
 {
 	int r,c,n;
 	int i;
@@ -204,8 +200,8 @@ screen()
 	refresh();
 }
 
-void
-target()
+static void
+target(void)
 {
 	int n;
 
@@ -217,8 +213,8 @@ target()
 	}
 }
 
-void
-notarget()
+static void
+notarget(void)
 {
 	int n;
 
@@ -230,8 +226,8 @@ notarget()
 	}
 }
 
-void
-blast()
+static void
+blast(void)
 {
 	int n;
 
@@ -252,7 +248,7 @@ blast()
 	alarm(1);
 }
 
-void
+static void
 moveenemy(int sig)
 {
 	double d;
@@ -291,8 +287,8 @@ moveenemy(int sig)
 	alarm(1);
 }
 
-void
-endfly()
+static void
+endfly(void)
 {
 	alarm(0);
 	signal(SIGALRM, SIG_DFL);

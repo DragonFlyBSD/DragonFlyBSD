@@ -32,13 +32,13 @@
  *
  * @(#)com5.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com5.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com5.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com5.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 void
-kiss()
+kiss(void)
 {
 	while (wordtype[++wordnumber] != NOUNS && wordnumber <= wordcount);
 	if (wordtype[wordnumber] == NOUNS && testbit(location[position].objects,wordvalue[wordnumber])){
@@ -78,7 +78,7 @@ kiss()
 }
 
 void
-love()
+love(void)
 {
 	int n;
 
@@ -124,7 +124,7 @@ love()
 }
 
 int
-zzz()
+zzz(void)
 {
 	int oldtime;
 	int n;
@@ -180,7 +180,7 @@ zzz()
 }
 
 void
-chime()
+chime(void)
 {
 	if ((gtime / CYCLE + 1) % 2 && OUTSIDE)
 		switch((gtime % CYCLE)/(CYCLE / 7)){
@@ -235,7 +235,7 @@ chime()
 }
 
 int
-give()
+give(void)
 {
 	int obj = -1, result = -1, person = 0, firstnumber;
 	int last1 = 0, last2 = 0;

@@ -32,17 +32,17 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/parse.c,v 1.5.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/parse.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/battlestar/parse.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 static int 	 hash  (const char *);
 static void 	 install (struct wlist *);
-struct wlist 	*lookup (const char *);
+static struct wlist 	*lookup (const char *);
 
 void
-wordinit()
+wordinit(void)
 {
 	struct wlist *w;
 
@@ -50,9 +50,8 @@ wordinit()
 		install(w);
 }
 
-int
-hash(s)
-	const char *s;
+static int
+hash(const char *s)
 {
 	int hashval = 0;
 
@@ -64,9 +63,8 @@ hash(s)
 	return hashval;
 }
 
-struct wlist *
-lookup(s)
-	const char *s;
+static struct wlist *
+lookup(const char *s)
 {
 	struct wlist *wp;
 
@@ -76,9 +74,8 @@ lookup(s)
 	return NULL;
 }
 
-void
-install(wp)
-	struct wlist *wp;
+static void
+install(struct wlist *wp)
 {
 	int hashval;
 
@@ -91,7 +88,7 @@ install(wp)
 }
 
 void
-parse()
+parse(void)
 {
 	struct wlist *wp;
 	int n;

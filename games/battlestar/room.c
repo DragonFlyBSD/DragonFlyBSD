@@ -32,13 +32,13 @@
  *
  * @(#)room.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/room.c,v 1.7.2.2 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/room.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/battlestar/room.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 void
-writedes()
+writedes(void)
 {
 	int compass;
 	const char *p;
@@ -59,7 +59,7 @@ writedes()
 }
 
 void
-printobjs()
+printobjs(void)
 {
 	unsigned int *p = location[position].objects;
 	int n;
@@ -71,8 +71,7 @@ printobjs()
 }
 
 void
-whichway(here)
-struct room here;
+whichway(struct room here)
 {
 	switch(direction) {
 
@@ -108,9 +107,7 @@ struct room here;
 }
 
 const char *
-truedirec(way, option)
-int way;
-unsigned int option;
+truedirec(int way, unsigned int option)
 {
 	switch(way) {
 
@@ -169,8 +166,7 @@ unsigned int option;
 }
 
 void
-newway(thisway)
-int thisway;
+newway(int thisway)
 {
 	switch(direction){
 

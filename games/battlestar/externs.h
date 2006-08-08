@@ -33,15 +33,15 @@
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
  *
  *	$FreeBSD: src/games/battlestar/externs.h,v 1.9.2.1 2001/03/05 11:45:36 kris Exp $
- *	$DragonFly: src/games/battlestar/externs.h,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ *	$DragonFly: src/games/battlestar/externs.h,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include <errno.h>
 #include <sys/param.h>
 #include <sys/signal.h>
-#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define BITS (8)

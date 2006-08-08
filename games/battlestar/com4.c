@@ -32,15 +32,13 @@
  *
  * @(#)com4.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com4.c,v 1.8.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com4.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com4.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
-#include <string.h>
 #include "externs.h"
 
 int
-take(from)
-unsigned int from[];
+take(unsigned int from[])
 {
 	int firstnumber, heavy, bulky, value;
 	int n;
@@ -184,8 +182,7 @@ unsigned int from[];
 }
 
 int
-throw(name)
-	const char *name;
+throw(const char *name)
 {
 	int n;
 	int deposit = 0;
@@ -265,8 +262,7 @@ throw(name)
 }
 
 int
-drop(name)
-const char *name;
+drop(const char *name)
 {
 
 	int firstnumber, value;
@@ -317,21 +313,21 @@ const char *name;
 }
 
 int
-takeoff()
+takeoff(void)
 {
 	wordnumber = take(wear);
 	return(drop("Dropped"));
 }
 
 int
-puton()
+puton(void)
 {
 	wordnumber = take(location[position].objects);
 	return(wearit());
 }
 
 int
-eat()
+eat(void)
 {
 	int firstnumber, value;
 

@@ -32,13 +32,13 @@
  *
  * @(#)cypher.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/cypher.c,v 1.7.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/cypher.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/cypher.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include "externs.h"
 
 int
-cypher()
+cypher(void)
 {
 	int n;
 	int junk;

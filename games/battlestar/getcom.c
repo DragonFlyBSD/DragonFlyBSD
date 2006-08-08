@@ -32,17 +32,14 @@
  *
  * @(#)getcom.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/getcom.c,v 1.6.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/getcom.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/getcom.c,v 1.3 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include <ctype.h>
 #include "externs.h"
 
 char *
-getcom(buf, size, prompt, error)
-	char *buf;
-	int size;
-	const char *prompt, *error;
+getcom(char *buf, int size, const char *prompt, const char *error)
 {
 	for (;;) {
 		fputs(prompt, stdout);
@@ -66,9 +63,7 @@ getcom(buf, size, prompt, error)
  * and leaves it unchanged if flag = 0
  */
 char *
-getword(buf1, buf2, flag)
-	char   *buf1, *buf2;
-	int     flag;
+getword(char *buf1, char *buf2, int flag)
 {
 	while (isspace(*buf1))
 		buf1++;

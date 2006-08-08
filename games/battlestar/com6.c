@@ -32,7 +32,7 @@
  *
  * @(#)com6.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com6.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com6.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/battlestar/com6.c,v 1.4 2006/08/08 16:47:20 pavalos Exp $
  */
 
 #include <signal.h>
@@ -42,7 +42,7 @@
 static void post (unsigned int ch);
 
 int
-launch()
+launch(void)
 {
 	if (testbit(location[position].objects,VIPER) && !notes[CANTLAUNCH]){
 		if (fuel > 4){
@@ -64,7 +64,7 @@ launch()
 }
 
 int
-land()
+land(void)
 {
 	if (notes[LAUNCHED] && testbit(location[position].objects,LAND) && location[position].down){
 		notes[LAUNCHED] = 0;
@@ -81,8 +81,7 @@ land()
 }
 
 void
-die(sig)	/* endgame */
-	int sig;
+die(int sig)	/* endgame */
 {
 	sig = 0;
 	printf("bye.\nYour rating was %s.\n", rate());
@@ -91,7 +90,7 @@ die(sig)	/* endgame */
 }
 
 void
-live()
+live(void)
 {
 	puts("\nYou win!");
 	post('!');
@@ -103,15 +102,14 @@ live()
 static FILE *score_fp;
 
 void
-open_score_file()
+open_score_file(void)
 {
 	if ((score_fp = fopen(_PATH_SCORE,"a")) == NULL)
 		perror(_PATH_SCORE);
 }
 
 static void
-post(ch)
-unsigned int ch;
+post(unsigned int ch)
 {
 	struct timeval tv;
 	char *date;
@@ -140,7 +138,7 @@ unsigned int ch;
 }
 
 const char *
-rate()
+rate(void)
 {
 	int score;
 
@@ -177,7 +175,7 @@ rate()
 }
 
 int
-drive()
+drive(void)
 {
 	if (testbit(location[position].objects,CAR)){
 		puts("You hop in the car and turn the key.  There is a perceptible grating noise,");
@@ -195,7 +193,7 @@ drive()
 }
 
 int
-ride()
+ride(void)
 {
 	if (testbit(location[position].objects,HORSE)){
 		puts("You climb onto the stallion and kick it in the guts.  The stupid steed launches");
@@ -218,7 +216,7 @@ ride()
 }
 
 void
-light()		/* synonyms = {strike, smoke} */
+light(void)	/* synonyms = {strike, smoke} */
 {		/* for matches, cigars */
 	if (testbit(inven,MATCHES) && matchcount){
 		puts("Your match splutters to life.");
