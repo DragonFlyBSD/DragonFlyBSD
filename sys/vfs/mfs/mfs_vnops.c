@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.30 2006/07/19 06:08:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.31 2006/08/08 01:23:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -82,13 +82,13 @@ static struct vop_ops mfs_vnode_vops = {
 	.vop_getpages =		mfs_getpages,
 	.vop_inactive =		mfs_inactive,
 	.vop_ioctl =		(void *)vop_enotty,
-	.vop_islocked =		(void *)vop_defaultop,
-	.vop_lock =		(void *)vop_defaultop,
+	.vop_islocked =		vop_stdislocked,
+	.vop_lock =		vop_stdlock,
 	.vop_open =		mfs_open,
 	.vop_print =		mfs_print,
 	.vop_reclaim =		mfs_reclaim,
 	.vop_strategy =		mfs_strategy,
-	.vop_unlock =		(void *)vop_defaultop
+	.vop_unlock =		vop_stdunlock
 };
 
 struct vop_ops *mfs_vnode_vops_p = &mfs_vnode_vops;

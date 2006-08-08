@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.41 2006/07/19 06:08:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.42 2006/08/08 01:23:05 dillon Exp $
  * 
  */
 
@@ -137,11 +137,8 @@ static int coda_readdir(struct vop_readdir_args *ap);
 static int coda_readlink(struct vop_readlink_args *ap);
 static int coda_inactive(struct vop_inactive_args *ap);
 static int coda_reclaim(struct vop_reclaim_args *ap);
-static int coda_lock(struct vop_lock_args *ap);
-static int coda_unlock(struct vop_unlock_args *ap);
 static int coda_bmap(struct vop_bmap_args *ap);
 static int coda_strategy(struct vop_strategy_args *ap);
-static int coda_islocked(struct vop_islocked_args *ap);
 
 struct vop_ops coda_vnode_ops = {
     .vop_default =	(void *)coda_vop_error,
@@ -168,12 +165,12 @@ struct vop_ops coda_vnode_ops = {
     .vop_readlink =	coda_readlink,
     .vop_inactive =	coda_inactive,
     .vop_reclaim =	coda_reclaim,
-    .vop_lock =		coda_lock,
-    .vop_unlock =	coda_unlock,
+    .vop_lock =		vop_stdlock,
+    .vop_unlock =	vop_stdunlock,
     .vop_bmap =		coda_bmap,
     .vop_strategy =	coda_strategy,
     .vop_print =	(void *)coda_vop_error,
-    .vop_islocked =	coda_islocked,
+    .vop_islocked =	vop_stdislocked,
     .vop_pathconf =	(void *)coda_vop_error,
     .vop_advlock =	(void *)coda_vop_nop,
     .vop_poll =		vop_stdpoll,
@@ -1678,57 +1675,6 @@ coda_reclaim(struct vop_reclaim_args *ap)
     coda_free(VTOC(vp));
     vp->v_data = NULL;
     return (0);
-}
-
-int
-coda_lock(struct vop_lock_args *ap)
-{
-/* true args */
-    struct vnode *vp = ap->a_vp;
-    struct cnode *cp = VTOC(vp);
-/* upcall decl */
-/* locals */
-
-    ENTRY;
-
-    if (coda_lockdebug) {
-	myprintf(("Attempting lock on %lx.%lx.%lx\n",
-		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
-    }
-
-#ifndef	DEBUG_LOCKS
-    return (lockmgr(&vp->v_lock, ap->a_flags));
-#else
-    return (debuglockmgr(&vp->v_lock, ap->a_flags,
-			 "coda_lock", vp->filename, vp->line));
-#endif
-}
-
-int
-coda_unlock(struct vop_unlock_args *ap)
-{
-/* true args */
-    struct vnode *vp = ap->a_vp;
-    struct cnode *cp = VTOC(vp);
-/* upcall decl */
-/* locals */
-
-    ENTRY;
-    if (coda_lockdebug) {
-	myprintf(("Attempting unlock on %lx.%lx.%lx\n",
-		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
-    }
-
-    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE));
-}
-
-int
-coda_islocked(struct vop_islocked_args *ap)
-{
-/* true args */
-    ENTRY;
-
-    return (lockstatus(&ap->a_vp->v_lock, ap->a_td));
 }
 
 /* How one looks up a vnode given a device/inode pair: */
