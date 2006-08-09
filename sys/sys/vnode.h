@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.62 2006/07/19 06:08:07 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.63 2006/08/09 22:47:33 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -282,7 +282,6 @@ struct vnode {
  */
 #define VMSC_GETVP	1
 #define VMSC_GETVX	2
-#define VMSC_REFVP	3
 #define VMSC_NOWAIT	0x10
 
 /*
@@ -569,6 +568,7 @@ void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
+void	vref_initial (struct vnode *vp, int reactivate);
 void	vrele (struct vnode *vp);
 void	vsetflags (struct vnode *vp, int flags);
 void	vclrflags (struct vnode *vp, int flags);

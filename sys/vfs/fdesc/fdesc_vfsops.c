@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.20 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.21 2006/08/09 22:47:34 dillon Exp $
  */
 
 /*
@@ -141,15 +141,16 @@ int
 fdesc_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *vp;
+	int error;
 
 	/*
 	 * Return locked reference to root.
 	 */
 	vp = VFSTOFDESC(mp)->f_root;
-	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	*vpp = vp;
-	return (0);
+	error = vget(vp, LK_EXCLUSIVE | LK_RETRY);
+	if (error == 0)
+		*vpp = vp;
+	return (error);
 }
 
 static int

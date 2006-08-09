@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.11 2006/05/06 02:43:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.12 2006/08/09 22:47:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,7 +132,7 @@ linux_copyin_path(char *uname, char **kname, int flags)
 		vproot = NULL;
 		if (error == 0) {
 			error = cache_vref(ndroot.nl_ncp, ndroot.nl_cred,
-						&vproot);
+					   &vproot);
 		}
 		nlookup_done(&ndroot);
 		if (error) {

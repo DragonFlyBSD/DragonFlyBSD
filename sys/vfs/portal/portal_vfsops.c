@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.21 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.22 2006/08/09 22:47:36 dillon Exp $
  */
 
 /*
@@ -196,15 +196,16 @@ static int
 portal_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *vp;
+	int error;
 
 	/*
 	 * Return locked reference to root.
 	 */
 	vp = VFSTOPORTAL(mp)->pm_root;
-	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	*vpp = vp;
-	return (0);
+	error = vget(vp, LK_EXCLUSIVE | LK_RETRY);
+	if (error == 0)
+		*vpp = vp;
+	return (error);
 }
 
 static int

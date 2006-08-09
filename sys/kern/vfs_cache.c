@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.72 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.73 2006/08/09 22:47:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -242,9 +242,6 @@ _cache_drop(struct namecache *ncp)
 /*
  * Link a new namecache entry to its parent.  Be careful to avoid races
  * if vhold() blocks in the future.
- *
- * If we are creating a child under an oldapi parent we must mark the
- * child as being an oldapi entry as well.
  */
 static void
 cache_link_parent(struct namecache *ncp, struct namecache *par)
@@ -883,7 +880,7 @@ again:
 			cache_unlock(ncp);
 			goto again;
 		}
-		vref(vp);
+		vref_initial(vp, 1);
 	}
 	if (error == 0 && vp == NULL)
 		error = ENOENT;

@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.19 2006/08/08 03:52:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.20 2006/08/09 22:47:32 dillon Exp $
  */
 
 /*
@@ -394,17 +394,18 @@ vfs_getnewfsid(struct mount *mp)
  * candidate for being (eventually) vgone()'d.  Returns 0 if the vnode is
  * not a good candidate, 1 if it is.
  *
- * vnodes marked VFREE are already on the free list, but may still need
- * to be recycled due to eating namecache resources and potentially blocking
- * the namecache directory chain and related vnodes from being freed.
+ * Note that a vnode can be marked VFREE without really being free, so
+ * we don't use the flag for any tests.
  */
 static __inline int 
 vmightfree(struct vnode *vp, int page_count)
 {
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
+#if 0
 	if ((vp->v_flag & VFREE) && TAILQ_EMPTY(&vp->v_namecache))
 		return (0);
+#endif
 	if (vp->v_usecount != 0)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
@@ -917,9 +918,6 @@ vmntvnodescan(
 			case VMSC_GETVX:
 				error = vx_get(vp);
 				break;
-			case VMSC_REFVP:
-				vref(vp);
-				/* fall through */
 			default:
 				error = 0;
 				break;
@@ -945,9 +943,6 @@ vmntvnodescan(
 			case VMSC_GETVX:
 				vx_put(vp);
 				break;
-			case VMSC_REFVP:
-				vrele(vp);
-				/* fall through */
 			default:
 				break;
 			}

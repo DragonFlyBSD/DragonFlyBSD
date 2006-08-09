@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.91 2006/07/18 22:22:12 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.92 2006/08/09 22:47:32 dillon Exp $
  */
 
 /*
@@ -149,16 +149,13 @@ rb_buf_compare(struct buf *b1, struct buf *b2)
 }
 
 /*
- * Return 0 if the vnode is already on the free list or cannot be placed
- * on the free list.  Return 1 if the vnode can be placed on the free list.
+ * Returns non-zero if the vnode is a candidate for lazy msyncing.
  */
 static __inline int
-vshouldfree(struct vnode *vp, int usecount)
+vshouldmsync(struct vnode *vp, int usecount)
 {
-	if (vp->v_flag & VFREE)
-		return (0);		/* already free */
 	if (vp->v_holdcnt != 0 || vp->v_usecount != usecount)
-		return (0);		/* other holderse */
+		return (0);		/* other holders */
 	if (vp->v_object &&
 	    (vp->v_object->ref_count || vp->v_object->resident_page_count)) {
 		return (0);
@@ -1861,7 +1858,7 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	int flags = (int)data;
 
 	if ((vp->v_flag & VRECLAIMED) == 0) {
-		if (vshouldfree(vp, 0))
+		if (vshouldmsync(vp, 0))
 			return(0);	/* call scan2 */
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
 		    (vp->v_flag & VOBJDIRTY) &&

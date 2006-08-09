@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.22 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.23 2006/08/09 22:47:35 dillon Exp $
  */
 
 /*
@@ -172,6 +172,7 @@ static int
 nullfs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *vp;
+	int error;
 
 	NULLFSDEBUG("nullfs_root(mp = %p, vp = %p)\n", (void *)mp,
 	    (void *)MOUNTTONULLMOUNT(mp)->nullm_rootvp);
@@ -180,18 +181,10 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 	 * Return locked reference to root.
 	 */
 	vp = MOUNTTONULLMOUNT(mp)->nullm_rootvp;
-	vref(vp);
-
-#ifdef NULLFS_DEBUG
-	if (VOP_ISLOCKED(vp, NULL)) {
-		Debugger("root vnode is locked.\n");
-		vrele(vp);
-		return (EDEADLK);
-	}
-#endif
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-	*vpp = vp;
-	return 0;
+	error = vget(vp, LK_EXCLUSIVE | LK_RETRY);
+	if (error == 0)
+		*vpp = vp;
+	return (error);
 }
 
 static int
