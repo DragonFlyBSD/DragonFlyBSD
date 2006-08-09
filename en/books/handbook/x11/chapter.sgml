@@ -1,31 +1,56 @@
 <!--
-     The FreeBSD Documentation Project
+     The DragonFlyBSD Documentation Project
 
-     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.8 2006/07/14 20:30:27 justin Exp $
+$DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.9 2006/08/09 03:52:13 justin Exp $
+
+Matches with: 
+$FreeBSD: /repoman/r/dcvs/doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.173 2006/05/30 23:08:25 trhodes Exp $
 -->
 
 <chapter id="x11">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Ken</firstname>
+	<surname>Tom</surname>
+	<contrib>Updated for X.Org's X11 server by </contrib>
+      </author>
+      <author>
+	<firstname>Marc</firstname>
+	<surname>Fonvieille</surname>
+      </author>
+    </authorgroup>
+    <authorgroup>
+      <author>
+	<firstname>V&iacute;ctor</firstname>
+	<surname>Balada D&iacute;az</surname>
+	<contrib>Updated for DragonFly by </contrib>
+      </author>
+    </authorgroup>
+  </chapterinfo>
+
   <title>The X Window System</title>
 
   <sect1 id="x11-synopsis">
     <title>Synopsis</title>
 
-    <para>&os; uses <application>&xfree86;</application> to provide users with
-      a powerful graphical user interface.  <application>&xfree86;</application>
-      is an open-source implementation of the X Window System.  This chapter
-      will cover installation and configuration of
-      <application>&xfree86;</application> on a &os; system.  For more
-      information on <application>&xfree86;</application> and video hardware that
-      it supports, check the <ulink
-        url="http://www.XFree86.org/">&xfree86;</ulink> web site.</para>
+    <para>&os; uses X11 to provide users with
+      a powerful graphical user interface.  X11
+      is an open-source implementation of the X Window System that
+      includes both <application>&xorg;</application> and
+      <application>&xfree86;</application>. &os; default official
+      flavor is <application>&xorg;</application>, the X11
+       server developed by the X.Org Foundation.</para>
 
-    <warning>
-      <para>This chapter contains a number of outdated 
-      references to the FreeBSD ports collection.  Most instructions 
-      still apply to pkgsrc, but proceed with caution until this 
-      chapter is updated.</para>
-    </warning>
+    <para>This chapter will cover the installation and configuration
+      of X11 with emphasis on
+      <application>&xorg;</application>.</para>
+
+    <para>For more information on the video hardware that X11
+      supports, check either the <ulink
+      url="http://www.x.org/">&xorg;</ulink> or <ulink
+      url="http://www.XFree86.org/">&xfree86;</ulink> web
+      sites.</para>
 
     <para>After reading this chapter, you will know:</para>
 
@@ -36,8 +61,7 @@
       </listitem>
 
       <listitem>
-        <para>How to install and configure
-          <application>&xfree86;</application>.</para>
+	<para>How to install and configure X11.</para>
       </listitem>
 
       <listitem>
@@ -45,8 +69,7 @@
       </listitem>
 
       <listitem>
-        <para>How to use &truetype; fonts in
-          <application>&xfree86;</application>.</para>
+	<para>How to use &truetype; fonts in X11.</para>
       </listitem>
 
       <listitem>
@@ -61,6 +84,17 @@
       <listitem><para>Know how to install additional third-party
         software (<xref linkend="pkgsrc">).</para></listitem>
     </itemizedlist>
+
+    <note>
+      <para>This chapter covers the installation and the configuration
+	of both <application>&xorg;</application> and
+	<application>&xfree86;</application> X11 servers.  For the most
+	part, configuration files, commands and syntaxes are identical.
+	In the case where there are differences, both
+	<application>&xorg;</application> and
+	<application>&xfree86;</application> syntaxes will be
+	shown.</para>
+    </note>
   </sect1>
 
   <sect1 id="x-understanding">
@@ -70,32 +104,35 @@
       familiar with other graphical environments, such as &microsoft.windows; or
       &macos;.</para>
 
-    <para>It is not necessary to understand all of the details of various
-      X components and how they interact; however, some basic knowledge makes
+    <para>While it is not necessary to understand all of the details of various
+      X components and how they interact, some basic knowledge makes
       it possible to take advantage of X's strengths.</para>
 
     <sect2>
       <title>Why X?</title>
 
       <para>X is not the first window system written for &unix;, but it is the
-        most popular.  X's original development team had worked on another
-        window system before writing X.  That system's name was
-        <quote>W</quote> (for <quote>Window</quote>).  X is just the next
+        most popular of them.  X's original development team had worked on another
+        window system prior to writing X.  That system's name was
+        <quote>W</quote> (for <quote>Window</quote>).  X was just the next
         letter in the Roman alphabet.</para>
 
       <para>X can be called <quote>X</quote>, <quote>X Window System</quote>,
-          <quote>X11</quote>, and other terms.  Calling X11
-          <quote>X Windows</quote> can offend some people;
-          see &man.X.7; for a bit more insight on this.</para>
+	<quote>X11</quote>, and a number of other terms.  You may find
+	that using the term <quote>X Windows</quote> to describe X11
+	can be offensive to some people; for a bit more insight on
+	this, see &man.X.7;.</para>
     </sect2>
 
     <sect2>
       <title>The X Client/Server Model</title>
 
       <para>X was designed from the beginning to be network-centric, and
-        adopts a <quote>client-server</quote> model.  In the X model, the
+        adopts a <quote>client-server</quote> model.</para>
+
+      <para>In the X model, the
         <quote>X server</quote> runs on the computer that has the keyboard,
-        monitor, and mouse attached.  The server is responsible for managing
+        monitor, and mouse attached.  The server's responsibility includes tasks such as managing
         the display, handling input from the keyboard and mouse, and so on.
         Each X application (such as <application>XTerm</application>, or
         <application>&netscape;</application>) is a <quote>client</quote>.  A
@@ -104,8 +141,8 @@
           messages such as <quote>The user just clicked on the OK
           button</quote>.</para>
 
-      <para>If there is only one computer involved, such as in a home or small
-        office environment, the X server and the X clients will be running on
+      <para>In a home or small
+        office environment, the X server and the X clients commonly run on
         the same computer.  However, it is perfectly possible to run the X
         server on a less powerful desktop computer, and run X applications
         (the clients) on, say, the powerful and expensive machine that serves
@@ -117,7 +154,7 @@
           server</quote> to be the big powerful machine down the hall, and
         the <quote>X client</quote> to be the machine on their desk.</para>
 
-      <para>Remember that the X server is the machine with the monitor and
+      <para>It is important to remember that the X server is the machine with the monitor and
         keyboard, and the X clients are the programs that display the
         windows.</para>
 
@@ -128,11 +165,10 @@
         various free and commercial applications available that do exactly
         that.</para>
 
-      <para>The X server that ships with &os; is called
-        <application>&xfree86;</application>, and is available for free, under a
-        license very similar to the &os; license.  Commercial X servers for
-        FreeBSD are also available, and ought to work with &os; .
-        (Unconfirmed as of this writing.)</para>
+      <para>&os; will use by default
+        <application>&xorg;</application>
+	server.  <application>&xorg;</application> is available for
+	free, under a license very similar to the DragonFly license.</para>
     </sect2>
 
     <sect2>
@@ -168,7 +204,7 @@
         button or similar device; some are <quote>themeable</quote>, allowing
         a complete change of look-and-feel by applying a new theme.  These
         window managers, and many more, are available in the
-        <filename>wm</filename> category of &pkgsrc;.</para>
+        <filename>x11-wm</filename> category of the Ports Collection.</para>
 
       <para>In addition, the <application>KDE</application> and
 	<application>GNOME</application> desktop environments both have their
@@ -177,7 +213,7 @@
       <para>Each window manager also has a different configuration mechanism;
         some expect configuration file written by hand, others feature
         GUI tools for most of the configuration tasks; at least one
-        (<application>sawfish</application>) has a configuration file written
+        (<application>Sawfish</application>) has a configuration file written
         in a dialect of the Lisp language.</para>
 
       <note>
@@ -272,7 +308,7 @@
 
       <para>Most newer X applications today will use a modern-looking widget
         set, either Qt, used by <application>KDE</application>, or
-        <application>GTK</application>, used by the
+        GTK+, used by the
         <application>GNOME</application>
         project.  In this respect, there is some convergence in
         look-and-feel of the &unix; desktop, which certainly makes things
@@ -281,41 +317,67 @@
   </sect1>
 
   <sect1 id="x-install">
-    <title>Installing &xfree86;</title>
+    <title>Installing X11</title>
 
-    <warning>
-      <para>This section is out of date; please consult the 
-      DragonFly BSD wiki or mailing lists for recent discussion.</para>
-    </warning>
+    <para><application>&xorg;</application> or
+      <application>&xfree86;</application> may be installed on &os;.
+      &os; doesn't force a default implementation, but recommends
+      <application>&xorg;</application>.  <application>&xorg;</application> is
+      the X server of the open source X Window System implementation
+      released by the X.Org Foundation.  <application>&xorg;</application>
+      is based on the code of
+      <application>&xfree86&nbsp;4.4RC2</application> and X11R6.6.
+      The X.Org Foundation released X11R6.7 in April 2004 and
+      X11R6.8.2 in February 2005, this latter is the version
+      currently available in the &os; pkgsrc framework.</para>
 
-    <para>
-      A binary
-      package to use with &man.pkg.add.1; tool is also available for
-      <application>&xfree86; 4.X</application>.  When the remote fetching
-      feature of &man.pkg.add.1; is used, the version number of the
-      package must be removed.  &man.pkg.add.1; will automatically fetch
-      the latest version of the application.  So to fetch and install the
-      package of <application>&xfree86; 4.X</application>, simply type:</para>
+    <para>To build and install <application>&xorg;</application> from the
+      Ports Collection:</para>
+
+    <screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/xorg</userinput>
+&prompt.root; <userinput>bmake install clean</userinput></screen>
+
+    <note>
+      <para>To build <application>&xorg;</application> in its
+	entirety, be sure to have at least 4&nbsp;GB of free space
+	available.</para>
+    </note>
+
+    <para>To build and install <application>&xfree86;</application>
+      from the pkgsrc framework:</para>
+
+    <screen>&prompt.root; <userinput>echo "X11_TYPE=XFree86" >> <filename>/etc/mk.conf</filename></userinput></screen>
+
+    <screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/XFree86</userinput>
+&prompt.root; <userinput>bmake install clean</userinput></screen>
+
+    <para>Alternatively, X11
+      can be installed directly from packages.
+      Binary packages to use with &man.pkg.add.1; tool are also available for
+      X11.  If you have configured <varname>PKG_PATH</varname> the remote
+      fetching feature of &man.pkg.add.1; is used, the version number of the
+      package is not required.  &man.pkg.add.1; will automatically fetch
+      the latest version of the application.</para>
+
+    <para>So to fetch and install the package of
+      <application>&xorg;</application>, simply type:</para>
+
+    <screen>&prompt.root; <userinput>pkg_add xorg</userinput></screen>
+
+    <para>The <application>&xfree86;&nbsp;4.X</application> package can be
+      installed by typing:</para>
 
     <screen>&prompt.root; <userinput>pkg_add XFree86</userinput></screen>
 
-    <para>You can also use the ports collection to install
-      <application>&xfree86; 4.X</application>, for that you simply need
-      to type the following commands:</para>
-
-    <screen>&prompt.root; <userinput>cd /usr/ports/x11/XFree86-4</userinput>
-&prompt.root; <userinput>make install clean</userinput></screen>
-
     <note><para>The examples above will install the complete
-      <application>&xfree86;</application> distribution including the
-      servers, clients, fonts etc.  Separate packages for
-      different parts of <application>&xfree86; 4.X</application> are also
+      X11 distribution including the
+      servers, clients, fonts etc.  Separate packages and ports of X11
+      are also
       available.</para></note>
 
     <para>The rest of this chapter will explain how to configure
-      <application>&xfree86;</application>, and how to set up a productive desktop
+      X11, and how to set up a productive desktop
       environment.</para>
-
   </sect1>
 
   <sect1 id="x-config">
@@ -329,16 +391,18 @@
         </author>
       </authorgroup>
     </sect1info>
-    <title>&xfree86; Configuration</title>
+    <title>X11 Configuration</title>
 
 
-    <indexterm><primary>XFree86 4.X</primary></indexterm>
-    <indexterm><primary>XFree86</primary></indexterm>
+    <indexterm><primary>&xfree86;&nbsp;4.X</primary></indexterm>
+    <indexterm><primary>&xfree86;</primary></indexterm>
+    <indexterm><primary>&xorg;</primary></indexterm>
+    <indexterm><primary>X11</primary></indexterm>
 
     <sect2>
       <title>Before Starting</title>
 
-      <para>Before configuration of <application>&xfree86; 4.X</application>,
+      <para>Before configuration of X11
         the following information about the target system is needed:</para>
 
       <itemizedlist>
@@ -351,7 +415,7 @@
       <indexterm><primary>vertical scan rate</primary></indexterm>
 
       <para>The specifications for the monitor are used by
-        <application>&xfree86;</application> to determine the resolution and
+        X11 to determine the resolution and
         refresh rate to run at.  These specifications can usually be
         obtained from the documentation that came with the monitor or from
         the manufacturer's website.  There are two ranges of numbers that
@@ -359,7 +423,7 @@
         rate.</para>
 
       <para>The video adapter's chipset defines what driver module
-        <application>&xfree86;</application> uses to talk to the graphics
+        X11 uses to talk to the graphics
         hardware.  With most chipsets, this can be automatically
         determined, but it is still useful to know in case the automatic
         detection does not work correctly.</para>
@@ -372,32 +436,43 @@
     </sect2>
 
     <sect2>
-      <title>Configuring &xfree86; 4.X</title>
+      <title>Configuring X11</title>
 
-      <para>Configuration of <application>&xfree86; 4.X</application> is
+      <para>Configuration of X11 is
         a multi-step process.  The first step is to build an initial
-        configuration file with the <option>-configure</option> option to
-        <application>&xfree86;</application>.  As the super user, simply
+        configuration file.
+        As the super user, simply
         run:</para>
+
+      <screen>&prompt.root; <userinput>Xorg -configure</userinput></screen>
+
+      <para>In the case of <application>&xfree86;</application>
+	type:</para>
 
       <screen>&prompt.root; <userinput>XFree86 -configure</userinput></screen>
 
-      <para>This will generate a skeleton
-        <application>&xfree86;</application> configuration file in the
+      <para>This will generate an
+        X11 configuration skeleton file in the
         <filename>/root</filename> directory called
-        <filename>XF86Config.new</filename> (in fact the directory used
-        is the one covered by the environment variable <envar>$HOME</envar>,
-        and it will depend from the way you got the superuser rights).  The
-        <application>&xfree86;</application> program will attempt to probe
-        the graphics hardware on the system and will write a
+	<filename>xorg.conf.new</filename> (whether you &man.su.1; or
+	do a direct login affects the inherited supervisor
+	<envar>$HOME</envar> directory variable).
+	For <application>&xfree86;</application>, this configuration
+	file is called  <filename>XF86Config.new</filename>.  The
+        X11 program will attempt to probe
+        the graphics hardware on the system and write a
         configuration file to load the proper drivers for the detected
         hardware on the target system.</para>
 
       <para>The next step is to test the existing
-        configuration to verify that <application>&xfree86;</application>
+        configuration to verify that <application>&xorg;</application>
         can work with the graphics
-        hardware on the target system.  To perform this task, the user
-        needs to run:</para>
+        hardware on the target system.  To perform this task,
+        type:</para>
+
+      <screen>&prompt.root; <userinput>Xorg -config xorg.conf.new</userinput></screen>
+
+      <para><application>&xfree86;</application> users will type:</para>
 
       <screen>&prompt.root; <userinput>XFree86 -xf86config XF86Config.new</userinput></screen>
 
@@ -409,17 +484,20 @@
           <keycap>Backspace</keycap>
         </keycombo> simultaneously.</para>
 
-	<note><para>If the mouse does not work, be sure the device
-	  has been configured.  See &man.moused.8 for more information</para></note>
+	<note><para>If the mouse does not work, you will need to first
+	  configure it before proceeding.</para></note>
 
-      <indexterm><primary>XFree86 4 Tuning</primary></indexterm>
+<!-- We don't have support for configuring the mouse in the installer -->
+<!-- See <xref linkend="mouse"> in the &os; install chapter.</para></note> -->
 
-      <para>Next, tune the <filename>XF86Config.new</filename>
+      <indexterm><primary>X11 tuning</primary></indexterm>
+
+      <para>Next, tune the <filename>xorg.conf.new</filename> (or <filename>XF86Config.new</filename> if you are running <application>&xfree86;</application>)
         configuration file to taste.  Open the file in a text editor such
         as &man.emacs.1; or &man.ee.1;.  First, add the
         frequencies for the target system's monitor.  These are usually
         expressed as a horizontal and vertical synchronization rate.  These
-        values are added to the <filename>XF86Config.new</filename> file
+        values are added to the <filename>xorg.conf.new</filename> file
         under the <literal>"Monitor"</literal> section:</para>
 
       <programlisting>Section "Monitor"
@@ -430,12 +508,12 @@
         VertRefresh  48-120
 EndSection</programlisting>
 
-      <para>The <varname>HorizSync</varname> and
-        <varname>VertRefresh</varname> keywords may not exist in the
-        configuration file.  If they do not, they need to be added, with
+      <para>The <literal>HorizSync</literal> and
+        <literal>VertRefresh</literal> keywords may be missing in the
+        configuration file.  If they are, they need to be added, with
         the correct horizontal synchronization rate placed after the
-        <varname>HorizSync</varname> keyword and the vertical
-        synchronization rate after the <varname>VertRefresh</varname>
+        <literal>HorizSync</literal> keyword and the vertical
+        synchronization rate after the <literal>VertRefresh</literal>
         keyword.  In the example above the target monitor's rates were
         entered.</para>
 
@@ -449,10 +527,13 @@ EndSection</programlisting>
         Option       "DPMS"</programlisting>
 
       <indexterm>
-        <primary><command>XF86Config</command></primary>
+        <primary><filename>xorg.conf</filename></primary>
+      </indexterm>
+      <indexterm>
+        <primary><filename>XF86Config</filename></primary>
       </indexterm>
 
-      <para>While the <filename>XF86Config.new</filename>
+      <para>While the <filename>xorg.conf.new</filename> (or <filename>XF86Config.new</filename>)
         configuration file is still open in an editor, select
         the default resolution and color depth desired.  This is
         defined in the <literal>"Screen"</literal> section:</para>
@@ -463,47 +544,74 @@ EndSection</programlisting>
         Monitor    "Monitor0"
         DefaultDepth 24
         SubSection "Display"
+                Viewport  0 0
                 Depth     24
                 Modes     "1024x768"
         EndSubSection
 EndSection</programlisting>
 
-      <para>The <varname>DefaultDepth</varname> keyword describes
+      <para>The <literal>DefaultDepth</literal> keyword describes
         the color depth to run at by default.  This can be overridden
-        with the <command>-bpp</command> command line switch to
-        &man.XFree86.1;.
-        The <varname>Modes</varname> keyword
+        with the <option>-depth</option> command line switch to
+        &man.Xorg.1; (or &man.XFree86.1;).
+        The <literal>Modes</literal> keyword
         describes the resolution to run at for the given color depth.
         Note that only VESA standard modes are supported as defined by
         the target system's graphics hardware.
         In the example above, the default color depth is twenty-four
         bits per pixel.  At this color depth, the accepted resolution is
-        one thousand twenty-four pixels by seven hundred and sixty-eight
+        1024 by 768
         pixels.</para>
 
       <para>Finally, write the configuration file and test it using
-        the test mode given above.  If all is well, the configuration
+        the test mode given above.</para>
+
+      <note>
+	<para>One of the tools available to assist you during
+	  troubleshooting process are the X11 log files, which contain
+	  information on each device that the X11 server attaches to.
+	  <application>&xorg;</application> log file names are in the format
+	  of <filename>/var/log/Xorg.0.log</filename>
+	  (<application>&xfree86;</application> log file names follow the
+	  format of <filename>XFree86.0.log</filename>).  The exact name
+	  of the log can vary from <filename>Xorg.0.log</filename> to
+	  <filename>Xorg.8.log</filename> and so forth.</para>
+      </note>
+
+      <para>If all is well, the configuration
         file needs to be installed in a common location where
-        &man.XFree86.1;
+        &man.Xorg.1; (or &man.XFree86.1;)
         can find it.
-        This is typically <filename>/etc/X11/XF86Config</filename> or
-        <filename>/usr/X11R6/etc/X11/XF86Config</filename>.</para>
+	This is typically <filename>/etc/X11/xorg.conf</filename> or
+	<filename>/usr/pkg/xorg/lib/X11/xorg.conf</filename> (for
+	<application>&xfree86;</application> it is called
+        <filename>/etc/X11/XF86Config</filename> or
+        <filename>/usr/pkg/XFree86/lib/X11/XF86Config</filename>).</para>
+<!-- The XFree86 paths needs confirmation -->
+      <screen>&prompt.root; <userinput>cp xorg.conf.new /etc/X11/xorg.conf</userinput></screen>
+
+      <para>For <application>&xfree86;</application>:</para>
 
       <screen>&prompt.root; <userinput>cp XF86Config.new /etc/X11/XF86Config</userinput></screen>
 
-      <para>Once the configuration file has been placed in a common
-        location, configuration is complete.  In order to start
-        <application>&xfree86; 4.X</application> with &man.startx.1;,
-        install the <filename role="package">x11/wrapper</filename> port.
-        <application>&xfree86; 4.X</application> can also be started with
-        &man.xdm.1;.</para>
+      <para>The X11 configuration process is now
+        complete.  You can start 
+        <application>&xfree86;&nbsp;4.X</application> or
+	<application>&xorg;</application> with &man.startx.1;.  The
+	 X11 server may also be started with the use of &man.xdm.1;.</para>
 
-      <note><para>There is also a graphical tool for configuration,
-	&man.xf86cfg.1;, that comes with the
-	<application>&xfree86; 4.X</application> distribution.  It
-	allows to interactively define your configuration by choosing
-	the appropriate drivers and settings.  This program can be used under console as well, just use the command <command>xf86cfg -textmode</command>.  For more details,
-	refer to the &man.xf86cfg.1; manual page.</para></note>
+      <note><para>There is also a graphical configuration tool,
+	&man.xorgcfg.1; (&man.xf86cfg.1; for <application>&xfree86;</application>), that comes with the
+	X11 distribution.  It
+	allows you to interactively define your configuration by choosing
+	the appropriate drivers and settings.  This program can be invoked from the console, by typing the command <command>xorgcfg -textmode</command>.  For more details,
+	refer to the &man.xorgcfg.1; and &man.xf86cfg.1; manual pages.</para>
+
+      <para>Alternatively, there is also a tool called &man.xorgconfig.1;
+	(&man.xf86config.1; for <application>&xfree86;</application>),
+	this program is a console utility that is less user friendly,
+	but it may work in situations where the other tools do
+	not.</para></note>
 
     </sect2>
 
@@ -517,31 +625,9 @@ EndSection</programlisting>
 
         <para>Configuration with &intel; i810 integrated chipsets
           requires the <devicename>agpgart</devicename>
-          AGP programming interface for <application>&xfree86;</application>
-          to drive the card.  The &man.agp.4; driver is in the
-	  <filename>GENERIC</filename> kernel since releases
-	  4.8-RELEASE and 5.0-RELEASE.  On prior releases, you will
-	  have to add the following line:</para>
-
-	<programlisting>device agp</programlisting>
-
-	<para>in your kernel configuration file and rebuild a new
-	  kernel.  Instead, you may want to load
-	  the <filename>agp.ko</filename> kernel module
-          automatically with the &man.loader.8; at boot time.
-          For that, simply add this line to
-          <filename>/boot/loader.conf</filename>:</para>
-
-        <programlisting>agp_load="YES"</programlisting>
-
-        <para>Next, a
-          device node needs to be created for the
-          programming interface.  To create the AGP device node, run
-          &man.MAKEDEV.8; in the <filename>/dev</filename>
-          directory:</para>
-
-        <screen>&prompt.root; <userinput>cd /dev</userinput>
-&prompt.root; <userinput>sh MAKEDEV agpgart</userinput></screen>
+          AGP programming interface for X11
+          to drive the card.  See the &man.agp.4; driver manual page
+	  for more information.</para>
 
         <para>This will allow configuration of the hardware as any other
           graphics board.  Note on systems without the &man.agp.4;
@@ -550,11 +636,11 @@ EndSection</programlisting>
 	  in the kernel at boot time through being compiled in or
 	  using <filename>/boot/loader.conf</filename>.</para>
 
-	<para>If you are using <application>&xfree86; 4.1.0</application> (or
+	<para>If you are using <application>&xfree86;&nbsp;4.1.0</application> (or
 	  later) and messages about unresolved symbols like
           <literal>fbPictureInit</literal> appear, try adding the
           following line after <literal>Driver "i810"</literal> in the
-          <application>&xfree86;</application> configuration file:</para>
+          X11 configuration file:</para>
         <programlisting>Option "NoDDC"</programlisting>
       </sect3>
     </sect2>
@@ -570,48 +656,47 @@ EndSection</programlisting>
         </author>
       </authorgroup>
     </sect1info>
-    <title>Using Fonts in &xfree86;</title>
+    <title>Using Fonts in X11</title>
 
     <sect2 id="type1">
     <title>Type1 Fonts</title>
     <para>The default fonts that ship with
-    <application>&xfree86;</application> are less than ideal for typical
+      X11 are less than ideal for typical
     desktop publishing applications.  Large presentation fonts show up
     jagged and unprofessional looking, and small fonts in
     <application>&netscape;</application> are almost completely unintelligible.
     However, there are several free, high quality Type1 (&postscript;) fonts
     available which can be readily used
-    with <application>&xfree86;</application>, either version 3.X or
-    version 4.X.  For instance, the URW font collection
-    (<filename role="package">x11-fonts/urwfonts</filename>) includes
-    high quality versions of standard type1 fonts (<trademark class="registered">Times Roman</trademark>,
-    <trademark class="registered">Helvetica</trademark>, <trademark class="registered">Palatino</trademark> and others).  The Freefonts collection
-    (<filename role="package">x11-fonts/freefonts</filename>) includes
-    many more fonts, but most of them are intended for use in
+    with X11.  For instance, the Freefonts collection
+    (<filename role="package">fonts/freefonts</filename>) includes
+    a lot of fonts, but most of them are intended for use in
     graphics software such as the <application>Gimp</application>, and are not
     complete enough to serve as screen fonts.  In addition,
-    <application>&xfree86;</application> can be configured to use
-    &truetype; fonts with a minimum of effort: see the
-    <link linkend="truetype">section on &truetype; fonts</link> later.</para>
+    X11 can be configured to use
+    &truetype; fonts with a minimum of effort.  For more details on
+    this, see the &man.X.7; manual page or the
+    <link linkend="truetype">section on &truetype; fonts</link>.</para>
 
-    <para>To install the above Type1 font collections from the ports
-        collection, run the following commands:</para>
+    <para>To install the Freefonts font collection from the pkgsrc
+        framework, run the following commands:</para>
 
-    <screen>&prompt.root; <userinput>cd /usr/ports/x11-fonts/urwfonts</userinput>
-&prompt.root; <userinput>make install clean</userinput></screen>
+    <screen>&prompt.root; <userinput>cd /usr/pkgsrc/fonts/freefonts</userinput>
+&prompt.root; <userinput>bmake install clean</userinput></screen>
 
-    <para>And likewise with the freefont or other collections.  To tell the X
-      server that these fonts exist, add an appropriate line to the
-      <filename>XF86Config</filename> file (in <filename>/etc/</filename> for
-      <application>&xfree86;</application> version 3, or in
-      <filename>/etc/X11/</filename> for version 4), which reads:</para>
+    <para>And likewise with the other collections.  To have the X
+      server detect these fonts, add an appropriate line to the
+      X server configuration file in <filename>/etc/X11/</filename>
+      (<filename>xorg.conf</filename> for
+      <application>&xorg;</application> and
+      <filename>XF86Config</filename> for
+      <application>&xfree86;</application>), which reads:</para>
 
-      <programlisting>FontPath "/usr/X11R6/lib/X11/fonts/URW/"</programlisting>
+      <programlisting>FontPath "/usr/pkg/lib/X11/fonts/freefont/"</programlisting>
 
       <para>Alternatively, at the command line in the X session
         run:</para>
 
-      <screen>&prompt.user; <userinput>xset fp+ /usr/X11R6/lib/X11/fonts/URW</userinput>
+      <screen>&prompt.user; <userinput>xset fp+ /usr/pkg/lib/X11/fonts/freefont/</userinput>
 &prompt.user; <userinput>xset fp rehash</userinput></screen>
 
       <para>This will work but will be lost when the X session is closed,
@@ -620,7 +705,8 @@ EndSection</programlisting>
     or <filename>~/.xsession</filename> when logging in through a
     graphical login manager like <application>XDM</application>).
     A third way is to use the new
-    <filename>XftConfig</filename> file: see the
+    <filename>/usr/pkg/xorg/etc/fonts/local.conf</filename> file: see the
+<!-- This path needs confirmation -->
     section on <link linkend="antialias">anti-aliasing</link>.
     </para>
     </sect2>
@@ -633,51 +719,49 @@ EndSection</programlisting>
       <secondary>TrueType</secondary>
     </indexterm>
 
-    <para><application>&xfree86; 4.X</application> has built in support
+    <para>Both <application>&xfree86;&nbsp;4.X</application> and <application>&xorg;</application> have built in support
     for rendering &truetype; fonts.  There are two different modules
     that can enable this functionality.  The freetype module is used
     in this example because it is more consistent with the other font
     rendering back-ends.  To enable the freetype module just add the
     following line to the <literal>"Module"</literal> section of the
+    <filename>/etc/X11/xorg.conf</filename> or
     <filename>/etc/X11/XF86Config</filename> file.</para>
 
     <programlisting>Load  "freetype"</programlisting>
 
-    <para>For <application>&xfree86; 3.3.X</application>, a separate
+    <para>For <application>&xfree86;&nbsp;3.3.X</application>, a separate
       &truetype; font server is needed.
       <application>Xfstt</application> is commonly used for
       this purpose.  To install <application>Xfstt</application>,
       simply install the port
-      <filename role="package">x11-servers/Xfstt</filename>.</para>
+      <filename role="package">x11/xfstt</filename>.</para>
 
     <para>Now make a directory for the &truetype; fonts (for example,
-      <filename>/usr/X11R6/lib/X11/fonts/TrueType</filename>)
+      <filename>/usr/pkg/xorg/lib/X11/fonts/TrueType</filename>)
       and copy all of the &truetype; fonts into this directory.  Keep in
       mind that &truetype; fonts cannot be directly taken from a
-      &macintosh;; they must be in &unix;/DOS/&windows; format for use by
-      <application>&xfree86;</application>.  Once the files have been
+      &macintosh;; they must be in &unix;/&ms-dos;/&windows; format for use by
+      X11.  Once the files have been
       copied into this directory, use
       <application>ttmkfdir</application> to create a
       <filename>fonts.dir</filename> file, so that the X font renderer
       knows that these new files have been installed.
-      <command>ttmkfdir</command> is available from the FreeBSD
-      Ports Collection as
-      <filename role="package">x11-fonts/ttmkfdir</filename>
-      or the &pkgsrc; collection at
+      <command>ttmkfdir</command> is available from the pkgsrc framework as
       <filename role="package">fonts/ttmkfdir2</filename>.</para>
 
-    <screen>&prompt.root; <userinput>cd /usr/X11R6/lib/X11/fonts/TrueType</userinput>
-&prompt.root; <userinput>ttmkfdir > fonts.dir</userinput></screen>
+    <screen>&prompt.root; <userinput>cd /usr/pkg/xorg/lib/X11/fonts/TrueType</userinput>
+&prompt.root; <userinput>ttmkfdir &gt; fonts.dir</userinput></screen>
 
     <para>Now add the &truetype; directory to the font
       path.  This is just the same as described above for <link
       linkend="type1">Type1</link> fonts, that is, use</para>
 
-    <screen>&prompt.user; <userinput>xset fp+ /usr/X11R6/lib/X11/fonts/TrueType</userinput>
+    <screen>&prompt.user; <userinput>xset fp+ /usr/pkg/xorg/lib/X11/fonts/TrueType</userinput>
 &prompt.user; <userinput>xset fp rehash</userinput></screen>
 
-    <para>or add a <option>FontPath</option> line to the
-       <filename>XF86Config</filename> file.</para>
+    <para>or add a <literal>FontPath</literal> line to the
+       <filename>xorg.conf</filename> (or <filename>XF86Config</filename>) file.</para>
 
       <para>That's it.  Now <application>&netscape;</application>,
         <application>Gimp</application>,
@@ -695,7 +779,7 @@ EndSection</programlisting>
         <author>
           <firstname>Joe Marcus</firstname>
           <surname>Clarke</surname>
-          <contrib>Updated for &xfree86; 4.3 by </contrib>
+          <contrib>Updated by </contrib>
           <!-- May 2003 -->
         </author>
       </authorgroup>
@@ -706,17 +790,20 @@ EndSection</programlisting>
     <indexterm><primary>fonts</primary>
       <secondary>anti-aliased</secondary></indexterm>
 
-    <para>Anti-aliasing has been available in
-      <application>&xfree86;</application> since 4.0.2.  However, font
+    <para>Anti-aliasing has been available in X11 since
+      <application>&xfree86;</application> 4.0.2.  However, font
       configuration was cumbersome before the introduction of
-      <application>&xfree86;</application> 4.3.0.  Starting in version 4.3.0, 
-      all fonts in <filename>/usr/X11R6/lib/X11/fonts/</filename> and
+      <application>&xfree86;</application> 4.3.0.
+      Beginning with
+      <application>&xfree86;</application> 4.3.0, all fonts in X11
+      that are found
+      in <filename>/usr/pkg/xorg/lib/X11/fonts/</filename> and
       <filename>~/.fonts/</filename> are automatically 
       made available for anti-aliasing to Xft-aware applications.  Not
-      all applications are Xft-aware yet, but many have received Xft support.
+      all applications are Xft-aware, but many have received Xft support.
       Examples of Xft-aware applications include Qt 2.3 and higher (the 
       toolkit for the <application>KDE</application> desktop), 
-      Gtk+ 2.0 and higher (the toolkit for the 
+      GTK+ 2.0 and higher (the toolkit for the 
       <application>GNOME</application> desktop), and 
       <application>Mozilla</application> 1.2 and higher.
     </para>
@@ -724,7 +811,7 @@ EndSection</programlisting>
     <para>In order to control which fonts are anti-aliased, or to
       configure anti-aliasing properties, create (or edit, if it
       already exists) the file
-      <filename>/usr/X11R6/etc/fonts/local.conf</filename>.  Several
+      <filename>/usr/pkg/xorg/lib/etc/fonts/local.conf</filename>.  Several
       advanced features of the Xft font system can be tuned using
       this file; this section describes only some simple
       possibilities.  For more details, please see
@@ -744,12 +831,12 @@ EndSection</programlisting>
     </programlisting>
 
     <para>As previously stated, all fonts in
-      <filename>/usr/X11R6/lib/X11/fonts/</filename> as well as
+      <filename>/usr/pkg/xorg/lib/X11/fonts/</filename> as well as
       <filename>~/.fonts/</filename> are already made available to
       Xft-aware applications.  If you wish to add another directory
       outside of these two directory trees, add a line similar to the
       following to
-      <filename>/usr/X11R6/etc/fonts/local.conf</filename>:</para>
+      <filename>/usr/pkg/lib/etc/fonts/local.conf</filename>:</para>
 
     <programlisting>&lt;dir&gt;/path/to/my/fonts&lt;/dir&gt;</programlisting>
 
@@ -762,7 +849,7 @@ EndSection</programlisting>
     <para>Anti-aliasing makes borders slightly fuzzy, which makes very
       small text more readable and removes <quote>staircases</quote> from
       large text, but can cause eyestrain if applied to normal text.  To
-      exclude point sizes smaller than 14 point from anti-aliasing, include
+      exclude font sizes smaller than 14 point from anti-aliasing, include
       these lines:</para>
 
       <programlisting>        &lt;match target="font"&gt;
@@ -770,6 +857,14 @@ EndSection</programlisting>
                 &lt;double&gt;14&lt;/double&gt;
             &lt;/test&gt;
             &lt;edit name="antialias" mode="assign"&gt;
+                &lt;bool&gt;false&lt;/bool&gt;
+            &lt;/edit&gt;
+        &lt;/match&gt;
+        &lt;match target="font"&gt;
+            &lt;test name="pixelsize" compare="less" qual="any"&gt;
+                &lt;double&gt;14&lt;/double&gt;
+            &lt;/test&gt;
+            &lt;edit mode="assign" name="antialias"&gt;
                 &lt;bool&gt;false&lt;/bool&gt;
             &lt;/edit&gt;
         &lt;/match&gt;</programlisting>
@@ -834,18 +929,18 @@ EndSection</programlisting>
         your changes to be ignored.</para>
 
        <para>The default font set that comes with 
-         <application>&xfree86;</application> is not very
+	 X11 is not very
          desirable when it comes to anti-aliasing.  A much better
 	 set of default fonts can be found in the 
-	 <filename role="package">x11-fonts/bitstream-vera</filename>
+	 <filename role="package">fonts/vera-ttf</filename>
 	 port.  This port will install a
-	 <filename>/usr/X11R6/etc/fonts/local.conf</filename> file
+	 <filename>/usr/pkg/lib/etc/fonts/local.conf</filename> file
 	 if one does not exist already.  If the file does exist,
-	 the port will create a <filename>/usr/X11R6/etc/fonts/local.conf-vera
+	 the port will create a <filename>/usr/pkg/lib/etc/fonts/local.conf-vera
 	 </filename> file.  Merge the contents of this file into
-	 <filename>/usr/X11R6/etc/fonts/local.conf</filename>, and the 
+	 <filename>/usr/pkg/lib/etc/fonts/local.conf</filename>, and the 
 	 Bitstream fonts will automatically replace the default 
-	 <application>&xfree86;</application> Serif, Sans Serif, and Monospaced 
+	 X11 Serif, Sans Serif, and Monospaced
 	 fonts.</para>
 
        <para>Finally, users can add their own settings via their personal 
@@ -879,18 +974,17 @@ EndSection</programlisting>
 	 <literal>vrgb</literal> or <literal>vbgr</literal>: experiment and
 	 see which works best.</para></note>
 
-       <indexterm><primary>Mozilla</primary></indexterm>
-       <indexterm><primary>web browsers</primary>
-         <secondary>Mozilla</secondary>
-         <see>Mozilla</see></indexterm>
+       <indexterm>
+	 <primary>Mozilla</primary>
+         <secondary>disabling anti-aliased fonts</secondary>
+       </indexterm>
 
        <para>Anti-aliasing should be enabled the next time the X
          server is started.  However, programs must know how to take
          advantage of it.  At present, the Qt toolkit does,
          so the entire <application>KDE</application> environment can
-         use anti-aliased fonts (see <xref
-         linkend="x11-wm-kde-antialias"> on
-         <application>KDE</application> for details).  Gtk+ and 
+         use anti-aliased fonts.
+         GTK+ and 
          <application>GNOME</application> can also be made to use 
          anti-aliasing via the <quote>Font</quote> capplet (see <xref
          linkend="x11-wm-gnome-antialias"> for details).  By default,
@@ -946,7 +1040,7 @@ EndSection</programlisting>
       <title>Using XDM</title>
 
       <para>The <application>XDM</application> daemon program is
-        located in <filename>/usr/X11R6/bin/xdm</filename>.  This program
+        located in <filename>/usr/pkg/xorg/bin/xdm</filename>.  This program
         can be run at any time as <username>root</username> and it will
         start managing the X display on the local machine.  If
         <application>XDM</application> is to be run every
@@ -957,10 +1051,10 @@ EndSection</programlisting>
         <filename>/etc/ttys</filename> file for running the
         <application>XDM</application> daemon on a virtual terminal:</para>
 
-      <screen>ttyv8   "/usr/X11R6/bin/xdm -nodaemon"  xterm   off secure</screen>
+      <screen>ttyv8   "/usr/pkg/xorg/bin/xdm -nodaemon"  xterm   off secure</screen>
 
       <para>By default this entry is disabled; in order to enable it
-        change the fifth field from <literal>off</literal> to
+        change field 5 from <literal>off</literal> to
         <literal>on</literal> and restart &man.init.8; using the
         directions in <xref linkend="term-hup">.  The first field, the
         name of the terminal this program will manage, is
@@ -972,14 +1066,17 @@ EndSection</programlisting>
     <sect2>
       <title>Configuring XDM</title>
 
+      <!-- Please, doublecheck this path -->
       <para>The <application>XDM</application> configuration directory
-        is located in <filename>/usr/X11R6/lib/X11/xdm</filename>.  In
-        this directory there are several files used to change the
+        is located in <filename>/var/lib/xdm</filename>.  The sample
+	configuration files are in
+	<filename>/usr/pkg/share/examples/xorg/xdm/</filename>,
+        in this directory there are several files used to change the
         behavior and appearance of
         <application>XDM</application>.  Typically these files will
         be found:</para>
 
-        <informaltable frame="none">
+        <informaltable frame="none" pgwide="1">
           <tgroup cols="2">
             <thead>
               <row>
@@ -1054,9 +1151,9 @@ EndSection</programlisting>
           <application>XDM</application> controlled displays is called
           the X Display Manager Connection Protocol (XDMCP).  This file
           is a ruleset for controlling XDMCP connections from remote
-          machines.  By default, it allows any client to connect, but
-          that does not matter unless the <filename>xdm-config</filename>
-          is changed to listen for remote connections.</para>
+	  machines.  It is ignored unless the <filename>xdm-config</filename>
+	  is changed to listen for remote connections.  By default, it does
+	  not allow any clients to connect.</para>
       </sect3>
 
       <sect3>
@@ -1065,7 +1162,7 @@ EndSection</programlisting>
           chooser and the login screens.  This is where the appearance
           of the login program can be modified.  The format is identical
           to the app-defaults file described in the
-          <application>&xfree86;</application> documentation.</para>
+	  X11 documentation.</para>
       </sect3>
 
       <sect3>
@@ -1140,9 +1237,9 @@ DisplayManager.requestPort:     0</screen>
 
         <para>Several replacements for the default
           <application>XDM</application> program exist.  One of them,
-          <application>KDM</application> (bundled with
+          <application>kdm</application> (bundled with
           <application>KDE</application>) is described later in this
-          chapter.  <application>KDM</application> offers many visual
+          chapter.  The <application>kdm</application> display manager offers many visual
           improvements and cosmetic frills, as well as the
           functionality to allow users to choose their window manager
           of choice at login time.</para>
@@ -1164,7 +1261,7 @@ DisplayManager.requestPort:     0</screen>
     <title>Desktop Environments</title>
 
     <para>This section describes the different desktop environments
-      available for X on &os; .  A <quote>desktop environment</quote>
+      available for X on FreeBSD.  A <quote>desktop environment</quote>
       can mean anything ranging from a simple window manager to a
       complete suite of desktop applications, such as
       <application>KDE</application> or <application>GNOME</application>.
@@ -1187,15 +1284,14 @@ DisplayManager.requestPort:     0</screen>
           cooperate and be consistent with each other.  Users of other
           operating systems or environments should feel right at home
           using the powerful graphics-driven environment that
-          <application>GNOME</application> provides.  </para>
+          <application>GNOME</application> provides.</para>
       </sect3>
 
       <sect3 id="x11-wm-gnome-install">
         <title>Installing GNOME</title>
 
-        <para>The easiest way to install
-          <application>GNOME</application> is with a package or 
-	  through the ports collection:</para>
+        <para><application>GNOME</application> can be easily
+	  installed from a package or from the pkgsrc framework:</para>
 
         <para>To install the <application>GNOME</application> package
           from the network, simply type:</para>
@@ -1205,38 +1301,56 @@ DisplayManager.requestPort:     0</screen>
         <para>To build <application>GNOME</application> from source, use
           the ports tree:</para>
 
-        <screen>&prompt.root; <userinput>cd /usr/ports/x11/gnome2</userinput>
-&prompt.root; <userinput>make install clean</userinput></screen>
+        <screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/gnome</userinput>
+&prompt.root; <userinput>bmake install clean</userinput></screen>
 
         <para>Once <application>GNOME</application> is installed,
           the X server must be told to start
           <application>GNOME</application> instead of a default window
-          manager.  If a custom <filename>.xinitrc</filename> is already in
+          manager.</para>
+
+	<!-- does gdm_enable="YES" also work on dfbsd? -->
+        <para>The easiest way to start
+          <application>GNOME</application> is with
+          <application>GDM</application>, the GNOME Display Manager.
+          <application>GDM</application>, which is installed as a part
+          of the <application>GNOME</application> desktop (but is
+          disabled by default), can be enabled by adding
+          <literal>gdm_enable="YES"</literal> to
+          <filename>/etc/rc.conf</filename>.  Once you have rebooted,
+          <application>GNOME</application> will start automatically
+          once you log in &mdash; no further configuration is
+          necessary.</para>
+
+        <para><application>GNOME</application> may also be started
+	  from the command-line by properly configuring a file named
+	  <filename>.xinitrc</filename>.
+          If a custom <filename>.xinitrc</filename> is already in
           place, simply replace the line that starts the current window
           manager with one that starts
-          <application>/usr/X11R6/bin/gnome-session</application> instead.
-          If nothing special has been done to configuration file,
-          then it is enough to simply type:</para>
+          <application>/usr/pkg/bin/gnome-session</application> instead.
+          If nothing special has been done to the configuration file,
+          then it is enough simply to type:</para>
 
-        <screen>&prompt.user; <userinput>echo "/usr/X11R6/bin/gnome-session" &gt; ~/.xinitrc</userinput></screen>
+        <screen>&prompt.user; <userinput>echo "/usr/pkg/bin/gnome-session" &gt; ~/.xinitrc</userinput></screen>
 
         <para>Next, type <command>startx</command>, and the
           <application>GNOME</application> desktop environment will be
           started.</para>
 
-        <note><para>If a display manager, like
+        <note><para>If an older display manager, like
           <application>XDM</application>, is being used, this will not work.
           Instead, create an executable <filename>.xsession</filename>
           file with the same command in it.  To do this, edit the file
           and replace the existing window manager command with
-          <application>/usr/X11R6/bin/gnome-session</application>:
+          <application>/usr/pkg/bin/gnome-session</application>:
           </para></note>
 
-        <screen>&prompt.user; <userinput>echo "#!/bin/sh" > ~/.xsession</userinput>
-&prompt.user; <userinput>echo "/usr/X11R6/bin/gnome-session" >> ~/.xsession</userinput>
+        <screen>&prompt.user; <userinput>echo "#!/bin/sh" &gt; ~/.xsession</userinput>
+&prompt.user; <userinput>echo "/usr/pkg/bin/gnome-session" &gt;&gt; ~/.xsession</userinput>
 &prompt.user; <userinput>chmod +x ~/.xsession</userinput></screen>
 
-        <para>Another option is to configure the display manager to
+        <para>Yet another option is to configure the display manager to
           allow choosing the window manager at login time; the section on
           <link linkend="x11-wm-kde-details">KDE details</link>
           explains how to do this for <application>kdm</application>, the
@@ -1248,9 +1362,9 @@ DisplayManager.requestPort:     0</screen>
 
         <indexterm><primary>GNOME</primary>
           <secondary>anti-aliased fonts</secondary></indexterm>
-	<para>Starting with version 4.0.2, <application>&xfree86;</application>
+	<para>X11
 	  supports anti-aliasing via its <quote>RENDER</quote> extension.
-	  Gtk+ 2.0 and greater (the toolkit used by
+	  GTK+ 2.0 and greater (the toolkit used by
 	  <application>GNOME</application>) can make use of this
 	  functionality.  Configuring anti-aliasing is described in
 	  <xref linkend="antialias">.  So, with up-to-date software,
@@ -1263,7 +1377,7 @@ DisplayManager.requestPort:     0</screen>
 	  <guibutton>Best shapes</guibutton>, 
 	  <guibutton>Best contrast</guibutton>, or
 	  <guibutton>Subpixel smoothing (LCDs)</guibutton>.  For a
-	  Gtk+ application that is not part of the 
+	  GTK+ application that is not part of the 
 	  <application>GNOME</application> desktop, set the
 	  environment variable <varname>GDK_USE_XFT</varname> to
 	  <literal>1</literal> before launching the program.</para>
@@ -1323,17 +1437,12 @@ DisplayManager.requestPort:     0</screen>
 	  </listitem>
         </itemizedlist>
 
-        <para><application>KDE</application> has an office application
-          suite based on <application>KDE</application>'s
-          <quote>KParts</quote> technology consisting
-          of a spread-sheet, a presentation application, an organizer, a
-          news client and more.  <application>KDE</application> also
-          comes with a web browser called
+        <para><application>KDE</application> comes with a web browser called
           <application>Konqueror</application>, which represents
           a solid competitor to other existing web browsers on &unix;
           systems.  More information on <application>KDE</application>
           can be found on the <ulink url="http://www.kde.org/">KDE
-          website</ulink>.  </para>
+          website</ulink>.</para>
       </sect3>
 
       <sect3 id="x11-wm-kde-install">
@@ -1341,13 +1450,13 @@ DisplayManager.requestPort:     0</screen>
 
         <para>Just as with <application>GNOME</application> or any
           other desktop environment, the easiest way to install
-          <application>KDE</application> is from a package
-	  or from the ports collection:</para>
+          <application>KDE</application> is through the pkgsrc
+	  framework or from a package:</para>
 
         <para>To install the <application>KDE</application> package
           from the network, simply type:</para>
 
-        <screen>&prompt.root; <userinput>pkg_add kde3</userinput></screen>
+        <screen>&prompt.root; <userinput>pkg_add kde</userinput></screen>
 
 	<para>&man.pkg.add.1; will automatically fetch the latest version
 	  of the application.</para>
@@ -1355,8 +1464,8 @@ DisplayManager.requestPort:     0</screen>
         <para>To build <application>KDE</application> from source,
           use the ports tree:</para>
 
-        <screen>&prompt.root; <userinput>cd /usr/ports/x11/kde3</userinput>
-&prompt.root; <userinput>make install clean</userinput></screen>
+        <screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/kde3</userinput>
+&prompt.root; <userinput>bmake install clean</userinput></screen>
 
         <para>After <application>KDE</application> has been installed,
           the X server must be told to launch this application
@@ -1370,7 +1479,7 @@ DisplayManager.requestPort:     0</screen>
           <application>KDE</application> will be the desktop.</para>
 
         <para>If a display manager such as
-          <application>xdm</application> is being used, the
+          <application>XDM</application> is being used, the
           configuration is slightly different.  Edit the
           <filename>.xsession</filename> file instead.  Instructions
           for <application>kdm</application> are described later in
@@ -1401,7 +1510,7 @@ DisplayManager.requestPort:     0</screen>
           <secondary>display manager</secondary></indexterm>
         <para>An administrator of a multi-user system may wish to have
           a graphical login screen to welcome users.
-          <link linkend="x-xdm"><filename>xdm</filename></link> can be
+          <link linkend="x-xdm">XDM</link> can be
           used, as described earlier.  However,
           <application>KDE</application> includes an
           alternative, <application>kdm</application>, which is designed
@@ -1411,121 +1520,13 @@ DisplayManager.requestPort:     0</screen>
           <application>GNOME</application>, or something else) to run
           after logging on.</para>
 
-        <para>To begin with, run the <application>KDE</application>
-          control panel, <command>kcontrol</command>, as
-          <username>root</username>.  It is generally considered
-          unsafe to run the entire X environment as
-          <username>root</username>.  Instead, run the window manager
-          as a normal user, open a terminal window (such as
-          <filename>xterm</filename> or <application>KDE</application>'s
-          <filename>konsole</filename>), become <username>root</username>
-          with <userinput>su</userinput> (the user must be in the
-          <groupname>wheel</groupname>
-          group in <filename>/etc/group</filename> for this), and then
-          type <userinput>kcontrol</userinput>.</para>
+        <para>To enable <application>kdm</application>, the
+	  <literal>ttyv8</literal> entry in <filename>/etc/ttys</filename>
+	  has to be adapted.  The line should look as follows:</para>
 
-	<para>Click on the icon on the left marked
-	  <guibutton>System</guibutton>, then on <guibutton>Login
-	  manager</guibutton>.  On the right there are
-          various configurable options, which the
-          <application>KDE</application> manual will explain in greater
-          detail.  Click on <guibutton>sessions</guibutton> on the right.
-          Click <guibutton>New type</guibutton> to add various window
-          managers and desktop environments.  These are just labels,
-          so they can say <application>KDE</application> and
-          <application>GNOME</application> rather than
-          <application>startkde</application> or
-          <application>gnome-session</application>.
-          Include a label <literal>failsafe</literal>.</para>
-
-        <para>Play with the other menus as well, they are mainly
-          cosmetic and self-explanatory.  When you are done, click on
-          <guibutton>Apply</guibutton> at the bottom, and quit the
-          control center.</para>
-
-        <para>To make sure <application>kdm</application> understands
-          what the labels (<application>KDE</application>,
-          <application>GNOME</application> etc) mean, edit the files used
-          by <link linkend="x-xdm">xdm</link>.
-          <note><para>In <application>KDE 2.2</application> this has
-            changed: <application>kdm</application> now uses its own
-            configuration files.  Please see the <application>KDE
-            2.2</application> documentation for details.</para>
-          </note>
-          In a terminal window, as <username>root</username>,
-          edit the file
-          <filename>/usr/X11R6/lib/X11/xdm/Xsession</filename>.  There is
-          a section in the middle like this:</para>
-
-	<screen>case $# in
-1)
-        case $1 in
-        failsafe)
-                exec xterm -geometry 80x24-0-0
-                ;;
-        esac
-esac</screen>
-
-        <para>A few lines need to be added to this section.
-          Assuming the labels from used were <quote>KDE</quote> and
-          <quote>GNOME</quote>,
-          use the following:</para>
-
-	<screen>case $# in
-1)
-        case $1 in
-        kde)
-                exec /usr/local/bin/startkde
-                ;;
-        GNOME)
-                exec /usr/X11R6/bin/gnome-session
-                ;;
-        failsafe)
-                exec xterm -geometry 80x24-0-0
-                ;;
-        esac
-esac</screen>
-
-        <para>For the <application>KDE</application>
-          login-time desktop background to be honored,
-          the following line needs to be added to
-          <filename>/usr/X11R6/lib/X11/xdm/Xsetup_0</filename>:</para>
-
-        <screen>/usr/local/bin/kdmdesktop</screen>
-
-        <para>Now, make sure <application>kdm</application> is listed in
-          <filename>/etc/ttys</filename> to be started at the next bootup.
-          To do this, simply follow the instructions from the previous
-          section on <link linkend="x-xdm">xdm</link> and replace
-          references to the <command>/usr/X11R6/bin/xdm</command>
-          program with <command>/usr/local/bin/kdm</command>.</para>
+	<programlisting>ttyv8 "/usr/pkg/bin/kdm -nodaemon" xterm on secure</programlisting>
       </sect3>
 
-      <sect3 id="x11-wm-kde-antialias">
-        <title>Anti-aliased Fonts</title>
-
-        <indexterm><primary>KDE</primary>
-          <secondary>anti-aliased fonts</secondary></indexterm>
-        <para>Starting with version 4.0.2,
-          <application>&xfree86;</application> supports anti-aliasing via
-	  its <quote>RENDER</quote> extension, and starting with version 2.3,
-	  Qt (the toolkit used by <application>KDE</application>) supports
-	  this extension.  Configuring this is described in <xref
-          linkend="antialias"> on antialiasing X11 fonts.  So, with
-          up-to-date software, anti-aliasing is possible on a
-          <application>KDE</application> desktop.  Just go to the KDE
-	  menu, go to
-	  <menuchoice>
-	    <guimenu>Preferences</guimenu>
-	    <guisubmenu>Look and Feel</guisubmenu>
-	    <guimenuitem>Fonts</guimenuitem></menuchoice>, and click on the check box
-          <guibutton>Use Anti-Aliasing for Fonts and Icons</guibutton>.
-          For a Qt application which is not part of
-	  <application>KDE</application>, the environment variable
-	  <varname>QT_XFT</varname> needs to be set to <literal>true</literal>
-	  before starting the program.</para>
-
-       </sect3>
      </sect2>
 
      <sect2 id="x11-wm-xfce">
@@ -1534,7 +1535,7 @@ esac</screen>
          <title>About XFce</title>
 
         <para><application>XFce</application> is a desktop environment
-          based on the GTK
+          based on the GTK+
           toolkit used by <application>GNOME</application>, but is much
           more lightweight and meant for those who want a simple,
           efficient desktop which is nevertheless easy to use and
@@ -1565,7 +1566,7 @@ esac</screen>
            </listitem>
 
            <listitem>
-	     <para>Themeable (since it uses GTK)</para>
+	     <para>Themeable (since it uses GTK+)</para>
            </listitem>
 
            <listitem>
@@ -1585,27 +1586,27 @@ esac</screen>
         <para>A binary package for <application>XFce</application>
           exists (at the time of writing).  To install, simply type:</para>
 
-        <screen>&prompt.root; <userinput>pkg_add xfce4</userinput></screen>
+        <screen>&prompt.root; <userinput>pkg_add -r xfce4</userinput></screen>
 
-        <para>Alternatively, to build from source, use the ports
-          collection:</para>
+        <para>Alternatively, to build from source, use the pkgsrc
+	  framework:</para>
 
-        <screen>&prompt.root; <userinput>cd /usr/ports/x11-wm/xfce4</userinput>
+        <screen>&prompt.root; <userinput>cd /usr/pkgsrc/meta-pkgs/xfce4</userinput>
 &prompt.root; <userinput>make install clean</userinput></screen>
 
         <para>Now, tell the X server to launch
          <application>XFce</application> the next time X is started.
          Simply type this:</para>
 
-        <screen>&prompt.user; <userinput>echo "/usr/X11R6/bin/startxfce4" &gt; ~/.xinitrc</userinput></screen>
+        <screen>&prompt.user; <userinput>echo "/usr/pkgsrc/bin/startxfce4" &gt; ~/.xinitrc</userinput></screen>
 
         <para>The next time X is started,
           <application>XFce</application> will be the desktop.
           As before, if a display manager like
-          <filename>xdm</filename> is being used, create an
+          <application>XDM</application> is being used, create an
           <filename>.xsession</filename>, as described in the
           section on <link linkend="x11-wm-gnome">GNOME</link>, but
-          with the <filename>/usr/X11R6/bin/startxfce4</filename>
+          with the <filename>/usr/pkg/bin/startxfce4</filename>
           command; or, configure the display manager to allow
           choosing a desktop at login time, as explained in
           the section on <link linkend="x11-wm-kde-kdm">kdm</link>.</para>

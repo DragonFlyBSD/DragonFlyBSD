@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.4 2005/03/16 05:01:45 justin Exp $ -->
+<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.5 2006/08/09 03:52:13 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY % output.html		"IGNORE">
@@ -192,6 +192,7 @@
             (case v
               (("current") (string-append u "&" "manpath=FreeBSD+5.2-current"))
               (("xfree86") (string-append u "&" "manpath=XFree86+4.3.0"))
+              (("xorg")    (string-append u "&" "manpath=Xorg+6.9.0"))
               (("netbsd")  (string-append u "&" "manpath=NetBSD+1.6.1"))
               (("openbsd") (string-append u "&" "manpath=OpenBSD+3.3"))
               (("ports")   (string-append u "&" "manpath=FreeBSD+Ports"))
