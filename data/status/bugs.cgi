@@ -1,33 +1,32 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/bugs.cgi,v 1.1 2006/04/05 03:05:15 justin Exp $
+# $DragonFly: site/data/status/Attic/bugs.cgi,v 1.2 2006/08/10 02:47:33 justin Exp $
 
 $TITLE(DragonFly - Reporting Bugs)
 <p>
 The project welcomes all bugs reports and tries to make bug reporting as
 painless an affair as possible by providing several ways to report them.</p>
 <ul>
-    <li>You can email your bug report to:  bugs at dragonflybsd.org</li>
-    <li>You can post to our private newsgroup:&nbsp;
+    <li>Email:  <a href="mailto:bugs'at'dragonflybsd.org">bugs at dragonflybsd.org</a> (mailing list)</li>
+    <li>News: 
 	<a href="nntp://nntp.dragonflybsd.org/dragonfly.bugs">
-		nntp://nntp.dragonflybsd.org/dragonfly.bugs</a></li>
-    <li>When we have an official bug tracking system in place you will
-       be able to submit a bug through that.</li>
-    <li>If you want to report a security related issue which may not be disclosed
-       immediately, write to:  security-officer at dragonflybsd.org</li>
+		nntp://nntp.dragonflybsd.org/dragonfly.bugs</a> (NNTP)</li>
+    <li>Web: <a href="http://bugs.dragonflybsd.org/">bugs.dragonflybsd.org</a> 
+    <li><b>Non-disclosable</b> security issues: 
+       security-officer at dragonflybsd.org</li>
 </ul>
+
 <p>
-The email and newsgroup bug reporting methods are meant to be casual affairs.
-Being able to post a bug report should give you a good feeling regardless of
-whether we are able to act on or respond to it.  Your report will be archived
-indefinitely so even if we are not able to deal with or respond to it
-immediately it will still be registered for possible future action.</p>
+Note: The mailing list, news, and web interface all relate, so for example, 
+an email to the mailing list will be replicated to the newsgroup AND show up 
+in the web bug tracking interface.  (The web interface does not post new 
+reports back, however.)  We suggest using mail or news, so that 
+issues can be discussed in public. 
+</p>
+
 <p>
-Since this is an open source project, the mileage you get out of reporting a
-bug will depend on many factors.  The primary motivator is succinctness and
-a high level of detail.  Bug reports containing patches are afforded the
-highest level of scrutiny; they are like gold to us.  On our side, an ability
-to locate and reproduce the bug greatly enhances our ability to solve the
-problem.  If we do not feel we can act on a bug... for example, if the
-bug falls outside the project's charter and goals list, we will tell you.
-Again, this is not a snub, it is simply a prioritization of work.</p>
+Bug reports are archived permanently.  Please be <i>succinct</i> 
+but <i>detailed</i> when writing your report.  The best bug reports are 
+those that include patches, and fit with the 
+<a href="http://www.dragonflybsd.org/docs/goals.cgi">goals</a> of the project.
+
