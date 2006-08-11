@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.92 2006/08/09 22:47:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.93 2006/08/11 01:54:59 dillon Exp $
  */
 
 /*
@@ -1041,13 +1041,14 @@ addaliasu(struct vnode *nvp, udev_t nvp_udev)
 /*
  * Disassociate a vnode from its underlying filesystem. 
  *
- * The vnode must be VX locked and refd
+ * The vnode must be VX locked, referenced, and v_spinlock must be held.
+ * This routine releases v_spinlock.
  *
  * If there are v_usecount references to the vnode other then ours we have
  * to VOP_CLOSE the vnode before we can deactivate and reclaim it.
  */
 void
-vclean(struct vnode *vp, int flags)
+vclean_interlocked(struct vnode *vp, int flags)
 {
 	int active;
 	int n;
@@ -1055,10 +1056,14 @@ vclean(struct vnode *vp, int flags)
 
 	/*
 	 * If the vnode has already been reclaimed we have nothing to do.
+	 * VRECLAIMED must be interlocked with the vnode's spinlock.
 	 */
-	if (vp->v_flag & VRECLAIMED)
+	if (vp->v_flag & VRECLAIMED) {
+		spin_unlock_wr(&vp->v_spinlock);
 		return;
+	}
 	vp->v_flag |= VRECLAIMED;
+	spin_unlock_wr(&vp->v_spinlock);
 
 	/*
 	 * Scrap the vfs cache
@@ -1188,12 +1193,12 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
 	while ((vq = SLIST_FIRST(&dev->si_hlist)) != NULL) {
-		if (vp == vq || vx_get(vq) == 0) {
-			if (vq == SLIST_FIRST(&dev->si_hlist))
-				vgone(vq);
-			if (vp != vq)
-				vx_put(vq);
-		}
+		if (vp != vq)
+			vx_get(vq);
+		if (vq == SLIST_FIRST(&dev->si_hlist))
+			vgone(vq);
+		if (vp != vq)
+			vx_put(vq);
 	}
 	lwkt_reltoken(&ilock);
 	release_dev(dev);
@@ -1236,6 +1241,13 @@ vrecycle(struct vnode *vp)
 void
 vgone(struct vnode *vp)
 {
+	spin_lock_wr(&vp->v_spinlock);
+	vgone_interlocked(vp);
+}
+
+void
+vgone_interlocked(struct vnode *vp)
+{
 	/*
 	 * assert that the VX lock is held.  This is an absolute requirement
 	 * now for vgone() to be called.
@@ -1244,9 +1256,10 @@ vgone(struct vnode *vp)
 
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED
-	 * bit.  Also deactivate the vnode if necessary.
+	 * bit.  Also deactivate the vnode if necessary. 
 	 */
-	vclean(vp, DOCLOSE);
+	vclean_interlocked(vp, DOCLOSE);
+	/* spinlock unlocked */
 
 	/*
 	 * Delete from old mount point vnode list, if on one.

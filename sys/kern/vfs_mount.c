@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.20 2006/08/09 22:47:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.21 2006/08/11 01:54:59 dillon Exp $
  */
 
 /*
@@ -916,7 +916,8 @@ vmntvnodescan(
 				error = vget(vp, LK_EXCLUSIVE|LK_NOWAIT);
 				break;
 			case VMSC_GETVX:
-				error = vx_get(vp);
+				vx_get(vp);
+				error = 0;
 				break;
 			default:
 				error = 0;
@@ -1030,11 +1031,10 @@ vflush(struct mount *mp, int rootrefs, int flags)
 		KASSERT(vflush_info.busy > 0, ("vflush: not busy"));
 		KASSERT(rootvp->v_usecount >= rootrefs, ("vflush: rootrefs"));
 		if (vflush_info.busy == 1 && rootvp->v_usecount == rootrefs) {
-			if (vx_lock(rootvp) == 0) {
-				vgone(rootvp);
-				vx_unlock(rootvp);
-				vflush_info.busy = 0;
-			}
+			vx_lock(rootvp);
+			vgone(rootvp);
+			vx_unlock(rootvp);
+			vflush_info.busy = 0;
 		}
 	}
 	if (vflush_info.busy)
@@ -1091,7 +1091,9 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 		if (vp->v_type != VBLK && vp->v_type != VCHR) {
 			vgone(vp);
 		} else {
-			vclean(vp, 0);
+			spin_lock_wr(&vp->v_spinlock);
+			vclean_interlocked(vp, 0);
+			/* spinlock unlocked */
 			vp->v_ops = &spec_vnode_vops_p;
 			insmntque(vp, NULL);
 		}

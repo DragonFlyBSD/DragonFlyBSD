@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.23 2006/08/08 03:52:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.24 2006/08/11 01:54:59 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -91,20 +91,23 @@ sharelock(struct lock *lkp, int incr) {
 	lkp->lk_sharecount += incr;
 }
 
-static LOCK_INLINE void
-shareunlock(struct lock *lkp, int decr) {
+static LOCK_INLINE int
+shareunlock(struct lock *lkp, int decr) 
+{
+	int dowakeup = 0;
 
 	KASSERT(lkp->lk_sharecount >= decr, ("shareunlock: count < decr"));
 
 	if (lkp->lk_sharecount == decr) {
 		lkp->lk_flags &= ~LK_SHARE_NONZERO;
 		if (lkp->lk_flags & (LK_WANT_UPGRADE | LK_WANT_EXCL)) {
-			wakeup(lkp);
+			dowakeup = 1;
 		}
 		lkp->lk_sharecount = 0;
 	} else {
 		lkp->lk_sharecount -= decr;
 	}
+	return(dowakeup);
 }
 
 /*
@@ -165,9 +168,11 @@ debuglockmgr(struct lock *lkp, u_int flags,
 	thread_t td;
 	int error;
 	int extflags;
+	int dowakeup;
 	static int didpanic;
 
 	error = 0;
+	dowakeup = 0;
 
 	if (lockmgr_from_int && mycpu->gd_intr_nesting_level &&
 	    (flags & LK_NOWAIT) == 0 &&
@@ -254,7 +259,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		lkp->lk_flags &= ~LK_HAVE_EXCL;
 		lkp->lk_lockholder = LK_NOTHREAD;
 		if (lkp->lk_waitcount)
-			wakeup((void *)lkp);
+			dowakeup = 1;
 		break;
 
 	case LK_EXCLUPGRADE:
@@ -264,7 +269,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * exclusive access.
 		 */
 		if (lkp->lk_flags & LK_WANT_UPGRADE) {
-			shareunlock(lkp, 1);
+			dowakeup = shareunlock(lkp, 1);
 			COUNT(td, -1);
 			error = EBUSY;
 			break;
@@ -284,7 +289,7 @@ debuglockmgr(struct lock *lkp, u_int flags,
 			spin_unlock_wr(&lkp->lk_spinlock);
 			panic("lockmgr: upgrade exclusive lock");
 		}
-		shareunlock(lkp, 1);
+		dowakeup += shareunlock(lkp, 1);
 		COUNT(td, -1);
 		/*
 		 * If we are just polling, check to see if we will block.
@@ -328,8 +333,9 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		 * lock, then request an exclusive lock.
 		 */
 		if ( (lkp->lk_flags & (LK_SHARE_NONZERO|LK_WAIT_NONZERO)) ==
-			LK_WAIT_NONZERO)
-			wakeup((void *)lkp);
+			LK_WAIT_NONZERO) {
+			++dowakeup;
+		}
 		/* fall into exclusive request */
 
 	case LK_EXCLUSIVE:
@@ -405,11 +411,11 @@ debuglockmgr(struct lock *lkp, u_int flags,
 				lkp->lk_exclusivecount--;
 			}
 		} else if (lkp->lk_flags & LK_SHARE_NONZERO) {
-			shareunlock(lkp, 1);
+			dowakeup += shareunlock(lkp, 1);
 			COUNT(td, -1);
 		}
 		if (lkp->lk_flags & LK_WAIT_NONZERO)
-			wakeup((void *)lkp);
+			++dowakeup;
 		break;
 
 	default:
@@ -419,6 +425,8 @@ debuglockmgr(struct lock *lkp, u_int flags,
 		/* NOTREACHED */
 	}
 	spin_unlock_wr(&lkp->lk_spinlock);
+	if (dowakeup)
+		wakeup(lkp);
 	return (error);
 }
 
@@ -433,6 +441,49 @@ lockmgr_kernproc(struct lock *lp)
 		COUNT(td, -1);
 		lp->lk_lockholder = LK_KERNTHREAD;
 	}
+}
+
+/*
+ * Set the lock to be exclusively held.  The caller is holding the lock's
+ * spinlock and the spinlock remains held on return.  A panic will occur
+ * if the lock cannot be set to exclusive.
+ */
+void
+lockmgr_setexclusive_interlocked(struct lock *lkp)
+{
+	thread_t td = curthread;
+
+	KKASSERT((lkp->lk_flags & (LK_HAVE_EXCL|LK_SHARE_NONZERO)) == 0);
+	KKASSERT(lkp->lk_exclusivecount == 0);
+	lkp->lk_flags |= LK_HAVE_EXCL;
+	lkp->lk_lockholder = td;
+	lkp->lk_exclusivecount = 1;
+	COUNT(td, 1);
+}
+
+/*
+ * Clear the caller's exclusive lock.  The caller is holding the lock's
+ * spinlock.  THIS FUNCTION WILL UNLOCK THE SPINLOCK.
+ *
+ * A panic will occur if the caller does not hold the lock.
+ */
+void
+lockmgr_clrexclusive_interlocked(struct lock *lkp)
+{
+	thread_t td = curthread;
+	int dowakeup = 0;
+
+	KKASSERT((lkp->lk_flags & LK_HAVE_EXCL) && lkp->lk_exclusivecount == 1
+		 && lkp->lk_lockholder == td);
+	lkp->lk_lockholder = LK_NOTHREAD;
+	lkp->lk_flags &= ~LK_HAVE_EXCL;
+	lkp->lk_exclusivecount = 0;
+	if (lkp->lk_flags & LK_WAIT_NONZERO)
+		dowakeup = 1;
+	COUNT(td, -1);
+	spin_unlock_wr(&lkp->lk_spinlock);
+	if (dowakeup)
+		wakeup((void *)lkp);
 }
 
 /*

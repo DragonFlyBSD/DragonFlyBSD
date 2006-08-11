@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.13 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.14 2006/08/11 01:55:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -425,10 +425,9 @@ again:
 	while (pfs) {
 		if (pfs->pfs_pid == pid) {
 			vp = PFSTOV(pfs);
-			if (vx_lock(vp) == 0) {
-				vgone(vp);
-				vx_unlock(vp);
-			}
+			vx_lock(vp);
+			vgone(vp);
+			vx_unlock(vp);
 			goto again;
 		}
 		pfs = pfs->pfs_next;

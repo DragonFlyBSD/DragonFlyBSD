@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.20 2006/08/09 22:47:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.21 2006/08/11 01:54:59 dillon Exp $
  */
 
 /*
@@ -130,41 +130,29 @@ vshouldfree(struct vnode *vp, int usecount)
 }
 
 /*
- * Reference a vnode or release the reference on a vnode.  The vnode will
- * be taken off the freelist if it is on it and cannot be recycled or 
- * deactivated while refd.  The last release of a vnode will deactivate the
- * vnode via VOP_INACTIVE().
- *
- * Special cases: refing a vnode does not clear VINACTIVE, you have to vget()
- * the vnode shared or exclusive to do that.
- *
- * Warning: must be callable if the caller holds a read spinlock to something
- * else, meaning we can't use read spinlocks here.
- */
-static __inline
-void
-__vref(struct vnode *vp)
-{
-	++vp->v_usecount;
-	if (vp->v_flag & VFREE)
-		__vbusy(vp);
-}
-
-/*
  * Add another ref to a vnode.  The vnode must already have at least one
  * ref.
+ *
+ * NOTE: The vnode may continue to reside on the free list
  */
 void
 vref(struct vnode *vp)
 {
-	KKASSERT(vp->v_usecount > 0 && (vp->v_flag & (VFREE|VINACTIVE)) == 0);
+	KKASSERT(vp->v_usecount > 0 && (vp->v_flag & VINACTIVE) == 0);
 	atomic_add_int(&vp->v_usecount, 1);
 }
 
 /*
  * Add a ref to a vnode which may not have any refs.  This routine is called
- * from the namecache and vx_get().  The vnode is explicitly removed from
- * the freelist if necessary.  If requested, the vnode will be reactivated.
+ * from the namecache and vx_get().  If requested, the vnode will be
+ * reactivated.
+ *
+ * Removal of the vnode from the free list is optional.  Since most vnodes
+ * are temporary in nature we opt not do it.  This also means we don't have
+ * to deal with lock ordering issues between the freelist and vnode
+ * spinlocks.
+ *
+ * We must acquire the vnode's spinlock to interlock against vrele().
  *
  * vget(), cache_vget(), and cache_vref() reactives vnodes.  vx_get() does
  * not.
@@ -172,69 +160,94 @@ vref(struct vnode *vp)
 void
 vref_initial(struct vnode *vp, int reactivate)
 {
-	crit_enter();
-	__vref(vp);
+	spin_lock_wr(&vp->v_spinlock);
+	atomic_add_int(&vp->v_usecount, 1);
 	if (reactivate)
 		vp->v_flag &= ~VINACTIVE;
-	crit_exit();
+	spin_unlock_wr(&vp->v_spinlock);
 }
 
+/*
+ * Release a ref on the vnode.  Since 0->1 transitions can only be made
+ * by vref_initial(), 1->0 transitions will be protected by the spinlock.
+ *
+ * When handling a 1->0 transition the vnode is guarenteed to not be locked
+ * and we can set the exclusive lock atomically while interlocked with our
+ * spinlock.  A panic will occur if the lock is held.
+ */
 void
 vrele(struct vnode *vp)
 {
-	crit_enter();
-	if (vp->v_usecount == 1) {
-		KASSERT(lockcountnb(&vp->v_lock) == 0,
-			("last vrele vp %p still locked", vp));
-
-		/*
-		 * Deactivation requires an exclusive v_lock (vx_lock()), and
-		 * only occurs if the usecount is still 1 after locking.
-		 */
-		if ((vp->v_flag & VINACTIVE) == 0) {
-			if (vx_lock(vp) == 0) {
-				if ((vp->v_flag & VINACTIVE) == 0 &&
-				    vp->v_usecount == 1) {
-					vp->v_flag |= VINACTIVE;
-					VOP_INACTIVE(vp);
-				}
-				vx_unlock(vp);
-			}
-		}
-		if (vshouldfree(vp, 1))
-			__vfree(vp);
-	} else {
-		KKASSERT(vp->v_usecount > 0);
+	spin_lock_wr(&vp->v_spinlock);
+	if (vp->v_usecount > 1) {
+		atomic_subtract_int(&vp->v_usecount, 1);
+		spin_unlock_wr(&vp->v_spinlock);
+		return;
 	}
-	--vp->v_usecount;
-	crit_exit();
+	KKASSERT(vp->v_usecount == 1);
+
+	/*
+	 * This is roughly equivalent to obtaining an exclusive
+	 * lock, but the spinlock is already held (and remains held
+	 * on return) and the lock must be obtainable without 
+	 * blocking, which it is in a 1->0 transition.
+	 */
+	lockmgr_setexclusive_interlocked(&vp->v_lock);
+
+	/*
+	 * VINACTIVE is interlocked by the spinlock, so we have to re-check
+	 * the bit if we release and reacquire the spinlock even though
+	 * we are holding the exclusive lockmgr lock throughout.
+	 *
+	 * VOP_INACTIVE can race other VOPs even though we hold an exclusive
+	 * lock.  This is ok.  The ref count of 1 must remain intact through
+	 * the VOP_INACTIVE call to avoid a recursion.
+	 */
+	while ((vp->v_flag & VINACTIVE) == 0 && vp->v_usecount == 1) {
+		vp->v_flag |= VINACTIVE;
+		spin_unlock_wr(&vp->v_spinlock);
+		VOP_INACTIVE(vp);
+		spin_lock_wr(&vp->v_spinlock);
+	}
+
+	/*
+	 * NOTE: v_usecount might no longer be 1
+	 */
+	atomic_subtract_int(&vp->v_usecount, 1);
+	if (vshouldfree(vp, 0))
+		__vfree(vp);
+	lockmgr_clrexclusive_interlocked(&vp->v_lock);
+	/* spinlock unlocked */
 }
 
 /*
  * Hold a vnode, preventing it from being recycled (unless it is already
  * undergoing a recyclement or already has been recycled).
  *
- * NOTE: vhold() will defer removal of the vnode from the freelist.
+ * Opting not to remove a vnode from the freelist simply means that
+ * allocvnode must do it for us if it finds an unsuitable vnode.
  */
 void
 vhold(struct vnode *vp)
 {
+	spin_lock_wr(&vp->v_spinlock);
 	atomic_add_int(&vp->v_holdcnt, 1);
+	spin_unlock_wr(&vp->v_spinlock);
 }
 
+/*
+ * Like vrele(), we must atomically place the vnode on the free list if
+ * it becomes suitable.  vhold()/vdrop() do not mess with VINACTIVE.
+ */
 void
 vdrop(struct vnode *vp)
 {
-	crit_enter();
-	if (vp->v_holdcnt == 1) {
-		--vp->v_holdcnt;
-		if (vshouldfree(vp, 0))
-			__vfree(vp);
-	} else {
-		--vp->v_holdcnt;
-		KKASSERT(vp->v_holdcnt > 0);
-	}
-	crit_exit();
+	KKASSERT(vp->v_holdcnt > 0);
+	spin_lock_wr(&vp->v_spinlock);
+	atomic_subtract_int(&vp->v_holdcnt, 1);
+	if (vshouldfree(vp, 0))
+		__vfree(vp);
+	spin_unlock_wr(&vp->v_spinlock);
 }
 
 /****************************************************************
@@ -250,42 +263,23 @@ vdrop(struct vnode *vp)
  * VINACTIVE bit on a vnode.
  */
 
-#define VXLOCKFLAGS	(LK_EXCLUSIVE|LK_RETRY)
-#define VXLOCKFLAGS_NB	(LK_EXCLUSIVE|LK_NOWAIT)
-
-static int
-__vxlock(struct vnode *vp, int flags)
-{
-	return(lockmgr(&vp->v_lock, flags));
-}
-
-static void
-__vxunlock(struct vnode *vp)
-{
-	lockmgr(&vp->v_lock, LK_RELEASE);
-}
-
-int
+void
 vx_lock(struct vnode *vp)
 {
-	return(__vxlock(vp, VXLOCKFLAGS));
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
 
 void
 vx_unlock(struct vnode *vp)
 {
-	__vxunlock(vp);
+	lockmgr(&vp->v_lock, LK_RELEASE);
 }
 
-int
+void
 vx_get(struct vnode *vp)
 {
-	int error;
-
 	vref_initial(vp, 0);
-	if ((error = __vxlock(vp, VXLOCKFLAGS)) != 0)
-		vrele(vp);
-	return(error);
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
 
 int
@@ -294,7 +288,8 @@ vx_get_nonblock(struct vnode *vp)
 	int error;
 
 	vref_initial(vp, 0);
-	if ((error = __vxlock(vp, VXLOCKFLAGS_NB)) != 0)
+	error = lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT);
+	if (error)
 		vrele(vp);
 	return(error);
 }
@@ -302,7 +297,7 @@ vx_get_nonblock(struct vnode *vp)
 void
 vx_put(struct vnode *vp)
 {
-	__vxunlock(vp);
+	lockmgr(&vp->v_lock, LK_RELEASE);
 	vrele(vp);
 }
 
@@ -334,8 +329,7 @@ vget(struct vnode *vp, int flags)
 {
 	int error;
 
-	crit_enter();
-	__vref(vp);
+	vref_initial(vp, 0);
 	if (flags & LK_TYPE_MASK) {
 		if ((error = vn_lock(vp, flags)) != 0) {
 			vrele(vp);
@@ -344,14 +338,13 @@ vget(struct vnode *vp, int flags)
 			vrele(vp);
 			error = ENOENT;
 		} else {
-			vp->v_flag &= ~VINACTIVE;
+			vp->v_flag &= ~VINACTIVE;	/* XXX not MP safe */
 			error = 0;
 		}
 	} else {
 		panic("vget() called with no lock specified!");
 		error = ENOENT;	/* not reached, compiler opt */
 	}
-	crit_exit();
 	return(error);
 }
 
@@ -421,51 +414,82 @@ allocvnode(int lktimeout, int lkflags)
 			if (vp == NULL)
 				panic("getnewvnode: free vnode isn't");
 
+			/* XXX for now */
+			KKASSERT(vp->v_flag & VFREE);
+
 			/*
-			 * Note the lack of a critical section.  We vx_get()
-			 * the vnode before we check it for validity, reducing
-			 * the number of checks we have to make.  The vx_get()
-			 * will also pull the vnode off of the freelist.
+			 * Handle the case where the vnode was pulled off
+			 * the free list while we were waiting for the
+			 * spinlock.
 			 */
-			if (vx_get(vp)) {
+			spin_lock_wr(&vp->v_spinlock);
+			if ((vp->v_flag & VFREE) == 0) {
+				spin_unlock_wr(&vp->v_spinlock);
 				vp = NULL;
 				continue;
 			}
 
 			/*
-			 * Can this vnode be recycled?  It must be in a
-			 * VINACTIVE state with only our reference to it.
-			 * (vx_get(), unlike vget(), does not reactivate
-			 * the vnode).  vx_put() will recycle it onto the
-			 * end of the freelist.
+			 * Lazy removal of the vnode from the freelist if
+			 * the vnode has references.
 			 */
-			if ((vp->v_flag & VINACTIVE) == 0 ||
-			    vp->v_holdcnt || vp->v_usecount != 1) {
+			if (vp->v_usecount || vp->v_holdcnt) {
+				__vbusy(vp);
+				spin_unlock_wr(&vp->v_spinlock);
+				vp = NULL;
+				continue;
+			}
+
+			/*
+			 * vx_get() equivalent, but atomic with the
+			 * spinlock held.  Since 0->1 transitions and the
+			 * lockmgr are protected by the spinlock we must
+			 * be able to get an exclusive lock without blocking
+			 * here.
+			 *
+			 * Also take the vnode off of the free list and
+			 * assert that it is inactive.
+			 */
+			vp->v_usecount = 1;
+			lockmgr_setexclusive_interlocked(&vp->v_lock);
+			__vbusy(vp);
+			KKASSERT(vp->v_flag & VINACTIVE);
+
+			/*
+			 * Reclaim the vnode.  VRECLAIMED will be set
+			 * atomically before the spinlock is released
+			 * by vgone_interlocked().
+			 */
+			if ((vp->v_flag & VRECLAIMED) == 0) {
+				vgone_interlocked(vp);
+				/* spinlock unlocked */
+			} else {
+				spin_unlock_wr(&vp->v_spinlock);
+			}
+
+			/*
+			 * We reclaimed the vnode but other claimants may
+			 * have referenced it while we were blocked.  We
+			 * cannot reuse a vnode until all refs are gone and
+			 * the vnode has completed reclamation.
+			 */
+			KKASSERT(vp->v_flag & VRECLAIMED);
+			if (vp->v_usecount != 1 || vp->v_holdcnt) {
 				vx_put(vp);
 				vp = NULL;
 				continue;
 			}
-
+			    
 			/*
-			 * Ok, we can reclaim the vnode if it isn't already
-			 * in a reclaimed state.  If the reclamation fails,
-			 * or if someone else is referencing the vnode after
-			 * we have vgone()'d it, we stop here.
+			 * There are no more structural references to the
+			 * vnode, referenced or otherwise.  We have a vnode!
+			 *
+			 * The vnode may have been placed on the free list
+			 * while we were blocked.
 			 */
-			if ((vp->v_flag & VRECLAIMED) == 0) {
-				vgone(vp);
-				if ((vp->v_flag & VRECLAIMED) == 0 ||
-				    vp->v_holdcnt || vp->v_usecount != 1) {
-					vx_put(vp);
-					vp = NULL;
-					continue;
-				}
-			}
+			if (vp->v_flag & VFREE)
+				__vbusy(vp);
 			KKASSERT(vp->v_flag & VINACTIVE);
-
-			/*
-			 * We have a vnode!
-			 */
 			break;
 		}
 	}
@@ -506,8 +530,7 @@ allocvnode(int lktimeout, int lkflags)
 		 * and reinitialized it.
 		 */
 		vp->v_usecount = 1;
-		if (__vxlock(vp, VXLOCKFLAGS))
-			panic("getnewvnode: __vxlock failed");
+		lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 		numvnodes++;
 	}
 

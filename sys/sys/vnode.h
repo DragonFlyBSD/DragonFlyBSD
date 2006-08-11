@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.63 2006/08/09 22:47:33 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.64 2006/08/11 01:55:00 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -488,8 +488,9 @@ int	vmntvnodescan(struct mount *mp, int flags,
 	    void *data);
 void	insmntque(struct vnode *vp, struct mount *mp);
 
-void	vclean (struct vnode *vp, int flags);
+void	vclean_interlocked (struct vnode *vp, int flags);
 void	vgone (struct vnode *vp);
+void	vgone_interlocked (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
@@ -558,9 +559,9 @@ int	vop_compat_nremove(struct vop_nremove_args *ap);
 int	vop_compat_nrmdir(struct vop_nrmdir_args *ap);
 int	vop_compat_nrename(struct vop_nrename_args *ap);
 
-int	vx_lock (struct vnode *vp);
+void	vx_lock (struct vnode *vp);
 void	vx_unlock (struct vnode *vp);
-int	vx_get (struct vnode *vp);
+void	vx_get (struct vnode *vp);
 int	vx_get_nonblock (struct vnode *vp);
 void	vx_put (struct vnode *vp);
 int	vget (struct vnode *vp, int lockflag);

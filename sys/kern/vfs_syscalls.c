@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.98 2006/08/08 03:52:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.99 2006/08/11 01:54:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -3072,10 +3072,10 @@ sys_revoke(struct revoke_args *uap)
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
 			error = suser_cred(cred, PRISON_ROOT);
 		if (error == 0 && count_udev(vp->v_udev) > 0) {
-			if ((error = vx_lock(vp)) == 0) {
-				VOP_REVOKE(vp, REVOKEALL);
-				vx_unlock(vp);
-			}
+			error = 0;
+			vx_lock(vp);
+			VOP_REVOKE(vp, REVOKEALL);
+			vx_unlock(vp);
 		}
 		vrele(vp);
 	}

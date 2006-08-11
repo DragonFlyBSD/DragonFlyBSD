@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.20 2006/08/08 21:36:28 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.21 2006/08/11 01:54:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -384,10 +384,9 @@ restart:
 	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		if (pfs->pfs_pid == pid) {
 			vp = PFSTOV(pfs);
-			if (vx_get(vp) == 0) {
-				vgone(vp);
-				vx_put(vp);
-			}
+			vx_get(vp);
+			vgone(vp);
+			vx_put(vp);
 			goto restart;
 		}
 	}

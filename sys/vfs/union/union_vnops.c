@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.31 2006/07/19 06:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.32 2006/08/11 01:55:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1138,16 +1138,14 @@ union_revoke(struct vop_revoke_args *ap)
 	struct vnode *vx;
 
 	if ((vx = UPPERVP(vp)) != NULL) {
-		if (vx_get(vx) == 0) {
-			VOP_REVOKE(vx, ap->a_flags);
-			vx_put(vx);
-		}
+		vx_get(vx);
+		VOP_REVOKE(vx, ap->a_flags);
+		vx_put(vx);
 	}
 	if ((vx = LOWERVP(vp)) != NULL) {
-		if (vx_get(vx) == 0) {
-			VOP_REVOKE(vx, ap->a_flags);
-			vx_put(vx);
-		}
+		vx_get(vx);
+		VOP_REVOKE(vx, ap->a_flags);
+		vx_put(vx);
 	}
 	vgone(vp);
 	return (0);

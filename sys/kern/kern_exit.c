@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.58 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.59 2006/08/11 01:54:59 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -264,10 +264,9 @@ exit1(int rv)
 				 */
 				if ((vp = sp->s_ttyvp) != NULL) {
 					ttyclosesession(sp, 0);
-					if (vx_lock(vp) == 0) {
-						VOP_REVOKE(vp, REVOKEALL);
-						vx_unlock(vp);
-					}
+					vx_lock(vp);
+					VOP_REVOKE(vp, REVOKEALL);
+					vx_unlock(vp);
 					vrele(vp);	/* s_ttyvp ref */
 				}
 			}
