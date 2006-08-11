@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.7 2006/07/12 04:01:00 justin Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.8 2006/08/11 02:36:05 justin Exp $
 -->
 
 <chapter id="multimedia">
@@ -24,7 +24,7 @@
       to enjoy high fidelity output from your computer.  This includes
       the ability to record and playback audio in the MPEG Audio Layer
       3 (MP3), WAV, and Ogg Vorbis formats as well as many other
-      formats.  The &pkgsrc; collection also contain applications
+      formats.  The &pkgsrctree; also contain applications
       allowing you to edit your recorded audio, add sound effects, and
       control attached MIDI devices.</para>
 
@@ -33,11 +33,13 @@
       to encode, convert, and playback various video media is more
       limited than the number of sound applications.  For example as
       of this writing, there is no good re-encoding application in the
-      FreeBSD Ports Collection, which could be use to convert
+      &pkgsrctree;, which could be use to convert
       between formats, as there is with <filename
       role="package">audio/sox</filename>.  However, the software
       landscape in this area is changing rapidly.</para>
       <!-- todo: reed: is the above "no good re-encoding" true? -->
+      <!-- I don't think so, you can reencode with mencoder, but it -->
+      <!-- may not be 'user friendly' -->
 
     <para>This chapter will describe the necessary steps to configure
       your sound card.  The configuration and installation of X11
@@ -393,8 +395,7 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
       <screen>&prompt.user; <userinput>cdcontrol -f /dev/acd0c play 1</userinput></screen>
 
     <para>Various applications, such as <filename
-      role="package">audio/workman</filename> offer a better
-      <!-- todo: reed: not in pkgsrc -->
+      role="package">audio/xmms</filename> offer a better
       interface.  You may want to install an application such as
       <filename role="package">audio/mpg123</filename> to listen to
       MP3 audio files.</para>
@@ -494,11 +495,11 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
       virtual channels any devices which are attached later will be
       given.</para>
 
-    <para>If you are not using &man.devfs.5;, you will have to point
-      your applications at <devicename>/dev/dsp0</devicename>.<replaceable>x</replaceable>, where
+    <para>As &os; doesn't support devfs you will have to point
+      your applications at
+      <devicename>/dev/dsp0</devicename>.<replaceable>x</replaceable>, where
       <replaceable>x</replaceable> is 0 to 3 if <varname>hw.snd.pcm.0.vchans</varname> is set
-      to 4 as in the above example.  On a system using &man.devfs.5;, the above will automatically be
-      allocated transparently to the user.</para>
+      to 4 as in the above example.</para>
    </sect2>
   </sect1>
 
@@ -533,8 +534,7 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
 	support.</para>
 
       <para><application>XMMS</application> can be installed from the
-	<filename role="package">multimedia/xmms</filename> port or package.</para>
-	<!-- todo: reed: under audio category for pkgsrc -->
+	<filename role="package">audio/xmms</filename> port or package.</para>
 
       <para><application>XMMS'</application> interface is intuitive,
 	with a playlist, graphic equalizer, and more.  Those familiar
@@ -579,7 +579,6 @@ MPEG 1.0 layer III, 128 kbit/s, 44100 Hz joint-stereo
 	the <filename role="package">sysutils/cdrtools</filename>
 	suite, is used for ripping audio information from CDs and the
 	information associated with them.</para>
-	<!-- todo: reed: pkgsrc is still called sysutils/cdrecord -->
 
       <para>With the audio CD in the drive, the following command can
 	be issued (as <username>root</username>) to rip an entire CD
@@ -622,7 +621,7 @@ MPEG 1.0 layer III, 128 kbit/s, 44100 Hz joint-stereo
       <para>Nowadays, the mp3 encoder of choice is
 	<application>lame</application>.
 	<application>Lame</application> can be found at
-	<filename role="package">audio/lame</filename> in the pkgsrc and ports trees.</para>
+	<filename role="package">audio/lame</filename> in the &pkgsrctree;.</para>
 
       <para>Using the ripped WAV files, the following command will
 	convert <filename>audio01.wav</filename> to
@@ -972,7 +971,8 @@ no adaptors present</screen>
       low-level abstraction to the hardware which can sometimes be
       more efficient than the X11 interface.</para>
 
-    <para>The SDL can be found at <filename role="package">devel/sdl12</filename> (or <filename role="package">pkgsrc/devel/SDL2</filename>).</para>
+    <para>The SDL can be found at
+      <filename role="package">devel/SDL</filename>.</para>
 
     </sect3>
 
@@ -1001,7 +1001,7 @@ no adaptors present</screen>
     <indexterm><primary>video packages</primary></indexterm>
 
     <para>This section discusses the software available from the
-      &pkgsrc; collection which can be used for video playback.
+      &pkgsrctree; which can be used for video playback.
       Video playback is a very active area of software development,
       and the capabilities of various applications are bound to
       diverge somewhat from the descriptions given here.</para>
@@ -1070,7 +1070,7 @@ no adaptors present</screen>
       </listitem>
 
       <listitem>
-        <para>Software not yet in the &pkgsrc; collection
+        <para>Software not yet in the &pkgsrctree; 
 	  which is commonly used in conjunction with the application.</para>
       </listitem>
 
@@ -1105,41 +1105,73 @@ no adaptors present</screen>
 	  binary which will not be portable from one system to
 	  another.  Therefore, it is important to build it from
 	  ports and not to use a binary package.  Additionally, a
-	  number of options can be specified in the <command>make</command>
-	  command line, as described at the start of the build.</para>
-	  <!-- todo: reed: mention pkgsrc here too -->
+	  number of options can be specified in the <command>bmake</command>
+	  command line, as described in the
+	  <command>bmake show-options</command>.</para>
 
-	<screen>&prompt.root; <userinput>cd /usr/ports/multimedia/mplayer</userinput>
-&prompt.root; <userinput>make</userinput>
-You can enable additional compilation optimizations
-by defining WITH_OPTIMIZED_CFLAGS
-You can enable GTK GUI by defining WITH_GUI.
-You can enable DVD support by defining WITH_DVD.
-You can enable SVGALIB support by defining WITH_SVGALIB.
-You can enable VORBIS sound support by defining WITH_VORBIS.
-You can enable XAnim DLL support by defining WITH_XANIM.
+	<screen>&prompt.root; <userinput>cd /usr/pkgsrc/multimedia/mplayer</userinput>
+&prompt.root; <userinput>bmake show-options</userinput>
+Any of the following general options may be selected:
+        aalib    Enable aalib support.
+        arts     Use the aRts audio daemon.
+        dts      Enable DTS Coherent Acoustics support.
+        dv       Enable usage of the libdv library.
+        dvdread  Enable reproduction of DVDs.
+        esound   Enable support for the Enlightment Sound Daemon.
+        ggi      Enable GGI support.
+        gif      Enable GIF support.
+        jpeg     Enable JPEG support.
+        mad      Enable usage of the mad library to play MP3 files.
+        mplayer-menu     Enable support for user-defined menus.
+        mplayer-real     Enable usage of Real codecs.
+        mplayer-runtime-cpudetection    Enable CPU detection at run time.
+        mplayer-win32    Enable usage of Win32 DLLs (codecs).
+        nas      Enable usage of the Network Audio System.
+        oss      Enable support for the Open Sound System audio library.
+        png      Enable PNG support.
+        sdl      Use SDL as display library.
+        theora   Use the theora codecs.
+        vorbis   Enable Ogg Vorbis support.
+        xvid     Enable usage of XVid codecs.
+At most one of the following faadgroup options may be selected:
+        faad     Enable AAC decoding support using faad2.
+        mplayer-internal-faad
+
+These options are enabled by default:
+        aalib arts dv dvdread esound faad gif jpeg
+        mad mplayer-menu mplayer-real mplayer-runtime-cpudetection
+        mplayer-win32 nas oss png sdl theora vorbis
+        xvid
+
+These options are currently enabled:
+        aalib arts dv dvdread esound faad gif jpeg
+        mad mplayer-menu mplayer-real mplayer-runtime-cpudetection
+        mplayer-win32 nas oss png sdl theora vorbis
+        xvid
+
+You can select which build options to use by setting PKG_DEFAULT_OPTIONS
+or PKG_OPTIONS.mplayer.
 </screen>
 
-	<!-- todo: reed: this is ports specific, could add pkgsrc notes -->
         <para>If you have <filename
-          role="package">x11-toolkits/gtk12</filename> installed, then
+          role="package">x11/gtk</filename> installed, then
           you might as well enable the GUI.  Otherwise, it is not
-          worth the effort.  If you intend to play (possibly CSS
-          encoded) DVD's with <application>MPlayer</application> you must enable the DVD support
-          option here <footnote><para>Unauthorized DVD playback is a
+          worth the effort.  If it is illegal to play (possibly CSS
+          encoded) DVD's with <application>MPlayer</application> on your
+	  country you must disable the DVD support
+          option<footnote><para>Unauthorized DVD playback is a
           serious criminal act in some countries.  Check local laws
-          before enabling this option.</para> </footnote>.  Some
-          reasonable options are:</para>
+          before enabling this option.</para> </footnote>.  Otherwise
+	  the defaults are ok:</para>
 
-        <screen>&prompt.root; <userinput>make WITH_DVD=yes WITH_SVGALIB=yes</userinput></screen>
+        <screen>&prompt.root; <userinput>bmake</userinput></screen>
 
         <para>As of this writing, the <application>MPlayer</application> port will build its HTML
           documentation and one executable,
-          <command>mplayer</command>.  It can also be made to build an
+          <command>mplayer</command>.  By default it builds an
           encoder, <command>mencoder</command>, which is a tool for
           re-encoding video.  A modification to the
-          <filename>Makefile</filename> can enable it.  It may be
-          enabled by default in subsequent versions of the port.</para>
+          <filename>Makefile</filename> can disable it.</para>
 
         <para>The HTML documentation for <application>MPlayer</application> is very informative.
           If the reader finds the information on video hardware and
@@ -1156,13 +1188,16 @@ You can enable XAnim DLL support by defining WITH_XANIM.
         <indexterm><primary>MPlayer</primary>
 	           <secondary>use</secondary></indexterm>
 
-        <para>Any user of <application>MPlayer</application> must set up a
-          <filename>.mplayer</filename> subdirectory of her
-          home directory.  To create this necessary subdirectory,
-	  you can type the following:</para>
+<!--      I'm sure that this must be wrong, but i don't know how to install -->
+<!--      the user dir on DragonFly. Maybe copying from some examples dir? -->
 
-<screen>&prompt.user; <userinput>cd /usr/ports/multimedia/mplayer</userinput>
-&prompt.user; <userinput>make install-user</userinput></screen>
+<!--         <para>Any user of <application>MPlayer</application> must set up a -->
+<!--           <filename>.mplayer</filename> subdirectory of her -->
+<!--           home directory.  To create this necessary subdirectory, -->
+<!-- 	  you can type the following:</para> -->
+
+<!-- <screen>&prompt.user; <userinput>cd /usr/ports/multimedia/mplayer</userinput> -->
+<!-- &prompt.user; <userinput>make install-user</userinput></screen> -->
 
 	<para>The command options for <command>mplayer</command> are
 	  listed in the manual page.  For even more detail there is HTML
@@ -1227,7 +1262,7 @@ zoom=yes</programlisting>
 	  <primary>mencoder</primary>
 	</indexterm>
 
-	<para>If you opt to install <command>mencoder</command> when
+	<para>If you installed <command>mencoder</command> when
 	 you build <application>MPlayer</application>, be forewarned
 	 that it is still an experimental component.  Before using 
          <command>mencoder</command> it is a good idea to
@@ -1273,7 +1308,7 @@ zoom=yes</programlisting>
      all in one video solution, but also in producing a reusable base
      library and a modular executable which can be extended with
      plugins.  It comes both as a package and as a port, <filename
-     role="package">multimedia/xine</filename>.</para>
+     role="package">multimedia/xine-ui</filename>.</para>
 
     <para>The <application>xine</application> player
      is still very rough around the edges, but it is clearly off to a
@@ -1284,8 +1319,8 @@ zoom=yes</programlisting>
     <para>As of this writing, there is no input module shipped with
      <application>xine</application> which will play CSS encoded DVD's.  There are third party
      builds which do have modules for this built in them, but none
-     of these are in the FreeBSD Ports Collection.</para>
-     <!-- todo: reed: what about pkgsrc? -->
+     of these are in the &pkgsrctree;.</para>
+     <!-- i don't think that this still applies... -->
 
     <para>Compared to <application>MPlayer</application>, <application>xine</application> does more for the user, but at the
       same time, takes some of the more fine-grained control away from
@@ -1315,20 +1350,21 @@ zoom=yes</programlisting>
       interfaces.</para>
 
     <para>Like <application>MPlayer</application>, <application>transcode</application> is very experimental software which
-      must be build from ports or &pkgsrc; at <filename
-      role="package">multimedia/transcode</filename>.  Using a great
-      many options to the <command>make</command> command.  I
-      recommend:</para>
+      must be build from &pkgsrc; at <filename
+      role="package">multimedia/transcode</filename>.  You can
+      see all the available options with the
+      <command>bmake show-options</command> command.  I
+      recommend the default ones.</para>
 
-      <screen>&prompt.root; <userinput>make WITH_LIBMPEG2=yes</userinput></screen>
+      <screen>&prompt.root; <userinput>bmake</userinput></screen>
 
-    <!-- todo: reed: ports specific, add pkgsrc notes? -->
-    <para>If you plan to install <filename
-      role="package">multimedia/avifile</filename>, then add the
-      <literal>WITH_AVIFILE</literal> option to your
-      <command>make</command> command line, as shown here:</para>
+<!-- seems that pkgsrc doesn't have a flavor/option for this -->
+<!--     <para>If you plan to install <filename -->
+<!--       role="package">multimedia/avifile</filename>, then add the -->
+<!--       <literal>WITH_AVIFILE</literal> option to your -->
+<!--       <command>make</command> command line, as shown here:</para> -->
 
-      <screen>&prompt.root; <userinput>make WITH_AVIFILE=yes WITH_LIBMPEG2=yes</userinput></screen>
+<!--       <screen>&prompt.root; <userinput>make WITH_AVIFILE=yes WITH_LIBMPEG2=yes</userinput></screen> -->
 
     <para>Here are two examples of using <command>transcode</command>
       for video conversion which produce rescaled output.  The first
@@ -1394,8 +1430,9 @@ zoom=yes</programlisting>
        <listitem>
          <para><ulink
 	   url="http://avifile.sourceforge.net/">Avifile</ulink> which
-	   is also a port <filename
-	   role='package'>multimedia/avifile</filename>.</para>
+	   is not yet in the official &pkgsrctree;, but you can
+	   find it on <ulink
+	   url="http://pkgsrc-wip.sourceforge.net/">pkgsrc-wip</ulink>.</para>
        </listitem>
        <!-- todo: reed: in pkgsrc-wip currently -->
 
@@ -1531,24 +1568,22 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
 	    <application>fxtv</application>.</para>
 	</listitem>
 	<listitem>
-	  <para><filename role="package">misc/alevt</filename>
-	    (or <filename role="package">pkgsrc/multimedia/alevt</filename>) decodes
-	    and displays Videotext/Teletext.</para>
+	  <para><filename role="package">multimedia/alevt</filename>
+	    decodes and displays Videotext/Teletext.</para>
 	</listitem>
 	<listitem>
 	  <para><filename role="package">audio/xmradio</filename>, an
 	    application to use the FM radio tuner coming with some
 	    TV cards.</para>
 	</listitem>
-	<listitem>
-	  <para><filename role="package">audio/wmtune</filename>, a handy
-	    desktop application for radio tuners.</para>
+<!-- 	<listitem> -->
+<!-- 	  <para><filename role="package">audio/wmtune</filename>, a handy -->
+<!-- 	    desktop application for radio tuners.</para> -->
 	    <!-- todo: reed: not in pkgsrc? -->
-	</listitem>
+<!-- 	</listitem> -->
       </itemizedlist>
 
-      <para>More applications are available in the &pkgsrc; and FreeBSD Ports
-	collections.</para>
+      <para>More applications are available in the &pkgsrctree;.</para>
     </sect2>
 
     <sect2>
@@ -1559,7 +1594,7 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
 	really supported by the &man.bktr.4; driver and if you used the right
 	configuration options.  For more support and various questions
 	about your TV card you may want to contact and use the
-	archives of the &a.freebsd.multimedia.name; mailing list.</para>
+	archives of the &a.users;.</para>
     </sect2>
   </sect1>
 </chapter>
