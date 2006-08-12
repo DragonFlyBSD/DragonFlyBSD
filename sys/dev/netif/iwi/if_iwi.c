@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.12 2006/08/01 18:04:22 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.13 2006/08/12 13:43:21 sephe Exp $
  */
 
 /*-
@@ -108,6 +108,7 @@ static struct iwi_ident {
 	{ 0, 0, NULL }
 };
 
+static void	iwi_fw_monitor(void *);
 static void	iwi_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	iwi_dma_map_mbuf(void *, bus_dma_segment_t *, int, bus_size_t,
 				 int);
@@ -205,6 +206,77 @@ static const struct ieee80211_rateset iwi_rateset_11b =
 
 static const struct ieee80211_rateset iwi_rateset_11g =
 	{ 12, { 2, 4, 11, 22, 12, 18, 24, 36, 48, 72, 96, 108 } };
+
+static void
+iwi_fw_monitor(void *arg)
+{
+	struct iwi_softc *sc = arg;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	for (;;) {
+		int error = 0;
+
+		/*
+		 * Test to see whether we are detaching,
+		 * this is used to avoid race condition
+		 * especially when attaching fails.
+		 */
+		if ((sc->flags & IWI_FLAG_EXIT) == 0) {
+			crit_enter();
+			tsleep_interlock(IWI_FW_WAKE_MONITOR(sc));
+			lwkt_serialize_exit(ifp->if_serializer);
+			error = tsleep(IWI_FW_WAKE_MONITOR(sc),
+				       0, "iwifwm", 0);
+			crit_exit();
+			lwkt_serialize_enter(ifp->if_serializer);
+		}
+
+		if (error == 0) {
+			int boff;
+
+			if (sc->flags & IWI_FLAG_EXIT)
+				break;
+			else if ((sc->flags & IWI_FLAG_RESET) == 0)
+				continue;
+
+			if_printf(ifp, "reset firmware\n");
+			for (boff = 1; sc->flags & IWI_FLAG_RESET; boff++) {
+				iwi_init(sc);
+				if (sc->flags & IWI_FLAG_FW_INITED) {
+					sc->flags &= ~IWI_FLAG_RESET;
+				} else if (boff > 10) {	/* XXX */
+					if_printf(ifp, "fw reset failed.  "
+						  "retrying...\n");
+
+					/* XXX avoid to sleep to long */
+					boff = 1;
+				}
+
+				/*
+				 * Since this would be infinite loop,
+				 * if reseting firmware never succeeded,
+				 * we test to see whether we are detaching.
+				 */
+				if (sc->flags & IWI_FLAG_EXIT)
+					break;
+
+				crit_enter();
+				tsleep_interlock(IWI_FW_CMD_ACKED(sc));
+				lwkt_serialize_exit(ifp->if_serializer);
+				error = tsleep(IWI_FW_CMD_ACKED(sc), 0,
+					       "iwirun", boff * hz);
+				crit_exit();
+				lwkt_serialize_enter(ifp->if_serializer);
+			}
+		}
+	}
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	if_printf(ifp, "fw monitor exiting\n");
+	wakeup(IWI_FW_EXIT_MONITOR(sc));
+	kthread_exit();
+}
 
 static int
 iwi_probe(device_t dev)
@@ -445,22 +517,39 @@ iwi_attach(device_t dev)
 	    CTLFLAG_RW, &sc->antenna, 0, "antenna (0=auto)");
 
 	/*
+	 * Start firmware monitoring thread
+	 *
+	 * NOTE:
+	 * This should be done only after serializer is initialized,
+	 * i.e. after ieee80211_ifattach(), because serializer will be
+	 * held once iwi_fw_monitor() is entered.
+	 */
+	error = kthread_create(iwi_fw_monitor, sc, &sc->sc_fw_monitor,
+			       "%s:fw-monitor", device_get_nameunit(dev));
+	if (error) {
+		device_printf(dev, "could not create fw monitor\n");
+		goto fail1;
+	}
+	sc->flags |= IWI_FLAG_MONITOR;
+
+	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE, iwi_intr, sc,
 			       &sc->sc_ih, ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
-
-		bpfdetach(ifp);
-		ieee80211_ifdetach(ic);
-		goto fail;
+		goto fail1;
 	}
 
 	if (bootverbose)
 		ieee80211_announce(ic);
 
 	return 0;
+
+fail1:
+	bpfdetach(ifp);
+	ieee80211_ifdetach(ic);
 fail:
 	iwi_detach(dev);
 	return ENXIO;
@@ -472,6 +561,21 @@ iwi_detach(device_t dev)
 	struct iwi_softc *sc = device_get_softc(dev);
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ifnet *ifp = ic->ic_ifp;
+
+	if (sc->flags & IWI_FLAG_MONITOR) {
+		lwkt_serialize_enter(ifp->if_serializer);
+		sc->flags |= IWI_FLAG_EXIT;
+		wakeup(IWI_FW_WAKE_MONITOR(sc));
+
+		crit_enter();
+		tsleep_interlock(IWI_FW_EXIT_MONITOR(sc));
+		lwkt_serialize_exit(ifp->if_serializer);
+		tsleep(IWI_FW_EXIT_MONITOR(sc), 0, "iwiexi", 0);
+		crit_exit();
+		/* No need to hold serializer again */
+
+		if_printf(ifp, "fw monitor exited\n");
+	}
 
 	if (device_is_attached(dev)) {
 		lwkt_serialize_enter(ifp->if_serializer);
@@ -1454,8 +1558,18 @@ iwi_intr(void *arg)
 	/* disable interrupts */
 	CSR_WRITE_4(sc, IWI_CSR_INTR_MASK, 0);
 
-	if (r & (IWI_INTR_FATAL_ERROR | IWI_INTR_PARITY_ERROR)) {
+	if (r & IWI_INTR_FATAL_ERROR) {
 		device_printf(sc->sc_dev, "fatal error\n");
+
+		if ((sc->flags & (IWI_FLAG_EXIT | IWI_FLAG_RESET)) == 0) {
+			sc->flags |= IWI_FLAG_RESET;
+			device_printf(sc->sc_dev, "wake firmware monitor\n");
+			wakeup(IWI_FW_WAKE_MONITOR(sc));
+		}
+	}
+
+	if (r & IWI_INTR_PARITY_ERROR) {
+		device_printf(sc->sc_dev, "parity error\n");
 		sc->sc_ic.ic_ifp->if_flags &= ~IFF_UP;
 		iwi_stop(sc);
 	}
@@ -1710,7 +1824,7 @@ iwi_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni,
 	bus_dmamap_sync(txq->desc_dmat, txq->desc_map, BUS_DMASYNC_PREWRITE);
 
 	DPRINTFN(5, ("sending data frame txq=%u idx=%u len=%u nseg=%u\n",
-	    ac, txq->cur, le16toh(desc->len), nsegs));
+	    ac, txq->cur, le16toh(desc->len), map.nseg));
 
 	txq->queued++;
 	txq->cur = (txq->cur + 1) % IWI_TX_RING_COUNT;
@@ -1805,8 +1919,8 @@ iwi_watchdog(struct ifnet *ifp)
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "device timeout\n");
 			ifp->if_oerrors++;
-			ifp->if_flags &= ~IFF_UP;
-			iwi_stop(sc);
+			sc->flags |= IWI_FLAG_RESET;
+			wakeup(IWI_FW_WAKE_MONITOR(sc));
 			return;
 		}
 		ifp->if_timer = 1;

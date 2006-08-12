@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwivar.h,v 1.4.2.1 2005/09/26 17:31:36 damien Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.5 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwivar.h,v 1.6 2006/08/12 13:43:21 sephe Exp $
  */
 
 struct iwi_firmware {
@@ -123,7 +123,6 @@ struct iwi_node {
 };
 
 struct iwi_softc {
-	struct ifnet		*sc_ifp;
 	struct ieee80211com	sc_ic;
 	int			(*sc_newstate)(struct ieee80211com *,
 				    enum ieee80211_state, int);
@@ -132,10 +131,13 @@ struct iwi_softc {
 
 	struct iwi_firmware	fw;
 	uint32_t		flags;
-#define IWI_FLAG_FW_CACHED	(1 << 0)
-#define IWI_FLAG_FW_INITED	(1 << 1)
-#define IWI_FLAG_FW_WARNED	(1 << 2)
-#define IWI_FLAG_SCANNING	(1 << 3)
+#define IWI_FLAG_FW_CACHED	0x01
+#define IWI_FLAG_FW_INITED	0x02
+#define IWI_FLAG_FW_WARNED	0x04
+#define IWI_FLAG_SCANNING	0x08
+#define IWI_FLAG_EXIT		0x10	/* detaching */
+#define IWI_FLAG_RESET		0x20	/* need to reset firmware */
+#define IWI_FLAG_MONITOR	0x40	/* monitor thread was created */
 
 	struct iwi_cmd_ring	cmdq;
 	struct iwi_tx_ring	txq[WME_NUM_AC];
@@ -175,6 +177,7 @@ struct iwi_softc {
 
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
+	struct thread		*sc_fw_monitor;
 };
 
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
@@ -182,3 +185,5 @@ struct iwi_softc {
 
 #define IWI_FW_INITIALIZED(sc)	(sc + 1)
 #define IWI_FW_CMD_ACKED(sc)	(sc + 2)
+#define IWI_FW_WAKE_MONITOR(sc)	(sc + 3)
+#define IWI_FW_EXIT_MONITOR(sc)	(sc + 4)
