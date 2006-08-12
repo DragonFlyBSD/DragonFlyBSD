@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.13 2005/11/29 19:56:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.14 2006/08/12 05:17:03 swildner Exp $
  */
 
 /*
@@ -1843,11 +1843,6 @@ struct bge_status_block {
 #define BGE_STATFLAG_LINKSTATE_CHANGED	0x00000002
 #define BGE_STATFLAG_ERROR		0x00000004
 
-
-/*
- * strange Broadcom PCI IDs
- */
-#define BCOM_DEVICEID_BCM5714C		0x1668
 
 /*
  * Offset of MAC address inside EEPROM.
