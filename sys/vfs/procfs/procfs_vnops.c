@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.34 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.35 2006/08/12 00:26:21 dillon Exp $
  */
 
 /*
@@ -800,7 +800,7 @@ out:
 	if (error == 0 && *vpp != dvp) {
 		if ((cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 		}
 	}
 	return (error);

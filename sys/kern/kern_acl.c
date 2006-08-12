@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.14 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.15 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -81,7 +81,7 @@ vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_SETACL(vp, type, &inkernacl, ucred);
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	return(error);
 }
 
@@ -118,7 +118,7 @@ vacl_delete(struct vnode *vp, acl_type_t type)
 	ucred = td->td_proc->p_ucred;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_SETACL(vp, ACL_TYPE_DEFAULT, 0, ucred);
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	return (error);
 }
 

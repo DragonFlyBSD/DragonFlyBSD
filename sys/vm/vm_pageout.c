@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.23 2006/05/25 07:36:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.24 2006/08/12 00:26:22 dillon Exp $
  */
 
 /*
@@ -626,11 +626,10 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 #endif
 
 /*
- * Don't try to be fancy - being fancy can lead to VOP_LOCK's and therefore
- * to vnode deadlocks.  We only do it for OBJT_DEFAULT and OBJT_SWAP objects
- * which we know can be trivially freed.
+ * Don't try to be fancy - being fancy can lead to vnode deadlocks.   We
+ * only do it for OBJT_DEFAULT and OBJT_SWAP objects which we know can
+ * be trivially freed.
  */
-
 void
 vm_pageout_page_free(vm_page_t m) {
 	vm_object_t object = m->object;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.50 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.51 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1685,7 +1685,7 @@ coredump(struct proc *p)
 	nd.nl_open_vp = NULL;
 	nlookup_done(&nd);
 
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	lf.l_whence = SEEK_SET;
 	lf.l_start = 0;
 	lf.l_len = 0;
@@ -1706,7 +1706,7 @@ coredump(struct proc *p)
 	vattr.va_size = 0;
 	VOP_SETATTR(vp, &vattr, cred);
 	p->p_acflag |= ACORE;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 
 	error = p->p_sysent->sv_coredump ?
 		  p->p_sysent->sv_coredump(p, vp, limit) : ENOSYS;

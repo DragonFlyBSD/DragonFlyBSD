@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.36 2006/07/18 22:22:15 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.37 2006/08/12 00:26:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -205,10 +205,10 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
-					VOP_UNLOCK(devvp, 0);
+					vn_unlock(devvp);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0);
+				vn_unlock(devvp);
 			}
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
@@ -259,7 +259,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0);
+		vn_unlock(devvp);
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = mountmsdosfs(devvp, mp, &args);
@@ -322,14 +322,14 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -802,7 +802,7 @@ msdosfs_sync(struct mount *mp, int waitfor)
 		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(pmp->pm_devvp, 0);
+		vn_unlock(pmp->pm_devvp);
 	}
 	return (scaninfo.allerror);
 }

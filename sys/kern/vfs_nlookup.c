@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.17 2006/06/01 06:10:50 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.18 2006/08/12 00:26:20 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -224,7 +224,7 @@ nlookup_done(struct nlookupdata *nd)
     }
     if (nd->nl_open_vp) {
 	if (nd->nl_flags & NLC_LOCKVP) {
-		VOP_UNLOCK(nd->nl_open_vp, 0);
+		vn_unlock(nd->nl_open_vp);
 		nd->nl_flags &= ~NLC_LOCKVP;
 	}
 	vn_close(nd->nl_open_vp, nd->nl_vp_fmode);

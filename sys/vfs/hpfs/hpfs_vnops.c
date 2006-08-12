@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.36 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.37 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1217,7 +1217,7 @@ hpfs_pathconf(struct vop_pathconf_args *ap)
 /*
  * Global vfs data structures
  */
-#if defined(__DragonFly__)
+
 struct vop_ops hpfs_vnode_vops = {
 	.vop_default =		vop_defaultop,
 	.vop_getattr =		hpfs_getattr,
@@ -1227,9 +1227,6 @@ struct vop_ops hpfs_vnode_vops = {
 	.vop_print =		hpfs_print,
 	.vop_old_create =	hpfs_create,
 	.vop_old_remove =	hpfs_remove,
-	.vop_islocked =		vop_stdislocked,
-	.vop_unlock =		vop_stdunlock,
-	.vop_lock =		vop_stdlock,
 	.vop_old_lookup =	hpfs_lookup,
 	.vop_access =		hpfs_access,
 	.vop_readdir =		hpfs_readdir,
@@ -1244,52 +1241,3 @@ struct vop_ops hpfs_vnode_vops = {
 	.vop_pathconf =		hpfs_pathconf
 };
 
-#else /* defined(__NetBSD__) */
-struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vnodeopv_entry_t) genfs_badop },	/* XXX */
-	{ &vop_old_lookup_desc, (vnodeopv_entry_t) hpfs_lookup }, /* lookup */
-	{ &vop_old_create_desc, genfs_eopnotsupp },		/* create */
-	{ &vop_old_mknod_desc, genfs_eopnotsupp },		/* mknod */
-	{ &vop_access_desc, (vnodeopv_entry_t) hpfs_access },	/* access */
-	{ &vop_getattr_desc, (vnodeopv_entry_t) hpfs_getattr },	/* getattr */
-	{ &vop_setattr_desc, genfs_eopnotsupp },	/* setattr */
-	{ &vop_read_desc, (vnodeopv_entry_t) hpfs_read },	/* read */
-	{ &vop_write_desc, (vnodeopv_entry_t) hpfs_write },	/* write */
-	{ &vop_lease_desc, genfs_lease_check },		/* lease */
-	{ &vop_fcntl_desc, genfs_fcntl },		/* fcntl */
-	{ &vop_ioctl_desc, genfs_enoioctl },		/* ioctl */
-	{ &vop_poll_desc, genfs_poll },			/* poll */
-	{ &vop_revoke_desc, genfs_revoke },		/* revoke */
-	{ &vop_mmap_desc, genfs_eopnotsupp },		/* mmap */
-	{ &vop_fsync_desc, genfs_fsync },		/* fsync */
-	{ &vop_seek_desc, genfs_seek },			/* seek */
-	{ &vop_old_remove_desc, genfs_eopnotsupp },	/* remove */
-	{ &vop_old_link_desc, genfs_eopnotsupp },	/* link */
-	{ &vop_old_rename_desc, genfs_eopnotsupp },	/* rename */
-	{ &vop_old_mkdir_desc, genfs_eopnotsupp },	/* mkdir */
-	{ &vop_old_rmdir_desc, genfs_eopnotsupp },	/* rmdir */
-	{ &vop_old_symlink_desc, genfs_eopnotsupp },	/* symlink */
-	{ &vop_readdir_desc, (vnodeopv_entry_t) hpfs_readdir },	/* readdir */
-	{ &vop_readlink_desc, genfs_eopnotsupp },	/* readlink */
-	{ &vop_abortop_desc, genfs_abortop },		/* abortop */
-	{ &vop_inactive_desc, (vnodeopv_entry_t) hpfs_inactive },	/* inactive */
-	{ &vop_reclaim_desc, (vnodeopv_entry_t) hpfs_reclaim },	/* reclaim */
-	{ &vop_lock_desc, genfs_lock },			/* lock */
-	{ &vop_unlock_desc, genfs_unlock },		/* unlock */
-	{ &vop_bmap_desc, (vnodeopv_entry_t) hpfs_bmap },	/* bmap */
-	{ &vop_strategy_desc, (vnodeopv_entry_t) hpfs_strategy },	/* strategy */
-	{ &vop_print_desc, (vnodeopv_entry_t) hpfs_print },	/* print */
-	{ &vop_islocked_desc, genfs_islocked },		/* islocked */
-	{ &vop_pathconf_desc, hpfs_pathconf },		/* pathconf */
-	{ &vop_advlock_desc, genfs_nullop },		/* advlock */
-	{ &vop_blkatoff_desc, genfs_eopnotsupp },	/* blkatoff */
-	{ &vop_valloc_desc, genfs_eopnotsupp },		/* valloc */
-	{ &vop_reallocblks_desc, genfs_eopnotsupp },	/* reallocblks */
-	{ &vop_vfree_desc, genfs_eopnotsupp },		/* vfree */
-	{ &vop_truncate_desc, genfs_eopnotsupp },	/* truncate */
-	{ &vop_update_desc, genfs_eopnotsupp },		/* update */
-	{ &vop_bwrite_desc, vn_bwrite },		/* bwrite */
-	{ NULL, NULL }
-};
-
-#endif

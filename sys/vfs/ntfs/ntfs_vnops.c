@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.35 2006/07/19 06:08:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.36 2006/08/12 00:26:21 dillon Exp $
  *
  */
 
@@ -839,9 +839,6 @@ struct vop_ops ntfs_vnode_vops = {
 	.vop_reclaim =		ntfs_reclaim,
 	.vop_print =		ntfs_print,
 	.vop_pathconf =		ntfs_pathconf,
-	.vop_islocked =		vop_stdislocked,
-	.vop_unlock =		vop_stdunlock,
-	.vop_lock =		vop_stdlock,
 	.vop_old_lookup =	ntfs_lookup,
 	.vop_access =		ntfs_access,
 	.vop_close =		ntfs_close,

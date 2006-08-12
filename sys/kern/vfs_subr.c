@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.93 2006/08/11 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.94 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -1367,7 +1367,7 @@ retry:
 		vp->v_usecount--;
 	} else {
 		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			tsleep(object, 0, "vodead", 0);
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			goto retry;
@@ -1440,7 +1440,7 @@ db_show_locked_vnodes(struct mount *mp, void *data __unused)
 	struct vnode *vp;
 
 	TAILQ_FOREACH(vp, &mp->mnt_nvnodelist, v_nmntvnodes) {
-		if (VOP_ISLOCKED(vp, NULL))
+		if (vn_islocked(vp))
 			vprint((char *)0, vp);
 	}
 	return(0);
@@ -1875,7 +1875,7 @@ vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
 			return(0);	/* call scan2 */
 		if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
 		    (vp->v_flag & VOBJDIRTY) &&
-		    (flags == MNT_WAIT || VOP_ISLOCKED(vp, NULL) == 0)) {
+		    (flags == MNT_WAIT || vn_islocked(vp) == 0)) {
 			return(0);	/* call scan2 */
 		}
 	}
@@ -2042,28 +2042,6 @@ vn_isdisk(struct vnode *vp, int *errp)
 		*errp = 0;
 	return (1);
 }
-
-#ifdef DEBUG_VFS_LOCKS
-
-void
-assert_vop_locked(struct vnode *vp, const char *str)
-{
-	if (vp && !VOP_ISLOCKED(vp, NULL)) {
-		panic("%s: %p is not locked shared but should be", str, vp);
-	}
-}
-
-void
-assert_vop_unlocked(struct vnode *vp, const char *str)
-{
-	if (vp) {
-		if (VOP_ISLOCKED(vp, curthread) == LK_EXCLUSIVE) {
-			panic("%s: %p is locked but should not be", str, vp);
-		}
-	}
-}
-
-#endif
 
 int
 vn_get_namelen(struct vnode *vp, int *namelen)

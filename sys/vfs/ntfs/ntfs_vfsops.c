@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.38 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.39 2006/08/12 00:26:21 dillon Exp $
  */
 
 
@@ -656,14 +656,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 
 	vinvalbuf(ntmp->ntm_devvp, V_SAVE, 0, 0);
 
-#if defined(__NetBSD__)
-	/* lock the device vnode before calling VOP_CLOSE() */
-	VOP_LOCK(ntmp->ntm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
-	VOP__UNLOCK(ntmp->ntm_devvp, 0);
-#else
-	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
-#endif
 
 	vrele(ntmp->ntm_devvp);
 

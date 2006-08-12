@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.10 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.11 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -164,11 +164,11 @@ extern u_char *fragtbl[];
 /* a few remarks about superblock locking/unlocking
  * Linux provides special routines for doing so
  * I haven't figured out yet what BSD does
- * I think I'll try a VOP_LOCK/VOP_UNLOCK on the device vnode
+ * I think I'll try a vn_lock/vn_unlock on the device vnode
  */
 #define  DEVVP(inode)		(VFSTOEXT2(ITOV(inode)->v_mount)->um_devvp)
 #define  lock_super(devvp)   	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY)
-#define  unlock_super(devvp) 	VOP_UNLOCK(devvp, 0)
+#define  unlock_super(devvp) 	vn_unlock(devvp)
 
 /*
  * To lock a buffer, set the B_LOCKED flag and then brelse() it. To unlock,

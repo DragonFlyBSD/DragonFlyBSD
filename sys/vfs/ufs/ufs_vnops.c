@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.53 2006/07/19 06:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.54 2006/08/12 00:26:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -777,7 +777,7 @@ ufs_link(struct vop_old_link_args *ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 out2:
 	VN_KNOTE(vp, NOTE_LINK);
 	VN_KNOTE(tdvp, NOTE_WRITE);
@@ -923,13 +923,13 @@ abortit:
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
 	if (ip->i_nlink >= LINK_MAX) {
-		VOP_UNLOCK(fvp, 0);
+		vn_unlock(fvp);
 		error = EMLINK;
 		goto abortit;
 	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0);
+		vn_unlock(fvp);
 		error = EPERM;
 		goto abortit;
 	}
@@ -940,7 +940,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0);
+			vn_unlock(fvp);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -977,7 +977,7 @@ abortit:
 		softdep_change_linkcnt(ip);
 	if ((error = ffs_update(fvp, !(DOINGSOFTDEP(fvp) |
 				       DOINGASYNC(fvp)))) != 0) {
-		VOP_UNLOCK(fvp, 0);
+		vn_unlock(fvp);
 		goto bad;
 	}
 
@@ -992,7 +992,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
-	VOP_UNLOCK(fvp, 0);
+	vn_unlock(fvp);
 
 	/*
 	 * We are now back to where we were in that fvp, fdvp are unlocked
@@ -2378,9 +2378,7 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_create =	ufs_create,
 	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		ufs_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_mkdir =		ufs_mkdir,
 	.vop_old_mknod =		ufs_mknod,
 	.vop_mmap =		ufs_mmap,
@@ -2398,7 +2396,6 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_setattr =		ufs_setattr,
 	.vop_strategy =		ufs_strategy,
 	.vop_old_symlink =	ufs_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_old_whiteout =	ufs_whiteout
 };
 
@@ -2409,13 +2406,10 @@ static struct vop_ops ufs_spec_vops = {
 	.vop_close =		ufsspec_close,
 	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		ufs_print,
 	.vop_read =		ufsspec_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		ufsspec_write
 };
 
@@ -2426,14 +2420,11 @@ static struct vop_ops ufs_fifo_vops = {
 	.vop_close =		ufsfifo_close,
 	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_kqfilter =		ufsfifo_kqfilter,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		ufs_print,
 	.vop_read =		ufsfifo_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		ufsfifo_write
 };
 

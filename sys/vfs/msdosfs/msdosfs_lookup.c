@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.19 2006/05/06 02:43:14 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.20 2006/08/12 00:26:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -361,7 +361,7 @@ notfound:
 		 * information cannot be used.
 		 */
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
@@ -447,7 +447,7 @@ foundroot:
 			return (error);
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -478,7 +478,7 @@ foundroot:
 			return (error);
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -505,7 +505,7 @@ foundroot:
 	 */
 	pdp = vdp;
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0);
+		vn_unlock(pdp);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = deget(pmp, cluster, blkoff,  &tdp);
 		if (error) {
@@ -529,7 +529,7 @@ foundroot:
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
 		if (!lockparent) {
-			VOP_UNLOCK(pdp, 0);
+			vn_unlock(pdp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);

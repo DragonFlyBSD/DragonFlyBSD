@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.24 2006/07/18 22:22:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.25 2006/08/12 00:26:21 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -212,7 +212,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	NCPVODEBUG("rootvp.vrefcnt=%d\n",vp->v_usecount);
 	return error;
 bad:
@@ -445,7 +445,7 @@ loop:
 		 */
 		if (vp->v_mount != mp)
 			goto loop;
-		if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree) ||
+		if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree) ||
 		    waitfor == MNT_LAZY)
 			continue;
 		if (vget(vp, LK_EXCLUSIVE))

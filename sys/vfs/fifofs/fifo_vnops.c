@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.32 2006/07/19 06:08:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.33 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -220,7 +220,7 @@ fifo_open(struct vop_open_args *ap)
 	}
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			error = tsleep((caddr_t)&fip->fi_readers,
 			    PCATCH, "fifoor", 0);
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -241,7 +241,7 @@ fifo_open(struct vop_open_args *ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
-				VOP_UNLOCK(vp, 0);
+				vn_unlock(vp);
 				error = tsleep((caddr_t)&fip->fi_writers,
 				    PCATCH, "fifoow", 0);
 				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
@@ -288,7 +288,7 @@ fifo_read(struct vop_read_args *ap)
 	else
 		flags = 0;
 	startresid = uio->uio_resid;
-	VOP_UNLOCK(ap->a_vp, 0);
+	vn_unlock(ap->a_vp);
 	error = soreceive(rso, (struct sockaddr **)0, uio, (struct mbuf **)0,
 	    (struct mbuf **)0, &flags);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
@@ -318,7 +318,7 @@ fifo_write(struct vop_write_args *ap)
 		flags = MSG_FNONBLOCKING;
 	else
 		flags = 0;
-	VOP_UNLOCK(ap->a_vp, 0);
+	vn_unlock(ap->a_vp);
 	error = sosend(wso, (struct sockaddr *)0, ap->a_uio, 0,
 		       (struct mbuf *)0, flags, td);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);

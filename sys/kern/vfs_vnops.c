@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.43 2006/08/08 03:52:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.44 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,7 +185,6 @@ again:
 			if (error)
 				return (error);
 			fmode &= ~O_TRUNC;
-			ASSERT_VOP_LOCKED(vp, "create");
 			/* locked vnode is returned */
 		} else {
 			if (fmode & O_EXCL) {
@@ -263,7 +262,7 @@ again:
 		}
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, 0);			/* XXX */
+		vn_unlock(vp);				/* XXX */
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
@@ -326,7 +325,7 @@ again:
 		nd->nl_open_vp = vp;
 		nd->nl_vp_fmode = fmode;
 		if ((nd->nl_flags & NLC_LOCKVP) == 0)
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 	} else {
 		vput(vp);
 	}
@@ -366,7 +365,7 @@ vn_close(struct vnode *vp, int flags)
 
 	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
 		error = VOP_CLOSE(vp, flags);
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 	}
 	vrele(vp);
 	return (error);
@@ -439,7 +438,7 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 		if (auio.uio_resid && error == 0)
 			error = EIO;
 	if ((ioflg & IO_NODELOCKED) == 0)
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 	return (error);
 }
 
@@ -526,7 +525,7 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	rel_mplock();
 	return (error);
 }
@@ -653,7 +652,7 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	rel_mplock();
 	return (error);
 }
@@ -992,8 +991,11 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 #ifdef	DEBUG_LOCKS
 		vp->filename = filename;
 		vp->line = line;
+		error = debuglockmgr(&vp->v_lock, flags,
+				     "vn_lock", filename, line);
+#else
+		error = lockmgr(&vp->v_lock, flags);
 #endif
-		error = VOP_LOCK(vp, flags);
 		if (error == 0)
 			break;
 	} while (flags & LK_RETRY);
@@ -1004,10 +1006,22 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 	 * refs go away.  So we can just check the flag.
 	 */
 	if (error == 0 && (vp->v_flag & VRECLAIMED)) {
-		VOP_UNLOCK(vp, 0);
+		lockmgr(&vp->v_lock, LK_RELEASE);
 		error = ENOENT;
 	}
 	return (error);
+}
+
+void
+vn_unlock(struct vnode *vp)
+{
+	lockmgr(&vp->v_lock, LK_RELEASE);
+}
+
+int
+vn_islocked(struct vnode *vp)
+{
+	return (lockstatus(&vp->v_lock, curthread));
 }
 
 /*

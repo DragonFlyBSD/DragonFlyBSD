@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.47 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.48 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -239,7 +239,7 @@ spec_open(struct vop_open_args *ap)
 	 * dev_dopen() is always called for each open.  dev_dclose() is
 	 * only called for the last close unless D_TRACKCLOSE is set.
 	 */
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
@@ -321,7 +321,7 @@ spec_read(struct vop_read_args *ap)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	error = dev_dread(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
@@ -351,7 +351,7 @@ spec_write(struct vop_write_args *ap)
 	if (dev == NULL)		/* device was revoked */
 		return (EBADF);
 
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
@@ -579,9 +579,9 @@ spec_close(struct vop_close_args *ap)
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
 		needrelock = 0;
-		if (VOP_ISLOCKED(vp, curthread)) {
+		if (vn_islocked(vp)) {
 			needrelock = 1;
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 		}
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
 		if (needrelock)

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.32 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.33 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ fdesc_lookup(struct vop_old_lookup_args *ap)
 		goto bad;
 	}
 
-	VOP_UNLOCK(dvp, 0);
+	vn_unlock(dvp);
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		vref(dvp);	

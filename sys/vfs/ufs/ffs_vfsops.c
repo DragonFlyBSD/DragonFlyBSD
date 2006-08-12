@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.46 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.47 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -225,10 +225,10 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred)) != 0) {
-					VOP_UNLOCK(devvp, 0);
+					vn_unlock(devvp);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0);
+				vn_unlock(devvp);
 			}
 
 			fs->fs_flags &= ~FS_UNCLEAN;
@@ -306,7 +306,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0);
+		vn_unlock(devvp);
 	}
 
 	if (mp->mnt_flag & MNT_UPDATE) {
@@ -402,7 +402,7 @@ success:
 				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
 				VOP_CLOSE(devvp, FREAD);
 			}
-			VOP_UNLOCK(devvp, 0);
+			vn_unlock(devvp);
 			ffs_sbupdate(ump, MNT_WAIT);
 		}
 	}
@@ -454,7 +454,7 @@ ffs_reload(struct mount *mp, struct ucred *cred)
 	devvp = VFSTOUFS(mp)->um_devvp;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, 0, 0, 0);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		panic("ffs_reload: dirty1");
 
@@ -607,14 +607,14 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct malloc_type *mtype)
 		return (EBUSY);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -898,7 +898,7 @@ ffs_flushfiles(struct mount *mp, int flags)
 	 */
 	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT);
-	VOP_UNLOCK(ump->um_devvp, 0);
+	vn_unlock(ump->um_devvp);
 	return (error);
 }
 
@@ -978,7 +978,7 @@ ffs_sync(struct mount *mp, int waitfor)
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0);
+		vn_unlock(ump->um_devvp);
 	}
 #ifdef QUOTA
 	ufs_qsync(mp);

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.27 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.28 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -259,7 +259,7 @@ sys_ktrace(struct ktrace_args *uap)
 		tracenode->kn_refs = 1;
 		nd.nl_open_vp = NULL;
 		nlookup_done(&nd);
-		VOP_UNLOCK(tracenode->kn_vp, 0);
+		vn_unlock(tracenode->kn_vp);
 	}
 	/*
 	 * Clear all uses of the tracefile.  Not the most efficient operation
@@ -524,7 +524,7 @@ ktrwrite(struct proc *p, struct ktr_header *kth, struct uio *uio)
 		error = VOP_WRITE(tracenode->kn_vp, uio,
 			  	  IO_UNIT | IO_APPEND, p->p_ucred);
 	}
-	VOP_UNLOCK(tracenode->kn_vp, 0);
+	vn_unlock(tracenode->kn_vp);
 	if (error) {
 		/*
 		 * If an error occured, give up tracing on all processes

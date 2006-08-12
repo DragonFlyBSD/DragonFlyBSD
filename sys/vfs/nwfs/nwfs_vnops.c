@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.31 2006/07/19 06:08:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.32 2006/08/12 00:26:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -97,9 +97,7 @@ struct vop_ops nwfs_vnode_vops = {
 	.vop_putpages =		nwfs_putpages,
 	.vop_ioctl =		nwfs_ioctl,
 	.vop_inactive =		nwfs_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		nwfs_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_lookup =	nwfs_lookup,
 	.vop_old_mkdir =	nwfs_mkdir,
 	.vop_old_mknod =	nwfs_mknod,
@@ -114,7 +112,6 @@ struct vop_ops nwfs_vnode_vops = {
 	.vop_setattr =		nwfs_setattr,
 	.vop_strategy =		nwfs_strategy,
 	.vop_old_symlink =	nwfs_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		nwfs_write
 };
 
@@ -906,7 +903,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		/* Handle RENAME or CREATE case... */
 		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent) {
 			if (!lockparent)
-				VOP_UNLOCK(dvp, 0);
+				vn_unlock(dvp);
 			return (EJUSTRETURN);
 		}
 		return ENOENT;
@@ -925,7 +922,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		if (!lockparent) VOP_UNLOCK(dvp, 0);
+		if (!lockparent) vn_unlock(dvp);
 		return (0);
 	}
 	if (nameiop == NAMEI_RENAME && wantparent) {
@@ -936,11 +933,11 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		if (error) return (error);
 		*vpp = vp;
 		if (!lockparent)
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 		return (0);
 	}
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0);	/* race to get the inode */
+		vn_unlock(dvp);	/* race to get the inode */
 		error = nwfs_nget(mp, fid, NULL, NULL, &vp);
 		if (error) {
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
@@ -960,7 +957,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		*vpp = vp;
 		NCPVNDEBUG("lookup: getnewvp!\n");
 		if (!lockparent)
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 	}
 #if 0
 	/* XXX MOVE TO NREMOVE */

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.25 2006/06/01 06:10:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.26 2006/08/12 00:26:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -431,7 +431,7 @@ loop:
 				 * while moving up the tree).
 				 */
 				vref(dvp);
-				VOP_UNLOCK(dvp, 0);
+				vn_unlock(dvp);
 				error = vn_lock(un->un_vnode, LK_EXCLUSIVE);
 				vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 				vrele(dvp);
@@ -726,7 +726,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 	 */
 	vn_lock(un->un_lowervp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_ACCESS(un->un_lowervp, VREAD, cred);
-	VOP_UNLOCK(un->un_lowervp, 0);
+	vn_unlock(un->un_lowervp);
 	if (error)
 		return (error);
 
@@ -746,14 +746,14 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		error = VOP_OPEN(lvp, FREAD, cred, NULL);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
-			VOP_UNLOCK(lvp, 0);
+			vn_unlock(lvp);
 			(void) VOP_CLOSE(lvp, FREAD);
 		}
 		if (error == 0)
 			UDEBUG(("union: copied up %s\n", un->un_path));
 
 	}
-	VOP_UNLOCK(uvp, 0);
+	vn_unlock(uvp);
 	union_newupper(un, uvp);
 	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
 	union_vn_close(uvp, FWRITE, cred);
@@ -822,7 +822,7 @@ union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
 	cn->cn_consume = cnp->cn_consume;
 
 	vref(dvp);
-	VOP_UNLOCK(dvp, 0);
+	vn_unlock(dvp);
 
 	/*
 	 * Pass dvp unlocked and referenced on call to relookup().
@@ -1173,7 +1173,7 @@ union_dircache(struct vnode *vp, struct thread *td)
 	un->un_dircache = dircache;
 
 out:
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	return (nvp);
 }
 
@@ -1243,7 +1243,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 				vput(lvp);
 				return (error);
 			}
-			VOP_UNLOCK(lvp, 0);
+			vn_unlock(lvp);
 			fp->f_data = lvp;
 			fp->f_offset = 0;
 			error = vn_close(*vp, FREAD);

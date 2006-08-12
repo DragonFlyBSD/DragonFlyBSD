@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.24 2006/08/08 03:52:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.25 2006/08/12 00:26:21 dillon Exp $
  */
 
 
@@ -296,94 +296,4 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	zfree(nfsnode_zone, np);
 	return (0);
 }
-
-#if 0
-/*
- * Lock an nfsnode
- *
- * nfs_lock(struct vnode *a_vp)
- */
-int
-nfs_lock(struct vop_lock_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-
-	/*
-	 * Ugh, another place where interruptible mounts will get hung.
-	 * If you make this sleep interruptible, then you have to fix all
-	 * the VOP_LOCK() calls to expect interruptibility.
-	 */
-	while (vp->v_flag & VXLOCK) {
-		vp->v_flag |= VXWANT;
-		(void) tsleep((caddr_t)vp, 0, "nfslck", 0);
-	}
-	if (vp->v_tag == VT_NON)
-		return (ENOENT);
-
-#if 0
-	/*
-	 * Only lock regular files.  If a server crashed while we were
-	 * holding a directory lock, we could easily end up sleeping
-	 * until the server rebooted while holding a lock on the root.
-	 * Locks are only needed for protecting critical sections in
-	 * VMIO at the moment.
-	 * New vnodes will have type VNON but they should be locked
-	 * since they may become VREG.  This is checked in loadattrcache
-	 * and unwanted locks are released there.
-	 */
-	if (vp->v_type == VREG || vp->v_type == VNON) {
-		while (np->n_flag & NLOCKED) {
-			np->n_flag |= NWANTED;
-			(void) tsleep((caddr_t) np, 0, "nfslck2", 0);
-			/*
-			 * If the vnode has transmuted into a VDIR while we
-			 * were asleep, then skip the lock.
-			 */
-			if (vp->v_type != VREG && vp->v_type != VNON)
-				return (0);
-		}
-		np->n_flag |= NLOCKED;
-	}
-#endif
-
-	return (0);
-}
-
-/*
- * Unlock an nfsnode
- *
- * nfs_unlock(struct vnode *a_vp)
- */
-int
-nfs_unlock(struct vop_unlock_args *ap)
-{
-#if 0
-	struct vnode* vp = ap->a_vp;
-        struct nfsnode* np = VTONFS(vp);
-
-	if (vp->v_type == VREG || vp->v_type == VNON) {
-		if (!(np->n_flag & NLOCKED))
-			panic("nfs_unlock: nfsnode not locked");
-		np->n_flag &= ~NLOCKED;
-		if (np->n_flag & NWANTED) {
-			np->n_flag &= ~NWANTED;
-			wakeup((caddr_t) np);
-		}
-	}
-#endif
-
-	return (0);
-}
-
-/*
- * Check for a locked nfsnode
- *
- * nfs_islocked(struct vnode *a_vp, struct thread *a_td)
- */
-int
-nfs_islocked(struct vop_islocked_args *ap)
-{
-	return VTONFS(ap->a_vp)->n_flag & NLOCKED ? 1 : 0;
-}
-#endif
 

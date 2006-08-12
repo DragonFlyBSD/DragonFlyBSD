@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.16 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.17 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ cttyopen(struct dev_open_args *ap)
 			error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
 			if (error)
 				vclrflags(ttyvp, VCTTYISOPEN);
-			VOP_UNLOCK(ttyvp, 0);
+			vn_unlock(ttyvp);
 		}
 	} else {
 		error = ENXIO;
@@ -128,7 +128,7 @@ cttyclose(struct dev_close_args *ap)
 		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 		if (error == 0) {
 			error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
-			VOP_UNLOCK(ttyvp, 0);
+			vn_unlock(ttyvp);
 		}
 	} else {
 		error = 0;
@@ -140,7 +140,7 @@ cttyclose(struct dev_close_args *ap)
  * Read from the controlling terminal (/dev/tty).  The tty is refed as
  * of the cttyvp(), but the ref can get ripped out from under us if
  * the controlling terminal is revoked while we are blocked on the lock,
- * so use vget() instead of VOP_LOCK.
+ * so use vget() instead of vn_lock().
  */
 static	int
 cttyread(struct dev_read_args *ap)
@@ -164,7 +164,7 @@ cttyread(struct dev_read_args *ap)
  * Read from the controlling terminal (/dev/tty).  The tty is refed as
  * of the cttyvp(), but the ref can get ripped out from under us if
  * the controlling terminal is revoked while we are blocked on the lock,
- * so use vget() instead of VOP_LOCK.
+ * so use vget() instead of vn_lock().
  */
 static	int
 cttywrite(struct dev_write_args *ap)

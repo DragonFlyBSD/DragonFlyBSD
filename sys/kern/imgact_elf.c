@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.39 2006/05/25 04:17:09 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.40 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -441,7 +441,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(imgp->vp, 0);
+		vn_unlock(imgp->vp);
 		goto fail;
 	}
 
@@ -452,7 +452,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	if (error == 0)
 		imgp->vp->v_flag |= VTEXT;
-	VOP_UNLOCK(imgp->vp, 0);
+	vn_unlock(imgp->vp);
 	if (error)
                 goto fail;
 
@@ -930,7 +930,7 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
 	fp->f_ops = &vnode_fileops;
 	fp->f_data = vp;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	
 	error = generic_elf_coredump(p, fp, limit);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.29 2006/07/19 06:08:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.30 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -877,8 +877,6 @@ struct vop_ops cd9660_vnode_vops = {
 	.vop_getattr =		cd9660_getattr,
 	.vop_inactive =		cd9660_inactive,
 	.vop_ioctl =		cd9660_ioctl,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_pathconf =		cd9660_pathconf,
 	.vop_print =		cd9660_print,
 	.vop_read =		cd9660_read,
@@ -887,7 +885,6 @@ struct vop_ops cd9660_vnode_vops = {
 	.vop_reclaim =		cd9660_reclaim,
 	.vop_setattr =		cd9660_setattr,
 	.vop_strategy =		cd9660_strategy,
-	.vop_unlock =		vop_stdunlock,
 	.vop_getpages =		cd9660_getpages,
 	.vop_putpages =		cd9660_putpages
 };
@@ -900,12 +897,9 @@ struct vop_ops cd9660_spec_vops = {
 	.vop_access =		cd9660_access,
 	.vop_getattr =		cd9660_getattr,
 	.vop_inactive =		cd9660_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		cd9660_print,
 	.vop_reclaim =		cd9660_reclaim,
 	.vop_setattr =		cd9660_setattr,
-	.vop_unlock =		vop_stdunlock
 };
 
 struct vop_ops cd9660_fifo_vops = {
@@ -913,11 +907,8 @@ struct vop_ops cd9660_fifo_vops = {
 	.vop_access =		cd9660_access,
 	.vop_getattr =		cd9660_getattr,
 	.vop_inactive =		cd9660_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		cd9660_print,
 	.vop_reclaim =		cd9660_reclaim,
 	.vop_setattr =		cd9660_setattr,
-	.vop_unlock =		vop_stdunlock
 };
 

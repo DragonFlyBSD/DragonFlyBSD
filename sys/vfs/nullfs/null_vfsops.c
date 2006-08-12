@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.23 2006/08/09 22:47:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.24 2006/08/12 00:26:21 dillon Exp $
  */
 
 /*
@@ -119,7 +119,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	vfs_add_vnodeops(mp, &null_vnode_vops, &mp->mnt_vn_norm_ops);
 
-	VOP_UNLOCK(rootvp, 0);
+	vn_unlock(rootvp);
 
 	/*
 	 * Keep a held reference to the root vnode.

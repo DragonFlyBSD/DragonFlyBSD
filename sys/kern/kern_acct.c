@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.25 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.26 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -150,7 +150,7 @@ sys_acct(struct acct_args *uap)
 		nd.nl_open_vp = NULL;
 		nlookup_done(&nd);
 
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 	} else {
 		vp = NULL;
 	}

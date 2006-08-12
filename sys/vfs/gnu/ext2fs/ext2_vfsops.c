@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.46 2006/08/03 16:40:48 swildner Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.47 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -279,7 +279,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD, FSCRED, NULL);
 			VOP_CLOSE(devvp, FREAD|FWRITE);
-			VOP_UNLOCK(devvp, 0);
+			vn_unlock(devvp);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
 			error = ext2_reload(mp, cred);
@@ -297,10 +297,10 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE, cred);
 				if (error) {
-					VOP_UNLOCK(devvp, 0);
+					vn_unlock(devvp);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0);
+				vn_unlock(devvp);
 			}
 
 			if ((fs->s_es->s_state & EXT2_VALID_FS) == 0 ||
@@ -322,7 +322,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
 			VOP_CLOSE(devvp, FREAD);
-			VOP_UNLOCK(devvp, 0);
+			vn_unlock(devvp);
 		}
 		if (args.fspec == 0) {
 			/*
@@ -363,7 +363,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0);
+		vn_unlock(devvp);
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
@@ -723,7 +723,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -1010,7 +1010,7 @@ ext2_sync(struct mount *mp, int waitfor)
 		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0);
+		vn_unlock(ump->um_devvp);
 	}
 #if QUOTA
 	ext2_qsync(mp);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.21 2006/08/11 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.22 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -334,7 +334,7 @@ vget(struct vnode *vp, int flags)
 		if ((error = vn_lock(vp, flags)) != 0) {
 			vrele(vp);
 		} else if (vp->v_flag & VRECLAIMED) {
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			vrele(vp);
 			error = ENOENT;
 		} else {
@@ -351,7 +351,7 @@ vget(struct vnode *vp, int flags)
 void
 vput(struct vnode *vp)
 {
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	vrele(vp);
 }
 

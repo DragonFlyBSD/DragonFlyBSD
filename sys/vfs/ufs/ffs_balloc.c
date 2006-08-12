@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.17 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.18 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,6 @@ ffs_balloc(struct vop_balloc_args *ap)
 	ufs_daddr_t newb, *bap, pref;
 	int deallocated, osize, nsize, num, i, error;
 	ufs_daddr_t *allocib, *blkp, *allocblk, allociblk[NIADDR + 1];
-	struct thread *td = curthread;	/* XXX */
 	int unwindidx;
 	int seqcount;
 
@@ -95,7 +94,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 * The vnode must be locked for us to be able to safely mess
 	 * around with the inode.
 	 */
-	if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
+	if (vn_islocked(vp) != LK_EXCLUSIVE) {
 		panic("ffs_balloc: vnode %p not exclusively locked!", vp);
 	}
 

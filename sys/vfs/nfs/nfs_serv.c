@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.36 2006/05/06 18:48:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.37 2006/08/12 00:26:21 dillon Exp $
  */
 
 /*
@@ -491,7 +491,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * However, the cnd resource continues to be maintained
 			 * via the original nd.  Confused?  You aren't alone!
 			 */
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			ncp = cache_hold(nd.nl_ncp);
 			nlookup_done(&nd);
 			error = nlookup_init_raw(&nd, nfs_pub.np_index,
@@ -2852,7 +2852,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 
 	/*
 	 * end section.  Allocate rbuf and continue
@@ -2883,7 +2883,7 @@ again:
 		if (!error)
 			error = getret;
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	if (error) {
 		vrele(vp);
 		vp = NULL;
@@ -3133,7 +3133,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	MALLOC(rbuf, caddr_t, siz, M_TEMP, M_WAITOK);
 again:
 	iv.iov_base = rbuf;
@@ -3154,7 +3154,7 @@ again:
 	error = VOP_READDIR(vp, &io, cred, &eofflag, &ncookies, &cookies);
 	off = (u_quad_t)io.uio_offset;
 	getret = VOP_GETATTR(vp, &at);
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	if (!cookies && !error)
 		error = NFSERR_PERM;
 	if (!error)

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.73 2006/08/09 22:47:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.74 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1091,7 +1091,7 @@ force:
 			printf("lookupdotdot failed %d dvp %p\n", error, dvp);
 			break;
 		}
-		VOP_UNLOCK(pvp, 0);
+		vn_unlock(pvp);
 
 		/*
 		 * Reuse makeit as a recursion depth counter.
@@ -1153,7 +1153,7 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			vrele(dvp);
 			return (error);
 		}
-		VOP_UNLOCK(pvp, 0);
+		vn_unlock(pvp);
 		if ((ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
 			cache_hold(ncp);
 			vrele(pvp);
@@ -1283,7 +1283,7 @@ again:
 				}
 				nlc.nlc_nameptr = den->d_name;
 				nlc.nlc_namelen = den->d_namlen;
-				VOP_UNLOCK(pvp, 0);
+				vn_unlock(pvp);
 				rncp = cache_nlookup(ncp, &nlc);
 				KKASSERT(rncp != NULL);
 				break;

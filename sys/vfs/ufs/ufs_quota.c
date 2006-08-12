@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.22 2006/05/06 16:20:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.23 2006/08/12 00:26:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -394,7 +394,7 @@ ufs_quotaon(struct ucred *cred, struct mount *mp, int type, caddr_t fname)
 	nd.nl_open_vp = NULL;
 	nlookup_done(&nd);
 
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	if (*vpp != vp)
 		ufs_quotaoff(mp, type);
 	ump->um_qflags[type] |= QTF_OPENING;
@@ -785,7 +785,7 @@ ufs_dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	if (auio.uio_resid == sizeof(struct ufs_dqblk) && error == 0)
 		bzero((caddr_t)&dq->dq_dqb, sizeof(struct ufs_dqblk));
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, 0);
+		vn_unlock(dqvp);
 	if (dq->dq_flags & DQ_WANT)
 		wakeup((caddr_t)dq);
 	dq->dq_flags = 0;
@@ -870,7 +870,7 @@ ufs_dqsync(struct vnode *vp, struct ufs_dquot *dq)
 		(void) tsleep((caddr_t)dq, 0, "dqsync", 0);
 		if ((dq->dq_flags & DQ_MOD) == 0) {
 			if (vp != dqvp)
-				VOP_UNLOCK(dqvp, 0);
+				vn_unlock(dqvp);
 			return (0);
 		}
 	}
@@ -891,7 +891,7 @@ ufs_dqsync(struct vnode *vp, struct ufs_dquot *dq)
 		wakeup((caddr_t)dq);
 	dq->dq_flags &= ~(DQ_MOD|DQ_LOCK|DQ_WANT);
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, 0);
+		vn_unlock(dqvp);
 	return (error);
 }
 

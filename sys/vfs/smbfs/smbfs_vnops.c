@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.33 2006/07/19 06:08:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.34 2006/08/12 00:26:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -98,9 +98,7 @@ struct vop_ops smbfs_vnode_vops = {
 	.vop_getpages =		smbfs_getpages,
 	.vop_inactive =		smbfs_inactive,
 	.vop_ioctl =		smbfs_ioctl,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		smbfs_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_lookup =	smbfs_lookup,
 	.vop_old_mkdir =	smbfs_mkdir,
 	.vop_old_mknod =	smbfs_mknod,
@@ -117,7 +115,6 @@ struct vop_ops smbfs_vnode_vops = {
 	.vop_setattr =		smbfs_setattr,
 	.vop_strategy =		smbfs_strategy,
 	.vop_old_symlink =	smbfs_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		smbfs_write,
 	.vop_getextattr = 	smbfs_getextattr
 /*	.vop_setextattr =	smbfs_setextattr */
@@ -1099,7 +1096,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			if (error)
 				return error;
 			if (!lockparent) {
-				VOP_UNLOCK(dvp, 0);
+				vn_unlock(dvp);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			return (EJUSTRETURN);
@@ -1125,7 +1122,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			return error;
 		*vpp = vp;
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
@@ -1141,13 +1138,13 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			return error;
 		*vpp = vp;
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
 	}
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 		error = smbfs_nget(mp, dvp, name, nmlen, NULL, &vp);
 		if (error) {
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
@@ -1172,7 +1169,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 		*vpp = vp;
 		SMBVDEBUG("lookup: getnewvp!\n");
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}

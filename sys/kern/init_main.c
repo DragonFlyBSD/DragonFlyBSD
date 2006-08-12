@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.58 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.59 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -461,7 +461,7 @@ start_init(void *dummy)
 	p->p_fd->fd_rdir = vp;
 	vref(p->p_fd->fd_rdir);
 	vfs_cache_setroot(vp, cache_hold(mp->mnt_ncp));
-	VOP_UNLOCK(vp, 0);			/* leave ref intact */
+	vn_unlock(vp);			/* leave ref intact */
 	p->p_fd->fd_ncdir = cache_hold(mp->mnt_ncp);
 	p->p_fd->fd_nrdir = cache_hold(mp->mnt_ncp);
 

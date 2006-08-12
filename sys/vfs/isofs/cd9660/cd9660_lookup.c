@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.22 2006/05/05 21:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.23 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -346,7 +346,7 @@ found:
 	 * it's a relocated directory.
 	 */
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0);	/* race to get the inode */
+		vn_unlock(pdp);	/* race to get the inode */
 		error = cd9660_vget_internal(vdp->v_mount, dp->i_ino, &tdp,
 					     dp->i_ino != ino, ep);
 		brelse(bp);
@@ -375,7 +375,7 @@ found:
 			return (error);
 		if (!lockparent) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(pdp, 0);
+			vn_unlock(pdp);
 		}
 		*vpp = tdp;
 	}

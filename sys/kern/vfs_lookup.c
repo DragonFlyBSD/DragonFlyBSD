@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.22 2006/05/05 21:15:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.23 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -151,7 +151,7 @@ relookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 bad:
 	if ((cnp->cn_flags & CNP_PDIRUNLOCK) == 0) {
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	}
 	if (*vpp) {
 		vput(*vpp);

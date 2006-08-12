@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.45 2006/08/08 03:52:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.46 2006/08/12 00:26:22 dillon Exp $
  */
 
 /*
@@ -2215,7 +2215,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 			    OFF_TO_IDX(offset),
 			    OFF_TO_IDX(offset + size + PAGE_MASK),
 			    flags);
-			VOP_UNLOCK(((struct vnode *)object->handle), 0);
+			vn_unlock(((struct vnode *)object->handle));
 			vm_object_deallocate(object);
 		}
 		if (object && invalidate &&

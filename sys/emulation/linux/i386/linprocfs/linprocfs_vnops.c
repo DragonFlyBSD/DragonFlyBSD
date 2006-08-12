@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.32 2006/07/18 22:22:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.33 2006/08/12 00:26:19 dillon Exp $
  */
 
 /*
@@ -752,7 +752,7 @@ out:
 	if (error == 0) {
 		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 		}
 	}
 	return (error);

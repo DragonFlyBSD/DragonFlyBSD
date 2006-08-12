@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.25 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.26 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -86,12 +86,6 @@ struct vop_generic_args {
 	struct syslink_desc *a_desc;	/* command descriptor for the call */
 	struct vop_ops *a_ops;		/* operations vector for the call */
 	int a_reserved[4];
-};
-
-struct vop_islocked_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	struct thread *a_td;
 };
 
 struct vop_old_lookup_args {
@@ -288,18 +282,6 @@ struct vop_inactive_args {
 struct vop_reclaim_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-};
-
-struct vop_lock_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	int a_flags;
-};
-
-struct vop_unlock_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	int a_flags;
 };
 
 struct vop_bmap_args {
@@ -531,7 +513,7 @@ struct vop_ops {
 
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
-	int	(*vop_islocked)(struct vop_islocked_args *);
+	int	(*vop_unused11)(void *);
 	int	(*vop_old_lookup)(struct vop_old_lookup_args *);
 	int	(*vop_unused03)(void *);
 	int	(*vop_old_create)(struct vop_old_create_args *);
@@ -561,8 +543,8 @@ struct vop_ops {
 	int	(*vop_readlink)(struct vop_readlink_args *);
 	int	(*vop_inactive)(struct vop_inactive_args *);
 	int	(*vop_reclaim)(struct vop_reclaim_args *);
-	int	(*vop_lock)(struct vop_lock_args *);
-	int	(*vop_unlock)(struct vop_unlock_args *);
+	int	(*vop_unused09)(void *);
+	int	(*vop_unused10)(void *);
 	int	(*vop_bmap)(struct vop_bmap_args *);
 	int	(*vop_strategy)(struct vop_strategy_args *);
 	int	(*vop_print)(struct vop_print_args *);
@@ -612,7 +594,6 @@ struct vop_ops {
 union vop_args_union {
 	struct vop_generic_args vu_head;
 	struct vop_generic_args vu_default;
-	struct vop_islocked_args vu_islocked;
 	struct vop_old_lookup_args vu_lookup;
 	struct vop_old_create_args vu_create;
 	struct vop_old_whiteout_args vu_whiteout;
@@ -640,8 +621,6 @@ union vop_args_union {
 	struct vop_readlink_args vu_readlink;
 	struct vop_inactive_args vu_inactive;
 	struct vop_reclaim_args vu_reclaim;
-	struct vop_lock_args vu_lock;
-	struct vop_unlock_args vu_unlock;
 	struct vop_bmap_args vu_bmap;
 	struct vop_strategy_args vu_strategy;
 	struct vop_print_args vu_print;
@@ -682,7 +661,6 @@ union vop_args_union {
  * routine directly in order to allow DragonFly to properly wrap the operation
  * in a message and dispatch it to the correct thread.
  */
-int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
 int vop_old_lookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
 int vop_old_create(struct vop_ops *ops, struct vnode *dvp,
@@ -737,8 +715,6 @@ int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 		struct ucred *cred);
 int vop_inactive(struct vop_ops *ops, struct vnode *vp);
 int vop_reclaim(struct vop_ops *ops, struct vnode *vp);
-int vop_lock(struct vop_ops *ops, struct vnode *vp, int flags);
-int vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 		struct vnode **vpp, off_t *doffsetp, int *runp, int *runb);
 int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio);
@@ -806,7 +782,6 @@ int vop_nrename(struct vop_ops *ops, struct namecache *fncp,
 int vop_vnoperate_ap(struct vop_generic_args *ap);
 int vop_cache_operate_ap(struct vop_generic_args *ap);
 int vop_journal_operate_ap(struct vop_generic_args *ap);
-int vop_islocked_ap(struct vop_islocked_args *ap);
 int vop_old_lookup_ap(struct vop_old_lookup_args *ap);
 int vop_old_create_ap(struct vop_old_create_args *ap);
 int vop_old_whiteout_ap(struct vop_old_whiteout_args *ap);
@@ -834,8 +809,6 @@ int vop_readdir_ap(struct vop_readdir_args *ap);
 int vop_readlink_ap(struct vop_readlink_args *ap);
 int vop_inactive_ap(struct vop_inactive_args *ap);
 int vop_reclaim_ap(struct vop_reclaim_args *ap);
-int vop_lock_ap(struct vop_lock_args *ap);
-int vop_unlock_ap(struct vop_unlock_args *ap);
 int vop_bmap_ap(struct vop_bmap_args *ap);
 int vop_strategy_ap(struct vop_strategy_args *ap);
 int vop_print_ap(struct vop_print_args *ap);
@@ -871,7 +844,6 @@ int vop_nrename_ap(struct vop_nrename_args *ap);
  * into a vop_ops operations vector.
  */
 extern struct syslink_desc vop_default_desc;
-extern struct syslink_desc vop_islocked_desc;
 extern struct syslink_desc vop_old_lookup_desc;
 extern struct syslink_desc vop_old_create_desc;
 extern struct syslink_desc vop_old_whiteout_desc;
@@ -899,8 +871,6 @@ extern struct syslink_desc vop_readdir_desc;
 extern struct syslink_desc vop_readlink_desc;
 extern struct syslink_desc vop_inactive_desc;
 extern struct syslink_desc vop_reclaim_desc;
-extern struct syslink_desc vop_lock_desc;
-extern struct syslink_desc vop_unlock_desc;
 extern struct syslink_desc vop_bmap_desc;
 extern struct syslink_desc vop_strategy_desc;
 extern struct syslink_desc vop_print_desc;
@@ -936,8 +906,6 @@ extern struct syslink_desc vop_nrename_desc;
  * VOP_*() convenience macros extract the operations vector and make the
  * vop_*() call.
  */
-#define VOP_ISLOCKED(vp, td)				\
-	vop_islocked(*(vp)->v_ops, vp, td)
 #define VOP_OPEN(vp, mode, cred, fp)			\
 	vop_open(*(vp)->v_ops, vp, mode, cred, fp)
 #define VOP_CLOSE(vp, fflag)				\
@@ -972,10 +940,6 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_inactive(*(vp)->v_ops, vp)
 #define VOP_RECLAIM(vp)					\
 	vop_reclaim(*(vp)->v_ops, vp)
-#define VOP_LOCK(vp, flags)				\
-	vop_lock(*(vp)->v_ops, vp, flags)
-#define VOP_UNLOCK(vp, flags)				\
-	vop_unlock(*(vp)->v_ops, vp, flags)
 #define VOP_BMAP(vp, loff, vpp, doffp, runp, runb)	\
 	vop_bmap(*(vp)->v_ops, vp, loff, vpp, doffp, runp, runb)
 #define VOP_PRINT(vp)					\

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.44 2006/07/18 22:22:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.45 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -993,7 +993,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(*vpp, 0);
+	vn_unlock(*vpp);
 
 	return (0);
 bad:
@@ -1147,7 +1147,7 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
     struct scaninfo *info = data;
 
-    if (VOP_ISLOCKED(vp, NULL) || RB_EMPTY(&vp->v_rbdirty_tree))
+    if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree))
 	return(-1);
     if (info->waitfor == MNT_LAZY)
 	return(-1);

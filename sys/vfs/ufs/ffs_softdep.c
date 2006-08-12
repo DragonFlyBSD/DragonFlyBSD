@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.47 2006/06/05 21:03:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.48 2006/08/12 00:26:21 dillon Exp $
  */
 
 /*
@@ -701,7 +701,7 @@ process_worklist_item(matchmnt, flags)
 		dirrem = WK_DIRREM(wk);
 		vp = ufs_ihashlookup(VFSTOUFS(dirrem->dm_mnt)->um_dev,
 		    dirrem->dm_oldinum);
-		if (vp == NULL || !VOP_ISLOCKED(vp, curthread))
+		if (vp == NULL || !vn_islocked(vp))
 			break;
 	}
 	if (wk == 0) {
@@ -823,7 +823,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags)
 		}
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_FSYNC(devvp, MNT_WAIT);
-		VOP_UNLOCK(devvp, 0);
+		vn_unlock(devvp);
 		if (error)
 			break;
 	}
@@ -4127,7 +4127,7 @@ softdep_fsync(vp)
 		 * ufs_lookup for details on possible races.
 		 */
 		FREE_LOCK(&lk);
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 		error = VFS_VGET(mnt, parentino, &pvp);
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		if (error != 0)
@@ -4313,7 +4313,7 @@ top:
 	 */
 	if (vn_isdisk(vp, NULL) && 
 	    vp->v_rdev &&
-	    vp->v_rdev->si_mountpoint && !VOP_ISLOCKED(vp, NULL) &&
+	    vp->v_rdev->si_mountpoint && !vn_islocked(vp) &&
 	    (error = VFS_SYNC(vp->v_rdev->si_mountpoint, MNT_WAIT)) != 0)
 		return (error);
 	return (0);

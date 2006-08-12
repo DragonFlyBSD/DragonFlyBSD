@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.40 2006/06/05 07:26:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.41 2006/08/12 00:26:21 dillon Exp $
  */
 
 /*
@@ -1797,7 +1797,7 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
  * 	- look up fsid in mount list (if not found ret error)
  *	- get vp and export rights by calling VFS_FHTOVP()
  *	- if cred->cr_uid == 0 or MNT_EXPORTANON set it to credanon
- *	- if not lockflag unlock it with VOP_UNLOCK()
+ *	- if not lockflag unlock it with vn_unlock()
  */
 int
 nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
@@ -1865,7 +1865,7 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 		*rdonlyp = 0;
 
 	if (!lockflag)
-		VOP_UNLOCK(*vpp, 0);
+		vn_unlock(*vpp);
 	return (0);
 }
 

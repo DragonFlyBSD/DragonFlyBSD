@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.32 2006/08/11 01:55:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.33 2006/08/12 00:26:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,7 +78,6 @@ static int	union_getattr (struct vop_getattr_args *ap);
 static int	union_inactive (struct vop_inactive_args *ap);
 static int	union_ioctl (struct vop_ioctl_args *ap);
 static int	union_link (struct vop_old_link_args *ap);
-static int	union_lock (struct vop_lock_args *ap);
 static int	union_lookup (struct vop_old_lookup_args *ap);
 static int	union_lookup1 (struct vnode *udvp, struct vnode **dvp,
 				   struct vnode **vpp,
@@ -103,7 +102,6 @@ static int	union_strategy (struct vop_strategy_args *ap);
 static int	union_getpages (struct vop_getpages_args *ap);
 static int	union_putpages (struct vop_putpages_args *ap);
 static int	union_symlink (struct vop_old_symlink_args *ap);
-static int	union_unlock (struct vop_unlock_args *ap);
 static int	union_whiteout (struct vop_old_whiteout_args *ap);
 static int	union_write (struct vop_read_args *ap);
 
@@ -358,10 +356,10 @@ union_lookup(struct vop_old_lookup_args *ap)
 		    uerror,
 		    upperdvp,
 		    upperdvp->v_usecount,
-		    VOP_ISLOCKED(upperdvp, NULL),
+		    vn_islocked(upperdvp),
 		    uppervp,
 		    (uppervp ? uppervp->v_usecount : -99),
-		    (uppervp ? VOP_ISLOCKED(uppervp, NULL) : -99)
+		    (uppervp ? vn_islocked(uppervp) : -99)
 		));
 
 		/*
@@ -528,11 +526,11 @@ union_lookup(struct vop_old_lookup_args *ap)
 	 */
 
 	if (uppervp && uppervp != upperdvp)
-		VOP_UNLOCK(uppervp, 0);
+		vn_unlock(uppervp);
 	if (lowervp)
-		VOP_UNLOCK(lowervp, 0);
+		vn_unlock(lowervp);
 	if (upperdvp)
-		VOP_UNLOCK(upperdvp, 0);
+		vn_unlock(upperdvp);
 
 	error = union_allocvp(ap->a_vpp, dvp->v_mount, dvp, upperdvp, cnp,
 			      uppervp, lowervp, 1);
@@ -594,7 +592,7 @@ out:
 
 	if (*ap->a_vpp != dvp) {
 		if ((error == 0 || error == EJUSTRETURN) && !lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 		}
 	}
 
@@ -638,7 +636,7 @@ union_create(struct vop_old_create_args *ap)
 		error = VOP_CREATE(dvp, &vp, cnp, ap->a_vap);
 		if (error == 0) {
 			mp = ap->a_dvp->v_mount;
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			UDEBUG(("ALLOCVP-1 FROM %p REFS %d\n", vp, vp->v_usecount));
 			error = union_allocvp(ap->a_vpp, mp, NULLVP, NULLVP,
 				cnp, vp, NULLVP, 1);
@@ -855,7 +853,7 @@ union_access(struct vop_access_args *ap)
 				error = vop_access_ap(ap);
 			}
 		}
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 	}
 	return(error);
 }
@@ -1258,7 +1256,7 @@ union_link(struct vop_old_link_args *ap)
 			if (dun->un_uppervp == tun->un_dirvp) {
 				if (dun->un_flags & UN_ULOCK) {
 					dun->un_flags &= ~UN_ULOCK;
-					VOP_UNLOCK(dun->un_uppervp, 0);
+					vn_unlock(dun->un_uppervp);
 				}
 			}
 #endif
@@ -1270,7 +1268,7 @@ union_link(struct vop_old_link_args *ap)
 				dun->un_flags |= UN_ULOCK;
 			}
 #endif
-			VOP_UNLOCK(ap->a_vp, 0);
+			vn_unlock(ap->a_vp);
 		}
 		vp = tun->un_uppervp;
 	}
@@ -1288,7 +1286,7 @@ union_link(struct vop_old_link_args *ap)
 	if ((tdvp = union_lock_upper(dun, td)) == NULLVP)
 		return (EROFS);
 
-	VOP_UNLOCK(ap->a_tdvp, 0);	/* unlock calling node */
+	vn_unlock(ap->a_tdvp);	/* unlock calling node */
 	error = VOP_LINK(tdvp, vp, cnp); /* call link on upper */
 
 	/*
@@ -1352,7 +1350,7 @@ union_rename(struct vop_old_rename_args *ap)
 			case VREG:
 				vn_lock(un->un_vnode, LK_EXCLUSIVE | LK_RETRY);
 				error = union_copyup(un, 1, ap->a_fcnp->cn_cred, ap->a_fcnp->cn_td);
-				VOP_UNLOCK(un->un_vnode, 0);
+				vn_unlock(un->un_vnode);
 				if (error)
 					goto bad;
 				break;
@@ -1371,9 +1369,9 @@ union_rename(struct vop_old_rename_args *ap)
 				vn_lock(fdvp, LK_EXCLUSIVE | LK_RETRY);
 				error = union_mkshadow(um, fdvp, 
 					    ap->a_fcnp, &un->un_uppervp);
-				VOP_UNLOCK(fdvp, 0);
+				vn_unlock(fdvp);
 				if (un->un_uppervp)
-					VOP_UNLOCK(un->un_uppervp, 0);
+					vn_unlock(un->un_uppervp);
 				if (error)
 					goto bad;
 				break;
@@ -1482,7 +1480,7 @@ union_mkdir(struct vop_old_mkdir_args *ap)
 		union_unlock_upper(upperdvp, td);
 
 		if (error == 0) {
-			VOP_UNLOCK(vp, 0);
+			vn_unlock(vp);
 			UDEBUG(("ALLOCVP-2 FROM %p REFS %d\n", vp, vp->v_usecount));
 			error = union_allocvp(ap->a_vpp, ap->a_dvp->v_mount,
 				ap->a_dvp, NULLVP, cnp, vp, NULLVP, 1);
@@ -1639,7 +1637,7 @@ union_inactive(struct vop_inactive_args *ap)
 #if 0
 	if ((un->un_flags & UN_ULOCK) && un->un_uppervp) {
 		un->un_flags &= ~UN_ULOCK;
-		VOP_UNLOCK(un->un_uppervp, 0);
+		vn_unlock(un->un_uppervp);
 	}
 #endif
 
@@ -1658,79 +1656,6 @@ union_reclaim(struct vop_reclaim_args *ap)
 	union_freevp(ap->a_vp);
 
 	return (0);
-}
-
-static int
-union_lock(struct vop_lock_args *ap)
-{
-#if 0
-	struct vnode *vp = ap->a_vp;
-	struct thread *td = ap->a_td;
-	int flags = ap->a_flags;
-	struct union_node *un;
-#endif
-	int error;
-
-	error = vop_stdlock(ap);
-#if 0
-	un = VTOUNION(vp);
-
-	if (error == 0) {
-		/*
-		 * Lock the upper if it exists and this is an exclusive lock
-		 * request.
-		 */
-		if (un->un_uppervp != NULLVP && 
-		    (flags & LK_TYPE_MASK) == LK_EXCLUSIVE) {
-			if ((un->un_flags & UN_ULOCK) == 0 && vp->v_usecount) {
-				error = vn_lock(un->un_uppervp, flags);
-				if (error) {
-					struct vop_unlock_args uap = { 0 };
-					uap.a_vp = ap->a_vp;
-					uap.a_flags = ap->a_flags;
-					vop_stdunlock(&uap);
-					return (error);
-				}
-				un->un_flags |= UN_ULOCK;
-			}
-		}
-	}
-#endif
-	return (error);
-}
-
-/*
- *	union_unlock:
- *
- *	Unlock our union node.  This also unlocks uppervp.  
- *
- * union_unlock(struct vnode *a_vp, int a_flags, struct thread *a_td)
- */
-static int
-union_unlock(struct vop_unlock_args *ap)
-{
-	int error;
-#if 0
-	struct union_node *un = VTOUNION(ap->a_vp);
-
-	KASSERT((un->un_uppervp == NULL || un->un_uppervp->v_usecount > 0), ("uppervp usecount is 0"));
-#endif
-
-	error = vop_stdunlock(ap);
-#if 0
-
-	/*
-	 * If no exclusive locks remain and we are holding an uppervp lock,
-	 * remove the uppervp lock.
-	 */
-
-	if ((un->un_flags & UN_ULOCK) && 
-	    lockstatus(&un->un_lock, NULL) != LK_EXCLUSIVE) {
-		un->un_flags &= ~UN_ULOCK;
-		VOP_UNLOCK(un->un_uppervp, LK_EXCLUSIVE);
-	}
-#endif
-	return(error);
 }
 
 /*
@@ -1848,9 +1773,7 @@ struct vop_ops union_vnode_vops = {
 	.vop_getattr =		union_getattr,
 	.vop_inactive =		union_inactive,
 	.vop_ioctl =		union_ioctl,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		union_link,
-	.vop_lock =		union_lock,
 	.vop_old_lookup =	union_lookup,
 	.vop_old_mkdir =	union_mkdir,
 	.vop_old_mknod =	union_mknod,
@@ -1870,7 +1793,6 @@ struct vop_ops union_vnode_vops = {
 	.vop_setattr =		union_setattr,
 	.vop_strategy =		union_strategy,
 	.vop_old_symlink =	union_symlink,
-	.vop_unlock =		union_unlock,
 	.vop_old_whiteout =	union_whiteout,
 	.vop_write =		union_write
 };

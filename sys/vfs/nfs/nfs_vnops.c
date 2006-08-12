@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.63 2006/07/19 06:08:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.64 2006/08/12 00:26:21 dillon Exp $
  */
 
 
@@ -146,9 +146,7 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_getpages =		nfs_getpages,
 	.vop_putpages =		nfs_putpages,
 	.vop_inactive =		nfs_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		nfs_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_lookup =	nfs_lookup,
 	.vop_old_mkdir =	nfs_mkdir,
 	.vop_old_mknod =	nfs_mknod,
@@ -166,7 +164,6 @@ struct vop_ops nfsv2_vnode_vops = {
 	.vop_setattr =		nfs_setattr,
 	.vop_strategy =		nfs_strategy,
 	.vop_old_symlink =	nfs_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		nfs_write,
 	.vop_nresolve =		nfs_nresolve
 };
@@ -181,13 +178,10 @@ struct vop_ops nfsv2_spec_vops = {
 	.vop_fsync =		nfs_fsync,
 	.vop_getattr =		nfs_getattr,
 	.vop_inactive =		nfs_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		nfs_print,
 	.vop_read =		nfsspec_read,
 	.vop_reclaim =		nfs_reclaim,
 	.vop_setattr =		nfs_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		nfsspec_write
 };
 
@@ -198,13 +192,10 @@ struct vop_ops nfsv2_fifo_vops = {
 	.vop_fsync =		nfs_fsync,
 	.vop_getattr =		nfs_getattr,
 	.vop_inactive =		nfs_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		nfs_print,
 	.vop_read =		nfsfifo_read,
 	.vop_reclaim =		nfs_reclaim,
 	.vop_setattr =		nfs_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		nfsfifo_write
 };
 
@@ -1024,14 +1015,14 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		*vpp = newvp;
 		m_freem(mrep);
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
 
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
 		if (error) {
@@ -1058,7 +1049,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			return (error);
 		}
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, 0);
+			vn_unlock(dvp);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		newvp = NFSTOV(np);
@@ -1087,7 +1078,7 @@ nfsmout:
 		     cnp->cn_nameiop == NAMEI_RENAME) &&
 		    error == ENOENT) {
 			if (!lockparent) {
-				VOP_UNLOCK(dvp, 0);
+				vn_unlock(dvp);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			if (dvp->v_mount->mnt_flag & MNT_RDONLY)

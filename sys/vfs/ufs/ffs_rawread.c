@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.25 2006/08/08 03:52:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.26 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,12 +52,11 @@
 #include <sys/sysctl.h>
 
 static int ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t offset,
-				 size_t len, struct thread *td, struct buf *bp,
-				 int *baseticks);
+				 size_t len, struct buf *bp, int *baseticks);
 static int ffs_rawread_main(struct vnode *vp,
 			    struct uio *uio);
 
-static int ffs_rawread_sync(struct vnode *vp, struct thread *td);
+static int ffs_rawread_sync(struct vnode *vp);
 
 int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 
@@ -89,7 +88,7 @@ ffs_rawread_setup(void)
 
 
 static int
-ffs_rawread_sync(struct vnode *vp, struct thread *td)
+ffs_rawread_sync(struct vnode *vp)
 {
 	int error;
 	int upgraded;
@@ -101,10 +100,10 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 	    (vp->v_flag & VOBJDIRTY) != 0) {
 		crit_exit();
 
-		if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
+		if (vn_islocked(vp) != LK_EXCLUSIVE) {
 			upgraded = 1;
 			/* Upgrade to exclusive lock, this might block */
-			VOP_LOCK(vp, LK_UPGRADE);
+			vn_lock(vp, LK_UPGRADE);
 		} else
 			upgraded = 0;
 		
@@ -123,7 +122,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			if (error != 0) {
 				crit_exit();
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE);
+					vn_lock(vp, LK_DOWNGRADE);
 				return (error);
 			}
 		}
@@ -132,7 +131,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			crit_exit();
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0) {
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE);
+					vn_lock(vp, LK_DOWNGRADE);
 				return (error);
 			}
 			crit_enter();
@@ -142,7 +141,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		}
 		crit_exit();
 		if (upgraded != 0)
-			VOP_LOCK(vp, LK_DOWNGRADE);
+			vn_lock(vp, LK_DOWNGRADE);
 	} else {
 		crit_exit();
 	}
@@ -152,8 +151,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 
 static int
 ffs_rawread_readahead(struct vnode *vp, caddr_t udata, off_t loffset,
-		      size_t len, struct thread *td, struct buf *bp,
-		      int *baseticks)
+		      size_t len, struct buf *bp, int *baseticks)
 {
 	int error;
 	int iolen;
@@ -239,9 +237,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 	caddr_t udata;
 	int resid;
 	off_t offset;
-	struct thread *td;
 	
-	td = uio->uio_td ? uio->uio_td : curthread;
 	udata = uio->uio_iov->iov_base;
 	resid = uio->uio_resid;
 	offset = uio->uio_offset;
@@ -258,7 +254,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			/* XXX: Leave some bufs for swap */
 			bp = getpbuf(&ffsrawbufcnt);
 			error = ffs_rawread_readahead(vp, udata, offset, resid,
-				    td, bp, &baseticks);
+						      bp, &baseticks);
 			if (error != 0)
 				break;
 			
@@ -274,7 +270,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 							udata + bp->b_bufsize,
 							offset + bp->b_bufsize,
 							resid - bp->b_bufsize,
-							td, nbp, &baseticks);
+							nbp, &baseticks);
 					if (nerror) {
 						relpbuf(nbp, &ffsrawbufcnt);
 						nbp = NULL;
@@ -308,7 +304,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			/* Incomplete read.  Try to read remaining part */
 			error = ffs_rawread_readahead(
 				    vp, udata, offset,
-				    bp->b_bufsize - iolen, td, bp, &baseticks);
+				    bp->b_bufsize - iolen, bp, &baseticks);
 			if (error != 0)
 				break;
 		} else if (nbp != NULL) { /* Complete read with readahead */
@@ -327,7 +323,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 						vp, udata + bp->b_bufsize,
 				   		offset + bp->b_bufsize,
 						resid - bp->b_bufsize,
-						td, nbp, &baseticks);
+						nbp, &baseticks);
 				if (nerror != 0) {
 					relpbuf(nbp, &ffsrawbufcnt);
 					nbp = NULL;
@@ -337,7 +333,7 @@ ffs_rawread_main(struct vnode *vp, struct uio *uio)
 			break;		
 		}  else if (resid > 0) { /* More to read, no readahead */
 			error = ffs_rawread_readahead(vp, udata, offset,
-						      resid, td, bp,
+						      resid, bp,
 						      &baseticks);
 			if (error != 0)
 				break;
@@ -373,8 +369,7 @@ ffs_rawread(struct vnode *vp,
 	    uio->uio_iovcnt == 1 && 
 	    uio->uio_segflg == UIO_USERSPACE &&
 	    uio->uio_resid == uio->uio_iov->iov_len &&
-	    (((uio->uio_td != NULL) ? uio->uio_td : curthread)->td_flags &
-	     TDF_DEADLKTREAT) == 0) {
+	    (curthread->td_flags & TDF_DEADLKTREAT) == 0) {
 		int secsize;		/* Media sector size */
 		off_t filebytes;	/* Bytes left of file */
 		int blockbytes;		/* Bytes left of file in full blocks */
@@ -391,9 +386,7 @@ ffs_rawread(struct vnode *vp,
 		    (uio->uio_resid & (secsize - 1)) == 0) {
 			
 			/* Sync dirty pages and buffers if needed */
-			error = ffs_rawread_sync(vp,
-						 (uio->uio_td != NULL) ?
-						 uio->uio_td : curthread);
+			error = ffs_rawread_sync(vp);
 			if (error != 0)
 				return error;
 			

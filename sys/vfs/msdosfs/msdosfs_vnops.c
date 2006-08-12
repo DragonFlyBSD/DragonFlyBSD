@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.39 2006/07/18 22:22:15 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.40 2006/08/12 00:26:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1047,7 +1047,7 @@ abortit:
 		    (fcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (tcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (ip->de_flag & DE_RENAME)) {
-			VOP_UNLOCK(fvp, 0);
+			vn_unlock(fvp);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -1081,7 +1081,7 @@ abortit:
 	 * call to doscheckpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
-	VOP_UNLOCK(fvp, 0);
+	vn_unlock(fvp);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
 
@@ -1185,7 +1185,7 @@ abortit:
 	fcnp->cn_flags &= ~CNP_MODMASK;
 	fcnp->cn_flags |= CNP_LOCKPARENT;
 	if (newparent == 0)
-		VOP_UNLOCK(tdvp, 0);
+		vn_unlock(tdvp);
 	error = relookup(fdvp, &fvp, fcnp);
 	if (error || fvp == NULL) {
 		/*
@@ -1515,7 +1515,7 @@ msdosfs_rmdir(struct vop_old_rmdir_args *ap)
 	 * directory.  Since dos filesystems don't do this we just purge
 	 * the name cache.
 	 */
-	VOP_UNLOCK(dvp, 0);
+	vn_unlock(dvp);
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
@@ -1981,9 +1981,7 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_fsync =		msdosfs_fsync,
 	.vop_getattr =		msdosfs_getattr,
 	.vop_inactive =		msdosfs_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		msdosfs_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_mkdir =	msdosfs_mkdir,
 	.vop_old_mknod =	msdosfs_mknod,
 	.vop_pathconf =		msdosfs_pathconf,
@@ -1997,7 +1995,6 @@ struct vop_ops msdosfs_vnode_vops = {
 	.vop_setattr =		msdosfs_setattr,
 	.vop_strategy =		msdosfs_strategy,
 	.vop_old_symlink =	msdosfs_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		msdosfs_write,
 	.vop_getpages =		msdosfs_getpages,
 	.vop_putpages =		msdosfs_putpages

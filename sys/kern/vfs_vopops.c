@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.31 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.32 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,6 @@
 		#name }
 
 VNODEOP_DESC_INIT(default);
-VNODEOP_DESC_INIT(islocked);
 VNODEOP_DESC_INIT(old_lookup);
 VNODEOP_DESC_INIT(old_create);
 VNODEOP_DESC_INIT(old_whiteout);
@@ -112,8 +111,6 @@ VNODEOP_DESC_INIT(readdir);
 VNODEOP_DESC_INIT(readlink);
 VNODEOP_DESC_INIT(inactive);
 VNODEOP_DESC_INIT(reclaim);
-VNODEOP_DESC_INIT(lock);
-VNODEOP_DESC_INIT(unlock);
 VNODEOP_DESC_INIT(bmap);
 VNODEOP_DESC_INIT(strategy);
 VNODEOP_DESC_INIT(print);
@@ -157,21 +154,6 @@ VNODEOP_DESC_INIT(nrename);
  * available for general use and have been renamed to vop_old_*().  Only 
  * the code in vfs_default.c is allowed to call those ops.
  */
-
-int
-vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
-{
-	struct vop_islocked_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_islocked_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_td = td;
-
-	DO_OPS(ops, error, &ap, vop_islocked);
-	return(error);
-}
 
 int
 vop_old_lookup(struct vop_ops *ops, struct vnode *dvp,
@@ -640,36 +622,6 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 	ap.a_vp = vp;
 
 	DO_OPS(ops, error, &ap, vop_reclaim);
-	return(error);
-}
-
-int
-vop_lock(struct vop_ops *ops, struct vnode *vp, int flags)
-{
-	struct vop_lock_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_lock_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_flags = flags;
-
-	DO_OPS(ops, error, &ap, vop_lock);
-	return(error);
-}
-
-int
-vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags)
-{
-	struct vop_unlock_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_unlock_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_flags = flags;
-
-	DO_OPS(ops, error, &ap, vop_unlock);
 	return(error);
 }
 
@@ -1321,15 +1273,6 @@ vop_journal_operate_ap(struct vop_generic_args *ap)
 }
 
 int
-vop_islocked_ap(struct vop_islocked_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_islocked);
-	return(error);
-}
-
-int
 vop_open_ap(struct vop_open_args *ap)
 {
 	int error;
@@ -1479,24 +1422,6 @@ vop_reclaim_ap(struct vop_reclaim_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_reclaim);
-	return(error);
-}
-
-int
-vop_lock_ap(struct vop_lock_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_lock);
-	return(error);
-}
-
-int
-vop_unlock_ap(struct vop_unlock_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_unlock);
 	return(error);
 }
 

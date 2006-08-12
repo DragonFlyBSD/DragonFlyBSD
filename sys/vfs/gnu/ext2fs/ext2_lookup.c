@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.23 2006/05/26 16:56:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.24 2006/08/12 00:26:20 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -524,7 +524,7 @@ searchloop:
 		 * information cannot be used.
 		 */
 		if (!lockparent)
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 		return (EJUSTRETURN);
 	}
 	return (ENOENT);
@@ -597,7 +597,7 @@ found:
 		}
 		*vpp = tdp;
 		if (!lockparent)
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 		return (0);
 	}
 
@@ -620,7 +620,7 @@ found:
 			return (error);
 		*vpp = tdp;
 		if (!lockparent)
-			VOP_UNLOCK(vdp, 0);
+			vn_unlock(vdp);
 		return (0);
 	}
 
@@ -645,7 +645,7 @@ found:
 	 */
 	pdp = vdp;
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, 0);	/* race to get the inode */
+		vn_unlock(pdp);	/* race to get the inode */
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0) {
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY);
 			return (error);
@@ -662,7 +662,7 @@ found:
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0)
 			return (error);
 		if (!lockparent)
-			VOP_UNLOCK(pdp, 0);
+			vn_unlock(pdp);
 		*vpp = tdp;
 	}
 	return (0);

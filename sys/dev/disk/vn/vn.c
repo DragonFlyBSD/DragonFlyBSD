@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.25 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.26 2006/08/12 00:26:18 dillon Exp $
  */
 
 /*
@@ -386,7 +386,7 @@ vnstrategy(struct dev_strategy_args *ap)
 			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
 		else
 			error = VOP_WRITE(vn->sc_vp, &auio, IO_NOWDRAIN, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0);
+		vn_unlock(vn->sc_vp);
 		bp->b_resid = auio.uio_resid;
 		if (error) {
 			bp->b_error = error;
@@ -569,7 +569,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, dev_t dev,
 			error = EINVAL;
 		goto done;
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	vn->sc_secsize = DEV_BSIZE;
 	vn->sc_vp = vp;
 	nd.nl_open_vp = NULL;
@@ -721,7 +721,7 @@ vnsetcred(struct vn_softc *vn, struct ucred *cred)
 		auio.uio_resid = aiov.iov_len;
 		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 		error = VOP_READ(vn->sc_vp, &auio, 0, vn->sc_cred);
-		VOP_UNLOCK(vn->sc_vp, 0);
+		vn_unlock(vn->sc_vp);
 		free(tmpbuf, M_TEMP);
 	}
 	return (error);

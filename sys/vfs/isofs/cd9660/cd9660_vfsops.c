@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.38 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.39 2006/08/12 00:26:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ iso_mountroot(struct mount *mp)
 
 	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(rootvp, FREAD, FSCRED, NULL);
-	VOP_UNLOCK(rootvp, 0);
+	vn_unlock(rootvp);
 	if (error)
 		return (error);
 
@@ -235,7 +235,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		vput(devvp);
 		return (error);
 	}
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = iso_mountfs(devvp, mp, &args);
@@ -297,7 +297,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct iso_args *argp)
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL);
-	VOP_UNLOCK(devvp, 0);
+	vn_unlock(devvp);
 	if (error)
 		return error;
 	dev = devvp->v_rdev;

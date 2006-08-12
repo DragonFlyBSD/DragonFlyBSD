@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.42 2006/07/19 06:08:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.43 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,8 +79,6 @@ struct vop_ops default_vnode_vops = {
 	.vop_advlock		= (void *)vop_einval,
 	.vop_fsync		= (void *)vop_null,
 	.vop_ioctl		= (void *)vop_enotty,
-	.vop_islocked		= vop_stdislocked,
-	.vop_lock		= vop_stdlock,
 	.vop_mmap		= (void *)vop_einval,
 	.vop_old_lookup		= vop_nolookup,
 	.vop_open		= vop_stdopen,
@@ -91,7 +89,6 @@ struct vop_ops default_vnode_vops = {
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
 	.vop_revoke		= vop_stdrevoke,
 	.vop_strategy		= vop_nostrategy,
-	.vop_unlock		= vop_stdunlock,
 	.vop_getacl		= (void *)vop_eopnotsupp,
 	.vop_setacl		= (void *)vop_eopnotsupp,
 	.vop_aclcheck		= (void *)vop_eopnotsupp,
@@ -222,9 +219,9 @@ vop_compat_nresolve(struct vop_nresolve_args *ap)
 	 */
 	error = vop_old_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0)
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		/* was resolved by another process while we were unlocked */
 		if (error == 0)
@@ -294,7 +291,7 @@ vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	 */
 	error = vop_old_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
 	if (error == 0)
-		VOP_UNLOCK(*ap->a_vpp, 0);
+		vn_unlock(*ap->a_vpp);
 	if (cnp.cn_flags & CNP_PDIRUNLOCK)
 		vrele(ap->a_dvp);
 	else
@@ -379,7 +376,7 @@ vop_compat_ncreate(struct vop_ncreate_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -461,7 +458,7 @@ vop_compat_nmkdir(struct vop_nmkdir_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -543,7 +540,7 @@ vop_compat_nmknod(struct vop_nmknod_args *ap)
 		KKASSERT(*ap->a_vpp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -622,7 +619,7 @@ vop_compat_nlink(struct vop_nlink_args *ap)
 		}
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -697,7 +694,7 @@ vop_compat_nsymlink(struct vop_nsymlink_args *ap)
 		KKASSERT(vp == NULL);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -792,7 +789,7 @@ vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
 		break;
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -867,7 +864,7 @@ vop_compat_nremove(struct vop_nremove_args *ap)
 			vput(vp);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -950,7 +947,7 @@ vop_compat_nrmdir(struct vop_nrmdir_args *ap)
 			vput(vp);
 	}
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, 0);
+		vn_unlock(dvp);
 	vrele(dvp);
 	return (error);
 }
@@ -1024,13 +1021,13 @@ vop_compat_nrename(struct vop_nrename_args *ap)
 	}
 	if ((fcnp.cn_flags & CNP_PDIRUNLOCK) == 0) {
 		fcnp.cn_flags |= CNP_PDIRUNLOCK;
-		VOP_UNLOCK(fdvp, 0);
+		vn_unlock(fdvp);
 	}
 	if (error) {
 		vrele(fdvp);
 		return (error);
 	}
-	VOP_UNLOCK(fvp, 0);
+	vn_unlock(fvp);
 
 	/*
 	 * fdvp and fvp are now referenced and unlocked.
@@ -1235,51 +1232,6 @@ vop_stdclose(struct vop_close_args *ap)
 	}
 	--vp->v_opencount;
 	return (0);
-}
-
-/*
- * Standard lock.  The lock is recursive-capable only if the lock was
- * initialized with LK_CANRECURSE or that flag is passed in a_flags.
- */
-int
-vop_stdlock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		int a_flags;
-	} */ *ap;
-{               
-	int error;
-
-#ifndef	DEBUG_LOCKS
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags);
-#else
-	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags,
-			"vop_stdlock", ap->a_vp->filename, ap->a_vp->line);
-#endif
-	return(error);
-}
-
-int
-vop_stdunlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-		int a_flags;
-	} */ *ap;
-{
-	int error;
-
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE);
-	return(error);
-}
-
-int
-vop_stdislocked(ap)
-	struct vop_islocked_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
-{
-	return (lockstatus(&ap->a_vp->v_lock, ap->a_td));
 }
 
 /*

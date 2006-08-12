@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.64 2006/08/11 01:55:00 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.65 2006/08/12 00:26:20 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -405,29 +405,6 @@ extern struct lwkt_token mntvnode_token;
 
 typedef int (*vnodeopv_entry_t)(struct vop_generic_args *);
 
-#ifdef DEBUG_VFS_LOCKS
-/*
- * Macros to aid in tracing VFS locking problems.  Not totally
- * reliable since if the process sleeps between changing the lock
- * state and checking it with the assert, some other process could
- * change the state.  They are good enough for debugging a single
- * filesystem using a single-threaded test.  I find that 'cvs co src'
- * is a pretty good test.
- */
-
-#define	ASSERT_VOP_LOCKED(vp, str) assert_vop_locked(vp, str)
-#define	ASSERT_VOP_UNLOCKED(vp, str) assert_vop_unlocked(vp, str);
-
-void	assert_vop_locked(struct vnode *vp, const char *str);
-void	assert_vop_unlocked(struct vnode *vp, const char *str);
-
-#else
-
-#define	ASSERT_VOP_LOCKED(vp, str)
-#define	ASSERT_VOP_UNLOCKED(vp, str)
-
-#endif /* DEBUG_VFS_LOCKS */
-
 /*
  * VOCALL calls an op given an ops vector.  We break it out because BSD's
  * vclean changes the ops vector and then wants to call ops with the old
@@ -504,6 +481,8 @@ void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_close (struct vnode *vp, int flags);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, int flags);
+int	vn_islocked (struct vnode *vp);
+void	vn_unlock (struct vnode *vp);
 #ifdef	DEBUG_LOCKS
 int	debug_vn_lock (struct vnode *vp, int flags,
 		const char *filename, int line);
@@ -529,10 +508,6 @@ void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
-int	vop_stdislocked (struct vop_islocked_args *ap);
-int	vop_stdlock (struct vop_lock_args *ap);
-int	vop_stdrlock (struct vop_lock_args *ap);
-int	vop_stdunlock (struct vop_unlock_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);

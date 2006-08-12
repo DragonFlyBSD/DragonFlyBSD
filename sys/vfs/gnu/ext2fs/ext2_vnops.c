@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.35 2006/07/19 06:08:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.36 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -385,7 +385,7 @@ ext2_link(struct vop_old_link_args *ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 out2:
 	return (error);
 }
@@ -457,13 +457,13 @@ abortit:
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
  	if (ip->i_nlink >= LINK_MAX) {
- 		VOP_UNLOCK(fvp, 0);
+ 		vn_unlock(fvp);
  		error = EMLINK;
  		goto abortit;
  	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0);
+		vn_unlock(fvp);
 		error = EPERM;
 		goto abortit;
 	}
@@ -474,7 +474,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0);
+			vn_unlock(fvp);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -503,7 +503,7 @@ abortit:
 	ip->i_nlink++;
 	ip->i_flag |= IN_CHANGE;
 	if ((error = EXT2_UPDATE(fvp, 1)) != 0) {
-		VOP_UNLOCK(fvp, 0);
+		vn_unlock(fvp);
 		goto bad;
 	}
 
@@ -518,7 +518,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred);
-	VOP_UNLOCK(fvp, 0);
+	vn_unlock(fvp);
 
 	/*
 	 * tvp (if not NULL) and tdvp are locked.  fvp and fdvp are not.
@@ -1051,7 +1051,7 @@ ext2_rmdir(struct vop_old_rmdir_args *ap)
 		goto out;
 	dp->i_nlink--;
 	dp->i_flag |= IN_CHANGE;
-	VOP_UNLOCK(dvp, 0);
+	vn_unlock(dvp);
 	/*
 	 * Truncate inode.  The only stuff left
 	 * in the directory is "." and "..".  The
@@ -2186,9 +2186,7 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_old_create =	ext2_create,
 	.vop_getattr =		ext2_getattr,
 	.vop_inactive =		ext2_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_old_link =		ext2_link,
-	.vop_lock =		vop_stdlock,
 	.vop_old_mkdir =	ext2_mkdir,
 	.vop_old_mknod =	ext2_mknod,
 	.vop_mmap =		ext2_mmap,
@@ -2206,7 +2204,6 @@ struct vop_ops ext2_vnode_vops = {
 	.vop_setattr =		ext2_setattr,
 	.vop_strategy =		ext2_strategy,
 	.vop_old_symlink =	ext2_symlink,
-	.vop_unlock =		vop_stdunlock,
 	.vop_old_whiteout =	ext2_whiteout,
 	.vop_getpages =		ext2_getpages,
 	.vop_putpages =		ext2_putpages
@@ -2219,13 +2216,10 @@ struct vop_ops ext2_spec_vops = {
 	.vop_close =		ext2spec_close,
 	.vop_getattr =		ext2_getattr,
 	.vop_inactive =		ext2_inactive,
-	.vop_islocked =		vop_stdislocked,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		ext2_print,
 	.vop_read =		ext2spec_read,
 	.vop_reclaim =		ext2_reclaim,
 	.vop_setattr =		ext2_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		ext2spec_write
 };
 
@@ -2236,14 +2230,11 @@ struct vop_ops ext2_fifo_vops = {
 	.vop_close =		ext2fifo_close,
 	.vop_getattr =		ext2_getattr,
 	.vop_inactive =		ext2_inactive,
-	.vop_islocked =		vop_stdislocked,
 	.vop_kqfilter =		ext2fifo_kqfilter,
-	.vop_lock =		vop_stdlock,
 	.vop_print =		ext2_print,
 	.vop_read =		ext2fifo_read,
 	.vop_reclaim =		ext2_reclaim,
 	.vop_setattr =		ext2_setattr,
-	.vop_unlock =		vop_stdunlock,
 	.vop_write =		ext2fifo_write
 };
 

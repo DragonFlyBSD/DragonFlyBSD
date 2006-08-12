@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.33 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.34 2006/08/12 00:26:19 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -435,7 +435,7 @@ out:
 	if (cookies)
 		free(cookies, M_TEMP);
 
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	free(buf, M_TEMP);
 done:
 	fdrop(fp);

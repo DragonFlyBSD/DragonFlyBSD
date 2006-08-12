@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.99 2006/08/11 01:54:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.100 2006/08/12 00:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -216,7 +216,7 @@ sys_mount(struct mount_args *uap)
 		vp->v_flag |= VMOUNT;
 		mp->mnt_flag |=
 		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 		goto update;
 	}
 	/*
@@ -306,7 +306,7 @@ sys_mount(struct mount_args *uap)
 	mp->mnt_vnodecovered = vp;
 	mp->mnt_stat.f_owner = cred->cr_uid;
 	mp->mnt_iosize_max = DFLTPHYS;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 update:
 	/*
 	 * Set the mount level flags.
@@ -370,7 +370,7 @@ update:
 		mountlist_insert(mp, MNTINS_LAST);
 		checkdirs(vp, mp->mnt_ncp);
 		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp);
 		if ((error = VFS_START(mp, 0)) != 0)
@@ -1114,7 +1114,7 @@ sys_fchdir(struct fchdir_args *uap)
 	if (error == 0) {
 		ovp = fdp->fd_cdir;
 		oncp = fdp->fd_ncdir;
-		VOP_UNLOCK(vp, 0);	/* leave ref intact */
+		vn_unlock(vp);		/* leave ref intact */
 		fdp->fd_cdir = vp;
 		fdp->fd_ncdir = ncp;
 		cache_drop(oncp);
@@ -1145,7 +1145,7 @@ kern_chdir(struct nlookupdata *nd)
 		return (error);
 
 	error = checkvp_chdir(vp, td);
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	if (error == 0) {
 		ovp = fdp->fd_cdir;
 		oncp = fdp->fd_ncdir;
@@ -1258,7 +1258,7 @@ kern_chroot(struct namecache *ncp)
 	 * associate it with rdir/jdir.
 	 */
 	error = checkvp_chdir(vp, td);
-	VOP_UNLOCK(vp, 0);	/* leave reference intact */
+	vn_unlock(vp);			/* leave reference intact */
 	if (error == 0) {
 		vrele(fdp->fd_rdir);
 		fdp->fd_rdir = vp;	/* reference inherited by fd_rdir */
@@ -2613,7 +2613,7 @@ kern_ftruncate(int fd, off_t length)
 		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred);
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 done:
 	fdrop(fp);
 	return (error);
@@ -2661,7 +2661,7 @@ sys_fsync(struct fsync_args *uap)
 	    bioops.io_fsync) {
 		error = (*bioops.io_fsync)(vp);
 	}
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	fdrop(fp);
 	return (error);
 }
@@ -2956,7 +2956,7 @@ unionread:
 	loff = auio.uio_offset = fp->f_offset;
 	error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag, NULL, NULL);
 	fp->f_offset = auio.uio_offset;
-	VOP_UNLOCK(vp, 0);
+	vn_unlock(vp);
 	if (error)
 		goto done;
 	if (count == auio.uio_resid) {
@@ -3206,7 +3206,7 @@ sys_fhopen(struct fhopen_args *uap)
 			goto bad;
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, 0);			/* XXX */
+		vn_unlock(vp);				/* XXX */
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
@@ -3263,7 +3263,7 @@ sys_fhopen(struct fhopen_args *uap)
 			type = 0;
 		else
 			type = F_WAIT;
-		VOP_UNLOCK(vp, 0);
+		vn_unlock(vp);
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
 			 * release our private reference.

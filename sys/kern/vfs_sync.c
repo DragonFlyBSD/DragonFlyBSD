@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.12 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.13 2006/08/12 00:26:20 dillon Exp $
  */
 
 /*
@@ -308,10 +308,7 @@ static struct vop_ops sync_vnode_vops = {
 	.vop_fsync =	sync_fsync,
 	.vop_inactive =	sync_inactive,
 	.vop_reclaim =	sync_reclaim,
-	.vop_lock =	vop_stdlock,
-	.vop_unlock =	vop_stdunlock,
 	.vop_print =	sync_print,
-	.vop_islocked =	vop_stdislocked
 };
 
 static struct vop_ops *sync_vnode_vops_p = &sync_vnode_vops;
