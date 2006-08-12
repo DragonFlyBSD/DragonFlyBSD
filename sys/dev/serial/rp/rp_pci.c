@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_pci.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.4 2004/09/18 20:02:36 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.5 2006/08/12 05:18:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -52,20 +52,9 @@
 #include "rpreg.h"
 #include "rpvar.h"
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-/* PCI IDs  */
-#define RP_VENDOR_ID		0x11FE
-#define RP_DEVICE_ID_32I	0x0001
-#define RP_DEVICE_ID_8I		0x0002
-#define RP_DEVICE_ID_16I	0x0003
-#define RP_DEVICE_ID_4Q		0x0004
-#define RP_DEVICE_ID_8O		0x0005
-#define RP_DEVICE_ID_8J		0x0006
-#define RP_DEVICE_ID_4J		0x0007
-#define RP_DEVICE_ID_6M		0x000C
-#define RP_DEVICE_ID_4M		0x000D
 
 /**************************************************************************
   MUDBAC remapped for PCI
@@ -128,7 +117,7 @@ rp_pciprobe(device_t dev)
 	char *s;
 
 	s = NULL;
-	if ((pci_get_devid(dev) & 0xffff) == RP_VENDOR_ID)
+	if ((pci_get_devid(dev) & 0xffff) == PCI_VENDOR_COMTROL)
 		s = "RocketPort PCI";
 
 	if (s != NULL) {
@@ -276,19 +265,19 @@ sPCIInitController( CONTROLLER_t *CtlP,
 		}
 
 		switch( VendorDevice ) {
-		case RP_DEVICE_ID_4Q:
-		case RP_DEVICE_ID_4J:
-		case RP_DEVICE_ID_4M:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT4QUAD:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT4RJ:
+		case PCI_PRODUCT_COMTROL_ROCKETMODEM4:
       			CtlP->AiopNumChan[i] = 4;
 			break;
-		case RP_DEVICE_ID_6M:
+		case PCI_PRODUCT_COMTROL_ROCKETMODEM6:
       			CtlP->AiopNumChan[i] = 6;
 			break;
-		case RP_DEVICE_ID_8O:
-		case RP_DEVICE_ID_8J:
-		case RP_DEVICE_ID_8I:
-		case RP_DEVICE_ID_16I:
-		case RP_DEVICE_ID_32I:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT8OCTA:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT8RJ:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT8EXT:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT16EXT:
+		case PCI_PRODUCT_COMTROL_ROCKETPORT32EXT:
       			CtlP->AiopNumChan[i] = 8;
 			break;
 		default:
