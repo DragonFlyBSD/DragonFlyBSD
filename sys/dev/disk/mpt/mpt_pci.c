@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.5 2005/06/16 15:48:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.6 2006/08/12 05:19:46 swildner Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -38,6 +38,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -49,30 +50,6 @@
 #include <sys/malloc.h>
 
 #include "mpt_freebsd.h"
-
-#ifndef	PCI_VENDOR_LSI
-#define	PCI_VENDOR_LSI			0x1000
-#endif
-
-#ifndef	PCI_PRODUCT_LSI_FC909
-#define	PCI_PRODUCT_LSI_FC909		0x0620
-#endif
-
-#ifndef	PCI_PRODUCT_LSI_FC909A
-#define	PCI_PRODUCT_LSI_FC909A		0x0621
-#endif
-
-#ifndef	PCI_PRODUCT_LSI_FC919
-#define	PCI_PRODUCT_LSI_FC919		0x0624
-#endif
-
-#ifndef	PCI_PRODUCT_LSI_FC929
-#define	PCI_PRODUCT_LSI_FC929		0x0622
-#endif
-
-#ifndef	PCI_PRODUCT_LSI_1030
-#define	PCI_PRODUCT_LSI_1030		0x0030
-#endif
 
 #ifndef	PCIM_CMD_SERRESPEN
 #define	PCIM_CMD_SERRESPEN	0x0100
@@ -142,23 +119,23 @@ mpt_probe(device_t dev)
 {
 	char *desc;
 
-	if (pci_get_vendor(dev) != PCI_VENDOR_LSI)
+	if (pci_get_vendor(dev) != PCI_VENDOR_SYMBIOS)
 		return (ENXIO);
 
 	switch ((pci_get_device(dev) & ~1)) {
-	case PCI_PRODUCT_LSI_FC909:
+	case PCI_PRODUCT_SYMBIOS_FC909:
 		desc = "LSILogic FC909 FC Adapter";
 		break;
-	case PCI_PRODUCT_LSI_FC909A:
+	case PCI_PRODUCT_SYMBIOS_FC909A:
 		desc = "LSILogic FC909A FC Adapter";
 		break;
-	case PCI_PRODUCT_LSI_FC919:
+	case PCI_PRODUCT_SYMBIOS_FC919:
 		desc = "LSILogic FC919 FC Adapter";
 		break;
-	case PCI_PRODUCT_LSI_FC929:
+	case PCI_PRODUCT_SYMBIOS_FC929:
 		desc = "LSILogic FC929 FC Adapter";
 		break;
-	case PCI_PRODUCT_LSI_1030:
+	case PCI_PRODUCT_SYMBIOS_1030:
 		desc = "LSILogic 1030 Ultra4 Adapter";
 		break;
 	default:
@@ -257,10 +234,10 @@ mpt_attach(device_t dev)
 	}
 	bzero(mpt, sizeof (mpt_softc_t));
 	switch ((pci_get_device(dev) & ~1)) {
-	case PCI_PRODUCT_LSI_FC909:
-	case PCI_PRODUCT_LSI_FC909A:
-	case PCI_PRODUCT_LSI_FC919:
-	case PCI_PRODUCT_LSI_FC929:
+	case PCI_PRODUCT_SYMBIOS_FC909:
+	case PCI_PRODUCT_SYMBIOS_FC909A:
+	case PCI_PRODUCT_SYMBIOS_FC919:
+	case PCI_PRODUCT_SYMBIOS_FC929:
 		mpt->is_fc = 1;
 		break;
 	default:
@@ -298,8 +275,8 @@ mpt_attach(device_t dev)
 	 * Is this part a dual?
 	 * If so, link with our partner (around yet)
 	 */
-	if ((pci_get_device(dev) & ~1) == PCI_PRODUCT_LSI_FC929 ||
-	    (pci_get_device(dev) & ~1) == PCI_PRODUCT_LSI_1030) {
+	if ((pci_get_device(dev) & ~1) == PCI_PRODUCT_SYMBIOS_FC929 ||
+	    (pci_get_device(dev) & ~1) == PCI_PRODUCT_SYMBIOS_1030) {
 		mpt_link_peer(mpt);
 	}
 
