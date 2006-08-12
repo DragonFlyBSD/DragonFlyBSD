@@ -1,7 +1,7 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.8 2006/08/12 05:42:26 swildner Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.9 2006/08/12 22:34:23 swildner Exp $
 #
-# This file contains common settings used for building FreeBSD
+# This file contains common settings used for building DragonFly
 # sources.
 
 # Enable various levels of compiler warning checks.  These may be

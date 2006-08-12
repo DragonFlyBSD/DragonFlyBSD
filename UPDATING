@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.20 2006/07/02 08:13:07 swildner Exp $
+$DragonFly: src/UPDATING,v 1.21 2006/08/12 22:34:23 swildner Exp $
 
 Updating Information for DragonFly users.
 
@@ -14,7 +14,7 @@ mailing list with the details.
   PREVIEW or HEAD)
 ---------------------
 
-The compatiblity shims for the build environment have been removed, you
+The compatibility shims for the build environment have been removed, you
 have to update to DragonFly 1.2 release branch first.
 
 The default PAM configuration has moved from /etc/pam.conf to /etc/pam.d/.

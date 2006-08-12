@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.19 2006/07/26 18:23:16 swildner Exp $
+# $DragonFly: src/Makefile,v 1.20 2006/08/12 22:34:23 swildner Exp $
 #
 # The user-driven targets are:
 #
@@ -32,8 +32,8 @@
 # most                - Build user commands, no libraries or include files.
 # installmost         - Install user commands, no libraries or include files.
 #
-# This makefile is simple by design. The FreeBSD make automatically reads
-# the /usr/share/mk/sys.mk unless the -m argument is specified on the 
+# This makefile is simple by design. The DragonFly make automatically reads
+# /usr/share/mk/sys.mk unless the -m argument is specified on the 
 # command line. By keeping this makefile simple, it doesn't matter too
 # much how different the installed mk files are from those in the source
 # tree. This makefile executes a child make process, forcing it to use
