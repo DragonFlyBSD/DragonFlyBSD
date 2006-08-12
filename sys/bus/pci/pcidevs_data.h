@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.15 2006/08/01 17:55:57 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.16 2006/08/12 05:14:45 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.15 2006/08/01 17:49:11 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.16 2006/08/12 05:12:51 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2309,37 +2309,7 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5702 10/100/1000 Ethernet",
 	},
 	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702X,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM5702X 10/100/1000 Ethernet",
-	},
-	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702_ALT,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM5702 10/100/1000 Ethernet",
-	},
-	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702FE,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM5702FE 10/100 Ethernet",
-	},
-	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM5703 10/100/1000 Ethernet",
-	},
-	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703X,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM5703X 10/100/1000 Ethernet",
-	},
-	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703A3,
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5703 10/100/1000 Ethernet",
@@ -2351,10 +2321,10 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5704C Gigabit Ethernet (1000BASE-T)",
 	},
 	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5704S,
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702FE,
 	    0,
 	    "Broadcom Corporation",
-	    "BCM5704S Gigabit Ethernet (1000BASE-X)",
+	    "BCM5702FE 10/100 Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705,
@@ -2385,6 +2355,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM5721 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5714,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5714 1000baseT Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5750,
@@ -2429,6 +2405,42 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "BCM5789 10/100/1000 Enternet",
 	},
 	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702X,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5702X 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703X,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5703X 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5704S,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5704S Gigabit Ethernet (1000BASE-X)",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702_ALT,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5702 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703A3,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM5703 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401B0,
+	    0,
+	    "Broadcom Corporation",
+	    "BCM4401-B0 10/100 Ethernet",
+	},
+	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5901,
 	    0,
 	    "Broadcom Corporation",
@@ -2445,12 +2457,6 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Broadcom Corporation",
 	    "BCM4401 10/100 Ethernet",
-	},
-	{
-	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401B0,
-	    0,
-	    "Broadcom Corporation",
-	    "BCM4401-B0 10/100 Ethernet",
 	},
 	{
 	    PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_5801,
@@ -3021,6 +3027,60 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Compex",
 	    "RL100-TX 10/100 Ethernet",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT32EXT,
+	    0,
+	    "Comtrol",
+	    "RocketPort 32 port external",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT8EXT,
+	    0,
+	    "Comtrol",
+	    "RocketPort 8 port external",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT16EXT,
+	    0,
+	    "Comtrol",
+	    "RocketPort 16 port external",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT4QUAD,
+	    0,
+	    "Comtrol",
+	    "RocketPort 4 port w/ quad cable",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT8OCTA,
+	    0,
+	    "Comtrol",
+	    "RocketPort 8 port w/ octa cable",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT8RJ,
+	    0,
+	    "Comtrol",
+	    "RocketPort 8 port w/ RJ11s",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETPORT4RJ,
+	    0,
+	    "Comtrol",
+	    "RocketPort 4 port w/ RJ11s",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETMODEM6,
+	    0,
+	    "Comtrol",
+	    "RocketModem 6 port",
+	},
+	{
+	    PCI_VENDOR_COMTROL, PCI_PRODUCT_COMTROL_ROCKETMODEM4,
+	    0,
+	    "Comtrol",
+	    "RocketModem 4 port",
 	},
 	{
 	    PCI_VENDOR_CONEXANT, PCI_PRODUCT_CONEXANT_SOFTK56,
@@ -13832,6 +13892,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_PMCSIERRA, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "PMC-Sierra",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_COMTROL, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Comtrol",
 	    NULL,
 	},
 	{

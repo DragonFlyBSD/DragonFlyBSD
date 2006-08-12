@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.15 2006/08/01 17:55:57 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.16 2006/08/12 05:14:44 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.15 2006/08/01 17:49:11 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.16 2006/08/12 05:12:51 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -494,6 +494,7 @@
 #define	PCI_VENDOR_ZORAN	0x11de		/* Zoran Corporation */
 #define	PCI_VENDOR_COMPEX	0x11f6		/* Compex */
 #define	PCI_VENDOR_PMCSIERRA	0x11f8		/* PMC-Sierra */
+#define	PCI_VENDOR_COMTROL	0x11fe		/* Comtrol */
 #define	PCI_VENDOR_CYCLADES	0x120e		/* Cyclades */
 #define	PCI_VENDOR_ESSENTIAL	0x120f		/* Essential Communications */
 #define	PCI_VENDOR_O2MICRO	0x1217		/* O2 Micro, Inc. */
@@ -1078,19 +1079,15 @@
 #define	PCI_PRODUCT_BROADCOM_BCM5700	0x1644		/* BCM5700 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5701	0x1645		/* BCM5701 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5702	0x1646		/* BCM5702 10/100/1000 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM5702X	0x16a6		/* BCM5702X 10/100/1000 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM5702_ALT	0x16c6		/* BCM5702 10/100/1000 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM5702FE	0x164d		/* BCM5702FE 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5703	0x1647		/* BCM5703 10/100/1000 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM5703X	0x16a7		/* BCM5703X 10/100/1000 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM5703A3	0x16c7		/* BCM5703 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5704C	0x1648		/* BCM5704C Gigabit Ethernet (1000BASE-T) */
-#define	PCI_PRODUCT_BROADCOM_BCM5704S	0x16a8		/* BCM5704S Gigabit Ethernet (1000BASE-X) */
+#define	PCI_PRODUCT_BROADCOM_BCM5702FE	0x164d		/* BCM5702FE 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705	0x1653		/* BCM5705 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705K	0x1654		/* BCM5705K 10/100/1000 Ethetnet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705M	0x165d		/* BCM5705M 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5705M_ALT	0x165e		/* BCM5705M 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5721	0x1659		/* BCM5721 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5714	0x1668		/* BCM5714 1000baseT Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5750	0x1676		/* BCM5750 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5750M	0x167c		/* BCM5750M 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5751	0x1677		/* BCM5751 10/100/1000 Ethernet */
@@ -1098,10 +1095,15 @@
 #define	PCI_PRODUCT_BROADCOM_BCM5782	0x1696		/* BCM5782 10/100/1000 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5788	0x169c		/* BCM5788 10/100/1000 Enternet */
 #define	PCI_PRODUCT_BROADCOM_BCM5789	0x169d		/* BCM5789 10/100/1000 Enternet */
+#define	PCI_PRODUCT_BROADCOM_BCM5702X	0x16a6		/* BCM5702X 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5703X	0x16a7		/* BCM5703X 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5704S	0x16a8		/* BCM5704S Gigabit Ethernet (1000BASE-X) */
+#define	PCI_PRODUCT_BROADCOM_BCM5702_ALT	0x16c6		/* BCM5702 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM5703A3	0x16c7		/* BCM5703 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_BROADCOM_BCM4401B0	0x170c		/* BCM4401-B0 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901	0x170d		/* BCM5901 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM5901A2	0x170e		/* BCM5901A 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_BCM4401	0x4401		/* BCM4401 10/100 Ethernet */
-#define	PCI_PRODUCT_BROADCOM_BCM4401B0	0x170c		/* BCM4401-B0 10/100 Ethernet */
 #define	PCI_PRODUCT_BROADCOM_5801	0x5801		/* 5801 Security processor */
 #define	PCI_PRODUCT_BROADCOM_5802	0x5802		/* 5802 Security processor */
 #define	PCI_PRODUCT_BROADCOM_5805	0x5805		/* 5805 Security processor */
@@ -1232,6 +1234,17 @@
 #define	PCI_PRODUCT_COMPEX_NE2KETHER	0x1401		/* Ethernet */
 #define	PCI_PRODUCT_COMPEX_RL100ATX	0x2011		/* RL100-ATX 10/100 Ethernet */
 #define	PCI_PRODUCT_COMPEX_RL100TX	0x9881		/* RL100-TX 10/100 Ethernet */
+
+/* Comtrol products */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT32EXT	0x0001		/* RocketPort 32 port external */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT8EXT	0x0002		/* RocketPort 8 port external */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT16EXT	0x0003		/* RocketPort 16 port external */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT4QUAD	0x0004		/* RocketPort 4 port w/ quad cable */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT8OCTA	0x0005		/* RocketPort 8 port w/ octa cable */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT8RJ	0x0006		/* RocketPort 8 port w/ RJ11s */
+#define	PCI_PRODUCT_COMTROL_ROCKETPORT4RJ	0x0007		/* RocketPort 4 port w/ RJ11s */
+#define	PCI_PRODUCT_COMTROL_ROCKETMODEM6	0x000c		/* RocketModem 6 port */
+#define	PCI_PRODUCT_COMTROL_ROCKETMODEM4	0x000d		/* RocketModem 4 port */
 
 /* Conexant Systems products */
 #define	PCI_PRODUCT_CONEXANT_SOFTK56	0x2443		/* SoftK56 PCI Software Modem */
