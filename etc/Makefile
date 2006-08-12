@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.122 2006/07/29 12:11:11 corecode Exp $
+# $DragonFly: src/etc/Makefile,v 1.123 2006/08/12 05:30:17 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -425,7 +425,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.post.mk
 	rm -f ${DESTDIR}/usr/share/mk/bsd.dfport.pre.mk
 	rm -f ${DESTDIR}/var/db/port.mkversion
-	rm -f ${DESTDIR}/share/mk/bsd.kern.mk
+	rm -f ${DESTDIR}/usr/share/mk/bsd.kern.mk
 	rm -f ${DESTDIR}/modules/pcic.ko
 	csh -c "rm -f ${DESTDIR}/usr/share/man/{man,cat}4/worm.4.gz"
 	rm -f ${DESTDIR}/usr/include/sys/wormio.h
