@@ -1,6 +1,6 @@
 #	@(#)bsd.README	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/share/mk/bsd.README,v 1.15.2.6 2002/07/19 08:34:07 ru Exp $
-# $DragonFly: src/share/mk/bsd.README,v 1.4 2006/06/28 21:37:37 swildner Exp $
+# $DragonFly: src/share/mk/bsd.README,v 1.5 2006/08/12 05:42:26 swildner Exp $
 
 XXX This document is seriously out of date, it is currenly being revised.
 
@@ -8,13 +8,13 @@ This is the README file for the new make "include" files for the BSD
 source tree.  The files are installed in /usr/share/mk, and are, by
 convention, named with the suffix ".mk".
 
-bsd.cpu.gcc2.mk		- 
-bsd.cpu.gcc3.mk		- 
-bsd.cpu.gcc34.mk	- 
-bsd.cpu.mk		- 
+bsd.cpu.gcc34.mk	- handle GCC 3.4 specific CPU flags & variables
+bsd.cpu.gcc40.mk	- handle GCC 4.0 specific CPU flags & variables
+bsd.cpu.mk		- handle CPU flags & variables
 bsd.dep.mk		- handle Makefile dependencies
 bsd.doc.mk		- building troff system documents
 bsd.files.mk		- 
+bsd.hostlib.mk		- 
 bsd.hostprog.mk		- 
 bsd.incs.mk		- 
 bsd.info.mk		- building GNU Info hypertext system
@@ -24,8 +24,10 @@ bsd.lib.mk		- support for building libraries
 bsd.libnames.mk		- define library names
 bsd.links.mk		- 
 bsd.man.mk		- installing manual pages and their links
+bsd.nls.mk		- 
 bsd.obj.mk		- creating 'obj' directories and cleaning up
 bsd.own.mk		- define common variables
+bsd.patch.mk		- 
 bsd.prog.mk		- building programs from source files
 bsd.subdir.mk		- targets for building subdirectories
 bsd.sys.mk		- 
