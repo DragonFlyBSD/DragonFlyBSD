@@ -1,6 +1,6 @@
 /**************************************************************************
 
-Copyright (c) 2001-2005, Intel Corporation
+Copyright (c) 2001-2006, Intel Corporation
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.15 2006/06/25 11:02:38 corecode Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.16 2006/08/12 13:03:44 sephe Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -84,18 +84,24 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Tunables */
 
 /*
- * EM_MAX_TXD: Maximum number of Transmit Descriptors
+ * EM_TXD: Maximum number of Transmit Descriptors
  * Valid Range: 80-256 for 82542 and 82543-based adapters
  *              80-4096 for others
  * Default Value: 256
  *   This value is the number of transmit descriptors allocated by the driver.
  *   Increasing this value allows the driver to queue more transmits. Each
  *   descriptor is 16 bytes.
+ *   Since TDLEN should be multiple of 128bytes, the number of transmit
+ *   desscriptors should meet the following condition.
+ *      (num_tx_desc * sizeof(struct em_tx_desc)) % 128 == 0
  */
-#define EM_MAX_TXD                      256
+#define EM_MIN_TXD		80
+#define EM_MAX_TXD_82543	256
+#define EM_MAX_TXD		4096
+#define EM_DEFAULT_TXD		EM_MAX_TXD_82543
 
 /*
- * EM_MAX_RXD - Maximum number of receive Descriptors
+ * EM_RXD - Maximum number of receive Descriptors
  * Valid Range: 80-256 for 82542 and 82543-based adapters
  *              80-4096 for others
  * Default Value: 256
@@ -103,9 +109,14 @@ POSSIBILITY OF SUCH DAMAGE.
  *   Increasing this value allows the driver to buffer more incoming packets.
  *   Each descriptor is 16 bytes.  A receive buffer is also allocated for each
  *   descriptor. The maximum MTU size is 16110.
- *
+ *   Since TDLEN should be multiple of 128bytes, the number of transmit
+ *   desscriptors should meet the following condition.
+ *      (num_tx_desc * sizeof(struct em_tx_desc)) % 128 == 0
  */
-#define EM_MAX_RXD                      256
+#define EM_MIN_RXD		80
+#define EM_MAX_RXD_82543	256
+#define EM_MAX_RXD		4096
+#define EM_DEFAULT_RXD		EM_MAX_RXD_82543
 
 /*
  * EM_TIDV - Transmit Interrupt Delay Value
@@ -166,14 +177,6 @@ POSSIBILITY OF SUCH DAMAGE.
  */
 #define EM_RADV                         64
 
-
-/*
- * This parameter controls the maximum no of times the driver will loop
- * in the isr.
- *           Minimum Value = 1
- */
-#define EM_MAX_INTR                     3
-
 /*
  * Inform the stack about transmit checksum offload capabilities.
  */
@@ -188,7 +191,7 @@ POSSIBILITY OF SUCH DAMAGE.
  * This parameter controls when the driver calls the routine to reclaim
  * transmit descriptors.
  */
-#define EM_TX_CLEANUP_THRESHOLD         EM_MAX_TXD / 8
+#define EM_TX_CLEANUP_THRESHOLD		(adapter->num_tx_desc / 8)
 
 /*
  * This parameter controls whether or not autonegotation is enabled.
@@ -226,7 +229,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define EM_VENDOR_ID                    0x8086
 #define EM_MMBA                         0x0010 /* Mem base address */
-#define EM_ROUNDUP(size, unit) (((size) + (unit) - 1) & ~((unit) - 1))
+#define EM_FLASH                        0x0014 /* Flash memory on ICH8 */
 
 #define EM_JUMBO_PBA                    0x00000028
 #define EM_DEFAULT_PBA                  0x00000030
@@ -237,6 +240,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define MAX_NUM_MULTICAST_ADDRESSES     128
 #define PCI_ANY_ID                      (~0U)
 #define ETHER_ALIGN                     2
+#define EM_DBA_ALIGN                    128
 
 /* Defines for printing debug information */
 #define DEBUG_INIT  0
@@ -284,7 +288,6 @@ struct em_buffer {
 };
 
 struct em_q {
-	bus_dmamap_t		map;		/* bus_dma map for packet */
 	int			nsegs;		/* # of segments/descriptors */
 	bus_dma_segment_t	segs[EM_MAX_SCATTER];
 };
@@ -338,6 +341,7 @@ struct adapter {
 	struct em_osdep osdep;
 	struct device   *dev;
 	struct resource *res_memory;
+	struct resource *flash_mem;
 	struct resource *res_ioport;
 	struct resource *res_interrupt;
 	void            *int_handler_tag;
@@ -345,6 +349,7 @@ struct adapter {
 	struct callout		timer;
 	struct callout		tx_fifo_timer;
 	int             io_rid;
+	int		em_insert_vlan_header;
 
 	/* Info about the board itself */
 	u_int32_t       part_num;
@@ -409,6 +414,8 @@ struct adapter {
 	unsigned long   no_tx_desc_avail2;
 	unsigned long	no_tx_map_avail;
 	unsigned long	no_tx_dma_setup;
+	unsigned long	rx_overruns;
+	unsigned long	watchdog_timeouts;
 
 	/* Used in for 82547 10Mb Half workaround */
 	u_int32_t	tx_fifo_size;
