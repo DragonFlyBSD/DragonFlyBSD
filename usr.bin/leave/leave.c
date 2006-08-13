@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)leave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/leave/leave.c,v 1.5.2.2 2001/07/30 09:43:30 dd Exp $
- * $DragonFly: src/usr.bin/leave/leave.c,v 1.5 2006/08/13 22:00:45 swildner Exp $
+ * $DragonFly: src/usr.bin/leave/leave.c,v 1.6 2006/08/13 22:08:14 swildner Exp $
  */
 
 #include <err.h>
@@ -47,7 +47,7 @@
 /*
  * XXX obscures strftime(3) '%+' format to suppress -Wformat warning
  */
-static const char fmt[] = {'%', '+'};
+static const char fmt[] = {'%', '+', '\0'};
 
 void doalarm(u_int);
 static void usage(void);
