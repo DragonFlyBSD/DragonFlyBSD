@@ -35,7 +35,7 @@
  *
  * @(#)reverse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/reverse.c,v 1.4 2005/03/01 21:37:33 cpressey Exp $
+ * $DragonFly: src/usr.bin/tail/reverse.c,v 1.5 2006/08/13 02:12:18 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -205,8 +205,10 @@ r_buf(FILE *fp)
 			tl->prev = mark->prev;
 			mark->prev->next = tl;
 			mark->prev = tl;
-		} else
-			mark->next = mark->prev = (mark = tl);
+		} else {
+			mark = tl;
+			mark->next = mark->prev = mark;
+		}
 
 		/* Fill the block with input data. */
 		for (p = tl->l, len = 0;
