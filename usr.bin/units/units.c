@@ -15,7 +15,7 @@
  * improvements you might make to this program.
  *
  * $FreeBSD: src/usr.bin/units/units.c,v 1.6.2.2 2001/03/04 09:22:35 kris Exp $
- * $DragonFly: src/usr.bin/units/units.c,v 1.3 2005/02/02 06:22:30 cpressey Exp $
+ * $DragonFly: src/usr.bin/units/units.c,v 1.4 2006/08/13 19:19:44 swildner Exp $
  */
 
 #include <ctype.h>
@@ -379,7 +379,7 @@ addunit(struct unittype * theunit, char *toadd, int flip)
 int 
 compare(const void *item1, const void *item2)
 {
-	return strcmp(*(const char **) item1, *(const char **) item2);
+	return strcmp(*(const char * const *)item1, *(const char * const *)item2);
 }
 
 
