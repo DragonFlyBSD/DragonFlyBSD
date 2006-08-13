@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.9 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.10 2006/08/13 19:12:04 dillon Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -95,6 +95,7 @@ struct stat {
 };
 
 #define _ST_FSMID_PRESENT_
+#define _ST_FLAGS_PRESENT_
 
 #undef __dev_t
 
