@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.12 2005/05/15 20:10:28 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.13 2006/08/13 02:18:51 swildner Exp $
  */
 
 #include <sys/file.h>
@@ -317,7 +317,7 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 	}
 
 	if (aip->ai_infoversion >= 1) {
-		printf("APM Capacities:\n", aip->ai_capabilities);
+		printf("APM Capacities:\n");
 		if (aip->ai_capabilities == 0xff00)
 			printf("\tunknown\n");
 		if (aip->ai_capabilities & 0x01)
