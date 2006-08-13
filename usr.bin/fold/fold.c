@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fold.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/fold/fold.c,v 1.4.2.3 2002/07/11 01:01:44 tjr Exp $
- * $DragonFly: src/usr.bin/fold/fold.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
+ * $DragonFly: src/usr.bin/fold/fold.c,v 1.5 2006/08/13 02:15:07 swildner Exp $
  */
 
 #include <ctype.h>
@@ -135,7 +135,7 @@ fold(int width)
 	static int buf_max;
 	int ch, col, i, indx, space;
 
-	col = indx = 0;
+	col = indx = space = 0;
 	while ((ch = getchar()) != EOF) {
 		if (ch == '\n') {
 			if (indx != 0)
