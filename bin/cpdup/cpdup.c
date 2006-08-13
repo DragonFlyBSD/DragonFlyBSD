@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.12 2006/07/05 17:20:37 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.13 2006/08/13 20:51:40 dillon Exp $
  */
 
 /*-
@@ -56,11 +56,17 @@
  */
 
 #include "cpdup.h"
+#include "hclink.h"
+#include "hcproto.h"
 
 #define HSIZE	16384
 #define HMASK	(HSIZE-1)
 #define HLSIZE	8192
 #define HLMASK	(HLSIZE - 1)
+
+#ifndef _ST_FLAGS_PRESENT_
+#define st_flags	st_mode
+#endif
 
 typedef struct Node {
     struct Node *no_Next;
@@ -109,6 +115,7 @@ int NoRemoveOpt;
 int UseMD5Opt;
 int UseFSMIDOpt;
 int SummaryOpt;
+int SlaveOpt;
 int EnableDirectoryRetries;
 int DstBaseLen;
 char IOBuf1[65536];
@@ -125,19 +132,23 @@ int64_t CountReadBytes;
 int64_t CountWriteBytes;
 int64_t CountRemovedItems;
 
+struct HostConf SrcHost;
+struct HostConf DstHost;
+
 int
 main(int ac, char **av)
 {
     int i;
     char *src = NULL;
     char *dst = NULL;
+    char *ptr;
     struct timeval start;
 
     gettimeofday(&start, NULL);
     for (i = 1; i < ac; ++i) {
-	char *ptr = av[i];
 	int v = 1;
 
+	ptr = av[i];
 	if (*ptr != '-') { 
 	    if (src == NULL) {
 		src = ptr;
@@ -179,6 +190,9 @@ main(int ac, char **av)
 	case 'H':
 	    UseHLPath = (*ptr) ? ptr : av[++i];
 	    break;
+	case 'S':
+	    SlaveOpt = v;
+	    break;
 	case 'f':
 	    ForceOpt = v;
 	    break;
@@ -218,10 +232,46 @@ main(int ac, char **av)
     }
 
     /*
+     * If we are told to go into slave mode, run the HC protocol
+     */
+    if (SlaveOpt) {
+	hc_slave(0, 1);
+	exit(0);
+    }
+
+    /*
+     * Extract the source and/or/neither target [user@]host and
+     * make any required connections.
+     */
+    if (src && (ptr = strchr(src, ':')) != NULL) {
+	asprintf(&SrcHost.host, "%*.*s", ptr - src, ptr - src, src);
+	src = ptr + 1;
+	if (UseCpFile) {
+	    fprintf(stderr, "The cpignore options are not currently supported for remote sources\n");
+	    exit(1);
+	}
+	if (UseMD5Opt) {
+	    fprintf(stderr, "The MD5 options are not currently supported for remote sources\n");
+	    exit(1);
+	}
+	if (hc_connect(&SrcHost) < 0)
+	    fprintf(stderr, "Unable to connect to %s\n", SrcHost.host);
+    }
+    if (dst && (ptr = strchr(dst, ':')) != NULL) {
+	asprintf(&DstHost.host, "%*.*s", ptr - dst, ptr - dst, dst);
+	dst = ptr + 1;
+	if (UseFSMIDOpt) {
+	    fprintf(stderr, "The FSMID options are not currently supported for remote targets\n");
+	    exit(1);
+	}
+	if (hc_connect(&DstHost) < 0)
+	    fprintf(stderr, "Unable to connect to %s\n", DstHost.host);
+    }
+
+    /*
      * dst may be NULL only if -m option is specified,
      * which forces an update of the MD5 checksums
      */
-
     if (dst == NULL && UseMD5Opt == 0) {
 	fatal(NULL);
 	/* not reached */
@@ -232,7 +282,9 @@ main(int ac, char **av)
     } else {
 	i = DoCopy(src, NULL, (dev_t)-1, (dev_t)-1);
     }
+#ifndef NOMD5
     md5_flush();
+#endif
     fsmid_flush();
 
     if (SummaryOpt && i == 0) {
@@ -344,7 +396,7 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
     /*
      * stat info matches ?
      */
-    if (stat(hpath, &sthl) < 0 ||
+    if (hc_stat(&DstHost, hpath, &sthl) < 0 ||
 	st1->st_size != sthl.st_size ||
 	st1->st_uid != sthl.st_uid ||
 	st1->st_gid != sthl.st_gid ||
@@ -358,15 +410,15 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
      * If ForceOpt is set we have to compare the files
      */
     if (ForceOpt) {
-	fd1 = open(spath, O_RDONLY);
-	fd2 = open(hpath, O_RDONLY);
+	fd1 = hc_open(&SrcHost, spath, O_RDONLY, 0);
+	fd2 = hc_open(&DstHost, hpath, O_RDONLY, 0);
 	good = 0;
 
 	if (fd1 >= 0 && fd2 >= 0) {
 	    int n;
 
-	    while ((n = read(fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
-		if (read(fd2, IOBuf2, sizeof(IOBuf2)) != n)
+	    while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+		if (hc_read(&DstHost, fd2, IOBuf2, sizeof(IOBuf2)) != n)
 		    break;
 		if (bcmp(IOBuf1, IOBuf2, n) != 0)
 		    break;
@@ -375,9 +427,9 @@ checkHLPath(struct stat *st1, const char *spath, const char *dpath)
 		good = 1;
 	}
 	if (fd1 >= 0)
-	    close(fd1);
+	    hc_close(&SrcHost, fd1);
 	if (fd2 >= 0)
-	    close(fd2);
+	    hc_close(&DstHost, fd2);
 	if (good == 0) {
 	    free(hpath);
 	    hpath = NULL;
@@ -401,11 +453,11 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
     size = 0;
     hln = NULL;
 
-    if (lstat(spath, &st1) != 0)
+    if (hc_lstat(&SrcHost, spath, &st1) != 0)
 	return(0);
     st2.st_mode = 0;	/* in case lstat fails */
     st2.st_flags = 0;	/* in case lstat fails */
-    if (dpath && lstat(dpath, &st2) == 0)
+    if (dpath && hc_lstat(&DstHost, dpath, &st2) == 0)
 	st2Valid = 1;
 
     if (S_ISREG(st1.st_mode)) {
@@ -437,7 +489,7 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 		    /*
 		     * hard link is not correct, attempt to unlink it
 		     */
-                    if (unlink(dpath) < 0) {
+                    if (hc_remove(&DstHost, dpath) < 0) {
 			logerr("%-32s hardlink: unable to unlink: %s\n", 
 			    ((dpath) ? dpath : spath), strerror(errno));
                         hltdelete(hln);
@@ -493,9 +545,11 @@ relink:
      */
 
     if (
-	st2Valid &&
-	st1.st_mode == st2.st_mode &&
-	st1.st_flags == st2.st_flags
+	st2Valid
+	&& st1.st_mode == st2.st_mode
+#ifdef _ST_FLAGS_PRESENT_
+	&& st1.st_flags == st2.st_flags
+#endif
     ) {
 	if (S_ISLNK(st1.st_mode) || S_ISDIR(st1.st_mode)) {
 	    /*
@@ -521,7 +575,9 @@ relink:
 		st1.st_uid == st2.st_uid &&
 		st1.st_gid == st2.st_gid &&
 		st1.st_mtime == st2.st_mtime
+#ifndef NOMD5
 		&& (UseMD5Opt == 0 || (mres = md5_check(spath, dpath)) == 0)
+#endif
 #ifdef _ST_FSMID_PRESENT_
 		&& (UseFSMIDOpt == 0 || (fres = fsmid_check(st1.st_fsmid, dpath)) == 0)
 #endif
@@ -529,9 +585,12 @@ relink:
                 if (hln)
                     hln->dino = st2.st_ino;
 		if (VerboseOpt >= 3) {
+#ifndef NOMD5
 		    if (UseMD5Opt)
 			logstd("%-32s md5-nochange\n", (dpath ? dpath : spath));
-		    else if (UseFSMIDOpt)
+		    else
+#endif
+		    if (UseFSMIDOpt)
 			logstd("%-32s fsmid-nochange\n", (dpath ? dpath : spath));
 		    else
 			logstd("%-32s nochange\n", (dpath ? dpath : spath));
@@ -568,14 +627,14 @@ relink:
 
 	if (fres < 0)
 	    logerr("%-32s/ fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
-	if ((dir = opendir(spath)) != NULL) {
+	if ((dir = hc_opendir(&SrcHost, spath)) != NULL) {
 	    struct dirent *den;
 	    int noLoop = 0;
 
 	    if (dpath) {
 		if (S_ISDIR(st2.st_mode) == 0) {
-		    remove(dpath);
-		    if (mkdir(dpath, st1.st_mode | 0700) != 0) {
+		    hc_remove(&DstHost, dpath);
+		    if (hc_mkdir(&DstHost, dpath, st1.st_mode | 0700) != 0) {
 			logerr("%s: mkdir failed: %s\n", 
 			    (dpath ? dpath : spath), strerror(errno));
 			r = 1;
@@ -584,8 +643,8 @@ relink:
 		    /*
 		     * Matt: why don't you check error codes here?
 		     */
-		    lstat(dpath, &st2);
-		    chown(dpath, st1.st_uid, st1.st_gid);
+		    hc_lstat(&DstHost, dpath, &st2);
+		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
 		    CountCopiedItems++;
 		} else {
 		    /*
@@ -595,7 +654,7 @@ relink:
 		     * st2.st_mode to match what we did ).
 		     */
 		    if ((st2.st_mode & 0700) != 0700) {
-			chmod(dpath, st2.st_mode | 0700);
+			hc_chmod(&DstHost, dpath, st2.st_mode | 0700);
 			st2.st_mode |= 0700;
 		    }
 		    if (VerboseOpt >= 2)
@@ -657,7 +716,7 @@ relink:
 	    if (UseFSMIDOpt)
 		AddList(&list, FSMIDCacheFile, 1);
 
-	    while (noLoop == 0 && (den = readdir(dir)) != NULL) {
+	    while (noLoop == 0 && (den = hc_readdir(&SrcHost, dir)) != NULL) {
 		/*
 		 * ignore . and ..
 		 */
@@ -689,14 +748,14 @@ relink:
 		    free(ndpath);
 	    }
 
-	    closedir(dir);
+	    hc_closedir(&SrcHost, dir);
 
 	    /*
 	     * Remove files/directories from destination that do not appear
 	     * in the source.
 	     */
-	    if (dpath && (dir = opendir(dpath)) != NULL) {
-		while (noLoop == 0 && (den = readdir(dir)) != NULL) {
+	    if (dpath && (dir = hc_opendir(&DstHost, dpath)) != NULL) {
+		while (noLoop == 0 && (den = hc_readdir(&DstHost, dir)) != NULL) {
 		    /*
 		     * ignore . or ..
 		     */
@@ -717,7 +776,7 @@ relink:
 			free(ndpath);
 		    }
 		}
-		closedir(dir);
+		hc_closedir(&DstHost, dir);
 	    }
 
 	    if (dpath) {
@@ -726,20 +785,23 @@ relink:
 		    st1.st_uid != st2.st_uid ||
 		    st1.st_gid != st2.st_gid
 		) {
-		    chown(dpath, st1.st_uid, st1.st_gid);
+		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
 		}
 		if (st2Valid == 0 || st1.st_mode != st2.st_mode) {
-		    chmod(dpath, st1.st_mode);
+		    hc_chmod(&DstHost, dpath, st1.st_mode);
 		}
+#ifdef _ST_FLAGS_PRESENT_
 		if (st2Valid == 0 || st1.st_flags != st2.st_flags) {
-		    chflags(dpath, st1.st_flags);
+		    hc_chflags(&DstHost, dpath, st1.st_flags);
 		}
+#endif
 	    }
 	}
     } else if (dpath == NULL) {
 	/*
 	 * If dpath is NULL, we are just updating the MD5
 	 */
+#ifndef NOMD5
 	if (UseMD5Opt && S_ISREG(st1.st_mode)) {
 	    mres = md5_check(spath, NULL);
 
@@ -752,6 +814,7 @@ relink:
 		logstd("%-32s md5-update\n", (dpath) ? dpath : spath);
 	    }
 	}
+#endif
     } else if (S_ISREG(st1.st_mode)) {
 	char *path;
 	char *hpath;
@@ -763,9 +826,12 @@ relink:
 	/*
 	 * Handle check failure message.
 	 */
+#ifndef NOMD5
 	if (mres < 0)
 	    logerr("%-32s md5-CHECK-FAILED\n", (dpath) ? dpath : spath);
-	else if (fres < 0)
+	else 
+#endif
+	if (fres < 0)
 	    logerr("%-32s fsmid-CHECK-FAILED\n", (dpath) ? dpath : spath);
 
 	/*
@@ -774,7 +840,7 @@ relink:
 	 */
 
 	if (UseHLPath && (hpath = checkHLPath(&st1, spath, dpath)) != NULL) {
-		if (link(hpath, dpath) == 0) {
+		if (hc_link(&DstHost, hpath, dpath) == 0) {
 			if (VerboseOpt) {
 			    logstd("%-32s hardlinked(-H)\n",
 				   (dpath ? dpath : spath));
@@ -789,15 +855,17 @@ relink:
 		free(hpath);
 	}
 
-	if ((fd1 = open(spath, O_RDONLY)) >= 0) {
-	    if ((fd2 = open(path, O_WRONLY|O_CREAT|O_EXCL, 0600)) < 0) {
+	if ((fd1 = hc_open(&SrcHost, spath, O_RDONLY, 0)) >= 0) {
+	    if ((fd2 = hc_open(&DstHost, path, O_WRONLY|O_CREAT|O_EXCL, 0600)) < 0) {
 		/*
 		 * There could be a .tmp file from a previously interrupted
 		 * run, delete and retry.  Fail if we still can't get at it.
 		 */
-		chflags(path, 0);
-		remove(path);
-		fd2 = open(path, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, 0600);
+#ifdef _ST_FLAGS_PRESENT_
+		hc_chflags(&DstHost, path, 0);
+#endif
+		hc_remove(&DstHost, path);
+		fd2 = hc_open(&DstHost, path, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, 0600);
 	    }
 	    if (fd2 >= 0) {
 		const char *op;
@@ -807,13 +875,13 @@ relink:
 		 * Matt: What about holes?
 		 */
 		op = "read";
-		while ((n = read(fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
+		while ((n = hc_read(&SrcHost, fd1, IOBuf1, sizeof(IOBuf1))) > 0) {
 		    op = "write";
-		    if (write(fd2, IOBuf1, n) != n)
+		    if (hc_write(&DstHost, fd2, IOBuf1, n) != n)
 			break;
 		    op = "read";
 		}
-		close(fd2);
+		hc_close(&DstHost, fd2);
 		if (n == 0) {
 		    struct timeval tv[2];
 
@@ -821,9 +889,9 @@ relink:
 		    tv[0].tv_sec = st1.st_mtime;
 		    tv[1].tv_sec = st1.st_mtime;
 
-		    utimes(path, tv);
-		    chown(path, st1.st_uid, st1.st_gid);
-		    chmod(path, st1.st_mode);
+		    hc_utimes(&DstHost, path, tv);
+		    hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
+		    hc_chmod(&DstHost, path, st1.st_mode);
 		    if (xrename(path, dpath, st2.st_flags) != 0) {
 			logerr("%-32s rename-after-copy failed: %s\n",
 			    (dpath ? dpath : spath), strerror(errno)
@@ -832,8 +900,10 @@ relink:
 		    } else {
 			if (VerboseOpt)
 			    logstd("%-32s copy-ok\n", (dpath ? dpath : spath));
+#ifdef _ST_FLAGS_PRESENT_
 			if (st1.st_flags)
-			    chflags(dpath, st1.st_flags);
+			    hc_chflags(&DstHost, dpath, st1.st_flags);
+#endif
 		    }
 		    CountReadBytes += size;
 		    CountWriteBytes += size;
@@ -844,7 +914,7 @@ relink:
 		    logerr("%-32s %s failed: %s\n",
 			(dpath ? dpath : spath), op, strerror(errno)
 		    );
-		    remove(path);
+		    hc_remove(&DstHost, path);
 		    ++r;
 		}
 	    } else {
@@ -854,7 +924,7 @@ relink:
 		);
 		++r;
 	    }
-	    close(fd1);
+	    hc_close(&SrcHost, fd1);
 	} else {
 	    logerr("%-32s copy: open failed: %s\n",
 		(dpath ? dpath : spath),
@@ -866,7 +936,7 @@ skip_copy:
 	free(path);
 
         if (hln) {
-            if (!r && stat(dpath, &st2) == 0)
+            if (!r && hc_stat(&DstHost, dpath, &st2) == 0)
                 hln->dino = st2.st_ino;
             else
                 hltdelete(hln);
@@ -879,21 +949,21 @@ skip_copy:
 	int n2;
 
 	snprintf(path, sizeof(path), "%s.tmp", dpath);
-	n1 = readlink(spath, link1, sizeof(link1) - 1);
-	n2 = readlink(dpath, link2, sizeof(link2) - 1);
+	n1 = hc_readlink(&SrcHost, spath, link1, sizeof(link1) - 1);
+	n2 = hc_readlink(&DstHost, dpath, link2, sizeof(link2) - 1);
 	if (n1 >= 0) {
 	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0) {
-		umask(~st1.st_mode);
-		remove(path);
+		hc_umask(&DstHost, ~st1.st_mode);
+		hc_remove(&DstHost, path);
 		link1[n1] = 0;
-		if (symlink(link1, path) < 0) {
+		if (hc_symlink(&DstHost, link1, path) < 0) {
                       logerr("%-32s symlink (%s->%s) failed: %s\n",
 			  (dpath ? dpath : spath), link1, path,
 			  strerror(errno)
 		      );
 		      ++r;
 		} else {
-		    lchown(path, st1.st_uid, st1.st_gid);
+		    hc_lchown(&DstHost, path, st1.st_uid, st1.st_gid);
 		    /*
 		     * there is no lchmod() or lchflags(), we 
 		     * cannot chmod or chflags a softlink.
@@ -905,7 +975,7 @@ skip_copy:
 		    } else if (VerboseOpt) {
 			logstd("%-32s softlink-ok\n", (dpath ? dpath : spath));
 		    }
-		    umask(000);
+		    hc_umask(&DstHost, 000);
 		    CountWriteBytes += n1;
 		    CountCopiedItems++;
 	  	}
@@ -933,11 +1003,11 @@ skip_copy:
 	) {
 	    snprintf(path, sizeof(path), "%s.tmp", dpath);
 
-	    remove(path);
+	    hc_remove(&DstHost, path);
 	    if (mknod(path, st1.st_mode, st1.st_rdev) == 0) {
-		chmod(path, st1.st_mode);
-		chown(path, st1.st_uid, st1.st_gid);
-		remove(dpath);
+		hc_chmod(&DstHost, path, st1.st_mode);
+		hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
+		hc_remove(&DstHost, dpath);
 		if (xrename(path, dpath, st2.st_flags) != 0) {
 		    logerr("%-32s dev-rename-after-create failed: %s\n",
 			(dpath ? dpath : spath),
@@ -972,16 +1042,16 @@ RemoveRecur(const char *dpath, dev_t devNo)
 {
     struct stat st;
 
-    if (lstat(dpath, &st) == 0) {
+    if (hc_lstat(&DstHost, dpath, &st) == 0) {
 	if ((int)devNo < 0)
 	    devNo = st.st_dev;
 	if (st.st_dev == devNo) {
 	    if (S_ISDIR(st.st_mode)) {
 		DIR *dir;
 
-		if ((dir = opendir(dpath)) != NULL) {
+		if ((dir = hc_opendir(&DstHost, dpath)) != NULL) {
 		    struct dirent *den;
-		    while ((den = readdir(dir)) != NULL) {
+		    while ((den = hc_readdir(&DstHost, dir)) != NULL) {
 			char *ndpath;
 
 			if (strcmp(den->d_name, ".") == 0)
@@ -992,11 +1062,11 @@ RemoveRecur(const char *dpath, dev_t devNo)
 			RemoveRecur(ndpath, devNo);
 			free(ndpath);
 		    }
-		    closedir(dir);
+		    hc_closedir(&DstHost, dir);
 		}
 		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
-			if (rmdir(dpath) < 0) {
+			if (hc_rmdir(&DstHost, dpath) < 0) {
 			    logerr("%-32s rmdir failed: %s\n",
 				dpath, strerror(errno)
 			    );
@@ -1007,7 +1077,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
 		    if (NoRemoveOpt) {
 			if (VerboseOpt)
 			    logstd("%-32s not-removed\n", dpath);
-		    } else if (rmdir(dpath) == 0) {
+		    } else if (hc_rmdir(&DstHost, dpath) == 0) {
 			if (VerboseOpt)
 			    logstd("%-32s rmdir-ok\n", dpath);
 			CountRemovedItems++;
@@ -1020,7 +1090,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
 	    } else {
 		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
-			if (remove(dpath) < 0) {
+			if (hc_remove(&DstHost, dpath) < 0) {
 			    logerr("%-32s remove failed: %s\n",
 				dpath, strerror(errno)
 			    );
@@ -1031,7 +1101,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
 		    if (NoRemoveOpt) {
 			if (VerboseOpt)
 			    logstd("%-32s not-removed\n", dpath);
-		    } else if (remove(dpath) == 0) {
+		    } else if (hc_remove(&DstHost, dpath) == 0) {
 			if (VerboseOpt)
 			    logstd("%-32s remove-ok\n", dpath);
 			CountRemovedItems++;
@@ -1211,10 +1281,12 @@ xrename(const char *src, const char *dst, u_long flags)
 
     r = 0;
 
-    if ((r = rename(src, dst)) < 0) {
-	chflags(dst, 0);
-	if ((r = rename(src, dst)) < 0)
-		chflags(dst, flags);
+    if ((r = hc_rename(&DstHost, src, dst)) < 0) {
+#ifdef _ST_FLAGS_PRESENT_
+	hc_chflags(&DstHost, dst, 0);
+	if ((r = hc_rename(&DstHost, src, dst)) < 0)
+		hc_chflags(&DstHost, dst, flags);
+#endif
     }
     return(r);
 }
@@ -1226,12 +1298,14 @@ xlink(const char *src, const char *dst, u_long flags)
 
     r = 0;
 
-    if ((r = link(src, dst)) < 0) {
-	chflags(src, 0);
-	r = link(src, dst);
+    if ((r = hc_link(&DstHost, src, dst)) < 0) {
+#ifdef _ST_FLAGS_PRESENT_
+	hc_chflags(&DstHost, src, 0);
+	r = hc_link(&DstHost, src, dst);
 	e = errno;
-	chflags(src, flags);
+	hc_chflags(&DstHost, src, flags);
 	errno = e;
+#endif
     }
     return(r);
 }

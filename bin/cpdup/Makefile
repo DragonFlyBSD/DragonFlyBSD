@@ -1,8 +1,12 @@
-# $DragonFly: src/bin/cpdup/Makefile,v 1.5 2006/04/25 21:30:45 dillon Exp $
+# $DragonFly: src/bin/cpdup/Makefile,v 1.6 2006/08/13 20:51:40 dillon Exp $
 #
 
 PROG=	cpdup
-SRCS=	cpdup.c misc.c md5.c fsmid.c
+SRCS=	cpdup.c hcproto.c hclink.c misc.c fsmid.c
+
+.if !defined(NOMD5)
+SRCS+=	md5.c
+.endif
 
 LDADD+= -lmd
 DPADD+= ${LIBMD}

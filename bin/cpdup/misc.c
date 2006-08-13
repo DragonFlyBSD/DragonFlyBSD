@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.6 2006/04/25 21:30:45 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.7 2006/08/13 20:51:40 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -100,11 +100,14 @@ fatal(const char *ctl, ...)
 	     "    -q          quiet operation\n"
 	     "    -o          do not remove any files, just overwrite/add\n"
 	);
-	puts("    -m          maintain/generate MD5 checkfile on source,\n"
+	puts(
+#ifndef NOMD5
+	     "    -m          maintain/generate MD5 checkfile on source,\n"
 	     "                and compare with (optional) destination,\n"
 	     "                copying if the compare fails\n"
 	     "    -M file     -m+specify MD5 checkfile, else .MD5_CHECKSUMS\n"
 	     "                copy if md5 check fails\n"
+#endif
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
 	     " Version 1.06 by Matt Dillon and Dima Ruban\n"

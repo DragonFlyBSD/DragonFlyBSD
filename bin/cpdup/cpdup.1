@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.13 2006/07/13 13:34:12 swildner Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.14 2006/08/13 20:51:40 dillon Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -29,6 +29,7 @@
 .Fl M
 .Ar file
 .Oc
+.Op Fl S
 .Op Fl k
 .Oo
 .Fl K
@@ -39,8 +40,8 @@
 .Ar file
 .Oc
 .Op Fl x
-.Ar source_dir
-.Ar target_dir
+.Ar [[user@]host:]source_dir
+.Ar [[user@]host:]target_dir
 .Sh DESCRIPTION
 The
 .Nm
@@ -113,7 +114,11 @@ cpdup will create a hardlink from a file found under
 to the target instead of copying the source to the target if the file found
 via
 .Ar path
-is identical to the source.  This allows one to use
+is identical to the source.
+Note that a remote host specification should not be used in this option,
+but the path will be relative to the target machine.
+.Pp
+This allows one to use
 .Nm
 to create incremental backups of a filesystem.  Create a direct 'level 0'
 backup, and then specify the level 0 backup path with this option when
@@ -138,6 +143,11 @@ and it is possible that you may run the process out of memory.
 Works the same as
 .Fl m
 but allows you to specify the name of the MD5 checkfile.
+.It Fl S
+This places
+.Nm
+into slave mode and is used to initiate the slave protocol on a remote
+machine.
 .It Fl k
 Generate and maintain a FSMID checkfile called .FSMID.CHECK in each
 directory on the target.
@@ -177,6 +187,14 @@ but allows you to specify the name of the exclusion file.  This file is
 automatically excluded from the copy.  Only one exclusion file may be
 specified.
 .El
+.Sh REMOTE COPYING
+.Nm
+can mirror directory structures across machines and can also do third-party
+copies.
+.Xr ssh 1
+sessions are used and
+.Nm
+is run on the remote machine(s) in slave mode.
 .Sh DIAGNOSTICS
 The
 .Nm
