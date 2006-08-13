@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.11 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.12 2006/08/13 18:16:04 swildner Exp $
  */
 
 #include "defs.h"
@@ -1162,7 +1162,8 @@ iput(struct ufs1_dinode *ip, ino_t ino)
 	sblock.fs_cstotal.cs_nifree--;
 	fscs[0].cs_nifree--;
 	if (ino >= (uint32_t)sblock.fs_ipg * (uint32_t)sblock.fs_ncg) {
-		printf("fsinit: inode value out of range (%d).\n", ino);
+		printf("fsinit: inode value out of range (%ju).\n",
+		    (uintmax_t)ino);
 		exit(32);
 	}
 	d = fsbtodb(&sblock, ino_to_fsba(&sblock, ino));

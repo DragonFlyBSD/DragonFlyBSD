@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2000/12/12 19:30:55 tomsoft Exp $
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
- * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.3 2006/04/03 01:58:49 dillon Exp $
+ * $DragonFly: src/sbin/ffsinfo/ffsinfo.c,v 1.4 2006/08/13 18:16:04 swildner Exp $
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/ffsinfo/ffsinfo.c,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
@@ -444,7 +444,7 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 	/*
 	 * Dump the main inode structure.
 	 */
-	snprintf(comment, sizeof(comment), "Inode 0x%08x", inode);
+	snprintf(comment, sizeof(comment), "Inode 0x%08jx", (uintmax_t)inode);
 	if (level & 0x100) {
 		DBG_DUMP_INO(&sblock,
 		    comment,
@@ -466,8 +466,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[0]), (size_t)sblock.fs_bsize,
 		    (void *)&i1blk, fsi);
-		snprintf(comment, sizeof(comment), "Inode 0x%08x: indirect 0",
-		    inode);
+		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 0",
+		    (uintmax_t)inode);
 		DBG_DUMP_IBLK(&sblock,
 		    comment,
 		    i1blk,
@@ -480,8 +480,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[1]), (size_t)sblock.fs_bsize,
 		    (void *)&i2blk, fsi);
-		snprintf(comment, sizeof(comment), "Inode 0x%08x: indirect 1",
-		    inode);
+		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 1",
+		    (uintmax_t)inode);
 		DBG_DUMP_IBLK(&sblock,
 		    comment,
 		    i2blk,
@@ -493,7 +493,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 			rdfs(fsbtodb(&sblock, *ind2ptr),
 			    (size_t)sblock.fs_bsize, (void *)&i1blk, fsi);
 			snprintf(comment, sizeof(comment),
-			    "Inode 0x%08x: indirect 1->%d", inode, ind2ctr);
+			    "Inode 0x%08jx: indirect 1->%d", (uintmax_t)inode,
+			    ind2ctr);
 			DBG_DUMP_IBLK(&sblock,
 			    comment,
 			    i1blk,
@@ -507,8 +508,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 		 */
 		rdfs(fsbtodb(&sblock, ino->di_ib[2]), (size_t)sblock.fs_bsize,
 		    (void *)&i3blk, fsi);
-		snprintf(comment, sizeof(comment), "Inode 0x%08x: indirect 2",
-		    inode);
+		snprintf(comment, sizeof(comment), "Inode 0x%08jx: indirect 2",
+		    (uintmax_t)inode);
 #define SQUARE(a) ((a)*(a))
 		DBG_DUMP_IBLK(&sblock,
 		    comment,
@@ -523,7 +524,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 			rdfs(fsbtodb(&sblock, *ind3ptr),
 			    (size_t)sblock.fs_bsize, (void *)&i2blk, fsi);
 			snprintf(comment, sizeof(comment),
-			    "Inode 0x%08x: indirect 2->%d", inode, ind3ctr);
+			    "Inode 0x%08jx: indirect 2->%d", (uintmax_t)inode,
+			    ind3ctr);
 			DBG_DUMP_IBLK(&sblock,
 			    comment,
 			    i2blk,
@@ -537,8 +539,8 @@ dump_whole_inode(ino_t inode, int fsi, int level)
 				    (size_t)sblock.fs_bsize, (void *)&i1blk,
 				    fsi);
 				snprintf(comment, sizeof(comment),
-				    "Inode 0x%08x: indirect 2->%d->%d", inode,
-				    ind3ctr, ind3ctr);
+				    "Inode 0x%08jx: indirect 2->%d->%d",
+				    (uintmax_t)inode, ind3ctr, ind3ctr);
 				DBG_DUMP_IBLK(&sblock,
 				    comment,
 				    i1blk,
