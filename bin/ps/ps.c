@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.19 2006/05/28 23:12:09 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.20 2006/08/13 02:13:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,6 @@ static char   o1[] = "pid";
 static char   o2[] = "tt state time command";
 static char ufmt[] = "user pid %cpu %mem vsz rss tt state start time command";
 static char vfmt[] = "pid state time sl re pagein vsz rss lim tsiz %cpu %mem command";
-static char yfmt[] = "uid pid ppid cpu pri iac nice wchan state tt time command";
 
 kvm_t *kd;
 
