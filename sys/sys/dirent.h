@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.5 2005/08/27 20:23:05 joerg Exp $
+ * $DragonFly: src/sys/sys/dirent.h,v 1.6 2006/08/13 19:19:47 dillon Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
@@ -74,6 +74,12 @@ struct dirent {
 	char		d_name[255 + 1];
 					/* name, NUL-terminated */
 };
+
+/*
+ * Linux compatibility, but its a good idea anyhow
+ */
+#define _DIRENT_HAVE_D_NAMLEN
+#define _DIRENT_HAVE_D_TYPE
 
 #if !defined(_KERNEL) && defined(__BSD_VISIBLE)
 #define	d_ino		d_fileno
