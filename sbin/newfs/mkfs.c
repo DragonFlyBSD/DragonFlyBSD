@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.12 2006/08/13 18:16:04 swildner Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.13 2006/08/13 20:55:12 swildner Exp $
  */
 
 #include "defs.h"
@@ -746,7 +746,7 @@ next:
 	wtfsflush();
 	/*
 	 * Update information about this partion in pack
-	 * label, to that it may be updated on disk.
+	 * label, so that it may be updated on disk.
 	 */
 	pp->p_fstype = FS_BSDFFS;
 	pp->p_fsize = sblock.fs_fsize;
