@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.13 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.14 2006/08/14 02:41:10 dillon Exp $
  */
 
 /*-
@@ -143,6 +143,8 @@ main(int ac, char **av)
     char *dst = NULL;
     char *ptr;
     struct timeval start;
+
+    signal(SIGPIPE, SIG_IGN);
 
     gettimeofday(&start, NULL);
     for (i = 1; i < ac; ++i) {
@@ -1294,7 +1296,10 @@ xrename(const char *src, const char *dst, u_long flags)
 static int
 xlink(const char *src, const char *dst, u_long flags)
 {
-    int r, e;
+    int r;
+#ifdef _ST_FLAGS_PRESENT_
+    int e;
+#endif
 
     r = 0;
 

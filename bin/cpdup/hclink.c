@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.1 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.2 2006/08/14 02:41:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -215,7 +215,10 @@ hcc_finish_command(struct HostConf *hc)
 #else
 	errno = EIO;
 #endif
-	return(NULL);
+	if (whead->cmd < 0x0010)
+		return(NULL);
+	fprintf(stderr, "cpdup lost connection to %s\n", hc->host);
+	exit(1);
     }
     if ((rhead = hcc_read_command(hc)) == NULL) {
 #ifdef __error
@@ -223,7 +226,10 @@ hcc_finish_command(struct HostConf *hc)
 #else
 	errno = EIO;
 #endif
-	return(NULL);
+	if (whead->cmd < 0x0010)
+		return(NULL);
+	fprintf(stderr, "cpdup lost connection to %s\n", hc->host);
+	exit(1);
     }
     if (rhead->error) {
 #ifdef __error
