@@ -33,21 +33,17 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)leave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/leave/leave.c,v 1.5.2.2 2001/07/30 09:43:30 dd Exp $
- * $DragonFly: src/usr.bin/leave/leave.c,v 1.6 2006/08/13 22:08:14 swildner Exp $
+ * $DragonFly: src/usr.bin/leave/leave.c,v 1.7 2006/08/14 07:37:38 swildner Exp $
  */
 
 #include <err.h>
 #include <ctype.h>
+#include <langinfo.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-
-/*
- * XXX obscures strftime(3) '%+' format to suppress -Wformat warning
- */
-static const char fmt[] = {'%', '+', '\0'};
 
 void doalarm(u_int);
 static void usage(void);
@@ -143,7 +139,8 @@ doalarm(u_int secs)
 	if ((pid = fork())) {
 		(void)time(&daytime);
 		daytime += secs;
-		strftime(tb, sizeof(tb), fmt, localtime(&daytime));
+		strftime(tb, sizeof(tb), nl_langinfo(D_T_FMT),
+		    localtime(&daytime));
 		printf("Alarm set for %s. (pid %d)\n", tb, pid);
 		exit(0);
 	}
