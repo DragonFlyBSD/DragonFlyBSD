@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.5 2006/08/09 03:52:13 justin Exp $ -->
+<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.6 2006/08/14 02:20:31 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY % output.html		"IGNORE">
@@ -213,10 +213,8 @@
 	  (let*	((class		(attribute-string (normalize "role"))))
 	    (cond
 	     ((equal? class "package")
-	      (let* ((urlurl	"http://www.FreeBSD.org/cgi/url.cgi")
-		     (href	(string-append urlurl "?ports/"
-					       (data (current-node))
-					       "/pkg-descr")))
+	      (let* ((urlurl	"http://pkgsrc.se/")
+		     (href	(string-append urlurl (data (current-node)))))
 		(create-link (list (list "HREF" href)) ($mono-seq$))))
 	     (else ($mono-seq$)))))
 
