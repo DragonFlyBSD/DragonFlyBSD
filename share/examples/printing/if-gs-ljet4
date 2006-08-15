@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Printer filter for postscript or plain text with output to a HP laserjet.
+# This requires two packages to be installed: 
+#
+#	/usr/pkgsrc/print/ghostscript
+#	/usr/pkgsrc/print/enscript
+#
+# lp|ps|local line printer:\
+#	:sh:mx#0:sf:\
+#	:lp=/dev/lpt0:sd=/var/spool/output/lpd:lf=/var/log/lpd-errs:\
+#	:if=/usr/local/libexec/if-gs-ljet4:
+#
+# $DragonFly: src/share/examples/printing/if-gs-ljet4,v 1.1 2006/08/15 16:21:23 dillon Exp $
+
+read first_line
+first_two_chars=`expr "$first_line" : '\(..\)'`
+
+if [ "$first_two_chars" = "%!" ]; then
+   #
+   #  PostScript job, print it.
+   #
+   (echo "$first_line" && cat && exit 0) | \
+	gs -q -sPAPERSIZE=letter -sDEVICE=ljet4 -sOutputFile=%stdout% -
+   # printf "\004"
+   exit 2
+else
+   #
+   #  Plain text, convert it, then print it.
+   #
+   ( echo "$first_line"; cat ) | /usr/pkg/bin/enscript -G | \
+	gs -q -sPAPERSIZE=letter -sDEVICE=ljet4 -sOutputFile=%stdout% -
+   # printf "\004"
+   exit 2
+fi
