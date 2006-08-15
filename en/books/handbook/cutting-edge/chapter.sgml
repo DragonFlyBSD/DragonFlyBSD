@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/cutting-edge/chapter.sgml,v 1.200 2004/05/17 19:48:36 simon Exp $
-     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.4 2006/05/07 02:58:28 justin Exp $
+     $DragonFly: doc/en/books/handbook/cutting-edge/chapter.sgml,v 1.5 2006/08/15 02:50:57 justin Exp $
 -->
 
 <chapter id="updating">
@@ -19,14 +19,14 @@
 
   <sect1 id="updating-setup">
     <title>Initial Setup</title>
-      <para>Updates to the DragonFly source code
+      <para>Updates to the &os; source code
       is performed using <application>cvsup</application>.  
       <application>cvsup</application> compares your local system source or 
       ports files to a remote repository, and downloads any changes.  Only the 
       differences in the files are downloaded, saving on bandwidth and time.</para>
   
       <para><application>cvsup</application> exists as a port 
-      (<filename role="package">net/cvsup</filename>) and traditionally had to be 
+      (<filename role="package">devel/cvsup</filename>) and traditionally had to be 
       installed separately on FreeBSD.  With &os;, the binary is installed as part 
       of the base system.</para>
   </sect1>

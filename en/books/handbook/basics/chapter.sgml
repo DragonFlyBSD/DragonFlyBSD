@@ -4,7 +4,7 @@
 $FreeBSD:
 /repoman/r/dcvs/doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.143
 2006/01/05 20:03:36 delphij Exp $
-$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.10 2006/07/12 04:00:59 justin Exp $
+$DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.11 2006/08/15 02:50:57 justin Exp $
 -->
 
 <chapter id="basics">
@@ -255,7 +255,7 @@ ttyv4   "/usr/libexec/getty Pc"         cons25  on  secure
 ttyv5   "/usr/libexec/getty Pc"         cons25  on  secure
 ttyv6   "/usr/libexec/getty Pc"         cons25  on  secure
 ttyv7   "/usr/libexec/getty Pc"         cons25  on  secure
-ttyv8   "/usr/X11R6/bin/xdm -nodaemon"  xterm   off secure</programlisting>
+ttyv8   "/usr/pkg/xorg/bin/xdm -nodaemon"  xterm   off secure</programlisting>
 
       <para>For a detailed description of every column in this file and all
 	the options you can use to set things up for the virtual consoles,
@@ -760,12 +760,6 @@ file1</programlisting>
 	    </row>
 	    
 	    <row>
-	      <entry><filename class="directory">/stand/</filename></entry>
-	      <entry>Programs used in a standalone environment.</entry>
-	    </row>
-	    
-	    
-	    <row>
 	      <entry><filename class="directory">/tmp/</filename></entry>
 	      <entry>Temporary files.  The contents of
             <filename class="directory">/tmp</filename> are usually NOT
@@ -832,15 +826,22 @@ file1</programlisting>
 	      <entry><filename class="directory">/usr/pkg</filename></entry>
 	      <entry>Used as
 	        the default destination for the files installed via the
-		&pkgsrc; framework or &pkgsrc; packages (optional).
+		&pkgsrctree; or &pkgsrc; packages (optional).
 		The configuration directory is tunable, but the default
 		location is <filename>/usr/pkg/etc</filename>.
 	      </entry>
 	    </row>
+	    
+	    <row>
+	      <entry><filename
+	      class="directory">/usr/pkg/xorg/</filename></entry>
+	      <entry>X11R6 distribution executables, libraries, etc
+	      (optional).</entry>
+	    </row>
 
 	    <row>
 	      <entry><filename class="directory">/usr/pkgsrc</filename></entry>
-	      <entry>The &pkgsrc; collection for installing packages (optional).</entry>
+	      <entry>The &pkgsrctree; for installing packages (optional).</entry>
 	    </row>
 	    
 	    <row>
@@ -856,13 +857,6 @@ file1</programlisting>
 	    <row>
 	      <entry><filename class="directory">/usr/src/</filename></entry>
 	      <entry>BSD and/or local source files.</entry>
-	    </row>
-	    
-	    <row>
-	      <entry><filename
-	      class="directory">/usr/X11R6/</filename></entry>
-	      <entry>X11R6 distribution executables, libraries, etc
-	      (optional).</entry>
 	    </row>
 	    
 	    <row>
@@ -2123,13 +2117,13 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <envar>EDITOR</envar> environment variable, under <command>csh</command> or 
       <command>tcsh</command> a
       command like this would set <envar>EDITOR</envar> to
-      <filename>/usr/local/bin/emacs</filename>:</para>
+      <filename>/usr/pkg/bin/emacs</filename>:</para>
 
-    <screen>&prompt.user; <userinput>setenv EDITOR /usr/local/bin/emacs</userinput></screen>
+    <screen>&prompt.user; <userinput>setenv EDITOR /usr/pkg/bin/emacs</userinput></screen>
 
     <para>Under Bourne shells:</para>
 
-    <screen>&prompt.user; <userinput>export EDITOR="/usr/local/bin/emacs"</userinput></screen>
+    <screen>&prompt.user; <userinput>export EDITOR="/usr/pkg/bin/emacs"</userinput></screen>
 
     <para>You can also make most shells expand the environment variable by
       placing a <literal>$</literal> character in front of it on the
@@ -2171,13 +2165,13 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
 	change your shell to <command>bash</command>, the following should do the
 	trick:</para>
 	
-      <screen>&prompt.user; <userinput>chsh -s /usr/local/bin/bash</userinput></screen>
+      <screen>&prompt.user; <userinput>chsh -s /usr/pkg/bin/bash</userinput></screen>
 
       <note>
 	<para>The shell that you wish to use <emphasis>must</emphasis> be
 	  present in the <filename>/etc/shells</filename> file.  If you
-	  have installed a shell from the <link linkend="pkgsrc">&pkgsrc;
-	  collection</link>, then this should have been done for you
+	  have installed a shell from the <link linkend="pkgsrc">&pkgsrctree;
+	  </link>, then this should have been done for you
 	  already.  If you installed the shell by hand, you must do
 	  this.</para>
      
@@ -2200,7 +2194,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>A lot of configuration in &os; is done by editing text files.
       Because of this, it would be a good idea to become familiar
       with a text editor.  &os; comes with a few as part of the base
-      system, and many more are available in the &pkgsrc; collections.</para>
+      system, and many more are available in the &pkgsrctree;.</para>
 
     <indexterm>
       <primary><command>ee</command></primary>
@@ -2241,7 +2235,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para>&os; also comes with more powerful text editors such as
       <application>vi</application> as part of the base system, while other editors, like
       <application>emacs</application> and <application>vim</application>,
-      are part of the &pkgsrc; collection.  These editors offer much
+      are part of the &pkgsrctree;.  These editors offer much
       more functionality and power at the expense of being a little more
       complicated to learn.  However if you plan on doing a lot of text
       editing, learning a more powerful editor such as
