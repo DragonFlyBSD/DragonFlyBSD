@@ -1,9 +1,9 @@
 # Makefile for vfs modules
 #
-# $DragonFly: src/sys/vfs/Makefile,v 1.6 2006/04/04 17:34:32 dillon Exp $
+# $DragonFly: src/sys/vfs/Makefile,v 1.7 2006/08/17 22:07:49 dillon Exp $
 
 SUBDIR=fifofs msdosfs portal gnu nfs procfs \
-	coda hpfs ntfs smbfs isofs fdesc mfs nwfs udf \
+	hpfs ntfs smbfs isofs fdesc mfs nwfs udf \
 	nullfs
 
 .include <bsd.subdir.mk>

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.86 2006/07/04 17:35:30 swildner Exp $
+# $DragonFly: src/sys/config/LINT,v 1.87 2006/08/17 22:07:51 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -810,11 +810,6 @@ options 	NFS_UIDHASHSIZ=29	# Tune the size of nfssvc_sock with this
 options 	NFS_WDELAYHASHSIZ=16	# and with this
 options 	NFS_MUIDHASHSIZ=63	# Tune the size of nfsmount with this
 options 	NFS_DEBUG		# Enable NFS Debugging
-
-# Coda stuff:
-# YYY-DR Till we rework the VOP methods for this filesystem
-#options 	CODA			#CODA filesystem.
-#pseudo-device	vcoda	4		#coda minicache <-> venus comm.
 
 #
 # Add support for the EXT2FS filesystem of Linux fame.  Be a bit

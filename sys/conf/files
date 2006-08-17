@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.134 2006/08/06 18:56:42 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.135 2006/08/17 22:07:33 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -33,13 +33,6 @@ aic79xx_reg_print.o		optional ahd pci ahd_reg_pretty_print	\
 	no-implicit-rule local
 kern/device_if.m			standard
 kern/bus_if.m				standard
-vfs/coda/coda_namecache.c		optional vcoda
-vfs/coda/coda_fbsd.c			optional vcoda
-vfs/coda/coda_psdev.c			optional vcoda
-vfs/coda/coda_subr.c			optional vcoda
-vfs/coda/coda_venus.c			optional vcoda
-vfs/coda/coda_vfsops.c			optional vcoda
-vfs/coda/coda_vnops.c			optional vcoda
 bus/cam/cam.c				optional scbus
 bus/cam/cam_xpt.c			optional scbus
 bus/cam/cam_extend.c			optional scbus
