@@ -1,7 +1,7 @@
 # $FreeBSD: src/usr.sbin/editmap/Makefile,v 1.1.2.1 2002/03/25 21:29:58 gshapiro Exp $
-# $DragonFly: src/usr.sbin/editmap/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
+# $DragonFly: src/usr.sbin/editmap/Makefile,v 1.8 2006/08/18 03:06:59 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
 .PATH: ${SENDMAIL_DIR}/editmap
 
 PROG=	editmap

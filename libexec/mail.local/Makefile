@@ -1,8 +1,8 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/libexec/mail.local/Makefile,v 1.10.2.7 2002/03/25 21:31:38 gshapiro Exp $
-# $DragonFly: src/libexec/mail.local/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
+# $DragonFly: src/libexec/mail.local/Makefile,v 1.8 2006/08/18 03:06:59 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
 .PATH:	${SENDMAIL_DIR}/mail.local
 
 PROG=	mail.local

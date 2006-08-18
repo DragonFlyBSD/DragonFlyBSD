@@ -1,8 +1,8 @@
 #	@(#)Makefile	8.2 (Berkeley) 9/21/96
 # $FreeBSD: src/usr.sbin/mailstats/Makefile,v 1.1.6.6 2002/03/25 21:31:43 gshapiro Exp $
-# $DragonFly: src/usr.sbin/mailstats/Makefile,v 1.7 2006/06/14 16:45:56 gshapiro Exp $
+# $DragonFly: src/usr.sbin/mailstats/Makefile,v 1.8 2006/08/18 03:06:59 gshapiro Exp $
 
-SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.7
+SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.13.8
 .PATH:	${SENDMAIL_DIR}/mailstats
 
 PROG=	mailstats
