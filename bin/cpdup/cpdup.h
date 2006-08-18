@@ -1,7 +1,7 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.4 2006/08/13 20:51:40 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.5 2006/08/18 01:13:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>

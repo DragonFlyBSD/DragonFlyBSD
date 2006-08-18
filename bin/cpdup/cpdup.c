@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.14 2006/08/14 02:41:10 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.15 2006/08/18 01:13:51 dillon Exp $
  */
 
 /*-
@@ -83,10 +83,10 @@ typedef struct List {
 struct hlink {
     ino_t ino;
     ino_t dino;
-    char name[2048];
     struct hlink *next;
     struct hlink *prev;
     nlink_t nlinked;
+    char name[0];
 };
 
 struct hlink *hltable[HLSIZE];
@@ -340,9 +340,11 @@ static struct hlink *
 hltadd(struct stat *stp, const char *path)
 {
     struct hlink *new;
+    int plen = strlen(path);
     int n;
 
-    if (!(new = malloc(sizeof (struct hlink)))) {
+    new = malloc(offsetof(struct hlink, name[plen + 1]));
+    if (new == NULL) {
         fprintf(stderr, "out of memory\n");
         exit(EXIT_FAILURE);
     }
@@ -350,7 +352,7 @@ hltadd(struct stat *stp, const char *path)
     /* initialize and link the new element into the table */
     new->ino = stp->st_ino;
     new->dino = 0;
-    strncpy(new->name, path, 2048);
+    bcopy(path, new->name, plen + 1);
     new->nlinked = 1;
     new->prev = NULL;
     n = stp->st_ino & HLMASK;

@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hclink.c,v 1.2 2006/08/14 02:41:10 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hclink.c,v 1.3 2006/08/18 01:13:51 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -334,20 +334,28 @@ void
 hcc_set_descriptor(struct HostConf *hc, int desc, void *ptr, int type)
 {
     struct HCHostDesc *hd;
+    struct HCHostDesc **hdp;
 
-    for (hd = hc->hostdescs; hd; hd = hd->next) {
+    for (hdp = &hc->hostdescs; (hd = *hdp) != NULL; hdp = &hd->next) {
 	if (hd->desc == desc) {
-	    hd->data = ptr;
-	    hd->type = type;
+	    if (ptr) {
+		hd->data = ptr;
+		hd->type = type;
+	    } else {
+		*hdp = hd->next;
+		free(hd);
+	    }
 	    return;
 	}
     }
-    hd = malloc(sizeof(*hd));
-    hd->desc = desc;
-    hd->type = type;
-    hd->data = ptr;
-    hd->next = hc->hostdescs;
-    hc->hostdescs = hd;
+    if (ptr) {
+	hd = malloc(sizeof(*hd));
+	hd->desc = desc;
+	hd->type = type;
+	hd->data = ptr;
+	hd->next = hc->hostdescs;
+	hc->hostdescs = hd;
+    }
 }
 
 struct HCLeaf *
