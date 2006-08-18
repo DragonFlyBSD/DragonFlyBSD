@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.15 2006/08/18 01:13:51 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.16 2006/08/18 16:05:00 dillon Exp $
  */
 
 /*-
@@ -784,6 +784,8 @@ relink:
 	    }
 
 	    if (dpath) {
+		struct timeval tv[2];
+
 		if (ForceOpt ||
 		    st2Valid == 0 || 
 		    st1.st_uid != st2.st_uid ||
@@ -799,6 +801,15 @@ relink:
 		    hc_chflags(&DstHost, dpath, st1.st_flags);
 		}
 #endif
+		if (ForceOpt ||
+		    st2Valid == 0 ||
+		    st1.st_mtime != st2.st_mtime
+		) {
+		    bzero(tv, sizeof(tv));
+		    tv[0].tv_sec = st1.st_mtime;
+		    tv[1].tv_sec = st1.st_mtime;
+		    hc_utimes(&DstHost, dpath, tv);
+		}
 	    }
 	}
     } else if (dpath == NULL) {
