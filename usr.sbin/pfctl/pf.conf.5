@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.5 2006/04/17 18:01:38 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.6 2006/08/18 01:42:58 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -2206,6 +2206,21 @@ Hence,
 .Ed
 .Pp
 will only block connections from 1.2.3.4 to port 25.
+.Sh FILES
+.Bl -tag -width "/etc/protocols" -compact
+.It Pa /etc/hosts
+Host name database.
+.It Pa /etc/pf.conf
+Default location of the ruleset file.
+.It Pa /etc/pf.os
+Default location of OS fingerprints.
+.It Pa /etc/protocols
+Protocol name database.
+.It Pa /etc/services
+Service name database.
+.It Pa /usr/share/examples/pf
+Example rulesets.
+.El
 .Sh TRANSLATION EXAMPLES
 This example maps incoming requests on port 80 to port 8080, on
 which a daemon is running (because, for example, it is not run as root,
@@ -2595,21 +2610,6 @@ upperlimit-sc  = "upperlimit" sc-spec
 sc-spec        = ( bandwidth-spec |
                  "(" bandwidth-spec number bandwidth-spec ")" )
 .Ed
-.Sh FILES
-.Bl -tag -width "/etc/protocols" -compact
-.It Pa /etc/hosts
-Host name database.
-.It Pa /etc/pf.conf
-Default location of the ruleset file.
-.It Pa /etc/pf.os
-Default location of OS fingerprints.
-.It Pa /etc/protocols
-Protocol name database.
-.It Pa /etc/services
-Service name database.
-.It Pa /usr/share/examples/pf
-Example rulesets.
-.El
 .Sh SEE ALSO
 .Xr icmp 4 ,
 .Xr icmp6 4 ,

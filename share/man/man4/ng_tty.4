@@ -33,7 +33,7 @@
 .\" Author: Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/ng_tty.4,v 1.14.2.1 2001/12/21 09:00:51 ru Exp $
-.\" $DragonFly: src/share/man/man4/ng_tty.4,v 1.3 2006/05/26 19:39:39 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ng_tty.4,v 1.4 2006/08/18 01:42:58 swildner Exp $
 .\" $Whistle: ng_tty.8,v 1.5 1999/01/25 23:46:28 archie Exp $
 .\"
 .Dd January 19, 1999
@@ -117,15 +117,6 @@ The
 .Dv NGM_SHUTDOWN
 control message is not valid, and always returns the error
 .Er EOPNOTSUPP .
-.Sh BUGS
-The serial driver code also has a notion of a
-.Dq hot character .
-Unfortunately, this value is statically defined in terms of the
-line discipline and cannot be changed.
-Therefore, if a hot character other than 0x7e (the default) is set for the
-.Nm
-node, the node has no way to convey this information to the
-serial driver, and sub-optimal performance may result.
 .Sh SEE ALSO
 .Xr ioctl 2 ,
 .Xr netgraph 4 ,
@@ -139,3 +130,12 @@ node type was implemented in
 .Fx 4.0 .
 .Sh AUTHORS
 .An Archie Cobbs Aq archie@FreeBSD.org
+.Sh BUGS
+The serial driver code also has a notion of a
+.Dq hot character .
+Unfortunately, this value is statically defined in terms of the
+line discipline and cannot be changed.
+Therefore, if a hot character other than 0x7e (the default) is set for the
+.Nm
+node, the node has no way to convey this information to the
+serial driver, and sub-optimal performance may result.

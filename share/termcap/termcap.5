@@ -52,7 +52,7 @@
 .\" ***************************************************************************/
 .\"
 .\" $FreeBSD: src/share/termcap/termcap.5,v 1.12.2.6 2002/08/15 08:30:27 ru Exp $
-.\" $DragonFly: src/share/termcap/termcap.5,v 1.4 2006/04/17 18:01:37 swildner Exp $
+.\" $DragonFly: src/share/termcap/termcap.5,v 1.5 2006/08/18 01:42:58 swildner Exp $
 .\"
 .Dd April 16, 1994
 .Dt TERMCAP 5
@@ -2109,6 +2109,11 @@ Hash database file containing terminal descriptions (see
 .Xr printf 3 ,
 .Xr termcap 3 ,
 .Xr term 5
+.Sh HISTORY
+The
+.Nm
+file format appeared in
+.Bx 3 .
 .Sh CAVEATS AND BUGS
 The
 .Em Note :
@@ -2138,8 +2143,3 @@ The total length of a single entry (excluding only escaped newlines)
 may not exceed 1024.
 .Pp
 Not all programs support all entries.
-.Sh HISTORY
-The
-.Nm
-file format appeared in
-.Bx 3 .

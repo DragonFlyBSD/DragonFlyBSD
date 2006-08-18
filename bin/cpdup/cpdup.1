@@ -3,7 +3,7 @@
 .\"    USE WITH EXTREME CAUTION.
 .\"
 .\"
-.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.14 2006/08/13 20:51:40 dillon Exp $
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.15 2006/08/18 01:42:58 swildner Exp $
 .Dd October 28, 1999
 .Dt CPDUP 1
 .Os BSD 4
@@ -203,6 +203,12 @@ utility exits 0 if no error occured and >0 if an error occured.
 .Xr cp 1 ,
 .Xr cpio 1 ,
 .Xr tar 1
+.Sh HISTORY
+The
+.Nm
+command was original created to update servers at BEST Internet circa 1997
+and was placed under the FreeBSD copyright for inclusion in the ports area
+in 1999.  The program was written by Matthew Dillon and Dima Ruban.
 .Sh BUGS
 UFS has a hardlink limit of 32767.  Many programs, in particular CVS
 with regards to its CVS/Root file, will generate a lot of hard links.
@@ -214,9 +220,3 @@ to maintain these hard links.  If this occurs
 .Nm
 will be forced to copy the file instead of link it, and thus not be able
 to make a perfect copy of the filesystem.
-.Sh HISTORY
-The
-.Nm
-command was original created to update servers at BEST Internet circa 1997
-and was placed under the FreeBSD copyright for inclusion in the ports area
-in 1999.  The program was written by Matthew Dillon and Dima Ruban.

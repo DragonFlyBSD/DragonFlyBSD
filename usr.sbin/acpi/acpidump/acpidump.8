@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.16 2004/06/04 19:21:06 ru Exp $
-.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.3 2006/02/17 19:40:09 swildner Exp $
+.\" $DragonFly: src/usr.sbin/acpi/acpidump/acpidump.8,v 1.4 2006/08/18 01:42:58 swildner Exp $
 .\"
 .Dd August 31, 2000
 .Dt ACPIDUMP 8
@@ -159,6 +159,15 @@ Verbose messages are enabled.
 .Xr acpiconf 8 ,
 .Xr acpidb 8 ,
 .Xr iasl 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Fx 5.0
+and was rewritten to use
+.Xr iasl 8
+for
+.Fx 5.2 .
 .Sh AUTHORS
 .An Doug Rabson Aq dfr@FreeBSD.org
 .An Mitsuru IWASAKI Aq iwasaki@FreeBSD.org
@@ -173,15 +182,6 @@ Some contributions made by
 .An Michael Lucas Aq mwlucas@blackhelicopters.org
 and
 .An Michael Smith Aq msmith@FreeBSD.org .
-.Sh HISTORY
-The
-.Nm
-utility first appeared in
-.Fx 5.0
-and was rewritten to use
-.Xr iasl 8
-for
-.Fx 5.2 .
 .Sh BUGS
 In the current implementation,
 .Nm
