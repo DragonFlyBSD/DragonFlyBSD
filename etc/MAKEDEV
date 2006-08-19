@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.20 2005/05/07 17:38:33 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.21 2006/08/19 01:36:39 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -158,7 +158,6 @@
 #	kbd	keyboard devices
 #	elan-mmcr	AMD Elan support (e.g. mmap MMCR)
 #	agpgart	AGP interface
-#	cfs*	Coda Distributed Filesystem
 #	nsmb*	SMB/CIFS protocol interface
 #	pf	PF packet filter
 #
@@ -2223,14 +2222,6 @@ tw*)
 	unit=`expr $i : 'tw\(.*\)'`
 
 	mknod tw $unit c 19 `unit2minor $unit` root:operator
-	;;
-
-#-----------------------------------------------------------------------------
-
-cfs*)
-	unit=`expr $i : 'cfs\(.*\)'`
-
-	mknod cfs $unit c 93 $unit root:operator
 	;;
 
 #-----------------------------------------------------------------------------

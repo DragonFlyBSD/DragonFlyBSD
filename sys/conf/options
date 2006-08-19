@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.51 2006/07/02 12:55:44 swildner Exp $
+# $DragonFly: src/sys/conf/options,v 1.52 2006/08/19 01:36:39 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -152,7 +152,6 @@ NTFS		opt_dontuse.h
 # statically compiled into the kernel, code for mounting them as root
 # filesystems will be enabled - but look below.  Boot-code is purposely
 # unavailable for the LKM-based versions.
-CODA
 CD9660
 FFS
 NFS
