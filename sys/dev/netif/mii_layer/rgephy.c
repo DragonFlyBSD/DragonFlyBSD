@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.2 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.3 2006/08/19 09:33:37 sephe Exp $
  */
 
 /*
@@ -108,6 +108,8 @@ rgephy_probe(device_t dev)
 	mpd = mii_phy_match(ma, rgephys);
 	if (mpd != NULL) {
 		device_set_desc(dev, mpd->mpd_name);
+		if (bootverbose)
+			device_printf(dev, "rev: %d\n", MII_REV(ma->mii_id2));
 		return (0);
 	}
 	return(ENXIO);
@@ -369,7 +371,8 @@ rgephy_mii_phy_auto(struct mii_softc *sc)
 	PHY_WRITE(sc, RGEPHY_MII_ANAR,
 		  BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) | ANAR_CSMA);
 	DELAY(1000);
-	PHY_WRITE(sc, RGEPHY_MII_1000CTL, RGEPHY_1000CTL_AFD);
+	PHY_WRITE(sc, RGEPHY_MII_1000CTL,
+	    RGEPHY_1000CTL_AHD | RGEPHY_1000CTL_AFD);
 	DELAY(1000);
 	PHY_WRITE(sc, RGEPHY_MII_BMCR,
 	    RGEPHY_BMCR_AUTOEN | RGEPHY_BMCR_STARTNEG);
@@ -407,13 +410,17 @@ rgephy_loop(struct mii_softc *sc)
 /*
  * Initialize RealTek PHY per the datasheet. The DSP in the PHYs of
  * existing revisions of the 8169S/8110S chips need to be tuned in
- * order to reliably negotiate a 1000Mbps link. Later revs of the
- * chips may not require this software tuning.
+ * order to reliably negotiate a 1000Mbps link. This is only needed
+ * for rev 0 and rev 1 of the PHY. Later versions work without
+ * any fixups.
  */
 static void
 rgephy_load_dspcode(struct mii_softc *sc)
 {
 	int val;
+
+	if (sc->mii_rev > 1)
+		return;
 
 	PHY_WRITE(sc, 31, 0x0001);
 	PHY_WRITE(sc, 21, 0x1000);
