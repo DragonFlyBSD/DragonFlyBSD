@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.34 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.35 2006/08/19 17:27:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -726,7 +726,10 @@ smbfs_readdir(struct vop_readdir_args *ap)
 		return (EOPNOTSUPP);
 	}
 #endif
-	error = smbfs_readvnode(vp, uio, ap->a_cred);
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
+		error = smbfs_readvnode(vp, uio, ap->a_cred);
+		vn_unlock(vp);
+	}
 	return error;
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.24 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.25 2006/08/19 17:27:25 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -696,6 +696,10 @@ udf_readdir(struct vop_readdir_args *a)
 	char *name;
 
 	vp = a->a_vp;
+
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
+
 	uio = a->a_uio;
 	node = VTON(vp);
 	udfmp = node->udfmp;
@@ -826,6 +830,7 @@ udf_readdir(struct vop_readdir_args *a)
 		}
 	}
 
+	vn_unlock(vp);
 	return(error);
 }
 

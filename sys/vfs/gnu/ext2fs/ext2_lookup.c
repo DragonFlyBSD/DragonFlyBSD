@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.24 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.25 2006/08/19 17:27:24 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -137,7 +137,6 @@ ext2_readdir(struct vop_readdir_args *ap)
 {
         struct uio *uio = ap->a_uio;
         int count, error;
-
 	struct ext2_dir_entry_2 *edp, *dp;
 	int ncookies;
 	struct uio auio;
@@ -146,6 +145,9 @@ ext2_readdir(struct vop_readdir_args *ap)
 	int DIRBLKSIZ = VTOI(ap->a_vp)->i_e2fs->s_blocksize;
 	int readcnt, retval;
 	off_t startoffset = uio->uio_offset;
+
+	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return(error);
 
 	count = uio->uio_resid;
 	/*
@@ -244,6 +246,7 @@ ext2_readdir(struct vop_readdir_args *ap)
 	FREE(dirbuf, M_TEMP);
 	if (ap->a_eofflag)
 		*ap->a_eofflag = VTOI(ap->a_vp)->i_size <= uio->uio_offset;
+	vn_unlock(ap->a_vp);
         return (error);
 }
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.32 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.33 2006/08/19 17:27:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -677,8 +677,10 @@ nwfs_readdir(struct vop_readdir_args *ap)
 		printf("nwfs_readdir: no support for cookies now...");
 		return (EOPNOTSUPP);
 	}
-
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
 	error = nwfs_readvnode(vp, uio, ap->a_cred);
+	vn_unlock(vp);
 	return error;
 }
 

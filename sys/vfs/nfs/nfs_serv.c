@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.37 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.38 2006/08/19 17:27:24 dillon Exp $
  */
 
 /*
@@ -2869,7 +2869,6 @@ again:
 	io.uio_rw = UIO_READ;
 	io.uio_td = NULL;
 	eofflag = 0;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if (cookies) {
 		free((caddr_t)cookies, M_TEMP);
 		cookies = NULL;
@@ -2883,7 +2882,6 @@ again:
 		if (!error)
 			error = getret;
 	}
-	vn_unlock(vp);
 	if (error) {
 		vrele(vp);
 		vp = NULL;
@@ -3146,7 +3144,6 @@ again:
 	io.uio_rw = UIO_READ;
 	io.uio_td = NULL;
 	eofflag = 0;
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if (cookies) {
 		free((caddr_t)cookies, M_TEMP);
 		cookies = NULL;
@@ -3154,7 +3151,6 @@ again:
 	error = VOP_READDIR(vp, &io, cred, &eofflag, &ncookies, &cookies);
 	off = (u_quad_t)io.uio_offset;
 	getret = VOP_GETATTR(vp, &at);
-	vn_unlock(vp);
 	if (!cookies && !error)
 		error = NFSERR_PERM;
 	if (!error)

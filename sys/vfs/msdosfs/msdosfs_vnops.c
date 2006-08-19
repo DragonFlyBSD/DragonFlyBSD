@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.40 2006/08/12 00:26:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.41 2006/08/19 17:27:24 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1557,8 +1557,8 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	long bias = 0;
 	daddr_t bn, lbn;
 	struct buf *bp;
-	struct denode *dep = VTODE(ap->a_vp);
-	struct msdosfsmount *pmp = dep->de_pmp;
+	struct denode *dep;
+	struct msdosfsmount *pmp;
 	struct direntry *dentp;
 	struct uio *uio = ap->a_uio;
 	u_long *cookies = NULL;
@@ -1571,6 +1571,12 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	char *d_name_storage = NULL;
 	char *d_name;
 
+	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
+
+	dep = VTODE(ap->a_vp);
+	pmp = dep->de_pmp;
+
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_readdir(): vp %p, uio %p, cred %p, eofflagp %p\n",
 	    ap->a_vp, uio, ap->a_cred, ap->a_eofflag);
@@ -1582,8 +1588,10 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	 * retrieve the wrong block from the buffer cache for a plain file.
 	 * So, fail attempts to readdir() on a plain file.
 	 */
-	if ((dep->de_Attributes & ATTR_DIRECTORY) == 0)
-		return (ENOTDIR);
+	if ((dep->de_Attributes & ATTR_DIRECTORY) == 0) {
+		error = ENOTDIR;
+		goto done;
+	}
 
 	/*
 	 * If the user buffer is smaller than the size of one dos directory
@@ -1592,8 +1600,10 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	 */
 	off = offset = uio->uio_offset;
 	if (uio->uio_resid < sizeof(struct direntry) ||
-	    (offset & (sizeof(struct direntry) - 1)))
-		return (EINVAL);
+	    (offset & (sizeof(struct direntry) - 1))) {
+		error = EINVAL;
+		goto done;
+	}
 
 	if (ap->a_ncookies) {
 		ncookies = uio->uio_resid / 16 + 1;
@@ -1671,7 +1681,7 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 		if (error) {
 			brelse(bp);
 			free(d_name_storage, M_TEMP);
-			return (error);
+			goto done;
 		}
 		n = min(n, blsize - bp->b_resid);
 
@@ -1796,6 +1806,8 @@ out:
 		else
 			*ap->a_eofflag = 0;
 	}
+done:
+	vn_unlock(ap->a_vp);
 	return (error);
 }
 

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.64 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.65 2006/08/19 17:27:24 dillon Exp $
  */
 
 
@@ -2091,6 +2091,9 @@ nfs_readdir(struct vop_readdir_args *ap)
 	if (vp->v_type != VDIR)
 		return (EPERM);
 
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
+
 	/*
 	 * If we have a valid EOF offset cache we must call VOP_GETATTR()
 	 * and then check that is still valid, or if this is an NQNFS mount
@@ -2103,7 +2106,7 @@ nfs_readdir(struct vop_readdir_args *ap)
 		    (np->n_flag & (NLMODIFIED|NRMODIFIED)) == 0
 		) {
 			nfsstats.direofcache_hits++;
-			return (0);
+			goto done;
 		}
 	}
 
@@ -2116,6 +2119,8 @@ nfs_readdir(struct vop_readdir_args *ap)
 
 	if (!error && uio->uio_resid == tresid)
 		nfsstats.direofcache_misses++;
+done:
+	vn_unlock(vp);
 	return (error);
 }
 

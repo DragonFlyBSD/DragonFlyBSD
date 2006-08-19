@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.37 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.38 2006/08/19 17:27:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -848,16 +848,18 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return(EINVAL);
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
+
 	num = uio->uio_offset;
 	cnum = 0;
 
 	if( num <= cnum ) {
 		dprintf((". faked, "));
 		if (vop_write_dirent(&error, uio, hp->h_no, DT_DIR, 1, "."))
-			return (0);
-		if(error)
-			return (error);
-
+			goto done;
+		if (error)
+			goto done;
 		ncookies ++;
 	}
 	cnum++;
@@ -866,9 +868,8 @@ hpfs_readdir(struct vop_readdir_args *ap)
 		dprintf((".. faked, "));
 		if (vop_write_dirent(&error, uio, hp->h_fn.fn_parent, DT_DIR, 2, ".."))
 			goto readdone;
-		if(error)
-			return (error);
-
+		if (error)
+			goto done;
 		ncookies ++;
 	}
 	cnum++;
@@ -883,14 +884,15 @@ dive:
 	error = bread(hp->h_devvp, dbtodoff(lsn), D_BSIZE, &bp);
 	if (error) {
 		brelse(bp);
-		return (error);
+		goto done;
 	}
 
 	dp = (struct dirblk *) bp->b_data;
 	if (dp->d_magic != D_MAGIC) {
 		printf("hpfs_readdir: MAGIC DOESN'T MATCH\n");
 		brelse(bp);
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
 
 	dep = D_DIRENT(dp);
@@ -918,7 +920,7 @@ dive:
 					}
 					if (error) {
 						brelse (bp);
-						return (error);
+						goto done;
 					}
 					ncookies++;
 				}
@@ -929,7 +931,8 @@ dive:
 		} else {
 			printf("hpfs_readdir: ERROR! oLSN not found\n");
 			brelse(bp);
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 	}
 
@@ -952,7 +955,7 @@ dive:
 				}
 				if (error) {
 					brelse (bp);
-					return (error);
+					goto done;
 				}
 				ncookies++;
 			}
@@ -1016,7 +1019,9 @@ readdone:
 		*ap->a_cookies = cookies;
 	}
 
-	return (0);
+done:
+	vn_unlock(ap->a_vp);
+	return (error);
 }
 
 /*

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.74 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.75 2006/08/19 17:27:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1238,7 +1238,7 @@ cache_inefficient_scan(struct namecache *ncp, struct ucred *cred,
 	vat.va_blocksize = 0;
 	if ((error = VOP_GETATTR(dvp, &vat)) != 0)
 		return (error);
-	if ((error = cache_vget(ncp, cred, LK_SHARED, &pvp)) != 0)
+	if ((error = cache_vref(ncp, cred, &pvp)) != 0)
 		return (error);
 	if (ncvp_debug)
 		printf("inefficient_scan: directory iosize %ld vattr fileid = %ld\n", vat.va_blocksize, (long)vat.va_fileid);
@@ -1283,7 +1283,6 @@ again:
 				}
 				nlc.nlc_nameptr = den->d_name;
 				nlc.nlc_namelen = den->d_namlen;
-				vn_unlock(pvp);
 				rncp = cache_nlookup(ncp, &nlc);
 				KKASSERT(rncp != NULL);
 				break;
@@ -1294,8 +1293,8 @@ again:
 		if (rncp == NULL && eofflag == 0 && uio.uio_resid != blksize)
 			goto again;
 	}
+	vrele(pvp);
 	if (rncp) {
-		vrele(pvp);
 		if (rncp->nc_flag & NCF_UNRESOLVED) {
 			cache_setvp(rncp, dvp);
 			if (ncvp_debug >= 2) {
@@ -1315,7 +1314,6 @@ again:
 	} else {
 		printf("cache_inefficient_scan: dvp %p NOT FOUND in %s\n",
 			dvp, ncp->nc_name);
-		vput(pvp);
 		error = ENOENT;
 	}
 	free(rbuf, M_TEMP);

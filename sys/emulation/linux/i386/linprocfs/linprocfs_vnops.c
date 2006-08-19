@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.33 2006/08/12 00:26:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.34 2006/08/19 17:27:22 dillon Exp $
  */
 
 /*
@@ -788,31 +788,31 @@ linprocfs_readdir(struct vop_readdir_args *ap)
 		return (EINVAL);
 
 	pfs = VTOPFS(ap->a_vp);
+	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
 
 	switch (pfs->pfs_type) {
-	/*
-	 * this is for the process-specific sub-directories.
-	 * all that is needed to is copy out all the entries
-	 * from the procent[] table (top of this file).
-	 */
 	case Pproc:
+		/*
+		 * This is for the process-specific sub-directories.
+		 * all that is needed to is copy out all the entries
+		 * from the procent[] table (top of this file).
+		 */
 		error = linprocfs_readdir_proc(ap);
 		break;
-
-	/*
-	 * this is for the root of the procfs filesystem
-	 * what is needed is a special entry for "self"
-	 * followed by an entry for each process on allproc
-	 */
-
 	case Proot:
+		/*
+		 * This is for the root of the procfs filesystem
+		 * what is needed is a special entry for "self"
+		 * followed by an entry for each process on allproc
+		 */
 		error = linprocfs_readdir_root(ap);
 		break;
-
 	default:
 		error = ENOTDIR;
 		break;
 	}
+	vn_unlock(ap->a_vp);
 
 	return (error);
 }

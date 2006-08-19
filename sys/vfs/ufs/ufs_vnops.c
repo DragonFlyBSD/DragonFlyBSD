@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.54 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.55 2006/08/19 17:27:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1674,6 +1674,9 @@ ufs_readdir(struct vop_readdir_args *ap)
 	}
 	cookie_index = 0;
 
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
+
 	/*
 	 * Past or at EOF
 	 */
@@ -1684,7 +1687,7 @@ ufs_readdir(struct vop_readdir_args *ap)
 			*ap->a_ncookies = cookie_index;
 			*ap->a_cookies = cookies;
 		}
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -1773,6 +1776,8 @@ ufs_readdir(struct vop_readdir_args *ap)
 			*ap->a_cookies = cookies;
 		}
 	}
+done:
+	vn_unlock(vp);
         return (error);
 }
 

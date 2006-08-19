@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.36 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.37 2006/08/19 17:27:24 dillon Exp $
  *
  */
 
@@ -570,6 +570,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 
 	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return (EINVAL);
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
 
 	/*
 	 * uio->uio_offset carries the number of the entry
@@ -589,9 +591,9 @@ ntfs_readdir(struct vop_readdir_args *ap)
 	if (ip->i_number != NTFS_ROOTINO && num == 0) {
 		if (vop_write_dirent(&error, uio, ip->i_number,
 		    DT_DIR, 1, "."))
-			return (0);
+			goto done;
 		if (error)
-			return (error);
+			goto done;
 
 		num++;
 		ncookies++;
@@ -603,8 +605,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		if (vop_write_dirent(&error, uio, NTFS_ROOTINO,
 		    DT_DIR, 2, ".."))
 			goto readdone;
-		if(error)
-			return (error);
+		if (error)
+			goto done;
 
 		num++;
 		ncookies++;
@@ -621,8 +623,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 		 */
 		error = ntfs_ntreaddir(ntmp, fp, num - faked, &iep);
 
-		if(error)
-			return (error);
+		if (error)
+			goto done;
 
 		if( NULL == iep )
 			break;
@@ -649,8 +651,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 				 (iep->ie_fflag & NTFS_FFLAG_DIR) ?
 					"dir" : "reg"));
 
-			if(error)
-				return (error);
+			if (error)
+				goto done;
 
 			ncookies++;
 			num++;
@@ -693,8 +695,10 @@ readdone:
 	}
 /*
 	if (ap->a_eofflag)
-	    *ap->a_eofflag = VTONT(ap->a_vp)->i_size <= uio->uio_offset;
+	    *ap->a_eofflag = VTONT(vp)->i_size <= uio->uio_offset;
 */
+done:
+	vn_unlock(vp);
 	return (error);
 }
 

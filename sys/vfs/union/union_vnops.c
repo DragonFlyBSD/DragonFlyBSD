@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.33 2006/08/12 00:26:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.34 2006/08/19 17:27:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,6 +117,22 @@ union_lock_upper(struct union_node *un, struct thread *td)
 	}
 	KASSERT((uppervp == NULL || uppervp->v_usecount > 0), ("uppervp usecount is 0"));
 	return(uppervp);
+}
+
+static __inline
+struct vnode *
+union_ref_upper(struct union_node *un)
+{
+	struct vnode *uppervp;
+
+	if ((uppervp = un->un_uppervp) != NULL) {
+		vref(uppervp);
+		if (uppervp->v_flag & VRECLAIMED) {
+			vrele(uppervp);
+			return (NULLVP);
+		}
+	}
+	return (uppervp);
 }
 
 static __inline
@@ -1567,11 +1583,11 @@ union_readdir(struct vop_readdir_args *ap)
 	struct vnode *uvp;
 	int error = 0;
 
-	if ((uvp = union_lock_upper(un, td)) != NULLVP) {
+	if ((uvp = union_ref_upper(un)) != NULLVP) {
 		ap->a_head.a_ops = *uvp->v_ops;
 		ap->a_vp = uvp;
 		error = vop_readdir_ap(ap);
-		union_unlock_upper(uvp, td);
+		vrele(uvp);
 	}
 	return(error);
 }

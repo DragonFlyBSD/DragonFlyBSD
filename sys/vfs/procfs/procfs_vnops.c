@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.35 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.36 2006/08/19 17:27:24 dillon Exp $
  */
 
 /*
@@ -832,34 +832,33 @@ procfs_readdir(struct vop_readdir_args *ap)
 
 	if (ap->a_uio->uio_offset < 0 || ap->a_uio->uio_offset > INT_MAX)
 		return (EINVAL);
-
+	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+		return (error);
 	pfs = VTOPFS(ap->a_vp);
 
 	switch (pfs->pfs_type) {
-	/*
-	 * this is for the process-specific sub-directories.
-	 * all that is needed to is copy out all the entries
-	 * from the procent[] table (top of this file).
-	 */
 	case Pproc:
+		/*
+		 * this is for the process-specific sub-directories.
+		 * all that is needed to is copy out all the entries
+		 * from the procent[] table (top of this file).
+		 */
 		error = procfs_readdir_proc(ap);
 		break;
-
-	/*
-	 * this is for the root of the procfs filesystem
-	 * what is needed is a special entry for "curproc"
-	 * followed by an entry for each process on allproc
-	 */
-
 	case Proot:
+		/*
+		 * this is for the root of the procfs filesystem
+		 * what is needed is a special entry for "curproc"
+		 * followed by an entry for each process on allproc
+		 */
 		error = procfs_readdir_root(ap);
 		break;
-
 	default:
 		error = ENOTDIR;
 		break;
 	}
 
+	vn_unlock(ap->a_vp);
 	return (error);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.30 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.31 2006/08/19 17:27:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -481,6 +481,9 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	imp = dp->i_mnt;
 	bmask = imp->im_bmask;
 
+	if ((error = vn_lock(vdp, LK_EXCLUSIVE|LK_RETRY)) != 0)
+		return (error);
+
 	MALLOC(idp, struct isoreaddir *, sizeof(*idp), M_TEMP, M_WAITOK);
 	idp->saveent.de.d_namlen = idp->assocent.de.d_namlen = 0;
 	/*
@@ -513,7 +516,7 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	if ((entryoffsetinblock = idp->curroff & bmask) &&
 	    (error = cd9660_devblkatoff(vdp, (off_t)idp->curroff, NULL, &bp))) {
 		FREE(idp, M_TEMP);
-		return (error);
+		goto done;
 	}
 	endsearch = dp->i_size;
 
@@ -639,6 +642,8 @@ cd9660_readdir(struct vop_readdir_args *ap)
 
 	FREE(idp, M_TEMP);
 
+done:
+	vn_unlock(vdp);
 	return (error);
 }
 

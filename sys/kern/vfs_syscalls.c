@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.100 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.101 2006/08/19 17:27:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2951,12 +2951,9 @@ unionread:
 	auio.uio_segflg = direction;
 	auio.uio_td = td;
 	auio.uio_resid = count;
-	/* vn_lock(vp, LK_SHARED | LK_RETRY); */
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	loff = auio.uio_offset = fp->f_offset;
 	error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag, NULL, NULL);
 	fp->f_offset = auio.uio_offset;
-	vn_unlock(vp);
 	if (error)
 		goto done;
 	if (count == auio.uio_resid) {
