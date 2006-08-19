@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc/Makefile.inc,v 1.5 1999/08/27 23:58:06 peter Exp $
-# $DragonFly: src/lib/libc/Makefile.inc,v 1.4 2005/04/21 16:36:34 joerg Exp $
+# $DragonFly: src/lib/libc/Makefile.inc,v 1.5 2006/08/19 09:14:27 swildner Exp $
 #
 # This file contains make rules that are shared by libc and libc_r.
 #
@@ -11,7 +11,7 @@ MDASM=
 MIASM=
 NOASM=
 
-WARNS=6
+#WARNS=6
 
 #
 # If there is a machine dependent makefile, use it:
