@@ -32,7 +32,7 @@
  *
  * @(#)pl_main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_main.c,v 1.6 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/pl_main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_main.c,v 1.3 2006/08/20 22:18:48 swildner Exp $
  */
 
 #include "player.h"
@@ -57,12 +57,12 @@ pl_main()
 
 initialize()
 {
-	register struct File *fp;
-	register struct ship *sp;
+	struct File *fp;
+	struct ship *sp;
 	char captain[80];
 	char message[60];
 	int load;
-	register int n;
+	int n;
 	char *nameptr;
 	int nat[NNATION];
 
