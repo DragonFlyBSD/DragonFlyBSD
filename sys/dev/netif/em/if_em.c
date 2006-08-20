@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.46 2005/12/31 14:07:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.46.2.1 2006/08/20 08:22:05 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -696,7 +696,12 @@ static int
 em_shutdown(device_t dev)
 {
 	struct adapter *adapter = device_get_softc(dev);
+	struct ifnet *ifp = &adapter->interface_data.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 	em_stop(adapter);
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	return(0);
 }
 
@@ -813,6 +818,10 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			em_set_multi(adapter);
 			if (adapter->hw.mac_type == em_82542_rev2_0)
 				em_initialize_receive_unit(adapter);
+#ifdef DEVICE_POLLING
+			/* Do not enable interrupt if polling(4) is enabled */
+			if ((ifp->if_flags & IFF_POLLING) == 0)
+#endif
 			em_enable_intr(adapter);
 		}
 		break;
@@ -978,6 +987,13 @@ em_init(void *arg)
 
 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
 	em_clear_hw_cntrs(&adapter->hw);
+
+#ifdef DEVICE_POLLING
+	/* Do not enable interrupt if polling(4) is enabled */
+	if (ifp->if_flags & IFF_POLLING)
+		em_disable_intr(adapter);
+	else
+#endif
 	em_enable_intr(adapter);
 
 	/* Don't reset the phy next time init gets called */
@@ -1365,7 +1381,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	current_tx_desc->lower.data |= htole32(E1000_TXD_CMD_EOP);
 
 	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
-			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+			BUS_DMASYNC_PREWRITE);
 
 	/* 
 	 * Advance the Transmit Descriptor Tail (Tdt), this tells the E1000
@@ -2305,7 +2321,7 @@ em_clean_transmit_interrupts(struct adapter *adapter)
 	}
 
 	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
-			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+			BUS_DMASYNC_PREWRITE);
 
 	adapter->oldest_used_tx_desc = i;
 
@@ -2432,7 +2448,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	}
 
 	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
-			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+			BUS_DMASYNC_PREWRITE);
 
 	return(0);
 
@@ -2739,7 +2755,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 	}
 
 	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
-			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+			BUS_DMASYNC_PREWRITE);
 
 	adapter->next_rx_desc_to_check = i;
 }
