@@ -1,5 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.trap.h - version 1.0.2 */
+/* $DragonFly: src/games/hack/def.trap.h,v 1.2 2006/08/21 19:45:32 pavalos Exp $ */
 
 struct trap {
 	struct trap *ntrap;
@@ -10,7 +11,6 @@ struct trap {
 };
 
 extern struct trap *ftrap;
-struct trap *t_at();
 #define newtrap()	(struct trap *) alloc(sizeof(struct trap))
 
 /* various kinds of traps */

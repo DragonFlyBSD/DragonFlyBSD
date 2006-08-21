@@ -1,31 +1,31 @@
 /* rnd.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/rnd.c,v 1.5 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/rnd.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/rnd.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdlib.h>
+#include "hack.h"
 
 #define RND(x)  (random() % x)
 
-rn1(x,y)
-int x,y;
+int
+rn1(int x, int y)
 {
 	return(RND(x)+y);
 }
 
-rn2(x)
-int x;
+int
+rn2(int x)
 {
 	return(RND(x));
 }
 
-rnd(x)
-int x;
+int
+rnd(int x)
 {
 	return(RND(x)+1);
 }
 
-d(n,x)
-int n,x;
+int
+d(int n, int x)
 {
 	int tmp = n;
 

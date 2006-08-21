@@ -1,18 +1,19 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mkmaze.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.mkmaze.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mkmaze.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.mkmaze.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include "def.mkroom.h"		/* not really used */
-extern struct monst *makemon();
 extern struct permonst pm_wizard;
-extern struct obj *mkobj_at();
-extern coord mazexy();
 struct permonst hell_hound =
 	{ "hell hound", 'd', 12, 14, 2, 3, 6, 0 };
 
-makemaz()
+static void	walkfrom(int, int);
+static void	move(int *, int *, int);
+static bool	okay(int, int, int);
+
+void
+makemaz(void)
 {
 	int x,y;
 	int zx,zy;
@@ -33,12 +34,12 @@ makemaz()
 		    (y == zy-1 || y == zy+1 || x == zx-1 || x == zx+2) ? HWALL:
 		    ROOM;
 	    }
-	    (void) mkobj_at(AMULET_SYM, zx, zy);
+	    mkobj_at(AMULET_SYM, zx, zy);
 	    flags.made_amulet = 1;
 	    walkfrom(zx+4, zy);
-	    if(mtmp = makemon(&hell_hound, zx, zy))
+	    if((mtmp = makemon(&hell_hound, zx, zy)))
 		mtmp->msleep = 1;
-	    if(mtmp = makemon(PM_WIZARD, zx+1, zy)) {
+	    if((mtmp = makemon(PM_WIZARD, zx+1, zy))) {
 		mtmp->msleep = 1;
 		flags.no_of_wizards = 1;
 	    }
@@ -47,8 +48,8 @@ makemaz()
 	    zx = mm.x;
 	    zy = mm.y;
 	    walkfrom(zx,zy);
-	    (void) mksobj_at(WAN_WISHING, zx, zy);
-	    (void) mkobj_at(ROCK_SYM, zx, zy);	/* put a rock on top of it */
+	    mksobj_at(WAN_WISHING, zx, zy);
+	    mkobj_at(ROCK_SYM, zx, zy);	/* put a rock on top of it */
 	}
 
 	for(x = 2; x < COLNO-1; x++)
@@ -64,17 +65,17 @@ makemaz()
 		}
 	for(x = rn1(8,11); x; x--) {
 		mm = mazexy();
-		(void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
+		mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
 	}
 	for(x = rn1(10,2); x; x--) {
 		mm = mazexy();
-		(void) mkobj_at(ROCK_SYM, mm.x, mm.y);
+		mkobj_at(ROCK_SYM, mm.x, mm.y);
 	}
 	mm = mazexy();
-	(void) makemon(PM_MINOTAUR, mm.x, mm.y);
+	makemon(PM_MINOTAUR, mm.x, mm.y);
 	for(x = rn1(5,7); x; x--) {
 		mm = mazexy();
-		(void) makemon((struct permonst *) 0, mm.x, mm.y);
+		makemon((struct permonst *) 0, mm.x, mm.y);
 	}
 	for(x = rn1(6,7); x; x--) {
 		mm = mazexy();
@@ -88,7 +89,9 @@ makemaz()
 	xdnstair = ydnstair = 0;
 }
 
-walkfrom(x,y) int x,y; {
+static void
+walkfrom(int x, int y)
+{
 int q,a,dir;
 int dirs[4];
 	levl[x][y].typ = ROOM;
@@ -105,9 +108,8 @@ int dirs[4];
 	}
 }
 
-move(x,y,dir)
-int *x, *y;
-int dir;
+static void
+move(int *x, int *y, int dir)
 {
 	switch(dir){
 		case 0: --(*y); break;
@@ -117,9 +119,8 @@ int dir;
 	}
 }
 
-okay(x,y,dir)
-int x,y;
-int dir;
+static bool
+okay(int x, int y, int dir)
 {
 	move(&x,&y,dir);
 	move(&x,&y,dir);
@@ -130,7 +131,8 @@ int dir;
 }
 
 coord
-mazexy(){
+mazexy(void)
+{
 	coord mm;
 	mm.x = 3 + 2*rn2(COLNO/2 - 2);
 	mm.y = 3 + 2*rn2(ROWNO/2 - 2);

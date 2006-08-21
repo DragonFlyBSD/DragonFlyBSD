@@ -1,11 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.topl.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.topl.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.topl.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.topl.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
-extern char *eos();
 extern int CO;
 
 char toplines[BUFSZ];
@@ -17,19 +15,26 @@ struct topl {
 } *old_toplines, *last_redone_topl;
 #define	OTLMAX	20		/* max nr of old toplines remembered */
 
-doredotopl(){
+static void	redotoplin(void);
+static void	xmore(const char *);
+
+int
+doredotopl(void)
+{
 	if(last_redone_topl)
 		last_redone_topl = last_redone_topl->next_topl;
 	if(!last_redone_topl)
 		last_redone_topl = old_toplines;
 	if(last_redone_topl){
-		(void) strcpy(toplines, last_redone_topl->topl_text);
+		strcpy(toplines, last_redone_topl->topl_text);
 	}
 	redotoplin();
 	return(0);
 }
 
-redotoplin() {
+static void
+redotoplin(void)
+{
 	home();
 	if(index(toplines, '\n')) cl_end();
 	putstr(toplines);
@@ -41,7 +46,9 @@ redotoplin() {
 		more();
 }
 
-remember_topl() {
+void
+remember_topl(void)
+{
 struct topl *tl;
 int cnt = OTLMAX;
 	if(last_redone_topl &&
@@ -53,7 +60,7 @@ int cnt = OTLMAX;
 		alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 1));
 	tl->next_topl = old_toplines;
 	tl->topl_text = (char *)(tl + 1);
-	(void) strcpy(tl->topl_text, toplines);
+	strcpy(tl->topl_text, toplines);
 	old_toplines = tl;
 	while(cnt && tl){
 		cnt--;
@@ -65,17 +72,19 @@ int cnt = OTLMAX;
 	}
 }
 
-addtopl(s) char *s; {
+void
+addtopl(const char *s)
+{
 	curs(tlx,tly);
-	if(tlx + strlen(s) > CO) putsym('\n');
+	if(tlx + (int)strlen(s) > CO) putsym('\n');
 	putstr(s);
 	tlx = curx;
 	tly = cury;
 	flags.toplin = 1;
 }
 
-xmore(s)
-char *s;	/* allowed chars besides space/return */
+static void
+xmore(const char *s)	/* allowed chars besides space/return */
 {
 	if(flags.toplin) {
 		curs(tlx, tly);
@@ -97,17 +106,21 @@ char *s;	/* allowed chars besides space/return */
 	flags.toplin = 0;
 }
 
-more(){
+void
+more(void)
+{
 	xmore("");
 }
 
-cmore(s)
-char *s;
+void
+cmore(const char *s)
 {
 	xmore(s);
 }
 
-clrlin(){
+void
+clrlin(void)
+{
 	if(flags.toplin) {
 		home();
 		cl_end();
@@ -117,17 +130,26 @@ clrlin(){
 	flags.toplin = 0;
 }
 
+void
+pline(const char *line, ...)
+{
+	va_list ap;
+	va_start(ap, line);
+	vpline(line, ap);
+	va_end(ap);
+}
+
 /*VARARGS1*/
-pline(line,arg1,arg2,arg3,arg4,arg5,arg6)
-char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
+void
+vpline(const char *line, va_list ap)
 {
 	char pbuf[BUFSZ];
 	char *bp = pbuf, *tl;
 	int n,n0;
 
 	if(!line || !*line) return;
-	if(!index(line, '%')) (void) strcpy(pbuf,line); else
-	(void) sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6);
+	if(!index(line, '%')) strcpy(pbuf,line); else
+	vsprintf(pbuf, line, ap);
 	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
 	nscr();		/* %% */
 
@@ -135,10 +157,10 @@ char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 	/* But messages like "You die..." deserve their own line */
 	n0 = strlen(bp);
 	if(flags.toplin == 1 && tly == 1 &&
-	    n0 + strlen(toplines) + 3 < CO-8 &&  /* leave room for --More-- */
+	    n0 + (int)strlen(toplines) + 3 < CO-8 && /* room for --More-- */
 	    strncmp(bp, "You ", 4)) {
-		(void) strcat(toplines, "  ");
-		(void) strcat(toplines, bp);
+		strcat(toplines, "  ");
+		strcat(toplines, bp);
 		tlx += 2;
 		addtopl(bp);
 		return;
@@ -156,7 +178,7 @@ char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 				if(!letter(bp[n])) n0 = n;
 			if(!n0) n0 = CO-2;
 		}
-		(void) strncpy((tl = eos(toplines)), bp, n0);
+		strncpy((tl = eos(toplines)), bp, n0);
 		tl[n0] = 0;
 		bp += n0;
 
@@ -165,12 +187,14 @@ char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 			tl[--n0] = 0;
 
 		n0 = strlen(bp);
-		if(n0 && tl[0]) (void) strcat(tl, "\n");
+		if(n0 && tl[0]) strcat(tl, "\n");
 	}
 	redotoplin();
 }
 
-putsym(c) char c; {
+void
+putsym(char c)
+{
 	switch(c) {
 	case '\b':
 		backsp();
@@ -186,9 +210,11 @@ putsym(c) char c; {
 		else
 			curx++;
 	}
-	(void) putchar(c);
+	putchar(c);
 }
 
-putstr(s) char *s; {
+void
+putstr(const char *s)
+{
 	while(*s) putsym(*s++);
 }

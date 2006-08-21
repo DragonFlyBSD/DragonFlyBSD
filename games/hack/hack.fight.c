@@ -1,20 +1,22 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.fight.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.fight.c,v 1.5 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.fight.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.fight.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 extern struct permonst li_dog, dog, la_dog;
-extern char *xname();
-extern struct obj *mkobj_at();
 
 static boolean far_noise;
 static long noisetime;
 
+static void	monstone(struct monst *);
+
 /* hitmm returns 0 (miss), 1 (hit), or 2 (kill) */
-hitmm(magr,mdef) struct monst *magr,*mdef; {
+int
+hitmm(struct monst *magr, struct monst *mdef)
+{
 struct permonst *pa = magr->data, *pd = mdef->data;
-int hit;
+int ht;
 schar tmp;
 boolean vis;
 	if(index("Eauy", pa->mlet)) return(0);
@@ -24,15 +26,15 @@ boolean vis;
 		tmp += 4;
 		if(mdef->msleep) mdef->msleep = 0;
 	}
-	hit = (tmp > rnd(20));
-	if(hit) mdef->msleep = 0;
+	ht = (tmp > rnd(20));
+	if(ht) mdef->msleep = 0;
 	vis = (cansee(magr->mx,magr->my) && cansee(mdef->mx,mdef->my));
 	if(vis){
 		char buf[BUFSZ];
 		if(mdef->mimic) seemimic(mdef);
 		if(magr->mimic) seemimic(magr);
-		(void) sprintf(buf,"%s %s", Monnam(magr),
-			hit ? "hits" : "misses");
+		sprintf(buf,"%s %s", Monnam(magr),
+			ht ? "hits" : "misses");
 		pline("%s %s.", buf, monnam(mdef));
 	} else {
 		boolean far = (dist(magr->mx, magr->my) > 15);
@@ -43,14 +45,14 @@ boolean vis;
 				far ? " in the distance" : "");
 		}
 	}
-	if(hit){
+	if(ht){
 		if(magr->data->mlet == 'c' && !magr->cham) {
 			magr->mhpmax += 3;
 			if(vis) pline("%s is turned to stone!", Monnam(mdef));
 			else if(mdef->mtame)
      pline("You have a peculiarly sad feeling for a moment, then it passes.");
 			monstone(mdef);
-			hit = 2;
+			ht = 2;
 		} else
 		if((mdef->mhp -= d(pa->damn,pa->damd)) < 1) {
 			magr->mhpmax += 1 + rn2(pd->mlevel+1);
@@ -62,17 +64,19 @@ boolean vis;
 			else if(mdef->mtame)
 		pline("You have a sad feeling for a moment, then it passes.");
 			mondied(mdef);
-			hit = 2;
+			ht = 2;
 		}
 	}
-	return(hit);
+	return(ht);
 }
 
 /* drop (perhaps) a cadaver and remove monster */
-mondied(mdef) struct monst *mdef; {
+void
+mondied(struct monst *mdef)
+{
 struct permonst *pd = mdef->data;
 		if(letter(pd->mlet) && rn2(3)){
-			(void) mkobj_at(pd->mlet,mdef->mx,mdef->my);
+			mkobj_at(pd->mlet,mdef->mx,mdef->my);
 			if(cansee(mdef->mx,mdef->my)){
 				unpmon(mdef);
 				atl(mdef->mx,mdef->my,fobj->olet);
@@ -83,8 +87,9 @@ struct permonst *pd = mdef->data;
 }
 
 /* drop a rock and remove monster */
-monstone(mdef) struct monst *mdef; {
-	extern char mlarge[];
+static void
+monstone(struct monst *mdef)
+{
 	if(index(mlarge, mdef->data->mlet))
 		mksobj_at(ENORMOUS_ROCK, mdef->mx, mdef->my);
 	else
@@ -96,8 +101,9 @@ monstone(mdef) struct monst *mdef; {
 	mondead(mdef);
 }
 
-
-fightm(mtmp) struct monst *mtmp; {
+int
+fightm(struct monst *mtmp)
+{
 struct monst *mon;
 	for(mon = fmon; mon; mon = mon->nmon) if(mon != mtmp) {
 		if(DIST(mon->mx,mon->my,mtmp->mx,mtmp->my) < 3)
@@ -108,9 +114,8 @@ struct monst *mon;
 }
 
 /* u is hit by sth, but not a monster */
-thitu(tlev,dam,name)
-int tlev,dam;
-char *name;
+bool
+thitu(int tlev, int dam, const char *name)
 {
 char buf[BUFSZ];
 	setan(name,buf);
@@ -128,14 +133,12 @@ char buf[BUFSZ];
 
 char mlarge[] = "bCDdegIlmnoPSsTUwY',&";
 
-boolean
-hmon(mon,obj,thrown)	/* return TRUE if mon still alive */
-struct monst *mon;
-struct obj *obj;
-int thrown;
+/* return TRUE if mon still alive */
+bool
+hmon(struct monst *mon, struct obj *obj, int thrown)
 {
 	int tmp;
-	boolean hittxt = FALSE;
+	bool hittxt = FALSE;
 
 	if(!obj){
 		tmp = rnd(2);	/* attack with bare hands */
@@ -249,8 +252,8 @@ int thrown;
 
 /* try to attack; return FALSE if monster evaded */
 /* u.dx and u.dy must be set */
-attack(mtmp)
-struct monst *mtmp;
+bool
+attack(struct monst *mtmp)
 {
 	schar tmp;
 	boolean malive = TRUE;

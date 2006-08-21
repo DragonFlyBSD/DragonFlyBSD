@@ -1,16 +1,19 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.wield.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.wield.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.wield.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.wield.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 extern struct obj zeroobj;
 
-setuwep(obj) struct obj *obj; {
+void
+setuwep(struct obj *obj)
+{
 	setworn(obj, W_WEP);
 }
 
-dowield()
+int
+dowield(void)
 {
 	struct obj *wep;
 	int res = 0;
@@ -46,7 +49,9 @@ dowield()
 	return(res);
 }
 
-corrode_weapon(){
+void
+corrode_weapon(void)
+{
 	if(!uwep || uwep->olet != WEAPON_SYM) return;	/* %% */
 	if(uwep->rustfree)
 		pline("Your %s not affected.", aobjnam(uwep, "are"));
@@ -56,12 +61,11 @@ corrode_weapon(){
 	}
 }
 
-chwepon(otmp,amount)
-struct obj *otmp;
-int amount;
+bool
+chwepon(struct obj *otmp, int amount)
 {
 	const char *color = (amount < 0) ? "black" : "green";
-	const char *time;
+	const char *ltime;
 
 	if(!uwep || uwep->olet != WEAPON_SYM) {
 		strange_feeling(otmp,
@@ -93,9 +97,9 @@ int amount;
 	    return(1);
 	}
 	if(!rn2(6)) amount *= 2;
-	time = (amount*amount == 1) ? "moment" : "while";
+	ltime = (amount*amount == 1) ? "moment" : "while";
 	pline("Your %s %s for a %s.",
-		aobjnam(uwep, "glow"), color, time);
+		aobjnam(uwep, "glow"), color, ltime);
 	uwep->spe += amount;
 	if(amount > 0) uwep->cursed = 0;
 	return(1);

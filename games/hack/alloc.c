@@ -1,8 +1,8 @@
 /* alloc.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/alloc.c,v 1.4 1999/11/16 02:57:01 billf Exp $ */
-/* $DragonFly: src/games/hack/alloc.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/alloc.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdlib.h>
+#include "hack.h"
 
 #ifdef LINT
 
@@ -13,9 +13,9 @@
 	"ftell defined (in <stdio.h>) but never used"
    from lint
 */
-#include <stdio.h>
 long *
-alloc(n) unsigned n; {
+alloc(size_t n)
+{
 long dummy = ftell(stderr);
 	if(n) dummy = 0;	/* make sure arg is used */
 	return(&dummy);
@@ -23,27 +23,14 @@ long dummy = ftell(stderr);
 
 #else
 
-long *
-alloc(lth)
-unsigned lth;
+void *
+alloc(size_t lth)
 {
-	char *ptr;
+	void *ptr;
 
-	if(!(ptr = malloc(lth)))
+	if((ptr = malloc(lth)) == NULL)
 		panic("Cannot get %d bytes", lth);
-	return((long *) ptr);
-}
-
-long *
-enlarge(ptr,lth)
-char *ptr;
-unsigned lth;
-{
-	char *nptr;
-
-	if(!(nptr = realloc(ptr,lth)))
-		panic("Cannot reallocate %d bytes", lth);
-	return((long *) nptr);
+	return(ptr);
 }
 
 #endif /* LINT */

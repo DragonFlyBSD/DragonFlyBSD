@@ -1,10 +1,14 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* makedefs.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/makedefs.c,v 1.4 1999/11/16 02:57:15 billf Exp $ */
-/* $DragonFly: src/games/hack/makedefs.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/makedefs.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
+#include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* construct definitions of object constants */
 #define	LINSZ	1000
@@ -13,15 +17,22 @@
 int fd;
 char string[STRSZ];
 
-main(argc, argv)
-	int argc;
-	char **argv;
+static void	readline(void);
+static char	nextchar(void);
+static bool	skipuntil(const char *);
+static bool	getentry(void);
+static void	capitalize(char *);
+static bool	letter(char);
+static bool	digit(char);
+
+int
+main(int argc, char **argv)
 {
-int index = 0;
+int idx = 0;
 int propct = 0;
 char *sp;
 	if (argc != 2) {
-		(void)fprintf(stderr, "usage: makedefs file\n");
+		fprintf(stderr, "usage: makedefs file\n");
 		exit(1);
 	}
 	if ((fd = open(argv[1], 0)) < 0) {
@@ -31,7 +42,7 @@ char *sp;
 	skipuntil("objects[] = {");
 	while(getentry()) {
 		if(!*string){
-			index++;
+			idx++;
 			continue;
 		}
 		for(sp = string; *sp; sp++)
@@ -45,22 +56,24 @@ char *sp;
 		for(sp = string; *sp; sp++) capitalize(sp);
 		/* avoid trouble with stupid C preprocessors */
 		if(!strncmp(string, "WORTHLESS_PIECE_OF_", 19))
-			printf("/* #define %s	%d */\n", string, index);
+			printf("/* #define %s	%d */\n", string, idx);
 		else
-			printf("#define	%s	%d\n", string, index);
-		index++;
+			printf("#define	%s	%d\n", string, idx);
+		idx++;
 	}
 	printf("\n#define	CORPSE	DEAD_HUMAN\n");
 	printf("#define	LAST_GEM	(JADE+1)\n");
 	printf("#define	LAST_RING	%d\n", propct);
-	printf("#define	NROFOBJECTS	%d\n", index-1);
+	printf("#define	NROFOBJECTS	%d\n", idx-1);
 	exit(0);
 }
 
 char line[LINSZ], *lp = line, *lp0 = line, *lpe = line;
 int eof;
 
-readline(){
+static void
+readline(void)
+{
 int n = read(fd, lp0, (line+LINSZ)-lp0);
 	if(n < 0){
 		printf("Input error.\n");
@@ -70,8 +83,9 @@ int n = read(fd, lp0, (line+LINSZ)-lp0);
 	lpe = lp0+n;
 }
 
-char
-nextchar(){
+static char
+nextchar(void)
+{
 	if(lp == lpe){
 		readline();
 		lp = lp0;
@@ -79,15 +93,18 @@ nextchar(){
 	return((lp == lpe) ? 0 : *lp++);
 }
 
-skipuntil(s) char *s; {
-char *sp0, *sp1;
+static bool
+skipuntil(const char *s)
+{
+const char *sp0;
+char *sp1;
 loop:
 	while(*s != nextchar())
 		if(eof) {
 			printf("Cannot skipuntil %s\n", s);
 			exit(1);
 		}
-	if(strlen(s) > lpe-lp+1){
+	if((int)strlen(s) > lpe-lp+1){
 		char *lp1, *lp2;
 		lp2 = lp;
 		lp1 = lp = lp0;
@@ -96,7 +113,7 @@ loop:
 		lp0 = lp1;
 		readline();
 		lp0 = lp2;
-		if(strlen(s) > lpe-lp+1) {
+		if((int)strlen(s) > lpe-lp+1) {
 			printf("error in skipuntil");
 			exit(1);
 		}
@@ -111,7 +128,9 @@ loop:
 	goto loop;
 }
 
-getentry(){
+static bool
+getentry(void)
+{
 int inbraces = 0, inparens = 0, stringseen = 0, commaseen = 0;
 int prefix = 0;
 char ch;
@@ -138,7 +157,7 @@ char identif[NSZ], *ip;
 				   !strcmp(identif, "RING") ||
 				   !strcmp(identif, "POTION") ||
 				   !strcmp(identif, "SCROLL"))
-				(void) strncpy(string, identif, 3),
+				strncpy(string, identif, 3),
 				string[3] = '_',
 				prefix = 4;
 		}
@@ -213,15 +232,21 @@ char identif[NSZ], *ip;
 	}
 }
 
-capitalize(sp) char *sp; {
+static void
+capitalize(char *sp)
+{
 	if('a' <= *sp && *sp <= 'z') *sp += 'A'-'a';
 }
 
-letter(ch) char ch; {
+static bool
+letter(char ch)
+{
 	return( ('a' <= ch && ch <= 'z') ||
 		('A' <= ch && ch <= 'Z') );
 }
 
-digit(ch) char ch; {
+static bool
+digit(char ch)
+{
 	return( '0' <= ch && ch <= '9' );
 }

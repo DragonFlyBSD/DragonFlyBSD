@@ -1,17 +1,22 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.steal.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.steal.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.steal.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.steal.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
+static void	stealarm(void);
+
 long		/* actually returns something that fits in an int */
-somegold(){
+somegold(void)
+{
 	return( (u.ugold < 100) ? u.ugold :
 		(u.ugold > 10000) ? rnd(10000) : rnd((int) u.ugold) );
 }
 
-stealgold(mtmp)  struct monst *mtmp; {
+void
+stealgold(struct monst *mtmp)
+{
 struct gold *gold = g_at(u.ux, u.uy);
 long tmp;
 	if(gold && ( !u.ugold || gold->amount > u.ugold || !rn2(5))) {
@@ -37,7 +42,10 @@ long tmp;
 /* steal armor after he finishes taking it off */
 unsigned stealoid;		/* object to be stolen */
 unsigned stealmid;		/* monster doing the stealing */
-stealarm(){
+
+static void
+stealarm(void)
+{
 	struct monst *mtmp;
 	struct obj *otmp;
 
@@ -62,8 +70,8 @@ stealarm(){
 /* returns 1 when something was stolen */
 /* (or at least, when N should flee now) */
 /* avoid stealing the object stealoid */
-steal(mtmp)
-struct monst *mtmp;
+bool
+steal(struct monst *mtmp)
 {
 	struct obj *otmp;
 	int tmp;
@@ -110,15 +118,9 @@ struct monst *mtmp;
 				(otmp == uarmg) ? "gloves" :
 				(otmp == uarmh) ? "helmet" : "armor");
 			named++;
-			(void) armoroff(otmp);
+			armoroff(otmp);
 			otmp->cursed = curssv;
 			if(multi < 0){
-				extern int (*afternmv)();
-				/*
-				multi = 0;
-				nomovemsg = 0;
-				afternmv = 0;
-				*/
 				stealoid = otmp->o_id;
 				stealmid = mtmp->m_id;
 				afternmv = stealarm;
@@ -149,16 +151,15 @@ struct monst *mtmp;
 	return((multi < 0) ? 0 : 1);
 }
 
-mpickobj(mtmp,otmp)
-struct monst *mtmp;
-struct obj *otmp;
+void
+mpickobj(struct monst *mtmp, struct obj *otmp)
 {
 	otmp->nobj = mtmp->minvent;
 	mtmp->minvent = otmp;
 }
 
-stealamulet(mtmp)
-struct monst *mtmp;
+bool
+stealamulet(struct monst *mtmp)
 {
 	struct obj *otmp;
 
@@ -176,9 +177,8 @@ struct monst *mtmp;
 }
 
 /* release the objects the killed animal has stolen */
-relobj(mtmp,show)
-struct monst *mtmp;
-int show;
+void
+relobj(struct monst *mtmp, int show)
 {
 	struct obj *otmp, *otmp2;
 

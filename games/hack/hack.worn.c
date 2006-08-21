@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.worn.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.worn.c,v 1.3 1999/11/16 02:57:14 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.worn.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.worn.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -22,9 +22,8 @@ struct worn {
 	{ 0, 0 }
 };
 
-setworn(obj, mask)
-struct obj *obj;
-long mask;
+void
+setworn(struct obj *obj, long mask)
 {
 	struct worn *wp;
 	struct obj *oobj;
@@ -51,7 +50,9 @@ long mask;
 }
 
 /* called e.g. when obj is destroyed */
-setnotworn(obj) struct obj *obj; {
+void
+setnotworn(struct obj *obj)
+{
 	struct worn *wp;
 
 	for(wp = worn; wp->w_mask; wp++)

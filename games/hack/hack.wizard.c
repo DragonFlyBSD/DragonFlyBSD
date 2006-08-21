@@ -1,21 +1,25 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.wizard.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.wizard.c,v 1.3 1999/11/16 02:57:14 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.wizard.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.wizard.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
 
 #include "hack.h"
 extern struct permonst pm_wizard;
-extern struct monst *makemon();
 
 #define	WIZSHOT	    6	/* one chance in WIZSHOT that wizard will try magic */
 #define	BOLT_LIM    8	/* from this distance D and 1 will try to hit you */
 
 char wizapp[] = "@DNPTUVXcemntx";
 
+static void	aggravate(void);
+static void	clonewiz(struct monst *);
+
 /* If he has found the Amulet, make the wizard appear after some time */
-amulet(){
+void
+amulet(void)
+{
 	struct obj *otmp;
 	struct monst *mtmp;
 
@@ -35,8 +39,8 @@ amulet(){
 		    }
 }
 
-wiz_hit(mtmp)
-struct monst *mtmp;
+bool
+wiz_hit(struct monst *mtmp)
 {
 	/* if we have stolen or found the amulet, we disappear */
 	if(mtmp->minvent && mtmp->minvent->olet == AMULET_SYM &&
@@ -74,15 +78,15 @@ hithim:
 		- amulet is on level 26 again. */
 	    if(hitu(mtmp, d(mtmp->data->damn,mtmp->data->damd))
 		&& !rn2(20) && stealamulet(mtmp))
-		;
+		return(0);
 	}
 	else
 	    inrange(mtmp);			/* try magic */
 	return(0);
 }
 
-inrange(mtmp)
-struct monst *mtmp;
+void
+inrange(struct monst *mtmp)
 {
 	schar tx,ty;
 
@@ -133,7 +137,7 @@ struct monst *mtmp;
 		    case 0:
 			/* create a nasty monster from a deep level */
 			/* (for the moment, 'nasty' is not implemented) */
-			(void) makemon((struct permonst *)0, u.ux, u.uy);
+			makemon((struct permonst *)0, u.ux, u.uy);
 			break;
 		    case 1:
 			pline("\"Destroy the thief, my pets!\"");
@@ -166,7 +170,8 @@ struct monst *mtmp;
 	}
 }
 
-aggravate()
+static void
+aggravate(void)
 {
 	struct monst *mtmp;
 
@@ -177,12 +182,12 @@ aggravate()
 	}
 }
 
-clonewiz(mtmp)
-struct monst *mtmp;
+static void
+clonewiz(struct monst *mtmp)
 {
 	struct monst *mtmp2;
 
-	if(mtmp2 = makemon(PM_WIZARD, mtmp->mx, mtmp->my)) {
+	if((mtmp2 = makemon(PM_WIZARD, mtmp->mx, mtmp->my))) {
 		flags.no_of_wizards = 2;
 		unpmon(mtmp2);
 		mtmp2->mappearance = wizapp[rn2(sizeof(wizapp)-1)];

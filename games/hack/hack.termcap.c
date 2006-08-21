@@ -1,15 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.termcap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.termcap.c,v 1.10 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.termcap.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.termcap.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdio.h>
 #include <termcap.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "config.h"	/* for ROWNO and COLNO */
-#include "def.flag.h"	/* for flags.nonull */
-extern long *alloc();
+#include "hack.h"
 
 static char tbuf[512];
 static char *HO, *CL, *CE, *tcUP, *CM, *ND, *XD, *tcBC, *SO, *SE, *TI, *TE;
@@ -19,7 +14,13 @@ static char tcPC = '\0';
 char *CD;		/* tested in pri.c: docorner() */
 int CO, LI;		/* used in pri.c and whatis.c */
 
-startup()
+static void	nocmov(int, int);
+static void	cmov(int, int);
+static int	xputc(int);
+static int	xputs(char *);
+
+void
+startup(void)
 {
 	char *term;
 	char *tptr;
@@ -35,7 +36,7 @@ startup()
 	if (tgetflag(__DECONST(char *, "NP")) ||
 	    tgetflag(__DECONST(char *, "nx")))
 		flags.nonull = 1;
-	if(pc = tgetstr(__DECONST(char *, "pc"), &tbufptr))
+	if((pc = tgetstr(__DECONST(char *, "pc"), &tbufptr)))
 		tcPC = *pc;
 	if(!(tcBC = tgetstr(__DECONST(char *, "bc"), &tbufptr))) {
 		if(!tgetflag(__DECONST(char *, "bs")))
@@ -74,28 +75,27 @@ startup()
 	if(!SO || !SE || (SG > 0)) SO = SE = 0;
 	CD = tgetstr(__DECONST(char *, "cd"), &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
-	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
+	if(tbufptr-tbuf > (int)sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);
 }
 
-start_screen()
+void
+start_screen(void)
 {
 	xputs(TI);
 	xputs(VS);
 }
 
-end_screen()
+void
+end_screen(void)
 {
 	xputs(VE);
 	xputs(TE);
 }
 
-/* Cursor movements */
-extern xchar curx, cury;
-
-curs(x, y)
-int x, y;	/* not xchar: perhaps xchar is unsigned and
-			   curx-x would be unsigned as well */
+/* not xchar: perhaps xchar is unsigned and curx-x would be unsigned as well */
+void
+curs(int x, int y)
 {
 
 	if (y == cury && x == curx)
@@ -107,7 +107,7 @@ int x, y;	/* not xchar: perhaps xchar is unsigned and
 	if(abs(cury-y) <= 3 && abs(curx-x) <= 3)
 		nocmov(x, y);
 	else if((x <= 3 && abs(cury-y)<= 3) || (!CM && x<abs(curx-x))) {
-		(void) putchar('\r');
+		putchar('\r');
 		curx = 1;
 		nocmov(x, y);
 	} else if(!CM) {
@@ -116,7 +116,8 @@ int x, y;	/* not xchar: perhaps xchar is unsigned and
 		cmov(x, y);
 }
 
-nocmov(x, y)
+static void
+nocmov(int x, int y)
 {
 	if (cury > y) {
 		if(tcUP) {
@@ -161,23 +162,29 @@ nocmov(x, y)
 	}
 }
 
-cmov(x, y)
-int x, y;
+static void
+cmov(int x, int y)
 {
 	xputs(tgoto(CM, x-1, y-1));
 	cury = y;
 	curx = x;
 }
 
-xputc(c) char c; {
-	(void) fputc(c, stdout);
+static int
+xputc(int c)
+{
+	return(fputc(c, stdout));
 }
 
-xputs(s) char *s; {
-	tputs(s, 1, xputc);
+static int
+xputs(char *s)
+{
+	return(tputs(s, 1, xputc));
 }
 
-cl_end() {
+void
+cl_end(void)
+{
 	if(CE)
 		xputs(CE);
 	else {	/* no-CE fix - free after Harold Rynes */
@@ -193,12 +200,15 @@ cl_end() {
 	}
 }
 
-clear_screen() {
+void
+clear_screen(void)
+{
 	xputs(CL);
 	curx = cury = 1;
 }
 
-home()
+void
+home(void)
 {
 	if(HO)
 		xputs(HO);
@@ -209,61 +219,34 @@ home()
 	curx = cury = 1;
 }
 
-standoutbeg()
+void
+standoutbeg(void)
 {
 	if(SO) xputs(SO);
 }
 
-standoutend()
+void
+standoutend(void)
 {
 	if(SE) xputs(SE);
 }
 
-backsp()
+void
+backsp(void)
 {
 	xputs(tcBC);
 	curx--;
 }
 
-bell()
+void
+bell(void)
 {
-	(void) putchar('\007');		/* curx does not change */
-	(void) fflush(stdout);
+	putchar('\007');		/* curx does not change */
+	fflush(stdout);
 }
 
-static short tmspc10[] = {		/* from termcap */
-	0, 2000, 1333, 909, 743, 666, 500, 333, 166, 83, 55, 41, 20, 10, 5, 3, 2, 1
-};
-
-#if 0
-delay_output() {
-	/* delay 50 ms - could also use a 'nap'-system call */
-	/* BUG: if the padding character is visible, as it is on the 5620
-	   then this looks terrible. */
-	if(!flags.nonull)
-		tputs("50", 1, xputc);
-
-		/* cbosgd!cbcephus!pds for SYS V R2 */
-		/* is this terminfo, or what? */
-		/* tputs("$<50>", 1, xputc); */
-	else {
-		(void) fflush(stdout);
-		usleep(50*1000);
-	}
-	else if(ospeed > 0 || ospeed < SIZE(tmspc10)) if(CM) {
-		/* delay by sending cm(here) an appropriate number of times */
-		int cmlen = strlen(tgoto(CM, curx-1, cury-1));
-		int i = 500 + tmspc10[ospeed]/2;
-
-		while(i > 0) {
-			cmov(curx, cury);
-			i -= cmlen*tmspc10[ospeed];
-		}
-	}
-}
-#endif /* 0 */
-
-cl_eos()			/* free after Robert Viduya */
+void
+cl_eos(void)			/* free after Robert Viduya */
 {				/* must only be called with curx = 1 */
 
 	if(CD)

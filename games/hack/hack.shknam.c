@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shknam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.shknam.c,v 1.3 1999/11/16 02:57:11 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.shknam.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.shknam.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -125,7 +125,9 @@ struct shk_nx {
 	{ 0,		shkgeneral }
 };
 
-findname(nampt, let) char *nampt; char let; {
+void
+findname(char *nampt, char let)
+{
 struct shk_nx *p = shk_nx;
 const char **q;
 int i;
@@ -134,9 +136,9 @@ int i;
 	for(i=0; i<dlevel; i++) if(!q[i]){
 		/* Not enough names, try general name */
 		if(let) findname(nampt, 0);
-		else (void) strcpy(nampt, "Dirk");
+		else strcpy(nampt, "Dirk");
 		return;
 	}
-	(void) strncpy(nampt, q[i], PL_NSIZ);
+	strncpy(nampt, q[i], PL_NSIZ);
 	nampt[PL_NSIZ-1] = 0;
 }

@@ -1,5 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.gold.h - version 1.0.2 */
+/* $DragonFly: src/games/hack/def.gold.h,v 1.2 2006/08/21 19:45:32 pavalos Exp $ */
 
 struct gold {
 	struct gold *ngold;
@@ -8,5 +9,4 @@ struct gold {
 };
 
 extern struct gold *fgold;
-struct gold *g_at();
 #define newgold()	(struct gold *) alloc(sizeof(struct gold))

@@ -1,6 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.monst.h - version 1.0.2 */
-/* $DragonFly: src/games/hack/def.monst.h,v 1.2 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/def.monst.h,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 struct monst {
 	struct monst *nmon;
@@ -50,7 +50,6 @@ struct monst {
 
 extern struct monst *fmon;
 extern struct monst *fallen_down;
-struct monst *m_at();
 
 /* these are in mspeed */
 #define MSLOW 1 /* slow monster */

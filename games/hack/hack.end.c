@@ -1,27 +1,49 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.end.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.end.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.end.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.end.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
-#include <signal.h>
 #define	Sprintf	(void) sprintf
-extern char plname[], pl_character[];
-extern char *itoa(), *eos();
-static	const char *ordin(int);
+
+#define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
+#define	NAMSZ	8
+#define	DTHSZ	40
+#define	PERSMAX	1
+#define	POINTSMIN	1	/* must be > 0 */
+#define	ENTRYMAX	100	/* must be >= 10 */
+#define	PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
+struct toptenentry {
+	struct toptenentry *tt_next;
+	long int points;
+	int level,maxlvl,hp,maxhp;
+	int uid;
+	char plchar;
+	char sex;
+	char name[NAMSZ+1];
+	char death[DTHSZ+1];
+	char date[7];		/* yymmdd */
+} *tt_head;
+
+static void		 done_intr(int);
+static void		 done_hangup(int);
+static void		 topten(void);
+static void		 outheader(void);
+static int		 outentry(int, struct toptenentry *, int);
+static char		*itoa(int);
+static const char	*ordin(int);
 
 xchar maxdlevel = 1;
 
 void
-done1()
+done1(__unused int unused)
 {
-	(void) signal(SIGINT,SIG_IGN);
+	signal(SIGINT,SIG_IGN);
 	pline("Really quit?");
 	if(readchar() != 'y') {
-		(void) signal(SIGINT,done1);
+		signal(SIGINT,done1);
 		clrlin();
-		(void) fflush(stdout);
+		fflush(stdout);
 		if(multi > 0) nomul(0);
 		return;
 	}
@@ -32,21 +54,25 @@ done1()
 int done_stopprint;
 int done_hup;
 
-void
-done_intr(){
+static void
+done_intr(__unused int unused)
+{
 	done_stopprint++;
-	(void) signal(SIGINT, SIG_IGN);
-	(void) signal(SIGQUIT, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+}
+
+static void
+done_hangup(__unused int unused)
+{
+	done_hup++;
+	signal(SIGHUP, SIG_IGN);
+	done_intr(0);
 }
 
 void
-done_hangup(){
-	done_hup++;
-	(void) signal(SIGHUP, SIG_IGN);
-	done_intr();
-}
-
-done_in_by(mtmp) struct monst *mtmp; {
+done_in_by(struct monst *mtmp)
+{
 static char buf[BUFSZ];
 	pline("You die ...");
 	if(mtmp->data->mlet == ' '){
@@ -82,9 +108,9 @@ done(const char *st1)
 		return;
 	}
 #endif /* WIZARD */
-	(void) signal(SIGINT, done_intr);
-	(void) signal(SIGQUIT, done_intr);
-	(void) signal(SIGHUP, done_hangup);
+	signal(SIGINT, done_intr);
+	signal(SIGQUIT, done_intr);
+	signal(SIGHUP, done_hangup);
 	if(*st1 == 'q' && u.uhp < 1){
 		st1 = "died";
 		killer = "quit while already on Charon's boat";
@@ -121,7 +147,6 @@ done(const char *st1)
 		u.urexp += 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20);
 	}
 	if(*st1 == 'e') {
-		extern struct monst *mydogs;
 		struct monst *mtmp;
 		struct obj *otmp;
 		int i;
@@ -198,26 +223,9 @@ done(const char *st1)
 	exit(0);
 }
 
-#define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
-#define	NAMSZ	8
-#define	DTHSZ	40
-#define	PERSMAX	1
-#define	POINTSMIN	1	/* must be > 0 */
-#define	ENTRYMAX	100	/* must be >= 10 */
-#define	PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
-struct toptenentry {
-	struct toptenentry *tt_next;
-	long int points;
-	int level,maxlvl,hp,maxhp;
-	int uid;
-	char plchar;
-	char sex;
-	char name[NAMSZ+1];
-	char death[DTHSZ+1];
-	char date[7];		/* yymmdd */
-} *tt_head;
-
-topten(){
+static void
+topten(void)
+{
 	int uid = getuid();
 	int rank, rank0 = -1, rank1 = 0;
 	int occ_cnt = PERSMAX;
@@ -227,7 +235,6 @@ topten(){
 	int sleepct = 300;
 	FILE *rfile;
 	int flg = 0;
-	extern char *getdate();
 #define	HUP	if(!done_hup)
 	while(link(recfile, reclock) == -1) {
 		HUP perror(reclock);
@@ -238,14 +245,14 @@ topten(){
 		}
 		HUP printf("Waiting for access to record file. (%d)\n",
 			sleepct);
-		HUP (void) fflush(stdout);
+		HUP fflush(stdout);
 		sleep(1);
 	}
 	if(!(rfile = fopen(recfile,"r"))){
 		HUP puts("Cannot open record file!");
 		goto unlock;
 	}
-	HUP (void) putchar('\n');
+	HUP putchar('\n');
 
 	/* create a new 'topten' entry */
 	t0 = newttentry();
@@ -257,11 +264,11 @@ topten(){
 	t0->plchar = pl_character[0];
 	t0->sex = (flags.female ? 'F' : 'M');
 	t0->uid = uid;
-	(void) strncpy(t0->name, plname, NAMSZ);
+	strncpy(t0->name, plname, NAMSZ);
 	(t0->name)[NAMSZ] = 0;
-	(void) strncpy(t0->death, killer, DTHSZ);
+	strncpy(t0->death, killer, DTHSZ);
 	(t0->death)[DTHSZ] = 0;
-	(void) strcpy(t0->date, getdate());
+	strcpy(t0->date, getdate());
 
 	/* assure minimum number of points */
 	if(t0->points < POINTSMIN)
@@ -318,7 +325,7 @@ topten(){
 	  }
 	}
 	if(flg) {	/* rewrite record file */
-		(void) fclose(rfile);
+		fclose(rfile);
 		if(!(rfile = fopen(recfile,"w"))){
 			HUP puts("Cannot write record file\n");
 			goto unlock;
@@ -343,8 +350,8 @@ topten(){
 	    t1->hp, t1->maxhp, t1->points,
 	    t1->plchar, t1->sex, t1->name, t1->death);
 	  if(done_stopprint) continue;
-	  if(rank > flags.end_top &&
-	    (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
+	  if(rank > (int)flags.end_top &&
+	    (rank < rank0-(int)flags.end_around || rank > rank0+(int)flags.end_around)
 	    && (!flags.end_own ||
 #ifdef PERS_IS_UID
 				  t1->uid != t0->uid ))
@@ -352,42 +359,45 @@ topten(){
 				  strncmp(t1->name, t0->name, NAMSZ)))
 #endif /* PERS_IS_UID */
 	  	continue;
-	  if(rank == rank0-flags.end_around &&
-	     rank0 > flags.end_top+flags.end_around+1 &&
+	  if(rank == rank0-(int)flags.end_around &&
+	     rank0 > (int)flags.end_top+(int)flags.end_around+1 &&
 	     !flags.end_own)
-		(void) putchar('\n');
+		putchar('\n');
 	  if(rank != rank0)
-		(void) outentry(rank, t1, 0);
+		outentry(rank, t1, 0);
 	  else if(!rank1)
-		(void) outentry(rank, t1, 1);
+		outentry(rank, t1, 1);
 	  else {
 		int t0lth = outentry(0, t0, -1);
 		int t1lth = outentry(rank, t1, t0lth);
 		if(t1lth > t0lth) t0lth = t1lth;
-		(void) outentry(0, t0, t0lth);
+		outentry(0, t0, t0lth);
 	  }
 	}
 	if(rank0 >= rank) if(!done_stopprint)
-		(void) outentry(0, t0, 1);
-	(void) fclose(rfile);
+		outentry(0, t0, 1);
+	fclose(rfile);
 unlock:
-	(void) unlink(reclock);
+	unlink(reclock);
 }
 
-outheader() {
+static void
+outheader(void)
+{
 char linebuf[BUFSZ];
 char *bp;
-	(void) strcpy(linebuf, "Number Points  Name");
+	strcpy(linebuf, "Number Points  Name");
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
-	(void) strcpy(bp, "Hp [max]");
+	strcpy(bp, "Hp [max]");
 	puts(linebuf);
 }
 
 /* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
-int
-outentry(rank,t1,so) struct toptenentry *t1; {
-boolean quit = FALSE, killed = FALSE, starv = FALSE;
+static int
+outentry(int rank, struct toptenentry *t1, int so)
+{
+boolean quit = FALSE, dead = FALSE, starv = FALSE;
 char linebuf[BUFSZ];
 	linebuf[0] = 0;
 	if(rank) Sprintf(eos(linebuf), "%3d", rank);
@@ -414,14 +424,14 @@ char linebuf[BUFSZ];
 		(t1->sex == 'F') ? "her" : "his");
 	  else if(!strncmp(t1->death,"starv",5))
 	    Sprintf(eos(linebuf), "starved to death"), starv = TRUE;
-	  else Sprintf(eos(linebuf), "was killed"), killed = TRUE;
+	  else Sprintf(eos(linebuf), "was killed"), dead = TRUE;
 	  Sprintf(eos(linebuf), " on%s level %d",
-	    (killed || starv) ? "" : " dungeon", t1->level);
+	    (dead || starv) ? "" : " dungeon", t1->level);
 	  if(t1->maxlvl != t1->level)
 	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
 	  if(quit && t1->death[4]) Sprintf(eos(linebuf), t1->death + 4);
 	}
-	if(killed) Sprintf(eos(linebuf), " by %s%s",
+	if(dead) Sprintf(eos(linebuf), " by %s%s",
 	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4))
 		? "" :
 	  index(vowels,*t1->death) ? "an " : "a ",
@@ -435,7 +445,7 @@ char linebuf[BUFSZ];
 	  hppos = COLNO - 7 - strlen(hpbuf);
 	  if(bp <= linebuf + hppos) {
 	    while(bp < linebuf + hppos) *bp++ = ' ';
-	    (void) strcpy(bp, hpbuf);
+	    strcpy(bp, hpbuf);
 	    Sprintf(eos(bp), " [%d]", t1->maxhp);
 	  }
 	}
@@ -448,13 +458,14 @@ char linebuf[BUFSZ];
 	  standoutbeg();
 	  fputs(linebuf,stdout);
 	  standoutend();
-	  (void) putchar('\n');
+	  putchar('\n');
 	}
 	return(strlen(linebuf));
 }
 
-char *
-itoa(a) int a; {
+static char *
+itoa(int a)
+{
 static char buf[12];
 	Sprintf(buf,"%d",a);
 	return(buf);
@@ -463,39 +474,43 @@ static char buf[12];
 static const char *
 ordin(int n)
 {
-	int d = n % 10;
-	return((d==0 || d>3 || n/10==1) ? "th" : (d==1) ? "st" :
-		(d==2) ? "nd" : "rd");
+	int d1 = n % 10;
+	return((d1==0 || d1>3 || n/10==1) ? "th" : (d1==1) ? "st" :
+		(d1==2) ? "nd" : "rd");
 }
 
-clearlocks(){
+void
+clearlocks(void)
+{
 int x;
-	(void) signal(SIGHUP,SIG_IGN);
+	signal(SIGHUP,SIG_IGN);
 	for(x = maxdlevel; x >= 0; x--) {
 		glo(x);
-		(void) unlink(lock);	/* not all levels need be present */
+		unlink(lock);	/* not all levels need be present */
 	}
 }
 
 #ifdef NOSAVEONHANGUP
-hangup()
+void
+hangup(__unused int unused)
 {
-	(void) signal(SIGINT, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
 	clearlocks();
 	exit(1);
 }
 #endif /* NOSAVEONHANGUP */
 
 char *
-eos(s)
-char *s;
+eos(char *s)
 {
 	while(*s) s++;
 	return(s);
 }
 
 /* it is the callers responsibility to check that there is room for c */
-charcat(s,c) char *s, c; {
+void
+charcat(char *s, char c)
+{
 	while(*s) s++;
 	*s++ = c;
 	*s = 0;
@@ -506,9 +521,10 @@ charcat(s,c) char *s, c; {
  * requested. Otherwise, find scores for the current player (and list them
  * if argc == -1).
  */
-prscore(argc,argv) int argc; char **argv; {
-	extern char *hname;
-	char **players;
+void
+prscore(int argc, char **argv)
+{
+	char **players = NULL;
 	int playerct;
 	int rank;
 	struct toptenentry *t1, *t2;
@@ -584,7 +600,7 @@ prscore(argc,argv) int argc; char **argv; {
 	  }
 	  t1 = t1->tt_next = newttentry();
 	}
-	(void) fclose(rfile);
+	fclose(rfile);
 	if(!flg) {
 	    if(outflg) {
 		printf("Cannot find any entries for ");
@@ -617,7 +633,7 @@ prscore(argc,argv) int argc; char **argv; {
 			  (digit(players[i][0]) && rank <= atoi(players[i]))){
 			outwithit:
 				if(outflg)
-				    (void) outentry(rank, t1, 0);
+				    outentry(rank, t1, 0);
 #ifdef nonsense
 				total_score += t1->points;
 				if(totcharct < sizeof(totchars)-1)

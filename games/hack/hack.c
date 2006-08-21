@@ -1,30 +1,27 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
 
-extern char news0();
-extern struct obj *addinv();
-extern boolean hmon();
+static void	movobj(struct obj *, int, int);
+#ifdef QUEST
+static bool	rroom(int, int);
+#endif
+static int	inv_cnt(void);
 
 /* called on movement:
 	1. when throwing ball+chain far away
 	2. when teleporting
 	3. when walking out of a lit room
  */
-unsee() {
+void
+unsee(void)
+{
 	int x,y;
 	struct rm *lev;
 
-/*
-	if(u.udispl){
-		u.udispl = 0;
-		newsym(u.udisx, u.udisy);
-	}
-*/
 #ifndef QUEST
 	if(seehx){
 		seehx = 0;
@@ -50,7 +47,8 @@ unsee() {
 	in hack.do.c:  seeoff(1) - go up or down the stairs
 	in hack.trap.c:seeoff(1) - fall through trapdoor
  */
-seeoff(mode)	/* 1 to redo @, 0 to leave them */
+void
+seeoff(bool mode)	/* 1 to redo @, 0 to leave them */
 {	/* 1 means misc movement, 0 means blindness */
 	int x,y;
 	struct rm *lev;
@@ -75,12 +73,13 @@ seeoff(mode)	/* 1 to redo @, 0 to leave them */
 	}
 }
 
-domove()
+void
+domove(void)
 {
 	xchar oldx,oldy;
-	struct monst *mtmp;
+	struct monst *mtmp = NULL;
 	struct rm *tmpr,*ust;
-	struct trap *trap;
+	struct trap *trap = NULL;
 	struct obj *otmp;
 
 	u_wipe_engr(rnd(5));
@@ -154,7 +153,7 @@ domove()
 		nomul(0);
 		return;
 	}
-	while(otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy)) {
+	while((otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy))) {
 		xchar rx = u.ux+2*u.dx, ry = u.uy+2*u.dy;
 		struct trap *ttmp;
 		nomul(0);
@@ -166,7 +165,7 @@ domove()
 			    pline("Perhaps that's why you cannot move it.");
 			    goto cannot_push;
 			}
-			if(ttmp = t_at(rx,ry))
+			if((ttmp = t_at(rx,ry)))
 			    switch(ttmp->ttyp) {
 			    case PIT:
 				pline("You push the rock into a pit!");
@@ -190,7 +189,6 @@ domove()
 			}
 			otmp->ox = rx;
 			otmp->oy = ry;
-			/* pobj(otmp); */
 			if(cansee(rx,ry)) atl(rx,ry,otmp->olet);
 			if(Invisible) newsym(u.ux+u.dx, u.uy+u.dy);
 
@@ -260,12 +258,6 @@ domove()
 	if(tmpr->typ == POOL && !Levitation)
 		drown();	/* not necessarily fatal */
 
-/*
-	if(u.udispl) {
-		u.udispl = 0;
-		newsym(oldx,oldy);
-	}
-*/
 	if(!Blind) {
 #ifdef QUEST
 		setsee();
@@ -302,13 +294,12 @@ domove()
 	}
 	if(!flags.nopick) pickup(1);
 	if(trap) dotrap(trap);		/* fall into pit, arrow trap, etc. */
-	(void) inshop();
+	inshop();
 	if(!Blind) read_engr_at(u.ux,u.uy);
 }
 
-movobj(obj, ox, oy)
-struct obj *obj;
-int ox, oy;
+static void
+movobj(struct obj *obj, int ox, int oy)
 {
 	/* Some dirty programming to get display right */
 	freeobj(obj);
@@ -319,7 +310,9 @@ int ox, oy;
 	obj->oy = oy;
 }
 
-dopickup(){
+int
+dopickup(void)
+{
 	if(!g_at(u.ux,u.uy) && !o_at(u.ux,u.uy)) {
 		pline("There is nothing here to pick up.");
 		return(0);
@@ -332,14 +325,15 @@ dopickup(){
 	return(1);
 }
 
-pickup(all)
+void
+pickup(int all)
 {
 	struct gold *gold;
 	struct obj *obj, *obj2;
 	int wt;
 
 	if(Levitation) return;
-	while(gold = g_at(u.ux,u.uy)) {
+	while((gold = g_at(u.ux,u.uy))) {
 		pline("%ld gold piece%s.", gold->amount, plur(gold->amount));
 		u.ugold += gold->amount;
 		flags.botl = 1;
@@ -406,7 +400,6 @@ pickup(all)
 		if(wt > 0) {
 			if(obj->quan > 1) {
 				/* see how many we can lift */
-				extern struct obj *splitobj();
 				int savequan = obj->quan;
 				int iw = inv_weight();
 				int qq;
@@ -422,7 +415,7 @@ pickup(all)
 			pline("You can only carry %s of the %s lying here.",
 					(qq == 1) ? "one" : "some",
 					doname(obj));
-				(void) splitobj(obj, qq);
+				splitobj(obj, qq);
 				/* note: obj2 is set already, so we'll never
 				 * encounter the other half; if it should be
 				 * otherwise then write
@@ -464,14 +457,14 @@ pickup(all)
 /* stop running if we see something interesting */
 /* turn around a corner if that is the only way we can proceed */
 /* do not turn left or right twice */
-lookaround(){
+void
+lookaround(void)
+{
 int x,y,i,x0,y0,m0,i0 = 9;
 int corrct = 0, noturn = 0;
 struct monst *mtmp;
-#ifdef lint
 	/* suppress "used before set" message */
-	x0 = y0 = 0;
-#endif /* lint */
+	x0 = y0 = m0 = 0;
 	if(Blind || flags.run == 0) return;
 	if(flags.run == 1 && levl[u.ux][u.uy].typ == ROOM) return;
 #ifdef QUEST
@@ -559,7 +552,9 @@ struct monst *mtmp;
 
 /* something like lookaround, but we are not running */
 /* react only to monsters that might hit us */
-monster_nearby() {
+bool
+monster_nearby(void)
+{
 int x,y;
 struct monst *mtmp;
 	if(!Blind)
@@ -575,7 +570,9 @@ struct monst *mtmp;
 }
 
 #ifdef QUEST
-cansee(x,y) xchar x,y; {
+bool
+cansee(xchar x, xchar y)
+{
 int dx,dy,adx,ady,sdx,sdy,dmax,d;
 	if(Blind) return(0);
 	if(!isok(x,y)) return(0);
@@ -609,13 +606,17 @@ int dx,dy,adx,ady,sdx,sdy,dmax,d;
 	}
 }
 
-rroom(x,y) int x,y; {
+static bool
+rroom(int x, int y)
+{
 	return(IS_ROOM(levl[u.ux+x][u.uy+y].typ));
 }
 
 #else
 
-cansee(x,y) xchar x,y; {
+bool
+cansee(xchar x, xchar y)
+{
 	if(Blind || u.uswallow) return(0);
 	if(dist(x,y) < 3) return(1);
 	if(levl[x][y].lit && seelx <= x && x <= seehx && seely <= y &&
@@ -624,12 +625,15 @@ cansee(x,y) xchar x,y; {
 }
 #endif /* QUEST */
 
-sgn(a) int a; {
+int
+sgn(int a)
+{
 	return((a > 0) ? 1 : (a == 0) ? 0 : -1);
 }
 
 #ifdef QUEST
-setsee()
+void
+setsee(void)
 {
 	x,y;
 
@@ -646,7 +650,8 @@ setsee()
 
 #else
 
-setsee()
+void
+setsee(void)
 {
 	int x,y;
 
@@ -679,15 +684,16 @@ setsee()
 }
 #endif /* QUEST */
 
-nomul(nval)
-int nval;
+void
+nomul(int nval)
 {
 	if(multi < 0) return;
 	multi = nval;
 	flags.mv = flags.run = 0;
 }
 
-abon()
+int
+abon(void)
 {
 	if(u.ustr == 3) return(-3);
 	else if(u.ustr < 6) return(-2);
@@ -698,7 +704,8 @@ abon()
 	else return(3);
 }
 
-dbon()
+int
+dbon(void)
 {
 	if(u.ustr < 6) return(-1);
 	else if(u.ustr < 16) return(0);
@@ -710,8 +717,8 @@ dbon()
 	else return(6);
 }
 
-losestr(num)	/* may kill you; cause may be poison or monster like 'A' */
-int num;
+void
+losestr(int num)	/* may kill you; cause may be poison or monster like 'A' */
 {
 	u.ustr -= num;
 	while(u.ustr < 3) {
@@ -722,9 +729,8 @@ int num;
 	flags.botl = 1;
 }
 
-losehp(n,knam)
-int n;
-char *knam;
+void
+losehp(int n, const char *knam)
 {
 	u.uhp -= n;
 	if(u.uhp > u.uhpmax)
@@ -736,9 +742,8 @@ char *knam;
 	}
 }
 
-losehp_m(n,mtmp)
-int n;
-struct monst *mtmp;
+void
+losehp_m(int n, struct monst *mtmp)
 {
 	u.uhp -= n;
 	flags.botl = 1;
@@ -746,10 +751,10 @@ struct monst *mtmp;
 		done_in_by(mtmp);
 }
 
-losexp()	/* hit by V or W */
+void
+losexp(void)	/* hit by V or W */
 {
 	int num;
-	extern long newuexp();
 
 	if(u.ulevel > 1)
 		pline("Goodbye level %u.", u.ulevel--);
@@ -762,7 +767,9 @@ losexp()	/* hit by V or W */
 	flags.botl = 1;
 }
 
-inv_weight(){
+int
+inv_weight(void)
+{
 struct obj *otmp = invent;
 int wt = (u.ugold + 500)/1000;
 int carrcap;
@@ -781,7 +788,9 @@ int carrcap;
 	return(wt - carrcap);
 }
 
-inv_cnt(){
+static int
+inv_cnt(void)
+{
 struct obj *otmp = invent;
 int ct = 0;
 	while(otmp){
@@ -792,7 +801,7 @@ int ct = 0;
 }
 
 long
-newuexp()
+newuexp(void)
 {
 	return(10*(1L << (u.ulevel-1)));
 }

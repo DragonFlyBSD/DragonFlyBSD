@@ -1,13 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.dog.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.dog.c,v 1.3 1999/11/16 02:57:03 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.dog.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.dog.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 #include	"hack.mfndpos.h"
-extern struct monst *makemon();
 #include "def.edog.h"
-#include "def.mkroom.h"
 
 struct permonst li_dog =
 	{ "little dog", 'd',2,18,6,1,6,sizeof(struct edog) };
@@ -16,14 +14,20 @@ struct permonst dog =
 struct permonst la_dog =
 	{ "large dog", 'd',6,15,4,2,4,sizeof(struct edog) };
 
+static void	initedog(struct monst *);
+static xchar	dogfood(struct obj *);
 
-makedog(){
+void
+makedog(void)
+{
 struct monst *mtmp = makemon(&li_dog,u.ux,u.uy);
 	if(!mtmp) return; /* dogs were genocided */
 	initedog(mtmp);
 }
 
-initedog(mtmp) struct monst *mtmp; {
+static void
+initedog(struct monst *mtmp)
+{
 	mtmp->mtame = mtmp->mpeaceful = 1;
 	EDOG(mtmp)->hungrytime = 1000 + moves;
 	EDOG(mtmp)->eattime = 0;
@@ -38,15 +42,17 @@ struct monst *mydogs = 0;
 struct monst *fallen_down = 0;	/* monsters that fell through a trapdoor */
 	/* they will appear on the next level @ goes to, even if he goes up! */
 
-losedogs(){
+void
+losedogs(void)
+{
 struct monst *mtmp;
-	while(mtmp = mydogs){
+	while((mtmp = mydogs)){
 		mydogs = mtmp->nmon;
 		mtmp->nmon = fmon;
 		fmon = mtmp;
 		mnexto(mtmp);
 	}
-	while(mtmp = fallen_down){
+	while((mtmp = fallen_down)){
 		fallen_down = mtmp->nmon;
 		mtmp->nmon = fmon;
 		fmon = mtmp;
@@ -54,7 +60,9 @@ struct monst *mtmp;
 	}
 }
 
-keepdogs(){
+void
+keepdogs(void)
+{
 struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	    if(dist(mtmp->mx,mtmp->my) < 3 && follower(mtmp)
@@ -68,7 +76,9 @@ struct monst *mtmp;
 	}
 }
 
-fall_down(mtmp) struct monst *mtmp; {
+void
+fall_down(struct monst *mtmp)
+{
 	relmon(mtmp);
 	mtmp->nmon = fallen_down;
 	fallen_down = mtmp;
@@ -84,7 +94,9 @@ fall_down(mtmp) struct monst *mtmp; {
 #define	APPORT	4
 #define	POISON	5
 #define	UNDEF	6
-dogfood(obj) struct obj *obj; {
+static xchar
+dogfood(struct obj *obj)
+{
 	switch(obj->olet) {
 	case FOOD_SYM:
 	    return(
@@ -106,9 +118,11 @@ dogfood(obj) struct obj *obj; {
 }
 
 /* return 0 (no move), 1 (move) or 2 (dead) */
-dog_move(mtmp, after) struct monst *mtmp; {
+int
+dog_move(struct monst *mtmp, int after)
+{
 int nx,ny,omx,omy,appr,nearer,j;
-int udist,chi,i,whappr;
+int udist,chi = 0,i,whappr;
 struct monst *mtmp2;
 struct permonst *mdat = mtmp->data;
 struct edog *edog = EDOG(mtmp);
@@ -154,21 +168,21 @@ int info[9];
 	/* Note: if apport == 1 then our behaviour is independent of udist */
 	if(mtmp->minvent){
 		if(!rn2(udist) || !rn2((int) edog->apport))
-		if(rn2(10) < edog->apport){
+		if(rn2(10) < (int)edog->apport){
 			relobj(mtmp, (int) mtmp->minvis);
 			if(edog->apport > 1) edog->apport--;
 			edog->dropdist = udist;		/* hpscdi!jon */
 			edog->droptime = moves;
 		}
 	} else {
-		if(obj = o_at(omx,omy)) if(!index("0_", obj->olet)){
+		if((obj = o_at(omx,omy))) if(!index("0_", obj->olet)){
 		    if((otyp = dogfood(obj)) <= CADAVER){
 			nix = omx;
 			niy = omy;
 			goto eatobj;
 		    }
 		    if(obj->owt < 10*mtmp->data->mlevel)
-		    if(rn2(20) < edog->apport+3)
+		    if(rn2(20) < (int)edog->apport+3)
 		    if(rn2(udist) || !rn2((int) edog->apport)){
 			freeobj(obj);
 			unpobj(obj);
@@ -181,9 +195,7 @@ int info[9];
 
 	/* first we look for food */
 	gtyp = UNDEF;	/* no goal as yet */
-#ifdef LINT
 	gx = gy = 0;	/* suppress 'used before set' message */
-#endif /* LINT */
 	for(obj = fobj; obj; obj = obj->nobj) {
 		otyp = dogfood(obj);
 		if(otyp > gtyp || otyp == UNDEF) continue;
@@ -199,7 +211,7 @@ int info[9];
 		} else
 		if(gtyp == UNDEF && dogroom >= 0 &&
 		   uroom == dogroom &&
-		   !mtmp->minvent && edog->apport > rn2(8)){
+		   !mtmp->minvent && (int)edog->apport > rn2(8)){
 			gx = obj->ox;
 			gy = obj->oy;
 			gtyp = APPORT;
@@ -255,7 +267,6 @@ int info[9];
 	if(mtmp->mconf) appr = 0;
 
 	if(gx == u.ux && gy == u.uy && (dogroom != uroom || dogroom < 0)){
-	extern coord *gettrack();
 	coord *cp;
 		cp = gettrack(omx,omy);
 		if(cp){
@@ -350,7 +361,7 @@ int info[9];
 newdogpos:
 	if(nix != omx || niy != omy){
 		if(info[chi] & ALLOW_U){
-			(void) hitu(mtmp, d(mdat->damn, mdat->damd)+1);
+			hitu(mtmp, d(mdat->damn, mdat->damd)+1);
 			return(0);
 		}
 		mtmp->mx = nix;
@@ -366,7 +377,9 @@ newdogpos:
 }
 
 /* return roomnumber or -1 */
-inroom(x,y) xchar x,y; {
+int
+inroom(xchar x, xchar y)
+{
 #ifndef QUEST
 	struct mkroom *croom = &rooms[0];
 	while(croom->hx >= 0){
@@ -379,9 +392,8 @@ inroom(x,y) xchar x,y; {
 	return(-1);	/* not in room or on door */
 }
 
-tamedog(mtmp, obj)
-struct monst *mtmp;
-struct obj *obj;
+bool
+tamedog(struct monst *mtmp, struct obj *obj)
 {
 	struct monst *mtmp2;
 
@@ -408,7 +420,7 @@ struct obj *obj;
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
 	*mtmp2 = *mtmp;
 	mtmp2->mxlth = sizeof(struct edog);
-	if(mtmp->mnamelth) (void) strcpy(NAME(mtmp2), NAME(mtmp));
+	if(mtmp->mnamelth) strcpy(NAME(mtmp2), NAME(mtmp));
 	initedog(mtmp2);
 	replmon(mtmp,mtmp2);
 	return(1);

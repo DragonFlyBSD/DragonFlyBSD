@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/hack/Makefile,v 1.20.2.4 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/hack/Makefile,v 1.4 2005/05/07 18:02:35 corecode Exp $
+# $DragonFly: src/games/hack/Makefile,v 1.5 2006/08/21 19:45:32 pavalos Exp $
 
 PROG=	hack
 SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
@@ -16,8 +16,8 @@ SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
 	hack.wizard.c hack.worm.c hack.worn.c hack.zap.c rnd.c \
 	hack.onames.h
 MAN=	hack.6
-DPADD=	${LIBTERMCAP} ${LIBCOMPAT}
-LDADD=	-ltermcap -lcompat
+DPADD=	${LIBTERMCAP}
+LDADD=	-ltermcap
 CFLAGS+= -I${.CURDIR} -I.
 FILES=	rumors help hh data
 FILESMODE_rumors=	440
@@ -25,6 +25,7 @@ FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
 HIDEGAME=hidegame
 CLEANFILES=hack.onames.h makedefs.nx makedefs.no
+WARNS?=	6
 
 build-tools: makedefs.nx
 

@@ -1,38 +1,41 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.objnam.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.objnam.c,v 1.3 1999/11/16 02:57:08 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.objnam.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.objnam.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 #define Sprintf (void) sprintf
 #define Strcat  (void) strcat
 #define	Strcpy	(void) strcpy
 #define	PREFIX	15
-extern char *eos();
 extern int bases[];
 
-char *
-strprepend(s,pref) char *s, *pref; {
+static char	*strprepend(char *, char *);
+static char	*sitoa(int);
+
+static char *
+strprepend(char *s, char *pref)
+{
 int i = strlen(pref);
 	if(i > PREFIX) {
 		pline("WARNING: prefix too short.");
 		return(s);
 	}
 	s -= i;
-	(void) strncpy(s, pref, i);	/* do not copy trailing 0 */
+	strncpy(s, pref, i);	/* do not copy trailing 0 */
 	return(s);
 }
 
-char *
-sitoa(a) int a; {
+static char *
+sitoa(int a)
+{
 static char buf[13];
 	Sprintf(buf, (a < 0) ? "%d" : "+%d", a);
 	return(buf);
 }
 
 char *
-typename(otyp)
-int otyp;
+typename(int otyp)
 {
 static char buf[BUFSZ];
 struct objclass *ocl = &objects[otyp];
@@ -82,8 +85,7 @@ int nn = ocl->oc_name_known;
 }
 
 char *
-xname(obj)
-struct obj *obj;
+xname(struct obj *obj)
 {
 static char bufr[BUFSZ];
 char *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
@@ -242,8 +244,7 @@ nopl:
 }
 
 char *
-doname(obj)
-struct obj *obj;
+doname(struct obj *obj)
 {
 char prefix[PREFIX];
 char *bp = xname(obj);
@@ -290,8 +291,8 @@ char *bp = xname(obj);
 }
 
 /* used only in hack.fight.c (thitu) */
-setan(str,buf)
-char *str,*buf;
+void
+setan(const char *str, char *buf)
 {
 	if(index(vowels,*str))
 		Sprintf(buf, "an %s", str);
@@ -300,7 +301,8 @@ char *str,*buf;
 }
 
 char *
-aobjnam(otmp,verb) struct obj *otmp; char *verb; {
+aobjnam(struct obj *otmp, const char *verb)
+{
 char *bp = xname(otmp);
 char prefix[PREFIX];
 	if(otmp->quan != 1) {
@@ -324,8 +326,7 @@ char prefix[PREFIX];
 }
 
 char *
-Doname(obj)
-struct obj *obj;
+Doname(struct obj *obj)
 {
 	char *s = doname(obj);
 
@@ -337,20 +338,19 @@ static	const char *wrp[] = { "wand", "ring", "potion", "scroll", "gem" };
 char wrpsym[] = { WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM };
 
 struct obj *
-readobjnam(bp) char *bp; {
+readobjnam(char *bp)
+{
 char *p;
 int i;
 int cnt, spe, spesgn, typ, heavy;
 char let;
 char *un, *dn, *an;
-/* int the = 0; char *oname = 0; */
 	cnt = spe = spesgn = typ = heavy = 0;
 	let = 0;
 	an = dn = un = 0;
 	for(p = bp; *p; p++)
 		if('A' <= *p && *p <= 'Z') *p += 'a'-'A';
 	if(!strncmp(bp, "the ", 4)){
-/*		the = 1; */
 		bp += 4;
 	} else if(!strncmp(bp, "an ", 3)){
 		cnt = 1;
@@ -395,7 +395,6 @@ char *un, *dn, *an;
 	*/
 	for(p = bp; *p; p++) if(!strncmp(p, " named ", 7)) {
 		*p = 0;
-/*		oname = p+7; */
 	}
 	for(p = bp; *p; p++) if(!strncmp(p, " called ", 8)) {
 		*p = 0;
@@ -410,7 +409,7 @@ char *un, *dn, *an;
 	if(cnt != 1) {
 		/* find "cloves of garlic", "worthless pieces of blue glass" */
 		for(p = bp; *p; p++) if(!strncmp(p, "s of ", 5)){
-			while(*p = p[1]) p++;
+			while((*p = p[1])) p++;
 			goto sing;
 		}
 		/* remove -s or -es (boxes) or -ies (rubies, zruties) */
@@ -461,7 +460,7 @@ sing:
 		an = bp;
 		goto srch;
 	}
-	for(i = 0; i < sizeof(wrpsym); i++) {
+	for(i = 0; (unsigned)i < sizeof(wrpsym); i++) {
 		int j = strlen(wrp[i]);
 		if(!strncmp(bp, wrp[i], j)){
 			let = wrpsym[i];
@@ -516,7 +515,6 @@ any:
 	typ = probtype(let);
 typfnd:
 	{ struct obj *otmp;
-	  extern struct obj *mksobj();
 	let = objects[typ].oc_olet;
 	otmp = mksobj(typ);
 	if(heavy)

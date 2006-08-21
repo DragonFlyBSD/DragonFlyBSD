@@ -1,31 +1,25 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.lev.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.lev.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.lev.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.lev.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include "def.mkroom.h"
-#include <stdio.h>
-extern struct monst *restmonchn();
-extern struct obj *restobjchn();
 extern struct obj *billobjs;
-extern char *itoa();
 extern char SAVEF[];
-extern int hackpid;
-extern xchar dlevel;
 extern char nul[];
 
 #ifndef NOWORM
-#include	"def.wseg.h"
 extern struct wseg *wsegs[32], *wheads[32];
 extern long wgrowtime[32];
 #endif /* NOWORM */
 
 boolean level_exists[MAXLEVEL+1];
 
-savelev(fd,lev)
-int fd;
-xchar lev;
+static void	savegoldchn(int, struct gold *);
+static void	savetrapchn(int, struct trap *);
+
+void
+savelev(int fd, xchar lev)
 {
 #ifndef NOWORM
 	struct wseg *wtmp, *wtmp2;
@@ -72,19 +66,16 @@ xchar lev;
 #endif /* NOWORM */
 }
 
-bwrite(fd,loc,num)
-int fd;
-char *loc;
-unsigned num;
+void
+bwrite(int fd, char *loc, unsigned int num)
 {
 /* lint wants the 3rd arg of write to be an int; lint -p an unsigned */
-	if(write(fd, loc, (int) num) != num)
+	if(write(fd, loc, (int) num) != (int)num)
 		panic("cannot write %u bytes to file #%d", num, fd);
 }
 
-saveobjchn(fd,otmp)
-int fd;
-struct obj *otmp;
+void
+saveobjchn(int fd, struct obj *otmp)
 {
 	struct obj *otmp2;
 	unsigned xl;
@@ -101,9 +92,8 @@ struct obj *otmp;
 	bwrite(fd, (char *) &minusone, sizeof(int));
 }
 
-savemonchn(fd,mtmp)
-int fd;
-struct monst *mtmp;
+void
+savemonchn(int fd, struct monst *mtmp)
 {
 	struct monst *mtmp2;
 	unsigned xl;
@@ -124,9 +114,8 @@ struct monst *mtmp;
 	bwrite(fd, (char *) &minusone, sizeof(int));
 }
 
-savegoldchn(fd,gold)
-int fd;
-struct gold *gold;
+static void
+savegoldchn(int fd, struct gold *gold)
 {
 	struct gold *gold2;
 	while(gold) {
@@ -138,9 +127,8 @@ struct gold *gold;
 	bwrite(fd, nul, sizeof(struct gold));
 }
 
-savetrapchn(fd,trap)
-int fd;
-struct trap *trap;
+static void
+savetrapchn(int fd, struct trap *trap)
 {
 	struct trap *trap2;
 	while(trap) {
@@ -152,9 +140,8 @@ struct trap *trap;
 	bwrite(fd, nul, sizeof(struct trap));
 }
 
-getlev(fd,pid,lev)
-int fd,pid;
-xchar lev;
+void
+getlev(int fd, int pid, xchar lev)
 {
 	struct gold *gold;
 	struct trap *trap;
@@ -190,7 +177,6 @@ xchar lev;
 	/* regenerate animals while on another level */
 	{ long tmoves = (moves > omoves) ? moves-omoves : 0;
 	  struct monst *mtmp, *mtmp2;
-	  extern char genocided[];
 
 	  for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 		long newhp;		/* tmoves may be very large */
@@ -256,29 +242,25 @@ xchar lev;
 #endif /* NOWORM */
 }
 
-mread(fd, buf, len)
-int fd;
-char *buf;
-unsigned len;
+void
+mread(int fd, char *buf, unsigned int len)
 {
 	int rlen;
-	extern boolean restoring;
 
 	rlen = read(fd, buf, (int) len);
-	if(rlen != len){
+	if(rlen != (int)len){
 		pline("Read %d instead of %u bytes.\n", rlen, len);
 		if(restoring) {
-			(void) unlink(SAVEF);
+			unlink(SAVEF);
 			error("Error restoring old game.");
 		}
 		panic("Error reading level file.");
 	}
 }
 
-mklev()
+void
+mklev(void)
 {
-	extern boolean in_mklev;
-
 	if(getbones()) return;
 
 	in_mklev = TRUE;

@@ -1,13 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.search.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.search.c,v 1.3 1999/11/16 02:57:11 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.search.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.search.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
-extern struct monst *makemon();
-
-findit()	/* returns number of things found */
+int
+findit(void)	/* returns number of things found */
 {
 	int num;
 	xchar zx,zy;
@@ -31,9 +30,9 @@ findit()	/* returns number of things found */
 				levl[zx][zy].typ = CORR;
 				atl(zx, zy, CORR_SYM);
 				num++;
-			} else if(ttmp = t_at(zx, zy)) {
+			} else if((ttmp = t_at(zx, zy))) {
 				if(ttmp->ttyp == PIERC){
-					(void) makemon(PM_PIERCER, zx, zy);
+					makemon(PM_PIERCER, zx, zy);
 					num++;
 					deltrap(ttmp);
 				} else if(!ttmp->tseen) {
@@ -42,7 +41,7 @@ findit()	/* returns number of things found */
 						atl(zx,zy,'^');
 					num++;
 				}
-			} else if(mtmp = m_at(zx,zy)) if(mtmp->mimic){
+			} else if((mtmp = m_at(zx,zy))) if(mtmp->mimic){
 				seemimic(mtmp);
 				num++;
 			}
@@ -50,7 +49,8 @@ findit()	/* returns number of things found */
 	return(num);
 }
 
-dosearch()
+int
+dosearch(void)
 {
 	xchar x,y;
 	struct trap *trap;
@@ -75,7 +75,7 @@ dosearch()
 			nomul(0);
 		} else {
 		/* Be careful not to find anything in an SCORR or SDOOR */
-			if(mtmp = m_at(x,y)) if(mtmp->mimic){
+			if((mtmp = m_at(x,y))) if(mtmp->mimic){
 				seemimic(mtmp);
 				pline("You find a mimic.");
 				return(1);
@@ -87,7 +87,7 @@ dosearch()
 				pline("You find a%s.", traps[trap->ttyp]);
 				if(trap->ttyp == PIERC) {
 					deltrap(trap);
-					(void) makemon(PM_PIERCER,x,y);
+					makemon(PM_PIERCER,x,y);
 					return(1);
 				}
 				trap->tseen = 1;
@@ -98,7 +98,9 @@ dosearch()
 	return(1);
 }
 
-doidtrap() {
+int
+doidtrap(void)
+{
 struct trap *trap;
 int x,y;
 	if(!getdir(1)) return(0);
@@ -116,8 +118,8 @@ int x,y;
 	return(0);
 }
 
-wakeup(mtmp)
-struct monst *mtmp;
+void
+wakeup(struct monst *mtmp)
 {
 	mtmp->msleep = 0;
 	setmangry(mtmp);
@@ -125,8 +127,8 @@ struct monst *mtmp;
 }
 
 /* NOTE: we must check if(mtmp->mimic) before calling this routine */
-seemimic(mtmp)
-struct monst *mtmp;
+void
+seemimic(struct monst *mtmp)
 {
 		mtmp->mimic = 0;
 		mtmp->mappearance = 0;

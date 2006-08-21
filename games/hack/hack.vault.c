@@ -1,21 +1,38 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.vault.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.vault.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.vault.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.vault.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 #ifdef QUEST
-setgd(/* mtmp */) /* struct monst *mtmp; */ {}
-gd_move() { return(2); }
-gddead(mtmp) struct monst *mtmp; {}
-replgd(mtmp,mtmp2) struct monst *mtmp, *mtmp2; {}
-invault(){}
+void
+setgd(void)
+{
+}
+
+int
+gd_move(void)
+{
+	return(2);
+}
+
+void
+gddead(struct monst *mtmp)
+{
+}
+
+void
+replgd(struct monst *mtmp, struct monst *mtmp2)
+{
+}
+
+void
+invault(void)
+{
+}
 
 #else
 
-
-#include "def.mkroom.h"
-extern struct monst *makemon();
 #define	FCSIZ	(ROWNO+COLNO)
 struct fakecorridor {
 	xchar fx,fy,ftyp;
@@ -35,8 +52,11 @@ static struct monst *guard;
 static int gdlevel;
 #define	EGD	((struct egd *)(&(guard->mextra[0])))
 
-static
-restfakecorr()
+static void	restfakecorr(void);
+static bool	goldincorridor(void);
+
+static void
+restfakecorr(void)
 {
 	int fcx,fcy,fcbeg;
 	struct rm *crm;
@@ -58,8 +78,8 @@ restfakecorr()
 	guard = 0;
 }
 
-static
-goldincorridor()
+static bool
+goldincorridor(void)
 {
 	int fci;
 
@@ -69,7 +89,9 @@ goldincorridor()
 	return(0);
 }
 
-setgd(){
+void
+setgd(void)
+{
 struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) if(mtmp->isgd){
 		guard = mtmp;
@@ -79,7 +101,9 @@ struct monst *mtmp;
 	guard = 0;
 }
 
-invault(){
+void
+invault(void)
+{
 int tmp = inroom(u.ux, u.uy);
     if(tmp < 0 || rooms[tmp].rtype != VAULT) {
 	u.uinvault = 0;
@@ -163,7 +187,9 @@ fnd:
     }
 }
 
-gd_move(){
+int
+gd_move(void)
+{
 int x,y,dx,dy,gx,gy,nx,ny,typ;
 struct fakecorridor *fcp;
 struct rm *crm;
@@ -247,12 +273,14 @@ newpos:
 	return(1);
 }
 
-gddead(){
+void
+gddead(void)
+{
 	guard = 0;
 }
 
-replgd(mtmp,mtmp2)
-struct monst *mtmp, *mtmp2;
+void
+replgd(struct monst *mtmp, struct monst *mtmp2)
 {
 	if(mtmp == guard)
 		guard = mtmp2;

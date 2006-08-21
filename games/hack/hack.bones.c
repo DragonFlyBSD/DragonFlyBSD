@@ -1,18 +1,16 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.bones.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.bones.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.bones.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.bones.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-extern char plname[PL_NSIZ];
-extern long somegold();
-extern struct monst *makemon();
-extern struct permonst pm_ghost;
 
 char bones[] = "bones_xx";
 
 /* save bones and possessions of a deceased adventurer */
-savebones(){
+void
+savebones(void)
+{
 int fd;
 struct obj *otmp;
 struct trap *ttmp;
@@ -22,7 +20,7 @@ struct monst *mtmp;
 	bones[6] = '0' + (dlevel/10);
 	bones[7] = '0' + (dlevel%10);
 	if((fd = open(bones,0)) >= 0){
-		(void) close(fd);
+		close(fd);
 		return;
 	}
 	/* drop everything; the corpse's possessions are usually cursed */
@@ -45,7 +43,7 @@ struct monst *mtmp;
 	mtmp->mx = u.ux;
 	mtmp->my = u.uy;
 	mtmp->msleep = 1;
-	(void) strcpy((char *) mtmp->mextra, plname);
+	strcpy((char *) mtmp->mextra, plname);
 	mkgold(somegold() + d(dlevel,30), u.ux, u.uy);
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
 		mtmp->m_id = 0;
@@ -71,10 +69,12 @@ struct monst *mtmp;
 	}
 	if((fd = creat(bones, FMASK)) < 0) return;
 	savelev(fd,dlevel);
-	(void) close(fd);
+	close(fd);
 }
 
-getbones(){
+int
+getbones(void)
+{
 int fd,x,y,ok;
 	if(rn2(3)) return(0);	/* only once in three times do we find bones */
 	bones[6] = '0' + dlevel/10;
@@ -85,7 +85,7 @@ int fd,x,y,ok;
 		for(x = 0; x < COLNO; x++) for(y = 0; y < ROWNO; y++)
 			levl[x][y].seen = levl[x][y].new = 0;
 	}
-	(void) close(fd);
+	close(fd);
 #ifdef WIZARD
 	if(!wizard)	/* duvel!frans: don't remove bones while debugging */
 #endif /* WiZARD */

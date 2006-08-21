@@ -1,7 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.objects.h - version 1.0.3 */
+/* $DragonFly: src/games/hack/def.objects.h,v 1.2 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * */
+#include <string.h>
 #include "config.h"
 #include "def.objclass.h"
 

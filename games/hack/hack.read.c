@@ -1,19 +1,18 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.read.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.read.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.read.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.read.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
-extern struct monst *makemon();
-extern struct obj *mkobj_at();
-int identify();
+static bool	monstersym(char);
 
-doread() {
+int
+doread(void)
+{
 	struct obj *scroll;
 	boolean confused = (Confusion != 0);
 	boolean known = FALSE;
-	extern struct obj *some_armor();
 
 	scroll = getobj("?", "read");
 	if(!scroll) return(0);
@@ -147,7 +146,7 @@ doread() {
 		if(!rn2(73)) cnt += rnd(4);
 		if(confused) cnt += 12;
 		while(cnt--)
-		    (void) makemon(confused ? PM_ACID_BLOB :
+		    makemon(confused ? PM_ACID_BLOB :
 			(struct permonst *) 0, u.ux, u.uy);
 		break;
 	    }
@@ -175,12 +174,12 @@ doread() {
 		struct monst *mtmp;
 
 		for(i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++)
-		if(mtmp = m_at(u.ux+i, u.uy+j))
-			(void) tamedog(mtmp, (struct obj *) 0);
+		if((mtmp = m_at(u.ux+i, u.uy+j)))
+			tamedog(mtmp, (struct obj *) 0);
 		break;
 	    }
 	case SCR_GENOCIDE:
-	    {	extern char genocided[], fut_geno[];
+	    {
 		char buf[BUFSZ];
 		struct monst *mtmp, *mtmp2;
 
@@ -374,7 +373,7 @@ doread() {
 		break;
 	    }
 	case SCR_FIRE:
-	    {	int num;
+	    {	int num = 0;
 		struct monst *mtmp;
 
 		known = TRUE;
@@ -437,8 +436,8 @@ doread() {
 	return(1);
 }
 
-identify(otmp)		/* also called by newmail() */
-struct obj *otmp;
+int
+identify(struct obj *otmp)	/* also called by newmail() */
 {
 	objects[otmp->otyp].oc_name_known = 1;
 	otmp->known = otmp->dknown = 1;
@@ -446,8 +445,8 @@ struct obj *otmp;
 	return(1);
 }
 
-litroom(on)
-boolean on;
+void
+litroom(bool on)
 {
 	int num,zx,zy;
 
@@ -521,11 +520,10 @@ do_it:
 }
 
 /* Test whether we may genocide all monsters with symbol  ch  */
-monstersym(ch)				/* arnold@ucsfcgl */
-char ch;
+static bool
+monstersym(char ch)			/* arnold@ucsfcgl */
 {
 	struct permonst *mp;
-	extern struct permonst pm_eel;
 
 	/*
 	 * can't genocide certain monsters

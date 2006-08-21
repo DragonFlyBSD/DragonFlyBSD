@@ -1,14 +1,16 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.potion.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.potion.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.potion.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.potion.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-extern int float_down();
 extern struct monst youmonst;
-extern struct monst *makemon();
 
-dodrink() {
+static void	ghost_from_bottle(void);
+
+int
+dodrink(void)
+{
 	struct obj *otmp,*objs;
 	struct monst *mtmp;
 	int unkn = 0, nothing = 0;
@@ -189,7 +191,8 @@ use_it:
 	return(1);
 }
 
-pluslvl()
+void
+pluslvl(void)
 {
 	int num;
 
@@ -198,17 +201,14 @@ pluslvl()
 	u.uhpmax += num;
 	u.uhp += num;
 	if(u.ulevel < 14) {
-		extern long newuexp();
-
 		u.uexp = newuexp()+1;
 		pline("Welcome to experience level %u.", ++u.ulevel);
 	}
 	flags.botl = 1;
 }
 
-strange_feeling(obj,txt)
-struct obj *obj;
-char *txt;
+void
+strange_feeling(struct obj *obj, const char *txt)
 {
 	if(flags.beginner)
 	    pline("You have a strange feeling for a moment, then it passes.");
@@ -223,11 +223,9 @@ static const char *bottlenames[] = {
 	"bottle", "phial", "flagon", "carafe", "flask", "jar", "vial"
 };
 
-potionhit(mon, obj)
-struct monst *mon;
-struct obj *obj;
+void
+potionhit(struct monst *mon, struct obj *obj)
 {
-	extern char *xname();
 	const char *botlnam = bottlenames[rn2(SIZE(bottlenames))];
 	boolean uclose, isyou = (mon == &youmonst);
 
@@ -295,8 +293,8 @@ struct obj *obj;
 	obfree(obj, Null(obj));
 }
 
-potionbreathe(obj)
-struct obj *obj;
+void
+potionbreathe(struct obj *obj)
 {
 	switch(obj->otyp) {
 	case POT_RESTORE_STRENGTH:
@@ -354,7 +352,9 @@ struct obj *obj;
  * -- If the flask is small, can one dip a large object? Does it magically
  * --   become a jug? Etc.
  */
-dodip(){
+int
+dodip(void)
+{
 	struct obj *potion, *obj;
 
 	if(!(obj = getobj("#", "dip")))
@@ -372,8 +372,9 @@ dodip(){
 	return(1);
 }
 
-ghost_from_bottle(){
-	extern struct permonst pm_ghost;
+static void
+ghost_from_bottle(void)
+{
 	struct monst *mtmp;
 
 	if(!(mtmp = makemon(PM_GHOST,u.ux,u.uy))){

@@ -1,17 +1,16 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mhitu.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mhitu.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mhitu.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.mhitu.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
-extern struct monst *makemon();
 
 /*
  * mhitu: monster hits you
  *	  returns 1 if monster dies (e.g. 'y', 'F'), 0 otherwise
  */
-mhitu(mtmp)
-struct monst *mtmp;
+bool
+mhitu(struct monst *mtmp)
 {
 	struct permonst *mdat = mtmp->data;
 	int tmp, ctmp;
@@ -75,13 +74,13 @@ struct monst *mtmp;
 		break;
 	case '&':
 		if(!mtmp->cham && !mtmp->mcan && !rn2(13)) {
-			(void) makemon(PM_DEMON,u.ux,u.uy);
+			makemon(PM_DEMON,u.ux,u.uy);
 		} else {
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,rnd(3));
-			(void) hitu(mtmp,rnd(3));
-			(void) hitu(mtmp,rn1(4,2));
+			hitu(mtmp,d(2,6));
+			hitu(mtmp,d(2,6));
+			hitu(mtmp,rnd(3));
+			hitu(mtmp,rnd(3));
+			hitu(mtmp,rn1(4,2));
 		}
 		break;
 	case ',':
@@ -114,7 +113,7 @@ struct monst *mtmp;
 		}
 		break;
 	case 'C':
-		(void) hitu(mtmp,rnd(6));
+		hitu(mtmp,rnd(6));
 		break;
 	case 'c':
 		if(!rn2(5)) {
@@ -122,26 +121,24 @@ struct monst *mtmp;
 			if(ctmp || !rn2(20) || (flags.moonphase == NEW_MOON
 			    && !carrying(DEAD_LIZARD))) {
 				Stoned = 5;
-				/* pline("You get turned to stone!"); */
-				/* done_in_by(mtmp); */
 			}
 		}
 		break;
 	case 'D':
 		if(rn2(6) || mtmp->mcan) {
-			(void) hitu(mtmp,d(3,10));
-			(void) hitu(mtmp,rnd(8));
-			(void) hitu(mtmp,rnd(8));
+			hitu(mtmp,d(3,10));
+			hitu(mtmp,rnd(8));
+			hitu(mtmp,rnd(8));
 			break;
 		}
 		kludge("%s breathes fire!","The dragon");
 		buzz(-1,mtmp->mx,mtmp->my,u.ux-mtmp->mx,u.uy-mtmp->my);
 		break;
 	case 'd':
-		(void) hitu(mtmp,d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
+		hitu(mtmp,d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
 		break;
 	case 'e':
-		(void) hitu(mtmp,d(3,6));
+		hitu(mtmp,d(3,6));
 		break;
 	case 'F':
 		if(mtmp->mcan) break;
@@ -177,8 +174,8 @@ struct monst *mtmp;
 		tmp = hitu(mtmp,rnd(3));
 		tmp &= hitu(mtmp,rnd(3));
 		if(tmp){
-			(void) hitu(mtmp,rnd(4));
-			(void) hitu(mtmp,rnd(4));
+			hitu(mtmp,rnd(4));
+			hitu(mtmp,rnd(4));
 		}
 		break;
 	case 'k':
@@ -209,8 +206,8 @@ struct monst *mtmp;
 			flags.botl = 1;
 			if(!rn2(50)) rloc(mtmp);
 		} else {
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,d(2,6));
+			hitu(mtmp,d(2,6));
+			hitu(mtmp,d(2,6));
 		}
 		break;
 	case 'o':
@@ -229,11 +226,11 @@ struct monst *mtmp;
 		if(ctmp && !rn2(4))
 			justswld(mtmp,"The purple worm");
 		else
-			(void) hitu(mtmp,d(2,4));
+			hitu(mtmp,d(2,4));
 		break;
 	case 'Q':
-		(void) hitu(mtmp,rnd(2));
-		(void) hitu(mtmp,rnd(2));
+		hitu(mtmp,rnd(2));
+		hitu(mtmp,rnd(2));
 		break;
 	case 'R':
 		if(tmp && uarmh && !uarmh->rustfree &&
@@ -257,12 +254,12 @@ struct monst *mtmp;
 		if(tmp && !rn2(8)) {
 			poisoned("scorpion's sting",mdat->mname);
 		}
-		(void) hitu(mtmp,rnd(8));
-		(void) hitu(mtmp,rnd(8));
+		hitu(mtmp,rnd(8));
+		hitu(mtmp,rnd(8));
 		break;
 	case 'T':
-		(void) hitu(mtmp,rnd(6));
-		(void) hitu(mtmp,rnd(6));
+		hitu(mtmp,rnd(6));
+		hitu(mtmp,rnd(6));
 		break;
 	case 't':
 		if(!rn2(5)) rloc(mtmp);
@@ -271,8 +268,8 @@ struct monst *mtmp;
 		mtmp->mflee = 1;
 		break;
 	case 'U':
-		(void) hitu(mtmp,d(3,4));
-		(void) hitu(mtmp,d(3,4));
+		hitu(mtmp,d(3,4));
+		hitu(mtmp,d(3,4));
 		break;
 	case 'v':
 		if(ctmp && !u.ustuck) u.ustuck = mtmp;
@@ -290,9 +287,9 @@ struct monst *mtmp;
 #endif /* NOWORM */
 		break;
 	case 'X':
-		(void) hitu(mtmp,rnd(5));
-		(void) hitu(mtmp,rnd(5));
-		(void) hitu(mtmp,rnd(5));
+		hitu(mtmp,rnd(5));
+		hitu(mtmp,rnd(5));
+		hitu(mtmp,rnd(5));
 		break;
 	case 'x':
 		{ long side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
@@ -312,18 +309,18 @@ struct monst *mtmp;
 		}
 		return(1);
 	case 'Y':
-		(void) hitu(mtmp,rnd(6));
+		hitu(mtmp,rnd(6));
 		break;
 	}
 	if(u.uhp < 1) done_in_by(mtmp);
 	return(0);
 }
 
-hitu(mtmp,dam)
-struct monst *mtmp;
-int dam;
+bool
+hitu(struct monst *mtmp, int dam)
 {
-	int tmp, res;
+	bool res;
+	int tmp;
 
 	nomul(0);
 	if(u.uswallow) return(0);
@@ -332,8 +329,7 @@ int dam;
 		mtmp->mundetected = 0;
 		if(!Blind) {
 			struct obj *obj;
-			extern char * Xmonnam();
-			if(obj = o_at(mtmp->mx,mtmp->my))
+			if((obj = o_at(mtmp->mx,mtmp->my)))
 				pline("%s was hidden under %s!",
 					Xmonnam(mtmp), doname(obj));
 		}

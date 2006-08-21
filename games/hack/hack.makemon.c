@@ -1,12 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.makemon.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.makemon.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.makemon.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.makemon.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
-extern char fut_geno[];
-extern char *index();
-extern struct obj *mkobj_at();
 struct monst zeromonst;
 
 /*
@@ -18,13 +15,11 @@ struct monst zeromonst;
  *	note that in this case we return only one of them (the one at [x,y]).
  */
 struct monst *
-makemon(ptr,x,y)
-struct permonst *ptr;
+makemon(struct permonst *ptr, int x, int y)
 {
 	struct monst *mtmp;
 	int tmp, ct;
 	boolean anything = (!ptr);
-	extern boolean in_mklev;
 
 	if(x != 0 || y != 0) if(m_at(x,y)) return((struct monst *) 0);
 	if(ptr){
@@ -48,7 +43,7 @@ struct permonst *ptr;
 gotmon:
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;	/* clear all entries in structure */
-	for(ct = 0; ct < ptr->pxlth; ct++)
+	for(ct = 0; (unsigned)ct < ptr->pxlth; ct++)
 		((char *) &(mtmp->mextra[0]))[ct] = 0;
 	mtmp->nmon = fmon;
 	fmon = mtmp;
@@ -75,11 +70,11 @@ gotmon:
 		mtmp->mhide = mtmp->mundetected = 1;
 		if(in_mklev)
 		if(mtmp->mx && mtmp->my)
-			(void) mkobj_at(0, mtmp->mx, mtmp->my);
+			mkobj_at(0, mtmp->mx, mtmp->my);
 	}
 	if(ptr->mlet == ':') {
 		mtmp->cham = 1;
-		(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+		newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
 	}
 	if(ptr->mlet == 'I' || ptr->mlet == ';')
 		mtmp->minvis = 1;
@@ -93,14 +88,13 @@ gotmon:
 #endif /* NOWORM */
 
 	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
-		coord enexto();
 		coord mm;
 		int cnt = rnd(10);
 		mm.x = x;
 		mm.y = y;
 		while(cnt--) {
 			mm = enexto(mm.x, mm.y);
-			(void) makemon(ptr, mm.x, mm.y);
+			makemon(ptr, mm.x, mm.y);
 		}
 	}
 
@@ -108,8 +102,7 @@ gotmon:
 }
 
 coord
-enexto(xx,yy)
-xchar xx,yy;
+enexto(xchar xx, xchar yy)
 {
 	xchar x,y;
 	coord foo[15], *tfoo;
@@ -148,7 +141,8 @@ foofull:
 	return( foo[rn2(tfoo-foo)] );
 }
 
-goodpos(x,y)	/* used only in mnexto and rloc */
+bool
+goodpos(int x, int y)	/* used only in mnexto and rloc */
 {
 	return(
 	! (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 ||
@@ -158,8 +152,8 @@ goodpos(x,y)	/* used only in mnexto and rloc */
 	));
 }
 
-rloc(mtmp)
-struct monst *mtmp;
+void
+rloc(struct monst *mtmp)
 {
 	int tx,ty;
 	char ch = mtmp->data->mlet;
@@ -184,9 +178,7 @@ struct monst *mtmp;
 }
 
 struct monst *
-mkmon_at(let,x,y)
-char let;
-int x,y;
+mkmon_at(char let, int x, int y)
 {
 	int ct;
 	struct permonst *ptr;

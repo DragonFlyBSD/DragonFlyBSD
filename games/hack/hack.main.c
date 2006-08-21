@@ -1,12 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.main.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.main.c,v 1.9 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.main.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.main.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdio.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <sys/stat.h>
 #include "hack.h"
 
 #ifdef QUEST
@@ -15,16 +12,10 @@
 #define	gamename	"hack"
 #endif
 
-extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
-extern struct permonst mons[CMNUM+2];
-extern char genocided[60], fut_geno[];
-
-int (*afternmv)();
-int (*occupation)();
+void (*afternmv)(void);
+bool (*occupation)(void);
 const char *occtxt;
 
-void done1();
-void hangup();
 
 int hackpid;				/* current pid */
 int locknum;				/* max num of players */
@@ -38,12 +29,11 @@ char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 extern long wailmsg;
 
 #ifdef CHDIR
-static	void chdirx(const char *, boolean);
+static void	chdirx(const char *, bool);
 #endif
 
-main(argc,argv)
-int argc;
-char *argv[];
+int
+main(int argc, char *argv[])
 {
 	int fd;
 #ifdef CHDIR
@@ -93,11 +83,11 @@ char *argv[];
 
 	  initoptions();
 	  if(!*plname && (s = getenv("USER")))
-		(void) strncpy(plname, s, sizeof(plname)-1);
+		strncpy(plname, s, sizeof(plname)-1);
 	  if(!*plname && (s = getenv("LOGNAME")))
-		(void) strncpy(plname, s, sizeof(plname)-1);
+		strncpy(plname, s, sizeof(plname)-1);
 	  if(!*plname && (s = getlogin()))
-		(void) strncpy(plname, s, sizeof(plname)-1);
+		strncpy(plname, s, sizeof(plname)-1);
 	}
 
 	/*
@@ -124,7 +114,7 @@ char *argv[];
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
-	(void) signal(SIGHUP, hangup);
+	signal(SIGHUP, hangup);
 
 	/*
 	 * Find the creation date of this game,
@@ -148,10 +138,7 @@ char *argv[];
 		switch(argv[0][1]){
 #ifdef WIZARD
 		case 'D':
-/*			if(!strcmp(getlogin(), WIZARD)) */
 				wizard = TRUE;
-/*			else
-				printf("Sorry.\n"); */
 			break;
 #endif
 #ifdef NEWS
@@ -161,20 +148,18 @@ char *argv[];
 #endif
 		case 'u':
 			if(argv[0][2])
-			  (void) strncpy(plname, argv[0]+2, sizeof(plname)-1);
+			  strncpy(plname, argv[0]+2, sizeof(plname)-1);
 			else if(argc > 1) {
 			  argc--;
 			  argv++;
-			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
+			  strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
 				printf("Player name expected after -u\n");
 			break;
 		default:
 			/* allow -T for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+1,
+			strncpy(pl_character, argv[0]+1,
 				sizeof(pl_character)-1);
-
-			/* printf("Unknown option: %s\n", *argv); */
 		}
 	}
 
@@ -192,7 +177,7 @@ char *argv[];
 	getmailstatus();
 #endif
 #ifdef WIZARD
-	if(wizard) (void) strcpy(plname, "wizard"); else
+	if(wizard) strcpy(plname, "wizard"); else
 #endif
 	if(!*plname || !strncmp(plname, "player", 4)
 		    || !strncmp(plname, "games", 4))
@@ -207,23 +192,23 @@ char *argv[];
 		 * check for multiple games under the same name
 		 * (if !locknum) or check max nr of players (otherwise)
 		 */
-		(void) signal(SIGQUIT,SIG_IGN);
-		(void) signal(SIGINT,SIG_IGN);
+		signal(SIGQUIT,SIG_IGN);
+		signal(SIGINT,SIG_IGN);
 		if(!locknum)
-			(void) strcpy(lock,plname);
+			strcpy(lock,plname);
 		getlock();	/* sets lock if locknum != 0 */
 #ifdef WIZARD
 	} else {
 		char *sfoo;
-		(void) strcpy(lock,plname);
-		if(sfoo = getenv("MAGIC"))
+		strcpy(lock,plname);
+		if((sfoo = getenv("MAGIC")))
 			while(*sfoo) {
 				switch(*sfoo++) {
-				case 'n': (void) srandom(*sfoo++);
+				case 'n': srandom(*sfoo++);
 					break;
 				}
 			}
-		if(sfoo = getenv("GENOCIDED")){
+		if((sfoo = getenv("GENOCIDED"))){
 			if(*sfoo == '!'){
 				struct permonst *pm = mons;
 				char *gp = genocided;
@@ -235,19 +220,19 @@ char *argv[];
 				}
 				*gp = 0;
 			} else
-				(void) strncpy(genocided, sfoo, sizeof(genocided)-1);
-			(void) strcpy(fut_geno, genocided);
+				strncpy(genocided, sfoo, sizeof(genocided)-1);
+			strcpy(fut_geno, genocided);
 		}
 	}
 #endif
 	setftty();
-	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
+	sprintf(SAVEF, "save/%d%s", getuid(), plname);
 	regularize(SAVEF+5);		/* avoid . or / in name */
 	if((fd = open(SAVEF,0)) >= 0 &&
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
-		(void) signal(SIGINT,done1);
+		signal(SIGINT,done1);
 		pline("Restoring old save file...");
-		(void) fflush(stdout);
+		fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
 		pline("Hello %s, welcome to %s!", plname, gamename);
@@ -262,16 +247,16 @@ not_recovered:
 		init_objects();
 		u_init();
 
-		(void) signal(SIGINT,done1);
+		signal(SIGINT,done1);
 		mklev();
 		u.ux = xupstair;
 		u.uy = yupstair;
-		(void) inshop();
+		inshop();
 		setsee();
 		flags.botlx = 1;
 		makedog();
 		{ struct monst *mtmp;
-		  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
+		  if((mtmp = m_at(u.ux, u.uy))) mnexto(mtmp);	/* riv05!a3 */
 		}
 		seemons();
 #ifdef NEWS
@@ -305,13 +290,12 @@ not_recovered:
 
 			if(moves%2 == 0 ||
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
-				extern struct monst *makemon();
 				movemon();
 				if(!rn2(70))
-				    (void) makemon((struct permonst *)0, 0, 0);
+				    makemon((struct permonst *)0, 0, 0);
 			}
 			if(Glib) glibr();
-			timeout();
+			p_timeout();
 			++moves;
 			if(flags.time) flags.botl = 1;
 			if(u.uhp < 1) {
@@ -340,7 +324,7 @@ not_recovered:
 				}
 			}
 			if(Teleportation && !rn2(85)) tele();
-			if(Searching && multi >= 0) (void) dosearch();
+			if(Searching && multi >= 0) dosearch();
 			gethungry();
 			invault();
 			amulet();
@@ -400,12 +384,12 @@ not_recovered:
 			rhack((char *) 0);
 		}
 		if(multi && multi%7 == 0)
-			(void) fflush(stdout);
+			fflush(stdout);
 	}
 }
 
-glo(foo)
-int foo;
+void
+glo(int foo)
 {
 	/* construct the string  xlock.n  */
 	char *tf;
@@ -420,10 +404,12 @@ int foo;
  * explicitly (-w implies wizard) or by askname.
  * It may still contain a suffix denoting pl_character.
  */
-askname(){
+void
+askname(void)
+{
 int c,ct;
 	printf("\nWho are you? ");
-	(void) fflush(stdout);
+	fflush(stdout);
 	ct = 0;
 	while((c = getchar()) != '\n'){
 		if(c == EOF) error("End of input\n");
@@ -434,23 +420,26 @@ int c,ct;
 		}
 		if(c != '-')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
-		if(ct < sizeof(plname)-1) plname[ct++] = c;
+		if(ct < (int)sizeof(plname)-1) plname[ct++] = c;
 	}
 	plname[ct] = 0;
 	if(ct == 0) askname();
 }
 
 /*VARARGS1*/
-impossible(s,x1,x2)
-char *s;
+void
+impossible(const char *s, ...)
 {
-	pline(s,x1,x2);
+	va_list ap;
+	va_start(ap, s);
+	vpline(s, ap);
+	va_end(ap);
 	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR
 static void
-chdirx(const char *dir, boolean wr)
+chdirx(const char *dir, bool wr)
 {
 
 #ifdef SECURE
@@ -486,12 +475,13 @@ chdirx(const char *dir, boolean wr)
 		printf("Warning: cannot write %s/%s", dir, RECORD);
 		getret();
 	    } else
-		(void) close(fd);
+		close(fd);
 	}
 }
 #endif
 
-stop_occupation()
+void
+stop_occupation(void)
 {
 	if(occupation) {
 		pline("You stop %s.", occtxt);

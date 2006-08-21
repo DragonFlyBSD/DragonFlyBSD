@@ -1,13 +1,16 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.eat.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.eat.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.eat.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.eat.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
-extern int (*afternmv)();
-extern int (*occupation)();
-extern struct obj *splitobj(), *addinv();
+
+static bool	opentin(void);
+static void	Meatdone(void);
+static void	unfaint(void);
+static void	newuhs(bool);
+static int	eatcorpse(struct obj *);
 
 /* hunger texts used on bottom line (each 8 chars long) */
 #define	SATIATED	0
@@ -28,19 +31,21 @@ const char *hu_stat[] = {
 	"Starved "
 };
 
-init_uhunger(){
+void
+init_uhunger(void)
+{
 	u.uhunger = 900;
 	u.uhs = NOT_HUNGRY;
 }
 
 #define	TTSZ	SIZE(tintxts)
 struct { const char *txt; int nut; } tintxts[] = {
-	"It contains first quality peaches - what a surprise!",	40,
-	"It contains salmon - not bad!",	60,
-	"It contains apple juice - perhaps not what you hoped for.", 20,
-	"It contains some nondescript substance, tasting awfully.", 500,
-	"It contains rotten meat. You vomit.", -50,
-	"It turns out to be empty.",	0
+	{ "It contains first quality peaches - what a surprise!", 40 },
+	{ "It contains salmon - not bad!", 60 },
+	{ "It contains apple juice - perhaps not what you hoped for.", 20 },
+	{ "It contains some nondescript substance, tasting awfully.", 500 },
+	{ "It contains rotten meat. You vomit.", -50 },
+	{ "It turns out to be empty.", 0 }
 };
 
 static struct {
@@ -48,7 +53,9 @@ static struct {
 	int usedtime, reqtime;
 } tin;
 
-opentin(){
+static bool
+opentin(void)
+{
 	int r;
 
 	if(!carried(tin.tin))		/* perhaps it was stolen? */
@@ -81,12 +88,16 @@ opentin(){
 	return(0);
 }
 
-Meatdone(){
+static void
+Meatdone(void)
+{
 	u.usym = '@';
 	prme();
 }
 
-doeat(){
+int
+doeat(void)
+{
 	struct obj *otmp;
 	struct objclass *ftmp;
 	int tmp;
@@ -102,7 +113,7 @@ doeat(){
 				(otmp->quan == 1) ? "it" : "one");
 			if(readchar() == 'y') {
 				if(otmp->quan != 1)
-					(void) splitobj(otmp, 1);
+					splitobj(otmp, 1);
 				freeobj(otmp);
 				otmp = addinv(otmp);
 				addtobill(otmp);
@@ -139,7 +150,6 @@ gotit:
 				pline("The tin slips out of your hands.");
 				if(otmp->quan > 1) {
 					struct obj *obj;
-					extern struct obj *splitobj();
 
 					obj = splitobj(otmp, 1);
 					if(otmp == uwep) setuwep(obj);
@@ -250,7 +260,7 @@ gotit:
 eatx:
 	if(multi<0 && !nomovemsg){
 		static char msgbuf[BUFSZ];
-		(void) sprintf(msgbuf, "You finished eating the %s.",
+		sprintf(msgbuf, "You finished eating the %s.",
 				ftmp->oc_name);
 		nomovemsg = msgbuf;
 	}
@@ -259,7 +269,9 @@ eatx:
 }
 
 /* called in hack.main.c */
-gethungry(){
+void
+gethungry(void)
+{
 	--u.uhunger;
 	if(moves % 2) {
 		if(Regeneration) u.uhunger--;
@@ -276,23 +288,31 @@ gethungry(){
 }
 
 /* called after vomiting and after performing feats of magic */
-morehungry(num) int num; {
+void
+morehungry(int num)
+{
 	u.uhunger -= num;
 	newuhs(TRUE);
 }
 
 /* called after eating something (and after drinking fruit juice) */
-lesshungry(num) int num; {
+void
+lesshungry(int num)
+{
 	u.uhunger += num;
 	newuhs(FALSE);
 }
 
-unfaint(){
+static void
+unfaint(void)
+{
 	u.uhs = FAINTING;
 	flags.botl = 1;
 }
 
-newuhs(incr) boolean incr; {
+static void
+newuhs(bool incr)
+{
 	int newhs, h = u.uhunger;
 
 	newhs = (h > 1000) ? SATIATED :
@@ -352,14 +372,16 @@ newuhs(incr) boolean incr; {
 #define	CORPSE_I_TO_C(otyp)	(char) ((otyp >= DEAD_ACID_BLOB)\
 		     ?  'a' + (otyp - DEAD_ACID_BLOB)\
 		     :	'@' + (otyp - DEAD_HUMAN))
-poisonous(otmp)
-struct obj *otmp;
+bool
+poisonous(struct obj *otmp)
 {
 	return(index(POISONOUS, CORPSE_I_TO_C(otmp->otyp)) != 0);
 }
 
 /* returns 1 if some text was printed */
-eatcorpse(otmp) struct obj *otmp; {
+static int
+eatcorpse(struct obj *otmp)
+{
 char let = CORPSE_I_TO_C(otmp->otyp);
 int tp = 0;
 	if(let != 'a' && moves > otmp->age + 50 + rn2(100)) {

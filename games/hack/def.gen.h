@@ -1,5 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.gen.h version 1.0.1: added ONCE flag */
+/* $DragonFly: src/games/hack/def.gen.h,v 1.2 2006/08/21 19:45:32 pavalos Exp $ */
 
 struct gen {
 	struct gen *ngen;
@@ -11,5 +12,4 @@ struct gen {
 #define	ONCE	0100
 };
 extern struct gen *fgold, *ftrap;
-struct gen *g_at();
 #define newgen()	(struct gen *) alloc(sizeof(struct gen))

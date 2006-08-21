@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.pager.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.pager.c,v 1.7 1999/11/16 02:57:09 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.pager.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.pager.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /* Also readmail() and doshell(), and generally the things that
@@ -9,21 +9,20 @@
 
 #include	<sys/types.h>
 #include	<sys/signal.h>
-#include	<stdio.h>
-#include        <stdlib.h>
-#include        <unistd.h>
 #include "hack.h"
 extern int CO, LI;	/* usually COLNO and ROWNO+2 */
 extern char *CD;
 extern char quitchars[];
-void done1();
 
-dowhatis()
+static void	intruph(int);
+static void	page_more(FILE *, int);
+
+int
+dowhatis(void)
 {
 	FILE *fp;
 	char bufr[BUFSZ+6];
 	char *buf = &bufr[6], *ep, q;
-	extern char readchar();
 
 	if(!(fp = fopen(DATAFILE, "r")))
 		pline("Cannot open data file!");
@@ -40,7 +39,7 @@ dowhatis()
 			if(buf[1] == '\t'){
 				buf = bufr;
 				buf[0] = q;
-				(void) strncpy(buf+1, "       ", 7);
+				strncpy(buf+1, "       ", 7);
 			}
 			pline(buf);
 			if(ep[-1] == ';') {
@@ -50,11 +49,11 @@ dowhatis()
 					return(0);
 				}
 			}
-			(void) fclose(fp); 	/* kopper@psuvax1 */
+			fclose(fp); 	/* kopper@psuvax1 */
 			return(0);
 		    }
 		pline("I've never heard of such things.");
-		(void) fclose(fp);
+		fclose(fp);
 	}
 	return(0);
 }
@@ -62,15 +61,16 @@ dowhatis()
 /* make the paging of a file interruptible */
 static int got_intrup;
 
-void
-intruph(){
+static void
+intruph(__unused int unused)
+{
 	got_intrup++;
 }
 
 /* simple pager, also used from dohelp() */
-page_more(fp,strip)
-FILE *fp;
-int strip;	/* nr of chars to be stripped from each line (0 or 1) */
+/* strip = nr of chars to be stripped from each line (0 or 1) */
+static void
+page_more(FILE *fp, int strip)
 {
 	char *bufr, *ep;
 	sig_t prevsig = signal(SIGINT, intruph);
@@ -90,20 +90,24 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 	set_pager(1);
 ret:
 	free(bufr);
-	(void) fclose(fp);
-	(void) signal(SIGINT, prevsig);
+	fclose(fp);
+	signal(SIGINT, prevsig);
 	got_intrup = 0;
 }
 
 static boolean whole_screen = TRUE;
 #define	PAGMIN	12	/* minimum # of lines for page below level map */
 
-set_whole_screen() {	/* called in termcap as soon as LI is known */
+void
+set_whole_screen(void)	/* called in termcap as soon as LI is known */
+{
 	whole_screen = (LI-ROWNO-2 <= PAGMIN || !CD);
 }
 
 #ifdef NEWS
-readnews() {
+bool
+readnews(void)
+{
 	int ret;
 
 	whole_screen = TRUE;	/* force a docrt(), our first */
@@ -113,8 +117,8 @@ readnews() {
 }
 #endif /* NEWS */
 
-set_pager(mode)
-int mode;	/* 0: open  1: wait+close  2: close */
+void
+set_pager(int mode)	/* 0: open  1: wait+close  2: close */
 {
 	static boolean so;
 	if(mode == 0) {
@@ -143,11 +147,9 @@ int mode;	/* 0: open  1: wait+close  2: close */
 	}
 }
 
-page_line(s)		/* returns 1 if we should quit */
-char *s;
+bool
+page_line(const char *s)	/* returns 1 if we should quit */
 {
-	extern char morc;
-
 	if(cury == LI-1) {
 		if(!*s)
 			return(0);	/* suppress blank lines at top */
@@ -181,9 +183,8 @@ char *s;
  *	cornline(3, 0)		: cleanup
  */
 
-cornline(mode, text)
-int mode;
-char *text;
+void
+cornline(int mode, const char *text)
 {
 	static struct line {
 		struct line *next_line;
@@ -216,7 +217,7 @@ char *text;
 		alloc((unsigned)(len + sizeof(struct line) + 1));
 	    tl->next_line = 0;
 	    tl->line_text = (char *)(tl + 1);
-	    (void) strcpy(tl->line_text, text);
+	    strcpy(tl->line_text, text);
 	    if(!texthead)
 		texthead = tl;
 	    else
@@ -272,13 +273,14 @@ char *text;
 	}
 
 cleanup:
-	while(tl = texthead) {
+	while((tl = texthead)) {
 		texthead = tl->next_line;
 		free((char *) tl);
 	}
 }
 
-dohelp()
+int
+dohelp(void)
 {
 	char c;
 
@@ -286,13 +288,13 @@ dohelp()
 	while (((c = readchar ()) != 'l') && (c != 's') && !index(quitchars,c))
 		bell ();
 	if (!index(quitchars, c))
-		(void) page_file((c == 'l') ? HELP : SHELP, FALSE);
+		page_file((c == 'l') ? HELP : SHELP, FALSE);
 	return(0);
 }
 
-page_file(fnam, silent)	/* return: 0 - cannot open fnam; 1 - otherwise */
-char *fnam;
-boolean silent;
+/* return: 0 - cannot open fnam; 1 - otherwise */
+bool
+page_file(const char *fnam, bool silent)
 {
 #ifdef DEF_PAGER			/* this implies that UNIX is defined */
       {
@@ -310,7 +312,7 @@ boolean silent;
 		/* Now that child() does a setuid(getuid()) and a chdir(),
 		   we may not be able to open file fnam anymore, so make
 		   it stdin. */
-		(void) close(0);
+		close(0);
 		if(dup(fd)) {
 			if(!silent) printf("Cannot open %s as stdin.\n", fnam);
 		} else {
@@ -319,7 +321,7 @@ boolean silent;
 		}
 		exit(1);
 	}
-	(void) close(fd);
+	close(fd);
       }
 #else /* DEF_PAGER */
       {
@@ -341,10 +343,12 @@ boolean silent;
 
 #ifdef UNIX
 #ifdef SHELL
-dosh(){
+int
+dosh(void)
+{
 char *str;
 	if(child(0)) {
-		if(str = getenv("SHELL"))
+		if((str = getenv("SHELL")))
 			execl(str, str, (char *) 0);
 		else
 			execl("/bin/sh", "sh", (char *) 0);
@@ -374,7 +378,9 @@ union wait {		/* used only for the cast  (union wait *) 0  */
 #endif /* BSD */
 #endif /* NOWAITINCLUDE */
 
-child(wt) {
+bool
+child(bool wt)
+{
 	int status;
 	int f;
 
@@ -384,7 +390,7 @@ child(wt) {
 		/* revoke */
 		setgid(getgid());
 #ifdef CHDIR
-		(void) chdir(getenv("HOME"));
+		chdir(getenv("HOME"));
 #endif /* CHDIR */
 		return(1);
 	}
@@ -393,14 +399,14 @@ child(wt) {
 		return(0);
 	}
 	/* fork succeeded; wait for child to exit */
-	(void) signal(SIGINT,SIG_IGN);
-	(void) signal(SIGQUIT,SIG_IGN);
-	(void) wait(&status);
+	signal(SIGINT,SIG_IGN);
+	signal(SIGQUIT,SIG_IGN);
+	wait(&status);
 	gettty();
 	setftty();
-	(void) signal(SIGINT,done1);
+	signal(SIGINT,done1);
 #ifdef WIZARD
-	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
+	if(wizard) signal(SIGQUIT,SIG_DFL);
 #endif /* WIZARD */
 	if(wt) getret();
 	docrt();

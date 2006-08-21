@@ -1,7 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.objclass.h - version 1.0.3 */
-/* $DragonFly: src/games/hack/def.objclass.h,v 1.2 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/def.objclass.h,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
+#ifndef _DEF_OBJCLASS_H_
+#define _DEF_OBJCLASS_H_
 /* definition of a class of objects */
 
 struct objclass {
@@ -59,3 +61,4 @@ extern struct objclass objects[];
  * hack.invent.c:          if(index("!%?[)=*(0/\"", sym)){
  * hack.invent.c:    || index("%?!*",otmp->olet))){
  */
+#endif /* _DEF_OBJCLASS_H_ */

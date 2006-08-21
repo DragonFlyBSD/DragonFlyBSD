@@ -1,18 +1,24 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do_wear.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do_wear.c,v 1.3 1999/11/16 02:57:03 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
 extern char quitchars[];
-extern char *Doname();
 
-off_msg(otmp) struct obj *otmp; {
+static void	off_msg(struct obj *);
+static int	dorr(struct obj *);
+static bool	cursed(struct obj *);
+
+static void
+off_msg(struct obj *otmp)
+{
 	pline("You were wearing %s.", doname(otmp));
 }
 
-doremarm() {
+int
+doremarm(void)
+{
 	struct obj *otmp;
 	if(!uarm && !uarmh && !uarms && !uarmg) {
 		pline("Not wearing any armor.");
@@ -32,11 +38,13 @@ doremarm() {
  pline("You seem not able to take off the gloves while holding your weapon.");
 		return(0);
 	}
-	(void) armoroff(otmp);
+	armoroff(otmp);
 	return(1);
 }
 
-doremring() {
+int
+doremring(void)
+{
 	if(!uleft && !uright){
 		pline("Not wearing any ring.");
 		return(0);
@@ -59,24 +67,26 @@ doremring() {
 		case 'R':
 			return(dorr(uright));
 		case '?':
-			(void) doprring();
+			doprring();
 			/* might look at morc here %% */
 		}
 	}
 	/* NOTREACHED */
-#ifdef lint
 	return(0);
-#endif /* lint */
 }
 
-dorr(otmp) struct obj *otmp; {
+static int
+dorr(struct obj *otmp)
+{
 	if(cursed(otmp)) return(0);
 	ringoff(otmp);
 	off_msg(otmp);
 	return(1);
 }
 
-cursed(otmp) struct obj *otmp; {
+static bool
+cursed(struct obj *otmp)
+{
 	if(otmp->cursed){
 		pline("You can't. It appears to be cursed.");
 		return(1);
@@ -84,7 +94,10 @@ cursed(otmp) struct obj *otmp; {
 	return(0);
 }
 
-armoroff(otmp) struct obj *otmp; {
+
+bool
+armoroff(struct obj *otmp)
+{
 int delay = -objects[otmp->otyp].oc_delay;
 	if(cursed(otmp)) return(0);
 	setworn((struct obj *) 0, otmp->owornmask & W_ARMOR);
@@ -106,7 +119,9 @@ int delay = -objects[otmp->otyp].oc_delay;
 	return(1);
 }
 
-doweararm() {
+int
+doweararm(void)
+{
 	struct obj *otmp;
 	int delay;
 	int err = 0;
@@ -165,7 +180,9 @@ doweararm() {
 	return(1);
 }
 
-dowearring() {
+int
+dowearring(void)
+{
 	struct obj *otmp;
 	long mask = 0;
 	long oldprop;
@@ -234,8 +251,8 @@ dowearring() {
 	return(1);
 }
 
-ringoff(obj)
-struct obj *obj;
+void
+ringoff(struct obj *obj)
 {
 long mask;
 	mask = obj->owornmask & W_RING;
@@ -270,7 +287,9 @@ long mask;
 	}
 }
 
-find_ac(){
+void
+find_ac(void)
+{
 int uac = 10;
 	if(uarm) uac -= ARM_BONUS(uarm);
 	if(uarm2) uac -= ARM_BONUS(uarm2);
@@ -285,7 +304,9 @@ int uac = 10;
 	}
 }
 
-glibr(){
+void
+glibr(void)
+{
 struct obj *otmp;
 int xfl = 0;
 	if(!uarmg) if(uleft || uright) {
@@ -312,7 +333,8 @@ int xfl = 0;
 }
 
 struct obj *
-some_armor(){
+some_armor(void)
+{
 struct obj *otmph = uarm;
 	if(uarmh && (!otmph || !rn2(4))) otmph = uarmh;
 	if(uarmg && (!otmph || !rn2(4))) otmph = uarmg;
@@ -320,7 +342,9 @@ struct obj *otmph = uarm;
 	return(otmph);
 }
 
-corrode_armor(){
+void
+corrode_armor(void)
+{
 struct obj *otmph = some_armor();
 	if(otmph){
 		if(otmph->rustfree ||

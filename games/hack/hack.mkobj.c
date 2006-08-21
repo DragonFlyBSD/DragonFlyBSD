@@ -1,16 +1,14 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mkobj.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mkobj.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mkobj.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.mkobj.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
 char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
-struct obj *mkobj(), *mksobj();
 
 struct obj *
-mkobj_at(let,x,y)
-int let,x,y;
+mkobj_at(int let, int x, int y)
 {
 	struct obj *otmp = mkobj(let);
 	otmp->ox = x;
@@ -20,8 +18,8 @@ int let,x,y;
 	return(otmp);
 }
 
-mksobj_at(otyp,x,y)
-int otyp,x,y;
+void
+mksobj_at(int otyp, int x, int y)
 {
 	struct obj *otmp = mksobj(otyp);
 	otmp->ox = x;
@@ -31,7 +29,8 @@ int otyp,x,y;
 }
 
 struct obj *
-mkobj(let) {
+mkobj(int let)
+{
 	if(!let)
 		let = mkobjstr[rn2(sizeof(mkobjstr) - 1)];
 	return(
@@ -47,8 +46,7 @@ mkobj(let) {
 struct obj zeroobj;
 
 struct obj *
-mksobj(otyp)
-int otyp;
+mksobj(int otyp)
 {
 	struct obj *otmp;
 	char let = objects[otyp].oc_olet;
@@ -119,24 +117,26 @@ int otyp;
 	return(otmp);
 }
 
-letter(c) {
+bool
+letter(char c)
+{
 	return(('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z'));
 }
 
-weight(obj)
-struct obj *obj;
+int
+weight(struct obj *obj)
 {
 int wt = objects[obj->otyp].oc_weight;
 	return(wt ? wt*obj->quan : (obj->quan + 1)/2);
 }
 
-mkgold(num,x,y)
-long num;
+void
+mkgold(long num, int x, int y)
 {
 	struct gold *gold;
 	long amount = (num ? num : 1 + (rnd(dlevel+2) * rnd(30)));
 
-	if(gold = g_at(x,y))
+	if((gold = g_at(x,y)))
 		gold->amount += amount;
 	else {
 		gold = newgold();

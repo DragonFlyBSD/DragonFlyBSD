@@ -1,14 +1,14 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.options.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.options.c,v 1.5 1999/11/16 02:57:08 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.options.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.options.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdlib.h>
-#include "config.h"
 #include "hack.h"
-extern char *eos();
 
-initoptions()
+static void	parseoptions(char *, bool);
+
+void
+initoptions(void)
 {
 	char *opts;
 
@@ -20,23 +20,22 @@ initoptions()
 	flags.end_around = 4;
 	flags.female = FALSE;			/* players are usually male */
 
-	if(opts = getenv("HACKOPTIONS"))
+	if((opts = getenv("HACKOPTIONS")))
 		parseoptions(opts,TRUE);
 }
 
-parseoptions(opts, from_env)
-char *opts;
-boolean from_env;
+static void
+parseoptions(char *opts, bool from_env)
 {
 	char *op,*op2;
 	unsigned num;
 	boolean negated;
 
-	if(op = index(opts, ',')) {
+	if((op = index(opts, ','))) {
 		*op++ = 0;
 		parseoptions(op, from_env);
 	}
-	if(op = index(opts, ' ')) {
+	if((op = index(opts, ' '))) {
 		op2 = op;
 		while(*op++)
 			if(*op != ' ') *op2++ = *op;
@@ -98,14 +97,13 @@ boolean from_env;
 
 	/* name:string */
 	if(!strncmp(opts,"name",4)) {
-		extern char plname[PL_NSIZ];
 		if(!from_env) {
 		  pline("The playername can be set only from HACKOPTIONS.");
 		  return;
 		}
 		op = index(opts,':');
 		if(!op) goto bad;
-		(void) strncpy(plname, op+1, sizeof(plname)-1);
+		strncpy(plname, op+1, sizeof(plname)-1);
 		return;
 	}
 
@@ -173,26 +171,27 @@ bad:
 	getret();
 }
 
-doset()
+int
+doset(void)
 {
 	char buf[BUFSZ];
 
 	pline("What options do you want to set? ");
 	getlin(buf);
 	if(!buf[0] || buf[0] == '\033') {
-	    (void) strcpy(buf,"HACKOPTIONS=");
-	    (void) strcat(buf, flags.female ? "female," : "male,");
-	    if(flags.standout) (void) strcat(buf,"standout,");
-	    if(flags.nonull) (void) strcat(buf,"nonull,");
-	    if(flags.nonews) (void) strcat(buf,"nonews,");
-	    if(flags.time) (void) strcat(buf,"time,");
-	    if(flags.notombstone) (void) strcat(buf,"notombstone,");
+	    strcpy(buf,"HACKOPTIONS=");
+	    strcat(buf, flags.female ? "female," : "male,");
+	    if(flags.standout) strcat(buf,"standout,");
+	    if(flags.nonull) strcat(buf,"nonull,");
+	    if(flags.nonews) strcat(buf,"nonews,");
+	    if(flags.time) strcat(buf,"time,");
+	    if(flags.notombstone) strcat(buf,"notombstone,");
 	    if(flags.no_rest_on_space)
-		(void) strcat(buf,"!rest_on_space,");
+		strcat(buf,"!rest_on_space,");
 	    if(flags.end_top != 5 || flags.end_around != 4 || flags.end_own){
-		(void) sprintf(eos(buf), "endgame: %u topscores/%u around me",
+		sprintf(eos(buf), "endgame: %u topscores/%u around me",
 			flags.end_top, flags.end_around);
-		if(flags.end_own) (void) strcat(buf, "/own scores");
+		if(flags.end_own) strcat(buf, "/own scores");
 	    } else {
 		char *eop = eos(buf);
 		if(*--eop == ',') *eop = 0;

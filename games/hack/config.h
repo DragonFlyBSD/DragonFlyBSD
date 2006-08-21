@@ -1,7 +1,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* config.h - version 1.0.3 */
-/* $DragonFly: src/games/hack/config.h,v 1.2 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/config.h,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
+#include <stdbool.h>
 #include "pathnames.h"
 
 #ifndef CONFIG	/* make sure the compiler doesnt see the typedefs twice */
@@ -105,7 +106,7 @@
  * will do when you have signed characters; otherwise use
  *	typedef	short int schar;
  */
-typedef	char	schar;
+typedef	short	schar;
 
 /*
  * small unsigned integers (8 bits suffice - but 7 bits do not)
@@ -122,7 +123,7 @@ typedef	unsigned char	uchar;
  * since otherwise comparisons with signed quantities are done incorrectly
  */
 typedef schar	xchar;
-typedef	xchar	boolean;		/* 0 or 1 */
+typedef	bool	boolean;		/* 0 or 1 */
 #define	TRUE	1
 #define	FALSE	0
 

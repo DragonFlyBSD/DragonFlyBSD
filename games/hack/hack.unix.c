@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.6 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/hack/hack.unix.c,v 1.7 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -14,47 +14,54 @@
  *	- determination of what files are "very old"
  */
 
-#include <stdio.h>
 #include <errno.h>
-#include <stdlib.h>
 #include "hack.h"	/* mainly for index() which depends on BSD */
 
 #include	<sys/types.h>		/* for time_t and stat */
 #include	<sys/stat.h>
 #include	<time.h>
 
-setrandom()
+static struct tm	*getlt(void);
+static bool		 veryold(int);
+#ifdef MAIL
+static void		 newmail(void);
+static void		 mdrush(struct monst *, bool);
+#endif
+
+void
+setrandom(void)
 {
-	(void) srandomdev();
+	srandomdev();
 }
 
-struct tm *
-getlt()
+static struct tm *
+getlt(void)
 {
 	time_t date;
-	struct tm *localtime();
 
-	(void) time(&date);
+	time(&date);
 	return(localtime(&date));
 }
 
-getyear()
+int
+getyear(void)
 {
 	return(1900 + getlt()->tm_year);
 }
 
 char *
-getdate()
+getdate(void)
 {
 	static char datestr[7];
 	struct tm *lt = getlt();
 
-	(void) snprintf(datestr, sizeof(datestr), "%02d%02d%02d",
+	snprintf(datestr, sizeof(datestr), "%02d%02d%02d",
 		lt->tm_year % 100, lt->tm_mon + 1, lt->tm_mday);
 	return(datestr);
 }
 
-phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
+int
+phase_of_the_moon(void)			/* 0-7, with 0: new, 4: full */
 {					/* moon period: 29.5306 days */
 					/* year: 365.2422 days */
 	struct tm *lt = getlt();
@@ -69,14 +76,16 @@ phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
 	return( (((((diy + epact) * 6) + 11) % 177) / 22) & 7 );
 }
 
-night()
+bool
+night(void)
 {
 	int hour = getlt()->tm_hour;
 
 	return(hour < 6 || hour > 21);
 }
 
-midnight()
+bool
+midnight(void)
 {
 	return(getlt()->tm_hour == 0);
 }
@@ -93,44 +102,11 @@ char *np;
 	if(stat(name, &hbuf))
 		error("Cannot get status of %s.",
 			(np = rindex(name, '/')) ? np+1 : name);
-#if 0
-/* version using PATH from: seismo!gregc@ucsf-cgl.ARPA (Greg Couch) */
-
-
-/*
- * The problem with   #include	<sys/param.h>   is that this include file
- * does not exist on all systems, and moreover, that it sometimes includes
- * <sys/types.h> again, so that the compiler sees these typedefs twice.
- */
-#define		MAXPATHLEN	1024
-
-char *np, *path;
-char filename[MAXPATHLEN+1];
-	if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
-		path = "";
-
-	for (;;) {
-		if ((np = index(path, ':')) == NULL)
-			np = path + strlen(path);	/* point to end str */
-		if (np - path <= 1)			/* %% */
-			(void) strcpy(filename, name);
-		else {
-			(void) strncpy(filename, path, np - path);
-			filename[np - path] = '/';
-			(void) strcpy(filename + (np - path) + 1, name);
-		}
-		if (stat(filename, &hbuf) == 0)
-			return;
-		if (*np == '\0')
-			break;
-		path = np + 1;
-	}
-	error("Cannot get status of %s.",
-		(np = rindex(name, '/')) ? np+1 : name);
-#endif
 }
 
-uptodate(fd) {
+bool
+uptodate(int fd)
+{
 	if(fstat(fd, &buf)) {
 		pline("Cannot get status of saved level? ");
 		return(0);
@@ -143,13 +119,15 @@ uptodate(fd) {
 }
 
 /* see whether we should throw away this xlock file */
-veryold(fd) {
+static bool
+veryold(int fd)
+{
 	int i;
 	time_t date;
 
 	if(fstat(fd, &buf)) return(0);			/* cannot get status */
 	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
-	(void) time(&date);
+	time(&date);
 	if(date - buf.st_mtime < 3L*24L*60L*60L) {	/* recent */
 		int lockedpid;	/* should be the same size as hackpid */
 
@@ -164,22 +142,22 @@ veryold(fd) {
 		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
 			return(0);
 	}
-	(void) close(fd);
+	close(fd);
 	for(i = 1; i <= MAXLEVEL; i++) {		/* try to remove all */
 		glo(i);
-		(void) unlink(lock);
+		unlink(lock);
 	}
 	glo(0);
 	if(unlink(lock)) return(0);			/* cannot remove it */
 	return(1);					/* success! */
 }
 
-getlock()
+void
+getlock(void)
 {
-	extern int hackpid, locknum;
 	int i = 0, fd;
 
-	(void) fflush(stdout);
+	fflush(stdout);
 
 	/* we ignore QUIT and INT at this point */
 	if (link(HLOCK, LLOCK) == -1) {
@@ -215,16 +193,16 @@ getlock()
 		if((fd = open(lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
 			perror(lock);
-			(void) unlink(LLOCK);
+			unlink(LLOCK);
 			error("Cannot open %s", lock);
 		}
 
 		if(veryold(fd))	/* if true, this closes fd and unlinks lock */
 			goto gotlock;
-		(void) close(fd);
+		close(fd);
 	} while(i < locknum);
 
-	(void) unlink(LLOCK);
+	unlink(LLOCK);
 	error(locknum ? "Too many hacks running now."
 		      : "There is a game in progress under your name.");
 gotlock:
@@ -281,7 +259,9 @@ static struct stat omstat,nmstat;
 static char *mailbox;
 static long laststattime;
 
-getmailstatus() {
+void
+getmailstatus(void)
+{
 	if(!(mailbox = getenv("MAIL")))
 		return;
 	if(stat(mailbox, &omstat)){
@@ -294,7 +274,9 @@ getmailstatus() {
 	}
 }
 
-ckmailstatus() {
+void
+ckmailstatus(void)
+{
 	if(!mailbox
 #ifdef MAILCKFREQ
 		    || moves < laststattime + MAILCKFREQ
@@ -316,13 +298,12 @@ ckmailstatus() {
 	}
 }
 
-newmail() {
+static void
+newmail(void)
+{
 	/* produce a scroll of mail */
 	struct obj *obj;
 	struct monst *md;
-	extern char plname[];
-	extern struct obj *mksobj(), *addinv();
-	extern struct monst *makemon();
 	extern struct permonst pm_mail_daemon;
 
 	obj = mksobj(SCR_MAIL);
@@ -341,13 +322,12 @@ newmail() {
 	}
 
 	obj = addinv(obj);
-	(void) identify(obj);		/* set known and do prinv() */
+	identify(obj);		/* set known and do prinv() */
 }
 
 /* make md run through the cave */
-mdrush(md,away)
-struct monst *md;
-boolean away;
+static void
+mdrush(struct monst *md, bool away)
 {
 	int uroom = inroom(u.ux, u.uy);
 	if(uroom >= 0) {
@@ -398,7 +378,9 @@ boolean away;
 		pmon(md);
 }
 
-readmail() {
+void
+readmail(void)
+{
 #ifdef DEF_MAILREADER			/* This implies that UNIX is defined */
 	char *mr = 0;
 	more();
@@ -409,7 +391,7 @@ readmail() {
 		exit(1);
 	}
 #else /* DEF_MAILREADER */
-	(void) page_file(mailbox, FALSE);
+	page_file(mailbox, FALSE);
 #endif /* DEF_MAILREADER */
 	/* get new stat; not entirely correct: there is a small time
 	   window where we do not see new mail */
@@ -417,8 +399,8 @@ readmail() {
 }
 #endif /* MAIL */
 
-regularize(s)	/* normalize file name - we don't like ..'s or /'s */
-char *s;
+void
+regularize(char *s)	/* normalize file name - we don't like ..'s or /'s */
 {
 	char *lp;
 

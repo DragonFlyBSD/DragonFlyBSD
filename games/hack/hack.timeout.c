@@ -1,11 +1,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.timeout.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.timeout.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.timeout.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.timeout.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 
-timeout(){
+static void	stoned_dialogue(void);
+
+void
+p_timeout(void)
+{
 struct prop *upp;
 	if(Stoned) stoned_dialogue();
 	for(upp = u.uprops; upp < u.uprops+SIZE(u.uprops); upp++)
@@ -51,7 +55,8 @@ static const char *stoned_texts[] = {
 	"You are a statue."			/* 1 */
 };
 
-stoned_dialogue()
+static void
+stoned_dialogue(void)
 {
 	long i = (Stoned & TIMEOUT);
 

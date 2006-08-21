@@ -32,7 +32,7 @@
  *
  * @(#)hack.tty.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hack/hack.tty.c,v 1.6.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/hack/hack.tty.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $
+ * $DragonFly: src/games/hack/hack.tty.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $
  */
 
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
@@ -41,7 +41,6 @@
    arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
 
 #include	"hack.h"
-#include	<stdio.h>
 
 /*
  * The distinctions here are not BSD - rest but rather USG - rest, as
@@ -91,30 +90,28 @@
 #define CBRKMASK	CBREAK
 #define CBRKON		/* empty */
 #define OSPEED(x)	(x).sg_ospeed
-#define GTTY(x)		(gtty(0, x))
-#define STTY(x)		(stty(0, x))
+#define GTTY(x)		(ioctl(0, TIOCGETP, x))
+#define STTY(x)		(ioctl(0, TIOCSETP, x))
 
 #endif /* USG */
 
-#if 0
-extern short ospeed;
-#endif
 static char erase_char, kill_char;
 static boolean settty_needed = FALSE;
 struct termstruct inittyb, curttyb;
+
+static void	setctty(void);
 
 /*
  * Get initial state of terminal, set ospeed (for termcap routines)
  * and switch off tab expansion if necessary.
  * Called by startup() in termcap.c and after returning from ! or ^Z
  */
-gettty(){
+void
+gettty(void)
+{
 	if(GTTY(&inittyb) < 0)
 		perror("Hack (gettty)");
 	curttyb = inittyb;
-#if 0
-	ospeed = OSPEED(inittyb);
-#endif
 	erase_char = inittyb.erase_sym;
 	kill_char = inittyb.kill_sym;
 	getioctls();
@@ -128,11 +125,13 @@ gettty(){
 }
 
 /* reset terminal to original state */
-settty(s) char *s; {
+void
+settty(const char *s)
+{
 	clear_screen();
 	end_screen();
 	if(s) printf("%s", s);
-	(void) fflush(stdout);
+	fflush(stdout);
 	if(STTY(&inittyb) < 0)
 		perror("Hack (settty)");
 	flags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
@@ -140,13 +139,16 @@ settty(s) char *s; {
 	setioctls();
 }
 
-setctty(){
+static void
+setctty(void)
+{
 	if(STTY(&curttyb) < 0)
 		perror("Hack (setctty)");
 }
 
-
-setftty(){
+void
+setftty(void)
+{
 int ef = 0;			/* desired value of flags & ECHO */
 int cf = CBRKON(CBRKMASK);	/* desired value of flags & CBREAK */
 int change = 0;
@@ -155,7 +157,6 @@ int change = 0;
 	/* Should use (ECHO|CRMOD) here instead of ECHO */
 	if((curttyb.echoflgs & ECHO) != ef){
 		curttyb.echoflgs &= ~ECHO;
-/*		curttyb.echoflgs |= ef;					*/
 		change++;
 	}
 	if((curttyb.cbrkflgs & CBRKMASK) != cf){
@@ -177,10 +178,15 @@ int change = 0;
 
 /* fatal error */
 /*VARARGS1*/
-error(s,x,y) char *s; {
+void
+error(const char *s, ...)
+{
+	va_list ap;
 	if(settty_needed)
 		settty((char *) 0);
-	printf(s,x,y);
+	va_start(ap, s);
+	vprintf(s, ap);
+	va_end(ap);
 	putchar('\n');
 	exit(1);
 }
@@ -191,15 +197,15 @@ error(s,x,y) char *s; {
  * Reading can be interrupted by an escape ('\033') - now the
  * resulting string is "\033".
  */
-getlin(bufp)
-char *bufp;
+void
+getlin(char *bufp)
 {
 	char *obufp = bufp;
 	int c;
 
 	flags.toplin = 2;		/* nonempty, no --More-- required */
 	for(;;) {
-		(void) fflush(stdout);
+		fflush(stdout);
 		if((c = getchar()) == EOF) {
 			*bufp = 0;
 			return;
@@ -236,12 +242,14 @@ char *bufp;
 	}
 }
 
-getret() {
+void
+getret(void)
+{
 	cgetret("");
 }
 
-cgetret(s)
-char *s;
+void
+cgetret(const char *s)
 {
 	putsym('\n');
 	if(flags.standout)
@@ -256,8 +264,8 @@ char *s;
 
 char morc;	/* tell the outside world what char he used */
 
-xwaitforspace(s)
-char *s;	/* chars allowed besides space or return */
+void
+xwaitforspace(const char *s)	/* chars allowed besides space or return */
 {
 int c;
 
@@ -276,7 +284,7 @@ int c;
 }
 
 char *
-parse()
+parse(void)
 {
 	static char inputline[COLNO];
 	int foo;
@@ -307,10 +315,11 @@ parse()
 }
 
 char
-readchar() {
+readchar(void)
+{
 	int sym;
 
-	(void) fflush(stdout);
+	fflush(stdout);
 	if((sym = getchar()) == EOF)
 #ifdef NR_OF_EOFS
 	{ /*
@@ -334,7 +343,8 @@ readchar() {
 	return((char) sym);
 }
 
-end_of_input()
+void
+end_of_input(void)
 {
 	settty("End of input?\n");
 	clearlocks();

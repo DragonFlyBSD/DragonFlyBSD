@@ -1,22 +1,26 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.apply.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.apply.c,v 1.4.2.1 2001/02/18 02:20:07 kris Exp $ */
-/* $DragonFly: src/games/hack/hack.apply.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.apply.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 #include	"def.edog.h"
-#include	"def.mkroom.h"
-static struct monst *bchit();
-extern struct obj *addinv();
-extern struct trap *maketrap();
-extern int (*occupation)();
 extern char quitchars[];
-extern char pl_character[];
 
-static void use_camera(), use_ice_box(), use_whistle(), use_magic_whistle();
-static int use_pick_axe();
+static void		 use_camera(struct obj *);
+static bool		 in_ice_box(struct obj *);
+static bool		 ck_ice_box(struct obj *);
+static int		 out_ice_box(struct obj *);
+static void		 use_ice_box(struct obj *);
+static struct monst	*bchit(int, int, int, char);
+static void		 use_whistle(struct obj *);
+static void		 use_magic_whistle(struct obj *);
+static bool		 dig(void);
+static int		 use_pick_axe(struct obj *);
 
-doapply() {
+int
+doapply(void)
+{
 	struct obj *obj;
 	int res = 1;
 
@@ -63,9 +67,9 @@ doapply() {
 	return(res);
 }
 
-/* ARGSUSED */
 static void
-use_camera(obj) /* */ struct obj *obj; {
+use_camera(__unused struct obj *obj)
+{
 struct monst *mtmp;
 	if(!getdir(1)){		/* ask: in what direction? */
 		flags.move = multi = 0;
@@ -80,7 +84,7 @@ struct monst *mtmp;
 			(u.dz > 0) ? "floor" : "ceiling");
 		return;
 	}
-	if(mtmp = bchit(u.dx, u.dy, COLNO, '!')) {
+	if((mtmp = bchit(u.dx, u.dy, COLNO, '!'))) {
 		if(mtmp->msleep){
 			mtmp->msleep = 0;
 			pline("The flash awakens %s.", monnam(mtmp)); /* a3 */
@@ -111,8 +115,9 @@ struct monst *mtmp;
 static
 struct obj *current_ice_box;	/* a local variable of use_ice_box, to be
 				used by its local procedures in/ck_ice_box */
-static
-in_ice_box(obj) struct obj *obj; {
+static bool
+in_ice_box(struct obj *obj)
+{
 	if(obj == current_ice_box ||
 		(Punished && (obj == uball || obj == uchain))){
 		pline("You must be kidding.");
@@ -142,13 +147,15 @@ in_ice_box(obj) struct obj *obj; {
 	return(1);
 }
 
-static
-ck_ice_box(obj) struct obj *obj; {
+static bool
+ck_ice_box(struct obj *obj)
+{
 	return(obj->o_cnt_id == current_ice_box->o_id);
 }
 
-static
-out_ice_box(obj) struct obj *obj; {
+static int
+out_ice_box(struct obj *obj)
+{
 struct obj *otmp;
 	if(obj == fcobj) fcobj = fcobj->nobj;
 	else {
@@ -158,11 +165,13 @@ struct obj *otmp;
 	}
 	current_ice_box->owt -= obj->owt;
 	obj->age = moves - obj->age;	/* simulated point of time */
-	(void) addinv(obj);
+	addinv(obj);
+	return(0);
 }
 
 static void
-use_ice_box(obj) struct obj *obj; {
+use_ice_box(struct obj *obj)
+{
 int cnt = 0;
 struct obj *otmp;
 	current_ice_box = obj;	/* for use by in/out_ice_box */
@@ -184,9 +193,9 @@ struct obj *otmp;
 		flags.move = multi = 0;
 }
 
-static
-struct monst *
-bchit(ddx,ddy,range,sym) int ddx,ddy,range; char sym; {
+static struct monst *
+bchit(int ddx, int ddy, int range, char sym)
+{
 	struct monst *mtmp = (struct monst *) 0;
 	int bchx = u.ux, bchy = u.uy;
 
@@ -194,7 +203,7 @@ bchit(ddx,ddy,range,sym) int ddx,ddy,range; char sym; {
 	while(range--) {
 		bchx += ddx;
 		bchy += ddy;
-		if(mtmp = m_at(bchx,bchy))
+		if((mtmp = m_at(bchx,bchy)))
 			break;
 		if(!ZAP_POS(levl[bchx][bchy].typ)) {
 			bchx -= ddx;
@@ -207,9 +216,9 @@ bchit(ddx,ddy,range,sym) int ddx,ddy,range; char sym; {
 	return(mtmp);
 }
 
-/* ARGSUSED */
 static void
-use_whistle(obj) struct obj *obj; {
+use_whistle(__unused struct obj *obj)
+{
 struct monst *mtmp = fmon;
 	pline("You produce a high whistling sound.");
 	while(mtmp) {
@@ -223,9 +232,9 @@ struct monst *mtmp = fmon;
 	}
 }
 
-/* ARGSUSED */
 static void
-use_magic_whistle(obj) struct obj *obj; {
+use_magic_whistle(__unused struct obj *obj)
+{
 struct monst *mtmp = fmon;
 	pline("You produce a strange whistling sound.");
 	while(mtmp) {
@@ -239,8 +248,9 @@ static uchar dig_level;
 static coord dig_pos;
 static boolean dig_down;
 
-static
-dig() {
+static bool
+dig(void)
+{
 	struct rm *lev;
 	int dpx = dig_pos.x, dpy = dig_pos.y;
 
@@ -280,7 +290,7 @@ dig() {
 		struct obj *obj;
 
 		lev = &levl[dpx][dpy];
-		if(obj = sobj_at(ENORMOUS_ROCK, dpx, dpy)) {
+		if((obj = sobj_at(ENORMOUS_ROCK, dpx, dpy))) {
 			fracture_rock(obj);
 			digtxt = "The rock falls apart.";
 		} else if(!lev->typ || lev->typ == SCORR) {
@@ -311,11 +321,14 @@ dig() {
 }
 
 /* When will hole be finished? Very rough indication used by shopkeeper. */
-holetime() {
+int
+holetime(void)
+{
 	return( (occupation == dig) ? (250 - dig_effort)/20 : -1);
 }
 
-dighole()
+void
+dighole(void)
 {
 	struct trap *ttmp = t_at(u.ux, u.uy);
 
@@ -341,12 +354,10 @@ dighole()
 	}
 }
 
-static
-use_pick_axe(obj)
-struct obj *obj;
+static int
+use_pick_axe(struct obj *obj)
 {
 	char dirsyms[12];
-	extern char sdir[];
 	char *dsp = dirsyms, *sdp = sdir;
 	struct monst *mtmp;
 	struct rm *lev;
@@ -364,7 +375,7 @@ struct obj *obj;
 		res = 1;
 	}
 	while(*sdp) {
-		(void) movecmd(*sdp);	/* sets u.dx and u.dy and u.dz */
+		movecmd(*sdp);	/* sets u.dx and u.dy and u.dz */
 		rx = u.ux + u.dx;
 		ry = u.uy + u.dy;
 		if(u.dz > 0 || (u.dz == 0 && isok(rx, ry) &&

@@ -1,13 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.rip.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.rip.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.rip.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.rip.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <stdio.h>
 #include "hack.h"
 
-static	void center(int , const char *);
-extern char plname[];
+static void	center(int, const char *);
 
 static char rip[][60] = {
 "                       ----------",
@@ -27,23 +25,25 @@ static char rip[][60] = {
 };
 static const int n_rips = sizeof(rip) / sizeof(rip[0]);
 
-outrip(){
+void
+outrip(void)
+{
 	char *dpx;
 	char buf[BUFSZ];
-	int i, x, y;
+	int j, x, y;
 
 	cls();
-	(void) strcpy(buf, plname);
+	strcpy(buf, plname);
 	buf[16] = 0;
 	center(6, buf);
-	(void) sprintf(buf, "%ld AU", u.ugold);
+	sprintf(buf, "%ld AU", u.ugold);
 	center(7, buf);
-	(void) sprintf(buf, "killed by%s",
+	sprintf(buf, "killed by%s",
 		!strncmp(killer, "the ", 4) ? "" :
 		!strcmp(killer, "starvation") ? "" :
 		index(vowels, *killer) ? " an" : " a");
 	center(8, buf);
-	(void) strcpy(buf, killer);
+	strcpy(buf, killer);
 	if(strlen(buf) > 16) {
 	    int i,i0,i1;
 		i0 = i1 = 0;
@@ -55,20 +55,19 @@ outrip(){
 		buf[i0] = 0;
 	}
 	center(9, buf);
-	(void) sprintf(buf, "%4d", getyear());
+	sprintf(buf, "%4d", getyear());
 	center(11, buf);
-	for(y = 8, i = 0; i < n_rips; y++, i++){
+	for(y = 8, j = 0; j < n_rips; y++, j++){
 		x = 0;
-		dpx = rip[i];
+		dpx = rip[j];
 		while(dpx[x]) {
 			while(dpx[x] == ' ') x++;
 			curs(x,y);
 			while(dpx[x] && dpx[x] != ' '){
-				extern int done_stopprint;
 				if(done_stopprint)
 					return;
 				curx++;
-				(void) putchar(dpx[x++]);
+				putchar(dpx[x++]);
 			}
 		}
 	}

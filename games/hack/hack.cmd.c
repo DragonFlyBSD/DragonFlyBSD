@@ -1,98 +1,93 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.cmd.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.cmd.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.cmd.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.cmd.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 #include	"def.func_tab.h"
 
-int doredraw(),doredotopl(),dodrop(),dodrink(),doread(),dosearch(),dopickup(),
-doversion(),doweararm(),dowearring(),doremarm(),doremring(),dopay(),doapply(),
-dosave(),dowield(),ddoinv(),dozap(),ddocall(),dowhatis(),doengrave(),dotele(),
-dohelp(),doeat(),doddrop(),do_mname(),doidtrap(),doprwep(),doprarm(),
-doprring(),doprgold(),dodiscovered(),dotypeinv(),dolook(),doset(),
-doup(), dodown(), done1(), donull(), dothrow(), doextcmd(), dodip(), dopray();
-#ifdef SHELL
-int dosh();
-#endif /* SHELL */
-#ifdef SUSPEND
-int dosuspend();
-#endif /* SUSPEND */
+static int	doextcmd(void);
+static char	lowc(char);
+static char	unctrl(char);
+#ifdef QUEST
+static bool	isroom(int, int);
+#endif
+static int	done2(void);
 
 struct func_tab cmdlist[]={
-	'\020', doredotopl,
-	'\022', doredraw,
-	'\024', dotele,
+	{ '\020', doredotopl },
+	{ '\022', doredraw },
+	{ '\024', dotele },
 #ifdef SUSPEND
-	'\032', dosuspend,
+	{ '\032', dosuspend },
 #endif /* SUSPEND */
-	'a', doapply,
+	{ 'a', doapply },
 /*	'A' : UNUSED */
 /*	'b', 'B' : go sw */
-	'c', ddocall,
-	'C', do_mname,
-	'd', dodrop,
-	'D', doddrop,
-	'e', doeat,
-	'E', doengrave,
+	{ 'c', ddocall },
+	{ 'C', do_mname },
+	{ 'd', dodrop },
+	{ 'D', doddrop },
+	{ 'e', doeat },
+	{ 'E', doengrave },
 /*	'f', 'F' : multiple go (might become 'fight') */
 /*	'g', 'G' : UNUSED */
 /*	'h', 'H' : go west */
-	'I', dotypeinv,		/* Robert Viduya */
-	'i', ddoinv,
+	{ 'I', dotypeinv },		/* Robert Viduya */
+	{ 'i', ddoinv },
 /*	'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N' : move commands */
 /*	'o', doopen,	*/
-	'O', doset,
-	'p', dopay,
-	'P', dowearring,
-	'q', dodrink,
-	'Q', done1,
-	'r', doread,
-	'R', doremring,
-	's', dosearch,
-	'S', dosave,
-	't', dothrow,
-	'T', doremarm,
+	{ 'O', doset },
+	{ 'p', dopay },
+	{ 'P', dowearring },
+	{ 'q', dodrink },
+	{ 'Q', done2 },
+	{ 'r', doread },
+	{ 'R', doremring },
+	{ 's', dosearch },
+	{ 'S', dosave },
+	{ 't', dothrow },
+	{ 'T', doremarm },
 /*	'u', 'U' : go ne */
-	'v', doversion,
+	{ 'v', doversion },
 /*	'V' : UNUSED */
-	'w', dowield,
-	'W', doweararm,
+	{ 'w', dowield },
+	{ 'W', doweararm },
 /*	'x', 'X' : UNUSED */
 /*	'y', 'Y' : go nw */
-	'z', dozap,
+	{ 'z', dozap },
 /*	'Z' : UNUSED */
-	'<', doup,
-	'>', dodown,
-	'/', dowhatis,
-	'?', dohelp,
+	{ '<', doup },
+	{ '>', dodown },
+	{ '/', dowhatis },
+	{ '?', dohelp },
 #ifdef SHELL
-	'!', dosh,
+	{ '!', dosh },
 #endif /* SHELL */
-	'.', donull,
-	' ', donull,
-	',', dopickup,
-	':', dolook,
-	'^', doidtrap,
-	'\\', dodiscovered,		/* Robert Viduya */
-	 WEAPON_SYM,  doprwep,
-	 ARMOR_SYM,  doprarm,
-	 RING_SYM,  doprring,
-	'$', doprgold,
-	'#', doextcmd,
-	0,0,0
+	{ '.', donull },
+	{ ' ', donull },
+	{ ',', dopickup },
+	{ ':', dolook },
+	{ '^', doidtrap },
+	{ '\\', dodiscovered },		/* Robert Viduya */
+	{ WEAPON_SYM,  doprwep },
+	{ ARMOR_SYM,  doprarm },
+	{ RING_SYM,  doprring },
+	{ '$', doprgold },
+	{ '#', doextcmd },
+	{ 0, 0 }
 };
 
 struct ext_func_tab extcmdlist[] = {
-	"dip", dodip,
-	"pray", dopray,
-	(char *) 0, donull
+	{ "dip", dodip },
+	{ "pray", dopray },
+	{ (char *) 0, donull }
 };
 
-extern char *parse(), lowc(), unctrl(), quitchars[];
+extern char quitchars[];
 
-rhack(cmd)
-char *cmd;
+void
+rhack(const char *cmd)
 {
 	struct func_tab *tlist = cmdlist;
 	boolean firsttime = FALSE;
@@ -172,7 +167,7 @@ char *cmd;
 	}
 	{ char expcmd[10];
 	  char *cp = expcmd;
-	  while(*cmd && cp-expcmd < sizeof(expcmd)-2) {
+	  while(*cmd && cp-expcmd < (int)sizeof(expcmd)-2) {
 		if(*cmd >= 040 && *cmd < 0177)
 			*cp++ = *cmd++;
 		else {
@@ -186,7 +181,8 @@ char *cmd;
 	multi = flags.move = 0;
 }
 
-doextcmd()	/* here after # - now read a full-word command */
+static int
+doextcmd(void)	/* here after # - now read a full-word command */
 {
 	char buf[BUFSZ];
 	struct ext_func_tab *efp = extcmdlist;
@@ -205,16 +201,14 @@ doextcmd()	/* here after # - now read a full-word command */
 	return(0);
 }
 
-char
-lowc(sym)
-char sym;
+static char
+lowc(char sym)
 {
     return( (sym >= 'A' && sym <= 'Z') ? sym+'a'-'A' : sym );
 }
 
-char
-unctrl(sym)
-char sym;
+static char
+unctrl(char sym)
 {
     return( (sym >= ('A' & 037) && sym <= ('Z' & 037)) ? sym + 0140 : sym );
 }
@@ -225,8 +219,8 @@ schar xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
 schar ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
 schar zdir[10] = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
 
-movecmd(sym)	/* also sets u.dz, but returns false for <> */
-char sym;
+bool
+movecmd(char sym)	/* also sets u.dz, but returns false for <> */
 {
 	char *dp;
 
@@ -238,8 +232,8 @@ char sym;
 	return(!u.dz);
 }
 
-getdir(s)
-boolean s;
+bool
+getdir(bool s)
 {
 	char dirsym;
 
@@ -255,7 +249,8 @@ boolean s;
 	return(1);
 }
 
-confdir()
+void
+confdir(void)
 {
 	int x = rn2(8);
 	u.dx = xdir[x];
@@ -263,7 +258,9 @@ confdir()
 }
 
 #ifdef QUEST
-finddir(){
+void
+finddir(void)
+{
 int i, ui = u.di;
 	for(i = 0; i <= 8; i++){
 		if(flags.run & 1) ui++; else ui += 7;
@@ -271,7 +268,7 @@ int i, ui = u.di;
 		if(i == 8){
 			pline("Not near a wall.");
 			flags.move = multi = 0;
-			return(0);
+			return;
 		}
 		if(!isroom(u.ux+xdir[ui], u.uy+ydir[ui]))
 			break;
@@ -282,7 +279,7 @@ int i, ui = u.di;
 		if(i == 8){
 			pline("Not near a room.");
 			flags.move = multi = 0;
-			return(0);
+			return;
 		}
 		if(isroom(u.ux+xdir[ui], u.uy+ydir[ui]))
 			break;
@@ -292,13 +289,28 @@ int i, ui = u.di;
 	u.dy = ydir[ui];
 }
 
-isroom(x,y)  x,y; {		/* what about POOL? */
+static bool
+isroom(int x, int y)
+{		/* what about POOL? */
 	return(isok(x,y) && (levl[x][y].typ == ROOM ||
 				(levl[x][y].typ >= LDOOR && flags.run >= 6)));
 }
 #endif /* QUEST */
 
-isok(x,y) int x,y; {
+bool
+isok(int x, int y)
+{
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */
 	return(x >= 1 && x <= COLNO-1 && y >= 0 && y <= ROWNO-1);
+}
+
+/*
+ * done2 is a function that fits into cmdlist[] (int func(void))
+ * and calls done1 which discards its argument.
+ */
+static int
+done2(void)
+{
+	done1(0);
+	return(0);
 }

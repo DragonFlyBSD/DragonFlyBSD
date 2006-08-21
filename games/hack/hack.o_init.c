@@ -1,16 +1,17 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.o_init.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.o_init.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.o_init.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.o_init.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include <string.h>
-#include	"config.h"		/* for typedefs */
 #include	"def.objects.h"
-#include	"hack.onames.h"		/* for LAST_GEM */
-extern char *index();
+#include	"hack.h"
+
+static void	setgemprobs(void);
+static bool	interesting_to_discover(int);
 
 int
-letindex(let) char let; {
+letindex(char let)
+{
 int i = 0;
 char ch;
 	while((ch = obj_symbols[i++]) != 0)
@@ -18,7 +19,9 @@ char ch;
 	return(0);
 }
 
-init_objects(){
+void
+init_objects(void)
+{
 	int i, j, first, last, sum, end;
 	char let;
 	const char *tmp;
@@ -67,7 +70,9 @@ init_objects(){
 	}
 }
 
-probtype(let) char let; {
+int
+probtype(char let)
+{
 int i = bases[letindex(let)];
 int prob = rn2(100);
 	while((prob -= objects[i].oc_prob) >= 0) i++;
@@ -76,10 +81,10 @@ int prob = rn2(100);
 	return(i);
 }
 
-setgemprobs()
+static void
+setgemprobs(void)
 {
 	int j,first;
-	extern xchar dlevel;
 
 	first = bases[letindex(GEM_SYM)];
 
@@ -95,14 +100,15 @@ setgemprobs()
 		objects[j].oc_prob = (20+j-first)/(LAST_GEM-first);
 }
 
-oinit()			/* level dependent initialization */
+void
+oinit(void)			/* level dependent initialization */
 {
 	setgemprobs();
 }
 
-extern long *alloc();
-
-savenames(fd) int fd; {
+void
+savenames(int fd)
+{
 int i;
 unsigned len;
 	bwrite(fd, (char *) bases, sizeof bases);
@@ -119,7 +125,9 @@ unsigned len;
 	}
 }
 
-restnames(fd) int fd; {
+void
+restnames(int fd)
+{
 int i;
 unsigned len;
 	mread(fd, (char *) bases, sizeof bases);
@@ -131,9 +139,9 @@ unsigned len;
 	}
 }
 
-dodiscovered()				/* free after Robert Viduya */
+int
+dodiscovered(void)			/* free after Robert Viduya */
 {
-    extern char *typename();
     int i, end;
     int	ct = 0;
 
@@ -155,8 +163,8 @@ dodiscovered()				/* free after Robert Viduya */
     return(0);
 }
 
-interesting_to_discover(i)
-int i;
+static bool
+interesting_to_discover(int i)
 {
     return(
 	objects[i].oc_uname != NULL ||

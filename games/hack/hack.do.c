@@ -1,26 +1,26 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.do.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.do.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
 
 #include "hack.h"
 
-extern struct obj *splitobj(), *addinv();
-extern boolean hmon();
-extern boolean level_exists[];
 extern struct monst youmonst;
-extern char *Doname();
 
-static int drop();
+static int	drop(struct obj *);
+static void	dropy(struct obj *);
 
-dodrop() {
+int
+dodrop(void)
+{
 	return(drop(getobj("0$#", "drop")));
 }
 
 static int
-drop(obj) struct obj *obj; {
+drop(struct obj *obj)
+{
 	if(!obj) return(0);
 	if(obj->olet == '$') {		/* pseudo object */
 		long amount = OGOLD(obj);
@@ -53,15 +53,15 @@ drop(obj) struct obj *obj; {
 }
 
 /* Called in several places - should not produce texts */
-dropx(obj)
-struct obj *obj;
+void
+dropx(struct obj *obj)
 {
 	freeinv(obj);
 	dropy(obj);
 }
 
-dropy(obj)
-struct obj *obj;
+static void
+dropy(struct obj *obj)
 {
 	if(obj->otyp == CRYSKNIFE)
 		obj->otyp = WORM_TOOTH;
@@ -75,11 +75,14 @@ struct obj *obj;
 }
 
 /* drop several things */
-doddrop() {
+int
+doddrop(void)
+{
 	return(ggetobj("drop", drop, 0));
 }
 
-dodown()
+int
+dodown(void)
 {
 	if(u.ux != xdnstair || u.uy != ydnstair) {
 		pline("You can't go down here.");
@@ -98,7 +101,8 @@ dodown()
 	return(1);
 }
 
-doup()
+int
+doup(void)
 {
 	if(u.ux != xupstair || u.uy != yupstair) {
 		pline("You can't go up here.");
@@ -117,9 +121,8 @@ doup()
 	return(1);
 }
 
-goto_level(newlevel, at_stairs)
-int newlevel;
-boolean at_stairs;
+void
+goto_level(int newlevel, boolean at_stairs)
 {
 	int fd;
 	boolean up = (newlevel < dlevel);
@@ -152,10 +155,10 @@ boolean at_stairs;
 		u.uswldtim = u.uswallow = 0;
 	flags.nscrinh = 1;
 	u.ux = FAR;				/* hack */
-	(void) inshop();			/* probably was a trapdoor */
+	inshop();				/* probably was a trapdoor */
 
 	savelev(fd,dlevel);
-	(void) close(fd);
+	close(fd);
 
 	dlevel = newlevel;
 	if(maxdlevel < dlevel)
@@ -165,15 +168,13 @@ boolean at_stairs;
 	if(!level_exists[dlevel])
 		mklev();
 	else {
-		extern int hackpid;
-
 		if((fd = open(lock,0)) < 0) {
 			pline("Cannot open %s .", lock);
 			pline("Probably someone removed it.");
 			done("tricked");
 		}
 		getlev(fd, hackpid, dlevel);
-		(void) close(fd);
+		close(fd);
 	}
 
 	if(at_stairs) {
@@ -223,12 +224,12 @@ boolean at_stairs;
 	    }
 	    selftouch("Falling, you");
 	}
-	(void) inshop();
+	inshop();
 	initrack();
 
 	losedogs();
 	{ struct monst *mtmp;
-	  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
+	  if((mtmp = m_at(u.ux, u.uy))) mnexto(mtmp);	/* riv05!a3 */
 	}
 	flags.nscrinh = 0;
 	setsee();
@@ -238,18 +239,22 @@ boolean at_stairs;
 	read_engr_at(u.ux,u.uy);
 }
 
-donull() {
+int
+donull(void)
+{
 	return(1);	/* Do nothing, but let other things happen */
 }
 
-dopray() {
+int
+dopray(void)
+{
 	nomovemsg = "You finished your prayer.";
 	nomul(-3);
 	return(1);
 }
 
-struct monst *bhit(), *boomhit();
-dothrow()
+int
+dothrow(void)
 {
 	struct obj *obj;
 	struct monst *mon;
@@ -277,7 +282,7 @@ dothrow()
 			setuwep((struct obj *) 0);
 	}
 	else if(obj->quan > 1)
-		(void) splitobj(obj, 1);
+		splitobj(obj, 1);
 	freeinv(obj);
 	if(u.uswallow) {
 		mon = u.ustuck;
@@ -314,7 +319,7 @@ dothrow()
 	} else if(obj->otyp == BOOMERANG) {
 		mon = boomhit(u.dx, u.dy);
 		if(mon == &youmonst) {		/* the thing was caught */
-			(void) addinv(obj);
+			addinv(obj);
 			return(1);
 		}
 	} else {
@@ -323,8 +328,8 @@ dothrow()
 
 		mon = bhit(u.dx, u.dy, (obj->otyp == ICE_BOX) ? 1 :
 			(!Punished || obj != uball) ? 8 : !u.ustuck ? 5 : 1,
-			obj->olet,
-			(int (*)()) 0, (int (*)()) 0, obj);
+			obj->olet, (void (*)(struct monst *, struct obj *)) 0,
+			(bool (*)(struct obj *, struct obj *)) 0, obj);
 	}
 	if(mon) {
 		/* awake monster if sleeping */
@@ -431,7 +436,7 @@ dothrow()
 		u.ux = uchain->ox = bhitpos.x - u.dx;
 		u.uy = uchain->oy = bhitpos.y - u.dy;
 		setsee();
-		(void) inshop();
+		inshop();
 	}
 	if(cansee(bhitpos.x, bhitpos.y)) prl(bhitpos.x,bhitpos.y);
 	return(1);
@@ -440,7 +445,8 @@ dothrow()
 /* split obj so that it gets size num */
 /* remainder is put in the object structure delivered by this call */
 struct obj *
-splitobj(obj, num) struct obj *obj; int num; {
+splitobj(struct obj *obj, int num)
+{
 struct obj *otmp;
 	otmp = newobj(0);
 	*otmp = *obj;		/* copies whole structure */
@@ -455,11 +461,9 @@ struct obj *otmp;
 	return(otmp);
 }
 
-more_experienced(exp,rexp)
-int exp, rexp;
+void
+more_experienced(int exp, int rexp)
 {
-	extern char pl_character[];
-
 	u.uexp += exp;
 	u.urexp += 4*exp + rexp;
 	if(exp) flags.botl = 1;
@@ -467,9 +471,8 @@ int exp, rexp;
 		flags.beginner = 0;
 }
 
-set_wounded_legs(side, timex)
-long side;
-int timex;
+void
+set_wounded_legs(long side, int timex)
 {
 	if(!Wounded_legs || (Wounded_legs & TIMEOUT))
 		Wounded_legs |= side + timex;
@@ -477,7 +480,8 @@ int timex;
 		Wounded_legs |= side;
 }
 
-heal_legs()
+void
+heal_legs(void)
 {
 	if(Wounded_legs) {
 		if((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)

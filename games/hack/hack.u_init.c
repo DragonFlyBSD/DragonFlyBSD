@@ -1,19 +1,13 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.u_init.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.u_init.c,v 1.4 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.u_init.c,v 1.4 2005/05/22 01:28:15 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.u_init.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
-#include <signal.h>
-#include <stdlib.h>
 #define Strcpy	(void) strcpy
 #define	Strcat	(void) strcat
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
-extern struct obj *addinv();
-extern char *eos();
-extern char plname[];
 
 struct you zerou;
 char pl_character[PL_CSIZ];
@@ -98,17 +92,24 @@ struct trobj Wizard[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 
-u_init(){
+static void	ini_inv(struct trobj *);
+#ifdef WIZARD
+static void	wiz_inv(void);
+#endif
+static int	role_index(char);
+
+void
+u_init(void)
+{
 int i;
 char exper = 'y', pc;
-extern char readchar();
 	if(flags.female)	/* should have been set in HACKOPTIONS */
 		strlcpy(roles[4], "Cave-woman", sizeof(roles[4]));
 	for(i = 0; i < NR_OF_ROLES; i++)
 		rolesyms[i] = roles[i][0];
 	rolesyms[i] = 0;
 
-	if(pc = pl_character[0]) {
+	if((pc = pl_character[0])) {
 		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
 		if((i = role_index(pc)) >= 0)
 			goto got_suffix;	/* implies experienced */
@@ -141,11 +142,11 @@ extern char readchar();
 	}
 	printf("? [%s] ", rolesyms);
 
-	while(pc = readchar()) {
+	while((pc = readchar())) {
 		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
 		if((i = role_index(pc)) >= 0) {
 			printf("%c\n", pc);	/* echo */
-			(void) fflush(stdout);	/* should be seen */
+			fflush(stdout);		/* should be seen */
 			break;
 		}
 		if(pc == '\n')
@@ -167,8 +168,8 @@ beginner:
 			roles[i]);
 		getret();
 		/* give him some feedback in case mklev takes much time */
-		(void) putchar('\n');
-		(void) fflush(stdout);
+		putchar('\n');
+		fflush(stdout);
 	}
 	if(exper) {
 		roles[i][0] = pc;
@@ -176,7 +177,7 @@ beginner:
 
 got_suffix:
 
-	(void) strncpy(pl_character, roles[i], PL_CSIZ-1);
+	strncpy(pl_character, roles[i], PL_CSIZ-1);
 	pl_character[PL_CSIZ-1] = 0;
 	flags.beginner = 1;
 	u = zerou;
@@ -241,9 +242,9 @@ got_suffix:
 	}
 	find_ac();
 	if(!rn2(20)) {
-		int d = rn2(7) - 2;	/* biased variation */
-		u.ustr += d;
-		u.ustrmax += d;
+		int d1 = rn2(7) - 2;	/* biased variation */
+		u.ustr += d1;
+		u.ustrmax += d1;
 	}
 
 #ifdef WIZARD
@@ -255,9 +256,10 @@ got_suffix:
 		u.ustr++, u.ustrmax++;
 }
 
-ini_inv(trop) struct trobj *trop; {
+static void
+ini_inv(struct trobj *trop)
+{
 struct obj *obj;
-extern struct obj *mkobj();
 	while(trop->trolet) {
 		obj = mkobj(trop->trolet);
 		obj->known = trop->trknown;
@@ -311,7 +313,9 @@ extern struct obj *mkobj();
 }
 
 #ifdef WIZARD
-wiz_inv(){
+static void
+wiz_inv(void)
+{
 struct trobj *trop = &Extra_objs[0];
 char *ep = getenv("INVENT");
 int type;
@@ -337,9 +341,11 @@ int type;
 }
 #endif /* WIZARD */
 
-plnamesuffix() {
+void
+plnamesuffix(void)
+{
 char *p;
-	if(p = rindex(plname, '-')) {
+	if((p = rindex(plname, '-'))) {
 		*p = 0;
 		pl_character[0] = p[1];
 		pl_character[1] = 0;
@@ -350,13 +356,13 @@ char *p;
 	}
 }
 
-role_index(pc)
-char pc;
+static int
+role_index(char pc)
 {		/* must be called only from u_init() */
 		/* so that rolesyms[] is defined */
 	char *cp;
 
-	if(cp = index(rolesyms, pc))
+	if((cp = index(rolesyms, pc)))
 		return(cp - rolesyms);
 	return(-1);
 }

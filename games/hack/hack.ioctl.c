@@ -1,13 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.ioctl.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.ioctl.c,v 1.2 1999/09/12 07:01:23 marcel Exp $
-   $DragonFly: src/games/hack/hack.ioctl.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $
+   $DragonFly: src/games/hack/hack.ioctl.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $
 
    This cannot be part of hack.tty.c (as it was earlier) since on some
    systems (e.g. MUNIX) the include files <termio.h> and <sgtty.h>
    define the same constants, and the C preprocessor complains. */
-#include <stdio.h>
-#include "config.h"
+#include "hack.h"
 #ifdef BSD
 #include	<sgtty.h>
 struct ltchars ltchars, ltchars0;
@@ -16,31 +15,37 @@ struct ltchars ltchars, ltchars0;
 struct termio termio;
 #endif /* BSD */
 
-getioctls() {
+void
+getioctls(void)
+{
 #ifdef BSD
-	(void) ioctl(fileno(stdin), (int) TIOCGLTC, (char *) &ltchars);
-	(void) ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars0);
+	ioctl(fileno(stdin), (int) TIOCGLTC, (char *) &ltchars);
+	ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars0);
 #else
-	(void) ioctl(fileno(stdin), (int) TCGETA, &termio);
+	ioctl(fileno(stdin), (int) TCGETA, &termio);
 #endif /* BSD */
 }
 
-setioctls() {
+void
+setioctls(void)
+{
 #ifdef BSD
-	(void) ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars);
+	ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars);
 #else
-	(void) ioctl(fileno(stdin), (int) TCSETA, &termio);
+	ioctl(fileno(stdin), (int) TCSETA, &termio);
 #endif /* BSD */
 }
 
 #ifdef SUSPEND		/* implies BSD */
 #include	<signal.h>
-dosuspend() {
+int
+dosuspend(void)
+{
 #ifdef SIGTSTP
 	if(signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
 		settty((char *) 0);
-		(void) signal(SIGTSTP, SIG_DFL);
-		(void) kill(0, SIGTSTP);
+		signal(SIGTSTP, SIG_DFL);
+		kill(0, SIGTSTP);
 		gettty();
 		setftty();
 		docrt();

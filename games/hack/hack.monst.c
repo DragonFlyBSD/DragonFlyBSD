@@ -1,10 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.monst.c - version 1.0.2 */
-/* $DragonFly: src/games/hack/hack.monst.c,v 1.2 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.monst.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 #include "def.eshk.h"
-extern char plname[PL_NSIZ];
 
 struct permonst mons[CMNUM+2] = {
 	{ "bat",		'B',1,22,8,1,4,0 },

@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.engrave.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.engrave.c,v 1.4 1999/11/16 02:57:04 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.engrave.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.engrave.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 
@@ -19,8 +19,12 @@ struct engr {
 #define	BURN	3
 } *head_engr;
 
-struct engr *
-engr_at(x,y) xchar x,y; {
+static struct engr	*engr_at(xchar, xchar);
+static void		 del_engr(struct engr *);
+
+static struct engr *
+engr_at(xchar x, xchar y)
+{
 struct engr *ep = head_engr;
 	while(ep) {
 		if(x == ep->engr_x && y == ep->engr_y)
@@ -30,15 +34,14 @@ struct engr *ep = head_engr;
 	return((struct engr *) 0);
 }
 
-sengr_at(s,x,y) char *s; xchar x,y; {
+bool
+sengr_at(const char *s, xchar x, xchar y)
+{
 struct engr *ep = engr_at(x,y);
 char *t;
 int n;
 	if(ep && ep->engr_time <= moves) {
 		t = ep->engr_txt;
-/*
-		if(!strcmp(s,t)) return(1);
-*/
 		n = strlen(s);
 		while(*t) {
 			if(!strncmp(s,t,n)) return(1);
@@ -48,14 +51,16 @@ int n;
 	return(0);
 }
 
-u_wipe_engr(cnt)
-int cnt;
+void
+u_wipe_engr(int cnt)
 {
 	if(!u.uswallow && !Levitation)
 		wipe_engr_at(u.ux, u.uy, cnt);
 }
 
-wipe_engr_at(x,y,cnt) xchar x,y,cnt; {
+void
+wipe_engr_at(xchar x, xchar y, xchar cnt)
+{
 struct engr *ep = engr_at(x,y);
 int lth,pos;
 char ch;
@@ -80,7 +85,9 @@ char ch;
 	}
 }
 
-read_engr_at(x,y) int x,y; {
+void
+read_engr_at(int x, int y)
+{
 struct engr *ep = engr_at(x,y);
 	if(ep && ep->engr_txt[0]) {
 	    switch(ep->engr_type) {
@@ -100,13 +107,12 @@ struct engr *ep = engr_at(x,y);
 	}
 }
 
-make_engr_at(x,y,s)
-int x,y;
-char *s;
+void
+make_engr_at(int x, int y, const char *s)
 {
 	struct engr *ep;
 
-	if(ep = engr_at(x,y))
+	if((ep = engr_at(x,y)))
 	    del_engr(ep);
 	ep = (struct engr *)
 	    alloc((unsigned)(sizeof(struct engr) + strlen(s) + 1));
@@ -115,13 +121,15 @@ char *s;
 	ep->engr_x = x;
 	ep->engr_y = y;
 	ep->engr_txt = (char *)(ep + 1);
-	(void) strcpy(ep->engr_txt, s);
+	strcpy(ep->engr_txt, s);
 	ep->engr_time = 0;
 	ep->engr_type = DUST;
 	ep->engr_lth = strlen(s) + 1;
 }
 
-doengrave(){
+int
+doengrave(void)
+{
 int len;
 char *sp;
 struct engr *ep, *oep = engr_at(u.ux,u.uy);
@@ -243,11 +251,11 @@ struct obj *otmp;
 	sp = (char *)(ep + 1);	/* (char *)ep + sizeof(struct engr) */
 	ep->engr_txt = sp;
 	if(oep) {
-		(void) strcpy(sp, oep->engr_txt);
-		(void) strcat(sp, buf);
+		strcpy(sp, oep->engr_txt);
+		strcat(sp, buf);
 		del_engr(oep);
 	} else
-		(void) strcpy(sp, buf);
+		strcpy(sp, buf);
 	ep->engr_lth = len+1;
 	ep->engr_type = type;
 	ep->engr_time = moves-multi;
@@ -258,7 +266,9 @@ struct obj *otmp;
 	return(1);
 }
 
-save_engravings(fd) int fd; {
+void
+save_engravings(int fd)
+{
 struct engr *ep = head_engr;
 	while(ep) {
 		if(!ep->engr_lth || !ep->engr_txt[0]){
@@ -273,7 +283,9 @@ struct engr *ep = head_engr;
 	head_engr = 0;
 }
 
-rest_engravings(fd) int fd; {
+void
+rest_engravings(int fd)
+{
 struct engr *ep;
 unsigned lth;
 	head_engr = 0;
@@ -288,7 +300,9 @@ unsigned lth;
 	}
 }
 
-del_engr(ep) struct engr *ep; {
+static void
+del_engr(struct engr *ep)
+{
 struct engr *ept;
 	if(ep == head_engr)
 		head_engr = ep->nxt_engr;

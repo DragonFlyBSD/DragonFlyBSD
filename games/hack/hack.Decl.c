@@ -1,6 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.Decl.c - version 1.0.3 */
-/* $DragonFly: src/games/hack/hack.Decl.c,v 1.3 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.Decl.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
 char nul[40];			/* contains zeros */
@@ -11,7 +11,6 @@ boolean in_mklev, restoring;
 
 struct rm levl[COLNO][ROWNO];	/* level map */
 #ifndef QUEST
-#include "def.mkroom.h"
 struct mkroom rooms[MAXNROFROOMS+1];
 coord doors[DOORMAX];
 #endif /* QUEST */

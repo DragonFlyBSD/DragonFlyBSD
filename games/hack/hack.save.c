@@ -1,46 +1,45 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.save.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.save.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.save.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
+/* $DragonFly: src/games/hack/hack.save.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-extern char genocided[60];	/* defined in Decl.c */
-extern char fut_geno[60];	/* idem */
-#include <signal.h>
-#include <unistd.h>
 
 extern char SAVEF[], nul[];
-extern char pl_character[PL_CSIZ];
-extern struct obj *restobjchn();
-extern struct monst *restmonchn();
 
-dosave(){
+static bool	dosave0(int);
+
+int
+dosave(void)
+{
 	if(dosave0(0)) {
 		settty("Be seeing you ...\n");
 		exit(0);
 	}
-#ifdef lint
 	return(0);
-#endif /* lint */
 }
 
 #ifndef NOSAVEONHANGUP
-hangup(){
-	(void) dosave0(1);
+void
+hangup(__unused int unused)
+{
+	dosave0(1);
 	exit(1);
 }
 #endif /* NOSAVEONHANGUP */
 
 /* returns 1 if save successful */
-dosave0(hu) int hu; {
+static bool
+dosave0(int hu)
+{
 	int fd, ofd;
 	int tmp;		/* not ! */
 
-	(void) signal(SIGHUP, SIG_IGN);
-	(void) signal(SIGINT, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
 	if((fd = creat(SAVEF, FMASK)) < 0) {
 		if(!hu) pline("Cannot open save file. (Continue or Quit)");
-		(void) unlink(SAVEF);		/* ab@unido */
+		unlink(SAVEF);		/* ab@unido */
 		return(0);
 	}
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
@@ -63,40 +62,36 @@ dosave0(hu) int hu; {
 	bwrite(fd, (char *) fut_geno, sizeof fut_geno);
 	savenames(fd);
 	for(tmp = 1; tmp <= maxdlevel; tmp++) {
-		extern int hackpid;
-		extern boolean level_exists[];
-
 		if(tmp == dlevel || !level_exists[tmp]) continue;
 		glo(tmp);
 		if((ofd = open(lock, 0)) < 0) {
 		    if(!hu) pline("Error while saving: cannot read %s.", lock);
-		    (void) close(fd);
-		    (void) unlink(SAVEF);
+		    close(fd);
+		    unlink(SAVEF);
 		    if(!hu) done("tricked");
 		    return(0);
 		}
 		getlev(ofd, hackpid, tmp);
-		(void) close(ofd);
+		close(ofd);
 		bwrite(fd, (char *) &tmp, sizeof tmp);	/* level number */
 		savelev(fd,tmp);			/* actual level */
-		(void) unlink(lock);
+		unlink(lock);
 	}
-	(void) close(fd);
+	close(fd);
 	glo(dlevel);
-	(void) unlink(lock);	/* get rid of current level --jgm */
+	unlink(lock);	/* get rid of current level --jgm */
 	glo(0);
-	(void) unlink(lock);
+	unlink(lock);
 	return(1);
 }
 
-dorecover(fd)
-int fd;
+bool
+dorecover(int fd)
 {
 	int nfd;
 	int tmp;		/* not a ! */
 	unsigned mid;		/* idem */
 	struct obj *otmp;
-	extern boolean restoring;
 
 	restoring = TRUE;
 	getlev(fd, 0, 0);
@@ -107,9 +102,9 @@ int fd;
 	fcobj = restobjchn(fd);
 	fallen_down = restmonchn(fd);
 	mread(fd, (char *) &tmp, sizeof tmp);
-	if(tmp != getuid()) {		/* strange ... */
-		(void) close(fd);
-		(void) unlink(SAVEF);
+	if(tmp != (int)getuid()) {	/* strange ... */
+		close(fd);
+		unlink(SAVEF);
 		puts("Saved game was not yours.");
 		restoring = FALSE;
 		return(0);
@@ -133,12 +128,12 @@ int fd;
 		if((nfd = creat(lock, FMASK)) < 0)
 			panic("Cannot open temp file %s!\n", lock);
 		savelev(nfd,tmp);
-		(void) close(nfd);
+		close(nfd);
 	}
-	(void) lseek(fd, (off_t)0, 0);
+	lseek(fd, (off_t)0, 0);
 	getlev(fd, 0, 0);
-	(void) close(fd);
-	(void) unlink(SAVEF);
+	close(fd);
+	unlink(SAVEF);
 	if(Punished) {
 		for(otmp = fobj; otmp; otmp = otmp->nobj)
 			if(otmp->olet == CHAIN_SYM) goto chainfnd;
@@ -172,16 +167,13 @@ int fd;
 }
 
 struct obj *
-restobjchn(fd)
-int fd;
+restobjchn(int fd)
 {
 	struct obj *otmp, *otmp2;
 	struct obj *first = 0;
 	int xl;
-#ifdef lint
 	/* suppress "used before set" warning from lint */
 	otmp2 = 0;
-#endif /* lint */
 	while(1) {
 		mread(fd, (char *) &xl, sizeof(xl));
 		if(xl == -1) break;
@@ -200,8 +192,7 @@ int fd;
 }
 
 struct monst *
-restmonchn(fd)
-int fd;
+restmonchn(int fd)
 {
 	struct monst *mtmp, *mtmp2;
 	struct monst *first = 0;
@@ -213,10 +204,8 @@ int fd;
 	mread(fd, (char *)&monbegin, sizeof(monbegin));
 	differ = (char *)(&mons[0]) - (char *)(monbegin);
 
-#ifdef lint
 	/* suppress "used before set" warning from lint */
 	mtmp2 = 0;
-#endif /* lint */
 	while(1) {
 		mread(fd, (char *) &xl, sizeof(xl));
 		if(xl == -1) break;

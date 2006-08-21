@@ -1,18 +1,22 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.rumors.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.rumors.c,v 1.3 1999/11/16 02:57:10 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.rumors.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.rumors.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
-#include	<stdio.h>
 #include	"hack.h"		/* for RUMORFILE and BSD (index) */
 #define	CHARSZ	8			/* number of bits in a char */
-extern long *alloc();
-extern char *index();
 int n_rumors = 0;
 int n_used_rumors = -1;
 char *usedbits;
 
-init_rumors(rumf) FILE *rumf; {
+static void	init_rumors(FILE *);
+static bool	skipline(FILE *);
+static void	outline(FILE *);
+static bool	used(int);
+
+static void
+init_rumors(FILE *rumf)
+{
 int i;
 	n_used_rumors = 0;
 	while(skipline(rumf)) n_rumors++;
@@ -22,7 +26,9 @@ int i;
 	for( ; i>=0; i--) usedbits[i] = 0;
 }
 
-skipline(rumf) FILE *rumf; {
+static bool
+skipline(FILE *rumf)
+{
 char line[COLNO];
 	while(1) {
 		if(!fgets(line, sizeof(line), rumf)) return(0);
@@ -30,7 +36,9 @@ char line[COLNO];
 	}
 }
 
-outline(rumf) FILE *rumf; {
+static void
+outline(FILE *rumf)
+{
 char line[COLNO];
 char *ep;
 	if(!fgets(line, sizeof(line), rumf)) return;
@@ -39,7 +47,9 @@ char *ep;
 	pline(line);
 }
 
-outrumor(){
+void
+outrumor(void)
+{
 int rn,i;
 FILE *rumf;
 	if(n_rumors <= n_used_rumors ||
@@ -49,7 +59,7 @@ FILE *rumf;
 	rn = rn2(n_rumors - n_used_rumors);
 	i = 0;
 	while(rn || used(i)) {
-		(void) skipline(rumf);
+		skipline(rumf);
 		if(!used(i)) rn--;
 		i++;
 	}
@@ -57,9 +67,11 @@ FILE *rumf;
 	n_used_rumors++;
 	outline(rumf);
 none:
-	(void) fclose(rumf);
+	fclose(rumf);
 }
 
-used(i) int i; {
+static bool
+used(int i)
+{
 	return(usedbits[i/CHARSZ] & (1 << (i % CHARSZ)));
 }

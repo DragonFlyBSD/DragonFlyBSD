@@ -1,15 +1,21 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.pri.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.pri.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.pri.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.pri.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
-#include <stdio.h>
+#include <curses.h>
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
 
 extern char *CD;
 
-swallowed()
+#ifdef NEWSCR
+static void	pobj(struct obj *);
+#endif
+static void	cornbot(int);
+
+void
+swallowed(void)
 {
 	char ulook[] = {"|@|"};
 	ulook[1] = u.usym;
@@ -33,14 +39,18 @@ swallowed()
 /*VARARGS1*/
 boolean panicking;
 
-panic(str,a1,a2,a3,a4,a5,a6)
-char *str;
+void
+panic(const char *str, ...)
 {
+	va_list ap;
+
 	if(panicking++) exit(1);    /* avoid loops - this should never happen*/
 	home();
 	puts(" Suddenly, the dungeon collapses.");
 	fputs(" ERROR:  ", stdout);
-	printf(str,a1,a2,a3,a4,a5,a6);
+	va_start(ap, str);
+	vprintf(str, ap);
+	va_end(ap);
 #ifdef DEBUG
 #ifdef UNIX
 	if(!fork())
@@ -51,8 +61,8 @@ char *str;
 	done("panicked");
 }
 
-atl(x,y,ch)
-int x,y;
+void
+atl(int x, int y, char ch)
 {
 	struct rm *crm = &levl[x][y];
 
@@ -66,8 +76,8 @@ int x,y;
 	on_scr(x,y);
 }
 
-on_scr(x,y)
-int x,y;
+void
+on_scr(int x, int y)
 {
 	if(x < scrlx) scrlx = x;
 	if(x > scrhx) scrhx = x;
@@ -82,7 +92,9 @@ int x,y;
 	(-2,let)-change let
 */
 
-tmp_at(x,y) schar x,y; {
+void
+tmp_at(schar x, schar y)
+{
 static schar prevx, prevy;
 static char let;
 	if((int)x == -2){	/* change let call */
@@ -110,7 +122,9 @@ static char let;
 }
 
 /* like the previous, but the symbols are first erased on completion */
-Tmp_at(x,y) schar x,y; {
+void
+Tmp_at(schar x, schar y)
+{
 static char let;
 static xchar cnt;
 static coord tc[COLNO];		/* but watch reflecting beams! */
@@ -146,14 +160,15 @@ int xx,yy;
 	}
 }
 
-setclipped(){
+void
+setclipped(void)
+{
 	error("Hack needs a screen of size at least %d by %d.\n",
 		ROWNO+2, COLNO);
 }
 
-at(x,y,ch)
-xchar x,y;
-char ch;
+void
+at(xchar x, xchar y, char ch)
 {
 #ifndef lint
 	/* if xchar is unsigned, lint will complain about  if(x < 0)  */
@@ -168,21 +183,25 @@ char ch;
 	}
 	y += 2;
 	curs(x,y);
-	(void) putchar(ch);
+	putchar(ch);
 	curx++;
 }
 
-prme(){
+void
+prme(void)
+{
 	if(!Invisible) at(u.ux,u.uy,u.usym);
 }
 
-doredraw()
+int
+doredraw(void)
 {
 	docrt();
 	return(0);
 }
 
-docrt()
+void
+docrt(void)
 {
 	int x,y;
 	struct rm *room;
@@ -221,7 +240,9 @@ docrt()
 	bot();
 }
 
-docorner(xmin,ymax) int xmin,ymax; {
+void
+docorner(int xmin, int ymax)
+{
 	int x,y;
 	struct rm *room;
 	struct monst *mtmp;
@@ -261,16 +282,18 @@ docorner(xmin,ymax) int xmin,ymax; {
 	}
 }
 
-curs_on_u(){
+void
+curs_on_u(void)
+{
 	curs(u.ux, u.uy+2);
 }
 
-pru()
+void
+pru(void)
 {
 	if(u.udispl && (Invisible || u.udisx != u.ux || u.udisy != u.uy))
-		/* if(! levl[u.udisx][u.udisy].new) */
-			if(!vism_at(u.udisx, u.udisy))
-				newsym(u.udisx, u.udisy);
+		if(!vism_at(u.udisx, u.udisy))
+			newsym(u.udisx, u.udisy);
 	if(Invisible) {
 		u.udispl = 0;
 		prl(u.ux,u.uy);
@@ -285,12 +308,12 @@ pru()
 }
 
 #ifndef NOWORM
-#include	"def.wseg.h"
 extern struct wseg *m_atseg;
 #endif /* NOWORM */
 
 /* print a position that is visible for @ */
-prl(x,y)
+void
+prl(int x, int y)
 {
 	struct rm *room;
 	struct monst *mtmp;
@@ -332,8 +355,7 @@ prl(x,y)
 }
 
 char
-news0(x,y)
-xchar x,y;
+news0(xchar x, xchar y)
 {
 	struct obj *otmp;
 	struct trap *ttmp;
@@ -370,27 +392,22 @@ xchar x,y;
 		if(room->lit || cansee(x,y) || Blind) tmp = '.';
 		else tmp = ' ';
 		break;
-/*
-	case POOL:
-		tmp = POOL_SYM;
-		break;
-*/
 	default:
 		tmp = ERRCHAR;
 	}
 	return(tmp);
 }
 
-newsym(x,y)
-int x,y;
+void
+newsym(int x, int y)
 {
 	atl(x,y,news0(x,y));
 }
 
 /* used with wand of digging (or pick-axe): fill scrsym and force display */
 /* also when a POOL evaporates */
-mnewsym(x,y)
-int x,y;
+void
+mnewsym(int x, int y)
 {
 	struct rm *room;
 	char newscrsym;
@@ -405,8 +422,8 @@ int x,y;
 	}
 }
 
-nosee(x,y)
-int x,y;
+void
+nosee(int x, int y)
 {
 	struct rm *room;
 
@@ -420,8 +437,8 @@ int x,y;
 }
 
 #ifndef QUEST
-prl1(x,y)
-int x,y;
+void
+prl1(int x, int y)
 {
 	if(u.dx) {
 		if(u.dy) {
@@ -442,8 +459,8 @@ int x,y;
 	}
 }
 
-nose1(x,y)
-int x,y;
+void
+nose1(int x, int y)
 {
 	if(u.dx) {
 		if(u.dy) {
@@ -465,8 +482,8 @@ int x,y;
 }
 #endif /* QUEST */
 
-vism_at(x,y)
-int x,y;
+bool
+vism_at(int x, int y)
 {
 	struct monst *mtmp;
 
@@ -478,7 +495,9 @@ int x,y;
 }
 
 #ifdef NEWSCR
-pobj(obj) struct obj *obj; {
+static void
+pobj(struct obj *obj)
+{
 int show = (!obj->oinvis || See_invisible) &&
 		cansee(obj->ox,obj->oy);
 	if(obj->odispl){
@@ -497,18 +516,16 @@ int show = (!obj->oinvis || See_invisible) &&
 }
 #endif /* NEWSCR */
 
-unpobj(obj) struct obj *obj; {
-/* 	if(obj->odispl){
-		if(!vism_at(obj->odx, obj->ody))
-			newsym(obj->odx, obj->ody);
-		obj->odispl = 0;
-	}
-*/
+void
+unpobj(struct obj *obj)
+{
 	if(!vism_at(obj->ox,obj->oy))
 		newsym(obj->ox,obj->oy);
 }
 
-seeobjs(){
+void
+seeobjs(void)
+{
 struct obj *obj, *obj2;
 	for(obj = fobj; obj; obj = obj2) {
 		obj2 = obj->nobj;
@@ -524,7 +541,9 @@ struct obj *obj, *obj2;
 	}
 }
 
-seemons(){
+void
+seemons(void)
+{
 struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
 		if(mtmp->data->mlet == ';')
@@ -537,7 +556,9 @@ struct monst *mtmp;
 	}
 }
 
-pmon(mon) struct monst *mon; {
+void
+pmon(struct monst *mon)
+{
 int show = (Blind && Telepat) || canseemon(mon);
 	if(mon->mdispl){
 		if(mon->mdx != mon->mx || mon->mdy != mon->my || !show)
@@ -554,14 +575,17 @@ int show = (Blind && Telepat) || canseemon(mon);
 	}
 }
 
-unpmon(mon) struct monst *mon; {
+void
+unpmon(struct monst *mon)
+{
 	if(mon->mdispl){
 		newsym(mon->mdx, mon->mdy);
 		mon->mdispl = 0;
 	}
 }
 
-nscr()
+void
+nscr(void)
 {
 	int x,y;
 	struct rm *room;
@@ -581,46 +605,47 @@ nscr()
 
 /* 100 suffices for bot(); no relation with COLNO */
 char oldbot[100], newbot[100];
-cornbot(lth)
-int lth;
+
+static void
+cornbot(int lth)
 {
-	if(lth < sizeof(oldbot)) {
+	if(lth < (int)sizeof(oldbot)) {
 		oldbot[lth] = 0;
 		flags.botl = 1;
 	}
 }
 
-bot()
+void
+bot(void)
 {
 char *ob = oldbot, *nb = newbot;
 int i;
-extern char *eos();
 	if(flags.botlx) *ob = 0;
 	flags.botl = flags.botlx = 0;
 #ifdef GOLD_ON_BOTL
-	(void) sprintf(newbot,
+	sprintf(newbot,
 		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
 		dlevel, u.ugold, u.uhp, u.uhpmax, u.uac);
 #else
-	(void) sprintf(newbot,
+	sprintf(newbot,
 		"Level %-2d   Hp %3d(%d)   Ac %-2d   Str ",
 		dlevel,  u.uhp, u.uhpmax, u.uac);
 #endif /* GOLD_ON_BOTL */
 	if(u.ustr>18) {
 	    if(u.ustr>117)
-		(void) strcat(newbot,"18/**");
+		strcat(newbot,"18/**");
 	    else
-		(void) sprintf(eos(newbot), "18/%02d",u.ustr-18);
+		sprintf(eos(newbot), "18/%02d",u.ustr-18);
 	} else
-	    (void) sprintf(eos(newbot), "%-2d   ",u.ustr);
+	    sprintf(eos(newbot), "%-2d   ",u.ustr);
 #ifdef EXP_ON_BOTL
-	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
+	sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
 #else
-	(void) sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
+	sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
 #endif /* EXP_ON_BOTL */
-	(void) strcat(newbot, hu_stat[u.uhs]);
+	strcat(newbot, hu_stat[u.uhs]);
 	if(flags.time)
-	    (void) sprintf(eos(newbot), "  %ld", moves);
+	    sprintf(eos(newbot), "  %ld", moves);
 	if(strlen(newbot) >= COLNO) {
 		char *bp0, *bp1;
 		bp0 = bp1 = newbot;
@@ -632,17 +657,19 @@ extern char *eos();
 	for(i = 1; i<COLNO; i++) {
 		if(*ob != *nb){
 			curs(i,ROWNO+2);
-			(void) putchar(*nb ? *nb : ' ');
+			putchar(*nb ? *nb : ' ');
 			curx++;
 		}
 		if(*ob) ob++;
 		if(*nb) nb++;
 	}
-	(void) strcpy(oldbot, newbot);
+	strcpy(oldbot, newbot);
 }
 
 #ifdef WAN_PROBING
-mstatusline(mtmp) struct monst *mtmp; {
+void
+mstatusline(struct monst *mtmp)
+{
 	pline("Status of %s: ", monnam(mtmp));
 	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Dam %d",
 	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->mhpmax,
@@ -650,7 +677,9 @@ mstatusline(mtmp) struct monst *mtmp; {
 }
 #endif /* WAN_PROBING */
 
-cls(){
+void
+cls(void)
+{
 	if(flags.toplin == 1)
 		more();
 	flags.toplin = 0;

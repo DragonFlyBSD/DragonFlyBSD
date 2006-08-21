@@ -1,11 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.trap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.trap.c,v 1.5 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.trap.c,v 1.4 2005/05/22 03:37:05 y0netan1 Exp $ */
+/* $DragonFly: src/games/hack/hack.trap.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include	"hack.h"
-
-extern struct monst *makemon();
 
 char vowels[] = "aeiou";
 
@@ -21,9 +19,12 @@ const char *traps[] = {
 	" mimic"
 };
 
+static void	vtele(void);
+static void	teleds(int, int);
+static bool	teleok(int, int);
+
 struct trap *
-maketrap(x,y,typ)
-int x,y,typ;
+maketrap(int x, int y, int typ)
 {
 	struct trap *ttmp;
 
@@ -38,7 +39,9 @@ int x,y,typ;
 	return(ttmp);
 }
 
-dotrap(trap) struct trap *trap; {
+void
+dotrap(struct trap *trap)
+{
 	int ttype = trap->ttyp;
 
 	nomul(0);
@@ -67,7 +70,7 @@ dotrap(trap) struct trap *trap; {
 			  if(uarmh)
 				pline("Its blow glances off your helmet.");
 			  else
-				(void) thitu(3,d(4,6),"falling piercer");
+				thitu(3,d(4,6),"falling piercer");
 			}
 			break;
 		case ARROW_TRAP:
@@ -137,7 +140,9 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 	}
 }
 
-mintrap(mtmp) struct monst *mtmp; {
+int
+mintrap(struct monst *mtmp)
+{
 	struct trap *trap = t_at(mtmp->mx, mtmp->my);
 	int wasintrap = mtmp->mtrapped;
 
@@ -148,7 +153,6 @@ mintrap(mtmp) struct monst *mtmp; {
 	} else {
 	    int tt = trap->ttyp;
 	    int in_sight = cansee(mtmp->mx,mtmp->my);
-	    extern char mlarge[];
 
 	    if(mtmp->mtrapseen & (1 << tt)) {
 		/* he has been in such a trap - perhaps he escapes */
@@ -227,7 +231,9 @@ pline("A trap door in the ceiling opens and a rock hits %s!", monnam(mtmp));
 	return(mtmp->mtrapped);
 }
 
-selftouch(arg) char *arg; {
+void
+selftouch(const char *arg)
+{
 	if(uwep && uwep->otyp == DEAD_COCKATRICE){
 		pline("%s touch the dead cockatrice.", arg);
 		pline("You turn to stone.");
@@ -236,7 +242,9 @@ selftouch(arg) char *arg; {
 	}
 }
 
-float_up(){
+void
+float_up(void)
+{
 	if(u.utrap) {
 		if(u.utraptype == TT_PIT) {
 			u.utrap = 0;
@@ -248,10 +256,12 @@ float_up(){
 		pline("You start to float in the air!");
 }
 
-float_down(){
+void
+float_down(void)
+{
 	struct trap *trap;
 	pline("You float gently to the ground.");
-	if(trap = t_at(u.ux,u.uy))
+	if((trap = t_at(u.ux,u.uy)))
 		switch(trap->ttyp) {
 		case PIERC:
 			break;
@@ -264,8 +274,9 @@ float_down(){
 	pickup(1);
 }
 
-vtele() {
-#include "def.mkroom.h"
+static void
+vtele(void)
+{
 	struct mkroom *croom;
 	for(croom = &rooms[0]; croom->hx >= 0; croom++)
 	    if(croom->rtype == VAULT) {
@@ -281,8 +292,9 @@ vtele() {
 	tele();
 }
 
-tele() {
-	extern coord getpos();
+void
+tele(void)
+{
 	coord cc;
 	int nux,nuy;
 
@@ -304,8 +316,8 @@ tele() {
 	teleds(nux, nuy);
 }
 
-teleds(nux, nuy)
-int nux,nuy;
+static void
+teleds(int nux, int nuy)
 {
 	if(Punished) unplacebc();
 	unsee();
@@ -322,21 +334,23 @@ int nux,nuy;
 	nomul(0);
 	if(levl[nux][nuy].typ == POOL && !Levitation)
 		drown();
-	(void) inshop();
+	inshop();
 	pickup(1);
 	if(!Blind) read_engr_at(u.ux,u.uy);
 }
 
-teleok(x,y) int x,y; {	/* might throw him into a POOL */
+static bool
+teleok(int x, int y)	/* might throw him into a POOL */
+{
 	return( isok(x,y) && !IS_ROCK(levl[x][y].typ) && !m_at(x,y) &&
 		!sobj_at(ENORMOUS_ROCK,x,y) && !t_at(x,y)
 	);
 	/* Note: gold is permitted (because of vaults) */
 }
 
-dotele() {
-	extern char pl_character[];
-
+int
+dotele(void)
+{
 	if(
 #ifdef WIZARD
 	   !wizard &&
@@ -355,7 +369,9 @@ dotele() {
 	return(1);
 }
 
-placebc(attach) int attach; {
+void
+placebc(int attach)
+{
 	if(!uchain || !uball){
 		impossible("Where are your chain and ball??");
 		return;
@@ -372,7 +388,9 @@ placebc(attach) int attach; {
 	}
 }
 
-unplacebc(){
+void
+unplacebc(void)
+{
 	if(!carried(uball)){
 		freeobj(uball);
 		unpobj(uball);
@@ -381,7 +399,9 @@ unplacebc(){
 	unpobj(uchain);
 }
 
-level_tele() {
+void
+level_tele(void)
+{
 int newlevel;
 	if(Teleport_control) {
 	    char buf[BUFSZ];
@@ -427,7 +447,8 @@ int newlevel;
 	goto_level(newlevel, FALSE); /* calls done("escaped") if newlevel==0 */
 }
 
-drown()
+void
+drown(void)
 {
 	pline("You fall into a pool!");
 	pline("You can't swim!");
@@ -441,7 +462,7 @@ drown()
 		/* we should perhaps merge these scrolls ? */
 
 		pline("You attempt a teleport spell.");	/* utcsri!carroll */
-		(void) dotele();
+		dotele();
 		if(levl[u.ux][u.uy].typ != POOL) return;
 	}
 	pline("You drown ...");
