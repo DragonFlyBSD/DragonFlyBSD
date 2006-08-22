@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/jexec/jexec.c,v 1.2 2003/07/04 19:14:27 bmilekic Exp $
- * $DragonFly: src/usr.sbin/jexec/jexec.c,v 1.1 2005/01/31 22:29:59 joerg Exp $
+ * $DragonFly: src/usr.sbin/jexec/jexec.c,v 1.2 2006/08/22 13:02:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ getjailid(const char *str)
 	errno = 0;
 	v = strtol(str, &ep, 10);
 	if (v < INT_MIN || v > INT_MAX || errno == ERANGE)
-		errc(1, ERANGE, "invalid jail id", str);
+		errc(1, ERANGE, "invalid jail id: %s", str);
 	if (ep == str || *ep != '\0')
 		errx(1, "cannot parse jail id: %s.", str);
 
