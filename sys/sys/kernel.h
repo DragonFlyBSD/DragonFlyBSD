@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.21 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.22 2006/08/23 06:45:40 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -119,6 +119,7 @@ enum sysinit_sub_id {
 	SI_SUB_KMEM		= 0x1800000,	/* kernel memory*/
 	SI_SUB_KVM_RSRC		= 0x1A00000,	/* kvm operational limits*/
 	SI_SUB_CPU		= 0x1e00000,	/* CPU resource(s)*/
+	SI_SUB_OBJCACHE		= 0x1e80000,	/* inits w/ objcache/malloc */
 	SI_SUB_KLD		= 0x1f00000,	/* KLD and module setup */
 	SI_SUB_INTRINSIC	= 0x2000000,	/* proc 0*/
 	SI_SUB_VM_CONF		= 0x2100000,	/* config VM, set limits*/

@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.7 2006/06/01 06:10:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.8 2006/08/23 06:45:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -235,6 +235,9 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 
 /*
  * Get an object from the object cache.
+ *
+ * WARNING!  ocflags are only used when we have to go to the underlying
+ * allocator, so we cannot depend on flags such as M_ZERO.
  */
 void *
 objcache_get(struct objcache *oc, int ocflags)

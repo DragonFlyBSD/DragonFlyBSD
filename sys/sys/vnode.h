@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.65 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.66 2006/08/23 06:45:40 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -75,6 +75,9 @@
 #endif
 #ifndef _SYS_SYSLINK_H_
 #include <sys/syslink.h>
+#endif
+#ifndef _SYS_CCMS_H_
+#include <sys/ccms.h>
 #endif
 #ifndef _MACHINE_LOCK_H_
 #include <machine/lock.h>
@@ -229,6 +232,7 @@ struct vnode {
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
 	struct vrangehead v_range;		/* range lock */
+	struct ccms_dataspace v_ccms;		/* cache coherency */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */

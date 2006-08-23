@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.44 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.45 2006/08/23 06:45:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -414,6 +414,7 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 {
 	struct uio auio;
 	struct iovec aiov;
+	struct ccms_lock ccms_lock;
 	int error;
 
 	if ((ioflg & IO_NODELOCKED) == 0)
@@ -427,11 +428,13 @@ vn_rdwr(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 	auio.uio_segflg = segflg;
 	auio.uio_rw = rw;
 	auio.uio_td = curthread;
+	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, &auio);
 	if (rw == UIO_READ) {
 		error = VOP_READ(vp, &auio, ioflg, cred);
 	} else {
 		error = VOP_WRITE(vp, &auio, ioflg, cred);
 	}
+	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	if (aresid)
 		*aresid = auio.uio_resid;
 	else
@@ -492,6 +495,7 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 static int
 vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
+	struct ccms_lock ccms_lock;
 	struct vnode *vp;
 	int error, ioflag;
 
@@ -518,10 +522,11 @@ vn_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	vn_lock(vp, LK_SHARED | LK_RETRY);
 	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
-
 	ioflag |= sequential_heuristic(uio, fp);
 
+	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
 	error = VOP_READ(vp, uio, ioflag, cred);
+	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
@@ -603,6 +608,7 @@ done:
 static int
 vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 {
+	struct ccms_lock ccms_lock;
 	struct vnode *vp;
 	int error, ioflag;
 
@@ -648,7 +654,9 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	if ((flags & O_FOFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
+	ccms_lock_get_uio(&vp->v_ccms, &ccms_lock, uio);
 	error = VOP_WRITE(vp, uio, ioflag, cred);
+	ccms_lock_put(&vp->v_ccms, &ccms_lock);
 	if ((flags & O_FOFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
