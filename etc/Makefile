@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.125 2006/08/18 08:22:43 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.126 2006/08/25 22:37:08 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -434,6 +434,7 @@ upgrade_etc:	preupgrade
 	rm -f ${DESTDIR}/sbin/brconfig
 	rm -f ${DESTDIR}/usr/share/mk/bsd.cpu.gcc[23].mk
 	rm -f ${DESTDIR}/modules/coda.ko
+	rm -f ${DESTDIR}/dev/zs0
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NO_MAKEDEV)

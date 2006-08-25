@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.cpu.gcc34.mk,v 1.1 2004/06/15 07:53:32 joerg Exp $
+# $DragonFly: src/share/mk/bsd.cpu.gcc34.mk,v 1.2 2006/08/25 22:37:08 swildner Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -8,9 +8,6 @@
 . if ${MACHINE_ARCH} == "i386"
 _CPUCFLAGS = -mtune=pentiumpro
 MACHINE_CPU = i486
-. elif ${MACHINE_ARCH} == "alpha"
-_CPUCFLAGS = -mtune=ev4 -mtune=ev5
-MACHINE_CPU = ev4
 .elif ${MACHINE_ARCH} == "amd64"
 MACHINE_CPU = amd64 sse2 sse
 . elif ${MACHINE_ARCH} == "ia64"
@@ -38,7 +35,6 @@ CPUTYPE = athlon
 # after /etc/make.conf so it can react to the local value of CPUTYPE
 # defined therein.  Consult:
 #	http://gcc.gnu.org/onlinedocs/gcc/i386-and-x86-64-Options.html
-#	http://gcc.gnu.org/onlinedocs/gcc/DEC-Alpha-Options.html
 #	http://gcc.gnu.org/onlinedocs/gcc/SPARC-Options.html
 #	http://gcc.gnu.org/onlinedocs/gcc/RS-6000-and-PowerPC-Options.html
 
@@ -65,22 +61,6 @@ _CPUCFLAGS = -march=pentium-mmx
 _CPUCFLAGS = -march=pentium
 .  elif ${CPUTYPE} == "i486"
 _CPUCFLAGS = -march=i486
-.  endif
-. elif ${MACHINE_ARCH} == "alpha"
-.  if ${CPUTYPE} == "ev67"
-_CPUCFLAGS = -mtune=ev67
-.  elif ${CPUTYPE} == "ev6"
-_CPUCFLAGS = -mtune=ev6
-.  elif ${CPUTYPE} == "pca56"
-_CPUCFLAGS = -mtune=pca56
-.  elif ${CPUTYPE} == "ev56"
-_CPUCFLAGS = -mtune=ev56
-.  elif ${CPUTYPE} == "ev5"
-_CPUCFLAGS = -mtune=ev5
-.  elif ${CPUTYPE} == "ev45"
-_CPUCFLAGS = -mtune=ev45
-.  elif ${CPUTYPE} == "ev4"
-_CPUCFLAGS = -mtune=ev4
 .  endif
 . endif
 
@@ -118,20 +98,6 @@ MACHINE_CPU = i486 i386
 .  elif ${CPUTYPE} == "i386"
 MACHINE_CPU = i386
 .  endif
-. elif ${MACHINE_ARCH} == "alpha"
-.  if ${CPUTYPE} == "ev6"
-MACHINE_CPU = ev6 ev56 pca56 ev5 ev45 ev4
-.  elif ${CPUTYPE} == "pca56"
-MACHINE_CPU = pca56 ev56 ev5 ev45 ev4
-.  elif ${CPUTYPE} == "ev56"
-MACHINE_CPU = ev56 ev5 ev45 ev4
-.  elif ${CPUTYPE} == "ev5"
-MACHINE_CPU = ev5 ev45 ev4
-.  elif ${CPUTYPE} == "ev45"
-MACHINE_CPU = ev45 ev4
-.  elif ${CPUTYPE} == "ev4"
-MACHINE_CPU = ev4
-.  endif
 . elif ${MACHINE_ARCH} == "amd64"
 MACHINE_CPU = amd64 sse2 sse
 . elif ${MACHINE_ARCH} == "ia64"
@@ -140,8 +106,3 @@ MACHINE_CPU = itanium
 .  endif
 . endif
 .endif
-
-.if ${MACHINE_ARCH} == "alpha"
-_CPUCFLAGS += -mieee
-.endif
-

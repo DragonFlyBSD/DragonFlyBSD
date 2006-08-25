@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc40.mk,v 1.1 2005/06/05 22:43:19 corecode Exp $
+# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc40.mk,v 1.2 2006/08/25 22:37:08 swildner Exp $
 
 # Set default CPU compile flags and baseline CPUTYPE for each arch.  The
 # compile flags must support the minimum CPU type for each architecture but
@@ -30,7 +30,6 @@ CPUTYPE = athlon
 # after /etc/make.conf so it can react to the local value of CPUTYPE
 # defined therein.  Consult:
 #	http://gcc.gnu.org/onlinedocs/gcc/i386-and-x86-64-Options.html
-#	http://gcc.gnu.org/onlinedocs/gcc/DEC-Alpha-Options.html
 #	http://gcc.gnu.org/onlinedocs/gcc/SPARC-Options.html
 #	http://gcc.gnu.org/onlinedocs/gcc/RS-6000-and-PowerPC-Options.html
 

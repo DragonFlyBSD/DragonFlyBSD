@@ -38,12 +38,12 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.7 2005/04/20 16:05:51 cpressey Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.8 2006/08/25 22:37:08 swildner Exp $
  */
 
 #include <sys/param.h>
 
-#if defined(sparc) || defined(mips) || defined(ibm032) || defined(__alpha__)
+#if defined(sparc) || defined(mips) || defined(ibm032)
 #define BPF_ALIGN
 #endif
 

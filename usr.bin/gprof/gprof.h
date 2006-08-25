@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)gprof.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/gprof/gprof.h,v 1.2 2006/07/31 12:12:08 corecode Exp $
+ * $DragonFly: src/usr.bin/gprof/gprof.h,v 1.3 2006/08/25 22:37:09 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -41,9 +41,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if __alpha__
-#   include "alpha.h"
-#endif
 #if vax
 #   include "vax.h"
 #endif

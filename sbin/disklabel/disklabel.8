@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.9 2006/05/26 19:39:38 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.10 2006/08/25 22:37:08 swildner Exp $
 .\"
 .Dd July 30, 1999
 .Dt DISKLABEL 8
@@ -444,8 +444,7 @@ Otherwise, the default boot image names are used:
 .Pa /boot/boot1
 and
 .Pa /boot/boot2
-for the standard stage1 and stage2 boot images (details may vary
-on architectures like the Alpha, where only a single-stage boot is used).
+for the standard stage1 and stage2 boot images.
 .El
 .Ss Initializing/Formatting a bootable disk from scratch
 To initialize a disk from scratch the following sequence is recommended.

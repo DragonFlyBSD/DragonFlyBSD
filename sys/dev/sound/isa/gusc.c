@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/isa/gusc.c,v 1.5.2.6 2002/04/22 15:49:30 cg Exp $
- * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.6 2005/10/12 17:35:55 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.7 2006/08/25 22:37:08 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,11 +44,8 @@
 
 #include <bus/isa/isavar.h>
 #include <bus/isa/isa_common.h>
-#ifdef __alpha__		/* XXX workaround a stupid warning */
-#include <alpha/isa/isavar.h>
-#endif
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.6 2005/10/12 17:35:55 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/isa/gusc.c,v 1.7 2006/08/25 22:37:08 swildner Exp $");
 
 #define LOGICALID_NOPNP 0
 #define LOGICALID_PCM   0x0000561e

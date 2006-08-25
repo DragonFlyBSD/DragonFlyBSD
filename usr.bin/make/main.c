@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.143 2005/09/24 07:27:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.144 2006/08/25 22:37:09 swildner Exp $
  */
 
 /*
@@ -813,8 +813,6 @@ InitVariables(const char progname[])
 	if ((machine_cpu = getenv("MACHINE_CPU")) == NULL) {
 		if (!strcmp(machine_arch, "i386"))
 			machine_cpu = "i386";
-		else if (!strcmp(machine_arch, "alpha"))
-			machine_cpu = "ev4";
 		else
 			machine_cpu = "unknown";
 	}

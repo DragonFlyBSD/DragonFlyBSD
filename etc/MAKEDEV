@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.21 2006/08/19 01:36:39 swildner Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.22 2006/08/25 22:37:08 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -493,7 +493,6 @@ all)
 	sh MAKEDEV cuaa0 cuaa1 cuaa2 cuaa3		# cdev, serial tty
 	sh MAKEDEV pty0					# cdev, pseudo tty
 	sh MAKEDEV ttyd0 ttyd1 ttyd2 ttyd3		# cdev, serial tty
-	sh MAKEDEV zs0					# big-Alpha serial tty
 	sh MAKEDEV kbd0 kbd1				# cdev, keyboard
 	sh MAKEDEV mse0 psm0 jogdial sysmouse		# cdev, mouse
 	sh MAKEDEV pcaudio speaker snd0			# cdev, noise
@@ -544,7 +543,6 @@ fixit)
 	sh MAKEDEV cuaa0				# cdev, serial tty
 	sh MAKEDEV pty0					# cdev, pseudo tty
 	sh MAKEDEV ttyd0				# cdev, serial tty
-	sh MAKEDEV zs0					# big-Alpha serial tty
 	sh MAKEDEV kbd0					# cdev, keyboard
 	sh MAKEDEV mse0 psm0 sysmouse			# cdev, mouse
 	sh MAKEDEV lpt0					# cdev, printer
@@ -1576,16 +1574,6 @@ cuaA*)
 
 		port=$(($port + 1))
 	done
-	;;
-
-#-----------------------------------------------------------------------------
-
-zs?)
-	unit=`expr $i : 'zs.*\(.\)$'`
-
-	m=`ttyminor $unit`
-
-	mknod zs $unit c 135 $m
 	;;
 
 #-----------------------------------------------------------------------------

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/param.h,v 1.9 2004/05/14 13:44:36 cognet Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/param.h,v 1.3 2006/07/27 00:41:24 corecode Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/param.h,v 1.4 2006/08/25 22:37:09 swildner Exp $
  */
 
 /*
@@ -64,9 +64,6 @@
  * or the value of sizeof is of type unsigned long.
  */
 #ifdef __amd64__
-#define PTRDIFF_IS_LONG		1
-#define SIZEOF_IS_ULONG		1
-#elif __alpha__
 #define PTRDIFF_IS_LONG		1
 #define SIZEOF_IS_ULONG		1
 #elif __i386__

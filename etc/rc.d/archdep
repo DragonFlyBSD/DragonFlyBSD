@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/archdep,v 1.5 2003/05/06 00:09:51 obrien Exp $
-# $DragonFly: src/etc/rc.d/Attic/archdep,v 1.5 2006/05/20 18:26:29 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/archdep,v 1.6 2006/08/25 22:37:08 swildner Exp $
 #
 
 # PROVIDE: archdep
@@ -22,26 +22,10 @@ unaligned_warnings()
 	fi
 }
 
-# Alpha OSF/1 binary emulation
-#
-osf1_compat()
-{
-	if checkyesno osf1_enable; then
-		echo -n ' OSF/1'
-		if ! kldstat -v | grep osf1_ecoff > /dev/null; then
-			kldload osf1 > /dev/null 2>&1
-		fi
-	fi
-}
-
 _arch=`${SYSCTL_N} hw.machine`
 echo -n "Initial $_arch initialization:"
 case $_arch in
 i386)
-	;;
-alpha)
-	osf1_compat
-	unaligned_warnings
 	;;
 ia64)
 	unaligned_warnings
