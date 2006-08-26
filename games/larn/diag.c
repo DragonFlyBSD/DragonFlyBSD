@@ -1,12 +1,11 @@
 /*	diag.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/diag.c,v 1.5 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/diag.c,v 1.4 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/larn/diag.c,v 1.5 2006/08/26 17:05:05 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/times.h>
 #include <sys/stat.h>
 #include "header.h"
 extern int rmst,maxitm,lasttime;
-extern char nosignal;
 static struct tms cputime;
 /*
 	***************************
@@ -15,9 +14,18 @@ static struct tms cputime;
 
 	subroutine to print out data for debugging
  */
+
+static void	greedy(void);
+static void	fsorry(void);
+static void	fcheat(void);
 #ifdef EXTRA
+static int	dcount(int);
+static void	drawdiagscreen(void);
+
 static int rndcount[16];
-diag()
+
+int
+diag(void)
 	{
 	int i,j;
 	int hit,dam;
@@ -79,9 +87,9 @@ diag()
 		}
 
 	lprcat("\n\nHere's the list of available potions:\n\n");
-	for (i=0; i<MAXPOTION; i++)	lprintf("%20s\n",&potionname[i][1]);
+	for (i=0; i<MAXPOTION; i++)	lprintf("%20s\n",&potionhide[i][1]);
 	lprcat("\n\nHere's the list of available scrolls:\n\n");
-	for (i=0; i<MAXSCROLL; i++)	lprintf("%20s\n",&scrollname[i][1]);
+	for (i=0; i<MAXSCROLL; i++)	lprintf("%20s\n",&scrollhide[i][1]);
 	lprcat("\n\nHere's the spell list:\n\n");
 	lprcat("spell          name           description\n");
 	lprcat("-------------------------------------------------------------------------------------------\n\n");
@@ -111,8 +119,8 @@ diag()
 /*
 	subroutine to count the number of occurrences of an object
  */
-dcount(l)
-	int l;
+static int
+dcount(int l)
 	{
 	int i,j,p;
 	int k;
@@ -127,7 +135,8 @@ dcount(l)
 /*
 	subroutine to draw the whole screen as the player knows it
  */
-diagdrawscreen()
+static void
+diagdrawscreen(void)
 	{
 	int i,j,k;
 
@@ -146,8 +155,9 @@ diagdrawscreen()
 	to save the game in a file
  */
 static time_t zzz=0;
-savegame(fname)
-	char *fname;
+
+int
+savegame(char *fname)
 	{
 	int i,k;
 	struct sphere *sp;
@@ -175,7 +185,7 @@ savegame(fname)
 	for (k=0; k<MAXPOTION; k++)  lprc(potionname[k][0]);
 	lwrite((char*)spelknow,SPNUM);		 lprc(wizard);
 	lprc(rmst);		/*	random monster generation counter */
-	for (i=0; i<90; i++)	lprc(itm[i].qty);
+	for (i=0; i<90; i++)	lprc(itm_[i].qty);
 	lwrite((char*)course,25);			lprc(cheat);		lprc(VERSION);
 	for (i=0; i<MAXMONST; i++) lprc(monster[i].genocided); /* genocide info */
 	for (sp=spheres; sp; sp=sp->p)
@@ -192,8 +202,8 @@ savegame(fname)
 	return(0);
 	}
 
-restoregame(fname)
-	char *fname;
+void
+restoregame(char *fname)
 	{
 	int i,k;
 	struct sphere *sp,*sp2;
@@ -214,12 +224,12 @@ restoregame(fname)
 	level = c[CAVELEVEL] = lgetc();
 	playerx = lgetc();		playery = lgetc();
 	lrfill((char*)iven,26);		lrfill((char*)ivenarg,26*sizeof(short));
-	for (k=0; k<MAXSCROLL; k++)  scrollname[k][0] = lgetc();
-	for (k=0; k<MAXPOTION; k++)  potionname[k][0] = lgetc();
+	for (k=0; k<MAXSCROLL; k++)  scrollname[k] = lgetc() ? scrollhide[k] : "";
+	for (k=0; k<MAXPOTION; k++)  potionname[k] = lgetc() ? potionhide[k] : "";
 	lrfill((char*)spelknow,SPNUM);		wizard = lgetc();
 	rmst = lgetc();			/*	random monster creation flag */
 
-	for (i=0; i<90; i++)	itm[i].qty = lgetc();
+	for (i=0; i<90; i++)	itm_[i].qty = lgetc();
 	lrfill((char*)course,25);			cheat = lgetc();
 	if (VERSION != lgetc())		/*  version number  */
 		{
@@ -250,7 +260,7 @@ restoregame(fname)
 
 	oldx = oldy = 0;
 	i = lrint_x();  /* inode # */
-	if (i && (filetimes.st_ino!=i)) fsorry();
+	if (i && (filetimes.st_ino!=(unsigned)i)) fsorry();
 	lrclose();
 	if (strcmp(fname,ckpfile) == 0)
 		{
@@ -274,7 +284,8 @@ restoregame(fname)
 /*
 	subroutine to not allow greedy cheaters
  */
-greedy()
+static void
+greedy(void)
 	{
 #if WIZID
 	if (wizard) return;
@@ -290,7 +301,8 @@ greedy()
 	subroutine to not allow altered save files and terminate the attempted
 	restart
  */
-fsorry()
+static void
+fsorry(void)
 	{
 	lprcat("\nSorry, but your savefile has been altered.\n");
 	lprcat("However, seeing as I am a good sport, I will let you play.\n");
@@ -301,7 +313,8 @@ fsorry()
 /*
 	subroutine to not allow game if save file can't be deleted
  */
-fcheat()
+static void
+fcheat(void)
 	{
 #if WIZID
 	if (wizard) return;

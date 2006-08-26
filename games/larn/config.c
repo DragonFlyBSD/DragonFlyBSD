@@ -5,6 +5,7 @@
  *                  do runtime concatenation, in main.
  *
  *		Larn is copyrighted 1986 by Noah Morgan.
+ * $DragonFly: src/games/larn/config.c,v 1.2 2006/08/26 17:05:05 pavalos Exp $
  */
 #include "header.h"
 #include "pathnames.h"
@@ -28,9 +29,6 @@ char scorefile[] = _PATH_SCORE;
 /* the maze data file */
 char larnlevels[] = _PATH_LEVELS;
 
-/* the fortune data file */
-char fortfile[] = _PATH_FORTS;
-
 /* the .larnopts filename */
 char optsfile[1024] ="/.larnopts";
 
@@ -39,7 +37,7 @@ char playerids[] = _PATH_PLAYERIDS;
 
 char diagfile[] ="Diagfile";		/* the diagnostic filename */
 char ckpfile[] ="Larn12.0.ckp";		/* the checkpoint filename */
-char *password ="pvnert(x)";		/* the wizards password <=32 */
+char password[] ="pvnert(x)";		/* the wizards password <=32 */
 char psname[PSNAMESIZE]="larn";		/* the process name */
 
 #define	WIZID	1

@@ -1,7 +1,22 @@
 /*	object.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/object.c,v 1.4 1999/11/16 02:57:23 billf Exp $ */
-/* $DragonFly: src/games/larn/object.c,v 1.4 2006/06/10 17:37:08 dillon Exp $ */
+/* $DragonFly: src/games/larn/object.c,v 1.5 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
+
+static void	finditem(int);
+static void	ostairs(int);
+static void	opotion(int);
+static void	oscroll(int);
+static void	oorb(void);
+static void	opit(void);
+static void	obottomless(void);
+static void	oelevator(int);
+static void	ostatue(void);
+static void	omirror(void);
+static void	obook(void);
+static void	ocookie(void);
+static void	ogold(int);
+static void	ohome(void);
 
 /*
 	***************
@@ -11,7 +26,8 @@
 	subroutine to look for an object and give the player his options
 	if an object was found.
  */
-lookforobject()
+void
+lookforobject(void)
 {
 int i,j;
 if (c[TIMESTOP])  return;	/* can't find objects is time is stopped	*/
@@ -24,11 +40,11 @@ switch(i)
 
 	case OPOTION:	lprcat("\n\nYou have found a magic potion");
 				i = iarg[playerx][playery];
-				if (potionname[i][0]) lprintf(" of %s",&potionname[i][1]);  opotion(i);  break;
+				if (potionname[i][0]) lprintf(" of %s",potionname[i]);  opotion(i);  break;
 
 	case OSCROLL:	lprcat("\n\nYou have found a magic scroll");
 				i = iarg[playerx][playery];
-				if (scrollname[i][0])	lprintf(" of %s",&scrollname[i][1]);
+				if (scrollname[i][0])	lprintf(" of %s",scrollname[i]);
 				oscroll(i);  break;
 
 	case OALTAR:	if (nearbymonst()) return;
@@ -74,7 +90,7 @@ switch(i)
 	case OSCHOOL:	if (nearbymonst()) return;
 				lprcat("\n\nYou have found the College of Larn.");
 				lprcat("\nDo you (g) go inside, or (i) stay here? ");
-				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 				if (i == 'g') { oschool();  /*	the college of larn	*/ }
 				else	lprcat(" stay here");
 				break;
@@ -87,7 +103,7 @@ switch(i)
 				if (i==OBANK) lprcat("\n\nYou have found the bank of Larn.");
 				else lprcat("\n\nYou have found a branch office of the bank of Larn.");
 				lprcat("\nDo you (g) go inside, or (i) stay here? ");
-				j=0; while ((j!='g') && (j!='i') && (j!='\33')) j=getchar();
+				j=0; while ((j!='g') && (j!='i') && (j!='\33')) j=getchr();
 				if (j == 'g') {  if (i==OBANK) obank(); else obank2(); /*  the bank of larn  */  }
 				else   lprcat(" stay here");
 				break;
@@ -98,7 +114,7 @@ switch(i)
 	case ODNDSTORE:	if (nearbymonst()) return;
 					lprcat("\n\nThere is a DND store here.");
 					lprcat("\nDo you (g) go inside, or (i) stay here? ");
-					i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+					i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 					if (i == 'g')
 						dndstore();  /*  the dnd adventurers store  */
 					else  lprcat(" stay here");
@@ -112,7 +128,7 @@ switch(i)
 
 	case OOPENDOOR:		lprintf("\n\nYou have found %s",objectname[i]);
 						lprcat("\nDo you (c) close it"); iopts();
-						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchar();
+						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchr();
 						if ((i=='\33') || (i=='i')) { ignore();  break; }
 						lprcat("close");  forget();
 						item[playerx][playery]=OCLOSEDDOOR;
@@ -122,7 +138,7 @@ switch(i)
 
 	case OCLOSEDDOOR:	lprintf("\n\nYou have found %s",objectname[i]);
 						lprcat("\nDo you (o) try to open it"); iopts();
-						i=0; while ((i!='o') && (i!='i') && (i!='\33')) i=getchar();
+						i=0; while ((i!='o') && (i!='i') && (i!='\33')) i=getchr();
 						if ((i=='\33') || (i=='i'))
 							{ ignore();  playerx = lastpx;
 							playery = lastpy; break; }
@@ -157,7 +173,7 @@ switch(i)
 
 	case OENTRANCE:	lprcat("\nYou have found "); lprcat(objectname[OENTRANCE]);
 					lprcat("\nDo you (g) go inside"); iopts();
-					i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+					i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 					if (i == 'g')
 						{
 						newcavelevel(1); playerx=33; playery=MAXY-2;
@@ -169,7 +185,7 @@ switch(i)
 
 	case OVOLDOWN:	lprcat("\nYou have found "); lprcat(objectname[OVOLDOWN]);
 						lprcat("\nDo you (c) climb down"); iopts();
-						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchar();
+						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchr();
 						if ((i=='\33') || (i=='i')) { ignore();  break; }
 					if (level!=0) { lprcat("\nThe shaft only extends 5 feet downward!"); return; }
 					if (packweight() > 45+3*(c[STRENGTH]+c[STREXTRA])) { lprcat("\nYou slip and fall down the shaft"); beep();
@@ -182,7 +198,7 @@ switch(i)
 
 	case OVOLUP:	lprcat("\nYou have found "); lprcat(objectname[OVOLUP]);
 						lprcat("\nDo you (c) climb up"); iopts();
-						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchar();
+						i=0; while ((i!='c') && (i!='i') && (i!='\33')) i=getchr();
 						if ((i=='\33') || (i=='i')) { ignore();  break; }
 					if (level!=11) { lprcat("\nThe shaft only extends 8 feet upwards before you find a blockage!"); return; }
 					if (packweight() > 45+5*(c[STRENGTH]+c[STREXTRA])) { lprcat("\nYou slip and fall down the shaft"); beep();
@@ -225,14 +241,14 @@ switch(i)
 	case OTRADEPOST:	if (nearbymonst()) return;
 				lprcat("\nYou have found the Larn trading Post.");
 				lprcat("\nDo you (g) go inside, or (i) stay here? ");
-				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 				if (i == 'g')  otradepost();  else  lprcat("stay here");
 				return;
 
 	case OHOME:	if (nearbymonst()) return;
 				lprcat("\nYou have found your way home.");
 				lprcat("\nDo you (g) go inside, or (i) stay here? ");
-				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 				if (i == 'g')  ohome();  else  lprcat("stay here");
 				return;
 
@@ -243,7 +259,7 @@ switch(i)
 	case OLRS:	if (nearbymonst()) return;
 				lprcat("\n\nThere is an LRS office here.");
 				lprcat("\nDo you (g) go inside, or (i) stay here? ");
-				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchar();
+				i=0; while ((i!='g') && (i!='i') && (i!='\33')) i=getchr();
 				if (i == 'g')
 					olrs();  /*  the larn revenue service */
 				else  lprcat(" stay here");
@@ -256,13 +272,13 @@ switch(i)
 /*
 	function to say what object we found and ask if player wants to take it
  */
-finditem(itm)
-	int itm;
+static void
+finditem(int obj)
 	{
 	int tmp,i;
-	lprintf("\n\nYou have found %s ",objectname[itm]);
+	lprintf("\n\nYou have found %s ",objectname[obj]);
 	tmp=iarg[playerx][playery];
-	switch(itm)
+	switch(obj)
 		{
 		case ODIAMOND:		case ORUBY:			case OEMERALD:
 		case OSAPPHIRE:		case OSPIRITSCARAB:	case OORBOFDRAGON:
@@ -272,9 +288,9 @@ finditem(itm)
 		if (tmp>0) lprintf("+ %d",(long)tmp); else if (tmp<0) lprintf(" %d",(long)tmp);
 		}
 	lprcat("\nDo you want to (t) take it"); iopts();
-	i=0; while (i!='t' && i!='i' && i!='\33') i=getchar();
+	i=0; while (i!='t' && i!='i' && i!='\33') i=getchr();
 	if (i == 't')
-		{	lprcat("take");  if (take(itm,tmp)==0)  forget();	return;	}
+		{	lprcat("take");  if (take(obj,tmp)==0)  forget();	return;	}
 	ignore();
 	}
 
@@ -287,15 +303,15 @@ finditem(itm)
 	subroutine to process the stair cases
 	if dir > 0 the up else down
  */
-ostairs(dir)
-	int dir;
+static void
+ostairs(int dir)
 	{
 	int k;
 	lprcat("\nDo you (s) stay here  ");
 	if (dir > 0)	lprcat("(u) go up  ");	else	lprcat("(d) go down  ");
 	lprcat("or (f) kick stairs? ");
 
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case '\33':
 		case 's':	case 'i':	lprcat("stay here");	return;
@@ -343,8 +359,8 @@ ostairs(dir)
 
 	subroutine to handle a teleport trap +/- 1 level maximum
  */
-oteleport(err)
-	int err;
+void
+oteleport(int err)
 	{
 	int tmp;
 	if (err) if (rnd(151)<3)  died(264);  /*	stuck in a rock */
@@ -368,11 +384,11 @@ oteleport(err)
 
 	function to process a potion
  */
-opotion(pot)
-	int pot;
+static void
+opotion(int pot)
 	{
 	lprcat("\nDo you (d) drink it, (t) take it"); iopts();
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case '\33':
 		case 'i':	ignore();  return;
@@ -388,12 +404,12 @@ opotion(pot)
 /*
 	function to drink a potion
  */
-quaffpotion(pot)
-	int pot;
+void
+quaffpotion(int pot)
 	{
 	int i,j,k;
 	if (pot<0 || pot>=MAXPOTION) return; /* check for within bounds */
-	potionname[pot][0] = ' ';
+	potionname[pot] = potionhide[pot];
 	switch(pot)
 		{
 		case 9: lprcat("\nYou feel greedy . . .");   nap(2000);
@@ -498,12 +514,12 @@ quaffpotion(pot)
 
 	function to process a magic scroll
  */
-oscroll(typ)
-	int typ;
+static void
+oscroll(int typ)
 	{
 	lprcat("\nDo you ");
 	if (c[BLINDCOUNT]==0) lprcat("(r) read it, "); lprcat("(t) take it"); iopts();
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case '\33':
 		case 'i':	ignore();  return;
@@ -534,25 +550,25 @@ char time_change[] = { HASTESELF,HERO,ALTPRO,PROTECTIONTIME,DEXCOUNT,
 /*
  *	function to adjust time when time warping and taking courses in school
  */
-larn_adjtime(tim)
-	long tim;
+void
+larn_adjtime(long tim)
 	{
 	int j;
 	for (j=0; j<26; j++)	/* adjust time related parameters */
-		if (c[time_change[j]])
-			if ((c[time_change[j]] -= tim) < 1) c[time_change[j]]=1;
+		if (c[(int)time_change[j]])
+			if ((c[(int)time_change[j]] -= tim) < 1) c[(int)time_change[j]]=1;
 	regen();
 	}
 
 /*
 	function to read a scroll
  */
-read_scroll(typ)
-	int typ;
+void
+read_scroll(int typ)
 	{
 	int i,j;
 	if (typ<0 || typ>=MAXSCROLL) return;  /* be sure we are within bounds */
-	scrollname[typ][0] = ' ';
+	scrollname[typ] = scrollhide[typ];
 	switch(typ)
 	  {
 	  case 0:	lprcat("\nYour armor glows for a moment");  enchantarmor(); return;
@@ -587,7 +603,7 @@ read_scroll(typ)
 
 	  case 11:	for (i=0; i<MAXY; i++)  for (j=0; j<MAXX; j++)
 					if (mitem[j][i])
-						hitp[j][i] = monster[mitem[j][i]].hitpoints;
+						hitp[j][i] = monster[(int)mitem[j][i]].hitpoints;
 				return;	/* monster healing */
 	  case 12:	c[SPIRITPRO] += 300 + rnd(200); bottomline(); return; /* spirit protection */
 
@@ -612,18 +628,18 @@ read_scroll(typ)
 						}
 				break;
 
-	  case 18:	for (i=0; i<11; i++)	c[exten[i]] <<= 1; /* spell extension */
+	  case 18:	for (i=0; i<11; i++)	c[(int)exten[i]] <<= 1; /* spell extension */
 				break;
 
 	  case 19:	for (i=0; i<26; i++)	/* identify */
 					{
-					if (iven[i]==OPOTION)  potionname[ivenarg[i]][0] = ' ';
-					if (iven[i]==OSCROLL)  scrollname[ivenarg[i]][0] = ' ';
+					if (iven[i]==OPOTION)  potionname[ivenarg[i]] = potionhide[ivenarg[i]];
+					if (iven[i]==OSCROLL)  scrollname[ivenarg[i]] = scrollhide[ivenarg[i]];
 					}
 				break;
 
 	  case 20:	for (i=0; i<10; i++)	/* remove curse */
-					if (c[curse[i]]) c[curse[i]] = 1;
+					if (c[(int)curse[i]]) c[(int)curse[i]] = 1;
 				break;
 
 	  case 21:	annihilate();	break;	/* scroll of annihilation */
@@ -635,15 +651,18 @@ read_scroll(typ)
 	}
 
 
-oorb()
+static void
+oorb(void)
 	{
 	}
 
-opit()
+static void
+opit(void)
 	{
 	int i;
 	if (rnd(101)<81)
 	  if (rnd(70) > 9*c[DEXTERITY]-packweight() || rnd(101)<5)
+	  {
 		if (level==MAXLEVEL-1) obottomless(); else
 		if (level==MAXLEVEL+MAXVLEVEL-1) obottomless(); else
 			{
@@ -658,15 +677,18 @@ opit()
 				lastnum=261; 	/*	if he dies scoreboard will say so */
 				}
 			losehp(i); nap(2000);  newcavelevel(level+1);  draws(0,MAXX,0,MAXY);
+	  }
 			}
 	}
 
-obottomless()
+static void
+obottomless(void)
 	{
 	lprcat("\nYou fell into a bottomless pit!");  beep(); nap(3000);  died(262);
 	}
-oelevator(dir)
-	int dir;
+
+static void
+oelevator(__unused int dir)
 	{
 #ifdef lint
 	int x;
@@ -675,19 +697,22 @@ oelevator(dir)
 #endif /* lint */
 	}
 
-ostatue()
+static void
+ostatue(void)
 	{
 	}
 
-omirror()
+static void
+omirror(void)
 	{
 	}
 
-obook()
+static void
+obook(void)
 	{
 	lprcat("\nDo you ");
 	if (c[BLINDCOUNT]==0) lprcat("(r) read it, "); lprcat("(t) take it"); iopts();
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case '\33':
 		case 'i':	ignore();	return;
@@ -704,8 +729,8 @@ obook()
 /*
 	function to read a book
  */
-readbook(lev)
-	int lev;
+void
+readbook(int lev)
 	{
 	int i,tmp;
 	if (lev<=3) i = rund((tmp=splev[lev])?tmp:1); else
@@ -716,11 +741,12 @@ readbook(lev)
 	 { lprcat("\nYour int went up by one!"); c[INTELLIGENCE]++; bottomline(); }
 	}
 
-ocookie()
+static void
+ocookie(void)
 	{
-	char *p;
+	const char *p;
 	lprcat("\nDo you (e) eat it, (t) take it"); iopts();
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case '\33':
 		case 'i':	ignore();	return;
@@ -728,7 +754,7 @@ ocookie()
 		case 'e':	lprcat("eat\nThe cookie tasted good.");
 					forget(); /* no more cookie	*/
 					if (c[BLINDCOUNT]) return;
-					if (!(p=fortune(fortfile))) return;
+					if (!(p=fortune())) return;
 					lprcat("  A message inside the cookie reads:\n"); lprcat(p);
 					return;
 
@@ -739,8 +765,8 @@ ocookie()
 
 
 /* routine to pick up some gold -- if arg==OMAXGOLD then the pile is worth 100* the argument */
-ogold(arg)
-	int arg;
+static void
+ogold(int arg)
 	{
 	long i;
 	i = iarg[playerx][playery];
@@ -751,7 +777,8 @@ ogold(arg)
 	item[playerx][playery] = know[playerx][playery] = 0; /*	destroy gold	*/
 	}
 
-ohome()
+static void
+ohome(void)
 	{
 	int i;
 	nosignal = 1;	/* disable signals */
@@ -796,14 +823,17 @@ ohome()
 		lprcat("\n     ----- press "); standout("return");
 		lprcat(" to continue, "); standout("escape");
 		lprcat(" to leave ----- ");
-		i=getchar();  while (i!='\33' && i!='\n') i=getchar();
+		i=getchr();  while (i!='\33' && i!='\n') i=getchr();
 		if (i=='\33') { drawscreen(); nosignal = 0; /* enable signals */ return; }
 		}
 	}
 
 /*	routine to save program space	*/
-iopts()
+void
+iopts(void)
 	{	lprcat(", or (i) ignore it? ");	}
-ignore()
+
+void
+ignore(void)
 	{	lprcat("ignore\n");	}
 

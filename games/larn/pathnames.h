@@ -31,11 +31,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	5.2 (Berkeley) 5/27/95
+ * $DragonFly: src/games/larn/pathnames.h,v 1.2 2006/08/26 17:05:05 pavalos Exp $
  */
 
 #define	_PATH_LOG		"/var/games/larn/llog12.0"
 #define	_PATH_SCORE		"/var/games/larn/lscore12.0"
 #define	_PATH_HELP		"/usr/share/games/larn/larn.help"
 #define	_PATH_LEVELS		"/usr/share/games/larn/larnmaze"
-#define	_PATH_FORTS		"/usr/share/games/larn/lfortune"
 #define	_PATH_PLAYERIDS		"/var/games/larn/playerids"

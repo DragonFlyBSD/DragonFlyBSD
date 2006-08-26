@@ -1,17 +1,27 @@
 /*	create.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/create.c,v 1.4 1999/11/16 02:57:20 billf Exp $ */
-/* $DragonFly: src/games/larn/create.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/create.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
-extern char spelknow[],larnlevels[];
-extern char beenhere[],wizard,level;
-extern short oldx,oldy;
+
+static void	makemaze(int);
+static int	cannedlevel(int);
+static void	treasureroom(int);
+static void	troom(int, int, int, int, int, int);
+static void	makeobject(int);
+static void	fillmroom(int, char, int);
+static void	froom(int, char, int);
+static void	fillroom(char, int);
+static void	sethp(int);
+static void	checkgen(void);
+
 /*
 	makeplayer()
 
 	subroutine to create the player and the players attributes
 	this is called at the beginning of a game and at no other time
  */
-makeplayer()
+void
+makeplayer(void)
 	{
 	int i;
 	scbr();  clear();
@@ -45,11 +55,11 @@ makeplayer()
 	levels will get a few more monsters.
 	Note that it is here we remove genocided monsters from the present level.
  */
-newcavelevel(x)
-	int x;
+void
+newcavelevel(int x)
 	{
 	int i,j;
-	if (beenhere[level]) savelevel();	/* put the level back into storage	*/
+	if (beenhere[(int)level]) savelevel();	/* put the level back into storage	*/
 	level = x;				/* get the new level and put in working storage */
 	if (beenhere[x]==0) for (i=0; i<MAXY; i++) for (j=0; j<MAXX; j++) know[j][i]=mitem[j][i]=0;
 		else { getlevel(); sethp(0);  goto chgn; }
@@ -74,14 +84,15 @@ chgn: checkgen();	/* wipe out any genocided monsters */
 	subroutine to make the caverns for a given level.  only walls are made.
  */
 static int mx,mxl,mxh,my,myl,myh,tmp2;
- makemaze(k)
-	int k;
+
+static void
+makemaze(int k)
 	{
 	int i,j,tmp;
 	int z;
 	if (k > 1 && (rnd(17)<=4 || k==MAXLEVEL-1 || k==MAXLEVEL+MAXVLEVEL-1))
 		{
-		if (cannedlevel(k));	return;		/* read maze from data file */
+		if (cannedlevel(k))	return;		/* read maze from data file */
 		}
 	if (k==0)  tmp=0;  else tmp=OWALL;
 	for (i=0; i<MAXY; i++)	for (j=0; j<MAXX; j++)	item[j][i]=tmp;
@@ -118,8 +129,8 @@ static int mx,mxl,mxh,my,myl,myh,tmp2;
 /*
 	function to eat away a filled in maze
  */
-eat(xx,yy)
-	int xx,yy;
+void
+eat(int xx, int yy)
 	{
 	int dir,try;
 	dir = rnd(4);	try=2;
@@ -163,10 +174,10 @@ eat(xx,yy)
  *		~	eye of larn		!	cure dianthroritis
  *		-	random object
  */
-cannedlevel(k)
-	int k;
+static int
+cannedlevel(int k)
 	{
-	char *row,*lgetl();
+	char *row;
 	int i,j;
 	int it,arg,mit,marg;
 	if (lopen(larnlevels)<0)
@@ -217,8 +228,8 @@ cannedlevel(k)
 	level 10's treasure room has the eye in it and demon lords
 	level V3 has potion of cure dianthroritis and demon prince
  */
-treasureroom(lv)
-	int lv;
+static void
+treasureroom(int lv)
 	{
 	int tx,ty,xsize,ysize;
 
@@ -238,8 +249,8 @@ treasureroom(lv)
  *	room is filled with objects and monsters
  *	the coordinate given is that of the upper left corner of the room
  */
-troom(lv,xsize,ysize,tx,ty,glyph)
-	int lv,xsize,ysize,tx,ty,glyph;
+static void
+troom(int lv, int xsize, int ysize, int tx, int ty, int glyph)
 	{
 	int i,j;
 	int tp1,tp2;
@@ -278,16 +289,14 @@ troom(lv,xsize,ysize,tx,ty,glyph)
 	playerx=tp1;  playery=tp2;
 	}
 
-static void fillroom();
-
 /*
 	***********
 	MAKE_OBJECT
 	***********
 	subroutine to create the objects in the maze for the given level
  */
-makeobject(j)
-	int j;
+static void
+makeobject(int j)
 	{
 	int i;
 	if (j==0)
@@ -373,17 +382,15 @@ makeobject(j)
 /*
 	subroutine to fill in a number of objects of the same kind
  */
-
-fillmroom(n,what,arg)
-	int n,arg;
-	char what;
+static void
+fillmroom(int n, char what, int arg)
 	{
 	int i;
 	for (i=0; i<n; i++)		fillroom(what,arg);
 	}
-froom(n,itm,arg)
-	int n,arg;
-	char itm;
+
+static void
+froom(int n, char itm, int arg)
 	{	if (rnd(151) < n) fillroom(itm,arg);	}
 
 /*
@@ -391,9 +398,7 @@ froom(n,itm,arg)
  *	uses a random walk
  */
 static void
-fillroom(what,arg)
-	int arg;
-	char what;
+fillroom(char what, int arg)
 	{
 	int x,y;
 
@@ -420,8 +425,8 @@ fillroom(what,arg)
 	subroutine to put monsters into an empty room without walls or other
 	monsters
  */
-fillmonst(what)
-	char what;
+int
+fillmonst(char what)
 	{
 	int x,y,trys;
 	for (trys=5; trys>0; --trys) /* max # of creation attempts */
@@ -430,7 +435,7 @@ fillmonst(what)
 	  if ((item[x][y]==0) && (mitem[x][y]==0) && ((playerx!=x) || (playery!=y)))
 	  	{
 		mitem[x][y] = what;  know[x][y]=0;
-		hitp[x][y] = monster[what].hitpoints;  return(0);
+		hitp[x][y] = monster[(int)what].hitpoints;  return(0);
 		}
 	  }
 	return(-1); /* creation failure */
@@ -441,8 +446,8 @@ fillmonst(what)
 	must be done when entering a new level
 	if sethp(1) then wipe out old monsters else leave them there
  */
-sethp(flg)
-	int flg;
+static void
+sethp(int flg)
 	{
 	int i,j;
 	if (flg) for (i=0; i<MAXY; i++) for (j=0; j<MAXX; j++) stealth[j][i]=0;
@@ -455,11 +460,12 @@ sethp(flg)
 /*
  *	Function to destroy all genocided monsters on the present level
  */
-checkgen()
+static void
+checkgen(void)
 	{
 	int x,y;
 	for (y=0; y<MAXY; y++)
 		for (x=0; x<MAXX; x++)
-			if (monster[mitem[x][y]].genocided)
+			if (monster[(int)mitem[x][y]].genocided)
 				mitem[x][y]=0; /* no more monster */
 	}

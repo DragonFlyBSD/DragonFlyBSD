@@ -32,7 +32,7 @@
  *
  * @(#)data.c	5.3 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/data.c,v 1.5 1999/11/30 03:48:59 billf Exp $
- * $DragonFly: src/games/larn/data.c,v 1.3 2006/06/13 22:12:16 dillon Exp $
+ * $DragonFly: src/games/larn/data.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
  */
 
 /*	data.c		Larn is copyrighted 1986 by Noah Morgan. */
@@ -51,7 +51,7 @@ static char aa6[] =	"    major deity    ";
 static char aa7[] =	"  novice guardian  ";
 static char aa8[] =	"apprentice guardian";
 static char aa9[] =	"    The Creator    ";
-char *class[]=
+const char *class[]=
 {	"  novice explorer  ", "apprentice explorer", " practiced explorer",/*  -3*/
 	"   expert explorer ", "  novice adventurer", "     adventurer    ",/*  -6*/
 	"apprentice conjurer", "     conjurer      ", "  master conjurer  ",/*  -9*/
@@ -147,7 +147,9 @@ short lastpx,lastpy;	/*	0 --- MAXX-1  or  0 --- MAXY-1					*/
 short oldx,oldy;
 short lasthx=0,lasthy=0;	/* location of monster last hit by player		*/
 short nobeep=0;			/* true if program is not to beep  					*/
-/* unsigned long randx=33601;      /*      the random number seed                                          */
+#ifdef MACRORND
+unsigned long randx=33601;      /*      the random number seed                                          */
+#endif
 time_t initialtime=0;			/* time playing began 							*/
 long gtime=0;				/*	the clock for the game						*/
 long outstanding_taxes=0;	/* present tax bill from score file 			*/
@@ -155,12 +157,12 @@ long c[100],cbak[100];		/*	the character description arrays			*/
 int enable_scroll=0;		/* constant for enabled/disabled scrolling regn */
 char aborted[] = " aborted";
 struct sphere *spheres=0; /*pointer to linked list for spheres of annihilation*/
-char *levelname[]=
+const char *levelname[]=
 { " H"," 1"," 2"," 3"," 4"," 5"," 6"," 7"," 8"," 9","10","V1","V2","V3" };
 
 char objnamelist[]=" ATOP%^F&^+M=%^$$f*OD#~][[)))(((||||||||{?!BC}o:@.<<<<EVV))([[]]](^ [H*** ^^ S tsTLc............................................";
 char monstnamelist[]=" BGHJKOScjtAELNQRZabhiCTYdegmvzFWflorXV pqsyUkMwDDPxnDDuD        ...............................................................";
-char *objectname[]=
+const char *objectname[]=
 { 0,"a holy altar","a handsome jewel encrusted throne","the orb","a pit",
   "a staircase leading upwards","an elevator going up","a bubbling fountain",
   "a great marble statue","a teleport trap","the college of Larn",
@@ -295,74 +297,78 @@ struct monst monster[] = {
 
 /*	name array for scrolls		*/
 
-char scrollname[][32] = {
-"\0enchant armor",
-"\0enchant weapon",
-"\0enlightenment",
-"\0blank paper",
-"\0create monster",
-"\0create artifact",
-"\0aggravate monsters",
-"\0time warp",
-"\0teleportation",
-"\0expanded awareness",
-"\0haste monsters",
-"\0monster healing",
-"\0spirit protection",
-"\0undead protection",
-"\0stealth",
-"\0magic mapping",
-"\0hold monsters",
-"\0gem perfection",
-"\0spell extension",
-"\0identify",
-"\0remove curse",
-"\0annihilation",
-"\0pulverization",
-"\0life protection",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 "
+const char *scrollname[] = { "","","","","","","","","","","","","","",
+			     "","","","","","","","","","","","","","" };
+const char *scrollhide[] = {
+" enchant armor",
+" enchant weapon",
+" enlightenment",
+" blank paper",
+" create monster",
+" create artifact",
+" aggravate monsters",
+" time warp",
+" teleportation",
+" expanded awareness",
+" haste monsters",
+" monster healing",
+" spirit protection",
+" undead protection",
+" stealth",
+" magic mapping",
+" hold monsters",
+" gem perfection",
+" spell extension",
+" identify",
+" remove curse",
+" annihilation",
+" pulverization",
+" life protection",
+"  ",
+"  ",
+"  ",
+"  "
  };
 
 /*	name array for magic potions	*/
-char potionname[][32] = {
-"\0sleep",
-"\0healing",
-"\0raise level",
-"\0increase ability",
-"\0wisdom",
-"\0strength",
-"\0raise charisma",
-"\0dizziness",
-"\0learning",
-"\0gold detection",
-"\0monster detection",
-"\0forgetfulness",
-"\0water",
-"\0blindness",
-"\0confusion",
-"\0heroism",
-"\0sturdiness",
-"\0giant strength",
-"\0fire resistance",
-"\0treasure finding",
-"\0instant healing",
+const char *potionname[] = { "","","","","","","","","","","","","","","","","",
+			"","","","","","","","","","","","","","","","","","" };
+const char *potionhide[] = {
+" sleep",
+" healing",
+" raise level",
+" increase ability",
+" wisdom",
+" strength",
+" raise charisma",
+" dizziness",
+" learning",
+" gold detection",
+" monster detection",
+" forgetfulness",
+" water",
+" blindness",
+" confusion",
+" heroism",
+" sturdiness",
+" giant strength",
+" fire resistance",
+" treasure finding",
+" instant healing",
 " cure dianthroritis",
-"\0poison",
-"\0see invisible",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 ",
-"\0 "
+" poison",
+" see invisible",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  ",
+"  "
  };
 
 
@@ -372,7 +378,7 @@ char potionname[][32] = {
 char spelknow[SPNUM]={0};
 char splev[] = { 1, 4, 9, 14, 18, 22, 26, 29, 32, 35, 37, 37, 37, 37, 37 };
 
-char *spelcode[]={
+const char *spelcode[]={
 	"pro",	"mle",	"dex",	"sle",	"chm",	"ssp",
 	"web",	"str",	"enl",	"hel",	"cbl",	"cre",	"pha",	"inv",
 	"bal",	"cld",	"ply",	"can",	"has",	"ckl",	"vpr",
@@ -381,7 +387,7 @@ char *spelcode[]={
 	"sph",	"gen",	"sum",	"wtw",	"alt",	"per"
  };
 
-char *spelname[]={
+const char *spelname[]={
 	"protection",				"magic missile",		"dexterity",
 	"sleep",					"charm monster",		"sonic spear",
 
@@ -404,7 +410,7 @@ char *spelname[]={
 	""
  };
 
-char *speldescript[]={
+const char *speldescript[]={
 /* 1 */
 	"generates a +2 protection field",
 	"creates and hurls a magic missile equivalent to a + 1 magic arrow",
@@ -540,7 +546,7 @@ char spelweird[MAXMONST+8][SPNUM] = {
 
  };
 
-char *spelmes[] = { "",
+const char *spelmes[] = { "",
 /*  1 */	"the web had no effect on the %s",
 /*  2 */	"the %s changed shape to avoid the web",
 /*  3 */	"the %s isn't afraid of you",

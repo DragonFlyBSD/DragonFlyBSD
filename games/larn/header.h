@@ -1,6 +1,8 @@
 /*	header.h		Larn is copyrighted 1986 by Noah Morgan. */
-/* $DragonFly: src/games/larn/header.h,v 1.4 2006/06/13 22:12:16 dillon Exp $ */
+/* $DragonFly: src/games/larn/header.h,v 1.5 2006/08/26 17:05:05 pavalos Exp $ */
 
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termcap.h>
@@ -36,7 +38,7 @@
 /*	this is the structure definition of the monster data	*/
 struct monst
 	{
-	char	*name;
+	const char	*name;
 	char	level;
 	short	armorclass;
 	char	damage;
@@ -53,10 +55,9 @@ struct monst
 struct _itm
 	{
 	short	price;
-	char	**mem;
-	char	obj;
-	char	arg;
-	char	qty;
+	short	obj;
+	short	arg;
+	short	qty;
 	};
 
 /*	this is the structure that holds the entire dungeon specifications	*/
@@ -326,7 +327,6 @@ struct sphere
 #define DEMONLORD 57
 #define DEMONPRINCE 64
 
-#define NULL 0
 #define BUFBIG	4096			/* size of the output buffer */
 #define MAXIBUF	4096			/* size of the input buffer */
 #define LOGNAMESIZE 40			/* max size of the players name */
@@ -342,9 +342,9 @@ extern char level,*levelname[],logfile[],loginname[],logname[],*lpbuf,*lpend;
 extern char *lpnt,moved[MAXX][MAXY],mitem[MAXX][MAXY],monstlevel[];
 extern char monstnamelist[],nch[],ndgg[],nlpts[],nomove,nosignal,nowelcome;
 extern char nplt[],nsw[],*objectname[];
-extern char objnamelist[],optsfile[],potionname[][32],playerids[],potprob[];
+extern char objnamelist[],optsfile[],playerids[],potprob[];
 extern char predostuff,psname[],restorflag,savefilename[],scorefile[],scprob[];
-extern char screen[MAXX][MAXY],scrollname[][32],sex,*spelcode[],*speldescript[];
+extern char screen[MAXX][MAXY],sex,*spelcode[],*speldescript[];
 extern char spelknow[],*spelname[],*spelmes[],spelweird[MAXMONST+8][SPNUM];
 extern char splev[],stealth[MAXX][MAXY],to_lower[],to_upper[],wizard;
 extern short diroffx[],diroffy[],hitflag,hit2flag,hit3flag,hitp[MAXX][MAXY];
@@ -356,12 +356,200 @@ extern long outstanding_taxes,skill[],gtime,c[],cbak[];
 extern struct cel *cell;
 extern struct monst monster[];
 extern struct sphere *spheres;
-extern struct _itm itm[];
+extern struct _itm itm_[];
+extern const char *potionhide[],*potionname[],*scrollhide[],*scrollname[];
 
-char *fortune(),*lgetw(),*lgetl();
-char *tmcapcnv();
-long paytaxes(),lgetc(),lrint_x();
-unsigned long readnum();
+/* bill.c */
+void	mailbill(void);
+
+/* create.c */
+void	makeplayer(void);
+void	newcavelevel(int);
+void	eat(int, int);
+int	fillmonst(char);
+
+/* diag.c */
+#ifdef EXTRA
+int	diag(void);
+#endif
+int	savegame(char *);
+void	restoregame(char *);
+
+/* display.c */
+void	bottomline(void);
+void	bottomhp(void);
+void	bottomspell(void);
+void	bottomdo(void);
+void	bot_linex(void);
+void	bottomgold(void);
+void	draws(int, int, int, int);
+void	drawscreen(void);
+void	showcell(int, int);
+void	show1cell(int, int);
+void	showplayer(void);
+int	moveplayer(int);
+void	seemagic(int);
+
+/* fortune.c */
+const char	*fortune(void);
+
+/* global.c */
+void	raiselevel(void);
+void	loselevel(void);
+void	raiseexperience(long);
+void	loseexperience(long);
+void	losehp(int);
+void	losemhp(int);
+void	raisehp(int);
+void	raisemhp(int);
+void	raisemspells(int);
+void	losemspells(int);
+int	makemonst(int);
+void	positionplayer(void);
+void	recalc(void);
+void	quit(void);
+void	more(void);
+int	take(int, int);
+int	drop_object(int);
+void	enchantarmor(void);
+void	enchweapon(void);
+int	pocketfull(void);
+int	nearbymonst(void);
+int	stealsomething(void);
+int	emptyhanded(void);
+void	creategem(void);
+void	adjustcvalues(int, int);
+int	getpassword(void);
+int	getyn(void);
+int	packweight(void);
+#ifndef MACRORND
+int	rnd(int);
+int	rund(int);
+#endif
+
+/* help.c */
+void	help(void);
+void	welcome(void);
+
+/* io.c */
+void	setupvt100(void);
+void	clearvt100(void);
+char	getchr(void);
+void	scbr(void);
+void	sncbr(void);
+void	newgame(void);
+void	lprintf(const char *, ...);
+void	lprint(long);
+void	lwrite(char *, int);
+long	lgetc(void);
+long	lrint_x(void);
+void	lrfill(char *, int);
+char	*lgetw(void);
+char	*lgetl(void);
+int	lcreat(char *);
+int	lopen(char *);
+int	lappend(char *);
+void	lrclose(void);
+void	lwclose(void);
+void	lprcat(const char *);
+void	cursor(int, int);
+void	cursors(void);
+#ifndef VT100
+void	init_term(void);
+#endif
+void	cl_line(int, int);
+void	cl_up(int, int);
+void	cl_dn(int, int);
+void	standout(const char *);
+void	set_score_output(void);
+void	lflush(void);
+#ifndef VT100
+char	*tmcapcnv(char *, char *);
+#endif
+void	beep(void);
+
+/* main.c */
+void	qshowstr(void);
+void	show3(int);
+void	parse2(void);
+unsigned long	readnum(long);
+
+/* monster.c */
+void	createmonster(int);
+void	createitem(int, int);
+void	cast(void);
+void	godirect(int, int, const char *, int, char);
+int	vxy(int *, int *);
+void	hitmonster(int, int);
+int	hitm(int, int, int);
+void	hitplayer(int, int);
+void	dropgold(int);
+void	something(int);
+int	newobject(int, int *);
+void	checkloss(int);
+long	annihilate(void);
+long	newsphere(int, int, int, int);
+long	rmsphere(int, int);
+
+/* moreobj.c */
+void	oaltar(void);
+void	othrone(int);
+void	odeadthrone(void);
+void	ochest(void);
+void	ofountain(void);
+
+/* movem.c */
+void	movemonst(void);
+
+/* nap.c */
+void	nap(int);
+
+/* object.c */
+void	lookforobject(void);
+void	oteleport(int);
+void	quaffpotion(int);
+void	larn_adjtime(long);
+void	read_scroll(int);
+void	readbook(int);
+void	iopts(void);
+void	ignore(void);
+
+/* regen.c */
+void	regen(void);
+
+/* savelev.c */
+void	savelevel(void);
+void	getlevel(void);
+
+/* scores.c */
+int	makeboard(void);
+int	hashewon(void);
+long	paytaxes(long);
+void	showscores(void);
+void	showallscores(void);
+void	died(int);
+void	diedlog(void);
+#ifndef UIDSCORE
+int	getplid(char *);
+#endif
+
+/* signal.c */
+void	sigsetup(void);
+
+/* store.c */
+void	dndstore(void);
+void	oschool(void);
+void	obank(void);
+void	obank2(void);
+void	ointerest(void);
+void	otradepost(void);
+void	olrs(void);
+
+/* tok.c */
+int	yylex(void);
+void	flushall(void);
+void	sethard(int);
+void	readopts(void);
 
 	/* macro to create scroll #'s with probability of occurrence */
 #define newscroll() (scprob[rund(81)])

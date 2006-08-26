@@ -32,16 +32,17 @@
  *
  * @(#)fortune.c	5.5 (Berkeley) 6/10/91
  * $FreeBSD: src/games/larn/fortune.c,v 1.2 1999/11/30 03:48:59 billf Exp $
- * $DragonFly: src/games/larn/fortune.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/fortune.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $
  */
 
 /* fortune.c		 Larn is copyrighted 1986 by Noah Morgan. */
+#include "header.h"
 
 /*
  * function to return a random fortune from the fortune file
  */
 
-char *flines[] = {
+const char *flines[] = {
 	"gem value = gem * 2 ^ perfection",
 	"sitting down can have unexpected results",
 	"don't pry into the affairs of others",
@@ -80,8 +81,8 @@ char *flines[] = {
 
 #define NFORTUNES	34
 
-char *
-fortune()
+const char *
+fortune(void)
 {
 	return (flines[random() % NFORTUNES]);
 }

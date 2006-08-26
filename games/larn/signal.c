@@ -1,39 +1,58 @@
 /*
- * $DragonFly: src/games/larn/signal.c,v 1.3 2006/03/12 12:20:31 swildner Exp $
+ * $DragonFly: src/games/larn/signal.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
  */
 
 #include <signal.h>
 #include "header.h"			/* "Larn is copyrighted 1986 by Noah Morgan.\n" */
 #define BIT(a) (1<<((a)-1))
-extern char savefilename[],wizard,predostuff,nosignal;
-static s2choose()	/* text to be displayed if ^C during intro screen */
+
+static void	s2choose(void);
+static void	cntlc(void);
+static void	sgam(void);
+#ifdef SIGTSTP
+static void	tstop(void);
+#endif
+static void	sigill(void);
+static void	sigtrap(void);
+static void	sigiot(void);
+static void	sigemt(void);
+static void	sigfpe(void);
+static void	sigbus(void);
+static void	sigsegv(void);
+static void	sigsys(void);
+static void	sigpipe(void);
+static void	sigterm(void);
+static void	sigpanic(int);
+
+static void
+s2choose(void)	/* text to be displayed if ^C during intro screen */
 	{
 	cursor(1,24); lprcat("Press "); setbold(); lprcat("return"); resetbold();
 	lprcat(" to continue: ");   lflush();
 	}
 
 static void
-cntlc()	/* what to do for a ^C */
+cntlc(void)	/* what to do for a ^C */
 	{
 	if (nosignal) return;	/* don't do anything if inhibited */
 	signal(SIGQUIT,SIG_IGN);	signal(SIGINT,SIG_IGN);
 	quit(); if (predostuff==1) s2choose(); else showplayer();
 	lflush();
-	signal(SIGQUIT,cntlc);	signal(SIGINT,cntlc);
+	signal(SIGQUIT,(sig_t)cntlc);	signal(SIGINT,(sig_t)cntlc);
 	}
 
 /*
  *	subroutine to save the game if a hangup signal
  */
 static void
-sgam()
+sgam(void)
 	{
 	savegame(savefilename);  wizard=1;  died(-257); /* hangup signal */
 	}
 
 #ifdef SIGTSTP
 static void
-tstop() /* control Y	*/
+tstop(void) /* control Y	*/
 	{
 	if (nosignal)   return;  /* nothing if inhibited */
 	lcreat((char*)0);  clearvt100();	lflush();	  signal(SIGTSTP,SIG_DFL);
@@ -43,7 +62,7 @@ tstop() /* control Y	*/
 #endif
 	kill(getpid(),SIGTSTP);
 
-	setupvt100();  signal(SIGTSTP,tstop);
+	setupvt100();  signal(SIGTSTP,(sig_t)tstop);
 	if (predostuff==1) s2choose(); else drawscreen();
 	showplayer();	lflush();
 	}
@@ -52,34 +71,64 @@ tstop() /* control Y	*/
 /*
  *	subroutine to issue the needed signal traps  called from main()
  */
-static void sigpanic();
-static void sigill()	{ sigpanic(SIGILL); }
-static void sigtrap()	{ sigpanic(SIGTRAP); }
-static void sigiot()	{ sigpanic(SIGIOT); }
-static void sigemt()	{ sigpanic(SIGEMT); }
-static void sigfpe()	{ sigpanic(SIGFPE); }
-static void sigbus()	{ sigpanic(SIGBUS); }
-static void sigsegv()	{ sigpanic(SIGSEGV); }
-static void sigsys()	{ sigpanic(SIGSYS); }
-static void sigpipe()	{ sigpanic(SIGPIPE); }
-static void sigterm()	{ sigpanic(SIGTERM); }
-sigsetup()
+static void
+sigill(void)
+	{ sigpanic(SIGILL); }
+
+static void
+sigtrap(void)
+	{ sigpanic(SIGTRAP); }
+
+static void
+sigiot(void)
+	{ sigpanic(SIGIOT); }
+
+static void
+sigemt(void)
+	{ sigpanic(SIGEMT); }
+
+static void
+sigfpe(void)
+	{ sigpanic(SIGFPE); }
+
+static void
+sigbus(void)
+	{ sigpanic(SIGBUS); }
+
+static void
+sigsegv(void)
+	{ sigpanic(SIGSEGV); }
+
+static void
+sigsys(void)
+	{ sigpanic(SIGSYS); }
+
+static void
+sigpipe(void)
+	{ sigpanic(SIGPIPE); }
+
+static void
+sigterm(void)
+	{ sigpanic(SIGTERM); }
+
+void
+sigsetup(void)
 	{
-	signal(SIGQUIT, cntlc); 		signal(SIGINT,  cntlc);
-	signal(SIGKILL, SIG_IGN);		signal(SIGHUP,  sgam);
-	signal(SIGILL,  sigill);		signal(SIGTRAP, sigtrap);
-	signal(SIGIOT,  sigiot);		signal(SIGEMT,  sigemt);
-	signal(SIGFPE,  sigfpe);		signal(SIGBUS,  sigbus);
-	signal(SIGSEGV, sigsegv);		signal(SIGSYS,  sigsys);
-	signal(SIGPIPE, sigpipe);		signal(SIGTERM, sigterm);
+	signal(SIGQUIT, (sig_t)cntlc); 		signal(SIGINT,  (sig_t)cntlc);
+	signal(SIGKILL, SIG_IGN);		signal(SIGHUP,  (sig_t)sgam);
+	signal(SIGILL,  (sig_t)sigill);		signal(SIGTRAP, (sig_t)sigtrap);
+	signal(SIGIOT,  (sig_t)sigiot);		signal(SIGEMT,  (sig_t)sigemt);
+	signal(SIGFPE,  (sig_t)sigfpe);		signal(SIGBUS,  (sig_t)sigbus);
+	signal(SIGSEGV, (sig_t)sigsegv);	signal(SIGSYS,  (sig_t)sigsys);
+	signal(SIGPIPE, (sig_t)sigpipe);	signal(SIGTERM, (sig_t)sigterm);
 #ifdef SIGTSTP
-	signal(SIGTSTP,tstop);		signal(SIGSTOP,tstop);
+	signal(SIGTSTP, (sig_t)tstop);		signal(SIGSTOP, (sig_t)tstop);
 #endif /* SIGTSTP */
 	}
 
 #ifdef BSD	/* for BSD UNIX? */
 
-static char *signame[NSIG] = { "",
+static const char *signame[NSIG] = { "",
 "SIGHUP",  /*	1	 hangup */
 "SIGINT",  /*	2	 interrupt */
 "SIGQUIT", /*	3	 quit */
@@ -111,7 +160,7 @@ static char *signame[NSIG] = { "",
 
 #else		/* for system V? */
 
-static char *signame[NSIG] = { "",
+static const char *signame[NSIG] = { "",
 "SIGHUP",  /*	1	 hangup */
 "SIGINT",  /*	2	 interrupt */
 "SIGQUIT", /*	3	 quit */
@@ -139,8 +188,7 @@ static char *signame[NSIG] = { "",
  *	routine to process a fatal error signal
  */
 static void
-sigpanic(sig)
-	int sig;
+sigpanic(int sig)
 	{
 	char buf[128];
 	signal(sig,SIG_DFL);

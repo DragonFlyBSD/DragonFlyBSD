@@ -1,13 +1,13 @@
 /* savelev.c		 Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/savelev.c,v 1.3 1999/11/16 02:57:24 billf Exp $ */
-/* $DragonFly: src/games/larn/savelev.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/savelev.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
-extern struct cel *cell;
 
 /*
  *	routine to save the present level into storage
  */
-savelevel()
+void
+savelevel(void)
 	{
 	struct cel *pcel;
 	char *pitem,*pknow,*pmitem;
@@ -29,7 +29,8 @@ savelevel()
 /*
  *	routine to restore a level from storage
  */
-getlevel()
+void
+getlevel(void)
 	{
 	struct cel *pcel;
 	char *pitem,*pknow,*pmitem;

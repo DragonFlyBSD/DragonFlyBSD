@@ -32,7 +32,7 @@
  *
  * @(#)bill.c	5.2 (Berkeley) 5/28/91
  * $FreeBSD: src/games/larn/bill.c,v 1.6 1999/11/30 03:48:58 billf Exp $
- * $DragonFly: src/games/larn/bill.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/bill.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $
  */
 
 #include <sys/file.h>
@@ -42,7 +42,7 @@
 
 /* bill.c		 Larn is copyrighted 1986 by Noah Morgan. */
 
-char *mail[] = {
+const char *mail[] = {
 	"From: dev-null (the LRS - Larn Revenue Service)\n",
 	"Subject: undeclared income\n",
 	"\n   We have heard you survived the caverns of Larn.  Let me be the",
@@ -111,13 +111,13 @@ char *mail[] = {
  */
 
 void
-mailbill()
+mailbill(void)
 {
 	int i;
 	char fname[32];
 	char buf[128];
-	char **cp;
-	int fd;
+	const char **cp;
+	int d;
 
 	wait(0);
 	if (fork() == 0) {
@@ -125,24 +125,24 @@ mailbill()
 		cp = mail;
 		sprintf(fname, "/tmp/#%dlarnmail", getpid());
 		for (i = 0; i < 6; i++) {
-			if ((fd = open(fname, O_WRONLY | O_TRUNC | O_CREAT),
+			if ((d = open(fname, O_WRONLY | O_TRUNC | O_CREAT),
 			    0660) == -1)
 				exit(0);
 			while (*cp != NULL) {
 				if (*cp[0] == '1') {
 					sprintf(buf, "\n%ld gold pieces back with you from your journey.  As the",
 					    (long)c[GOLD]);
-					write(fd, buf, strlen(buf));
+					write(d, buf, strlen(buf));
 				} else if (*cp[0] == '2') {
 					sprintf(buf, "\nin preparing your tax bill.  You owe %ld gold pieces as", (long)c[GOLD]*TAXRATE);
-					write(fd, buf, strlen(buf));
+					write(d, buf, strlen(buf));
 				} else
-					write(fd, *cp, strlen(*cp));
+					write(d, *cp, strlen(*cp));
 				cp++;
 			}
 			cp++;
 
-			close(fd);
+			close(d);
 			sprintf(buf, "/usr/sbin/sendmail %s < %s > /dev/null",
 			    loginname, fname);
 			system(buf);

@@ -1,7 +1,7 @@
 /*
  *	movem.c (move monster)		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/movem.c,v 1.4 1999/11/16 02:57:23 billf Exp $
- * $DragonFly: src/games/larn/movem.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/movem.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $
  *
  *	Here are the functions in this file:
  *
@@ -12,6 +12,10 @@
  */
 #include "header.h"
 
+static void	movemt(int, int);
+static void	mmove(int, int, int, int);
+static void	movsphere(void);
+
 /*
  *	movemonst()		Routine to move the monsters toward the player
  *
@@ -21,7 +25,9 @@
  */
 static short w1[9],w1x[9],w1y[9];
 static int tmp1,tmp2,tmp3,tmp4,distance;
-movemonst()
+
+void
+movemonst(void)
 	{
 	int i,j;
 	if (c[TIMESTOP]) return;	/* no action if time is stopped */
@@ -93,8 +99,9 @@ movemonst()
  *	Returns no value.
  */
 static int tmpitem,xl,xh,yl,yh;
-movemt(i,j)
-	int i,j;
+
+static void
+movemt(int i, int j)
 	{
 	int k,m,z,tmp,xtmp,ytmp,monst;
 	switch(monst=mitem[i][j])  /* for half speed monsters */
@@ -190,11 +197,11 @@ out:  if (tmp<distance) /* did find connectivity */
  *	Enter with the from coordinates in (x,y) and the destination coordinates
  *	in (xd,yd).
  */
-mmove(aa,bb,cc,dd)
-	int aa,bb,cc,dd;
+static void
+mmove(int aa, int bb, int cc, int dd)
 	{
 	int tmp,i,flag;
-	char *who,*p;
+	const char *who = NULL, *p;
 	flag=0;	/* set to 1 if monster hit by arrow trap */
 	if ((cc==playerx) && (dd==playery))
 		{
@@ -259,7 +266,6 @@ mmove(aa,bb,cc,dd)
 		  };
 		if (p) { lprintf(p,who,monster[tmp].name); beep(); }
 		}
-/*	if (yrepcount>1) { know[aa][bb] &= 2;  know[cc][dd] &= 2; return; } */
 	if (know[aa][bb] & 1)   show1cell(aa,bb);
 	if (know[cc][dd] & 1)   show1cell(cc,dd);
 	}
@@ -275,7 +281,8 @@ mmove(aa,bb,cc,dd)
  *	No value is returned.
  */
 #define SPHMAX 20	/* maximum number of spheres movsphere can handle */
-movsphere()
+static void
+movsphere(void)
 	{
 	int x,y,dir,len;
 	struct sphere *sp,*sp2;

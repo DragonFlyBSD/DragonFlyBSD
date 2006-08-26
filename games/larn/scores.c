@@ -1,6 +1,6 @@
 /* scores.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/scores.c,v 1.6 1999/11/16 02:57:24 billf Exp $
- * $DragonFly: src/games/larn/scores.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/larn/scores.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
  *
  *	Functions in this file are:
  *
@@ -27,6 +27,16 @@
 #include <sys/times.h>
 #include <sys/stat.h>
 #include "header.h"
+
+static int	readboard(void);
+static int	writeboard(void);
+static int	winshou(void);
+static int	shou(int);
+static int	sortboard(void);
+static void	newscore(long, char *, int, int);
+static void	new1sub(long, int, char *, long);
+static void	new2sub(long, int, char *, int);
+static void	diedsub(int);
 
 struct scofmt			/*	This is the structure for the scoreboard 		*/
 	{
@@ -75,7 +85,7 @@ struct log_fmt			/* 102 bytes struct for the log file 				*/
 static struct scofmt sco[SCORESIZE];	/* the structure for the scoreboard  */
 static struct wscofmt winr[SCORESIZE];	/* struct for the winning scoreboard */
 static struct log_fmt logg;				/* structure for the log file 		 */
-static char *whydead[] = {
+static const char *whydead[] = {
 	"quit", "suspended", "self - annihilated", "shot by an arrow",
 	"hit by a dart", "fell into a pit", "fell into a bottomless pit",
 	"a winner", "trapped in solid rock", "killed by a missing save file",
@@ -96,7 +106,8 @@ static char *whydead[] = {
  *
  *	returns -1 if unable to read in the scoreboard, returns 0 if all is OK
  */
-readboard()
+static int
+readboard(void)
 	{
 	if (lopen(scorefile)<0)
 	  { lprcat("Can't read scoreboard\n"); lflush(); return(-1); }
@@ -109,7 +120,8 @@ readboard()
  *
  *	returns -1 if unable to write the scoreboard, returns 0 if all is OK
  */
-writeboard()
+static int
+writeboard(void)
 	{
 	set_score_output();
 	if (lcreat(scorefile)<0)
@@ -123,7 +135,8 @@ writeboard()
  *
  *	returns -1 if unable to write the scoreboard, returns 0 if all is OK
  */
-makeboard()
+int
+makeboard(void)
 	{
 	int i;
 	for (i=0; i<SCORESIZE; i++)
@@ -144,7 +157,8 @@ makeboard()
  *	scoreboard.  This function also sets outstanding_taxes to the value in
  *	the winners scoreboard.
  */
-hashewon()
+int
+hashewon(void)
 	{
 	int i;
 	c[HARDGAME] = 0;
@@ -165,8 +179,8 @@ hashewon()
  *	Enter with the amount (in gp) to pay on the taxes.
  *	Returns amount actually paid.
  */
-long paytaxes(x)
-	long x;
+long
+paytaxes(long x)
 	{
 	int i;
 	long amt;
@@ -191,7 +205,8 @@ long paytaxes(x)
  *
  *	Returns the number of players on scoreboard that were shown
  */
-winshou()
+static int
+winshou(void)
 	{
 	struct wscofmt *p;
 	int i,j,count;
@@ -228,8 +243,8 @@ winshou()
  *	Enter with 0 to list the scores, enter with 1 to list inventories too
  *	Returns the number of players on scoreboard that were shown
  */
-shou(x)
-	int x;
+static int
+shou(int x)
 	{
 	int i,j,n,k;
 	int count;
@@ -273,7 +288,9 @@ shou(x)
  *	Returns nothing of value
  */
 static char esb[] = "The scoreboard is empty.\n";
-showscores()
+
+void
+showscores(void)
 	{
 	int i,j;
 	lflush();  lcreat((char*)0);  if (readboard()<0) return;
@@ -287,13 +304,14 @@ showscores()
  *
  *	Returns nothing of value
  */
-showallscores()
+void
+showallscores(void)
 	{
 	int i,j;
 	lflush();  lcreat((char*)0);  if (readboard()<0) return;
 	c[WEAR] = c[WIELD] = c[SHIELD] = -1;  /* not wielding or wearing anything */
-	for (i=0; i<MAXPOTION; i++) potionname[i][0]=' ';
-	for (i=0; i<MAXSCROLL; i++) scrollname[i][0]=' ';
+	for (i=0; i<MAXPOTION; i++) potionname[i] = potionhide[i];
+	for (i=0; i<MAXSCROLL; i++) scrollname[i] = scrollhide[i];
 	i=winshou();  j=shou(1);
 	if (i+j==0) lprcat(esb); else lprc('\n');
 	lflush();
@@ -304,9 +322,10 @@ showallscores()
  *
  *	Returns 0 if no sorting done, else returns 1
  */
-sortboard()
+static int
+sortboard(void)
 	{
-	int i,j,pos;
+	int i,j = 0,pos;
 	long jdat;
 	for (i=0; i<SCORESIZE; i++) sco[i].order = winr[i].order = -1;
 	pos=0;  while (pos < SCORESIZE)
@@ -337,10 +356,8 @@ sortboard()
  *		died() reason # in whyded, and TRUE/FALSE in winner if a winner
  *	ex.		newscore(1000, "player 1", 32, 0);
  */
-newscore(score, whoo, whyded, winner)
-	long score;
-	int winner, whyded;
-	char *whoo;
+static void
+newscore(long score, char *whoo, int whyded, int winner)
 	{
 	int i;
 	long taxes;
@@ -380,10 +397,8 @@ newscore(score, whoo, whyded, winner)
  *		slot in scoreboard in i, and the tax bill in taxes.
  *	Returns nothing of value
  */
-new1sub(score,i,whoo,taxes)
-	long score,taxes;
-	int i;
-	char *whoo;
+static void
+new1sub(long score, int i, char *whoo, long taxes)
 	{
 	struct wscofmt *p;
 	p = &winr[i];
@@ -405,10 +420,8 @@ new1sub(score,i,whoo,taxes)
  *		died() reason # in whyded, and slot in scoreboard in i.
  *	Returns nothing of value
  */
-new2sub(score,i,whoo,whyded)
-	long score;
-	int i,whyded;
-	char *whoo;
+static void
+new2sub(long score, int i, char *whoo, int whyded)
 	{
 	int j;
 	struct scofmt *p;
@@ -465,14 +478,18 @@ new2sub(score,i,whoo,whyded)
  */
 
 static int scorerror;
-died(x)
-	int x;
+
+void
+died(int x)
 	{
 	int f,win;
-	char ch,*mod;
+	char ch;
+	const char *mod;
 	time_t zzz;
+#ifdef EXTRA
 	long i;
 	struct tms cputime;
+#endif
 	if (c[LIFEPROT]>0) /* if life protection */
 		{
 		switch((x>0) ? x : -x)
@@ -553,10 +570,11 @@ invalid:
  *	diedsub(x) Subroutine to print out the line showing the player when he is killed
  *		int x;
  */
-diedsub(x)
-int x;
+static void
+diedsub(int x)
 	{
-	char ch,*mod;
+	char ch;
+	const char *mod;
 	lprintf("Score: %d, Diff: %d,  %s ",(long)c[GOLD],(long)c[HARDGAME],logname);
 	if (x < 256)
 		{
@@ -566,13 +584,14 @@ int x;
 		lprintf("killed by %s %s",mod,monster[x].name);
 		}
 	else lprintf("%s",whydead[x - 256]);
-	if (x != 263) lprintf(" on %s\n",levelname[level]);  else lprc('\n');
+	if (x != 263) lprintf(" on %s\n",levelname[(int)level]);  else lprc('\n');
 	}
 
 /*
  *	diedlog() 	Subroutine to read a log file and print it out in ascii format
  */
-diedlog()
+void
+diedlog(void)
 	{
 	int n;
 	char *p;
@@ -617,8 +636,9 @@ diedlog()
  *			Id # in ascii     \n     character name     \n
  */
 static int havepid= -1;	/* playerid # if previously done */
-getplid(nam)
-	char *nam;
+
+int
+getplid(char *nam)
 	{
 	int fd7,high=999,no;
 	char *p,*p2;

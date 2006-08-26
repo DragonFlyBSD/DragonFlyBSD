@@ -1,6 +1,6 @@
 /* regen.c 			Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/regen.c,v 1.4 1999/11/16 02:57:24 billf Exp $ */
-/* $DragonFly: src/games/larn/regen.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/larn/regen.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
 /*
 	*******
@@ -10,7 +10,8 @@
 
 	subroutine to regenerate player hp and spells
  */
-regen()
+void
+regen(void)
 	{
 	int i,flag;
 	long *d;

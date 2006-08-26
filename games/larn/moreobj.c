@@ -1,6 +1,6 @@
 /* moreobj.c 		Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/moreobj.c,v 1.4 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/moreobj.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/moreobj.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $
  *
  *	Routines in this file:
  *
@@ -11,7 +11,9 @@
  */
 #include "header.h"
 
-static void ohear();
+static void	ohear(void);
+static void	fch(int, long *);
+static void	fntchange(int);
 
 /*
  *	******
@@ -20,17 +22,18 @@ static void ohear();
  *
  *	subroutine to process an altar object
  */
-oaltar()
+void
+oaltar(void)
 	{
 	unsigned long k;
 
 	lprcat("\nDo you (p) pray  (d) desecrate"); iopts();
 	while (1)
 	  {
-	  while (1) switch(getchar())
+	  while (1) switch(getchr())
 		{
 		case 'p':	lprcat(" pray\nDo you (m) give money or (j) just pray? ");
-					while (1) switch(getchar())
+					while (1) switch(getchr())
 					  {
 					  case 'j':	if (rnd(100)<75)
 									lprcat("\nnothing happens");
@@ -52,13 +55,13 @@ oaltar()
 					  			cursor(1,23);  cltoeoln();
 								lprcat("how much do you donate? ");
 								k = readnum((long)c[GOLD]);
-								if (c[GOLD]<k)
+								if (c[GOLD]<(long)k)
 									{
 									lprcat("\nYou don't have that much!");
 									return;
 									}
 								c[GOLD] -= k;
-								if (k < c[GOLD]/10 || k<rnd(50))
+								if ((long)k < c[GOLD]/10 || (long)k<rnd(50))
 									{ createmonster(makemonst(level+1)); c[AGGRAVATE] += 200; }
 								else if (rnd(101) > 50)	{ ohear(); return; }
 								else if (rnd(43) == 5)
@@ -103,7 +106,7 @@ oaltar()
 	function to cast a +3 protection on the player
  */
 static void
-ohear()
+ohear(void)
 	{
 	lprcat("\nYou have been heard!");
 	if (c[ALTPRO]==0) c[MOREDEFENSES]+=3;
@@ -118,15 +121,15 @@ ohear()
 
 	subroutine to process a throne object
  */
-othrone(arg)
-	int arg;
+void
+othrone(int arg)
 	{
 	int i,k;
 
 	lprcat("\nDo you (p) pry off jewels, (s) sit down"); iopts();
 	while (1)
 	  {
-	  while (1) switch(getchar())
+	  while (1) switch(getchr())
 		{
 		case 'p':	lprcat(" pry off");  k=rnd(101);
 					if (k<25)
@@ -161,14 +164,15 @@ othrone(arg)
 	  }
 	}
 
-odeadthrone()
+void
+odeadthrone(void)
 	{
 	int k;
 
 	lprcat("\nDo you (s) sit down"); iopts();
 	while (1)
 	  {
-	  while (1) switch(getchar())
+	  while (1) switch(getchr())
 		{
 		case 's': 	lprcat(" sit down");  k=rnd(101);
 				  	if (k<35) { lprcat("\nZaaaappp!  You've been teleported!\n"); beep(); oteleport(0); }
@@ -188,13 +192,14 @@ odeadthrone()
 
 	subroutine to process a throne object
  */
-ochest()
+void
+ochest(void)
 	{
 	int i,k;
 	lprcat("\nDo you (t) take it, (o) try to open it"); iopts();
 	while (1)
 	  {
-	  while (1) switch(getchar())
+	  while (1) switch(getchr())
 		{
 		case 'o':	lprcat(" open it");  k=rnd(101);
 					if (k<40)
@@ -243,13 +248,13 @@ ochest()
 	OFOUNTAIN
 	*********
  */
-
-ofountain()
+void
+ofountain(void)
 	{
 	int x;
 	cursors();
 	lprcat("\nDo you (d) drink, (w) wash yourself"); iopts();
-	while (1) switch(getchar())
+	while (1) switch(getchr())
 		{
 		case 'd':	lprcat("drink");
 					if (rnd(1501)<2)
@@ -311,9 +316,7 @@ ofountain()
 	subroutine to process an up/down of a character attribute for ofountain
  */
 static void
-fch(how,x)
-	int how;
-	long *x;
+fch(int how, long *x)
 	{
 	if (how < 0)	 { lprcat(" went down by one!");	--(*x); }
 		else		 { lprcat(" went up by one!");	(*x)++; }
@@ -324,8 +327,8 @@ fch(how,x)
 	a subroutine to raise or lower character levels
 	if x > 0 they are raised   if x < 0 they are lowered
  */
-fntchange(how)
-	int how;
+static void
+fntchange(int how)
 	{
 	long j;
 	lprc('\n');

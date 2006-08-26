@@ -1,7 +1,8 @@
 /* tok.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/tok.c,v 1.5 1999/11/16 02:57:25 billf Exp $ */
-/* $DragonFly: src/games/larn/tok.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/larn/tok.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $ */
 #include <sys/types.h>
+#include <sys/wait.h>
 #ifdef SYSV
 #include <fcntl.h>
 #include <termio.h>
@@ -24,7 +25,8 @@ static char usermpoint=0;			/* the user monster pointer */
 /*
 	lexical analyzer for larn
  */
-yylex()
+int
+yylex(void)
 	{
 	char cc;
 	int ic;
@@ -96,7 +98,8 @@ yylex()
 /*
  *	flushall()		Function to flush all type-ahead in the input buffer
  */
-flushall()
+void
+flushall(void)
 	{
 	char cc;
 	int ic;
@@ -112,8 +115,8 @@ flushall()
 	function to set the desired hardness
 	enter with hard= -1 for default hardness, else any desired hardness
  */
-sethard(hard)
-	int hard;
+void
+sethard(int hard)
 	{
 	int j,k,i;
 	j=c[HARDGAME]; hashewon();
@@ -123,7 +126,7 @@ sethard(hard)
 		}
 	else c[HARDGAME]=j; /* set c[HARDGAME] to proper value if restoring game */
 
-	if (k=c[HARDGAME])
+	if ((k=c[HARDGAME]))
 	  for (j=0; j<=MAXMONST+8; j++)
 		{
 		i = ((6+k)*monster[j].hitpoints+1)/6;
@@ -142,7 +145,8 @@ sethard(hard)
 /*
 	function to read and process the larn options file
  */
-readopts()
+void
+readopts(void)
 	{
 	char *i;
 	int j,k;
@@ -152,8 +156,7 @@ readopts()
 		{
 		strcpy(logname,loginname); return; /* user name if no character name */
 		}
-	i = " ";
-	while (*i)
+	do
 	  {
 	  if ((i=(char *)lgetw()) == 0) break; /* check for EOF */
 	  while ((*i==' ') || (*i=='\t')) i++; /* eat leading whitespace */
@@ -175,14 +178,14 @@ readopts()
 						{
 						if ((i=lgetw())==0) break;
 						if (strlen(i)>=MAXMNAME) i[MAXMNAME-1]=0;
-						strcpy(usermonster[usermpoint],i);
+						strcpy(usermonster[(int)usermpoint],i);
 						if (usermpoint >= MAXUM) break; /* defined all of em */
-						if (isalpha(j=usermonster[usermpoint][0]))
+						if (isalpha(j=usermonster[(int)usermpoint][0]))
 							{
 							for (k=1; k<MAXMONST+8; k++) /* find monster */
 							  if (monstnamelist[k] == j)
 								{
-								monster[k].name = &usermonster[usermpoint++][0];
+								monster[k].name = &usermonster[(int)usermpoint++][0];
 								break;
 								}
 							}
@@ -216,7 +219,7 @@ readopts()
 						}
 					break;
 		};
-	  }
+	  } while(*i);
 	if (flag)  strcpy(logname,loginname);
 	}
 

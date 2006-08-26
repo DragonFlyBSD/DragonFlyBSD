@@ -1,7 +1,10 @@
 /*	help.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/help.c,v 1.4 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/help.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/larn/help.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
+
+static void	retcont(void);
+static int	openhelp(void);
 /*
  *	help function to display the help info
  *
@@ -11,8 +14,8 @@
  *	page (23 lines) for the introductory message (not counted in above)
  *	pages of help text (23 lines per page)
  */
-extern char helpfile[];
-help()
+void
+help(void)
 	{
 	int i,j;
 #ifndef VT100
@@ -34,7 +37,7 @@ help()
 			lprcat("    ---- Press ");  standout("return");
 			lprcat(" to exit, ");  standout("space");
 			lprcat(" for more help ---- ");
-			i=0; while ((i!=' ') && (i!='\n') && (i!='\33')) i=getchar();
+			i=0; while ((i!=' ') && (i!='\n') && (i!='\33')) i=getchr();
 			if ((i=='\n') || (i=='\33'))
 				{
 				lrclose();  setscroll();  drawscreen();  return;
@@ -47,7 +50,8 @@ help()
 /*
  *	function to display the welcome message and background
  */
-welcome()
+void
+welcome(void)
 	{
 	int i;
 #ifndef VT100
@@ -67,17 +71,19 @@ welcome()
 /*
  *	function to say press return to continue and reset scroll when done
  */
-retcont()
+static void
+retcont(void)
 	{
 	cursor(1,24); lprcat("Press "); standout("return");
-	lprcat(" to continue: ");   while (getchar() != '\n');
+	lprcat(" to continue: ");   while (getchr() != '\n');
 	setscroll();
 	}
 
 /*
  *	routine to open the help file and return the first character - '0'
  */
-openhelp()
+static int
+openhelp(void)
 	{
 	if (lopen(helpfile)<0)
 		{

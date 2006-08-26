@@ -1,6 +1,6 @@
 /*	main.c		*/
 /* $FreeBSD: src/games/larn/main.c,v 1.9 1999/11/30 03:48:59 billf Exp $ */
-/* $DragonFly: src/games/larn/main.c,v 1.3 2006/01/22 03:43:37 swildner Exp $ */
+/* $DragonFly: src/games/larn/main.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "header.h"
@@ -27,22 +27,51 @@ Cmd line format: larn [-slicnh] [-o<optsifle>] [-##] [++]\n\
   -o<optsfile>   specify .larnopts filename to be used instead of \"~/.larnopts\"\n\
 ";
 #ifdef VT100
-static char *termtypes[] = { "vt100", "vt101", "vt102", "vt103", "vt125",
+static const char *termtypes[] = { "vt100", "vt101", "vt102", "vt103", "vt125",
 	"vt131", "vt140", "vt180", "vt220", "vt240", "vt241", "vt320", "vt340",
 	"vt341"  };
 #endif /* VT100 */
+
+static void	showstr(void);
+static void	t_setup(int);
+static void	t_endup(int);
+static void	showwear(void);
+static void	showwield(void);
+static void	showread(void);
+static void	showeat(void);
+static void	showquaff(void);
+static void	show1(int, const char **);
+static void	randmonst(void);
+static void	parse(void);
+static void	run(int);
+static void	wield(void);
+static void	ydhi(int);
+static void	ycwi(int);
+static void	wear(void);
+static void	dropobj(void);
+static void	readscr(void);
+static void	eatcookie(void);
+static void	quaff(void);
+static int	whatitem(const char *);
+#ifdef HIDEBYLINK
+static void	szero(char *);
+#endif
+
 /*
 	************
 	MAIN PROGRAM
 	************
  */
-main(argc,argv)
-	int argc;
-	char **argv;
+int
+main(int argc, char **argv)
 	{
-	int i,j;
+	int i;
 	int hard;
-	char *ptr=0,*ttype;
+	const char *ptr;
+#ifdef VT100
+	char *ttype;
+	int j;
+#endif
 	struct passwd *pwe;
 	struct stat sb;
 
@@ -53,7 +82,7 @@ main(argc,argv)
 	init_term();	/* setup the terminal (find out what type) for termcap */
 #endif /* VT100 */
 	if (((ptr = getlogin()) == 0) || (*ptr==0)) {	/* try to get login name */
-	  if (pwe=getpwuid(getuid())) /* can we get it from /etc/passwd? */
+	  if ((pwe=getpwuid(getuid()))) /* can we get it from /etc/passwd? */
 		ptr = pwe->pw_name;
 	  else
 	  if ((ptr = getenv("USER")) == 0)
@@ -235,7 +264,8 @@ main(argc,argv)
 
 	show character's inventory
  */
-showstr()
+static void
+showstr(void)
 	{
 	int i,number;
 	for (number=3, i=0; i<26; i++)
@@ -243,7 +273,8 @@ showstr()
 	t_setup(number);	qshowstr();	  t_endup(number);
 	}
 
-qshowstr()
+void
+qshowstr(void)
 	{
 	int i,j,k,sigsav;
 	srcount=0;  sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
@@ -260,8 +291,8 @@ qshowstr()
 /*
  *	subroutine to clear screen depending on # lines to display
  */
-t_setup(count)
-	int count;
+static void
+t_setup(int count)
 	{
 	if (count<20)  /* how do we clear the screen? */
 		{
@@ -276,8 +307,8 @@ t_setup(count)
 /*
  *	subroutine to restore normal display screen depending on t_setup()
  */
-t_endup(count)
-	int count;
+static void
+t_endup(int count)
 	{
 	if (count<18)  /* how did we clear the screen? */
 		draws(0,MAXX,0,(count>MAXY) ? MAXY : count);
@@ -290,14 +321,15 @@ t_endup(count)
 /*
 	function to show the things player is wearing only
  */
-showwear()
+static void
+showwear(void)
 	{
 	int i,j,sigsav,count;
 	sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
 	srcount=0;
 
 	 for (count=2,j=0; j<=26; j++)	 /* count number of items we will display */
-	   if (i=iven[j])
+	   if ((i=iven[j]))
 		switch(i)
 			{
 			case OLEATHER:	case OPLATE:	case OCHAIN:
@@ -324,14 +356,15 @@ showwear()
 /*
 	function to show the things player can wield only
  */
-showwield()
+static void
+showwield(void)
 	{
 	int i,j,sigsav,count;
 	sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
 	srcount=0;
 
 	 for (count=2,j=0; j<=26; j++)	/* count how many items */
-	   if (i=iven[j])
+	   if ((i=iven[j]))
 		switch(i)
 			{
 			case ODIAMOND:  case ORUBY:  case OEMERALD:  case OSAPPHIRE:
@@ -360,7 +393,8 @@ showwield()
 /*
  *	function to show the things player can read only
  */
-showread()
+static void
+showread(void)
 	{
 	int i,j,sigsav,count;
 	sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
@@ -386,7 +420,8 @@ showread()
 /*
  *	function to show the things player can eat only
  */
-showeat()
+static void
+showeat(void)
 	{
 	int i,j,sigsav,count;
 	sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
@@ -412,7 +447,8 @@ showeat()
 /*
 	function to show the things player can quaff only
  */
-showquaff()
+static void
+showquaff(void)
 	{
 	int i,j,sigsav,count;
 	sigsav=nosignal;  nosignal=1; /* don't allow ^c etc */
@@ -435,42 +471,42 @@ showquaff()
 	more();		nosignal=sigsav;		t_endup(count);
 	}
 
-show1(idx,str2)
-	int idx;
-	char *str2[];
+static void
+show1(int idx, const char *str2[])
 	{
-	if (str2==0)  lprintf("\n%c)   %s",idx+'a',objectname[iven[idx]]);
-	else if (*str2[ivenarg[idx]]==0)  lprintf("\n%c)   %s",idx+'a',objectname[iven[idx]]);
-	else lprintf("\n%c)   %s of%s",idx+'a',objectname[iven[idx]],str2[ivenarg[idx]]);
+	lprintf("\n%c)   %s",idx+'a',objectname[(int)iven[idx]]);
+	if(str2 != NULL && str2[ivenarg[idx]][0] != NULL)
+		lprintf(" of%s", str2[ivenarg[idx]]);
 	}
 
-show3(index)
-	int index;
+void
+show3(int idx)
 	{
-	switch(iven[index])
+	switch(iven[idx])
 		{
-		case OPOTION:	show1(index,potionname);  break;
-		case OSCROLL:	show1(index,scrollname);  break;
+		case OPOTION:	show1(idx,potionname);  break;
+		case OSCROLL:	show1(idx,scrollname);  break;
 
 		case OLARNEYE:		case OBOOK:			case OSPIRITSCARAB:
 		case ODIAMOND:		case ORUBY:			case OCUBEofUNDEAD:
 		case OEMERALD:		case OCHEST:		case OCOOKIE:
-		case OSAPPHIRE:		case ONOTHEFT:		show1(index,(char **)0);  break;
+		case OSAPPHIRE:		case ONOTHEFT:		show1(idx,NULL);  break;
 
-		default:		lprintf("\n%c)   %s",index+'a',objectname[iven[index]]);
-						if (ivenarg[index]>0) lprintf(" + %d",(long)ivenarg[index]);
-						else if (ivenarg[index]<0) lprintf(" %d",(long)ivenarg[index]);
+		default:		lprintf("\n%c)   %s",idx+'a',objectname[(int)iven[idx]]);
+						if (ivenarg[idx]>0) lprintf(" + %d",(long)ivenarg[idx]);
+						else if (ivenarg[idx]<0) lprintf(" %d",(long)ivenarg[idx]);
 						break;
 		}
-	if (c[WIELD]==index) lprcat(" (weapon in hand)");
-	if ((c[WEAR]==index) || (c[SHIELD]==index))  lprcat(" (being worn)");
+	if (c[WIELD]==idx) lprcat(" (weapon in hand)");
+	if ((c[WEAR]==idx) || (c[SHIELD]==idx))  lprcat(" (being worn)");
 	if (++srcount>=22) { srcount=0; more(); clear(); }
 	}
 
 /*
 	subroutine to randomly create monsters if needed
  */
-randmonst()
+static void
+randmonst(void)
 	{
 	if (c[TIMESTOP]) return;	/*	don't make monsters if time is stopped	*/
 	if (--rmst <= 0)
@@ -485,7 +521,8 @@ randmonst()
 
 	get and execute a command
  */
-parse()
+static void
+parse(void)
 	{
 	int i,j,k,flag;
 	while	(1)
@@ -553,7 +590,7 @@ parse()
 									{
 									case OTRAPDOOR:		case ODARTRAP:
 									case OTRAPARROW:	case OTELEPORTER:
-										lprcat("\nIts "); lprcat(objectname[item[i][j]]);  flag++;
+										lprcat("\nIts "); lprcat(objectname[(int)item[i][j]]);  flag++;
 									};
 								}
 							}
@@ -583,8 +620,8 @@ parse()
 						for (i=0; i<MAXY; i++)
 							for (j=0; j<MAXX; j++)  know[j][i]=1;
 						for (i=0; i<SPNUM; i++)	spelknow[i]=1;
-						for (i=0; i<MAXSCROLL; i++)  scrollname[i][0]=' ';
-						for (i=0; i<MAXPOTION; i++)  potionname[i][0]=' ';
+						for (i=0; i<MAXSCROLL; i++)  scrollname[i] = scrollhide[i];
+						for (i=0; i<MAXPOTION; i++)  potionname[i] = potionhide[i];
 						}
 						for (i=0; i<MAXSCROLL; i++)
 						  if (strlen(scrollname[i])>2) /* no null items */
@@ -637,14 +674,15 @@ parse()
 		}
 	}
 
-parse2()
+void
+parse2(void)
 	{
 	if (c[HASTEMONST]) movemonst(); movemonst(); /*	move the monsters		*/
 	randmonst();	regen();
 	}
 
-run(dir)
-	int dir;
+static void
+run(int dir)
 	{
 	int i;
 	i=1; while (i)
@@ -659,7 +697,8 @@ run(dir)
 /*
 	function to wield a weapon
  */
-wield()
+static void
+wield(void)
 	{
 	int i;
 	while (1)
@@ -680,17 +719,19 @@ wield()
 /*
 	common routine to say you don't have an item
  */
-ydhi(x)
-	int x;
+static void
+ydhi(int x)
 	{ cursors();  lprintf("\nYou don't have item %c!",x); }
-ycwi(x)
-	int x;
+
+static void
+ycwi(int x)
 	{ cursors();  lprintf("\nYou can't wield item %c!",x); }
 
 /*
 	function to wear armor
  */
-wear()
+static void
+wear(void)
 	{
 	int i;
 	while (1)
@@ -718,7 +759,8 @@ wear()
 /*
 	function to drop an object
  */
-dropobj()
+static void
+dropobj(void)
 	{
 	int i;
 	char *p;
@@ -762,7 +804,8 @@ dropobj()
 /*
  *	readscr()		Subroutine to read a scroll one is carrying
  */
-readscr()
+static void
+readscr(void)
 	{
 	int i;
 	while (1)
@@ -784,10 +827,11 @@ readscr()
 /*
  *	subroutine to eat a cookie one is carrying
  */
-eatcookie()
+static void
+eatcookie(void)
 {
 int i;
-char *p;
+const char *p;
 while (1)
 	{
 	if ((i = whatitem("eat"))=='\33')  return;
@@ -800,7 +844,7 @@ while (1)
 				iven[i-'a']=0;
 				if (!c[BLINDCOUNT])
 					{
-					if (p=fortune(fortfile))
+					if ((p=fortune()))
 						{
 						lprcat("  Inside you find a scrap of paper that says:\n");
 						lprcat(p);
@@ -818,7 +862,8 @@ while (1)
 /*
  *	subroutine to quaff a potion one is carrying
  */
-quaff()
+static void
+quaff(void)
 	{
 	int i;
 	while (1)
@@ -839,12 +884,12 @@ quaff()
 /*
 	function to ask what player wants to do
  */
-whatitem(str)
-	char *str;
+static int
+whatitem(const char *str)
 	{
 	int i;
 	cursors();  lprintf("\nWhat do you want to %s [* for all] ? ",str);
-	i=0; while (i>'z' || (i<'a' && i!='*' && i!='\33' && i!='.')) i=getchar();
+	i=0; while (i>'z' || (i<'a' && i!='*' && i!='\33' && i!='.')) i=getchr();
 	if (i=='\33')  lprcat(" aborted");
 	return(i);
 	}
@@ -853,20 +898,20 @@ whatitem(str)
 	subroutine to get a number from the player
 	and allow * to mean return amt, else return the number entered
  */
-unsigned long readnum(mx)
-	long mx;
+unsigned long
+readnum(long mx)
 	{
 	int i;
 	unsigned long amt=0;
 	sncbr();
-	if ((i=getchar()) == '*')  amt = mx;   /* allow him to say * for all gold */
+	if ((i=getchr()) == '*')  amt = mx;   /* allow him to say * for all gold */
 	else
 		while (i != '\n')
 			{
 			if (i=='\033') { scbr(); lprcat(" aborted"); return(0); }
 			if ((i <= '9') && (i >= '0') && (amt<99999999))
 				amt = amt*10+i-'0';
-			i = getchar();
+			i = getchr();
 			}
 	scbr();  return(amt);
 	}
@@ -875,8 +920,8 @@ unsigned long readnum(mx)
 /*
  *	routine to zero every byte in a string
  */
-szero(str)
-	char *str;
+static void
+szero(char *str)
 	{
 	while (*str)
 		*str++ = 0;
