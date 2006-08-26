@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/_stdint.h,v 1.1 2002/07/29 17:41:07 mike Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.5 2006/05/21 03:43:44 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdint.h,v 1.6 2006/08/26 17:43:54 joerg Exp $
  */
 
 #ifndef _MACHINE_STDINT_H_
@@ -113,7 +113,7 @@ typedef __int32_t	__sig_atomic_t;
 typedef unsigned long	__clock_t;
 typedef unsigned long	__clockid_t;
 typedef __uint32_t	__socklen_t;
-
+typedef volatile int	__atomic_intr_t;
 /*
  * Its convenient to put these here rather then create another header file.
  */

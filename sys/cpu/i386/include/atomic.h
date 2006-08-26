@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.20 2006/06/02 20:32:05 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.21 2006/08/26 17:43:54 joerg Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -227,34 +227,29 @@ atomic_poll_release_int(volatile u_int *p)
  *				the field is ignored.
  */
 
-#ifndef __ATOMIC_INTR_T
-#define __ATOMIC_INTR_T
-typedef volatile int atomic_intr_t;
-#endif
-
 #if defined(KLD_MODULE)
 
-void atomic_intr_init(atomic_intr_t *p);
-int atomic_intr_handler_disable(atomic_intr_t *p);
-void atomic_intr_handler_enable(atomic_intr_t *p);
-int atomic_intr_handler_is_enabled(atomic_intr_t *p);
-int atomic_intr_cond_test(atomic_intr_t *p);
-int atomic_intr_cond_try(atomic_intr_t *p);
-void atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg);
-void atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg);
+void atomic_intr_init(__atomic_intr_t *p);
+int atomic_intr_handler_disable(__atomic_intr_t *p);
+void atomic_intr_handler_enable(__atomic_intr_t *p);
+int atomic_intr_handler_is_enabled(__atomic_intr_t *p);
+int atomic_intr_cond_test(__atomic_intr_t *p);
+int atomic_intr_cond_try(__atomic_intr_t *p);
+void atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg);
+void atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg);
 
 #else
 
 static __inline
 void
-atomic_intr_init(atomic_intr_t *p)
+atomic_intr_init(__atomic_intr_t *p)
 {
 	*p = 0;
 }
 
 static __inline
 int
-atomic_intr_handler_disable(atomic_intr_t *p)
+atomic_intr_handler_disable(__atomic_intr_t *p)
 {
 	int data;
 
@@ -266,14 +261,14 @@ atomic_intr_handler_disable(atomic_intr_t *p)
 
 static __inline
 void
-atomic_intr_handler_enable(atomic_intr_t *p)
+atomic_intr_handler_enable(__atomic_intr_t *p)
 {
 	__asm __volatile(MPLOCKED "andl $0xBFFFFFFF,%0" : "+m" (*p));
 }
 
 static __inline
 int
-atomic_intr_handler_is_enabled(atomic_intr_t *p)
+atomic_intr_handler_is_enabled(__atomic_intr_t *p)
 {
 	int data;
 
@@ -284,7 +279,7 @@ atomic_intr_handler_is_enabled(atomic_intr_t *p)
 
 static __inline
 void
-atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
+atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
 	__asm __volatile(MPLOCKED "incl %0; " \
 			 "1: ;" \
@@ -303,7 +298,7 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
  */
 static __inline
 int
-atomic_intr_cond_try(atomic_intr_t *p)
+atomic_intr_cond_try(__atomic_intr_t *p)
 {
 	int ret;
 
@@ -322,14 +317,14 @@ atomic_intr_cond_try(atomic_intr_t *p)
 
 static __inline
 int
-atomic_intr_cond_test(atomic_intr_t *p)
+atomic_intr_cond_test(__atomic_intr_t *p)
 {
 	return((int)(*p & 0x80000000));
 }
 
 static __inline
 void
-atomic_intr_cond_exit(atomic_intr_t *p, void (*func)(void *), void *arg)
+atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
 	__asm __volatile(MPLOCKED "decl %0; " \
 			MPLOCKED "btrl $31,%0; " \
