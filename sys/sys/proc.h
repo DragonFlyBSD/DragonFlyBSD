@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.82 2006/06/07 03:02:11 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.83 2006/08/27 12:54:59 davidxu Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -140,7 +140,7 @@ struct lwp {
 
 	struct proc	*lwp_proc;	/* Link to our proc. */
 
-	int		lwp_tid;	/* Our thread id . */
+	lwpid_t		lwp_tid;	/* Our thread id . */
 
 	struct pstats	*lwp_stats;	/* Accounting/statistics (PROC ONLY). */
 #ifdef notyet
