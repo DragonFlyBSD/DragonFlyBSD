@@ -32,7 +32,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/move.c,v 1.6 1999/11/30 03:49:18 billf Exp $
- * $DragonFly: src/games/robots/move.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/move.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 #include <sys/ttydefaults.h>
@@ -41,16 +41,21 @@
 
 # define	ESC	'\033'
 
+static bool	must_telep(void);
+static bool	do_move(int, int);
+static bool	eaten(COORD *);
+
 /*
  * get_move:
  *	Get and execute a move from the player
  */
-get_move()
+void
+get_move(void)
 {
 	int	c;
-	int	y, x, lastmove;
-	static COORD	newpos;
-
+#ifdef	FANCY
+	int	lastmove;
+#endif
 	if (Waiting)
 		return;
 
@@ -158,7 +163,6 @@ over:
 		  case 'W':
 			Waiting = TRUE;
 			leaveok(stdscr, TRUE);
-			/* flushok(stdscr, FALSE); */
 			goto ret;
 		  case 't':
 		  case 'T':
@@ -194,7 +198,8 @@ ret:
  *	Must I teleport; i.e., is there anywhere I can move without
  * being eaten?
  */
-must_telep()
+static bool
+must_telep(void)
 {
 	int	x, y;
 	static COORD	newpos;
@@ -225,8 +230,8 @@ must_telep()
  * do_move:
  *	Execute a move
  */
-do_move(dy, dx)
-int	dy, dx;
+static bool
+do_move(int dy, int dx)
 {
 	static COORD	newpos;
 
@@ -261,8 +266,8 @@ int	dy, dx;
  * eaten:
  *	Player would get eaten at this place
  */
-eaten(pos)
-COORD	*pos;
+static bool
+eaten(COORD *pos)
 {
 	int	x, y;
 
@@ -283,7 +288,8 @@ COORD	*pos;
  * reset_count:
  *	Reset the count variables
  */
-reset_count()
+void
+reset_count(void)
 {
 	Count = 0;
 	Running = FALSE;
@@ -295,7 +301,8 @@ reset_count()
  * jumping:
  *	See if we are jumping, i.e., we should not refresh.
  */
-jumping()
+bool
+jumping(void)
 {
 	return (Jump && (Count || Running || Waiting));
 }

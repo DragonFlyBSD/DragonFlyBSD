@@ -32,10 +32,11 @@
  *
  * @(#)score.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/score.c,v 1.5 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/score.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/score.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
+# include	<fcntl.h>
 # include	<sys/types.h>
 # include	<pwd.h>
 # include	"pathnames.h"
@@ -48,18 +49,22 @@ typedef struct {
 
 typedef struct passwd	PASSWD;
 
-char	*Scorefile = _PATH_SCORE;
+const char	*Scorefile = _PATH_SCORE;
 
 int	Max_per_uid = MAX_PER_UID;
 
 static SCORE	Top[MAXSCORES];
+
+static void	set_name(SCORE *);
+static int	cmp_sc(const void *, const void *);
 
 /*
  * score:
  *	Post the player's score, if reasonable, and then print out the
  *	top list.
  */
-score()
+void
+score(void)
 {
 	int	inf;
 	SCORE	*scp;
@@ -136,13 +141,14 @@ score()
 	close(inf);
 }
 
-set_name(scp)
-SCORE	*scp;
+static void
+set_name(SCORE *scp)
 {
 	PASSWD	*pp;
+	static char	unk[] = "???";
 
 	if ((pp = getpwuid(scp->s_uid)) == NULL)
-		pp->pw_name = "???";
+		pp->pw_name = unk;
 	strncpy(scp->s_name, pp->pw_name, MAXNAME);
 }
 
@@ -150,17 +156,18 @@ SCORE	*scp;
  * cmp_sc:
  *	Compare two scores.
  */
-cmp_sc(s1, s2)
-SCORE	*s1, *s2;
+static int
+cmp_sc(const void *s1, const void *s2)
 {
-	return s2->s_score - s1->s_score;
+	return (((const SCORE *)s2)->s_score - ((const SCORE *)s1)->s_score);
 }
 
 /*
  * show_score:
  *	Show the score list for the '-s' option.
  */
-show_score()
+void
+show_score(void)
 {
 	SCORE	*scp;
 	int	inf;

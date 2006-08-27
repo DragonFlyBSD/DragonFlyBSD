@@ -31,11 +31,14 @@
  * SUCH DAMAGE.
  *
  *	@(#)robots.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/robots/robots.h,v 1.2 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	<curses.h>
 # include	<setjmp.h>
-
+# include	<stdlib.h>
+# include	<string.h>
+# include	<unistd.h>
 /*
  * miscellaneous constants
  */
@@ -84,9 +87,10 @@ extern bool	Pattern_roll, Stand_still;
 #endif
 
 extern char	Cnt_move, Field[Y_FIELDSIZE][X_FIELDSIZE], *Next_move,
-		*Move_list, Run_ch;
+		Run_ch;
+extern const char *Move_list, *Scorefile;
 
-extern int	Count, Level, Num_robots, Num_scores, Score,
+extern int	Count, Level, Max_per_uid, Num_robots, Num_scores, Score,
 		Start_level, Wait_bonus;
 
 extern COORD	Max, Min, My_pos, Robots[];
@@ -96,12 +100,17 @@ extern jmp_buf	End_move;
 /*
  * functions types
  */
-
-int	cmp_sc();
-void	move_robots();
-
-COORD	*rnd_pos();
-
-
-
-
+void	flush_in(void);
+void	init_field(void);
+void	quit(void);
+void	make_level(void);
+void	get_move(void);
+void	reset_count(void);
+bool	jumping(void);
+void	move_robots(bool);
+void	add_score(int);
+void	play_level(void);
+int	query(const char *);
+COORD	*rnd_pos(void);
+void	score(void);
+void	show_score(void);

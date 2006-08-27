@@ -32,10 +32,9 @@
  *
  * @(#)init_field.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/init_field.c,v 1.6 1999/11/30 03:49:17 billf Exp $
- * $DragonFly: src/games/robots/init_field.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/init_field.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-#include <string.h>
 # include	"robots.h"
 
 /*
@@ -43,13 +42,12 @@
  *	Lay down the initial pattern whih is constant across all levels,
  *	and initialize all the global variables.
  */
-init_field()
+void
+init_field(void)
 {
 	int	i;
-	WINDOW	*wp;
-	int	j;
 	static bool	first = TRUE;
-	static char	*desc[] = {
+	static const char	*desc[] = {
 				"Directions:",
 				"",
 				"y k u",
@@ -77,7 +75,6 @@ init_field()
 
 	Dead = FALSE;
 	Waiting = FALSE;
-	/* flushok(stdscr, TRUE); */
 	Score = 0;
 
 	erase();

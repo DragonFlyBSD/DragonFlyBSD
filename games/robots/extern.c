@@ -32,7 +32,7 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/extern.c,v 1.2 1999/11/30 03:49:16 billf Exp $
- * $DragonFly: src/games/robots/extern.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/extern.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
@@ -56,7 +56,7 @@ bool	Was_bonus = FALSE;	/* Was a bonus last level */
 char	Cnt_move;		/* Command which has preceded the count */
 char	Field[Y_FIELDSIZE][X_FIELDSIZE];	/* the playing field itslef */
 char	*Next_move;		/* Next move to be used in the pattern */
-char	*Move_list = "YHBJNLUK";/* List of moves in the pattern */
+const char *Move_list = "YHBJNLUK";/* List of moves in the pattern */
 char	Run_ch;			/* Character for the direction we are running */
 
 int	Count = 0;		/* Command count */

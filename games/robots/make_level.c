@@ -32,7 +32,7 @@
  *
  * @(#)make_level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/make_level.c,v 1.4 1999/11/30 03:49:18 billf Exp $
- * $DragonFly: src/games/robots/make_level.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/make_level.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
@@ -41,12 +41,12 @@
  * make_level:
  *	Make the current level
  */
-make_level()
+void
+make_level(void)
 {
 	int	i;
 	COORD	*cp;
-	WINDOW	*wp;
-	int	x, *endp;
+	int	x;
 
 	reset_count();
 	for (i = 1; i < Y_FIELDSIZE; i++)

@@ -33,24 +33,21 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/main.c,v 1.7 1999/11/30 03:49:18 billf Exp $
- * $DragonFly: src/games/robots/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/main.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
 # include	<signal.h>
-# include       <stdlib.h>
 # include	<ctype.h>
 
-main(ac, av)
-int	ac;
-char	**av;
+static bool	another(void);
+
+int
+main(int ac, char **av)
 {
 	char	*sp;
 	bool	bad_arg;
 	bool	show_only;
-	extern char	*Scorefile;
-	extern int	Max_per_uid;
-	void quit();
 
 	show_only = FALSE;
 	if (ac > 1) {
@@ -109,7 +106,7 @@ char	**av;
 	}
 
 	initscr();
-	signal(SIGINT, quit);
+	signal(SIGINT, (sig_t)quit);
 	crmode();
 	noecho();
 	nonl();
@@ -126,7 +123,7 @@ char	**av;
 
 	srandomdev();
 	if (Real_time)
-		signal(SIGALRM, move_robots);
+		signal(SIGALRM, (sig_t)move_robots);
 	do {
 		init_field();
 		for (Level = Start_level; !Dead; Level++) {
@@ -139,13 +136,8 @@ char	**av;
 		score();
 	} while (another());
 	quit();
-}
-
-void
-__cputchar(ch)
-	int ch;
-{
-	(void)putchar(ch);
+	/* NOTREACHED */
+	return(0);
 }
 
 /*
@@ -153,7 +145,7 @@ __cputchar(ch)
  *	Leave the program elegantly.
  */
 void
-quit()
+quit(void)
 {
 	endwin();
 	exit(0);
@@ -164,7 +156,8 @@ quit()
  * another:
  *	See if another game is desired
  */
-another()
+static bool
+another(void)
 {
 	int	y;
 

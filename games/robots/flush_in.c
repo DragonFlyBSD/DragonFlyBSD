@@ -32,16 +32,17 @@
  *
  * @(#)flush_in.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/flush_in.c,v 1.2 1999/11/30 03:49:17 billf Exp $
- * $DragonFly: src/games/robots/flush_in.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/robots/flush_in.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include	<curses.h>
+# include	"robots.h"
 
 /*
  * flush_in:
  *	Flush all pending input.
  */
-flush_in()
+void
+flush_in(void)
 {
 # ifdef TIOCFLUSH
 	ioctl(fileno(stdin), TIOCFLUSH, NULL);

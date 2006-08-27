@@ -32,7 +32,7 @@
  *
  * @(#)play_level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/play_level.c,v 1.4 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/play_level.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/robots/play_level.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
@@ -41,10 +41,10 @@
  * play_level:
  *	Let the player play the current level
  */
-play_level()
+void
+play_level(void)
 {
 	COORD	*cp;
-	int	y, x, bonus;
 
 	move(My_pos.y, My_pos.x);
 	addch(PLAYER);

@@ -32,27 +32,25 @@
  *
  * @(#)move_robs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/move_robs.c,v 1.4 1999/11/30 03:49:19 billf Exp $
- * $DragonFly: src/games/robots/move_robs.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/robots/move_robs.c,v 1.4 2006/08/27 21:45:07 pavalos Exp $
  */
 
 # include	"robots.h"
 # include	<signal.h>
+
+static int	sign(int);
 
 /*
  * move_robots:
  *	Move the robots around
  */
 void
-move_robots(was_sig)
-bool	was_sig;
+move_robots(bool was_sig)
 {
 	COORD	*rp;
-	int	y, x;
-	int	mindist, d;
-	static COORD	newpos;
 
 	if (Real_time)
-		signal(SIGALRM, move_robots);
+		signal(SIGALRM, (sig_t)move_robots);
 # ifdef DEBUG
 	move(Min.y, Min.x);
 	addch(inch());
@@ -128,8 +126,8 @@ bool	was_sig;
  * add_score:
  *	Add a score to the overall point total
  */
-add_score(add)
-int	add;
+void
+add_score(int add)
 {
 	Score += add;
 	move(Y_SCORE, X_SCORE);
@@ -140,8 +138,8 @@ int	add;
  * sign:
  *	Return the sign of the number
  */
-sign(n)
-int	n;
+static int
+sign(int n)
 {
 	if (n < 0)
 		return -1;

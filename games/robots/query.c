@@ -32,18 +32,17 @@
  *
  * @(#)query.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/query.c,v 1.5 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/query.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/query.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-#include <string.h>
 # include	"robots.h"
 
 /*
  * query:
  *	Ask a question and get a yes or no answer.  Default is "no".
  */
-query(prompt)
-char	*prompt;
+int
+query(const char *prompt)
 {
 	int	c, retval;
 	int	y, x;

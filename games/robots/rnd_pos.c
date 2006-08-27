@@ -32,24 +32,24 @@
  *
  * @(#)rnd_pos.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/rnd_pos.c,v 1.5 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/rnd_pos.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/robots/rnd_pos.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
  */
 
-# include       <stdlib.h>
 # include	"robots.h"
 
 # define	IS_SAME(p,y,x)	((p).y != -1 && (p).y == y && (p).x == x)
+
+static int	rnd(int);
 
 /*
  * rnd_pos:
  *	Pick a random, unoccupied position
  */
 COORD *
-rnd_pos()
+rnd_pos(void)
 {
 	static COORD	pos;
 	static int	call = 0;
-	int	i = 0;
 
 	do {
 		pos.y = rnd(Y_FIELDSIZE - 1) + 1;
@@ -60,8 +60,8 @@ rnd_pos()
 	return &pos;
 }
 
-rnd(range)
-int	range;
+static int
+rnd(int range)
 {
 	return random() % range;
 }
