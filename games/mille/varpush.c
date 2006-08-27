@@ -32,9 +32,10 @@
  *
  * @(#)varpush.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/varpush.c,v 1.6 1999/12/12 06:17:25 billf Exp $
- * $DragonFly: src/games/mille/varpush.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/varpush.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
+# include	<errno.h>
 # include	<paths.h>
 # include	"mille.h"
 
@@ -44,30 +45,39 @@
 
 /*
  *	push variables around via the routine func() on the file
- * channel file.  func() is either read or write.
+ * channel file.  func() is either readv or writev.
  */
-void
-varpush(file, func)
-int	file;
-int	(*func)(); {
+bool
+varpush(int file, ssize_t (*func)(int, const struct iovec *, int))
+{
 
 	int	temp;
+	const struct iovec iov[] = {
+	{ (void *) &Debug,	sizeof Debug },
+	{ (void *) &Finished,	sizeof Finished },
+	{ (void *) &Order,	sizeof Order },
+	{ (void *) &End,	sizeof End },
+	{ (void *) &On_exit,	sizeof On_exit },
+	{ (void *) &Handstart,	sizeof Handstart },
+	{ (void *) &Numgos,	sizeof Numgos },
+	{ (void *)  Numseen,	sizeof Numseen },
+	{ (void *) &Play,	sizeof Play },
+	{ (void *) &Window,	sizeof Window },
+	{ (void *)  Deck,	sizeof Deck },
+	{ (void *) &Discard,	sizeof Discard },
+	{ (void *)  Player,	sizeof Player }
+	};
 
-	(*func)(file, (char *) &Debug, sizeof Debug);
-	(*func)(file, (char *) &Finished, sizeof Finished);
-	(*func)(file, (char *) &Order, sizeof Order);
-	(*func)(file, (char *) &End, sizeof End);
-	(*func)(file, (char *) &On_exit, sizeof On_exit);
-	(*func)(file, (char *) &Handstart, sizeof Handstart);
-	(*func)(file, (char *) &Numgos, sizeof Numgos);
-	(*func)(file, (char *)  Numseen, sizeof Numseen);
-	(*func)(file, (char *) &Play, sizeof Play);
-	(*func)(file, (char *) &Window, sizeof Window);
-	(*func)(file, (char *)  Deck, sizeof Deck);
-	(*func)(file, (char *) &Discard, sizeof Discard);
-	(*func)(file, (char *)  Player, sizeof Player);
-	if (func == read) {
-		read(file, (char *) &temp, sizeof temp);
+	if (((func)(file, iov, sizeof(iov) /sizeof(iov[0]))) < 0) {
+		error(strerror(errno));
+		return FALSE;
+	}
+
+	if (func == readv) {
+		if ((read(file, (void *) &temp, sizeof temp)) < 0) {
+			error(strerror(errno));
+			return FALSE;
+		}
 		Topcard = &Deck[temp];
 #ifdef DEBUG
 		if (Debug) {
@@ -86,6 +96,10 @@ over:
 	}
 	else {
 		temp = Topcard - Deck;
-		write(file, (char *) &temp, sizeof temp);
+		if ((write(file, (void *) &temp, sizeof temp)) < 0) {
+			error(strerror(errno));
+			return FALSE;
+		}
 	}
+	return TRUE;
 }

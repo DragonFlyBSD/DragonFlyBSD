@@ -32,7 +32,7 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/extern.c,v 1.3 1999/11/30 03:49:01 billf Exp $
- * $DragonFly: src/games/mille/extern.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/extern.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	"mille.h"
@@ -48,9 +48,9 @@ bool	Debug,			/* set if debugging code on		*/
 	Order,			/* set if hand should be sorted		*/
 	Saved;			/* set if game just saved		*/
 
-char	*C_fmt = "%-18.18s",	/* format for printing cards		*/
-	*Fromfile = NULL,	/* startup file for game		*/
-	Initstr[100],		/* initial string for error field	*/
+char	*Fromfile = NULL,	/* startup file for game		*/
+	Initstr[100];		/* initial string for error field	*/
+const char *C_fmt = "%-18.18s",	/* format for printing cards		*/
 	*_cn[NUM_CARDS] = {	/* Card name buffer			*/
 		"",
 		"25",

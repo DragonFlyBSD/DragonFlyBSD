@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/misc.c,v 1.8.2.1 2001/06/13 13:52:14 dwmalone Exp $
- * $DragonFly: src/games/mille/misc.c,v 1.3 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/mille/misc.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <sys/file.h>
@@ -55,7 +55,7 @@
 
 /* VARARGS1 */
 bool
-error(char *str, ...)
+error(const char *str, ...)
 {
 	va_list arg;
 
@@ -72,7 +72,7 @@ error(char *str, ...)
 }
 
 CARD
-getcard()
+getcard(void)
 {
 	int		c, c1;
 
@@ -121,8 +121,8 @@ cont:		;
 }
 
 bool
-check_ext(forcomp)
-bool	forcomp; {
+check_ext(bool forcomp)
+{
 
 
 	if (End == 700)
@@ -176,8 +176,8 @@ done:
  * also allowed.  Return TRUE if the answer was yes, FALSE if no.
  */
 bool
-getyn(promptno)
-int	promptno; {
+getyn(int promptno)
+{
 
 	char	c;
 
@@ -221,7 +221,7 @@ int	promptno; {
  * it.  Exit appropriately.
  */
 void
-check_more()
+check_more(void)
 {
 
 	On_exit = TRUE;
@@ -249,7 +249,7 @@ check_more()
 }
 
 char
-readch()
+readch(void)
 {
 	int		cnt;
 	static char	c;

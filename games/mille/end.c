@@ -32,7 +32,7 @@
  *
  * @(#)end.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/end.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/end.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/mille/end.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	"mille.h"
@@ -41,18 +41,13 @@
  * @(#)end.c	1.1 (Berkeley) 4/1/82
  */
 
-#ifndef EXTRAP
-void extrapolate (PLAY *);
-void undoex (void);
-#endif
-
 /*
  *	print out the score as if it was final, and add the totals for
  * the end-of-games points to the user who deserves it (if any).
  */
 void
-finalscore(pp)
-	PLAY	*pp; {
+finalscore(PLAY *pp)
+{
 
 	int		temp, tot, num;
 
@@ -96,8 +91,8 @@ static int	Last_tot[2];	/* last tot used for extrapolate	*/
  * the end-of-games points to the user who deserves it (if any).
  */
 void
-extrapolate(pp)
-	PLAY	*pp; {
+extrapolate(PLAY *pp)
+{
 
 	int		x, num, tot, count;
 
@@ -141,7 +136,8 @@ extrapolate(pp)
 }
 
 void
-undoex() {
+undoex(void)
+{
 
 	reg PLAY	*pp;
 	reg int		i;

@@ -32,7 +32,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/move.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/move.c,v 1.4 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/mille/move.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <termios.h>
@@ -62,7 +62,7 @@ static int haspicked (PLAY *);
 static bool playcard (PLAY *);
 
 void
-domove()
+domove(void)
 {
 	PLAY	*pp;
 	int		i, j;
@@ -166,7 +166,8 @@ acc:
  * the game is over
  */
 static void
-check_go() {
+check_go(void)
+{
 
 	CARD	card;
 	PLAY	*pp, *op;
@@ -197,8 +198,7 @@ check_go() {
 }
 
 static bool
-playcard(pp)
-PLAY	*pp;
+playcard(PLAY *pp)
 {
 	int		v;
 	CARD	card;
@@ -347,7 +347,7 @@ protected:
 }
 
 static void
-getmove()
+getmove(void)
 {
 	char	c;
 #ifdef DEBUG
@@ -481,8 +481,8 @@ ret:
  * return whether or not the player has picked
  */
 static int
-haspicked(pp)
-PLAY	*pp; {
+haspicked(PLAY *pp)
+{
 
 	int	card;
 
@@ -501,8 +501,8 @@ PLAY	*pp; {
 }
 
 void
-account(card)
-CARD	card; {
+account(CARD card)
+{
 
 	CARD	oppos;
 
@@ -527,10 +527,9 @@ CARD	card; {
 }
 
 void
-prompt(promptno)
-int	promptno;
+prompt(int promptno)
 {
-	static char	*names[] = {
+	static const char	*names[] = {
 				">>:Move:",
 				"Really?",
 				"Another hand?",
@@ -559,8 +558,7 @@ int	promptno;
 }
 
 void
-sort(hand)
-CARD	*hand;
+sort(CARD *hand)
 {
 	CARD	*cp, *tp;
 	CARD	temp;

@@ -32,7 +32,7 @@
  *
  * @(#)roll.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/roll.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/roll.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/roll.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	"mille.h"
@@ -45,8 +45,8 @@
  */
 
 int
-roll(ndie, nsides)
-int	ndie, nsides; {
+roll(int ndie, int nsides)
+{
 
 	int			tot;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/mille/mille.c,v 1.10 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.c,v 1.4 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/mille/mille.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  *
  * @(#) Copyright (c) 1982, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mille.c	8.1 (Berkeley) 5/31/93
@@ -51,9 +51,8 @@
 static void usage (void);
 
 int
-main(ac, av)
-	int	ac;
-	char	*av[]; {
+main(int ac, char *av[])
+{
 
 	bool	restore;
 
@@ -129,7 +128,7 @@ main(ac, av)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: mille [restore_file]\n");
 	exit(1);
@@ -140,23 +139,23 @@ usage()
  * quit.
  */
 void
-rub(sig)
-int sig; {
+rub(__unused int sig)
+{
 
-	(void)signal(SIGINT, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
 	if (getyn(REALLYPROMPT))
 		die(0);
-	(void)signal(SIGINT, rub);
+	signal(SIGINT, rub);
 }
 
 /*
  *	Time to go beddy-by
  */
 void
-die(code)
-int code; {
+die(int code)
+{
 
-	(void)signal(SIGINT, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
 	if (outf)
 		fflush(outf);
 	mvcur(0, COLS - 1, LINES - 1, 0);

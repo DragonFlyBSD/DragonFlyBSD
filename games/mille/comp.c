@@ -32,7 +32,7 @@
  *
  * @(#)comp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/comp.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/comp.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/comp.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	"mille.h"
@@ -44,7 +44,7 @@
 # define	V_VALUABLE	40
 
 void
-calcmove()
+calcmove(void)
 {
 	CARD		card;
 	int		*value;
@@ -187,7 +187,7 @@ redoit:
 				diff = End - pp->mileage;
 				/* avoid getting too close */
 				if (Topcard > Deck && cango && diff <= 100
-				    && diff / Value[card] > count[card]
+				    && (int)diff / Value[card] > count[card]
 				    && (card == C_25 || diff % 50 == 0)) {
 					if (card == C_50 && diff - 50 == 25
 					    && count[C_25] > 0)
@@ -400,8 +400,7 @@ play_it:
  * Return true if the given player could conceivably win with his next card.
  */
 bool
-onecard(pp)
-PLAY	*pp;
+onecard(PLAY *pp)
 {
 	CARD	bat, spd, card;
 
@@ -433,9 +432,7 @@ PLAY	*pp;
 }
 
 bool
-canplay(pp, op, card)
-PLAY	*pp, *op;
-CARD	card;
+canplay(PLAY *pp, PLAY *op, CARD card)
 {
 	switch (card) {
 	  case C_200:

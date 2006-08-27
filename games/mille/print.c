@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/print.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/print.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/mille/print.c,v 1.4 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	"mille.h"
@@ -48,7 +48,8 @@ static void show_card (int, int, CARD, CARD *);
 static void show_score (int, int, int, int *);
 
 void
-prboard() {
+prboard(void)
+{
 
 	PLAY	*pp;
 	int	i, j, k, temp;
@@ -66,7 +67,7 @@ prboard() {
 		show_card(14, temp, pp->battle, &pp->sh_battle);
 		show_card(16, temp, pp->speed, &pp->sh_speed);
 		for (i = C_25; i <= C_200; i++) {
-			char	*name;
+			const char	*name;
 			int		end;
 
 			if (pp->nummiles[i] == pp->sh_nummiles[i])
@@ -103,9 +104,7 @@ prboard() {
  *	Show the given card if it is different from the last one shown
  */
 static void
-show_card(y, x, c, lc)
-int		y, x;
-CARD	c, *lc;
+show_card(int y, int x, CARD c, CARD *lc)
 {
 	if (c == *lc)
 		return;
@@ -117,11 +116,11 @@ CARD	c, *lc;
 static char	Score_fmt[] = "%4d";
 
 void
-prscore(for_real)
-bool	for_real; {
+prscore(bool for_real)
+{
 
 	PLAY	*pp;
-	int		x;
+	int		x = for_real;	/* uses for_real #ifndef EXTRAP */
 
 	stdscr = Score;
 	for (pp = Player; pp < &Player[2]; pp++) {
@@ -164,9 +163,7 @@ bool	for_real; {
  *	showed it.
  */
 static void
-show_score(y, x, s, ls)
-int		y, x;
-int	s, *ls;
+show_score(int y, int x, int s, int *ls)
 {
 	if (s == *ls)
 		return;

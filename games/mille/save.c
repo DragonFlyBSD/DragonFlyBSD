@@ -32,7 +32,7 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/save.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/save.c,v 1.4 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/mille/save.c,v 1.5 2006/08/27 17:17:23 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -60,17 +60,20 @@ typedef	struct stat	STAT;
 
 /*
  *	This routine saves the current game for use at a later date
+ *	Returns whether or not it could be done.
  */
 
 bool
-save() {
+save(void)
+{
 
 	char		*sp;
-	int		outf;
+	int		outfd;
 	time_t		*tp;
 	char		buf[80];
 	time_t		tme;
 	STAT		junk;
+	bool		retval;
 
 	sp = NULL;
 	tp = &tme;
@@ -117,24 +120,27 @@ over:
 	    && getyn(OVERWRITEFILEPROMPT) == FALSE))
 		return FALSE;
 
-	if ((outf = creat(buf, 0644)) < 0) {
+	if ((outfd = creat(buf, 0644)) < 0) {
 		error(strerror(errno));
 		return FALSE;
 	}
 	mvwaddstr(Score, ERR_Y, ERR_X, buf);
 	wrefresh(Score);
 	time(tp);			/* get current time		*/
-	strcpy(buf, ctime(tp));
-	sp = buf;
-	for (; *sp != '\n'; sp++)
-		continue;
-	*sp = '\0';
-	varpush(outf, write);
-	close(outf);
-	wprintw(Score, " [%s]", buf);
+	retval = varpush(outfd, writev);
+	close(outfd);
+	if (retval == FALSE)
+		unlink(buf);
+	else {
+		strcpy(buf, ctime(tp));
+		for (sp = buf; *sp != '\n'; sp++)
+			continue;
+		*sp = '\0';
+		wprintw(Score, " [%s]", buf);
+	}
 	wclrtoeol(Score);
 	wrefresh(Score);
-	return TRUE;
+	return retval;
 }
 
 /*
@@ -143,8 +149,8 @@ over:
  * be cleaned up before the game starts.
  */
 bool
-rest_f(file)
-char	*file; {
+rest_f(char *file)
+{
 
 	char	*sp;
 	int		inf;
@@ -159,7 +165,7 @@ char	*file; {
 		perror(file);
 		exit(1);
 	}
-	varpush(inf, read);
+	varpush(inf, readv);
 	close(inf);
 	strcpy(buf, ctime(&sbuf.st_mtime));
 	for (sp = buf; *sp != '\n'; sp++)
@@ -168,7 +174,7 @@ char	*file; {
 	/*
 	 * initialize some necessary values
 	 */
-	(void)sprintf(Initstr, "%s [%s]\n", file, buf);
+	sprintf(Initstr, "%s [%s]\n", file, buf);
 	Fromfile = file;
 	return !On_exit;
 }

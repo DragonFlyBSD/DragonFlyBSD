@@ -33,7 +33,7 @@
  *	@(#)mille.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/mille/mille.h,v 1.7 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.h,v 1.5 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/games/mille/mille.h,v 1.6 2006/08/27 17:17:23 pavalos Exp $
  */
 
 # include	<sys/types.h>
@@ -215,7 +215,8 @@ typedef struct {
 
 extern bool	Debug, Finished, Next, On_exit, Order, Saved;
 
-extern char	*C_fmt, **C_name, *Fromfile, Initstr[];
+extern char	*Fromfile, Initstr[];
+extern const char	*C_fmt, **C_name;
 
 extern int	Card_no, End, Handstart, Movetype, Numcards[], Numgos,
 		Numneed[], Numseen[NUM_CARDS], Play, Value[], Window;
@@ -240,7 +241,7 @@ bool	check_ext (bool);
 void	check_more (void);
 void	die (int);
 void	domove (void);
-bool	error (char *, ...);
+bool	error (const char *, ...);
 #ifdef EXTRAP
 void	extrapolate (PLAY *);
 #endif
@@ -263,7 +264,7 @@ CARD	safety (CARD);
 bool	save (void);
 void	shuffle (void);
 void	sort (CARD *);
-void	varpush (int, int (*)());
+bool	varpush (int, ssize_t (*)(int, const struct iovec *, int));
 #ifdef EXTRAP
 void	undoex (void);
 #endif
