@@ -32,9 +32,9 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $NetBSD: bridge.4,v 1.7 2005/06/23 12:47:38 peter Exp $
-.\" $DragonFly: src/share/man/man4/bridge.4,v 1.8 2006/03/21 04:24:27 swildner Exp $
+.\" $DragonFly: src/share/man/man4/bridge.4,v 1.9 2006/08/29 22:26:32 swildner Exp $
 .\"
-.Dd January 4, 2004
+.Dd August 30, 2006
 .Dt BRIDGE 4
 .Os
 .Sh NAME
@@ -60,10 +60,9 @@ The bridge is created using the
 .Xr ifconfig 8
 .Cm create
 subcommand.
-The learning and forwarding behavior and other parameters of a
-bridge are configured by the
-.Xr brconfig 8
-utility.
+See the
+.Xr ifconfig 8
+manual page for further information on configuring bridges.
 .Pp
 A bridge can be used to provide several services, such as a simple
 802.11-to-Ethernet bridge for wireless hosts, and traffic isolation.
@@ -111,7 +110,7 @@ The MTU of the first member interface to be added is used as the bridge MTU,
 all additional members are required to have exactly the same value.
 .Sh SEE ALSO
 .Xr pf 4 ,
-.Xr brconfig 8
+.Xr ifconfig 8
 .Sh HISTORY
 The
 .Nm
