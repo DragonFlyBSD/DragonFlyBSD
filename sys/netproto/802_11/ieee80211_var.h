@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_var.h,v 1.22.2.11 2006/03/13 03:05:48 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.4 2006/08/04 15:42:27 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_var.h,v 1.5 2006/09/01 15:12:11 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_VAR_H_
 #define _NET80211_IEEE80211_VAR_H_
@@ -60,6 +60,7 @@
 #include <netproto/802_11/ieee80211_ioctl.h>	/* for ieee80211_stats */
 #include <netproto/802_11/ieee80211_node.h>
 #include <netproto/802_11/ieee80211_proto.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
 
 #define	IEEE80211_TXPOWER_MAX	100	/* .5 dbM (XXX units?) */
 #define	IEEE80211_TXPOWER_MIN	0	/* kill radio */
@@ -214,6 +215,11 @@ struct ieee80211com {
 	 * is setup that the methods are safe to call.
 	 */
 	const struct ieee80211_aclator *ic_acl;
+
+	/*
+	 * Rate control state/configuration.
+	 */
+	struct ieee80211_ratectl_state ic_ratectl;
 	void			*ic_as;
 	uint32_t		ic_pad[56];	/* future expansion */
 };

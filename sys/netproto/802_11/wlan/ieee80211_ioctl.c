@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.c,v 1.25.2.11 2006/02/28 02:02:43 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_ioctl.c,v 1.3 2006/09/01 15:12:11 sephe Exp $
  */
 
 /*
@@ -1510,6 +1510,9 @@ ieee80211_ioctl_get80211(struct ieee80211com *ic, u_long cmd,
 	case IEEE80211_IOC_BURST:
 		ireq->i_val = (ic->ic_flags & IEEE80211_F_BURST) != 0;
 		break;
+	case IEEE80211_IOC_RATECTL:
+		ireq->i_val = ic->ic_ratectl.rc_st_ratectl;
+		break;
 	default:
 		error = EINVAL;
 		break;
@@ -2427,6 +2430,15 @@ ieee80211_ioctl_set80211(struct ieee80211com *ic, u_long cmd, struct ieee80211re
 		} else
 			ic->ic_flags &= ~IEEE80211_F_BURST;
 		error = ENETRESET;		/* XXX maybe not for station? */
+		break;
+	case IEEE80211_IOC_RATECTL:
+		if (ireq->i_val < 0 || ireq->i_val >= IEEE80211_RATECTL_MAX ||
+		    ireq->i_val == IEEE80211_RATECTL_NONE) {
+			error = EINVAL;
+			break;
+		}
+
+		error = ieee80211_ratectl_change(ic, ireq->i_val);
 		break;
 	default:
 		error = EINVAL;

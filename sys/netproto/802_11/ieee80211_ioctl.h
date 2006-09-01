@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_ioctl.h,v 1.10.2.4 2005/12/22 19:18:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_ioctl.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_IOCTL_H_
 #define _NET80211_IEEE80211_IOCTL_H_
@@ -446,6 +446,7 @@ struct ieee80211req {
 #define	IEEE80211_IOC_MCAST_RATE	72	/* tx rate for mcast frames */
 #define	IEEE80211_IOC_FRAGTHRESHOLD	73	/* tx fragmentation threshold */
 #define	IEEE80211_IOC_BURST		75	/* packet bursting */
+#define IEEE80211_IOC_RATECTL		255
 
 /*
  * Scan result data returned for IEEE80211_IOC_SCAN_RESULTS.

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.c,v 1.19.2.7 2006/03/11 19:25:23 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.7 2006/06/28 21:03:51 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211.c,v 1.8 2006/09/01 15:12:11 sephe Exp $
  */
 
 /*
@@ -209,6 +209,8 @@ ieee80211_ifattach(struct ieee80211com *ic)
 
 	ieee80211_sysctl_attach(ic);		/* NB: requires ic_vap */
 
+	ieee80211_ratectl_attach(ic);
+
 	/*
 	 * Install a default reset method for the ioctl support.
 	 * The driver is expected to fill this in before calling us.
@@ -222,6 +224,17 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 {
 	struct ifnet *ifp = ic->ic_ifp;
 
+	/*
+	 * XXX
+	 * Certain rate control algorithm(e.g. onoe) may iterate node
+	 * tables, which will assert serializer.
+	 * In order to make the assertion work, hold serializer here.
+	 * SHOULD BE REMOVED
+	 */
+	lwkt_serialize_enter(ifp->if_serializer);
+	ieee80211_ratectl_detach(ic);
+	lwkt_serialize_exit(ifp->if_serializer);
+
 	ieee80211_remove_vap(ic);
 
 	ieee80211_sysctl_detach(ic);
@@ -232,9 +245,8 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	 * XXX
 	 * ieee80211_node_detach() -> ieee80211_node_table_cleanup()
 	 * -> ieee80211_free_allnodes_locked()
-	 * will assert the serializer
-	 * In order to make the assertion work, hold serializer here
-	 *
+	 * will assert the serializer.
+	 * In order to make the assertion work, hold serializer here.
 	 * SHOULD BE REMOVED
 	 */
 	lwkt_serialize_enter(ifp->if_serializer);

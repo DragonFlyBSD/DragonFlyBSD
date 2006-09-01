@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.137 2006/08/27 03:41:46 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.138 2006/09/01 15:12:11 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -710,6 +710,8 @@ net/zlib.c		optional ipsec
 netproto/802_11/wlan/ieee80211.c			optional wlan
 netproto/802_11/wlan/ieee80211_crypto.c			optional wlan
 netproto/802_11/wlan/ieee80211_crypto_none.c		optional wlan
+netproto/802_11/wlan/ieee80211_ratectl.c		optional wlan
+netproto/802_11/wlan/ieee80211_ratectl_none.c		optional wlan
 netproto/802_11/wlan/ieee80211_dragonfly.c		optional wlan
 netproto/802_11/wlan/ieee80211_input.c			optional wlan
 netproto/802_11/wlan/ieee80211_ioctl.c			optional wlan
@@ -721,6 +723,8 @@ netproto/802_11/wlan_ccmp/ieee80211_crypto_ccmp.c	optional wlan_ccmp
 netproto/802_11/wlan_tkip/ieee80211_crypto_tkip.c	optional wlan_tkip
 netproto/802_11/wlan_wep/ieee80211_crypto_wep.c		optional wlan_wep
 netproto/802_11/wlan_xauth/ieee80211_xauth.c		optional wlan_xauth
+netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c	optional wlan_ratectl_onoe
+netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c	optional wlan_ratectl_amrr
 netproto/atalk/aarp.c		optional netatalk
 netproto/atalk/at_control.c	optional netatalk
 netproto/atalk/at_proto.c	optional netatalk

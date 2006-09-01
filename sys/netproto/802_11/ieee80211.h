@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211.h,v 1.9.2.1 2005/07/29 23:31:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
@@ -436,6 +436,8 @@ struct ieee80211_country_ie {
 
 #define	IEEE80211_RATE_BASIC		0x80
 #define	IEEE80211_RATE_VAL		0x7f
+#define IEEE80211_RS_RATE(rs, idx) \
+	((rs)->rs_rates[idx] & IEEE80211_RATE_VAL)
 
 /* EPR information element flags */
 #define	IEEE80211_ERP_NON_ERP_PRESENT	0x01

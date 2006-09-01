@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.3 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.4 2006/09/01 15:12:11 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -372,6 +372,7 @@ copy_bss(struct ieee80211_node *nbss, const struct ieee80211_node *obss)
 	nbss->ni_txpower = obss->ni_txpower;
 	nbss->ni_vlan = obss->ni_vlan;
 	nbss->ni_rsn = obss->ni_rsn;
+	ieee80211_ratectl_data_dup(obss, nbss);
 	/* XXX statistics? */
 }
 
@@ -965,6 +966,8 @@ ieee80211_setup_node(struct ieee80211_node_table *nt,
 	LIST_INSERT_HEAD(&nt->nt_hash[hash], ni, ni_hash);
 	ni->ni_table = nt;
 	ni->ni_ic = ic;
+
+	ieee80211_ratectl_data_alloc(ni);
 }
 
 struct ieee80211_node *
@@ -1010,6 +1013,8 @@ ieee80211_tmp_node(struct ieee80211com *ic, const uint8_t *macaddr)
 
 		ni->ni_table = NULL;		/* NB: pedantic */
 		ni->ni_ic = ic;
+
+		ieee80211_ratectl_data_alloc(ni);
 	} else {
 		/* XXX msg */
 		ic->ic_stats.is_rx_nodealloc++;
@@ -1108,8 +1113,12 @@ ieee80211_fakeup_adhoc_node(struct ieee80211_node_table *nt,
 	if (ni != NULL) {
 		/* XXX no rate negotiation; just dup */
 		ni->ni_rates = ic->ic_bss->ni_rates;
+
+		ieee80211_ratectl_newassoc(ni, 1);
+
 		if (ic->ic_newassoc != NULL)
 			ic->ic_newassoc(ni, 1);
+
 		/* XXX not right for 802.1x/WPA */
 		ieee80211_node_authorize(ni);
 		if (ic->ic_opmode == IEEE80211_M_AHDEMO) {
@@ -1299,8 +1308,12 @@ ieee80211_add_neighbor(struct ieee80211com *ic,
 	ni = ieee80211_dup_bss(&ic->ic_sta, wh->i_addr2);/* XXX alloc_node? */
 	if (ni != NULL) {
 		ieee80211_init_neighbor(ni, wh, sp);
+
+		ieee80211_ratectl_newassoc(ni, 1);
+
 		if (ic->ic_newassoc != NULL)
 			ic->ic_newassoc(ni, 1);
+
 		/* XXX not right for 802.1x/WPA */
 		ieee80211_node_authorize(ni);
 	}
@@ -1570,6 +1583,8 @@ _ieee80211_free_node(struct ieee80211_node *ni)
 		ni->ni_macaddr, ":",
 		nt != NULL ? nt->nt_name : "<gone>");
 
+	ieee80211_ratectl_data_free(ni);
+
 	IEEE80211_AID_CLR(ni->ni_associd, ic->ic_aid_bitmap);
 	if (nt != NULL) {
 		TAILQ_REMOVE(&nt->nt_node, ni, ni_list);
@@ -1673,6 +1688,9 @@ node_reclaim(struct ieee80211_node_table *nt, struct ieee80211_node *ni)
 		"%s: remove %p<%6D> from %s table, refcnt %d\n",
 		__func__, ni, ni->ni_macaddr, ":",
 		nt->nt_name, ieee80211_node_refcnt(ni)-1);
+
+	ieee80211_ratectl_data_free(ni);
+
 	/*
 	 * Clear any entry in the unicast key mapping table.
 	 * We need to do it here so rx lookups don't find it
@@ -2038,9 +2056,12 @@ ieee80211_node_join(struct ieee80211com *ic, struct ieee80211_node *ni, int resp
 	    ni->ni_flags & IEEE80211_NODE_QOS ? ", QoS" : ""
 	);
 
+	ieee80211_ratectl_newassoc(ni, newassoc);
+
 	/* give driver a chance to setup state like ni_txrate */
 	if (ic->ic_newassoc != NULL)
 		ic->ic_newassoc(ni, newassoc);
+
 	ni->ni_inact_reload = ic->ic_inact_auth;
 	ni->ni_inact = ni->ni_inact_reload;
 	IEEE80211_SEND_MGMT(ic, ni, resp, IEEE80211_STATUS_SUCCESS);

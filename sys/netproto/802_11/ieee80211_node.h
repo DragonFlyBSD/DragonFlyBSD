@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.h,v 1.17.2.5 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_node.h,v 1.3 2006/09/01 15:12:11 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_NODE_H_
 #define _NET80211_IEEE80211_NODE_H_
@@ -147,6 +147,7 @@ struct ieee80211_node {
 	int			ni_txrate;	/* index to ni_rates[] */
 	struct ifqueue		ni_savedq;	/* ps-poll queue */
 	struct ieee80211_nodestats ni_stats;	/* per-node statistics */
+	void			*ni_rate_data;
 	uint32_t		ni_pad[8];	/* future expansion */
 };
 MALLOC_DECLARE(M_80211_NODE);

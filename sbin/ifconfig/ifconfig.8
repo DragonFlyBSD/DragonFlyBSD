@@ -27,9 +27,9 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.85 2004/07/27 09:51:49 yar Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.10 2006/05/18 14:24:34 sephe Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.11 2006/09/01 15:12:11 sephe Exp $
 .\"
-.Dd May 14, 2006
+.Dd September 1, 2006
 .Dt IFCONFIG 8
 .Os
 .Sh NAME
@@ -848,6 +848,18 @@ capable; otherwise, the operating system will automatically
 attempt to reestablish communication.
 Manual mode is mostly useful when an application wants to
 control the selection of an access point.
+.It Cm ratectl Ar algorithm
+Set the TX rate control algorithm.
+The set of valid
+.Ar algorithm
+is
+.Cm onoe
+(Onoe TX rate control algorithm)
+and
+.Cm amrr
+(AMRR TX rate control algorithm).
+.Ar Algorithm
+names are case sensitive.
 .It Cm rtsthreshold Ar length
 Set the threshold for which
 transmitted frames are preceded by transmission of an

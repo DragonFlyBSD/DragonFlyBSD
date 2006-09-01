@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.9 2006/03/07 17:50:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.12 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.13 2006/09/01 15:12:11 sephe Exp $
  */
 
 /*-
@@ -81,6 +81,7 @@
 #include <netproto/802_11/ieee80211.h>
 #include <netproto/802_11/ieee80211_crypto.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -668,6 +669,21 @@ static void
 set80211burst(const char *val, int d, int s, const struct afswtch *rafp)
 {
 	set80211(s, IEEE80211_IOC_BURST, d, 0, NULL);
+}
+
+static void
+set80211ratectl(const char *val, int d, int s, const struct afswtch *rafp)
+{
+	int ratectl = 0;
+
+	if (strcmp("onoe", val) == 0)
+		ratectl = IEEE80211_RATECTL_ONOE;
+	else if (strcmp("amrr", val) == 0)
+		ratectl = IEEE80211_RATECTL_AMRR;
+	else
+		errx(1, "unknown ratectl");
+
+	set80211(s, IEEE80211_IOC_RATECTL, ratectl, 0, NULL);
 }
 
 static
@@ -1439,6 +1455,29 @@ ieee80211_status(int s)
 		/* If we can't get the SSID, this isn't an 802.11 device. */
 		return;
 	}
+
+	ireq.i_type = IEEE80211_IOC_RATECTL;
+	if (ioctl(s, SIOCG80211, &ireq) != -1) {
+		int lineb = 1;
+
+		switch (ireq.i_val) {
+		case IEEE80211_RATECTL_ONOE:
+			printf("\tratectl: onoe");
+			break;
+		case IEEE80211_RATECTL_AMRR:
+			printf("\tratectl: amrr");
+			break;
+		default:
+			if (verbose)
+				printf("\tratectl: none");
+			else
+				lineb = 0;
+			break;
+		}
+		if (lineb)
+			LINE_BREAK();
+	}
+
 	num = 0;
 	ireq.i_type = IEEE80211_IOC_NUMSSIDS;
 	if (ioctl(s, SIOCG80211, &ireq) >= 0)
@@ -1951,6 +1990,7 @@ static struct cmd ieee80211_cmds[] = {
 	DEF_CMD_ARG("fragthreshold",	set80211fragthreshold),
 	DEF_CMD("burst",	1,	set80211burst),
 	DEF_CMD("-burst",	0,	set80211burst),
+	DEF_CMD_ARG("ratectl",		set80211ratectl)
 };
 static struct afswtch af_ieee80211 = {
 	.af_name	= "af_ieee80211",
