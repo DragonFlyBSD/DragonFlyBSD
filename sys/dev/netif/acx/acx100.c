@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.3 2006/06/17 10:31:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.4 2006/09/01 15:13:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -257,7 +257,10 @@ static int	acx100_write_config(struct acx_softc *, struct acx_config *);
 static int	acx100_set_txpower(struct acx_softc *);
 
 static void	acx100_set_fw_txdesc_rate(struct acx_softc *,
-					  struct acx_txbuf *, int);
+					  struct acx_txbuf *,
+					  struct ieee80211_node *, int);
+static void	acx100_tx_complete(struct acx_softc *, struct acx_txbuf *,
+				   int, int);
 static void	acx100_set_bss_join_param(struct acx_softc *, void *, int);
 
 static int	acx100_set_wepkey(struct acx_softc *, struct ieee80211_key *,
@@ -269,6 +272,7 @@ void
 acx100_set_param(device_t dev)
 {
 	struct acx_softc *sc = device_get_softc(dev);
+	struct ieee80211com *ic = &sc->sc_ic;
 
 	sc->chip_mem1_rid = PCIR_BAR(1);
 	sc->chip_mem2_rid = PCIR_BAR(2);
@@ -282,17 +286,23 @@ acx100_set_param(device_t dev)
 	sc->chip_fw_txdesc_ctrl = DESC_CTRL_AUTODMA |
 				  DESC_CTRL_RECLAIM |
 				  DESC_CTRL_FIRST_FRAG;
+	sc->chip_short_retry_limit = 7;
 
 	sc->chip_phymode = IEEE80211_MODE_11B;
 	sc->chip_chan_flags = IEEE80211_CHAN_B;
-	sc->sc_ic.ic_phytype = IEEE80211_T_DS;
-	sc->sc_ic.ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
+
+	ic->ic_phytype = IEEE80211_T_DS;
+	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
+
+	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE;
+	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_ONOE;
 
 	sc->chip_init = acx100_init;
 	sc->chip_set_wepkey = acx100_set_wepkey;
 	sc->chip_read_config = acx100_read_config;
 	sc->chip_write_config = acx100_write_config;
 	sc->chip_set_fw_txdesc_rate = acx100_set_fw_txdesc_rate;
+	sc->chip_tx_complete = acx100_tx_complete;
 	sc->chip_set_bss_join_param = acx100_set_bss_join_param;
 	sc->chip_proc_wep_rxbuf = acx100_proc_wep_rxbuf;
 }
@@ -681,8 +691,20 @@ acx100_set_txpower(struct acx_softc *sc)
 
 static void
 acx100_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
-			  int rate)
+			  struct ieee80211_node *ni, int data_len)
 {
+	int rate;
+
+	tx_buf->tb_rateidx_len = 1;
+	if (ni == NULL) {
+		rate = 2;	/* 1Mbit/s */
+		tx_buf->tb_rateidx[0] = 0;
+	} else {
+		ieee80211_ratectl_findrate(ni, data_len,
+					   tx_buf->tb_rateidx, 1);
+		rate = IEEE80211_RS_RATE(&ni->ni_rates,
+					 tx_buf->tb_rateidx[0]);
+	}
 	FW_TXDESC_SETFIELD_1(sc, tx_buf, f_tx_rate100, ACX100_RATE(rate));
 }
 
@@ -747,4 +769,22 @@ acx100_proc_wep_rxbuf(struct acx_softc *sc, struct mbuf *m, int *len)
 
 #undef IEEEWEP_EXLEN
 #undef IEEEWEP_IVLEN
+}
+
+static void
+acx100_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+		   int frame_len, int is_fail)
+{
+	int long_retries, short_retries;
+	struct ieee80211_ratectl_res rc_res;
+
+	long_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
+	short_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
+
+	rc_res.rc_res_rateidx = tx_buf->tb_rateidx[0];
+	rc_res.rc_res_tries = short_retries + 1;
+
+	ieee80211_ratectl_tx_complete(tx_buf->tb_node, frame_len,
+				      &rc_res, 1, short_retries, long_retries,
+				      is_fail);
 }

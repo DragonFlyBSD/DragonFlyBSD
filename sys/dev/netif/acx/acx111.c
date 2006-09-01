@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.3 2006/06/17 10:31:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.4 2006/09/01 15:13:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,7 @@
 
 #define ACX111_CONF_MEM		0x0003
 #define ACX111_CONF_MEMINFO	0x0005
+#define ACX111_CONF_RT0_NRETRY	0x0006
 
 #define ACX111_INTR_ENABLE	(ACXRV_INTR_TX_FINI | ACXRV_INTR_RX_FINI)
 /*
@@ -101,6 +102,9 @@
 #define ACX111_TXPOWER_VAL	2
 #endif
 
+#define ACX111_ONOE_RATEIDX_MAX		4
+#define ACX111_AMRR_RATEIDX_MAX		IEEE80211_AMRR_RATEIDX_MAX
+
 /*
  * NOTE:
  * Following structs' fields are little endian
@@ -135,6 +139,33 @@ struct acx111_conf_mem {
 	uint8_t		fw_txring_reserved1;
 	uint8_t		fw_txring_reserved2;
 	uint8_t		fw_txring_attr;	/* see ACX111_TXRING_ATTR_ */
+} __packed;
+
+/*
+ * ACX111 does support limited multi-rate retry, following rules apply to
+ * at least firmware rev1.2.x.x:
+ * 1) Rate field in firmware descriptor is a bitmask, which indicates
+ *    set of rates to be used to send the packet.
+ * 2) "acx111_conf_rt0_nretry" configures the number of retries for
+ *    1st rate.
+ * 3) Except for the last rate and 1st rate, rest of the rates in the
+ *    rate set are tried only once.
+ * 4) Last rate will be tried until "short retry limit" + "long retry limit"
+ *    reaches.
+ *
+ * e.g.
+ * a) 54Mbit/s, 48Mbit/s and 1Mbit/s are in the rate set.
+ * b) Number of retries for the 1st rate (i.e. 54Mbit/s) is set to 3.
+ * c) Short retry limit is set to 7
+ *
+ * For the above configuration:
+ * A) 4 tries will be spent at 54Mbit/s.
+ * B) 1 try will be spent at 48Mbit/s, if A) fails.
+ * C) 3 tries will be spent at 1Mbit/s, if A) and B) fail.
+ */
+struct acx111_conf_rt0_nretry {
+	struct acx_conf	confcom;
+	uint8_t		rt0_nretry;	/* number of retry for 1st rate */
 } __packed;
 
 #define ACX111_STA_MAX			32
@@ -190,6 +221,7 @@ struct acx111_wepkey {
 #define ACX111_CONF_FUNC(sg, name)	_ACX_CONF_FUNC(sg, name, 111)
 #define ACX_CONF_mem			ACX111_CONF_MEM
 #define ACX_CONF_meminfo		ACX111_CONF_MEMINFO
+#define ACX_CONF_rt0_nretry		ACX111_CONF_RT0_NRETRY
 #define ACX_CONF_txpower		ACX_CONF_TXPOWER
 #define ACX_CONF_option			ACX_CONF_OPTION
 ACX111_CONF_FUNC(set, mem);
@@ -197,6 +229,7 @@ ACX111_CONF_FUNC(get, meminfo);
 ACX111_CONF_FUNC(set, txpower);
 ACX111_CONF_FUNC(get, option);
 ACX111_CONF_FUNC(set, option);
+ACX111_CONF_FUNC(set, rt0_nretry);
 
 static const uint16_t acx111_reg[ACXREG_MAX] = {
 	ACXREG(SOFT_RESET,		0x0000),
@@ -254,20 +287,44 @@ static uint16_t	acx111_rate_map[109] = {
 	ACX111_RATE(108)
 };
 
+static const int
+acx111_onoe_tries[IEEE80211_RATEIDX_MAX] = { 4, 1, 1, 3, 0 };
+
+static const int
+acx111_amrr_tries[IEEE80211_RATEIDX_MAX] = { 2, 1, 1, 3, 0 };
+
 static int	acx111_init(struct acx_softc *);
 static int	acx111_init_memory(struct acx_softc *);
 static void	acx111_init_fw_txring(struct acx_softc *, uint32_t);
 
 static int	acx111_write_config(struct acx_softc *, struct acx_config *);
 
-static void	acx111_set_fw_txdesc_rate(struct acx_softc *,
-					  struct acx_txbuf *, int);
 static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
+
+static void	acx111_ratectl_change(struct ieee80211com *, u_int, u_int);
+
+static void	_acx111_set_fw_txdesc_rate(struct acx_softc *,
+					   struct acx_txbuf *,
+					   struct ieee80211_node *, int, int);
+static void	acx111_set_fw_txdesc_rate_onoe(struct acx_softc *,
+					       struct acx_txbuf *,
+					       struct ieee80211_node *, int);
+static void	acx111_set_fw_txdesc_rate_amrr(struct acx_softc *,
+					       struct acx_txbuf *,
+					       struct ieee80211_node *, int);
+
+static void	_acx111_tx_complete(struct acx_softc *, struct acx_txbuf *,
+				    int, int, const int[]);
+static void	acx111_tx_complete_onoe(struct acx_softc *, struct acx_txbuf *,
+					int, int);
+static void	acx111_tx_complete_amrr(struct acx_softc *, struct acx_txbuf *,
+					int, int);
 
 void
 acx111_set_param(device_t dev)
 {
 	struct acx_softc *sc = device_get_softc(dev);
+	struct ieee80211com *ic = &sc->sc_ic;
 
 	sc->chip_mem1_rid = PCIR_BAR(0);
 	sc->chip_mem2_rid = PCIR_BAR(1);
@@ -282,14 +339,19 @@ acx111_set_param(device_t dev)
 			      IEEE80211_CHAN_OFDM |
 			      IEEE80211_CHAN_DYN |
 			      IEEE80211_CHAN_2GHZ;
-	sc->sc_ic.ic_caps = IEEE80211_C_WPA;
-	sc->sc_ic.ic_phytype = IEEE80211_T_OFDM;
-	sc->sc_ic.ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
-	sc->sc_ic.ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
+
+	ic->ic_caps = IEEE80211_C_WPA /* | IEEE80211_C_SHSLOT */;
+	ic->ic_phytype = IEEE80211_T_OFDM;
+	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
+	ic->ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
+
+	ic->ic_ratectl.rc_st_ratectl_cap = IEEE80211_RATECTL_CAP_ONOE |
+					   IEEE80211_RATECTL_CAP_AMRR;
+	ic->ic_ratectl.rc_st_ratectl = IEEE80211_RATECTL_AMRR;
+	ic->ic_ratectl.rc_st_change = acx111_ratectl_change;
 
 	sc->chip_init = acx111_init;
 	sc->chip_write_config = acx111_write_config;
-	sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate;
 	sc->chip_set_bss_join_param = acx111_set_bss_join_param;
 }
 
@@ -397,6 +459,7 @@ acx111_write_config(struct acx_softc *sc, struct acx_config *conf)
 {
 	struct acx111_conf_txpower tx_power;
 	struct acx111_conf_option opt;
+	struct acx111_conf_rt0_nretry rt0_nretry;
 	uint32_t dataflow;
 
 	/* Set TX power */
@@ -424,19 +487,72 @@ acx111_write_config(struct acx_softc *sc, struct acx_config *conf)
 		if_printf(&sc->sc_ic.ic_if, "%s can't set option\n", __func__);
 		return ENXIO;
 	}
+
+	/*
+	 * Set number of retries for 0th rate
+	 */
+	rt0_nretry.rt0_nretry = sc->chip_rate_fallback;
+	if (acx111_set_rt0_nretry_conf(sc, &rt0_nretry) != 0) {
+		if_printf(&sc->sc_ic.ic_if, "%s can't set rate0 nretry\n",
+			  __func__);
+		return ENXIO;
+	}
 	return 0;
 }
 
 static void
-acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
-			  int rate0)
+_acx111_set_fw_txdesc_rate(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+			   struct ieee80211_node *ni, int data_len,
+			   int rateidx_max)
 {
 	uint16_t rate;
 
-	rate = acx111_rate_map[rate0];
-	KASSERT(rate != 0, ("no rate map for %d\n", rate0));
+	KKASSERT(rateidx_max <= IEEE80211_RATEIDX_MAX);
 
+	if (ni == NULL) {
+		rate = ACX111_RATE_2;	/* 1Mbit/s */
+		tx_buf->tb_rateidx_len = 1;
+		tx_buf->tb_rateidx[0] = 0;
+	} else {
+		struct ieee80211_rateset *rs = &ni->ni_rates;
+		int *rateidx = tx_buf->tb_rateidx;
+		int i, n;
+
+		n = ieee80211_ratectl_findrate(ni, data_len, rateidx,
+					       rateidx_max);
+
+		rate = 0;
+		for (i = 0; i < n; ++i) {
+			rate |= acx111_rate_map[
+				IEEE80211_RS_RATE(rs, rateidx[i])];
+		}
+		if (rate == 0) {
+			if_printf(&sc->sc_ic.ic_if,
+				  "WARNING no rate, set to 1Mbit/s\n");
+			rate = ACX111_RATE_2;
+			tx_buf->tb_rateidx_len = 1;
+			tx_buf->tb_rateidx[0] = 0;
+		} else {
+			tx_buf->tb_rateidx_len = n;
+		}
+	}
 	FW_TXDESC_SETFIELD_2(sc, tx_buf, u.r2.rate111, rate);
+}
+
+static void
+acx111_set_fw_txdesc_rate_onoe(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+			       struct ieee80211_node *ni, int data_len)
+{
+	_acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
+				   ACX111_ONOE_RATEIDX_MAX);
+}
+
+static void
+acx111_set_fw_txdesc_rate_amrr(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+			       struct ieee80211_node *ni, int data_len)
+{
+	_acx111_set_fw_txdesc_rate(sc, tx_buf, ni, data_len,
+				   ACX111_AMRR_RATEIDX_MAX);
 }
 
 static void
@@ -446,4 +562,127 @@ acx111_set_bss_join_param(struct acx_softc *sc, void *param, int dtim_intvl)
 
 	bj->basic_rates = htole16(ACX111_RATE_ALL);
 	bj->dtim_intvl = dtim_intvl;
+}
+
+static void
+acx111_ratectl_change(struct ieee80211com *ic, u_int orc, u_int nrc)
+{
+	struct ifnet *ifp = &ic->ic_if;
+	struct acx_softc *sc = ifp->if_softc;
+	const int *tries;
+	int i;
+
+	switch (nrc) {
+	case IEEE80211_RATECTL_ONOE:
+		tries = acx111_onoe_tries;
+		sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate_onoe;
+		sc->chip_tx_complete = acx111_tx_complete_onoe;
+		break;
+
+	case IEEE80211_RATECTL_AMRR:
+		tries = acx111_amrr_tries;
+		sc->chip_set_fw_txdesc_rate = acx111_set_fw_txdesc_rate_amrr;
+		sc->chip_tx_complete = acx111_tx_complete_amrr;
+		break;
+
+	case IEEE80211_RATECTL_NONE:
+		/* This could only happen during detaching */
+		return;
+
+	default:
+		panic("unknown rate control algo %u\n", nrc);
+		break;
+	}
+
+	sc->chip_rate_fallback = tries[0] - 1;
+
+	sc->chip_short_retry_limit = 0;
+	for (i = 0; i < IEEE80211_RATEIDX_MAX; ++i)
+		sc->chip_short_retry_limit += tries[i];
+	sc->chip_short_retry_limit--;
+
+	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP)) ==
+	    (IFF_RUNNING | IFF_UP)) {
+	    	struct acx_conf_nretry_short sretry;
+		struct acx111_conf_rt0_nretry rt0_nretry;
+
+		/*
+		 * Set number of short retries
+		 */
+		sretry.nretry = sc->chip_short_retry_limit;
+		if (acx_set_nretry_short_conf(sc, &sretry) != 0) {
+			if_printf(ifp, "%s can't set short retry limit\n",
+				  __func__);
+		}
+		DPRINTF((ifp, "%s set sretry %d\n", __func__,
+			 sc->chip_short_retry_limit));
+
+		/*
+		 * Set number of retries for 0th rate
+		 */
+		rt0_nretry.rt0_nretry = sc->chip_rate_fallback;
+		if (acx111_set_rt0_nretry_conf(sc, &rt0_nretry) != 0) {
+			if_printf(ifp, "%s can't set rate0 nretry\n",
+				  __func__);
+		}
+		DPRINTF((ifp, "%s set rate 0 nretry %d\n", __func__,
+			 sc->chip_rate_fallback));
+	}
+}
+
+static void
+_acx111_tx_complete(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+		    int frame_len, int is_fail, const int tries_arr[])
+{
+	struct ieee80211_ratectl_res rc_res[IEEE80211_RATEIDX_MAX];
+	int long_retries, short_retries, n, tries, prev_tries;
+
+	KKASSERT(tx_buf->tb_rateidx_len <= IEEE80211_RATEIDX_MAX);
+
+	long_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_rts_nretry);
+	short_retries = FW_TXDESC_GETFIELD_1(sc, tx_buf, f_tx_data_nretry);
+
+#if 0
+	DPRINTF((&sc->sc_ic.ic_if, "s%d l%d rateidx_len %d\n",
+		 short_retries, long_retries, tx_buf->tb_rateidx_len));
+#endif
+
+	prev_tries = tries = 0;
+	for (n = 0; n < tx_buf->tb_rateidx_len; ++n) {
+		rc_res[n].rc_res_tries = tries_arr[n];
+		rc_res[n].rc_res_rateidx = tx_buf->tb_rateidx[n];
+		if (!is_fail) {
+			if (short_retries + 1 <= tries)
+				break;
+			prev_tries = tries;
+			tries += tries_arr[n];
+		}
+	}
+	KKASSERT(n != 0);
+
+	if (!is_fail && short_retries + 1 <= tries) {
+		rc_res[n - 1].rc_res_tries = short_retries + 1 - prev_tries;
+#if 0
+		DPRINTF((&sc->sc_ic.ic_if, "n %d, last tries%d\n",
+			 n, rc_res[n - 1].rc_res_tries));
+#endif
+	}
+	ieee80211_ratectl_tx_complete(tx_buf->tb_node, frame_len, rc_res, n,
+				      short_retries, long_retries, is_fail);
+}
+
+static void
+acx111_tx_complete_onoe(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+			int frame_len, int is_fail)
+{
+	_acx111_tx_complete(sc, tx_buf, frame_len, is_fail,
+			    acx111_onoe_tries);
+}
+
+static void
+acx111_tx_complete_amrr(struct acx_softc *sc, struct acx_txbuf *tx_buf,
+			int frame_len, int is_fail)
+{
+	_acx111_tx_complete(sc, tx_buf, frame_len, is_fail,
+			    acx111_amrr_tries);
 }

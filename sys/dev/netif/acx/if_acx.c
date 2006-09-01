@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.4 2006/08/04 14:04:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.5 2006/09/01 15:13:15 sephe Exp $
  */
 
 /*
@@ -165,16 +165,16 @@ static int	acx_init_tx_ring(struct acx_softc *);
 static int	acx_init_rx_ring(struct acx_softc *);
 static int	acx_newbuf(struct acx_softc *, struct acx_rxbuf *, int);
 static int	acx_encap(struct acx_softc *, struct acx_txbuf *,
-			  struct mbuf *, struct ieee80211_node *, int);
+			  struct mbuf *, struct ieee80211_node *);
 
 static int	acx_reset(struct acx_softc *);
 
 static int	acx_set_null_tmplt(struct acx_softc *);
 static int	acx_set_probe_req_tmplt(struct acx_softc *, const char *, int);
-static int	acx_set_probe_resp_tmplt(struct acx_softc *, const char *, int,
-					 int);
-static int	acx_set_beacon_tmplt(struct acx_softc *, const char *, int,
-				     int);
+static int	acx_set_probe_resp_tmplt(struct acx_softc *,
+					 struct ieee80211_node *);
+static int	acx_set_beacon_tmplt(struct acx_softc *,
+				     struct ieee80211_node *);
 
 static int	acx_read_eeprom(struct acx_softc *, uint32_t, uint8_t *);
 static int	acx_read_phyreg(struct acx_softc *, uint32_t, uint8_t *);
@@ -188,17 +188,8 @@ static int	acx_load_radio_firmware(struct acx_softc *, const uint8_t *,
 static int	acx_load_base_firmware(struct acx_softc *, const uint8_t *,
 				       uint32_t);
 
-static struct ieee80211_node *acx_node_alloc(struct ieee80211_node_table *);
-static void	acx_node_init(struct acx_softc *, struct acx_node *);
-static void	acx_node_update(struct acx_softc *, struct acx_node *,
-				uint8_t, uint8_t);
 static int	acx_newstate(struct ieee80211com *, enum ieee80211_state, int);
 
-static int	acx_sysctl_txrate_upd_intvl_min(SYSCTL_HANDLER_ARGS);
-static int	acx_sysctl_txrate_upd_intvl_max(SYSCTL_HANDLER_ARGS);
-static int	acx_sysctl_txrate_sample_thresh(SYSCTL_HANDLER_ARGS);
-static int	acx_sysctl_long_retry_limit(SYSCTL_HANDLER_ARGS);
-static int	acx_sysctl_short_retry_limit(SYSCTL_HANDLER_ARGS);
 static int	acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS);
 
 const struct ieee80211_rateset	acx_rates_11b =
@@ -412,11 +403,13 @@ acx_attach(device_t dev)
 
 	ic->ic_opmode = IEEE80211_M_STA;
 	ic->ic_state = IEEE80211_S_INIT;
+	ic->ic_bintval = acx_beacon_intvl;
 
 	/*
 	 * NOTE: Don't overwrite ic_caps set by chip specific code
 	 */
 	ic->ic_caps |= IEEE80211_C_WEP |	/* WEP */
+		       IEEE80211_C_HOSTAP |	/* Host AP modes */
 		       IEEE80211_C_IBSS |	/* IBSS modes */
 		       IEEE80211_C_SHPREAMBLE;	/* Short preamble */
 
@@ -428,20 +421,13 @@ acx_attach(device_t dev)
 
 	ieee80211_ifattach(ic);
 
-	/* Override node alloc */
-	ic->ic_node_alloc = acx_node_alloc;
-
 	/* Override newstate */
 	sc->sc_newstate = ic->ic_newstate;
 	ic->ic_newstate = acx_newstate;
 
 	ieee80211_media_init(ic, ieee80211_media_change, ieee80211_media_status);
 
-	sc->sc_txrate_upd_intvl_min = 10;	/* 10 seconds */
-	sc->sc_txrate_upd_intvl_max = 300;	/* 5 minutes */
-	sc->sc_txrate_sample_thresh = 30;	/* 30 packets */
 	sc->sc_long_retry_limit = 4;
-	sc->sc_short_retry_limit = 7;
 	sc->sc_msdu_lifetime = 4096;
 
 	sysctl_ctx_init(&sc->sc_sysctl_ctx);
@@ -455,39 +441,6 @@ acx_attach(device_t dev)
 		error = ENXIO;
 		goto fail1;
 	}
-
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "txrate_upd_intvl_min",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_txrate_upd_intvl_min, "I",
-			"min seconds to wait before raising TX rate");
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "txrate_upd_intvl_max",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_txrate_upd_intvl_max, "I",
-			"max seconds to wait before raising TX rate");
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "txrate_sample_threshold",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_txrate_sample_thresh, "I",
-			"number of packets to be sampled "
-			"before raising TX rate");
-
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "long_retry_limit",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_long_retry_limit, "I",
-			"max number of retries for RTS packets");
-	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
-			OID_AUTO, "short_retry_limit",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, acx_sysctl_short_retry_limit, "I",
-			"max number of retries for non-RTS packets");
 
 	SYSCTL_ADD_PROC(&sc->sc_sysctl_ctx,
 			SYSCTL_CHILDREN(sc->sc_sysctl_tree),
@@ -786,7 +739,6 @@ acx_stop(struct acx_softc *sc)
 	/* Free TX mbuf */
 	for (i = 0; i < ACX_TX_DESC_CNT; ++i) {
 		struct acx_txbuf *buf;
-		struct ieee80211_node *ni;
 
 		buf = &bd->tx_buf[i];
 
@@ -797,9 +749,8 @@ acx_stop(struct acx_softc *sc)
 			buf->tb_mbuf = NULL;
 		}
 
-		ni = (struct ieee80211_node *)buf->tb_node;
-		if (ni != NULL)
-			ieee80211_free_node(ni);
+		if (buf->tb_node != NULL)
+			ieee80211_free_node(buf->tb_node);
 		buf->tb_node = NULL;
 	}
 
@@ -968,7 +919,8 @@ acx_write_config(struct acx_softc *sc, struct acx_config *conf)
 	int error;
 
 	/* Set number of long/short retry */
-	sretry.nretry = sc->sc_short_retry_limit;
+	KKASSERT(sc->chip_short_retry_limit > 0);
+	sretry.nretry = sc->chip_short_retry_limit;
 	if (acx_set_nretry_short_conf(sc, &sretry) != 0) {
 		if_printf(&sc->sc_ic.ic_if, "can't set short retry limit\n");
 		return ENXIO;
@@ -1130,7 +1082,7 @@ acx_start(struct ifnet *ifp)
 		struct ieee80211_frame *f;
 		struct ieee80211_node *ni = NULL;
 		struct mbuf *m;
-		int rate;
+		int mgmt_pkt = 0;
 
 		if (!IF_QEMPTY(&ic->ic_mgtq)) {
 			IF_DEQUEUE(&ic->ic_mgtq, m);
@@ -1138,18 +1090,9 @@ acx_start(struct ifnet *ifp)
 			ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 			m->m_pkthdr.rcvif = NULL;
 
-#if 0
-			/*
-			 * Since mgmt data are transmitted at fixed rate
-			 * they will not be used to do rate control.
-			 */
-			if (ni != NULL)
-				ieee80211_free_node(ni);
-#endif
-			rate = 4;	/* XXX 2Mb/s for mgmt packet */
+			mgmt_pkt = 1;
 		} else if (!ifq_is_empty(&ifp->if_snd)) {
 			struct ether_header *eh;
-			struct acx_node *node;
 
 			if (ic->ic_state != IEEE80211_S_RUN) {
 				if_printf(ifp, "data packet dropped due to "
@@ -1187,25 +1130,6 @@ acx_start(struct ifnet *ifp)
 				continue;
 			}
 
-			node = (struct acx_node *)ni;
-			if (node->nd_txrate < 0) {
-				acx_node_init(sc, node);
-#if 0
-				if (ic->ic_opmode == IEEE80211_M_IBSS) {
-					/* XXX
-					 * Add extra reference here,
-					 * so that some node (bss_dup)
-					 * will not be freed just after
-					 * they are allocated, which
-					 * make TX rate control impossible
-					 */
-					ieee80211_ref_node(ni);
-				}
-#endif
-			}
-
-			rate = node->nd_rates.rs_rates[node->nd_txrate];
-
 			BPF_MTAP(ifp, m);
 		} else {
 			break;
@@ -1225,7 +1149,16 @@ acx_start(struct ifnet *ifp)
 		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m);
 
-		if (acx_encap(sc, buf, m, ni, rate) != 0) {
+		/*
+		 * Since mgmt data are transmitted at fixed rate
+		 * they will not be used to do rate control.
+		 */
+		if (mgmt_pkt && ni != NULL) {
+			ieee80211_free_node(ni);
+			ni = NULL;
+		}
+
+		if (acx_encap(sc, buf, m, ni) != 0) {
 			/*
 			 * NOTE: `m' will be freed in acx_encap()
 			 * if we reach here.
@@ -1327,6 +1260,7 @@ acx_txeof(struct acx_softc *sc)
 	for (buf = &bd->tx_buf[idx]; buf->tb_mbuf != NULL;
 	     buf = &bd->tx_buf[idx]) {
 		uint8_t ctrl, error;
+		int frame_len;
 
 		ctrl = FW_TXDESC_GETFIELD_1(sc, buf, f_tx_ctrl);
 		if ((ctrl & (DESC_CTRL_HOSTOWN | DESC_CTRL_ACXDONE)) !=
@@ -1334,6 +1268,7 @@ acx_txeof(struct acx_softc *sc)
 			break;
 
 		bus_dmamap_unload(bd->mbuf_dma_tag, buf->tb_mbuf_dmamap);
+		frame_len = buf->tb_mbuf->m_pkthdr.len;
 		m_freem(buf->tb_mbuf);
 		buf->tb_mbuf = NULL;
 
@@ -1346,14 +1281,8 @@ acx_txeof(struct acx_softc *sc)
 		}
 
 		if (buf->tb_node != NULL) {
-			struct ieee80211com *ic;
-			struct ieee80211_node *ni;
-
-			ic = &sc->sc_ic;
-			ni = (struct ieee80211_node *)buf->tb_node;
-
-			acx_node_update(sc, buf->tb_node, buf->tb_rate, error);
-			ieee80211_free_node(ni);
+			sc->chip_tx_complete(sc, buf, frame_len, error);
+			ieee80211_free_node(buf->tb_node);
 			buf->tb_node = NULL;
 		}
 
@@ -1859,176 +1788,15 @@ acx_load_firmware(struct acx_softc *sc, uint32_t offset, const uint8_t *data,
 	return 0;
 }
 
-static struct ieee80211_node *
-acx_node_alloc(struct ieee80211_node_table *nt __unused)
-{
-	struct acx_node *node;
-
-	node = malloc(sizeof(struct acx_node), M_80211_NODE, M_NOWAIT | M_ZERO);
-	node->nd_txrate = -1;
-	return (struct ieee80211_node *)node;
-}
-
-static void
-acx_node_init(struct acx_softc *sc, struct acx_node *node)
-{
-	struct ieee80211_rateset *nd_rset, *ic_rset, *cp_rset;
-	struct ieee80211com *ic;
-	int i, j, c;
-
-	ic = &sc->sc_ic;
-
-	nd_rset = &node->nd_node.ni_rates;
-	ic_rset = &ic->ic_sup_rates[sc->chip_phymode];
-	cp_rset = &node->nd_rates;
-	c = 0;
-
-#define IEEERATE(rate)	((rate) & IEEE80211_RATE_VAL)
-	for (i = 0; i < nd_rset->rs_nrates; ++i) {
-		uint8_t nd_rate = IEEERATE(nd_rset->rs_rates[i]);
-
-		for (j = 0; j < ic_rset->rs_nrates; ++j) {
-			if (nd_rate == IEEERATE(ic_rset->rs_rates[j])) {
-				cp_rset->rs_rates[c++] = nd_rate;
-				if (node->nd_txrate < 0) {
-					/* XXX slow start?? */
-					node->nd_txrate = 0;
-					node->nd_node.ni_txrate = i;
-				}
-				break;
-			}
-		}
-	}
-	KASSERT(node->nd_node.ni_txrate >= 0, ("no compat rates"));
-	DPRINTF((&ic->ic_if, "node rate %d\n",
-		 IEEERATE(nd_rset->rs_rates[node->nd_node.ni_txrate])));
-#undef IEEERATE
-
-	cp_rset->rs_nrates = c;
-
-	node->nd_txrate_upd_intvl = sc->sc_txrate_upd_intvl_min;
-	node->nd_txrate_upd_time = time_second;
-	node->nd_txrate_sample = 0;
-}
-
-static void
-acx_node_update(struct acx_softc *sc, struct acx_node *node, uint8_t rate,
-		uint8_t error)
-{
-	struct ieee80211_rateset *nd_rset, *cp_rset;
-	int i, time_diff;
-
-	nd_rset = &node->nd_node.ni_rates;
-	cp_rset = &node->nd_rates;
-
-	time_diff = time_second - node->nd_txrate_upd_time;
-
-	if (error == DESC_ERR_MSDU_TIMEOUT ||
-	    error == DESC_ERR_EXCESSIVE_RETRY) {
-		uint8_t cur_rate;
-
-		/* Reset packet sample counter */
-		node->nd_txrate_sample = 0;
-
-		if (rate > cp_rset->rs_rates[node->nd_txrate]) {
-			/*
-			 * This rate has already caused toubles,
-			 * so don't count it in here
-			 */
-			return;
-		}
-
-		/* Double TX rate updating interval */
-		node->nd_txrate_upd_intvl *= 2;
-		if (node->nd_txrate_upd_intvl <=
-		    sc->sc_txrate_upd_intvl_min) {
-			node->nd_txrate_upd_intvl =
-				sc->sc_txrate_upd_intvl_min;
-		} else if (node->nd_txrate_upd_intvl >
-			   sc->sc_txrate_upd_intvl_max) {
-			node->nd_txrate_upd_intvl =
-				sc->sc_txrate_upd_intvl_max;
-		}
-
-		if (node->nd_txrate == 0)
-			return;
-
-		node->nd_txrate_upd_time += time_diff;
-
-		/* TX rate down */
-		node->nd_txrate--;
-		cur_rate = cp_rset->rs_rates[node->nd_txrate + 1];
-		while (cp_rset->rs_rates[node->nd_txrate] > cur_rate) {
-			if (node->nd_txrate - 1 > 0)
-				node->nd_txrate--;
-			else
-				break;
-		}
-		DPRINTF((&sc->sc_ic.ic_if, "rate down %6D %d -> %d\n",
-			 node->nd_node.ni_macaddr, ":",
-			 cp_rset->rs_rates[node->nd_txrate + 1],
-			 cp_rset->rs_rates[node->nd_txrate]));
-	} else if (node->nd_txrate + 1 < node->nd_rates.rs_nrates) {
-		uint8_t cur_rate;
-
-		node->nd_txrate_sample++;
-
-		if (node->nd_txrate_sample <= sc->sc_txrate_sample_thresh ||
-		    time_diff <= node->nd_txrate_upd_intvl)
-			return;
-
-		/* Reset packet sample counter */
-		node->nd_txrate_sample = 0;
-
-		/* Half TX rate updating interval */
-		node->nd_txrate_upd_intvl /= 2;
-		if (node->nd_txrate_upd_intvl <
-		    sc->sc_txrate_upd_intvl_min) {
-			node->nd_txrate_upd_intvl =
-				sc->sc_txrate_upd_intvl_min;
-		} else if (node->nd_txrate_upd_intvl >
-			   sc->sc_txrate_upd_intvl_max) {
-			node->nd_txrate_upd_intvl =
-				sc->sc_txrate_upd_intvl_max;
-		}
-
-		node->nd_txrate_upd_time += time_diff;
-
-		/* TX Rate up */
-		node->nd_txrate++;
-		cur_rate = cp_rset->rs_rates[node->nd_txrate - 1];
-		while (cp_rset->rs_rates[node->nd_txrate] < cur_rate) {
-			if (node->nd_txrate + 1 < cp_rset->rs_nrates)
-				node->nd_txrate++;
-			else
-				break;
-		}
-		DPRINTF((&sc->sc_ic.ic_if, "rate up %6D %d -> %d\n",
-			 node->nd_node.ni_macaddr, ":",
-			 cur_rate, cp_rset->rs_rates[node->nd_txrate]));
-	} else {
-		return;
-	}
-
-#define IEEERATE(rate)	((rate) & IEEE80211_RATE_VAL)
-	/* XXX Update ieee80211_node's TX rate index */
-	for (i = 0; i < nd_rset->rs_nrates; ++i) {
-		if (IEEERATE(nd_rset->rs_rates[i]) ==
-		    cp_rset->rs_rates[node->nd_txrate]) {
-			node->nd_node.ni_txrate = i;
-			break;
-		}
-	}
-#undef IEEERATE
-}
-
 static int
 acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 {
 	struct acx_softc *sc = ic->ic_if.if_softc;
-	int error = 0;
+	int error = 0, mode = 0;
 
 	ASSERT_SERIALIZED(ic->ic_if.if_serializer);
+
+	ieee80211_ratectl_newstate(ic, nstate);
 
 	switch (nstate) {
 	case IEEE80211_S_SCAN:
@@ -2076,7 +1844,8 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		}
 		break;
 	case IEEE80211_S_RUN:
-		if (ic->ic_opmode == IEEE80211_M_IBSS) {
+		if (ic->ic_opmode == IEEE80211_M_IBSS ||
+		    ic->ic_opmode == IEEE80211_M_HOSTAP) {
 			struct ieee80211_node *ni;
 			uint8_t chan;
 
@@ -2099,23 +1868,25 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 				goto back;
 			}
 
-			if (acx_set_beacon_tmplt(sc, ni->ni_essid,
-						 ni->ni_esslen, chan) != 0) {
+			if (acx_set_beacon_tmplt(sc, ni) != 0) {
 				if_printf(&ic->ic_if,
 					  "set bescon template failed\n");
 				goto back;
 			}
 
-			if (acx_set_probe_resp_tmplt(sc, ni->ni_essid,
-						     ni->ni_esslen,
-						     chan) != 0) {
+			if (acx_set_probe_resp_tmplt(sc, ni) != 0) {
 				if_printf(&ic->ic_if, "set probe response "
 					  "template failed\n");
 				goto back;
 			}
 
-			if (acx_join_bss(sc, ACX_MODE_ADHOC, ni) != 0) {
-				if_printf(&ic->ic_if, "join IBSS failed\n");
+			if (ic->ic_opmode == IEEE80211_M_IBSS)
+				mode = ACX_MODE_ADHOC;
+			else
+				mode = ACX_MODE_AP;
+
+			if (acx_join_bss(sc, mode, ni) != 0) {
+				if_printf(&ic->ic_if, "acx_join_ibss failed\n");
 				goto back;
 			}
 
@@ -2470,11 +2241,10 @@ acx_newbuf(struct acx_softc *sc, struct acx_rxbuf *rb, int wait)
 
 static int
 acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
-	  struct ieee80211_node *ni, int rate)
+	  struct ieee80211_node *ni)
 {
 	struct acx_buf_data *bd = &sc->sc_buf_data;
 	struct acx_ring_data *rd = &sc->sc_ring_data;
-	struct acx_node *node = (struct acx_node *)ni;
 	uint32_t paddr;
 	uint8_t ctrl;
 	int error;
@@ -2529,8 +2299,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 			BUS_DMASYNC_PREWRITE);
 
 	txbuf->tb_mbuf = m;
-	txbuf->tb_node = node;
-	txbuf->tb_rate = rate;
+	txbuf->tb_node = ni;
 
 	/*
 	 * TX buffers are accessed in following way:
@@ -2575,7 +2344,7 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_data_nretry, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_rts_nretry, 0);
 	FW_TXDESC_SETFIELD_1(sc, txbuf, f_tx_rts_ok, 0);
-	sc->chip_set_fw_txdesc_rate(sc, txbuf, rate);
+	sc->chip_set_fw_txdesc_rate(sc, txbuf, ni, m->m_pkthdr.len);
 
 	txbuf->tb_desc1->h_ctrl = 0;
 	txbuf->tb_desc2->h_ctrl = 0;
@@ -2637,233 +2406,49 @@ acx_set_probe_req_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len)
 }
 
 static int
-acx_set_probe_resp_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len,
-			 int chan)
+acx_set_probe_resp_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 {
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_tmplt_probe_resp resp;
-	struct ieee80211_frame *f;
-	struct ieee80211com *ic;
-	uint8_t *v;
-	int vlen;
-
-	ic = &sc->sc_ic;
+	struct ieee80211_beacon_offsets bo;
+	struct mbuf *m;
+	int len;
 
 	bzero(&resp, sizeof(resp));
 
-	f = &resp.data.u_data.f;
-	f->i_fc[0] = IEEE80211_FC0_SUBTYPE_PROBE_RESP | IEEE80211_FC0_TYPE_MGT;
-	IEEE80211_ADDR_COPY(f->i_addr1, etherbroadcastaddr);
-	IEEE80211_ADDR_COPY(f->i_addr2, IF_LLADDR(&ic->ic_if));
-	IEEE80211_ADDR_COPY(f->i_addr3, IF_LLADDR(&ic->ic_if));
+	bzero(&bo, sizeof(bo));
+	m = ieee80211_beacon_alloc(ic, ni, &bo);
+	DPRINTF((&ic->ic_if, "%s alloc beacon size %d\n", __func__,
+		 m->m_pkthdr.len));
 
-	resp.data.u_data.beacon_intvl = htole16(acx_beacon_intvl);
-	resp.data.u_data.cap = htole16(IEEE80211_CAPINFO_IBSS);
+	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&resp.data);
+	len = m->m_pkthdr.len + sizeof(resp.size);
+	m_freem(m);
 
-	v = resp.data.u_data.var;
-	v = ieee80211_add_ssid(v, ssid, ssid_len);
-	v = ieee80211_add_rates(v, &ic->ic_sup_rates[sc->chip_phymode]);
-
-	*v++ = IEEE80211_ELEMID_DSPARMS;
-	*v++ = 1;
-	*v++ = chan;
-
-	/* This should after IBSS or TIM, but acx always keeps them last */
-	v = ieee80211_add_xrates(v, &ic->ic_sup_rates[sc->chip_phymode]);
-
-	if (ic->ic_opmode == IEEE80211_M_IBSS) {
-		*v++ = IEEE80211_ELEMID_IBSSPARMS;
-		*v++ = 2;
-	}
-
-	vlen = v - resp.data.u_data.var;
-
-	return _acx_set_probe_resp_tmplt(sc, &resp,
-					 ACX_TMPLT_PROBE_RESP_SIZ(vlen));
+	return _acx_set_probe_resp_tmplt(sc, &resp, len);
 }
 
-/* XXX C&P of acx_set_probe_resp_tmplt() */
 static int
-acx_set_beacon_tmplt(struct acx_softc *sc, const char *ssid, int ssid_len,
-		     int chan)
+acx_set_beacon_tmplt(struct acx_softc *sc, struct ieee80211_node *ni)
 {
+	struct ieee80211com *ic = &sc->sc_ic;
 	struct acx_tmplt_beacon beacon;
-	struct ieee80211_frame *f;
-	struct ieee80211com *ic;
-	uint8_t *v;
-	int vlen;
-
-	ic = &sc->sc_ic;
+	struct ieee80211_beacon_offsets bo;
+	struct mbuf *m;
+	int len;
 
 	bzero(&beacon, sizeof(beacon));
 
-	f = &beacon.data.u_data.f;
-	f->i_fc[0] = IEEE80211_FC0_SUBTYPE_BEACON | IEEE80211_FC0_TYPE_MGT;
-	IEEE80211_ADDR_COPY(f->i_addr1, etherbroadcastaddr);
-	IEEE80211_ADDR_COPY(f->i_addr2, IF_LLADDR(&ic->ic_if));
-	IEEE80211_ADDR_COPY(f->i_addr3, IF_LLADDR(&ic->ic_if));
+	bzero(&bo, sizeof(bo));
+	m = ieee80211_beacon_alloc(ic, ni, &bo);
+	DPRINTF((&ic->ic_if, "%s alloc beacon size %d\n", __func__,
+		 m->m_pkthdr.len));
 
-	beacon.data.u_data.beacon_intvl = htole16(acx_beacon_intvl);
-	beacon.data.u_data.cap = htole16(IEEE80211_CAPINFO_IBSS);
+	m_copydata(m, 0, m->m_pkthdr.len, (caddr_t)&beacon.data);
+	len = m->m_pkthdr.len + sizeof(beacon.size);
+	m_freem(m);
 
-	v = beacon.data.u_data.var;
-	v = ieee80211_add_ssid(v, ssid, ssid_len);
-	v = ieee80211_add_rates(v, &ic->ic_sup_rates[sc->chip_phymode]);
-
-	*v++ = IEEE80211_ELEMID_DSPARMS;
-	*v++ = 1;
-	*v++ = chan;
-
-	/* This should after IBSS or TIM, but acx always keeps them last */
-	v = ieee80211_add_xrates(v, &ic->ic_sup_rates[sc->chip_phymode]);
-
-	if (ic->ic_opmode == IEEE80211_M_IBSS) {
-		*v++ = IEEE80211_ELEMID_IBSSPARMS;
-		*v++ = 2;
-	}
-
-	vlen = v - beacon.data.u_data.var;
-
-	return _acx_set_beacon_tmplt(sc, &beacon, ACX_TMPLT_BEACON_SIZ(vlen));
-}
-
-static int
-acx_sysctl_txrate_upd_intvl_min(SYSCTL_HANDLER_ARGS)
-{
-	struct acx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_txrate_upd_intvl_min;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0 || v > sc->sc_txrate_upd_intvl_max) {
-		error = EINVAL;
-		goto back;
-	}
-
-	sc->sc_txrate_upd_intvl_min = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-acx_sysctl_txrate_upd_intvl_max(SYSCTL_HANDLER_ARGS)
-{
-	struct acx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_txrate_upd_intvl_max;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0 || v < sc->sc_txrate_upd_intvl_min) {
-		error = EINVAL;
-		goto back;
-	}
-
-	sc->sc_txrate_upd_intvl_max = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-acx_sysctl_txrate_sample_thresh(SYSCTL_HANDLER_ARGS)
-{
-	struct acx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_txrate_sample_thresh;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0) {
-		error = EINVAL;
-		goto back;
-	}
-
-	sc->sc_txrate_sample_thresh = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-acx_sysctl_long_retry_limit(SYSCTL_HANDLER_ARGS)
-{
-	struct acx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_long_retry_limit;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0) {
-		error = EINVAL;
-		goto back;
-	}
-
-	if (sc->sc_flags & ACX_FLAG_FW_LOADED) {
-		struct acx_conf_nretry_long lretry;
-
-		lretry.nretry = v;
-		if (acx_set_nretry_long_conf(sc, &lretry) != 0) {
-			if_printf(ifp, "can't set long retry limit\n");
-			error = ENXIO;
-			goto back;
-		}
-	}
-	sc->sc_long_retry_limit = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
-}
-
-static int
-acx_sysctl_short_retry_limit(SYSCTL_HANDLER_ARGS)
-{
-	struct acx_softc *sc = arg1;
-	struct ifnet *ifp = &sc->sc_ic.ic_if;
-	int error = 0, v;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	v = sc->sc_short_retry_limit;
-	error = sysctl_handle_int(oidp, &v, 0, req);
-	if (error || req->newptr == NULL)
-		goto back;
-	if (v <= 0) {
-		error = EINVAL;
-		goto back;
-	}
-
-	if (sc->sc_flags & ACX_FLAG_FW_LOADED) {
-		struct acx_conf_nretry_short sretry;
-
-		sretry.nretry = v;
-		if (acx_set_nretry_short_conf(sc, &sretry) != 0) {
-			if_printf(ifp, "can't set short retry limit\n");
-			error = ENXIO;
-			goto back;
-		}
-	}
-	sc->sc_short_retry_limit = v;
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
+	return _acx_set_beacon_tmplt(sc, &beacon, len);
 }
 
 static int

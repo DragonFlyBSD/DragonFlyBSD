@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acxcmd.h,v 1.2 2006/09/01 15:13:15 sephe Exp $
  */
 
 #ifndef _ACXCMD_H
@@ -209,7 +209,7 @@ struct acx_tmplt_probe_resp {
 			uint16_t	cap;
 			uint8_t		var[1];
 		} __packed	u_data;
-		uint8_t		u_mem[0x54];
+		uint8_t		u_mem[0x100];
 	}		data;
 } __packed;
 
@@ -228,7 +228,7 @@ struct acx_tmplt_beacon {
 			uint16_t	cap;
 			uint8_t		var[1];
 		} __packed	u_data;
-		uint8_t		u_mem[0x54];
+		uint8_t		u_mem[0x100];
 	}		data;
 } __packed;
 

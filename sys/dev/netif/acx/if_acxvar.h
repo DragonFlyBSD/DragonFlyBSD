@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.4 2006/08/04 14:04:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.5 2006/09/01 15:13:15 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -78,6 +78,8 @@
 
 #define DESC_READ_1(sc, off)		\
 	bus_space_read_1((sc)->sc_mem2_bt, (sc)->sc_mem2_bh, (off))
+#define DESC_READ_2(sc, off)		\
+	bus_space_read_2((sc)->sc_mem2_bt, (sc)->sc_mem2_bh, (off))
 #define DESC_READ_4(sc, off)		\
 	bus_space_read_4((sc)->sc_mem2_bt, (sc)->sc_mem2_bh, (off))
 
@@ -108,6 +110,8 @@
 
 #define FW_TXDESC_GETFIELD_1(sc, mb, field)		\
 	FW_TXDESC_GETFIELD(sc, mb, field, 1)
+#define FW_TXDESC_GETFIELD_2(sc, mb, field)		\
+	le16toh(FW_TXDESC_GETFIELD(sc, mb, field, 2))
 #define FW_TXDESC_GETFIELD_4(sc, mb, field)		\
 	le32toh(FW_TXDESC_GETFIELD(sc, mb, field, 4))
 
@@ -254,8 +258,10 @@ struct acx_txbuf {
 	/*
 	 * Used by tx rate updating
 	 */
-	struct acx_node		*tb_node;	/* remote node */
-	int			tb_rate;	/* current tx rate */
+	struct ieee80211_node	*tb_node;	/* remote node */
+
+	int			tb_rateidx_len;
+	int			tb_rateidx[IEEE80211_RATEIDX_MAX];
 };
 
 struct acx_rxbuf {
@@ -276,17 +282,6 @@ struct acx_buf_data {
 	int			tx_free_start;
 	int			tx_used_start;
 	int			tx_used_count;
-};
-
-struct acx_node {
-	struct ieee80211_node nd_node;	/* MUST be first */
-
-	struct ieee80211_rateset nd_rates; /* shared rates */
-	int	nd_txrate;		/* index into nd_rates[] */
-
-	int	nd_txrate_upd_intvl;	/* tx rate upd interval */
-	int	nd_txrate_upd_time;	/* tx rate upd timestamp */
-	int	nd_txrate_sample;	/* num of samples for specific rate */
 };
 
 struct acx_firmware {
@@ -387,14 +382,13 @@ struct acx_softc {
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;
 
+	int			sc_long_retry_limit;
+	int			chip_short_retry_limit;
+	int			chip_rate_fallback;
+
 	/*
 	 * Per interface sysctl variables
 	 */
-	int			sc_txrate_upd_intvl_min;
-	int			sc_txrate_upd_intvl_max;
-	int			sc_txrate_sample_thresh;
-	int			sc_long_retry_limit;
-	int			sc_short_retry_limit;
 	int			sc_msdu_lifetime;
 
 	int			(*sc_newstate)
@@ -415,7 +409,12 @@ struct acx_softc {
 				(struct acx_softc *, struct acx_config *);
 
 	void			(*chip_set_fw_txdesc_rate) /* non-NULL */
-				(struct acx_softc *, struct acx_txbuf *, int);
+				(struct acx_softc *, struct acx_txbuf *,
+				 struct ieee80211_node *, int);
+
+	void			(*chip_tx_complete)	/* non-NULL */
+				(struct acx_softc *, struct acx_txbuf *,
+				 int, int);
 
 	void			(*chip_set_bss_join_param) /* non-NULL */
 				(struct acx_softc *, void *, int);
