@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.16 2006/08/12 05:14:45 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.17 2006/09/02 11:33:26 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.16 2006/08/12 05:12:51 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.17 2006/09/02 10:25:42 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -7779,6 +7779,54 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "MCP55 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP61 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP61 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP61 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN4,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP61 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN4,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP65 Lan",
 	},
 	{
 	    PCI_VENDOR_NVIDIA_SGS, PCI_PRODUCT_NVIDIA_SGS_RIVA128,

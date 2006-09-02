@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.16 2006/08/12 05:14:44 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.17 2006/09/02 11:33:26 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.16 2006/08/12 05:12:51 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.17 2006/09/02 10:25:42 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2212,6 +2212,14 @@
 #define	PCI_PRODUCT_NVIDIA_QUADRO_FX_1100	0x034e		/* Quadro FX 1100 */
 #define	PCI_PRODUCT_NVIDIA_MCP55_LAN1	0x0372		/* MCP55 Lan */
 #define	PCI_PRODUCT_NVIDIA_MCP55_LAN2	0x0373		/* MCP55 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP61_LAN1	0x03e5		/* MCP61 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP61_LAN2	0x03e6		/* MCP61 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP61_LAN3	0x03ee		/* MCP61 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP61_LAN4	0x03ef		/* MCP61 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP65_LAN1	0x0450		/* MCP65 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP65_LAN2	0x0451		/* MCP65 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP65_LAN3	0x0452		/* MCP65 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP65_LAN4	0x0453		/* MCP65 Lan */
 
 /* Nvidia Corporation & SGS-Thomson Microelectronics */
 #define	PCI_PRODUCT_NVIDIA_SGS_RIVA128	0x0018		/* Riva 128 */
