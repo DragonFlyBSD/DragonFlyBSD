@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.27 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.28 2006/09/02 16:51:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1380,10 +1380,10 @@ unp_mark(struct file *fp, void *data)
 
 	if (info->locked_fp != fp)
 		spin_lock_wr(&fp->f_spin);
-	if (fp->f_flag & FMARK)
-		return;
-	++info->defer;
-	fp->f_flag |= (FMARK|FDEFER);
+	if ((fp->f_flag & FMARK) == 0) {
+		++info->defer;
+		fp->f_flag |= (FMARK|FDEFER);
+	}
 	if (info->locked_fp != fp)
 		spin_unlock_wr(&fp->f_spin);
 }
