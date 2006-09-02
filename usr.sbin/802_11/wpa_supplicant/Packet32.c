@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/Packet32.c,v 1.2.2.2 2006/04/12 17:21:08 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Packet32.c,v 1.1 2006/06/24 07:29:44 sephe Exp $
+ * $DragonFly: src/usr.sbin/802_11/wpa_supplicant/Packet32.c,v 1.2 2006/09/02 05:40:35 sephe Exp $
  */
 
 /*
@@ -345,53 +345,3 @@ PacketCloseAdapter(iface)
 
 	return;
 }
-
-#if __FreeBSD_version < 600000
-
-/*
- * The version of libpcap in FreeBSD 5.2.1 doesn't have these routines.
- * Call me insane if you will, but I still run 5.2.1 on my laptop, and
- * I'd like to use WPA there.
- */
-
-int
-pcap_get_selectable_fd(pcap_t *p)
-{
-	return(pcap_fileno(p));
-}
-
-/*
- * The old version of libpcap opens its BPF descriptor in read-only
- * mode. We need to temporarily create a new one we can write to.
- */
-
-int
-pcap_inject(pcap_t *p, const void *buf, size_t len)
-{
-	int			fd;
-	int			res, n = 0;
-	char			device[sizeof "/dev/bpf0000000000"];
-	struct ifreq		ifr;
-
-        /*
-         * Go through all the minors and find one that isn't in use.
-         */
-	do {
-		(void)snprintf(device, sizeof(device), "/dev/bpf%d", n++);
-		fd = open(device, O_RDWR);
-	} while (fd < 0 && errno == EBUSY);
-
-	if (fd == -1)
-		return(-1);
-
-	bzero((char *)&ifr, sizeof(ifr));
-	ioctl(pcap_fileno(p), BIOCGETIF, (caddr_t)&ifr);
-	ioctl(fd, BIOCSETIF, (caddr_t)&ifr);
-
-	res = write(fd, buf, len);
-
-	close(fd);
-
-	return(res);
-}
-#endif

@@ -13,7 +13,7 @@
  * See README and COPYING for more details.
  *
  * $FreeBSD: src/usr.sbin/wpa/l2_packet.c,v 1.1.2.2 2006/03/24 01:43:17 sam Exp $
- * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.1 2006/06/24 07:29:44 sephe Exp $
+ * $DragonFly: src/usr.sbin/802_11/l2_packet.c,v 1.2 2006/09/02 05:40:35 sephe Exp $
  */
 
 /*
@@ -32,6 +32,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -51,6 +52,53 @@ struct l2_packet_data {
 	int l2_hdr; /* whether to include layer 2 (Ethernet) header data
 		     * buffers */
 };
+
+/*
+ * The version of libpcap in FreeBSD 5.2.1 doesn't have these routines.
+ * Call me insane if you will, but I still run 5.2.1 on my laptop, and
+ * I'd like to use WPA there.
+ */
+
+int
+pcap_get_selectable_fd(pcap_t *p)
+{
+	return(pcap_fileno(p));
+}
+
+/*
+ * The old version of libpcap opens its BPF descriptor in read-only
+ * mode. We need to temporarily create a new one we can write to.
+ */
+
+int
+pcap_inject(pcap_t *p, const void *buf, size_t len)
+{
+	int			fd;
+	int			res, n = 0;
+	char			device[sizeof "/dev/bpf0000000000"];
+	struct ifreq		ifr;
+
+        /*
+         * Go through all the minors and find one that isn't in use.
+         */
+	do {
+		(void)snprintf(device, sizeof(device), "/dev/bpf%d", n++);
+		fd = open(device, O_RDWR);
+	} while (fd < 0 && errno == EBUSY);
+
+	if (fd == -1)
+		return(-1);
+
+	bzero((char *)&ifr, sizeof(ifr));
+	ioctl(pcap_fileno(p), BIOCGETIF, (caddr_t)&ifr);
+	ioctl(fd, BIOCSETIF, (caddr_t)&ifr);
+
+	res = write(fd, buf, len);
+
+	close(fd);
+
+	return(res);
+}
 
 int
 l2_packet_get_own_addr(struct l2_packet_data *l2, u8 *addr)
