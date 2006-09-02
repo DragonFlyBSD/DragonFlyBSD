@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/Attic/index.cgi,v 1.5 2006/07/25 14:58:19 justin Exp $
+# $DragonFly: site/data/Attic/index.cgi,v 1.6 2006/09/02 03:52:23 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -14,7 +14,6 @@ $TITLE(The DragonFly BSD Project)
 	<p>The <a href="http://wiki.dragonflybsd.org/">DragonFlyBSD Wiki</a>
 	was started by Devon H. O'Dell and Sascha Wildner for things related
 	to DragonFly.</p>
-	<p>The <a href="http://gobsd.com">GoBSD Community</a> site has information about sub-projects such as adding DragonFly support into Pkgsrc and other developments to help make DragonFly a good general-purpose operating system.</p>
 </td></tr>
 </table>
 

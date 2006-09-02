@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/community/Attic/download.cgi,v 1.3 2006/07/31 20:26:45 justin Exp $
+# $DragonFly: site/data/community/Attic/download.cgi,v 1.4 2006/09/02 03:52:27 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -75,9 +75,7 @@ the following tags:
 
 <p>
 Daily DragonFly events and news are reported at the 
-<a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>.</p>
-
-<p><a href="http://gobsd.com">GoBSD.com</a> is a BSD-centric community website. 
+<a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Digest</a>.</p>
 </p>
 
 <h2>Current Working Set</h2>
@@ -342,14 +340,6 @@ rsync
 <TD>binary pkgsrc packages </TD>
 <TD><a href="http://theshell.com/pub/DragonFly/packages/RELEASE/i386/All/">i386 packages</a>, 
 <a href="http://theshell.com/pub/DragonFly/packages/RELEASE/bootstrap/">bootstrap kits</a>
-</TD>
-</TR>
-
-<TR>
-<TD> www.gobsd.com (USA)</TD>
-<TD>binary pkgsrc packages </TD>
-<TD><a href="http://www.gobsd.com/pkgsrc/DragonFly/RELEASE/i386/All/">i386 packages</a>,
-<a href="http://www.gobsd.com/DragonFly/RELEASE/bootstrap/">bootstrap kits</a>
 </TD>
 </TR>
 
