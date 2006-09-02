@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.1 2006/08/27 03:28:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.2 2006/09/02 11:44:58 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -232,7 +232,31 @@ static const struct nfe_dev {
 	  "NVIDIA MCP55 Gigabit Ethernet" },
 
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP55_LAN2,
-	  "NVIDIA MCP55 Gigabit Ethernet" }
+	  "NVIDIA MCP55 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN1,
+	  "NVIDIA MCP61 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN2,
+	  "NVIDIA MCP61 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN3,
+	  "NVIDIA MCP61 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP61_LAN4,
+	  "NVIDIA MCP61 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN1,
+	  "NVIDIA MCP65 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN2,
+	  "NVIDIA MCP65 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN3,
+	  "NVIDIA MCP65 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP65_LAN4,
+	  "NVIDIA MCP65 Gigabit Ethernet" }
 };
 
 static device_method_t nfe_methods[] = {
@@ -291,12 +315,20 @@ nfe_probe(device_t dev)
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP61_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP61_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP61_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP61_LAN4:
 				sc->sc_flags = NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_CK804_LAN1:
 			case PCI_PRODUCT_NVIDIA_CK804_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP65_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP65_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP65_LAN4:
 				sc->sc_flags = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM;
