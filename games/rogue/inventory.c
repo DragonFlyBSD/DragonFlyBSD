@@ -35,7 +35,7 @@
  *
  * @(#)inventory.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/inventory.c,v 1.4 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/inventory.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/inventory.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -51,6 +51,10 @@
  */
 
 #include "rogue.h"
+
+static boolean	pr_com_id(int);
+static boolean	get_com_id(int *, short);
+static boolean	pr_motion_char(int);
 
 boolean is_wood[WANDS];
 const char *press_space = " --press space to continue--";
@@ -71,7 +75,6 @@ const char *const wand_materials[WAND_MATERIALS] = {
 	"platinum ",
 	"silicon ",
 	"titanium ",
-
 	"teak ",
 	"oak ",
 	"cherry ",
@@ -157,62 +160,61 @@ struct id_com_s {
 };
 
 const struct id_com_s com_id_tab[COMS] = {
-	'?',	"?       prints help",
-	'r',	"r       read scroll",
-	'/',	"/       identify object",
-	'e',	"e       eat food",
-	'h',	"h       left ",
-	'w',	"w       wield a weapon",
-	'j',	"j       down",
-	'W',	"W       wear armor",
-	'k',	"k       up",
-	'T',	"T       take armor off",
-	'l',	"l       right",
-	'P',	"P       put on ring",
-	'y',	"y       up & left",
-	'R',	"R       remove ring",
-	'u',	"u       up & right",
-	'd',	"d       drop object",
-	'b',	"b       down & left",
-	'c',	"c       call object",
-	'n',	"n       down & right",
-	'\0',	"<SHIFT><dir>: run that way",
-	')',	")       print current weapon",
-	'\0',	"<CTRL><dir>: run till adjacent",
-	']',	"]       print current armor",
-	'f',	"f<dir>  fight till death or near death",
-	'=',	"=       print current rings",
-	't',	"t<dir>  throw something",
-	'\001',	"^A      print Hp-raise average",
-	'm',	"m<dir>  move onto without picking up",
-	'z',	"z<dir>  zap a wand in a direction",
-	'o',	"o       examine/set options",
-	'^',	"^<dir>  identify trap type",
-	'\022',	"^R      redraw screen",
-	'&',	"&       save screen into 'rogue.screen'",
-	's',	"s       search for trap/secret door",
-	'\020',	"^P      repeat last message",
-	'>',	">       go down a staircase",
-	'\033',	"^[      cancel command",
-	'<',	"<       go up a staircase",
-	'S',	"S       save game",
-	'.',	".       rest for a turn",
-	'Q',	"Q       quit",
-	',',	",       pick something up",
-	'!',	"!       shell escape",
-	'i',	"i       inventory",
-	'F',	"F<dir>  fight till either of you dies",
-	'I',	"I       inventory single item",
-	'v',	"v       print version number",
-	'q',	"q       quaff potion"
+	{ '?',		"?       prints help" },
+	{ 'r',		"r       read scroll" },
+	{ '/',		"/     	 identify object" },
+	{ 'e',		"e       eat food" },
+	{ 'h',		"h       left " },
+	{ 'w',		"w       wield a weapon" },
+	{ 'j',		"j       down" },
+	{ 'W',		"W       wear armor" },
+	{ 'k',		"k       up" },
+	{ 'T',		"T       take armor off" },
+	{ 'l',		"l       right" },
+	{ 'P',		"P       put on ring" },
+	{ 'y',		"y       up & left" },
+	{ 'R',		"R       remove ring" },
+	{ 'u',		"u       up & right" },
+	{ 'd',		"d       drop object" },
+	{ 'b',		"b       down & left" },
+	{ 'c',		"c       call object" },
+	{ 'n',		"n       down & right" },
+	{ '\0',		"<SHIFT><dir>: run that way" },
+	{ ')',		")       print current weapon" },
+	{ '\0',		"<CTRL><dir>: run till adjacent" },
+	{ ']',		"]       print current armor" },
+	{ 'f',		"f<dir>  fight till death or near death" },
+	{ '=',		"=       print current rings" },
+	{ 't',		"t<dir>  throw something" },
+	{ '\001',	"^A      print Hp-raise average" },
+	{ 'm',		"m<dir>  move onto without picking up" },
+	{ 'z',		"z<dir>  zap a wand in a direction" },
+	{ 'o',		"o       examine/set options" },
+	{ '^',		"^<dir>  identify trap type" },
+	{ '\022',	"^R      redraw screen" },
+	{ '&',		"&       save screen into 'rogue.screen'" },
+	{ 's',		"s       search for trap/secret door" },
+	{ '\020',	"^P      repeat last message" },
+	{ '>',		">       go down a staircase" },
+	{ '\033',	"^[      cancel command" },
+	{ '<',		"<       go up a staircase" },
+	{ 'S',		"S       save game" },
+	{ '.',		".       rest for a turn" },
+	{ 'Q',		"Q       quit" },
+	{ ',',		",       pick something up" },
+	{ '!',		"!       shell escape" },
+	{ 'i',		"i       inventory" },
+	{ 'F',		"F<dir>  fight till either of you dies" },
+	{ 'I',		"I       inventory single item" },
+	{ 'v',		"v       print version number" },
+	{ 'q',		"q       quaff potion" }
 };
 
 extern boolean wizard;
 extern char *m_names[], *more;
 
-inventory(pack, mask)
-const object *pack;
-unsigned short mask;
+void
+inventory(const object *pack, unsigned short mask)
 {
 	object *obj;
 	short i = 0, j, maxlen = 0, n;
@@ -240,7 +242,7 @@ unsigned short mask;
 		}
 		obj = obj->next_object;
 	}
-	(void) strcpy(descs[i++], press_space);
+	strcpy(descs[i++], press_space);
 	if (maxlen < 27) maxlen = 27;
 	col = DCOLS - (maxlen + 2);
 
@@ -265,7 +267,8 @@ unsigned short mask;
 	}
 }
 
-id_com()
+void
+id_com(void)
 {
 	int ch = 0;
 	short i, j, k;
@@ -282,7 +285,7 @@ id_com()
 			{
 				char save[(((COMS / 2) + (COMS % 2)) + 1)][DCOLS];
 				short rows = (((COMS / 2) + (COMS % 2)) + 1);
-				boolean need_two_screens;
+				boolean need_two_screens = 0;
 
 				if (rows > LINES) {
 					need_two_screens = 1;
@@ -341,8 +344,8 @@ MORE:
 	}
 }
 
-pr_com_id(ch)
-int ch;
+static boolean
+pr_com_id(int ch)
 {
 	int i;
 
@@ -354,23 +357,22 @@ int ch;
 	return(1);
 }
 
-get_com_id(index, ch)
-int *index;
-short ch;
+static boolean
+get_com_id(int *idx, short ch)
 {
 	short i;
 
 	for (i = 0; i < COMS; i++) {
 		if (com_id_tab[i].com_char == ch) {
-			*index = i;
+			*idx = i;
 			return(1);
 		}
 	}
 	return(0);
 }
 
-pr_motion_char(ch)
-int ch;
+static boolean
+pr_motion_char(int ch)
 {
 	if (	(ch == 'J') ||
 			(ch == 'K') ||
@@ -393,12 +395,12 @@ int ch;
 
 		if (ch <= '\031') {
 			ch += 96;
-			(void) strcpy(until, "until adjascent");
+			strcpy(until, "until adjascent");
 		} else {
 			ch += 32;
 			until[0] = '\0';
 		}
-		(void) get_com_id(&n, ch);
+		get_com_id(&n, ch);
 		sprintf(buf, "run %s %s", com_id_tab[n].com_desc + 8, until);
 		check_message();
 		message(buf, 0);
@@ -408,7 +410,8 @@ int ch;
 	}
 }
 
-mix_colors()
+void
+mix_colors(void)
 {
 	short i, j, k;
 	char *t[MAX_ID_TITLE_LEN];
@@ -421,27 +424,27 @@ mix_colors()
 	}
 }
 
-make_scroll_titles()
+void
+make_scroll_titles(void)
 {
 	short i, j, n;
 	short sylls, s;
 
 	for (i = 0; i < SCROLS; i++) {
 		sylls = get_rand(2, 5);
-		(void) strcpy(id_scrolls[i].title, "'");
+		strcpy(id_scrolls[i].title, "'");
 
 		for (j = 0; j < sylls; j++) {
 			s = get_rand(1, (MAXSYLLABLES-1));
-			(void) strcat(id_scrolls[i].title, syllables[s]);
+			strcat(id_scrolls[i].title, syllables[s]);
 		}
 		n = strlen(id_scrolls[i].title);
-		(void) strcpy(id_scrolls[i].title+(n-1), "' ");
+		strcpy(id_scrolls[i].title+(n-1), "' ");
 	}
 }
 
-get_desc(obj, desc)
-const object *obj;
-char *desc;
+void
+get_desc(const object *obj, char *desc)
 {
 	const char *item_name;
 	struct id *id_table;
@@ -449,7 +452,7 @@ char *desc;
 	short i;
 
 	if (obj->what_is == AMULET) {
-		(void) strcpy(desc, "the amulet of Yendor ");
+		strcpy(desc, "the amulet of Yendor ");
 		return;
 	}
 	item_name = name_of(obj);
@@ -461,7 +464,7 @@ char *desc;
 
 	if (obj->what_is != ARMOR) {
 		if (obj->quantity == 1) {
-			(void) strcpy(desc, "a ");
+			strcpy(desc, "a ");
 		} else {
 			sprintf(desc, "%d ", obj->quantity);
 		}
@@ -471,12 +474,12 @@ char *desc;
 			if (obj->quantity > 1) {
 				sprintf(desc, "%d rations of ", obj->quantity);
 			} else {
-				(void) strcpy(desc, "some ");
+				strcpy(desc, "some ");
 			}
 		} else {
-			(void) strcpy(desc, "a ");
+			strcpy(desc, "a ");
 		}
-		(void) strcat(desc, item_name);
+		strcat(desc, item_name);
 		goto ANA;
 	}
 	id_table = get_id_table(obj);
@@ -493,13 +496,13 @@ char *desc;
 CHECK:
 		switch(obj->what_is) {
 		case SCROL:
-			(void) strcat(desc, item_name);
-			(void) strcat(desc, "entitled: ");
-			(void) strcat(desc, id_table[obj->which_kind].title);
+			strcat(desc, item_name);
+			strcat(desc, "entitled: ");
+			strcat(desc, id_table[obj->which_kind].title);
 			break;
 		case POTION:
-			(void) strcat(desc, id_table[obj->which_kind].title);
-			(void) strcat(desc, item_name);
+			strcat(desc, id_table[obj->which_kind].title);
+			strcat(desc, item_name);
 			break;
 		case WAND:
 		case RING:
@@ -510,20 +513,20 @@ CHECK:
 			if (id_table[obj->which_kind].id_status == CALLED) {
 				goto CALL;
 			}
-			(void) strcat(desc, id_table[obj->which_kind].title);
-			(void) strcat(desc, item_name);
+			strcat(desc, id_table[obj->which_kind].title);
+			strcat(desc, item_name);
 			break;
 		case ARMOR:
 			if (obj->identified) {
 				goto ID;
 			}
-			(void) strcpy(desc, id_table[obj->which_kind].title);
+			strcpy(desc, id_table[obj->which_kind].title);
 			break;
 		case WEAPON:
 			if (obj->identified) {
 				goto ID;
 			}
-			(void) strcat(desc, name_of(obj));
+			strcat(desc, name_of(obj));
 			break;
 		}
 		break;
@@ -533,9 +536,9 @@ CALL:	switch(obj->what_is) {
 		case POTION:
 		case WAND:
 		case RING:
-			(void) strcat(desc, item_name);
-			(void) strcat(desc, "called ");
-			(void) strcat(desc, id_table[obj->which_kind].title);
+			strcat(desc, item_name);
+			strcat(desc, "called ");
+			strcat(desc, id_table[obj->which_kind].title);
 			break;
 		}
 		break;
@@ -543,8 +546,8 @@ CALL:	switch(obj->what_is) {
 ID:		switch(obj->what_is) {
 		case SCROL:
 		case POTION:
-			(void) strcat(desc, item_name);
-			(void) strcat(desc, id_table[obj->which_kind].real);
+			strcat(desc, item_name);
+			strcat(desc, id_table[obj->which_kind].real);
 			break;
 		case RING:
 			if (wizard || obj->identified) {
@@ -552,32 +555,32 @@ ID:		switch(obj->what_is) {
 					(obj->which_kind == ADD_STRENGTH)) {
 					sprintf(more_info, "%s%d ", ((obj->class > 0) ? "+" : ""),
 						obj->class);
-					(void) strcat(desc, more_info);
+					strcat(desc, more_info);
 				}
 			}
-			(void) strcat(desc, item_name);
-			(void) strcat(desc, id_table[obj->which_kind].real);
+			strcat(desc, item_name);
+			strcat(desc, id_table[obj->which_kind].real);
 			break;
 		case WAND:
-			(void) strcat(desc, item_name);
-			(void) strcat(desc, id_table[obj->which_kind].real);
+			strcat(desc, item_name);
+			strcat(desc, id_table[obj->which_kind].real);
 			if (wizard || obj->identified) {
 				sprintf(more_info, "[%d]", obj->class);
-				(void) strcat(desc, more_info);
+				strcat(desc, more_info);
 			}
 			break;
 		case ARMOR:
 			sprintf(desc, "%s%d ", ((obj->d_enchant >= 0) ? "+" : ""),
 			obj->d_enchant);
-			(void) strcat(desc, id_table[obj->which_kind].title);
+			strcat(desc, id_table[obj->which_kind].title);
 			sprintf(more_info, "[%d] ", get_armor_class(obj));
-			(void) strcat(desc, more_info);
+			strcat(desc, more_info);
 			break;
 		case WEAPON:
 			sprintf(desc+strlen(desc), "%s%d,%s%d ",
 			((obj->hit_enchant >= 0) ? "+" : ""), obj->hit_enchant,
 			((obj->d_enchant >= 0) ? "+" : ""), obj->d_enchant);
-			(void) strcat(desc, name_of(obj));
+			strcat(desc, name_of(obj));
 			break;
 		}
 		break;
@@ -592,17 +595,18 @@ ANA:
 		}
 	}
 	if (obj->in_use_flags & BEING_WIELDED) {
-		(void) strcat(desc, "in hand");
+		strcat(desc, "in hand");
 	} else if (obj->in_use_flags & BEING_WORN) {
-		(void) strcat(desc, "being worn");
+		strcat(desc, "being worn");
 	} else if (obj->in_use_flags & ON_LEFT_HAND) {
-		(void) strcat(desc, "on left hand");
+		strcat(desc, "on left hand");
 	} else if (obj->in_use_flags & ON_RIGHT_HAND) {
-		(void) strcat(desc, "on right hand");
+		strcat(desc, "on right hand");
 	}
 }
 
-get_wand_and_ring_materials()
+void
+get_wand_and_ring_materials(void)
 {
 	short i, j;
 	boolean used[WAND_MATERIALS];
@@ -615,7 +619,7 @@ get_wand_and_ring_materials()
 			j = get_rand(0, WAND_MATERIALS-1);
 		} while (used[j]);
 		used[j] = 1;
-		(void) strcpy(id_wands[i].title, wand_materials[j]);
+		strcpy(id_wands[i].title, wand_materials[j]);
 		is_wood[i] = (j > MAX_METAL);
 	}
 	for (i = 0; i < GEMS; i++) {
@@ -626,12 +630,12 @@ get_wand_and_ring_materials()
 			j = get_rand(0, GEMS-1);
 		} while (used[j]);
 		used[j] = 1;
-		(void) strcpy(id_rings[i].title, gems[j]);
+		strcpy(id_rings[i].title, gems[j]);
 	}
 }
 
-single_inv(ichar)
-short ichar;
+void
+single_inv(short ichar)
 {
 	short ch;
 	char desc[DCOLS];
@@ -655,8 +659,7 @@ short ichar;
 }
 
 struct id *
-get_id_table(obj)
-const object *obj;
+get_id_table(const object *obj)
 {
 	switch(obj->what_is) {
 	case SCROL:
@@ -675,8 +678,8 @@ const object *obj;
 	return((struct id *) 0);
 }
 
-inv_armor_weapon(is_weapon)
-boolean is_weapon;
+void
+inv_armor_weapon(boolean is_weapon)
 {
 	if (is_weapon) {
 		if (rogue.weapon) {
@@ -693,7 +696,8 @@ boolean is_weapon;
 	}
 }
 
-id_type()
+void
+id_type(void)
 {
 	const char *id;
 	int ch;

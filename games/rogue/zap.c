@@ -35,7 +35,7 @@
  *
  * @(#)zap.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/zap.c,v 1.3 1999/11/30 03:49:29 billf Exp $
- * $DragonFly: src/games/rogue/zap.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/zap.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -57,7 +57,13 @@ boolean wizard = 0;
 extern boolean being_held, score_only, detect_monster;
 extern short cur_room;
 
-zapp()
+static object	*get_zapped_monster(short, short *, short *);
+static void	zap_monster(object *, unsigned short);
+static void	tele_away(object *);
+static void	wdrain_life(object *);
+
+void
+zapp(void)
 {
 	short wch;
 	boolean first_miss = 1;
@@ -108,13 +114,11 @@ zapp()
 			}
 		}
 	}
-	(void) reg_move();
+	reg_move();
 }
 
-object *
-get_zapped_monster(dir, row, col)
-short dir;
-short *row, *col;
+static object *
+get_zapped_monster(short dir, short *row, short *col)
 {
 	short orow, ocol;
 
@@ -134,9 +138,8 @@ short *row, *col;
 	}
 }
 
-zap_monster(monster, kind)
-object *monster;
-unsigned short kind;
+static void
+zap_monster(object *monster, unsigned short kind)
 {
 	short row, col;
 	object *nm;
@@ -173,7 +176,7 @@ unsigned short kind;
 		}
 		nm = monster->next_monster;
 		tc = monster->trail_char;
-		(void) gr_monster(monster, get_rand(0, MONSTERS-1));
+		gr_monster(monster, get_rand(0, MONSTERS-1));
 		monster->row = row;
 		monster->col = col;
 		monster->next_monster = nm;
@@ -201,8 +204,8 @@ unsigned short kind;
 	}
 }
 
-tele_away(monster)
-object *monster;
+static void
+tele_away(object *monster)
 {
 	short row, col;
 
@@ -220,7 +223,8 @@ object *monster;
 	}
 }
 
-wizardize()
+void
+wizardize(void)
 {
 	char buf[100];
 
@@ -229,7 +233,7 @@ wizardize()
 		message("not wizard anymore", 0);
 	} else {
 		if (get_input_line("wizard's password:", "", buf, "", 0, 0)) {
-			(void) xxx(1);
+			xxx(1);
 			xxxx(buf, strlen(buf));
 			if (!strncmp(buf, "\247\104\126\272\115\243\027", 7)) {
 				wizard = 1;
@@ -242,8 +246,8 @@ wizardize()
 	}
 }
 
-wdrain_life(monster)
-object *monster;
+static void
+wdrain_life(object *monster)
 {
 	short hp;
 	object *lmon, *nm;
@@ -257,22 +261,22 @@ object *monster;
 			nm = lmon->next_monster;
 			if (get_room_number(lmon->row, lmon->col) == cur_room) {
 				wake_up(lmon);
-				(void) mon_damage(lmon, hp);
+				mon_damage(lmon, hp);
 			}
 			lmon = nm;
 		}
 	} else {
 		if (monster) {
 			wake_up(monster);
-			(void) mon_damage(monster, hp);
+			mon_damage(monster, hp);
 		}
 	}
 	print_stats(STAT_HP);
 	relight();
 }
 
-bounce(ball, dir, row, col, r)
-short ball, dir, row, col, r;
+void
+bounce(short ball, short dir, short row, short col, short r)
 {
 	short orow, ocol;
 	char buf[DCOLS];
@@ -348,7 +352,7 @@ short ball, dir, row, col, r;
 			}
 			sprintf(buf, "the %s hits the %s", s, mon_name(monster));
 			message(buf, 0);
-			(void) mon_damage(monster, damage);
+			mon_damage(monster, damage);
 		} else {
 			damage = -1;
 			if (!(monster->m_flags & FREEZES)) {
@@ -365,7 +369,7 @@ short ball, dir, row, col, r;
 			if (damage != -1) {
 				sprintf(buf, "the %s hits the %s", s, mon_name(monster));
 				message(buf, 0);
-				(void) mon_damage(monster, damage);
+				mon_damage(monster, damage);
 			}
 		}
 	} else if ((row == rogue.row) && (col == rogue.col)) {

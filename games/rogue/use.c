@@ -35,7 +35,7 @@
  *
  * @(#)use.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/use.c,v 1.4 1999/11/30 03:49:29 billf Exp $
- * $DragonFly: src/games/rogue/use.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/use.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -70,7 +70,15 @@ extern boolean being_held;
 extern char *fruit, *you_can_move_again;
 extern boolean sustain_strength;
 
-quaff()
+static void	potion_heal(boolean);
+static void	idntfy(void);
+static void	hold_monster(void);
+static void	go_blind(void);
+static const char	*get_ench_color(void);
+static void	uncurse_all(void);
+
+void
+quaff(void)
 {
 	short ch;
 	char buf[80];
@@ -157,7 +165,7 @@ quaff()
 		case LEVITATION:
 			message("you start to float in the air", 0);
 			levitate += get_rand(15, 30);
-			being_held = bear_trap = 0;
+			bear_trap = being_held = 0;
 			break;
 		case HASTE_SELF:
 			message("you feel yourself moving much faster", 0);
@@ -183,7 +191,8 @@ quaff()
 	vanish(obj, 1, &rogue.pack);
 }
 
-read_scroll()
+void
+read_scroll(void)
 {
 	short ch;
 	object *obj;
@@ -295,10 +304,8 @@ read_scroll()
  *  arrow (or whatever) in the quiver.  It will only decrement the count.
  */
 
-vanish(obj, rm, pack)
-object *obj;
-short rm;
-object *pack;
+void
+vanish(object *obj, short rm, object *pack)
 {
 	if (obj->quantity > 1) {
 		obj->quantity--;
@@ -314,11 +321,12 @@ object *pack;
 		free_object(obj);
 	}
 	if (rm) {
-		(void) reg_move();
+		reg_move();
 	}
 }
 
-potion_heal(extra)
+static void
+potion_heal(boolean extra)
 {
 	float ratio;
 	short add;
@@ -363,7 +371,8 @@ potion_heal(extra)
 	}
 }
 
-idntfy()
+static void
+idntfy(void)
 {
 	short ch;
 	object *obj;
@@ -390,7 +399,8 @@ AGAIN:
 	message(desc, 0);
 }
 
-eat()
+void
+eat(void)
 {
 	short ch;
 	short moves;
@@ -431,7 +441,8 @@ eat()
 	vanish(obj, 1, &rogue.pack);
 }
 
-hold_monster()
+static void
+hold_monster(void)
 {
 	short i, j;
 	short mcount = 0;
@@ -463,7 +474,8 @@ hold_monster()
 	}
 }
 
-tele()
+void
+tele(void)
 {
 	mvaddch(rogue.row, rogue.col, get_dungeon_char(rogue.row, rogue.col));
 
@@ -475,7 +487,8 @@ tele()
 	bear_trap = 0;
 }
 
-hallucinate()
+void
+hallucinate(void)
 {
 	object *obj, *monster;
 	short ch;
@@ -504,14 +517,16 @@ hallucinate()
 	}
 }
 
-unhallucinate()
+void
+unhallucinate(void)
 {
 	halluc = 0;
 	relight();
 	message("everything looks SO boring now", 1);
 }
 
-unblind()
+void
+unblind(void)
 {
 	blind = 0;
 	message("the veil of darkness lifts", 1);
@@ -524,7 +539,8 @@ unblind()
 	}
 }
 
-relight()
+void
+relight(void)
 {
 	if (cur_room == PASSAGE) {
 		light_passage(rogue.row, rogue.col);
@@ -534,7 +550,8 @@ relight()
 	mvaddch(rogue.row, rogue.col, rogue.fchar);
 }
 
-take_a_nap()
+void
+take_a_nap(void)
 {
 	short i;
 
@@ -548,7 +565,8 @@ take_a_nap()
 	message(you_can_move_again, 0);
 }
 
-go_blind()
+static void
+go_blind(void)
 {
 	short i, j;
 
@@ -579,8 +597,8 @@ go_blind()
 	mvaddch(rogue.row, rogue.col, rogue.fchar);
 }
 
-const char *
-get_ench_color()
+static const char *
+get_ench_color(void)
 {
 	if (halluc) {
 		return(id_potions[get_rand(0, POTIONS-1)].title);
@@ -590,12 +608,14 @@ get_ench_color()
 	return("blue ");
 }
 
-cnfs()
+void
+cnfs(void)
 {
 	confused += get_rand(12, 22);
 }
 
-unconfuse()
+void
+unconfuse(void)
 {
 	char msg[80];
 
@@ -604,7 +624,8 @@ unconfuse()
 	message(msg, 1);
 }
 
-uncurse_all()
+static void
+uncurse_all(void)
 {
 	object *obj;
 

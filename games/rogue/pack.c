@@ -35,7 +35,7 @@
  *
  * @(#)pack.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/pack.c,v 1.8 1999/11/30 03:49:25 billf Exp $
- * $DragonFly: src/games/rogue/pack.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/pack.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -50,21 +50,25 @@
  *
  */
 
+#include <unistd.h>
 #include "rogue.h"
 
 const char *curse_message = "you can't, it appears to be cursed";
 
 extern short levitate;
 
+static object	*check_duplicate(object *, object *);
+static int	next_avail_ichar(void);
+static boolean	mask_pack(const object *, unsigned short);
+static boolean	is_pack_letter(short *, unsigned short *);
+
 object *
-add_to_pack(obj, pack, condense)
-object *obj, *pack;
-int condense;
+add_to_pack(object *obj, object *pack, int condense)
 {
 	object *op;
 
 	if (condense) {
-		if (op = check_duplicate(obj, pack)) {
+		if ((op = check_duplicate(obj, pack))) {
 			free_object(obj);
 			return(op);
 		} else {
@@ -85,8 +89,8 @@ int condense;
 	return(obj);
 }
 
-take_from_pack(obj, pack)
-object *obj, *pack;
+void
+take_from_pack(object *obj, object *pack)
 {
 	while (pack->next_object != obj) {
 		pack = pack->next_object;
@@ -99,9 +103,7 @@ object *obj, *pack;
  */
 
 object *
-pick_up(row, col, status)
-int row, col;
-short *status;
+pick_up(int row, int col, short *status)
 {
 	object *obj;
 
@@ -146,7 +148,8 @@ short *status;
 	return(obj);
 }
 
-drop()
+void
+drop(void)
 {
 	object *obj, *new;
 	short ch;
@@ -202,15 +205,14 @@ drop()
 		take_from_pack(obj, &rogue.pack);
 	}
 	place_at(obj, rogue.row, rogue.col);
-	(void) strcpy(desc, "dropped ");
+	strcpy(desc, "dropped ");
 	get_desc(obj, desc+8);
 	message(desc, 0);
-	(void) reg_move();
+	reg_move();
 }
 
-object *
-check_duplicate(obj, pack)
-object *obj, *pack;
+static object *
+check_duplicate(object *obj, object *pack)
 {
 	object *op;
 
@@ -242,7 +244,8 @@ object *obj, *pack;
 	return(0);
 }
 
-next_avail_ichar()
+static int
+next_avail_ichar(void)
 {
 	object *obj;
 	int i;
@@ -264,16 +267,16 @@ next_avail_ichar()
 	return('?');
 }
 
-wait_for_ack()
+void
+wait_for_ack(void)
 {
 	if (!isatty(0) || !isatty(1))
 	    return;
 	while (rgetchar() != ' ') ;
 }
 
-pack_letter(prompt, mask)
-const char *prompt;
-unsigned short mask;
+short
+pack_letter(const char *prompt, unsigned short mask)
 {
 	short ch;
 	unsigned short tmask = mask;
@@ -308,7 +311,8 @@ unsigned short mask;
 	return(ch);
 }
 
-take_off()
+void
+take_off(void)
 {
 	char desc[DCOLS];
 	object *obj;
@@ -320,18 +324,19 @@ take_off()
 			mv_aquatars();
 			obj = rogue.armor;
 			unwear(rogue.armor);
-			(void) strcpy(desc, "was wearing ");
+			strcpy(desc, "was wearing ");
 			get_desc(obj, desc+12);
 			message(desc, 0);
 			print_stats(STAT_ARMOR);
-			(void) reg_move();
+			reg_move();
 		}
 	} else {
 		message("not wearing any", 0);
 	}
 }
 
-wear()
+void
+wear(void)
 {
 	short ch;
 	object *obj;
@@ -355,16 +360,16 @@ wear()
 		return;
 	}
 	obj->identified = 1;
-	(void) strcpy(desc, "wearing ");
+	strcpy(desc, "wearing ");
 	get_desc(obj, desc + 8);
 	message(desc, 0);
 	do_wear(obj);
 	print_stats(STAT_ARMOR);
-	(void) reg_move();
+	reg_move();
 }
 
-unwear(obj)
-object *obj;
+void
+unwear(object *obj)
 {
 	if (obj) {
 		obj->in_use_flags &= (~BEING_WORN);
@@ -372,15 +377,16 @@ object *obj;
 	rogue.armor = (object *) 0;
 }
 
-do_wear(obj)
-object *obj;
+void
+do_wear(object *obj)
 {
 	rogue.armor = obj;
 	obj->in_use_flags |= BEING_WORN;
 	obj->identified = 1;
 }
 
-wield()
+void
+wield(void)
 {
 	short ch;
 	object *obj;
@@ -409,23 +415,23 @@ wield()
 		message("in use", 0);
 	} else {
 		unwield(rogue.weapon);
-		(void) strcpy(desc, "wielding ");
+		strcpy(desc, "wielding ");
 		get_desc(obj, desc + 9);
 		message(desc, 0);
 		do_wield(obj);
-		(void) reg_move();
+		reg_move();
 	}
 }
 
-do_wield(obj)
-object *obj;
+void
+do_wield(object *obj)
 {
 	rogue.weapon = obj;
 	obj->in_use_flags |= BEING_WIELDED;
 }
 
-unwield(obj)
-object *obj;
+void
+unwield(object *obj)
 {
 	if (obj) {
 		obj->in_use_flags &= (~BEING_WIELDED);
@@ -433,7 +439,8 @@ object *obj;
 	rogue.weapon = (object *) 0;
 }
 
-call_it()
+void
+call_it(void)
 {
 	short ch;
 	object *obj;
@@ -457,12 +464,12 @@ call_it()
 
 	if (get_input_line("call it:","",buf,id_table[obj->which_kind].title,1,1)) {
 		id_table[obj->which_kind].id_status = CALLED;
-		(void) strcpy(id_table[obj->which_kind].title, buf);
+		strcpy(id_table[obj->which_kind].title, buf);
 	}
 }
 
-pack_count(new_obj)
-const object *new_obj;
+short
+pack_count(const object *new_obj)
 {
 	object *obj;
 	short count = 0;
@@ -488,10 +495,8 @@ const object *new_obj;
 	return(count);
 }
 
-boolean
-mask_pack(pack, mask)
-const object *pack;
-unsigned short mask;
+static boolean
+mask_pack(const object *pack, unsigned short mask)
 {
 	while (pack->next_object) {
 		pack = pack->next_object;
@@ -502,9 +507,8 @@ unsigned short mask;
 	return(0);
 }
 
-is_pack_letter(c, mask)
-short *c;
-unsigned short *mask;
+static boolean
+is_pack_letter(short *c, unsigned short *mask)
 {
 	if (((*c == '?') || (*c == '!') || (*c == ':') || (*c == '=') ||
 		(*c == ')') || (*c == ']') || (*c == '/') || (*c == ','))) {
@@ -540,12 +544,14 @@ unsigned short *mask;
 	return(((*c >= 'a') && (*c <= 'z')) || (*c == CANCEL) || (*c == LIST));
 }
 
-has_amulet()
+boolean
+has_amulet(void)
 {
 	return(mask_pack(&rogue.pack, AMULET));
 }
 
-kick_into_pack()
+void
+kick_into_pack(void)
 {
 	object *obj;
 	char desc[DCOLS];
@@ -554,7 +560,7 @@ kick_into_pack()
 	if (!(dungeon[rogue.row][rogue.col] & OBJECT)) {
 		message("nothing here", 0);
 	} else {
-		if (obj = pick_up(rogue.row, rogue.col, &stat)) {
+		if ((obj = pick_up(rogue.row, rogue.col, &stat))) {
 			get_desc(obj, desc);
 			if (obj->what_is == GOLD) {
 				message(desc, 0);
@@ -569,7 +575,7 @@ kick_into_pack()
 			}
 		}
 		if (obj || (!stat)) {
-			(void) reg_move();
+			reg_move();
 		}
 	}
 }

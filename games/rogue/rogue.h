@@ -35,10 +35,12 @@
  *
  *	@(#)rogue.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/rogue.h,v 1.3.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/rogue.h,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/rogue.h,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 #include <curses.h>
+#include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 /*
@@ -52,7 +54,7 @@
  *         gain or profit.
  */
 
-#define boolean char
+#define boolean bool
 
 #define NOTHING		((unsigned short)     0)
 #define OBJECT		((unsigned short)    01)
@@ -202,7 +204,7 @@
 struct id {
 	short value;
 	char title[MAX_ID_TITLE_LEN];
-	char *real;
+	const char *real;
 	unsigned short id_status;
 };
 
@@ -254,10 +256,10 @@ typedef struct obj object;
 
 #define INIT_AW (object*)0,(object*)0
 #define INIT_RINGS (object*)0,(object*)0
-#define INIT_HP 12,12
+#define INIT_HP 12
 #define INIT_STR 16,16
 #define INIT_EXP 1,0
-#define INIT_PACK {0}
+#define INIT_PACK {0,"",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,NULL}
 #define INIT_GOLD 0
 #define INIT_CHAR '@'
 #define INIT_MOVES 1250
@@ -433,41 +435,6 @@ extern object level_monsters;
 
 #define MIN_ROW 1
 
-/* external routine declarations.
- */
-const char *mon_name();
-const char *get_ench_color();
-const char *name_of();
-const char *md_gln();
-char *md_getenv();
-char *md_malloc();
-boolean is_direction();
-boolean mon_sees();
-boolean mask_pack();
-boolean mask_room();
-boolean is_digit();
-boolean check_hunger();
-boolean reg_move();
-boolean md_df();
-boolean has_been_touched();
-object *add_to_pack();
-object *alloc_object();
-object *get_letter_object();
-object *gr_monster();
-object *get_thrown_at_monster();
-object *get_zapped_monster();
-object *check_duplicate();
-object *gr_object();
-object *object_at();
-object *pick_up();
-struct id *get_id_table();
-unsigned short gr_what_is();
-#define rrandom random
-#define srrandom(x) srandomdev()
-long lget_number();
-long xxx();
-void byebye(), onintr(), error_save();
-
 struct rogue_time {
 	short year;		/* >= 1987 */
 	short month;	/* 1 - 12 */
@@ -476,6 +443,246 @@ struct rogue_time {
 	short minute;	/* 0 - 59 */
 	short second;	/* 0 - 59 */
 };
+
+/* external routine declarations.
+ */
+#define rrandom random
+#define srrandom(x) srandomdev()
+
+/* hit.c */
+void	mon_hit(object *);
+void	rogue_hit(object *, boolean);
+void	rogue_damage(short, object *, short);
+int	get_damage(const char *, boolean);
+int	get_number(const char *);
+long	lget_number(const char *);
+boolean	mon_damage(object *, short);
+void	fight(boolean);
+void	get_dir_rc(short, short *, short *, short);
+short	get_hit_chance(const object *);
+short	get_weapon_damage(const object *);
+void	s_con_mon(object *);
+
+/* init.c */
+boolean	init(int, char**);
+void	clean_up(const char *);
+void	start_window(void);
+void	stop_window(void);
+void	byebye(void);
+void	onintr(void);
+void	error_save(void);
+
+/* inventory.c */
+void	inventory(const object *, unsigned short);
+void	id_com(void);
+void	mix_colors(void);
+void	make_scroll_titles(void);
+void	get_desc(const object *, char *);
+void	get_wand_and_ring_materials(void);
+void	single_inv(short);
+struct id	*get_id_table(const object *);
+void	inv_armor_weapon(boolean);
+void	id_type(void);
+
+/* level.c */
+void	make_level(void);
+void	clear_level(void);
+void	put_player(short);
+boolean	drop_check(void);
+boolean	check_up(void);
+void	add_exp(int, boolean);
+int	hp_raise(void);
+void	show_average_hp(void);
+
+/* machdep.c */
+#ifdef UNIX
+void	md_slurp(void);
+void	md_control_keybord(boolean);
+void	md_heed_signals(void);
+void	md_ignore_signals(void);
+int	md_get_file_id(const char *);
+int	md_link_count(const char *);
+void	md_gct(struct rogue_time *);
+void	md_gfmt(const char *, struct rogue_time *);
+boolean	md_df(const char *);
+const char	*md_gln(void);
+void	md_sleep(int);
+char	*md_getenv(const char *);
+char	*md_malloc(int);
+int	md_gseed(void);
+void	md_exit(int);
+void	md_lock(boolean);
+void	md_shell(const char *);
+#endif
+
+/* message.c */
+void	message(const char *, boolean);
+void	remessage(short);
+void	check_message(void);
+short	get_input_line(const char *, const char *, char *,
+		       const char *, boolean, boolean);
+int	rgetchar(void);
+void	print_stats(int);
+void	sound_bell(void);
+boolean	is_digit(short);
+int	r_index(const char *, int, boolean);
+
+/* monster.c */
+void	put_mons(void);
+object	*gr_monster(object *, int);
+void	mv_mons(void);
+void	party_monsters(int, int);
+short	gmc_row_col(int, int);
+short	gmc(object *);
+void	mv_1_monster(object *, short, short);
+void	move_mon_to(object *, short, short);
+boolean	mon_can_go(const object *, short, short);
+void	wake_up(object *);
+void	wake_room(short, boolean, short, short);
+const char	*mon_name(const object *);
+void	wanderer(void);
+void	show_monsters(void);
+void	create_monster(void);
+int	rogue_can_see(int, int);
+char	gr_obj_char(void);
+void	aggravate(void);
+boolean	mon_sees(const object *, int, int);
+void	mv_aquatars(void);
+
+/* move.c */
+short	one_move_rogue(short, short);
+void	multiple_move_rogue(short);
+boolean	is_passable(int, int);
+boolean	can_move(short, short, short, short);
+void	move_onto(void);
+boolean	is_direction(short, short *);
+boolean	reg_move(void);
+void	rest(int);
+
+/* object.c */
+void	put_objects(void);
+void	place_at(object *, int, int);
+object	*object_at(object *, short, short);
+object	*get_letter_object(int);
+void	free_stuff(object *);
+const char	*name_of(const object *);
+object	*gr_object(void);
+void	get_food(object *, boolean);
+void	put_stairs(void);
+short	get_armor_class(const object *);
+object	*alloc_object(void);
+void	free_object(object *);
+void	show_objects(void);
+void	put_amulet(void);
+void	c_object_for_wizard(void);
+
+/* pack.c */
+object	*add_to_pack(object *, object *, int);
+void	take_from_pack(object *, object *);
+object	*pick_up(int, int, short *);
+void	drop(void);
+void	wait_for_ack(void);
+short	pack_letter(const char *, unsigned short);
+void	take_off(void);
+void	wear(void);
+void	unwear(object *);
+void	do_wear(object *);
+void	wield(void);
+void	do_wield(object *);
+void	unwield(object *);
+void	call_it(void);
+short	pack_count(const object *);
+boolean	has_amulet(void);
+void	kick_into_pack(void);
+
+/* play.c */
+void	play_level(void);
+
+/* random.c */
+int	get_rand(int, int);
+boolean	rand_percent(int);
+boolean	coin_toss(void);
+
+/* ring.c */
+void	put_on_ring(void);
+void	do_put_on(object *, boolean);
+void	remove_ring(void);
+void	un_put_on(object *);
+void	gr_ring(object *, boolean);
+void	inv_rings(void);
+void	ring_stats(boolean);
+
+/* room.c */
+void	light_up_room(int);
+void	light_passage(int, int);
+void	darken_room(short);
+char	get_dungeon_char(int, int);
+char	get_mask_char(unsigned short);
+void	gr_row_col(short *, short *, unsigned short);
+short	gr_room(void);
+short	party_objects(short);
+short	get_room_number(int, int);
+boolean	is_all_connected(void);
+void	draw_magic_map(void);
+void	dr_course(object *, boolean, short, short);
+void	edit_opts(void);
+void	do_shell(void);
+
+/* save.c */
+void	save_game(void);
+void	save_into_file(const char *);
+void	restore(const char *);
+
+/* score.c */
+void	killed_by(const object *, short);
+void	win(void);
+void	quit(boolean);
+void	put_scores(const object *, short);
+boolean	is_vowel(short);
+void	xxxx(char *, short);
+long	xxx(boolean);
+
+/* spec_hit.c */
+void	special_hit(object *);
+void	rust(object *);
+void	cough_up(object *);
+boolean	seek_gold(object *);
+void	check_gold_seeker(object *);
+boolean	check_imitator(object *);
+boolean	imitating(short, short);
+boolean	m_confuse(object *);
+boolean	flame_broil(object *);
+
+/* throw.c */
+void	throw(void);
+void	rand_around(short, short *, short *);
+
+/* trap.c */
+void	trap_player(short, short);
+void	add_traps(void);
+void	id_trap(void);
+void	show_traps(void);
+void	search(short, boolean);
+
+/* use.c */
+void	quaff(void);
+void	read_scroll(void);
+void	vanish(object *, short, object *);
+void	eat(void);
+void	tele(void);
+void	hallucinate(void);
+void	unhallucinate(void);
+void	unblind(void);
+void	relight(void);
+void	take_a_nap(void);
+void	cnfs(void);
+void	unconfuse(void);
+
+/* zap.c */
+void	zapp(void);
+void	wizardize(void);
+void	bounce(short, short, short, short, short);
+
 /*
  * external variable declarations.
  */

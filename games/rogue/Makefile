@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/rogue/Makefile,v 1.4.2.5 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/rogue/Makefile,v 1.3 2005/05/07 18:33:25 corecode Exp $
+# $DragonFly: src/games/rogue/Makefile,v 1.4 2006/09/02 19:31:07 pavalos Exp $
 
 PROG=	rogue
 CFLAGS+=-DUNIX
@@ -8,9 +8,10 @@ SRCS=	hit.c init.c inventory.c level.c machdep.c main.c \
 	message.c monster.c move.c object.c pack.c play.c random.c ring.c \
 	room.c save.c score.c spec_hit.c throw.c trap.c use.c zap.c
 DPADD=	${LIBCURSES} ${LIBTERMCAP}
-LDADD=	-lcurses -ltermcap
+LDADD=	-lcurses
 HIDEGAME=hidegame
 MAN=	rogue.6
+WARNS?=	6
 
 beforeinstall:
 .if !exists(${DESTDIR}/var/games/rogue.scores)

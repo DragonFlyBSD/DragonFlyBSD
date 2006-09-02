@@ -35,7 +35,7 @@
  *
  * @(#)ring.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/ring.c,v 1.3 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/ring.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/ring.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -69,7 +69,8 @@ boolean maintain_armor;
 extern char *curse_message;
 extern boolean wizard;
 
-put_on_ring()
+void
+put_on_ring(void)
 {
 	short ch;
 	char desc[DCOLS];
@@ -121,7 +122,7 @@ put_on_ring()
 	check_message();
 	get_desc(ring, desc);
 	message(desc, 0);
-	(void) reg_move();
+	reg_move();
 }
 
 /*
@@ -129,9 +130,8 @@ put_on_ring()
  * serious problems when do_put_on() is called from read_pack() in restore().
  */
 
-do_put_on(ring, on_left)
-object *ring;
-boolean on_left;
+void
+do_put_on(object *ring, boolean on_left)
 {
 	if (on_left) {
 		ring->in_use_flags |= ON_LEFT_HAND;
@@ -142,12 +142,13 @@ boolean on_left;
 	}
 }
 
-remove_ring()
+void
+remove_ring(void)
 {
 	boolean left = 0, right = 0;
 	short ch;
 	char buf[DCOLS];
-	object *ring;
+	object *ring = NULL;
 
 	if (r_rings == 0) {
 		inv_rings();
@@ -183,16 +184,16 @@ remove_ring()
 			message(curse_message, 0);
 		} else {
 			un_put_on(ring);
-			(void) strcpy(buf, "removed ");
+			strcpy(buf, "removed ");
 			get_desc(ring, buf + 8);
 			message(buf, 0);
-			(void) reg_move();
+			reg_move();
 		}
 	}
 }
 
-un_put_on(ring)
-object *ring;
+void
+un_put_on(object *ring)
 {
 	if (ring && (ring->in_use_flags & ON_LEFT_HAND)) {
 		ring->in_use_flags &= (~ON_LEFT_HAND);
@@ -204,9 +205,8 @@ object *ring;
 	ring_stats(1);
 }
 
-gr_ring(ring, assign_wk)
-object *ring;
-boolean assign_wk;
+void
+gr_ring(object *ring, boolean assign_wk)
 {
 	ring->what_is = RING;
 	if (assign_wk) {
@@ -215,22 +215,6 @@ boolean assign_wk;
 	ring->class = 0;
 
 	switch(ring->which_kind) {
-	/*
-	case STEALTH:
-		break;
-	case SLOW_DIGEST:
-		break;
-	case REGENERATION:
-		break;
-	case R_SEE_INVISIBLE:
-		break;
-	case SUSTAIN_STRENGTH:
-		break;
-	case R_MAINTAIN_ARMOR:
-		break;
-	case SEARCHING:
-		break;
-	*/
 	case R_TELEPORT:
 		ring->is_cursed = 1;
 		break;
@@ -245,7 +229,8 @@ boolean assign_wk;
 	}
 }
 
-inv_rings()
+void
+inv_rings(void)
 {
 	char buf[DCOLS];
 
@@ -270,8 +255,8 @@ inv_rings()
 	}
 }
 
-ring_stats(pr)
-boolean pr;
+void
+ring_stats(boolean pr)
 {
 	short i;
 	object *ring;

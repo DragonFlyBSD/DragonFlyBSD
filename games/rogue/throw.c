@@ -35,7 +35,7 @@
  *
  * @(#)throw.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/throw.c,v 1.3 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/throw.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/throw.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -56,7 +56,12 @@ extern short cur_room;
 extern char *curse_message;
 extern char hit_message[];
 
-throw()
+static boolean	throw_at_monster(object *, object *);
+static object	*get_thrown_at_monster(object *, short, short *, short *);
+static void	flop_weapon(object *, short, short);
+
+void
+throw(void)
 {
 	short wch, d;
 	boolean first_miss = 1;
@@ -119,8 +124,8 @@ throw()
 	vanish(weapon, 1, &rogue.pack);
 }
 
-throw_at_monster(monster, weapon)
-object *monster, *weapon;
+static boolean
+throw_at_monster(object *monster, object *weapon)
 {
 	short damage, hit_chance;
 	short t;
@@ -145,20 +150,17 @@ object *monster, *weapon;
 	weapon->quantity = t;
 
 	if (!rand_percent(hit_chance)) {
-		(void) strcat(hit_message, "misses  ");
+		strcat(hit_message, "misses  ");
 		return(0);
 	}
 	s_con_mon(monster);
-	(void) strcat(hit_message, "hit  ");
-	(void) mon_damage(monster, damage);
+	strcat(hit_message, "hit  ");
+	mon_damage(monster, damage);
 	return(1);
 }
 
-object *
-get_thrown_at_monster(obj, dir, row, col)
-object *obj;
-short dir;
-short *row, *col;
+static object *
+get_thrown_at_monster(object *obj, short dir, short *row, short *col)
 {
 	short orow, ocol;
 	short i, ch;
@@ -199,9 +201,8 @@ short *row, *col;
 	return(0);
 }
 
-flop_weapon(weapon, row, col)
-object *weapon;
-short row, col;
+static void
+flop_weapon(object *weapon, short row, short col)
 {
 	object *new_weapon, *monster;
 	short i = 0;
@@ -235,7 +236,7 @@ short row, col;
 			dch = get_dungeon_char(row, col);
 			if (mon) {
 				mch = mvinch(row, col);
-				if (monster = object_at(&level_monsters, row, col)) {
+				if ((monster = object_at(&level_monsters, row, col))) {
 					monster->trail_char = dch;
 				}
 				if ((mch < 'A') || (mch > 'Z')) {
@@ -258,8 +259,8 @@ short row, col;
 	}
 }
 
-rand_around(i, r, c)
-short i, *r, *c;
+void
+rand_around(short i, short *r, short *c)
 {
 	static char pos[] = "\010\007\001\003\004\005\002\006\0";
 	static short row, col;

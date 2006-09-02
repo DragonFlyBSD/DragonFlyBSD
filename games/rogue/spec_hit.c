@@ -35,7 +35,7 @@
  *
  * @(#)spec_hit.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/spec_hit.c,v 1.4 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/spec_hit.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/spec_hit.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -61,8 +61,19 @@ extern boolean detect_monster, mon_disappeared;
 extern boolean sustain_strength, maintain_armor;
 extern char *you_can_move_again;
 
-special_hit(monster)
-object *monster;
+static void	freeze(object *);
+static void	steal_gold(object *);
+static void	steal_item(object *);
+static void	disappear(object *);
+static boolean	try_to_cough(short, short, object *);
+static boolean	gold_at(short, short);
+static void	sting(object *);
+static void	drop_level(void);
+static void	drain_life(void);
+static short	get_dir(short, short, short, short);
+
+void
+special_hit(object *monster)
 {
 	if ((monster->m_flags & CONFUSED) && rand_percent(66)) {
 		return;
@@ -92,8 +103,8 @@ object *monster;
 	}
 }
 
-rust(monster)
-object *monster;
+void
+rust(object *monster)
 {
 	if ((!rogue.armor) || (get_armor_class(rogue.armor) <= 1) ||
 		(rogue.armor->which_kind == LEATHER)) {
@@ -111,8 +122,8 @@ object *monster;
 	}
 }
 
-freeze(monster)
-object *monster;
+static void
+freeze(object *monster)
 {
 	short freeze_percent = 99;
 	short i, n;
@@ -144,8 +155,8 @@ object *monster;
 	}
 }
 
-steal_gold(monster)
-object *monster;
+static void
+steal_gold(object *monster)
 {
 	int amount;
 
@@ -164,11 +175,11 @@ object *monster;
 	disappear(monster);
 }
 
-steal_item(monster)
-object *monster;
+static void
+steal_item(object *monster)
 {
 	object *obj;
-	short i, n, t;
+	short i, n, t = 0;
 	char desc[80];
 	boolean has_something = 0;
 
@@ -203,7 +214,7 @@ object *monster;
 			}
 		}
 	}
-	(void) strcpy(desc, "she stole ");
+	strcpy(desc, "she stole ");
 	if (obj->what_is != WEAPON) {
 		t = obj->quantity;
 		obj->quantity = 1;
@@ -218,8 +229,8 @@ DSPR:
 	disappear(monster);
 }
 
-disappear(monster)
-object *monster;
+static void
+disappear(object *monster)
 {
 	short row, col;
 
@@ -235,8 +246,8 @@ object *monster;
 	mon_disappeared = 1;
 }
 
-cough_up(monster)
-object *monster;
+void
+cough_up(object *monster)
 {
 	object *obj;
 	short row, col, i, n;
@@ -279,9 +290,8 @@ object *monster;
 	free_object(obj);
 }
 
-try_to_cough(row, col, obj)
-short row, col;
-object *obj;
+static boolean
+try_to_cough(short row, short col, object *obj)
 {
 	if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) || (col>(DCOLS-1))) {
 		return(0);
@@ -298,8 +308,8 @@ object *obj;
 	return(0);
 }
 
-seek_gold(monster)
-object *monster;
+boolean
+seek_gold(object *monster)
 {
 	short i, j, rn, s;
 
@@ -330,8 +340,8 @@ object *monster;
 	return(0);
 }
 
-gold_at(row, col)
-short row, col;
+static boolean
+gold_at(short row, short col)
 {
 	if (dungeon[row][col] & OBJECT) {
 		object *obj;
@@ -344,14 +354,14 @@ short row, col;
 	return(0);
 }
 
-check_gold_seeker(monster)
-object *monster;
+void
+check_gold_seeker(object *monster)
 {
 	monster->m_flags &= (~SEEKS_GOLD);
 }
 
-check_imitator(monster)
-object *monster;
+boolean
+check_imitator(object *monster)
 {
 	char msg[80];
 
@@ -369,13 +379,13 @@ object *monster;
 	return(0);
 }
 
-imitating(row, col)
-short row, col;
+boolean
+imitating(short row, short col)
 {
 	if (dungeon[row][col] & MONSTER) {
-		object *object_at(), *monster;
+		object *monster;
 
-		if (monster = object_at(&level_monsters, row, col)) {
+		if ((monster = object_at(&level_monsters, row, col))) {
 			if (monster->m_flags & IMITATES) {
 				return(1);
 			}
@@ -384,8 +394,8 @@ short row, col;
 	return(0);
 }
 
-sting(monster)
-object *monster;
+static void
+sting(object *monster)
 {
 	short sting_chance = 35;
 	char msg[80];
@@ -407,7 +417,8 @@ object *monster;
 	}
 }
 
-drop_level()
+static void
+drop_level(void)
 {
 	int hp;
 
@@ -426,7 +437,8 @@ drop_level()
 	add_exp(1, 0);
 }
 
-drain_life()
+static void
+drain_life(void)
 {
 	short n;
 
@@ -454,8 +466,8 @@ drain_life()
 	print_stats((STAT_STRENGTH | STAT_HP));
 }
 
-m_confuse(monster)
-object *monster;
+boolean
+m_confuse(object *monster)
 {
 	char msg[80];
 
@@ -476,8 +488,8 @@ object *monster;
 	return(0);
 }
 
-flame_broil(monster)
-object *monster;
+boolean
+flame_broil(object *monster)
 {
 	short row, col, dir;
 
@@ -502,8 +514,8 @@ object *monster;
 	return(1);
 }
 
-get_dir(srow, scol, drow, dcol)
-short srow, scol, drow, dcol;
+static short
+get_dir(short srow, short scol, short drow, short dcol)
 {
 	if (srow == drow) {
 		if (scol < dcol) {

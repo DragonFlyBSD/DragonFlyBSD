@@ -35,7 +35,7 @@
  *
  * @(#)level.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/level.c,v 1.3 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/level.c,v 1.3 2006/08/03 16:40:46 swildner Exp $
+ * $DragonFly: src/games/rogue/level.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -89,12 +89,29 @@ short random_rooms[MAXROOMS] = {3, 7, 5, 2, 0, 6, 1, 4, 8};
 
 extern boolean being_held, wizard, detect_monster;
 extern boolean see_invisible;
-extern short bear_trap, levitate, extra_hp, less_hp, cur_room;
+extern short bear_trap, levitate, extra_hp, less_hp;
 
-make_level()
+static void	make_room(short, short, short, short);
+static boolean	connect_rooms(short, short);
+static void	put_door(room *, short, short *, short *);
+static void	draw_simple_passage(short, short, short, short, short);
+static boolean	same_row(short, short);
+static boolean	same_col(short, short);
+static void	add_mazes(void);
+static void	fill_out_level(void);
+static void	fill_it(int, boolean);
+static void	recursive_deadend(short, const short *, short, short);
+static boolean	mask_room(short, short *, short *, unsigned short);
+static void	make_maze(short, short, short, short, short, short);
+static void	hide_boxed_passage(short, short, short, short, short);
+static short	get_exp_level(long);
+static void	mix_random_rooms(void);
+
+void
+make_level(void)
 {
 	short i, j;
-	short must_1, must_2, must_3;
+	short must_1, must_2 = 0, must_3 = 0;
 	boolean big_room;
 
 	if (cur_level < LAST_DUNGEON) {
@@ -158,10 +175,10 @@ make_level()
 			i = random_rooms[j];
 
 			if (i < (MAXROOMS-1)) {
-				(void) connect_rooms(i, i+1);
+				connect_rooms(i, i+1);
 			}
 			if (i < (MAXROOMS-3)) {
-				(void) connect_rooms(i, i+3);
+				connect_rooms(i, i+3);
 			}
 			if (i < (MAXROOMS-2)) {
 				if (rooms[i+1].is_room & R_NOTHING) {
@@ -188,13 +205,15 @@ make_level()
 	}
 }
 
-make_room(rn, r1, r2, r3)
-short rn, r1, r2, r3;
+static void
+make_room(short rn, short r1, short r2, short r3)
 {
 	short left_col, right_col, top_row, bottom_row;
 	short width, height;
 	short row_offset, col_offset;
 	short i, j, ch;
+
+	left_col = right_col = top_row = bottom_row = 0;
 
 	switch(rn) {
 	case 0:
@@ -297,8 +316,8 @@ END:
 	rooms[rn].right_col = right_col;
 }
 
-connect_rooms(room1, room2)
-short room1, room2;
+static boolean
+connect_rooms(short room1, short room2)
 {
 	short row1, col1, row2, col2, dir;
 
@@ -344,7 +363,8 @@ short room1, room2;
 	return(1);
 }
 
-clear_level()
+void
+clear_level(void)
 {
 	short i, j;
 
@@ -364,16 +384,14 @@ clear_level()
 		}
 	}
 	detect_monster = see_invisible = 0;
-	being_held = bear_trap = 0;
+	bear_trap = being_held = 0;
 	party_room = NO_ROOM;
 	rogue.row = rogue.col = -1;
 	clear();
 }
 
-put_door(rm, dir, row, col)
-room *rm;
-short dir;
-short *row, *col;
+static void
+put_door(room *rm, short dir, short *row, short *col)
 {
 	short wall_width;
 
@@ -407,8 +425,8 @@ short *row, *col;
 	rm->doors[dir/2].door_col = *col;
 }
 
-draw_simple_passage(row1, col1, row2, col2, dir)
-short row1, col1, row2, col2, dir;
+static void
+draw_simple_passage(short row1, short col1, short row2, short col2, short dir)
 {
 	short i, middle, t;
 
@@ -448,17 +466,20 @@ short row1, col1, row2, col2, dir;
 	}
 }
 
-same_row(room1, room2)
+static boolean
+same_row(short room1, short room2)
 {
 	return((room1 / 3) == (room2 / 3));
 }
 
-same_col(room1, room2)
+static boolean
+same_col(short room1, short room2)
 {
 	return((room1 % 3) == (room2 % 3));
 }
 
-add_mazes()
+static void
+add_mazes(void)
 {
 	short i, j;
 	short start;
@@ -489,7 +510,8 @@ add_mazes()
 	}
 }
 
-fill_out_level()
+static void
+fill_out_level(void)
 {
 	short i, rn;
 
@@ -509,9 +531,8 @@ fill_out_level()
 	}
 }
 
-fill_it(rn, do_rec_de)
-int rn;
-boolean do_rec_de;
+static void
+fill_it(int rn, boolean do_rec_de)
 {
 	short i, tunnel_dir, door_dir, drow, dcol;
 	short target_room, rooms_found = 0;
@@ -570,10 +591,8 @@ boolean do_rec_de;
 	}
 }
 
-recursive_deadend(rn, offsets, srow, scol)
-short rn;
-const short *offsets;
-short srow, scol;
+static void
+recursive_deadend(short rn, const short *offsets, short srow, short scol)
 {
 	short i, de;
 	short drow, dcol, tunnel_dir;
@@ -605,11 +624,8 @@ short srow, scol;
 	}
 }
 
-boolean
-mask_room(rn, row, col, mask)
-short rn;
-short *row, *col;
-unsigned short mask;
+static boolean
+mask_room(short rn, short *row, short *col, unsigned short mask)
 {
 	short i, j;
 
@@ -625,8 +641,8 @@ unsigned short mask;
 	return(0);
 }
 
-make_maze(r, c, tr, br, lc, rc)
-short r, c, tr, br, lc, rc;
+static void
+make_maze(short r, short c, short tr, short br, short lc, short rc)
 {
 	char dirs[4];
 	short i, t;
@@ -690,8 +706,8 @@ short r, c, tr, br, lc, rc;
 	}
 }
 
-hide_boxed_passage(row1, col1, row2, col2, n)
-short row1, col1, row2, col2, n;
+static void
+hide_boxed_passage(short row1, short col1, short row2, short col2, short n)
 {
 	short i, j, t;
 	short row, col, row_cut, col_cut;
@@ -725,8 +741,8 @@ short row1, col1, row2, col2, n;
 	}
 }
 
-put_player(nr)
-short nr;		/* try not to put in this room */
+void
+put_player(short nr)		/* try not to put in this room */
 {
 	short rn = nr, misses;
 	short row, col;
@@ -757,7 +773,8 @@ short nr;		/* try not to put in this room */
 	mvaddch(rogue.row, rogue.col, rogue.fchar);
 }
 
-drop_check()
+boolean
+drop_check(void)
 {
 	if (wizard) {
 		return(1);
@@ -773,7 +790,8 @@ drop_check()
 	return(0);
 }
 
-check_up()
+boolean
+check_up(void)
 {
 	if (!wizard) {
 		if (!(dungeon[rogue.row][rogue.col] & STAIRS)) {
@@ -795,9 +813,8 @@ check_up()
 	return(0);
 }
 
-add_exp(e, promotion)
-int e;
-boolean promotion;
+void
+add_exp(int e, boolean promotion)
 {
 	char mbuf[40];
 	short new_exp;
@@ -826,8 +843,8 @@ boolean promotion;
 	}
 }
 
-get_exp_level(e)
-long e;
+static short
+get_exp_level(long e)
 {
 	short i;
 
@@ -839,7 +856,8 @@ long e;
 	return(i+1);
 }
 
-hp_raise()
+int
+hp_raise(void)
 {
 	int hp;
 
@@ -847,7 +865,8 @@ hp_raise()
 	return(hp);
 }
 
-show_average_hp()
+void
+show_average_hp(void)
 {
 	char mbuf[80];
 	float real_average;
@@ -866,7 +885,8 @@ show_average_hp()
 	message(mbuf, 0);
 }
 
-mix_random_rooms()
+static void
+mix_random_rooms(void)
 {
 	short i, t;
 	short x, y;

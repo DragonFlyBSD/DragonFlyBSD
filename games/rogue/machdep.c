@@ -35,7 +35,7 @@
  *
  * @(#)machdep.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/machdep.c,v 1.6.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/machdep.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/machdep.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -95,7 +95,9 @@
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <pwd.h>
+#include <time.h>
 
 #ifdef UNIX_BSD4_2
 #include <sys/time.h>
@@ -125,12 +127,13 @@
  * big deal.
  */
 
-md_slurp()
+void
+md_slurp(void)
 {
-	(void)fpurge(stdin);
+	fpurge(stdin);
 }
 
-/* md_control_keyboard():
+/* md_control_keybord():
  *
  * This routine is much like md_cbreak_no_echo_nonl() below.  It sets up the
  * keyboard for appropriate input.  Specifically, it prevents the tty driver
@@ -148,8 +151,8 @@ md_slurp()
  * cause certain command characters to be unavailable.
  */
 
-md_control_keybord(mode)
-boolean mode;
+void
+md_control_keybord(boolean mode)
 {
 	static boolean called_before = 0;
 #ifdef UNIX_BSD4_2
@@ -217,11 +220,12 @@ boolean mode;
  * input, this is not usually critical.
  */
 
-md_heed_signals()
+void
+md_heed_signals(void)
 {
-	signal(SIGINT, onintr);
-	signal(SIGQUIT, byebye);
-	signal(SIGHUP, error_save);
+	signal(SIGINT, (sig_t)onintr);
+	signal(SIGQUIT, (sig_t)byebye);
+	signal(SIGHUP, (sig_t)error_save);
 }
 
 /* md_ignore_signals():
@@ -236,7 +240,8 @@ md_heed_signals()
  * file, corruption.
  */
 
-md_ignore_signals()
+void
+md_ignore_signals(void)
 {
 	signal(SIGQUIT, SIG_IGN);
 	signal(SIGINT, SIG_IGN);
@@ -253,8 +258,7 @@ md_ignore_signals()
  */
 
 int
-md_get_file_id(fname)
-const char *fname;
+md_get_file_id(const char *fname)
 {
 	struct stat sbuf;
 
@@ -273,8 +277,7 @@ const char *fname;
  */
 
 int
-md_link_count(fname)
-const char *fname;
+md_link_count(const char *fname)
 {
 	struct stat sbuf;
 
@@ -296,10 +299,10 @@ const char *fname;
  * saved-game files and play them.
  */
 
-md_gct(rt_buf)
-struct rogue_time *rt_buf;
+void
+md_gct(struct rogue_time *rt_buf)
 {
-	struct tm *t, *localtime();
+	struct tm *t;
 	time_t seconds;
 
 	time(&seconds);
@@ -329,9 +332,8 @@ struct rogue_time *rt_buf;
  * saved-games that have been modified.
  */
 
-md_gfmt(fname, rt_buf)
-const char *fname;
-struct rogue_time *rt_buf;
+void
+md_gfmt(const char *fname, struct rogue_time *rt_buf)
 {
 	struct stat sbuf;
 	time_t seconds;
@@ -361,8 +363,7 @@ struct rogue_time *rt_buf;
  */
 
 boolean
-md_df(fname)
-const char *fname;
+md_df(const char *fname)
 {
 	if (unlink(fname)) {
 		return(0);
@@ -380,7 +381,7 @@ const char *fname;
  */
 
 const char *
-md_gln()
+md_gln(void)
 {
 	struct passwd *p;
 	char *s;
@@ -401,10 +402,10 @@ md_gln()
  * delaying execution, which is useful to this program at some times.
  */
 
-md_sleep(nsecs)
-int nsecs;
+void
+md_sleep(int nsecs)
 {
-	(void) sleep(nsecs);
+	sleep(nsecs);
 }
 
 /* md_getenv()
@@ -426,8 +427,7 @@ int nsecs;
  */
 
 char *
-md_getenv(name)
-const char *name;
+md_getenv(const char *name)
 {
 	char *value;
 
@@ -445,8 +445,7 @@ const char *name;
  */
 
 char *
-md_malloc(n)
-int n;
+md_malloc(int n)
 {
 	char *t;
 
@@ -472,7 +471,8 @@ int n;
  * exactly the same way given the same input.
  */
 
-md_gseed()
+int
+md_gseed(void)
 {
 	time_t seconds;
 
@@ -487,8 +487,8 @@ md_gseed()
  * hang when it should quit.
  */
 
-md_exit(status)
-int status;
+void
+md_exit(int status)
 {
 	exit(status);
 }
@@ -504,8 +504,8 @@ int status;
  * the lock is released.
  */
 
-md_lock(l)
-boolean l;
+void
+md_lock(boolean l)
 {
 	static int fd;
 	short tries;
@@ -519,8 +519,8 @@ boolean l;
 			if (!flock(fd, LOCK_EX|LOCK_NB))
 				return;
 	} else {
-		(void)flock(fd, LOCK_NB);
-		(void)close(fd);
+		flock(fd, LOCK_NB);
+		close(fd);
 	}
 }
 
@@ -533,8 +533,8 @@ boolean l;
  * The effective user id is restored after the shell completes.
  */
 
-md_shell(shell)
-const char *shell;
+void
+md_shell(const char *shell)
 {
 	long w[2];
 
@@ -543,7 +543,7 @@ const char *shell;
 		setgid(getgid());
 		execl(shell, shell, 0);
 	}
-	wait(w);
+	wait((int *)w);
 }
 
 #endif /* UNIX */

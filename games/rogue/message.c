@@ -35,7 +35,7 @@
  *
  * @(#)message.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/message.c,v 1.7.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/rogue/message.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/message.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -63,9 +63,11 @@ extern boolean cant_int, did_int, interrupted, save_is_interactive, flush;
 extern short add_strength;
 extern short cur_level;
 
-message(msg, intrpt)
-const char *msg;
-boolean intrpt;
+static void	pad(const char *, short);
+static void	save_screen(void);
+
+void
+message(const char *msg, boolean intrpt)
 {
 	cant_int = 1;
 
@@ -86,7 +88,7 @@ boolean intrpt;
 	}
 	if (!rmsg) {
 		imsg = (imsg + 1) % NMESSAGES;
-		(void) strcpy(msgs[imsg], msg);
+		strcpy(msgs[imsg], msg);
 	}
 	mvaddstr(MIN_ROW-1, 0, msg);
 	addch(' ');
@@ -102,8 +104,8 @@ boolean intrpt;
 	}
 }
 
-remessage(c)
-short c;
+void
+remessage(short c)
 {
 	if (imsg != -1) {
 		check_message();
@@ -118,7 +120,8 @@ short c;
 	}
 }
 
-check_message()
+void
+check_message(void)
 {
 	if (msg_cleared) {
 		return;
@@ -129,12 +132,9 @@ check_message()
 	msg_cleared = 1;
 }
 
-get_input_line(prompt, insert, buf, if_cancelled, add_blank, do_echo)
-const char *prompt, *insert;
-char *buf;
-const char *if_cancelled;
-boolean add_blank;
-boolean do_echo;
+short
+get_input_line(const char *prompt, const char *insert, char *buf,
+	       const char *if_cancelled, boolean add_blank, boolean do_echo)
 {
 	short ch;
 	short i = 0, n;
@@ -144,7 +144,7 @@ boolean do_echo;
 
 	if (insert[0]) {
 		mvaddstr(0, n + 1, insert);
-		(void) strcpy(buf, insert);
+		strcpy(buf, insert);
 		i = strlen(insert);
 		move(0, (n + i + 1));
 		refresh();
@@ -188,7 +188,8 @@ boolean do_echo;
 	return(i);
 }
 
-rgetchar()
+int
+rgetchar(void)
 {
 	int ch;
 
@@ -219,8 +220,8 @@ Level: 99 Gold: 999999 Hp: 999(999) Str: 99(99) Arm: 99 Exp: 21/10000000 Hungry
 0    5    1    5    2    5    3    5    4    5    5    5    6    5    7    5
 */
 
-print_stats(stat_mask)
-int stat_mask;
+void
+print_stats(int stat_mask)
 {
 	char buf[16];
 	boolean label;
@@ -305,9 +306,8 @@ int stat_mask;
 	refresh();
 }
 
-pad(s, n)
-const char *s;
-short n;
+static void
+pad(const char *s, short n)
 {
 	short i;
 
@@ -316,7 +316,8 @@ short n;
 	}
 }
 
-save_screen()
+static void
+save_screen(void)
 {
 	FILE *fp;
 	short i, j;
@@ -344,23 +345,21 @@ save_screen()
 	}
 }
 
-sound_bell()
+void
+sound_bell(void)
 {
 	putchar(7);
 	fflush(stdout);
 }
 
 boolean
-is_digit(ch)
-short ch;
+is_digit(short ch)
 {
 	return((ch >= '0') && (ch <= '9'));
 }
 
-r_index(str, ch, last)
-const char *str;
-int ch;
-boolean last;
+int
+r_index(const char *str, int ch, boolean last)
 {
 	int i = 0;
 

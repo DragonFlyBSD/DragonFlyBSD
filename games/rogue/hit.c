@@ -35,7 +35,7 @@
  *
  * @(#)hit.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/hit.c,v 1.6 1999/11/30 03:49:22 billf Exp $
- * $DragonFly: src/games/rogue/hit.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/hit.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -59,8 +59,12 @@ extern short halluc, blind, cur_level;
 extern short add_strength, ring_exp, r_rings;
 extern boolean being_held, interrupted, wizard, con_mon;
 
-mon_hit(monster)
-object *monster;
+static int	get_w_damage(const object *);
+static int	to_hit(const object *);
+static short	damage_for_strength(void);
+
+void
+mon_hit(object *monster)
 {
 	short damage, hit_chance;
 	const char *mn;
@@ -120,9 +124,8 @@ object *monster;
 	}
 }
 
-rogue_hit(monster, force_hit)
-object *monster;
-boolean force_hit;
+void
+rogue_hit(object *monster, boolean force_hit)
 {
 	short damage, hit_chance;
 
@@ -137,7 +140,7 @@ boolean force_hit;
 		}
 		if (!rand_percent(hit_chance)) {
 			if (!fight_monster) {
-				(void) strcpy(hit_message, "you miss  ");
+				strcpy(hit_message, "you miss  ");
 			}
 			goto RET;
 		}
@@ -150,7 +153,7 @@ boolean force_hit;
 		}
 		if (mon_damage(monster, damage)) {	/* still alive? */
 			if (!fight_monster) {
-				(void) strcpy(hit_message, "you hit  ");
+				strcpy(hit_message, "you hit  ");
 			}
 		}
 RET:	check_gold_seeker(monster);
@@ -158,10 +161,8 @@ RET:	check_gold_seeker(monster);
 	}
 }
 
-rogue_damage(d, monster, other)
-short d;
-object *monster;
-short other;
+void
+rogue_damage(short d, object *monster, short other)
 {
 	if (d >= rogue.hp_current) {
 		rogue.hp_current = 0;
@@ -174,9 +175,8 @@ short other;
 	}
 }
 
-get_damage(ds, r)
-const char *ds;
-boolean r;
+int
+get_damage(const char *ds, boolean r)
 {
 	int i = 0, j, n, d, total = 0;
 
@@ -200,27 +200,27 @@ boolean r;
 	return(total);
 }
 
-get_w_damage(obj)
-const object *obj;
+static int
+get_w_damage(const object *obj)
 {
 	char new_damage[12];
-	int to_hit, damage;
+	int t_hit, damage;
 	int i = 0;
 
 	if ((!obj) || (obj->what_is != WEAPON)) {
 		return(-1);
 	}
-	to_hit = get_number(obj->damage) + obj->hit_enchant;
+	t_hit = get_number(obj->damage) + obj->hit_enchant;
 	while (obj->damage[i++] != 'd') ;
 	damage = get_number(obj->damage + i) + obj->d_enchant;
 
-	sprintf(new_damage, "%dd%d", to_hit, damage);
+	sprintf(new_damage, "%dd%d", t_hit, damage);
 
 	return(get_damage(new_damage, 1));
 }
 
-get_number(s)
-const char *s;
+int
+get_number(const char *s)
 {
 	int i = 0;
 	int total = 0;
@@ -233,8 +233,7 @@ const char *s;
 }
 
 long
-lget_number(s)
-const char *s;
+lget_number(const char *s)
 {
 	short i = 0;
 	long total = 0;
@@ -246,8 +245,8 @@ const char *s;
 	return(total);
 }
 
-to_hit(obj)
-const object *obj;
+static int
+to_hit(const object *obj)
 {
 	if (!obj) {
 		return(1);
@@ -255,7 +254,8 @@ const object *obj;
 	return(get_number(obj->damage) + obj->hit_enchant);
 }
 
-damage_for_strength()
+static short
+damage_for_strength(void)
 {
 	short strength;
 
@@ -285,9 +285,8 @@ damage_for_strength()
 	return(8);
 }
 
-mon_damage(monster, damage)
-object *monster;
-short damage;
+boolean
+mon_damage(object *monster, short damage)
 {
 	const char *mn;
 	short row, col;
@@ -318,8 +317,8 @@ short damage;
 	return(1);
 }
 
-fight(to_the_death)
-boolean to_the_death;
+void
+fight(boolean to_the_death)
 {
 	short ch, c, d;
 	short row, col;
@@ -356,7 +355,7 @@ boolean to_the_death;
 		possible_damage = fight_monster->stationary_damage - 1;
 	}
 	while (fight_monster) {
-		(void) one_move_rogue(ch, 0);
+		one_move_rogue(ch, 0);
 		if (((!to_the_death) && (rogue.hp_current <= possible_damage)) ||
 			interrupted || (!(dungeon[row][col] & MONSTER))) {
 			fight_monster = 0;
@@ -369,10 +368,8 @@ boolean to_the_death;
 	}
 }
 
-get_dir_rc(dir, row, col, allow_off_screen)
-short dir;
-short *row, *col;
-short allow_off_screen;
+void
+get_dir_rc(short dir, short *row, short *col, short allow_off_screen)
 {
 	switch(dir) {
 	case LEFT:
@@ -422,8 +419,8 @@ short allow_off_screen;
 	}
 }
 
-get_hit_chance(weapon)
-const object *weapon;
+short
+get_hit_chance(const object *weapon)
 {
 	short hit_chance;
 
@@ -433,8 +430,8 @@ const object *weapon;
 	return(hit_chance);
 }
 
-get_weapon_damage(weapon)
-const object *weapon;
+short
+get_weapon_damage(const object *weapon)
 {
 	short damage;
 
@@ -444,8 +441,8 @@ const object *weapon;
 	return(damage);
 }
 
-s_con_mon(monster)
-object *monster;
+void
+s_con_mon(object *monster)
 {
 	if (con_mon) {
 		monster->m_flags |= CONFUSED;

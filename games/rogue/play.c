@@ -35,7 +35,7 @@
  *
  * @(#)play.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/play.c,v 1.3 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/play.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/play.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -59,7 +59,8 @@ extern short party_room, bear_trap;
 extern char hit_message[];
 extern boolean wizard, trap_door;
 
-play_level()
+void
+play_level(void)
 {
 	short ch;
 	int count;
@@ -106,7 +107,7 @@ CH:
 		case 'u':
 		case 'n':
 		case 'b':
-			(void) one_move_rogue(ch, 1);
+			one_move_rogue(ch, 1);
 			break;
 		case 'H':
 		case 'J':

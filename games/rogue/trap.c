@@ -35,7 +35,7 @@
  *
  * @(#)trap.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/trap.c,v 1.6 1999/11/30 03:49:28 billf Exp $
- * $DragonFly: src/games/rogue/trap.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/trap.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -78,8 +78,10 @@ extern short ring_exp;
 extern boolean sustain_strength;
 extern short blind;
 
-trap_at(row, col)
-int row, col;
+static short	trap_at(int, int);
+
+static short
+trap_at(int row, int col)
 {
 	short i;
 
@@ -91,8 +93,8 @@ int row, col;
 	return(NO_TRAP);
 }
 
-trap_player(row, col)
-short row, col;
+void
+trap_player(short row, short col)
 {
 	short t;
 
@@ -143,7 +145,8 @@ short row, col;
 	}
 }
 
-add_traps()
+void
+add_traps(void)
 {
 	short i, n, tries = 0;
 	short row, col;
@@ -187,7 +190,8 @@ add_traps()
 	}
 }
 
-id_trap()
+void
+id_trap(void)
 {
 	short dir, row, col, d, t;
 
@@ -214,7 +218,8 @@ id_trap()
 	}
 }
 
-show_traps()
+void
+show_traps(void)
 {
 	short i, j;
 
@@ -227,9 +232,8 @@ show_traps()
 	}
 }
 
-search(n, is_auto)
-short n;
-boolean is_auto;
+void
+search(short n, boolean is_auto)
 {
 	short s, i, j, row, col, t;
 	short shown = 0, found = 0;
@@ -277,7 +281,7 @@ boolean is_auto;
 			}
 		}
 		if ((!is_auto) && (reg_search = !reg_search)) {
-			(void) reg_move();
+			reg_move();
 		}
 	}
 }

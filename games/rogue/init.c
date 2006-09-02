@@ -35,7 +35,7 @@
  *
  * @(#)init.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/init.c,v 1.4 1999/11/30 03:49:22 billf Exp $
- * $DragonFly: src/games/rogue/init.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/init.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -73,9 +73,14 @@ extern char *save_file;
 extern short party_room;
 extern boolean jump;
 
-init(argc, argv)
-int argc;
-char *argv[];
+static void	player_init(void);
+static void	do_args(int, char **);
+static void	do_opts(void);
+static void	env_get_value(char **, char *, boolean);
+static void	init_str(char **, const char *);
+
+boolean
+init(int argc, char *argv[])
 {
 	const char *pn;
 	int seed;
@@ -84,7 +89,7 @@ char *argv[];
 	if ((!pn) || (strlen(pn) >= MAX_OPT_LEN)) {
 		clean_up("Hey!  Who are you?");
 	}
-	(void) strcpy(login_name, pn);
+	strcpy(login_name, pn);
 
 	do_args(argc, argv);
 	do_opts();
@@ -108,7 +113,7 @@ char *argv[];
 		put_scores((object *) 0, 0);
 	}
 	seed = md_gseed();
-	(void) srrandom(seed);
+	srrandom(seed);
 	if (rest_file) {
 		restore(rest_file);
 		return(1);
@@ -124,7 +129,8 @@ char *argv[];
 	return(0);
 }
 
-player_init()
+static void
+player_init(void)
 {
 	object *obj;
 
@@ -132,7 +138,7 @@ player_init()
 
 	obj = alloc_object();
 	get_food(obj, 1);
-	(void) add_to_pack(obj, &rogue.pack, 1);
+	add_to_pack(obj, &rogue.pack, 1);
 
 	obj = alloc_object();		/* initial armor */
 	obj->what_is = ARMOR;
@@ -140,7 +146,7 @@ player_init()
 	obj->class = RINGMAIL+2;
 	obj->is_protected = 0;
 	obj->d_enchant = 1;
-	(void) add_to_pack(obj, &rogue.pack, 1);
+	add_to_pack(obj, &rogue.pack, 1);
 	do_wear(obj);
 
 	obj = alloc_object();		/* initial weapons */
@@ -149,7 +155,7 @@ player_init()
 	obj->damage = "2d3";
 	obj->hit_enchant = obj->d_enchant = 1;
 	obj->identified = 1;
-	(void) add_to_pack(obj, &rogue.pack, 1);
+	add_to_pack(obj, &rogue.pack, 1);
 	do_wield(obj);
 
 	obj = alloc_object();
@@ -159,7 +165,7 @@ player_init()
 	obj->hit_enchant = 1;
 	obj->d_enchant = 0;
 	obj->identified = 1;
-	(void) add_to_pack(obj, &rogue.pack, 1);
+	add_to_pack(obj, &rogue.pack, 1);
 
 	obj = alloc_object();
 	obj->what_is = WEAPON;
@@ -169,11 +175,11 @@ player_init()
 	obj->hit_enchant = 0;
 	obj->d_enchant = 0;
 	obj->identified = 1;
-	(void) add_to_pack(obj, &rogue.pack, 1);
+	add_to_pack(obj, &rogue.pack, 1);
 }
 
-clean_up(estr)
-const char *estr;
+void
+clean_up(const char *estr)
 {
 	if (save_is_interactive) {
 		if (init_curses) {
@@ -186,7 +192,8 @@ const char *estr;
 	md_exit(0);
 }
 
-start_window()
+void
+start_window(void)
 {
 	crmode();
 	noecho();
@@ -196,14 +203,15 @@ start_window()
 	md_control_keybord(0);
 }
 
-stop_window()
+void
+stop_window(void)
 {
 	endwin();
 	md_control_keybord(1);
 }
 
 void
-byebye()
+byebye(void)
 {
 	md_ignore_signals();
 	if (ask_quit) {
@@ -215,7 +223,7 @@ byebye()
 }
 
 void
-onintr()
+onintr(void)
 {
 	md_ignore_signals();
 	if (cant_int) {
@@ -228,16 +236,15 @@ onintr()
 }
 
 void
-error_save()
+error_save(void)
 {
 	save_is_interactive = 0;
 	save_into_file(error_file);
 	clean_up("");
 }
 
-do_args(argc, argv)
-int argc;
-char *argv[];
+static void
+do_args(int argc, char *argv[])
 {
 	short i, j;
 
@@ -256,11 +263,12 @@ char *argv[];
 	}
 }
 
-do_opts()
+static void
+do_opts(void)
 {
 	char *eptr;
 
-	if (eptr = md_getenv("ROGUEOPTS")) {
+	if ((eptr = md_getenv("ROGUEOPTS"))) {
 		for (;;) {
 			while ((*eptr) == ' ') {
 				eptr++;
@@ -305,9 +313,8 @@ do_opts()
 	init_str(&fruit, "slime-mold");
 }
 
-env_get_value(s, e, add_blank)
-char **s, *e;
-boolean add_blank;
+static void
+env_get_value(char **s, char *e, boolean add_blank)
 {
 	short i = 0;
 	const char *t;
@@ -324,19 +331,18 @@ boolean add_blank;
 		}
 	}
 	*s = md_malloc(MAX_OPT_LEN + 2);
-	(void) strncpy(*s, t, i);
+	strncpy(*s, t, i);
 	if (add_blank) {
 		(*s)[i++] = ' ';
 	}
 	(*s)[i] = '\0';
 }
 
-init_str(str, dflt)
-char **str;
-const char *dflt;
+static void
+init_str(char **str, const char *dflt)
 {
 	if (!(*str)) {
 		*str = md_malloc(MAX_OPT_LEN + 2);
-		(void) strcpy(*str, dflt);
+		strcpy(*str, dflt);
 	}
 }

@@ -35,7 +35,7 @@
  *
  * @(#)save.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/save.c,v 1.6 1999/11/30 03:49:27 billf Exp $
- * $DragonFly: src/games/rogue/save.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
+ * $DragonFly: src/games/rogue/save.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -51,13 +51,13 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include "rogue.h"
 
 short write_failed = 0;
 char *save_file = (char *) 0;
 static char save_name[80];
 
-extern boolean detect_monster;
 extern short cur_level, max_level;
 extern short party_room;
 extern short foods;
@@ -78,7 +78,21 @@ extern short m_moves;
 
 extern boolean msg_cleared;
 
-save_game()
+static void	del_save_file(void);
+static void	write_pack(const object *, FILE *);
+static void	read_pack(object *, FILE *, boolean);
+static void	rw_dungeon(FILE *, boolean);
+static void	rw_id(struct id *, FILE *, int, boolean);
+static void	write_string(char *, FILE *);
+static void	read_string(char *, FILE *, size_t);
+static void	rw_rooms(FILE *, boolean);
+static void	r_read(FILE *, char *, int);
+static void	r_write(FILE *, const char *, int);
+static boolean	has_been_touched(const struct rogue_time *,
+				 const struct rogue_time *);
+
+void
+save_game(void)
 {
 	char fname[64];
 
@@ -91,8 +105,8 @@ save_game()
 	save_into_file(fname);
 }
 
-save_into_file(sfile)
-const char *sfile;
+void
+save_into_file(const char *sfile)
 {
 	FILE *fp;
 	int file_id;
@@ -102,15 +116,15 @@ const char *sfile;
 	struct rogue_time rt_buf;
 
 	if (sfile[0] == '~') {
-		if (hptr = md_getenv("HOME")) {
+		if ((hptr = md_getenv("HOME"))) {
 			len = strlen(hptr) + strlen(sfile);
 			name_buffer = md_malloc(len);
 			if (name_buffer == NULL) {
 				message("out of memory for save file name", 0);
 				sfile = error_file;
 			} else {
-				(void) strcpy(name_buffer, hptr);
-				(void) strcat(name_buffer, sfile+1);
+				strcpy(name_buffer, hptr);
+				strcat(name_buffer, sfile+1);
 				sfile = name_buffer;
 			}
 
@@ -125,7 +139,7 @@ const char *sfile;
 	}
 	md_ignore_signals();
 	write_failed = 0;
-	(void) xxx(1);
+	xxx(1);
 	r_write(fp, (char *) &detect_monster, sizeof(detect_monster));
 	r_write(fp, (char *) &cur_level, sizeof(cur_level));
 	r_write(fp, (char *) &max_level, sizeof(max_level));
@@ -165,7 +179,7 @@ const char *sfile;
 	fclose(fp);
 
 	if (write_failed) {
-		(void) md_df(sfile);	/* delete file */
+		md_df(sfile);	/* delete file */
 	} else {
 		if (strcmp(sfile, save_name) == 0)
 			save_name[0] = 0;
@@ -173,7 +187,8 @@ const char *sfile;
 	}
 }
 
-static del_save_file()
+static void
+del_save_file(void)
 {
 	if (!save_name[0])
 		return;
@@ -182,10 +197,10 @@ static del_save_file()
 	md_df(save_name);
 }
 
-restore(fname)
-const char *fname;
+void
+restore(const char *fname)
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	struct rogue_time saved_time, mod_time;
 	char buf[4];
 	char tbuf[40];
@@ -198,13 +213,13 @@ const char *fname;
 	if (md_link_count(fname) > 1) {
 		clean_up("file has link");
 	}
-	(void) xxx(1);
+	xxx(1);
 	r_read(fp, (char *) &detect_monster, sizeof(detect_monster));
 	r_read(fp, (char *) &cur_level, sizeof(cur_level));
 	r_read(fp, (char *) &max_level, sizeof(max_level));
 	read_string(hunger_str, fp, sizeof hunger_str);
 
-	(void) strlcpy(tbuf, login_name, sizeof tbuf);
+	strlcpy(tbuf, login_name, sizeof tbuf);
 	read_string(login_name, fp, sizeof login_name);
 	if (strcmp(tbuf, login_name)) {
 		clean_up("you're not the original player");
@@ -263,23 +278,20 @@ const char *fname;
 	fclose(fp);
 }
 
-write_pack(pack, fp)
-const object *pack;
-FILE *fp;
+static void
+write_pack(const object *pack, FILE *fp)
 {
 	object t;
 
-	while (pack = pack->next_object) {
+	while ((pack = pack->next_object)) {
 		r_write(fp, (const char *) pack, sizeof(object));
 	}
 	t.ichar = t.what_is = 0;
 	r_write(fp, (const char *) &t, sizeof(object));
 }
 
-read_pack(pack, fp, is_rogue)
-object *pack;
-FILE *fp;
-boolean is_rogue;
+static void
+read_pack(object *pack, FILE *fp, boolean is_rogue)
 {
 	object read_obj, *new_obj;
 
@@ -306,9 +318,8 @@ boolean is_rogue;
 	}
 }
 
-rw_dungeon(fp, rw)
-FILE *fp;
-boolean rw;
+static void
+rw_dungeon(FILE *fp, boolean rw)
 {
 	short i, j;
 	char buf[DCOLS];
@@ -330,11 +341,8 @@ boolean rw;
 	}
 }
 
-rw_id(id_table, fp, n, wr)
-struct id id_table[];
-FILE *fp;
-int n;
-boolean wr;
+static void
+rw_id(struct id id_table[], FILE *fp, int n, boolean wr)
 {
 	short i;
 
@@ -353,9 +361,8 @@ boolean wr;
 	}
 }
 
-write_string(s, fp)
-char *s;
-FILE *fp;
+static void
+write_string(char *s, FILE *fp)
 {
 	short n;
 
@@ -365,23 +372,20 @@ FILE *fp;
 	r_write(fp, s, n);
 }
 
-read_string(s, fp, len)
-char *s;
-FILE *fp;
-size_t len;
+static void
+read_string(char *s, FILE *fp, size_t len)
 {
 	short n;
 
 	r_read(fp, (char *) &n, sizeof(short));
-	if (n > len)
+	if (n > (short)len)
 		clean_up("read_string: corrupt game file");
 	r_read(fp, s, n);
 	xxxx(s, n);
 }
 
-rw_rooms(fp, rw)
-FILE *fp;
-boolean rw;
+static void
+rw_rooms(FILE *fp, boolean rw)
 {
 	short i;
 
@@ -391,23 +395,19 @@ boolean rw;
 	}
 }
 
-r_read(fp, buf, n)
-FILE *fp;
-char *buf;
-int n;
+static void
+r_read(FILE *fp, char *buf, int n)
 {
-	if (fread(buf, sizeof(char), n, fp) != n) {
+	if (fread(buf, sizeof(char), n, fp) != (unsigned)n) {
 		clean_up("read() failed, don't know why");
 	}
 }
 
-r_write(fp, buf, n)
-FILE *fp;
-const char *buf;
-int n;
+static void
+r_write(FILE *fp, const char *buf, int n)
 {
 	if (!write_failed) {
-		if (fwrite(buf, sizeof(char), n, fp) != n) {
+		if (fwrite(buf, sizeof(char), n, fp) != (unsigned)n) {
 			message("write() failed, don't know why", 0);
 			sound_bell();
 			write_failed = 1;
@@ -415,9 +415,9 @@ int n;
 	}
 }
 
-boolean
-has_been_touched(saved_time, mod_time)
-const struct rogue_time *saved_time, *mod_time;
+static boolean
+has_been_touched(const struct rogue_time *saved_time,
+		 const struct rogue_time *mod_time)
 {
 	if (saved_time->year < mod_time->year) {
 		return(1);

@@ -35,7 +35,7 @@
  *
  * @(#)room.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/room.c,v 1.7 1999/11/30 03:49:26 billf Exp $
- * $DragonFly: src/games/rogue/room.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/room.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -89,20 +89,26 @@ struct option {
 	},
 	{
 		"Name (\"name\"): ",
-		0, &nick_name
+		0, &nick_name, NULL
 	},
 	{
 		"Fruit (\"fruit\"): ",
-		0, &fruit
+		0, &fruit, NULL
 	},
 	{
 		"Save file (\"file\"): ",
-		0, &save_file
+		0, &save_file, NULL
 	}
 };
 
-light_up_room(rn)
-int rn;
+static void	visit_rooms(int);
+static boolean	get_oth_room(short, short *, short *);
+static void	opt_show(int);
+static void	opt_erase(int);
+static void	opt_go(int);
+
+void
+light_up_room(int rn)
 {
 	short i, j;
 
@@ -114,7 +120,7 @@ int rn;
 				if (dungeon[i][j] & MONSTER) {
 					object *monster;
 
-					if (monster = object_at(&level_monsters, i, j)) {
+					if ((monster = object_at(&level_monsters, i, j))) {
 						dungeon[monster->row][monster->col] &= (~MONSTER);
 						monster->trail_char =
 							get_dungeon_char(monster->row, monster->col);
@@ -128,8 +134,8 @@ int rn;
 	}
 }
 
-light_passage(row, col)
-int row, col;
+void
+light_passage(int row, int col)
 {
 	short i, j, i_end, j_end;
 
@@ -148,8 +154,8 @@ int row, col;
 	}
 }
 
-darken_room(rn)
-short rn;
+void
+darken_room(short rn)
 {
 	short i, j;
 
@@ -172,8 +178,8 @@ short rn;
 	}
 }
 
-get_dungeon_char(row, col)
-int row, col;
+char
+get_dungeon_char(int row, int col)
 {
 	unsigned short mask = dungeon[row][col];
 
@@ -220,8 +226,8 @@ int row, col;
 	return(' ');
 }
 
-get_mask_char(mask)
-unsigned short mask;
+char
+get_mask_char(unsigned short mask)
 {
 		switch(mask) {
 		case SCROL:
@@ -247,9 +253,8 @@ unsigned short mask;
 		}
 }
 
-gr_row_col(row, col, mask)
-short *row, *col;
-unsigned short mask;
+void
+gr_row_col(short *row, short *col, unsigned short mask)
 {
 	short rn;
 	short r, c;
@@ -268,7 +273,8 @@ unsigned short mask;
 	*col = c;
 }
 
-gr_room()
+short
+gr_room(void)
 {
 	short i;
 
@@ -279,7 +285,8 @@ gr_room()
 	return(i);
 }
 
-party_objects(rn)
+short
+party_objects(short rn)
 {
 	short i, j, nf = 0;
 	object *obj;
@@ -311,8 +318,8 @@ party_objects(rn)
 	return(nf);
 }
 
-get_room_number(row, col)
-int row, col;
+short
+get_room_number(int row, int col)
 {
 	short i;
 
@@ -325,9 +332,10 @@ int row, col;
 	return(NO_ROOM);
 }
 
-is_all_connected()
+boolean
+is_all_connected(void)
 {
-	short i, starting_room;
+	short i, starting_room = 0;
 
 	for (i = 0; i < MAXROOMS; i++) {
 		rooms_visited[i] = 0;
@@ -346,8 +354,8 @@ is_all_connected()
 	return(1);
 }
 
-visit_rooms(rn)
-int rn;
+static void
+visit_rooms(int rn)
 {
 	short i;
 	short oth_rn;
@@ -362,7 +370,8 @@ int rn;
 	}
 }
 
-draw_magic_map()
+void
+draw_magic_map(void)
 {
 	short i, j, ch, och;
 	unsigned short mask = (HORWALL | VERTWALL | DOOR | TUNNEL | TRAP | STAIRS |
@@ -398,7 +407,7 @@ draw_magic_map()
 					if (s & MONSTER) {
 						object *monster;
 
-						if (monster = object_at(&level_monsters, i, j)) {
+						if ((monster = object_at(&level_monsters, i, j))) {
 							monster->trail_char = ch;
 						}
 					}
@@ -408,10 +417,8 @@ draw_magic_map()
 	}
 }
 
-dr_course(monster, entering, row, col)
-object *monster;
-boolean entering;
-short row, col;
+void
+dr_course(object *monster, boolean entering, short row, short col)
 {
 	short i, j, k, rn;
 	short r, rr;
@@ -482,8 +489,8 @@ short row, col;
 	}
 }
 
-get_oth_room(rn, row, col)
-short rn, *row, *col;
+static boolean
+get_oth_room(short rn, short *row, short *col)
 {
 	short d = -1;
 
@@ -504,7 +511,8 @@ short rn, *row, *col;
 	return(0);
 }
 
-edit_opts()
+void
+edit_opts(void)
 {
 	char save[NOPTS+1][DCOLS];
 	short i, j;
@@ -583,7 +591,7 @@ CH:
 					ch = rgetchar();
 				} while ((ch != '\012') && (ch != '\015') && (ch != '\033'));
 				if (j != 0) {
-					(void) strcpy(*(options[i].strval), buf);
+					strcpy(*(options[i].strval), buf);
 				}
 				opt_show(i);
 				goto CH;
@@ -602,8 +610,8 @@ CH:
 	}
 }
 
-opt_show(i)
-int i;
+static void
+opt_show(int i)
 {
 	const char *s;
 	struct option *opt = &options[i];
@@ -618,8 +626,8 @@ int i;
 	addstr(s);
 }
 
-opt_erase(i)
-int i;
+static void
+opt_erase(int i)
 {
 	struct option *opt = &options[i];
 
@@ -627,13 +635,14 @@ int i;
 	clrtoeol();
 }
 
-opt_go(i)
-int i;
+static void
+opt_go(int i)
 {
 	move(i, strlen(options[i].prompt));
 }
 
-do_shell()
+void
+do_shell(void)
 {
 #ifdef UNIX
 	const char *sh;

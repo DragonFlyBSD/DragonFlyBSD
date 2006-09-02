@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/main.c,v 1.3 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/main.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/main.c,v 1.3 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -55,9 +55,8 @@
 
 extern short party_room;
 
-main(argc, argv)
-int argc;
-char *argv[];
+int
+main(int argc, char *argv[])
 {
 	if (init(argc, argv)) {		/* restored game */
 		goto PL;
@@ -77,4 +76,6 @@ PL:
 		free_stuff(&level_objects);
 		free_stuff(&level_monsters);
 	}
+	/* NOTREACHED */
+	return(0);
 }
