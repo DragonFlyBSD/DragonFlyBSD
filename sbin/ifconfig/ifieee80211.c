@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.18.2.9 2006/03/07 17:50:23 sam Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.13 2006/09/01 15:12:11 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.14 2006/09/03 02:17:54 sephe Exp $
  */
 
 /*-
@@ -957,19 +957,36 @@ DECL_CMD_FUNC(set80211scan, val, d)
 	list_scan(s);
 }
 
+static enum ieee80211_opmode get80211opmode(int s);
+
 static void
 list_stations(int s)
 {
-	uint8_t buf[24*1024];
+	union {
+		struct ieee80211req_sta_req req;
+		uint8_t buf[24*1024];
+	} u;
+	enum ieee80211_opmode opmode = get80211opmode(s);
 	struct ieee80211req ireq;
 	uint8_t *cp;
 	int len;
 
 	(void) memset(&ireq, 0, sizeof(ireq));
 	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	/* broadcast address =>'s get all stations */
+	(void) memset(u.req.is_u.macaddr, 0xff, IEEE80211_ADDR_LEN);
+	if (opmode == IEEE80211_M_STA) {
+		/*
+		 * Get information about the associated AP.
+		 */
+		ireq.i_type = IEEE80211_IOC_BSSID;
+		ireq.i_data = u.req.is_u.macaddr;
+		ireq.i_len = IEEE80211_ADDR_LEN;
+		(void) ioctl(s, SIOCG80211, &ireq);
+	}
 	ireq.i_type = IEEE80211_IOC_STA_INFO;
-	ireq.i_data = buf;
-	ireq.i_len = sizeof(buf);
+	ireq.i_data = &u;
+	ireq.i_len = sizeof(u);
 	if (ioctl(s, SIOCG80211, &ireq) < 0)
 		errx(1, "unable to get station information");
 	len = ireq.i_len;
@@ -988,12 +1005,14 @@ list_stations(int s)
 		, "CAPS"
 		, "ERP"
 	);
-	cp = buf;
+	cp = (uint8_t *) u.req.info;
 	do {
 		struct ieee80211req_sta_info *si;
 		uint8_t *vp;
 
 		si = (struct ieee80211req_sta_info *) cp;
+		if (si->isi_len < sizeof(*si))
+			break;
 		vp = (u_int8_t *)(si+1);
 		printf("%s %4u %4d %3dM %4d %4d %6d %6d %-4.4s %3x"
 			, ether_ntoa((const struct ether_addr*) si->isi_macaddr)
