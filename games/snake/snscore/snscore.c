@@ -33,17 +33,19 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)snscore.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/games/snake/snscore/snscore.c,v 1.5 1999/11/30 03:49:42 billf Exp $
- * $DragonFly: src/games/snake/snscore/snscore.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/snake/snscore/snscore.c,v 1.3 2006/09/03 23:23:10 pavalos Exp $
  */
 
 #include <sys/types.h>
+#include <err.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "pathnames.h"
 
-char *recfile = _PATH_RAWSCORES;
+const char *recfile = _PATH_RAWSCORES;
 #define MAXPLAYERS 256
 
 struct	player	{
@@ -60,25 +62,27 @@ main()
 	int	noplayers;
 	int	i, j, notsorted;
 	short	whoallbest, allbest;
-	char	*q;
+	const	char *q;
 	struct	passwd	*p;
 
+	/* Revoke setgid privileges */
+	setgid(getgid());
+
 	fd = fopen(recfile, "r");
-
-	if (fd == NULL) {
-		perror(recfile);
-		exit(1);
-	}
-
+	if (fd == NULL)
+		err(1, "opening `%s'", recfile);
 	printf("Snake players scores to date\n");
-	fread(&whoallbest, sizeof(short), 1, fd);
+	if (fread(&whoallbest, sizeof(short), 1, fd) == 0) {
+		printf("No scores recorded yet!\n");
+		exit(0);
+	}
 	fread(&allbest, sizeof(short), 1, fd);
 	noplayers = 0;
 	for (uid = 2; ;uid++) {
 		if(fread(&score, sizeof(short), 1, fd) == 0)
 			break;
 		if (score > 0) {
-			if (noplayers > MAXPLAYERS) {
+			if (noplayers >= MAXPLAYERS) {
 				printf("too many players\n");
 				exit(2);
 			}
@@ -88,8 +92,9 @@ main()
 			if (p == NULL)
 				continue;
 			q = p -> pw_name;
-			players[noplayers].name = malloc(strlen(q) + 1);
-			strcpy(players[noplayers].name, q);
+			players[noplayers].name = strdup(q);
+			if (players[noplayers].name == NULL)
+				err(1, NULL);
 			noplayers++;
 		}
 	}

@@ -1,12 +1,12 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/snake/snake/Makefile,v 1.5.2.3 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/snake/snake/Makefile,v 1.2 2003/06/17 04:25:25 dillon Exp $
+# $DragonFly: src/games/snake/snake/Makefile,v 1.3 2006/09/03 23:23:10 pavalos Exp $
 
 PROG=	snake
-SRCS=	snake.c move.c
+SRCS=	snake.c
 MAN=	snake.6
-DPADD=	${LIBM} ${LIBTERMCAP} ${LIBCOMPAT}
-LDADD=	-lm -ltermcap -lcompat
+DPADD=	${LIBM} ${LIBCURSES}
+LDADD=	-lm -lcurses
 HIDEGAME=hidegame
 MLINKS=	snake.6 snscore.6
 
