@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/af_link.c,v 1.2 2004/12/31 19:46:27 sam Exp $
- * $DragonFly: src/sbin/ifconfig/af_link.c,v 1.1 2006/04/02 03:33:59 sephe Exp $
+ * $DragonFly: src/sbin/ifconfig/af_link.c,v 1.2 2006/09/03 02:01:52 sephe Exp $
  */
 
 #include <sys/types.h>
@@ -77,7 +77,7 @@ link_getaddr(const char *addr, int which)
 
 	if (which != ADDR)
 		errx(1, "can't set link-level netmask or broadcast");
-	if ((temp = malloc(strlen(addr) + 1)) == NULL)
+	if ((temp = malloc(strlen(addr) + 2)) == NULL)
 		errx(1, "malloc failed");
 	temp[0] = ':';
 	strcpy(temp + 1, addr);
