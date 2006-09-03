@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.6 2006/07/28 02:17:40 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.7 2006/09/03 17:31:55 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -283,7 +283,7 @@ pfattach(void)
 	pf_pfil_hooked = 0;
 
 	/* XXX do our best to avoid a conflict */
-	pf_status.hostid = arc4random();
+	pf_status.hostid = karc4random();
 
 	return (error);
 }

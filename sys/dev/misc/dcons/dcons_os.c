@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.3 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.4 2006/09/03 17:31:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -366,7 +366,7 @@ dcons_tty_start(struct tty *tp)
 
 	tp->t_state |= TS_BUSY;
 	while (tp->t_outq.c_cc != 0)
-		dcons_os_putc(dc, getc(&tp->t_outq));
+		dcons_os_putc(dc, clist_getc(&tp->t_outq));
 	tp->t_state &= ~TS_BUSY;
 
 	ttwwakeup(tp);

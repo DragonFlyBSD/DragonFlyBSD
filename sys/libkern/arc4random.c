@@ -8,7 +8,7 @@
  * Dan Moschuk
  *
  * $FreeBSD: src/sys/libkern/arc4random.c,v 1.3.2.2 2001/09/17 07:06:50 silby Exp $
- * $DragonFly: src/sys/libkern/arc4random.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/arc4random.c,v 1.3 2006/09/03 17:31:55 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -113,7 +113,7 @@ arc4_randbyte(void)
 }
 
 u_int32_t
-arc4random(void)
+karc4random(void)
 {
 	u_int32_t ret;
 	struct timeval tv_now;

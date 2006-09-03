@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.6 2005/08/11 03:11:59 corecode Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.7 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*
@@ -241,7 +241,7 @@ clist_free_cblocks(struct clist *clistp)
  * Get a character from the head of a clist.
  */
 int
-getc(struct clist *clistp)
+clist_getc(struct clist *clistp)
 {
 	int chr = -1;
 	struct cblock *cblockp;
@@ -382,7 +382,7 @@ ndflush(struct clist *clistp, int amount)
  * more clists, or 0 for success.
  */
 int
-putc(int chr, struct clist *clistp)
+clist_putc(int chr, struct clist *clistp)
 {
 	struct cblock *cblockp;
 
@@ -612,7 +612,7 @@ nextc(struct clist *clistp, char *cp, int *dst)
  * "Unput" a character from a clist.
  */
 int
-unputc(struct clist *clistp)
+clist_unputc(struct clist *clistp)
 {
 	struct cblock *cblockp = 0, *cbp = 0;
 	int chr = -1;
@@ -723,6 +723,6 @@ catq(struct clist *src_clistp, struct clist *dest_clistp)
 	 * XXX  This should probably be optimized to more than one
 	 * character at a time.
 	 */
-	while ((chr = getc(src_clistp)) != -1)
-		putc(chr, dest_clistp);
+	while ((chr = clist_getc(src_clistp)) != -1)
+		clist_putc(chr, dest_clistp);
 }

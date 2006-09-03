@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.24 2006/01/14 11:33:50 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.25 2006/09/03 17:31:55 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -307,7 +307,7 @@ syncache_init(void)
 	tcp_syncache.cache_limit =
 	    tcp_syncache.hashsize * tcp_syncache.bucket_limit;
 	tcp_syncache.rexmt_limit = SYNCACHE_MAXREXMTS;
-	tcp_syncache.hash_secret = arc4random();
+	tcp_syncache.hash_secret = karc4random();
 
 	TUNABLE_INT_FETCH("net.inet.tcp.syncache.hashsize",
 	    &tcp_syncache.hashsize);
@@ -1000,7 +1000,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 	if (tcp_syncookies)
 		sc->sc_iss = syncookie_generate(sc);
 	else
-		sc->sc_iss = arc4random();
+		sc->sc_iss = karc4random();
 
 	/* Initial receive window: clip sbspace to [0 .. TCP_MAXWIN] */
 	win = sbspace(&so->so_rcv);
@@ -1358,7 +1358,7 @@ syncookie_generate(struct syncache *sc)
 	idx = ((ticks << SYNCOOKIE_TIMESHIFT) / hz) & SYNCOOKIE_WNDMASK;
 	if (tcp_secret[idx].ts_expire < ticks) {
 		for (i = 0; i < 4; i++)
-			tcp_secret[idx].ts_secbits[i] = arc4random();
+			tcp_secret[idx].ts_secbits[i] = karc4random();
 		tcp_secret[idx].ts_expire = ticks + SYNCOOKIE_TIMEOUT;
 	}
 	for (data = sizeof(tcp_msstab) / sizeof(int) - 1; data > 0; data--)

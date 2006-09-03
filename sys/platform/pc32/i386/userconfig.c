@@ -47,7 +47,7 @@
  ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **
  ** $FreeBSD: src/sys/i386/i386/userconfig.c,v 1.175.2.10 2002/10/05 18:31:48 scottl Exp $
- ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.5 2005/05/07 17:38:34 swildner Exp $
+ ** $DragonFly: src/sys/platform/pc32/i386/userconfig.c,v 1.6 2006/09/03 17:31:54 dillon Exp $
  **/
 
 /**
@@ -129,8 +129,6 @@ static struct uc_device *uc_devlist;	/* list read by kget to extract changes */
 static struct uc_device *uc_devtab;	/* fake uc_device table */
 
 static int userconfig_boot_parsing;	/* set if we are reading from the boot instructions */
-
-#define putchar(x)	cnputc(x)
 
 static void load_devtab(void);
 static void free_devtab(void);
@@ -218,7 +216,7 @@ init_config_script(void)
 }
 
 static int
-getchar(void)
+kgetchar(void)
 {
     int			c = -1;
 #ifdef INTRO_USERCONFIG
@@ -1145,10 +1143,10 @@ putxyl(int x, int y, char *str, int len)
 		break;
 		
 	    default:
-		putchar(*str++);	/* not an escape */
+		cnputc(*str++);	/* not an escape */
 	    }
 	}else{
-	    putchar(*str++);		/* emit the character */
+	    cnputc(*str++);		/* emit the character */
 	}
     }
 }
@@ -1443,7 +1441,7 @@ yesnocancel(char *str)
 
     putmsg(str);
     for(;;)
-	switch(getchar())
+	switch(kgetchar())
 	{
 	case -1:
 	case 'n':
@@ -1576,7 +1574,7 @@ editval(int x, int y, int width, int hex, int min, int max, int *val, int ro)
 	    move(x+xp,y);			/* position the cursor */
 	}
 
-	c = getchar();
+	c = kgetchar();
 
 	switch(extended)			/* escape handling */
 	{
@@ -1639,7 +1637,7 @@ editval(int x, int y, int width, int hex, int min, int max, int *val, int ro)
 	    if (ro)				/* readonly? */
 	    {
 		puthelp(" !iThis value cannot be edited (Press ESC)");
-		while(getchar() != 0x1b);	/* wait for key */
+		while(kgetchar() != 0x1b);	/* wait for key */
 		return(KEY_NULL);		/* spin */
 	    }
 	    if (xp)				/* still something left to delete */
@@ -1671,7 +1669,7 @@ editval(int x, int y, int width, int hex, int min, int max, int *val, int ro)
 	    if (ro)				/* readonly? */
 	    {
 		puthelp(" !iThis value cannot be edited (Press ESC)");
-		while(getchar() != 0x1b);	/* wait for key */
+		while(kgetchar() != 0x1b);	/* wait for key */
 		return(KEY_NULL);		/* spin */
 	    }
 	    if (xp >= width)			/* no room for more characters anyway */
@@ -1998,7 +1996,7 @@ helpscreen(void)
 	sprintf(prompt,"!i --%s-- [U]p [D]own [Q]uit !n",helptext[line] ? "MORE" : "END");
 	putxy(0,24,prompt);
 	
-	c = getchar();				/* so what do they say? */
+	c = kgetchar();				/* so what do they say? */
 	
 	switch (c)
 	{
@@ -2070,7 +2068,7 @@ dolist(int row, int num, int detail, int *ofs, DEV_LIST **list, char *dhelp)
 	    delta = 0;
 	}
 
-	c = getchar();				/* get a character */
+	c = kgetchar();				/* get a character */
 	if ((extended == 2) || (c==588) || (c==596))	/* console gives "alternative" codes */
 	{
 	    extended = 0;			/* no longer */
@@ -3026,7 +3024,7 @@ introfunc(CmdParm *parms)
 	    
 	    move(0, 0);	/* move the cursor out of the way */
 	}
-	c = getchar();
+	c = kgetchar();
 	if ((extended == 2) || (c == 588) || (c == 596)) {	/* console gives "alternative" codes */
 	    extended = 0;		/* no longer */
 	    switch (c) {
@@ -3137,7 +3135,7 @@ lspnp ()
 	    if (lineno >= 23) {
 		    if (!userconfig_boot_parsing) {
 			    printf("<More> ");
-			    if (getchar() == 'q') {
+			    if (kgetchar() == 'q') {
 				    printf("quit\n");
 				    return (1);
 			    }
@@ -3189,7 +3187,7 @@ lsdevtab(struct uc_device *dt)
 	if (lineno >= 23) {
 		printf("<More> ");
 		if (!userconfig_boot_parsing) {
-			if (getchar() == 'q') {
+			if (kgetchar() == 'q') {
 				printf("quit\n");
 				return (1);
 			}
@@ -3290,7 +3288,7 @@ cngets(char *input, int maxin)
     int c, nchars = 0;
 
     while (1) {
-	c = getchar();
+	c = kgetchar();
 	/* Treat ^H or ^? as backspace */
 	if ((c == '\010' || c == '\177')) {
 	    	if (nchars) {

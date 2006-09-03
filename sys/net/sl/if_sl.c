@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.25 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.26 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*
@@ -619,7 +619,7 @@ slstart(struct tty *tp)
 		 */
 		if (tp->t_outq.c_cc == 0) {
 			++sc->sc_if.if_obytes;
-			putc(FRAME_END, &tp->t_outq);
+			clist_putc(FRAME_END, &tp->t_outq);
 		}
 
 		while (m) {
@@ -658,12 +658,12 @@ slstart(struct tty *tp)
 				 * Put it out in a different form.
 				 */
 				if (cp < ep) {
-					if (putc(FRAME_ESCAPE, &tp->t_outq))
+					if (clist_putc(FRAME_ESCAPE, &tp->t_outq))
 						break;
-					if (putc(*cp++ == FRAME_ESCAPE ?
+					if (clist_putc(*cp++ == FRAME_ESCAPE ?
 					   TRANS_FRAME_ESCAPE : TRANS_FRAME_END,
 					   &tp->t_outq)) {
-						unputc(&tp->t_outq);
+						clist_unputc(&tp->t_outq);
 						break;
 					}
 					sc->sc_if.if_obytes += 2;
@@ -672,7 +672,7 @@ slstart(struct tty *tp)
 			m = m_free(m);
 		}
 
-		if (putc(FRAME_END, &tp->t_outq)) {
+		if (clist_putc(FRAME_END, &tp->t_outq)) {
 			/*
 			 * Not enough room.  Remove a char to make room
 			 * and end the packet normally.
@@ -680,8 +680,8 @@ slstart(struct tty *tp)
 			 * a day) you probably do not have enough clists
 			 * and you should increase "nclist" in param.c.
 			 */
-			unputc(&tp->t_outq);
-			putc(FRAME_END, &tp->t_outq);
+			clist_unputc(&tp->t_outq);
+			clist_putc(FRAME_END, &tp->t_outq);
 			sc->sc_if.if_collisions++;
 		} else {
 			++sc->sc_if.if_obytes;
@@ -992,7 +992,7 @@ sl_outfill(void *chan)
 		if (sc->sc_flags & SC_OUTWAIT) {
 			crit_enter();
 			++sc->sc_if.if_obytes;
-			putc(FRAME_END, &tp->t_outq);
+			clist_putc(FRAME_END, &tp->t_outq);
 			(*tp->t_oproc)(tp);
 			crit_exit();
 		} else

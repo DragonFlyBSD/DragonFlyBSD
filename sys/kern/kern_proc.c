@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.25 2006/05/24 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.26 2006/09/03 17:31:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,7 +382,7 @@ orphanpg(struct pgrp *pg)
  * Add a new process to the allproc list and the PID hash.  This
  * also assigns a pid to the new process.
  *
- * MPALMOSTSAFE - acquires mplock for arc4random() call
+ * MPALMOSTSAFE - acquires mplock for karc4random() call
  */
 void
 proc_add_allproc(struct proc *p)
@@ -391,7 +391,7 @@ proc_add_allproc(struct proc *p)
 
 	if ((random_offset = randompid) != 0) {
 		get_mplock();
-		random_offset = arc4random() % random_offset;
+		random_offset = karc4random() % random_offset;
 		rel_mplock();
 	}
 

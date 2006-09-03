@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.14 2006/07/28 02:17:40 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.15 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*
@@ -258,12 +258,12 @@ again:
 			goto again;
 		}
 		while (tp->t_canq.c_cc > 1 && ap->a_uio->uio_resid > 0)
-			if (ureadc(getc(&tp->t_canq), ap->a_uio) < 0) {
+			if (ureadc(clist_getc(&tp->t_canq), ap->a_uio) < 0) {
 				error = EFAULT;
 				break;
 			}
 		if (tp->t_canq.c_cc == 1)
-			(void) getc(&tp->t_canq);
+			clist_getc(&tp->t_canq);
 		if (tp->t_canq.c_cc)
 			return (error);
 	} else
@@ -563,7 +563,7 @@ again:
 		}
 		/* adjust for data copied in but not written */
 		ap->a_uio->uio_resid += cc;
-		(void) putc(0, &tp->t_canq);
+		clist_putc(0, &tp->t_canq);
 		ttwakeup(tp);
 		wakeup(TSA_PTS_READ(tp));
 		return (0);

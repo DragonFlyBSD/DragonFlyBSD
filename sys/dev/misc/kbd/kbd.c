@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.17 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.18 2006/09/03 17:31:53 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -731,7 +731,7 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 
 		/* store the byte as is for K_RAW and K_CODE modes */
 		if (mode != K_XLATE) {
-			putc(KEYCHAR(c), &sc->gkb_q);
+			clist_putc(KEYCHAR(c), &sc->gkb_q);
 			continue;
 		}
 
@@ -746,9 +746,9 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 				/* ignore them... */
 				continue;
 			case BTAB:	/* a backtab: ESC [ Z */
-				putc(0x1b, &sc->gkb_q);
-				putc('[', &sc->gkb_q);
-				putc('Z', &sc->gkb_q);
+				clist_putc(0x1b, &sc->gkb_q);
+				clist_putc('[', &sc->gkb_q);
+				clist_putc('Z', &sc->gkb_q);
 				continue;
 			}
 		}
@@ -756,18 +756,18 @@ genkbd_event(keyboard_t *kbd, int event, void *arg)
 		/* normal chars, normal chars with the META, function keys */
 		switch (KEYFLAGS(c)) {
 		case 0:			/* a normal char */
-			putc(KEYCHAR(c), &sc->gkb_q);
+			clist_putc(KEYCHAR(c), &sc->gkb_q);
 			break;
 		case MKEY:		/* the META flag: prepend ESC */
-			putc(0x1b, &sc->gkb_q);
-			putc(KEYCHAR(c), &sc->gkb_q);
+			clist_putc(0x1b, &sc->gkb_q);
+			clist_putc(KEYCHAR(c), &sc->gkb_q);
 			break;
 		case FKEY | SPCLKEY:	/* a function key, return string */
 			cp = (*kbdsw[kbd->kb_index]->get_fkeystr)(kbd,
 							KEYCHAR(c), &len);
 			if (cp != NULL) {
 				while (len-- >  0)
-					putc(*cp++, &sc->gkb_q);
+					clist_putc(*cp++, &sc->gkb_q);
 			}
 			break;
 		}

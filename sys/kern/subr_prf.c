@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.10 2005/11/21 21:56:14 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.11 2006/09/03 17:31:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,7 @@ struct	tty *constty;			/* pointer to console "window" tty */
 static void (*v_putc)(int) = cnputc;	/* routine to putc on virtual console */
 static void  msglogchar(int c, int pri);
 static void  msgaddchar(int c, void *dummy);
-static void  putchar (int ch, void *arg);
+static void  kputchar (int ch, void *arg);
 static char *ksprintn (char *nbuf, u_long num, int base, int *len);
 static char *ksprintqn (char *nbuf, u_quad_t num, int base, int *len);
 static void  snprintf_func (int ch, void *arg);
@@ -134,7 +134,7 @@ uprintf(const char *fmt, ...)
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
 
-		retval = kvprintf(fmt, putchar, &pca, 10, ap);
+		retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 		__va_end(ap);
 	}
 	return retval;
@@ -180,7 +180,7 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 	pca.tty = tp;
 	pca.flags = flags;
 	pca.pri = LOG_INFO;
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 	msgbuftrigger = 1;
 	return retval;
@@ -201,7 +201,7 @@ ttyprintf(struct tty *tp, const char *fmt, ...)
 	__va_start(ap, fmt);
 	pca.tty = tp;
 	pca.flags = TOTTY;
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 	return retval;
 }
@@ -223,7 +223,7 @@ log(int level, const char *fmt, ...)
 	pca.flags = log_open ? TOLOG : TOCONS;
 
 	__va_start(ap, fmt);
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 
 	msgbuftrigger = 1;
@@ -242,7 +242,7 @@ addlog(const char *fmt, ...)
 	pca.flags = log_open ? TOLOG : TOCONS;
 
 	__va_start(ap, fmt);
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	__va_end(ap);
 
 	msgbuftrigger = 1;
@@ -314,7 +314,7 @@ printf(const char *fmt, ...)
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
 	cons_lock();
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	cons_unlock();
 	__va_end(ap);
 	if (!panicstr)
@@ -336,7 +336,7 @@ vprintf(const char *fmt, __va_list ap)
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
 	cons_lock();
-	retval = kvprintf(fmt, putchar, &pca, 10, ap);
+	retval = kvprintf(fmt, kputchar, &pca, 10, ap);
 	cons_unlock();
 	if (!panicstr)
 		msgbuftrigger = 1;
@@ -352,7 +352,7 @@ vprintf(const char *fmt, __va_list ap)
  * NOT YET ENTIRELY MPSAFE, EVEN WHEN LOGGING JUST TO THE SYSCONSOLE.
  */
 static void
-putchar(int c, void *arg)
+kputchar(int c, void *arg)
 {
 	struct putchar_arg *ap = (struct putchar_arg*) arg;
 	int flags = ap->flags;

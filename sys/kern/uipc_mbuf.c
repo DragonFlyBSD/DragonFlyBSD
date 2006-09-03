@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.55 2006/01/21 19:05:42 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.56 2006/09/03 17:31:55 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -1519,7 +1519,7 @@ m_defrag_nofree(struct mbuf *m0, int how)
 
 #ifdef MBUF_STRESS_TEST
 	if (m_defragrandomfailures) {
-		int temp = arc4random() & 0xff;
+		int temp = karc4random() & 0xff;
 		if (temp == 0xba)
 			goto nospace;
 	}

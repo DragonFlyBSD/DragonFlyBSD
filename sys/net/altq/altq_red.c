@@ -1,5 +1,5 @@
 /*	$KAME: altq_red.c,v 1.19 2004/04/17 10:54:49 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_red.c,v 1.2 2006/09/03 17:31:55 dillon Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -404,7 +404,7 @@ drop_early(int fp_len, int fp_probd, int count)
 	 * drop probability = (avg - TH_MIN) / d
 	 */
 
-	if ((arc4random() % d) < fp_len) {
+	if ((karc4random() % d) < fp_len) {
 		/* drop or mark */
 		return (1);
 	}

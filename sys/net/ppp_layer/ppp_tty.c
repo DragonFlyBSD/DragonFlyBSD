@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.18 2006/07/28 02:17:40 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.19 2006/09/03 17:31:55 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -346,7 +346,7 @@ pppread(struct tty *tp, struct uio *uio, int flag)
     }
 
     /* Pull place-holder byte out of canonical queue */
-    getc(&tp->t_canq);
+    clist_getc(&tp->t_canq);
 
     /* Get the packet from the input queue */
     IF_DEQUEUE(&sc->sc_inq, m0);
@@ -565,7 +565,7 @@ pppasyncstart(struct ppp_softc *sc)
 	    /* XXX as above. */
 	    if (CCOUNT(&tp->t_outq) == 0) {
 		++sc->sc_stats.ppp_obytes;
-		putc(PPP_FLAG, &tp->t_outq);
+		clist_putc(PPP_FLAG, &tp->t_outq);
 	    }
 
 	    /* Calculate the FCS for the first mbuf's worth. */
@@ -603,12 +603,12 @@ pppasyncstart(struct ppp_softc *sc)
 		 */
 		if (len) {
 		    crit_enter();
-		    if (putc(PPP_ESCAPE, &tp->t_outq)) {
+		    if (clist_putc(PPP_ESCAPE, &tp->t_outq)) {
 			crit_exit();
 			break;
 		    }
-		    if (putc(*start ^ PPP_TRANS, &tp->t_outq)) {
-			unputc(&tp->t_outq);
+		    if (clist_putc(*start ^ PPP_TRANS, &tp->t_outq)) {
+			clist_unputc(&tp->t_outq);
 			crit_exit();
 			break;
 		    }
@@ -655,10 +655,10 @@ pppasyncstart(struct ppp_softc *sc)
 		 */
 		crit_enter();
 		for (q = endseq; q < p; ++q)
-		    if (putc(*q, &tp->t_outq)) {
+		    if (clist_putc(*q, &tp->t_outq)) {
 			done = 0;
 			for (; q > endseq; --q)
-			    unputc(&tp->t_outq);
+			    clist_unputc(&tp->t_outq);
 			break;
 		    }
 		crit_exit();
@@ -721,7 +721,7 @@ pppasyncctlp(struct ppp_softc *sc)
     /* Put a placeholder byte in canq for ttselect()/ttnread(). */
     crit_enter();
     tp = (struct tty *) sc->sc_devp;
-    putc(0, &tp->t_canq);
+    clist_putc(0, &tp->t_canq);
     ttwakeup(tp);
     crit_exit();
 }

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iwi/if_iwi.c,v 1.8.2.6 2006/02/23 02:06:46 sam Exp $
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.13 2006/08/12 13:43:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.14 2006/09/03 17:31:54 dillon Exp $
  */
 
 /*-
@@ -2421,7 +2421,7 @@ iwi_config(struct iwi_softc *sc)
 			return error;
 	}
 
-	data = htole32(arc4random());
+	data = htole32(karc4random());
 	DPRINTF(("Setting initialization vector to %u\n", le32toh(data)));
 	error = iwi_cmd(sc, IWI_CMD_SET_IV, &data, sizeof data, 0);
 	if (error != 0)

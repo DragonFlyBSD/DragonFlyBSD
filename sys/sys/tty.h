@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.10 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.11 2006/09/03 17:31:55 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -246,11 +246,12 @@ int	 b_to_q (char *cp, int cc, struct clist *q);
 void	 catq (struct clist *from, struct clist *to);
 void	 clist_alloc_cblocks (struct clist *q, int ccmax, int ccres);
 void	 clist_free_cblocks (struct clist *q);
-int	 getc (struct clist *q);
+int	 clist_getc (struct clist *q);
+int	 clist_unputc (struct clist *q);
 void	 ndflush (struct clist *q, int cc);
 char	*nextc (struct clist *q, char *cp, int *c);
 void	 nottystop (struct tty *tp, int rw);
-int	 putc (int c, struct clist *q);
+int	 clist_putc (int c, struct clist *q);
 int	 q_to_b (struct clist *q, char *cp, int cc);
 void	 termioschars (struct termios *t);
 int	 tputchar (int c, struct tty *tp);
@@ -288,7 +289,6 @@ int	 ttysleep (struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout);
 int	 ttywait (struct tty *tp);
 int	 ttywrite (struct dev_write_args *);
-int	 unputc (struct clist *q);
 
 #endif /* _KERNEL */
 

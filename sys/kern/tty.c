@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.26 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.27 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*-
@@ -394,9 +394,9 @@ parmrk:
 				if (tp->t_rawq.c_cc + tp->t_canq.c_cc >
 				    MAX_INPUT - 3)
 					goto input_overflow;
-				(void)putc(0377 | TTY_QUOTE, &tp->t_rawq);
-				(void)putc(0 | TTY_QUOTE, &tp->t_rawq);
-				(void)putc(c | TTY_QUOTE, &tp->t_rawq);
+				clist_putc(0377 | TTY_QUOTE, &tp->t_rawq);
+				clist_putc(0 | TTY_QUOTE, &tp->t_rawq);
+				clist_putc(c | TTY_QUOTE, &tp->t_rawq);
 				goto endcase;
 			} else
 				c = 0;
@@ -511,7 +511,7 @@ parmrk:
 		 */
 		if (CCEQ(cc[VERASE], c) || CCEQ(cc[VERASE2], c) ) {
 			if (tp->t_rawq.c_cc)
-				ttyrub(unputc(&tp->t_rawq), tp);
+				ttyrub(clist_unputc(&tp->t_rawq), tp);
 			goto endcase;
 		}
 		/*
@@ -522,7 +522,7 @@ parmrk:
 			    tp->t_rawq.c_cc == tp->t_rocount &&
 			    !ISSET(lflag, ECHOPRT))
 				while (tp->t_rawq.c_cc)
-					ttyrub(unputc(&tp->t_rawq), tp);
+					ttyrub(clist_unputc(&tp->t_rawq), tp);
 			else {
 				ttyecho(c, tp);
 				if (ISSET(lflag, ECHOK) ||
@@ -543,7 +543,7 @@ parmrk:
 			/*
 			 * erase whitespace
 			 */
-			while ((c = unputc(&tp->t_rawq)) == ' ' || c == '\t')
+			while ((c = clist_unputc(&tp->t_rawq)) == ' ' || c == '\t')
 				ttyrub(c, tp);
 			if (c == -1)
 				goto endcase;
@@ -552,11 +552,11 @@ parmrk:
 			 * next chars type (for ALTWERASE)
 			 */
 			ttyrub(c, tp);
-			c = unputc(&tp->t_rawq);
+			c = clist_unputc(&tp->t_rawq);
 			if (c == -1)
 				goto endcase;
 			if (c == ' ' || c == '\t') {
-				(void)putc(c, &tp->t_rawq);
+				clist_putc(c, &tp->t_rawq);
 				goto endcase;
 			}
 			ctype = ISALPHA(c);
@@ -565,12 +565,12 @@ parmrk:
 			 */
 			do {
 				ttyrub(c, tp);
-				c = unputc(&tp->t_rawq);
+				c = clist_unputc(&tp->t_rawq);
 				if (c == -1)
 					goto endcase;
 			} while (c != ' ' && c != '\t' &&
 			    (!ISSET(lflag, ALTWERASE) || ISALPHA(c) == ctype));
-			(void)putc(c, &tp->t_rawq);
+			clist_putc(c, &tp->t_rawq);
 			goto endcase;
 		}
 		/*
@@ -610,13 +610,13 @@ input_overflow:
 
 	if (   c == 0377 && ISSET(iflag, PARMRK) && !ISSET(iflag, ISTRIP)
 	     && ISSET(iflag, IGNBRK|IGNPAR) != (IGNBRK|IGNPAR))
-		(void)putc(0377 | TTY_QUOTE, &tp->t_rawq);
+		clist_putc(0377 | TTY_QUOTE, &tp->t_rawq);
 
 	/*
 	 * Put data char in q for user and
 	 * wakeup on seeing a line delimiter.
 	 */
-	if (putc(c, &tp->t_rawq) >= 0) {
+	if (clist_putc(c, &tp->t_rawq) >= 0) {
 		if (!ISSET(lflag, ICANON)) {
 			ttwakeup(tp);
 			ttyecho(c, tp);
@@ -680,7 +680,7 @@ ttyoutput(c, tp)
 	if (!ISSET(oflag, OPOST)) {
 		if (ISSET(tp->t_lflag, FLUSHO))
 			return (-1);
-		if (putc(c, &tp->t_outq))
+		if (clist_putc(c, &tp->t_outq))
 			return (c);
 		tk_nout++;
 		tp->t_outcc++;
@@ -716,7 +716,7 @@ ttyoutput(c, tp)
 	if (c == '\n' && ISSET(tp->t_oflag, ONLCR)) {
 		tk_nout++;
 		tp->t_outcc++;
-		if (!ISSET(tp->t_lflag, FLUSHO) && putc('\r', &tp->t_outq))
+		if (!ISSET(tp->t_lflag, FLUSHO) && clist_putc('\r', &tp->t_outq))
 			return (c);
 	}
 	/* If OCRNL is set, translate "\r" into "\n". */
@@ -728,7 +728,7 @@ ttyoutput(c, tp)
 
 	tk_nout++;
 	tp->t_outcc++;
-	if (!ISSET(tp->t_lflag, FLUSHO) && putc(c, &tp->t_outq))
+	if (!ISSET(tp->t_lflag, FLUSHO) && clist_putc(c, &tp->t_outq))
 		return (c);
 
 	col = tp->t_column;
@@ -1407,7 +1407,7 @@ ttyblock(tp)
 
 	SET(tp->t_state, TS_TBLOCK);
 	if (ISSET(tp->t_iflag, IXOFF) && tp->t_cc[VSTOP] != _POSIX_VDISABLE &&
-	    putc(tp->t_cc[VSTOP], &tp->t_outq) != 0)
+	    clist_putc(tp->t_cc[VSTOP], &tp->t_outq) != 0)
 		CLR(tp->t_state, TS_TBLOCK);	/* try again later */
 	ttstart(tp);
 }
@@ -1424,7 +1424,7 @@ ttyunblock(tp)
 
 	CLR(tp->t_state, TS_TBLOCK);
 	if (ISSET(tp->t_iflag, IXOFF) && tp->t_cc[VSTART] != _POSIX_VDISABLE &&
-	    putc(tp->t_cc[VSTART], &tp->t_outq) != 0)
+	    clist_putc(tp->t_cc[VSTART], &tp->t_outq) != 0)
 		SET(tp->t_state, TS_TBLOCK);	/* try again later */
 	ttstart(tp);
 }
@@ -1551,7 +1551,7 @@ ttypend(tp)
 	bzero(&tp->t_rawq, sizeof tp->t_rawq);
 	tp->t_rawq.c_cbmax = tq.c_cbmax;
 	tp->t_rawq.c_cbreserved = tq.c_cbreserved;
-	while ((c = getc(&tq)) >= 0)
+	while ((c = clist_getc(&tq)) >= 0)
 		ttyinput(c, tp);
 	CLR(tp->t_state, TS_TYPEN);
 }
@@ -1759,7 +1759,7 @@ read:
 	goto out;
 slowcase:
 	for (;;) {
-		c = getc(qp);
+		c = clist_getc(qp);
 		if (c < 0) {
 			if (first)
 				goto loop;

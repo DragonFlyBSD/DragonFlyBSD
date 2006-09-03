@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.41 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.42 2006/09/03 17:31:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
 /*
  * stackgap_random specifies if the stackgap should have a random size added
  * to it.  It must be a power of 2.  If non-zero, the stack gap will be 
- * calculated as: ALIGN(arc4random() & (stackgap_random - 1)).
+ * calculated as: ALIGN(karc4random() & (stackgap_random - 1)).
  */
 static int stackgap_random = 1024;
 static int
@@ -798,7 +798,7 @@ exec_copyout_strings(struct image_params *imgp)
 	arginfo = (struct ps_strings *)PS_STRINGS;
 	szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
 	if (stackgap_random != 0)
-		sgap = ALIGN(arc4random() & (stackgap_random - 1));
+		sgap = ALIGN(karc4random() & (stackgap_random - 1));
 	else
 		sgap = 0;
 	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE - sgap -

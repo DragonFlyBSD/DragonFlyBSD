@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.7 2006/06/30 16:50:01 geekgod Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.8 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*
@@ -461,9 +461,9 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	 * OUI code.
 	 */
 	{
-		int rnd = arc4random();
+		int rnd = karc4random();
 		bcopy(&rnd, &eaddr[0], 4); /* ETHER_ADDR_LEN == 6 */
-		rnd = arc4random();
+		rnd = karc4random();
 		bcopy(&rnd, &eaddr[2], 4); /* ETHER_ADDR_LEN == 6 */
 	}
 	eaddr[0] &= ~1;		/* clear multicast bit */
@@ -2190,7 +2190,7 @@ bridge_rtable_init(struct bridge_softc *sc)
 	for (i = 0; i < BRIDGE_RTHASH_SIZE; i++)
 		LIST_INIT(&sc->sc_rthash[i]);
 
-	sc->sc_rthash_key = arc4random();
+	sc->sc_rthash_key = karc4random();
 
 	LIST_INIT(&sc->sc_rtlist);
 

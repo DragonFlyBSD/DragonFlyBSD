@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptosoft.c,v 1.2.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.3 2006/09/03 17:31:55 dillon Exp $	*/
 /*	$OpenBSD: cryptosoft.c,v 1.35 2002/04/26 08:43:50 deraadt Exp $	*/
 
 /*
@@ -122,17 +122,17 @@ swcr_encdec(struct cryptodesc *crd, struct swcr_data *sw, caddr_t buf,
 			for (i = 0;
 			    i + sizeof (u_int32_t) < EALG_MAX_BLOCK_LEN;
 			    i += sizeof (u_int32_t)) {
-				u_int32_t temp = arc4random();
+				u_int32_t temp = karc4random();
 
 				bcopy(&temp, iv + i, sizeof(u_int32_t));
 			}
 			/*
 			 * What if the block size is not a multiple
 			 * of sizeof (u_int32_t), which is the size of
-			 * what arc4random() returns ?
+			 * what karc4random() returns ?
 			 */
 			if (EALG_MAX_BLOCK_LEN % sizeof (u_int32_t) != 0) {
-				u_int32_t temp = arc4random();
+				u_int32_t temp = karc4random();
 
 				bcopy (&temp, iv + i,
 				    EALG_MAX_BLOCK_LEN - i);

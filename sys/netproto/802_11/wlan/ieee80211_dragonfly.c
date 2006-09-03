@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_freebsd.c,v 1.7.2.2 2005/12/22 19:22:51 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.2 2006/08/04 15:42:27 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_dragonfly.c,v 1.3 2006/09/03 17:31:55 dillon Exp $
  */
 
 /*
@@ -206,7 +206,7 @@ get_random_bytes(void *p, size_t n)
 	uint8_t *dp = p;
 
 	while (n > 0) {
-		uint32_t v = arc4random();
+		uint32_t v = karc4random();
 		size_t nb = n > sizeof(uint32_t) ? sizeof(uint32_t) : n;
 
 		bcopy(&v, dp, n > sizeof(uint32_t) ? sizeof(uint32_t) : n);
