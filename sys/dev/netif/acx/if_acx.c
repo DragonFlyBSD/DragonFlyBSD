@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.5 2006/09/01 15:13:15 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.6 2006/09/03 05:05:25 sephe Exp $
  */
 
 /*
@@ -239,6 +239,8 @@ DRIVER_MODULE(acx, pci, acx_driver, acx_devclass, 0, 0);
 DRIVER_MODULE(acx, cardbus, acx_driver, acx_devclass, 0, 0);
 
 MODULE_DEPEND(acx, wlan, 1, 1, 1);
+MODULE_DEPEND(acx, wlan_ratectl_onoe, 1, 1, 1);
+MODULE_DEPEND(acx, wlan_ratectl_amrr, 1, 1, 1);
 MODULE_DEPEND(acx, pci, 1, 1, 1);
 MODULE_DEPEND(acx, cardbus, 1, 1, 1);
 
