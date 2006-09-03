@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.13 2006/05/25 07:36:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.14 2006/09/03 17:55:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,9 +113,9 @@ static void	db_print_stack_entry(const char *, int, char **, int *, db_addr_t);
 
 
 static char	*watchtype_str(int type);
-int		i386_set_watch(int watchnum, unsigned int watchaddr, 
+static int	ki386_set_watch(int watchnum, unsigned int watchaddr, 
                                int size, int access, struct dbreg * d);
-int		i386_clr_watch(int watchnum, struct dbreg * d);
+static int	ki386_clr_watch(int watchnum, struct dbreg * d);
 int		db_md_set_watchpoint(db_expr_t addr, db_expr_t size);
 int		db_md_clr_watchpoint(db_expr_t addr, db_expr_t size);
 void		db_md_list_watchpoints(void);
@@ -458,9 +458,8 @@ DB_DRX_FUNC(dr5)
 DB_DRX_FUNC(dr6)
 DB_DRX_FUNC(dr7)
 
-
-int
-i386_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
+static int
+ki386_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 	       struct dbreg *d)
 {
 	int i;
@@ -520,7 +519,7 @@ i386_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 
 
 int
-i386_clr_watch(int watchnum, struct dbreg *d)
+ki386_clr_watch(int watchnum, struct dbreg *d)
 {
 	if (watchnum < 0 || watchnum >= 4)
 		return(-1);
@@ -558,7 +557,7 @@ db_md_set_watchpoint(db_expr_t addr, db_expr_t size)
 				wsize = size;
 			if (wsize == 3)
 				wsize++;
-			i386_set_watch(i, addr, wsize, DBREG_DR7_WRONLY, &d);
+			ki386_set_watch(i, addr, wsize, DBREG_DR7_WRONLY, &d);
 			addr += wsize;
 			size -= wsize;
 		}
@@ -581,7 +580,7 @@ db_md_clr_watchpoint(db_expr_t addr, db_expr_t size)
 		if (d.dr7 & (3 << (i * 2))) {
 			if ((DBREG_DRX((&d), i) >= addr) && 
 			    (DBREG_DRX((&d), i) < addr + size))
-				i386_clr_watch(i, &d);
+				ki386_clr_watch(i, &d);
 		}
 	}
 

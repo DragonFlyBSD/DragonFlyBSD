@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.24 2006/07/02 00:49:31 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.25 2006/09/03 17:55:34 dillon Exp $
  *
  */
 
@@ -69,10 +69,10 @@
 
 
 
-static int i386_get_ldt(struct lwp *, char *, int *);
-static int i386_set_ldt(struct lwp *, char *, int *);
-static int i386_get_ioperm(struct lwp *, char *);
-static int i386_set_ioperm(struct lwp *, char *);
+static int ki386_get_ldt(struct lwp *, char *, int *);
+static int ki386_set_ldt(struct lwp *, char *, int *);
+static int ki386_get_ioperm(struct lwp *, char *);
+static int ki386_set_ioperm(struct lwp *, char *);
 static int check_descs(union descriptor *, int);
 int i386_extend_pcb(struct lwp *);
 
@@ -88,16 +88,16 @@ sys_sysarch(struct sysarch_args *uap)
 
 	switch(uap->op) {
 	case I386_GET_LDT:
-		error = i386_get_ldt(lp, uap->parms, &uap->sysmsg_result);
+		error = ki386_get_ldt(lp, uap->parms, &uap->sysmsg_result);
 		break;
 	case I386_SET_LDT:
-		error = i386_set_ldt(lp, uap->parms, &uap->sysmsg_result);
+		error = ki386_set_ldt(lp, uap->parms, &uap->sysmsg_result);
 		break;
 	case I386_GET_IOPERM:
-		error = i386_get_ioperm(lp, uap->parms);
+		error = ki386_get_ioperm(lp, uap->parms);
 		break;
 	case I386_SET_IOPERM:
-		error = i386_set_ioperm(lp, uap->parms);
+		error = ki386_set_ioperm(lp, uap->parms);
 		break;
 	case I386_VM86:
 		error = vm86_sysarch(lp, uap->parms);
@@ -164,7 +164,7 @@ i386_extend_pcb(struct lwp *lp)
 }
 
 static int
-i386_set_ioperm(struct lwp *lp, char *args)
+ki386_set_ioperm(struct lwp *lp, char *args)
 {
 	int i, error;
 	struct i386_ioperm_args ua;
@@ -202,7 +202,7 @@ i386_set_ioperm(struct lwp *lp, char *args)
 }
 
 static int
-i386_get_ioperm(struct lwp *lp, char *args)
+ki386_get_ioperm(struct lwp *lp, char *args)
 {
 	int i, state, error;
 	struct i386_ioperm_args ua;
@@ -349,7 +349,7 @@ user_ldt_free(struct pcb *pcb)
 }
 
 static int
-i386_get_ldt(struct lwp *lwp, char *args, int *res)
+ki386_get_ldt(struct lwp *lwp, char *args, int *res)
 {
 	int error = 0;
 	struct pcb *pcb = lwp->lwp_thread->td_pcb;
@@ -362,7 +362,7 @@ i386_get_ldt(struct lwp *lwp, char *args, int *res)
 		return(error);
 
 #ifdef	DEBUG
-	printf("i386_get_ldt: start=%d num=%d descs=%p\n",
+	printf("ki386_get_ldt: start=%d num=%d descs=%p\n",
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
 
@@ -395,7 +395,7 @@ i386_get_ldt(struct lwp *lwp, char *args, int *res)
 }
 
 static int
-i386_set_ldt(struct lwp *lp, char *args, int *res)
+ki386_set_ldt(struct lwp *lp, char *args, int *res)
 {
 	int error = 0;
 	int largest_ld;
@@ -409,7 +409,7 @@ i386_set_ldt(struct lwp *lp, char *args, int *res)
 		return(error);
 
 #ifdef	DEBUG
-	printf("i386_set_ldt: start=%d num=%d descs=%p\n",
+	printf("ki386_set_ldt: start=%d num=%d descs=%p\n",
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
 
