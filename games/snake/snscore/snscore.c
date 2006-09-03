@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)snscore.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/games/snake/snscore/snscore.c,v 1.5 1999/11/30 03:49:42 billf Exp $
- * $DragonFly: src/games/snake/snscore/snscore.c,v 1.3 2006/09/03 23:23:10 pavalos Exp $
+ * $DragonFly: src/games/snake/snscore/snscore.c,v 1.4 2006/09/03 23:47:56 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ struct	player	{
 } players[MAXPLAYERS], temp;
 
 int
-main()
+main(void)
 {
 	short	uid, score;
 	FILE	*fd;

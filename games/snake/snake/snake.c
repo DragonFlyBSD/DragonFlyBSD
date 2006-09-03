@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)snake.c	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/games/snake/snake/snake.c,v 1.11.2.1 2000/08/17 06:21:44 jhb Exp $
- * $DragonFly: src/games/snake/snake/snake.c,v 1.3 2006/09/03 23:23:10 pavalos Exp $
+ * $DragonFly: src/games/snake/snake/snake.c,v 1.4 2006/09/03 23:47:56 pavalos Exp $
  */
 
 /*
@@ -132,9 +132,8 @@ void		suspend(void);
 void		win(const struct point *);
 void		winnings(int);
 
-main(argc,argv)
-int argc;
-char **argv;
+int
+main(int argc, char **argv)
 {
 	int ch, i;
 	time_t tv;
@@ -153,7 +152,7 @@ char **argv;
 	}
 	setgid(getgid());
 
-	(void) time(&tv);
+	time(&tv);
 
 	while ((ch = getopt(argc, argv, "l:w:t")) != -1)
 		switch ((char) ch) {
@@ -240,9 +239,7 @@ char **argv;
 }
 
 struct point *
-point(ps, x, y)
-	struct point *ps;
-	int     x, y;
+point(struct point *ps, int x, int y)
 {
 	ps->col = x;
 	ps->line = y;
@@ -251,7 +248,7 @@ point(ps, x, y)
 
 /* Main command loop */
 void
-mainloop()
+mainloop(void)
 {
 	int     k;
 	int     repeat = 1;
@@ -409,9 +406,9 @@ mainloop()
 					pchar(&you,' ');
 				do {
 					snrand(&money);
-				} while (money.col == finish.col && money.line == finish.line ||
-					 money.col < 5 && money.line == 0 ||
-					 money.col == you.col && money.line == you.line);
+				} while ((money.col == finish.col && money.line == finish.line) ||
+					 (money.col < 5 && money.line == 0) ||
+					 (money.col == you.col && money.line == you.line));
 				pchar(&money,TREASURE);
 				winnings(cashvalue);
 				continue;
@@ -433,7 +430,9 @@ mainloop()
 	}
 }
 
-setup(){	/*
+void
+setup(void)
+{		/*
 		 * setup the board
 		 */
 	int i;
@@ -451,7 +450,7 @@ setup(){	/*
 }
 
 void
-drawbox()
+drawbox(void)
 {
 	int i;
 
@@ -465,8 +464,8 @@ drawbox()
 	}
 }
 
-snrand(sp)
-struct point *sp;
+void
+snrand(struct point *sp)
 {
 	struct point p;
 	int i;
@@ -494,8 +493,8 @@ struct point *sp;
 	*sp = p;
 }
 
-post(iscore, flag)
-int	iscore, flag;
+int
+post(int iscore, int flag)
 {
 	short	score = iscore;
 	short	uid;
@@ -568,7 +567,8 @@ int	iscore, flag;
  * overshooting.  This loses horribly at 9600 baud, but works nicely
  * if the terminal gets behind.
  */
-flushi()
+void
+flushi(void)
 {
 	tcflush(0, TCIFLUSH);
 }
@@ -580,8 +580,9 @@ float absv[8]= {
 	1, 1.4, 1, 1.4, 1, 1.4, 1, 1.4
 };
 int oldw=0;
-chase (np, sp)
-struct point *sp, *np;
+
+void
+chase(struct point *np, struct point *sp)
 {
 	/* this algorithm has bugs; otherwise the
 	   snake would get too good */
@@ -640,8 +641,9 @@ struct point *sp, *np;
 	point(np,sp->col+mx[w],sp->line+my[w]);
 }
 
-spacewarp(w)
-int w;{
+void
+spacewarp(int w)
+{
 	struct point p;
 	int j;
 	const char   *str;
@@ -672,24 +674,9 @@ int w;{
 	winnings(cashvalue);
 }
 
-snap()
+void
+snap(void)
 {
-#if 0 /* This code doesn't really make sense.  */
-	struct point p;
-
-	if (you.line < 3) {
-		mvaddch(1, you.col + 1, '-');
-	}
-	if (you.line > lcnt - 4) {
-		mvaddch(lcnt, you.col + 1, '_');
-	}
-	if (you.col < 10) {
-		mvaddch(you.line + 1, 1, '(');
-	}
-	if (you.col > ccnt - 10) {
-		mvaddch(you.line + 1, ccnt, ')');
-	}
-#endif
 	if (!stretch(&money))
 		if (!stretch(&finish)) {
 			pchar(&you, '?');
@@ -697,29 +684,12 @@ snap()
 			delay(10);
 			pchar(&you, ME);
 		}
-#if 0
-	if (you.line < 3) {
-		point(&p, you.col, 0);
-		chk(&p);
-	}
-	if(you.line > lcnt-4){
-		point(&p,you.col,lcnt-1);
-		chk(&p);
-	}
-	if(you.col < 10){
-		point(&p,0,you.line);
-		chk(&p);
-	}
-	if(you.col > ccnt-10){
-		point(&p,ccnt-1,you.line);
-		chk(&p);
-	}
-#endif
 	refresh();
 }
 
-stretch(ps)
-const struct point *ps;{
+int
+stretch(const struct point *ps)
+{
 	struct point p;
 
 	point(&p,you.col,you.line);
@@ -764,8 +734,9 @@ const struct point *ps;{
 	return(0);
 }
 
-surround(ps)
-struct point *ps;{
+void
+surround(struct point *ps)
+{
 	int j;
 
 	if(ps->col == 0)ps->col++;
@@ -802,8 +773,8 @@ struct point *ps;{
 	delay(6);
 }
 
-win(ps)
-const struct point *ps;
+void
+win(const struct point *ps)
 {
 	struct point x;
 	int j,k;
@@ -834,7 +805,8 @@ const struct point *ps;
 	}
 }
 
-pushsnake()
+int
+pushsnake(void)
 {
 	int i, bonus;
 	int issame = 0;
@@ -892,8 +864,8 @@ pushsnake()
 	return(0);
 }
 
-chk(sp)
-const struct point *sp;
+int
+chk(const struct point *sp)
 {
 	int j;
 
@@ -927,8 +899,9 @@ const struct point *sp;
 	pchar(sp,' ');
 	return(0);
 }
-winnings(won)
-int won;
+
+void
+winnings(int won)
 {
 	if (won > 0) {
 		mvprintw(1, 1, "$%d", won);
@@ -936,14 +909,16 @@ int won;
 }
 
 void
-stop(dummy){
+stop(__unused int dummy)
+{
 	signal(SIGINT,SIG_IGN);
 	endwin();
 	length(moves);
 	exit(0);
 }
 
-suspend()
+void
+suspend(void)
 {
 	endwin();
 	kill(getpid(), SIGTSTP);
@@ -951,14 +926,14 @@ suspend()
 	winnings(cashvalue);
 }
 
-length(num)
-int num;
+void
+length(int num)
 {
 	printf("You made %d moves.\n", num);
 }
 
-logit(msg)
-const char *msg;
+void
+logit(const char *msg)
 {
 	time_t t;
 
