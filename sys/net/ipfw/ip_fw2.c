@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.19 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.20 2006/09/03 18:52:29 dillon Exp $
  */
 
 #define        DEB(x)
@@ -1746,7 +1746,8 @@ check_body:
 				break;
 
 			case O_PROB:
-				match = (random()<((ipfw_insn_u32 *)cmd)->d[0]);
+				match = (krandom() <
+					((ipfw_insn_u32 *)cmd)->d[0]);
 				break;
 
 			/*

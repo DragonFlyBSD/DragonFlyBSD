@@ -36,7 +36,7 @@
  *
  *	from: @(#)igmp_var.h	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp_var.h,v 1.17 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/igmp_var.h,v 1.5 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp_var.h,v 1.6 2006/09/03 18:52:29 dillon Exp $
  */
 
 #ifndef _NETINET_IGMP_VAR_H_
@@ -76,7 +76,7 @@ struct igmpstat {
 };
 
 #ifdef _KERNEL
-#define IGMP_RANDOM_DELAY(X) (random() % (X) + 1)
+#define IGMP_RANDOM_DELAY(X) (krandom() % (X) + 1)
 
 /*
  * States for IGMPv2's leave processing

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.41 2006/08/12 00:26:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.42 2006/09/03 18:52:30 dillon Exp $
  */
 
 /*
@@ -626,7 +626,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 
 	/* Get a pretty random xid to start with */
 	if (!nfs_xid) 
-		nfs_xid = random();
+		nfs_xid = krandom();
 	/*
 	 * Skip zero xid if it should ever happen.
 	 */

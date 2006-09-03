@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.23 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.24 2006/09/03 18:52:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -635,7 +635,7 @@ ffs_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 	 * Set up a new generation number for this inode.
 	 */
 	if (ip->i_gen == 0 || ++ip->i_gen == 0)
-		ip->i_gen = random() / 2 + 1;
+		ip->i_gen = krandom() / 2 + 1;
 	return (0);
 noinodes:
 	ffs_fserr(fs, cred->cr_uid, "out of inodes");

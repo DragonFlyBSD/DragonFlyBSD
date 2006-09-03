@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.60 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.61 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -381,7 +381,7 @@ proc0_post(void *dummy __unused)
 	 * XXX: Does read_random() contain enough bits to be used here ?
 	 */
 	nanotime(&ts);
-	srandom(ts.tv_sec ^ ts.tv_nsec);
+	skrandom(ts.tv_sec ^ ts.tv_nsec);
 }
 
 static int

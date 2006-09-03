@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/dragon/dragon_saver.c,v 1.1.2.1 2003/05/11 01:17:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.5 2005/06/11 00:26:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.6 2006/09/03 18:52:26 dillon Exp $
  */
 
 #include	<sys/param.h>
@@ -122,12 +122,12 @@ dragon_update(video_adapter_t *adp)
 
 		/* set palette of each curves */
 		for (tmp = 0; tmp < 3*CURVE; ++tmp) {
-			dragon_pal[3+tmp] = (u_char)random(); 
+			dragon_pal[3+tmp] = (u_char)krandom(); 
 		}
 		load_palette(adp, dragon_pal);
 
-		mul = ((random() & 7) + 1) * (SCRW / 320);
-		org_x = random() % SCRW; org_y = random() % SCRH;
+		mul = ((krandom() & 7) + 1) * (SCRW / 320);
+		org_x = krandom() % SCRW; org_y = krandom() % SCRH;
 
 		curve = 0;
 		order = ORDER;

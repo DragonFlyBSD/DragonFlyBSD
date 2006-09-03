@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.15 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.16 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -148,7 +148,7 @@ generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 
 		for (i = 0; i < 2; i++) {
 			microtime(&tv);
-			val32 = random() ^ tv.tv_usec;
+			val32 = krandom() ^ tv.tv_usec;
 			bcopy(&val32, seed + sizeof(val32) * i, sizeof(val32));
 		}
 	} else {
@@ -192,7 +192,7 @@ generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 		    "generate_tmp_ifid: computed MD5 value is zero.\n");
 
 		microtime(&tv);
-		val32 = random() ^ tv.tv_usec;
+		val32 = krandom() ^ tv.tv_usec;
 		val32 = 1 + (val32 % (0xffffffff - 1));
 	}
 

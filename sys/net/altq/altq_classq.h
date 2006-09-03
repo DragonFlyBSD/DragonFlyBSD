@@ -1,5 +1,5 @@
 /*	$KAME: altq_classq.h,v 1.6 2003/01/07 07:33:38 kjc Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_classq.h,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_classq.h,v 1.2 2006/09/03 18:52:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
@@ -138,7 +138,7 @@ _getq_random(class_queue_t *q)
 	else {
 		struct mbuf *prev = NULL;
 
-		n = random() % qlen(q) + 1;
+		n = krandom() % qlen(q) + 1;
 		for (i = 0; i < n; i++) {
 			prev = m;
 			m = m->m_nextpkt;

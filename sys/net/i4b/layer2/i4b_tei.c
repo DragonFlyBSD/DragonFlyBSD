@@ -30,7 +30,7 @@
  *	$Id: i4b_tei.c,v 1.25 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_tei.c,v 1.6.2.2 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.6 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.7 2006/09/03 18:52:29 dillon Exp $
  *
  *      last edit-date: [Fri Oct 13 15:56:35 2000]
  *
@@ -276,7 +276,7 @@ i4b_make_rand_ri(l2_softc_t *l2sc)
 #ifdef RANDOMDEV
         read_random((char *)&val, sizeof(val));
 #else
-	val = (u_short)random();
+	val = (u_short)krandom();
 #endif /* RANDOMDEV */ 
 	l2sc->last_rih = (val >> 8) & 0x00ff;
 	l2sc->last_ril = val & 0x00ff;

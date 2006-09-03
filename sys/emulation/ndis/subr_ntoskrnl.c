@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.7 2005/12/10 16:06:20 swildner Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.8 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -1217,8 +1217,8 @@ rand(void)
 	struct timeval		tv;
 
 	microtime(&tv);
-	srandom(tv.tv_usec);
-	return((int)random());
+	skrandom(tv.tv_usec);
+	return((int)krandom());
 }
 
 __stdcall static uint8_t

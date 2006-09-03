@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.9 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.10 2006/09/03 18:52:29 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -84,12 +84,12 @@ int	 fls (int);
 int	 locc (int, char *, u_int);
 void	 qsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
-u_long	 random (void);
+u_long	 krandom (void);
 char	*index (const char *, int);
 char	*rindex (const char *, int);
 int	 scanc (u_int, const u_char *, const u_char *, int);
 int	 skpc (int, int, char *);
-void	 srandom (u_long);
+void	 skrandom (u_long);
 char	*strcat (char * __restrict, const char * __restrict);
 int	 strcmp (const char *, const char *);
 char	*strcpy (char * __restrict, const char * __restrict);

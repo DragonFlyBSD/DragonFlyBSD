@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.24 2006/08/23 20:43:17 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.25 2006/09/03 18:52:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1320,7 +1320,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 
 			/* Generate new local sequence number */
 #if defined(__DragonFly__)
-			sp->pp_seq[IDX_LCP] = random();
+			sp->pp_seq[IDX_LCP] = krandom();
 #else
 			sp->pp_seq[IDX_LCP] ^= time.tv_sec ^ time.tv_usec;
 #endif
@@ -2611,7 +2611,7 @@ sppp_lcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 					if (debug)
 						addlog("magic glitch ");
 #if defined(__DragonFly__)
-					sp->lcp.magic = random();
+					sp->lcp.magic = krandom();
 #else
 					sp->lcp.magic = time.tv_sec + time.tv_usec;
 #endif
@@ -2797,7 +2797,7 @@ sppp_lcp_scr(struct sppp *sp)
 	if (sp->lcp.opts & (1 << LCP_OPT_MAGIC)) {
 		if (! sp->lcp.magic)
 #if defined(__DragonFly__)
-			sp->lcp.magic = random();
+			sp->lcp.magic = krandom();
 #else
 			sp->lcp.magic = time.tv_sec + time.tv_usec;
 #endif
@@ -4303,7 +4303,7 @@ sppp_chap_tlu(struct sppp *sp)
 		 * Compute the re-challenge timeout.  This will yield
 		 * a number between 300 and 810 seconds.
 		 */
-		i = 300 + ((unsigned)(random() & 0xff00) >> 7);
+		i = 300 + ((unsigned)(krandom() & 0xff00) >> 7);
 		callout_reset(&sp->timeout[IDX_CHAP], i * hz, chap.TO, sp);
 	}
 
@@ -4373,10 +4373,10 @@ sppp_chap_scr(struct sppp *sp)
 	seed = tv.tv_sec ^ tv.tv_usec;
 	}
 #endif
-	ch[0] = seed ^ random();
-	ch[1] = seed ^ random();
-	ch[2] = seed ^ random();
-	ch[3] = seed ^ random();
+	ch[0] = seed ^ krandom();
+	ch[1] = seed ^ krandom();
+	ch[2] = seed ^ krandom();
+	ch[3] = seed ^ krandom();
 	clen = AUTHKEYLEN;
 
 	sp->confid[IDX_CHAP] = ++sp->pp_seq[IDX_CHAP];

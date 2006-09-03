@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.65 2006/09/03 18:29:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.66 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -968,7 +968,7 @@ loadav(void *arg)
 	 * random variation to avoid synchronisation with processes that
 	 * run at regular intervals.
 	 */
-	callout_reset(&loadav_callout, hz * 4 + (int)(random() % (hz * 2 + 1)),
+	callout_reset(&loadav_callout, hz * 4 + (int)(krandom() % (hz * 2 + 1)),
 		      loadav, NULL);
 }
 

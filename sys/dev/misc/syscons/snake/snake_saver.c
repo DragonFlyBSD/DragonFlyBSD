@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/snake/snake_saver.c,v 1.26.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/snake/snake_saver.c,v 1.5 2005/03/28 21:30:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/snake/snake_saver.c,v 1.6 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -93,11 +93,11 @@ snake_saver(video_adapter_t *adp, int blank)
 		f = savs[0];
 		if ((f % scp->xsize) == 0 ||
 		    (f % scp->xsize) == scp->xsize - 1 ||
-		    (random() % 50) == 0)
+		    (krandom() % 50) == 0)
 			dirx = -dirx;
 		if ((f / scp->xsize) == 0 ||
 		    (f / scp->xsize) == scp->ysize - 1 ||
-		    (random() % 20) == 0)
+		    (krandom() % 20) == 0)
 			diry = -diry;
 		savs[0] += dirx + diry;
 		for (f=messagelen-1; f>=0; f--)

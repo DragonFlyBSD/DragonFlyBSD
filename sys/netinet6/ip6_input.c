@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.28 2006/05/20 06:32:41 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.29 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -206,9 +206,9 @@ ip6_init(void)
 	 * as initialization during bootstrap time occur in fixed order.
 	 */
 	microtime(&tv);
-	ip6_flow_seq = random() ^ tv.tv_usec;
+	ip6_flow_seq = krandom() ^ tv.tv_usec;
 	microtime(&tv);
-	ip6_desync_factor = (random() ^ tv.tv_usec) % MAX_TEMP_DESYNC_FACTOR;
+	ip6_desync_factor = (krandom() ^ tv.tv_usec) % MAX_TEMP_DESYNC_FACTOR;
 }
 
 static void

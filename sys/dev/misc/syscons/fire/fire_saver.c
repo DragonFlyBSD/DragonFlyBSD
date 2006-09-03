@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/fire/fire_saver.c,v 1.6.2.1 2000/05/10 14:01:23 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/fire/fire_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fire/fire_saver.c,v 1.4 2006/09/03 18:52:27 dillon Exp $
  */
 
 /*
@@ -85,7 +85,7 @@ fire_saver(video_adapter_t *adp, int blank)
 	}
 	/* make a new bottom line */
 	for (x = 0, y = Y_SIZE; x < X_SIZE; x++)
-	    buf[x + (y * X_SIZE)] = random() % 160 + 96;
+	    buf[x + (y * X_SIZE)] = krandom() % 160 + 96;
 
 	/* fade the flames out */
 	for (y = 0; y < Y_SIZE; y++) {

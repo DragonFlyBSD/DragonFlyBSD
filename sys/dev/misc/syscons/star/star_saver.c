@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/star/star_saver.c,v 1.23.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.4 2005/02/13 03:02:26 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.5 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,16 +78,16 @@ star_saver(video_adapter_t *adp, int blank)
 			blanked = TRUE;
 			for(i=0; i<NUM_STARS; i++) {
 				stars[i][0] =
-					random() % (scp->xsize*scp->ysize);
+					krandom() % (scp->xsize*scp->ysize);
 				stars[i][1] = 0;
 			}
 		}
-		cell = random() % NUM_STARS;
+		cell = krandom() % NUM_STARS;
 		sc_vtb_putc(&scp->scr, stars[cell][0], 
 			    sc->scr_map[pattern[stars[cell][1]]],
-			    colors[random()%sizeof(colors)] << 8);
-		if ((stars[cell][1]+=(random()%4)) >= sizeof(pattern)-1) {
-			stars[cell][0] = random() % (scp->xsize*scp->ysize);
+			    colors[krandom()%sizeof(colors)] << 8);
+		if ((stars[cell][1]+=(krandom()%4)) >= sizeof(pattern)-1) {
+			stars[cell][0] = krandom() % (scp->xsize*scp->ysize);
 			stars[cell][1] = 0;
 		}
 	}

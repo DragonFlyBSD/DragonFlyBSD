@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/mld6_var.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/mld6_var.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/mld6_var.h,v 1.5 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: mld6_var.h,v 1.4 2000/03/25 07:23:54 sumikawa Exp $	*/
 
 /*
@@ -36,7 +36,7 @@
 
 #ifdef _KERNEL
 
-#define MLD6_RANDOM_DELAY(X) (random() % (X) + 1)
+#define MLD6_RANDOM_DELAY(X) (krandom() % (X) + 1)
 
 /*
  * States for MLD stop-listening processing

@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.11 2006/04/04 17:34:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.12 2006/09/03 18:52:29 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -419,7 +419,7 @@ ext2_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 	 * XXX check if this makes sense in ext2
 	 */
 	if (ip->i_gen == 0 || ++ip->i_gen == 0)
-		ip->i_gen = random() / 2 + 1;
+		ip->i_gen = krandom() / 2 + 1;
 /*
 printf("ext2_valloc: allocated inode %d\n", ino);
 */

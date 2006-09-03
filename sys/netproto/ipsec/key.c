@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.14 2006/01/14 13:36:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.15 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -4194,7 +4194,7 @@ key_timehandler(void *unused)
 static void
 key_srandom(void)
 {
-	srandom(time_second);
+	skrandom(time_second);
 }
 
 u_long
@@ -4217,7 +4217,7 @@ key_randomfill(void *p, size_t l)
 	n = (size_t)read_random(p, (u_int)l);
 	/* last resort */
 	while (n < l) {
-		v = random();
+		v = krandom();
 		bcopy(&v, (u_int8_t *)p + n,
 		    l - n < sizeof(v) ? l - n : sizeof(v));
 		n += sizeof(v);

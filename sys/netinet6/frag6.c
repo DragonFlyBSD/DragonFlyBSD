@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.8 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.9 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -91,7 +91,7 @@ frag6_init(void)
 	 * as initialization during bootstrap time occur in fixed order.
 	 */
 	microtime(&tv);
-	ip6_id = random() ^ tv.tv_usec;
+	ip6_id = krandom() ^ tv.tv_usec;
 	ip6q.ip6q_next = ip6q.ip6q_prev = &ip6q;
 }
 

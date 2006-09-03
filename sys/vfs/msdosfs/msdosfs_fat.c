@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_fat.c,v 1.23 2000/01/27 14:43:06 nyan Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.9 2006/03/24 22:39:22 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_fat.c,v 1.10 2006/09/03 18:52:30 dillon Exp $ */
 /*	$NetBSD: msdosfs_fat.c,v 1.28 1997/11/17 15:36:49 ws Exp $	*/
 
 /*-
@@ -756,7 +756,7 @@ clusteralloc(struct msdosfsmount *pmp, u_long start, u_long count,
 	 * Start at a (pseudo) random place to maximize cluster runs
 	 * under multiple writers.
 	 */
-	newst = random() % (pmp->pm_maxcluster + 1);
+	newst = krandom() % (pmp->pm_maxcluster + 1);
 	foundl = 0;
 
 	for (cn = newst; cn <= pmp->pm_maxcluster;) {

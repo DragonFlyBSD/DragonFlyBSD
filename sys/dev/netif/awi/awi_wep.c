@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.14 2006/08/06 12:49:04 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.15 2006/09/03 18:52:28 dillon Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -300,7 +300,7 @@ awi_wep_encrypt(struct awi_softc *sc, struct mbuf *m0, int txflag)
 		kid = sc->sc_wep_defkid;
 		wh = mtod(n, struct ieee80211_frame *);
 		wh->i_fc[1] |= IEEE80211_FC1_WEP;
-		iv = random();
+		iv = krandom();
 		/*
 		 * store IV, byte order is not the matter since it's random.
 		 * assuming IEEE80211_WEP_IVLEN is 3

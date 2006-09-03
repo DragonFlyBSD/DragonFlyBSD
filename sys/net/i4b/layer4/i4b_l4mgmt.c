@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.8 2005/06/14 21:19:19 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.9 2006/09/03 18:52:29 dillon Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -247,7 +247,7 @@ get_rand_cr(int unit)
 #ifdef RANDOMDEV
 		read_random((char *)&val, sizeof(val));
 #else
-		val = (u_char)random();
+		val = (u_char)krandom();
 #endif /* RANDOMDEV */
 
 		retval = val & 0x7f;

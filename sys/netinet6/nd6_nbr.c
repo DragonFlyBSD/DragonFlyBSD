@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.13 2006/09/03 18:29:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.14 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -1094,9 +1094,9 @@ nd6_dad_start(struct ifaddr *ifa,
 		int ntick;
 
 		if (*tick == 0)
-			ntick = random() % (MAX_RTR_SOLICITATION_DELAY * hz);
+			ntick = krandom() % (MAX_RTR_SOLICITATION_DELAY * hz);
 		else
-			ntick = *tick + random() % (hz / 2);
+			ntick = *tick + krandom() % (hz / 2);
 		*tick = ntick;
 		nd6_dad_starttimer(dp, ntick);
 	}

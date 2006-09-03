@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/warp/warp_saver.c,v 1.7.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.4 2005/06/11 00:26:51 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.5 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,7 @@ warp_init(video_adapter_t *adp)
 
     /* randomize the star field */
     for (i = 0; i < STARS; i++) {
-	star[i] = random() % (SCRW*SCRH);
+	star[i] = krandom() % (SCRW*SCRH);
     }
     
     blanked = 0;

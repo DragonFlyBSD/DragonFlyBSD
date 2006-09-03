@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.18 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.19 2006/09/03 18:52:29 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -978,7 +978,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
     if (fs->flags_fs & DN_QSIZE_IS_BYTES)
 	p_b = (p_b * len) / fs->max_pkt_size;
     if (++q->count == 0)
-	q->random = random() & 0xffff;
+	q->random = krandom() & 0xffff;
     else {
 	/*
 	 * q->count counts packets arrived since last drop, so a greater
@@ -988,7 +988,7 @@ red_drops(struct dn_flow_set *fs, struct dn_flow_queue *q, int len)
 	    q->count = 0;
 	    DEB(printf("- red drop");)
 	    /* after a drop we calculate a new random value */
-	    q->random = random() & 0xffff;
+	    q->random = krandom() & 0xffff;
 	    return 1;    /* drop */
 	}
     }
@@ -1101,7 +1101,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
      */
     q->tot_bytes += len ;
     q->tot_pkts++ ;
-    if ( fs->plr && random() < fs->plr )
+    if ( fs->plr && krandom() < fs->plr )
 	goto dropit ;		/* random pkt drop			*/
     if ( fs->flags_fs & DN_QSIZE_IS_BYTES) {
     	if (q->len_bytes > fs->qsize)

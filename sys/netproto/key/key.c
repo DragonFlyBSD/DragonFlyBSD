@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.16 2006/03/29 23:17:16 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.17 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -4349,7 +4349,7 @@ key_srandom(void)
 
 	microtime(&tv);
 
-	srandom(tv.tv_usec);
+	skrandom(tv.tv_usec);
 
 	return;
 }
@@ -4374,7 +4374,7 @@ key_randomfill(void *p, size_t l)
 	n = (size_t)read_random(p, (u_int)l);
 	/* last resort */
 	while (n < l) {
-		v = random();
+		v = krandom();
 		bcopy(&v, (u_int8_t *)p + n,
 		    l - n < sizeof(v) ? l - n : sizeof(v));
 		n += sizeof(v);

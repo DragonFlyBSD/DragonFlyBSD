@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.6 2005/06/11 00:26:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.7 2006/09/03 18:52:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,7 +83,7 @@ rain_saver(video_adapter_t *adp, int blank)
 	    crit_exit();
 	    bzero(vid, SCRW*SCRH);
 	    for (i = 0; i < SCRW; i += 2)
-		vid[i] = 1 + (random() % RAINMAX);
+		vid[i] = 1 + (krandom() % RAINMAX);
 	    for (j = 1, k = SCRW; j < SCRH; j++)
 		for (i = 0; i < SCRW; i += 2, k += 2)
 		    vid[k] = (vid[k-SCRW] < RAINMAX) ? 1 + vid[k-SCRW] : 1;

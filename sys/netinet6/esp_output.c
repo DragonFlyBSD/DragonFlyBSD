@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.7 2006/05/01 16:27:35 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.8 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -453,7 +453,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 		n = (randpadmax - plen + extendsiz) / padbound;
 
 		if (n > 0)
-			n = (random() % n) * padbound;
+			n = (krandom() % n) * padbound;
 		else
 			n = 0;
 

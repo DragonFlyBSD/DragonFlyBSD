@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.8 2006/09/03 18:52:29 dillon Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*
@@ -228,7 +228,7 @@ struct	in6_ndifreq {
 #define TEMPADDR_REGEN_ADVANCE		5	/* sec */
 #define MAX_TEMP_DESYNC_FACTOR		600	/* 10 min */
 #define ND_COMPUTE_RTIME(x) \
-		(((MIN_RANDOM_FACTOR * (x >> 10)) + (random() & \
+		(((MIN_RANDOM_FACTOR * (x >> 10)) + (krandom() & \
 		((MAX_RANDOM_FACTOR - MIN_RANDOM_FACTOR) * (x >> 10)))) /1000)
 
 TAILQ_HEAD(nd_drhead, nd_defrouter);

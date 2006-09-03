@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.16 2006/06/25 11:02:39 corecode Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.17 2006/09/03 18:52:29 dillon Exp $
  */
 
 #define        DEB(x)
@@ -1221,7 +1221,7 @@ again:
 			f = q->rule ;
 			q->pcnt++ ;
 			q->bcnt += ip_len;
-			goto got_match ; /* random not allowed here */
+			goto got_match ; /* krandom not allowed here */
 		    }
 		    /* if this was a check-only rule, continue with next */
 		    if (f->fw_flg & IP_FW_F_CHECK_S)
@@ -1446,7 +1446,7 @@ bogusfrag:
 		}
 
 rnd_then_got_match:
-		if ( f->dont_match_prob && random() < f->dont_match_prob )
+		if ( f->dont_match_prob && krandom() < f->dont_match_prob )
 			continue ;
 got_match:
 		/*
