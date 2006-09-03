@@ -32,23 +32,24 @@
  *
  * @(#)dr_main.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/games/sail/dr_main.c,v 1.4 1999/11/30 03:49:33 billf Exp $
- * $DragonFly: src/games/sail/dr_main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/dr_main.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "driver.h"
 
-dr_main()
+int
+dr_main(void)
 {
 	int n;
 	struct ship *sp;
 	int nat[NNATION];
 	int value = 0;
 
-	(void) signal(SIGINT, SIG_IGN);
-	(void) signal(SIGQUIT, SIG_IGN);
-	(void) signal(SIGTSTP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
 	if (issetuid)
-		(void) setuid(geteuid());
+		setuid(geteuid());
 	if (game < 0 || game >= NSCENE) {
 		fprintf(stderr, "DRIVER: Bad game number %d\n", game);
 		exit(1);
@@ -64,7 +65,7 @@ dr_main()
 	foreachship(sp) {
 		if (sp->file == NULL &&
 		    (sp->file = (struct File *)calloc(1, sizeof (struct File))) == NULL) {
-			(void) fprintf(stderr, "DRIVER: Out of memory.\n");
+			fprintf(stderr, "DRIVER: Out of memory.\n");
 			exit(1);
 		}
 		sp->file->index = sp - SHIP(0);

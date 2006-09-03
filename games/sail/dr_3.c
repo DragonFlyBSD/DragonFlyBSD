@@ -32,12 +32,18 @@
  *
  * @(#)dr_3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_3.c,v 1.6 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_3.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/dr_3.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "driver.h"
 
-moveall()		/* move all comp ships */
+static bool	stillmoving(int);
+static bool	isolated(struct ship *);
+static bool	push(struct ship *, struct ship *);
+static void	step(char, struct ship *, char *);
+
+void
+moveall(void)		/* move all comp ships */
 {
 	struct ship *sp, *sq;		/* r11, r10 */
 	int n;				/* r9 */
@@ -77,10 +83,10 @@ moveall()		/* move all comp ships */
 	n = 0;
 	foreachship(sp) {
 		if (snagged(sp))
-			(void) strcpy(sp->file->movebuf, "d");
+			strcpy(sp->file->movebuf, "d");
 		else
 			if (*sp->file->movebuf != 'd')
-				(void) strcat(sp->file->movebuf, "d");
+				strcat(sp->file->movebuf, "d");
 		row[n] = sp->file->row;
 		col[n] = sp->file->col;
 		dir[n] = sp->file->dir;
@@ -175,8 +181,8 @@ moveall()		/* move all comp ships */
 	}
 }
 
-stillmoving(k)
-int k;
+static bool
+stillmoving(int k)
 {
 	struct ship *sp;
 
@@ -186,8 +192,8 @@ int k;
 	return 0;
 }
 
-isolated(ship)
-struct ship *ship;
+static bool
+isolated(struct ship *ship)
 {
 	struct ship *sp;
 
@@ -198,8 +204,8 @@ struct ship *ship;
 	return 1;
 }
 
-push(from, to)
-struct ship *from, *to;
+static bool
+push(struct ship *from, struct ship *to)
 {
 	int bs, sb;
 
@@ -212,10 +218,8 @@ struct ship *from, *to;
 	return from < to;
 }
 
-step(com, sp, moved)
-char com;
-struct ship *sp;
-char *moved;
+static void
+step(char com, struct ship *sp, char *moved)
 {
 	int dist;
 
@@ -243,7 +247,7 @@ char *moved;
 	case 'd':
 		if (!*moved) {
 			if (windspeed != 0 && ++sp->file->drift > 2 &&
-			    (sp->specs->class >= 3 && !snagged(sp)
+			    ((sp->specs->class >= 3 && !snagged(sp))
 			     || (turn & 1) == 0)) {
 				sp->file->row -= dr[winddir];
 				sp->file->col -= dc[winddir];
@@ -254,10 +258,8 @@ char *moved;
 	}
 }
 
-sendbp(from, to, sections, isdefense)
-struct ship *from, *to;
-int sections;
-char isdefense;
+void
+sendbp(struct ship *from, struct ship *to, int sections, char isdefense)
 {
 	int n;
 	struct BP *bp;
@@ -276,9 +278,8 @@ char isdefense;
 	}
 }
 
-toughmelee(ship, to, isdefense, count)
-struct ship *ship, *to;
-int isdefense, count;
+int
+toughmelee(struct ship *ship, struct ship *to, int isdefense, int count)
 {
 	struct BP *bp;
 	int obp = 0;
@@ -308,7 +309,8 @@ int isdefense, count;
 		return 0;
 }
 
-reload()
+void
+reload(void)
 {
 	struct ship *sp;
 
@@ -317,22 +319,23 @@ reload()
 	}
 }
 
-checksails()
+void
+checksails(void)
 {
 	struct ship *sp;
 	int rig, full;
-	struct ship *close;
+	struct ship *closest;
 
 	foreachship(sp) {
 		if (sp->file->captain[0] != 0)
 			continue;
 		rig = sp->specs->rig1;
-		if (windspeed == 6 || windspeed == 5 && sp->specs->class > 4)
+		if (windspeed == 6 || (windspeed == 5 && sp->specs->class > 4))
 			rig = 0;
 		if (rig && sp->specs->crew3) {
-			close = closestenemy(sp, 0, 0);
-			if (close != 0) {
-				if (range(sp, close) > 9)
+			closest = closestenemy(sp, 0, 0);
+			if (closest != 0) {
+				if (range(sp, closest) > 9)
 					full = 1;
 				else
 					full = 0;

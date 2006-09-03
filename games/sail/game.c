@@ -32,19 +32,18 @@
  *
  * @(#)game.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/game.c,v 1.5 1999/11/30 03:49:33 billf Exp $
- * $DragonFly: src/games/sail/game.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/game.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
-maxturns(ship, af)
-struct ship *ship;
-char *af;
+int
+maxturns(struct ship *ship, char *af)
 {
 	int turns;
 
 	turns = ship->specs->ta;
-	if (*af = (ship->file->drift > 1 && turns)) {
+	if ((*af = (ship->file->drift > 1 && turns))) {
 		turns--;
 		if (ship->file->FS == 1)
 			turns = 0;
@@ -52,9 +51,8 @@ char *af;
 	return turns;
 }
 
-maxmove(ship, dir, fs)
-struct ship *ship;
-int dir, fs;
+int
+maxmove(struct ship *ship, int dir, int fs)
 {
 	int riggone = 0, Move, flank = 0;
 

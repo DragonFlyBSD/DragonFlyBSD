@@ -32,13 +32,13 @@
  *
  * @(#)dr_4.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_4.c,v 1.5 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_4.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/dr_4.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
-ungrap(from, to)
-struct ship *from, *to;
+void
+ungrap(struct ship *from, struct ship *to)
 {
 	int k;
 	char friend;
@@ -54,8 +54,8 @@ struct ship *from, *to;
 	}
 }
 
-grap(from, to)
-struct ship *from, *to;
+void
+grap(struct ship *from, struct ship *to)
 {
 	if (capship(from)->nationality != capship(to)->nationality && die() > 2)
 		return;

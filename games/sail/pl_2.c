@@ -32,12 +32,13 @@
  *
  * @(#)pl_2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_2.c,v 1.4 1999/11/30 03:49:36 billf Exp $
- * $DragonFly: src/games/sail/pl_2.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_2.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
 
-play()
+void
+play(void)
 {
 	struct ship *sp;
 
@@ -105,7 +106,7 @@ play()
 			break;
 		case 'i':
 			if ((sp = closestenemy(ms, 0, 1)) == 0)
-				Signal("No more ships left.");
+				Signal("No more ships left.", (struct ship *)0);
 			else
 				eyeball(sp);
 			break;

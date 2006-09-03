@@ -32,12 +32,15 @@
  *
  * @(#)pl_6.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_6.c,v 1.5 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_6.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_6.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
 
-repair()
+static bool	turned(void);
+
+void
+repair(void)
 {
 	char c;
 	char *repairs;
@@ -130,7 +133,8 @@ repair()
 	repaired = 1;
 }
 
-turned()
+static bool
+turned(void)
 {
 	char *p;
 
@@ -140,7 +144,8 @@ turned()
 	return 0;
 }
 
-loadplayer()
+void
+loadplayer(void)
 {
 	char c;
 	int loadL, loadR, ready, load;
@@ -159,7 +164,7 @@ loadplayer()
 		else
 			loadR = 1;
 	}
-	if (!loadL && loadR || loadL && !loadR) {
+	if ((!loadL && loadR) || (loadL && !loadR)) {
 		c = sgetch("Reload with (round, double, chain, grape)? ",
 			(struct ship *)0, 1);
 		switch (c) {

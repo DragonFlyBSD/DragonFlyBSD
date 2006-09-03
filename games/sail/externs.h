@@ -31,31 +31,35 @@
  * SUCH DAMAGE.
  *
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
- * $DragonFly: src/games/sail/externs.h,v 1.3 2006/03/12 14:06:39 swildner Exp $
+ * $DragonFly: src/games/sail/externs.h,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
+#include <stdarg.h>
+#include <stdbool.h>
+#include <string.h>
 #include <stdio.h>
 #include <signal.h>
 #include <ctype.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "machdep.h"
 
 	/* program mode */
-int mode;
-jmp_buf restart;
+extern int mode;
+extern jmp_buf restart;
 #define MODE_PLAYER	1
 #define MODE_DRIVER	2
 #define MODE_LOGGER	3
 
 	/* command line flags */
-char debug;				/* -D */
-char randomize;				/* -x, give first available ship */
-char longfmt;				/* -l, print score in long format */
-char nobells;				/* -b, don't ring bell before Signal */
+extern char debug;				/* -D */
+extern char randomize;				/* -x, give first available ship */
+extern char longfmt;				/* -l, print score in long format */
+extern char nobells;				/* -b, don't ring bell before Signal */
 
 	/* other initial modes */
-char issetuid;				/* running setuid */
+extern char issetuid;				/* running setuid */
 
 #define die()           (random() % 6 + 1)
 #define sqr(a)		((a) * (a))
@@ -184,8 +188,8 @@ struct File {
 	int index;
 	char captain[20];		/* 0 */
 	short points;			/* 20 */
-	char loadL;			/* 22 */
-	char loadR;			/* 24 */
+	unsigned char loadL;		/* 22 */
+	unsigned char loadR;		/* 24 */
 	char readyL;			/* 26 */
 	char readyR;			/* 28 */
 	struct BP OBP[NBP];		/* 30 */
@@ -205,7 +209,7 @@ struct File {
 	char FS;			/* 280 */
 	char explode;			/* 282 */
 	char sink;			/* 284 */
-	char dir;
+	unsigned char dir;
 	short col;
 	short row;
 	char loadwith;
@@ -213,9 +217,9 @@ struct File {
 };
 
 struct ship {
-	char *shipname;			/* 0 */
+	const char *shipname;		/* 0 */
 	struct shipspecs *specs;	/* 2 */
-	char nationality;		/* 4 */
+	unsigned char nationality;	/* 4 */
 	short shiprow;			/* 6 */
 	short shipcol;			/* 8 */
 	char shipdir;			/* 10 */
@@ -226,21 +230,21 @@ struct scenario {
 	char winddir;			/* 0 */
 	char windspeed;			/* 2 */
 	char windchange;		/* 4 */
-	char vessels;			/* 12 */
-	char *name;			/* 14 */
+	unsigned char vessels;		/* 12 */
+	const char *name;		/* 14 */
 	struct ship ship[NSHIP];	/* 16 */
 };
 extern struct scenario scene[];
-int nscene;
+extern int nscene;
 
 struct shipspecs {
 	char bs;
 	char fs;
 	char ta;
 	short guns;
-	char class;
+	unsigned char class;
 	char hull;
-	char qual;
+	unsigned char qual;
 	char crew1;
 	char crew2;
 	char crew3;
@@ -256,8 +260,8 @@ struct shipspecs {
 };
 extern struct shipspecs specs[];
 
-struct scenario *cc;		/* the current scenario */
-struct ship *ls;		/* &cc->ship[cc->vessels] */
+extern struct scenario *cc;	/* the current scenario */
+extern struct ship *ls;		/* &cc->ship[cc->vessels] */
 
 #define SHIP(s)		(&cc->ship[s])
 #define foreachship(sp)	for ((sp) = cc->ship; (sp) < ls; (sp)++)
@@ -265,49 +269,148 @@ struct ship *ls;		/* &cc->ship[cc->vessels] */
 struct windeffects {
 	char A, B, C, D;
 };
-struct windeffects WET[7][6];
+extern struct windeffects WET[7][6];
 
 struct Tables {
 	char H, G, C, R;
 };
-struct Tables RigTable[11][6];
-struct Tables HullTable[11][6];
+extern struct Tables RigTable[11][6];
+extern struct Tables HullTable[11][6];
 
-char AMMO[9][4];
-char HDT[9][10];
-char HDTrake[9][10];
-char QUAL[9][5];
-char MT[9][3];
+extern char AMMO[9][4];
+extern char HDT[9][10];
+extern char HDTrake[9][10];
+extern char QUAL[9][5];
+extern char MT[9][3];
 
-extern char *countryname[];
-extern char *classname[];
-extern char *directionname[];
-extern char *qualname[];
+extern const char *countryname[];
+extern const char *classname[];
+extern const char *directionname[];
+extern const char *qualname[];
 extern char loadname[];
 
 extern char rangeofshot[];
 
 extern char dr[], dc[];
 
-int winddir;
-int windspeed;
-int turn;
-int game;
-int alive;
-int people;
-char hasdriver;
+extern int winddir;
+extern int windspeed;
+extern int turn;
+extern int game;
+extern int alive;
+extern int people;
+extern char hasdriver;
 
-char *info();
-char *quality();
-double arctan();
-char *saywhat();
-struct ship *closestenemy();
+/* assorted.c */
+void	table(int, int, int, struct ship *, struct ship *, int);
+void	Cleansnag(struct ship *, struct ship *, char, char);
 
-char *rindex();
-char *strcpy();
-char *strcat();
-char *strncpy();
-char *getenv();
-char *gets();
+/* dr_1.c */
+void	unfoul(void);
+void	boardcomp(void);
+void	resolve(void);
+void	compcombat(void);
+int	next(void);
 
-int	write_log(struct ship *s);
+/* dr_2.c */
+void	thinkofgrapples(void);
+void	checkup(void);
+void	prizecheck(void);
+void	closeon(struct ship *, struct ship *, char *, int, int, int);
+
+/* dr_3.c */
+void	moveall(void);
+void	sendbp(struct ship *, struct ship *, int, char);
+int	toughmelee(struct ship *, struct ship *, int, int);
+void	reload(void);
+void	checksails(void);
+
+/* dr_4.c */
+void	ungrap(struct ship *, struct ship *);
+void	grap(struct ship *, struct ship *);
+
+/* dr_5.c */
+void	subtract(struct ship *, int, int [3], struct ship *, int);
+int	mensent(struct ship *, struct ship *, int [3], struct ship **, int *, char);
+
+/* dr_main.c */
+int	dr_main(void);
+
+/* game.c */
+int	maxturns(struct ship *, char *);
+int	maxmove(struct ship *, int, int);
+
+/* lo_main.c */
+int	lo_main(void);
+
+/* misc.c */
+int	range(struct ship *, struct ship *);
+struct ship	*closestenemy(struct ship *, char, char);
+char	gunsbear(struct ship *, struct ship *);
+int	portside(struct ship *, struct ship *, int);
+char	colours(struct ship *);
+void	write_log(struct ship *);
+
+/* parties.c */
+bool	meleeing(struct ship *, struct ship *);
+bool	boarding(struct ship *, char);
+void	unboard(struct ship *, struct ship *, char);
+
+/* pl_1.c */
+void	leave(int);
+void	choke(void);
+void	child(void);
+
+/* pl_2.c */
+void	play(void);
+
+/* pl_3.c */
+void	acceptcombat(void);
+void	grapungrap(void);
+void	unfoulplayer(void);
+
+/* pl_4.c */
+void	changesail(void);
+void	acceptsignal(void);
+void	lookout(void);
+const char	*saywhat(struct ship *, char);
+void	eyeball(struct ship *);
+
+/* pl_5.c */
+void	acceptmove(void);
+void	acceptboard(void);
+
+/* pl_6.c */
+void	repair(void);
+void	loadplayer(void);
+
+/* pl_7.c */
+void	initscreen(void);
+void	cleanupscreen(void);
+void	newturn(void);
+void	Signal(const char *, struct ship *, ...);
+int	sgetch(const char *, struct ship *, char);
+void	sgetstr(const char *, char *, int);
+void	draw_screen(void);
+void	draw_view(void);
+void	draw_turn(void);
+void	draw_stat(void);
+void	draw_slot(void);
+void	draw_board(void);
+void	centerview(void);
+void	upview(void);
+void	downview(void);
+void	leftview(void);
+void	rightview(void);
+
+/* pl_main.c */
+int	pl_main(void);
+
+/* sync.c */
+void	fmtship(char *, size_t, const char *, struct ship *);
+void	makesignal(struct ship *, const char *, struct ship *, ...);
+bool	sync_exists(int);
+int	sync_open(void);
+void	sync_close(char);
+void	Write(int, struct ship *, char, int, int, int, int);
+int	Sync(void);

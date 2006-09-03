@@ -33,22 +33,21 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/main.c,v 1.5 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/main.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
 /*ARGSUSED*/
-main(argc, argv)
-	int argc;
-	char **argv;
+int
+main(__unused int argc, char **argv)
 {
 	char *p;
 	int i;
 
 	srandomdev();
 	issetuid = getuid() != geteuid();
-	if (p = rindex(*argv, '/'))
+	if ((p = rindex(*argv, '/')))
 		p++;
 	else
 		p = *argv;
@@ -70,7 +69,7 @@ main(argc, argv)
 			debug++;
 			break;
 		case 'x':
-			randomize;
+			randomize++;
 			break;
 		case 'l':
 			longfmt++;
@@ -86,7 +85,7 @@ main(argc, argv)
 		game = atoi(*argv);
 	else
 		game = -1;
-	if (i = setjmp(restart))
+	if ((i = setjmp(restart)))
 		mode = i;
 	switch (mode) {
 	case MODE_PLAYER:

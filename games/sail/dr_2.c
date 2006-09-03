@@ -32,7 +32,7 @@
  *
  * @(#)dr_2.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_2.c,v 1.6 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_2.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/dr_2.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include <string.h>
@@ -40,7 +40,14 @@
 
 #define couldwin(f,t) (f->specs->crew2 > t->specs->crew2 * 1.5)
 
-thinkofgrapples()
+static char	strend(char *);
+static int	score(char *, struct ship *, struct ship *, char);
+static void	sail_move(char *, struct ship *, unsigned char *, short *, short *, char *);
+static void	try(char *, char *, int, int, int, int, int, struct ship *, struct ship *, int *, int);
+static void	rmend(char *);
+
+void
+thinkofgrapples(void)
 {
 	struct ship *sp, *sq;
 	char friendly;
@@ -70,7 +77,8 @@ thinkofgrapples()
 	}
 }
 
-checkup()
+void
+checkup(void)
 {
 	struct ship *sp, *sq;
 	char explode, sink;
@@ -100,7 +108,8 @@ checkup()
 	}
 }
 
-prizecheck()
+void
+prizecheck(void)
 {
 	struct ship *sp;
 
@@ -118,8 +127,8 @@ prizecheck()
 	}
 }
 
-strend(str)
-char *str;
+static char
+strend(char *str)
 {
 	char *p;
 
@@ -128,10 +137,8 @@ char *str;
 	return p == str ? 0 : p[-1];
 }
 
-closeon(from, to, command, ta, ma, af)
-struct ship *from, *to;
-char command[];
-int ma, ta, af;
+void
+closeon(struct ship *from, struct ship *to, char command[], int ta, int ma, int af)
 {
 	int high;
 	char temp[10];
@@ -143,10 +150,8 @@ int ma, ta, af;
 
 int dtab[] = {0,1,1,2,3,4,4,5};		/* diagonal distances in x==y */
 
-score(movement, ship, to, onlytemp)
-char movement[];
-struct ship *ship, *to;
-char onlytemp;
+static int
+score(char movement[], struct ship *ship, struct ship *to, char onlytemp)
 {
 	char drift;
 	int row, col, dir, total, ran;
@@ -159,7 +164,7 @@ char onlytemp;
 	drift = fp->drift;
 	sail_move(movement, ship, &fp->dir, &fp->row, &fp->col, &drift);
 	if (!*movement)
-		(void) strcpy(movement, "d");
+		strcpy(movement, "d");
 
 	ran = range(ship, to);
 	total = -50 * ran;
@@ -176,12 +181,8 @@ char onlytemp;
 	return total;
 }
 
-sail_move(p, ship, dir, row, col, drift)
-char *p;
-struct ship *ship;
-char *dir;
-short *row, *col;
-char *drift;
+static void
+sail_move(char *p, struct ship *ship, unsigned char *dir, short *row, short *col, char *drift)
 {
 	int dist;
 	char moved = 0;
@@ -210,7 +211,7 @@ char *drift;
 	}
 	if (!moved) {
 		if (windspeed != 0 && ++*drift > 2) {
-			if (ship->specs->class >= 3 && !snagged(ship)
+			if ((ship->specs->class >= 3 && !snagged(ship))
 			    || (turn & 1) == 0) {
 				*row -= dr[winddir];
 				*col -= dc[winddir];
@@ -220,10 +221,8 @@ char *drift;
 		*drift = 0;
 }
 
-try(command, temp, ma, ta, af, vma, dir, f, t, high, rakeme)
-struct ship *f, *t;
-int ma, ta, af, vma, dir, *high, rakeme;
-char command[], temp[];
+static void
+try(char command[], char temp[], int ma, int ta, int af, int vma, int dir, struct ship *f, struct ship *t, int *high, int rakeme)
 {
 	int new, n;
 	char st[4];
@@ -231,41 +230,41 @@ char command[], temp[];
 
 	if ((n = strend(temp)) < '1' || n > '9')
 		for (n = 1; vma - n >= 0; n++) {
-			(void) sprintf(st, "%d", n);
-			(void) strcat(temp, st);
+			sprintf(st, "%d", n);
+			strcat(temp, st);
 			new = score(temp, f, t, rakeme);
 			if (new > *high && (!rakeme || rakeyou)) {
 				*high = new;
-				(void) strcpy(command, temp);
+				strcpy(command, temp);
 			}
 			try(command, temp, ma-n, ta, af, vma-n,
 				dir, f, t, high, rakeme);
 			rmend(temp);
 		}
-	if (ma > 0 && ta > 0 && (n = strend(temp)) != 'l' && n != 'r' || !strlen(temp)) {
-		(void) strcat(temp, "r");
+	if ((ma > 0 && ta > 0 && (n = strend(temp)) != 'l' && n != 'r') || !strlen(temp)) {
+		strcat(temp, "r");
 		new = score(temp, f, t, rakeme);
-		if (new > *high && (!rakeme || gunsbear(f, t) && !gunsbear(t, f))) {
+		if (new > *high && (!rakeme || (gunsbear(f, t) && !gunsbear(t, f)))) {
 			*high = new;
-			(void) strcpy(command, temp);
+			strcpy(command, temp);
 		}
 		try(command, temp, ma-1, ta-1, af, min(ma-1, maxmove(f, (dir == 8 ? 1 : dir+1), 0)), (dir == 8 ? 1 : dir+1),f,t,high,rakeme);
 		rmend(temp);
 	}
 	if ((ma > 0 && ta > 0 && (n = strend(temp)) != 'l' && n != 'r') || !strlen(temp)){
-		(void) strcat(temp, "l");
+		strcat(temp, "l");
 		new = score(temp, f, t, rakeme);
 		if (new > *high && (!rakeme || (gunsbear(f, t) && !gunsbear(t, f)))){
 			*high = new;
-			(void) strcpy(command, temp);
+			strcpy(command, temp);
 		}
 		try(command, temp, ma-1, ta-1, af, (min(ma-1,maxmove(f, (dir-1 ? dir-1 : 8), 0))), (dir-1 ? dir -1 : 8), f, t, high, rakeme);
 		rmend(temp);
 	}
 }
 
-rmend(str)
-char *str;
+static void
+rmend(char *str)
 {
 	char *p;
 

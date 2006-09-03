@@ -32,7 +32,7 @@
  *
  * @(#)lo_main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/lo_main.c,v 1.2 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/lo_main.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/lo_main.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 /*
@@ -45,17 +45,18 @@
 #include "externs.h"
 #include "pathnames.h"
 
-char *title[] = {
+const char *title[] = {
 	"Admiral", "Commodore", "Captain", "Captain",
 	"Captain", "Captain", "Captain", "Commander",
 	"Commander", "Lieutenant"
 };
 
-lo_main()
+int
+lo_main(void)
 {
 	FILE *fp;
 	char sbuf[32];
-	int n = 0, people;
+	int n = 0, ppl;
 	struct passwd *pass;
 	struct logs log;
 	struct ship *ship;
@@ -64,7 +65,7 @@ lo_main()
 		perror(_PATH_LOGFILE);
 		exit(1);
 	}
-	switch (fread((char *)&people, sizeof people, 1, fp)) {
+	switch (fread((char *)&ppl, sizeof ppl, 1, fp)) {
 	case 0:
 		printf("Nobody has sailed yet.\n");
 		exit(0);
@@ -77,15 +78,15 @@ lo_main()
 	while (fread((char *)&log, sizeof log, 1, fp) == 1 &&
 	       log.l_name[0] != '\0') {
 		if (longfmt && (pass = getpwuid(log.l_uid)) != NULL)
-			(void) sprintf(sbuf, "%10.10s (%s)",
+			sprintf(sbuf, "%10.10s (%s)",
 				log.l_name, pass->pw_name);
 		else
-			(void) sprintf(sbuf, "%20.20s", log.l_name);
+			sprintf(sbuf, "%20.20s", log.l_name);
 		ship = &scene[log.l_gamenum].ship[log.l_shipnum];
 		printf("%-10s %21s of the %15s %3d points, %5.2f equiv\n",
 			title[n++], sbuf, ship->shipname, log.l_netpoints,
 			(float) log.l_netpoints / ship->specs->pts);
 	}
-	printf("\n%d people have played.\n", people);
+	printf("\n%d people have played.\n", ppl);
 	return 0;
 }

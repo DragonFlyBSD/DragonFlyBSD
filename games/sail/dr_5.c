@@ -32,15 +32,13 @@
  *
  * @(#)dr_5.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_5.c,v 1.4 1999/11/30 03:49:33 billf Exp $
- * $DragonFly: src/games/sail/dr_5.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/dr_5.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
-subtract(from, totalfrom, crewfrom, fromcap, pcfrom)
-struct ship *from, *fromcap;
-int pcfrom;
-int  totalfrom, crewfrom[3];
+void
+subtract(struct ship *from, int totalfrom, int crewfrom[3], struct ship *fromcap, int pcfrom)
 {
 	int n;
 
@@ -62,10 +60,8 @@ int  totalfrom, crewfrom[3];
 	}
 }
 
-mensent(from, to, crew, captured, pc, isdefense)
-struct ship *from, *to, **captured;
-int crew[3], *pc;
-char isdefense;
+int
+mensent(struct ship *from, struct ship *to, int crew[3], struct ship **captured, int *pc, char isdefense)
 {					/* returns # of crew squares sent */
 	int men = 0;
 	int n;

@@ -32,14 +32,13 @@
  *
  * @(#)parties.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/parties.c,v 1.5 1999/11/30 03:49:35 billf Exp $
- * $DragonFly: src/games/sail/parties.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/parties.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
-meleeing(from, to)
-struct ship *from;
-struct ship *to;
+bool
+meleeing(struct ship *from, struct ship *to)
 {
 	struct BP *p = from->file->OBP;
 	struct BP *q = p + NBP;
@@ -50,9 +49,8 @@ struct ship *to;
 	return 0;
 }
 
-boarding(from, isdefense)
-struct ship *from;
-char isdefense;
+bool
+boarding(struct ship *from, char isdefense)
 {
 	struct BP *p = isdefense ? from->file->DBP : from->file->OBP;
 	struct BP *q = p + NBP;
@@ -63,9 +61,8 @@ char isdefense;
 	return 0;
 }
 
-unboard(ship, to, isdefense)
-struct ship *ship, *to;
-char isdefense;
+void
+unboard(struct ship *ship, struct ship *to, char isdefense)
 {
 	struct BP *p = isdefense ? ship->file->DBP : ship->file->OBP;
 	int n;

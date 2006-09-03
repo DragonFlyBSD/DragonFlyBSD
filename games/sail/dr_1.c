@@ -32,12 +32,15 @@
  *
  * @(#)dr_1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/dr_1.c,v 1.7 1999/11/30 03:49:32 billf Exp $
- * $DragonFly: src/games/sail/dr_1.c,v 1.3 2006/03/12 14:06:39 swildner Exp $
+ * $DragonFly: src/games/sail/dr_1.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "driver.h"
 
-unfoul()
+static int	fightitout(struct ship *, struct ship *, int);
+
+void
+unfoul(void)
 {
 	struct ship *sp;
 	struct ship *to;
@@ -59,7 +62,8 @@ unfoul()
 	}
 }
 
-boardcomp()
+void
+boardcomp(void)
 {
 	int crew[3];
 	struct ship *sp, *sq;
@@ -123,15 +127,14 @@ boardcomp()
 	}
 }
 
-fightitout(from, to, key)
-struct ship *from, *to;
-int key;
+static int
+fightitout(struct ship *from, struct ship *to, int key)
 {
 	struct ship *fromcap, *tocap;
 	int crewfrom[3], crewto[3], menfrom, mento;
 	int pcto, pcfrom, fromstrength, strengthto, frominjured, toinjured;
 	int topoints;
-	int index, totalfrom = 0, totalto = 0;
+	int idx, totalfrom = 0, totalto = 0;
 	int count;
 	char message[60];
 
@@ -156,18 +159,18 @@ int key;
 	fromstrength = menfrom * fromcap->specs->qual;
 	strengthto = mento * tocap->specs->qual;
 	for (count = 0;
-	     (fromstrength < strengthto * 3 && strengthto < fromstrength * 3
+	     ((fromstrength < strengthto * 3 && strengthto < fromstrength * 3)
 	      || fromstrength == -1) && count < 4;
 	     count++) {
-		index = fromstrength/10;
-		if (index > 8)
-			index = 8;
-		toinjured = MT[index][2 - die() / 3];
+		idx = fromstrength/10;
+		if (idx > 8)
+			idx = 8;
+		toinjured = MT[idx][2 - die() / 3];
 		totalto += toinjured;
-		index = strengthto/10;
-		if (index > 8)
-			index = 8;
-		frominjured = MT[index][2 - die() / 3];
+		idx = strengthto/10;
+		if (idx > 8)
+			idx = 8;
+		frominjured = MT[idx][2 - die() / 3];
 		totalfrom += frominjured;
 		menfrom -= frominjured;
 		mento -= toinjured;
@@ -179,7 +182,7 @@ int key;
 		subtract(from, totalfrom, crewfrom, fromcap, pcfrom);
 		subtract(to, totalto, crewto, tocap, pcto);
 		makesignal(from, "boarders from %s repelled", to);
-		(void) sprintf(message, "killed in melee: %d.  %s: %d",
+		sprintf(message, "killed in melee: %d.  %s: %d",
 			totalto, from->shipname, totalfrom);
 		Write(W_SIGNAL, to, 1, (long) message, 0, 0, 0);
 		if (key)
@@ -211,10 +214,10 @@ int key;
 				subtract(to, mento, crewto, tocap, pcto);
 				subtract(from, - mento, crewfrom, to, 0);
 			}
-			(void) sprintf(message, "captured by the %s!",
+			sprintf(message, "captured by the %s!",
 				to->shipname);
 			Write(W_SIGNAL, from, 1, (long) message, 0, 0, 0);
-			(void) sprintf(message, "killed in melee: %d.  %s: %d",
+			sprintf(message, "killed in melee: %d.  %s: %d",
 				totalto, from->shipname, totalfrom);
 			Write(W_SIGNAL, to, 1, (long) message, 0, 0, 0);
 			mento = 0;
@@ -224,7 +227,8 @@ int key;
 	return 0;
 }
 
-resolve()
+void
+resolve(void)
 {
 	int thwart;
 	struct ship *sp, *sq;
@@ -234,7 +238,7 @@ resolve()
 			continue;
 		for (sq = sp + 1; sq < ls; sq++)
 			if (sq->file->dir && meleeing(sp, sq) && meleeing(sq, sp))
-				(void) fightitout(sp, sq, 0);
+				fightitout(sp, sq, 0);
 		thwart = 2;
 		foreachship(sq) {
 			if (sq->file->dir && meleeing(sq, sp))
@@ -254,14 +258,15 @@ resolve()
 	}
 }
 
-compcombat()
+void
+compcombat(void)
 {
 	int n;
 	struct ship *sp;
 	struct ship *closest;
 	int crew[3], men = 0, target, temp;
 	int r, guns, ready, load, car;
-	int index, rakehim, sternrake;
+	int idx, rakehim, sternrake;
 	int shootat, hit;
 
 	foreachship(sp) {
@@ -333,21 +338,21 @@ compcombat()
 			if (temp > 8)
 				temp -= 8;
 			sternrake = temp > 4 && temp < 6;
-			index = guns;
+			idx = guns;
 			if (target < 3)
-				index += car;
-			index = (index - 1) / 3;
-			index = index > 8 ? 8 : index;
+				idx += car;
+			idx = (idx - 1) / 3;
+			idx = idx > 8 ? 8 : idx;
 			if (!rakehim)
-				hit = HDT[index][target-1];
+				hit = HDT[idx][target-1];
 			else
-				hit = HDTrake[index][target-1];
+				hit = HDTrake[idx][target-1];
 			if (rakehim && sternrake)
 				hit++;
-			hit += QUAL[index][capship(sp)->specs->qual - 1];
+			hit += QUAL[idx][capship(sp)->specs->qual - 1];
 			for (n = 0; n < 3 && sp->file->captured == 0; n++)
 				if (!crew[n]) {
-					if (index <= 5)
+					if (idx <= 5)
 						hit--;
 					else
 						hit -= 2;
@@ -357,18 +362,18 @@ compcombat()
 					sp->file->readyL &= ~R_INITIAL;
 				else
 					sp->file->readyR &= ~R_INITIAL;
-				if (index <= 3)
+				if (idx <= 3)
 					hit++;
 				else
 					hit += 2;
 			}
 			if (sp->file->captured != 0) {
-				if (index <= 1)
+				if (idx <= 1)
 					hit--;
 				else
 					hit -= 2;
 			}
-			hit += AMMO[index][load - 1];
+			hit += AMMO[idx][load - 1];
 			temp = sp->specs->class;
 			if ((temp >= 5 || temp == 1) && windspeed == 5)
 				hit--;
@@ -385,7 +390,8 @@ compcombat()
 	}
 }
 
-next()
+int
+next(void)
 {
 	if (++turn % 55 == 0) {
 		if (alive)
@@ -395,7 +401,7 @@ next()
 	}
 	if (people <= 0 || windspeed == 7) {
 		struct ship *s;
-		struct ship *bestship;
+		struct ship *bestship = NULL;
 		float net, best = 0.0;
 		foreachship(s) {
 			if (*s->file->captain)
@@ -408,11 +414,13 @@ next()
 		}
 		if (best > 0.0) {
 			char *p = getenv("WOTD");
-			if (p == 0)
-				p = "Driver";
+			if (p == 0) {
+				char buf[6] = "Driver";
+				p = buf;
+			}
 			if (islower(*p))
 				*p = toupper(*p);
-			(void) strncpy(bestship->file->captain, p,
+			strncpy(bestship->file->captain, p,
 				sizeof bestship->file->captain);
 			bestship->file->captain
 				[sizeof bestship->file->captain - 1] = 0;

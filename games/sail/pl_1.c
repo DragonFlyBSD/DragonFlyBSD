@@ -32,7 +32,7 @@
  *
  * @(#)pl_1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_1.c,v 1.2 1999/11/30 03:49:36 billf Exp $
- * $DragonFly: src/games/sail/pl_1.c,v 1.3 2006/03/12 14:06:39 swildner Exp $
+ * $DragonFly: src/games/sail/pl_1.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
@@ -47,14 +47,14 @@
  * Of course, we don't do any more Sync()'s if we got here
  * because of a Sync() failure.
  */
-leave(conditions)
-int conditions;
+void
+leave(int conditions)
 {
-	(void) signal(SIGHUP, SIG_IGN);
-	(void) signal(SIGINT, SIG_IGN);
-	(void) signal(SIGQUIT, SIG_IGN);
-	(void) signal(SIGALRM, SIG_IGN);
-	(void) signal(SIGCHLD, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGALRM, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
 
 	if (done_curses) {
 		Signal("It looks like you've had it!",
@@ -105,7 +105,7 @@ int conditions;
 			makesignal(ms, "Captain %s relinquishing.",
 				(struct ship *)0, mf->captain);
 			Write(W_END, ms, 0, 0, 0, 0, 0);
-			(void) Sync();
+			Sync();
 		}
 	}
 	sync_close(!hasdriver);
@@ -114,22 +114,22 @@ int conditions;
 }
 
 void
-choke()
+choke(void)
 {
 	leave(LEAVE_QUIT);
 }
 
 void
-child()
+child(void)
 {
 	union wait status;
 	int pid;
 
-	(void) signal(SIGCHLD, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
 	do {
 		pid = wait3((int *)&status, WNOHANG, (struct rusage *)0);
-		if (pid < 0 || pid > 0 && !WIFSTOPPED(status))
+		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
 			hasdriver = 0;
 	} while (pid > 0);
-	(void) signal(SIGCHLD, child);
+	signal(SIGCHLD, (sig_t)child);
 }

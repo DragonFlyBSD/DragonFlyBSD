@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/misc.c,v 1.5 1999/11/30 03:49:34 billf Exp $
- * $DragonFly: src/games/sail/misc.c,v 1.3 2006/03/12 14:06:39 swildner Exp $
+ * $DragonFly: src/games/sail/misc.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
@@ -40,9 +40,11 @@
 
 #define distance(x,y) (abs(x) >= abs(y) ? abs(x) + abs(y)/2 : abs(y) + abs(x)/2)
 
+static int	angle(int, int);
+
 /* XXX */
-range(from, to)
-struct ship *from, *to;
+int
+range(struct ship *from, struct ship *to)
 {
 	int bow1r, bow1c, bow2r, bow2c;
 	int stern1r, stern1c, stern2c, stern2r;
@@ -69,9 +71,7 @@ struct ship *from, *to;
 }
 
 struct ship *
-closestenemy(from, side, anyship)
-struct ship *from;
-char side, anyship;
+closestenemy(struct ship *from, char side, char anyship)
 {
 	struct ship *sp;
 	char a;
@@ -97,35 +97,35 @@ char side, anyship;
 	return closest;
 }
 
-angle(dr, dc)
-int dr, dc;
+static int
+angle(int Dr, int Dc)
 {
 	int i;
 
-	if (dc >= 0 && dr > 0)
+	if (Dc >= 0 && Dr > 0)
 		i = 0;
-	else if (dr <= 0 && dc > 0)
+	else if (Dr <= 0 && Dc > 0)
 		i = 2;
-	else if (dc <= 0 && dr < 0)
+	else if (Dc <= 0 && Dr < 0)
 		i = 4;
 	else
 		i = 6;
-	dr = abs(dr);
-	dc = abs(dc);
-	if ((i == 0 || i == 4) && dc * 2.4 > dr) {
+	Dr = abs(Dr);
+	Dc = abs(Dc);
+	if ((i == 0 || i == 4) && Dc * 2.4 > Dr) {
 		i++;
-		if (dc > dr * 2.4)
+		if (Dc > Dr * 2.4)
 			i++;
-	} else if ((i == 2 || i == 6) && dr * 2.4 > dc) {
+	} else if ((i == 2 || i == 6) && Dr * 2.4 > Dc) {
 		i++;
-		if (dr > dc * 2.4)
+		if (Dr > Dc * 2.4)
 			i++;
 	}
 	return i % 8 + 1;
 }
 
-gunsbear(from, to)		/* checks for target bow or stern */
-struct ship *from, *to;
+char
+gunsbear(struct ship *from, struct ship *to)	/* checks for target bow or stern */
 {
 	int Dr, Dc, i;
 	int ang;
@@ -145,9 +145,9 @@ struct ship *from, *to;
 	return 0;
 }
 
-portside(from, on, quick)
-struct ship *from, *on;
-int quick;			/* returns true if fromship is */
+int
+portside(struct ship *from, struct ship *on, int quick)
+				/* returns true if fromship is */
 {				/* shooting at onship's starboard side */
 	int ang;
 	int Dr, Dc;
@@ -165,10 +165,10 @@ int quick;			/* returns true if fromship is */
 	return ang < 5;
 }
 
-colours(sp)
-struct ship *sp;
+char
+colours(struct ship *sp)
 {
-	char flag;
+	char flag = 0;
 
 	if (sp->file->struck)
 		flag = '!';
@@ -183,8 +183,8 @@ struct ship *sp;
 }
 
 #include <sys/file.h>
-write_log(s)
-struct ship *s;
+void
+write_log(struct ship *s)
 {
 	FILE *fp;
 	int persons;
@@ -207,27 +207,27 @@ struct ship *s;
 			= lp->l_gamenum = lp->l_netpoints = 0;
 	rewind(fp);
 	if (persons < 0)
-		(void) putw(1, fp);
+		putw(1, fp);
 	else
-		(void) putw(persons + 1, fp);
+		putw(persons + 1, fp);
 	for (lp = log; lp < &log[NLOG]; lp++)
 		if (net > (float)lp->l_netpoints
 		    / scene[lp->l_gamenum].ship[lp->l_shipnum].specs->pts) {
-			(void) fwrite((char *)log,
+			fwrite((char *)log,
 				sizeof (struct logs), lp - log, fp);
-			(void) strcpy(log[NLOG-1].l_name, s->file->captain);
+			strcpy(log[NLOG-1].l_name, s->file->captain);
 			log[NLOG-1].l_uid = getuid();
 			log[NLOG-1].l_shipnum = s->file->index;
 			log[NLOG-1].l_gamenum = game;
 			log[NLOG-1].l_netpoints = s->file->points;
-			(void) fwrite((char *)&log[NLOG-1],
+			fwrite((char *)&log[NLOG-1],
 				sizeof (struct logs), 1, fp);
-			(void) fwrite((char *)lp,
+			fwrite((char *)lp,
 				sizeof (struct logs), &log[NLOG-1] - lp, fp);
 			break;
 		}
 #ifdef LOCK_EX
-	(void) flock(fileno(fp), LOCK_UN);
+	flock(fileno(fp), LOCK_UN);
 #endif
-	(void) fclose(fp);
+	fclose(fp);
 }

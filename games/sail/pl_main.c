@@ -32,17 +32,18 @@
  *
  * @(#)pl_main.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_main.c,v 1.6 1999/11/30 03:49:38 billf Exp $
- * $DragonFly: src/games/sail/pl_main.c,v 1.3 2006/08/20 22:18:48 swildner Exp $
+ * $DragonFly: src/games/sail/pl_main.c,v 1.4 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 
-void choke(), child();
+static void	initialize(void);
 
 /*ARGSUSED*/
-pl_main()
+int
+pl_main(void)
 {
 
 	if (!SCREENTEST()) {
@@ -55,7 +56,8 @@ pl_main()
 	return 0;			/* for lint,  play() never returns */
 }
 
-initialize()
+static void
+initialize(void)
 {
 	struct File *fp;
 	struct ship *sp;
@@ -67,8 +69,8 @@ initialize()
 	int nat[NNATION];
 
 	if (game < 0) {
-		(void) puts("Choose a scenario:\n");
-		(void) puts("\n\tNUMBER\tSHIPS\tIN PLAY\tTITLE");
+		puts("Choose a scenario:\n");
+		puts("\n\tNUMBER\tSHIPS\tIN PLAY\tTITLE");
 		for (n = 0; n < NSCENE; n++) {
 			/* ( */
 			printf("\t%d):\t%d\t%s\t%s\n", n, scene[n].vessels,
@@ -77,13 +79,13 @@ initialize()
 		}
 reprint:
 		printf("\nScenario number? ");
-		(void) fflush(stdout);
-		(void) scanf("%d", &game);
+		fflush(stdout);
+		scanf("%d", &game);
 		while (getchar() != '\n')
 			;
 	}
 	if (game < 0 || game >= NSCENE) {
-		(void) puts("Very funny.");
+		puts("Very funny.");
 		exit(1);
 	}
 	cc = &scene[game];
@@ -94,7 +96,7 @@ reprint:
 	foreachship(sp) {
 		if (sp->file == NULL &&
 		    (sp->file = (struct File *)calloc(1, sizeof (struct File))) == NULL) {
-			(void) puts("OUT OF MEMORY");
+			puts("OUT OF MEMORY");
 			exit(1);
 		}
 		sp->file->index = sp - SHIP(0);
@@ -106,8 +108,8 @@ reprint:
 	windspeed = cc->windspeed;
 	winddir = cc->winddir;
 
-	(void) signal(SIGHUP, choke);
-	(void) signal(SIGINT, choke);
+	signal(SIGHUP, (sig_t)choke);
+	signal(SIGINT, (sig_t)choke);
 
 	hasdriver = sync_exists(game);
 	if (sync_open() < 0) {
@@ -116,8 +118,8 @@ reprint:
 	}
 
 	if (hasdriver) {
-		(void) puts("Synchronizing with the other players...");
-		(void) fflush(stdout);
+		puts("Synchronizing with the other players...");
+		fflush(stdout);
 		if (Sync() < 0)
 			leave(LEAVE_SYNC);
 	}
@@ -127,7 +129,7 @@ reprint:
 			    && sp->file->captured == 0)
 				break;
 		if (sp >= ls) {
-			(void) puts("All ships taken in that scenario.");
+			puts("All ships taken in that scenario.");
 			foreachship(sp)
 				free((char *)sp->file);
 			sync_close(0);
@@ -146,12 +148,12 @@ reprint:
 					sp->specs->pts,
 					saywhat(sp, 1));
 			printf("\nWhich ship (0-%d)? ", cc->vessels-1);
-			(void) fflush(stdout);
+			fflush(stdout);
 			if (scanf("%d", &player) != 1 || player < 0
 			    || player >= cc->vessels) {
 				while (getchar() != '\n')
 					;
-				(void) puts("Say what?");
+				puts("Say what?");
 				player = -1;
 			} else
 				while (getchar() != '\n')
@@ -163,7 +165,7 @@ reprint:
 			leave(LEAVE_SYNC);
 		fp = SHIP(player)->file;
 		if (fp->captain[0] || fp->struck || fp->captured != 0)
-			(void) puts("That ship is taken.");
+			puts("That ship is taken.");
 		else
 			break;
 	}
@@ -176,7 +178,7 @@ reprint:
 	if (Sync() < 0)
 		leave(LEAVE_SYNC);
 
-	(void) signal(SIGCHLD, child);
+	signal(SIGCHLD, (sig_t)child);
 	if (!hasdriver)
 		switch (fork()) {
 		case 0:
@@ -194,13 +196,13 @@ reprint:
 		ms->shipname, mc->guns, classname[mc->class],
 		qualname[mc->qual]);
 	if ((nameptr = (char *) getenv("SAILNAME")) && *nameptr)
-		(void) strncpy(captain, nameptr, sizeof captain);
+		strncpy(captain, nameptr, sizeof captain);
 	else {
-		(void) printf("Your name, Captain? ");
-		(void) fflush(stdout);
-		(void) fgets(captain, sizeof captain, stdin);
+		printf("Your name, Captain? ");
+		fflush(stdout);
+		fgets(captain, sizeof captain, stdin);
 		if (!*captain)
-			(void) strcpy(captain, "no name");
+			strcpy(captain, "no name");
 		else
 			captain[sizeof(captain) - 1] = '\0';
 	}
@@ -210,8 +212,8 @@ reprint:
 
 		printf("\nInitial broadside %s (grape, chain, round, double): ",
 			n ? "right" : "left");
-		(void) fflush(stdout);
-		(void) scanf("%9s", buf);
+		fflush(stdout);
+		scanf("%9s", buf);
 		switch (*buf) {
 		case 'g':
 			load = L_GRAPE;
@@ -239,7 +241,7 @@ reprint:
 
 	initscreen();
 	draw_board();
-	(void) sprintf(message, "Captain %s assuming command", captain);
+	sprintf(message, "Captain %s assuming command", captain);
 	Write(W_SIGNAL, ms, 1, (long)message, 0, 0, 0);
 	newturn();
 }

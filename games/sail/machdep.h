@@ -31,16 +31,23 @@
  * SUCH DAMAGE.
  *
  *	@(#)machdep.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/sail/machdep.h,v 1.2 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #define TIMEOUT 300				/* Sync() timeout in seconds */
 
-/* for 4.2bsd machines */
-#define blockalarm()	((void) sigblock(1 << SIGALRM-1))
-#define unblockalarm()	((void) sigsetmask(sigblock(0) & ~(1 << SIGALRM-1)))
-
-/* for 2.9bsd machines (onyx)
-typedef int void;
-#define blockalarm()	((void) sighold(SIGALRM))
-#define unblockalarm()	((void) sigrelse(SIGALRM))
-*/
+/* for POSIX systems */
+#define	blockalarm() \
+	do {								\
+		sigset_t sigset;					\
+		sigemptyset(&sigset);					\
+		sigaddset(&sigset, SIGALRM);				\
+		sigprocmask(SIG_BLOCK, &sigset, (sigset_t *)0);		\
+	} while (0)
+#define	unblockalarm() \
+	do {								\
+		sigset_t sigset;					\
+		sigemptyset(&sigset);					\
+		sigaddset(&sigset, SIGALRM);				\
+		sigprocmask(SIG_UNBLOCK, &sigset, (sigset_t *)0);	\
+	} while (0)

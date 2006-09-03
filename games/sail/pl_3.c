@@ -32,17 +32,18 @@
  *
  * @(#)pl_3.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_3.c,v 1.6 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_3.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_3.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
 
-acceptcombat()
+void
+acceptcombat(void)
 {
 	int men = 0;
 	int target, temp;
 	int n, r;
-	int index, rakehim, sternrake;
+	int idx, rakehim, sternrake;
 	int hhits = 0, ghits = 0, rhits = 0, chits = 0;
 	int crew[3];
 	int load;
@@ -78,7 +79,7 @@ acceptcombat()
 			guns = mc->gunL;
 			car = mc->carL;
 		}
-		if (!guns && !car || load == L_EMPTY || (ready & R_LOADED) == 0)
+		if ((!guns && !car) || load == L_EMPTY || (ready & R_LOADED) == 0)
 			goto cant;
 		if (mf->struck || !crew[2])
 			goto cant;
@@ -88,7 +89,7 @@ acceptcombat()
 		if (closest->file->struck)
 			goto cant;
 		target = range(ms, closest);
-		if (target > rangeofshot[load] || !guns && target >= 3)
+		if (target > rangeofshot[load] || (!guns && target >= 3))
 			goto cant;
 		Signal("%s (%c%c) within range of %s broadside.",
 			closest, r ? "right" : "left");
@@ -130,38 +131,38 @@ acceptcombat()
 			else
 				Signal("Stern Rake! %s splintering!", closest);
 		}
-		index = guns;
+		idx = guns;
 		if (target < 3)
-			index += car;
-		index = (index - 1)/3;
-		index = index > 8 ? 8 : index;
+			idx += car;
+		idx = (idx - 1)/3;
+		idx = idx > 8 ? 8 : idx;
 		if (!rakehim)
-			hit = HDT[index][target-1];
+			hit = HDT[idx][target-1];
 		else
-			hit = HDTrake[index][target-1];
+			hit = HDTrake[idx][target-1];
 		if (rakehim && sternrake)
 			hit++;
-		hit += QUAL[index][mc->qual-1];
+		hit += QUAL[idx][mc->qual-1];
 		for (n = 0; n < 3 && mf->captured == 0; n++)
 			if (!crew[n]) {
-				if (index <= 5)
+				if (idx <= 5)
 					hit--;
 				else
 					hit -= 2;
 			}
 		if (ready & R_INITIAL) {
-			if (index <= 3)
+			if (idx <= 3)
 				hit++;
 			else
 				hit += 2;
 		}
 		if (mf->captured != 0) {
-			if (index <= 1)
+			if (idx <= 1)
 				hit--;
 			else
 				hit -= 2;
 		}
-		hit += AMMO[index][load - 1];
+		hit += AMMO[idx][load - 1];
 		if (((temp = mc->class) >= 5 || temp == 1) && windspeed == 5)
 			hit--;
 		if (windspeed == 6 && temp == 4)
@@ -212,7 +213,8 @@ acceptcombat()
 	unblockalarm();
 }
 
-grapungrap()
+void
+grapungrap(void)
 {
 	struct ship *sp;
 	int i;
@@ -254,7 +256,8 @@ grapungrap()
 	}
 }
 
-unfoulplayer()
+void
+unfoulplayer(void)
 {
 	struct ship *to;
 	int i;

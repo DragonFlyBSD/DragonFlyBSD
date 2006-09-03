@@ -32,14 +32,16 @@
  *
  * @(#)assorted.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/assorted.c,v 1.5 1999/11/30 03:49:31 billf Exp $
- * $DragonFly: src/games/sail/assorted.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/assorted.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "externs.h"
 
-table(rig, shot, hittable, on, from, roll)
-struct ship *on, *from;
-int rig, shot, hittable, roll;
+static void	strike(struct ship *, struct ship *);
+
+void
+table(int rig, int shot, int hittable,
+      struct ship *on, struct ship *from, int roll)
 {
 	int hhits = 0, chits = 0, ghits = 0, rhits = 0;
 	int Ghit = 0, Hhit = 0, Rhit = 0, Chit = 0;
@@ -47,7 +49,7 @@ int rig, shot, hittable, roll;
 	int crew[3];
 	int n;
 	int rigg[4];
-	char *message;
+	const char *message = NULL;
 	struct Tables *tp;
 
 	pc = on->file->pcrew;
@@ -206,25 +208,12 @@ int rig, shot, hittable, roll;
 		}
 		makesignal(on, message, (struct ship *)0);
 	}
-	/*
-	if (Chit > 1 && on->file->readyL&R_INITIAL && on->file->readyR&R_INITIAL) {
-		on->specs->qual--;
-		if (on->specs->qual <= 0) {
-			makesignal(on, "crew mutinying!", (struct ship *)0);
-			on->specs->qual = 5;
-			Write(W_CAPTURED, on, 0, on->file->index, 0, 0, 0);
-		} else
-			makesignal(on, "crew demoralized", (struct ship *)0);
-		Write(W_QUAL, on, 0, on->specs->qual, 0, 0, 0);
-	}
-	*/
 	if (!hull)
 		strike(on, from);
 }
 
-Cleansnag(from, to, all, flag)
-struct ship *from, *to;
-char all, flag;
+void
+Cleansnag(struct ship *from, struct ship *to, char all, char flag)
 {
 	if (flag & 1) {
 		Write(W_UNGRAP, from, 0, to->file->index, all, 0, 0);
@@ -248,8 +237,8 @@ char all, flag;
 	}
 }
 
-strike(ship, from)
-struct ship *ship, *from;
+static void
+strike(struct ship *ship, struct ship *from)
 {
 	int points;
 

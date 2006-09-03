@@ -32,18 +32,19 @@
  *
  * @(#)pl_4.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/sail/pl_4.c,v 1.5 1999/11/30 03:49:37 billf Exp $
- * $DragonFly: src/games/sail/pl_4.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/sail/pl_4.c,v 1.3 2006/09/03 17:33:13 pavalos Exp $
  */
 
 #include "player.h"
 
-changesail()
+void
+changesail(void)
 {
 	int rig, full;
 
 	rig = mc->rig1;
 	full = mf->FS;
-	if (windspeed == 6 || windspeed == 5 && mc->class > 4)
+	if (windspeed == 6 || (windspeed == 5 && mc->class > 4))
 		rig = 0;
 	if (mc->crew3 && rig) {
 		if (!full) {
@@ -63,7 +64,8 @@ changesail()
 		Signal("Sails rent to pieces", (struct ship *)0);
 }
 
-acceptsignal()
+void
+acceptsignal(void)
 {
 	char buf[60];
 	char *p = buf;
@@ -77,7 +79,8 @@ acceptsignal()
 	Write(W_SIGNAL, ms, 1, (long)buf, 0, 0, 0);
 }
 
-lookout()
+void
+lookout(void)
 {
 	struct ship *sp;
 	char buf[3];
@@ -94,10 +97,8 @@ lookout()
 	}
 }
 
-char *
-saywhat(sp, flag)
-struct ship *sp;
-char flag;
+const char *
+saywhat(struct ship *sp, char flag)
 {
 	if (sp->file->captain[0])
 		return sp->file->captain;
@@ -111,8 +112,8 @@ char flag;
 		return "(computer)";
 }
 
-eyeball(ship)
-struct ship *ship;
+void
+eyeball(struct ship *ship)
 {
 	int i;
 
