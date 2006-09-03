@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.17 2006/09/02 11:33:26 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.18 2006/09/03 06:08:19 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -2211,6 +2211,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Avlab Technology, Inc.",
 	    "Low Profile PCI 4 Serial",
+	},
+	{
+	    PCI_VENDOR_BELKIN, PCI_PRODUCT_BELKIN_F5D6001,
+	    0,
+	    "Belkin",
+	    "F5D6001 802.11b",
 	},
 	{
 	    PCI_VENDOR_CCUBE, PCI_PRODUCT_CCUBE_CINEMASTER,
@@ -8229,6 +8235,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Realtek Semiconductor",
 	    "8169 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8180,
+	    0,
+	    "Realtek Semiconductor",
+	    "8180 802.11b",
 	},
 	{
 	    PCI_VENDOR_RICOH, PCI_PRODUCT_RICOH_Rx5C465,
@@ -14462,6 +14474,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_FZJZEL, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "FZ Juelich / ZEL",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_BELKIN, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "Belkin",
 	    NULL,
 	},
 	{

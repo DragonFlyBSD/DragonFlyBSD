@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.17 2006/09/02 11:33:26 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.18 2006/09/03 06:08:19 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -581,6 +581,7 @@
 #define	PCI_VENDOR_ANTARES	0x1754		/* Antares Microsystems, Inc. */
 #define	PCI_VENDOR_CAVIUM	0x177d		/* Cavium */
 #define	PCI_VENDOR_FZJZEL	0x1796		/* FZ Juelich / ZEL */
+#define	PCI_VENDOR_BELKIN	0x1799		/* Belkin */
 #define	PCI_VENDOR_SANDBURST	0x17ba		/* Sandburst, Inc. */
 #define	PCI_VENDOR_RALINK	0x1814		/* Ralink Technologies */
 #define	PCI_VENDOR_SYMPHONY2	0x1c1c		/* Symphony Labs (2nd PCI Vendor ID) */
@@ -1051,6 +1052,9 @@
 
 /* Avlab Technology products */
 #define	PCI_PRODUCT_AVLAB_LPPCI4S	0x2150		/* Low Profile PCI 4 Serial */
+
+/* Belkin products */
+#define	PCI_PRODUCT_BELKIN_F5D6001	0x6001		/* F5D6001 802.11b */
 
 /* CCUBE products */
 #define	PCI_PRODUCT_CCUBE_CINEMASTER	0x8888		/* Cinemaster C 3.0 DVD Decoder */
@@ -2325,6 +2329,7 @@
 #define	PCI_PRODUCT_REALTEK_RT8139B	0x8138		/* 8139B 10/100 Ethernet */
 #define	PCI_PRODUCT_REALTEK_RT8139	0x8139		/* 8139 10/100 Ethernet */
 #define	PCI_PRODUCT_REALTEK_RT8169	0x8169		/* 8169 10/100/1000 Ethernet */
+#define	PCI_PRODUCT_REALTEK_RT8180	0x8180		/* 8180 802.11b */
 
 /* RICOH products */
 #define	PCI_PRODUCT_RICOH_Rx5C465	0x0465		/* 5C465 PCI-CardBus bridge */
