@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.17 2006/09/02 10:25:42 sephe Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.18 2006/09/03 06:07:32 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -574,6 +574,7 @@ vendor PEPPERCON	0x1743  Peppercon AG
 vendor ANTARES		0x1754	Antares Microsystems, Inc.
 vendor CAVIUM		0x177d	Cavium
 vendor FZJZEL		0x1796	FZ Juelich / ZEL
+vendor BELKIN		0x1799	Belkin
 vendor SANDBURST	0x17ba	Sandburst, Inc.
 vendor RALINK		0x1814	Ralink Technologies
 vendor SYMPHONY2	0x1c1c	Symphony Labs (2nd PCI Vendor ID)
@@ -1044,6 +1045,9 @@ product AVANCE2 ALS4000	0x4000	ALS4000 Audio
 
 /* Avlab Technology products */
 product AVLAB LPPCI4S	0x2150	Low Profile PCI 4 Serial
+
+/* Belkin products */
+product BELKIN F5D6001	0x6001	F5D6001 802.11b
 
 /* CCUBE products */
 product CCUBE CINEMASTER	0x8888	Cinemaster C 3.0 DVD Decoder
@@ -2318,6 +2322,7 @@ product REALTEK	RT8129		0x8129	8129 10/100 Ethernet
 product REALTEK RT8139B		0x8138	8139B 10/100 Ethernet
 product REALTEK RT8139		0x8139	8139 10/100 Ethernet
 product REALTEK RT8169		0x8169	8169 10/100/1000 Ethernet
+product REALTEK RT8180		0x8180	8180 802.11b
 
 /* RICOH products */
 product RICOH Rx5C465	0x0465 5C465 PCI-CardBus bridge
