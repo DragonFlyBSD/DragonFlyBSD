@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.41 2006/08/06 18:56:44 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.42 2006/09/03 17:11:48 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -659,3 +659,11 @@
 482	STD	BSD	{ int __accept(int s, int flags, caddr_t name, int *anamelen); }
 483	STD	BSD	{ int __connect(int s, int flags, caddr_t name, int namelen); }
 484	STD	BSD	{ int syslink(int fd, int cmd, sysid_t *mask, sysid_t *match); }
+485	STD	BSD	{ int vmspace_ctl(void *id, void *ctx, int what); } 
+486	STD	BSD	{ int vmspace_map(void *id, off_t offset, void *ptr, \
+					  int bytes, int prot); }
+487	STD	BSD	{ int vmspace_protect(void *id, off_t offset, \
+					  int bytes, int prot); } 
+488	STD	BSD	{ int vmspace_read(void *id, void *ptr, int bytes); } 
+489	STD	BSD	{ int vmspace_write(void *id, const void *ptr, \
+					  int bytes); } 
