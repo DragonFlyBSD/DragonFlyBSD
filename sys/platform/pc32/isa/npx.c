@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.31 2006/05/02 22:52:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.32 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -837,7 +837,7 @@ npx_intr(void *dummy)
 		 *
 		 * Treat them like a true async interrupt.
 		 */
-		psignal(curproc, SIGFPE);
+		ksignal(curproc, SIGFPE);
 	}
 	rel_mplock();
 	crit_exit();

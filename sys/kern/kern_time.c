@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.35 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.36 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -702,7 +702,7 @@ realitexpire(arg)
 	struct timeval ctv, ntv;
 
 	p = (struct proc *)arg;
-	psignal(p, SIGALRM);
+	ksignal(p, SIGALRM);
 	if (!timevalisset(&p->p_realtimer.it_interval)) {
 		timevalclear(&p->p_realtimer.it_value);
 		return;

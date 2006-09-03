@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.20 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.21 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -450,7 +450,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 			p->p_flag |= P_BREAKTSLEEP;
 			setrunnable(p);
 		} else if (data) {
-			psignal(p, data);
+			ksignal(p, data);
 		}
 		crit_exit();
 		return 0;

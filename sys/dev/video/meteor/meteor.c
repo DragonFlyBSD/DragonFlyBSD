@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.17 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.18 2006/09/03 18:29:16 dillon Exp $
  */
 
 /*		Change History:
@@ -632,7 +632,7 @@ meteor_intr(void *arg)
 		 * let them know the field is complete.
 		 */
 		if(mtr->proc && (mtr->signal & METEOR_SIG_MODE_MASK))
-			psignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
+			ksignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
 	}
 	if (status & 0x2) {		/* odd field */
 		mtr->odd_fields_captured++;
@@ -646,7 +646,7 @@ meteor_intr(void *arg)
 		 * let them know the field is complete.
 		 */
 		if(mtr->proc && (mtr->signal & METEOR_SIG_MODE_MASK))
-			psignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
+			ksignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
 	}
 
 	/*
@@ -679,7 +679,7 @@ meteor_intr(void *arg)
 		 * let them know the frame is complete.
 		 */
 		if(mtr->proc && !(mtr->signal & METEOR_SIG_MODE_MASK))
-			psignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
+			ksignal(mtr->proc, mtr->signal&(~METEOR_SIG_MODE_MASK));
 		/*
 		 * Reset the want flags if in continuous or
 		 * synchronous capture mode.

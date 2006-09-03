@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.18 2006/01/31 19:05:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.19 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -110,13 +110,13 @@ MALLOC_DEFINE(M_IPMADDR, "in6_multi", "internet multicast address");
 /*
  * Definitions of some costant IP6 addresses.
  */
-const struct in6_addr in6addr_any = IN6ADDR_ANY_INIT;
-const struct in6_addr in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
-const struct in6_addr in6addr_nodelocal_allnodes =
+const struct in6_addr kin6addr_any = IN6ADDR_ANY_INIT;
+const struct in6_addr kin6addr_loopback = IN6ADDR_LOOPBACK_INIT;
+const struct in6_addr kin6addr_nodelocal_allnodes =
 	IN6ADDR_NODELOCAL_ALLNODES_INIT;
-const struct in6_addr in6addr_linklocal_allnodes =
+const struct in6_addr kin6addr_linklocal_allnodes =
 	IN6ADDR_LINKLOCAL_ALLNODES_INIT;
-const struct in6_addr in6addr_linklocal_allrouters =
+const struct in6_addr kin6addr_linklocal_allrouters =
 	IN6ADDR_LINKLOCAL_ALLROUTERS_INIT;
 
 const struct in6_addr in6mask0 = IN6MASK0;
@@ -1043,7 +1043,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		bzero(&mltaddr, sizeof(mltaddr));
 		mltaddr.sin6_len = sizeof(struct sockaddr_in6);
 		mltaddr.sin6_family = AF_INET6;
-		mltaddr.sin6_addr = in6addr_linklocal_allnodes;
+		mltaddr.sin6_addr = kin6addr_linklocal_allnodes;
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 
 		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
@@ -1092,10 +1092,10 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		if (ifp->if_flags & IFF_LOOPBACK) {
 			struct in6_ifaddr *ia_loop;
 
-			struct in6_addr loop6 = in6addr_loopback;
+			struct in6_addr loop6 = kin6addr_loopback;
 			ia_loop = in6ifa_ifpwithaddr(ifp, &loop6);
 
-			mltaddr.sin6_addr = in6addr_nodelocal_allnodes;
+			mltaddr.sin6_addr = kin6addr_nodelocal_allnodes;
 
 			IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
 			if (in6m == NULL && ia_loop != NULL) {

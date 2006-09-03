@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.8 2005/11/14 18:50:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.9 2006/09/03 18:29:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,7 @@ procfs_control(struct proc *curp, struct proc *p, int op)
 			p->p_oppid = p->p_pptr->p_pid;
 			proc_reparent(p, curp);
 		}
-		psignal(p, SIGSTOP);
+		ksignal(p, SIGSTOP);
 		return (0);
 	}
 
@@ -321,7 +321,7 @@ procfs_doctl(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 				 */
 				setrunnable(p);
 			} else {
-				psignal(p, nm->nm_val);
+				ksignal(p, nm->nm_val);
 			}
 			error = 0;
 		}

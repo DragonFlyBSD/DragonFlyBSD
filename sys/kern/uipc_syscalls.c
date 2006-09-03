@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.73 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.74 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -656,7 +656,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		    error == EINTR || error == EWOULDBLOCK))
 			error = 0;
 		if (error == EPIPE)
-			psignal(p, SIGPIPE);
+			ksignal(p, SIGPIPE);
 	}
 #ifdef KTRACE
 	if (ktriov != NULL) {

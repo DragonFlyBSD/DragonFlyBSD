@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.12 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.13 2006/09/03 18:29:16 dillon Exp $
  *
  */
 
@@ -266,7 +266,7 @@ spigintr(void *arg)
 
 	ss = (struct spigot_softc *)&spigot_softc[unit];
 	if(ss->p && ss->signal_num)
-		psignal(ss->p, ss->signal_num);
+		ksignal(ss->p, ss->signal_num);
 }
 
 static	int

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.6 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.7 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
@@ -201,7 +201,7 @@ in6_addrscope(struct in6_addr *addr)
 		}
 	}
 
-	if (bcmp(&in6addr_loopback, addr, sizeof(*addr) - 1) == 0) {
+	if (bcmp(&kin6addr_loopback, addr, sizeof(*addr) - 1) == 0) {
 		if (addr->s6_addr8[15] == 1) /* loopback */
 			return IPV6_ADDR_SCOPE_NODELOCAL;
 		if (addr->s6_addr8[15] == 0) /* unspecified */

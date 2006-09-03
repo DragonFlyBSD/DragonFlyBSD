@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.11 2006/05/06 02:43:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.12 2006/09/03 18:29:17 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -215,7 +215,7 @@ ext2_write(struct vop_write_args *ap)
 	if (vp->v_type == VREG && td && td->td_proc &&
 	    uio->uio_offset + uio->uio_resid >
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(td->td_proc, SIGXFSZ);
+		ksignal(td->td_proc, SIGXFSZ);
 		return (EFBIG);
 	}
 

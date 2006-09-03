@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.21 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.22 2006/09/03 18:29:17 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -241,7 +241,7 @@ nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
 	if (uiop->uio_resid == 0) return 0;
 	if (td->td_proc && uiop->uio_offset + uiop->uio_resid > 
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(td->td_proc, SIGXFSZ);
+		ksignal(td->td_proc, SIGXFSZ);
 		return (EFBIG);
 	}
 	error = ncp_write(NWFSTOCONN(nmp), &np->n_fh, uiop, cred);

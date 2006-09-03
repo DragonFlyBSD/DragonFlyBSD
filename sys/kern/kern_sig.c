@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.51 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.52 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -320,7 +320,7 @@ kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 			/* never to be seen again */
 			SIGDELSET(p->p_siglist, sig);
 			if (sig != SIGCONT)
-				/* easier in psignal */
+				/* easier in ksignal */
 				SIGADDSET(p->p_sigignore, sig);
 			SIGDELSET(p->p_sigcatch, sig);
 		} else {
@@ -638,7 +638,7 @@ killpg(int sig, int pgid, int all)
 			}
 			++info.nfound;
 			if (sig)
-				psignal(p, sig);
+				ksignal(p, sig);
 		}
 	}
 	return (info.nfound ? 0 : ESRCH);
@@ -655,7 +655,7 @@ killpg_all_callback(struct proc *p, void *data)
 	}
 	++info->nfound;
 	if (info->sig)
-		psignal(p, info->sig);
+		ksignal(p, info->sig);
 	return(0);
 }
 
@@ -674,7 +674,7 @@ kern_kill(int sig, int pid)
 		if (!CANSIGNAL(p, sig))
 			return (EPERM);
 		if (sig)
-			psignal(p, sig);
+			ksignal(p, sig);
 		return (0);
 	}
 	switch (pid) {
@@ -722,7 +722,7 @@ pgsignal(struct pgrp *pgrp, int sig, int checkctty)
 	if (pgrp)
 		LIST_FOREACH(p, &pgrp->pg_members, p_pglist)
 			if (checkctty == 0 || p->p_flag & P_CONTROLT)
-				psignal(p, sig);
+				ksignal(p, sig);
 }
 
 /*
@@ -761,7 +761,7 @@ trapsignal(struct proc *p, int sig, u_long code)
 	} else {
 		p->p_code = code;	/* XXX for core dump/debugger */
 		p->p_sig = sig;		/* XXX to verify code */
-		psignal(p, sig);
+		ksignal(p, sig);
 	}
 }
 
@@ -779,15 +779,15 @@ trapsignal(struct proc *p, int sig, u_long code)
  * Other ignored signals are discarded immediately.
  */
 void
-psignal(struct proc *p, int sig)
+ksignal(struct proc *p, int sig)
 {
 	struct lwp *lp = &p->p_lwp;
 	int prop;
 	sig_t action;
 
 	if (sig > _SIG_MAXSIG || sig <= 0) {
-		printf("psignal: signal %d\n", sig);
-		panic("psignal signal number");
+		printf("ksignal: signal %d\n", sig);
+		panic("ksignal signal number");
 	}
 
 	crit_enter();
@@ -924,7 +924,7 @@ psignal(struct proc *p, int sig)
 			p->p_xstat = sig;
 			wakeup(p->p_pptr);
 			if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
-				psignal(p->p_pptr, SIGCHLD);
+				ksignal(p->p_pptr, SIGCHLD);
 			goto out;
 		}
 
@@ -1195,7 +1195,7 @@ sys_sigtimedwait(struct sigtimedwait_args *uap)
 		error = copyout(&info, uap->info, sizeof(info));
 	/* Repost if we got an error. */
 	if (error)
-		psignal(curproc, info.si_signo);
+		ksignal(curproc, info.si_signo);
 	else
 		uap->sysmsg_result = info.si_signo;
 	return (error);
@@ -1218,7 +1218,7 @@ sys_sigwaitinfo(struct sigwaitinfo_args *uap)
 		error = copyout(&info, uap->info, sizeof(info));
 	/* Repost if we got an error. */
 	if (error)
-		psignal(curproc, info.si_signo);
+		ksignal(curproc, info.si_signo);
 	else
 		uap->sysmsg_result = info.si_signo;
 	return (error);
@@ -1301,7 +1301,7 @@ issignal(struct proc *p)
 			p->p_xstat = sig;
 			p->p_flag |= P_STOPPED;
 			p->p_flag &= ~P_WAITED;
-			psignal(p->p_pptr, SIGCHLD);
+			ksignal(p->p_pptr, SIGCHLD);
 			do {
 				tstop(p);
 			} while (!trace_req(p) && (p->p_flag & P_TRACED));
@@ -1383,7 +1383,7 @@ issignal(struct proc *p)
 				p->p_flag &= ~P_WAITED;
 
 				if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
-					psignal(p->p_pptr, SIGCHLD);
+					ksignal(p->p_pptr, SIGCHLD);
 				while (p->p_flag & P_STOPPED) {
 					tstop(p);
 				}
@@ -1514,7 +1514,7 @@ killproc(struct proc *p, char *why)
 {
 	log(LOG_ERR, "pid %d (%s), uid %d, was killed: %s\n", p->p_pid, p->p_comm,
 		p->p_ucred ? p->p_ucred->cr_uid : -1, why);
-	psignal(p, SIGKILL);
+	ksignal(p, SIGKILL);
 }
 
 /*
@@ -1729,7 +1729,7 @@ out2:
 int
 sys_nosys(struct nosys_args *args)
 {
-	psignal(curproc, SIGSYS);
+	ksignal(curproc, SIGSYS);
 	return (EINVAL);
 }
 
@@ -1746,14 +1746,14 @@ pgsigio(struct sigio *sigio, int sig, int checkctty)
 	if (sigio->sio_pgid > 0) {
 		if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred,
 		             sigio->sio_proc))
-			psignal(sigio->sio_proc, sig);
+			ksignal(sigio->sio_proc, sig);
 	} else if (sigio->sio_pgid < 0) {
 		struct proc *p;
 
 		LIST_FOREACH(p, &sigio->sio_pgrp->pg_members, p_pglist)
 			if (CANSIGIO(sigio->sio_ruid, sigio->sio_ucred, p) &&
 			    (checkctty == 0 || (p->p_flag & P_CONTROLT)))
-				psignal(p, sig);
+				ksignal(p, sig);
 	}
 }
 

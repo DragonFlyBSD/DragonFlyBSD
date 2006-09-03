@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.27 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.28 2006/09/03 18:29:16 dillon Exp $
  */
 
 /*-
@@ -1510,7 +1510,7 @@ ttymodem(tp, flag)
 			SET(tp->t_state, TS_ZOMBIE);
 			CLR(tp->t_state, TS_CONNECTED);
 			if (tp->t_session && tp->t_session->s_leader)
-				psignal(tp->t_session->s_leader, SIGHUP);
+				ksignal(tp->t_session->s_leader, SIGHUP);
 			ttyflush(tp, FREAD | FWRITE);
 			return (0);
 		}

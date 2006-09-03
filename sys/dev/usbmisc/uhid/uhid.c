@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.16 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.17 2006/09/03 18:29:16 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -376,7 +376,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		PROC_LOCK(sc->sc_async);
-		psignal(sc->sc_async, SIGIO);
+		ksignal(sc->sc_async, SIGIO);
 		PROC_UNLOCK(sc->sc_async);
 	}
 }

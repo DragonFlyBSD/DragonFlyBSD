@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.21 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.22 2006/09/03 18:29:16 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -292,7 +292,7 @@ linux_rt_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 			printf(LMSG("rt_sendsig: bad stack %p, oonstack=%x"),
 			    fp, oonstack);
 #endif
-		psignal(p, SIGILL);
+		ksignal(p, SIGILL);
 		return;
 	}
 
@@ -439,7 +439,7 @@ linux_sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		SIGDELSET(p->p_sigignore, SIGILL);
 		SIGDELSET(p->p_sigcatch, SIGILL);
 		SIGDELSET(p->p_sigmask, SIGILL);
-		psignal(p, SIGILL);
+		ksignal(p, SIGILL);
 		return;
 	}
 

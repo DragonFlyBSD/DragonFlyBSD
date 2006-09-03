@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.36 2006/08/19 17:27:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.37 2006/09/03 18:29:17 dillon Exp $
  */
 
 /*
@@ -333,7 +333,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	  if ((signo = *(int*)ap->a_data) != 0) {
 	    if (signo >= NSIG || signo <= 0)
 	      return EINVAL;
-	    psignal(procp, signo);
+	    ksignal(procp, signo);
 	  }
 	  procp->p_step = 0;
 	  wakeup(&procp->p_step);

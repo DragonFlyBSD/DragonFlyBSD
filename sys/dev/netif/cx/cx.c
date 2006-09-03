@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.17 2006/08/06 12:49:05 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.18 2006/09/03 18:29:16 dillon Exp $
  *
  */
 #undef DEBUG
@@ -49,7 +49,7 @@
 #if defined(__DragonFly__) || !defined (__FreeBSD__) || __FreeBSD__ >= 2
 #      define t_out t_outq
 #      define RB_LEN(q) ((q).c_cc)
-#      define RB_GETC(q) getc(&q)
+#      define RB_GETC(q) clist_getc(&q)
 #ifndef TSA_CARR_ON /* FreeBSD 2.x before not long after 2.0.5 */
 #      define TSA_CARR_ON(tp) tp
 #      define TSA_OLOWAT(q) ((caddr_t)&(q)->t_out)

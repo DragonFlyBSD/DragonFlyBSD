@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.42 2006/09/03 17:31:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.43 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -428,7 +428,7 @@ interpret:
 	STOPEVENT(p, S_EXEC, 0);
 
 	if (p->p_flag & P_TRACED)
-		psignal(p, SIGTRAP);
+		ksignal(p, SIGTRAP);
 
 	/* clear "fork but no exec" flag, as we _are_ execing */
 	p->p_acflag &= ~AFORK;

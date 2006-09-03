@@ -62,7 +62,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.138 2005/01/09 17:42:03 cognet Exp
- * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.16 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.17 2006/09/03 18:29:16 dillon Exp $
  */
 
 /*
@@ -816,7 +816,7 @@ common_bktr_intr( void *arg )
 
 		if (bktr->proc != NULL) {
 			PROC_LOCK(bktr->proc);
-			psignal( bktr->proc, bktr->signal);
+			ksignal( bktr->proc, bktr->signal);
 			PROC_UNLOCK(bktr->proc);
 		}
 

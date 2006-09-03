@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.4 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.5 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -223,11 +223,11 @@ extern const struct in6_addr in6mask128;
 	{{{ 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
 	    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02 }}}
 
-extern const struct in6_addr in6addr_any;
-extern const struct in6_addr in6addr_loopback;
-extern const struct in6_addr in6addr_nodelocal_allnodes;
-extern const struct in6_addr in6addr_linklocal_allnodes;
-extern const struct in6_addr in6addr_linklocal_allrouters;
+extern const struct in6_addr kin6addr_any;
+extern const struct in6_addr kin6addr_loopback;
+extern const struct in6_addr kin6addr_nodelocal_allnodes;
+extern const struct in6_addr kin6addr_linklocal_allnodes;
+extern const struct in6_addr kin6addr_linklocal_allrouters;
 
 /*
  * Equality

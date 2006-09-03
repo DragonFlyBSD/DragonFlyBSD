@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.24 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.25 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -2265,7 +2265,7 @@ signal_vt_rel(scr_stat *scp)
     if (scp->smode.mode != VT_PROCESS)
 	return FALSE;
     scp->status |= SWITCH_WAIT_REL;
-    psignal(scp->proc, scp->smode.relsig);
+    ksignal(scp->proc, scp->smode.relsig);
     DPRINTF(5, ("sending relsig to %d\n", scp->pid));
     return TRUE;
 }
@@ -2278,7 +2278,7 @@ signal_vt_acq(scr_stat *scp)
     if (scp->sc->unit == sc_console_unit)
 	cons_unavail = TRUE;
     scp->status |= SWITCH_WAIT_ACQ;
-    psignal(scp->proc, scp->smode.acqsig);
+    ksignal(scp->proc, scp->smode.acqsig);
     DPRINTF(5, ("sending acqsig to %d\n", scp->pid));
     return TRUE;
 }

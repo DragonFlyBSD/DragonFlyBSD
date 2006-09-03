@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.26 2006/09/03 17:31:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.27 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -370,8 +370,8 @@ orphanpg(struct pgrp *pg)
 	LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 		if (p->p_flag & P_STOPPED) {
 			LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-				psignal(p, SIGHUP);
-				psignal(p, SIGCONT);
+				ksignal(p, SIGHUP);
+				ksignal(p, SIGCONT);
 			}
 			return;
 		}

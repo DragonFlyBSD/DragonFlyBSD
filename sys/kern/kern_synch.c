@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.64 2006/07/11 01:01:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.65 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -210,7 +210,7 @@ schedcpu_stats(struct proc *p, void *data __unused)
 }
 
 /*
- * Resource checks.  XXX break out since psignal/killproc can block,
+ * Resource checks.  XXX break out since ksignal/killproc can block,
  * limiting us to one process killed per second.  There is probably
  * a better way.
  */
@@ -238,7 +238,7 @@ schedcpu_resource(struct proc *p, void *data __unused)
 	case PLIMIT_TESTCPU_XCPU:
 		if ((p->p_flag & P_XCPU) == 0) {
 			p->p_flag |= P_XCPU;
-			psignal(p, SIGXCPU);
+			ksignal(p, SIGXCPU);
 		}
 		break;
 	default:
@@ -394,7 +394,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 				goto resume;
 
 			/*
-			 * Causes psignal to wake us up when.
+			 * Causes ksignal to wake us up when.
 			 */
 			p->p_flag |= P_SINTR;
 		}

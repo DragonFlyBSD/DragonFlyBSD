@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.20 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.21 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -665,7 +665,7 @@ udp6_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		 * of overwriting any previously bound local address.
 		 */
 		if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
-			inp->in6p_laddr = in6addr_any;
+			inp->in6p_laddr = kin6addr_any;
 		in_pcbinswildcardhash(inp);
 	}
 	return error;

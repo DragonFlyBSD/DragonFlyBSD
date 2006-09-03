@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.37 2006/05/06 16:01:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.38 2006/09/03 18:29:17 dillon Exp $
  */
 
 
@@ -847,7 +847,7 @@ restart:
 	 */
 	if (td->td_proc && uio->uio_offset + uio->uio_resid >
 	      td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(td->td_proc, SIGXFSZ);
+		ksignal(td->td_proc, SIGXFSZ);
 		if (haverslock)
 			nfs_rsunlock(np);
 		return (EFBIG);
@@ -1375,7 +1375,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 		if (td && td->td_proc && (vp->v_flag & VTEXT) &&
 		    np->n_mtime != np->n_vattr.va_mtime.tv_sec) {
 			uprintf("Process killed due to text file modification\n");
-			psignal(td->td_proc, SIGKILL);
+			ksignal(td->td_proc, SIGKILL);
 		}
 		break;
 	    case VLNK:

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.12 2005/06/03 19:56:08 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.13 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -293,7 +293,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	 * S bit ("solicited") must be zero.
 	 */
 	if (IN6_IS_ADDR_UNSPECIFIED(&saddr6)) {
-		saddr6 = in6addr_linklocal_allnodes;
+		saddr6 = kin6addr_linklocal_allnodes;
 		saddr6.s6_addr16[1] = htons(ifp->if_index);
 		nd6_na_output(ifp, &saddr6, &taddr6,
 			      ((anycast || proxy || !tlladdr)

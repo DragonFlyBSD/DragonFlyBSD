@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.53 2006/06/08 18:25:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.54 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -509,7 +509,7 @@ hardclock(systimer_t info, struct intrframe *frame)
 	hardclock_softtick(gd);
 
 	/*
-	 * ITimer handling is per-tick, per-cpu.  I don't think psignal()
+	 * ITimer handling is per-tick, per-cpu.  I don't think ksignal()
 	 * is mpsafe on curproc, so XXX get the mplock.
 	 */
 	if ((p = curproc) != NULL && try_mplock()) {
@@ -517,10 +517,10 @@ hardclock(systimer_t info, struct intrframe *frame)
 		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&p->p_timer[ITIMER_VIRTUAL].it_value) &&
 		    itimerdecr(&p->p_timer[ITIMER_VIRTUAL], tick) == 0)
-			psignal(p, SIGVTALRM);
+			ksignal(p, SIGVTALRM);
 		if (timevalisset(&p->p_timer[ITIMER_PROF].it_value) &&
 		    itimerdecr(&p->p_timer[ITIMER_PROF], tick) == 0)
-			psignal(p, SIGPROF);
+			ksignal(p, SIGPROF);
 		rel_mplock();
 	}
 	setdelayed();

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.10 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.11 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -373,7 +373,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 				 * Undo any address bind that may have
 				 * occurred above.
 				 */
-				inp->in6p_laddr = in6addr_any;
+				inp->in6p_laddr = kin6addr_any;
 				return (EAGAIN);
 			}
 			--*lastport;
@@ -394,7 +394,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 				 * Undo any address bind that may have
 				 * occurred above.
 				 */
-				inp->in6p_laddr = in6addr_any;
+				inp->in6p_laddr = kin6addr_any;
 				return (EAGAIN);
 			}
 			++*lastport;
@@ -407,7 +407,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 
 	inp->inp_lport = lport;
 	if (in_pcbinsporthash(inp) != 0) {
-		inp->in6p_laddr = in6addr_any;
+		inp->in6p_laddr = kin6addr_any;
 		inp->inp_lport = 0;
 		return (EAGAIN);
 	}

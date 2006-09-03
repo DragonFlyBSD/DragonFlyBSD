@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.19 2006/05/26 19:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.20 2006/09/03 18:29:17 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -285,7 +285,7 @@ ffs_write(struct vop_write_args *ap)
 	if (vp->v_type == VREG && td && td->td_proc &&
 	    uio->uio_offset + uio->uio_resid >
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(td->td_proc, SIGXFSZ);
+		ksignal(td->td_proc, SIGXFSZ);
 		return (EFBIG);
 	}
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.14 2006/01/14 11:44:25 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.15 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -565,11 +565,11 @@ in6_ifattach_loopback(struct ifnet *ifp)	/* must be IFT_LOOP */
 	 */
 	ifra.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
 	ifra.ifra_dstaddr.sin6_family = AF_INET6;
-	ifra.ifra_dstaddr.sin6_addr = in6addr_loopback;
+	ifra.ifra_dstaddr.sin6_addr = kin6addr_loopback;
 
 	ifra.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
 	ifra.ifra_addr.sin6_family = AF_INET6;
-	ifra.ifra_addr.sin6_addr = in6addr_loopback;
+	ifra.ifra_addr.sin6_addr = kin6addr_loopback;
 
 	/* the loopback  address should NEVER expire. */
 	ifra.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
@@ -750,7 +750,7 @@ in6_ifattach(struct ifnet *ifp,
 	 * XXX multiple loopback interface case.
 	 */
 	if ((ifp->if_flags & IFF_LOOPBACK) != 0) {
-		in6 = in6addr_loopback;
+		in6 = kin6addr_loopback;
 		if (in6ifa_ifpwithaddr(ifp, &in6) == NULL) {
 			if (in6_ifattach_loopback(ifp) != 0)
 				return;
@@ -879,7 +879,7 @@ in6_ifdetach(struct ifnet *ifp)
 	bzero(&sin6, sizeof(sin6));
 	sin6.sin6_len = sizeof(struct sockaddr_in6);
 	sin6.sin6_family = AF_INET6;
-	sin6.sin6_addr = in6addr_linklocal_allnodes;
+	sin6.sin6_addr = kin6addr_linklocal_allnodes;
 	sin6.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 	rt = rtpurelookup((struct sockaddr *)&sin6);
 	if (rt != NULL && rt->rt_ifp == ifp) {

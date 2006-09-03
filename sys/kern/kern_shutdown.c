@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.32 2006/09/03 17:43:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.33 2006/09/03 18:29:16 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -187,7 +187,7 @@ shutdown_nice(int howto)
 	
 	/* Send a signal to init(8) and have it shutdown the world */
 	if (initproc != NULL) {
-		psignal(initproc, SIGINT);
+		ksignal(initproc, SIGINT);
 	} else {
 		/* No init(8) running, so simply reboot */
 		boot(RB_NOSYNC);

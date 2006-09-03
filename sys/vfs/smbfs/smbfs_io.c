@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.25 2006/05/06 02:43:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.26 2006/09/03 18:29:17 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -280,7 +280,7 @@ smbfs_writevnode(struct vnode *vp, struct uio *uiop,
 	if (td->td_proc &&
 	    uiop->uio_offset + uiop->uio_resid >
 	    td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
-		psignal(td->td_proc, SIGXFSZ);
+		ksignal(td->td_proc, SIGXFSZ);
 		return EFBIG;
 	}
 	smb_makescred(&scred, td, cred);

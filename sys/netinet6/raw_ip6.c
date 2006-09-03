@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.20 2005/08/11 03:19:39 corecode Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.21 2006/09/03 18:29:17 dillon Exp $
  */
 
 /*
@@ -605,7 +605,7 @@ rip6_disconnect(struct socket *so)
 
 	if ((so->so_state & SS_ISCONNECTED) == 0)
 		return ENOTCONN;
-	inp->in6p_faddr = in6addr_any;
+	inp->in6p_faddr = kin6addr_any;
 	return rip6_abort(so);
 }
 

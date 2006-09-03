@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.25 2006/09/03 17:31:55 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.26 2006/09/03 18:29:17 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -695,7 +695,7 @@ syncache_socket(struct syncache *sc, struct socket *lso)
 		 * put the PCB on the hash lists.
 		 */
 		if (isipv6)
-			inp->in6p_laddr = in6addr_any;
+			inp->in6p_laddr = kin6addr_any;
 		else
 			inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;

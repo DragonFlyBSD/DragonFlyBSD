@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.29 2006/06/13 08:12:03 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.30 2006/09/03 18:29:16 dillon Exp $
  */
 
 /*
@@ -595,7 +595,7 @@ aio_process(struct aiocblist *aiocbe)
 		if (error == ERESTART || error == EINTR || error == EWOULDBLOCK)
 			error = 0;
 		if ((error == EPIPE) && (cb->aio_lio_opcode == LIO_WRITE))
-			psignal(aiocbe->userproc, SIGPIPE);
+			ksignal(aiocbe->userproc, SIGPIPE);
 	}
 
 	cnt -= auio.uio_resid;
@@ -772,7 +772,7 @@ aio_daemon(void *uproc)
 				    lj->lioj_queue_count) &&
 				    (lj->lioj_buffer_finished_count ==
 				    lj->lioj_buffer_count)) {
-						psignal(userp,
+						ksignal(userp,
 						    lj->lioj_signal.sigev_signo);
 						lj->lioj_flags |=
 						    LIOJ_SIGNAL_POSTED;
@@ -794,7 +794,7 @@ aio_daemon(void *uproc)
 			}
 
 			if (cb->aio_sigevent.sigev_notify == SIGEV_SIGNAL) {
-				psignal(userp, cb->aio_sigevent.sigev_signo);
+				ksignal(userp, cb->aio_sigevent.sigev_signo);
 			}
 		}
 
@@ -1627,7 +1627,7 @@ sys_aio_cancel(struct aio_cancel_args *uap)
 /* XXX cancelled, knote? */
 			        if (cbe->uaiocb.aio_sigevent.sigev_notify ==
 				    SIGEV_SIGNAL)
-					psignal(cbe->userproc, cbe->uaiocb.aio_sigevent.sigev_signo);
+					ksignal(cbe->userproc, cbe->uaiocb.aio_sigevent.sigev_signo);
 				if (uap->aiocbp) 
 					break;
 			}
@@ -1664,7 +1664,7 @@ sys_aio_cancel(struct aio_cancel_args *uap)
 /* XXX cancelled, knote? */
 			        if (cbe->uaiocb.aio_sigevent.sigev_notify ==
 				    SIGEV_SIGNAL)
-					psignal(cbe->userproc, cbe->uaiocb.aio_sigevent.sigev_signo);
+					ksignal(cbe->userproc, cbe->uaiocb.aio_sigevent.sigev_signo);
 			} else {
 				notcancelled++;
 			}
@@ -1985,12 +1985,12 @@ process_signal(void *aioj)
 
 	if ((lj) && (lj->lioj_signal.sigev_notify == SIGEV_SIGNAL) &&
 	    (lj->lioj_queue_count == lj->lioj_queue_finished_count)) {
-		psignal(lj->lioj_ki->kaio_p, lj->lioj_signal.sigev_signo);
+		ksignal(lj->lioj_ki->kaio_p, lj->lioj_signal.sigev_signo);
 		lj->lioj_flags |= LIOJ_SIGNAL_POSTED;
 	}
 
 	if (cb->aio_sigevent.sigev_notify == SIGEV_SIGNAL)
-		psignal(aiocbe->userproc, cb->aio_sigevent.sigev_signo);
+		ksignal(aiocbe->userproc, cb->aio_sigevent.sigev_signo);
 }
 
 /*

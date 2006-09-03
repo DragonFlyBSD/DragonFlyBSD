@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.28 2006/01/31 19:05:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.29 2006/09/03 18:29:17 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -254,7 +254,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	else {
 		inp->inp_lport = lport;
 		if (in_pcbinsporthash(inp) != 0) {
-			inp->in6p_laddr = in6addr_any;
+			inp->in6p_laddr = kin6addr_any;
 			inp->inp_lport = 0;
 			return (EAGAIN);
 		}
@@ -299,7 +299,7 @@ in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		 * use the loopback addr, e.g ::1.
 		 */
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr))
-			sin6->sin6_addr = in6addr_loopback;
+			sin6->sin6_addr = kin6addr_loopback;
 	}
 	{
 		/*

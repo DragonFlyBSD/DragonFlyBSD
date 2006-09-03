@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.34 2006/08/19 17:27:22 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.35 2006/09/03 18:29:16 dillon Exp $
  */
 
 /*
@@ -300,7 +300,7 @@ linprocfs_ioctl(struct vop_ioctl_args *ap)
 	  if ((signo = *(int*)ap->a_data) != 0) {
 	    if (signo >= NSIG || signo <= 0)
 	      return EINVAL;
-	    psignal(procp, signo);
+	    ksignal(procp, signo);
 	  }
 	  procp->p_step = 0;
 	  wakeup(&procp->p_step);
