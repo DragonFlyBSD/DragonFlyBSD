@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
- * $DragonFly: src/sys/kern/kern_environment.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_environment.c,v 1.3 2006/09/03 17:43:59 dillon Exp $
  */
 
 /*
@@ -51,7 +51,7 @@ static char	*kernenv_next(char *cp);
  * Look up an environment variable by name.
  */
 char *
-getenv(const char *name)
+kgetenv(const char *name)
 {
     char	*cp, *ep;
     int		len;
@@ -73,11 +73,11 @@ getenv(const char *name)
  * Return a string value from an environment variable.
  */
 int
-getenv_string(const char *name, char *data, int size)
+kgetenv_string(const char *name, char *data, int size)
 {
     char *tmp;
 
-    tmp = getenv(name);
+    tmp = kgetenv(name);
     if (tmp != NULL) {
 	strncpy(data, tmp, size);
 	data[size - 1] = 0;
@@ -90,12 +90,12 @@ getenv_string(const char *name, char *data, int size)
  * Return an integer value from an environment variable.
  */
 int
-getenv_int(const char *name, int *data)
+kgetenv_int(const char *name, int *data)
 {
     quad_t tmp;
     int rval;
 
-    rval = getenv_quad(name, &tmp);
+    rval = kgetenv_quad(name, &tmp);
     if (rval) {
 	*data = (int) tmp;
     }
@@ -106,13 +106,13 @@ getenv_int(const char *name, int *data)
  * Return a quad_t value from an environment variable.
  */
 int
-getenv_quad(const char *name, quad_t *data)
+kgetenv_quad(const char *name, quad_t *data)
 {
     const char	*value;
     char	*vtp;
     quad_t	iv;
     
-    if ((value = getenv(name)) == NULL)
+    if ((value = kgetenv(name)) == NULL)
 	return(0);
     
     iv = strtoq(value, &vtp, 0);

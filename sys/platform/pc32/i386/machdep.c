@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.94 2006/06/07 03:02:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.95 2006/09/03 17:43:59 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1574,7 +1574,7 @@ physmap_done:
 	 * hw.physmem is a size in bytes; we also allow k, m, and g suffixes
 	 * for the appropriate modifiers.  This overrides MAXMEM.
 	 */
-	if ((cp = getenv("hw.physmem")) != NULL) {
+	if ((cp = kgetenv("hw.physmem")) != NULL) {
 		u_int64_t AllowMem, sanity;
 		char *ep;
 
@@ -1629,8 +1629,8 @@ physmap_done:
 	/*
 	 * Get dcons buffer address
 	 */
-	if (getenv_quad("dcons.addr", &dcons_addr) == 0 ||
-	    getenv_quad("dcons.size", &dcons_size) == 0)
+	if (kgetenv_quad("dcons.addr", &dcons_addr) == 0 ||
+	    kgetenv_quad("dcons.size", &dcons_size) == 0)
 		dcons_addr = 0;
 
 	/*

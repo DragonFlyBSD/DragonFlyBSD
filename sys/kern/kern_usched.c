@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_usched.c,v 1.5 2006/06/05 07:26:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_usched.c,v 1.6 2006/09/03 17:43:59 dillon Exp $
  */
 
 #include <sys/errno.h>
@@ -54,7 +54,7 @@ usched_init(void)
 {
 	const char *defsched;
 
-	defsched = getenv("kern.user_scheduler");
+	defsched = kgetenv("kern.user_scheduler");
 
 	/*
 	 * Add various userland schedulers to the system.

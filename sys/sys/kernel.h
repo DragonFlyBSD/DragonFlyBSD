@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.22 2006/08/23 06:45:40 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.23 2006/09/03 17:43:59 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -279,7 +279,7 @@ struct tunable_int {
 	SYSINIT(__Tunable_init_ ## line, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, \
 	     tunable_int_init, &__tunable_int_ ## line)
 
-#define	TUNABLE_INT_FETCH(path, var)	getenv_int((path), (var))
+#define	TUNABLE_INT_FETCH(path, var)	kgetenv_int((path), (var))
 
 /* Backwards compatibility with the old deprecated TUNABLE_INT_DECL API */
 #define TUNABLE_INT_DECL(path, defval, var)	\
@@ -308,7 +308,7 @@ struct tunable_quad {
 	SYSINIT(__Tunable_init_ ## line, SI_SUB_TUNABLES, SI_ORDER_MIDDLE, \
 	    tunable_quad_init, &__tunable_quad_ ## line)
 
-#define	TUNABLE_QUAD_FETCH(path, var)	getenv_quad((path), (var))
+#define	TUNABLE_QUAD_FETCH(path, var)	kgetenv_quad((path), (var))
 
 extern void tunable_str_init(void *);
 struct tunable_str {
@@ -331,7 +331,7 @@ struct tunable_str {
 	     tunable_str_init, &__tunable_str_ ## line)
 
 #define	TUNABLE_STR_FETCH(path, var, size)			\
-	getenv_string((path), (var), (size))
+	kgetenv_string((path), (var), (size))
 
 /*
  * Compatibility.  To be deprecated after LKM is removed.

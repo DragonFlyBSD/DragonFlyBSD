@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.11 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.12 2006/09/03 17:43:59 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -198,7 +198,7 @@ int	iszerodev (dev_t dev);
 dev_t	make_sub_dev (dev_t dev, int minor);
 int	lminor (dev_t dev);
 void	setconf (void);
-dev_t	getdiskbyname(const char *name);
+dev_t	kgetdiskbyname(const char *name);
 int	dev_is_good(dev_t dev);
 
 /*

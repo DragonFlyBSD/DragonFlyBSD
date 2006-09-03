@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.157 2004/06/05 09:56:04 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.20 2006/07/28 02:17:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.21 2006/09/03 17:43:55 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -267,7 +267,7 @@ acpi_Startup(void)
 
     /* Start up the ACPI CA subsystem. */
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (!strcmp(debugpoint, "init"))
 	    acpi_EnterDebugger();
@@ -279,7 +279,7 @@ acpi_Startup(void)
 	return_VALUE (error);
     }
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (!strcmp(debugpoint, "tables"))
 	    acpi_EnterDebugger();
@@ -407,7 +407,7 @@ acpi_attach(device_t dev)
     callout_init(&sc->acpi_sleep_timer);
 
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (!strcmp(debugpoint, "spaces"))
 	    acpi_EnterDebugger();
@@ -455,7 +455,7 @@ acpi_attach(device_t dev)
      *     all our child devices, but on many systems it works here.
      */
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (!strcmp(debugpoint, "enable"))
 	    acpi_EnterDebugger();
@@ -531,7 +531,7 @@ acpi_attach(device_t dev)
     sc->acpi_disable_on_poweroff = 0;
     if (bootverbose)
 	sc->acpi_verbose = 1;
-    if ((env = getenv("hw.acpi.verbose")) && strcmp(env, "0")) {
+    if ((env = kgetenv("hw.acpi.verbose")) && strcmp(env, "0")) {
 	sc->acpi_verbose = 1;
 	freeenv(env);
     }
@@ -563,7 +563,7 @@ acpi_attach(device_t dev)
      * Scan the namespace and attach/initialise children.
      */
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (!strcmp(debugpoint, "probe"))
 	    acpi_EnterDebugger();
@@ -598,7 +598,7 @@ acpi_attach(device_t dev)
     sc->acpi_dev_t->si_drv1 = sc;
 
 #ifdef ACPI_DEBUGGER
-    debugpoint = getenv("debug.acpi.debugger");
+    debugpoint = kgetenv("debug.acpi.debugger");
     if (debugpoint) {
 	if (strcmp(debugpoint, "running") == 0)
 	    acpi_EnterDebugger();
@@ -649,13 +649,13 @@ acpi_quirks_set(void)
      * the settings alone.
      */
     len = 0;
-    if ((env = getenv("acpi_dsdt_load")) != NULL) {
+    if ((env = kgetenv("acpi_dsdt_load")) != NULL) {
 	/* XXX No strcasecmp but this is good enough. */
 	if (*env == 'Y' || *env == 'y')
 	    goto out;
 	freeenv(env);
     }
-    if ((env = getenv("debug.acpi.disabled")) != NULL) {
+    if ((env = kgetenv("debug.acpi.disabled")) != NULL) {
 	if (strstr("quirks", env) != NULL)
 	    goto out;
 	len = strlen(env);
@@ -2278,8 +2278,8 @@ acpi_avoid(ACPI_HANDLE handle)
     np = acpi_name(handle);
     if (*np == '\\')
 	np++;
-    if ((env = getenv("debug.acpi.avoid.paths")) == NULL &&
-	(env = getenv("debug.acpi.avoid")) == NULL)
+    if ((env = kgetenv("debug.acpi.avoid.paths")) == NULL &&
+	(env = kgetenv("debug.acpi.avoid")) == NULL)
 	return (0);
 
     /* Scan the avoid list checking for a match */
@@ -2314,7 +2314,7 @@ acpi_disabled(char *subsys)
     char	*cp, *env;
     int		len;
 
-    if ((env = getenv("debug.acpi.disabled")) == NULL)
+    if ((env = kgetenv("debug.acpi.disabled")) == NULL)
 	return (0);
     if (strcmp(env, "all") == 0) {
 	freeenv(env);
@@ -2353,7 +2353,7 @@ acpi_enabled(char *subsys)
     char	*cp, *env;
     int		len;
 
-    if ((env = getenv("debug.acpi.enabled")) == NULL)
+    if ((env = kgetenv("debug.acpi.enabled")) == NULL)
 	return (0);
     if (strcmp(env, "all") == 0) {
 	freeenv(env);
@@ -2732,8 +2732,8 @@ acpi_set_debugging(void *junk)
 	AcpiDbgLevel = 0;
     }
 
-    layer = getenv("debug.acpi.layer");
-    level = getenv("debug.acpi.level");
+    layer = kgetenv("debug.acpi.layer");
+    level = kgetenv("debug.acpi.level");
     if (layer == NULL && level == NULL)
 	return;
 

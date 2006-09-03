@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.14 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.15 2006/09/03 17:43:59 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -132,7 +132,7 @@ vinumattach(void *dummy)
      * See if the loader has passed us a disk to
      * read the initial configuration from.
      */
-    if ((cp = getenv("vinum.drives")) != NULL) {
+    if ((cp = kgetenv("vinum.drives")) != NULL) {
 	for (cp1 = cp, i = 0, drives = 0; *cp1 != '\0'; i++) {
 	    cp2 = cp1;
 	    while (*cp1 != '\0' && *cp1 != ',' && *cp1 != ' ')
@@ -151,7 +151,7 @@ vinumattach(void *dummy)
     bailout:
 	free(drives, M_TEMP);
     }
-    if ((cp = getenv("vinum.root")) != NULL) {
+    if ((cp = kgetenv("vinum.root")) != NULL) {
 	for (i = 0; i < vinum_conf.volumes_used; i++) {
 	    vol = &vinum_conf.volume[i];
 	    if ((vol->state == volume_up)

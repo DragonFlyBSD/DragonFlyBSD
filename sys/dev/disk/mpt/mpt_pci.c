@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_pci.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.6 2006/08/12 05:19:46 swildner Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_pci.c,v 1.7 2006/09/03 17:43:57 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -153,14 +153,14 @@ mpt_set_options(mpt_softc_t *mpt)
 	int bitmap;
 
 	bitmap = 0;
-	if (getenv_int("mpt_disable", &bitmap)) {
+	if (kgetenv_int("mpt_disable", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->disabled = 1;
 		}
 	}
 
 	bitmap = 0;
-	if (getenv_int("mpt_debug", &bitmap)) {
+	if (kgetenv_int("mpt_debug", &bitmap)) {
 		if (bitmap & (1 << mpt->unit)) {
 			mpt->verbose = 2;
 		}

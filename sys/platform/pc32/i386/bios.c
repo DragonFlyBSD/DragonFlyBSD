@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.10 2004/04/29 12:11:16 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.11 2006/09/03 17:43:59 dillon Exp $
  */
 
 /*
@@ -93,7 +93,7 @@ bios32_init(void *junk)
 	    }
 
 	    /*  Allow user override of PCI BIOS search */
-	    if (((p = getenv("machdep.bios.pci")) == NULL) || strcmp(p, "disable")) {
+	    if (((p = kgetenv("machdep.bios.pci")) == NULL) || strcmp(p, "disable")) {
 		/* See if there's a PCI BIOS entrypoint here */
 		PCIbios.ident.id = 0x49435024;	/* PCI systems should have this */
 		if (!bios32_SDlookup(&PCIbios) && bootverbose)
@@ -111,7 +111,7 @@ bios32_init(void *junk)
      *
      * Allow user override of PnP BIOS search
      */
-    if (((p = getenv("machdep.bios.pnp")) == NULL || strcmp(p, "disable")) &&
+    if (((p = kgetenv("machdep.bios.pnp")) == NULL || strcmp(p, "disable")) &&
 	(sigaddr = bios_sigsearch(0, "$PnP", 4, 16, 0)) != 0
     ) {
 	/* get a virtual pointer to the structure */

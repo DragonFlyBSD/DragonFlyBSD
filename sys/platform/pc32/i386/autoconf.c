@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.23 2005/11/04 08:57:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.24 2006/09/03 17:43:59 dillon Exp $
  */
 
 /*
@@ -364,7 +364,7 @@ inaddr_to_sockaddr(char *ev, struct sockaddr_in *sa)
 
 	bzero(sa, sizeof(*sa));
 
-	if ((cp = getenv(ev)) == NULL)
+	if ((cp = kgetenv(ev)) == NULL)
 		return(1);
 	if (sscanf(cp, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) != 4)
 		return(1);
@@ -388,7 +388,7 @@ hwaddr_to_sockaddr(char *ev, struct sockaddr_dl *sa)
 	sa->sdl_family = AF_LINK;
 	sa->sdl_type = IFT_ETHER;
 	sa->sdl_alen = ETHER_ADDR_LEN;
-	if ((cp = getenv(ev)) == NULL)
+	if ((cp = kgetenv(ev)) == NULL)
 		return(1);
 	if (sscanf(cp, "%x:%x:%x:%x:%x:%x", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]) != 6)
 		return(1);
@@ -407,7 +407,7 @@ decode_nfshandle(char *ev, u_char *fh)
 	u_char	*cp;
 	int	len, val;
 
-	if (((cp = getenv(ev)) == NULL) || (strlen(cp) < 2) || (*cp != 'X'))
+	if (((cp = kgetenv(ev)) == NULL) || (strlen(cp) < 2) || (*cp != 'X'))
 		return(0);
 	len = 0;
 	cp++;
@@ -507,7 +507,7 @@ match_done:
 	if (decode_nfshandle("boot.nfsroot.nfshandle", &nd->root_fh[0]) == 0) {
 		printf("PXE: Warning, no NFS handle passed from loader\n");
 	}
-	if ((cp = getenv("boot.nfsroot.path")) != NULL)
+	if ((cp = kgetenv("boot.nfsroot.path")) != NULL)
 		strncpy(nd->root_hostnam, cp, MNAMELEN - 1);
 
 	nfs_diskless_valid = 1;

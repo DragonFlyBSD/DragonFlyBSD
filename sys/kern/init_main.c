@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.59 2006/08/12 00:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.60 2006/09/03 17:43:59 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -475,11 +475,11 @@ start_init(void *dummy)
 	p->p_vmspace->vm_maxsaddr = (caddr_t)addr;
 	p->p_vmspace->vm_ssize = 1;
 
-	if ((var = getenv("init_path")) != NULL) {
+	if ((var = kgetenv("init_path")) != NULL) {
 		strncpy(init_path, var, sizeof init_path);
 		init_path[sizeof init_path - 1] = 0;
 	}
-	if ((var = getenv("kern.fallback_elf_brand")) != NULL)
+	if ((var = kgetenv("kern.fallback_elf_brand")) != NULL)
 		fallback_elf_brand = strtol(var, NULL, 0);
 	
 	for (path = init_path; *path != '\0'; path = next) {

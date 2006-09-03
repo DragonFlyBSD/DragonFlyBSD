@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.17 2004/06/10 20:03:46 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.5 2005/11/02 08:33:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.6 2006/09/03 17:43:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -619,7 +619,7 @@ madt_parse_interrupt_override(MADT_INTERRUPT_OVERRIDE *intr)
 	 */
 	if (intr->Source == AcpiGbl_FADT->SciInt) {
 		madt_found_sci_override = 1;
-		if (getenv_string("hw.acpi.sci.trigger", buf, sizeof(buf))) {
+		if (kgetenv_string("hw.acpi.sci.trigger", buf, sizeof(buf))) {
 			if (tolower(buf[0]) == 'e')
 				trig = INTR_TRIGGER_EDGE;
 			else if (tolower(buf[0]) == 'l')
@@ -631,7 +631,7 @@ madt_parse_interrupt_override(MADT_INTERRUPT_OVERRIDE *intr)
 			printf("MADT: Forcing SCI to %s trigger\n",
 			    trig == INTR_TRIGGER_EDGE ? "edge" : "level");
 		}
-		if (getenv_string("hw.acpi.sci.polarity", buf, sizeof(buf))) {
+		if (kgetenv_string("hw.acpi.sci.polarity", buf, sizeof(buf))) {
 			if (tolower(buf[0]) == 'h')
 				pol = INTR_POLARITY_HIGH;
 			else if (tolower(buf[0]) == 'l')

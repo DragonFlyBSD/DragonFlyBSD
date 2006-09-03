@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/vfs_conf.c,v 1.49.2.5 2003/01/07 11:56:53 joerg Exp $
- *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.16 2006/05/06 18:48:52 dillon Exp $
+ *	$DragonFly: src/sys/kern/vfs_conf.c,v 1.17 2006/09/03 17:43:59 dillon Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ vfs_mountroot(void *junk)
 	 * supplied via some other means.  This is the preferred 
 	 * mechanism.
 	 */
-	if (!vfs_mountroot_try(getenv("vfs.root.mountfrom")))
+	if (!vfs_mountroot_try(kgetenv("vfs.root.mountfrom")))
 		return;
 
 	/*
@@ -335,7 +335,7 @@ gets(char *cp)
  * it refers to.
  */
 dev_t
-getdiskbyname(const char *name) 
+kgetdiskbyname(const char *name) 
 {
 	char *cp;
 	int nlen;
@@ -436,7 +436,7 @@ setrootbyname(char *name)
 {
 	dev_t diskdev;
 
-	diskdev = getdiskbyname(name);
+	diskdev = kgetdiskbyname(name);
 	if (diskdev != NODEV) {
 		rootdev = diskdev;
 		return (0);
@@ -454,7 +454,7 @@ DB_SHOW_COMMAND(disk, db_getdiskbyname)
 		db_error("usage: show disk/devicename");
 		return;
 	}
-	dev = getdiskbyname(modif);
+	dev = kgetdiskbyname(modif);
 	if (dev != NODEV)
 		db_printf("dev_t = %p\n", dev);
 	else

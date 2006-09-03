@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_pci.c,v 1.78.2.4 2002/10/11 18:50:53 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.8 2005/10/12 17:35:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_pci.c,v 1.9 2006/09/03 17:43:56 dillon Exp $ */
 /*
  * PCI specific probe and attach routines for Qlogic ISP SCSI adapters.
  * FreeBSD Version.
@@ -356,7 +356,7 @@ isp_pci_attach(device_t dev)
 	 * Figure out if we're supposed to skip this one.
 	 */
 	unit = device_get_unit(dev);
-	if (getenv_int("isp_disable", &bitmap)) {
+	if (kgetenv_int("isp_disable", &bitmap)) {
 		if (bitmap & (1 << unit)) {
 			device_printf(dev, "not configuring\n");
 			/*
@@ -374,14 +374,14 @@ isp_pci_attach(device_t dev)
 	m1 = PCIM_CMD_PORTEN;
 	m2 = PCIM_CMD_MEMEN;
 	bitmap = 0;
-	if (getenv_int("isp_mem_map", &bitmap)) {
+	if (kgetenv_int("isp_mem_map", &bitmap)) {
 		if (bitmap & (1 << unit)) {
 			m1 = PCIM_CMD_MEMEN;
 			m2 = PCIM_CMD_PORTEN;
 		}
 	}
 	bitmap = 0;
-	if (getenv_int("isp_io_map", &bitmap)) {
+	if (kgetenv_int("isp_io_map", &bitmap)) {
 		if (bitmap & (1 << unit)) {
 			m1 = PCIM_CMD_PORTEN;
 			m2 = PCIM_CMD_MEMEN;
@@ -581,31 +581,31 @@ isp_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	if (getenv_int("isp_no_fwload", &bitmap)) {
+	if (kgetenv_int("isp_no_fwload", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts |= ISP_CFG_NORELOAD;
 	}
-	if (getenv_int("isp_fwload", &bitmap)) {
+	if (kgetenv_int("isp_fwload", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts &= ~ISP_CFG_NORELOAD;
 	}
-	if (getenv_int("isp_no_nvram", &bitmap)) {
+	if (kgetenv_int("isp_no_nvram", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts |= ISP_CFG_NONVRAM;
 	}
-	if (getenv_int("isp_nvram", &bitmap)) {
+	if (kgetenv_int("isp_nvram", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts &= ~ISP_CFG_NONVRAM;
 	}
-	if (getenv_int("isp_fcduplex", &bitmap)) {
+	if (kgetenv_int("isp_fcduplex", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts |= ISP_CFG_FULL_DUPLEX;
 	}
-	if (getenv_int("isp_no_fcduplex", &bitmap)) {
+	if (kgetenv_int("isp_no_fcduplex", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts &= ~ISP_CFG_FULL_DUPLEX;
 	}
-	if (getenv_int("isp_nport", &bitmap)) {
+	if (kgetenv_int("isp_nport", &bitmap)) {
 		if (bitmap & (1 << unit))
 			isp->isp_confopts |= ISP_CFG_NPORT;
 	}
@@ -618,7 +618,7 @@ isp_pci_attach(device_t dev)
 	 * hint replacement to specify WWN strings with a leading
 	 * 'w' (e..g w50000000aaaa0001). Sigh.
 	 */
-	if (getenv_quad("isp_portwwn", &wwn)) {
+	if (kgetenv_quad("isp_portwwn", &wwn)) {
 		isp->isp_osinfo.default_port_wwn = wwn;
 		isp->isp_confopts |= ISP_CFG_OWNWWPN;
 	}
@@ -626,7 +626,7 @@ isp_pci_attach(device_t dev)
 		isp->isp_osinfo.default_port_wwn = 0x400000007F000009ull;
 	}
 
-	if (getenv_quad("isp_nodewwn", &wwn)) {
+	if (kgetenv_quad("isp_nodewwn", &wwn)) {
 		isp->isp_osinfo.default_node_wwn = wwn;
 		isp->isp_confopts |= ISP_CFG_OWNWWNN;
 	}
@@ -635,7 +635,7 @@ isp_pci_attach(device_t dev)
 	}
 
 	isp_debug = 0;
-	(void) getenv_int("isp_debug", &isp_debug);
+	(void) kgetenv_int("isp_debug", &isp_debug);
 	if (bus_setup_intr(dev, irq, 0, isp_pci_intr,
 	    isp, &pcs->ih, NULL)) {
 		device_printf(dev, "could not setup interrupt\n");
@@ -644,7 +644,7 @@ isp_pci_attach(device_t dev)
 
 #ifdef	ISP_FW_CRASH_DUMP
 	bitmap = 0;
-	if (getenv_int("isp_fw_dump_enable", &bitmap)) {
+	if (kgetenv_int("isp_fw_dump_enable", &bitmap)) {
 		if (bitmap & (1 << unit) {
 			size_t amt = 0;
 			if (IS_2200(isp)) {

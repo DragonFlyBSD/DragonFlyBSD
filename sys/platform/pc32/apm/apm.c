@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.15 2006/07/28 02:17:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apm/apm.c,v 1.16 2006/09/03 17:43:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1015,7 +1015,7 @@ apm_attach(device_t dev)
 	/* Always call HLT in idle loop */
 	sc->always_halt_cpu = 1;
 
-	getenv_int("debug.apm_debug", &apm_debug);
+	kgetenv_int("debug.apm_debug", &apm_debug);
 
 	/* print bootstrap messages */
 	APM_DPRINT("apm: APM BIOS version %04lx\n",  apm_version);

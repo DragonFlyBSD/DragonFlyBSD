@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.39 2006/07/28 02:17:41 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.40 2006/09/03 17:43:59 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -194,12 +194,12 @@ void	startprofclock (struct proc *);
 void	stopprofclock (struct proc *);
 void	setstatclockrate (int hzrate);
 
-char	*getenv (const char *name);
-#define	testenv	getenv
+char	*kgetenv (const char *name);
+#define	testenv	kgetenv
 #define	freeenv(p)
-int	getenv_int (const char *name, int *data);
-int	getenv_string (const char *name, char *data, int size);
-int	getenv_quad (const char *name, quad_t *data);
+int	kgetenv_int (const char *name, int *data);
+int	kgetenv_string (const char *name, char *data, int size);
+int	kgetenv_quad (const char *name, quad_t *data);
 extern char *kern_envp;
 
 #ifdef APM_FIXUP_CALLTODO 

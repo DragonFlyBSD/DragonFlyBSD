@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/dcons/dcons_os.c,v 1.4 2004/10/24 12:41:04 simokawa Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.4 2006/09/03 17:31:52 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons_os.c,v 1.5 2006/09/03 17:43:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -486,8 +486,8 @@ dcons_drv_init(int stage)
 	dg.size = DCONS_BUF_SIZE;
 
 #ifdef __i386__
-	if (getenv_quad("dcons.addr", &addr) > 0 &&
-	    getenv_quad("dcons.size", &size) > 0) {
+	if (kgetenv_quad("dcons.addr", &addr) > 0 &&
+	    kgetenv_quad("dcons.size", &size) > 0) {
 		vm_paddr_t pa;
 		/*
 		 * Allow read/write access to dcons buffer.
