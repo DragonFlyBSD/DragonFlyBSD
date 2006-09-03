@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.c,v 1.10.2.2 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.3 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_crypto.c,v 1.4 2006/09/03 07:37:58 sephe Exp $
  */
 
 /*
@@ -222,6 +222,12 @@ int
 ieee80211_crypto_available(u_int cipher)
 {
 	return cipher < IEEE80211_CIPHER_MAX && ciphers[cipher] != NULL;
+}
+
+const struct ieee80211_cipher *
+ieee80211_crypto_cipher(u_int cipher)
+{
+	return cipher < IEEE80211_CIPHER_MAX ? ciphers[cipher] : NULL;
 }
 
 /* XXX well-known names! */

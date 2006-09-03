@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.89 2006/09/01 15:12:11 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.90 2006/09/03 07:37:58 sephe Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1421,6 +1421,7 @@ device		an		# Aironet Communications 4500/4800
 device		ipw		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		wi		# WaveLAN/IEEE, PRISM-II, Spectrum24 802.11DS
+device		rtw		# RealTek 8180
 device		acx		# TI ACX100/ACX111
 device wl0 at isa? port 0x300	# T1 speed ISA/radio lan
 device		xe		# Xircom PCMCIA

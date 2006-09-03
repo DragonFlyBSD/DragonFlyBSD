@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_crypto.h,v 1.9.2.1 2005/09/03 22:40:02 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/ieee80211_crypto.h,v 1.2 2006/05/18 13:51:46 sephe Exp $
+ * $DragonFly: src/sys/netproto/802_11/ieee80211_crypto.h,v 1.3 2006/09/03 07:37:58 sephe Exp $
  */
 #ifndef _NET80211_IEEE80211_CRYPTO_H_
 #define _NET80211_IEEE80211_CRYPTO_H_
@@ -173,6 +173,7 @@ extern	const struct ieee80211_cipher ieee80211_cipher_none;
 void	ieee80211_crypto_register(const struct ieee80211_cipher *);
 void	ieee80211_crypto_unregister(const struct ieee80211_cipher *);
 int	ieee80211_crypto_available(u_int cipher);
+const struct ieee80211_cipher *ieee80211_crypto_cipher(u_int cipher);
 
 struct ieee80211_key *ieee80211_crypto_encap(struct ieee80211com *,
 		struct ieee80211_node *, struct mbuf *);

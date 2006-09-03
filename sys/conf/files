@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.138 2006/09/01 15:12:11 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.139 2006/09/03 07:37:58 sephe Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -384,6 +384,11 @@ dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
 dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
+dev/netif/rtw/rtw.c			optional rtw
+dev/netif/rtw/rtwphy.c			optional rtw
+dev/netif/rtw/rtwphyio.c		optional rtw
+dev/netif/rtw/smc93cx6.c		optional rtw
+dev/netif/rtw/if_rtw_pci.c		optional rtw pci
 dev/netif/xe/if_xe.c			optional xe
 dev/netif/xe/if_xe_pccard.c		optional xe pccard
 vfs/gnu/ext2fs/ext2_alloc.c		optional ext2fs
