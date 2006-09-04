@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/users/chapter.sgml,v 1.43 2004/02/16 14:02:08 ceri Exp $
-     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.3 2006/07/12 04:01:00 justin Exp $
+     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.4 2006/09/04 02:04:19 justin Exp $
 -->
 
 <chapter id="users">
@@ -391,13 +391,7 @@
 	the new user a welcome message.</para>
 
       <para>To create the initial configuration file, use
-	<command>adduser -s -config_create</command>.
-	<footnote>
-	  <para>The <option>-s</option> makes &man.adduser.8;
-	    default to
-	    quiet.  We use <option>-v</option> later when we want to
-	    change defaults.</para>
-	</footnote>
+	<command>adduser -C</command>.
 	Next, we configure &man.adduser.8;
 	defaults, and create our first user account, since using
 	<username>root</username> for normal usage is evil and
@@ -407,57 +401,57 @@
 	<title>Configuring <command>adduser</command> and adding a
 	  user</title>
 
-	<screen>&prompt.root; <userinput>adduser -v</userinput>
-Use option ``-silent'' if you don't want to see all warnings and questions.
-Check /etc/shells
-Check /etc/master.passwd
-Check /etc/group
-Enter your default shell: csh date no sh tcsh zsh [sh]: <userinput>zsh</userinput>
-Your default shell is: zsh -&gt; /usr/local/bin/zsh
-Enter your default HOME partition: [/home]:
-Copy dotfiles from: /usr/share/skel no [/usr/share/skel]: 
-Send message from file: /etc/adduser.message no 
-[/etc/adduser.message]: <userinput>no</userinput>
-Do not send message
-Use passwords (y/n) [y]: <userinput>y</userinput>
-
-Write your changes to /etc/adduser.conf? (y/n) [n]: <userinput>y</userinput>
-
-Ok, let's go.
-Don't worry about mistakes. I will give you the chance later to correct any input.
-Enter username [a-z0-9_-]: <userinput>jru</userinput>
-Enter full name []: <userinput>J. Random User</userinput>
-Enter shell csh date no sh tcsh zsh [zsh]: 
-Enter home directory (full path) [/home/jru]: 
-Uid [1001]: 
-Enter login class: default []: 
-Login group jru [jru]: 
-Login group is ``jru''. Invite jru into other groups: guest no 
-[no]: <userinput>wheel</userinput>
-Enter password []: 
-Enter password again []: 
-
-Name:	  jru
-Password: ****
-Fullname: J. Random User
-Uid:	  1001
-Gid:	  1001 (jru)
-Class:	  
-Groups:	  jru wheel
-HOME:     /home/jru
-Shell:	  /usr/local/bin/zsh
-OK? (y/n) [y]: <userinput>y</userinput>
-Added user ``jru''
-Copy files from /usr/share/skel to /home/jru
-Add another user? (y/n) [y]: <userinput>n</userinput>
+	<screen>&prompt.root; <userinput>adduser -C</userinput>
+Login group []: 
+Enter additional groups []: 
+Login class [default]: 
+Shell (sh csh tcsh screen bash) [sh]: tcsh
+Home directory [/home/]: 
+Use password-based authentication? [yes]: 
+Use an empty password? (yes/no) [no]: 
+Use a random password? (yes/no) [no]: yes
+Lock out the account after creation? [no]: 
+Pass Type  : random
+Class      : 
+Groups     :  
+Home       : /home/
+Shell      : /bin/tcsh
+Locked     : no
+OK? (yes/no): yes
+Re-edit the default configuration? (yes/no): no
 Goodbye!
-&prompt.root;</screen>
+&prompt.root; <userinput>adduser</userinput>
+Username: <userinput>jru</userinput>
+Full name: <userinput>J. Random User</userinput>
+Uid (Leave empty for default): 
+Login group [jru]: 
+Login group is jru. Invite jru into other groups? []: wheel
+Login class [default]: 
+Shell (sh csh tcsh screen bash) [tcsh]: 
+Home directory [/home/jru]: 
+Use password-based authentication? [yes]: 
+Use an empty password? (yes/no) [no]: 
+Use a random password? (yes/no) [yes]: 
+Lock out the account after creation? [no]: 
+Username   : jru
+Password   : &lt;random&gt;
+Full Name  : J. Random User
+Uid        : 1002
+Class      : 
+Groups     : jru wheel 
+Home       : /home/jru
+Shell      : /bin/tcsh
+Locked     : no
+OK? (yes/no): <userinput>yes</userinput>
+adduser: INFO: Successfully added (jru) to the user database.
+adduser: INFO: Password for (jru) is: hhvBZ9.daTtxXr
+Add another user? (yes/no): <userinput>no</userinput>
+Goodbye!</screen>
       </example>
 
       <para>In summary, we changed the default shell to
-	<application>zsh</application> (an additional shell found in
-	&pkgsrc;), and turned off the sending of a welcome mail to
-	added users.  We then saved the configuration,
+	<application>tcsh</application>, and turned on generating
+	random passwords for added users.  We then saved the configuration,
 	created an account for <username>jru</username>, and made
 	sure <username>jru</username> is in <username>wheel</username>
 	group (so that she may assume the role of
@@ -474,7 +468,7 @@ Goodbye!
 	<para>Just use &man.adduser.8; without arguments
 	  from now on, and you will not have to go through changing the
 	  defaults.  If the program asks you to change the defaults,
-	  exit the program, and try the <option>-s</option>
+	  exit the program, and try the <option>-C</option>
 	  option.</para>
       </note>
 
@@ -546,17 +540,14 @@ Goodbye!
       <example>
 	<title><command>rmuser</command> Interactive Account Removal</title>
 
-	<screen>&prompt.root; <userinput>rmuser jru</userinput>
+	<screen>&prompt.root;  <userinput>rmuser jru</userinput>
 Matching password entry:
-jru:*:1001:1001::0:0:J. Random User:/home/jru:/usr/local/bin/zsh
-Is this the entry you wish to remove? <userinput>y</userinput>
-Remove user's home directory (/home/jru)? <userinput>y</userinput>
-Updating password file, updating databases, done.
-Updating group file: trusted (removing group jru -- personal group is empty) done.
-Removing user's incoming mail file /var/mail/jru: done.
-Removing files belonging to jru from /tmp: done.
-Removing files belonging to jru from /var/tmp: done.
-Removing files belonging to jru from /var/tmp/vi.recover: done.
+
+jru:*:1002:1002::0:0:J. Random User:/home/jru:/bin/tcsh
+
+Is this the entry you wish to remove? <userinput>yes</userinput>
+Remove user's home directory (/home/jru)? <userinput>yes</userinput>
+Removing user (jru): mailspool home passwd.
 &prompt.root;</screen>
       </example>
     </sect2>
@@ -585,13 +576,13 @@ Removing files belonging to jru from /var/tmp/vi.recover: done.
 	<screen>#Changing user database information for jru.
 Login: jru
 Password: *
-Uid [#]: 1001
-Gid [# or name]: 1001
+Uid [#]: 1002
+Gid [# or name]: 1002
 Change [month day year]:
 Expire [month day year]:
 Class:
 Home directory: /home/jru
-Shell: /usr/local/bin/zsh
+Shell: /bin/tcsh
 Full Name: J. Random User
 Office Location:
 Office Phone:
@@ -606,7 +597,7 @@ Other information:</screen>
 	<title>Interactive <command>chpass</command> by Normal User</title>
 
 	<screen>#Changing user database information for jru.
-Shell: /usr/local/bin/zsh
+Shell: /bin/tcsh
 Full Name: J. Random User
 Office Location:
 Office Phone:
@@ -1039,7 +1030,8 @@ teamtwo:*:1100:jru</screen>
       the group list by the system; the user will not show up as a member
       when using the <option>groupshow</option> command to &man.pw.8;,
       but will show up when the information is queried via &man.id.1; or
-      similar tool.  In other words, &man.pw.8; only manipulates the
+      similar tool.  In other words, &man.pw.8; group management only
+      manipulates the
       <filename>/etc/group</filename> file; it will never attempt to read
       additionally data from <filename>/etc/passwd</filename>.</para>
 
@@ -1047,7 +1039,7 @@ teamtwo:*:1100:jru</screen>
       <title>Using &man.id.1; to Determine Group Membership</title>
 
       <screen>&prompt.user; <userinput>id jru</userinput>
-uid=1001(jru) gid=1001(jru) groups=1001(jru), 1100(teamtwo)</screen>
+uid=1002(jru) gid=1002(jru) groups=1002(jru), 1100(teamtwo)</screen>
     </example>
 
     <para>As you can see, <username>jru</username> is a member of the
