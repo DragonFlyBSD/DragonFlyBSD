@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.23 2006/09/04 07:00:58 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.24 2006/09/04 23:03:38 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -201,14 +201,24 @@ void	contigfree (void *addr, unsigned long size,
 void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   int flags, vm_paddr_t low, vm_paddr_t high,
 			   unsigned long alignment, unsigned long boundary);
-void	free (void *addr, struct malloc_type *type);
-void	*malloc (unsigned long size, struct malloc_type *type, int flags);
 void	malloc_init (void *);
 void	malloc_uninit (void *);
+
+/*
+ * XXX remove the old malloc functions once all references to them have
+ * been renamed to the new kmalloc functions.
+ */
+#if !defined(KMALLOC_ONLY)
+void	*malloc (unsigned long size, struct malloc_type *type, int flags);
 void	*realloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
-void	*reallocf (void *addr, unsigned long size,
+void	free (void *addr, struct malloc_type *type);
+#endif
+
+void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
+void	*krealloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
+void	kfree (void *addr, struct malloc_type *type);
 char	*kstrdup (const char *, struct malloc_type *);
 
 #endif /* _KERNEL */

@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.39 2006/09/04 07:00:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.40 2006/09/04 23:03:36 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -387,8 +387,9 @@ zoneindex(unsigned long *bytes)
  *
  * MPSAFE
  */
+
 void *
-malloc(unsigned long size, struct malloc_type *type, int flags)
+kmalloc(unsigned long size, struct malloc_type *type, int flags)
 {
     SLZone *z;
     SLChunk *chunk;
@@ -685,7 +686,7 @@ fail:
  * new size fits within the chunking of the old pointer's zone.
  */
 void *
-realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
+krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 {
     SLZone *z;
     void *nptr;
@@ -788,7 +789,7 @@ free_remote(void *ptr)
  * MPSAFE
  */
 void
-free(void *ptr, struct malloc_type *type)
+kfree(void *ptr, struct malloc_type *type)
 {
     SLZone *z;
     SLChunk *chunk;
@@ -1002,6 +1003,31 @@ chunk_mark_free(SLZone *z, void *chunk)
     bitdex &= 31;
     KASSERT((*bitptr & (1 << bitdex)) != 0, ("memory chunk %p is already free!", chunk));
     *bitptr &= ~(1 << bitdex);
+}
+
+#endif
+
+#if !defined(KMALLOC_ONLY)
+/*
+ * Compatibility code for old libc-hostile function names
+ */
+
+void *
+malloc(unsigned long size, struct malloc_type *type, int flags)
+{
+    return(kmalloc(size, type, flags));
+}
+
+void *
+realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
+{
+    return(krealloc(ptr, size, type, flags));
+}
+
+void
+free(void *ptr, struct malloc_type *type)
+{
+    kfree(ptr, type);
 }
 
 #endif
