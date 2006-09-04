@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_firmware.c,v 1.3 2005/07/06 05:59:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_firmware.c,v 1.4 2006/09/04 07:00:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ firmware_prepare_image(const char *imgname, size_t imglen)
 	int error;
 
  	img = malloc(sizeof(*img), M_DEVBUF, M_WAITOK | M_ZERO);
-	img->fw_name = strdup(imgname, M_DEVBUF); /* XXX necessary? */
+	img->fw_name = kstrdup(imgname, M_DEVBUF); /* XXX necessary? */
 	img->fw_refcnt = 1;
 	img->fw_imglen = imglen;
 

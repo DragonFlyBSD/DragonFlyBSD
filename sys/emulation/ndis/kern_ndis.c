@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.9 2005/12/31 23:35:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.10 2006/09/04 07:00:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -656,12 +656,12 @@ ndis_add_sysctl(void *arg, char *key, char *desc, char *val, int flag)
 	sc = arg;
 
 	cfg = malloc(sizeof(struct ndis_cfglist), M_DEVBUF, M_WAITOK|M_ZERO);
-	cfg->ndis_cfg.nc_cfgkey = strdup(key, M_DEVBUF);
+	cfg->ndis_cfg.nc_cfgkey = kstrdup(key, M_DEVBUF);
 	if (desc == NULL) {
 		snprintf(descstr, sizeof(descstr), "%s (dynamic)", key);
-		cfg->ndis_cfg.nc_cfgdesc = strdup(descstr, M_DEVBUF);
+		cfg->ndis_cfg.nc_cfgdesc = kstrdup(descstr, M_DEVBUF);
 	} else
-		cfg->ndis_cfg.nc_cfgdesc = strdup(desc, M_DEVBUF);
+		cfg->ndis_cfg.nc_cfgdesc = kstrdup(desc, M_DEVBUF);
 	strcpy(cfg->ndis_cfg.nc_val, val);
 
 	TAILQ_INSERT_TAIL(&sc->ndis_cfglist_head, cfg, link);

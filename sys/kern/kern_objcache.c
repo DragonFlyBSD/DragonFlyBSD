@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.8 2006/08/23 06:45:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.9 2006/09/04 07:00:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -166,7 +166,7 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	/* allocate object cache structure */
 	oc = malloc(__offsetof(struct objcache, cache_percpu[ncpus]),
 		    M_OBJCACHE, M_WAITOK | M_ZERO);
-	oc->name = strdup(name, M_TEMP);
+	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor;
 	oc->dtor = dtor;
 	oc->private = private;

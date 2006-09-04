@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.38 2006/05/24 03:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.39 2006/09/04 07:00:58 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -749,7 +749,7 @@ realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
  * (MP SAFE) (MAY BLOCK)
  */
 char *
-strdup(const char *str, struct malloc_type *type)
+kstrdup(const char *str, struct malloc_type *type)
 {
     int zlen;	/* length inclusive of terminating NUL */
     char *nstr;
