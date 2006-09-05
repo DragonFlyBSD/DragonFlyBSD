@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.41 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.42 2006/09/05 15:38:26 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1003,31 +1003,6 @@ chunk_mark_free(SLZone *z, void *chunk)
     bitdex &= 31;
     KASSERT((*bitptr & (1 << bitdex)) != 0, ("memory chunk %p is already free!", chunk));
     *bitptr &= ~(1 << bitdex);
-}
-
-#endif
-
-#if !defined(KMALLOC_ONLY)
-/*
- * Compatibility code for old libc-hostile function names
- */
-
-void *
-malloc(unsigned long size, struct malloc_type *type, int flags)
-{
-    return(kmalloc(size, type, flags));
-}
-
-void *
-realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
-{
-    return(krealloc(ptr, size, type, flags));
-}
-
-void
-free(void *ptr, struct malloc_type *type)
-{
-    kfree(ptr, type);
 }
 
 #endif

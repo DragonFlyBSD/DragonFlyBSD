@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.25 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.26 2006/09/05 15:38:27 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -203,17 +203,6 @@ void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   unsigned long alignment, unsigned long boundary);
 void	malloc_init (void *);
 void	malloc_uninit (void *);
-
-/*
- * XXX remove the old malloc functions once all references to them have
- * been renamed to the new kmalloc functions.
- */
-#if !defined(KMALLOC_ONLY)
-void	*malloc (unsigned long size, struct malloc_type *type, int flags);
-void	*realloc (void *addr, unsigned long size,
-		      struct malloc_type *type, int flags);
-void	free (void *addr, struct malloc_type *type);
-#endif
 
 void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
 void	*krealloc (void *addr, unsigned long size,
