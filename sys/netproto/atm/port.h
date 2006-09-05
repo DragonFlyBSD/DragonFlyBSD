@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/port.h,v 1.2.2.2 2003/01/23 21:06:44 sam Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.8 2006/09/05 03:48:13 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.9 2006/09/05 17:41:18 dillon Exp $
  *
  */
 
@@ -76,8 +76,8 @@
  * UM_ZERO(addr, len)	Zeros len bytes of data from addr.
  *
  */
-#define	UM_ALLOC(size)		kmalloc((size_t)(size))
-#define	UM_FREE(addr)		kfree((void *)(addr))
+#define	UM_ALLOC(size)		malloc((size_t)(size))
+#define	UM_FREE(addr)		free((void *)(addr))
 #define	UM_COPY(from, to, len)	bcopy((void *)(from), (void *)(to),\
 						(size_t)(len))
 #define	UM_ZERO(addr, len)	bzero((void *)(addr), (size_t)(len))
