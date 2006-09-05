@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/splash.c,v 1.8 2000/01/29 14:42:57 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.4 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/splash.c,v 1.5 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ splash_register(splash_decoder_t *decoder)
 				break;
 		}
 		if ((i >= decoders) && (decoders % DECODER_ARRAY_DELTA) == 0) {
-			p = malloc(sizeof(*p)*(decoders + DECODER_ARRAY_DELTA),
+			p = kmalloc(sizeof(*p)*(decoders + DECODER_ARRAY_DELTA),
 			   	M_DEVBUF, M_NOWAIT);
 			if (p == NULL)
 				return ENOMEM;

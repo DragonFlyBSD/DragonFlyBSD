@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.11 2006/08/03 16:40:47 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.12 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -2871,7 +2871,7 @@ trm_initACB(PACB pACB, u_int16_t unit)
 		if (pACB->AdaptSCSIID != i) {
 			for (j = 0; j < (pACB->max_lun +1); j++) {
 				pACB->scan_devices[i][j] = 1;
-				pACB->pDCB[i][j]= (PDCB) malloc (
+				pACB->pDCB[i][j]= (PDCB) kmalloc (
 				    sizeof (struct _DCB), M_DEVBUF, M_WAITOK);
 				trm_initDCB(pACB,
 				    pACB->pDCB[i][j], unit, i, j);

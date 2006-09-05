@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.26 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.27 2006/09/05 03:48:10 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -299,7 +299,7 @@ sc_attach_unit(int unit, int flags)
 	if (sc_console->tsw->te_size > 0) {
 	    /* assert(sc_console->ts != NULL); */
 	    kernel_console_ts = sc_console->ts;
-	    sc_console->ts = malloc(sc_console->tsw->te_size,
+	    sc_console->ts = kmalloc(sc_console->tsw->te_size,
 				    M_SYSCONS, M_WAITOK);
 	    bcopy(kernel_console_ts, sc_console->ts, sc_console->tsw->te_size);
     	    (*sc_console->tsw->te_default_attr)(sc_console,

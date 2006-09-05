@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.9 2006/09/05 03:48:12 dillon Exp $
  */
 
 /*
@@ -364,7 +364,7 @@ rman_reserve_resource(struct rman *rm, u_long start, u_long end, u_long count,
 			rv->r_dev = dev;
 			rv->r_rm = rm;
 			if (s->r_sharehead == 0) {
-				s->r_sharehead = malloc(sizeof *s->r_sharehead,
+				s->r_sharehead = kmalloc(sizeof *s->r_sharehead,
 							M_RMAN, M_NOWAIT);
 				if (s->r_sharehead == 0) {
 					kfree(rv, M_RMAN);

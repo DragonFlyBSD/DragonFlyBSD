@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.10 2006/09/05 00:55:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.11 2006/09/05 03:48:09 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -854,7 +854,7 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 		return (EINVAL);
 
 	if (sc->sc_sessions == NULL) {
-		ses = sc->sc_sessions = malloc(sizeof(struct ubsec_session),
+		ses = sc->sc_sessions = kmalloc(sizeof(struct ubsec_session),
 						M_DEVBUF, M_INTWAIT);
 		sesn = 0;
 		sc->sc_nsessions = 1;
@@ -868,7 +868,7 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 
 		if (ses == NULL) {
 			sesn = sc->sc_nsessions;
-			ses = malloc((sesn + 1) * sizeof(struct ubsec_session),
+			ses = kmalloc((sesn + 1) * sizeof(struct ubsec_session),
 					M_DEVBUF, M_INTWAIT);
 			bcopy(sc->sc_sessions, ses, sesn *
 			    sizeof(struct ubsec_session));

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.11 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.12 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -807,7 +807,7 @@ ndis_convert_res(void *arg)
 
 	SLIST_INIT(&brl_rev);
 
-	rl = malloc(sizeof(ndis_resource_list) +
+	rl = kmalloc(sizeof(ndis_resource_list) +
 	    (sizeof(cm_partial_resource_desc) * (sc->ndis_rescnt - 1)),
 	    M_DEVBUF, M_WAITOK|M_NULLOK|M_ZERO);
 
@@ -837,7 +837,7 @@ ndis_convert_res(void *arg)
 		 * temporary list with the entries in reverse order.
 		 */
 		SLIST_FOREACH(brle, brl, link) {
-			n = malloc(sizeof(struct resource_list_entry),
+			n = kmalloc(sizeof(struct resource_list_entry),
 			    M_TEMP, M_WAITOK|M_NULLOK);
 			if (n == NULL) {
 				error = ENOMEM;
@@ -1175,7 +1175,7 @@ ndis_init_dma(void *arg)
 
 	sc = arg;
 
-	sc->ndis_tmaps = malloc(sizeof(bus_dmamap_t) * sc->ndis_maxpkts,
+	sc->ndis_tmaps = kmalloc(sizeof(bus_dmamap_t) * sc->ndis_maxpkts,
 	    M_DEVBUF, M_WAITOK|M_ZERO);
 
 	for (i = 0; i < sc->ndis_maxpkts; i++) {

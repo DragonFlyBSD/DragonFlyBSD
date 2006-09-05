@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.9 2005/05/05 22:57:44 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.10 2006/09/05 03:48:10 dillon Exp $
  *
  */
 
@@ -86,8 +86,8 @@ enum _pdq_type_t {
 #define	PDQ_OS_USEC_DELAY(n)		DELAY(n)
 #define	PDQ_OS_MEMZERO(p, n)		bzero((caddr_t)(p), (n))
 #define	PDQ_OS_VA_TO_PA(pdq, p)		vtophys(p)
-#define	PDQ_OS_MEMALLOC(n)		malloc(n, M_DEVBUF, M_WAITOK)
-#define	PDQ_OS_MEMFREE(p, n)		free((void *) p, M_DEVBUF)
+#define	PDQ_OS_MEMALLOC(n)		kmalloc(n, M_DEVBUF, M_WAITOK)
+#define	PDQ_OS_MEMFREE(p, n)		kfree((void *) p, M_DEVBUF)
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	PDQ_OS_MEMALLOC_CONTIG(n)	vm_page_alloc_contig(n, 0, 0xffffffff, PAGE_SIZE)
 #define	PDQ_OS_MEMFREE_CONTIG(p, n)	kmem_free(kernel_map, (vm_offset_t) p, n)

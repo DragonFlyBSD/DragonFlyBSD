@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.15 2006/09/05 00:55:32 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.16 2006/09/05 03:48:07 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -1171,7 +1171,7 @@ chgetelemstatus(struct cam_periph *periph,
 	}
 
 	user_data = (struct changer_element_status *)
-		malloc(avail * sizeof(struct changer_element_status),
+		kmalloc(avail * sizeof(struct changer_element_status),
 		       M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	desc = (struct read_element_status_descriptor *)((uintptr_t)data +

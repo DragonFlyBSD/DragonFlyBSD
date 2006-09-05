@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.17 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.18 2006/09/05 03:48:10 dillon Exp $
  *
  */
 
@@ -471,7 +471,7 @@ END_DEBUG
 		 * note: realloc() does not support M_ZERO.  We must zero
 		 * the extended region manually.
 		 */
-		newluns = realloc(target->luns, 
+		newluns = krealloc(target->luns, 
 				sizeof(struct sbp_dev *) * maxlun,
 				M_SBP, M_WAITOK);
 
@@ -499,7 +499,7 @@ END_DEBUG
 
 		sdev = target->luns[lun];
 		if (sdev == NULL) {
-			sdev = malloc(sizeof(struct sbp_dev),
+			sdev = kmalloc(sizeof(struct sbp_dev),
 			    M_SBP, M_WAITOK | M_ZERO);
 			target->luns[lun] = sdev;
 			sdev->lun_id = lun;

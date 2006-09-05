@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.13 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.14 2006/09/05 03:48:09 dillon Exp $
  *
  */
 
@@ -112,7 +112,7 @@ fwdev_allocbuf(struct firewire_comm *fc, struct fw_xferq *q,
 	if (q->flag & (FWXFERQ_RUNNING | FWXFERQ_EXTBUF))
 		return(EBUSY);
 
-	q->bulkxfer = (struct fw_bulkxfer *) malloc(
+	q->bulkxfer = (struct fw_bulkxfer *) kmalloc(
 		sizeof(struct fw_bulkxfer) * b->nchunk,
 		M_FW, M_WAITOK);
 	if (q->bulkxfer == NULL)

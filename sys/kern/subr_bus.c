@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.30 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.31 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -122,7 +122,7 @@ devclass_find_internal(const char *classname, const char *parentname,
 
 	if (create && !dc) {
 		PDEBUG(("creating %s", classname));
-		dc = malloc(sizeof(struct devclass) + strlen(classname) + 1,
+		dc = kmalloc(sizeof(struct devclass) + strlen(classname) + 1,
 			    M_BUS, M_INTWAIT | M_ZERO);
 		if (!dc)
 			return(NULL);
@@ -1609,7 +1609,7 @@ resource_cfgload(void *dummy __unused)
 				if (res->u.stringval)
 					kfree(res->u.stringval, M_TEMP);
 				stringval = cfgres[j].u.stringval;
-				res->u.stringval = malloc(strlen(stringval) + 1,
+				res->u.stringval = kmalloc(strlen(stringval) + 1,
 							  M_TEMP, M_INTWAIT);
 				if (res->u.stringval == NULL)
 					break;

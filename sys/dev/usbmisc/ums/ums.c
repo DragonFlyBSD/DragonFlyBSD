@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.18 2006/09/05 00:55:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -281,7 +281,7 @@ USB_ATTACH(ums)
 				hid_input, &loc_btn, 0))
 			break;
 	sc->nbuttons = i - 1;
-	sc->sc_loc_btn = malloc(sizeof(struct hid_location)*sc->nbuttons,
+	sc->sc_loc_btn = kmalloc(sizeof(struct hid_location)*sc->nbuttons,
 				M_USBDEV, M_INTWAIT);
 
 	printf("%s: %d buttons%s\n", USBDEVNAME(sc->sc_dev),

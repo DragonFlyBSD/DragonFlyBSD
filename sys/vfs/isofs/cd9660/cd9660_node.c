@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.18 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.19 2006/09/05 03:48:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ cd9660_init(struct vfsconf *vfsp)
 	isohash = 16;
 	while (isohash < hlimit)
 		isohash <<= 1;
-	isohashtbl = malloc(sizeof(void *) * isohash,
+	isohashtbl = kmalloc(sizeof(void *) * isohash,
 			    M_ISOFSMNT, M_WAITOK|M_ZERO);
 	--isohash;
 	lwkt_token_init(&cd9660_ihash_token);

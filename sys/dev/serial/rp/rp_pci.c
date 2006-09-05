@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_pci.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.6 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.7 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -155,9 +155,9 @@ rp_pciattach(device_t dev)
 
 	/* The IO ports of AIOPs for a PCI controller are continuous. */
 	ctlp->io_num = 1;
-	ctlp->io_rid = malloc(sizeof(*(ctlp->io_rid)) * ctlp->io_num, 
+	ctlp->io_rid = kmalloc(sizeof(*(ctlp->io_rid)) * ctlp->io_num, 
 				M_DEVBUF, M_WAITOK | M_ZERO);
-	ctlp->io = malloc(sizeof(*(ctlp->io)) * ctlp->io_num, 
+	ctlp->io = kmalloc(sizeof(*(ctlp->io)) * ctlp->io_num, 
 				M_DEVBUF, M_WAITOK | M_ZERO);
 
 	ctlp->bus_ctlp = NULL;

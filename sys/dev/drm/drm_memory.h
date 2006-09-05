@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_memory.h,v 1.8.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.4 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.5 2006/09/05 03:48:10 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -147,7 +147,7 @@ int DRM(mem_info) DRM_SYSCTL_HANDLER_ARGS
 	int ret;
 	drm_mem_stats_t *stats;
 	
-	stats = malloc(sizeof(DRM(mem_stats)), DRM(M_DRM), M_WAITOK);
+	stats = kmalloc(sizeof(DRM(mem_stats)), DRM(M_DRM), M_WAITOK);
 	
 	DRM_SPINLOCK(&DRM(mem_lock));
 	bcopy(DRM(mem_stats), stats, sizeof(DRM(mem_stats)));
@@ -155,7 +155,7 @@ int DRM(mem_info) DRM_SYSCTL_HANDLER_ARGS
 	
 	ret = DRM(_mem_info)(stats, oidp, arg1, arg2, req);
 	
-	free(stats, DRM(M_DRM));
+	kfree(stats, DRM(M_DRM));
 	return ret;
 }
 #endif /* __FreeBSD__ */
@@ -169,7 +169,7 @@ void *DRM(alloc)(size_t size, int area)
 		return NULL;
 	}
 
-	if (!(pt = malloc(size, DRM(M_DRM), M_NOWAIT))) {
+	if (!(pt = kmalloc(size, DRM(M_DRM), M_NOWAIT))) {
 		DRM_SPINLOCK(&DRM(mem_lock));
 		++DRM(mem_stats)[area].fail_count;
 		DRM_SPINUNLOCK(&DRM(mem_lock));
@@ -222,7 +222,7 @@ void DRM(free)(void *pt, size_t size, int area)
 	if (!pt)
 		DRM_MEM_ERROR(area, "Attempt to free NULL pointer\n");
 	else
-		free(pt, DRM(M_DRM));
+		kfree(pt, DRM(M_DRM));
 	DRM_SPINLOCK(&DRM(mem_lock));
 	DRM(mem_stats)[area].bytes_freed += size;
 	free_count  = ++DRM(mem_stats)[area].free_count;

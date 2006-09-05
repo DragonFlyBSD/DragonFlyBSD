@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.6 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.7 2006/09/05 03:48:09 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -170,7 +170,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 		ssize = rounddown(PAGE_SIZE, esize);
 		nseg = howmany(n, ssize / esize);
 	}
-	am = (struct fwdma_alloc_multi *)malloc(sizeof(struct fwdma_alloc_multi)
+	am = (struct fwdma_alloc_multi *)kmalloc(sizeof(struct fwdma_alloc_multi)
 			+ sizeof(struct fwdma_seg)*nseg, M_FW, M_WAITOK);
 	if (am == NULL) {
 		printf("fwdma_malloc_multiseg: malloc failed\n");

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.36 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.37 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -432,11 +432,11 @@ epic_common_attach(epic_softc_t *sc)
 	uint16_t sub_vid;
 	int i;
 
-	sc->tx_flist = malloc(sizeof(struct epic_frag_list)*TX_RING_SIZE,
+	sc->tx_flist = kmalloc(sizeof(struct epic_frag_list)*TX_RING_SIZE,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->tx_desc = malloc(sizeof(struct epic_tx_desc)*TX_RING_SIZE,
+	sc->tx_desc = kmalloc(sizeof(struct epic_tx_desc)*TX_RING_SIZE,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
-	sc->rx_desc = malloc(sizeof(struct epic_rx_desc)*RX_RING_SIZE,
+	sc->rx_desc = kmalloc(sizeof(struct epic_rx_desc)*RX_RING_SIZE,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* Bring the chip out of low-power mode. */

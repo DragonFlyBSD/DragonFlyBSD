@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.12 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.13 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -828,7 +828,7 @@ mn_create_channel(struct softc *sc, int chan)
 {
 	struct schan *sch;
 
-	sch = sc->ch[chan] = (struct schan *)malloc(sizeof *sc->ch[chan], 
+	sch = sc->ch[chan] = (struct schan *)kmalloc(sizeof *sc->ch[chan], 
 	    M_MN, M_WAITOK | M_ZERO);
 	sch->sc = sc;
 	sch->state = DOWN;

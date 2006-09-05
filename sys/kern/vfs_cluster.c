@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.27 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.28 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -955,7 +955,7 @@ cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int lblocksize)
 	int i, len;
 
 	len = (int)(vp->v_lastw - vp->v_cstart + lblocksize) / lblocksize;
-	buflist = malloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
+	buflist = kmalloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
 			 M_SEGMENT, M_WAITOK);
 	buflist->bs_nchildren = 0;
 	buflist->bs_children = (struct buf **) (buflist + 1);

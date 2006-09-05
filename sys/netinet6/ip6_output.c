@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.20 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.21 2006/09/05 03:48:12 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1847,14 +1847,14 @@ ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 
 	dst->ip6po_hlim = src->ip6po_hlim;
 	if (src->ip6po_pktinfo) {
-		dst->ip6po_pktinfo = malloc(sizeof(*dst->ip6po_pktinfo),
+		dst->ip6po_pktinfo = kmalloc(sizeof(*dst->ip6po_pktinfo),
 					    M_IP6OPT, canwait);
 		if (dst->ip6po_pktinfo == NULL && canwait == M_NOWAIT)
 			goto bad;
 		*dst->ip6po_pktinfo = *src->ip6po_pktinfo;
 	}
 	if (src->ip6po_nexthop) {
-		dst->ip6po_nexthop = malloc(src->ip6po_nexthop->sa_len,
+		dst->ip6po_nexthop = kmalloc(src->ip6po_nexthop->sa_len,
 					    M_IP6OPT, canwait);
 		if (dst->ip6po_nexthop == NULL && canwait == M_NOWAIT)
 			goto bad;
@@ -2279,7 +2279,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
 			if (needcopy) {
 				/* XXX: Is it really WAITOK? */
 				opt->ip6po_pktinfo =
-					malloc(sizeof(struct in6_pktinfo),
+					kmalloc(sizeof(struct in6_pktinfo),
 					       M_IP6OPT, M_WAITOK);
 				bcopy(CMSG_DATA(cm), opt->ip6po_pktinfo,
 				    sizeof(struct in6_pktinfo));
@@ -2338,7 +2338,7 @@ ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
 
 			if (needcopy) {
 				opt->ip6po_nexthop =
-					malloc(*CMSG_DATA(cm),
+					kmalloc(*CMSG_DATA(cm),
 					       M_IP6OPT, M_WAITOK);
 				bcopy(CMSG_DATA(cm),
 				      opt->ip6po_nexthop,

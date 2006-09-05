@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.22 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.23 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -600,7 +600,7 @@ dsmakeslicestruct(int nslices, struct disklabel *lp)
 	struct diskslice *sp;
 	struct diskslices *ssp;
 
-	ssp = malloc(offsetof(struct diskslices, dss_slices) +
+	ssp = kmalloc(offsetof(struct diskslices, dss_slices) +
 		     nslices * sizeof *sp, M_DEVBUF, M_WAITOK);
 	ssp->dss_first_bsd_slice = COMPATIBILITY_SLICE;
 	ssp->dss_nslices = nslices;

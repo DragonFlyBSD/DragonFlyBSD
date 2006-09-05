@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.18 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.19 2006/09/05 03:48:10 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -115,8 +115,8 @@
 #define DRM_TASKQUEUE_ARGS	void *arg, int pending
 #define DRM_IRQ_ARGS		void *arg
 #define DRM_DEVICE		drm_device_t	*dev	= kdev->si_drv1
-#define DRM_MALLOC(size)	malloc( size, DRM(M_DRM), M_NOWAIT )
-#define DRM_FREE(pt,size)		free( pt, DRM(M_DRM) )
+#define DRM_MALLOC(size)	kmalloc( size, DRM(M_DRM), M_NOWAIT )
+#define DRM_FREE(pt,size)	kfree( pt, DRM(M_DRM) )
 #define DRM_VTOPHYS(addr)	vtophys(addr)
 
 /* Read/write from bus space, with byteswapping to le if necessary */

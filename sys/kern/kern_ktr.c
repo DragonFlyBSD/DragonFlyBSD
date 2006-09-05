@@ -62,7 +62,7 @@
  * SUCH DAMAGE.
  */
 /*
- * $DragonFly: src/sys/kern/kern_ktr.c,v 1.16 2006/05/29 07:18:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktr.c,v 1.17 2006/09/05 03:48:12 dillon Exp $
  */
 /*
  * Kernel tracepoint facility.
@@ -186,7 +186,7 @@ ktr_sysinit(void *dummy)
 	int i;
 
 	for(i = 1; i < ncpus; ++i) {
-		ktr_buf[i] = malloc(KTR_ENTRIES * sizeof(struct ktr_entry),
+		ktr_buf[i] = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
 				    M_KTR, M_WAITOK | M_ZERO);
 	}
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.15 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.16 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -1096,7 +1096,7 @@ ndis_alloc_mapreg(ndis_handle adapter, uint32_t dmachannel, uint8_t dmasize,
 	block = (ndis_miniport_block *)adapter;
 	sc = (struct ndis_softc *)block->nmb_ifp;
 
-	sc->ndis_mmaps = malloc(sizeof(bus_dmamap_t) * physmapneeded,
+	sc->ndis_mmaps = kmalloc(sizeof(bus_dmamap_t) * physmapneeded,
 	    M_DEVBUF, M_INTWAIT|M_ZERO);
 
 	if (sc->ndis_mmaps == NULL)
@@ -1418,7 +1418,7 @@ ndis_alloc_packetpool(ndis_status *status, ndis_handle *pool,
 	ndis_packet		*cur;
 	int			i;
 
-	*pool = malloc(sizeof(ndis_packet) *
+	*pool = kmalloc(sizeof(ndis_packet) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
 	cur = (ndis_packet *)*pool;
@@ -1620,7 +1620,7 @@ ndis_alloc_bufpool(ndis_status *status, ndis_handle *pool,
 	ndis_buffer		*cur;
 	int			i;
 
-	*pool = malloc(sizeof(ndis_buffer) *
+	*pool = kmalloc(sizeof(ndis_buffer) *
 	    ((descnum + NDIS_POOL_EXTRA) + 1),
 	    M_DEVBUF, M_WAITOK|M_ZERO);
 	cur = (ndis_buffer *)*pool;

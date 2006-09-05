@@ -70,7 +70,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.72 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.73 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1543,7 +1543,7 @@ again:
 			ni = (i - 1) / 2;
 		}
 		spin_unlock_rd(&fdp->fd_spin);
-		newfdp->fd_files = malloc(i * sizeof(struct fdnode),
+		newfdp->fd_files = kmalloc(i * sizeof(struct fdnode),
 					  M_FILEDESC, M_WAITOK | M_ZERO);
 
 		/*
@@ -2286,7 +2286,7 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 {
 	struct filedesc_to_leader *fdtol;
 	
-	fdtol = malloc(sizeof(struct filedesc_to_leader), 
+	fdtol = kmalloc(sizeof(struct filedesc_to_leader), 
 			M_FILEDESC_TO_LEADER, M_WAITOK);
 	fdtol->fdl_refcount = 1;
 	fdtol->fdl_holdcount = 0;

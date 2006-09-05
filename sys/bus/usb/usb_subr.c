@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.12 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.13 2006/09/05 03:48:09 dillon Exp $
  */
 
 /* Also already have from NetBSD:
@@ -467,7 +467,7 @@ usbd_fill_iface_data(usbd_device_handle dev, int ifaceidx, int altidx)
 	nendpt = ifc->idesc->bNumEndpoints;
 	DPRINTFN(4,("usbd_fill_iface_data: found idesc nendpt=%d\n", nendpt));
 	if (nendpt != 0) {
-		ifc->endpoints = malloc(nendpt * sizeof(struct usbd_endpoint),
+		ifc->endpoints = kmalloc(nendpt * sizeof(struct usbd_endpoint),
 					M_USB, M_INTWAIT);
 	} else {
 		ifc->endpoints = NULL;
@@ -710,7 +710,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 
 	/* Allocate and fill interface data. */
 	nifc = cdp->bNumInterface;
-	dev->ifaces = malloc(nifc * sizeof(struct usbd_interface),
+	dev->ifaces = kmalloc(nifc * sizeof(struct usbd_interface),
 			     M_USB, M_INTWAIT);
 	DPRINTFN(5,("usbd_set_config_index: dev=%p cdesc=%p\n", dev, cdp));
 	dev->cdesc = cdp;

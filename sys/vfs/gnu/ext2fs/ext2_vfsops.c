@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.48 2006/09/03 18:52:29 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.49 2006/09/05 03:48:13 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -108,8 +108,8 @@ static struct vfsops ext2fs_vfsops = {
 };
 
 VFS_SET(ext2fs_vfsops, ext2fs, 0);
-#define bsd_malloc malloc
-#define bsd_free free
+#define bsd_malloc kmalloc
+#define bsd_free kfree
 
 static int ext2fs_inode_hash_lock;
 

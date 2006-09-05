@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.5 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.6 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -110,7 +110,7 @@ twa_setup(struct twa_softc *sc)
 	}
 
 	/* Allocate memory for the AEN queue. */
-	if ((aen_queue = malloc(sizeof(struct twa_event_packet) * TWA_Q_LENGTH,
+	if ((aen_queue = kmalloc(sizeof(struct twa_event_packet) * TWA_Q_LENGTH,
 					M_DEVBUF, M_WAITOK)) == NULL) {
 		/* 
 		 * This should not cause us to return error.  We will only be

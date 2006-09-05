@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpoio.c,v 1.10.2.3 2001/10/02 05:27:20 nsouch Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpoio.c,v 1.7 2006/09/05 03:48:10 dillon Exp $
  *
  */
 
@@ -593,7 +593,7 @@ vpoio_attach(struct vpoio_data *vpo)
 	device_t ppbus = device_get_parent(vpo->vpo_dev);
 	int error = 0;
 
-	vpo->vpo_nibble_inbyte_msq = malloc(sizeof(nibble_inbyte_submicroseq),
+	vpo->vpo_nibble_inbyte_msq = kmalloc(sizeof(nibble_inbyte_submicroseq),
 						M_DEVBUF, M_WAITOK);
 
 	bcopy((void *)nibble_inbyte_submicroseq,

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.20 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.21 2006/09/05 03:48:12 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1414,7 +1414,7 @@ config_red(struct dn_flow_set *p, struct dn_flow_set * x)
 	return EINVAL;
     }
     x->lookup_depth = red_lookup_depth;
-    x->w_q_lookup = malloc(x->lookup_depth * sizeof(int),
+    x->w_q_lookup = kmalloc(x->lookup_depth * sizeof(int),
 			M_DUMMYNET, M_WAITOK);
 
     /* fill the lookup table with (1 - w_q)^x */
@@ -1447,7 +1447,7 @@ alloc_hash(struct dn_flow_set *x, struct dn_flow_set *pfs)
 	x->rq_size = l;
     } else                  /* one is enough for null mask */
 	x->rq_size = 1;
-    x->rq = malloc((1 + x->rq_size) * sizeof(struct dn_flow_queue *),
+    x->rq = kmalloc((1 + x->rq_size) * sizeof(struct dn_flow_queue *),
 		    M_DUMMYNET, M_WAITOK | M_ZERO);
     x->rq_elements = 0;
     return 0 ;

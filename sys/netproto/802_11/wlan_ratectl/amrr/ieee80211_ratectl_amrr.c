@@ -35,7 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/amrr/amrr.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.2 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/amrr/ieee80211_ratectl_amrr.c,v 1.3 2006/09/05 03:48:12 dillon Exp $
  */
 
 /*
@@ -502,7 +502,7 @@ static void
 amrr_data_alloc(struct ieee80211_node *ni)
 {
 	KKASSERT(ni->ni_rate_data == NULL);
-	ni->ni_rate_data = malloc(sizeof(struct amrr_data),
+	ni->ni_rate_data = kmalloc(sizeof(struct amrr_data),
 				  M_AMRR_RATECTL_DATA, M_NOWAIT | M_ZERO);
 }
 

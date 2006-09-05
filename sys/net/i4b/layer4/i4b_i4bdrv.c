@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.16 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.17 2006/09/05 03:48:12 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -636,10 +636,10 @@ i4bioctl(struct dev_ioctl_args *ap)
 				goto download_done;
 			}
 
-			prots = malloc(r->numprotos * sizeof(struct isdn_dr_prot),
+			prots = kmalloc(r->numprotos * sizeof(struct isdn_dr_prot),
 					M_DEVBUF, M_WAITOK);
 
-			prots2 = malloc(r->numprotos * sizeof(struct isdn_dr_prot),
+			prots2 = kmalloc(r->numprotos * sizeof(struct isdn_dr_prot),
 					M_DEVBUF, M_WAITOK);
 
 			if(!prots || !prots2)

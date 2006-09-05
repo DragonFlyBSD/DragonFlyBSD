@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.5 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.6 2006/09/05 03:48:12 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -132,7 +132,7 @@ pfi_initialize(void)
 
 	TAILQ_INIT(&pfi_statehead);
 	pfi_buffer_max = 64;
-	pfi_buffer = malloc(pfi_buffer_max * sizeof(*pfi_buffer),
+	pfi_buffer = kmalloc(pfi_buffer_max * sizeof(*pfi_buffer),
 	    PFI_MTYPE, M_WAITOK);
 	pfi_self = pfi_if_create("self", NULL, PFI_IFLAG_GROUP);
 	pfi_dynamic_drivers();

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.30 2006/09/05 03:48:12 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -855,7 +855,7 @@ journal_write(struct vop_write_args *ap)
 	uio_one_iovec = ap->a_uio->uio_iov[0];
 	uio_copy.uio_iov = &uio_one_iovec;
     } else {
-	uio_copy.uio_iov = malloc(uio_copy.uio_iovcnt * sizeof(struct iovec),
+	uio_copy.uio_iov = kmalloc(uio_copy.uio_iovcnt * sizeof(struct iovec),
 				    M_JOURNAL, M_WAITOK);
 	bcopy(ap->a_uio->uio_iov, uio_copy.uio_iov, 
 		uio_copy.uio_iovcnt * sizeof(struct iovec));

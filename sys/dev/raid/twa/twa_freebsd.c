@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.11 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.12 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -574,7 +574,7 @@ twa_alloc_req_pkts(struct twa_softc *sc, int num_reqs)
 	struct twa_request	*tr;
 	int			i;
 
-	sc->twa_req_buf = malloc(num_reqs * sizeof(struct twa_request),
+	sc->twa_req_buf = kmalloc(num_reqs * sizeof(struct twa_request),
 					TWA_MALLOC_CLASS, M_INTWAIT);
 
 	/* Allocate the bus DMA tag appropriate for PCI. */

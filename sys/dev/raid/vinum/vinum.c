@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.16 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.17 2006/09/05 03:48:11 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -139,7 +139,7 @@ vinumattach(void *dummy)
 		cp1++;
 	    if (*cp1 != '\0')
 		*cp1++ = '\0';
-	    drives = realloc(drives, (unsigned long)((i + 1) * sizeof(char *)),
+	    drives = krealloc(drives, (unsigned long)((i + 1) * sizeof(char *)),
 			     M_TEMP, M_WAITOK);
 	    drives[i] = cp2;
 	}

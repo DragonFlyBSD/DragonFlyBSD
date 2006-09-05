@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.6 2006/09/05 00:55:36 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.7 2006/09/05 03:48:09 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -96,7 +96,7 @@ agp_amd_alloc_gatt(device_t dev)
 	 * directory.
 	 */
 	gatt->ag_entries = entries;
-	gatt->ag_virtual = malloc(entries * sizeof(u_int32_t),
+	gatt->ag_virtual = kmalloc(entries * sizeof(u_int32_t),
 				  M_AGP, M_INTWAIT | M_ZERO);
 
 	/*

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.21 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.22 2006/09/05 03:48:12 dillon Exp $
  */
 
 #define        DEB(x)
@@ -839,7 +839,7 @@ realloc_dynamic_table(void)
 	if (ipfw_dyn_v != NULL)
 		kfree(ipfw_dyn_v, M_IPFW);
 	for (;;) {
-		ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
+		ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
 		       M_IPFW, M_WAITOK | M_ZERO);
 		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
 			break;

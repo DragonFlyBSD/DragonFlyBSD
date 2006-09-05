@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.66 2006/09/03 18:52:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.67 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -299,7 +299,7 @@ sleep_gdinit(globaldata_t gd)
 
 		gd->gd_tsleep_hash = slpque_cpu0;
 	} else {
-		gd->gd_tsleep_hash = malloc(sizeof(slpque_cpu0), 
+		gd->gd_tsleep_hash = kmalloc(sizeof(slpque_cpu0), 
 					    M_TSLEEP, M_WAITOK | M_ZERO);
 	}
 	for (i = 0; i < TABLESIZE; ++i)

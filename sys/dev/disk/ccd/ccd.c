@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.35 2006/09/05 00:55:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.36 2006/09/05 03:48:10 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -362,7 +362,7 @@ ccdinit(struct ccddevice *ccd, char **cpaths, struct ucred *cred)
 	cs->sc_nccdisks = ccd->ccd_ndev;
 
 	/* Allocate space for the component info. */
-	cs->sc_cinfo = malloc(cs->sc_nccdisks * sizeof(struct ccdcinfo),
+	cs->sc_cinfo = kmalloc(cs->sc_nccdisks * sizeof(struct ccdcinfo),
 	    M_DEVBUF, M_WAITOK);
 
 	/*
@@ -602,7 +602,7 @@ ccdinterleave(struct ccd_softc *cs, int unit)
 		 * Allocate space for ii_index.  We might allocate more then
 		 * we use.
 		 */
-		ii->ii_index = malloc((sizeof(int) * cs->sc_nccdisks),
+		ii->ii_index = kmalloc((sizeof(int) * cs->sc_nccdisks),
 		    M_DEVBUF, M_WAITOK);
 
 		/*
@@ -1315,9 +1315,9 @@ ccdioctl(struct dev_ioctl_args *ap)
 		 * Allocate space for and copy in the array of
 		 * componet pathnames and device numbers.
 		 */
-		cpp = malloc(ccio->ccio_ndisks * sizeof(char *),
+		cpp = kmalloc(ccio->ccio_ndisks * sizeof(char *),
 		    M_DEVBUF, M_WAITOK);
-		vpp = malloc(ccio->ccio_ndisks * sizeof(struct vnode *),
+		vpp = kmalloc(ccio->ccio_ndisks * sizeof(struct vnode *),
 		    M_DEVBUF, M_WAITOK);
 
 		error = copyin((caddr_t)ccio->ccio_disks, (caddr_t)cpp,

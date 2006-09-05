@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.8 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.9 2006/09/05 03:48:09 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -3807,7 +3807,7 @@ ahc_alloc(void *platform_arg, char *name)
 	ahc = device_get_softc((device_t)platform_arg);
 #endif
 	memset(ahc, 0, sizeof(*ahc));
-	ahc->seep_config = malloc(sizeof(*ahc->seep_config),
+	ahc->seep_config = kmalloc(sizeof(*ahc->seep_config),
 				  M_DEVBUF, M_WAITOK);
 	LIST_INIT(&ahc->pending_scbs);
 	/* We don't know our unit number until the OSM sets it */
@@ -3848,7 +3848,7 @@ ahc_softc_init(struct ahc_softc *ahc)
 	ahc->pause = ahc->unpause | PAUSE; 
 	/* XXX The shared scb data stuff should be deprecated */
 	if (ahc->scb_data == NULL) {
-		ahc->scb_data = malloc(sizeof(*ahc->scb_data),
+		ahc->scb_data = kmalloc(sizeof(*ahc->scb_data),
 				       M_DEVBUF, M_WAITOK | M_ZERO);
 	}
 
@@ -4243,7 +4243,7 @@ ahc_init_scbdata(struct ahc_softc *ahc)
 	SLIST_INIT(&scb_data->sg_maps);
 
 	/* Allocate SCB resources */
-	scb_data->scbarray = malloc(sizeof(struct scb) * AHC_SCB_MAX_ALLOC,
+	scb_data->scbarray = kmalloc(sizeof(struct scb) * AHC_SCB_MAX_ALLOC,
 				    M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	/* Determine the number of hardware SCBs and initialize them */

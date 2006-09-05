@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_isa.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.5 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_isa.c,v 1.6 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,12 +174,12 @@ rp_probe(device_t dev)
 
 	/* The IO ports of AIOPs for an ISA controller are discrete. */
 	ctlp->io_num = 1;
-	ctlp->io_rid = malloc(sizeof(*(ctlp->io_rid)) * MAX_AIOPS_PER_BOARD,
+	ctlp->io_rid = kmalloc(sizeof(*(ctlp->io_rid)) * MAX_AIOPS_PER_BOARD,
 				M_DEVBUF, M_WAITOK | M_ZERO);
-	ctlp->io = malloc(sizeof(*(ctlp->io)) * MAX_AIOPS_PER_BOARD, 
+	ctlp->io = kmalloc(sizeof(*(ctlp->io)) * MAX_AIOPS_PER_BOARD, 
 				M_DEVBUF, M_WAITOK | M_ZERO);
 
-	ctlp->bus_ctlp = malloc(sizeof(ISACONTROLLER_t) * 1,
+	ctlp->bus_ctlp = kmalloc(sizeof(ISACONTROLLER_t) * 1,
 				M_DEVBUF, M_WAITOK | M_ZERO);
 
 	ctlp->io_rid[0] = 0;

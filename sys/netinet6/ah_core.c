@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.7 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.8 2006/09/05 03:48:12 dillon Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -609,7 +609,7 @@ ah_hmac_sha1_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_hmac_sha1_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(64 + 64 + sizeof(SHA1_CTX),
+	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA1_CTX),
 			M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;
@@ -729,7 +729,7 @@ ah_hmac_sha2_256_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_hmac_sha2_256_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(64 + 64 + sizeof(SHA256_CTX),
+	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA256_CTX),
 	    M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;
@@ -854,7 +854,7 @@ ah_hmac_sha2_384_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_hmac_sha2_384_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(64 + 64 + sizeof(SHA384_CTX),
+	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA384_CTX),
 	    M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;
@@ -980,7 +980,7 @@ ah_hmac_sha2_512_init(struct ah_algorithm_state *state, struct secasvar *sav)
 		panic("ah_hmac_sha2_512_init: what?");
 
 	state->sav = sav;
-	state->foo = (void *)malloc(64 + 64 + sizeof(SHA512_CTX),
+	state->foo = (void *)kmalloc(64 + 64 + sizeof(SHA512_CTX),
 	    M_TEMP, M_NOWAIT);
 	if (!state->foo)
 		return ENOBUFS;

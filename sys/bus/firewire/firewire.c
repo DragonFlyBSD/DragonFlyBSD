@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.15 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.16 2006/09/05 03:48:09 dillon Exp $
  *
  */
 
@@ -759,9 +759,9 @@ fw_init(struct firewire_comm *fc)
 		fc->it[i]->maxq = FWMAXQUEUE;
 	}
 /* Initialize csr registers */
-	fc->topology_map = malloc(sizeof(struct fw_topology_map),
+	fc->topology_map = kmalloc(sizeof(struct fw_topology_map),
 				    M_FW, M_WAITOK | M_ZERO);
-	fc->speed_map = malloc(sizeof(struct fw_speed_map),
+	fc->speed_map = kmalloc(sizeof(struct fw_speed_map),
 				    M_FW, M_WAITOK | M_ZERO);
 	CSRARC(fc, TOPO_MAP) = 0x3f1 << 16;
 	CSRARC(fc, TOPO_MAP + 4) = 1;

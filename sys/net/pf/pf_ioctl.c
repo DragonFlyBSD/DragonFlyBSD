@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.8 2006/09/05 00:55:47 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.9 2006/09/05 03:48:12 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -451,7 +451,7 @@ pf_find_or_create_ruleset(char anchorname[PF_ANCHOR_NAME_SIZE],
 	if (a != NULL && !strcmp(a->name, anchorname))
 		anchor = a;
 	else {
-		anchor = (struct pf_anchor *)malloc(sizeof(struct pf_anchor),
+		anchor = (struct pf_anchor *)kmalloc(sizeof(struct pf_anchor),
 		    M_TEMP, M_NOWAIT);
 		if (anchor == NULL)
 			return (NULL);
@@ -468,7 +468,7 @@ pf_find_or_create_ruleset(char anchorname[PF_ANCHOR_NAME_SIZE],
 		r = TAILQ_NEXT(r, entries);
 	if (r != NULL && !strcmp(r->name, rulesetname))
 		return (r);
-	ruleset = (struct pf_ruleset *)malloc(sizeof(struct pf_ruleset),
+	ruleset = (struct pf_ruleset *)kmalloc(sizeof(struct pf_ruleset),
 	    M_TEMP, M_NOWAIT);
 	if (ruleset != NULL) {
 		pf_init_ruleset(ruleset);
@@ -600,7 +600,7 @@ tagname2tag(struct pf_tags *head, char *tagname)
 		return (0);
 
 	/* allocate and fill new struct pf_tagname */
-	tag = (struct pf_tagname *)malloc(sizeof(struct pf_tagname),
+	tag = (struct pf_tagname *)kmalloc(sizeof(struct pf_tagname),
 	    M_TEMP, M_NOWAIT);
 	if (tag == NULL)
 		return (0);

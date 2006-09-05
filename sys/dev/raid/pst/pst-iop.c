@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-iop.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.8 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-iop.c,v 1.9 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ iop_init(struct iop_softc *sc)
     }
 
     /* register iop_attach to be run when interrupts are enabled */
-    sc->iop_delayed_attach = malloc(sizeof(struct intr_config_hook), 
+    sc->iop_delayed_attach = kmalloc(sizeof(struct intr_config_hook), 
 				   M_PSTIOP, M_INTWAIT | M_ZERO);
     sc->iop_delayed_attach->ich_func = (void *)iop_attach;
     sc->iop_delayed_attach->ich_arg = (void *)sc;
@@ -302,7 +302,7 @@ iop_get_lct(struct iop_softc *sc)
 	contigfree(reply, ALLOCSIZE, M_PSTIOP);
 	return 0;
     }
-    sc->lct = malloc(reply->table_size * sizeof(struct i2o_lct_entry),
+    sc->lct = kmalloc(reply->table_size * sizeof(struct i2o_lct_entry),
 			   M_PSTIOP, M_INTWAIT | M_ZERO);
     bcopy(&reply->entry[0], sc->lct, 
 	  reply->table_size * sizeof(struct i2o_lct_entry));

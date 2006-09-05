@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.44 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.45 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -472,7 +472,7 @@ fxp_attach(device_t dev)
 	CSR_WRITE_4(sc, FXP_CSR_PORT, FXP_PORT_SELECTIVE_RESET);
 	DELAY(10);
 
-	sc->cbl_base = malloc(sizeof(struct fxp_cb_tx) * FXP_NTXCB,
+	sc->cbl_base = kmalloc(sizeof(struct fxp_cb_tx) * FXP_NTXCB,
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->fxp_stats = kmalloc(sizeof(struct fxp_stats), M_DEVBUF,

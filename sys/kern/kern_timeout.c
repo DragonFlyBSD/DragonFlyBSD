@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.21 2005/12/20 19:09:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.22 2006/09/05 03:48:12 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -165,7 +165,7 @@ swi_softclock_setup(void *arg)
 
 		sc = &softclock_pcpu_ary[cpu];
 
-		sc->callwheel = malloc(sizeof(*sc->callwheel) * callwheelsize,
+		sc->callwheel = kmalloc(sizeof(*sc->callwheel) * callwheelsize,
 					M_CALLOUT, M_WAITOK|M_ZERO);
 		for (i = 0; i < callwheelsize; ++i)
 			TAILQ_INIT(&sc->callwheel[i]);

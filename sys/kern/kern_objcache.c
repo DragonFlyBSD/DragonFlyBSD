@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.10 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.11 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ mag_alloc(int capacity)
 {
 	struct magazine *mag;
 
-	mag = malloc(__offsetof(struct magazine, objects[capacity]),
+	mag = kmalloc(__offsetof(struct magazine, objects[capacity]),
 			M_OBJMAG, M_INTWAIT | M_ZERO);
 	mag->capacity = capacity;
 	mag->rounds = 0;
@@ -164,7 +164,7 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	int cpuid;
 
 	/* allocate object cache structure */
-	oc = malloc(__offsetof(struct objcache, cache_percpu[ncpus]),
+	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
 		    M_OBJCACHE, M_WAITOK | M_ZERO);
 	oc->name = kstrdup(name, M_TEMP);
 	oc->ctor = ctor;

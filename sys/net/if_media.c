@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.10 2006/09/05 00:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.11 2006/09/05 03:48:12 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -286,7 +286,7 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 			return (EINVAL);
 
 		if (ifmr->ifm_count != 0) {
-			kptr = (int *)malloc(ifmr->ifm_count * sizeof(int),
+			kptr = (int *)kmalloc(ifmr->ifm_count * sizeof(int),
 			    M_TEMP, M_WAITOK);
 
 			/*

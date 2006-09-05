@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.18 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
  */
 
 #ifndef lint
@@ -509,7 +509,7 @@ try_next:
 		modp = (struct si_module *)
 			(maddr + (unsigned)(modp->sm_next & 0x7fff));
 	}
-	sc->sc_ports = malloc(sizeof(struct si_port) * nport,
+	sc->sc_ports = kmalloc(sizeof(struct si_port) * nport,
 				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_nport = nport;
 	for (n = 0; n < nport; ++n) {

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.52 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.53 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -958,7 +958,7 @@ no_valid_rt:
 		struct netmsg_remwildcard *msg;
 
 		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
-		msg = malloc(sizeof(struct netmsg_remwildcard),
+		msg = kmalloc(sizeof(struct netmsg_remwildcard),
 			    M_LWKTMSG, M_INTWAIT);
 		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 		    lwkt_cmd_func(in_pcbremwildcardhash_handler),
@@ -1047,7 +1047,7 @@ tcp_drain(void)
 		if (cpu == mycpu->gd_cpuid) {
 			tcp_drain_oncpu(&tcbinfo[cpu].pcblisthead);
 		} else {
-			msg = malloc(sizeof(struct netmsg_tcp_drain),
+			msg = kmalloc(sizeof(struct netmsg_tcp_drain),
 				    M_LWKTMSG, M_NOWAIT);
 			if (msg == NULL)
 				continue;

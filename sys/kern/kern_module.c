@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.11 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.12 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ module_register(const moduledata_t *data, linker_file_t container)
 	return EEXIST;
     }
     namelen = strlen(data->name) + 1;
-    newmod = (module_t) malloc(sizeof(struct module) + namelen,
+    newmod = (module_t) kmalloc(sizeof(struct module) + namelen,
 			       M_MODULE, M_WAITOK);
     if (newmod == 0)
 	return ENOMEM;

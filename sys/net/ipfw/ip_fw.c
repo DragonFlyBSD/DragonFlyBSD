@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.18 2006/09/05 00:55:47 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.19 2006/09/05 03:48:12 dillon Exp $
  */
 
 #define        DEB(x)
@@ -850,7 +850,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	    curr_dyn_buckets = dyn_buckets ;
 	    if (ipfw_dyn_v != NULL)
 		kfree(ipfw_dyn_v, M_IPFW);
-	    ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof r,
+	    ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof r,
                    M_IPFW, M_WAITOK | M_ZERO);
 	    if (ipfw_dyn_v == NULL)
 		return NULL; /* failed ! */

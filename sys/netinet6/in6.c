@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.20 2006/09/05 00:55:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.21 2006/09/05 03:48:12 dillon Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -2357,12 +2357,12 @@ in6_domifattach(struct ifnet *ifp)
 	ext = (struct in6_ifextra *)kmalloc(sizeof(*ext), M_IFADDR, M_WAITOK);
 	bzero(ext, sizeof(*ext));
 
-	ext->in6_ifstat = (struct in6_ifstat *)malloc(sizeof(struct in6_ifstat),
+	ext->in6_ifstat = (struct in6_ifstat *)kmalloc(sizeof(struct in6_ifstat),
 		M_IFADDR, M_WAITOK);
 	bzero(ext->in6_ifstat, sizeof(*ext->in6_ifstat));
 
 	ext->icmp6_ifstat =
-		(struct icmp6_ifstat *)malloc(sizeof(struct icmp6_ifstat),
+		(struct icmp6_ifstat *)kmalloc(sizeof(struct icmp6_ifstat),
 			M_IFADDR, M_WAITOK);
 	bzero(ext->icmp6_ifstat, sizeof(*ext->icmp6_ifstat));
 

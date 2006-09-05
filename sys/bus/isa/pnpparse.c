@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/pnpparse.c,v 1.14 2003/06/11 00:32:45 obrien Exp $
- * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.7 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.8 2006/09/05 03:48:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -422,7 +422,7 @@ pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn)
 	parent = device_get_parent(dev);
 	id = isa_get_logicalid(dev);
 
-	configs = malloc(sizeof(*configs)*(1 + MAXDEP),
+	configs = kmalloc(sizeof(*configs)*(1 + MAXDEP),
 			  M_DEVBUF, M_WAITOK | M_ZERO);
 	config = &configs[0];
 	priorities[0] = 0;

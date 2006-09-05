@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.36 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.37 2006/09/05 03:48:13 dillon Exp $
  */
 
 /*
@@ -2117,7 +2117,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				struct nfsrv_rec *rec;
 				int mf = (waitflag & MB_DONTWAIT) ?
 					    M_NOWAIT : M_WAITOK;
-				rec = malloc(sizeof(struct nfsrv_rec),
+				rec = kmalloc(sizeof(struct nfsrv_rec),
 					     M_NFSRVDESC, mf);
 				if (!rec) {
 					if (nam)

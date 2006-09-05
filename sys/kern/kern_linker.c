@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.29 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.30 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -495,7 +495,7 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
 {
     linker_file_t* newdeps;
 
-    newdeps = malloc((file->ndeps + 1) * sizeof(linker_file_t*),
+    newdeps = kmalloc((file->ndeps + 1) * sizeof(linker_file_t*),
 		     M_LINKER, M_WAITOK);
     if (newdeps == NULL)
 	return ENOMEM;
@@ -601,7 +601,7 @@ linker_file_lookup_symbol(linker_file_t file, const char* name, int deps, caddr_
 	 * Round the symbol size up to align.
 	 */
 	common_size = (common_size + sizeof(int) - 1) & -sizeof(int);
-	cp = malloc(sizeof(struct common_symbol)
+	cp = kmalloc(sizeof(struct common_symbol)
 		    + common_size
 		    + strlen(name) + 1,
 		    M_LINKER, M_WAITOK);

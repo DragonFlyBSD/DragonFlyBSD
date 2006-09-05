@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptosoft.c,v 1.2.2.1 2002/11/21 23:34:23 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.4 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptosoft.c,v 1.5 2006/09/05 03:48:13 dillon Exp $	*/
 /*	$OpenBSD: cryptosoft.c,v 1.35 2002/04/26 08:43:50 deraadt Exp $	*/
 
 /*
@@ -612,7 +612,7 @@ swcr_newsession(void *arg, u_int32_t *sid, struct cryptoini *cri)
 		} else
 			swcr_sesnum *= 2;
 
-		swd = malloc(swcr_sesnum * sizeof(struct swcr_data *),
+		swd = kmalloc(swcr_sesnum * sizeof(struct swcr_data *),
 		    M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 		if (swd == NULL) {
 			/* Reset session number */

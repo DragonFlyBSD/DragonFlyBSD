@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.25 2006/09/05 00:55:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.26 2006/09/05 03:48:13 dillon Exp $
  */
 
 /*
@@ -104,7 +104,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 					&rootvp);
 	}
 
-	xmp = (struct null_mount *) malloc(sizeof(struct null_mount),
+	xmp = (struct null_mount *) kmalloc(sizeof(struct null_mount),
 				M_NULLFSMNT, M_WAITOK);	/* XXX */
 
 	/*

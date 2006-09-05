@@ -34,7 +34,7 @@
  * THE POSSIBILITY OF SUCH DAMAGES.
  *
  * $FreeBSD: src/sys/dev/ath/ath_rate/onoe/onoe.c,v 1.8.2.3 2006/02/24 19:51:11 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.2 2006/09/05 00:55:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan_ratectl/onoe/ieee80211_ratectl_onoe.c,v 1.3 2006/09/05 03:48:13 dillon Exp $
  */
 
 /*
@@ -493,7 +493,7 @@ static void
 onoe_data_alloc(struct ieee80211_node *ni)
 {
 	KKASSERT(ni->ni_rate_data == NULL);
-	ni->ni_rate_data = malloc(sizeof(struct onoe_data),
+	ni->ni_rate_data = kmalloc(sizeof(struct onoe_data),
 				  M_ONOE_RATECTL_DATA, M_NOWAIT | M_ZERO);
 }
 

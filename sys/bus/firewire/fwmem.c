@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.12 2006/09/05 03:48:09 dillon Exp $
  */
 
 #ifndef __DragonFly__
@@ -287,7 +287,7 @@ fwmem_open (struct dev_open_args *ap)
 		fms = (struct fwmem_softc *)dev->si_drv1;
 		fms->refcount ++;
 	} else {
-		fms = (struct fwmem_softc *)malloc(sizeof(struct fwmem_softc),
+		fms = (struct fwmem_softc *)kmalloc(sizeof(struct fwmem_softc),
 							M_FWMEM, M_WAITOK);
 		if (fms == NULL)
 			return ENOMEM;

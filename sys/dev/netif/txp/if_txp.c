@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.38 2006/09/05 00:55:41 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.39 2006/09/05 03:48:11 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -954,7 +954,7 @@ txp_alloc_rings(struct txp_softc *sc)
 		struct txp_swdesc *sd;
 		if (sc->sc_rxbufs[i].rb_sd != NULL)
 			continue;
-		sc->sc_rxbufs[i].rb_sd = malloc(sizeof(struct txp_swdesc),
+		sc->sc_rxbufs[i].rb_sd = kmalloc(sizeof(struct txp_swdesc),
 		    M_DEVBUF, M_WAITOK);
 		if (sc->sc_rxbufs[i].rb_sd == NULL)
 			return(ENOBUFS);
@@ -1399,7 +1399,7 @@ txp_response(struct txp_softc *sc, u_int32_t ridx, u_int16_t id, u_int16_t seq,
 		rsp = (struct txp_rsp_desc *)(((u_int8_t *)sc->sc_rspring.base) + ridx);
 
 		if (id == rsp->rsp_id && rsp->rsp_seq == seq) {
-			*rspp = (struct txp_rsp_desc *)malloc(
+			*rspp = (struct txp_rsp_desc *)kmalloc(
 			    sizeof(struct txp_rsp_desc) * (rsp->rsp_numdesc + 1),
 			    M_DEVBUF, M_INTWAIT);
 			if ((*rspp) == NULL)

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.44 2006/09/05 00:55:39 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.45 2006/09/05 03:48:10 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4146,9 +4146,9 @@ tulip_pci_attach(device_t dev)
 
     tulip_initcsrs(sc, csr_base + csroffset, csrsize);
 
-    sc->tulip_rxdescs = malloc(sizeof(tulip_desc_t) * TULIP_RXDESCS, 
+    sc->tulip_rxdescs = kmalloc(sizeof(tulip_desc_t) * TULIP_RXDESCS, 
 				M_DEVBUF, M_INTWAIT);
-    sc->tulip_txdescs = malloc(sizeof(tulip_desc_t) * TULIP_TXDESCS,
+    sc->tulip_txdescs = kmalloc(sizeof(tulip_desc_t) * TULIP_TXDESCS,
 				M_DEVBUF, M_INTWAIT);
 
     tulip_initring(sc, &sc->tulip_rxinfo, sc->tulip_rxdescs, TULIP_RXDESCS);

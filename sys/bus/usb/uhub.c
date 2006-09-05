@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhub.c,v 1.64 2003/02/08 03:32:51 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/uhub.c,v 1.54 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/uhub.c,v 1.7 2006/09/05 00:55:36 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/uhub.c,v 1.8 2006/09/05 03:48:09 dillon Exp $
  */
 
 /*
@@ -216,7 +216,7 @@ USB_ATTACH(uhub)
 	       USBDEVNAME(sc->sc_dev), nports, nports != 1 ? "s" : "",
 	       nremov, dev->self_powered ? "self" : "bus");
 
-	hub = malloc(sizeof(*hub) + (nports-1) * sizeof(struct usbd_port),
+	hub = kmalloc(sizeof(*hub) + (nports-1) * sizeof(struct usbd_port),
 		     M_USBDEV, M_WAITOK);
 	dev->hub = hub;
 	dev->hub->hubsoftc = sc;

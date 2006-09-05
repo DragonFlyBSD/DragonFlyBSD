@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_ioctl.c,v 1.5 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.7 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_ioctl.c,v 1.8 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -164,7 +164,7 @@ ips_ioctl_request(ips_softc_t *sc, u_long ioctl_request, caddr_t addr,
 	case IPS_USER_CMD:
 		user_request = (ips_user_request *)addr;
 		ioctl_cmd = kmalloc(sizeof(ips_ioctl_t), M_IPSBUF, M_WAITOK);
-		ioctl_cmd->command_buffer = malloc(sizeof(ips_generic_cmd),
+		ioctl_cmd->command_buffer = kmalloc(sizeof(ips_generic_cmd),
 		    M_IPSBUF, M_WAITOK);
 		if (copyin(user_request->command_buffer,
 		    ioctl_cmd->command_buffer, sizeof(ips_generic_cmd))) {

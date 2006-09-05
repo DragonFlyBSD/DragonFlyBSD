@@ -27,7 +27,7 @@
  *   Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_scatter.h,v 1.4.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.3 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.4 2006/09/05 03:48:10 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -38,7 +38,7 @@
 
 void DRM(sg_cleanup)( drm_sg_mem_t *entry )
 {
-	free( entry->virtual, DRM(M_DRM) );
+	kfree( entry->virtual, DRM(M_DRM) );
 
 	DRM(free)( entry->busaddr,
 		   entry->pages * sizeof(*entry->busaddr),
@@ -84,7 +84,7 @@ int DRM(sg_alloc)( DRM_IOCTL_ARGS )
 	}
 	bzero( (void *)entry->busaddr, pages * sizeof(*entry->busaddr) );
 
-	entry->virtual = malloc( pages << PAGE_SHIFT, DRM(M_DRM), M_WAITOK );
+	entry->virtual = kmalloc( pages << PAGE_SHIFT, DRM(M_DRM), M_WAITOK );
 	if ( !entry->virtual ) {
 		DRM(free)( entry->busaddr,
 			   entry->pages * sizeof(*entry->busaddr),

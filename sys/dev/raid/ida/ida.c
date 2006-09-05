@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.12 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.13 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -198,7 +198,7 @@ ida_init(struct ida_softc *ida)
 	STAILQ_INIT(&ida->qcb_queue);
         bioq_init(&ida->bio_queue);
 
-	ida->qcbs = malloc(IDA_QCB_MAX * sizeof(struct ida_qcb), 
+	ida->qcbs = kmalloc(IDA_QCB_MAX * sizeof(struct ida_qcb), 
 			    M_DEVBUF, M_INTWAIT|M_ZERO);
 
 	/*

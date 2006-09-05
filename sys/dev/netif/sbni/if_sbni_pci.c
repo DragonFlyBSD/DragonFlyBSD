@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_pci.c,v 1.6 2002/09/28 20:59:59 phk Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.11 2006/09/05 00:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni_pci.c,v 1.12 2006/09/05 03:48:10 dillon Exp $
  */
 
  
@@ -86,7 +86,7 @@ sbni_pci_probe(device_t dev)
 
 	if (pci_get_subdevice(dev) == 2) {
 		ports <<= 1;
-		sc->slave_sc = malloc(sizeof(struct sbni_softc),
+		sc->slave_sc = kmalloc(sizeof(struct sbni_softc),
 				      M_DEVBUF, M_INTWAIT | M_ZERO);
 		device_set_desc(dev, "Granch SBNI12/PCI Dual adapter");
 	} else {

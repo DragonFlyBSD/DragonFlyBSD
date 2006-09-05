@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.19 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.20 2006/09/05 03:48:12 dillon Exp $
  */
 
 #define FREEBSD_AOUT	1
@@ -244,7 +244,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
      */
     af = kmalloc(sizeof(struct aout_file), M_LINKER, M_WAITOK);
     bzero(af, sizeof(*af));
-    af->address = malloc(header.a_text + header.a_data + header.a_bss,
+    af->address = kmalloc(header.a_text + header.a_data + header.a_bss,
 			 M_LINKER, M_WAITOK);
     
     /*

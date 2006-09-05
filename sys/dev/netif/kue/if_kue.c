@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.20 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.21 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -470,7 +470,7 @@ USB_ATTACH(kue)
 	err = kue_ctl(sc, KUE_CTL_READ, KUE_CMD_GET_ETHER_DESCRIPTOR,
 	    0, (char *)&sc->kue_desc, sizeof(sc->kue_desc));
 
-	sc->kue_mcfilters = malloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
+	sc->kue_mcfilters = kmalloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
 	    M_USBDEV, M_WAITOK);
 
 	ifp = &sc->arpcom.ac_if;

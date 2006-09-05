@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.17 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.18 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -235,7 +235,7 @@ pst_start(struct pst_softc *psc)
     if (psc->outstanding < (I2O_IOP_OUTBOUND_FRAME_COUNT - 1) &&
 	(bio = bioq_first(&psc->bio_queue))) {
 	if ((mfa = iop_get_mfa(psc->iop)) != 0xffffffff) {
-	    request = malloc(sizeof(struct pst_request),
+	    request = kmalloc(sizeof(struct pst_request),
 			       M_PSTRAID, M_INTWAIT | M_ZERO);
 	    psc->outstanding++;
 	    request->psc = psc;

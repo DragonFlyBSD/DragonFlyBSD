@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.6 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.7 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*-
@@ -540,12 +540,12 @@ digi_init(struct digi_softc *sc)
 
 	if (sc->ports)
 		kfree(sc->ports, M_TTYS);
-	sc->ports = malloc(sizeof(struct digi_p) * sc->numports,
+	sc->ports = kmalloc(sizeof(struct digi_p) * sc->numports,
 	    M_TTYS, M_WAITOK | M_ZERO);
 
 	if (sc->ttys)
 		kfree(sc->ttys, M_TTYS);
-	sc->ttys = malloc(sizeof(struct tty) * sc->numports,
+	sc->ttys = kmalloc(sizeof(struct tty) * sc->numports,
 	    M_TTYS, M_WAITOK | M_ZERO);
 
 	/*

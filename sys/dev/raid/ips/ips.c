@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.15 2006/09/05 00:55:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.16 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -151,7 +151,7 @@ ips_cmdqueue_init(ips_softc_t *sc)
 	int i;
 	ips_command_t *command;
 
-	sc->commandarray = malloc(sizeof(sc->commandarray[0]) * sc->max_cmds,
+	sc->commandarray = kmalloc(sizeof(sc->commandarray[0]) * sc->max_cmds,
 	    M_IPSBUF, M_INTWAIT | M_ZERO);
 	SLIST_INIT(&sc->free_cmd_list);
 	for (i = 0; i < sc->max_cmds; i++) {

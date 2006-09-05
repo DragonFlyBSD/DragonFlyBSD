@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.7 2006/09/05 00:55:34 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.8 2006/09/05 03:48:08 dillon Exp $
  */
 
 #include "opt_eisa.h"
@@ -105,7 +105,7 @@ mainboard_probe(device_t dev)
 	if (eisa_get_slot(dev) != 0)
 		return (ENXIO);
 
-	idstring = malloc(8 + sizeof(" (System Board)") + 1,
+	idstring = kmalloc(8 + sizeof(" (System Board)") + 1,
 			    M_DEVBUF, M_INTWAIT);
 	sprintf(idstring, "%c%c%c%03x%01x (System Board)",
 		EISA_MFCTR_CHAR0(id),

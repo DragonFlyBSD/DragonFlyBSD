@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.15 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.16 2006/09/05 03:48:10 dillon Exp $
  */
 
 /*
@@ -194,14 +194,14 @@ icioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	    if ((error = iicbus_request_bus(parent, icdev, IIC_WAIT|IIC_INTR)))
 		return (error);
 
-	    sc->ic_obuf = malloc(sc->ic_if.if_mtu + ICHDRLEN,
+	    sc->ic_obuf = kmalloc(sc->ic_if.if_mtu + ICHDRLEN,
 				  M_DEVBUF, M_WAITOK);
 	    if (!sc->ic_obuf) {
 		iicbus_release_bus(parent, icdev);
 		return ENOBUFS;
 	    }
 
-	    sc->ic_ifbuf = malloc(sc->ic_if.if_mtu + ICHDRLEN,
+	    sc->ic_ifbuf = kmalloc(sc->ic_if.if_mtu + ICHDRLEN,
 				  M_DEVBUF, M_WAITOK);
 	    if (!sc->ic_ifbuf) {
 		iicbus_release_bus(parent, icdev);

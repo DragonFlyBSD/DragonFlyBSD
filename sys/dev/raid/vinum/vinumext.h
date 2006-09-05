@@ -35,7 +35,7 @@
  *
  * $Id: vinumext.h,v 1.26 2000/05/16 07:38:08 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumext.h,v 1.25.2.3 2001/05/11 02:11:06 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.8 2006/07/28 02:17:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumext.h,v 1.9 2006/09/05 03:48:11 dillon Exp $
  */
 
 /* vinumext.h: external definitions */
@@ -256,9 +256,9 @@ caddr_t MMalloc(int size, char *, int);
 void FFree(void *mem, char *, int);
 #define LOCKDRIVE(d) lockdrive (d, __FILE__, __LINE__)
 #else
-#define Malloc(x)  malloc((x), M_DEVBUF, \
+#define Malloc(x)  kmalloc((x), M_DEVBUF, \
 	mycpu->gd_intr_nesting_level == 0? M_WAITOK: M_INTWAIT)
-#define Free(x)    free((x), M_DEVBUF)
+#define Free(x)    kfree((x), M_DEVBUF)
 #define LOCKDRIVE(d) lockdrive (d)
 #endif
 #else

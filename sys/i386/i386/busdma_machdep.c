@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.14 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/busdma_machdep.c,v 1.15 2006/09/05 03:48:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -255,7 +255,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 
 	if (dmat->segments == NULL) {
 		KKASSERT(dmat->nsegments && dmat->nsegments < 16384);
-		dmat->segments = malloc(sizeof(bus_dma_segment_t) * 
+		dmat->segments = kmalloc(sizeof(bus_dma_segment_t) * 
 					dmat->nsegments, M_DEVBUF, M_INTWAIT);
 	}
 
@@ -342,7 +342,7 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 
 	if (dmat->segments == NULL) {
 		KKASSERT(dmat->nsegments < 16384);
-		dmat->segments = malloc(sizeof(bus_dma_segment_t) * 
+		dmat->segments = kmalloc(sizeof(bus_dma_segment_t) * 
 					dmat->nsegments, M_DEVBUF, M_INTWAIT);
 	}
 

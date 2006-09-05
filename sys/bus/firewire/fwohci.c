@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.11 2006/09/05 00:55:35 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.12 2006/09/05 03:48:09 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -1230,7 +1230,7 @@ fwohci_db_init(struct fwohci_softc *sc, struct fwohci_dbch *dbch)
 	/* DB entry must start at 16 bytes bounary. */
 	STAILQ_INIT(&dbch->db_trq);
 	db_tr = (struct fwohcidb_tr *)
-		malloc(sizeof(struct fwohcidb_tr) * dbch->ndb,
+		kmalloc(sizeof(struct fwohcidb_tr) * dbch->ndb,
 		M_FW, M_WAITOK | M_ZERO);
 	if(db_tr == NULL){
 		printf("fwohci_db_init: malloc(1) failed\n");

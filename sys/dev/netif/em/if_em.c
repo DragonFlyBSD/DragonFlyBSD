@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.48 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.49 2006/09/05 03:48:10 dillon Exp $
  * $FreeBSD$
  */
 /*
@@ -2227,7 +2227,7 @@ em_dma_free(struct adapter *adapter, struct em_dma_alloc *dma)
 static int
 em_allocate_transmit_structures(struct adapter * adapter)
 {
-	adapter->tx_buffer_area = malloc(sizeof(struct em_buffer) *
+	adapter->tx_buffer_area = kmalloc(sizeof(struct em_buffer) *
 	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->tx_buffer_area == NULL) {
 		device_printf(adapter->dev, "Unable to allocate tx_buffer memory\n");

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.11 2006/09/05 00:55:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.12 2006/09/05 03:48:13 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -145,7 +145,7 @@ crypto_init(void)
 	}
 
 	crypto_drivers_num = CRYPTO_DRIVERS_INITIAL;
-	crypto_drivers = malloc(crypto_drivers_num *
+	crypto_drivers = kmalloc(crypto_drivers_num *
 	    sizeof(struct cryptocap), M_CRYPTO_DATA, M_NOWAIT | M_ZERO);
 	if (crypto_drivers == NULL) {
 		printf("crypto_init: cannot malloc driver table\n");
@@ -358,7 +358,7 @@ crypto_get_driverid(u_int32_t flags)
 			return -1;
 		}
 
-		newdrv = malloc(2 * crypto_drivers_num *
+		newdrv = kmalloc(2 * crypto_drivers_num *
 		    sizeof(struct cryptocap), M_CRYPTO_DATA, M_NOWAIT|M_ZERO);
 		if (newdrv == NULL) {
 			crit_exit();

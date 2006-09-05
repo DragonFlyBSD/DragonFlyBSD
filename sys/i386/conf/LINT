@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.91 2006/09/03 09:07:20 sephe Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.92 2006/09/05 03:48:11 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -64,6 +64,8 @@ makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
 #makeoptions	MODULES_OVERRIDE="linux sound/snd sound/pcm sound/driver/maestro3"
 #makeoptions	INSTALLSTRIPPED=1
 #makeoptions	INSTALLSTRIPPEDMODULES=1
+
+options		KMALLOC_ONLY
 
 #
 # Certain applications can grow to be larger than the 128M limit

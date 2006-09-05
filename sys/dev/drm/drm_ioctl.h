@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_ioctl.h,v 1.4.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_ioctl.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_ioctl.h,v 1.4 2006/09/05 03:48:10 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -63,7 +63,7 @@ int DRM(irq_busid)( DRM_IOCTL_ARGS )
 			break;
 	}
 
-	free(kids, M_TEMP);
+	kfree(kids, M_TEMP);
 
 	if (i != num_kids)
 		id.irq = pci_get_irq(dev);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.8 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.9 2006/09/05 03:48:12 dillon Exp $
  */
 
 /*
@@ -167,7 +167,7 @@ caps_alloc(thread_t td, const char *name, int len, uid_t uid, gid_t gid,
     caps_kinfo_t caps;
     caps_kinfo_t ctmp;
 
-    caps = malloc(offsetof(struct caps_kinfo, ci_name[len+1]), 
+    caps = kmalloc(offsetof(struct caps_kinfo, ci_name[len+1]), 
 			M_CAPS, M_WAITOK|M_ZERO);
     TAILQ_INIT(&caps->ci_msgpendq);
     TAILQ_INIT(&caps->ci_msguserq);

@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.18 2006/09/05 00:55:45 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.19 2006/09/05 03:48:11 dillon Exp $
  */
 
 /*
@@ -392,7 +392,7 @@ mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 		nd = imin(mo->mo_arg[0], mem_range_softc.mr_ndesc);
 		if (nd > 0) {
 			md = (struct mem_range_desc *)
-				malloc(nd * sizeof(struct mem_range_desc),
+				kmalloc(nd * sizeof(struct mem_range_desc),
 				       M_MEMDESC, M_WAITOK);
 			error = mem_range_attr_get(md, &nd);
 			if (!error)
@@ -406,7 +406,7 @@ mem_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred)
 		break;
 		
 	case MEMRANGE_SET:
-		md = (struct mem_range_desc *)malloc(sizeof(struct mem_range_desc),
+		md = (struct mem_range_desc *)kmalloc(sizeof(struct mem_range_desc),
 						    M_MEMDESC, M_WAITOK);
 		error = copyin(mo->mo_desc, md, sizeof(struct mem_range_desc));
 		/* clamp description string */

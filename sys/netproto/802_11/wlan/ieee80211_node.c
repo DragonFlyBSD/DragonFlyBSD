@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net80211/ieee80211_node.c,v 1.48.2.10 2006/03/13 03:05:47 sam Exp $
- * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.5 2006/09/05 00:55:48 dillon Exp $
+ * $DragonFly: src/sys/netproto/802_11/wlan/ieee80211_node.c,v 1.6 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ ieee80211_node_lateattach(struct ieee80211com *ic)
 		ic->ic_max_aid = IEEE80211_AID_MAX;
 
 	ic->ic_aid_bitmap =
-		malloc(howmany(ic->ic_max_aid, 32) * sizeof(uint32_t),
+		kmalloc(howmany(ic->ic_max_aid, 32) * sizeof(uint32_t),
 		       M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* XXX defer until using hostap/ibss mode */
@@ -2291,7 +2291,7 @@ ieee80211_node_table_init(struct ieee80211com *ic,
 	nt->nt_keyixmax = keyixmax;
 	if (nt->nt_keyixmax > 0) {
 		nt->nt_keyixmap =
-			malloc(keyixmax * sizeof(struct ieee80211_node *),
+			kmalloc(keyixmax * sizeof(struct ieee80211_node *),
 			       M_80211_NODE, M_WAITOK | M_ZERO);
 	} else {
 		nt->nt_keyixmap = NULL;

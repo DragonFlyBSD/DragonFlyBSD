@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.25 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.26 2006/09/05 03:48:10 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -304,7 +304,7 @@ found:
 		xferq->psize = MCLBYTES;
 		xferq->queued = 0;
 		xferq->buf = NULL;
-		xferq->bulkxfer = (struct fw_bulkxfer *) malloc(
+		xferq->bulkxfer = (struct fw_bulkxfer *) kmalloc(
 			sizeof(struct fw_bulkxfer) * xferq->bnchunk,
 							M_FWE, M_WAITOK);
 		if (xferq->bulkxfer == NULL) {
