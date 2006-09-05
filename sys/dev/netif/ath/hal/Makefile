@@ -34,7 +34,7 @@
 # THE POSSIBILITY OF SUCH DAMAGES.
 #
 # $FreeBSD: src/sys/modules/ath_hal/Makefile,v 1.4 2005/01/18 03:28:08 sam Exp $
-# $DragonFly: src/sys/dev/netif/ath/hal/Makefile,v 1.1 2006/07/13 09:15:22 sephe Exp $
+# $DragonFly: src/sys/dev/netif/ath/hal/Makefile,v 1.2 2006/09/05 16:50:52 dillon Exp $
 #
 
 #
@@ -56,7 +56,7 @@ SRCS	+= bus_if.h device_if.h pci_if.h opt_ah.h
 OBJS	= hal.o
 
 hal.o: ${MACHINE_ARCH}-elf.hal.o.uu
-	uudecode -p < ${.ALLSRC} > ${.TARGET}
+	uudecode -p < ${HAL}/public/${MACHINE_ARCH}-elf.hal.o.uu > ${.TARGET}
 
 opt_ah.h: ${MACHINE_ARCH}-elf.opt_ah.h
 	cp ${.ALLSRC} ${.TARGET}

@@ -31,10 +31,12 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.29.2.14 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.6 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.7 2006/09/05 16:50:50 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
+
+#ifdef AHC_PCI_CONFIG
 
 #define	AHC_PCI_IOADDR  PCIR_MAPS	/* I/O Address */
 #define	AHC_PCI_MEMADDR (PCIR_MAPS + 4) /* Mem I/O Address */
@@ -278,3 +280,5 @@ ahc_power_state_change(struct ahc_softc *ahc, ahc_power_state new_state)
 		cap_offset = (cap >> 8) & 0xFF;
 	}
 }
+
+#endif

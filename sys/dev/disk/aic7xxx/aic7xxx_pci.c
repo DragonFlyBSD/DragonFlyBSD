@@ -42,7 +42,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_pci.c#69 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_pci.c,v 1.2.2.17 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.4 2006/09/05 00:55:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_pci.c,v 1.5 2006/09/05 16:50:50 dillon Exp $
  */
 
 #ifdef __linux__
@@ -54,6 +54,8 @@
 #include "aic7xxx_inline.h"
 #include "aic7xxx_93cx6.h"
 #endif
+
+#ifdef AHC_PCI_CONFIG
 
 #define AHC_PCI_IOADDR	PCIR_MAPS	/* I/O Address */
 #define AHC_PCI_MEMADDR	(PCIR_MAPS + 4)	/* Mem I/O Address */
@@ -2481,3 +2483,5 @@ ahc_aha494XX_setup(struct ahc_softc *ahc)
 	ahc->flags |= AHC_LARGE_SEEPROM;
 	return (0);
 }
+
+#endif
