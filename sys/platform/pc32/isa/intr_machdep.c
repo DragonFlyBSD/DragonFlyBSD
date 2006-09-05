@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.44 2005/12/24 20:34:04 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.45 2006/09/05 16:19:01 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -73,7 +73,6 @@
 #include <bus/isa/isavar.h>
 #endif
 #include <i386/isa/intr_machdep.h>
-#include <bus/isa/isavar.h>
 #include <sys/interrupt.h>
 #include <machine/clock.h>
 #include <machine/cpu.h>
